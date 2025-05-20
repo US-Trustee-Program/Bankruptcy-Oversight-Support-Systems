@@ -9,7 +9,7 @@ button.unstyled-button {
 }
 
 .usa-form-group {
-  label:has(+ .usa-input-group input[required])::after {
+  label:has(~ .usa-input-group input[required])::after {
     content: ' *';
     color: $secondary-dark;
   }

@@ -89,12 +89,12 @@ function spyOnUseState() {
   return vi.spyOn(UseStateModule, 'useState').mockImplementation(useStateMock);
 }
 
-function selectCheckbox(id: string) {
+async function selectCheckbox(id: string) {
   const checkbox = document.querySelector(`#checkbox-${id}`);
   if (checkbox) {
     const checkboxLabelButton = document.querySelector(`#checkbox-${id}-click-target`);
     if (checkboxLabelButton) {
-      fireEvent.click(checkboxLabelButton);
+      await userEvent.click(checkboxLabelButton);
     }
   }
   return checkbox;

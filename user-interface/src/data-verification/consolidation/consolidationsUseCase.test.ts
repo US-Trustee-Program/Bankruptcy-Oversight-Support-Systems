@@ -22,36 +22,35 @@ describe('Consolidation UseCase tests', () => {
   let useCase: ConsolidationsUseCase;
   const onExpand = vi.fn();
 
-  const mockLeadCase = MockData.getConsolidatedOrderCase();
+  const mockAddCase = MockData.getConsolidatedOrderCase();
   const mockOrder = MockData.getConsolidationOrder();
   const onOrderUpdateSpy = vi.fn();
   const { waitFor } = TestingUtilities;
 
-  function setupLeadCase() {
-    store.setLeadCase(mockLeadCase);
-    store.setLeadCaseNumber(getCaseNumber(mockLeadCase.caseId));
-    store.setLeadCaseId(mockLeadCase.caseId);
-    store.setLeadCaseCourt(mockLeadCase.courtDivisionCode);
-    store.setLeadCaseNumberError('error message');
-  }
+  const setupAddCase = () => {
+    store.setCaseToAdd(mockAddCase);
+    store.setCaseToAddCaseNumber(getCaseNumber(mockAddCase.caseId));
+    store.setCaseToAddCourt(mockAddCase.courtDivisionCode);
+    store.setAddCaseNumberError('error message');
+  };
 
-  function includeCases(mockCases: ConsolidationOrderCase[]) {
+  const includeCases = (mockCases: ConsolidationOrderCase[]) => {
     store.setSelectedCases(mockCases);
     store.setLeadCase(mockCases[1]);
     store.setConsolidationType('administrative');
-  }
+  };
 
-  function expectClearLeadCase() {
+  const expectClearLeadCase = () => {
     expect(store.leadCase).toBeNull();
     expect(store.leadCaseId).toEqual('');
     expect(store.leadCaseNumber).toEqual('');
     expect(store.leadCaseNumberError).toEqual('');
     expect(store.foundValidCaseNumber).toBe(false);
-  }
+  };
 
   const accordionFieldHeaders = ['Court District', 'Order Filed', 'Event Type', 'Event Status'];
 
-  function initUseCase() {
+  const initUseCase = () => {
     const props = {
       order: mockOrder,
       statusType: orderStatusType,
@@ -67,7 +66,7 @@ describe('Consolidation UseCase tests', () => {
     controls = useConsolidationControlsMock();
 
     useCase = consolidationUseCase(store, controls, props.onOrderUpdate, props.onExpand);
-  }
+  };
 
   beforeEach(async () => {
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
@@ -84,9 +83,8 @@ describe('Consolidation UseCase tests', () => {
   test('should properly handle handleClearInputs', () => {
     const clearAllCheckBoxesSpy = vi.spyOn(controls, 'clearAllCheckBoxes');
     const unsetConsolidationTypeSpy = vi.spyOn(controls, 'unsetConsolidationType');
-    const showLeadCaseFormSpy = vi.spyOn(store, 'setShowLeadCaseForm');
 
-    setupLeadCase();
+    setupAddCase();
 
     store.setFoundValidCaseNumber(true);
     store.setShowLeadCaseForm(true);
@@ -95,7 +93,6 @@ describe('Consolidation UseCase tests', () => {
     expectClearLeadCase();
     expect(clearAllCheckBoxesSpy).toHaveBeenCalled();
     expect(unsetConsolidationTypeSpy).toHaveBeenCalled();
-    expect(showLeadCaseFormSpy).toHaveBeenCalledWith(false);
   });
 
   test('should call approveConsolidation when approve button is clicked', () => {
@@ -157,7 +154,7 @@ describe('Consolidation UseCase tests', () => {
     const setLeadCaseSpy = vi.spyOn(store, 'setLeadCase');
     const setLeadCaseIdSpy = vi.spyOn(store, 'setLeadCaseId');
 
-    setupLeadCase();
+    setupAddCase();
 
     const newLeadCase = MockData.getConsolidatedOrderCase();
     useCase.handleMarkLeadCase(newLeadCase);
@@ -166,7 +163,6 @@ describe('Consolidation UseCase tests', () => {
     expect(store.leadCaseId).toEqual(newLeadCase.caseId);
     expect(store.leadCaseNumber).toEqual('');
     expect(store.leadCaseCourt).toEqual('');
-    expect(store.showLeadCaseForm).toBe(false);
     expect(setLeadCaseSpy).toHaveBeenCalledWith(newLeadCase);
     expect(setLeadCaseIdSpy).toHaveBeenCalledWith(newLeadCase.caseId);
 
@@ -175,34 +171,6 @@ describe('Consolidation UseCase tests', () => {
 
     expect(setLeadCaseSpy).toHaveBeenCalledWith(null);
     expect(setLeadCaseIdSpy).toHaveBeenCalledWith('');
-  });
-
-  test('should handle clearing the lead case number input', () => {
-    setupLeadCase();
-    store.setFoundValidCaseNumber(true);
-    store.setShowLeadCaseForm(true);
-    const controlSpy = vi.spyOn(controls, 'disableButton');
-
-    useCase.handleLeadCaseInputChange();
-
-    expect(store.leadCaseNumber).toEqual('');
-    expect(store.foundValidCaseNumber).toEqual(false);
-    expect(store.leadCase).toBeNull();
-    expect(store.leadCaseNumberError).toEqual('');
-    expect(controlSpy).toHaveBeenCalledWith(controls.approveButton, true);
-  });
-
-  test('should handle setting the lead case number input', () => {
-    setupLeadCase();
-    store.setFoundValidCaseNumber(true);
-    store.setShowLeadCaseForm(true);
-    const disableButtonSpy = vi.spyOn(controls, 'disableButton');
-
-    const caseNumber = '24-12345';
-    useCase.handleLeadCaseInputChange(caseNumber);
-
-    expect(store.leadCaseNumber).toEqual(caseNumber);
-    expect(disableButtonSpy).not.toHaveBeenCalled();
   });
 
   test('should get caseAssignments and caseAssociations when accordion is expanded', async () => {
@@ -245,18 +213,10 @@ describe('Consolidation UseCase tests', () => {
     expect(setLeadCaseCourtSpy).toHaveBeenCalled();
   });
 
-  test('should clear lead case and set show lead case form when lead case form toggle is selected', () => {
-    setupLeadCase();
-    useCase.handleToggleLeadCaseForm(true);
-    expect(store.showLeadCaseForm).toBe(true);
-    expectClearLeadCase();
-  });
-
-  test('should return a valid lead case if case is not already consolidated and is not the child of another consolidation', async () => {
-    const disableLeadCaseSpy = vi.spyOn(controls, 'disableLeadCaseForm');
-    const setIsValidatingSpy = vi.spyOn(store, 'setIsValidatingLeadCaseNumber');
-    const setLeadCaseNumberErrorSpy = vi.spyOn(store, 'setLeadCaseNumberError');
-    const setLeadCaseIdSpy = vi.spyOn(store, 'setLeadCaseId');
+  test('should return a valid case if case is not already consolidated and is not the child of another consolidation', async () => {
+    const setIsValidatingSpy = vi.spyOn(store, 'setIsLookingForCase');
+    const setAddCaseNumberErrorSpy = vi.spyOn(store, 'setAddCaseNumberError');
+    const setCaseToAddSpy = vi.spyOn(store, 'setCaseToAdd');
 
     const caseSummary = MockData.getCaseSummary();
     const summaryResponse: ResponseBody<CaseSummary> =
@@ -272,15 +232,57 @@ describe('Consolidation UseCase tests', () => {
 
     const getCaseAssignmentsSpy = vi.spyOn(Api2, 'getCaseAssignments');
 
-    setupLeadCase();
-    useCase.getValidLeadCase();
-    expect(disableLeadCaseSpy).toHaveBeenCalledWith(true);
+    setupAddCase();
+    useCase.verifyCaseCanBeAdded();
+    useCase.handleAddCaseAction();
     expect(setIsValidatingSpy).toHaveBeenCalledWith(true);
-    expect(setLeadCaseNumberErrorSpy).toHaveBeenCalledWith('');
-    expect(setLeadCaseIdSpy).toHaveBeenCalledWith('');
-    expect(getCaseSummarySpy).toHaveBeenCalledWith(mockLeadCase.caseId);
-    expect(getCaseAssociationsSpy).toHaveBeenCalledWith(mockLeadCase.caseId);
-    expect(getCaseAssignmentsSpy).toHaveBeenCalledWith(mockLeadCase.caseId);
+    expect(setCaseToAddSpy).toHaveBeenCalledWith(mockAddCase);
+    expect(setAddCaseNumberErrorSpy).toHaveBeenCalledWith('');
+    expect(getCaseSummarySpy).toHaveBeenCalledWith(mockAddCase.caseId);
+    expect(getCaseAssociationsSpy).toHaveBeenCalledWith(mockAddCase.caseId);
+    expect(getCaseAssignmentsSpy).toHaveBeenCalledWith(mockAddCase.caseId);
+  });
+
+  test('should display an alert if case is already included in the consolidation', async () => {
+    const setIsValidatingSpy = vi.spyOn(store, 'setIsLookingForCase');
+    const setAddCaseNumberErrorSpy = vi.spyOn(store, 'setAddCaseNumberError');
+    const setCaseToAddSpy = vi.spyOn(store, 'setCaseToAdd');
+
+    const caseSummary = MockData.getCaseSummary();
+    const summaryResponse: ResponseBody<CaseSummary> =
+      MockData.getNonPaginatedResponseBody<CaseSummary>(caseSummary);
+    const getCaseSummarySpy = vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue(summaryResponse);
+
+    const associationsResponse: ResponseBody<Consolidation[]> = MockData.getPaginatedResponseBody<
+      Consolidation[]
+    >([]);
+    const getCaseAssociationsSpy = vi
+      .spyOn(Api2, 'getCaseAssociations')
+      .mockResolvedValue(associationsResponse);
+
+    const getCaseAssignmentsSpy = vi.spyOn(Api2, 'getCaseAssignments');
+
+    store.order = MockData.getConsolidationOrder();
+    store.order.childCases.push(mockAddCase);
+    setupAddCase();
+    useCase.verifyCaseCanBeAdded();
+
+    expect(setIsValidatingSpy).toHaveBeenCalledWith(false);
+    expect(setCaseToAddSpy).toHaveBeenCalledWith(mockAddCase);
+    expect(setAddCaseNumberErrorSpy).toHaveBeenCalledWith(
+      'This case is already included in the consolidation.',
+    );
+    expect(getCaseSummarySpy).not.toHaveBeenCalled();
+    expect(getCaseAssociationsSpy).not.toHaveBeenCalled();
+    expect(getCaseAssignmentsSpy).not.toHaveBeenCalled();
+  });
+
+  test('should add case to store.order.childCases when handleAddCaseAction is called an store.caseToAdd is set', async () => {
+    store.setCaseToAdd(mockAddCase);
+    expect(store.order.childCases).not.toContain(mockAddCase);
+
+    useCase.handleAddCaseAction();
+    expect(store.order.childCases).toContain(mockAddCase);
   });
 
   test('should set selected cases', () => {
@@ -298,7 +300,7 @@ describe('Consolidation UseCase tests', () => {
   test('should disable approve button and enable reject button if any selected cases are already consolidated', () => {
     const disableButtonSpy = vi.spyOn(controls, 'disableButton');
     store.setIsDataEnhanced(true);
-    setupLeadCase();
+    setupAddCase();
     store.setConsolidationType('administrative');
     const cases = [
       MockData.getConsolidatedOrderCase({
@@ -312,6 +314,78 @@ describe('Consolidation UseCase tests', () => {
     expect(disableButtonSpy).toHaveBeenCalledWith(controls.rejectButton, false);
     expect(disableButtonSpy).toHaveBeenCalledWith(controls.approveButton, true);
     expect(disableButtonSpy).not.toHaveBeenCalledWith(controls.approveButton, false);
+  });
+
+  test('areAnySelectedCasesConsolidated should return false if none of the selected case is consolidated', async () => {
+    const disableButtonSpy = vi.spyOn(controls, 'disableButton');
+    const selections = MockData.buildArray(MockData.getConsolidatedOrderCase, 3);
+    store.setIsDataEnhanced(true);
+    store.setLeadCaseId('12-34567');
+    store.setConsolidationType('administrative');
+    useCase.updateAllSelections(selections);
+    useCase.updateSubmitButtonsState();
+    expect(disableButtonSpy).toHaveBeenCalledWith(controls.approveButton, false);
+  });
+
+  test('should set case number to add if handleAddCaseNumberInputChange is supplied a case number', async () => {
+    const disableButtonSpy = vi.spyOn(controls, 'disableButton');
+    store.setCaseToAddCaseNumber('');
+    expect(store.caseToAddCaseNumber).toEqual('');
+    const bCase = MockData.getConsolidatedOrderCase();
+    const newCaseNumber = '11-11111';
+    store.setCaseToAdd(bCase);
+    expect(store.caseToAdd).toEqual(bCase);
+    useCase.handleAddCaseNumberInputChange(newCaseNumber);
+
+    expect(store.caseToAdd).toEqual(bCase);
+    expect(store.caseToAddCaseNumber).toEqual(newCaseNumber);
+    expect(disableButtonSpy).not.toHaveBeenCalled();
+  });
+
+  test('should clear case number and case to add, and disable button if handleAddCaseNumberInputChange not supplied a case number', async () => {
+    const disableButtonSpy = vi.spyOn(controls, 'disableButton');
+    const oldCaseNumber = '11-11111';
+    store.setCaseToAddCaseNumber(oldCaseNumber);
+    expect(store.caseToAddCaseNumber).toEqual(oldCaseNumber);
+    const bCase = MockData.getConsolidatedOrderCase();
+    store.setCaseToAdd(bCase);
+    expect(store.caseToAdd).toEqual(bCase);
+    useCase.handleAddCaseNumberInputChange();
+
+    expect(store.caseToAdd).toBeNull();
+    expect(store.caseToAddCaseNumber).toEqual('');
+    expect(disableButtonSpy).toHaveBeenCalledWith(controls.approveButton, true);
+  });
+
+  test('handleAddCaseCourtSelectChange should update store.setCaseToAddCourt when a value is supplied', async () => {
+    const disableButtonSpy = vi.spyOn(controls, 'disableButton');
+    const originalCourt = 'old court';
+    const newCourt = 'new court';
+    store.setCaseToAddCourt(originalCourt);
+    expect(store.caseToAddCourt).toEqual(originalCourt);
+    const bCase = MockData.getConsolidatedOrderCase();
+    store.setCaseToAdd(bCase);
+    expect(store.caseToAdd).toEqual(bCase);
+
+    useCase.handleAddCaseCourtSelectChange([{ label: 'foo', value: newCourt }]);
+    expect(store.caseToAddCourt).toEqual(newCourt);
+    expect(store.caseToAdd).toEqual(bCase);
+    expect(disableButtonSpy).not.toHaveBeenCalled();
+  });
+
+  test('handleAddCaseCourtSelectChange should clear store.caseToAddCourt, store.caseToAdd, and disable approveButton when a value is not supplied', async () => {
+    const disableButtonSpy = vi.spyOn(controls, 'disableButton');
+    const originalCourt = 'old court';
+    store.setCaseToAddCourt(originalCourt);
+    expect(store.caseToAddCourt).toEqual(originalCourt);
+    const bCase = MockData.getConsolidatedOrderCase();
+    store.setCaseToAdd(bCase);
+    expect(store.caseToAdd).toEqual(bCase);
+
+    useCase.handleAddCaseCourtSelectChange([]);
+    expect(store.caseToAddCourt).toEqual('');
+    expect(store.caseToAdd).toBeNull();
+    expect(disableButtonSpy).toHaveBeenCalledWith(controls.approveButton, true);
   });
 
   test('should throw if lead case is a child in any other consolidation', () => {
@@ -373,7 +447,7 @@ describe('Consolidation UseCase tests', () => {
 
   const params = [
     { message: '404 Not Found', expected: `We couldn't find a case with that number.` },
-    { message: '', expected: 'Cannot verify lead case number.' },
+    { message: '', expected: 'Cannot verify case number.' },
   ];
 
   test.each(params)(
@@ -388,17 +462,17 @@ describe('Consolidation UseCase tests', () => {
       vi.spyOn(Api2, 'getCaseAssociations').mockResolvedValue(associationResponse);
       vi.spyOn(Api2, 'getCaseAssignments').mockResolvedValue(assignmentResponse);
 
-      store.leadCaseCourt = '101';
-      store.leadCaseNumber = '23-12345';
+      store.caseToAddCourt = '101';
+      store.caseToAddCaseNumber = '23-12345';
 
-      useCase.getValidLeadCase();
+      useCase.verifyCaseCanBeAdded();
 
       await waitFor(() => {
-        return store.leadCaseNumberError.length != 0 && store.foundValidCaseNumber === false;
+        return store.addCaseNumberError?.length != 0 && store.foundValidCaseNumber === false;
       });
 
-      expect(store.leadCaseNumberError).toEqual(params.expected);
-      expect(store.isValidatingLeadCaseNumber).toBe(false);
+      expect(store.addCaseNumberError).toEqual(params.expected);
+      expect(store.isLookingForCase).toBe(false);
       expect(store.foundValidCaseNumber).toBe(false);
     },
   );
@@ -413,17 +487,17 @@ describe('Consolidation UseCase tests', () => {
     vi.spyOn(Api2, 'getCaseAssignments').mockResolvedValue(assignmentsResponse);
     vi.spyOn(Api2, 'getCaseAssociations').mockRejectedValue({ message: 'some server error' });
 
-    store.leadCaseCourt = '101';
-    store.leadCaseNumber = '23-12345';
+    store.caseToAddCourt = '101';
+    store.caseToAddCaseNumber = '23-12345';
 
-    useCase.getValidLeadCase();
+    useCase.verifyCaseCanBeAdded();
 
     await waitFor(() => {
-      return store.leadCaseNumberError.length != 0 && store.foundValidCaseNumber === false;
+      return store.addCaseNumberError?.length != 0 && store.foundValidCaseNumber === false;
     });
 
-    expect(store.leadCaseNumberError).toEqual('some server error');
-    expect(store.isValidatingLeadCaseNumber).toBe(false);
+    expect(store.addCaseNumberError).toEqual('some server error');
+    expect(store.isLookingForCase).toBe(false);
     expect(store.foundValidCaseNumber).toBe(false);
   });
 
@@ -438,19 +512,17 @@ describe('Consolidation UseCase tests', () => {
     vi.spyOn(Api2, 'getCaseAssociations').mockResolvedValue(associationResponse);
     vi.spyOn(Api2, 'getCaseAssignments').mockRejectedValue({ message: 'some server error' });
 
-    store.leadCaseCourt = '101';
-    store.leadCaseNumber = '23-12345';
+    store.caseToAddCourt = '101';
+    store.caseToAddCaseNumber = '23-12345';
 
-    useCase.getValidLeadCase();
+    useCase.verifyCaseCanBeAdded();
 
     await waitFor(() => {
-      return store.leadCaseNumberError.length != 0 && store.foundValidCaseNumber === false;
+      return store.addCaseNumberError?.length != 0 && store.foundValidCaseNumber === false;
     });
 
-    expect(store.leadCaseNumberError).toEqual(
-      'Cannot verify lead case assignments. some server error',
-    );
-    expect(store.isValidatingLeadCaseNumber).toBe(false);
+    expect(store.addCaseNumberError).toEqual('Cannot verify case assignments. some server error');
+    expect(store.isLookingForCase).toBe(false);
     expect(store.foundValidCaseNumber).toBe(false);
   });
 
