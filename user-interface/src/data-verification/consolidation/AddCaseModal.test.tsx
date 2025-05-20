@@ -36,6 +36,9 @@ describe('AddCaseModal', () => {
       isLookingForCase: false,
       caseToAdd: null,
       handleAddCaseAction,
+      caseToAddCourt: '710',
+      caseToAddCaseNumber: '11-11111',
+      verifyCaseCanBeAdded: vi.fn(),
     };
     const viewModel: AddCaseModel = {
       ...defaultViewModel,
@@ -87,5 +90,10 @@ describe('AddCaseModal', () => {
     const { ref } = renderWithProps();
     ref.current!.hide(true);
     expect(handleAddCaseReset).toHaveBeenCalled();
+  });
+
+  test('k', () => {
+    const { viewModel } = renderWithProps();
+    expect(viewModel.verifyCaseCanBeAdded).toHaveBeenCalled();
   });
 });

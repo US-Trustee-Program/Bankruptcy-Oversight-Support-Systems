@@ -20,6 +20,8 @@ interface ConsolidationViewModel {
   accordionFieldHeaders: string[];
   addCaseModal: React.RefObject<AddCaseModalImperative>;
   addCaseNumberError: string | null;
+  caseToAddCaseNumber: string | null;
+  caseToAddCourt: string | null;
   additionalCaseDivisionRef: Ref<ComboBoxRef>;
   additionalCaseNumberRef: Ref<InputRef>;
   approveButton: React.Ref<ButtonRef>;
@@ -57,7 +59,6 @@ interface ConsolidationViewModel {
   handleClearInputs: () => void;
   handleConfirmAction: (action: ConfirmActionResults) => void;
   handleIncludeCase: (bCase: ConsolidationOrderCase) => void;
-  handleLeadCaseInputChange: (caseNumber?: string) => void;
   handleMarkLeadCase: (bCase: ConsolidationOrderCase) => void;
   handleOnExpand: () => void;
   handleRejectButtonClick: () => void;
@@ -65,11 +66,14 @@ interface ConsolidationViewModel {
   handleSelectLeadCaseCourt: (option: ComboOptionList) => void;
   showConfirmationModal: ShowConfirmationModal;
   updateAllSelections: (caseList: ConsolidationOrderCase[]) => void;
+  verifyCaseCanBeAdded: () => void;
 }
 
 interface AddCaseModel
   extends Pick<
     ConsolidationViewModel,
+    | 'caseToAddCaseNumber'
+    | 'caseToAddCourt'
     | 'handleAddCaseCourtSelectChange'
     | 'handleAddCaseNumberInputChange'
     | 'handleAddCaseReset'
@@ -80,6 +84,7 @@ interface AddCaseModel
     | 'isLookingForCase'
     | 'caseToAdd'
     | 'handleAddCaseAction'
+    | 'verifyCaseCanBeAdded'
   > {
   orderId: string;
   defaultDivisionCode: string;

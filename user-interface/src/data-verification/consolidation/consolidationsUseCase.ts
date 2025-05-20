@@ -46,7 +46,6 @@ export interface ConsolidationsUseCase {
   handleClearInputs(): void;
   handleConfirmAction(action: ConfirmActionResults): void;
   handleIncludeCase(bCase: ConsolidationOrderCase): void;
-  handleLeadCaseInputChange(caseNumber?: string): void;
   handleMarkLeadCase(bCase: ConsolidationOrderCase): void;
   handleOnExpand(): Promise<void>;
   handleRejectButtonClick(): void;
@@ -390,15 +389,6 @@ const consolidationUseCase = (
     updateSubmitButtonsState();
   };
 
-  const handleLeadCaseInputChange = async (caseNumber?: string) => {
-    if (caseNumber) {
-      store.setLeadCaseNumber(caseNumber);
-    } else {
-      clearLeadCase();
-      controls.disableButton(controls.approveButton, true);
-    }
-  };
-
   const handleAddCaseNumberInputChange = async (caseNumber?: string) => {
     if (caseNumber) {
       store.setCaseToAddCaseNumber(caseNumber);
@@ -482,7 +472,6 @@ const consolidationUseCase = (
     handleClearInputs,
     handleConfirmAction,
     handleIncludeCase,
-    handleLeadCaseInputChange,
     handleMarkLeadCase,
     handleOnExpand,
     handleRejectButtonClick,

@@ -173,34 +173,6 @@ describe('Consolidation UseCase tests', () => {
     expect(setLeadCaseIdSpy).toHaveBeenCalledWith('');
   });
 
-  test('should handle clearing the lead case number input', () => {
-    setupAddCase();
-    store.setFoundValidCaseNumber(true);
-    store.setShowLeadCaseForm(true);
-    const controlSpy = vi.spyOn(controls, 'disableButton');
-
-    useCase.handleLeadCaseInputChange();
-
-    expect(store.leadCaseNumber).toEqual('');
-    expect(store.foundValidCaseNumber).toEqual(false);
-    expect(store.leadCase).toBeNull();
-    expect(store.leadCaseNumberError).toEqual('');
-    expect(controlSpy).toHaveBeenCalledWith(controls.approveButton, true);
-  });
-
-  test('should handle setting the lead case number input', () => {
-    setupAddCase();
-    store.setFoundValidCaseNumber(true);
-    store.setShowLeadCaseForm(true);
-    const disableButtonSpy = vi.spyOn(controls, 'disableButton');
-
-    const caseNumber = '24-12345';
-    useCase.handleLeadCaseInputChange(caseNumber);
-
-    expect(store.leadCaseNumber).toEqual(caseNumber);
-    expect(disableButtonSpy).not.toHaveBeenCalled();
-  });
-
   test('should get caseAssignments and caseAssociations when accordion is expanded', async () => {
     const setIsDataEnhancedSpy = vi.spyOn(store, 'setIsDataEnhanced');
     const assignmentsSpy = vi.spyOn(Api2, 'getCaseAssignments');

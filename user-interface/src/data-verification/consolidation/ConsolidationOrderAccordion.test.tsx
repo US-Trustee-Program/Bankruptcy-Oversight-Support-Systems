@@ -89,7 +89,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     };
 
     const renderProps = { ...defaultProps, ...props };
-    render(
+    return render(
       <BrowserRouter>
         <ConsolidationOrderAccordion {...renderProps} />
       </BrowserRouter>,
@@ -140,12 +140,14 @@ describe('ConsolidationOrderAccordion tests', () => {
     const approveButton = findApproveButton(order.id!);
     const rejectButton = findRejectButton(order.id!);
     const clearButton = findClearButton(order.id!);
+
+    expect(rejectButton).not.toBeEnabled();
+
     const consolidationTypeRadio = await selectConsolidationType();
     const checkbox1 = await clickCaseCheckbox(order.id!, 0);
     const checkbox2 = await clickCaseCheckbox(order.id!, 1);
 
     expect(approveButton).not.toBeEnabled();
-    expect(rejectButton).not.toBeEnabled();
 
     await waitFor(() => {
       expect(rejectButton).toBeEnabled();
@@ -376,82 +378,69 @@ describe('ConsolidationOrderAccordion tests', () => {
     });
   });
 
-  test.skip('should correctly enable/disable buttons when selecting consolidated cases and lead case from order case list table', async () => {
+  test('should correctly enable/disable buttons when selecting consolidated cases and lead case from order case list table', async () => {
+    vi.spyOn(Api2, 'getCaseAssociations').mockResolvedValue({
+      data: [],
+    });
     renderWithProps();
-    const { approveButton, rejectButton, checkbox1 } = await fillInFormToEnableVerifyButton();
+    const { approveButton, rejectButton } = await fillInFormToEnableVerifyButton();
     const includeAllCheckbox = document.querySelector(
-      `#checkbox-case-list-${order.id}-checkbox-toggle`,
+      `#checkbox-case-list-${order.id}-checkbox-toggle-click-target`,
     );
 
-    const secondCheckbox = await clickCaseCheckbox(order.id!, 1);
+    await clickCaseCheckbox(order.id!, 1);
+
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
-      expect(rejectButton).toBeEnabled();
     });
+    expect(rejectButton).toBeEnabled();
 
     await clearLeadCase(0);
     await waitFor(() => {
       expect(approveButton).not.toBeEnabled();
-      expect(rejectButton).toBeEnabled();
     });
+    expect(rejectButton).toBeEnabled();
 
     await setLeadCase(0);
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
-      expect(rejectButton).toBeEnabled();
     });
+    expect(rejectButton).toBeEnabled();
 
-    await user.click(checkbox1!);
+    await clickCaseCheckbox(order.id!, 0);
     await waitFor(() => {
-      expect(approveButton).toBeEnabled();
-      expect(rejectButton).toBeEnabled();
-    });
-
-    await user.click(secondCheckbox!);
-    await waitFor(() => {
-      expect(approveButton).not.toBeEnabled();
       expect(rejectButton).not.toBeEnabled();
     });
-
-    await user.click(includeAllCheckbox!);
-    await waitFor(() => {
-      expect(approveButton).toBeEnabled();
-      expect(rejectButton).toBeEnabled();
-    });
-
-    await user.click(includeAllCheckbox!);
-    await waitFor(() => {
-      expect(approveButton).not.toBeEnabled();
-      expect(rejectButton).not.toBeEnabled();
-    });
-
-    await user.click(checkbox1!);
-    await user.click(secondCheckbox!);
-    await waitFor(() => {
-      expect(approveButton).toBeEnabled();
-      expect(rejectButton).toBeEnabled();
-    });
-  });
-
-  test.skip('should open approval modal when approve button is clicked', async () => {
-    renderWithProps();
-    await openAccordion(user, order.id!);
-
-    const approveButton = document.querySelector(
-      `#accordion-approve-button-${order.id}`,
-    ) as HTMLButtonElement;
     expect(approveButton).not.toBeEnabled();
 
-    await selectConsolidationType();
-    await setLeadCase(0);
-
-    clickCaseCheckbox(order.id!, 0);
-    clickCaseCheckbox(order.id!, 1);
+    await user.click(includeAllCheckbox!);
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
     });
+    expect(rejectButton).toBeEnabled();
 
-    await user.click(approveButton);
+    await user.click(includeAllCheckbox!);
+    await waitFor(() => {
+      expect(approveButton).not.toBeEnabled();
+    });
+    expect(rejectButton).not.toBeEnabled();
+
+    await clickCaseCheckbox(order.id!, 0);
+    await clickCaseCheckbox(order.id!, 1);
+    await waitFor(() => {
+      expect(approveButton).toBeEnabled();
+    });
+    expect(rejectButton).toBeEnabled();
+  });
+
+  test('should open approval modal when approve button is clicked', async () => {
+    vi.spyOn(Api2, 'getCaseAssociations').mockResolvedValue({
+      data: [],
+    });
+    renderWithProps();
+    const { approveButton } = await fillInFormToEnableVerifyButton();
+
+    await user.click(approveButton!);
 
     const modal = screen.getByTestId(`modal-confirmation-modal-${order.id}`);
     await waitFor(() => {
@@ -462,13 +451,16 @@ describe('ConsolidationOrderAccordion tests', () => {
     });
   });
 
-  test.skip('should call orderUpdate for approval', async () => {
+  test('should call orderUpdate for approval', async () => {
     const leadCase = order.childCases[0];
     const expectedOrderApproved: ConsolidationOrder = {
       ...order,
       leadCase,
       status: 'approved',
     };
+    vi.spyOn(Api2, 'getCaseAssociations').mockResolvedValue({
+      data: [],
+    });
     vi.spyOn(Api2, 'putConsolidationOrderApproval').mockResolvedValue({
       data: [expectedOrderApproved],
     });
@@ -513,13 +505,16 @@ describe('ConsolidationOrderAccordion tests', () => {
     });
   });
 
-  test.skip('should handle api exception for approval', async () => {
+  test('should handle api exception for approval', async () => {
+    vi.spyOn(Api2, 'getCaseAssociations').mockResolvedValue({
+      data: [],
+    });
+    const errorMessage = 'Some random error';
+    vi.spyOn(Api2, 'putConsolidationOrderApproval').mockRejectedValue(new Error(errorMessage));
     renderWithProps();
 
-    const errorMessage = 'Some random error';
     const alertMessage =
       'An unknown error has occurred and has been logged.  Please try again later.';
-    vi.spyOn(Api2, 'putConsolidationOrderApproval').mockRejectedValue(new Error(errorMessage));
 
     const { approveButton } = await fillInFormToEnableVerifyButton();
 
@@ -559,8 +554,10 @@ describe('ConsolidationOrderAccordion tests', () => {
     });
   });
 
-  // TODO: The fact that this if failing makes no sense to me. Manually it works as expected.
-  test.skip('should clear checkboxes and disable approve button when cancel is clicked', async () => {
+  test('should clear checkboxes and disable approve button when cancel is clicked', async () => {
+    vi.spyOn(Api2, 'getCaseAssociations').mockResolvedValue({
+      data: [],
+    });
     renderWithProps();
     const { approveButton, rejectButton, clearButton, checkbox1, checkbox2 } =
       await fillInFormToEnableVerifyButton();
@@ -584,7 +581,10 @@ describe('ConsolidationOrderAccordion tests', () => {
     });
   });
 
-  test.skip('should clear checkboxes and disable approve button when accordion is collapsed', async () => {
+  test('should clear checkboxes and disable approve button when accordion is collapsed', async () => {
+    vi.spyOn(Api2, 'getCaseAssociations').mockResolvedValue({
+      data: [],
+    });
     renderWithProps();
     let { approveButton, checkbox1, checkbox2 } = await fillInFormToEnableVerifyButton();
 
@@ -616,7 +616,10 @@ describe('ConsolidationOrderAccordion tests', () => {
     });
   });
 
-  test.skip('should select all checkboxes and enable approve button when Include All button is clicked and consolidation type and lead case are set', async () => {
+  test('should select all checkboxes and enable approve button when Include All button is clicked and consolidation type and lead case are set', async () => {
+    vi.spyOn(Api2, 'getCaseAssociations').mockResolvedValue({
+      data: [],
+    });
     renderWithProps();
     const { approveButton } = await fillInFormToEnableVerifyButton();
 
@@ -624,39 +627,31 @@ describe('ConsolidationOrderAccordion tests', () => {
       'table input[type="checkbox"]',
     );
 
-    const includeAllCheckbox = await testingUtilities.selectCheckbox(
-      `case-list-${order.id}-checkbox-toggle`,
+    await waitFor(() => {
+      for (const checkbox of checkboxList) {
+        expect(checkbox.checked).toBeTruthy();
+      }
+      expect(approveButton).toBeEnabled();
+    });
+
+    const includeAllCheckbox = document.querySelector(
+      `#checkbox-case-list-${order.id}-checkbox-toggle-click-target`,
     );
-
-    await waitFor(() => {
-      for (const checkbox of checkboxList) {
-        expect(checkbox.checked).toBeTruthy();
-      }
-    });
-
-    await waitFor(() => {
-      expect(approveButton).toBeEnabled();
-    });
-
-    await user.click(checkboxList[0]);
-    await waitFor(() => {
-      expect(checkboxList[0].checked).toBeFalsy();
-    });
-
     await user.click(includeAllCheckbox!);
-    await waitFor(() => {
-      for (const checkbox of checkboxList) {
-        expect(checkbox.checked).toBeTruthy();
-      }
-      expect(approveButton).toBeEnabled();
-    });
 
-    await user.click(includeAllCheckbox!);
     await waitFor(() => {
       for (const checkbox of checkboxList) {
         expect(checkbox.checked).toBeFalsy();
       }
       expect(approveButton).toBeDisabled();
+    });
+
+    await user.click(includeAllCheckbox!);
+    await waitFor(() => {
+      for (const checkbox of checkboxList) {
+        expect(checkbox.checked).toBeTruthy();
+      }
+      expect(approveButton).toBeEnabled();
     });
   });
 });
