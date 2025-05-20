@@ -63,7 +63,6 @@ interface ConsolidationViewModel {
   handleRejectButtonClick: () => void;
   handleSelectConsolidationType: (value: string) => void;
   handleSelectLeadCaseCourt: (option: ComboOptionList) => void;
-  handleToggleLeadCaseForm: (checked: boolean) => void;
   showConfirmationModal: ShowConfirmationModal;
   updateAllSelections: (caseList: ConsolidationOrderCase[]) => void;
 }

@@ -95,7 +95,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     handleRejectButtonClick: useCase.handleRejectButtonClick,
     handleSelectConsolidationType: useCase.handleSelectConsolidationType,
     handleSelectLeadCaseCourt: useCase.handleSelectLeadCaseCourt,
-    handleToggleLeadCaseForm: useCase.handleToggleLeadCaseForm,
     showConfirmationModal: consolidationControls.showConfirmationModal,
     updateAllSelections: useCase.updateAllSelections,
 

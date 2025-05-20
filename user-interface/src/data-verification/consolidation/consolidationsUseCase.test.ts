@@ -83,7 +83,6 @@ describe('Consolidation UseCase tests', () => {
   test('should properly handle handleClearInputs', () => {
     const clearAllCheckBoxesSpy = vi.spyOn(controls, 'clearAllCheckBoxes');
     const unsetConsolidationTypeSpy = vi.spyOn(controls, 'unsetConsolidationType');
-    const showLeadCaseFormSpy = vi.spyOn(store, 'setShowLeadCaseForm');
 
     setupAddCase();
 
@@ -94,7 +93,6 @@ describe('Consolidation UseCase tests', () => {
     expectClearLeadCase();
     expect(clearAllCheckBoxesSpy).toHaveBeenCalled();
     expect(unsetConsolidationTypeSpy).toHaveBeenCalled();
-    expect(showLeadCaseFormSpy).toHaveBeenCalledWith(false);
   });
 
   test('should call approveConsolidation when approve button is clicked', () => {
@@ -165,7 +163,6 @@ describe('Consolidation UseCase tests', () => {
     expect(store.leadCaseId).toEqual(newLeadCase.caseId);
     expect(store.leadCaseNumber).toEqual('');
     expect(store.leadCaseCourt).toEqual('');
-    expect(store.showLeadCaseForm).toBe(false);
     expect(setLeadCaseSpy).toHaveBeenCalledWith(newLeadCase);
     expect(setLeadCaseIdSpy).toHaveBeenCalledWith(newLeadCase.caseId);
 
@@ -242,13 +239,6 @@ describe('Consolidation UseCase tests', () => {
     const newLeadCaseCourt = { label: 'test', value: 'test value' };
     useCase.handleSelectLeadCaseCourt(newLeadCaseCourt);
     expect(setLeadCaseCourtSpy).toHaveBeenCalled();
-  });
-
-  test('should clear lead case and set show lead case form when lead case form toggle is selected', () => {
-    setupAddCase();
-    useCase.handleToggleLeadCaseForm(true);
-    expect(store.showLeadCaseForm).toBe(true);
-    expectClearLeadCase();
   });
 
   test('should return a valid case if case is not already consolidated and is not the child of another consolidation', async () => {
