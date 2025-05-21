@@ -33,6 +33,12 @@ export function useConsolidationControlsMock(): ConsolidationControls {
       hide: () => {},
     },
   };
+  const addCaseModalRef = {
+    current: {
+      show: () => {},
+      hide: () => {},
+    },
+  };
   const jointAdministrationRef = {
     current: {
       disable: (value: boolean) => {},
@@ -40,7 +46,8 @@ export function useConsolidationControlsMock(): ConsolidationControls {
       isChecked: () => true,
     },
   };
-  const leadCaseDivisionRef = {
+
+  const additionalCaseDivisionRef = {
     current: {
       setSelections: (options: ComboOption[]) => {},
       getSelections: () => [
@@ -57,7 +64,7 @@ export function useConsolidationControlsMock(): ConsolidationControls {
       focus: () => {},
     },
   };
-  const leadCaseNumberRef = {
+  const additionalCaseNumberRef = {
     current: {
       setValue: (value: string) => {},
       disable: (value: boolean) => {},
@@ -94,26 +101,26 @@ export function useConsolidationControlsMock(): ConsolidationControls {
     status: OrderStatus,
     consolidationType?: ConsolidationType,
   ) => {};
-  const disableLeadCaseForm = (disabled: boolean) => {};
+
   const clearAllCheckBoxes = () => {};
   const disableButton = (button: Ref<ButtonRef>, state: boolean) => {};
   const unsetConsolidationType = () => {};
 
   return {
+    additionalCaseDivisionRef,
+    additionalCaseNumberRef,
+    addCaseModal: addCaseModalRef,
     approveButton,
     caseTableActions: caseTableRef,
+    clearAllCheckBoxes,
     clearButton,
     confirmationModal: confirmationModalRef,
-    jointAdministrationRadio: jointAdministrationRef,
-    leadCaseDivisionRef,
-    leadCaseNumberRef,
-    rejectButton,
-    substantiveRadio: substantiveRef,
-    leadCaseFormToggle: toggleLeadCaseFormRef,
-    showConfirmationModal,
-    disableLeadCaseForm,
-    clearAllCheckBoxes,
     disableButton,
+    jointAdministrationRadio: jointAdministrationRef,
+    leadCaseFormToggle: toggleLeadCaseFormRef,
+    rejectButton,
+    showConfirmationModal,
+    substantiveRadio: substantiveRef,
     unsetConsolidationType,
   };
 }

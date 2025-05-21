@@ -2,14 +2,14 @@ import { CaseAssignment } from '@common/cams/assignments';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import { CaseSummary } from '@common/cams/cases';
 
-export function getCurrentLeadCaseId(params: { leadCaseCourt?: string; leadCaseNumber?: string }) {
+export function getCaseId(params: { court?: string; caseNumber?: string }) {
   if (
-    params.leadCaseCourt &&
-    params.leadCaseCourt.length === 3 &&
-    params.leadCaseNumber &&
-    params.leadCaseNumber.length === 8
+    params.court &&
+    params.court.length === 3 &&
+    params.caseNumber &&
+    params.caseNumber.length === 8
   ) {
-    return `${params.leadCaseCourt}-${params.leadCaseNumber}`;
+    return `${params.court}-${params.caseNumber}`;
   }
   return '';
 }

@@ -80,6 +80,7 @@ jobs:
         with:
           azcliversion: 2.62.0
           inlineScript: |
+            export AZURE_CORE_USE_MSAL_HTTP_CACHE="${{ vars.AZURE_CORE_USE_MSAL_HTTP_CACHE }}"
             ./ops/scripts/utility/az-delete-branch-resources.sh \
             --app-resource-group=${{ secrets.AZ_APP_RG }} \
             --db-account=${{ secrets.AZ_COSMOS_MONGO_ACCOUNT_NAME }} \

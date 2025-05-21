@@ -24,8 +24,21 @@ export function useConsolidationStoreReact(
   const [order, setOrder] = useState<ConsolidationOrder>(props.order);
   const [selectedCases, setSelectedCases] = useState<Array<ConsolidationOrderCase>>([]);
   const [showLeadCaseForm, setShowLeadCaseForm] = useState<boolean>(false);
+  const [addCaseNumberError, setAddCaseNumberError] = useState<string | null>(null);
+  const [caseToAdd, setCaseToAdd] = useState<ConsolidationOrderCase | null>(null);
+  const [isLookingForCase, setIsLookingForCase] = useState<boolean>(false);
+  const [caseToAddCourt, setCaseToAddCourt] = useState<string>('');
+  const [caseToAddCaseNumber, setCaseToAddCaseNumber] = useState<string>('');
 
   return {
+    caseToAddCourt,
+    setCaseToAddCourt,
+    caseToAddCaseNumber,
+    setCaseToAddCaseNumber,
+    addCaseNumberError,
+    setAddCaseNumberError,
+    caseToAdd,
+    setCaseToAdd,
     consolidationType,
     setConsolidationType,
     filteredOfficesList,
@@ -36,6 +49,8 @@ export function useConsolidationStoreReact(
     setIsProcessing: setIsConsolidationProcessing,
     isDataEnhanced,
     setIsDataEnhanced,
+    isLookingForCase,
+    setIsLookingForCase,
     isValidatingLeadCaseNumber,
     setIsValidatingLeadCaseNumber,
     leadCase,

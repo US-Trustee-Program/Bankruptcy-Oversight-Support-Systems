@@ -28,7 +28,7 @@ describe('Test Checkbox component', async () => {
     const checkboxOnClick = vi.fn();
     renderWithProps({ onChange: checkboxOnClick });
 
-    testingUtilities.selectCheckbox('checkbox123');
+    await testingUtilities.selectCheckbox('checkbox123');
     expect(checkboxOnClick).toHaveBeenCalled();
   });
 
