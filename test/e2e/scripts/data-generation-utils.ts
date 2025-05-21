@@ -9,7 +9,9 @@ import { ConsolidationOrder, TransferOrder } from '../../../common/src/cams/orde
 import { extractAndPrepareSqlData } from './dxtr-utils';
 import { insertConsolidationOrders, insertTransferOrders, syncCases } from './cosmos-utils';
 
-export const KNOWN_GOOD_TRANSFER_FROM_CASE_ID = '081-65-67641';
+export const KNOWN_GOOD_TRANSFER_FROM_CASE_NUMBER = '65-67641';
+export const KNOWN_GOOD_TRANSFER_FROM_CASE_ID = '081-' + KNOWN_GOOD_TRANSFER_FROM_CASE_NUMBER;
+
 export const KNOWN_GOOD_TRANSFER_TO_CASE_ID = '091-69-12345';
 
 dotenv.config();

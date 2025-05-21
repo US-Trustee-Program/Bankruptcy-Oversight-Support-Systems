@@ -39,7 +39,7 @@ describe('MockLogin', () => {
     );
 
     await waitFor(() => {
-      const modal = screen.getByTestId('modal-login-modal');
+      const modal = screen.getByTestId('modal-content-login-modal');
       expect(modal).toBeInTheDocument();
       expect(modal).toHaveAttribute('aria-labelledby', 'login-modal-heading');
     });

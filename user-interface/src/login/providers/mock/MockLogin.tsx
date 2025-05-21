@@ -95,7 +95,9 @@ export function MockLogin(props: MockLoginProps) {
   const modalId = 'login-modal';
 
   useEffect(() => {
-    modalRef.current?.show(!!state.session);
+    if (state.session) {
+      modalRef.current?.show({});
+    }
   }, []);
 
   if (state.session)

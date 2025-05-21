@@ -171,7 +171,7 @@ describe('Case detail basic information panel', () => {
         expect(modal).toBeVisible();
       });
 
-      testingUtilities.selectCheckbox('0-checkbox');
+      await testingUtilities.selectCheckbox('0-checkbox');
 
       const submitButton = screen.getByTestId(`button-${assignmentModalId}-submit-button`);
       fireEvent.click(submitButton);
