@@ -130,9 +130,9 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
               <div className="grid-col-10">
                 <p aria-details="" className="form-instructions measure-6">
                   Choose a consolidation type. Use the checkboxes to include cases in the
-                  consolidation (at least two cases), and then mark a lead case. If the lead case is
-                  not listed, enter it at the bottom. When finished, click Verify to review your
-                  changes before approving them.
+                  consolidation (at least two cases), and then mark a lead case. If a case is not
+                  listed, add it at the bottom. When finished, click Verify to review your changes
+                  before approving them.
                 </p>
                 <FormRequirementsNotice />
                 <RadioGroup
