@@ -2,18 +2,18 @@ import { OrderSyncState } from '../gateways.types';
 import { ApplicationContext } from '../../adapters/types/basic';
 import {
   ConsolidationOrder,
+  ConsolidationOrderActionApproval,
+  ConsolidationOrderActionRejection,
   ConsolidationOrderCase,
-  RawConsolidationOrder,
-  TransferOrder,
+  ConsolidationType,
+  getCaseSummaryFromConsolidationOrderCase,
+  getCaseSummaryFromTransferOrder,
   isTransferOrder,
   Order,
-  ConsolidationOrderActionRejection,
   OrderStatus,
-  ConsolidationOrderActionApproval,
+  RawConsolidationOrder,
+  TransferOrder,
   TransferOrderAction,
-  ConsolidationType,
-  getCaseSummaryFromTransferOrder,
-  getCaseSummaryFromConsolidationOrderCase,
 } from '../../../../common/src/cams/orders';
 import {
   ConsolidationFrom,
@@ -219,12 +219,7 @@ export class OrdersUseCase {
       }
     }
 
-    const jobIds: Set<number> = new Set();
-    consolidations.forEach((consolidation) => {
-      jobIds.add(consolidation.jobId);
-    });
     const consolidationsByJobId = await this.mapConsolidations(context, consolidations);
-
     await consolidationsRepo.createMany(Array.from(consolidationsByJobId.values()));
 
     for (const order of consolidations) {
@@ -331,7 +326,8 @@ export class OrdersUseCase {
       throw new UnauthorizedError(MODULE_NAME);
     }
 
-    if (includedCases.length <= 1 && status === 'approved') {
+    // Included cases list does NOT include the lead case.
+    if (includedCases.length < 1 && status === 'approved') {
       throw new BadRequestError(MODULE_NAME, {
         message: 'Consolidation approvals require at least one child case.',
       });
@@ -365,9 +361,11 @@ export class OrdersUseCase {
       }
     }
 
-    const remainingChildCases = provisionalOrder.childCases.filter(
-      (c) => !includedCases.includes(c.caseId),
-    );
+    // Make sure we remove the lead case from the remaining child cases if it exists, so we do not
+    // create another consolidation order containing just the lead case.
+    const remainingChildCases = provisionalOrder.childCases
+      .filter((c) => !includedCases.includes(c.caseId))
+      .filter((c) => c.caseId !== leadCase.caseId) as Array<ConsolidationOrderCase>;
     const response: Array<ConsolidationOrder> = [];
     const doSplit = remainingChildCases.length > 0;
     const newConsolidation: ConsolidationOrder = {
