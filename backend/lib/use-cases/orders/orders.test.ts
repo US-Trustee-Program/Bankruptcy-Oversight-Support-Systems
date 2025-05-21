@@ -4,10 +4,10 @@ import {
 } from '../../testing/testing-utilities';
 import { OrdersUseCase } from './orders';
 import {
-  getOrdersRepository,
-  getCasesRepository,
   getCasesGateway,
+  getCasesRepository,
   getConsolidationOrdersRepository,
+  getOrdersRepository,
 } from '../../factory';
 import { OrderSyncState } from '../gateways.types';
 import {
@@ -42,6 +42,8 @@ import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repo
 import { UstpDivisionMeta } from '../../../../common/src/cams/offices';
 
 describe('Orders use case', () => {
+  const ORIGINAL_ENV = process.env;
+
   const CASE_ID = '000-11-22222';
   let mockContext;
   let ordersRepo;
@@ -55,6 +57,17 @@ describe('Orders use case', () => {
     offices: [REGION_02_GROUP_NY],
   });
   const unauthorizedUser = MockData.getCamsUser({ roles: [] });
+
+  beforeAll(() => {
+    process.env = {
+      ...ORIGINAL_ENV,
+      CAMS_LOGIN_PROVIDER: 'mock',
+    };
+  });
+
+  afterAll(() => {
+    process.env = ORIGINAL_ENV;
+  });
 
   beforeEach(async () => {
     mockContext = await createMockApplicationContext();
@@ -507,6 +520,21 @@ describe('Orders use case', () => {
     expect(mockGetConsolidation).not.toHaveBeenCalled();
   });
 
+  test('should not approve a consolidation without at least one child case.', async () => {
+    // TODO: CAMS-447 Enforce consolidation orders must include ONE lead case and at least ONCE child case.
+    const pendingConsolidation = MockData.getConsolidationOrder();
+    const leadCase = MockData.getCaseSummary();
+    const approval: ConsolidationOrderActionApproval = {
+      ...pendingConsolidation,
+      approvedCases: [leadCase.caseId],
+      leadCase,
+      status: 'approved',
+    };
+    await expect(useCase.approveConsolidation(mockContext, approval)).rejects.toThrow(
+      'Consolidation approvals require at least one child case.',
+    );
+  });
+
   test('should throw an error if user is unauthorized to reject consolidations', async () => {
     const pendingConsolidation = MockData.getConsolidationOrder();
     const leadCase = MockData.getCaseSummary();
@@ -527,17 +555,6 @@ describe('Orders use case', () => {
       'Unauthorized',
     );
     expect(mockDelete).not.toHaveBeenCalled();
-  });
-
-  test('should only approve a consolidation with a lead case and at least one child case.', async () => {
-    // TODO: CAMS-447 Enforce consolidation orders must include ONE lead case and at least ONCE child case.
-    //const pendingConsolidation = MockData.getConsolidationOrder();
-    //const leadCase = MockData.getCaseSummary();
-    //const consolidation = MockData.buildArray(
-    //  () => MockData.getConsolidationFrom({ override: { otherCase: leadCase } }),
-    //  5,
-    //);
-    expect(1).toEqual(1);
   });
 
   test('should identify the user who approved the change', async () => {
