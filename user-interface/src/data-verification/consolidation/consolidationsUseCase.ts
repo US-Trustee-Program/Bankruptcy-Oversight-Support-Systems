@@ -310,6 +310,7 @@ const consolidationUseCase = (
   const updateSubmitButtonsState = () => {
     if (store.selectedCases.length) {
       const disableApprove =
+        store.selectedCases.length <= 1 ||
         !store.isDataEnhanced ||
         store.leadCaseId === '' ||
         store.consolidationType === null ||

@@ -126,7 +126,7 @@ describe('Consolidation UseCase tests', () => {
     useCase.handleConfirmAction(action);
 
     await TestingUtilities.waitFor(() => {
-      return store.isProcessing === false;
+      return !store.isProcessing;
     });
 
     expect(putSpy).toHaveBeenCalled();
@@ -468,7 +468,7 @@ describe('Consolidation UseCase tests', () => {
       useCase.verifyCaseCanBeAdded();
 
       await waitFor(() => {
-        return store.addCaseNumberError?.length != 0 && store.foundValidCaseNumber === false;
+        return store.addCaseNumberError?.length != 0 && !store.foundValidCaseNumber;
       });
 
       expect(store.addCaseNumberError).toEqual(params.expected);
@@ -493,7 +493,7 @@ describe('Consolidation UseCase tests', () => {
     useCase.verifyCaseCanBeAdded();
 
     await waitFor(() => {
-      return store.addCaseNumberError?.length != 0 && store.foundValidCaseNumber === false;
+      return store.addCaseNumberError?.length != 0 && !store.foundValidCaseNumber;
     });
 
     expect(store.addCaseNumberError).toEqual('some server error');
@@ -518,12 +518,22 @@ describe('Consolidation UseCase tests', () => {
     useCase.verifyCaseCanBeAdded();
 
     await waitFor(() => {
-      return store.addCaseNumberError?.length != 0 && store.foundValidCaseNumber === false;
+      return store.addCaseNumberError?.length != 0 && !store.foundValidCaseNumber;
     });
 
     expect(store.addCaseNumberError).toEqual('Cannot verify case assignments. some server error');
     expect(store.isLookingForCase).toBe(false);
     expect(store.foundValidCaseNumber).toBe(false);
+  });
+
+  test('should disable the verify button if a lead case and at least once child case are not selected', async () => {
+    const disableButtonSpy = vi.spyOn(controls.approveButton.current!, 'disableButton');
+    const leadCase = MockData.getConsolidatedOrderCase();
+    store.setLeadCase(leadCase);
+    store.setConsolidationType('administrative');
+    store.setSelectedCases([leadCase]);
+    useCase.updateSubmitButtonsState();
+    expect(disableButtonSpy).toHaveBeenCalled();
   });
 
   const approvalAlerts = [{ success: true }, { success: false }];

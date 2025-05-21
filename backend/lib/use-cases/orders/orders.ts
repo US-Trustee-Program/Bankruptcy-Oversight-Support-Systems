@@ -331,6 +331,12 @@ export class OrdersUseCase {
       throw new UnauthorizedError(MODULE_NAME);
     }
 
+    if (includedCases.length <= 1 && status === 'approved') {
+      throw new BadRequestError(MODULE_NAME, {
+        message: 'Consolidation approvals require at least one child case.',
+      });
+    }
+
     const includedChildCases = provisionalOrder.childCases.filter((c) =>
       includedCases.includes(c.caseId),
     );
