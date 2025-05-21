@@ -405,7 +405,6 @@ export class OrdersUseCase {
     }
 
     if (status === 'approved') {
-      // TODO: CAMS-447 Enforce consolidation orders must include ONE lead case and at least ONCE child case.
       const assignmentUseCase = new CaseAssignmentUseCase(context);
       const leadCaseAssignmentsMap = await assignmentUseCase.findAssignmentsByCaseId([
         leadCase.caseId,

@@ -521,7 +521,6 @@ describe('Orders use case', () => {
   });
 
   test('should not approve a consolidation without at least one child case.', async () => {
-    // TODO: CAMS-447 Enforce consolidation orders must include ONE lead case and at least ONCE child case.
     const pendingConsolidation = MockData.getConsolidationOrder();
     const leadCase = MockData.getCaseSummary();
     const approval: ConsolidationOrderActionApproval = {
