@@ -252,9 +252,12 @@ Admin Endpoint Pattern: `http://localhost:{port}/api/{function_name}`
 Use `curl` or your favorite API testing tool to send an HTTP request to following local Azure
 Function admin endpoints:
 
+// TODO: We need to write up adding the ApiKey auth header
+// curl -d "{}" -H "Content-Type: application/json" -H "Authorization: ApiKey 083ab6dc66238d4ec1630f2b4fc415399d29b4346a4f718b235eb592321e6050" -X POST http://localhost:7072/import/sync-orders
+
 ```sh
 # For the `orders-sync` function:
-curl -d "{}" -H "Content-Type: application/json" -X POST http://localhost:7071/api/orders-sync
+curl -d "{}" -H "Content-Type: application/json" -X POST http://localhost:7071/import/sync-orders
 
 # For the `admin` function `deleteMigrations`:
 curl -d "{\"apiKey\": \"{the admin key}\"}" -X DELETE http://localhost:7071/api/dev-tools/deleteMigrations
