@@ -333,6 +333,8 @@ export class OrdersUseCase {
       });
     }
 
+    // TODO we should consider retrieving this from persistence instead of relying
+    // on the front end to provide it.
     const includedChildCases = provisionalOrder.childCases.filter((c) =>
       includedCases.includes(c.caseId),
     );

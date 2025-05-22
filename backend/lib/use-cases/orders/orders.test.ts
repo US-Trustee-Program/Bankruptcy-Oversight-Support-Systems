@@ -525,7 +525,7 @@ describe('Orders use case', () => {
     const leadCase = MockData.getCaseSummary();
     const approval: ConsolidationOrderActionApproval = {
       ...pendingConsolidation,
-      approvedCases: [leadCase.caseId],
+      approvedCases: [],
       leadCase,
       status: 'approved',
     };
