@@ -103,7 +103,9 @@ export function useConsolidationControlsMock(): ConsolidationControls {
   ) => {};
 
   const clearAllCheckBoxes = () => {};
-  const disableButton = (button: Ref<ButtonRef>, state: boolean) => {};
+  const disableButton = (button: Ref<ButtonRef>, state: boolean) => {
+    button.current?.disableButton(state);
+  };
   const unsetConsolidationType = () => {};
 
   return {
