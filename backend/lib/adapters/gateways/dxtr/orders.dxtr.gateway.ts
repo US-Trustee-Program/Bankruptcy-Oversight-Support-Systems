@@ -86,7 +86,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
     try {
       const { maxTxId, chapters, regions } = this.setUpCommonParameters(txId, context);
 
-      // Get raw orders which are subsets of case detail associated with a transfer order
+      // Get raw orders which are subsets of case detail associated with consolidation orders
       const rawOrders = await this.getConsolidationOrders(context, txId, chapters, regions);
 
       // Get the docket entries for consolidation orders
