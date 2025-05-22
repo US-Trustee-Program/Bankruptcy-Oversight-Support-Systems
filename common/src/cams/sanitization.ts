@@ -28,15 +28,15 @@ export function maskToExtendedAscii(dirty: string, mask: string): string {
   // TODO: Is there value to keeping Extended ASCII characters (128-255) in the string?
   return Array.from(removeVariationSelectors(dirty))
     .map((char) => {
-      const code = char.charCodeAt(0);
+      const code = char.codePointAt(0);
       return code > 31 && code <= 255 ? char : mask;
     })
     .join('');
 }
 
 /**
- * Filters all UTF-8 characters outside the Extended ASCII range (0-255) with the provided replacement.
- * Filters all non-printable ASCII characters (0-31) with the provided replacement.
+ * Filters all UTF-8 characters outside the Extended ASCII range (0-255).
+ * Filters all non-printable ASCII characters (0-31).
  *
  * @param dirty
  */
@@ -49,6 +49,6 @@ export function filterToExtendedAscii(dirty: string): string {
  * @param text
  */
 function removeVariationSelectors(text: string): string {
-  const regex = /[\uFE00-\uFE0F]|\uDB40[\uDD00-\uDDEF]/g;
+  const regex = /\p{Variation_Selector}/gu;
   return text.replace(regex, '');
 }
