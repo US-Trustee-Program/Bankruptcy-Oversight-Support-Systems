@@ -47,23 +47,31 @@ describe('Orders use case', () => {
         courtDivisionCode,
       },
     });
+    originalConsolidation.childCases.push(
+      MockData.getConsolidatedOrderCase({
+        override: { courtDivisionCode },
+      }),
+    );
     const mockDelete = jest.spyOn(MockMongoRepository.prototype, 'delete').mockResolvedValue();
     const leadCaseSummary = MockData.getCaseSummary({ override: { courtDivisionCode } });
     const approval: ConsolidationOrderActionApproval = {
       ...originalConsolidation,
-      approvedCases: [originalConsolidation.childCases[0].caseId],
+      approvedCases: [
+        originalConsolidation.childCases[0].caseId,
+        originalConsolidation.childCases[1].caseId,
+      ],
       leadCase: leadCaseSummary,
     };
 
     const approvedConsolidation = {
       ...originalConsolidation,
-      childCases: [originalConsolidation.childCases[0]],
+      childCases: [originalConsolidation.childCases[0], originalConsolidation.childCases[1]],
       leadCase: leadCaseSummary,
       id: crypto.randomUUID(),
     };
     const newPendingConsolidation = {
       ...originalConsolidation,
-      childCases: [originalConsolidation.childCases[1]],
+      childCases: [originalConsolidation.childCases[2]],
       id: crypto.randomUUID(),
     };
 
@@ -80,7 +88,7 @@ describe('Orders use case', () => {
     );
     const leadCaseAfter: ConsolidationOrderSummary = {
       status: 'approved',
-      childCases: [childCaseSummaries[0]],
+      childCases: [childCaseSummaries[0], childCaseSummaries[1]],
     };
     const leadCaseHistory: Partial<CaseHistory> = {
       documentType: 'AUDIT_CONSOLIDATION',
@@ -160,7 +168,7 @@ describe('Orders use case', () => {
         caseId: originalConsolidation.childCases[0].caseId,
       }),
     );
-    expect(mockCreateHistory.mock.calls[1][0]).toEqual(expect.objectContaining(leadCaseHistory));
+    expect(mockCreateHistory.mock.calls[2][0]).toEqual(expect.objectContaining(leadCaseHistory));
 
     expect(mockGetHistory).toHaveBeenCalledTimes(approval.approvedCases.length + 1);
     expect(actual).toEqual([newPendingConsolidation, approvedConsolidation]);

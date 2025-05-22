@@ -383,6 +383,13 @@ describe('ConsolidationOrderAccordion tests', () => {
       data: [],
     });
     renderWithProps();
+
+    // Initial button state
+    await waitFor(() => {
+      expect(findApproveButton(order.id!)).toBeDisabled();
+    });
+    expect(findRejectButton(order.id!)).toBeDisabled();
+
     const { approveButton, rejectButton } = await fillInFormToEnableVerifyButton();
     const includeAllCheckbox = document.querySelector(
       `#checkbox-case-list-${order.id}-checkbox-toggle-click-target`,
@@ -391,7 +398,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     await clickCaseCheckbox(order.id!, 1);
 
     await waitFor(() => {
-      expect(approveButton).toBeEnabled();
+      expect(approveButton).toBeDisabled();
     });
     expect(rejectButton).toBeEnabled();
 
@@ -403,7 +410,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     await setLeadCase(0);
     await waitFor(() => {
-      expect(approveButton).toBeEnabled();
+      expect(approveButton).toBeDisabled();
     });
     expect(rejectButton).toBeEnabled();
 
