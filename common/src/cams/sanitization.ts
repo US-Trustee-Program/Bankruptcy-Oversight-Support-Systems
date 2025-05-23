@@ -24,14 +24,23 @@ export function isValidUserInput(input: string) {
  * @param mask
  */
 export function maskToExtendedAscii(dirty: string, mask: string): string {
-  // TODO: Should we just limit this to the ASCII printable characters (32-126)?
-  // TODO: Is there value to keeping Extended ASCII characters (128-255) in the string?
-  return Array.from(removeVariationSelectors(dirty))
-    .map((char) => {
-      const code = char.codePointAt(0);
-      return code > 31 && code <= 255 ? char : mask;
-    })
-    .join('');
+  return (
+    dirty
+      // 1. Remove emojis (covers most emoji ranges in Unicode)
+      .replace(
+        /([\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F700}-\u{1F77F}]|[\u{1F780}-\u{1F7FF}]|[\u{1F800}-\u{1F8FF}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA00}-\u{1FA6F}]|[\u{1FA70}-\u{1FAFF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{FE00}-\u{FE0F}]|[\u{1F1E6}-\u{1F1FF}])/gu,
+        mask,
+      )
+      // 2. Remove variation selectors (FE00–FE0F, etc.)
+      .replace(/[\uFE00-\uFE0F\u180B-\u180D\uFE20-\uFE2F]/gu, mask)
+      // 3. Replace characters not in allowed set:
+      //    - Printable ASCII: \x20-\x7E
+      //    - Accented Latin-1 letters: \xC0-\xFF, excluding non-letters later
+      .replace(/[^\x20-\x7E\xC0-\xD6\xD8-\xF6\xF8-\xFF]/g, mask)
+      // 4. Replace non-printable ASCII (0–31)
+      // eslint-disable-next-line no-control-regex
+      .replace(/[\x00-\x1F]/g, mask)
+  );
 }
 
 /**
@@ -42,13 +51,4 @@ export function maskToExtendedAscii(dirty: string, mask: string): string {
  */
 export function filterToExtendedAscii(dirty: string): string {
   return maskToExtendedAscii(dirty, '');
-}
-
-/**
- * Removes all Unicode variation selectors from the provided string.
- * @param text
- */
-function removeVariationSelectors(text: string): string {
-  const regex = /\p{Variation_Selector}/gu;
-  return text.replace(regex, '');
 }
