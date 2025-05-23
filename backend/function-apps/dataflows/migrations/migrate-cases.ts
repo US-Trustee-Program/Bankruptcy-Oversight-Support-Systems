@@ -18,6 +18,7 @@ import ApplicationContextCreator from '../../azure/application-context-creator';
 import { UnknownError } from '../../../lib/common-errors/unknown-error';
 import { getTodaysIsoDate } from '../../../../common/src/date-helper';
 import { STORAGE_QUEUE_CONNECTION } from '../storage-queues';
+import { filterToExtendedAscii } from '../../../../common/src/cams/sanitization';
 
 const MODULE_NAME = 'MIGRATE-CASES';
 const PAGE_SIZE = 100;
@@ -133,7 +134,7 @@ async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationCo
 
   if (event.retryCount > RETRY_LIMIT) {
     invocationContext.extraOutputs.set(HARD_STOP, [event]);
-    logger.info(MODULE_NAME, `Too many attempts to sync ${event.caseId}.`);
+    logger.info(MODULE_NAME, `Too many attempts to sync ${filterToExtendedAscii(event.caseId)}.`);
   } else {
     if (!event.bCase) {
       const exportResult = await ExportAndLoadCase.exportCase(context, event);
@@ -156,7 +157,10 @@ async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationCo
       invocationContext.extraOutputs.set(DLQ, [event]);
     }
 
-    logger.info(MODULE_NAME, `Successfully retried to sync ${event.caseId}.`);
+    logger.info(
+      MODULE_NAME,
+      `Successfully retried to sync ${filterToExtendedAscii(event.caseId)}.`,
+    );
   }
 }
 
