@@ -312,7 +312,7 @@ const consolidationUseCase = (
     const consolidatedSelections = store.selectedCases.filter(
       (bCase) =>
         bCase.associations!.length > 0 &&
-        !bCase.associations!.find((assoc) => assoc.documentType === 'CONSOLIDATION_FROM'),
+        bCase.associations!.find((assoc) => assoc.documentType === 'CONSOLIDATION_TO'),
     );
     return consolidatedSelections.length !== 0;
   };
