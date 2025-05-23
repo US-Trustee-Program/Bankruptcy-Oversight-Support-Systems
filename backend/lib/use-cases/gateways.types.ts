@@ -88,6 +88,7 @@ export interface ConsolidationOrdersRepository<T = ConsolidationOrder>
     CreatesMany<T>,
     Reads<T>,
     Deletes,
+    Updates<T, T>,
     Releasable {}
 
 export interface UserSessionCacheRepository<T = CamsSession>

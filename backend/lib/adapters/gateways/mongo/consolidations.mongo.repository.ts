@@ -101,4 +101,30 @@ export default class ConsolidationOrdersMongoRepository<
       throw getCamsError(originalError, MODULE_NAME);
     }
   }
+
+  public async update(data: T): Promise<T> {
+    try {
+      const query = this.doc('consolidationId').equals(data.consolidationId);
+      const existing = await this.getAdapter<T>().findOne(query);
+
+      const {
+        id: _id,
+        consolidationId: _consolidationId,
+        jobId: _jobId,
+        ...mutableProperties
+      } = data;
+
+      const updated = {
+        ...existing,
+        ...mutableProperties,
+      };
+
+      const result = await this.getAdapter<T>().replaceOne(query, updated);
+      if (result.modifiedCount === 1) {
+        return updated;
+      }
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
 }

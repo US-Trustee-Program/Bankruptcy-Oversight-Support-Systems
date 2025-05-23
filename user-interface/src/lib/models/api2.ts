@@ -343,14 +343,12 @@ async function putConsolidationOrderApproval(data: ConsolidationOrderActionAppro
 }
 
 async function putConsolidationOrderRejection(data: ConsolidationOrderActionRejection) {
-  if (data.reason) {
-    data.reason = sanitizeText(data.reason);
-    if (isValidUserInput(data.reason)) {
-      return api().put<ConsolidationOrder[], ConsolidationOrderActionRejection>(
-        '/consolidations/reject',
-        data,
-      );
-    }
+  data.reason = sanitizeText(data.reason ?? '');
+  if (isValidUserInput(data.reason)) {
+    return api().put<ConsolidationOrder[], ConsolidationOrderActionRejection>(
+      '/consolidations/reject',
+      data,
+    );
   }
 }
 
