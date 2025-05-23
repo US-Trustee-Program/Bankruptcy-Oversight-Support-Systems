@@ -349,8 +349,7 @@ export class OrdersUseCase {
       throw new UnauthorizedError(MODULE_NAME);
     }
 
-    // Included cases list does NOT include the lead case.
-    if (includedCases.length < 1 && status === 'approved') {
+    if (includedCases.length = 1 && status === 'approved' && includedCases[0].caseId === leadCase.caseId) {
       throw new BadRequestError(MODULE_NAME, {
         message: 'Consolidation approvals require at least one child case.',
       });
@@ -409,7 +408,6 @@ export class OrdersUseCase {
       leadCase,
     };
 
-    // Add the revised order to the repo and delete the original order.
     const createdConsolidation = await consolidationsRepo.create(newConsolidation);
     response.push(createdConsolidation as ConsolidationOrder);
 
