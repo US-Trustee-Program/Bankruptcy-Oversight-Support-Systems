@@ -393,12 +393,12 @@ export class OrdersUseCase {
       }
     }
 
-    // Make sure we remove the lead case from the remaining child cases if it exists, so we do not
-    // create another consolidation order containing just the lead case.
-    // note -- rejection doesn't have a leadCase
+    const filterChildCasesOnThisOrder = (c) => !includedCases.includes(c.caseId);
+    const filterLeadCaseIfItExists = (c) => !leadCase || c.caseId !== leadCase.caseId;
+
     const remainingChildCases = provisionalOrder.childCases
-      .filter((c) => !includedCases.includes(c.caseId))
-      .filter((c) => !leadCase || c.caseId !== leadCase.caseId) as Array<ConsolidationOrderCase>;
+      .filter(filterChildCasesOnThisOrder)
+      .filter(filterLeadCaseIfItExists) as Array<ConsolidationOrderCase>;
     const response: Array<ConsolidationOrder> = [];
     const doSplit = remainingChildCases.length > 0;
     const newConsolidation: ConsolidationOrder = {
