@@ -358,6 +358,7 @@ describe('Orders use case', () => {
       leadCase: leadCaseSummary,
       id: crypto.randomUUID(),
     };
+    jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(pendingConsolidation);
     const mockPut = jest
       .spyOn(MockMongoRepository.prototype, 'create')
       .mockResolvedValue(newConsolidation);
@@ -413,26 +414,112 @@ describe('Orders use case', () => {
     expect(actual).toEqual([newConsolidation]);
   });
 
+  test('should reject a consolidation order and save a new pending order when only a subset of cases are rejected', async () => {
+    const pendingConsolidation = MockData.getConsolidationOrder();
+    const mockDelete = jest
+      .spyOn(MockMongoRepository.prototype, 'delete')
+      .mockRejectedValue(new Error('should not be called'));
+    const leadCaseSummary = MockData.getCaseSummary();
+
+    const rejectionReason = 'test';
+    const rejection: ConsolidationOrderActionRejection = {
+      rejectedCases: [pendingConsolidation.childCases[0].caseId],
+      reason: rejectionReason,
+      consolidationId: pendingConsolidation.id,
+    };
+    const newConsolidation = {
+      ...pendingConsolidation,
+      leadCase: leadCaseSummary,
+      id: crypto.randomUUID(),
+    };
+    const newPendingConsolidation = {
+      ...pendingConsolidation,
+      id: crypto.randomUUID(),
+      status: 'pending',
+      childCases: pendingConsolidation.childCases.filter(
+        (bCase) => pendingConsolidation.childCases[0].caseId !== bCase.caseId,
+      ),
+    };
+    jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(pendingConsolidation);
+
+    const mockPut = jest
+      .spyOn(MockMongoRepository.prototype, 'create')
+      .mockResolvedValue(newConsolidation);
+    const mockUpdate = jest
+      .spyOn(MockMongoRepository.prototype, 'update')
+      .mockResolvedValue(newPendingConsolidation);
+
+    const before: ConsolidationOrderSummary = {
+      status: 'pending',
+      childCases: [],
+    };
+    const after: ConsolidationOrderSummary = {
+      status: 'rejected',
+      childCases: [],
+    };
+    const childCaseHistory: Partial<CaseHistory> = {
+      documentType: 'AUDIT_CONSOLIDATION',
+      caseId: pendingConsolidation.childCases[0].caseId,
+      before,
+      after,
+    };
+    const initialCaseHistory: CaseHistory = {
+      documentType: 'AUDIT_CONSOLIDATION',
+      caseId: pendingConsolidation.childCases[0].caseId,
+      before: null,
+      after: before,
+      updatedOn: '2024-01-01T12:00:00.000Z',
+      updatedBy: authorizedUser,
+    };
+    const mockGetHistory = jest
+      .spyOn(MockMongoRepository.prototype, 'getCaseHistory')
+      .mockImplementation((_context: ApplicationContext, caseId: string) => {
+        return Promise.resolve([{ ...initialCaseHistory, caseId }]);
+      });
+    const mockCreateHistory = jest
+      .spyOn(MockMongoRepository.prototype, 'createCaseHistory')
+      .mockResolvedValue();
+    const mockGetConsolidation = jest.spyOn(casesRepo, 'getConsolidation').mockResolvedValue([]);
+
+    const actual = await useCase.rejectConsolidation(mockContext, rejection);
+    expect(mockGetConsolidation).toHaveBeenCalledTimes(0);
+    expect(mockDelete).not.toHaveBeenCalled();
+    expect(mockPut).toHaveBeenCalledTimes(1);
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    expect(mockCreateHistory.mock.calls[0][0]).toEqual(
+      expect.objectContaining({
+        ...childCaseHistory,
+        caseId: pendingConsolidation.childCases[0].caseId,
+      }),
+    );
+    expect(mockGetHistory).toHaveBeenCalledTimes(1);
+    expect(actual).toEqual(expect.arrayContaining([newPendingConsolidation, newConsolidation]));
+  });
+
   test('should throw an error if a child case is part of another consolidation', async () => {
     const pendingConsolidation = MockData.getConsolidationOrder();
     const leadCase = MockData.getCaseSummary();
     const approval: ConsolidationOrderActionApproval = {
-      ...pendingConsolidation,
       approvedCases: pendingConsolidation.childCases.map((bCase) => {
         return bCase.caseId;
       }),
       leadCase,
-      status: 'approved',
+      consolidationId: pendingConsolidation.id,
+      consolidationType: pendingConsolidation.consolidationType,
     };
     const mockGetConsolidation = jest
       .spyOn(casesRepo, 'getConsolidation')
       .mockResolvedValueOnce([
         MockData.getConsolidationReference({
-          override: { caseId: approval.childCases[0].caseId, documentType: 'CONSOLIDATION_TO' },
+          override: {
+            caseId: pendingConsolidation.childCases[0].caseId,
+            documentType: 'CONSOLIDATION_TO',
+          },
         }),
       ])
       .mockResolvedValue([]);
     jest.spyOn(MockMongoRepository.prototype, 'delete').mockResolvedValue();
+    jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(pendingConsolidation);
 
     await expect(useCase.approveConsolidation(mockContext, approval)).rejects.toThrow(
       'Cannot consolidate order. A child case has already been consolidated.',
@@ -444,12 +531,12 @@ describe('Orders use case', () => {
     const pendingConsolidation = MockData.getConsolidationOrder();
     const leadCase = MockData.getCaseSummary();
     const approval: ConsolidationOrderActionApproval = {
-      ...pendingConsolidation,
       approvedCases: pendingConsolidation.childCases.map((bCase) => {
         return bCase.caseId;
       }),
       leadCase,
-      status: 'approved',
+      consolidationId: pendingConsolidation.id,
+      consolidationType: pendingConsolidation.consolidationType,
     };
     const mockGetConsolidation = jest
       .spyOn(casesRepo, 'getConsolidation')
@@ -465,6 +552,7 @@ describe('Orders use case', () => {
         }
       });
     jest.spyOn(MockMongoRepository.prototype, 'delete').mockResolvedValue();
+    jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(pendingConsolidation);
 
     await expect(useCase.approveConsolidation(mockContext, approval)).rejects.toThrow(
       'Cannot consolidate order. The lead case is a child case of another consolidation.',
@@ -502,12 +590,12 @@ describe('Orders use case', () => {
     const pendingConsolidation = MockData.getConsolidationOrder();
     const leadCase = MockData.getCaseSummary();
     const approval: ConsolidationOrderActionApproval = {
-      ...pendingConsolidation,
       approvedCases: pendingConsolidation.childCases.map((bCase) => {
         return bCase.caseId;
       }),
       leadCase,
-      status: 'approved',
+      consolidationId: pendingConsolidation.id,
+      consolidationType: pendingConsolidation.consolidationType,
     };
     const mockGetConsolidation = jest
       .spyOn(casesRepo, 'getConsolidation')
@@ -524,10 +612,10 @@ describe('Orders use case', () => {
     const pendingConsolidation = MockData.getConsolidationOrder();
     const leadCase = MockData.getCaseSummary();
     const approval: ConsolidationOrderActionApproval = {
-      ...pendingConsolidation,
       approvedCases: [],
       leadCase,
-      status: 'approved',
+      consolidationId: pendingConsolidation.id,
+      consolidationType: pendingConsolidation.consolidationType,
     };
     await expect(useCase.approveConsolidation(mockContext, approval)).rejects.toThrow(
       'Consolidation approvals require at least one child case.',
@@ -536,14 +624,12 @@ describe('Orders use case', () => {
 
   test('should throw an error if user is unauthorized to reject consolidations', async () => {
     const pendingConsolidation = MockData.getConsolidationOrder();
-    const leadCase = MockData.getCaseSummary();
     const rejection: ConsolidationOrderActionRejection = {
-      ...pendingConsolidation,
       rejectedCases: pendingConsolidation.childCases.map((bCase) => {
         return bCase.caseId;
       }),
-      leadCase,
-      status: 'rejected',
+      consolidationId: pendingConsolidation.id,
+      reason: 'reject reason',
     };
     const mockDelete = jest
       .spyOn(consolidationRepo, 'delete')
@@ -556,16 +642,236 @@ describe('Orders use case', () => {
     expect(mockDelete).not.toHaveBeenCalled();
   });
 
-  test('should identify the user who approved the change', async () => {
+  test('should approve and return a consolidation order', async () => {
     const pendingConsolidation = MockData.getConsolidationOrder();
     const leadCase = MockData.getCaseSummary();
     const approval: ConsolidationOrderActionApproval = {
-      ...pendingConsolidation,
       approvedCases: pendingConsolidation.childCases.map((bCase) => {
         return bCase.caseId;
       }),
       leadCase,
+      consolidationId: pendingConsolidation.id,
+      consolidationType: pendingConsolidation.consolidationType,
+    };
+    const newConsolidation = {
+      ...pendingConsolidation,
       status: 'approved',
+      leadCase: leadCase,
+      id: crypto.randomUUID(),
+    };
+    const consolidation = MockData.buildArray(
+      () => MockData.getConsolidationFrom({ override: { otherCase: leadCase } }),
+      5,
+    );
+    const mockGetConsolidation = jest
+      .spyOn(casesRepo, 'getConsolidation')
+      .mockImplementation((_context: ApplicationContext, caseId: string) => {
+        if (caseId === leadCase.caseId) {
+          return Promise.resolve(consolidation);
+        } else {
+          return Promise.resolve([]);
+        }
+      });
+
+    const before: ConsolidationOrderSummary = {
+      status: 'pending',
+      childCases: [],
+    };
+    const after: ConsolidationOrderSummary = {
+      status: 'approved',
+      leadCase: expect.anything(),
+      childCases: [],
+    };
+    const childCaseHistory: Partial<CaseHistory> = {
+      documentType: 'AUDIT_CONSOLIDATION',
+      caseId: pendingConsolidation.childCases[0].caseId,
+      before,
+      after,
+    };
+    const initialCaseHistory: CaseHistory = {
+      documentType: 'AUDIT_CONSOLIDATION',
+      caseId: pendingConsolidation.childCases[0].caseId,
+      before: null,
+      after: before,
+      updatedOn: '2024-01-01T12:00:00.000Z',
+      updatedBy: authorizedUser,
+    };
+    jest
+      .spyOn(MockMongoRepository.prototype, 'getCaseHistory')
+      .mockImplementation((_context: ApplicationContext, caseId: string) => {
+        return Promise.resolve([{ ...initialCaseHistory, caseId }]);
+      });
+    const mockCreateCaseHistory = jest
+      .spyOn(MockMongoRepository.prototype, 'createCaseHistory')
+      .mockResolvedValue();
+    jest.spyOn(consolidationRepo, 'delete').mockResolvedValue({});
+    jest.spyOn(consolidationRepo, 'read').mockResolvedValue(pendingConsolidation);
+    jest
+      .spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments')
+      .mockImplementation(() => Promise.resolve());
+
+    jest.spyOn(MockMongoRepository.prototype, 'create').mockResolvedValue(newConsolidation);
+
+    const caseId = '111-22-33333';
+    const assignments = MockData.buildArray(() => MockData.getAttorneyAssignment({ caseId }), 3);
+    const expectedMap = new Map([[caseId, assignments]]);
+
+    jest
+      .spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases')
+      .mockResolvedValue(expectedMap);
+
+    jest
+      .spyOn(MockMongoRepository.prototype, 'createConsolidationTo')
+      .mockImplementation((_context: ApplicationContext, consolidationTo: ConsolidationTo) => {
+        return Promise.resolve(MockData.getConsolidationTo({ override: { ...consolidationTo } }));
+      });
+
+    jest
+      .spyOn(MockMongoRepository.prototype, 'createConsolidationFrom')
+      .mockImplementation((_context: ApplicationContext, consolidationFrom: ConsolidationFrom) => {
+        return Promise.resolve(
+          MockData.getConsolidationFrom({ override: { ...consolidationFrom } }),
+        );
+      });
+
+    const actual = await useCase.approveConsolidation(mockContext, approval);
+    expect(mockGetConsolidation).toHaveBeenCalled();
+    expect(mockCreateCaseHistory.mock.calls[0][0]).toEqual(
+      expect.objectContaining({
+        ...childCaseHistory,
+        caseId: pendingConsolidation.childCases[0].caseId,
+      }),
+    );
+    expect(mockCreateCaseHistory.mock.calls[1][0]).toEqual(
+      expect.objectContaining({
+        ...childCaseHistory,
+        caseId: pendingConsolidation.childCases[1].caseId,
+      }),
+    );
+    expect(actual).toEqual([newConsolidation]);
+  });
+
+  test('should approve a consolidation order and save a new pending order when only a subset of cases are approved', async () => {
+    const pendingConsolidation = MockData.getConsolidationOrder();
+    const leadCase = MockData.getCaseSummary();
+    const approval: ConsolidationOrderActionApproval = {
+      approvedCases: [pendingConsolidation.childCases[0].caseId],
+      leadCase,
+      consolidationId: pendingConsolidation.id,
+      consolidationType: pendingConsolidation.consolidationType,
+    };
+    const newConsolidation = {
+      ...pendingConsolidation,
+      childCases: [pendingConsolidation.childCases[0]],
+      status: 'approved',
+      leadCase: leadCase,
+      id: crypto.randomUUID(),
+    };
+    const newPendingConsolidation = {
+      ...pendingConsolidation,
+      id: crypto.randomUUID(),
+      status: 'pending',
+      childCases: pendingConsolidation.childCases.filter(
+        (bCase) => pendingConsolidation.childCases[0].caseId !== bCase.caseId,
+      ),
+    };
+    const consolidation = MockData.buildArray(
+      () => MockData.getConsolidationFrom({ override: { otherCase: leadCase } }),
+      5,
+    );
+    const mockGetConsolidation = jest
+      .spyOn(casesRepo, 'getConsolidation')
+      .mockImplementation((_context: ApplicationContext, caseId: string) => {
+        if (caseId === leadCase.caseId) {
+          return Promise.resolve(consolidation);
+        } else {
+          return Promise.resolve([]);
+        }
+      });
+
+    const before: ConsolidationOrderSummary = {
+      status: 'pending',
+      childCases: [],
+    };
+    const after: ConsolidationOrderSummary = {
+      status: 'approved',
+      leadCase: expect.anything(),
+      childCases: [],
+    };
+    const childCaseHistory: Partial<CaseHistory> = {
+      documentType: 'AUDIT_CONSOLIDATION',
+      caseId: pendingConsolidation.childCases[0].caseId,
+      before,
+      after,
+    };
+    const initialCaseHistory: CaseHistory = {
+      documentType: 'AUDIT_CONSOLIDATION',
+      caseId: pendingConsolidation.childCases[0].caseId,
+      before: null,
+      after: before,
+      updatedOn: '2024-01-01T12:00:00.000Z',
+      updatedBy: authorizedUser,
+    };
+    jest
+      .spyOn(MockMongoRepository.prototype, 'getCaseHistory')
+      .mockImplementation((_context: ApplicationContext, caseId: string) => {
+        return Promise.resolve([{ ...initialCaseHistory, caseId }]);
+      });
+    const mockCreateCaseHistory = jest
+      .spyOn(MockMongoRepository.prototype, 'createCaseHistory')
+      .mockResolvedValue();
+    jest.spyOn(consolidationRepo, 'delete').mockRejectedValue(new Error('should not be called'));
+    jest.spyOn(consolidationRepo, 'read').mockResolvedValue(pendingConsolidation);
+    jest
+      .spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments')
+      .mockImplementation(() => Promise.resolve());
+
+    jest.spyOn(MockMongoRepository.prototype, 'create').mockResolvedValue(newConsolidation);
+    jest.spyOn(MockMongoRepository.prototype, 'update').mockResolvedValue(newPendingConsolidation);
+
+    const caseId = '111-22-33333';
+    const assignments = MockData.buildArray(() => MockData.getAttorneyAssignment({ caseId }), 3);
+    const expectedMap = new Map([[caseId, assignments]]);
+
+    jest
+      .spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases')
+      .mockResolvedValue(expectedMap);
+
+    jest
+      .spyOn(MockMongoRepository.prototype, 'createConsolidationTo')
+      .mockImplementation((_context: ApplicationContext, consolidationTo: ConsolidationTo) => {
+        return Promise.resolve(MockData.getConsolidationTo({ override: { ...consolidationTo } }));
+      });
+
+    jest
+      .spyOn(MockMongoRepository.prototype, 'createConsolidationFrom')
+      .mockImplementation((_context: ApplicationContext, consolidationFrom: ConsolidationFrom) => {
+        return Promise.resolve(
+          MockData.getConsolidationFrom({ override: { ...consolidationFrom } }),
+        );
+      });
+
+    const actual = await useCase.approveConsolidation(mockContext, approval);
+    expect(mockGetConsolidation).toHaveBeenCalled();
+    expect(mockCreateCaseHistory.mock.calls[0][0]).toEqual(
+      expect.objectContaining({
+        ...childCaseHistory,
+        caseId: pendingConsolidation.childCases[0].caseId,
+      }),
+    );
+    expect(actual).toEqual(expect.arrayContaining([newPendingConsolidation, newConsolidation]));
+  });
+
+  test('should identify the user who approved the change', async () => {
+    const pendingConsolidation = MockData.getConsolidationOrder();
+    const leadCase = MockData.getCaseSummary();
+    const approval: ConsolidationOrderActionApproval = {
+      approvedCases: pendingConsolidation.childCases.map((bCase) => {
+        return bCase.caseId;
+      }),
+      leadCase,
+      consolidationId: pendingConsolidation.id,
+      consolidationType: pendingConsolidation.consolidationType,
     };
     const consolidation = MockData.buildArray(
       () => MockData.getConsolidationFrom({ override: { otherCase: leadCase } }),
@@ -584,6 +890,7 @@ describe('Orders use case', () => {
       .spyOn(MockMongoRepository.prototype, 'createCaseHistory')
       .mockResolvedValue();
     jest.spyOn(consolidationRepo, 'delete').mockResolvedValue({});
+    jest.spyOn(consolidationRepo, 'read').mockResolvedValue(pendingConsolidation);
     jest
       .spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments')
       .mockImplementation(() => Promise.resolve());
@@ -630,18 +937,19 @@ describe('Orders use case', () => {
     const pendingConsolidation = MockData.getConsolidationOrder();
     const leadCase = MockData.getCaseSummary();
     const rejection: ConsolidationOrderActionRejection = {
-      ...pendingConsolidation,
       rejectedCases: pendingConsolidation.childCases.map((bCase) => {
         return bCase.caseId;
       }),
-      leadCase,
-      status: 'approved',
+      consolidationId: pendingConsolidation.id,
+      reason: 'reject reason',
     };
     const newConsolidation = {
       ...pendingConsolidation,
       leadCase: leadCase,
       id: crypto.randomUUID(),
     };
+
+    jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(pendingConsolidation);
     jest.spyOn(MockMongoRepository.prototype, 'create').mockResolvedValue(newConsolidation);
     const mockCreateCaseHistory = jest
       .spyOn(MockMongoRepository.prototype, 'createCaseHistory')

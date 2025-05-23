@@ -7,8 +7,10 @@ export type OrderStatus = 'pending' | 'approved' | 'rejected';
 export type OrderType = 'transfer' | 'consolidation';
 export type ConsolidationType = 'administrative' | 'substantive';
 
-export type ConsolidationOrderActionRejection = ConsolidationOrder & {
+export type ConsolidationOrderActionRejection = {
+  consolidationId: string;
   rejectedCases: Array<string>;
+  reason?: string;
 };
 
 export function isConsolidationOrderRejection(
@@ -18,21 +20,15 @@ export function isConsolidationOrderRejection(
     typeof body === 'object' &&
     body !== null &&
     'rejectedCases' in body &&
-    'consolidationId' in body &&
-    'consolidationType' in body &&
-    'orderType' in body &&
-    'orderDate' in body &&
-    'status' in body &&
-    'courtName' in body &&
-    'courtDivisionCode' in body &&
-    'jobId' in body &&
-    'childCases' in body
+    'consolidationId' in body
   );
 }
 
-export type ConsolidationOrderActionApproval = ConsolidationOrder & {
+export type ConsolidationOrderActionApproval = {
+  consolidationId: string;
+  leadCase?: CaseSummary;
   approvedCases: Array<string>;
-  leadCase: CaseSummary;
+  consolidationType: ConsolidationType;
 };
 
 export function isConsolidationOrderApproval(
@@ -44,14 +40,7 @@ export function isConsolidationOrderApproval(
     'approvedCases' in body &&
     'leadCase' in body &&
     'consolidationId' in body &&
-    'consolidationType' in body &&
-    'orderType' in body &&
-    'orderDate' in body &&
-    'status' in body &&
-    'courtName' in body &&
-    'courtDivisionCode' in body &&
-    'jobId' in body &&
-    'childCases' in body
+    'consolidationType' in body
   );
 }
 
@@ -96,7 +85,7 @@ export function getCaseSummaryFromTransferOrder(order: TransferOrder) {
 export type ConsolidationOrder = CamsDocument & {
   deleted?: true;
   consolidationId: string;
-  consolidationType: ConsolidationType;
+  consolidationType?: ConsolidationType;
   orderType: 'consolidation';
   orderDate: string;
   status: OrderStatus;
