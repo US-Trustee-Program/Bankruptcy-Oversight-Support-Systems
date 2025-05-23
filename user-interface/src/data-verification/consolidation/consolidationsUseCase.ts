@@ -19,11 +19,7 @@ import { ResponseBody } from '@common/api/response';
 import { ComboOption, ComboOptionList } from '@/lib/components/combobox/ComboBox';
 
 type ChildCaseFacts = { isConsolidationChildCase: boolean; leadCase?: CaseSummary };
-type _PreviousLeadConsolidationFacts = {
-  isAlreadyConsolidated: boolean;
-  consolidationType?: ConsolidationType;
-  childCase?: CaseSummary;
-};
+
 export type OnOrderUpdate = (
   alertDetails: AlertDetails,
   orders?: ConsolidationOrder[],
