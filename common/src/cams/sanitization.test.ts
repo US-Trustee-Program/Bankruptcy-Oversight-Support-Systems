@@ -59,6 +59,7 @@ describe('String sanitization functions', () => {
     const testStrings = [
       ['Hello World', 'Hello World'],
       ['Bell' + String.fromCharCode(0x07), 'Bell'],
+      ['Test Del ' + String.fromCharCode(0x7f) + ' char', 'Test Del  char'],
       ['Café', 'Café'],
       ['Hello 世界', 'Hello '],
       ['Héllo 👋 ñäçø — 你好 ×÷', 'Héllo  ñäçø   '],
