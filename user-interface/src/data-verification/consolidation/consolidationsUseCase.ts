@@ -19,11 +19,7 @@ import { ResponseBody } from '@common/api/response';
 import { ComboOption, ComboOptionList } from '@/lib/components/combobox/ComboBox';
 
 type ChildCaseFacts = { isConsolidationChildCase: boolean; leadCase?: CaseSummary };
-type PreviousLeadConsolidationFacts = {
-  isAlreadyConsolidated: boolean;
-  consolidationType?: ConsolidationType;
-  childCase?: CaseSummary;
-};
+
 export type OnOrderUpdate = (
   alertDetails: AlertDetails,
   orders?: ConsolidationOrder[],
@@ -98,34 +94,10 @@ const consolidationUseCase = (
     const childCaseFacts: ChildCaseFacts =
       childCaseFactsList.length === 1 ? childCaseFactsList[0] : { isConsolidationChildCase: false };
 
-    const previousConsolidationFactsList = associations
-      .filter((reference) => reference.caseId === currentLeadCaseId)
-      .filter((reference) => reference.documentType === 'CONSOLIDATION_FROM')
-      .map((reference) => {
-        return {
-          isAlreadyConsolidated: true,
-          consolidationType: reference.consolidationType,
-          childCase: reference.otherCase,
-        } as PreviousLeadConsolidationFacts;
-      });
-    const previousConsolidationFacts: PreviousLeadConsolidationFacts =
-      previousConsolidationFactsList.length > 0
-        ? previousConsolidationFactsList[0]
-        : { isAlreadyConsolidated: false };
-
     if (childCaseFacts.isConsolidationChildCase) {
       const message =
         `Case ${getCaseNumber(currentLeadCaseId)} is a consolidated ` +
         `child case of case ${getCaseNumber(childCaseFacts.leadCase!.caseId)}.`;
-      store.setLeadCaseNumberError(message);
-      store.setIsValidatingLeadCaseNumber(false);
-      store.setFoundValidCaseNumber(false);
-      throw new Error(message);
-    } else if (
-      previousConsolidationFacts.isAlreadyConsolidated &&
-      previousConsolidationFacts.consolidationType !== store.consolidationType
-    ) {
-      const message = `This case is already part of a consolidation with the same consolidation type.`;
       store.setLeadCaseNumberError(message);
       store.setIsValidatingLeadCaseNumber(false);
       store.setFoundValidCaseNumber(false);
@@ -229,7 +201,7 @@ const consolidationUseCase = (
     if (action.status === 'approved' && store.leadCase && store.consolidationType) {
       const leadCaseId = store.leadCase.caseId;
       const data: ConsolidationOrderActionApproval = {
-        ...store.order,
+        consolidationId: store.order.consolidationId,
         consolidationType: store.consolidationType,
         approvedCases: store.selectedCases
           .map((bCase) => bCase.caseId)
@@ -273,7 +245,7 @@ const consolidationUseCase = (
       'An unknown error has occurred and has been logged.  Please try again later.';
     if (action.status === 'rejected') {
       const data: ConsolidationOrderActionRejection = {
-        ...store.order,
+        consolidationId: store.order.consolidationId,
         rejectedCases: store.selectedCases.map((bCase) => bCase.caseId),
         reason: action.rejectionReason ?? '',
       };
@@ -309,12 +281,23 @@ const consolidationUseCase = (
 
   const updateSubmitButtonsState = () => {
     if (store.selectedCases.length) {
-      const disableApprove =
-        store.selectedCases.length <= 1 ||
-        !store.isDataEnhanced ||
-        store.leadCaseId === '' ||
-        store.consolidationType === null ||
-        areAnySelectedCasesConsolidated();
+      const alreadyConsolidatedLeadCase = store.selectedCases.find((bCase) =>
+        bCase.associations?.find((assoc) => assoc.documentType === 'CONSOLIDATION_FROM'),
+      );
+
+      let disableApprove = false;
+      if (alreadyConsolidatedLeadCase && store.leadCaseId !== alreadyConsolidatedLeadCase.caseId) {
+        disableApprove = true;
+      } else {
+        disableApprove =
+          store.selectedCases.length === 1 && store.leadCaseId === store.selectedCases[0].caseId;
+        disableApprove =
+          disableApprove ||
+          !store.isDataEnhanced ||
+          store.leadCaseId === '' ||
+          store.consolidationType === null ||
+          areAnySelectedCasesConsolidated();
+      }
 
       controls.disableButton(controls.rejectButton, false);
       controls.disableButton(controls.approveButton, disableApprove);
@@ -327,7 +310,9 @@ const consolidationUseCase = (
 
   const areAnySelectedCasesConsolidated = () => {
     const consolidatedSelections = store.selectedCases.filter(
-      (bCase) => bCase.associations!.length > 0,
+      (bCase) =>
+        bCase.associations!.length > 0 &&
+        !bCase.associations!.find((assoc) => assoc.documentType === 'CONSOLIDATION_FROM'),
     );
     return consolidatedSelections.length !== 0;
   };

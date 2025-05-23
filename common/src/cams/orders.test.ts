@@ -25,18 +25,24 @@ describe('orders model tests', () => {
   });
 
   test('should properly identify consolidation rejections', () => {
-    const mockOrderAction = MockData.getConsolidationOrder({
-      override: { status: 'rejected' },
-    }) as ConsolidationOrderActionRejection;
+    const mockOrder = MockData.getConsolidationOrder();
+    const mockOrderAction: ConsolidationOrderActionRejection = {
+      consolidationId: mockOrder.consolidationId,
+      rejectedCases: mockOrder.childCases.map((bCase) => bCase.caseId),
+    };
     mockOrderAction.rejectedCases = [];
     mockOrderAction.reason = 'rejection reason';
     expect(isConsolidationOrderRejection(mockOrderAction)).toBeTruthy();
   });
 
   test('should properly identify consolidation approvals', () => {
-    const mockOrderAction = MockData.getConsolidationOrder({
-      override: { status: 'approved' },
-    }) as ConsolidationOrderActionApproval;
+    const mockOrder = MockData.getConsolidationOrder();
+    const mockOrderAction: ConsolidationOrderActionApproval = {
+      consolidationId: mockOrder.consolidationId,
+      approvedCases: mockOrder.childCases.map((bCase) => bCase.caseId),
+      leadCase: MockData.getCaseSummary(),
+      consolidationType: 'administrative',
+    };
     mockOrderAction.approvedCases = [];
     mockOrderAction.leadCase = MockData.getCaseSummary();
     expect(isConsolidationOrderApproval(mockOrderAction)).toBeTruthy();

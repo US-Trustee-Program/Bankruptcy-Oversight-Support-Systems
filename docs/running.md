@@ -245,35 +245,49 @@ az functionapp config appsettings list -g {resource-group-name} -n {function-app
 Replace `{resource-group-name}` and `{function-app-name}` with their respective values in the
 command above.
 
-##### Running Administrative Functions Locally
+##### Triggering Dataflow Functions with HTTP Triggers Locally
 
-Admin Endpoint Pattern: `http://localhost:{port}/api/{function_name}`
+Ensure the desired data flow is enabled via the `CAMS_ENABLED_DATAFLOWS` environment variable. Separate two or more than one data
+flow names with commas.
+```shell
+export CAMS_ENABLED_DATAFLOWS=<data-flow-names>
 
-Use `curl` or your favorite API testing tool to send an HTTP request to following local Azure
-Function admin endpoints:
-
-```sh
-# For the `orders-sync` function:
-curl -d "{}" -H "Content-Type: application/json" -X POST http://localhost:7071/api/orders-sync
-
-# For the `admin` function `deleteMigrations`:
-curl -d "{\"apiKey\": \"{the admin key}\"}" -X DELETE http://localhost:7071/api/dev-tools/deleteMigrations
-
-# Data Migration
-curl -d "(see below)" -H "Content-Type: application/json" -X POST http://localhost:7071/dataflows/consolidation
+# Example:
+# CAMS_ENABLED_DATAFLOWS=SYNC_OFFICE_STAFF,SYNC_ORDERS
 ```
 
-Possible data for dataflows (example):
+The `data-flow-name` is a list of `MODULE_NAME` values from the function definitions in `backend/function-apps/input` or `backend/function-apps/migrations` for the function(s) being tested.
 
-```json
-{
-  "apiKey": "{the admin key}",
-  "chapters": ["11", "15"],
-  "divisionCodes": ["081"]
-}
+Run the data flow functions from the `backend` node project:
+```shell
+npm run start:dataflows
 ```
 
-See:
+Use `curl` -- or your favorite API testing tool -- to send an HTTP request to local Azure
+Function http trigger endpoints.
+
+```shell
+curl -H "Content-Type: application/json" \
+     -H "Authorization: ApiKey <redacted-key>" \
+     -X POST -d "<any-required-json>" \
+     http://localhost:7072/<base-path>/<route>
+ ```
+
+The `<redacted-key>` is the value of the `ADMIN_KEY` environment variable used when the functions are started.
+
+The `<any-required-json>` is specific to each given HTTP trigger, but is typically an empty object literal.
+
+The `<base-path>` is `input` or `migrations` named after the directory the Azure Function is defined in `backend/function-apps`.
+
+The `<route>` is the route registered in the Azure Function's HTTP trigger setup. Look for the `route` property on the `app.http` configuration found in the `setup` function in the function definition. For example, the `<route>` would be `sync-cases` given the following `app.http` configuration:
+```ts
+app.http(HTTP_TRIGGER, {
+  route: 'sync-cases',
+  methods: ['POST'],
+});
+```
+
+See also:
 [Code and test Azure Functions locally](https://learn.microsoft.com/en-us/azure/azure-functions/functions-develop-local)
 
 ## These Docs

@@ -423,7 +423,7 @@ describe('Consolidation UseCase tests', () => {
     expect(associations).toEqual(data);
   });
 
-  test('should throw if lead case is already a lead for the other type of consolidation', () => {
+  test.skip('should throw if lead case is already a lead for the other type of consolidation', () => {
     const caseId = '120-23-12345';
     const documentType = 'CONSOLIDATION_FROM';
     const consolidationType = 'substantive';

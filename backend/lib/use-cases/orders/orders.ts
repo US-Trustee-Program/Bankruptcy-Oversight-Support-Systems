@@ -2,18 +2,18 @@ import { OrderSyncState } from '../gateways.types';
 import { ApplicationContext } from '../../adapters/types/basic';
 import {
   ConsolidationOrder,
+  ConsolidationOrderActionApproval,
+  ConsolidationOrderActionRejection,
   ConsolidationOrderCase,
-  RawConsolidationOrder,
-  TransferOrder,
+  ConsolidationType,
+  getCaseSummaryFromConsolidationOrderCase,
+  getCaseSummaryFromTransferOrder,
   isTransferOrder,
   Order,
-  ConsolidationOrderActionRejection,
   OrderStatus,
-  ConsolidationOrderActionApproval,
+  RawConsolidationOrder,
+  TransferOrder,
   TransferOrderAction,
-  ConsolidationType,
-  getCaseSummaryFromTransferOrder,
-  getCaseSummaryFromConsolidationOrderCase,
 } from '../../../../common/src/cams/orders';
 import {
   ConsolidationFrom,
@@ -55,6 +55,16 @@ export interface SyncOrdersStatus {
   startingTxId: string;
   maxTxId: string;
 }
+
+type HandleConsolidationParams = {
+  context: ApplicationContext;
+  status: OrderStatus;
+  provisionalOrderId: string;
+  includedCases: string[];
+  consolidationType?: ConsolidationType;
+  leadCase?: CaseSummary;
+  reason?: string;
+};
 
 export class OrdersUseCase {
   private readonly context: ApplicationContext;
@@ -219,12 +229,7 @@ export class OrdersUseCase {
       }
     }
 
-    const jobIds: Set<number> = new Set();
-    consolidations.forEach((consolidation) => {
-      jobIds.add(consolidation.jobId);
-    });
     const consolidationsByJobId = await this.mapConsolidations(context, consolidations);
-
     await consolidationsRepo.createMany(Array.from(consolidationsByJobId.values()));
 
     for (const order of consolidations) {
@@ -262,23 +267,29 @@ export class OrdersUseCase {
     context: ApplicationContext,
     data: ConsolidationOrderActionApproval,
   ): Promise<ConsolidationOrder[]> {
-    const { approvedCases, leadCase, ...provisionalOrder } = data;
-    return await this.handleConsolidation(
+    const { approvedCases, leadCase, consolidationType, consolidationId } = data;
+    return await this.handleConsolidation({
       context,
-      'approved',
-      provisionalOrder,
-      approvedCases,
-      data.consolidationType,
+      status: 'approved',
+      provisionalOrderId: consolidationId,
+      includedCases: approvedCases,
+      consolidationType,
       leadCase,
-    );
+    });
   }
 
   public async rejectConsolidation(
     context: ApplicationContext,
     data: ConsolidationOrderActionRejection,
   ): Promise<ConsolidationOrder[]> {
-    const { rejectedCases, ...provisionalOrder } = data;
-    return await this.handleConsolidation(context, 'rejected', provisionalOrder, rejectedCases);
+    const { rejectedCases, consolidationId, reason } = data;
+    return await this.handleConsolidation({
+      context,
+      status: 'rejected',
+      provisionalOrderId: consolidationId,
+      includedCases: rejectedCases,
+      reason,
+    });
   }
 
   private async buildHistory(
@@ -292,7 +303,9 @@ export class OrdersUseCase {
       status,
       childCases,
     };
-    if (leadCase) after.leadCase = leadCase;
+    if (leadCase) {
+      after.leadCase = leadCase;
+    }
     let before;
     try {
       const casesRepo = Factory.getCasesRepository(context);
@@ -320,29 +333,44 @@ export class OrdersUseCase {
   }
 
   private async handleConsolidation(
-    context: ApplicationContext,
-    status: OrderStatus,
-    provisionalOrder: ConsolidationOrder,
-    includedCases: string[],
-    consolidationType?: ConsolidationType,
-    leadCase?: CaseSummary,
+    params: HandleConsolidationParams,
   ): Promise<ConsolidationOrder[]> {
+    const {
+      context,
+      status,
+      provisionalOrderId,
+      includedCases,
+      consolidationType,
+      leadCase,
+      reason,
+    } = params;
+
     if (!context.session.user.roles.includes(CamsRole.DataVerifier)) {
       throw new UnauthorizedError(MODULE_NAME);
     }
 
-    if (includedCases.length <= 1 && status === 'approved') {
+    if (
+      status === 'approved' &&
+      (includedCases.length === 0 ||
+        (includedCases.length === 1 && includedCases[0] === leadCase.caseId))
+    ) {
       throw new BadRequestError(MODULE_NAME, {
         message: 'Consolidation approvals require at least one child case.',
       });
+    }
+
+    const casesRepo = Factory.getCasesRepository(context);
+    const consolidationsRepo = Factory.getConsolidationOrdersRepository(context);
+    const provisionalOrder = await consolidationsRepo.read(provisionalOrderId);
+
+    if (reason) {
+      provisionalOrder.reason = reason;
     }
 
     const includedChildCases = provisionalOrder.childCases.filter((c) =>
       includedCases.includes(c.caseId),
     );
 
-    const casesRepo = Factory.getCasesRepository(context);
-    const consolidationsRepo = Factory.getConsolidationOrdersRepository(context);
     if (status === 'approved') {
       for (const caseId of includedCases) {
         const references = await casesRepo.getConsolidation(caseId);
@@ -365,9 +393,12 @@ export class OrdersUseCase {
       }
     }
 
-    const remainingChildCases = provisionalOrder.childCases.filter(
-      (c) => !includedCases.includes(c.caseId),
-    );
+    const filterChildCasesOnThisOrder = (c) => !includedCases.includes(c.caseId);
+    const filterLeadCaseIfItExists = (c) => !leadCase || c.caseId !== leadCase.caseId;
+
+    const remainingChildCases = provisionalOrder.childCases
+      .filter(filterChildCasesOnThisOrder)
+      .filter(filterLeadCaseIfItExists) as Array<ConsolidationOrderCase>;
     const response: Array<ConsolidationOrder> = [];
     const doSplit = remainingChildCases.length > 0;
     const newConsolidation: ConsolidationOrder = {
@@ -381,21 +412,20 @@ export class OrdersUseCase {
       leadCase,
     };
 
+    const createdConsolidation = await consolidationsRepo.create(newConsolidation);
+    response.push(createdConsolidation as ConsolidationOrder);
+
     if (doSplit) {
       const remainingOrder = {
         ...provisionalOrder,
         consolidationType,
         childCases: remainingChildCases,
-        id: undefined,
       };
-      const updatedRemainingOrder = await consolidationsRepo.create(remainingOrder);
+      const updatedRemainingOrder = await consolidationsRepo.update(remainingOrder);
       response.push(updatedRemainingOrder as ConsolidationOrder);
+    } else {
+      await consolidationsRepo.delete(provisionalOrder.id);
     }
-
-    // Add the revised order to the repo and delete the original order.
-    const createdConsolidation = await consolidationsRepo.create(newConsolidation);
-    await consolidationsRepo.delete(provisionalOrder.id);
-    response.push(createdConsolidation as ConsolidationOrder);
 
     for (const childCase of newConsolidation.childCases) {
       if (!leadCase || childCase.caseId !== leadCase.caseId) {
@@ -508,7 +538,6 @@ export class OrdersUseCase {
       const firstOrder = caseSummaries.values().next()?.value;
       const consolidationOrder: ConsolidationOrder = {
         consolidationId,
-        consolidationType: firstOrder.consolidationType,
         orderType: 'consolidation',
         orderDate: firstOrder.orderDate,
         status: 'pending',

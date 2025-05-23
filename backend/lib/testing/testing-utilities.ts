@@ -23,11 +23,13 @@ export async function createMockApplicationContext<B = unknown>(
   };
 
   const logger = new LoggerImpl('invocation-id');
-  return await ContextCreator.applicationContextCreator({
+  const context = await ContextCreator.getApplicationContext<B>({
     invocationContext,
     logger,
     request: createMockRequest(args.request),
   });
+  context.session = await createMockApplicationContextSession();
+  return context;
 }
 
 export async function createMockApplicationContextSession(
