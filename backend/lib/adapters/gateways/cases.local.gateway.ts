@@ -6,6 +6,7 @@ import { CaseBasics, CaseDetail } from '../../../../common/src/cams/cases';
 import { CamsError } from '../../common-errors/cams-error';
 import { CasesSearchPredicate } from '../../../../common/src/api/search';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import { filterToExtendedAscii } from '../../../../common/src/cams/sanitization';
 
 const MODULE_NAME = 'MOCK-CASES-GATEWAY';
 
@@ -75,10 +76,10 @@ export class CasesLocalGateway implements CasesInterface {
     } catch (err) {
       applicationContext.logger.error(
         MODULE_NAME,
-        `Failed to read mock case detail for ${caseId}.`,
+        `Failed to read mock case detail for ${filterToExtendedAscii(caseId)}.`,
         err,
       );
-      const message = (err as Error).message;
+      const { message } = err as Error;
       return Promise.reject(message);
     }
     return caseDetail;
