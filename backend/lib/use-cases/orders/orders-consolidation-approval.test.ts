@@ -53,7 +53,6 @@ describe('Orders use case', () => {
     );
     jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(originalConsolidation);
 
-    //const mockDelete = jest.spyOn(MockMongoRepository.prototype, 'delete').mockResolvedValue();
     const leadCaseSummary = MockData.getCaseSummary({ override: { courtDivisionCode } });
     const approval: ConsolidationOrderActionApproval = {
       ...originalConsolidation,
