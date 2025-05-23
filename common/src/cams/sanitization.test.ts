@@ -43,7 +43,7 @@ describe('String sanitization functions', () => {
       ['Hello 世界', 'Hello ', undefined],
       ['Hello 世界 2', 'Hello .. 2', '.'],
       [String.fromCharCode(0x2764) + ' Emoji Test', ' Emoji Test', undefined],
-      ['❤️ Emoji Test 2', 'x Emoji Test 2', 'x'],
+      ['❤️ Emoji Test 2', 'xx Emoji Test 2', 'x'],
       ['Oh 💩 Test', 'Oh X Test', 'X'],
     ];
 
@@ -61,6 +61,7 @@ describe('String sanitization functions', () => {
       ['Bell' + String.fromCharCode(0x07), 'Bell'],
       ['Café', 'Café'],
       ['Hello 世界', 'Hello '],
+      ['Héllo 👋 ñäçø — 你好 ×÷', 'Héllo  ñäçø   '],
       [String.fromCharCode(0x2764) + ' Emoji Test', ' Emoji Test'],
     ];
 
