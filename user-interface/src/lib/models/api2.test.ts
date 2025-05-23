@@ -194,7 +194,6 @@ describe('_Api2 functions', async () => {
     const dirtyConsolidationOrder: ConsolidationOrderActionRejection = {
       ...baseOrder,
       rejectedCases: [baseOrder.childCases[0].caseId],
-      status: 'rejected',
       reason: inputBlockedFromApi,
     };
 
@@ -207,16 +206,14 @@ describe('_Api2 functions', async () => {
     const path = '/consolidations/reject';
     const baseOrder = MockData.getConsolidationOrder();
     const dirtyConsolidationOrder: ConsolidationOrderActionRejection = {
-      ...baseOrder,
+      consolidationId: baseOrder.consolidationId,
       rejectedCases: [baseOrder.childCases[0].caseId],
-      status: 'rejected',
       reason: inputPassedThroughApi,
     };
 
     const cleanConsolidationOrder = {
-      ...baseOrder,
+      consolidationId: baseOrder.consolidationId,
       rejectedCases: [baseOrder.childCases[0].caseId],
-      status: 'rejected',
       reason: inputPassedThroughApi,
     };
 
@@ -294,9 +291,11 @@ describe('_Api2 functions', async () => {
     );
     await expect(api2.Api2.searchCases({})).rejects.toThrow(error);
     await expect(api2.Api2.deletePrivilegedIdentityUser('userId')).rejects.toThrow(error);
+    const mockOrder = MockData.getConsolidationOrder();
     await expect(
       api2.Api2.putConsolidationOrderApproval({
-        ...MockData.getConsolidationOrder(),
+        consolidationId: mockOrder.consolidationId,
+        consolidationType: 'administrative',
         approvedCases: [],
         leadCase: MockData.getCaseSummary(),
       }),

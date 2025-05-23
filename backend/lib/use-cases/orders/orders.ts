@@ -56,6 +56,16 @@ export interface SyncOrdersStatus {
   maxTxId: string;
 }
 
+type HandleConsolidationParams = {
+  context: ApplicationContext;
+  status: OrderStatus;
+  provisionalOrderId: string;
+  includedCases: string[];
+  consolidationType?: ConsolidationType;
+  leadCase?: CaseSummary;
+  reason?: string;
+};
+
 export class OrdersUseCase {
   private readonly context: ApplicationContext;
 
@@ -257,23 +267,29 @@ export class OrdersUseCase {
     context: ApplicationContext,
     data: ConsolidationOrderActionApproval,
   ): Promise<ConsolidationOrder[]> {
-    const { approvedCases, leadCase, ...provisionalOrder } = data;
-    return await this.handleConsolidation(
+    const { approvedCases, leadCase, consolidationType, consolidationId } = data;
+    return await this.handleConsolidation({
       context,
-      'approved',
-      provisionalOrder,
-      approvedCases,
-      data.consolidationType,
+      status: 'approved',
+      provisionalOrderId: consolidationId,
+      includedCases: approvedCases,
+      consolidationType,
       leadCase,
-    );
+    });
   }
 
   public async rejectConsolidation(
     context: ApplicationContext,
     data: ConsolidationOrderActionRejection,
   ): Promise<ConsolidationOrder[]> {
-    const { rejectedCases, ...provisionalOrder } = data;
-    return await this.handleConsolidation(context, 'rejected', provisionalOrder, rejectedCases);
+    const { rejectedCases, consolidationId, reason } = data;
+    return await this.handleConsolidation({
+      context,
+      status: 'rejected',
+      provisionalOrderId: consolidationId,
+      includedCases: rejectedCases,
+      reason,
+    });
   }
 
   private async buildHistory(
@@ -287,7 +303,9 @@ export class OrdersUseCase {
       status,
       childCases,
     };
-    if (leadCase) after.leadCase = leadCase;
+    if (leadCase) {
+      after.leadCase = leadCase;
+    }
     let before;
     try {
       const casesRepo = Factory.getCasesRepository(context);
@@ -315,13 +333,18 @@ export class OrdersUseCase {
   }
 
   private async handleConsolidation(
-    context: ApplicationContext,
-    status: OrderStatus,
-    provisionalOrder: ConsolidationOrder,
-    includedCases: string[],
-    consolidationType?: ConsolidationType,
-    leadCase?: CaseSummary,
+    params: HandleConsolidationParams,
   ): Promise<ConsolidationOrder[]> {
+    const {
+      context,
+      status,
+      provisionalOrderId,
+      includedCases,
+      consolidationType,
+      leadCase,
+      reason,
+    } = params;
+
     if (!context.session.user.roles.includes(CamsRole.DataVerifier)) {
       throw new UnauthorizedError(MODULE_NAME);
     }
@@ -333,14 +356,18 @@ export class OrdersUseCase {
       });
     }
 
-    // TODO we should consider retrieving this from persistence instead of relying
-    // on the front end to provide it.
+    const casesRepo = Factory.getCasesRepository(context);
+    const consolidationsRepo = Factory.getConsolidationOrdersRepository(context);
+    const provisionalOrder = await consolidationsRepo.read(provisionalOrderId);
+
+    if (reason) {
+      provisionalOrder.reason = reason;
+    }
+
     const includedChildCases = provisionalOrder.childCases.filter((c) =>
       includedCases.includes(c.caseId),
     );
 
-    const casesRepo = Factory.getCasesRepository(context);
-    const consolidationsRepo = Factory.getConsolidationOrdersRepository(context);
     if (status === 'approved') {
       for (const caseId of includedCases) {
         const references = await casesRepo.getConsolidation(caseId);
@@ -365,9 +392,10 @@ export class OrdersUseCase {
 
     // Make sure we remove the lead case from the remaining child cases if it exists, so we do not
     // create another consolidation order containing just the lead case.
+    // note -- rejection doesn't have a leadCase
     const remainingChildCases = provisionalOrder.childCases
       .filter((c) => !includedCases.includes(c.caseId))
-      .filter((c) => c.caseId !== leadCase.caseId) as Array<ConsolidationOrderCase>;
+      .filter((c) => !leadCase || c.caseId !== leadCase.caseId) as Array<ConsolidationOrderCase>;
     const response: Array<ConsolidationOrder> = [];
     const doSplit = remainingChildCases.length > 0;
     const newConsolidation: ConsolidationOrder = {
@@ -381,21 +409,21 @@ export class OrdersUseCase {
       leadCase,
     };
 
+    // Add the revised order to the repo and delete the original order.
+    const createdConsolidation = await consolidationsRepo.create(newConsolidation);
+    response.push(createdConsolidation as ConsolidationOrder);
+
     if (doSplit) {
       const remainingOrder = {
         ...provisionalOrder,
         consolidationType,
         childCases: remainingChildCases,
-        id: undefined,
       };
-      const updatedRemainingOrder = await consolidationsRepo.create(remainingOrder);
+      const updatedRemainingOrder = await consolidationsRepo.update(remainingOrder);
       response.push(updatedRemainingOrder as ConsolidationOrder);
+    } else {
+      await consolidationsRepo.delete(provisionalOrder.id);
     }
-
-    // Add the revised order to the repo and delete the original order.
-    const createdConsolidation = await consolidationsRepo.create(newConsolidation);
-    await consolidationsRepo.delete(provisionalOrder.id);
-    response.push(createdConsolidation as ConsolidationOrder);
 
     for (const childCase of newConsolidation.childCases) {
       if (!leadCase || childCase.caseId !== leadCase.caseId) {
@@ -508,7 +536,6 @@ export class OrdersUseCase {
       const firstOrder = caseSummaries.values().next()?.value;
       const consolidationOrder: ConsolidationOrder = {
         consolidationId,
-        consolidationType: firstOrder.consolidationType,
         orderType: 'consolidation',
         orderDate: firstOrder.orderDate,
         status: 'pending',
