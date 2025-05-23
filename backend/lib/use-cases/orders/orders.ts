@@ -349,7 +349,11 @@ export class OrdersUseCase {
       throw new UnauthorizedError(MODULE_NAME);
     }
 
-    if (includedCases.length = 1 && status === 'approved' && includedCases[0].caseId === leadCase.caseId) {
+    if (
+      status === 'approved' &&
+      (includedCases.length === 0 ||
+        (includedCases.length === 1 && includedCases[0] === leadCase.caseId))
+    ) {
       throw new BadRequestError(MODULE_NAME, {
         message: 'Consolidation approvals require at least one child case.',
       });
