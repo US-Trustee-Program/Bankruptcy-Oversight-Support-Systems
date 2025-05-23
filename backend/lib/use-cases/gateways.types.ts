@@ -16,6 +16,7 @@ import { CaseDocket, CaseNote, SyncedCase } from '../../../common/src/cams/cases
 import {
   CasesSearchPredicate,
   OfficeAssigneePredicate,
+  OfficeUserRolesPredicate,
   OrdersSearchPredicate,
 } from '../../../common/src/api/search';
 import {
@@ -32,6 +33,7 @@ import { ConditionOrConjunction, Query, SortSpec } from '../query/query-builder'
 import { AcmsConsolidation, AcmsPredicate } from './dataflows/migrate-consolidations';
 import { Pipeline } from '../query/query-pipeline';
 import { ResourceActions } from '../../../common/src/cams/actions';
+import { OfficeStaff } from '../adapters/gateways/mongo/offices.mongo.repository';
 
 export type ReplaceResult = {
   id: string;
@@ -168,7 +170,9 @@ export interface CasesRepository extends Releasable {
   getSyncedCase(caseId: string): Promise<SyncedCase>;
 }
 
-export interface OfficesRepository extends Releasable {
+export interface OfficesRepository
+  extends Searches<OfficeUserRolesPredicate, OfficeStaff>,
+    Releasable {
   putOrExtendOfficeStaff(officeCode: string, staff: Staff, expires: string): Promise<void>;
   getOfficeAttorneys(officeCode: string): Promise<AttorneyUser[]>;
   putOfficeStaff(officeCode: string, user: CamsUserReference, ttl?: number): Promise<ReplaceResult>;

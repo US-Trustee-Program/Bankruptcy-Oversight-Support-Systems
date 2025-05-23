@@ -1,5 +1,6 @@
 import { CamsUserReference } from '../cams/users';
 import { PaginationParameters } from './pagination';
+import { CamsRole } from '../cams/roles';
 
 export const DEFAULT_SEARCH_LIMIT = 25;
 export const DEFAULT_SEARCH_OFFSET = 0;
@@ -37,4 +38,10 @@ export type OfficeAssigneePredicate = {
   officeCode?: string;
   caseId?: string;
   userId?: string;
+};
+
+export type OfficeUserRolesPredicate = {
+  officeCode?: string;
+  userId?: string;
+  role?: CamsRole;
 };
