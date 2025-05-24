@@ -274,7 +274,12 @@ describe('offices repo', () => {
       };
 
       const expectedError = new CamsError(expect.anything(), {
-        message: 'Failed while performing search query.',
+        message: 'Unknown Error',
+        camsStackInfo: {
+          message: 'Failed while performing search query.',
+          module: expect.anything(),
+        },
+        data: predicate,
       });
       await expect(repo.search(predicate)).rejects.toThrow(expectedError);
     });

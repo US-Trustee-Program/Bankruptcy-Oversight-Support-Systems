@@ -165,7 +165,10 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
       if (isNotFoundError(originalError)) {
         return [];
       }
-      throw getCamsError(originalError, MODULE_NAME, 'Failed while performing search query.');
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: { message: 'Failed to get office staff.', module: MODULE_NAME },
+        data: predicate,
+      });
     }
   }
 
