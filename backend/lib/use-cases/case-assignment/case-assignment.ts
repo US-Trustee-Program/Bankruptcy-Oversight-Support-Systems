@@ -92,7 +92,7 @@ export class CaseAssignmentUseCase {
           .search({ officeCode, userId: assignment.id, role })
           .then((response) => {
             return response.find((staff) => {
-              if (staff.roles.includes(role as CamsRole)) {
+              if (staff.roles.includes(role as CamsRole) && staff.name === assignment.name) {
                 return true;
               }
             });
