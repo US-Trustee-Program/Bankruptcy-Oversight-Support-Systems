@@ -81,7 +81,7 @@ export class CaseAssignmentUseCase {
     const officesGateway = getOfficesGateway(context);
     const offices = await officesGateway.getOffices(context);
     const divisionCodeMap = mapDivisionCodeToUstpOffice(offices);
-    const officeCode = divisionCodeMap.get(bCase.caseId.substring(0, 3)).officeCode;
+    const { officeCode } = divisionCodeMap.get(bCase.caseId.substring(0, 3));
 
     const officesRepo = getOfficesRepository(context);
     const calls = [];
