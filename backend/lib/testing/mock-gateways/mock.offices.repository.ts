@@ -1,5 +1,6 @@
 import { TRIAL_ATTORNEYS } from '../../../../common/src/cams/test-utilities/attorneys.mock';
 import { CamsUserReference, Staff } from '../../../../common/src/cams/users';
+import { OfficeUserRolesPredicate } from '../../../../common/src/api/search';
 
 export const MockOfficesRepository = {
   release: () => {},
@@ -11,4 +12,5 @@ export const MockOfficesRepository = {
   getOfficeAttorneys: () => {
     return Promise.resolve(TRIAL_ATTORNEYS);
   },
+  search: (_predicate: OfficeUserRolesPredicate) => Promise.resolve([]),
 };

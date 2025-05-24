@@ -11,6 +11,11 @@ import { getCourtDivisionCodes } from '../../../../common/src/cams/users';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { ConsolidationOrder } from '../../../../common/src/cams/orders';
 import OfficeAssigneesUseCase from '../../use-cases/offices/office-assignees';
+import { OfficeStaff } from '../../adapters/gateways/mongo/offices.mongo.repository';
+import { ACMS_SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditable';
+import { MANHATTAN } from '../../../../common/src/cams/test-utilities/courts.mock';
+import { OfficeUserRolesPredicate } from '../../../../common/src/api/search';
+import { MockOfficesRepository } from '../../testing/mock-gateways/mock.offices.repository';
 
 const randomId = () => {
   return '' + Math.random() * 99999999;
@@ -41,9 +46,6 @@ describe('Case assignment tests', () => {
     });
 
     test('should return all assignments for a given case ID', async () => {
-      const findAssignmentsByCaseId = jest
-        .spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases')
-        .mockResolvedValue([]);
       const caseId = '111-22-12345';
       const assignments = [
         {
@@ -59,9 +61,10 @@ describe('Case assignment tests', () => {
           assignedOn: new Date().toISOString(),
         },
       ];
-
       const expectedMap = new Map([[caseId, assignments]]);
-      findAssignmentsByCaseId.mockResolvedValue(expectedMap);
+      jest
+        .spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases')
+        .mockResolvedValue(expectedMap);
 
       const assignmentUseCase = new CaseAssignmentUseCase(applicationContext);
 
@@ -74,7 +77,20 @@ describe('Case assignment tests', () => {
 
   describe('createTrialAttorneyAssignments', () => {
     const attorneyJaneSmith = { id: 'userId-Jane Smith', name: 'Jane Smith' };
+    const officeStaffJaneSmith: OfficeStaff = {
+      ...attorneyJaneSmith,
+      updatedBy: ACMS_SYSTEM_USER_REFERENCE,
+      updatedOn: MockData.getDateBeforeToday().toISOString(),
+      officeCode: MANHATTAN.officeCode,
+      roles: [CamsRole.TrialAttorney],
+      documentType: 'OFFICE_STAFF',
+      ttl: 100,
+    };
     const attorneyJoeNobel = { id: 'userId-Joe Nobel', name: 'Joe Nobel' };
+    const officeStaffJoeNobel = {
+      ...officeStaffJaneSmith,
+      ...attorneyJoeNobel,
+    };
     const caseId = '081-23-01176';
     const role = CamsRole.TrialAttorney;
 
@@ -85,6 +101,22 @@ describe('Case assignment tests', () => {
         },
       });
       applicationContext.session = await createMockApplicationContextSession({ user });
+      jest
+        .spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases')
+        .mockResolvedValue(new Map([[caseId, []]]));
+      const syncedCase = MockData.getSyncedCase({ override: { caseId } });
+      jest.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(syncedCase);
+      jest
+        .spyOn(MockOfficesRepository, 'search')
+        .mockImplementation((predicate: OfficeUserRolesPredicate) => {
+          if (predicate.userId === attorneyJoeNobel.id) {
+            return Promise.resolve([officeStaffJoeNobel]);
+          } else if (predicate.userId === attorneyJaneSmith.id) {
+            return Promise.resolve([officeStaffJaneSmith]);
+          } else {
+            return Promise.resolve([]);
+          }
+        });
     });
 
     afterEach(() => {
@@ -93,17 +125,18 @@ describe('Case assignment tests', () => {
 
     test('should not create assignment for not found user id', async () => {
       jest
-        .spyOn(MockMongoRepository.prototype, 'search')
-        .mockRejectedValue(new Error('this should be called but will not be yet'));
-      jest.spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases').mockResolvedValue([]);
+        .spyOn(MockOfficesRepository, 'search')
+        .mockImplementation((predicate: OfficeUserRolesPredicate) => {
+          if (predicate.userId === attorneyJoeNobel.id) {
+            return Promise.resolve([officeStaffJoeNobel]);
+          } else {
+            return Promise.resolve([]);
+          }
+        });
       const context = { ...applicationContext };
-      context.session = await createMockApplicationContextSession({ user });
+      context.session = MockData.getManhattanAssignmentManagerSession();
       const assignmentUseCase = new CaseAssignmentUseCase(context);
       const assignments = [attorneyJaneSmith, attorneyJoeNobel];
-      // TODO: I don't completely understand the intent of this test based on
-      // the description.  The user so far, is found, but the office and division
-      // codes assigned to this user does not match 081 which is the office we're looking for
-      // so this user is not a member of that office. case-assignment.ts line 44
       await expect(
         assignmentUseCase.createTrialAttorneyAssignments(
           context,
@@ -111,13 +144,10 @@ describe('Case assignment tests', () => {
           assignments,
           role.toString(),
         ),
-      ).rejects.toThrow('this should be called but will not be yet');
+      ).rejects.toThrow('Invalid assignments found.');
     });
 
     test('should create new case assignments when none exist on the case', async () => {
-      const findAssignmentsByCaseId = jest
-        .spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases')
-        .mockResolvedValue([]);
       jest.spyOn(CaseManagement.prototype, 'getCaseSummary').mockResolvedValue(
         MockData.getCaseDetail({
           override: { courtDivisionCode: getCourtDivisionCodes(user)[0] },
@@ -133,7 +163,9 @@ describe('Case assignment tests', () => {
       jest.spyOn(MockMongoRepository.prototype, 'createCaseHistory').mockResolvedValue();
       jest.spyOn(MockMongoRepository.prototype, 'getConsolidation').mockResolvedValue([]);
       jest.spyOn(MockMongoRepository.prototype, 'update').mockResolvedValue(randomId);
-      findAssignmentsByCaseId.mockResolvedValue(new Map([[caseId, []]]));
+      jest
+        .spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases')
+        .mockResolvedValue(new Map([[caseId, []]]));
 
       const assignmentUseCase = new CaseAssignmentUseCase(applicationContext);
       const assignments = [attorneyJaneSmith, attorneyJoeNobel];
@@ -164,9 +196,6 @@ describe('Case assignment tests', () => {
 
     test('should add new case assignments on a case with existing assignments', async () => {
       const assignmentUseCase = new CaseAssignmentUseCase(applicationContext);
-      const findAssignmentsByCaseId = jest
-        .spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases')
-        .mockResolvedValue([]);
       const createAssignment = jest
         .spyOn(MockMongoRepository.prototype, 'create')
         .mockImplementation((consolidationOrder: ConsolidationOrder) => {
@@ -201,7 +230,9 @@ describe('Case assignment tests', () => {
         role,
       };
 
-      findAssignmentsByCaseId.mockResolvedValue(new Map([[caseId, [assignmentOne]]]));
+      jest
+        .spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases')
+        .mockResolvedValue(new Map([[caseId, [assignmentOne]]]));
 
       await assignmentUseCase.createTrialAttorneyAssignments(
         applicationContext,
@@ -226,9 +257,6 @@ describe('Case assignment tests', () => {
       const updateAssignment = jest
         .spyOn(MockMongoRepository.prototype, 'update')
         .mockResolvedValue(randomId);
-      const findAssignmentsByCaseId = jest
-        .spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases')
-        .mockResolvedValue([]);
       jest.spyOn(CaseManagement.prototype, 'getCaseSummary').mockResolvedValue(
         MockData.getCaseDetail({
           override: { courtDivisionCode: getCourtDivisionCodes(user)[0] },
@@ -248,7 +276,9 @@ describe('Case assignment tests', () => {
         role,
       };
 
-      findAssignmentsByCaseId.mockResolvedValue(new Map([[caseId, [assignmentOne]]]));
+      jest
+        .spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases')
+        .mockResolvedValue(new Map([[caseId, [assignmentOne]]]));
 
       await assignmentUseCase.createTrialAttorneyAssignments(
         applicationContext,
@@ -266,9 +296,6 @@ describe('Case assignment tests', () => {
     });
 
     test('should not do anything if user does not have the CaseAssignmentManager role', async () => {
-      const findAssignmentsByCaseId = jest
-        .spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases')
-        .mockResolvedValue([]);
       const createAssignment = jest
         .spyOn(MockMongoRepository.prototype, 'create')
         .mockImplementation((consolidationOrder: ConsolidationOrder) => {
@@ -279,8 +306,9 @@ describe('Case assignment tests', () => {
       const context = { ...applicationContext };
       context.session = await createMockApplicationContextSession();
       const assignmentUseCase = new CaseAssignmentUseCase(context);
-
-      findAssignmentsByCaseId.mockResolvedValue([]);
+      jest
+        .spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases')
+        .mockResolvedValue(new Map());
 
       const assignments = [attorneyJaneSmith, attorneyJoeNobel];
       await expect(
@@ -300,9 +328,9 @@ describe('Case assignment tests', () => {
       jest
         .spyOn(CaseManagement.prototype, 'getCaseSummary')
         .mockResolvedValue(MockData.getCaseDetail({ override: { courtDivisionCode: '0000' } }));
-      const findAssignmentsByCaseId = jest
+      jest
         .spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases')
-        .mockResolvedValue([]);
+        .mockResolvedValue(new Map());
       const createAssignment = jest
         .spyOn(MockMongoRepository.prototype, 'create')
         .mockImplementation((consolidationOrder: ConsolidationOrder) => {
@@ -310,8 +338,6 @@ describe('Case assignment tests', () => {
             MockData.getConsolidationOrder({ override: { ...consolidationOrder } }),
           );
         });
-
-      findAssignmentsByCaseId.mockResolvedValue([]);
 
       const assignments = [attorneyJaneSmith, attorneyJoeNobel];
       await expect(
