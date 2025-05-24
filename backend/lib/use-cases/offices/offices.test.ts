@@ -8,7 +8,6 @@ import { MOCKED_USTP_OFFICES_ARRAY, UstpDivisionMeta } from '../../../../common/
 import AttorneysList from '../attorneys/attorneys';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { CamsRole } from '../../../../common/src/cams/roles';
-import { MockOfficesRepository } from '../../testing/mock-gateways/mock.offices.repository';
 import UsersHelpers from '../users/users.helpers';
 import MockUserGroupGateway from '../../testing/mock-gateways/mock-user-group-gateway';
 
@@ -85,18 +84,9 @@ describe('offices use case tests', () => {
   test('should return attorneys for office', async () => {
     const useCase = new OfficesUseCase();
     const mockAttorneys = [];
-    const repoSpy = jest.fn().mockResolvedValue(mockAttorneys);
-    jest.spyOn(factory, 'getOfficesRepository').mockImplementation(() => {
-      return {
-        release: () => {},
-        putOfficeStaff: jest.fn(),
-        getOfficeAttorneys: repoSpy,
-        findAndDeleteStaff: jest.fn(),
-        putOrExtendOfficeStaff: jest.fn(),
-        getOfficeAssignments: jest.fn(),
-        close: jest.fn(),
-      };
-    });
+    const repoSpy = jest
+      .spyOn(MockMongoRepository.prototype, 'getOfficeAttorneys')
+      .mockResolvedValue(mockAttorneys);
     const attorneysSpy = jest.spyOn(AttorneysList.prototype, 'getAttorneyList');
 
     const { officeCode } = MANHATTAN_OFFICE;
@@ -166,7 +156,7 @@ describe('offices use case tests', () => {
         return user;
       });
     const putSpy = jest
-      .spyOn(MockOfficesRepository, 'putOfficeStaff')
+      .spyOn(MockMongoRepository.prototype, 'putOfficeStaff')
       .mockResolvedValueOnce({ id: users[1].id, modifiedCount: 1, upsertedCount: 0 })
       .mockRejectedValueOnce(new Error('some unknown error'))
       .mockResolvedValue({ id: users[3].id, modifiedCount: 0, upsertedCount: 1 });

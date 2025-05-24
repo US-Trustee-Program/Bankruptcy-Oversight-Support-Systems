@@ -15,7 +15,6 @@ import { OfficeStaff } from '../../adapters/gateways/mongo/offices.mongo.reposit
 import { ACMS_SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditable';
 import { MANHATTAN } from '../../../../common/src/cams/test-utilities/courts.mock';
 import { OfficeUserRolesPredicate } from '../../../../common/src/api/search';
-import { MockOfficesRepository } from '../../testing/mock-gateways/mock.offices.repository';
 
 const randomId = () => {
   return '' + Math.random() * 99999999;
@@ -107,7 +106,7 @@ describe('Case assignment tests', () => {
       const syncedCase = MockData.getSyncedCase({ override: { caseId } });
       jest.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(syncedCase);
       jest
-        .spyOn(MockOfficesRepository, 'search')
+        .spyOn(MockMongoRepository.prototype, 'search')
         .mockImplementation((predicate: OfficeUserRolesPredicate) => {
           if (predicate.userId === attorneyJoeNobel.id) {
             return Promise.resolve([officeStaffJoeNobel]);
@@ -125,7 +124,7 @@ describe('Case assignment tests', () => {
 
     test('should not create assignment for not found user id', async () => {
       jest
-        .spyOn(MockOfficesRepository, 'search')
+        .spyOn(MockMongoRepository.prototype, 'search')
         .mockImplementation((predicate: OfficeUserRolesPredicate) => {
           if (predicate.userId === attorneyJoeNobel.id) {
             return Promise.resolve([officeStaffJoeNobel]);
