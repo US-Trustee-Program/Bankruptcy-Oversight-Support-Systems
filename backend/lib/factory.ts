@@ -52,7 +52,6 @@ import { UserSessionCacheMongoRepository } from './adapters/gateways/mongo/user-
 import { AcmsGatewayImpl } from './adapters/gateways/acms/acms.gateway';
 import { deferRelease } from './deferrable/defer-release';
 import { CaseNotesMongoRepository } from './adapters/gateways/mongo/case-notes.mongo.repository';
-import { MockOfficesRepository } from './testing/mock-gateways/mock.offices.repository';
 import { UsersMongoRepository } from './adapters/gateways/mongo/user.repository';
 import MockUserGroupGateway from './testing/mock-gateways/mock-user-group-gateway';
 import { getCamsErrorWithStack } from './common-errors/error-utilities';
@@ -142,7 +141,7 @@ export const getOfficesGateway = (context: ApplicationContext): OfficesGateway =
 
 export const getOfficesRepository = (context: ApplicationContext): OfficesRepository => {
   if (context.config.authConfig.provider === 'mock') {
-    return MockOfficesRepository;
+    return MockMongoRepository.getInstance(context);
   }
   const repo = OfficesMongoRepository.getInstance(context);
   deferRelease(repo, context);
