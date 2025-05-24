@@ -115,10 +115,6 @@ export class CaseAssignmentUseCase {
         data: { newAssignments, validatedAssignments },
       });
     }
-    // is the user / role combo valid?
-    // is it a real user?
-    // is that user associated with the office associated with the case?
-    // does the user actually have the passed-in role?
 
     const listOfAssignments: CaseAssignment[] = [];
     const attorneys = [...new Set(validatedAssignments)];
