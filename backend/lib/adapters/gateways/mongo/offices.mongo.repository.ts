@@ -9,6 +9,7 @@ import { OfficesRepository, ReplaceResult } from '../../../use-cases/gateways.ty
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { DEFAULT_STAFF_TTL } from '../../../use-cases/offices/offices';
 import { isNotFoundError } from '../../../common-errors/not-found-error';
+import { OfficeUserRolesPredicate } from '../../../../../common/src/api/search';
 
 const MODULE_NAME = 'OFFICES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'offices';
@@ -141,6 +142,10 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
         camsStackInfo: { message: 'Failed to create or update office staff.', module: MODULE_NAME },
       });
     }
+  }
+
+  public async search(_predicate?: OfficeUserRolesPredicate): Promise<OfficeStaff[]> {
+    throw new Error('Not implemented.');
   }
 
   private async findOneOfficeStaff(officeCode: string, staff: Staff): Promise<OfficeStaff | null> {

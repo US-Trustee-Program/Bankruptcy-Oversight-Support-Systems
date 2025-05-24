@@ -1,4 +1,9 @@
-import Factory, { getAssignmentRepository, getQueueGateway } from '../../factory';
+import Factory, {
+  getAssignmentRepository,
+  getOfficesGateway,
+  getOfficesRepository,
+  getQueueGateway,
+} from '../../factory';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseAssignmentRepository, QueueGateway } from '../gateways.types';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
@@ -9,6 +14,7 @@ import { CamsRole } from '../../../../common/src/cams/roles';
 import { AssignmentError } from './assignment.exception';
 import { createAuditRecord } from '../../../../common/src/cams/auditable';
 import OfficeAssigneesUseCase from '../offices/office-assignees';
+import { mapDivisionCodeToUstpOffice } from '../../../../common/src/cams/offices';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT';
 
@@ -71,19 +77,57 @@ export class CaseAssignmentUseCase {
     const assignmentRepo = Factory.getAssignmentRepository(context);
     context.logger.info(MODULE_NAME, 'New assignments:', newAssignments);
 
+    const bCase = await casesRepo.getSyncedCase(caseId);
+    const officesGateway = getOfficesGateway(context);
+    const offices = await officesGateway.getOffices(context);
+    const divisionCodeMap = mapDivisionCodeToUstpOffice(offices);
+    const officeCode = divisionCodeMap.get(bCase.caseId.substring(0, 3)).officeCode;
+
+    const officesRepo = getOfficesRepository(context);
+    const calls = [];
+    const validatedAssignments: CamsUserReference[] = [];
+    newAssignments.forEach((assignment) => {
+      calls.push(
+        officesRepo
+          .search({ officeCode, userId: assignment.id, role })
+          .then((response) => {
+            return response.find((staff) => {
+              if (staff.roles.includes(role as CamsRole)) {
+                return true;
+              }
+            });
+          })
+          .catch((_err) => {
+            // Do something?
+          }),
+      );
+    });
+    await Promise.all(calls).then((responses) => {
+      for (let i = 0; i < calls.length; i++) {
+        if (responses[i]) {
+          validatedAssignments.push({ id: responses[i].id, name: responses[i].name });
+        }
+      }
+    });
+    if (validatedAssignments.length !== newAssignments.length) {
+      throw new AssignmentError(MODULE_NAME, {
+        message: 'Invalid assignments found.',
+        data: { newAssignments, validatedAssignments },
+      });
+    }
     // is the user / role combo valid?
     // is it a real user?
     // is that user associated with the office associated with the case?
     // does the user actually have the passed-in role?
 
     const listOfAssignments: CaseAssignment[] = [];
-    const attorneys = [...new Set(newAssignments)];
+    const attorneys = [...new Set(validatedAssignments)];
     const currentDate = new Date().toISOString();
     attorneys.forEach((attorney) => {
       const assignment = createAuditRecord<CaseAssignment>(
         {
           documentType: 'ASSIGNMENT',
-          caseId: caseId,
+          caseId: bCase.caseId,
           userId: attorney.id,
           name: attorney.name,
           role: CamsRole[role],
@@ -99,8 +143,10 @@ export class CaseAssignmentUseCase {
     const addedAssignments = [];
     const removedAssignments = [];
 
-    const existingAssignmentRecordsMap = await assignmentRepo.getAssignmentsForCases([caseId]);
-    const existingAssignmentRecords = existingAssignmentRecordsMap.get(caseId) ?? [];
+    const existingAssignmentRecordsMap = await assignmentRepo.getAssignmentsForCases([
+      bCase.caseId,
+    ]);
+    const existingAssignmentRecords = existingAssignmentRecordsMap.get(bCase.caseId) ?? [];
     for (const existingAssignment of existingAssignmentRecords) {
       const stillAssigned = listOfAssignments.find((newAssignment) => {
         return (
@@ -131,11 +177,11 @@ export class CaseAssignmentUseCase {
       }
     }
 
-    const newAssignmentRecordsMap = await assignmentRepo.getAssignmentsForCases([caseId]);
-    const newAssignmentRecords = newAssignmentRecordsMap.get(caseId);
+    const newAssignmentRecordsMap = await assignmentRepo.getAssignmentsForCases([bCase.caseId]);
+    const newAssignmentRecords = newAssignmentRecordsMap.get(bCase.caseId);
     const history = createAuditRecord<CaseAssignmentHistory>(
       {
-        caseId,
+        caseId: bCase.caseId,
         documentType: 'AUDIT_ASSIGNMENT',
         before: existingAssignmentRecords,
         after: newAssignmentRecords,
@@ -151,7 +197,7 @@ export class CaseAssignmentUseCase {
 
     context.logger.info(
       MODULE_NAME,
-      `Updated assignments for case number ${caseId}.`,
+      `Updated assignments for case number ${bCase.caseId}.`,
       listOfAssignmentIdsCreated,
     );
     return listOfAssignmentIdsCreated;
