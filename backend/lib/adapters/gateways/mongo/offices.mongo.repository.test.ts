@@ -16,6 +16,7 @@ import { DEFAULT_STAFF_TTL } from '../../../use-cases/offices/offices';
 import { Staff } from '../../../../../common/src/cams/users';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import { CamsError } from '../../../common-errors/cams-error';
+import { OfficeUserRolesPredicate } from '../../../../../common/src/api/search';
 
 describe('offices repo', () => {
   let context: ApplicationContext;
@@ -165,6 +166,31 @@ describe('offices repo', () => {
     expect(replaceOneSpy).toHaveBeenCalledWith(expect.anything(), expectedStaff, true);
   });
 
+  test('should search', async () => {
+    const findSpy = jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+    const predicate: OfficeUserRolesPredicate = {
+      userId: 'test-user',
+      officeCode: 'test-office',
+      role: CamsRole.TrialAttorney,
+    };
+    await repo.search(predicate);
+    expect(findSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        values: expect.arrayContaining([
+          expect.objectContaining({ leftOperand: { name: 'id' }, rightOperand: 'test-user' }),
+          expect.objectContaining({
+            leftOperand: { name: 'officeCode' },
+            rightOperand: 'test-office',
+          }),
+          expect.objectContaining({
+            leftOperand: { name: 'roles' },
+            rightOperand: [CamsRole.TrialAttorney],
+          }),
+        ]),
+      }),
+    );
+  });
+
   describe('error handling', () => {
     const module = 'OFFICES-MONGO-REPOSITORY';
     const error = new Error('some error');
@@ -235,6 +261,36 @@ describe('offices repo', () => {
       await expect(repo.putOrExtendOfficeStaff('test-office', staff, expires)).rejects.toThrow(
         expectedError,
       );
+    });
+
+    test('should throw CamsError when find throws an error other than NotFound', async () => {
+      jest
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockRejectedValue(new Error('some error'));
+      const predicate: OfficeUserRolesPredicate = {
+        userId: 'test-user',
+        officeCode: 'test-office',
+        role: CamsRole.TrialAttorney,
+      };
+
+      const expectedError = new CamsError(expect.anything(), {
+        message: 'Failed while performing search query.',
+      });
+      await expect(repo.search(predicate)).rejects.toThrow(expectedError);
+    });
+
+    test('should return empty array when find throws a NotFound error', async () => {
+      jest
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockRejectedValue(new NotFoundError('not found'));
+      const predicate: OfficeUserRolesPredicate = {
+        userId: 'test-user',
+        officeCode: 'test-office',
+        role: CamsRole.TrialAttorney,
+      };
+
+      const actual = await repo.search(predicate);
+      expect(actual).toEqual([]);
     });
   });
 });

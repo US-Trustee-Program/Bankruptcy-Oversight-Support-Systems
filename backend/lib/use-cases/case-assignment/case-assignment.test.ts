@@ -122,7 +122,7 @@ describe('Case assignment tests', () => {
       jest.restoreAllMocks();
     });
 
-    test('should not create assignment for not found user id', async () => {
+    test('should not create assignments if one or more user ids is not found', async () => {
       jest
         .spyOn(MockMongoRepository.prototype, 'search')
         .mockImplementation((predicate: OfficeUserRolesPredicate) => {
@@ -142,6 +142,84 @@ describe('Case assignment tests', () => {
           caseId,
           assignments,
           role.toString(),
+        ),
+      ).rejects.toThrow('Invalid assignments found.');
+    });
+
+    test('should not create assignments if one or more names do not match', async () => {
+      jest
+        .spyOn(MockMongoRepository.prototype, 'search')
+        .mockImplementation((predicate: OfficeUserRolesPredicate) => {
+          if (predicate.userId === attorneyJoeNobel.id) {
+            return Promise.resolve([officeStaffJoeNobel]);
+          } else if (predicate.userId === attorneyJaneSmith.id) {
+            return Promise.resolve([{ ...officeStaffJaneSmith, name: 'Joe Nobel' }]);
+          } else {
+            return Promise.resolve([]);
+          }
+        });
+      const context = { ...applicationContext };
+      context.session = MockData.getManhattanAssignmentManagerSession();
+      const assignmentUseCase = new CaseAssignmentUseCase(context);
+      const assignments = [attorneyJaneSmith, attorneyJoeNobel];
+      await expect(
+        assignmentUseCase.createTrialAttorneyAssignments(
+          context,
+          caseId,
+          assignments,
+          role.toString(),
+        ),
+      ).rejects.toThrow('Invalid assignments found.');
+    });
+
+    test('should not create assignments if one or more roles do not match', async () => {
+      jest
+        .spyOn(MockMongoRepository.prototype, 'search')
+        .mockImplementation((predicate: OfficeUserRolesPredicate) => {
+          if (predicate.userId === attorneyJoeNobel.id) {
+            return Promise.resolve([officeStaffJoeNobel]);
+          } else if (predicate.userId === attorneyJaneSmith.id) {
+            return Promise.resolve([{ ...officeStaffJaneSmith, roles: [CamsRole.DataVerifier] }]);
+          } else {
+            return Promise.resolve([]);
+          }
+        });
+      const context = { ...applicationContext };
+      context.session = MockData.getManhattanAssignmentManagerSession();
+      const assignmentUseCase = new CaseAssignmentUseCase(context);
+      const assignments = [attorneyJaneSmith, attorneyJoeNobel];
+      await expect(
+        assignmentUseCase.createTrialAttorneyAssignments(
+          context,
+          caseId,
+          assignments,
+          role.toString(),
+        ),
+      ).rejects.toThrow('Invalid assignments found.');
+    });
+
+    test('should not create assignments if role is not a CamsRole', async () => {
+      jest
+        .spyOn(MockMongoRepository.prototype, 'search')
+        .mockImplementation((predicate: OfficeUserRolesPredicate) => {
+          if (predicate.userId === attorneyJoeNobel.id) {
+            return Promise.resolve([officeStaffJoeNobel]);
+          } else if (predicate.userId === attorneyJaneSmith.id) {
+            return Promise.resolve([officeStaffJaneSmith]);
+          } else {
+            return Promise.resolve([]);
+          }
+        });
+      const context = { ...applicationContext };
+      context.session = MockData.getManhattanAssignmentManagerSession();
+      const assignmentUseCase = new CaseAssignmentUseCase(context);
+      const assignments = [attorneyJaneSmith, attorneyJoeNobel];
+      await expect(
+        assignmentUseCase.createTrialAttorneyAssignments(
+          context,
+          caseId,
+          assignments,
+          'TrialDragon',
         ),
       ).rejects.toThrow('Invalid assignments found.');
     });
