@@ -11,6 +11,7 @@ import MigrateConsolidations from './migrations/migrate-consolidations';
 import MigrateAssignees from './migrations/migrate-assignees';
 import CaseAssignmentEvent from './events/case-assignment-event';
 import CaseClosedEvent from './events/case-closed-event';
+import MigrateOrderIds from './migrations/migrate-order-ids';
 
 /*
 
@@ -20,7 +21,7 @@ This module calls setup functions for each "registered" data flow. Each data flo
 
 A comma-delimited list of the MODULE_NAME values is required to appear in a comma-delimited list in the CAMS_ENABLED_DATAFLOWS environment variable. Due to how hyphens are interpreted in scripts, all hyphens that appear in a given MODULE_NAME must be replaced with underscores.
 
-Any module name not listed is not setup and will not appear in the list of Azure Functions in Azure Portal. This enables data flows to be setup
+Any module name not listed is not set up and will not appear in the list of Azure Functions in Azure Portal. This enables data flows to be setup
 independently across environments.
 
 The configuration is logged on startup. Example:
@@ -104,6 +105,7 @@ dataflows.register(
   MigrateCases,
   MigrateConsolidations,
   MigrateAssignees,
+  MigrateOrderIds,
 );
 
 // Log the list of registered data flows.
