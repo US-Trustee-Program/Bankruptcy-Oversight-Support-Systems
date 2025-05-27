@@ -13,6 +13,7 @@ import { getCamsUserReference } from '../../../../common/src/cams/session';
 import { randomUUID } from 'node:crypto';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { Action, Actions, ResourceActions } from '../../../../common/src/cams/actions';
+import { filterToExtendedAscii } from '../../../../common/src/cams/sanitization';
 
 const MODULE_NAME = 'CASE-NOTES-USE-CASE';
 
@@ -35,8 +36,9 @@ export class CaseNotesUseCase {
       createdBy: userRef,
       createdOn: today,
     };
+    const sanitizedNote = this.sanitizeNoteInput(data);
 
-    await this.caseNotesRepository.create(data);
+    await this.caseNotesRepository.create(sanitizedNote);
   }
 
   public async getCaseNotes(caseId: string): Promise<ResourceActions<CaseNote>[]> {
@@ -88,6 +90,7 @@ export class CaseNotesUseCase {
       updatedOn: dateOfEdit,
       updatedBy: getCamsUserReference(noteEditRequest.sessionUser),
     };
+    const sanitizedNewNote = this.sanitizeNoteInput(newNote);
 
     const archiveNote: Partial<CaseNote> = {
       id: note.id,
@@ -96,7 +99,7 @@ export class CaseNotesUseCase {
       archivedBy: getCamsUserReference(sessionUser),
     };
 
-    const creationResponse = await this.caseNotesRepository.create(newNote);
+    const creationResponse = await this.caseNotesRepository.create(sanitizedNewNote);
     await this.caseNotesRepository.archiveCaseNote(archiveNote);
     return creationResponse;
   }
@@ -106,5 +109,14 @@ export class CaseNotesUseCase {
     if (note.createdBy.id === userRef.id) {
       return [Actions.merge(Actions.EditNote, note), Actions.merge(Actions.RemoveNote, note)];
     }
+  }
+
+  private sanitizeNoteInput(noteInput: CaseNote): CaseNote {
+    return {
+      ...noteInput,
+      title: filterToExtendedAscii(noteInput.title),
+      content: filterToExtendedAscii(noteInput.content),
+      caseId: filterToExtendedAscii(noteInput.caseId),
+    };
   }
 }

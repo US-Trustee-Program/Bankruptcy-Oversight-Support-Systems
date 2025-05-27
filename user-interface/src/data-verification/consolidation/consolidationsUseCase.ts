@@ -17,6 +17,7 @@ import { CaseAssignment } from '@common/cams/assignments';
 import { Consolidation } from '@common/cams/events';
 import { ResponseBody } from '@common/api/response';
 import { ComboOption, ComboOptionList } from '@/lib/components/combobox/ComboBox';
+import { sanitizeText } from '@/lib/utils/sanitize-text';
 
 type ChildCaseFacts = { isConsolidationChildCase: boolean; leadCase?: CaseSummary };
 
@@ -247,7 +248,7 @@ const consolidationUseCase = (
       const data: ConsolidationOrderActionRejection = {
         consolidationId: store.order.consolidationId,
         rejectedCases: store.selectedCases.map((bCase) => bCase.caseId),
-        reason: action.rejectionReason ?? '',
+        reason: sanitizeText(action.rejectionReason ?? ''),
       };
 
       store.setIsProcessing(true);

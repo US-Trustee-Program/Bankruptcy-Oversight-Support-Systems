@@ -1,5 +1,9 @@
 import { PaginationParameters } from '../../../../../../common/src/api/pagination';
 import { DEFAULT_SEARCH_LIMIT } from '../../../../../../common/src/api/search';
+import {
+  filterToExtendedAscii,
+  isValidUserInput,
+} from '../../../../../../common/src/cams/sanitization';
 import { CamsError, isCamsError } from '../../../../common-errors/cams-error';
 import { getCamsErrorWithStack } from '../../../../common-errors/error-utilities';
 import { NotFoundError } from '../../../../common-errors/not-found-error';
@@ -17,6 +21,7 @@ import { toMongoAggregate } from './mongo-aggregate-renderer';
 import { toMongoQuery, toMongoSort } from './mongo-query-renderer';
 import { randomUUID } from 'crypto';
 import { Document as MongoDocument, MongoServerError } from 'mongodb';
+import { BadRequestError } from '../../../../common-errors/bad-request';
 
 export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   private collectionHumble: CollectionHumble<T>;
@@ -148,7 +153,11 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     const mongoQuery = toMongoQuery<T>(query);
     const mongoItem = createOrGetId<T>(item);
     try {
-      const result = await this.collectionHumble.replaceOne(mongoQuery, mongoItem, upsert);
+      const result = await this.collectionHumble.replaceOne(
+        mongoQuery,
+        sanitizeStrings(mongoItem, this.moduleName),
+        upsert,
+      );
 
       const unknownError = new UnknownError(this.moduleName, {
         message: 'Failed to insert document into database.',
@@ -192,7 +201,10 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     const mongoQuery = toMongoQuery(query);
 
     try {
-      const result = await this.collectionHumble.updateOne(mongoQuery, itemProperties);
+      const result = await this.collectionHumble.updateOne(
+        mongoQuery,
+        sanitizeStrings(itemProperties, this.moduleName),
+      );
       const unknownError = new UnknownError(this.moduleName, {
         message: 'Failed to insert document into database.',
       });
@@ -224,7 +236,9 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     try {
       const cleanItem = removeIds(item);
       const mongoItem = createOrGetId<T>(cleanItem);
-      const result = await this.collectionHumble.insertOne(mongoItem);
+      const result = await this.collectionHumble.insertOne(
+        sanitizeStrings(mongoItem, this.moduleName),
+      );
       if (!result.acknowledged) {
         throw new UnknownError(this.moduleName, {
           message: 'Failed to insert document into database.',
@@ -243,7 +257,8 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     try {
       const mongoItems = items.map((item) => {
         const cleanItem = removeIds(item);
-        return createOrGetId<T>(cleanItem);
+        const sanitizedItem = sanitizeStrings(cleanItem, this.moduleName);
+        return createOrGetId<T>(sanitizedItem);
       });
       const result = await this.collectionHumble.insertMany(mongoItems);
       const insertedIds = mongoItems.map((item) => item.id);
@@ -359,6 +374,19 @@ export function removeIds<T>(item: CamsItem<T>): CamsItem<T> {
   delete cleanItem._id;
   delete cleanItem.id;
   return cleanItem;
+}
+
+export function sanitizeStrings<T>(item: CamsItem<T>, moduleName: string): CamsItem<T> {
+  for (const key in item) {
+    if (typeof item[key] === 'string') {
+      if (!isValidUserInput(item[key])) {
+        throw new BadRequestError(moduleName, { message: 'Invalid user input.' });
+      }
+      item[key] = filterToExtendedAscii(item[key] as string);
+    }
+  }
+
+  return item;
 }
 
 type CamsItem<T> = T & {

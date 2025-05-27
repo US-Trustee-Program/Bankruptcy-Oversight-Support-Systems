@@ -2,6 +2,7 @@ import DOMPurify, { Config } from 'dompurify';
 import { useAppInsights } from '../hooks/UseApplicationInsights';
 import { IEventTelemetry } from '@microsoft/applicationinsights-web';
 import LocalStorage from './local-storage';
+import { filterToExtendedAscii } from '@common/cams/sanitization';
 
 const defaultConfiguration = {
   ALLOWED_TAGS: ['#text'],
@@ -10,7 +11,7 @@ const defaultConfiguration = {
 
 export function sanitizeText(maybeDirty: string, configuration: Partial<Config> = {}) {
   const domPurifyConfig: Config = { ...defaultConfiguration, ...configuration };
-  const clean = DOMPurify.sanitize(maybeDirty, domPurifyConfig);
+  const clean = DOMPurify.sanitize(filterToExtendedAscii(maybeDirty), domPurifyConfig);
 
   if (DOMPurify.removed.length) {
     const { appInsights } = useAppInsights();

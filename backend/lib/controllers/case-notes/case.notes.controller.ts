@@ -38,12 +38,12 @@ export class CaseNotesController implements CamsController {
       if (context.request.method === 'POST') {
         const { caseId } = context.request.params;
         const { content, title } = context.request.body;
-        this.validatePostRequestParameters(caseId, content, title);
         const noteInput: CaseNoteInput = {
           caseId,
           title,
           content,
         };
+        this.validateRequestParameters(noteInput);
         await caseNotesUseCase.createCaseNote(context.session.user, noteInput);
         return httpSuccess({
           statusCode: HttpStatusCodes.CREATED,
@@ -55,7 +55,7 @@ export class CaseNotesController implements CamsController {
           caseId,
           sessionUser: context.session.user,
         };
-        this.validateArchiveRequestParameters(archiveNote);
+        this.validateRequestParameters({ id: noteId, caseId });
         await caseNotesUseCase.archiveCaseNote(archiveNote);
         return httpSuccess({
           statusCode: HttpStatusCodes.CREATED,
@@ -67,8 +67,8 @@ export class CaseNotesController implements CamsController {
           ...note,
           id: noteId,
           caseId,
-          updatedBy: note.updatedBy,
         };
+        this.validateRequestParameters(noteForRequest);
         const request: CaseNoteEditRequest = {
           note: noteForRequest,
           sessionUser: context.session.user,
@@ -95,55 +95,29 @@ export class CaseNotesController implements CamsController {
     }
   }
 
-  private validatePostRequestParameters(
-    caseId: string,
-    noteContent: string | null,
-    noteTitle: string | null,
-  ) {
+  private validateRequestParameters(input: Partial<CaseNoteInput>) {
     const badParams = [];
     const messages = [];
-    if (!caseId) {
-      badParams.push('caseId');
-    } else if (!caseId.match(VALID_CASEID_PATTERN)) {
-      messages.push(INVALID_CASEID_MESSAGE);
-    }
-
-    if (!noteTitle) {
-      badParams.push('case note title');
-    } else if (!isValidUserInput(noteTitle)) {
-      messages.push(INVALID_NOTE_TITLE_MESSAGE);
-    }
-
-    if (!noteContent) {
-      badParams.push('case note content');
-    } else if (!isValidUserInput(noteContent)) {
-      messages.push(INVALID_NOTE_MESSAGE);
-    }
-
-    if (badParams.length > 0) {
-      const isPlural = badParams.length > 1;
-      const message = `Required ${isPlural ? 'parameters' : 'parameter'} ${badParams.join(', ')} ${isPlural ? 'are' : 'is'} absent.`;
-      messages.push(message);
-    }
-    if (messages.length) {
-      throw new ForbiddenCaseNotesError(MODULE_NAME, { message: messages.join(' ') });
-    }
-  }
-
-  private validateArchiveRequestParameters(request: Partial<CaseNoteDeleteRequest>) {
-    const badParams = [];
-    const messages = [];
-
-    if (!request['id']) {
-      badParams.push('id');
-    } else if (!request['id'].match(VALID_ID_PATTERN)) {
+    if (input.id && !input.id.match(VALID_ID_PATTERN)) {
       messages.push(INVALID_ID_MESSAGE);
     }
 
-    if (!request['caseId']) {
+    if (!input.caseId) {
       badParams.push('caseId');
-    } else if (!request['caseId'].match(VALID_CASEID_PATTERN)) {
+    } else if (!input.caseId.match(VALID_CASEID_PATTERN)) {
       messages.push(INVALID_CASEID_MESSAGE);
+    }
+
+    if (!input.title) {
+      badParams.push('case note title');
+    } else if (!isValidUserInput(input.title)) {
+      messages.push(INVALID_NOTE_TITLE_MESSAGE);
+    }
+
+    if (!input.content) {
+      badParams.push('case note content');
+    } else if (!isValidUserInput(input.content)) {
+      messages.push(INVALID_NOTE_MESSAGE);
     }
 
     if (badParams.length > 0) {
