@@ -3,12 +3,13 @@ import { CamsUserReference, Staff } from '../../../../../common/src/cams/users';
 import { Auditable, createAuditRecord } from '../../../../../common/src/cams/auditable';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { getCamsUserReference } from '../../../../../common/src/cams/session';
-import QueryBuilder from '../../../query/query-builder';
+import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
 import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { OfficesRepository, ReplaceResult } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { DEFAULT_STAFF_TTL } from '../../../use-cases/offices/offices';
 import { isNotFoundError } from '../../../common-errors/not-found-error';
+import { OfficeUserRolesPredicate } from '../../../../../common/src/api/search';
 
 const MODULE_NAME = 'OFFICES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'offices';
@@ -26,6 +27,8 @@ export type OfficeStaff = Staff &
 export class OfficesMongoRepository extends BaseMongoRepository implements OfficesRepository {
   private static referenceCount: number = 0;
   private static instance: OfficesMongoRepository;
+
+  private doc = using<OfficeStaff>();
 
   constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);
@@ -139,6 +142,32 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: { message: 'Failed to create or update office staff.', module: MODULE_NAME },
+      });
+    }
+  }
+
+  public async search(predicate?: OfficeUserRolesPredicate): Promise<OfficeStaff[]> {
+    const conditions: ConditionOrConjunction<OfficeStaff>[] = [];
+    if (predicate?.userId) {
+      conditions.push(this.doc('id').equals(predicate.userId));
+    }
+    if (predicate.officeCode) {
+      conditions.push(this.doc('officeCode').equals(predicate.officeCode));
+    }
+    if (predicate.role) {
+      conditions.push(this.doc('roles').contains([predicate.role as CamsRole]));
+    }
+
+    try {
+      const query = predicate ? and(...conditions) : null;
+      return await this.getAdapter<OfficeStaff>().find(query);
+    } catch (originalError) {
+      if (isNotFoundError(originalError)) {
+        return [];
+      }
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: { message: 'Failed to get office staff.', module: MODULE_NAME },
+        data: predicate,
       });
     }
   }

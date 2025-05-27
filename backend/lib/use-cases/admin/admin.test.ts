@@ -3,7 +3,6 @@ import { AdminUseCase } from './admin';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { PrivilegedIdentityUser } from '../../../../common/src/cams/users';
-import { MockOfficesRepository } from '../../testing/mock-gateways/mock.offices.repository';
 import { randomUUID } from 'node:crypto';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
@@ -40,7 +39,7 @@ describe('Admin Use Case', () => {
       .spyOn(MockMongoRepository.prototype, 'putPrivilegedIdentityUser')
       .mockResolvedValue({ id: users[0].id, modifiedCount: 0, upsertedCount: 1 });
     const officeSpy = jest
-      .spyOn(MockOfficesRepository, 'putOrExtendOfficeStaff')
+      .spyOn(MockMongoRepository.prototype, 'putOrExtendOfficeStaff')
       .mockResolvedValue();
 
     const groups = ['USTP CAMS Case Assignment Manager', 'USTP CAMS Region 2 Office Manhattan'];
