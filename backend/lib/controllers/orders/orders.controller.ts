@@ -79,7 +79,7 @@ export class OrdersController implements CamsController, CamsTimerController {
   }
 
   private async handleConsolidations(context: ApplicationContext) {
-    const procedure = context.request.params.procedure;
+    const { procedure } = context.request.params;
     let response: ManageConsolidationResponse;
 
     if (procedure === 'reject') {
