@@ -1,10 +1,9 @@
-import * as sanitization from '../../../../../../common/src/cams/sanitization';
 import { CamsError } from '../../../../common-errors/cams-error';
 import { NotFoundError } from '../../../../common-errors/not-found-error';
 import { CollectionHumble, DocumentClient } from '../../../../humble-objects/mongo-humble';
 import QueryBuilder from '../../../../query/query-builder';
 import QueryPipeline from '../../../../query/query-pipeline';
-import { MongoCollectionAdapter, removeIds, sanitizeStrings } from './mongo-adapter';
+import { MongoCollectionAdapter, removeIds } from './mongo-adapter';
 
 const { and, orderBy } = QueryBuilder;
 
@@ -403,34 +402,5 @@ describe('Mongo adapter', () => {
     await expect(adapter.countAllDocuments()).rejects.toThrow(expectedError);
     await expect(adapter.findOne(testQuery)).rejects.toThrow(expectedError);
     await expect(adapter.getAll()).rejects.toThrow(expectedError);
-  });
-
-  describe('sanitizeStrings', () => {
-    test('should sanitize strings values in an item', () => {
-      const testString = 'This is a test string with some emojis 😊';
-      const item = {
-        stringToSanitize: testString,
-        numberToIgnore: 42,
-      };
-
-      const sanitizeSpy = jest.spyOn(sanitization, 'filterToExtendedAscii');
-
-      const result = sanitizeStrings(item, 'test-module');
-
-      expect(sanitizeSpy).toHaveBeenCalledWith(testString);
-      expect(sanitizeSpy).toHaveBeenCalledTimes(1);
-      expect(result.stringToSanitize).toEqual('This is a test string with some emojis ');
-    });
-
-    test('should throw for malicious user input', () => {
-      const testString =
-        'This is a test string with some <script>malicious code</script> and emojis 😊';
-      const item = {
-        stringToSanitize: testString,
-        numberToIgnore: 42,
-      };
-
-      expect(() => sanitizeStrings(item, 'test-module')).toThrow('Invalid user input');
-    });
   });
 });

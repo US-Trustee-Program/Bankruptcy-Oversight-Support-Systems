@@ -92,7 +92,7 @@ export class OrdersUseCase {
 
   public async getSuggestedCases(context: ApplicationContext): Promise<Array<CaseSummary>> {
     const casesGateway = Factory.getCasesGateway(this.context);
-    const caseId = context.request.params.caseId;
+    const { caseId } = context.request.params;
     return casesGateway.getSuggestedCases(context, caseId);
   }
 
@@ -110,6 +110,7 @@ export class OrdersUseCase {
     const casesRepo = Factory.getCasesRepository(this.context);
 
     const divisionMeta = storageGateway.getUstpDivisionMeta();
+
     const divisionCodeMaybe = data['newCase'] ? data['newCase'].courtDivisionCode : null;
     if (
       divisionCodeMaybe &&
