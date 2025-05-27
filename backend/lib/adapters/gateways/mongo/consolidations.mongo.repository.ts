@@ -68,7 +68,9 @@ export default class ConsolidationOrdersMongoRepository<
   }
 
   public async createMany(list: T[]): Promise<void> {
-    if (!list || !list.length) return;
+    if (!list || !list.length) {
+      return;
+    }
     try {
       await this.getAdapter<T>().insertMany(list);
     } catch (originalError) {

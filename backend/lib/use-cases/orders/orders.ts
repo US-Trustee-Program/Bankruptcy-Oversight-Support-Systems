@@ -92,7 +92,7 @@ export class OrdersUseCase {
 
   public async getSuggestedCases(context: ApplicationContext): Promise<Array<CaseSummary>> {
     const casesGateway = Factory.getCasesGateway(this.context);
-    const caseId = context.request.params.caseId;
+    const { caseId } = context.request.params;
     return casesGateway.getSuggestedCases(context, caseId);
   }
 
@@ -393,8 +393,10 @@ export class OrdersUseCase {
       }
     }
 
-    const filterChildCasesOnThisOrder = (c) => !includedCases.includes(c.caseId);
-    const filterLeadCaseIfItExists = (c) => !leadCase || c.caseId !== leadCase.caseId;
+    const filterChildCasesOnThisOrder = (c: ConsolidationOrderCase) =>
+      !includedCases.includes(c.caseId);
+    const filterLeadCaseIfItExists = (c: ConsolidationOrderCase) =>
+      !leadCase || c.caseId !== leadCase.caseId;
 
     const remainingChildCases = provisionalOrder.childCases
       .filter(filterChildCasesOnThisOrder)
