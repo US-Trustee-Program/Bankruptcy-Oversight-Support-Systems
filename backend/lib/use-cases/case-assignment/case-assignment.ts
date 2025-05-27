@@ -15,6 +15,7 @@ import { AssignmentError } from './assignment.exception';
 import { createAuditRecord } from '../../../../common/src/cams/auditable';
 import OfficeAssigneesUseCase from '../offices/office-assignees';
 import { mapDivisionCodeToUstpOffice } from '../../../../common/src/cams/offices';
+import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT';
 
@@ -97,8 +98,14 @@ export class CaseAssignmentUseCase {
               }
             });
           })
-          .catch((_err) => {
-            // Do something?
+          .catch((originalError) => {
+            const error = getCamsErrorWithStack(originalError, MODULE_NAME, {
+              camsStackInfo: {
+                module: MODULE_NAME,
+                message: 'Failed while searching for assignments.',
+              },
+            });
+            context.logger.camsError(error);
           }),
       );
     });

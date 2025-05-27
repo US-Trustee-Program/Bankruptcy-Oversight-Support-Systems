@@ -198,6 +198,33 @@ describe('Case assignment tests', () => {
       ).rejects.toThrow('Invalid assignments found.');
     });
 
+    test('should log but not reject Promise.all when one of multiple searches fails', async () => {
+      jest
+        .spyOn(MockMongoRepository.prototype, 'search')
+        .mockImplementation((predicate: OfficeUserRolesPredicate) => {
+          if (predicate.userId === attorneyJoeNobel.id) {
+            return new Promise((resolve) => setTimeout(() => resolve([officeStaffJoeNobel]), 200));
+          } else {
+            return Promise.reject();
+          }
+        });
+      const context = { ...applicationContext };
+      context.session = MockData.getManhattanAssignmentManagerSession();
+      const assignmentUseCase = new CaseAssignmentUseCase(context);
+      const assignments = [attorneyJaneSmith, attorneyJoeNobel];
+      const loggerSpy = jest.spyOn(context.logger, 'camsError');
+      await expect(
+        assignmentUseCase.createTrialAttorneyAssignments(
+          context,
+          caseId,
+          assignments,
+          role.toString(),
+        ),
+      ).rejects.toThrow('Invalid assignments found.');
+
+      expect(loggerSpy).toHaveBeenCalledTimes(1);
+    });
+
     test('should not create assignments if role is not a CamsRole', async () => {
       jest
         .spyOn(MockMongoRepository.prototype, 'search')
