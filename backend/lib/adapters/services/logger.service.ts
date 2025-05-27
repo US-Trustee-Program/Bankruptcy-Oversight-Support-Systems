@@ -22,7 +22,7 @@ export class LoggerImpl implements LoggerHelper {
     this.invocationId = invocationId;
   }
 
-  private sanitize(input: string): string {
+  private neutralizeOutput(input: string): string {
     return input.replace(/[\r\n]+/g, ' ').trim();
   }
 
@@ -40,7 +40,7 @@ export class LoggerImpl implements LoggerHelper {
           })
         : ''
     }`;
-    this.provider(this.sanitize(logString.trim()));
+    this.provider(this.neutralizeOutput(logString.trim()));
   }
 
   private scrubMessage(message: string) {
