@@ -38,3 +38,9 @@ export type OfficeAssigneePredicate = {
   caseId?: string;
   userId?: string;
 };
+
+export type OfficeUserRolesPredicate = {
+  officeCode?: string;
+  userId?: string;
+  role?: string;
+};
