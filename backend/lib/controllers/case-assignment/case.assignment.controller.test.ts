@@ -121,23 +121,33 @@ describe('Case Assignment Creation Tests', () => {
     );
   });
 
-  test('should identify a bad role assignment', async () => {
-    const listOfAttorneys: CamsUserReference[] = [Jane, Tom, Jane, Adrian, Tom];
-    const testCaseAssignment = {
-      caseId: '081-18-12345',
-      listOfAttorneyNames: listOfAttorneys,
-      role: 'bad-role',
-    };
-    applicationContext.request = mockCamsHttpRequest({
-      method: 'POST',
-      params: { id: '081-18-12345' },
-      body: testCaseAssignment,
-    });
-    const assignmentController = new CaseAssignmentController(applicationContext);
-    await expect(assignmentController.handleRequest(applicationContext)).rejects.toThrow(
-      'Invalid role for the attorney. Requires role to be a TrialAttorney for case assignment.',
-    );
-  });
+  const roleTestCases = [
+    'bad-role',
+    CamsRole.DataVerifier,
+    CamsRole.CaseAssignmentManager,
+    CamsRole.PrivilegedIdentityUser,
+    CamsRole.SuperUser,
+  ];
+  test.each(roleTestCases)(
+    'should identify a bad role assignment for %s role',
+    async (role: string) => {
+      const listOfAttorneys: CamsUserReference[] = [Jane, Tom, Jane, Adrian, Tom];
+      const testCaseAssignment = {
+        caseId: '081-18-12345',
+        listOfAttorneyNames: listOfAttorneys,
+        role,
+      };
+      applicationContext.request = mockCamsHttpRequest({
+        method: 'POST',
+        params: { id: '081-18-12345' },
+        body: testCaseAssignment,
+      });
+      const assignmentController = new CaseAssignmentController(applicationContext);
+      await expect(assignmentController.handleRequest(applicationContext)).rejects.toThrow(
+        'The provided role is not an assignable role.',
+      );
+    },
+  );
 
   test('should fetch a list of assignments when a GET request is called', async () => {
     const caseId = '111-22-33333';

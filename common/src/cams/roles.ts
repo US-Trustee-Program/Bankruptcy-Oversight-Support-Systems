@@ -5,3 +5,7 @@ export enum CamsRole {
   TrialAttorney = 'TrialAttorney',
   DataVerifier = 'DataVerifier',
 }
+
+export enum AssignableRole {
+  TrialAttorney = CamsRole.TrialAttorney,
+}
