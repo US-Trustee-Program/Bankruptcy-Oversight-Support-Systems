@@ -171,8 +171,12 @@ export default function DataVerificationScreen() {
     .map((order) => {
       const isHidden =
         !typeFilter.includes(order.orderType) || !statusFilter.includes(order.status);
-      if (!isHidden) visibleItemCount++;
-      if (order.status === 'pending') pendingItemCount++;
+      if (!isHidden) {
+        visibleItemCount++;
+      }
+      if (order.status === 'pending') {
+        pendingItemCount++;
+      }
 
       return isTransferOrder(order) ? (
         <TransferOrderAccordion
