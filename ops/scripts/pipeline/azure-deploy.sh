@@ -348,7 +348,18 @@ while [[ $# -gt 0 ]]; do
         deployment_parameters="${deployment_parameters} ${is_ustp_deployment_param}"
         shift
         ;;
-
+    --maxObjectDepth)
+        inputParams+=("${1}")
+        maxObjectDepth="maxObjectDepth=${2}"
+        deployment_parameters="${deployment_parameters} ${maxObjectDepth}"
+        shift
+        ;;
+    --maxObjectKeyCount)
+        inputParams+=("${1}")
+        maxObjectKeyCount="maxObjectKeyCount=${2}"
+        deployment_parameters="${deployment_parameters} ${maxObjectKeyCount}"
+        shift
+        ;;
     *)
         echo "Exit on param: ${1}"
         exit 2 # error on unknown flag/switch
