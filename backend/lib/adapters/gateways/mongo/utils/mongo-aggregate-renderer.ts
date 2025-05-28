@@ -3,6 +3,7 @@ import {
   AddFields,
   ExcludeFields,
   Group,
+  IncludeFields,
   Join,
   Paginate,
   Pipeline,
@@ -97,11 +98,20 @@ export function toMongoGroup(stage: Group) {
   }, group);
 }
 
-export function toMongoProject(stage: ExcludeFields) {
-  // Note that we could extend this by letting stage be another type.
-  // https://www.mongodb.com/docs/manual/reference/operator/aggregation/project/#syntax
+// TODO: Future contraction. We can provide a unified projection `toMongoProject` if we produce another stage that includes inclusive and exclusive field specifications.
+// See: https://www.mongodb.com/docs/manual/reference/operator/aggregation/project/#syntax
+
+export function toMongoProjectExclude(stage: ExcludeFields) {
   const fields = stage.fields.reduce((acc, field) => {
     acc[field.name] = 0;
+    return acc;
+  }, {});
+  return { $project: fields };
+}
+
+export function toMongoProjectInclude(stage: IncludeFields) {
+  const fields = stage.fields.reduce((acc, field) => {
+    acc[field.name] = 1;
     return acc;
   }, {});
   return { $project: fields };
@@ -162,7 +172,10 @@ export function toMongoAggregate(pipeline: Pipeline): AggregateQuery {
       return toMongoAddFields(stage);
     }
     if (stage.stage === 'EXCLUDE') {
-      return toMongoProject(stage);
+      return toMongoProjectExclude(stage);
+    }
+    if (stage.stage === 'INCLUDE') {
+      return toMongoProjectInclude(stage);
     }
     if (stage.stage === 'GROUP') {
       return toMongoGroup(stage);

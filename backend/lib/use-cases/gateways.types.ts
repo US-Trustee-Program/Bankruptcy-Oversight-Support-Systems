@@ -258,3 +258,7 @@ export interface QueueGateway {
     queueName: LogicalQueueNames,
   ): { enqueue: (...messages: T[]) => void };
 }
+
+// TODO: Delete these types once the consolidation order `consolidationId` values have been migrated.
+export type MigrationConsolidationOrder = Pick<ConsolidationOrder, 'id' | 'jobId' | 'status'>;
+export type UpdateConsolidationId = Pick<ConsolidationOrder, 'id' | 'consolidationId'>;
