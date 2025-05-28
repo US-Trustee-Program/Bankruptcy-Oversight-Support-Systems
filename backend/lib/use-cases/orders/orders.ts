@@ -394,8 +394,10 @@ export class OrdersUseCase {
       }
     }
 
-    const filterChildCasesOnThisOrder = (c) => !includedCases.includes(c.caseId);
-    const filterLeadCaseIfItExists = (c) => !leadCase || c.caseId !== leadCase.caseId;
+    const filterChildCasesOnThisOrder = (c: ConsolidationOrderCase) =>
+      !includedCases.includes(c.caseId);
+    const filterLeadCaseIfItExists = (c: ConsolidationOrderCase) =>
+      !leadCase || c.caseId !== leadCase.caseId;
 
     const remainingChildCases = provisionalOrder.childCases
       .filter(filterChildCasesOnThisOrder)

@@ -526,12 +526,39 @@ describe('Consolidation UseCase tests', () => {
     expect(store.foundValidCaseNumber).toBe(false);
   });
 
-  test('should disable the verify button if a lead case and at least once child case are not selected', async () => {
+  test('should disable the verify button if a lead case and at least one child case are not selected', async () => {
+    const disableButtonSpy = vi.spyOn(controls.approveButton.current!, 'disableButton');
+    const leadCase = MockData.getConsolidatedOrderCase();
+    store.setLeadCase(leadCase);
+    store.setLeadCaseId(leadCase.caseId);
+    store.setConsolidationType('administrative');
+    store.setSelectedCases([leadCase]);
+    useCase.updateSubmitButtonsState();
+    expect(disableButtonSpy).toHaveBeenCalled();
+  });
+
+  test('should disable the verify button if a selected child case is a lead case for another consolidation', async () => {
     const disableButtonSpy = vi.spyOn(controls.approveButton.current!, 'disableButton');
     const leadCase = MockData.getConsolidatedOrderCase();
     store.setLeadCase(leadCase);
     store.setConsolidationType('administrative');
-    store.setSelectedCases([leadCase]);
+    const selectedCases = MockData.buildArray(MockData.getConsolidatedOrderCase, 4);
+    selectedCases[0].associations?.push(MockData.getConsolidationFrom());
+    store.setSelectedCases(selectedCases);
+    useCase.updateSubmitButtonsState();
+    expect(disableButtonSpy).toHaveBeenCalled();
+  });
+
+  test('should disable the verify button if a selected child case is already a part of another consolidation', async () => {
+    const disableButtonSpy = vi.spyOn(controls.approveButton.current!, 'disableButton');
+    const leadCase = MockData.getConsolidatedOrderCase();
+    store.setLeadCase(leadCase);
+    store.setLeadCaseId(leadCase.caseId);
+    store.setConsolidationType('administrative');
+    store.setIsDataEnhanced(true);
+    const selectedCases = MockData.buildArray(MockData.getConsolidatedOrderCase, 4);
+    selectedCases[0].associations?.push(MockData.getConsolidationTo());
+    store.setSelectedCases(selectedCases);
     useCase.updateSubmitButtonsState();
     expect(disableButtonSpy).toHaveBeenCalled();
   });
