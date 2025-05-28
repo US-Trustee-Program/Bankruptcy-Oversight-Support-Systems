@@ -152,7 +152,9 @@ function ConsolidationOrderModalComponent(
   }
 
   function reset() {
-    if (reasonRef.current) reasonRef.current.value = '';
+    if (reasonRef.current) {
+      reasonRef.current.value = '';
+    }
   }
 
   function resizeModal() {
@@ -174,16 +176,21 @@ function ConsolidationOrderModalComponent(
           consolidationTypeDiv.clientHeight +
           assignmentsListDiv.clientHeight +
           button.clientHeight;
-        let finalSize = windowSize.height! - overallHeightOfModal;
-        if (finalSize < minChildCasesDivHeight) finalSize = minChildCasesDivHeight;
+        const finalSize = Math.max(
+          windowSize.height! - overallHeightOfModal,
+          minChildCasesDivHeight,
+        );
         setChildCasesDivHeight(`${finalSize}px`);
       }
     }
   }
 
   function getAssigneeNames(assignees: CaseAssignment[]) {
-    if (assignees?.length) return assignees.map((assignee) => assignee.name);
-    else return [];
+    if (assignees?.length) {
+      return assignees.map((assignee) => assignee.name);
+    } else {
+      return [];
+    }
   }
 
   useEffect(() => {
