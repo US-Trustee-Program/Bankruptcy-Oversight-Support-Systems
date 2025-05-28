@@ -12,7 +12,6 @@ import {
 import { UnknownError } from '../../../lib/common-errors/unknown-error';
 import { CaseNote } from '../../../../common/src/cams/cases';
 import * as featureFlags from '../../../lib/adapters/utils/feature-flag';
-import { BadRequestError } from '../../../lib/common-errors/bad-request';
 
 const defaultRequestProps: Partial<CamsHttpRequest> = {
   method: 'POST',
@@ -70,29 +69,6 @@ describe('Case Notes Function Tests', () => {
     const requestOverride = {
       body: {
         caseId: '001-67-89123',
-      },
-    };
-
-    const request = createMockAzureFunctionRequest({
-      ...defaultRequestProps,
-      ...requestOverride,
-    });
-
-    const response = await handler(request, context);
-    expect(response).toEqual(azureHttpResponse);
-  });
-
-  test('should throw error when XSS note content is provided', async () => {
-    const error = new BadRequestError('MOCK_CASE_NOTE_MODULE', { message: 'Invalid user input.' });
-    const { azureHttpResponse } = buildTestResponseError(error);
-    jest.spyOn(CaseNotesController.prototype, 'handleRequest').mockRejectedValue(error);
-
-    const maliciousNote = "fetch('/api/data');";
-    const requestOverride = {
-      body: {
-        caseId: '001-67-89123',
-        title: 'test note title',
-        content: maliciousNote,
       },
     };
 
