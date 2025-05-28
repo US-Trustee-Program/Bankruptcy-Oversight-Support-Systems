@@ -70,7 +70,12 @@ export class OfficesUseCase {
     }, new Map<string, UstpOfficeDetails>());
 
     // Filter out any groups not relevant to CAMS.
-    const userGroups = sanitizeDeep(await userGroupSource.getUserGroups(context), MODULE_NAME);
+    const userGroups = sanitizeDeep(
+      await userGroupSource.getUserGroups(context),
+      MODULE_NAME,
+      context.logger,
+      false,
+    );
     const officeGroups = userGroups.filter((group) => groupToOfficeMap.has(group.name));
     const roleGroups = userGroups.filter((group) => groupToRoleMap.has(group.name));
 

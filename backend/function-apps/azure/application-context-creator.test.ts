@@ -7,6 +7,7 @@ import { createMockApplicationContext } from '../../lib/testing/testing-utilitie
 import ContextCreator from './application-context-creator';
 import { createMockAzureFunctionContext, createMockAzureFunctionRequest } from './testing-helpers';
 import { azureToCamsHttpRequest } from './functions';
+import { BadRequestError } from '../../lib/common-errors/bad-request';
 
 describe('Application Context Creator', () => {
   describe('applicationContextCreator', () => {
@@ -23,6 +24,56 @@ describe('Application Context Creator', () => {
       expect(context.featureFlags instanceof Object).toBeTruthy();
       expect(featureFlagsSpy).toHaveBeenCalled();
       expect(context.request).toEqual(await azureToCamsHttpRequest(request));
+    });
+
+    test('should throw an error when attempting to create context with no request', async () => {
+      const invocationContext = createMockAzureFunctionContext();
+      await expect(
+        ContextCreator.applicationContextCreator({
+          invocationContext,
+        }),
+      ).rejects.toThrow();
+    });
+
+    test('should throw when malicious input is included in request', async () => {
+      const maliciousNote = "fetch('/api/data');";
+      const invocationContext = createMockAzureFunctionContext();
+      const request = createMockAzureFunctionRequest({
+        method: 'POST',
+        body: {
+          malicious: maliciousNote,
+        },
+      });
+
+      await expect(
+        ContextCreator.applicationContextCreator({
+          invocationContext,
+          request,
+        }),
+      ).rejects.toThrow(
+        new BadRequestError(expect.any(String), { message: 'Invalid user input.' }),
+      );
+    });
+
+    test('should scrub unicode characters', async () => {
+      const unicode = 'Hello World 你好 with emoji 🚀';
+      const scrubbed = 'Hello World  with emoji ';
+      const invocationContext = createMockAzureFunctionContext();
+      const originalRequest = createMockAzureFunctionRequest({
+        method: 'POST',
+        body: {
+          unicode,
+        },
+      });
+      const scrubbedBody = {
+        unicode: scrubbed,
+      };
+
+      const context = await ContextCreator.applicationContextCreator({
+        invocationContext,
+        request: originalRequest,
+      });
+      expect(context.request.body).toEqual(scrubbedBody);
     });
   });
 

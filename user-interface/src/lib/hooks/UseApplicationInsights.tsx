@@ -31,6 +31,6 @@ if (appInsightsConnectionString) {
   });
 }
 
-export function useAppInsights() {
+export function getAppInsights() {
   return { reactPlugin, appInsights };
 }

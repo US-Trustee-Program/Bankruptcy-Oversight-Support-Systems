@@ -12,7 +12,6 @@ import {
   CaseNoteInput,
 } from '../../../../common/src/cams/cases';
 import { ForbiddenCaseNotesError } from './case.notes.exception';
-import { isValidUserInput } from '../../../../common/src/cams/sanitization';
 import { ResourceActions } from '../../../../common/src/cams/actions';
 
 const MODULE_NAME = 'CASE-NOTES-CONTROLLER';
@@ -20,8 +19,6 @@ const VALID_CASEID_PATTERN = RegExp(/^[\dA-Z]{3}-\d{2}-\d{5}$/);
 const VALID_ID_PATTERN = RegExp(/^[\dA-Za-z]+(-[\dA-Za-z]+)*$/);
 const INVALID_ID_MESSAGE = 'case note ID must be provided.';
 const INVALID_CASEID_MESSAGE = 'caseId must be formatted like 111-01-12345.';
-const INVALID_NOTE_MESSAGE = 'Note content contains invalid keywords.';
-const INVALID_NOTE_TITLE_MESSAGE = 'Note title contains invalid keywords.';
 
 export class CaseNotesController implements CamsController {
   private readonly applicationContext: ApplicationContext;
@@ -107,14 +104,10 @@ export class CaseNotesController implements CamsController {
 
     if (!input.title) {
       badParams.push('case note title');
-    } else if (!isValidUserInput(input.title)) {
-      messages.push(INVALID_NOTE_TITLE_MESSAGE);
     }
 
     if (!input.content) {
       badParams.push('case note content');
-    } else if (!isValidUserInput(input.content)) {
-      messages.push(INVALID_NOTE_MESSAGE);
     }
 
     if (badParams.length > 0) {

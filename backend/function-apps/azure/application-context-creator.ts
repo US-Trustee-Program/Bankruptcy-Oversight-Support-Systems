@@ -35,7 +35,7 @@ async function applicationContextCreator<B = unknown>(
     logger,
     request,
   });
-  context.request = sanitizeDeep(context.request, MODULE_NAME);
+  context.request = sanitizeDeep(context.request, MODULE_NAME, context.logger);
 
   context.session = await getApplicationContextSession(context);
 
@@ -48,13 +48,14 @@ async function getApplicationContext<B = unknown>(
   const { invocationContext, logger, request } = args;
   const config = new ApplicationConfiguration();
   const featureFlags = await getFeatureFlags(config);
+  const camsRequest = await azureToCamsHttpRequest<B>(request);
 
   return {
     config,
     featureFlags,
     logger: logger ?? ContextCreator.getLogger(invocationContext),
     invocationId: invocationContext.invocationId,
-    request: request ? await azureToCamsHttpRequest<B>(request) : undefined,
+    request: camsRequest,
     session: undefined,
     closables: [],
     releasables: [],

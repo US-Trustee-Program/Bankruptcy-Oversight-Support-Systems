@@ -9,16 +9,20 @@ export async function handler(
   request: HttpRequest,
   invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {
-  const context = await ContextCreator.applicationContextCreator({
-    invocationContext,
-    request,
-  });
+  const logger = ContextCreator.getLogger(invocationContext);
+
   try {
+    const context = await ContextCreator.applicationContextCreator({
+      invocationContext,
+      logger,
+      request,
+    });
+
     const meController = new MeController();
     const response = await meController.handleRequest(context);
     return toAzureSuccess(response);
   } catch (error) {
-    return toAzureError(context.logger, MODULE_NAME, error);
+    return toAzureError(logger, MODULE_NAME, error);
   }
 }
 
