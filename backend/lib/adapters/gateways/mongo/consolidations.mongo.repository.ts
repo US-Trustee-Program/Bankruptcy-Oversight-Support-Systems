@@ -127,4 +127,14 @@ export default class ConsolidationOrdersMongoRepository<
       throw getCamsError(originalError, MODULE_NAME);
     }
   }
+
+  public async count(keyRoot: string): Promise<number> {
+    const doc = using<ConsolidationOrder>();
+    try {
+      const query = doc('consolidationId').regex(new RegExp(keyRoot));
+      return await this.getAdapter<T>().countDocuments(query);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
 }
