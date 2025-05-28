@@ -24,7 +24,6 @@ import {
 import { CaseSummary } from '../../../../common/src/cams/cases';
 import { CamsError } from '../../common-errors/cams-error';
 import { sortDates, sortDatesReverse } from '../../../../common/src/date-helper';
-import * as crypto from 'crypto';
 import {
   CaseConsolidationHistory,
   CaseHistory,
@@ -231,23 +230,32 @@ export class OrdersUseCase {
     }
 
     const consolidationsByJobId = await this.mapConsolidations(context, consolidations);
-    await consolidationsRepo.createMany(Array.from(consolidationsByJobId.values()));
+    const writtenJobIds: number[] = [];
+    for (const order of consolidationsByJobId.values()) {
+      const count = await consolidationsRepo.count(order.consolidationId);
+      if (count === 0) {
+        const writtenConsolidation = await consolidationsRepo.create(order);
+        writtenJobIds.push(writtenConsolidation.jobId);
+      }
+    }
 
     for (const order of consolidations) {
-      const history: ConsolidationOrderSummary = {
-        status: 'pending',
-        childCases: [],
-      };
-      const caseHistory = createAuditRecord<CaseHistory>(
-        {
-          caseId: order.caseId,
-          documentType: 'AUDIT_CONSOLIDATION',
-          before: null,
-          after: history,
-        },
-        context.session?.user,
-      );
-      await casesRepo.createCaseHistory(caseHistory);
+      if (writtenJobIds.includes(order.jobId)) {
+        const history: ConsolidationOrderSummary = {
+          status: 'pending',
+          childCases: [],
+        };
+        const caseHistory = createAuditRecord<CaseHistory>(
+          {
+            caseId: order.caseId,
+            documentType: 'AUDIT_CONSOLIDATION',
+            before: null,
+            after: history,
+          },
+          context.session?.user,
+        );
+        await casesRepo.createCaseHistory(caseHistory);
+      }
     }
 
     const finalSyncState = { ...initialSyncState, txId: maxTxId };
@@ -406,12 +414,19 @@ export class OrdersUseCase {
       ...provisionalOrder,
       id: undefined,
       orderType: 'consolidation',
-      consolidationId: crypto.randomUUID(),
+      consolidationId: undefined,
       consolidationType,
       status,
       childCases: includedChildCases,
       leadCase,
     };
+
+    const keyComponents = [newConsolidation.jobId, newConsolidation.status];
+    const keyRoot = keyComponents.join('/');
+
+    const count = await consolidationsRepo.count(keyRoot);
+    keyComponents.push(count);
+    newConsolidation.consolidationId = keyComponents.join('/');
 
     const createdConsolidation = await consolidationsRepo.create(newConsolidation);
     response.push(createdConsolidation as ConsolidationOrder);
@@ -534,9 +549,10 @@ export class OrdersUseCase {
     }
 
     jobToCaseMap.forEach((caseSummaries, jobId) => {
-      const consolidationId = crypto.randomUUID();
-      // TODO: Maybe grab the earliest date from all the case summaries, rather than just the first one.
-      const firstOrder = caseSummaries.values().next()?.value;
+      const consolidationId = [jobId, 'pending'].join('/');
+      const firstOrder = [...caseSummaries.values()].sort((a, b) =>
+        sortDatesReverse(a.orderDate, b.orderDate),
+      )[0];
       const consolidationOrder: ConsolidationOrder = {
         consolidationId,
         orderType: 'consolidation',
