@@ -47,10 +47,10 @@ vi.mock('dompurify', () => ({
   },
 }));
 
-// Mock useAppInsights
+// Mock getAppInsights
 const mockTrackEvent = vi.fn();
 vi.mock('../hooks/UseApplicationInsights', () => ({
-  useAppInsights: () => ({
+  getAppInsights: () => ({
     appInsights: {
       trackEvent: mockTrackEvent,
     },

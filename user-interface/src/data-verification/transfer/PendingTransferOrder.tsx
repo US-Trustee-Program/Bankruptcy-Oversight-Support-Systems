@@ -18,6 +18,7 @@ import { SuggestedTransferCases, SuggestedTransferCasesImperative } from './Sugg
 import { FromCaseSummary } from './FromCaseSummary';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import './PendingTransferOrder.scss';
+import { sanitizeText } from '@/lib/utils/sanitize-text';
 
 export type PendingTransferOrderImperative = {
   cancel: () => void;
@@ -89,7 +90,7 @@ function _PendingTransferOrder(
       id: order.id,
       caseId: order.caseId,
       orderType: 'transfer',
-      reason: rejectionReason,
+      reason: sanitizeText(rejectionReason ?? ''),
       status: 'rejected',
     };
 

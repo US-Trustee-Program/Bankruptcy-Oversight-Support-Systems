@@ -1,7 +1,7 @@
 import { Routes, Route } from 'react-router-dom';
 import { Header } from './lib/components/Header';
 import { AppInsightsErrorBoundary } from '@microsoft/applicationinsights-react-js';
-import { useAppInsights } from './lib/hooks/UseApplicationInsights';
+import { getAppInsights } from './lib/hooks/UseApplicationInsights';
 import { createContext, useRef } from 'react';
 import { withLDProvider } from 'launchdarkly-react-client-sdk';
 import { getFeatureFlagConfiguration } from './configuration/featureFlagConfiguration';
@@ -22,7 +22,7 @@ const featureFlagConfig = getFeatureFlagConfiguration();
 export const GlobalAlertContext = createContext<React.RefObject<GlobalAlertRef> | null>(null);
 
 function App() {
-  const { reactPlugin } = useAppInsights();
+  const { reactPlugin } = getAppInsights();
   const globalAlertRef = useRef<GlobalAlertRef>(null);
 
   return (

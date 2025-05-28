@@ -12,7 +12,6 @@ import {
   CaseNoteInput,
 } from '../../../../common/src/cams/cases';
 import { ForbiddenCaseNotesError } from './case.notes.exception';
-import { isValidUserInput } from '../../../../common/src/cams/sanitization';
 import { ResourceActions } from '../../../../common/src/cams/actions';
 
 const MODULE_NAME = 'CASE-NOTES-CONTROLLER';
@@ -20,8 +19,6 @@ const VALID_CASEID_PATTERN = RegExp(/^[\dA-Z]{3}-\d{2}-\d{5}$/);
 const VALID_ID_PATTERN = RegExp(/^[\dA-Za-z]+(-[\dA-Za-z]+)*$/);
 const INVALID_ID_MESSAGE = 'case note ID must be provided.';
 const INVALID_CASEID_MESSAGE = 'caseId must be formatted like 111-01-12345.';
-const INVALID_NOTE_MESSAGE = 'Note content contains invalid keywords.';
-const INVALID_NOTE_TITLE_MESSAGE = 'Note title contains invalid keywords.';
 
 export class CaseNotesController implements CamsController {
   private readonly applicationContext: ApplicationContext;
@@ -38,12 +35,12 @@ export class CaseNotesController implements CamsController {
       if (context.request.method === 'POST') {
         const { caseId } = context.request.params;
         const { content, title } = context.request.body;
-        this.validatePostRequestParameters(caseId, content, title);
         const noteInput: CaseNoteInput = {
           caseId,
           title,
           content,
         };
+        this.validateRequestParameters(noteInput);
         await caseNotesUseCase.createCaseNote(context.session.user, noteInput);
         return httpSuccess({
           statusCode: HttpStatusCodes.CREATED,
@@ -55,7 +52,7 @@ export class CaseNotesController implements CamsController {
           caseId,
           sessionUser: context.session.user,
         };
-        this.validateArchiveRequestParameters(archiveNote);
+        this.validateArchiveRequestParameters({ id: noteId, caseId });
         await caseNotesUseCase.archiveCaseNote(archiveNote);
         return httpSuccess({
           statusCode: HttpStatusCodes.CREATED,
@@ -67,8 +64,8 @@ export class CaseNotesController implements CamsController {
           ...note,
           id: noteId,
           caseId,
-          updatedBy: note.updatedBy,
         };
+        this.validateRequestParameters(noteForRequest);
         const request: CaseNoteEditRequest = {
           note: noteForRequest,
           sessionUser: context.session.user,
@@ -95,29 +92,22 @@ export class CaseNotesController implements CamsController {
     }
   }
 
-  private validatePostRequestParameters(
-    caseId: string,
-    noteContent: string | null,
-    noteTitle: string | null,
-  ) {
+  private validateRequestParameters(input: Partial<CaseNoteInput>) {
     const badParams = [];
     const messages = [];
-    if (!caseId) {
+
+    if (!input.caseId) {
       badParams.push('caseId');
-    } else if (!caseId.match(VALID_CASEID_PATTERN)) {
+    } else if (!input.caseId.match(VALID_CASEID_PATTERN)) {
       messages.push(INVALID_CASEID_MESSAGE);
     }
 
-    if (!noteTitle) {
+    if (!input.title) {
       badParams.push('case note title');
-    } else if (!isValidUserInput(noteTitle)) {
-      messages.push(INVALID_NOTE_TITLE_MESSAGE);
     }
 
-    if (!noteContent) {
+    if (!input.content) {
       badParams.push('case note content');
-    } else if (!isValidUserInput(noteContent)) {
-      messages.push(INVALID_NOTE_MESSAGE);
     }
 
     if (badParams.length > 0) {
