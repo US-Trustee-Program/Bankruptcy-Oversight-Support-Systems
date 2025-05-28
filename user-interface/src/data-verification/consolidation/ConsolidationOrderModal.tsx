@@ -176,8 +176,10 @@ function ConsolidationOrderModalComponent(
           consolidationTypeDiv.clientHeight +
           assignmentsListDiv.clientHeight +
           button.clientHeight;
-        let finalSize = windowSize.height! - overallHeightOfModal;
-        finalSize = Math.max(finalSize, minChildCasesDivHeight);
+        const finalSize = Math.max(
+          windowSize.height! - overallHeightOfModal,
+          minChildCasesDivHeight,
+        );
         setChildCasesDivHeight(`${finalSize}px`);
       }
     }
