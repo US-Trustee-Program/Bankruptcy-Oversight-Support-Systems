@@ -80,6 +80,11 @@ export type ExcludeFields = {
   fields: FieldReference<never>[];
 };
 
+export type IncludeFields = {
+  stage: 'INCLUDE';
+  fields: Field[];
+};
+
 export type Group = {
   stage: 'GROUP';
   groupBy: Field[];
@@ -120,6 +125,7 @@ export type Stage<T = never> =
   | Join
   | AddFields<T>
   | ExcludeFields
+  | IncludeFields
   | Group;
 
 export function isPipeline(obj: unknown): obj is Pipeline {
@@ -199,6 +205,10 @@ function exclude(...fields: FieldReference<never>[]): ExcludeFields {
   return { stage: 'EXCLUDE', fields };
 }
 
+function include(...fields: Field[]): IncludeFields {
+  return { stage: 'INCLUDE', fields };
+}
+
 function pipeline(...stages: Stage[]): Pipeline {
   return { stages };
 }
@@ -224,6 +234,7 @@ const QueryPipeline = {
   exclude,
   first,
   group,
+  include,
   join,
   match,
   paginate,
