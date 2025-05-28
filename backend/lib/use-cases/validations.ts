@@ -1,12 +1,25 @@
 import { filterToExtendedAscii, isValidUserInput } from '../../../common/src/cams/sanitization';
+import { LoggerImpl } from '../adapters/services/logger.service';
 import { BadRequestError } from '../common-errors/bad-request';
 
-export function sanitizeDeep<T>(input: T, moduleName: string): T {
-  const seen = new WeakSet();
-  const MAX_OBJECT_DEPTH = parseInt(process.env.MAX_OBJECT_DEPTH) ?? 50;
-  const MAX_OBJECT_KEY_COUNT = parseInt(process.env.MAX_OBJECT_KEY_COUNT) ?? 1000;
+const MODULE_NAME = 'VALIDATIONS';
 
-  function _sanitize(input: unknown, depth: number): unknown {
+export function sanitizeDeep<T>(
+  input: T,
+  moduleName: string,
+  logger: LoggerImpl,
+  scrubUnicode: boolean = true,
+): T {
+  const seen = new WeakMap();
+  const parsedMaxObjectDepth = parseInt(process.env.MAX_OBJECT_DEPTH);
+  const MAX_OBJECT_DEPTH = isNaN(parsedMaxObjectDepth) ? 50 : parsedMaxObjectDepth;
+  const parsedMaxObjectKeyCount = parseInt(process.env.MAX_OBJECT_KEY_COUNT);
+  const MAX_OBJECT_KEY_COUNT = isNaN(parsedMaxObjectKeyCount) ? 1000 : parsedMaxObjectKeyCount;
+  let totalDepth = 0;
+  let totalKeyCount = 0;
+
+  const _sanitize = (input: unknown, depth: number, scrubUnicode: boolean): unknown => {
+    totalDepth = depth;
     if (depth > MAX_OBJECT_DEPTH) {
       throw new Error('Max depth exceeded');
     }
@@ -15,29 +28,37 @@ export function sanitizeDeep<T>(input: T, moduleName: string): T {
       if (!isValidUserInput(input)) {
         throw new BadRequestError(moduleName, { message: 'Invalid user input.' });
       }
-      return filterToExtendedAscii(input) as unknown as T;
+      if (scrubUnicode) {
+        return filterToExtendedAscii(input) as unknown as T;
+      }
     }
     if (Array.isArray(input)) {
-      return input.map((item) => _sanitize(item, depth + 1)) as unknown as T;
+      return input.map((item) => _sanitize(item, depth + 1, scrubUnicode)) as unknown as T;
     }
     if (input && typeof input === 'object') {
-      if (Object.keys(input).length > MAX_OBJECT_KEY_COUNT) {
+      const keyCount = Object.keys(input).length;
+      totalKeyCount += keyCount;
+      if (keyCount > MAX_OBJECT_KEY_COUNT) {
         throw new Error('Max key count exceeded');
       }
 
       if (seen.has(input)) {
-        return null;
+        return seen.get(input);
       }
 
-      seen.add(input);
       const result: Record<string, unknown> = {};
+      // This sets the value of the object in the map to the reference of `result`.
+      seen.set(input, result);
       for (const [key, value] of Object.entries(input)) {
-        result[key] = _sanitize(value, depth + 1);
+        result[key] = _sanitize(value, depth + 1, scrubUnicode);
       }
       return result as T;
     }
     return input;
-  }
+  };
 
-  return _sanitize(input, 0) as T;
+  const sanitizedContent = _sanitize(input, 0, scrubUnicode) as T;
+
+  logger.info(MODULE_NAME, `Total Depth: ${totalDepth}, Total Key Count: ${totalKeyCount}`);
+  return sanitizedContent;
 }

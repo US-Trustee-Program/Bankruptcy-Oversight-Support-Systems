@@ -4,7 +4,7 @@ import { CaseBasics, SyncedCase } from '@common/cams/cases';
 import { Table, TableBody, TableRowProps } from '@/lib/components/uswds/Table';
 import { CasesSearchPredicate } from '@common/api/search';
 import Alert, { AlertDetails, AlertProps, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { useAppInsights } from '@/lib/hooks/UseApplicationInsights';
+import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { Pagination } from '@/lib/components/uswds/Pagination';
 import { deepEqual } from '@/lib/utils/objectEquality';
@@ -61,7 +61,7 @@ export function SearchResults(props: SearchResultsProps) {
     row: Row,
     ...otherProps
   } = props;
-  const { reactPlugin } = useAppInsights();
+  const { reactPlugin } = getAppInsights();
   const trackSearchEvent = useTrackEvent(reactPlugin, 'search', {}, true);
   const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({});
   const [isSearching, setIsSearching] = useState<boolean>(false);

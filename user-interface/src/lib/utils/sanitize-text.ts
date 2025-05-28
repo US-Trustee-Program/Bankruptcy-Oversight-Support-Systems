@@ -1,5 +1,5 @@
 import DOMPurify, { Config } from 'dompurify';
-import { useAppInsights } from '../hooks/UseApplicationInsights';
+import { getAppInsights } from '../hooks/UseApplicationInsights';
 import { IEventTelemetry } from '@microsoft/applicationinsights-web';
 import LocalStorage from './local-storage';
 import { filterToExtendedAscii } from '@common/cams/sanitization';
@@ -14,7 +14,7 @@ export function sanitizeText(maybeDirty: string, configuration: Partial<Config> 
   const clean = DOMPurify.sanitize(filterToExtendedAscii(maybeDirty), domPurifyConfig);
 
   if (DOMPurify.removed.length) {
-    const { appInsights } = useAppInsights();
+    const { appInsights } = getAppInsights();
     const event: IEventTelemetry = {
       name: 'Malicious text entry found',
       properties: {

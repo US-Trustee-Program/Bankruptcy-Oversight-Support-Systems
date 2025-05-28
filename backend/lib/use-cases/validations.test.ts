@@ -1,3 +1,4 @@
+import { createMockApplicationContext } from '../testing/testing-utilities';
 import { sanitizeDeep } from './validations';
 
 describe('sanitizeDeep', () => {
@@ -7,25 +8,28 @@ describe('sanitizeDeep', () => {
     process.env = { ...originalEnv };
   });
 
-  test('should sanitize a simple string', () => {
+  test('should sanitize a simple string', async () => {
+    const context = await createMockApplicationContext();
     const testString = 'Hello World 你好 with emoji 🚀';
-    const sanitized = sanitizeDeep(testString, 'TEST-MODULE');
+    const sanitized = sanitizeDeep(testString, 'TEST-MODULE', context.logger);
     expect(sanitized).toEqual('Hello World  with emoji ');
   });
 
-  test('should sanitize an array of strings', () => {
+  test('should sanitize an array of strings', async () => {
+    const context = await createMockApplicationContext();
     const testArray = ['Hello', 'World 世界', 'Test 😊 emoji'];
-    const sanitized = sanitizeDeep(testArray, 'TEST-MODULE');
+    const sanitized = sanitizeDeep(testArray, 'TEST-MODULE', context.logger);
     expect(sanitized).toEqual(['Hello', 'World ', 'Test  emoji']);
   });
 
-  test('should recursively sanitize an object', () => {
+  test('should recursively sanitize an object', async () => {
+    const context = await createMockApplicationContext();
     const testObject = {
       name: 'Test 你好',
       value: 123,
       nested: { key: 'Nested Value 💡', nestedArray: ['thing1 ©', 'thing2 🔥'] },
     };
-    const sanitized = sanitizeDeep(testObject, 'TEST-MODULE');
+    const sanitized = sanitizeDeep(testObject, 'TEST-MODULE', context.logger);
     expect(sanitized).toEqual({
       name: 'Test ',
       value: 123,
@@ -36,23 +40,30 @@ describe('sanitizeDeep', () => {
     });
   });
 
-  test('should detect and ignore cyclic references in objects', () => {
-    const testObject = { name: 'Test', testObject: null };
+  test('should detect and ignore cyclic references in objects', async () => {
+    const context = await createMockApplicationContext();
+    const testObject = { name: 'Test 你好', testObject: null };
     testObject.testObject = testObject;
-    const sanitized = sanitizeDeep(testObject, 'TEST-MODULE');
-    expect(sanitized).toEqual({ name: 'Test', testObject: null });
+    const sanitized = sanitizeDeep(testObject, 'TEST-MODULE', context.logger);
+    const sanitizedObject = { name: 'Test ', testObject: null };
+    sanitizedObject.testObject = sanitizedObject;
+    expect(sanitized).toEqual(sanitizedObject);
   });
 
-  test('should throw an error when max depth of an object is exceeded', () => {
+  test('should throw an error when max depth of an object is exceeded', async () => {
+    const context = await createMockApplicationContext();
     process.env.MAX_OBJECT_DEPTH = '5';
     const testObject = {
       level1: { level2: { level3: { level4: { level5: { level6: 'deep' } } } } },
     };
 
-    expect(() => sanitizeDeep(testObject, 'TEST-MODULE')).toThrow('Max depth exceeded');
+    expect(() => sanitizeDeep(testObject, 'TEST-MODULE', context.logger)).toThrow(
+      'Max depth exceeded',
+    );
   });
 
-  test('should throw an error when max key count of an object is exceeded', () => {
+  test('should throw an error when max key count of an object is exceeded', async () => {
+    const context = await createMockApplicationContext();
     process.env.MAX_OBJECT_KEY_COUNT = '2';
     const testObject = {
       key1: 'value1',
@@ -60,10 +71,13 @@ describe('sanitizeDeep', () => {
       key3: 'value3',
     };
 
-    expect(() => sanitizeDeep(testObject, 'TEST-MODULE')).toThrow('Max key count exceeded');
+    expect(() => sanitizeDeep(testObject, 'TEST-MODULE', context.logger)).toThrow(
+      'Max key count exceeded',
+    );
   });
 
-  test('should throw BadRequestError for invalid user input', () => {
+  test('should throw BadRequestError for invalid user input', async () => {
+    const context = await createMockApplicationContext();
     const testStringsWithScriptInjection = [
       '<script>alert("XSS")</script>',
       'Check this document.querySelector("input").value',
@@ -78,11 +92,15 @@ describe('sanitizeDeep', () => {
     ];
 
     testStringsWithScriptInjection.forEach((testString) => {
-      expect(() => sanitizeDeep(testString, 'TEST-MODULE')).toThrow('Invalid user input.');
+      expect(() => sanitizeDeep(testString, 'TEST-MODULE', context.logger)).toThrow(
+        'Invalid user input.',
+      );
     });
 
     testStringsWithMongoInjection.forEach((testString) => {
-      expect(() => sanitizeDeep(testString, 'TEST-MODULE')).toThrow('Invalid user input.');
+      expect(() => sanitizeDeep(testString, 'TEST-MODULE', context.logger)).toThrow(
+        'Invalid user input.',
+      );
     });
 
     const testObject = {
@@ -90,6 +108,8 @@ describe('sanitizeDeep', () => {
       description: '<script>alert("XSS")</script>',
     };
 
-    expect(() => sanitizeDeep(testObject, 'TEST-MODULE')).toThrow('Invalid user input.');
+    expect(() => sanitizeDeep(testObject, 'TEST-MODULE', context.logger)).toThrow(
+      'Invalid user input.',
+    );
   });
 });
