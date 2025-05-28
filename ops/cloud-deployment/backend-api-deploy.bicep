@@ -89,6 +89,10 @@ param privateDnsZoneResourceGroup string = virtualNetworkResourceGroupName
 @description('DNS Zone Subscription ID. USTP uses a different subscription for prod deployment.')
 param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 
+param maxObjectDepth string
+
+param maxObjectKeyCount string
+
 var createApplicationInsights = deployAppInsights && !empty(analyticsWorkspaceId)
 
 resource appConfigIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
@@ -290,6 +294,14 @@ var baseApplicationSettings = concat(
     {
       name: 'MyTaskHub'
       value: 'main'
+    }
+    {
+      name: 'MAX_OBJECT_DEPTH'
+      value: maxObjectDepth
+    }
+    {
+      name: 'MAX_OBJECT_KEY_COUNT'
+      value: maxObjectKeyCount
     }
   ],
   isUstpDeployment

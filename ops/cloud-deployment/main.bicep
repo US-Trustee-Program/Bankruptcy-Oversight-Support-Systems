@@ -109,6 +109,10 @@ param isUstpDeployment bool = false
 
 param mssqlRequestTimeout string = '15000'
 
+param maxObjectDepth string
+
+param maxObjectKeyCount string
+
 @description('Used to set Content-Security-Policy for USTP.')
 @secure()
 param ustpIssueCollectorHash string = ''
@@ -224,6 +228,8 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
       kvAppConfigName: kvAppConfigName
       isUstpDeployment: isUstpDeployment
       mssqlRequestTimeout: mssqlRequestTimeout
+      maxObjectDepth: maxObjectDepth
+      maxObjectKeyCount: maxObjectKeyCount
     }
     dependsOn: [
       network
