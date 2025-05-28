@@ -14,12 +14,15 @@ export default async function handler(
   request: HttpRequest,
   invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {
-  const context = await ContextCreator.applicationContextCreator<CaseNoteInput>({
-    invocationContext,
-    request,
-  });
+  const logger = ContextCreator.getLogger(invocationContext);
 
   try {
+    const context = await ContextCreator.applicationContextCreator<CaseNoteInput>({
+      invocationContext,
+      request,
+      logger,
+    });
+
     const caseNotesController = new CaseNotesController(context);
 
     if (context.featureFlags['case-notes-enabled'] === false) {
@@ -29,7 +32,7 @@ export default async function handler(
     const controllerResponse = await caseNotesController.handleRequest(context);
     return toAzureSuccess(controllerResponse);
   } catch (error) {
-    return toAzureError(context.logger, MODULE_NAME, error);
+    return toAzureError(logger, MODULE_NAME, error);
   }
 }
 

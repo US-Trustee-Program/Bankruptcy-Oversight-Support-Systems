@@ -9,18 +9,22 @@ export default async function handler(
   request: HttpRequest,
   invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {
-  const context = await ContextCreator.applicationContextCreator({
-    invocationContext,
-    request,
-  });
+  const logger = ContextCreator.getLogger(invocationContext);
+
   try {
+    const context = await ContextCreator.applicationContextCreator({
+      invocationContext,
+      logger,
+      request,
+    });
+
     const officesController = new OfficesController();
     context.session = await ContextCreator.getApplicationContextSession(context);
 
     const responseBody = await officesController.handleRequest(context);
     return toAzureSuccess(responseBody);
   } catch (error) {
-    return toAzureError(context.logger, MODULE_NAME, error);
+    return toAzureError(logger, MODULE_NAME, error);
   }
 }
 

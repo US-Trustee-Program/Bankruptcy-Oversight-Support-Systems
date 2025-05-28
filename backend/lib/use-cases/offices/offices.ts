@@ -13,6 +13,7 @@ import { OfficeStaffSyncState } from '../gateways.types';
 import { USTP_OFFICE_NAME_MAP } from '../../adapters/gateways/dxtr/dxtr.constants';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import UsersHelpers from '../users/users.helpers';
+import { sanitizeDeep } from '../validations';
 
 const MODULE_NAME = 'OFFICES-USE-CASE';
 export const DEFAULT_STAFF_TTL = 60 * 60 * 25;
@@ -69,7 +70,12 @@ export class OfficesUseCase {
     }, new Map<string, UstpOfficeDetails>());
 
     // Filter out any groups not relevant to CAMS.
-    const userGroups = await userGroupSource.getUserGroups(context);
+    const userGroups = sanitizeDeep(
+      await userGroupSource.getUserGroups(context),
+      MODULE_NAME,
+      context.logger,
+      false,
+    );
     const officeGroups = userGroups.filter((group) => groupToOfficeMap.has(group.name));
     const roleGroups = userGroups.filter((group) => groupToRoleMap.has(group.name));
 

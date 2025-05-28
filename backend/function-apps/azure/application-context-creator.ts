@@ -7,6 +7,7 @@ import { LoggerImpl } from '../../lib/adapters/services/logger.service';
 import { azureToCamsHttpRequest } from './functions';
 import { UnauthorizedError } from '../../lib/common-errors/unauthorized-error';
 import { getUserSessionUseCase } from '../../lib/factory';
+import { sanitizeDeep } from '../../lib/use-cases/validations';
 
 const MODULE_NAME = 'APPLICATION-CONTEXT-CREATOR';
 
@@ -29,7 +30,12 @@ async function applicationContextCreator<B = unknown>(
 ): Promise<ApplicationContext<B>> {
   const { invocationContext, logger, request } = args;
 
-  const context = await getApplicationContext<B>({ invocationContext, logger, request });
+  const context = await getApplicationContext<B>({
+    invocationContext,
+    logger,
+    request,
+  });
+  context.request = sanitizeDeep(context.request, MODULE_NAME, context.logger);
 
   context.session = await getApplicationContextSession(context);
 
