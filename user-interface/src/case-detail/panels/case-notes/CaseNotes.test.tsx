@@ -8,6 +8,7 @@ import { InputRef } from '@/lib/type-declarations/input-fields';
 import React from 'react';
 import Input from '@/lib/components/uswds/Input';
 import LocalStorage from '@/lib/utils/local-storage';
+import LocalFormCache from '@/lib/utils/local-form-cache';
 import Actions from '@common/cams/actions';
 import { randomUUID } from 'crypto';
 
@@ -224,5 +225,33 @@ describe('test utilities', () => {
     const result2 = getCaseNotesInputValue(null);
     expect(result2).toEqual('');
     expect(typeof result2).toEqual('string');
+  });
+
+  test('should display info alert if cache holds a case note for the case', async () => {
+    // Define the buildCaseNoteFormKey function (same as in CaseNoteFormModal.tsx)
+    function buildCaseNoteFormKey(caseId: string) {
+      return `case-notes-${caseId}`;
+    }
+
+    // Mock LocalFormCache.getForm to return a cached note
+    const mockCachedNote = {
+      caseId,
+      title: 'Draft Note Title',
+      content: 'Draft Note Content',
+    };
+    vi.spyOn(LocalFormCache, 'getForm').mockImplementation((key: string) => {
+      if (key === buildCaseNoteFormKey(caseId)) {
+        return mockCachedNote;
+      }
+      return null;
+    });
+
+    // Render the component
+    renderWithProps({ caseId });
+
+    // Check for the info alert
+    const draftNoteAlert = await screen.findByTestId('draft-note-alert-test-id');
+    expect(draftNoteAlert).toBeInTheDocument();
+    expect(draftNoteAlert).toHaveTextContent(/you have a draft case note/i);
   });
 });
