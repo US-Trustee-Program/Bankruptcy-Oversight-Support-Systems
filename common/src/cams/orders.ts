@@ -195,6 +195,8 @@ export function generateConsolidationId(
   index?: number,
 ): string {
   const parts = [jobId, status];
-  if (index !== undefined && status !== 'pending') parts.push(index);
+  if (index !== undefined && status !== 'pending') {
+    parts.push(index);
+  }
   return parts.join('/');
 }
