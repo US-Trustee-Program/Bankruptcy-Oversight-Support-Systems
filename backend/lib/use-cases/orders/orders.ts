@@ -550,9 +550,9 @@ export class OrdersUseCase {
 
     jobToCaseMap.forEach((caseSummaries, jobId) => {
       const consolidationId = [jobId, 'pending'].join('/');
-      const firstOrder = [...caseSummaries.values()].sort((a, b) =>
-        sortDatesReverse(a.orderDate, b.orderDate),
-      )[0];
+      const firstOrder = [...caseSummaries.values()].reduce((prior, next) =>
+        sortDatesReverse(prior.orderDate, next.orderDate) <= 0 ? prior : next,
+      );
       const consolidationOrder: ConsolidationOrder = {
         consolidationId,
         orderType: 'consolidation',
