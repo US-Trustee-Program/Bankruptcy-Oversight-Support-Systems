@@ -21,7 +21,7 @@
     "@azure/cosmos": "^4.4.1",
     "@azure/identity": "^4.10.0",
     "@faker-js/faker": "^9.8.0",
-    "@types/node": "^22.15.21",
+    "@types/node": "^22.15.24",
     "dotenv": "^16.5.0",
     "tsx": "^4.19.4"
   },
@@ -35,6 +35,6 @@
     "eslint-plugin-prettier": "^5.4.0",
     "eslint-plugin-promise": "^7.2.1",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.32.1"
+    "typescript-eslint": "^8.33.0"
   }
 }
