@@ -17,6 +17,7 @@ import CaseNoteFormModal, {
 } from '@/case-detail/panels/case-notes/CaseNoteFormModal';
 import CaseNoteRemovalModal, { CaseNoteRemovalModalRef } from './CaseNoteRemovalModal';
 import Actions from '@common/cams/actions';
+import LocalFormCache from '@/lib/utils/local-form-cache';
 
 export function getCaseNotesInputValue(ref: TextAreaRef | null) {
   return ref?.getValue() ?? '';
@@ -46,9 +47,14 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
   useMemo(mapArchiveButtonRefs, [caseNotes]);
   useMemo(mapEditButtonRefs, [caseNotes]);
   const [focusId, setFocusId] = useState<string | null>(null);
+  const [hasDraftNote, setHasDraftNote] = useState<boolean>(false);
   const removeConfirmationModalId = 'remove-note-modal';
   const editNoteModalId = 'edit-note-modal';
   const addNoteModalId = 'add-note-modal';
+
+  function buildCaseNoteFormKey(caseId: string) {
+    return `case-notes-${caseId}`;
+  }
 
   const MINIMUM_SEARCH_CHARACTERS = 3;
 
@@ -204,10 +210,29 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
     }
   }, [focusId, openEditModalButtonRefs.current]);
 
+  useEffect(() => {
+    const hasDraft = !!LocalFormCache.getForm(buildCaseNoteFormKey(caseId));
+    setHasDraftNote(hasDraft);
+  }, [caseId]);
+
   return (
     <div className="case-notes-panel">
       <div className="case-notes-title">
         <h3>Case Notes</h3>
+        {/* Check for draft case notes and display a notification if one exists */}
+        {hasDraftNote && (
+          <div data-testid="draft-note-alert-test-id">
+            <Alert
+              message="You have a draft case note. Click 'Add' to continue editing."
+              type={UswdsAlertStyle.Info}
+              role={'status'}
+              timeout={0}
+              title="Draft Note Available"
+              show={true}
+              inline={true}
+            />
+          </div>
+        )}
         <OpenModalButton
           className="add-button"
           id={'case-note-add-button'}
