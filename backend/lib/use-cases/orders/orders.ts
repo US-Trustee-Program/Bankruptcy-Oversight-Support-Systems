@@ -6,6 +6,7 @@ import {
   ConsolidationOrderActionRejection,
   ConsolidationOrderCase,
   ConsolidationType,
+  generateConsolidationId,
   getCaseSummaryFromConsolidationOrderCase,
   getCaseSummaryFromTransferOrder,
   isTransferOrder,
@@ -421,12 +422,14 @@ export class OrdersUseCase {
       leadCase,
     };
 
-    const keyComponents = [newConsolidation.jobId, newConsolidation.status];
-    const keyRoot = keyComponents.join('/');
-
-    const count = await consolidationsRepo.count(keyRoot);
-    keyComponents.push(count);
-    newConsolidation.consolidationId = keyComponents.join('/');
+    const count = await consolidationsRepo.count(
+      generateConsolidationId(newConsolidation.jobId, newConsolidation.status),
+    );
+    newConsolidation.consolidationId = generateConsolidationId(
+      newConsolidation.jobId,
+      newConsolidation.status,
+      count,
+    );
 
     const createdConsolidation = await consolidationsRepo.create(newConsolidation);
     response.push(createdConsolidation as ConsolidationOrder);
@@ -549,7 +552,7 @@ export class OrdersUseCase {
     }
 
     jobToCaseMap.forEach((caseSummaries, jobId) => {
-      const consolidationId = [jobId, 'pending'].join('/');
+      const consolidationId = generateConsolidationId(jobId, 'pending');
       const firstOrder = [...caseSummaries.values()].reduce((prior, next) =>
         sortDatesReverse(prior.orderDate, next.orderDate) <= 0 ? prior : next,
       );
