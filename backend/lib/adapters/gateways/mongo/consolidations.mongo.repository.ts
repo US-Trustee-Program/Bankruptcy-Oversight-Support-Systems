@@ -5,6 +5,7 @@ import { ConsolidationOrdersRepository } from '../../../use-cases/gateways.types
 import { ApplicationContext } from '../../types/basic';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
+import { escapeRegExCharacters } from '../../../../../common/src/cams/regex';
 
 const MODULE_NAME = 'CONSOLIDATIONS-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'consolidations';
@@ -131,7 +132,8 @@ export default class ConsolidationOrdersMongoRepository<
   public async count(keyRoot: string): Promise<number> {
     const doc = using<ConsolidationOrder>();
     try {
-      const query = doc('consolidationId').regex(new RegExp(keyRoot));
+      const regex = new RegExp(`^${escapeRegExCharacters(keyRoot)}`);
+      const query = doc('consolidationId').regex(regex);
       return await this.getAdapter<T>().countDocuments(query);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
