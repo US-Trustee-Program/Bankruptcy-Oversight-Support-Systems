@@ -1,12 +1,14 @@
 import {
   ConsolidationOrderActionApproval,
   ConsolidationOrderActionRejection,
+  generateConsolidationId,
   getCaseSummaryFromConsolidationOrderCase,
   getCaseSummaryFromTransferOrder,
   isConsolidationOrder,
   isConsolidationOrderApproval,
   isConsolidationOrderRejection,
   isTransferOrder,
+  OrderStatus,
 } from './orders';
 import { MockData } from './test-utilities/mock-data';
 import { isConsolidationHistory } from './history';
@@ -113,5 +115,21 @@ describe('orders model tests', () => {
     for (const idx in rawConsolidationOnlyProperties) {
       expect(summary).not.toHaveProperty(rawConsolidationOnlyProperties[idx]);
     }
+  });
+
+  describe('generateConsolidationId', () => {
+    const idTests = [
+      [[1000, 'pending'], '1000/pending'],
+      [[1000, 'pending', 0], '1000/pending'],
+      [[2000, 'approved', 0], '2000/approved/0'],
+      [[2000, 'approved', 10], '2000/approved/10'],
+      [[3000, 'rejected', 1], '3000/rejected/1'],
+    ];
+    test.each(idTests)(
+      'should generate expected consolidation id for %s',
+      (args: [number, OrderStatus, number | undefined], expected: string) => {
+        expect(generateConsolidationId(...args)).toEqual(expected);
+      },
+    );
   });
 });
