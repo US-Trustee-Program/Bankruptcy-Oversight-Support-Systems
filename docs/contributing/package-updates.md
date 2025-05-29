@@ -21,6 +21,8 @@ To provide confidence in the commits being made, the commit is made and signed a
 
 ?> Note that on the DOJ laptop you will need to install Git from the Software Center to be able to run Git Bash.
 
+### Create a new key
+
 1. In Git Bash, Run `gpg --full-generate-key`
 1. Select `RSA and RSA` for the kind of key
 1. Choose a sufficiently strong keysize, preferably the longest possible
