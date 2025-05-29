@@ -52,6 +52,8 @@ To provide confidence in the commits being made, the commit is made and signed a
 
 !> Items marked with an asterisk `*` should be stored in KeePass or some other secure way of keeping keys/secrets
 
+### Key Expiration
+
 Before the key expires, the expiration date should be extended using the following steps.
 
 ?> Note that this can actually happen after expiration, but any commits signed with an expired key will be unable to be verified by GitHub.
