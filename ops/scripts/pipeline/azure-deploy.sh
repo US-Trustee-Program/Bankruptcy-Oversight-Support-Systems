@@ -352,13 +352,13 @@ while [[ $# -gt 0 ]]; do
         inputParams+=("${1}")
         maxObjectDepth="maxObjectDepth=${2}"
         deployment_parameters="${deployment_parameters} ${maxObjectDepth}"
-        shift
+        shift 2
         ;;
     --maxObjectKeyCount)
         inputParams+=("${1}")
         maxObjectKeyCount="maxObjectKeyCount=${2}"
         deployment_parameters="${deployment_parameters} ${maxObjectKeyCount}"
-        shift
+        shift 2
         ;;
     *)
         echo "Exit on param: ${1}"
