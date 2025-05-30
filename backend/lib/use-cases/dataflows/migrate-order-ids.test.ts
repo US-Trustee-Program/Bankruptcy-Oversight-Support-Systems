@@ -30,7 +30,7 @@ describe('MigrateOrderIdsUseCase', () => {
   });
 
   describe('migrateConsolidationOrderIds', () => {
-    it('should group orders by jobId', async () => {
+    test('should group orders by jobId', async () => {
       // Arrange
       const mockOrders: MigrationConsolidationOrder[] = [
         { id: '1', jobId: 1000, status: 'pending' },
@@ -56,7 +56,7 @@ describe('MigrateOrderIdsUseCase', () => {
       ]);
     });
 
-    it('should handle empty orders list', async () => {
+    test('should handle empty orders list', async () => {
       // Arrange
       mockRepo.list.mockResolvedValue([]);
 
@@ -69,7 +69,7 @@ describe('MigrateOrderIdsUseCase', () => {
   });
 
   describe('updateConsolidationIds', () => {
-    it('should update consolidation IDs for all orders based on status', async () => {
+    test('should update consolidation IDs for all orders based on status', async () => {
       // Arrange
       const mockOrders: MigrationConsolidationOrder[] = [
         { id: '1', jobId: 1000, status: 'pending' },
@@ -92,7 +92,7 @@ describe('MigrateOrderIdsUseCase', () => {
       expect(mockRepo.set).toHaveBeenCalledWith({ id: '3', consolidationId: '1000/rejected/0' });
     });
 
-    it('should handle empty orders list', async () => {
+    test('should handle empty orders list', async () => {
       // Arrange
       const mockOrders: MigrationConsolidationOrder[] = [];
 
@@ -103,7 +103,7 @@ describe('MigrateOrderIdsUseCase', () => {
       expect(mockRepo.set).not.toHaveBeenCalled();
     });
 
-    it('should process orders in correct order: pending, rejected, approved', async () => {
+    test('should process orders in correct order: pending, rejected, approved', async () => {
       // Arrange
       mockRepo.set.mockImplementation((params) => {
         return Promise.resolve(params);
@@ -136,7 +136,7 @@ describe('MigrateOrderIdsUseCase', () => {
   });
 
   describe('mapSetParameters', () => {
-    it('should create consolidationId without index for pending status', () => {
+    test('should create consolidationId without index for pending status', () => {
       // This is testing the private function indirectly through updateConsolidationIds
       const mockOrder: MigrationConsolidationOrder = {
         id: '1',
@@ -158,7 +158,7 @@ describe('MigrateOrderIdsUseCase', () => {
       });
     });
 
-    it('should include index in consolidationId for non-pending statuses', async () => {
+    test('should include index in consolidationId for non-pending statuses', async () => {
       // Arrange
       const mockOrders: MigrationConsolidationOrder[] = [
         { id: '1', jobId: 1000, status: 'approved' },
