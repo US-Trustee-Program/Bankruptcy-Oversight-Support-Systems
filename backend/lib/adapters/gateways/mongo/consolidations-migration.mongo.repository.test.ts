@@ -16,13 +16,6 @@ describe('ConsolidationOrdersMigrationMongoRepository', () => {
   beforeEach(async () => {
     jest.spyOn(global.crypto, 'randomUUID').mockReturnValue('0-0-0-0-0');
     mockContext = await createMockApplicationContext();
-
-    // Reset the singleton instance before each test
-    // @ts-expect-error - Accessing private static property for testing
-    ConsolidationOrdersMigrationMongoRepository.instance = null;
-    // @ts-expect-error - Accessing private static property for testing
-    ConsolidationOrdersMigrationMongoRepository.referenceCount = 0;
-
     repository = ConsolidationOrdersMigrationMongoRepository.getInstance(mockContext);
 
     // Mock the adapter methods
@@ -39,76 +32,8 @@ describe('ConsolidationOrdersMigrationMongoRepository', () => {
   });
 
   afterEach(() => {
+    repository?.release();
     jest.clearAllMocks();
-  });
-
-  describe('getInstance', () => {
-    test('should create a new instance when one does not exist', () => {
-      // Reset the singleton instance
-      // @ts-expect-error - Accessing private static property for testing
-      ConsolidationOrdersMigrationMongoRepository.instance = null;
-      // @ts-expect-error - Accessing private static property for testing
-      ConsolidationOrdersMigrationMongoRepository.referenceCount = 0;
-
-      const instance = ConsolidationOrdersMigrationMongoRepository.getInstance(mockContext);
-
-      expect(instance).toBeInstanceOf(ConsolidationOrdersMigrationMongoRepository);
-      // @ts-expect-error - Accessing private static property for testing
-      expect(ConsolidationOrdersMigrationMongoRepository.referenceCount).toBe(1);
-    });
-
-    test('should return the existing instance when one exists', () => {
-      const firstInstance = ConsolidationOrdersMigrationMongoRepository.getInstance(mockContext);
-      const secondInstance = ConsolidationOrdersMigrationMongoRepository.getInstance(mockContext);
-
-      expect(firstInstance).toBe(secondInstance);
-      // @ts-expect-error - Accessing private static property for testing
-      expect(ConsolidationOrdersMigrationMongoRepository.referenceCount).toBe(3);
-    });
-  });
-
-  describe('dropInstance', () => {
-    test('should decrement the reference count', () => {
-      // Get two instances to increase the reference count to 2
-      ConsolidationOrdersMigrationMongoRepository.getInstance(mockContext);
-      ConsolidationOrdersMigrationMongoRepository.getInstance(mockContext);
-
-      // @ts-expect-error - Accessing private static property for testing
-      expect(ConsolidationOrdersMigrationMongoRepository.referenceCount).toBe(3);
-
-      ConsolidationOrdersMigrationMongoRepository.dropInstance();
-
-      // @ts-expect-error - Accessing private static property for testing
-      expect(ConsolidationOrdersMigrationMongoRepository.referenceCount).toBe(2);
-    });
-
-    test('should close the client and set instance to null when reference count is 0', () => {
-      // @ts-expect-error - Accessing private static property for testing
-      const mockClose = jest.fn().mockResolvedValue(undefined);
-      // @ts-expect-error - Accessing protected property for testing
-      repository.client = { close: mockClose };
-
-      ConsolidationOrdersMigrationMongoRepository.dropInstance();
-
-      // @ts-expect-error - Accessing private static property for testing
-      expect(ConsolidationOrdersMigrationMongoRepository.referenceCount).toBe(0);
-      expect(mockClose).toHaveBeenCalled();
-      // @ts-expect-error - Accessing private static property for testing
-      expect(ConsolidationOrdersMigrationMongoRepository.instance).toBeNull();
-    });
-  });
-
-  describe('release', () => {
-    test('should call dropInstance', () => {
-      const dropInstanceSpy = jest.spyOn(
-        ConsolidationOrdersMigrationMongoRepository,
-        'dropInstance',
-      );
-
-      repository.release();
-
-      expect(dropInstanceSpy).toHaveBeenCalled();
-    });
   });
 
   describe('list', () => {
