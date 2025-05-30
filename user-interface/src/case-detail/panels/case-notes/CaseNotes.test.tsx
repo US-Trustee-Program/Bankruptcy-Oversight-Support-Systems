@@ -47,7 +47,7 @@ function renderWithProps(props?: Partial<CaseNotesProps>) {
     areCaseNotesLoading: false,
   };
   const renderProps = { ...defaultProps, ...props };
-  render(<CaseNotes {...renderProps} ref={caseNotesRef} />);
+  return render(<CaseNotes {...renderProps} ref={caseNotesRef} />);
 }
 
 describe('case note tests', () => {
@@ -216,9 +216,7 @@ describe('case note tests', () => {
     expect(deleteSpy).toHaveBeenCalledWith(expectedSecondRemoveArgument);
     expect(onNoteRemoveSpy).toHaveBeenCalledTimes(1);
   });
-});
 
-describe('test utilities', () => {
   test('getCaseNotesInputValue should always return an empty string when a null is provided', async () => {
     const ref = React.createRef<InputRef>();
     render(<Input ref={ref}></Input>);
@@ -253,5 +251,47 @@ describe('test utilities', () => {
     const draftNoteAlert = await screen.findByTestId('draft-note-alert-test-id');
     expect(draftNoteAlert).toBeInTheDocument();
     expect(draftNoteAlert).toHaveTextContent(/you have a draft case note/i);
+  });
+
+  test('should update remove draft alert when modal is closed', async () => {
+    const mockCachedNote = {
+      value: {
+        caseId,
+        title: 'Draft Note Title',
+        content: 'Draft Note Content',
+      },
+      expiresAfter: 1,
+    };
+
+    let shouldReturnCachedNote = true;
+    vi.spyOn(LocalFormCache, 'getForm').mockImplementation((key: string) => {
+      if (key === `case-notes-${caseId}` && shouldReturnCachedNote) {
+        return mockCachedNote;
+      }
+      return null;
+    });
+
+    renderWithProps({ caseId });
+
+    const initialDraftNoteAlert = await screen.findByTestId('draft-note-alert-test-id');
+    expect(initialDraftNoteAlert).toBeInTheDocument();
+
+    shouldReturnCachedNote = false;
+
+    const addButton = screen.getByTestId('open-modal-button_case-note-add-button');
+    await userEvent.click(addButton);
+
+    await waitFor(() => {
+      const modal = screen.getByTestId('modal-content-case-note-form');
+      expect(modal).toBeInTheDocument();
+    });
+
+    const cancelButton = screen.getByText(/discard/i);
+    await userEvent.click(cancelButton);
+
+    await waitFor(() => {
+      const draftNoteAlert = screen.queryByTestId('draft-note-alert-test-id');
+      expect(draftNoteAlert).not.toBeInTheDocument();
+    });
   });
 });

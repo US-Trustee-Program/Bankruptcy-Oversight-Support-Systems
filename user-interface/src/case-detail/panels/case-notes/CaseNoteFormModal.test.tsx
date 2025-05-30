@@ -97,7 +97,11 @@ async function openWithExpectedContent(data: CaseNoteInput) {
   return modal;
 }
 
-async function setUpAndLoadFromCache(cachedTitle: string, cachedContent: string) {
+async function setUpAndLoadFromCache(
+  cachedTitle: string,
+  cachedContent: string,
+  modalProps?: Partial<CaseNoteFormModalProps>,
+) {
   const note = MockData.getCaseNote();
   const modalRef = React.createRef<CaseNoteFormModalRef>();
   vi.spyOn(LocalFormCache, 'getForm').mockReturnValue({
@@ -118,7 +122,7 @@ async function setUpAndLoadFromCache(cachedTitle: string, cachedContent: string)
     content: '',
   };
 
-  renderWithProps(modalRef, {}, noteOpenProps);
+  renderWithProps(modalRef, { ...modalProps }, noteOpenProps);
 
   const modal = screen.getByTestId(`modal-case-note-form`);
   const openButton = screen.getByTestId(openModalButtonId);
@@ -433,5 +437,70 @@ describe('case note tests', () => {
   test('should default to empty string if no ref passed into getCaseNotesInputValue', () => {
     const returnValue = getCaseNotesInputValue(null);
     expect(returnValue).toEqual('');
+  });
+
+  test('Should call onModalClosed callback when modal closes after successful submission', async () => {
+    const onModalClosedSpy = vi.fn();
+
+    const postNoteSpy = vi.spyOn(Api2, 'postCaseNote');
+    postNoteSpy.mockResolvedValue();
+
+    const modalRef = React.createRef<CaseNoteFormModalRef>();
+    renderWithProps(modalRef, { onModalClosed: onModalClosedSpy });
+
+    const modal = screen.getByTestId(`modal-case-note-form`);
+    const openButton = screen.getByTestId(openModalButtonId);
+    await userEvent.click(openButton);
+    expect(modal).toHaveClass('is-visible');
+
+    const titleInput = screen.getByTestId(titleInputId);
+    const contentInput = screen.getByTestId(contentInputId);
+    await userEvent.type(titleInput, 'New Note Title');
+    await userEvent.type(contentInput, 'New Note Content');
+    await userEvent.click(screen.getByTestId(submitButtonId));
+
+    await waitFor(() => {
+      expect(modal).not.toHaveClass('is-visible');
+    });
+  });
+
+  test('Should call onModalClosed callback when modal closes after cancellation', async () => {
+    const onModalClosedSpy = vi.fn();
+
+    await setUpAndLoadFromCache('test title', 'test content', { onModalClosed: onModalClosedSpy });
+
+    const modal = screen.getByTestId(`modal-case-note-form`);
+    const openButton = screen.getByTestId(openModalButtonId);
+    await userEvent.click(openButton);
+    expect(modal).toHaveClass('is-visible');
+
+    const titleInput = screen.getByTestId(titleInputId);
+    const contentInput = screen.getByTestId(contentInputId);
+    await userEvent.type(titleInput, 'Draft Title');
+    await userEvent.type(contentInput, 'Draft Content');
+
+    const cancelButton = screen.getByTestId(cancelButtonId);
+    await userEvent.click(cancelButton);
+    expect(modal).not.toHaveClass('is-visible');
+
+    expect(onModalClosedSpy).toHaveBeenCalledTimes(1);
+    expect(onModalClosedSpy).toHaveBeenCalledWith(expect.stringMatching(/^\d{3}-\d{2}-\d{5}$/gm));
+  });
+
+  test('Should clear form cache and call onModalClosed callback when modal is cancelled', async () => {
+    const onModalClosedSpy = vi.fn();
+
+    const clearFormSpy = vi.spyOn(LocalFormCache, 'clearForm');
+    await setUpAndLoadFromCache('test title', 'test content', { onModalClosed: onModalClosedSpy });
+
+    const cancelButton = screen.getByTestId(cancelButtonId);
+    await userEvent.click(cancelButton);
+
+    // Verify the form cache was cleared
+    expect(clearFormSpy).toHaveBeenCalled();
+
+    // Verify the callback was called
+    expect(onModalClosedSpy).toHaveBeenCalledTimes(1);
+    expect(onModalClosedSpy).toHaveBeenCalledWith(expect.stringMatching(/^\d{3}-\d{2}-\d{5}$/gm));
   });
 });
