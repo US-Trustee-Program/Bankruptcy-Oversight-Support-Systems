@@ -6,10 +6,11 @@ export type CaseNumberProps = JSX.IntrinsicElements['span'] & {
   renderAs?: 'link' | 'span';
   openLinkIn?: 'same-window' | 'new-window';
   'data-testid'?: string;
+  tab?: string;
 };
 
 export function CaseNumber(props: CaseNumberProps) {
-  const { caseId, renderAs = 'link', openLinkIn = 'new-window', ...otherProps } = props;
+  const { caseId, renderAs = 'link', openLinkIn = 'new-window', tab, ...otherProps } = props;
   const span = <span {...otherProps}>{getCaseNumber(caseId)}</span>;
   if (renderAs === 'link') {
     const target = openLinkIn === 'new-window' ? `CAMS-case-detail-${caseId}` : '_self';
@@ -17,7 +18,7 @@ export function CaseNumber(props: CaseNumberProps) {
     return (
       <Link
         data-testid={dataTestId}
-        to={`/case-detail/${caseId}/`}
+        to={`/case-detail/${caseId}/${tab ?? ''}`}
         className={`usa-link`}
         title={`View case number ${props.caseId} details`}
         target={target}

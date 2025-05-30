@@ -81,7 +81,7 @@ export const MyCasesScreen = () => {
         <span className="draft-notes-alert-message">
           You have a draft case note on case{' '}
           <span className="text-no-wrap">
-            <CaseNumber caseId={draftNotesCaseIds[0]} />
+            <CaseNumber caseId={draftNotesCaseIds[0]} tab="notes" />
           </span>
           . <em>It will expire on {formatDateTime(new Date(draftNotes[0].expiresAfter))}</em>.
         </span>
@@ -91,11 +91,11 @@ export const MyCasesScreen = () => {
         <span className="draft-notes-alert-message">
           You have draft case notes on cases{' '}
           <span className="text-no-wrap">
-            <CaseNumber caseId={draftNotesCaseIds[0]} />
+            <CaseNumber caseId={draftNotesCaseIds[0]} tab="notes" />
           </span>{' '}
           and{' '}
           <span className="text-no-wrap">
-            <CaseNumber caseId={draftNotesCaseIds[1]} />
+            <CaseNumber caseId={draftNotesCaseIds[1]} tab="notes" />
           </span>
           .{' '}
           <em>
@@ -115,13 +115,13 @@ export const MyCasesScreen = () => {
               {index > 0 && ', '}
 
               <span className="text-no-wrap">
-                <CaseNumber caseId={id} />
+                <CaseNumber caseId={id} tab="notes" />
               </span>
             </React.Fragment>
           ))}
           , and{' '}
           <span className="text-no-wrap">
-            <CaseNumber caseId={lastCaseId} />
+            <CaseNumber caseId={lastCaseId} tab="notes" />
           </span>
           .{' '}
           <em>
