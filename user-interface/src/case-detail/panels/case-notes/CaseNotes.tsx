@@ -138,6 +138,8 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
                 title: note.title,
                 content: note.content,
                 callback: onUpdateNoteRequest,
+                initialTitle: note.title,
+                initialContent: note.content,
               }}
               ariaLabel={`Edit note titled ${note.title}`}
             >
@@ -159,6 +161,8 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
                 caseId: note.caseId,
                 buttonId: `case-note-remove-button-${idx}`,
                 callback: onUpdateNoteRequest,
+                initialTitle: note.title,
+                initialContent: note.content,
               }}
               ariaLabel={`Remove note titled ${note.title}`}
             >
@@ -251,8 +255,12 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
           ref={openAddModalButtonRef}
           openProps={{
             caseId,
+            title: draftNote?.value.title ?? '',
+            content: draftNote?.value.content ?? '',
             buttonId: `case-note-add-button`,
             callback: onUpdateNoteRequest,
+            initialTitle: '',
+            initialContent: '',
           }}
           onClick={() => {
             setFocusId('');

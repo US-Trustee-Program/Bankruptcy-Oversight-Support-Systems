@@ -1,6 +1,6 @@
 import './CaseNoteFormModal.scss';
 import Alert, { AlertDetails, AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { ModalRefType, OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import Input from '@/lib/components/uswds/Input';
 import Modal from '@/lib/components/uswds/modal/Modal';
@@ -14,7 +14,6 @@ import { CaseNoteInput } from '@common/cams/cases';
 import { getCamsUserReference } from '@common/cams/session';
 import LocalStorage from '@/lib/utils/local-storage';
 import LocalFormCache from '@/lib/utils/local-form-cache';
-import { Cacheable } from '@/lib/utils/local-cache';
 
 const useThrottleCallback = (callback: () => void, delay: number) => {
   const isThrottled = useRef(false);
@@ -48,11 +47,13 @@ type CallbackFunction = (noteId?: string) => void;
 
 export type CaseNoteFormModalOpenProps = {
   id?: string;
-  title?: string;
-  content?: string;
+  title: string;
+  content: string;
   caseId: string;
   callback: CallbackFunction;
   openModalButtonRef: OpenModalButtonRef;
+  initialTitle: string;
+  initialContent: string;
 };
 
 export interface CaseNoteFormModalRef extends ModalRefType {
@@ -68,11 +69,15 @@ export type CaseNoteFormModalProps = {
 
 const defaultModalOpenOptions: CaseNoteFormModalOpenProps = {
   caseId: '',
+  title: '',
+  content: '',
   callback: () => {},
   openModalButtonRef: {
     focus: () => {},
     disableButton: (_state: boolean) => {},
   },
+  initialTitle: '',
+  initialContent: '',
 };
 
 function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNoteFormModalRef>) {
@@ -84,10 +89,9 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     useState<CaseNoteFormModalOpenProps>(defaultModalOpenOptions);
   const [noteModalTitle, setNoteModalTitle] = useState<string>('');
   const [cancelButtonLabel, setCancelButtonLabel] = useState<string>('');
-  const [formValuesFromShowOptions, setFormValuesFromShowOptions] = useState<CaseNoteInput | null>(
-    null,
-  );
   const [caseNoteFormError, setCaseNoteFormError] = useState<string>('');
+  const [initialTitle, setInitialTitle] = useState<string>('');
+  const [initialContent, setInitialContent] = useState<string>('');
   const alertRef = useRef<AlertRefType>(null);
 
   const modalRef = useRef<ModalRefType>(null);
@@ -104,25 +108,25 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     }
   }
 
-  function toggleButtonOnDirtyForm() {
-    const cachedData = LocalFormCache.getForm(formKey) as Cacheable<CaseNoteInput>;
-    const dirty =
-      cachedData &&
-      formValuesFromShowOptions &&
-      (formValuesFromShowOptions.title !== cachedData.value.title ||
-        formValuesFromShowOptions.content !== cachedData.value.content);
-    disableSubmitButton(!dirty);
+  function toggleButtonOnDirtyForm(initialTitle: string, initialContent: string) {
+    setTimeout(() => {
+      const notSavable =
+        titleInputRef.current?.getValue() === '' ||
+        contentInputRef.current?.getValue() === '' ||
+        (initialTitle === titleInputRef.current?.getValue() &&
+          initialContent === contentInputRef.current?.getValue());
+
+      disableSubmitButton(notSavable);
+    }, 10);
   }
 
   function saveFormData(data: CaseNoteInput) {
     if ((formKey && data.title?.length > 0) || data.content?.length > 0) {
       LocalFormCache.saveForm(formKey, data);
-    } else {
-      if (formKey) {
-        LocalFormCache.clearForm(formKey);
-      }
+    } else if (formKey) {
+      LocalFormCache.clearForm(formKey);
     }
-    toggleButtonOnDirtyForm();
+    toggleButtonOnDirtyForm(initialTitle, initialContent);
   }
 
   function handleTitleChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -147,7 +151,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     LocalFormCache.clearForm(formKey);
     setCaseNoteFormError('');
     alertRef.current?.hide();
-    toggleButtonOnDirtyForm();
+    toggleButtonOnDirtyForm(initialTitle, initialContent);
   }
 
   function disableFormFields(disabled: boolean) {
@@ -266,31 +270,17 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
       const formKey = buildCaseNoteFormKey(showProps.caseId);
       setFormKey(formKey);
       setModalOpenOptions(showProps);
-      setFormValuesFromShowOptions({
-        caseId: showProps.caseId,
-        title: showProps.title ?? '',
-        content: showProps.content ?? '',
-      });
-
+      setInitialTitle(showProps.initialTitle);
+      setInitialContent(showProps.initialContent);
       titleInputRef.current?.setValue(showProps.title ?? '');
       contentInputRef.current?.setValue(showProps.content ?? '');
-
-      const formData = LocalFormCache.getForm(formKey) as Cacheable<CaseNoteInput>;
-      if (
-        formData &&
-        formData.value.caseId === showProps.caseId &&
-        (formData.value.title?.length > 0 || formData.value.content?.length > 0)
-      ) {
-        titleInputRef.current?.setValue(formData.value.title);
-        contentInputRef.current?.setValue(formData.value.content);
-      }
 
       if (modalRef.current?.show) {
         const showOptions = {
           openModalButtonRef: showProps.openModalButtonRef,
         };
         modalRef.current?.show(showOptions);
-        toggleButtonOnDirtyForm();
+        toggleButtonOnDirtyForm(showProps.initialTitle, showProps.initialContent);
       }
     }
   }
@@ -304,7 +294,6 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
       props.onModalClosed(modalOpenOptions.caseId);
     }
 
-    setFormValuesFromShowOptions(null);
     setModalOpenOptions(defaultModalOpenOptions);
   }
 
@@ -314,6 +303,10 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
       hide,
     };
   });
+
+  useEffect(() => {
+    disableSubmitButton(true);
+  }, []);
 
   return (
     <Modal
