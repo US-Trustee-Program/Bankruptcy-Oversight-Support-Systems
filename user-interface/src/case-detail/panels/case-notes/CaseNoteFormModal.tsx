@@ -63,6 +63,7 @@ export interface CaseNoteFormModalRef extends ModalRefType {
 export type CaseNoteFormModalProps = {
   modalId: string;
   alertMessage?: AlertDetails;
+  onModalClosed?: (caseId: string) => void;
 };
 
 const defaultModalOpenOptions: CaseNoteFormModalOpenProps = {
@@ -114,10 +115,12 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   }
 
   function saveFormData(data: CaseNoteInput) {
-    if (data.title?.length > 0 || data.content?.length > 0) {
+    if ((formKey && data.title?.length > 0) || data.content?.length > 0) {
       LocalFormCache.saveForm(formKey, data);
     } else {
-      LocalFormCache.clearForm(formKey);
+      if (formKey) {
+        LocalFormCache.clearForm(formKey);
+      }
     }
     toggleButtonOnDirtyForm();
   }
@@ -249,7 +252,10 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     },
     cancelButton: {
       label: cancelButtonLabel,
-      onClick: clearCaseNoteForm,
+      onClick: () => {
+        clearCaseNoteForm();
+        hide();
+      },
     },
   };
 
@@ -293,6 +299,11 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     if (modalRef.current?.hide) {
       modalRef.current?.hide({});
     }
+
+    if (modalOpenOptions.caseId && props.onModalClosed) {
+      props.onModalClosed(modalOpenOptions.caseId);
+    }
+
     setFormValuesFromShowOptions(null);
     setModalOpenOptions(defaultModalOpenOptions);
   }

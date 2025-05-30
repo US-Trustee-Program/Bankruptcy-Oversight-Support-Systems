@@ -214,8 +214,14 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
   useEffect(() => {
     const draftNote = LocalFormCache.getForm<Cacheable<CaseNoteInput>>(`case-notes-${caseId}`);
     setDraftNote(draftNote);
-    // TODO: consider emitting an event when the modal closes which triggers this
   }, []);
+
+  const handleModalClosed = (eventCaseId: string) => {
+    if (eventCaseId === caseId) {
+      const draftNote = LocalFormCache.getForm<Cacheable<CaseNoteInput>>(`case-notes-${caseId}`);
+      setDraftNote(draftNote);
+    }
+  };
 
   return (
     <div className="case-notes-panel">
@@ -286,7 +292,11 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
           </>
         )}
       </div>
-      <CaseNoteFormModal ref={caseNoteModalRef} modalId="case-note-modal"></CaseNoteFormModal>
+      <CaseNoteFormModal
+        ref={caseNoteModalRef}
+        modalId="case-note-modal"
+        onModalClosed={handleModalClosed}
+      ></CaseNoteFormModal>
       <CaseNoteRemovalModal
         ref={removeConfirmationModalRef}
         modalId={removeConfirmationModalId}
