@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
@@ -17,6 +17,15 @@ import ScreenInfoButton from '@/lib/components/cams/ScreenInfoButton';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import ToggleButton from '@/lib/components/cams/ToggleButton/ToggleButton';
+import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import LocalFormCache from '@/lib/utils/local-form-cache';
+import { CaseNoteInput } from '@common/cams/cases';
+import { CaseNumber } from '@/lib/components/CaseNumber';
+import React from 'react';
+import { Cacheable } from '@/lib/utils/local-cache';
+import useFeatureFlags, { DRAFT_CASE_NOTE_ALERT_ENABLED } from '@/lib/hooks/UseFeatureFlags';
+import { formatDateTime } from '@/lib/utils/datetime';
+import { getCaseNumber } from '@/lib/utils/caseNumber';
 
 export const MyCasesScreen = () => {
   const screenTitle = 'My Cases';
@@ -25,6 +34,11 @@ export const MyCasesScreen = () => {
   const infoModalId = 'info-modal';
   const session = LocalStorage.getSession();
   const [doShowClosedCases, setDoShowClosedCases] = useState(false);
+  const [draftNotesCaseIds, setDraftNotesCaseIds] = useState<string[]>([]);
+  const [draftNotes, setDraftNotes] = useState<Cacheable<CaseNoteInput>[]>([]);
+
+  const featureFlags = useFeatureFlags();
+  const draftNoteAlertEnabledFlag = featureFlags[DRAFT_CASE_NOTE_ALERT_ENABLED];
 
   if (!session || !session.user.offices) {
     // TODO: This renders a blank pane with no notice to the user. Maybe this should at least return a <Stop> component with a message.
@@ -52,6 +66,87 @@ export const MyCasesScreen = () => {
     return isActive;
   }
 
+  function buildAlertMessage() {
+    const earliestExpiry = draftNotes.reduce(
+      (acc: Cacheable<CaseNoteInput> | undefined, cache: Cacheable<CaseNoteInput>) => {
+        if (!acc || acc.expiresAfter > cache.expiresAfter) {
+          return cache;
+        }
+        return acc;
+      },
+      undefined,
+    );
+    if (draftNotesCaseIds.length === 1) {
+      return (
+        <span className="draft-notes-alert-message">
+          You have a draft case note on case{' '}
+          <span className="text-no-wrap">
+            <CaseNumber caseId={draftNotesCaseIds[0]} />
+          </span>
+          . <em>It will expire on {formatDateTime(new Date(draftNotes[0].expiresAfter))}</em>.
+        </span>
+      );
+    } else if (draftNotesCaseIds.length === 2) {
+      return (
+        <span className="draft-notes-alert-message">
+          You have draft case notes on cases{' '}
+          <span className="text-no-wrap">
+            <CaseNumber caseId={draftNotesCaseIds[0]} />
+          </span>{' '}
+          and{' '}
+          <span className="text-no-wrap">
+            <CaseNumber caseId={draftNotesCaseIds[1]} />
+          </span>
+          .{' '}
+          <em>
+            The draft on case number {getCaseNumber(earliestExpiry?.value.caseId)} expires on{' '}
+            {formatDateTime(new Date(earliestExpiry!.expiresAfter))}
+          </em>
+          .
+        </span>
+      );
+    } else if (draftNotesCaseIds.length > 2) {
+      const lastCaseId = draftNotesCaseIds[draftNotesCaseIds.length - 1];
+      return (
+        <span className="draft-notes-alert-message">
+          You have draft case notes on cases{' '}
+          {draftNotesCaseIds.slice(0, -1).map((id, index) => (
+            <React.Fragment key={id}>
+              {index > 0 && ', '}
+
+              <span className="text-no-wrap">
+                <CaseNumber caseId={id} />
+              </span>
+            </React.Fragment>
+          ))}
+          , and{' '}
+          <span className="text-no-wrap">
+            <CaseNumber caseId={lastCaseId} />
+          </span>
+          .{' '}
+          <em>
+            The draft on case number {getCaseNumber(earliestExpiry?.value.caseId)} expires on{' '}
+            {formatDateTime(new Date(earliestExpiry!.expiresAfter))}
+          </em>
+          .
+        </span>
+      );
+    }
+    return null;
+  }
+
+  useEffect(() => {
+    const caseNotePattern = /^case-notes-/;
+    const draftNotesFound =
+      LocalFormCache.getFormsByPattern<Cacheable<CaseNoteInput>>(caseNotePattern);
+    setDraftNotes(draftNotesFound.map((cache) => cache.form));
+    const ids: string[] = draftNotesFound.map((record) => {
+      return record.form.value.caseId;
+    });
+
+    setDraftNotesCaseIds(ids);
+  }, []);
+
   return (
     <MainContent className="my-cases case-list">
       <DocumentTitle name="My Cases" />
@@ -61,6 +156,21 @@ export const MyCasesScreen = () => {
           <div className="screen-heading">
             <h1 data-testid="case-list-heading">{screenTitle}</h1>
             <ScreenInfoButton infoModalRef={infoModalRef} modalId={infoModalId} />
+            {draftNoteAlertEnabledFlag && draftNotesCaseIds.length > 0 && (
+              <div data-testid="draft-notes-alert-test-id">
+                <Alert
+                  type={UswdsAlertStyle.Info}
+                  role={'status'}
+                  timeout={0}
+                  title="Draft Notes Available"
+                  show={true}
+                  inline={true}
+                  id="draft-notes-alert"
+                >
+                  {buildAlertMessage()}
+                </Alert>
+              </div>
+            )}
           </div>
 
           <h3>Filters</h3>

@@ -101,9 +101,12 @@ async function setUpAndLoadFromCache(cachedTitle: string, cachedContent: string)
   const note = MockData.getCaseNote();
   const modalRef = React.createRef<CaseNoteFormModalRef>();
   vi.spyOn(LocalFormCache, 'getForm').mockReturnValue({
-    caseId: note.caseId,
-    title: cachedTitle,
-    content: cachedContent,
+    value: {
+      caseId: note.caseId,
+      title: cachedTitle,
+      content: cachedContent,
+    },
+    expiresAfter: 1,
   });
   const saveFormSpy = vi.spyOn(LocalFormCache, 'saveForm');
   const clearFormSpy = vi.spyOn(LocalFormCache, 'clearForm');
@@ -158,7 +161,7 @@ describe('case note tests', () => {
     vi.resetModules();
     session = MockData.getCamsSession();
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
-    vi.spyOn(LocalFormCache, 'getForm').mockReturnValue({});
+    vi.spyOn(LocalFormCache, 'getForm').mockReturnValue({ expiresAfter: 1, value: {} });
   });
 
   afterEach(() => {

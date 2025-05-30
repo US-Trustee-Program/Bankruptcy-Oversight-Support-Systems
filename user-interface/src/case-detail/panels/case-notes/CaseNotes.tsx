@@ -4,7 +4,7 @@ import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { TextAreaRef } from '@/lib/type-declarations/input-fields';
 import { formatDateTime } from '@/lib/utils/datetime';
-import { CaseNote } from '@common/cams/cases';
+import { CaseNote, CaseNoteInput } from '@common/cams/cases';
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
 import { AlertOptions } from '../CaseDetailCourtDocket';
@@ -18,6 +18,8 @@ import CaseNoteFormModal, {
 import CaseNoteRemovalModal, { CaseNoteRemovalModalRef } from './CaseNoteRemovalModal';
 import Actions from '@common/cams/actions';
 import LocalFormCache from '@/lib/utils/local-form-cache';
+import { Cacheable } from '@/lib/utils/local-cache';
+import useFeatureFlags, { DRAFT_CASE_NOTE_ALERT_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 
 export function getCaseNotesInputValue(ref: TextAreaRef | null) {
   return ref?.getValue() ?? '';
@@ -47,16 +49,15 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
   useMemo(mapArchiveButtonRefs, [caseNotes]);
   useMemo(mapEditButtonRefs, [caseNotes]);
   const [focusId, setFocusId] = useState<string | null>(null);
-  const [hasDraftNote, setHasDraftNote] = useState<boolean>(false);
+  const [draftNote, setDraftNote] = useState<Cacheable<CaseNoteInput> | null>(null);
   const removeConfirmationModalId = 'remove-note-modal';
   const editNoteModalId = 'edit-note-modal';
   const addNoteModalId = 'add-note-modal';
 
-  function buildCaseNoteFormKey(caseId: string) {
-    return `case-notes-${caseId}`;
-  }
-
   const MINIMUM_SEARCH_CHARACTERS = 3;
+
+  const featureFlags = useFeatureFlags();
+  const draftNoteAlertEnabledFlag = featureFlags[DRAFT_CASE_NOTE_ALERT_ENABLED];
 
   function mapArchiveButtonRefs() {
     openArchiveModalButtonRefs.current =
@@ -211,25 +212,27 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
   }, [focusId, openEditModalButtonRefs.current]);
 
   useEffect(() => {
-    const hasDraft = !!LocalFormCache.getForm(buildCaseNoteFormKey(caseId));
-    setHasDraftNote(hasDraft);
-  }, [caseId]);
+    const draftNote = LocalFormCache.getForm<Cacheable<CaseNoteInput>>(`case-notes-${caseId}`);
+    setDraftNote(draftNote);
+    // TODO: consider emitting an event when the modal closes which triggers this
+  }, []);
 
   return (
     <div className="case-notes-panel">
       <div className="case-notes-title">
         <h3>Case Notes</h3>
         {/* Check for draft case notes and display a notification if one exists */}
-        {hasDraftNote && (
-          <div data-testid="draft-note-alert-test-id">
+        {draftNoteAlertEnabledFlag && draftNote && (
+          <div data-testid="draft-note-alert-test-id" className="draft-notes-alert-container">
             <Alert
-              message="You have a draft case note. Click 'Add' to continue editing."
+              message={`You have a draft case note. It will expire on ${formatDateTime(new Date(draftNote.expiresAfter))}.`}
               type={UswdsAlertStyle.Info}
               role={'status'}
               timeout={0}
               title="Draft Note Available"
               show={true}
               inline={true}
+              className="grid-col-8"
             />
           </div>
         )}
@@ -251,7 +254,7 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
           ariaLabel={`Add new note`}
         >
           <Icon name="add_circle_outline" className="add-circle-outline-icon" />
-          Add
+          {draftNote ? 'Continue Editing' : 'Add Note'}
         </OpenModalButton>
         {areCaseNotesLoading && (
           <LoadingSpinner id="notes-loading-indicator" caption="Loading case notes..." />

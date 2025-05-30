@@ -11,6 +11,7 @@ import LocalStorage from '@/lib/utils/local-storage';
 import LocalFormCache from '@/lib/utils/local-form-cache';
 import Actions from '@common/cams/actions';
 import { randomUUID } from 'crypto';
+import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 
 const caseId = '000-11-22222';
 const userId = '001';
@@ -33,6 +34,10 @@ const caseNotes = [
 const caseNotesRef = React.createRef<CaseNotesRef>();
 
 function renderWithProps(props?: Partial<CaseNotesProps>) {
+  const mockFeatureFlags = {
+    'draft-case-note-alert': true,
+  };
+  vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
   const defaultProps: CaseNotesProps = {
     caseId: '000-11-22222',
     hasCaseNotes: false,
@@ -228,28 +233,23 @@ describe('test utilities', () => {
   });
 
   test('should display info alert if cache holds a case note for the case', async () => {
-    // Define the buildCaseNoteFormKey function (same as in CaseNoteFormModal.tsx)
-    function buildCaseNoteFormKey(caseId: string) {
-      return `case-notes-${caseId}`;
-    }
-
-    // Mock LocalFormCache.getForm to return a cached note
     const mockCachedNote = {
-      caseId,
-      title: 'Draft Note Title',
-      content: 'Draft Note Content',
+      value: {
+        caseId,
+        title: 'Draft Note Title',
+        content: 'Draft Note Content',
+      },
+      expiresAfter: 1,
     };
     vi.spyOn(LocalFormCache, 'getForm').mockImplementation((key: string) => {
-      if (key === buildCaseNoteFormKey(caseId)) {
+      if (key === `case-notes-${caseId}`) {
         return mockCachedNote;
       }
       return null;
     });
 
-    // Render the component
     renderWithProps({ caseId });
 
-    // Check for the info alert
     const draftNoteAlert = await screen.findByTestId('draft-note-alert-test-id');
     expect(draftNoteAlert).toBeInTheDocument();
     expect(draftNoteAlert).toHaveTextContent(/you have a draft case note/i);

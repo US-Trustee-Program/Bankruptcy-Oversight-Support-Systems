@@ -14,6 +14,7 @@ import { CaseNoteInput } from '@common/cams/cases';
 import { getCamsUserReference } from '@common/cams/session';
 import LocalStorage from '@/lib/utils/local-storage';
 import LocalFormCache from '@/lib/utils/local-form-cache';
+import { Cacheable } from '@/lib/utils/local-cache';
 
 const useThrottleCallback = (callback: () => void, delay: number) => {
   const isThrottled = useRef(false);
@@ -103,12 +104,12 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   }
 
   function toggleButtonOnDirtyForm() {
-    const cachedData = LocalFormCache.getForm(formKey) as CaseNoteInput;
+    const cachedData = LocalFormCache.getForm(formKey) as Cacheable<CaseNoteInput>;
     const dirty =
       cachedData &&
       formValuesFromShowOptions &&
-      (formValuesFromShowOptions.title !== cachedData.title ||
-        formValuesFromShowOptions.content !== cachedData.content);
+      (formValuesFromShowOptions.title !== cachedData.value.title ||
+        formValuesFromShowOptions.content !== cachedData.value.content);
     disableSubmitButton(!dirty);
   }
 
@@ -268,14 +269,14 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
       titleInputRef.current?.setValue(showProps.title ?? '');
       contentInputRef.current?.setValue(showProps.content ?? '');
 
-      const formData = LocalFormCache.getForm(formKey) as CaseNoteInput;
+      const formData = LocalFormCache.getForm(formKey) as Cacheable<CaseNoteInput>;
       if (
         formData &&
-        formData.caseId === showProps.caseId &&
-        (formData.title?.length > 0 || formData.content?.length > 0)
+        formData.value.caseId === showProps.caseId &&
+        (formData.value.title?.length > 0 || formData.value.content?.length > 0)
       ) {
-        titleInputRef.current?.setValue(formData.title);
-        contentInputRef.current?.setValue(formData.content);
+        titleInputRef.current?.setValue(formData.value.title);
+        contentInputRef.current?.setValue(formData.value.content);
       }
 
       if (modalRef.current?.show) {

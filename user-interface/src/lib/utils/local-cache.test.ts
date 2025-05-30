@@ -103,7 +103,7 @@ describe('LocalCache', () => {
 
     LocalCache.set(key, value, ttl);
     const result = LocalCache.get(key);
-    expect(result).toBe(value);
+    expect(result).toEqual({ value, expiresAfter: expect.any(Number) });
   });
 
   test('should return null if the cache is expired', () => {
@@ -149,7 +149,10 @@ describe('LocalCache', () => {
 
     LocalCache.purge();
 
-    expect(LocalCache.get(validKey)).toBe('validValue');
+    expect(LocalCache.get(validKey)).toEqual({
+      value: 'validValue',
+      expiresAfter: expect.any(Number),
+    });
     expect(LocalCache.get(expiredKey)).toBeNull();
     expect(window.localStorage.getItem(otherNonCacheKey)).toEqual('test');
 
