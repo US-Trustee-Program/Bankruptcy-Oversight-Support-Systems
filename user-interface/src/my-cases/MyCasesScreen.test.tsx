@@ -118,7 +118,7 @@ describe('MyCasesScreen', () => {
       cachedValues: [
         {
           key: 'foo1',
-          form: {
+          item: {
             expiresAfter: new Date(MockData.someDateAfterThisDate(now, 10)).valueOf(),
             value: { title: 'title', content: 'content', caseId: '081-00-12345' },
           },
@@ -132,14 +132,14 @@ describe('MyCasesScreen', () => {
       cachedValues: [
         {
           key: 'foo1',
-          form: {
+          item: {
             expiresAfter: new Date(MockData.someDateAfterThisDate(now, 10)).valueOf(),
             value: { title: 'title', content: 'content', caseId: '081-00-12345' },
           },
         },
         {
           key: 'foo2',
-          form: {
+          item: {
             expiresAfter: new Date(MockData.someDateAfterThisDate(now, 10)).valueOf(),
             value: { title: 'title', content: 'content', caseId: '081-00-54321' },
           },
@@ -153,21 +153,21 @@ describe('MyCasesScreen', () => {
       cachedValues: [
         {
           key: 'foo1',
-          form: {
+          item: {
             expiresAfter: new Date(MockData.someDateAfterThisDate(now, 10)).valueOf(),
             value: { title: 'title', content: 'content', caseId: '081-00-12345' },
           },
         },
         {
           key: 'foo2',
-          form: {
+          item: {
             expiresAfter: new Date(MockData.someDateAfterThisDate(now, 10)).valueOf(),
             value: { title: 'title', content: 'content', caseId: '081-00-54321' },
           },
         },
         {
           key: 'foo3',
-          form: {
+          item: {
             expiresAfter: new Date(MockData.someDateAfterThisDate(now, 10)).valueOf(),
             value: { title: 'title', content: 'content', caseId: '081-00-54322' },
           },
@@ -180,7 +180,7 @@ describe('MyCasesScreen', () => {
     (args: {
       caseName: string;
       expectedAlertText: string;
-      cachedValues: Array<{ key: string; form: Cacheable<CaseNoteInput> }>;
+      cachedValues: Array<{ key: string; item: Cacheable<CaseNoteInput> }>;
     }) => {
       vi.spyOn(LocalFormCache, 'getFormsByPattern').mockImplementation((_pattern: RegExp) => {
         return args.cachedValues;

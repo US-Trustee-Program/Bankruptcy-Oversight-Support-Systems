@@ -121,7 +121,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   }
 
   function saveFormData(data: CaseNoteInput) {
-    if ((formKey && data.title?.length > 0) || data.content?.length > 0) {
+    if (formKey && (data.title?.length > 0 || data.content?.length > 0)) {
       LocalFormCache.saveForm(formKey, data);
     } else if (formKey) {
       LocalFormCache.clearForm(formKey);
