@@ -33,6 +33,11 @@ describe('Orders use case', () => {
     mockContext.session = await createMockApplicationContextSession({ user: authorizedUser });
     casesRepo = getCasesRepository(mockContext);
     useCase = new OrdersUseCase(mockContext);
+
+    jest.spyOn(MockMongoRepository.prototype, 'count').mockResolvedValue(0);
+    jest
+      .spyOn(MockMongoRepository.prototype, 'create')
+      .mockImplementation((order) => Promise.resolve(order));
   });
 
   afterEach(() => {

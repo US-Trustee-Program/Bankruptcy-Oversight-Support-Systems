@@ -195,4 +195,8 @@ export class MockMongoRepository
   getDistinctAssigneesByOffice(_ignore: any): Promise<CamsUserReference[]> {
     throw new Error('Method not implemented.');
   }
+
+  count(_ignore: any): Promise<number> {
+    throw new Error('Method not implemented.');
+  }
 }

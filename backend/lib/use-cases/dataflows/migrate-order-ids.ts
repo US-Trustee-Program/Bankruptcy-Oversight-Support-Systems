@@ -3,16 +3,13 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import Factory from '../../factory';
 import { MigrationConsolidationOrder } from '../gateways.types';
+import { generateConsolidationId } from '../../../../common/src/cams/orders';
 
 const mapSetParameters = (order: MigrationConsolidationOrder, idx: number) => {
-  const { id } = order;
-  const parts = [order.jobId, order.status];
-  if (order.status !== 'pending') {
-    parts.push(idx);
-  }
-  const consolidationId = parts.join('/');
-
-  return { id, consolidationId };
+  return {
+    id: order.id,
+    consolidationId: generateConsolidationId(order.jobId, order.status, idx),
+  };
 };
 
 async function migrateConsolidationOrderIds(context: ApplicationContext) {
