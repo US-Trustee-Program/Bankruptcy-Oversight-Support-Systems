@@ -3,6 +3,10 @@
 .case-notes-panel {
   margin-left: 2rem;
 
+  .draft-notes-alert-container {
+    padding-bottom: .5rem;
+  }
+
   .case-notes-form-container {
     padding-bottom: 2rem;
   }
@@ -23,6 +27,10 @@
 
       .case-note-title-and-date {
         padding-bottom: 1rem;
+
+        .case-note-header {
+          padding-right: 1.5rem;
+        }
 
         .case-note-date {
           font-style: italic;

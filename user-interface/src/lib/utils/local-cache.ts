@@ -1,12 +1,12 @@
 import { HOUR } from './datetime';
 import getAppConfiguration from '@/configuration/appConfiguration';
 
-type Cachable<T = unknown> = {
+export type Cacheable<T = unknown> = {
   expiresAfter: number;
   value: T;
 };
 
-const NAMESPACE = 'cams:cache:';
+export const NAMESPACE = 'cams:cache:';
 const DEFAULT_TTL = HOUR;
 const canCache = !!window.localStorage && !getAppConfiguration().disableLocalCache;
 
@@ -27,7 +27,7 @@ function purge() {
       }
 
       keysToPurge.forEach((key) => {
-        const cached = JSON.parse(window.localStorage.getItem(key)!) as Cachable;
+        const cached = JSON.parse(window.localStorage.getItem(key)!) as Cacheable;
         if (cached && cached.expiresAfter < Date.now()) {
           window.localStorage.removeItem(key);
         }
@@ -38,15 +38,15 @@ function purge() {
   }
 }
 
-function get<T>(key: string): T | null {
+function get<T>(key: string): Cacheable<T> | null {
   try {
-    let value: T | null = null;
+    let value: Cacheable<T> | null = null;
     if (canCache) {
       const json = window.localStorage.getItem(NAMESPACE + key);
       if (json) {
-        const cached = JSON.parse(json) as Cachable<T>;
+        const cached = JSON.parse(json) as Cacheable<T>;
         if (cached.expiresAfter > Date.now()) {
-          value = cached.value;
+          value = cached;
         } else {
           window.localStorage.removeItem(NAMESPACE + key);
         }
@@ -62,7 +62,7 @@ function set<T>(key: string, value: T, ttlSeconds: number = DEFAULT_TTL): boolea
   try {
     let success = false;
     if (canCache) {
-      const cachable: Cachable<T> = {
+      const cachable: Cacheable<T> = {
         expiresAfter: Date.now() + ttlSeconds * 1000,
         value,
       };
