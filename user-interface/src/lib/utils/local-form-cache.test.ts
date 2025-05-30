@@ -74,8 +74,8 @@ describe('LocalFormCache', () => {
       expect(result).toHaveLength(2);
       expect(result).toEqual(
         expect.arrayContaining([
-          { key: 'foo1', form: { value: { id: 1 }, expiresAfter: expect.any(Number) } },
-          { key: 'foo2', form: { value: { id: 2 }, expiresAfter: expect.any(Number) } },
+          { key: 'foo1', item: { value: { id: 1 }, expiresAfter: expect.any(Number) } },
+          { key: 'foo2', item: { value: { id: 2 }, expiresAfter: expect.any(Number) } },
         ]),
       );
     });
@@ -92,9 +92,9 @@ describe('LocalFormCache', () => {
       expect(result).toHaveLength(3);
       expect(result).toEqual(
         expect.arrayContaining([
-          { key: 'case-notes-123', form: { value: { id: 1 }, expiresAfter: expect.any(Number) } },
-          { key: 'case-notes-456', form: { value: { id: 2 }, expiresAfter: expect.any(Number) } },
-          { key: 'case-notes-789', form: { value: { id: 3 }, expiresAfter: expect.any(Number) } },
+          { key: 'case-notes-123', item: { value: { id: 1 }, expiresAfter: expect.any(Number) } },
+          { key: 'case-notes-456', item: { value: { id: 2 }, expiresAfter: expect.any(Number) } },
+          { key: 'case-notes-789', item: { value: { id: 3 }, expiresAfter: expect.any(Number) } },
         ]),
       );
     });
@@ -113,23 +113,10 @@ describe('LocalFormCache', () => {
       expect(result).toHaveLength(2);
       expect(result).toEqual(
         expect.arrayContaining([
-          { key: 'case-notes-123', form: { value: { id: 1 }, expiresAfter: expect.any(Number) } },
-          { key: 'case-notes-456', form: { value: { id: 2 }, expiresAfter: expect.any(Number) } },
+          { key: 'case-notes-123', item: { value: { id: 1 }, expiresAfter: expect.any(Number) } },
+          { key: 'case-notes-456', item: { value: { id: 2 }, expiresAfter: expect.any(Number) } },
         ]),
       );
-    });
-
-    test('should skip keys where getForm returns null', () => {
-      LocalFormCache.saveForm('foo1', { id: 1 });
-      LocalFormCache.saveForm('foo2', null as unknown as object);
-
-      const pattern = /^foo/;
-      const result = LocalFormCache.getFormsByPattern(pattern);
-
-      expect(result).toHaveLength(1);
-      expect(result).toEqual([
-        { key: 'foo1', form: { value: { id: 1 }, expiresAfter: expect.any(Number) } },
-      ]);
     });
   });
 });

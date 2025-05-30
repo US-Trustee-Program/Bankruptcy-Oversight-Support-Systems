@@ -55,4 +55,4 @@ export const SECOND = 1;
 export const MINUTE = 60;
 export const HOUR = 3600;
 export const DAY = 86400;
-export const THREE_DAYS = 86400 * 3;
+export const THREE_DAYS = DAY * 3;

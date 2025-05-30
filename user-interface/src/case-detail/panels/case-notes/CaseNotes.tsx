@@ -220,8 +220,8 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
     setDraftNote(draftNote);
   }, []);
 
-  const handleModalClosed = (eventCaseId: string) => {
-    if (eventCaseId === caseId) {
+  const handleModalClosed = (eventCaseId: string, edit: boolean = false) => {
+    if (eventCaseId === caseId && !edit) {
       const draftNote = LocalFormCache.getForm<Cacheable<CaseNoteInput>>(`case-notes-${caseId}`);
       setDraftNote(draftNote);
     }
@@ -231,7 +231,6 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
     <div className="case-notes-panel">
       <div className="case-notes-title">
         <h3>Case Notes</h3>
-        {/* Check for draft case notes and display a notification if one exists */}
         {draftNoteAlertEnabledFlag && draftNote && (
           <div data-testid="draft-note-alert-test-id" className="draft-notes-alert-container">
             <Alert

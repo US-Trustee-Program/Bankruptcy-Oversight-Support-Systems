@@ -253,7 +253,7 @@ describe('case note tests', () => {
     expect(draftNoteAlert).toHaveTextContent(/you have a draft case note/i);
   });
 
-  test('should update remove draft alert when modal is closed', async () => {
+  test('should remove draft alert when modal is closed', async () => {
     const mockCachedNote = {
       value: {
         caseId,

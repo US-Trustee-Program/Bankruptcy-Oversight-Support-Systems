@@ -137,11 +137,10 @@ export const MyCasesScreen = () => {
 
   useEffect(() => {
     const caseNotePattern = /^case-notes-/;
-    const draftNotesFound =
-      LocalFormCache.getFormsByPattern<Cacheable<CaseNoteInput>>(caseNotePattern);
-    setDraftNotes(draftNotesFound.map((cache) => cache.form));
+    const draftNotesFound = LocalFormCache.getFormsByPattern<CaseNoteInput>(caseNotePattern);
+    setDraftNotes(draftNotesFound.map((cache) => cache.item));
     const ids: string[] = draftNotesFound.map((record) => {
-      return record.form.value.caseId;
+      return record.item.value.caseId;
     });
 
     setDraftNotesCaseIds(ids);

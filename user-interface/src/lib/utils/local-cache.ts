@@ -6,7 +6,7 @@ export type Cacheable<T = unknown> = {
   value: T;
 };
 
-export const NAMESPACE = 'cams:cache:';
+const NAMESPACE = 'cams:cache:';
 const DEFAULT_TTL = HOUR;
 const canCache = !!window.localStorage && !getAppConfiguration().disableLocalCache;
 
@@ -27,8 +27,8 @@ function purge() {
       }
 
       keysToPurge.forEach((key) => {
-        const cached = JSON.parse(window.localStorage.getItem(key)!) as Cacheable;
-        if (cached && cached.expiresAfter < Date.now()) {
+        const cached = window.localStorage.getItem(key);
+        if (cached && (JSON.parse(cached) as Cacheable).expiresAfter < Date.now()) {
           window.localStorage.removeItem(key);
         }
       });
@@ -56,6 +56,34 @@ function get<T>(key: string): Cacheable<T> | null {
   } catch {
     return null;
   }
+}
+
+function getByKeyPattern<T>(pattern: RegExp): Array<{ key: string; item: Cacheable<T> }> {
+  const items: Array<{ key: string; item: Cacheable<T> }> = [];
+
+  const regExString = pattern.source.replace('^', `^${NAMESPACE}`);
+  const _pattern = new RegExp(regExString);
+
+  if (!window.localStorage) {
+    return items;
+  }
+
+  for (let i = 0; i < window.localStorage.length; i++) {
+    const fullKey = window.localStorage.key(i);
+
+    if (fullKey && fullKey.startsWith(NAMESPACE)) {
+      const key = fullKey.substring(NAMESPACE.length);
+
+      if (_pattern.test(fullKey)) {
+        const item = get<T>(key)!;
+        if (item) {
+          items.push({ key: key, item });
+        }
+      }
+    }
+  }
+
+  return items;
 }
 
 function set<T>(key: string, value: T, ttlSeconds: number = DEFAULT_TTL): boolean {
@@ -105,6 +133,7 @@ function removeNamespace(suffix: string = '') {
 
 export const LocalCache = {
   get,
+  getByKeyPattern,
   set,
   remove,
   removeAll,
