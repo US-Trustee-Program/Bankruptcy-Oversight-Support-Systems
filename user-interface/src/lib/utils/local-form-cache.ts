@@ -5,9 +5,9 @@ const FORM_NAMESPACE = 'form:';
 
 const { get, getByKeyPattern, set, remove, removeNamespace } = LocalCache;
 
-function getForm<T extends Cacheable>(key: string): T | null {
+function getForm<T>(key: string): Cacheable<T> | null {
   const formKey = FORM_NAMESPACE + key;
-  return get<object>(formKey) as T;
+  return get<object>(formKey) as Cacheable<T>;
 }
 
 function saveForm(key: string, data: object) {
