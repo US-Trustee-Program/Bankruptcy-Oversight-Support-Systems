@@ -7,12 +7,18 @@ describe('LocalCache', () => {
     foo: 'bar',
   };
 
-  beforeAll(() => {
-    vi.stubEnv('CAMS_DISABLE_LOCAL_CACHE', 'false');
+  beforeEach(async () => {
+    vi.resetModules();
     vi.stubGlobal('localStorage', mockLocalStorage);
+    window.CAMS_CONFIGURATION = {
+      ...window.CAMS_CONFIGURATION,
+      CAMS_DISABLE_LOCAL_CACHE: 'false',
+    };
+    const reloaded = await import('./local-cache');
+    expect(reloaded.LocalCache.isCacheEnabled()).toBeTruthy();
   });
 
-  beforeEach(() => {
+  afterEach(() => {
     mockLocalStorage.clear();
   });
 
@@ -165,6 +171,68 @@ describe('LocalCache', () => {
     vi.useRealTimers();
   });
 
+  test('should check if cache is disabled if the local storage API is not available', async () => {
+    vi.stubGlobal('localStorage', null);
+    vi.resetModules();
+    const reloaded = await import('./local-cache');
+    expect(reloaded.LocalCache.isCacheEnabled()).toBeFalsy();
+  });
+
+  test('should check if cache is disabled if the CAMS_DISABLE_LOCAL_CACHE config is true', async () => {
+    vi.resetModules();
+    vi.stubGlobal('localStorage', mockLocalStorage);
+    window.CAMS_CONFIGURATION = {
+      ...window.CAMS_CONFIGURATION,
+      CAMS_DISABLE_LOCAL_CACHE: 'true',
+    };
+    const reloaded = await import('./local-cache');
+    expect(reloaded.LocalCache.isCacheEnabled()).toBeFalsy();
+  });
+
+  test('should check if cache is enabled', async () => {
+    vi.resetModules();
+    vi.stubGlobal('localStorage', mockLocalStorage);
+    const reloaded = await import('./local-cache');
+    expect(reloaded.LocalCache.isCacheEnabled()).toBeTruthy();
+  });
+
+  test('should return false if localStorage is disabled', () => {
+    vi.stubGlobal('localStorage', null);
+
+    const result = LocalCache.getByKeyPattern(/^foo/);
+    expect(result).toHaveLength(0);
+  });
+
+  test('should return empty array if localStorage is disabled', () => {
+    vi.stubGlobal('localStorage', null);
+
+    const result = LocalCache.set('disabledKey', 'disabledValue');
+    expect(result).toBe(false);
+  });
+
+  test('should safely handle exceptions', () => {
+    const justThrow = vi.fn().mockImplementation(() => {
+      throw new Error('Test Error');
+    });
+    vi.stubGlobal('localStorage', {
+      getItem: justThrow,
+      setItem: justThrow,
+      removeItem: justThrow,
+      clear: justThrow,
+      key: justThrow,
+      length: 0,
+    });
+
+    const calls = [
+      () => LocalCache.get('key'),
+      () => LocalCache.set('key', 'value'),
+      () => LocalCache.purge(),
+    ];
+    calls.forEach((call) => {
+      expect(call).not.toThrow();
+    });
+  });
+
   test('should return empty array when no items exist', () => {
     const pattern = /^foo/;
     const result = LocalCache.getByKeyPattern(pattern);
@@ -236,67 +304,5 @@ describe('LocalCache', () => {
         { key: 'case-notes-456', item: { value: { id: 2 }, expiresAfter: expect.any(Number) } },
       ]),
     );
-  });
-
-  //////////////////////////////////////////////////////////////////////////////////
-  // Tests below this line should always be executed last because of vi.stubGlobal.
-  //////////////////////////////////////////////////////////////////////////////////
-
-  test('should check if cache is disabled if the local storage API is not available', async () => {
-    vi.stubGlobal('localStorage', null);
-    vi.resetModules();
-    const reloaded = await import('./local-cache');
-    expect(reloaded.LocalCache.isCacheEnabled()).toBeFalsy();
-  });
-
-  test('should check if cache is disabled if the CAMS_DISABLE_LOCAL_CACHE config is true', async () => {
-    vi.stubEnv('CAMS_DISABLE_LOCAL_CACHE', 'true');
-    vi.resetModules();
-    const reloaded = await import('./local-cache');
-    expect(reloaded.LocalCache.isCacheEnabled()).toBeFalsy();
-  });
-
-  test('should check if cache is enabled', async () => {
-    vi.resetModules();
-    vi.stubGlobal('localStorage', mockLocalStorage);
-    const reloaded = await import('./local-cache');
-    expect(reloaded.LocalCache.isCacheEnabled()).toBeTruthy();
-  });
-
-  test('should return false if localStorage is disabled', () => {
-    vi.stubGlobal('localStorage', null);
-
-    const result = LocalCache.getByKeyPattern(/^foo/);
-    expect(result).toHaveLength(0);
-  });
-
-  test('should return empty array if localStorage is disabled', () => {
-    vi.stubGlobal('localStorage', null);
-
-    const result = LocalCache.set('disabledKey', 'disabledValue');
-    expect(result).toBe(false);
-  });
-
-  test('should safely handle exceptions', () => {
-    const justThrow = vi.fn().mockImplementation(() => {
-      throw new Error('Test Error');
-    });
-    vi.stubGlobal('localStorage', {
-      getItem: justThrow,
-      setItem: justThrow,
-      removeItem: justThrow,
-      clear: justThrow,
-      key: justThrow,
-      length: 0,
-    });
-
-    const calls = [
-      () => LocalCache.get('key'),
-      () => LocalCache.set('key', 'value'),
-      () => LocalCache.purge(),
-    ];
-    calls.forEach((call) => {
-      expect(call).not.toThrow();
-    });
   });
 });
