@@ -17,7 +17,7 @@ describe('Api2 cache enabled', () => {
     const cacheGetSpy = vi
       .spyOn(cacheModule.LocalCache, 'get')
       .mockReturnValueOnce(null)
-      .mockReturnValue({ data: [] });
+      .mockReturnValue({ expiresAfter: 1, value: { data: [] } });
     const cacheSetSpy = vi.spyOn(cacheModule.LocalCache, 'set').mockResolvedValue(true);
     const fetchSpy = vi.spyOn(apiModule.default, 'get').mockResolvedValue({ data: [] });
 

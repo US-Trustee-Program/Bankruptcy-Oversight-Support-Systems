@@ -1,7 +1,7 @@
 import { HOUR } from './datetime';
 import getAppConfiguration from '@/configuration/appConfiguration';
 
-type Cachable<T = unknown> = {
+export type Cacheable<T = unknown> = {
   expiresAfter: number;
   value: T;
 };
@@ -27,8 +27,8 @@ function purge() {
       }
 
       keysToPurge.forEach((key) => {
-        const cached = JSON.parse(window.localStorage.getItem(key)!) as Cachable;
-        if (cached && cached.expiresAfter < Date.now()) {
+        const cached = window.localStorage.getItem(key);
+        if (cached && (JSON.parse(cached) as Cacheable).expiresAfter < Date.now()) {
           window.localStorage.removeItem(key);
         }
       });
@@ -38,15 +38,15 @@ function purge() {
   }
 }
 
-function get<T>(key: string): T | null {
+function get<T>(key: string): Cacheable<T> | null {
   try {
-    let value: T | null = null;
+    let value: Cacheable<T> | null = null;
     if (canCache) {
       const json = window.localStorage.getItem(NAMESPACE + key);
       if (json) {
-        const cached = JSON.parse(json) as Cachable<T>;
+        const cached = JSON.parse(json) as Cacheable<T>;
         if (cached.expiresAfter > Date.now()) {
-          value = cached.value;
+          value = cached;
         } else {
           window.localStorage.removeItem(NAMESPACE + key);
         }
@@ -58,11 +58,39 @@ function get<T>(key: string): T | null {
   }
 }
 
+function getByKeyPattern<T>(pattern: RegExp): Array<{ key: string; item: Cacheable<T> }> {
+  const items: Array<{ key: string; item: Cacheable<T> }> = [];
+
+  const regExString = pattern.source.replace('^', `^${NAMESPACE}`);
+  const _pattern = new RegExp(regExString, pattern.flags);
+
+  if (!window.localStorage) {
+    return items;
+  }
+
+  for (let i = 0; i < window.localStorage.length; i++) {
+    const fullKey = window.localStorage.key(i);
+
+    if (fullKey && fullKey.startsWith(NAMESPACE)) {
+      const key = fullKey.substring(NAMESPACE.length);
+
+      if (_pattern.test(fullKey)) {
+        const item = get<T>(key)!;
+        if (item) {
+          items.push({ key: key, item });
+        }
+      }
+    }
+  }
+
+  return items;
+}
+
 function set<T>(key: string, value: T, ttlSeconds: number = DEFAULT_TTL): boolean {
   try {
     let success = false;
     if (canCache) {
-      const cachable: Cachable<T> = {
+      const cachable: Cacheable<T> = {
         expiresAfter: Date.now() + ttlSeconds * 1000,
         value,
       };
@@ -105,6 +133,7 @@ function removeNamespace(suffix: string = '') {
 
 export const LocalCache = {
   get,
+  getByKeyPattern,
   set,
   remove,
   removeAll,

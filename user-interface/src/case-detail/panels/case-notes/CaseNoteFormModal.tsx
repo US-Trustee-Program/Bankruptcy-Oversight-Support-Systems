@@ -1,6 +1,6 @@
 import './CaseNoteFormModal.scss';
 import Alert, { AlertDetails, AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { ModalRefType, OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import Input from '@/lib/components/uswds/Input';
 import Modal from '@/lib/components/uswds/modal/Modal';
@@ -47,11 +47,13 @@ type CallbackFunction = (noteId?: string) => void;
 
 export type CaseNoteFormModalOpenProps = {
   id?: string;
-  title?: string;
-  content?: string;
+  title: string;
+  content: string;
   caseId: string;
   callback: CallbackFunction;
   openModalButtonRef: OpenModalButtonRef;
+  initialTitle: string;
+  initialContent: string;
 };
 
 export interface CaseNoteFormModalRef extends ModalRefType {
@@ -62,15 +64,20 @@ export interface CaseNoteFormModalRef extends ModalRefType {
 export type CaseNoteFormModalProps = {
   modalId: string;
   alertMessage?: AlertDetails;
+  onModalClosed?: (caseId: string) => void;
 };
 
 const defaultModalOpenOptions: CaseNoteFormModalOpenProps = {
   caseId: '',
+  title: '',
+  content: '',
   callback: () => {},
   openModalButtonRef: {
     focus: () => {},
     disableButton: (_state: boolean) => {},
   },
+  initialTitle: '',
+  initialContent: '',
 };
 
 function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNoteFormModalRef>) {
@@ -82,10 +89,9 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     useState<CaseNoteFormModalOpenProps>(defaultModalOpenOptions);
   const [noteModalTitle, setNoteModalTitle] = useState<string>('');
   const [cancelButtonLabel, setCancelButtonLabel] = useState<string>('');
-  const [formValuesFromShowOptions, setFormValuesFromShowOptions] = useState<CaseNoteInput | null>(
-    null,
-  );
   const [caseNoteFormError, setCaseNoteFormError] = useState<string>('');
+  const [initialTitle, setInitialTitle] = useState<string>('');
+  const [initialContent, setInitialContent] = useState<string>('');
   const alertRef = useRef<AlertRefType>(null);
 
   const modalRef = useRef<ModalRefType>(null);
@@ -102,23 +108,25 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     }
   }
 
-  function toggleButtonOnDirtyForm() {
-    const cachedData = LocalFormCache.getForm(formKey) as CaseNoteInput;
-    const dirty =
-      cachedData &&
-      formValuesFromShowOptions &&
-      (formValuesFromShowOptions.title !== cachedData.title ||
-        formValuesFromShowOptions.content !== cachedData.content);
-    disableSubmitButton(!dirty);
+  function toggleButtonOnDirtyForm(initialTitle: string, initialContent: string) {
+    setTimeout(() => {
+      const notSavable =
+        titleInputRef.current?.getValue() === '' ||
+        contentInputRef.current?.getValue() === '' ||
+        (initialTitle === titleInputRef.current?.getValue() &&
+          initialContent === contentInputRef.current?.getValue());
+
+      disableSubmitButton(notSavable);
+    }, 10);
   }
 
   function saveFormData(data: CaseNoteInput) {
-    if (data.title?.length > 0 || data.content?.length > 0) {
+    if (formKey && (data.title?.length > 0 || data.content?.length > 0)) {
       LocalFormCache.saveForm(formKey, data);
-    } else {
+    } else if (formKey) {
       LocalFormCache.clearForm(formKey);
     }
-    toggleButtonOnDirtyForm();
+    toggleButtonOnDirtyForm(initialTitle, initialContent);
   }
 
   function handleTitleChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -143,7 +151,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     LocalFormCache.clearForm(formKey);
     setCaseNoteFormError('');
     alertRef.current?.hide();
-    toggleButtonOnDirtyForm();
+    toggleButtonOnDirtyForm(initialTitle, initialContent);
   }
 
   function disableFormFields(disabled: boolean) {
@@ -248,7 +256,10 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     },
     cancelButton: {
       label: cancelButtonLabel,
-      onClick: clearCaseNoteForm,
+      onClick: () => {
+        clearCaseNoteForm();
+        hide();
+      },
     },
   };
 
@@ -259,31 +270,17 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
       const formKey = buildCaseNoteFormKey(showProps.caseId);
       setFormKey(formKey);
       setModalOpenOptions(showProps);
-      setFormValuesFromShowOptions({
-        caseId: showProps.caseId,
-        title: showProps.title ?? '',
-        content: showProps.content ?? '',
-      });
-
+      setInitialTitle(showProps.initialTitle);
+      setInitialContent(showProps.initialContent);
       titleInputRef.current?.setValue(showProps.title ?? '');
       contentInputRef.current?.setValue(showProps.content ?? '');
-
-      const formData = LocalFormCache.getForm(formKey) as CaseNoteInput;
-      if (
-        formData &&
-        formData.caseId === showProps.caseId &&
-        (formData.title?.length > 0 || formData.content?.length > 0)
-      ) {
-        titleInputRef.current?.setValue(formData.title);
-        contentInputRef.current?.setValue(formData.content);
-      }
 
       if (modalRef.current?.show) {
         const showOptions = {
           openModalButtonRef: showProps.openModalButtonRef,
         };
         modalRef.current?.show(showOptions);
-        toggleButtonOnDirtyForm();
+        toggleButtonOnDirtyForm(showProps.initialTitle, showProps.initialContent);
       }
     }
   }
@@ -292,7 +289,11 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     if (modalRef.current?.hide) {
       modalRef.current?.hide({});
     }
-    setFormValuesFromShowOptions(null);
+
+    if (modalOpenOptions.caseId && props.onModalClosed) {
+      props.onModalClosed(modalOpenOptions.caseId);
+    }
+
     setModalOpenOptions(defaultModalOpenOptions);
   }
 
@@ -302,6 +303,10 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
       hide,
     };
   });
+
+  useEffect(() => {
+    disableSubmitButton(true);
+  }, []);
 
   return (
     <Modal

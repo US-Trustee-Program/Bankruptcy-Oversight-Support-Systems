@@ -9,11 +9,19 @@ import { CamsRole } from '@common/cams/roles';
 import Api2 from '@/lib/models/api2';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { formatDate } from '@/lib/utils/datetime';
+import LocalFormCache from '@/lib/utils/local-form-cache';
+import { Cacheable } from '@/lib/utils/local-cache';
+import { CaseNoteInput } from '@common/cams/cases';
+import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 
 describe('MyCasesScreen', () => {
   const user: CamsUser = MockData.getCamsUser({});
 
   beforeEach(() => {
+    const mockFeatureFlags = {
+      'draft-case-note-alert': true,
+    };
+    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
   });
 
@@ -101,4 +109,91 @@ describe('MyCasesScreen', () => {
     expect(body?.childNodes.length).toEqual(1);
     expect(body?.childNodes[0]).toContainHTML(expectedDiv);
   });
+
+  const now = new Date().toISOString();
+  const cachedNotesCases = [
+    {
+      caseName: '1 case note',
+      expectedAlertText: 'You have a draft case note on case 00-12345. It will expire on',
+      cachedValues: [
+        {
+          key: 'foo1',
+          item: {
+            expiresAfter: new Date(MockData.someDateAfterThisDate(now, 10)).valueOf(),
+            value: { title: 'title', content: 'content', caseId: '081-00-12345' },
+          },
+        },
+      ],
+    },
+    {
+      caseName: '2 case notes',
+      expectedAlertText:
+        'You have draft case notes on cases 00-12345 and 00-54321. The draft on case number',
+      cachedValues: [
+        {
+          key: 'foo1',
+          item: {
+            expiresAfter: new Date(MockData.someDateAfterThisDate(now, 10)).valueOf(),
+            value: { title: 'title', content: 'content', caseId: '081-00-12345' },
+          },
+        },
+        {
+          key: 'foo2',
+          item: {
+            expiresAfter: new Date(MockData.someDateAfterThisDate(now, 10)).valueOf(),
+            value: { title: 'title', content: 'content', caseId: '081-00-54321' },
+          },
+        },
+      ],
+    },
+    {
+      caseName: '3 case notes',
+      expectedAlertText:
+        'You have draft case notes on cases 00-12345, 00-54321, and 00-54322. The draft on case number',
+      cachedValues: [
+        {
+          key: 'foo1',
+          item: {
+            expiresAfter: new Date(MockData.someDateAfterThisDate(now, 10)).valueOf(),
+            value: { title: 'title', content: 'content', caseId: '081-00-12345' },
+          },
+        },
+        {
+          key: 'foo2',
+          item: {
+            expiresAfter: new Date(MockData.someDateAfterThisDate(now, 10)).valueOf(),
+            value: { title: 'title', content: 'content', caseId: '081-00-54321' },
+          },
+        },
+        {
+          key: 'foo3',
+          item: {
+            expiresAfter: new Date(MockData.someDateAfterThisDate(now, 10)).valueOf(),
+            value: { title: 'title', content: 'content', caseId: '081-00-54322' },
+          },
+        },
+      ],
+    },
+  ];
+  test.each(cachedNotesCases)(
+    'should display alert if cache holds $caseName',
+    (args: {
+      caseName: string;
+      expectedAlertText: string;
+      cachedValues: Array<{ key: string; item: Cacheable<CaseNoteInput> }>;
+    }) => {
+      vi.spyOn(LocalFormCache, 'getFormsByPattern').mockImplementation((_pattern: RegExp) => {
+        return args.cachedValues;
+      });
+
+      render(
+        <BrowserRouter>
+          <MyCasesScreen></MyCasesScreen>
+        </BrowserRouter>,
+      );
+      const alertMessage = document.querySelector('.draft-notes-alert-message');
+      expect(alertMessage).toBeInTheDocument();
+      expect(alertMessage).toHaveTextContent(args.expectedAlertText);
+    },
+  );
 });

@@ -11,6 +11,7 @@ export const PRIVILEGED_IDENTITY_MANAGEMENT = 'privileged-identity-management';
 export const STAFF_ASSIGNMENT_FILTER_ENABLED = 'staff-assignment-filter-enabled';
 export const SYSTEM_MAINTENANCE_BANNER = 'system-maintenance-banner';
 export const TRANSFER_ORDERS_ENABLED = 'transfer-orders-enabled';
+export const DRAFT_CASE_NOTE_ALERT_ENABLED = 'draft-case-note-alert';
 
 export default function useFeatureFlags(): FeatureFlagSet {
   const config = getFeatureFlagConfiguration();

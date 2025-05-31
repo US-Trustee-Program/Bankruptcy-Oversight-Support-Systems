@@ -1,27 +1,37 @@
-import { DAY } from './datetime';
-import LocalCache from './local-cache';
+import { THREE_DAYS } from './datetime';
+import LocalCache, { Cacheable } from './local-cache';
 
-const NAMESPACE = 'form:';
+const FORM_NAMESPACE = 'form:';
 
-const { get, set, remove, removeNamespace } = LocalCache;
+const { get, getByKeyPattern, set, remove, removeNamespace } = LocalCache;
 
-function getForm(key: string): object | null {
-  const formKey = NAMESPACE + key;
-  return get<object>(formKey);
+function getForm<T>(key: string): Cacheable<T> | null {
+  const formKey = FORM_NAMESPACE + key;
+  return get<object>(formKey) as Cacheable<T>;
 }
 
 function saveForm(key: string, data: object) {
-  const formKey = NAMESPACE + key;
-  set<object>(formKey, data, DAY);
+  const formKey = FORM_NAMESPACE + key;
+  set<object>(formKey, data, THREE_DAYS);
 }
 
 function clearForm(key: string) {
-  const formKey = NAMESPACE + key;
+  const formKey = FORM_NAMESPACE + key;
   remove(formKey);
 }
 
 function removeAll() {
-  removeNamespace(NAMESPACE);
+  removeNamespace(FORM_NAMESPACE);
+}
+
+function getFormsByPattern<T>(pattern: RegExp): Array<{ key: string; item: Cacheable<T> }> {
+  const regExString = pattern.source.replace('^', `^${FORM_NAMESPACE}`);
+  return getByKeyPattern<T>(new RegExp(regExString, pattern.flags)).map((cached) => {
+    return {
+      key: cached.key.replace(FORM_NAMESPACE, ''),
+      item: cached.item,
+    };
+  });
 }
 
 const LocalFormCache = {
@@ -29,6 +39,7 @@ const LocalFormCache = {
   saveForm,
   clearForm,
   removeAll,
+  getFormsByPattern,
 };
 
 export default LocalFormCache;

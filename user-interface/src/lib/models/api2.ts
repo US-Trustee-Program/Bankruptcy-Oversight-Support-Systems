@@ -214,7 +214,7 @@ function withCache(cacheOptions: CacheOptions): Pick<GenericApiClient, 'get'> {
       if (LocalCache.isCacheEnabled()) {
         const cached = LocalCache.get<ResponseBody<T>>(key);
         if (cached) {
-          return Promise.resolve(cached);
+          return Promise.resolve(cached.value);
         } else {
           const response = await api().get<T>(path, options);
           LocalCache.set<ResponseBody<T>>(key, response, cacheOptions.ttl);
