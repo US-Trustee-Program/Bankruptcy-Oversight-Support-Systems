@@ -216,13 +216,13 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
   }, [focusId, openEditModalButtonRefs.current]);
 
   useEffect(() => {
-    const draftNote = LocalFormCache.getForm<Cacheable<CaseNoteInput>>(`case-notes-${caseId}`);
+    const draftNote = LocalFormCache.getForm<CaseNoteInput>(`case-notes-${caseId}`);
     setDraftNote(draftNote);
   }, []);
 
   const handleModalClosed = (eventCaseId: string, edit: boolean = false) => {
     if (eventCaseId === caseId && !edit) {
-      const draftNote = LocalFormCache.getForm<Cacheable<CaseNoteInput>>(`case-notes-${caseId}`);
+      const draftNote = LocalFormCache.getForm<CaseNoteInput>(`case-notes-${caseId}`);
       setDraftNote(draftNote);
     }
   };
