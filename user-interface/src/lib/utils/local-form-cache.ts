@@ -26,7 +26,7 @@ function removeAll() {
 
 function getFormsByPattern<T>(pattern: RegExp): Array<{ key: string; item: Cacheable<T> }> {
   const regExString = pattern.source.replace('^', `^${FORM_NAMESPACE}`);
-  return getByKeyPattern<T>(new RegExp(regExString)).map((cached) => {
+  return getByKeyPattern<T>(new RegExp(regExString, pattern.flags)).map((cached) => {
     return {
       key: cached.key.replace(FORM_NAMESPACE, ''),
       item: cached.item,

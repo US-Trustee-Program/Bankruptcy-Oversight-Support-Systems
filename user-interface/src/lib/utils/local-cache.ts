@@ -62,7 +62,7 @@ function getByKeyPattern<T>(pattern: RegExp): Array<{ key: string; item: Cacheab
   const items: Array<{ key: string; item: Cacheable<T> }> = [];
 
   const regExString = pattern.source.replace('^', `^${NAMESPACE}`);
-  const _pattern = new RegExp(regExString);
+  const _pattern = new RegExp(regExString, pattern.flags);
 
   if (!window.localStorage) {
     return items;
