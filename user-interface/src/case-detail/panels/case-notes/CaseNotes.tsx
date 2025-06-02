@@ -220,8 +220,8 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
     setDraftNote(draftNote);
   }, []);
 
-  const handleModalClosed = (eventCaseId: string, edit: boolean = false) => {
-    if (eventCaseId === caseId && !edit) {
+  const handleModalClosed = (eventCaseId: string, mode: 'create' | 'edit') => {
+    if (eventCaseId === caseId && mode !== 'edit') {
       const draftNote = LocalFormCache.getForm<CaseNoteInput>(`case-notes-${caseId}`);
       setDraftNote(draftNote);
     }

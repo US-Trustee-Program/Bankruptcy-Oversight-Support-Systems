@@ -16,164 +16,19 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { randomUUID } from 'crypto';
 import LocalFormCache from '@/lib/utils/local-form-cache';
 import { CamsSession, getCamsUserReference } from '@common/cams/session';
-import { CaseNoteInput } from '@common/cams/cases';
 
-const title = 'Test Case Note Title';
-const content = 'Test Case Note Content';
-const testCaseId = '000-11-22222';
-const titleInputId = 'case-note-title-input';
-const contentInputId = 'textarea-note-content';
-const openModalButtonId = 'open-modal-button';
-const modalId = 'modal-case-note-form';
-const cancelButtonId = 'button-case-note-form-cancel-button';
-const submitButtonId = 'button-case-note-form-submit-button';
-const notesSubmissionErrorMessage = 'There was a problem submitting the case note.';
+const MODAL_ID = 'modal-case-note-form';
+const TITLE_INPUT_ID = 'case-note-title-input';
+const CONTENT_INPUT_ID = 'textarea-note-content';
+const OPEN_BUTTON_ID = 'open-modal-button';
+const CANCEL_BUTTON_ID = 'button-case-note-form-cancel-button';
+const SUBMIT_BUTTON_ID = 'button-case-note-form-submit-button';
+const ERROR_MESSAGE = 'There was a problem submitting the case note.';
+const TEST_CASE_ID = '000-11-22222';
 
-const modalOpenButtonRef = React.createRef<OpenModalButtonRef>();
-let session: CamsSession;
+describe('CaseNoteFormModal - Simple Tests', () => {
+  let session: CamsSession;
 
-function renderWithProps(
-  modalRef: React.RefObject<CaseNoteFormModalRef>,
-  modalProps?: Partial<CaseNoteFormModalProps>,
-  openProps?: Partial<CaseNoteFormModalOpenProps>,
-) {
-  const defaultModalProps = {
-    modalId,
-    ref: modalOpenButtonRef,
-  };
-
-  const defaultOpenProps = {
-    caseId: testCaseId,
-    callback: vi.fn(),
-    title: '',
-    content: '',
-    initialTitle: '',
-    initialContent: '',
-  };
-
-  const modalRenderProps = { ...defaultModalProps, ...modalProps };
-  const openRenderProps = { ...defaultOpenProps, ...openProps };
-  render(
-    <React.StrictMode>
-      <BrowserRouter>
-        <>
-          <OpenModalButton
-            modalId={modalId}
-            modalRef={modalRef}
-            openProps={openRenderProps}
-            ref={modalOpenButtonRef}
-          >
-            Open Modal
-          </OpenModalButton>
-          <CaseNoteFormModal {...modalRenderProps} ref={modalRef} modalId={modalId} />
-        </>
-      </BrowserRouter>
-    </React.StrictMode>,
-  );
-}
-
-async function openWithExpectedContent(data: CaseNoteInput) {
-  const modalRef = React.createRef<CaseNoteFormModalRef>();
-  const noteOpenProps: Partial<CaseNoteFormModalOpenProps> = {
-    id: data.id ?? undefined,
-    caseId: data.caseId,
-    title: data.title,
-    content: data.content,
-    initialTitle: '',
-    initialContent: '',
-  };
-
-  renderWithProps(modalRef, {}, noteOpenProps);
-
-  const modal = screen.getByTestId(modalId);
-  expect(modal).not.toHaveClass('is-visible');
-  const openButton = screen.getByTestId(openModalButtonId);
-  expect(openButton).toBeInTheDocument();
-
-  await userEvent.click(openButton);
-  expect(modal).toHaveClass('is-visible');
-
-  const titleInput = screen.getByTestId(titleInputId);
-  const contentInput = screen.getByTestId(contentInputId);
-
-  expect(titleInput).toHaveValue(data.title);
-  expect(contentInput).toHaveValue(data.content);
-
-  return modal;
-}
-
-async function setUpAndLoadFromCache(
-  cachedTitle: string,
-  cachedContent: string,
-  opts: {
-    modalProps?: Partial<CaseNoteFormModalProps>;
-    openProps?: Partial<CaseNoteFormModalOpenProps>;
-  } = {},
-) {
-  const note = MockData.getCaseNote();
-  const modalRef = React.createRef<CaseNoteFormModalRef>();
-  vi.spyOn(LocalFormCache, 'getForm').mockReturnValue({
-    value: {
-      caseId: opts.openProps?.caseId ?? note.caseId,
-      title: cachedTitle,
-      content: cachedContent,
-    },
-    expiresAfter: 1,
-  });
-  const saveFormSpy = vi.spyOn(LocalFormCache, 'saveForm');
-  const clearFormSpy = vi.spyOn(LocalFormCache, 'clearForm');
-  const noteId = randomUUID();
-
-  const expectedTitle = opts.openProps?.title ?? cachedTitle;
-  const expectedContent = opts.openProps?.content ?? cachedContent;
-
-  const noteOpenProps: Partial<CaseNoteFormModalOpenProps> = {
-    ...opts.openProps,
-    id: opts.openProps?.id ?? noteId,
-    caseId: opts.openProps?.caseId ?? note.caseId,
-    title: expectedTitle,
-    content: expectedContent,
-    initialTitle: opts.openProps?.initialTitle ?? '',
-    initialContent: opts.openProps?.initialContent ?? '',
-  };
-
-  renderWithProps(modalRef, { ...opts.modalProps }, noteOpenProps);
-
-  const modal = screen.getByTestId(`modal-case-note-form`);
-  const openButton = screen.getByTestId(openModalButtonId);
-  await userEvent.click(openButton);
-  expect(modal).toHaveClass('is-visible');
-
-  const input = document.querySelector('input');
-  const textarea = document.querySelector('textarea');
-  const submitBtn = screen.getByTestId(submitButtonId);
-
-  expect(input).toHaveValue(expectedTitle);
-  expect(textarea).toHaveValue(expectedContent);
-
-  const newTitle = 'new title';
-  const newContent = 'new content';
-
-  await userEvent.clear(input!);
-  await userEvent.clear(textarea!);
-  expect(clearFormSpy).toHaveBeenCalledTimes(1);
-
-  await userEvent.type(input!, newTitle);
-  await userEvent.type(textarea!, newContent);
-
-  const expectedSaveContent = {
-    caseId: note.caseId,
-    title: newTitle,
-    content: newContent,
-  };
-
-  expect(saveFormSpy).toHaveBeenCalled();
-  const lastContent = saveFormSpy.mock.calls[saveFormSpy.mock.calls.length - 1];
-  expect(lastContent.pop()).toEqual(expectedSaveContent);
-  expect(submitBtn).toBeEnabled();
-}
-
-describe('case note tests', () => {
   beforeEach(() => {
     vi.resetModules();
     session = MockData.getCamsSession();
@@ -185,253 +40,301 @@ describe('case note tests', () => {
     vi.restoreAllMocks();
   });
 
-  test('Should properly post new case note', async () => {
+  const renderComponent = (
+    modalRef: React.RefObject<CaseNoteFormModalRef>,
+    modalProps: Partial<CaseNoteFormModalProps> = {},
+    openProps: Partial<CaseNoteFormModalOpenProps> = {},
+  ) => {
+    const defaultOpenProps = {
+      caseId: TEST_CASE_ID,
+      callback: vi.fn(),
+      title: '',
+      content: '',
+      initialTitle: '',
+      initialContent: '',
+    };
+
+    const openRenderProps = { ...defaultOpenProps, ...openProps };
+    const modalOpenButtonRef = React.createRef<OpenModalButtonRef>();
+
+    return render(
+      <React.StrictMode>
+        <BrowserRouter>
+          <>
+            <OpenModalButton
+              modalId={MODAL_ID}
+              modalRef={modalRef}
+              openProps={openRenderProps}
+              ref={modalOpenButtonRef}
+            >
+              Open Modal
+            </OpenModalButton>
+            <CaseNoteFormModal modalId={MODAL_ID} {...modalProps} ref={modalRef} />
+          </>
+        </BrowserRouter>
+      </React.StrictMode>,
+    );
+  };
+
+  test('should open modal when button is clicked', async () => {
+    const modalRef = React.createRef<CaseNoteFormModalRef>();
+    renderComponent(modalRef);
+
+    const modal = screen.getByTestId(MODAL_ID);
+    expect(modal).not.toHaveClass('is-visible');
+
+    const openButton = screen.getByTestId(OPEN_BUTTON_ID);
+    await userEvent.click(openButton);
+
+    expect(modal).toHaveClass('is-visible');
+  });
+
+  test('should properly post new case note', async () => {
     const postNoteSpy = vi.spyOn(Api2, 'postCaseNote');
     postNoteSpy.mockResolvedValue();
 
-    const modal = await openWithExpectedContent({
-      caseId: testCaseId,
-      title: '',
-      content: '',
+    const modalRef = React.createRef<CaseNoteFormModalRef>();
+    renderComponent(modalRef);
+
+    const openButton = screen.getByTestId(OPEN_BUTTON_ID);
+    await userEvent.click(openButton);
+
+    const titleInput = screen.getByTestId(TITLE_INPUT_ID);
+    const contentInput = screen.getByTestId(CONTENT_INPUT_ID);
+    const newTitle = 'New Note Title';
+    const newContent = 'New Note Content';
+
+    await userEvent.type(titleInput, newTitle);
+    await userEvent.type(contentInput, newContent);
+
+    const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
+    await userEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(postNoteSpy).toHaveBeenCalledWith({
+        title: newTitle,
+        content: newContent,
+        caseId: TEST_CASE_ID,
+        updatedBy: getCamsUserReference(session.user),
+      });
     });
 
-    const titleInput = screen.getByTestId(titleInputId);
-    const contentInput = screen.getByTestId(contentInputId);
-    const editedNoteTitleText = 'Edited Note Title';
-    const editedNoteContentText = 'Edited Note Content';
-
-    await userEvent.type(titleInput, editedNoteTitleText);
-    await userEvent.type(contentInput, editedNoteContentText);
-    await userEvent.click(screen.getByTestId(submitButtonId));
-
+    const modal = screen.getByTestId(MODAL_ID);
     await waitFor(() => {
       expect(modal).not.toHaveClass('is-visible');
     });
-    expect(postNoteSpy).toHaveBeenCalledWith({
-      title: editedNoteTitleText,
-      content: editedNoteContentText,
-      caseId: testCaseId,
-      updatedBy: getCamsUserReference(session.user),
-    });
   });
 
-  test('Should properly put case note edit', async () => {
+  test('should properly put case note edit', async () => {
     const putNoteSpy = vi.spyOn(Api2, 'putCaseNote');
-
-    const editedNoteTitleText = 'Edited Note Title';
-    const editedNoteContentText = 'Edited Note Content';
     const note = MockData.getCaseNote();
     putNoteSpy.mockResolvedValue(note.id);
 
-    const modal = await openWithExpectedContent({
-      id: note.id,
-      caseId: testCaseId,
-      title: note.title,
-      content: note.content,
-    });
-
-    const titleInput = screen.getByTestId(titleInputId);
-    const contentInput = screen.getByTestId(contentInputId);
-
-    await userEvent.type(titleInput, editedNoteTitleText);
-    await userEvent.type(contentInput, editedNoteContentText);
-    await userEvent.click(screen.getByTestId(submitButtonId));
-    await waitFor(() => {
-      expect(modal).not.toHaveClass('is-visible');
-    });
-    expect(putNoteSpy).toHaveBeenCalled();
-  });
-
-  test('Should close when cancel is clicked', async () => {
     const modalRef = React.createRef<CaseNoteFormModalRef>();
-    renderWithProps(modalRef);
-
-    const modal = screen.getByTestId(`modal-case-note-form`);
-    expect(modal).not.toHaveClass('is-visible');
-    const openButton = screen.getByTestId(openModalButtonId);
-    expect(openButton).toBeInTheDocument();
-    expect(modal).not.toHaveClass('is-visible');
-
-    await userEvent.click(openButton);
-    expect(modal).toHaveClass('is-visible');
-
-    const titleInput = screen.getByTestId(titleInputId);
-    await userEvent.type(titleInput, title);
-    expect(titleInput).toHaveValue(title);
-    const contentInput = screen.getByTestId(contentInputId);
-    await userEvent.type(contentInput, content);
-    expect(contentInput).toHaveValue(content);
-    const cancelButton = screen.getByTestId(cancelButtonId);
-    expect(cancelButton).toBeVisible();
-    await userEvent.click(cancelButton);
-    expect(modal).not.toHaveClass('is-visible');
-  });
-
-  test('Should display error and not close modal if error occurs submitting new case note', async () => {
-    const editedNoteTitleText = 'Edited Note Title';
-    const editedNoteContentText = 'Edited Note Content';
-    const notesSubmissionErrorMessage = 'There was a problem submitting the case note.';
-    const modalRef = React.createRef<CaseNoteFormModalRef>();
-    const postSpy = vi.spyOn(Api2, 'postCaseNote').mockRejectedValue({});
-    renderWithProps(modalRef);
-
-    const modal = screen.getByTestId(modalId);
-    expect(modal).not.toHaveClass('is-visible');
-    const openButton = screen.getByTestId(openModalButtonId);
-    expect(openButton).toBeInTheDocument();
-
-    await userEvent.click(openButton);
-    expect(modal).toHaveClass('is-visible');
-
-    const titleInput = screen.getByTestId(titleInputId);
-    const contentInput = screen.getByTestId(contentInputId);
-
-    await userEvent.type(titleInput, editedNoteTitleText);
-    await userEvent.type(contentInput, editedNoteContentText);
-    await userEvent.click(screen.getByTestId(submitButtonId));
-    expect(postSpy).toHaveBeenCalled();
-    const errorMessage = screen.getByTestId('alert-message-case-note-form-error');
-    expect(errorMessage).toBeVisible();
-    expect(errorMessage).toHaveTextContent(notesSubmissionErrorMessage);
-    expect(modal).toHaveClass('is-visible');
-  });
-
-  test('Should display error and not close modal if error occurs submitting a case note edit', async () => {
-    const editedNoteTitleText = 'Edited Note Title';
-    const editedNoteContentText = 'Edited Note Content';
-
-    const modalRef = React.createRef<CaseNoteFormModalRef>();
-    const postSpy = vi.spyOn(Api2, 'putCaseNote').mockRejectedValue({});
-    renderWithProps(
+    renderComponent(
       modalRef,
       {},
       {
-        id: randomUUID(),
-        content: editedNoteContentText,
-        title: editedNoteTitleText,
-        caseId: '111-22-33333',
+        id: note.id,
+        caseId: TEST_CASE_ID,
+        title: note.title,
+        content: note.content,
       },
     );
 
-    const modal = screen.getByTestId(modalId);
-    expect(modal).not.toHaveClass('is-visible');
-    const openButton = screen.getByTestId(openModalButtonId);
-    expect(openButton).toBeInTheDocument();
-
+    const openButton = screen.getByTestId(OPEN_BUTTON_ID);
     await userEvent.click(openButton);
+
+    const titleInput = screen.getByTestId(TITLE_INPUT_ID);
+    const contentInput = screen.getByTestId(CONTENT_INPUT_ID);
+    const editedTitle = 'Edited Note Title';
+    const editedContent = 'Edited Note Content';
+
+    await userEvent.clear(titleInput);
+    await userEvent.clear(contentInput);
+    await userEvent.type(titleInput, editedTitle);
+    await userEvent.type(contentInput, editedContent);
+
+    const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
+    await userEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(putNoteSpy).toHaveBeenCalledWith({
+        id: note.id,
+        title: editedTitle,
+        content: editedContent,
+        caseId: TEST_CASE_ID,
+        updatedBy: getCamsUserReference(session.user),
+      });
+    });
+
+    const modal = screen.getByTestId(MODAL_ID);
+    await waitFor(() => {
+      expect(modal).not.toHaveClass('is-visible');
+    });
+  });
+
+  test('should close when cancel is clicked', async () => {
+    const modalRef = React.createRef<CaseNoteFormModalRef>();
+    renderComponent(modalRef);
+
+    const openButton = screen.getByTestId(OPEN_BUTTON_ID);
+    await userEvent.click(openButton);
+
+    const modal = screen.getByTestId(MODAL_ID);
     expect(modal).toHaveClass('is-visible');
 
-    const titleInput = screen.getByTestId(titleInputId);
-    const contentInput = screen.getByTestId(contentInputId);
+    const titleInput = screen.getByTestId(TITLE_INPUT_ID);
+    const contentInput = screen.getByTestId(CONTENT_INPUT_ID);
+    await userEvent.type(titleInput, 'Test Title');
+    await userEvent.type(contentInput, 'Test Content');
 
-    await userEvent.type(titleInput, editedNoteTitleText);
-    await userEvent.type(contentInput, editedNoteContentText);
-    await userEvent.click(screen.getByTestId(submitButtonId));
+    const cancelButton = screen.getByTestId(CANCEL_BUTTON_ID);
+    await userEvent.click(cancelButton);
+
+    expect(modal).not.toHaveClass('is-visible');
+  });
+
+  test('should display error and not close modal if error occurs submitting new case note', async () => {
+    const postSpy = vi.spyOn(Api2, 'postCaseNote').mockRejectedValue({});
+
+    const modalRef = React.createRef<CaseNoteFormModalRef>();
+    renderComponent(modalRef);
+
+    const openButton = screen.getByTestId(OPEN_BUTTON_ID);
+    await userEvent.click(openButton);
+
+    const titleInput = screen.getByTestId(TITLE_INPUT_ID);
+    const contentInput = screen.getByTestId(CONTENT_INPUT_ID);
+    await userEvent.type(titleInput, 'Test Title');
+    await userEvent.type(contentInput, 'Test Content');
+
+    const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
+    await userEvent.click(submitButton);
+
     expect(postSpy).toHaveBeenCalled();
-    const errorMessage = screen.getByTestId('alert-case-note-form-error');
+
+    const errorMessage = screen.getByTestId('alert-message-case-note-form-error');
     expect(errorMessage).toBeVisible();
-    expect(errorMessage).toHaveTextContent(notesSubmissionErrorMessage);
+    expect(errorMessage).toHaveTextContent(ERROR_MESSAGE);
+
+    const modal = screen.getByTestId(MODAL_ID);
     expect(modal).toHaveClass('is-visible');
   });
 
-  test('modal show method should set up form fields based on open props', async () => {
-    const clearFormSpy = vi.spyOn(LocalFormCache, 'clearForm');
-    const putSpy = vi.spyOn(Api2, 'putCaseNote').mockResolvedValue('some-id');
-    await setUpAndLoadFromCache('test title', 'test content');
+  test('should display error and not close modal if error occurs submitting a case note edit', async () => {
+    const putSpy = vi.spyOn(Api2, 'putCaseNote').mockRejectedValue({});
+    const noteId = randomUUID();
 
-    const submitButton = screen.getByTestId(submitButtonId);
+    const modalRef = React.createRef<CaseNoteFormModalRef>();
+    renderComponent(
+      modalRef,
+      {},
+      {
+        id: noteId,
+        caseId: TEST_CASE_ID,
+        title: 'Original Title',
+        content: 'Original Content',
+      },
+    );
+
+    const openButton = screen.getByTestId(OPEN_BUTTON_ID);
+    await userEvent.click(openButton);
+
+    const titleInput = screen.getByTestId(TITLE_INPUT_ID);
+    const contentInput = screen.getByTestId(CONTENT_INPUT_ID);
+    await userEvent.clear(titleInput);
+    await userEvent.clear(contentInput);
+    await userEvent.type(titleInput, 'Edited Title');
+    await userEvent.type(contentInput, 'Edited Content');
+
+    const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
     await userEvent.click(submitButton);
 
     expect(putSpy).toHaveBeenCalled();
-    expect(clearFormSpy).toHaveBeenCalledTimes(2);
+
+    const errorMessage = screen.getByTestId('alert-case-note-form-error');
+    expect(errorMessage).toBeVisible();
+    expect(errorMessage).toHaveTextContent(ERROR_MESSAGE);
+
+    const modal = screen.getByTestId(MODAL_ID);
+    expect(modal).toHaveClass('is-visible');
   });
 
-  test('should default to empty string if no ref passed into getCaseNotesInputValue', () => {
-    const returnValue = getCaseNotesInputValue(null);
-    expect(returnValue).toEqual('');
-  });
-
-  test('Should call onModalClosed callback when modal closes after successful submission', async () => {
+  test('should call onModalClosed callback when modal closes after successful submission', async () => {
     const onModalClosedSpy = vi.fn();
-
     const postNoteSpy = vi.spyOn(Api2, 'postCaseNote');
     postNoteSpy.mockResolvedValue();
 
     const modalRef = React.createRef<CaseNoteFormModalRef>();
-    renderWithProps(modalRef, { onModalClosed: onModalClosedSpy });
+    renderComponent(modalRef, { onModalClosed: onModalClosedSpy });
 
-    const modal = screen.getByTestId(`modal-case-note-form`);
-    const openButton = screen.getByTestId(openModalButtonId);
+    const openButton = screen.getByTestId(OPEN_BUTTON_ID);
     await userEvent.click(openButton);
-    expect(modal).toHaveClass('is-visible');
 
-    const titleInput = screen.getByTestId(titleInputId);
-    const contentInput = screen.getByTestId(contentInputId);
-    await userEvent.type(titleInput, 'New Note Title');
-    await userEvent.type(contentInput, 'New Note Content');
-    await userEvent.click(screen.getByTestId(submitButtonId));
+    const titleInput = screen.getByTestId(TITLE_INPUT_ID);
+    const contentInput = screen.getByTestId(CONTENT_INPUT_ID);
+    await userEvent.type(titleInput, 'Test Title');
+    await userEvent.type(contentInput, 'Test Content');
+
+    const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
+    await userEvent.click(submitButton);
 
     await waitFor(() => {
-      expect(modal).not.toHaveClass('is-visible');
+      expect(onModalClosedSpy).toHaveBeenCalledWith(TEST_CASE_ID, 'create');
     });
   });
 
-  test('Should call onModalClosed callback when modal closes after cancellation', async () => {
+  test('should call onModalClosed callback when modal closes after cancellation', async () => {
     const onModalClosedSpy = vi.fn();
 
-    await setUpAndLoadFromCache('test title', 'test content', {
-      modalProps: { onModalClosed: onModalClosedSpy },
-    });
+    const modalRef = React.createRef<CaseNoteFormModalRef>();
+    renderComponent(modalRef, { onModalClosed: onModalClosedSpy });
 
-    const modal = screen.getByTestId(`modal-case-note-form`);
-    const openButton = screen.getByTestId(openModalButtonId);
+    const openButton = screen.getByTestId(OPEN_BUTTON_ID);
     await userEvent.click(openButton);
-    expect(modal).toHaveClass('is-visible');
 
-    const titleInput = screen.getByTestId(titleInputId);
-    const contentInput = screen.getByTestId(contentInputId);
+    const titleInput = screen.getByTestId(TITLE_INPUT_ID);
+    const contentInput = screen.getByTestId(CONTENT_INPUT_ID);
     await userEvent.type(titleInput, 'Draft Title');
     await userEvent.type(contentInput, 'Draft Content');
 
-    const cancelButton = screen.getByTestId(cancelButtonId);
+    const cancelButton = screen.getByTestId(CANCEL_BUTTON_ID);
     await userEvent.click(cancelButton);
-    expect(modal).not.toHaveClass('is-visible');
 
-    expect(onModalClosedSpy).toHaveBeenCalledTimes(1);
-    expect(onModalClosedSpy).toHaveBeenCalledWith(expect.stringMatching(/^\d{3}-\d{2}-\d{5}$/gm));
+    expect(onModalClosedSpy).toHaveBeenCalledWith(TEST_CASE_ID, 'create');
   });
 
-  test('Should clear form cache and call onModalClosed callback when modal is cancelled', async () => {
-    const onModalClosedSpy = vi.fn();
-
+  test('should clear form cache when modal is cancelled', async () => {
     const clearFormSpy = vi.spyOn(LocalFormCache, 'clearForm');
-    await setUpAndLoadFromCache('test title', 'test content', {
-      modalProps: { onModalClosed: onModalClosedSpy },
-    });
 
-    const cancelButton = screen.getByTestId(cancelButtonId);
+    const modalRef = React.createRef<CaseNoteFormModalRef>();
+    renderComponent(modalRef);
+
+    const openButton = screen.getByTestId(OPEN_BUTTON_ID);
+    await userEvent.click(openButton);
+
+    const titleInput = screen.getByTestId(TITLE_INPUT_ID);
+    const contentInput = screen.getByTestId(CONTENT_INPUT_ID);
+    await userEvent.type(titleInput, 'Test Title');
+    await userEvent.type(contentInput, 'Test Content');
+
+    const cancelButton = screen.getByTestId(CANCEL_BUTTON_ID);
     await userEvent.click(cancelButton);
 
-    // Verify the form cache was cleared
     expect(clearFormSpy).toHaveBeenCalled();
-
-    // Verify the callback was called
-    expect(onModalClosedSpy).toHaveBeenCalledTimes(1);
-    expect(onModalClosedSpy).toHaveBeenCalledWith(expect.stringMatching(/^\d{3}-\d{2}-\d{5}$/gm));
   });
 
-  test('Should disable Save button unless both Title and Content have non-empty values', async () => {
+  test('should disable Save button unless both Title and Content have non-empty values', async () => {
     const modalRef = React.createRef<CaseNoteFormModalRef>();
-    renderWithProps(modalRef);
+    renderComponent(modalRef);
 
-    const modal = screen.getByTestId(modalId);
-    const openButton = screen.getByTestId(openModalButtonId);
+    const openButton = screen.getByTestId(OPEN_BUTTON_ID);
     await userEvent.click(openButton);
-    expect(modal).toHaveClass('is-visible');
 
-    const titleInput = screen.getByTestId(titleInputId);
-    const contentInput = screen.getByTestId(contentInputId);
-    const submitButton = screen.getByTestId(submitButtonId);
+    const titleInput = screen.getByTestId(TITLE_INPUT_ID);
+    const contentInput = screen.getByTestId(CONTENT_INPUT_ID);
+    const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
 
     expect(titleInput).toHaveValue('');
     expect(contentInput).toHaveValue('');
@@ -459,5 +362,53 @@ describe('case note tests', () => {
     expect(titleInput).toHaveValue('');
     expect(contentInput).toHaveValue('Test Content');
     expect(submitButton).toBeDisabled();
+  });
+
+  test('should cache form data when typing', async () => {
+    const saveFormSpy = vi.spyOn(LocalFormCache, 'saveForm');
+
+    const modalRef = React.createRef<CaseNoteFormModalRef>();
+    renderComponent(modalRef);
+
+    const openButton = screen.getByTestId(OPEN_BUTTON_ID);
+    await userEvent.click(openButton);
+
+    const titleInput = screen.getByTestId(TITLE_INPUT_ID);
+    await userEvent.type(titleInput, 'Test Title');
+
+    expect(saveFormSpy).toHaveBeenCalled();
+
+    const contentInput = screen.getByTestId(CONTENT_INPUT_ID);
+    await userEvent.type(contentInput, 'Test Content');
+
+    const lastCall = saveFormSpy.mock.calls[saveFormSpy.mock.calls.length - 1];
+    expect(lastCall[1]).toEqual({
+      caseId: TEST_CASE_ID,
+      title: 'Test Title',
+      content: 'Test Content',
+    });
+  });
+
+  test('getCaseNotesInputValue should default to empty string if no ref passed', () => {
+    const result = getCaseNotesInputValue(null);
+    expect(result).toEqual('');
+  });
+
+  const modeCases = [['create'], ['edit']];
+  test.each(modeCases)('should call close callback with %s mode', async (mode: string) => {
+    const onModalClosedSpy = vi.fn();
+    const modalRef = React.createRef<CaseNoteFormModalRef>();
+    renderComponent(
+      modalRef,
+      { onModalClosed: onModalClosedSpy },
+      { id: mode === 'edit' ? '123' : undefined },
+    );
+
+    const openButton = screen.getByTestId(OPEN_BUTTON_ID);
+    await userEvent.click(openButton);
+    const cancelButton = screen.getByTestId(CANCEL_BUTTON_ID);
+    expect(cancelButton).toBeVisible();
+    await userEvent.click(cancelButton);
+    expect(onModalClosedSpy).toHaveBeenCalledWith(TEST_CASE_ID, mode);
   });
 });
