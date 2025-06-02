@@ -64,7 +64,7 @@ export interface CaseNoteFormModalRef extends ModalRefType {
 export type CaseNoteFormModalProps = {
   modalId: string;
   alertMessage?: AlertDetails;
-  onModalClosed?: (caseId: string) => void;
+  onModalClosed?: (caseId: string, mode: 'create' | 'edit') => void;
 };
 
 const defaultModalOpenOptions: CaseNoteFormModalOpenProps = {
@@ -92,6 +92,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   const [caseNoteFormError, setCaseNoteFormError] = useState<string>('');
   const [initialTitle, setInitialTitle] = useState<string>('');
   const [initialContent, setInitialContent] = useState<string>('');
+  const [mode, setMode] = useState<'create' | 'edit'>('create');
   const alertRef = useRef<AlertRefType>(null);
 
   const modalRef = useRef<ModalRefType>(null);
@@ -265,6 +266,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
 
   function show(showProps: CaseNoteFormModalOpenProps) {
     setNoteModalTitle(`${showProps.id ? 'Edit' : 'Create'} Case Note`);
+    setMode(showProps.id ? 'edit' : 'create');
     setCancelButtonLabel(`${showProps.id ? 'Cancel' : 'Discard'}`);
     if (showProps) {
       const formKey = buildCaseNoteFormKey(showProps.caseId);
@@ -291,7 +293,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     }
 
     if (modalOpenOptions.caseId && props.onModalClosed) {
-      props.onModalClosed(modalOpenOptions.caseId);
+      props.onModalClosed(modalOpenOptions.caseId, mode);
     }
 
     setModalOpenOptions(defaultModalOpenOptions);
