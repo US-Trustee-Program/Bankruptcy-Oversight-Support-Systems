@@ -14,6 +14,7 @@ import { CaseNoteInput } from '@common/cams/cases';
 import { getCamsUserReference } from '@common/cams/session';
 import LocalStorage from '@/lib/utils/local-storage';
 import LocalFormCache from '@/lib/utils/local-form-cache';
+import Editor, { EditorRef } from '@/case-detail/panels/case-notes/Editor';
 
 const useThrottleCallback = (callback: () => void, delay: number) => {
   const isThrottled = useRef(false);
@@ -104,6 +105,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   const modalRef = useRef<ModalRefType>(null);
   const titleInputRef = useRef<TextAreaRef>(null);
   const contentInputRef = useRef<TextAreaRef>(null);
+  const editorRef = useRef<EditorRef>(null);
   const notesRequiredFieldsMessage = 'Title and content are both required inputs.';
   const notesSubmissionErrorMessage = 'There was a problem submitting the case note.';
   const session = LocalStorage.getSession();
@@ -353,6 +355,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
             onChange={handleContentChange}
             ref={contentInputRef}
           />
+          <Editor id="formatted-editor" ref={editorRef} />
         </div>
       }
     ></Modal>
