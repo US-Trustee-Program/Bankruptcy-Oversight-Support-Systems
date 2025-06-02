@@ -91,7 +91,9 @@ export interface ConsolidationOrdersRepository<T = ConsolidationOrder>
     Reads<T>,
     Deletes,
     Updates<T, T>,
-    Releasable {}
+    Releasable {
+  count: (keyRoot: string) => Promise<number>;
+}
 
 export interface UserSessionCacheRepository<T = CamsSession>
   extends Reads<T>,

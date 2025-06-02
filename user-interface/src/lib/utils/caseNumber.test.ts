@@ -4,7 +4,7 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import { waitFor } from '@testing-library/react';
 
 describe('Formatting case id', () => {
-  it('Should get case number from case id', async () => {
+  test('Should get case number from case id', async () => {
     const caseId = '081-11-22222';
     const caseNumber = '11-22222';
 
@@ -12,7 +12,7 @@ describe('Formatting case id', () => {
     expect(actual).toEqual(caseNumber);
   });
 
-  it('Should get case number from case id when the division is not present', async () => {
+  test('Should get case number from case id when the division is not present', async () => {
     const caseId = '11-22222';
     const caseNumber = '11-22222';
 
@@ -20,7 +20,7 @@ describe('Formatting case id', () => {
     expect(actual).toEqual(caseNumber);
   });
 
-  it('Should handle undefined input', async () => {
+  test('Should handle undefined input', async () => {
     const actual = getCaseNumber(undefined);
     expect(actual).toEqual('');
   });
