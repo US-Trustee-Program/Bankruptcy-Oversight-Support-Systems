@@ -188,3 +188,15 @@ export type RawOrderSync = {
 export type FlexibleTransferOrderAction = Partial<TransferOrderAction> & {
   newCase?: Partial<CaseSummary>;
 };
+
+export function generateConsolidationId(
+  jobId: number,
+  status: OrderStatus,
+  index?: number,
+): string {
+  const parts = [jobId, status];
+  if (index !== undefined && status !== 'pending') {
+    parts.push(index);
+  }
+  return parts.join('/');
+}
