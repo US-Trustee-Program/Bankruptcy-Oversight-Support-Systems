@@ -258,10 +258,8 @@ describe('SuggestedTransferCases component', () => {
 
     await fillCaseNotListedForm(order);
 
-    await waitFor(async () => {
-      const validCasesTable = await screen.findByTestId('validated-cases');
-      expect(validCasesTable).toBeVisible();
-    });
+    const validCasesTable = await screen.findByTestId('validated-cases');
+    expect(validCasesTable).toBeVisible();
   });
 
   test('ref.cancel should reset all form fields, validation states, case summary and order transfer details', async () => {
