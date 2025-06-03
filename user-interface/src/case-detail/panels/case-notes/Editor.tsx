@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import './Editor.scss';
+import Button from '@/lib/components/uswds/Button';
 
 // Regular expressions for text formatting
 const PARAGRAPH_SPLIT_REGEX = /\n\n+/;
@@ -114,7 +115,7 @@ function _Editor(props: EditorProps, ref: React.Ref<EditorRef>) {
     processed = processed.replace(ITALIC_REGEX, '<em>$1</em>');
 
     // Finally handle underline
-    processed = processed.replace(UNDERLINE_REGEX, '<u>$1</u>');
+    processed = processed.replace(UNDERLINE_REGEX, '<span class="underline">$1</span>');
 
     // Sanitize the HTML to prevent XSS attacks
     // This is a simple implementation - in a production environment,
@@ -159,6 +160,46 @@ function _Editor(props: EditorProps, ref: React.Ref<EditorRef>) {
     }
   };
 
+  // Function to insert formatting characters around the cursor or selected text
+  const insertFormatting = (startChars: string, endChars: string) => {
+    const textArea = textAreaRef.current;
+    if (!textArea) return;
+
+    const start = textArea.selectionStart;
+    const end = textArea.selectionEnd;
+    const selectedText = inputValue.substring(start, end);
+    const beforeText = inputValue.substring(0, start);
+    const afterText = inputValue.substring(end);
+
+    // Create the new value with formatting characters around the selected text
+    const newValue = beforeText + startChars + selectedText + endChars + afterText;
+
+    // Update the input value
+    setInputValue(newValue);
+    if (onChange) {
+      onChange(newValue);
+    }
+
+    // Focus the textarea and set the cursor position after the operation
+    setTimeout(() => {
+      textArea.focus();
+
+      // If there's no selected text, place cursor between the formatting characters
+      // Otherwise, place cursor after the closing formatting character
+      const newCursorPos =
+        selectedText.length === 0
+          ? start + startChars.length // Place cursor between formatting characters
+          : start + startChars.length + selectedText.length + endChars.length; // Place cursor after everything
+
+      textArea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
+  };
+
+  // Handlers for formatting buttons
+  const handleBoldClick = () => insertFormatting('**', '**');
+  const handleItalicClick = () => insertFormatting('*', '*');
+  const handleUnderlineClick = () => insertFormatting('_', '_');
+
   function ariaDescribedBy() {
     return ariaDescription ? `editor-hint-${id}` : undefined;
   }
@@ -191,6 +232,32 @@ function _Editor(props: EditorProps, ref: React.Ref<EditorRef>) {
         </div>
       )}
       <div className="editor-wrapper">
+        <div className="editor-formatting-buttons">
+          <Button
+            onClick={handleBoldClick}
+            aria-label="Bold"
+            title="Bold (Ctrl+B)"
+            disabled={inputDisabled}
+          >
+            B
+          </Button>
+          <Button
+            onClick={handleItalicClick}
+            aria-label="Italic"
+            title="Italic (Ctrl+I)"
+            disabled={inputDisabled}
+          >
+            I
+          </Button>
+          <Button
+            onClick={handleUnderlineClick}
+            aria-label="Underline"
+            title="Underline (Ctrl+U)"
+            disabled={inputDisabled}
+          >
+            U
+          </Button>
+        </div>
         <textarea
           id={textAreaId}
           data-testid={textAreaId}

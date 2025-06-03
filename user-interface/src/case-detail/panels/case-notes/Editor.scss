@@ -9,6 +9,26 @@
   margin-bottom: 0.5rem;
 }
 
+.editor-formatting-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+
+  button {
+    font-weight: bold;
+    min-width: 2.5rem;
+    padding: 0.5rem;
+
+    &:nth-child(2) {
+      font-style: italic;
+    }
+
+    &:nth-child(3) {
+      text-decoration: underline;
+    }
+  }
+}
+
 .editor-textarea {
   min-height: 150px;
   resize: vertical;
@@ -43,6 +63,13 @@
     margin-top: 0;
     margin-bottom: 1rem;
     line-height: 1.5;
+
+    span {
+      color: #0050d8;
+      .underline {
+        text-decoration: underline;
+      }
+    }
   }
 
   p:last-child {
@@ -51,14 +78,11 @@
 
   strong {
     font-weight: bold;
+    color: #0050d8;
   }
 
   em {
     font-style: italic;
-  }
-
-  u {
-    text-decoration: underline;
   }
 
   a {
