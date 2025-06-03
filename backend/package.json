@@ -10,7 +10,7 @@
     "@types/node": "^22.15.24",
     "azure-function-context-mock": "^0.0.7",
     "dependency-cruiser": "^16.10.2",
-    "eslint": "^9.27.0",
+    "eslint": "^9.28.0",
     "eslint-config-prettier": "^10.1.5",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-n": "^17.18.0",
