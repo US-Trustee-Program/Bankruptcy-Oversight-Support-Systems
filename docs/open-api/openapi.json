@@ -1,0 +1,12 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "CAMS API",
+    "description": "API for the Case Assignment Management System",
+    "version": "1.0.0"
+  },
+  "paths": {},
+  "components": {
+    "schemas": {}
+  }
+}
