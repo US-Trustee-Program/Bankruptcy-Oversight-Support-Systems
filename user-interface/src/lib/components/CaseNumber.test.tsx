@@ -60,4 +60,19 @@ describe('CaseNumber component', () => {
     expect(span).toBeInTheDocument();
     expect(span.attributes.getNamedItem('class')?.value).toEqual(className);
   });
+
+  test('should open a specific tab if specified', () => {
+    renderWithProps({ ...defaultProps, tab: 'notes', openLinkIn: 'same-window' });
+
+    const link = screen.getByTestId(linkTestId);
+    expect(link).toBeInTheDocument();
+    expect(link.attributes.getNamedItem('href')?.value).toEqual(`/case-detail/${caseId}/notes`);
+    expect(link.attributes.getNamedItem('title')?.value).toEqual(
+      `View case number ${caseId} details`,
+    );
+
+    const span = screen.getByTestId(testId);
+    expect(span).toBeInTheDocument();
+    expect(span).toHaveTextContent(expectedTextContent);
+  });
 });
