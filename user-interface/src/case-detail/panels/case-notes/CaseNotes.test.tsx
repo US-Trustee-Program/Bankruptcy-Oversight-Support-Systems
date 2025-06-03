@@ -8,8 +8,10 @@ import { InputRef } from '@/lib/type-declarations/input-fields';
 import React from 'react';
 import Input from '@/lib/components/uswds/Input';
 import LocalStorage from '@/lib/utils/local-storage';
+import LocalFormCache from '@/lib/utils/local-form-cache';
 import Actions from '@common/cams/actions';
 import { randomUUID } from 'crypto';
+import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 
 const caseId = '000-11-22222';
 const userId = '001';
@@ -32,6 +34,10 @@ const caseNotes = [
 const caseNotesRef = React.createRef<CaseNotesRef>();
 
 function renderWithProps(props?: Partial<CaseNotesProps>) {
+  const mockFeatureFlags = {
+    'draft-case-note-alert': true,
+  };
+  vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
   const defaultProps: CaseNotesProps = {
     caseId: '000-11-22222',
     hasCaseNotes: false,
@@ -41,7 +47,7 @@ function renderWithProps(props?: Partial<CaseNotesProps>) {
     areCaseNotesLoading: false,
   };
   const renderProps = { ...defaultProps, ...props };
-  render(<CaseNotes {...renderProps} ref={caseNotesRef} />);
+  return render(<CaseNotes {...renderProps} ref={caseNotesRef} />);
 }
 
 describe('case note tests', () => {
@@ -210,9 +216,7 @@ describe('case note tests', () => {
     expect(deleteSpy).toHaveBeenCalledWith(expectedSecondRemoveArgument);
     expect(onNoteRemoveSpy).toHaveBeenCalledTimes(1);
   });
-});
 
-describe('test utilities', () => {
   test('getCaseNotesInputValue should always return an empty string when a null is provided', async () => {
     const ref = React.createRef<InputRef>();
     render(<Input ref={ref}></Input>);
@@ -224,5 +228,70 @@ describe('test utilities', () => {
     const result2 = getCaseNotesInputValue(null);
     expect(result2).toEqual('');
     expect(typeof result2).toEqual('string');
+  });
+
+  test('should display info alert if cache holds a case note for the case', async () => {
+    const mockCachedNote = {
+      value: {
+        caseId,
+        title: 'Draft Note Title',
+        content: 'Draft Note Content',
+      },
+      expiresAfter: 1,
+    };
+    vi.spyOn(LocalFormCache, 'getForm').mockImplementation((key: string) => {
+      if (key === `case-notes-${caseId}`) {
+        return mockCachedNote;
+      }
+      return null;
+    });
+
+    renderWithProps({ caseId });
+
+    const draftNoteAlert = await screen.findByTestId('draft-note-alert-test-id');
+    expect(draftNoteAlert).toBeInTheDocument();
+    expect(draftNoteAlert).toHaveTextContent(/you have a draft case note/i);
+  });
+
+  test('should remove draft alert when modal is closed', async () => {
+    const mockCachedNote = {
+      value: {
+        caseId,
+        title: 'Draft Note Title',
+        content: 'Draft Note Content',
+      },
+      expiresAfter: 1,
+    };
+
+    let shouldReturnCachedNote = true;
+    vi.spyOn(LocalFormCache, 'getForm').mockImplementation((key: string) => {
+      if (key === `case-notes-${caseId}` && shouldReturnCachedNote) {
+        return mockCachedNote;
+      }
+      return null;
+    });
+
+    renderWithProps({ caseId });
+
+    const initialDraftNoteAlert = await screen.findByTestId('draft-note-alert-test-id');
+    expect(initialDraftNoteAlert).toBeInTheDocument();
+
+    shouldReturnCachedNote = false;
+
+    const addButton = screen.getByTestId('open-modal-button_case-note-add-button');
+    await userEvent.click(addButton);
+
+    await waitFor(() => {
+      const modal = screen.getByTestId('modal-content-case-note-form');
+      expect(modal).toBeInTheDocument();
+    });
+
+    const cancelButton = screen.getByText(/discard/i);
+    await userEvent.click(cancelButton);
+
+    await waitFor(() => {
+      const draftNoteAlert = screen.queryByTestId('draft-note-alert-test-id');
+      expect(draftNoteAlert).not.toBeInTheDocument();
+    });
   });
 });

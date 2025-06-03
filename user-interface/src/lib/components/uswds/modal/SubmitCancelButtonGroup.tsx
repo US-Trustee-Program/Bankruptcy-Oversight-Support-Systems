@@ -44,38 +44,36 @@ function SubmitCancelButtonGroupComponent(
   }));
 
   return (
-    <>
-      <ul className={classes}>
-        {submitButton && (
-          <li className="usa-button-group__item">
-            <Button
-              id={`${modalId}-submit-button`}
-              ref={toggleSubmitButtonRef}
-              uswdsStyle={submitButton.uswdsStyle ?? UswdsButtonStyle.Default}
-              className={submitButton.className ?? ''}
-              onClick={submitButton.onClick}
-              onKeyDown={submitButton.onKeyDown}
-              disabled={submitButton.disabled ?? false}
-            >
-              {submitButton.label.length > 0 ? submitButton.label : 'Submit'}
-            </Button>
-          </li>
-        )}
-        {cancelButton && (
-          <li className="usa-button-group__item">
-            <Button
-              id={`${modalId}-cancel-button`}
-              uswdsStyle={cancelButton.uswdsStyle ?? UswdsButtonStyle.Unstyled}
-              className={cancelButtonClassName}
-              onClick={cancelButton.onClick ?? close}
-              onKeyDown={cancelButton.onKeyDown}
-            >
-              {cancelButton.label.length > 0 ? cancelButton.label : 'Go back'}
-            </Button>
-          </li>
-        )}
-      </ul>
-    </>
+    <ul className={classes}>
+      {submitButton && (
+        <li className="usa-button-group__item">
+          <Button
+            id={`${modalId}-submit-button`}
+            ref={toggleSubmitButtonRef}
+            uswdsStyle={submitButton.uswdsStyle ?? UswdsButtonStyle.Default}
+            className={submitButton.className ?? ''}
+            onClick={submitButton.onClick}
+            onKeyDown={submitButton.onKeyDown}
+            disabled={submitButton.disabled ?? false}
+          >
+            {submitButton.label.length > 0 ? submitButton.label : 'Submit'}
+          </Button>
+        </li>
+      )}
+      {cancelButton && (
+        <li className="usa-button-group__item">
+          <Button
+            id={`${modalId}-cancel-button`}
+            uswdsStyle={cancelButton.uswdsStyle ?? UswdsButtonStyle.Unstyled}
+            className={cancelButtonClassName}
+            onClick={cancelButton.onClick ?? close}
+            onKeyDown={cancelButton.onKeyDown}
+          >
+            {cancelButton.label.length > 0 ? cancelButton.label : 'Go back'}
+          </Button>
+        </li>
+      )}
+    </ul>
   );
 }
 

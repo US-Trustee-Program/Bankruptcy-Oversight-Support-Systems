@@ -3,11 +3,22 @@ import LocalCache from './local-cache';
 import { mockLocalStorage } from '../testing/mock-local-storage';
 
 describe('LocalCache', () => {
-  beforeAll(() => {
+  const cacheItem = {
+    foo: 'bar',
+  };
+
+  beforeEach(async () => {
+    vi.resetModules();
     vi.stubGlobal('localStorage', mockLocalStorage);
+    window.CAMS_CONFIGURATION = {
+      ...window.CAMS_CONFIGURATION,
+      CAMS_DISABLE_LOCAL_CACHE: 'false',
+    };
+    const reloaded = await import('./local-cache');
+    expect(reloaded.LocalCache.isCacheEnabled()).toBeTruthy();
   });
 
-  beforeEach(() => {
+  afterEach(() => {
     mockLocalStorage.clear();
   });
 
@@ -103,7 +114,7 @@ describe('LocalCache', () => {
 
     LocalCache.set(key, value, ttl);
     const result = LocalCache.get(key);
-    expect(result).toBe(value);
+    expect(result).toEqual({ value, expiresAfter: expect.any(Number) });
   });
 
   test('should return null if the cache is expired', () => {
@@ -149,19 +160,15 @@ describe('LocalCache', () => {
 
     LocalCache.purge();
 
-    expect(LocalCache.get(validKey)).toBe('validValue');
+    expect(LocalCache.get(validKey)).toEqual({
+      value: 'validValue',
+      expiresAfter: expect.any(Number),
+    });
     expect(LocalCache.get(expiredKey)).toBeNull();
     expect(window.localStorage.getItem(otherNonCacheKey)).toEqual('test');
 
     window.localStorage.removeItem(otherNonCacheKey);
     vi.useRealTimers();
-  });
-
-  test('should return false if localStorage is disabled', () => {
-    vi.stubGlobal('localStorage', null);
-
-    const result = LocalCache.set('disabledKey', 'disabledValue');
-    expect(result).toBe(false);
   });
 
   test('should check if cache is disabled if the local storage API is not available', async () => {
@@ -172,8 +179,12 @@ describe('LocalCache', () => {
   });
 
   test('should check if cache is disabled if the CAMS_DISABLE_LOCAL_CACHE config is true', async () => {
-    vi.stubEnv('CAMS_DISABLE_LOCAL_CACHE', 'true');
     vi.resetModules();
+    vi.stubGlobal('localStorage', mockLocalStorage);
+    window.CAMS_CONFIGURATION = {
+      ...window.CAMS_CONFIGURATION,
+      CAMS_DISABLE_LOCAL_CACHE: 'true',
+    };
     const reloaded = await import('./local-cache');
     expect(reloaded.LocalCache.isCacheEnabled()).toBeFalsy();
   });
@@ -183,6 +194,20 @@ describe('LocalCache', () => {
     vi.stubGlobal('localStorage', mockLocalStorage);
     const reloaded = await import('./local-cache');
     expect(reloaded.LocalCache.isCacheEnabled()).toBeTruthy();
+  });
+
+  test('should return false if localStorage is disabled', () => {
+    vi.stubGlobal('localStorage', null);
+
+    const result = LocalCache.getByKeyPattern(/^foo/);
+    expect(result).toHaveLength(0);
+  });
+
+  test('should return empty array if localStorage is disabled', () => {
+    vi.stubGlobal('localStorage', null);
+
+    const result = LocalCache.set('disabledKey', 'disabledValue');
+    expect(result).toBe(false);
   });
 
   test('should safely handle exceptions', () => {
@@ -206,5 +231,78 @@ describe('LocalCache', () => {
     calls.forEach((call) => {
       expect(call).not.toThrow();
     });
+  });
+
+  test('should return empty array when no items exist', () => {
+    const pattern = /^foo/;
+    const result = LocalCache.getByKeyPattern(pattern);
+    expect(result).toEqual([]);
+  });
+
+  test('should return empty array when no items match pattern', () => {
+    // Save items with keys that don't match the pattern
+    LocalCache.set('bar1', cacheItem);
+    LocalCache.set('bar2', cacheItem);
+    LocalCache.set('baz', cacheItem);
+
+    const pattern = /^foo/;
+    const result = LocalCache.getByKeyPattern(pattern);
+    expect(result).toEqual([]);
+  });
+
+  test('should return matching items when some items match pattern', () => {
+    LocalCache.set('foo1', { id: 1 });
+    LocalCache.set('foo2', { id: 2 });
+    LocalCache.set('bar', { id: 3 });
+
+    const pattern = /^foo/;
+    const result = LocalCache.getByKeyPattern(pattern);
+
+    expect(result).toHaveLength(2);
+    expect(result).toEqual(
+      expect.arrayContaining([
+        { key: 'foo1', item: { value: { id: 1 }, expiresAfter: expect.any(Number) } },
+        { key: 'foo2', item: { value: { id: 2 }, expiresAfter: expect.any(Number) } },
+      ]),
+    );
+  });
+
+  test('should return all items when all items match pattern', () => {
+    // Save items with keys that all match the pattern
+    LocalCache.set('case-notes-123', { id: 1 });
+    LocalCache.set('case-notes-456', { id: 2 });
+    LocalCache.set('case-notes-789', { id: 3 });
+
+    const pattern = /^case-notes-/;
+    const result = LocalCache.getByKeyPattern(pattern);
+
+    expect(result).toHaveLength(3);
+    expect(result).toEqual(
+      expect.arrayContaining([
+        { key: 'case-notes-123', item: { value: { id: 1 }, expiresAfter: expect.any(Number) } },
+        { key: 'case-notes-456', item: { value: { id: 2 }, expiresAfter: expect.any(Number) } },
+        { key: 'case-notes-789', item: { value: { id: 3 }, expiresAfter: expect.any(Number) } },
+      ]),
+    );
+  });
+
+  test('should match items using complex regex patterns', () => {
+    // Save items with various keys
+    LocalCache.set('case-notes-123', { id: 1 });
+    LocalCache.set('case-notes-456', { id: 2 });
+    LocalCache.set('other-form-789', { id: 3 });
+    LocalCache.set('form-123-notes', { id: 4 });
+
+    // Pattern that matches keys containing 'notes' followed by a dash and numbers
+    const pattern = /notes-\d+$/;
+    const result = LocalCache.getByKeyPattern(pattern);
+
+    expect(result).toHaveLength(2);
+    expect(result).toEqual(
+      expect.arrayContaining([
+        { key: 'case-notes-123', item: { value: { id: 1 }, expiresAfter: expect.any(Number) } },
+        { key: 'case-notes-456', item: { value: { id: 2 }, expiresAfter: expect.any(Number) } },
+      ]),
+    );
   });
 });
