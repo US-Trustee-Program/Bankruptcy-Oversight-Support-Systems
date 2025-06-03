@@ -35,6 +35,15 @@
                   // Replace
                   element.parentNode.replaceChild(replacement, element);
                 });
+              const el = htmlElement.querySelector('#swagger-ui');
+              if (el && !el.dataset.initialized) {
+                el.dataset.initialized = 'true';
+                SwaggerUIBundle({
+                  url:'/open-api/openapi.json',
+                  dom_id: '#swagger-ui',
+                  presets: [SwaggerUIBundle.presets.apis],
+                })
+              }
               next(htmlElement.innerHTML);
             });
             hook.doneEach(function () {
@@ -55,5 +64,12 @@
     <script src="//unpkg.com/docsify-mermaid@2.0.1/dist/docsify-mermaid.js"></script>
     <!-- Docsify v4 -->
     <script src="//cdn.jsdelivr.net/npm/docsify@4"></script>
+    <script src="https://unpkg.com/swagger-ui-dist/swagger-ui-bundle.js"></script>
+<!--    <script>-->
+<!--      const ui = SwaggerUIBundle({-->
+<!--        url: "../backend/openapi/openapi.json",-->
+<!--        dom_id: "#swagger-ui"-->
+<!--      });-->
+<!--    </script>-->
   </body>
 </html>

@@ -1,0 +1,110 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Case Assignments API",
+    "description": "API for managing case assignments",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/case-assignments/{id}": {
+      "get": {
+        "summary": "Get case assignments by case ID",
+        "description": "Retrieves all assignments associated with a specific case",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Case ID in format XXX-XX-XXXXX",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[\\dA-Z]{3}-\\d{2}-\\d{5}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of case assignments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "../schemas/common.json#/CaseAssignment"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "404": {
+            "description": "Case not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/case-assignments": {
+      "post": {
+        "summary": "Create trial attorney assignments",
+        "description": "Assigns trial attorneys to a case with specified roles",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "caseId",
+                  "attorneyList",
+                  "role"
+                ],
+                "properties": {
+                  "caseId": {
+                    "type": "string",
+                    "description": "Case ID in format XXX-XX-XXXXX",
+                    "pattern": "^[\\dA-Z]{3}-\\d{2}-\\d{5}$"
+                  },
+                  "attorneyList": {
+                    "type": "array",
+                    "description": "List of attorneys to assign",
+                    "items": {
+                      "$ref": "../schemas/common.json#/CamsUserReference"
+                    }
+                  },
+                  "role": {
+                    "type": "string",
+                    "description": "Role to assign to the attorneys",
+                    "enum": [
+                      "TRIAL_ATTORNEY"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Assignments created successfully"
+          },
+          "400": {
+            "description": "Bad request - invalid parameters"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    }
+  }
+}
