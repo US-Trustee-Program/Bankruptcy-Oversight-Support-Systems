@@ -109,14 +109,12 @@ describe('PendingTransferOrder component', () => {
     beforeEach(async () => {
       vi.stubEnv('CAMS_USE_FAKE_API', 'true');
       order = { ...mockTransferOrder };
-      vi.spyOn(Api2, 'getCaseSummary').mockResolvedValueOnce(mockGetCaseSummary);
-      vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValueOnce(
-        mockGetTransferredCaseSuggestions,
-      );
+      vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue(mockGetCaseSummary);
+      vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValue(mockGetTransferredCaseSuggestions);
     });
 
     afterEach(() => {
-      vi.clearAllMocks();
+      vi.restoreAllMocks();
     });
 
     test('should show suggested cases', async () => {
@@ -247,7 +245,7 @@ describe('PendingTransferOrder component', () => {
       vi.stubEnv('CAMS_USE_FAKE_API', 'true');
       order = MockData.getTransferOrder();
       vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue(mockGetCaseSummary);
-      vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValueOnce(
+      vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValue(
         mockGetTransferredCaseSuggestionsEmpty,
       );
     });
@@ -263,7 +261,7 @@ describe('PendingTransferOrder component', () => {
       vi.spyOn(Api2, 'getCaseSummary')
         .mockResolvedValueOnce(mockGetCaseSummary)
         .mockResolvedValueOnce(mockGetCaseSummaryForToCase);
-      vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValueOnce(
+      vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValue(
         mockGetTransferredCaseSuggestionsEmpty,
       );
 
@@ -313,7 +311,7 @@ describe('PendingTransferOrder component', () => {
         .mockResolvedValueOnce(mockGetCaseSummary)
         .mockResolvedValueOnce(mockGetCaseSummaryForToCase);
 
-      vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValueOnce(
+      vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValue(
         mockGetTransferredCaseSuggestionsEmpty,
       );
 
@@ -382,7 +380,7 @@ describe('PendingTransferOrder component', () => {
       vi.spyOn(Api2, 'getCaseSummary')
         .mockResolvedValueOnce(mockGetCaseSummary)
         .mockResolvedValueOnce(mockGetCaseSummaryForToCase);
-      vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValueOnce(
+      vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValue(
         mockGetTransferredCaseSuggestionsEmpty,
       );
 
@@ -449,7 +447,7 @@ describe('PendingTransferOrder component', () => {
         .mockResolvedValueOnce(mockGetCaseSummary)
         .mockResolvedValueOnce(mockGetCaseSummaryForToCase);
       vi.spyOn(Api2, 'patchTransferOrderApproval').mockRejectedValue(new Error(errorMessage));
-      vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValueOnce(
+      vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValue(
         mockGetTransferredCaseSuggestionsEmpty,
       );
 
@@ -495,7 +493,7 @@ describe('PendingTransferOrder component', () => {
         .mockResolvedValueOnce(mockGetCaseSummary)
         .mockResolvedValueOnce(mockGetCaseSummaryForToCase);
       vi.spyOn(Api2, 'patchTransferOrderRejection').mockRejectedValue(new Error(errorMessage));
-      vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValueOnce(
+      vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValue(
         mockGetTransferredCaseSuggestionsEmpty,
       );
 
@@ -538,7 +536,7 @@ describe('PendingTransferOrder component', () => {
       vi.spyOn(Api2, 'getCaseSummary')
         .mockResolvedValueOnce(mockGetCaseSummary)
         .mockResolvedValueOnce(mockGetCaseSummaryForToCase);
-      vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValueOnce(
+      vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValue(
         mockGetTransferredCaseSuggestionsEmpty,
       );
 
@@ -593,9 +591,7 @@ describe('PendingTransferOrder component', () => {
       vi.spyOn(Api2, 'getCaseSummary')
         .mockResolvedValueOnce(mockGetCaseSummary)
         .mockResolvedValue(mockGetCaseSummaryForToCase);
-      vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValueOnce(
-        mockGetTransferredCaseSuggestions,
-      );
+      vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValue(mockGetTransferredCaseSuggestions);
       const testCaseNumber = '23-12345';
       renderWithProps();
       await waitFor(() => {
@@ -642,7 +638,7 @@ describe('PendingTransferOrder component', () => {
       vi.spyOn(Api2, 'getCaseSummary')
         .mockResolvedValueOnce(mockGetCaseSummary)
         .mockResolvedValue(mockGetCaseSummaryForToCase);
-      vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValueOnce(
+      vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValue(
         mockGetTransferredCaseSuggestionsEmpty,
       );
 
