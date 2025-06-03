@@ -45,6 +45,8 @@ function buildCaseNoteFormKey(caseId: string) {
 
 type CallbackFunction = (noteId?: string) => void;
 
+export type CaseNoteFormMode = 'create' | 'edit';
+
 export type CaseNoteFormModalOpenProps = {
   id?: string;
   title: string;
@@ -54,6 +56,7 @@ export type CaseNoteFormModalOpenProps = {
   openModalButtonRef: OpenModalButtonRef;
   initialTitle: string;
   initialContent: string;
+  mode: CaseNoteFormMode;
 };
 
 export interface CaseNoteFormModalRef extends ModalRefType {
@@ -78,6 +81,7 @@ const defaultModalOpenOptions: CaseNoteFormModalOpenProps = {
   },
   initialTitle: '',
   initialContent: '',
+  mode: 'create',
 };
 
 function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNoteFormModalRef>) {
@@ -92,7 +96,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   const [caseNoteFormError, setCaseNoteFormError] = useState<string>('');
   const [initialTitle, setInitialTitle] = useState<string>('');
   const [initialContent, setInitialContent] = useState<string>('');
-  const [mode, setMode] = useState<'create' | 'edit'>('create');
+  const [mode, setMode] = useState<CaseNoteFormMode>('create');
   const alertRef = useRef<AlertRefType>(null);
 
   const modalRef = useRef<ModalRefType>(null);
@@ -104,7 +108,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
 
   function disableSubmitButton(disable: boolean) {
     const buttons = modalRef.current?.buttons;
-    if (buttons && buttons.current) {
+    if (buttons?.current) {
       buttons.current.disableSubmitButton(disable);
     }
   }
@@ -122,9 +126,9 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   }
 
   function saveFormData(data: CaseNoteInput) {
-    if (formKey && (data.title?.length > 0 || data.content?.length > 0)) {
+    if (mode !== 'edit' && formKey && (data.title?.length > 0 || data.content?.length > 0)) {
       LocalFormCache.saveForm(formKey, data);
-    } else if (formKey) {
+    } else if (mode !== 'edit' && formKey) {
       LocalFormCache.clearForm(formKey);
     }
     toggleButtonOnDirtyForm(initialTitle, initialContent);
@@ -149,7 +153,9 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   function clearCaseNoteForm() {
     titleInputRef.current?.clearValue();
     contentInputRef.current?.clearValue();
-    LocalFormCache.clearForm(formKey);
+    if (mode === 'create') {
+      LocalFormCache.clearForm(formKey);
+    }
     setCaseNoteFormError('');
     alertRef.current?.hide();
     toggleButtonOnDirtyForm(initialTitle, initialContent);
@@ -222,7 +228,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     const title = getCaseNotesInputValue(titleInputRef.current);
     const content = getCaseNotesInputValue(contentInputRef.current);
 
-    if (!modalOpenOptions.id && session?.user) {
+    if (mode === 'create' && session?.user) {
       const caseNoteInput: CaseNoteInput = {
         caseId: modalOpenOptions.caseId,
         title,
@@ -232,7 +238,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
       return validFields(title, content)
         ? await postCaseNote(caseNoteInput)
         : alertRef.current?.show();
-    } else if (modalOpenOptions.id && session?.user) {
+    } else if (mode === 'edit' && modalOpenOptions.id && session?.user) {
       const caseNoteInput: CaseNoteInput = {
         id: modalOpenOptions.id,
         caseId: modalOpenOptions.caseId,
@@ -265,9 +271,9 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   };
 
   function show(showProps: CaseNoteFormModalOpenProps) {
-    setNoteModalTitle(`${showProps.id ? 'Edit' : 'Create'} Case Note`);
-    setMode(showProps.id ? 'edit' : 'create');
-    setCancelButtonLabel(`${showProps.id ? 'Cancel' : 'Discard'}`);
+    setNoteModalTitle(`${showProps.mode === 'edit' ? 'Edit' : 'Create'} Case Note`);
+    setMode(showProps.mode);
+    setCancelButtonLabel(`${showProps.mode === 'edit' ? 'Cancel' : 'Discard'}`);
     if (showProps) {
       const formKey = buildCaseNoteFormKey(showProps.caseId);
       setFormKey(formKey);
