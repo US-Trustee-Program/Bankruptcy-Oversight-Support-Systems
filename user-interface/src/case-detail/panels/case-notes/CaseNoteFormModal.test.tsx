@@ -2,6 +2,7 @@ import CaseNoteFormModal, {
   CaseNoteFormModalOpenProps,
   CaseNoteFormModalProps,
   CaseNoteFormModalRef,
+  CaseNoteFormMode,
   getCaseNotesInputValue,
 } from './CaseNoteFormModal';
 import { render, screen, waitFor } from '@testing-library/react';
@@ -52,6 +53,7 @@ describe('CaseNoteFormModal - Simple Tests', () => {
       content: '',
       initialTitle: '',
       initialContent: '',
+      mode: 'create',
     };
 
     const openRenderProps = { ...defaultOpenProps, ...openProps };
@@ -139,6 +141,7 @@ describe('CaseNoteFormModal - Simple Tests', () => {
         caseId: TEST_CASE_ID,
         title: note.title,
         content: note.content,
+        mode: 'edit',
       },
     );
 
@@ -235,6 +238,7 @@ describe('CaseNoteFormModal - Simple Tests', () => {
         caseId: TEST_CASE_ID,
         title: 'Original Title',
         content: 'Original Content',
+        mode: 'edit',
       },
     );
 
@@ -394,21 +398,25 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     expect(result).toEqual('');
   });
 
-  const modeCases = [['create'], ['edit']];
-  test.each(modeCases)('should call close callback with %s mode', async (mode: string) => {
-    const onModalClosedSpy = vi.fn();
-    const modalRef = React.createRef<CaseNoteFormModalRef>();
-    renderComponent(
-      modalRef,
-      { onModalClosed: onModalClosedSpy },
-      { id: mode === 'edit' ? '123' : undefined },
-    );
+  const modeCases: { mode: CaseNoteFormMode }[] = [{ mode: 'create' }, { mode: 'edit' }];
+  test.each(modeCases)(
+    'should call close callback with $mode mode',
+    async (args: { mode: CaseNoteFormMode }) => {
+      const { mode } = args;
+      const onModalClosedSpy = vi.fn();
+      const modalRef = React.createRef<CaseNoteFormModalRef>();
+      renderComponent(
+        modalRef,
+        { onModalClosed: onModalClosedSpy },
+        { id: mode === 'edit' ? '123' : undefined, mode },
+      );
 
-    const openButton = screen.getByTestId(OPEN_BUTTON_ID);
-    await userEvent.click(openButton);
-    const cancelButton = screen.getByTestId(CANCEL_BUTTON_ID);
-    expect(cancelButton).toBeVisible();
-    await userEvent.click(cancelButton);
-    expect(onModalClosedSpy).toHaveBeenCalledWith(TEST_CASE_ID, mode);
-  });
+      const openButton = screen.getByTestId(OPEN_BUTTON_ID);
+      await userEvent.click(openButton);
+      const cancelButton = screen.getByTestId(CANCEL_BUTTON_ID);
+      expect(cancelButton).toBeVisible();
+      await userEvent.click(cancelButton);
+      expect(onModalClosedSpy).toHaveBeenCalledWith(TEST_CASE_ID, mode);
+    },
+  );
 });

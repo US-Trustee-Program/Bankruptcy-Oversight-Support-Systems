@@ -14,6 +14,7 @@ import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import Icon from '@/lib/components/uswds/Icon';
 import CaseNoteFormModal, {
   CaseNoteFormModalRef,
+  CaseNoteFormMode,
 } from '@/case-detail/panels/case-notes/CaseNoteFormModal';
 import CaseNoteRemovalModal, { CaseNoteRemovalModalRef } from './CaseNoteRemovalModal';
 import Actions from '@common/cams/actions';
@@ -140,6 +141,7 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
                 callback: onUpdateNoteRequest,
                 initialTitle: note.title,
                 initialContent: note.content,
+                mode: 'edit',
               }}
               ariaLabel={`Edit note titled ${note.title}`}
             >
@@ -220,8 +222,8 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
     setDraftNote(draftNote);
   }, []);
 
-  const handleModalClosed = (eventCaseId: string, mode: 'create' | 'edit') => {
-    if (eventCaseId === caseId && mode !== 'edit') {
+  const handleModalClosed = (eventCaseId: string, mode: CaseNoteFormMode) => {
+    if (eventCaseId === caseId && mode === 'create') {
       const draftNote = LocalFormCache.getForm<CaseNoteInput>(`case-notes-${caseId}`);
       setDraftNote(draftNote);
     }
@@ -260,6 +262,7 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
             callback: onUpdateNoteRequest,
             initialTitle: '',
             initialContent: '',
+            mode: 'create',
           }}
           onClick={() => {
             setFocusId('');
