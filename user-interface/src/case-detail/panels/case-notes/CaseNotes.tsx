@@ -13,6 +13,7 @@ import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
 import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import Icon from '@/lib/components/uswds/Icon';
 import CaseNoteFormModal, {
+  buildCaseNoteFormKey,
   CaseNoteFormModalRef,
   CaseNoteFormMode,
 } from '@/case-detail/panels/case-notes/CaseNoteFormModal';
@@ -20,7 +21,10 @@ import CaseNoteRemovalModal, { CaseNoteRemovalModalRef } from './CaseNoteRemoval
 import Actions from '@common/cams/actions';
 import LocalFormCache from '@/lib/utils/local-form-cache';
 import { Cacheable } from '@/lib/utils/local-cache';
-import useFeatureFlags, { DRAFT_CASE_NOTE_ALERT_ENABLED } from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlags, {
+  DRAFT_CASE_NOTE_ALERT_ENABLED,
+  EDIT_CASE_NOTE_DRAFT_ALERT_ENABLED,
+} from '@/lib/hooks/UseFeatureFlags';
 
 export function getCaseNotesInputValue(ref: TextAreaRef | null) {
   return ref?.getValue() ?? '';
@@ -59,6 +63,7 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
 
   const featureFlags = useFeatureFlags();
   const draftNoteAlertEnabledFlag = featureFlags[DRAFT_CASE_NOTE_ALERT_ENABLED];
+  const editNoteDraftAlertEnabledFlag = featureFlags[EDIT_CASE_NOTE_DRAFT_ALERT_ENABLED];
 
   function mapArchiveButtonRefs() {
     openArchiveModalButtonRefs.current =
@@ -86,9 +91,14 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
     openEditModalButtonRefs.current = newRefs;
   }
 
-  function showCaseNotes(note: CaseNote, idx: number) {
+  function showCaseNote(note: CaseNote, idx: number) {
     const sanitizedCaseNote = sanitizeText(note.content);
     const sanitizedCaseNoteTitle = sanitizeText(note.title);
+    let draft: Cacheable<CaseNoteInput> | null = null;
+    if (editNoteDraftAlertEnabledFlag) {
+      const formKey = buildCaseNoteFormKey(note.caseId, 'edit', note.id ?? '');
+      draft = LocalFormCache.getForm<CaseNoteInput>(formKey);
+    }
 
     return (
       <li className="case-note grid-container" key={idx} data-testid={`case-note-${idx}`}>
@@ -122,6 +132,19 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
         <div className="case-note-author" data-testid={`case-note-author-${idx}`}>
           {note.updatedBy.name}
         </div>
+        {editNoteDraftAlertEnabledFlag && draft && (
+          <Alert
+            message={`You have a draft edit. It will expire on ${formatDateTime(new Date(draft.expiresAfter))}.`}
+            type={UswdsAlertStyle.Info}
+            role={'status'}
+            timeout={0}
+            title="Draft Note Available"
+            show={true}
+            inline={true}
+            slim={true}
+            className="grid-col-8"
+          />
+        )}
         <div className="case-note-toolbar" data-testid={`case-note-toolbar-${idx}`}>
           {Actions.contains(note, Actions.EditNote) && (
             <OpenModalButton
@@ -136,8 +159,8 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
                 id: note.id,
                 caseId: note.caseId,
                 buttonId: `case-note-edit-button-${idx}`,
-                title: note.title,
-                content: note.content,
+                title: draft?.value.title ?? note.title,
+                content: draft?.value.content ?? note.content,
                 callback: onUpdateNoteRequest,
                 initialTitle: note.title,
                 initialContent: note.content,
@@ -179,7 +202,7 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
 
   function renderCaseNotes() {
     return caseNotes?.map((note, idx: number) => {
-      return showCaseNotes(note, idx);
+      return showCaseNote(note, idx);
     });
   }
 
@@ -223,7 +246,8 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
   }, []);
 
   const handleModalClosed = (eventCaseId: string, mode: CaseNoteFormMode) => {
-    if (eventCaseId === caseId && mode === 'create') {
+    // TODO: when removing the flag, also remove the mode === 'create' portion of checks
+    if (eventCaseId === caseId && (mode === 'create' || editNoteDraftAlertEnabledFlag)) {
       const draftNote = LocalFormCache.getForm<CaseNoteInput>(`case-notes-${caseId}`);
       setDraftNote(draftNote);
     }
