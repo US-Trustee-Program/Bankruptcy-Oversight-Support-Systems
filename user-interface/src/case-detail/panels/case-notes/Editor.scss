@@ -65,8 +65,7 @@
     line-height: 1.5;
 
     span {
-      color: #0050d8;
-      .underline {
+      &.underline {
         text-decoration: underline;
       }
     }
@@ -78,7 +77,6 @@
 
   strong {
     font-weight: bold;
-    color: #0050d8;
   }
 
   em {
