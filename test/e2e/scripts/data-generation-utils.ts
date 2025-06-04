@@ -18,9 +18,9 @@ dotenv.config();
 
 export async function seedCosmosE2eDatabase() {
   const env = { ...process.env };
+  console.log('TEST_ENV:', env.TEST_ENV);
   const invocationContext = createMockAzureFunctionContext(env);
   const appContext = await ContextCreator.getApplicationContext({ invocationContext });
-  appContext.logger.info('DATA-GENERATION-UTILS', 'DB Config', appContext.config.dxtrDbConfig);
   const { dxtrCaseIds, dxtrCases, transferTo, transferFrom } =
     await extractAndPrepareSqlData(appContext);
 
