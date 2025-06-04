@@ -105,6 +105,7 @@ jobs:
           export MONGO_CONNECTION_STRING="${{ secrets.MONGO_CONNECTION_STRING }}"
           export COSMOS_DATABASE_NAME="${e2eDatabaseName}"
           export DATABASE_MOCK=false
+          export TEST_ENV="some environment variable"
 
           echo "Seeding E2E CosmosDB..."
 
