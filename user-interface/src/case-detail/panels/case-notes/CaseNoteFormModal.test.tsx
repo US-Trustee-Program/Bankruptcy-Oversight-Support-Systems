@@ -4,6 +4,7 @@ import CaseNoteFormModal, {
   CaseNoteFormModalRef,
   CaseNoteFormMode,
   getCaseNotesInputValue,
+  buildCaseNoteFormKey,
 } from './CaseNoteFormModal';
 import { render, screen, waitFor } from '@testing-library/react';
 import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
@@ -17,6 +18,7 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { randomUUID } from 'crypto';
 import LocalFormCache from '@/lib/utils/local-form-cache';
 import { CamsSession, getCamsUserReference } from '@common/cams/session';
+import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 
 const MODAL_ID = 'modal-case-note-form';
 const TITLE_INPUT_ID = 'case-note-title-input';
@@ -419,4 +421,150 @@ describe('CaseNoteFormModal - Simple Tests', () => {
       expect(onModalClosedSpy).toHaveBeenCalledWith(TEST_CASE_ID, mode);
     },
   );
+
+  test('buildCaseNoteFormKey should generate correct key for create mode', () => {
+    const caseId = '123-45-67890';
+    const mode = 'create';
+    const id = '';
+    const key = buildCaseNoteFormKey(caseId, mode, id);
+    expect(key).toBe('case-notes-123-45-67890');
+  });
+
+  test('buildCaseNoteFormKey should generate correct key for edit mode', () => {
+    const caseId = '123-45-67890';
+    const mode = 'edit';
+    const id = 'note-id-123';
+    const key = buildCaseNoteFormKey(caseId, mode, id);
+    expect(key).toBe('case-notes-123-45-67890-note-id-123');
+  });
+
+  test('should respect edit note draft alert feature flag when enabled', async () => {
+    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
+      'edit-case-note-draft-alert': true,
+    });
+
+    const saveFormSpy = vi.spyOn(LocalFormCache, 'saveForm');
+    const noteId = randomUUID();
+
+    const modalRef = React.createRef<CaseNoteFormModalRef>();
+    renderComponent(
+      modalRef,
+      {},
+      {
+        id: noteId,
+        caseId: TEST_CASE_ID,
+        title: 'Original Title',
+        content: 'Original Content',
+        mode: 'edit',
+      },
+    );
+
+    const openButton = screen.getByTestId(OPEN_BUTTON_ID);
+    await userEvent.click(openButton);
+
+    const titleInput = screen.getByTestId(TITLE_INPUT_ID);
+    await userEvent.clear(titleInput);
+    await userEvent.type(titleInput, 'Edited Title');
+
+    expect(saveFormSpy).toHaveBeenCalled();
+
+    const lastCall = saveFormSpy.mock.calls[saveFormSpy.mock.calls.length - 1];
+    expect(lastCall[0]).toContain(`-${noteId}`);
+  });
+
+  test('should respect edit note draft alert feature flag when disabled', async () => {
+    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
+      'edit-case-note-draft-alert': false,
+    });
+
+    const saveFormSpy = vi.spyOn(LocalFormCache, 'saveForm');
+    const noteId = randomUUID();
+
+    const modalRef = React.createRef<CaseNoteFormModalRef>();
+    renderComponent(
+      modalRef,
+      {},
+      {
+        id: noteId,
+        caseId: TEST_CASE_ID,
+        title: 'Original Title',
+        content: 'Original Content',
+        mode: 'edit',
+      },
+    );
+
+    const openButton = screen.getByTestId(OPEN_BUTTON_ID);
+    await userEvent.click(openButton);
+
+    const titleInput = screen.getByTestId(TITLE_INPUT_ID);
+    await userEvent.clear(titleInput);
+    await userEvent.type(titleInput, 'Edited Title');
+
+    const saveFormCalls = saveFormSpy.mock.calls;
+    const editModeSaveFormCalls = saveFormCalls.filter((call) => call[0].includes(`-${noteId}`));
+    expect(editModeSaveFormCalls.length).toBe(0);
+  });
+
+  test('should initialize form with provided values', async () => {
+    const initialTitle = 'Initial Title';
+    const initialContent = 'Initial Content';
+
+    const modalRef = React.createRef<CaseNoteFormModalRef>();
+    renderComponent(
+      modalRef,
+      {},
+      {
+        caseId: TEST_CASE_ID,
+        title: initialTitle,
+        content: initialContent,
+        initialTitle: initialTitle,
+        initialContent: initialContent,
+        mode: 'create',
+      },
+    );
+
+    const openButton = screen.getByTestId(OPEN_BUTTON_ID);
+    await userEvent.click(openButton);
+
+    const titleInput = screen.getByTestId(TITLE_INPUT_ID);
+    const contentInput = screen.getByTestId(CONTENT_INPUT_ID);
+
+    expect(titleInput).toHaveValue(initialTitle);
+    expect(contentInput).toHaveValue(initialContent);
+
+    const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
+    await waitFor(() => {
+      expect(submitButton).toBeDisabled();
+    });
+  });
+
+  test('should clear form cache after successful submission', async () => {
+    const postNoteSpy = vi.spyOn(Api2, 'postCaseNote');
+    postNoteSpy.mockResolvedValue();
+
+    const clearFormSpy = vi.spyOn(LocalFormCache, 'clearForm');
+
+    const modalRef = React.createRef<CaseNoteFormModalRef>();
+    renderComponent(modalRef);
+
+    const openButton = screen.getByTestId(OPEN_BUTTON_ID);
+    await userEvent.click(openButton);
+
+    const titleInput = screen.getByTestId(TITLE_INPUT_ID);
+    const contentInput = screen.getByTestId(CONTENT_INPUT_ID);
+    await userEvent.type(titleInput, 'Test Title');
+    await userEvent.type(contentInput, 'Test Content');
+
+    const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
+    await userEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(clearFormSpy).toHaveBeenCalled();
+    });
+
+    const modal = screen.getByTestId(MODAL_ID);
+    await waitFor(() => {
+      expect(modal).not.toHaveClass('is-visible');
+    });
+  });
 });
