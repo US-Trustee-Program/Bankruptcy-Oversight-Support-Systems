@@ -70,7 +70,7 @@ export interface CaseNoteFormModalRef extends ModalRefType {
 export type CaseNoteFormModalProps = {
   modalId: string;
   alertMessage?: AlertDetails;
-  onModalClosed?: (caseId: string, mode: 'create' | 'edit') => void;
+  onModalClosed?: (caseId: string, mode: CaseNoteFormMode) => void;
 };
 
 const defaultModalOpenOptions: CaseNoteFormModalOpenProps = {
