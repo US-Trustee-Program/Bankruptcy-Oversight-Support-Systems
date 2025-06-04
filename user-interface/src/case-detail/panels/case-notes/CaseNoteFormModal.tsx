@@ -1,12 +1,11 @@
 import './CaseNoteFormModal.scss';
 import Alert, { AlertDetails, AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { ModalRefType, OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import Input from '@/lib/components/uswds/Input';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
 import { TextAreaRef } from '@/lib/type-declarations/input-fields';
-import TextArea from '@/lib/components/uswds/TextArea';
 import Api2 from '@/lib/models/api2';
 import HttpStatusCodes from '@common/api/http-status-codes';
 import { ResponseBody } from '@common/api/response';
@@ -14,6 +13,8 @@ import { CaseNoteInput } from '@common/cams/cases';
 import { getCamsUserReference } from '@common/cams/session';
 import LocalStorage from '@/lib/utils/local-storage';
 import LocalFormCache from '@/lib/utils/local-form-cache';
+import { CamsRichTextEditorRef } from '@/lib/components/cams/CamsRichTextEditor/CamsRichTextEditor';
+import CamsRichTextEditorContainer from '@/lib/components/cams/CamsRichTextEditor/CamsRichTextEditorContainer';
 
 const useThrottleCallback = (callback: () => void, delay: number) => {
   const isThrottled = useRef(false);
@@ -91,6 +92,8 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   const modalRef = useRef<ModalRefType>(null);
   const titleInputRef = useRef<TextAreaRef>(null);
   const contentInputRef = useRef<TextAreaRef>(null);
+  const camsRichTextEditorRef = useRef<CamsRichTextEditorRef>(null);
+
   const notesRequiredFieldsMessage = 'Title and content are both required inputs.';
   const notesSubmissionErrorMessage = 'There was a problem submitting the case note.';
   const session = LocalStorage.getSession();
@@ -129,11 +132,12 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     });
   }
 
-  function handleContentChange(event: React.ChangeEvent<HTMLTextAreaElement>) {
+  //function handleContentChange(event: React.ChangeEvent<HTMLTextAreaElement>) {
+  function handleContentChange(value: string) {
     saveFormData({
       caseId: modalOpenOptions.caseId,
       title: getCaseNotesInputValue(titleInputRef.current),
-      content: event.target.value,
+      content: value,
     });
   }
 
@@ -296,6 +300,16 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     setModalOpenOptions(defaultModalOpenOptions);
   }
 
+  useEffect(() => {
+    camsRichTextEditorRef.current?.fromHtml(
+      `<ul>
+        <li>item 1 <strong>BOLD</strong></li>
+        <li>item 2 <em>Italic!</em></li>
+        <li>item 3 <u>underlined</u></li>
+      </ul>`,
+    );
+  }, []);
+
   useImperativeHandle(ref, () => {
     return {
       show,
@@ -332,13 +346,14 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
             autoComplete="off"
             ref={titleInputRef}
           />
-          <TextArea
+          <CamsRichTextEditorContainer
             id="note-content"
             label="Note Text"
             required={true}
+            ref={camsRichTextEditorRef}
             onChange={handleContentChange}
-            ref={contentInputRef}
           />
+          <div>{camsRichTextEditorRef.current?.toHtml()}</div>
         </div>
       }
     ></Modal>

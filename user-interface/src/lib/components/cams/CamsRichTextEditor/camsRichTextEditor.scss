@@ -1,0 +1,15 @@
+.cams-rich-text-editor-container {
+  appearance: textarea;
+  -moz-appearance: textfield-multiline;
+  border: 1px solid gray;
+  font: medium -moz-fixed;
+  font: -webkit-small-control;
+  overflow: auto;
+  padding: 2px;
+  resize: both;
+}
+
+.cams-rich-text-editor {
+  margin: 2px;
+  padding: 4px;
+}
