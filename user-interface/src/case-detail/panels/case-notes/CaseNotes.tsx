@@ -55,6 +55,7 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
   useMemo(mapEditButtonRefs, [caseNotes]);
   const [focusId, setFocusId] = useState<string | null>(null);
   const [draftNote, setDraftNote] = useState<Cacheable<CaseNoteInput> | null>(null);
+  const [editDrafts, setEditDrafts] = useState<Cacheable<CaseNoteInput>[] | null>(null);
   const removeConfirmationModalId = 'remove-note-modal';
   const editNoteModalId = 'edit-note-modal';
   const addNoteModalId = 'add-note-modal';
@@ -216,6 +217,12 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
     }
   }
 
+  function getEditDrafts() {
+    // TODO: Is there a way we can leverage VALID_CASEID_PATTERN well?
+    const pattern = /^case-notes-[\dA-Z]{3}-\d{2}-\d{5}-/;
+    return LocalFormCache.getFormsByPattern<CaseNoteInput>(pattern);
+  }
+
   useImperativeHandle(ref, () => {
     return {
       focus,
@@ -243,13 +250,19 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
   useEffect(() => {
     const draftNote = LocalFormCache.getForm<CaseNoteInput>(`case-notes-${caseId}`);
     setDraftNote(draftNote);
+    setEditDrafts(getEditDrafts().map((form) => form.item));
   }, []);
 
   const handleModalClosed = (eventCaseId: string, mode: CaseNoteFormMode) => {
-    // TODO: when removing the flag, also remove the mode === 'create' portion of checks
-    if (eventCaseId === caseId && (mode === 'create' || editNoteDraftAlertEnabledFlag)) {
+    if (eventCaseId === caseId && mode === 'create') {
       const draftNote = LocalFormCache.getForm<CaseNoteInput>(`case-notes-${caseId}`);
       setDraftNote(draftNote);
+    }
+    if (editNoteDraftAlertEnabledFlag) {
+      const updatedEditDrafts = getEditDrafts();
+      if (updatedEditDrafts.length !== editDrafts?.length) {
+        setEditDrafts(updatedEditDrafts.map((form) => form.item));
+      }
     }
   };
 
