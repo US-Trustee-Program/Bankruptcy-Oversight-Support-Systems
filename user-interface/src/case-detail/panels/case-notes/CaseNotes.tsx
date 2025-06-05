@@ -140,7 +140,6 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
             type={UswdsAlertStyle.Info}
             role={'status'}
             timeout={0}
-            title="Draft Note Available"
             show={true}
             inline={true}
             slim={true}
