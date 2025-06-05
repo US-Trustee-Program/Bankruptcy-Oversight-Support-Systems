@@ -287,10 +287,10 @@ describe('case note tests', () => {
       expect(caseNote).toBeInTheDocument();
     });
 
-    const editDraftAlert = screen.getByText(/you have a draft edit/i);
+    const editDraftAlert = screen.getByTestId(`alert-message-draft-edit-note-${noteId}`);
     expect(editDraftAlert).toBeInTheDocument();
     expect(editDraftAlert).toHaveTextContent(
-      `You have a draft edit. It will expire on ${formatDateTime(expiryDate)}.`,
+      `You have a draft case note. It will expire on ${formatDateTime(expiryDate)}.`,
     );
   });
 
@@ -375,7 +375,7 @@ describe('case note tests', () => {
       expect(caseNote).toBeInTheDocument();
     });
 
-    const editDraftAlert = screen.getByText(/you have a draft edit/i);
+    const editDraftAlert = screen.getByTestId(`alert-message-draft-edit-note-${noteId}`);
     expect(editDraftAlert).toBeInTheDocument();
 
     shouldReturnCachedEditNote = false;
