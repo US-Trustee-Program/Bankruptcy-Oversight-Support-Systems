@@ -336,8 +336,7 @@ describe('case note tests', () => {
     });
   });
 
-  test.skip('should remove edit note draft alert when edit modal is closed', async () => {
-    // Enable edit note draft alert feature flag
+  test('should remove edit note draft alert when edit modal is closed', async () => {
     const featureFlags = {
       'edit-case-note-draft-alert': true,
     };
@@ -356,7 +355,12 @@ describe('case note tests', () => {
 
     let shouldReturnCachedEditNote = true;
 
-    // Mock getFormsByPattern to return the edit draft when shouldReturnCachedEditNote is true
+    vi.spyOn(LocalFormCache, 'getForm').mockImplementation((key: string) => {
+      if (key === `case-notes-${caseId}-${noteId}` && shouldReturnCachedEditNote) {
+        return mockCachedEditNote;
+      }
+      return null;
+    });
     vi.spyOn(LocalFormCache, 'getFormsByPattern').mockImplementation((_pattern: RegExp) => {
       if (shouldReturnCachedEditNote) {
         return [{ key: editFormKey, item: mockCachedEditNote }];
@@ -366,36 +370,32 @@ describe('case note tests', () => {
 
     renderWithProps({ caseId, hasCaseNotes: true, caseNotes }, featureFlags);
 
-    // Wait for the case note to be rendered
     await waitFor(() => {
       const caseNote = screen.getByTestId('case-note-0');
       expect(caseNote).toBeInTheDocument();
     });
 
-    // Verify that the edit draft alert is shown
     const editDraftAlert = screen.getByText(/you have a draft edit/i);
     expect(editDraftAlert).toBeInTheDocument();
 
-    // Simulate clearing the cache when the modal is closed
     shouldReturnCachedEditNote = false;
 
-    // Click the edit button
+    const modal = screen.getByTestId('modal-case-note-form');
     const editButton = screen.getByTestId('open-modal-button_case-note-edit-button_0');
     await userEvent.click(editButton);
 
-    // Wait for the modal to appear
     await waitFor(() => {
-      const modal = screen.getByTestId('modal-content-case-note-form');
-      expect(modal).toBeInTheDocument();
+      expect(modal).toHaveClass('is-visible');
     });
 
-    // Click the cancel button
-    const cancelButton = screen.getByText(/cancel/i);
+    const cancelButton = screen.getByTestId('button-case-note-form-cancel-button');
     await userEvent.click(cancelButton);
-
-    // Verify that the edit draft alert is no longer shown
     await waitFor(() => {
-      const editDraftAlert = screen.queryByText(/you have a draft edit/i);
+      expect(modal).toHaveClass('is-hidden');
+    });
+
+    await waitFor(() => {
+      const editDraftAlert = screen.queryByTestId(`alert-message-draft-edit-note-${noteId}`);
       expect(editDraftAlert).not.toBeInTheDocument();
     });
   });

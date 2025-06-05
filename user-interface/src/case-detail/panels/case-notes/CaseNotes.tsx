@@ -135,6 +135,7 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
         </div>
         {editNoteDraftAlertEnabledFlag && draft && (
           <Alert
+            id={`draft-edit-note-${note.id}`}
             message={`You have a draft edit. It will expire on ${formatDateTime(new Date(draft.expiresAfter))}.`}
             type={UswdsAlertStyle.Info}
             role={'status'}
@@ -273,6 +274,7 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
         {draftNoteAlertEnabledFlag && draftNote && (
           <div data-testid="draft-note-alert-test-id" className="draft-notes-alert-container">
             <Alert
+              id="draft-add-note"
               message={`You have a draft case note. It will expire on ${formatDateTime(new Date(draftNote.expiresAfter))}.`}
               type={UswdsAlertStyle.Info}
               role={'status'}
