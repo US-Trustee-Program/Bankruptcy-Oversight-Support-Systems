@@ -136,7 +136,7 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
         {editNoteDraftAlertEnabledFlag && draft && (
           <Alert
             id={`draft-edit-note-${note.id}`}
-            message={`You have a draft edit. It will expire on ${formatDateTime(new Date(draft.expiresAfter))}.`}
+            message={getDraftAlertMessage(draft)}
             type={UswdsAlertStyle.Info}
             role={'status'}
             timeout={0}
@@ -175,7 +175,7 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
           )}
           {Actions.contains(note, Actions.RemoveNote) && (
             <OpenModalButton
-              className="remove-button"
+              className="remove-button text-secondary-dark"
               id={`case-note-remove-button`}
               buttonIndex={`${idx}`}
               uswdsStyle={UswdsButtonStyle.Unstyled}
@@ -193,7 +193,7 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
               ariaLabel={`Remove note titled ${note.title}`}
             >
               <Icon name="remove_circle" className="remove-icon" />
-              Remove
+              Delete
             </OpenModalButton>
           )}
         </div>
@@ -266,6 +266,10 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
     }
   };
 
+  function getDraftAlertMessage(draftNote: Cacheable<CaseNoteInput>) {
+    return `You have a draft case note. It will expire on ${formatDateTime(new Date(draftNote.expiresAfter))}.`;
+  }
+
   return (
     <div className="case-notes-panel">
       <div className="case-notes-title">
@@ -274,7 +278,7 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
           <div data-testid="draft-note-alert-test-id" className="draft-notes-alert-container">
             <Alert
               id="draft-add-note"
-              message={`You have a draft case note. It will expire on ${formatDateTime(new Date(draftNote.expiresAfter))}.`}
+              message={getDraftAlertMessage(draftNote)}
               type={UswdsAlertStyle.Info}
               role={'status'}
               timeout={0}
