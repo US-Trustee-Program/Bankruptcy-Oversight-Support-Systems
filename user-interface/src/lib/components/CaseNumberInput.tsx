@@ -38,6 +38,7 @@ function CaseNumberInputComponent(props: CaseNumberInputProps, ref: React.Ref<In
   } = props;
   const [isDisabled, setIsDisabled] = useState<boolean>(false);
   const forwardedRef = useRef<InputRef>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   function getValue() {
     return forwardedRef.current?.getValue() ?? '';
@@ -56,8 +57,13 @@ function CaseNumberInputComponent(props: CaseNumberInputProps, ref: React.Ref<In
   }
 
   function disable(value: boolean) {
-    setTimeout(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    timeoutRef.current = setTimeout(() => {
       setIsDisabled(value);
+      timeoutRef.current = null;
     }, 100);
 
     return forwardedRef.current?.disable(value);
@@ -104,6 +110,15 @@ function CaseNumberInputComponent(props: CaseNumberInputProps, ref: React.Ref<In
       onEnable();
     }
   }, [isDisabled]);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
+  }, []);
 
   return (
     <Input
