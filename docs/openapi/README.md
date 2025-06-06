@@ -9,7 +9,9 @@ This directory contains the OpenAPI specifications for the CAMS API.
   - `case-assignments.json`: Specification for the case assignments endpoints.
   - (Additional endpoint specs will be added here)
 - `schemas/`: Directory containing reusable schema definitions.
-  - `common.json`: Common schema definitions used across multiple endpoints.
+  - `cams-error.json`: CAMS error schemas.
+  - `cams-user.json`: CAMS user schemas.
+  - `cases.json`: Cases domain schemas.
 
 ## Usage
 
@@ -17,11 +19,11 @@ This directory contains the OpenAPI specifications for the CAMS API.
 
 1. Create a new JSON file in the `specs/` directory for your endpoint.
 2. Define the endpoint paths, operations, and responses according to the OpenAPI 3.0 specification.
-3. Reference common schemas from `schemas/common.json` using `$ref: "../schemas/common.json#/SchemaName"`.
+3. Reference schemas from `schemas/{schema-file}.json` using `$ref: "../schemas/{schema-file}.json#/{schema-name}"`.
 
 ### Adding a New Schema
 
-1. If your endpoint uses a schema that could be reused across multiple endpoints, add it to `schemas/common.json`.
+1. If your endpoint uses a schema that could be reused across multiple endpoints, add it to `schemas` directory.
 2. Otherwise, include the schema definition directly in your endpoint specification file.
 
 ## Tools

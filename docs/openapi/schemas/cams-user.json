@@ -1,0 +1,15 @@
+{
+  "CamsUserReference": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "User identifier"
+      },
+      "displayName": {
+        "type": "string",
+        "description": "Display name of the user"
+      }
+    }
+  }
+}

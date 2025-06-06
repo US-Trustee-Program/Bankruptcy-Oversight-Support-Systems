@@ -1,0 +1,49 @@
+{
+  "CamsError": {
+    "type": "object",
+    "properties": {
+      "isCamsError": {
+        "type": "boolean",
+        "default": true,
+        "description": "Indicates this is a CAMS error"
+      },
+      "status": {
+        "type": "integer",
+        "description": "HTTP status code"
+      },
+      "message": {
+        "type": "string",
+        "description": "Error message"
+      },
+      "module": {
+        "type": "string",
+        "description": "Module where the error occurred"
+      },
+      "data": {
+        "type": "object",
+        "description": "Additional error data"
+      },
+      "camsStack": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "module": {
+              "type": "string",
+              "description": "Module name"
+            },
+            "message": {
+              "type": "string",
+              "description": "Stack message"
+            }
+          }
+        },
+        "description": "Stack of error information"
+      },
+      "originalError": {
+        "type": "string",
+        "description": "Original error information"
+      }
+    }
+  }
+}
