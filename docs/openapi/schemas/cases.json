@@ -1,40 +1,4 @@
 {
-  "CaseAssignment": {
-    "type": "object",
-    "properties": {
-      "id": {
-        "type": "string",
-        "description": "Unique identifier for the assignment"
-      },
-      "caseId": {
-        "$ref": "#/CaseId"
-      },
-      "userId": {
-        "type": "string",
-        "description": "The assigned user's identifier"
-      },
-      "role": {
-        "type": "string",
-        "enum": [
-          "TrialAttorney"
-        ],
-        "description": "The role assigned to the user"
-      },
-      "assignedAt": {
-        "type": "string",
-        "format": "date-time",
-        "description": "When the assignment was created"
-      },
-      "assignedBy": {
-        "$ref": "cams-user.json#/CamsUserReference",
-        "description": "User reference of who created the assignment"
-      },
-      "active": {
-        "type": "boolean",
-        "description": "Whether the assignment is currently active"
-      }
-    }
-  },
   "CaseId": {
     "type": "string",
     "pattern": "^\\d{3}-\\d{2}-\\d{5}$",

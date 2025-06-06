@@ -29,7 +29,7 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "$ref": "../schemas/cases.json#/CaseAssignment"
+                        "$ref": "../schemas/assignments.json#/CaseAssignment"
                       }
                     }
                   }
@@ -39,6 +39,16 @@
           },
           "400": {
             "description": "Invalid case ID format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "../schemas/cams-error.json#/CamsError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
             "content": {
               "application/json": {
                 "schema": {
@@ -91,27 +101,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "required": [
-                  "role",
-                  "attorneyList"
-                ],
-                "properties": {
-                  "role": {
-                    "type": "string",
-                    "enum": [
-                      "TrialAttorney"
-                    ],
-                    "description": "The assignable role for the attorneys"
-                  },
-                  "attorneyList": {
-                    "type": "array",
-                    "items": {
-                      "$ref": "../schemas/cams-user.json#/CamsUserReference"
-                    },
-                    "description": "List of attorneys to assign to the case"
-                  }
-                }
+                "$ref": "../schemas/assignments.json#/StaffAssignmentAction"
               }
             }
           }
@@ -122,6 +112,16 @@
           },
           "400": {
             "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "../schemas/cams-error.json#/CamsError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
             "content": {
               "application/json": {
                 "schema": {

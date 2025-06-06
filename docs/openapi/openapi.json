@@ -11,7 +11,7 @@
   },
   "servers": [
     {
-      "url": "/"
+      "url": "http://localhost:7071/api"
     }
   ],
   "components": {
@@ -20,7 +20,8 @@
         "type": "apiKey",
         "in": "header",
         "name": "Authorization",
-        "description": "API key authentication using the Authorization header with 'ApiKey' value"
+        "description": "API key authentication using the Authorization header with 'ApiKey' value",
+        "scheme": "ApiKey"
       }
     }
   },
