@@ -83,7 +83,7 @@ export const MyCasesScreen = () => {
           <span className="text-no-wrap">
             <CaseNumber caseId={draftNotesCaseIds[0]} tab="notes" />
           </span>
-          . <em>It will expire on {formatDateTime(new Date(draftNotes[0].expiresAfter))}</em>.
+          . <em>It will expire on {formatDateTime(new Date(earliestExpiry!.expiresAfter))}</em>.
         </span>
       );
     } else if (draftNotesCaseIds.length === 2) {
@@ -139,11 +139,13 @@ export const MyCasesScreen = () => {
     const caseNotePattern = /^case-notes-/;
     const draftNotesFound = LocalFormCache.getFormsByPattern<CaseNoteInput>(caseNotePattern);
     setDraftNotes(draftNotesFound.map((cache) => cache.item));
-    const ids: string[] = draftNotesFound.map((record) => {
-      return record.item.value.caseId;
+
+    const uniqueIds = new Set<string>();
+    draftNotesFound.forEach((record) => {
+      uniqueIds.add(record.item.value.caseId);
     });
 
-    setDraftNotesCaseIds(ids);
+    setDraftNotesCaseIds(Array.from(uniqueIds));
   }, []);
 
   return (

@@ -1,3 +1,5 @@
+import { VALID_CASEID_PATTERN } from '@common/cams/cases';
+
 export function getCaseNumber(caseId: string | undefined): string {
   if (caseId) {
     const caseData = caseId.split('-');
@@ -8,8 +10,7 @@ export function getCaseNumber(caseId: string | undefined): string {
 }
 
 export function copyCaseNumber(caseId: string | undefined): void {
-  const CASE_ID_PATTERN = /^\d{3}-\d{2}-\d{5}$/;
-  if (caseId && CASE_ID_PATTERN.test(caseId)) {
+  if (caseId && VALID_CASEID_PATTERN.test(caseId)) {
     navigator.clipboard.writeText(caseId);
   }
 }

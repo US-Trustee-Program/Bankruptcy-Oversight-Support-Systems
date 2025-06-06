@@ -33,9 +33,10 @@ const caseNotes = [
 ];
 const caseNotesRef = React.createRef<CaseNotesRef>();
 
-function renderWithProps(props?: Partial<CaseNotesProps>) {
+function renderWithProps(props?: Partial<CaseNotesProps>, featureFlags?: Record<string, boolean>) {
   const mockFeatureFlags = {
     'draft-case-note-alert': true,
+    ...(featureFlags || {}),
   };
   vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
   const defaultProps: CaseNotesProps = {
@@ -253,6 +254,46 @@ describe('case note tests', () => {
     expect(draftNoteAlert).toHaveTextContent(/you have a draft case note/i);
   });
 
+  test('should display edit note draft alert if cache holds an edit draft', async () => {
+    const featureFlags = {
+      'edit-case-note-draft-alert': true,
+    };
+
+    const noteId = caseNotes[0].id!;
+    const editFormKey = `case-notes-${caseId}-${noteId}`;
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + 1);
+
+    const mockCachedEditNote = {
+      value: {
+        caseId,
+        title: 'Draft Edit Title',
+        content: 'Draft Edit Content',
+      },
+      expiresAfter: expiryDate.valueOf(),
+    };
+
+    vi.spyOn(LocalFormCache, 'getForm').mockImplementation((key: string) => {
+      if (key === editFormKey) {
+        return mockCachedEditNote;
+      }
+      return null;
+    });
+
+    renderWithProps({ caseId, hasCaseNotes: true, caseNotes }, featureFlags);
+
+    await waitFor(() => {
+      const caseNote = screen.getByTestId('case-note-0');
+      expect(caseNote).toBeInTheDocument();
+    });
+
+    const editDraftAlert = screen.getByTestId(`alert-message-draft-edit-note-${noteId}`);
+    expect(editDraftAlert).toBeInTheDocument();
+    expect(editDraftAlert).toHaveTextContent(
+      `You have a draft case note. It will expire on ${formatDateTime(expiryDate)}.`,
+    );
+  });
+
   test('should remove draft alert when modal is closed', async () => {
     const mockCachedNote = {
       value: {
@@ -292,6 +333,70 @@ describe('case note tests', () => {
     await waitFor(() => {
       const draftNoteAlert = screen.queryByTestId('draft-note-alert-test-id');
       expect(draftNoteAlert).not.toBeInTheDocument();
+    });
+  });
+
+  test('should remove edit note draft alert when edit modal is closed', async () => {
+    const featureFlags = {
+      'edit-case-note-draft-alert': true,
+    };
+
+    const noteId = caseNotes[0].id!;
+    const editFormKey = `case-notes-${caseId}-${noteId}`;
+
+    const mockCachedEditNote = {
+      value: {
+        caseId,
+        title: 'Draft Edit Title',
+        content: 'Draft Edit Content',
+      },
+      expiresAfter: 1,
+    };
+
+    let shouldReturnCachedEditNote = true;
+
+    vi.spyOn(LocalFormCache, 'getForm').mockImplementation((key: string) => {
+      if (key === `case-notes-${caseId}-${noteId}` && shouldReturnCachedEditNote) {
+        return mockCachedEditNote;
+      }
+      return null;
+    });
+    vi.spyOn(LocalFormCache, 'getFormsByPattern').mockImplementation((_pattern: RegExp) => {
+      if (shouldReturnCachedEditNote) {
+        return [{ key: editFormKey, item: mockCachedEditNote }];
+      }
+      return [];
+    });
+
+    renderWithProps({ caseId, hasCaseNotes: true, caseNotes }, featureFlags);
+
+    await waitFor(() => {
+      const caseNote = screen.getByTestId('case-note-0');
+      expect(caseNote).toBeInTheDocument();
+    });
+
+    const editDraftAlert = screen.getByTestId(`alert-message-draft-edit-note-${noteId}`);
+    expect(editDraftAlert).toBeInTheDocument();
+
+    shouldReturnCachedEditNote = false;
+
+    const modal = screen.getByTestId('modal-case-note-form');
+    const editButton = screen.getByTestId('open-modal-button_case-note-edit-button_0');
+    await userEvent.click(editButton);
+
+    await waitFor(() => {
+      expect(modal).toHaveClass('is-visible');
+    });
+
+    const cancelButton = screen.getByTestId('button-case-note-form-cancel-button');
+    await userEvent.click(cancelButton);
+    await waitFor(() => {
+      expect(modal).toHaveClass('is-hidden');
+    });
+
+    await waitFor(() => {
+      const editDraftAlert = screen.queryByTestId(`alert-message-draft-edit-note-${noteId}`);
+      expect(editDraftAlert).not.toBeInTheDocument();
     });
   });
 });

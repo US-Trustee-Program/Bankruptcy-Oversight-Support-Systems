@@ -14,6 +14,7 @@ import { CaseNoteInput } from '@common/cams/cases';
 import { getCamsUserReference } from '@common/cams/session';
 import LocalStorage from '@/lib/utils/local-storage';
 import LocalFormCache from '@/lib/utils/local-form-cache';
+import useFeatureFlags, { EDIT_CASE_NOTE_DRAFT_ALERT_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 
 const useThrottleCallback = (callback: () => void, delay: number) => {
   const isThrottled = useRef(false);
@@ -39,8 +40,10 @@ export function getCaseNotesInputValue(ref: TextAreaRef | null) {
   return ref?.getValue() ?? '';
 }
 
-function buildCaseNoteFormKey(caseId: string) {
-  return `case-notes-${caseId}`;
+export function buildCaseNoteFormKey(caseId: string, mode: CaseNoteFormMode, id: string) {
+  const base = `case-notes-${caseId}`;
+  const edit = mode === 'edit' ? `-${id}` : '';
+  return `${base}${edit}`;
 }
 
 type CallbackFunction = (noteId?: string) => void;
@@ -67,7 +70,7 @@ export interface CaseNoteFormModalRef extends ModalRefType {
 export type CaseNoteFormModalProps = {
   modalId: string;
   alertMessage?: AlertDetails;
-  onModalClosed?: (caseId: string, mode: 'create' | 'edit') => void;
+  onModalClosed?: (caseId: string, mode: CaseNoteFormMode) => void;
 };
 
 const defaultModalOpenOptions: CaseNoteFormModalOpenProps = {
@@ -106,6 +109,9 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   const notesSubmissionErrorMessage = 'There was a problem submitting the case note.';
   const session = LocalStorage.getSession();
 
+  const featureFlags = useFeatureFlags();
+  const editNoteDraftAlertEnabledFlag = featureFlags[EDIT_CASE_NOTE_DRAFT_ALERT_ENABLED];
+
   function disableSubmitButton(disable: boolean) {
     const buttons = modalRef.current?.buttons;
     if (buttons?.current) {
@@ -126,9 +132,14 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   }
 
   function saveFormData(data: CaseNoteInput) {
-    if (mode !== 'edit' && formKey && (data.title?.length > 0 || data.content?.length > 0)) {
+    // TODO: when removing the flag, also remove the mode !== 'edit' portion of checks
+    if (
+      (mode !== 'edit' || editNoteDraftAlertEnabledFlag) &&
+      formKey &&
+      (data.title?.length > 0 || data.content?.length > 0)
+    ) {
       LocalFormCache.saveForm(formKey, data);
-    } else if (mode !== 'edit' && formKey) {
+    } else if ((mode !== 'edit' || editNoteDraftAlertEnabledFlag) && formKey) {
       LocalFormCache.clearForm(formKey);
     }
     toggleButtonOnDirtyForm(initialTitle, initialContent);
@@ -153,7 +164,8 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   function clearCaseNoteForm() {
     titleInputRef.current?.clearValue();
     contentInputRef.current?.clearValue();
-    if (mode === 'create') {
+    // TODO: when removing the flag, remove the entire conditional
+    if (mode === 'create' || editNoteDraftAlertEnabledFlag) {
       LocalFormCache.clearForm(formKey);
     }
     setCaseNoteFormError('');
@@ -275,7 +287,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     setMode(showProps.mode);
     setCancelButtonLabel(`${showProps.mode === 'edit' ? 'Cancel' : 'Discard'}`);
     if (showProps) {
-      const formKey = buildCaseNoteFormKey(showProps.caseId);
+      const formKey = buildCaseNoteFormKey(showProps.caseId, showProps.mode, showProps.id ?? '');
       setFormKey(formKey);
       setModalOpenOptions(showProps);
       setInitialTitle(showProps.initialTitle);

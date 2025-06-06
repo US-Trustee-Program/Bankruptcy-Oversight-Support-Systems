@@ -46,7 +46,7 @@ function _CaseNoteRemovalModal(
     modalId,
     modalRef: modalRef as React.RefObject<ModalRefType>,
     submitButton: {
-      label: 'Remove',
+      label: 'Delete',
       onClick: handleRemoveSubmitButtonClick,
       disabled: false,
       closeOnClick: true,
@@ -96,8 +96,8 @@ function _CaseNoteRemovalModal(
       ref={modalRef}
       modalId={modalId}
       className="remove-note-confirmation-modal"
-      heading="Remove note?"
-      content="Would you like to remove this note? This action cannot be undone."
+      heading="Delete note?"
+      content="Would you like to delete this note? This action cannot be undone."
       actionButtonGroup={removeConfirmationButtonGroup}
     ></Modal>
   );

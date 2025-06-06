@@ -10,12 +10,12 @@ import {
   CaseNoteDeleteRequest,
   CaseNoteEditRequest,
   CaseNoteInput,
+  VALID_CASEID_PATTERN,
 } from '../../../../common/src/cams/cases';
 import { ForbiddenCaseNotesError } from './case.notes.exception';
 import { ResourceActions } from '../../../../common/src/cams/actions';
 
 const MODULE_NAME = 'CASE-NOTES-CONTROLLER';
-const VALID_CASEID_PATTERN = RegExp(/^[\dA-Z]{3}-\d{2}-\d{5}$/);
 const VALID_ID_PATTERN = RegExp(/^[\dA-Za-z]+(-[\dA-Za-z]+)*$/);
 const INVALID_ID_MESSAGE = 'case note ID must be provided.';
 const INVALID_CASEID_MESSAGE = 'caseId must be formatted like 111-01-12345.';
