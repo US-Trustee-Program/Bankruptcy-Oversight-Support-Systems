@@ -1,0 +1,91 @@
+{
+  "StaffAssignmentAction": {
+    "required": [
+      "caseId",
+      "attorneyList",
+      "role"
+    ],
+    "properties": {
+      "caseId": {
+        "$ref": "cases.json#/CaseId"
+      },
+      "attorneyList": {
+        "type": "array",
+        "items": {
+          "$ref": "../schemas/cams-user.json#/CamsUserReference"
+        },
+        "description": "List of attorneys to assign to the case"
+      },
+      "role": {
+        "type": "string",
+        "default": "TrialAttorney",
+        "description": "The role assigned to the user"
+      }
+    }
+  },
+  "CaseAssignment": {
+    "type": "object",
+    "required": [
+      "id",
+      "caseId",
+      "userId",
+      "name",
+      "role",
+      "assignedOn",
+      "createdOn",
+      "createdBy",
+      "updatedOn",
+      "updatedBy"
+    ],
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "Unique identifier for the assignment"
+      },
+      "caseId": {
+        "$ref": "cases.json#/CaseId"
+      },
+      "userId": {
+        "type": "string",
+        "description": "The assigned user's identifier"
+      },
+      "name": {
+        "type": "string",
+        "description": "Assigned user's name"
+      },
+      "role": {
+        "type": "string",
+        "default": "TrialAttorney",
+        "description": "The role assigned to the user"
+      },
+      "assignedOn": {
+        "type": "string",
+        "format": "date-time",
+        "description": "When the user was assigned to the case"
+      },
+      "unassignedOn": {
+        "type": "string",
+        "format": "date-time",
+        "description": "When the user was unassigned from the case"
+      },
+      "createdOn": {
+        "type": "string",
+        "format": "date-time",
+        "description": "When the assignment was created"
+      },
+      "createdBy": {
+        "$ref": "cams-user.json#/CamsUserReference",
+        "description": "User reference of who created the assignment"
+      },
+      "updatedOn": {
+        "type": "string",
+        "format": "date-time",
+        "description": "When the assignment was last updated"
+      },
+      "updatedBy": {
+        "$ref": "cams-user.json#/CamsUserReference",
+        "description": "User reference of who last updated the assignment"
+      }
+    }
+  }
+}
