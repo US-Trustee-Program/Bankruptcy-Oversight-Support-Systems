@@ -7,6 +7,8 @@
     <meta name="description" content="Description">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
     <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
+    <!-- Theme: Defaults -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify-themeable@0/dist/css/theme-defaults.css">
   </head>
   <body>
     <div id="app"></div>
@@ -35,15 +37,6 @@
                   // Replace
                   element.parentNode.replaceChild(replacement, element);
                 });
-              const el = htmlElement.querySelector('#swagger-ui');
-              if (el && !el.dataset.initialized) {
-                el.dataset.initialized = 'true';
-                SwaggerUIBundle({
-                  url:'/open-api/openapi.json',
-                  dom_id: '#swagger-ui',
-                  presets: [SwaggerUIBundle.presets.apis],
-                })
-              }
               next(htmlElement.innerHTML);
             });
             hook.doneEach(function () {
@@ -62,14 +55,9 @@
       window.mermaid = mermaid;
     </script>
     <script src="//unpkg.com/docsify-mermaid@2.0.1/dist/docsify-mermaid.js"></script>
+    <script src="https://unpkg.com/docsify-swagger-ui@2.0.3/dist/index.min.js"></script>
     <!-- Docsify v4 -->
     <script src="//cdn.jsdelivr.net/npm/docsify@4"></script>
-    <script src="https://unpkg.com/swagger-ui-dist/swagger-ui-bundle.js"></script>
-<!--    <script>-->
-<!--      const ui = SwaggerUIBundle({-->
-<!--        url: "../backend/openapi/openapi.json",-->
-<!--        dom_id: "#swagger-ui"-->
-<!--      });-->
-<!--    </script>-->
+    <script src="https://cdn.jsdelivr.net/npm/docsify-themeable@0/dist/js/docsify-themeable.min.js"></script>
   </body>
 </html>
