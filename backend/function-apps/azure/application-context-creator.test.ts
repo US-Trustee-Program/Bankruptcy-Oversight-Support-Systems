@@ -101,15 +101,15 @@ describe('Application Context Creator', () => {
       context.request.headers.authorization = 'shouldthrowError';
 
       await expect(ContextCreator.getApplicationContextSession(context)).rejects.toThrow(
-        'Bearer token not found in authorization header',
+        'Authorization scheme and token not found in authorization header',
       );
     });
 
-    test('should throw an UnauthorizedError if authorization header contains Bearer but no token', async () => {
+    test('should throw an UnauthorizedError if authorization header has a scheme but no token', async () => {
       context.request.headers.authorization = 'Bearer ';
 
       await expect(ContextCreator.getApplicationContextSession(context)).rejects.toThrow(
-        'Bearer token not found in authorization header',
+        'Authorization scheme and token not found in authorization header',
       );
     });
 
@@ -118,6 +118,23 @@ describe('Application Context Creator', () => {
 
       await expect(ContextCreator.getApplicationContextSession(context)).rejects.toThrow(
         'Malformed Bearer token in authorization header',
+      );
+    });
+
+    test('should throw an UnauthorizedError if authorization header contains unacceptable scheme', async () => {
+      context.request.headers.authorization =
+        'BadScheme some-text-that-is-not-possibly-a-valid-jwt';
+
+      await expect(ContextCreator.getApplicationContextSession(context)).rejects.toThrow(
+        'Unsupported authorization scheme',
+      );
+    });
+
+    test('should throw an UnauthorizedError if authorization header contains an invalid API key', async () => {
+      context.request.headers.authorization = 'ApiKey thisIsAnInvalidApiKey';
+
+      await expect(ContextCreator.getApplicationContextSession(context)).rejects.toThrow(
+        'Invalid API key in authorization header',
       );
     });
 
