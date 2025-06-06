@@ -218,7 +218,6 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
   }
 
   function getEditDrafts() {
-    // TODO: Is there a way we can leverage VALID_CASEID_PATTERN well?
     const pattern = /^case-notes-[\dA-Z]{3}-\d{2}-\d{5}-/;
     return LocalFormCache.getFormsByPattern<CaseNoteInput>(pattern);
   }
