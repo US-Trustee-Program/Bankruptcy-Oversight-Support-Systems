@@ -1,7 +1,8 @@
 import './camsRichTextEditor.scss';
 import { forwardRef } from 'react';
-import CamsRichTextEditor, { CamsRichTextEditorRef } from './CamsRichTextEditor';
 import { Descendant } from 'slate';
+import { CamsRichTextEditorRef } from './CamsRichTextEditorUtilities';
+import CamsRichTextEditor from './CamsRichTextEditor';
 
 export interface CamsRichTextEditorContainerProps {
   id: string;

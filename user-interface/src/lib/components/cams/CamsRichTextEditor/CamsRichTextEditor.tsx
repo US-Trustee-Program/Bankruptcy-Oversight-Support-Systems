@@ -1,9 +1,17 @@
 import React, { forwardRef, useCallback, useImperativeHandle, useMemo } from 'react';
 import { createEditor, Descendant, Editor } from 'slate';
-import { Slate, withReact, Editable, RenderLeafProps } from 'slate-react';
+import { Slate, withReact, Editable, RenderLeafProps, RenderElementProps } from 'slate-react';
 import { withHistory } from 'slate-history';
 import { htmlToSlate, slateToHtml } from '@slate-serializers/html';
-import { CustomText, CustomElement, Mark, CustomEditor } from './camsRichTextEditor.d';
+import type { CustomText, CustomElement, Mark, CustomEditor } from './CamsRichTextEditor.types';
+import {
+  CamsRichTextEditorProps,
+  CamsRichTextEditorRef,
+  indentListItem,
+  outdentListItem,
+  toggleList,
+  toggleMark,
+} from './CamsRichTextEditorUtilities';
 
 declare module 'slate' {
   interface CustomTypes {
@@ -13,35 +21,29 @@ declare module 'slate' {
   }
 }
 
-const toggleMark = (editor: Editor, format: Mark) => {
-  const marks = Editor.marks(editor);
-  const isActive = marks?.[format] === true;
-  if (isActive) {
-    editor.removeMark(format);
-  } else {
-    editor.addMark(format, true);
-  }
-};
-
-const getCurrentContents = (editor: Editor) => {
-  const contents = editor.children;
-  console.log(contents);
-};
-
-export interface CamsRichTextEditorRef {
-  toHtml: () => string;
-  fromHtml: (value: string) => void;
-}
-
-export interface CamsRichTextEditorProps {
-  onChange?: (value: Descendant[]) => void;
-}
-
 const _CamsRichTextEditor = (
   props: CamsRichTextEditorProps,
   ref: React.Ref<CamsRichTextEditorRef>,
 ) => {
   const editor: CustomEditor = useMemo(() => withHistory(withReact(createEditor())), []);
+
+  const renderElement = useCallback((props: RenderElementProps) => {
+    const { element, attributes, children } = props;
+
+    setTimeout(() => {
+      console.log(JSON.stringify(editor.children, null, 2));
+    }, 300);
+    switch (element.type) {
+      case 'bulleted-list':
+        return <ul {...attributes}>{children}</ul>;
+      case 'numbered-list':
+        return <ol {...attributes}>{children}</ol>;
+      case 'list-item':
+        return <li {...attributes}>{children}</li>;
+      default:
+        return <p {...attributes}>{children}</p>;
+    }
+  }, []);
 
   const renderLeaf = useCallback((props: RenderLeafProps) => {
     const { attributes, children, leaf } = props;
@@ -59,30 +61,56 @@ const _CamsRichTextEditor = (
       type: 'paragraph',
       children: [{ text: 'Press Ctrl+B (or Cmd+B on Mac) to bold text.' }],
     },
+    {
+      type: 'bulleted-list',
+      children: [
+        {
+          type: 'list-item',
+          children: [
+            { text: 'Item 1' },
+            {
+              type: 'bulleted-list',
+              children: [
+                {
+                  type: 'list-item',
+                  children: [{ text: 'Nested item 1' }],
+                },
+              ],
+            },
+          ],
+        },
+        {
+          type: 'list-item',
+          children: [{ text: 'Item 2' }],
+        },
+      ],
+    },
   ];
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    getCurrentContents(editor);
-
-    if (!(event.ctrlKey || event.metaKey)) {
-      return;
-    }
-
-    let mark: Mark | undefined;
-
     const key = event.key.toLowerCase();
-
-    if (key === 'b') {
-      mark = 'bold';
-    } else if (key === 'i') {
-      mark = 'italic';
-    } else if (key === 'u') {
-      mark = 'underline';
-    }
-
-    if (mark) {
-      toggleMark(editor, mark);
+    if (event.ctrlKey || event.metaKey) {
+      let mark: Mark | undefined;
+      if (key === 'b') {
+        mark = 'bold';
+      } else if (key === 'i') {
+        mark = 'italic';
+      } else if (key === 'u') {
+        mark = 'underline';
+      }
+      if (mark) {
+        toggleMark(editor, mark);
+        event.preventDefault();
+      }
+    } else if (key === 'tab') {
       event.preventDefault();
+      if (event.shiftKey) {
+        outdentListItem(editor);
+      } else {
+        console.log('Before indent', JSON.stringify(editor.children, null, 2));
+        indentListItem(editor);
+        console.log('After indent', JSON.stringify(editor.children, null, 2));
+      }
     }
   };
 
@@ -193,10 +221,27 @@ const _CamsRichTextEditor = (
         >
           <u>U</u>
         </button>
+        <button
+          onMouseDown={(e) => {
+            e.preventDefault();
+            toggleList(editor, 'bulleted-list');
+          }}
+        >
+          • Bullet
+        </button>
+        <button
+          onMouseDown={(e) => {
+            e.preventDefault();
+            toggleList(editor, 'numbered-list');
+          }}
+        >
+          1. Number
+        </button>
       </div>
       <Editable
         className="cams-rich-text-editor"
         renderLeaf={renderLeaf}
+        renderElement={renderElement}
         onKeyDown={handleKeyDown}
         placeholder="Type something and try bolding it..."
       />

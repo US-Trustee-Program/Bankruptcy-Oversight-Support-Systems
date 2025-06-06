@@ -13,7 +13,7 @@ import { CaseNoteInput } from '@common/cams/cases';
 import { getCamsUserReference } from '@common/cams/session';
 import LocalStorage from '@/lib/utils/local-storage';
 import LocalFormCache from '@/lib/utils/local-form-cache';
-import { CamsRichTextEditorRef } from '@/lib/components/cams/CamsRichTextEditor/CamsRichTextEditor';
+import { CamsRichTextEditorRef } from '@/lib/components/cams/CamsRichTextEditor/CamsRichTextEditorUtilities';
 import CamsRichTextEditorContainer from '@/lib/components/cams/CamsRichTextEditor/CamsRichTextEditorContainer';
 
 const useThrottleCallback = (callback: () => void, delay: number) => {
@@ -87,8 +87,9 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     null,
   );
   const [caseNoteFormError, setCaseNoteFormError] = useState<string>('');
-  const alertRef = useRef<AlertRefType>(null);
+  const [foobar, setFoobar] = useState<string>('');
 
+  const alertRef = useRef<AlertRefType>(null);
   const modalRef = useRef<ModalRefType>(null);
   const titleInputRef = useRef<TextAreaRef>(null);
   const contentInputRef = useRef<TextAreaRef>(null);
@@ -139,6 +140,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
       title: getCaseNotesInputValue(titleInputRef.current),
       content: value,
     });
+    setFoobar(value);
   }
 
   function clearCaseNoteForm() {
@@ -301,6 +303,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   }
 
   useEffect(() => {
+    /*
     camsRichTextEditorRef.current?.fromHtml(
       `<ul>
         <li>item 1 <strong>BOLD</strong></li>
@@ -308,6 +311,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
         <li>item 3 <u>underlined</u></li>
       </ul>`,
     );
+    */
   }, []);
 
   useImperativeHandle(ref, () => {
@@ -353,7 +357,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
             ref={camsRichTextEditorRef}
             onChange={handleContentChange}
           />
-          <div>{camsRichTextEditorRef.current?.toHtml()}</div>
+          <div>{foobar}</div>
         </div>
       }
     ></Modal>
