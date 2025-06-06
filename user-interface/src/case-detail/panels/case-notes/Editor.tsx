@@ -2,17 +2,34 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 're
 import './Editor.scss';
 import Button from '@/lib/components/uswds/Button';
 
-// Regular expressions for text formatting
-const PARAGRAPH_SPLIT_REGEX = /\n\n+/;
-const LIST_ITEM_REGEX = /^\s*(\d+\.|\*|-)\s/;
-const ORDERED_LIST_REGEX = /^\s*\d+\./;
-const LINE_BREAK_REGEX = /\n/g;
-const LINK_REGEX = /\[(.*?)]\((.*?)\)/g;
-const BOLD_REGEX = /\*\*(.*?)\*\*/g;
-const ITALIC_REGEX = /(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g;
-const UNDERLINE_REGEX = /_(.*?)_/g;
-const JAVASCRIPT_REGEX = /javascript:/gi;
-const EVENT_HANDLER_REGEX = /on\w+=/gi;
+export function normalizeContentEditableRoot(root: HTMLElement) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let node: Text | null;
+  while ((node = walker.nextNode() as Text | null)) {
+    if (node.parentNode === root && node.textContent?.trim()) {
+      const p = document.createElement('p');
+      node.replaceWith(p);
+      p.appendChild(node);
+    }
+  }
+}
+
+function stripFormatting(node: Node) {
+  if (!(node instanceof HTMLElement)) {
+    return;
+  }
+
+  const inlineTags = ['strong', 'b', 'em', 'i', 'u', 'span', 'font'];
+
+  inlineTags.forEach((tag) => {
+    node.querySelectorAll(tag).forEach((el) => {
+      while (el.firstChild) {
+        el.parentNode?.insertBefore(el.firstChild, el);
+      }
+      el.remove();
+    });
+  });
+}
 
 export interface EditorRef {
   clearValue: () => void;
@@ -35,174 +52,37 @@ export interface EditorProps {
 }
 
 function _Editor(props: EditorProps, ref: React.Ref<EditorRef>) {
-  const { id, label, ariaDescription, onChange, required, className } = props;
-  const [inputValue, setInputValue] = useState<string>(props.value || '');
-  const [inputDisabled, setInputDisabled] = useState<boolean>(props.disabled || false);
-  const textAreaId = `editor-${id}`;
-  const labelId = `editor-label-${id}`;
-  const textAreaRef = useRef<HTMLTextAreaElement>(null);
+  const { id, label, ariaDescription, onChange, required, className, value, disabled } = props;
 
-  // Update inputValue when props.value changes
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [inputDisabled, setInputDisabled] = useState<boolean>(disabled || false);
+
   useEffect(() => {
-    setInputValue(props.value || '');
-  }, [props.value]);
+    setInputDisabled(disabled || false);
+  }, [disabled]);
 
-  // Update inputDisabled when props.disabled changes
   useEffect(() => {
-    setInputDisabled(props.disabled || false);
-  }, [props.disabled]);
-
-  // Function to convert text with formatting markers to HTML
-  const convertToHtml = (text: string): string => {
-    if (!text) return '';
-
-    // Process the text in multiple passes to handle nested formatting
-
-    // First, split by double newlines to identify paragraphs
-    const paragraphs = text.split(PARAGRAPH_SPLIT_REGEX);
-
-    // Process each paragraph
-    const processedParagraphs = paragraphs.map((paragraph) => {
-      // Check if this is a list
-      if (LIST_ITEM_REGEX.test(paragraph)) {
-        // Determine if it's an ordered or unordered list
-        const isOrdered = ORDERED_LIST_REGEX.test(paragraph);
-        const listTag = isOrdered ? 'ol' : 'ul';
-
-        // Split into list items
-        const items = paragraph.split(LINE_BREAK_REGEX).filter((line) => line.trim());
-
-        // Process each list item
-        const listItems = items
-          .map((item) => {
-            // Remove the list marker
-            const content = item.replace(LIST_ITEM_REGEX, '');
-
-            // Process inline formatting within the list item
-            const formattedContent = processInlineFormatting(content);
-
-            return `<li>${formattedContent}</li>`;
-          })
-          .join('');
-
-        return `<${listTag}>${listItems}</${listTag}>`;
-      } else {
-        // Regular paragraph - process inline formatting
-        const formattedParagraph = processInlineFormatting(
-          paragraph.replace(LINE_BREAK_REGEX, '<br>'),
-        );
-        return `<p>${formattedParagraph}</p>`;
-      }
-    });
-
-    return processedParagraphs.join('');
-  };
-
-  // Helper function to process inline formatting
-  const processInlineFormatting = (text: string): string => {
-    let processed = text;
-
-    // We need to process these in a specific order to avoid conflicts
-
-    // First, handle links as they have the most complex syntax
-    processed = processed.replace(LINK_REGEX, '<a href="$2">$1</a>');
-
-    // Then handle bold (before italic, since ** would match * as well)
-    processed = processed.replace(BOLD_REGEX, '<strong>$1</strong>');
-
-    // Then handle italic
-    // We use a more specific regex to avoid matching ** for bold
-    processed = processed.replace(ITALIC_REGEX, '<em>$1</em>');
-
-    // Finally handle underline
-    processed = processed.replace(UNDERLINE_REGEX, '<span class="underline">$1</span>');
-
-    // Sanitize the HTML to prevent XSS attacks
-    // This is a simple implementation - in a production environment,
-    // you might want to use a library like DOMPurify
-    processed = processed.replace(JAVASCRIPT_REGEX, '').replace(EVENT_HANDLER_REGEX, '');
-
-    return processed;
-  };
+    if (value && contentRef.current) {
+      contentRef.current.innerHTML = value;
+    }
+  }, [value]);
 
   const clearValue = () => {
-    setInputValue('');
-    if (onChange) {
-      onChange('');
+    if (contentRef.current) {
+      contentRef.current.innerHTML = '';
+      onChange?.('');
     }
   };
 
-  const getValue = () => {
-    return inputValue;
-  };
-
-  const getHtml = () => {
-    return convertToHtml(inputValue);
-  };
-
-  const setValue = (value: string) => {
-    setInputValue(value);
-  };
-
-  const disable = (value: boolean) => {
-    setInputDisabled(value);
-  };
-
-  const focus = () => {
-    textAreaRef?.current?.focus();
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newValue = e.target.value;
-    setInputValue(newValue);
-    if (onChange) {
-      onChange(newValue);
+  const getValue = () => contentRef.current?.innerText || '';
+  const getHtml = () => contentRef.current?.innerHTML || '';
+  const setValue = (html: string) => {
+    if (contentRef.current) {
+      contentRef.current.innerHTML = html;
     }
   };
-
-  // Function to insert formatting characters around the cursor or selected text
-  const insertFormatting = (startChars: string, endChars: string) => {
-    const textArea = textAreaRef.current;
-    if (!textArea) return;
-
-    const start = textArea.selectionStart;
-    const end = textArea.selectionEnd;
-    const selectedText = inputValue.substring(start, end);
-    const beforeText = inputValue.substring(0, start);
-    const afterText = inputValue.substring(end);
-
-    // Create the new value with formatting characters around the selected text
-    const newValue = beforeText + startChars + selectedText + endChars + afterText;
-
-    // Update the input value
-    setInputValue(newValue);
-    if (onChange) {
-      onChange(newValue);
-    }
-
-    // Focus the textarea and set the cursor position after the operation
-    setTimeout(() => {
-      textArea.focus();
-
-      // If there's no selected text, place cursor between the formatting characters
-      // Otherwise, place cursor after the closing formatting character
-      const newCursorPos =
-        selectedText.length === 0
-          ? start + startChars.length // Place cursor between formatting characters
-          : start + startChars.length + selectedText.length + endChars.length; // Place cursor after everything
-
-      textArea.setSelectionRange(newCursorPos, newCursorPos);
-    }, 0);
-  };
-
-  // Handlers for formatting buttons
-  const handleBoldClick = () => insertFormatting('**', '**');
-  const handleItalicClick = () => insertFormatting('*', '*');
-  const handleUnderlineClick = () => insertFormatting('_', '_');
-
-  function ariaDescribedBy() {
-    return ariaDescription ? `editor-hint-${id}` : undefined;
-  }
+  const disable = (val: boolean) => setInputDisabled(val);
+  const focus = () => contentRef.current?.focus();
 
   useImperativeHandle(ref, () => ({
     clearValue,
@@ -213,96 +93,299 @@ function _Editor(props: EditorProps, ref: React.Ref<EditorRef>) {
     focus,
   }));
 
+  function toggleSelection(tagName: 'strong' | 'em' | 'u') {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+    if (range.collapsed) {
+      return;
+    }
+
+    const commonAncestor = range.commonAncestorContainer;
+    const wrapperElement = findClosest(commonAncestor, tagName);
+
+    if (wrapperElement) {
+      // Unwrap
+      const parent = wrapperElement.parentNode;
+      while (wrapperElement.firstChild) {
+        parent?.insertBefore(wrapperElement.firstChild, wrapperElement);
+      }
+      parent?.removeChild(wrapperElement);
+    } else {
+      // Wrap
+      const wrapper = document.createElement(tagName);
+      wrapper.appendChild(range.extractContents());
+      range.insertNode(wrapper);
+
+      // Move selection after the inserted node
+      range.setStartAfter(wrapper);
+      range.setEndAfter(wrapper);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+
+    onChange?.(getHtml());
+  }
+
+  const findClosest = (node: Node | null, selector: string): HTMLElement | null => {
+    while (node) {
+      if (node instanceof HTMLElement && node.matches(selector)) {
+        return node;
+      }
+      node = node.parentNode!;
+    }
+    return null;
+  };
+
+  const insertList = (type: 'ul' | 'ol') => {
+    const selection = window.getSelection();
+    if (!selection || !selection.rangeCount) {
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+    const list = document.createElement(type);
+    const li = document.createElement('li');
+    const span = document.createElement('span');
+    const cleanText = document.createTextNode('\u200B');
+
+    span.appendChild(cleanText);
+    li.appendChild(span);
+    list.appendChild(li);
+
+    // Insert new list block
+    range.deleteContents();
+    range.insertNode(list);
+
+    // move the selection into the span
+    const newRange = document.createRange();
+    newRange.setStart(span.firstChild!, 1);
+    newRange.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(newRange);
+  };
+
+  const indentListItem = () => {
+    const selection = window.getSelection();
+    if (!selection?.rangeCount) {
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+    const node = range.startContainer;
+    const li = node instanceof Element ? node.closest?.('li') : node.parentElement?.closest('li');
+    if (!li) {
+      return;
+    }
+
+    const parentList = li.parentElement;
+    if (!parentList) {
+      return;
+    }
+
+    const prevLi = li.previousElementSibling;
+    if (!prevLi || prevLi.tagName !== 'LI') {
+      return;
+    }
+
+    let nestedList = prevLi.querySelector('ul, ol');
+    if (!nestedList) {
+      nestedList = document.createElement(parentList.tagName.toLowerCase());
+      prevLi.appendChild(nestedList);
+    }
+
+    nestedList.appendChild(li);
+  };
+
+  const outdentListItem = () => {
+    const selection = window.getSelection();
+    if (!selection?.rangeCount) {
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+    const node = range.startContainer;
+    const li = node instanceof Element ? node.closest?.('li') : node.parentElement?.closest('li');
+    if (!li) {
+      return;
+    }
+
+    const parentList = li.parentElement;
+    const grandparentLi = parentList?.parentElement?.closest?.('li');
+
+    if (parentList && grandparentLi) {
+      grandparentLi.parentElement?.insertBefore(li, grandparentLi.nextSibling);
+
+      // Clean up empty lists
+      if (parentList.children.length === 0) {
+        parentList.remove();
+      }
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.ctrlKey && !e.shiftKey) {
+      switch (e.key.toLowerCase()) {
+        case 'b':
+          e.preventDefault();
+          toggleSelection('strong');
+          break;
+        case 'i':
+          e.preventDefault();
+          toggleSelection('em');
+          break;
+        case 'u':
+          e.preventDefault();
+          toggleSelection('u');
+          break;
+      }
+    }
+
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      if (e.shiftKey) {
+        outdentListItem();
+      } else {
+        indentListItem();
+      }
+      onChange?.(getHtml());
+    } else if (e.key === 'Enter') {
+      const selection = window.getSelection();
+      if (!selection || !selection.rangeCount) {
+        return;
+      }
+
+      const range = selection.getRangeAt(0);
+      const li =
+        range?.startContainer instanceof Element
+          ? range.startContainer.closest('li')
+          : range?.startContainer.parentElement?.closest('li');
+
+      if (li) {
+        // Inside a list item — allow native behavior
+        const isEmpty = li.textContent?.trim() === '';
+        if (isEmpty) {
+          e.preventDefault();
+
+          // Exit list: insert new paragraph after list
+          const p = document.createElement('p');
+          stripFormatting(p);
+          const span = document.createElement('span');
+          span.textContent = '\u200B';
+          p.appendChild(span);
+
+          const list = li.closest('ul') || li.closest('ol');
+          list?.parentNode?.insertBefore(p, list.nextSibling);
+
+          // Move selection into the new paragraph
+          const newRange = document.createRange();
+          newRange.setStart(span.firstChild!, 1);
+          newRange.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+
+          // Optionally remove the list if it has no meaningful content left
+          if (list && [...list.children].every((child) => child.textContent?.trim() === '')) {
+            list.remove();
+          }
+
+          return;
+        }
+
+        return;
+      }
+
+      // Remove formatting context
+      e.preventDefault();
+      const p = document.createElement('p');
+      stripFormatting(p);
+      const span = document.createElement('span');
+      span.textContent = '\u200B';
+      p.appendChild(span);
+
+      range.deleteContents();
+      range.insertNode(p);
+
+      const newRange = document.createRange();
+      newRange.setStart(span.firstChild!, 1);
+      newRange.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(newRange);
+    }
+  };
+
   return (
     <div className="usa-form-group editor-container">
       {label && (
         <label
-          htmlFor={textAreaId}
-          id={labelId}
-          data-testid={labelId}
+          htmlFor={id}
+          id={`editor-label-${id}`}
           className={`usa-label ${className ? `${className}-label` : ''}`}
         >
           {label}
           {required && <span className="required-form-field" />}
         </label>
       )}
+
       {ariaDescription && (
-        <div className="usa-hint" id={ariaDescribedBy()}>
+        <div className="usa-hint" id={`editor-hint-${id}`}>
           {ariaDescription}
         </div>
       )}
-      <div className="editor-wrapper">
-        <div className="editor-formatting-buttons">
-          <Button
-            onClick={handleBoldClick}
-            aria-label="Bold"
-            title="Bold (Ctrl+B)"
-            disabled={inputDisabled}
-          >
-            B
-          </Button>
-          <Button
-            onClick={handleItalicClick}
-            aria-label="Italic"
-            title="Italic (Ctrl+I)"
-            disabled={inputDisabled}
-          >
-            I
-          </Button>
-          <Button
-            onClick={handleUnderlineClick}
-            aria-label="Underline"
-            title="Underline (Ctrl+U)"
-            disabled={inputDisabled}
-          >
-            U
-          </Button>
-        </div>
-        <textarea
-          id={textAreaId}
-          data-testid={textAreaId}
-          className={`${className || ''} usa-textarea editor-textarea`}
-          value={inputValue}
-          onChange={handleChange}
-          disabled={inputDisabled}
-          ref={textAreaRef}
-          aria-describedby={ariaDescribedBy()}
-          placeholder="Enter text here. Use formatting options shown below."
-        />
-        {inputValue && (
-          <div className="editor-preview-container">
-            <div className="editor-preview-header">Preview</div>
-            <div className="editor-preview" dangerouslySetInnerHTML={{ __html: getHtml() }} />
-          </div>
-        )}
+
+      <div className="editor-formatting-buttons">
+        <Button onClick={() => toggleSelection('strong')} title="Bold (Ctrl+B)">
+          B
+        </Button>
+        <Button onClick={() => toggleSelection('em')} title="Italic (Ctrl+I)">
+          I
+        </Button>
+        <Button onClick={() => toggleSelection('u')} title="Underline (Ctrl+U)">
+          U
+        </Button>
+        <Button
+          onClick={() => {
+            insertList('ul');
+            onChange?.(getHtml());
+          }}
+          title="Bulleted List"
+        >
+          •
+        </Button>
+        <Button
+          onClick={() => {
+            insertList('ol');
+            onChange?.(getHtml());
+          }}
+          title="Numbered List"
+        >
+          1.
+        </Button>
       </div>
-      <div className="editor-help">
-        <p>Formatting options:</p>
-        <ul className="editor-help-list">
-          <li>
-            <strong>**bold**</strong> for bold text
-          </li>
-          <li>
-            <em>*italic*</em> for italic text
-          </li>
-          <li>
-            <u>_underline_</u> for underlined text
-          </li>
-          <li>[link text](https://example.com) for hyperlinks</li>
-          <li>
-            Lists:
-            <ul>
-              <li>* item or - item for unordered lists</li>
-              <li>1. item for ordered lists</li>
-            </ul>
-          </li>
-          <li>Use blank lines to create new paragraphs</li>
-        </ul>
-      </div>
+      <div
+        id={id}
+        className={`editor-content ${className || ''}`}
+        contentEditable={!inputDisabled}
+        tabIndex={0}
+        onInput={() => onChange?.(getHtml())}
+        onKeyDown={handleKeyDown}
+        ref={contentRef}
+        aria-describedby={ariaDescription ? `editor-hint-${id}` : undefined}
+        role="textbox"
+        aria-multiline="true"
+        suppressContentEditableWarning
+        style={{
+          minHeight: '150px',
+          border: '1px solid #ccc',
+          padding: '1rem',
+        }}
+      />
     </div>
   );
 }
 
 const Editor = forwardRef(_Editor);
-
 export default Editor;
