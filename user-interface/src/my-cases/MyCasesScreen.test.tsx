@@ -8,7 +8,7 @@ import testingUtilities from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
 import Api2 from '@/lib/models/api2';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
-import { formatDate } from '@/lib/utils/datetime';
+import { formatDate, formatDateTime } from '@/lib/utils/datetime';
 import LocalFormCache from '@/lib/utils/local-form-cache';
 import { Cacheable } from '@/lib/utils/local-cache';
 import { CaseNoteInput } from '@common/cams/cases';
@@ -196,4 +196,53 @@ describe('MyCasesScreen', () => {
       expect(alertMessage).toHaveTextContent(args.expectedAlertText);
     },
   );
+
+  test('should deduplicate case IDs when displaying draft notes alert', () => {
+    const duplicatedId = '081-00-12345';
+    const uniqueId = '081-00-54321';
+    const earlierDate = new Date(MockData.someDateAfterThisDate(now, 10));
+    const laterDate = new Date(MockData.someDateAfterThisDate(earlierDate.toISOString(), 5));
+    const duplicateCaseIdValues = [
+      {
+        key: 'foo1',
+        item: {
+          expiresAfter: earlierDate.valueOf(),
+          value: { title: 'title 1', content: 'content 1', caseId: duplicatedId },
+        },
+      },
+      {
+        key: 'foo2',
+        item: {
+          expiresAfter: laterDate.valueOf(),
+          value: { title: 'title 2', content: 'content 2', caseId: duplicatedId },
+        },
+      },
+      {
+        key: 'foo3',
+        item: {
+          expiresAfter: new Date(MockData.someDateAfterThisDate(now, 15)).valueOf(),
+          value: { title: 'title 3', content: 'content 3', caseId: uniqueId },
+        },
+      },
+    ];
+
+    vi.spyOn(LocalFormCache, 'getFormsByPattern').mockImplementation((_pattern: RegExp) => {
+      return duplicateCaseIdValues;
+    });
+
+    render(
+      <BrowserRouter>
+        <MyCasesScreen></MyCasesScreen>
+      </BrowserRouter>,
+    );
+
+    const alertMessage = document.querySelector('.draft-notes-alert-message');
+    expect(alertMessage).toBeInTheDocument();
+    expect(alertMessage).toHaveTextContent(
+      `You have draft case notes on cases ${getCaseNumber(duplicatedId)} and ${getCaseNumber(uniqueId)}`,
+    );
+    expect(alertMessage).toHaveTextContent(
+      `The draft on case number ${getCaseNumber(duplicatedId)} expires on ${formatDateTime(new Date(earlierDate))}.`,
+    );
+  });
 });
