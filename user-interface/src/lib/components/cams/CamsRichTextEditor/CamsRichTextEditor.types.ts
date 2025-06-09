@@ -13,7 +13,8 @@ export type CustomElement =
   | { type: 'paragraph'; children: CustomText[] }
   | { type: 'bulleted-list'; children: CustomElement[] }
   | { type: 'numbered-list'; children: CustomElement[] }
-  | { type: 'list-item'; children: (CustomElement | CustomText)[] };
+  | { type: 'list-item'; children: CustomElement[] }
+  | { type: 'list-item-text'; children: CustomText[] };
 
 type ElementOfType<T extends CustomElement['type']> = Extract<CustomElement, { type: T }>;
 
@@ -21,6 +22,7 @@ export type ParagraphElement = ElementOfType<'paragraph'>;
 export type BulletedListElement = ElementOfType<'bulleted-list'>;
 export type NumberedListElement = ElementOfType<'numbered-list'>;
 export type ListItemElement = ElementOfType<'list-item'>;
+export type ListItemTextElement = ElementOfType<'list-item-text'>;
 
 export type CustomEditor = BaseEditor & ReactEditor & HistoryEditor;
 
