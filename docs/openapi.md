@@ -1,0 +1,1 @@
+[swagger](openapi/openapi.json)
