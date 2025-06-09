@@ -1,5 +1,5 @@
 import * as jwt from 'jsonwebtoken';
-import { InvocationContext, HttpRequest } from '@azure/functions';
+import { HttpRequest, InvocationContext } from '@azure/functions';
 import { ApplicationContext } from '../../lib/adapters/types/basic';
 import { ApplicationConfiguration } from '../../lib/configs/application-configuration';
 import { getFeatureFlags } from '../../lib/adapters/utils/feature-flag';
@@ -71,26 +71,29 @@ async function getApplicationContextSession(context: ApplicationContext) {
     });
   }
 
-  const match = authorizationHeader.match(/Bearer (.+)/);
+  const [scheme, token] = authorizationHeader.split(' ');
 
-  if (!match || match.length !== 2) {
+  if (!scheme || !token) {
     throw new UnauthorizedError(MODULE_NAME, {
-      message: 'Bearer token not found in authorization header',
-    });
-  }
-
-  let accessToken = '';
-  const jwtToken = jwt.decode(match[1]);
-  if (jwtToken) {
-    accessToken = match[1];
-  } else {
-    throw new UnauthorizedError(MODULE_NAME, {
-      message: 'Malformed Bearer token in authorization header',
+      message: 'Authorization scheme and token not found in authorization header',
     });
   }
 
   const sessionUseCase = getUserSessionUseCase(context);
-  return sessionUseCase.lookup(context, accessToken, context.config.authConfig.provider);
+
+  switch (scheme) {
+    case 'Bearer':
+      if (!jwt.decode(token)) {
+        throw new UnauthorizedError(MODULE_NAME, {
+          message: 'Malformed Bearer token in authorization header',
+        });
+      }
+      return sessionUseCase.lookup(context, token, context.config.authConfig.provider);
+    case 'ApiKey':
+      return sessionUseCase.lookupApiKey(context, token);
+    default:
+      throw new UnauthorizedError(MODULE_NAME, { message: 'Unsupported authorization scheme' });
+  }
 }
 
 const ContextCreator = {
