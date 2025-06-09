@@ -132,10 +132,14 @@ describe('Application Context Creator', () => {
 
     test('should throw an UnauthorizedError if authorization header contains an invalid API key', async () => {
       context.request.headers.authorization = 'ApiKey thisIsAnInvalidApiKey';
+      const lookupSpy = jest
+        .spyOn(MockUserSessionUseCase.prototype, 'lookupApiKey')
+        .mockRejectedValue(new Error('Invalid API key in authorization header'));
 
       await expect(ContextCreator.getApplicationContextSession(context)).rejects.toThrow(
         'Invalid API key in authorization header',
       );
+      expect(lookupSpy).toHaveBeenCalled();
     });
 
     test('should call user session gateway lookup', async () => {
