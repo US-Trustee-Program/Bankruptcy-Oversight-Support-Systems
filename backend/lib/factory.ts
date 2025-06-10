@@ -58,6 +58,7 @@ import { getCamsErrorWithStack } from './common-errors/error-utilities';
 import { OfficeAssigneeMongoRepository } from './adapters/gateways/mongo/office-assignee.mongo.repository';
 import StorageQueueGateway from './adapters/gateways/storage-queue/storage-queue-gateway';
 import ConsolidationOrdersMigrationMongoRepository from './adapters/gateways/mongo/consolidations-migration.mongo.repository';
+import { MockUserSessionCacheRepository } from './testing/mock-gateways/mock-user-session-cache.repository';
 
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
@@ -73,7 +74,7 @@ let usersRepository: UsersRepository;
 let mockOrdersRepository: MockMongoRepository;
 let mockConsolidationsRepository: MockMongoRepository;
 let mockCasesRepository: MockMongoRepository;
-let mockUserSessionCacheRepository: MockMongoRepository;
+let mockUserSessionCacheRepository: MockUserSessionCacheRepository;
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return MockAttorneysGateway;
@@ -252,9 +253,9 @@ export const getAuthorizationGateway = (context: ApplicationContext): OpenIdConn
 
 // TODO?: Do not use the factory to get the use case.
 export const getUserSessionUseCase = (context: ApplicationContext) => {
-  if (context.config.authConfig.provider === 'mock') {
-    return new MockUserSessionUseCase();
-  }
+  // if (context.config.authConfig.provider === 'mock') {
+  //   return new MockUserSessionUseCase();
+  // }
   const repo = new UserSessionUseCase();
   deferRelease(repo, context);
   return repo;
@@ -264,9 +265,9 @@ export const getUserSessionCacheRepository = (
   context: ApplicationContext,
 ): UserSessionCacheRepository => {
   // TODO?: Drive this off dbMock || authConfig.provider === 'mock' and implement a unique mock repo.
-  if (context.config.get('dbMock')) {
+  if (context.config.get('dbMock') || context.config.authConfig.provider === 'mock') {
     if (!mockUserSessionCacheRepository) {
-      mockUserSessionCacheRepository = MockMongoRepository.getInstance(context);
+      mockUserSessionCacheRepository = MockUserSessionCacheRepository.getInstance(context);
     }
     return mockUserSessionCacheRepository;
   }
