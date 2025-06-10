@@ -1,5 +1,7 @@
 export const ZERO_WIDTH_SPACE = '\u200B';
 export const ZERO_WIDTH_SPACE_REGEX = new RegExp(ZERO_WIDTH_SPACE, 'g');
+type RichTextFormat = 'strong' | 'em' | 'u';
+
 const EDITOR_CONTENT_SELECTOR = '.editor-content';
 
 const normalizeContentEditableRoot = (root: HTMLElement) => {
@@ -62,7 +64,34 @@ const findClosestAncestor = <T extends Element = Element>(
   return null;
 };
 
-const toggleSelection = (tagName: 'strong' | 'em' | 'u') => {
+const createElement = (format: RichTextFormat): HTMLElement => {
+  switch (format) {
+    case 'strong':
+      return document.createElement('strong');
+    case 'em':
+      return document.createElement('em');
+    case 'u': {
+      const span = document.createElement('span');
+      span.className = 'underline';
+      return span;
+    }
+  }
+};
+
+const isMatchingElement = (el: Element, format: RichTextFormat): boolean => {
+  switch (format) {
+    case 'strong':
+      return el.tagName === 'STRONG';
+    case 'em':
+      return el.tagName === 'EM';
+    case 'u':
+      return el.tagName === 'SPAN' && el.classList.contains('underline');
+    default:
+      return false;
+  }
+};
+
+const toggleSelection = (tagName: RichTextFormat) => {
   const selection = window.getSelection();
   if (!selection || selection.rangeCount === 0) {
     return;
@@ -181,8 +210,12 @@ const outdentListItem = () => {
     return;
   }
 
+  // get all following siblings of li (liSiblings)
+  const allChildrenOfLiParent = Array.from(li.parentElement?.children || []);
+  const liSiblings = allChildrenOfLiParent.slice(allChildrenOfLiParent.indexOf(li) + 1);
+
   const parentList = li.parentElement;
-  const grandparentLi = parentList?.parentElement?.closest?.('li');
+  const grandparentLi = parentList?.parentElement;
 
   if (!parentList || !grandparentLi) {
     return;
@@ -197,6 +230,13 @@ const outdentListItem = () => {
   if (parentList.children.length === 0) {
     parentList.remove();
   }
+
+  // move all liSiblings to be children of li in a new ul node.
+  const newUl = document.createElement('ul');
+  liSiblings.forEach((sibling) => {
+    newUl.appendChild(sibling);
+  });
+  li.appendChild(newUl);
 
   // Restore selection
   const newRange = document.createRange();
@@ -529,6 +569,8 @@ const handlePrintableKey = (e: React.KeyboardEvent<HTMLDivElement>): boolean => 
 };
 
 export {
+  createElement,
+  isMatchingElement,
   findClosestAncestor,
   handleCtrlKey,
   handleEnterKey,
