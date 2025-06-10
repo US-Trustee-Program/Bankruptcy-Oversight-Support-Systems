@@ -6,7 +6,6 @@ import Input from '@/lib/components/uswds/Input';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
 import { TextAreaRef } from '@/lib/type-declarations/input-fields';
-import TextArea from '@/lib/components/uswds/TextArea';
 import Api2 from '@/lib/models/api2';
 import HttpStatusCodes from '@common/api/http-status-codes';
 import { ResponseBody } from '@common/api/response';
@@ -14,7 +13,9 @@ import { CaseNoteInput } from '@common/cams/cases';
 import { getCamsUserReference } from '@common/cams/session';
 import LocalStorage from '@/lib/utils/local-storage';
 import LocalFormCache from '@/lib/utils/local-form-cache';
-import Editor, { EditorRef } from '@/case-detail/panels/case-notes/Editor';
+import RichTextEditor, {
+  RichTextEditorRef,
+} from '@/lib/components/cams/RichTextEditor/RichTextEditor';
 
 const useThrottleCallback = (callback: () => void, delay: number) => {
   const isThrottled = useRef(false);
@@ -105,7 +106,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   const modalRef = useRef<ModalRefType>(null);
   const titleInputRef = useRef<TextAreaRef>(null);
   const contentInputRef = useRef<TextAreaRef>(null);
-  const editorRef = useRef<EditorRef>(null);
+  const editorRef = useRef<RichTextEditorRef>(null);
   const notesRequiredFieldsMessage = 'Title and content are both required inputs.';
   const notesSubmissionErrorMessage = 'There was a problem submitting the case note.';
   const session = LocalStorage.getSession();
@@ -146,11 +147,11 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     });
   }
 
-  function handleContentChange(event: React.ChangeEvent<HTMLTextAreaElement>) {
+  function handleContentChange(value: string) {
     saveFormData({
       caseId: modalOpenOptions.caseId,
       title: getCaseNotesInputValue(titleInputRef.current),
-      content: event.target.value,
+      content: value,
     });
   }
 
@@ -348,14 +349,13 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
             autoComplete="off"
             ref={titleInputRef}
           />
-          <TextArea
-            id="note-content"
+          <RichTextEditor
+            id="formatted-editor"
             label="Note Text"
             required={true}
             onChange={handleContentChange}
-            ref={contentInputRef}
+            ref={editorRef}
           />
-          <Editor id="formatted-editor" ref={editorRef} />
         </div>
       }
     ></Modal>
