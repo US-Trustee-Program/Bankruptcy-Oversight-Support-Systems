@@ -39,7 +39,7 @@ export class UserSessionCacheMongoRepository
     return UserSessionCacheMongoRepository.instance;
   }
 
-  public static dropInstance() {
+  private static dropInstance() {
     if (UserSessionCacheMongoRepository.referenceCount > 0) {
       UserSessionCacheMongoRepository.referenceCount--;
     }
