@@ -29,23 +29,17 @@ describe('User session cache Cosmos repository tests', () => {
     await closeDeferred(context);
   });
 
-  test('read should throw for invalid token', async () => {
-    const find = jest.spyOn(MongoCollectionAdapter.prototype, 'find');
-    await expect(repo.read('invalid.token')).rejects.toThrow('Invalid token received.');
-    expect(find).not.toHaveBeenCalled();
-  });
-
   test('read should throw error on cache miss', async () => {
     jest
       .spyOn(MongoCollectionAdapter.prototype, 'findOne')
       .mockRejectedValue(new NotFoundError(''));
-    await expect(repo.read('a.valid.token')).rejects.toThrow('Not found');
+    await expect(repo.read('aValidSignature')).rejects.toThrow('Not found');
   });
 
   test('read should return CamsSession on cache hit', async () => {
     const session = { ...expected, id: 'some-id', signature: 'some signature', ttl: 42 };
     jest.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(session);
-    const actual = await repo.read('a.valid.token');
+    const actual = await repo.read('aValidSignature');
     expect(actual).toEqual(expected);
     expect(actual).not.toEqual(
       expect.objectContaining({
@@ -57,7 +51,7 @@ describe('User session cache Cosmos repository tests', () => {
   });
 
   test('upsert should throw for invalid token', async () => {
-    const newSession = { ...expected, accessToken: 'invalid.token' };
+    const newSession = { ...expected, accessToken: 'invalidSignature' };
     const insertOne = jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne');
     await expect(repo.upsert(newSession)).rejects.toThrow('Invalid token received.');
     expect(insertOne).not.toHaveBeenCalled();

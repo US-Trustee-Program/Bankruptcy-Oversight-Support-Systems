@@ -15,7 +15,12 @@ export class UserSessionUseCase {
     const sessionCacheRepository = getUserSessionCacheRepository(context);
 
     try {
-      const session = await sessionCacheRepository.read(token);
+      const tokenParts = token.split('.');
+      if (tokenParts.length !== 3) {
+        throw new UnauthorizedError(MODULE_NAME, { message: 'Invalid token received.' });
+      }
+      const signature = tokenParts[2];
+      const session = await sessionCacheRepository.read(signature);
       context.logger.debug(MODULE_NAME, 'Found session in cache.');
       return session;
     } catch (originalError) {

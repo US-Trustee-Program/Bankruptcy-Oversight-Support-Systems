@@ -53,12 +53,7 @@ export class UserSessionCacheMongoRepository
     UserSessionCacheMongoRepository.dropInstance();
   }
 
-  public async read(token: string): Promise<CamsSession> {
-    const tokenParts = token.split('.');
-    if (tokenParts.length !== 3) {
-      throw new UnauthorizedError(MODULE_NAME, { message: 'Invalid token received.' });
-    }
-    const signature = tokenParts[2];
+  public async read(signature: string): Promise<CamsSession> {
     const query = doc('signature').equals(signature);
 
     try {

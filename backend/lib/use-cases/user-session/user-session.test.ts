@@ -140,4 +140,9 @@ describe('user-session.gateway test', () => {
     jest.spyOn(factoryModule, 'getAuthorizationGateway').mockReturnValue(null);
     await expect(gateway.lookup(context, jwtString, provider)).rejects.toThrow(ServerConfigError);
   });
+
+  const cases = [['hashedKey'], ['unsigned.token']];
+  test.each(cases)('should throw UnauthorizedError for %s', async (token: string) => {
+    await expect(gateway.lookup(context, token, provider)).rejects.toThrow(UnauthorizedError);
+  });
 });
