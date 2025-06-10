@@ -7,6 +7,7 @@ import * as crypto from 'crypto';
 
 const cache = new Map<string, CamsSession>();
 
+// TODO?: Get rid of this mock use case.
 export class MockUserSessionUseCase {
   async lookup(
     _context: ApplicationContext,

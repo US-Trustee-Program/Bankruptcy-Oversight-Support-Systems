@@ -250,6 +250,7 @@ export const getAuthorizationGateway = (context: ApplicationContext): OpenIdConn
   return null;
 };
 
+// TODO?: Do not use the factory to get the use case.
 export const getUserSessionUseCase = (context: ApplicationContext) => {
   if (context.config.authConfig.provider === 'mock') {
     return new MockUserSessionUseCase();
