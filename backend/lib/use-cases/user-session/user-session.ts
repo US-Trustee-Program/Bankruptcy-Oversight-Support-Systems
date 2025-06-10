@@ -65,14 +65,14 @@ export class UserSessionUseCase {
     }
   }
 
-  async lookupApiKey(context: ApplicationContext, token: string): Promise<CamsSession> {
-    // TODO: Convert the token to a hashed variant to use as the token to lookup in Cosmos.
-    const hashedToken = crypto.createHash('sha256').update(token).digest('base64');
+  async lookupApiKey(context: ApplicationContext, apiKey: string): Promise<CamsSession> {
+    // TODO: Convert the apiKey to a hashed variant to use as the apiKey to lookup in Cosmos.
+    const hashedApiKey = crypto.createHash('sha256').update(apiKey).digest('base64');
 
     const sessionCacheRepository = getUserSessionCacheRepository(context);
 
     try {
-      const session = await sessionCacheRepository.read(hashedToken);
+      const session = await sessionCacheRepository.read(hashedApiKey);
       context.logger.debug(MODULE_NAME, 'Found session in cache.');
       return session;
     } catch (originalError) {
@@ -85,7 +85,7 @@ export class UserSessionUseCase {
     }
 
     try {
-      if (token !== process.env.ADMIN_KEY) {
+      if (apiKey !== process.env.ADMIN_KEY) {
         throw new UnauthorizedError(MODULE_NAME, {
           message: 'Invalid API key in authorization header',
         });
@@ -93,7 +93,7 @@ export class UserSessionUseCase {
 
       // TODO: For now we will just return a static session since the current API key is also static.
       const session: CamsSession = {
-        accessToken: hashedToken,
+        accessToken: hashedApiKey,
         expires: Date.now() + 3600 * 1000, // Now plus one hour.
         issuer: 'cams',
         provider: 'apikey',

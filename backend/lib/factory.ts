@@ -262,6 +262,7 @@ export const getUserSessionUseCase = (context: ApplicationContext) => {
 export const getUserSessionCacheRepository = (
   context: ApplicationContext,
 ): UserSessionCacheRepository => {
+  // TODO?: Drive this off dbMock || authConfig.provider === 'mock' and implement a unique mock repo.
   if (context.config.get('dbMock')) {
     if (!mockUserSessionCacheRepository) {
       mockUserSessionCacheRepository = MockMongoRepository.getInstance(context);
