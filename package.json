@@ -14,14 +14,12 @@
     "build:frontend": "pushd user-interface && npm run build && popd",
     "build:common": "pushd common && npm run build && popd",
     "clean-and-build": "npm run clean:all && npm run ci:all && npm run build",
-    "lint": "eslint . -c eslint.config.mjs",
-    "docs": "docsify serve docs -o"
+    "lint": "eslint . -c eslint.config.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
     "@typescript-eslint/eslint-plugin": "^8.18.2",
     "@typescript-eslint/parser": "^8.18.2",
-    "docsify-cli": "^4.4.4",
     "eslint": "^9.28.0",
     "eslint-config-prettier": "^10.1.5",
     "eslint-plugin-jest": "^28.12.0",
