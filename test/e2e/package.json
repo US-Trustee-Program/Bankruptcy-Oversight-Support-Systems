@@ -32,5 +32,8 @@
   "dependencies": {
     "ts-node": "^10.9.2",
     "tsx": "^4.20.1"
+  },
+  "overrides": {
+    "brace-expansion": "^4.0.1"
   }
 }
