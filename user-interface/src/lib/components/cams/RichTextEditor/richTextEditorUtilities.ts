@@ -16,6 +16,75 @@ const normalizeContentEditableRoot = (root: HTMLElement) => {
   }
 };
 
+function normalizeInlineFormatting(root: Node) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
+  const inlineTags = ['strong', 'em'];
+  const classBasedSpans = ['underline'];
+
+  const shouldMerge = (a: Element, b: Element): boolean => {
+    // Match by tag
+    if (a.tagName === b.tagName && inlineTags.includes(a.tagName.toLowerCase())) {
+      return true;
+    }
+
+    // Match span.class
+    if (
+      a.tagName === 'SPAN' &&
+      b.tagName === 'SPAN' &&
+      classBasedSpans.some((cls) => a.classList.contains(cls) && b.classList.contains(cls))
+    ) {
+      return true;
+    }
+
+    return false;
+  };
+
+  const normalizeElement = (node: Element) => {
+    for (let i = node.childNodes.length - 1; i > 0; i--) {
+      const current = node.childNodes[i];
+      const prev = node.childNodes[i - 1];
+
+      if (
+        current.nodeType === Node.ELEMENT_NODE &&
+        prev.nodeType === Node.ELEMENT_NODE &&
+        shouldMerge(current as Element, prev as Element)
+      ) {
+        const currEl = current as Element;
+        const prevEl = prev as Element;
+
+        // Move current's children into prev
+        while (currEl.firstChild) {
+          prevEl.appendChild(currEl.firstChild);
+        }
+
+        // Remove current
+        node.removeChild(currEl);
+      }
+    }
+
+    // Remove empty inline elements
+    Array.from(node.childNodes).forEach((child) => {
+      if (
+        child.nodeType === Node.ELEMENT_NODE &&
+        (inlineTags.includes((child as Element).tagName.toLowerCase()) ||
+          ((child as Element).tagName === 'SPAN' &&
+            classBasedSpans.some((cls) => (child as Element).classList.contains(cls)))) &&
+        !child.textContent?.trim()
+      ) {
+        node.removeChild(child);
+      }
+    });
+
+    node.normalize();
+  };
+
+  let current: Node | null = walker.currentNode;
+  while (current) {
+    normalizeElement(current as Element);
+    current = walker.nextNode();
+  }
+}
+
 const stripFormatting = (node: Node) => {
   if (!(node instanceof HTMLElement)) {
     return;
@@ -64,7 +133,7 @@ const findClosestAncestor = <T extends Element = Element>(
   return null;
 };
 
-const createElement = (format: RichTextFormat): HTMLElement => {
+const createRichTextElement = (format: RichTextFormat): HTMLElement => {
   switch (format) {
     case 'strong':
       return document.createElement('strong');
@@ -102,7 +171,7 @@ const toggleSelection = (tagName: RichTextFormat) => {
   if (range.collapsed) {
     // Collapsed selection — toggle inline formatting state
     // Optionally create an empty element with zero-width space
-    const el = document.createElement(tagName);
+    const el = createRichTextElement(tagName);
     el.appendChild(document.createTextNode(ZERO_WIDTH_SPACE));
     range.insertNode(el);
 
@@ -116,41 +185,127 @@ const toggleSelection = (tagName: RichTextFormat) => {
   }
 
   // Extended selection — wrap or unwrap selection content
-  const contents = range.extractContents();
-
-  let modified = false;
+  const contents = range.cloneContents();
 
   // If content is already wrapped with this tag, unwrap it
-  contents.childNodes.forEach((node) => {
-    if (
-      node.nodeType === Node.ELEMENT_NODE &&
-      (node as HTMLElement).tagName.toLowerCase() === tagName
-    ) {
-      const inner = Array.from(node.childNodes);
-      inner.forEach((child) => contents.appendChild(child));
-      contents.removeChild(node);
-      modified = true;
-    }
-  });
+  // If content wholly contains this tag, expand the tag
+  // Here is |some <strong>sample text</strong>| that contains some markup.
+  // --> Here is <strong>some sample text</strong> that contains some markup.
+  // Here is some |<strong>sample text</strong>| that contains some markup.
+  // --> Here is some sample text that contains some markup.
+  // Here is some |<strong>sample text</strong> that |contains some markup.
+  // --> Here is some <strong>sample text that </strong>contains some markup.
+  // Here is |some <strong>sample| text</strong> that contains some markup.
+  // --> Here is <strong>some sample text</strong> that contains some markup.
+  // Here is some <strong>sample |text</strong> that contains| some markup.
+  // --> Here is some <strong>sample text that contains</strong> some markup.
 
-  if (!modified) {
-    // Wrap in tagName
-    const wrapper = document.createElement(tagName);
-    wrapper.appendChild(contents);
-    range.insertNode(wrapper);
-  } else {
-    // Insert modified unwrapped content
+  // Check if the selection is exactly the content of a single tag of the target type
+  // We need to check if the selection's parent is a tag of the target type and if the selection
+  // encompasses the entire content of that tag
+  let isExactlyOneTag = false;
+
+  // Store the original range information before extracting contents
+  const { startContainer, endContainer, startOffset, endOffset } = range;
+
+  // Check if both start and end containers are the same text node or are children of the same parent
+  if (startContainer === endContainer || startContainer.parentNode === endContainer.parentNode) {
+    const parent = startContainer.parentNode as HTMLElement;
+
+    // Check if the parent is an element of the target type
+    if (parent && parent.nodeType === Node.ELEMENT_NODE && isMatchingElement(parent, tagName)) {
+      // Check if the selection encompasses the entire content of the parent
+      const parentContent = parent.textContent || '';
+      const selectedContent = contents.textContent || '';
+
+      // If the selected content is the same as the parent's content, then the selection
+      // encompasses the entire content of the parent
+      isExactlyOneTag =
+        parentContent === selectedContent &&
+        // Make sure we're not selecting more than just this element
+        startOffset === 0 &&
+        endOffset ===
+          (endContainer.nodeType === Node.TEXT_NODE
+            ? endContainer.textContent?.length || 0
+            : endContainer.childNodes.length);
+
+      if (isExactlyOneTag) {
+        const grandParent = parent.parentNode;
+        if (!grandParent) {
+          return;
+        }
+
+        // Move all children out of the formatting element
+        while (parent.firstChild) {
+          grandParent.insertBefore(parent.firstChild, parent);
+        }
+
+        // Remove the formatting element
+        grandParent.removeChild(parent);
+        normalizeInlineFormatting(grandParent);
+
+        return;
+      }
+    }
+  }
+
+  // Check if the selection contains any tags of the target type
+  const containsTargetTag = Array.from(contents.querySelectorAll(tagName)).length > 0;
+
+  // Check if we need to unwrap (when selection is exactly one tag) or wrap
+  if (containsTargetTag) {
+    // Case: Selection contains or partially overlaps with tags of the target type
+
+    // First, collect all text nodes and elements that aren't of the target type
+    const nodesToWrap: Node[] = [];
+    const processNode = (node: Node) => {
+      if (
+        node.nodeType === Node.ELEMENT_NODE &&
+        (node as HTMLElement).tagName.toLowerCase() === tagName
+      ) {
+        // For target elements, add their children to be processed
+        Array.from(node.childNodes).forEach((child) => processNode(child));
+      } else {
+        nodesToWrap.push(node);
+      }
+    };
+
+    Array.from(contents.childNodes).forEach((node) => processNode(node));
+
+    // Create a new wrapper and add all the collected nodes
+    const wrapper = createRichTextElement(tagName);
+    nodesToWrap.forEach((node) => wrapper.appendChild(node));
+
+    // Clear the original contents and add the wrapper
+    while (contents.firstChild) {
+      contents.removeChild(contents.firstChild);
+    }
+    contents.appendChild(wrapper);
+
+    range.deleteContents();
     range.insertNode(contents);
+  } else {
+    // Case: Selection doesn't contain any tags of the target type - wrap it
+    const wrapper = createRichTextElement(tagName);
+    wrapper.appendChild(contents);
+    range.deleteContents();
+    range.insertNode(wrapper);
   }
 
   // Restore selection
-  selection.removeAllRanges();
-  const newRange = document.createRange();
-  if (range.startContainer.firstChild) {
-    newRange.setStartBefore(range.startContainer.firstChild);
-    newRange.setEndAfter(range.startContainer.lastChild!);
-    selection.addRange(newRange);
+  // selection.removeAllRanges();
+  // const newRange = document.createRange();
+  // if (range.startContainer.firstChild) {
+  //   newRange.setStartBefore(range.startContainer.firstChild);
+  //   newRange.setEndAfter(range.startContainer.lastChild!);
+  //   selection.addRange(newRange);
+  // }
+
+  // Normalize
+  if (selection.anchorNode) {
+    normalizeInlineFormatting(selection.anchorNode);
   }
+  // TODO: remove all these comments and simplify
 };
 
 const indentListItem = () => {
@@ -205,19 +360,25 @@ const outdentListItem = () => {
 
   const range = selection.getRangeAt(0);
   const node = range.startContainer;
-  const li = node instanceof Element ? node.closest?.('li') : node.parentElement?.closest('li');
-  if (!li) {
+  const targetLi =
+    node instanceof Element ? node.closest?.('li') : node.parentElement?.closest('li');
+  if (!targetLi) {
     return;
   }
 
   // get all following siblings of li (liSiblings)
-  const allChildrenOfLiParent = Array.from(li.parentElement?.children || []);
-  const liSiblings = allChildrenOfLiParent.slice(allChildrenOfLiParent.indexOf(li) + 1);
+  const allChildrenOfLiParent = Array.from(targetLi.parentElement?.children || []);
+  const liNextSiblings = allChildrenOfLiParent.slice(allChildrenOfLiParent.indexOf(targetLi) + 1);
 
-  const parentList = li.parentElement;
+  const parentList = targetLi.parentElement;
   const grandparentLi = parentList?.parentElement;
 
+  const editor = document.querySelector(EDITOR_CONTENT_SELECTOR);
+
   if (!parentList || !grandparentLi) {
+    return;
+  }
+  if (!editor?.contains(grandparentLi) || editor === grandparentLi) {
     return;
   }
 
@@ -225,18 +386,20 @@ const outdentListItem = () => {
   const offsetNode = range.startContainer;
   const offset = range.startOffset;
 
-  grandparentLi.parentElement?.insertBefore(li, grandparentLi.nextSibling);
+  grandparentLi.parentElement?.insertBefore(targetLi, grandparentLi.nextSibling);
 
   if (parentList.children.length === 0) {
     parentList.remove();
   }
 
   // move all liSiblings to be children of li in a new ul node.
-  const newUl = document.createElement('ul');
-  liSiblings.forEach((sibling) => {
-    newUl.appendChild(sibling);
-  });
-  li.appendChild(newUl);
+  if (liNextSiblings.length > 0) {
+    const newUl = document.createElement('ul');
+    liNextSiblings.forEach((sibling) => {
+      newUl.appendChild(sibling);
+    });
+    targetLi.appendChild(newUl);
+  }
 
   // Restore selection
   const newRange = document.createRange();
@@ -298,9 +461,7 @@ const unwrapList = () => {
 const createListWithEmptyItem = (type: 'ul' | 'ol'): HTMLElement => {
   const list = document.createElement(type);
   const li = document.createElement('li');
-  const span = document.createElement('span');
-  span.textContent = ZERO_WIDTH_SPACE;
-  li.appendChild(span);
+  li.appendChild(document.createTextNode(ZERO_WIDTH_SPACE));
   list.appendChild(li);
   return list;
 };
@@ -329,34 +490,51 @@ const insertList = (type: 'ul' | 'ol') => {
     currentParagraph.parentNode === editor;
 
   const list = createListWithEmptyItem(type);
-  const span = list.querySelector('span');
+  const listItem = list.querySelector('li');
 
   const parent = currentParagraph?.parentNode || editor;
 
+  // Handle selection or trailing content
+  let extractedContent: DocumentFragment | null = null;
+
+  if (!range.collapsed) {
+    // Text is selected — extract and insert into the list item
+    extractedContent = range.extractContents();
+  } else if (currentParagraph) {
+    // No selection, but check for content after the cursor
+    const afterRange = document.createRange();
+    afterRange.setStart(range.endContainer, range.endOffset);
+    afterRange.setEndAfter(currentParagraph.lastChild!);
+    if (!afterRange.collapsed) {
+      extractedContent = afterRange.extractContents();
+    }
+  }
+
+  // Insert extracted content into list item span
+  if (listItem && extractedContent && extractedContent.hasChildNodes()) {
+    listItem.innerHTML = ''; // clear default content
+    listItem.appendChild(extractedContent);
+  }
+
   if (currentParagraph && parent) {
-    // break out of paragraph and insert list as sibling
     if (isParagraphEmpty) {
       currentParagraph.replaceWith(list);
-    } else if (currentParagraph) {
-      parent.insertBefore(list, currentParagraph.nextSibling);
     } else {
-      editor.appendChild(list);
+      parent.insertBefore(list, currentParagraph.nextSibling);
     }
 
-    // remove any empty paragraph
     if (!currentParagraph.textContent?.trim()) {
       currentParagraph.remove();
     }
   } else {
-    // no paragraph found - insert where the selection is
     range.deleteContents();
     range.insertNode(list);
   }
 
-  // move the selection into the span
-  if (span?.firstChild) {
+  // Move the selection inside the list item's span
+  if (listItem?.firstChild) {
     const newRange = document.createRange();
-    newRange.setStart(span.firstChild, 1);
+    newRange.setStart(listItem.firstChild, listItem.firstChild.nodeType === Node.TEXT_NODE ? 1 : 0);
     newRange.collapse(true);
     selection.removeAllRanges();
     selection.addRange(newRange);
@@ -454,9 +632,7 @@ const handleEnterKey = (e: React.KeyboardEvent<HTMLDivElement>): boolean => {
         // Exit list: insert a paragraph after the list
         const p = document.createElement('p');
         stripFormatting(p);
-        const span = document.createElement('span');
-        span.textContent = ZERO_WIDTH_SPACE;
-        p.appendChild(span);
+        p.appendChild(document.createTextNode(ZERO_WIDTH_SPACE));
 
         const list = findClosestAncestor<HTMLOListElement | HTMLUListElement>(listItem, 'ol,ul');
         list?.parentNode?.insertBefore(p, list.nextSibling);
@@ -465,7 +641,7 @@ const handleEnterKey = (e: React.KeyboardEvent<HTMLDivElement>): boolean => {
 
         // Move selection to new paragraph
         const newRange = document.createRange();
-        newRange.setStart(span.firstChild!, 1);
+        newRange.setStart(p.firstChild!, 1);
         newRange.collapse(true);
         selection.removeAllRanges();
         selection.addRange(newRange);
@@ -489,9 +665,7 @@ const handleEnterKey = (e: React.KeyboardEvent<HTMLDivElement>): boolean => {
 
     const newParagraph = document.createElement('p');
     stripFormatting(newParagraph);
-    const newSpan = document.createElement('span');
-    newSpan.textContent = ZERO_WIDTH_SPACE;
-    newParagraph.appendChild(newSpan);
+    newParagraph.appendChild(document.createTextNode(ZERO_WIDTH_SPACE));
 
     if (currentParagraph && currentParagraph.parentNode) {
       // Insert after existing paragraph
@@ -503,7 +677,7 @@ const handleEnterKey = (e: React.KeyboardEvent<HTMLDivElement>): boolean => {
     }
 
     const newRange = document.createRange();
-    newRange.setStart(newSpan.firstChild!, 1);
+    newRange.setStart(newParagraph.firstChild!, 1);
     newRange.collapse(true);
     selection.removeAllRanges();
     selection.addRange(newRange);
@@ -545,16 +719,13 @@ const handlePrintableKey = (e: React.KeyboardEvent<HTMLDivElement>): boolean => 
 
       const p = document.createElement('p');
       stripFormatting(p);
-      const span = document.createElement('span');
-
       const char = e.key.length === 1 ? e.key : ''; // Skip non-printable keys
-      span.textContent = char || ZERO_WIDTH_SPACE;
-      p.appendChild(span);
+      p.textContent = char || ZERO_WIDTH_SPACE;
 
       range.insertNode(p);
 
       const newRange = document.createRange();
-      const textNode = span.firstChild;
+      const textNode = p.firstChild;
       const offset = textNode instanceof Text ? textNode.length : 1;
 
       newRange.setStart(textNode!, offset);
@@ -569,7 +740,7 @@ const handlePrintableKey = (e: React.KeyboardEvent<HTMLDivElement>): boolean => 
 };
 
 export {
-  createElement,
+  createRichTextElement,
   isMatchingElement,
   findClosestAncestor,
   handleCtrlKey,
