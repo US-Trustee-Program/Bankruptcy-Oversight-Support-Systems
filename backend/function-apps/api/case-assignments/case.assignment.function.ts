@@ -38,6 +38,3 @@ app.http('case-assignments', {
   route: 'case-assignments/{id?}',
   extraOutputs,
 });
-
-// How we maybe should do this: /case-assignments?caseId=081-25-12345
-// How we actually do this: /case-assignments/081-25-12345

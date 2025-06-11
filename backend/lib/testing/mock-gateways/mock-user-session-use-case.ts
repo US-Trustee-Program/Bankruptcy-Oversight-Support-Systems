@@ -3,7 +3,6 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { getUser } from './mock-oauth2-gateway';
 import { CamsSession } from '../../../../common/src/cams/session';
 import { CamsJwtClaims } from '../../../../common/src/cams/jwt';
-import * as crypto from 'crypto';
 
 const cache = new Map<string, CamsSession>();
 
@@ -27,25 +26,6 @@ export class MockUserSessionUseCase {
     const cacheEntry: CamsSession = { user, provider, accessToken, expires, issuer };
     cache.set(key, cacheEntry);
 
-    return cacheEntry;
-  }
-
-  async lookupApiKey(_context: ApplicationContext, token: string): Promise<CamsSession> {
-    const hashedToken = crypto.createHash('sha256').update(token).digest('base64');
-
-    if (cache.has(hashedToken)) {
-      return cache.get(hashedToken);
-    }
-
-    const cacheEntry: CamsSession = {
-      accessToken: hashedToken,
-      expires: Date.now() + 3600 * 1000, // Now plus one hour.
-      issuer: 'cams',
-      provider: 'apikey',
-      user: { id: 'apiuser', name: 'Api User' },
-    };
-
-    cache.set(hashedToken, cacheEntry);
     return cacheEntry;
   }
 }
