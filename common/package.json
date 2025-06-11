@@ -38,5 +38,8 @@
   },
   "dependencies": {
     "buffer": "^6.0.3"
+  },
+  "overrides": {
+    "brace-expansion": "^4.0.1"
   }
 }

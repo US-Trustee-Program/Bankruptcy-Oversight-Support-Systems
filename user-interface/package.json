@@ -70,7 +70,8 @@
   },
   "overrides": {
     "semver": ">7.5.1 <8.x.x",
-    "@babel/runtime": ">=7.26.10 <8.x.x"
+    "@babel/runtime": ">=7.26.10 <8.x.x",
+    "brace-expansion": "^4.0.1"
   },
   "scripts": {
     "clean": "rm -rf build && rm -rf node_modules && rm -rf ./coverage",
