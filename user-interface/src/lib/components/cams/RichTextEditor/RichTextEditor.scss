@@ -38,13 +38,11 @@
 
     p {
       margin-top: 0;
-      margin-bottom: 1rem;
-      line-height: 1.5;
+      margin-bottom: 0.25rem;
+      line-height: 1.25;
 
-      span {
-        .underline {
-          text-decoration: underline;
-        }
+      span.underline {
+        text-decoration: underline;
       }
     }
 
@@ -71,17 +69,14 @@
 
     ul, ol {
       margin-top: 0;
-      margin-bottom: 0;
+      margin-bottom: 0.5rem;
       padding-left: 2rem;
-      padding-top: 0.5rem;
-      padding-bottom: 0.5rem;
+      padding-top: 0.25rem;
+      padding-bottom: 0.25rem;
 
       li {
-        margin-bottom: 0.5rem;
-      }
-
-      li:last-child {
         margin-bottom: 0;
+        line-height: 1.25rem;
       }
     }
 
