@@ -18,7 +18,6 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { randomUUID } from 'crypto';
 import LocalFormCache from '@/lib/utils/local-form-cache';
 import { CamsSession, getCamsUserReference } from '@common/cams/session';
-import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 
 const MODAL_ID = 'modal-case-note-form';
 const TITLE_INPUT_ID = 'case-note-title-input';
@@ -438,11 +437,7 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     expect(key).toBe('case-notes-123-45-67890-note-id-123');
   });
 
-  test('should respect edit note draft alert feature flag when enabled', async () => {
-    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
-      'edit-case-note-draft-alert': true,
-    });
-
+  test('should show edit note draft alert', async () => {
     const saveFormSpy = vi.spyOn(LocalFormCache, 'saveForm');
     const noteId = randomUUID();
 
@@ -470,39 +465,6 @@ describe('CaseNoteFormModal - Simple Tests', () => {
 
     const lastCall = saveFormSpy.mock.calls[saveFormSpy.mock.calls.length - 1];
     expect(lastCall[0]).toContain(`-${noteId}`);
-  });
-
-  test('should respect edit note draft alert feature flag when disabled', async () => {
-    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
-      'edit-case-note-draft-alert': false,
-    });
-
-    const saveFormSpy = vi.spyOn(LocalFormCache, 'saveForm');
-    const noteId = randomUUID();
-
-    const modalRef = React.createRef<CaseNoteFormModalRef>();
-    renderComponent(
-      modalRef,
-      {},
-      {
-        id: noteId,
-        caseId: TEST_CASE_ID,
-        title: 'Original Title',
-        content: 'Original Content',
-        mode: 'edit',
-      },
-    );
-
-    const openButton = screen.getByTestId(OPEN_BUTTON_ID);
-    await userEvent.click(openButton);
-
-    const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-    await userEvent.clear(titleInput);
-    await userEvent.type(titleInput, 'Edited Title');
-
-    const saveFormCalls = saveFormSpy.mock.calls;
-    const editModeSaveFormCalls = saveFormCalls.filter((call) => call[0].includes(`-${noteId}`));
-    expect(editModeSaveFormCalls.length).toBe(0);
   });
 
   test('should initialize form with provided values', async () => {

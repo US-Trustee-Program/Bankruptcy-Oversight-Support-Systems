@@ -11,7 +11,6 @@ import {
 } from '../../azure/testing-helpers';
 import { UnknownError } from '../../../lib/common-errors/unknown-error';
 import { CaseNote } from '../../../../common/src/cams/cases';
-import * as featureFlags from '../../../lib/adapters/utils/feature-flag';
 
 const defaultRequestProps: Partial<CamsHttpRequest> = {
   method: 'POST',
@@ -107,61 +106,5 @@ describe('Case Notes Function Tests', () => {
 
     const response = await handler(request, context);
     expect(response).toEqual(azureHttpResponse);
-  });
-});
-
-describe('Case Notes Feature Flag Tests', () => {
-  let context;
-
-  beforeEach(() => {
-    jest
-      .spyOn(ContextCreator, 'getApplicationContextSession')
-      .mockResolvedValue(MockData.getManhattanAssignmentManagerSession());
-    context = new InvocationContext({
-      logHandler: () => {},
-      invocationId: 'id',
-    });
-  });
-
-  afterEach(() => {
-    jest.resetAllMocks();
-  });
-
-  jest.mock('../../../lib/adapters/utils/feature-flag.ts');
-
-  test('Should return an Unauthorized Error if case-notes-enabled is false', async () => {
-    const requestOverride = {
-      body: {
-        caseId: '001-67-89123',
-      },
-    };
-
-    const expected = {
-      headers: expect.anything(),
-      jsonBody: 'Unauthorized',
-      status: 401,
-    };
-
-    const request = createMockAzureFunctionRequest({
-      ...defaultRequestProps,
-      ...requestOverride,
-    });
-
-    const { camsHttpResponse } = buildTestResponseSuccess<CaseNote[]>({
-      meta: {
-        self: request.url,
-      },
-      data: [],
-    });
-
-    jest.spyOn(featureFlags, 'getFeatureFlags').mockResolvedValue({
-      'case-notes-enabled': false,
-    });
-
-    jest.spyOn(CaseNotesController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
-
-    const response = await handler(request, context);
-
-    expect(response).toEqual(expect.objectContaining(expected));
   });
 });

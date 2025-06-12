@@ -18,10 +18,7 @@ describe('MyCasesScreen', () => {
   const user: CamsUser = MockData.getCamsUser({});
 
   beforeEach(() => {
-    const mockFeatureFlags = {
-      'draft-case-note-alert': true,
-    };
-    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
+    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({});
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
   });
 

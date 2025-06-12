@@ -41,7 +41,6 @@ describe('StaffAssignmentScreen', () => {
     mockFeatureFlags = {
       'chapter-eleven-enabled': false,
       'chapter-twelve-enabled': false,
-      'staff-assignment-filter-enabled': true,
     };
     vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
   });

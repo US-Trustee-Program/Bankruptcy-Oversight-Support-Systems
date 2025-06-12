@@ -12,7 +12,5 @@ export const testFeatureFlags: FeatureFlagSet = {
   'chapter-eleven-enabled': true,
   'transfer-orders-enabled': true,
   'consolidations-enabled': true,
-  'case-notes-enabled': true,
   'privileged-identity-management': true,
-  'staff-assignment-filter-enabled': true,
 };
