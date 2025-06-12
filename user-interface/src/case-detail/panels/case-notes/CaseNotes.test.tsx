@@ -11,7 +11,6 @@ import LocalStorage from '@/lib/utils/local-storage';
 import LocalFormCache from '@/lib/utils/local-form-cache';
 import Actions from '@common/cams/actions';
 import { randomUUID } from 'crypto';
-import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 
 const caseId = '000-11-22222';
 const userId = '001';
@@ -33,12 +32,7 @@ const caseNotes = [
 ];
 const caseNotesRef = React.createRef<CaseNotesRef>();
 
-function renderWithProps(props?: Partial<CaseNotesProps>, featureFlags?: Record<string, boolean>) {
-  const mockFeatureFlags = {
-    'draft-case-note-alert': true,
-    ...(featureFlags || {}),
-  };
-  vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
+function renderWithProps(props?: Partial<CaseNotesProps>) {
   const defaultProps: CaseNotesProps = {
     caseId: '000-11-22222',
     hasCaseNotes: false,
@@ -255,10 +249,6 @@ describe('case note tests', () => {
   });
 
   test('should display edit note draft alert if cache holds an edit draft', async () => {
-    const featureFlags = {
-      'edit-case-note-draft-alert': true,
-    };
-
     const noteId = caseNotes[0].id!;
     const editFormKey = `case-notes-${caseId}-${noteId}`;
     const expiryDate = new Date();
@@ -280,7 +270,7 @@ describe('case note tests', () => {
       return null;
     });
 
-    renderWithProps({ caseId, hasCaseNotes: true, caseNotes }, featureFlags);
+    renderWithProps({ caseId, hasCaseNotes: true, caseNotes });
 
     await waitFor(() => {
       const caseNote = screen.getByTestId('case-note-0');
@@ -337,10 +327,6 @@ describe('case note tests', () => {
   });
 
   test('should remove edit note draft alert when edit modal is closed', async () => {
-    const featureFlags = {
-      'edit-case-note-draft-alert': true,
-    };
-
     const noteId = caseNotes[0].id!;
     const editFormKey = `case-notes-${caseId}-${noteId}`;
 
@@ -368,7 +354,7 @@ describe('case note tests', () => {
       return [];
     });
 
-    renderWithProps({ caseId, hasCaseNotes: true, caseNotes }, featureFlags);
+    renderWithProps({ caseId, hasCaseNotes: true, caseNotes });
 
     await waitFor(() => {
       const caseNote = screen.getByTestId('case-note-0');

@@ -12,16 +12,11 @@ import { formatDate, formatDateTime } from '@/lib/utils/datetime';
 import LocalFormCache from '@/lib/utils/local-form-cache';
 import { Cacheable } from '@/lib/utils/local-cache';
 import { CaseNoteInput } from '@common/cams/cases';
-import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 
 describe('MyCasesScreen', () => {
   const user: CamsUser = MockData.getCamsUser({});
 
   beforeEach(() => {
-    const mockFeatureFlags = {
-      'draft-case-note-alert': true,
-    };
-    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
   });
 

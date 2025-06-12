@@ -14,7 +14,6 @@ import { CaseNoteInput } from '@common/cams/cases';
 import { getCamsUserReference } from '@common/cams/session';
 import LocalStorage from '@/lib/utils/local-storage';
 import LocalFormCache from '@/lib/utils/local-form-cache';
-import useFeatureFlags, { EDIT_CASE_NOTE_DRAFT_ALERT_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 
 const useThrottleCallback = (callback: () => void, delay: number) => {
   const isThrottled = useRef(false);
@@ -109,9 +108,6 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   const notesSubmissionErrorMessage = 'There was a problem submitting the case note.';
   const session = LocalStorage.getSession();
 
-  const featureFlags = useFeatureFlags();
-  const editNoteDraftAlertEnabledFlag = featureFlags[EDIT_CASE_NOTE_DRAFT_ALERT_ENABLED];
-
   function disableSubmitButton(disable: boolean) {
     const buttons = modalRef.current?.buttons;
     if (buttons?.current) {
@@ -132,14 +128,9 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   }
 
   function saveFormData(data: CaseNoteInput) {
-    // TODO: when removing the flag, also remove the mode !== 'edit' portion of checks
-    if (
-      (mode !== 'edit' || editNoteDraftAlertEnabledFlag) &&
-      formKey &&
-      (data.title?.length > 0 || data.content?.length > 0)
-    ) {
+    if (formKey && (data.title?.length > 0 || data.content?.length > 0)) {
       LocalFormCache.saveForm(formKey, data);
-    } else if ((mode !== 'edit' || editNoteDraftAlertEnabledFlag) && formKey) {
+    } else if (formKey) {
       LocalFormCache.clearForm(formKey);
     }
     toggleButtonOnDirtyForm(initialTitle, initialContent);
@@ -164,10 +155,8 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   function clearCaseNoteForm() {
     titleInputRef.current?.clearValue();
     contentInputRef.current?.clearValue();
-    // TODO: when removing the flag, remove the entire conditional
-    if (mode === 'create' || editNoteDraftAlertEnabledFlag) {
-      LocalFormCache.clearForm(formKey);
-    }
+    LocalFormCache.clearForm(formKey);
+
     setCaseNoteFormError('');
     alertRef.current?.hide();
     toggleButtonOnDirtyForm(initialTitle, initialContent);

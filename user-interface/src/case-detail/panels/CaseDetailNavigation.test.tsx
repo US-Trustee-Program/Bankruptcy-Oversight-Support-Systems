@@ -1,7 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import CaseDetailNavigation, { NavState, mapNavState, setCurrentNav } from './CaseDetailNavigation';
 import { BrowserRouter } from 'react-router-dom';
-import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 
 describe('Navigation tests', () => {
   const activeNavClass = 'usa-current current';
@@ -25,11 +24,6 @@ describe('Navigation tests', () => {
     ['associated-cases-link'],
     ['case-notes-link'],
   ])('should render each navigation element in component', async (linkId: string) => {
-    const mockFeatureFlags = {
-      'case-notes-enabled': true,
-    };
-    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
-
     render(
       <BrowserRouter>
         <CaseDetailNavigation
@@ -50,24 +44,6 @@ describe('Navigation tests', () => {
       const activeLinks = allLinks.filter((l) => l.classList.contains('usa-current'));
       expect(activeLinks.length).toEqual(1);
     });
-  });
-
-  test('should not display CaseNotes tab if feature flag is disabled', () => {
-    const mockFeatureFlags = {
-      'case-notes-enabled': false,
-    };
-    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
-    render(
-      <BrowserRouter>
-        <CaseDetailNavigation
-          caseId="12345"
-          initiallySelectedNavLink={NavState.CASE_OVERVIEW}
-          showAssociatedCasesList={true}
-        />
-      </BrowserRouter>,
-    );
-    const link = screen.queryByTestId('case-notes-link');
-    expect(link).not.toBeInTheDocument();
   });
 
   test(`mapNavState should return ${NavState.CASE_OVERVIEW} when the url does not contain a path after the case number`, () => {

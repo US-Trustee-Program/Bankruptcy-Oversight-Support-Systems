@@ -27,7 +27,6 @@ import { useApi2 } from '@/lib/hooks/UseApi2';
 import { CaseAssignment } from '@common/cams/assignments';
 import { CamsRole } from '@common/cams/roles';
 import CaseNotes, { CaseNotesRef } from './panels/case-notes/CaseNotes';
-import useFeatureFlags, { CASE_NOTES_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailOverview = lazy(() => import('./panels/CaseDetailOverview'));
@@ -236,8 +235,6 @@ export interface CaseDetailProps {
 }
 
 export default function CaseDetailScreen(props: CaseDetailProps) {
-  const featureFlags = useFeatureFlags();
-  const caseNotesEnabledFlag = featureFlags[CASE_NOTES_ENABLED];
   const { caseId } = useParams();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isDocketLoading, setIsDocketLoading] = useState<boolean>(false);
@@ -761,23 +758,21 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                       />
                     }
                   />
-                  {caseNotesEnabledFlag && (
-                    <Route
-                      path="notes"
-                      element={
-                        <CaseNotes
-                          caseId={caseId ?? ''}
-                          hasCaseNotes={hasCaseNotes}
-                          caseNotes={filteredCaseNotes}
-                          searchString={caseNoteSearchText}
-                          areCaseNotesLoading={areCaseNotesLoading}
-                          alertOptions={notesAlertOptions}
-                          onUpdateNoteRequest={handleNotesCallback}
-                          ref={caseNotesRef}
-                        />
-                      }
-                    />
-                  )}
+                  <Route
+                    path="notes"
+                    element={
+                      <CaseNotes
+                        caseId={caseId ?? ''}
+                        hasCaseNotes={hasCaseNotes}
+                        caseNotes={filteredCaseNotes}
+                        searchString={caseNoteSearchText}
+                        areCaseNotesLoading={areCaseNotesLoading}
+                        alertOptions={notesAlertOptions}
+                        onUpdateNoteRequest={handleNotesCallback}
+                        ref={caseNotesRef}
+                      />
+                    }
+                  />
                 </Routes>
               </Suspense>
               <Outlet />
