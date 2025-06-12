@@ -3,16 +3,12 @@ import { FeatureFlagSet, testFeatureFlags } from '@common/feature-flags';
 import { getFeatureFlagConfiguration } from '@/configuration/featureFlagConfiguration';
 import getAppConfiguration from '@/configuration/appConfiguration';
 
-export const CASE_NOTES_ENABLED = 'case-notes-enabled';
 export const CHAPTER_ELEVEN_ENABLED = 'chapter-eleven-enabled';
 export const CHAPTER_TWELVE_ENABLED = 'chapter-twelve-enabled';
 export const CONSOLIDATIONS_ENABLED = 'consolidations-enabled';
 export const PRIVILEGED_IDENTITY_MANAGEMENT = 'privileged-identity-management';
-export const STAFF_ASSIGNMENT_FILTER_ENABLED = 'staff-assignment-filter-enabled';
 export const SYSTEM_MAINTENANCE_BANNER = 'system-maintenance-banner';
 export const TRANSFER_ORDERS_ENABLED = 'transfer-orders-enabled';
-export const DRAFT_CASE_NOTE_ALERT_ENABLED = 'draft-case-note-alert';
-export const EDIT_CASE_NOTE_DRAFT_ALERT_ENABLED = 'edit-case-note-draft-alert';
 
 export default function useFeatureFlags(): FeatureFlagSet {
   const config = getFeatureFlagConfiguration();

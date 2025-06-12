@@ -1,4 +1,3 @@
-import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { describe } from 'vitest';
 import { render, waitFor, screen, fireEvent } from '@testing-library/react';
 import CaseDetailScreen, { applyCaseNoteSortAndFilters, CaseDetailProps } from './CaseDetailScreen';
@@ -11,7 +10,6 @@ import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 describe('Case Note Tests', async () => {
   const testCaseId = '111-11-12345';
   const testCaseDetail = MockData.getCaseDetail({ override: { caseId: testCaseId } });
-  const testEmptyCaseNotes: CaseNote[] = [];
   const testFullCaseNotes: CaseNote[] = MockData.buildArray(
     () => MockData.getCaseNote({ caseId: testCaseDetail.caseId }),
     4,
@@ -44,40 +42,7 @@ describe('Case Note Tests', async () => {
     vi.restoreAllMocks();
   });
 
-  test('Case Note tab should not be visible if feature flag is off', async () => {
-    const mockFeatureFlags = {
-      'case-notes-enabled': false,
-    };
-    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
-
-    renderWithProps({ caseNotes: testEmptyCaseNotes });
-
-    await waitFor(() => {
-      const notesNavLink = screen.queryByTestId('case-notes-link');
-      expect(notesNavLink).not.toBeInTheDocument();
-    });
-  });
-
-  test('Case Note tab should be visible if feature flag is on and filter notes', async () => {
-    const mockFeatureFlags = {
-      'case-notes-enabled': true,
-    };
-    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
-
-    renderWithProps();
-
-    await waitFor(() => {
-      const notesNavLink = screen.queryByTestId('case-notes-link');
-      expect(notesNavLink).toBeInTheDocument();
-    });
-  });
-
-  test('Case Note tab should be visible if feature flag is on', async () => {
-    const mockFeatureFlags = {
-      'case-notes-enabled': true,
-    };
-    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
-
+  test('Case Note tab should be visible', async () => {
     renderWithProps();
 
     await waitFor(() => {
@@ -87,11 +52,6 @@ describe('Case Note Tests', async () => {
   });
 
   test('Should search case notes properly', async () => {
-    const mockFeatureFlags = {
-      'case-notes-enabled': true,
-    };
-    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
-
     renderWithProps({ caseNotes: testNotesToFilter });
 
     await waitFor(() => {
@@ -143,13 +103,8 @@ describe('Case Note Tests', async () => {
   const panelVisibleOptions = [[testFullCaseNotes], [[]]];
 
   test.each(panelVisibleOptions)(
-    'Case note search input visibility should be conditional on pressence of case notes: visible if case notes exist.',
+    'Case note search input visibility should be conditional on presence of case notes: visible if case notes exist.',
     async (testNotes: CaseNote[]) => {
-      const mockFeatureFlags = {
-        'case-notes-enabled': true,
-      };
-
-      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
       let notesNavLink;
 
       renderWithProps({ caseNotes: testNotes });
@@ -174,11 +129,6 @@ describe('Case Note Tests', async () => {
   );
 
   test('Should pass empty notes when notes are undefined', async () => {
-    const mockFeatureFlags = {
-      'case-notes-enabled': true,
-    };
-
-    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
     const { filteredCaseNotes, notesAlertOptions } = applyCaseNoteSortAndFilters([], {
       caseNoteSearchText: '',
       sortDirection: 'Newest',

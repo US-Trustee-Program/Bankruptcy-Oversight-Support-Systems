@@ -3,7 +3,6 @@ import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import ScreenInfoButton from '@/lib/components/cams/ScreenInfoButton';
 import { Stop } from '@/lib/components/Stop';
 import Modal from '@/lib/components/uswds/modal/Modal';
-import { STAFF_ASSIGNMENT_FILTER_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 import SearchResults from '@/search-results/SearchResults';
 import { StaffAssignmentHeader } from '../header/StaffAssignmentHeader';
 import AssignAttorneyModal from '../modal/AssignAttorneyModal';
@@ -61,20 +60,20 @@ export function StaffAssignmentScreenView(props: StaffAssignmentScreenViewProps)
               showHelpDeskContact
             ></Stop>
           )}
-          {viewModel.featureFlags[STAFF_ASSIGNMENT_FILTER_ENABLED] && (
-            <StaffAssignmentFilter
-              ref={viewModel.filterRef}
-              handleFilterAssignee={viewModel.handleFilterAssignee}
-            />
-          )}
           {showAssignments && (
-            <SearchResults
-              id="search-results"
-              searchPredicate={searchPredicate}
-              noResultsAlertProps={noResultsAlertProps}
-              header={StaffAssignmentHeader}
-              row={viewModel.StaffAssignmentRowClosure}
-            ></SearchResults>
+            <>
+              <StaffAssignmentFilter
+                ref={viewModel.filterRef}
+                handleFilterAssignee={viewModel.handleFilterAssignee}
+              />
+              <SearchResults
+                id="search-results"
+                searchPredicate={searchPredicate}
+                noResultsAlertProps={noResultsAlertProps}
+                header={StaffAssignmentHeader}
+                row={viewModel.StaffAssignmentRowClosure}
+              ></SearchResults>
+            </>
           )}
         </div>
         <div className="grid-col-1"></div>

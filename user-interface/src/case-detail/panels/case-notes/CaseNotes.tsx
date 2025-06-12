@@ -21,10 +21,6 @@ import CaseNoteRemovalModal, { CaseNoteRemovalModalRef } from './CaseNoteRemoval
 import Actions from '@common/cams/actions';
 import LocalFormCache from '@/lib/utils/local-form-cache';
 import { Cacheable } from '@/lib/utils/local-cache';
-import useFeatureFlags, {
-  DRAFT_CASE_NOTE_ALERT_ENABLED,
-  EDIT_CASE_NOTE_DRAFT_ALERT_ENABLED,
-} from '@/lib/hooks/UseFeatureFlags';
 
 export function getCaseNotesInputValue(ref: TextAreaRef | null) {
   return ref?.getValue() ?? '';
@@ -62,10 +58,6 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
 
   const MINIMUM_SEARCH_CHARACTERS = 3;
 
-  const featureFlags = useFeatureFlags();
-  const draftNoteAlertEnabledFlag = featureFlags[DRAFT_CASE_NOTE_ALERT_ENABLED];
-  const editNoteDraftAlertEnabledFlag = featureFlags[EDIT_CASE_NOTE_DRAFT_ALERT_ENABLED];
-
   function mapArchiveButtonRefs() {
     openArchiveModalButtonRefs.current =
       caseNotes?.map(
@@ -95,11 +87,8 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
   function showCaseNote(note: CaseNote, idx: number) {
     const sanitizedCaseNote = sanitizeText(note.content);
     const sanitizedCaseNoteTitle = sanitizeText(note.title);
-    let draft: Cacheable<CaseNoteInput> | null = null;
-    if (editNoteDraftAlertEnabledFlag) {
-      const formKey = buildCaseNoteFormKey(note.caseId, 'edit', note.id ?? '');
-      draft = LocalFormCache.getForm<CaseNoteInput>(formKey);
-    }
+    const formKey = buildCaseNoteFormKey(note.caseId, 'edit', note.id ?? '');
+    const draft = LocalFormCache.getForm<CaseNoteInput>(formKey);
 
     return (
       <li className="case-note grid-container" key={idx} data-testid={`case-note-${idx}`}>
@@ -133,7 +122,7 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
         <div className="case-note-author" data-testid={`case-note-author-${idx}`}>
           {note.updatedBy.name}
         </div>
-        {editNoteDraftAlertEnabledFlag && draft && (
+        {draft && (
           <Alert
             id={`draft-edit-note-${note.id}`}
             message={getDraftAlertMessage(draft)}
@@ -257,11 +246,9 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
       const draftNote = LocalFormCache.getForm<CaseNoteInput>(`case-notes-${caseId}`);
       setDraftNote(draftNote);
     }
-    if (editNoteDraftAlertEnabledFlag) {
-      const updatedEditDrafts = getEditDrafts();
-      if (updatedEditDrafts.length !== editDrafts?.length) {
-        setEditDrafts(updatedEditDrafts.map((form) => form.item));
-      }
+    const updatedEditDrafts = getEditDrafts();
+    if (updatedEditDrafts.length !== editDrafts?.length) {
+      setEditDrafts(updatedEditDrafts.map((form) => form.item));
     }
   };
 
@@ -273,7 +260,7 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
     <div className="case-notes-panel">
       <div className="case-notes-title">
         <h3>Case Notes</h3>
-        {draftNoteAlertEnabledFlag && draftNote && (
+        {draftNote && (
           <div data-testid="draft-note-alert-test-id" className="draft-notes-alert-container">
             <Alert
               id="draft-add-note"

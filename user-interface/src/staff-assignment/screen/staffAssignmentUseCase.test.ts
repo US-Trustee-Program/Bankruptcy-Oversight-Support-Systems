@@ -78,7 +78,6 @@ describe('staff assignment use case tests', () => {
     mockFeatureFlags = {
       'chapter-eleven-enabled': true,
       'chapter-twelve-enabled': true,
-      'staff-assignment-filter-enabled': true,
     };
     vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
   });
