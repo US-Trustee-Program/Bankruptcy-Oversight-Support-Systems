@@ -23,7 +23,6 @@ import { CaseNoteInput } from '@common/cams/cases';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import React from 'react';
 import { Cacheable } from '@/lib/utils/local-cache';
-import useFeatureFlags, { DRAFT_CASE_NOTE_ALERT_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 import { formatDateTime } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 
@@ -36,9 +35,6 @@ export const MyCasesScreen = () => {
   const [doShowClosedCases, setDoShowClosedCases] = useState(false);
   const [draftNotesCaseIds, setDraftNotesCaseIds] = useState<string[]>([]);
   const [draftNotes, setDraftNotes] = useState<Cacheable<CaseNoteInput>[]>([]);
-
-  const featureFlags = useFeatureFlags();
-  const draftNoteAlertEnabledFlag = featureFlags[DRAFT_CASE_NOTE_ALERT_ENABLED];
 
   if (!session || !session.user.offices) {
     // TODO: This renders a blank pane with no notice to the user. Maybe this should at least return a <Stop> component with a message.
@@ -157,7 +153,7 @@ export const MyCasesScreen = () => {
           <div className="screen-heading">
             <h1 data-testid="case-list-heading">{screenTitle}</h1>
             <ScreenInfoButton infoModalRef={infoModalRef} modalId={infoModalId} />
-            {draftNoteAlertEnabledFlag && draftNotesCaseIds.length > 0 && (
+            {draftNotesCaseIds.length > 0 && (
               <div data-testid="draft-notes-alert-test-id">
                 <Alert
                   type={UswdsAlertStyle.Info}

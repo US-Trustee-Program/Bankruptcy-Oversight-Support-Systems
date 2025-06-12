@@ -1,4 +1,3 @@
-import useFeatureFlags, { CASE_NOTES_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 
@@ -44,8 +43,6 @@ export default function CaseDetailNavigation({
   className,
 }: CaseDetailNavigationProps) {
   const [activeNav, setActiveNav] = useState<NavState>(initiallySelectedNavLink);
-  const featureFlags = useFeatureFlags();
-  const caseNotesEnabledFlag = featureFlags[CASE_NOTES_ENABLED];
 
   return (
     <>
@@ -78,19 +75,17 @@ export default function CaseDetailNavigation({
               Court Docket
             </NavLink>
           </li>
-          {caseNotesEnabledFlag && (
-            <li className="usa-sidenav__item">
-              <NavLink
-                to={`/case-detail/${caseId}/notes`}
-                data-testid="case-notes-link"
-                className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.CASE_NOTES)}
-                onClick={() => setActiveNav(NavState.CASE_NOTES)}
-                title="view case notes"
-              >
-                Case Notes
-              </NavLink>
-            </li>
-          )}
+          <li className="usa-sidenav__item">
+            <NavLink
+              to={`/case-detail/${caseId}/notes`}
+              data-testid="case-notes-link"
+              className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.CASE_NOTES)}
+              onClick={() => setActiveNav(NavState.CASE_NOTES)}
+              title="view case notes"
+            >
+              Case Notes
+            </NavLink>
+          </li>
           <li className="usa-sidenav__item">
             <NavLink
               to={`/case-detail/${caseId}/audit-history`}
