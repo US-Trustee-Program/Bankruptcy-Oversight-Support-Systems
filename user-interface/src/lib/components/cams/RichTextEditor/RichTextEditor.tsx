@@ -1,14 +1,6 @@
 import './RichTextEditor.scss';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import {
-  cleanZeroWidthSpaces,
-  handleCtrlKey,
-  handleDentures,
-  handleEnterKey,
-  handlePrintableKey,
-  toggleList,
-  toggleSelection,
-} from './richTextEditorUtilities';
+import { Editor } from './Editor';
 import { RichTextButton } from './RichTextButton';
 
 export interface RichTextEditorRef {
@@ -35,7 +27,14 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
   const { id, label, ariaDescription, onChange, required, className, value, disabled } = props;
 
   const contentRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<Editor | null>(null);
   const [inputDisabled, setInputDisabled] = useState<boolean>(disabled || false);
+
+  useEffect(() => {
+    if (contentRef.current && !editorRef.current) {
+      editorRef.current = new Editor(contentRef.current);
+    }
+  }, []);
 
   useEffect(() => {
     setInputDisabled(disabled || false);
@@ -57,7 +56,7 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
   const getValue = () => contentRef.current?.innerText || '';
   const getHtml = () => {
     const rawHtml = contentRef.current?.innerHTML || '';
-    return cleanZeroWidthSpaces(rawHtml);
+    return Editor.cleanZeroWidthSpaces(rawHtml);
   };
 
   const setValue = (html: string) => {
@@ -78,20 +77,24 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
   }));
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (handleCtrlKey(e)) {
+    if (!editorRef.current) {
       return;
     }
 
-    if (handleDentures(e)) {
+    if (editorRef.current.handleCtrlKey(e)) {
+      return;
+    }
+
+    if (editorRef.current.handleDentures(e)) {
       onChange?.(getHtml());
       return;
     }
 
-    if (handleEnterKey(e)) {
+    if (editorRef.current.handleEnterKey(e)) {
       return;
     }
 
-    if (handlePrintableKey(e)) {
+    if (editorRef.current.handlePrintableKey(e)) {
       onChange?.(getHtml());
       return;
     }
@@ -120,7 +123,7 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
         <RichTextButton
           title="Bold (Ctrl+B)"
           ariaLabel="Set bold formatting"
-          onClick={() => toggleSelection('strong')}
+          onClick={() => editorRef.current?.toggleSelection('strong')}
         >
           B
         </RichTextButton>
@@ -128,7 +131,7 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
           title="Italic (Ctrl+I)"
           ariaLabel="Set italic formatting"
           style={{ fontStyle: 'italic' }}
-          onClick={() => toggleSelection('em')}
+          onClick={() => editorRef.current?.toggleSelection('em')}
         >
           I
         </RichTextButton>
@@ -136,7 +139,7 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
           title="Underline (Ctrl+U)"
           ariaLabel="Set underline formatting"
           style={{ textDecoration: 'underline' }}
-          onClick={() => toggleSelection('u')}
+          onClick={() => editorRef.current?.toggleSelection('u')}
         >
           U
         </RichTextButton>
@@ -145,7 +148,7 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
           title="Bulleted List"
           ariaLabel="Insert bulleted list"
           onClick={() => {
-            toggleList('ul');
+            editorRef.current?.toggleList('ul');
             onChange?.(getHtml());
           }}
         ></RichTextButton>
@@ -154,7 +157,7 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
           title="Numbered List"
           ariaLabel="Insert numbered list"
           onClick={() => {
-            toggleList('ol');
+            editorRef.current?.toggleList('ol');
             onChange?.(getHtml());
           }}
         ></RichTextButton>
