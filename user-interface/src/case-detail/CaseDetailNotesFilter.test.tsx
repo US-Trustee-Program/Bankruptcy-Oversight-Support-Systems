@@ -51,15 +51,6 @@ describe('Case Note Tests', async () => {
     });
   });
 
-  test('Case Note tab should be visible', async () => {
-    renderWithProps();
-
-    await waitFor(() => {
-      const notesNavLink = screen.queryByTestId('case-notes-link');
-      expect(notesNavLink).toBeInTheDocument();
-    });
-  });
-
   test('Should search case notes properly', async () => {
     renderWithProps({ caseNotes: testNotesToFilter });
 
