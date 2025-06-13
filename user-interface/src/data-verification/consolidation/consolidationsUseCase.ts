@@ -171,14 +171,12 @@ const consolidationUseCase = (
           const associations = responses[1] as Consolidation[];
           const attorneyAssignments = responses[2] as CaseAssignment[];
 
-          const isLeadCase =
-            associations.filter(
-              (a) => a.documentType === 'CONSOLIDATION_FROM' && a.caseId === caseSummary.caseId,
-            ).length > 0;
-          const isChildCase =
-            associations.filter(
-              (a) => a.documentType === 'CONSOLIDATION_TO' && a.caseId === caseSummary.caseId,
-            ).length > 0;
+          const isLeadCase = associations.some(
+            (a) => a.documentType === 'CONSOLIDATION_FROM' && a.caseId === caseSummary.caseId,
+          );
+          const isChildCase = associations.some(
+            (a) => a.documentType === 'CONSOLIDATION_TO' && a.caseId === caseSummary.caseId,
+          );
 
           store.setCaseToAdd({
             ...caseSummary,
@@ -323,7 +321,7 @@ const consolidationUseCase = (
   };
 
   const areAnySelectedCasesConsolidated = () => {
-    return store.selectedCases.filter((bCase) => bCase.isChildCase).length > 0;
+    return store.selectedCases.some((bCase) => bCase.isChildCase);
   };
 
   const setOrderWithDataEnhancement = (order: ConsolidationOrder) => {
