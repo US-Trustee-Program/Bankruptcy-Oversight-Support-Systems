@@ -110,6 +110,8 @@ export type ConsolidationOrderCase = CaseSummary & {
   orderDate: string;
   attorneyAssignments?: CaseAssignment[];
   associations?: Consolidation[];
+  isLeadCase?: boolean;
+  isChildCase?: boolean;
 };
 
 export function getCaseSummaryFromConsolidationOrderCase(

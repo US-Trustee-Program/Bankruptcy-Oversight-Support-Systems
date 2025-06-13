@@ -131,15 +131,44 @@ describe('test ConsolidationCasesTable component', () => {
     expect(document.body).toHaveTextContent('No docket entries');
   });
 
-  test('Should display "Already part of consolidation" alert if a case in a consolidation order is a part of another consolidation', () => {
+  test('Should display alert if a case is a part of another consolidation', () => {
     const props = {
       cases: [
         MockData.getConsolidatedOrderCase({
           override: {
+            isChildCase: true,
             associations: [
               MockData.getConsolidationReference({
                 override: {
                   caseId: '11-1111',
+                  documentType: 'CONSOLIDATION_TO',
+                },
+              }),
+            ],
+          },
+        }),
+      ],
+    };
+
+    renderWithProps(props);
+
+    expect(screen.getByTestId('alert-container-is-child')).toHaveTextContent(
+      'This case is a child case of a consolidation and cannot be consolidated.',
+    );
+  });
+
+  test('Should display alert if a case is the lead case of another consolidation', () => {
+    const caseId = '11-1111';
+    const props = {
+      cases: [
+        MockData.getConsolidatedOrderCase({
+          override: {
+            caseId,
+            isLeadCase: true,
+            associations: [
+              MockData.getConsolidationReference({
+                override: {
+                  caseId,
                   documentType: 'CONSOLIDATION_FROM',
                 },
               }),
@@ -151,8 +180,8 @@ describe('test ConsolidationCasesTable component', () => {
 
     renderWithProps(props);
 
-    expect(screen.getByTestId('alert-container')).toHaveTextContent(
-      'This case is already part of a consolidation. Uncheck it to consolidate the other cases.',
+    expect(screen.getByTestId('alert-container-is-lead')).toHaveTextContent(
+      'his case is the lead case of a consolidation and can be used as the lead of this consolidation.',
     );
   });
 
