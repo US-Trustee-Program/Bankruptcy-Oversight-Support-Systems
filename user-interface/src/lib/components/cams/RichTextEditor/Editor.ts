@@ -2,8 +2,6 @@ export const ZERO_WIDTH_SPACE = '​';
 export const ZERO_WIDTH_SPACE_REGEX = new RegExp(ZERO_WIDTH_SPACE, 'g');
 export type RichTextFormat = 'strong' | 'em' | 'u';
 
-export const EDITOR_CONTENT_SELECTOR = '.editor-content';
-
 export class Editor {
   private root: HTMLElement;
   private window: Window;
@@ -15,12 +13,9 @@ export class Editor {
     this.document = this.root.ownerDocument;
   }
 
-  // --- STATIC ---
   public static cleanZeroWidthSpaces(html: string): string {
     return html.replace(ZERO_WIDTH_SPACE_REGEX, '');
   }
-
-  // --- PUBLIC API ---
 
   public handleCtrlKey(e: React.KeyboardEvent<HTMLDivElement>): boolean {
     if (e.ctrlKey) {
@@ -227,65 +222,21 @@ export class Editor {
       return;
     }
 
-    const contents = range.cloneContents();
-    const { startContainer, endContainer, startOffset, endOffset } = range;
+    // First normalize to clean up any nested identical tags
+    this.normalizeInlineFormatting();
 
-    if (
-      startContainer.parentNode &&
-      (startContainer === endContainer || startContainer.parentNode === endContainer.parentNode)
-    ) {
-      const parent = startContainer.parentNode as HTMLElement;
+    // Check if the entire selection is formatted with the target format
+    const isFullyFormatted = this.isEntireSelectionFormatted(range, tagName);
 
-      if (
-        parent.nodeType === Node.ELEMENT_NODE &&
-        Editor.isMatchingElement(parent, tagName) &&
-        parent.textContent === contents.textContent &&
-        startOffset === 0 &&
-        endOffset ===
-          (endContainer.nodeType === Node.TEXT_NODE
-            ? endContainer.textContent?.length || 0
-            : endContainer.childNodes.length)
-      ) {
-        const grandParent = parent.parentNode;
-        if (!grandParent) {
-          return;
-        }
-
-        while (parent.firstChild) {
-          grandParent.insertBefore(parent.firstChild, parent);
-        }
-
-        grandParent.removeChild(parent);
-        this.normalizeInlineFormatting();
-        return;
-      }
-    }
-
-    const containsTargetTag = contents.querySelector(tagName) !== null;
-
-    if (containsTargetTag) {
-      const nodesToWrap: Node[] = [];
-      const processNode = (node: Node) => {
-        if (
-          node.nodeType === Node.ELEMENT_NODE &&
-          Editor.isMatchingElement(node as Element, tagName)
-        ) {
-          Array.from(node.childNodes).forEach(processNode);
-        } else {
-          nodesToWrap.push(node);
-        }
-      };
-
-      Array.from(contents.childNodes).forEach(processNode);
-
-      const wrapper = Editor.createRichTextElement(tagName);
-      nodesToWrap.forEach((node) => wrapper.appendChild(node));
-      range.deleteContents();
-      range.insertNode(wrapper);
+    if (isFullyFormatted) {
+      // Handle removing formatting - entire selection is formatted
+      this.removeFormattingFromRange(range, tagName);
     } else {
+      // Either not formatted at all, or only partially formatted
+      // In both cases, we want to add/expand formatting to cover the entire selection
+      const contents = range.extractContents();
       const wrapper = Editor.createRichTextElement(tagName);
       wrapper.appendChild(contents);
-      range.deleteContents();
       range.insertNode(wrapper);
     }
 
@@ -293,7 +244,149 @@ export class Editor {
     selection.removeAllRanges();
   }
 
-  // --- PRIVATE HELPERS ---
+  private isEntireSelectionFormatted(range: Range, tagName: RichTextFormat): boolean {
+    // Simple approach: check if both start and end containers are within the same formatted element
+    // and if the selection spans the entire content of that element
+
+    const { startContainer, endContainer } = range;
+
+    // Find the formatted element that contains the start
+    let startFormatElement: Element | null = null;
+    let current: Node | null =
+      startContainer.nodeType === Node.TEXT_NODE ? startContainer.parentNode : startContainer;
+
+    while (current && current !== this.root) {
+      if (
+        current.nodeType === Node.ELEMENT_NODE &&
+        Editor.isMatchingElement(current as Element, tagName)
+      ) {
+        startFormatElement = current as Element;
+        break;
+      }
+      current = current.parentNode;
+    }
+
+    // If start isn't in a formatted element, it's not entirely formatted
+    if (!startFormatElement) {
+      return false;
+    }
+
+    // Check if end is also in the same formatted element
+    current = endContainer.nodeType === Node.TEXT_NODE ? endContainer.parentNode : endContainer;
+
+    while (current && current !== this.root) {
+      if (current === startFormatElement) {
+        // Both start and end are in the same formatted element
+        // Check if the selection spans content that goes outside this element
+        return (
+          range.startContainer === range.endContainer ||
+          startFormatElement.contains(range.endContainer)
+        );
+      }
+      current = current.parentNode;
+    }
+
+    // End container is not in the same formatted element as start
+    return false;
+  }
+
+  private removeFormattingFromRange(range: Range, tagName: RichTextFormat): void {
+    // This handles the complex case of removing formatting from a partial selection
+    // The browser automatically splits text nodes when we extract, which is what we want
+
+    // First, we need to preserve any ancestor formatting that should remain
+    const ancestorFormats: Element[] = [];
+    let current: Node | null = range.startContainer;
+
+    // Walk up to find formatting elements that aren't the target format
+    while (current && current !== this.root) {
+      if (current.nodeType === Node.ELEMENT_NODE) {
+        const element = current as Element;
+        if (
+          !Editor.isMatchingElement(element, tagName) &&
+          (element.tagName === 'STRONG' ||
+            element.tagName === 'EM' ||
+            (element.tagName === 'SPAN' && element.classList.contains('underline')))
+        ) {
+          ancestorFormats.unshift(element.cloneNode(false) as Element);
+        }
+      }
+      current = current.parentNode;
+    }
+
+    // Extract the content (this automatically splits text nodes)
+    const extractedContent = range.extractContents();
+
+    // Remove the target formatting from extracted content
+    this.removeFormatFromFragment(extractedContent, tagName);
+
+    // Wrap the extracted content in the preserved ancestor formatting
+    let wrappedContent: Node = extractedContent;
+    ancestorFormats.forEach((ancestorElement) => {
+      const wrapper = ancestorElement.cloneNode(false) as Element;
+      wrapper.appendChild(wrappedContent);
+      wrappedContent = wrapper;
+    });
+
+    // Fix the insertion point - after extraction, we need to determine the correct position
+    // Check if the extracted content was from the beginning of the formatted element
+    let insertionPoint: Node | null = range.startContainer;
+
+    // If we're inside a text node, check its parent
+    if (insertionPoint.nodeType === Node.TEXT_NODE) {
+      insertionPoint = insertionPoint.parentNode;
+    }
+
+    // Walk up to find the target formatted element
+    while (insertionPoint && insertionPoint !== this.root) {
+      if (
+        insertionPoint.nodeType === Node.ELEMENT_NODE &&
+        Editor.isMatchingElement(insertionPoint as Element, tagName)
+      ) {
+        // Check if the range is at the beginning of the formatted element
+        // If so, position before the element; otherwise, after it
+        const isAtBeginning =
+          range.startOffset === 0 && range.startContainer === insertionPoint.firstChild;
+
+        if (isAtBeginning) {
+          range.setStartBefore(insertionPoint);
+        } else {
+          range.setStartAfter(insertionPoint);
+        }
+        range.collapse(true);
+        break;
+      }
+      insertionPoint = insertionPoint.parentNode;
+    }
+
+    // Insert the properly formatted content back
+    range.insertNode(wrappedContent);
+  }
+
+  private removeFormatFromFragment(fragment: DocumentFragment, tagName: RichTextFormat): void {
+    // Find all instances of the target format and unwrap them
+    const selector = tagName === 'u' ? 'span.underline' : tagName;
+
+    // Keep processing until no more elements are found
+    let elementsFound = true;
+    while (elementsFound) {
+      const elements = fragment.querySelectorAll(selector);
+      elementsFound = elements.length > 0;
+
+      elements.forEach((element) => {
+        if (Editor.isMatchingElement(element, tagName)) {
+          // Move children up to replace the formatted element
+          const parent = element.parentNode;
+          if (parent) {
+            while (element.firstChild) {
+              parent.insertBefore(element.firstChild, element);
+            }
+            parent.removeChild(element);
+          }
+        }
+      });
+    }
+  }
 
   private findClosestAncestor<T extends Element = Element>(
     node: Node | null,
@@ -422,7 +515,7 @@ export class Editor {
 
     if (listItem?.firstChild) {
       const newRange = this.document.createRange();
-      const firstChild = listItem.firstChild;
+      const { firstChild } = listItem;
       newRange.setStart(firstChild, firstChild.nodeType === Node.TEXT_NODE ? 1 : 0);
       newRange.collapse(true);
       selection.removeAllRanges();
@@ -458,7 +551,54 @@ export class Editor {
       return false;
     };
 
+    const flattenNestedIdenticalTags = (rootElement: Element) => {
+      // Find all elements with the same tag name as any of their ancestors
+      const findNestedIdenticalElements = (element: Element): Element[] => {
+        const nestedElements: Element[] = [];
+
+        const checkElement = (el: Element, ancestors: Element[] = []) => {
+          // Check if this element matches any ancestor
+          const matchingAncestor = ancestors.find((ancestor) => shouldMerge(el, ancestor));
+          if (matchingAncestor) {
+            nestedElements.push(el);
+          }
+
+          // Recursively check children
+          Array.from(el.children).forEach((child) => {
+            checkElement(child as Element, [...ancestors, el]);
+          });
+        };
+
+        checkElement(element);
+        return nestedElements;
+      };
+
+      // Keep flattening until no more nested elements are found
+      let foundNested = true;
+      while (foundNested) {
+        const nestedElements = findNestedIdenticalElements(rootElement);
+        foundNested = nestedElements.length > 0;
+
+        // Unwrap each nested element
+        nestedElements.forEach((element) => {
+          const parent = element.parentNode;
+          if (parent) {
+            // Move all children of the nested element to the parent
+            while (element.firstChild) {
+              parent.insertBefore(element.firstChild, element);
+            }
+            // Remove the now-empty nested element
+            parent.removeChild(element);
+          }
+        });
+      }
+    };
+
     const normalizeElement = (node: Element) => {
+      // First flatten nested identical tags throughout the entire subtree
+      flattenNestedIdenticalTags(node);
+
+      // Then merge adjacent similar elements
       for (let i = node.childNodes.length - 1; i > 0; i--) {
         const current = node.childNodes[i];
         const prev = node.childNodes[i - 1];
@@ -475,6 +615,7 @@ export class Editor {
         }
       }
 
+      // Remove empty formatting elements
       Array.from(node.childNodes).forEach((child) => {
         if (
           child.nodeType === Node.ELEMENT_NODE &&
@@ -594,8 +735,6 @@ export class Editor {
       selection.addRange(newRange);
     }
   }
-
-  // --- STATIC HELPERS ---
 
   private static createListWithEmptyItem(type: 'ul' | 'ol'): HTMLElement {
     const list = document.createElement(type);
