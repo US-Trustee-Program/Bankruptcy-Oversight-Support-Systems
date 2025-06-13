@@ -4,16 +4,32 @@ This document outlines specific guidelines for the backend project of CAMS. Thes
 
 ## Factory Pattern Usage
 
-### Prefer Getter Functions Over Dependency Injection
+### Prefer using Factory for Dependency Injection
 
-- Use getter functions from `factory.ts` instead of direct dependency injection
+- Use getter functions from `factory.ts` for dependency injection
 - The factory should decide which implementation to return based on context/configuration
 - This approach supports the Option-Enabling Architecture by isolating implementation details
 
 #### Example: Creating a Use Case
 
 ```typescript
-// Good: Using a factory getter function
+// Good: Dependency injection by exclusive use of a factory
+import { getMyGateway } from '../../factory';
+
+export default class MyUseCase {
+  private myGateway: MyGatewayInterface;
+
+  constructor(applicationContext: ApplicationContext) {
+    // Use the provided gateway if available, otherwise get it from the factory
+    this.myGateway = getMyGateway(applicationContext);
+  }
+
+  // Use case methods...
+}
+```
+
+```typescript
+// Acceptable: Support dependency injection via constructor to override dependencies from factory
 import { getMyGateway } from '../../factory';
 
 export default class MyUseCase {
@@ -29,7 +45,7 @@ export default class MyUseCase {
 ```
 
 ```typescript
-// Avoid: Direct dependency injection without factory option
+// Avoid: Tight coupling to specific dependency implementations
 import { MyGatewayImplementation } from '../../adapters/gateways/my-gateway';
 
 export default class MyUseCase {
