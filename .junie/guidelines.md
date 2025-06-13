@@ -40,6 +40,8 @@ CAMS follows the Option-enabling Software Architecture (OeSA) approach, which in
 
 - More-important (strategic) modules should not depend on less-important (tactical) modules
 - Use interfaces to invert dependencies when necessary
+    - These interfaces are often defined in common areas
+        - For example, backend use cases typically refer to `gateways.types.ts` for their interfaces rather than the interface being defined in the same file or in a sibling file
 - Strategic components are abstract, high-level components critical to the product's value
 - Tactical components are concrete, detail-oriented components closer to implementation specifics
 
@@ -124,3 +126,13 @@ CAMS follows the Option-enabling Software Architecture (OeSA) approach, which in
 - ESLint rules are set up in a modular fashion
 - Different rules apply based on which subproject the file is in
 - The configuration can be found in `eslint.config.mjs` at the root of the project
+
+## Formatting
+
+- Files should always end in a newline
+
+## Naming Conventions
+
+### Files
+
+- Only use TypeScript Declaration files for typing npm packages with no types
