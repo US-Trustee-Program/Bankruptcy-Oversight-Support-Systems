@@ -236,7 +236,6 @@ describe('Login', () => {
     await waitFor(() => {
       expect(screen.getByTestId('button-auo-confirm')).toBeInTheDocument();
     });
-    screen.debug();
   });
 
   test('should render OktaProvider for okta provider type', async () => {
