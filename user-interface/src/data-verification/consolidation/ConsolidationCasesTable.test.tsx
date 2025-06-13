@@ -181,7 +181,7 @@ describe('test ConsolidationCasesTable component', () => {
     renderWithProps(props);
 
     expect(screen.getByTestId('alert-container-is-lead')).toHaveTextContent(
-      'his case is the lead case of a consolidation and can be used as the lead of this consolidation.',
+      'This case is the lead case of a consolidation and can be used as the lead of this consolidation.',
     );
   });
 
