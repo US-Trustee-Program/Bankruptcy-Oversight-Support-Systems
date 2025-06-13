@@ -221,3 +221,163 @@ describe('Editor: handleDentures', () => {
     expect(outdentSpy).toHaveBeenCalled();
   });
 });
+
+describe('Editor: normalizeInlineFormatting handles nested identical tags', () => {
+  let editor: Editor;
+  let container: HTMLDivElement;
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    editor = new Editor(container);
+  });
+
+  afterEach(() => {
+    document.body.removeChild(container);
+    vi.restoreAllMocks();
+  });
+
+  test('flattens nested identical strong tags', () => {
+    container.innerHTML = '<p>one <strong><strong>two</strong></strong> three</p>';
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (editor as any).normalizeInlineFormatting();
+    expect(container.innerHTML).toBe('<p>one <strong>two</strong> three</p>');
+  });
+
+  test('flattens deeply nested identical strong tags', () => {
+    container.innerHTML = '<p>one <strong><strong><strong>two</strong></strong></strong> three</p>';
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (editor as any).normalizeInlineFormatting();
+    expect(container.innerHTML).toBe('<p>one <strong>two</strong> three</p>');
+  });
+
+  test('flattens nested identical em tags', () => {
+    container.innerHTML = '<p>one <em><em>two</em></em> three</p>';
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (editor as any).normalizeInlineFormatting();
+    expect(container.innerHTML).toBe('<p>one <em>two</em> three</p>');
+  });
+
+  test('preserves different nested tags', () => {
+    container.innerHTML = '<p>one <strong><em>two</em></strong> three</p>';
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (editor as any).normalizeInlineFormatting();
+    expect(container.innerHTML).toBe('<p>one <strong><em>two</em></strong> three</p>');
+  });
+
+  test('flattens complex nested structure with mixed identical and different tags', () => {
+    container.innerHTML =
+      '<p>one <strong><strong><em><strong>two</strong></em></strong></strong> three</p>';
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (editor as any).normalizeInlineFormatting();
+    expect(container.innerHTML).toBe('<p>one <strong><em>two</em></strong> three</p>');
+  });
+});
+
+describe('Editor: toggleSelection with nested formatting', () => {
+  let editor: Editor;
+  let container: HTMLDivElement;
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    editor = new Editor(container);
+  });
+
+  afterEach(() => {
+    document.body.removeChild(container);
+    vi.restoreAllMocks();
+  });
+
+  test('removes bold formatting from nested strong tags while preserving italic', () => {
+    // Set up the problematic structure from the bug report
+    container.innerHTML =
+      'one <strong><strong><em><strong>two</strong></em> </strong><em><strong>th</strong>r</em></strong>ee four';
+
+    // Select the text "two"
+    const textNode = container.querySelector('strong em strong')?.firstChild as Text;
+    expect(textNode?.textContent).toBe('two');
+
+    const selection = window.getSelection()!;
+    const range = document.createRange();
+    range.setStart(textNode, 0);
+    range.setEnd(textNode, 3);
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    // Toggle bold formatting (should remove bold, keep italic)
+    editor.toggleSelection('strong');
+
+    expect(container.innerHTML).toContain('<em>two</em>');
+    expect(container.innerHTML).not.toContain('<strong><strong>');
+    expect(container.innerHTML).not.toContain('<strong><em><strong>two</strong></em></strong>');
+  });
+
+  test('removes bold formatting from partial text selection within formatted element', () => {
+    container.innerHTML = 'one <em><strong>two three</strong> <strong>four</strong></em> five six';
+
+    const strongElement = container.querySelector('strong');
+    const textNode = strongElement?.firstChild as Text;
+    expect(textNode?.textContent).toBe('two three');
+
+    const selection = window.getSelection()!;
+    const range = document.createRange();
+    range.setStart(textNode, 4); // Start after "two "
+    range.setEnd(textNode, 9); // End after "three"
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    editor.toggleSelection('strong');
+
+    expect(container.innerHTML).toContain('<strong>two </strong>');
+    expect(container.innerHTML).toContain('three');
+    expect(container.innerHTML).not.toContain('<strong>two three</strong>');
+
+    expect(container.innerHTML).toBe(
+      'one <em><strong>two </strong>three <strong>four</strong></em> five six',
+    );
+  });
+
+  test('handles removing formatting from text at beginning of formatted element', () => {
+    container.innerHTML = 'one <em>two <strong>three</strong> <strong>four</strong></em> five six';
+
+    const emElement = container.querySelector('em');
+    const textNode = emElement?.firstChild as Text;
+    expect(textNode?.textContent).toBe('two ');
+
+    const selection = window.getSelection()!;
+    const range = document.createRange();
+    range.setStart(textNode, 0);
+    range.setEnd(textNode, 4); // Select "two " (including space)
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    editor.toggleSelection('em');
+
+    expect(container.innerHTML).toBe(
+      'one two <em><strong>three</strong> <strong>four</strong></em> five six',
+    );
+  });
+
+  test('expands formatting when selection spans from inside formatted element to outside', () => {
+    container.innerHTML = 'one two <strong>three</strong> four five six';
+
+    const strongElement = container.querySelector('strong');
+    const strongTextNode = strongElement?.firstChild as Text;
+    const nextTextNode = strongElement?.nextSibling as Text;
+
+    expect(strongTextNode?.textContent).toBe('three');
+    expect(nextTextNode?.textContent?.startsWith(' four')).toBe(true);
+
+    const selection = window.getSelection()!;
+    const range = document.createRange();
+    range.setStart(strongTextNode, 0); // Start at beginning of "three"
+    range.setEnd(nextTextNode, 5); // End after " four" (0=' ', 1='f', 2='o', 3='u', 4='r', 5=end)
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    editor.toggleSelection('strong');
+
+    expect(container.innerHTML).toBe('one two <strong>three four</strong> five six');
+  });
+});
