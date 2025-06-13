@@ -20,7 +20,6 @@ export default class MyUseCase {
   private myGateway: MyGatewayInterface;
 
   constructor(applicationContext: ApplicationContext) {
-    // Use the provided gateway if available, otherwise get it from the factory
     this.myGateway = getMyGateway(applicationContext);
   }
 
