@@ -74,6 +74,7 @@ const consolidationUseCase = (
   const handleAddCaseAction = () => {
     if (store.caseToAdd) {
       store.order.childCases.push(store.caseToAdd);
+      store.setSelectedCases([...store.selectedCases, store.caseToAdd]);
     }
     handleAddCaseReset();
   };
@@ -169,12 +170,22 @@ const consolidationUseCase = (
           const caseSummary = responses[0] as CaseSummary;
           const associations = responses[1] as Consolidation[];
           const attorneyAssignments = responses[2] as CaseAssignment[];
+
+          const isLeadCase = associations.some(
+            (a) => a.documentType === 'CONSOLIDATION_FROM' && a.caseId === caseSummary.caseId,
+          );
+          const isChildCase = associations.some(
+            (a) => a.documentType === 'CONSOLIDATION_TO' && a.caseId === caseSummary.caseId,
+          );
+
           store.setCaseToAdd({
             ...caseSummary,
             docketEntries: [],
             orderDate: store.order.orderDate,
             attorneyAssignments,
             associations,
+            isLeadCase,
+            isChildCase,
           });
           store.setIsLookingForCase(false);
           store.setFoundValidCaseNumber(true);
@@ -310,12 +321,7 @@ const consolidationUseCase = (
   };
 
   const areAnySelectedCasesConsolidated = () => {
-    const consolidatedSelections = store.selectedCases.filter(
-      (bCase) =>
-        bCase.associations!.length > 0 &&
-        bCase.associations!.find((assoc) => assoc.documentType === 'CONSOLIDATION_TO'),
-    );
-    return consolidatedSelections.length !== 0;
+    return store.selectedCases.some((bCase) => bCase.isChildCase);
   };
 
   const setOrderWithDataEnhancement = (order: ConsolidationOrder) => {

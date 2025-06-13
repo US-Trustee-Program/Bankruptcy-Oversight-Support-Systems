@@ -169,6 +169,7 @@ function _ConsolidationCaseTable(
                         value={idx}
                         title={`select ${bCase.caseTitle}`}
                         checked={included.includes(idx)}
+                        disabled={bCase.isChildCase}
                       ></Checkbox>
                     </td>
                   )}
@@ -250,12 +251,24 @@ function _ConsolidationCaseTable(
                           </div>
                         );
                       })}
-                    {(bCase.associations?.length ?? 0) > 0 && (
+                    {bCase.isLeadCase && !bCase.isChildCase && (
                       <Alert
+                        id="is-lead"
                         inline={true}
                         show={true}
                         message={
-                          'This case is already part of a consolidation. Uncheck it to consolidate the other cases.'
+                          'This case is the lead case of a consolidation and can be used as the lead of this consolidation.'
+                        }
+                        type={UswdsAlertStyle.Warning}
+                      ></Alert>
+                    )}
+                    {bCase.isChildCase && (
+                      <Alert
+                        id="is-child"
+                        inline={true}
+                        show={true}
+                        message={
+                          'This case is a child case of a consolidation and cannot be consolidated.'
                         }
                         type={UswdsAlertStyle.Warning}
                       ></Alert>

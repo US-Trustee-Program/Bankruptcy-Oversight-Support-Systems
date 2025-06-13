@@ -3,9 +3,8 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { EventCaseReference } from '../../../../common/src/cams/events';
 
 function getEarliestDate(orders: Array<EventCaseReference>) {
-  const earliestOrder = orders.sort((a, b) => (a.orderDate < b.orderDate ? -1 : 1))[0];
-  const earliestOrderDate = earliestOrder.orderDate;
-  return earliestOrderDate;
+  const earliestOrder = [...orders].sort((a, b) => (a.orderDate < b.orderDate ? -1 : 1))[0];
+  return earliestOrder.orderDate;
 }
 
 export class CaseAssociatedUseCase {
