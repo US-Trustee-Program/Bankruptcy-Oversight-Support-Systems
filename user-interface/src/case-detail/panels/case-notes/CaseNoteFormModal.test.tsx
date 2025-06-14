@@ -3,7 +3,7 @@ import CaseNoteFormModal, {
   CaseNoteFormModalProps,
   CaseNoteFormModalRef,
   CaseNoteFormMode,
-  getCaseNotesInputValue,
+  getCaseNotesTitleValue,
   buildCaseNoteFormKey,
 } from './CaseNoteFormModal';
 import { render, screen, waitFor } from '@testing-library/react';
@@ -21,7 +21,7 @@ import { CamsSession, getCamsUserReference } from '@common/cams/session';
 
 const MODAL_ID = 'modal-case-note-form';
 const TITLE_INPUT_ID = 'case-note-title-input';
-const CONTENT_INPUT_ID = 'textarea-note-content';
+const CONTENT_INPUT_SELECTOR = '.rich-text-editor-container .editor-content';
 const OPEN_BUTTON_ID = 'open-modal-button';
 const CANCEL_BUTTON_ID = 'button-case-note-form-cancel-button';
 const SUBMIT_BUTTON_ID = 'button-case-note-form-submit-button';
@@ -103,12 +103,13 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     await userEvent.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-    const contentInput = screen.getByTestId(CONTENT_INPUT_ID);
+    const contentInput = document.querySelector(CONTENT_INPUT_SELECTOR);
     const newTitle = 'New Note Title';
     const newContent = 'New Note Content';
+    const expectedContent = '<p>New Note Content</p>';
 
     await userEvent.type(titleInput, newTitle);
-    await userEvent.type(contentInput, newContent);
+    await userEvent.type(contentInput!, newContent);
 
     const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
     await userEvent.click(submitButton);
@@ -116,7 +117,7 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     await waitFor(() => {
       expect(postNoteSpy).toHaveBeenCalledWith({
         title: newTitle,
-        content: newContent,
+        content: expectedContent,
         caseId: TEST_CASE_ID,
         updatedBy: getCamsUserReference(session.user),
       });
@@ -150,14 +151,14 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     await userEvent.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-    const contentInput = screen.getByTestId(CONTENT_INPUT_ID);
+    const contentInput = document.querySelector(CONTENT_INPUT_SELECTOR);
     const editedTitle = 'Edited Note Title';
     const editedContent = 'Edited Note Content';
 
     await userEvent.clear(titleInput);
-    await userEvent.clear(contentInput);
+    await userEvent.clear(contentInput!);
     await userEvent.type(titleInput, editedTitle);
-    await userEvent.type(contentInput, editedContent);
+    await userEvent.type(contentInput!, editedContent);
 
     const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
     await userEvent.click(submitButton);
@@ -166,7 +167,7 @@ describe('CaseNoteFormModal - Simple Tests', () => {
       expect(putNoteSpy).toHaveBeenCalledWith({
         id: note.id,
         title: editedTitle,
-        content: editedContent,
+        content: `<p>${editedContent}</p>`,
         caseId: TEST_CASE_ID,
         updatedBy: getCamsUserReference(session.user),
       });
@@ -189,9 +190,9 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     expect(modal).toHaveClass('is-visible');
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-    const contentInput = screen.getByTestId(CONTENT_INPUT_ID);
+    const contentInput = document.querySelector(CONTENT_INPUT_SELECTOR);
     await userEvent.type(titleInput, 'Test Title');
-    await userEvent.type(contentInput, 'Test Content');
+    await userEvent.type(contentInput!, 'Test Content');
 
     const cancelButton = screen.getByTestId(CANCEL_BUTTON_ID);
     await userEvent.click(cancelButton);
@@ -209,9 +210,9 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     await userEvent.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-    const contentInput = screen.getByTestId(CONTENT_INPUT_ID);
+    const contentInput = document.querySelector(CONTENT_INPUT_SELECTOR);
     await userEvent.type(titleInput, 'Test Title');
-    await userEvent.type(contentInput, 'Test Content');
+    await userEvent.type(contentInput!, 'Test Content');
 
     const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
     await userEvent.click(submitButton);
@@ -247,11 +248,11 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     await userEvent.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-    const contentInput = screen.getByTestId(CONTENT_INPUT_ID);
+    const contentInput = document.querySelector(CONTENT_INPUT_SELECTOR);
     await userEvent.clear(titleInput);
-    await userEvent.clear(contentInput);
+    await userEvent.clear(contentInput!);
     await userEvent.type(titleInput, 'Edited Title');
-    await userEvent.type(contentInput, 'Edited Content');
+    await userEvent.type(contentInput!, 'Edited Content');
 
     const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
     await userEvent.click(submitButton);
@@ -278,9 +279,9 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     await userEvent.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-    const contentInput = screen.getByTestId(CONTENT_INPUT_ID);
+    const contentInput = document.querySelector(CONTENT_INPUT_SELECTOR);
     await userEvent.type(titleInput, 'Test Title');
-    await userEvent.type(contentInput, 'Test Content');
+    await userEvent.type(contentInput!, 'Test Content');
 
     const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
     await userEvent.click(submitButton);
@@ -300,9 +301,9 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     await userEvent.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-    const contentInput = screen.getByTestId(CONTENT_INPUT_ID);
+    const contentInput = document.querySelector(CONTENT_INPUT_SELECTOR);
     await userEvent.type(titleInput, 'Draft Title');
-    await userEvent.type(contentInput, 'Draft Content');
+    await userEvent.type(contentInput!, 'Draft Content');
 
     const cancelButton = screen.getByTestId(CANCEL_BUTTON_ID);
     await userEvent.click(cancelButton);
@@ -320,9 +321,9 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     await userEvent.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-    const contentInput = screen.getByTestId(CONTENT_INPUT_ID);
+    const contentInput = document.querySelector(CONTENT_INPUT_SELECTOR);
     await userEvent.type(titleInput, 'Test Title');
-    await userEvent.type(contentInput, 'Test Content');
+    await userEvent.type(contentInput!, 'Test Content');
 
     const cancelButton = screen.getByTestId(CANCEL_BUTTON_ID);
     await userEvent.click(cancelButton);
@@ -338,34 +339,34 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     await userEvent.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-    const contentInput = screen.getByTestId(CONTENT_INPUT_ID);
+    const contentInput = document.querySelector(CONTENT_INPUT_SELECTOR);
     const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
 
     expect(titleInput).toHaveValue('');
-    expect(contentInput).toHaveValue('');
+    expect(contentInput!.innerHTML).toEqual('');
     await waitFor(() => {
       expect(submitButton).toBeDisabled();
     });
 
     await userEvent.type(titleInput, 'Test Title');
     expect(titleInput).toHaveValue('Test Title');
-    expect(contentInput).toHaveValue('');
+    expect(contentInput!.innerHTML).toEqual('');
     expect(submitButton).toBeDisabled();
 
     await userEvent.clear(titleInput);
-    await userEvent.type(contentInput, 'Test Content');
+    await userEvent.type(contentInput!, 'Test Content');
     expect(titleInput).toHaveValue('');
-    expect(contentInput).toHaveValue('Test Content');
+    expect(contentInput!.innerHTML).toEqual('<p>Test Content</p>');
     expect(submitButton).toBeDisabled();
 
     await userEvent.type(titleInput, 'Test Title');
     expect(titleInput).toHaveValue('Test Title');
-    expect(contentInput).toHaveValue('Test Content');
+    expect(contentInput!.innerHTML).toEqual('<p>Test Content</p>');
     expect(submitButton).toBeEnabled();
 
     await userEvent.clear(titleInput);
     expect(titleInput).toHaveValue('');
-    expect(contentInput).toHaveValue('Test Content');
+    expect(contentInput!.innerHTML).toEqual('<p>Test Content</p>');
     expect(submitButton).toBeDisabled();
   });
 
@@ -383,19 +384,19 @@ describe('CaseNoteFormModal - Simple Tests', () => {
 
     expect(saveFormSpy).toHaveBeenCalled();
 
-    const contentInput = screen.getByTestId(CONTENT_INPUT_ID);
-    await userEvent.type(contentInput, 'Test Content');
+    const contentInput = document.querySelector(CONTENT_INPUT_SELECTOR);
+    await userEvent.type(contentInput!, 'Test Content');
 
     const lastCall = saveFormSpy.mock.calls[saveFormSpy.mock.calls.length - 1];
     expect(lastCall[1]).toEqual({
       caseId: TEST_CASE_ID,
       title: 'Test Title',
-      content: 'Test Content',
+      content: '<p>Test Content</p>',
     });
   });
 
   test('getCaseNotesInputValue should default to empty string if no ref passed', () => {
-    const result = getCaseNotesInputValue(null);
+    const result = getCaseNotesTitleValue(null);
     expect(result).toEqual('');
   });
 
@@ -489,10 +490,10 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     await userEvent.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-    const contentInput = screen.getByTestId(CONTENT_INPUT_ID);
+    const contentInput = document.querySelector(CONTENT_INPUT_SELECTOR);
 
     expect(titleInput).toHaveValue(initialTitle);
-    expect(contentInput).toHaveValue(initialContent);
+    expect(contentInput!.innerHTML).toEqual(initialContent);
 
     const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
     await waitFor(() => {
@@ -513,9 +514,9 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     await userEvent.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-    const contentInput = screen.getByTestId(CONTENT_INPUT_ID);
+    const contentInput = document.querySelector(CONTENT_INPUT_SELECTOR);
     await userEvent.type(titleInput, 'Test Title');
-    await userEvent.type(contentInput, 'Test Content');
+    await userEvent.type(contentInput!, 'Test Content');
 
     const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
     await userEvent.click(submitButton);

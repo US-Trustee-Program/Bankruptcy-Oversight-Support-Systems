@@ -16,7 +16,6 @@ export interface RichTextEditorProps {
   id: string;
   label?: string;
   ariaDescription?: string;
-  value?: string;
   onChange?: (value: string) => void;
   disabled?: boolean;
   required?: boolean;
@@ -24,7 +23,7 @@ export interface RichTextEditorProps {
 }
 
 function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditorRef>) {
-  const { id, label, ariaDescription, onChange, required, className, value, disabled } = props;
+  const { id, label, ariaDescription, onChange, required, className, disabled } = props;
 
   const contentRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<Editor | null>(null);
@@ -39,12 +38,6 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
   useEffect(() => {
     setInputDisabled(disabled || false);
   }, [disabled]);
-
-  useEffect(() => {
-    if (value && contentRef.current) {
-      contentRef.current.innerHTML = value;
-    }
-  }, [value]);
 
   const clearValue = () => {
     if (contentRef.current) {
@@ -77,24 +70,24 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
   }));
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (!editorRef.current) {
+    if (editorRef.current?.handleCtrlKey(e)) {
       return;
     }
 
-    if (editorRef.current.handleCtrlKey(e)) {
-      return;
-    }
-
-    if (editorRef.current.handleDentures(e)) {
+    if (editorRef.current?.handleDentures(e)) {
       onChange?.(getHtml());
       return;
     }
 
-    if (editorRef.current.handleEnterKey(e)) {
+    if (editorRef.current?.handleEnterKey(e)) {
       return;
     }
 
-    if (editorRef.current.handlePrintableKey(e)) {
+    if (editorRef.current?.handleDeleteKeyOnList(e)) {
+      return;
+    }
+
+    if (editorRef.current?.handlePrintableKey(e)) {
       onChange?.(getHtml());
       return;
     }
@@ -104,7 +97,6 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
     <div className="usa-form-group rich-text-editor-container">
       {label && (
         <label
-          htmlFor={id}
           id={`editor-label-${id}`}
           className={`usa-label ${className ? `${className}-label` : ''}`}
         >
@@ -170,6 +162,7 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
         onInput={() => onChange?.(getHtml())}
         onKeyDown={handleKeyDown}
         ref={contentRef}
+        aria-labelledby={label ? `editor-label-${id}` : undefined}
         aria-describedby={ariaDescription ? `editor-hint-${id}` : undefined}
         role="textbox"
         aria-multiline="true"

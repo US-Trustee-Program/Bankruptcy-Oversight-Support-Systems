@@ -2,6 +2,9 @@ export const ZERO_WIDTH_SPACE = '​';
 export const ZERO_WIDTH_SPACE_REGEX = new RegExp(ZERO_WIDTH_SPACE, 'g');
 export type RichTextFormat = 'strong' | 'em' | 'u';
 
+const INLINE_TAGS = ['strong', 'em'];
+const CLASS_BASED_SPANS = ['underline'];
+
 export class Editor {
   private root: HTMLElement;
   private window: Window;
@@ -18,6 +21,10 @@ export class Editor {
   }
 
   public handleCtrlKey(e: React.KeyboardEvent<HTMLDivElement>): boolean {
+    if (e.metaKey) {
+      e.preventDefault();
+      return false;
+    }
     if (e.ctrlKey) {
       switch (e.key.toLowerCase()) {
         case 'b':
@@ -133,6 +140,85 @@ export class Editor {
     return false;
   }
 
+  public handleDeleteKeyOnList(e: React.KeyboardEvent<HTMLDivElement>): boolean {
+    if (e.key !== 'Backspace' && e.key !== 'Delete') {
+      return false;
+    }
+
+    const selection = this.window.getSelection();
+    if (!selection || !selection.rangeCount) {
+      return false;
+    }
+
+    const range = selection.getRangeAt(0);
+
+    if (!range.collapsed || range.startOffset !== 0) {
+      return false;
+    }
+
+    const parentList = this.findClosestAncestor<HTMLUListElement | HTMLOListElement>(
+      range.startContainer,
+      'ul, ol',
+    );
+    if (!parentList) {
+      return false;
+    }
+
+    const currentListItem = this.findClosestAncestor<HTMLLIElement>(range.startContainer, 'li');
+    if (!currentListItem) {
+      return false;
+    }
+
+    const isLastItem = parentList?.childNodes[parentList.childNodes.length - 1] === currentListItem;
+    if (!isLastItem) {
+      return false;
+    }
+
+    if (currentListItem.querySelector('ul, ol, li')) {
+      return false;
+    }
+
+    const grandMammi = this.getAncestorIfLastLeaf(parentList);
+    if (!grandMammi) {
+      return false;
+    }
+
+    e.preventDefault();
+
+    const listItemContents = currentListItem.childNodes;
+    if (!listItemContents || (listItemContents[0] as Element).tagName === 'BR') {
+      currentListItem.remove();
+      if (parentList.childNodes.length === 0) {
+        parentList.remove();
+      }
+      return true;
+    }
+
+    const p = this.document.createElement('p');
+    Editor.stripFormatting(p);
+    while (currentListItem.firstChild) {
+      p.appendChild(currentListItem.firstChild);
+    }
+    grandMammi?.parentNode?.insertBefore(p, grandMammi.nextSibling);
+
+    currentListItem.remove();
+    if (parentList.childNodes.length === 0) {
+      parentList.remove();
+    }
+
+    const newRange = this.document.createRange();
+    newRange.setStart(p.firstChild!, 1);
+    newRange.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(newRange);
+
+    if (parentList && [...parentList.children].every((child) => child.textContent?.trim() === '')) {
+      parentList.remove();
+    }
+
+    return true;
+  }
+
   public handlePrintableKey(e: React.KeyboardEvent<HTMLDivElement>): boolean {
     const isPrintableKey = e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey;
     if (!isPrintableKey) {
@@ -155,8 +241,7 @@ export class Editor {
       const isInRootWithoutBlock =
         container &&
         this.root.contains(container) &&
-        !this.findClosestAncestor(container, 'p,li,ul,ol') &&
-        container.parentElement === this.root;
+        !this.findClosestAncestor(container, 'p,li,ul,ol');
 
       if (isInRootWithoutBlock) {
         e.preventDefault();
@@ -200,8 +285,8 @@ export class Editor {
       'ol,ul',
     );
 
-    if (li && list?.tagName.toLowerCase() === type) {
-      this.unwrapList();
+    if (li && list) {
+      this.unwrapListItem(li, list);
     } else {
       this.insertList(type);
     }
@@ -214,6 +299,10 @@ export class Editor {
     }
 
     const range = selection.getRangeAt(0);
+    if (this.isRangeAcrossBlocks(range)) {
+      // TODO: We should probably tell the user they can't change formatting across paragraphs or lists
+      return;
+    }
 
     if (range.collapsed) {
       const el = Editor.createRichTextElement(tagName);
@@ -221,9 +310,6 @@ export class Editor {
       range.insertNode(el);
       return;
     }
-
-    // First normalize to clean up any nested identical tags
-    this.normalizeInlineFormatting();
 
     // Check if the entire selection is formatted with the target format
     const isFullyFormatted = this.isEntireSelectionFormatted(range, tagName);
@@ -242,6 +328,52 @@ export class Editor {
 
     this.normalizeInlineFormatting();
     selection.removeAllRanges();
+  }
+
+  private isRangeAcrossBlocks(range: Range): boolean {
+    const blockTags = ['P', 'LI', 'DIV'];
+    const getBlockAncestor = (node: Node): HTMLElement | null => {
+      let current: Node | null = node;
+      while (current && current !== this.root) {
+        if (
+          current.nodeType === Node.ELEMENT_NODE &&
+          blockTags.includes((current as Element).tagName)
+        ) {
+          return current as HTMLElement;
+        }
+        current = current.parentNode;
+      }
+      return null;
+    };
+    const startBlock = getBlockAncestor(range.startContainer);
+    const endBlock = getBlockAncestor(range.endContainer);
+    return !!startBlock && !!endBlock && startBlock !== endBlock;
+  }
+
+  private getAncestorIfLastLeaf(
+    parentList: HTMLUListElement | HTMLOListElement,
+  ): HTMLOListElement | HTMLUListElement | false {
+    const grandParentListItem = this.findClosestAncestor<HTMLLIElement>(parentList, 'li');
+    if (!grandParentListItem) {
+      return parentList;
+    }
+
+    const grandParentList = this.findClosestAncestor<HTMLUListElement | HTMLOListElement>(
+      grandParentListItem,
+      'ul, ol',
+    );
+    if (!grandParentList) {
+      return parentList;
+    }
+
+    if (
+      grandParentList &&
+      grandParentList.childNodes[grandParentList.childNodes.length - 1] !== grandParentListItem
+    ) {
+      return false;
+    }
+
+    return this.getAncestorIfLastLeaf(grandParentList);
   }
 
   private isEntireSelectionFormatted(range: Range, tagName: RichTextFormat): boolean {
@@ -291,76 +423,72 @@ export class Editor {
   }
 
   private removeFormattingFromRange(range: Range, tagName: RichTextFormat): void {
-    // This handles the complex case of removing formatting from a partial selection
-    // The browser automatically splits text nodes when we extract, which is what we want
+    // Find the closest ancestor formatting element for both start and end
+    const startFormat = this.findClosestAncestor<Element>(
+      range.startContainer,
+      tagName === 'u' ? 'span.underline' : tagName,
+    );
+    const endFormat = this.findClosestAncestor<Element>(
+      range.endContainer,
+      tagName === 'u' ? 'span.underline' : tagName,
+    );
 
-    // First, we need to preserve any ancestor formatting that should remain
-    const ancestorFormats: Element[] = [];
-    let current: Node | null = range.startContainer;
+    // If both start and end are in the same formatting element, split it at both boundaries
+    if (startFormat && startFormat === endFormat) {
+      // Split at end first (so indices don't shift)
+      const endRange = this.document.createRange();
+      endRange.setStart(range.endContainer, range.endOffset);
+      endRange.setEndAfter(startFormat);
+      const afterFragment = endRange.extractContents();
 
-    // Walk up to find formatting elements that aren't the target format
+      // Split at start
+      const startRange = this.document.createRange();
+      startRange.setStartBefore(startFormat);
+      startRange.setEnd(range.startContainer, range.startOffset);
+      const beforeFragment = startRange.extractContents();
+
+      // The selected content is now the only child of startFormat
+      const selectedFragment = this.document.createDocumentFragment();
+      while (startFormat.firstChild) {
+        selectedFragment.appendChild(startFormat.firstChild);
+      }
+
+      // Remove the formatting from the selected fragment
+      this.removeFormatFromFragment(selectedFragment, tagName);
+
+      // Insert back: beforeFragment, unformatted selectedFragment, afterFragment
+      const parent = startFormat.parentNode;
+      if (parent) {
+        parent.insertBefore(beforeFragment, startFormat);
+        parent.insertBefore(selectedFragment, startFormat);
+        parent.insertBefore(afterFragment, startFormat);
+        parent.removeChild(startFormat);
+      }
+    } else {
+      // Fallback: just remove formatting from the extracted content
+      const extractedContent = range.extractContents();
+      this.removeFormatFromFragment(extractedContent, tagName);
+      range.insertNode(extractedContent);
+    }
+  }
+
+  private getAncestorFormatting(node: Node, skipTag: RichTextFormat): Element | null {
+    let current: Node | null = node;
     while (current && current !== this.root) {
       if (current.nodeType === Node.ELEMENT_NODE) {
-        const element = current as Element;
+        const el = current as HTMLElement;
         if (
-          !Editor.isMatchingElement(element, tagName) &&
-          (element.tagName === 'STRONG' ||
-            element.tagName === 'EM' ||
-            (element.tagName === 'SPAN' && element.classList.contains('underline')))
+          !Editor.isMatchingElement(el, skipTag) &&
+          (el.tagName === 'STRONG' ||
+            el.tagName === 'EM' ||
+            (el.tagName === 'SPAN' && el.classList.contains('underline')))
         ) {
-          ancestorFormats.unshift(element.cloneNode(false) as Element);
+          return el;
         }
       }
       current = current.parentNode;
     }
-
-    // Extract the content (this automatically splits text nodes)
-    const extractedContent = range.extractContents();
-
-    // Remove the target formatting from extracted content
-    this.removeFormatFromFragment(extractedContent, tagName);
-
-    // Wrap the extracted content in the preserved ancestor formatting
-    let wrappedContent: Node = extractedContent;
-    ancestorFormats.forEach((ancestorElement) => {
-      const wrapper = ancestorElement.cloneNode(false) as Element;
-      wrapper.appendChild(wrappedContent);
-      wrappedContent = wrapper;
-    });
-
-    // Fix the insertion point - after extraction, we need to determine the correct position
-    // Check if the extracted content was from the beginning of the formatted element
-    let insertionPoint: Node | null = range.startContainer;
-
-    // If we're inside a text node, check its parent
-    if (insertionPoint.nodeType === Node.TEXT_NODE) {
-      insertionPoint = insertionPoint.parentNode;
-    }
-
-    // Walk up to find the target formatted element
-    while (insertionPoint && insertionPoint !== this.root) {
-      if (
-        insertionPoint.nodeType === Node.ELEMENT_NODE &&
-        Editor.isMatchingElement(insertionPoint as Element, tagName)
-      ) {
-        // Check if the range is at the beginning of the formatted element
-        // If so, position before the element; otherwise, after it
-        const isAtBeginning =
-          range.startOffset === 0 && range.startContainer === insertionPoint.firstChild;
-
-        if (isAtBeginning) {
-          range.setStartBefore(insertionPoint);
-        } else {
-          range.setStartAfter(insertionPoint);
-        }
-        range.collapse(true);
-        break;
-      }
-      insertionPoint = insertionPoint.parentNode;
-    }
-
-    // Insert the properly formatted content back
-    range.insertNode(wrappedContent);
+    return null;
   }
 
   private removeFormatFromFragment(fragment: DocumentFragment, tagName: RichTextFormat): void {
@@ -471,48 +599,33 @@ export class Editor {
       range.startContainer,
       'p',
     );
-    const isParagraphEmpty =
-      currentParagraph &&
-      Editor.cleanZeroWidthSpaces(currentParagraph.textContent || '') === '' &&
-      currentParagraph.parentNode === this.root;
 
+    // If we're in a paragraph with content, convert the paragraph to a list item
+    if (currentParagraph && currentParagraph.parentNode === this.root) {
+      const paragraphHasContent =
+        currentParagraph.textContent?.trim() || currentParagraph.querySelector('*');
+
+      if (paragraphHasContent) {
+        // Convert paragraph to list
+        this.convertParagraphToList(currentParagraph, type, range);
+        return;
+      }
+    }
+
+    // Default behavior: create a new empty list
     const list = Editor.createListWithEmptyItem(type);
     const listItem = list.querySelector('li');
 
-    const parent = currentParagraph?.parentNode || this.root;
-    let extractedContent: DocumentFragment | null = null;
-
-    if (!range.collapsed) {
-      extractedContent = range.extractContents();
-    } else if (currentParagraph) {
-      const afterRange = this.document.createRange();
-      afterRange.setStart(range.endContainer, range.endOffset);
-      afterRange.setEndAfter(currentParagraph.lastChild!);
-      if (!afterRange.collapsed) {
-        extractedContent = afterRange.extractContents();
-      }
-    }
-
-    if (listItem && extractedContent && extractedContent.hasChildNodes()) {
-      listItem.innerHTML = '';
-      listItem.appendChild(extractedContent);
-    }
-
-    if (currentParagraph && parent) {
-      if (isParagraphEmpty) {
-        currentParagraph.replaceWith(list);
-      } else {
-        parent.insertBefore(list, currentParagraph.nextSibling);
-      }
-
-      if (!currentParagraph.textContent?.trim()) {
-        currentParagraph.remove();
-      }
+    if (currentParagraph && currentParagraph.parentNode === this.root) {
+      // Replace empty paragraph with list
+      currentParagraph.replaceWith(list);
     } else {
+      // Insert list at cursor position
       range.deleteContents();
       range.insertNode(list);
     }
 
+    // Position cursor in the new list item
     if (listItem?.firstChild) {
       const newRange = this.document.createRange();
       const { firstChild } = listItem;
@@ -520,6 +633,90 @@ export class Editor {
       newRange.collapse(true);
       selection.removeAllRanges();
       selection.addRange(newRange);
+    }
+  }
+
+  private convertParagraphToList(
+    paragraph: HTMLParagraphElement,
+    listType: 'ul' | 'ol',
+    currentRange: Range,
+  ): void {
+    const selection = this.window.getSelection();
+    if (!selection) {
+      return;
+    }
+
+    // Store cursor position relative to paragraph content
+    const cursorOffset = this.getCursorOffsetInParagraph(paragraph, currentRange);
+
+    // Create new list with the paragraph content
+    const list = this.document.createElement(listType);
+    const listItem = this.document.createElement('li');
+
+    // Move all paragraph content to the list item
+    while (paragraph.firstChild) {
+      listItem.appendChild(paragraph.firstChild);
+    }
+
+    // Ensure list item has some content
+    if (!listItem.textContent?.trim() && !listItem.querySelector('*')) {
+      listItem.appendChild(this.document.createTextNode(ZERO_WIDTH_SPACE));
+    }
+
+    list.appendChild(listItem);
+    paragraph.replaceWith(list);
+
+    // Restore cursor position in the new list item
+    this.setCursorInListItem(listItem, cursorOffset);
+  }
+
+  private getCursorOffsetInParagraph(paragraph: HTMLParagraphElement, range: Range): number {
+    const walker = this.document.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT, null);
+
+    let offset = 0;
+    let node: Text | null;
+
+    while ((node = walker.nextNode() as Text)) {
+      if (node === range.startContainer) {
+        return offset + range.startOffset;
+      }
+      offset += node.textContent?.length || 0;
+    }
+
+    return offset;
+  }
+
+  private setCursorInListItem(listItem: HTMLLIElement, targetOffset: number): void {
+    const selection = this.window.getSelection();
+    if (!selection) {
+      return;
+    }
+
+    const walker = this.document.createTreeWalker(listItem, NodeFilter.SHOW_TEXT, null);
+
+    let currentOffset = 0;
+    let node: Text | null;
+
+    while ((node = walker.nextNode() as Text)) {
+      const nodeLength = node.textContent?.length || 0;
+      if (currentOffset + nodeLength >= targetOffset) {
+        const range = this.document.createRange();
+        range.setStart(node, Math.min(targetOffset - currentOffset, nodeLength));
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        return;
+      }
+      currentOffset += nodeLength;
+    }
+
+    // Fallback: position at the end of the list item
+    if (listItem.lastChild) {
+      const range = this.document.createRange();
+      range.setStartAfter(listItem.lastChild);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
     }
   }
 
@@ -534,17 +731,15 @@ export class Editor {
 
   private normalizeInlineFormatting(): void {
     const walker = this.document.createTreeWalker(this.root, NodeFilter.SHOW_ELEMENT);
-    const inlineTags = ['strong', 'em'];
-    const classBasedSpans = ['underline'];
 
     const shouldMerge = (a: Element, b: Element): boolean => {
-      if (a.tagName === b.tagName && inlineTags.includes(a.tagName.toLowerCase())) {
+      if (a.tagName === b.tagName && INLINE_TAGS.includes(a.tagName.toLowerCase())) {
         return true;
       }
       if (
         a.tagName === 'SPAN' &&
         b.tagName === 'SPAN' &&
-        classBasedSpans.some((cls) => a.classList.contains(cls) && b.classList.contains(cls))
+        CLASS_BASED_SPANS.some((cls) => a.classList.contains(cls) && b.classList.contains(cls))
       ) {
         return true;
       }
@@ -598,6 +793,8 @@ export class Editor {
       // First flatten nested identical tags throughout the entire subtree
       flattenNestedIdenticalTags(node);
 
+      this.removeEmptyFormattingElements(node);
+
       // Then merge adjacent similar elements
       for (let i = node.childNodes.length - 1; i > 0; i--) {
         const current = node.childNodes[i];
@@ -615,18 +812,7 @@ export class Editor {
         }
       }
 
-      // Remove empty formatting elements
-      Array.from(node.childNodes).forEach((child) => {
-        if (
-          child.nodeType === Node.ELEMENT_NODE &&
-          (inlineTags.includes((child as Element).tagName.toLowerCase()) ||
-            ((child as Element).tagName === 'SPAN' &&
-              classBasedSpans.some((cls) => (child as Element).classList.contains(cls)))) &&
-          !child.textContent?.trim()
-        ) {
-          node.removeChild(child);
-        }
-      });
+      this.removeEmptyFormattingElements(node);
 
       node.normalize();
     };
@@ -636,6 +822,20 @@ export class Editor {
       normalizeElement(current as Element);
       current = walker.nextNode();
     }
+  }
+
+  private removeEmptyFormattingElements(node: Element): void {
+    Array.from(node.childNodes).forEach((child) => {
+      if (
+        child.nodeType === Node.ELEMENT_NODE &&
+        (INLINE_TAGS.includes((child as Element).tagName.toLowerCase()) ||
+          ((child as Element).tagName === 'SPAN' &&
+            CLASS_BASED_SPANS.some((cls) => (child as Element).classList.contains(cls)))) &&
+        (!child.textContent || child.textContent.length === 0)
+      ) {
+        node.removeChild(child);
+      }
+    });
   }
 
   private outdentListItem(): void {
@@ -688,6 +888,200 @@ export class Editor {
 
     selection.removeAllRanges();
     selection.addRange(newRange);
+  }
+
+  private unwrapListItem(li: HTMLLIElement, list: HTMLOListElement | HTMLUListElement): void {
+    const selection = this.window.getSelection();
+    if (!selection?.rangeCount) {
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+    const offset = range.startOffset;
+
+    // Create paragraph from list item content
+    const p = this.document.createElement('p');
+    Editor.stripFormatting(p);
+
+    // Extract content from the list item, separating text/inline elements from nested lists
+    const textContent = this.document.createDocumentFragment();
+    const nestedLists: (HTMLUListElement | HTMLOListElement)[] = [];
+
+    Array.from(li.childNodes).forEach((child) => {
+      if (
+        child.nodeType === Node.TEXT_NODE ||
+        (child.nodeType === Node.ELEMENT_NODE && !['UL', 'OL'].includes((child as Element).tagName))
+      ) {
+        textContent.appendChild(child.cloneNode(true));
+      } else if (
+        child.nodeType === Node.ELEMENT_NODE &&
+        ['UL', 'OL'].includes((child as Element).tagName)
+      ) {
+        nestedLists.push(child.cloneNode(true) as HTMLUListElement | HTMLOListElement);
+      }
+    });
+
+    if (textContent.textContent?.trim() || textContent.querySelector('*')) {
+      p.appendChild(textContent);
+    } else {
+      p.appendChild(this.document.createTextNode(ZERO_WIDTH_SPACE));
+    }
+
+    // Find the root list (not nested within another list item) for insertion point
+    let rootList = list;
+    let parentLi = this.findClosestAncestor<HTMLLIElement>(list.parentNode, 'li');
+    while (parentLi) {
+      const nextRootList = this.findClosestAncestor<HTMLOListElement | HTMLUListElement>(
+        parentLi.parentNode,
+        'ol,ul',
+      );
+      if (nextRootList && this.root.contains(nextRootList)) {
+        rootList = nextRootList;
+        parentLi = this.findClosestAncestor<HTMLLIElement>(nextRootList.parentNode, 'li');
+      } else {
+        break;
+      }
+    }
+
+    if (!this.root.contains(rootList) || rootList.parentNode !== this.root) {
+      return;
+    }
+
+    // Find which root-level item contains our target item BEFORE removing it
+    const allRootItems = Array.from(rootList.children);
+    let splitIndex = -1;
+
+    // Find which root-level item contains our target item
+    for (let i = 0; i < allRootItems.length; i++) {
+      const rootItem = allRootItems[i] as HTMLElement;
+      if (rootItem.contains(li)) {
+        splitIndex = i;
+        break;
+      }
+    }
+
+    if (splitIndex === -1) {
+      // Fallback: just append after the root list
+      const listParent = rootList.parentNode!;
+      listParent.insertBefore(p, rootList.nextSibling);
+      return;
+    }
+
+    // Store references before removing anything
+    const listParent = rootList.parentNode!;
+    const immediateParentList = li.parentElement!;
+
+    // Split the root list at the found index
+    // For root-level items, exclude the item being extracted
+    // For nested items, include the parent item that contains the nested item
+    const isRootLevelExtraction = allRootItems[splitIndex] === li;
+    const beforeItems = allRootItems.slice(0, isRootLevelExtraction ? splitIndex : splitIndex + 1);
+    const afterItems = allRootItems.slice(splitIndex + 1);
+
+    // Special case: if this is the only item in the list, just replace the list with the paragraph
+    if (allRootItems.length === 1 && isRootLevelExtraction) {
+      listParent.replaceChild(p, rootList);
+
+      // Insert any nested lists after the paragraph
+      nestedLists.forEach((nestedList) => {
+        listParent.insertBefore(nestedList, p.nextSibling);
+      });
+
+      // Restore cursor position
+      const newRange = this.document.createRange();
+      if (p.firstChild) {
+        const textNode =
+          p.firstChild.nodeType === Node.TEXT_NODE
+            ? (p.firstChild as Text)
+            : (p.firstChild.firstChild as Text);
+        if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+          const newOffset = Math.min(offset, textNode.textContent?.length || 0);
+          newRange.setStart(textNode, newOffset);
+          newRange.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+        }
+      }
+      return;
+    }
+
+    // Remove the target item from its immediate parent list
+    li.remove();
+
+    // If the immediate parent list is now empty, remove it
+    if (immediateParentList.children.length === 0) {
+      immediateParentList.remove();
+    }
+
+    // Create before list if there are items before the split
+    if (beforeItems.length > 0) {
+      const beforeList = this.document.createElement(rootList.tagName.toLowerCase());
+      beforeItems.forEach((item) => beforeList.appendChild(item));
+      listParent.insertBefore(beforeList, rootList);
+    }
+
+    // Insert the paragraph
+    listParent.insertBefore(p, rootList);
+
+    // Insert any nested lists after the paragraph
+    nestedLists.forEach((nestedList) => {
+      listParent.insertBefore(nestedList, rootList);
+    });
+
+    // Create after list if there are items after the split
+    if (afterItems.length > 0) {
+      const afterList = this.document.createElement(rootList.tagName.toLowerCase());
+      afterItems.forEach((item) => afterList.appendChild(item));
+      listParent.insertBefore(afterList, rootList);
+    }
+
+    // Remove the original root list
+    rootList.remove();
+
+    // Restore cursor position in the new paragraph
+    const newRange = this.document.createRange();
+    if (p.firstChild) {
+      const textNode =
+        p.firstChild.nodeType === Node.TEXT_NODE
+          ? (p.firstChild as Text)
+          : (p.firstChild.firstChild as Text);
+      if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+        const newOffset = Math.min(offset, textNode.textContent?.length || 0);
+        newRange.setStart(textNode, newOffset);
+        newRange.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(newRange);
+      }
+    }
+  }
+
+  private findListItemIndex(targetLi: HTMLLIElement, rootList: HTMLElement): number {
+    // Recursively find the index of the target list item within the root list structure
+    const findInList = (list: HTMLElement, target: HTMLLIElement): number => {
+      const directChildren = Array.from(list.children);
+
+      for (let i = 0; i < directChildren.length; i++) {
+        const child = directChildren[i] as HTMLElement;
+
+        if (child === target) {
+          return i;
+        }
+
+        if (child.tagName === 'LI') {
+          // Check nested lists within this list item
+          const nestedLists = child.querySelectorAll('ul, ol');
+          for (const nestedList of nestedLists) {
+            if (nestedList.contains(target)) {
+              return i;
+            }
+          }
+        }
+      }
+
+      return -1;
+    };
+
+    return findInList(rootList, targetLi);
   }
 
   private unwrapList(): void {
