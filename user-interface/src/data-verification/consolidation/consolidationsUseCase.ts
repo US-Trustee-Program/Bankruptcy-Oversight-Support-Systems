@@ -52,6 +52,14 @@ export interface ConsolidationsUseCase {
   handleAddCaseCourtSelectChange(option: ComboOptionList): void;
 }
 
+function isLeadCase(caseId: string, associations: Consolidation[]): boolean {
+  return associations.some((a) => a.documentType === 'CONSOLIDATION_FROM' && a.caseId === caseId);
+}
+
+function isChildCase(caseId: string, associations: Consolidation[]): boolean {
+  return associations.some((a) => a.documentType === 'CONSOLIDATION_TO' && a.caseId === caseId);
+}
+
 const consolidationUseCase = (
   store: ConsolidationStore,
   controls: ConsolidationControls,
@@ -74,7 +82,9 @@ const consolidationUseCase = (
   const handleAddCaseAction = () => {
     if (store.caseToAdd) {
       store.order.childCases.push(store.caseToAdd);
-      store.setSelectedCases([...store.selectedCases, store.caseToAdd]);
+      if (store.caseToAdd.isLeadCase) {
+        handleMarkLeadCase(store.caseToAdd);
+      }
     }
     handleAddCaseReset();
   };
@@ -171,21 +181,14 @@ const consolidationUseCase = (
           const associations = responses[1] as Consolidation[];
           const attorneyAssignments = responses[2] as CaseAssignment[];
 
-          const isLeadCase = associations.some(
-            (a) => a.documentType === 'CONSOLIDATION_FROM' && a.caseId === caseSummary.caseId,
-          );
-          const isChildCase = associations.some(
-            (a) => a.documentType === 'CONSOLIDATION_TO' && a.caseId === caseSummary.caseId,
-          );
-
           store.setCaseToAdd({
             ...caseSummary,
             docketEntries: [],
             orderDate: store.order.orderDate,
             attorneyAssignments,
             associations,
-            isLeadCase,
-            isChildCase,
+            isLeadCase: isLeadCase(caseSummary.caseId, associations),
+            isChildCase: isChildCase(caseSummary.caseId, associations),
           });
           store.setIsLookingForCase(false);
           store.setFoundValidCaseNumber(true);
@@ -293,11 +296,9 @@ const consolidationUseCase = (
 
   const updateSubmitButtonsState = () => {
     if (store.selectedCases.length) {
-      const alreadyConsolidatedLeadCase = store.selectedCases.find((bCase) =>
-        bCase.associations?.find((assoc) => assoc.documentType === 'CONSOLIDATION_FROM'),
-      );
+      const alreadyConsolidatedLeadCase = store.selectedCases.find((bCase) => bCase.isLeadCase);
 
-      let disableApprove = false;
+      let disableApprove;
       if (alreadyConsolidatedLeadCase && store.leadCaseId !== alreadyConsolidatedLeadCase.caseId) {
         disableApprove = true;
       } else {
@@ -436,6 +437,8 @@ const consolidationUseCase = (
         try {
           const associatedResponse = await api2.getCaseAssociations(bCase.caseId);
           bCase.associations = associatedResponse.data;
+          bCase.isLeadCase = isLeadCase(bCase.caseId, bCase.associations);
+          bCase.isChildCase = isChildCase(bCase.caseId, bCase.associations);
         } catch {
           isDataEnhanced = false;
         }
