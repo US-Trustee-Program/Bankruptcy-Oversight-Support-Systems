@@ -40,25 +40,70 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
   }, [disabled]);
 
   const clearValue = () => {
-    if (contentRef.current) {
+    if (contentRef.current && editorRef.current) {
       contentRef.current.innerHTML = '';
+      // Re-initialize with empty paragraph
+      editorRef.current = new Editor(contentRef.current);
       onChange?.('');
     }
   };
 
   const getValue = () => contentRef.current?.innerText || '';
+
   const getHtml = () => {
     const rawHtml = contentRef.current?.innerHTML || '';
-    return Editor.cleanZeroWidthSpaces(rawHtml);
+    const cleanedHtml = Editor.cleanHtml(rawHtml);
+
+    // Return empty string if content is just an empty paragraph
+    if (
+      editorRef.current &&
+      typeof editorRef.current.isEmptyContent === 'function' &&
+      editorRef.current.isEmptyContent()
+    ) {
+      return '';
+    }
+
+    return cleanedHtml;
   };
 
   const setValue = (html: string) => {
     if (contentRef.current) {
-      contentRef.current.innerHTML = html;
+      if (html.trim() === '') {
+        // If setting empty content, reinitialize with empty paragraph
+        contentRef.current.innerHTML = '';
+        if (editorRef.current) {
+          editorRef.current = new Editor(contentRef.current);
+        }
+      } else {
+        contentRef.current.innerHTML = html;
+      }
     }
   };
   const disable = (val: boolean) => setInputDisabled(val);
-  const focus = () => contentRef.current?.focus();
+  const focus = () => {
+    if (contentRef.current) {
+      contentRef.current.focus();
+
+      // If the editor is empty, position cursor in the empty paragraph
+      if (
+        editorRef.current &&
+        typeof editorRef.current.isEmptyContent === 'function' &&
+        editorRef.current.isEmptyContent()
+      ) {
+        const p = contentRef.current.querySelector('p');
+        if (p?.firstChild) {
+          const selection = window.getSelection();
+          if (selection) {
+            const range = document.createRange();
+            range.setStart(p.firstChild, 1); // After the zero-width space
+            range.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(range);
+          }
+        }
+      }
+    }
+  };
 
   useImperativeHandle(ref, () => ({
     clearValue,
@@ -72,6 +117,12 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (editorRef.current?.handleCtrlKey(e)) {
       return;
+    }
+
+    if (editorRef.current?.handleBackspaceOnEmptyContent) {
+      if (editorRef.current.handleBackspaceOnEmptyContent(e)) {
+        return;
+      }
     }
 
     if (editorRef.current?.handleDentures(e)) {

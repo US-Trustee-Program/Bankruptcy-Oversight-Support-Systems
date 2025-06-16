@@ -18,6 +18,7 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { randomUUID } from 'crypto';
 import LocalFormCache from '@/lib/utils/local-form-cache';
 import { CamsSession, getCamsUserReference } from '@common/cams/session';
+import { ZERO_WIDTH_SPACE } from '@/lib/components/cams/RichTextEditor/editor.constants';
 
 const MODAL_ID = 'modal-case-note-form';
 const TITLE_INPUT_ID = 'case-note-title-input';
@@ -343,30 +344,31 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
 
     expect(titleInput).toHaveValue('');
-    expect(contentInput!.innerHTML).toEqual('');
+    expect(contentInput!.innerHTML).toEqual(`<p>${ZERO_WIDTH_SPACE}</p>`);
     await waitFor(() => {
       expect(submitButton).toBeDisabled();
     });
 
     await userEvent.type(titleInput, 'Test Title');
     expect(titleInput).toHaveValue('Test Title');
-    expect(contentInput!.innerHTML).toEqual('');
+    expect(contentInput!.innerHTML).toEqual(`<p>${ZERO_WIDTH_SPACE}</p>`);
     expect(submitButton).toBeDisabled();
 
     await userEvent.clear(titleInput);
+    await userEvent.click(contentInput!);
     await userEvent.type(contentInput!, 'Test Content');
     expect(titleInput).toHaveValue('');
-    expect(contentInput!.innerHTML).toEqual('<p>Test Content</p>');
+    expect(contentInput!.innerHTML).toEqual(`<p>${ZERO_WIDTH_SPACE}Test Content</p>`);
     expect(submitButton).toBeDisabled();
 
     await userEvent.type(titleInput, 'Test Title');
     expect(titleInput).toHaveValue('Test Title');
-    expect(contentInput!.innerHTML).toEqual('<p>Test Content</p>');
+    expect(contentInput!.innerHTML).toEqual(`<p>${ZERO_WIDTH_SPACE}Test Content</p>`);
     expect(submitButton).toBeEnabled();
 
     await userEvent.clear(titleInput);
     expect(titleInput).toHaveValue('');
-    expect(contentInput!.innerHTML).toEqual('<p>Test Content</p>');
+    expect(contentInput!.innerHTML).toEqual(`<p>${ZERO_WIDTH_SPACE}Test Content</p>`);
     expect(submitButton).toBeDisabled();
   });
 

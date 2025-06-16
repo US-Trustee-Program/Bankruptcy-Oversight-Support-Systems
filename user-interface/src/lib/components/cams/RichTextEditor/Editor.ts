@@ -1,6 +1,9 @@
-export const ZERO_WIDTH_SPACE = '​';
-export const ZERO_WIDTH_SPACE_REGEX = new RegExp(ZERO_WIDTH_SPACE, 'g');
-export type RichTextFormat = 'strong' | 'em' | 'u';
+import {
+  EMPTY_TAG_REGEX,
+  RichTextFormat,
+  ZERO_WIDTH_SPACE,
+  ZERO_WIDTH_SPACE_REGEX,
+} from '@/lib/components/cams/RichTextEditor/editor.constants';
 
 const INLINE_TAGS = ['strong', 'em'];
 const CLASS_BASED_SPANS = ['underline'];
@@ -14,11 +17,62 @@ export class Editor {
     this.root = root;
     this.window = this.root.ownerDocument.defaultView!;
     this.document = this.root.ownerDocument;
+
+    // Initialize with empty paragraph if the root is empty
+    this.initializeContent();
+  }
+
+  private initializeContent(): void {
+    if (!this.root.hasChildNodes() || this.root.innerHTML.trim() === '') {
+      const p = this.document.createElement('p');
+      p.appendChild(this.document.createTextNode(ZERO_WIDTH_SPACE));
+      this.root.appendChild(p);
+
+      // Position cursor in the new paragraph
+      this.positionCursorInEmptyParagraph(p);
+    }
+  }
+
+  private positionCursorInEmptyParagraph(paragraph: HTMLParagraphElement): void {
+    const selection = this.window.getSelection();
+    if (selection && paragraph.firstChild) {
+      const range = this.document.createRange();
+      range.setStart(paragraph.firstChild, paragraph.firstChild.textContent?.length || 0); // After the zero-width space
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+  }
+
+  public isEmptyContent(): boolean {
+    const children = Array.from(this.root.children);
+
+    if (children.length === 0) {
+      return true;
+    }
+
+    for (const child of children) {
+      const textContent = child.textContent || '';
+      const cleanedContent = textContent.replace(ZERO_WIDTH_SPACE_REGEX, '').trim();
+      if (cleanedContent !== '') {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   public static cleanZeroWidthSpaces(html: string): string {
     return html.replace(ZERO_WIDTH_SPACE_REGEX, '');
   }
+
+  public static cleanEmptyTags(html: string): string {
+    return html.replace(EMPTY_TAG_REGEX, '');
+  }
+
+  public static cleanHtml = (html: string) => {
+    return Editor.cleanEmptyTags(Editor.cleanZeroWidthSpaces(html));
+  };
 
   public handleCtrlKey(e: React.KeyboardEvent<HTMLDivElement>): boolean {
     if (e.metaKey) {
@@ -75,66 +129,121 @@ export class Editor {
       return false;
     }
 
-    if (e.key === 'Enter') {
-      const range = selection.getRangeAt(0);
-      const listItem = this.findClosestAncestor<HTMLLIElement>(range.startContainer, 'li');
+    if (e.key !== 'Enter') {
+      return false;
+    }
 
-      if (listItem) {
-        const isEmpty = listItem.textContent?.trim() === '';
-        if (isEmpty) {
-          e.preventDefault();
+    const range = selection.getRangeAt(0);
+    const listItem = this.findClosestAncestor<HTMLLIElement>(range.startContainer, 'li');
 
-          const p = this.document.createElement('p');
-          Editor.stripFormatting(p);
-          p.appendChild(this.document.createTextNode(ZERO_WIDTH_SPACE));
+    if (listItem) {
+      const isEmpty = listItem.textContent?.trim() === '';
+      if (isEmpty) {
+        e.preventDefault();
 
-          const list = this.findClosestAncestor<HTMLOListElement | HTMLUListElement>(
-            listItem,
-            'ol,ul',
-          );
-          list?.parentNode?.insertBefore(p, list.nextSibling);
+        const p = this.document.createElement('p');
+        Editor.stripFormatting(p);
+        p.appendChild(this.document.createTextNode(ZERO_WIDTH_SPACE));
 
-          listItem.remove();
+        const list = this.findClosestAncestor<HTMLOListElement | HTMLUListElement>(
+          listItem,
+          'ol,ul',
+        );
+        list?.parentNode?.insertBefore(p, list.nextSibling);
 
-          const newRange = this.document.createRange();
-          newRange.setStart(p.firstChild!, 1);
-          newRange.collapse(true);
-          selection.removeAllRanges();
-          selection.addRange(newRange);
+        listItem.remove();
 
-          if (list && [...list.children].every((child) => child.textContent?.trim() === '')) {
-            list.remove();
-          }
+        const newRange = this.document.createRange();
+        newRange.setStart(p.firstChild!, 1);
+        newRange.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(newRange);
 
+        if (list && [...list.children].every((child) => child.textContent?.trim() === '')) {
+          list.remove();
+        }
+
+        return true;
+      }
+      return false;
+    }
+
+    e.preventDefault();
+
+    const currentParagraph = this.findClosestAncestor<HTMLParagraphElement>(
+      range.startContainer,
+      'p',
+    );
+
+    const newParagraph = this.document.createElement('p');
+    Editor.stripFormatting(newParagraph);
+    newParagraph.appendChild(this.document.createTextNode(ZERO_WIDTH_SPACE));
+
+    if (currentParagraph?.parentNode) {
+      currentParagraph.parentNode.insertBefore(newParagraph, currentParagraph.nextSibling);
+    } else {
+      range.collapse(false);
+      range.insertNode(newParagraph);
+    }
+
+    const newRange = this.document.createRange();
+    newRange.setStart(newParagraph.firstChild!, 1);
+    newRange.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(newRange);
+    return true;
+  }
+
+  public handleBackspaceOnEmptyContent(e: React.KeyboardEvent<HTMLDivElement>): boolean {
+    if (e.key !== 'Backspace') {
+      return false;
+    }
+
+    const selection = this.window.getSelection();
+    if (!selection || !selection.rangeCount) {
+      return false;
+    }
+
+    const range = selection.getRangeAt(0);
+
+    // Check if we're in a paragraph
+    const currentParagraph = this.findClosestAncestor<HTMLParagraphElement>(
+      range.startContainer,
+      'p',
+    );
+
+    if (!currentParagraph) {
+      return false;
+    }
+
+    // Check if this is the only paragraph and if it contains only zero-width space or br
+    const allParagraphs = this.root.querySelectorAll('p');
+    const allLists = this.root.querySelectorAll('ul, ol');
+
+    // If this is the only block element (paragraph) and it's empty or nearly empty, prevent deletion
+    if (allParagraphs.length === 1 && allLists.length === 0) {
+      const paragraphText = currentParagraph.textContent
+        ?.replace(ZERO_WIDTH_SPACE_REGEX, '')
+        .trim();
+      const isEmpty = !paragraphText || paragraphText === '';
+
+      const hasOnlyZeroWidthSpace = currentParagraph.textContent === ZERO_WIDTH_SPACE;
+
+      if (hasOnlyZeroWidthSpace || isEmpty) {
+        e.preventDefault();
+        this.positionCursorInEmptyParagraph(currentParagraph);
+        return true;
+      }
+    } else {
+      if (currentParagraph.textContent === ZERO_WIDTH_SPACE) {
+        e.preventDefault();
+        const previousSibling = currentParagraph.previousSibling!;
+        if (previousSibling) {
+          range.setStart(previousSibling.firstChild!, previousSibling.textContent?.length ?? 0);
+          currentParagraph.remove();
           return true;
         }
-        return false;
       }
-
-      e.preventDefault();
-
-      const currentParagraph = this.findClosestAncestor<HTMLParagraphElement>(
-        range.startContainer,
-        'p',
-      );
-
-      const newParagraph = this.document.createElement('p');
-      Editor.stripFormatting(newParagraph);
-      newParagraph.appendChild(this.document.createTextNode(ZERO_WIDTH_SPACE));
-
-      if (currentParagraph?.parentNode) {
-        currentParagraph.parentNode.insertBefore(newParagraph, currentParagraph.nextSibling);
-      } else {
-        range.collapse(false);
-        range.insertNode(newParagraph);
-      }
-
-      const newRange = this.document.createRange();
-      newRange.setStart(newParagraph.firstChild!, 1);
-      newRange.collapse(true);
-      selection.removeAllRanges();
-      selection.addRange(newRange);
-      return true;
     }
 
     return false;
@@ -190,6 +299,10 @@ export class Editor {
       currentListItem.remove();
       if (parentList.childNodes.length === 0) {
         parentList.remove();
+        const p = this.document.createElement('p');
+        p.appendChild(this.document.createTextNode(ZERO_WIDTH_SPACE));
+        this.root.appendChild(p);
+        this.positionCursorInEmptyParagraph(p);
       }
       return true;
     }
@@ -231,6 +344,18 @@ export class Editor {
     }
 
     const range = selection.getRangeAt(0);
+
+    // Check if we're typing in an empty paragraph (our initialized state)
+    const currentParagraph = this.findClosestAncestor<HTMLParagraphElement>(
+      range.startContainer,
+      'p',
+    );
+
+    if (currentParagraph && this.isEmptyContent()) {
+      // We're typing in the empty paragraph - let the browser handle it naturally
+      // The zero-width space will be replaced by the typed character
+      return false;
+    }
 
     if (this.root.contains(range.startContainer)) {
       const container =
@@ -286,7 +411,7 @@ export class Editor {
     );
 
     if (li && list) {
-      this.unwrapListItem(li, list);
+      this.unwrapListItem(li, list, selection);
     } else {
       this.insertList(type);
     }
@@ -305,9 +430,28 @@ export class Editor {
     }
 
     if (range.collapsed) {
-      const el = Editor.createRichTextElement(tagName);
-      el.appendChild(this.document.createTextNode(ZERO_WIDTH_SPACE));
-      range.insertNode(el);
+      // Check if we're already inside a formatting element of the target type
+      const existingFormatElement = this.findClosestAncestor<Element>(
+        range.startContainer,
+        tagName === 'u' ? 'span.underline' : tagName,
+      );
+
+      if (existingFormatElement && Editor.isMatchingElement(existingFormatElement, tagName)) {
+        // We're inside a formatting element - toggle it off by moving cursor outside
+        this.exitFormattingElement(existingFormatElement, range);
+      } else {
+        // We're not in a formatting element - toggle it on by creating one
+        const el = Editor.createRichTextElement(tagName);
+        el.appendChild(this.document.createTextNode(ZERO_WIDTH_SPACE));
+        range.insertNode(el);
+
+        // Position cursor inside the new formatting element
+        const newRange = this.document.createRange();
+        newRange.setStart(el.firstChild!, 1); // After the zero-width space
+        newRange.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(newRange);
+      }
       return;
     }
 
@@ -328,6 +472,97 @@ export class Editor {
 
     this.normalizeInlineFormatting();
     selection.removeAllRanges();
+  }
+
+  private exitFormattingElement(formatElement: Element, _range: Range): void {
+    const selection = this.window.getSelection();
+    if (!selection) {
+      return;
+    }
+
+    // Find all active formatting elements at the current cursor position, excluding the one being toggled off
+    const currentRange = selection.getRangeAt(0);
+    const activeFormats = this.getActiveFormatsExcluding(
+      currentRange.startContainer,
+      formatElement,
+    );
+
+    // Create the new nested structure with the remaining formats
+    const newFormatStructure = this.createNestedFormatStructure(activeFormats);
+
+    // Insert the new structure after the current formatting element
+    if (formatElement.parentNode) {
+      formatElement.parentNode.insertBefore(newFormatStructure, formatElement.nextSibling);
+    }
+
+    // Position cursor in the innermost element of the new structure
+    this.positionCursorInNewStructure(newFormatStructure);
+  }
+
+  private getActiveFormatsExcluding(node: Node, excludeElement: Element): RichTextFormat[] {
+    const formats: RichTextFormat[] = [];
+    let current: Node | null = node;
+
+    while (current && current !== this.root) {
+      if (current.nodeType === Node.ELEMENT_NODE && current !== excludeElement) {
+        const element = current as Element;
+        if (element.tagName === 'STRONG') {
+          formats.unshift('strong');
+        } else if (element.tagName === 'EM') {
+          formats.unshift('em');
+        } else if (element.tagName === 'SPAN' && element.classList.contains('underline')) {
+          formats.unshift('u');
+        }
+      }
+      current = current.parentNode;
+    }
+
+    return formats;
+  }
+
+  private createNestedFormatStructure(formats: RichTextFormat[]): Element {
+    if (formats.length === 0) {
+      // No remaining formats, just create a text node with zero-width space
+      const textNode = this.document.createTextNode(ZERO_WIDTH_SPACE);
+      const span = this.document.createElement('span');
+      span.appendChild(textNode);
+      return span;
+    }
+
+    // Create nested structure from outermost to innermost
+    const outerElement = Editor.createRichTextElement(formats[0]);
+    let currentElement: Element = outerElement;
+
+    for (let i = 1; i < formats.length; i++) {
+      const newElement = Editor.createRichTextElement(formats[i]);
+      currentElement.appendChild(newElement);
+      currentElement = newElement;
+    }
+
+    // Add zero-width space to the innermost element
+    const textNode = this.document.createTextNode(ZERO_WIDTH_SPACE);
+    currentElement.appendChild(textNode);
+
+    return outerElement;
+  }
+
+  private positionCursorInNewStructure(structure: Element): void {
+    const selection = this.window.getSelection();
+    if (!selection) {
+      return;
+    }
+
+    // Find the innermost text node
+    const walker = this.document.createTreeWalker(structure, NodeFilter.SHOW_TEXT, null);
+
+    const textNode = walker.nextNode() as Text;
+    if (textNode) {
+      const range = this.document.createRange();
+      range.setStart(textNode, 1); // After the zero-width space
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
   }
 
   private isRangeAcrossBlocks(range: Range): boolean {
@@ -470,25 +705,6 @@ export class Editor {
       this.removeFormatFromFragment(extractedContent, tagName);
       range.insertNode(extractedContent);
     }
-  }
-
-  private getAncestorFormatting(node: Node, skipTag: RichTextFormat): Element | null {
-    let current: Node | null = node;
-    while (current && current !== this.root) {
-      if (current.nodeType === Node.ELEMENT_NODE) {
-        const el = current as HTMLElement;
-        if (
-          !Editor.isMatchingElement(el, skipTag) &&
-          (el.tagName === 'STRONG' ||
-            el.tagName === 'EM' ||
-            (el.tagName === 'SPAN' && el.classList.contains('underline')))
-        ) {
-          return el;
-        }
-      }
-      current = current.parentNode;
-    }
-    return null;
   }
 
   private removeFormatFromFragment(fragment: DocumentFragment, tagName: RichTextFormat): void {
@@ -890,12 +1106,11 @@ export class Editor {
     selection.addRange(newRange);
   }
 
-  private unwrapListItem(li: HTMLLIElement, list: HTMLOListElement | HTMLUListElement): void {
-    const selection = this.window.getSelection();
-    if (!selection?.rangeCount) {
-      return;
-    }
-
+  private unwrapListItem(
+    li: HTMLLIElement,
+    list: HTMLOListElement | HTMLUListElement,
+    selection: Selection,
+  ): void {
     const range = selection.getRangeAt(0);
     const offset = range.startOffset;
 
@@ -1052,81 +1267,6 @@ export class Editor {
         selection.removeAllRanges();
         selection.addRange(newRange);
       }
-    }
-  }
-
-  private findListItemIndex(targetLi: HTMLLIElement, rootList: HTMLElement): number {
-    // Recursively find the index of the target list item within the root list structure
-    const findInList = (list: HTMLElement, target: HTMLLIElement): number => {
-      const directChildren = Array.from(list.children);
-
-      for (let i = 0; i < directChildren.length; i++) {
-        const child = directChildren[i] as HTMLElement;
-
-        if (child === target) {
-          return i;
-        }
-
-        if (child.tagName === 'LI') {
-          // Check nested lists within this list item
-          const nestedLists = child.querySelectorAll('ul, ol');
-          for (const nestedList of nestedLists) {
-            if (nestedList.contains(target)) {
-              return i;
-            }
-          }
-        }
-      }
-
-      return -1;
-    };
-
-    return findInList(rootList, targetLi);
-  }
-
-  private unwrapList(): void {
-    const selection = this.window.getSelection();
-    if (!selection || !selection.rangeCount) {
-      return;
-    }
-
-    const range = selection.getRangeAt(0);
-    const list = this.findClosestAncestor<HTMLUListElement | HTMLOListElement>(
-      range.startContainer,
-      'ul,ol',
-    );
-    if (!list) {
-      return;
-    }
-
-    if (!this.root.contains(list)) {
-      return;
-    }
-
-    const parent = list.parentNode!;
-    const paragraphFragments: HTMLParagraphElement[] = [];
-
-    list.querySelectorAll('li').forEach((li) => {
-      const p = this.document.createElement('p');
-      Editor.stripFormatting(p);
-      const span = this.document.createElement('span');
-
-      span.innerHTML = li.innerHTML || ZERO_WIDTH_SPACE;
-      p.appendChild(span);
-      paragraphFragments.push(p);
-    });
-
-    paragraphFragments.forEach((p) => parent.insertBefore(p, list));
-    list.remove();
-
-    const firstSpan = paragraphFragments[0].querySelector('span');
-    if (firstSpan?.firstChild?.nodeType === Node.TEXT_NODE) {
-      const textNode = firstSpan.firstChild as Text;
-      const newRange = this.document.createRange();
-      newRange.setStart(textNode, textNode.length);
-      newRange.collapse(true);
-      selection.removeAllRanges();
-      selection.addRange(newRange);
     }
   }
 

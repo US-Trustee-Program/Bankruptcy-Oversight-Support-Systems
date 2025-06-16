@@ -1,66 +1,9 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, expect, beforeEach, vi } from 'vitest';
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RichTextEditor, { RichTextEditorRef } from './RichTextEditor';
-
-/**
- * Define the mock class and helper ONLY ONCE, INSIDE the vi.mock factory.
- * Do NOT define EditorMock or createEditorMock at the top level.
- */
-vi.mock('./Editor', () => {
-  class EditorMock {
-    constructor(_root: HTMLElement) {}
-
-    isRangeAcrossBlocks = vi.fn();
-    getAncestorIfLastLeaf = vi.fn();
-    isEntireSelectionFormatted = vi.fn();
-    removeFormattingFromRange = vi.fn();
-    getAncestorFormatting = vi.fn();
-    removeFormatFromFragment = vi.fn();
-    findClosestAncestor = vi.fn();
-    indentListItem = vi.fn();
-    insertList = vi.fn();
-    convertParagraphToList = vi.fn();
-    getCursorOffsetInParagraph = vi.fn();
-    setCursorInListItem = vi.fn();
-    outdentListItem = vi.fn();
-    unwrapListItem = vi.fn();
-    normalizeInlineFormatting = vi.fn();
-    isEditorInRange = vi.fn();
-    removeEmptyFormattingElements = vi.fn();
-    findListItemIndex = vi.fn();
-    unwrapList = vi.fn();
-
-    static cleanZeroWidthSpaces(html: string) {
-      return html.replace(/\u200B/g, '');
-    }
-
-    handleCtrlKey(_e: unknown) {
-      return false;
-    }
-    handleDentures(_e: unknown) {
-      return false;
-    }
-    handleEnterKey(_e: unknown) {
-      return false;
-    }
-    handleDeleteKeyOnList(_e: unknown) {
-      return false;
-    }
-    handlePrintableKey(_e: unknown) {
-      return false;
-    }
-    toggleSelection(_e: unknown) {
-      return false;
-    }
-    toggleList(_e: unknown) {
-      return false;
-    }
-  }
-
-  return { Editor: EditorMock };
-});
+import { ZERO_WIDTH_SPACE } from '@/lib/components/cams/RichTextEditor/editor.constants';
 
 describe('RichTextEditor', () => {
   let Editor: {
@@ -97,7 +40,7 @@ describe('RichTextEditor', () => {
 
   // Remove manual cleanup; RTL/Vitest does this automatically.
 
-  it('renders with label and aria description', () => {
+  test('renders with label and aria description', () => {
     render(
       <RichTextEditor id="test-editor" label="Test Label" ariaDescription="Test description" />,
     );
@@ -105,7 +48,7 @@ describe('RichTextEditor', () => {
     expect(screen.getByText('Test description')).toBeInTheDocument();
   });
 
-  it('calls onChange when input changes', async () => {
+  test('calls onChange when input changes', async () => {
     const onChange = vi.fn();
     render(<RichTextEditor id="test-editor" onChange={onChange} />);
     const editable = screen.getByRole('textbox');
@@ -113,7 +56,7 @@ describe('RichTextEditor', () => {
     expect(onChange).toHaveBeenCalled();
   });
 
-  it('calls Editor.handleCtrlKey on keydown and stops if handled', async () => {
+  test('calls Editor.handleCtrlKey on keydown and stops if handled', async () => {
     const handleCtrlKey = vi.fn().mockReturnValue(true);
 
     // Patch the prototype BEFORE rendering the component
@@ -137,7 +80,7 @@ describe('RichTextEditor', () => {
     Editor.prototype.handleCtrlKey = () => false;
   });
 
-  it('calls Editor.handleDentures and onChange on Tab', async () => {
+  test('calls Editor.handleDentures and onChange on Tab', async () => {
     const handleDentures = vi.fn().mockReturnValue(true);
     Editor.prototype.handleDentures = handleDentures;
     const onChange = vi.fn();
@@ -155,7 +98,7 @@ describe('RichTextEditor', () => {
     expect(onChange).toHaveBeenCalled();
   });
 
-  it.skip('calls Editor.handleEnterKey on Enter', async () => {
+  test.skip('calls Editor.handleEnterKey on Enter', async () => {
     const handleEnterKey = vi.fn().mockReturnValue(true);
 
     // Use a ref to patch the instance method after the Editor instance is created
@@ -186,7 +129,7 @@ describe('RichTextEditor', () => {
     expect(handleEnterKey).toHaveBeenCalled();
   });
 
-  it.skip('calls Editor.handleDeleteKeyOnList on Backspace', async () => {
+  test.skip('calls Editor.handleDeleteKeyOnList on Backspace', async () => {
     const handleDeleteKeyOnList = vi.fn().mockReturnValue(true);
 
     // Use a ref to patch the instance method and avoid variable redeclaration
@@ -218,7 +161,7 @@ describe('RichTextEditor', () => {
     expect(handleDeleteKeyOnList).toHaveBeenCalled();
   });
 
-  it('calls Editor.toggleSelection when toolbar buttons are clicked', async () => {
+  test('calls Editor.toggleSelection when toolbar buttons are clicked', async () => {
     const toggleSelection = vi.fn();
     Editor.prototype.toggleSelection = toggleSelection;
     render(<RichTextEditor id="test-editor" />);
@@ -230,7 +173,7 @@ describe('RichTextEditor', () => {
     expect(toggleSelection).toHaveBeenCalledWith('u');
   });
 
-  it('calls Editor.toggleList and onChange when list buttons are clicked', async () => {
+  test('calls Editor.toggleList and onChange when list buttons are clicked', async () => {
     const toggleList = vi.fn();
     Editor.prototype.toggleList = toggleList;
     const onChange = vi.fn();
@@ -243,7 +186,7 @@ describe('RichTextEditor', () => {
     expect(onChange).toHaveBeenCalled();
   });
 
-  it('exposes imperative methods via ref', async () => {
+  test('exposes imperative methods via ref', async () => {
     const ref = React.createRef<RichTextEditorRef>();
     render(<RichTextEditor id="test-editor" ref={ref} />);
     const editable = screen.getByRole('textbox');
@@ -258,7 +201,8 @@ describe('RichTextEditor', () => {
     expect(ref.current!.getHtml()).toBe('<p>baz</p>');
     // clearValue
     ref.current!.clearValue();
-    expect(editable.innerHTML).toBe('');
+    // After clearValue, the editor is re-initialized with an empty paragraph containing a zero-width space
+    expect(editable.innerHTML).toContain('<p>');
     // disable
     ref.current!.disable(true);
     expect(editable.getAttribute('contenteditable')).toBe('true');
@@ -267,4 +211,46 @@ describe('RichTextEditor', () => {
     ref.current!.focus();
     expect(focusSpy).toHaveBeenCalled();
   });
+
+  test('should return content with no zero-width spaces and no empty tags', () => {
+    const ref = React.createRef<RichTextEditorRef>();
+    render(<RichTextEditor id="test-editor" ref={ref} />);
+    ref.current!.setValue(`<p>foo${ZERO_WIDTH_SPACE}</p><p><br></p>`);
+    expect(ref.current!.getHtml()).toEqual('<p>foo</p>');
+  });
+
+  // describe('Editor: getHtml integration with RichTextEditor', () => {
+  //   test('RichTextEditor.getHtml() returns empty string for initialized empty editor', () => {
+  //     const container = document.createElement('div');
+  //     document.body.appendChild(container);
+
+  //     const editor = new Editor(container);
+
+  //     expect(editor.isEmptyContent()).toBe(true);
+  //     expect(container.innerHTML).toContain(`<p>${ZERO_WIDTH_SPACE}</p>`);
+  //     document.body.removeChild(container);
+  //   });
+
+  //   test('RichTextEditor.getHtml() returns actual content when editor has real content', () => {
+  //     const container = document.createElement('div');
+  //     document.body.appendChild(container);
+
+  //     const editor = new Editor(container);
+
+  //     container.innerHTML = '<p>Hello world</p>';
+
+  //     // Simulate RichTextEditor's getHtml method
+  //     const rawHtml = container.innerHTML;
+  //     const cleanedHtml = Editor.cleanZeroWidthSpaces(rawHtml);
+
+  //     // The editor should not be empty
+  //     expect(editor.isEmptyContent()).toBe(false);
+
+  //     // getHtml should return the actual content
+  //     const finalHtml = editor.isEmptyContent() ? '' : cleanedHtml;
+  //     expect(finalHtml).toBe('<p>Hello world</p>');
+
+  //     document.body.removeChild(container);
+  //   });
+  // });
 });
