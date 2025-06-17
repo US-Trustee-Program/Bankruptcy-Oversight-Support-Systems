@@ -1,4 +1,4 @@
-import { describe, expect, beforeEach, vi } from 'vitest';
+import { describe, expect, beforeEach, vi, beforeAll } from 'vitest';
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -8,6 +8,7 @@ import { ZERO_WIDTH_SPACE } from '@/lib/components/cams/RichTextEditor/editor.co
 describe('RichTextEditor', () => {
   let Editor: {
     prototype: {
+      handleBackspaceOnEmptyContent: (e: unknown) => boolean;
       handleCtrlKey: (e: unknown) => boolean;
       handleDentures: (e: unknown) => boolean;
       handleEnterKey: (e: unknown) => boolean;
@@ -22,6 +23,7 @@ describe('RichTextEditor', () => {
   beforeAll(async () => {
     Editor = (await import('./Editor')).Editor as unknown as {
       prototype: {
+        handleBackspaceOnEmptyContent: (e: unknown) => boolean;
         handleCtrlKey: (e: unknown) => boolean;
         handleDentures: (e: unknown) => boolean;
         handleEnterKey: (e: unknown) => boolean;
@@ -98,67 +100,136 @@ describe('RichTextEditor', () => {
     expect(onChange).toHaveBeenCalled();
   });
 
-  test.skip('calls Editor.handleEnterKey on Enter', async () => {
+  test('handles Enter key in handleKeyDown', () => {
+    // Create a mock implementation of handleEnterKey that returns true
     const handleEnterKey = vi.fn().mockReturnValue(true);
 
-    // Use a ref to patch the instance method after the Editor instance is created
-    const ref = React.createRef<RichTextEditorRef>();
-    render(<RichTextEditor id="test-editor" key={Math.random()} ref={ref} />);
+    // Mock all other methods to return false
+    const handleCtrlKey = vi.fn().mockReturnValue(false);
+    const handleBackspaceOnEmptyContent = vi.fn().mockReturnValue(false);
+    const handleDentures = vi.fn().mockReturnValue(false);
+    const handleDeleteKeyOnList = vi.fn().mockReturnValue(false);
+    const handlePrintableKey = vi.fn().mockReturnValue(false);
+
+    // Apply the mocks to the Editor prototype
+    vi.spyOn(Editor.prototype, 'handleCtrlKey').mockImplementation(handleCtrlKey);
+    vi.spyOn(Editor.prototype, 'handleBackspaceOnEmptyContent').mockImplementation(
+      handleBackspaceOnEmptyContent,
+    );
+    vi.spyOn(Editor.prototype, 'handleDentures').mockImplementation(handleDentures);
+    vi.spyOn(Editor.prototype, 'handleEnterKey').mockImplementation(handleEnterKey);
+    vi.spyOn(Editor.prototype, 'handleDeleteKeyOnList').mockImplementation(handleDeleteKeyOnList);
+    vi.spyOn(Editor.prototype, 'handlePrintableKey').mockImplementation(handlePrintableKey);
+
+    // Render the component
+    render(<RichTextEditor id="test-editor" />);
+
+    // Get the editable element
     const editable = screen.getByRole('textbox');
-    editable.focus();
 
-    // Access the editor instance via the ref and patch the method
-    const editorInstance =
-      ref.current &&
-      (
-        ref.current as unknown as {
-          editorRef?: { current?: { handleEnterKey?: (e: unknown) => boolean } };
-        }
-      ).editorRef?.current;
-    if (editorInstance) {
-      editorInstance.handleEnterKey = handleEnterKey;
-    }
-
-    const event = new KeyboardEvent('keydown', {
+    // Create a keydown event for Enter
+    const enterEvent = new KeyboardEvent('keydown', {
       key: 'Enter',
       bubbles: true,
       cancelable: true,
     });
-    editable.dispatchEvent(event);
 
+    // Dispatch the event
+    editable.dispatchEvent(enterEvent);
+
+    // Verify handleEnterKey was called
     expect(handleEnterKey).toHaveBeenCalled();
+
+    // Restore all mocks
+    vi.restoreAllMocks();
   });
 
-  test.skip('calls Editor.handleDeleteKeyOnList on Backspace', async () => {
+  test('handles Backspace key in handleKeyDown for lists', () => {
+    // Create a mock implementation of handleDeleteKeyOnList that returns true
     const handleDeleteKeyOnList = vi.fn().mockReturnValue(true);
 
-    // Use a ref to patch the instance method and avoid variable redeclaration
-    const ref2 = React.createRef<RichTextEditorRef>();
-    render(<RichTextEditor id="test-editor" key={Math.random()} ref={ref2} />);
-    const editable2 = screen.getByRole('textbox');
-    editable2.focus();
+    // Mock all other methods to return false
+    const handleCtrlKey = vi.fn().mockReturnValue(false);
+    const handleBackspaceOnEmptyContent = vi.fn().mockReturnValue(false);
+    const handleDentures = vi.fn().mockReturnValue(false);
+    const handleEnterKey = vi.fn().mockReturnValue(false);
+    const handlePrintableKey = vi.fn().mockReturnValue(false);
 
-    // Access the editor instance via the ref and patch the method
-    // This cast is for test purposes and is safe in this context
-    const editorInstance2 =
-      ref2.current &&
-      (
-        ref2.current as unknown as {
-          editorRef?: { current?: { handleDeleteKeyOnList?: (e: unknown) => boolean } };
-        }
-      ).editorRef?.current;
-    if (editorInstance2) {
-      editorInstance2.handleDeleteKeyOnList = handleDeleteKeyOnList;
-    }
+    // Apply the mocks to the Editor prototype
+    vi.spyOn(Editor.prototype, 'handleCtrlKey').mockImplementation(handleCtrlKey);
+    vi.spyOn(Editor.prototype, 'handleBackspaceOnEmptyContent').mockImplementation(
+      handleBackspaceOnEmptyContent,
+    );
+    vi.spyOn(Editor.prototype, 'handleDentures').mockImplementation(handleDentures);
+    vi.spyOn(Editor.prototype, 'handleEnterKey').mockImplementation(handleEnterKey);
+    vi.spyOn(Editor.prototype, 'handleDeleteKeyOnList').mockImplementation(handleDeleteKeyOnList);
+    vi.spyOn(Editor.prototype, 'handlePrintableKey').mockImplementation(handlePrintableKey);
 
-    const event = new KeyboardEvent('keydown', {
+    // Render the component
+    render(<RichTextEditor id="test-editor" />);
+
+    // Get the editable element
+    const editable = screen.getByRole('textbox');
+
+    // Create a keydown event for Backspace
+    const backspaceEvent = new KeyboardEvent('keydown', {
       key: 'Backspace',
       bubbles: true,
       cancelable: true,
     });
-    editable2.dispatchEvent(event);
 
+    // Dispatch the event
+    editable.dispatchEvent(backspaceEvent);
+
+    // Verify handleDeleteKeyOnList was called
     expect(handleDeleteKeyOnList).toHaveBeenCalled();
+
+    // Restore all mocks
+    vi.restoreAllMocks();
+  });
+
+  test('handles Backspace key on empty content', () => {
+    // Create a mock implementation of handleBackspaceOnEmptyContent that returns true
+    const handleBackspaceOnEmptyContent = vi.fn().mockReturnValue(true);
+
+    // Mock all other methods to return false
+    const handleCtrlKey = vi.fn().mockReturnValue(false);
+    const handleDentures = vi.fn().mockReturnValue(false);
+    const handleEnterKey = vi.fn().mockReturnValue(false);
+    const handleDeleteKeyOnList = vi.fn().mockReturnValue(false);
+    const handlePrintableKey = vi.fn().mockReturnValue(false);
+
+    // Apply the mocks to the Editor prototype
+    vi.spyOn(Editor.prototype, 'handleCtrlKey').mockImplementation(handleCtrlKey);
+    vi.spyOn(Editor.prototype, 'handleBackspaceOnEmptyContent').mockImplementation(
+      handleBackspaceOnEmptyContent,
+    );
+    vi.spyOn(Editor.prototype, 'handleDentures').mockImplementation(handleDentures);
+    vi.spyOn(Editor.prototype, 'handleEnterKey').mockImplementation(handleEnterKey);
+    vi.spyOn(Editor.prototype, 'handleDeleteKeyOnList').mockImplementation(handleDeleteKeyOnList);
+    vi.spyOn(Editor.prototype, 'handlePrintableKey').mockImplementation(handlePrintableKey);
+
+    // Render the component
+    render(<RichTextEditor id="test-editor" />);
+
+    // Get the editable element
+    const editable = screen.getByRole('textbox');
+
+    // Create a keydown event for Backspace
+    const backspaceEvent = new KeyboardEvent('keydown', {
+      key: 'Backspace',
+      bubbles: true,
+      cancelable: true,
+    });
+
+    // Dispatch the event
+    editable.dispatchEvent(backspaceEvent);
+
+    // Verify handleBackspaceOnEmptyContent was called
+    expect(handleBackspaceOnEmptyContent).toHaveBeenCalled();
+
+    // Restore all mocks
+    vi.restoreAllMocks();
   });
 
   test('calls Editor.toggleSelection when toolbar buttons are clicked', async () => {
@@ -218,39 +289,4 @@ describe('RichTextEditor', () => {
     ref.current!.setValue(`<p>foo${ZERO_WIDTH_SPACE}</p><p><br></p>`);
     expect(ref.current!.getHtml()).toEqual('<p>foo</p>');
   });
-
-  // describe('Editor: getHtml integration with RichTextEditor', () => {
-  //   test('RichTextEditor.getHtml() returns empty string for initialized empty editor', () => {
-  //     const container = document.createElement('div');
-  //     document.body.appendChild(container);
-
-  //     const editor = new Editor(container);
-
-  //     expect(editor.isEmptyContent()).toBe(true);
-  //     expect(container.innerHTML).toContain(`<p>${ZERO_WIDTH_SPACE}</p>`);
-  //     document.body.removeChild(container);
-  //   });
-
-  //   test('RichTextEditor.getHtml() returns actual content when editor has real content', () => {
-  //     const container = document.createElement('div');
-  //     document.body.appendChild(container);
-
-  //     const editor = new Editor(container);
-
-  //     container.innerHTML = '<p>Hello world</p>';
-
-  //     // Simulate RichTextEditor's getHtml method
-  //     const rawHtml = container.innerHTML;
-  //     const cleanedHtml = Editor.cleanZeroWidthSpaces(rawHtml);
-
-  //     // The editor should not be empty
-  //     expect(editor.isEmptyContent()).toBe(false);
-
-  //     // getHtml should return the actual content
-  //     const finalHtml = editor.isEmptyContent() ? '' : cleanedHtml;
-  //     expect(finalHtml).toBe('<p>Hello world</p>');
-
-  //     document.body.removeChild(container);
-  //   });
-  // });
 });

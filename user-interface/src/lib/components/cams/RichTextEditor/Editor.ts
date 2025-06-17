@@ -4,19 +4,18 @@ import {
   ZERO_WIDTH_SPACE,
   ZERO_WIDTH_SPACE_REGEX,
 } from '@/lib/components/cams/RichTextEditor/editor.constants';
+import { SelectionService } from './SelectionService.humble';
 
 const INLINE_TAGS = ['strong', 'em'];
 const CLASS_BASED_SPANS = ['underline'];
 
 export class Editor {
   private root: HTMLElement;
-  private window: Window;
-  private document: Document;
+  private selectionService: SelectionService;
 
-  constructor(root: HTMLElement) {
+  constructor(root: HTMLElement, selectionService: SelectionService) {
     this.root = root;
-    this.window = this.root.ownerDocument.defaultView!;
-    this.document = this.root.ownerDocument;
+    this.selectionService = selectionService;
 
     // Initialize with empty paragraph if the root is empty
     this.initializeContent();
@@ -24,8 +23,8 @@ export class Editor {
 
   private initializeContent(): void {
     if (!this.root.hasChildNodes() || this.root.innerHTML.trim() === '') {
-      const p = this.document.createElement('p');
-      p.appendChild(this.document.createTextNode(ZERO_WIDTH_SPACE));
+      const p = this.selectionService.createElement('p');
+      p.appendChild(this.selectionService.createTextNode(ZERO_WIDTH_SPACE));
       this.root.appendChild(p);
 
       // Position cursor in the new paragraph
@@ -34,13 +33,12 @@ export class Editor {
   }
 
   private positionCursorInEmptyParagraph(paragraph: HTMLParagraphElement): void {
-    const selection = this.window.getSelection();
+    const selection = this.selectionService.getCurrentSelection();
     if (selection && paragraph.firstChild) {
-      const range = this.document.createRange();
+      const range = this.selectionService.createRange();
       range.setStart(paragraph.firstChild, paragraph.firstChild.textContent?.length || 0); // After the zero-width space
       range.collapse(true);
-      selection.removeAllRanges();
-      selection.addRange(range);
+      this.selectionService.setSelectionRange(range);
     }
   }
 
@@ -100,7 +98,7 @@ export class Editor {
 
   public handleDentures(e: React.KeyboardEvent<HTMLDivElement>): boolean {
     if (e.key === 'Tab') {
-      const selection = this.window.getSelection();
+      const selection = this.selectionService.getCurrentSelection();
       if (!selection?.rangeCount) {
         return false;
       }
@@ -124,7 +122,7 @@ export class Editor {
   }
 
   public handleEnterKey(e: React.KeyboardEvent<HTMLDivElement>): boolean {
-    const selection = this.window.getSelection();
+    const selection = this.selectionService.getCurrentSelection();
     if (!selection || !selection.rangeCount) {
       return false;
     }
@@ -141,9 +139,9 @@ export class Editor {
       if (isEmpty) {
         e.preventDefault();
 
-        const p = this.document.createElement('p');
+        const p = this.selectionService.createElement('p');
         Editor.stripFormatting(p);
-        p.appendChild(this.document.createTextNode(ZERO_WIDTH_SPACE));
+        p.appendChild(this.selectionService.createTextNode(ZERO_WIDTH_SPACE));
 
         const list = this.findClosestAncestor<HTMLOListElement | HTMLUListElement>(
           listItem,
@@ -153,11 +151,10 @@ export class Editor {
 
         listItem.remove();
 
-        const newRange = this.document.createRange();
+        const newRange = this.selectionService.createRange();
         newRange.setStart(p.firstChild!, 1);
         newRange.collapse(true);
-        selection.removeAllRanges();
-        selection.addRange(newRange);
+        this.selectionService.setSelectionRange(newRange);
 
         if (list && [...list.children].every((child) => child.textContent?.trim() === '')) {
           list.remove();
@@ -175,9 +172,9 @@ export class Editor {
       'p',
     );
 
-    const newParagraph = this.document.createElement('p');
+    const newParagraph = this.selectionService.createElement('p');
     Editor.stripFormatting(newParagraph);
-    newParagraph.appendChild(this.document.createTextNode(ZERO_WIDTH_SPACE));
+    newParagraph.appendChild(this.selectionService.createTextNode(ZERO_WIDTH_SPACE));
 
     if (currentParagraph?.parentNode) {
       currentParagraph.parentNode.insertBefore(newParagraph, currentParagraph.nextSibling);
@@ -186,11 +183,10 @@ export class Editor {
       range.insertNode(newParagraph);
     }
 
-    const newRange = this.document.createRange();
+    const newRange = this.selectionService.createRange();
     newRange.setStart(newParagraph.firstChild!, 1);
     newRange.collapse(true);
-    selection.removeAllRanges();
-    selection.addRange(newRange);
+    this.selectionService.setSelectionRange(newRange);
     return true;
   }
 
@@ -199,7 +195,7 @@ export class Editor {
       return false;
     }
 
-    const selection = this.window.getSelection();
+    const selection = this.selectionService.getCurrentSelection();
     if (!selection || !selection.rangeCount) {
       return false;
     }
@@ -254,7 +250,7 @@ export class Editor {
       return false;
     }
 
-    const selection = this.window.getSelection();
+    const selection = this.selectionService.getCurrentSelection();
     if (!selection || !selection.rangeCount) {
       return false;
     }
@@ -299,15 +295,15 @@ export class Editor {
       currentListItem.remove();
       if (parentList.childNodes.length === 0) {
         parentList.remove();
-        const p = this.document.createElement('p');
-        p.appendChild(this.document.createTextNode(ZERO_WIDTH_SPACE));
+        const p = this.selectionService.createElement('p');
+        p.appendChild(this.selectionService.createTextNode(ZERO_WIDTH_SPACE));
         this.root.appendChild(p);
         this.positionCursorInEmptyParagraph(p);
       }
       return true;
     }
 
-    const p = this.document.createElement('p');
+    const p = this.selectionService.createElement('p');
     Editor.stripFormatting(p);
     while (currentListItem.firstChild) {
       p.appendChild(currentListItem.firstChild);
@@ -319,11 +315,10 @@ export class Editor {
       parentList.remove();
     }
 
-    const newRange = this.document.createRange();
+    const newRange = this.selectionService.createRange();
     newRange.setStart(p.firstChild!, 1);
     newRange.collapse(true);
-    selection.removeAllRanges();
-    selection.addRange(newRange);
+    this.selectionService.setSelectionRange(newRange);
 
     if (parentList && [...parentList.children].every((child) => child.textContent?.trim() === '')) {
       parentList.remove();
@@ -338,7 +333,7 @@ export class Editor {
       return false;
     }
 
-    const selection = this.window.getSelection();
+    const selection = this.selectionService.getCurrentSelection();
     if (!selection || !selection.rangeCount) {
       return false;
     }
@@ -371,21 +366,20 @@ export class Editor {
       if (isInRootWithoutBlock) {
         e.preventDefault();
 
-        const p = this.document.createElement('p');
+        const p = this.selectionService.createElement('p');
         Editor.stripFormatting(p);
         const char = e.key.length === 1 ? e.key : '';
         p.textContent = char || ZERO_WIDTH_SPACE;
 
         range.insertNode(p);
 
-        const newRange = this.document.createRange();
+        const newRange = this.selectionService.createRange();
         const textNode = p.firstChild;
         const offset = textNode instanceof Text ? textNode.length : 1;
 
         newRange.setStart(textNode!, offset);
         newRange.collapse(true);
-        selection.removeAllRanges();
-        selection.addRange(newRange);
+        this.selectionService.setSelectionRange(newRange);
 
         return true;
       }
@@ -398,7 +392,7 @@ export class Editor {
       return;
     }
 
-    const selection = this.window.getSelection();
+    const selection = this.selectionService.getCurrentSelection();
     if (!selection?.rangeCount) {
       return;
     }
@@ -418,7 +412,7 @@ export class Editor {
   }
 
   public toggleSelection(tagName: RichTextFormat): void {
-    const selection = this.window.getSelection();
+    const selection = this.selectionService.getCurrentSelection();
     if (!selection || selection.rangeCount === 0) {
       return;
     }
@@ -441,16 +435,15 @@ export class Editor {
         this.exitFormattingElement(existingFormatElement, range);
       } else {
         // We're not in a formatting element - toggle it on by creating one
-        const el = Editor.createRichTextElement(tagName);
-        el.appendChild(this.document.createTextNode(ZERO_WIDTH_SPACE));
+        const el = this.createRichTextElement(tagName);
+        el.appendChild(this.selectionService.createTextNode(ZERO_WIDTH_SPACE));
         range.insertNode(el);
 
         // Position cursor inside the new formatting element
-        const newRange = this.document.createRange();
+        const newRange = this.selectionService.createRange();
         newRange.setStart(el.firstChild!, 1); // After the zero-width space
         newRange.collapse(true);
-        selection.removeAllRanges();
-        selection.addRange(newRange);
+        this.selectionService.setSelectionRange(newRange);
       }
       return;
     }
@@ -465,17 +458,17 @@ export class Editor {
       // Either not formatted at all, or only partially formatted
       // In both cases, we want to add/expand formatting to cover the entire selection
       const contents = range.extractContents();
-      const wrapper = Editor.createRichTextElement(tagName);
+      const wrapper = this.createRichTextElement(tagName);
       wrapper.appendChild(contents);
       range.insertNode(wrapper);
     }
 
     this.normalizeInlineFormatting();
-    selection.removeAllRanges();
+    this.selectionService.getCurrentSelection()?.removeAllRanges();
   }
 
   private exitFormattingElement(formatElement: Element, _range: Range): void {
-    const selection = this.window.getSelection();
+    const selection = this.selectionService.getCurrentSelection();
     if (!selection) {
       return;
     }
@@ -523,45 +516,44 @@ export class Editor {
   private createNestedFormatStructure(formats: RichTextFormat[]): Element {
     if (formats.length === 0) {
       // No remaining formats, just create a text node with zero-width space
-      const textNode = this.document.createTextNode(ZERO_WIDTH_SPACE);
-      const span = this.document.createElement('span');
+      const textNode = this.selectionService.createTextNode(ZERO_WIDTH_SPACE);
+      const span = this.selectionService.createElement('span');
       span.appendChild(textNode);
       return span;
     }
 
     // Create nested structure from outermost to innermost
-    const outerElement = Editor.createRichTextElement(formats[0]);
+    const outerElement = this.createRichTextElement(formats[0]);
     let currentElement: Element = outerElement;
 
     for (let i = 1; i < formats.length; i++) {
-      const newElement = Editor.createRichTextElement(formats[i]);
+      const newElement = this.createRichTextElement(formats[i]);
       currentElement.appendChild(newElement);
       currentElement = newElement;
     }
 
     // Add zero-width space to the innermost element
-    const textNode = this.document.createTextNode(ZERO_WIDTH_SPACE);
+    const textNode = this.selectionService.createTextNode(ZERO_WIDTH_SPACE);
     currentElement.appendChild(textNode);
 
     return outerElement;
   }
 
   private positionCursorInNewStructure(structure: Element): void {
-    const selection = this.window.getSelection();
+    const selection = this.selectionService.getCurrentSelection();
     if (!selection) {
       return;
     }
 
     // Find the innermost text node
-    const walker = this.document.createTreeWalker(structure, NodeFilter.SHOW_TEXT, null);
+    const walker = this.selectionService.createTreeWalker(structure, NodeFilter.SHOW_TEXT, null);
 
     const textNode = walker.nextNode() as Text;
     if (textNode) {
-      const range = this.document.createRange();
+      const range = this.selectionService.createRange();
       range.setStart(textNode, 1); // After the zero-width space
       range.collapse(true);
-      selection.removeAllRanges();
-      selection.addRange(range);
+      this.selectionService.setSelectionRange(range);
     }
   }
 
@@ -671,19 +663,19 @@ export class Editor {
     // If both start and end are in the same formatting element, split it at both boundaries
     if (startFormat && startFormat === endFormat) {
       // Split at end first (so indices don't shift)
-      const endRange = this.document.createRange();
+      const endRange = this.selectionService.createRange();
       endRange.setStart(range.endContainer, range.endOffset);
       endRange.setEndAfter(startFormat);
       const afterFragment = endRange.extractContents();
 
       // Split at start
-      const startRange = this.document.createRange();
+      const startRange = this.selectionService.createRange();
       startRange.setStartBefore(startFormat);
       startRange.setEnd(range.startContainer, range.startOffset);
       const beforeFragment = startRange.extractContents();
 
       // The selected content is now the only child of startFormat
-      const selectedFragment = this.document.createDocumentFragment();
+      const selectedFragment = this.selectionService.createDocumentFragment();
       while (startFormat.firstChild) {
         selectedFragment.appendChild(startFormat.firstChild);
       }
@@ -755,7 +747,7 @@ export class Editor {
   }
 
   private indentListItem(): void {
-    const selection = this.window.getSelection();
+    const selection = this.selectionService.getCurrentSelection();
     if (!selection?.rangeCount) {
       return;
     }
@@ -779,7 +771,9 @@ export class Editor {
 
     let nestedList = prevLi.querySelector('ul, ol');
     if (!nestedList) {
-      nestedList = this.document.createElement(parentList.tagName.toLowerCase());
+      nestedList = this.selectionService.createElement(
+        parentList.tagName.toLowerCase() as keyof HTMLElementTagNameMap,
+      );
       prevLi.appendChild(nestedList);
     }
 
@@ -788,12 +782,11 @@ export class Editor {
 
     nestedList.appendChild(li);
 
-    const newRange = this.document.createRange();
+    const newRange = this.selectionService.createRange();
     newRange.setStart(offsetNode, Math.min(offset, offsetNode.textContent?.length ?? offset));
     newRange.collapse(true);
 
-    selection.removeAllRanges();
-    selection.addRange(newRange);
+    this.selectionService.setSelectionRange(newRange);
   }
 
   private insertList(type: 'ul' | 'ol'): void {
@@ -801,7 +794,7 @@ export class Editor {
       return;
     }
 
-    const selection = this.window.getSelection();
+    const selection = this.selectionService.getCurrentSelection();
     if (!selection || !selection.rangeCount) {
       return;
     }
@@ -829,7 +822,7 @@ export class Editor {
     }
 
     // Default behavior: create a new empty list
-    const list = Editor.createListWithEmptyItem(type);
+    const list = this.createListWithEmptyItem(type);
     const listItem = list.querySelector('li');
 
     if (currentParagraph && currentParagraph.parentNode === this.root) {
@@ -843,12 +836,11 @@ export class Editor {
 
     // Position cursor in the new list item
     if (listItem?.firstChild) {
-      const newRange = this.document.createRange();
+      const newRange = this.selectionService.createRange();
       const { firstChild } = listItem;
       newRange.setStart(firstChild, firstChild.nodeType === Node.TEXT_NODE ? 1 : 0);
       newRange.collapse(true);
-      selection.removeAllRanges();
-      selection.addRange(newRange);
+      this.selectionService.setSelectionRange(newRange);
     }
   }
 
@@ -857,7 +849,7 @@ export class Editor {
     listType: 'ul' | 'ol',
     currentRange: Range,
   ): void {
-    const selection = this.window.getSelection();
+    const selection = this.selectionService.getCurrentSelection();
     if (!selection) {
       return;
     }
@@ -866,8 +858,8 @@ export class Editor {
     const cursorOffset = this.getCursorOffsetInParagraph(paragraph, currentRange);
 
     // Create new list with the paragraph content
-    const list = this.document.createElement(listType);
-    const listItem = this.document.createElement('li');
+    const list = this.selectionService.createElement(listType);
+    const listItem = this.selectionService.createElement('li');
 
     // Move all paragraph content to the list item
     while (paragraph.firstChild) {
@@ -876,7 +868,7 @@ export class Editor {
 
     // Ensure list item has some content
     if (!listItem.textContent?.trim() && !listItem.querySelector('*')) {
-      listItem.appendChild(this.document.createTextNode(ZERO_WIDTH_SPACE));
+      listItem.appendChild(this.selectionService.createTextNode(ZERO_WIDTH_SPACE));
     }
 
     list.appendChild(listItem);
@@ -887,7 +879,7 @@ export class Editor {
   }
 
   private getCursorOffsetInParagraph(paragraph: HTMLParagraphElement, range: Range): number {
-    const walker = this.document.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT, null);
+    const walker = this.selectionService.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT, null);
 
     let offset = 0;
     let node: Text | null;
@@ -903,12 +895,12 @@ export class Editor {
   }
 
   private setCursorInListItem(listItem: HTMLLIElement, targetOffset: number): void {
-    const selection = this.window.getSelection();
+    const selection = this.selectionService.getCurrentSelection();
     if (!selection) {
       return;
     }
 
-    const walker = this.document.createTreeWalker(listItem, NodeFilter.SHOW_TEXT, null);
+    const walker = this.selectionService.createTreeWalker(listItem, NodeFilter.SHOW_TEXT, null);
 
     let currentOffset = 0;
     let node: Text | null;
@@ -916,11 +908,10 @@ export class Editor {
     while ((node = walker.nextNode() as Text)) {
       const nodeLength = node.textContent?.length || 0;
       if (currentOffset + nodeLength >= targetOffset) {
-        const range = this.document.createRange();
+        const range = this.selectionService.createRange();
         range.setStart(node, Math.min(targetOffset - currentOffset, nodeLength));
         range.collapse(true);
-        selection.removeAllRanges();
-        selection.addRange(range);
+        this.selectionService.setSelectionRange(range);
         return;
       }
       currentOffset += nodeLength;
@@ -928,16 +919,15 @@ export class Editor {
 
     // Fallback: position at the end of the list item
     if (listItem.lastChild) {
-      const range = this.document.createRange();
+      const range = this.selectionService.createRange();
       range.setStartAfter(listItem.lastChild);
       range.collapse(true);
-      selection.removeAllRanges();
-      selection.addRange(range);
+      this.selectionService.setSelectionRange(range);
     }
   }
 
   private isEditorInRange(): boolean {
-    const selection = this.window.getSelection();
+    const selection = this.selectionService.getCurrentSelection();
     if (!selection?.rangeCount) {
       return false;
     }
@@ -946,7 +936,7 @@ export class Editor {
   }
 
   private normalizeInlineFormatting(): void {
-    const walker = this.document.createTreeWalker(this.root, NodeFilter.SHOW_ELEMENT);
+    const walker = this.selectionService.createTreeWalker(this.root, NodeFilter.SHOW_ELEMENT);
 
     const shouldMerge = (a: Element, b: Element): boolean => {
       if (a.tagName === b.tagName && INLINE_TAGS.includes(a.tagName.toLowerCase())) {
@@ -1055,7 +1045,7 @@ export class Editor {
   }
 
   private outdentListItem(): void {
-    const selection = this.window.getSelection();
+    const selection = this.selectionService.getCurrentSelection();
     if (!selection?.rangeCount) {
       return;
     }
@@ -1091,19 +1081,18 @@ export class Editor {
     }
 
     if (liNextSiblings.length > 0) {
-      const newUl = this.document.createElement('ul');
+      const newUl = this.selectionService.createElement('ul');
       liNextSiblings.forEach((sibling) => {
         newUl.appendChild(sibling);
       });
       targetLi.appendChild(newUl);
     }
 
-    const newRange = this.document.createRange();
+    const newRange = this.selectionService.createRange();
     newRange.setStart(offsetNode, Math.min(offset, offsetNode.textContent?.length ?? offset));
     newRange.collapse(true);
 
-    selection.removeAllRanges();
-    selection.addRange(newRange);
+    this.selectionService.setSelectionRange(newRange);
   }
 
   private unwrapListItem(
@@ -1115,11 +1104,11 @@ export class Editor {
     const offset = range.startOffset;
 
     // Create paragraph from list item content
-    const p = this.document.createElement('p');
+    const p = this.selectionService.createElement('p');
     Editor.stripFormatting(p);
 
     // Extract content from the list item, separating text/inline elements from nested lists
-    const textContent = this.document.createDocumentFragment();
+    const textContent = this.selectionService.createDocumentFragment();
     const nestedLists: (HTMLUListElement | HTMLOListElement)[] = [];
 
     Array.from(li.childNodes).forEach((child) => {
@@ -1139,7 +1128,7 @@ export class Editor {
     if (textContent.textContent?.trim() || textContent.querySelector('*')) {
       p.appendChild(textContent);
     } else {
-      p.appendChild(this.document.createTextNode(ZERO_WIDTH_SPACE));
+      p.appendChild(this.selectionService.createTextNode(ZERO_WIDTH_SPACE));
     }
 
     // Find the root list (not nested within another list item) for insertion point
@@ -1203,7 +1192,7 @@ export class Editor {
       });
 
       // Restore cursor position
-      const newRange = this.document.createRange();
+      const newRange = this.selectionService.createRange();
       if (p.firstChild) {
         const textNode =
           p.firstChild.nodeType === Node.TEXT_NODE
@@ -1213,8 +1202,7 @@ export class Editor {
           const newOffset = Math.min(offset, textNode.textContent?.length || 0);
           newRange.setStart(textNode, newOffset);
           newRange.collapse(true);
-          selection.removeAllRanges();
-          selection.addRange(newRange);
+          this.selectionService.setSelectionRange(newRange);
         }
       }
       return;
@@ -1230,7 +1218,9 @@ export class Editor {
 
     // Create before list if there are items before the split
     if (beforeItems.length > 0) {
-      const beforeList = this.document.createElement(rootList.tagName.toLowerCase());
+      const beforeList = this.selectionService.createElement(
+        rootList.tagName.toLowerCase() as keyof HTMLElementTagNameMap,
+      );
       beforeItems.forEach((item) => beforeList.appendChild(item));
       listParent.insertBefore(beforeList, rootList);
     }
@@ -1245,7 +1235,9 @@ export class Editor {
 
     // Create after list if there are items after the split
     if (afterItems.length > 0) {
-      const afterList = this.document.createElement(rootList.tagName.toLowerCase());
+      const afterList = this.selectionService.createElement(
+        rootList.tagName.toLowerCase() as keyof HTMLElementTagNameMap,
+      );
       afterItems.forEach((item) => afterList.appendChild(item));
       listParent.insertBefore(afterList, rootList);
     }
@@ -1254,7 +1246,7 @@ export class Editor {
     rootList.remove();
 
     // Restore cursor position in the new paragraph
-    const newRange = this.document.createRange();
+    const newRange = this.selectionService.createRange();
     if (p.firstChild) {
       const textNode =
         p.firstChild.nodeType === Node.TEXT_NODE
@@ -1264,28 +1256,27 @@ export class Editor {
         const newOffset = Math.min(offset, textNode.textContent?.length || 0);
         newRange.setStart(textNode, newOffset);
         newRange.collapse(true);
-        selection.removeAllRanges();
-        selection.addRange(newRange);
+        this.selectionService.setSelectionRange(newRange);
       }
     }
   }
 
-  private static createListWithEmptyItem(type: 'ul' | 'ol'): HTMLElement {
-    const list = document.createElement(type);
-    const li = document.createElement('li');
-    li.appendChild(document.createTextNode(ZERO_WIDTH_SPACE));
+  private createListWithEmptyItem(type: 'ul' | 'ol'): HTMLElement {
+    const list = this.selectionService.createElement(type);
+    const li = this.selectionService.createElement('li');
+    li.appendChild(this.selectionService.createTextNode(ZERO_WIDTH_SPACE));
     list.appendChild(li);
     return list;
   }
 
-  private static createRichTextElement(format: RichTextFormat): HTMLElement {
+  private createRichTextElement(format: RichTextFormat): HTMLElement {
     switch (format) {
       case 'strong':
-        return document.createElement('strong');
+        return this.selectionService.createElement('strong');
       case 'em':
-        return document.createElement('em');
+        return this.selectionService.createElement('em');
       case 'u': {
-        const span = document.createElement('span');
+        const span = this.selectionService.createElement('span');
         span.className = 'underline';
         return span;
       }

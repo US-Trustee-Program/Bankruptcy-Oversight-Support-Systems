@@ -1,6 +1,7 @@
 import './RichTextEditor.scss';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Editor } from './Editor';
+import { BrowserSelectionService } from './SelectionService.humble';
 import { RichTextButton } from './RichTextButton';
 
 export interface RichTextEditorRef {
@@ -28,10 +29,13 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
   const contentRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<Editor | null>(null);
   const [inputDisabled, setInputDisabled] = useState<boolean>(disabled || false);
+  const [selectionService] = useState<BrowserSelectionService>(
+    () => new BrowserSelectionService(window, document),
+  );
 
   useEffect(() => {
     if (contentRef.current && !editorRef.current) {
-      editorRef.current = new Editor(contentRef.current);
+      editorRef.current = new Editor(contentRef.current, selectionService);
     }
   }, []);
 
@@ -43,7 +47,7 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
     if (contentRef.current && editorRef.current) {
       contentRef.current.innerHTML = '';
       // Re-initialize with empty paragraph
-      editorRef.current = new Editor(contentRef.current);
+      editorRef.current = new Editor(contentRef.current, selectionService);
       onChange?.('');
     }
   };
@@ -72,7 +76,7 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
         // If setting empty content, reinitialize with empty paragraph
         contentRef.current.innerHTML = '';
         if (editorRef.current) {
-          editorRef.current = new Editor(contentRef.current);
+          editorRef.current = new Editor(contentRef.current, selectionService);
         }
       } else {
         contentRef.current.innerHTML = html;
@@ -119,10 +123,11 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
       return;
     }
 
-    if (editorRef.current?.handleBackspaceOnEmptyContent) {
-      if (editorRef.current.handleBackspaceOnEmptyContent(e)) {
-        return;
-      }
+    if (
+      editorRef.current?.handleBackspaceOnEmptyContent &&
+      editorRef.current.handleBackspaceOnEmptyContent(e)
+    ) {
+      return;
     }
 
     if (editorRef.current?.handleDentures(e)) {
