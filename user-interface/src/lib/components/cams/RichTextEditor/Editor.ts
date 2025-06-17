@@ -218,29 +218,29 @@ export class Editor {
 
     // If this is the only block element (paragraph) and it's empty or nearly empty, prevent deletion
     if (allParagraphs.length === 1 && allLists.length === 0) {
-      const paragraphText = currentParagraph.textContent
-        ?.replace(ZERO_WIDTH_SPACE_REGEX, '')
-        .trim();
-      const isEmpty = !paragraphText || paragraphText === '';
+          const paragraphText = currentParagraph.textContent
+            ?.replace(ZERO_WIDTH_SPACE_REGEX, '')
+            .trim();
+          const isEmpty = !paragraphText || paragraphText === '';
 
-      const hasOnlyZeroWidthSpace = currentParagraph.textContent === ZERO_WIDTH_SPACE;
+          const hasOnlyZeroWidthSpace = currentParagraph.textContent === ZERO_WIDTH_SPACE;
 
-      if (hasOnlyZeroWidthSpace || isEmpty) {
-        e.preventDefault();
-        this.positionCursorInEmptyParagraph(currentParagraph);
-        return true;
-      }
-    } else {
-      if (currentParagraph.textContent === ZERO_WIDTH_SPACE) {
-        e.preventDefault();
-        const previousSibling = currentParagraph.previousSibling!;
-        if (previousSibling) {
-          range.setStart(previousSibling.firstChild!, previousSibling.textContent?.length ?? 0);
-          currentParagraph.remove();
-          return true;
+          if (hasOnlyZeroWidthSpace || isEmpty) {
+            e.preventDefault();
+            this.positionCursorInEmptyParagraph(currentParagraph);
+            return true;
+          }
         }
-      }
-    }
+    else if (currentParagraph.textContent === ZERO_WIDTH_SPACE) {
+            e.preventDefault();
+            const previousSibling = currentParagraph.previousSibling!;
+            if (previousSibling) {
+              range.setStart(previousSibling.firstChild!, previousSibling.textContent?.length ?? 0);
+              currentParagraph.remove();
+              return true;
+            }
+          }
+
 
     return false;
   }
