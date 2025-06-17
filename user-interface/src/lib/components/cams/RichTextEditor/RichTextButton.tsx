@@ -21,18 +21,7 @@ export function RichTextButton(props: RichTextButtonProps) {
       onClick={onClick}
       style={style}
     >
-      {icon && (
-        <svg
-          className="usa-icon"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 32 32"
-          role="img"
-          aria-hidden="true"
-          focusable="false"
-        >
-          <RichTextIcon name={icon}></RichTextIcon>
-        </svg>
-      )}
+      {icon && <RichTextIcon name={icon}></RichTextIcon>}
       {!icon && children}
     </Button>
   );
