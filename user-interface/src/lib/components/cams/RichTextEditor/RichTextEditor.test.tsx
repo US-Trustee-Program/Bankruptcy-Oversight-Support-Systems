@@ -1,6 +1,6 @@
 import { describe, expect, beforeEach, vi, beforeAll } from 'vitest';
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RichTextEditor, { RichTextEditorRef } from './RichTextEditor';
 import { ZERO_WIDTH_SPACE } from '@/lib/components/cams/RichTextEditor/editor.constants';
@@ -288,5 +288,29 @@ describe('RichTextEditor', () => {
     render(<RichTextEditor id="test-editor" ref={ref} />);
     ref.current!.setValue(`<p>foo${ZERO_WIDTH_SPACE}</p><p><br></p>`);
     expect(ref.current!.getHtml()).toEqual('<p>foo</p>');
+  });
+
+  test('getHtml returns empty string when editor is empty', () => {
+    const ref = React.createRef<RichTextEditorRef>();
+    render(<RichTextEditor id="test-editor" ref={ref} />);
+    expect(ref.current!.getHtml()).toBe('');
+  });
+
+  test('disable sets inputDisabled', async () => {
+    const ref = React.createRef<RichTextEditorRef>();
+    render(<RichTextEditor id="test-editor" ref={ref} />);
+    ref.current!.disable(true);
+    await waitFor(() => {
+      expect(screen.getByRole('textbox')).toHaveAttribute('contenteditable', 'false');
+    });
+  });
+
+  test('focus calls focus on the contenteditable div', () => {
+    const ref = React.createRef<RichTextEditorRef>();
+    render(<RichTextEditor id="test-editor" ref={ref} />);
+    const editable = screen.getByRole('textbox');
+    const focusSpy = vi.spyOn(editable, 'focus');
+    ref.current!.focus();
+    expect(focusSpy).toHaveBeenCalled();
   });
 });
