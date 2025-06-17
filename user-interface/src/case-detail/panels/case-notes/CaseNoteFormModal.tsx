@@ -353,7 +353,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
             ref={titleInputRef}
           />
           <RichTextEditor
-            id="formatted-editor"
+            id="case-note-formatted-editor"
             label="Note Text"
             required={true}
             onChange={handleContentChange}

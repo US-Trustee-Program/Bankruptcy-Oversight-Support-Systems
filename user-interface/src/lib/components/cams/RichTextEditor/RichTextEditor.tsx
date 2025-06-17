@@ -150,7 +150,7 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
   };
 
   return (
-    <div className="usa-form-group rich-text-editor-container">
+    <div id={`${id}-container`} className="usa-form-group rich-text-editor-container">
       {label && (
         <label
           id={`editor-label-${id}`}
@@ -212,6 +212,7 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
       </div>
       <div
         id={id}
+        data-testid={id}
         className={`editor-content ${className || ''}`}
         contentEditable={!inputDisabled}
         tabIndex={0}
