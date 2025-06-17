@@ -3,6 +3,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 're
 import { Editor } from './Editor';
 import { BrowserSelectionService } from './SelectionService.humble';
 import { RichTextButton } from './RichTextButton';
+import DOMPurify from 'dompurify';
 
 export interface RichTextEditorRef {
   clearValue: () => void;
@@ -56,7 +57,7 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
 
   const getHtml = () => {
     const rawHtml = contentRef.current?.innerHTML || '';
-    const cleanedHtml = Editor.cleanHtml(rawHtml);
+    const cleanedHtml = Editor.cleanHtml(DOMPurify.sanitize(rawHtml));
 
     // Return empty string if content is just an empty paragraph
     if (
@@ -79,7 +80,7 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
           editorRef.current = new Editor(contentRef.current, selectionService);
         }
       } else {
-        contentRef.current.innerHTML = html;
+        contentRef.current.innerHTML = DOMPurify.sanitize(html);
       }
     }
   };
