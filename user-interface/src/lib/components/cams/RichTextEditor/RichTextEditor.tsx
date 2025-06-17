@@ -5,6 +5,26 @@ import { BrowserSelectionService } from './SelectionService.humble';
 import { RichTextButton } from './RichTextButton';
 import DOMPurify from 'dompurify';
 
+const DOMPURIFY_CONFIG = {
+  ALLOWED_TAGS: ['em', 'strong', 'p', 'ul', 'ol', 'li', 'br', 'span', 'a'],
+  ALLOWED_ATTR: ['href', 'class', 'style'],
+  ALLOW_DATA_ATTR: false,
+  FORBID_TAGS: ['style', 'script', 'iframe', 'object', 'embed', 'form', 'input', 'button'],
+  FORBID_ATTR: [
+    'onerror',
+    'onload',
+    'onclick',
+    'onmouseover',
+    'onmousedown',
+    'onfocus',
+    'onblur',
+    'onkeydown',
+    'onkeypress',
+    'srcset',
+    'src',
+  ],
+};
+
 export interface RichTextEditorRef {
   clearValue: () => void;
   getValue: () => string;
@@ -57,22 +77,7 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
 
   const getHtml = () => {
     const rawHtml = contentRef.current?.innerHTML || '';
-    // Configure DOMPurify to prevent XSS
-    const DOMPURIFY_CONFIG = {
-      ALLOWED_TAGS: [
-        'b', 'i', 'em', 'strong', 'a', 'p', 'ul', 'ol', 'li', 'br', 'span', 'div', 'u', 's', 'sub', 'sup', 'blockquote', 'pre', 'code'
-      ],
-      ALLOWED_ATTR: [
-        'href', 'title', 'target', 'rel', 'class', 'style'
-      ],
-      ALLOW_DATA_ATTR: false,
-      FORBID_TAGS: ['style', 'script', 'iframe', 'object', 'embed', 'form', 'input', 'button'],
-      FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur', 'srcset'],
-      // You can further restrict as needed
-    };
-    const cleanedHtml = Editor.cleanHtml(
-      DOMPurify.sanitize(rawHtml, DOMPURIFY_CONFIG)
-    );
+    const cleanedHtml = Editor.cleanHtml(DOMPurify.sanitize(rawHtml, DOMPURIFY_CONFIG));
 
     // Return empty string if content is just an empty paragraph
     if (
@@ -95,7 +100,7 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
           editorRef.current = new Editor(contentRef.current, selectionService);
         }
       } else {
-        contentRef.current.innerHTML = DOMPurify.sanitize(html);
+        contentRef.current.innerHTML = DOMPurify.sanitize(html, DOMPURIFY_CONFIG);
       }
     }
   };
