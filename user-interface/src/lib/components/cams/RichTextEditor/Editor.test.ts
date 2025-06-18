@@ -1,7 +1,11 @@
 import { describe, expect, vi, beforeEach, afterEach, test } from 'vitest';
 import { Editor } from './Editor';
 import { MockSelectionService } from './SelectionService.humble';
-import { ZERO_WIDTH_SPACE } from '@/lib/components/cams/RichTextEditor/editor.constants';
+import {
+  DOMPURIFY_CONFIG,
+  ZERO_WIDTH_SPACE,
+} from '@/lib/components/cams/RichTextEditor/editor.constants';
+import DOMPurify from 'dompurify';
 
 // Helper functions adapted for SelectionService pattern
 function setCursorInParagraph(
@@ -34,18 +38,11 @@ function setCursorInElement(
   return selectionService.getCurrentSelection();
 }
 
-function _insertTextAtSelection(text: string, selectionService: MockSelectionService) {
-  const selection = selectionService.getCurrentSelection();
-  const range = selection.getRangeAt(0);
-  const textNode = document.createTextNode(text);
-  range.insertNode(textNode);
-  range.setStartAfter(textNode);
-  range.collapse(true);
-  selection.removeAllRanges();
-  selection.addRange(range);
+function safelySetInnerHTML(element: HTMLElement, html: string): void {
+  element.innerHTML = DOMPurify.sanitize(html, DOMPURIFY_CONFIG);
 }
 
-describe('Editor2', () => {
+describe('Editor', () => {
   let root: HTMLDivElement;
   let editor: Editor;
   let selectionService: MockSelectionService;
@@ -73,7 +70,7 @@ describe('Editor2', () => {
     it('should not modify root if it already has content', () => {
       // Create a new editor with pre-existing content
       const newRoot = document.createElement('div');
-      newRoot.innerHTML = '<p>existing content</p>';
+      safelySetInnerHTML(newRoot, '<p>existing content</p>');
       new Editor(newRoot, selectionService);
       expect(newRoot.innerHTML).toBe('<p>existing content</p>');
     });
@@ -85,28 +82,28 @@ describe('Editor2', () => {
     });
 
     it('should return false if there is text content', () => {
-      root.innerHTML = '<p>hello</p>';
+      safelySetInnerHTML(root, '<p>hello</p>');
       expect(editor.isEmptyContent()).toBe(false);
     });
 
     it('should return true if only zero-width spaces are present', () => {
-      root.innerHTML = `<p>${ZERO_WIDTH_SPACE}</p>`;
+      safelySetInnerHTML(root, `<p>${ZERO_WIDTH_SPACE}</p>`);
       expect(editor.isEmptyContent()).toBe(true);
     });
 
     it('should return true for multiple empty paragraphs', () => {
-      root.innerHTML = `<p>${ZERO_WIDTH_SPACE}</p><p>   </p><p></p>`;
+      safelySetInnerHTML(root, `<p>${ZERO_WIDTH_SPACE}</p><p>   </p><p></p>`);
       expect(editor.isEmptyContent()).toBe(true);
     });
 
     it('should return false if any paragraph has content', () => {
-      root.innerHTML = `<p>${ZERO_WIDTH_SPACE}</p><p>content</p>`;
+      safelySetInnerHTML(root, `<p>${ZERO_WIDTH_SPACE}</p><p>content</p>`);
       expect(editor.isEmptyContent()).toBe(false);
     });
   });
 });
 
-describe('Editor2.cleanZeroWidthSpaces', () => {
+describe('Editor.cleanZeroWidthSpaces', () => {
   test('removes all zero-width spaces from a string', () => {
     const input = `Hello${ZERO_WIDTH_SPACE}World${ZERO_WIDTH_SPACE}`;
     const output = Editor.cleanZeroWidthSpaces(input);
@@ -162,7 +159,7 @@ describe('Editor2.cleanZeroWidthSpaces', () => {
   });
 });
 
-describe('Editor2.cleanEmptyTags', () => {
+describe('Editor.cleanEmptyTags', () => {
   test('removes empty tags from HTML', () => {
     const input = '<p></p><div>content</div><span></span>';
     const result = Editor.cleanEmptyTags(input);
@@ -188,7 +185,7 @@ describe('Editor2.cleanEmptyTags', () => {
   });
 });
 
-describe('Editor2.cleanHtml', () => {
+describe('Editor.cleanHtml', () => {
   test('removes both zero-width spaces and empty tags', () => {
     const input = `<p>foo${ZERO_WIDTH_SPACE}</p><p><br></p>`;
     const result = Editor.cleanHtml(input);
@@ -214,7 +211,7 @@ describe('Editor2.cleanHtml', () => {
   });
 });
 
-describe('Editor2: handleCtrlKey', () => {
+describe('Editor: handleCtrlKey', () => {
   let editor: Editor;
   let container: HTMLDivElement;
   let selectionService: MockSelectionService;
@@ -311,7 +308,7 @@ describe('Editor2: handleCtrlKey', () => {
   });
 });
 
-describe('Editor2: handleDentures', () => {
+describe('Editor: handleDentures', () => {
   let editor: Editor;
   let container: HTMLDivElement;
   let selectionService: MockSelectionService;
@@ -372,7 +369,7 @@ describe('Editor2: handleDentures', () => {
   });
 
   test('returns false when not in a list item', () => {
-    container.innerHTML = '<p>Not in a list</p>';
+    safelySetInnerHTML(container, '<p>Not in a list</p>');
     const paragraph = container.querySelector('p')!;
     setCursorInParagraph(paragraph, 0, selectionService);
 
@@ -384,7 +381,7 @@ describe('Editor2: handleDentures', () => {
   });
 
   test('handles Tab for indentation in list item', () => {
-    container.innerHTML = '<ul><li>Item 1</li><li>Item 2</li></ul>';
+    safelySetInnerHTML(container, '<ul><li>Item 1</li><li>Item 2</li></ul>');
     const listItem = container.querySelectorAll('li')[1] as HTMLElement;
     setCursorInElement(listItem, 0, selectionService);
 
@@ -399,7 +396,7 @@ describe('Editor2: handleDentures', () => {
   });
 
   test('handles Shift+Tab for outdentation in list item', () => {
-    container.innerHTML = '<ul><li>Item 1<ul><li>Nested item</li></ul></li></ul>';
+    safelySetInnerHTML(container, '<ul><li>Item 1<ul><li>Nested item</li></ul></li></ul>');
     const nestedItem = container.querySelector('ul ul li')! as HTMLElement;
     setCursorInElement(nestedItem, 0, selectionService);
 
@@ -417,7 +414,7 @@ describe('Editor2: handleDentures', () => {
   });
 });
 
-describe('Editor2: handleEnterKey method', () => {
+describe('Editor: handleEnterKey method', () => {
   let editor: Editor;
   let container: HTMLDivElement;
   let selectionService: MockSelectionService;
@@ -464,7 +461,7 @@ describe('Editor2: handleEnterKey method', () => {
   });
 
   test('creates new paragraph on Enter in regular paragraph', () => {
-    container.innerHTML = '<p>Some text</p>';
+    safelySetInnerHTML(container, '<p>Some text</p>');
     const paragraph = container.querySelector('p')!;
     setCursorInParagraph(paragraph, 4, selectionService);
 
@@ -477,7 +474,7 @@ describe('Editor2: handleEnterKey method', () => {
   });
 
   test('exits empty list item and creates paragraph', () => {
-    container.innerHTML = '<ul><li>Item 1</li><li></li></ul>';
+    safelySetInnerHTML(container, '<ul><li>Item 1</li><li></li></ul>');
     const emptyListItem = container.querySelectorAll('li')[1];
     setCursorInElement(emptyListItem, 0, selectionService);
 
@@ -491,7 +488,7 @@ describe('Editor2: handleEnterKey method', () => {
   });
 
   test('handles enter in non-empty list item normally', () => {
-    container.innerHTML = '<ul><li>Non-empty item</li></ul>';
+    safelySetInnerHTML(container, '<ul><li>Non-empty item</li></ul>');
     const listItem = container.querySelector('li')!;
     setCursorInElement(listItem, 5, selectionService);
 
@@ -503,7 +500,7 @@ describe('Editor2: handleEnterKey method', () => {
   });
 });
 
-describe('Editor2: handlePrintableKey method', () => {
+describe('Editor: handlePrintableKey method', () => {
   let editor: Editor;
   let container: HTMLDivElement;
   let selectionService: MockSelectionService;
@@ -586,7 +583,7 @@ describe('Editor2: handlePrintableKey method', () => {
 
   test('creates paragraph when typing directly in root', () => {
     // Clear the container and position cursor in root
-    container.innerHTML = '';
+    safelySetInnerHTML(container, '');
     const textNode = document.createTextNode('');
     container.appendChild(textNode);
 
@@ -604,7 +601,7 @@ describe('Editor2: handlePrintableKey method', () => {
   });
 });
 
-describe('Editor2: toggleList', () => {
+describe('Editor: toggleList', () => {
   let editor: Editor;
   let container: HTMLDivElement;
   let selectionService: MockSelectionService;
@@ -621,7 +618,7 @@ describe('Editor2: toggleList', () => {
   });
 
   test('converts paragraph to unordered list', () => {
-    container.innerHTML = '<p>Test paragraph</p>';
+    safelySetInnerHTML(container, '<p>Test paragraph</p>');
     const paragraph = container.querySelector('p')!;
     setCursorInParagraph(paragraph, 4, selectionService);
 
@@ -633,7 +630,7 @@ describe('Editor2: toggleList', () => {
   });
 
   test('converts paragraph to ordered list', () => {
-    container.innerHTML = '<p>Test paragraph</p>';
+    safelySetInnerHTML(container, '<p>Test paragraph</p>');
     const paragraph = container.querySelector('p')!;
     setCursorInParagraph(paragraph, 4, selectionService);
 
@@ -645,7 +642,7 @@ describe('Editor2: toggleList', () => {
   });
 
   test('unwraps list item back to paragraph', () => {
-    container.innerHTML = '<ul><li>List item</li></ul>';
+    safelySetInnerHTML(container, '<ul><li>List item</li></ul>');
     const listItem = container.querySelector('li')!;
     setCursorInElement(listItem, 4, selectionService);
 
@@ -658,7 +655,7 @@ describe('Editor2: toggleList', () => {
 
   test('creates empty list when cursor is in empty paragraph', () => {
     // Clear the default paragraph content
-    container.innerHTML = '<p></p>';
+    safelySetInnerHTML(container, '<p></p>');
     const paragraph = container.querySelector('p')!;
     setCursorInParagraph(paragraph, 0, selectionService);
 
@@ -684,7 +681,7 @@ describe('Editor2: toggleList', () => {
   });
 });
 
-describe('Editor2: toggleSelection', () => {
+describe('Editor: toggleSelection', () => {
   let editor: Editor;
   let container: HTMLDivElement;
   let selectionService: MockSelectionService;
@@ -701,7 +698,7 @@ describe('Editor2: toggleSelection', () => {
   });
 
   test('applies bold formatting to selected text', () => {
-    container.innerHTML = '<p>Hello world</p>';
+    safelySetInnerHTML(container, '<p>Hello world</p>');
     const paragraph = container.querySelector('p')!;
     const range = selectionService.createRange();
     range.setStart(paragraph.firstChild!, 0);
@@ -714,7 +711,7 @@ describe('Editor2: toggleSelection', () => {
   });
 
   test('applies italic formatting to selected text', () => {
-    container.innerHTML = '<p>Hello world</p>';
+    safelySetInnerHTML(container, '<p>Hello world</p>');
     const paragraph = container.querySelector('p')!;
     const range = selectionService.createRange();
     range.setStart(paragraph.firstChild!, 0);
@@ -727,7 +724,7 @@ describe('Editor2: toggleSelection', () => {
   });
 
   test('applies underline formatting to selected text', () => {
-    container.innerHTML = '<p>Hello world</p>';
+    safelySetInnerHTML(container, '<p>Hello world</p>');
     const paragraph = container.querySelector('p')!;
     const range = selectionService.createRange();
     range.setStart(paragraph.firstChild!, 0);
@@ -740,7 +737,7 @@ describe('Editor2: toggleSelection', () => {
   });
 
   test('removes formatting from already formatted text', () => {
-    container.innerHTML = '<p><strong>Hello</strong> world</p>';
+    safelySetInnerHTML(container, '<p><strong>Hello</strong> world</p>');
     const strongElement = container.querySelector('strong')!;
     const range = selectionService.createRange();
     range.setStart(strongElement.firstChild!, 0);
@@ -754,7 +751,7 @@ describe('Editor2: toggleSelection', () => {
   });
 
   test('creates formatting element at cursor position when no text selected', () => {
-    container.innerHTML = '<p>Hello world</p>';
+    safelySetInnerHTML(container, '<p>Hello world</p>');
     const paragraph = container.querySelector('p')!;
     setCursorInParagraph(paragraph, 5, selectionService);
 
@@ -764,7 +761,7 @@ describe('Editor2: toggleSelection', () => {
   });
 
   test('exits formatting element when toggling off at cursor position', () => {
-    container.innerHTML = '<p>Hello <strong>bold</strong> world</p>';
+    safelySetInnerHTML(container, '<p>Hello <strong>bold</strong> world</p>');
     const strongElement = container.querySelector('strong')!;
     setCursorInElement(strongElement, 2, selectionService);
 
@@ -775,7 +772,7 @@ describe('Editor2: toggleSelection', () => {
   });
 
   test('does nothing when selection spans across blocks', () => {
-    container.innerHTML = '<p>First paragraph</p><p>Second paragraph</p>';
+    safelySetInnerHTML(container, '<p>First paragraph</p><p>Second paragraph</p>');
     const firstP = container.querySelectorAll('p')[0];
     const secondP = container.querySelectorAll('p')[1];
 
@@ -791,7 +788,7 @@ describe('Editor2: toggleSelection', () => {
   });
 });
 
-describe('Editor2: handleBackspaceOnEmptyContent', () => {
+describe('Editor: handleBackspaceOnEmptyContent', () => {
   let editor: Editor;
   let container: HTMLDivElement;
   let selectionService: MockSelectionService;
@@ -841,7 +838,7 @@ describe('Editor2: handleBackspaceOnEmptyContent', () => {
   });
 
   test('allows deletion when multiple paragraphs exist', () => {
-    container.innerHTML = `<p>First</p><p>${ZERO_WIDTH_SPACE}</p>`;
+    safelySetInnerHTML(container, `<p>First</p><p>${ZERO_WIDTH_SPACE}</p>`);
     const emptyParagraph = container.querySelectorAll('p')[1];
     setCursorInParagraph(emptyParagraph, 1, selectionService);
 
@@ -854,7 +851,7 @@ describe('Editor2: handleBackspaceOnEmptyContent', () => {
   });
 
   test('allows normal backspace in non-empty paragraph', () => {
-    container.innerHTML = '<p>Hello world</p>';
+    safelySetInnerHTML(container, '<p>Hello world</p>');
     const paragraph = container.querySelector('p')!;
     setCursorInParagraph(paragraph, 5, selectionService);
 
@@ -866,7 +863,7 @@ describe('Editor2: handleBackspaceOnEmptyContent', () => {
   });
 });
 
-describe('Editor2: handleDeleteKeyOnList', () => {
+describe('Editor: handleDeleteKeyOnList', () => {
   let editor: Editor;
   let container: HTMLDivElement;
   let selectionService: MockSelectionService;
@@ -909,7 +906,7 @@ describe('Editor2: handleDeleteKeyOnList', () => {
   });
 
   test('returns false when not at start of list item', () => {
-    container.innerHTML = '<ul><li>Item content</li></ul>';
+    safelySetInnerHTML(container, '<ul><li>Item content</li></ul>');
     const listItem = container.querySelector('li')!;
     setCursorInElement(listItem, 4, selectionService); // Not at start
 
@@ -921,7 +918,7 @@ describe('Editor2: handleDeleteKeyOnList', () => {
   });
 
   test('returns false when not in a list', () => {
-    container.innerHTML = '<p>Not in a list</p>';
+    safelySetInnerHTML(container, '<p>Not in a list</p>');
     const paragraph = container.querySelector('p')!;
     setCursorInParagraph(paragraph, 0, selectionService);
 
@@ -933,7 +930,7 @@ describe('Editor2: handleDeleteKeyOnList', () => {
   });
 
   test('returns false when not the last item in the list', () => {
-    container.innerHTML = '<ul><li>First item</li><li>Second item</li></ul>';
+    safelySetInnerHTML(container, '<ul><li>First item</li><li>Second item</li></ul>');
     const firstItem = container.querySelectorAll('li')[0];
     setCursorInElement(firstItem, 0, selectionService);
 
@@ -945,7 +942,10 @@ describe('Editor2: handleDeleteKeyOnList', () => {
   });
 
   test('returns false when list item has nested lists', () => {
-    container.innerHTML = '<ul><li>Item with nested list<ul><li>Nested item</li></ul></li></ul>';
+    safelySetInnerHTML(
+      container,
+      '<ul><li>Item with nested list<ul><li>Nested item</li></ul></li></ul>',
+    );
     const listItem = container.querySelector('li')!;
     setCursorInElement(listItem, 0, selectionService);
 
@@ -958,7 +958,9 @@ describe('Editor2: handleDeleteKeyOnList', () => {
 
   test('returns false when grandparent is not found', () => {
     // Create a list structure where getAncestorIfLastLeaf would return false
-    container.innerHTML = `
+    safelySetInnerHTML(
+      container,
+      `
       <ul>
         <li>First item</li>
         <li>
@@ -967,7 +969,8 @@ describe('Editor2: handleDeleteKeyOnList', () => {
           </ul>
         </li>
       </ul>
-    `;
+    `,
+    );
 
     // Get the nested list item
     const nestedItem = container.querySelector('ul ul li')! as HTMLElement;
@@ -981,7 +984,7 @@ describe('Editor2: handleDeleteKeyOnList', () => {
   });
 
   test('removes last empty list item', () => {
-    container.innerHTML = '<ul><li>First item</li><li><br></li></ul>';
+    safelySetInnerHTML(container, '<ul><li>First item</li><li><br></li></ul>');
     const emptyListItem = container.querySelectorAll('li')[1];
     // Position cursor at the start of the empty list item
     const range = selectionService.createRange();
@@ -1007,7 +1010,7 @@ describe('Editor2: handleDeleteKeyOnList', () => {
   });
 
   test('handles list item with BR element', () => {
-    container.innerHTML = '<ul><li>First item</li><li><br></li></ul>';
+    safelySetInnerHTML(container, '<ul><li>First item</li><li><br></li></ul>');
     const emptyListItem = container.querySelectorAll('li')[1];
 
     // Position cursor at the start of the empty list item
@@ -1027,7 +1030,7 @@ describe('Editor2: handleDeleteKeyOnList', () => {
   });
 
   test('removes empty list when last item is deleted', () => {
-    container.innerHTML = '<ul><li><br></li></ul>';
+    safelySetInnerHTML(container, '<ul><li><br></li></ul>');
     const listItem = container.querySelector('li')!;
     // Position cursor at the start of the empty list item
     const range = selectionService.createRange();
@@ -1045,7 +1048,7 @@ describe('Editor2: handleDeleteKeyOnList', () => {
   });
 
   test('converts last list item with content to paragraph', () => {
-    container.innerHTML = '<ul><li>Content</li></ul>';
+    safelySetInnerHTML(container, '<ul><li>Content</li></ul>');
     const listItem = container.querySelector('li')!;
     setCursorInElement(listItem, 0, selectionService);
 
@@ -1060,7 +1063,7 @@ describe('Editor2: handleDeleteKeyOnList', () => {
   });
 });
 
-describe('Editor2: Additional coverage tests', () => {
+describe('Editor: Additional coverage tests', () => {
   let editor: Editor;
   let container: HTMLDivElement;
   let selectionService: MockSelectionService;
@@ -1079,7 +1082,7 @@ describe('Editor2: Additional coverage tests', () => {
 
   describe('toggleList - additional scenarios', () => {
     test('toggleList handles nested lists correctly', () => {
-      container.innerHTML = '<ul><li>Item 1<ul><li>Nested item</li></ul></li></ul>';
+      safelySetInnerHTML(container, '<ul><li>Item 1<ul><li>Nested item</li></ul></li></ul>');
       const nestedItem = container.querySelector('ul ul li')! as HTMLElement;
       setCursorInElement(nestedItem, 0, selectionService);
 
@@ -1093,7 +1096,7 @@ describe('Editor2: Additional coverage tests', () => {
 
     test('toggleList creates different list types', () => {
       // Start with a paragraph
-      container.innerHTML = '<p>Item 1</p>';
+      safelySetInnerHTML(container, '<p>Item 1</p>');
       const paragraph = container.querySelector('p')! as HTMLElement;
       setCursorInElement(paragraph, 0, selectionService);
 
@@ -1106,7 +1109,7 @@ describe('Editor2: Additional coverage tests', () => {
       expect(container.querySelector('li')!.textContent).toBe('Item 1');
 
       // Clear and create a new paragraph
-      container.innerHTML = '<p>Item 1</p>';
+      safelySetInnerHTML(container, '<p>Item 1</p>');
       const newParagraph = container.querySelector('p')! as HTMLElement;
       setCursorInElement(newParagraph, 0, selectionService);
 
@@ -1120,7 +1123,7 @@ describe('Editor2: Additional coverage tests', () => {
     });
 
     test('toggleList handles empty paragraphs correctly', () => {
-      container.innerHTML = `<p>${ZERO_WIDTH_SPACE}</p>`;
+      safelySetInnerHTML(container, `<p>${ZERO_WIDTH_SPACE}</p>`);
       const paragraph = container.querySelector('p')!;
       setCursorInParagraph(paragraph, 1, selectionService);
 
@@ -1134,7 +1137,7 @@ describe('Editor2: Additional coverage tests', () => {
 
   describe('toggleSelection - additional scenarios', () => {
     test('toggleSelection adds formatting to already formatted text', () => {
-      container.innerHTML = '<p>Hello <em>world</em></p>';
+      safelySetInnerHTML(container, '<p>Hello <em>world</em></p>');
       const emElement = container.querySelector('em')!;
       const range = selectionService.createRange();
       range.selectNodeContents(emElement);
@@ -1150,7 +1153,7 @@ describe('Editor2: Additional coverage tests', () => {
     });
 
     test('toggleSelection handles partial selection within formatted text', () => {
-      container.innerHTML = '<p><strong>Hello world</strong></p>';
+      safelySetInnerHTML(container, '<p><strong>Hello world</strong></p>');
       const strongElement = container.querySelector('strong')!;
       const range = selectionService.createRange();
       range.setStart(strongElement.firstChild!, 0);
@@ -1165,7 +1168,7 @@ describe('Editor2: Additional coverage tests', () => {
     });
 
     test('toggleSelection applies bold formatting', () => {
-      container.innerHTML = '<p>Hello world</p>';
+      safelySetInnerHTML(container, '<p>Hello world</p>');
       const paragraph = container.querySelector('p')!;
       const range = selectionService.createRange();
       range.setStart(paragraph.firstChild!, 0);
@@ -1181,21 +1184,21 @@ describe('Editor2: Additional coverage tests', () => {
   });
 
   test('normalizeInlineFormatting flattens nested identical tags', () => {
-    container.innerHTML = '<p>one <strong><strong>two</strong></strong> three</p>';
+    safelySetInnerHTML(container, '<p>one <strong><strong>two</strong></strong> three</p>');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (editor as any).normalizeInlineFormatting();
     expect(container.innerHTML).toBe('<p>one <strong>two</strong> three</p>');
   });
 
   test('normalizeInlineFormatting preserves different nested tags', () => {
-    container.innerHTML = '<p>one <strong><em>two</em></strong> three</p>';
+    safelySetInnerHTML(container, '<p>one <strong><em>two</em></strong> three</p>');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (editor as any).normalizeInlineFormatting();
     expect(container.innerHTML).toBe('<p>one <strong><em>two</em></strong> three</p>');
   });
 
   test('normalizeInlineFormatting merges adjacent identical tags', () => {
-    container.innerHTML = '<p>one <strong>two</strong><strong>three</strong> four</p>';
+    safelySetInnerHTML(container, '<p>one <strong>two</strong><strong>three</strong> four</p>');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (editor as any).normalizeInlineFormatting();
     expect(container.innerHTML).toBe('<p>one <strong>twothree</strong> four</p>');
@@ -1210,7 +1213,7 @@ describe('Editor2: Additional coverage tests', () => {
   });
 
   test('isEditorInRange returns true when selection is within editor', () => {
-    container.innerHTML = '<p>Some content</p>';
+    safelySetInnerHTML(container, '<p>Some content</p>');
     setCursorInParagraph(container.querySelector('p')!, 5, selectionService);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1229,7 +1232,7 @@ describe('Editor2: Additional coverage tests', () => {
   });
 
   test('handles cross-paragraph selection gracefully in toggleSelection', () => {
-    container.innerHTML = '<p>First paragraph</p><p>Second paragraph</p>';
+    safelySetInnerHTML(container, '<p>First paragraph</p><p>Second paragraph</p>');
 
     const firstP = container.querySelectorAll('p')[0];
     const secondP = container.querySelectorAll('p')[1];
@@ -1249,7 +1252,7 @@ describe('Editor2: Additional coverage tests', () => {
   });
 
   test('properly merges adjacent similar elements after formatting', () => {
-    container.innerHTML = '<p><strong>Bold</strong> text <strong>more</strong></p>';
+    safelySetInnerHTML(container, '<p><strong>Bold</strong> text <strong>more</strong></p>');
 
     const pElement = container.querySelector('p')!;
     const textNode = pElement.childNodes[1] as Text;
@@ -1276,7 +1279,7 @@ describe('Editor2: Additional coverage tests', () => {
   });
 
   test('toggles formatting with collapsed cursor', () => {
-    container.innerHTML = `<p>${ZERO_WIDTH_SPACE}</p>`;
+    safelySetInnerHTML(container, `<p>${ZERO_WIDTH_SPACE}</p>`);
     setCursorInParagraph(container.querySelector('p')!, 1, selectionService);
 
     editor.toggleSelection('strong');
@@ -1286,7 +1289,7 @@ describe('Editor2: Additional coverage tests', () => {
   });
 
   test('handles empty formatting elements correctly', () => {
-    container.innerHTML = '<p>text<strong></strong>more</p>';
+    safelySetInnerHTML(container, '<p>text<strong></strong>more</p>');
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (editor as any).normalizeInlineFormatting();
@@ -1295,7 +1298,7 @@ describe('Editor2: Additional coverage tests', () => {
   });
 
   test('list splitting behavior when toggling middle item', () => {
-    container.innerHTML = '<ul><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul>';
+    safelySetInnerHTML(container, '<ul><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul>');
 
     const middleLi = container.querySelectorAll('li')[1];
     const range = document.createRange();
@@ -1310,7 +1313,7 @@ describe('Editor2: Additional coverage tests', () => {
   });
 
   test('single item list converts to paragraph', () => {
-    container.innerHTML = '<ul><li>Only Item</li></ul>';
+    safelySetInnerHTML(container, '<ul><li>Only Item</li></ul>');
 
     const firstLi = container.querySelector('li');
     const range = document.createRange();
@@ -1323,7 +1326,7 @@ describe('Editor2: Additional coverage tests', () => {
   });
 
   test('preserves nested formatting when toggling off one format', () => {
-    container.innerHTML = `<p><em><strong>${ZERO_WIDTH_SPACE}</strong></em></p>`;
+    safelySetInnerHTML(container, `<p><em><strong>${ZERO_WIDTH_SPACE}</strong></em></p>`);
     const strongElement = container.querySelector('strong')!;
     setCursorInElement(strongElement, 1, selectionService);
 
@@ -1339,7 +1342,7 @@ describe('Editor2: Additional coverage tests', () => {
   describe('complex interactions between methods', () => {
     test('formatting and list conversion', () => {
       // Create a paragraph with text
-      container.innerHTML = '<p>Test paragraph</p>';
+      safelySetInnerHTML(container, '<p>Test paragraph</p>');
 
       // Apply formatting to the paragraph
       const paragraph = container.querySelector('p')!;
@@ -1354,7 +1357,7 @@ describe('Editor2: Additional coverage tests', () => {
       expect(container.innerHTML).toContain('<strong>Test</strong>');
 
       // Create a new paragraph for list conversion
-      container.innerHTML = '<p>List item</p>';
+      safelySetInnerHTML(container, '<p>List item</p>');
       const newParagraph = container.querySelector('p')!;
       setCursorInParagraph(newParagraph, 0, selectionService);
 
@@ -1369,7 +1372,7 @@ describe('Editor2: Additional coverage tests', () => {
 
     test('convertParagraphToList calls setCursorInListItem', () => {
       // Create a paragraph with text
-      container.innerHTML = '<p>Test paragraph</p>';
+      safelySetInnerHTML(container, '<p>Test paragraph</p>');
       const paragraph = container.querySelector('p')!;
       setCursorInParagraph(paragraph, 0, selectionService);
 
@@ -1392,7 +1395,7 @@ describe('Editor2: Additional coverage tests', () => {
 
     test('setCursorInListItem is called during list conversion', () => {
       // Create a paragraph with text
-      container.innerHTML = '<p>Test paragraph</p>';
+      safelySetInnerHTML(container, '<p>Test paragraph</p>');
       const paragraph = container.querySelector('p')!;
       setCursorInParagraph(paragraph, 0, selectionService);
 
@@ -1415,7 +1418,7 @@ describe('Editor2: Additional coverage tests', () => {
 
     test('convertParagraphToList handles empty list items by adding zero-width space', () => {
       // Create a paragraph with no text content
-      container.innerHTML = '<p></p>';
+      safelySetInnerHTML(container, '<p></p>');
       const paragraph = container.querySelector('p')!;
       setCursorInParagraph(paragraph, 0, selectionService);
 
@@ -1430,7 +1433,7 @@ describe('Editor2: Additional coverage tests', () => {
 
     test('convertParagraphToList returns early when no selection exists', () => {
       // Create a paragraph
-      container.innerHTML = '<p>Test paragraph</p>';
+      safelySetInnerHTML(container, '<p>Test paragraph</p>');
 
       // Mock the getCurrentSelection to return null
       const originalGetSelection = selectionService.getCurrentSelection;
@@ -1448,7 +1451,7 @@ describe('Editor2: Additional coverage tests', () => {
     });
 
     test('list conversion followed by formatting', () => {
-      container.innerHTML = '<p>Test paragraph</p>';
+      safelySetInnerHTML(container, '<p>Test paragraph</p>');
       const paragraph = container.querySelector('p')!;
       setCursorInParagraph(paragraph, 5, selectionService);
 
@@ -1470,7 +1473,7 @@ describe('Editor2: Additional coverage tests', () => {
     });
 
     test('key handling interactions', () => {
-      container.innerHTML = '<p>Test</p>';
+      safelySetInnerHTML(container, '<p>Test</p>');
       const paragraph = container.querySelector('p')!;
       setCursorInParagraph(paragraph, 4, selectionService);
 
@@ -1504,7 +1507,7 @@ describe('Editor2: Additional coverage tests', () => {
     });
 
     test('multiple formatting operations', () => {
-      container.innerHTML = '<p>Test paragraph</p>';
+      safelySetInnerHTML(container, '<p>Test paragraph</p>');
       const paragraph = container.querySelector('p')!;
       const range = selectionService.createRange();
       range.setStart(paragraph.firstChild!, 0);
@@ -1533,7 +1536,7 @@ describe('Editor2: Additional coverage tests', () => {
     });
 
     test('applying and removing a single format', () => {
-      container.innerHTML = '<p>Test paragraph</p>';
+      safelySetInnerHTML(container, '<p>Test paragraph</p>');
       const paragraph = container.querySelector('p')!;
       const range = selectionService.createRange();
       range.setStart(paragraph.firstChild!, 0);
@@ -1574,7 +1577,10 @@ describe('Editor2: Additional coverage tests', () => {
     test('removes formatting elements with children', () => {
       // Create a paragraph with nested formatting
       const paragraph = document.createElement('p');
-      paragraph.innerHTML = 'Text with <strong>bold <em>and italic</em></strong> formatting';
+      safelySetInnerHTML(
+        paragraph,
+        'Text with <strong>bold <em>and italic</em></strong> formatting',
+      );
 
       // Call stripFormatting on the paragraph
       // @ts-expect-error - Accessing private static method for testing
@@ -1606,7 +1612,10 @@ describe('Editor2: Additional coverage tests', () => {
     test('handles empty formatting elements', () => {
       // Create a paragraph with empty formatting elements
       const paragraph = document.createElement('p');
-      paragraph.innerHTML = 'Text with <strong></strong> empty <em></em> formatting elements';
+      safelySetInnerHTML(
+        paragraph,
+        'Text with <strong></strong> empty <em></em> formatting elements',
+      );
 
       // Call stripFormatting on the paragraph
       // @ts-expect-error - Accessing private static method for testing
@@ -1633,7 +1642,7 @@ describe('Editor2: Additional coverage tests', () => {
   describe('unwrapListItem with nested lists', () => {
     test('handles list items with nested lists', () => {
       // Create a list with a nested list
-      container.innerHTML = '<ul><li>Parent item<ul><li>Nested item</li></ul></li></ul>';
+      safelySetInnerHTML(container, '<ul><li>Parent item<ul><li>Nested item</li></ul></li></ul>');
 
       // Get the parent list item
       const parentLi = container.querySelector('li')!;
@@ -1661,7 +1670,9 @@ describe('Editor2: Additional coverage tests', () => {
 
     test('handles complex nested list structure with multiple levels', () => {
       // Create a complex nested list structure with multiple levels
-      container.innerHTML = `
+      safelySetInnerHTML(
+        container,
+        `
         <ul>
           <li>Level 1 Item 1</li>
           <li>Level 1 Item 2
@@ -1675,7 +1686,8 @@ describe('Editor2: Additional coverage tests', () => {
             </ul>
           </li>
         </ul>
-      `;
+      `,
+      );
 
       // Get the level 2 list item with a nested list
       const level2Item = container.querySelectorAll('ul > li > ul > li')[1] as HTMLElement;
@@ -1703,14 +1715,17 @@ describe('Editor2: Additional coverage tests', () => {
 
     test('handles unwrapping list item with multiple nested lists', () => {
       // Create a list item with multiple nested lists
-      container.innerHTML = `
+      safelySetInnerHTML(
+        container,
+        `
         <ul>
           <li>Parent item
             <ul><li>First nested list item</li></ul>
             <ul><li>Second nested list item</li></ul>
           </li>
         </ul>
-      `;
+      `,
+      );
 
       // Get the parent list item
       const parentLi = container.querySelector('li')!;
@@ -1744,7 +1759,7 @@ describe('Editor2: Additional coverage tests', () => {
 
     test('handles unwrapping list item with non-text node as first child in final paragraph', () => {
       // Create a list with a list item containing a span
-      container.innerHTML = '<ul><li><span>Text in span</span></li></ul>';
+      safelySetInnerHTML(container, '<ul><li><span>Text in span</span></li></ul>');
 
       // Get the list item
       const listItem = container.querySelector('li')!;
@@ -1783,7 +1798,7 @@ describe('Editor2: Additional coverage tests', () => {
 
     test('handles list items with empty text content', () => {
       // Create a list with an empty list item
-      container.innerHTML = '<ul><li></li></ul>';
+      safelySetInnerHTML(container, '<ul><li></li></ul>');
 
       // Get the list item
       const listItem = container.querySelector('li')!;
@@ -1806,7 +1821,7 @@ describe('Editor2: Additional coverage tests', () => {
 
     test('handles non-text node as first child in paragraph', () => {
       // Create a list with a list item containing a span
-      container.innerHTML = '<ul><li><span>Text in span</span></li></ul>';
+      safelySetInnerHTML(container, '<ul><li><span>Text in span</span></li></ul>');
 
       // Get the list item
       const listItem = container.querySelector('li')!;
@@ -1836,7 +1851,7 @@ describe('Editor2: Additional coverage tests', () => {
       // Create a separate container not in the editor
       const outsideContainer = document.createElement('div');
       document.body.appendChild(outsideContainer);
-      outsideContainer.innerHTML = '<ul><li>Outside item</li></ul>';
+      safelySetInnerHTML(outsideContainer, '<ul><li>Outside item</li></ul>');
 
       try {
         // Get the list item and list
@@ -1865,7 +1880,7 @@ describe('Editor2: Additional coverage tests', () => {
 
     test('handles split index not found', () => {
       // Create a list with a list item
-      container.innerHTML = '<ul><li>Item</li></ul>';
+      safelySetInnerHTML(container, '<ul><li>Item</li></ul>');
 
       // Get the list item and list
       const listItem = container.querySelector('li')!;
@@ -1894,7 +1909,9 @@ describe('Editor2: Additional coverage tests', () => {
 
     test('handles nested list with parent list item not in root', () => {
       // Create a complex nested list structure
-      container.innerHTML = `
+      safelySetInnerHTML(
+        container,
+        `
         <ul id="rootList">
           <li>Root item
             <ul id="nestedList">
@@ -1902,7 +1919,8 @@ describe('Editor2: Additional coverage tests', () => {
             </ul>
           </li>
         </ul>
-      `;
+      `,
+      );
 
       // Get the nested list item and its parent list
       const nestedItem = container.querySelector('#nestedList li')! as HTMLElement;
@@ -1941,7 +1959,7 @@ describe('Editor2: Additional coverage tests', () => {
   describe('complex DOM structures in text handling', () => {
     test('handles non-text node firstChild in paragraphs', () => {
       // Create a paragraph with a non-text firstChild (a span)
-      container.innerHTML = '<p><span>Text in span</span></p>';
+      safelySetInnerHTML(container, '<p><span>Text in span</span></p>');
 
       // Get the paragraph
       const paragraph = container.querySelector('p')!;
@@ -1964,7 +1982,7 @@ describe('Editor2: Additional coverage tests', () => {
 
     test('handles non-text node firstChild in unwrapListItem', () => {
       // Create a list with a list item containing a span
-      container.innerHTML = '<ul><li><span>Text in span</span></li></ul>';
+      safelySetInnerHTML(container, '<ul><li><span>Text in span</span></li></ul>');
 
       // Get the list item
       const listItem = container.querySelector('li')!;
@@ -1992,7 +2010,7 @@ describe('Editor2: Additional coverage tests', () => {
 
     test('handles non-text node firstChild in paragraph with complex structure', () => {
       // Create a list with a list item containing a complex structure
-      container.innerHTML = '<ul><li><div><span>Text in span</span></div></li></ul>';
+      safelySetInnerHTML(container, '<ul><li><div><span>Text in span</span></div></li></ul>');
 
       // Get the list item
       const listItem = container.querySelector('li')!;
@@ -2033,7 +2051,7 @@ describe('Editor2: Additional coverage tests', () => {
   describe('outdentListItem', () => {
     test('handles no target list item', () => {
       // Create a paragraph (not a list)
-      container.innerHTML = '<p>Not a list item</p>';
+      safelySetInnerHTML(container, '<p>Not a list item</p>');
       const paragraph = container.querySelector('p')!;
       setCursorInParagraph(paragraph, 0, selectionService);
 
@@ -2047,13 +2065,13 @@ describe('Editor2: Additional coverage tests', () => {
 
     test('handles root element as grandparent list item', () => {
       // Create a list structure where the root element would be considered the grandparent
-      container.innerHTML = '<ul><li>Item</li></ul>';
+      safelySetInnerHTML(container, '<ul><li>Item</li></ul>');
 
       // Mock the root to be a list item element
       // @ts-expect-error - Accessing private property for testing
       const originalRoot = editor.root;
       const mockRoot = document.createElement('li');
-      mockRoot.innerHTML = '<ul><li>Nested item</li></ul>';
+      safelySetInnerHTML(mockRoot, '<ul><li>Nested item</li></ul>');
       // @ts-expect-error - Accessing private property for testing
       editor.root = mockRoot;
 
@@ -2076,7 +2094,7 @@ describe('Editor2: Additional coverage tests', () => {
 
     test('handles outdentListItem with root equal to grandparent list item', () => {
       // Create a list structure
-      container.innerHTML = '<ul><li>Parent<ul><li>Child</li></ul></li></ul>';
+      safelySetInnerHTML(container, '<ul><li>Parent<ul><li>Child</li></ul></li></ul>');
 
       // Get the nested list item and its parent list
       const nestedItem = container.querySelector('ul ul li')! as HTMLElement;
@@ -2119,7 +2137,7 @@ describe('Editor2: Additional coverage tests', () => {
 
     test('handles no selection', () => {
       // Create a list with a nested item
-      container.innerHTML = '<ul><li>Parent<ul><li>Child</li></ul></li></ul>';
+      safelySetInnerHTML(container, '<ul><li>Parent<ul><li>Child</li></ul></li></ul>');
 
       // Mock the getCurrentSelection to return null
       const originalGetSelection = selectionService.getCurrentSelection;
@@ -2138,7 +2156,7 @@ describe('Editor2: Additional coverage tests', () => {
 
     test('handles selection with no ranges', () => {
       // Create a list with a nested item
-      container.innerHTML = '<ul><li>Parent<ul><li>Child</li></ul></li></ul>';
+      safelySetInnerHTML(container, '<ul><li>Parent<ul><li>Child</li></ul></li></ul>');
 
       // Mock the getCurrentSelection to return a selection with no ranges
       const originalGetSelection = selectionService.getCurrentSelection;
@@ -2159,7 +2177,7 @@ describe('Editor2: Additional coverage tests', () => {
 
     test('handles no parent list or grandparent list item', () => {
       // Create a list with a single item (no parent list item)
-      container.innerHTML = '<ul><li>Top level item</li></ul>';
+      safelySetInnerHTML(container, '<ul><li>Top level item</li></ul>');
       const listItem = container.querySelector('li')!;
       setCursorInElement(listItem, 0, selectionService);
 
@@ -2174,7 +2192,7 @@ describe('Editor2: Additional coverage tests', () => {
     test('handles when parent list exists but grandparent list item does not', () => {
       // Create a list with a nested list but no grandparent list item
       // This is a special case where the parent list exists but the grandparent list item doesn't
-      container.innerHTML = '<div><ul><li>Item</li></ul></div>';
+      safelySetInnerHTML(container, '<div><ul><li>Item</li></ul></div>');
       const listItem = container.querySelector('li')!;
       setCursorInElement(listItem, 0, selectionService);
 
@@ -2204,7 +2222,7 @@ describe('Editor2: Additional coverage tests', () => {
 
       try {
         // Create a nested list structure in the outside container
-        outsideContainer.innerHTML = '<ul><li>Parent<ul><li>Child</li></ul></li></ul>';
+        safelySetInnerHTML(outsideContainer, '<ul><li>Parent<ul><li>Child</li></ul></li></ul>');
 
         // Get the nested list item
         const nestedItem = outsideContainer.querySelector('ul ul li')!;
@@ -2317,7 +2335,7 @@ describe('Editor2: Additional coverage tests', () => {
     });
 
     test('returns false when not at start of list item', () => {
-      container.innerHTML = '<ul><li>Item content</li></ul>';
+      safelySetInnerHTML(container, '<ul><li>Item content</li></ul>');
       const listItem = container.querySelector('li')!;
       setCursorInElement(listItem, 4, selectionService); // Not at start
 
@@ -2329,7 +2347,7 @@ describe('Editor2: Additional coverage tests', () => {
     });
 
     test('returns false when not in a list', () => {
-      container.innerHTML = '<p>Not in a list</p>';
+      safelySetInnerHTML(container, '<p>Not in a list</p>');
       const paragraph = container.querySelector('p')!;
       setCursorInParagraph(paragraph, 0, selectionService);
 
@@ -2341,7 +2359,7 @@ describe('Editor2: Additional coverage tests', () => {
     });
 
     test('returns false when not the last item in the list', () => {
-      container.innerHTML = '<ul><li>First item</li><li>Second item</li></ul>';
+      safelySetInnerHTML(container, '<ul><li>First item</li><li>Second item</li></ul>');
       const firstItem = container.querySelectorAll('li')[0];
       setCursorInElement(firstItem, 0, selectionService);
 
@@ -2353,7 +2371,10 @@ describe('Editor2: Additional coverage tests', () => {
     });
 
     test('returns false when list item has nested lists', () => {
-      container.innerHTML = '<ul><li>Item with nested list<ul><li>Nested item</li></ul></li></ul>';
+      safelySetInnerHTML(
+        container,
+        '<ul><li>Item with nested list<ul><li>Nested item</li></ul></li></ul>',
+      );
       const listItem = container.querySelector('li')!;
       setCursorInElement(listItem, 0, selectionService);
 
@@ -2366,7 +2387,9 @@ describe('Editor2: Additional coverage tests', () => {
 
     test('returns false when grandparent is not found', () => {
       // Create a list structure where getAncestorIfLastLeaf would return false
-      container.innerHTML = `
+      safelySetInnerHTML(
+        container,
+        `
         <ul>
           <li>First item</li>
           <li>
@@ -2375,7 +2398,8 @@ describe('Editor2: Additional coverage tests', () => {
             </ul>
           </li>
         </ul>
-      `;
+      `,
+      );
 
       // Get the nested list item
       const nestedItem = container.querySelector('ul ul li')! as HTMLElement;
@@ -2389,7 +2413,7 @@ describe('Editor2: Additional coverage tests', () => {
     });
 
     test('removes last empty list item', () => {
-      container.innerHTML = '<ul><li>First item</li><li><br></li></ul>';
+      safelySetInnerHTML(container, '<ul><li>First item</li><li><br></li></ul>');
       const emptyListItem = container.querySelectorAll('li')[1];
       // Position cursor at the start of the empty list item
       const range = selectionService.createRange();
@@ -2415,7 +2439,7 @@ describe('Editor2: Additional coverage tests', () => {
     });
 
     test('handles list item with BR element', () => {
-      container.innerHTML = '<ul><li>First item</li><li><br></li></ul>';
+      safelySetInnerHTML(container, '<ul><li>First item</li><li><br></li></ul>');
       const emptyListItem = container.querySelectorAll('li')[1];
 
       // Position cursor at the start of the empty list item
@@ -2435,7 +2459,7 @@ describe('Editor2: Additional coverage tests', () => {
     });
 
     test('removes empty list when last item is deleted', () => {
-      container.innerHTML = '<ul><li><br></li></ul>';
+      safelySetInnerHTML(container, '<ul><li><br></li></ul>');
       const listItem = container.querySelector('li')!;
       // Position cursor at the start of the empty list item
       const range = selectionService.createRange();
@@ -2453,7 +2477,7 @@ describe('Editor2: Additional coverage tests', () => {
     });
 
     test('converts last list item with content to paragraph', () => {
-      container.innerHTML = '<ul><li>Content</li></ul>';
+      safelySetInnerHTML(container, '<ul><li>Content</li></ul>');
       const listItem = container.querySelector('li')!;
       setCursorInElement(listItem, 0, selectionService);
 
@@ -2519,7 +2543,7 @@ describe('Editor2: Additional coverage tests', () => {
       });
 
       test('insertList else branch when not in paragraph or cursor not at paragraph level (lines 804-805)', () => {
-        branchRoot.innerHTML = '<div><span>Text in span</span></div>';
+        safelySetInnerHTML(branchRoot, '<div><span>Text in span</span></div>');
 
         const span = branchRoot.querySelector('span')!;
         const range = branchSelectionService.createRange();
@@ -2538,7 +2562,7 @@ describe('Editor2: Additional coverage tests', () => {
 
     describe('convertParagraphToList method - uncovered branches', () => {
       test('convertParagraphToList returns early when selection is null (lines 833-835)', () => {
-        branchRoot.innerHTML = '<p>Test content</p>';
+        safelySetInnerHTML(branchRoot, '<p>Test content</p>');
         const paragraph = branchRoot.querySelector('p')!;
 
         // Mock selectionService to return null
@@ -2559,7 +2583,7 @@ describe('Editor2: Additional coverage tests', () => {
       });
 
       test('convertParagraphToList handles empty list item content (lines 854-855)', () => {
-        branchRoot.innerHTML = '<p></p>'; // Empty paragraph
+        safelySetInnerHTML(branchRoot, '<p></p>'); // Empty paragraph
         const paragraph = branchRoot.querySelector('p')!;
 
         const range = branchSelectionService.createRange();
@@ -2578,7 +2602,7 @@ describe('Editor2: Additional coverage tests', () => {
 
     describe('getCursorOffsetInParagraph and setCursorInListItem - uncovered branches', () => {
       test('setCursorInListItem returns early when selection is null (lines 894)', () => {
-        branchRoot.innerHTML = '<ul><li>Test content</li></ul>';
+        safelySetInnerHTML(branchRoot, '<ul><li>Test content</li></ul>');
         const listItem = branchRoot.querySelector('li')!;
 
         // Mock selectionService to return null
@@ -2601,7 +2625,7 @@ describe('Editor2: Additional coverage tests', () => {
 
       test('setCursorInListItem fallback positioning (lines 900-901)', () => {
         const editor = new Editor(branchRoot, selectionService);
-        branchRoot.innerHTML = '<ul><li><strong>Bold text</strong></li></ul>';
+        safelySetInnerHTML(branchRoot, '<ul><li><strong>Bold text</strong></li></ul>');
         const listItem = branchRoot.querySelector('li')!;
 
         type EditorWithPrivateMethods = Editor & {
@@ -2623,7 +2647,7 @@ describe('Editor2: Additional coverage tests', () => {
         const editor = new Editor(branchRoot, selectionService);
 
         // Create nested identical elements that should be flattened
-        branchRoot.innerHTML = '<p><strong><strong>Nested bold</strong></strong></p>';
+        safelySetInnerHTML(branchRoot, '<p><strong><strong>Nested bold</strong></strong></p>');
 
         // @ts-expect-error - Accessing private method for testing
         editor.normalizeInlineFormatting();
@@ -2652,7 +2676,7 @@ describe('Editor2: Additional coverage tests', () => {
         const editor = new Editor(branchRoot, selectionService);
 
         // Create a nested list structure
-        branchRoot.innerHTML = '<ul><li>Item 1<ul><li>Nested item</li></ul></li></ul>';
+        safelySetInnerHTML(branchRoot, '<ul><li>Item 1<ul><li>Nested item</li></ul></li></ul>');
         const nestedLi = branchRoot.querySelector('ul ul li')!;
 
         // Find the grandparent list item - this would be the outer <li>
@@ -2685,7 +2709,7 @@ describe('Editor2: Additional coverage tests', () => {
 
         // Create a detached list structure
         const detachedList = document.createElement('ul');
-        detachedList.innerHTML = '<li>Item 1<ul><li>Nested item</li></ul></li>';
+        safelySetInnerHTML(detachedList, '<li>Item 1<ul><li>Nested item</li></ul></li>');
 
         const nestedLi = detachedList.querySelector('ul li')!;
 
@@ -2707,7 +2731,7 @@ describe('Editor2: Additional coverage tests', () => {
         const editor = new Editor(branchRoot, selectionService);
 
         // Create a complex list structure where the target item can't be found
-        branchRoot.innerHTML = '<ul><li>Item 1</li><li>Item 2</li></ul>';
+        safelySetInnerHTML(branchRoot, '<ul><li>Item 1</li><li>Item 2</li></ul>');
         const list = branchRoot.querySelector('ul')!;
 
         // Create a detached list item that's not actually in the list
@@ -2740,7 +2764,7 @@ describe('Editor2: Additional coverage tests', () => {
 
         // Create a detached list
         const detachedList = document.createElement('ul');
-        detachedList.innerHTML = '<li>Detached item</li>';
+        safelySetInnerHTML(detachedList, '<li>Detached item</li>');
         const detachedLi = detachedList.querySelector('li')!;
 
         const selection = selectionService.getCurrentSelection();
@@ -2764,7 +2788,7 @@ describe('Editor2: Additional coverage tests', () => {
     describe('Additional edge cases for complete coverage', () => {
       test('insertList with empty paragraph and no content', () => {
         const editor = new Editor(branchRoot, selectionService);
-        branchRoot.innerHTML = '<p></p>';
+        safelySetInnerHTML(branchRoot, '<p></p>');
         const paragraph = branchRoot.querySelector('p')!;
 
         const range = selectionService.createRange();
@@ -2782,7 +2806,7 @@ describe('Editor2: Additional coverage tests', () => {
 
       test('convertParagraphToList with paragraph containing only elements', () => {
         const editor = new Editor(branchRoot, selectionService);
-        branchRoot.innerHTML = '<p><br></p>';
+        safelySetInnerHTML(branchRoot, '<p><br></p>');
         const paragraph = branchRoot.querySelector('p')!;
 
         const range = selectionService.createRange();
@@ -2803,7 +2827,7 @@ describe('Editor2: Additional coverage tests', () => {
         const editor = new Editor(branchRoot, selectionService);
 
         // Create structure with empty formatting elements
-        branchRoot.innerHTML = '<p>Text <strong></strong> more text</p>';
+        safelySetInnerHTML(branchRoot, '<p>Text <strong></strong> more text</p>');
 
         // @ts-expect-error - Accessing private method for testing
         editor.normalizeInlineFormatting();
@@ -2814,7 +2838,10 @@ describe('Editor2: Additional coverage tests', () => {
 
       test('setCursorInListItem with complex nested content', () => {
         const editor = new Editor(branchRoot, selectionService);
-        branchRoot.innerHTML = '<ul><li><em>Italic</em> and <strong>bold</strong> text</li></ul>';
+        safelySetInnerHTML(
+          branchRoot,
+          '<ul><li><em>Italic</em> and <strong>bold</strong> text</li></ul>',
+        );
         const listItem = branchRoot.querySelector('li')!;
 
         type EditorWithPrivateMethods = Editor & {
@@ -2863,7 +2890,7 @@ describe('Editor2: Additional coverage tests', () => {
       const editor = new Editor(container, selectionService);
 
       // Create HTML with different formatting elements at start and end
-      container.innerHTML = '<p><strong>Bold text</strong> and <em>italic text</em></p>';
+      safelySetInnerHTML(container, '<p><strong>Bold text</strong> and <em>italic text</em></p>');
 
       const strongElement = container.querySelector('strong')!;
       const emElement = container.querySelector('em')!;
@@ -2892,7 +2919,9 @@ describe('Editor2: Additional coverage tests', () => {
       const editor = new Editor(container, selectionService);
 
       // Create a nested list structure where the grandparent list item is NOT the last child
-      container.innerHTML = `
+      safelySetInnerHTML(
+        container,
+        `
         <ul>
           <li>First item
             <ul>
@@ -2901,7 +2930,8 @@ describe('Editor2: Additional coverage tests', () => {
           </li>
           <li>Second item (this makes the first item NOT the last)</li>
         </ul>
-      `;
+      `,
+      );
 
       const nestedList = container.querySelector('ul ul')! as HTMLUListElement;
 
@@ -3020,7 +3050,7 @@ describe('Editor2: Additional coverage tests', () => {
       const editor = new Editor(container, selectionService);
 
       // Create HTML with a formatted element
-      container.innerHTML = '<p><strong>Bold text</strong></p>';
+      safelySetInnerHTML(container, '<p><strong>Bold text</strong></p>');
 
       const strongElement = container.querySelector('strong')!;
       const textNode = strongElement.firstChild as Text;
@@ -3044,7 +3074,7 @@ describe('Editor2: Additional coverage tests', () => {
       const editor = new Editor(container, selectionService);
 
       // Create a list with two items where the first has no nested list
-      container.innerHTML = '<ul><li>First item</li><li>Second item</li></ul>';
+      safelySetInnerHTML(container, '<ul><li>First item</li><li>Second item</li></ul>');
 
       const secondLi = container.querySelectorAll('li')[1];
       const range = selectionService.createRange();
@@ -3094,7 +3124,7 @@ describe('Editor2: Additional coverage tests', () => {
       const editor = new Editor(container, selectionService);
 
       // Create HTML with a formatted element containing multiple nodes
-      container.innerHTML = '<p><strong>Bold <em>italic</em> text</strong></p>';
+      safelySetInnerHTML(container, '<p><strong>Bold <em>italic</em> text</strong></p>');
 
       const strongElement = container.querySelector('strong')!;
       const emElement = container.querySelector('em')!;
@@ -3117,7 +3147,7 @@ describe('Editor2: Additional coverage tests', () => {
       const editor = new Editor(container, selectionService);
 
       // Create a paragraph (not in a list)
-      container.innerHTML = '<p>Not in a list item</p>';
+      safelySetInnerHTML(container, '<p>Not in a list item</p>');
 
       const paragraph = container.querySelector('p')!;
       const range = selectionService.createRange();
@@ -3139,7 +3169,7 @@ describe('Editor2: Additional coverage tests', () => {
       const editor = new Editor(container, selectionService);
 
       // Create HTML with nested EM and STRONG elements
-      container.innerHTML = '<p><strong><em>Bold italic text</em></strong></p>';
+      safelySetInnerHTML(container, '<p><strong><em>Bold italic text</em></strong></p>');
 
       const emElement = container.querySelector('em')!;
       const strongElement = container.querySelector('strong')!;
@@ -3157,7 +3187,7 @@ describe('Editor2: Additional coverage tests', () => {
       const editor = new Editor(container, selectionService);
 
       // Create HTML with underline span
-      container.innerHTML = '<p><span class="underline">Underlined text</span></p>';
+      safelySetInnerHTML(container, '<p><span class="underline">Underlined text</span></p>');
 
       const spanElement = container.querySelector('span')!;
       const paragraphElement = container.querySelector('p')!;
@@ -3213,7 +3243,7 @@ describe('Editor2: Additional coverage tests', () => {
       const editor = new Editor(container, selectionService);
 
       // Clear the initial empty paragraph that Editor creates
-      container.innerHTML = '';
+      safelySetInnerHTML(container, '');
 
       // Create an orphaned list item (not inside a list)
       const listItem = document.createElement('li');
@@ -3237,7 +3267,7 @@ describe('Editor2: Additional coverage tests', () => {
       const editor = new Editor(container, selectionService);
 
       // Create a list with only one item (no previous sibling)
-      container.innerHTML = '<ul><li>Only item</li></ul>';
+      safelySetInnerHTML(container, '<ul><li>Only item</li></ul>');
 
       const listItem = container.querySelector('li')!;
       const range = selectionService.createRange();
