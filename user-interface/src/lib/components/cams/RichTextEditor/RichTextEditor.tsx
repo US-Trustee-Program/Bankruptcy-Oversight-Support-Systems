@@ -3,6 +3,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 're
 import { Editor } from './Editor';
 import { BrowserSelectionService } from './SelectionService.humble';
 import { RichTextButton } from './RichTextButton';
+import editorUtilities from './utilities';
 import { DOMPURIFY_CONFIG } from './editor.constants';
 import DOMPurify from 'dompurify';
 
@@ -58,18 +59,7 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
 
   const getHtml = () => {
     const rawHtml = contentRef.current?.innerHTML || '';
-    const cleanedHtml = Editor.cleanHtml(DOMPurify.sanitize(rawHtml, DOMPURIFY_CONFIG));
-
-    // Return empty string if content is just an empty paragraph
-    if (
-      editorRef.current &&
-      typeof editorRef.current.isEmptyContent === 'function' &&
-      editorRef.current.isEmptyContent()
-    ) {
-      return '';
-    }
-
-    return cleanedHtml;
+    return editorUtilities.cleanHtml(DOMPurify.sanitize(rawHtml, DOMPURIFY_CONFIG));
   };
 
   const setValue = (html: string) => {
@@ -91,11 +81,7 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
       contentRef.current.focus();
 
       // If the editor is empty, position cursor in the empty paragraph
-      if (
-        editorRef.current &&
-        typeof editorRef.current.isEmptyContent === 'function' &&
-        editorRef.current.isEmptyContent()
-      ) {
+      if (editorUtilities.isEmptyContent(contentRef.current)) {
         const p = contentRef.current.querySelector('p');
         if (p?.firstChild) {
           const selection = window.getSelection();
