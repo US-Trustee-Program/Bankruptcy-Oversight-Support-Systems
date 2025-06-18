@@ -22,19 +22,19 @@
     "@eslint/js": "^9.17.0",
     "@faker-js/faker": "^9.8.0",
     "@types/jest": "^29.5.14",
-    "@types/node": "^22.15.31",
+    "@types/node": "^22.15.32",
     "@typescript-eslint/parser": "^8.18.2",
-    "dependency-cruiser": "^16.10.2",
-    "eslint": "^9.28.0",
+    "dependency-cruiser": "^16.10.3",
+    "eslint": "^9.29.0",
     "eslint-config-prettier": "^10.1.5",
-    "eslint-plugin-jest": "^28.13.3",
-    "eslint-plugin-prettier": "^5.4.1",
+    "eslint-plugin-jest": "^28.14.0",
+    "eslint-plugin-prettier": "^5.5.0",
     "jest": "^29.7.0",
     "prettier": "^3.5.3",
-    "ts-jest": "^29.3.4",
+    "ts-jest": "^29.4.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.34.0"
+    "typescript-eslint": "^8.34.1"
   },
   "dependencies": {
     "buffer": "^6.0.3"
