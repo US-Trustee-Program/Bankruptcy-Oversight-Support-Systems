@@ -3,27 +3,8 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 're
 import { Editor } from './Editor';
 import { BrowserSelectionService } from './SelectionService.humble';
 import { RichTextButton } from './RichTextButton';
+import { DOMPURIFY_CONFIG } from './editor.constants';
 import DOMPurify from 'dompurify';
-
-const DOMPURIFY_CONFIG = {
-  ALLOWED_TAGS: ['em', 'strong', 'p', 'ul', 'ol', 'li', 'br', 'span', 'a'],
-  ALLOWED_ATTR: ['href', 'class', 'style'],
-  ALLOW_DATA_ATTR: false,
-  FORBID_TAGS: ['style', 'script', 'iframe', 'object', 'embed', 'form', 'input', 'button'],
-  FORBID_ATTR: [
-    'onerror',
-    'onload',
-    'onclick',
-    'onmouseover',
-    'onmousedown',
-    'onfocus',
-    'onblur',
-    'onkeydown',
-    'onkeypress',
-    'srcset',
-    'src',
-  ],
-};
 
 export interface RichTextEditorRef {
   clearValue: () => void;
