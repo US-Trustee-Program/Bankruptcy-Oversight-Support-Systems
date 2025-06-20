@@ -265,7 +265,12 @@ export class ListService {
     const parentList = targetLi.parentElement;
     const grandparentLi = parentList?.parentElement;
 
-    if (!parentList || !grandparentLi) {
+    if (
+      !parentList ||
+      !grandparentLi ||
+      !['UL', 'LI'].includes(parentList.tagName) ||
+      grandparentLi.tagName !== 'LI'
+    ) {
       return;
     }
     if (!this.root.contains(grandparentLi) || this.root === grandparentLi) {
