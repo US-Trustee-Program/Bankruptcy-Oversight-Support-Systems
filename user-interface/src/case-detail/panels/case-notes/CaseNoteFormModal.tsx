@@ -5,8 +5,7 @@ import { ModalRefType, OpenModalButtonRef } from '@/lib/components/uswds/modal/m
 import Input from '@/lib/components/uswds/Input';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
-import { TextAreaRef } from '@/lib/type-declarations/input-fields';
-import TextArea from '@/lib/components/uswds/TextArea';
+import { InputRef, TextAreaRef } from '@/lib/type-declarations/input-fields';
 import Api2 from '@/lib/models/api2';
 import HttpStatusCodes from '@common/api/http-status-codes';
 import { ResponseBody } from '@common/api/response';
@@ -14,6 +13,9 @@ import { CaseNoteInput } from '@common/cams/cases';
 import { getCamsUserReference } from '@common/cams/session';
 import LocalStorage from '@/lib/utils/local-storage';
 import LocalFormCache from '@/lib/utils/local-form-cache';
+import RichTextEditor, {
+  RichTextEditorRef,
+} from '@/lib/components/cams/RichTextEditor/RichTextEditor';
 
 const useThrottleCallback = (callback: () => void, delay: number) => {
   const isThrottled = useRef(false);
@@ -35,8 +37,12 @@ const useThrottleCallback = (callback: () => void, delay: number) => {
   }, [delay]);
 };
 
-export function getCaseNotesInputValue(ref: TextAreaRef | null) {
+export function getCaseNotesTitleValue(ref: InputRef | null) {
   return ref?.getValue() ?? '';
+}
+
+export function getCaseNotesContentValue(ref: RichTextEditorRef | null) {
+  return ref?.getHtml() ?? '';
 }
 
 export function buildCaseNoteFormKey(caseId: string, mode: CaseNoteFormMode, id: string) {
@@ -103,7 +109,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
 
   const modalRef = useRef<ModalRefType>(null);
   const titleInputRef = useRef<TextAreaRef>(null);
-  const contentInputRef = useRef<TextAreaRef>(null);
+  const contentInputRef = useRef<RichTextEditorRef>(null);
   const notesRequiredFieldsMessage = 'Title and content are both required inputs.';
   const notesSubmissionErrorMessage = 'There was a problem submitting the case note.';
   const session = LocalStorage.getSession();
@@ -119,9 +125,9 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     setTimeout(() => {
       const notSavable =
         titleInputRef.current?.getValue() === '' ||
-        contentInputRef.current?.getValue() === '' ||
+        contentInputRef.current?.getHtml() === '' ||
         (initialTitle === titleInputRef.current?.getValue() &&
-          initialContent === contentInputRef.current?.getValue());
+          initialContent === contentInputRef.current?.getHtml());
 
       disableSubmitButton(notSavable);
     }, 10);
@@ -140,15 +146,15 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     saveFormData({
       caseId: modalOpenOptions.caseId,
       title: event?.target.value,
-      content: getCaseNotesInputValue(contentInputRef.current),
+      content: getCaseNotesContentValue(contentInputRef.current),
     });
   }
 
-  function handleContentChange(event: React.ChangeEvent<HTMLTextAreaElement>) {
+  function handleContentChange(value: string) {
     saveFormData({
       caseId: modalOpenOptions.caseId,
-      title: getCaseNotesInputValue(titleInputRef.current),
-      content: event.target.value,
+      title: getCaseNotesTitleValue(titleInputRef.current),
+      content: value,
     });
   }
 
@@ -226,8 +232,8 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   }
 
   const sendCaseNoteToApi = useThrottleCallback(async () => {
-    const title = getCaseNotesInputValue(titleInputRef.current);
-    const content = getCaseNotesInputValue(contentInputRef.current);
+    const title = getCaseNotesTitleValue(titleInputRef.current);
+    const content = getCaseNotesContentValue(contentInputRef.current);
 
     if (mode === 'create' && session?.user) {
       const caseNoteInput: CaseNoteInput = {
@@ -346,8 +352,8 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
             autoComplete="off"
             ref={titleInputRef}
           />
-          <TextArea
-            id="note-content"
+          <RichTextEditor
+            id="case-note-formatted-editor"
             label="Note Text"
             required={true}
             onChange={handleContentChange}

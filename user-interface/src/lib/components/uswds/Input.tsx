@@ -21,7 +21,7 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
   const [inputValue, setInputValue] = useState<string>(props.value || '');
   const [inputDisabled, setInputDisabled] = useState<boolean>(props.disabled ?? false);
 
-  const { includeClearButton, ariaDescription, errorMessage, ...otherProps } = props;
+  const { includeClearButton, ariaDescription, errorMessage, required, ...otherProps } = props;
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -89,7 +89,6 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
       <div className="usa-form-group">
         <label className="usa-label" id={props.id + '-label'} htmlFor={props.id}>
           {props.label}
-          {props.required && <span className="required-form-field" />}
         </label>
         {ariaDescription && (
           <div className="usa-hint" id={ariaDescribedBy()}>
@@ -101,6 +100,7 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
         >
           <input
             {...otherProps}
+            required={required}
             className={`usa-input usa-tooltip ${props.className ?? ''}`}
             aria-invalid={errorMessage ? 'true' : undefined}
             aria-errormessage={errorMessage ? `${props.id}-input__error-message` : undefined}
