@@ -1,5 +1,5 @@
-import { CONTENT_INPUT_SELECTOR, DOMPURIFY_CONFIG } from './editor.constants';
-import DOMPurify from 'dompurify';
+import { CONTENT_INPUT_SELECTOR } from './editor.constants';
+import { safelyGetHtml, safelySetHtml } from '@/lib/components/cams/RichTextEditor/utilities';
 
 export const getEditorContent = (): HTMLElement => {
   const content = document.querySelector<HTMLElement>(CONTENT_INPUT_SELECTOR);
@@ -16,11 +16,11 @@ export const expectEditorContent = (): HTMLElement => {
 };
 
 export const safelySetTestHtml = (element: HTMLElement, html: string): void => {
-  element.innerHTML = DOMPurify.sanitize(html, DOMPURIFY_CONFIG);
+  safelySetHtml(element, html);
 };
 
 export const safelyGetTestHtml = (element: HTMLElement): string => {
-  return DOMPurify.sanitize(element.innerHTML, DOMPURIFY_CONFIG);
+  return safelyGetHtml(element);
 };
 
 export const createTestEvent = <T extends keyof WindowEventMap>(

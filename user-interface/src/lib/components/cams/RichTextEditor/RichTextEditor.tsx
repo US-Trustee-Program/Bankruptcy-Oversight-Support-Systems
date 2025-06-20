@@ -3,9 +3,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 're
 import { Editor } from './Editor';
 import { BrowserSelectionService } from './SelectionService.humble';
 import { RichTextButton } from './RichTextButton';
-import editorUtilities from './utilities';
-import { DOMPURIFY_CONFIG } from './editor.constants';
-import DOMPurify from 'dompurify';
+import editorUtilities, { safelyGetHtml, safelySetHtml } from './utilities';
 
 export interface RichTextEditorRef {
   clearValue: () => void;
@@ -58,8 +56,7 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
   const getValue = () => contentRef.current?.innerText || '';
 
   const getHtml = () => {
-    const rawHtml = contentRef.current?.innerHTML || '';
-    return editorUtilities.cleanHtml(DOMPurify.sanitize(rawHtml, DOMPURIFY_CONFIG));
+    return editorUtilities.cleanHtml(safelyGetHtml(contentRef.current));
   };
 
   const setValue = (html: string) => {
@@ -71,7 +68,7 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
           editorRef.current = new Editor(contentRef.current, selectionService);
         }
       } else {
-        contentRef.current.innerHTML = DOMPurify.sanitize(html, DOMPURIFY_CONFIG);
+        safelySetHtml(contentRef.current, html);
       }
     }
   };
