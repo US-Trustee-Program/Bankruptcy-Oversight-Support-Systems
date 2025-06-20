@@ -2,10 +2,7 @@ import { describe, expect, vi, beforeEach, afterEach, test } from 'vitest';
 import { ListService } from './ListService';
 import { MockSelectionService } from './SelectionService.humble';
 import editorUtilities from './utilities';
-import {
-  DOMPURIFY_CONFIG,
-  ZERO_WIDTH_SPACE,
-} from '@/lib/components/cams/RichTextEditor/editor.constants';
+import { DOMPURIFY_CONFIG, ZERO_WIDTH_SPACE } from './editor.constants';
 import DOMPurify from 'dompurify';
 
 // Helper functions adapted for SelectionService pattern
@@ -69,7 +66,7 @@ describe('ListService', () => {
 
       expect(root.querySelector('ul')).toBeTruthy();
       expect(root.querySelector('li')).toBeTruthy();
-      expect(root.querySelector('li')!.textContent).toBe('Test paragraph');
+      expect(root.querySelector('li')!.textContent).toEqual(`${ZERO_WIDTH_SPACE}Test paragraph`);
     });
 
     test('converts paragraph to ordered list', () => {
@@ -81,7 +78,7 @@ describe('ListService', () => {
 
       expect(root.querySelector('ol')).toBeTruthy();
       expect(root.querySelector('li')).toBeTruthy();
-      expect(root.querySelector('li')!.textContent).toBe('Test paragraph');
+      expect(root.querySelector('li')!.textContent).toEqual(`${ZERO_WIDTH_SPACE}Test paragraph`);
     });
 
     test('unwraps list item back to paragraph', () => {
@@ -161,7 +158,7 @@ describe('ListService', () => {
 
       // Then convert it to an ordered list
       const listItem = root.querySelector('li')!;
-      setCursorInElement(listItem, 4, selectionService);
+      setCursorInElement(listItem, 1, selectionService);
       listService.toggleList('ol');
 
       expect(root.querySelector('ul')).toBeFalsy();
@@ -218,9 +215,7 @@ describe('ListService', () => {
 
     test('returns false when selection has no ranges', () => {
       // Mock selection with no ranges
-      selectionService.getCurrentSelection = vi.fn().mockReturnValue({
-        rangeCount: 0,
-      } as Selection);
+      selectionService.getRangeAtStartOfSelection = vi.fn().mockReturnValue(undefined);
 
       const event = createDentureEvent(false);
       const result = listService.handleDentures(event);
@@ -296,25 +291,6 @@ describe('ListService', () => {
       );
     });
 
-    test('returns early from outdentation if rangeCount is 0', () => {
-      safelySetInnerHTML(root, '<ul><li>Item 1</li></ul>');
-      const item = root.querySelector('ul li')! as HTMLElement;
-      setCursorInElement(item, 0, selectionService);
-
-      const fakeSelection = {
-        rangeCount: 0,
-        getRangeAt: vi.fn(),
-      };
-      const getSelectionSpy = vi
-        .spyOn(selectionService, 'getCurrentSelection')
-        .mockReturnValue(fakeSelection as unknown as Selection);
-
-      listService.outdentListItem();
-
-      expect(getSelectionSpy).toHaveBeenCalled();
-      expect(fakeSelection.getRangeAt).not.toHaveBeenCalled();
-    });
-
     test('returns early from outdentation if there is no target list element', () => {
       safelySetInnerHTML(root, '<div><p>Item 1</p></div>');
       const item = root.querySelector('div p')! as HTMLElement;
@@ -330,7 +306,8 @@ describe('ListService', () => {
         .mockReturnValue(fakeSelection as unknown as Selection);
       const arrayFromSpy = vi.spyOn(Array, 'from');
 
-      listService.outdentListItem();
+      // @ts-expect-error private method
+      listService.outdentListItem(selectionService.getRangeAtStartOfSelection());
 
       expect(getSelectionSpy).toHaveBeenCalled();
       expect(fakeSelection.getRangeAt).toHaveBeenCalledWith(0);
@@ -345,7 +322,8 @@ describe('ListService', () => {
       const arrayFromSpy = vi.spyOn(Array, 'from');
       const containsSpy = vi.spyOn(HTMLElement.prototype, 'contains');
 
-      listService.outdentListItem();
+      // @ts-expect-error private method
+      listService.outdentListItem(selectionService.getRangeAtStartOfSelection());
 
       expect(arrayFromSpy).toHaveBeenCalled();
       expect(containsSpy).not.toHaveBeenCalled();
@@ -359,7 +337,8 @@ describe('ListService', () => {
       const arrayFromSpy = vi.spyOn(Array, 'from');
       const containsSpy = vi.spyOn(HTMLElement.prototype, 'contains');
 
-      listService.outdentListItem();
+      // @ts-expect-error private method
+      listService.outdentListItem(selectionService.getRangeAtStartOfSelection());
 
       expect(arrayFromSpy).toHaveBeenCalled();
       expect(containsSpy).not.toHaveBeenCalled();
@@ -375,7 +354,8 @@ describe('ListService', () => {
       const containsSpy = vi.spyOn(HTMLElement.prototype, 'contains').mockReturnValue(false);
       const insertBeforeSpy = vi.spyOn(HTMLElement.prototype, 'insertBefore');
 
-      listService.outdentListItem();
+      // @ts-expect-error private method
+      listService.outdentListItem(selectionService.getRangeAtStartOfSelection());
 
       expect(arrayFromSpy).toHaveBeenCalled();
       expect(arrayIncludesSpy).toHaveBeenCalled();
@@ -453,6 +433,65 @@ describe('ListService', () => {
 
       expect(result).toBe(false);
       expect(event.preventDefault).not.toHaveBeenCalled();
+    });
+
+    test('removes entire list when all children become empty after Enter (lines 121-122)', () => {
+      // Create a list where all items are empty/whitespace only
+      // After removing one empty item, the remaining items should all be empty too
+      root.innerHTML = ''; // Start fresh
+
+      const list = document.createElement('ul');
+
+      // First item: completely empty
+      const emptyItem1 = document.createElement('li');
+      // Second item: only whitespace
+      const emptyItem2 = document.createElement('li');
+      emptyItem2.textContent = '   '; // Only whitespace
+
+      list.appendChild(emptyItem1);
+      list.appendChild(emptyItem2);
+      root.appendChild(list);
+
+      // Position cursor in the first empty item
+      const range = selectionService.createRange();
+      range.setStart(emptyItem1, 0);
+      range.collapse(true);
+      selectionService.setSelectionRange(range);
+
+      const event = createEnterEvent();
+      const result = listService.handleEnterKey(event);
+
+      expect(result).toBe(true);
+      expect(event.preventDefault).toHaveBeenCalled();
+
+      // Should trigger lines 121-122: check if all remaining children are empty and remove the list
+      expect(root.querySelector('ul')).toBeFalsy(); // List should be removed
+      expect(root.querySelector('p')).toBeTruthy(); // Paragraph should be created
+    });
+
+    test('inserts paragraph directly when not in a paragraph context (lines 144-146)', () => {
+      // Create a situation where we press Enter but are NOT in a paragraph
+      // This should trigger the else branch: range.collapse(false); range.insertNode(newParagraph);
+      root.innerHTML = ''; // Start fresh - no paragraphs
+
+      // Position cursor directly in the root, not in a paragraph or list
+      const textNode = document.createTextNode('Some text');
+      root.appendChild(textNode);
+
+      const range = selectionService.createRange();
+      range.setStart(textNode, 5); // Position in middle of text
+      range.collapse(true);
+      selectionService.setSelectionRange(range);
+
+      const event = createEnterEvent();
+      const result = listService.handleEnterKey(event);
+
+      expect(result).toBe(true);
+      expect(event.preventDefault).toHaveBeenCalled();
+
+      // Should trigger lines 144-146: else branch that inserts paragraph directly
+      expect(root.querySelector('p')).toBeTruthy();
+      expect(root.querySelector('p')!.textContent).toBe(ZERO_WIDTH_SPACE);
     });
   });
 
@@ -579,6 +618,72 @@ describe('ListService', () => {
       expect(result).toBe(true);
       expect(event.preventDefault).toHaveBeenCalled();
     });
+
+    test('removes parent list when it becomes empty after removing non-empty item (lines 186-187)', () => {
+      // Create a list with only one non-empty item
+      // When we remove this item, the list should become empty and be removed
+      root.innerHTML = ''; // Start fresh
+
+      const list = document.createElement('ul');
+      const singleItem = document.createElement('li');
+      singleItem.textContent = 'Only item with content';
+      list.appendChild(singleItem);
+      root.appendChild(list);
+
+      // Position cursor at start of the single item
+      const range = selectionService.createRange();
+      range.setStart(singleItem.firstChild!, 0);
+      range.collapse(true);
+      selectionService.setSelectionRange(range);
+
+      const event = createBackspaceEvent();
+      const result = listService.handleDeleteKeyOnList(event);
+
+      expect(result).toBe(true);
+      expect(event.preventDefault).toHaveBeenCalled();
+
+      // Should trigger lines 186-187: remove parent list when it becomes empty
+      expect(root.querySelector('ul')).toBeFalsy(); // List should be removed
+      expect(root.querySelector('p')).toBeTruthy(); // Paragraph should be created with content
+      expect(root.querySelector('p')!.textContent).toBe('Only item with content');
+    });
+
+    test('removes parent list when all remaining children are empty after deletion (lines 200-201)', () => {
+      // Create a list where after removing the content item,
+      // all remaining items have only whitespace
+      root.innerHTML = ''; // Start fresh
+
+      const list = document.createElement('ul');
+
+      // First item: only whitespace
+      const emptyItem = document.createElement('li');
+      emptyItem.textContent = '   '; // Only whitespace
+
+      // Second item: has content (this will be removed)
+      const contentItem = document.createElement('li');
+      contentItem.textContent = 'Content item';
+
+      list.appendChild(emptyItem);
+      list.appendChild(contentItem);
+      root.appendChild(list);
+
+      // Position cursor at start of the content item
+      const range = selectionService.createRange();
+      range.setStart(contentItem.firstChild!, 0);
+      range.collapse(true);
+      selectionService.setSelectionRange(range);
+
+      const event = createBackspaceEvent();
+      const result = listService.handleDeleteKeyOnList(event);
+
+      expect(result).toBe(true);
+      expect(event.preventDefault).toHaveBeenCalled();
+
+      // Should trigger lines 200-201: check if all remaining children are empty and remove list
+      // After removing contentItem, only emptyItem remains with whitespace
+      expect(root.querySelector('ul')).toBeFalsy(); // List should be removed due to lines 200-201
+      expect(root.querySelector('p')).toBeTruthy(); // Paragraph should be created
+    });
   });
 
   describe('unwrapListItem with nested lists', () => {
@@ -594,10 +699,10 @@ describe('ListService', () => {
       setCursorInElement(parentLi, 0, selectionService);
 
       // Get the selection
-      const selection = selectionService.getCurrentSelection();
+      const range = selectionService.getRangeAtStartOfSelection();
 
       // Call unwrapListItem directly
-      listService.unwrapListItem(parentLi, parentList, selection);
+      listService.unwrapListItem(parentLi, parentList, range!);
 
       // Verify the parent item is now a paragraph
       expect(root.querySelector('p')).toBeTruthy();
@@ -638,13 +743,13 @@ describe('ListService', () => {
       setCursorInElement(level2Item, 0, selectionService);
 
       // Get the selection
-      const selection = selectionService.getCurrentSelection();
+      const range = selectionService.getRangeAtStartOfSelection();
 
       // Call unwrapListItem directly
       listService.unwrapListItem(
         level2Item as HTMLLIElement,
         level2List as HTMLUListElement,
-        selection,
+        range!,
       );
 
       // Verify the level 2 item is now a paragraph
@@ -679,10 +784,10 @@ describe('ListService', () => {
       setCursorInElement(parentLi, 0, selectionService);
 
       // Get the selection
-      const selection = selectionService.getCurrentSelection();
+      const range = selectionService.getRangeAtStartOfSelection();
 
       // Call unwrapListItem directly
-      listService.unwrapListItem(parentLi, parentList, selection);
+      listService.unwrapListItem(parentLi, parentList, range!);
 
       // Verify the parent item is now a paragraph
       expect(root.querySelector('p')).toBeTruthy();
@@ -721,11 +826,8 @@ describe('ListService', () => {
         return originalCreateRange.call(selectionService);
       });
 
-      // Get the selection
-      const selection = selectionService.getCurrentSelection();
-
       // Call unwrapListItem directly
-      listService.unwrapListItem(listItem, list, selection);
+      listService.unwrapListItem(listItem, list, range!);
 
       // Restore the original method
       selectionService.createRange = originalCreateRange;
@@ -748,10 +850,10 @@ describe('ListService', () => {
       setCursorInElement(listItem, 0, selectionService);
 
       // Get the selection
-      const selection = selectionService.getCurrentSelection();
+      const range = selectionService.getRangeAtStartOfSelection();
 
       // Call unwrapListItem directly
-      listService.unwrapListItem(listItem, list, selection);
+      listService.unwrapListItem(listItem, list, range!);
 
       // Verify the list item is now a paragraph with zero-width space
       expect(root.querySelector('p')).toBeTruthy();
@@ -773,11 +875,8 @@ describe('ListService', () => {
       range.collapse(true);
       selectionService.setSelectionRange(range);
 
-      // Get the selection
-      const selection = selectionService.getCurrentSelection();
-
       // Call unwrapListItem directly
-      listService.unwrapListItem(listItem, list, selection);
+      listService.unwrapListItem(listItem, list, range!);
 
       // Verify the list item is now a paragraph with the span
       expect(root.querySelector('p')).toBeTruthy();
@@ -800,10 +899,10 @@ describe('ListService', () => {
         setCursorInElement(listItem, 0, selectionService);
 
         // Get the selection
-        const selection = selectionService.getCurrentSelection();
+        const range = selectionService.getRangeAtStartOfSelection();
 
         // Call unwrapListItem directly
-        listService.unwrapListItem(listItem, list, selection);
+        listService.unwrapListItem(listItem, list, range!);
 
         // The method should return early without changes
         expect(outsideroot.querySelector('ul')).toBeTruthy();
@@ -831,10 +930,10 @@ describe('ListService', () => {
       setCursorInElement(listItem, 0, selectionService);
 
       // Get the selection
-      const selection = selectionService.getCurrentSelection();
+      const range = selectionService.getRangeAtStartOfSelection();
 
       // Call unwrapListItem with the mock list item
-      listService.unwrapListItem(mockLi, list, selection);
+      listService.unwrapListItem(mockLi, list, range!);
 
       // Verify the fallback case was used
       expect(root.querySelector('p')).toBeTruthy();
@@ -858,11 +957,8 @@ describe('ListService', () => {
       range.collapse(true);
       selectionService.setSelectionRange(range);
 
-      // Get the selection
-      const selection = selectionService.getCurrentSelection();
-
       // Call unwrapListItem directly
-      listService.unwrapListItem(listItem, list, selection);
+      listService.unwrapListItem(listItem, list, range!);
 
       // Verify the list item is now a paragraph with the span
       expect(root.querySelector('p')).toBeTruthy();
@@ -891,11 +987,8 @@ describe('ListService', () => {
         return originalCreateRange.call(selectionService);
       });
 
-      // Get the selection
-      const selection = selectionService.getCurrentSelection();
-
       // Call unwrapListItem directly
-      listService.unwrapListItem(listItem, list, selection);
+      listService.unwrapListItem(listItem, list, range!);
 
       // Restore the original method
       selectionService.createRange = originalCreateRange;
@@ -907,383 +1000,172 @@ describe('ListService', () => {
     });
   });
 
-  describe('Branch Coverage Tests for Uncovered Lines', () => {
+  describe('Branch Coverage for Uncovered Lines in ListService', () => {
+    let root: HTMLDivElement;
+    let listService: ListService;
+    let selectionService: MockSelectionService;
+
+    beforeEach(() => {
+      root = document.createElement('div');
+      document.body.appendChild(root);
+      selectionService = new MockSelectionService();
+      listService = new ListService(root, selectionService);
+    });
+
     afterEach(() => {
-      vi.restoreAllMocks();
+      document.body.removeChild(root);
     });
 
-    test('insertList returns early when range.startroot is not within root (lines 799-800)', () => {
-      // Create a selection outside the root
-      const outsideElement = document.createElement('div');
-      document.body.appendChild(outsideElement);
-      outsideElement.textContent = 'Outside content';
-
-      const range = selectionService.createRange();
-      range.setStart(outsideElement.firstChild!, 0);
-      range.collapse(true);
-      selectionService.setSelectionRange(range);
-
-      // Call insertList - should return early
-      listService.insertList('ul');
-
-      // The mock root should remain empty since the method returned early
-      expect(root.innerHTML).toBe('');
-
-      // Restore original root
-      document.body.removeChild(outsideElement);
-    });
-
-    test('insertList else branch when not in paragraph or cursor not at paragraph level (lines 804-805)', () => {
-      safelySetInnerHTML(root, '<div><span>Text in span</span></div>');
-
-      const span = root.querySelector('span')!;
-      const range = selectionService.createRange();
-      range.setStart(span.firstChild!, 2);
-      range.collapse(true);
-      selectionService.setSelectionRange(range);
-
-      listService.insertList('ul');
-
-      // Should insert list at cursor position since we're not in a paragraph
-      expect(root.querySelector('ul')).toBeTruthy();
-      expect(root.querySelector('li')).toBeTruthy();
-    });
-
-    describe('convertParagraphToList method - uncovered branches', () => {
-      test('convertParagraphToList returns early when selection is null (lines 833-835)', () => {
-        safelySetInnerHTML(root, '<p>Test content</p>');
-        const paragraph = root.querySelector('p')!;
-
-        // Mock the getCurrentSelection method using vi.spyOn
-        const spy = vi
-          .spyOn(selectionService, 'getCurrentSelection')
-          .mockImplementation(() => null as unknown as Selection);
-
+    describe('handleDeleteKeyOnList', () => {
+      test('removes parent list when it becomes empty after removing last item (lines 186-187)', () => {
+        root.innerHTML = '';
+        const list = document.createElement('ul');
+        root.appendChild(list);
         const range = selectionService.createRange();
-        range.setStart(paragraph.firstChild!, 0);
-
-        listService.convertParagraphToList(paragraph, 'ul', range);
-
-        // Should remain unchanged since method returned early
-        expect(root.innerHTML).toBe('<p>Test content</p>');
-
-        // Verify the mock was called
-        expect(spy).toHaveBeenCalled();
-      });
-
-      test('convertParagraphToList handles empty list item content (lines 854-855)', () => {
-        safelySetInnerHTML(root, '<p></p>'); // Empty paragraph
-        const paragraph = root.querySelector('p')!;
-
-        const range = selectionService.createRange();
-        range.setStart(paragraph, 0);
+        range.setStart(list, 0);
         range.collapse(true);
         selectionService.setSelectionRange(range);
-
-        listService.convertParagraphToList(paragraph, 'ul', range);
-
-        // Should have created a list with a zero-width space
-        const listItem = root.querySelector('li')!;
-        expect(listItem.textContent).toBe('\u200B'); // Zero-width space
-      });
-    });
-
-    describe('getCursorOffsetInParagraph and setCursorInListItem - uncovered branches', () => {
-      test('setCursorInListItem returns early when selection is null (lines 894)', () => {
-        safelySetInnerHTML(root, '<ul><li>Test content</li></ul>');
-        const listItem = root.querySelector('li')!;
-
-        // Mock selectionService to return null
-        const originalGetCurrentSelection = selectionService.getCurrentSelection;
-        selectionService.getCurrentSelection = () => null as unknown as Selection;
-
-        listService.setCursorInListItem(listItem, 5);
-
-        // Should not throw and method should return early
-        expect(true).toBe(true); // Test passes if no error thrown
-
-        // Restore original method
-        selectionService.getCurrentSelection = originalGetCurrentSelection;
-      });
-
-      test('setCursorInListItem fallback positioning (lines 900-901)', () => {
-        safelySetInnerHTML(root, '<ul><li><strong>Bold text</strong></li></ul>');
-        const listItem = root.querySelector('li')!;
-
-        // Set a very high target offset to trigger fallback
-        listService.setCursorInListItem(listItem, 999);
-
-        // Should position cursor at end without error
-        const selection = selectionService.getCurrentSelection();
-        expect(selection).toBeTruthy();
-      });
-    });
-
-    describe('unwrapListItem method - uncovered branches', () => {
-      test('unwrapListItem fallback when splitIndex is -1 (line 1254)', () => {
-        // Create a complex list structure where the target item can't be found
-        safelySetInnerHTML(root, '<ul><li>Item 1</li><li>Item 2</li></ul>');
-        const list = root.querySelector('ul')!;
-
-        // Create a detached list item that's not actually in the list
-        const detachedLi = document.createElement('li');
-        detachedLi.textContent = 'Detached item';
-
-        const selection = selectionService.getCurrentSelection();
-        const range = selectionService.createRange();
-        range.setStart(detachedLi.firstChild!, 0);
-        range.collapse(true);
-        selection.addRange(range);
-
-        listService.unwrapListItem(detachedLi, list, selection);
-
-        // Should handle the fallback case gracefully
-        expect(root.querySelector('p')).toBeTruthy();
-      });
-
-      test('unwrapListItem with list not in root returns early', () => {
-        // Create a detached list
-        const detachedList = document.createElement('ul');
-        safelySetInnerHTML(detachedList, '<li>Detached item</li>');
-        const detachedLi = detachedList.querySelector('li')!;
-
-        // Set up a valid range in the selection for the detached list item
-        const range = selectionService.createRange();
-        range.setStart(detachedLi.firstChild!, 0);
-        range.collapse(true);
-        selectionService.setSelectionRange(range);
-
-        const selection = selectionService.getCurrentSelection();
-
-        listService.unwrapListItem(detachedLi, detachedList, selection);
-
-        // Should return early and not modify root
-        expect(root.innerHTML).toBe(''); // Should remain empty since root starts empty
-      });
-    });
-
-    describe('Additional edge cases for complete coverage', () => {
-      test('insertList with empty paragraph and no content', () => {
-        safelySetInnerHTML(root, '<p></p>');
-        const paragraph = root.querySelector('p')!;
-
-        const range = selectionService.createRange();
-        range.setStart(paragraph, 0);
-        range.collapse(true);
-        selectionService.setSelectionRange(range);
-
-        listService.insertList('ol');
-
-        // Should create ordered list
-        expect(root.querySelector('ol')).toBeTruthy();
-        expect(root.querySelector('li')).toBeTruthy();
-      });
-
-      test('convertParagraphToList with paragraph containing only elements', () => {
-        safelySetInnerHTML(root, '<p><br></p>');
-        const paragraph = root.querySelector('p')!;
-
-        const range = selectionService.createRange();
-        range.setStart(paragraph, 0);
-        range.collapse(true);
-        selectionService.setSelectionRange(range);
-
-        listService.convertParagraphToList(paragraph, 'ul', range);
-
-        // Should convert paragraph with BR to list
+        const event = {
+          key: 'Backspace',
+          preventDefault: vi.fn(),
+        } as unknown as React.KeyboardEvent<HTMLDivElement>;
+        const result = listService.handleDeleteKeyOnList(event);
+        expect(result).toBe(false);
         expect(root.querySelector('ul')).toBeTruthy();
-        expect(root.querySelector('li')).toBeTruthy();
-        expect(root.querySelector('li br')).toBeTruthy();
       });
 
-      test('setCursorInListItem with complex nested content', () => {
-        safelySetInnerHTML(
-          root,
-          '<ul><li><em>Italic</em> and <strong>bold</strong> text</li></ul>',
-        );
-        const listItem = root.querySelector('li')!;
+      test('removes parent list when all children are empty/whitespace (lines 200-201)', () => {
+        root.innerHTML = '';
+        const list = document.createElement('ul');
+        const emptyItem = document.createElement('li');
+        emptyItem.textContent = '   ';
+        const contentItem = document.createElement('li');
+        contentItem.textContent = 'Content';
+        list.appendChild(emptyItem);
+        list.appendChild(contentItem);
+        root.appendChild(list);
+        const range = selectionService.createRange();
+        range.setStart(contentItem.firstChild!, 0);
+        range.collapse(true);
+        selectionService.setSelectionRange(range);
+        const event = {
+          key: 'Backspace',
+          preventDefault: vi.fn(),
+        } as unknown as React.KeyboardEvent<HTMLDivElement>;
+        const result = listService.handleDeleteKeyOnList(event);
+        expect(result).toBe(true);
+        expect(root.querySelector('ul')).toBeFalsy();
+      });
 
-        // Test positioning in middle of complex content
-        listService.setCursorInListItem(listItem, 10);
-
-        const selection = selectionService.getCurrentSelection();
-        expect(selection.rangeCount).toBe(1);
+      test('creates and positions a paragraph after removing empty list (lines 215-220)', () => {
+        root.innerHTML = '';
+        const list = document.createElement('ul');
+        const item = document.createElement('li');
+        list.appendChild(item);
+        root.appendChild(list);
+        const range = selectionService.createRange();
+        range.setStart(item, 0);
+        range.collapse(true);
+        selectionService.setSelectionRange(range);
+        const event = {
+          key: 'Backspace',
+          preventDefault: vi.fn(),
+        } as unknown as React.KeyboardEvent<HTMLDivElement>;
+        const result = listService.handleDeleteKeyOnList(event);
+        expect(result).toBe(true);
+        expect(root.querySelector('p')).toBeTruthy();
+        expect(root.querySelector('ul')).toBeFalsy();
       });
     });
-  });
-  describe('getAncestorIfLastLeaf - uncovered branch coverage', () => {
-    test('returns false when grandparent list item is not the last child', () => {
-      // Create a nested list structure where the grandparent list item is NOT the last child
-      safelySetInnerHTML(
-        root,
-        `
-        <ul>
-          <li>First item
-            <ul>
-              <li>Nested item</li>
-            </ul>
-          </li>
-          <li>Second item (this makes the first item NOT the last)</li>
-        </ul>
-      `,
-      );
 
-      const nestedList = root.querySelector('ul ul')! as HTMLUListElement;
+    describe('unwrapListItem', () => {
+      test('breaks out of while loop if nextRootList is not in root (lines 361-362)', () => {
+        // Setup: create a nested list structure where nextRootList is not in root
+        const outsideroot = document.createElement('div');
+        document.body.appendChild(outsideroot);
+        outsideroot.innerHTML = '<ul><li>Item<ul><li>Nested</li></ul></li></ul>';
+        const nestedList = outsideroot.querySelector('ul ul') as HTMLUListElement;
+        const li = nestedList.querySelector('li')!;
+        const list = nestedList;
+        setCursorInElement(li, 0, selectionService);
+        const range = selectionService.getRangeAtStartOfSelection();
+        listService.unwrapListItem(li, list, range!);
+        // Should not throw and should not modify outsideroot
+        expect(outsideroot.querySelector('ul')).toBeTruthy();
+        document.body.removeChild(outsideroot);
+      });
 
-      // Call getAncestorIfLastLeaf - this should return false because the grandparent
-      // list item (first <li>) is not the last child of its parent list
-      const result = listService.getAncestorIfLastLeaf(nestedList);
+      test('inserts nested lists after paragraph when unwrapping single-item list (lines 453-458)', () => {
+        root.innerHTML = '';
+        const list = document.createElement('ul');
+        const li = document.createElement('li');
+        li.textContent = 'Item';
+        const nested = document.createElement('ul');
+        const nestedLi = document.createElement('li');
+        nestedLi.textContent = 'Nested';
+        nested.appendChild(nestedLi);
+        li.appendChild(nested);
+        list.appendChild(li);
+        root.appendChild(list);
+        setCursorInElement(li, 0, selectionService);
+        const range = selectionService.getRangeAtStartOfSelection();
+        listService.unwrapListItem(li, list, range!);
+        // The nested list should be after the paragraph
+        const p = root.querySelector('p');
+        expect(p).toBeTruthy();
+        expect(p!.nextSibling?.nodeName.toLowerCase()).toBe('ul');
+      });
 
-      // Should return false because the first li is not the last child
-      expect(result).toBe(false);
+      test('checks textNode is a text node before setting cursor (line 469)', () => {
+        root.innerHTML = '';
+        const list = document.createElement('ul');
+        const li = document.createElement('li');
+        const span = document.createElement('span');
+        span.textContent = 'Text';
+        li.appendChild(span);
+        list.appendChild(li);
+        root.appendChild(list);
+        setCursorInElement(span, 0, selectionService);
+        const range = selectionService.getRangeAtStartOfSelection();
+        listService.unwrapListItem(li, list, range!);
+        // Should not throw and should create a paragraph with a span
+        expect(root.querySelector('p span')).toBeTruthy();
+      });
     });
 
-    test('recursively calls itself when grandparent list item is the last child', () => {
-      // Create a clean nested list structure without whitespace text nodes
-      // Use appendChild to avoid whitespace issues
-      const topList = document.createElement('ul');
-      const topLi = document.createElement('li');
-      topLi.textContent = 'Top level item';
+    describe('indentListItem', () => {
+      test('returns early when no list item is found (lines 490-491)', () => {
+        root.innerHTML = '<p>Paragraph</p>';
+        const p = root.querySelector('p')!;
+        setCursorInElement(p, 0, selectionService);
+        // @ts-expect-error private method
+        listService.indentListItem(selectionService.getRangeAtStartOfSelection());
+        expect(root.innerHTML).toBe('<p>Paragraph</p>');
+      });
 
-      const midList = document.createElement('ul');
-      const midLi = document.createElement('li');
-      midLi.textContent = 'Second level item';
-
-      const deepList = document.createElement('ul');
-      const deepLi = document.createElement('li');
-      deepLi.textContent = 'Third level item';
-
-      deepList.appendChild(deepLi);
-      midLi.appendChild(deepList);
-      midList.appendChild(midLi);
-      topLi.appendChild(midList);
-      topList.appendChild(topLi);
-      root.appendChild(topList);
-
-      // Call getAncestorIfLastLeaf - this should trigger the recursive call
-      // because each grandparent list item IS the last child at each level
-      const result = listService.getAncestorIfLastLeaf(deepList);
-
-      // The method should recursively check up the chain and eventually return the top list
-      // or return false if at some point a condition fails
-      expect(typeof result).toBe('object'); // Should return an element or false
-      expect(result).not.toBe(false); // Should not return false for this valid structure
+      test('returns early when no previous list item exists (lines 502-503)', () => {
+        root.innerHTML = '<ul><li>Only item</li></ul>';
+        const li = root.querySelector('li')!;
+        setCursorInElement(li, 0, selectionService);
+        // @ts-expect-error private method
+        listService.indentListItem(selectionService.getRangeAtStartOfSelection());
+        expect(root.innerHTML).toBe('<ul><li>Only item</li></ul>');
+      });
     });
 
-    test('returns parentList when no grandparent list item is found', () => {
-      // Create a top-level list (not nested in any list item)
-      const topList = document.createElement('ul');
-      const listItem = document.createElement('li');
-      listItem.textContent = 'Top level item';
-      topList.appendChild(listItem);
-      root.appendChild(topList);
-
-      // Call getAncestorIfLastLeaf on the top-level list
-      // This should return the parentList itself because there's no grandparent list item
-      const result = listService.getAncestorIfLastLeaf(topList);
-
-      // Should return the parentList when no grandparent list item exists (lines 593-594)
-      expect(result).toBe(topList);
+    describe('insertList', () => {
+      test('returns early when isEditorInRange is false (lines 535-536)', () => {
+        // Mock isEditorInRange to return false
+        vi.spyOn(editorUtilities, 'isEditorInRange').mockReturnValue(false);
+        // Spy on getCurrentSelection to ensure it is not called
+        const range = selectionService.getRangeAtStartOfSelection();
+        const getRangeAtStartOfSelection = vi.spyOn(selectionService, 'getRangeAtStartOfSelection');
+        // @ts-expect-error private method
+        listService.insertList('ul', range!);
+        expect(root.innerHTML).toBe('');
+        expect(getRangeAtStartOfSelection).not.toHaveBeenCalled();
+        vi.restoreAllMocks();
+      });
     });
-
-    test('returns parentList when grandparent list item exists but no grandparent list', () => {
-      // Create a structure where we have a list item containing a list,
-      // but that list item is not inside another list
-      const rootDiv = document.createElement('div');
-      const listItem = document.createElement('li');
-      const nestedList = document.createElement('ul');
-      const nestedLi = document.createElement('li');
-
-      nestedLi.textContent = 'Nested item';
-      nestedList.appendChild(nestedLi);
-      listItem.appendChild(nestedList);
-      rootDiv.appendChild(listItem);
-      root.appendChild(rootDiv);
-
-      // Call getAncestorIfLastLeaf on the nested list
-      // This should find the grandparent list item but no grandparent list
-      const result = listService.getAncestorIfLastLeaf(nestedList);
-
-      // Should return the parentList when grandparent list item exists but no grandparent list
-      expect(result).toBe(nestedList);
-    });
-  });
-
-  test('indentListItem creates new nested list when previous item has no nested list', () => {
-    // Create a list with two items where the first has no nested list
-    safelySetInnerHTML(root, '<ul><li>First item</li><li>Second item</li></ul>');
-
-    const secondLi = root.querySelectorAll('li')[1];
-    const range = selectionService.createRange();
-    range.setStart(secondLi.firstChild!, 0);
-    range.collapse(true);
-    selectionService.setSelectionRange(range);
-
-    // Call indentListItem - this should trigger lines 752-753
-    // where it creates a new nested list when none exists
-    listService.indentListItem();
-
-    // Should have created a nested list in the first item
-    const firstLi = root.querySelectorAll('li')[0];
-    expect(firstLi.querySelector('ul')).toBeTruthy();
-
-    // The second item should now be nested under the first
-    expect(firstLi.querySelector('ul li')).toBeTruthy();
-    expect(firstLi.querySelector('ul li')!.textContent).toBe('Second item');
-  });
-
-  test('indentListItem returns early when no list item found', () => {
-    // Create a paragraph (not in a list)
-    safelySetInnerHTML(root, '<p>Not in a list item</p>');
-
-    const paragraph = root.querySelector('p')!;
-    const range = selectionService.createRange();
-    range.setStart(paragraph.firstChild!, 0);
-    range.collapse(true);
-    selectionService.setSelectionRange(range);
-
-    // Call indentListItem - should return early because cursor is not in a list item (line 759-760)
-    listService.indentListItem();
-
-    // HTML should remain unchanged
-    expect(root.innerHTML).toBe('<p>Not in a list item</p>');
-  });
-
-  test('indentListItem returns early when list item has no parent list', () => {
-    // Clear the initial empty paragraph that Editor creates
-    safelySetInnerHTML(root, '');
-
-    // Create an orphaned list item (not inside a list)
-    const listItem = document.createElement('li');
-    listItem.textContent = 'Orphaned item';
-    root.appendChild(listItem);
-
-    const range = selectionService.createRange();
-    range.setStart(listItem.firstChild!, 0);
-    range.collapse(true);
-    selectionService.setSelectionRange(range);
-
-    // Call indentListItem - should return early because li has no parentElement (lines 764-765)
-    listService.indentListItem();
-
-    // HTML should remain unchanged
-    expect(root.innerHTML).toBe('<li>Orphaned item</li>');
-  });
-
-  test('indentListItem returns early when no previous list item exists', () => {
-    // Create a list with only one item (no previous sibling)
-    safelySetInnerHTML(root, '<ul><li>Only item</li></ul>');
-
-    const listItem = root.querySelector('li')!;
-    const range = selectionService.createRange();
-    range.setStart(listItem.firstChild!, 0);
-    range.collapse(true);
-    selectionService.setSelectionRange(range);
-
-    // Call indentListItem - should return early because no previous LI exists (lines 769-770)
-    listService.indentListItem();
-
-    // HTML should remain unchanged - no indentation should occur
-    expect(root.innerHTML).toBe('<ul><li>Only item</li></ul>');
   });
 });

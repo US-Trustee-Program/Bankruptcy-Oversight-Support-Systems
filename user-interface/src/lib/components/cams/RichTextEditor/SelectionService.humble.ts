@@ -1,5 +1,6 @@
 export interface SelectionService {
   getCurrentSelection(): Selection | null;
+  getRangeAtStartOfSelection(): Range | undefined;
   createRange(): Range;
   setSelectionRange(range: Range): void;
   getSelectedText(): string;
@@ -33,6 +34,11 @@ export class BrowserSelectionService implements SelectionService {
       selection.removeAllRanges();
       selection.addRange(range);
     }
+  }
+
+  getRangeAtStartOfSelection(): Range | undefined {
+    const selection = this.getCurrentSelection();
+    return selection ? selection.getRangeAt(0) : undefined;
   }
 
   getSelectedText(): string {
@@ -114,6 +120,10 @@ export class MockSelectionService implements SelectionService {
     const selection = this.getCurrentSelection();
     selection.removeAllRanges();
     selection.addRange(range);
+  }
+
+  getRangeAtStartOfSelection(): Range | undefined {
+    return this.getCurrentSelection()?.getRangeAt(0) || undefined;
   }
 
   getSelectedText(): string {

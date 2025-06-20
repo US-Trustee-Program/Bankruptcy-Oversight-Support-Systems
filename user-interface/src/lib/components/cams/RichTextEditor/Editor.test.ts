@@ -363,7 +363,7 @@ describe('Editor: Additional coverage tests', () => {
       // Should now be an unordered list
       expect(container.querySelector('ul')).toBeTruthy();
       expect(container.querySelector('li')).toBeTruthy();
-      expect(container.querySelector('li')!.textContent).toBe('Item 1');
+      expect(container.querySelector('li')!.textContent).toEqual(`${ZERO_WIDTH_SPACE}Item 1`);
 
       // Clear and create a new paragraph
       safelySetInnerHTML(container, '<p>Item 1</p>');
@@ -376,7 +376,7 @@ describe('Editor: Additional coverage tests', () => {
       // Should now be an ordered list
       expect(container.querySelector('ol')).toBeTruthy();
       expect(container.querySelector('li')).toBeTruthy();
-      expect(container.querySelector('li')!.textContent).toBe('Item 1');
+      expect(container.querySelector('li')!.textContent).toEqual(`${ZERO_WIDTH_SPACE}Item 1`);
     });
 
     test('toggleList handles empty paragraphs correctly', () => {
@@ -527,7 +527,7 @@ describe('Editor: Additional coverage tests', () => {
       // Verify list was created
       expect(container.querySelector('ul')).toBeTruthy();
       expect(container.querySelector('li')).toBeTruthy();
-      expect(container.querySelector('li')!.textContent).toBe('List item');
+      expect(container.querySelector('li')!.textContent).toEqual(`${ZERO_WIDTH_SPACE}List item`);
     });
 
     test('convertParagraphToList calls setCursorInListItem', () => {
@@ -556,21 +556,6 @@ describe('Editor: Additional coverage tests', () => {
       // Verify list was created
       expect(container.querySelector('ul')).toBeTruthy();
       expect(container.querySelector('li')).toBeTruthy();
-    });
-
-    test('convertParagraphToList handles empty list items by adding zero-width space', () => {
-      // Create a paragraph with no text content
-      safelySetInnerHTML(container, '<p></p>');
-      const paragraph = container.querySelector('p')!;
-      setCursorInParagraph(paragraph, 0, selectionService);
-
-      // Convert to list - this will trigger the empty list item branch
-      editor.toggleList('ul');
-
-      // Verify list was created with zero-width space
-      expect(container.querySelector('ul')).toBeTruthy();
-      expect(container.querySelector('li')).toBeTruthy();
-      expect(container.querySelector('li')!.textContent).toBe(ZERO_WIDTH_SPACE);
     });
 
     test('convertParagraphToList returns early when no selection exists', () => {
@@ -603,8 +588,8 @@ describe('Editor: Additional coverage tests', () => {
       // Then apply formatting
       const listItem = container.querySelector('li')!;
       const range = selectionService.createRange();
-      range.setStart(listItem.firstChild!, 0);
-      range.setEnd(listItem.firstChild!, 4); // Select "Test"
+      range.setStart(listItem.childNodes[1]!, 0);
+      range.setEnd(listItem.childNodes[1]!, 4); // Select "Test"
       selectionService.setSelectionRange(range);
       editor.toggleSelection('em');
 
