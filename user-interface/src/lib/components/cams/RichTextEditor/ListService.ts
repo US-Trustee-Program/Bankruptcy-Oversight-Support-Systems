@@ -16,12 +16,11 @@ export class ListService {
       return;
     }
 
-    const selection = this.selectionService.getCurrentSelection();
-    if (!selection?.rangeCount) {
+    const range = this.selectionService.getRangeAtStartOfSelection();
+    if (!range) {
       return;
     }
 
-    const range = selection.getRangeAt(0);
     const li = editorUtilities.findClosestAncestor<HTMLLIElement>(
       this.root,
       range.startContainer,
@@ -41,21 +40,20 @@ export class ListService {
         this.convertListType(list, type);
       } else {
         // Same list type, so unwrap the list item
-        this.unwrapListItem(li, list, selection);
+        this.unwrapListItem(li, list, range);
       }
     } else {
-      this.insertList(type);
+      this.insertList(type, range);
     }
   }
 
   public handleDentures(e: React.KeyboardEvent<HTMLDivElement>): boolean {
     if (e.key === 'Tab') {
-      const selection = this.selectionService.getCurrentSelection();
-      if (!selection?.rangeCount) {
+      const range = this.selectionService.getRangeAtStartOfSelection();
+      if (!range) {
         return false;
       }
 
-      const range = selection.getRangeAt(0);
       const listItem = editorUtilities.findClosestAncestor<HTMLLIElement>(
         this.root,
         range.startContainer,
@@ -68,9 +66,9 @@ export class ListService {
 
       e.preventDefault();
       if (e.shiftKey) {
-        this.outdentListItem();
+        this.outdentListItem(range);
       } else {
-        this.indentListItem();
+        this.indentListItem(range);
       }
       return true;
     }
@@ -157,14 +155,9 @@ export class ListService {
       return false;
     }
 
-    const selection = this.selectionService.getCurrentSelection();
-    if (!selection || !selection.rangeCount) {
-      return false;
-    }
+    const range = this.selectionService.getRangeAtStartOfSelection();
 
-    const range = selection.getRangeAt(0);
-
-    if (!range.collapsed || range.startOffset !== 0) {
+    if (!range || !range.collapsed || range.startOffset !== 0) {
       return false;
     }
 
@@ -186,7 +179,7 @@ export class ListService {
       return false;
     }
 
-    const isLastItem = parentList?.childNodes[parentList.childNodes.length - 1] === currentListItem;
+    const isLastItem = parentList?.children[parentList.children.length - 1] === currentListItem;
     if (!isLastItem) {
       return false;
     }
@@ -245,13 +238,7 @@ export class ListService {
     return true;
   }
 
-  public outdentListItem(): void {
-    const selection = this.selectionService.getCurrentSelection();
-    if (!selection?.rangeCount) {
-      return;
-    }
-
-    const range = selection.getRangeAt(0);
+  private outdentListItem(range: Range): void {
     const node = range.startContainer;
     const targetLi =
       node instanceof Element ? node.closest?.('li') : node.parentElement?.closest('li');
@@ -304,9 +291,8 @@ export class ListService {
   public unwrapListItem(
     li: HTMLLIElement,
     list: HTMLOListElement | HTMLUListElement,
-    selection: Selection,
+    range: Range,
   ): void {
-    const range = selection.getRangeAt(0);
     const offset = range.startOffset;
 
     // Create paragraph from list item content
@@ -484,13 +470,7 @@ export class ListService {
     return list;
   }
 
-  public indentListItem(): void {
-    const selection = this.selectionService.getCurrentSelection();
-    if (!selection?.rangeCount) {
-      return;
-    }
-
-    const range = selection.getRangeAt(0);
+  private indentListItem(range: Range): void {
     const node = range.startContainer;
     const li = node instanceof Element ? node.closest?.('li') : node.parentElement?.closest('li');
     if (!li) {
@@ -527,18 +507,8 @@ export class ListService {
     this.selectionService.setSelectionRange(newRange);
   }
 
-  public insertList(type: 'ul' | 'ol'): void {
+  private insertList(type: 'ul' | 'ol', range: Range): void {
     if (!editorUtilities.isEditorInRange(this.root, this.selectionService)) {
-      return;
-    }
-
-    const selection = this.selectionService.getCurrentSelection();
-    if (!selection || !selection.rangeCount) {
-      return;
-    }
-
-    const range = selection.getRangeAt(0);
-    if (!this.root.contains(range.startContainer)) {
       return;
     }
 
@@ -550,49 +520,15 @@ export class ListService {
 
     // If we're in a paragraph with content, convert the paragraph to a list item
     if (currentParagraph && currentParagraph.parentNode === this.root) {
-      const paragraphHasContent =
-        currentParagraph.textContent?.trim() || currentParagraph.querySelector('*');
-
-      if (paragraphHasContent) {
-        // Convert paragraph to list
-        this.convertParagraphToList(currentParagraph, type, range);
-        return;
-      }
-    }
-
-    // Default behavior: create a new empty list
-    const list = this.createListWithEmptyItem(type);
-    const listItem = list.querySelector('li');
-
-    if (currentParagraph && currentParagraph.parentNode === this.root) {
-      // Replace empty paragraph with list
-      currentParagraph.replaceWith(list);
-    } else {
-      // Insert list at cursor position
-      range.deleteContents();
-      range.insertNode(list);
-    }
-
-    // Position cursor in the new list item
-    if (listItem?.firstChild) {
-      const newRange = this.selectionService.createRange();
-      const { firstChild } = listItem;
-      newRange.setStart(firstChild, firstChild.nodeType === Node.TEXT_NODE ? 1 : 0);
-      newRange.collapse(true);
-      this.selectionService.setSelectionRange(newRange);
+      this.convertParagraphToList(currentParagraph, type, range);
     }
   }
 
-  public convertParagraphToList(
+  private convertParagraphToList(
     paragraph: HTMLParagraphElement,
     listType: 'ul' | 'ol',
     currentRange: Range,
   ): void {
-    const selection = this.selectionService.getCurrentSelection();
-    if (!selection) {
-      return;
-    }
-
     // Store cursor position relative to paragraph content
     const cursorOffset = editorUtilities.getCursorOffsetInParagraph(
       this.selectionService,
@@ -600,33 +536,21 @@ export class ListService {
       currentRange,
     );
 
-    // Create new list with the paragraph content
-    const list = this.selectionService.createElement(listType);
-    const listItem = this.selectionService.createElement('li');
-
-    // Move all paragraph content to the list item
-    while (paragraph.firstChild) {
-      listItem.appendChild(paragraph.firstChild);
+    const list = this.createListWithEmptyItem(listType);
+    if (paragraph.firstChild && (paragraph.textContent?.trim() || paragraph.querySelector('*'))) {
+      while (paragraph.firstChild) {
+        list.firstChild?.appendChild(paragraph.firstChild);
+      }
     }
-
-    // Ensure list item has some content
-    if (!listItem.textContent?.trim() && !listItem.querySelector('*')) {
-      listItem.appendChild(this.selectionService.createTextNode(ZERO_WIDTH_SPACE));
-    }
-
-    list.appendChild(listItem);
     paragraph.replaceWith(list);
 
     // Restore cursor position in the new list item
-    this.setCursorInListItem(listItem, cursorOffset);
+    if (list.children.length) {
+      this.setCursorInListItem(list.children[0] as HTMLLIElement, cursorOffset);
+    }
   }
 
-  public setCursorInListItem(listItem: HTMLLIElement, targetOffset: number): void {
-    const selection = this.selectionService.getCurrentSelection();
-    if (!selection) {
-      return;
-    }
-
+  private setCursorInListItem(listItem: HTMLLIElement, targetOffset: number): void {
     const walker = this.selectionService.createTreeWalker(listItem, NodeFilter.SHOW_TEXT, null);
 
     let currentOffset = 0;
@@ -668,7 +592,7 @@ export class ListService {
     }
   }
 
-  public getAncestorIfLastLeaf(
+  private getAncestorIfLastLeaf(
     parentList: HTMLUListElement | HTMLOListElement,
   ): HTMLOListElement | HTMLUListElement | false {
     const grandParentListItem = editorUtilities.findClosestAncestor<HTMLLIElement>(
@@ -687,10 +611,7 @@ export class ListService {
       return parentList;
     }
 
-    if (
-      grandParentList &&
-      grandParentList.childNodes[grandParentList.childNodes.length - 1] !== grandParentListItem
-    ) {
+    if (grandParentList.children[grandParentList.children.length - 1] !== grandParentListItem) {
       return false;
     }
 
