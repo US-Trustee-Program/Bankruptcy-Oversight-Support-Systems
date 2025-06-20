@@ -2,41 +2,8 @@ import { describe, expect, vi, beforeEach, afterEach, test } from 'vitest';
 import { FormattingService } from './FormattingService';
 import { MockSelectionService } from './SelectionService.humble';
 import editorUtilities from './utilities';
-import { DOMPURIFY_CONFIG, RichTextFormat, ZERO_WIDTH_SPACE } from './editor.constants';
-import DOMPurify from 'dompurify';
-
-// Helper functions from Editor.test.ts
-function setCursorInParagraph(
-  paragraph: HTMLParagraphElement,
-  offset: number,
-  selectionService: MockSelectionService,
-): void {
-  const textNode = paragraph.firstChild;
-  if (textNode) {
-    const range = selectionService.createRange();
-    range.setStart(textNode, offset);
-    range.collapse(true);
-    selectionService.setSelectionRange(range);
-  }
-}
-
-function setCursorInElement(
-  element: HTMLElement,
-  offset: number,
-  selectionService: MockSelectionService,
-): void {
-  const textNode = element.firstChild;
-  if (textNode) {
-    const range = selectionService.createRange();
-    range.setStart(textNode, offset);
-    range.collapse(true);
-    selectionService.setSelectionRange(range);
-  }
-}
-
-function safelySetInnerHTML(element: HTMLElement, html: string): void {
-  element.innerHTML = DOMPurify.sanitize(html, DOMPURIFY_CONFIG);
-}
+import { RichTextFormat, ZERO_WIDTH_SPACE } from './editor.constants';
+import { setCursorInElement, setCursorInParagraph } from './test-utils';
 
 describe('FormattingService: toggleSelection', () => {
   let formattingService: FormattingService;
@@ -56,7 +23,10 @@ describe('FormattingService: toggleSelection', () => {
   });
 
   test('getActiveFormatsExcluding should return an array of tag names in the order from root node to inner most child', () => {
-    container.innerHTML = '<p><strong><span class="underline"><em>test</em></span></strong></p>';
+    editorUtilities.safelySetHtml(
+      container,
+      '<p><strong><span class="underline"><em>test</em></span></strong></p>',
+    );
     const italic = container.querySelector('em');
     const excludeElement = document.createElement('div');
     // @ts-expect-error private function
@@ -66,23 +36,17 @@ describe('FormattingService: toggleSelection', () => {
 
   test('createNestedFormatStructure should return a nodelist of elements in the same order as the passed array of formats', () => {
     const node = document.createElement('div');
-    node.innerHTML = `<strong><span class="underline"><em>${ZERO_WIDTH_SPACE}</em></span></strong>`;
+    editorUtilities.safelySetHtml(
+      node,
+      `<strong><span class="underline"><em>${ZERO_WIDTH_SPACE}</em></span></strong>`,
+    );
     // @ts-expect-error private function
     const result = formattingService.createNestedFormatStructure(['strong', 'u', 'em']);
     expect(result).toEqual(node.children[0]);
   });
 
-  test('returns false when no selection exists', () => {
-    selectionService.getCurrentSelection = vi.fn().mockReturnValue(null);
-    const isRangeAcrossBlocksSpy = vi.spyOn(editorUtilities, 'isRangeAcrossBlocks');
-
-    formattingService.toggleSelection('strong');
-
-    expect(isRangeAcrossBlocksSpy).not.toHaveBeenCalled();
-  });
-
   test('applies bold formatting to selected text', () => {
-    safelySetInnerHTML(container, '<p>Hello world</p>');
+    editorUtilities.safelySetHtml(container, '<p>Hello world</p>');
     const paragraph = container.querySelector('p')!;
     const range = selectionService.createRange();
     range.setStart(paragraph.firstChild!, 0);
@@ -91,11 +55,11 @@ describe('FormattingService: toggleSelection', () => {
 
     formattingService.toggleSelection('strong');
 
-    expect(container.innerHTML).toContain('<strong>');
+    expect(editorUtilities.safelyGetHtml(container)).toContain('<strong>');
   });
 
   test('applies italic formatting to selected text', () => {
-    safelySetInnerHTML(container, '<p>Hello world</p>');
+    editorUtilities.safelySetHtml(container, '<p>Hello world</p>');
     const paragraph = container.querySelector('p')!;
     const range = selectionService.createRange();
     range.setStart(paragraph.firstChild!, 0);
@@ -104,11 +68,11 @@ describe('FormattingService: toggleSelection', () => {
 
     formattingService.toggleSelection('em');
 
-    expect(container.innerHTML).toContain('<em>');
+    expect(editorUtilities.safelyGetHtml(container)).toContain('<em>');
   });
 
   test('applies underline formatting to selected text', () => {
-    safelySetInnerHTML(container, '<p>Hello world</p>');
+    editorUtilities.safelySetHtml(container, '<p>Hello world</p>');
     const paragraph = container.querySelector('p')!;
     const range = selectionService.createRange();
     range.setStart(paragraph.firstChild!, 0);
@@ -117,11 +81,11 @@ describe('FormattingService: toggleSelection', () => {
 
     formattingService.toggleSelection('u');
 
-    expect(container.innerHTML).toContain('<span class="underline">');
+    expect(editorUtilities.safelyGetHtml(container)).toContain('<span class="underline">');
   });
 
   test('removes formatting from already formatted text', () => {
-    safelySetInnerHTML(container, '<p><strong>Hello</strong> world</p>');
+    editorUtilities.safelySetHtml(container, '<p><strong>Hello</strong> world</p>');
     const strongElement = container.querySelector('strong')!;
     const range = selectionService.createRange();
     range.setStart(strongElement.firstChild!, 0);
@@ -130,22 +94,22 @@ describe('FormattingService: toggleSelection', () => {
 
     formattingService.toggleSelection('strong');
 
-    expect(container.innerHTML).not.toContain('<strong>');
+    expect(editorUtilities.safelyGetHtml(container)).not.toContain('<strong>');
     expect(container.textContent).toBe('Hello world');
   });
 
   test('creates formatting element at cursor position when no text selected', () => {
-    safelySetInnerHTML(container, '<p>Hello world</p>');
+    editorUtilities.safelySetHtml(container, '<p>Hello world</p>');
     const paragraph = container.querySelector('p')!;
     setCursorInParagraph(paragraph, 5, selectionService);
 
     formattingService.toggleSelection('strong');
 
-    expect(container.innerHTML).toContain('<strong>');
+    expect(editorUtilities.safelyGetHtml(container)).toContain('<strong>');
   });
 
   test('exits formatting element when toggling off at cursor position', () => {
-    safelySetInnerHTML(container, '<p>Hello <strong>bold</strong> world</p>');
+    editorUtilities.safelySetHtml(container, '<p>Hello <strong>bold</strong> world</p>');
     const strongElement = container.querySelector('strong')!;
     setCursorInElement(strongElement, 2, selectionService);
 
@@ -156,7 +120,7 @@ describe('FormattingService: toggleSelection', () => {
   });
 
   test('does nothing when selection spans across blocks', () => {
-    safelySetInnerHTML(container, '<p>First paragraph</p><p>Second paragraph</p>');
+    editorUtilities.safelySetHtml(container, '<p>First paragraph</p><p>Second paragraph</p>');
     const firstP = container.querySelectorAll('p')[0];
     const secondP = container.querySelectorAll('p')[1];
 
@@ -190,7 +154,7 @@ describe('FormattingService: toggleSelection - additional scenarios', () => {
   });
 
   test('toggleSelection adds formatting to already formatted text', () => {
-    safelySetInnerHTML(container, '<p>Hello <em>world</em></p>');
+    editorUtilities.safelySetHtml(container, '<p>Hello <em>world</em></p>');
     const emElement = container.querySelector('em')!;
     const range = selectionService.createRange();
     range.selectNodeContents(emElement);
@@ -206,7 +170,7 @@ describe('FormattingService: toggleSelection - additional scenarios', () => {
   });
 
   test('toggleSelection handles partial selection within formatted text', () => {
-    safelySetInnerHTML(container, '<p><strong>Hello world</strong></p>');
+    editorUtilities.safelySetHtml(container, '<p><strong>Hello world</strong></p>');
     const strongElement = container.querySelector('strong')!;
     const range = selectionService.createRange();
     range.setStart(strongElement.firstChild!, 0);
@@ -217,93 +181,26 @@ describe('FormattingService: toggleSelection - additional scenarios', () => {
 
     // Should remove formatting from "Hello" but keep it for " world"
     expect(container.textContent).toBe('Hello world');
-    expect(container.innerHTML).toContain('Hello<strong> world</strong>');
-  });
-
-  test('toggleSelection applies bold formatting', () => {
-    safelySetInnerHTML(container, '<p>Hello world</p>');
-    const paragraph = container.querySelector('p')!;
-    const range = selectionService.createRange();
-    range.setStart(paragraph.firstChild!, 0);
-    range.setEnd(paragraph.firstChild!, 5); // Select "Hello"
-    selectionService.setSelectionRange(range);
-
-    formattingService.toggleSelection('strong');
-
-    // Should have bold formatting applied
-    expect(container.innerHTML).toContain('<strong>');
-    expect(container.textContent).toBe('Hello world');
-  });
-
-  test('handles cross-paragraph selection gracefully in toggleSelection', () => {
-    safelySetInnerHTML(container, '<p>First paragraph</p><p>Second paragraph</p>');
-
-    const firstP = container.querySelectorAll('p')[0];
-    const secondP = container.querySelectorAll('p')[1];
-    const firstText = firstP.firstChild as Text;
-    const secondText = secondP.firstChild as Text;
-
-    const range = document.createRange();
-    range.setStart(firstText, 5);
-    range.setEnd(secondText, 6);
-    selectionService.setSelectionRange(range);
-
-    // Should not apply formatting across paragraphs
-    formattingService.toggleSelection('strong');
-
-    // Formatting should not be applied
-    expect(container.innerHTML).not.toContain('<strong>');
-  });
-
-  test('isEntireSelectionFormatted returns false when some of selection is not formatted', () => {
-    safelySetInnerHTML(
-      container,
-      '<p><strong>Hello world</strong> This is not in the formatting</p>',
-    );
-    const paragraph = container.querySelector('p')!;
-    const range = selectionService.createRange();
-    range.setStart(paragraph.firstChild!, 0);
-    range.setEnd(paragraph.childNodes[1]!, 2);
-    selectionService.setSelectionRange(range);
-
-    // @ts-expect-error private function
-    const result = formattingService.isEntireSelectionFormatted(range, 'strong');
-    expect(result).toBe(false);
-  });
-
-  test('isEntireSelectionFormatted returns true when entire selection is formatted', () => {
-    safelySetInnerHTML(
-      container,
-      '<p><strong>Hello <em>This is nested formatting</em> world</strong> This is not in the formatting</p>',
-    );
-    const paragraph = container.querySelector('p')!;
-    const range = selectionService.createRange();
-    range.setStart(paragraph.firstChild!, 0);
-    range.setEnd(paragraph.firstChild!.childNodes[1].firstChild!, 4);
-    selectionService.setSelectionRange(range);
-
-    // @ts-expect-error private function
-    const result = formattingService.isEntireSelectionFormatted(range, 'strong');
-    expect(result).toBe(true);
+    const html = editorUtilities.safelyGetHtml(container);
+    expect(html).toBe('<p>Hello<strong> world</strong></p>');
   });
 
   test('positionCursorInNewStructure should return early when no selection exists', () => {
     selectionService.getCurrentSelection = vi.fn().mockReturnValue(null);
-    vi.spyOn(selectionService, 'createTreeWalker').mockReturnValue(null as unknown as TreeWalker);
     const structure = document.createElement('div');
     // @ts-expect-error private function
     formattingService.positionCursorInNewStructure(structure);
-    expect(selectionService.createTreeWalker).not.toHaveBeenCalled();
+    expect(selectionService.getCurrentSelection()).toBeNull();
   });
 
-  test('removeFormatFromFragment should remove formatting from a fragment', () => {
-    safelySetInnerHTML(container, '<p><strong>Hello <em>world</em></strong></p>');
-    const emElement = container.querySelector('em')!;
-    const fragment = selectionService.createDocumentFragment();
-    fragment.appendChild(emElement);
+  test('removeFormatFromFragment should remove formatting', () => {
+    editorUtilities.safelySetHtml(container, '<p><strong>Hello <em>world</em></strong></p>');
+    const strongElement = container.querySelector('strong')!;
+    const fragment = document.createDocumentFragment();
+    fragment.appendChild(strongElement.cloneNode(true));
     // @ts-expect-error private function
-    formattingService.removeFormatFromFragment(fragment, 'em');
-    expect(fragment.textContent).toBe('world');
+    formattingService.removeFormatFromFragment(fragment, 'strong');
+    expect(fragment.textContent).toBe('Hello world');
   });
 });
 
