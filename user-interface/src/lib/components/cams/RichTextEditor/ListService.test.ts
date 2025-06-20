@@ -1,44 +1,9 @@
 import { describe, expect, vi, beforeEach, afterEach, test } from 'vitest';
 import { ListService } from './ListService';
 import { MockSelectionService } from './SelectionService.humble';
-import editorUtilities from './utilities';
-import { DOMPURIFY_CONFIG, ZERO_WIDTH_SPACE } from './editor.constants';
-import DOMPurify from 'dompurify';
-
-// Helper functions adapted for SelectionService pattern
-function setCursorInParagraph(
-  paragraph: HTMLParagraphElement,
-  offset: number,
-  selectionService: MockSelectionService,
-) {
-  const range = selectionService.createRange();
-  if (!paragraph.firstChild) {
-    paragraph.appendChild(document.createTextNode(''));
-  }
-  range.setStart(paragraph.firstChild!, offset);
-  range.collapse(true);
-  selectionService.setSelectionRange(range);
-  return selectionService.getCurrentSelection();
-}
-
-function setCursorInElement(
-  element: Element,
-  offset: number,
-  selectionService: MockSelectionService,
-) {
-  const range = selectionService.createRange();
-  if (!element.firstChild) {
-    element.appendChild(document.createTextNode(''));
-  }
-  range.setStart(element.firstChild!, offset);
-  range.collapse(true);
-  selectionService.setSelectionRange(range);
-  return selectionService.getCurrentSelection();
-}
-
-function safelySetInnerHTML(element: HTMLElement, html: string): void {
-  element.innerHTML = DOMPurify.sanitize(html, DOMPURIFY_CONFIG);
-}
+import editorUtilities, { safelySetHtml, safelyGetHtml } from './utilities';
+import { ZERO_WIDTH_SPACE } from './editor.constants';
+import { setCursorInElement, setCursorInParagraph2 } from './test-utils';
 
 describe('ListService', () => {
   let root: HTMLDivElement;
@@ -58,31 +23,32 @@ describe('ListService', () => {
 
   describe('toggleList', () => {
     test('converts paragraph to unordered list', () => {
-      safelySetInnerHTML(root, '<p>Test paragraph</p>');
       const paragraph = root.querySelector('p')!;
-      setCursorInParagraph(paragraph, 4, selectionService);
+      setCursorInParagraph2(paragraph, 4, selectionService);
 
       listService.toggleList('ul');
 
-      expect(root.querySelector('ul')).toBeTruthy();
-      expect(root.querySelector('li')).toBeTruthy();
+      const html = safelyGetHtml(root);
+      expect(html).toContain('<ul>');
+      expect(html).toContain('<li>');
       expect(root.querySelector('li')!.textContent).toEqual(`${ZERO_WIDTH_SPACE}Test paragraph`);
     });
 
     test('converts paragraph to ordered list', () => {
-      safelySetInnerHTML(root, '<p>Test paragraph</p>');
+      safelySetHtml(root, '<p>Test paragraph</p>');
       const paragraph = root.querySelector('p')!;
-      setCursorInParagraph(paragraph, 4, selectionService);
+      setCursorInParagraph2(paragraph, 4, selectionService);
 
       listService.toggleList('ol');
 
-      expect(root.querySelector('ol')).toBeTruthy();
-      expect(root.querySelector('li')).toBeTruthy();
+      const html = editorUtilities.safelyGetHtml(root);
+      expect(html).toContain('<ol>');
+      expect(html).toContain('<li>');
       expect(root.querySelector('li')!.textContent).toEqual(`${ZERO_WIDTH_SPACE}Test paragraph`);
     });
 
     test('unwraps list item back to paragraph', () => {
-      safelySetInnerHTML(root, '<ul><li>List item</li></ul>');
+      safelySetHtml(root, '<ul><li>List item</li></ul>');
       const listItem = root.querySelector('li')!;
       setCursorInElement(listItem, 4, selectionService);
 
@@ -94,9 +60,9 @@ describe('ListService', () => {
     });
 
     test('creates empty list when cursor is in empty paragraph', () => {
-      safelySetInnerHTML(root, '<p></p>');
+      safelySetHtml(root, '<p></p>');
       const paragraph = root.querySelector('p')!;
-      setCursorInParagraph(paragraph, 0, selectionService);
+      setCursorInParagraph2(paragraph, 0, selectionService);
 
       listService.toggleList('ul');
 
@@ -120,7 +86,7 @@ describe('ListService', () => {
     });
 
     test('toggleList handles nested lists correctly', () => {
-      safelySetInnerHTML(root, '<ul><li>Item 1<ul><li>Nested item</li></ul></li></ul>');
+      safelySetHtml(root, '<ul><li>Item 1<ul><li>Nested item</li></ul></li></ul>');
       const nestedItem = root.querySelector('ul ul li')!;
       setCursorInElement(nestedItem, 3, selectionService);
 
@@ -147,9 +113,9 @@ describe('ListService', () => {
     });
 
     test('toggleList creates different list types', () => {
-      safelySetInnerHTML(root, '<p>Test paragraph</p>');
+      safelySetHtml(root, '<p>Test paragraph</p>');
       const paragraph = root.querySelector('p')!;
-      setCursorInParagraph(paragraph, 4, selectionService);
+      setCursorInParagraph2(paragraph, 4, selectionService);
 
       // First create an unordered list
       listService.toggleList('ul');
@@ -166,9 +132,9 @@ describe('ListService', () => {
     });
 
     test('toggleList handles empty paragraphs correctly', () => {
-      safelySetInnerHTML(root, '<p></p>');
+      safelySetHtml(root, '<p></p>');
       const paragraph = root.querySelector('p')!;
-      setCursorInParagraph(paragraph, 0, selectionService);
+      setCursorInParagraph2(paragraph, 0, selectionService);
 
       listService.toggleList('ul');
 
@@ -225,9 +191,9 @@ describe('ListService', () => {
     });
 
     test('returns false when not in a list item', () => {
-      safelySetInnerHTML(root, '<p>Not in a list</p>');
+      safelySetHtml(root, '<p>Not in a list</p>');
       const paragraph = root.querySelector('p')!;
-      setCursorInParagraph(paragraph, 0, selectionService);
+      setCursorInParagraph2(paragraph, 0, selectionService);
 
       const event = createDentureEvent(false);
       const result = listService.handleDentures(event);
@@ -237,7 +203,7 @@ describe('ListService', () => {
     });
 
     test('handles Tab for indentation in list item', () => {
-      safelySetInnerHTML(root, '<ul><li>Item 1</li><li>Item 2</li></ul>');
+      safelySetHtml(root, '<ul><li>Item 1</li><li>Item 2</li></ul>');
       const listItem = root.querySelectorAll('li')[1] as HTMLElement;
       setCursorInElement(listItem, 0, selectionService);
 
@@ -254,7 +220,7 @@ describe('ListService', () => {
     });
 
     test('handles Shift+Tab for outdentation in list item', () => {
-      safelySetInnerHTML(root, '<ul><li>Item 1<ul><li>Nested item</li></ul></li></ul>');
+      safelySetHtml(root, '<ul><li>Item 1<ul><li>Nested item</li></ul></li></ul>');
       const nestedItem = root.querySelector('ul ul li')! as HTMLElement;
       setCursorInElement(nestedItem, 0, selectionService);
 
@@ -272,7 +238,7 @@ describe('ListService', () => {
     });
 
     test('handles Shift+Tab for outdentation in list item and all sibbling list items after it become its children', () => {
-      safelySetInnerHTML(
+      safelySetHtml(
         root,
         '<ul><li>Item 1<ul><li>item 2</li><li>item 3</li><li>item 4</li><li>item 5</li></ul></li></ul>',
       );
@@ -292,7 +258,7 @@ describe('ListService', () => {
     });
 
     test('returns early from outdentation if there is no target list element', () => {
-      safelySetInnerHTML(root, '<div><p>Item 1</p></div>');
+      safelySetHtml(root, '<div><p>Item 1</p></div>');
       const item = root.querySelector('div p')! as HTMLElement;
       setCursorInElement(item, 0, selectionService);
 
@@ -315,7 +281,7 @@ describe('ListService', () => {
     });
 
     test('returns early from outdentation if list item parent is the outermost list', () => {
-      safelySetInnerHTML(root, '<ul><li>Item 1</li></ul>');
+      safelySetHtml(root, '<ul><li>Item 1</li></ul>');
       const item = root.querySelector('ul li')! as HTMLElement;
       setCursorInElement(item, 0, selectionService);
 
@@ -330,7 +296,7 @@ describe('ListService', () => {
     });
 
     test('returns early from outdentation if list item parent is not a list', () => {
-      safelySetInnerHTML(root, '<div><li>Item 1</li></div>');
+      safelySetHtml(root, '<div><li>Item 1</li></div>');
       const item = root.querySelector('div li')! as HTMLElement;
       setCursorInElement(item, 0, selectionService);
 
@@ -345,7 +311,7 @@ describe('ListService', () => {
     });
 
     test('returns early from outdentation if root element does not contain list', () => {
-      safelySetInnerHTML(root, '<li><ul><li>Item 1</li></ul></li>');
+      safelySetHtml(root, '<li><ul><li>Item 1</li></ul></li>');
       const item = root.querySelector('li ul li')! as HTMLElement;
       setCursorInElement(item, 0, selectionService);
 
@@ -397,9 +363,9 @@ describe('ListService', () => {
     });
 
     test('creates new paragraph on Enter in regular paragraph', () => {
-      safelySetInnerHTML(root, '<p>Some text</p>');
+      safelySetHtml(root, '<p>Some text</p>');
       const paragraph = root.querySelector('p')!;
-      setCursorInParagraph(paragraph, 4, selectionService);
+      setCursorInParagraph2(paragraph, 4, selectionService);
 
       const event = createEnterEvent();
       const result = listService.handleEnterKey(event);
@@ -410,7 +376,7 @@ describe('ListService', () => {
     });
 
     test('exits empty list item and creates paragraph', () => {
-      safelySetInnerHTML(root, '<ul><li>Item 1</li><li></li></ul>');
+      safelySetHtml(root, '<ul><li>Item 1</li><li></li></ul>');
       const emptyListItem = root.querySelectorAll('li')[1];
       setCursorInElement(emptyListItem, 0, selectionService);
 
@@ -424,7 +390,7 @@ describe('ListService', () => {
     });
 
     test('handles enter in non-empty list item normally', () => {
-      safelySetInnerHTML(root, '<ul><li>Non-empty item</li></ul>');
+      safelySetHtml(root, '<ul><li>Non-empty item</li></ul>');
       const listItem = root.querySelector('li')!;
       setCursorInElement(listItem, 5, selectionService);
 
@@ -523,7 +489,7 @@ describe('ListService', () => {
     });
 
     test('returns false when not at start of list item', () => {
-      safelySetInnerHTML(root, '<ul><li>Item content</li></ul>');
+      safelySetHtml(root, '<ul><li>Item content</li></ul>');
       const listItem = root.querySelector('li')!;
       setCursorInElement(listItem, 4, selectionService); // Not at start
 
@@ -535,9 +501,9 @@ describe('ListService', () => {
     });
 
     test('returns false when not in a list', () => {
-      safelySetInnerHTML(root, '<p>Not in a list</p>');
+      safelySetHtml(root, '<p>Not in a list</p>');
       const paragraph = root.querySelector('p')!;
-      setCursorInParagraph(paragraph, 0, selectionService);
+      setCursorInParagraph2(paragraph, 0, selectionService);
 
       const event = createBackspaceEvent();
       const result = listService.handleDeleteKeyOnList(event);
@@ -547,7 +513,7 @@ describe('ListService', () => {
     });
 
     test('returns false when not the last item in the list', () => {
-      safelySetInnerHTML(root, '<ul><li>First item</li><li>Second item</li></ul>');
+      safelySetHtml(root, '<ul><li>First item</li><li>Second item</li></ul>');
       const firstItem = root.querySelectorAll('li')[0];
       setCursorInElement(firstItem, 0, selectionService);
 
@@ -559,10 +525,7 @@ describe('ListService', () => {
     });
 
     test('returns false when list item has nested lists', () => {
-      safelySetInnerHTML(
-        root,
-        '<ul><li>Item with nested list<ul><li>Nested item</li></ul></li></ul>',
-      );
+      safelySetHtml(root, '<ul><li>Item with nested list<ul><li>Nested item</li></ul></li></ul>');
       const listItem = root.querySelector('li')!;
       setCursorInElement(listItem, 0, selectionService);
 
@@ -575,7 +538,7 @@ describe('ListService', () => {
 
     test('removes empty list item when backspace is pressed at start', () => {
       // Use a list item with a BR element, which is a common way to represent an empty list item
-      safelySetInnerHTML(root, '<ul><li>First item</li><li><br></li></ul>');
+      safelySetHtml(root, '<ul><li>First item</li><li><br></li></ul>');
       const emptyItem = root.querySelectorAll('li')[1];
 
       // Set the cursor at the start of the list item (before the BR element)
@@ -593,7 +556,7 @@ describe('ListService', () => {
     });
 
     test('converts list item to paragraph when backspace is pressed at start of last item', () => {
-      safelySetInnerHTML(root, '<ul><li>First item</li><li>Last item</li></ul>');
+      safelySetHtml(root, '<ul><li>First item</li><li>Last item</li></ul>');
       const lastItem = root.querySelectorAll('li')[1];
       setCursorInElement(lastItem, 0, selectionService);
 
@@ -608,7 +571,7 @@ describe('ListService', () => {
     });
 
     test('works with Delete key as well as Backspace', () => {
-      safelySetInnerHTML(root, '<ul><li>First item</li><li>Last item</li></ul>');
+      safelySetHtml(root, '<ul><li>First item</li><li>Last item</li></ul>');
       const lastItem = root.querySelectorAll('li')[1];
       setCursorInElement(lastItem, 0, selectionService);
 
@@ -689,7 +652,7 @@ describe('ListService', () => {
   describe('unwrapListItem with nested lists', () => {
     test('handles list items with nested lists', () => {
       // Create a list with a nested list
-      safelySetInnerHTML(root, '<ul><li>Parent item<ul><li>Nested item</li></ul></li></ul>');
+      safelySetHtml(root, '<ul><li>Parent item<ul><li>Nested item</li></ul></li></ul>');
 
       // Get the parent list item
       const parentLi = root.querySelector('li')!;
@@ -716,7 +679,7 @@ describe('ListService', () => {
 
     test('handles complex nested list structure with multiple levels', () => {
       // Create a complex nested list structure with multiple levels
-      safelySetInnerHTML(
+      safelySetHtml(
         root,
         `
         <ul>
@@ -764,7 +727,7 @@ describe('ListService', () => {
 
     test('handles unwrapping list item with multiple nested lists', () => {
       // Create a list item with multiple nested lists
-      safelySetInnerHTML(
+      safelySetHtml(
         root,
         `
         <ul>
@@ -807,7 +770,7 @@ describe('ListService', () => {
 
     test('handles unwrapping list item with non-text node as first child in final paragraph', () => {
       // Create a list with a list item containing a span
-      safelySetInnerHTML(root, '<ul><li><span>Text in span</span></li></ul>');
+      safelySetHtml(root, '<ul><li><span>Text in span</span></li></ul>');
 
       // Get the list item
       const listItem = root.querySelector('li')!;
@@ -840,7 +803,7 @@ describe('ListService', () => {
 
     test('handles list items with empty text content', () => {
       // Create a list with an empty list item
-      safelySetInnerHTML(root, '<ul><li></li></ul>');
+      safelySetHtml(root, '<ul><li></li></ul>');
 
       // Get the list item
       const listItem = root.querySelector('li')!;
@@ -862,7 +825,7 @@ describe('ListService', () => {
 
     test('handles non-text node as first child in paragraph', () => {
       // Create a list with a list item containing a span
-      safelySetInnerHTML(root, '<ul><li><span>Text in span</span></li></ul>');
+      safelySetHtml(root, '<ul><li><span>Text in span</span></li></ul>');
 
       // Get the list item
       const listItem = root.querySelector('li')!;
@@ -888,7 +851,7 @@ describe('ListService', () => {
       // Create a separate root not in the editor
       const outsideroot = document.createElement('div');
       document.body.appendChild(outsideroot);
-      safelySetInnerHTML(outsideroot, '<ul><li>Outside item</li></ul>');
+      safelySetHtml(outsideroot, '<ul><li>Outside item</li></ul>');
 
       try {
         // Get the list item and list
@@ -916,7 +879,7 @@ describe('ListService', () => {
 
     test('handles split index not found', () => {
       // Create a list with a list item
-      safelySetInnerHTML(root, '<ul><li>Item</li></ul>');
+      safelySetHtml(root, '<ul><li>Item</li></ul>');
 
       // Get the list item and list
       const listItem = root.querySelector('li')!;
@@ -944,7 +907,7 @@ describe('ListService', () => {
 
     test('handles non-text node firstChild in unwrapListItem', () => {
       // Create a list with a list item containing a span
-      safelySetInnerHTML(root, '<ul><li><span>Text in span</span></li></ul>');
+      safelySetHtml(root, '<ul><li><span>Text in span</span></li></ul>');
 
       // Get the list item
       const listItem = root.querySelector('li')!;
@@ -968,7 +931,7 @@ describe('ListService', () => {
 
     test('handles non-text node firstChild in paragraph with complex structure', () => {
       // Create a list with a list item containing a complex structure
-      safelySetInnerHTML(root, '<ul><li><div><span>Text in span</span></div></li></ul>');
+      safelySetHtml(root, '<ul><li><div><span>Text in span</span></div></li></ul>');
 
       // Get the list item
       const listItem = root.querySelector('li')!;
@@ -1201,7 +1164,7 @@ describe('ListService', () => {
     });
 
     test('should return false when the range starts in an li element within a ul element within another li within a ul within another li element and that topmost li element is not the last child of its parent ul', () => {
-      safelySetInnerHTML(
+      safelySetHtml(
         root,
         `
         <ul>
@@ -1242,7 +1205,7 @@ describe('ListService', () => {
     });
 
     test('should return grandparent list when the range starts in an li element within a ul element within another li within a ul', () => {
-      safelySetInnerHTML(
+      safelySetHtml(
         root,
         `
         <li>

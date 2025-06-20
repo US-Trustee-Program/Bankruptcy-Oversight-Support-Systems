@@ -1,26 +1,7 @@
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import { MockSelectionService } from './SelectionService.humble';
-import { DOMPURIFY_CONFIG } from './editor.constants';
-import DOMPurify from 'dompurify';
-import editorUtilities from './utilities';
-
-function safelySetInnerHTML(element: HTMLElement, html: string): void {
-  element.innerHTML = DOMPurify.sanitize(html, DOMPURIFY_CONFIG);
-}
-
-function setCursorInParagraph(
-  paragraph: HTMLParagraphElement,
-  offset: number,
-  selectionService: MockSelectionService,
-): void {
-  const textNode = paragraph.firstChild;
-  if (textNode) {
-    const range = selectionService.createRange();
-    range.setStart(textNode, offset);
-    range.collapse(true);
-    selectionService.setSelectionRange(range);
-  }
-}
+import editorUtilities, { safelySetHtml } from './utilities';
+import { setCursorInParagraph } from './test-utils';
 
 describe('utilities', () => {
   let container: HTMLDivElement;
@@ -39,7 +20,7 @@ describe('utilities', () => {
 
   describe('isEditorInRange', () => {
     test('isEditorInRange returns true when selection is within editor', () => {
-      safelySetInnerHTML(container, '<p>Some content</p>');
+      safelySetHtml(container, '<p>Some content</p>');
       setCursorInParagraph(container.querySelector('p')!, 5, selectionService);
 
       const result = editorUtilities.isEditorInRange(container, selectionService);
@@ -71,10 +52,7 @@ describe('utilities', () => {
     test('removes formatting elements with children', () => {
       // Create a paragraph with nested formatting
       const paragraph = document.createElement('p');
-      safelySetInnerHTML(
-        paragraph,
-        'Text with <strong>bold <em>and italic</em></strong> formatting',
-      );
+      safelySetHtml(paragraph, 'Text with <strong>bold <em>and italic</em></strong> formatting');
 
       // Call stripFormatting on the paragraph
       editorUtilities.stripFormatting(paragraph);
@@ -104,10 +82,7 @@ describe('utilities', () => {
     test('handles empty formatting elements', () => {
       // Create a paragraph with empty formatting elements
       const paragraph = document.createElement('p');
-      safelySetInnerHTML(
-        paragraph,
-        'Text with <strong></strong> empty <em></em> formatting elements',
-      );
+      safelySetHtml(paragraph, 'Text with <strong></strong> empty <em></em> formatting elements');
 
       // Call stripFormatting on the paragraph
       editorUtilities.stripFormatting(paragraph);
