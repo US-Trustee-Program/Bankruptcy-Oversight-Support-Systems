@@ -1,5 +1,6 @@
-import { EMPTY_TAG_REGEX, ZERO_WIDTH_SPACE_REGEX } from './editor.constants';
+import { DOMPURIFY_CONFIG, EMPTY_TAG_REGEX, ZERO_WIDTH_SPACE_REGEX } from './editor.constants';
 import { SelectionService } from './SelectionService.humble';
+import DOMPurify from 'dompurify';
 function stripFormatting(node: Node): void {
   if (!(node instanceof HTMLElement)) {
     return;
@@ -132,15 +133,26 @@ function cleanHtml(html: string) {
   return cleanEmptyTags(cleanZeroWidthSpaces(html));
 }
 
+export const safelySetHtml = (element: HTMLElement, html: string | Node): void => {
+  element.innerHTML = DOMPurify.sanitize(html, DOMPURIFY_CONFIG);
+};
+
+export const safelyGetHtml = (element: HTMLElement | null): string => {
+  if (!element) {
+    return '';
+  }
+  return DOMPurify.sanitize(element.innerHTML, DOMPURIFY_CONFIG);
+};
+
 export default {
-  cleanEmptyTags,
   cleanHtml,
-  cleanZeroWidthSpaces,
   findClosestAncestor,
   getCursorOffsetInParagraph,
   isEditorInRange,
   isEmptyContent,
   isRangeAcrossBlocks,
   positionCursorInEmptyParagraph,
+  safelyGetHtml,
+  safelySetHtml,
   stripFormatting,
 };
