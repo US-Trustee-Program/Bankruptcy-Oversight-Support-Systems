@@ -55,50 +55,8 @@ export class Editor {
     return this.listService.toggleList(type);
   }
 
-  public indentListItem(): void {
-    return this.listService.indentListItem();
-  }
-
-  public outdentListItem(): void {
-    return this.listService.outdentListItem();
-  }
-
-  public setCursorInListItem(listItem: HTMLLIElement, targetOffset: number): void {
-    return this.listService.setCursorInListItem(listItem, targetOffset);
-  }
-
-  public getAncestorIfLastLeaf(
-    parentList: HTMLUListElement | HTMLOListElement,
-  ): HTMLOListElement | HTMLUListElement | false {
-    return this.listService.getAncestorIfLastLeaf(parentList);
-  }
-
-  public convertParagraphToList(
-    paragraph: HTMLParagraphElement,
-    listType: 'ul' | 'ol',
-    currentRange: Range,
-  ): void {
-    return this.listService.convertParagraphToList(paragraph, listType, currentRange);
-  }
-
-  public insertList(type: 'ul' | 'ol'): void {
-    return this.listService.insertList(type);
-  }
-
-  public unwrapListItem(
-    li: HTMLLIElement,
-    list: HTMLOListElement | HTMLUListElement,
-    selection: Selection,
-  ): void {
-    return this.listService.unwrapListItem(li, list, selection);
-  }
-
   public handleCtrlKey(e: React.KeyboardEvent<HTMLDivElement>): boolean {
-    if (e.metaKey) {
-      e.preventDefault();
-      return false;
-    }
-    if (e.ctrlKey) {
+    if (e.ctrlKey || e.metaKey) {
       switch (e.key.toLowerCase()) {
         case 'b':
           e.preventDefault();
@@ -213,8 +171,7 @@ export class Editor {
 
         const p = this.selectionService.createElement('p');
         editorUtilities.stripFormatting(p);
-        const char = e.key.length === 1 ? e.key : '';
-        p.textContent = char || ZERO_WIDTH_SPACE;
+        p.textContent = e.key;
 
         range.insertNode(p);
 

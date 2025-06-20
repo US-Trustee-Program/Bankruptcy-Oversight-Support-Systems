@@ -1,6 +1,9 @@
 import { describe, expect, vi, beforeEach, afterEach, test } from 'vitest';
 import { FormattingService } from './FormattingService';
 import { MockSelectionService } from './SelectionService.humble';
+import editorUtilities from './utilities';
+import { DOMPURIFY_CONFIG, RichTextFormat, ZERO_WIDTH_SPACE } from './editor.constants';
+import DOMPurify from 'dompurify';
 
 // Helper functions from Editor.test.ts
 function setCursorInParagraph(
@@ -32,7 +35,7 @@ function setCursorInElement(
 }
 
 function safelySetInnerHTML(element: HTMLElement, html: string): void {
-  element.innerHTML = html;
+  element.innerHTML = DOMPurify.sanitize(html, DOMPURIFY_CONFIG);
 }
 
 describe('FormattingService: toggleSelection', () => {
@@ -50,6 +53,32 @@ describe('FormattingService: toggleSelection', () => {
   afterEach(() => {
     document.body.removeChild(container);
     vi.restoreAllMocks();
+  });
+
+  test('getActiveFormatsExcluding should return an array of tag names in the order from root node to inner most child', () => {
+    container.innerHTML = '<p><strong><span class="underline"><em>test</em></span></strong></p>';
+    const italic = container.querySelector('em');
+    const excludeElement = document.createElement('div');
+    // @ts-expect-error private function
+    const result = formattingService.getActiveFormatsExcluding(italic, excludeElement);
+    expect(result).toEqual(['strong', 'u', 'em']);
+  });
+
+  test('createNestedFormatStructure should return a nodelist of elements in the same order as the passed array of formats', () => {
+    const node = document.createElement('div');
+    node.innerHTML = `<strong><span class="underline"><em>${ZERO_WIDTH_SPACE}</em></span></strong>`;
+    // @ts-expect-error private function
+    const result = formattingService.createNestedFormatStructure(['strong', 'u', 'em']);
+    expect(result).toEqual(node.children[0]);
+  });
+
+  test('returns false when no selection exists', () => {
+    selectionService.getCurrentSelection = vi.fn().mockReturnValue(null);
+    const isRangeAcrossBlocksSpy = vi.spyOn(editorUtilities, 'isRangeAcrossBlocks');
+
+    formattingService.toggleSelection('strong');
+
+    expect(isRangeAcrossBlocksSpy).not.toHaveBeenCalled();
   });
 
   test('applies bold formatting to selected text', () => {
@@ -225,52 +254,56 @@ describe('FormattingService: toggleSelection - additional scenarios', () => {
     // Formatting should not be applied
     expect(container.innerHTML).not.toContain('<strong>');
   });
-});
 
-describe('FormattingService: normalizeInlineFormatting', () => {
-  let formattingService: FormattingService;
-  let container: HTMLDivElement;
-  let selectionService: MockSelectionService;
+  test('isEntireSelectionFormatted returns false when some of selection is not formatted', () => {
+    safelySetInnerHTML(
+      container,
+      '<p><strong>Hello world</strong> This is not in the formatting</p>',
+    );
+    const paragraph = container.querySelector('p')!;
+    const range = selectionService.createRange();
+    range.setStart(paragraph.firstChild!, 0);
+    range.setEnd(paragraph.childNodes[1]!, 2);
+    selectionService.setSelectionRange(range);
 
-  beforeEach(() => {
-    container = document.createElement('div');
-    document.body.appendChild(container);
-    selectionService = new MockSelectionService();
-    formattingService = new FormattingService(container, selectionService);
+    // @ts-expect-error private function
+    const result = formattingService.isEntireSelectionFormatted(range, 'strong');
+    expect(result).toBe(false);
   });
 
-  afterEach(() => {
-    document.body.removeChild(container);
-    vi.restoreAllMocks();
+  test('isEntireSelectionFormatted returns true when entire selection is formatted', () => {
+    safelySetInnerHTML(
+      container,
+      '<p><strong>Hello <em>This is nested formatting</em> world</strong> This is not in the formatting</p>',
+    );
+    const paragraph = container.querySelector('p')!;
+    const range = selectionService.createRange();
+    range.setStart(paragraph.firstChild!, 0);
+    range.setEnd(paragraph.firstChild!.childNodes[1].firstChild!, 4);
+    selectionService.setSelectionRange(range);
+
+    // @ts-expect-error private function
+    const result = formattingService.isEntireSelectionFormatted(range, 'strong');
+    expect(result).toBe(true);
   });
 
-  test('normalizeInlineFormatting flattens nested identical tags', () => {
-    safelySetInnerHTML(container, '<p>one <strong><strong>two</strong></strong> three</p>');
-    // Call private method using any type
-    (formattingService as any).normalizeInlineFormatting();
-    expect(container.innerHTML).toBe('<p>one <strong>two</strong> three</p>');
+  test('positionCursorInNewStructure should return early when no selection exists', () => {
+    selectionService.getCurrentSelection = vi.fn().mockReturnValue(null);
+    vi.spyOn(selectionService, 'createTreeWalker').mockReturnValue(null as unknown as TreeWalker);
+    const structure = document.createElement('div');
+    // @ts-expect-error private function
+    formattingService.positionCursorInNewStructure(structure);
+    expect(selectionService.createTreeWalker).not.toHaveBeenCalled();
   });
 
-  test('normalizeInlineFormatting preserves different nested tags', () => {
-    safelySetInnerHTML(container, '<p>one <strong><em>two</em></strong> three</p>');
-    // Call private method using any type
-    (formattingService as any).normalizeInlineFormatting();
-    expect(container.innerHTML).toBe('<p>one <strong><em>two</em></strong> three</p>');
-  });
-
-  test('normalizeInlineFormatting merges adjacent identical tags', () => {
-    safelySetInnerHTML(container, '<p>one <strong>two</strong><strong>three</strong> four</p>');
-    // Call private method using any type
-    (formattingService as any).normalizeInlineFormatting();
-    expect(container.innerHTML).toBe('<p>one <strong>twothree</strong> four</p>');
-  });
-
-  test('normalizeInlineFormatting merges adjacent span tags with same class', () => {
-    container.innerHTML =
-      '<p>one <span class="underline">two</span><span class="underline">three</span> four</p>';
-    // Call private method using any type
-    (formattingService as any).normalizeInlineFormatting();
-    expect(container.innerHTML).toBe('<p>one <span class="underline">twothree</span> four</p>');
+  test('removeFormatFromFragment should remove formatting from a fragment', () => {
+    safelySetInnerHTML(container, '<p><strong>Hello <em>world</em></strong></p>');
+    const emElement = container.querySelector('em')!;
+    const fragment = selectionService.createDocumentFragment();
+    fragment.appendChild(emElement);
+    // @ts-expect-error private function
+    formattingService.removeFormatFromFragment(fragment, 'em');
+    expect(fragment.textContent).toBe('world');
   });
 });
 
@@ -307,6 +340,20 @@ describe('FormattingService: keyboard shortcuts', () => {
     test('Ctrl+U applies underline formatting', () => {
       formattingService.toggleSelection('u');
       expect(toggleSelectionSpy).toHaveBeenCalledWith('u');
+    });
+  });
+
+  describe('isMatchingElement', () => {
+    test('handles default case correctly', () => {
+      const element = document.createElement('div');
+
+      // @ts-expect-error - Accessing private static method for testing
+      const result = FormattingService.isMatchingElement(
+        element,
+        'invalid-format' as RichTextFormat,
+      );
+
+      expect(result).toBe(false);
     });
   });
 });
