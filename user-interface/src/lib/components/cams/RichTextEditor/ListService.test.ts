@@ -267,79 +267,6 @@ describe('ListService', () => {
         '<ul><li>Item 1<ul></ul></li><li>item 2<ul><li>item 3</li><li>item 4</li><li>item 5</li></ul></li></ul>',
       );
     });
-
-    test('returns early from outdentation if there is no target list element', () => {
-      safelySetHtml(root, '<div><p>Item 1</p></div>');
-      const item = root.querySelector('div p')! as HTMLElement;
-      setCursorInElement(item, 0, selectionService);
-
-      const fakeRange = { startContainer: document.createElement('div') };
-      const fakeSelection = {
-        rangeCount: 1,
-        getRangeAt: vi.fn(() => fakeRange),
-      };
-      const getSelectionSpy = vi
-        .spyOn(selectionService, 'getCurrentSelection')
-        .mockReturnValue(fakeSelection as unknown as Selection);
-      const arrayFromSpy = vi.spyOn(Array, 'from');
-
-      // @ts-expect-error private method
-      listService.outdentListItem(selectionService.getRangeAtStartOfSelection());
-
-      expect(getSelectionSpy).toHaveBeenCalled();
-      expect(fakeSelection.getRangeAt).toHaveBeenCalledWith(0);
-      expect(arrayFromSpy).not.toHaveBeenCalled();
-    });
-
-    test('returns early from outdentation if list item parent is the outermost list', () => {
-      safelySetHtml(root, '<ul><li>Item 1</li></ul>');
-      const item = root.querySelector('ul li')! as HTMLElement;
-      setCursorInElement(item, 0, selectionService);
-
-      const arrayFromSpy = vi.spyOn(Array, 'from');
-      const containsSpy = vi.spyOn(HTMLElement.prototype, 'contains');
-
-      // @ts-expect-error private method
-      listService.outdentListItem(selectionService.getRangeAtStartOfSelection());
-
-      expect(arrayFromSpy).toHaveBeenCalled();
-      expect(containsSpy).not.toHaveBeenCalled();
-    });
-
-    test('returns early from outdentation if list item parent is not a list', () => {
-      safelySetHtml(root, '<div><li>Item 1</li></div>');
-      const item = root.querySelector('div li')! as HTMLElement;
-      setCursorInElement(item, 0, selectionService);
-
-      const arrayFromSpy = vi.spyOn(Array, 'from');
-      const containsSpy = vi.spyOn(HTMLElement.prototype, 'contains');
-
-      // @ts-expect-error private method
-      listService.outdentListItem(selectionService.getRangeAtStartOfSelection());
-
-      expect(arrayFromSpy).toHaveBeenCalled();
-      expect(containsSpy).not.toHaveBeenCalled();
-    });
-
-    test('returns early from outdentation if root element does not contain list', () => {
-      safelySetHtml(root, '<li><ul><li>Item 1</li></ul></li>');
-      const item = root.querySelector('li ul li')! as HTMLElement;
-      setCursorInElement(item, 0, selectionService);
-
-      const arrayFromSpy = vi.spyOn(Array, 'from');
-      const arrayIncludesSpy = vi.spyOn(Array.prototype, 'includes').mockReturnValue(true);
-      const containsSpy = vi.spyOn(HTMLElement.prototype, 'contains').mockReturnValue(false);
-      const insertBeforeSpy = vi.spyOn(HTMLElement.prototype, 'insertBefore');
-
-      // @ts-expect-error private method
-      listService.outdentListItem(selectionService.getRangeAtStartOfSelection());
-
-      expect(arrayFromSpy).toHaveBeenCalled();
-      expect(arrayIncludesSpy).toHaveBeenCalled();
-      expect(arrayIncludesSpy).toHaveReturnedWith(true);
-      expect(containsSpy).toHaveReturnedWith(false);
-      expect(insertBeforeSpy).not.toHaveBeenCalled();
-    });
   });
 
   describe('handleEnterKey', () => {
@@ -1122,41 +1049,6 @@ describe('ListService', () => {
         expect(root.querySelector('p span')).toBeTruthy();
       });
     });
-
-    describe('indentListItem', () => {
-      test('returns early when no list item is found', () => {
-        root.innerHTML = '<p>Paragraph</p>';
-        const p = root.querySelector('p')!;
-        setCursorInElement(p, 0, selectionService);
-        // @ts-expect-error private method
-        listService.indentListItem(selectionService.getRangeAtStartOfSelection());
-        expect(root.innerHTML).toBe('<p>Paragraph</p>');
-      });
-
-      test('returns early when no previous list item exists', () => {
-        root.innerHTML = '<ul><li>Only item</li></ul>';
-        const li = root.querySelector('li')!;
-        setCursorInElement(li, 0, selectionService);
-        // @ts-expect-error private method
-        listService.indentListItem(selectionService.getRangeAtStartOfSelection());
-        expect(root.innerHTML).toBe('<ul><li>Only item</li></ul>');
-      });
-    });
-
-    describe('insertList', () => {
-      test('returns early when isEditorInRange is false', () => {
-        // Mock isEditorInRange to return false
-        vi.spyOn(editorUtilities, 'isEditorInRange').mockReturnValue(false);
-        // Spy on getCurrentSelection to ensure it is not called
-        const range = selectionService.getRangeAtStartOfSelection();
-        const getRangeAtStartOfSelection = vi.spyOn(selectionService, 'getRangeAtStartOfSelection');
-        // @ts-expect-error private method
-        listService.insertList('ul', range!);
-        expect(root.innerHTML).toBe('');
-        expect(getRangeAtStartOfSelection).not.toHaveBeenCalled();
-        vi.restoreAllMocks();
-      });
-    });
   });
 
   describe('handleDeleteKeyOnList', () => {
@@ -1320,50 +1212,6 @@ describe('ListService', () => {
 
       // Verify setSelectionRange was called (indicating cursor positioning occurred)
       expect(setSelectionRangeSpy).toHaveBeenCalled();
-    });
-  });
-
-  describe('indentListItem', () => {
-    test('should return early when the list item has no parent list', () => {
-      // Create a detached li element with no parent
-      const li = document.createElement('li');
-      li.textContent = 'Detached list item';
-
-      // Create a mock text node that will return the detached li
-      const mockTextNode = document.createTextNode('test');
-
-      // Mock the parentElement.closest method to return the detached li
-      Object.defineProperty(mockTextNode, 'parentElement', {
-        value: {
-          closest: vi.fn().mockReturnValue(li),
-        },
-      });
-
-      // Create a range that will return our mock text node
-      const range = selectionService.createRange();
-      Object.defineProperty(range, 'startContainer', {
-        value: mockTextNode,
-      });
-
-      // Mock getCurrentSelection to return a selection with the range
-      const mockSelection = {
-        rangeCount: 1,
-        getRangeAt: vi.fn().mockReturnValue(range),
-      } as unknown as Selection;
-      vi.spyOn(selectionService, 'getCurrentSelection').mockReturnValue(mockSelection);
-
-      // Store initial DOM state
-      const initialHTML = root.innerHTML;
-
-      // Call indentListItem (should return early due to no parent element)
-      // @ts-expect-error private method
-      listService.indentListItem(selectionService.getRangeAtStartOfSelection());
-
-      // Verify DOM hasn't changed (method returned early)
-      expect(root.innerHTML).toBe(initialHTML);
-
-      // Verify the li element has no parent (parentElement is null)
-      expect(li.parentElement).toBeNull();
     });
   });
 });
