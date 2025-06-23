@@ -710,7 +710,7 @@ describe('Editor: Additional coverage tests', () => {
 
       // Set cursor in the paragraph
       const range = selectionService.createRange();
-      const firstChild = paragraph!.firstChild;
+      const { firstChild } = paragraph!;
       expect(firstChild).not.toBeNull();
       const firstChildOfFirstChild = firstChild!.firstChild;
       expect(firstChildOfFirstChild).not.toBeNull();
