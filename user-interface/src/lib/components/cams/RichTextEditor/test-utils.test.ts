@@ -1,10 +1,5 @@
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
-import {
-  getEditorContent,
-  expectEditorContent,
-  safelySetTestHtml,
-  safelyGetTestHtml,
-} from './test-utils';
+import { safelySetTestHtml, safelyGetTestHtml } from './test-utils';
 import { CONTENT_INPUT_SELECTOR } from './editor.constants';
 
 describe('test-utils', () => {
@@ -22,30 +17,6 @@ describe('test-utils', () => {
     if (document.body.contains(container)) {
       document.body.removeChild(container);
     }
-  });
-
-  describe('getEditorContent', () => {
-    test('returns editor content element when it exists', () => {
-      const content = getEditorContent();
-      expect(content).toBe(container);
-    });
-
-    test('throws error when editor content element does not exist', () => {
-      document.body.removeChild(container);
-      expect(() => getEditorContent()).toThrow('Editor content element not found');
-    });
-  });
-
-  describe('expectEditorContent', () => {
-    test('returns editor content element when it exists', () => {
-      const content = expectEditorContent();
-      expect(content).toBe(container);
-    });
-
-    test('throws error when editor content element does not exist', () => {
-      document.body.removeChild(container);
-      expect(() => expectEditorContent()).toThrow('Editor content element not found');
-    });
   });
 
   describe('safelySetTestHtml', () => {

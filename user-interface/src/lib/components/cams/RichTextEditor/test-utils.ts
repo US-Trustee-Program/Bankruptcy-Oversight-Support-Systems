@@ -1,20 +1,5 @@
-import { CONTENT_INPUT_SELECTOR } from './editor.constants';
 import { safelyGetHtml, safelySetHtml } from '@/lib/components/cams/RichTextEditor/utilities';
 import { MockSelectionService } from '@/lib/components/cams/RichTextEditor/SelectionService.humble';
-
-export const getEditorContent = (): HTMLElement => {
-  const content = document.querySelector<HTMLElement>(CONTENT_INPUT_SELECTOR);
-  if (!content) {
-    throw new Error('Editor content element not found');
-  }
-  return content;
-};
-
-export const expectEditorContent = (): HTMLElement => {
-  const content = getEditorContent();
-  expect(content).not.toBeNull();
-  return content;
-};
 
 export const safelySetTestHtml = (element: HTMLElement, html: string): void => {
   safelySetHtml(element, html);
