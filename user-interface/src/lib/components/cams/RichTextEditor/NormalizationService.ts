@@ -36,21 +36,7 @@ export class NormalizationService {
     this.removeEmptyFormattingElements(node);
 
     // Then merge adjacent similar elements
-    for (let i = node.childNodes.length - 1; i > 0; i--) {
-      const current = node.childNodes[i];
-      const prev = node.childNodes[i - 1];
-
-      if (
-        current.nodeType === Node.ELEMENT_NODE &&
-        prev.nodeType === Node.ELEMENT_NODE &&
-        this.shouldMerge(current as Element, prev as Element)
-      ) {
-        while (current.firstChild) {
-          prev.appendChild(current.firstChild);
-        }
-        current.remove();
-      }
-    }
+    this.mergeAdjacentSimilarElements(node);
 
     this.removeEmptyFormattingElements(node);
 
@@ -123,5 +109,29 @@ export class NormalizationService {
         node.removeChild(child);
       }
     });
+  }
+
+  private mergeAdjacentSimilarElements(node: Element): void {
+    // Iterate forward through child nodes with decrement on merge
+    for (let i = 0; i < node.childNodes.length - 1; i++) {
+      const current = node.childNodes[i];
+      const next = node.childNodes[i + 1];
+
+      if (
+        current.nodeType === Node.ELEMENT_NODE &&
+        next.nodeType === Node.ELEMENT_NODE &&
+        this.shouldMerge(current as Element, next as Element)
+      ) {
+        // Move all children from next element to current element
+        while (next.firstChild) {
+          current.appendChild(next.firstChild);
+        }
+        // Remove the now-empty next element
+        next.remove();
+
+        // Decrement i so we recheck the current position with the new next element
+        i--;
+      }
+    }
   }
 }
