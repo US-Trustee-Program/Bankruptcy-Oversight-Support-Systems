@@ -133,7 +133,7 @@ function cleanHtml(html: string) {
   return cleanEmptyTags(cleanZeroWidthSpaces(html));
 }
 
-export const safelySetHtml = (element: HTMLElement, html: string | Node): void => {
+export const safelySetHtml = (element: HTMLElement, html: string): void => {
   element.innerHTML = DOMPurify.sanitize(html, DOMPURIFY_CONFIG);
 };
 
