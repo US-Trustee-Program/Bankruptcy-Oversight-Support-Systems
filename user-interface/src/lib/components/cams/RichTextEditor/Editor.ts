@@ -120,11 +120,14 @@ export class Editor {
       }
     } else if (currentParagraph.textContent === ZERO_WIDTH_SPACE) {
       e.preventDefault();
-      const previousSibling = currentParagraph.previousSibling!;
-      if (previousSibling) {
-        range.setStart(previousSibling.firstChild!, previousSibling.textContent?.length ?? 0);
-        currentParagraph.remove();
-        return true;
+      const previousSibling = currentParagraph.previousSibling;
+      if (previousSibling && previousSibling.nodeType === Node.ELEMENT_NODE) {
+        const firstChild = previousSibling.firstChild;
+        if (firstChild) {
+          range.setStart(firstChild, previousSibling.textContent?.length ?? 0);
+          currentParagraph.remove();
+          return true;
+        }
       }
     }
 

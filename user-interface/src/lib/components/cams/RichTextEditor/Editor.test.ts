@@ -268,6 +268,40 @@ describe('Editor: handleBackspaceOnEmptyContent', () => {
     // Should merge with previous paragraph
   });
 
+  test('handles case where previousSibling is not an element', () => {
+    // Create a text node as the previous sibling
+    const textNode = document.createTextNode('Text Node');
+    container.appendChild(textNode);
+    safelySetHtml(container, `${container.innerHTML}<p>${ZERO_WIDTH_SPACE}</p>`);
+
+    const emptyParagraph = container.querySelector('p')!;
+    setCursorInParagraph2(emptyParagraph, 1, selectionService);
+
+    const event = createBackspaceEvent();
+    const result = editor.handleBackspaceOnEmptyContent(event);
+
+    // Should not throw and should prevent default since we're handling it
+    expect(result).toBe(false);
+    expect(event.preventDefault).toHaveBeenCalled();
+  });
+
+  test('handles case where previousSibling has no firstChild', () => {
+    // Create an empty element as the previous sibling
+    const emptyElement = document.createElement('div');
+    container.appendChild(emptyElement);
+    safelySetHtml(container, `${container.innerHTML}<p>${ZERO_WIDTH_SPACE}</p>`);
+
+    const emptyParagraph = container.querySelector('p')!;
+    setCursorInParagraph2(emptyParagraph, 1, selectionService);
+
+    const event = createBackspaceEvent();
+    const result = editor.handleBackspaceOnEmptyContent(event);
+
+    // Should not throw and should prevent default since we're handling it
+    expect(result).toBe(false);
+    expect(event.preventDefault).toHaveBeenCalled();
+  });
+
   test('allows normal backspace in non-empty paragraph', () => {
     safelySetHtml(container, '<p>Hello world</p>');
     const paragraph = container.querySelector('p')!;
