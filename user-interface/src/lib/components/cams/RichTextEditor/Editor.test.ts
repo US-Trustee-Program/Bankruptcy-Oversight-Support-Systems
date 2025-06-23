@@ -140,8 +140,9 @@ describe('Editor: handlePrintableKey method', () => {
 
   test('allows typing in empty paragraph', () => {
     // The editor starts with an empty paragraph containing zero-width space
-    const paragraph = container.querySelector('p')!;
-    setCursorInParagraph2(paragraph, 1, selectionService);
+    const paragraph = container.querySelector('p');
+    expect(paragraph).not.toBeNull();
+    setCursorInParagraph2(paragraph!, 1, selectionService);
 
     const event = createPrintableKeyEvent('a');
     const result = editor.handlePrintableKey(event);
@@ -244,8 +245,9 @@ describe('Editor: handleBackspaceOnEmptyContent', () => {
 
   test('prevents deletion of last empty paragraph', () => {
     // Editor starts with one empty paragraph
-    const paragraph = container.querySelector('p')!;
-    setCursorInParagraph2(paragraph, 1, selectionService);
+    const paragraph = container.querySelector('p');
+    expect(paragraph).not.toBeNull();
+    setCursorInParagraph2(paragraph!, 1, selectionService);
 
     const event = createBackspaceEvent();
     const result = editor.handleBackspaceOnEmptyContent(event);
@@ -274,8 +276,9 @@ describe('Editor: handleBackspaceOnEmptyContent', () => {
     container.appendChild(textNode);
     safelySetHtml(container, `${container.innerHTML}<p>${ZERO_WIDTH_SPACE}</p>`);
 
-    const emptyParagraph = container.querySelector('p')!;
-    setCursorInParagraph2(emptyParagraph, 1, selectionService);
+    const emptyParagraph = container.querySelector('p');
+    expect(emptyParagraph).not.toBeNull();
+    setCursorInParagraph2(emptyParagraph!, 1, selectionService);
 
     const event = createBackspaceEvent();
     const result = editor.handleBackspaceOnEmptyContent(event);
@@ -291,8 +294,9 @@ describe('Editor: handleBackspaceOnEmptyContent', () => {
     container.appendChild(emptyElement);
     safelySetHtml(container, `${container.innerHTML}<p>${ZERO_WIDTH_SPACE}</p>`);
 
-    const emptyParagraph = container.querySelector('p')!;
-    setCursorInParagraph2(emptyParagraph, 1, selectionService);
+    const emptyParagraph = container.querySelector('p');
+    expect(emptyParagraph).not.toBeNull();
+    setCursorInParagraph2(emptyParagraph!, 1, selectionService);
 
     const event = createBackspaceEvent();
     const result = editor.handleBackspaceOnEmptyContent(event);
@@ -304,8 +308,9 @@ describe('Editor: handleBackspaceOnEmptyContent', () => {
 
   test('allows normal backspace in non-empty paragraph', () => {
     safelySetHtml(container, '<p>Hello world</p>');
-    const paragraph = container.querySelector('p')!;
-    setCursorInParagraph2(paragraph, 5, selectionService);
+    const paragraph = container.querySelector('p');
+    expect(paragraph).not.toBeNull();
+    setCursorInParagraph2(paragraph!, 5, selectionService);
 
     const event = createBackspaceEvent();
     const result = editor.handleBackspaceOnEmptyContent(event);
@@ -335,7 +340,8 @@ describe('Editor: Additional coverage tests', () => {
   describe('toggleList - additional scenarios', () => {
     test('toggleList handles nested lists correctly', () => {
       safelySetHtml(container, '<ul><li>Item 1<ul><li>Nested item</li></ul></li></ul>');
-      const nestedItem = container.querySelector('ul ul li')! as HTMLElement;
+      const nestedItem = container.querySelector('ul ul li') as HTMLElement;
+      expect(nestedItem).not.toBeNull();
       setCursorInElement(nestedItem, 0, selectionService);
 
       editor.toggleList('ul');
@@ -349,7 +355,8 @@ describe('Editor: Additional coverage tests', () => {
     test('toggleList creates different list types', () => {
       // Start with a paragraph
       safelySetHtml(container, '<p>Item 1</p>');
-      const paragraph = container.querySelector('p')! as HTMLElement;
+      const paragraph = container.querySelector('p') as HTMLElement;
+      expect(paragraph).not.toBeNull();
       setCursorInElement(paragraph, 0, selectionService);
 
       // Convert to unordered list
@@ -358,11 +365,14 @@ describe('Editor: Additional coverage tests', () => {
       // Should now be an unordered list
       expect(container.querySelector('ul')).toBeTruthy();
       expect(container.querySelector('li')).toBeTruthy();
-      expect(container.querySelector('li')!.textContent).toEqual(`${ZERO_WIDTH_SPACE}Item 1`);
+      const li = container.querySelector('li');
+      expect(li).not.toBeNull();
+      expect(li!.textContent).toEqual(`${ZERO_WIDTH_SPACE}Item 1`);
 
       // Clear and create a new paragraph
       safelySetHtml(container, '<p>Item 1</p>');
-      const newParagraph = container.querySelector('p')! as HTMLElement;
+      const newParagraph = container.querySelector('p') as HTMLElement;
+      expect(newParagraph).not.toBeNull();
       setCursorInElement(newParagraph, 0, selectionService);
 
       // Convert to ordered list
@@ -371,13 +381,16 @@ describe('Editor: Additional coverage tests', () => {
       // Should now be an ordered list
       expect(container.querySelector('ol')).toBeTruthy();
       expect(container.querySelector('li')).toBeTruthy();
-      expect(container.querySelector('li')!.textContent).toEqual(`${ZERO_WIDTH_SPACE}Item 1`);
+      const orderedLi = container.querySelector('li');
+      expect(orderedLi).not.toBeNull();
+      expect(orderedLi!.textContent).toEqual(`${ZERO_WIDTH_SPACE}Item 1`);
     });
 
     test('toggleList handles empty paragraphs correctly', () => {
       safelySetHtml(container, `<p>${ZERO_WIDTH_SPACE}</p>`);
-      const paragraph = container.querySelector('p')!;
-      setCursorInParagraph2(paragraph, 1, selectionService);
+      const paragraph = container.querySelector('p');
+      expect(paragraph).not.toBeNull();
+      setCursorInParagraph2(paragraph!, 1, selectionService);
 
       editor.toggleList('ul');
 
@@ -523,8 +536,9 @@ describe('Editor: Additional coverage tests', () => {
     test('convertParagraphToList calls setCursorInListItem', () => {
       // Create a paragraph with text
       safelySetHtml(container, '<p>Test paragraph</p>');
-      const paragraph = container.querySelector('p')!;
-      setCursorInParagraph2(paragraph, 0, selectionService);
+      const paragraph = container.querySelector('p');
+      expect(paragraph).not.toBeNull();
+      setCursorInParagraph2(paragraph!, 0, selectionService);
 
       // Convert to list
       editor.toggleList('ul');
@@ -537,8 +551,9 @@ describe('Editor: Additional coverage tests', () => {
     test('setCursorInListItem is called during list conversion', () => {
       // Create a paragraph with text
       safelySetHtml(container, '<p>Test paragraph</p>');
-      const paragraph = container.querySelector('p')!;
-      setCursorInParagraph2(paragraph, 0, selectionService);
+      const paragraph = container.querySelector('p');
+      expect(paragraph).not.toBeNull();
+      setCursorInParagraph2(paragraph!, 0, selectionService);
 
       // Convert to list
       editor.toggleList('ul');
@@ -569,17 +584,19 @@ describe('Editor: Additional coverage tests', () => {
 
     test('list conversion followed by formatting', () => {
       safelySetHtml(container, '<p>Test paragraph</p>');
-      const paragraph = container.querySelector('p')!;
-      setCursorInParagraph2(paragraph, 5, selectionService);
+      const paragraph = container.querySelector('p');
+      expect(paragraph).not.toBeNull();
+      setCursorInParagraph2(paragraph!, 5, selectionService);
 
       // Convert to list first
       editor.toggleList('ul');
 
       // Then apply formatting
-      const listItem = container.querySelector('li')!;
+      const listItem = container.querySelector('li');
+      expect(listItem).not.toBeNull();
       const range = selectionService.createRange();
-      range.setStart(listItem.childNodes[1]!, 0);
-      range.setEnd(listItem.childNodes[1]!, 4); // Select "Test"
+      range.setStart(listItem!.childNodes[1]!, 0);
+      range.setEnd(listItem!.childNodes[1]!, 4); // Select "Test"
       selectionService.setSelectionRange(range);
       editor.toggleSelection('em');
 
@@ -591,8 +608,9 @@ describe('Editor: Additional coverage tests', () => {
 
     test('key handling interactions', () => {
       safelySetHtml(container, '<p>Test</p>');
-      const paragraph = container.querySelector('p')!;
-      setCursorInParagraph2(paragraph, 4, selectionService);
+      const paragraph = container.querySelector('p');
+      expect(paragraph).not.toBeNull();
+      setCursorInParagraph2(paragraph!, 4, selectionService);
 
       // Create Enter key event
       const enterEvent = {
@@ -625,10 +643,11 @@ describe('Editor: Additional coverage tests', () => {
 
     test('multiple formatting operations', () => {
       safelySetHtml(container, '<p>Test paragraph</p>');
-      const paragraph = container.querySelector('p')!;
+      const paragraph = container.querySelector('p');
+      expect(paragraph).not.toBeNull();
       const range = selectionService.createRange();
-      range.setStart(paragraph.firstChild!, 0);
-      range.setEnd(paragraph.firstChild!, 4); // Select "Test"
+      range.setStart(paragraph!.firstChild!, 0);
+      range.setEnd(paragraph!.firstChild!, 4); // Select "Test"
       selectionService.setSelectionRange(range);
 
       // Apply bold formatting
@@ -637,9 +656,10 @@ describe('Editor: Additional coverage tests', () => {
 
       // Apply italic formatting to the same text
       // First, reselect the text inside the strong element
-      const strongElement = container.querySelector('strong')!;
+      const strongElement = container.querySelector('strong');
+      expect(strongElement).not.toBeNull();
       const newRange = selectionService.createRange();
-      newRange.selectNodeContents(strongElement);
+      newRange.selectNodeContents(strongElement!);
       selectionService.setSelectionRange(newRange);
 
       editor.toggleSelection('em');
@@ -654,10 +674,11 @@ describe('Editor: Additional coverage tests', () => {
 
     test('applying and removing a single format', () => {
       safelySetHtml(container, '<p>Test paragraph</p>');
-      const paragraph = container.querySelector('p')!;
+      const paragraph = container.querySelector('p');
+      expect(paragraph).not.toBeNull();
       const range = selectionService.createRange();
-      range.setStart(paragraph.firstChild!, 0);
-      range.setEnd(paragraph.firstChild!, 4); // Select "Test"
+      range.setStart(paragraph!.firstChild!, 0);
+      range.setEnd(paragraph!.firstChild!, 4); // Select "Test"
       selectionService.setSelectionRange(range);
 
       // Apply bold formatting
@@ -665,9 +686,10 @@ describe('Editor: Additional coverage tests', () => {
       expect(container.innerHTML).toContain('<strong>');
 
       // Remove bold formatting
-      const strongElement = container.querySelector('strong')!;
+      const strongElement = container.querySelector('strong');
+      expect(strongElement).not.toBeNull();
       const newRange = selectionService.createRange();
-      newRange.selectNodeContents(strongElement);
+      newRange.selectNodeContents(strongElement!);
       selectionService.setSelectionRange(newRange);
 
       editor.toggleSelection('strong');
@@ -683,11 +705,16 @@ describe('Editor: Additional coverage tests', () => {
       safelySetHtml(container, '<p><span>Text in span</span></p>');
 
       // Get the paragraph
-      const paragraph = container.querySelector('p')!;
+      const paragraph = container.querySelector('p');
+      expect(paragraph).not.toBeNull();
 
       // Set cursor in the paragraph
       const range = selectionService.createRange();
-      range.setStart(paragraph.firstChild!.firstChild!, 0);
+      const firstChild = paragraph!.firstChild;
+      expect(firstChild).not.toBeNull();
+      const firstChildOfFirstChild = firstChild!.firstChild;
+      expect(firstChildOfFirstChild).not.toBeNull();
+      range.setStart(firstChildOfFirstChild!, 0);
       range.collapse(true);
       selectionService.setSelectionRange(range);
 

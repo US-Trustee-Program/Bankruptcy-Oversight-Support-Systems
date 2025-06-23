@@ -24,46 +24,56 @@ describe('ListService', () => {
   describe('toggleList', () => {
     test('converts paragraph to unordered list', () => {
       safelySetHtml(root, '<p>Test paragraph</p>');
-      const paragraph = root.querySelector('p')!;
-      setCursorInParagraph2(paragraph, 4, selectionService);
+      const paragraph = root.querySelector('p');
+      expect(paragraph).not.toBeNull();
+      setCursorInParagraph2(paragraph!, 4, selectionService);
 
       listService.toggleList('ul');
 
       const html = safelyGetHtml(root);
       expect(html).toContain('<ul>');
       expect(html).toContain('<li>');
-      expect(root.querySelector('li')!.textContent).toEqual(`${ZERO_WIDTH_SPACE}Test paragraph`);
+      const li = root.querySelector('li');
+      expect(li).not.toBeNull();
+      expect(li!.textContent).toEqual(`${ZERO_WIDTH_SPACE}Test paragraph`);
     });
 
     test('converts paragraph to ordered list', () => {
       safelySetHtml(root, '<p>Test paragraph</p>');
-      const paragraph = root.querySelector('p')!;
-      setCursorInParagraph2(paragraph, 4, selectionService);
+      const paragraph = root.querySelector('p');
+      expect(paragraph).not.toBeNull();
+      setCursorInParagraph2(paragraph!, 4, selectionService);
 
       listService.toggleList('ol');
 
       const html = editorUtilities.safelyGetHtml(root);
       expect(html).toContain('<ol>');
       expect(html).toContain('<li>');
-      expect(root.querySelector('li')!.textContent).toEqual(`${ZERO_WIDTH_SPACE}Test paragraph`);
+      const li = root.querySelector('li');
+      expect(li).not.toBeNull();
+      expect(li!.textContent).toEqual(`${ZERO_WIDTH_SPACE}Test paragraph`);
     });
 
     test('unwraps list item back to paragraph', () => {
       safelySetHtml(root, '<ul><li>List item</li></ul>');
-      const listItem = root.querySelector('li')!;
-      setCursorInElement(listItem, 4, selectionService);
+      const listItem = root.querySelector('li');
+      expect(listItem).not.toBeNull();
+      setCursorInElement(listItem!, 4, selectionService);
 
       listService.toggleList('ul');
 
       expect(root.querySelector('ul')).toBeFalsy();
       expect(root.querySelector('p')).toBeTruthy();
-      expect(root.querySelector('p')!.textContent).toBe('List item');
+      const p = root.querySelector('p');
+      expect(p).not.toBeNull();
+      expect(p!.textContent).toBe('List item');
     });
 
     test('creates empty list when cursor is in empty paragraph', () => {
       safelySetHtml(root, '<p></p>');
-      const paragraph = root.querySelector('p')!;
-      setCursorInParagraph2(paragraph, 0, selectionService);
+      const paragraph = root.querySelector('p');
+      expect(paragraph).not.toBeNull();
+      setCursorInParagraph2(paragraph!, 0, selectionService);
 
       listService.toggleList('ul');
 
