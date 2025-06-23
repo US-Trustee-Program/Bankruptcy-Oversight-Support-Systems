@@ -16,6 +16,7 @@ import LocalFormCache from '@/lib/utils/local-form-cache';
 import RichTextEditor, {
   RichTextEditorRef,
 } from '@/lib/components/cams/RichTextEditor/RichTextEditor';
+import { sanitizeText } from '@/lib/utils/sanitize-text';
 
 const useThrottleCallback = (callback: () => void, delay: number) => {
   const isThrottled = useRef(false);
@@ -38,7 +39,7 @@ const useThrottleCallback = (callback: () => void, delay: number) => {
 };
 
 export function getCaseNotesTitleValue(ref: InputRef | null) {
-  return ref?.getValue() ?? '';
+  return sanitizeText(ref?.getValue() ?? '');
 }
 
 export function getCaseNotesContentValue(ref: RichTextEditorRef | null) {

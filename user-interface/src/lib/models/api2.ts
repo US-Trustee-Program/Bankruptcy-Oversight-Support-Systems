@@ -260,12 +260,10 @@ async function getCaseNotes(caseId: string) {
 }
 
 async function postCaseNote(note: CaseNoteInput): Promise<void> {
-  const sanitizedNote = sanitizeText(note.content);
-  const sanitizedTitle = sanitizeText(note.title);
-  if (sanitizedNote.length > 0 && sanitizedTitle.length > 0 && isValidUserInput(sanitizedNote)) {
+  if (note.content.length > 0 && note.title.length > 0 && isValidUserInput(note.content)) {
     await api().post<CaseNoteInput>(`/cases/${note.caseId}/notes`, {
-      title: sanitizedTitle,
-      content: sanitizedNote,
+      title: note.title,
+      content: note.content,
     });
   }
 }
