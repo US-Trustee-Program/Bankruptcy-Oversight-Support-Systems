@@ -3,7 +3,7 @@ import { Editor } from './Editor';
 import { MockSelectionService } from './SelectionService.humble';
 import { ZERO_WIDTH_SPACE } from '@/lib/components/cams/RichTextEditor/editor.constants';
 import editorUtilities, { safelySetHtml } from './utilities';
-import { setCursorInParagraph2, setCursorInElement } from './test-utils';
+import { setCursorInParagraph, setCursorInElement } from './test-utils';
 
 const createPrintableKeyEvent = (key: string): React.KeyboardEvent<HTMLDivElement> =>
   ({
@@ -142,7 +142,7 @@ describe('Editor: handlePrintableKey method', () => {
     // The editor starts with an empty paragraph containing zero-width space
     const paragraph = container.querySelector('p');
     expect(paragraph).not.toBeNull();
-    setCursorInParagraph2(paragraph!, 1, selectionService);
+    setCursorInParagraph(paragraph!, 1, selectionService);
 
     const event = createPrintableKeyEvent('a');
     const result = editor.handlePrintableKey(event);
@@ -247,7 +247,7 @@ describe('Editor: handleBackspaceOnEmptyContent', () => {
     // Editor starts with one empty paragraph
     const paragraph = container.querySelector('p');
     expect(paragraph).not.toBeNull();
-    setCursorInParagraph2(paragraph!, 1, selectionService);
+    setCursorInParagraph(paragraph!, 1, selectionService);
 
     const event = createBackspaceEvent();
     const result = editor.handleBackspaceOnEmptyContent(event);
@@ -260,7 +260,7 @@ describe('Editor: handleBackspaceOnEmptyContent', () => {
   test('allows deletion when multiple paragraphs exist', () => {
     safelySetHtml(container, `<p>First</p><p>${ZERO_WIDTH_SPACE}</p>`);
     const emptyParagraph = container.querySelectorAll('p')[1];
-    setCursorInParagraph2(emptyParagraph, 1, selectionService);
+    setCursorInParagraph(emptyParagraph, 1, selectionService);
 
     const event = createBackspaceEvent();
     const result = editor.handleBackspaceOnEmptyContent(event);
@@ -278,7 +278,7 @@ describe('Editor: handleBackspaceOnEmptyContent', () => {
 
     const emptyParagraph = container.querySelector('p');
     expect(emptyParagraph).not.toBeNull();
-    setCursorInParagraph2(emptyParagraph!, 1, selectionService);
+    setCursorInParagraph(emptyParagraph!, 1, selectionService);
 
     const event = createBackspaceEvent();
     const result = editor.handleBackspaceOnEmptyContent(event);
@@ -296,7 +296,7 @@ describe('Editor: handleBackspaceOnEmptyContent', () => {
 
     const emptyParagraph = container.querySelector('p');
     expect(emptyParagraph).not.toBeNull();
-    setCursorInParagraph2(emptyParagraph!, 1, selectionService);
+    setCursorInParagraph(emptyParagraph!, 1, selectionService);
 
     const event = createBackspaceEvent();
     const result = editor.handleBackspaceOnEmptyContent(event);
@@ -310,7 +310,7 @@ describe('Editor: handleBackspaceOnEmptyContent', () => {
     safelySetHtml(container, '<p>Hello world</p>');
     const paragraph = container.querySelector('p');
     expect(paragraph).not.toBeNull();
-    setCursorInParagraph2(paragraph!, 5, selectionService);
+    setCursorInParagraph(paragraph!, 5, selectionService);
 
     const event = createBackspaceEvent();
     const result = editor.handleBackspaceOnEmptyContent(event);
@@ -390,7 +390,7 @@ describe('Editor: Additional coverage tests', () => {
       safelySetHtml(container, `<p>${ZERO_WIDTH_SPACE}</p>`);
       const paragraph = container.querySelector('p');
       expect(paragraph).not.toBeNull();
-      setCursorInParagraph2(paragraph!, 1, selectionService);
+      setCursorInParagraph(paragraph!, 1, selectionService);
 
       editor.toggleList('ul');
 
@@ -448,7 +448,7 @@ describe('Editor: Additional coverage tests', () => {
 
   test('toggles formatting with collapsed cursor', () => {
     safelySetHtml(container, `<p>${ZERO_WIDTH_SPACE}</p>`);
-    setCursorInParagraph2(container.querySelector('p')!, 1, selectionService);
+    setCursorInParagraph(container.querySelector('p')!, 1, selectionService);
 
     editor.toggleSelection('strong');
 
@@ -522,7 +522,7 @@ describe('Editor: Additional coverage tests', () => {
       // Create a new paragraph for list conversion
       safelySetHtml(container, '<p>List item</p>');
       const newParagraph = container.querySelector('p')!;
-      setCursorInParagraph2(newParagraph, 0, selectionService);
+      setCursorInParagraph(newParagraph, 0, selectionService);
 
       // Convert to list
       editor.toggleList('ul');
@@ -538,7 +538,7 @@ describe('Editor: Additional coverage tests', () => {
       safelySetHtml(container, '<p>Test paragraph</p>');
       const paragraph = container.querySelector('p');
       expect(paragraph).not.toBeNull();
-      setCursorInParagraph2(paragraph!, 0, selectionService);
+      setCursorInParagraph(paragraph!, 0, selectionService);
 
       // Convert to list
       editor.toggleList('ul');
@@ -553,7 +553,7 @@ describe('Editor: Additional coverage tests', () => {
       safelySetHtml(container, '<p>Test paragraph</p>');
       const paragraph = container.querySelector('p');
       expect(paragraph).not.toBeNull();
-      setCursorInParagraph2(paragraph!, 0, selectionService);
+      setCursorInParagraph(paragraph!, 0, selectionService);
 
       // Convert to list
       editor.toggleList('ul');
@@ -586,7 +586,7 @@ describe('Editor: Additional coverage tests', () => {
       safelySetHtml(container, '<p>Test paragraph</p>');
       const paragraph = container.querySelector('p');
       expect(paragraph).not.toBeNull();
-      setCursorInParagraph2(paragraph!, 5, selectionService);
+      setCursorInParagraph(paragraph!, 5, selectionService);
 
       // Convert to list first
       editor.toggleList('ul');
@@ -610,7 +610,7 @@ describe('Editor: Additional coverage tests', () => {
       safelySetHtml(container, '<p>Test</p>');
       const paragraph = container.querySelector('p');
       expect(paragraph).not.toBeNull();
-      setCursorInParagraph2(paragraph!, 4, selectionService);
+      setCursorInParagraph(paragraph!, 4, selectionService);
 
       // Create Enter key event
       const enterEvent = {
@@ -632,7 +632,7 @@ describe('Editor: Additional coverage tests', () => {
 
       // Position cursor at start of second paragraph
       const secondParagraph = container.querySelectorAll('p')[1];
-      setCursorInParagraph2(secondParagraph, 0, selectionService);
+      setCursorInParagraph(secondParagraph, 0, selectionService);
 
       // Handle Backspace to delete the empty paragraph
       editor.handleBackspaceOnEmptyContent(backspaceEvent);
