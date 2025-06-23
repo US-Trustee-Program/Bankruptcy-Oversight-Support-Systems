@@ -3,7 +3,7 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RichTextEditor, { RichTextEditorRef } from './RichTextEditor';
-import { ZERO_WIDTH_SPACE } from '@/lib/components/cams/RichTextEditor/editor.constants';
+import { ZERO_WIDTH_SPACE } from '@/lib/components/cams/RichTextEditor/Editor.constants';
 
 describe('RichTextEditor', () => {
   let Editor: {

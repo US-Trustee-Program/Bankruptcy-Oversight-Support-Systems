@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
-import { safelySetTestHtml, safelyGetTestHtml } from './test-utils';
-import { CONTENT_INPUT_SELECTOR } from './editor.constants';
+import { safelySetTestHtml, safelyGetTestHtml } from './RichTextEditor.test-utils';
+import { CONTENT_INPUT_SELECTOR } from './Editor.constants';
 
 describe('test-utils', () => {
   let container: HTMLDivElement;

@@ -1,6 +1,6 @@
-import editorUtilities from './utilities';
+import editorUtilities from './Editor.utilities';
 import { SelectionService } from './SelectionService.humble';
-import { ZERO_WIDTH_SPACE } from './editor.constants';
+import { ZERO_WIDTH_SPACE } from './Editor.constants';
 
 export class ListUtilities {
   private root: HTMLElement;

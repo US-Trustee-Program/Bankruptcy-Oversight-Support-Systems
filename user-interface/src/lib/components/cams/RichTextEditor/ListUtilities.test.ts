@@ -1,9 +1,9 @@
 import { describe, expect, vi, beforeEach, afterEach, test } from 'vitest';
 import { ListUtilities } from './ListUtilities';
 import { MockSelectionService } from './SelectionService.humble';
-import { safelySetHtml } from './utilities';
-import { ZERO_WIDTH_SPACE } from './editor.constants';
-import { setCursorInElement } from './test-utils';
+import { safelySetHtml } from './Editor.utilities';
+import { ZERO_WIDTH_SPACE } from './Editor.constants';
+import { setCursorInElement } from './RichTextEditor.test-utils';
 
 describe('ListUtilities', () => {
   let root: HTMLDivElement;

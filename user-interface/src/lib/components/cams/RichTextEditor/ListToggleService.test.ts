@@ -2,9 +2,9 @@ import { describe, expect, vi, beforeEach, afterEach, test } from 'vitest';
 import { ListToggleService } from './ListToggleService';
 import { ListUtilities } from './ListUtilities';
 import { MockSelectionService } from './SelectionService.humble';
-import editorUtilities, { safelySetHtml, safelyGetHtml } from './utilities';
-import { ZERO_WIDTH_SPACE } from './editor.constants';
-import { setCursorInElement, setCursorInParagraph } from './test-utils';
+import editorUtilities, { safelySetHtml, safelyGetHtml } from './Editor.utilities';
+import { ZERO_WIDTH_SPACE } from './Editor.constants';
+import { setCursorInElement, setCursorInParagraph } from './RichTextEditor.test-utils';
 
 describe('ListToggleService', () => {
   let root: HTMLDivElement;

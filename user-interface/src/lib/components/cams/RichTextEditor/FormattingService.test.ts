@@ -1,9 +1,9 @@
 import { describe, expect, vi, beforeEach, afterEach, test } from 'vitest';
 import { FormattingService } from './FormattingService';
 import { MockSelectionService } from './SelectionService.humble';
-import editorUtilities from './utilities';
-import { RichTextFormat, ZERO_WIDTH_SPACE } from './editor.constants';
-import { setCursorInElement, setCursorInParagraph } from './test-utils';
+import editorUtilities from './Editor.utilities';
+import { RichTextFormat, ZERO_WIDTH_SPACE } from './Editor.constants';
+import { setCursorInElement, setCursorInParagraph } from './RichTextEditor.test-utils';
 
 describe('FormattingService: toggleSelection', () => {
   let formattingService: FormattingService;

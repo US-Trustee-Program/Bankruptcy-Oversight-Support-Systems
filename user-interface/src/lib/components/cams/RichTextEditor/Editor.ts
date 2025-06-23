@@ -2,8 +2,8 @@ import {
   RichTextFormat,
   ZERO_WIDTH_SPACE,
   ZERO_WIDTH_SPACE_REGEX,
-} from '@/lib/components/cams/RichTextEditor/editor.constants';
-import editorUtilities from './utilities';
+} from '@/lib/components/cams/RichTextEditor/Editor.constants';
+import editorUtilities from './Editor.utilities';
 import { SelectionService } from './SelectionService.humble';
 import { ListService } from './ListService';
 import { FormattingService } from './FormattingService';

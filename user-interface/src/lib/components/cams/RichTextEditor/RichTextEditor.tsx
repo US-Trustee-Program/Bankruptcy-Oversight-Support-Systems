@@ -3,7 +3,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 're
 import { Editor } from './Editor';
 import { BrowserSelectionService } from './SelectionService.humble';
 import { RichTextButton } from './RichTextButton';
-import editorUtilities, { safelyGetHtml, safelySetHtml } from './utilities';
+import editorUtilities, { safelyGetHtml, safelySetHtml } from './Editor.utilities';
 
 export interface RichTextEditorRef {
   clearValue: () => void;
