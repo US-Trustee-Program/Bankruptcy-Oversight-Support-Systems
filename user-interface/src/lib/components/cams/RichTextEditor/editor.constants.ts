@@ -5,7 +5,7 @@ export const CONTENT_INPUT_SELECTOR = '#rich-text-editor-content';
 
 export const DOMPURIFY_CONFIG = {
   ALLOWED_TAGS: ['em', 'strong', 'p', 'ul', 'ol', 'li', 'br', 'span', 'a'],
-  ALLOWED_ATTR: ['href', 'class', 'style'],
+  ALLOWED_ATTR: ['href', 'class'],
   ALLOW_DATA_ATTR: false,
   FORBID_TAGS: ['style', 'script', 'iframe', 'object', 'embed', 'form', 'input', 'button'],
   FORBID_ATTR: [
