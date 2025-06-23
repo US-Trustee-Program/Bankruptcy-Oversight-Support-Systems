@@ -23,6 +23,7 @@ describe('ListService', () => {
 
   describe('toggleList', () => {
     test('converts paragraph to unordered list', () => {
+      safelySetHtml(root, '<p>Test paragraph</p>');
       const paragraph = root.querySelector('p')!;
       setCursorInParagraph2(paragraph, 4, selectionService);
 
@@ -88,7 +89,7 @@ describe('ListService', () => {
     test('toggleList handles nested lists correctly', () => {
       safelySetHtml(root, '<ul><li>Item 1<ul><li>Nested item</li></ul></li></ul>');
       const nestedItem = root.querySelector('ul ul li')!;
-      setCursorInElement(nestedItem, 3, selectionService);
+      setCursorInElement(nestedItem as HTMLElement, 3, selectionService);
 
       listService.toggleList('ul');
 
@@ -362,6 +363,7 @@ describe('ListService', () => {
       expect(event.preventDefault).not.toHaveBeenCalled();
     });
 
+    // TODO why is this valid behavior for the Enter key in a list?
     test('creates new paragraph on Enter in regular paragraph', () => {
       safelySetHtml(root, '<p>Some text</p>');
       const paragraph = root.querySelector('p')!;
@@ -387,6 +389,21 @@ describe('ListService', () => {
       expect(event.preventDefault).toHaveBeenCalled();
       expect(root.querySelector('p')).toBeTruthy();
       expect(root.querySelectorAll('li')).toHaveLength(1);
+    });
+
+    test('should exit empty list item and create paragraph at root when list item is empty and enter is pressed', () => {
+      safelySetHtml(root, '<ul><li>Item 1<ul><li>Nested item</li><li></li></ul></li></ul>');
+      const emptyListItem = root.querySelectorAll('ul ul li')[1]!;
+      setCursorInElement(emptyListItem as HTMLElement, 0, selectionService);
+
+      const event = createEnterEvent();
+      const result = listService.handleEnterKey(event);
+
+      expect(result).toBe(true);
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(safelyGetHtml(root)).toEqual(
+        `<ul><li>Item 1<ul><li>Nested item</li></ul></li></ul><p>${ZERO_WIDTH_SPACE}</p>`,
+      );
     });
 
     test('handles enter in non-empty list item normally', () => {
