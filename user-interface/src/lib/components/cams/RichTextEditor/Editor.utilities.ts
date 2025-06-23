@@ -1,4 +1,4 @@
-import { DOMPURIFY_CONFIG, EMPTY_TAG_REGEX, ZERO_WIDTH_SPACE_REGEX } from './editor.constants';
+import { DOMPURIFY_CONFIG, EMPTY_TAG_REGEX, ZERO_WIDTH_SPACE_REGEX } from './Editor.constants';
 import { SelectionService } from './SelectionService.humble';
 import DOMPurify from 'dompurify';
 function stripFormatting(node: Node): void {

@@ -1,9 +1,9 @@
 import { describe, expect, vi, beforeEach, afterEach, test } from 'vitest';
 import { Editor } from './Editor';
 import { MockSelectionService } from './SelectionService.humble';
-import { ZERO_WIDTH_SPACE } from '@/lib/components/cams/RichTextEditor/editor.constants';
-import editorUtilities, { safelySetHtml } from './utilities';
-import { setCursorInParagraph, setCursorInElement } from './test-utils';
+import { ZERO_WIDTH_SPACE } from '@/lib/components/cams/RichTextEditor/Editor.constants';
+import editorUtilities, { safelySetHtml } from './Editor.utilities';
+import { setCursorInParagraph, setCursorInElement } from './RichTextEditor.test-utils';
 
 const createPrintableKeyEvent = (key: string): React.KeyboardEvent<HTMLDivElement> =>
   ({

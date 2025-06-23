@@ -18,7 +18,7 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { randomUUID } from 'crypto';
 import LocalFormCache from '@/lib/utils/local-form-cache';
 import { CamsSession, getCamsUserReference } from '@common/cams/session';
-import { ZERO_WIDTH_SPACE } from '@/lib/components/cams/RichTextEditor/editor.constants';
+import { ZERO_WIDTH_SPACE } from '@/lib/components/cams/RichTextEditor/Editor.constants';
 
 const MODAL_ID = 'modal-case-note-form';
 const TITLE_INPUT_ID = 'case-note-title-input';

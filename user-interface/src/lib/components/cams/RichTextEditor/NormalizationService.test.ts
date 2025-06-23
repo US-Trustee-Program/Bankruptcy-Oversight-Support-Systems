@@ -1,6 +1,6 @@
 import { NormalizationService } from './NormalizationService';
 import { MockSelectionService } from './SelectionService.humble';
-import editorUtilities from './utilities';
+import editorUtilities from './Editor.utilities';
 
 describe('FormattingService: normalizeInlineFormatting', () => {
   let normalizationService: NormalizationService;

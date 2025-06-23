@@ -896,18 +896,18 @@
 <path fill="none" stroke="black" d="M741,-1428.34C741,-1597.2 741,-3998.8 741,-3998.8 741,-3998.8 813.34,-3998.8 813.34,-3998.8"/>
 <polygon fill="black" stroke="black" points="818.34,-3998.8 813.34,-4001.05 815.84,-3998.8 813.34,-3998.8 813.34,-3998.8 813.34,-3998.8 815.84,-3998.8 813.34,-3996.55 818.34,-3998.8 818.34,-3998.8"/>
 </g>
-<!-- lib/testing/testing&#45;utilities.ts -->
+<!-- lib/testing/testing&#45;Editor.utilities.ts -->
 <g id="node30" class="node">
-<title>lib/testing/testing&#45;utilities.ts</title>
-<g id="a_node30"><a xlink:href="lib/testing/testing-utilities.ts" xlink:title="testing&#45;utilities.ts">
+<title>lib/testing/testing&#45;Editor.utilities.ts</title>
+<g id="a_node30"><a xlink:href="lib/testing/testing-Editor.utilities.ts" xlink:title="testing&#45;Editor.utilities.ts">
 <path fill="#ddfeff" stroke="black" d="M934.5,-5978C934.5,-5978 851.5,-5978 851.5,-5978 848.5,-5978 845.5,-5975 845.5,-5972 845.5,-5972 845.5,-5966 845.5,-5966 845.5,-5963 848.5,-5960 851.5,-5960 851.5,-5960 934.5,-5960 934.5,-5960 937.5,-5960 940.5,-5963 940.5,-5966 940.5,-5966 940.5,-5972 940.5,-5972 940.5,-5975 937.5,-5978 934.5,-5978"/>
-<text text-anchor="start" x="853.5" y="-5966.8" font-family="Helvetica,sans-Serif" font-size="9.00">testing&#45;utilities.ts</text>
+<text text-anchor="start" x="853.5" y="-5966.8" font-family="Helvetica,sans-Serif" font-size="9.00">testing&#45;Editor.utilities.ts</text>
 </a>
 </g>
 </g>
-<!-- case&#45;assignments/case.assignment.function.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts -->
+<!-- case&#45;assignments/case.assignment.function.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts -->
 <g id="edge37" class="edge">
-<title>case&#45;assignments/case.assignment.function.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts</title>
+<title>case&#45;assignments/case.assignment.function.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts</title>
 <path fill="none" stroke="black" d="M746.61,-1417.2C774.62,-1417.2 799,-1417.2 799,-1417.2 799,-1417.2 799,-5943 799,-5943 799,-5943 908,-5943 908,-5943 908,-5943 908,-5954.91 908,-5954.91"/>
 <polygon fill="black" stroke="black" points="908,-5959.91 905.75,-5954.91 908,-5957.41 908,-5954.91 908,-5954.91 908,-5954.91 908,-5957.41 910.25,-5954.91 908,-5959.91 908,-5959.91"/>
 </g>
@@ -1001,21 +1001,21 @@
 <path fill="none" stroke="black" d="M958,-4006.03C958,-4045.51 958,-4201 958,-4201 958,-4201 1047.65,-4201 1047.65,-4201"/>
 <polygon fill="black" stroke="black" points="1052.65,-4201 1047.65,-4203.25 1050.15,-4201 1047.65,-4201 1047.65,-4201 1047.65,-4201 1050.15,-4201 1047.65,-4198.75 1052.65,-4201 1052.65,-4201"/>
 </g>
-<!-- lib/testing/testing&#45;utilities.ts&#45;&gt;node_modules/azure&#45;function&#45;context&#45;mock -->
+<!-- lib/testing/testing&#45;Editor.utilities.ts&#45;&gt;node_modules/azure&#45;function&#45;context&#45;mock -->
 <g id="edge626" class="edge">
-<title>lib/testing/testing&#45;utilities.ts&#45;&gt;node_modules/azure&#45;function&#45;context&#45;mock</title>
+<title>lib/testing/testing&#45;Editor.utilities.ts&#45;&gt;node_modules/azure&#45;function&#45;context&#45;mock</title>
 <path fill="none" stroke="black" d="M940.84,-5975.43C1037.08,-5975.43 1245,-5975.43 1245,-5975.43 1245,-5975.43 1245,-6699.95 1245,-6699.95 1245,-6699.95 1245.13,-6699.95 1245.13,-6699.95"/>
 <polygon fill="black" stroke="black" points="1246.3,-6699.95 1241.3,-6702.2 1243.8,-6699.95 1241.3,-6699.95 1241.3,-6699.95 1241.3,-6699.95 1243.8,-6699.95 1241.3,-6697.7 1246.3,-6699.95 1246.3,-6699.95"/>
 </g>
-<!-- lib/testing/testing&#45;utilities.ts&#45;&gt;lib/adapters/utils/application&#45;context&#45;creator.ts -->
+<!-- lib/testing/testing&#45;Editor.utilities.ts&#45;&gt;lib/adapters/utils/application&#45;context&#45;creator.ts -->
 <g id="edge625" class="edge">
-<title>lib/testing/testing&#45;utilities.ts&#45;&gt;lib/adapters/utils/application&#45;context&#45;creator.ts</title>
+<title>lib/testing/testing&#45;Editor.utilities.ts&#45;&gt;lib/adapters/utils/application&#45;context&#45;creator.ts</title>
 <path fill="none" stroke="black" d="M940.83,-5970.29C987.34,-5970.29 1051,-5970.29 1051,-5970.29 1051,-5970.29 1051,-4393.35 1051,-4393.35"/>
 <polygon fill="black" stroke="black" points="1051,-4388.35 1053.25,-4393.34 1051,-4390.85 1051,-4393.35 1051,-4393.35 1051,-4393.35 1051,-4390.85 1048.75,-4393.35 1051,-4388.35 1051,-4388.35"/>
 </g>
-<!-- lib/testing/testing&#45;utilities.ts&#45;&gt;lib/adapters/types/basic.d.ts -->
+<!-- lib/testing/testing&#45;Editor.utilities.ts&#45;&gt;lib/adapters/types/basic.d.ts -->
 <g id="edge624" class="edge">
-<title>lib/testing/testing&#45;utilities.ts&#45;&gt;lib/adapters/types/basic.d.ts</title>
+<title>lib/testing/testing&#45;Editor.utilities.ts&#45;&gt;lib/adapters/types/basic.d.ts</title>
 <path fill="none" stroke="black" d="M940.72,-5972.86C1085.68,-5972.86 1511,-5972.86 1511,-5972.86 1511,-5972.86 1511,-4155.42 1511,-4155.42"/>
 <polygon fill="black" stroke="black" points="1511,-4150.42 1513.25,-4155.42 1511,-4152.92 1511,-4155.42 1511,-4155.42 1511,-4155.42 1511,-4152.92 1508.75,-4155.42 1511,-4150.42 1511,-4150.42"/>
 </g>
@@ -2078,9 +2078,9 @@
 </a>
 </g>
 </g>
-<!-- healthcheck/healthcheck.db.cosmos.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts -->
+<!-- healthcheck/healthcheck.db.cosmos.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts -->
 <g id="edge114" class="edge">
-<title>healthcheck/healthcheck.db.cosmos.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts</title>
+<title>healthcheck/healthcheck.db.cosmos.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts</title>
 <path fill="none" stroke="black" d="M160,-1410.04C160,-1634.78 160,-5977 160,-5977 160,-5977 840.47,-5977 840.47,-5977"/>
 <polygon fill="black" stroke="black" points="845.47,-5977 840.47,-5979.25 842.97,-5977 840.47,-5977 840.47,-5977 840.47,-5977 842.97,-5977 840.47,-5974.75 845.47,-5977 845.47,-5977"/>
 </g>
@@ -2771,9 +2771,9 @@
 <path fill="none" stroke="black" d="M772.89,-4024C801.72,-4024 825,-4024 825,-4024 825,-4024 825,-4011.14 825,-4011.14"/>
 <polygon fill="black" stroke="black" points="825,-4006.14 827.25,-4011.14 825,-4008.64 825,-4011.14 825,-4011.14 825,-4011.14 825,-4008.64 822.75,-4011.14 825,-4006.14 825,-4006.14"/>
 </g>
-<!-- lib/adapters/controllers/case.assignment.controller.exception.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts -->
+<!-- lib/adapters/controllers/case.assignment.controller.exception.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts -->
 <g id="edge138" class="edge">
-<title>lib/adapters/controllers/case.assignment.controller.exception.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts</title>
+<title>lib/adapters/controllers/case.assignment.controller.exception.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts</title>
 <path fill="none" stroke="black" d="M769,-4036.01C769,-4178.03 769,-5951.5 769,-5951.5 769,-5951.5 878,-5951.5 878,-5951.5 878,-5951.5 878,-5954.84 878,-5954.84"/>
 <polygon fill="black" stroke="black" points="878,-5959.84 875.75,-5954.84 878,-5957.34 878,-5954.84 878,-5954.84 878,-5954.84 878,-5957.34 880.25,-5954.84 878,-5959.84 878,-5959.84"/>
 </g>
@@ -3179,9 +3179,9 @@
 <path fill="none" stroke="black" d="M508,-5580.28C508,-5693.89 508,-6812.5 508,-6812.5 508,-6812.5 1285,-6812.5 1285,-6812.5 1285,-6812.5 1285,-8518.74 1285,-8518.74"/>
 <polygon fill="black" stroke="black" points="1285,-8523.74 1282.75,-8518.74 1285,-8521.24 1285,-8518.74 1285,-8518.74 1285,-8518.74 1285,-8521.24 1287.25,-8518.74 1285,-8523.74 1285,-8523.74"/>
 </g>
-<!-- lib/adapters/gateways/case.assignment.cosmosdb.repository.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts -->
+<!-- lib/adapters/gateways/case.assignment.cosmosdb.repository.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts -->
 <g id="edge175" class="edge">
-<title>lib/adapters/gateways/case.assignment.cosmosdb.repository.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts</title>
+<title>lib/adapters/gateways/case.assignment.cosmosdb.repository.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts</title>
 <path fill="none" stroke="black" d="M536,-5580.06C536,-5639.3 536,-5969 536,-5969 536,-5969 840.22,-5969 840.22,-5969"/>
 <polygon fill="black" stroke="black" points="845.22,-5969 840.22,-5971.25 842.72,-5969 840.22,-5969 840.22,-5969 840.22,-5969 842.72,-5969 840.22,-5966.75 845.22,-5969 845.22,-5969"/>
 </g>
@@ -3356,9 +3356,9 @@
 <path fill="none" stroke="black" d="M515.26,-5540C673.66,-5540 1000,-5540 1000,-5540 1000,-5540 1000,-8527.27 1000,-8527.27 1000,-8527.27 1080.9,-8527.27 1080.9,-8527.27"/>
 <polygon fill="black" stroke="black" points="1085.9,-8527.27 1080.9,-8529.52 1083.4,-8527.27 1080.9,-8527.27 1080.9,-8527.27 1080.9,-8527.27 1083.4,-8527.27 1080.9,-8525.02 1085.9,-8527.27 1085.9,-8527.27"/>
 </g>
-<!-- lib/adapters/gateways/cases.cosmosdb.repository.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts -->
+<!-- lib/adapters/gateways/cases.cosmosdb.repository.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts -->
 <g id="edge195" class="edge">
-<title>lib/adapters/gateways/cases.cosmosdb.repository.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts</title>
+<title>lib/adapters/gateways/cases.cosmosdb.repository.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts</title>
 <path fill="none" stroke="black" d="M515,-5544C557.42,-5544 600,-5544 600,-5544 600,-5544 600,-5964 600,-5964 600,-5964 840.27,-5964 840.27,-5964"/>
 <polygon fill="black" stroke="black" points="845.27,-5964 840.27,-5966.25 842.77,-5964 840.27,-5964 840.27,-5964 840.27,-5964 842.77,-5964 840.27,-5961.75 845.27,-5964 845.27,-5964"/>
 </g>
@@ -3662,9 +3662,9 @@
 </a>
 </g>
 </g>
-<!-- lib/adapters/gateways/cosmos/cosmos.repository.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts -->
+<!-- lib/adapters/gateways/cosmos/cosmos.repository.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts -->
 <g id="edge220" class="edge">
-<title>lib/adapters/gateways/cosmos/cosmos.repository.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts</title>
+<title>lib/adapters/gateways/cosmos/cosmos.repository.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts</title>
 <path fill="none" stroke="black" d="M495.18,-5374.4C522.86,-5374.4 549,-5374.4 549,-5374.4 549,-5374.4 549,-5968 549,-5968 549,-5968 840.17,-5968 840.17,-5968"/>
 <polygon fill="black" stroke="black" points="845.17,-5968 840.17,-5970.25 842.67,-5968 840.17,-5968 840.17,-5968 840.17,-5968 842.67,-5968 840.17,-5965.75 845.17,-5968 845.17,-5968"/>
 </g>
@@ -3749,9 +3749,9 @@
 </a>
 </g>
 </g>
-<!-- lib/adapters/gateways/dxtr/case&#45;docket.dxtr.gateway.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts -->
+<!-- lib/adapters/gateways/dxtr/case&#45;docket.dxtr.gateway.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts -->
 <g id="edge236" class="edge">
-<title>lib/adapters/gateways/dxtr/case&#45;docket.dxtr.gateway.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts</title>
+<title>lib/adapters/gateways/dxtr/case&#45;docket.dxtr.gateway.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts</title>
 <path fill="none" stroke="black" d="M734,-5218.24C734,-5304.19 734,-5961 734,-5961 734,-5961 840.29,-5961 840.29,-5961"/>
 <polygon fill="black" stroke="black" points="845.29,-5961 840.29,-5963.25 842.79,-5961 840.29,-5961 840.29,-5961 840.29,-5961 842.79,-5961 840.29,-5958.75 845.29,-5961 845.29,-5961"/>
 </g>
@@ -4457,9 +4457,9 @@
 <path fill="none" stroke="black" d="M372.2,-5119C358.09,-5119 347,-5119 347,-5119 347,-5119 347,-2375.38 347,-2375.38 347,-2375.38 1294,-2375.38 1294,-2375.38 1294,-2375.38 1294,-2357.19 1294,-2357.19"/>
 <polygon fill="black" stroke="black" points="1294,-2352.19 1296.25,-2357.19 1294,-2354.69 1294,-2357.19 1294,-2357.19 1294,-2357.19 1294,-2354.69 1291.75,-2357.19 1294,-2352.19 1294,-2352.19"/>
 </g>
-<!-- lib/adapters/gateways/dxtr/offices.gateway.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts -->
+<!-- lib/adapters/gateways/dxtr/offices.gateway.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts -->
 <g id="edge302" class="edge">
-<title>lib/adapters/gateways/dxtr/offices.gateway.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts</title>
+<title>lib/adapters/gateways/dxtr/offices.gateway.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts</title>
 <path fill="none" stroke="black" d="M489.65,-5121.25C519.27,-5121.25 549,-5121.25 549,-5121.25 549,-5121.25 549,-5966 549,-5966 549,-5966 840.17,-5966 840.17,-5966"/>
 <polygon fill="black" stroke="black" points="845.17,-5966 840.17,-5968.25 842.67,-5966 840.17,-5966 840.17,-5966 840.17,-5966 842.67,-5966 840.17,-5963.75 845.17,-5966 845.17,-5966"/>
 </g>
@@ -4556,9 +4556,9 @@
 <path fill="none" stroke="black" d="M499.65,-5210.8C530.46,-5210.8 560,-5210.8 560,-5210.8 560,-5210.8 560,-8567 560,-8567 560,-8567 849.8,-8567 849.8,-8567"/>
 <polygon fill="black" stroke="black" points="854.8,-8567 849.8,-8569.25 852.3,-8567 849.8,-8567 849.8,-8567 849.8,-8567 852.3,-8567 849.8,-8564.75 854.8,-8567 854.8,-8567"/>
 </g>
-<!-- lib/adapters/gateways/dxtr/orders.dxtr.gateway.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts -->
+<!-- lib/adapters/gateways/dxtr/orders.dxtr.gateway.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts -->
 <g id="edge316" class="edge">
-<title>lib/adapters/gateways/dxtr/orders.dxtr.gateway.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts</title>
+<title>lib/adapters/gateways/dxtr/orders.dxtr.gateway.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts</title>
 <path fill="none" stroke="black" d="M499.64,-5214.4C525.6,-5214.4 549,-5214.4 549,-5214.4 549,-5214.4 549,-5967 549,-5967 549,-5967 840.17,-5967 840.17,-5967"/>
 <polygon fill="black" stroke="black" points="845.17,-5967 840.17,-5969.25 842.67,-5967 840.17,-5967 840.17,-5967 840.17,-5967 842.67,-5967 840.17,-5964.75 845.17,-5967 845.17,-5967"/>
 </g>
@@ -4826,9 +4826,9 @@
 <path fill="none" stroke="black" d="M344.86,-5514C332.02,-5514 323,-5514 323,-5514 323,-5514 323,-2196.5 323,-2196.5 323,-2196.5 1062.36,-2196.5 1062.36,-2196.5"/>
 <polygon fill="black" stroke="black" points="1067.36,-2196.5 1062.36,-2198.75 1064.86,-2196.5 1062.36,-2196.5 1062.36,-2196.5 1062.36,-2196.5 1064.86,-2196.5 1062.36,-2194.25 1067.36,-2196.5 1067.36,-2196.5"/>
 </g>
-<!-- lib/adapters/gateways/orders.cosmosdb.repository.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts -->
+<!-- lib/adapters/gateways/orders.cosmosdb.repository.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts -->
 <g id="edge371" class="edge">
-<title>lib/adapters/gateways/orders.cosmosdb.repository.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts</title>
+<title>lib/adapters/gateways/orders.cosmosdb.repository.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts</title>
 <path fill="none" stroke="black" d="M517,-5512C559.58,-5512 602,-5512 602,-5512 602,-5512 602,-5963 602,-5963 602,-5963 840.27,-5963 840.27,-5963"/>
 <polygon fill="black" stroke="black" points="845.27,-5963 840.27,-5965.25 842.77,-5963 840.27,-5963 840.27,-5963 840.27,-5963 842.77,-5963 840.27,-5960.75 845.27,-5963 845.27,-5963"/>
 </g>
@@ -5021,9 +5021,9 @@
 </a>
 </g>
 </g>
-<!-- lib/adapters/gateways/runtime&#45;state.cosmosdb.repository.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts -->
+<!-- lib/adapters/gateways/runtime&#45;state.cosmosdb.repository.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts -->
 <g id="edge390" class="edge">
-<title>lib/adapters/gateways/runtime&#45;state.cosmosdb.repository.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts</title>
+<title>lib/adapters/gateways/runtime&#45;state.cosmosdb.repository.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts</title>
 <path fill="none" stroke="black" d="M533.54,-5484C570.37,-5484 603,-5484 603,-5484 603,-5484 603,-5962 603,-5962 603,-5962 840.44,-5962 840.44,-5962"/>
 <polygon fill="black" stroke="black" points="845.44,-5962 840.44,-5964.25 842.94,-5962 840.44,-5962 840.44,-5962 840.44,-5962 842.94,-5962 840.44,-5959.75 845.44,-5962 845.44,-5962"/>
 </g>
@@ -5516,9 +5516,9 @@
 </a>
 </g>
 </g>
-<!-- lib/controllers/case&#45;docket/case&#45;docket.controller.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts -->
+<!-- lib/controllers/case&#45;docket/case&#45;docket.controller.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts -->
 <g id="edge482" class="edge">
-<title>lib/controllers/case&#45;docket/case&#45;docket.controller.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts</title>
+<title>lib/controllers/case&#45;docket/case&#45;docket.controller.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts</title>
 <path fill="none" stroke="black" d="M357.35,-2106C295.45,-2106 217,-2106 217,-2106 217,-2106 217,-5972 217,-5972 217,-5972 840.46,-5972 840.46,-5972"/>
 <polygon fill="black" stroke="black" points="845.46,-5972 840.47,-5974.25 842.96,-5972 840.46,-5972 840.46,-5972 840.46,-5972 842.96,-5972 840.46,-5969.75 845.46,-5972 845.46,-5972"/>
 </g>
@@ -5573,9 +5573,9 @@
 </a>
 </g>
 </g>
-<!-- lib/controllers/case&#45;history/case&#45;history.controller.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts -->
+<!-- lib/controllers/case&#45;history/case&#45;history.controller.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts -->
 <g id="edge495" class="edge">
-<title>lib/controllers/case&#45;history/case&#45;history.controller.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts</title>
+<title>lib/controllers/case&#45;history/case&#45;history.controller.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts</title>
 <path fill="none" stroke="black" d="M357.98,-2044.5C292.95,-2044.5 208,-2044.5 208,-2044.5 208,-2044.5 208,-5973 208,-5973 208,-5973 840.38,-5973 840.38,-5973"/>
 <polygon fill="black" stroke="black" points="845.38,-5973 840.38,-5975.25 842.88,-5973 840.38,-5973 840.38,-5973 840.38,-5973 842.88,-5973 840.38,-5970.75 845.38,-5973 845.38,-5973"/>
 </g>
@@ -5648,9 +5648,9 @@
 <path fill="none" stroke="black" d="M351.89,-1842C321.97,-1842 295,-1842 295,-1842 295,-1842 295,-8570 295,-8570 295,-8570 849.68,-8570 849.68,-8570"/>
 <polygon fill="black" stroke="black" points="854.68,-8570 849.68,-8572.25 852.18,-8570 849.68,-8570 849.68,-8570 849.68,-8570 852.18,-8570 849.68,-8567.75 854.68,-8570 854.68,-8570"/>
 </g>
-<!-- lib/controllers/case&#45;summary/case&#45;summary.controller.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts -->
+<!-- lib/controllers/case&#45;summary/case&#45;summary.controller.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts -->
 <g id="edge506" class="edge">
-<title>lib/controllers/case&#45;summary/case&#45;summary.controller.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts</title>
+<title>lib/controllers/case&#45;summary/case&#45;summary.controller.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts</title>
 <path fill="none" stroke="black" d="M351.98,-1836C275.16,-1836 170,-1836 170,-1836 170,-1836 170,-5976 170,-5976 170,-5976 840.28,-5976 840.28,-5976"/>
 <polygon fill="black" stroke="black" points="845.28,-5976 840.28,-5978.25 842.78,-5976 840.28,-5976 840.28,-5976 840.28,-5976 842.78,-5976 840.28,-5973.75 845.28,-5976 845.28,-5976"/>
 </g>
@@ -5693,9 +5693,9 @@
 <path fill="none" stroke="black" d="M452,-1998.09C452,-2004.52 452,-2012 452,-2012 452,-2012 1306,-2012 1306,-2012 1306,-2012 1306,-2328.8 1306,-2328.8"/>
 <polygon fill="black" stroke="black" points="1306,-2333.8 1303.75,-2328.8 1306,-2331.3 1306,-2328.8 1306,-2328.8 1306,-2328.8 1306,-2331.3 1308.25,-2328.8 1306,-2333.8 1306,-2333.8"/>
 </g>
-<!-- lib/controllers/offices/offices.controller.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts -->
+<!-- lib/controllers/offices/offices.controller.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts -->
 <g id="edge518" class="edge">
-<title>lib/controllers/offices/offices.controller.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts</title>
+<title>lib/controllers/offices/offices.controller.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts</title>
 <path fill="none" stroke="black" d="M369.93,-1989C298.24,-1989 189,-1989 189,-1989 189,-1989 189,-5974 189,-5974 189,-5974 840.44,-5974 840.44,-5974"/>
 <polygon fill="black" stroke="black" points="845.44,-5974 840.44,-5976.25 842.94,-5974 840.44,-5974 840.44,-5974 840.44,-5974 842.94,-5974 840.44,-5971.75 845.44,-5974 845.44,-5974"/>
 </g>
@@ -5798,9 +5798,9 @@
 <path fill="none" stroke="black" d="M517.76,-1894.5C741.21,-1894.5 1319,-1894.5 1319,-1894.5 1319,-1894.5 1319,-2328.63 1319,-2328.63"/>
 <polygon fill="black" stroke="black" points="1319,-2333.63 1316.75,-2328.63 1319,-2331.13 1319,-2328.63 1319,-2328.63 1319,-2328.63 1319,-2331.13 1321.25,-2328.63 1319,-2333.63 1319,-2333.63"/>
 </g>
-<!-- lib/controllers/orders/orders.controller.exceptions.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts -->
+<!-- lib/controllers/orders/orders.controller.exceptions.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts -->
 <g id="edge528" class="edge">
-<title>lib/controllers/orders/orders.controller.exceptions.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts</title>
+<title>lib/controllers/orders/orders.controller.exceptions.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts</title>
 <path fill="none" stroke="black" d="M517.72,-1899C682.15,-1899 1023,-1899 1023,-1899 1023,-1899 1023,-5967.71 1023,-5967.71 1023,-5967.71 945.67,-5967.71 945.67,-5967.71"/>
 <polygon fill="black" stroke="black" points="940.67,-5967.71 945.67,-5965.46 943.17,-5967.71 945.67,-5967.71 945.67,-5967.71 945.67,-5967.71 943.17,-5967.71 945.67,-5969.96 940.67,-5967.71 940.67,-5967.71"/>
 </g>
@@ -5867,9 +5867,9 @@
 <path fill="none" stroke="black" d="M492.25,-1935C509.67,-1935 524,-1935 524,-1935 524,-1935 524,-2195 524,-2195 524,-2195 1062.18,-2195 1062.18,-2195"/>
 <polygon fill="black" stroke="black" points="1067.18,-2195 1062.18,-2197.25 1064.68,-2195 1062.18,-2195 1062.18,-2195 1062.18,-2195 1064.68,-2195 1062.18,-2192.75 1067.18,-2195 1067.18,-2195"/>
 </g>
-<!-- lib/controllers/orders/orders.controller.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts -->
+<!-- lib/controllers/orders/orders.controller.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts -->
 <g id="edge540" class="edge">
-<title>lib/controllers/orders/orders.controller.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts</title>
+<title>lib/controllers/orders/orders.controller.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts</title>
 <path fill="none" stroke="black" d="M370,-1926C295.42,-1926 179,-1926 179,-1926 179,-1926 179,-5975 179,-5975 179,-5975 840.32,-5975 840.32,-5975"/>
 <polygon fill="black" stroke="black" points="845.32,-5975 840.32,-5977.25 842.82,-5975 840.32,-5975 840.32,-5975 840.32,-5975 842.82,-5975 840.32,-5972.75 845.32,-5975 845.32,-5975"/>
 </g>
@@ -6059,9 +6059,9 @@
 </a>
 </g>
 </g>
-<!-- lib/factory.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts -->
+<!-- lib/factory.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts -->
 <g id="edge582" class="edge">
-<title>lib/factory.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts</title>
+<title>lib/factory.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts</title>
 <path fill="none" stroke="black" d="M470.18,-3924C598.96,-3924 1001,-3924 1001,-3924 1001,-3924 1001,-5962.57 1001,-5962.57 1001,-5962.57 945.68,-5962.57 945.68,-5962.57"/>
 <polygon fill="black" stroke="black" points="940.68,-5962.57 945.68,-5960.32 943.18,-5962.57 945.68,-5962.57 945.68,-5962.57 945.68,-5962.57 943.18,-5962.57 945.68,-5964.82 940.68,-5962.57 940.68,-5962.57"/>
 </g>
@@ -6251,9 +6251,9 @@
 </a>
 </g>
 </g>
-<!-- lib/use&#45;cases/case&#45;docket/case&#45;docket.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts -->
+<!-- lib/use&#45;cases/case&#45;docket/case&#45;docket.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts -->
 <g id="edge648" class="edge">
-<title>lib/use&#45;cases/case&#45;docket/case&#45;docket.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts</title>
+<title>lib/use&#45;cases/case&#45;docket/case&#45;docket.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts</title>
 <path fill="none" stroke="black" d="M613.39,-3243.6C515.9,-3243.6 313,-3243.6 313,-3243.6 313,-3243.6 313,-5971 313,-5971 313,-5971 840.04,-5971 840.04,-5971"/>
 <polygon fill="black" stroke="black" points="845.04,-5971 840.04,-5973.25 842.54,-5971 840.04,-5971 840.04,-5971 840.04,-5971 842.54,-5971 840.04,-5968.75 845.04,-5971 845.04,-5971"/>
 </g>
@@ -6290,9 +6290,9 @@
 </a>
 </g>
 </g>
-<!-- lib/use&#45;cases/case&#45;history/case&#45;history.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts -->
+<!-- lib/use&#45;cases/case&#45;history/case&#45;history.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts -->
 <g id="edge656" class="edge">
-<title>lib/use&#45;cases/case&#45;history/case&#45;history.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts</title>
+<title>lib/use&#45;cases/case&#45;history/case&#45;history.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts</title>
 <path fill="none" stroke="black" d="M613.95,-3337.5C583.27,-3337.5 550,-3337.5 550,-3337.5 550,-3337.5 550,-5965 550,-5965 550,-5965 840.31,-5965 840.31,-5965"/>
 <polygon fill="black" stroke="black" points="845.31,-5965 840.31,-5967.25 842.81,-5965 840.31,-5965 840.31,-5965 840.31,-5965 842.81,-5965 840.31,-5962.75 845.31,-5965 845.31,-5965"/>
 </g>
@@ -6479,9 +6479,9 @@
 <path fill="none" stroke="black" d="M874,-3198.32C874,-3202.98 874,-3207.64 874,-3207.64 874,-3207.64 1003,-3207.64 1003,-3207.64 1003,-3207.64 1003,-8565.2 1003,-8565.2 1003,-8565.2 1066.71,-8565.2 1066.71,-8565.2"/>
 <polygon fill="black" stroke="black" points="1071.71,-8565.2 1066.71,-8567.45 1069.21,-8565.2 1066.71,-8565.2 1066.71,-8565.2 1066.71,-8565.2 1069.21,-8565.2 1066.71,-8562.95 1071.71,-8565.2 1071.71,-8565.2"/>
 </g>
-<!-- lib/use&#45;cases/offices/offices.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts -->
+<!-- lib/use&#45;cases/offices/offices.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts -->
 <g id="edge713" class="edge">
-<title>lib/use&#45;cases/offices/offices.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts</title>
+<title>lib/use&#45;cases/offices/offices.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts</title>
 <path fill="none" stroke="black" d="M931.54,-3190.8C963.94,-3190.8 1005,-3190.8 1005,-3190.8 1005,-3190.8 1005,-5965.14 1005,-5965.14 1005,-5965.14 945.82,-5965.14 945.82,-5965.14"/>
 <polygon fill="black" stroke="black" points="940.82,-5965.14 945.82,-5962.89 943.32,-5965.14 945.82,-5965.14 945.82,-5965.14 945.82,-5965.14 943.32,-5965.14 945.82,-5967.39 940.82,-5965.14 940.82,-5965.14"/>
 </g>
@@ -6548,9 +6548,9 @@
 <path fill="none" stroke="black" d="M469.59,-3445.5C494.39,-3445.5 522,-3445.5 522,-3445.5 522,-3445.5 522,-2422.15 522,-2422.15 522,-2422.15 1318,-2422.15 1318,-2422.15 1318,-2422.15 1318,-2357.08 1318,-2357.08"/>
 <polygon fill="black" stroke="black" points="1318,-2352.08 1320.25,-2357.08 1318,-2354.58 1318,-2357.08 1318,-2357.08 1318,-2357.08 1318,-2354.58 1315.75,-2357.08 1318,-2352.08 1318,-2352.08"/>
 </g>
-<!-- lib/use&#45;cases/orders/orders.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts -->
+<!-- lib/use&#45;cases/orders/orders.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts -->
 <g id="edge736" class="edge">
-<title>lib/use&#45;cases/orders/orders.test.ts&#45;&gt;lib/testing/testing&#45;utilities.ts</title>
+<title>lib/use&#45;cases/orders/orders.test.ts&#45;&gt;lib/testing/testing&#45;Editor.utilities.ts</title>
 <path fill="none" stroke="black" d="M392.39,-3448C358.98,-3448 316,-3448 316,-3448 316,-3448 316,-5970 316,-5970 316,-5970 840.29,-5970 840.29,-5970"/>
 <polygon fill="black" stroke="black" points="845.29,-5970 840.29,-5972.25 842.79,-5970 840.29,-5970 840.29,-5970 840.29,-5970 842.79,-5970 840.29,-5967.75 845.29,-5970 845.29,-5970"/>
 </g>

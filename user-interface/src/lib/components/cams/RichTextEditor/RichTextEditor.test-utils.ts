@@ -1,4 +1,7 @@
-import { safelyGetHtml, safelySetHtml } from '@/lib/components/cams/RichTextEditor/utilities';
+import {
+  safelyGetHtml,
+  safelySetHtml,
+} from '@/lib/components/cams/RichTextEditor/Editor.utilities';
 import { MockSelectionService } from '@/lib/components/cams/RichTextEditor/SelectionService.humble';
 
 export const safelySetTestHtml = (element: HTMLElement, html: string): void => {

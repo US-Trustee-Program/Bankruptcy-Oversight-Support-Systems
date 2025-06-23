@@ -1,4 +1,4 @@
-import editorUtilities from './utilities';
+import editorUtilities from './Editor.utilities';
 import { SelectionService } from './SelectionService.humble';
 
 export class ListIndentationService {

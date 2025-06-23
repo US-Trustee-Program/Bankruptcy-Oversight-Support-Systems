@@ -1,6 +1,6 @@
-import editorUtilities from './utilities';
+import editorUtilities from './Editor.utilities';
 import { SelectionService } from './SelectionService.humble';
-import { RichTextFormat, ZERO_WIDTH_SPACE } from './editor.constants';
+import { RichTextFormat, ZERO_WIDTH_SPACE } from './Editor.constants';
 import { NormalizationService } from './NormalizationService';
 
 export class FormattingService {

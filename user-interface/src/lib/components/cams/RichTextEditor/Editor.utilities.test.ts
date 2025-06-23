@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import { MockSelectionService } from './SelectionService.humble';
-import editorUtilities, { safelySetHtml } from './utilities';
-import { setCursorInParagraph } from './test-utils';
+import editorUtilities, { safelySetHtml } from './Editor.utilities';
+import { setCursorInParagraph } from './RichTextEditor.test-utils';
 
 describe('utilities', () => {
   let container: HTMLDivElement;

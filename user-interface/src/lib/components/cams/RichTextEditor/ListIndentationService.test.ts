@@ -1,8 +1,8 @@
 import { describe, expect, vi, beforeEach, afterEach, test } from 'vitest';
 import { ListIndentationService } from './ListIndentationService';
 import { MockSelectionService } from './SelectionService.humble';
-import { safelySetHtml } from './utilities';
-import { setCursorInElement } from './test-utils';
+import { safelySetHtml } from './Editor.utilities';
+import { setCursorInElement } from './RichTextEditor.test-utils';
 
 describe('ListIndentationService', () => {
   let root: HTMLDivElement;
