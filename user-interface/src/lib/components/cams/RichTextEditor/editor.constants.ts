@@ -1,6 +1,6 @@
 export const ZERO_WIDTH_SPACE = '​';
 export const ZERO_WIDTH_SPACE_REGEX = new RegExp(ZERO_WIDTH_SPACE, 'g');
-export const EMPTY_TAG_REGEX = /<([a-z][^>]*)>\s*(?:<br\s*\/?>)*\s*<\/\1>/gi;
+export const EMPTY_TAG_REGEX = /<(p|li|span)>\s*(?:<br\s*\/?>)*\s*<\/\1>/gi;
 export const CONTENT_INPUT_SELECTOR = '#rich-text-editor-content';
 
 export const DOMPURIFY_CONFIG = {
