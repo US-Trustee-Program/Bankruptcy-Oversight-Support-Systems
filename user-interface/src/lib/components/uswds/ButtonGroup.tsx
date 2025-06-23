@@ -30,7 +30,9 @@ export default function ButtonGroup({
   };
 
   const renderChildren = () => {
-    if (!children || (children as Array<ReactElement>).length == 0) return;
+    if (!children || (children as Array<ReactElement>).length == 0) {
+      return;
+    }
 
     return Children.map(children, (child, idx) => {
       if (isValidElement(child)) {
@@ -40,7 +42,9 @@ export default function ButtonGroup({
 
         let childClassName: string =
           activeButtonId === childId ? UswdsButtonStyle.Default : UswdsButtonStyle.Outline;
-        if (typedChild.props.className) childClassName += ` ${typedChild.props.className}`;
+        if (typedChild.props.className) {
+          childClassName += ` ${typedChild.props.className}`;
+        }
 
         return (
           <li key={idx} className="usa-button-group__item">
