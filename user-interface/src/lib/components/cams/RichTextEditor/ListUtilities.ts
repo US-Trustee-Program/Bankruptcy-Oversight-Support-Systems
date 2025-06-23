@@ -22,23 +22,8 @@ export class ListUtilities {
     const p = this.selectionService.createElement('p');
     editorUtilities.stripFormatting(p);
 
-    // Extract content from the list item, separating text/inline elements from nested lists
-    const textContent = this.selectionService.createDocumentFragment();
-    const nestedLists: (HTMLUListElement | HTMLOListElement)[] = [];
-
-    Array.from(li.childNodes).forEach((child) => {
-      if (
-        child.nodeType === Node.TEXT_NODE ||
-        (child.nodeType === Node.ELEMENT_NODE && !['UL', 'OL'].includes((child as Element).tagName))
-      ) {
-        textContent.appendChild(child.cloneNode(true));
-      } else if (
-        child.nodeType === Node.ELEMENT_NODE &&
-        ['UL', 'OL'].includes((child as Element).tagName)
-      ) {
-        nestedLists.push(child.cloneNode(true) as HTMLUListElement | HTMLOListElement);
-      }
-    });
+    // Extract content from the list item
+    const { textContent, nestedLists } = this.extractContent(li);
 
     if (textContent.textContent?.trim() || textContent.querySelector('*')) {
       p.appendChild(textContent);
@@ -46,47 +31,17 @@ export class ListUtilities {
       p.appendChild(this.selectionService.createTextNode(ZERO_WIDTH_SPACE));
     }
 
-    // Find the root list (not nested within another list item) for insertion point
-    let rootList = list;
-    let parentLi = editorUtilities.findClosestAncestor<HTMLLIElement>(
-      this.root,
-      list.parentNode,
-      'li',
-    );
-    while (parentLi) {
-      const nextRootList = editorUtilities.findClosestAncestor<HTMLOListElement | HTMLUListElement>(
-        this.root,
-        parentLi.parentNode,
-        'ol,ul',
-      );
-      if (nextRootList && this.root.contains(nextRootList)) {
-        rootList = nextRootList;
-        parentLi = editorUtilities.findClosestAncestor<HTMLLIElement>(
-          this.root,
-          nextRootList.parentNode,
-          'li',
-        );
-      } else {
-        break;
-      }
-    }
-
-    if (!this.root.contains(rootList) || rootList.parentNode !== this.root) {
+    // Find the root list using existing method
+    const rootList = this.findRootList(list);
+    if (!rootList || !this.root.contains(rootList) || rootList.parentNode !== this.root) {
       return;
     }
 
-    // Find which root-level item contains our target item BEFORE removing it
-    const allRootItems = Array.from(rootList.children);
-    let splitIndex = -1;
-
-    // Find which root-level item contains our target item
-    for (let i = 0; i < allRootItems.length; i++) {
-      const rootItem = allRootItems[i] as HTMLElement;
-      if (rootItem.contains(li)) {
-        splitIndex = i;
-        break;
-      }
-    }
+    // Determine how to split the list
+    const { beforeItems, afterItems, isRootLevelExtraction, splitIndex } = this.splitList(
+      rootList,
+      li,
+    );
 
     if (splitIndex === -1) {
       // Fallback: just append after the root list
@@ -99,15 +54,8 @@ export class ListUtilities {
     const listParent = rootList.parentNode!;
     const immediateParentList = li.parentElement!;
 
-    // Split the root list at the found index
-    // For root-level items, exclude the item being extracted
-    // For nested items, include the parent item that contains the nested item
-    const isRootLevelExtraction = allRootItems[splitIndex] === li;
-    const beforeItems = allRootItems.slice(0, isRootLevelExtraction ? splitIndex : splitIndex + 1);
-    const afterItems = allRootItems.slice(splitIndex + 1);
-
     // Special case: if this is the only item in the list, just replace the list with the paragraph
-    if (allRootItems.length === 1 && isRootLevelExtraction) {
+    if (Array.from(rootList.children).length === 1 && isRootLevelExtraction) {
       listParent.replaceChild(p, rootList);
 
       // Insert any nested lists after the paragraph
@@ -115,20 +63,7 @@ export class ListUtilities {
         listParent.insertBefore(nestedList, p.nextSibling);
       });
 
-      // Restore cursor position
-      const newRange = this.selectionService.createRange();
-      if (p.firstChild) {
-        const textNode =
-          p.firstChild.nodeType === Node.TEXT_NODE
-            ? (p.firstChild as Text)
-            : (p.firstChild.firstChild as Text);
-        if (textNode && textNode.nodeType === Node.TEXT_NODE) {
-          const newOffset = Math.min(offset, textNode.textContent?.length || 0);
-          newRange.setStart(textNode, newOffset);
-          newRange.collapse(true);
-          this.selectionService.setSelectionRange(newRange);
-        }
-      }
+      this.restoreCursor(p, offset);
       return;
     }
 
@@ -136,16 +71,11 @@ export class ListUtilities {
     li.remove();
 
     // If the immediate parent list is now empty, remove it
-    if (immediateParentList.children.length === 0) {
-      immediateParentList.remove();
-    }
+    this.cleanupEmptyParentList(immediateParentList);
 
     // Create before list if there are items before the split
     if (beforeItems.length > 0) {
-      const beforeList = this.selectionService.createElement(
-        rootList.tagName.toLowerCase() as keyof HTMLElementTagNameMap,
-      );
-      beforeItems.forEach((item) => beforeList.appendChild(item));
+      const beforeList = this.createListFromItems(rootList.tagName, beforeItems);
       listParent.insertBefore(beforeList, rootList);
     }
 
@@ -159,10 +89,7 @@ export class ListUtilities {
 
     // Create after list if there are items after the split
     if (afterItems.length > 0) {
-      const afterList = this.selectionService.createElement(
-        rootList.tagName.toLowerCase() as keyof HTMLElementTagNameMap,
-      );
-      afterItems.forEach((item) => afterList.appendChild(item));
+      const afterList = this.createListFromItems(rootList.tagName, afterItems);
       listParent.insertBefore(afterList, rootList);
     }
 
@@ -170,19 +97,7 @@ export class ListUtilities {
     rootList.remove();
 
     // Restore cursor position in the new paragraph
-    const newRange = this.selectionService.createRange();
-    if (p.firstChild) {
-      const textNode =
-        p.firstChild.nodeType === Node.TEXT_NODE
-          ? (p.firstChild as Text)
-          : (p.firstChild.firstChild as Text);
-      if (textNode && textNode.nodeType === Node.TEXT_NODE) {
-        const newOffset = Math.min(offset, textNode.textContent?.length || 0);
-        newRange.setStart(textNode, newOffset);
-        newRange.collapse(true);
-        this.selectionService.setSelectionRange(newRange);
-      }
-    }
+    this.restoreCursor(p, offset);
   }
 
   public createListWithEmptyItem(type: 'ul' | 'ol'): HTMLElement {
@@ -278,5 +193,105 @@ export class ListUtilities {
     }
 
     return this.getAncestorIfLastLeaf(grandParentList);
+  }
+
+  /**
+   * Extracts content from a list item, separating text/inline elements from nested lists
+   */
+  private extractContent(li: HTMLLIElement): {
+    textContent: DocumentFragment;
+    nestedLists: (HTMLUListElement | HTMLOListElement)[];
+  } {
+    const textContent = this.selectionService.createDocumentFragment();
+    const nestedLists: (HTMLUListElement | HTMLOListElement)[] = [];
+
+    Array.from(li.childNodes).forEach((child) => {
+      if (
+        child.nodeType === Node.TEXT_NODE ||
+        (child.nodeType === Node.ELEMENT_NODE && !['UL', 'OL'].includes((child as Element).tagName))
+      ) {
+        textContent.appendChild(child.cloneNode(true));
+      } else if (
+        child.nodeType === Node.ELEMENT_NODE &&
+        ['UL', 'OL'].includes((child as Element).tagName)
+      ) {
+        nestedLists.push(child.cloneNode(true) as HTMLUListElement | HTMLOListElement);
+      }
+    });
+
+    return { textContent, nestedLists };
+  }
+
+  /**
+   * Determines how to split a root list when extracting an item
+   */
+  private splitList(
+    rootList: HTMLOListElement | HTMLUListElement,
+    targetLi: HTMLLIElement,
+  ): {
+    beforeItems: Element[];
+    afterItems: Element[];
+    isRootLevelExtraction: boolean;
+    splitIndex: number;
+  } {
+    const allRootItems = Array.from(rootList.children);
+    let splitIndex = -1;
+
+    // Find which root-level item contains our target item
+    for (let i = 0; i < allRootItems.length; i++) {
+      const rootItem = allRootItems[i] as HTMLElement;
+      if (rootItem.contains(targetLi)) {
+        splitIndex = i;
+        break;
+      }
+    }
+
+    const isRootLevelExtraction = splitIndex !== -1 && allRootItems[splitIndex] === targetLi;
+    const beforeItems = allRootItems.slice(0, isRootLevelExtraction ? splitIndex : splitIndex + 1);
+    const afterItems = allRootItems.slice(splitIndex + 1);
+
+    return { beforeItems, afterItems, isRootLevelExtraction, splitIndex };
+  }
+
+  /**
+   * Creates a new list element with the given items
+   */
+  private createListFromItems(
+    tagName: string,
+    items: Element[],
+  ): HTMLOListElement | HTMLUListElement {
+    const list = this.selectionService.createElement(
+      tagName.toLowerCase() as keyof HTMLElementTagNameMap,
+    );
+    items.forEach((item) => list.appendChild(item));
+    return list as HTMLOListElement | HTMLUListElement;
+  }
+
+  /**
+   * Removes an empty parent list if it has no children
+   */
+  private cleanupEmptyParentList(listElement: HTMLElement | null): void {
+    if (listElement && listElement.children.length === 0) {
+      listElement.remove();
+    }
+  }
+
+  /**
+   * Restores cursor position in a paragraph after unwrapping
+   */
+  private restoreCursor(paragraph: HTMLElement, originalOffset: number): void {
+    const newRange = this.selectionService.createRange();
+    if (paragraph.firstChild) {
+      const textNode =
+        paragraph.firstChild.nodeType === Node.TEXT_NODE
+          ? (paragraph.firstChild as Text)
+          : (paragraph.firstChild.firstChild as Text);
+      if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+        const newOffset = Math.min(originalOffset, textNode.textContent?.length || 0);
+        newRange.setStart(textNode, newOffset);
+        newRange.collapse(true);
+        this.selectionService.setSelectionRange(newRange);
+      }
+    }
   }
 }
