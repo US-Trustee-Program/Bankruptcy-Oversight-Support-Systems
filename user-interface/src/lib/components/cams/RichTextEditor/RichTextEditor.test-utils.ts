@@ -11,7 +11,7 @@ export const safelySetTestHtml = (element: HTMLElement, html: string): void => {
 export const safelyGetTestHtml = (element: HTMLElement): string => {
   return safelyGetHtml(element);
 };
-// TODO: Reconcile the setCursorInParagraph and setCursorInParagraph functions into a single function.
+
 export function setCursorInParagraph(
   paragraph: HTMLParagraphElement,
   offset: number,
