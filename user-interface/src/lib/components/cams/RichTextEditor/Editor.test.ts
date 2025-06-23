@@ -410,18 +410,19 @@ describe('Editor: Additional coverage tests', () => {
   });
 
   test('list splitting behavior when toggling middle item', () => {
-    // TODO: Is root missing a class used by the content selector?
-    const root = document.createElement('div');
-    editorUtilities.safelySetHtml(root, '<ul><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul>');
+    editorUtilities.safelySetHtml(
+      container,
+      '<ul><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul>',
+    );
 
-    const middleLi = root.querySelectorAll('li')[1];
+    const middleLi = container.querySelectorAll('li')[1];
     const range = document.createRange();
     range.selectNodeContents(middleLi);
     selectionService.setSelectionRange(range);
 
     editor.toggleList('ul');
 
-    const html = editorUtilities.safelyGetHtml(root);
+    const html = editorUtilities.safelyGetHtml(container);
     expect(html).toMatch(/<ul><li>Item 1<\/li><\/ul>/);
     expect(html).toMatch(/<p>Item 2<\/p>/);
     expect(html).toMatch(/<ul><li>Item 3<\/li><\/ul>/);

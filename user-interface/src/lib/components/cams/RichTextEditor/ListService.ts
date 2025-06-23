@@ -106,7 +106,16 @@ export class ListService {
           listItem,
           'ol,ul',
         );
-        list?.parentNode?.insertBefore(p, list.nextSibling);
+
+        // Find the root list (outermost list that's a direct child of this.root)
+        const rootList = this.findRootList(list);
+        if (rootList && rootList.parentNode === this.root) {
+          // Insert paragraph after the root list
+          this.root.insertBefore(p, rootList.nextSibling);
+        } else {
+          // Fallback to original behavior
+          list?.parentNode?.insertBefore(p, list.nextSibling);
+        }
 
         listItem.remove();
 
@@ -590,6 +599,40 @@ export class ListService {
     if (list.parentNode) {
       list.parentNode.replaceChild(newList, list);
     }
+  }
+
+  private findRootList(
+    list: HTMLOListElement | HTMLUListElement | null,
+  ): HTMLOListElement | HTMLUListElement | null {
+    if (!list) {
+      return null;
+    }
+
+    let rootList = list;
+    let parentLi = editorUtilities.findClosestAncestor<HTMLLIElement>(
+      this.root,
+      list.parentNode,
+      'li',
+    );
+    while (parentLi) {
+      const nextRootList = editorUtilities.findClosestAncestor<HTMLOListElement | HTMLUListElement>(
+        this.root,
+        parentLi.parentNode,
+        'ol,ul',
+      );
+      if (nextRootList && this.root.contains(nextRootList)) {
+        rootList = nextRootList;
+        parentLi = editorUtilities.findClosestAncestor<HTMLLIElement>(
+          this.root,
+          nextRootList.parentNode,
+          'li',
+        );
+      } else {
+        break;
+      }
+    }
+
+    return rootList;
   }
 
   private getAncestorIfLastLeaf(

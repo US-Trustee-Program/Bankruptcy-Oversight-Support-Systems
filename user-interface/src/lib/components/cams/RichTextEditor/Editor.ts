@@ -48,6 +48,8 @@ export class Editor {
   }
 
   public handleEnterKey(e: React.KeyboardEvent<HTMLDivElement>): boolean {
+    // TODO we should consider whether we want something called ListService
+    // handling ALL enter key behavior, or only that within a list.
     return this.listService.handleEnterKey(e);
   }
 
