@@ -3,7 +3,7 @@ import { ListService } from './ListService';
 import { MockSelectionService } from './SelectionService.humble';
 import editorUtilities, { safelySetHtml, safelyGetHtml } from './utilities';
 import { ZERO_WIDTH_SPACE } from './editor.constants';
-import { setCursorInElement, setCursorInParagraph2 } from './test-utils';
+import { setCursorInElement, setCursorInParagraph } from './test-utils';
 
 describe('ListService', () => {
   let root: HTMLDivElement;
@@ -26,7 +26,7 @@ describe('ListService', () => {
       safelySetHtml(root, '<p>Test paragraph</p>');
       const paragraph = root.querySelector('p');
       expect(paragraph).not.toBeNull();
-      setCursorInParagraph2(paragraph!, 4, selectionService);
+      setCursorInParagraph(paragraph!, 4, selectionService);
 
       listService.toggleList('ul');
 
@@ -42,7 +42,7 @@ describe('ListService', () => {
       safelySetHtml(root, '<p>Test paragraph</p>');
       const paragraph = root.querySelector('p');
       expect(paragraph).not.toBeNull();
-      setCursorInParagraph2(paragraph!, 4, selectionService);
+      setCursorInParagraph(paragraph!, 4, selectionService);
 
       listService.toggleList('ol');
 
@@ -73,7 +73,7 @@ describe('ListService', () => {
       safelySetHtml(root, '<p></p>');
       const paragraph = root.querySelector('p');
       expect(paragraph).not.toBeNull();
-      setCursorInParagraph2(paragraph!, 0, selectionService);
+      setCursorInParagraph(paragraph!, 0, selectionService);
 
       listService.toggleList('ul');
 
@@ -126,7 +126,7 @@ describe('ListService', () => {
     test('toggleList creates different list types', () => {
       safelySetHtml(root, '<p>Test paragraph</p>');
       const paragraph = root.querySelector('p')!;
-      setCursorInParagraph2(paragraph, 4, selectionService);
+      setCursorInParagraph(paragraph, 4, selectionService);
 
       // First create an unordered list
       listService.toggleList('ul');
@@ -145,7 +145,7 @@ describe('ListService', () => {
     test('toggleList handles empty paragraphs correctly', () => {
       safelySetHtml(root, '<p></p>');
       const paragraph = root.querySelector('p')!;
-      setCursorInParagraph2(paragraph, 0, selectionService);
+      setCursorInParagraph(paragraph, 0, selectionService);
 
       listService.toggleList('ul');
 
@@ -204,7 +204,7 @@ describe('ListService', () => {
     test('returns false when not in a list item', () => {
       safelySetHtml(root, '<p>Not in a list</p>');
       const paragraph = root.querySelector('p')!;
-      setCursorInParagraph2(paragraph, 0, selectionService);
+      setCursorInParagraph(paragraph, 0, selectionService);
 
       const event = createDentureEvent(false);
       const result = listService.handleDentures(event);
@@ -304,7 +304,7 @@ describe('ListService', () => {
     test('creates new paragraph on Enter in regular paragraph', () => {
       safelySetHtml(root, '<p>Some text</p>');
       const paragraph = root.querySelector('p')!;
-      setCursorInParagraph2(paragraph, 4, selectionService);
+      setCursorInParagraph(paragraph, 4, selectionService);
 
       const event = createEnterEvent();
       const result = listService.handleEnterKey(event);
@@ -457,7 +457,7 @@ describe('ListService', () => {
     test('returns false when not in a list', () => {
       safelySetHtml(root, '<p>Not in a list</p>');
       const paragraph = root.querySelector('p')!;
-      setCursorInParagraph2(paragraph, 0, selectionService);
+      setCursorInParagraph(paragraph, 0, selectionService);
 
       const event = createBackspaceEvent();
       const result = listService.handleDeleteKeyOnList(event);

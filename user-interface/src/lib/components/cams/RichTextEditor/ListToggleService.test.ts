@@ -4,7 +4,7 @@ import { ListUtilities } from './ListUtilities';
 import { MockSelectionService } from './SelectionService.humble';
 import editorUtilities, { safelySetHtml, safelyGetHtml } from './utilities';
 import { ZERO_WIDTH_SPACE } from './editor.constants';
-import { setCursorInElement, setCursorInParagraph2 } from './test-utils';
+import { setCursorInElement, setCursorInParagraph } from './test-utils';
 
 describe('ListToggleService', () => {
   let root: HTMLDivElement;
@@ -29,7 +29,7 @@ describe('ListToggleService', () => {
       safelySetHtml(root, '<p>Test paragraph</p>');
       const paragraph = root.querySelector('p');
       expect(paragraph).not.toBeNull();
-      setCursorInParagraph2(paragraph!, 4, selectionService);
+      setCursorInParagraph(paragraph!, 4, selectionService);
 
       listToggleService.toggleList('ul');
 
@@ -45,7 +45,7 @@ describe('ListToggleService', () => {
       safelySetHtml(root, '<p>Test paragraph</p>');
       const paragraph = root.querySelector('p');
       expect(paragraph).not.toBeNull();
-      setCursorInParagraph2(paragraph!, 4, selectionService);
+      setCursorInParagraph(paragraph!, 4, selectionService);
 
       listToggleService.toggleList('ol');
 
@@ -76,7 +76,7 @@ describe('ListToggleService', () => {
       safelySetHtml(root, '<p></p>');
       const paragraph = root.querySelector('p');
       expect(paragraph).not.toBeNull();
-      setCursorInParagraph2(paragraph!, 0, selectionService);
+      setCursorInParagraph(paragraph!, 0, selectionService);
 
       listToggleService.toggleList('ul');
 
@@ -129,7 +129,7 @@ describe('ListToggleService', () => {
     test('toggleList creates different list types', () => {
       safelySetHtml(root, '<p>Test paragraph</p>');
       const paragraph = root.querySelector('p')!;
-      setCursorInParagraph2(paragraph, 4, selectionService);
+      setCursorInParagraph(paragraph, 4, selectionService);
 
       // First create an unordered list
       listToggleService.toggleList('ul');
@@ -148,7 +148,7 @@ describe('ListToggleService', () => {
     test('toggleList handles empty paragraphs correctly', () => {
       safelySetHtml(root, '<p></p>');
       const paragraph = root.querySelector('p')!;
-      setCursorInParagraph2(paragraph, 0, selectionService);
+      setCursorInParagraph(paragraph, 0, selectionService);
 
       listToggleService.toggleList('ul');
 

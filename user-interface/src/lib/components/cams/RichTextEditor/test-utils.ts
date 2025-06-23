@@ -8,8 +8,8 @@ export const safelySetTestHtml = (element: HTMLElement, html: string): void => {
 export const safelyGetTestHtml = (element: HTMLElement): string => {
   return safelyGetHtml(element);
 };
-// TODO: Reconcile the setCursorInParagraph and setCursorInParagraph2 functions into a single function.
-export function setCursorInParagraph2(
+// TODO: Reconcile the setCursorInParagraph and setCursorInParagraph functions into a single function.
+export function setCursorInParagraph(
   paragraph: HTMLParagraphElement,
   offset: number,
   selectionService: MockSelectionService,
@@ -22,20 +22,6 @@ export function setCursorInParagraph2(
   range.collapse(true);
   selectionService.setSelectionRange(range);
   return selectionService.getCurrentSelection();
-}
-
-export function setCursorInParagraph(
-  paragraph: HTMLParagraphElement,
-  offset: number,
-  selectionService: MockSelectionService,
-): void {
-  const textNode = paragraph.firstChild;
-  if (textNode) {
-    const range = selectionService.createRange();
-    range.setStart(textNode, offset);
-    range.collapse(true);
-    selectionService.setSelectionRange(range);
-  }
 }
 
 export function setCursorInElement(

@@ -4,7 +4,7 @@ import { ListUtilities } from './ListUtilities';
 import { MockSelectionService } from './SelectionService.humble';
 import { safelySetHtml, safelyGetHtml } from './utilities';
 import { ZERO_WIDTH_SPACE } from './editor.constants';
-import { setCursorInElement, setCursorInParagraph2 } from './test-utils';
+import { setCursorInElement, setCursorInParagraph } from './test-utils';
 
 describe('ListNavigationService', () => {
   let root: HTMLDivElement;
@@ -58,7 +58,7 @@ describe('ListNavigationService', () => {
     test('creates new paragraph on Enter in regular paragraph', () => {
       safelySetHtml(root, '<p>Some text</p>');
       const paragraph = root.querySelector('p')!;
-      setCursorInParagraph2(paragraph, 4, selectionService);
+      setCursorInParagraph(paragraph, 4, selectionService);
 
       const event = createEnterEvent();
       const result = listNavigationService.handleEnterKey(event);
@@ -211,7 +211,7 @@ describe('ListNavigationService', () => {
     test('returns false when not in a list', () => {
       safelySetHtml(root, '<p>Not in a list</p>');
       const paragraph = root.querySelector('p')!;
-      setCursorInParagraph2(paragraph, 0, selectionService);
+      setCursorInParagraph(paragraph, 0, selectionService);
 
       const event = createBackspaceEvent();
       const result = listNavigationService.handleDeleteKeyOnList(event);
