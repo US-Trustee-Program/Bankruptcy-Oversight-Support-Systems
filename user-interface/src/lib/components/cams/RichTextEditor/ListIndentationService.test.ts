@@ -1,6 +1,5 @@
 import { describe, expect, vi, beforeEach, afterEach, test } from 'vitest';
 import { ListIndentationService } from './ListIndentationService';
-import { ListUtilities } from './ListUtilities';
 import { MockSelectionService } from './SelectionService.humble';
 import { safelySetHtml } from './utilities';
 import { setCursorInElement } from './test-utils';
@@ -8,15 +7,13 @@ import { setCursorInElement } from './test-utils';
 describe('ListIndentationService', () => {
   let root: HTMLDivElement;
   let listIndentationService: ListIndentationService;
-  let listUtilities: ListUtilities;
   let selectionService: MockSelectionService;
 
   beforeEach(() => {
     root = document.createElement('div');
     document.body.appendChild(root);
     selectionService = new MockSelectionService();
-    listUtilities = new ListUtilities(root, selectionService);
-    listIndentationService = new ListIndentationService(root, selectionService, listUtilities);
+    listIndentationService = new ListIndentationService(root, selectionService);
   });
 
   afterEach(() => {
