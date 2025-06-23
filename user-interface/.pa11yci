@@ -55,8 +55,8 @@
         "click element [data-testid='open-modal-button_case-note-add-button']",
         "wait for element [data-testid='case-note-title-input'] to be visible",
         "set field [data-testid='case-note-title-input'] to 'some Test title for pa11y'",
-        "wait for element [data-testid='textarea-note-content'] to be visible",
-        "set field [data-testid='textarea-note-content'] to 'some Test note for pa11y'",
+        "wait for element [data-testid='case-note-formatted-editor'] to be visible",
+        "set field [data-testid='case-note-formatted-editor'] to 'some Test note for pa11y'",
         "wait for element [data-testid='button-case-note-form-submit-button'] to be visible",
         "click element [data-testid='button-case-note-form-submit-button']"
       ]
