@@ -36,9 +36,7 @@ export class ListNavigationService {
       if (isEmpty) {
         e.preventDefault();
 
-        const p = this.selectionService.createElement('p');
-        editorUtilities.stripFormatting(p);
-        p.appendChild(this.selectionService.createTextNode(ZERO_WIDTH_SPACE));
+        const p = this.createEmptyParagraph();
 
         const list = editorUtilities.findClosestAncestor<HTMLOListElement | HTMLUListElement>(
           this.root,
@@ -58,14 +56,9 @@ export class ListNavigationService {
 
         listItem.remove();
 
-        const newRange = this.selectionService.createRange();
-        newRange.setStart(p.firstChild!, 1);
-        newRange.collapse(true);
-        this.selectionService.setSelectionRange(newRange);
+        this.focusParagraph(p);
 
-        if (list && [...list.children].every((child) => child.textContent?.trim() === '')) {
-          list.remove();
-        }
+        this.removeIfEmpty(list);
 
         return true;
       }
@@ -80,9 +73,7 @@ export class ListNavigationService {
       'p',
     );
 
-    const newParagraph = this.selectionService.createElement('p');
-    editorUtilities.stripFormatting(newParagraph);
-    newParagraph.appendChild(this.selectionService.createTextNode(ZERO_WIDTH_SPACE));
+    const newParagraph = this.createEmptyParagraph();
 
     if (currentParagraph?.parentNode) {
       currentParagraph.parentNode.insertBefore(newParagraph, currentParagraph.nextSibling);
@@ -91,10 +82,7 @@ export class ListNavigationService {
       range.insertNode(newParagraph);
     }
 
-    const newRange = this.selectionService.createRange();
-    newRange.setStart(newParagraph.firstChild!, 1);
-    newRange.collapse(true);
-    this.selectionService.setSelectionRange(newRange);
+    this.focusParagraph(newParagraph);
     return true;
   }
 
@@ -154,8 +142,7 @@ export class ListNavigationService {
       currentListItem.remove();
       if (parentList.childNodes.length === 0) {
         parentList.remove();
-        const p = this.selectionService.createElement('p');
-        p.appendChild(this.selectionService.createTextNode(ZERO_WIDTH_SPACE));
+        const p = this.createEmptyParagraph();
         this.root.appendChild(p);
         editorUtilities.positionCursorInEmptyParagraph(this.selectionService, p);
       }
@@ -170,19 +157,43 @@ export class ListNavigationService {
     grandMammi?.parentNode?.insertBefore(p, grandMammi.nextSibling);
 
     currentListItem.remove();
-    if (parentList.childNodes.length === 0) {
-      parentList.remove();
-    }
+    this.cleanupEmptyParentList(parentList);
 
-    const newRange = this.selectionService.createRange();
-    newRange.setStart(p.firstChild!, 1);
-    newRange.collapse(true);
-    this.selectionService.setSelectionRange(newRange);
+    this.focusParagraph(p);
 
-    if (parentList && [...parentList.children].every((child) => child.textContent?.trim() === '')) {
-      parentList.remove();
-    }
+    this.removeIfEmpty(parentList);
 
     return true;
+  }
+
+  private createEmptyParagraph(): HTMLParagraphElement {
+    const p = this.selectionService.createElement('p');
+    editorUtilities.stripFormatting(p);
+    p.appendChild(this.selectionService.createTextNode(ZERO_WIDTH_SPACE));
+    return p;
+  }
+
+  private focusParagraph(paragraph: HTMLParagraphElement): void {
+    const newRange = this.selectionService.createRange();
+    newRange.setStart(paragraph.firstChild!, 1);
+    newRange.collapse(true);
+    this.selectionService.setSelectionRange(newRange);
+  }
+
+  private removeIfEmpty(element: Element | null): boolean {
+    if (!element) {
+      return false;
+    }
+    if ([...element.children].every((child) => child.textContent?.trim() === '')) {
+      element.remove();
+      return true;
+    }
+    return false;
+  }
+
+  private cleanupEmptyParentList(listElement: Element | null): void {
+    if (listElement && listElement.childNodes.length === 0) {
+      listElement.remove();
+    }
   }
 }
