@@ -76,6 +76,12 @@ export class ListNavigationService {
     const newParagraph = this.createEmptyParagraph();
 
     if (currentParagraph?.parentNode) {
+      // Bisect the current text at the cursor location.
+      newParagraph.textContent =
+        currentParagraph.textContent?.slice(range.startOffset) ?? ZERO_WIDTH_SPACE;
+      currentParagraph.textContent =
+        currentParagraph.textContent?.slice(0, range.startOffset) ?? ZERO_WIDTH_SPACE;
+
       currentParagraph.parentNode.insertBefore(newParagraph, currentParagraph.nextSibling);
     } else {
       range.collapse(false);
@@ -175,7 +181,7 @@ export class ListNavigationService {
 
   private focusParagraph(paragraph: HTMLParagraphElement): void {
     const newRange = this.selectionService.createRange();
-    newRange.setStart(paragraph.firstChild!, 1);
+    newRange.setStart(paragraph.firstChild! ?? paragraph, 0);
     newRange.collapse(true);
     this.selectionService.setSelectionRange(newRange);
   }
