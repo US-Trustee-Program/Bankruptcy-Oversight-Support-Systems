@@ -272,12 +272,11 @@ async function putCaseNote(note: CaseNoteInput): Promise<string | undefined> {
   if (!note.id) {
     throw new Error('Id must be provided');
   }
-  const sanitizedNote = sanitizeText(note.content);
-  const sanitizedTitle = sanitizeText(note.title);
-  if (sanitizedNote.length > 0 && sanitizedTitle.length > 0 && isValidUserInput(sanitizedNote)) {
+
+  if (note.content.length > 0 && note.title.length > 0 && isValidUserInput(note.content)) {
     const response = await api().put<CaseNoteInput[]>(`/cases/${note.caseId}/notes/${note.id}`, {
-      title: sanitizedTitle,
-      content: sanitizedNote,
+      title: note.title,
+      content: note.content,
       updatedBy: note.updatedBy,
     });
     return response.data[0].id;
