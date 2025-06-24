@@ -122,7 +122,10 @@ export class Editor {
         editorUtilities.positionCursorInEmptyParagraph(this.selectionService, currentParagraph);
         return true;
       }
-    } else if (currentParagraph.textContent === ZERO_WIDTH_SPACE) {
+    } else if (
+      currentParagraph.textContent === ZERO_WIDTH_SPACE ||
+      currentParagraph.textContent === ''
+    ) {
       e.preventDefault();
       const { previousSibling } = currentParagraph;
       if (previousSibling && previousSibling.nodeType === Node.ELEMENT_NODE) {
