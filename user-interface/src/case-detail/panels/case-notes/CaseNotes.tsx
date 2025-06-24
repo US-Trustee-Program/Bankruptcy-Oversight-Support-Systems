@@ -6,7 +6,6 @@ import { TextAreaRef } from '@/lib/type-declarations/input-fields';
 import { formatDateTime } from '@/lib/utils/datetime';
 import { CaseNote, CaseNoteInput } from '@common/cams/cases';
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import { sanitizeText } from '@/lib/utils/sanitize-text';
 import { AlertOptions } from '../CaseDetailCourtDocket';
 import { handleHighlight } from '@/lib/utils/highlight-api';
 import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
@@ -21,6 +20,7 @@ import CaseNoteRemovalModal, { CaseNoteRemovalModalRef } from './CaseNoteRemoval
 import Actions from '@common/cams/actions';
 import LocalFormCache from '@/lib/utils/local-form-cache';
 import { Cacheable } from '@/lib/utils/local-cache';
+import PrerenderedHtml from '@/lib/components/cams/PrerenderedHtml/PrerenderedHtml';
 
 export function getCaseNotesInputValue(ref: TextAreaRef | null) {
   return ref?.getValue() ?? '';
@@ -85,8 +85,6 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
   }
 
   function showCaseNote(note: CaseNote, idx: number) {
-    const sanitizedCaseNote = sanitizeText(note.content);
-    const sanitizedCaseNoteTitle = sanitizeText(note.title);
     const formKey = buildCaseNoteFormKey(note.caseId, 'edit', note.id ?? '');
     const draft = LocalFormCache.getForm<CaseNoteInput>(formKey);
 
@@ -97,10 +95,10 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
             <h4
               className="case-note-header usa-tooltip"
               data-testid={`case-note-${idx}-header`}
-              title={sanitizedCaseNoteTitle}
-              aria-label={`Note Title: ${sanitizedCaseNoteTitle}`}
+              title={note.title}
+              aria-label={`Note Title: ${note.title}`}
             >
-              {sanitizedCaseNoteTitle}
+              {note.title}
             </h4>
           </div>
           <div className="case-note-date grid-col-4" data-testid={`case-note-creation-date-${idx}`}>
@@ -111,11 +109,11 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
         <div className="grid-row">
           <div className="grid-col-12 case-note-content">
             <div
-              className="note-content"
+              className="editor-content"
               data-testid={`case-note-${idx}-text`}
               aria-label="full text of case note"
             >
-              {sanitizedCaseNote}
+              <PrerenderedHtml htmlString={note.content} />
             </div>
           </div>
         </div>

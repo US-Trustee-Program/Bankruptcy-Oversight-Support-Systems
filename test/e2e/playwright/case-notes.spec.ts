@@ -36,7 +36,7 @@ test.describe('Case Notes', () => {
     await expect(page.locator('[data-testid="modal-content-case-note-form"]')).toBeVisible();
 
     await page.locator('[data-testid="case-note-title-input"]').fill(testNoteTitle);
-    await page.locator('[data-testid="textarea-note-content"]').fill(testNoteContent);
+    await page.locator('[data-testid="case-note-formatted-editor"]').fill(testNoteContent);
     await expect(page.locator('[data-testid="button-case-note-form-submit-button"]')).toBeVisible();
     await page.locator('[data-testid="button-case-note-form-submit-button"]').click();
     await expect(page.locator('[data-testid="modal-content-case-note-form"]')).not.toBeVisible();
@@ -53,12 +53,12 @@ test.describe('Case Notes', () => {
     await page.locator('[data-testid="open-modal-button_case-note-edit-button_0"]').click();
 
     await expect(page.locator('[data-testid="case-note-title-input"]')).toBeVisible();
-    await expect(page.locator('[data-testid="textarea-note-content"]')).toBeVisible();
+    await expect(page.locator('[data-testid="case-note-formatted-editor"]')).toBeVisible();
 
     await page.locator('[data-testid="case-note-title-input"]').clear();
     await page.locator('[data-testid="case-note-title-input"]').fill(noteTitleEdit);
-    await page.locator('[data-testid="textarea-note-content"]').clear();
-    await page.locator('[data-testid="textarea-note-content"]').fill(noteContentEdit);
+    await page.locator('[data-testid="case-note-formatted-editor"]').clear();
+    await page.locator('[data-testid="case-note-formatted-editor"]').fill(noteContentEdit);
 
     await expect(page.locator('[data-testid="button-case-note-form-submit-button"]')).toBeEnabled();
     await page.locator('[data-testid="button-case-note-form-submit-button"]').click();
