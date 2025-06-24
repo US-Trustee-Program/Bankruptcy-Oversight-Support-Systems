@@ -53,6 +53,10 @@ export class Editor {
     return this.listService.handleEnterKey(e);
   }
 
+  public handlePaste(e: React.ClipboardEvent<HTMLDivElement>): boolean {
+    return this.formattingService.handlePaste(e);
+  }
+
   public toggleList(type: 'ul' | 'ol'): void {
     return this.listService.toggleList(type);
   }
