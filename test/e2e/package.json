@@ -16,18 +16,18 @@
   "license": "ISC",
   "devDependencies": {
     "@eslint/js": "^9.17.0",
-    "@playwright/test": "^1.53.0",
-    "@types/node": "^22.15.32",
+    "@playwright/test": "^1.53.1",
+    "@types/node": "^22.15.33",
     "dotenv": "^16.5.0",
     "eslint": "^9.29.0",
     "eslint-config-prettier": "^10.1.5",
-    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-n": "^17.20.0",
     "eslint-plugin-prettier": "^5.5.0",
     "eslint-plugin-promise": "^7.2.1",
-    "prettier": "^3.5.3",
+    "prettier": "^3.6.1",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.34.1"
+    "typescript-eslint": "^8.35.0"
   },
   "dependencies": {
     "ts-node": "^10.9.2",
