@@ -9,6 +9,7 @@ export const CONSOLIDATIONS_ENABLED = 'consolidations-enabled';
 export const PRIVILEGED_IDENTITY_MANAGEMENT = 'privileged-identity-management';
 export const SYSTEM_MAINTENANCE_BANNER = 'system-maintenance-banner';
 export const TRANSFER_ORDERS_ENABLED = 'transfer-orders-enabled';
+export const FORMAT_CASE_NOTES = 'format-case-notes';
 
 export default function useFeatureFlags(): FeatureFlagSet {
   const config = getFeatureFlagConfiguration();
