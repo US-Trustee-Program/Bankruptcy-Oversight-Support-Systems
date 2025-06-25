@@ -77,12 +77,54 @@ export class ListNavigationService {
 
     if (currentParagraph?.parentNode) {
       // Bisect the current text at the cursor location.
-      const newParagraphText = currentParagraph.textContent?.slice(range.startOffset);
-      const currentParagraphText = currentParagraph.textContent?.slice(0, range.startOffset);
-      newParagraph.textContent = newParagraphText || ZERO_WIDTH_SPACE;
-      currentParagraph.textContent = currentParagraphText || ZERO_WIDTH_SPACE;
+      const nodeWithCursor = selection.anchorNode!;
+      // split nodeWithCursor into two nodes, one with the text before the cursor, one with the text after the cursor
+      let leftSide = nodeWithCursor.cloneNode(true);
+      let rightSide = nodeWithCursor.cloneNode(true);
+      leftSide.textContent = nodeWithCursor.textContent?.slice(0, range.startOffset) ?? '';
+      // TODO we may lose any formatting fully contained on the right side.
+      rightSide.textContent = nodeWithCursor.textContent?.slice(range.startOffset) ?? '';
 
-      currentParagraph.parentNode.insertBefore(newParagraph, currentParagraph.nextSibling);
+      // TODO anchor tag is a special case, handle it
+
+      // Make the left side node a descendent of currentParagraph. If nodeWithCursor has n ancestors between it and currentParagraph,
+      // then ensure leftSide has n ancestors of the respective types between it and currentParagraph.
+      let hasNonParagraphAncestor = true;
+      let currentAncestorNode = nodeWithCursor.parentNode;
+      let lastVisitedNode;
+      while (hasNonParagraphAncestor) {
+        if (currentAncestorNode && currentAncestorNode.nodeName !== 'P') {
+          // make left side a child of a new node of the same type as currentAncestorNode
+          const newLeftNode = this.selectionService.createElement(
+            currentAncestorNode.nodeName as keyof HTMLElementTagNameMap,
+          );
+          newLeftNode.appendChild(leftSide);
+          leftSide = newLeftNode;
+          const newRightNode = this.selectionService.createElement(
+            currentAncestorNode.nodeName as keyof HTMLElementTagNameMap,
+          );
+          newRightNode.appendChild(rightSide);
+          rightSide = newRightNode;
+          hasNonParagraphAncestor = true;
+          lastVisitedNode = currentAncestorNode;
+          currentAncestorNode = currentAncestorNode.parentNode;
+        } else if (lastVisitedNode) {
+          // we've reached the nearest ancestor that is a paragraph, make left side a child and be done
+
+          // Get all child of the p nodes to the right of the cursor
+          const rightSideNodes: ChildNode[] = [];
+          let x = lastVisitedNode.nextSibling;
+          while (x) {
+            rightSideNodes.push(x);
+            x = x.nextSibling;
+          }
+
+          currentParagraph.replaceChild(leftSide, lastVisitedNode);
+          newParagraph.append(rightSide, ...rightSideNodes);
+          currentParagraph.parentNode.insertBefore(newParagraph, currentParagraph.nextSibling);
+          hasNonParagraphAncestor = false;
+        }
+      }
     } else {
       range.collapse(false);
       range.insertNode(newParagraph);
