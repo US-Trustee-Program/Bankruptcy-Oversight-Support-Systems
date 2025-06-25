@@ -13,4 +13,5 @@ export const testFeatureFlags: FeatureFlagSet = {
   'transfer-orders-enabled': true,
   'consolidations-enabled': true,
   'privileged-identity-management': true,
+  'format-case-notes': true,
 };

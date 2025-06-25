@@ -19,6 +19,7 @@ import { randomUUID } from 'crypto';
 import LocalFormCache from '@/lib/utils/local-form-cache';
 import { CamsSession, getCamsUserReference } from '@common/cams/session';
 import { ZERO_WIDTH_SPACE } from '@/lib/components/cams/RichTextEditor/Editor.constants';
+import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 
 const MODAL_ID = 'modal-case-note-form';
 const TITLE_INPUT_ID = 'case-note-title-input';
@@ -37,6 +38,10 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     session = MockData.getCamsSession();
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
     vi.spyOn(LocalFormCache, 'getForm').mockReturnValue({ expiresAfter: 1, value: {} });
+    const mockFeatureFlags = {
+      [FeatureFlagHook.FORMAT_CASE_NOTES]: true,
+    };
+    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
   });
 
   afterEach(() => {
