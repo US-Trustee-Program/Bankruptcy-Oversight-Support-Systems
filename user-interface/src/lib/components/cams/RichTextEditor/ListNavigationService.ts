@@ -79,8 +79,8 @@ export class ListNavigationService {
       // Bisect the current text at the cursor location.
       const newParagraphText = currentParagraph.textContent?.slice(range.startOffset);
       const currentParagraphText = currentParagraph.textContent?.slice(0, range.startOffset);
-      newParagraph.textContent = newParagraphText ? newParagraphText : ZERO_WIDTH_SPACE;
-      currentParagraph.textContent = currentParagraphText ? currentParagraphText : ZERO_WIDTH_SPACE;
+      newParagraph.textContent = newParagraphText || ZERO_WIDTH_SPACE;
+      currentParagraph.textContent = currentParagraphText || ZERO_WIDTH_SPACE;
 
       currentParagraph.parentNode.insertBefore(newParagraph, currentParagraph.nextSibling);
     } else {
