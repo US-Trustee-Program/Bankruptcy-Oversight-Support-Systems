@@ -322,7 +322,7 @@ describe('FormattingService: handlePaste', () => {
     const mockClipboardData = {
       getData: vi
         .fn()
-        .mockReturnValue('Visit https://www.example.com and check http://www.example.com'),
+        .mockReturnValue('Visit https://www.example.com/ and check http://www.example.com'),
     };
     const mockEvent = {
       clipboardData: mockClipboardData,
@@ -334,7 +334,7 @@ describe('FormattingService: handlePaste', () => {
     expect(result).toBe(true);
     expect(mockEvent.preventDefault).toHaveBeenCalled();
     expect(container.innerHTML).toBe(
-      '<p>Resources: Visit <a href="https://www.example.com" target="_blank" rel="noopener noreferrer">https://www.example.com</a> and check <a href="http://www.example.com" target="_blank" rel="noopener noreferrer">http://www.example.com</a></p>',
+      '<p>Resources: Visit <a href="https://www.example.com/" target="_blank" rel="noopener noreferrer">https://www.example.com/</a> and check <a href="http://www.example.com" target="_blank" rel="noopener noreferrer">http://www.example.com</a></p>',
     );
   });
 

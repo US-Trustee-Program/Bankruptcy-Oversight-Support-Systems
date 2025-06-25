@@ -1,6 +1,11 @@
 import editorUtilities, { safelySetHtml } from './Editor.utilities';
 import { SelectionService } from './SelectionService.humble';
-import { RichTextFormat, ZERO_WIDTH_SPACE, HTTP_REG, DOMPURIFY_CONFIG } from './Editor.constants';
+import {
+  RichTextFormat,
+  ZERO_WIDTH_SPACE,
+  HTTP_REG_PATTERN,
+  DOMPURIFY_CONFIG,
+} from './Editor.constants';
 import { NormalizationService } from './NormalizationService';
 import DOMPurify from 'dompurify';
 
@@ -91,7 +96,9 @@ export class FormattingService {
     }
 
     // Apply URL processing to the entire pasted content first
-    const urlMatches = Array.from(pastedTextRaw.matchAll(HTTP_REG));
+    // Create a new RegExp with global flag to prevent lastIndex mutation issues
+    const urlRegex = new RegExp(HTTP_REG_PATTERN.source, 'g');
+    const urlMatches = Array.from(pastedTextRaw.matchAll(urlRegex));
 
     let processedText = pastedTextRaw;
     if (urlMatches.length > 0) {
