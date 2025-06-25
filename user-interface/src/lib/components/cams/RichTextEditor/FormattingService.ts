@@ -1,7 +1,8 @@
-import editorUtilities from './Editor.utilities';
+import editorUtilities, { safelySetHtml } from './Editor.utilities';
 import { SelectionService } from './SelectionService.humble';
-import { RichTextFormat, ZERO_WIDTH_SPACE, HTTP_REG } from './Editor.constants';
+import { RichTextFormat, ZERO_WIDTH_SPACE, HTTP_REG, DOMPURIFY_CONFIG } from './Editor.constants';
 import { NormalizationService } from './NormalizationService';
+import DOMPurify from 'dompurify';
 
 export class FormattingService {
   private root: HTMLElement;
@@ -84,7 +85,7 @@ export class FormattingService {
       return false;
     }
 
-    const pastedTextRaw = clipboardData.getData('text/plain');
+    const pastedTextRaw = DOMPurify.sanitize(clipboardData.getData('text/plain'), DOMPURIFY_CONFIG);
     if (!pastedTextRaw) {
       return false;
     }
@@ -164,7 +165,7 @@ export class FormattingService {
 
     // Insert first line content at cursor position
     const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = firstLine;
+    safelySetHtml(tempDiv, firstLine);
 
     const fragment = document.createDocumentFragment();
     while (tempDiv.firstChild) {
@@ -180,7 +181,7 @@ export class FormattingService {
     for (const line of remainingLines) {
       const newP = this.selectionService.createElement('p');
       const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = line;
+      safelySetHtml(tempDiv, line);
 
       while (tempDiv.firstChild) {
         newP.appendChild(tempDiv.firstChild);
