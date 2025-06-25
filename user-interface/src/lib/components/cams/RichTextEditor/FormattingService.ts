@@ -79,7 +79,7 @@ export class FormattingService {
   }
 
   public handlePaste(e: React.ClipboardEvent<HTMLDivElement>): boolean {
-    const clipboardData = e.clipboardData;
+    const { clipboardData } = e;
     if (!clipboardData) {
       return false;
     }
