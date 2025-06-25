@@ -134,6 +134,13 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
     }
   };
 
+  const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+    if (editorRef.current?.handlePaste(e)) {
+      onChange?.(getHtml());
+      return;
+    }
+  };
+
   return (
     <div id={`${id}-container`} className="usa-form-group rich-text-editor-container">
       {label && (
@@ -203,6 +210,7 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
         tabIndex={0}
         onInput={() => onChange?.(getHtml())}
         onKeyDown={handleKeyDown}
+        onPaste={handlePaste}
         ref={contentRef}
         aria-labelledby={label ? `editor-label-${id}` : undefined}
         aria-describedby={ariaDescription ? `editor-hint-${id}` : undefined}

@@ -254,3 +254,135 @@ describe('FormattingService: keyboard shortcuts', () => {
     });
   });
 });
+
+describe('FormattingService: handlePaste', () => {
+  let formattingService: FormattingService;
+  let container: HTMLDivElement;
+  let selectionService: MockSelectionService;
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    selectionService = new MockSelectionService();
+    formattingService = new FormattingService(container, selectionService);
+  });
+
+  afterEach(() => {
+    document.body.removeChild(container);
+    vi.restoreAllMocks();
+  });
+
+  test('should wrap a valid URL in an anchor tag and set href to that URL when pasted content contains a valid URL', () => {
+    editorUtilities.safelySetHtml(container, '<p>Check this out: </p>');
+    const paragraph = container.querySelector('p')!;
+    setCursorInParagraph(paragraph, 16, selectionService);
+
+    const mockClipboardData = {
+      getData: vi.fn().mockReturnValue('https://www.example.com'),
+    };
+    const mockEvent = {
+      clipboardData: mockClipboardData,
+      preventDefault: vi.fn(),
+    } as unknown as React.ClipboardEvent<HTMLDivElement>;
+
+    const result = formattingService.handlePaste(mockEvent);
+
+    expect(result).toBe(true);
+    expect(mockEvent.preventDefault).toHaveBeenCalled();
+    expect(container.innerHTML).toContain(
+      '<a href="https://www.example.com" target="_blank" rel="noopener noreferrer">https://www.example.com</a>',
+    );
+  });
+
+  test('should not wrap anything in anchor tags when the pasted content contains nothing matching a URL', () => {
+    editorUtilities.safelySetHtml(container, '<p>Some text: </p>');
+    const paragraph = container.querySelector('p')!;
+    setCursorInParagraph(paragraph, 11, selectionService);
+
+    const mockClipboardData = {
+      getData: vi.fn().mockReturnValue('just some plain text'),
+    };
+    const mockEvent = {
+      clipboardData: mockClipboardData,
+      preventDefault: vi.fn(),
+    } as unknown as React.ClipboardEvent<HTMLDivElement>;
+
+    const result = formattingService.handlePaste(mockEvent);
+
+    expect(result).toBe(false);
+    expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+    expect(container.innerHTML).not.toContain('<a');
+  });
+
+  test('should wrap multiple subsets of content in anchor tags and set href appropriately when pasted content contains multiple matches of URL', () => {
+    editorUtilities.safelySetHtml(container, '<p>Resources: </p>');
+    const paragraph = container.querySelector('p')!;
+    setCursorInParagraph(paragraph, 11, selectionService);
+
+    const mockClipboardData = {
+      getData: vi
+        .fn()
+        .mockReturnValue('Visit https://www.example.com/ and check http://www.example.com'),
+    };
+    const mockEvent = {
+      clipboardData: mockClipboardData,
+      preventDefault: vi.fn(),
+    } as unknown as React.ClipboardEvent<HTMLDivElement>;
+
+    const result = formattingService.handlePaste(mockEvent);
+
+    expect(result).toBe(true);
+    expect(mockEvent.preventDefault).toHaveBeenCalled();
+    expect(container.innerHTML).toBe(
+      '<p>Resources: Visit <a href="https://www.example.com/" target="_blank" rel="noopener noreferrer">https://www.example.com/</a> and check <a href="http://www.example.com" target="_blank" rel="noopener noreferrer">http://www.example.com</a></p>',
+    );
+  });
+
+  test('should preserve line breaks when pasting content', () => {
+    editorUtilities.safelySetHtml(container, '<p>Resources: </p>');
+    const paragraph = container.querySelector('p')!;
+    setCursorInParagraph(paragraph, 11, selectionService);
+
+    const mockClipboardData = {
+      getData: vi
+        .fn()
+        .mockReturnValue('Visit https://www.example.com\nand check http://www.example.com'),
+    };
+    const mockEvent = {
+      clipboardData: mockClipboardData,
+      preventDefault: vi.fn(),
+    } as unknown as React.ClipboardEvent<HTMLDivElement>;
+
+    const result = formattingService.handlePaste(mockEvent);
+
+    expect(result).toBe(true);
+    expect(mockEvent.preventDefault).toHaveBeenCalled();
+    expect(container.innerHTML).toBe(
+      '<p>Resources: Visit <a href="https://www.example.com" target="_blank" rel="noopener noreferrer">https://www.example.com</a></p><p>and check <a href="http://www.example.com" target="_blank" rel="noopener noreferrer">http://www.example.com</a></p>',
+    );
+  });
+
+  test('should preserve line breaks and move content after the cursor to a new paragraph when pasting content when there is content after the cursor', () => {
+    editorUtilities.safelySetHtml(container, '<p>Resources: Check this out: </p>');
+    const paragraph = container.querySelector('p')!;
+    setCursorInParagraph(paragraph, 11, selectionService);
+
+    const mockClipboardData = {
+      getData: vi
+        .fn()
+        .mockReturnValue('Visit https://www.example.com\nand check http://www.example.com'),
+    };
+    const mockEvent = {
+      clipboardData: mockClipboardData,
+      preventDefault: vi.fn(),
+    } as unknown as React.ClipboardEvent<HTMLDivElement>;
+
+    const result = formattingService.handlePaste(mockEvent);
+
+    expect(result).toBe(true);
+    expect(mockEvent.preventDefault).toHaveBeenCalled();
+    expect(container.innerHTML).toBe(
+      '<p>Resources: Visit <a href="https://www.example.com" target="_blank" rel="noopener noreferrer">https://www.example.com</a></p><p>and check <a href="http://www.example.com" target="_blank" rel="noopener noreferrer">http://www.example.com</a></p><p>Check this out: </p>',
+    );
+  });
+});
