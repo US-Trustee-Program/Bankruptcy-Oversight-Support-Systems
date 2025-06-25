@@ -73,7 +73,7 @@ export class ListNavigationService {
       'p',
     );
 
-    const newParagraph = this.createEmptyParagraph();
+    const newParagraph = this.selectionService.createElement('p');
 
     if (currentParagraph?.parentNode) {
       const { leftFragment, rightFragment } = this.splitParagraphAtCursor(currentParagraph, range);
@@ -120,7 +120,13 @@ export class ListNavigationService {
       paragraphClone,
     );
 
-    if (!cursorNodeInClone) {
+    const endCursorNodeInClone = this.findEquivalentNode(
+      range.endContainer,
+      paragraph,
+      paragraphClone,
+    );
+
+    if (!cursorNodeInClone || !endCursorNodeInClone) {
       // Fallback: put everything in left fragment
       leftFragment.appendChild(paragraphClone);
       return { leftFragment, rightFragment };
@@ -131,7 +137,7 @@ export class ListNavigationService {
     leftRange.setEnd(cursorNodeInClone, range.startOffset);
 
     // Set up the right range (from cursor to end of paragraph)
-    rightRange.setStart(cursorNodeInClone, range.startOffset);
+    rightRange.setStart(endCursorNodeInClone, range.endOffset);
     rightRange.setEnd(paragraphClone, paragraphClone.childNodes.length);
 
     // Extract the content
