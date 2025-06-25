@@ -136,6 +136,7 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
 
   const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
     if (editorRef.current?.handlePaste(e)) {
+      onChange?.(getHtml());
       return;
     }
   };
