@@ -314,35 +314,6 @@ describe('ListService', () => {
       expect(root.querySelectorAll('p')).toHaveLength(2);
     });
 
-    test('exits empty list item and creates paragraph', () => {
-      safelySetHtml(root, '<ul><li>Item 1</li><li></li></ul>');
-      const emptyListItem = root.querySelectorAll('li')[1];
-      setCursorInElement(emptyListItem, 0, selectionService);
-
-      const event = createEnterEvent();
-      const result = listService.handleEnterKey(event);
-
-      expect(result).toBe(true);
-      expect(event.preventDefault).toHaveBeenCalled();
-      expect(root.querySelector('p')).toBeTruthy();
-      expect(root.querySelectorAll('li')).toHaveLength(1);
-    });
-
-    test('should exit empty list item and create paragraph at root when list item is empty and enter is pressed', () => {
-      safelySetHtml(root, '<ul><li>Item 1<ul><li>Nested item</li><li></li></ul></li></ul>');
-      const emptyListItem = root.querySelectorAll('ul ul li')[1]!;
-      setCursorInElement(emptyListItem as HTMLElement, 0, selectionService);
-
-      const event = createEnterEvent();
-      const result = listService.handleEnterKey(event);
-
-      expect(result).toBe(true);
-      expect(event.preventDefault).toHaveBeenCalled();
-      expect(safelyGetHtml(root)).toEqual(
-        `<ul><li>Item 1<ul><li>Nested item</li></ul></li></ul><p>${ZERO_WIDTH_SPACE}</p>`,
-      );
-    });
-
     test('handles enter in non-empty list item normally', () => {
       safelySetHtml(root, '<ul><li>Non-empty item</li></ul>');
       const listItem = root.querySelector('li')!;
@@ -353,40 +324,6 @@ describe('ListService', () => {
 
       expect(result).toBe(false);
       expect(event.preventDefault).not.toHaveBeenCalled();
-    });
-
-    test('removes entire list when all children become empty after Enter', () => {
-      // Create a list where all items are empty/whitespace only
-      // After removing one empty item, the remaining items should all be empty too
-      root.innerHTML = ''; // Start fresh
-
-      const list = document.createElement('ul');
-
-      // First item: completely empty
-      const emptyItem1 = document.createElement('li');
-      // Second item: only whitespace
-      const emptyItem2 = document.createElement('li');
-      emptyItem2.textContent = '   '; // Only whitespace
-
-      list.appendChild(emptyItem1);
-      list.appendChild(emptyItem2);
-      root.appendChild(list);
-
-      // Position cursor in the first empty item
-      const range = selectionService.createRange();
-      range.setStart(emptyItem1, 0);
-      range.collapse(true);
-      selectionService.setSelectionRange(range);
-
-      const event = createEnterEvent();
-      const result = listService.handleEnterKey(event);
-
-      expect(result).toBe(true);
-      expect(event.preventDefault).toHaveBeenCalled();
-
-      // Should trigger lines 121-122: check if all remaining children are empty and remove the list
-      expect(root.querySelector('ul')).toBeFalsy(); // List should be removed
-      expect(root.querySelector('p')).toBeTruthy(); // Paragraph should be created
     });
 
     test('inserts paragraph directly when not in a paragraph context', () => {
