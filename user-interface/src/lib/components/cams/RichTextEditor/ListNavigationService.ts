@@ -32,7 +32,8 @@ export class ListNavigationService {
     );
 
     if (listItem) {
-      const isEmpty = listItem.textContent?.trim() === '';
+      const trimmedTextContent = listItem.textContent?.trim();
+      const isEmpty = trimmedTextContent === ZERO_WIDTH_SPACE || trimmedTextContent === '';
       if (isEmpty) {
         e.preventDefault();
 
