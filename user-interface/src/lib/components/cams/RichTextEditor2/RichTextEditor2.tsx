@@ -4,9 +4,10 @@ import { StateMachineProvider, useStateMachine } from './StateMachineContext';
 import { EditorEvent } from './StateMachine';
 import { VirtualDOMTree } from './virtual-dom/VirtualDOMTree';
 import { VNode } from './virtual-dom/VNode';
-import { createTextNode } from './virtual-dom/VNodeFactory';
+import { createTextNode, createFormattingNode } from './virtual-dom/VNodeFactory';
 import { insertNode, removeNode } from './virtual-dom/VirtualDOMOperations';
 import { HtmlCodec } from './virtual-dom/HtmlCodec';
+import { BrowserSelectionService, type SelectionService } from './SelectionService.humble';
 import * as React from 'react';
 
 export interface RichTextEditor2Ref {
@@ -37,6 +38,55 @@ function _RichTextEditor2Internal(props: RichTextEditor2Props, ref: React.Ref<Ri
 
   // Initialize virtual DOM tree
   const virtualDOMRef = useRef<VirtualDOMTree>(new VirtualDOMTree());
+
+  // Initialize selection service
+  const selectionServiceRef = useRef<SelectionService>(
+    new BrowserSelectionService(window, document),
+  );
+
+  /**
+   * Apply formatting to the currently selected text
+   */
+  const applyFormatting = (formatType: 'bold' | 'italic' | 'underline') => {
+    const selection = selectionServiceRef.current.getCurrentSelection();
+    if (!selection || selection.rangeCount === 0) {
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+    const selectedText = selectionServiceRef.current.getSelectedText();
+
+    if (!selectedText.trim()) {
+      return; // Don't format empty selections
+    }
+
+    // Create a formatting node with the selected text as a child
+    const textNode = createTextNode(selectedText);
+    const formattingNode = createFormattingNode(formatType);
+
+    // Add the text node as a child of the formatting node
+    insertNode(formattingNode, textNode, 0);
+
+    // Replace the selected content with the formatted content
+    range.deleteContents();
+
+    // Create the HTML element for the formatting
+    const formattingElement = document.createElement(formattingNode.tagName);
+    formattingElement.textContent = selectedText;
+
+    // Insert the formatted element
+    range.insertNode(formattingElement);
+
+    // Update the virtual DOM by re-parsing the current content
+    if (contentRef.current) {
+      const currentHtml = contentRef.current.innerHTML;
+      setValue(currentHtml);
+    }
+
+    // Clear selection and notify change
+    selection.removeAllRanges();
+    onChange?.(getHtml());
+  };
 
   const clearValue = () => {
     // Clear the virtual DOM tree by removing all children from the root
@@ -131,10 +181,19 @@ function _RichTextEditor2Internal(props: RichTextEditor2Props, ref: React.Ref<Ri
     if (e.ctrlKey || e.metaKey) {
       switch (e.key.toLowerCase()) {
         case 'b':
+          e.preventDefault();
+          dispatch(EditorEvent.KEYBOARD_SHORTCUT);
+          applyFormatting('bold');
+          break;
         case 'i':
+          e.preventDefault();
+          dispatch(EditorEvent.KEYBOARD_SHORTCUT);
+          applyFormatting('italic');
+          break;
         case 'u':
           e.preventDefault();
           dispatch(EditorEvent.KEYBOARD_SHORTCUT);
+          applyFormatting('underline');
           break;
       }
     }

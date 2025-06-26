@@ -5,7 +5,9 @@ This document outlines the implementation plan for RichTextEditor2, a new rich t
 
 ## AI Agent Guidelines
 
+- Read context, decisions, and reasoning from `CAMS-526-rte-v2-reasoning.md` to include details from the last step implemented.
 - Use vitest for unit testing.
+- Use `@testing-library/react1. Prefer userEvent over fireEvent.
 - Use the BrowserSelectionService humble object for tests in place of tight coupling with the browser API.
 - Use test-driven development practices. Write tests before writing implementation.
 - Unit test coverage for branches and lines is 100%.
@@ -13,7 +15,7 @@ This document outlines the implementation plan for RichTextEditor2, a new rich t
 - Run `npm run lint:fix` to lint source files. Fix any reported linter issues.
 
 When working on implementation steps:
-- **Always update the reasoning file**: Save context, decisions, and reasoning to `CAMS-526-rte-v2-reasoning.md` (located in project root)
+- **Always update the reasoning file**: Save context, decisions, and reasoning to `CAMS-526-rte-v2-reasoning.md`
 - **Document architecture decisions**: Record why specific approaches were chosen
 - **Update progress**: Mark completed tasks in this goals file and update the reasoning file
 - **Maintain context**: Include enough detail for subsequent AI agents to understand the current state
@@ -66,9 +68,9 @@ It is important to minimize third party dependencies.
     - [ ] Handle edge cases in HTML content
 
 ### 4. Core Editor Features
-- [ ] Text formatting capabilities
-    - [ ] Bold, italic, underline formatting
-    - [ ] Format application through FSM
+- [x] Text formatting capabilities
+    - [x] Bold, italic, underline formatting
+    - [x] Format application through FSM
     - [ ] Format removal and toggling
 - [ ] List management
     - [ ] Bulleted lists (ul)
@@ -156,7 +158,7 @@ It is important to minimize third party dependencies.
 
 ### Phase 2: Basic Editor Functionality
 1. [x] Text input and editing
-2. Basic formatting (bold, italic, underline)
+2. [x] Basic formatting (bold, italic, underline)
 3. Paragraph handling
 
 ### Phase 3: Advanced Features
