@@ -102,6 +102,8 @@ It is important to minimize third party dependencies.
     - [ ] Large document handling
     - [ ] Rapid input scenarios
     - [ ] Memory usage optimization
+- [ ] BDD-style Test
+  - [ ] Write BDD-style test for the RichTextEditor2 component
 
 ### 7. Performance Considerations
 - [ ] Optimize virtual DOM operations
