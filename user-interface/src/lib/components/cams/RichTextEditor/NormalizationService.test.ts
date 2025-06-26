@@ -1,6 +1,7 @@
 import { NormalizationService } from './NormalizationService';
 import { MockSelectionService } from './SelectionService.humble';
 import editorUtilities from './Editor.utilities';
+import { ZERO_WIDTH_SPACE } from './Editor.constants';
 
 describe('FormattingService: normalizeInlineFormatting', () => {
   let normalizationService: NormalizationService;
@@ -129,5 +130,35 @@ describe('FormattingService: normalizeInlineFormatting', () => {
     );
     normalizationService.normalizeInlineFormatting();
     expect(editorUtilities.safelyGetHtml(container)).toBe('<p><strong>12345678</strong></p>');
+  });
+
+  test('should remove zero-width space from non-empty paragraph', () => {
+    editorUtilities.safelySetHtml(
+      container,
+      `<p>${ZERO_WIDTH_SPACE}one <strong>two</strong> three</p>`,
+    );
+    normalizationService.normalizeInlineFormatting();
+    expect(editorUtilities.safelyGetHtml(container)).toEqual(
+      '<p>one <strong>two</strong> three</p>',
+    );
+  });
+
+  test('should remove empty span tags', () => {
+    editorUtilities.safelySetHtml(container, '<p><span></span>one <strong>two</strong> three</p>');
+    normalizationService.normalizeInlineFormatting();
+    expect(editorUtilities.safelyGetHtml(container)).toEqual(
+      '<p>one <strong>two</strong> three</p>',
+    );
+  });
+
+  test('should merge text node of a non-formatting span tag with adjacent text node', () => {
+    editorUtilities.safelySetHtml(
+      container,
+      '<p><span>one</span> two <span>three</span> four<span class="underline">five</span></p>',
+    );
+    normalizationService.normalizeInlineFormatting();
+    expect(editorUtilities.safelyGetHtml(container)).toEqual(
+      '<p>one two three four<span class="underline">five</span></p>',
+    );
   });
 });
