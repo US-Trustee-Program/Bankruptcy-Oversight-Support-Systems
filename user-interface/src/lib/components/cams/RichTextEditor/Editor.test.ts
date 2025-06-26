@@ -306,6 +306,32 @@ describe('Editor: handleBackspaceOnEmptyContent', () => {
     expect(event.preventDefault).toHaveBeenCalled();
   });
 
+  test('handles backspace properly when previousSibling firstChild has insufficient length', () => {
+    safelySetHtml(container, '<p>First paragraph</p>');
+
+    const complexElement = document.createElement('p');
+    const emptySpan = document.createElement('span');
+    const textNode = document.createTextNode('Some content that makes textContent.length > 0');
+
+    complexElement.appendChild(emptySpan);
+    complexElement.appendChild(textNode);
+    container.appendChild(complexElement);
+
+    const zeroWidthParagraph = document.createElement('p');
+    zeroWidthParagraph.textContent = ZERO_WIDTH_SPACE;
+    container.appendChild(zeroWidthParagraph);
+
+    setCursorInParagraph(zeroWidthParagraph, 1, selectionService);
+
+    const event = createBackspaceEvent();
+
+    editor.handleBackspaceOnEmptyContent(event);
+
+    expect(event.preventDefault).toHaveBeenCalled();
+
+    expect(container.querySelector(`p[textContent="${ZERO_WIDTH_SPACE}"]`)).toBeFalsy();
+  });
+
   test('allows normal backspace in non-empty paragraph', () => {
     safelySetHtml(container, '<p>Hello world</p>');
     const paragraph = container.querySelector('p');

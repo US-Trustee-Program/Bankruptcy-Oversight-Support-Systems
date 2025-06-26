@@ -1,4 +1,4 @@
-import editorUtilities from './Editor.utilities';
+import editorUtilities, { safelySetHtml } from './Editor.utilities';
 import { SelectionService } from './SelectionService.humble';
 import { ListUtilities } from './ListUtilities';
 import { ZERO_WIDTH_SPACE } from './Editor.constants';
@@ -73,23 +73,124 @@ export class ListNavigationService {
       'p',
     );
 
-    const newParagraph = this.createEmptyParagraph();
-
+    let newParagraph: HTMLParagraphElement;
     if (currentParagraph?.parentNode) {
-      // Bisect the current text at the cursor location.
-      const newParagraphText = currentParagraph.textContent?.slice(range.startOffset);
-      const currentParagraphText = currentParagraph.textContent?.slice(0, range.startOffset);
-      newParagraph.textContent = newParagraphText || ZERO_WIDTH_SPACE;
-      currentParagraph.textContent = currentParagraphText || ZERO_WIDTH_SPACE;
+      newParagraph = this.selectionService.createElement('p');
+      const { leftFragment, rightFragment } = this.splitParagraphAtCursor(currentParagraph, range);
 
+      // Clear the current paragraph and append the left fragment
+      safelySetHtml(currentParagraph, '');
+      currentParagraph.appendChild(leftFragment);
+
+      // Clear the new paragraph and append the right fragment
+      newParagraph.appendChild(rightFragment);
+
+      // Insert the new paragraph after the current one
       currentParagraph.parentNode.insertBefore(newParagraph, currentParagraph.nextSibling);
     } else {
+      newParagraph = this.createEmptyParagraph();
       range.collapse(false);
       range.insertNode(newParagraph);
     }
 
     this.focusParagraph(newParagraph);
     return true;
+  }
+
+  /**
+   * Split a paragraph at the cursor position while preserving all formatting
+   */
+  private splitParagraphAtCursor(
+    paragraph: HTMLParagraphElement,
+    range: Range,
+  ): { leftFragment: DocumentFragment; rightFragment: DocumentFragment } {
+    const leftFragment = this.selectionService.createDocumentFragment();
+    const rightFragment = this.selectionService.createDocumentFragment();
+
+    // Clone the original paragraph for safe manipulation
+    const paragraphClone = paragraph.cloneNode(true) as HTMLParagraphElement;
+
+    // Create ranges for the left and right parts within the cloned paragraph
+    const leftRange = this.selectionService.createRange();
+    const rightRange = this.selectionService.createRange();
+
+    // Find the corresponding cursor position in the cloned paragraph
+    const cursorNodeInClone = this.findEquivalentNode(
+      range.startContainer,
+      paragraph,
+      paragraphClone,
+    );
+
+    const endCursorNodeInClone = this.findEquivalentNode(
+      range.endContainer,
+      paragraph,
+      paragraphClone,
+    );
+
+    if (!cursorNodeInClone || !endCursorNodeInClone) {
+      // Fallback: put everything in left fragment
+      leftFragment.appendChild(paragraphClone);
+      return { leftFragment, rightFragment };
+    }
+
+    // Set up the left range (from start of paragraph to cursor)
+    leftRange.setStart(paragraphClone, 0);
+    leftRange.setEnd(cursorNodeInClone, range.startOffset);
+
+    // Set up the right range (from cursor to end of paragraph)
+    rightRange.setStart(endCursorNodeInClone, range.endOffset);
+    rightRange.setEnd(paragraphClone, paragraphClone.childNodes.length);
+
+    // Extract the content
+    const leftContent = leftRange.cloneContents();
+    const rightContent = rightRange.cloneContents();
+
+    leftFragment.appendChild(leftContent);
+    rightFragment.appendChild(rightContent);
+
+    // Ensure both fragments have content (at least a zero-width space)
+    if (!leftFragment.textContent) {
+      leftFragment.appendChild(this.selectionService.createTextNode(ZERO_WIDTH_SPACE));
+    }
+    if (!rightFragment.textContent) {
+      rightFragment.appendChild(this.selectionService.createTextNode(ZERO_WIDTH_SPACE));
+    }
+
+    return { leftFragment, rightFragment };
+  }
+
+  /**
+   * Find the equivalent node in a cloned tree
+   */
+  private findEquivalentNode(targetNode: Node, originalRoot: Node, clonedRoot: Node): Node | null {
+    if (targetNode === originalRoot) {
+      return clonedRoot;
+    }
+
+    // Build path from original root to target node
+    const path: number[] = [];
+    let current = targetNode;
+
+    while (current && current !== originalRoot) {
+      const parent = current.parentNode;
+      if (!parent) break;
+
+      const index = Array.from(parent.childNodes).indexOf(current as ChildNode);
+      path.unshift(index);
+      current = parent;
+    }
+
+    // Follow the same path in the cloned tree
+    let clonedNode: Node = clonedRoot;
+    for (const index of path) {
+      if (clonedNode.childNodes[index]) {
+        clonedNode = clonedNode.childNodes[index];
+      } else {
+        return null;
+      }
+    }
+
+    return clonedNode;
   }
 
   public handleDeleteKeyOnList(e: React.KeyboardEvent<HTMLDivElement>): boolean {
