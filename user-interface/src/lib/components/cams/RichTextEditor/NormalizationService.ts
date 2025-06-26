@@ -1,4 +1,5 @@
 import { SelectionService } from './SelectionService.humble';
+import { ZERO_WIDTH_SPACE_REGEX } from './Editor.constants';
 
 const INLINE_TAGS = ['strong', 'em'];
 const CLASS_BASED_SPANS = ['underline'];
@@ -33,12 +34,18 @@ export class NormalizationService {
     // First flatten nested identical tags throughout the entire subtree
     this.flattenNestedIdenticalTags(node);
 
+    // Remove non-formatting spans and merge their text content
+    this.unwrapNonFormattingSpans(node);
+
     this.removeEmptyFormattingElements(node);
 
     // Then merge adjacent similar elements
     this.mergeAdjacentSimilarElements(node);
 
     this.removeEmptyFormattingElements(node);
+
+    // Remove zero-width spaces from text nodes
+    this.removeZeroWidthSpaces(node);
 
     node.normalize();
   }
@@ -102,8 +109,7 @@ export class NormalizationService {
       if (
         child.nodeType === Node.ELEMENT_NODE &&
         (INLINE_TAGS.includes((child as Element).tagName.toLowerCase()) ||
-          ((child as Element).tagName === 'SPAN' &&
-            CLASS_BASED_SPANS.some((cls) => (child as Element).classList.contains(cls)))) &&
+          (child as Element).tagName === 'SPAN') &&
         (!child.textContent || child.textContent.length === 0)
       ) {
         node.removeChild(child);
@@ -133,5 +139,48 @@ export class NormalizationService {
         i--;
       }
     }
+  }
+
+  private removeZeroWidthSpaces(node: Element): void {
+    const walker = this.selectionService.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+    const textNodes: Text[] = [];
+
+    let current: Node | null = walker.currentNode;
+    while (current) {
+      if (current.nodeType === Node.TEXT_NODE) {
+        textNodes.push(current as Text);
+      }
+      current = walker.nextNode();
+    }
+
+    textNodes.forEach((textNode) => {
+      if (textNode.textContent) {
+        textNode.textContent = textNode.textContent.replace(ZERO_WIDTH_SPACE_REGEX, '');
+      }
+    });
+  }
+
+  private unwrapNonFormattingSpans(node: Element): void {
+    // Find all span elements that don't have formatting classes
+    const spansToUnwrap: Element[] = [];
+    Array.from(node.querySelectorAll('span')).forEach((span) => {
+      const hasFormattingClass = CLASS_BASED_SPANS.some((cls) => span.classList.contains(cls));
+      if (!hasFormattingClass) {
+        spansToUnwrap.push(span);
+      }
+    });
+
+    // Unwrap each non-formatting span
+    spansToUnwrap.forEach((span) => {
+      const parent = span.parentNode;
+      if (parent) {
+        // Move all child nodes of the span to the parent
+        while (span.firstChild) {
+          parent.insertBefore(span.firstChild, span);
+        }
+        // Remove the now-empty span
+        parent.removeChild(span);
+      }
+    });
   }
 }
