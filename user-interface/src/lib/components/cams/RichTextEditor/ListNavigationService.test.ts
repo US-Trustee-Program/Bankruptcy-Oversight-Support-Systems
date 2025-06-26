@@ -69,7 +69,7 @@ describe('ListNavigationService', () => {
     });
 
     test('exits empty list item and creates paragraph', () => {
-      safelySetHtml(root, '<ul><li>Item 1</li><li></li></ul>');
+      safelySetHtml(root, `<ul><li>Item 1</li><li>${ZERO_WIDTH_SPACE}</li></ul>`);
       const emptyListItem = root.querySelectorAll('li')[1];
       setCursorInElement(emptyListItem, 0, selectionService);
 
@@ -83,7 +83,10 @@ describe('ListNavigationService', () => {
     });
 
     test('should exit empty list item and create paragraph at root when list item is empty and enter is pressed', () => {
-      safelySetHtml(root, '<ul><li>Item 1<ul><li>Nested item</li><li></li></ul></li></ul>');
+      safelySetHtml(
+        root,
+        `<ul><li>Item 1<ul><li>Nested item</li><li>${ZERO_WIDTH_SPACE}</li></ul></li></ul>`,
+      );
       const emptyListItem = root.querySelectorAll('ul ul li')[1]!;
       setCursorInElement(emptyListItem as HTMLElement, 0, selectionService);
 
