@@ -16,6 +16,8 @@ import {
   removeTextContent,
   splitTextNode,
   mergeTextNodes,
+  findCommonAncestor,
+  getTextNodesInOrder,
 } from './VirtualDOMOperations';
 
 describe('VirtualDOMOperations', () => {
@@ -199,6 +201,38 @@ describe('VirtualDOMOperations', () => {
 
       expect(newPara.depth).toBe(1);
       expect(textNode.depth).toBe(2);
+    });
+
+    test('should return null when old node is not found in parent children', () => {
+      const oldPara = createElementNode('p', { parent: root, depth: 1 });
+      const newPara = createElementNode('div');
+
+      // Don't add oldPara to root.children, but set parent reference
+      // This creates an inconsistent state where parent is set but node is not in children
+
+      const replaced = replaceNode(oldPara, newPara);
+
+      expect(replaced).toBeNull();
+    });
+
+    test('should remove new node from its current parent when replacing', () => {
+      const oldPara = createElementNode('p', { parent: root, depth: 1 });
+      const newPara = createElementNode('div');
+      const otherParent = createElementNode('section', { parent: root, depth: 1 });
+
+      // Set up the tree
+      root.children.push(oldPara, otherParent);
+
+      // Make newPara a child of otherParent
+      newPara.parent = otherParent;
+      otherParent.children.push(newPara);
+
+      const replaced = replaceNode(oldPara, newPara);
+
+      expect(replaced).toBe(oldPara);
+      expect(otherParent.children).not.toContain(newPara);
+      expect(root.children).toContain(newPara);
+      expect(newPara.parent).toBe(root);
     });
   });
 
@@ -433,6 +467,139 @@ describe('VirtualDOMOperations', () => {
 
       expect(merged).not.toBeNull();
       expect(merged!.content).toBe('Hello World');
+    });
+  });
+
+  describe('findCommonAncestor', () => {
+    test('should find common ancestor of two sibling nodes', () => {
+      const para1 = createElementNode('p', { parent: root, depth: 1 });
+      const para2 = createElementNode('p', { parent: root, depth: 1 });
+
+      root.children.push(para1, para2);
+
+      const commonAncestor = findCommonAncestor(para1, para2);
+      expect(commonAncestor).toBe(root);
+    });
+
+    test('should find common ancestor of nodes at different depths', () => {
+      const para1 = createElementNode('p', { parent: root, depth: 1 });
+      const text1 = createTextNode('Hello', { parent: para1, depth: 2 });
+      const para2 = createElementNode('p', { parent: root, depth: 1 });
+
+      root.children.push(para1, para2);
+      para1.children.push(text1);
+
+      const commonAncestor = findCommonAncestor(text1, para2);
+      expect(commonAncestor).toBe(root);
+    });
+
+    test('should find common ancestor when one node is ancestor of another', () => {
+      const para = createElementNode('p', { parent: root, depth: 1 });
+      const text = createTextNode('Hello', { parent: para, depth: 2 });
+
+      root.children.push(para);
+      para.children.push(text);
+
+      const commonAncestor = findCommonAncestor(para, text);
+      expect(commonAncestor).toBe(para);
+    });
+
+    test('should return root when comparing root with any node', () => {
+      const para = createElementNode('p', { parent: root, depth: 1 });
+      root.children.push(para);
+
+      const commonAncestor = findCommonAncestor(root, para);
+      expect(commonAncestor).toBe(root);
+    });
+
+    test('should return root when comparing same node', () => {
+      const para = createElementNode('p', { parent: root, depth: 1 });
+      root.children.push(para);
+
+      const commonAncestor = findCommonAncestor(para, para);
+      expect(commonAncestor).toBe(para);
+    });
+
+    test('should handle deeply nested nodes', () => {
+      const para1 = createElementNode('p', { parent: root, depth: 1 });
+      const span1 = createElementNode('span', { parent: para1, depth: 2 });
+      const text1 = createTextNode('Hello', { parent: span1, depth: 3 });
+
+      const para2 = createElementNode('p', { parent: root, depth: 1 });
+      const span2 = createElementNode('span', { parent: para2, depth: 2 });
+      const text2 = createTextNode('World', { parent: span2, depth: 3 });
+
+      root.children.push(para1, para2);
+      para1.children.push(span1);
+      span1.children.push(text1);
+      para2.children.push(span2);
+      span2.children.push(text2);
+
+      const commonAncestor = findCommonAncestor(text1, text2);
+      expect(commonAncestor).toBe(root);
+    });
+  });
+
+  describe('getTextNodesInOrder', () => {
+    test('should return all text nodes in document order', () => {
+      const para1 = createElementNode('p', { parent: root, depth: 1 });
+      const text1 = createTextNode('Hello', { parent: para1, depth: 2 });
+      const text2 = createTextNode(' ', { parent: para1, depth: 2 });
+
+      const para2 = createElementNode('p', { parent: root, depth: 1 });
+      const text3 = createTextNode('World', { parent: para2, depth: 2 });
+
+      root.children.push(para1, para2);
+      para1.children.push(text1, text2);
+      para2.children.push(text3);
+
+      const textNodes = getTextNodesInOrder(root);
+      expect(textNodes).toEqual([text1, text2, text3]);
+    });
+
+    test('should return empty array when no text nodes exist', () => {
+      const para = createElementNode('p', { parent: root, depth: 1 });
+      root.children.push(para);
+
+      const textNodes = getTextNodesInOrder(root);
+      expect(textNodes).toEqual([]);
+    });
+
+    test('should return text nodes from specific subtree', () => {
+      const para1 = createElementNode('p', { parent: root, depth: 1 });
+      const text1 = createTextNode('Hello', { parent: para1, depth: 2 });
+
+      const para2 = createElementNode('p', { parent: root, depth: 1 });
+      const text2 = createTextNode('World', { parent: para2, depth: 2 });
+
+      root.children.push(para1, para2);
+      para1.children.push(text1);
+      para2.children.push(text2);
+
+      const textNodes = getTextNodesInOrder(para1);
+      expect(textNodes).toEqual([text1]);
+    });
+
+    test('should handle deeply nested text nodes', () => {
+      const para = createElementNode('p', { parent: root, depth: 1 });
+      const span = createElementNode('span', { parent: para, depth: 2 });
+      const text1 = createTextNode('Hello', { parent: span, depth: 3 });
+      const text2 = createTextNode(' World', { parent: span, depth: 3 });
+
+      root.children.push(para);
+      para.children.push(span);
+      span.children.push(text1, text2);
+
+      const textNodes = getTextNodesInOrder(root);
+      expect(textNodes).toEqual([text1, text2]);
+    });
+
+    test('should return single text node when only one exists', () => {
+      const text = createTextNode('Hello', { parent: root, depth: 1 });
+      root.children.push(text);
+
+      const textNodes = getTextNodesInOrder(root);
+      expect(textNodes).toEqual([text]);
     });
   });
 });

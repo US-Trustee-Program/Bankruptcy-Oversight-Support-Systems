@@ -226,8 +226,21 @@ export class VirtualDOMTree {
   getNodeRange(startNode: VNode, endNode: VNode): VNode[] {
     const range: VNode[] = [];
     let capturing = false;
+    let foundEnd = false;
 
     this.traverseDepthFirst((node: VNode) => {
+      // Special case: if startNode and endNode are the same
+      if (startNode === endNode && node === startNode) {
+        range.push(node);
+        return false; // Stop traversal
+      }
+
+      // If we find endNode before startNode, return empty range
+      if (node === endNode && !capturing) {
+        foundEnd = true;
+        return false; // Stop traversal
+      }
+
       if (node === startNode) {
         capturing = true;
       }
@@ -236,12 +249,18 @@ export class VirtualDOMTree {
         range.push(node);
       }
 
-      if (node === endNode) {
-        return false; // Stop traversal
+      if (node === endNode && capturing) {
+        foundEnd = true;
       }
 
-      return true; // Continue traversal
+      // Continue traversal for children of endNode, but stop after that
+      return !foundEnd || node === endNode;
     });
+
+    // If we found endNode before startNode, return empty array
+    if (foundEnd && !capturing) {
+      return [];
+    }
 
     return range;
   }
