@@ -126,12 +126,15 @@ export class Editor {
       e.preventDefault();
       const { previousSibling } = currentParagraph;
       if (previousSibling && previousSibling.nodeType === Node.ELEMENT_NODE) {
-        const { firstChild } = previousSibling;
-        if (firstChild) {
-          range.setStart(firstChild, previousSibling.textContent?.length ?? 0);
-          currentParagraph.remove();
-          return true;
+        // Find the last text node in the previous sibling to position cursor properly
+        const lastTextNode = this.findLastTextNode(previousSibling);
+        if (lastTextNode) {
+          range.setStart(lastTextNode, lastTextNode.textContent?.length ?? 0);
+          range.collapse(true);
+          this.selectionService.setSelectionRange(range);
         }
+        currentParagraph.remove();
+        return true;
       }
     }
 
@@ -196,5 +199,25 @@ export class Editor {
       }
     }
     return false;
+  }
+
+  /**
+   * Find the last text node within an element for proper cursor positioning
+   */
+  private findLastTextNode(element: Node): Text | null {
+    if (element.nodeType === Node.TEXT_NODE) {
+      return element as Text;
+    }
+
+    // Traverse children in reverse order to find the last text node
+    for (let i = element.childNodes.length - 1; i >= 0; i--) {
+      const child = element.childNodes[i];
+      const lastTextNode = this.findLastTextNode(child);
+      if (lastTextNode) {
+        return lastTextNode;
+      }
+    }
+
+    return null;
   }
 }
