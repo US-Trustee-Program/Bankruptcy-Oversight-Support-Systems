@@ -3,6 +3,12 @@
 ## Overview
 This document outlines the implementation plan for RichTextEditor2, a new rich text editor component that uses a finite state machine for state management, virtual DOM for document representation, and HTML encoding for content storage.
 
+## Guidelines
+
+- Use vitest for unit testing.
+- Use the BrowserSelectionService humble object for tests in place of tight coupling with the browser API.
+- Use test-driven development practices. Write tests before writing implementation.
+
 ## Allowed Dependencies
 
 It is important to minimize third party dependencies.
@@ -13,13 +19,13 @@ It is important to minimize third party dependencies.
 ## Architecture Goals
 
 ### 1. Finite State Machine (FSM) Implementation
-- [ ] Design and implement a finite state machine to manage editor state
-    - [ ] Define editor states (e.g., idle, typing, formatting, selecting)
-    - [ ] Define state transitions and triggers
-    - [ ] Implement state machine core logic
-    - [ ] Create state machine context/provider
+- [x] Design and implement a finite state machine to manage editor state
+    - [x] Define editor states (e.g., idle, typing, formatting, selecting)
+    - [x] Define state transitions and triggers
+    - [x] Implement state machine core logic
+    - [x] Create state machine context/provider
 - [ ] Integrate FSM with React component lifecycle
-    - [ ] Connect FSM state to React state
+    - [x] Connect FSM state to React state
     - [ ] Handle state transitions in event handlers
     - [ ] Ensure proper cleanup and state reset
 
@@ -131,7 +137,7 @@ It is important to minimize third party dependencies.
 ## Implementation Phases
 
 ### Phase 1: Core Architecture
-1. Implement basic finite state machine
+1. [x] Implement basic finite state machine
 2. Create virtual DOM structure
 3. Set up HTML encoding/decoding
 
