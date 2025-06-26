@@ -390,7 +390,8 @@ describe('VirtualDOMOperations', () => {
 
       const merged = mergeTextNodes(text1, text2);
 
-      expect(merged.content).toBe('Hello World');
+      expect(merged).not.toBeNull();
+      expect(merged!.content).toBe('Hello World');
       expect(root.children).toContain(merged);
       expect(root.children).not.toContain(text1);
       expect(root.children).not.toContain(text2);
@@ -430,7 +431,8 @@ describe('VirtualDOMOperations', () => {
 
       const merged = mergeTextNodes(text2, text1); // Reverse order
 
-      expect(merged.content).toBe('Hello World');
+      expect(merged).not.toBeNull();
+      expect(merged!.content).toBe('Hello World');
     });
   });
 });

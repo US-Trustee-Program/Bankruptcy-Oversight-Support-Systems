@@ -1,5 +1,13 @@
 import './RichTextEditor2.scss';
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import { StateMachineProvider, useStateMachine } from './StateMachineContext';
+import { EditorEvent } from './StateMachine';
+import { VirtualDOMTree } from './virtual-dom/VirtualDOMTree';
+import { VNode } from './virtual-dom/VNode';
+import { createTextNode } from './virtual-dom/VNodeFactory';
+import { insertNode, removeNode } from './virtual-dom/VirtualDOMOperations';
+import { HtmlCodec } from './virtual-dom/HtmlCodec';
+import * as React from 'react';
 
 export interface RichTextEditor2Ref {
   clearValue: () => void;
@@ -20,36 +28,58 @@ export interface RichTextEditor2Props {
   className?: string;
 }
 
-function _RichTextEditor2(props: RichTextEditor2Props, ref: React.Ref<RichTextEditor2Ref>) {
+function _RichTextEditor2Internal(props: RichTextEditor2Props, ref: React.Ref<RichTextEditor2Ref>) {
   const { id, label, ariaDescription, onChange, required, className, disabled } = props;
 
   const contentRef = useRef<HTMLDivElement>(null);
   const [inputDisabled, setInputDisabled] = useState<boolean>(disabled || false);
+  const { dispatch } = useStateMachine();
 
-  // TODO: Implement finite state machine for content and editor state
-  // TODO: Implement virtual DOM for document state
-  // TODO: Use HTML encoding
+  // Initialize virtual DOM tree
+  const virtualDOMRef = useRef<VirtualDOMTree>(new VirtualDOMTree());
 
   const clearValue = () => {
-    // TODO: Implement with state machine
+    // Clear the virtual DOM tree by removing all children from the root
+    const root = virtualDOMRef.current.getRoot();
+    const children = [...root.children]; // Create a copy to avoid mutation during iteration
+    children.forEach((child) => removeNode(child));
+
+    // Update real DOM
     if (contentRef.current) {
       contentRef.current.innerHTML = '';
-      onChange?.('');
     }
+
+    // Notify change
+    onChange?.('');
   };
 
   const getValue = () => {
-    // TODO: Implement with virtual DOM
-    return contentRef.current?.innerText || '';
+    // Get text content from virtual DOM
+    return virtualDOMRef.current.getTextContent();
   };
 
   const getHtml = () => {
-    // TODO: Implement with virtual DOM and HTML encoding
-    return contentRef.current?.innerHTML || '';
+    // Get HTML from virtual DOM using codec
+    return HtmlCodec.encode(virtualDOMRef.current.getRoot());
   };
 
   const setValue = (html: string) => {
-    // TODO: Implement with state machine and virtual DOM
+    // Parse HTML and update virtual DOM
+    const parsedTree = HtmlCodec.decode(html);
+
+    // Clear existing content
+    const root = virtualDOMRef.current.getRoot();
+    const children = [...root.children];
+    children.forEach((child) => removeNode(child));
+
+    // Add new content from the parsed tree
+    if (parsedTree.children.length > 0) {
+      parsedTree.children.forEach((child: VNode) => {
+        insertNode(root, child, root.children.length);
+      });
+    }
+
+    // Update real DOM
     if (contentRef.current) {
       contentRef.current.innerHTML = html;
     }
@@ -74,17 +104,62 @@ function _RichTextEditor2(props: RichTextEditor2Props, ref: React.Ref<RichTextEd
     focus,
   }));
 
-  const handleInput = () => {
-    // TODO: Implement with state machine
+  const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
+    // Dispatch INPUT event to state machine
+    dispatch(EditorEvent.INPUT);
+
+    // Get current content from DOM and update virtual DOM
+    const currentContent = (e.target as HTMLDivElement).innerText;
+
+    // Update virtual DOM with new content
+    // For basic text input, we'll replace the content with a single text node
+    const root = virtualDOMRef.current.getRoot();
+    const children = [...root.children];
+    children.forEach((child) => removeNode(child));
+
+    if (currentContent) {
+      const textNode = createTextNode(currentContent);
+      insertNode(root, textNode, 0);
+    }
+
+    // Notify change
     onChange?.(getHtml());
   };
 
-  const handleKeyDown = (_e: React.KeyboardEvent<HTMLDivElement>) => {
-    // TODO: Implement keyboard handling with state machine
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    // Handle keyboard shortcuts
+    if (e.ctrlKey || e.metaKey) {
+      switch (e.key.toLowerCase()) {
+        case 'b':
+        case 'i':
+        case 'u':
+          e.preventDefault();
+          dispatch(EditorEvent.KEYBOARD_SHORTCUT);
+          break;
+      }
+    }
   };
 
-  const handlePaste = (_e: React.ClipboardEvent<HTMLDivElement>) => {
-    // TODO: Implement paste handling with state machine
+  const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+    e.preventDefault();
+
+    // Get pasted content
+    const pastedText = e.clipboardData.getData('text/plain');
+
+    if (pastedText) {
+      // Update virtual DOM with pasted content
+      const root = virtualDOMRef.current.getRoot();
+      const textNode = createTextNode(pastedText);
+      insertNode(root, textNode, root.children.length);
+
+      // Update real DOM
+      if (contentRef.current) {
+        contentRef.current.innerText = pastedText;
+      }
+
+      // Notify change
+      onChange?.(getHtml());
+    }
   };
 
   return (
@@ -107,7 +182,7 @@ function _RichTextEditor2(props: RichTextEditor2Props, ref: React.Ref<RichTextEd
 
       {/* TODO: Implement toolbar with state machine integration */}
       <div className="editor-toolbar">
-        {/* Toolbar buttons will be implemented with state machine */}
+        {/* Toolbar buttons will be implemented with the state machine */}
       </div>
 
       <div
@@ -127,6 +202,16 @@ function _RichTextEditor2(props: RichTextEditor2Props, ref: React.Ref<RichTextEd
         suppressContentEditableWarning
       />
     </div>
+  );
+}
+
+const RichTextEditor2Internal = forwardRef(_RichTextEditor2Internal);
+
+function _RichTextEditor2(props: RichTextEditor2Props, ref: React.Ref<RichTextEditor2Ref>) {
+  return (
+    <StateMachineProvider>
+      <RichTextEditor2Internal {...props} ref={ref} />
+    </StateMachineProvider>
   );
 }
 
