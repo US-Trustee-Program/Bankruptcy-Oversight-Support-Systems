@@ -306,6 +306,42 @@ describe('Editor: handleBackspaceOnEmptyContent', () => {
     expect(event.preventDefault).toHaveBeenCalled();
   });
 
+  test('handles backspace properly when previousSibling firstChild has insufficient length', () => {
+    // Create multiple paragraphs so we don't hit the "only paragraph" condition
+    safelySetHtml(container, '<p>First paragraph</p>');
+
+    // Create a complex DOM structure that would trigger the IndexSizeError in buggy code
+    // previousSibling has an empty firstChild but non-empty textContent
+    const complexElement = document.createElement('div');
+    const emptySpan = document.createElement('span'); // Empty firstChild with length 0
+    const textNode = document.createTextNode('Some content that makes textContent.length > 0');
+
+    complexElement.appendChild(emptySpan);
+    complexElement.appendChild(textNode);
+    container.appendChild(complexElement);
+
+    // Add the paragraph with ZERO_WIDTH_SPACE AFTER the complex element
+    const zeroWidthParagraph = document.createElement('p');
+    zeroWidthParagraph.textContent = ZERO_WIDTH_SPACE;
+    container.appendChild(zeroWidthParagraph);
+
+    // Position cursor in the zero-width paragraph
+    setCursorInParagraph(zeroWidthParagraph, 1, selectionService);
+
+    const event = createBackspaceEvent();
+
+    // This should NOT throw an error and should handle the backspace properly
+    expect(() => {
+      editor.handleBackspaceOnEmptyContent(event);
+    }).not.toThrow();
+
+    // Verify the event was handled
+    expect(event.preventDefault).toHaveBeenCalled();
+
+    // Verify the empty paragraph was removed
+    expect(container.querySelector('p[textContent="​"]')).toBeFalsy();
+  });
+
   test('allows normal backspace in non-empty paragraph', () => {
     safelySetHtml(container, '<p>Hello world</p>');
     const paragraph = container.querySelector('p');

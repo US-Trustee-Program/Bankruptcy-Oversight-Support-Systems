@@ -163,7 +163,6 @@ describe('ListNavigationService', () => {
       expect(result).toBe(true);
       expect(event.preventDefault).toHaveBeenCalled();
 
-      // Should trigger lines 144-146: else branch that inserts paragraph directly
       expect(root.querySelector('p')).toBeTruthy();
       expect(root.querySelector('p')!.textContent).toBe(ZERO_WIDTH_SPACE);
     });

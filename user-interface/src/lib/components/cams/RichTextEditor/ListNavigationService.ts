@@ -73,9 +73,9 @@ export class ListNavigationService {
       'p',
     );
 
-    const newParagraph = this.selectionService.createElement('p');
-
+    let newParagraph: HTMLParagraphElement;
     if (currentParagraph?.parentNode) {
+      newParagraph = this.selectionService.createElement('p');
       const { leftFragment, rightFragment } = this.splitParagraphAtCursor(currentParagraph, range);
 
       // Clear the current paragraph and append the left fragment
@@ -88,6 +88,7 @@ export class ListNavigationService {
       // Insert the new paragraph after the current one
       currentParagraph.parentNode.insertBefore(newParagraph, currentParagraph.nextSibling);
     } else {
+      newParagraph = this.createEmptyParagraph();
       range.collapse(false);
       range.insertNode(newParagraph);
     }
