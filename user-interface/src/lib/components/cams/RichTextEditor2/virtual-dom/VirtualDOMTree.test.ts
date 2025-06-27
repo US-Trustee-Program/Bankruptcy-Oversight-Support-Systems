@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach } from 'vitest';
-import { VNodeType, VNode } from './VNode';
+import { VNodeType, VNode, isElementNode, isTextNode } from './VNode';
 import {
   createTextNode,
   createElementNode,
@@ -427,7 +427,9 @@ describe('VirtualDOMTree', () => {
 
       expect(clonedNode).not.toBe(para);
       expect(clonedNode.type).toBe(para.type);
-      expect(clonedNode.tagName).toBe(para.tagName);
+      if (isElementNode(clonedNode) && isElementNode(para)) {
+        expect(clonedNode.tagName).toBe(para.tagName);
+      }
       expect(clonedNode.parent).toBeNull();
       expect(clonedNode.children).toEqual([]);
     });
@@ -455,7 +457,9 @@ describe('VirtualDOMTree', () => {
 
       expect(clonedText).not.toBe(text);
       expect(clonedText.type).toBe(VNodeType.TEXT);
-      expect(clonedText.content).toBe('Hello World');
+      if (isTextNode(clonedText)) {
+        expect(clonedText.content).toBe('Hello World');
+      }
       expect(clonedText.parent).toBeNull();
       expect(clonedText.children).toEqual([]);
     });

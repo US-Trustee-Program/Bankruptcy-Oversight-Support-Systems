@@ -259,6 +259,54 @@ The design maintains compatibility with existing RichTextEditor2Ref interface wh
   - **Modified**: `RichTextEditor2.tsx` - Converted to thin delegating component
   - **Verification**: All 202 tests pass, confirming successful migration
 
+### Phase 2 Step 3: Style Toggling Implementation (Current Session)
+- **Status**: ✅ COMPLETED
+- **Date**: Current session
+- **Implementation Details**:
+  - **Services Architecture**: Created `services` subdirectory under `editor` directory following code partitioning guidelines
+  - **FormattingDetectionService**: Implemented pure functions for detecting formatting in DOM selections:
+    - `hasFormatting()`: Checks if element has specific formatting
+    - `hasAncestorFormatting()`: Checks if any ancestor has formatting
+    - `getSelectionFormattingState()`: Returns 'all', 'partial', or 'none' for selection formatting state
+    - `findFormattingElement()`: Finds formatting element containing given element
+  - **FormattingRemovalService**: Implemented pure functions for removing formatting:
+    - `unwrapFormattingElement()`: Removes formatting wrapper while preserving content
+    - `removeFormattingFromSelection()`: Removes formatting from selection (collapsed or text)
+    - `findFormattingElementsInRange()`: Finds all formatting elements within a range
+    - `splitFormattingElement()`: Splits formatting element at boundaries (returns split parts)
+  - **Editor Class Integration**: Updated Editor class to use toggle functionality:
+    - Replaced `applyFormatting()` with `toggleFormatting()` method
+    - Uses `getSelectionFormattingState()` to determine current formatting state
+    - Calls `removeFormattingFromSelection()` when formatting exists
+    - Calls `applyFormattingToSelection()` when formatting doesn't exist
+    - Updated keyboard shortcut handlers to use toggle functionality
+  - **Comprehensive Testing**: Created extensive test suites:
+    - FormattingDetectionService: 22 tests covering all functions and edge cases
+    - FormattingRemovalService: 17 tests covering all functions and edge cases
+    - All tests properly mock DOM APIs and browser selection
+    - Tests verify actual behavior rather than implementation details
+
+- **Architecture Benefits Achieved**:
+  - **Code Partitioning**: Services are pure functions in separate modules following CAMS guidelines
+  - **Dependency Inversion**: Editor depends on service abstractions, not concrete implementations
+  - **Good Fences**: Clean boundaries with simple data types crossing service boundaries
+  - **Testability**: Services can be unit tested independently with comprehensive coverage
+  - **Edge Case Handling**: Proper handling of partial selections, nested formatting, and mixed content
+
+- **Testing Results**:
+  - **Total Tests**: 253 tests pass across all RichTextEditor2 components
+  - **Service Tests**: 39 tests (22 detection + 17 removal) with 100% coverage
+  - **Integration Tests**: All Editor and component tests continue to pass
+  - **Functionality Verified**: Toggle behavior works correctly for bold, italic, and underline
+
+- **Files Created/Modified**:
+  - **Created**: `FormattingDetectionService.ts` - Pure functions for formatting detection
+  - **Created**: `FormattingDetectionService.test.ts` - Comprehensive test suite (22 tests)
+  - **Created**: `FormattingRemovalService.ts` - Pure functions for formatting removal
+  - **Created**: `FormattingRemovalService.test.ts` - Comprehensive test suite (17 tests)
+  - **Modified**: `Editor.ts` - Replaced applyFormatting with toggleFormatting implementation
+  - **Verification**: All 253 RichTextEditor2 tests pass, confirming successful implementation
+
 ## Guidance for AI Agents
 
 When working on subsequent steps:
@@ -270,3 +318,4 @@ When working on subsequent steps:
 6. Consider edge cases and error handling
 7. Maintain compatibility with the existing RichTextEditor interface
 8. Follow the Editor class design decision when implementing the Editor class
+9. Use the established services pattern for new functionality (pure functions in services subdirectory)

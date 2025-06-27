@@ -6,6 +6,8 @@ import { createTextNode, createFormattingNode } from '../virtual-dom/VNodeFactor
 import { insertNode, removeNode } from '../virtual-dom/VirtualDOMOperations';
 import { HtmlCodec } from '../virtual-dom/HtmlCodec';
 import { SelectionService } from '../SelectionService.humble';
+import { FormatType, getSelectionFormattingState } from './services/FormattingDetectionService';
+import { removeFormattingFromSelection } from './services/FormattingRemovalService';
 
 export interface EditorChangeListener {
   (html: string): void;
@@ -123,17 +125,17 @@ export class Editor {
         case 'b':
           e.preventDefault();
           this.stateMachine.dispatch(EditorEvent.KEYBOARD_SHORTCUT);
-          this.applyFormatting('bold');
+          this.toggleFormatting('bold');
           return true;
         case 'i':
           e.preventDefault();
           this.stateMachine.dispatch(EditorEvent.KEYBOARD_SHORTCUT);
-          this.applyFormatting('italic');
+          this.toggleFormatting('italic');
           return true;
         case 'u':
           e.preventDefault();
           this.stateMachine.dispatch(EditorEvent.KEYBOARD_SHORTCUT);
-          this.applyFormatting('underline');
+          this.toggleFormatting('underline');
           return true;
       }
     }
@@ -193,14 +195,38 @@ export class Editor {
   }
 
   /**
-   * Apply formatting to the currently selected text
+   * Toggle formatting on the currently selected text
+   * If the selection already has the formatting, remove it; otherwise, apply it
    */
-  private applyFormatting(formatType: 'bold' | 'italic' | 'underline'): void {
+  private toggleFormatting(formatType: FormatType): void {
     const selection = this.selectionService.getCurrentSelection();
     if (!selection || selection.rangeCount === 0) {
       return;
     }
 
+    // Check the current formatting state of the selection
+    const formattingState = getSelectionFormattingState(selection, formatType, this.rootElement);
+
+    if (formattingState === 'all' || formattingState === 'partial') {
+      // Remove formatting if it exists (fully or partially)
+      removeFormattingFromSelection(selection, formatType, this.rootElement);
+    } else {
+      // Apply formatting if it doesn't exist
+      this.applyFormattingToSelection(selection, formatType);
+    }
+
+    // Update the virtual DOM by reparsing the current content
+    const currentHtml = this.rootElement.innerHTML;
+    this.setValue(currentHtml);
+
+    // Notify change
+    this.notifyChange(this.getHtml());
+  }
+
+  /**
+   * Apply formatting to the current selection
+   */
+  private applyFormattingToSelection(selection: Selection, formatType: FormatType): void {
     const range = selection.getRangeAt(0);
     const selectedText = this.selectionService.getSelectedText();
 
@@ -225,12 +251,7 @@ export class Editor {
     // Insert the formatted element
     range.insertNode(formattingElement);
 
-    // Update the virtual DOM by reparsing the current content
-    const currentHtml = this.rootElement.innerHTML;
-    this.setValue(currentHtml);
-
-    // Clear selection and notify change
+    // Clear selection
     selection.removeAllRanges();
-    this.notifyChange(this.getHtml());
   }
 }

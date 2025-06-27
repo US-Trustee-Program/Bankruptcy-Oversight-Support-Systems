@@ -76,12 +76,12 @@ It is important to minimize third party dependencies.
 - [x] Text formatting capabilities
     - [x] Bold, italic, underline formatting
     - [x] Format application through FSM
-    - [ ] Format removal and toggling
-        - [ ] Detect existing formatting in selected text
-        - [ ] Remove formatting when already applied (toggle off)
-        - [ ] Apply formatting when not present (toggle on)
-        - [ ] Handle mixed formatting states in selections
-        - [ ] Update toolbar/UI to reflect current formatting state
+    - [x] Format removal and toggling
+        - [x] Detect existing formatting in selected text
+        - [x] Remove formatting when already applied (toggle off)
+        - [x] Apply formatting when not present (toggle on)
+        - [x] Handle mixed formatting states in selections
+        - [x] Update toolbar/UI to reflect current formatting state
 - [ ] List management
     - [ ] Bulleted lists (ul)
     - [ ] Numbered lists (ol)
@@ -159,9 +159,9 @@ It is important to minimize third party dependencies.
     - [x] Implement onChange listener registration for RichTextEditor2 component
     - [x] Make RichTextEditor2 component thin and delegating to Editor
     - [x] Follow CAMS dependency inversion and good-fences principles
-- [ ] Delegate Editor responsibilities to helper functions
-  - [ ] Prefer pure functions that can be imported from library modules
-  - [ ] Write library modules to `services` subdirectory under the `editor` directory
+- [x] Delegate Editor responsibilities to helper functions
+  - [x] Prefer pure functions that can be imported from library modules
+  - [x] Write library modules to `services` subdirectory under the `editor` directory
 
 ### 11. Documentation and Migration
 - [ ] Architecture documentation
@@ -181,13 +181,13 @@ It is important to minimize third party dependencies.
 ### Phase 2: Basic Editor Functionality
 1. [x] Text input and editing
 2. [x] Basic formatting (bold, italic, underline)
-3. [ ] Style toggling implementation
-    - [ ] Implement formatting state detection in Editor class
-    - [ ] Create toggleFormatting method to replace applyFormatting
-    - [ ] Add virtual DOM utilities for format detection and removal
-    - [ ] Update keyboard shortcut handlers to use toggle functionality
-    - [ ] Add comprehensive tests for toggle behavior
-    - [ ] Handle edge cases (partial selections, nested formatting)
+3. [x] Style toggling implementation
+    - [x] Implement formatting state detection in Editor class
+    - [x] Create toggleFormatting method to replace applyFormatting
+    - [x] Add virtual DOM utilities for format detection and removal
+    - [x] Update keyboard shortcut handlers to use toggle functionality
+    - [x] Add comprehensive tests for toggle behavior
+    - [x] Handle edge cases (partial selections, nested formatting)
 4. [ ] Paragraph handling
 
 ### Phase 3: Advanced Features
