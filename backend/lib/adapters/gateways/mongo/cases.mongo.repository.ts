@@ -194,7 +194,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: {
           message:
-            'Unable to create assignment history. Please try again later. If the problem persists, please contact USTP support.',
+            'Unable to create case history. Please try again later. If the problem persists, please contact USTP support.',
           module: MODULE_NAME,
         },
       });
