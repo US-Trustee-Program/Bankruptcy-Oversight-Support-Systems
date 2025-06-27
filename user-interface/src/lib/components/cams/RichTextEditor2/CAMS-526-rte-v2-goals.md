@@ -145,11 +145,19 @@ It is important to minimize third party dependencies.
     - [ ] Intuitive keyboard shortcuts
     - [ ] Visual feedback for state changes
 
-### 9. Documentation and Migration
+### 9. Editor Class Design Decision
+- [ ] Create Editor class to encapsulate FSM and virtual DOM
+    - [ ] Design Editor class interface for browser event handling
+    - [ ] Implement onChange listener registration for RichTextEditor2 component
+    - [ ] Make RichTextEditor2 component thin and delegating to Editor
+    - [ ] Follow CAMS dependency inversion and good-fences principles
+
+### 10. Documentation and Migration
 - [ ] Architecture documentation
     - [ ] Finite state machine design
     - [ ] Virtual DOM structure
     - [ ] HTML encoding strategy
+    - [ ] Editor class architecture and interface
 
 ## Implementation Phases
 

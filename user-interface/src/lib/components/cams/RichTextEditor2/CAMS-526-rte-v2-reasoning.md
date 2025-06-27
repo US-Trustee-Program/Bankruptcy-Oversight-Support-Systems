@@ -134,6 +134,91 @@ This document captures the reasoning and context for the RichTextEditor2 impleme
 - **Verification**: All 185 tests pass, confirming formatting implementation works without breaking existing functionality
 - **Architecture Impact**: Established pattern for text formatting operations through FSM and virtual DOM integration
 
+## Editor Class Design Decision (Current Session)
+
+### Status: 📋 PLANNED
+### Date: Current session
+
+### Context and Problem
+The current RichTextEditor2 implementation has all editor logic (FSM, virtual DOM, formatting, event handling) directly embedded in the React component. This violates the single responsibility principle and makes the component tightly coupled to implementation details. The issue description requests creating an Editor class that encapsulates the FSM and virtual DOM, with the React component becoming thin and delegating to the Editor.
+
+### Design Decision: Editor Class Architecture
+
+Following the existing Editor class pattern from RichTextEditor and CAMS architectural guidelines, we will create an Editor class for RichTextEditor2 with the following design:
+
+#### Editor Class Interface
+```typescript
+export interface EditorChangeListener {
+  (html: string): void;
+}
+
+export class Editor {
+  // Constructor takes root element and selection service (dependency injection)
+  constructor(root: HTMLElement, selectionService: SelectionService);
+
+  // Content management methods (matching RichTextEditor2Ref interface)
+  clearValue(): void;
+  getValue(): string;
+  getHtml(): string;
+  setValue(html: string): void;
+  focus(): void;
+
+  // Browser event handling methods (return boolean if event was handled)
+  handleInput(e: React.FormEvent<HTMLDivElement>): boolean;
+  handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>): boolean;
+  handlePaste(e: React.ClipboardEvent<HTMLDivElement>): boolean;
+
+  // Change listener registration for React component
+  onContentChange(listener: EditorChangeListener): void;
+  removeContentChangeListener(listener: EditorChangeListener): void;
+
+  // State management
+  getCurrentState(): EditorState;
+
+  // Cleanup
+  destroy(): void;
+}
+```
+
+#### Encapsulated Components
+The Editor class will encapsulate:
+1. **EditorStateMachine**: FSM for state management
+2. **VirtualDOMTree**: Virtual DOM for document representation
+3. **SelectionService**: Browser selection abstraction (injected)
+4. **HtmlCodec**: HTML encoding/decoding (static methods)
+5. **Content change listeners**: Array of callback functions
+
+#### Architecture Benefits
+1. **Dependency Inversion**: React component depends on Editor abstraction, not concrete FSM/virtual DOM implementations
+2. **Single Responsibility**: Editor handles all editor logic, React component handles only UI concerns
+3. **Good Fences**: Clean boundary between React UI layer and editor business logic
+4. **Testability**: Editor can be unit tested independently of React
+5. **Consistency**: Follows established pattern from original RichTextEditor
+
+#### React Component Changes
+The RichTextEditor2 component will become thin and delegate to Editor:
+- Create Editor instance in useRef
+- Register onChange listener with Editor
+- Delegate all event handlers to Editor methods
+- Delegate all ref methods to Editor methods
+- Remove direct FSM and virtual DOM management
+
+#### Migration Strategy
+1. Create Editor class with current logic extracted from RichTextEditor2
+2. Update RichTextEditor2 to use Editor class
+3. Ensure all existing tests continue to pass
+4. Add unit tests for Editor class
+5. Update StateMachineProvider to work with Editor class
+
+### Rationale
+This design follows CAMS guidelines:
+- **Option-Enabling Architecture**: Editor class provides clean abstraction that enables future changes
+- **Dependency Rule**: React component (tactical) depends on Editor (strategic), not vice versa
+- **Good Fences**: Simple data types (strings, events) cross the boundary between React and Editor
+- **Invasive Species Rule**: Editor encapsulates all third-party dependencies (FSM, virtual DOM)
+
+The design maintains compatibility with existing RichTextEditor2Ref interface while creating a cleaner separation of concerns.
+
 ## Guidance for AI Agents
 
 When working on subsequent steps:
@@ -144,3 +229,4 @@ When working on subsequent steps:
 5. Update progress markers in the goals markdown when steps are completed
 6. Consider edge cases and error handling
 7. Maintain compatibility with the existing RichTextEditor interface
+8. Follow the Editor class design decision when implementing the Editor class
