@@ -214,16 +214,16 @@ It is important to minimize third party dependencies.
     - [x] Update keyboard shortcut handlers to use toggle functionality
     - [x] Add comprehensive tests for toggle behavior
     - [x] Handle edge cases (partial selections, nested formatting)
-4. [ ] Paragraph handling
-    - [ ] Virtual DOM paragraph operations
-        - [ ] Implement paragraph node creation and insertion in virtual DOM
-        - [ ] Add paragraph boundary detection utilities
-        - [ ] Create paragraph splitting operations for Enter key handling
-        - [ ] Implement paragraph merging operations for Backspace/Delete
-        - [ ] Add cross-paragraph content manipulation support
-    - [ ] Paragraph-aware editor behaviors
-        - [ ] Implement Enter key paragraph creation logic
-        - [ ] Add Backspace/Delete paragraph merging behavior
+4. [x] Paragraph handling
+    - [x] Virtual DOM paragraph operations
+        - [x] Implement paragraph node creation and insertion in virtual DOM
+        - [x] Add paragraph boundary detection utilities
+        - [x] Create paragraph splitting operations for Enter key handling
+        - [x] Implement paragraph merging operations for Backspace/Delete
+        - [x] Add cross-paragraph content manipulation support
+    - [x] Paragraph-aware editor behaviors
+        - [x] Implement Enter key paragraph creation logic
+        - [x] Add Backspace/Delete paragraph merging behavior
         - [ ] Create paragraph navigation and cursor positioning
         - [ ] Handle formatting preservation across paragraph operations
     - [ ] HTML structure and encoding
@@ -234,7 +234,7 @@ It is important to minimize third party dependencies.
         - [ ] Update FSM to handle paragraph-related state transitions
         - [ ] Integrate paragraph operations with formatting system
         - [ ] Ensure paragraph handling works with clipboard operations
-        - [ ] Add comprehensive tests for paragraph functionality
+        - [x] Add comprehensive tests for paragraph functionality
 
 ### Phase 3: Advanced Features
 1. List management

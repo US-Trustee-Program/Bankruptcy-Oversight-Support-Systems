@@ -74,10 +74,12 @@ export class MockSelectionService implements SelectionService {
     rangeCount: number;
     ranges: Range[];
     text: string;
+    cursorPosition?: number;
   } = {
     rangeCount: 0,
     ranges: [],
     text: '',
+    cursorPosition: undefined,
   };
 
   getCurrentSelection(): Selection {
@@ -94,6 +96,22 @@ export class MockSelectionService implements SelectionService {
         if (this.mockSelection.ranges.length > 0) {
           return this.mockSelection.ranges[index];
         }
+
+        // If we have a mock cursor position, create a range with that position
+        if (this.mockSelection.cursorPosition !== undefined) {
+          const range = document.createRange();
+          // Create a mock range with the specified cursor position
+          Object.defineProperty(range, 'startOffset', {
+            value: this.mockSelection.cursorPosition,
+            writable: false,
+          });
+          Object.defineProperty(range, 'endOffset', {
+            value: this.mockSelection.cursorPosition,
+            writable: false,
+          });
+          return range;
+        }
+
         return realSelection?.getRangeAt(index) || document.createRange();
       },
       removeAllRanges: () => {
@@ -139,6 +157,14 @@ export class MockSelectionService implements SelectionService {
   // Helper methods for tests
   setMockSelectedText(text: string): void {
     this.mockSelection.text = text;
+  }
+
+  setMockCursorPosition(position: number): void {
+    // Store the cursor position for use in getRangeAt
+    this.mockSelection.cursorPosition = position;
+    this.mockSelection.rangeCount = 1;
+    // Clear existing ranges since we're using cursor position instead
+    this.mockSelection.ranges = [];
   }
 
   createElement<K extends keyof HTMLElementTagNameMap>(tagName: K): HTMLElementTagNameMap[K] {

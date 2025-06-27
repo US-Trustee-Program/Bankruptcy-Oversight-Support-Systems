@@ -259,4 +259,184 @@ describe('Editor', () => {
     editor.setValue('<p>Test</p>');
     expect(listener).not.toHaveBeenCalled();
   });
+
+  describe('paragraph handling', () => {
+    test('handleKeyDown handles Enter key for paragraph creation', () => {
+      const onChange = vi.fn();
+      editor.onContentChange(onChange);
+
+      // Set initial content with a paragraph
+      editor.setValue('<p>Hello world</p>');
+
+      // Mock cursor position in middle of paragraph
+      mockSelectionService.setMockCursorPosition(5); // After "Hello"
+
+      const mockEvent = {
+        key: 'Enter',
+        ctrlKey: false,
+        metaKey: false,
+        preventDefault: vi.fn(),
+      } as unknown as React.KeyboardEvent<HTMLDivElement>;
+
+      const result = editor.handleKeyDown(mockEvent);
+
+      expect(result).toBe(true);
+      expect(mockEvent.preventDefault).toHaveBeenCalled();
+      expect(onChange).toHaveBeenCalled();
+
+      // Should create two paragraphs
+      const html = editor.getHtml();
+      expect(html).toContain('<p>Hello</p>');
+      expect(html).toContain('<p> world</p>');
+    });
+
+    test('handleKeyDown handles Enter key at beginning of paragraph', () => {
+      const onChange = vi.fn();
+      editor.onContentChange(onChange);
+
+      editor.setValue('<p>Hello world</p>');
+      mockSelectionService.setMockCursorPosition(0); // At beginning
+
+      const mockEvent = {
+        key: 'Enter',
+        ctrlKey: false,
+        metaKey: false,
+        preventDefault: vi.fn(),
+      } as unknown as React.KeyboardEvent<HTMLDivElement>;
+
+      const result = editor.handleKeyDown(mockEvent);
+
+      expect(result).toBe(true);
+      expect(mockEvent.preventDefault).toHaveBeenCalled();
+
+      // Should create empty paragraph before existing content
+      const html = editor.getHtml();
+      expect(html).toContain('<p></p>');
+      expect(html).toContain('<p>Hello world</p>');
+    });
+
+    test('handleKeyDown handles Enter key at end of paragraph', () => {
+      const onChange = vi.fn();
+      editor.onContentChange(onChange);
+
+      editor.setValue('<p>Hello world</p>');
+      mockSelectionService.setMockCursorPosition(11); // At end
+
+      const mockEvent = {
+        key: 'Enter',
+        ctrlKey: false,
+        metaKey: false,
+        preventDefault: vi.fn(),
+      } as unknown as React.KeyboardEvent<HTMLDivElement>;
+
+      const result = editor.handleKeyDown(mockEvent);
+
+      expect(result).toBe(true);
+      expect(mockEvent.preventDefault).toHaveBeenCalled();
+
+      // Should create new empty paragraph after existing content
+      const html = editor.getHtml();
+      expect(html).toContain('<p>Hello world</p>');
+      expect(html).toContain('<p></p>');
+    });
+
+    test('handleKeyDown handles Backspace key for paragraph merging', () => {
+      const onChange = vi.fn();
+      editor.onContentChange(onChange);
+
+      // Set content with two paragraphs
+      editor.setValue('<p>First paragraph</p><p>Second paragraph</p>');
+
+      // Mock cursor at beginning of second paragraph
+      mockSelectionService.setMockCursorPosition(15); // Beginning of "Second"
+
+      const mockEvent = {
+        key: 'Backspace',
+        ctrlKey: false,
+        metaKey: false,
+        preventDefault: vi.fn(),
+      } as unknown as React.KeyboardEvent<HTMLDivElement>;
+
+      const result = editor.handleKeyDown(mockEvent);
+
+      expect(result).toBe(true);
+      expect(mockEvent.preventDefault).toHaveBeenCalled();
+      expect(onChange).toHaveBeenCalled();
+
+      // Should merge paragraphs
+      const html = editor.getHtml();
+      expect(html).toContain('<p>First paragraphSecond paragraph</p>');
+    });
+
+    test('handleKeyDown handles Delete key for paragraph merging', () => {
+      const onChange = vi.fn();
+      editor.onContentChange(onChange);
+
+      // Set content with two paragraphs
+      editor.setValue('<p>First paragraph</p><p>Second paragraph</p>');
+
+      // Mock cursor at end of first paragraph
+      mockSelectionService.setMockCursorPosition(14); // End of "First paragraph"
+
+      const mockEvent = {
+        key: 'Delete',
+        ctrlKey: false,
+        metaKey: false,
+        preventDefault: vi.fn(),
+      } as unknown as React.KeyboardEvent<HTMLDivElement>;
+
+      const result = editor.handleKeyDown(mockEvent);
+
+      expect(result).toBe(true);
+      expect(mockEvent.preventDefault).toHaveBeenCalled();
+      expect(onChange).toHaveBeenCalled();
+
+      // Should merge paragraphs
+      const html = editor.getHtml();
+      expect(html).toContain('<p>First paragraphSecond paragraph</p>');
+    });
+
+    test('handleKeyDown preserves formatting when splitting paragraphs', () => {
+      const onChange = vi.fn();
+      editor.onContentChange(onChange);
+
+      // Set content with formatted text
+      editor.setValue('<p>Hello <strong>bold</strong> world</p>');
+
+      // Mock cursor position in middle of bold text
+      mockSelectionService.setMockCursorPosition(8); // In "bold"
+
+      const mockEvent = {
+        key: 'Enter',
+        ctrlKey: false,
+        metaKey: false,
+        preventDefault: vi.fn(),
+      } as unknown as React.KeyboardEvent<HTMLDivElement>;
+
+      const result = editor.handleKeyDown(mockEvent);
+
+      expect(result).toBe(true);
+      expect(mockEvent.preventDefault).toHaveBeenCalled();
+
+      // Should preserve formatting in split paragraphs
+      const html = editor.getHtml();
+      expect(html).toContain('<strong>');
+      expect(html).toContain('</strong>');
+    });
+
+    test('handleKeyDown returns false for paragraph operations when disabled', () => {
+      editor.disable(true);
+
+      const mockEvent = {
+        key: 'Enter',
+        ctrlKey: false,
+        metaKey: false,
+        preventDefault: vi.fn(),
+      } as unknown as React.KeyboardEvent<HTMLDivElement>;
+
+      const result = editor.handleKeyDown(mockEvent);
+      expect(result).toBe(false);
+      expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+    });
+  });
 });
