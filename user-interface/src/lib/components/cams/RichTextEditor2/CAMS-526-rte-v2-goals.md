@@ -88,15 +88,15 @@ It is important to minimize third party dependencies.
         - [x] Apply formatting when not present (toggle on)
         - [x] Handle mixed formatting states in selections
         - [x] Update toolbar/UI to reflect current formatting state
-- [ ] Paragraph handling and structure
-    - [ ] Paragraph creation and management
-        - [ ] Automatic paragraph wrapping for content
-        - [ ] Paragraph boundary detection and navigation
-        - [ ] Empty paragraph handling and cleanup
-    - [ ] Paragraph formatting operations
-        - [ ] Apply formatting to entire paragraphs
-        - [ ] Preserve paragraph structure during formatting
-        - [ ] Handle cross-paragraph selections
+- [x] Paragraph handling and structure
+    - [x] Paragraph creation and management
+        - [x] Automatic paragraph wrapping for content
+        - [x] Paragraph boundary detection and navigation
+        - [x] Empty paragraph handling and cleanup
+    - [x] Paragraph formatting operations
+        - [x] Apply formatting to entire paragraphs
+        - [x] Preserve paragraph structure during formatting
+        - [x] Handle cross-paragraph selections
     - [ ] Paragraph-aware cursor positioning
         - [ ] Maintain cursor position within paragraph context
         - [ ] Handle cursor movement between paragraphs
@@ -107,15 +107,15 @@ It is important to minimize third party dependencies.
     - [ ] List nesting support
     - [ ] List item navigation
 - [x] Keyboard event handling
-    - [ ] Enter key behavior (new paragraphs/list items)
-        - [ ] Create new paragraph on Enter key press
-        - [ ] Handle Enter within formatted text
-        - [ ] Preserve formatting in new paragraphs when appropriate
-        - [ ] Handle Enter at beginning/middle/end of paragraphs
-    - [ ] Backspace/Delete key behavior
-        - [ ] Merge paragraphs when deleting paragraph boundaries
-        - [ ] Handle backspace at paragraph beginnings
-        - [ ] Preserve formatting during paragraph merging
+    - [x] Enter key behavior (new paragraphs/list items)
+        - [x] Create new paragraph on Enter key press
+        - [x] Handle Enter within formatted text
+        - [x] Preserve formatting in new paragraphs when appropriate
+        - [x] Handle Enter at beginning/middle/end of paragraphs
+    - [x] Backspace/Delete key behavior
+        - [x] Merge paragraphs when deleting paragraph boundaries
+        - [x] Handle backspace at paragraph beginnings
+        - [x] Preserve formatting during paragraph merging
     - [x] Keyboard shortcuts (Ctrl+B, Ctrl+I, Ctrl+U)
     - [ ] Tab navigation and indentation
 - [x] Clipboard operations
@@ -225,7 +225,7 @@ It is important to minimize third party dependencies.
         - [x] Implement Enter key paragraph creation logic
         - [x] Add Backspace/Delete paragraph merging behavior
         - [ ] Create paragraph navigation and cursor positioning
-        - [ ] Handle formatting preservation across paragraph operations
+        - [x] Handle formatting preservation across paragraph operations
     - [ ] HTML structure and encoding
         - [ ] Ensure proper paragraph HTML output (<p> tags)
         - [ ] Handle paragraph-based content parsing from HTML input

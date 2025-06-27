@@ -368,6 +368,53 @@ The design maintains compatibility with existing RichTextEditor2Ref interface wh
   - **Bug Fix**: Fixed critical virtual DOM synchronization issue in setValue method
   - **Verification**: All 79 tests pass, confirming successful paragraph handling implementation
 
+### Paragraph Formatting Operations Implementation (Current Session)
+- **Status**: ✅ COMPLETED
+- **Date**: Current session
+- **Implementation Details**:
+  - **Enhanced ParagraphOperationsService**: Added three new functions for paragraph formatting operations:
+    - `applyFormattingToParagraph()`: Applies formatting to entire paragraphs by wrapping all content in a formatting node
+    - `removeFormattingFromParagraph()`: Recursively removes specific formatting while preserving other formatting
+    - `applyFormattingToMultipleParagraphs()`: Applies formatting to multiple paragraphs for cross-paragraph selections
+  - **Comprehensive Test Coverage**: Added 10 new test cases covering:
+    - Applying bold, italic, and underline formatting to entire paragraphs
+    - Handling empty paragraphs and mixed content scenarios
+    - Preserving existing formatting when applying new formatting
+    - Removing specific formatting while preserving others
+    - Cross-paragraph formatting operations
+  - **Architecture Benefits**:
+    - Pure functions following established services pattern
+    - Proper virtual DOM manipulation with parent-child relationships
+    - Recursive formatting removal that handles nested structures
+    - Support for all three formatting types (bold, italic, underline)
+
+- **Testing Implementation**:
+  - **New Test Cases**: Added 10 comprehensive tests to ParagraphOperationsService.test.ts:
+    - 4 tests for `applyFormattingToParagraph()` covering various scenarios
+    - 3 tests for `removeFormattingFromParagraph()` covering edge cases
+    - 3 tests for `applyFormattingToMultipleParagraphs()` covering cross-paragraph operations
+  - **Test Coverage**: All tests verify proper virtual DOM structure and parent-child relationships
+  - **Edge Case Handling**: Tests cover empty paragraphs, mixed content, and nested formatting
+
+- **Architecture Benefits Achieved**:
+  - **Services Pattern**: Paragraph formatting implemented as pure functions following established pattern
+  - **Virtual DOM Integration**: Seamless integration with existing virtual DOM operations
+  - **Formatting Preservation**: Proper handling of existing formatting when applying or removing new formatting
+  - **Cross-Paragraph Support**: Support for formatting operations across multiple paragraphs
+  - **Type Safety**: Proper TypeScript typing with FormatType union type
+
+- **Testing Results**:
+  - **Total Tests**: 296 tests pass across all RichTextEditor2 components
+  - **Paragraph Tests**: 36 tests (26 existing + 10 new) with 100% coverage of paragraph functionality
+  - **Integration Success**: All existing tests continue to pass, confirming no regressions
+  - **Functionality Verified**: Paragraph formatting operations work correctly for all formatting types
+
+- **Files Created/Modified**:
+  - **Modified**: `ParagraphOperationsService.ts` - Added three new formatting functions (104 lines added)
+  - **Modified**: `ParagraphOperationsService.test.ts` - Added 10 comprehensive formatting tests (161 lines added)
+  - **Updated**: Goals document to reflect completed paragraph formatting operations
+  - **Verification**: All 296 RichTextEditor2 tests pass, confirming successful implementation
+
 ## Guidance for AI Agents
 
 When working on subsequent steps:

@@ -4,7 +4,14 @@
  */
 
 import { VNode, ElementNode, isElementNode, isTextNode } from '../../virtual-dom/VNode';
-import { createElementNode, createTextNode } from '../../virtual-dom/VNodeFactory';
+import {
+  createElementNode,
+  createTextNode,
+  createFormattingNode,
+} from '../../virtual-dom/VNodeFactory';
+
+// Import formatting types from FormattingDetectionService
+type FormatType = 'bold' | 'italic' | 'underline';
 
 /**
  * Interface for paragraph boundaries
@@ -245,4 +252,105 @@ export function moveCursorToParagraphStart(paragraph: ElementNode): number {
  */
 export function moveCursorToParagraphEnd(paragraph: ElementNode): number {
   return paragraph.endOffset;
+}
+
+/**
+ * Apply formatting to an entire paragraph
+ * Wraps all paragraph content in a formatting node
+ */
+export function applyFormattingToParagraph(
+  paragraph: ElementNode,
+  formatType: FormatType,
+): ElementNode {
+  const formattedParagraph = createParagraphNode();
+
+  // If paragraph is empty, return empty formatted paragraph
+  if (paragraph.children.length === 0) {
+    return formattedParagraph;
+  }
+
+  // Create formatting node to wrap all content
+  const formattingNode = createFormattingNode(formatType);
+
+  // Copy all children from original paragraph to formatting node
+  formattingNode.children = [...paragraph.children];
+  formattingNode.children.forEach((child) => {
+    child.parent = formattingNode;
+  });
+
+  // Add formatting node to new paragraph
+  formattedParagraph.children.push(formattingNode);
+  formattingNode.parent = formattedParagraph;
+
+  return formattedParagraph;
+}
+
+/**
+ * Remove specific formatting from a paragraph
+ * Recursively removes formatting nodes of the specified type
+ */
+export function removeFormattingFromParagraph(
+  paragraph: ElementNode,
+  formatType: FormatType,
+): ElementNode {
+  const unformattedParagraph = createParagraphNode();
+
+  // Helper function to remove formatting recursively
+  function removeFormattingFromNode(node: VNode): VNode[] {
+    if (isTextNode(node)) {
+      return [node];
+    }
+
+    if (isElementNode(node)) {
+      // Check if this is the formatting we want to remove
+      const isTargetFormatting =
+        (formatType === 'bold' && (node.tagName === 'strong' || node.tagName === 'b')) ||
+        (formatType === 'italic' && (node.tagName === 'em' || node.tagName === 'i')) ||
+        (formatType === 'underline' && node.tagName === 'u');
+
+      if (isTargetFormatting) {
+        // Remove this formatting node and return its children
+        const result: VNode[] = [];
+        for (const child of node.children) {
+          result.push(...removeFormattingFromNode(child));
+        }
+        return result;
+      } else {
+        // Keep this node but process its children
+        const processedNode = createElementNode(node.tagName, { attributes: node.attributes });
+        for (const child of node.children) {
+          const processedChildren = removeFormattingFromNode(child);
+          processedChildren.forEach((processedChild) => {
+            processedNode.children.push(processedChild);
+            processedChild.parent = processedNode;
+          });
+        }
+        return [processedNode];
+      }
+    }
+
+    return [node];
+  }
+
+  // Process all children of the paragraph
+  for (const child of paragraph.children) {
+    const processedChildren = removeFormattingFromNode(child);
+    processedChildren.forEach((processedChild) => {
+      unformattedParagraph.children.push(processedChild);
+      processedChild.parent = unformattedParagraph;
+    });
+  }
+
+  return unformattedParagraph;
+}
+
+/**
+ * Apply formatting to multiple paragraphs
+ * Useful for cross-paragraph selections
+ */
+export function applyFormattingToMultipleParagraphs(
+  paragraphs: ElementNode[],
+  formatType: FormatType,
+): ElementNode[] {
+  return paragraphs.map((paragraph) => applyFormattingToParagraph(paragraph, formatType));
 }

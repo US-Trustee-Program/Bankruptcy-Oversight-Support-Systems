@@ -10,6 +10,9 @@ import {
   getParagraphContent,
   moveCursorToParagraphStart,
   moveCursorToParagraphEnd,
+  applyFormattingToParagraph,
+  removeFormattingFromParagraph,
+  applyFormattingToMultipleParagraphs,
 } from './ParagraphOperationsService';
 import { createElementNode, createTextNode, createRootNode } from '../../virtual-dom/VNodeFactory';
 import { VNode, ElementNode, TextNode } from '../../virtual-dom/VNode';
@@ -314,6 +317,183 @@ describe('ParagraphOperationsService', () => {
         const paragraph = createElementNode('p', { startOffset: 10, endOffset: 25 });
         const position = moveCursorToParagraphEnd(paragraph);
         expect(position).toBe(25);
+      });
+    });
+  });
+
+  describe('paragraph formatting operations', () => {
+    describe('applyFormattingToParagraph', () => {
+      test('should apply bold formatting to entire paragraph', () => {
+        const paragraph = createElementNode('p');
+        const textNode = createTextNode('Hello world');
+        paragraph.children.push(textNode);
+        textNode.parent = paragraph;
+
+        const formattedParagraph = applyFormattingToParagraph(paragraph, 'bold');
+
+        expect(formattedParagraph.children).toHaveLength(1);
+        expect(formattedParagraph.children[0].tagName).toBe('strong');
+        expect((formattedParagraph.children[0].children[0] as TextNode).content).toBe(
+          'Hello world',
+        );
+      });
+
+      test('should apply italic formatting to paragraph with mixed content', () => {
+        const paragraph = createElementNode('p');
+        const textNode1 = createTextNode('Hello ');
+        const strong = createElementNode('strong');
+        const boldText = createTextNode('bold');
+        const textNode2 = createTextNode(' world');
+
+        paragraph.children.push(textNode1, strong, textNode2);
+        strong.children.push(boldText);
+        textNode1.parent = paragraph;
+        strong.parent = paragraph;
+        boldText.parent = strong;
+        textNode2.parent = paragraph;
+
+        const formattedParagraph = applyFormattingToParagraph(paragraph, 'italic');
+
+        expect(formattedParagraph.children).toHaveLength(1);
+        expect(formattedParagraph.children[0].tagName).toBe('em');
+        expect(formattedParagraph.children[0].children).toHaveLength(3);
+      });
+
+      test('should handle empty paragraph', () => {
+        const paragraph = createElementNode('p');
+        const formattedParagraph = applyFormattingToParagraph(paragraph, 'underline');
+
+        expect(formattedParagraph.children).toHaveLength(0);
+      });
+
+      test('should preserve existing formatting when applying new formatting', () => {
+        const paragraph = createElementNode('p');
+        const strong = createElementNode('strong');
+        const boldText = createTextNode('Bold text');
+        paragraph.children.push(strong);
+        strong.children.push(boldText);
+        strong.parent = paragraph;
+        boldText.parent = strong;
+
+        const formattedParagraph = applyFormattingToParagraph(paragraph, 'italic');
+
+        expect(formattedParagraph.children).toHaveLength(1);
+        expect(formattedParagraph.children[0].tagName).toBe('em');
+        expect(formattedParagraph.children[0].children[0].tagName).toBe('strong');
+        expect((formattedParagraph.children[0].children[0].children[0] as TextNode).content).toBe(
+          'Bold text',
+        );
+      });
+    });
+
+    describe('removeFormattingFromParagraph', () => {
+      test('should remove bold formatting from entire paragraph', () => {
+        const paragraph = createElementNode('p');
+        const strong = createElementNode('strong');
+        const boldText = createTextNode('Bold text');
+        paragraph.children.push(strong);
+        strong.children.push(boldText);
+        strong.parent = paragraph;
+        boldText.parent = strong;
+
+        const unformattedParagraph = removeFormattingFromParagraph(paragraph, 'bold');
+
+        expect(unformattedParagraph.children).toHaveLength(1);
+        expect(unformattedParagraph.children[0].type).toBe('text');
+        expect((unformattedParagraph.children[0] as TextNode).content).toBe('Bold text');
+      });
+
+      test('should remove specific formatting while preserving others', () => {
+        const paragraph = createElementNode('p');
+        const em = createElementNode('em');
+        const strong = createElementNode('strong');
+        const text = createTextNode('Bold italic text');
+
+        paragraph.children.push(em);
+        em.children.push(strong);
+        strong.children.push(text);
+        em.parent = paragraph;
+        strong.parent = em;
+        text.parent = strong;
+
+        const unformattedParagraph = removeFormattingFromParagraph(paragraph, 'bold');
+
+        expect(unformattedParagraph.children).toHaveLength(1);
+        expect(unformattedParagraph.children[0].tagName).toBe('em');
+        expect((unformattedParagraph.children[0].children[0] as TextNode).content).toBe(
+          'Bold italic text',
+        );
+      });
+
+      test('should handle paragraph without target formatting', () => {
+        const paragraph = createElementNode('p');
+        const textNode = createTextNode('Plain text');
+        paragraph.children.push(textNode);
+        textNode.parent = paragraph;
+
+        const unformattedParagraph = removeFormattingFromParagraph(paragraph, 'bold');
+
+        expect(unformattedParagraph.children).toHaveLength(1);
+        expect((unformattedParagraph.children[0] as TextNode).content).toBe('Plain text');
+      });
+    });
+
+    describe('applyFormattingToMultipleParagraphs', () => {
+      test('should apply formatting to multiple paragraphs', () => {
+        const paragraph1 = createElementNode('p');
+        const paragraph2 = createElementNode('p');
+        const text1 = createTextNode('First paragraph');
+        const text2 = createTextNode('Second paragraph');
+
+        paragraph1.children.push(text1);
+        paragraph2.children.push(text2);
+        text1.parent = paragraph1;
+        text2.parent = paragraph2;
+
+        const formattedParagraphs = applyFormattingToMultipleParagraphs(
+          [paragraph1, paragraph2],
+          'bold',
+        );
+
+        expect(formattedParagraphs).toHaveLength(2);
+        expect(formattedParagraphs[0].children[0].tagName).toBe('strong');
+        expect(formattedParagraphs[1].children[0].tagName).toBe('strong');
+        expect((formattedParagraphs[0].children[0].children[0] as TextNode).content).toBe(
+          'First paragraph',
+        );
+        expect((formattedParagraphs[1].children[0].children[0] as TextNode).content).toBe(
+          'Second paragraph',
+        );
+      });
+
+      test('should handle empty paragraphs array', () => {
+        const formattedParagraphs = applyFormattingToMultipleParagraphs([], 'italic');
+        expect(formattedParagraphs).toHaveLength(0);
+      });
+
+      test('should handle mixed content across paragraphs', () => {
+        const paragraph1 = createElementNode('p');
+        const paragraph2 = createElementNode('p');
+        const text1 = createTextNode('Plain text');
+        const strong = createElementNode('strong');
+        const boldText = createTextNode('Bold text');
+
+        paragraph1.children.push(text1);
+        paragraph2.children.push(strong);
+        strong.children.push(boldText);
+        text1.parent = paragraph1;
+        strong.parent = paragraph2;
+        boldText.parent = strong;
+
+        const formattedParagraphs = applyFormattingToMultipleParagraphs(
+          [paragraph1, paragraph2],
+          'underline',
+        );
+
+        expect(formattedParagraphs).toHaveLength(2);
+        expect(formattedParagraphs[0].children[0].tagName).toBe('u');
+        expect(formattedParagraphs[1].children[0].tagName).toBe('u');
+        expect(formattedParagraphs[1].children[0].children[0].tagName).toBe('strong');
       });
     });
   });
