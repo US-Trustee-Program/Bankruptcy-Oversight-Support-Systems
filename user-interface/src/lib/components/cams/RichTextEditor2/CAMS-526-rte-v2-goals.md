@@ -12,14 +12,14 @@ This document outlines the implementation plan for RichTextEditor2, a new rich t
 - Use the BrowserSelectionService humble object for tests in place of tight coupling with the browser API.
 - Use test-driven development practices. Write tests before writing implementation.
 - Unit test coverage for branches and lines is 100%.
-- All typescript compiler warnings must be resolved.
+- All TypeScript compiler warnings must be resolved.
 - Run `npm run lint:fix` to lint source files. Fix any reported linter issues.
 
 When working on implementation steps:
 - **Always update the reasoning file**: Save context, decisions, and reasoning to `CAMS-526-rte-v2-reasoning.md`
 - **Include verbose descriptions of reasoning**: Write verbose reasoning to `CAMS-526-rte-v2-reasoning.md`
 - **Document architecture decisions**: Record why specific approaches were chosen
-- **Update progress**: Mark completed tasks in this goals file and update the reasoning file
+- **Update progress**: Mark completed tasks in this goal file and update the reasoning file
 - **Maintain context**: Include enough detail for subsequent AI agents to understand the current state
 - **Test verification**: Confirm all tests pass before marking steps complete
 - **Follow established patterns**: Maintain consistency with existing architecture decisions
@@ -108,7 +108,7 @@ It is important to minimize third party dependencies.
     - [x] Virtual DOM manipulation
     - [x] Diff algorithm testing
     - [x] DOM synchronization testing
-- [x] Integration tests for component
+- [x] Integration tests for the component
     - [x] User interaction scenarios
     - [x] Keyboard event handling
     - [x] Clipboard operations
@@ -130,7 +130,7 @@ It is important to minimize third party dependencies.
     - [ ] onChange callbacks
     - [ ] Virtual DOM synchronization
 - [ ] Memory management
-    - [ ] Clean up event listeners
+    - [ ] Cleanup event listeners
     - [ ] Manage virtual DOM tree size
     - [ ] Optimize state machine memory usage
 
@@ -146,13 +146,16 @@ It is important to minimize third party dependencies.
     - [ ] Visual feedback for state changes
 
 ### 9. Editor Class Design Decision
-- [ ] Create Editor class to encapsulate FSM and virtual DOM
-    - [ ] Design Editor class interface for browser event handling
-    - [ ] Implement onChange listener registration for RichTextEditor2 component
-    - [ ] Make RichTextEditor2 component thin and delegating to Editor
-    - [ ] Follow CAMS dependency inversion and good-fences principles
+- [x] Create Editor class to encapsulate FSM and virtual DOM
+    - [x] Design Editor class interface for browser event handling
+    - [x] Implement onChange listener registration for RichTextEditor2 component
+    - [x] Make RichTextEditor2 component thin and delegating to Editor
+    - [x] Follow CAMS dependency inversion and good-fences principles
+- [ ] Delegate Editor responsibilities to helper functions
+  - [ ] Prefer pure functions that can be imported from library modules
+  - [ ] Write library modules to `services` subdirectory under the `editor` directory
 
-### 10. Documentation and Migration
+### 11. Documentation and Migration
 - [ ] Architecture documentation
     - [ ] Finite state machine design
     - [ ] Virtual DOM structure
@@ -165,6 +168,7 @@ It is important to minimize third party dependencies.
 1. [x] Implement basic finite state machine
 2. [X] Create virtual DOM structure
 3. [x] Set up HTML encoding/decoding
+4. [x] Implement Editor abstraction from RichTextEditor2
 
 ### Phase 2: Basic Editor Functionality
 1. [x] Text input and editing

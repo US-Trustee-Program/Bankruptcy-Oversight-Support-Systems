@@ -1,0 +1,236 @@
+import * as React from 'react';
+import { EditorStateMachine, EditorEvent, EditorState } from '../state-machine/StateMachine';
+import { VirtualDOMTree } from '../virtual-dom/VirtualDOMTree';
+import { VNode } from '../virtual-dom/VNode';
+import { createTextNode, createFormattingNode } from '../virtual-dom/VNodeFactory';
+import { insertNode, removeNode } from '../virtual-dom/VirtualDOMOperations';
+import { HtmlCodec } from '../virtual-dom/HtmlCodec';
+import { SelectionService } from '../SelectionService.humble';
+
+export interface EditorChangeListener {
+  (html: string): void;
+}
+
+/**
+ * Editor class encapsulates all rich text editor logic, including FSM, virtual DOM,
+ * and content management. This follows the CAMS dependency inversion principle
+ * by providing a clean abstraction for the React component to depend.
+ */
+export class Editor {
+  private stateMachine: EditorStateMachine;
+  private virtualDOM: VirtualDOMTree;
+  private selectionService: SelectionService;
+  private rootElement: HTMLElement;
+  private changeListeners: EditorChangeListener[] = [];
+  private isDisabled: boolean = false;
+
+  constructor(rootElement: HTMLElement, selectionService: SelectionService) {
+    this.rootElement = rootElement;
+    this.selectionService = selectionService;
+    this.stateMachine = new EditorStateMachine();
+    this.virtualDOM = new VirtualDOMTree();
+  }
+
+  // Content management methods (matching RichTextEditor2Ref interface)
+  clearValue(): void {
+    // Clear the virtual DOM tree by removing all children from the root
+    const root = this.virtualDOM.getRoot();
+    const children = [...root.children]; // Create a copy to avoid mutation during iteration
+    children.forEach((child) => removeNode(child));
+
+    // Update real DOM
+    this.rootElement.innerHTML = '';
+
+    // Notify change
+    this.notifyChange('');
+  }
+
+  getValue(): string {
+    // Get text content from virtual DOM
+    return this.virtualDOM.getTextContent();
+  }
+
+  getHtml(): string {
+    // Get HTML from virtual DOM using codec
+    return HtmlCodec.encode(this.virtualDOM.getRoot());
+  }
+
+  setValue(html: string): void {
+    // Parse HTML and update virtual DOM
+    const parsedTree = HtmlCodec.decode(html);
+
+    // Clear existing content
+    const root = this.virtualDOM.getRoot();
+    const children = [...root.children];
+    children.forEach((child) => removeNode(child));
+
+    // Add new content from the parsed tree
+    if (parsedTree.children.length > 0) {
+      parsedTree.children.forEach((child: VNode) => {
+        insertNode(root, child, root.children.length);
+      });
+    }
+
+    // Update real DOM
+    this.rootElement.innerHTML = html;
+  }
+
+  focus(): void {
+    this.rootElement.focus();
+  }
+
+  disable(disabled: boolean): void {
+    this.isDisabled = disabled;
+    this.rootElement.contentEditable = disabled ? 'false' : 'true';
+  }
+
+  // Browser event handling methods (return boolean if the event was handled)
+  handleInput(e: React.FormEvent<HTMLDivElement>): boolean {
+    if (this.isDisabled) {
+      return false;
+    }
+
+    // Dispatch INPUT event to state machine
+    this.stateMachine.dispatch(EditorEvent.INPUT);
+
+    // Get current content from DOM and update virtual DOM
+    const currentContent = (e.target as HTMLDivElement).innerText;
+
+    // Update virtual DOM with new content
+    // For basic text input, we'll replace the content with a single text node
+    const root = this.virtualDOM.getRoot();
+    const children = [...root.children];
+    children.forEach((child) => removeNode(child));
+
+    if (currentContent) {
+      const textNode = createTextNode(currentContent);
+      insertNode(root, textNode, 0);
+    }
+
+    // Notify change
+    this.notifyChange(this.getHtml());
+    return true;
+  }
+
+  handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>): boolean {
+    if (this.isDisabled) {
+      return false;
+    }
+
+    // Handle keyboard shortcuts
+    if (e.ctrlKey || e.metaKey) {
+      switch (e.key.toLowerCase()) {
+        case 'b':
+          e.preventDefault();
+          this.stateMachine.dispatch(EditorEvent.KEYBOARD_SHORTCUT);
+          this.applyFormatting('bold');
+          return true;
+        case 'i':
+          e.preventDefault();
+          this.stateMachine.dispatch(EditorEvent.KEYBOARD_SHORTCUT);
+          this.applyFormatting('italic');
+          return true;
+        case 'u':
+          e.preventDefault();
+          this.stateMachine.dispatch(EditorEvent.KEYBOARD_SHORTCUT);
+          this.applyFormatting('underline');
+          return true;
+      }
+    }
+    return false;
+  }
+
+  handlePaste(e: React.ClipboardEvent<HTMLDivElement>): boolean {
+    if (this.isDisabled) {
+      return false;
+    }
+
+    e.preventDefault();
+
+    // Get pasted content
+    const pastedText = e.clipboardData.getData('text/plain');
+
+    if (pastedText) {
+      // Update virtual DOM with pasted content
+      const root = this.virtualDOM.getRoot();
+      const textNode = createTextNode(pastedText);
+      insertNode(root, textNode, root.children.length);
+
+      // Update real DOM
+      this.rootElement.innerText = pastedText;
+
+      // Notify change
+      this.notifyChange(this.getHtml());
+    }
+    return true;
+  }
+
+  // Change listener registration for the React component
+  onContentChange(listener: EditorChangeListener): void {
+    this.changeListeners.push(listener);
+  }
+
+  removeContentChangeListener(listener: EditorChangeListener): void {
+    const index = this.changeListeners.indexOf(listener);
+    if (index > -1) {
+      this.changeListeners.splice(index, 1);
+    }
+  }
+
+  // State management
+  getCurrentState(): EditorState {
+    return this.stateMachine.getCurrentState();
+  }
+
+  // Cleanup
+  destroy(): void {
+    this.changeListeners = [];
+  }
+
+  // Private methods
+  private notifyChange(html: string): void {
+    this.changeListeners.forEach((listener) => listener(html));
+  }
+
+  /**
+   * Apply formatting to the currently selected text
+   */
+  private applyFormatting(formatType: 'bold' | 'italic' | 'underline'): void {
+    const selection = this.selectionService.getCurrentSelection();
+    if (!selection || selection.rangeCount === 0) {
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+    const selectedText = this.selectionService.getSelectedText();
+
+    if (!selectedText.trim()) {
+      return; // Don't format empty selections
+    }
+
+    // Create a formatting node with the selected text as a child
+    const textNode = createTextNode(selectedText);
+    const formattingNode = createFormattingNode(formatType);
+
+    // Add the text node as a child of the formatting node
+    insertNode(formattingNode, textNode, 0);
+
+    // Replace the selected content with the formatted content
+    range.deleteContents();
+
+    // Create the HTML element for the formatting
+    const formattingElement = document.createElement(formattingNode.tagName);
+    formattingElement.textContent = selectedText;
+
+    // Insert the formatted element
+    range.insertNode(formattingElement);
+
+    // Update the virtual DOM by reparsing the current content
+    const currentHtml = this.rootElement.innerHTML;
+    this.setValue(currentHtml);
+
+    // Clear selection and notify change
+    selection.removeAllRanges();
+    this.notifyChange(this.getHtml());
+  }
+}

@@ -3,7 +3,7 @@ import { VNodeType, TextNode } from './VNode';
 import { createTextNode, createElementNode, resetNodeIdCounter } from './VNodeFactory';
 import { VirtualDOMTree } from './VirtualDOMTree';
 import { insertNode, removeNode } from './VirtualDOMOperations';
-import { EditorStateMachine, EditorState, EditorEvent } from '../StateMachine';
+import { EditorStateMachine, EditorState, EditorEvent } from '../state-machine/StateMachine';
 
 describe('Virtual DOM Integration', () => {
   let tree: VirtualDOMTree;

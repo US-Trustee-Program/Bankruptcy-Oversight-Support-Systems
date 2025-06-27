@@ -1,13 +1,7 @@
 import './RichTextEditor2.scss';
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
-import { StateMachineProvider, useStateMachine } from './StateMachineContext';
-import { EditorEvent } from './StateMachine';
-import { VirtualDOMTree } from './virtual-dom/VirtualDOMTree';
-import { VNode } from './virtual-dom/VNode';
-import { createTextNode, createFormattingNode } from './virtual-dom/VNodeFactory';
-import { insertNode, removeNode } from './virtual-dom/VirtualDOMOperations';
-import { HtmlCodec } from './virtual-dom/HtmlCodec';
-import { BrowserSelectionService, type SelectionService } from './SelectionService.humble';
+import { forwardRef, useImperativeHandle, useRef, useState, useEffect } from 'react';
+import { Editor, EditorChangeListener } from './editor/Editor';
+import { BrowserSelectionService } from './SelectionService.humble';
 import * as React from 'react';
 
 export interface RichTextEditor2Ref {
@@ -34,115 +28,63 @@ function _RichTextEditor2Internal(props: RichTextEditor2Props, ref: React.Ref<Ri
 
   const contentRef = useRef<HTMLDivElement>(null);
   const [inputDisabled, setInputDisabled] = useState<boolean>(disabled || false);
-  const { dispatch } = useStateMachine();
+  const editorRef = useRef<Editor | null>(null);
 
-  // Initialize virtual DOM tree
-  const virtualDOMRef = useRef<VirtualDOMTree>(new VirtualDOMTree());
+  // Initialize Editor when contentRef is available
+  useEffect(() => {
+    if (contentRef.current && !editorRef.current) {
+      const selectionService = new BrowserSelectionService(window, document);
+      editorRef.current = new Editor(contentRef.current, selectionService);
 
-  // Initialize selection service
-  const selectionServiceRef = useRef<SelectionService>(
-    new BrowserSelectionService(window, document),
-  );
-
-  /**
-   * Apply formatting to the currently selected text
-   */
-  const applyFormatting = (formatType: 'bold' | 'italic' | 'underline') => {
-    const selection = selectionServiceRef.current.getCurrentSelection();
-    if (!selection || selection.rangeCount === 0) {
-      return;
+      // Register onChange listener if provided
+      if (onChange) {
+        const changeListener: EditorChangeListener = (html: string) => {
+          onChange(html);
+        };
+        editorRef.current.onContentChange(changeListener);
+      }
     }
 
-    const range = selection.getRangeAt(0);
-    const selectedText = selectionServiceRef.current.getSelectedText();
+    return () => {
+      // Cleanup on unmount
+      if (editorRef.current) {
+        editorRef.current.destroy();
+      }
+    };
+  }, [onChange]);
 
-    if (!selectedText.trim()) {
-      return; // Don't format empty selections
+  // Update disabled state when prop changes
+  useEffect(() => {
+    if (editorRef.current) {
+      editorRef.current.disable(disabled || false);
     }
+    setInputDisabled(disabled || false);
+  }, [disabled]);
 
-    // Create a formatting node with the selected text as a child
-    const textNode = createTextNode(selectedText);
-    const formattingNode = createFormattingNode(formatType);
-
-    // Add the text node as a child of the formatting node
-    insertNode(formattingNode, textNode, 0);
-
-    // Replace the selected content with the formatted content
-    range.deleteContents();
-
-    // Create the HTML element for the formatting
-    const formattingElement = document.createElement(formattingNode.tagName);
-    formattingElement.textContent = selectedText;
-
-    // Insert the formatted element
-    range.insertNode(formattingElement);
-
-    // Update the virtual DOM by re-parsing the current content
-    if (contentRef.current) {
-      const currentHtml = contentRef.current.innerHTML;
-      setValue(currentHtml);
-    }
-
-    // Clear selection and notify change
-    selection.removeAllRanges();
-    onChange?.(getHtml());
-  };
-
+  // Delegate all ref methods to Editor
   const clearValue = () => {
-    // Clear the virtual DOM tree by removing all children from the root
-    const root = virtualDOMRef.current.getRoot();
-    const children = [...root.children]; // Create a copy to avoid mutation during iteration
-    children.forEach((child) => removeNode(child));
-
-    // Update real DOM
-    if (contentRef.current) {
-      contentRef.current.innerHTML = '';
-    }
-
-    // Notify change
-    onChange?.('');
+    editorRef.current?.clearValue();
   };
 
   const getValue = () => {
-    // Get text content from virtual DOM
-    return virtualDOMRef.current.getTextContent();
+    return editorRef.current?.getValue() || '';
   };
 
   const getHtml = () => {
-    // Get HTML from virtual DOM using codec
-    return HtmlCodec.encode(virtualDOMRef.current.getRoot());
+    return editorRef.current?.getHtml() || '';
   };
 
   const setValue = (html: string) => {
-    // Parse HTML and update virtual DOM
-    const parsedTree = HtmlCodec.decode(html);
-
-    // Clear existing content
-    const root = virtualDOMRef.current.getRoot();
-    const children = [...root.children];
-    children.forEach((child) => removeNode(child));
-
-    // Add new content from the parsed tree
-    if (parsedTree.children.length > 0) {
-      parsedTree.children.forEach((child: VNode) => {
-        insertNode(root, child, root.children.length);
-      });
-    }
-
-    // Update real DOM
-    if (contentRef.current) {
-      contentRef.current.innerHTML = html;
-    }
+    editorRef.current?.setValue(html);
   };
 
   const disable = (val: boolean) => {
     setInputDisabled(val);
+    editorRef.current?.disable(val);
   };
 
   const focus = () => {
-    if (contentRef.current) {
-      contentRef.current.focus();
-    }
+    editorRef.current?.focus();
   };
 
   useImperativeHandle(ref, () => ({
@@ -154,71 +96,17 @@ function _RichTextEditor2Internal(props: RichTextEditor2Props, ref: React.Ref<Ri
     focus,
   }));
 
+  // Delegate all event handlers to Editor
   const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
-    // Dispatch INPUT event to state machine
-    dispatch(EditorEvent.INPUT);
-
-    // Get current content from DOM and update virtual DOM
-    const currentContent = (e.target as HTMLDivElement).innerText;
-
-    // Update virtual DOM with new content
-    // For basic text input, we'll replace the content with a single text node
-    const root = virtualDOMRef.current.getRoot();
-    const children = [...root.children];
-    children.forEach((child) => removeNode(child));
-
-    if (currentContent) {
-      const textNode = createTextNode(currentContent);
-      insertNode(root, textNode, 0);
-    }
-
-    // Notify change
-    onChange?.(getHtml());
+    editorRef.current?.handleInput(e);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    // Handle keyboard shortcuts
-    if (e.ctrlKey || e.metaKey) {
-      switch (e.key.toLowerCase()) {
-        case 'b':
-          e.preventDefault();
-          dispatch(EditorEvent.KEYBOARD_SHORTCUT);
-          applyFormatting('bold');
-          break;
-        case 'i':
-          e.preventDefault();
-          dispatch(EditorEvent.KEYBOARD_SHORTCUT);
-          applyFormatting('italic');
-          break;
-        case 'u':
-          e.preventDefault();
-          dispatch(EditorEvent.KEYBOARD_SHORTCUT);
-          applyFormatting('underline');
-          break;
-      }
-    }
+    editorRef.current?.handleKeyDown(e);
   };
 
   const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
-    e.preventDefault();
-
-    // Get pasted content
-    const pastedText = e.clipboardData.getData('text/plain');
-
-    if (pastedText) {
-      // Update virtual DOM with pasted content
-      const root = virtualDOMRef.current.getRoot();
-      const textNode = createTextNode(pastedText);
-      insertNode(root, textNode, root.children.length);
-
-      // Update real DOM
-      if (contentRef.current) {
-        contentRef.current.innerText = pastedText;
-      }
-
-      // Notify change
-      onChange?.(getHtml());
-    }
+    editorRef.current?.handlePaste(e);
   };
 
   return (
@@ -242,6 +130,7 @@ function _RichTextEditor2Internal(props: RichTextEditor2Props, ref: React.Ref<Ri
       {/* TODO: Implement toolbar with state machine integration */}
       <div className="editor-toolbar">
         {/* Toolbar buttons will be implemented with the state machine */}
+        {/* Toolbar buttons must use the RichTextButton component. */}
       </div>
 
       <div
@@ -267,11 +156,7 @@ function _RichTextEditor2Internal(props: RichTextEditor2Props, ref: React.Ref<Ri
 const RichTextEditor2Internal = forwardRef(_RichTextEditor2Internal);
 
 function _RichTextEditor2(props: RichTextEditor2Props, ref: React.Ref<RichTextEditor2Ref>) {
-  return (
-    <StateMachineProvider>
-      <RichTextEditor2Internal {...props} ref={ref} />
-    </StateMachineProvider>
-  );
+  return <RichTextEditor2Internal {...props} ref={ref} />;
 }
 
 const RichTextEditor2 = forwardRef(_RichTextEditor2);
