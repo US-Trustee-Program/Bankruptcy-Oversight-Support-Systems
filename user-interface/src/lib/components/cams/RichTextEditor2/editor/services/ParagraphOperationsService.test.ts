@@ -139,6 +139,14 @@ describe('ParagraphOperationsService', () => {
       expect(boundaries.start).toBe(5);
       expect(boundaries.end).toBe(5);
     });
+
+    test('should return correct boundaries for paragraph with different offsets', () => {
+      const paragraph = createElementNode('p', { startOffset: 0, endOffset: 100 });
+
+      const boundaries = findParagraphBoundaries(paragraph);
+      expect(boundaries.start).toBe(0);
+      expect(boundaries.end).toBe(100);
+    });
   });
 
   describe('getParagraphContent', () => {
@@ -218,6 +226,28 @@ describe('ParagraphOperationsService', () => {
       expect(result.firstParagraph.children).toHaveLength(1);
       expect(result.secondParagraph.children).toHaveLength(0);
       expect((result.firstParagraph.children[0] as TextNode).content).toBe('Hello world');
+    });
+
+    test('should handle split with nested element nodes', () => {
+      const paragraph = createElementNode('p', { startOffset: 0, endOffset: 20 });
+      const textNode1 = createTextNode('Hello ');
+      const strongElement = createElementNode('strong');
+      const boldText = createTextNode('bold');
+      const textNode2 = createTextNode(' world');
+
+      // Build nested structure: <p>Hello <strong>bold</strong> world</p>
+      paragraph.children.push(textNode1, strongElement, textNode2);
+      strongElement.children.push(boldText);
+      textNode1.parent = paragraph;
+      strongElement.parent = paragraph;
+      boldText.parent = strongElement;
+      textNode2.parent = paragraph;
+
+      // Split in the middle - this will exercise getElementContentLength
+      const result = splitParagraphAtCursor(paragraph, 10);
+
+      expect(result.firstParagraph.children.length).toBeGreaterThan(0);
+      expect(result.secondParagraph.children.length).toBeGreaterThan(0);
     });
   });
 
@@ -435,6 +465,30 @@ describe('ParagraphOperationsService', () => {
 
         expect(unformattedParagraph.children).toHaveLength(1);
         expect((unformattedParagraph.children[0] as TextNode).content).toBe('Plain text');
+      });
+
+      test('should handle unknown node types gracefully', () => {
+        const paragraph = createElementNode('p');
+
+        // Create a mock node that is neither text nor element
+        const unknownNode = {
+          id: 'unknown-1',
+          type: 'unknown',
+          parent: paragraph,
+          children: [],
+          startOffset: 0,
+          endOffset: 0,
+          depth: 1,
+        } as unknown as VNode;
+
+        paragraph.children.push(unknownNode);
+        unknownNode.parent = paragraph;
+
+        const unformattedParagraph = removeFormattingFromParagraph(paragraph, 'bold');
+
+        // Should handle unknown node type and include it in result
+        expect(unformattedParagraph.children).toHaveLength(1);
+        expect(unformattedParagraph.children[0]).toBe(unknownNode);
       });
     });
 
