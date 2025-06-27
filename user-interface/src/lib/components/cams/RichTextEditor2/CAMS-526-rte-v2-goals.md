@@ -59,6 +59,12 @@ It is important to minimize third party dependencies.
         - [ ] Format detection utilities for existing content
         - [ ] Format removal operations for toggle functionality
         - [ ] Format state queries for UI feedback
+    - [ ] Paragraph management operations
+        - [ ] Paragraph node creation and insertion
+        - [ ] Paragraph boundary detection and manipulation
+        - [ ] Paragraph splitting and merging operations
+        - [ ] Cross-paragraph content operations
+        - [ ] Paragraph-aware text insertion and deletion
     - [ ] List management operations
     - [ ] Undo/redo support through virtual DOM snapshots
 
@@ -82,6 +88,19 @@ It is important to minimize third party dependencies.
         - [x] Apply formatting when not present (toggle on)
         - [x] Handle mixed formatting states in selections
         - [x] Update toolbar/UI to reflect current formatting state
+- [ ] Paragraph handling and structure
+    - [ ] Paragraph creation and management
+        - [ ] Automatic paragraph wrapping for content
+        - [ ] Paragraph boundary detection and navigation
+        - [ ] Empty paragraph handling and cleanup
+    - [ ] Paragraph formatting operations
+        - [ ] Apply formatting to entire paragraphs
+        - [ ] Preserve paragraph structure during formatting
+        - [ ] Handle cross-paragraph selections
+    - [ ] Paragraph-aware cursor positioning
+        - [ ] Maintain cursor position within paragraph context
+        - [ ] Handle cursor movement between paragraphs
+        - [ ] Preserve cursor position during virtual DOM updates
 - [ ] List management
     - [ ] Bulleted lists (ul)
     - [ ] Numbered lists (ol)
@@ -89,7 +108,14 @@ It is important to minimize third party dependencies.
     - [ ] List item navigation
 - [x] Keyboard event handling
     - [ ] Enter key behavior (new paragraphs/list items)
+        - [ ] Create new paragraph on Enter key press
+        - [ ] Handle Enter within formatted text
+        - [ ] Preserve formatting in new paragraphs when appropriate
+        - [ ] Handle Enter at beginning/middle/end of paragraphs
     - [ ] Backspace/Delete key behavior
+        - [ ] Merge paragraphs when deleting paragraph boundaries
+        - [ ] Handle backspace at paragraph beginnings
+        - [ ] Preserve formatting during paragraph merging
     - [x] Keyboard shortcuts (Ctrl+B, Ctrl+I, Ctrl+U)
     - [ ] Tab navigation and indentation
 - [x] Clipboard operations
@@ -189,6 +215,26 @@ It is important to minimize third party dependencies.
     - [x] Add comprehensive tests for toggle behavior
     - [x] Handle edge cases (partial selections, nested formatting)
 4. [ ] Paragraph handling
+    - [ ] Virtual DOM paragraph operations
+        - [ ] Implement paragraph node creation and insertion in virtual DOM
+        - [ ] Add paragraph boundary detection utilities
+        - [ ] Create paragraph splitting operations for Enter key handling
+        - [ ] Implement paragraph merging operations for Backspace/Delete
+        - [ ] Add cross-paragraph content manipulation support
+    - [ ] Paragraph-aware editor behaviors
+        - [ ] Implement Enter key paragraph creation logic
+        - [ ] Add Backspace/Delete paragraph merging behavior
+        - [ ] Create paragraph navigation and cursor positioning
+        - [ ] Handle formatting preservation across paragraph operations
+    - [ ] HTML structure and encoding
+        - [ ] Ensure proper paragraph HTML output (<p> tags)
+        - [ ] Handle paragraph-based content parsing from HTML input
+        - [ ] Maintain paragraph structure during HTML sanitization
+    - [ ] Integration with existing systems
+        - [ ] Update FSM to handle paragraph-related state transitions
+        - [ ] Integrate paragraph operations with formatting system
+        - [ ] Ensure paragraph handling works with clipboard operations
+        - [ ] Add comprehensive tests for paragraph functionality
 
 ### Phase 3: Advanced Features
 1. List management
