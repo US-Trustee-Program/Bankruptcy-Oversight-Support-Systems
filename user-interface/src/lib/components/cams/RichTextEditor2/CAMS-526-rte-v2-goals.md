@@ -56,6 +56,9 @@ It is important to minimize third party dependencies.
 - [x] Virtual DOM operations
     - [x] Insert/delete operations
     - [ ] Text formatting operations
+        - [ ] Format detection utilities for existing content
+        - [ ] Format removal operations for toggle functionality
+        - [ ] Format state queries for UI feedback
     - [ ] List management operations
     - [ ] Undo/redo support through virtual DOM snapshots
 
@@ -74,6 +77,11 @@ It is important to minimize third party dependencies.
     - [x] Bold, italic, underline formatting
     - [x] Format application through FSM
     - [ ] Format removal and toggling
+        - [ ] Detect existing formatting in selected text
+        - [ ] Remove formatting when already applied (toggle off)
+        - [ ] Apply formatting when not present (toggle on)
+        - [ ] Handle mixed formatting states in selections
+        - [ ] Update toolbar/UI to reflect current formatting state
 - [ ] List management
     - [ ] Bulleted lists (ul)
     - [ ] Numbered lists (ol)
@@ -173,7 +181,14 @@ It is important to minimize third party dependencies.
 ### Phase 2: Basic Editor Functionality
 1. [x] Text input and editing
 2. [x] Basic formatting (bold, italic, underline)
-3. Paragraph handling
+3. [ ] Style toggling implementation
+    - [ ] Implement formatting state detection in Editor class
+    - [ ] Create toggleFormatting method to replace applyFormatting
+    - [ ] Add virtual DOM utilities for format detection and removal
+    - [ ] Update keyboard shortcut handlers to use toggle functionality
+    - [ ] Add comprehensive tests for toggle behavior
+    - [ ] Handle edge cases (partial selections, nested formatting)
+4. [ ] Paragraph handling
 
 ### Phase 3: Advanced Features
 1. List management
