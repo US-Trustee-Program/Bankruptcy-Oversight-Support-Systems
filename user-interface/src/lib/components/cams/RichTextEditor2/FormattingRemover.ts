@@ -5,6 +5,7 @@
 import { VNode, isFormattingNode, FormattingNode } from './virtual-dom/VNode';
 import { FormattingType } from './formatting-analysis.types';
 import { FormattingDetector } from './FormattingDetector';
+import { createFormattingNode } from './virtual-dom/VNodeFactory';
 
 /**
  * Utility class for removing formatting from virtual DOM nodes
@@ -96,29 +97,134 @@ export class FormattingRemover {
   }
 
   /**
-   * Split a formatting node around a selection (for partial formatting removal)
+   * Split a formatting node at selection boundaries
    * This is useful when removing formatting from only part of a formatted node's content
+   * 
+   * For example, if we have: "This is <strong>another</strong> test"
+   * And the selection is: "another test"
+   * We want to split the strong node to get: "This is <strong>another test</strong>"
    */
-  splitFormattingNodeAroundSelection(
+  splitFormattingNodeAtBoundaries(
     formattingNode: FormattingNode,
     selectedNodes: VNode[],
   ): VNode[] {
-    // This is a more complex operation for partial selections
-    // For now, we'll implement the simpler case of removing the entire formatting
     const selectedNodeSet = new Set(selectedNodes);
     const allChildren = formattingNode.children;
+    const parent = formattingNode.parent;
+
+    if (!parent) {
+      return [formattingNode]; // Can't split if no parent
+    }
 
     // Check if all children are selected
     const allChildrenSelected = allChildren.every((child) => selectedNodeSet.has(child));
 
     if (allChildrenSelected) {
-      // Remove the entire formatting node
+      // If all children are selected, just unwrap the formatting node
       return this.unwrapFormattingNode(formattingNode);
-    } else {
-      // For partial selection, we need more complex logic
-      // This would involve creating new formatting nodes for unselected parts
-      // For now, return the node unchanged to maintain structure
+    }
+
+    // Find which children are selected and which are not
+    const selectedChildren: VNode[] = [];
+    const unselectedChildren: VNode[] = [];
+
+    allChildren.forEach((child) => {
+      if (selectedNodeSet.has(child)) {
+        selectedChildren.push(child);
+      } else {
+        unselectedChildren.push(child);
+      }
+    });
+
+    if (selectedChildren.length === 0) {
+      // No children are selected, return the node unchanged
       return [formattingNode];
     }
+
+    // Find the index of the formatting node in its parent's children
+    const nodeIndex = parent.children.indexOf(formattingNode);
+    if (nodeIndex === -1) {
+      return [formattingNode]; // Node not found in parent's children
+    }
+
+    // Remove the formatting node from its parent
+    parent.children.splice(nodeIndex, 1);
+
+    // Create new formatting nodes for the unselected parts
+    const resultNodes: VNode[] = [];
+
+    // Group consecutive unselected children
+    const unselectedGroups: VNode[][] = [];
+    let currentGroup: VNode[] = [];
+
+    // Find the position of the first selected child
+    const firstSelectedIndex = allChildren.findIndex((child) => selectedNodeSet.has(child));
+
+    // Find the position of the last selected child
+    const lastSelectedIndex = allChildren.findIndex((child, index) => 
+      selectedNodeSet.has(child) && 
+      (index === allChildren.length - 1 || !selectedNodeSet.has(allChildren[index + 1]))
+    );
+
+    // If there are unselected children before the selection, create a formatting node for them
+    if (firstSelectedIndex > 0) {
+      const beforeGroup = allChildren.slice(0, firstSelectedIndex);
+      const beforeFormatNode = createFormattingNode(formattingNode.formatType);
+
+      // Add the formatting node to the parent
+      parent.children.splice(nodeIndex, 0, beforeFormatNode);
+      beforeFormatNode.parent = parent;
+
+      // Add the unselected children to the formatting node
+      beforeGroup.forEach((child, index) => {
+        beforeFormatNode.children.push(child);
+        child.parent = beforeFormatNode;
+      });
+
+      resultNodes.push(beforeFormatNode);
+    }
+
+    // Add the selected children directly to the parent
+    selectedChildren.forEach((child) => {
+      parent.children.splice(nodeIndex + resultNodes.length, 0, child);
+      child.parent = parent;
+      resultNodes.push(child);
+    });
+
+    // If there are unselected children after the selection, create a formatting node for them
+    if (lastSelectedIndex < allChildren.length - 1) {
+      const afterGroup = allChildren.slice(lastSelectedIndex + 1);
+      const afterFormatNode = createFormattingNode(formattingNode.formatType);
+
+      // Add the formatting node to the parent
+      parent.children.splice(nodeIndex + resultNodes.length, 0, afterFormatNode);
+      afterFormatNode.parent = parent;
+
+      // Add the unselected children to the formatting node
+      afterGroup.forEach((child) => {
+        afterFormatNode.children.push(child);
+        child.parent = afterFormatNode;
+      });
+
+      resultNodes.push(afterFormatNode);
+    }
+
+    // Clear the original formatting node's relationships
+    formattingNode.parent = null;
+    formattingNode.children = [];
+
+    return resultNodes;
+  }
+
+  /**
+   * Split a formatting node around a selection (for partial formatting removal)
+   * This is useful when removing formatting from only part of a formatted node's content
+   * @deprecated Use splitFormattingNodeAtBoundaries instead
+   */
+  splitFormattingNodeAroundSelection(
+    formattingNode: FormattingNode,
+    selectedNodes: VNode[],
+  ): VNode[] {
+    return this.splitFormattingNodeAtBoundaries(formattingNode, selectedNodes);
   }
 }

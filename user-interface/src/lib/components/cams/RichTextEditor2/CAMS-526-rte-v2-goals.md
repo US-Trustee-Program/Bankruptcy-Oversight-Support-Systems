@@ -63,7 +63,7 @@ It is important to minimize third party dependencies.
   - [ ] Handle cursor position preservation during updates
 - [x] Virtual DOM operations
   - [x] Insert/delete operations
-  - [ ] Text formatting operations (IN PROGRESS - toggle behavior in Phase 2b)
+  - [x] Text formatting operations
   - [ ] List management operations
   - [ ] Undo/redo support through virtual DOM snapshots
 
@@ -83,7 +83,7 @@ It is important to minimize third party dependencies.
 - [x] Text formatting capabilities
   - [x] Bold, italic, underline formatting
   - [x] Format application through FSM
-  - [ ] Format removal and toggling (IN PROGRESS - See Phase 2b below)
+  - [x] Format removal and toggling
 - [ ] List management
   - [ ] Bulleted lists (ul)
   - [ ] Numbered lists (ol)
@@ -125,8 +125,8 @@ It is important to minimize third party dependencies.
   - [x] Keyboard event handling
   - [x] Clipboard operations
   - [x] Accessibility compliance
-  - [ ] Formatting toggle behavior (Phase 2b)
-  - [ ] Mixed selection formatting scenarios (Phase 2b)
+  - [x] Formatting toggle behavior
+  - [x] Mixed selection formatting scenarios
 - [ ] Performance testing
   - [ ] Large document handling
   - [ ] Rapid input scenarios
@@ -224,25 +224,25 @@ formatting on/off based on current selection state.
 
 #### Mixed Selection Handling
 
-- [ ] 🚨 **CRITICAL**: Implement node splitting for partial selections
-  - [ ] Create `splitFormattingNodeAtBoundaries()` function
-  - [ ] Split formatting nodes at selection start/end boundaries
-  - [ ] Preserve formatting on unselected portions of split nodes
-  - [ ] Handle complex nesting scenarios during splits
-- [ ] Implement partial formatting application
-  - [ ] Apply formatting only to unformatted parts of selection
-  - [ ] Leave already-formatted content unchanged
-  - [ ] Handle edge cases (adjacent formatting nodes, empty selections)
-- [ ] Intelligent toggle logic
-  - [ ] FULLY_APPLIED → Remove formatting from entire selection
-  - [ ] NOT_APPLIED → Apply formatting to entire selection
-  - [ ] PARTIALLY_APPLIED → Apply formatting to unformatted parts
+- [x] 🚨 **CRITICAL**: Implement node splitting for partial selections
+  - [x] Create `splitFormattingNodeAtBoundaries()` function
+  - [x] Split formatting nodes at selection start/end boundaries
+  - [x] Preserve formatting on unselected portions of split nodes
+  - [x] Handle complex nesting scenarios during splits
+- [x] Implement partial formatting application
+  - [x] Apply formatting only to unformatted parts of selection
+  - [x] Leave already-formatted content unchanged
+  - [x] Handle edge cases (adjacent formatting nodes, empty selections)
+- [x] Intelligent toggle logic
+  - [x] FULLY_APPLIED → Remove formatting from entire selection
+  - [x] NOT_APPLIED → Apply formatting to entire selection
+  - [x] PARTIALLY_APPLIED → Apply formatting to unformatted parts
 
 #### Integration and Implementation
 
 - [x] Replace `applyFormatting` with `toggleFormatting`
   - [x] Implement toggle logic based on selection analysis
-  - [ ] 🚨 **CRITICAL BUG**: Current implementation removes entire formatting nodes instead of
+  - [x] 🚨 **CRITICAL BUG**: Current implementation removes entire formatting nodes instead of
         splitting
   - [ ] Maintain cursor position during formatting operations
   - [x] Ensure proper virtual DOM and real DOM synchronization
@@ -257,24 +257,24 @@ formatting on/off based on current selection state.
   - [x] `SelectionFormattingAnalyzer.test.ts`
   - [x] `FormattingDetector.test.ts`
   - [x] `FormattingRemover.test.ts`
-- [ ] Integration tests for toggle behavior
-  - [ ] Simple toggle on/off scenarios
-  - [ ] 🚨 **CRITICAL**: Mixed formatting scenarios with node splitting
-    - [ ] Test: "another test" selection in `This is <strong>another</strong> test`
-    - [ ] Expected: `This is <strong>another test</strong>`
-    - [ ] Currently fails due to wholesale node removal bug
-  - [ ] Nested formatting handling
-  - [ ] Edge cases (empty selections, single character, full document)
+- [x] Integration tests for toggle behavior
+  - [x] Simple toggle on/off scenarios
+  - [x] 🚨 **CRITICAL**: Mixed formatting scenarios with node splitting
+    - [x] Test: "another test" selection in `This is <strong>another</strong> test`
+    - [x] Expected: `This is <strong>another test</strong>`
+    - [x] Fixed wholesale node removal bug
+  - [x] Nested formatting handling
+  - [x] Edge cases (empty selections, single character, full document)
 - [x] Regression testing
   - [x] Verify all existing tests continue to pass
   - [x] Ensure no functionality is broken by toggle implementation
 
 #### Edge Cases and Polish
 
-- [ ] Handle complex scenarios
-  - [ ] Empty selections (no-op behavior)
-  - [ ] Nested formatting (bold inside italic)
-  - [ ] Adjacent formatting nodes (merge when possible)
+- [x] Handle complex scenarios
+  - [x] Empty selections (no-op behavior)
+  - [x] Nested formatting (bold inside italic)
+  - [x] Adjacent formatting nodes (merge when possible)
   - [ ] Cursor position preservation across toggle operations
 - [ ] Performance optimization
   - [ ] Optimize formatting analysis for large selections

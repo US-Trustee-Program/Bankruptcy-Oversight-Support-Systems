@@ -266,4 +266,197 @@ describe('FormattingRemover', () => {
       expect(root.children).toEqual([italicNode]);
     });
   });
+
+  describe('splitFormattingNodeAtBoundaries', () => {
+    it('should return the original node if it has no parent', () => {
+      const boldNode = createFormattingNode('bold');
+      const textNode = createTextNode('Bold text');
+
+      boldNode.children = [textNode];
+      textNode.parent = boldNode;
+
+      const result = remover.splitFormattingNodeAtBoundaries(boldNode, [textNode]);
+
+      expect(result).toEqual([boldNode]);
+    });
+
+    it('should unwrap the node if all children are selected', () => {
+      const root = createRootNode();
+      const boldNode = createFormattingNode('bold');
+      const textNode1 = createTextNode('Bold');
+      const textNode2 = createTextNode(' text');
+
+      // Setup parent-child relationships
+      boldNode.parent = root;
+      textNode1.parent = boldNode;
+      textNode2.parent = boldNode;
+      boldNode.children = [textNode1, textNode2];
+      root.children = [boldNode];
+
+      const result = remover.splitFormattingNodeAtBoundaries(boldNode, [textNode1, textNode2]);
+
+      expect(result).toEqual([textNode1, textNode2]);
+      expect(textNode1.parent).toBe(root);
+      expect(textNode2.parent).toBe(root);
+      expect(root.children).toEqual([textNode1, textNode2]);
+    });
+
+    it('should return the original node if no children are selected', () => {
+      const root = createRootNode();
+      const boldNode = createFormattingNode('bold');
+      const textNode = createTextNode('Bold text');
+
+      // Setup parent-child relationships
+      boldNode.parent = root;
+      textNode.parent = boldNode;
+      boldNode.children = [textNode];
+      root.children = [boldNode];
+
+      const result = remover.splitFormattingNodeAtBoundaries(boldNode, []);
+
+      expect(result).toEqual([boldNode]);
+      expect(textNode.parent).toBe(boldNode);
+      expect(boldNode.parent).toBe(root);
+      expect(root.children).toEqual([boldNode]);
+    });
+
+    it('should split the node when selection is at the beginning', () => {
+      const root = createRootNode();
+      const boldNode = createFormattingNode('bold');
+      const textNode1 = createTextNode('Bold');
+      const textNode2 = createTextNode(' text');
+
+      // Setup parent-child relationships
+      boldNode.parent = root;
+      textNode1.parent = boldNode;
+      textNode2.parent = boldNode;
+      boldNode.children = [textNode1, textNode2];
+      root.children = [boldNode];
+
+      const result = remover.splitFormattingNodeAtBoundaries(boldNode, [textNode1]);
+
+      // Should have textNode1 directly under root and a new bold node with textNode2
+      expect(result.length).toBe(2);
+      expect(textNode1.parent).toBe(root);
+
+      // Find the new formatting node in the result
+      const newBoldNode = result.find(node => isFormattingNode(node));
+      expect(newBoldNode).toBeDefined();
+      if (newBoldNode && isFormattingNode(newBoldNode)) {
+        expect(newBoldNode.formatType).toBe('bold');
+        expect(newBoldNode.children).toEqual([textNode2]);
+        expect(textNode2.parent).toBe(newBoldNode);
+      }
+
+      // Check the root's children
+      expect(root.children.length).toBe(2);
+      expect(root.children).toContain(textNode1);
+      expect(root.children).toContain(newBoldNode);
+    });
+
+    it('should split the node when selection is at the end', () => {
+      const root = createRootNode();
+      const boldNode = createFormattingNode('bold');
+      const textNode1 = createTextNode('Bold');
+      const textNode2 = createTextNode(' text');
+
+      // Setup parent-child relationships
+      boldNode.parent = root;
+      textNode1.parent = boldNode;
+      textNode2.parent = boldNode;
+      boldNode.children = [textNode1, textNode2];
+      root.children = [boldNode];
+
+      const result = remover.splitFormattingNodeAtBoundaries(boldNode, [textNode2]);
+
+      // Should have a new bold node with textNode1 and textNode2 directly under root
+      expect(result.length).toBe(2);
+      expect(textNode2.parent).toBe(root);
+
+      // Find the new formatting node in the result
+      const newBoldNode = result.find(node => isFormattingNode(node));
+      expect(newBoldNode).toBeDefined();
+      if (newBoldNode && isFormattingNode(newBoldNode)) {
+        expect(newBoldNode.formatType).toBe('bold');
+        expect(newBoldNode.children).toEqual([textNode1]);
+        expect(textNode1.parent).toBe(newBoldNode);
+      }
+
+      // Check the root's children
+      expect(root.children.length).toBe(2);
+      expect(root.children).toContain(textNode2);
+      expect(root.children).toContain(newBoldNode);
+    });
+
+    it('should split the node when selection is in the middle', () => {
+      const root = createRootNode();
+      const boldNode = createFormattingNode('bold');
+      const textNode1 = createTextNode('Bold');
+      const textNode2 = createTextNode(' middle');
+      const textNode3 = createTextNode(' text');
+
+      // Setup parent-child relationships
+      boldNode.parent = root;
+      textNode1.parent = boldNode;
+      textNode2.parent = boldNode;
+      textNode3.parent = boldNode;
+      boldNode.children = [textNode1, textNode2, textNode3];
+      root.children = [boldNode];
+
+      const result = remover.splitFormattingNodeAtBoundaries(boldNode, [textNode2]);
+
+      // Should have two new bold nodes (before and after) and textNode2 directly under root
+      expect(result.length).toBe(3);
+      expect(textNode2.parent).toBe(root);
+
+      // Find the new formatting nodes in the result
+      const newBoldNodes = result.filter(node => isFormattingNode(node));
+      expect(newBoldNodes.length).toBe(2);
+
+      // Check the first formatting node (should contain textNode1)
+      const beforeBoldNode = newBoldNodes.find(node => 
+        isFormattingNode(node) && node.children.includes(textNode1)
+      );
+      expect(beforeBoldNode).toBeDefined();
+      if (beforeBoldNode && isFormattingNode(beforeBoldNode)) {
+        expect(beforeBoldNode.formatType).toBe('bold');
+        expect(beforeBoldNode.children).toEqual([textNode1]);
+        expect(textNode1.parent).toBe(beforeBoldNode);
+      }
+
+      // Check the second formatting node (should contain textNode3)
+      const afterBoldNode = newBoldNodes.find(node => 
+        isFormattingNode(node) && node.children.includes(textNode3)
+      );
+      expect(afterBoldNode).toBeDefined();
+      if (afterBoldNode && isFormattingNode(afterBoldNode)) {
+        expect(afterBoldNode.formatType).toBe('bold');
+        expect(afterBoldNode.children).toEqual([textNode3]);
+        expect(textNode3.parent).toBe(afterBoldNode);
+      }
+
+      // Check the root's children
+      expect(root.children.length).toBe(3);
+      expect(root.children).toContain(textNode2);
+      expect(root.children).toContain(beforeBoldNode);
+      expect(root.children).toContain(afterBoldNode);
+    });
+
+    it('should handle the case where the node is not found in parent children', () => {
+      const root = createRootNode();
+      const boldNode = createFormattingNode('bold');
+      const textNode = createTextNode('Bold text');
+
+      // Setup parent-child relationships but don't add boldNode to root.children
+      boldNode.parent = root;
+      textNode.parent = boldNode;
+      boldNode.children = [textNode];
+      root.children = []; // Empty children array
+
+      const result = remover.splitFormattingNodeAtBoundaries(boldNode, [textNode]);
+
+      // Should return the original node since it's not found in parent's children
+      expect(result).toEqual([boldNode]);
+    });
+  });
 });

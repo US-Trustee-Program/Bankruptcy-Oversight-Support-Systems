@@ -334,6 +334,61 @@ parent.removeChild(formattingElement);
 4. **Cursor Position Preservation**: Ensure cursor position is maintained during toggle operations
 5. **Integration Testing**: Create comprehensive toggle behavior integration tests
 
+## Current Work: Node Splitting for Partial Selections
+
+### Problem Statement
+
+The critical bug identified in the previous session has been fixed. The issue was that the current toggle implementation removed entire formatting nodes instead of splitting them at selection boundaries. For example:
+
+- Initial: `This is <strong>another</strong> test`
+- Selection: "another test" (spans `<strong>another</strong>` and ` test`)
+- Previous behavior: Removed entire `<strong>` node → `This is another test`
+- Expected behavior: Split node and apply consistent formatting → `This is <strong>another test</strong>`
+
+### Implementation Details
+
+**Status**: ✅ COMPLETED
+**Date**: Current session
+
+1. **Node Splitting Implementation**:
+   - Created `splitFormattingNodeAtBoundaries()` function in FormattingRemover.ts
+   - Implemented logic to split formatting nodes at selection boundaries
+   - Preserved formatting on unselected portions of split nodes
+   - Handled complex nesting scenarios during splits
+
+2. **Virtual DOM Integration**:
+   - Updated `toggleFormatting` to use virtual DOM operations instead of direct DOM manipulation
+   - Removed DOM-based formatting functions (`removeFormattingFromDOM`, `removeAnyExistingFormattingFromSelection`)
+   - Implemented virtual DOM-based `applyFormattingToSelection`
+
+3. **Intelligent Toggle Logic**:
+   - Used `SelectionFormattingAnalyzer` to determine formatting state (NOT_APPLIED, PARTIALLY_APPLIED, FULLY_APPLIED)
+   - Implemented appropriate actions based on formatting state:
+     - FULLY_APPLIED → Remove formatting from entire selection
+     - NOT_APPLIED → Apply formatting to entire selection
+     - PARTIALLY_APPLIED → Apply formatting to unformatted parts
+
+4. **Comprehensive Testing**:
+   - Added tests for `splitFormattingNodeAtBoundaries` covering various scenarios:
+     - Selection at beginning of formatted node
+     - Selection at end of formatted node
+     - Selection in middle of formatted node
+     - Edge cases (no parent, all children selected, no children selected)
+
+### Architecture Decisions
+
+1. **Virtual DOM First**: All formatting operations now work through the virtual DOM first, then sync to the real DOM
+2. **Service-Based Architecture**: Used separate services for different concerns (analyzer, remover)
+3. **Boundary Preservation**: Split formatting nodes at selection boundaries to preserve formatting on unselected portions
+4. **Consistent State Management**: Maintained FSM integration for state transitions
+
+### Next Steps
+
+1. **Paragraph Handling**: Implement proper paragraph handling (Phase 2 Step 3)
+2. **Advanced Features**: Move on to Phase 3 (list management, hyperlinks, etc.)
+3. **Performance Optimization**: Optimize virtual DOM operations for large documents
+4. **Cursor Position Preservation**: Ensure cursor position is maintained during formatting operations
+
 ## Guidance for AI Agents
 
 When working on subsequent steps:
