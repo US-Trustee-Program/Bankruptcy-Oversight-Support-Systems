@@ -5,9 +5,10 @@ This document outlines the implementation plan for RichTextEditor2, a new rich t
 
 ## AI Agent Guidelines
 
+- Use the project guidelines in the `.junie` and `.cursor` directories.
 - Read context, decisions, and reasoning from `CAMS-526-rte-v2-reasoning.md` to include details from the last step implemented.
-- Use vitest for unit testing.
-- Use `@testing-library/react1. Prefer userEvent over fireEvent.
+- Use vitest for unit testing. Use `test` rather than `it` for tests.
+- Use `@testing-library/react. Prefer userEvent over fireEvent.
 - Use the BrowserSelectionService humble object for tests in place of tight coupling with the browser API.
 - Use test-driven development practices. Write tests before writing implementation.
 - Unit test coverage for branches and lines is 100%.
@@ -16,6 +17,7 @@ This document outlines the implementation plan for RichTextEditor2, a new rich t
 
 When working on implementation steps:
 - **Always update the reasoning file**: Save context, decisions, and reasoning to `CAMS-526-rte-v2-reasoning.md`
+- **Include verbose descriptions of reasoning**: Write verbose reasoning to `CAMS-526-rte-v2-reasoning.md`
 - **Document architecture decisions**: Record why specific approaches were chosen
 - **Update progress**: Mark completed tasks in this goals file and update the reasoning file
 - **Maintain context**: Include enough detail for subsequent AI agents to understand the current state
