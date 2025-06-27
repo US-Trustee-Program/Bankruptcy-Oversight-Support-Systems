@@ -725,13 +725,13 @@ describe('Orders use case', () => {
       .spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases')
       .mockResolvedValue(expectedMap);
 
-    jest
+    const mockCreateConsolidationTo = jest
       .spyOn(MockMongoRepository.prototype, 'createConsolidationTo')
       .mockImplementation((_context: ApplicationContext, consolidationTo: ConsolidationTo) => {
         return Promise.resolve(MockData.getConsolidationTo({ override: { ...consolidationTo } }));
       });
 
-    jest
+    const mockCreateConsolidationFrom = jest
       .spyOn(MockMongoRepository.prototype, 'createConsolidationFrom')
       .mockImplementation((_context: ApplicationContext, consolidationFrom: ConsolidationFrom) => {
         return Promise.resolve(
@@ -753,6 +753,178 @@ describe('Orders use case', () => {
         caseId: pendingConsolidation.childCases[1].caseId,
       }),
     );
+
+    // Verify that createConsolidationTo and createConsolidationFrom are called for each child case
+    expect(mockCreateConsolidationTo).toHaveBeenCalledTimes(pendingConsolidation.childCases.length);
+    expect(mockCreateConsolidationFrom).toHaveBeenCalledTimes(
+      pendingConsolidation.childCases.length,
+    );
+
+    // Verify that the child cases in the AUDIT_CONSOLIDATION document include all approved cases
+    const leadCaseHistory = mockCreateCaseHistory.mock.calls.find(
+      (call) => call[0].caseId === leadCase.caseId,
+    );
+    expect(leadCaseHistory[0].after.childCases).toHaveLength(
+      pendingConsolidation.childCases.length,
+    );
+
+    expect(actual).toEqual([newConsolidation]);
+  });
+
+  test('should approve a consolidation order with additional cases not in the provisional order', async () => {
+    const pendingConsolidation = MockData.getConsolidationOrder();
+    const leadCase = MockData.getCaseSummary();
+
+    // Create additional case that's not in the provisional order
+    const additionalCase = MockData.getCaseSummary({
+      override: { caseId: 'additional-case-id' },
+    });
+
+    // Include the additional case in the approved cases
+    const approval: ConsolidationOrderActionApproval = {
+      approvedCases: [
+        ...pendingConsolidation.childCases.map((bCase) => bCase.caseId),
+        additionalCase.caseId,
+      ],
+      leadCase,
+      consolidationId: pendingConsolidation.id,
+      consolidationType: pendingConsolidation.consolidationType,
+    };
+
+    // Mock the getCaseSummary to return the additional case
+    jest
+      .spyOn(CasesLocalGateway.prototype, 'getCaseSummary')
+      .mockImplementation((_context: ApplicationContext, caseId: string) => {
+        if (caseId === additionalCase.caseId) {
+          return Promise.resolve(additionalCase);
+        }
+        return Promise.resolve(null);
+      });
+
+    const newConsolidation = {
+      ...pendingConsolidation,
+      status: 'approved',
+      leadCase: leadCase,
+      id: crypto.randomUUID(),
+      // The new consolidation should include all child cases, including the additional one
+      childCases: [
+        ...pendingConsolidation.childCases,
+        {
+          ...additionalCase,
+          orderDate: pendingConsolidation.orderDate,
+          docketEntries: [],
+        },
+      ],
+    };
+
+    const consolidation = MockData.buildArray(
+      () => MockData.getConsolidationFrom({ override: { otherCase: leadCase } }),
+      5,
+    );
+
+    const mockGetConsolidation = jest
+      .spyOn(casesRepo, 'getConsolidation')
+      .mockImplementation((_context: ApplicationContext, caseId: string) => {
+        if (caseId === leadCase.caseId) {
+          return Promise.resolve(consolidation);
+        } else {
+          return Promise.resolve([]);
+        }
+      });
+
+    const before: ConsolidationOrderSummary = {
+      status: 'pending',
+      childCases: [],
+    };
+
+    const initialCaseHistory: CaseHistory = {
+      documentType: 'AUDIT_CONSOLIDATION',
+      caseId: pendingConsolidation.childCases[0].caseId,
+      before: null,
+      after: before,
+      updatedOn: '2024-01-01T12:00:00.000Z',
+      updatedBy: authorizedUser,
+    };
+
+    jest
+      .spyOn(MockMongoRepository.prototype, 'getCaseHistory')
+      .mockImplementation((_context: ApplicationContext, caseId: string) => {
+        return Promise.resolve([{ ...initialCaseHistory, caseId }]);
+      });
+
+    const mockCreateCaseHistory = jest
+      .spyOn(MockMongoRepository.prototype, 'createCaseHistory')
+      .mockResolvedValue();
+
+    jest.spyOn(consolidationRepo, 'delete').mockResolvedValue({});
+    jest.spyOn(consolidationRepo, 'read').mockResolvedValue(pendingConsolidation);
+
+    jest
+      .spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments')
+      .mockImplementation(() => Promise.resolve());
+
+    jest.spyOn(MockMongoRepository.prototype, 'create').mockResolvedValue(newConsolidation);
+
+    const caseId = '111-22-33333';
+    const assignments = MockData.buildArray(() => MockData.getAttorneyAssignment({ caseId }), 3);
+    const expectedMap = new Map([[caseId, assignments]]);
+
+    jest
+      .spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases')
+      .mockResolvedValue(expectedMap);
+
+    const mockCreateConsolidationTo = jest
+      .spyOn(MockMongoRepository.prototype, 'createConsolidationTo')
+      .mockImplementation((_context: ApplicationContext, consolidationTo: ConsolidationTo) => {
+        return Promise.resolve(MockData.getConsolidationTo({ override: { ...consolidationTo } }));
+      });
+
+    const mockCreateConsolidationFrom = jest
+      .spyOn(MockMongoRepository.prototype, 'createConsolidationFrom')
+      .mockImplementation((_context: ApplicationContext, consolidationFrom: ConsolidationFrom) => {
+        return Promise.resolve(
+          MockData.getConsolidationFrom({ override: { ...consolidationFrom } }),
+        );
+      });
+
+    jest.spyOn(casesGateway, 'getCaseSummary').mockResolvedValue(additionalCase);
+
+    const actual = await useCase.approveConsolidation(mockContext, approval);
+
+    // Verify that getConsolidation is called for all cases
+    expect(mockGetConsolidation).toHaveBeenCalledTimes(approval.approvedCases.length + 1); // +1 for lead case
+
+    // Verify that createCaseHistory is called for all child cases, including the additional one
+    expect(mockCreateCaseHistory).toHaveBeenCalledTimes(approval.approvedCases.length + 1); // +1 for lead case
+
+    // Verify that createConsolidationTo and createConsolidationFrom are called for all child cases
+    expect(mockCreateConsolidationTo).toHaveBeenCalledTimes(approval.approvedCases.length);
+    expect(mockCreateConsolidationFrom).toHaveBeenCalledTimes(approval.approvedCases.length);
+
+    // Verify that the additional case is included in the calls to createConsolidationTo
+    const additionalCaseToCall = mockCreateConsolidationTo.mock.calls.find(
+      (call) => call[0].caseId === additionalCase.caseId,
+    );
+    expect(additionalCaseToCall).toBeDefined();
+
+    // Verify that the additional case is included in the calls to createConsolidationFrom
+    const additionalCaseFromCall = mockCreateConsolidationFrom.mock.calls.find(
+      (call) => call[0].otherCase.caseId === additionalCase.caseId,
+    );
+    expect(additionalCaseFromCall).toBeDefined();
+
+    // Verify that the child cases in the AUDIT_CONSOLIDATION document include all approved cases
+    const leadCaseHistory = mockCreateCaseHistory.mock.calls.find(
+      (call) => call[0].caseId === leadCase.caseId,
+    );
+    expect(leadCaseHistory[0].after.childCases).toHaveLength(approval.approvedCases.length);
+
+    // Verify that the additional case is included in the lead case history
+    const additionalCaseInHistory = leadCaseHistory[0].after.childCases.find(
+      (childCase) => childCase.caseId === additionalCase.caseId,
+    );
+    expect(additionalCaseInHistory).toBeDefined();
+
     expect(actual).toEqual([newConsolidation]);
   });
 
@@ -842,13 +1014,13 @@ describe('Orders use case', () => {
       .spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases')
       .mockResolvedValue(expectedMap);
 
-    jest
+    const mockCreateConsolidationTo = jest
       .spyOn(MockMongoRepository.prototype, 'createConsolidationTo')
       .mockImplementation((_context: ApplicationContext, consolidationTo: ConsolidationTo) => {
         return Promise.resolve(MockData.getConsolidationTo({ override: { ...consolidationTo } }));
       });
 
-    jest
+    const mockCreateConsolidationFrom = jest
       .spyOn(MockMongoRepository.prototype, 'createConsolidationFrom')
       .mockImplementation((_context: ApplicationContext, consolidationFrom: ConsolidationFrom) => {
         return Promise.resolve(
@@ -864,6 +1036,29 @@ describe('Orders use case', () => {
         caseId: pendingConsolidation.childCases[0].caseId,
       }),
     );
+
+    // Verify that createConsolidationTo and createConsolidationFrom are called only for the approved cases
+    expect(mockCreateConsolidationTo).toHaveBeenCalledTimes(approval.approvedCases.length);
+    expect(mockCreateConsolidationFrom).toHaveBeenCalledTimes(approval.approvedCases.length);
+
+    // Verify that the approved case is included in the calls to createConsolidationTo
+    const approvedCaseToCall = mockCreateConsolidationTo.mock.calls.find(
+      (call) => call[0].caseId === pendingConsolidation.childCases[0].caseId,
+    );
+    expect(approvedCaseToCall).toBeDefined();
+
+    // Verify that the approved case is included in the calls to createConsolidationFrom
+    const approvedCaseFromCall = mockCreateConsolidationFrom.mock.calls.find(
+      (call) => call[0].otherCase.caseId === pendingConsolidation.childCases[0].caseId,
+    );
+    expect(approvedCaseFromCall).toBeDefined();
+
+    // Verify that the child cases in the AUDIT_CONSOLIDATION document include only the approved cases
+    const leadCaseHistory = mockCreateCaseHistory.mock.calls.find(
+      (call) => call[0].caseId === leadCase.caseId,
+    );
+    expect(leadCaseHistory[0].after.childCases).toHaveLength(approval.approvedCases.length);
+
     expect(actual).toEqual(expect.arrayContaining([newPendingConsolidation, newConsolidation]));
   });
 
