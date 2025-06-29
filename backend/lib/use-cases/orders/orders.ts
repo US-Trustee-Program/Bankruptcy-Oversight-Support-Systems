@@ -39,7 +39,7 @@ import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { createAuditRecord } from '../../../../common/src/cams/auditable';
 import { OrdersSearchPredicate } from '../../../../common/src/api/search';
 import { isNotFoundError } from '../../common-errors/not-found-error';
-import { Factory } from '../../factory';
+import { Factory, getCasesGateway } from '../../factory';
 
 const MODULE_NAME = 'ORDERS-USE-CASE';
 
@@ -380,6 +380,26 @@ export class OrdersUseCase {
     const includedChildCases = provisionalOrder.childCases.filter((c) =>
       includedCases.includes(c.caseId),
     );
+    const includedChildCaseIds = includedChildCases.map((bCase) => bCase.caseId);
+    const additionalCaseIds = includedCases.filter(
+      (bCase) => !includedChildCaseIds.includes(bCase),
+    );
+    context.logger.debug(MODULE_NAME, 'Provisional order:', provisionalOrder);
+    context.logger.debug(MODULE_NAME, 'Params:', { ...params, context: undefined });
+    context.logger.debug(
+      MODULE_NAME,
+      `Provisional order included these case id's:`,
+      includedChildCaseIds,
+    );
+    context.logger.debug(MODULE_NAME, `Included case id's were:`, includedCases);
+
+    const gateway = getCasesGateway(context);
+    for (const caseId of additionalCaseIds) {
+      const summary = await gateway.getCaseSummary(context, caseId);
+      if (summary) {
+        includedChildCases.push({ ...summary, docketEntries: [], orderDate: '' });
+      }
+    }
 
     if (status === 'approved') {
       for (const caseId of includedCases) {
@@ -555,9 +575,12 @@ export class OrdersUseCase {
 
     jobToCaseMap.forEach((caseSummaries, jobId) => {
       const consolidationId = generateConsolidationId(jobId, 'pending');
-      const firstOrder = [...caseSummaries.values()].reduce((prior, next) =>
-        sortDatesReverse(prior.orderDate, next.orderDate) <= 0 ? prior : next,
-      );
+      const firstOrder = [...caseSummaries.values()].reduce((prior, next) => {
+        if (!prior) {
+          return next;
+        }
+        return sortDatesReverse(prior.orderDate, next.orderDate) <= 0 ? prior : next;
+      }, null);
       const consolidationOrder: ConsolidationOrder = {
         consolidationId,
         orderType: 'consolidation',
