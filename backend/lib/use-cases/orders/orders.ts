@@ -396,7 +396,9 @@ export class OrdersUseCase {
     const gateway = getCasesGateway(context);
     for (const caseId of additionalCaseIds) {
       const summary = await gateway.getCaseSummary(context, caseId);
-      includedChildCases.push({ ...summary, docketEntries: [], orderDate: '' });
+      if (summary) {
+        includedChildCases.push({ ...summary, docketEntries: [], orderDate: '' });
+      }
     }
 
     if (status === 'approved') {
@@ -573,10 +575,12 @@ export class OrdersUseCase {
 
     jobToCaseMap.forEach((caseSummaries, jobId) => {
       const consolidationId = generateConsolidationId(jobId, 'pending');
-      const firstOrder = [...caseSummaries.values()].reduce(
-        (prior, next) => (sortDatesReverse(prior.orderDate, next.orderDate) <= 0 ? prior : next),
-        {} as ConsolidationOrderCase,
-      );
+      const firstOrder = [...caseSummaries.values()].reduce((prior, next) => {
+        if (!prior) {
+          return next;
+        }
+        return sortDatesReverse(prior.orderDate, next.orderDate) <= 0 ? prior : next;
+      }, null);
       const consolidationOrder: ConsolidationOrder = {
         consolidationId,
         orderType: 'consolidation',
