@@ -3,10 +3,27 @@
 ## Overview
 This document outlines the implementation plan for RichTextEditor2, a new rich text editor component that uses a finite state machine for state management, virtual DOM for document representation, and HTML encoding for content storage.
 
+## Iterative Design and Implementation Process
+
+Refer to the design guidelines `/.junie/design-guidelines.md`.
+
+This is our process:
+
+1. You will ask for design input from me for each goal.
+2. You will consider my design input and update the specification as necessary to include design decisions.
+3. You will ask me for test scenarios.
+4. You will suggest uncovered edge cases to include in the test scenarios.
+4. You will implement tests for the test scenarios.
+5. You will ask me to review the tests you implement.
+6. You will write the implementation to pass the test while adhering to all other project guidelines.
+7. You will confirm all tests for the newly written code pass.
+8. You will confirm the test coverage goals are met.
+9. You will confirm no TypeScript errors or warnings exist.
+10. You will lint the code and fix any linter errors.
+
 ## AI Agent Guidelines
 
 - Use the project guidelines in the `.junie` and `.cursor` directories.
-- Read context, decisions, and reasoning from `CAMS-526-rte-v2-reasoning.md` to include details from the last step implemented.
 - Use vitest for unit testing. Use `test` rather than `it` for tests.
 - Use `@testing-library/react. Prefer userEvent over fireEvent.
 - Use the BrowserSelectionService humble object for tests in place of tight coupling with the browser API.
@@ -17,11 +34,9 @@ This document outlines the implementation plan for RichTextEditor2, a new rich t
 - Run `npm run lint:fix` to lint source files. Fix any reported linter issues.
 
 When working on implementation steps:
-- **Refer to the specification**: Refer to `CAMS-526-rte-v2-spec.md` for the component specification. If and when the design must change, update the spec file accordingly.
-- **Always update the reasoning file**: Save context, decisions, and reasoning to `CAMS-526-rte-v2-reasoning.md`
-- **Include verbose descriptions of reasoning**: Write verbose reasoning to `CAMS-526-rte-v2-reasoning.md`
+- **Refer to the specification**: Refer to `CAMS-526-rte-v2-spec.md` for the component specification. If and when the design must change, update the spec file accordingly. Include verbose reasoning in the decision records.
 - **Document architecture decisions**: Record why specific approaches were chosen
-- **Update progress**: Mark completed tasks in this goal file and update the reasoning file
+- **Update progress**: Mark completed tasks in this goal file
 - **Maintain context**: Include enough detail for subsequent AI agents to understand the current state
 - **Test verification**: Confirm all tests pass before marking steps complete
 - **Follow established patterns**: Maintain consistency with existing architecture decisions
