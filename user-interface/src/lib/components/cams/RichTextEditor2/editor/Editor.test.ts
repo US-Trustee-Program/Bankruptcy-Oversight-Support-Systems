@@ -337,7 +337,7 @@ describe('Editor', () => {
       // Should create new empty paragraph after existing content
       const html = editor.getHtml();
       expect(html).toContain('<p>Hello world</p>');
-      expect(html).toContain('<p></p>');
+      expect(html).toContain('<p><br></br></p>'); // Empty paragraphs contain <br> tags
     });
 
     test('handleKeyDown handles Backspace key for paragraph merging', () => {
@@ -376,7 +376,7 @@ describe('Editor', () => {
       editor.setValue('<p>First paragraph</p><p>Second paragraph</p>');
 
       // Mock cursor at end of first paragraph
-      mockSelectionService.setMockCursorPosition(14); // End of "First paragraph"
+      mockSelectionService.setMockCursorPosition(14); // End of "First paragraph" (position 14)
 
       const mockEvent = {
         key: 'Delete',

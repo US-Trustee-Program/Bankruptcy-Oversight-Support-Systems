@@ -10,6 +10,10 @@ import {
   getParagraphContent,
   moveCursorToParagraphStart,
   moveCursorToParagraphEnd,
+  getCursorPositionInParagraph,
+  setCursorPositionInParagraph,
+  findParagraphAtCursor,
+  preserveCursorPositionDuringUpdate,
   applyFormattingToParagraph,
   removeFormattingFromParagraph,
   applyFormattingToMultipleParagraphs,
@@ -18,15 +22,8 @@ import { createElementNode, createTextNode, createRootNode } from '../../virtual
 import { VNode, ElementNode, TextNode } from '../../virtual-dom/VNode';
 
 describe('ParagraphOperationsService', () => {
-  let _mockRoot: VNode;
-  let _mockParagraph: ElementNode;
-  let _mockTextNode: TextNode;
-
   beforeEach(() => {
     vi.restoreAllMocks();
-    _mockRoot = createRootNode();
-    _mockParagraph = createElementNode('p');
-    _mockTextNode = createTextNode('Hello world');
   });
 
   describe('createParagraphNode', () => {
@@ -297,7 +294,7 @@ describe('ParagraphOperationsService', () => {
 
       expect(merged.children).toHaveLength(2);
       expect((merged.children[0] as TextNode).content).toBe('Hello ');
-      expect(merged.children[1].tagName).toBe('strong');
+      expect((merged.children[1] as ElementNode).tagName).toBe('strong');
       expect((merged.children[1].children[0] as TextNode).content).toBe('world');
     });
   });
@@ -349,6 +346,152 @@ describe('ParagraphOperationsService', () => {
         expect(position).toBe(25);
       });
     });
+
+    describe('getCursorPositionInParagraph', () => {
+      test('should calculate relative position within paragraph', () => {
+        const paragraph = createElementNode('p', { startOffset: 10, endOffset: 25 });
+
+        // Test position at start
+        expect(getCursorPositionInParagraph(paragraph, 10)).toBe(0);
+
+        // Test position in middle
+        expect(getCursorPositionInParagraph(paragraph, 15)).toBe(5);
+
+        // Test position at end
+        expect(getCursorPositionInParagraph(paragraph, 25)).toBe(15);
+      });
+
+      test('should clamp position to paragraph boundaries', () => {
+        const paragraph = createElementNode('p', { startOffset: 10, endOffset: 25 });
+
+        // Test position before paragraph start
+        expect(getCursorPositionInParagraph(paragraph, 5)).toBe(0);
+
+        // Test position after paragraph end
+        expect(getCursorPositionInParagraph(paragraph, 30)).toBe(15);
+      });
+    });
+
+    describe('setCursorPositionInParagraph', () => {
+      test('should convert relative position to absolute position', () => {
+        const paragraph = createElementNode('p', { startOffset: 10, endOffset: 25 });
+
+        // Test position at start
+        expect(setCursorPositionInParagraph(paragraph, 0)).toBe(10);
+
+        // Test position in middle
+        expect(setCursorPositionInParagraph(paragraph, 5)).toBe(15);
+
+        // Test position at end
+        expect(setCursorPositionInParagraph(paragraph, 15)).toBe(25);
+      });
+
+      test('should clamp relative position to paragraph length', () => {
+        const paragraph = createElementNode('p', { startOffset: 10, endOffset: 25 });
+
+        // Test negative position
+        expect(setCursorPositionInParagraph(paragraph, -5)).toBe(10);
+
+        // Test position beyond paragraph length
+        expect(setCursorPositionInParagraph(paragraph, 20)).toBe(25);
+      });
+    });
+
+    describe('findParagraphAtCursor', () => {
+      test('should find paragraph containing cursor position', () => {
+        const root = createRootNode();
+        const paragraph1 = createElementNode('p', { startOffset: 0, endOffset: 10 });
+        const paragraph2 = createElementNode('p', { startOffset: 10, endOffset: 20 });
+
+        root.children.push(paragraph1, paragraph2);
+        paragraph1.parent = root;
+        paragraph2.parent = root;
+
+        // Test cursor in first paragraph
+        expect(findParagraphAtCursor(root, 5)).toBe(paragraph1);
+
+        // Test cursor in second paragraph
+        expect(findParagraphAtCursor(root, 15)).toBe(paragraph2);
+
+        // Test cursor at paragraph boundary
+        expect(findParagraphAtCursor(root, 10)).toBe(paragraph1);
+      });
+
+      test('should return null if no paragraph contains cursor', () => {
+        const root = createRootNode();
+        const paragraph = createElementNode('p', { startOffset: 10, endOffset: 20 });
+
+        root.children.push(paragraph);
+        paragraph.parent = root;
+
+        // Test cursor before paragraph
+        expect(findParagraphAtCursor(root, 5)).toBeNull();
+
+        // Test cursor after paragraph
+        expect(findParagraphAtCursor(root, 25)).toBeNull();
+      });
+
+      test('should find nested paragraph', () => {
+        const root = createRootNode();
+        const container = createElementNode('div');
+        const paragraph = createElementNode('p', { startOffset: 5, endOffset: 15 });
+
+        root.children.push(container);
+        container.children.push(paragraph);
+        container.parent = root;
+        paragraph.parent = container;
+
+        expect(findParagraphAtCursor(root, 10)).toBe(paragraph);
+      });
+    });
+
+    describe('preserveCursorPositionDuringUpdate', () => {
+      test('should preserve relative cursor position when paragraph moves', () => {
+        const originalParagraph = createElementNode('p', { startOffset: 10, endOffset: 25 });
+        const updatedParagraph = createElementNode('p', { startOffset: 20, endOffset: 35 });
+
+        // Cursor at position 15 (relative position 5 in original paragraph)
+        const originalCursor = 15;
+        const preservedCursor = preserveCursorPositionDuringUpdate(
+          originalParagraph,
+          updatedParagraph,
+          originalCursor,
+        );
+
+        // Should be at position 25 (relative position 5 in updated paragraph)
+        expect(preservedCursor).toBe(25);
+      });
+
+      test('should handle cursor at paragraph boundaries', () => {
+        const originalParagraph = createElementNode('p', { startOffset: 10, endOffset: 25 });
+        const updatedParagraph = createElementNode('p', { startOffset: 30, endOffset: 45 });
+
+        // Test cursor at start
+        expect(preserveCursorPositionDuringUpdate(originalParagraph, updatedParagraph, 10)).toBe(
+          30,
+        );
+
+        // Test cursor at end
+        expect(preserveCursorPositionDuringUpdate(originalParagraph, updatedParagraph, 25)).toBe(
+          45,
+        );
+      });
+
+      test('should handle paragraph size changes', () => {
+        const originalParagraph = createElementNode('p', { startOffset: 10, endOffset: 30 });
+        const updatedParagraph = createElementNode('p', { startOffset: 10, endOffset: 20 });
+
+        // Cursor at position 25 (relative position 15 in original paragraph)
+        // Updated paragraph is shorter, so cursor should be clamped to end
+        const preservedCursor = preserveCursorPositionDuringUpdate(
+          originalParagraph,
+          updatedParagraph,
+          25,
+        );
+
+        expect(preservedCursor).toBe(20);
+      });
+    });
   });
 
   describe('paragraph formatting operations', () => {
@@ -362,7 +505,7 @@ describe('ParagraphOperationsService', () => {
         const formattedParagraph = applyFormattingToParagraph(paragraph, 'bold');
 
         expect(formattedParagraph.children).toHaveLength(1);
-        expect(formattedParagraph.children[0].tagName).toBe('strong');
+        expect((formattedParagraph.children[0] as ElementNode).tagName).toBe('strong');
         expect((formattedParagraph.children[0].children[0] as TextNode).content).toBe(
           'Hello world',
         );
@@ -385,7 +528,7 @@ describe('ParagraphOperationsService', () => {
         const formattedParagraph = applyFormattingToParagraph(paragraph, 'italic');
 
         expect(formattedParagraph.children).toHaveLength(1);
-        expect(formattedParagraph.children[0].tagName).toBe('em');
+        expect((formattedParagraph.children[0] as ElementNode).tagName).toBe('em');
         expect(formattedParagraph.children[0].children).toHaveLength(3);
       });
 
@@ -408,8 +551,8 @@ describe('ParagraphOperationsService', () => {
         const formattedParagraph = applyFormattingToParagraph(paragraph, 'italic');
 
         expect(formattedParagraph.children).toHaveLength(1);
-        expect(formattedParagraph.children[0].tagName).toBe('em');
-        expect(formattedParagraph.children[0].children[0].tagName).toBe('strong');
+        expect((formattedParagraph.children[0] as ElementNode).tagName).toBe('em');
+        expect((formattedParagraph.children[0].children[0] as ElementNode).tagName).toBe('strong');
         expect((formattedParagraph.children[0].children[0].children[0] as TextNode).content).toBe(
           'Bold text',
         );
@@ -449,7 +592,7 @@ describe('ParagraphOperationsService', () => {
         const unformattedParagraph = removeFormattingFromParagraph(paragraph, 'bold');
 
         expect(unformattedParagraph.children).toHaveLength(1);
-        expect(unformattedParagraph.children[0].tagName).toBe('em');
+        expect((unformattedParagraph.children[0] as ElementNode).tagName).toBe('em');
         expect((unformattedParagraph.children[0].children[0] as TextNode).content).toBe(
           'Bold italic text',
         );
@@ -510,8 +653,8 @@ describe('ParagraphOperationsService', () => {
         );
 
         expect(formattedParagraphs).toHaveLength(2);
-        expect(formattedParagraphs[0].children[0].tagName).toBe('strong');
-        expect(formattedParagraphs[1].children[0].tagName).toBe('strong');
+        expect((formattedParagraphs[0].children[0] as ElementNode).tagName).toBe('strong');
+        expect((formattedParagraphs[1].children[0] as ElementNode).tagName).toBe('strong');
         expect((formattedParagraphs[0].children[0].children[0] as TextNode).content).toBe(
           'First paragraph',
         );
@@ -545,9 +688,11 @@ describe('ParagraphOperationsService', () => {
         );
 
         expect(formattedParagraphs).toHaveLength(2);
-        expect(formattedParagraphs[0].children[0].tagName).toBe('u');
-        expect(formattedParagraphs[1].children[0].tagName).toBe('u');
-        expect(formattedParagraphs[1].children[0].children[0].tagName).toBe('strong');
+        expect((formattedParagraphs[0].children[0] as ElementNode).tagName).toBe('u');
+        expect((formattedParagraphs[1].children[0] as ElementNode).tagName).toBe('u');
+        expect((formattedParagraphs[1].children[0].children[0] as ElementNode).tagName).toBe(
+          'strong',
+        );
       });
     });
   });

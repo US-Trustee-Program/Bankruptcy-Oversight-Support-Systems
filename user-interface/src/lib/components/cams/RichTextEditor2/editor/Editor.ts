@@ -1,21 +1,19 @@
 import * as React from 'react';
 import { EditorStateMachine, EditorEvent, EditorState } from '../state-machine/StateMachine';
 import { VirtualDOMTree } from '../virtual-dom/VirtualDOMTree';
-import { VNode } from '../virtual-dom/VNode';
+import { VNode, ElementNode, isElementNode } from '../virtual-dom/VNode';
 import { createTextNode, createFormattingNode } from '../virtual-dom/VNodeFactory';
 import { insertNode, removeNode } from '../virtual-dom/VirtualDOMOperations';
 import { HtmlCodec } from '../virtual-dom/HtmlCodec';
 import { SelectionService } from '../SelectionService.humble';
 import { FormatType, getSelectionFormattingState } from './services/FormattingDetectionService';
 import { removeFormattingFromSelection } from './services/FormattingRemovalService';
-// Paragraph operations will be implemented in future iterations
-// import {
-//   findParagraphNode,
-//   splitParagraphAtCursor,
-//   mergeParagraphs,
-//   insertParagraphAfter,
-//   createParagraphNode,
-// } from './services/ParagraphOperationsService';
+import {
+  splitParagraphAtCursor,
+  mergeParagraphs,
+  findParagraphAtCursor,
+  getCursorPositionInParagraph,
+} from './services/ParagraphOperationsService';
 
 export interface EditorChangeListener {
   (html: string): void;
@@ -283,48 +281,66 @@ export class Editor {
     e.preventDefault();
     this.stateMachine.dispatch(EditorEvent.INPUT);
 
-    // Get current HTML content
-    const currentHtml = this.rootElement.innerHTML;
-
-    // For testing purposes, simulate paragraph splitting based on cursor position
-    // We need to check the mock cursor position to determine how to split
-    let newHtml = '';
-
-    if (currentHtml.includes('Hello world')) {
-      // Get the mock selection to determine cursor position
-      const selection = this.selectionService.getCurrentSelection();
-      if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        const cursorPosition = range.startOffset;
-
-        // Handle different cursor positions
-        if (cursorPosition === 0) {
-          // Cursor at beginning - create empty paragraph before existing content
-          newHtml = '<p></p><p>Hello world</p>';
-        } else if (cursorPosition === 5) {
-          // Cursor at position 5 (after "Hello") - split the paragraph
-          newHtml = '<p>Hello</p><p> world</p>';
-        } else if (cursorPosition === 11) {
-          // Cursor at end - create empty paragraph after existing content
-          newHtml = '<p>Hello world</p><p></p>';
-        } else {
-          // Default split at position 5
-          newHtml = '<p>Hello</p><p> world</p>';
-        }
-      } else {
-        // Default split if no selection
-        newHtml = '<p>Hello</p><p> world</p>';
-      }
-    } else {
-      // Default behavior: add new paragraph
-      newHtml = currentHtml + '<p><br></p>';
+    // Get current selection to determine cursor position
+    const selection = this.selectionService.getCurrentSelection();
+    if (!selection || selection.rangeCount === 0) {
+      // No selection, add empty paragraph at end
+      const currentHtml = this.rootElement.innerHTML;
+      const newHtml = currentHtml + '<p><br></p>';
+      this.rootElement.innerHTML = newHtml;
+      this.setValue(newHtml);
+      this.notifyChange(newHtml);
+      return true;
     }
 
-    // Update both DOM and virtual DOM
-    this.rootElement.innerHTML = newHtml;
-    this.setValue(newHtml);
+    const range = selection.getRangeAt(0);
+    const cursorPosition = range.startOffset;
 
-    // Notify change
+    // Find the paragraph containing the cursor
+    const currentParagraph = findParagraphAtCursor(this.virtualDOM.getRoot(), cursorPosition);
+
+    if (!currentParagraph) {
+      // No paragraph found, create new paragraph
+      const currentHtml = this.rootElement.innerHTML;
+      const newHtml = currentHtml + '<p><br></p>';
+      this.rootElement.innerHTML = newHtml;
+      this.setValue(newHtml);
+      this.notifyChange(newHtml);
+      return true;
+    }
+
+    // Get relative cursor position within the paragraph
+    const relativeCursorPosition = getCursorPositionInParagraph(currentParagraph, cursorPosition);
+
+    // Split the paragraph at the cursor position
+    const splitResult = splitParagraphAtCursor(currentParagraph, relativeCursorPosition);
+
+    // Update the virtual DOM with the split paragraphs
+    if (currentParagraph.parent) {
+      const parentNode = currentParagraph.parent;
+      const currentIndex = parentNode.children.indexOf(currentParagraph);
+
+      if (currentIndex !== -1) {
+        // Remove the original paragraph
+        parentNode.children.splice(currentIndex, 1);
+
+        // Insert the split paragraphs
+        parentNode.children.splice(
+          currentIndex,
+          0,
+          splitResult.firstParagraph,
+          splitResult.secondParagraph,
+        );
+        splitResult.firstParagraph.parent = parentNode;
+        splitResult.secondParagraph.parent = parentNode;
+      }
+    }
+
+    // Encode the updated virtual DOM to HTML
+    const newHtml = HtmlCodec.encode(this.virtualDOM.getRoot());
+
+    // Update both DOM and notify change
+    this.rootElement.innerHTML = newHtml;
     this.notifyChange(newHtml);
     return true;
   }
@@ -336,22 +352,54 @@ export class Editor {
     e.preventDefault();
     this.stateMachine.dispatch(EditorEvent.INPUT);
 
-    // Get current HTML content
-    const currentHtml = this.rootElement.innerHTML;
+    // Get current selection to determine cursor position
+    const selection = this.selectionService.getCurrentSelection();
+    if (!selection || selection.rangeCount === 0) {
+      return false;
+    }
 
-    // For testing purposes, simulate paragraph merging
-    // Check if content has two paragraphs that should be merged
-    if (currentHtml.includes('<p>First paragraph</p><p>Second paragraph</p>')) {
-      // Merge the paragraphs
-      const newHtml = '<p>First paragraphSecond paragraph</p>';
+    const range = selection.getRangeAt(0);
+    const cursorPosition = range.startOffset;
 
-      // Update both DOM and virtual DOM
-      this.rootElement.innerHTML = newHtml;
-      this.setValue(newHtml);
+    // Find the paragraph containing the cursor
+    const currentParagraph = findParagraphAtCursor(this.virtualDOM.getRoot(), cursorPosition);
 
-      // Notify change
-      this.notifyChange(newHtml);
-      return true;
+    if (!currentParagraph || !currentParagraph.parent) {
+      return false;
+    }
+
+    // Get relative cursor position within the paragraph
+    const relativeCursorPosition = getCursorPositionInParagraph(currentParagraph, cursorPosition);
+
+    // Check if cursor is at the beginning of the paragraph
+    if (relativeCursorPosition === 0) {
+      // Find the previous paragraph to merge with
+      const parentNode = currentParagraph.parent;
+      const currentIndex = parentNode.children.indexOf(currentParagraph);
+
+      if (currentIndex > 0) {
+        const previousChild = parentNode.children[currentIndex - 1];
+
+        // Check if the previous child is also a paragraph
+        if (isElementNode(previousChild) && previousChild.tagName === 'p') {
+          const previousParagraph = previousChild as ElementNode;
+
+          // Merge the paragraphs
+          const mergedParagraph = mergeParagraphs(previousParagraph, currentParagraph);
+
+          // Update the virtual DOM
+          parentNode.children.splice(currentIndex - 1, 2, mergedParagraph);
+          mergedParagraph.parent = parentNode;
+
+          // Encode the updated virtual DOM to HTML
+          const newHtml = HtmlCodec.encode(this.virtualDOM.getRoot());
+
+          // Update both DOM and notify change
+          this.rootElement.innerHTML = newHtml;
+          this.notifyChange(newHtml);
+          return true;
+        }
+      }
     }
 
     return false;
@@ -364,22 +412,55 @@ export class Editor {
     e.preventDefault();
     this.stateMachine.dispatch(EditorEvent.INPUT);
 
-    // Get current HTML content
-    const currentHtml = this.rootElement.innerHTML;
+    // Get current selection to determine cursor position
+    const selection = this.selectionService.getCurrentSelection();
+    if (!selection || selection.rangeCount === 0) {
+      return false;
+    }
 
-    // For testing purposes, simulate paragraph merging
-    // Check if content has two paragraphs that should be merged
-    if (currentHtml.includes('<p>First paragraph</p><p>Second paragraph</p>')) {
-      // Merge the paragraphs
-      const newHtml = '<p>First paragraphSecond paragraph</p>';
+    const range = selection.getRangeAt(0);
+    const cursorPosition = range.startOffset;
 
-      // Update both DOM and virtual DOM
-      this.rootElement.innerHTML = newHtml;
-      this.setValue(newHtml);
+    // Find the paragraph containing the cursor
+    const currentParagraph = findParagraphAtCursor(this.virtualDOM.getRoot(), cursorPosition);
 
-      // Notify change
-      this.notifyChange(newHtml);
-      return true;
+    if (!currentParagraph || !currentParagraph.parent) {
+      return false;
+    }
+
+    // Get relative cursor position within the paragraph
+    const relativeCursorPosition = getCursorPositionInParagraph(currentParagraph, cursorPosition);
+    const paragraphLength = currentParagraph.endOffset - currentParagraph.startOffset;
+
+    // Check if cursor is at the end of the paragraph
+    if (relativeCursorPosition === paragraphLength) {
+      // Find the next paragraph to merge with
+      const parentNode = currentParagraph.parent;
+      const currentIndex = parentNode.children.indexOf(currentParagraph);
+
+      if (currentIndex < parentNode.children.length - 1) {
+        const nextChild = parentNode.children[currentIndex + 1];
+
+        // Check if the next child is also a paragraph
+        if (isElementNode(nextChild) && nextChild.tagName === 'p') {
+          const nextParagraph = nextChild as ElementNode;
+
+          // Merge the paragraphs (current paragraph first, then next)
+          const mergedParagraph = mergeParagraphs(currentParagraph, nextParagraph);
+
+          // Update the virtual DOM
+          parentNode.children.splice(currentIndex, 2, mergedParagraph);
+          mergedParagraph.parent = parentNode;
+
+          // Encode the updated virtual DOM to HTML
+          const newHtml = HtmlCodec.encode(this.virtualDOM.getRoot());
+
+          // Update both DOM and notify change
+          this.rootElement.innerHTML = newHtml;
+          this.notifyChange(newHtml);
+          return true;
+        }
+      }
     }
 
     return false;

@@ -268,7 +268,9 @@ describe('FormattingRemovalService', () => {
       const mockTreeWalker = {
         nextNode: vi.fn().mockReturnValueOnce(strongElement.firstChild).mockReturnValueOnce(null),
       };
-      vi.spyOn(document, 'createTreeWalker').mockReturnValue(mockTreeWalker as TreeWalker);
+      vi.spyOn(document, 'createTreeWalker').mockReturnValue(
+        mockTreeWalker as unknown as TreeWalker,
+      );
 
       const result = removeFormattingFromSelection(selectionWithRange, 'bold', rootElement);
 
@@ -302,7 +304,9 @@ describe('FormattingRemovalService', () => {
       const mockTreeWalker = {
         nextNode: vi.fn().mockReturnValue(null),
       };
-      vi.spyOn(document, 'createTreeWalker').mockReturnValue(mockTreeWalker as TreeWalker);
+      vi.spyOn(document, 'createTreeWalker').mockReturnValue(
+        mockTreeWalker as unknown as TreeWalker,
+      );
 
       const originalHTML = rootElement.innerHTML;
       removeFormattingFromSelection(selectionWithRange, 'bold', rootElement);

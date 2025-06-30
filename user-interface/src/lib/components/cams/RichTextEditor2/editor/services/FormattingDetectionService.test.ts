@@ -184,7 +184,9 @@ describe('FormattingDetectionService', () => {
       const mockTreeWalker = {
         nextNode: vi.fn().mockReturnValueOnce(textNode).mockReturnValueOnce(null),
       };
-      vi.spyOn(document, 'createTreeWalker').mockReturnValue(mockTreeWalker as TreeWalker);
+      vi.spyOn(document, 'createTreeWalker').mockReturnValue(
+        mockTreeWalker as unknown as TreeWalker,
+      );
 
       expect(getSelectionFormattingState(selectionWithRange, 'bold', rootElement)).toBe('all');
     });
@@ -211,7 +213,9 @@ describe('FormattingDetectionService', () => {
       const mockTreeWalker = {
         nextNode: vi.fn().mockReturnValueOnce(textNode).mockReturnValueOnce(null),
       };
-      vi.spyOn(document, 'createTreeWalker').mockReturnValue(mockTreeWalker as TreeWalker);
+      vi.spyOn(document, 'createTreeWalker').mockReturnValue(
+        mockTreeWalker as unknown as TreeWalker,
+      );
 
       expect(getSelectionFormattingState(selectionWithRange, 'bold', rootElement)).toBe('none');
     });
@@ -244,7 +248,9 @@ describe('FormattingDetectionService', () => {
           .mockReturnValueOnce(plainTextNode)
           .mockReturnValueOnce(null),
       };
-      vi.spyOn(document, 'createTreeWalker').mockReturnValue(mockTreeWalker as TreeWalker);
+      vi.spyOn(document, 'createTreeWalker').mockReturnValue(
+        mockTreeWalker as unknown as TreeWalker,
+      );
 
       expect(getSelectionFormattingState(selectionWithRange, 'bold', rootElement)).toBe('partial');
     });
@@ -296,7 +302,9 @@ describe('FormattingDetectionService', () => {
       const mockTreeWalker = {
         nextNode: vi.fn().mockReturnValueOnce(boldTextNode).mockReturnValueOnce(null), // End before we get to unformatted text
       };
-      vi.spyOn(document, 'createTreeWalker').mockReturnValue(mockTreeWalker as TreeWalker);
+      vi.spyOn(document, 'createTreeWalker').mockReturnValue(
+        mockTreeWalker as unknown as TreeWalker,
+      );
 
       expect(getSelectionFormattingState(selectionWithRange, 'bold', rootElement)).toBe('all');
     });

@@ -255,6 +255,89 @@ export function moveCursorToParagraphEnd(paragraph: ElementNode): number {
 }
 
 /**
+ * Calculate cursor position relative to paragraph start
+ * @param paragraph The paragraph element
+ * @param absolutePosition The absolute cursor position in the document
+ * @returns The relative position within the paragraph (0-based)
+ */
+export function getCursorPositionInParagraph(
+  paragraph: ElementNode,
+  absolutePosition: number,
+): number {
+  const relativePosition = absolutePosition - paragraph.startOffset;
+  const paragraphLength = paragraph.endOffset - paragraph.startOffset;
+
+  // Clamp to paragraph boundaries
+  return Math.max(0, Math.min(relativePosition, paragraphLength));
+}
+
+/**
+ * Convert relative position within paragraph to absolute document position
+ * @param paragraph The paragraph element
+ * @param relativePosition The position relative to paragraph start
+ * @returns The absolute position in the document
+ */
+export function setCursorPositionInParagraph(
+  paragraph: ElementNode,
+  relativePosition: number,
+): number {
+  const paragraphLength = paragraph.endOffset - paragraph.startOffset;
+  const clampedRelative = Math.max(0, Math.min(relativePosition, paragraphLength));
+
+  return paragraph.startOffset + clampedRelative;
+}
+
+/**
+ * Find the paragraph element that contains the given cursor position
+ * @param root The root node to search within
+ * @param cursorPosition The absolute cursor position
+ * @returns The paragraph element containing the cursor, or null if not found
+ */
+export function findParagraphAtCursor(root: VNode, cursorPosition: number): ElementNode | null {
+  function searchNode(node: VNode): ElementNode | null {
+    // Check if this is a paragraph that contains the cursor position
+    if (isParagraphNode(node)) {
+      const paragraph = node as ElementNode;
+      if (cursorPosition >= paragraph.startOffset && cursorPosition < paragraph.endOffset) {
+        return paragraph;
+      }
+    }
+
+    // Search children recursively
+    for (const child of node.children) {
+      const found = searchNode(child);
+      if (found) {
+        return found;
+      }
+    }
+
+    return null;
+  }
+
+  return searchNode(root);
+}
+
+/**
+ * Preserve cursor position during virtual DOM updates
+ * Maintains the relative position within a paragraph when the paragraph's absolute position changes
+ * @param originalParagraph The paragraph before the update
+ * @param updatedParagraph The paragraph after the update
+ * @param originalCursorPosition The cursor position before the update
+ * @returns The adjusted cursor position after the update
+ */
+export function preserveCursorPositionDuringUpdate(
+  originalParagraph: ElementNode,
+  updatedParagraph: ElementNode,
+  originalCursorPosition: number,
+): number {
+  // Calculate relative position within the original paragraph
+  const relativePosition = getCursorPositionInParagraph(originalParagraph, originalCursorPosition);
+
+  // Convert to absolute position in the updated paragraph
+  return setCursorPositionInParagraph(updatedParagraph, relativePosition);
+}
+
+/**
  * Apply formatting to an entire paragraph
  * Wraps all paragraph content in a formatting node
  */

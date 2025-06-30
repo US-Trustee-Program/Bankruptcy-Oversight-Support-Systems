@@ -57,6 +57,9 @@ RichTextEditor2/
     - Backspace/Delete paragraph merging
     - Paragraph formatting operations
     - Cross-paragraph content manipulation
+    - Enhanced cursor positioning within paragraphs
+    - Paragraph boundary detection and navigation
+    - Cursor position preservation during virtual DOM updates
 
 #### Component Interface
 - **Props Interface**: Complete compatibility with original RichTextEditor props

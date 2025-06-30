@@ -13,6 +13,7 @@ This document outlines the implementation plan for RichTextEditor2, a new rich t
 - Use test-driven development practices. Write tests before writing implementation.
 - Unit test coverage for branches and lines is 100%.
 - All TypeScript compiler warnings must be resolved.
+- Avoid the use of the `any` keyword in TypeScript.
 - Run `npm run lint:fix` to lint source files. Fix any reported linter issues.
 
 When working on implementation steps:
@@ -98,10 +99,10 @@ It is important to minimize third party dependencies.
         - [x] Apply formatting to entire paragraphs
         - [x] Preserve paragraph structure during formatting
         - [x] Handle cross-paragraph selections
-    - [ ] Paragraph-aware cursor positioning
-        - [ ] Maintain cursor position within paragraph context
-        - [ ] Handle cursor movement between paragraphs
-        - [ ] Preserve cursor position during virtual DOM updates
+    - [x] Paragraph-aware cursor positioning
+        - [x] Maintain cursor position within paragraph context
+        - [x] Handle cursor movement between paragraphs
+        - [x] Preserve cursor position during virtual DOM updates
 - [ ] List management
     - [ ] Bulleted lists (ul)
     - [ ] Numbered lists (ol)
