@@ -4,6 +4,7 @@ import {
   findParagraphNode,
   isParagraphNode,
   splitParagraphAtCursor,
+  splitElementAtPosition,
   mergeParagraphs,
   insertParagraphAfter,
   findParagraphBoundaries,
@@ -20,6 +21,7 @@ import {
 } from './ParagraphOperationsService';
 import { createElementNode, createTextNode, createRootNode } from '../../virtual-dom/VNodeFactory';
 import { VNode, ElementNode, TextNode } from '../../virtual-dom/VNode';
+import { HtmlCodec } from '../../virtual-dom/HtmlCodec';
 
 describe('ParagraphOperationsService', () => {
   beforeEach(() => {
@@ -491,6 +493,147 @@ describe('ParagraphOperationsService', () => {
 
         expect(preservedCursor).toBe(20);
       });
+    });
+  });
+
+  describe('splitElementAtPosition', () => {
+    test('should split text node correctly', () => {
+      const textNode = createTextNode('Hello world');
+      const result = splitElementAtPosition(textNode, 5);
+
+      expect(result.firstElement).toBeTruthy();
+      expect(result.secondElement).toBeTruthy();
+      expect((result.firstElement as TextNode).content).toBe('Hello');
+      expect((result.secondElement as TextNode).content).toBe(' world');
+    });
+
+    test('should split formatting element correctly', () => {
+      const strongElement = createElementNode('strong');
+      const textNode = createTextNode('Hello world');
+      strongElement.children.push(textNode);
+      textNode.parent = strongElement;
+
+      const result = splitElementAtPosition(strongElement, 5);
+
+      expect(result.firstElement).toBeTruthy();
+      expect(result.secondElement).toBeTruthy();
+
+      const firstElement = result.firstElement as ElementNode;
+      const secondElement = result.secondElement as ElementNode;
+
+      expect(firstElement.tagName).toBe('strong');
+      expect(secondElement.tagName).toBe('strong');
+      expect((firstElement.children[0] as TextNode).content).toBe('Hello');
+      expect((secondElement.children[0] as TextNode).content).toBe(' world');
+    });
+
+    test('should split nested formatting correctly', () => {
+      const strongElement = createElementNode('strong');
+      const emElement = createElementNode('em');
+      const textNode = createTextNode('Bold italic text');
+
+      strongElement.children.push(emElement);
+      emElement.children.push(textNode);
+      emElement.parent = strongElement;
+      textNode.parent = emElement;
+
+      const result = splitElementAtPosition(strongElement, 4); // After "Bold"
+
+      expect(result.firstElement).toBeTruthy();
+      expect(result.secondElement).toBeTruthy();
+
+      const firstElement = result.firstElement as ElementNode;
+      const secondElement = result.secondElement as ElementNode;
+
+      expect(firstElement.tagName).toBe('strong');
+      expect(secondElement.tagName).toBe('strong');
+      expect((firstElement.children[0] as ElementNode).tagName).toBe('em');
+      expect((secondElement.children[0] as ElementNode).tagName).toBe('em');
+      expect(((firstElement.children[0] as ElementNode).children[0] as TextNode).content).toBe(
+        'Bold',
+      );
+      expect(((secondElement.children[0] as ElementNode).children[0] as TextNode).content).toBe(
+        ' italic text',
+      );
+    });
+  });
+
+  describe('splitParagraphAtCursor with formatting', () => {
+    test('should split paragraph with formatted content correctly', () => {
+      const paragraph = createElementNode('p', { startOffset: 0, endOffset: 11 });
+      const strongElement = createElementNode('strong');
+      const textNode = createTextNode('Hello world');
+
+      paragraph.children.push(strongElement);
+      strongElement.children.push(textNode);
+      strongElement.parent = paragraph;
+      textNode.parent = strongElement;
+
+      const result = splitParagraphAtCursor(paragraph, 5); // Split after "Hello"
+
+      expect(result.firstParagraph.children).toHaveLength(1);
+      expect(result.secondParagraph.children).toHaveLength(1);
+
+      const firstStrong = result.firstParagraph.children[0] as ElementNode;
+      const secondStrong = result.secondParagraph.children[0] as ElementNode;
+
+      expect(firstStrong.tagName).toBe('strong');
+      expect(secondStrong.tagName).toBe('strong');
+      expect((firstStrong.children[0] as TextNode).content).toBe('Hello');
+      expect((secondStrong.children[0] as TextNode).content).toBe(' world');
+    });
+
+    test('should work with HtmlCodec parsed content', () => {
+      // Parse HTML content like the Editor does
+      const virtualDOM = HtmlCodec.decode('<p><strong>Hello world</strong></p>');
+
+      // Find the paragraph (should be the first child of root)
+      expect(virtualDOM.children).toHaveLength(1);
+      const paragraph = virtualDOM.children[0] as ElementNode;
+      expect(paragraph.tagName).toBe('p');
+
+      // Verify the structure
+      expect(paragraph.children).toHaveLength(1);
+      const strongElement = paragraph.children[0] as ElementNode;
+      expect(strongElement.tagName).toBe('strong');
+      expect(strongElement.children).toHaveLength(1);
+      const textNode = strongElement.children[0] as TextNode;
+      expect(textNode.content).toBe('Hello world');
+
+      // Check offsets
+      console.log('Paragraph offsets:', paragraph.startOffset, paragraph.endOffset);
+      console.log('Strong offsets:', strongElement.startOffset, strongElement.endOffset);
+      console.log('Text offsets:', textNode.startOffset, textNode.endOffset);
+
+      // Split at position 5 (after "Hello")
+      console.log('About to split at position 5');
+      const result = splitParagraphAtCursor(paragraph, 5);
+
+      console.log('Split result:');
+      console.log('First paragraph children:', result.firstParagraph.children.length);
+      console.log('Second paragraph children:', result.secondParagraph.children.length);
+
+      // Verify the split result
+      expect(result.firstParagraph.children).toHaveLength(1);
+      expect(result.secondParagraph.children).toHaveLength(1);
+
+      const firstStrong = result.firstParagraph.children[0] as ElementNode;
+      const secondStrong = result.secondParagraph.children[0] as ElementNode;
+
+      expect(firstStrong.tagName).toBe('strong');
+      expect(secondStrong.tagName).toBe('strong');
+      expect((firstStrong.children[0] as TextNode).content).toBe('Hello');
+      expect((secondStrong.children[0] as TextNode).content).toBe(' world');
+
+      // Encode back to HTML to verify the result
+      const firstHtml = HtmlCodec.encode(result.firstParagraph);
+      const secondHtml = HtmlCodec.encode(result.secondParagraph);
+
+      console.log('First paragraph HTML:', firstHtml);
+      console.log('Second paragraph HTML:', secondHtml);
+
+      expect(firstHtml).toBe('<p><strong>Hello</strong></p>');
+      expect(secondHtml).toBe('<p><strong> world</strong></p>');
     });
   });
 

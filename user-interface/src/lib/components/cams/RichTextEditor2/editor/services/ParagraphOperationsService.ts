@@ -3,7 +3,13 @@
  * Following CAMS guidelines for service architecture with dependency inversion
  */
 
-import { VNode, ElementNode, isElementNode, isTextNode } from '../../virtual-dom/VNode';
+import {
+  VNode,
+  ElementNode,
+  isElementNode,
+  isTextNode,
+  isFormattingNode,
+} from '../../virtual-dom/VNode';
 import {
   createElementNode,
   createTextNode,
@@ -97,6 +103,147 @@ export function getParagraphContent(paragraph: ElementNode): string {
 }
 
 /**
+ * Interface for element split result
+ */
+export interface ElementSplitResult {
+  firstElement: VNode | null;
+  secondElement: VNode | null;
+}
+
+/**
+ * Split an element node at the given position
+ * Returns two new element nodes with content split at the position
+ */
+export function splitElementAtPosition(element: VNode, position: number): ElementSplitResult {
+  if (isTextNode(element)) {
+    // For text nodes, split the content
+    const firstText = element.content.substring(0, position);
+    const secondText = element.content.substring(position);
+
+    return {
+      firstElement: firstText ? createTextNode(firstText) : null,
+      secondElement: secondText ? createTextNode(secondText) : null,
+    };
+  }
+
+  if (isElementNode(element)) {
+    // For element nodes, create two new elements with the same tag and attributes
+    const firstElement = createElementNode(element.tagName, { attributes: element.attributes });
+    const secondElement = createElementNode(element.tagName, { attributes: element.attributes });
+
+    // Split the children at the given position
+    let currentPosition = 0;
+    let splitFound = false;
+
+    for (const child of element.children) {
+      if (splitFound) {
+        // All remaining children go to second element
+        secondElement.children.push(child);
+        child.parent = secondElement;
+      } else {
+        const childLength = getElementContentLength(child);
+
+        if (currentPosition + childLength <= position) {
+          // Entire child goes to first element
+          firstElement.children.push(child);
+          child.parent = firstElement;
+          currentPosition += childLength;
+        } else if (currentPosition >= position) {
+          // Entire child goes to second element
+          secondElement.children.push(child);
+          child.parent = secondElement;
+          splitFound = true;
+        } else {
+          // Split this child
+          const childSplitPosition = position - currentPosition;
+          const childSplitResult = splitElementAtPosition(child, childSplitPosition);
+
+          if (childSplitResult.firstElement) {
+            firstElement.children.push(childSplitResult.firstElement);
+            childSplitResult.firstElement.parent = firstElement;
+          }
+
+          if (childSplitResult.secondElement) {
+            secondElement.children.push(childSplitResult.secondElement);
+            childSplitResult.secondElement.parent = secondElement;
+          }
+
+          splitFound = true;
+        }
+
+        currentPosition += childLength;
+      }
+    }
+
+    return {
+      firstElement: firstElement.children.length > 0 ? firstElement : null,
+      secondElement: secondElement.children.length > 0 ? secondElement : null,
+    };
+  }
+
+  if (isFormattingNode(element)) {
+    // For formatting nodes, create two new formatting nodes with the same tag and format type
+    const firstElement = createFormattingNode(element.formatType);
+    const secondElement = createFormattingNode(element.formatType);
+
+    // Split the children at the given position
+    let currentPosition = 0;
+    let splitFound = false;
+
+    for (const child of element.children) {
+      if (splitFound) {
+        // All remaining children go to second element
+        secondElement.children.push(child);
+        child.parent = secondElement;
+      } else {
+        const childLength = getElementContentLength(child);
+
+        if (currentPosition + childLength <= position) {
+          // Entire child goes to first element
+          firstElement.children.push(child);
+          child.parent = firstElement;
+          currentPosition += childLength;
+        } else if (currentPosition >= position) {
+          // Entire child goes to second element
+          secondElement.children.push(child);
+          child.parent = secondElement;
+          splitFound = true;
+        } else {
+          // Split this child
+          const childSplitPosition = position - currentPosition;
+          const childSplitResult = splitElementAtPosition(child, childSplitPosition);
+
+          if (childSplitResult.firstElement) {
+            firstElement.children.push(childSplitResult.firstElement);
+            childSplitResult.firstElement.parent = firstElement;
+          }
+
+          if (childSplitResult.secondElement) {
+            secondElement.children.push(childSplitResult.secondElement);
+            childSplitResult.secondElement.parent = secondElement;
+          }
+
+          splitFound = true;
+        }
+
+        currentPosition += childLength;
+      }
+    }
+
+    return {
+      firstElement: firstElement.children.length > 0 ? firstElement : null,
+      secondElement: secondElement.children.length > 0 ? secondElement : null,
+    };
+  }
+
+  // For other node types, return as-is (shouldn't happen in normal cases)
+  return {
+    firstElement: element,
+    secondElement: null,
+  };
+}
+
+/**
  * Split a paragraph at the given cursor position
  * Returns two new paragraph nodes with content split at the cursor
  */
@@ -108,7 +255,9 @@ export function splitParagraphAtCursor(
   const secondParagraph = createParagraphNode();
 
   // Calculate relative position within paragraph
-  const relativePosition = cursorPosition - paragraph.startOffset;
+  // If paragraph.startOffset is 0, use cursorPosition directly
+  const relativePosition =
+    paragraph.startOffset === 0 ? cursorPosition : cursorPosition - paragraph.startOffset;
 
   if (relativePosition <= 0) {
     // Split at beginning - all content goes to second paragraph
@@ -160,20 +309,71 @@ export function splitParagraphAtCursor(
 
           splitFound = true;
         }
-      } else {
-        // For non-text nodes, we'll put them entirely in one paragraph or the other
-        // This is a simplified approach - in a full implementation we might need to split element nodes too
-        if (currentPosition < relativePosition) {
+      } else if (isFormattingNode(child)) {
+        // Handle formatting nodes specifically
+        const elementLength = getElementContentLength(child);
+
+        if (currentPosition + elementLength <= relativePosition) {
+          // Entire formatting element goes to first paragraph
           firstParagraph.children.push(child);
           child.parent = firstParagraph;
-        } else {
+          currentPosition += elementLength;
+        } else if (currentPosition >= relativePosition) {
+          // Entire formatting element goes to second paragraph
           secondParagraph.children.push(child);
           child.parent = secondParagraph;
           splitFound = true;
+        } else {
+          // Cursor is inside this formatting element - need to split the element
+          const elementSplitPosition = relativePosition - currentPosition;
+          const splitResult = splitElementAtPosition(child, elementSplitPosition);
+
+          if (splitResult.firstElement) {
+            firstParagraph.children.push(splitResult.firstElement);
+            splitResult.firstElement.parent = firstParagraph;
+          }
+
+          if (splitResult.secondElement) {
+            secondParagraph.children.push(splitResult.secondElement);
+            splitResult.secondElement.parent = secondParagraph;
+          }
+
+          splitFound = true;
         }
 
-        // Estimate the length of element content for positioning
+        currentPosition += elementLength;
+      } else {
+        // For other element nodes, we need to split them if the cursor is inside
         const elementLength = getElementContentLength(child);
+
+        if (currentPosition + elementLength <= relativePosition) {
+          // Entire element goes to first paragraph
+          firstParagraph.children.push(child);
+          child.parent = firstParagraph;
+          currentPosition += elementLength;
+        } else if (currentPosition >= relativePosition) {
+          // Entire element goes to second paragraph
+          secondParagraph.children.push(child);
+          child.parent = secondParagraph;
+          splitFound = true;
+        } else {
+          // Cursor is inside this element - need to split the element
+          const elementSplitPosition = relativePosition - currentPosition;
+          const splitResult = splitElementAtPosition(child, elementSplitPosition);
+
+          if (splitResult.firstElement) {
+            firstParagraph.children.push(splitResult.firstElement);
+            splitResult.firstElement.parent = firstParagraph;
+          }
+
+          if (splitResult.secondElement) {
+            secondParagraph.children.push(splitResult.secondElement);
+            splitResult.secondElement.parent = secondParagraph;
+          }
+
+          splitFound = true;
+        }
+
         currentPosition += elementLength;
       }
     }

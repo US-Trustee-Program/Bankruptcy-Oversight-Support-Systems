@@ -6,6 +6,7 @@ import { createTextNode, createFormattingNode } from '../virtual-dom/VNodeFactor
 import { insertNode, removeNode } from '../virtual-dom/VirtualDOMOperations';
 import { HtmlCodec } from '../virtual-dom/HtmlCodec';
 import { SelectionService } from '../SelectionService.humble';
+import { ZERO_WIDTH_SPACE } from '../../RichTextEditor/Editor.constants';
 import { FormatType, getSelectionFormattingState } from './services/FormattingDetectionService';
 import { removeFormattingFromSelection } from './services/FormattingRemovalService';
 import {
@@ -13,6 +14,7 @@ import {
   mergeParagraphs,
   findParagraphAtCursor,
   getCursorPositionInParagraph,
+  createParagraphNode,
 } from './services/ParagraphOperationsService';
 
 export interface EditorChangeListener {
@@ -171,17 +173,30 @@ export class Editor {
     // Get pasted content
     const pastedText = e.clipboardData.getData('text/plain');
 
-    if (pastedText) {
-      // Update virtual DOM with pasted content
+    if (pastedText.trim()) {
+      // Split pasted text by newlines to create multiple paragraphs
+      const lines = pastedText.split('\n').filter((line) => line.trim() !== '');
+
+      if (lines.length === 0) {
+        return true; // No content to paste
+      }
+
       const root = this.virtualDOM.getRoot();
-      const textNode = createTextNode(pastedText);
-      insertNode(root, textNode, root.children.length);
+
+      // Create paragraph nodes for each line
+      lines.forEach((line) => {
+        const paragraphNode = createParagraphNode({}, line.trim());
+        insertNode(root, paragraphNode, root.children.length);
+      });
+
+      // Encode the updated virtual DOM to HTML
+      const newHtml = HtmlCodec.encode(root);
 
       // Update real DOM
-      this.rootElement.innerText = pastedText;
+      this.rootElement.innerHTML = newHtml;
 
       // Notify change
-      this.notifyChange(this.getHtml());
+      this.notifyChange(newHtml);
     }
     return true;
   }
@@ -286,7 +301,7 @@ export class Editor {
     if (!selection || selection.rangeCount === 0) {
       // No selection, add empty paragraph at end
       const currentHtml = this.rootElement.innerHTML;
-      const newHtml = currentHtml + '<p><br></p>';
+      const newHtml = currentHtml + `<p>${ZERO_WIDTH_SPACE}</p>`;
       this.rootElement.innerHTML = newHtml;
       this.setValue(newHtml);
       this.notifyChange(newHtml);
@@ -302,18 +317,15 @@ export class Editor {
     if (!currentParagraph) {
       // No paragraph found, create new paragraph
       const currentHtml = this.rootElement.innerHTML;
-      const newHtml = currentHtml + '<p><br></p>';
+      const newHtml = currentHtml + `<p>${ZERO_WIDTH_SPACE}</p>`;
       this.rootElement.innerHTML = newHtml;
       this.setValue(newHtml);
       this.notifyChange(newHtml);
       return true;
     }
 
-    // Get relative cursor position within the paragraph
-    const relativeCursorPosition = getCursorPositionInParagraph(currentParagraph, cursorPosition);
-
-    // Split the paragraph at the cursor position
-    const splitResult = splitParagraphAtCursor(currentParagraph, relativeCursorPosition);
+    // Split the paragraph at the cursor position (using absolute position)
+    const splitResult = splitParagraphAtCursor(currentParagraph, cursorPosition);
 
     // Update the virtual DOM with the split paragraphs
     if (currentParagraph.parent) {

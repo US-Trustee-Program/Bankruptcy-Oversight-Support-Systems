@@ -2,6 +2,7 @@ import * as React from 'react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { Editor } from './Editor';
 import { MockSelectionService } from '../SelectionService.humble';
+import { ZERO_WIDTH_SPACE } from '../../RichTextEditor/Editor.constants';
 
 describe('Editor', () => {
   let mockElement: HTMLElement;
@@ -190,7 +191,7 @@ describe('Editor', () => {
 
     expect(result).toBe(true);
     expect(mockEvent.preventDefault).toHaveBeenCalled();
-    expect(mockElement.innerText).toBe('pasted text');
+    expect(mockElement.innerHTML).toContain('<p>pasted text</p>');
     expect(onChange).toHaveBeenCalled();
   });
 
@@ -206,6 +207,98 @@ describe('Editor', () => {
 
     const result = editor.handlePaste(mockEvent);
     expect(result).toBe(false);
+  });
+
+  test('handlePaste wraps single line text in paragraph', () => {
+    const onChange = vi.fn();
+    editor.onContentChange(onChange);
+
+    const mockEvent = {
+      preventDefault: vi.fn(),
+      clipboardData: {
+        getData: vi.fn().mockReturnValue('single line text'),
+      },
+    } as unknown as React.ClipboardEvent<HTMLDivElement>;
+
+    const result = editor.handlePaste(mockEvent);
+
+    expect(result).toBe(true);
+    expect(mockEvent.preventDefault).toHaveBeenCalled();
+    expect(onChange).toHaveBeenCalled();
+
+    // Should wrap pasted text in paragraph
+    const html = editor.getHtml();
+    expect(html).toContain('<p>single line text</p>');
+  });
+
+  test('handlePaste creates multiple paragraphs for multi-line text', () => {
+    const onChange = vi.fn();
+    editor.onContentChange(onChange);
+
+    const multiLineText = 'First line\nSecond line\nThird line';
+    const mockEvent = {
+      preventDefault: vi.fn(),
+      clipboardData: {
+        getData: vi.fn().mockReturnValue(multiLineText),
+      },
+    } as unknown as React.ClipboardEvent<HTMLDivElement>;
+
+    const result = editor.handlePaste(mockEvent);
+
+    expect(result).toBe(true);
+    expect(mockEvent.preventDefault).toHaveBeenCalled();
+    expect(onChange).toHaveBeenCalled();
+
+    // Should create multiple paragraphs
+    const html = editor.getHtml();
+    expect(html).toContain('<p>First line</p>');
+    expect(html).toContain('<p>Second line</p>');
+    expect(html).toContain('<p>Third line</p>');
+  });
+
+  test('handlePaste preserves existing paragraph structure', () => {
+    const onChange = vi.fn();
+    editor.onContentChange(onChange);
+
+    // Set initial content with existing paragraphs
+    editor.setValue('<p>Existing paragraph</p>');
+
+    const mockEvent = {
+      preventDefault: vi.fn(),
+      clipboardData: {
+        getData: vi.fn().mockReturnValue('pasted text'),
+      },
+    } as unknown as React.ClipboardEvent<HTMLDivElement>;
+
+    const result = editor.handlePaste(mockEvent);
+
+    expect(result).toBe(true);
+    expect(mockEvent.preventDefault).toHaveBeenCalled();
+    expect(onChange).toHaveBeenCalled();
+
+    // Should preserve existing content and add new paragraph
+    const html = editor.getHtml();
+    expect(html).toContain('<p>Existing paragraph</p>');
+    expect(html).toContain('<p>pasted text</p>');
+  });
+
+  test('handlePaste handles empty clipboard data gracefully', () => {
+    const onChange = vi.fn();
+    editor.onContentChange(onChange);
+
+    const mockEvent = {
+      preventDefault: vi.fn(),
+      clipboardData: {
+        getData: vi.fn().mockReturnValue(''),
+      },
+    } as unknown as React.ClipboardEvent<HTMLDivElement>;
+
+    const result = editor.handlePaste(mockEvent);
+
+    expect(result).toBe(true);
+    expect(mockEvent.preventDefault).toHaveBeenCalled();
+    // onChange should not be called for empty paste
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   test('change listener registration and removal works', () => {
@@ -337,7 +430,7 @@ describe('Editor', () => {
       // Should create new empty paragraph after existing content
       const html = editor.getHtml();
       expect(html).toContain('<p>Hello world</p>');
-      expect(html).toContain('<p><br></br></p>'); // Empty paragraphs contain <br> tags
+      expect(html).toContain(`<p>${ZERO_WIDTH_SPACE}</p>`); // Empty paragraphs contain zero-width-space
     });
 
     test('handleKeyDown handles Backspace key for paragraph merging', () => {
@@ -437,6 +530,154 @@ describe('Editor', () => {
       const result = editor.handleKeyDown(mockEvent);
       expect(result).toBe(false);
       expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+    });
+
+    // Tests for the specific scenarios mentioned in the issue description
+    describe('Enter key with formatting preservation', () => {
+      test('Enter at beginning of formatted text should prepend empty paragraph', () => {
+        const onChange = vi.fn();
+        editor.onContentChange(onChange);
+
+        // Set content with formatted text
+        editor.setValue('<p><strong>Bold text</strong> and normal text</p>');
+
+        // Mock cursor at beginning of the paragraph (before "Bold")
+        mockSelectionService.setMockCursorPosition(0);
+
+        const mockEvent = {
+          key: 'Enter',
+          ctrlKey: false,
+          metaKey: false,
+          preventDefault: vi.fn(),
+        } as unknown as React.KeyboardEvent<HTMLDivElement>;
+
+        const result = editor.handleKeyDown(mockEvent);
+
+        expect(result).toBe(true);
+        expect(mockEvent.preventDefault).toHaveBeenCalled();
+        expect(onChange).toHaveBeenCalled();
+
+        // Should create empty paragraph before existing content
+        const html = editor.getHtml();
+        expect(html).toContain('<p></p>'); // Empty paragraph first
+        expect(html).toContain('<p><strong>Bold text</strong> and normal text</p>'); // Original content preserved
+      });
+
+      test('Enter at end of formatted text should append empty paragraph', () => {
+        const onChange = vi.fn();
+        editor.onContentChange(onChange);
+
+        // Set content with formatted text
+        editor.setValue('<p>Normal text and <strong>bold text</strong></p>');
+
+        // Mock cursor at end of the paragraph (after "bold text")
+        mockSelectionService.setMockCursorPosition(25); // At end of paragraph
+
+        const mockEvent = {
+          key: 'Enter',
+          ctrlKey: false,
+          metaKey: false,
+          preventDefault: vi.fn(),
+        } as unknown as React.KeyboardEvent<HTMLDivElement>;
+
+        const result = editor.handleKeyDown(mockEvent);
+
+        expect(result).toBe(true);
+        expect(mockEvent.preventDefault).toHaveBeenCalled();
+        expect(onChange).toHaveBeenCalled();
+
+        // Should create empty paragraph after existing content
+        const html = editor.getHtml();
+        expect(html).toContain('<p>Normal text and <strong>bold text</strong></p>'); // Original content preserved
+        expect(html).toContain(`<p>${ZERO_WIDTH_SPACE}</p>`); // Empty paragraph after
+      });
+
+      test('Enter in middle of formatted text should split with formatting preserved', () => {
+        const onChange = vi.fn();
+        editor.onContentChange(onChange);
+
+        // Set content with formatted text
+        editor.setValue('<p><strong>Hello world</strong></p>');
+
+        // Mock cursor in middle of "Hello world" (between "Hello" and " world")
+        mockSelectionService.setMockCursorPosition(5); // After "Hello"
+
+        const mockEvent = {
+          key: 'Enter',
+          ctrlKey: false,
+          metaKey: false,
+          preventDefault: vi.fn(),
+        } as unknown as React.KeyboardEvent<HTMLDivElement>;
+
+        const result = editor.handleKeyDown(mockEvent);
+
+        expect(result).toBe(true);
+        expect(mockEvent.preventDefault).toHaveBeenCalled();
+        expect(onChange).toHaveBeenCalled();
+
+        // Should split the formatted text properly
+        const html = editor.getHtml();
+        expect(html).toContain('<p><strong>Hello</strong></p>'); // First paragraph with formatting
+        expect(html).toContain('<p><strong> world</strong></p>'); // Second paragraph with formatting
+      });
+
+      test('Enter in middle of mixed formatting should preserve all formatting', () => {
+        const onChange = vi.fn();
+        editor.onContentChange(onChange);
+
+        // Set content with mixed formatting
+        editor.setValue('<p>Normal <strong>bold</strong> and <em>italic</em> text</p>');
+
+        // Mock cursor between "bold" and " and" (after the </strong> tag)
+        mockSelectionService.setMockCursorPosition(11); // After "bold"
+
+        const mockEvent = {
+          key: 'Enter',
+          ctrlKey: false,
+          metaKey: false,
+          preventDefault: vi.fn(),
+        } as unknown as React.KeyboardEvent<HTMLDivElement>;
+
+        const result = editor.handleKeyDown(mockEvent);
+
+        expect(result).toBe(true);
+        expect(mockEvent.preventDefault).toHaveBeenCalled();
+        expect(onChange).toHaveBeenCalled();
+
+        // Should split while preserving all formatting
+        const html = editor.getHtml();
+        expect(html).toContain('<p>Normal <strong>bold</strong></p>'); // First paragraph
+        expect(html).toContain('<p> and <em>italic</em> text</p>'); // Second paragraph
+      });
+
+      test('Enter in middle of nested formatting should preserve nesting', () => {
+        const onChange = vi.fn();
+        editor.onContentChange(onChange);
+
+        // Set content with nested formatting (bold + italic)
+        editor.setValue('<p><strong><em>Bold italic text</em></strong></p>');
+
+        // Mock cursor in middle of "Bold italic text" (between "Bold" and " italic")
+        mockSelectionService.setMockCursorPosition(4); // After "Bold"
+
+        const mockEvent = {
+          key: 'Enter',
+          ctrlKey: false,
+          metaKey: false,
+          preventDefault: vi.fn(),
+        } as unknown as React.KeyboardEvent<HTMLDivElement>;
+
+        const result = editor.handleKeyDown(mockEvent);
+
+        expect(result).toBe(true);
+        expect(mockEvent.preventDefault).toHaveBeenCalled();
+        expect(onChange).toHaveBeenCalled();
+
+        // Should split while preserving nested formatting
+        const html = editor.getHtml();
+        expect(html).toContain('<p><strong><em>Bold</em></strong></p>'); // First paragraph with nested formatting
+        expect(html).toContain('<p><strong><em> italic text</em></strong></p>'); // Second paragraph with nested formatting
+      });
     });
   });
 });

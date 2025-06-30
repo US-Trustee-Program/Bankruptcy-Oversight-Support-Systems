@@ -226,16 +226,16 @@ It is important to minimize third party dependencies.
     - [x] Paragraph-aware editor behaviors
         - [x] Implement Enter key paragraph creation logic
         - [x] Add Backspace/Delete paragraph merging behavior
-        - [ ] Create paragraph navigation and cursor positioning
+        - [x] Create paragraph navigation and cursor positioning
         - [x] Handle formatting preservation across paragraph operations
-    - [ ] HTML structure and encoding
-        - [ ] Ensure proper paragraph HTML output (<p> tags)
-        - [ ] Handle paragraph-based content parsing from HTML input
-        - [ ] Maintain paragraph structure during HTML sanitization
-    - [ ] Integration with existing systems
-        - [ ] Update FSM to handle paragraph-related state transitions
-        - [ ] Integrate paragraph operations with formatting system
-        - [ ] Ensure paragraph handling works with clipboard operations
+    - [x] HTML structure and encoding
+        - [x] Ensure proper paragraph HTML output (<p> tags)
+        - [x] Handle paragraph-based content parsing from HTML input
+        - [x] Maintain paragraph structure during HTML sanitization
+    - [x] Integration with existing systems
+        - [x] Update FSM to handle paragraph-related state transitions
+        - [x] Integrate paragraph operations with formatting system
+        - [x] Ensure paragraph handling works with clipboard operations
         - [x] Add comprehensive tests for paragraph functionality
 
 ### Phase 3: Advanced Features

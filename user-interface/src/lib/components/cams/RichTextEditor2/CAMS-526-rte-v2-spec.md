@@ -93,6 +93,16 @@
 *   **Rationale & Trade-offs:** Comprehensive accessibility ensures legal compliance and inclusive user experience. Service-based approach maintains testability. Trade-off: Additional implementation complexity, but critical accessibility benefits.
 *   **Implications:** Requires AccessibilityService, ARIA state management, and keyboard navigation handlers.
 
+### DECISION-009: Empty Paragraph Definition with Zero-Width Space
+*   **Context:** Need for consistent representation of empty paragraphs across different browsers and editing scenarios while maintaining semantic correctness and accessibility.
+*   **Decision:** Define empty paragraphs as paragraph elements containing a single zero-width space character (U+200B) instead of `<br>` tags or truly empty elements.
+*   **Alternatives Considered:**
+    *   **Alternative A:** Empty paragraph elements with no content (`<p></p>`)
+    *   **Alternative B:** Paragraph elements with `<br>` tags (`<p><br></p>`)
+    *   **Alternative C:** Non-breaking space character (`&nbsp;`)
+*   **Rationale & Trade-offs:** Zero-width space provides consistent cursor positioning across browsers, maintains semantic paragraph structure, and ensures accessibility compliance. Unlike `<br>` tags, it doesn't introduce visual spacing issues. Unlike empty elements, it provides a reliable cursor target. Trade-off: Slightly more complex content handling, but significant gains in cross-browser consistency and user experience.
+*   **Implications:** All paragraph creation, splitting, and merging operations must use the ZERO_WIDTH_SPACE constant. HTML encoding/decoding must handle zero-width space characters appropriately. Testing must account for zero-width space in empty paragraph assertions.
+
 ## 3. Data Models / Schema
 
 ### Entity: VNode (Virtual DOM Node)
