@@ -1,453 +1,142 @@
-# CAMS-526 RichTextEditor2 Component Specification
-
-## Overview
-
-This specification documents the RichTextEditor2 component implementation for the CAMS (Case
-Management System) project. The component is designed as a drop-in replacement for the existing
-RichTextEditor, featuring improved architecture with finite state machine (FSM) state management,
-virtual DOM document representation, and HTML encoding for content storage.
-
-## Architecture Overview
-
-### Core Design Principles
-
-The RichTextEditor2 follows CAMS development guidelines and implements an Option-Enabling Software
-Architecture (OeSA):
-
-- **Screaming Architecture**: Directory structure reflects the domain (rich text editing) rather
-  than technical implementation
-- **Dependency Rule**: Strategic components (Editor, FSM) do not depend on tactical components
-  (React, DOM APIs)
-- **Good Fences**: Clean boundaries with simple data types crossing major boundaries
-- **Invasive Species Rule**: Third-party dependencies are isolated through humble objects and
-  adapters
-
-### Component Architecture
-
-```
-RichTextEditor2/
-├── RichTextEditor2.tsx           # Thin React component (UI layer)
-├── editor/
-│   ├── Editor.ts                 # Core editor logic (strategic)
-│   └── services/                 # Pure function services
-│       ├── FormattingDetectionService.ts
-│       ├── FormattingRemovalService.ts
-│       └── ParagraphOperationsService.ts
-├── state-machine/
-│   ├── StateMachine.ts           # Finite state machine
-│   └── StateMachineContext.tsx   # React context wrapper
-├── virtual-dom/
-│   ├── VNode.ts                  # Virtual node definitions
-│   ├── VNodeFactory.ts           # Node creation utilities
-│   ├── VirtualDOMTree.ts         # Tree management
-│   ├── VirtualDOMOperations.ts   # Tree operations
-│   └── HtmlCodec.ts              # HTML encoding/decoding
-└── SelectionService.humble.ts    # Browser selection abstraction
-```
-
-## Current Implementation Status
-
-### Completed Features ✅
-
-#### Phase 1: Core Architecture
-
-- **Finite State Machine**: Complete FSM implementation with states (IDLE, TYPING, SELECTING,
-  FORMATTING)
-- **Virtual DOM**: Full virtual DOM structure with node types, tree operations, and synchronization
-- **HTML Encoding**: Robust HTML encoding/decoding with DOMPurify sanitization
-- **Editor Class**: Complete Editor abstraction encapsulating FSM and virtual DOM
-
-#### Phase 2: Basic Editor Functionality
-
-- **Text Input and Editing**: Full text input handling with virtual DOM integration
-- **Basic Formatting**: Bold, italic, underline formatting with toggle functionality
-- **Style Toggling**: Complete implementation with formatting detection and removal services
-- **Paragraph Handling**: Comprehensive paragraph operations including:
-  - Enter key paragraph creation and splitting
-  - Backspace/Delete paragraph merging
-  - Paragraph formatting operations
-  - Cross-paragraph content manipulation
-  - Enhanced cursor positioning within paragraphs
-  - Paragraph boundary detection and navigation
-  - Cursor position preservation during virtual DOM updates
-
-#### Component Interface
-
-- **Props Interface**: Complete compatibility with original RichTextEditor props
-- **Ref Interface**: All ref methods implemented (clearValue, getValue, getHtml, setValue, disable,
-  focus)
-- **Event Handling**: Full keyboard shortcuts (Ctrl+B, Ctrl+I, Ctrl+U) and paste handling
-
-#### Testing Infrastructure
-
-- **Comprehensive Test Coverage**: 296 tests across all components
-- **Unit Tests**: FSM, virtual DOM, services, and Editor class
-- **Integration Tests**: Component-level user interaction scenarios
-- **Test-Driven Development**: All features implemented with tests-first approach
-
-### Remaining Work 🚧
-
-#### Phase 3: Advanced Features
-
-1. **Toolbar Implementation** 🔄
-
-   - Integrate RichTextButton components with state machine
-   - Visual feedback for formatting state
-   - Accessibility compliance for toolbar
-   - Keyboard navigation support
-
-2. **List Management** ⏳
-
-   - Bulleted lists (ul) creation and management
-   - Numbered lists (ol) creation and management
-   - List nesting support (sub-lists)
-   - List item navigation and manipulation
-   - List-to-paragraph and paragraph-to-list conversion
-
-3. **Advanced Keyboard Handling** ⏳
-
-   - Tab navigation and indentation
-   - List-specific keyboard shortcuts
-   - Advanced cursor positioning
-
-4. **Enhanced Clipboard Operations** ⏳
-   - Copy/cut operations with rich text preservation
-   - Rich text preservation in clipboard
-   - Improved paste handling for complex HTML
-
-#### Phase 4: Polish and Optimization
-
-1. **Performance Optimization** ⏳
-
-   - Virtual DOM operation optimization
-   - Debouncing expensive operations
-   - Memory management improvements
-   - Large document handling optimization
-
-2. **Accessibility and UX** ⏳
-
-   - ARIA attributes and roles enhancement
-   - Screen reader compatibility improvements
-   - Smooth cursor movement
-   - Visual feedback for state changes
-
-3. **Content Management** ⏳
-   - HTML structure validation
-   - Whitespace and formatting normalization
-   - Edge case handling in HTML content
-
-## Technical Specifications
-
-### Editor Class Interface
-
-```typescript
-export interface EditorChangeListener {
-  (html: string): void;
-}
-
-export class Editor {
-  constructor(root: HTMLElement, selectionService: SelectionService);
-
-  // Content management
-  clearValue(): void;
-  getValue(): string;
-  getHtml(): string;
-  setValue(html: string): void;
-  focus(): void;
-  disable(disabled: boolean): void;
-
-  // Event handling
-  handleInput(e: React.FormEvent<HTMLDivElement>): boolean;
-  handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>): boolean;
-  handlePaste(e: React.ClipboardEvent<HTMLDivElement>): boolean;
-
-  // Change listeners
-  onContentChange(listener: EditorChangeListener): void;
-  removeContentChangeListener(listener: EditorChangeListener): void;
-
-  // State management
-  getCurrentState(): EditorState;
-
-  // Cleanup
-  destroy(): void;
-}
-```
-
-### React Component Interface
-
-```typescript
-export interface RichTextEditor2Props {
-  id: string;
-  label?: string;
-  ariaDescription?: string;
-  onChange?: (value: string) => void;
-  disabled?: boolean;
-  required?: boolean;
-  className?: string;
-}
-
-export interface RichTextEditor2Ref {
-  clearValue: () => void;
-  getValue: () => string;
-  getHtml: () => string;
-  setValue: (value: string) => void;
-  disable: (value: boolean) => void;
-  focus: () => void;
-}
-```
-
-### Services Architecture
-
-All services follow the pure function pattern and are located in `editor/services/`:
-
-- **FormattingDetectionService**: Pure functions for detecting formatting states
-- **FormattingRemovalService**: Pure functions for removing formatting
-- **ParagraphOperationsService**: Pure functions for paragraph manipulation
-
-### State Machine States
-
-```typescript
-enum EditorState {
-  IDLE = 'IDLE',
-  TYPING = 'TYPING',
-  SELECTING = 'SELECTING',
-  FORMATTING = 'FORMATTING',
-}
-
-enum EditorEvent {
-  INPUT = 'INPUT',
-  KEYBOARD_SHORTCUT = 'KEYBOARD_SHORTCUT',
-  SELECTION_CHANGE = 'SELECTION_CHANGE',
-  RESET = 'RESET',
-}
-```
-
-### Virtual DOM Structure
-
-```typescript
-interface VNode {
-  type: 'text' | 'element';
-  tagName?: string;
-  attributes?: Record<string, string>;
-  textContent?: string;
-  children: VNode[];
-  parent?: VNode;
-}
-```
-
-## Paragraph Handling Design Directives
-
-### Core Paragraph Behavior Requirements
-
-The RichTextEditor2 component must adhere to specific paragraph handling behaviors to ensure
-consistent and predictable user experience:
-
-#### 1. Initialization Behavior
-
-- **Initial Structure**: Upon component initialization, the editor must contain a single empty
-  paragraph (`<p>`) element as the first and only child of the root contenteditable div
-- **No Direct Text Nodes**: The root div must never contain text nodes as direct children; all text
-  content must be wrapped in paragraph elements
-- **Non-Deletable Root Paragraph**: The initial empty paragraph cannot be deleted by user actions
-  (Backspace, Delete keys)
-- **HTML Structure**: The initial state should render as:
-  ```html
-  <div contenteditable="true">
-    <p></p>
-  </div>
-  ```
-
-#### 2. Enter Key Behavior
-
-- **New Paragraph Creation**: When the Enter key is pressed, create a new empty paragraph (`<p>`)
-  element
-- **Cursor Positioning**: Place the cursor inside the newly created paragraph at the beginning of
-  the paragraph
-- **Visual Behavior**: This creates the visual effect of a new line with the cursor positioned at
-  the start
-- **Paragraph Splitting**: If Enter is pressed within existing content, split the current paragraph
-  at the cursor position, creating two paragraphs
-
-#### 3. Paragraph Structure Maintenance
-
-- **Consistent Wrapper**: All text content must be contained within paragraph elements
-- **Empty Paragraph Handling**: Empty paragraphs should be preserved to maintain line structure
-- **Cross-Paragraph Operations**: Formatting and editing operations must respect paragraph
-  boundaries
-- **HTML Output**: All HTML output must maintain proper paragraph structure with `<p>` tags
-
-#### 4. Implementation Requirements
-
-- **Virtual DOM Support**: The virtual DOM must properly represent paragraph structure
-- **ParagraphOperationsService**: Paragraph operations must be implemented through the
-  ParagraphOperationsService
-- **State Machine Integration**: Paragraph creation and manipulation must integrate with the editor
-  state machine
-- **Selection Management**: Cursor positioning and selection must be paragraph-aware
-
-#### 5. Browser Compatibility
-
-- **Cross-Browser Consistency**: Paragraph behavior must be consistent across all supported browsers
-- **DOM Normalization**: The component must normalize browser-specific paragraph handling
-  differences
-- **Selection Preservation**: Cursor position must be preserved during paragraph operations
-
-### Technical Implementation Notes
-
-These directives ensure that:
-
-- The editor maintains a predictable document structure
-- Text content is always properly containerized in semantic HTML elements
-- User interactions (Enter key, content editing) behave consistently
-- The virtual DOM and actual DOM remain synchronized with paragraph structure
-- Accessibility standards are maintained through proper semantic markup
-
-## Implementation Guidelines
-
-### Development Practices
-
-1. **Test-Driven Development**: Write tests before implementation
-2. **Pure Functions**: Prefer pure functions in services over stateful classes
-3. **Dependency Injection**: Use constructor injection for dependencies
-4. **Error Handling**: Implement comprehensive error handling and edge cases
-5. **TypeScript**: Maintain strict TypeScript compliance with no compiler warnings
-
-### Code Organization
-
-1. **Services Pattern**: Implement new functionality as pure functions in services directory
-2. **Single Responsibility**: Each service should have a single, well-defined responsibility
-3. **Interface Segregation**: Define minimal interfaces for dependencies
-4. **Dependency Inversion**: Depend on abstractions, not concretions
-
-### Testing Requirements
-
-1. **Unit Test Coverage**: Maintain 100% line and branch coverage
-2. **Integration Tests**: Test component behavior from user perspective
-3. **Mock Dependencies**: Use humble objects for browser APIs
-4. **BDD-Style Tests**: Write behavior-driven tests for user scenarios
-
-## Next Implementation Steps
-
-### Priority 1: Toolbar Implementation
-
-**Objective**: Complete the visual toolbar with formatting buttons
-
-**Tasks**:
-
-1. Integrate RichTextButton components with Editor class
-2. Implement toolbar state synchronization with formatting state
-3. Add visual feedback for active formatting
-4. Ensure accessibility compliance
-5. Add keyboard navigation support
-
-**Acceptance Criteria**:
-
-- Toolbar buttons reflect current formatting state
-- Clicking buttons toggles formatting correctly
-- Keyboard shortcuts work alongside toolbar buttons
-- ARIA attributes provide proper accessibility
-- All existing tests continue to pass
-
-### Priority 2: List Management
-
-**Objective**: Implement bulleted and numbered list functionality
-
-**Tasks**:
-
-1. Create ListOperationsService with pure functions
-2. Extend virtual DOM to support list nodes (ul, ol, li)
-3. Implement list creation and conversion operations
-4. Add list-specific keyboard handling
-5. Implement list nesting support
-
-**Acceptance Criteria**:
-
-- Users can create bulleted and numbered lists
-- Lists can be nested and un-nested
-- List items can be converted to paragraphs and vice versa
-- Keyboard navigation works within lists
-- List formatting is preserved during operations
-
-### Priority 3: Performance Optimization
-
-**Objective**: Optimize component performance for large documents
-
-**Tasks**:
-
-1. Implement virtual DOM operation batching
-2. Add debouncing for expensive operations
-3. Optimize memory usage and cleanup
-4. Add performance monitoring and metrics
-
-**Acceptance Criteria**:
-
-- Component handles large documents (>10KB) smoothly
-- Memory usage remains stable during extended use
-- Virtual DOM operations are efficiently batched
-- No memory leaks in long-running sessions
-
-## Success Criteria
-
-### Functional Requirements
-
-- ✅ Drop-in replacement for existing RichTextEditor
-- ✅ Maintains same prop and ref interface
-- ✅ Supports basic text formatting (bold, italic, underline)
-- ✅ Handles paragraph operations correctly
-- 🚧 Supports list creation and management
-- 🚧 Provides accessible toolbar interface
-- 🚧 Handles large documents efficiently
-
-### Non-Functional Requirements
-
-- ✅ Maintainable and extensible architecture
-- ✅ Comprehensive test coverage (296 tests passing)
-- ✅ TypeScript compliance with no compiler warnings
-- ✅ Follows CAMS development guidelines
-- 🚧 Performance optimized for production use
-- 🚧 Full accessibility compliance (WCAG 2.1 AA)
-
-### Technical Requirements
-
-- ✅ Finite state machine for state management
-- ✅ Virtual DOM for document representation
-- ✅ HTML encoding with XSS protection
-- ✅ Services architecture with pure functions
-- ✅ Dependency injection and inversion
-- ✅ Clean separation of concerns
-
-## Dependencies
-
-### Allowed Dependencies
-
-- **React**: Core library for UI components
-- **DOMPurify**: HTML sanitization for XSS protection
-
-### Internal Dependencies
-
-- **CAMS Design System**: RichTextButton and other UI components
-- **Testing Libraries**: @testing-library/react, vitest
-- **TypeScript**: Type safety and development tooling
-
-## Migration Strategy
-
-The RichTextEditor2 is designed as a drop-in replacement:
-
-1. **Interface Compatibility**: Same props and ref interface as original
-2. **CSS Compatibility**: Same CSS class structure
-3. **Event Compatibility**: Same event handling patterns
-4. **Accessibility Compatibility**: Same ARIA attributes and roles
-
-## Conclusion
-
-The RichTextEditor2 component represents a significant architectural improvement over the original
-RichTextEditor. With its FSM-based state management, virtual DOM document representation, and
-services-based architecture, it provides a solid foundation for rich text editing functionality in
-the CAMS application.
-
-The current implementation has successfully completed the core architecture and basic functionality
-phases. The remaining work focuses on advanced features (lists, toolbar), performance optimization,
-and accessibility enhancements.
-
-The component follows CAMS development guidelines and implements option-enabling architecture
-principles, making it maintainable, testable, and extensible for future requirements.
+# DESIGN LOG: CAMS RichTextEditor2 Component
+
+## 1. Project Overview & Core Goals
+
+*   **Objective:** Develop a drop-in replacement for the existing RichTextEditor component with improved architecture, finite state machine state management, virtual DOM document representation, and HTML encoding for content storage.
+*   **Core Goals:**
+    *   Maintainability through Option-Enabling Software Architecture (OeSA)
+    *   Scalability with virtual DOM and FSM-based state management
+    *   Fast User Experience with optimized rendering and operations
+    *   Low Operational Cost through comprehensive testing and clean architecture
+    *   Accessibility compliance (WCAG 2.1 AA)
+    *   XSS protection through HTML sanitization
+
+## 2. Architectural Decisions
+
+### DECISION-001: Finite State Machine for State Management
+*   **Context:** The original RichTextEditor lacked clear state management, leading to unpredictable behavior and difficult debugging.
+*   **Decision:** Implement a finite state machine with four distinct states: IDLE, TYPING, SELECTING, and FORMATTING.
+*   **Alternatives Considered:**
+    *   **Alternative A:** React state management with useState/useReducer
+    *   **Alternative B:** External state management library (Redux, Zustand)
+    *   **Alternative C:** No formal state management (status quo)
+*   **Rationale & Trade-offs:** FSM provides predictable state transitions and makes the component behavior explicit and testable. Trade-off: Additional complexity in implementation, but significant gains in maintainability and debugging.
+*   **Implications:** All user interactions must be modeled as state transitions, requiring careful design of events and state handlers.
+
+### DECISION-002: Virtual DOM Document Representation
+*   **Context:** Direct DOM manipulation in the original component led to synchronization issues and performance problems.
+*   **Decision:** Implement a virtual DOM tree structure to represent document state, with synchronization to actual DOM.
+*   **Alternatives Considered:**
+    *   **Alternative A:** Direct DOM manipulation (status quo)
+    *   **Alternative B:** Document fragments for batch operations
+    *   **Alternative C:** Third-party virtual DOM library
+*   **Rationale & Trade-offs:** Virtual DOM provides predictable document state, enables efficient batch operations, and simplifies testing. Trade-off: Memory overhead and complexity, but gains in reliability and performance.
+*   **Implications:** All document operations must work through virtual DOM, requiring comprehensive tree operation utilities.
+
+### DECISION-003: Services Architecture with Pure Functions
+*   **Context:** Need for testable, reusable business logic separated from UI concerns.
+*   **Decision:** Implement core functionality as pure functions in service modules (FormattingDetectionService, FormattingRemovalService, ParagraphOperationsService).
+*   **Alternatives Considered:**
+    *   **Alternative A:** Class-based services with instance methods
+    *   **Alternative B:** Inline functions within components
+    *   **Alternative C:** Utility classes with static methods
+*   **Rationale & Trade-offs:** Pure functions are easier to test, reason about, and compose. They eliminate side effects and improve reliability. Trade-off: Requires careful dependency injection, but gains in testability and maintainability.
+*   **Implications:** All business logic must be stateless and depend only on input parameters.
+
+### DECISION-004: Dependency Inversion with Humble Objects
+*   **Context:** Need to isolate browser APIs and third-party dependencies from core business logic.
+*   **Decision:** Use humble objects and adapters to abstract browser selection APIs and other external dependencies.
+*   **Alternatives Considered:**
+    *   **Alternative A:** Direct browser API usage throughout codebase
+    *   **Alternative B:** Wrapper classes for browser APIs
+    *   **Alternative C:** Mock browser APIs in tests only
+*   **Rationale & Trade-offs:** Humble objects enable comprehensive unit testing and reduce coupling to browser-specific behavior. Trade-off: Additional abstraction layer, but significant gains in testability and portability.
+*   **Implications:** All browser interactions must go through abstraction interfaces.
+
+### DECISION-005: HTML Encoding with DOMPurify Sanitization
+*   **Context:** Need for secure HTML storage and XSS protection while maintaining rich text formatting.
+*   **Decision:** Use DOMPurify for HTML sanitization with custom configuration for allowed tags and attributes.
+*   **Alternatives Considered:**
+    *   **Alternative A:** Custom HTML sanitization implementation
+    *   **Alternative B:** No sanitization (security risk)
+    *   **Alternative C:** Plain text storage only
+*   **Rationale & Trade-offs:** DOMPurify is battle-tested and maintained, providing robust XSS protection. Trade-off: External dependency, but critical security benefits.
+*   **Implications:** All HTML content must be sanitized before storage or display.
+
+## 3. Data Models / Schema
+
+### Entity: VNode (Virtual DOM Node)
+*   `type`: 'text' | 'element' - Node type discriminator
+*   `tagName`: string (optional) - HTML tag name for element nodes
+*   `attributes`: Record<string, string> (optional) - HTML attributes
+*   `textContent`: string (optional) - Text content for text nodes
+*   `children`: VNode[] - Child nodes array
+*   `parent`: VNode (optional) - Parent node reference
+
+### Entity: EditorState (FSM States)
+*   `IDLE`: Default state, ready for user input
+*   `TYPING`: Active text input in progress
+*   `SELECTING`: Text selection in progress
+*   `FORMATTING`: Formatting operation in progress
+
+### Entity: EditorEvent (FSM Events)
+*   `INPUT`: Text input event
+*   `KEYBOARD_SHORTCUT`: Formatting keyboard shortcut
+*   `SELECTION_CHANGE`: Selection change event
+*   `RESET`: Reset to idle state
+
+### Entity: RichTextEditor2Props
+*   `id`: string - Unique component identifier
+*   `label`: string (optional) - Accessibility label
+*   `ariaDescription`: string (optional) - ARIA description
+*   `onChange`: (value: string) => void (optional) - Change callback
+*   `disabled`: boolean (optional) - Disabled state
+*   `required`: boolean (optional) - Required field indicator
+*   `className`: string (optional) - CSS class names
+
+## 4. API Endpoints (if applicable)
+
+*Not applicable - this is a client-side component with no server API interactions.*
+
+## 5. Key Components & Responsibilities
+
+*   **`Editor`:** Core editor logic encapsulating FSM and virtual DOM. Handles all user interactions and maintains document state.
+*   **`StateMachine`:** Manages editor state transitions and validates state changes according to FSM rules.
+*   **`VirtualDOMTree`:** Manages virtual DOM tree structure, node creation, and tree traversal operations.
+*   **`VirtualDOMOperations`:** Provides tree manipulation operations (insert, delete, update nodes).
+*   **`HtmlCodec`:** Handles HTML encoding/decoding and sanitization using DOMPurify.
+*   **`FormattingDetectionService`:** Pure functions for detecting current formatting state at cursor position.
+*   **`FormattingRemovalService`:** Pure functions for removing formatting from selected text or nodes.
+*   **`ParagraphOperationsService`:** Pure functions for paragraph creation, splitting, merging, and manipulation.
+*   **`SelectionService`:** Humble object abstracting browser selection APIs for testability.
+*   **`RichTextEditor2`:** Thin React component providing UI layer and prop interface compatibility.
+
+## 6. Future Considerations & Tech Debt
+
+### Phase 3: Advanced Features (In Progress)
+*   **CAMS-526-TOOLBAR**: Toolbar implementation with RichTextButton integration and visual state feedback
+*   **CAMS-526-LISTS**: List management (ul, ol) with nesting support and keyboard navigation
+*   **CAMS-526-KEYBOARD**: Advanced keyboard handling including Tab navigation and list shortcuts
+*   **CAMS-526-CLIPBOARD**: Enhanced clipboard operations with rich text preservation
+
+### Phase 4: Polish and Optimization (Planned)
+*   **CAMS-526-PERF**: Performance optimization for large documents with virtual DOM batching and debouncing
+*   **CAMS-526-A11Y**: Accessibility enhancements including ARIA attributes and screen reader compatibility
+*   **CAMS-526-CONTENT**: Content management with HTML validation and whitespace normalization
+
+### Technical Debt Items
+*   **CAMS-526-MIGRATION**: Complete migration strategy documentation and testing for drop-in replacement
+*   **CAMS-526-DOCS**: Comprehensive API documentation and usage examples
+*   **CAMS-526-E2E**: End-to-end testing scenarios for complex user workflows
+
+### Paragraph Handling Requirements
+*   **Initialization**: Editor must start with single empty `<p>` element, no direct text nodes in root
+*   **Enter Key**: Creates new paragraphs with proper cursor positioning and content splitting
+*   **Structure**: All text content must be wrapped in paragraph elements for semantic correctness
+*   **Browser Compatibility**: Normalize paragraph behavior across different browsers
+*   **Virtual DOM**: Paragraph structure must be properly represented in virtual DOM tree
+
+### Current Implementation Status
+*   **✅ Completed**: Core architecture (FSM, Virtual DOM, HTML encoding), basic functionality (text input, formatting, paragraph handling), component interface, comprehensive testing (296 tests)
+*   **🚧 In Progress**: Toolbar implementation with state synchronization
+*   **⏳ Planned**: List management, advanced keyboard handling, clipboard operations, performance optimization, accessibility enhancements
