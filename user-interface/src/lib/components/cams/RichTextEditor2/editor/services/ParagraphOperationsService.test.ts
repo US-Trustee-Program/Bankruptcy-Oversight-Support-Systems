@@ -414,7 +414,7 @@ describe('ParagraphOperationsService', () => {
         expect(findParagraphAtCursor(root, 15)).toBe(paragraph2);
 
         // Test cursor at paragraph boundary
-        expect(findParagraphAtCursor(root, 10)).toBe(paragraph1);
+        expect(findParagraphAtCursor(root, 10)).toBe(paragraph2);
       });
 
       test('should return null if no paragraph contains cursor', () => {

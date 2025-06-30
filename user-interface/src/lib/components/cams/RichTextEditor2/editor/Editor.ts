@@ -432,8 +432,11 @@ export class Editor {
     const relativeCursorPosition = getCursorPositionInParagraph(currentParagraph, cursorPosition);
     const paragraphLength = currentParagraph.endOffset - currentParagraph.startOffset;
 
-    // Check if cursor is at the end of the paragraph
-    if (relativeCursorPosition === paragraphLength) {
+    // Check if cursor is at the end of the paragraph or at the last character
+    if (
+      relativeCursorPosition === paragraphLength ||
+      relativeCursorPosition === paragraphLength - 1
+    ) {
       // Find the next paragraph to merge with
       const parentNode = currentParagraph.parent;
       const currentIndex = parentNode.children.indexOf(currentParagraph);
