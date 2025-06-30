@@ -136,3 +136,7 @@ CAMS follows the Option-enabling Software Architecture (OeSA) approach, which in
 ### Files
 
 - Only use TypeScript Declaration files for typing npm packages with no types
+
+## Design Guidelines
+
+Read the `design-guidelines.md` file.
