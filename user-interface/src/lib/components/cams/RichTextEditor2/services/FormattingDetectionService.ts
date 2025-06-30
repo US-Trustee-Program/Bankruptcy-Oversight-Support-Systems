@@ -3,6 +3,9 @@
  *
  * This service provides utilities to detect existing formatting in selected text,
  * which is essential for toggle functionality in the rich text editor.
+ *
+ * NOTE: This is currently a DOM-based implementation and will be refactored
+ * to a pure VDOM-based service in a future phase.
  */
 
 export type FormatType = 'bold' | 'italic' | 'underline';

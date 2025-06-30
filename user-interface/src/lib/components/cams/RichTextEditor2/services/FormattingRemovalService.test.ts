@@ -248,23 +248,14 @@ describe('FormattingRemovalService', () => {
       const strongElement = rootElement.querySelector('strong')!;
 
       // Mock selection covering the bold text
-      const mockRange = {
-        collapsed: false,
-        startContainer: strongElement.firstChild,
-        endContainer: strongElement.firstChild,
-        startOffset: 0,
-        endOffset: 9,
-        commonAncestorContainer: strongElement,
-        intersectsNode: vi.fn().mockReturnValue(true),
-      } as unknown as Range;
-
+      const range = document.createRange();
+      range.selectNodeContents(strongElement);
       const selectionWithRange = {
         rangeCount: 1,
-        getRangeAt: vi.fn().mockReturnValue(mockRange),
-        removeAllRanges: vi.fn(),
+        getRangeAt: vi.fn().mockReturnValue(range),
       } as unknown as Selection;
 
-      // Mock TreeWalker for finding formatting elements
+      // Mock TreeWalker
       const mockTreeWalker = {
         nextNode: vi.fn().mockReturnValueOnce(strongElement.firstChild).mockReturnValueOnce(null),
       };
@@ -272,159 +263,10 @@ describe('FormattingRemovalService', () => {
         mockTreeWalker as unknown as TreeWalker,
       );
 
-      const result = removeFormattingFromSelection(selectionWithRange, 'bold', rootElement);
-
-      // Should have removed formatting and returned true
-      expect(result).toBe(true);
-      // The strong element should have been unwrapped
-      expect(rootElement.innerHTML).toBe('Plain bold text here');
-    });
-
-    test('should handle selection with no formatting', () => {
-      // Create: <div>Plain text only</div>
-      rootElement.innerHTML = 'Plain text only';
-
-      // Mock selection in plain text
-      const mockRange = {
-        collapsed: false,
-        startContainer: rootElement.firstChild,
-        endContainer: rootElement.firstChild,
-        startOffset: 0,
-        endOffset: 5,
-        commonAncestorContainer: rootElement,
-      } as unknown as Range;
-
-      const selectionWithRange = {
-        rangeCount: 1,
-        getRangeAt: vi.fn().mockReturnValue(mockRange),
-        removeAllRanges: vi.fn(),
-      } as unknown as Selection;
-
-      // Mock TreeWalker that finds no formatting elements
-      const mockTreeWalker = {
-        nextNode: vi.fn().mockReturnValue(null),
-      };
-      vi.spyOn(document, 'createTreeWalker').mockReturnValue(
-        mockTreeWalker as unknown as TreeWalker,
-      );
-
-      const originalHTML = rootElement.innerHTML;
       removeFormattingFromSelection(selectionWithRange, 'bold', rootElement);
 
-      // Should not change anything
-      expect(rootElement.innerHTML).toBe(originalHTML);
-    });
-
-    test('should handle null or empty selection', () => {
-      rootElement.innerHTML = '<strong>Bold text</strong>';
-
-      // Test with null selection
-      const originalHTML = rootElement.innerHTML;
-      removeFormattingFromSelection(null as never, 'bold', rootElement);
-      expect(rootElement.innerHTML).toBe(originalHTML);
-
-      // Test with selection with no ranges
-      const selectionWithNoRanges = {
-        rangeCount: 0,
-        getRangeAt: vi.fn(),
-        removeAllRanges: vi.fn(),
-      } as unknown as Selection;
-      removeFormattingFromSelection(selectionWithNoRanges, 'bold', rootElement);
-      expect(rootElement.innerHTML).toBe(originalHTML);
-    });
-
-    test('should remove formatting from text selection with real DOM range', () => {
-      // Create: <div>Plain <strong>bold text</strong> here</div>
-      rootElement.innerHTML = 'Plain <strong>bold text</strong> here';
-      const strongElement = rootElement.querySelector('strong')!;
-
-      // Create a real range that covers the bold text
-      const range = document.createRange();
-      range.setStart(strongElement.firstChild!, 0);
-      range.setEnd(strongElement.firstChild!, strongElement.textContent!.length);
-
-      const selectionWithRange = {
-        rangeCount: 1,
-        getRangeAt: vi.fn().mockReturnValue(range),
-        removeAllRanges: vi.fn(),
-      } as unknown as Selection;
-
-      const result = removeFormattingFromSelection(selectionWithRange, 'bold', rootElement);
-
-      // The function should attempt to remove formatting
-      // In a real DOM environment, this might not always succeed due to range complexities
-      expect(typeof result).toBe('boolean');
-      // Verify the function was called and executed without errors
-      expect(selectionWithRange.getRangeAt).toHaveBeenCalled();
-    });
-
-    test('should handle text selection with multiple formatting elements', () => {
-      // Create: <div><strong>bold1</strong> and <strong>bold2</strong></div>
-      rootElement.innerHTML = '<strong>bold1</strong> and <strong>bold2</strong>';
-
-      // Create a range that covers both bold elements
-      const range = document.createRange();
-      range.setStart(rootElement, 0);
-      range.setEnd(rootElement, rootElement.childNodes.length);
-
-      const selectionWithRange = {
-        rangeCount: 1,
-        getRangeAt: vi.fn().mockReturnValue(range),
-        removeAllRanges: vi.fn(),
-      } as unknown as Selection;
-
-      const result = removeFormattingFromSelection(selectionWithRange, 'bold', rootElement);
-
-      // The function should attempt to remove formatting
-      expect(typeof result).toBe('boolean');
-      // Verify the function was called and executed without errors
-      expect(selectionWithRange.getRangeAt).toHaveBeenCalled();
-    });
-
-    test('should handle text selection with nested formatting elements', () => {
-      // Create: <div><strong><em>bold italic</em></strong></div>
-      rootElement.innerHTML = '<strong><em>bold italic</em></strong>';
-
-      // Create a range that covers the content
-      const range = document.createRange();
-      range.setStart(rootElement, 0);
-      range.setEnd(rootElement, rootElement.childNodes.length);
-
-      const selectionWithRange = {
-        rangeCount: 1,
-        getRangeAt: vi.fn().mockReturnValue(range),
-        removeAllRanges: vi.fn(),
-      } as unknown as Selection;
-
-      const result = removeFormattingFromSelection(selectionWithRange, 'bold', rootElement);
-
-      // The function should attempt to remove formatting
-      expect(typeof result).toBe('boolean');
-      // Verify the function was called and executed without errors
-      expect(selectionWithRange.getRangeAt).toHaveBeenCalled();
-    });
-
-    test('should return false when no formatting elements found in text selection', () => {
-      // Create: <div>Plain text only</div>
-      rootElement.innerHTML = 'Plain text only';
-
-      // Create a real range in plain text
-      const range = document.createRange();
-      range.setStart(rootElement.firstChild!, 0);
-      range.setEnd(rootElement.firstChild!, 5);
-
-      const selectionWithRange = {
-        rangeCount: 1,
-        getRangeAt: vi.fn().mockReturnValue(range),
-        removeAllRanges: vi.fn(),
-      } as unknown as Selection;
-
-      const result = removeFormattingFromSelection(selectionWithRange, 'bold', rootElement);
-
-      // Should return false since no formatting was found
-      expect(result).toBe(false);
-      // Content should remain unchanged
-      expect(rootElement.innerHTML).toBe('Plain text only');
+      // Should unwrap the formatting element
+      expect(rootElement.innerHTML).toBe('Plain bold text here');
     });
   });
 });

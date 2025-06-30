@@ -68,7 +68,7 @@ describe('HtmlCodec', () => {
       textNode.parent = elementNode;
 
       const result = HtmlCodec.encode(elementNode);
-      expect(result).toBe('<p>Hello</p>');
+      expect(result).toBe('<p data-id="p-1">Hello</p>');
     });
 
     test('should encode a formatting node to HTML', () => {
@@ -98,7 +98,7 @@ describe('HtmlCodec', () => {
       textNode.parent = formattingNode;
 
       const result = HtmlCodec.encode(formattingNode);
-      expect(result).toBe('<strong>Bold</strong>');
+      expect(result).toBe('<strong data-id="strong-1">Bold</strong>');
     });
 
     test('should encode element with attributes', () => {
@@ -131,7 +131,10 @@ describe('HtmlCodec', () => {
       textNode.parent = elementNode;
 
       const result = HtmlCodec.encode(elementNode);
-      expect(result).toBe('<a href="https://example.com" target="_blank">Link</a>');
+      expect(result).toContain('data-id="a-1"');
+      expect(result).toContain('href="https://example.com"');
+      expect(result).toContain('target="_blank"');
+      expect(result).toContain('Link');
     });
 
     test('should encode root node with multiple children', () => {
@@ -253,27 +256,28 @@ describe('HtmlCodec', () => {
         depth: 2,
         content: 'Hello',
       };
-
       const elementNode: ElementNode = {
         id: 'p-1',
         type: VNodeType.ELEMENT,
+        tagName: 'p',
+        attributes: {},
         parent: null,
         children: [textNode],
         startOffset: 0,
         endOffset: 5,
         depth: 1,
-        tagName: 'p',
-        attributes: {},
       };
-
       textNode.parent = elementNode;
 
-      mockSanitize.mockReturnValue('<p>Hello</p>');
+      mockSanitize.mockReturnValue('<p data-id="p-1">Hello</p>'); // Mock sanitized output
 
       const result = HtmlCodec.encodeToSafeHtml(elementNode);
 
-      expect(mockDOMPurify.sanitize).toHaveBeenCalledWith('<p>Hello</p>', expect.any(Object));
-      expect(result).toBe('<p>Hello</p>');
+      expect(mockDOMPurify.sanitize).toHaveBeenCalledWith(
+        '<p data-id="p-1">Hello</p>',
+        expect.any(Object),
+      );
+      expect(result).toBe('<p data-id="p-1">Hello</p>');
     });
   });
 

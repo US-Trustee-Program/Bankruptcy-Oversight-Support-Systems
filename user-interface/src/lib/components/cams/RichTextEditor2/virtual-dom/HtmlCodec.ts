@@ -93,7 +93,8 @@ export class HtmlCodec {
   }
 
   private static encodeElementNode(node: ElementNode): string {
-    const attributes = this.encodeAttributes(node.attributes);
+    const allAttributes = { ...node.attributes, 'data-id': node.id };
+    const attributes = this.encodeAttributes(allAttributes);
     const childrenHtml = node.children.map((child) => this.encode(child)).join('');
 
     if (attributes) {
@@ -104,7 +105,7 @@ export class HtmlCodec {
 
   private static encodeFormattingNode(node: FormattingNode): string {
     const childrenHtml = node.children.map((child) => this.encode(child)).join('');
-    return `<${node.tagName}>${childrenHtml}</${node.tagName}>`;
+    return `<${node.tagName} data-id="${node.id}">${childrenHtml}</${node.tagName}>`;
   }
 
   private static encodeRootNode(node: RootNode): string {

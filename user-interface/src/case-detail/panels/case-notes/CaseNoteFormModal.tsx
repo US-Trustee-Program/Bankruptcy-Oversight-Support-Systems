@@ -13,9 +13,12 @@ import { CaseNoteInput } from '@common/cams/cases';
 import { getCamsUserReference } from '@common/cams/session';
 import LocalStorage from '@/lib/utils/local-storage';
 import LocalFormCache from '@/lib/utils/local-form-cache';
-import RichTextEditor, {
-  RichTextEditorRef,
-} from '@/lib/components/cams/RichTextEditor/RichTextEditor';
+// import RichTextEditor, {
+//   RichTextEditorRef,
+// } from '@/lib/components/cams/RichTextEditor/RichTextEditor';
+import RichTextEditor2, {
+  RichTextEditor2Ref,
+} from '@/lib/components/cams/RichTextEditor2/RichTextEditor2';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
 import useFeatureFlags, { FORMAT_CASE_NOTES } from '@/lib/hooks/UseFeatureFlags';
 import TextArea from '@/lib/components/uswds/TextArea';
@@ -48,7 +51,7 @@ export function getCaseNotesContentValue(ref: InputRef | null) {
   return sanitizeText(ref?.getValue() ?? '');
 }
 
-export function getCaseNotesRichTextContentValue(ref: RichTextEditorRef | null) {
+export function getCaseNotesRichTextContentValue(ref: RichTextEditor2Ref | null) {
   return ref?.getHtml() ?? '';
 }
 
@@ -122,7 +125,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   const notesSubmissionErrorMessage = 'There was a problem submitting the case note.';
   const session = LocalStorage.getSession();
 
-  const richTextContentInputRef = useRef<RichTextEditorRef>(null);
+  const richTextContentInputRef = useRef<RichTextEditor2Ref>(null);
 
   function disableSubmitButton(disable: boolean) {
     const buttons = modalRef.current?.buttons;
@@ -393,7 +396,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
             ref={titleInputRef}
           />
           {featureFlags[FORMAT_CASE_NOTES] ? (
-            <RichTextEditor
+            <RichTextEditor2
               id="case-note-formatted-editor"
               label="Note Text"
               required={true}
