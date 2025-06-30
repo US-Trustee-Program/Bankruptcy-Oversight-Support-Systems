@@ -63,6 +63,36 @@
 *   **Rationale & Trade-offs:** DOMPurify is battle-tested and maintained, providing robust XSS protection. Trade-off: External dependency, but critical security benefits.
 *   **Implications:** All HTML content must be sanitized before storage or display.
 
+### DECISION-006: List Management Architecture
+*   **Context:** Need to support bulleted and numbered lists with nesting capabilities while maintaining virtual DOM consistency.
+*   **Decision:** Implement ListOperationsService with pure functions for list creation, conversion, and nesting operations. Extend virtual DOM to support ul, ol, and li node types.
+*   **Alternatives Considered:**
+    *   **Alternative A:** Direct DOM manipulation for list operations
+    *   **Alternative B:** Third-party list management library
+    *   **Alternative C:** Simplified list support without nesting
+*   **Rationale & Trade-offs:** Service-based approach maintains architectural consistency and testability. Virtual DOM extension ensures predictable list state management. Trade-off: Increased complexity, but comprehensive list functionality.
+*   **Implications:** Requires new VNode types, list-specific keyboard handlers, and conversion utilities between paragraphs and list items.
+
+### DECISION-007: Performance Optimization Strategy
+*   **Context:** Need to handle large documents efficiently while maintaining responsive user experience.
+*   **Decision:** Implement virtual DOM operation batching, debounced onChange callbacks, and memory management patterns.
+*   **Alternatives Considered:**
+    *   **Alternative A:** Real-time operations without batching
+    *   **Alternative B:** Virtualization for large document rendering
+    *   **Alternative C:** Lazy loading of document sections
+*   **Rationale & Trade-offs:** Batching reduces DOM thrashing and improves performance. Debouncing prevents excessive callback execution. Trade-off: Slight delay in operations, but significant performance gains.
+*   **Implications:** Requires operation queue management, batch processing logic, and performance monitoring utilities.
+
+### DECISION-008: Accessibility Enhancement Design
+*   **Context:** Need to meet WCAG 2.1 AA compliance and provide comprehensive screen reader support.
+*   **Decision:** Implement ARIA attributes, keyboard navigation patterns, and screen reader announcements through dedicated accessibility service.
+*   **Alternatives Considered:**
+    *   **Alternative A:** Basic ARIA attributes only
+    *   **Alternative B:** Third-party accessibility library
+    *   **Alternative C:** Browser default accessibility features
+*   **Rationale & Trade-offs:** Comprehensive accessibility ensures legal compliance and inclusive user experience. Service-based approach maintains testability. Trade-off: Additional implementation complexity, but critical accessibility benefits.
+*   **Implications:** Requires AccessibilityService, ARIA state management, and keyboard navigation handlers.
+
 ## 3. Data Models / Schema
 
 ### Entity: VNode (Virtual DOM Node)
@@ -94,12 +124,35 @@
 *   `required`: boolean (optional) - Required field indicator
 *   `className`: string (optional) - CSS class names
 
+### Entity: ListNode (Extended VNode for Lists)
+*   `type`: 'element' - Always element type for list nodes
+*   `tagName`: 'ul' | 'ol' | 'li' - List-specific tag names
+*   `attributes`: Record<string, string> - HTML attributes including list-type, start, etc.
+*   `children`: VNode[] - Child list items or content
+*   `listLevel`: number - Nesting level for nested lists
+*   `listType`: 'bulleted' | 'numbered' - Semantic list type
+
+### Entity: PerformanceMetrics
+*   `operationCount`: number - Number of queued operations
+*   `batchSize`: number - Current batch processing size
+*   `memoryUsage`: number - Estimated memory usage in bytes
+*   `renderTime`: number - Last render operation time in milliseconds
+*   `documentSize`: number - Current document size in characters
+
+### Entity: AccessibilityState
+*   `currentRole`: string - Current ARIA role
+*   `announcements`: string[] - Queue of screen reader announcements
+*   `focusedElement`: string - ID of currently focused element
+*   `keyboardNavigation`: boolean - Whether keyboard navigation is active
+*   `ariaLive`: 'polite' | 'assertive' | 'off' - Live region announcement level
+
 ## 4. API Endpoints (if applicable)
 
 *Not applicable - this is a client-side component with no server API interactions.*
 
 ## 5. Key Components & Responsibilities
 
+### Implemented Components
 *   **`Editor`:** Core editor logic encapsulating FSM and virtual DOM. Handles all user interactions and maintains document state.
 *   **`StateMachine`:** Manages editor state transitions and validates state changes according to FSM rules.
 *   **`VirtualDOMTree`:** Manages virtual DOM tree structure, node creation, and tree traversal operations.
@@ -111,23 +164,101 @@
 *   **`SelectionService`:** Humble object abstracting browser selection APIs for testability.
 *   **`RichTextEditor2`:** Thin React component providing UI layer and prop interface compatibility.
 
+### Components to be Implemented
+*   **`ListOperationsService`:** Pure functions for list creation, conversion between paragraphs and lists, nesting operations, and list item manipulation.
+*   **`PerformanceService`:** Utilities for operation batching, debouncing, memory management, and performance monitoring.
+*   **`AccessibilityService`:** ARIA attribute management, screen reader announcements, keyboard navigation patterns, and accessibility state tracking.
+*   **`ClipboardService`:** Enhanced clipboard operations with rich text preservation, copy/cut functionality, and format-aware paste handling.
+*   **`KeyboardNavigationService`:** Advanced keyboard handling including Tab navigation, list shortcuts, and accessibility-compliant navigation patterns.
+*   **`HyperlinkService`:** URL detection, anchor tag creation, and link management within rich text content.
+*   **`ValidationService`:** HTML structure validation, content normalization, and whitespace management.
+*   **`UndoRedoService`:** Virtual DOM snapshot management for undo/redo functionality with efficient memory usage.
+
 ## 6. Future Considerations & Tech Debt
 
-### Phase 3: Advanced Features (In Progress)
-*   **CAMS-526-TOOLBAR**: Toolbar implementation with RichTextButton integration and visual state feedback
-*   **CAMS-526-LISTS**: List management (ul, ol) with nesting support and keyboard navigation
-*   **CAMS-526-KEYBOARD**: Advanced keyboard handling including Tab navigation and list shortcuts
-*   **CAMS-526-CLIPBOARD**: Enhanced clipboard operations with rich text preservation
+### Phase 3: Advanced Features Implementation Guide
 
-### Phase 4: Polish and Optimization (Planned)
-*   **CAMS-526-PERF**: Performance optimization for large documents with virtual DOM batching and debouncing
-*   **CAMS-526-A11Y**: Accessibility enhancements including ARIA attributes and screen reader compatibility
-*   **CAMS-526-CONTENT**: Content management with HTML validation and whitespace normalization
+#### CAMS-526-LISTS: List Management Architecture
+**Implementation Approach:**
+*   Create `ListOperationsService` with pure functions for list operations
+*   Extend VNode types to support `ul`, `ol`, and `li` elements with nesting metadata
+*   Implement list conversion utilities (paragraph ↔ list item)
+*   Add list-specific keyboard handlers (Enter, Tab, Shift+Tab for nesting)
+*   Create list state detection and manipulation functions
+
+**Key Functions Required:**
+*   `createList(type: 'ul' | 'ol', items: string[]): VNode`
+*   `convertParagraphToListItem(paragraph: VNode): VNode`
+*   `nestListItem(listItem: VNode, direction: 'in' | 'out'): VNode`
+*   `splitListAtCursor(list: VNode, position: number): VNode[]`
+
+#### CAMS-526-PERF: Performance Optimization Strategy
+**Implementation Approach:**
+*   Implement operation batching with `PerformanceService.batchOperations()`
+*   Add debouncing for onChange callbacks (300ms default)
+*   Create memory management utilities for large document handling
+*   Implement virtual DOM operation queuing and batch processing
+
+**Key Patterns:**
+*   Batch DOM updates using `requestAnimationFrame`
+*   Debounce expensive operations (HTML encoding, onChange)
+*   Implement memory cleanup for unused VNode references
+*   Add performance monitoring and metrics collection
+
+#### CAMS-526-A11Y: Accessibility Enhancement Design
+**Implementation Approach:**
+*   Create `AccessibilityService` for ARIA management
+*   Implement keyboard navigation patterns following WCAG 2.1 AA
+*   Add screen reader announcements for state changes
+*   Ensure proper focus management and tab order
+
+**Key Features:**
+*   Dynamic ARIA attributes based on editor state
+*   Screen reader announcements for formatting changes
+*   Keyboard shortcuts with accessibility compliance
+*   Focus trap management within editor boundaries
+
+#### CAMS-526-CLIPBOARD: Enhanced Clipboard Operations
+**Implementation Approach:**
+*   Extend current paste handling to support copy/cut operations
+*   Implement rich text preservation in clipboard data
+*   Add format-aware paste handling for external content
+*   Create clipboard data sanitization and validation
+
+**Key Functions:**
+*   `copySelection(selection: VNode[]): ClipboardData`
+*   `cutSelection(selection: VNode[]): ClipboardData`
+*   `pasteWithFormatPreservation(data: ClipboardData): VNode[]`
+
+### Phase 4: Polish and Optimization Implementation Guide
+
+#### CAMS-526-KEYBOARD: Advanced Keyboard Navigation
+**Implementation Approach:**
+*   Create `KeyboardNavigationService` for complex navigation patterns
+*   Implement Tab navigation with proper accessibility support
+*   Add list-specific keyboard shortcuts (Ctrl+Shift+L for lists)
+*   Ensure keyboard navigation works with screen readers
+
+#### CAMS-526-HYPERLINKS: Link Management
+**Implementation Approach:**
+*   Create `HyperlinkService` for URL detection and link creation
+*   Implement automatic link detection during typing
+*   Add link editing and removal functionality
+*   Ensure links are properly represented in virtual DOM
+
+#### CAMS-526-UNDO-REDO: History Management
+**Implementation Approach:**
+*   Implement `UndoRedoService` with virtual DOM snapshots
+*   Create efficient snapshot storage with memory limits
+*   Add keyboard shortcuts (Ctrl+Z, Ctrl+Y) for undo/redo
+*   Ensure history preservation across formatting operations
 
 ### Technical Debt Items
 *   **CAMS-526-MIGRATION**: Complete migration strategy documentation and testing for drop-in replacement
 *   **CAMS-526-DOCS**: Comprehensive API documentation and usage examples
 *   **CAMS-526-E2E**: End-to-end testing scenarios for complex user workflows
+*   **CAMS-526-BDD**: Behavior-driven development tests for user scenarios
+*   **CAMS-526-VALIDATION**: HTML structure validation and content normalization
 
 ### Paragraph Handling Requirements
 *   **Initialization**: Editor must start with single empty `<p>` element, no direct text nodes in root
