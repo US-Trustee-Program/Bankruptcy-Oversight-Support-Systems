@@ -16,6 +16,7 @@ This document outlines the implementation plan for RichTextEditor2, a new rich t
 - Run `npm run lint:fix` to lint source files. Fix any reported linter issues.
 
 When working on implementation steps:
+- **Refer to the specification**: Refer to `CAMS-526-rte-v2-spec.md` for the component specification. If and when the design must change, update the spec file accordingly.
 - **Always update the reasoning file**: Save context, decisions, and reasoning to `CAMS-526-rte-v2-reasoning.md`
 - **Include verbose descriptions of reasoning**: Write verbose reasoning to `CAMS-526-rte-v2-reasoning.md`
 - **Document architecture decisions**: Record why specific approaches were chosen
