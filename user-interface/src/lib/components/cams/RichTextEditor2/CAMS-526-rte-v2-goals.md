@@ -58,6 +58,59 @@ It is important to minimize third party dependencies.
 - DOMPurify for HTML sanitization against XSS attacks
 - React core library
 
+## Phase 2.1 Architectural Decisions
+
+### **State Management Structure**
+
+Based on design input, the core state will use self-documenting variable names:
+
+```typescript
+interface EditorState {
+  virtualDOM: VNode;                    // Document structure representation
+  selection: Selection;                 // Cursor/selection state using path-based addressing
+  currentEditorMode: EditorMode;        // Current finite state machine mode
+}
+
+type EditorMode = 'IDLE' | 'TYPING' | 'SELECTING' | 'FORMATTING';
+
+// All state transitions follow this pattern:
+type StateTransition = (currentState: EditorState) => EditorState;
+```
+
+### **Selection Addressing Strategy**
+
+Path-based addressing chosen for robustness and undo/redo compatibility:
+
+```typescript
+interface Selection {
+  startPath: number[];    // [0, 2, 1] = first block, third child, second child
+  startOffset: number;    // Character offset within the target node
+  endPath: number[];      // End position path
+  endOffset: number;      // End character offset
+  isCollapsed: boolean;   // Whether selection is just a cursor
+}
+```
+
+**Rationale**: Path-based addressing survives VNode recreation and is serializable for operation-based undo/redo.
+
+### **Operation-Based Undo/Redo**
+
+```typescript
+interface EditorOperation {
+  type: 'insertText' | 'deleteText' | 'formatText' | 'insertParagraph' | 'toggleList';
+  data: unknown;              // Operation-specific data (no 'any' types)
+  inverse: EditorOperation;   // The operation to undo this one
+  timestamp: number;
+}
+```
+
+### **Error Recovery Strategy**
+
+Virtual DOM as source of truth with graceful user experience:
+- Preserve actively typed content during recovery
+- Log errors for debugging without interrupting user flow
+- Maintain user in current editing mode during recovery
+
 ## Current State Assessment
 
 ### ✅ **Completed (Phase 1)**
@@ -105,12 +158,12 @@ principles. These decisions must be documented in the specification._
 2.  **Selection-First State Management**:
 
     - **Atomic State Updates**: The editor's state will be treated as an immutable, atomic unit
-      comprising both the virtual DOM tree and the selection state (`{vdom, selection}`).
+      comprising the virtual DOM tree, selection state, and current editor mode (`{virtualDOM, selection, currentEditorMode}`).
     - **Pure Mutation Functions**: All operations will be pure functions with the signature
-      `(state) => newState`. For example:
-      `(vdom, selection) => { vdom: newVdom, selection: newSelection }`.
+      `(currentState: EditorState) => EditorState`. For example:
+      `(currentState: EditorState) => { virtualDOM: newVirtualDOM, selection: newSelection, currentEditorMode: newMode }`.
     - **Explicit Synchronization**: A change is committed to the browser in two explicit steps: 1)
-      Patch the real DOM based on a diff of the old and new VDOM. 2) Set the browser's selection
+      Patch the real DOM based on a diff of the old and new virtual DOM. 2) Set the browser's selection
       based on the new selection state. The cursor is never an afterthought.
 
 3.  **Fundamental Undo/Redo Integration**:
@@ -119,8 +172,8 @@ principles. These decisions must be documented in the specification._
       is a fundamental part of the state management architecture and will be implemented from the
       very beginning of Phase 2. Every state mutation will be designed to integrate with it.
 
-4.  **Simplified, Reliable VDOM Patching**:
-    - **Initial Strategy**: We will start with a simple and reliable VDOM patch strategy: on any
+4.  **Simplified, Reliable Virtual DOM Patching**:
+    - **Initial Strategy**: We will start with a simple and reliable virtual DOM patch strategy: on any
       change, we will find the lowest common ancestor of the changed nodes and re-render that entire
       subtree in the real DOM.
     - **Progressive Optimization**: More advanced diff/patching algorithms will be implemented later
@@ -139,22 +192,24 @@ text in a single paragraph reliably.
 **Tasks**:
 
 1.  **Core State & Undo/Redo Implementation**
-    - [ ] Implement `UndoRedoService` to manage snapshots of the editor state (`{vdom, selection}`).
-    - [ ] Design core mutation logic to be compatible with the undo stack from the start.
-    - [ ] Define the `SelectionState` data model to track cursor/selection via VDOM nodes and
-          offsets.
+    - [ ] Implement `UndoRedoService` to manage operation history with EditorOperation interface
+    - [ ] Design core mutation logic to be compatible with the undo stack from the start
+    - [ ] Define the `EditorState` interface with self-documenting names (virtualDOM, selection, currentEditorMode)
+    - [ ] Implement path-based `Selection` interface for robust addressing
 2.  **`beforeinput` Handler for Text**
-    - [ ] Implement `beforeinput` handlers for `insertText` and `deleteContentBackward`.
-    - [ ] Create the pure mutation function for character insertion and deletion.
-    - [ ] Prevent the browser's default action and take full control of the DOM change.
-3.  **VDOM-to-DOM Synchronization**
-    - [ ] Implement the initial "re-render subtree" patching strategy.
-    - [ ] Use `requestAnimationFrame` for all DOM writes to prevent layout thrashing.
-    - [ ] Implement the `SelectionService` logic to set the browser selection after a DOM patch.
+    - [ ] Implement `beforeinput` handlers for `insertText` and `deleteContentBackward`
+    - [ ] Create pure mutation functions with signature `(EditorState) => EditorState`
+    - [ ] Prevent the browser's default action and take full control of the DOM change
+3.  **Virtual DOM-to-DOM Synchronization**
+    - [ ] Implement the initial "re-render subtree" patching strategy
+    - [ ] Use `requestAnimationFrame` for all DOM writes to prevent layout thrashing
+    - [ ] Implement the `SelectionService` logic to set the browser selection after a DOM patch
+    - [ ] Implement error recovery strategy with virtual DOM as source of truth
 4.  **Integration & Testing**
-    - [ ] Write comprehensive unit tests for the state mutation logic.
-    - [ ] Write integration tests for typing and deleting characters.
-    - [ ] Confirm undo/redo works correctly for all text operations.
+    - [ ] Write comprehensive unit tests for the state mutation logic
+    - [ ] Write integration tests for typing and deleting characters
+    - [ ] Confirm undo/redo works correctly for all text operations
+    - [ ] Ensure 100% test coverage and no TypeScript warnings
 
 **Dependencies**: Existing Virtual DOM components, SelectionService humble object.
 
@@ -166,16 +221,16 @@ with Backspace.
 **Tasks**:
 
 1.  **`beforeinput` Handler for Paragraphs**
-    - [ ] Implement `beforeinput` handlers for `insertParagraph`.
-    - [ ] Extend the handler for `deleteContentBackward` to detect and handle merging paragraphs.
-    - [ ] Create the pure mutation functions for splitting and merging paragraph nodes in the VDOM.
+    - [ ] Implement `beforeinput` handlers for `insertParagraph`
+    - [ ] Extend the handler for `deleteContentBackward` to detect and handle merging paragraphs
+    - [ ] Create pure mutation functions for splitting and merging paragraph nodes in the virtual DOM
 2.  **Cursor & Selection Logic**
     - [ ] Ensure the selection state is correctly calculated and set after splitting/merging
-          paragraphs.
+          paragraphs using path-based addressing
 3.  **Integration & Testing**
-    - [ ] Write integration tests for creating and merging paragraphs.
-    - [ ] Confirm undo/redo works correctly for all paragraph operations.
-    - [ ] Test edge cases like empty paragraphs and merging paragraphs with different formatting.
+    - [ ] Write integration tests for creating and merging paragraphs
+    - [ ] Confirm undo/redo works correctly for all paragraph operations
+    - [ ] Test edge cases like empty paragraphs and merging paragraphs with different formatting
 
 **Dependencies**: Phase 2.1 completion.
 
@@ -187,15 +242,15 @@ on a text selection.
 **Tasks**:
 
 1.  **Formatting Mutation Logic**
-    - [ ] Implement pure mutation functions to apply/remove formatting by modifying VDOM node
-          attributes and structure.
-    - [ ] Handle toggling, nesting, and applying formatting to mixed-format selections.
+    - [ ] Implement pure mutation functions to apply/remove formatting by modifying virtual DOM node
+          attributes and structure
+    - [ ] Handle toggling, nesting, and applying formatting to mixed-format selections
 2.  **Selection-Based Formatting**
-    - [ ] Implement the logic to apply formatting based on the current `SelectionState`.
-    - [ ] Update `FormattingDetectionService` to read format state from the VDOM and selection.
+    - [ ] Implement the logic to apply formatting based on the current path-based `Selection` state
+    - [ ] Update `FormattingDetectionService` to read format state from the virtual DOM and selection
 3.  **Integration & Testing**
-    - [ ] Write integration tests for applying, removing, and toggling all formats.
-    - [ ] Confirm undo/redo works correctly for all formatting operations.
+    - [ ] Write integration tests for applying, removing, and toggling all formats
+    - [ ] Confirm undo/redo works correctly for all formatting operations
 
 **Dependencies**: Phase 2.2 completion.
 
@@ -209,7 +264,7 @@ _Priority: High - Required for basic user interaction_
 
 1.  **Toolbar Container & State Synchronization**
 
-- [ ] Implement toolbar state management connected to Editor FSM
+- [ ] Implement toolbar state management connected to Editor finite state machine
 - [ ] Create toolbar update mechanism based on cursor position and formatting state
 - [ ] Add toolbar enabled/disabled state handling
 
@@ -343,7 +398,7 @@ _Priority: High - Legal compliance requirement_
 - [ ] Announcements for formatting changes and operations
 - [ ] Focus trap management within editor boundaries
 
-**Dependencies**: Phase 2.3 completion, existing Editor class, FSM
+**Dependencies**: Phase 2.3 completion, existing Editor class, finite state machine
 
 ### **Phase 4C: Advanced Features**
 
@@ -408,8 +463,8 @@ _Priority: Medium - Production readiness_
 
 - ✅ **Virtual DOM Integrity**: Virtual DOM remains the single source of truth
 - ✅ **Performance**: No unnecessary full DOM replacements during typing
-- ✅ **State Consistency**: FSM state transitions work correctly with all operations
-- ✅ **Selection Management**: Text selection and cursor position handling is reliable
+- ✅ **State Consistency**: Finite state machine state transitions work correctly with all operations
+- ✅ **Selection Management**: Text selection and cursor position handling is reliable using path-based addressing
 - ✅ **Error Recovery**: Component handles edge cases gracefully without corruption
 
 ### **Testing Requirements**
@@ -450,5 +505,8 @@ _Priority: Medium - Production readiness_
 5. **Backward Compatibility**: Maintain existing component interface throughout re-implementation
 6. **Iterative Development**: Each phase should follow the established TDD process outlined in this
    document
-7. **Architectural Consistency**: Maintain the established patterns (FSM, Virtual DOM, service-based
+7. **Architectural Consistency**: Maintain the established patterns (finite state machine, Virtual DOM, service-based
    architecture)
+8. **Self-Documenting Code**: Use clear variable names and avoid acronyms (virtualDOM instead of vdom, currentEditorMode instead of fsm)
+9. **Strict TypeScript**: No use of 'any' type - all interfaces must be properly typed
+10. **Error Recovery**: Implement graceful error handling with virtual DOM as source of truth

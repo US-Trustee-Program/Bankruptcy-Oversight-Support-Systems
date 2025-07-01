@@ -103,9 +103,132 @@
 *   **Rationale & Trade-offs:** Zero-width space provides consistent cursor positioning across browsers, maintains semantic paragraph structure, and ensures accessibility compliance. Unlike `<br>` tags, it doesn't introduce visual spacing issues. Unlike empty elements, it provides a reliable cursor target. Trade-off: Slightly more complex content handling, but significant gains in cross-browser consistency and user experience.
 *   **Implications:** All paragraph creation, splitting, and merging operations must use the ZERO_WIDTH_SPACE constant. HTML encoding/decoding must handle zero-width space characters appropriately. Testing must account for zero-width space in empty paragraph assertions.
 
+### DECISION-010: Core State Management Structure
+*   **Context:** Need for simple, predictable state management that supports undo/redo and virtual DOM operations while using self-documenting variable names.
+*   **Decision:** Implement atomic state updates with a single EditorState interface using descriptive names: `virtualDOM` instead of `vdom`, `currentEditorMode` instead of `fsm`, with all operations following the pattern `(EditorState) => EditorState`.
+*   **Alternatives Considered:**
+    *   **Alternative A:** Separate state objects for different concerns
+    *   **Alternative B:** Direct virtual DOM manipulation without centralized state
+    *   **Alternative C:** Using acronyms (vdom, fsm) for brevity
+*   **Rationale & Trade-offs:** Atomic state updates ensure consistency and simplify undo/redo implementation. Pure functions enable predictable behavior and easier testing. Self-documenting names improve code readability and reduce onboarding time. Trade-off: Requires immutable update patterns and slightly more verbose naming, but provides architectural clarity and maintainability.
+*   **Implications:** All editor operations must be implemented as pure functions that return new state objects rather than mutating existing state. All variable names must be self-documenting without acronyms.
+
+### DECISION-011: Path-Based Selection Addressing
+*   **Context:** Need for robust selection management that survives virtual DOM updates and supports operation-based undo/redo.
+*   **Decision:** Implement path-based selection addressing using arrays of indices to navigate the virtual DOM tree, rather than direct node references.
+*   **Alternatives Considered:**
+    *   **Alternative A:** Direct VNode references with offsets
+    *   **Alternative B:** DOM-based selection tracking
+    *   **Alternative C:** ID-based node addressing
+*   **Rationale & Trade-offs:** Path-based addressing survives VNode recreation during virtual DOM updates and is serializable for undo/redo operations. Works reliably across different DOM structures. Trade-off: Requires path resolution logic for DOM operations, but provides robust selection management.
+*   **Implications:** Selection state must be converted between path-based representation and browser selection API. All selection operations must work through path resolution. Selection survives virtual DOM recreation.
+
+### DECISION-012: Operation-Based Undo/Redo Architecture
+*   **Context:** Need for memory-efficient undo/redo that integrates with core state management architecture from the start of Phase 2.1.
+*   **Decision:** Implement operation-based history using EditorOperation objects that contain the operation data and its inverse operation. UndoRedoService is a core architectural component, not an optional feature.
+*   **Alternatives Considered:**
+    *   **Alternative A:** Full state snapshots for undo/redo
+    *   **Alternative B:** No undo/redo support initially
+    *   **Alternative C:** Command pattern with separate undo commands
+*   **Rationale & Trade-offs:** Operation-based history uses significantly less memory than full snapshots and enables fine-grained undo/redo behavior. Integration from the start ensures all operations are designed to be reversible. Trade-off: Requires careful operation design and sophisticated inverse logic, but provides efficient and comprehensive undo/redo.
+*   **Implications:** Every editor operation must be designed to generate an inverse operation. All state mutations must go through the UndoRedoService to maintain history. UndoRedoService must be implemented from Phase 2.1 start.
+
+### DECISION-013: Error Recovery Strategy
+*   **Context:** Need for graceful handling of virtual DOM/real DOM synchronization issues without disrupting user experience.
+*   **Decision:** Implement virtual DOM as the definitive source of truth with error recovery that preserves user's active typing and maintains editing flow.
+*   **Alternatives Considered:**
+    *   **Alternative A:** Real DOM as source of truth with virtual DOM syncing
+    *   **Alternative B:** Error reporting without recovery
+    *   **Alternative C:** Full editor restart on errors
+*   **Rationale & Trade-offs:** Virtual DOM as source of truth provides predictable behavior and easier testing. Recovery strategy maintains user experience while logging issues for debugging. Trade-off: Requires sophisticated recovery logic, but prevents user data loss and editing disruption.
+*   **Implications:** All DOM synchronization must prioritize virtual DOM state. Error recovery must preserve user's current typing and maintain editor mode. Errors should be logged but not exposed to users.
+
+### DECISION-014: BeforeInput Event Strategy
+*   **Context:** Need for reliable input handling that maintains virtual DOM as source of truth before browser DOM mutations occur.
+*   **Decision:** Use `beforeinput` event exclusively for all input operations, preventing default browser behavior and handling all mutations through virtual DOM operations.
+*   **Alternatives Considered:**
+    *   **Alternative A:** Mixed approach with some direct DOM manipulation
+    *   **Alternative B:** Input event handling after DOM changes
+    *   **Alternative C:** Keydown/keypress event handling
+*   **Rationale & Trade-offs:** BeforeInput provides user intent before DOM mutations, allowing virtual DOM to remain authoritative. Preventing default gives complete control over editor behavior. Trade-off: Requires comprehensive input type handling, but ensures predictable behavior across all input scenarios.
+*   **Implications:** All user input must be handled through beforeinput event handlers. Default browser behavior must be prevented for all editor-managed input types. Virtual DOM must handle all content mutations.
+
 ## 3. Data Models / Schema
 
-### Entity: VNode (Virtual DOM Node)
+### Core Editor State (DECISION-010)
+
+#### Entity: EditorState
+*   `virtualDOM`: VNode - Document structure representation using self-documenting name
+*   `selection`: Selection - Cursor/selection state using path-based addressing
+*   `currentEditorMode`: EditorMode - Current finite state machine mode (not fsm)
+
+#### Type: EditorMode
+*   `'IDLE'` - Default state, ready for user input
+*   `'TYPING'` - Active text input in progress
+*   `'SELECTING'` - Text selection in progress
+*   `'FORMATTING'` - Formatting operation in progress
+
+#### Type: StateTransition
+*   Function signature: `(currentState: EditorState) => EditorState`
+*   All editor operations must follow this pure function pattern
+
+### Path-Based Selection (DECISION-011)
+
+#### Entity: Selection
+*   `startPath`: number[] - Array of indices to navigate virtual DOM tree (e.g., [0, 2, 1])
+*   `startOffset`: number - Character offset within the target node
+*   `endPath`: number[] - End position path using same format
+*   `endOffset`: number - End character offset
+*   `isCollapsed`: boolean - Whether selection is just a cursor
+
+#### Interface: SelectionService
+*   `pathToNode(virtualDOM: VNode, path: number[]): VNode | null` - Resolve path to node
+*   `nodeToPath(virtualDOM: VNode, targetNode: VNode): number[] | null` - Get path for node
+*   `setBrowserSelection(selection: Selection, realDOM: Element): void` - Set browser selection
+*   `getBrowserSelection(realDOM: Element): Selection | null` - Get current browser selection
+
+### Operation-Based History (DECISION-012)
+
+#### Entity: EditorOperation
+*   `type`: 'insertText' | 'deleteText' | 'formatText' | 'insertParagraph' | 'toggleList' - Operation type
+*   `data`: unknown - Operation-specific data (strongly typed, no 'any' types)
+*   `inverse`: EditorOperation - The operation to undo this one
+*   `timestamp`: number - When the operation was executed
+
+#### Interface: UndoRedoService
+*   `execute(operation: EditorOperation): EditorState` - Execute operation and update history
+*   `undo(): EditorState | null` - Undo last operation
+*   `redo(): EditorState | null` - Redo previously undone operation
+*   `canUndo(): boolean` - Whether undo is available
+*   `canRedo(): boolean` - Whether redo is available
+*   `clear(): void` - Clear all history
+
+### Error Recovery (DECISION-013)
+
+#### Interface: ErrorRecoveryStrategy
+*   `recoverFromDesync(virtualDOM: VNode, realDOM: Element): EditorState` - Recover from sync issues
+*   `preserveActiveContent(realDOM: Element): string` - Extract user's active typing
+*   `logRecoveryEvent(error: Error, context: unknown): void` - Log recovery events for debugging
+
+### BeforeInput Handling (DECISION-014)
+
+#### Interface: BeforeInputHandler
+*   `handleBeforeInput(event: InputEvent, currentState: EditorState): EditorState` - Process beforeinput events
+*   `preventDefaultForEditorInputTypes(event: InputEvent): boolean` - Determine if should prevent default
+*   `mapInputTypeToOperation(inputType: string): EditorOperation | null` - Convert input type to operation
+
+#### Type: SupportedInputType
+*   `'insertText'` - Text insertion
+*   `'deleteContentBackward'` - Backspace deletion
+*   `'deleteContentForward'` - Delete key deletion
+*   `'insertParagraph'` - Enter key paragraph creation
+*   `'formatBold'` - Bold formatting
+*   `'formatItalic'` - Italic formatting
+*   `'formatUnderline'` - Underline formatting
+
+### Virtual DOM Structure (Existing)
+
+#### Entity: VNode (Virtual DOM Node)
 *   `type`: 'text' | 'element' - Node type discriminator
 *   `tagName`: string (optional) - HTML tag name for element nodes
 *   `attributes`: Record<string, string> (optional) - HTML attributes
@@ -113,19 +236,9 @@
 *   `children`: VNode[] - Child nodes array
 *   `parent`: VNode (optional) - Parent node reference
 
-### Entity: EditorState (FSM States)
-*   `IDLE`: Default state, ready for user input
-*   `TYPING`: Active text input in progress
-*   `SELECTING`: Text selection in progress
-*   `FORMATTING`: Formatting operation in progress
+### Component Interface (Existing)
 
-### Entity: EditorEvent (FSM Events)
-*   `INPUT`: Text input event
-*   `KEYBOARD_SHORTCUT`: Formatting keyboard shortcut
-*   `SELECTION_CHANGE`: Selection change event
-*   `RESET`: Reset to idle state
-
-### Entity: RichTextEditor2Props
+#### Entity: RichTextEditor2Props
 *   `id`: string - Unique component identifier
 *   `label`: string (optional) - Accessibility label
 *   `ariaDescription`: string (optional) - ARIA description
@@ -134,7 +247,9 @@
 *   `required`: boolean (optional) - Required field indicator
 *   `className`: string (optional) - CSS class names
 
-### Entity: ListNode (Extended VNode for Lists)
+### Future Data Models
+
+#### Entity: ListNode (Extended VNode for Lists) - Phase 3B
 *   `type`: 'element' - Always element type for list nodes
 *   `tagName`: 'ul' | 'ol' | 'li' - List-specific tag names
 *   `attributes`: Record<string, string> - HTML attributes including list-type, start, etc.
@@ -142,14 +257,14 @@
 *   `listLevel`: number - Nesting level for nested lists
 *   `listType`: 'bulleted' | 'numbered' - Semantic list type
 
-### Entity: PerformanceMetrics
+#### Entity: PerformanceMetrics - Phase 4A
 *   `operationCount`: number - Number of queued operations
 *   `batchSize`: number - Current batch processing size
 *   `memoryUsage`: number - Estimated memory usage in bytes
 *   `renderTime`: number - Last render operation time in milliseconds
 *   `documentSize`: number - Current document size in characters
 
-### Entity: AccessibilityState
+#### Entity: AccessibilityState - Phase 4B
 *   `currentRole`: string - Current ARIA role
 *   `announcements`: string[] - Queue of screen reader announcements
 *   `focusedElement`: string - ID of currently focused element
