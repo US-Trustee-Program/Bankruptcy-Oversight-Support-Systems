@@ -16,6 +16,9 @@ import LocalFormCache from '@/lib/utils/local-form-cache';
 import RichTextEditor, {
   RichTextEditorRef,
 } from '@/lib/components/cams/RichTextEditor/RichTextEditor';
+import RichTextEditor3, {
+  RichTextEditor3Ref,
+} from '@/lib/components/cams/RichTextEditor3/RichTextEditor3';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
 import useFeatureFlags, { FORMAT_CASE_NOTES } from '@/lib/hooks/UseFeatureFlags';
 import TextArea from '@/lib/components/uswds/TextArea';
@@ -123,6 +126,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   const session = LocalStorage.getSession();
 
   const richTextContentInputRef = useRef<RichTextEditorRef>(null);
+  const richText3ContentInputRef = useRef<RichTextEditor3Ref>(null);
 
   function disableSubmitButton(disable: boolean) {
     const buttons = modalRef.current?.buttons;
@@ -393,13 +397,21 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
             ref={titleInputRef}
           />
           {featureFlags[FORMAT_CASE_NOTES] ? (
-            <RichTextEditor
-              id="case-note-formatted-editor"
-              label="Note Text"
-              required={true}
-              onChange={handleRichTextContentChange}
-              ref={richTextContentInputRef}
-            />
+            <>
+              <RichTextEditor
+                id="case-note-formatted-editor"
+                label="Note Text"
+                required={true}
+                onChange={handleRichTextContentChange}
+                ref={richTextContentInputRef}
+              />
+              <RichTextEditor3
+                id="case-note-rich-text-editor-3"
+                label="RichTextEditor3 Component"
+                required={false}
+                ref={richText3ContentInputRef}
+              />
+            </>
           ) : (
             <TextArea
               id="note-content"
