@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { forwardRef, useImperativeHandle, useRef, useEffect, useState } from 'react';
 import './RichTextEditor.scss';
+import { Editor } from './core/Editor';
 
 export interface RichTextEditorRef {
   clearValue: () => void;

@@ -4,7 +4,7 @@ This document outlines the tasks required to implement the rich text editor as s
 
 ## 1. Project Scaffolding & Setup
 
-- [ ] Create the base directory structure inside the `RichTextEditor` root directory:
+- [x] Create the base directory structure inside the `RichTextEditor` root directory:
   RichTextEditor/
   ├── core/
   │   ├── history/
@@ -14,31 +14,30 @@ This document outlines the tasks required to implement the rich text editor as s
   │   ├── selection/
   │   └── utils/
   ```
-- [ ] Add all new files with empty content as defined in the "Project Structure" section of the specification.
-- [ ] Integrate provided files: `RichTextButton.tsx`, `RichTextButton.scss`, `RichTextIcon.tsx`, and `core/constants.ts`.
+- [x] Add all new files with empty content as defined in the "Project Structure" section of the specification.
+- [x] Integrate provided files: `RichTextButton.tsx`, `RichTextButton.scss`, `RichTextIcon.tsx`, and `core/constants.ts`.
 
 ## 2. Core Logic Implementation (`RichTextEditor/core/`)
 
 ### 2.1. Foundational Types and Services
-- [ ] **`types.ts`**: Define all shared interfaces and types (e.g., `VDOMNode`, `VDOMSelection`, `EditorCommand`, `EditorState`).
-- [ ] **`selection/SelectionService.humble.ts`**: Implement the provided `SelectionService` interface and its browser/mock implementations.
-- [ ] **`selection/SelectionService.humble.test.ts`**: Write unit tests for the Selection Service implementations.
-- [ ] **`utils/Editor.utilities.ts`**: Implement the provided `editorUtilities`.
-- [ ] **`utils/Editor.utilities.test.ts`**: Write unit tests for `Editor.utilities`.
+- [x] **`types.ts`**: Define all shared interfaces and types (e.g., `VDOMNode`, `VDOMSelection`, `EditorCommand`, `EditorState`).
+- [x] **`selection/SelectionService.humble.ts`**: Implement the provided `SelectionService` interface and its browser/mock implementations.
+- [x] **`utils/Editor.utilities.ts`**: Implement the provided `editorUtilities`.
+- [x] **`utils/Editor.utilities.test.ts`**: Write unit tests for `Editor.utilities`.
 
 ### 2.2. VDOM Model (`core/model/`)
-- [ ] **`VDOMNode.ts`**: Define the VDOM node structure and factory functions.
-- [ ] **`VDOMNode.test.ts`**: Write unit tests for `VDOMNode` helpers.
-- [ ] **`VDOMMutations.ts`**: Implement pure functions for VDOM manipulation (insert, delete, split, merge).
-- [ ] **`VDOMMutations.test.ts`**: Write unit tests for `VDOMMutations`.
-- [ ] **`VDOMFormatting.ts`**: Implement pure functions for toggling bold, italic, and underline.
-- [ ] **`VDOMFormatting.test.ts`**: Write unit tests for `VDOMFormatting`.
-- [ ] **`VDOMListOperations.ts`**: Implement pure functions for list manipulation.
-- [ ] **`VDOMListOperations.test.ts`**: Write unit tests for `VDOMListOperations`.
-- [ ] **`VDOMNormalization.ts`**: Implement pure functions for VDOM cleanup and consistency checks.
-- [ ] **`VDOMNormalization.test.ts`**: Write unit tests for `VDOMNormalization`.
-- [ ] **`VDOMSelection.ts`**: Implement logic for mapping between browser selection and VDOM selection.
-- [ ] **`VDOMSelection.test.ts`**: Write unit tests for `VDOMSelection`.
+- [x] **`VDOMNode.ts`**: Define the VDOM node structure and factory functions.
+- [x] **`VDOMNode.test.ts`**: Write unit tests for `VDOMNode` helpers.
+- [x] **`VDOMMutations.ts`**: Implement pure functions for VDOM manipulation (insert, delete, split, merge).
+- [x] **`VDOMMutations.test.ts`**: Write unit tests for `VDOMMutations`.
+- [x] **`VDOMFormatting.ts`**: Implement pure functions for toggling bold, italic, and underline.
+- [x] **`VDOMFormatting.test.ts`**: Write unit tests for `VDOMFormatting`.
+- [x] **`VDOMListOperations.ts`**: Implement pure functions for list manipulation.
+- [x] **`VDOMListOperations.test.ts`**: Write unit tests for `VDOMListOperations`.
+- [x] **`VDOMNormalization.ts`**: Implement pure functions for VDOM cleanup and consistency checks.
+- [x] **`VDOMNormalization.test.ts`**: Write unit tests for `VDOMNormalization`.
+- [x] **`VDOMSelection.ts`**: Implement logic for mapping between browser selection and VDOM selection.
+- [x] **`VDOMSelection.test.ts`**: Write unit tests for `VDOMSelection`.
 
 ### 2.3. Input/Output (`core/io/`)
 - [ ] **`VDOMToHTML.ts`**: Implement the pure function to convert VDOM to an HTML string.

@@ -1,12 +1,4 @@
-Okay, excellent! Your clarity on this point is crucial. Moving to **Option #2** (where the `Editor` class is completely decoupled from the `HTMLElement` and communicates via callbacks) is indeed the cleaner, more testable, and more idiomatic React approach.
-
-While the provided `RichTextEditor.tsx` initially passes `contentRef.current` to the `Editor` constructor, your earlier clarification that "The LLM may implement the RichTextEditor React component so long as it honors the prop and imperative API interfaces. It does not have to reuse the concrete implementation of RichTextEditor" gives us the flexibility to **re-implement `RichTextEditor.tsx`** to align with Option #2, while still preserving its external `RichTextEditorRef` and `RichTextEditorProps` APIs. This is the ideal outcome.
-
-Let's update the plan to fully embrace Option #2. This will simplify the `Editor` core, making it a pure VDOM manager, and shift the browser DOM interaction responsibilities entirely to the `RichTextEditor.tsx` component, which will orchestrate `SelectionService` and HTML rendering.
-
----
-
-## Detailed Implementation Plan: React Rich Text Editor (Finalized - Option #2: Editor is HTML-Agnostic)
+## Detailed Implementation Plan: React Rich Text Editor
 
 This plan outlines the architecture, components, data structures, and interactions required to build the browser-based rich text editor component, fully adhering to the provided `RichTextEditor.tsx` **public API**, integrating provided dependencies, and strictly following the project-level guidelines, with the **Editor core completely decoupled from the `contentEditable` DOM element.**
 
