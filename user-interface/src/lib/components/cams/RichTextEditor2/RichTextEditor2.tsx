@@ -1,7 +1,6 @@
 import './RichTextEditor2.scss';
-import * as React from 'react';
 import { forwardRef, useImperativeHandle, useRef, useState, useEffect } from 'react';
-import { EditorState, SelectionState } from './types';
+import { EditorState, SelectionState, BeforeInputEvent, DOMPosition } from './types';
 import { insertText, deleteContentBackward } from './mutations/textMutations';
 import { VNodeType, RootNode, ElementNode, TextNode, VNode, isTextNode } from './virtual-dom/VNode';
 import { HtmlCodec } from './virtual-dom/HtmlCodec';
@@ -97,10 +96,7 @@ const RichTextEditor2 = forwardRef<RichTextEditor2Ref, RichTextEditor2Props>(
       const { selection } = editorState;
       if (!selection) return;
 
-      const vdomToDomPosition = (
-        vnode: VNode,
-        vdomOffset: number,
-      ): { node: Node; offset: number } | null => {
+      const vdomToDomPosition = (vnode: VNode, vdomOffset: number): DOMPosition | null => {
         if (!isTextNode(vnode)) {
           // For now, only handle text node selections.
           // A more robust implementation would find the nearest text node.
@@ -109,10 +105,14 @@ const RichTextEditor2 = forwardRef<RichTextEditor2Ref, RichTextEditor2Props>(
 
         // We need to find the DOM element corresponding to the VNode's *parent*.
         const vdomParent = vnode.parent;
-        if (!vdomParent) return null;
+        if (!vdomParent) {
+          return null;
+        }
 
         const domParent = contentDiv.querySelector(`[data-id="${vdomParent.id}"]`);
-        if (!domParent) return null;
+        if (!domParent) {
+          return null;
+        }
 
         // Now, within that parent, find the correct text node child.
         // This is tricky because of how the browser might merge or split text nodes.
@@ -128,7 +128,9 @@ const RichTextEditor2 = forwardRef<RichTextEditor2Ref, RichTextEditor2Props>(
           }
         }
 
-        if (!found) return null;
+        if (!found) {
+          return null;
+        }
 
         // Walk the DOM to find the nth text node within the parent.
         const walker = document.createTreeWalker(domParent, NodeFilter.SHOW_TEXT);
@@ -171,9 +173,9 @@ const RichTextEditor2 = forwardRef<RichTextEditor2Ref, RichTextEditor2Props>(
       }
     }, [editorState, onChange]);
 
-    const handleBeforeInput = (event: React.FormEvent<HTMLDivElement>) => {
+    const handleBeforeInput = (event: BeforeInputEvent) => {
       event.preventDefault();
-      const inputEvent = event.nativeEvent as InputEvent;
+      const inputEvent = event.nativeEvent;
 
       setEditorState((currentEditorState) => {
         let newState: EditorState | null = null;
@@ -219,10 +221,14 @@ const RichTextEditor2 = forwardRef<RichTextEditor2Ref, RichTextEditor2Props>(
     }));
 
     function findFirstTextNode(node: VNode): TextNode | null {
-      if (isTextNode(node)) return node;
+      if (isTextNode(node)) {
+        return node;
+      }
       for (const child of node.children) {
         const found = findFirstTextNode(child);
-        if (found) return found;
+        if (found) {
+          return found;
+        }
       }
       return null;
     }

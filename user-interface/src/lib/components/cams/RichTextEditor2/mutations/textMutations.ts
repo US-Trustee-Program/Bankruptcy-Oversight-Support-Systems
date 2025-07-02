@@ -76,10 +76,15 @@ export function insertText(state: EditorState, textToInsert: string): EditorStat
   const newTree = new VirtualDOMTree(newRoot);
   const actualNewTextNode = newTree.findNodeById(newTextNode.id);
 
+  if (!actualNewTextNode || !isTextNode(actualNewTextNode)) {
+    // This should not happen if our mutation logic is correct
+    return state;
+  }
+
   const newSelection: SelectionState = {
-    anchorNode: actualNewTextNode as TextNode,
+    anchorNode: actualNewTextNode,
     anchorOffset: anchorOffset + textToInsert.length,
-    focusNode: actualNewTextNode as TextNode,
+    focusNode: actualNewTextNode,
     focusOffset: anchorOffset + textToInsert.length,
     isCollapsed: true,
   };
@@ -132,10 +137,15 @@ export function deleteContentBackward(state: EditorState): EditorState {
   const newTree = new VirtualDOMTree(newRoot);
   const actualNewTextNode = newTree.findNodeById(newTextNode.id);
 
+  if (!actualNewTextNode || !isTextNode(actualNewTextNode)) {
+    // This should not happen if our mutation logic is correct
+    return state;
+  }
+
   const newSelection: SelectionState = {
-    anchorNode: actualNewTextNode as TextNode,
+    anchorNode: actualNewTextNode,
     anchorOffset: anchorOffset - 1,
-    focusNode: actualNewTextNode as TextNode,
+    focusNode: actualNewTextNode,
     focusOffset: anchorOffset - 1,
     isCollapsed: true,
   };

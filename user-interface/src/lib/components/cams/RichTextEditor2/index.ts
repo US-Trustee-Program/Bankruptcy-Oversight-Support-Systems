@@ -32,8 +32,6 @@ export type { Phase21CoreConfig } from './core-state/Phase21EditorCore';
 
 // LEGACY EXPORTS - For backward compatibility (VNode-based selection)
 export type {
-  LegacyEditorState,
-  LegacySelectionState,
   // Backward compatibility aliases
   SelectionState,
   EditorState as DeprecatedEditorState,

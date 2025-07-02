@@ -39,17 +39,18 @@ describe('RichTextEditor2', () => {
     const fiberKey = Object.keys(element).find((key) => key.startsWith('__reactFiber'));
 
     if (fiberKey) {
-      /*
-      const fiber = (element as any)[fiberKey];
+      const elementWithFiber = element as unknown as Record<string, unknown>;
+      const fiber = elementWithFiber[fiberKey] as {
+        memoizedProps?: { onBeforeInput?: (event: unknown) => void };
+      };
       if (fiber?.memoizedProps?.onBeforeInput) {
         const mockEvent = {
-          preventDefault: () => {},
+          preventDefault: vi.fn(),
           nativeEvent,
         };
         fiber.memoizedProps.onBeforeInput(mockEvent);
         return;
       }
-        */
     }
 
     // Fallback to normal event firing

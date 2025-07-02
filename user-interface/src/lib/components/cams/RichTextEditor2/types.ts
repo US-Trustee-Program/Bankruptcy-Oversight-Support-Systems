@@ -1,14 +1,11 @@
 import { VNode, RootNode } from './virtual-dom/VNode';
 
 /**
- * DEPRECATED: Legacy selection state using VNode references.
- * New implementations should use path-based Selection from core-state/EditorState.ts
- *
  * Defines the state of the user's selection within the virtual DOM.
  * The selection is represented by a range between an anchor and a focus point,
  * much like the browser's native Selection API.
  */
-export interface LegacySelectionState {
+export interface SelectionState {
   /** The VNode where the selection begins. */
   anchorNode: VNode;
   /** The character offset within the anchorNode where the selection begins. */
@@ -22,22 +19,28 @@ export interface LegacySelectionState {
 }
 
 /**
- * DEPRECATED: Legacy editor state using VNode references.
- * New implementations should use EditorState from core-state/EditorState.ts
- *
  * Represents the complete, immutable state of the editor at a single point in time.
  * This includes the entire document structure (vdom) and the user's selection.
  * This atomic unit is passed to mutation functions and stored in the undo/redo history.
  */
-export interface LegacyEditorState {
+export interface EditorState {
   /** The root node of the virtual DOM tree. */
   readonly vdom: RootNode;
   /** The state of the user's selection. */
-  readonly selection: LegacySelectionState;
+  readonly selection: SelectionState;
 }
 
-// Keep backward compatibility aliases
-/** @deprecated Use LegacySelectionState instead */
-export type SelectionState = LegacySelectionState;
-/** @deprecated Use LegacyEditorState instead */
-export type EditorState = LegacyEditorState;
+/**
+ * React event with beforeinput native event
+ */
+export interface BeforeInputEvent extends React.FormEvent<HTMLDivElement> {
+  nativeEvent: InputEvent;
+}
+
+/**
+ * Position within a DOM node for cursor placement
+ */
+export interface DOMPosition {
+  node: Node;
+  offset: number;
+}
