@@ -1,21 +1,19 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
-import RichTextEditor3, { RichTextEditor3Ref } from './RichTextEditor3';
+import { render, screen, fireEvent, act } from '@testing-library/react';
+import { vi } from 'vitest';
+import RichTextEditor3 from './RichTextEditor3';
+import type { RichTextEditor3Ref } from './types';
 
 describe('RichTextEditor3', () => {
   it('renders without props', () => {
     render(<RichTextEditor3 />);
-    expect(
-      screen.getByText('RichTextEditor3 - Simple dumb component (does nothing for now)'),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('textbox')).toBeInTheDocument();
   });
 
   it('renders with id prop', () => {
     render(<RichTextEditor3 id="test-editor" />);
-    const editorDiv = screen.getByText(
-      'RichTextEditor3 - Simple dumb component (does nothing for now)',
-    ).parentElement;
-    expect(editorDiv).toHaveAttribute('id', 'test-editor');
+    const textarea = screen.getByRole('textbox');
+    expect(textarea).toHaveAttribute('id', 'test-editor');
   });
 
   it('renders label when provided', () => {
@@ -46,53 +44,82 @@ describe('RichTextEditor3', () => {
   it('applies required class to label when required is true', () => {
     render(<RichTextEditor3 label="Required Field" required={true} id="test-editor" />);
     const label = screen.getByText('Required Field *');
+    expect(label).toHaveClass('rich-text-editor3__label');
     expect(label).toHaveClass('required');
   });
 
   it('does not apply required class to label when required is false', () => {
     render(<RichTextEditor3 label="Optional Field" required={false} id="test-editor" />);
     const label = screen.getByText('Optional Field');
+    expect(label).toHaveClass('rich-text-editor3__label');
     expect(label).not.toHaveClass('required');
   });
 
   describe('ref methods', () => {
-    it('exposes getValue method that returns empty string', () => {
+    it('exposes getValue method that returns current value', () => {
       const ref = React.createRef<RichTextEditor3Ref>();
       render(<RichTextEditor3 ref={ref} />);
 
       expect(ref.current?.getValue()).toBe('');
     });
 
-    it('exposes setValue method that does nothing', () => {
+    it('exposes setValue method that updates the value', () => {
       const ref = React.createRef<RichTextEditor3Ref>();
       render(<RichTextEditor3 ref={ref} />);
 
-      // Should not throw error when called
-      expect(() => ref.current?.setValue('test value')).not.toThrow();
+      act(() => {
+        ref.current?.setValue('test value');
+      });
+      expect(ref.current?.getValue()).toBe('test value');
+
+      const textarea = screen.getByRole('textbox');
+      expect(textarea).toHaveValue('test value');
     });
 
-    it('exposes clearValue method that does nothing', () => {
+    it('exposes clearValue method that clears the value', () => {
       const ref = React.createRef<RichTextEditor3Ref>();
       render(<RichTextEditor3 ref={ref} />);
 
-      // Should not throw error when called
-      expect(() => ref.current?.clearValue()).not.toThrow();
+      act(() => {
+        ref.current?.setValue('initial value');
+      });
+      expect(ref.current?.getValue()).toBe('initial value');
+
+      act(() => {
+        ref.current?.clearValue();
+      });
+      expect(ref.current?.getValue()).toBe('');
+
+      const textarea = screen.getByRole('textbox');
+      expect(textarea).toHaveValue('');
     });
 
-    it('exposes disable method that does nothing', () => {
+    it('exposes disable method that disables the textarea', () => {
       const ref = React.createRef<RichTextEditor3Ref>();
       render(<RichTextEditor3 ref={ref} />);
 
-      // Should not throw error when called
-      expect(() => ref.current?.disable(true)).not.toThrow();
-      expect(() => ref.current?.disable(false)).not.toThrow();
+      const textarea = screen.getByRole('textbox');
+      expect(textarea).not.toBeDisabled();
+
+      act(() => {
+        ref.current?.disable(true);
+      });
+      expect(textarea).toBeDisabled();
+
+      act(() => {
+        ref.current?.disable(false);
+      });
+      expect(textarea).not.toBeDisabled();
     });
 
-    it('exposes getHtml method that returns empty string', () => {
+    it('exposes getHtml method that returns current value', () => {
       const ref = React.createRef<RichTextEditor3Ref>();
       render(<RichTextEditor3 ref={ref} />);
 
-      expect(ref.current?.getHtml()).toBe('');
+      act(() => {
+        ref.current?.setValue('test html content');
+      });
+      expect(ref.current?.getHtml()).toBe('test html content');
     });
   });
 
@@ -100,16 +127,42 @@ describe('RichTextEditor3', () => {
     expect(RichTextEditor3.displayName).toBe('RichTextEditor3');
   });
 
-  it('renders with proper styling', () => {
+  it('renders with proper CSS classes instead of inline styles', () => {
     render(<RichTextEditor3 id="test-editor" />);
-    const editorDiv = screen.getByText(
-      'RichTextEditor3 - Simple dumb component (does nothing for now)',
-    ).parentElement;
+    const textarea = screen.getByRole('textbox');
+    const container = textarea.parentElement;
 
-    expect(editorDiv).toHaveStyle({
-      border: '1px solid #ccc',
-      padding: '8px',
-      minHeight: '100px',
-    });
+    expect(container).toHaveClass('rich-text-editor3');
+    expect(textarea).toHaveClass('rich-text-editor3__textarea');
+  });
+
+  it('applies proper classes to label', () => {
+    render(<RichTextEditor3 label="Test Label" id="test-editor" />);
+    const label = screen.getByText('Test Label');
+
+    expect(label).toHaveClass('rich-text-editor3__label');
+  });
+
+  it('allows user to type text', () => {
+    render(<RichTextEditor3 />);
+    const textarea = screen.getByRole('textbox');
+
+    fireEvent.change(textarea, { target: { value: 'Hello, world!' } });
+    expect(textarea).toHaveValue('Hello, world!');
+  });
+
+  it('calls onChange when text is typed', () => {
+    const mockOnChange = vi.fn();
+    render(<RichTextEditor3 onChange={mockOnChange} />);
+    const textarea = screen.getByRole('textbox');
+
+    fireEvent.change(textarea, { target: { value: 'Test input' } });
+    expect(mockOnChange).toHaveBeenCalledWith('Test input');
+  });
+
+  it('applies required attribute when required is true', () => {
+    render(<RichTextEditor3 required={true} />);
+    const textarea = screen.getByRole('textbox');
+    expect(textarea).toBeRequired();
   });
 });

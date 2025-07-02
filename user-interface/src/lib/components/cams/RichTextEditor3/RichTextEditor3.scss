@@ -1,0 +1,45 @@
+.rich-text-editor3 {
+  display: block;
+
+  &__label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #333;
+
+    &.required {
+      &::after {
+        content: " *";
+        color: #e52e2e;
+      }
+    }
+  }
+
+  &__textarea {
+    width: 100%;
+    min-height: 100px;
+    border: 1px solid #ccc;
+    padding: 8px;
+    font-family: inherit;
+    font-size: inherit;
+    resize: vertical;
+    border-radius: 4px;
+    transition: border-color 0.2s ease-in-out;
+
+    &:focus {
+      outline: none;
+      border-color: #0066cc;
+      box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.2);
+    }
+
+    &:disabled {
+      background-color: #f5f5f5;
+      color: #666;
+      cursor: not-allowed;
+    }
+
+    &[required] {
+      border-left: 4px solid #e52e2e;
+    }
+  }
+}

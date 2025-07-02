@@ -1,49 +1,51 @@
 import React from 'react';
-
-export interface RichTextEditor3Props {
-  id?: string;
-  label?: string;
-  required?: boolean;
-  onChange?: (value: string) => void;
-}
-
-export interface RichTextEditor3Ref {
-  getValue: () => string;
-  setValue: (value: string) => void;
-  clearValue: () => void;
-  disable: (disabled: boolean) => void;
-  getHtml: () => string;
-}
+import type { RichTextEditor3Props, RichTextEditor3Ref } from './types';
+import './RichTextEditor3.scss';
 
 const RichTextEditor3 = React.forwardRef<RichTextEditor3Ref, RichTextEditor3Props>(
   (props: RichTextEditor3Props, ref: React.Ref<RichTextEditor3Ref>) => {
-    const { id, label, required = false } = props;
+    const { id, label, required = false, onChange } = props;
+    const [value, setValue] = React.useState<string>('');
+    const [disabled, setDisabled] = React.useState<boolean>(false);
 
     React.useImperativeHandle(ref, () => ({
-      getValue: () => '',
-      setValue: (_value: string) => {
-        // Simple dumb component - does nothing for now
+      getValue: () => value,
+      setValue: (newValue: string) => {
+        setValue(newValue);
       },
       clearValue: () => {
-        // Simple dumb component - does nothing for now
+        setValue('');
       },
-      disable: (_disabled: boolean) => {
-        // Simple dumb component - does nothing for now
+      disable: (isDisabled: boolean) => {
+        setDisabled(isDisabled);
       },
-      getHtml: () => '',
+      getHtml: () => value,
     }));
 
+    const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const newValue = event.target.value;
+      setValue(newValue);
+      if (onChange) {
+        onChange(newValue);
+      }
+    };
+
     return (
-      <div>
+      <div className="rich-text-editor3">
         {label && (
-          <label htmlFor={id} className={required ? 'required' : ''}>
+          <label htmlFor={id} className={`rich-text-editor3__label${required ? ' required' : ''}`}>
             {label}
             {required && ' *'}
           </label>
         )}
-        <div id={id} style={{ border: '1px solid #ccc', padding: '8px', minHeight: '100px' }}>
-          <p>RichTextEditor3 - Simple dumb component (does nothing for now)</p>
-        </div>
+        <textarea
+          id={id}
+          value={value}
+          onChange={handleChange}
+          disabled={disabled}
+          required={required}
+          className="rich-text-editor3__textarea"
+        />
       </div>
     );
   },
@@ -52,3 +54,4 @@ const RichTextEditor3 = React.forwardRef<RichTextEditor3Ref, RichTextEditor3Prop
 RichTextEditor3.displayName = 'RichTextEditor3';
 
 export default RichTextEditor3;
+export type { RichTextEditor3Props, RichTextEditor3Ref } from './types';
