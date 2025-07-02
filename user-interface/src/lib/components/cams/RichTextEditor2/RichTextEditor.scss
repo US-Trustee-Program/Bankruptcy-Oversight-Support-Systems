@@ -1,0 +1,34 @@
+// RichTextEditor Styles
+// TODO: Implement styles for the new RichTextEditor component
+// This will be developed alongside the finite state machine implementation
+
+.rich-text-editor-container {
+  // TODO: Add container styles
+}
+
+.editor-toolbar {
+  // TODO: Add toolbar styles
+}
+
+.editor-content {
+  min-height: 120px;
+  padding: 8px 12px;
+  border: 1px solid #565c65;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.5;
+  background-color: #ffffff;
+
+  &:focus {
+    outline: 2px solid #005ea2;
+    outline-offset: 0;
+    border-color: #005ea2;
+  }
+
+  &[contenteditable="false"] {
+    background-color: #f0f0f0;
+    color: #757575;
+    cursor: not-allowed;
+  }
+}
