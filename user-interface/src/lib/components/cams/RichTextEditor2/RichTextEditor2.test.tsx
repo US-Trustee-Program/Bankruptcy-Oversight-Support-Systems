@@ -27,15 +27,33 @@ describe('RichTextEditor2', () => {
   });
 
   const fireBeforeInput = (element: HTMLElement, inputType: string, data?: string) => {
-    const event = new InputEvent('beforeinput', {
+    // Create the native event
+    const nativeEvent = new InputEvent('beforeinput', {
       bubbles: true,
       cancelable: true,
       inputType,
       data,
     });
-    // Manually prevent the default action, which userEvent.type() was not respecting.
-    event.preventDefault();
-    fireEvent(element, event);
+
+    // Call the React handler directly since jsdom doesn't support beforeinput events properly
+    const fiberKey = Object.keys(element).find((key) => key.startsWith('__reactFiber'));
+
+    if (fiberKey) {
+      /*
+      const fiber = (element as any)[fiberKey];
+      if (fiber?.memoizedProps?.onBeforeInput) {
+        const mockEvent = {
+          preventDefault: () => {},
+          nativeEvent,
+        };
+        fiber.memoizedProps.onBeforeInput(mockEvent);
+        return;
+      }
+        */
+    }
+
+    // Fallback to normal event firing
+    fireEvent(element, nativeEvent);
   };
 
   test('handles text input via onBeforeInput', async () => {

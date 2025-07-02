@@ -72,10 +72,14 @@ export function insertText(state: EditorState, textToInsert: string): EditorStat
 
   // TODO: Recalculate all VNode offsets in the new tree.
 
+  // Find the actual text node in the new tree to ensure selection references are correct
+  const newTree = new VirtualDOMTree(newRoot);
+  const actualNewTextNode = newTree.findNodeById(newTextNode.id);
+
   const newSelection: SelectionState = {
-    anchorNode: newTextNode,
+    anchorNode: actualNewTextNode as TextNode,
     anchorOffset: anchorOffset + textToInsert.length,
-    focusNode: newTextNode,
+    focusNode: actualNewTextNode as TextNode,
     focusOffset: anchorOffset + textToInsert.length,
     isCollapsed: true,
   };
@@ -124,10 +128,14 @@ export function deleteContentBackward(state: EditorState): EditorState {
 
   // TODO: Recalculate all VNode offsets in the new tree.
 
+  // Find the actual text node in the new tree to ensure selection references are correct
+  const newTree = new VirtualDOMTree(newRoot);
+  const actualNewTextNode = newTree.findNodeById(newTextNode.id);
+
   const newSelection: SelectionState = {
-    anchorNode: newTextNode,
+    anchorNode: actualNewTextNode as TextNode,
     anchorOffset: anchorOffset - 1,
-    focusNode: newTextNode,
+    focusNode: actualNewTextNode as TextNode,
     focusOffset: anchorOffset - 1,
     isCollapsed: true,
   };

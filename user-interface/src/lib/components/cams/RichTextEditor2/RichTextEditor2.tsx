@@ -79,7 +79,7 @@ const RichTextEditor2 = forwardRef<RichTextEditor2Ref, RichTextEditor2Props>(
     const [inputDisabled, setInputDisabled] = useState<boolean>(disabled || false);
 
     useEffect(() => {
-      console.log('RichTextEditor2 mounted, contentRef:', contentRef.current);
+      // Component mounted - editor is ready
     }, []);
 
     // VDOM -> DOM Rendering & Selection Synchronization Effect
@@ -177,6 +177,7 @@ const RichTextEditor2 = forwardRef<RichTextEditor2Ref, RichTextEditor2Props>(
 
       setEditorState((currentEditorState) => {
         let newState: EditorState | null = null;
+
         switch (inputEvent.inputType) {
           case 'insertText':
             if (inputEvent.data) {
@@ -187,6 +188,7 @@ const RichTextEditor2 = forwardRef<RichTextEditor2Ref, RichTextEditor2Props>(
             newState = deleteContentBackward(currentEditorState);
             break;
         }
+
         return newState || currentEditorState;
       });
     };

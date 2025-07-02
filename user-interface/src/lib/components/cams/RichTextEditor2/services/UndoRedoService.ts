@@ -1,3 +1,13 @@
+/**
+ * DEPRECATED: This UndoRedoService implementation is deprecated.
+ * Use the new operation-based UndoRedoService from core-state/UndoRedoService.ts
+ *
+ * The new implementation provides:
+ * - Operation-based undo/redo with inverse operations
+ * - Circular buffer for memory efficiency
+ * - Better integration with the Phase 2.1 architecture
+ */
+
 import { EditorState } from '../types';
 
 /**
