@@ -7,14 +7,13 @@ This plan outlines the architecture, components, data structures, and interactio
 *   **TypeScript First:** All code will be written in TypeScript, leveraging its type safety and developer tooling benefits. Interfaces and types will be explicitly defined for all data structures and function signatures.
 *   **Test-Driven Development (TDD):** For each functional requirement, unit tests will be written *first*, aiming for **100% branch and line coverage**. The implementation code will then be developed to pass these tests. **Vitest** and **React Testing Library with `userEvent`** will be the primary testing tools.
 *   **Humble Object Pattern & Invasive-Species Rule:** Direct interaction with global browser APIs (`window.getSelection()`, `document.createRange()`, `document.createElement()`, etc.) will be abstracted behind the `SelectionService` interface (and its `BrowserSelectionService` and `MockSelectionService` implementations). This ensures the majority of our code depends on things under our control and isolates third-party/browser dependencies. `DOMPurify` will also be used in an isolated manner within converter and clipboard modules.
-*   **Decoupled Editor Core:** The `Editor` class (`core/Editor.ts`) will **not** have direct knowledge of the `contentEditable` HTMLElement. It will manage the Virtual DOM and its transformations, emitting an HTML string and current formatting/selection state via callbacks. This adheres strongly to the **Dependency Rule**.
+*   **DOM-Injected Editor Core:** The `Editor` class (`core/Editor.ts`) will receive the `contentEditable` HTMLElement via injection from the `RichTextEditor.tsx` component through the `setRootElement()` method. The Editor will manage the Virtual DOM and its transformations, directly updating the injected DOM element and emitting formatting/selection state via callbacks. This maintains the **Dependency Rule** by having the React component (higher-level) inject the DOM dependency into the Editor (lower-level).
 *   **Orchestrating React Component:** The **re-implemented `RichTextEditor.tsx` component** will be responsible for:
     *   Rendering the `contentEditable` div.
     *   Instantiating the `Editor` and subscribing to its change events.
-    *   Updating the `contentEditable` div's `innerHTML` based on HTML received from the `Editor`.
-    *   Translating the `VDOMSelection` received from the `Editor` into a browser `Range` and applying it via `SelectionService`.
-    *   Capturing all browser DOM events (`onInput`, `onKeyDown`, `onPaste`, `onMouseUp`, `onBlur`) and passing them, along with the *current browser selection*, to the `Editor` for processing.
+    *   Injecting the `contentEditable` div reference into the `Editor` via `setRootElement()` method.
     *   Updating formatting buttons based on state received from the `Editor`.
+    *   The `Editor` will handle DOM updates and event listeners directly on the injected element.
 *   **Virtual DOM (VDOM):** A TypeScript representation of the editor's content, designed to be easily manipulated programmatically. It will be the single source of truth for the editor's content.
 *   **Finite State Machine (FSM):** The FSM within the `Editor` will interpret user events and trigger corresponding transformations on the VDOM. It acts as an "Event Processor" or "Command Dispatcher" that maps input events and explicit commands (e.g., from buttons, shortcuts) to VDOM operations.
 *   **Pure Functions & Single Responsibility Principle (SRP):** All VDOM manipulation logic, formatting, and conversion functions will be implemented as pure functions in separate modules, ensuring testability, maintainability, and ease of Undo/Redo implementation. This also contributes to managing technical debt.
@@ -116,67 +115,62 @@ RichTextEditor/
 *   **Responsibilities:**
     *   Render a `div` with `contentEditable="true"` and `id={CONTENT_INPUT_SELECTOR}`.
     *   Render formatting buttons using the `RichTextButton` component, displaying `currentFormatting` state.
-    *   Initialize an `Editor` instance in `useEffect` (on mount), passing the `selectionService` and **three new internal callbacks**:
-        *   `onContentChange: (html: string) => void` (for `htmlContent` state)
-        *   `onFormattingChange: (formatting: { bold: boolean; italic: boolean; underline: boolean; }) => void` (for `currentFormatting` state)
-        *   `onSelectionUpdate: (vdomSelection: VDOMSelection) => void` (for `currentVDOMSelection` state)
-    *   Attach all necessary event listeners (`onInput`, `onKeyDown`, `onMouseUp`, `onBlur`, `onCut`, `onCopy`, `onPaste`) to the `contentEditable` div.
-    *   **Crucially, for each event listener:**
-        *   Call `event.preventDefault()` if the `Editor` method indicates it has handled the event.
-        *   Call the appropriate `Editor` instance method, passing the raw `event` object and `selectionService.getCurrentSelection()` (or just `selectionService` if the `Editor` method fetches it internally).
-    *   Update the `contentEditable` div's `innerHTML` with `htmlContent` received from the `Editor`'s `onContentChange` callback. This is the only place `innerHTML` should be set.
-    *   Update button states based on `currentFormatting`.
-    *   **Crucial for Selection Restoration:** In a `useLayoutEffect` (or a similar post-render hook), after `htmlContent` updates, use `VDOMSelection.applySelectionToBrowser(selectionService, currentVDOMSelection, contentRef.current, editorRef.current?.getVDOM() || [])` to restore the browser's text selection/cursor position.
+    *   Initialize an `Editor` instance in `useState`, passing the `selectionService` and **callback functions**:
+        *   `onChange: (html: string) => void` (for external `onChange` prop and internal state updates)
+        *   `onSelectionChange: (vdomSelection: VDOMSelection) => void` (for `currentFormatting` state updates)
+    *   In `useEffect` (after mount), call `editor.setRootElement(contentRef.current)` to inject the DOM element.
+    *   The `Editor` handles all DOM manipulation and event listeners automatically after injection.
+    *   Update button states based on `currentFormatting` received from `onSelectionChange` callback.
     *   **Imperative Handle Implementation:**
-        *   `clearValue()`: Reset `htmlContent` to empty, and call `editorRef.current?.initializeEmptyContent()`.
-        *   `getValue()`: Call `contentRef.current?.innerText || ''`.
-        *   `getHtml()`: Call `editorUtilities.cleanHtml(safelyGetHtml(contentRef.current))`.
-        *   `setValue(html: string)`: Call `editorRef.current?.setValue(html)`. The `Editor` will then emit the new HTML via `onContentChange`.
-        *   `disable(val: boolean)`: Update internal `inputDisabled` state.
-        *   `focus()`: Calls `contentRef.current.focus()`. Then, as in the original, use `selectionService.createRange()`, `selectionService.setSelectionRange()` to position cursor if empty.
+        *   `clearValue()`: Call `editor.clearValue()`. The `Editor` handles DOM updates automatically.
+        *   `getValue()`: Call `editor.getValue()`.
+        *   `getHtml()`: Call `editor.getHtml()`.
+        *   `setValue(html: string)`: Call `editor.setValue(html)`. The `Editor` handles DOM updates automatically.
+        *   `disable(val: boolean)`: Update the `contentEditable` attribute on `contentRef.current`.
+        *   `focus()`: Call `contentRef.current?.focus()`.
 
 #### 4.2 `Editor` Class (`core/Editor.ts`)
 
-*   **Purpose:** The core logic encapsulating VDOM, FSM, History, Clipboard. It is **HTML-agnostic** and operates purely on its internal VDOM state. It provides HTML and formatting state via callbacks. It adheres to the **Dependency Rule** by only depending on `SelectionService` interface for interactions with the browser's DOM/Selection API, not the `HTMLElement` itself.
+*   **Purpose:** The core logic encapsulating VDOM, FSM, History, Clipboard. It receives a DOM element via injection and directly manages its content and event listeners. It provides HTML and formatting state via callbacks. It adheres to the **Dependency Rule** by accepting the DOM element as an injected dependency from the higher-level React component.
 *   **Constructor:**
-    *   `constructor(selectionService: SelectionService, onContentChange: (html: string) => void, onFormattingChange: (formatting: { bold: boolean; italic: boolean; underline: boolean; }) => void, onSelectionUpdate: (vdomSelection: VDOMSelection) => void)`
-    *   `selectionService`: Injected dependency for browser DOM/selection interactions (e.g., getting current browser `Selection` for VDOM mapping).
-    *   `onContentChange`: Callback to `RichTextEditor.tsx` when content (VDOM) changes.
-    *   `onFormattingChange`: Callback to `RichTextEditor.tsx` when current formatting (at selection) changes.
-    *   `onSelectionUpdate`: Callback to `RichTextEditor.tsx` when internal VDOM selection changes, to guide browser selection restoration.
+    *   `constructor(options: EditorOptions)` where `EditorOptions` includes:
+        *   `selectionService: SelectionService`: Injected dependency for browser DOM/selection interactions.
+        *   `onChange: (html: string) => void`: Callback to `RichTextEditor.tsx` when content (VDOM) changes.
+        *   `onSelectionChange?: (vdomSelection: VDOMSelection) => void`: Optional callback when internal VDOM selection changes.
+        *   `rootElement?: HTMLDivElement`: Optional initial DOM element reference.
     *   Initializes `this.vdom` (defaulting to an empty paragraph with `ZERO_WIDTH_SPACE`).
     *   Initializes `this.historyManager` and `this.clipboardManager`.
+    *   If `rootElement` is provided, sets up DOM interaction immediately.
 *   **Internal State:**
+    *   `rootElement: HTMLDivElement | null`: Reference to the injected DOM element.
     *   `vdom: VDOMNode[]`: Current state of the Virtual DOM.
     *   `selection: VDOMSelection`: Internal representation of the current cursor position/selection range within the VDOM.
     *   `historyManager: HistoryManager`: Manages the undo/redo stack.
     *   `clipboardManager: ClipboardManager`: Handles clipboard operations.
     *   `selectionService: SelectionService`: Injected dependency.
 *   **Public Methods (API to match calls from `RichTextEditor.tsx` and imperative handle):**
+    *   `setRootElement(rootElement: HTMLDivElement | null): void`: Injects the DOM element reference, sets up event listeners, and updates the DOM content. Called by `RichTextEditor.tsx` after mounting.
     *   `setValue(html: string): void`: Sanitizes `html` with `DOMPurify`, parses to VDOM via `HTMLToVDOM.parseHTMLToVDOM`, updates `this.vdom`, then calls `_emitChange` and `_emitSelectionAndFormatting`.
     *   `getHtml(): string`: Returns `VDOMToHTML.renderVDOMToHTML(this.vdom)`.
-    *   `toggleSelection(formatType: RichTextFormat, browserSelection: Selection, rootElement: HTMLElement): boolean`: Maps to `applyFormat` command. Receives current browser selection and root element from `RichTextEditor.tsx`. Updates VDOM. Returns `true` if VDOM changed.
-    *   `toggleList(listType: 'ul' | 'ol', browserSelection: Selection, rootElement: HTMLElement): boolean`: Maps to `TOGGLE_LIST` command. Receives current browser selection and root element. Updates VDOM. Returns `true` if VDOM changed.
-    *   `handleCtrlKey(e: KeyboardEvent, browserSelection: Selection, rootElement: HTMLElement): boolean`: Processes `Ctrl+B`, `Ctrl+I`, `Ctrl+U`, `Ctrl+Z`, `Ctrl+Y`. Returns `true` if handled and event should be prevented.
-    *   `handleBackspaceOnEmptyContent(e: KeyboardEvent, browserSelection: Selection, rootElement: HTMLElement): boolean`: Returns `true` if handled.
-    *   `handleDentures(e: KeyboardEvent, browserSelection: Selection, rootElement: HTMLElement): boolean`: Returns `true` if handled.
-    *   `handleEnterKey(e: KeyboardEvent, browserSelection: Selection, rootElement: HTMLElement): boolean`: Returns `true` if handled.
-    *   `handleDeleteKeyOnList(e: KeyboardEvent, browserSelection: Selection, rootElement: HTMLElement): boolean`: Returns `true` if handled.
-    *   `handlePrintableKey(e: KeyboardEvent, browserSelection: Selection, rootElement: HTMLElement): boolean`: Processes character input. Returns `true` if text was inserted.
-    *   `handlePaste(e: ClipboardEvent, browserSelection: Selection, rootElement: HTMLElement): boolean`: Delegates to `clipboardManager.paste`. Returns `true` if content was pasted.
-    *   `undo(browserSelection: Selection, rootElement: HTMLElement): void`: Orchestrates `historyManager.undo()`. Updates VDOM and selection, then calls `_emitChange` and `_emitSelectionAndFormatting`.
-    *   `redo(browserSelection: Selection, rootElement: HTMLElement): void`: Orchestrates `historyManager.redo()`. Updates VDOM and selection, then calls `_emitChange` and `_emitSelectionAndFormatting`.
+    *   `getValue(): string`: Returns the plain text content of the editor.
+    *   `clearValue(): void`: Resets `this.vdom` to empty state and updates the DOM.
     *   `initializeEmptyContent(): void`: Resets `this.vdom` to a single empty paragraph with ZWS. Calls `_emitChange` and `_emitSelectionAndFormatting`.
-    *   `getVDOM(): VDOMNode[]`: Exposes current VDOM state for `RichTextEditor.tsx`'s selection restoration.
+    *   `getVDOM(): VDOMNode[]`: Exposes current VDOM state for debugging or advanced use cases.
+    *   Note: Event handling methods are now internal and called automatically via DOM event listeners set up by `setRootElement()`.
 *   **Private/Internal Methods:**
     *   `_dispatch(command: EditorCommand, payload?: any)`: Internal dispatcher to `FSM.processCommand`.
     *   `_updateVDOM(newVDOM: VDOMNode[], newSelection: VDOMSelection, isPersistentChange: boolean = true)`:
         *   Updates `this.vdom` and `this.selection`.
         *   If `isPersistentChange` is true, pushes the *previous* state (`this.vdom`, `this.selection`) onto the `historyManager`'s undo stack.
         *   Calls `_emitChange()` and `_emitSelectionAndFormatting()`.
-    *   `_emitChange()`: Calls `this.onContentChange(this.getHtml())`.
-    *   `_emitSelectionAndFormatting()`: Determines active formatting at `this.selection` using `VDOMSelection.getFormattingAtSelection` and calls `this.onFormattingChange` and `this.onSelectionUpdate`.
-    *   `_updateSelectionFromBrowser(browserSelection: Selection, rootElement: HTMLElement): void`: Internal helper to update `this.selection` from browser data. Called by various `handle*` methods at the start.
+    *   `_emitChange()`: Calls `this.onChange(this.getHtml())` and updates the DOM content if `rootElement` is available.
+    *   `_emitSelectionAndFormatting()`: Determines active formatting at `this.selection` using `VDOMSelection.getFormattingAtSelection` and calls `this.onSelectionChange`.
+    *   `setupEventListeners(element: HTMLDivElement): void`: Sets up DOM event listeners for user input, keyboard events, and mouse clicks.
+    *   `cleanupEventListeners(): void`: Removes existing DOM event listeners.
+    *   `handleBeforeInput(event: InputEvent): boolean`: Processes user input events and updates VDOM accordingly.
+    *   `handleKeyDown(event: KeyboardEvent): boolean`: Processes keyboard events including shortcuts and navigation.
+    *   `handleClick(event: MouseEvent): void`: Updates selection state based on mouse clicks.
+    *   `syncSelectionFromBrowser(): void`: Updates internal VDOM selection from current browser selection.
 
 #### 4.3 `core/types.ts`
 
@@ -232,29 +226,26 @@ All functions within these modules **must be pure functions**. They will accept 
 
 ### 5. Data Structures (No changes)
 
-### 6. Event Handling & Workflow (Detailed with Option #2)
+### 6. Event Handling & Workflow (DOM Injection Pattern)
 
-1.  **User Interaction:** User types, clicks, selects text in `contentEditable` div, clicks formatting buttons, or uses keyboard shortcuts.
-2.  **`RichTextEditor.tsx` Captures Event:** `onInput`, `onKeyDown`, `onPaste`, `onMouseUp`, `onBlur`, button `onClick` handlers.
-3.  **Delegation to `Editor`:**
-    *   **All User Interactions:** `RichTextEditor.tsx`'s event handlers will call appropriate `editorRef.current` methods, passing the `event` object, `selectionService.getCurrentSelection()` (or fetching it just before the call), and `contentRef.current` as `rootElement`.
-    *   `RichTextEditor.tsx` will `e.preventDefault()` for events where the `Editor` method returns `true` (indicating it has handled the event and no default browser action should occur).
-4.  **`Editor` Processes Event/Command:**
-    *   The `Editor` method first calls `_updateSelectionFromBrowser(browserSelection, rootElement)` to ensure its internal `this.selection` is up-to-date with the browser's current state.
+1.  **Initialization:** `RichTextEditor.tsx` creates an `Editor` instance and calls `editor.setRootElement(contentRef.current)` to inject the DOM element.
+2.  **DOM Event Setup:** `Editor` automatically sets up event listeners (`beforeinput`, `keydown`, `click`) on the injected DOM element.
+3.  **User Interaction:** User types, clicks, selects text in `contentEditable` div, or clicks formatting buttons.
+4.  **Direct Event Handling:**
+    *   **DOM Events:** `Editor`'s internal event handlers (`handleBeforeInput`, `handleKeyDown`, `handleClick`) process events directly.
+    *   **Button Events:** `RichTextEditor.tsx` button handlers call `Editor` methods directly (e.g., for formatting commands).
+5.  **`Editor` Processes Event/Command:**
+    *   The `Editor` calls `syncSelectionFromBrowser()` to update its internal `this.selection` from the current browser state.
     *   It then dispatches an `EditorCommand` to the `FSM`.
-5.  **FSM/Command Dispatcher:** Processes the command and returns the new `vdom`, `selection`, and `didChange`/`isPersistent` flags.
-6.  **VDOM Mutation & History Update:** `Editor`'s `_updateVDOM` updates its internal state and pushes to `HistoryManager`.
-7.  **Normalization:** `VDOMNormalization.normalizeVDOM` is called.
-8.  **Emit Changes (Internal `Editor` callbacks):**
-    *   `Editor` calls `this.onContentChange(this.getHtml())`.
-    *   `Editor` calls `this.onFormattingChange(currentFormatting)`.
-    *   `Editor` calls `this.onSelectionUpdate(this.selection)`.
-9.  **`RichTextEditor.tsx` Re-renders & External `onChange`:**
-    *   `RichTextEditor.tsx` updates its `htmlContent` state, triggering a re-render.
-    *   `RichTextEditor.tsx` uses `safelySetHtml(contentRef.current, htmlContent)` to update the DOM.
-    *   `RichTextEditor.tsx` updates `currentFormatting` state, updating buttons.
-    *   `RichTextEditor.tsx` calls `VDOMSelection.applySelectionToBrowser(selectionService, currentVDOMSelection, contentRef.current, editorRef.current?.getVDOM() || [])` in `useLayoutEffect` to restore the browser selection.
-    *   `RichTextEditor.tsx` calls its external `onChange?.(getHtml())` prop for major changes.
+6.  **FSM/Command Dispatcher:** Processes the command and returns the new `vdom`, `selection`, and `didChange`/`isPersistent` flags.
+7.  **VDOM Mutation & History Update:** `Editor`'s `_updateVDOM` updates its internal state and pushes to `HistoryManager`.
+8.  **Normalization:** `VDOMNormalization.normalizeVDOM` is called.
+9.  **DOM Update & Callbacks:**
+    *   `Editor` calls `_emitChange()` which updates the DOM content directly and calls `this.onChange(this.getHtml())`.
+    *   `Editor` calls `_emitSelectionAndFormatting()` which calls `this.onSelectionChange(this.selection)`.
+10. **`RichTextEditor.tsx` Re-renders:**
+    *   `RichTextEditor.tsx` updates `currentFormatting` state based on `onSelectionChange` callback, updating buttons.
+    *   `RichTextEditor.tsx` calls its external `onChange?.(html)` prop for major changes.
 
 ### 7. TDD Approach & Test Coverage
 

@@ -1,136 +1,184 @@
-# Selection Synchronization Implementation Plan
+# Basic Text Input & Display - Narrow Vertical Slices Implementation Plan
 
-This document outlines the plan for implementing proper selection synchronization between the real
-DOM and virtual DOM in the RichTextEditor component.
+This document outlines the implementation of the "Basic Text Input & Display" slice using narrow vertical slices. Each slice delivers a minimal but complete user-facing feature that touches all layers of the system, building incrementally toward the full functionality.
 
-## Key Gaps Analysis
+## Overview
 
-1. **SelectionService Integration**:
+The "Basic Text Input & Display" slice from the main plan is broken down into 5 narrow vertical slices, each delivering a working feature that users can interact with:
 
-   - The SelectionService interface in VDOMSelection.ts is considered the "modern" interface
-   - We need to update SelectionService.humble.ts to match this interface
-   - This requires adding new methods to both BrowserSelectionService and MockSelectionService
-     classes
+1. **Static Text Display** - Display pre-defined text content
+2. **Single Character Input** - Type one character and see it displayed
+3. **Text String Input** - Type multiple characters and see them displayed
+4. **Basic Text Deletion** - Delete characters using backspace
+5. **Cursor Position Tracking** - Visual cursor positioning and basic selection
 
-2. **Editor Selection Handling**:
+Each slice follows the vertical slice principle: it touches all architectural layers (VDOM model, Editor core, React component) and delivers working functionality.
 
-   - Editor needs to integrate with VDOMSelection module
-   - Editor needs to add callbacks for selection changes
-   - Editor should use the SelectionService for DOM interactions
+## Slice 1: Static Text Display
 
-3. **React Component Selection Synchronization**:
-   - Will be addressed after Editor selection handling is improved
-   - Goal is to keep the component slim
+**Goal**: Display a hardcoded paragraph of text in the editor
 
-## Implementation Plan
+**User Story**: As a user, I can see text content displayed in the editor area
 
-### 1. Update SelectionService.humble.ts
+**Components to implement**:
+- [ ] **VDOM Foundation**:
+  - [ ] Minimal `VDOMNode.ts` with paragraph and text node types only
+  - [ ] Basic `VDOMToHTML.ts` to convert VDOM to displayable HTML
+- [ ] **Core Editor**:
+  - [ ] Minimal `Editor.ts` class with hardcoded content
+  - [ ] `getContent()` method returning HTML string
+- [ ] **React Component**:
+  - [ ] Basic `RichTextEditor.tsx` with contentEditable div
+  - [ ] Display content from Editor via dangerouslySetInnerHTML
+- [ ] **Tests**:
+  - [ ] Unit test for VDOMNode creation
+  - [ ] Unit test for VDOMToHTML conversion
+  - [ ] Unit test for Editor.getContent()
+  - [ ] Integration test for component rendering
 
-First, enhance SelectionService.humble.ts to include all methods required by VDOMSelection.ts:
+**Acceptance Criteria**:
+- Editor displays "Hello, World!" text
+- Text is properly formatted as a paragraph
+- Component renders without errors
 
-- Add the missing methods to the SelectionService interface:
+## Slice 2: Single Character Input
 
-  - getSelectionText()
-  - isSelectionCollapsed()
-  - getSelectionAnchorNode()
-  - getSelectionAnchorOffset()
-  - getSelectionFocusNode()
-  - getSelectionFocusOffset()
+**Goal**: Type one character and see it replace the existing content
 
-- Implement these methods in both BrowserSelectionService and MockSelectionService classes
-- Ensure proper implementation with direct browser API calls in BrowserSelectionService
-- Provide sensible mock implementations in MockSelectionService
+**User Story**: As a user, I can type a single character and see it displayed
 
-### 2. Enhance Editor for Selection Tracking
+**Components to implement**:
+- [ ] **VDOM Operations**:
+  - [ ] Basic text replacement in `VDOMMutations.ts`
+  - [ ] Simple cursor position tracking in `VDOMSelection.ts`
+- [ ] **Core Editor**:
+  - [ ] `insertText(char: string)` method
+  - [ ] Content change notification via callback
+- [ ] **React Component**:
+  - [ ] `onInput` event handler
+  - [ ] Character extraction from input event
+  - [ ] Content update and re-render
+- [ ] **Tests**:
+  - [ ] Unit test for text insertion mutation
+  - [ ] Unit test for Editor.insertText()
+  - [ ] Integration test for typing one character
 
-Next, update the Editor class to properly track and synchronize selection:
+**Acceptance Criteria**:
+- Typing 'A' replaces content with 'A'
+- Content updates are reflected in the display
+- Only single character input is supported
 
-- Update the Editor constructor to accept additional parameters:
+## Slice 3: Text String Input
 
-  - selectionService: SelectionService
-  - onSelectionChange: (selection: VDOMSelection) => void
+**Goal**: Type multiple characters and see them accumulate
 
-- Add selection tracking functionality:
+**User Story**: As a user, I can type multiple characters and see them build up as a string
 
-  - Track VDOMSelection state internally
-  - Update selection state after content changes
-  - Notify via onSelectionChange callback when selection changes
+**Components to implement**:
+- [ ] **VDOM Operations**:
+  - [ ] Text accumulation in `VDOMMutations.ts`
+  - [ ] Cursor position advancement in `VDOMSelection.ts`
+- [ ] **Core Editor**:
+  - [ ] Enhanced `insertText()` to handle string building
+  - [ ] Internal content state management
+- [ ] **React Component**:
+  - [ ] Enhanced input handling for multiple characters
+  - [ ] Proper event handling to prevent browser default behavior
+- [ ] **Tests**:
+  - [ ] Unit test for string accumulation
+  - [ ] Unit test for cursor advancement
+  - [ ] Integration test for typing multiple characters
 
-- Integrate with VDOMSelection module:
+**Acceptance Criteria**:
+- Typing "Hello" results in "Hello" being displayed
+- Each character appears as it's typed
+- Cursor position advances with each character
 
-  - Use getSelectionFromBrowser() to map DOM selection to VDOM
-  - Update content handling to maintain proper selection state
+## Slice 4: Basic Text Deletion
 
-- Add selection-specific methods:
-  - getSelection(): Returns current VDOM selection
-  - setSelection(selection: VDOMSelection): Sets selection state
+**Goal**: Delete characters using backspace key
 
-### 3. Update FSM to Handle Selection
+**User Story**: As a user, I can use backspace to delete characters I've typed
 
-The FSM needs to be aware of selection state:
+**Components to implement**:
+- [ ] **VDOM Operations**:
+  - [ ] Text deletion in `VDOMMutations.ts`
+  - [ ] Cursor position retreat in `VDOMSelection.ts`
+- [ ] **Core Editor**:
+  - [ ] `deleteText()` method
+  - [ ] Backspace key command handling
+- [ ] **React Component**:
+  - [ ] `onKeyDown` event handler for backspace
+  - [ ] Prevention of default backspace behavior
+- [ ] **Tests**:
+  - [ ] Unit test for text deletion mutation
+  - [ ] Unit test for Editor.deleteText()
+  - [ ] Integration test for backspace functionality
 
-- Update processCommand to accept and return selection state
-- Add commands for selection manipulation (SET_SELECTION, etc.)
-- Ensure all content operations update selection appropriately
-- Return both new content and new selection from command processing
+**Acceptance Criteria**:
+- Backspace removes the last character
+- Cursor position moves backward appropriately
+- Cannot delete beyond the beginning of text
 
-### 4. Testing Strategy
+## Slice 5: Cursor Position Tracking
 
-We'll develop tests in this order:
+**Goal**: Show visual cursor and handle basic selection
 
-1. **SelectionService Tests**:
+**User Story**: As a user, I can see where my cursor is positioned and click to move it
 
-   - Test new methods added to BrowserSelectionService and MockSelectionService
-   - Test edge cases like empty selection or selection spanning elements
+**Components to implement**:
+- [ ] **Selection Foundation**:
+  - [ ] Basic `SelectionService.humble.ts` with minimal browser selection API
+  - [ ] Selection mapping in `VDOMSelection.ts`
+  - [ ] `HTMLToVDOM.ts` for parsing existing content
+- [ ] **Core Editor**:
+  - [ ] Selection state tracking
+  - [ ] `setSelection()` and `getSelection()` methods
+  - [ ] Selection change notifications
+- [ ] **React Component**:
+  - [ ] Click event handling for cursor positioning
+  - [ ] Selection synchronization between VDOM and DOM
+  - [ ] Proper cursor display
+- [ ] **Tests**:
+  - [ ] Unit test for selection service
+  - [ ] Unit test for selection mapping
+  - [ ] Integration test for cursor positioning
 
-2. **VDOMSelection Integration Tests**:
+**Acceptance Criteria**:
+- Clicking in text positions cursor at click location
+- Cursor is visually displayed
+- Typing inserts text at cursor position
+- Backspace deletes character before cursor
 
-   - Test bidirectional mapping with updated SelectionService
-   - Test various selection scenarios (cursor, text range, multi-node)
+## Implementation Strategy
 
-3. **Editor Selection Tests**:
+### Development Approach
+1. **Test-Driven Development**: Write failing tests first, implement minimal code to pass
+2. **One Slice at a Time**: Complete each slice fully before moving to the next
+3. **Incremental Refinement**: Each slice may require refactoring previous components
 
-   - Test selection tracking during content changes
-   - Test selection notifications
-   - Test selection preservation and restoration
+### Architectural Principles
+- **Vertical Integration**: Each slice touches VDOM, Editor, and React layers
+- **Minimal Viable Feature**: Each slice delivers the smallest possible working feature
+- **Progressive Enhancement**: Later slices build on and enhance earlier implementations
 
-4. **End-to-End Component Tests**:
-   - Test user interactions with selection (clicking, typing, arrow keys)
-   - Test selection behavior after content updates
-
-### 5. Implementation Sequence
-
-1. First, update SelectionService.humble.ts with new methods
-2. Write tests for the updated SelectionService implementation
-3. Update Editor to track and notify selection changes
-4. Write tests for Editor selection handling
-5. Update FSM to handle selection state
-6. Write tests for FSM selection handling
-7. After all the above is working, reassess React component needs
+### Quality Gates
+- All tests must pass before moving to next slice
+- Each slice must be demonstrable to users
+- Code must maintain type safety throughout
+- No slice should break functionality from previous slices
 
 ## Benefits of This Approach
 
-1. **Interface Alignment**: By enhancing SelectionService.humble.ts to match the interface in
-   VDOMSelection.ts, we ensure compatibility between components.
-
-2. **Clear Responsibility Boundaries**:
-
-   - SelectionService handles browser selection API interactions
-   - VDOMSelection handles mapping between DOM and VDOM selections
-   - Editor maintains selection state and handles notifications
-   - FSM ensures selection state is updated with content changes
-
-3. **Test-Driven Development**:
-
-   - Each component can be tested independently
-   - We can validate selection behavior at each level
-
-4. **Incremental Implementation**:
-   - Focus first on getting the core selection tracking working
-   - Defer React component enhancements until basic functionality is validated
+1. **Rapid Feedback**: Users can interact with working features immediately
+2. **Risk Reduction**: Problems are discovered early in small, manageable pieces
+3. **Clear Progress**: Each slice represents tangible progress toward the goal
+4. **Flexible Prioritization**: Slices can be reordered based on user feedback
+5. **Easier Testing**: Small, focused functionality is easier to test thoroughly
 
 ## Next Steps
 
-1. Begin by updating the SelectionService.humble.ts interface and implementations
-2. Follow with test-driven implementation of each component in sequence
-3. Validate selection behavior at each stage before proceeding to the next
+1. Begin with Slice 1: Static Text Display
+2. Implement using TDD approach
+3. Validate each slice with both unit and integration tests
+4. Demonstrate working functionality before proceeding to next slice
