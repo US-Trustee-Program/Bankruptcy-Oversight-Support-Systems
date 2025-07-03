@@ -11,7 +11,12 @@ import {
  * @param html - The HTML string to clean
  * @returns Sanitized HTML string
  */
-export function cleanHtml(html: string): string {
+export function cleanHtml(html: string | null | undefined): string {
+  // Handle null, undefined, or non-string inputs
+  if (!html || typeof html !== 'string') {
+    return '';
+  }
+
   // Sanitize the HTML using DOMPurify with our configuration
   const cleaned = DOMPurify.sanitize(html, DOMPURIFY_CONFIG);
 
@@ -59,7 +64,12 @@ export function safelySetHtml(element: HTMLElement | null | undefined, html: str
  * @param content - The content to check (can be HTML string or text content)
  * @returns True if the content is considered empty
  */
-export function isEmptyContent(content: string): boolean {
+export function isEmptyContent(content: string | null | undefined): boolean {
+  // Handle null, undefined, or non-string inputs
+  if (!content || typeof content !== 'string') {
+    return true;
+  }
+
   // Remove zero-width spaces
   const cleaned = content.replace(ZERO_WIDTH_SPACE_REGEX, '');
 
@@ -114,7 +124,12 @@ export function normalizeHtml(html: string): string {
  * @param html - The HTML string to extract text from
  * @returns Plain text content
  */
-export function extractTextFromHtml(html: string): string {
+export function extractTextFromHtml(html: string | null | undefined): string {
+  // Handle null, undefined, or non-string inputs
+  if (!html || typeof html !== 'string') {
+    return '';
+  }
+
   const tempDiv = document.createElement('div');
   tempDiv.innerHTML = cleanHtml(html);
   const textContent = tempDiv.textContent || tempDiv.innerText || '';
@@ -128,7 +143,12 @@ export function extractTextFromHtml(html: string): string {
  * @param content - The content to check
  * @returns True if content contains only zero-width spaces
  */
-export function isOnlyZeroWidthSpaces(content: string): boolean {
+export function isOnlyZeroWidthSpaces(content: string | null | undefined): boolean {
+  // Handle null, undefined, or non-string inputs
+  if (!content || typeof content !== 'string') {
+    return false;
+  }
+
   const withoutZws = content.replace(ZERO_WIDTH_SPACE_REGEX, '');
   return withoutZws.length === 0 && content.length > 0;
 }

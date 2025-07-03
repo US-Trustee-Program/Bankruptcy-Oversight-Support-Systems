@@ -2,6 +2,7 @@ import * as React from 'react';
 import { forwardRef, useImperativeHandle, useRef, useEffect, useState } from 'react';
 import './RichTextEditor.scss';
 import { Editor } from './core/Editor';
+import { BrowserSelectionService } from './core/selection/SelectionService.humble';
 
 export interface RichTextEditorRef {
   clearValue: () => void;
@@ -28,53 +29,26 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
   const domElementRef = useRef<HTMLDivElement>(null);
 
   const handleOnChange = (value: string) => {
-    if (domElementRef.current) {
-      domElementRef.current.innerHTML = value;
-    }
     if (onChange) {
       onChange(value);
     }
   };
 
   const [editor] = useState<Editor>(() => {
-    return new Editor({ onChange: handleOnChange });
+    const selectionService = new BrowserSelectionService(window, document);
+    return new Editor({
+      onChange: handleOnChange,
+      onSelectionChange: (selection) => {
+        // Handle selection changes here, e.g., update formatting buttons
+        console.log('Selection changed:', selection);
+      },
+      selectionService,
+    });
   });
 
-  // Set up DOM element and event listeners after mount
   useEffect(() => {
     if (domElementRef.current && editor) {
-      domElementRef.current.innerHTML = editor.getHtml();
-
-      // Add beforeinput event listener to capture user input
-      const handleBeforeInput = (e: Event) => {
-        const inputEvent = e as InputEvent;
-        editor.handleBeforeInput(inputEvent);
-        e.preventDefault();
-      };
-
-      // Add keydown event listener to capture arrow keys and other navigation
-      const handleKeyDown = (e: Event) => {
-        const keyEvent = e as KeyboardEvent;
-        editor.handleKeyDown(keyEvent);
-      };
-
-      // Add click event listener to capture mouse clicks for cursor positioning
-      const handleClick = (e: Event) => {
-        const mouseEvent = e as MouseEvent;
-        editor.handleClick(mouseEvent);
-      };
-
-      domElementRef.current.addEventListener('beforeinput', handleBeforeInput);
-      domElementRef.current.addEventListener('keydown', handleKeyDown);
-      domElementRef.current.addEventListener('click', handleClick);
-
-      return () => {
-        if (domElementRef.current) {
-          domElementRef.current.removeEventListener('beforeinput', handleBeforeInput);
-          domElementRef.current.removeEventListener('keydown', handleKeyDown);
-          domElementRef.current.removeEventListener('click', handleClick);
-        }
-      };
+      editor.setRootElement(domElementRef.current);
     }
   }, [editor]);
 

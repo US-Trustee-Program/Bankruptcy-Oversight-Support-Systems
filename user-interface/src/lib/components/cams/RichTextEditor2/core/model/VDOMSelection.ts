@@ -1,5 +1,4 @@
 import { VDOMNode, VDOMSelection, RichTextFormatState } from '../types';
-import { findNodeById } from './VDOMMutations';
 
 /**
  * Interface for SelectionService to abstract browser selection APIs
@@ -86,100 +85,35 @@ export function getTextOffsetInVDOM(vdom: VDOMNode[], nodeId: string, offset: nu
 }
 
 /**
- * Finds the DOM node corresponding to a VDOM node
+ * Converts browser selection to VDOM selection - Simplified approach
  */
-function findDOMNodeByVDOMId(rootElement: HTMLElement, nodeId: string): Node | null {
-  // This is a simplified implementation
-  // In a real implementation, we would maintain a mapping between VDOM IDs and DOM nodes
-  // or use data attributes to identify nodes
-
-  function traverseDOM(element: Node): Node | null {
-    // Check if this node has a data attribute matching our VDOM ID
-    if (element.nodeType === Node.ELEMENT_NODE) {
-      const el = element as Element;
-      if (el.getAttribute && el.getAttribute('data-vdom-id') === nodeId) {
-        return element;
-      }
-    }
-
-    // Traverse children
-    for (let i = 0; i < element.childNodes.length; i++) {
-      const found = traverseDOM(element.childNodes[i]);
-      if (found) return found;
-    }
-
-    return null;
-  }
-
-  return traverseDOM(rootElement);
-}
-
-/**
- * Converts browser selection to VDOM selection
- */
-export function getSelectionFromBrowser(
-  selectionService: SelectionService,
-  rootElement: HTMLElement,
-  vdom: VDOMNode[],
-): VDOMSelection {
+export function getSelectionFromBrowser(selectionService: SelectionService): VDOMSelection {
   const selection = selectionService.getCurrentSelection();
 
   if (!selection || !selection.anchorNode || !selection.focusNode) {
-    // Return a default selection at the beginning of the first text node
-    const firstTextNode = findFirstTextNode(vdom);
-    if (firstTextNode) {
-      return {
-        start: { nodeId: firstTextNode.id, offset: 0 },
-        end: { nodeId: firstTextNode.id, offset: 0 },
-        isCollapsed: true,
-      };
-    }
-
-    // Fallback if no text node found
+    // Return a default selection at the beginning
     return {
-      start: { nodeId: '', offset: 0 },
-      end: { nodeId: '', offset: 0 },
+      start: { offset: 0 },
+      end: { offset: 0 },
       isCollapsed: true,
     };
   }
 
-  const anchorNode = selectionService.getSelectionAnchorNode();
   const anchorOffset = selectionService.getSelectionAnchorOffset();
-  const focusNode = selectionService.getSelectionFocusNode();
   const focusOffset = selectionService.getSelectionFocusOffset();
   const isCollapsed = selectionService.isSelectionCollapsed();
 
-  // Find corresponding VDOM nodes
-  const startVDOMNode = anchorNode ? findNodeByDOMNode(vdom, anchorNode, rootElement) : null;
-  const endVDOMNode = focusNode ? findNodeByDOMNode(vdom, focusNode, rootElement) : null;
-
-  if (!startVDOMNode || !endVDOMNode) {
-    // Fallback to first text node
-    const firstTextNode = findFirstTextNode(vdom);
-    if (firstTextNode) {
-      return {
-        start: { nodeId: firstTextNode.id, offset: 0 },
-        end: { nodeId: firstTextNode.id, offset: 0 },
-        isCollapsed: true,
-      };
-    }
-
-    return {
-      start: { nodeId: '', offset: 0 },
-      end: { nodeId: '', offset: 0 },
-      isCollapsed: true,
-    };
-  }
-
+  // For simplified approach, we'll use the browser's selection offsets directly
+  // This works for simple text content without complex formatting
   return {
-    start: { nodeId: startVDOMNode.id, offset: anchorOffset },
-    end: { nodeId: endVDOMNode.id, offset: focusOffset },
+    start: { offset: Math.min(anchorOffset, focusOffset) },
+    end: { offset: Math.max(anchorOffset, focusOffset) },
     isCollapsed,
   };
 }
 
 /**
- * Applies VDOM selection to browser selection
+ * Applies VDOM selection to browser selection - Simplified approach
  */
 export function applySelectionToBrowser(
   selectionService: SelectionService,
@@ -187,10 +121,9 @@ export function applySelectionToBrowser(
   rootElement: HTMLElement,
   vdom: VDOMNode[],
 ): void {
-  const startNode = findNodeById(vdom, vdomSelection.start.nodeId);
-  const endNode = findNodeById(vdom, vdomSelection.end.nodeId);
-
-  if (!startNode || !endNode) {
+  // Add null check for rootElement to prevent traversal errors
+  if (!rootElement) {
+    console.warn('Cannot apply selection to browser: rootElement is null');
     return;
   }
 
@@ -198,37 +131,24 @@ export function applySelectionToBrowser(
   const range = selectionService.createRange();
 
   try {
-    // Find corresponding DOM nodes
-    const startDOMNode = findDOMNodeByVDOMId(rootElement, startNode.id);
-    const endDOMNode = findDOMNodeByVDOMId(rootElement, endNode.id);
+    // For simplified approach, find the first text node in the element
+    const textNode = findTextNodeInElement(rootElement);
 
-    if (startDOMNode && endDOMNode) {
-      // For text nodes, we can set the range directly
-      if (startDOMNode.nodeType === Node.TEXT_NODE) {
-        range.setStart(startDOMNode, vdomSelection.start.offset);
-      } else {
-        // For element nodes, we need to find the text node within
-        const textNode = findTextNodeInElement(startDOMNode);
-        if (textNode) {
-          range.setStart(textNode, vdomSelection.start.offset);
-        }
-      }
+    if (textNode) {
+      // Set the range using simple offsets
+      const startOffset = Math.min(vdomSelection.start.offset, textNode.textContent?.length || 0);
+      const endOffset = Math.min(vdomSelection.end.offset, textNode.textContent?.length || 0);
+
+      range.setStart(textNode, startOffset);
 
       if (vdomSelection.isCollapsed) {
         range.collapse(true);
       } else {
-        if (endDOMNode.nodeType === Node.TEXT_NODE) {
-          range.setEnd(endDOMNode, vdomSelection.end.offset);
-        } else {
-          const textNode = findTextNodeInElement(endDOMNode);
-          if (textNode) {
-            range.setEnd(textNode, vdomSelection.end.offset);
-          }
-        }
+        range.setEnd(textNode, endOffset);
       }
     }
 
-    // Always call setSelectionRange, even if DOM nodes weren't found
+    // Always call setSelectionRange, even if text node wasn't found
     // This allows tests to verify the function is working correctly
     selectionService.setSelectionRange(range);
   } catch (error) {
@@ -238,105 +158,41 @@ export function applySelectionToBrowser(
 }
 
 /**
- * Gets all nodes within a selection range
+ * Gets all nodes within a selection range - Simplified approach
  */
 export function getNodesInRange(vdom: VDOMNode[], selection: VDOMSelection): VDOMNode[] {
-  if (selection.isCollapsed) {
-    const node = findNodeById(vdom, selection.start.nodeId);
-    return node ? [node] : [];
+  // For simplified approach, recursively find all text nodes
+  // since we're working with simple text content
+  function findAllTextNodes(nodes: VDOMNode[]): VDOMNode[] {
+    const textNodes: VDOMNode[] = [];
+    for (const node of nodes) {
+      if (node.type === 'text') {
+        textNodes.push(node);
+      }
+      if (node.children) {
+        textNodes.push(...findAllTextNodes(node.children));
+      }
+    }
+    return textNodes;
   }
 
-  // For single node selection
-  if (selection.start.nodeId === selection.end.nodeId) {
-    const node = findNodeById(vdom, selection.start.nodeId);
-    return node ? [node] : [];
-  }
-
-  // For multi-node selection, this is a simplified implementation
-  // In a full implementation, we would traverse the VDOM tree and collect
-  // all nodes between the start and end positions
-  const nodes: VDOMNode[] = [];
-  const startNode = findNodeById(vdom, selection.start.nodeId);
-  const endNode = findNodeById(vdom, selection.end.nodeId);
-
-  if (startNode) nodes.push(startNode);
-  if (endNode && endNode !== startNode) nodes.push(endNode);
-
-  return nodes;
+  return findAllTextNodes(vdom);
 }
 
 /**
- * Gets the formatting state at the current selection
+ * Gets the formatting state at the current selection - Simplified approach
  */
 export function getFormattingAtSelection(
   vdom: VDOMNode[],
   selection: VDOMSelection,
 ): RichTextFormatState {
-  const formatting: RichTextFormatState = {
+  // For vertical slice #1 (basic text input), we don't have formatting yet
+  // Return no formatting for now
+  return {
     bold: false,
     italic: false,
     underline: false,
   };
-
-  // Get the node at the selection start
-  const node = findNodeById(vdom, selection.start.nodeId);
-  if (!node) {
-    return formatting;
-  }
-
-  // Find the path from root to this node to check for formatting ancestors
-  const path = findNodePath(vdom, selection.start.nodeId);
-  if (!path) {
-    return formatting;
-  }
-
-  // Check each node in the path for formatting
-  for (const pathNode of path) {
-    switch (pathNode.type) {
-      case 'strong':
-        formatting.bold = true;
-        break;
-      case 'em':
-        formatting.italic = true;
-        break;
-      case 'u':
-        formatting.underline = true;
-        break;
-    }
-  }
-
-  // For range selections, check if any part of the range has formatting
-  if (!selection.isCollapsed) {
-    // Check all nodes in the VDOM for formatting (simplified approach)
-    function checkAllNodesForFormatting(nodes: VDOMNode[]): void {
-      for (const node of nodes) {
-        const nodePath = findNodePath(vdom, node.id);
-        if (nodePath) {
-          for (const pathNode of nodePath) {
-            switch (pathNode.type) {
-              case 'strong':
-                formatting.bold = true;
-                break;
-              case 'em':
-                formatting.italic = true;
-                break;
-              case 'u':
-                formatting.underline = true;
-                break;
-            }
-          }
-        }
-
-        if (node.children) {
-          checkAllNodesForFormatting(node.children);
-        }
-      }
-    }
-
-    checkAllNodesForFormatting(vdom);
-  }
-
-  return formatting;
 }
 
 /**

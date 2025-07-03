@@ -4,6 +4,12 @@ export interface SelectionService {
   createRange(): Range;
   setSelectionRange(range: Range): void;
   getSelectedText(): string;
+  getSelectionText(): string; // Alias for getSelectedText for compatibility with VDOMSelection.ts
+  isSelectionCollapsed(): boolean;
+  getSelectionAnchorNode(): Node | null;
+  getSelectionAnchorOffset(): number;
+  getSelectionFocusNode(): Node | null;
+  getSelectionFocusOffset(): number;
   selectNodeContents(node: Node): void;
   createElement<K extends keyof HTMLElementTagNameMap>(tagName: K): HTMLElementTagNameMap[K];
   createTextNode(text: string): Text;
@@ -46,6 +52,36 @@ export class BrowserSelectionService implements SelectionService {
     return selection ? selection.toString() : '';
   }
 
+  // Alias for getSelectedText for compatibility with VDOMSelection.ts
+  getSelectionText(): string {
+    return this.getSelectedText();
+  }
+
+  isSelectionCollapsed(): boolean {
+    const selection = this.getCurrentSelection();
+    return selection ? selection.isCollapsed : true;
+  }
+
+  getSelectionAnchorNode(): Node | null {
+    const selection = this.getCurrentSelection();
+    return selection ? selection.anchorNode : null;
+  }
+
+  getSelectionAnchorOffset(): number {
+    const selection = this.getCurrentSelection();
+    return selection ? selection.anchorOffset : 0;
+  }
+
+  getSelectionFocusNode(): Node | null {
+    const selection = this.getCurrentSelection();
+    return selection ? selection.focusNode : null;
+  }
+
+  getSelectionFocusOffset(): number {
+    const selection = this.getCurrentSelection();
+    return selection ? selection.focusOffset : 0;
+  }
+
   selectNodeContents(node: Node): void {
     const range = this.createRange();
     range.selectNodeContents(node);
@@ -75,11 +111,21 @@ export class MockSelectionService implements SelectionService {
     ranges: Range[];
     text: string;
     cursorPosition?: number;
+    isCollapsed: boolean;
+    anchorNode: Node | null;
+    anchorOffset: number;
+    focusNode: Node | null;
+    focusOffset: number;
   } = {
     rangeCount: 0,
     ranges: [],
     text: '',
     cursorPosition: undefined,
+    isCollapsed: true,
+    anchorNode: null,
+    anchorOffset: 0,
+    focusNode: null,
+    focusOffset: 0,
   };
 
   getCurrentSelection(): Selection {
@@ -148,6 +194,31 @@ export class MockSelectionService implements SelectionService {
     return this.mockSelection.text;
   }
 
+  // Alias for getSelectedText for compatibility with VDOMSelection.ts
+  getSelectionText(): string {
+    return this.getSelectedText();
+  }
+
+  isSelectionCollapsed(): boolean {
+    return this.mockSelection.isCollapsed;
+  }
+
+  getSelectionAnchorNode(): Node | null {
+    return this.mockSelection.anchorNode;
+  }
+
+  getSelectionAnchorOffset(): number {
+    return this.mockSelection.anchorOffset;
+  }
+
+  getSelectionFocusNode(): Node | null {
+    return this.mockSelection.focusNode;
+  }
+
+  getSelectionFocusOffset(): number {
+    return this.mockSelection.focusOffset;
+  }
+
   selectNodeContents(node: Node): void {
     const range = this.createRange();
     range.selectNodeContents(node);
@@ -165,6 +236,21 @@ export class MockSelectionService implements SelectionService {
     this.mockSelection.rangeCount = 1;
     // Clear existing ranges since we're using cursor position instead
     this.mockSelection.ranges = [];
+  }
+
+  // Additional helper methods for tests
+  setIsCollapsed(isCollapsed: boolean): void {
+    this.mockSelection.isCollapsed = isCollapsed;
+  }
+
+  setMockAnchorNode(node: Node, offset: number): void {
+    this.mockSelection.anchorNode = node;
+    this.mockSelection.anchorOffset = offset;
+  }
+
+  setMockFocusNode(node: Node, offset: number): void {
+    this.mockSelection.focusNode = node;
+    this.mockSelection.focusOffset = offset;
   }
 
   createElement<K extends keyof HTMLElementTagNameMap>(tagName: K): HTMLElementTagNameMap[K] {

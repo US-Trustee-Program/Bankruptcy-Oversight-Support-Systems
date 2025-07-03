@@ -1,17 +1,28 @@
-import { EditorCommand, EditorState, FSMResult, VDOMNode, VDOM_NODE_TYPES } from './types';
+import {
+  EditorCommand,
+  EditorState,
+  FSMResult,
+  VDOMNode,
+  VDOM_NODE_TYPES,
+  VDOMSelection,
+} from './types';
 
 // TODO: Future options for FSM configuration
 export type FSMOptions = object;
 
 export class FSM {
-  private cursorPosition: number = 0;
-
   constructor(_options?: FSMOptions) {
     // Future initialization
   }
 
-  processCommand(command: EditorCommand, currentState: EditorState): FSMResult {
+  processCommand(
+    command: EditorCommand | { type: 'SET_SELECTION'; payload: VDOMSelection },
+    currentState: EditorState,
+  ): FSMResult {
     switch (command.type) {
+      case 'SET_SELECTION':
+        return this.handleSetSelection(command.payload, currentState);
+
       case 'INSERT_TEXT':
         // TODO: We probably need to model a discriminated union for the EditorCommand to get the type right here.
         // TODO: Make sure the payload is typed as string when the command is to insert text. Remove the type cast.
@@ -56,32 +67,58 @@ export class FSM {
   private handleInsertText(text: string, currentState: EditorState): FSMResult {
     // Get the current text content and insert at cursor position
     const currentText = this.getTextContent(currentState.vdom);
-    const newText =
-      currentText.slice(0, this.cursorPosition) + text + currentText.slice(this.cursorPosition);
 
-    // Update cursor position
-    this.cursorPosition += text.length;
+    // Use the selection state to determine cursor position instead of internal state
+    const cursorPosition = currentState.selection.start.offset;
 
-    // Create a single text node with the new content
-    const textNode: VDOMNode = {
-      id: `text-${Date.now()}-${Math.random()}`,
-      type: VDOM_NODE_TYPES.TEXT,
-      content: newText,
-    };
+    const newText = currentText.slice(0, cursorPosition) + text + currentText.slice(cursorPosition);
+
+    // Calculate new cursor position
+    const newCursorPosition = cursorPosition + text.length;
+
+    // Try to reuse existing text node if we have one, otherwise create new one
+    let textNode: VDOMNode;
+    const existingTextNode = currentState.vdom.find((node) => node.type === VDOM_NODE_TYPES.TEXT);
+
+    if (existingTextNode) {
+      // Reuse existing text node ID to maintain selection continuity
+      textNode = {
+        id: existingTextNode.id,
+        type: VDOM_NODE_TYPES.TEXT,
+        content: newText,
+      };
+    } else {
+      // Create a new text node if none exists
+      textNode = {
+        id: `text-${Date.now()}-${Math.random()}`,
+        type: VDOM_NODE_TYPES.TEXT,
+        content: newText,
+      };
+    }
 
     const newVDOM = [textNode];
 
+    // Create a new selection at the new cursor position
+    const newSelection = {
+      start: { offset: newCursorPosition },
+      end: { offset: newCursorPosition },
+      isCollapsed: true,
+    };
+
     return {
       newVDOM,
-      newSelection: currentState.selection,
+      newSelection,
       didChange: true,
       isPersistent: true,
     };
   }
 
   private handleBackspace(currentState: EditorState): FSMResult {
+    // Use the selection state to determine cursor position
+    const cursorPosition = currentState.selection.start.offset;
+
     // Only delete if cursor is not at the beginning
-    if (this.cursorPosition <= 0) {
+    if (cursorPosition <= 0) {
       return {
         newVDOM: currentState.vdom,
         newSelection: currentState.selection,
@@ -92,11 +129,10 @@ export class FSM {
 
     // Get current text and remove character before cursor
     const currentText = this.getTextContent(currentState.vdom);
-    const newText =
-      currentText.slice(0, this.cursorPosition - 1) + currentText.slice(this.cursorPosition);
+    const newText = currentText.slice(0, cursorPosition - 1) + currentText.slice(cursorPosition);
 
-    // Update cursor position
-    this.cursorPosition = Math.max(0, this.cursorPosition - 1);
+    // Calculate new cursor position
+    const newCursorPosition = Math.max(0, cursorPosition - 1);
 
     // Create new VDOM with updated text
     const newVDOM = newText
@@ -109,9 +145,16 @@ export class FSM {
         ]
       : [];
 
+    // Create new selection at the updated cursor position
+    const newSelection = {
+      start: { offset: newCursorPosition },
+      end: { offset: newCursorPosition },
+      isCollapsed: true,
+    };
+
     return {
       newVDOM,
-      newSelection: currentState.selection,
+      newSelection,
       didChange: true,
       isPersistent: true,
     };
@@ -135,25 +178,45 @@ export class FSM {
   }
 
   private handleMoveCursorLeft(currentState: EditorState): FSMResult {
+    // Use the selection state to determine current cursor position
+    const currentCursorPosition = currentState.selection.start.offset;
+
     // Move cursor left by one position, but not below 0
-    this.cursorPosition = Math.max(0, this.cursorPosition - 1);
+    const newCursorPosition = Math.max(0, currentCursorPosition - 1);
+
+    // Create new selection with updated cursor position
+    const newSelection = {
+      start: { offset: newCursorPosition },
+      end: { offset: newCursorPosition },
+      isCollapsed: true,
+    };
 
     return {
       newVDOM: currentState.vdom,
-      newSelection: currentState.selection,
+      newSelection,
       didChange: false, // No content change, just cursor movement
       isPersistent: false,
     };
   }
 
   private handleMoveCursorRight(currentState: EditorState): FSMResult {
+    // Use the selection state to determine current cursor position
+    const currentCursorPosition = currentState.selection.start.offset;
+
     // Move cursor right by one position, but not beyond text length
     const textLength = this.getTextContent(currentState.vdom).length;
-    this.cursorPosition = Math.min(textLength, this.cursorPosition + 1);
+    const newCursorPosition = Math.min(textLength, currentCursorPosition + 1);
+
+    // Create new selection with updated cursor position
+    const newSelection = {
+      start: { offset: newCursorPosition },
+      end: { offset: newCursorPosition },
+      isCollapsed: true,
+    };
 
     return {
       newVDOM: currentState.vdom,
-      newSelection: currentState.selection,
+      newSelection,
       didChange: false, // No content change, just cursor movement
       isPersistent: false,
     };
@@ -163,13 +226,49 @@ export class FSM {
     // Set cursor to the specified position
     if (typeof position === 'number') {
       const textLength = this.getTextContent(currentState.vdom).length;
-      this.cursorPosition = Math.max(0, Math.min(position, textLength));
+      const newCursorPosition = Math.max(0, Math.min(position, textLength));
+
+      // Create selection object with cursor at specified position
+      const newSelection = {
+        start: { offset: newCursorPosition },
+        end: { offset: newCursorPosition },
+        isCollapsed: true,
+      };
+
+      return {
+        newVDOM: currentState.vdom,
+        newSelection,
+        didChange: false, // No content change, just cursor movement
+        isPersistent: false,
+      };
     }
 
     return {
       newVDOM: currentState.vdom,
       newSelection: currentState.selection,
       didChange: false, // No content change, just cursor movement
+      isPersistent: false,
+    };
+  }
+
+  /**
+   * Handle the SET_SELECTION command
+   * This is used to directly set the selection state from external sources
+   */
+  private handleSetSelection(selection: VDOMSelection, currentState: EditorState): FSMResult {
+    if (!selection) {
+      return {
+        newVDOM: currentState.vdom,
+        newSelection: currentState.selection,
+        didChange: false,
+        isPersistent: false,
+      };
+    }
+
+    return {
+      newVDOM: currentState.vdom,
+      newSelection: selection,
+      didChange: false, // No content change, just selection change
       isPersistent: false,
     };
   }
