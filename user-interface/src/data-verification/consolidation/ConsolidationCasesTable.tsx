@@ -256,9 +256,7 @@ function _ConsolidationCaseTable(
                         id="is-lead"
                         inline={true}
                         show={true}
-                        message={
-                          'This case is the lead case of a consolidation and can be used as the lead of this consolidation.'
-                        }
+                        message={`This case is the lead case of a ${bCase.associations?.[0].consolidationType === 'administrative' ? 'joint administration' : 'substantive'} consolidation and can be used as the lead of this consolidation.`}
                         type={UswdsAlertStyle.Warning}
                       ></Alert>
                     )}
