@@ -1,5 +1,6 @@
 import React from 'react';
 import type { RichTextEditor3Props, RichTextEditor3Ref } from './types';
+import { RichTextButton } from './RichTextButton';
 import './RichTextEditor3.scss';
 
 const RichTextEditor3 = React.forwardRef<RichTextEditor3Ref, RichTextEditor3Props>(
@@ -38,6 +39,18 @@ const RichTextEditor3 = React.forwardRef<RichTextEditor3Ref, RichTextEditor3Prop
             {required && ' *'}
           </label>
         )}
+        <div className="rich-text-editor3__toolbar">
+          <RichTextButton
+            title="Bold"
+            ariaLabel="Make text bold"
+            onClick={() => {
+              // Bold functionality will be implemented later
+              console.log('Bold button clicked');
+            }}
+          >
+            b
+          </RichTextButton>
+        </div>
         <textarea
           id={id}
           value={value}

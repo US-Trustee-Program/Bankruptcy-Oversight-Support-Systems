@@ -131,9 +131,12 @@ describe('RichTextEditor3', () => {
     render(<RichTextEditor3 id="test-editor" />);
     const textarea = screen.getByRole('textbox');
     const container = textarea.parentElement;
+    const toolbar = container?.querySelector('.rich-text-editor3__toolbar');
 
     expect(container).toHaveClass('rich-text-editor3');
     expect(textarea).toHaveClass('rich-text-editor3__textarea');
+    expect(toolbar).toBeInTheDocument();
+    expect(toolbar).toHaveClass('rich-text-editor3__toolbar');
   });
 
   it('applies proper classes to label', () => {
@@ -164,5 +167,34 @@ describe('RichTextEditor3', () => {
     render(<RichTextEditor3 required={true} />);
     const textarea = screen.getByRole('textbox');
     expect(textarea).toBeRequired();
+  });
+
+  it('renders toolbar component', () => {
+    render(<RichTextEditor3 id="test-editor" />);
+    const container = screen.getByRole('textbox').parentElement;
+    const toolbar = container?.querySelector('.rich-text-editor3__toolbar');
+
+    expect(toolbar).toBeInTheDocument();
+    expect(toolbar).toHaveClass('rich-text-editor3__toolbar');
+  });
+
+  it('renders bold button in toolbar', () => {
+    render(<RichTextEditor3 id="test-editor" />);
+    const boldButton = screen.getByRole('button', { name: 'Make text bold' });
+
+    expect(boldButton).toBeInTheDocument();
+    expect(boldButton).toHaveTextContent('b');
+    expect(boldButton).toHaveAttribute('title', 'Bold');
+  });
+
+  it('logs message when bold button is clicked', () => {
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    render(<RichTextEditor3 id="test-editor" />);
+    const boldButton = screen.getByRole('button', { name: 'Make text bold' });
+
+    fireEvent.click(boldButton);
+    expect(consoleSpy).toHaveBeenCalledWith('Bold button clicked');
+
+    consoleSpy.mockRestore();
   });
 });

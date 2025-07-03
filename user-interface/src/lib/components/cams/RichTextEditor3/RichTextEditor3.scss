@@ -15,15 +15,28 @@
     }
   }
 
+  &__toolbar {
+    border: 1px solid #ccc;
+    border-bottom: none;
+    background-color: #f8f9fa;
+    padding: 8px;
+    border-radius: 4px 4px 0 0;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
   &__textarea {
     width: 100%;
     min-height: 100px;
     border: 1px solid #ccc;
+    border-top: none;
     padding: 8px;
     font-family: inherit;
     font-size: inherit;
     resize: vertical;
-    border-radius: 4px;
+    border-radius: 0 0 4px 4px;
     transition: border-color 0.2s ease-in-out;
 
     &:focus {
