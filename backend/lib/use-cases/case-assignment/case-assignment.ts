@@ -30,10 +30,11 @@ export class CaseAssignmentUseCase {
     this.queueGateway = getQueueGateway(applicationContext);
   }
 
+  // TODO: createTrialAttorneyAssignments should not take a role, or should be renamed
   public async createTrialAttorneyAssignments(
     context: ApplicationContext,
     caseId: string,
-    newAssignments: CamsUserReference[],
+    newAssignees: CamsUserReference[],
     role: string,
     options: { processRoles?: CamsRole[] } = {},
   ): Promise<void> {
@@ -52,7 +53,7 @@ export class CaseAssignmentUseCase {
         message: 'User does not have appropriate access to create assignments for this office.',
       });
     }
-    await this.assignTrialAttorneys(context, caseId, newAssignments, role);
+    await this.assignTrialAttorneys(context, caseId, newAssignees, role);
 
     // Reassign all child cases if this is a joint administration lead case.
     const consolidationReferences = await casesRepo.getConsolidation(caseId);
@@ -64,19 +65,20 @@ export class CaseAssignmentUseCase {
       )
       .map((reference) => reference.otherCase.caseId);
     for (const childCaseId of childCaseIds) {
-      await this.assignTrialAttorneys(context, childCaseId, newAssignments, role);
+      await this.assignTrialAttorneys(context, childCaseId, newAssignees, role);
     }
   }
 
+  // TODO: assignTrialAttorneys should not take a role, or should be renamed
   private async assignTrialAttorneys(
     context: ApplicationContext,
     caseId: string,
-    newAssignments: CamsUserReference[],
+    newAssignees: CamsUserReference[],
     role: string,
   ): Promise<string[]> {
     const casesRepo = Factory.getCasesRepository(context);
     const assignmentRepo = Factory.getAssignmentRepository(context);
-    context.logger.info(MODULE_NAME, 'New assignments:', newAssignments);
+    context.logger.info(MODULE_NAME, 'New assignments:', newAssignees);
 
     const bCase = await casesRepo.getSyncedCase(caseId);
     const officesGateway = getOfficesGateway(context);
@@ -87,13 +89,13 @@ export class CaseAssignmentUseCase {
     const officesRepo = getOfficesRepository(context);
     const calls = [];
     const validatedAssignments: CamsUserReference[] = [];
-    newAssignments.forEach((assignment) => {
+    newAssignees.forEach((assignee) => {
       calls.push(
         officesRepo
-          .search({ officeCode, userId: assignment.id, role })
+          .search({ officeCode, userId: assignee.id, role })
           .then((response) => {
             return response.find((staff) => {
-              if (staff.roles.includes(role as CamsRole) && staff.name === assignment.name) {
+              if (staff.roles.includes(role as CamsRole) && staff.name === assignee.name) {
                 return true;
               }
             });
@@ -116,10 +118,10 @@ export class CaseAssignmentUseCase {
         }
       }
     });
-    if (validatedAssignments.length !== newAssignments.length) {
+    if (validatedAssignments.length !== newAssignees.length) {
       throw new AssignmentError(MODULE_NAME, {
         message: 'Invalid assignments found.',
-        data: { newAssignments, validatedAssignments },
+        data: { newAssignments: newAssignees, validatedAssignments },
       });
     }
 

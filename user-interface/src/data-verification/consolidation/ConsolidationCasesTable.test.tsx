@@ -157,7 +157,7 @@ describe('test ConsolidationCasesTable component', () => {
     );
   });
 
-  test('Should display alert if a case is the lead case of another consolidation', () => {
+  test('Should display alert if a case is the lead case of another administrative consolidation', () => {
     const caseId = '11-1111';
     const props = {
       cases: [
@@ -170,6 +170,7 @@ describe('test ConsolidationCasesTable component', () => {
                 override: {
                   caseId,
                   documentType: 'CONSOLIDATION_FROM',
+                  consolidationType: 'administrative',
                 },
               }),
             ],
@@ -181,7 +182,36 @@ describe('test ConsolidationCasesTable component', () => {
     renderWithProps(props);
 
     expect(screen.getByTestId('alert-container-is-lead')).toHaveTextContent(
-      'This case is the lead case of a consolidation and can be used as the lead of this consolidation.',
+      'This case is the lead case of a joint administration consolidation and can be used as the lead of this consolidation.',
+    );
+  });
+
+  test('Should display alert if a case is the lead case of another substantive consolidation', () => {
+    const caseId = '11-1111';
+    const props = {
+      cases: [
+        MockData.getConsolidatedOrderCase({
+          override: {
+            caseId,
+            isLeadCase: true,
+            associations: [
+              MockData.getConsolidationReference({
+                override: {
+                  caseId,
+                  documentType: 'CONSOLIDATION_FROM',
+                  consolidationType: 'substantive',
+                },
+              }),
+            ],
+          },
+        }),
+      ],
+    };
+
+    renderWithProps(props);
+
+    expect(screen.getByTestId('alert-container-is-lead')).toHaveTextContent(
+      'This case is the lead case of a substantive consolidation and can be used as the lead of this consolidation.',
     );
   });
 
