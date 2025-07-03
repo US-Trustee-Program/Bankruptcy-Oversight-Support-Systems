@@ -30,6 +30,7 @@ export class CaseAssignmentUseCase {
     this.queueGateway = getQueueGateway(applicationContext);
   }
 
+  // TODO: createTrialAttorneyAssignments should not take a role, or should be renamed
   public async createTrialAttorneyAssignments(
     context: ApplicationContext,
     caseId: string,
