@@ -1,7 +1,7 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { Editor, EditorOptions } from './Editor';
 import { FSM } from './FSM';
-import { VDOMSelection } from './types';
+import { VDOMNode, VDOMSelection } from './types';
 import { SelectionService } from './selection/SelectionService.humble';
 import * as VDOMToHTMLModule from './io/VDOMToHTML';
 import * as VDOMSelectionModule from './model/VDOMSelection';
@@ -19,13 +19,28 @@ describe('Editor with Selection Tracking', () => {
   let mockOnChange: (html: string) => void;
   let mockOnSelectionChange: (selection: VDOMSelection) => void;
   let mockSelectionService: SelectionService;
-  let mockFSM: { processCommand: ReturnType<typeof vi.fn> };
+  let mockProcessCommand: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.restoreAllMocks();
 
-    // Setup VDOMToHTML mock
+    // Setup VDOMToHTML mock with a default value
     vi.mocked(VDOMToHTMLModule.vdomToHTML).mockReturnValue('<p>mocked html</p>');
+
+    // But also configure it to return specific values for specific inputs
+    vi.mocked(VDOMToHTMLModule.vdomToHTML).mockImplementation((vdom) => {
+      // Return different HTML based on the content of the VDOM
+      if (
+        vdom.length > 0 &&
+        vdom[0].type === 'paragraph' &&
+        vdom[0].children &&
+        vdom[0].children.length > 0 &&
+        vdom[0].children[0].content === 'Hello World'
+      ) {
+        return '<p>Hello World</p>';
+      }
+      return '<p>mocked html</p>';
+    });
 
     // Setup VDOMSelection mocks
     vi.mocked(VDOMSelectionModule.getSelectionFromBrowser).mockReturnValue({
@@ -57,21 +72,26 @@ describe('Editor with Selection Tracking', () => {
       createTreeWalker: vi.fn(),
     };
 
-    // Reset mocked FSM
-    vi.mocked(FSM).mockClear();
-    mockFSM = {
-      processCommand: vi.fn().mockReturnValue({
-        newVDOM: [],
-        newSelection: {
-          start: { offset: 0 },
-          end: { offset: 0 },
-          isCollapsed: true,
-        },
-        didChange: true,
-        isPersistent: true,
-      }),
+    // Setup mock process command function
+    mockProcessCommand = vi.fn().mockReturnValue({
+      newVDOM: [],
+      newSelection: {
+        start: { offset: 0 },
+        end: { offset: 0 },
+        isCollapsed: true,
+      },
+      didChange: true,
+      isPersistent: true,
+    });
+
+    // Setup FSM mock
+    const mockFSM = {
+      processCommand: mockProcessCommand,
+      getTextContent: vi.fn().mockReturnValue(''),
     };
-    vi.mocked(FSM).mockImplementation(() => mockFSM);
+
+    // Mock FSM constructor
+    vi.mocked(FSM).mockImplementation(() => mockFSM as unknown as FSM);
 
     const options: EditorOptions = {
       onChange: mockOnChange,
@@ -122,7 +142,7 @@ describe('Editor with Selection Tracking', () => {
     editor.handleBeforeInput(inputEvent);
 
     // Verify FSM was called with the correct command
-    expect(mockFSM.processCommand).toHaveBeenCalledWith(
+    expect(mockProcessCommand).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'INSERT_TEXT', payload: 'a' }),
       expect.objectContaining({
         vdom: expect.any(Array),
@@ -133,7 +153,7 @@ describe('Editor with Selection Tracking', () => {
     );
 
     // Verify that the FSM was called (the exact selection state is verified by the debug output)
-    expect(mockFSM.processCommand).toHaveBeenCalledTimes(1);
+    expect(mockProcessCommand).toHaveBeenCalledTimes(1);
   });
 
   test('should update selection from FSM result', () => {
@@ -144,7 +164,7 @@ describe('Editor with Selection Tracking', () => {
       isCollapsed: true,
     };
 
-    mockFSM.processCommand.mockReturnValueOnce({
+    mockProcessCommand.mockReturnValueOnce({
       newVDOM: [],
       newSelection,
       didChange: true,
@@ -160,5 +180,101 @@ describe('Editor with Selection Tracking', () => {
 
     // Verify selection was updated
     expect(mockOnSelectionChange).toHaveBeenCalledWith(newSelection);
+  });
+
+  describe('insertText', () => {
+    test('should insert text at current selection position and notify changes', () => {
+      // Arrange
+      const initialVDOM: VDOMNode[] = [
+        {
+          id: 'p1',
+          type: 'paragraph',
+          children: [
+            {
+              id: 'text1',
+              type: 'text',
+              content: 'Hello',
+            },
+          ],
+        } as VDOMNode,
+      ];
+
+      const initialSelection: VDOMSelection = {
+        start: { offset: 5 },
+        end: { offset: 5 },
+        isCollapsed: true,
+      };
+
+      // Setup FSM to return a modified VDOM with the text inserted
+      const newVDOM: VDOMNode[] = [
+        {
+          id: 'p1',
+          type: 'paragraph',
+          children: [
+            {
+              id: 'text1',
+              type: 'text',
+              content: 'Hello World',
+            },
+          ],
+        } as VDOMNode,
+      ];
+
+      const newSelection: VDOMSelection = {
+        start: { offset: 11 },
+        end: { offset: 11 },
+        isCollapsed: true,
+      };
+
+      mockProcessCommand.mockReturnValueOnce({
+        newVDOM,
+        newSelection,
+        didChange: true,
+        isPersistent: true,
+      });
+
+      // Create editor instance with initial state
+      editor = new Editor({
+        onChange: mockOnChange,
+        onSelectionChange: mockOnSelectionChange,
+        selectionService: mockSelectionService,
+      });
+
+      // Create a method to set VDOM for testing
+      // We need this since there's no public API for setting VDOM directly
+      const setEditorVDOM = (editor: Editor, vdom: VDOMNode[]) => {
+        Object.defineProperty(editor, 'state', {
+          value: { ...editor['state'], vdom },
+          writable: true,
+          configurable: true,
+        });
+      };
+
+      // Set initial state using proper methods where available
+      setEditorVDOM(editor, initialVDOM);
+      editor.updateSelection(initialSelection);
+
+      // Reset mocks to clear initialization calls
+      vi.clearAllMocks();
+
+      // Act - call the insertText method
+      editor.insertText(' World');
+
+      // Assert - We need to verify the command type, but the state might be modified by the time
+      // the test assertion runs due to how the FSM is mocked and how the Editor updates state
+      expect(mockProcessCommand).toHaveBeenCalledWith(
+        { type: 'INSERT_TEXT', payload: { text: ' World' } },
+        expect.any(Object), // We're only asserting that FSM was called with the right command
+      );
+
+      // Verify VDOM was updated
+      expect(editor.getVDOM()).toEqual(newVDOM);
+
+      // Verify onChange was called
+      expect(mockOnChange).toHaveBeenCalledWith('<p>Hello World</p>');
+
+      // Verify selection was updated
+      expect(mockOnSelectionChange).toHaveBeenCalledWith(newSelection);
+    });
   });
 });

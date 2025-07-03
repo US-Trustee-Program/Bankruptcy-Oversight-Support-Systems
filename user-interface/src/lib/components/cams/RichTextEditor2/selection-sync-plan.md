@@ -21,52 +21,55 @@ Each slice follows the vertical slice principle: it touches all architectural la
 **User Story**: As a user, I can see text content displayed in the editor area
 
 **Components to implement**:
-- [ ] **VDOM Foundation**:
-  - [ ] Minimal `VDOMNode.ts` with paragraph and text node types only
-  - [ ] Basic `VDOMToHTML.ts` to convert VDOM to displayable HTML
-- [ ] **Core Editor**:
-  - [ ] Minimal `Editor.ts` class with hardcoded content
-  - [ ] `getContent()` method returning HTML string
-- [ ] **React Component**:
-  - [ ] Basic `RichTextEditor.tsx` with contentEditable div
-  - [ ] Display content from Editor via dangerouslySetInnerHTML
-- [ ] **Tests**:
-  - [ ] Unit test for VDOMNode creation
-  - [ ] Unit test for VDOMToHTML conversion
-  - [ ] Unit test for Editor.getContent()
-  - [ ] Integration test for component rendering
+- [x] **VDOM Foundation**:
+  - [x] Minimal `VDOMNode.ts` with paragraph and text node types only
+  - [x] Basic `VDOMToHTML.ts` to convert VDOM to displayable HTML
+- [x] **Core Editor**:
+  - [x] Minimal `Editor.ts` class with hardcoded content
+  - [x] `getContent()` method returning HTML string (as `getHtml()` in the implementation)
+- [x] **React Component**:
+  - [x] Basic `RichTextEditor.tsx` with contentEditable div
+  - [x] Display content from Editor via dangerouslySetInnerHTML
+- [x] **Tests**:
+  - [x] Unit test for VDOMNode creation
+  - [x] Unit test for VDOMToHTML conversion
+  - [x] Unit test for Editor.getContent()
+  - [x] Integration test for component rendering
 
 **Acceptance Criteria**:
-- Editor displays "Hello, World!" text
-- Text is properly formatted as a paragraph
-- Component renders without errors
 
-## Slice 2: Single Character Input
+- [x] Editor displays "Hello, World!" text
+- [x] Text is properly formatted as a paragraph
+- [x] Component renders without errors
+
+## Slice 2: Single Character Input ✓
 
 **Goal**: Type one character and see it replace the existing content
 
 **User Story**: As a user, I can type a single character and see it displayed
 
 **Components to implement**:
-- [ ] **VDOM Operations**:
-  - [ ] Basic text replacement in `VDOMMutations.ts`
-  - [ ] Simple cursor position tracking in `VDOMSelection.ts`
-- [ ] **Core Editor**:
-  - [ ] `insertText(char: string)` method
-  - [ ] Content change notification via callback
-- [ ] **React Component**:
-  - [ ] `onInput` event handler
-  - [ ] Character extraction from input event
-  - [ ] Content update and re-render
-- [ ] **Tests**:
-  - [ ] Unit test for text insertion mutation
-  - [ ] Unit test for Editor.insertText()
-  - [ ] Integration test for typing one character
+
+- [x] **VDOM Operations**:
+  - [x] Basic text replacement in `VDOMMutations.ts`
+  - [x] Simple cursor position tracking in `VDOMSelection.ts`
+- [x] **Core Editor**:
+  - [x] `insertText(char: string)` method
+  - [x] Content change notification via callback
+- [x] **React Component**:
+  - [x] `onInput` event handler (implemented as beforeinput in Editor.ts)
+  - [x] Character extraction from input event
+  - [x] Content update and re-render
+- [x] **Tests**:
+  - [x] Unit test for text insertion mutation
+  - [x] Unit test for Editor.insertText()
+  - [x] Integration test for typing one character
 
 **Acceptance Criteria**:
-- Typing 'A' replaces content with 'A'
-- Content updates are reflected in the display
-- Only single character input is supported
+
+- [x] Typing 'A' replaces content with 'A'
+- [x] Content updates are reflected in the display
+- [x] Only single character input is supported
 
 ## Slice 3: Text String Input
 

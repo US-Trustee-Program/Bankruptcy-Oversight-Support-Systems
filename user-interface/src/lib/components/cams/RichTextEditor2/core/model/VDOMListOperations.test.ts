@@ -21,23 +21,17 @@ beforeEach(() => {
 });
 
 // Helper function to create a selection
-function createSelection(
-  startNodeId: string,
-  startOffset: number,
-  endNodeId: string,
-  endOffset: number,
-): VDOMSelection {
+function createSelection(startOffset: number, endOffset: number): VDOMSelection {
   return {
-    start: { nodeId: startNodeId, offset: startOffset },
-    end: { nodeId: endNodeId, offset: endOffset },
-    isCollapsed: startNodeId === endNodeId && startOffset === endOffset,
+    start: { offset: startOffset },
+    end: { offset: endOffset },
+    isCollapsed: startOffset === endOffset,
   };
 }
 
 test('toggleList should convert paragraph to unordered list', () => {
   const vdom = [createParagraphNode([createTextNode('List item')])];
-  const textNode = vdom[0].children![0];
-  const selection = createSelection(textNode.id, 0, textNode.id, 9);
+  const selection = createSelection(0, 9);
 
   const result = toggleList(vdom, selection, 'ul');
 
@@ -50,8 +44,7 @@ test('toggleList should convert paragraph to unordered list', () => {
 
 test('toggleList should convert paragraph to ordered list', () => {
   const vdom = [createParagraphNode([createTextNode('Numbered item')])];
-  const textNode = vdom[0].children![0];
-  const selection = createSelection(textNode.id, 0, textNode.id, 12);
+  const selection = createSelection(0, 12);
 
   const result = toggleList(vdom, selection, 'ol');
 
@@ -64,9 +57,7 @@ test('toggleList should convert paragraph to ordered list', () => {
 
 test('toggleList should convert list back to paragraph', () => {
   const vdom = [createListNode([createListItemNode([createTextNode('List item')])], 'ul')];
-  const listItem = vdom[0].children![0];
-  const textNode = listItem.children![0];
-  const selection = createSelection(textNode.id, 0, textNode.id, 9);
+  const selection = createSelection(0, 9);
 
   const result = toggleList(vdom, selection, 'ul');
 
@@ -77,9 +68,7 @@ test('toggleList should convert list back to paragraph', () => {
 
 test('toggleList should convert between list types', () => {
   const vdom = [createListNode([createListItemNode([createTextNode('List item')])], 'ul')];
-  const listItem = vdom[0].children![0];
-  const textNode = listItem.children![0];
-  const selection = createSelection(textNode.id, 0, textNode.id, 9);
+  const selection = createSelection(0, 9);
 
   const result = toggleList(vdom, selection, 'ol');
 
@@ -94,9 +83,7 @@ test('toggleList should handle multiple paragraphs', () => {
     createParagraphNode([createTextNode('First item')]),
     createParagraphNode([createTextNode('Second item')]),
   ];
-  const firstText = vdom[0].children![0];
-  const secondText = vdom[1].children![0];
-  const selection = createSelection(firstText.id, 0, secondText.id, 11);
+  const selection = createSelection(0, 11);
 
   const result = toggleList(vdom, selection, 'ul');
 
@@ -115,8 +102,7 @@ test('toggleList should handle formatted text in paragraphs', () => {
       createTextNode(' text'),
     ]),
   ];
-  const firstText = vdom[0].children![0];
-  const selection = createSelection(firstText.id, 0, firstText.id, 6);
+  const selection = createSelection(0, 6);
 
   const result = toggleList(vdom, selection, 'ul');
 
@@ -128,8 +114,7 @@ test('toggleList should handle formatted text in paragraphs', () => {
 
 test('toggleList should handle collapsed selection in paragraph', () => {
   const vdom = [createParagraphNode([createTextNode('List item')])];
-  const textNode = vdom[0].children![0];
-  const selection = createSelection(textNode.id, 5, textNode.id, 5);
+  const selection = createSelection(5, 5);
 
   const result = toggleList(vdom, selection, 'ul');
 
@@ -140,9 +125,7 @@ test('toggleList should handle collapsed selection in paragraph', () => {
 
 test('toggleList should handle collapsed selection in list', () => {
   const vdom = [createListNode([createListItemNode([createTextNode('List item')])], 'ul')];
-  const listItem = vdom[0].children![0];
-  const textNode = listItem.children![0];
-  const selection = createSelection(textNode.id, 5, textNode.id, 5);
+  const selection = createSelection(5, 5);
 
   const result = toggleList(vdom, selection, 'ul');
 
@@ -180,9 +163,7 @@ test('convertListItemToParagraph should convert list item content', () => {
 
 test('isInList should detect if selection is within a list', () => {
   const vdom = [createListNode([createListItemNode([createTextNode('List item')])], 'ul')];
-  const listItem = vdom[0].children![0];
-  const textNode = listItem.children![0];
-  const selection = createSelection(textNode.id, 0, textNode.id, 9);
+  const selection = createSelection(0, 9);
 
   const inList = isInList(vdom, selection);
 
@@ -191,8 +172,7 @@ test('isInList should detect if selection is within a list', () => {
 
 test('isInList should return false for paragraph selection', () => {
   const vdom = [createParagraphNode([createTextNode('Not in list')])];
-  const textNode = vdom[0].children![0];
-  const selection = createSelection(textNode.id, 0, textNode.id, 11);
+  const selection = createSelection(0, 11);
 
   const inList = isInList(vdom, selection);
 
@@ -201,10 +181,7 @@ test('isInList should return false for paragraph selection', () => {
 
 test('getListAncestor should find list ancestor', () => {
   const vdom = [createListNode([createListItemNode([createTextNode('List item')])], 'ul')];
-  const listItem = vdom[0].children![0];
-  const textNode = listItem.children![0];
-
-  const listAncestor = getListAncestor(vdom, textNode.id);
+  const listAncestor = getListAncestor(vdom);
 
   expect(listAncestor).toBe(vdom[0]);
   expect(listAncestor?.type).toBe('ul');
@@ -212,17 +189,14 @@ test('getListAncestor should find list ancestor', () => {
 
 test('getListAncestor should return null for non-list content', () => {
   const vdom = [createParagraphNode([createTextNode('Not in list')])];
-  const textNode = vdom[0].children![0];
-
-  const listAncestor = getListAncestor(vdom, textNode.id);
+  const listAncestor = getListAncestor(vdom);
 
   expect(listAncestor).toBeNull();
 });
 
 test('canToggleList should return true for valid selections', () => {
   const vdom = [createParagraphNode([createTextNode('Can be list')])];
-  const textNode = vdom[0].children![0];
-  const selection = createSelection(textNode.id, 0, textNode.id, 11);
+  const selection = createSelection(0, 11);
 
   const canToggle = canToggleList(vdom, selection);
 
@@ -231,9 +205,7 @@ test('canToggleList should return true for valid selections', () => {
 
 test('canToggleList should return true for list selections', () => {
   const vdom = [createListNode([createListItemNode([createTextNode('List item')])], 'ul')];
-  const listItem = vdom[0].children![0];
-  const textNode = listItem.children![0];
-  const selection = createSelection(textNode.id, 0, textNode.id, 9);
+  const selection = createSelection(0, 9);
 
   const canToggle = canToggleList(vdom, selection);
 
@@ -242,8 +214,7 @@ test('canToggleList should return true for list selections', () => {
 
 test('toggleList should preserve selection position', () => {
   const vdom = [createParagraphNode([createTextNode('List item')])];
-  const textNode = vdom[0].children![0];
-  const selection = createSelection(textNode.id, 5, textNode.id, 5);
+  const selection = createSelection(5, 5);
 
   const result = toggleList(vdom, selection, 'ul');
 
@@ -258,9 +229,7 @@ test('toggleList should handle mixed content selection', () => {
     createListNode([createListItemNode([createTextNode('Existing list item')])], 'ul'),
     createParagraphNode([createTextNode('Second paragraph')]),
   ];
-  const firstText = vdom[0].children![0];
-  const lastText = vdom[2].children![0];
-  const selection = createSelection(firstText.id, 0, lastText.id, 16);
+  const selection = createSelection(0, 16);
 
   const result = toggleList(vdom, selection, 'ul');
 
@@ -272,9 +241,7 @@ test('toggleList should handle mixed content selection', () => {
 
 test('toggleList should handle empty list items', () => {
   const vdom = [createListNode([createListItemNode([createTextNode('')])], 'ul')];
-  const listItem = vdom[0].children![0];
-  const textNode = listItem.children![0];
-  const selection = createSelection(textNode.id, 0, textNode.id, 0);
+  const selection = createSelection(0, 0);
 
   const result = toggleList(vdom, selection, 'ul');
 

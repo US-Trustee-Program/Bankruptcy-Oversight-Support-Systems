@@ -1,6 +1,5 @@
 import { VDOMNode, VDOMSelection, ListType } from '../types';
 import { createListNode, createListItemNode, createParagraphNode } from './VDOMNode';
-import { findNodeById } from './VDOMMutations';
 
 /**
  * Result type for list operations
@@ -41,28 +40,7 @@ function cloneVDOM(vdom: VDOMNode[]): VDOMNode[] {
   return vdom.map(cloneNode);
 }
 
-/**
- * Finds the path from root to a specific node
- */
-function findNodePath(vdom: VDOMNode[], targetId: string): VDOMNode[] | null {
-  function traverse(nodes: VDOMNode[], path: VDOMNode[]): VDOMNode[] | null {
-    for (const node of nodes) {
-      const currentPath = [...path, node];
-
-      if (node.id === targetId) {
-        return currentPath;
-      }
-
-      if (node.children) {
-        const result = traverse(node.children, currentPath);
-        if (result) return result;
-      }
-    }
-    return null;
-  }
-
-  return traverse(vdom, []);
-}
+// Removed findNodePath function as we no longer need it (no nodeId)
 
 /**
  * Converts a paragraph node to a list item node
@@ -93,98 +71,80 @@ export function convertListItemToParagraph(listItem: VDOMNode): VDOMNode {
 }
 
 /**
- * Checks if a selection is within a list
+ * Checks if there is a list in the VDOM
+ * Note: Since we no longer have nodeId, we need to use a different approach
+ * This function now determines if there are any lists in the VDOM structure
  */
-export function isInList(vdom: VDOMNode[], selection: VDOMSelection): boolean {
-  const path = findNodePath(vdom, selection.start.nodeId);
-  if (!path) return false;
+export function isInList(vdom: VDOMNode[], _selection: VDOMSelection): boolean {
+  // Without nodeId, we need to analyze the VDOM structure to determine if there are lists
 
-  return path.some((node) => node.type === 'ul' || node.type === 'ol');
+  // Traverse the VDOM to find any list nodes (ul/ol)
+  function containsList(nodes: VDOMNode[]): boolean {
+    for (const node of nodes) {
+      if (node.type === 'ul' || node.type === 'ol') {
+        return true;
+      }
+
+      if (node.children && node.children.length > 0 && containsList(node.children)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  return containsList(vdom);
 }
 
 /**
  * Gets the list ancestor of a node
+ *
+ * Note: This function has been modified to work without nodeId
+ * It now returns the first list found in the VDOM, which is a simplification
+ * for the current implementation.
  */
-export function getListAncestor(vdom: VDOMNode[], nodeId: string): VDOMNode | null {
-  const path = findNodePath(vdom, nodeId);
-  if (!path) return null;
+export function getListAncestor(vdom: VDOMNode[]): VDOMNode | null {
+  // Without nodeId, we need to scan the VDOM for the first list
 
-  // Find the first list node in the path
-  for (const node of path) {
-    if (node.type === 'ul' || node.type === 'ol') {
-      return node;
+  function findFirstList(nodes: VDOMNode[]): VDOMNode | null {
+    for (const node of nodes) {
+      if (node.type === 'ul' || node.type === 'ol') {
+        return node;
+      }
+
+      if (node.children) {
+        const listInChildren = findFirstList(node.children);
+        if (listInChildren) {
+          return listInChildren;
+        }
+      }
     }
+    return null;
   }
 
-  return null;
+  return findFirstList(vdom);
 }
 
 /**
  * Checks if a list toggle operation can be performed
+ *
+ * Since we no longer have nodeId, we'll allow toggling as long as we have content
  */
-export function canToggleList(vdom: VDOMNode[], selection: VDOMSelection): boolean {
-  // Can always toggle if we have a valid selection
-  const startNode = findNodeById(vdom, selection.start.nodeId);
-  return startNode !== null;
+export function canToggleList(vdom: VDOMNode[], _selection: VDOMSelection): boolean {
+  // Without nodeId, we'll just check if there's content in the VDOM
+  return vdom.length > 0;
 }
 
 /**
  * Gets all nodes that are affected by the selection
+ *
+ * Note: Since we no longer have nodeId, we'll use a simpler approach that
+ * just returns all top-level block nodes in the VDOM.
  */
-function getAffectedNodes(vdom: VDOMNode[], selection: VDOMSelection): VDOMNode[] {
+function getAffectedNodes(vdom: VDOMNode[], _selection: VDOMSelection): VDOMNode[] {
   const affectedNodes: VDOMNode[] = [];
 
-  // For collapsed selection, just get the containing block
-  if (selection.isCollapsed) {
-    const path = findNodePath(vdom, selection.start.nodeId);
-    if (path) {
-      // Find the top-level block (paragraph or list)
-      for (const node of path) {
-        if (node.type === 'paragraph' || node.type === 'ul' || node.type === 'ol') {
-          affectedNodes.push(node);
-          break;
-        }
-      }
-    }
-    return affectedNodes;
-  }
-
-  // For range selection, find all top-level nodes that contain the selection
-  const startPath = findNodePath(vdom, selection.start.nodeId);
-  const endPath = findNodePath(vdom, selection.end.nodeId);
-
-  if (!startPath || !endPath) {
-    return affectedNodes;
-  }
-
-  // Find the top-level nodes for start and end
-  let startTopLevel: VDOMNode | null = null;
-  let endTopLevel: VDOMNode | null = null;
-
-  for (const node of startPath) {
-    if (vdom.includes(node)) {
-      startTopLevel = node;
-      break;
-    }
-  }
-
-  for (const node of endPath) {
-    if (vdom.includes(node)) {
-      endTopLevel = node;
-      break;
-    }
-  }
-
-  if (!startTopLevel || !endTopLevel) {
-    return affectedNodes;
-  }
-
-  // Find all nodes between start and end (inclusive)
-  const startIndex = vdom.indexOf(startTopLevel);
-  const endIndex = vdom.indexOf(endTopLevel);
-
-  for (let i = startIndex; i <= endIndex; i++) {
-    const node = vdom[i];
+  // Without nodeId, we'll collect all top-level block nodes
+  for (const node of vdom) {
     if (node.type === 'paragraph' || node.type === 'ul' || node.type === 'ol') {
       affectedNodes.push(node);
     }

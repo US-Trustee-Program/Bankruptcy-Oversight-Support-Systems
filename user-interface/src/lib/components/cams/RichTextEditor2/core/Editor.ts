@@ -225,11 +225,7 @@ export class Editor {
       }
 
       // Get selection from browser and update VDOM selection
-      this.state.selection = getSelectionFromBrowser(
-        this.selectionService,
-        rootElement,
-        this.state.vdom,
-      );
+      this.state.selection = getSelectionFromBrowser(this.selectionService);
     } catch (error) {
       console.error('Error synchronizing selection:', error);
     }
@@ -352,16 +348,32 @@ export class Editor {
     }
 
     if (this.rootElement) {
-      applySelectionToBrowser(
-        this.selectionService,
-        this.state.selection,
-        this.rootElement,
-        this.state.vdom,
-      );
+      applySelectionToBrowser(this.selectionService, this.state.selection, this.rootElement);
     }
 
     if (this.onSelectionChange) {
       this.onSelectionChange(this.state.selection);
+    }
+  }
+
+  // Method to get VDOM for testing purposes
+  getVDOM(): VDOMNode[] {
+    return this.state.vdom;
+  }
+
+  // Text editing methods
+  insertText(text: string): void {
+    // Process the command through the FSM
+    const result = this.fsm.processCommand({ type: 'INSERT_TEXT', payload: { text } }, this.state);
+
+    // Update state if there was a change
+    if (result.didChange) {
+      this.state.vdom = result.newVDOM;
+      this.state.selection = result.newSelection;
+
+      // Notify callbacks
+      this.notifyChange();
+      this.notifySelectionChange();
     }
   }
 }

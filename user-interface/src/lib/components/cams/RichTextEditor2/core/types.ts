@@ -22,9 +22,9 @@ export interface VDOMNode {
   attributes?: Record<string, string>; // For elements with attributes (e.g., href for links)
 }
 
-// VDOM Selection Types - Simplified approach without IDs
+// VDOM Selection Types
 export interface VDOMPosition {
-  offset: number; // Simple offset in the text content
+  offset: number; // Offset in the text content
 }
 
 export interface VDOMSelection {

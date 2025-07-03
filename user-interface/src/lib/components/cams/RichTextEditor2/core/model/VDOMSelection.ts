@@ -61,10 +61,14 @@ export function getTextOffsetInVDOM(vdom: VDOMNode[], nodeId: string, offset: nu
   let found = false;
 
   function traverse(nodes: VDOMNode[]): void {
-    if (found) return;
+    if (found) {
+      return;
+    }
 
     for (const node of nodes) {
-      if (found) return;
+      if (found) {
+        return;
+      }
 
       if (node.id === nodeId) {
         totalOffset += offset;
@@ -119,7 +123,6 @@ export function applySelectionToBrowser(
   selectionService: SelectionService,
   vdomSelection: VDOMSelection,
   rootElement: HTMLElement,
-  vdom: VDOMNode[],
 ): void {
   // Add null check for rootElement to prevent traversal errors
   if (!rootElement) {
@@ -160,7 +163,7 @@ export function applySelectionToBrowser(
 /**
  * Gets all nodes within a selection range - Simplified approach
  */
-export function getNodesInRange(vdom: VDOMNode[], selection: VDOMSelection): VDOMNode[] {
+export function getNodesInRange(vdom: VDOMNode[]): VDOMNode[] {
   // For simplified approach, recursively find all text nodes
   // since we're working with simple text content
   function findAllTextNodes(nodes: VDOMNode[]): VDOMNode[] {
@@ -183,8 +186,8 @@ export function getNodesInRange(vdom: VDOMNode[], selection: VDOMSelection): VDO
  * Gets the formatting state at the current selection - Simplified approach
  */
 export function getFormattingAtSelection(
-  vdom: VDOMNode[],
-  selection: VDOMSelection,
+  _vdom: VDOMNode[],
+  _selection: VDOMSelection,
 ): RichTextFormatState {
   // For vertical slice #1 (basic text input), we don't have formatting yet
   // Return no formatting for now
@@ -193,22 +196,6 @@ export function getFormattingAtSelection(
     italic: false,
     underline: false,
   };
-}
-
-/**
- * Helper function to find the first text node in VDOM
- */
-function findFirstTextNode(vdom: VDOMNode[]): VDOMNode | null {
-  for (const node of vdom) {
-    if (node.type === 'text') {
-      return node;
-    }
-    if (node.children) {
-      const found = findFirstTextNode(node.children);
-      if (found) return found;
-    }
-  }
-  return null;
 }
 
 /**
@@ -225,31 +212,10 @@ function findTextNodeInElement(element: Node): Text | null {
       return child as Text;
     }
     const found = findTextNodeInElement(child);
-    if (found) return found;
+    if (found) {
+      return found;
+    }
   }
 
   return null;
-}
-
-/**
- * Helper function to find the path from root to a specific node
- */
-function findNodePath(vdom: VDOMNode[], targetId: string): VDOMNode[] | null {
-  function traverse(nodes: VDOMNode[], path: VDOMNode[]): VDOMNode[] | null {
-    for (const node of nodes) {
-      const currentPath = [...path, node];
-
-      if (node.id === targetId) {
-        return currentPath;
-      }
-
-      if (node.children) {
-        const result = traverse(node.children, currentPath);
-        if (result) return result;
-      }
-    }
-    return null;
-  }
-
-  return traverse(vdom, []);
 }
