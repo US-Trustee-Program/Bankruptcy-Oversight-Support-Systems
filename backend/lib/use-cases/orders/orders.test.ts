@@ -40,6 +40,7 @@ import { REGION_02_GROUP_NY } from '../../../../common/src/cams/test-utilities/m
 import { getCourtDivisionCodes } from '../../../../common/src/cams/users';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { UstpDivisionMeta } from '../../../../common/src/cams/offices';
+import { CaseAssignment } from '../../../../common/src/cams/assignments';
 
 describe('Orders use case', () => {
   const ORIGINAL_ENV = process.env;
@@ -711,15 +712,27 @@ describe('Orders use case', () => {
       .mockResolvedValue();
     jest.spyOn(consolidationRepo, 'delete').mockResolvedValue({});
     jest.spyOn(consolidationRepo, 'read').mockResolvedValue(pendingConsolidation);
-    jest
+    const createAssignmentsSpy = jest
       .spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments')
       .mockImplementation(() => Promise.resolve());
 
     jest.spyOn(MockMongoRepository.prototype, 'create').mockResolvedValue(newConsolidation);
 
-    const caseId = '111-22-33333';
-    const assignments = MockData.buildArray(() => MockData.getAttorneyAssignment({ caseId }), 3);
-    const expectedMap = new Map([[caseId, assignments]]);
+    const expectedMap: Map<string, CaseAssignment[]> = new Map();
+    const leadCaseAssignments = MockData.buildArray(
+      () => MockData.getAttorneyAssignment({ caseId: leadCase.caseId }),
+      3,
+    );
+    const leadCaseAssignees = leadCaseAssignments.map((assignment) => {
+      return { id: assignment.userId, name: assignment.name };
+    });
+    expectedMap.set(leadCase.caseId, leadCaseAssignments);
+    pendingConsolidation.childCases.forEach((childCase) => {
+      expectedMap.set(
+        childCase.caseId,
+        MockData.buildArray(() => MockData.getAttorneyAssignment({ caseId: childCase.caseId }), 3),
+      );
+    });
 
     jest
       .spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases')
@@ -768,6 +781,18 @@ describe('Orders use case', () => {
       pendingConsolidation.childCases.length,
     );
 
+    // Verify that createTrialAttorneyAssignments is called once for each approved child
+    expect(createAssignmentsSpy).toHaveBeenCalledTimes(approval.approvedCases.length);
+    approval.approvedCases.forEach((approvedCase) => {
+      expect(createAssignmentsSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        approvedCase,
+        leadCaseAssignees,
+        CamsRole.TrialAttorney,
+        { processRoles: [CamsRole.CaseAssignmentManager] },
+      );
+    });
+
     expect(actual).toEqual([newConsolidation]);
   });
 
@@ -777,7 +802,7 @@ describe('Orders use case', () => {
 
     // Create additional case that's not in the provisional order
     const additionalCase = MockData.getCaseSummary({
-      override: { caseId: 'additional-case-id' },
+      override: { caseId: MockData.randomCaseId() },
     });
 
     // Include the additional case in the approved cases
@@ -859,15 +884,27 @@ describe('Orders use case', () => {
     jest.spyOn(consolidationRepo, 'delete').mockResolvedValue({});
     jest.spyOn(consolidationRepo, 'read').mockResolvedValue(pendingConsolidation);
 
-    jest
+    const createAssignmentsSpy = jest
       .spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments')
-      .mockImplementation(() => Promise.resolve());
+      .mockResolvedValue();
 
     jest.spyOn(MockMongoRepository.prototype, 'create').mockResolvedValue(newConsolidation);
 
-    const caseId = '111-22-33333';
-    const assignments = MockData.buildArray(() => MockData.getAttorneyAssignment({ caseId }), 3);
-    const expectedMap = new Map([[caseId, assignments]]);
+    const expectedMap: Map<string, CaseAssignment[]> = new Map();
+    const leadCaseAssignments = MockData.buildArray(
+      () => MockData.getAttorneyAssignment({ caseId: leadCase.caseId }),
+      3,
+    );
+    const leadCaseAssignees = leadCaseAssignments.map((assignment) => {
+      return { id: assignment.userId, name: assignment.name };
+    });
+    expectedMap.set(leadCase.caseId, leadCaseAssignments);
+    pendingConsolidation.childCases.forEach((childCase) => {
+      expectedMap.set(
+        childCase.caseId,
+        MockData.buildArray(() => MockData.getAttorneyAssignment({ caseId: childCase.caseId }), 3),
+      );
+    });
 
     jest
       .spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases')
@@ -924,6 +961,18 @@ describe('Orders use case', () => {
       (childCase) => childCase.caseId === additionalCase.caseId,
     );
     expect(additionalCaseInHistory).toBeDefined();
+
+    // Verify that createTrialAttorneyAssignments is called once for each approved child
+    expect(createAssignmentsSpy).toHaveBeenCalledTimes(approval.approvedCases.length);
+    approval.approvedCases.forEach((approvedCase) => {
+      expect(createAssignmentsSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        approvedCase,
+        leadCaseAssignees,
+        CamsRole.TrialAttorney,
+        { processRoles: [CamsRole.CaseAssignmentManager] },
+      );
+    });
 
     expect(actual).toEqual([newConsolidation]);
   });
@@ -999,16 +1048,28 @@ describe('Orders use case', () => {
       .mockResolvedValue();
     jest.spyOn(consolidationRepo, 'delete').mockRejectedValue(new Error('should not be called'));
     jest.spyOn(consolidationRepo, 'read').mockResolvedValue(pendingConsolidation);
-    jest
+    const createAssignmentsSpy = jest
       .spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments')
-      .mockImplementation(() => Promise.resolve());
+      .mockResolvedValue();
 
     jest.spyOn(MockMongoRepository.prototype, 'create').mockResolvedValue(newConsolidation);
     jest.spyOn(MockMongoRepository.prototype, 'update').mockResolvedValue(newPendingConsolidation);
 
-    const caseId = '111-22-33333';
-    const assignments = MockData.buildArray(() => MockData.getAttorneyAssignment({ caseId }), 3);
-    const expectedMap = new Map([[caseId, assignments]]);
+    const expectedMap: Map<string, CaseAssignment[]> = new Map();
+    const leadCaseAssignments = MockData.buildArray(
+      () => MockData.getAttorneyAssignment({ caseId: leadCase.caseId }),
+      3,
+    );
+    const leadCaseAssignees = leadCaseAssignments.map((assignment) => {
+      return { id: assignment.userId, name: assignment.name };
+    });
+    expectedMap.set(leadCase.caseId, leadCaseAssignments);
+    pendingConsolidation.childCases.forEach((childCase) => {
+      expectedMap.set(
+        childCase.caseId,
+        MockData.buildArray(() => MockData.getAttorneyAssignment({ caseId: childCase.caseId }), 3),
+      );
+    });
 
     jest
       .spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases')
@@ -1059,6 +1120,18 @@ describe('Orders use case', () => {
     );
     expect(leadCaseHistory[0].after.childCases).toHaveLength(approval.approvedCases.length);
 
+    // Verify that createTrialAttorneyAssignments is called once for each approved child
+    expect(createAssignmentsSpy).toHaveBeenCalledTimes(approval.approvedCases.length);
+    approval.approvedCases.forEach((approvedCase) => {
+      expect(createAssignmentsSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        approvedCase,
+        leadCaseAssignees,
+        CamsRole.TrialAttorney,
+        { processRoles: [CamsRole.CaseAssignmentManager] },
+      );
+    });
+
     expect(actual).toEqual(expect.arrayContaining([newPendingConsolidation, newConsolidation]));
   });
 
@@ -1091,9 +1164,9 @@ describe('Orders use case', () => {
       .mockResolvedValue();
     jest.spyOn(consolidationRepo, 'delete').mockResolvedValue({});
     jest.spyOn(consolidationRepo, 'read').mockResolvedValue(pendingConsolidation);
-    jest
+    const createAssignmentsSpy = jest
       .spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments')
-      .mockImplementation(() => Promise.resolve());
+      .mockResolvedValue();
 
     jest
       .spyOn(MockMongoRepository.prototype, 'create')
@@ -1103,9 +1176,21 @@ describe('Orders use case', () => {
         );
       });
 
-    const caseId = '111-22-33333';
-    const assignments = MockData.buildArray(() => MockData.getAttorneyAssignment({ caseId }), 3);
-    const expectedMap = new Map([[caseId, assignments]]);
+    const expectedMap: Map<string, CaseAssignment[]> = new Map();
+    const leadCaseAssignments = MockData.buildArray(
+      () => MockData.getAttorneyAssignment({ caseId: leadCase.caseId }),
+      3,
+    );
+    const leadCaseAssignees = leadCaseAssignments.map((assignment) => {
+      return { id: assignment.userId, name: assignment.name };
+    });
+    expectedMap.set(leadCase.caseId, leadCaseAssignments);
+    pendingConsolidation.childCases.forEach((childCase) => {
+      expectedMap.set(
+        childCase.caseId,
+        MockData.buildArray(() => MockData.getAttorneyAssignment({ caseId: childCase.caseId }), 3),
+      );
+    });
 
     jest
       .spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases')
@@ -1131,6 +1216,18 @@ describe('Orders use case', () => {
     expect(mockCreateCaseHistory).toHaveBeenCalledWith(
       expect.objectContaining({ updatedBy: getCamsUserReference(authorizedUser) }),
     );
+
+    // Verify that createTrialAttorneyAssignments is called once for each approved child
+    expect(createAssignmentsSpy).toHaveBeenCalledTimes(approval.approvedCases.length);
+    approval.approvedCases.forEach((approvedCase) => {
+      expect(createAssignmentsSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        approvedCase,
+        leadCaseAssignees,
+        CamsRole.TrialAttorney,
+        { processRoles: [CamsRole.CaseAssignmentManager] },
+      );
+    });
   });
 
   test('should identify the user who rejected the change', async () => {
@@ -1157,7 +1254,7 @@ describe('Orders use case', () => {
     jest.spyOn(consolidationRepo, 'delete').mockResolvedValue({});
     jest
       .spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments')
-      .mockImplementation(() => Promise.resolve());
+      .mockRejectedValue(new Error('should not be called'));
     mockContext.session = await createMockApplicationContextSession({ user: authorizedUser });
     await useCase.rejectConsolidation(mockContext, rejection);
     expect(mockCreateCaseHistory).toHaveBeenCalledWith(
