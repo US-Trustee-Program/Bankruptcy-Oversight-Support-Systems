@@ -482,7 +482,7 @@ export class OrdersUseCase {
       ]);
       const leadCaseAssignments = leadCaseAssignmentsMap.get(leadCase.caseId) ?? [];
       const leadCaseAttorneys: CamsUserReference[] = leadCaseAssignments.map((assignment) => {
-        return { id: assignment.caseId, name: assignment.name };
+        return { id: assignment.userId, name: assignment.name };
       });
 
       const childCaseSummaries = [];
@@ -517,7 +517,7 @@ export class OrdersUseCase {
             context,
             childCase.caseId,
             leadCaseAttorneys,
-            'TrialAttorney',
+            CamsRole.TrialAttorney,
             { processRoles: [CamsRole.CaseAssignmentManager] },
           );
 
