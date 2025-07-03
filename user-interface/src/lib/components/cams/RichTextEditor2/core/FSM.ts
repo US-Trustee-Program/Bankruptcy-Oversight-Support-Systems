@@ -4,6 +4,8 @@ import { EditorCommand, EditorState, FSMResult, VDOMNode, VDOM_NODE_TYPES } from
 export type FSMOptions = object;
 
 export class FSM {
+  private cursorPosition: number = 0;
+
   constructor(_options?: FSMOptions) {
     // Future initialization
   }
@@ -11,13 +13,34 @@ export class FSM {
   processCommand(command: EditorCommand, currentState: EditorState): FSMResult {
     switch (command.type) {
       case 'INSERT_TEXT':
-        return this.handleInsertText(command.payload, currentState);
+        // TODO: We probably need to model a discriminated union for the EditorCommand to get the type right here.
+        // TODO: Make sure the payload is typed as string when the command is to insert text. Remove the type cast.
+        return this.handleInsertText(command.payload as string, currentState);
 
       case 'BACKSPACE':
         return this.handleBackspace(currentState);
 
       case 'ENTER_KEY':
         return this.handleEnterKey(currentState);
+
+      case 'MOVE_CURSOR_LEFT':
+        return this.handleMoveCursorLeft(currentState);
+
+      case 'MOVE_CURSOR_RIGHT':
+        return this.handleMoveCursorRight(currentState);
+
+      case 'MOVE_CURSOR_UP':
+      case 'MOVE_CURSOR_DOWN':
+        // For now, up/down movement is not implemented
+        return {
+          newVDOM: currentState.vdom,
+          newSelection: currentState.selection,
+          didChange: false,
+          isPersistent: false,
+        };
+
+      case 'SET_CURSOR_POSITION':
+        return this.handleSetCursorPosition(command.payload, currentState);
 
       default:
         // For unhandled commands, return current state unchanged
@@ -31,39 +54,60 @@ export class FSM {
   }
 
   private handleInsertText(text: string, currentState: EditorState): FSMResult {
-    // For now, create a simple text node and add it to VDOM
-    // This is a minimal implementation to maintain current functionality
+    // Get the current text content and insert at cursor position
+    const currentText = this.getTextContent(currentState.vdom);
+    const newText =
+      currentText.slice(0, this.cursorPosition) + text + currentText.slice(this.cursorPosition);
+
+    // Update cursor position
+    this.cursorPosition += text.length;
+
+    // Create a single text node with the new content
     const textNode: VDOMNode = {
       id: `text-${Date.now()}-${Math.random()}`,
       type: VDOM_NODE_TYPES.TEXT,
-      content: text,
+      content: newText,
     };
 
-    const newVDOM = [...currentState.vdom, textNode];
+    const newVDOM = [textNode];
 
     return {
       newVDOM,
-      newSelection: currentState.selection, // Keep current selection for now
+      newSelection: currentState.selection,
       didChange: true,
       isPersistent: true,
     };
   }
 
   private handleBackspace(currentState: EditorState): FSMResult {
-    // Remove the last text node if it exists
-    const newVDOM = [...currentState.vdom];
-    if (newVDOM.length > 0) {
-      const lastNode = newVDOM[newVDOM.length - 1];
-      if (lastNode.type === VDOM_NODE_TYPES.TEXT && lastNode.content) {
-        if (lastNode.content.length > 1) {
-          // Remove last character from the text node
-          lastNode.content = lastNode.content.slice(0, -1);
-        } else {
-          // Remove the entire text node if it only has one character
-          newVDOM.pop();
-        }
-      }
+    // Only delete if cursor is not at the beginning
+    if (this.cursorPosition <= 0) {
+      return {
+        newVDOM: currentState.vdom,
+        newSelection: currentState.selection,
+        didChange: false,
+        isPersistent: false,
+      };
     }
+
+    // Get current text and remove character before cursor
+    const currentText = this.getTextContent(currentState.vdom);
+    const newText =
+      currentText.slice(0, this.cursorPosition - 1) + currentText.slice(this.cursorPosition);
+
+    // Update cursor position
+    this.cursorPosition = Math.max(0, this.cursorPosition - 1);
+
+    // Create new VDOM with updated text
+    const newVDOM = newText
+      ? [
+          {
+            id: `text-${Date.now()}-${Math.random()}`,
+            type: VDOM_NODE_TYPES.TEXT,
+            content: newText,
+          },
+        ]
+      : [];
 
     return {
       newVDOM,
@@ -88,5 +132,53 @@ export class FSM {
       didChange: true,
       isPersistent: true,
     };
+  }
+
+  private handleMoveCursorLeft(currentState: EditorState): FSMResult {
+    // Move cursor left by one position, but not below 0
+    this.cursorPosition = Math.max(0, this.cursorPosition - 1);
+
+    return {
+      newVDOM: currentState.vdom,
+      newSelection: currentState.selection,
+      didChange: false, // No content change, just cursor movement
+      isPersistent: false,
+    };
+  }
+
+  private handleMoveCursorRight(currentState: EditorState): FSMResult {
+    // Move cursor right by one position, but not beyond text length
+    const textLength = this.getTextContent(currentState.vdom).length;
+    this.cursorPosition = Math.min(textLength, this.cursorPosition + 1);
+
+    return {
+      newVDOM: currentState.vdom,
+      newSelection: currentState.selection,
+      didChange: false, // No content change, just cursor movement
+      isPersistent: false,
+    };
+  }
+
+  private handleSetCursorPosition(position: unknown, currentState: EditorState): FSMResult {
+    // Set cursor to the specified position
+    if (typeof position === 'number') {
+      const textLength = this.getTextContent(currentState.vdom).length;
+      this.cursorPosition = Math.max(0, Math.min(position, textLength));
+    }
+
+    return {
+      newVDOM: currentState.vdom,
+      newSelection: currentState.selection,
+      didChange: false, // No content change, just cursor movement
+      isPersistent: false,
+    };
+  }
+
+  public getTextContent(vdom: VDOMNode[]): string {
+    // Extract all text content from VDOM nodes
+    return vdom
+      .filter((node) => node.type === VDOM_NODE_TYPES.TEXT)
+      .map((node) => node.content || '')
+      .join('');
   }
 }

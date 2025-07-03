@@ -52,11 +52,27 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
         e.preventDefault();
       };
 
+      // Add keydown event listener to capture arrow keys and other navigation
+      const handleKeyDown = (e: Event) => {
+        const keyEvent = e as KeyboardEvent;
+        editor.handleKeyDown(keyEvent);
+      };
+
+      // Add click event listener to capture mouse clicks for cursor positioning
+      const handleClick = (e: Event) => {
+        const mouseEvent = e as MouseEvent;
+        editor.handleClick(mouseEvent);
+      };
+
       domElementRef.current.addEventListener('beforeinput', handleBeforeInput);
+      domElementRef.current.addEventListener('keydown', handleKeyDown);
+      domElementRef.current.addEventListener('click', handleClick);
 
       return () => {
         if (domElementRef.current) {
           domElementRef.current.removeEventListener('beforeinput', handleBeforeInput);
+          domElementRef.current.removeEventListener('keydown', handleKeyDown);
+          domElementRef.current.removeEventListener('click', handleClick);
         }
       };
     }

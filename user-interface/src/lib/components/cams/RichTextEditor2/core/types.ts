@@ -50,7 +50,12 @@ export type EditorCommandType =
   | 'COPY'
   | 'ENTER_KEY'
   | 'BACKSPACE'
-  | 'DELETE_KEY';
+  | 'DELETE_KEY'
+  | 'MOVE_CURSOR_LEFT'
+  | 'MOVE_CURSOR_RIGHT'
+  | 'MOVE_CURSOR_UP'
+  | 'MOVE_CURSOR_DOWN'
+  | 'SET_CURSOR_POSITION';
 
 export interface EditorCommand {
   type: EditorCommandType;

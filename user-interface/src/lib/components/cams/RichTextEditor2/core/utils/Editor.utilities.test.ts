@@ -117,7 +117,7 @@ describe('Editor.utilities', () => {
     test('should handle errors gracefully', () => {
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const mockElement = {
-        set innerHTML(value: string) {
+        set innerHTML(_: string) {
           throw new Error('Test error');
         },
       } as unknown as HTMLElement;

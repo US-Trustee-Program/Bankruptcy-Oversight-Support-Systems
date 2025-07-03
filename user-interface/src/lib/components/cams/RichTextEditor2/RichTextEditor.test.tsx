@@ -77,6 +77,65 @@ describe('RichTextEditor', () => {
       expect(editorElement.innerHTML).toContain('First line');
       expect(editorElement.innerHTML).toContain('Second line');
     });
+
+    test('should handle cursor positioning and text insertion at cursor position', async () => {
+      // Given: A rich text editor is rendered
+      const user = userEvent.setup();
+      render(<RichTextEditor id="test-editor" label="Test Editor" ref={editorRef} />);
+
+      const editorElement = screen.getByTestId('test-editor');
+      await user.click(editorElement);
+
+      // When: User types a two word sentence
+      await user.type(editorElement, 'Hello world');
+
+      // Then: The sentence should be rendered in the component
+      expect(editorElement).toHaveTextContent('Hello world');
+
+      // When: User moves cursor to the beginning of the second word
+      // We'll simulate this by clicking at the position before "world"
+      // For now, we'll use keyboard navigation to move cursor
+      await user.keyboard('{ArrowLeft}{ArrowLeft}{ArrowLeft}{ArrowLeft}{ArrowLeft}');
+
+      // And: User types a third word between the first two words
+      await user.type(editorElement, 'beautiful ');
+
+      // Then: The three word sentence should be rendered
+      expect(editorElement).toHaveTextContent('Hello beautiful world');
+    });
+
+    test('should handle cursor positioning with mouse click and text insertion at cursor position', async () => {
+      // Given: A rich text editor is rendered
+      const user = userEvent.setup();
+      render(<RichTextEditor id="test-editor" label="Test Editor" ref={editorRef} />);
+
+      const editorElement = screen.getByTestId('test-editor');
+      await user.click(editorElement);
+
+      // When: User types a two word sentence
+      await user.type(editorElement, 'Hello world');
+
+      // Then: The sentence should be rendered in the component
+      expect(editorElement).toHaveTextContent('Hello world');
+
+      // When: User clicks between the two words to position cursor
+      // We'll simulate clicking at the position between "Hello" and "world"
+      // For testing purposes, we'll click at a specific position in the element
+      const rect = editorElement.getBoundingClientRect();
+      const clickX = rect.left + rect.width * 0.5; // Click roughly in the middle
+      const clickY = rect.top + rect.height * 0.5;
+      await user.pointer({
+        keys: '[MouseLeft]',
+        target: editorElement,
+        coords: { x: clickX, y: clickY },
+      });
+
+      // And: User types a third word between the first two words
+      await user.type(editorElement, 'beautiful ');
+
+      // Then: The three word sentence should be rendered
+      expect(editorElement).toHaveTextContent('Hello beautiful world');
+    });
   });
 
   describe('Editor Integration', () => {

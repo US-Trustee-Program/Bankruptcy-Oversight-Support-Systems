@@ -12,10 +12,6 @@ import {
  * @returns Sanitized HTML string
  */
 export function cleanHtml(html: string): string {
-  if (!html || typeof html !== 'string') {
-    return '';
-  }
-
   // Sanitize the HTML using DOMPurify with our configuration
   const cleaned = DOMPurify.sanitize(html, DOMPURIFY_CONFIG);
 
@@ -52,9 +48,7 @@ export function safelySetHtml(element: HTMLElement | null | undefined, html: str
   }
 
   try {
-    // Clean the HTML before setting it
-    const cleanedHtml = cleanHtml(html);
-    element.innerHTML = cleanedHtml;
+    element.innerHTML = cleanHtml(html);
   } catch (error) {
     console.warn('Error setting HTML content:', error);
   }
@@ -66,10 +60,6 @@ export function safelySetHtml(element: HTMLElement | null | undefined, html: str
  * @returns True if the content is considered empty
  */
 export function isEmptyContent(content: string): boolean {
-  if (!content || typeof content !== 'string') {
-    return true;
-  }
-
   // Remove zero-width spaces
   const cleaned = content.replace(ZERO_WIDTH_SPACE_REGEX, '');
 
@@ -110,6 +100,7 @@ export function normalizeHtml(html: string): string {
   let normalized = cleanHtml(html);
 
   // If the content doesn't start with a block element, wrap it in a paragraph
+  // TODO: Move regex to the constants file
   const blockElementRegex = /^\s*<(p|div|h[1-6]|ul|ol|li|blockquote)/i;
   if (!blockElementRegex.test(normalized)) {
     normalized = `<p>${normalized}</p>`;
@@ -124,10 +115,6 @@ export function normalizeHtml(html: string): string {
  * @returns Plain text content
  */
 export function extractTextFromHtml(html: string): string {
-  if (!html || typeof html !== 'string') {
-    return '';
-  }
-
   const tempDiv = document.createElement('div');
   tempDiv.innerHTML = cleanHtml(html);
   const textContent = tempDiv.textContent || tempDiv.innerText || '';
@@ -142,10 +129,6 @@ export function extractTextFromHtml(html: string): string {
  * @returns True if content contains only zero-width spaces
  */
 export function isOnlyZeroWidthSpaces(content: string): boolean {
-  if (!content || typeof content !== 'string') {
-    return false;
-  }
-
   const withoutZws = content.replace(ZERO_WIDTH_SPACE_REGEX, '');
   return withoutZws.length === 0 && content.length > 0;
 }
