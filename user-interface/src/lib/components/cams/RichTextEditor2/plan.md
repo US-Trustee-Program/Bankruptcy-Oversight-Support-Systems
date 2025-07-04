@@ -15,40 +15,40 @@ functionality. Each slice delivers a complete, user-facing feature, building on 
 This slice focuses on the most fundamental feature: allowing users to type text and see it
 displayed.
 
-- [ ] **Foundational Components:**
-  - [ ] Minimal `VDOMNode` structure (paragraph and text nodes only) in `model/VDOMNode.ts`
-  - [ ] Basic text insert/delete operations in `model/VDOMMutations.ts`
-  - [ ] Simple selection mapping in `model/VDOMSelection.ts`
-  - [ ] Basic HTML conversion (VDOM ↔ HTML) in `io/VDOMToHTML.ts` and `io/HTMLToVDOM.ts`
-  - [ ] Selection service implementation in `selection/SelectionService.humble.ts`
-- [ ] **Core Editor:**
+- [x] **Foundational Components:**
+  - [x] Minimal `VDOMNode` structure (paragraph and text nodes only) in `model/VDOMNode.ts`
+  - [x] Basic text insert/delete operations in `model/VDOMMutations.ts`
+  - [x] Simple selection mapping in `model/VDOMSelection.ts`
+  - [x] Basic HTML conversion (VDOM ↔ HTML) in `io/VDOMToHTML.ts` and `io/HTMLToVDOM.ts`
+  - [x] Selection service implementation in `selection/SelectionService.humble.ts`
+- [x] **Core Editor:**
 
-  - [ ] Basic `Editor` class with minimal state (VDOM, selection) in `Editor.ts`
-  - [ ] Text input/deletion handling
-  - [ ] Content change notifications
+  - [x] Basic `Editor` class with minimal state (VDOM, selection) in `Editor.ts`
+  - [x] Text input/deletion handling
+  - [x] Content change notifications
 
-- [ ] **React Component:**
-  - [ ] Minimal `RichTextEditor.tsx` with contentEditable div
-  - [ ] Basic event handling (input, keydown)
-  - [ ] Content display from Editor
-  - [ ] Selection synchronization
-- [ ] **Tests:**
-  - [ ] Unit tests for all components
-  - [ ] Integration test for typing and displaying text
+- [x] **React Component:**
+  - [x] Minimal `RichTextEditor.tsx` with contentEditable div
+  - [x] Basic event handling (input, keydown)
+  - [x] Content display from Editor
+  - [x] Selection synchronization
+- [x] **Tests:**
+  - [x] Unit tests for all components
+  - [x] Integration test for typing and displaying text
 
 ## 2. Slice: Paragraph Operations
 
 This slice adds the ability to create and navigate between paragraphs.
 
-- [ ] **Model Extensions:**
-  - [ ] Paragraph split/merge operations in `model/VDOMMutations.ts`
-  - [ ] Cross-paragraph selection in `model/VDOMSelection.ts`
-- [ ] **Core Editor:**
-  - [ ] Enter key handling for paragraph creation
-  - [ ] Backspace/Delete at paragraph boundaries
-- [ ] **Tests:**
-  - [ ] Unit tests for paragraph operations
-  - [ ] Integration tests for creating/merging paragraphs
+- [x] **Model Extensions:**
+  - [x] Paragraph split/merge operations in `model/VDOMMutations.ts` (partial implementation with BR nodes)
+  - [x] Cross-paragraph selection in `model/VDOMSelection.ts` (basic implementation)
+- [x] **Core Editor:**
+  - [x] Enter key handling for paragraph creation
+  - [x] Backspace/Delete at paragraph boundaries
+- [x] **Tests:**
+  - [x] Unit tests for paragraph operations
+  - [x] Integration tests for creating/merging paragraphs
 
 ## 3. Slice: Basic Formatting (Bold, Italic, Underline)
 
@@ -56,8 +56,8 @@ This slice adds the first formatting capabilities.
 
 - [ ] **Formatting Components:**
 
-  - [ ] Format toggle operations in `model/VDOMFormatting.ts`
-  - [ ] Format state detection in `model/VDOMSelection.ts`
+  - [ ] Format toggle operations in `model/VDOMFormatting.ts` (file exists but is empty)
+  - [x] Format state detection in `model/VDOMSelection.ts` (basic format state structure exists)
 
 - [ ] **Core Editor:**
   - [ ] Format toggle command handling
@@ -76,7 +76,7 @@ This slice adds the first formatting capabilities.
 This slice adds the ability to undo and redo changes.
 
 - [ ] **History Components:**
-  - [ ] History stack in `history/HistoryManager.ts`
+  - [ ] History stack in `history/HistoryManager.ts` (file exists but is empty)
   - [ ] State snapshot capture and restoration
 - [ ] **Core Editor:**
   - [ ] Integration with history manager
@@ -89,17 +89,17 @@ This slice adds the ability to undo and redo changes.
 
 This slice adds support for ordered and unordered lists.
 
-- [ ] **List Components:**
-  - [ ] List operations in `model/VDOMListOperations.ts`
-  - [ ] List normalization in `model/VDOMNormalization.ts`
+- [x] **List Components:**
+  - [x] List operations in `model/VDOMListOperations.ts`
+  - [x] List normalization in `model/VDOMNormalization.ts`
 - [ ] **Core Editor:**
   - [ ] List toggle command handling
   - [ ] Special key handling in lists (Tab, Backspace, Enter)
 - [ ] **React Component:**
   - [ ] List buttons implementation
   - [ ] List state visualization
-- [ ] **Tests:**
-  - [ ] Unit tests for list operations
+- [x] **Tests:**
+  - [x] Unit tests for list operations
   - [ ] Integration tests for list creation and manipulation
 
 ## 6. Slice: Clipboard Operations
@@ -107,7 +107,7 @@ This slice adds support for ordered and unordered lists.
 This slice adds support for copy, cut, and paste operations.
 
 - [ ] **Clipboard Components:**
-  - [ ] Clipboard interaction in `clipboard/ClipboardManager.ts`
+  - [ ] Clipboard interaction in `clipboard/ClipboardManager.ts` (file exists but is empty)
 - [ ] **Core Editor:**
   - [ ] Copy/cut/paste command handling
   - [ ] HTML sanitization for paste operations
@@ -119,11 +119,11 @@ This slice adds support for copy, cut, and paste operations.
 
 This final slice completes the public API and ensures accessibility features.
 
-- [ ] **Utilities:**
-  - [ ] HTML cleaning and safety in `utils/Editor.utilities.ts`
-- [ ] **Core Editor:**
-  - [ ] Complete command handling via FSM
-  - [ ] Final polish of content normalization
+- [x] **Utilities:**
+  - [x] HTML cleaning and safety in `utils/Editor.utilities.ts`
+- [x] **Core Editor:**
+  - [x] Complete command handling via FSM (basic implementation exists)
+  - [x] Final polish of content normalization
 - [ ] **React Component:**
   - [ ] Full imperative handle implementation (clearValue, getValue, etc.)
   - [ ] Complete props handling (disabled, required, etc.)
