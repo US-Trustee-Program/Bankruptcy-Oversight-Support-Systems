@@ -10,6 +10,8 @@ import { FSM } from './FSM';
 import { vdomToHTML } from './io/VDOMToHTML';
 import { SelectionService } from './selection/SelectionService.humble';
 import { getSelectionFromBrowser, applySelectionToBrowser } from './model/VDOMSelection';
+// Import the direct formatting function for debugging
+import { toggleBoldInSelection as directToggleBold } from './model/VDOMFormatting';
 
 export interface EditorOptions {
   rootElement?: HTMLDivElement | null;
@@ -231,52 +233,86 @@ export class Editor {
 
     // Handle keyboard shortcuts first
 
+    // Special direct handling for Cmd+B on Mac or Ctrl+B on Windows
+    if ((event.ctrlKey || event.metaKey) && event.key === 'b') {
+      console.log(
+        'Bold keyboard shortcut detected - ctrlKey:',
+        event.ctrlKey,
+        'metaKey:',
+        event.metaKey,
+        'key:',
+        event.key,
+      );
+      console.trace('Bold keyboard shortcut stack trace');
+      event.preventDefault();
+
+      // DIRECTLY CALL toggleBold() method for Command+B and Ctrl+B
+      console.log('Directly calling toggleBold()');
+      this.toggleBold();
+      return; // Exit early after handling the shortcut
+    }
+
     let command: EditorCommand | null = null;
 
-    if (event.ctrlKey && event.key === 'b') {
-      event.preventDefault();
-      command = { type: 'TOGGLE_BOLD' };
-    } else {
-      // Handle arrow keys for cursor movement
-      switch (event.key) {
-        case 'ArrowLeft':
-          command = {
-            type: 'MOVE_CURSOR_LEFT',
-          };
-          break;
-        case 'ArrowRight':
-          command = {
-            type: 'MOVE_CURSOR_RIGHT',
-          };
-          break;
-        case 'ArrowUp':
-          command = {
-            type: 'MOVE_CURSOR_UP',
-          };
-          break;
-        case 'ArrowDown':
-          command = {
-            type: 'MOVE_CURSOR_DOWN',
-          };
-          break;
-        default:
-          // Unhandled key, ignore
-          return;
-      }
+    // Handle arrow keys for cursor movement
+    switch (event.key) {
+      case 'ArrowLeft':
+        command = {
+          type: 'MOVE_CURSOR_LEFT',
+        };
+        break;
+      case 'ArrowRight':
+        command = {
+          type: 'MOVE_CURSOR_RIGHT',
+        };
+        break;
+      case 'ArrowUp':
+        command = {
+          type: 'MOVE_CURSOR_UP',
+        };
+        break;
+      case 'ArrowDown':
+        command = {
+          type: 'MOVE_CURSOR_DOWN',
+        };
+        break;
+      default:
+        // Unhandled key, ignore
+        return;
     }
 
     if (command) {
       // Delegate to FSM
       event.preventDefault();
+      console.log('Sending command to FSM:', command);
+
+      try {
+        // Manually trigger the toggleBoldInSelection function when Toggle Bold command is processed
+        if (command && command.type === 'TOGGLE_BOLD') {
+          console.log('Direct call to toggleBoldInSelection for debugging');
+          const directResult = directToggleBold(this.state.vdom, this.state.selection);
+          console.log('Direct toggleBoldInSelection result:', directResult);
+        }
+      } catch (error) {
+        console.error('Error in direct call:', error);
+      }
+
       const result = this.fsm.processCommand(command, this.state);
+      console.log('FSM result received:', {
+        didChange: result.didChange,
+        newVDOM: result.newVDOM,
+        selectionChanged: result.newSelection !== this.state.selection,
+      });
 
       if (result.didChange) {
+        console.log('Applying content change from FSM result');
         this.state.vdom = result.newVDOM;
         this.state.selection = result.newSelection;
         this.notifyChange();
         this.notifySelectionChange();
       } else if (result.newSelection !== this.state.selection) {
         // If only selection changed but not content
+        console.log('Applying selection change from FSM result');
         this.state.selection = result.newSelection;
         this.notifySelectionChange();
       }
@@ -363,7 +399,7 @@ export class Editor {
   // Text editing methods
   insertText(text: string): void {
     // Process the command through the FSM
-    const result = this.fsm.processCommand({ type: 'INSERT_TEXT', payload: { text } }, this.state);
+    const result = this.fsm.processCommand({ type: 'INSERT_TEXT', payload: text }, this.state);
 
     // Update state if there was a change
     if (result.didChange) {
@@ -373,6 +409,31 @@ export class Editor {
       // Notify callbacks
       this.notifyChange();
       this.notifySelectionChange();
+    }
+  }
+
+  // Formatting methods
+  toggleBold(): void {
+    console.log('Editor.toggleBold() called');
+
+    try {
+      // BYPASS THE FSM AND CALL THE FORMATTING FUNCTION DIRECTLY FOR DEBUGGING
+      console.log('Directly calling toggleBoldInSelection');
+      const newVDOM = directToggleBold(this.state.vdom, this.state.selection);
+      console.log('Toggle bold result:', newVDOM);
+
+      // Update state directly
+      const didChange = JSON.stringify(newVDOM) !== JSON.stringify(this.state.vdom);
+      if (didChange) {
+        console.log('Bold toggling changed content');
+        this.state.vdom = newVDOM;
+
+        // Notify callbacks
+        this.notifyChange();
+        this.notifySelectionChange();
+      }
+    } catch (error) {
+      console.error('Error in toggleBold:', error);
     }
   }
 }

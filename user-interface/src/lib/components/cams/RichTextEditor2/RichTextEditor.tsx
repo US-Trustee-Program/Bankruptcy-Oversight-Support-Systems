@@ -46,6 +46,16 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
     });
   });
 
+  // Function to handle bold button click
+  const handleBoldClick = () => {
+    console.log('Bold button clicked');
+    // Add a debug log to check if event is firing
+    console.trace('Bold button click stack trace');
+
+    // Use the new toggleBold method added to the Editor class
+    editor.toggleBold();
+  };
+
   useEffect(() => {
     if (domElementRef.current && editor) {
       editor.setRootElement(domElementRef.current);
@@ -78,7 +88,17 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
       >
         {label || 'Rich text editor'}
       </label>
-      <div className="editor-toolbar">{/* Toolbar will go here */}</div>
+      <div className="editor-toolbar">
+        <button
+          type="button"
+          onClick={handleBoldClick}
+          className="toolbar-button"
+          aria-label="Bold"
+          title="Bold"
+        >
+          <strong>B</strong>
+        </button>
+      </div>
       <div
         contentEditable={!disabled}
         ref={domElementRef}

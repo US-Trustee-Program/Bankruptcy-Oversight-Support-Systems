@@ -130,31 +130,43 @@ export function isTextNodeBold(textNode: VDOMNode, vdom: VDOMNode[]): boolean {
  * Toggle bold formatting for nodes within a selection
  */
 export function toggleBoldInSelection(vdom: VDOMNode[], selection: VDOMSelection): VDOMNode[] {
+  console.log('===== toggleBoldInSelection CALLED =====');
+  console.log('VDOM:', vdom);
+  console.log('Selection:', selection);
+  console.trace('Stack trace');
+
   // Handle empty VDOM
   if (vdom.length === 0) {
+    console.log('Empty VDOM, nothing to format');
     return [];
   }
 
   // Calculate the overall text content and determine formatting state
   const { textContent, formattingMap } = buildTextContentAndFormattingMap(vdom);
+  console.log('Text content:', textContent);
 
   // Clamp selection to actual content bounds
   const startOffset = Math.max(0, Math.min(selection.start.offset, textContent.length));
   const endOffset = Math.max(startOffset, Math.min(selection.end.offset, textContent.length));
+  console.log('Selection range:', startOffset, 'to', endOffset);
 
   // If selection is collapsed or at end, toggle entire content (for backward compatibility)
   if (startOffset === endOffset || startOffset === textContent.length) {
-    const result = toggleBoldEntireContent(vdom);
-    return result;
+    console.log('Collapsed selection, toggling entire content');
+    return toggleBoldEntireContent(vdom);
   }
 
   // Check if ALL the text in the selection has bold formatting
   // If even one character is not bold, we'll apply bold to the entire selection
   const selectionHasBold = hasFormattingInRange(formattingMap, startOffset, endOffset, 'bold');
+  console.log('Selection has bold formatting?', selectionHasBold);
+
   // Apply the toggle operation - if selectionHasBold is true (all chars are bold), remove formatting
   // If selectionHasBold is false (some chars are not bold), apply bold to all
-  const result = applyFormattingToggle(vdom, startOffset, endOffset, 'bold', !selectionHasBold);
-  return result;
+  const shouldApply = !selectionHasBold;
+  console.log(shouldApply ? 'Applying bold formatting' : 'Removing bold formatting');
+
+  return applyFormattingToggle(vdom, startOffset, endOffset, 'bold', shouldApply);
 }
 
 /**
@@ -199,9 +211,13 @@ function buildTextContentAndFormattingMap(vdom: VDOMNode[]): {
 }
 
 /**
- * Check if a range has a specific formatting
- * Returns true only if ALL characters in the range have the formatting
- * This ensures that partially formatted selections will become fully formatted when toggled
+ * Check if a range has a specific formatting.
+ * Returns TRUE if ALL characters in the range have the formatting (so formatting should be removed).
+ * Returns FALSE if ANY characters lack the formatting (so formatting should be applied to all).
+ *
+ * The toggle behavior follows these simple rules:
+ * - If ALL text in selection has formatting, remove formatting from all
+ * - If ANY text in selection lacks formatting, apply formatting to all
  */
 function hasFormattingInRange(
   formattingMap: Array<{ bold: boolean; nodeId: string; nodeType: string }>,
@@ -209,21 +225,38 @@ function hasFormattingInRange(
   endOffset: number,
   format: 'bold',
 ): boolean {
+  console.log('==== hasFormattingInRange CALLED ====');
+  console.log('Format:', format);
+  console.log('Range:', startOffset, 'to', endOffset);
+  console.log('FormattingMap length:', formattingMap.length);
+  console.log('First few formatting entries:', formattingMap.slice(0, 5));
+  console.trace('Stack trace');
+
   if (startOffset >= endOffset || startOffset >= formattingMap.length) {
+    console.log('Empty selection or invalid range, applying formatting by default');
     return false;
   }
 
-  // Check if ALL characters have the formatting
-  // If any character doesn't have the format, we'll return false,
-  // which means we'll apply the formatting to the entire selection
+  // Count formatted characters for debugging
+  let formattedCount = 0;
+
+  // Check each character in the range
   for (let i = startOffset; i < Math.min(endOffset, formattingMap.length); i++) {
-    if (!formattingMap[i][format]) {
-      // Found a character without formatting - return false to apply formatting to all
+    if (formattingMap[i][format]) {
+      formattedCount++;
+    } else {
+      // If ANY character is not formatted, we should apply formatting to all
+      console.log(
+        'Found unformatted character at position',
+        i - startOffset,
+        'applying formatting to all',
+      );
       return false;
     }
   }
 
-  // All characters have the formatting, so return true to remove formatting
+  // If we get here, ALL characters have the formatting
+  console.log('All characters are formatted:', formattedCount, 'removing formatting from all');
   return true;
 }
 

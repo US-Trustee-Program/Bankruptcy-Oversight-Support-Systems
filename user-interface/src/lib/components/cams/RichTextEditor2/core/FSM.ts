@@ -20,6 +20,8 @@ export class FSM {
     command: EditorCommand | { type: 'SET_SELECTION'; payload: VDOMSelection },
     currentState: EditorState,
   ): FSMResult {
+    console.log('FSM.processCommand called with command type:', command.type);
+
     switch (command.type) {
       case 'SET_SELECTION':
         return this.handleSetSelection(command.payload, currentState);
@@ -185,8 +187,19 @@ export class FSM {
     // Use the selection state to determine current cursor position
     const currentCursorPosition = currentState.selection.start.offset;
 
-    // Move cursor left by one position, but not below 0
+    // Calculate node positions to find the correct cursor position
+    const nodePositions = this.calculateNodePositions(currentState.vdom);
+
+    // Check if we're at a formatting boundary
     const newCursorPosition = Math.max(0, currentCursorPosition - 1);
+
+    // Find if the new position is exactly at a node boundary and adjust if needed
+    const boundaryNode = nodePositions.find((pos) => pos.start === newCursorPosition);
+    if (boundaryNode) {
+      // If we're at the boundary between formatted and unformatted text,
+      // ensure the cursor is positioned properly on the character
+      console.log('Cursor at boundary between nodes:', boundaryNode);
+    }
 
     // Create new selection with updated cursor position
     const newSelection = {
@@ -207,9 +220,26 @@ export class FSM {
     // Use the selection state to determine current cursor position
     const currentCursorPosition = currentState.selection.start.offset;
 
+    // Calculate node positions to find the correct cursor position
+    const nodePositions = this.calculateNodePositions(currentState.vdom);
+
+    // Calculate total text length
+    let textLength = 0;
+    if (nodePositions.length > 0) {
+      const lastNode = nodePositions[nodePositions.length - 1];
+      textLength = lastNode.end;
+    }
+
     // Move cursor right by one position, but not beyond text length
-    const textLength = this.getTextContent(currentState.vdom).length;
     const newCursorPosition = Math.min(textLength, currentCursorPosition + 1);
+
+    // Find if the new position is exactly at a node boundary and adjust if needed
+    const boundaryNode = nodePositions.find((pos) => pos.end === newCursorPosition);
+    if (boundaryNode) {
+      // If we're at the boundary between formatted and unformatted text,
+      // ensure the cursor is positioned properly on the character
+      console.log('Cursor at boundary between nodes:', boundaryNode);
+    }
 
     // Create new selection with updated cursor position
     const newSelection = {
@@ -281,18 +311,88 @@ export class FSM {
    * Handle the TOGGLE_BOLD command
    */
   private handleToggleBold(currentState: EditorState): FSMResult {
+    console.log('===== FSM.handleToggleBold CALLED =====');
+    console.trace('FSM.handleToggleBold stack trace');
+
+    // Store cursor position before toggling bold
+    const selectionStart = currentState.selection.start.offset;
+    const selectionEnd = currentState.selection.end.offset;
+    const isSelectionCollapsed = currentState.selection.isCollapsed;
+
+    console.log('Current selection:', {
+      start: selectionStart,
+      end: selectionEnd,
+      isCollapsed: isSelectionCollapsed,
+    });
+    console.log('Current VDOM:', currentState.vdom);
+
     // Use the formatting function to toggle bold
+    console.log('Calling toggleBoldInSelection...');
     const newVDOM = toggleBoldInSelection(currentState.vdom, currentState.selection);
 
     // Check if there was actually a change
     const didChange = JSON.stringify(newVDOM) !== JSON.stringify(currentState.vdom);
 
+    // Create a new selection that preserves the original cursor position
+    // This helps prevent cursor jumping when toggling bold
+    const newSelection = {
+      start: { offset: selectionStart },
+      end: { offset: selectionEnd },
+      isCollapsed: isSelectionCollapsed,
+    };
+
     return {
       newVDOM,
-      newSelection: currentState.selection, // Preserve selection
+      newSelection,
       didChange,
       isPersistent: didChange,
     };
+  }
+
+  /**
+   * Calculate the positions of each node in the VDOM
+   * This helps with mapping cursor positions between different node types
+   * with different formatting
+   */
+  private calculateNodePositions(vdom: VDOMNode[]): Array<{
+    node: VDOMNode;
+    start: number;
+    end: number;
+  }> {
+    const positions: Array<{
+      node: VDOMNode;
+      start: number;
+      end: number;
+    }> = [];
+
+    let currentOffset = 0;
+
+    for (const node of vdom) {
+      if (node.type === VDOM_NODE_TYPES.TEXT) {
+        const length = node.content?.length || 0;
+        positions.push({
+          node,
+          start: currentOffset,
+          end: currentOffset + length,
+        });
+        currentOffset += length;
+      } else if (node.type === 'strong' && node.children) {
+        // Handle formatted nodes
+        for (const child of node.children) {
+          if (child.type === VDOM_NODE_TYPES.TEXT) {
+            const length = child.content?.length || 0;
+            positions.push({
+              node: child,
+              start: currentOffset,
+              end: currentOffset + length,
+            });
+            currentOffset += length;
+          }
+        }
+      }
+    }
+
+    return positions;
   }
 
   public getTextContent(vdom: VDOMNode[]): string {

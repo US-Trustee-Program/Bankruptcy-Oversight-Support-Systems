@@ -3,11 +3,32 @@
 // This will be developed alongside the finite state machine implementation
 
 .rich-text-editor-container {
-  // TODO: Add container styles
+  width: 100%;
+  position: relative;
 }
 
 .editor-toolbar {
-  // TODO: Add toolbar styles
+  display: flex;
+  gap: 5px;
+  padding: 5px;
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  border-bottom: none;
+
+  .toolbar-button {
+    padding: 5px 10px;
+    background-color: white;
+    border: 1px solid #ccc;
+    cursor: pointer;
+
+    &:hover {
+      background-color: #f5f5f5;
+    }
+
+    &:active {
+      background-color: #e5e5e5;
+    }
+  }
 }
 
 .editor-content {

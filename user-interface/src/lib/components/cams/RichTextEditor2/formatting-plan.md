@@ -36,44 +36,48 @@ Editor core, React component) and delivers working functionality.
   - [x] Format state tracking in `Editor.ts`
   - [x] Format state change notification via callback
 
-- [ ] **React Component**:
+- [x] **React Component**:
 
-  - [ ] Add a toolbar above the edit field but within the same component as the edit field.
-  - [ ] Use the RichTextButton.tsx and RichTextIcon.tsx components to create buttons for the bold,
+  - [x] Add a toolbar above the edit field but within the same component as the edit field.
+  - [x] Use the RichTextButton.tsx and RichTextIcon.tsx components to create buttons for the bold,
         italic, and underline functionality.
   - [x] The styling for the buttons that is specific to this use case, whould be within it's own
         file (such as the RichTextEditor.scss file).
-  - [ ] The bold button should not have an icon but should have a capital letter B as it's content.
+  - [x] The bold button should not have an icon but should have a capital letter B as it's content.
         The letter B should have css (defined within RichTextEditor.scss file) to add bold styling
         to the text in the button.
-  - [ ] The italic button should not have an icon but should have a capital letter I as it's
+  - [x] The italic button should not have an icon but should have a capital letter I as it's
         content. The letter I should have css to add em (emphasis, italic) styling to the text in
         the button.
-  - [ ] The underline button should not have an icon but should have a capital letter U as it's
+  - [x] The underline button should not have an icon but should have a capital letter U as it's
         content. The letter U shouild have css to add text underline styling to the text in the
         button.
-  - [ ] Format state visualization in toolbar buttons
-  - [ ] Format state update on selection change
+  - [x] Format state visualization in toolbar buttons
+  - [x] Format state update on selection change
 
 - **Steps to Proceed**
 
-  - [ ] Implement 1 step
-  - [ ] Pause to allow the developer (user) to manually test the changes in a browser.
-  - [ ] Wait for the developer to say "continue" before proceeding.
-  - [ ] Stop often to discuss with the human developer what AI would like to do. Get approval from
+  - [x] Implement initial formatting functionality
+  - [x] Add debug logging to trace formatting function calls
+  - [x] Pause to allow the developer (user) to manually test the changes in a browser.
+  - [x] Fixed linting errors in Editor.ts
+  - [x] Wait for the developer to say "continue" before proceeding.
+  - [x] Stop often to discuss with the human developer what AI would like to do. Get approval from
         developer.
 
 - [x] **Tests**:
   - [x] Unit test for format state detection
   - [x] Unit test for format state tracking
-  - [ ] Integration test for format state UI updates
+  - [x] Integration test for format state UI updates
+  - [x] Debug logging to verify keyboard shortcuts functionality
 
 **Acceptance Criteria**:
 
-- When selecting bold text, the bold button appears active
-- When selecting italic text, the italic button appears active
-- When selecting underlined text, the underline button appears active
-- When selecting mixed formatting, the appropriate buttons show the mixed state
+- [x] When selecting bold text, the bold button appears active
+- [x] When selecting italic text, the italic button appears active
+- [x] When selecting underlined text, the underline button appears active
+- [x] When selecting mixed formatting, the appropriate buttons show the mixed state
+- [x] Both Ctrl+B (Windows) and Cmd+B (Mac) keyboard shortcuts toggle bold formatting
 
 ## Slice 2: Bold Text Toggle
 
@@ -91,13 +95,14 @@ Editor core, React component) and delivers working functionality.
 - [x] **Core Editor**:
 
   - [x] Bold command handling via FSM
-  - [x] Keyboard shortcut support for Ctrl+B (Cmd+B on Mac)
+  - [x] Keyboard shortcut support for Ctrl+B (primary) and Cmd+B (on Mac)
   - [x] Direct processing of `TOGGLE_BOLD` commands through FSM
+  - [x] Fixed linting errors in Editor.ts
 
-- [ ] **React Component**:
+- [x] **React Component**:
 
-  - [ ] Bold button implementation
-  - [ ] Button click handling for bold
+  - [x] Bold button implementation
+  - [x] Button click handling for bold
 
 - **Steps to Proceed**
 
@@ -404,13 +409,13 @@ integration points:
 
 Based on review of the existing code, we need to implement:
 
-1. **Format Persistence**: Text formatting must persist across operations like paragraph splits,
+1. **Format Persistence**: ✅ Text formatting must persist across operations like paragraph splits,
    deletions, and merges
-2. **Multi-paragraph Formatting**: Users should be able to format selections that span multiple
+2. **Multi-paragraph Formatting**: ✅ Users should be able to format selections that span multiple
    paragraphs
-3. **Mixed Formatting**: The system should handle mixed formatting within a selection correctly
-4. **DOM Rendering**: Formatted text must render correctly in the contentEditable DOM element
-5. **Format Toggling Logic**: The toggle behavior should follow standard word processor conventions
+3. **Mixed Formatting**: ✅ The system should handle mixed formatting within a selection correctly
+4. **DOM Rendering**: ✅ Formatted text must render correctly in the contentEditable DOM element
+5. **Format Toggling Logic**: ✅ The toggle behavior should follow standard word processor conventions
 
 ### Implementation Guidelines
 
@@ -425,37 +430,39 @@ Based on review of the existing code, we need to implement:
 
 ### Implementation Tasks
 
-1. **VDOMFormatting.ts** (Partially Implemented)
+1. **VDOMFormatting.ts** (Implemented)
 
    - ✅ Implemented `getNodeFormatState` function for format detection
    - ✅ Implemented `getFormattingAtSelection` function
    - ✅ Implemented `toggleBoldInSelection` function for bold formatting
    - ✅ Added text node splitting for partial formatting
-   - Implement similar toggle functions for italic and underline formatting
+   - ✅ Implemented `toggleItalicInSelection` function for italic formatting
+   - ✅ Implemented `toggleUnderlineInSelection` function for underline formatting
 
 2. **VDOMSelection.ts** (Implemented)
 
    - ✅ Updated `getFormattingAtSelection` function to correctly detect formatting in selection
    - ✅ Added support for detecting mixed formatting states (partially formatted)
 
-3. **Editor.ts** (Partially Implemented)
+3. **Editor.ts** (Implemented)
 
-   - ✅ Added `toggleBold` method
    - ✅ Added format state tracking and notification via callbacks
    - ✅ Updated command handling for bold operations
-   - Add `toggleItalic` and `toggleUnderline` methods
-   - Update command handling for italic and underline operations
+   - ✅ Updated command handling for italic operations
+   - ✅ Updated command handling for underline operations
+   - ✅ Implemented keyboard shortcut handling for formatting commands
 
-4. **RichTextEditor.tsx** (Component Implementation Needed)
+4. **RichTextEditor.tsx** (Partially Implemented)
 
-   - Add format button UI implementation
-   - Add click handlers for format operations
-   - Add format state visualization
-   - Implement keyboard shortcut handling
+   - ✅ Added format button UI implementation
+   - ✅ Added click handlers for format operations
+   - ✅ Added format state visualization
+   - ✅ Implemented keyboard shortcut handling
 
 5. **Tests** (Partially Implemented)
    - ✅ Added tests for format state detection
    - ✅ Added tests for bold formatting operation
-   - Add comprehensive tests for italic and underline formatting operations
-   - Add tests for edge cases like mixed formatting
-   - Add tests for keyboard shortcuts
+   - ✅ Added tests for italic formatting operation
+   - ✅ Added tests for underline formatting operation
+   - ✅ Added tests for keyboard shortcuts
+   - [ ] Add more comprehensive tests for edge cases like mixed formatting

@@ -190,7 +190,7 @@ export function getSelectionFromBrowser(selectionService: SelectionService): VDO
 }
 
 /**
- * Applies VDOM selection to browser selection - Simplified approach
+ * Applies VDOM selection to browser selection - Enhanced approach for formatted text
  */
 export function applySelectionToBrowser(
   selectionService: SelectionService,
@@ -228,20 +228,37 @@ export function applySelectionToBrowser(
   const range = selectionService.createRange();
 
   try {
-    // For simplified approach, find the first text node in the element
-    const textNode = findTextNodeInElement(rootElement);
+    // Enhanced approach: Find the correct text node and offset for formatted text
+    const { startNode, startOffset, endNode, endOffset } = findPositionInFormattedText(
+      rootElement,
+      vdomSelection,
+    );
 
-    if (textNode) {
-      // Set the range using simple offsets
-      const startOffset = Math.min(vdomSelection.start.offset, textNode.textContent?.length || 0);
-      const endOffset = Math.min(vdomSelection.end.offset, textNode.textContent?.length || 0);
-
-      range.setStart(textNode, startOffset);
+    if (startNode) {
+      range.setStart(startNode, startOffset);
 
       if (vdomSelection.isCollapsed) {
         range.collapse(true);
-      } else {
-        range.setEnd(textNode, endOffset);
+      } else if (endNode) {
+        range.setEnd(endNode, endOffset);
+      }
+    } else {
+      // Fallback to first text node if we can't find the right position
+      const textNode = findTextNodeInElement(rootElement);
+
+      if (textNode) {
+        // Get safe offsets that won't exceed text node length
+        const nodeLength = textNode.textContent?.length || 0;
+        const safeStartOffset = Math.min(vdomSelection.start.offset, nodeLength);
+        const safeEndOffset = Math.min(vdomSelection.end.offset, nodeLength);
+
+        range.setStart(textNode, safeStartOffset);
+
+        if (vdomSelection.isCollapsed) {
+          range.collapse(true);
+        } else {
+          range.setEnd(textNode, safeEndOffset);
+        }
       }
     }
 
@@ -382,4 +399,63 @@ function isEditableDescendant(element: HTMLElement, editorId?: string): boolean 
   }
 
   return false;
+}
+
+/**
+ * Find the correct DOM nodes and offsets for a given VDOM selection
+ * This handles formatted text (like bold, italic, etc.) by traversing the DOM tree
+ * and tracking offsets across node boundaries
+ */
+function findPositionInFormattedText(
+  rootElement: HTMLElement,
+  vdomSelection: VDOMSelection,
+): {
+  startNode: Node | null;
+  startOffset: number;
+  endNode: Node | null;
+  endOffset: number;
+} {
+  const startOffset = vdomSelection.start.offset;
+  const endOffset = vdomSelection.end.offset;
+
+  // Traverse text nodes in the DOM to find the position
+  const result = {
+    startNode: null as Node | null,
+    startOffset: 0,
+    endNode: null as Node | null,
+    endOffset: 0,
+  };
+
+  // Create a TreeWalker to traverse text nodes in document order
+  const walker = document.createTreeWalker(rootElement, NodeFilter.SHOW_TEXT, null);
+
+  let currentNode = walker.nextNode();
+  let cumulativeOffset = 0;
+  let startNodeFound = false;
+  let endNodeFound = false;
+
+  while (currentNode && (!startNodeFound || !endNodeFound)) {
+    const nodeLength = currentNode.textContent?.length || 0;
+    const nextOffset = cumulativeOffset + nodeLength;
+
+    // Check if this node contains the start position
+    if (!startNodeFound && startOffset >= cumulativeOffset && startOffset <= nextOffset) {
+      result.startNode = currentNode;
+      result.startOffset = startOffset - cumulativeOffset;
+      startNodeFound = true;
+    }
+
+    // Check if this node contains the end position
+    if (!endNodeFound && endOffset >= cumulativeOffset && endOffset <= nextOffset) {
+      result.endNode = currentNode;
+      result.endOffset = endOffset - cumulativeOffset;
+      endNodeFound = true;
+    }
+
+    // Move to the next text node
+    cumulativeOffset = nextOffset;
+    currentNode = walker.nextNode();
+  }
+
+  return result;
 }
