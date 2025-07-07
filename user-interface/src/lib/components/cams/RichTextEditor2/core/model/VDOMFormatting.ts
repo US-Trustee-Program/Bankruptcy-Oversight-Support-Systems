@@ -148,9 +148,11 @@ export function toggleBoldInSelection(vdom: VDOMNode[], selection: VDOMSelection
     return result;
   }
 
-  // Determine the dominant formatting state in the selection
+  // Check if ALL the text in the selection has bold formatting
+  // If even one character is not bold, we'll apply bold to the entire selection
   const selectionHasBold = hasFormattingInRange(formattingMap, startOffset, endOffset, 'bold');
-  // Apply the toggle operation
+  // Apply the toggle operation - if selectionHasBold is true (all chars are bold), remove formatting
+  // If selectionHasBold is false (some chars are not bold), apply bold to all
   const result = applyFormattingToggle(vdom, startOffset, endOffset, 'bold', !selectionHasBold);
   return result;
 }
@@ -198,6 +200,8 @@ function buildTextContentAndFormattingMap(vdom: VDOMNode[]): {
 
 /**
  * Check if a range has a specific formatting
+ * Returns true only if ALL characters in the range have the formatting
+ * This ensures that partially formatted selections will become fully formatted when toggled
  */
 function hasFormattingInRange(
   formattingMap: Array<{ bold: boolean; nodeId: string; nodeType: string }>,
@@ -209,13 +213,18 @@ function hasFormattingInRange(
     return false;
   }
 
-  // Check if any character in the range has the formatting
+  // Check if ALL characters have the formatting
+  // If any character doesn't have the format, we'll return false,
+  // which means we'll apply the formatting to the entire selection
   for (let i = startOffset; i < Math.min(endOffset, formattingMap.length); i++) {
-    if (formattingMap[i][format]) {
-      return true;
+    if (!formattingMap[i][format]) {
+      // Found a character without formatting - return false to apply formatting to all
+      return false;
     }
   }
-  return false;
+
+  // All characters have the formatting, so return true to remove formatting
+  return true;
 }
 
 /**

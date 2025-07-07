@@ -22,21 +22,21 @@ Each slice follows the vertical slice principle: it touches all architectural la
 
 **Components to implement**:
 
-- [ ] **VDOM Foundation**:
-  - [ ] Enhanced `VDOMSelection.ts` to track format state
-  - [ ] Format detection logic in `VDOMFormatting.ts`
+- [x] **VDOM Foundation**:
+  - [x] Enhanced `VDOMSelection.ts` to track format state
+  - [x] Format detection logic in `VDOMFormatting.ts`
 
-- [ ] **Core Editor**:
-  - [ ] Format state tracking in `Editor.ts`
-  - [ ] Format state change notification via callback
+- [x] **Core Editor**:
+  - [x] Format state tracking in `Editor.ts`
+  - [x] Format state change notification via callback
 
 - [ ] **React Component**:
   - [ ] Add a toolbar above the edit field but within the same component as the edit field.
   - [ ] Use the RichTextButton.tsx and RichTextIcon.tsx components to create buttons for the bold, italic, and underline functionality.
-  - [ ] The styling for the buttons that is specific to this use case, whould be within it's own file (such as the RichTextEditor.scss file).
+  - [x] The styling for the buttons that is specific to this use case, whould be within it's own file (such as the RichTextEditor.scss file).
   - [ ] The bold button should not have an icon but should have a capital letter B as it's content. The letter B should have css (defined within RichTextEditor.scss file) to add bold styling to the text in the button.
   - [ ] The italic button should not have an icon but should have a capital letter I as it's content. The letter I should have css to add em (emphasis, italic) styling to the text in the button.
-  - [ ] - [ ] The underline button should not have an icon but should have a capital letter U as it's content. The letter U shouild have css to add text underline styling to the text in the button.
+  - [ ] The underline button should not have an icon but should have a capital letter U as it's content. The letter U shouild have css to add text underline styling to the text in the button.
   - [ ] Format state visualization in toolbar buttons
   - [ ] Format state update on selection change
 
@@ -46,9 +46,9 @@ Each slice follows the vertical slice principle: it touches all architectural la
   - [ ] Wait for the developer to say "continue" before proceeding.
   - [ ] Stop often to discuss with the human developer what AI would like to do.  Get approval from developer.
 
-- [ ] **Tests**:
-  - [ ] Unit test for format state detection
-  - [ ] Unit test for format state tracking
+- [x] **Tests**:
+  - [x] Unit test for format state detection
+  - [x] Unit test for format state tracking
   - [ ] Integration test for format state UI updates
 
 **Acceptance Criteria**:
@@ -66,13 +66,13 @@ Each slice follows the vertical slice principle: it touches all architectural la
 
 **Components to implement**:
 
-- [ ] **VDOM Operations**:
-  - [ ] Bold formatting in `VDOMFormatting.ts`
-  - [ ] Text node splitting for partial formatting
+- [x] **VDOM Operations**:
+  - [x] Bold formatting in `VDOMFormatting.ts`
+  - [x] Text node splitting for partial formatting
 
-- [ ] **Core Editor**:
-  - [ ] `toggleBold()` method
-  - [ ] Bold command handling
+- [x] **Core Editor**:
+  - [x] `toggleBold()` method
+  - [x] Bold command handling
 
 - [ ] **React Component**:
   - [ ] Bold button implementation
@@ -84,9 +84,9 @@ Each slice follows the vertical slice principle: it touches all architectural la
   - [ ] Wait for the developer to say "continue" before proceeding.
   - [ ] Stop often to discuss with the human developer what AI would like to do.  Get approval from developer.
 
-- [ ] **Tests**:
-  - [ ] Unit test for bold formatting operation
-  - [ ] Unit test for bold toggle command
+- [x] **Tests**:
+  - [x] Unit test for bold formatting operation
+  - [x] Unit test for bold toggle command
   - [ ] Integration test for bold button click
 
 **Acceptance Criteria**:
@@ -343,20 +343,23 @@ Based on review of the existing code, we need to implement:
 
 ### Implementation Tasks
 
-1. **VDOMFormatting.ts** (Currently Empty)
-   - Implement `applyFormatToNodes` function for adding formatting to selected text
-   - Implement `removeFormatFromNodes` function for removing formatting
-   - Implement `toggleFormat` function that determines whether to add or remove formatting
-   - Add support for splitting nodes when partial formatting is applied
+1. **VDOMFormatting.ts** (Partially Implemented)
+   - ✅ Implemented `getNodeFormatState` function for format detection
+   - ✅ Implemented `getFormattingAtSelection` function
+   - ✅ Implemented `toggleBoldInSelection` function for bold formatting
+   - ✅ Added text node splitting for partial formatting
+   - Implement similar toggle functions for italic and underline formatting
 
-2. **VDOMSelection.ts** (Basic Implementation Exists)
-   - Update `getFormattingAtSelection` function to correctly detect formatting in selection
-   - Add support for detecting mixed formatting states (partially formatted)
+2. **VDOMSelection.ts** (Implemented)
+   - ✅ Updated `getFormattingAtSelection` function to correctly detect formatting in selection
+   - ✅ Added support for detecting mixed formatting states (partially formatted)
 
-3. **Editor.ts** (No Format Support Yet)
-   - Add `toggleBold`, `toggleItalic`, and `toggleUnderline` methods
-   - Add format state tracking and notification via callbacks
-   - Update command handling for format operations
+3. **Editor.ts** (Partially Implemented)
+   - ✅ Added `toggleBold` method
+   - ✅ Added format state tracking and notification via callbacks
+   - ✅ Updated command handling for bold operations
+   - Add `toggleItalic` and `toggleUnderline` methods
+   - Update command handling for italic and underline operations
 
 4. **RichTextEditor.tsx** (Component Implementation Needed)
    - Add format button UI implementation
@@ -364,7 +367,9 @@ Based on review of the existing code, we need to implement:
    - Add format state visualization
    - Implement keyboard shortcut handling
 
-5. **Tests**
-   - Add comprehensive tests for all formatting operations
+5. **Tests** (Partially Implemented)
+   - ✅ Added tests for format state detection
+   - ✅ Added tests for bold formatting operation
+   - Add comprehensive tests for italic and underline formatting operations
    - Add tests for edge cases like mixed formatting
    - Add tests for keyboard shortcuts

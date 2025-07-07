@@ -531,4 +531,54 @@ describe('VDOMFormatting', () => {
     expect(result[0].content).toBe('This is a test');
     expect(result[0].children).toBeUndefined();
   });
+
+  describe('toggleBoldInSelection - Partial Bold Toggling', () => {
+    test('should make partially bold selection fully bold', () => {
+      // Arrange: "Hello world" where "He" is bold and the rest is plain
+      const boldTextNode = createTextNode('He');
+      const strongNode = createStrongNode([boldTextNode]);
+      const plainTextNode = createTextNode('llo world');
+      const vdom = [strongNode, plainTextNode];
+
+      // Select the entire text "Hello world"
+      const selection: VDOMSelection = {
+        start: { offset: 0 },
+        end: { offset: 11 }, // "Hello world" length
+        isCollapsed: false,
+      };
+
+      // Act
+      const result = toggleBoldInSelection(vdom, selection);
+
+      // Assert: The entire selection should become bold (not plain)
+      expect(result).toHaveLength(1);
+      expect(result[0].type).toBe('strong');
+      expect(result[0].children![0].content).toBe('Hello world');
+    });
+
+    test('should make selection fully bold when it contains mixed formatting', () => {
+      // Arrange: "Hello world everyone" where "Hello" is bold, the rest is plain
+      const boldTextNode = createTextNode('Hello');
+      const strongNode = createStrongNode([boldTextNode]);
+      const plainTextNode = createTextNode(' world everyone');
+      const vdom = [strongNode, plainTextNode];
+
+      // Select "Hello world" (leaving "everyone" unselected)
+      const selection: VDOMSelection = {
+        start: { offset: 0 },
+        end: { offset: 11 }, // "Hello world" length
+        isCollapsed: false,
+      };
+
+      // Act
+      const result = toggleBoldInSelection(vdom, selection);
+
+      // Assert: The selected text should become bold, unselected text stays plain
+      expect(result).toHaveLength(2);
+      expect(result[0].type).toBe('strong');
+      expect(result[0].children![0].content).toBe('Hello world');
+      expect(result[1].type).toBe('text');
+      expect(result[1].content).toBe(' everyone');
+    });
+  });
 });
