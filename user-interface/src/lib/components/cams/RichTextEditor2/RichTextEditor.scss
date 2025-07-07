@@ -19,6 +19,7 @@
   font-size: 1rem;
   line-height: 1.5;
   background-color: #ffffff;
+  white-space: pre-wrap;
 
   &:focus {
     outline: 2px solid #005ea2;
@@ -26,7 +27,7 @@
     border-color: #005ea2;
   }
 
-  &[contenteditable="false"] {
+  &[contenteditable='false'] {
     background-color: #f0f0f0;
     color: #757575;
     cursor: not-allowed;

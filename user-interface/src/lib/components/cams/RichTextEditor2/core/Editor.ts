@@ -181,6 +181,7 @@ export class Editor {
 
     // Delegate to FSM
     const result = this.fsm.processCommand(command, this.state);
+    event.preventDefault();
 
     // Debug logging
     console.log('FSM result:', {
