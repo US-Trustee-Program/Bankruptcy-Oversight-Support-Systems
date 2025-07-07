@@ -40,6 +40,12 @@ Each slice follows the vertical slice principle: it touches all architectural la
   - [ ] Format state visualization in toolbar buttons
   - [ ] Format state update on selection change
 
+- **Steps to Proceed**
+  - [ ] Implement 1 step
+  - [ ] Pause to allow the developer (user) to manually test the changes in a browser.
+  - [ ] Wait for the developer to say "continue" before proceeding.
+  - [ ] Stop often to discuss with the human developer what AI would like to do.  Get approval from developer.
+
 - [ ] **Tests**:
   - [ ] Unit test for format state detection
   - [ ] Unit test for format state tracking
@@ -71,6 +77,12 @@ Each slice follows the vertical slice principle: it touches all architectural la
 - [ ] **React Component**:
   - [ ] Bold button implementation
   - [ ] Button click handling for bold
+
+- **Steps to Proceed**
+  - [ ] Implement 1 step
+  - [ ] Pause to allow the developer (user) to manually test the changes in a browser.
+  - [ ] Wait for the developer to say "continue" before proceeding.
+  - [ ] Stop often to discuss with the human developer what AI would like to do.  Get approval from developer.
 
 - [ ] **Tests**:
   - [ ] Unit test for bold formatting operation
@@ -104,6 +116,12 @@ Each slice follows the vertical slice principle: it touches all architectural la
   - [ ] Italic button implementation
   - [ ] Button click handling for italic
 
+- **Steps to Proceed**
+  - [ ] Implement 1 step
+  - [ ] Pause to allow the developer (user) to manually test the changes in a browser.
+  - [ ] Wait for the developer to say "continue" before proceeding.
+  - [ ] Stop often to discuss with the human developer what AI would like to do.  Get approval from developer.
+
 - [ ] **Tests**:
   - [ ] Unit test for italic formatting operation
   - [ ] Unit test for italic toggle command
@@ -136,6 +154,12 @@ Each slice follows the vertical slice principle: it touches all architectural la
   - [ ] Underline button implementation
   - [ ] Button click handling for underline
 
+- **Steps to Proceed**
+  - [ ] Implement 1 step
+  - [ ] Pause to allow the developer (user) to manually test the changes in a browser.
+  - [ ] Wait for the developer to say "continue" before proceeding.
+  - [ ] Stop often to discuss with the human developer what AI would like to do.  Get approval from developer.
+
 - [ ] **Tests**:
   - [ ] Unit test for underline formatting operation
   - [ ] Unit test for underline toggle command
@@ -159,9 +183,17 @@ Each slice follows the vertical slice principle: it touches all architectural la
 - [ ] **Core Editor**:
   - [ ] Keyboard shortcut mapping in FSM
   - [ ] Shortcut command routing
+
 - [ ] **React Component**:
   - [ ] Key event handling for shortcuts
   - [ ] Prevention of browser default behavior for shortcuts
+
+- **Steps to Proceed**
+  - [ ] Implement 1 step
+  - [ ] Pause to allow the developer (user) to manually test the changes in a browser.
+  - [ ] Wait for the developer to say "continue" before proceeding.
+  - [ ] Stop often to discuss with the human developer what AI would like to do.  Get approval from developer.
+
 - [ ] **Tests**:
   - [ ] Unit test for keyboard shortcut handling
   - [ ] Integration test for each shortcut (Ctrl+B, Ctrl+I, Ctrl+U)
@@ -187,7 +219,8 @@ Each slice follows the vertical slice principle: it touches all architectural la
 
 1. The formatting functionality should be implemented as soon as possible, before any content structure work
 2. Partial formatting (applying formatting to part of a text node) should not be deferred too long
-3. Complete all formatting slices (1-5) before moving on to the main plan's Slice 3 implementation
+3. Stop after each formatting slice and wait for approval before continuing. The human developer would like to manually test each change in a browser.
+4. Complete all formatting slices (1-5) before moving on to the main plan's Slice 3 implementation
 
 ### UI/UX Guidelines
 
@@ -211,7 +244,8 @@ Each slice follows the vertical slice principle: it touches all architectural la
 
 1. **Test-Driven Development**: Write failing tests first, implement minimal code to pass
 2. **One Slice at a Time**: Complete each slice fully before moving to the next
-3. **Incremental Refinement**: Each slice may require refactoring previous components
+3. **Human user check and approval**: Human user has opportunity to test in browser and approval before continuing.
+4. **Incremental Refinement**: Each slice may require refactoring previous components
 
 ### Implementation Order and Dependencies
 
