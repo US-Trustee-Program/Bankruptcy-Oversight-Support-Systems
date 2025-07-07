@@ -278,9 +278,8 @@ describe('Editor with Selection Tracking', () => {
     });
   });
 
-  // NOTE: These tests describe the behavior of methods that will be implemented
-  describe('toggleBold (future implementation)', () => {
-    test('should process TOGGLE_BOLD command through FSM when implemented', () => {
+  describe('formatting commands through FSM', () => {
+    test('should process TOGGLE_BOLD command through FSM via keyboard shortcut', () => {
       // Arrange
       const mockResult = {
         newVDOM: [
@@ -306,8 +305,14 @@ describe('Editor with Selection Tracking', () => {
       };
       mockProcessCommand.mockReturnValue(mockResult);
 
+      const keyEvent = new KeyboardEvent('keydown', {
+        key: 'b',
+        ctrlKey: true,
+        bubbles: true,
+      });
+
       // Act
-      editor.toggleBold();
+      editor.handleKeyDown(keyEvent);
 
       // Assert
       expect(mockProcessCommand).toHaveBeenCalledWith(
@@ -321,9 +326,20 @@ describe('Editor with Selection Tracking', () => {
   });
 
   describe('keyboard shortcut handling', () => {
-    test('should call toggleBold when Ctrl+B is pressed', () => {
+    test('should process TOGGLE_BOLD command when Ctrl+B is pressed', () => {
       // Arrange
-      const mockToggleBold = vi.spyOn(editor, 'toggleBold');
+      const mockResult = {
+        newVDOM: [],
+        newSelection: {
+          start: { offset: 0 },
+          end: { offset: 0 },
+          isCollapsed: true,
+        },
+        didChange: true,
+        isPersistent: true,
+      };
+      mockProcessCommand.mockReturnValue(mockResult);
+
       const keyEvent = new KeyboardEvent('keydown', {
         key: 'b',
         ctrlKey: true,
@@ -334,7 +350,13 @@ describe('Editor with Selection Tracking', () => {
       editor.handleKeyDown(keyEvent);
 
       // Assert
-      expect(mockToggleBold).toHaveBeenCalled();
+      expect(mockProcessCommand).toHaveBeenCalledWith(
+        { type: 'TOGGLE_BOLD' },
+        expect.objectContaining({
+          vdom: expect.any(Array),
+          selection: expect.any(Object),
+        }),
+      );
     });
 
     test('should prevent default browser behavior for Ctrl+B', () => {
@@ -353,36 +375,43 @@ describe('Editor with Selection Tracking', () => {
       expect(mockPreventDefault).toHaveBeenCalled();
     });
 
-    test('should not call toggleBold for other key combinations', () => {
+    test('should handle arrow keys without processing TOGGLE_BOLD', () => {
       // Arrange
-      const mockToggleBold = vi.spyOn(editor, 'toggleBold');
       const keyEvent = new KeyboardEvent('keydown', {
-        key: 'b',
-        ctrlKey: false, // No ctrl key
+        key: 'ArrowLeft',
+        ctrlKey: false,
         bubbles: true,
       });
+
+      // Reset mock to track what gets called
+      mockProcessCommand.mockClear();
 
       // Act
       editor.handleKeyDown(keyEvent);
 
-      // Assert
-      expect(mockToggleBold).not.toHaveBeenCalled();
+      // Assert - should call FSM with cursor movement, not TOGGLE_BOLD
+      expect(mockProcessCommand).toHaveBeenCalledWith(
+        { type: 'MOVE_CURSOR_LEFT' },
+        expect.any(Object),
+      );
     });
 
-    test('should not call toggleBold for Ctrl+other keys', () => {
+    test('should not process any command for unhandled keys', () => {
       // Arrange
-      const mockToggleBold = vi.spyOn(editor, 'toggleBold');
       const keyEvent = new KeyboardEvent('keydown', {
-        key: 'i', // Different key
-        ctrlKey: true,
+        key: 'x', // Unhandled key
+        ctrlKey: false,
         bubbles: true,
       });
+
+      // Reset mock to track what gets called
+      mockProcessCommand.mockClear();
 
       // Act
       editor.handleKeyDown(keyEvent);
 
-      // Assert
-      expect(mockToggleBold).not.toHaveBeenCalled();
+      // Assert - should not call FSM for unhandled keys
+      expect(mockProcessCommand).not.toHaveBeenCalled();
     });
   });
 });

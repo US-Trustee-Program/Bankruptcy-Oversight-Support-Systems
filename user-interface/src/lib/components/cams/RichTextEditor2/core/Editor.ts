@@ -89,25 +89,6 @@ export class Editor {
   }
 
   /**
-   * Toggle bold formatting on the current selection
-   */
-  toggleBold(): void {
-    const command: EditorCommand = { type: 'TOGGLE_BOLD' };
-    const result = this.fsm.processCommand(command, this.state);
-
-    if (result.didChange) {
-      this.state.vdom = result.newVDOM;
-      this.state.selection = result.newSelection;
-      this.notifyChange();
-      this.notifySelectionChange();
-    } else if (result.newSelection !== this.state.selection) {
-      // If only selection changed but not content
-      this.state.selection = result.newSelection;
-      this.notifySelectionChange();
-    }
-  }
-
-  /**
    * Updates the root element reference and sets up DOM interactions
    */
   setRootElement(rootElement: HTMLDivElement | null): void {
@@ -249,43 +230,44 @@ export class Editor {
     this.syncSelectionFromBrowser();
 
     // Handle keyboard shortcuts first
-    if (event.ctrlKey && event.key === 'b') {
-      event.preventDefault();
-      this.toggleBold();
-      return;
-    }
 
     let command: EditorCommand | null = null;
 
-    // Handle arrow keys for cursor movement
-    switch (event.key) {
-      case 'ArrowLeft':
-        command = {
-          type: 'MOVE_CURSOR_LEFT',
-        };
-        break;
-      case 'ArrowRight':
-        command = {
-          type: 'MOVE_CURSOR_RIGHT',
-        };
-        break;
-      case 'ArrowUp':
-        command = {
-          type: 'MOVE_CURSOR_UP',
-        };
-        break;
-      case 'ArrowDown':
-        command = {
-          type: 'MOVE_CURSOR_DOWN',
-        };
-        break;
-      default:
-        // Unhandled key, ignore
-        return;
+    if (event.ctrlKey && event.key === 'b') {
+      event.preventDefault();
+      command = { type: 'TOGGLE_BOLD' };
+    } else {
+      // Handle arrow keys for cursor movement
+      switch (event.key) {
+        case 'ArrowLeft':
+          command = {
+            type: 'MOVE_CURSOR_LEFT',
+          };
+          break;
+        case 'ArrowRight':
+          command = {
+            type: 'MOVE_CURSOR_RIGHT',
+          };
+          break;
+        case 'ArrowUp':
+          command = {
+            type: 'MOVE_CURSOR_UP',
+          };
+          break;
+        case 'ArrowDown':
+          command = {
+            type: 'MOVE_CURSOR_DOWN',
+          };
+          break;
+        default:
+          // Unhandled key, ignore
+          return;
+      }
     }
 
     if (command) {
       // Delegate to FSM
+      event.preventDefault();
       const result = this.fsm.processCommand(command, this.state);
 
       if (result.didChange) {
