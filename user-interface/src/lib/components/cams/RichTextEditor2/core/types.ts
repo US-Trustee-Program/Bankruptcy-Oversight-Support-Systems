@@ -33,6 +33,15 @@ export interface VDOMSelection {
   isCollapsed: boolean;
 }
 
+// Format state types
+export type FormatStateValue = 'active' | 'inactive' | 'mixed';
+
+export interface RichTextFormatState {
+  bold: FormatStateValue;
+  italic: FormatStateValue;
+  underline: FormatStateValue;
+}
+
 // Editor Command Types
 export type EditorCommandType =
   | 'INSERT_TEXT'
@@ -67,13 +76,6 @@ export interface EditorState {
   selection: VDOMSelection;
   canUndo: boolean;
   canRedo: boolean;
-}
-
-// Formatting State Types
-export interface RichTextFormatState {
-  bold: boolean;
-  italic: boolean;
-  underline: boolean;
 }
 
 // History Types
@@ -135,7 +137,7 @@ export const VDOM_NODE_TYPES = {
 
 // Format mapping
 export const FORMAT_TO_VDOM_TYPE: Record<RichTextFormat, VDOMNodeType> = {
-  strong: 'strong',
-  em: 'em',
-  u: 'u',
+  bold: 'strong',
+  italic: 'em',
+  underline: 'u',
 };

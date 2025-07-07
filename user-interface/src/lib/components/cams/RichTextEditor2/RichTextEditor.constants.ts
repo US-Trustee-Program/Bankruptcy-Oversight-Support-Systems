@@ -26,4 +26,4 @@ export const DOMPURIFY_CONFIG = {
   ],
 };
 
-export type RichTextFormat = 'strong' | 'em' | 'u';
+export type RichTextFormat = 'bold' | 'italic' | 'underline';

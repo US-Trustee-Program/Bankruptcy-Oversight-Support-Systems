@@ -66,7 +66,7 @@ test('findNodeByDOMNode should find VDOM node corresponding to DOM node', () => 
   const mockDOMNode = createMockTextNode('Hello ');
 
   // Mock the mapping - in real implementation this would use DOM traversal
-  const result = findNodeByDOMNode(vdom, mockDOMNode, document.createElement('div'));
+  const result = findNodeByDOMNode(vdom, mockDOMNode);
 
   // Since we can't easily mock the DOM traversal, we'll test the structure
   expect(typeof result).toBe('object');
@@ -138,8 +138,9 @@ test('getSelectionFromBrowser should handle collapsed selection', () => {
 });
 
 test('applySelectionToBrowser should set browser selection from VDOM selection', () => {
-  const vdom = createSimpleVDOM();
   const rootElement = document.createElement('div');
+  // Set contentEditable to true to make the test pass with our new check
+  rootElement.setAttribute('contentEditable', 'true');
   const selection = createSelection(2, 5);
 
   const mockRange = {
@@ -150,15 +151,16 @@ test('applySelectionToBrowser should set browser selection from VDOM selection',
 
   mockSelectionService.createRange.mockReturnValue(mockRange);
 
-  applySelectionToBrowser(mockSelectionService, selection, rootElement, vdom);
+  applySelectionToBrowser(mockSelectionService, selection, rootElement);
 
   expect(mockSelectionService.createRange).toHaveBeenCalled();
   expect(mockSelectionService.setSelectionRange).toHaveBeenCalledWith(mockRange);
 });
 
 test('applySelectionToBrowser should handle collapsed selection', () => {
-  const vdom = createSimpleVDOM();
   const rootElement = document.createElement('div');
+  // Set contentEditable to true to make the test pass with our new check
+  rootElement.setAttribute('contentEditable', 'true');
   const selection = createSelection(3, 3);
 
   const mockRange = {
@@ -169,43 +171,49 @@ test('applySelectionToBrowser should handle collapsed selection', () => {
 
   mockSelectionService.createRange.mockReturnValue(mockRange);
 
-  applySelectionToBrowser(mockSelectionService, selection, rootElement, vdom);
+  applySelectionToBrowser(mockSelectionService, selection, rootElement);
 
   expect(mockSelectionService.createRange).toHaveBeenCalled();
   expect(mockSelectionService.setSelectionRange).toHaveBeenCalledWith(mockRange);
 });
 
-test('getNodesInRange should return nodes within selection range', () => {
+test('getNodesInRange should return nodes from VDOM', () => {
   const vdom = createSimpleVDOM();
-  const selection = createSelection(3, 8);
 
-  const nodes = getNodesInRange(vdom, selection);
+  const nodes = getNodesInRange(vdom);
 
   expect(nodes).toBeDefined();
   expect(Array.isArray(nodes)).toBe(true);
   expect(nodes.length).toBeGreaterThan(0);
 });
 
-test('getNodesInRange should handle collapsed selection', () => {
+test('getNodesInRange should find all text nodes', () => {
   const vdom = createSimpleVDOM();
-  const selection = createSelection(3, 3);
 
-  const nodes = getNodesInRange(vdom, selection);
+  const nodes = getNodesInRange(vdom);
 
   expect(nodes).toBeDefined();
   expect(Array.isArray(nodes)).toBe(true);
-  expect(nodes.length).toBeGreaterThan(0);
+  // SimpleVDOM has 3 text nodes (Hello, world, !)
+  expect(nodes.length).toBe(3);
+  expect(nodes.every((node) => node.type === 'text')).toBe(true);
 });
 
-test('getNodesInRange should handle single node selection', () => {
-  const vdom = createSimpleVDOM();
-  const selection = createSelection(1, 4);
+test('getNodesInRange should handle complex VDOM structures', () => {
+  const vdom = [
+    createParagraphNode([
+      createTextNode('First '),
+      createStrongNode([createTextNode('bold'), createEmNode([createTextNode('and italic')])]),
+      createTextNode(' text'),
+    ]),
+  ];
 
-  const nodes = getNodesInRange(vdom, selection);
+  const nodes = getNodesInRange(vdom);
 
   expect(nodes).toBeDefined();
   expect(Array.isArray(nodes)).toBe(true);
-  expect(nodes.length).toBeGreaterThan(0);
+  // Should find all 4 text nodes
+  expect(nodes.length).toBe(4);
 });
 
 test('getFormattingAtSelection should detect bold formatting', () => {
@@ -309,7 +317,7 @@ test('getFormattingAtSelection should handle range selection with mixed formatti
 
 // Tests for null handling scenarios
 test('applySelectionToBrowser should handle null rootElement gracefully', () => {
-  const vdom = createSimpleVDOM();
+  // Remove unused vdom variable
   const selection = createSelection(2, 5);
 
   const mockRange = {
@@ -325,7 +333,7 @@ test('applySelectionToBrowser should handle null rootElement gracefully', () => 
 
   // This should not throw an error and should log a warning
   expect(() => {
-    applySelectionToBrowser(mockSelectionService, selection, null as never, vdom);
+    applySelectionToBrowser(mockSelectionService, selection, null as never);
   }).not.toThrow();
 
   expect(consoleSpy).toHaveBeenCalledWith('Cannot apply selection to browser: rootElement is null');
@@ -334,9 +342,39 @@ test('applySelectionToBrowser should handle null rootElement gracefully', () => 
   consoleSpy.mockRestore();
 });
 
-test('applySelectionToBrowser should handle missing VDOM nodes gracefully', () => {
-  const vdom = createSimpleVDOM();
+test('applySelectionToBrowser should not apply selection to non-editable elements', () => {
   const rootElement = document.createElement('div');
+  // Explicitly NOT setting contentEditable="true"
+  const selection = createSelection(2, 5);
+
+  const mockRange = {
+    setStart: vi.fn(),
+    setEnd: vi.fn(),
+    collapse: vi.fn(),
+  };
+
+  mockSelectionService.createRange.mockReturnValue(mockRange);
+
+  // Mock console.warn to verify it's called
+  const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+  // This should not throw an error and should log a warning
+  expect(() => {
+    applySelectionToBrowser(mockSelectionService, selection, rootElement);
+  }).not.toThrow();
+
+  expect(consoleSpy).toHaveBeenCalledWith(
+    'Cannot apply selection to browser: rootElement is not an editable field of this editor',
+  );
+  expect(mockSelectionService.createRange).not.toHaveBeenCalled();
+
+  consoleSpy.mockRestore();
+});
+
+test('applySelectionToBrowser should handle missing VDOM nodes gracefully', () => {
+  const rootElement = document.createElement('div');
+  // Set contentEditable to true to make the test pass with our new check
+  rootElement.setAttribute('contentEditable', 'true');
   // Create selection with valid offsets
   const selection = createSelection(2, 5);
 
@@ -350,9 +388,107 @@ test('applySelectionToBrowser should handle missing VDOM nodes gracefully', () =
 
   // This should not throw an error
   expect(() => {
-    applySelectionToBrowser(mockSelectionService, selection, rootElement, vdom);
+    applySelectionToBrowser(mockSelectionService, selection, rootElement);
   }).not.toThrow();
 
   // Should create range since we're using simplified approach
   expect(mockSelectionService.createRange).toHaveBeenCalled();
+});
+
+test('applySelectionToBrowser should apply selection when ancestor is contentEditable', () => {
+  // Create a nested structure: div (contentEditable) > span > p
+  const rootElement = document.createElement('div');
+  rootElement.setAttribute('contentEditable', 'true');
+
+  const span = document.createElement('span');
+  rootElement.appendChild(span);
+
+  const paragraph = document.createElement('p');
+  span.appendChild(paragraph);
+
+  const selection = createSelection(2, 5);
+
+  const mockRange = {
+    setStart: vi.fn(),
+    setEnd: vi.fn(),
+    collapse: vi.fn(),
+  };
+
+  mockSelectionService.createRange.mockReturnValue(mockRange);
+
+  // This should not throw and should apply the selection
+  applySelectionToBrowser(mockSelectionService, selection, paragraph);
+
+  // Selection service should be called since paragraph is inside contentEditable div
+  expect(mockSelectionService.createRange).toHaveBeenCalled();
+  expect(mockSelectionService.setSelectionRange).toHaveBeenCalledWith(mockRange);
+});
+
+test('applySelectionToBrowser should apply selection when using the correct editorId', () => {
+  const rootElement = document.createElement('div');
+  rootElement.setAttribute('contentEditable', 'true');
+  rootElement.setAttribute('data-editor-id', 'editor-123');
+  const selection = createSelection(2, 5);
+
+  const mockRange = {
+    setStart: vi.fn(),
+    setEnd: vi.fn(),
+    collapse: vi.fn(),
+  };
+
+  mockSelectionService.createRange.mockReturnValue(mockRange);
+
+  // Apply selection with matching editor ID
+  applySelectionToBrowser(mockSelectionService, selection, rootElement, 'editor-123');
+
+  expect(mockSelectionService.createRange).toHaveBeenCalled();
+  expect(mockSelectionService.setSelectionRange).toHaveBeenCalledWith(mockRange);
+});
+
+test('applySelectionToBrowser should not apply selection with incorrect editorId', () => {
+  const rootElement = document.createElement('div');
+  rootElement.setAttribute('contentEditable', 'true');
+  rootElement.setAttribute('data-editor-id', 'editor-123');
+  const selection = createSelection(2, 5);
+
+  const mockRange = {
+    setStart: vi.fn(),
+    setEnd: vi.fn(),
+    collapse: vi.fn(),
+  };
+
+  mockSelectionService.createRange.mockReturnValue(mockRange);
+
+  const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+  // Apply selection with non-matching editor ID
+  applySelectionToBrowser(mockSelectionService, selection, rootElement, 'editor-456');
+
+  expect(consoleSpy).toHaveBeenCalledWith(
+    'Cannot apply selection to browser: rootElement is not an editable field of this editor',
+  );
+  expect(mockSelectionService.createRange).not.toHaveBeenCalled();
+
+  consoleSpy.mockRestore();
+});
+
+test('applySelectionToBrowser should apply selection to element with correct editor class', () => {
+  const rootElement = document.createElement('div');
+  rootElement.setAttribute('contentEditable', 'true');
+  rootElement.classList.add('rich-text-editor-editor-789');
+  const selection = createSelection(2, 5);
+
+  const mockRange = {
+    setStart: vi.fn(),
+    setEnd: vi.fn(),
+    collapse: vi.fn(),
+  };
+
+  mockSelectionService.createRange.mockReturnValue(mockRange);
+
+  // Apply selection with matching editor ID via class name
+  applySelectionToBrowser(mockSelectionService, selection, rootElement, 'editor-789');
+
+  expect(mockSelectionService.createRange).toHaveBeenCalled();
+  expect(mockSelectionService.setSelectionRange).toHaveBeenCalledWith(mockRange);
 });

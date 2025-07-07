@@ -207,6 +207,17 @@ Each slice follows the vertical slice principle: it touches all architectural la
 
 ## Implementation Notes
 
+### Testing Guidelines
+
+- **Running Tests**:
+  - To run all tests: `npm test`
+  - To run specific test file: `npm test -- path/to/file/test.test.ts`
+  - Example: `npm test -- src/lib/components/cams/RichTextEditor2/core/model/VDOMFormatting.new.test.ts`
+  - When tests fail, check for:
+    - Mock implementation issues (ensure mocks match imported names)
+    - Type errors (avoid using 'any' type in tests)
+    - Unused variables (remove or use them)
+
 ### Format State and Functionality
 
 - Format state detection (Slice 1) must include the foundation for actually applying formats
@@ -322,6 +333,13 @@ Based on review of the existing code, we need to implement:
 3. **Mixed Formatting**: The system should handle mixed formatting within a selection correctly
 4. **DOM Rendering**: Formatted text must render correctly in the contentEditable DOM element
 5. **Format Toggling Logic**: The toggle behavior should follow standard word processor conventions
+
+### Implementation Guidelines
+
+1. **YAGNI Principle**: Follow the "You Aren't Gonna Need It" principle - don't add functionality until it's necessary. Remove unused parameters, avoid speculative code, and implement only what's needed for the current slice.
+2. **Progressive Enhancement**: Implement features incrementally, ensuring each step is fully functional before moving to the next.
+3. **Test-Driven Development**: Write tests before or alongside implementation code to ensure correctness.
+4. **Human Validation**: Pause for human review and manual testing after each significant change.
 
 ### Implementation Tasks
 

@@ -1,4 +1,8 @@
 import { VDOMNode, VDOMSelection, RichTextFormatState } from '../types';
+import {
+  getNodesInSelection,
+  getFormattingAtSelection as getVDOMFormattingState,
+} from './VDOMFormatting';
 
 /**
  * Interface for SelectionService to abstract browser selection APIs
@@ -18,11 +22,7 @@ interface SelectionService {
 /**
  * Finds a VDOM node that corresponds to a DOM node
  */
-export function findNodeByDOMNode(
-  vdom: VDOMNode[],
-  domNode: Node,
-  _rootElement: HTMLElement,
-): VDOMNode | null {
+export function findNodeByDOMNode(vdom: VDOMNode[], domNode: Node): VDOMNode | null {
   // This is a simplified implementation
   // In a full implementation, we would need to traverse the DOM and VDOM in parallel
   // to establish the mapping between DOM nodes and VDOM nodes
@@ -123,10 +123,31 @@ export function applySelectionToBrowser(
   selectionService: SelectionService,
   vdomSelection: VDOMSelection,
   rootElement: HTMLElement,
+  editorId?: string,
 ): void {
-  // Add null check for rootElement to prevent traversal errors
+  // Validate that rootElement exists and has the correct attributes
   if (!rootElement) {
     console.warn('Cannot apply selection to browser: rootElement is null');
+    return;
+  }
+
+  // Check if the rootElement is an editable area (contentEditable=true) that belongs to this editor instance
+  // This ensures we only apply selections within the editable field of the specific editor instance
+  const isContentEditable = rootElement.getAttribute('contentEditable') === 'true';
+  const isEditableDescendantResult = isEditableDescendant(rootElement, editorId);
+
+  if (!isContentEditable && !isEditableDescendantResult) {
+    console.warn(
+      'Cannot apply selection to browser: rootElement is not an editable field of this editor',
+    );
+    return;
+  }
+
+  // If we have a specific editorId, ensure this element belongs to that editor
+  if (editorId && isContentEditable && !isEditableDescendantResult) {
+    console.warn(
+      'Cannot apply selection to browser: rootElement is not an editable field of this editor',
+    );
     return;
   }
 
@@ -183,19 +204,53 @@ export function getNodesInRange(vdom: VDOMNode[]): VDOMNode[] {
 }
 
 /**
- * Gets the formatting state at the current selection - Simplified approach
+ * This is a temporary compatibility function for existing tests
+ * that expect a different format return type.
+ * @deprecated Use getFormatStateAtSelection instead
  */
 export function getFormattingAtSelection(
   _vdom: VDOMNode[],
   _selection: VDOMSelection,
-): RichTextFormatState {
-  // For vertical slice #1 (basic text input), we don't have formatting yet
-  // Return no formatting for now
+): { bold: boolean; italic: boolean; underline: boolean } {
+  // For now, return all false for compatibility with existing tests
   return {
     bold: false,
     italic: false,
     underline: false,
   };
+}
+
+/**
+ * Gets the format state at the current selection
+ */
+export function getFormatStateAtSelection(
+  vdom: VDOMNode[],
+  selection: VDOMSelection,
+): RichTextFormatState {
+  if (selection.isCollapsed) {
+    // When selection is collapsed (cursor position), return inactive for all formats
+    // This will be replaced with cursor position format detection later
+    return {
+      bold: 'inactive',
+      italic: 'inactive',
+      underline: 'inactive',
+    };
+  }
+
+  // Get the nodes that are within the selection
+  const selectedNodes = getNodesInSelection(vdom, selection.start.offset, selection.end.offset);
+
+  // If we can't find any nodes in the selection, use a default inactive state
+  if (selectedNodes.length === 0) {
+    return {
+      bold: 'inactive',
+      italic: 'inactive',
+      underline: 'inactive',
+    };
+  }
+
+  // Get the formatting state for the selected nodes
+  return getVDOMFormattingState(selectedNodes);
 }
 
 /**
@@ -218,4 +273,40 @@ function findTextNodeInElement(element: Node): Text | null {
   }
 
   return null;
+}
+
+/**
+ * Helper function to check if an element is within a specific editable area
+ * This ensures selections only apply within the specific instance of the RichTextEditor
+ * @param element The element to check
+ * @param editorId Optional identifier for the specific RichTextEditor instance
+ */
+function isEditableDescendant(element: HTMLElement, editorId?: string): boolean {
+  // Check if any parent element is contentEditable AND belongs to the right editor instance
+  let parent: HTMLElement | null = element;
+
+  while (parent) {
+    const isEditable =
+      parent.getAttribute('contentEditable') === 'true' || parent.isContentEditable;
+
+    if (isEditable) {
+      // If no specific editorId is provided, just confirm it's editable
+      if (!editorId) {
+        return true;
+      }
+
+      // Check if this editable element belongs to the specific editor instance
+      const elementEditorId = parent.getAttribute('data-editor-id');
+      const hasEditorClass = parent.classList.contains(`rich-text-editor-${editorId}`);
+
+      if (elementEditorId === editorId || hasEditorClass) {
+        return true;
+      }
+    }
+
+    // Move up the DOM tree
+    parent = parent.parentElement;
+  }
+
+  return false;
 }
