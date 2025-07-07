@@ -89,7 +89,51 @@ export function getTextOffsetInVDOM(vdom: VDOMNode[], nodeId: string, offset: nu
 }
 
 /**
- * Converts browser selection to VDOM selection - Simplified approach
+ * Converts DOM node-relative offset to text content offset
+ * This function walks through the DOM to calculate the cumulative text offset
+ */
+function domOffsetToTextContentOffset(
+  containerNode: Node,
+  targetNode: Node,
+  domOffset: number,
+): number {
+  let textOffset = 0;
+
+  // Safety check for valid nodes
+  if (!containerNode || !targetNode) {
+    return domOffset; // Fallback to original offset
+  }
+
+  try {
+    // Create a TreeWalker to traverse text nodes in document order
+    const walker = document.createTreeWalker(containerNode, NodeFilter.SHOW_TEXT, null);
+
+    let currentNode: Node | null = walker.nextNode();
+
+    while (currentNode) {
+      if (currentNode === targetNode) {
+        // Found our target node, add the offset within this node
+        return textOffset + domOffset;
+      }
+
+      // Add the full length of this text node to our running total
+      const textContent = currentNode.textContent || '';
+      textOffset += textContent.length;
+
+      currentNode = walker.nextNode();
+    }
+
+    // If we didn't find the target node, return the total length
+    // This handles cases where the target is at the very end
+    return textOffset;
+  } catch (_error) {
+    // If TreeWalker fails (e.g., in tests with mock nodes), fallback to simple offset
+    return domOffset;
+  }
+}
+
+/**
+ * Converts browser selection to VDOM selection with proper offset mapping
  */
 export function getSelectionFromBrowser(selectionService: SelectionService): VDOMSelection {
   const selection = selectionService.getCurrentSelection();
@@ -107,11 +151,40 @@ export function getSelectionFromBrowser(selectionService: SelectionService): VDO
   const focusOffset = selectionService.getSelectionFocusOffset();
   const isCollapsed = selectionService.isSelectionCollapsed();
 
-  // For simplified approach, we'll use the browser's selection offsets directly
-  // This works for simple text content without complex formatting
+  // Find the editor root by walking up from the anchor node
+  let editorRoot: Node | null = selection.anchorNode;
+
+  // Walk up the DOM tree to find the editor root
+  while (editorRoot) {
+    if (editorRoot.nodeType === Node.ELEMENT_NODE) {
+      const element = editorRoot as Element;
+      if (element.hasAttribute('contenteditable') || element.hasAttribute('data-editor-root')) {
+        break;
+      }
+    }
+    editorRoot = editorRoot.parentNode;
+  }
+
+  // If we can't find an editor root, use the anchor node's parent or the anchor node itself
+  if (!editorRoot) {
+    editorRoot = selection.anchorNode.parentNode || selection.anchorNode;
+  }
+
+  // Convert DOM offsets to text content offsets
+  const anchorTextOffset = domOffsetToTextContentOffset(
+    editorRoot,
+    selection.anchorNode,
+    anchorOffset,
+  );
+  const focusTextOffset = domOffsetToTextContentOffset(
+    editorRoot,
+    selection.focusNode,
+    focusOffset,
+  );
+
   return {
-    start: { offset: Math.min(anchorOffset, focusOffset) },
-    end: { offset: Math.max(anchorOffset, focusOffset) },
+    start: { offset: Math.min(anchorTextOffset, focusTextOffset) },
+    end: { offset: Math.max(anchorTextOffset, focusTextOffset) },
     isCollapsed,
   };
 }

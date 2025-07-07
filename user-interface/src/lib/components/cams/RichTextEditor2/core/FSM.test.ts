@@ -72,4 +72,155 @@ describe('FSM with Selection Handling', () => {
     // Selection should be updated to position after the inserted text
     expect(result.newSelection).not.toEqual(defaultState.selection);
   });
+
+  describe('TOGGLE_BOLD command processing', () => {
+    test('should apply bold formatting to plain text', () => {
+      // Arrange
+      const state: EditorState = {
+        vdom: [
+          {
+            id: 'text-1',
+            type: 'text',
+            content: 'Hello world',
+          },
+        ],
+        selection: {
+          start: { offset: 0 },
+          end: { offset: 11 },
+          isCollapsed: false,
+        },
+        canUndo: false,
+        canRedo: false,
+      };
+      const command: EditorCommand = { type: 'TOGGLE_BOLD' };
+
+      // Act
+      const result = fsm.processCommand(command, state);
+
+      // Assert
+      expect(result.didChange).toBe(true);
+      expect(result.isPersistent).toBe(true);
+      expect(result.newVDOM).toHaveLength(1);
+      expect(result.newVDOM[0].type).toBe('strong');
+      expect(result.newVDOM[0].children).toHaveLength(1);
+      expect(result.newVDOM[0].children![0].content).toBe('Hello world');
+    });
+
+    test('should remove bold formatting from bold text', () => {
+      // Arrange
+      const state: EditorState = {
+        vdom: [
+          {
+            id: 'strong-1',
+            type: 'strong',
+            children: [
+              {
+                id: 'text-1',
+                type: 'text',
+                content: 'Bold text',
+              },
+            ],
+          },
+        ],
+        selection: {
+          start: { offset: 0 },
+          end: { offset: 9 },
+          isCollapsed: false,
+        },
+        canUndo: false,
+        canRedo: false,
+      };
+      const command: EditorCommand = { type: 'TOGGLE_BOLD' };
+
+      // Act
+      const result = fsm.processCommand(command, state);
+
+      // Assert
+      expect(result.didChange).toBe(true);
+      expect(result.isPersistent).toBe(true);
+      expect(result.newVDOM).toHaveLength(1);
+      expect(result.newVDOM[0].type).toBe('text');
+      expect(result.newVDOM[0].content).toBe('Bold text');
+      expect(result.newVDOM[0].children).toBeUndefined();
+    });
+
+    test('should preserve selection after bold toggle', () => {
+      // Arrange
+      const originalSelection = {
+        start: { offset: 0 },
+        end: { offset: 5 },
+        isCollapsed: false,
+      };
+      const state: EditorState = {
+        vdom: [
+          {
+            id: 'text-1',
+            type: 'text',
+            content: 'Hello',
+          },
+        ],
+        selection: originalSelection,
+        canUndo: false,
+        canRedo: false,
+      };
+      const command: EditorCommand = { type: 'TOGGLE_BOLD' };
+
+      // Act
+      const result = fsm.processCommand(command, state);
+
+      // Assert
+      expect(result.newSelection).toEqual(originalSelection);
+    });
+
+    test('should handle collapsed selection on plain text', () => {
+      // Arrange
+      const state: EditorState = {
+        vdom: [
+          {
+            id: 'text-1',
+            type: 'text',
+            content: 'Hello',
+          },
+        ],
+        selection: {
+          start: { offset: 2 },
+          end: { offset: 2 },
+          isCollapsed: true,
+        },
+        canUndo: false,
+        canRedo: false,
+      };
+      const command: EditorCommand = { type: 'TOGGLE_BOLD' };
+
+      // Act
+      const result = fsm.processCommand(command, state);
+
+      // Assert
+      expect(result.didChange).toBe(true);
+      expect(result.newVDOM[0].type).toBe('strong');
+      expect(result.newVDOM[0].children![0].content).toBe('Hello');
+    });
+
+    test('should handle empty VDOM gracefully', () => {
+      // Arrange
+      const state: EditorState = {
+        vdom: [],
+        selection: {
+          start: { offset: 0 },
+          end: { offset: 0 },
+          isCollapsed: true,
+        },
+        canUndo: false,
+        canRedo: false,
+      };
+      const command: EditorCommand = { type: 'TOGGLE_BOLD' };
+
+      // Act
+      const result = fsm.processCommand(command, state);
+
+      // Assert
+      expect(result.didChange).toBe(false);
+      expect(result.newVDOM).toEqual([]);
+    });
+  });
 });

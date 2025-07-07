@@ -47,6 +47,7 @@ export type EditorCommandType =
   | 'INSERT_TEXT'
   | 'DELETE_CONTENT'
   | 'APPLY_FORMAT'
+  | 'TOGGLE_BOLD'
   | 'TOGGLE_LIST'
   | 'SPLIT_NODE'
   | 'MERGE_NODES'

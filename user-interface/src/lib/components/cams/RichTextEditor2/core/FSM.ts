@@ -6,6 +6,7 @@ import {
   VDOM_NODE_TYPES,
   VDOMSelection,
 } from './types';
+import { toggleBoldInSelection } from './model/VDOMFormatting';
 
 // TODO: Future options for FSM configuration
 export type FSMOptions = object;
@@ -52,6 +53,9 @@ export class FSM {
 
       case 'SET_CURSOR_POSITION':
         return this.handleSetCursorPosition(command.payload, currentState);
+
+      case 'TOGGLE_BOLD':
+        return this.handleToggleBold(currentState);
 
       default:
         // For unhandled commands, return current state unchanged
@@ -270,6 +274,24 @@ export class FSM {
       newSelection: selection,
       didChange: false, // No content change, just selection change
       isPersistent: false,
+    };
+  }
+
+  /**
+   * Handle the TOGGLE_BOLD command
+   */
+  private handleToggleBold(currentState: EditorState): FSMResult {
+    // Use the formatting function to toggle bold
+    const newVDOM = toggleBoldInSelection(currentState.vdom, currentState.selection);
+
+    // Check if there was actually a change
+    const didChange = JSON.stringify(newVDOM) !== JSON.stringify(currentState.vdom);
+
+    return {
+      newVDOM,
+      newSelection: currentState.selection, // Preserve selection
+      didChange,
+      isPersistent: didChange,
     };
   }
 

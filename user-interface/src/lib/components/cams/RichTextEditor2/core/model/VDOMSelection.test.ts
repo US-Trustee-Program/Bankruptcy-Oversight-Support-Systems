@@ -492,3 +492,191 @@ test('applySelectionToBrowser should apply selection to element with correct edi
   expect(mockSelectionService.createRange).toHaveBeenCalled();
   expect(mockSelectionService.setSelectionRange).toHaveBeenCalledWith(mockRange);
 });
+
+// Helper function to render VDOM to DOM element for testing
+function renderVDOMToDOM(vdom: VDOMNode[], container: HTMLElement): void {
+  // Simple implementation that creates DOM nodes from VDOM
+  container.innerHTML = '';
+  vdom.forEach((node) => {
+    const domNode = createDOMFromVDOM(node);
+    container.appendChild(domNode);
+  });
+}
+
+function createDOMFromVDOM(vdom: VDOMNode): Node {
+  if (vdom.type === 'text') {
+    return document.createTextNode(vdom.content || '');
+  }
+
+  const element = document.createElement(vdom.type);
+  if (vdom.children) {
+    vdom.children.forEach((child) => {
+      element.appendChild(createDOMFromVDOM(child));
+    });
+  }
+  return element;
+}
+
+/**
+ * These tests are designed to FAIL and expose the offset mapping bug
+ * where selection offsets are assumed to be text content offsets
+ * when they're actually DOM node-relative offsets.
+ */
+
+test('Selection across formatted text boundaries correctly maps offsets', () => {
+  // Setup: Create VDOM with mixed formatting - "Hello [bold]world[/bold] test"
+  const vdom: VDOMNode[] = [
+    createTextNode('Hello '),
+    createStrongNode([createTextNode('world')]),
+    createTextNode(' test'),
+  ];
+
+  // Create DOM element and render VDOM
+  const rootElement = document.createElement('div');
+  rootElement.setAttribute('contenteditable', 'true');
+  rootElement.setAttribute('data-editor-root', 'true');
+  document.body.appendChild(rootElement);
+  renderVDOMToDOM(vdom, rootElement);
+
+  // The DOM structure is now:
+  // - Text node: "Hello "      (offsets 0-5 in text content, 0-5 in DOM)
+  // - <strong>                 (no direct text)
+  //   - Text node: "world"     (offsets 6-10 in text content, 0-4 in DOM node)
+  // - Text node: " test"       (offsets 11-15 in text content, 0-4 in DOM node)
+
+  // Simulate browser selection: select "o w" (spans across format boundary)
+  // In text content this should be offsets 4-7
+  // But in DOM, "o" is at offset 4 in first text node, "w" is at offset 0 in bold text node
+
+  const firstTextNode = rootElement.firstChild;
+  const boldTextNode = rootElement.querySelector('strong')?.firstChild;
+
+  const mockSelection = {
+    anchorNode: firstTextNode, // First text node "Hello "
+    focusNode: boldTextNode, // Bold text node "world"
+    anchorOffset: 4, // "o" in "Hello "
+    focusOffset: 1, // "w" in "world"
+    isCollapsed: false,
+  };
+
+  mockSelectionService.getCurrentSelection.mockReturnValue(mockSelection as unknown as Selection);
+  mockSelectionService.getSelectionAnchorOffset.mockReturnValue(4);
+  mockSelectionService.getSelectionFocusOffset.mockReturnValue(1);
+  mockSelectionService.isSelectionCollapsed.mockReturnValue(false);
+
+  // Get the VDOM selection using current implementation
+  const vdomSelection = getSelectionFromBrowser(mockSelectionService);
+
+  // This SHOULD be the correct text content offsets for "o w"
+  const expectedSelection: VDOMSelection = {
+    start: { offset: 4 }, // "o" in "Hello world test"
+    end: { offset: 7 }, // "w" in "Hello world test"
+    isCollapsed: false,
+  };
+
+  // Clean up
+  document.body.removeChild(rootElement);
+
+  // This test now PASSES because we've implemented proper
+  // DOM node-relative to text content offset mapping
+  expect(vdomSelection).toEqual(expectedSelection);
+});
+
+test('Selection starting in formatted text correctly maps offsets', () => {
+  // Setup: Create VDOM with bold at start - "[bold]Hello[/bold] world"
+  const vdom: VDOMNode[] = [createStrongNode([createTextNode('Hello')]), createTextNode(' world')];
+
+  const rootElement = document.createElement('div');
+  rootElement.setAttribute('contenteditable', 'true');
+  document.body.appendChild(rootElement);
+  renderVDOMToDOM(vdom, rootElement);
+
+  // DOM structure:
+  // - <strong>
+  //   - Text node: "Hello"     (offsets 0-4 in text content, 0-4 in DOM node)
+  // - Text node: " world"     (offsets 5-10 in text content, 0-5 in DOM node)
+
+  // Simulate browser selection: select "lo w" (from bold text to regular text)
+  const boldTextNode = rootElement.querySelector('strong')?.firstChild;
+  const regularTextNode = rootElement.lastChild;
+
+  const mockSelection = {
+    anchorNode: boldTextNode, // Bold text "Hello"
+    focusNode: regularTextNode, // Regular text " world"
+    anchorOffset: 3, // "l" in "Hello"
+    focusOffset: 2, // "w" in " world"
+    isCollapsed: false,
+  };
+
+  mockSelectionService.getCurrentSelection.mockReturnValue(mockSelection as unknown as Selection);
+  mockSelectionService.getSelectionAnchorOffset.mockReturnValue(3);
+  mockSelectionService.getSelectionFocusOffset.mockReturnValue(2);
+  mockSelectionService.isSelectionCollapsed.mockReturnValue(false);
+
+  const vdomSelection = getSelectionFromBrowser(mockSelectionService);
+
+  // Expected text content offsets for "lo w"
+  const expectedSelection: VDOMSelection = {
+    start: { offset: 3 }, // "l" in "Hello world"
+    end: { offset: 7 }, // "w" in "Hello world"
+    isCollapsed: false,
+  };
+
+  // Clean up
+  document.body.removeChild(rootElement);
+
+  // This test now PASSES - offset mapping works correctly
+  expect(vdomSelection).toEqual(expectedSelection);
+});
+
+test('Multiple format nodes correctly accumulate offsets', () => {
+  // Setup: Complex VDOM - "A[bold]B[/bold]C[italic]D[/italic]E"
+  const vdom: VDOMNode[] = [
+    createTextNode('A'),
+    createStrongNode([createTextNode('B')]),
+    createTextNode('C'),
+    createEmNode([createTextNode('D')]),
+    createTextNode('E'),
+  ];
+
+  const rootElement = document.createElement('div');
+  rootElement.setAttribute('contenteditable', 'true');
+  document.body.appendChild(rootElement);
+  renderVDOMToDOM(vdom, rootElement);
+
+  // Text content: "ABCDE" (positions 0,1,2,3,4)
+  // DOM structure creates multiple separate text nodes
+
+  // Simulate selecting "CD" (across italic boundary)
+  const cTextNode = rootElement.childNodes[2]; // Text node "C"
+  const dTextNode = rootElement.querySelector('em')?.firstChild; // Italic text "D"
+
+  const mockSelection = {
+    anchorNode: cTextNode, // Text node "C"
+    focusNode: dTextNode, // Italic text "D"
+    anchorOffset: 0, // "C"
+    focusOffset: 1, // "D" (end of selection)
+    isCollapsed: false,
+  };
+
+  mockSelectionService.getCurrentSelection.mockReturnValue(mockSelection as unknown as Selection);
+  mockSelectionService.getSelectionAnchorOffset.mockReturnValue(0);
+  mockSelectionService.getSelectionFocusOffset.mockReturnValue(1);
+  mockSelectionService.isSelectionCollapsed.mockReturnValue(false);
+
+  const vdomSelection = getSelectionFromBrowser(mockSelectionService);
+
+  // Expected text content offsets for "CD"
+  const expectedSelection: VDOMSelection = {
+    start: { offset: 2 }, // "C" in "ABCDE"
+    end: { offset: 4 }, // End of "D" in "ABCDE"
+    isCollapsed: false,
+  };
+
+  // Clean up
+  document.body.removeChild(rootElement);
+
+  // This test now PASSES - the offset mapping fix correctly handles
+  // multiple format nodes and accumulates text content offsets properly
+  expect(vdomSelection).toEqual(expectedSelection);
+});

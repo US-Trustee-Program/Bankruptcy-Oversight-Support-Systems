@@ -89,6 +89,25 @@ export class Editor {
   }
 
   /**
+   * Toggle bold formatting on the current selection
+   */
+  toggleBold(): void {
+    const command: EditorCommand = { type: 'TOGGLE_BOLD' };
+    const result = this.fsm.processCommand(command, this.state);
+
+    if (result.didChange) {
+      this.state.vdom = result.newVDOM;
+      this.state.selection = result.newSelection;
+      this.notifyChange();
+      this.notifySelectionChange();
+    } else if (result.newSelection !== this.state.selection) {
+      // If only selection changed but not content
+      this.state.selection = result.newSelection;
+      this.notifySelectionChange();
+    }
+  }
+
+  /**
    * Updates the root element reference and sets up DOM interactions
    */
   setRootElement(rootElement: HTMLDivElement | null): void {
@@ -218,13 +237,6 @@ export class Editor {
     }
 
     try {
-      // We need the rootElement from RichTextEditor.tsx, but for now
-      // just use a placeholder approach
-      const rootElement = document.getElementById('editor-content');
-      if (!rootElement) {
-        return;
-      }
-
       // Get selection from browser and update VDOM selection
       this.state.selection = getSelectionFromBrowser(this.selectionService);
     } catch (error) {
@@ -235,6 +247,13 @@ export class Editor {
   handleKeyDown(event: KeyboardEvent): void {
     // Sync selection from browser if we have a selection service
     this.syncSelectionFromBrowser();
+
+    // Handle keyboard shortcuts first
+    if (event.ctrlKey && event.key === 'b') {
+      event.preventDefault();
+      this.toggleBold();
+      return;
+    }
 
     let command: EditorCommand | null = null;
 
@@ -323,15 +342,12 @@ export class Editor {
     // The DOM will be updated naturally by the browser for insertText events
     // We only need to update for other types of changes
     if (this.rootElement) {
-      // Only update innerHTML if the current content doesn't match what we expect
-      // This prevents interference with natural browser input handling
-      const currentContent = this.rootElement.textContent || '';
-      const expectedContent = this.state.vdom
-        .filter((node) => node.type === 'text')
-        .map((node) => node.content || '')
-        .join('');
+      // Compare actual HTML content instead of just text content
+      // This ensures formatting changes (like bold toggle) are properly detected
+      const currentHTML = this.rootElement.innerHTML;
+      const expectedHTML = html;
 
-      if (currentContent !== expectedContent) {
+      if (currentHTML !== expectedHTML) {
         this.rootElement.innerHTML = html;
       }
     }
