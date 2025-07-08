@@ -102,22 +102,22 @@ Each slice must complete the following before moving to the next:
    - [x] Add tests for Editor.getFormatState
    - [x] Ensure all tests pass
    - [x] Fix bug with text selection format detection
-   - [ ] Manual testing
-   - [ ] Explicit human approval ("continue")
+   - [x] Manual testing
+   - [x] Explicit human approval ("continue")
 
-2. [ ] Slice 2: Italic Format Detection at Cursor Position
-   - [ ] Write unit tests
-   - [ ] Implement the function
-   - [ ] Ensure tests pass
-   - [ ] Manual testing
-   - [ ] Explicit human approval ("continue")
+2. [x] Slice 2: Italic Format Detection at Cursor Position
+   - [x] Write unit tests
+   - [x] Implement the function
+   - [x] Ensure tests pass
+   - [x] Manual testing
+   - [x] Explicit human approval ("continue")
 
-3. [ ] Slice 3: Underline Format Detection at Cursor Position
-   - [ ] Write unit tests
-   - [ ] Implement the function
-   - [ ] Ensure tests pass
-   - [ ] Manual testing
-   - [ ] Explicit human approval ("continue")
+3. [x] Slice 3: Underline Format Detection at Cursor Position
+   - [x] Write unit tests
+   - [x] Implement the function
+   - [x] Ensure tests pass
+   - [x] Manual testing
+   - [x] Explicit human approval ("continue")
 
 4. [ ] Slice 4: List Format Detection at Cursor Position
    - [ ] Write unit tests
@@ -156,6 +156,44 @@ To test each vertical slice:
 3. Test the specific functionality for the current slice (instructions will be provided for each slice)
 4. Verify the behavior matches the expected outcome
 5. Provide explicit "continue" to proceed to the next slice
+
+### Manual Testing for Slice 3: Underline Format Detection
+
+For this slice, we need to verify that the FormatDetectionService correctly detects underline formatting at the cursor position.
+
+1. Build and run the application using:
+
+   ```bash
+   npm run dev
+   ```
+
+2. Navigate to a page with the rich text editor
+3. Place your cursor inside an underlined text element
+   - You can create underlined text by selecting some text and pressing Ctrl+U or clicking the Underline button
+4. Open the browser's developer tools (F12)
+5. In the Console tab, you should see automatic logging of the format state whenever your cursor moves or when text is selected
+   - Look for messages starting with "Format state at cursor position:" showing the current formatting state
+   - You'll see a boolean value for `underline: true` when inside underlined text, and `underline: false` otherwise
+   - You'll also see additional information about the cursor position:
+     - If text is selected: "Text selection detected:" with details about the selection range
+     - If it's just a cursor position: "Cursor position:" with container, parentElement, and offset information
+
+6. You can also manually check the format state by running the following in the console:
+
+   ```javascript
+   // Get the editor component instance
+   const editor = document.querySelector('#rich-text-editor-content').__reactFiber$;
+
+   // Call getFormatState() method
+   const formatState = editor.getFormatState();
+
+   // The format state is automatically logged to the console
+   ```
+
+7. Verify that formatState.underline is true when the cursor is inside an underlined element
+8. Move the cursor to regular (non-underlined) text and verify formatState.underline is false
+9. Try selecting text that includes both underlined and non-underlined sections to see the debug information
+10. Provide explicit "continue" to proceed to Slice 4 if all tests pass
 
 ### Manual Testing for Slice 1: Bold Format Detection
 
@@ -205,17 +243,17 @@ For this slice, we need to verify that the FormatDetectionService correctly dete
 
 ### Current Step
 
-- Completed implementation of Slice 1: Bold Format Detection at Cursor Position
+- Completed implementation of Slice 3: Underline Format Detection at Cursor Position
 - All automated tests pass successfully
-- Awaiting manual testing and human approval before proceeding to Slice 2
+- Awaiting manual testing and human approval before proceeding to Slice 4
 
 ### Completed Work
 
-1. Created FormatDetectionService with an implementation for bold format detection
-   - Implemented getFormatState() method that returns bold status at cursor position
-   - Added unit tests covering various cases for bold format detection
+1. Created FormatDetectionService with implementation for bold, italic, and underline format detection
+   - Implemented getFormatState() method that returns format status at cursor position
+   - Added unit tests covering various cases for each format type
    - Setup FormatState interface with all format types we'll implement
-   - Fixed text selection format detection to properly report bold state
+   - Fixed text selection format detection to properly report format states
 
 2. Updated Editor class to use FormatDetectionService
    - Added public getFormatState() method that delegates to FormatDetectionService

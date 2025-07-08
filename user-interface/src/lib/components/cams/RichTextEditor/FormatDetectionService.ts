@@ -21,7 +21,10 @@ export class FormatDetectionService {
 
   /**
    * Gets the format state at the current cursor position or selection.
-   * For this vertical slice, we only implement the bold detection.
+   * For these vertical slices, we implement format detection one by one:
+   * - Bold detection (Slice 1)
+   * - Italic detection (Slice 2)
+   * - Underline detection (Slice 3)
    * Other format states will be implemented in subsequent slices.
    */
   public getFormatState(): FormatState {
@@ -41,8 +44,10 @@ export class FormatDetectionService {
 
     const range = selection.getRangeAt(0);
 
-    // For now, we only implement bold detection
+    // Detect bold, italic, and underline formatting
     formatState.bold = this.isFormatActive(range, 'strong');
+    formatState.italic = this.isFormatActive(range, 'em');
+    formatState.underline = this.isFormatActive(range, 'u');
 
     return formatState;
   }

@@ -203,5 +203,139 @@ describe('FormatDetectionService', () => {
       expect(result.orderedList).toBe(false);
       expect(result.unorderedList).toBe(false);
     });
+
+    it('should detect italic formatting at cursor position', () => {
+      // Arrange
+      // Create an em element with text inside
+      const emElement = document.createElement('em');
+      const textNode = document.createTextNode('Italic text');
+      emElement.appendChild(textNode);
+      root.appendChild(emElement);
+
+      // Mock the range and selection
+      const mockSelection = {
+        rangeCount: 1,
+        getRangeAt: vi.fn().mockReturnValue({
+          collapsed: true,
+          startContainer: textNode,
+          endContainer: textNode,
+          startOffset: 0,
+          endOffset: 0,
+        } as unknown as Range),
+      } as unknown as Selection;
+
+      (mockSelectionService.getCurrentSelection as unknown as MockFunction).mockReturnValue(mockSelection);
+
+      // Act
+      const result = formatDetectionService.getFormatState();
+
+      // Assert
+      expect(result.bold).toBe(false);
+      expect(result.italic).toBe(true);
+      expect(result.underline).toBe(false);
+      expect(result.orderedList).toBe(false);
+      expect(result.unorderedList).toBe(false);
+    });
+
+    it('should detect italic formatting when text is selected within an italic element', () => {
+      // Arrange
+      // Create an em element with text inside
+      const emElement = document.createElement('em');
+      const textNode = document.createTextNode('Italic text');
+      emElement.appendChild(textNode);
+      root.appendChild(emElement);
+
+      // Mock the range and selection - note collapsed: false for text selection
+      const mockSelection = {
+        rangeCount: 1,
+        getRangeAt: vi.fn().mockReturnValue({
+          collapsed: false,
+          startContainer: textNode,
+          endContainer: textNode,
+          startOffset: 0,
+          endOffset: 11, // Select the entire "Italic text"
+        } as unknown as Range),
+      } as unknown as Selection;
+
+      (mockSelectionService.getCurrentSelection as unknown as MockFunction).mockReturnValue(mockSelection);
+
+      // Act
+      const result = formatDetectionService.getFormatState();
+
+      // Assert
+      expect(result.bold).toBe(false);
+      expect(result.italic).toBe(true);
+      expect(result.underline).toBe(false);
+      expect(result.orderedList).toBe(false);
+      expect(result.unorderedList).toBe(false);
+    });
+
+    it('should detect underline formatting at cursor position', () => {
+      // Arrange
+      // Create a span with underline class with text inside
+      const spanElement = document.createElement('span');
+      spanElement.classList.add('underline');
+      const textNode = document.createTextNode('Underlined text');
+      spanElement.appendChild(textNode);
+      root.appendChild(spanElement);
+
+      // Mock the range and selection
+      const mockSelection = {
+        rangeCount: 1,
+        getRangeAt: vi.fn().mockReturnValue({
+          collapsed: true,
+          startContainer: textNode,
+          endContainer: textNode,
+          startOffset: 0,
+          endOffset: 0,
+        } as unknown as Range),
+      } as unknown as Selection;
+
+      (mockSelectionService.getCurrentSelection as unknown as MockFunction).mockReturnValue(mockSelection);
+
+      // Act
+      const result = formatDetectionService.getFormatState();
+
+      // Assert
+      expect(result.bold).toBe(false);
+      expect(result.italic).toBe(false);
+      expect(result.underline).toBe(true);
+      expect(result.orderedList).toBe(false);
+      expect(result.unorderedList).toBe(false);
+    });
+
+    it('should detect underline formatting when text is selected within an underlined element', () => {
+      // Arrange
+      // Create a span with underline class with text inside
+      const spanElement = document.createElement('span');
+      spanElement.classList.add('underline');
+      const textNode = document.createTextNode('Underlined text');
+      spanElement.appendChild(textNode);
+      root.appendChild(spanElement);
+
+      // Mock the range and selection - note collapsed: false for text selection
+      const mockSelection = {
+        rangeCount: 1,
+        getRangeAt: vi.fn().mockReturnValue({
+          collapsed: false,
+          startContainer: textNode,
+          endContainer: textNode,
+          startOffset: 0,
+          endOffset: 15, // Select the entire "Underlined text"
+        } as unknown as Range),
+      } as unknown as Selection;
+
+      (mockSelectionService.getCurrentSelection as unknown as MockFunction).mockReturnValue(mockSelection);
+
+      // Act
+      const result = formatDetectionService.getFormatState();
+
+      // Assert
+      expect(result.bold).toBe(false);
+      expect(result.italic).toBe(false);
+      expect(result.underline).toBe(true);
+      expect(result.orderedList).toBe(false);
+      expect(result.unorderedList).toBe(false);
+    });
   });
 });
