@@ -16,6 +16,7 @@ import LocalFormCache from '@/lib/utils/local-form-cache';
 import RichTextEditor, {
   RichTextEditorRef,
 } from '@/lib/components/cams/RichTextEditor/RichTextEditor';
+import QuillEditor, { QuillEditorRef } from '@/lib/components/cams/QuillEditor/QuillEditor';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
 import useFeatureFlags, { FORMAT_CASE_NOTES } from '@/lib/hooks/UseFeatureFlags';
 import TextArea from '@/lib/components/uswds/TextArea';
@@ -49,6 +50,10 @@ export function getCaseNotesContentValue(ref: InputRef | null) {
 }
 
 export function getCaseNotesRichTextContentValue(ref: RichTextEditorRef | null) {
+  return ref?.getHtml() ?? '';
+}
+
+export function getCaseNotesQuillContentValue(ref: QuillEditorRef | null) {
   return ref?.getHtml() ?? '';
 }
 
@@ -123,6 +128,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   const session = LocalStorage.getSession();
 
   const richTextContentInputRef = useRef<RichTextEditorRef>(null);
+  const quillContentInputRef = useRef<QuillEditorRef>(null);
 
   function disableSubmitButton(disable: boolean) {
     const buttons = modalRef.current?.buttons;
@@ -136,7 +142,9 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
       let currentContent = contentInputRef.current?.getValue();
       let currentTitle = titleInputRef.current?.getValue();
       if (featureFlags[FORMAT_CASE_NOTES]) {
-        currentContent = richTextContentInputRef.current?.getHtml();
+        // Use either the RichTextEditor or QuillEditor content
+        currentContent =
+          richTextContentInputRef.current?.getHtml() || quillContentInputRef.current?.getHtml();
         currentTitle = titleInputRef.current?.getValue();
       }
       const notSavable =
@@ -181,10 +189,19 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     });
   }
 
+  function handleQuillContentChange(value: string) {
+    saveFormData({
+      caseId: modalOpenOptions.caseId,
+      title: getCaseNotesTitleValue(titleInputRef.current),
+      content: value,
+    });
+  }
+
   function clearCaseNoteForm() {
     titleInputRef.current?.clearValue();
     if (featureFlags[FORMAT_CASE_NOTES]) {
       richTextContentInputRef.current?.clearValue();
+      quillContentInputRef.current?.clearValue();
     } else {
       contentInputRef.current?.clearValue();
     }
@@ -199,6 +216,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     titleInputRef.current?.disable(disabled);
     if (featureFlags[FORMAT_CASE_NOTES]) {
       richTextContentInputRef.current?.disable(disabled);
+      quillContentInputRef.current?.disable(disabled);
     } else {
       contentInputRef.current?.disable(disabled);
     }
@@ -267,7 +285,10 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     let content = getCaseNotesContentValue(contentInputRef.current);
     if (featureFlags[FORMAT_CASE_NOTES]) {
       title = getCaseNotesTitleValue(titleInputRef.current);
-      content = getCaseNotesRichTextContentValue(richTextContentInputRef.current);
+      // Use either the RichTextEditor or QuillEditor content
+      content =
+        getCaseNotesRichTextContentValue(richTextContentInputRef.current) ||
+        getCaseNotesQuillContentValue(quillContentInputRef.current);
     }
 
     if (mode === 'create' && session?.user) {
@@ -326,6 +347,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
 
       if (featureFlags[FORMAT_CASE_NOTES]) {
         richTextContentInputRef.current?.setValue(showProps.content ?? '');
+        quillContentInputRef.current?.setValue(showProps.content ?? '');
       } else {
         contentInputRef.current?.setValue(showProps.content ?? '');
       }
@@ -393,13 +415,24 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
             ref={titleInputRef}
           />
           {featureFlags[FORMAT_CASE_NOTES] ? (
-            <RichTextEditor
-              id="case-note-formatted-editor"
-              label="Note Text"
-              required={true}
-              onChange={handleRichTextContentChange}
-              ref={richTextContentInputRef}
-            />
+            <>
+              <h3>DIY</h3>
+              <RichTextEditor
+                id="case-note-formatted-editor"
+                label="Note Text"
+                required={true}
+                onChange={handleRichTextContentChange}
+                ref={richTextContentInputRef}
+              />
+              <h3>Quill</h3>
+              <QuillEditor
+                id="case-note-quill-editor"
+                label="Note Text (Quill)"
+                required={true}
+                onChange={handleQuillContentChange}
+                ref={quillContentInputRef}
+              />
+            </>
           ) : (
             <TextArea
               id="note-content"
