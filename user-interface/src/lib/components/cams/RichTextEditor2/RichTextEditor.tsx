@@ -3,6 +3,7 @@ import { forwardRef, useImperativeHandle, useRef, useEffect, useState } from 're
 import './RichTextEditor.scss';
 import { Editor } from './core/Editor';
 import { BrowserSelectionService } from './core/selection/SelectionService.humble';
+import { CombinedFormatState } from './core/types';
 
 export interface RichTextEditorRef {
   clearValue: () => void;
@@ -28,6 +29,20 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
 
   const domElementRef = useRef<HTMLDivElement>(null);
 
+  // Track the combined formatting state for button UI
+  const [combinedFormatState, setCombinedFormatState] = useState<CombinedFormatState>({
+    currentFormatting: {
+      bold: 'inactive',
+      italic: 'inactive',
+      underline: 'inactive',
+    },
+    toggleState: {
+      bold: 'inactive',
+      italic: 'inactive',
+      underline: 'inactive',
+    },
+  });
+
   const handleOnChange = (value: string) => {
     if (onChange) {
       onChange(value);
@@ -42,6 +57,20 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
         // Handle selection changes here, e.g., update formatting buttons
         console.log('Selection changed:', selection);
       },
+      onFormattingChange: (formatting) => {
+        // Update format state for button UI
+        console.log('Formatting changed:', formatting);
+        console.log('Current formatting bold state:', formatting.currentFormatting.bold);
+        console.log('Toggle state bold:', formatting.toggleState.bold);
+
+        // Calculate if bold should be active
+        const shouldBeActive =
+          formatting.currentFormatting.bold === 'active' ||
+          formatting.toggleState.bold === 'active';
+        console.log('Bold button should be active:', shouldBeActive);
+
+        setCombinedFormatState(formatting);
+      },
       selectionService,
     });
   });
@@ -49,12 +78,19 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
   // Function to handle bold button click
   const handleBoldClick = () => {
     console.log('Bold button clicked');
+    console.log('Current combined format state:', combinedFormatState);
     // Add a debug log to check if event is firing
     console.trace('Bold button click stack trace');
 
     // Use the new toggleBold method added to the Editor class
     editor.toggleBold();
   };
+
+  // Determine if bold button should be active
+  // Active when either current text is bold OR bold formatting is pending
+  const isBoldActive =
+    combinedFormatState.currentFormatting.bold === 'active' ||
+    combinedFormatState.toggleState.bold === 'active';
 
   useEffect(() => {
     if (domElementRef.current && editor) {
@@ -92,9 +128,12 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
         <button
           type="button"
           onClick={handleBoldClick}
-          className="toolbar-button"
+          className={`toolbar-button ${isBoldActive ? 'active' : ''}`}
           aria-label="Bold"
           title="Bold"
+          aria-pressed={isBoldActive}
+          data-format-state={combinedFormatState.currentFormatting.bold}
+          data-toggle-state={combinedFormatState.toggleState.bold}
         >
           <strong>B</strong>
         </button>

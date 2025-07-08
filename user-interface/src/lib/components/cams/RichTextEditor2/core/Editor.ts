@@ -1,6 +1,7 @@
 import {
   OnContentChangeCallback,
   OnSelectionUpdateCallback,
+  OnFormattingChangeCallback,
   EditorState,
   VDOMNode,
   VDOMSelection,
@@ -10,12 +11,17 @@ import {
 import { FSM } from './FSM';
 import { vdomToHTML } from './io/VDOMToHTML';
 import { SelectionService } from './selection/SelectionService.humble';
-import { getSelectionFromBrowser, applySelectionToBrowser } from './model/VDOMSelection';
+import {
+  getSelectionFromBrowser,
+  applySelectionToBrowser,
+  getFormatStateAtSelection,
+} from './model/VDOMSelection';
 
 export interface EditorOptions {
   rootElement?: HTMLDivElement | null;
   onChange: OnContentChangeCallback;
   onSelectionChange?: OnSelectionUpdateCallback;
+  onFormattingChange?: OnFormattingChangeCallback;
   selectionService: SelectionService;
 }
 
@@ -25,12 +31,14 @@ export class Editor {
   private fsm: FSM;
   private onChange: OnContentChangeCallback;
   private onSelectionChange?: OnSelectionUpdateCallback;
+  private onFormattingChange?: OnFormattingChangeCallback;
   private selectionService: SelectionService;
   private eventCleanupFunctions: (() => void)[] = [];
 
   constructor(options: EditorOptions) {
     this.onChange = options.onChange;
     this.onSelectionChange = options.onSelectionChange;
+    this.onFormattingChange = options.onFormattingChange;
     this.selectionService = options.selectionService;
     this.fsm = new FSM();
     this.rootElement = options.rootElement || null;
@@ -56,6 +64,7 @@ export class Editor {
 
     // Notify of initial state
     this.notifyChange();
+    this.notifyFormattingChange();
   }
 
   /**
@@ -64,6 +73,7 @@ export class Editor {
   updateSelection(selection: VDOMSelection): void {
     this.state.selection = selection;
     this.notifySelectionChange();
+    this.notifyFormattingChange();
   }
 
   getHtml(): string {
@@ -302,8 +312,9 @@ export class Editor {
 
   private handleFSMResult(result: FSMResult): void {
     // Update format toggle state if present
-    if (result.formatToggleState) {
-      this.state.formatToggleState = result.formatToggleState;
+    const formatToggleStateChanged = result.formatToggleState !== undefined;
+    if (formatToggleStateChanged) {
+      this.state.formatToggleState = result.formatToggleState!;
     }
 
     if (result.didChange) {
@@ -323,10 +334,15 @@ export class Editor {
 
       this.notifyChange();
       this.notifySelectionChange();
+      this.notifyFormattingChange();
     } else if (result.newSelection !== this.state.selection) {
       // If only selection changed but not content
       this.state.selection = result.newSelection;
       this.notifySelectionChange();
+      this.notifyFormattingChange();
+    } else if (formatToggleStateChanged) {
+      // If only toggle state changed, still notify formatting change
+      this.notifyFormattingChange();
     }
   }
 
@@ -360,6 +376,7 @@ export class Editor {
 
         // Always notify of selection changes after click
         this.notifySelectionChange();
+        this.notifyFormattingChange();
       }
     }
   }
@@ -399,6 +416,20 @@ export class Editor {
 
     if (this.onSelectionChange) {
       this.onSelectionChange(this.state.selection);
+    }
+  }
+
+  /**
+   * Notifies listeners of formatting state changes
+   */
+  private notifyFormattingChange(): void {
+    if (this.onFormattingChange) {
+      const currentFormatting = getFormatStateAtSelection(this.state.vdom, this.state.selection);
+      const combinedState = {
+        currentFormatting,
+        toggleState: this.state.formatToggleState,
+      };
+      this.onFormattingChange(combinedState);
     }
   }
 

@@ -113,9 +113,15 @@ export interface ClipboardResult {
 // List Types
 export type ListType = 'ul' | 'ol';
 
+// Combined format state for UI display
+export interface CombinedFormatState {
+  currentFormatting: RichTextFormatState; // Based on current selection
+  toggleState: FormatToggleState; // Pending formatting to be applied
+}
+
 // Editor Callback Types
 export type OnContentChangeCallback = (html: string) => void;
-export type OnFormattingChangeCallback = (formatting: RichTextFormatState) => void;
+export type OnFormattingChangeCallback = (formatting: CombinedFormatState) => void;
 export type OnSelectionUpdateCallback = (selection: VDOMSelection) => void;
 
 // Utility Types

@@ -28,6 +28,28 @@
     &:active {
       background-color: #e5e5e5;
     }
+
+    // Active state for formatting buttons - use higher specificity and !important
+    &.active {
+      background-color: #005ea2;
+      color: white;
+      border-color: #004a8c;
+
+      &:hover {
+        background-color: #004a8c;
+      }
+
+      &:active {
+        background-color: #003d7a;
+      }
+
+      // Ensure nested elements also get white color
+      strong,
+      em,
+      u {
+        color: white;
+      }
+    }
   }
 }
 

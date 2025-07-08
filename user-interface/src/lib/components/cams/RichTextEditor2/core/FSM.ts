@@ -408,11 +408,24 @@ export class FSM {
     // For collapsed selections (cursor), we should only update the toggle state
     // without modifying the VDOM structure
     if (selection.isCollapsed) {
-      // Get current format state at cursor position
-      const currentBoldState = getFormatStateAtCursorPosition(currentState.vdom, selection, 'bold');
+      // Check if there's already a pending toggle state
+      const currentToggleState = currentState.formatToggleState.bold;
 
-      // Toggle the bold state
-      const newBoldState: FormatStateValue = currentBoldState === 'active' ? 'inactive' : 'active';
+      let newBoldState: FormatStateValue;
+
+      if (currentToggleState !== 'inactive') {
+        // If there's already a pending toggle, cancel it (set back to inactive)
+        newBoldState = 'inactive';
+      } else {
+        // If no pending toggle, determine new state based on current cursor position
+        const currentBoldState = getFormatStateAtCursorPosition(
+          currentState.vdom,
+          selection,
+          'bold',
+        );
+        newBoldState = currentBoldState === 'active' ? 'inactive' : 'active';
+      }
+
       const newToggleState = {
         ...currentState.formatToggleState,
         bold: newBoldState,
