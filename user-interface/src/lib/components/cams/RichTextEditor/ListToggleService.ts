@@ -61,8 +61,34 @@ export class ListToggleService {
     );
 
     // If we're in a paragraph with content, convert the paragraph to a list item
-    if (currentParagraph && currentParagraph.parentNode === this.root) {
+    if (currentParagraph && this.root.contains(currentParagraph)) {
       this.convertParagraphToList(currentParagraph, type, range);
+    } else {
+      // If we're not in a paragraph or the paragraph isn't found,
+      // create a new list and place it at the cursor position
+      const list = this.listUtilities.createListWithEmptyItem(type);
+
+      // Get the nearest block element or use the root if none is found
+      const blockElement =
+        editorUtilities.findClosestAncestor<HTMLElement>(
+          this.root,
+          range.startContainer,
+          'p,div,blockquote,h1,h2,h3,h4,h5,h6',
+        ) || this.root;
+
+      // If we found a block element other than the root, replace it with our list
+      if (blockElement !== this.root) {
+        blockElement.replaceWith(list);
+      } else {
+        // Insert at cursor position
+        range.deleteContents();
+        range.insertNode(list);
+      }
+
+      // Position cursor in the list item
+      if (list.firstChild) {
+        this.listUtilities.setCursorInListItem(list.firstChild as HTMLLIElement, 0);
+      }
     }
   }
 

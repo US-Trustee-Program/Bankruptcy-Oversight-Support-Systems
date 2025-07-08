@@ -337,5 +337,145 @@ describe('FormatDetectionService', () => {
       expect(result.orderedList).toBe(false);
       expect(result.unorderedList).toBe(false);
     });
+
+    it('should detect unordered list formatting at cursor position', () => {
+      // Arrange
+      // Create an unordered list with a list item
+      const ulElement = document.createElement('ul');
+      const liElement = document.createElement('li');
+      const textNode = document.createTextNode('List item');
+      liElement.appendChild(textNode);
+      ulElement.appendChild(liElement);
+      root.appendChild(ulElement);
+
+      // Mock the range and selection
+      const mockSelection = {
+        rangeCount: 1,
+        getRangeAt: vi.fn().mockReturnValue({
+          collapsed: true,
+          startContainer: textNode,
+          endContainer: textNode,
+          startOffset: 0,
+          endOffset: 0,
+        } as unknown as Range),
+      } as unknown as Selection;
+
+      (mockSelectionService.getCurrentSelection as unknown as MockFunction).mockReturnValue(mockSelection);
+
+      // Act
+      const result = formatDetectionService.getFormatState();
+
+      // Assert
+      expect(result.bold).toBe(false);
+      expect(result.italic).toBe(false);
+      expect(result.underline).toBe(false);
+      expect(result.orderedList).toBe(false);
+      expect(result.unorderedList).toBe(true);
+    });
+
+    it('should detect ordered list formatting at cursor position', () => {
+      // Arrange
+      // Create an ordered list with a list item
+      const olElement = document.createElement('ol');
+      const liElement = document.createElement('li');
+      const textNode = document.createTextNode('List item');
+      liElement.appendChild(textNode);
+      olElement.appendChild(liElement);
+      root.appendChild(olElement);
+
+      // Mock the range and selection
+      const mockSelection = {
+        rangeCount: 1,
+        getRangeAt: vi.fn().mockReturnValue({
+          collapsed: true,
+          startContainer: textNode,
+          endContainer: textNode,
+          startOffset: 0,
+          endOffset: 0,
+        } as unknown as Range),
+      } as unknown as Selection;
+
+      (mockSelectionService.getCurrentSelection as unknown as MockFunction).mockReturnValue(mockSelection);
+
+      // Act
+      const result = formatDetectionService.getFormatState();
+
+      // Assert
+      expect(result.bold).toBe(false);
+      expect(result.italic).toBe(false);
+      expect(result.underline).toBe(false);
+      expect(result.orderedList).toBe(true);
+      expect(result.unorderedList).toBe(false);
+    });
+
+    it('should detect unordered list formatting when text is selected within a list item', () => {
+      // Arrange
+      // Create an unordered list with a list item
+      const ulElement = document.createElement('ul');
+      const liElement = document.createElement('li');
+      const textNode = document.createTextNode('List item');
+      liElement.appendChild(textNode);
+      ulElement.appendChild(liElement);
+      root.appendChild(ulElement);
+
+      // Mock the range and selection - note collapsed: false for text selection
+      const mockSelection = {
+        rangeCount: 1,
+        getRangeAt: vi.fn().mockReturnValue({
+          collapsed: false,
+          startContainer: textNode,
+          endContainer: textNode,
+          startOffset: 0,
+          endOffset: 9, // Select the entire "List item"
+        } as unknown as Range),
+      } as unknown as Selection;
+
+      (mockSelectionService.getCurrentSelection as unknown as MockFunction).mockReturnValue(mockSelection);
+
+      // Act
+      const result = formatDetectionService.getFormatState();
+
+      // Assert
+      expect(result.bold).toBe(false);
+      expect(result.italic).toBe(false);
+      expect(result.underline).toBe(false);
+      expect(result.orderedList).toBe(false);
+      expect(result.unorderedList).toBe(true);
+    });
+
+    it('should detect ordered list formatting when text is selected within a list item', () => {
+      // Arrange
+      // Create an ordered list with a list item
+      const olElement = document.createElement('ol');
+      const liElement = document.createElement('li');
+      const textNode = document.createTextNode('List item');
+      liElement.appendChild(textNode);
+      olElement.appendChild(liElement);
+      root.appendChild(olElement);
+
+      // Mock the range and selection - note collapsed: false for text selection
+      const mockSelection = {
+        rangeCount: 1,
+        getRangeAt: vi.fn().mockReturnValue({
+          collapsed: false,
+          startContainer: textNode,
+          endContainer: textNode,
+          startOffset: 0,
+          endOffset: 9, // Select the entire "List item"
+        } as unknown as Range),
+      } as unknown as Selection;
+
+      (mockSelectionService.getCurrentSelection as unknown as MockFunction).mockReturnValue(mockSelection);
+
+      // Act
+      const result = formatDetectionService.getFormatState();
+
+      // Assert
+      expect(result.bold).toBe(false);
+      expect(result.italic).toBe(false);
+      expect(result.underline).toBe(false);
+      expect(result.orderedList).toBe(true);
+      expect(result.unorderedList).toBe(false);
+    });
   });
 });

@@ -25,6 +25,7 @@ export class FormatDetectionService {
    * - Bold detection (Slice 1)
    * - Italic detection (Slice 2)
    * - Underline detection (Slice 3)
+   * - List detection (Slice 4)
    * Other format states will be implemented in subsequent slices.
    */
   public getFormatState(): FormatState {
@@ -43,6 +44,11 @@ export class FormatDetectionService {
     }
 
     const range = selection.getRangeAt(0);
+    const startNode = range.startContainer;
+
+    // First check if we're inside a list structure
+    formatState.orderedList = this.isWithinList(startNode, 'ol');
+    formatState.unorderedList = this.isWithinList(startNode, 'ul');
 
     // Detect bold, italic, and underline formatting
     formatState.bold = this.isFormatActive(range, 'strong');
@@ -56,6 +62,7 @@ export class FormatDetectionService {
    * Determines if the specified format is active at the current cursor position.
    * @param range The current range
    * @param format The format to check
+   * @param node Optional node to check instead of the range's start container
    * @returns True if the format is active, false otherwise
    */
   private isFormatActive(range: Range, format: RichTextFormat | 'u'): boolean {
@@ -84,5 +91,43 @@ export class FormatDetectionService {
     const formatElement = editorUtilities.findClosestAncestor<Element>(this.root, node, selector);
 
     return formatElement !== null;
+  }
+
+  /**
+   * Checks if the node is within a list of the specified type.
+   * @param node The node to check
+   * @param listType The type of list ('ul' or 'ol')
+   * @returns True if the node is within the specified list type
+   */
+  private isWithinList(node: Node, listType: 'ul' | 'ol'): boolean {
+    // First, check if we're in a list item
+    const listItemElement = editorUtilities.findClosestAncestor<HTMLLIElement>(
+      this.root,
+      node,
+      'li',
+    );
+
+    if (!listItemElement) {
+      return false;
+    }
+
+    // Then check if the list item is within the specified list type
+    // We need to check direct parent first and fallback to ancestor search for nested lists
+    const directParent = listItemElement.parentElement;
+    let listElement = null;
+
+    // First check if direct parent matches the list type
+    if (directParent?.tagName?.toLowerCase() === listType) {
+      listElement = directParent;
+    } else {
+      // Then try to find an ancestor with the specified list type
+      listElement = editorUtilities.findClosestAncestor<HTMLElement>(
+        this.root,
+        listItemElement,
+        listType,
+      );
+    }
+
+    return listElement !== null;
   }
 }

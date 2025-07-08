@@ -27,9 +27,6 @@ export class Editor {
 
     // Initialize with empty paragraph if the root is empty
     this.initializeContent();
-
-    // For debugging only: Add listeners to log format state when selection changes
-    this.addDebugEventListeners();
   }
 
   private initializeContent(): void {
@@ -235,42 +232,7 @@ export class Editor {
    */
   public getFormatState(): FormatState {
     const formatState = this.formatDetectionService.getFormatState();
-
-    // Log the current format state to the console for debugging
     console.log('Format state at cursor position:', formatState);
-
-    // Log selection information if there is a selection
-    const selection = this.selectionService.getCurrentSelection();
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
-      if (!range.collapsed) {
-        console.log('Text selection detected:', {
-          isCollapsed: range.collapsed,
-          startContainer: range.startContainer.nodeName,
-          endContainer: range.endContainer.nodeName,
-          selectedText: range.toString(),
-        });
-      } else {
-        console.log('Cursor position:', {
-          container: range.startContainer.nodeName,
-          parentElement: range.startContainer.parentElement?.nodeName,
-          offset: range.startOffset,
-        });
-      }
-    }
-
     return formatState;
-  }
-
-  private addDebugEventListeners(): void {
-    // For debugging only: Add listeners to log format state when selection changes
-    this.root.addEventListener('mouseup', this.handleSelectionChange.bind(this));
-    this.root.addEventListener('keyup', this.handleSelectionChange.bind(this));
-    console.log('Debug event listeners added for format state detection');
-  }
-
-  private handleSelectionChange(): void {
-    // Small delay to ensure selection is updated before checking format state
-    setTimeout(() => this.getFormatState(), 0);
   }
 }
