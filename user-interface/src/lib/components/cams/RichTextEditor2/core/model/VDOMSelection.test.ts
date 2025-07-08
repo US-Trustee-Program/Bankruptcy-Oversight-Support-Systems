@@ -14,6 +14,7 @@ import {
   getFormattingAtSelection,
   findNodeByDOMNode,
   getTextOffsetInVDOM,
+  textContentOffsetToNodeOffset, // Add the new function we're testing
 } from './VDOMSelection';
 
 // Mock SelectionService for testing
@@ -61,7 +62,7 @@ function createSimpleVDOM(): VDOMNode[] {
   ];
 }
 
-test('findNodeByDOMNode should find VDOM node corresponding to DOM node', () => {
+test('should return VDOM node that matches DOM node text content', () => {
   const vdom = createSimpleVDOM();
   const mockDOMNode = createMockTextNode('Hello ');
 
@@ -72,7 +73,7 @@ test('findNodeByDOMNode should find VDOM node corresponding to DOM node', () => 
   expect(typeof result).toBe('object');
 });
 
-test('getTextOffsetInVDOM should calculate correct offset in VDOM structure', () => {
+test('should calculate cumulative text offset up to specified node and position', () => {
   const vdom = createSimpleVDOM();
   const textNode = vdom[0].children![0];
 
@@ -81,7 +82,7 @@ test('getTextOffsetInVDOM should calculate correct offset in VDOM structure', ()
   expect(offset).toBe(3);
 });
 
-test('getTextOffsetInVDOM should handle offset in nested nodes', () => {
+test('should include parent text length when calculating offset within nested formatting nodes', () => {
   const vdom = createSimpleVDOM();
   const strongNode = vdom[0].children![1];
   const textInStrong = strongNode.children![0];
@@ -92,7 +93,7 @@ test('getTextOffsetInVDOM should handle offset in nested nodes', () => {
   expect(offset).toBe(8);
 });
 
-test('getSelectionFromBrowser should convert browser selection to VDOM selection', () => {
+test('should convert DOM node positions to absolute text offsets when getting browser selection', () => {
   // Mock browser selection
   const mockSelection = {
     anchorNode: createMockTextNode('Hello '),
@@ -115,7 +116,7 @@ test('getSelectionFromBrowser should convert browser selection to VDOM selection
   expect(result.isCollapsed).toBe(false);
 });
 
-test('getSelectionFromBrowser should handle collapsed selection', () => {
+test('should create collapsed VDOM selection when browser selection has same start and end positions', () => {
   const mockSelection = {
     anchorNode: createMockTextNode('Hello '),
     anchorOffset: 3,
@@ -137,7 +138,7 @@ test('getSelectionFromBrowser should handle collapsed selection', () => {
   expect(result.isCollapsed).toBe(true);
 });
 
-test('applySelectionToBrowser should set browser selection from VDOM selection', () => {
+test('should convert absolute text offsets to DOM range and apply to browser selection', () => {
   const rootElement = document.createElement('div');
   // Set contentEditable to true to make the test pass with our new check
   rootElement.setAttribute('contentEditable', 'true');
@@ -679,4 +680,330 @@ test('Multiple format nodes correctly accumulate offsets', () => {
   // This test now PASSES - the offset mapping fix correctly handles
   // multiple format nodes and accumulates text content offsets properly
   expect(vdomSelection).toEqual(expectedSelection);
+});
+
+// New tests for textContentOffsetToNodeOffset function
+test('should return node ID and relative offset when given absolute position in single text node', () => {
+  const vdom: VDOMNode[] = [
+    {
+      id: 'text-1',
+      type: 'text',
+      content: 'Hello World',
+    },
+  ];
+
+  // Test various positions within the text
+  expect(textContentOffsetToNodeOffset(vdom, 0)).toEqual({
+    nodeId: 'text-1',
+    offset: 0,
+  });
+
+  expect(textContentOffsetToNodeOffset(vdom, 5)).toEqual({
+    nodeId: 'text-1',
+    offset: 5,
+  });
+
+  expect(textContentOffsetToNodeOffset(vdom, 11)).toEqual({
+    nodeId: 'text-1',
+    offset: 11,
+  });
+});
+
+test('should map absolute positions to correct nodes when text is split across multiple nodes', () => {
+  const vdom: VDOMNode[] = [
+    {
+      id: 'text-1',
+      type: 'text',
+      content: 'Hello ',
+    },
+    {
+      id: 'text-2',
+      type: 'text',
+      content: 'World',
+    },
+  ];
+
+  // Position 0-5 should be in first node
+  expect(textContentOffsetToNodeOffset(vdom, 0)).toEqual({
+    nodeId: 'text-1',
+    offset: 0,
+  });
+
+  expect(textContentOffsetToNodeOffset(vdom, 3)).toEqual({
+    nodeId: 'text-1',
+    offset: 3,
+  });
+
+  expect(textContentOffsetToNodeOffset(vdom, 6)).toEqual({
+    nodeId: 'text-1',
+    offset: 6,
+  });
+
+  // Position 6-10 should be in second node
+  expect(textContentOffsetToNodeOffset(vdom, 7)).toEqual({
+    nodeId: 'text-2',
+    offset: 1,
+  });
+
+  expect(textContentOffsetToNodeOffset(vdom, 11)).toEqual({
+    nodeId: 'text-2',
+    offset: 5,
+  });
+});
+
+test('should traverse into formatting containers to find text nodes when position falls within formatted text', () => {
+  const vdom: VDOMNode[] = [
+    {
+      id: 'text-1',
+      type: 'text',
+      content: 'This is a ',
+    },
+    {
+      id: 'strong-1',
+      type: 'strong',
+      children: [
+        {
+          id: 'text-2',
+          type: 'text',
+          content: 'test',
+        },
+      ],
+    },
+  ];
+
+  // Position 0-9 should be in first text node
+  expect(textContentOffsetToNodeOffset(vdom, 0)).toEqual({
+    nodeId: 'text-1',
+    offset: 0,
+  });
+
+  expect(textContentOffsetToNodeOffset(vdom, 5)).toEqual({
+    nodeId: 'text-1',
+    offset: 5,
+  });
+
+  expect(textContentOffsetToNodeOffset(vdom, 10)).toEqual({
+    nodeId: 'text-1',
+    offset: 10,
+  });
+
+  // Position 10-14 should be in the text node inside strong
+  expect(textContentOffsetToNodeOffset(vdom, 11)).toEqual({
+    nodeId: 'text-2',
+    offset: 1,
+  });
+
+  expect(textContentOffsetToNodeOffset(vdom, 14)).toEqual({
+    nodeId: 'text-2',
+    offset: 4,
+  });
+});
+
+test('should place cursor at end of previous text node when position falls exactly at node boundary', () => {
+  // This is the exact scenario from our bug report
+  const vdom: VDOMNode[] = [
+    {
+      id: 'text-1',
+      type: 'text',
+      content: 'This is a ',
+    },
+    {
+      id: 'strong-1',
+      type: 'strong',
+      children: [
+        {
+          id: 'text-2',
+          type: 'text',
+          content: 'test',
+        },
+      ],
+    },
+  ];
+
+  // Position 10 is exactly at the boundary between "This is a " and "test"
+  // We should favor placing cursor at the end of the first node for insertion
+  expect(textContentOffsetToNodeOffset(vdom, 10)).toEqual({
+    nodeId: 'text-1',
+    offset: 10,
+  });
+
+  // Position 14 is at the very end of document - should be at end of last text node
+  expect(textContentOffsetToNodeOffset(vdom, 14)).toEqual({
+    nodeId: 'text-2',
+    offset: 4,
+  });
+});
+
+test('should traverse multiple levels of nested formatting to find correct text node', () => {
+  const vdom: VDOMNode[] = [
+    {
+      id: 'text-1',
+      type: 'text',
+      content: 'Plain ',
+    },
+    {
+      id: 'strong-1',
+      type: 'strong',
+      children: [
+        {
+          id: 'text-2',
+          type: 'text',
+          content: 'bold ',
+        },
+        {
+          id: 'em-1',
+          type: 'em',
+          children: [
+            {
+              id: 'text-3',
+              type: 'text',
+              content: 'italic',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'text-4',
+      type: 'text',
+      content: ' end',
+    },
+  ];
+
+  // "Plain " = 6 chars
+  expect(textContentOffsetToNodeOffset(vdom, 3)).toEqual({
+    nodeId: 'text-1',
+    offset: 3,
+  });
+
+  // "Plain bold " = 11 chars, position 8 should be in "bold " text
+  expect(textContentOffsetToNodeOffset(vdom, 8)).toEqual({
+    nodeId: 'text-2',
+    offset: 2,
+  });
+
+  // "Plain bold italic" = 17 chars, position 13 should be in "italic" text
+  expect(textContentOffsetToNodeOffset(vdom, 13)).toEqual({
+    nodeId: 'text-3',
+    offset: 2,
+  });
+
+  // Position 18 should be in final " end" text
+  expect(textContentOffsetToNodeOffset(vdom, 18)).toEqual({
+    nodeId: 'text-4',
+    offset: 1,
+  });
+});
+
+test('should return null when given invalid positions outside document bounds', () => {
+  const vdom: VDOMNode[] = [
+    {
+      id: 'text-1',
+      type: 'text',
+      content: 'Hello',
+    },
+  ];
+
+  // Position beyond end of content should return null
+  expect(textContentOffsetToNodeOffset(vdom, 10)).toBeNull();
+
+  // Negative position should return null
+  expect(textContentOffsetToNodeOffset(vdom, -1)).toBeNull();
+});
+
+test('should return null when document contains no content', () => {
+  const vdom: VDOMNode[] = [];
+
+  expect(textContentOffsetToNodeOffset(vdom, 0)).toBeNull();
+  expect(textContentOffsetToNodeOffset(vdom, 5)).toBeNull();
+});
+
+test('should handle empty text nodes by placing cursor at their zero position', () => {
+  const vdom: VDOMNode[] = [
+    {
+      id: 'text-1',
+      type: 'text',
+      content: '',
+    },
+    {
+      id: 'text-2',
+      type: 'text',
+      content: 'Hello',
+    },
+  ];
+
+  // Position 0 should be in the empty text node
+  expect(textContentOffsetToNodeOffset(vdom, 0)).toEqual({
+    nodeId: 'text-1',
+    offset: 0,
+  });
+
+  // Position 1 should be in the second text node
+  expect(textContentOffsetToNodeOffset(vdom, 1)).toEqual({
+    nodeId: 'text-2',
+    offset: 1,
+  });
+});
+
+test('should skip non-text nodes when calculating text positions', () => {
+  const vdom: VDOMNode[] = [
+    {
+      id: 'text-1',
+      type: 'text',
+      content: 'Hello',
+    },
+    {
+      id: 'br-1',
+      type: 'br',
+    },
+    {
+      id: 'text-2',
+      type: 'text',
+      content: 'World',
+    },
+  ];
+
+  // BR nodes don't contribute to text content, so positions should skip them
+  expect(textContentOffsetToNodeOffset(vdom, 3)).toEqual({
+    nodeId: 'text-1',
+    offset: 3,
+  });
+
+  expect(textContentOffsetToNodeOffset(vdom, 7)).toEqual({
+    nodeId: 'text-2',
+    offset: 2,
+  });
+});
+
+test('should maintain position accuracy when converting between absolute and node-based selections', () => {
+  const vdom: VDOMNode[] = [
+    {
+      id: 'text-1',
+      type: 'text',
+      content: 'This is a ',
+    },
+    {
+      id: 'strong-1',
+      type: 'strong',
+      children: [
+        {
+          id: 'text-2',
+          type: 'text',
+          content: 'test',
+        },
+      ],
+    },
+  ];
+
+  // Test round-trip conversion for various positions
+  const testPositions = [0, 3, 7, 10, 11, 13, 14];
+
+  for (const absolutePos of testPositions) {
+    const nodePos = textContentOffsetToNodeOffset(vdom, absolutePos);
+
+    if (nodePos) {
+      const backToAbsolute = getTextOffsetInVDOM(vdom, nodePos.nodeId, nodePos.offset);
+      expect(backToAbsolute).toBe(absolutePos);
+    }
+  }
 });

@@ -89,6 +89,72 @@ export function getTextOffsetInVDOM(vdom: VDOMNode[], nodeId: string, offset: nu
 }
 
 /**
+ * Converts absolute text content offset to node-based selection
+ * This is the reverse operation of getTextOffsetInVDOM
+ */
+export function textContentOffsetToNodeOffset(
+  vdom: VDOMNode[],
+  absoluteOffset: number,
+): { nodeId: string; offset: number } | null {
+  // Handle invalid inputs
+  if (absoluteOffset < 0 || vdom.length === 0) {
+    return null;
+  }
+
+  let currentOffset = 0;
+  let lastTextNode: { nodeId: string; length: number } | null = null;
+
+  function traverse(nodes: VDOMNode[]): { nodeId: string; offset: number } | null {
+    for (const node of nodes) {
+      if (node.type === 'text' && node.content !== undefined) {
+        const nodeLength = node.content.length;
+        lastTextNode = { nodeId: node.id, length: nodeLength };
+
+        // Check if the absolute offset falls within this text node
+        if (absoluteOffset >= currentOffset && absoluteOffset < currentOffset + nodeLength) {
+          const relativeOffset = absoluteOffset - currentOffset;
+          return {
+            nodeId: node.id,
+            offset: relativeOffset,
+          };
+        }
+
+        currentOffset += nodeLength;
+      } else if (node.children) {
+        // Recursively traverse children for formatting nodes
+        const result = traverse(node.children);
+        if (result) {
+          return result;
+        }
+      }
+      // Skip non-text nodes (like 'br') as they don't contribute to text content
+    }
+
+    return null;
+  }
+
+  const result = traverse(vdom);
+
+  // If we didn't find a match but the offset equals the total length,
+  // place cursor at the end of the last text node
+  if (!result && absoluteOffset === currentOffset && lastTextNode) {
+    return {
+      nodeId: lastTextNode.nodeId,
+      offset: lastTextNode.length,
+    };
+  }
+
+  // If we didn't find a match and the offset is beyond our content, return null
+  if (!result && absoluteOffset > currentOffset) {
+    return null;
+  }
+
+  return result;
+
+  return result;
+}
+
+/**
  * Converts DOM node-relative offset to text content offset
  * This function walks through the DOM to calculate the cumulative text offset
  */

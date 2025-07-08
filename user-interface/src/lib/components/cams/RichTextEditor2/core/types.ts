@@ -25,6 +25,7 @@ export interface VDOMNode {
 // VDOM Selection Types
 export interface VDOMPosition {
   offset: number; // Offset in the text content
+  nodeId?: string; // Optional node ID for node-based selections (used by VDOMMutations)
 }
 
 export interface VDOMSelection {

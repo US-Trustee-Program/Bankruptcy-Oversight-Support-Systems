@@ -7,6 +7,8 @@ import {
   VDOMSelection,
 } from './types';
 import { toggleBoldInSelection } from './model/VDOMFormatting';
+import { textContentOffsetToNodeOffset, getTextOffsetInVDOM } from './model/VDOMSelection';
+import { insertText, deleteContentWithCleanup } from './model/VDOMMutations';
 
 // TODO: Future options for FSM configuration
 export type FSMOptions = object;
@@ -71,30 +73,78 @@ export class FSM {
   }
 
   private handleInsertText(text: string, currentState: EditorState): FSMResult {
-    // Get the current text content and insert at cursor position
+    // Phase 1: Hybrid approach - convert absolute selection to node-based selection,
+    // then use VDOMMutations.insertText, then convert result back to absolute
+
+    // Step 1: Convert absolute selection to node-based selection
+    const nodeStartPos = textContentOffsetToNodeOffset(
+      currentState.vdom,
+      currentState.selection.start.offset,
+    );
+    const nodeEndPos = textContentOffsetToNodeOffset(
+      currentState.vdom,
+      currentState.selection.end.offset,
+    );
+
+    // Step 2: Handle conversion failures with fallback
+    if (!nodeStartPos || !nodeEndPos) {
+      console.warn('Position conversion failed, using fallback approach');
+      return this.handleInsertTextFallback(text, currentState);
+    }
+
+    // Step 3: Create node-based selection for VDOMMutations
+    const nodeBasedSelection: VDOMSelection = {
+      start: { nodeId: nodeStartPos.nodeId, offset: nodeStartPos.offset },
+      end: { nodeId: nodeEndPos.nodeId, offset: nodeEndPos.offset },
+      isCollapsed: currentState.selection.isCollapsed,
+    };
+
+    // Step 4: Use VDOMMutations.insertText
+    const mutationResult = insertText(currentState.vdom, nodeBasedSelection, text);
+
+    // Step 5: Convert result selection back to absolute positioning
+    const absoluteStartOffset = getTextOffsetInVDOM(
+      mutationResult.newVDOM,
+      mutationResult.newSelection.start.nodeId!,
+      mutationResult.newSelection.start.offset,
+    );
+    const absoluteEndOffset = getTextOffsetInVDOM(
+      mutationResult.newVDOM,
+      mutationResult.newSelection.end.nodeId!,
+      mutationResult.newSelection.end.offset,
+    );
+
+    const absoluteSelection: VDOMSelection = {
+      start: { offset: absoluteStartOffset },
+      end: { offset: absoluteEndOffset },
+      isCollapsed: mutationResult.newSelection.isCollapsed,
+    };
+
+    return {
+      newVDOM: mutationResult.newVDOM,
+      newSelection: absoluteSelection,
+      didChange: true,
+      isPersistent: true,
+    };
+  }
+
+  private handleInsertTextFallback(text: string, currentState: EditorState): FSMResult {
+    // Original implementation as fallback
     const currentText = this.getTextContent(currentState.vdom);
-
-    // Use the selection state to determine cursor position instead of internal state
     const cursorPosition = currentState.selection.start.offset;
-
     const newText = currentText.slice(0, cursorPosition) + text + currentText.slice(cursorPosition);
-
-    // Calculate new cursor position
     const newCursorPosition = cursorPosition + text.length;
 
-    // Try to reuse existing text node if we have one, otherwise create new one
     let textNode: VDOMNode;
     const existingTextNode = currentState.vdom.find((node) => node.type === VDOM_NODE_TYPES.TEXT);
 
     if (existingTextNode) {
-      // Reuse existing text node ID to maintain selection continuity
       textNode = {
         id: existingTextNode.id,
         type: VDOM_NODE_TYPES.TEXT,
         content: newText,
       };
     } else {
-      // Create a new text node if none exists
       textNode = {
         id: `text-${Date.now()}-${Math.random()}`,
         type: VDOM_NODE_TYPES.TEXT,
@@ -103,8 +153,6 @@ export class FSM {
     }
 
     const newVDOM = [textNode];
-
-    // Create a new selection at the new cursor position
     const newSelection = {
       start: { offset: newCursorPosition },
       end: { offset: newCursorPosition },
@@ -120,6 +168,82 @@ export class FSM {
   }
 
   private handleBackspace(currentState: EditorState): FSMResult {
+    // Phase 1: Hybrid approach - convert absolute selection to node-based selection,
+    // then use VDOMMutations.deleteContent, then convert result back to absolute
+
+    // Step 1: For BACKSPACE, we need to delete the character BEFORE the cursor
+    // So we convert the position of the character to delete, not the cursor position
+    const cursorPosition = currentState.selection.start.offset;
+
+    // Handle edge case: can't delete if at beginning of document
+    if (cursorPosition <= 0) {
+      return {
+        newVDOM: currentState.vdom,
+        newSelection: currentState.selection,
+        didChange: false,
+        isPersistent: false,
+      };
+    }
+
+    // Handle malformed selections gracefully by checking bounds
+    const textContent = this.getTextContent(currentState.vdom);
+    if (cursorPosition > textContent.length) {
+      // Out of bounds selection - return original state with no changes
+      return {
+        newVDOM: currentState.vdom,
+        newSelection: {
+          start: { offset: textContent.length },
+          end: { offset: textContent.length },
+          isCollapsed: true,
+        },
+        didChange: false,
+        isPersistent: false,
+      };
+    }
+
+    // Convert the position of the character to delete (cursor - 1)
+    const deletePosition = cursorPosition - 1;
+    const nodeStartPos = textContentOffsetToNodeOffset(currentState.vdom, deletePosition);
+
+    // Step 2: Handle conversion failures with fallback
+    if (!nodeStartPos) {
+      return this.handleBackspaceFallback(currentState);
+    }
+
+    // Step 3: Create node-based selection for VDOMMutations
+    // For BACKSPACE, we create a range selection that deletes one character
+    const nodeBasedSelection: VDOMSelection = {
+      start: { nodeId: nodeStartPos.nodeId, offset: nodeStartPos.offset },
+      end: { nodeId: nodeStartPos.nodeId, offset: nodeStartPos.offset + 1 },
+      isCollapsed: false, // Range selection to delete the character
+    };
+
+    // Step 4: Use VDOMMutations.deleteContentWithCleanup for BACKSPACE
+    const mutationResult = deleteContentWithCleanup(currentState.vdom, nodeBasedSelection);
+
+    // Step 5: Convert result selection back to absolute positioning
+    const absoluteStartOffset = getTextOffsetInVDOM(
+      mutationResult.newVDOM,
+      mutationResult.newSelection.start.nodeId!,
+      mutationResult.newSelection.start.offset,
+    );
+
+    const absoluteSelection: VDOMSelection = {
+      start: { offset: absoluteStartOffset },
+      end: { offset: absoluteStartOffset },
+      isCollapsed: true,
+    };
+
+    return {
+      newVDOM: mutationResult.newVDOM,
+      newSelection: absoluteSelection,
+      didChange: true,
+      isPersistent: true,
+    };
+  }
+
+  private handleBackspaceFallback(currentState: EditorState): FSMResult {
+    // Original implementation as fallback
     // Use the selection state to determine cursor position
     const cursorPosition = currentState.selection.start.offset;
 
@@ -396,10 +520,20 @@ export class FSM {
   }
 
   public getTextContent(vdom: VDOMNode[]): string {
-    // Extract all text content from VDOM nodes
-    return vdom
-      .filter((node) => node.type === VDOM_NODE_TYPES.TEXT)
-      .map((node) => node.content || '')
-      .join('');
+    // Extract all text content from VDOM nodes, recursively traversing formatting containers
+    let result = '';
+
+    function traverse(nodes: VDOMNode[]): void {
+      for (const node of nodes) {
+        if (node.type === VDOM_NODE_TYPES.TEXT) {
+          result += node.content || '';
+        } else if (node.children) {
+          traverse(node.children);
+        }
+      }
+    }
+
+    traverse(vdom);
+    return result;
   }
 }

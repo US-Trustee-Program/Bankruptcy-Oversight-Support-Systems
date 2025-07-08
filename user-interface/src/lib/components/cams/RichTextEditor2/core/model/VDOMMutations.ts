@@ -1,6 +1,7 @@
 import { VDOMNode, VDOMSelection, VDOMPosition } from '../types';
 import { ZERO_WIDTH_SPACE } from '../../RichTextEditor.constants';
 import { createTextNode } from './VDOMNode';
+import { textContentOffsetToNodeOffset } from './VDOMSelection';
 
 /**
  * Result type for mutation operations
@@ -308,4 +309,233 @@ export function mergeNodes(
   };
 
   return { newVDOM, newSelection };
+}
+
+/**
+ * Removes empty formatting containers from the VDOM
+ * This is called after deletion operations to clean up containers that no longer have content
+ */
+export function removeEmptyFormattingContainers(vdom: VDOMNode[]): VDOMNode[] {
+  const result: VDOMNode[] = [];
+
+  for (const node of vdom) {
+    if (node.type === 'text') {
+      // Keep text nodes (even empty ones for now, they might have zero-width space)
+      result.push(node);
+    } else if (node.children) {
+      // Recursively clean children first
+      const cleanedChildren = removeEmptyFormattingContainers(node.children);
+
+      // Only keep the container if it has non-empty children
+      if (cleanedChildren.length > 0 && !isContainerEffectivelyEmpty(cleanedChildren)) {
+        result.push({
+          ...node,
+          children: cleanedChildren,
+        });
+      }
+      // If container is empty, don't add it to result (effectively removing it)
+    } else {
+      // Keep non-text nodes without children (like br tags)
+      result.push(node);
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Checks if a container is effectively empty (contains only empty text nodes or zero-width spaces)
+ */
+function isContainerEffectivelyEmpty(children: VDOMNode[]): boolean {
+  return children.every((child) => {
+    if (child.type === 'text') {
+      const content = child.content || '';
+      return content === '' || content === ZERO_WIDTH_SPACE;
+    }
+    if (child.children) {
+      return isContainerEffectivelyEmpty(child.children);
+    }
+    return false; // Non-text nodes without children are not considered empty
+  });
+}
+
+/**
+ * Merges adjacent text nodes in the VDOM
+ * This is called after deletion operations that might create adjacent text nodes
+ */
+export function mergeAdjacentTextNodes(vdom: VDOMNode[]): VDOMNode[] {
+  const result: VDOMNode[] = [];
+  let lastTextNode: VDOMNode | null = null;
+
+  for (const node of vdom) {
+    if (node.type === 'text') {
+      if (lastTextNode) {
+        // Merge with previous text node
+        lastTextNode.content = (lastTextNode.content || '') + (node.content || '');
+      } else {
+        // Start a new text sequence
+        lastTextNode = cloneNode(node);
+        result.push(lastTextNode);
+      }
+    } else {
+      // Non-text node breaks the text sequence
+      lastTextNode = null;
+
+      if (node.children) {
+        // Recursively merge children
+        result.push({
+          ...node,
+          children: mergeAdjacentTextNodes(node.children),
+        });
+      } else {
+        result.push(cloneNode(node));
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Enhanced deleteContent that includes cleanup operations
+ * This version handles empty container removal and node merging
+ */
+export function deleteContentWithCleanup(
+  vdom: VDOMNode[],
+  selection: VDOMSelection,
+): MutationResult {
+  // Calculate the absolute offset of the selection start in the original VDOM
+  // This helps us place the cursor correctly after cleanup
+  const originalStartOffset = getAbsoluteOffsetFromOriginalVDOM(vdom, selection.start);
+
+  // First, perform the basic deletion
+  const basicResult = deleteContent(vdom, selection);
+
+  // Then apply cleanup operations
+  let cleanedVDOM = removeEmptyFormattingContainers(basicResult.newVDOM);
+  cleanedVDOM = mergeAdjacentTextNodes(cleanedVDOM);
+
+  // Fix the selection if the referenced node no longer exists after cleanup
+  let fixedSelection = basicResult.newSelection;
+  const startNodeId = basicResult.newSelection.start.nodeId;
+  if (startNodeId) {
+    const referencedNode = findNodeById(cleanedVDOM, startNodeId);
+
+    if (!referencedNode) {
+      // The referenced node was removed during cleanup
+      // Use the original absolute offset to place cursor correctly
+      fixedSelection = findPositionFromAbsoluteOffset(cleanedVDOM, originalStartOffset);
+    }
+  }
+
+  return {
+    newVDOM: cleanedVDOM,
+    newSelection: fixedSelection,
+  };
+}
+
+/**
+ * Calculate absolute offset of a position in the original VDOM
+ */
+function getAbsoluteOffsetFromOriginalVDOM(vdom: VDOMNode[], position: VDOMPosition): number {
+  if (!position.nodeId) {
+    return position.offset || 0;
+  }
+
+  let absoluteOffset = 0;
+  let found = false;
+
+  function traverse(nodes: VDOMNode[]): void {
+    if (found) return;
+
+    for (const node of nodes) {
+      if (found) return;
+
+      if (node.id === position.nodeId) {
+        absoluteOffset += position.offset || 0;
+        found = true;
+        return;
+      }
+
+      if (node.type === 'text' && node.content) {
+        absoluteOffset += node.content.length;
+      } else if (node.children) {
+        traverse(node.children);
+      }
+    }
+  }
+
+  traverse(vdom);
+  return absoluteOffset;
+}
+
+/**
+ * Find a position in the cleaned VDOM based on absolute offset
+ * For BACKSPACE operations, we position at the deletion point
+ */
+function findPositionFromAbsoluteOffset(
+  vdom: VDOMNode[],
+  originalAbsoluteOffset: number,
+): VDOMSelection {
+  // For BACKSPACE, position the cursor at the deletion point
+  // originalAbsoluteOffset is the position of the deleted character
+  // We want the cursor positioned there (not -1)
+  const targetOffset = originalAbsoluteOffset;
+
+  const newPosition = textContentOffsetToNodeOffset(vdom, targetOffset);
+  if (newPosition) {
+    return {
+      start: newPosition,
+      end: newPosition,
+      isCollapsed: true,
+    };
+  }
+
+  // Fallback to end of last text node
+  return findEndOfLastTextNode(vdom);
+}
+
+/**
+ * Find the end position of the last text node (fallback)
+ */
+function findEndOfLastTextNode(vdom: VDOMNode[]): VDOMSelection {
+  let lastTextNode: VDOMNode | null = null;
+
+  function findLastTextNode(nodes: VDOMNode[]): void {
+    for (const node of nodes) {
+      if (node.type === 'text') {
+        lastTextNode = node;
+      } else if (node.children) {
+        findLastTextNode(node.children);
+      }
+    }
+  }
+
+  findLastTextNode(vdom);
+
+  if (lastTextNode) {
+    const textNode = lastTextNode as VDOMNode & { type: 'text'; content?: string };
+    const contentLength = textNode.content ? textNode.content.length : 0;
+    return {
+      start: { nodeId: textNode.id, offset: contentLength },
+      end: { nodeId: textNode.id, offset: contentLength },
+      isCollapsed: true,
+    };
+  }
+
+  // Ultimate fallback
+  if (vdom.length > 0) {
+    return {
+      start: { nodeId: vdom[0].id, offset: 0 },
+      end: { nodeId: vdom[0].id, offset: 0 },
+      isCollapsed: true,
+    };
+  }
+
+  // Empty VDOM fallback
+  return {
+    start: { offset: 0 },
+    end: { offset: 0 },
+    isCollapsed: true,
+  };
 }
