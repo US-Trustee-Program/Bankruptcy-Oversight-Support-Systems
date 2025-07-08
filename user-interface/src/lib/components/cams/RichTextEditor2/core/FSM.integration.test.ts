@@ -1,6 +1,7 @@
 import { test, expect, beforeEach } from 'vitest';
 import { FSM } from './FSM';
 import { EditorState, VDOMNode } from './types';
+import { getFormatStateAtCursorPosition } from './model/VDOMFormatting';
 
 describe('FSM.handleInsertText - Bug Fix Integration Tests', () => {
   let fsm: FSM;
@@ -31,15 +32,21 @@ describe('FSM.handleInsertText - Bug Fix Integration Tests', () => {
       },
     ];
 
+    const selection = {
+      start: { offset: 14 }, // Cursor at the actual end of document
+      end: { offset: 14 },
+      isCollapsed: true,
+    };
+
+    // Determine the correct toggle state based on cursor position
+    const boldState = getFormatStateAtCursorPosition(initialVDOM, selection, 'bold');
+
     const initialState: EditorState = {
       vdom: initialVDOM,
-      selection: {
-        start: { offset: 14 }, // Cursor at the actual end of document
-        end: { offset: 14 },
-        isCollapsed: true,
-      },
+      selection,
       canUndo: false,
       canRedo: false,
+      formatToggleState: { bold: boldState, italic: 'inactive', underline: 'inactive' },
     };
 
     // Insert a space at the end
@@ -96,15 +103,21 @@ describe('FSM.handleInsertText - Bug Fix Integration Tests', () => {
       },
     ];
 
+    const selection = {
+      start: { offset: 6 }, // Exactly at boundary between "Hello " and "World"
+      end: { offset: 6 },
+      isCollapsed: true,
+    };
+
+    // Determine the correct toggle state based on cursor position
+    const boldState = getFormatStateAtCursorPosition(initialVDOM, selection, 'bold');
+
     const initialState: EditorState = {
       vdom: initialVDOM,
-      selection: {
-        start: { offset: 6 }, // Exactly at boundary between "Hello " and "World"
-        end: { offset: 6 },
-        isCollapsed: true,
-      },
+      selection,
       canUndo: false,
       canRedo: false,
+      formatToggleState: { bold: boldState, italic: 'inactive', underline: 'inactive' },
     };
 
     const result = fsm.processCommand({ type: 'INSERT_TEXT', payload: 'Big ' }, initialState);
@@ -145,15 +158,21 @@ describe('FSM.handleInsertText - Bug Fix Integration Tests', () => {
       },
     ];
 
+    const selection = {
+      start: { offset: 11 }, // After "bold " in the formatted text
+      end: { offset: 11 },
+      isCollapsed: true,
+    };
+
+    // Determine the correct toggle state based on cursor position
+    const boldState = getFormatStateAtCursorPosition(initialVDOM, selection, 'bold');
+
     const initialState: EditorState = {
       vdom: initialVDOM,
-      selection: {
-        start: { offset: 11 }, // After "bold " in the formatted text
-        end: { offset: 11 },
-        isCollapsed: true,
-      },
+      selection,
       canUndo: false,
       canRedo: false,
+      formatToggleState: { bold: boldState, italic: 'inactive', underline: 'inactive' },
     };
 
     const result = fsm.processCommand({ type: 'INSERT_TEXT', payload: 'very ' }, initialState);
@@ -178,15 +197,21 @@ describe('FSM.handleInsertText - Bug Fix Integration Tests', () => {
       } as VDOMNode,
     ];
 
+    const selection = {
+      start: { offset: 0 },
+      end: { offset: 0 },
+      isCollapsed: true,
+    };
+
+    // Determine the correct toggle state based on cursor position
+    const boldState = getFormatStateAtCursorPosition(initialVDOM, selection, 'bold');
+
     const initialState: EditorState = {
       vdom: initialVDOM,
-      selection: {
-        start: { offset: 0 },
-        end: { offset: 0 },
-        isCollapsed: true,
-      },
+      selection,
       canUndo: false,
       canRedo: false,
+      formatToggleState: { bold: boldState, italic: 'inactive', underline: 'inactive' },
     };
 
     const result = fsm.processCommand({ type: 'INSERT_TEXT', payload: 'test' }, initialState);

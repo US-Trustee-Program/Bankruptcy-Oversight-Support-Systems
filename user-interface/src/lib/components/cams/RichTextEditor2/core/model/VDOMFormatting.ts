@@ -1,4 +1,10 @@
-import { VDOMNode, RichTextFormatState, FORMAT_TO_VDOM_TYPE, VDOMSelection } from '../types';
+import {
+  VDOMNode,
+  RichTextFormatState,
+  FORMAT_TO_VDOM_TYPE,
+  VDOMSelection,
+  FormatStateValue,
+} from '../types';
 import { RichTextFormat } from '../../RichTextEditor.constants';
 
 /**
@@ -97,20 +103,73 @@ export function getFormattingAtSelection(selectedNodes: VDOMNode[]): RichTextFor
 
 /**
  * Get all nodes within a selection range
- * (This is a simplified placeholder - a real implementation would use the selection range)
+ * For collapsed selections (cursor position), returns nodes containing the character to the left of cursor
  */
 export function getNodesInSelection(
-  _vdom: VDOMNode[],
-  _startOffset: number,
-  _endOffset: number,
+  vdom: VDOMNode[],
+  startOffset: number,
+  endOffset: number,
 ): VDOMNode[] {
-  // This is a simplified implementation that just returns text nodes
-  // A real implementation would traverse the VDOM and find nodes within the selection range
-  const nodes: VDOMNode[] = [];
+  if (vdom.length === 0) {
+    return [];
+  }
 
-  // We'll implement this with real selection traversal logic later
-  // For now, just return an empty array as a placeholder
-  return nodes;
+  // For collapsed selections at position 0, there's no character to the left
+  if (startOffset === endOffset && startOffset === 0) {
+    return [];
+  }
+
+  const { formattingMap } = buildTextContentAndFormattingMap(vdom);
+
+  // For collapsed selections, we want the formatting of the character to the left
+  if (startOffset === endOffset) {
+    const charIndex = startOffset - 1;
+    if (charIndex < 0 || charIndex >= formattingMap.length) {
+      return [];
+    }
+
+    // Find the node that contains this character
+    const nodeId = formattingMap[charIndex].nodeId;
+    return findNodesById(vdom, nodeId);
+  }
+
+  // For range selections, find all nodes that intersect with the selection
+  const selectedNodes: VDOMNode[] = [];
+  const seenNodeIds = new Set<string>();
+
+  for (let i = startOffset; i < endOffset && i < formattingMap.length; i++) {
+    const nodeId = formattingMap[i].nodeId;
+    if (!seenNodeIds.has(nodeId)) {
+      seenNodeIds.add(nodeId);
+      const nodes = findNodesById(vdom, nodeId);
+      selectedNodes.push(...nodes);
+    }
+  }
+
+  return selectedNodes;
+}
+
+/**
+ * Helper function to find nodes by ID in the VDOM tree
+ */
+function findNodesById(vdom: VDOMNode[], targetId: string): VDOMNode[] {
+  const result: VDOMNode[] = [];
+
+  function traverse(nodes: VDOMNode[]) {
+    for (const node of nodes) {
+      if (node.id === targetId) {
+        // For formatting context, we want the parent container (strong, em, etc.)
+        // If it's a text node inside a formatting container, return the container
+        result.push(node);
+      }
+      if (node.children) {
+        traverse(node.children);
+      }
+    }
+  }
+
+  traverse(vdom);
+  return result;
 }
 
 /**
@@ -130,41 +189,30 @@ export function isTextNodeBold(textNode: VDOMNode, vdom: VDOMNode[]): boolean {
  * Toggle bold formatting for nodes within a selection
  */
 export function toggleBoldInSelection(vdom: VDOMNode[], selection: VDOMSelection): VDOMNode[] {
-  console.log('===== toggleBoldInSelection CALLED =====');
-  console.log('VDOM:', vdom);
-  console.log('Selection:', selection);
-  console.trace('Stack trace');
-
   // Handle empty VDOM
   if (vdom.length === 0) {
-    console.log('Empty VDOM, nothing to format');
     return [];
   }
 
   // Calculate the overall text content and determine formatting state
   const { textContent, formattingMap } = buildTextContentAndFormattingMap(vdom);
-  console.log('Text content:', textContent);
 
   // Clamp selection to actual content bounds
   const startOffset = Math.max(0, Math.min(selection.start.offset, textContent.length));
   const endOffset = Math.max(startOffset, Math.min(selection.end.offset, textContent.length));
-  console.log('Selection range:', startOffset, 'to', endOffset);
 
   // If selection is collapsed or at end, toggle entire content (for backward compatibility)
   if (startOffset === endOffset || startOffset === textContent.length) {
-    console.log('Collapsed selection, toggling entire content');
     return toggleBoldEntireContent(vdom);
   }
 
   // Check if ALL the text in the selection has bold formatting
   // If even one character is not bold, we'll apply bold to the entire selection
   const selectionHasBold = hasFormattingInRange(formattingMap, startOffset, endOffset, 'bold');
-  console.log('Selection has bold formatting?', selectionHasBold);
 
   // Apply the toggle operation - if selectionHasBold is true (all chars are bold), remove formatting
   // If selectionHasBold is false (some chars are not bold), apply bold to all
   const shouldApply = !selectionHasBold;
-  console.log(shouldApply ? 'Applying bold formatting' : 'Removing bold formatting');
 
   return applyFormattingToggle(vdom, startOffset, endOffset, 'bold', shouldApply);
 }
@@ -225,38 +273,19 @@ function hasFormattingInRange(
   endOffset: number,
   format: 'bold',
 ): boolean {
-  console.log('==== hasFormattingInRange CALLED ====');
-  console.log('Format:', format);
-  console.log('Range:', startOffset, 'to', endOffset);
-  console.log('FormattingMap length:', formattingMap.length);
-  console.log('First few formatting entries:', formattingMap.slice(0, 5));
-  console.trace('Stack trace');
-
   if (startOffset >= endOffset || startOffset >= formattingMap.length) {
-    console.log('Empty selection or invalid range, applying formatting by default');
     return false;
   }
 
-  // Count formatted characters for debugging
-  let formattedCount = 0;
-
   // Check each character in the range
   for (let i = startOffset; i < Math.min(endOffset, formattingMap.length); i++) {
-    if (formattingMap[i][format]) {
-      formattedCount++;
-    } else {
+    if (!formattingMap[i][format]) {
       // If ANY character is not formatted, we should apply formatting to all
-      console.log(
-        'Found unformatted character at position',
-        i - startOffset,
-        'applying formatting to all',
-      );
       return false;
     }
   }
 
   // If we get here, ALL characters have the formatting
-  console.log('All characters are formatted:', formattedCount, 'removing formatting from all');
   return true;
 }
 
@@ -438,6 +467,19 @@ function toggleBoldEntireContent(vdom: VDOMNode[]): VDOMNode[] {
 }
 
 /**
+ * Get the text length of a VDOM node
+ */
+function getNodeTextLength(node: VDOMNode): number {
+  if (node.type === 'text') {
+    return node.content?.length || 0;
+  }
+  if (node.children) {
+    return node.children.reduce((total, child) => total + getNodeTextLength(child), 0);
+  }
+  return 0;
+}
+
+/**
  * Helper function to create a text node
  */
 function createTextNode(content: string): VDOMNode {
@@ -446,4 +488,409 @@ function createTextNode(content: string): VDOMNode {
     type: 'text',
     content,
   };
+}
+
+/**
+ * Insert text with the current toggle formatting state
+ */
+export function insertTextWithFormatting(
+  vdom: VDOMNode[],
+  selection: VDOMSelection,
+  text: string,
+  toggleState: import('../types').FormatToggleState,
+): { newVDOM: VDOMNode[]; newSelection: VDOMSelection } {
+  // For collapsed selections, insert text with specified formatting
+  if (!selection.isCollapsed) {
+    throw new Error('insertTextWithFormatting currently only supports collapsed selections');
+  }
+
+  const { textContent, formattingMap } = buildTextContentAndFormattingMap(vdom);
+  const clampedOffset = Math.max(0, Math.min(selection.start.offset, textContent.length));
+
+  if (toggleState.bold === 'active') {
+    return insertBoldText(vdom, clampedOffset, text, textContent, formattingMap);
+  } else {
+    return insertPlainText(vdom, clampedOffset, text, textContent);
+  }
+}
+
+/**
+ * Insert plain text, merging with adjacent text nodes when possible
+ */
+function insertPlainText(
+  vdom: VDOMNode[],
+  offset: number,
+  text: string,
+  textContent: string,
+): { newVDOM: VDOMNode[]; newSelection: VDOMSelection } {
+  // Handle simple case: single text node
+  if (vdom.length === 1 && vdom[0].type === 'text') {
+    const textNode = vdom[0];
+    const newContent = textContent.slice(0, offset) + text + textContent.slice(offset);
+
+    return {
+      newVDOM: [
+        {
+          ...textNode,
+          content: newContent,
+        },
+      ],
+      newSelection: {
+        start: { offset: offset + text.length },
+        end: { offset: offset + text.length },
+        isCollapsed: true,
+      },
+    };
+  }
+
+  // For complex VDOM, check if we can merge with adjacent plain text
+  const { formattingMap } = buildTextContentAndFormattingMap(vdom);
+
+  // Check if insertion point is between two plain text characters
+  const prevCharIndex = offset - 1;
+  const nextCharIndex = offset;
+  const prevIsPlain =
+    prevCharIndex < 0 ||
+    (prevCharIndex < formattingMap.length && !formattingMap[prevCharIndex].bold);
+  const nextIsPlain = nextCharIndex >= formattingMap.length || !formattingMap[nextCharIndex].bold;
+
+  // If both adjacent characters are plain text (or we're at boundaries), try to merge
+  if (prevIsPlain && nextIsPlain) {
+    // Find the position in VDOM where we should insert
+    let currentOffset = 0;
+    let insertNodeIndex = -1;
+    let insertCharOffset = 0;
+
+    for (let i = 0; i < vdom.length; i++) {
+      const node = vdom[i];
+      const nodeLength = getNodeTextLength(node);
+
+      if (currentOffset <= offset && offset <= currentOffset + nodeLength) {
+        insertNodeIndex = i;
+        insertCharOffset = offset - currentOffset;
+        break;
+      }
+
+      currentOffset += nodeLength;
+    }
+
+    // If we found a text node to insert into
+    if (insertNodeIndex >= 0 && vdom[insertNodeIndex].type === 'text') {
+      const targetNode = vdom[insertNodeIndex];
+      const newContent =
+        (targetNode.content || '').slice(0, insertCharOffset) +
+        text +
+        (targetNode.content || '').slice(insertCharOffset);
+
+      const newVDOM = [...vdom];
+      newVDOM[insertNodeIndex] = {
+        ...targetNode,
+        content: newContent,
+      };
+
+      return {
+        newVDOM,
+        newSelection: {
+          start: { offset: offset + text.length },
+          end: { offset: offset + text.length },
+          isCollapsed: true,
+        },
+      };
+    }
+
+    // If we're at the boundary between nodes, try to merge with previous text node
+    if (
+      insertCharOffset === 0 &&
+      insertNodeIndex > 0 &&
+      vdom[insertNodeIndex - 1].type === 'text'
+    ) {
+      const prevNode = vdom[insertNodeIndex - 1];
+      const newContent = (prevNode.content || '') + text;
+
+      const newVDOM = [...vdom];
+      newVDOM[insertNodeIndex - 1] = {
+        ...prevNode,
+        content: newContent,
+      };
+
+      return {
+        newVDOM,
+        newSelection: {
+          start: { offset: offset + text.length },
+          end: { offset: offset + text.length },
+          isCollapsed: true,
+        },
+      };
+    }
+  }
+
+  // Fallback: split and rebuild (original behavior)
+  const beforeText = textContent.slice(0, offset);
+  const afterText = textContent.slice(offset);
+
+  const result: VDOMNode[] = [];
+
+  // Add before text (preserve original formatting)
+  if (beforeText) {
+    const beforeNodes = extractFormattedTextRange(vdom, 0, offset);
+    result.push(...beforeNodes);
+  }
+
+  // Add inserted text as plain
+  const insertedTextNode = createTextNode(text);
+  result.push(insertedTextNode);
+
+  // Add after text (preserve original formatting)
+  if (afterText) {
+    const afterNodes = extractFormattedTextRange(vdom, offset, textContent.length);
+    result.push(...afterNodes);
+  }
+
+  return {
+    newVDOM: result,
+    newSelection: {
+      start: { offset: offset + text.length },
+      end: { offset: offset + text.length },
+      isCollapsed: true,
+    },
+  };
+}
+
+/**
+ * Insert bold text, extending existing bold formatting when possible
+ */
+function insertBoldText(
+  vdom: VDOMNode[],
+  offset: number,
+  text: string,
+  textContent: string,
+  formattingMap: Array<{ bold: boolean }>,
+): { newVDOM: VDOMNode[]; newSelection: VDOMSelection } {
+  // Check if we're inserting adjacent to bold text
+  const prevCharIndex = offset - 1;
+  const nextCharIndex = offset;
+  const prevIsBold = prevCharIndex >= 0 && formattingMap[prevCharIndex]?.bold;
+  const nextIsBold = nextCharIndex < formattingMap.length && formattingMap[nextCharIndex]?.bold;
+
+  // If we're in the middle of bold text OR adjacent to bold text on either side, extend it
+  if (prevIsBold || nextIsBold) {
+    return extendBoldFormatting(vdom, offset, text, textContent);
+  }
+
+  // Otherwise, split and insert new bold formatting
+  return splitAndInsertBold(vdom, offset, text, textContent);
+}
+
+/**
+ * Extend existing bold formatting by inserting text into it
+ */
+function extendBoldFormatting(
+  vdom: VDOMNode[],
+  offset: number,
+  text: string,
+  textContent: string,
+): { newVDOM: VDOMNode[]; newSelection: VDOMSelection } {
+  // Find the strong node that contains or is adjacent to this position
+  let currentOffset = 0;
+  let targetNodeIndex = -1;
+  let relativeOffset = 0;
+
+  for (let i = 0; i < vdom.length; i++) {
+    const node = vdom[i];
+
+    if (node.type === 'strong' && node.children) {
+      const strongTextContent = node.children
+        .filter((child) => child.type === 'text')
+        .map((child) => child.content || '')
+        .join('');
+
+      const nodeEndOffset = currentOffset + strongTextContent.length;
+
+      // Check if offset falls within this strong node or right at its end
+      if (offset >= currentOffset && offset <= nodeEndOffset) {
+        targetNodeIndex = i;
+        relativeOffset = offset - currentOffset;
+        break;
+      }
+
+      currentOffset = nodeEndOffset;
+    } else if (node.type === 'text') {
+      const nodeEndOffset = currentOffset + (node.content?.length || 0);
+
+      // Check if offset falls right after a strong node (for appending)
+      if (offset === currentOffset && i > 0 && vdom[i - 1].type === 'strong') {
+        targetNodeIndex = i - 1;
+        relativeOffset = (vdom[i - 1] as VDOMNode).children?.[0]?.content?.length || 0;
+        break;
+      }
+
+      currentOffset = nodeEndOffset;
+    }
+  }
+
+  if (targetNodeIndex >= 0) {
+    const targetNode = vdom[targetNodeIndex];
+
+    if (targetNode.type === 'strong' && targetNode.children) {
+      const strongTextContent = targetNode.children
+        .filter((child) => child.type === 'text')
+        .map((child) => child.content || '')
+        .join('');
+
+      const newContent =
+        strongTextContent.slice(0, relativeOffset) + text + strongTextContent.slice(relativeOffset);
+
+      const newStrongNode: VDOMNode = {
+        ...targetNode,
+        children: [
+          {
+            ...targetNode.children[0],
+            content: newContent,
+          },
+        ],
+      };
+
+      // Rebuild VDOM with the extended strong node
+      const newVDOM = [...vdom];
+      newVDOM[targetNodeIndex] = newStrongNode;
+
+      return {
+        newVDOM,
+        newSelection: {
+          start: { offset: offset + text.length },
+          end: { offset: offset + text.length },
+          isCollapsed: true,
+        },
+      };
+    }
+  }
+
+  // Fallback to split and insert
+  return splitAndInsertBold(vdom, offset, text, textContent);
+}
+
+/**
+ * Split text and insert new bold formatting
+ */
+function splitAndInsertBold(
+  vdom: VDOMNode[],
+  offset: number,
+  text: string,
+  textContent: string,
+): { newVDOM: VDOMNode[]; newSelection: VDOMSelection } {
+  // Handle simple case: single text node to split
+  if (vdom.length === 1 && vdom[0].type === 'text') {
+    const textNode = vdom[0];
+    const beforeText = textContent.slice(0, offset);
+    const afterText = textContent.slice(offset);
+
+    const result: VDOMNode[] = [];
+
+    if (beforeText) {
+      result.push({
+        ...textNode,
+        content: beforeText,
+      });
+    }
+
+    result.push({
+      id: `strong-${Date.now()}-${Math.random()}`,
+      type: 'strong',
+      children: [createTextNode(text)],
+    });
+
+    if (afterText) {
+      result.push(createTextNode(afterText));
+    }
+
+    return {
+      newVDOM: result,
+      newSelection: {
+        start: { offset: offset + text.length },
+        end: { offset: offset + text.length },
+        isCollapsed: true,
+      },
+    };
+  }
+
+  // For complex VDOM, split and rebuild
+  const beforeText = textContent.slice(0, offset);
+  const afterText = textContent.slice(offset);
+
+  const result: VDOMNode[] = [];
+
+  // Add before text (preserve original formatting)
+  if (beforeText) {
+    const beforeNodes = extractFormattedTextRange(vdom, 0, offset);
+    result.push(...beforeNodes);
+  }
+
+  // Add inserted text as bold
+  const insertedTextNode = createTextNode(text);
+  const strongNode: VDOMNode = {
+    id: `strong-${Date.now()}-${Math.random()}`,
+    type: 'strong',
+    children: [insertedTextNode],
+  };
+  result.push(strongNode);
+
+  // Add after text (preserve original formatting)
+  if (afterText) {
+    const afterNodes = extractFormattedTextRange(vdom, offset, textContent.length);
+    result.push(...afterNodes);
+  }
+
+  return {
+    newVDOM: result,
+    newSelection: {
+      start: { offset: offset + text.length },
+      end: { offset: offset + text.length },
+      isCollapsed: true,
+    },
+  };
+}
+
+/**
+ * Get the formatting state at a specific cursor position
+ * Returns the formatting of the character immediately to the left of the cursor
+ */
+export function getFormatStateAtCursorPosition(
+  vdom: VDOMNode[],
+  selection: VDOMSelection,
+  format: RichTextFormat,
+): FormatStateValue {
+  // If cursor is at position 0 or document is empty, always inactive
+  if (selection.start.offset <= 0 || vdom.length === 0) {
+    return 'inactive';
+  }
+
+  // Build text content and formatting map to find character at position
+  const { formattingMap } = buildTextContentAndFormattingMap(vdom);
+
+  // Get the character immediately to the left of cursor (offset - 1)
+  const charIndex = selection.start.offset - 1;
+
+  // If index is out of bounds, return inactive
+  if (charIndex < 0 || charIndex >= formattingMap.length) {
+    return 'inactive';
+  }
+
+  // Check the formatting of the character to the left
+  const charFormatting = formattingMap[charIndex];
+
+  // Return the appropriate format state based on the format type
+  switch (format) {
+    case 'bold':
+      return charFormatting.bold ? 'active' : 'inactive';
+    case 'italic':
+      // For now, we only support bold in the formatting map
+      // This will need to be extended when italic/underline are implemented
+      return 'inactive';
+    case 'underline':
+      // For now, we only support bold in the formatting map
+      // This will need to be extended when italic/underline are implemented
+      return 'inactive';
+    default:
+      return 'inactive';
+  }
 }

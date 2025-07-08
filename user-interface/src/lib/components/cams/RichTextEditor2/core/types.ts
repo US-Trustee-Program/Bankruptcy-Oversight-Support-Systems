@@ -43,6 +43,13 @@ export interface RichTextFormatState {
   underline: FormatStateValue;
 }
 
+// Format toggle state types for tracking user's explicit formatting toggles
+export interface FormatToggleState {
+  bold: FormatStateValue;
+  italic: FormatStateValue;
+  underline: FormatStateValue;
+}
+
 // Editor Command Types
 export type EditorCommandType =
   | 'INSERT_TEXT'
@@ -78,6 +85,7 @@ export interface EditorState {
   selection: VDOMSelection;
   canUndo: boolean;
   canRedo: boolean;
+  formatToggleState: FormatToggleState;
 }
 
 // History Types
@@ -93,6 +101,7 @@ export interface FSMResult {
   newSelection: VDOMSelection;
   didChange: boolean;
   isPersistent: boolean;
+  formatToggleState?: FormatToggleState; // Optional - only present when toggle state changes
 }
 
 // Clipboard Types

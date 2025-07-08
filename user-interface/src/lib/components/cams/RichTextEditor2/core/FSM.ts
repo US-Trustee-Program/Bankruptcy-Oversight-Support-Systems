@@ -5,10 +5,15 @@ import {
   VDOMNode,
   VDOM_NODE_TYPES,
   VDOMSelection,
+  FormatStateValue,
 } from './types';
-import { toggleBoldInSelection } from './model/VDOMFormatting';
+import {
+  getFormatStateAtCursorPosition,
+  insertTextWithFormatting,
+  toggleBoldInSelection,
+} from './model/VDOMFormatting';
 import { textContentOffsetToNodeOffset, getTextOffsetInVDOM } from './model/VDOMSelection';
-import { insertText, deleteContentWithCleanup } from './model/VDOMMutations';
+import { deleteContentWithCleanup } from './model/VDOMMutations';
 
 // TODO: Future options for FSM configuration
 export type FSMOptions = object;
@@ -73,58 +78,21 @@ export class FSM {
   }
 
   private handleInsertText(text: string, currentState: EditorState): FSMResult {
-    // Phase 1: Hybrid approach - convert absolute selection to node-based selection,
-    // then use VDOMMutations.insertText, then convert result back to absolute
-
-    // Step 1: Convert absolute selection to node-based selection
-    const nodeStartPos = textContentOffsetToNodeOffset(
+    // Use the new insertTextWithFormatting function that respects toggle state
+    const result = insertTextWithFormatting(
       currentState.vdom,
-      currentState.selection.start.offset,
+      currentState.selection,
+      text,
+      currentState.formatToggleState,
     );
-    const nodeEndPos = textContentOffsetToNodeOffset(
-      currentState.vdom,
-      currentState.selection.end.offset,
-    );
-
-    // Step 2: Handle conversion failures with fallback
-    if (!nodeStartPos || !nodeEndPos) {
-      console.warn('Position conversion failed, using fallback approach');
-      return this.handleInsertTextFallback(text, currentState);
-    }
-
-    // Step 3: Create node-based selection for VDOMMutations
-    const nodeBasedSelection: VDOMSelection = {
-      start: { nodeId: nodeStartPos.nodeId, offset: nodeStartPos.offset },
-      end: { nodeId: nodeEndPos.nodeId, offset: nodeEndPos.offset },
-      isCollapsed: currentState.selection.isCollapsed,
-    };
-
-    // Step 4: Use VDOMMutations.insertText
-    const mutationResult = insertText(currentState.vdom, nodeBasedSelection, text);
-
-    // Step 5: Convert result selection back to absolute positioning
-    const absoluteStartOffset = getTextOffsetInVDOM(
-      mutationResult.newVDOM,
-      mutationResult.newSelection.start.nodeId!,
-      mutationResult.newSelection.start.offset,
-    );
-    const absoluteEndOffset = getTextOffsetInVDOM(
-      mutationResult.newVDOM,
-      mutationResult.newSelection.end.nodeId!,
-      mutationResult.newSelection.end.offset,
-    );
-
-    const absoluteSelection: VDOMSelection = {
-      start: { offset: absoluteStartOffset },
-      end: { offset: absoluteEndOffset },
-      isCollapsed: mutationResult.newSelection.isCollapsed,
-    };
 
     return {
-      newVDOM: mutationResult.newVDOM,
-      newSelection: absoluteSelection,
+      newVDOM: result.newVDOM,
+      newSelection: result.newSelection,
       didChange: true,
       isPersistent: true,
+      // Note: Toggle state should be reset after text insertion
+      // but we'll handle that in the Editor when it receives the FSM result
     };
   }
 
@@ -435,42 +403,44 @@ export class FSM {
    * Handle the TOGGLE_BOLD command
    */
   private handleToggleBold(currentState: EditorState): FSMResult {
-    console.log('===== FSM.handleToggleBold CALLED =====');
-    console.trace('FSM.handleToggleBold stack trace');
+    const selection = currentState.selection;
 
-    // Store cursor position before toggling bold
-    const selectionStart = currentState.selection.start.offset;
-    const selectionEnd = currentState.selection.end.offset;
-    const isSelectionCollapsed = currentState.selection.isCollapsed;
+    // For collapsed selections (cursor), we should only update the toggle state
+    // without modifying the VDOM structure
+    if (selection.isCollapsed) {
+      // Get current format state at cursor position
+      const currentBoldState = getFormatStateAtCursorPosition(currentState.vdom, selection, 'bold');
 
-    console.log('Current selection:', {
-      start: selectionStart,
-      end: selectionEnd,
-      isCollapsed: isSelectionCollapsed,
-    });
-    console.log('Current VDOM:', currentState.vdom);
+      // Toggle the bold state
+      const newBoldState: FormatStateValue = currentBoldState === 'active' ? 'inactive' : 'active';
+      const newToggleState = {
+        ...currentState.formatToggleState,
+        bold: newBoldState,
+      };
 
-    // Use the formatting function to toggle bold
-    console.log('Calling toggleBoldInSelection...');
-    const newVDOM = toggleBoldInSelection(currentState.vdom, currentState.selection);
+      // Return with updated toggle state but no VDOM changes
+      return {
+        newVDOM: currentState.vdom, // No change to VDOM
+        newSelection: selection, // No change to selection
+        didChange: false, // Content didn't change
+        isPersistent: false, // Don't persist just a toggle state change
+        formatToggleState: newToggleState, // Update the toggle state
+      };
+    } else {
+      // For range selections, apply formatting immediately using the old function
+      const newVDOM = toggleBoldInSelection(currentState.vdom, selection);
 
-    // Check if there was actually a change
-    const didChange = JSON.stringify(newVDOM) !== JSON.stringify(currentState.vdom);
+      // Check if there was actually a change
+      const didChange = JSON.stringify(newVDOM) !== JSON.stringify(currentState.vdom);
 
-    // Create a new selection that preserves the original cursor position
-    // This helps prevent cursor jumping when toggling bold
-    const newSelection = {
-      start: { offset: selectionStart },
-      end: { offset: selectionEnd },
-      isCollapsed: isSelectionCollapsed,
-    };
-
-    return {
-      newVDOM,
-      newSelection,
-      didChange,
-      isPersistent: didChange,
-    };
+      return {
+        newVDOM,
+        newSelection: selection,
+        didChange,
+        isPersistent: didChange,
+        // No formatToggleState change for range selections
+      };
+    }
   }
 
   /**

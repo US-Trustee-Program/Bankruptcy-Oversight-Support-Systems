@@ -29,6 +29,11 @@ describe('FSM with Selection Handling', () => {
       selection: defaultSelection,
       canUndo: false,
       canRedo: false,
+      formatToggleState: {
+        bold: 'inactive',
+        italic: 'inactive',
+        underline: 'inactive',
+      },
     };
   });
 
@@ -91,6 +96,11 @@ describe('FSM with Selection Handling', () => {
         },
         canUndo: false,
         canRedo: false,
+        formatToggleState: {
+          bold: 'inactive',
+          italic: 'inactive',
+          underline: 'inactive',
+        },
       };
       const command: EditorCommand = { type: 'TOGGLE_BOLD' };
 
@@ -129,6 +139,11 @@ describe('FSM with Selection Handling', () => {
         },
         canUndo: false,
         canRedo: false,
+        formatToggleState: {
+          bold: 'inactive',
+          italic: 'inactive',
+          underline: 'inactive',
+        },
       };
       const command: EditorCommand = { type: 'TOGGLE_BOLD' };
 
@@ -162,6 +177,11 @@ describe('FSM with Selection Handling', () => {
         selection: originalSelection,
         canUndo: false,
         canRedo: false,
+        formatToggleState: {
+          bold: 'inactive',
+          italic: 'inactive',
+          underline: 'inactive',
+        },
       };
       const command: EditorCommand = { type: 'TOGGLE_BOLD' };
 
@@ -189,6 +209,11 @@ describe('FSM with Selection Handling', () => {
         },
         canUndo: false,
         canRedo: false,
+        formatToggleState: {
+          bold: 'inactive',
+          italic: 'inactive',
+          underline: 'inactive',
+        },
       };
       const command: EditorCommand = { type: 'TOGGLE_BOLD' };
 
@@ -196,9 +221,12 @@ describe('FSM with Selection Handling', () => {
       const result = fsm.processCommand(command, state);
 
       // Assert
-      expect(result.didChange).toBe(true);
-      expect(result.newVDOM[0].type).toBe('strong');
-      expect(result.newVDOM[0].children![0].content).toBe('Hello');
+      // For collapsed selections, we should only update toggle state, not the VDOM
+      expect(result.didChange).toBe(false);
+      expect(result.newVDOM).toEqual(state.vdom); // VDOM should be unchanged
+      expect(result.formatToggleState).toBeDefined();
+      expect(result.formatToggleState!.bold).toBe('active'); // Toggle state should be updated
+      expect(result.newSelection).toEqual(state.selection); // Selection should be unchanged
     });
 
     test('should handle empty VDOM gracefully', () => {
@@ -212,6 +240,11 @@ describe('FSM with Selection Handling', () => {
         },
         canUndo: false,
         canRedo: false,
+        formatToggleState: {
+          bold: 'inactive',
+          italic: 'inactive',
+          underline: 'inactive',
+        },
       };
       const command: EditorCommand = { type: 'TOGGLE_BOLD' };
 

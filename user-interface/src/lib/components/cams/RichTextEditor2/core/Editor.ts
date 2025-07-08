@@ -5,13 +5,12 @@ import {
   VDOMNode,
   VDOMSelection,
   EditorCommand,
+  FSMResult,
 } from './types';
 import { FSM } from './FSM';
 import { vdomToHTML } from './io/VDOMToHTML';
 import { SelectionService } from './selection/SelectionService.humble';
 import { getSelectionFromBrowser, applySelectionToBrowser } from './model/VDOMSelection';
-// Import the direct formatting function for debugging
-import { toggleBoldInSelection as directToggleBold } from './model/VDOMFormatting';
 
 export interface EditorOptions {
   rootElement?: HTMLDivElement | null;
@@ -48,6 +47,11 @@ export class Editor {
       selection: emptySelection,
       canUndo: false,
       canRedo: false,
+      formatToggleState: {
+        bold: 'inactive',
+        italic: 'inactive',
+        underline: 'inactive',
+      },
     };
 
     // Notify of initial state
@@ -246,7 +250,6 @@ export class Editor {
       console.trace('Bold keyboard shortcut stack trace');
       event.preventDefault();
 
-      // DIRECTLY CALL toggleBold() method for Command+B and Ctrl+B
       console.log('Directly calling toggleBold()');
       this.toggleBold();
       return; // Exit early after handling the shortcut
@@ -286,17 +289,6 @@ export class Editor {
       event.preventDefault();
       console.log('Sending command to FSM:', command);
 
-      try {
-        // Manually trigger the toggleBoldInSelection function when Toggle Bold command is processed
-        if (command && command.type === 'TOGGLE_BOLD') {
-          console.log('Direct call to toggleBoldInSelection for debugging');
-          const directResult = directToggleBold(this.state.vdom, this.state.selection);
-          console.log('Direct toggleBoldInSelection result:', directResult);
-        }
-      } catch (error) {
-        console.error('Error in direct call:', error);
-      }
-
       const result = this.fsm.processCommand(command, this.state);
       console.log('FSM result received:', {
         didChange: result.didChange,
@@ -304,18 +296,37 @@ export class Editor {
         selectionChanged: result.newSelection !== this.state.selection,
       });
 
-      if (result.didChange) {
-        console.log('Applying content change from FSM result');
-        this.state.vdom = result.newVDOM;
-        this.state.selection = result.newSelection;
-        this.notifyChange();
-        this.notifySelectionChange();
-      } else if (result.newSelection !== this.state.selection) {
-        // If only selection changed but not content
-        console.log('Applying selection change from FSM result');
-        this.state.selection = result.newSelection;
-        this.notifySelectionChange();
+      this.handleFSMResult(result);
+    }
+  }
+
+  private handleFSMResult(result: FSMResult): void {
+    // Update format toggle state if present
+    if (result.formatToggleState) {
+      this.state.formatToggleState = result.formatToggleState;
+    }
+
+    if (result.didChange) {
+      this.state.vdom = result.newVDOM;
+      this.state.selection = result.newSelection;
+
+      // After text insertion, reset toggle state to match actual formatting at cursor
+      // This prevents the toggle state from persisting after text is inserted
+      if (result.formatToggleState === undefined) {
+        // Only reset if the FSM didn't explicitly set a new toggle state
+        this.state.formatToggleState = {
+          bold: 'inactive',
+          italic: 'inactive',
+          underline: 'inactive',
+        };
       }
+
+      this.notifyChange();
+      this.notifySelectionChange();
+    } else if (result.newSelection !== this.state.selection) {
+      // If only selection changed but not content
+      this.state.selection = result.newSelection;
+      this.notifySelectionChange();
     }
   }
 
@@ -414,26 +425,7 @@ export class Editor {
 
   // Formatting methods
   toggleBold(): void {
-    console.log('Editor.toggleBold() called');
-
-    try {
-      // BYPASS THE FSM AND CALL THE FORMATTING FUNCTION DIRECTLY FOR DEBUGGING
-      console.log('Directly calling toggleBoldInSelection');
-      const newVDOM = directToggleBold(this.state.vdom, this.state.selection);
-      console.log('Toggle bold result:', newVDOM);
-
-      // Update state directly
-      const didChange = JSON.stringify(newVDOM) !== JSON.stringify(this.state.vdom);
-      if (didChange) {
-        console.log('Bold toggling changed content');
-        this.state.vdom = newVDOM;
-
-        // Notify callbacks
-        this.notifyChange();
-        this.notifySelectionChange();
-      }
-    } catch (error) {
-      console.error('Error in toggleBold:', error);
-    }
+    const result = this.fsm.processCommand({ type: 'TOGGLE_BOLD', payload: null }, this.state);
+    this.handleFSMResult(result);
   }
 }
