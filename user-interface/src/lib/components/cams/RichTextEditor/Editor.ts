@@ -7,21 +7,29 @@ import editorUtilities from './Editor.utilities';
 import { SelectionService } from './SelectionService.humble';
 import { ListService } from './ListService';
 import { FormattingService } from './FormattingService';
+import { FormatDetectionService, FormatState } from './FormatDetectionService';
+
+export type { FormatState };
 
 export class Editor {
   private root: HTMLElement;
   private selectionService: SelectionService;
   private listService: ListService;
   private formattingService: FormattingService;
+  private formatDetectionService: FormatDetectionService;
 
   constructor(root: HTMLElement, selectionService: SelectionService) {
     this.root = root;
     this.selectionService = selectionService;
     this.listService = new ListService(root, selectionService);
     this.formattingService = new FormattingService(root, selectionService);
+    this.formatDetectionService = new FormatDetectionService(root, selectionService);
 
     // Initialize with empty paragraph if the root is empty
     this.initializeContent();
+
+    // For debugging only: Add listeners to log format state when selection changes
+    this.addDebugEventListeners();
   }
 
   private initializeContent(): void {
@@ -219,5 +227,50 @@ export class Editor {
     }
 
     return null;
+  }
+
+  /**
+   * Gets the current formatting state at the cursor position or for selected text
+   * @returns Format state object with boolean flags for each formatting type
+   */
+  public getFormatState(): FormatState {
+    const formatState = this.formatDetectionService.getFormatState();
+
+    // Log the current format state to the console for debugging
+    console.log('Format state at cursor position:', formatState);
+
+    // Log selection information if there is a selection
+    const selection = this.selectionService.getCurrentSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      if (!range.collapsed) {
+        console.log('Text selection detected:', {
+          isCollapsed: range.collapsed,
+          startContainer: range.startContainer.nodeName,
+          endContainer: range.endContainer.nodeName,
+          selectedText: range.toString(),
+        });
+      } else {
+        console.log('Cursor position:', {
+          container: range.startContainer.nodeName,
+          parentElement: range.startContainer.parentElement?.nodeName,
+          offset: range.startOffset,
+        });
+      }
+    }
+
+    return formatState;
+  }
+
+  private addDebugEventListeners(): void {
+    // For debugging only: Add listeners to log format state when selection changes
+    this.root.addEventListener('mouseup', this.handleSelectionChange.bind(this));
+    this.root.addEventListener('keyup', this.handleSelectionChange.bind(this));
+    console.log('Debug event listeners added for format state detection');
+  }
+
+  private handleSelectionChange(): void {
+    // Small delay to ensure selection is updated before checking format state
+    setTimeout(() => this.getFormatState(), 0);
   }
 }

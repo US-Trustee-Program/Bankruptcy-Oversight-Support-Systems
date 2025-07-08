@@ -755,3 +755,57 @@ describe('Editor: Additional coverage tests', () => {
     });
   });
 });
+
+describe('Editor.getFormatState', () => {
+  let root: HTMLDivElement;
+  let editor: Editor;
+  let selectionService: MockSelectionService;
+
+  beforeEach(() => {
+    root = document.createElement('div');
+    document.body.appendChild(root);
+    selectionService = new MockSelectionService();
+    editor = new Editor(root, selectionService);
+  });
+
+  afterEach(() => {
+    document.body.removeChild(root);
+    vi.restoreAllMocks();
+  });
+
+  it('should return format state from the FormatDetectionService', () => {
+    // Arrange
+    const mockFormatState = {
+      bold: true,
+      italic: false,
+      underline: false,
+      orderedList: false,
+      unorderedList: false,
+    };
+
+    // We need to use Object.defineProperty to access the private property
+    // and replace it with a mock that we can spy on
+    const mockFormatDetectionService = {
+      getFormatState: vi.fn().mockReturnValue(mockFormatState),
+    };
+
+    // @ts-expect-error - Accessing private property for testing
+    const originalService = editor['formatDetectionService'];
+    // @ts-expect-error - Replacing private property for testing
+    editor['formatDetectionService'] = mockFormatDetectionService;
+
+    try {
+      // Act
+      const result = editor.getFormatState();
+
+      // Assert
+      expect(mockFormatDetectionService.getFormatState).toHaveBeenCalled();
+      expect(result).toEqual(mockFormatState);
+      expect(result.bold).toBe(true);
+    } finally {
+      // Clean up by restoring the original service
+      // @ts-expect-error - Restoring private property after test
+      editor['formatDetectionService'] = originalService;
+    }
+  });
+});
