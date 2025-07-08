@@ -4,37 +4,6 @@ import Quill from 'quill';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
 import Button from '../../uswds/Button';
 
-// Define types for Quill callbacks and ranges
-interface QuillRange {
-  index: number;
-  length: number;
-}
-
-interface QuillFormat {
-  bold?: boolean;
-  [key: string]: unknown;
-}
-
-type TextChangeHandler = () => void;
-type SelectionChangeHandler = (range: QuillRange | null) => void;
-
-// Define interface for our mock Quill instance in tests
-interface MockQuill {
-  _textChangeCallback?: TextChangeHandler;
-  _selectionChangeCallback?: SelectionChangeHandler;
-  on(event: 'text-change', callback: TextChangeHandler): void;
-  on(event: 'selection-change', callback: SelectionChangeHandler): void;
-  enable(enabled: boolean): void;
-  setText(text: string): void;
-  getText(): string;
-  getFormat(range?: QuillRange): QuillFormat;
-  format(name: string, value: boolean): void;
-  root: {
-    innerHTML: string;
-  };
-  focus(): void;
-}
-
 // Define the interface for the QuillEditor ref
 export interface QuillEditorRef {
   clearValue: () => void;
@@ -68,53 +37,8 @@ function _QuillEditor(props: QuillEditorProps, ref: React.Ref<QuillEditorRef>) {
   const toolbarRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
 
-  // Check if we're in a test environment
-  const isTestEnv = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
-
   // Initialize Quill editor
   useEffect(() => {
-    // Skip Quill initialization in test environment
-    if (isTestEnv) {
-      // Create a mock Quill instance for testing
-      const mockQuill: MockQuill = {
-        on: (
-          event: 'text-change' | 'selection-change',
-          callback: TextChangeHandler | SelectionChangeHandler,
-        ) => {
-          // Store the callback for testing
-          if (event === 'text-change') {
-            mockQuill._textChangeCallback = callback as TextChangeHandler;
-          } else if (event === 'selection-change') {
-            mockQuill._selectionChangeCallback = callback as SelectionChangeHandler;
-            // Call with empty range to initialize
-            (callback as SelectionChangeHandler)(null);
-          }
-        },
-        enable: () => {},
-        setText: () => {},
-        getText: () => '',
-        getFormat: (_range?: QuillRange) => ({ bold: false }),
-        format: (name: string, _value: boolean) => {
-          // Update format state in tests
-          if (name === 'bold') {
-            // Simulate selection-change event to update state
-            const callback = mockQuill._selectionChangeCallback;
-            if (callback) {
-              setTimeout(() => callback({ index: 0, length: 0 }), 0);
-            }
-          }
-        },
-        root: {
-          innerHTML: '',
-        },
-        focus: () => {},
-      };
-
-      quillRef.current = mockQuill as unknown as Quill;
-      return;
-    }
-
-    // Normal initialization for non-test environment
     if (!quillRef.current && editorRef.current) {
       try {
         // Initialize Quill with minimal configuration and explicitly disable the toolbar module
