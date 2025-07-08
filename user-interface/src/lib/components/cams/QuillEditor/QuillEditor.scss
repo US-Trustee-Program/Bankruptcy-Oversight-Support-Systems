@@ -11,6 +11,10 @@
       outline: 0.25rem solid #2491ff;
       outline-offset: 0;
     }
+
+    p {
+      margin-top: 0;
+    }
   }
 
   /* Ensure Quill toolbar has USWDS-like styling */
@@ -26,16 +30,6 @@
     border: 1px solid #565c65;
     border-bottom-left-radius: 0.25rem;
     border-bottom-right-radius: 0.25rem;
-  }
-
-  /* Remove padding from the editor to allow clicking anywhere */
-  .ql-editor {
-    padding: 0;
-
-    /* Remove margin from paragraphs to eliminate space at the top */
-    p {
-      margin: 0;
-    }
   }
 
   /* Style for required field indicator */
@@ -72,12 +66,11 @@
     height: 40px;
     color: white;
 
-    &.custom-bold-button {
+    &.ql-bold {
       font-weight: bold;
     }
 
-    /* Handle active state for custom buttons */
-    &.active {
+    &.ql-active {
       background-color: #d6d6d6;
     }
   }

@@ -267,7 +267,7 @@ function _QuillEditor(props: QuillEditorProps, ref: React.Ref<QuillEditorRef>) {
       )}
 
       <div
-        id={`${id}-container`}
+        id={`${id}-wrapper`}
         className={`quill-editor-wrapper ${className || ''}`}
         ref={editorContainerRef}
       >
@@ -318,8 +318,8 @@ function _QuillEditor(props: QuillEditorProps, ref: React.Ref<QuillEditorRef>) {
             }
           }}
           onKeyDown={(e) => {
-            // Handle keyboard interaction - focus the editor on Enter or Space
-            if (e.key === 'Enter' || e.key === ' ') {
+            // Handle keyboard interaction - focus the editor on Enter
+            if (e.key === 'Enter') {
               e.preventDefault();
               if (quillRef.current) {
                 try {
