@@ -170,5 +170,38 @@ describe('FormatDetectionService', () => {
       expect(result.orderedList).toBe(false);
       expect(result.unorderedList).toBe(false);
     });
+
+    it('should detect bold formatting when text is selected within a bold element', () => {
+      // Arrange
+      // Create a strong element with text inside
+      const strongElement = document.createElement('strong');
+      const textNode = document.createTextNode('Bold text');
+      strongElement.appendChild(textNode);
+      root.appendChild(strongElement);
+
+      // Mock the range and selection - note collapsed: false for text selection
+      const mockSelection = {
+        rangeCount: 1,
+        getRangeAt: vi.fn().mockReturnValue({
+          collapsed: false,
+          startContainer: textNode,
+          endContainer: textNode,
+          startOffset: 0,
+          endOffset: 9, // Select the entire "Bold text"
+        } as unknown as Range),
+      } as unknown as Selection;
+
+      (mockSelectionService.getCurrentSelection as unknown as MockFunction).mockReturnValue(mockSelection);
+
+      // Act
+      const result = formatDetectionService.getFormatState();
+
+      // Assert
+      expect(result.bold).toBe(true);
+      expect(result.italic).toBe(false);
+      expect(result.underline).toBe(false);
+      expect(result.orderedList).toBe(false);
+      expect(result.unorderedList).toBe(false);
+    });
   });
 });

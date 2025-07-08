@@ -101,6 +101,7 @@ Each slice must complete the following before moving to the next:
    - [x] Update Editor.ts to use FormatDetectionService
    - [x] Add tests for Editor.getFormatState
    - [x] Ensure all tests pass
+   - [x] Fix bug with text selection format detection
    - [ ] Manual testing
    - [ ] Explicit human approval ("continue")
 
@@ -214,10 +215,12 @@ For this slice, we need to verify that the FormatDetectionService correctly dete
    - Implemented getFormatState() method that returns bold status at cursor position
    - Added unit tests covering various cases for bold format detection
    - Setup FormatState interface with all format types we'll implement
+   - Fixed text selection format detection to properly report bold state
 
 2. Updated Editor class to use FormatDetectionService
    - Added public getFormatState() method that delegates to FormatDetectionService
    - Added unit tests to verify proper delegation
+   - Added debug console logging for format state and cursor/selection information
 
 ### Key Findings
 

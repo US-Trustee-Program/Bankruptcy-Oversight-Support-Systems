@@ -59,9 +59,10 @@ export class FormatDetectionService {
       return this.isWithinFormattingElement(range.startContainer, format);
     }
 
-    // For now, we only handle collapsed ranges (cursor position)
-    // Text selection handling will be implemented in a future slice
-    return false;
+    // For text selection, we'll check if the start container is within a formatting element
+    // This is a simple implementation for Slice 1 that works for bold text
+    // A more robust implementation for mixed formatting will be added in Slice 5
+    return this.isWithinFormattingElement(range.startContainer, format);
   }
 
   /**
