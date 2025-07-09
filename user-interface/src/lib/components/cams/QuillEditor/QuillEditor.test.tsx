@@ -38,7 +38,7 @@ describe('QuillEditor', () => {
       enable: vi.fn(),
       setText: vi.fn(),
       getText: vi.fn().mockReturnValue(''),
-      getFormat: vi.fn().mockReturnValue({ bold: false }),
+      getFormat: vi.fn().mockReturnValue({ bold: false, italic: false }),
       format: vi.fn(),
       root: {
         innerHTML: '',
@@ -212,6 +212,51 @@ describe('QuillEditor', () => {
 
     // Initially, the button should not have the active class
     expect(boldButton.classList.contains('active')).toBe(false);
+
+    // We're not testing the click behavior here as it would require complex mocking
+    // of the Quill instance and proper handling of state updates.
+    // Instead, we're just verifying the button exists and has the correct initial state.
+  });
+
+  test('italic button should have proper styling and content', async () => {
+    // Render component
+    render(<QuillEditor id="test-editor" />);
+
+    // Find the italic button by test ID or text content
+    let italicButton: HTMLElement;
+    try {
+      italicButton = screen.getByTestId('italic-button');
+    } catch (_error) {
+      // If that fails, try to find it by its text content
+      italicButton = screen.getByText('I');
+    }
+
+    expect(italicButton).toBeTruthy();
+
+    // Check that the button has the text "I"
+    expect(italicButton.textContent).toBe('I');
+
+    // Check that the button has a title attribute
+    expect(italicButton.getAttribute('title')).toBe('Italic');
+  });
+
+  test('italic button should be properly wired up', async () => {
+    // Render component
+    render(<QuillEditor id="test-editor" />);
+
+    // Find the italic button by test ID or text content
+    let italicButton: HTMLElement;
+    try {
+      italicButton = screen.getByTestId('italic-button');
+    } catch (_error) {
+      // If that fails, try to find it by its text content
+      italicButton = screen.getByText('I');
+    }
+
+    expect(italicButton).toBeTruthy();
+
+    // Initially, the button should not have the active class
+    expect(italicButton.classList.contains('active')).toBe(false);
 
     // We're not testing the click behavior here as it would require complex mocking
     // of the Quill instance and proper handling of state updates.

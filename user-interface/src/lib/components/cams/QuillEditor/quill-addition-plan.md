@@ -6,8 +6,9 @@ Always abide by the applicable `.guidelines.md` files.
 
 - [x] Implement a humble object or wrapper for the Quill editor.
 - [x] Implement bold formatting.
-- [] Implement italic formatting.
+- [x] Implement italic formatting.
 - [] Implement underline formatting.
+- [] Implement keyboard shortcuts (e.g., ctrl + {character} to toggle formats).
 - [x] Implement converting to and from HTML for persistence/display from persistence.
 - [] Implement ordered and unordered lists.
 - [] Implement links.

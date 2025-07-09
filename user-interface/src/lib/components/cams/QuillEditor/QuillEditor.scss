@@ -66,11 +66,15 @@
     height: 40px;
     color: white;
 
-    &.ql-bold {
+    &.ql-bold, &.custom-bold-button {
       font-weight: bold;
     }
 
-    &.ql-active {
+    &.ql-italic, &.custom-italic-button {
+      font-style: italic;
+    }
+
+    &.ql-active, &.active {
       background-color: #d6d6d6;
     }
   }

@@ -33,6 +33,7 @@ function _QuillEditor(props: QuillEditorProps, ref: React.Ref<QuillEditorRef>) {
   const quillRef = useRef<Quill | null>(null);
   const [_inputDisabled, setInputDisabled] = useState<boolean>(disabled || false);
   const [isBold, setIsBold] = useState<boolean>(false);
+  const [isItalic, setIsItalic] = useState<boolean>(false);
 
   const toolbarRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
@@ -61,8 +62,9 @@ function _QuillEditor(props: QuillEditorProps, ref: React.Ref<QuillEditorRef>) {
             if (range) {
               // Get the format at the current selection
               const format = quillRef.current?.getFormat(range);
-              // Update bold state
+              // Update bold and italic states
               setIsBold(!!format?.bold);
+              setIsItalic(!!format?.italic);
             }
           });
         }
@@ -115,6 +117,10 @@ function _QuillEditor(props: QuillEditorProps, ref: React.Ref<QuillEditorRef>) {
     if (quillRef.current && quillRef.current.root) {
       try {
         const html = quillRef.current.root.innerHTML;
+        // Check if the content is empty (just a paragraph with a break or empty)
+        if (html === '' || html === '<p><br></p>' || html === '<p></p>') {
+          return '';
+        }
         return html;
       } catch (error) {
         console.error('Error getting Quill HTML:', error);
@@ -218,6 +224,28 @@ function _QuillEditor(props: QuillEditorProps, ref: React.Ref<QuillEditorRef>) {
             }}
           >
             B
+          </Button>
+          <Button
+            type="button"
+            aria-label="Set italic formatting"
+            title="Italic"
+            className={`usa-button rich-text-button custom-italic-button ${isItalic ? 'active' : ''}`}
+            data-testid="italic-button"
+            onClick={() => {
+              if (quillRef.current) {
+                try {
+                  const format = quillRef.current.getFormat();
+                  const newItalicValue = !format.italic;
+                  quillRef.current.format('italic', newItalicValue);
+                  // Update state immediately
+                  setIsItalic(newItalicValue);
+                } catch (error) {
+                  console.error('Error toggling italic format:', error);
+                }
+              }
+            }}
+          >
+            I
           </Button>
         </div>
 
