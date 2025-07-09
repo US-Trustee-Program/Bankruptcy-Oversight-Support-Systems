@@ -13,14 +13,19 @@ import { CamsError } from '../../../common-errors/cams-error';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import QueryBuilder, { Conjunction, using } from '../../../query/query-builder';
 import { CASE_HISTORY } from '../../../testing/mock-data/case-history.mock';
-import { createMockApplicationContext } from '../../../testing/testing-utilities';
+import {
+  createMockApplicationContext,
+  getTheThrownError,
+} from '../../../testing/testing-utilities';
 import { ApplicationContext } from '../../types/basic';
 import { CasesMongoRepository } from './cases.mongo.repository';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import * as crypto from 'crypto';
 import { UnknownError } from '../../../common-errors/unknown-error';
 import { CamsPaginationResponse } from '../../../use-cases/gateways.types';
-import { CaseHistory } from '../../../../../common/src/cams/history';
+import { CaseConsolidationHistory, CaseHistory } from '../../../../../common/src/cams/history';
+import { randomUUID } from 'crypto';
+import { SYSTEM_USER_REFERENCE } from '../../../../../common/src/cams/auditable';
 
 describe('Cases repository', () => {
   let repo: CasesMongoRepository;
@@ -52,6 +57,10 @@ describe('Cases repository', () => {
     await closeDeferred(context);
     jest.restoreAllMocks();
     repo.release();
+  });
+
+  afterAll(() => {
+    CasesMongoRepository.dropInstance();
   });
 
   test('should getTransfers', async () => {
@@ -497,6 +506,118 @@ describe('Cases repository', () => {
     expect(aggregateSpy).toHaveBeenCalledWith(expectedQuery);
   });
 
+  test('should add all conditions', async () => {
+    const divisionCodes = ['081', '071'];
+    const caseNumber = '00-11111';
+    const caseId = divisionCodes[0] + '-' + caseNumber;
+    const chapters = ['15', '12'];
+    const predicate: CasesSearchPredicate = {
+      caseNumber,
+      caseIds: [caseId],
+      chapters,
+      divisionCodes,
+      excludeChildConsolidations: true,
+      excludeClosedCases: true,
+      includeOnlyUnassigned: true,
+      limit: 25,
+      offset: 0,
+    };
+
+    const expectedSyncedCaseArray: ResourceActions<SyncedCase>[] = [
+      MockData.getSyncedCase({ override: { caseId } }),
+    ];
+
+    const expectedPaginationResponse: CamsPaginationResponse<SyncedCase> = {
+      metadata: { total: expectedSyncedCaseArray.length },
+      data: expectedSyncedCaseArray,
+    };
+
+    const aggregateSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+      .mockResolvedValue(expectedPaginationResponse);
+
+    // This object is very brittle, but I'm not sure if it matters as this is pretty core to the query language.
+    const expectedQuery = {
+      stages: [
+        expect.objectContaining({
+          conjunction: 'AND',
+          stage: 'MATCH',
+          values: expect.arrayContaining([
+            expect.objectContaining({
+              leftOperand: { name: 'documentType' },
+              rightOperand: 'SYNCED_CASE',
+            }),
+            expect.objectContaining({
+              leftOperand: { name: 'caseNumber' },
+              rightOperand: caseNumber,
+            }),
+            expect.objectContaining({
+              leftOperand: { name: 'caseId' },
+              rightOperand: [caseId],
+            }),
+            expect.objectContaining({
+              leftOperand: { name: 'chapter' },
+              rightOperand: chapters,
+            }),
+            expect.objectContaining({
+              leftOperand: { name: 'courtDivisionCode' },
+              rightOperand: divisionCodes,
+            }),
+            expect.objectContaining({
+              conjunction: 'OR',
+              values: expect.arrayContaining([
+                expect.objectContaining({
+                  condition: 'EXISTS',
+                  leftOperand: { name: 'closedDate' },
+                  rightOperand: false,
+                }),
+                expect.objectContaining({
+                  conjunction: 'AND',
+                  values: expect.arrayContaining([
+                    expect.objectContaining({
+                      condition: 'EXISTS',
+                      leftOperand: { name: 'reopenedDate' },
+                      rightOperand: true,
+                    }),
+                    expect.objectContaining({
+                      condition: 'EXISTS',
+                      leftOperand: { name: 'reopenedDate' },
+                      rightOperand: true,
+                    }),
+                    expect.objectContaining({
+                      leftOperand: { name: 'reopenedDate' },
+                      rightOperand: { name: 'closedDate' },
+                    }),
+                  ]),
+                }),
+              ]),
+            }),
+          ]),
+        }),
+        expect.objectContaining({ stage: 'JOIN' }),
+        expect.objectContaining({ stage: 'ADD_FIELDS' }),
+        expect.objectContaining({ condition: 'EQUALS', stage: 'MATCH' }),
+        expect.objectContaining({ stage: 'EXCLUDE' }),
+        expect.objectContaining({
+          stage: 'SORT',
+          fields: [
+            { field: { name: 'dateFiled' }, direction: 'DESCENDING' },
+            { field: { name: 'caseNumber' }, direction: 'DESCENDING' },
+          ],
+        }),
+        expect.objectContaining({
+          stage: 'PAGINATE',
+          skip: predicate.offset,
+          limit: predicate.limit,
+        }),
+      ],
+    };
+
+    const result = await repo.searchCases(predicate);
+    expect(result).toEqual(expectedPaginationResponse);
+    expect(aggregateSpy).toHaveBeenCalledWith(expectedQuery);
+  });
+
   test('should throw error when paginate throws error', async () => {
     const predicate: CasesSearchPredicate = {
       chapters: ['15'],
@@ -511,6 +632,72 @@ describe('Cases repository', () => {
     await expect(async () => await repo.searchCases(predicate)).rejects.toThrow(
       'Unknown CAMS Error',
     );
+  });
+
+  test('should throw error when paginate throws error with includeOnlyUnassigned', async () => {
+    const predicate: CasesSearchPredicate = {
+      chapters: ['15'],
+      includeOnlyUnassigned: true,
+      limit: 25,
+      offset: 0,
+    };
+
+    jest
+      .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+      .mockRejectedValue(new CamsError('CASES_MONGO_REPOSITORY'));
+    await expect(async () => await repo.searchCases(predicate)).rejects.toThrow(
+      'Unknown CAMS Error',
+    );
+  });
+
+  test('should call paginate with includeOnlyUnassigned and assignments in query', async () => {
+    const predicate: CasesSearchPredicate = {
+      chapters: ['15'],
+      includeOnlyUnassigned: true,
+      assignments: [{ id: '123', name: 'Test User' }],
+      limit: 25,
+      offset: 0,
+    };
+
+    const expectedSyncedCaseArray: ResourceActions<SyncedCase>[] = [
+      MockData.getSyncedCase({ override: { caseId: caseId1 } }),
+    ];
+
+    const expectedPaginationResponse: CamsPaginationResponse<SyncedCase> = {
+      metadata: { total: expectedSyncedCaseArray.length },
+      data: expectedSyncedCaseArray,
+    };
+
+    const aggregateSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+      .mockResolvedValue(expectedPaginationResponse);
+
+    const result = await repo.searchCases(predicate);
+
+    const expectedQuery = {
+      stages: [
+        expect.objectContaining({ conjunction: 'AND', stage: 'MATCH' }),
+        expect.objectContaining({ stage: 'JOIN' }),
+        expect.objectContaining({ stage: 'ADD_FIELDS' }),
+        expect.objectContaining({ condition: 'EQUALS', stage: 'MATCH' }),
+        expect.objectContaining({ stage: 'EXCLUDE' }),
+        expect.objectContaining({
+          stage: 'SORT',
+          fields: [
+            { field: { name: 'dateFiled' }, direction: 'DESCENDING' },
+            { field: { name: 'caseNumber' }, direction: 'DESCENDING' },
+          ],
+        }),
+        expect.objectContaining({
+          stage: 'PAGINATE',
+          skip: predicate.offset,
+          limit: predicate.limit,
+        }),
+      ],
+    };
+
+    expect(result).toEqual(expectedPaginationResponse);
+    expect(aggregateSpy).toHaveBeenCalledWith(expectedQuery);
   });
 
   test('should throw error when paginate has invalid limit and offset', async () => {
@@ -680,5 +867,54 @@ describe('Cases repository', () => {
       .mockRejectedValue(new Error('some error'));
 
     await expect(repo.getSyncedCase(bCase.caseId)).rejects.toThrow(UnknownError);
+  });
+
+  test('should call create for case history', async () => {
+    const history: CaseConsolidationHistory = {
+      id: randomUUID().toString(),
+      caseId: '111-11-11111',
+      before: null,
+      after: {
+        status: 'pending',
+        childCases: [],
+      },
+      documentType: 'AUDIT_CONSOLIDATION',
+      updatedOn: new Date().toISOString(),
+      updatedBy: SYSTEM_USER_REFERENCE,
+    };
+    const createSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
+      .mockResolvedValue(history.id);
+    await repo.createCaseHistory(history);
+    expect(createSpy).toHaveBeenCalledWith(history);
+  });
+
+  test('should handle error creating case history', async () => {
+    const history: CaseConsolidationHistory = {
+      id: randomUUID().toString(),
+      caseId: '111-11-11111',
+      before: null,
+      after: {
+        status: 'pending',
+        childCases: [],
+      },
+      documentType: 'AUDIT_CONSOLIDATION',
+      updatedOn: new Date().toISOString(),
+      updatedBy: SYSTEM_USER_REFERENCE,
+    };
+    const error = new Error('some error');
+    jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(error);
+    const actualError = await getTheThrownError(() => repo.createCaseHistory(history));
+    expect(actualError.isCamsError).toBeTruthy();
+    expect(actualError.camsStack).toEqual([
+      expect.objectContaining({
+        message: 'Failed to create item.',
+        module: 'CASES-MONGO-REPOSITORY',
+      }),
+      expect.objectContaining({
+        message: expect.stringContaining('Unable to create case history.'),
+        module: 'CASES-MONGO-REPOSITORY',
+      }),
+    ]);
   });
 });

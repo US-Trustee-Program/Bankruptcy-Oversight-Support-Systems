@@ -17,11 +17,7 @@ export type UstpGroup = {
   divisions: UstpDivision[];
 };
 
-export type UstpDivisionMeta = {
-  isLegacy?: true;
-};
-
-export type UstpDivision = UstpDivisionMeta & {
+export type UstpDivision = {
   divisionCode: string; // ACMS Div Code Office_Regions_and_Divisions.pdf
   court: Court;
   courtOffice: CourtOffice;
