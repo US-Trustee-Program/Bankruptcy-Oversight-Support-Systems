@@ -1,11 +1,10 @@
 import ContextCreator from '../../azure/application-context-creator';
-import { CamsError } from '../../../lib/common-errors/cams-error';
 import HealthcheckCosmosDb from './healthcheck.db.cosmos';
 
 import { app, InvocationContext, HttpResponseInit, HttpRequest } from '@azure/functions';
 import HealthcheckSqlDb from './healthcheck.db.sql';
 import HealthcheckInfo from './healthcheck.info';
-import { toAzureError, toAzureSuccess } from '../../azure/functions';
+import { toAzureSuccess } from '../../azure/functions';
 import { httpSuccess } from '../../../lib/adapters/utils/http-response';
 import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
 import { closeDeferred } from '../../../lib/deferrable/defer-close';
@@ -47,30 +46,24 @@ export default async function handler(
     info,
   };
 
+  await closeDeferred(context);
+
   // Add boolean flag for any other checks here
-  const result = checkResults(
+  const success = checkResults(
     cosmosStatus.cosmosDbDeleteStatus,
     cosmosStatus.cosmosDbReadStatus,
     cosmosStatus.cosmosDbWriteStatus,
     checkSqlDbReadAccess,
-  )
-    ? toAzureSuccess(
-        httpSuccess({
-          body: {
-            data: Object.assign({ status: 'OK' }, respBody),
-          },
-        }),
-      )
-    : toAzureError(
-        context,
-        MODULE_NAME,
-        new CamsError(MODULE_NAME, {
-          message: JSON.stringify(respBody),
-          status: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        }),
-      );
-  await closeDeferred(context);
-  return result;
+  );
+
+  return toAzureSuccess(
+    httpSuccess({
+      body: {
+        data: { status: success ? 'OK' : 'ERROR', ...respBody },
+      },
+      statusCode: success ? HttpStatusCodes.OK : HttpStatusCodes.INTERNAL_SERVER_ERROR,
+    }),
+  );
 }
 
 export function checkResults(...results: boolean[]) {
