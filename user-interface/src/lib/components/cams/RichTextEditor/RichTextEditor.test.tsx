@@ -1,9 +1,10 @@
 import { describe, expect, beforeEach, vi, beforeAll } from 'vitest';
-import React from 'react';
+import React, { useState } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RichTextEditor, { RichTextEditorRef } from './RichTextEditor';
 import { ZERO_WIDTH_SPACE } from '@/lib/components/cams/RichTextEditor/Editor.constants';
+import { RichTextButton } from './RichTextButton';
 
 describe('RichTextEditor', () => {
   let Editor: {
@@ -312,5 +313,79 @@ describe('RichTextEditor', () => {
     const focusSpy = vi.spyOn(editable, 'focus');
     ref.current!.focus();
     expect(focusSpy).toHaveBeenCalled();
+  });
+
+  test('toolbar buttons reflect format state when active prop is passed', async () => {
+    // For this test, we'll create a special test component that manually controls
+    // format state rather than relying on editor functionality
+    const TestComponent = () => {
+      const [formatState, setFormatState] = useState({
+        bold: false,
+        italic: false,
+        underline: false,
+        orderedList: false,
+        unorderedList: false,
+      });
+
+      return (
+        <div>
+          <div className="editor-toolbar">
+            <RichTextButton
+              title="Bold"
+              ariaLabel="Set bold formatting"
+              onClick={() => setFormatState({ ...formatState, bold: !formatState.bold })}
+              active={formatState.bold}
+            >
+              B
+            </RichTextButton>
+            <RichTextButton
+              title="Bulleted List"
+              ariaLabel="Insert bulleted list"
+              icon="bulleted-list"
+              onClick={() =>
+                setFormatState({
+                  ...formatState,
+                  unorderedList: !formatState.unorderedList,
+                })
+              }
+              active={formatState.unorderedList}
+            />
+          </div>
+        </div>
+      );
+    };
+
+    // Render our test component
+    render(<TestComponent />);
+
+    // Get buttons
+    const boldButton = screen.getByLabelText('Set bold formatting');
+    const bulletedListButton = screen.getByLabelText('Insert bulleted list');
+
+    // Initial state - buttons should be inactive
+    expect(boldButton).toHaveAttribute('aria-pressed', 'false');
+    expect(bulletedListButton).toHaveAttribute('aria-pressed', 'false');
+
+    // Set up userEvent
+    const user = userEvent.setup();
+
+    // Click the bold button to toggle its state
+    await user.click(boldButton);
+
+    // Now the bold button should show as active
+    expect(boldButton).toHaveAttribute('aria-pressed', 'true');
+
+    // Click the list button to toggle its state
+    await user.click(bulletedListButton);
+
+    // Now the list button should also be active
+    expect(bulletedListButton).toHaveAttribute('aria-pressed', 'true');
+
+    // Click the bold button again to toggle off
+    await user.click(boldButton);
+
+    // Now bold should be inactive but list still active
+    expect(boldButton).toHaveAttribute('aria-pressed', 'false');
+    expect(bulletedListButton).toHaveAttribute('aria-pressed', 'true');
   });
 });

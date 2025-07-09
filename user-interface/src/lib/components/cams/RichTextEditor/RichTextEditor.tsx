@@ -4,6 +4,7 @@ import { Editor } from './Editor';
 import { BrowserSelectionService } from './SelectionService.humble';
 import { RichTextButton } from './RichTextButton';
 import editorUtilities, { safelyGetHtml, safelySetHtml } from './Editor.utilities';
+import { FormatState } from './FormatDetectionService';
 
 export interface RichTextEditorRef {
   clearValue: () => void;
@@ -33,11 +34,57 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
   const [selectionService] = useState<BrowserSelectionService>(
     () => new BrowserSelectionService(window, document),
   );
+  const [formatState, setFormatState] = useState<FormatState>({
+    bold: false,
+    italic: false,
+    underline: false,
+    orderedList: false,
+    unorderedList: false,
+  });
 
   useEffect(() => {
     if (contentRef.current && !editorRef.current) {
       editorRef.current = new Editor(contentRef.current, selectionService);
     }
+  }, []);
+
+  // Update the format state when the selection changes
+  const updateFormatState = () => {
+    if (editorRef.current) {
+      setFormatState(editorRef.current.getFormatState());
+    }
+  };
+
+  // Add event listeners for selection changes and cursor movement
+  useEffect(() => {
+    const editorContent = contentRef.current;
+    if (!editorContent) {
+      return;
+    }
+
+    // Update format state on selection change
+    const handleSelectionChange = () => {
+      const selection = window.getSelection();
+      if (selection && editorContent.contains(selection.anchorNode)) {
+        updateFormatState();
+      }
+    };
+
+    // Listen for selection changes
+    document.addEventListener('selectionchange', handleSelectionChange);
+
+    // Also update format state on mouse up, key up, and input events
+    editorContent.addEventListener('mouseup', updateFormatState);
+    editorContent.addEventListener('keyup', updateFormatState);
+    editorContent.addEventListener('input', updateFormatState);
+
+    // Clean up event listeners
+    return () => {
+      document.removeEventListener('selectionchange', handleSelectionChange);
+      editorContent.removeEventListener('mouseup', updateFormatState);
+      editorContent.removeEventListener('keyup', updateFormatState);
+      editorContent.removeEventListener('input', updateFormatState);
+    };
   }, []);
 
   useEffect(() => {
@@ -105,6 +152,7 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (editorRef.current?.handleCtrlKey(e)) {
+      updateFormatState();
       return;
     }
 
@@ -112,24 +160,29 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
       editorRef.current?.handleBackspaceOnEmptyContent &&
       editorRef.current.handleBackspaceOnEmptyContent(e)
     ) {
+      updateFormatState();
       return;
     }
 
     if (editorRef.current?.handleDentures(e)) {
       onChange?.(getHtml());
+      updateFormatState();
       return;
     }
 
     if (editorRef.current?.handleEnterKey(e)) {
+      updateFormatState();
       return;
     }
 
     if (editorRef.current?.handleDeleteKeyOnList(e)) {
+      updateFormatState();
       return;
     }
 
     if (editorRef.current?.handlePrintableKey(e)) {
       onChange?.(getHtml());
+      updateFormatState();
       return;
     }
   };
@@ -137,6 +190,7 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
   const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
     if (editorRef.current?.handlePaste(e)) {
       onChange?.(getHtml());
+      updateFormatState();
       return;
     }
   };
@@ -163,7 +217,11 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
         <RichTextButton
           title="Bold (Ctrl+B)"
           ariaLabel="Set bold formatting"
-          onClick={() => editorRef.current?.toggleSelection('strong')}
+          onClick={() => {
+            editorRef.current?.toggleSelection('strong');
+            updateFormatState();
+          }}
+          active={formatState.bold}
         >
           B
         </RichTextButton>
@@ -171,7 +229,11 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
           title="Italic (Ctrl+I)"
           ariaLabel="Set italic formatting"
           style={{ fontStyle: 'italic' }}
-          onClick={() => editorRef.current?.toggleSelection('em')}
+          onClick={() => {
+            editorRef.current?.toggleSelection('em');
+            updateFormatState();
+          }}
+          active={formatState.italic}
         >
           I
         </RichTextButton>
@@ -179,7 +241,11 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
           title="Underline (Ctrl+U)"
           ariaLabel="Set underline formatting"
           style={{ textDecoration: 'underline' }}
-          onClick={() => editorRef.current?.toggleSelection('u')}
+          onClick={() => {
+            editorRef.current?.toggleSelection('u');
+            updateFormatState();
+          }}
+          active={formatState.underline}
         >
           U
         </RichTextButton>
@@ -190,7 +256,9 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
           onClick={() => {
             editorRef.current?.toggleList('ul');
             onChange?.(getHtml());
+            updateFormatState();
           }}
+          active={formatState.unorderedList}
         ></RichTextButton>
         <RichTextButton
           icon="numbered-list"
@@ -199,7 +267,9 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
           onClick={() => {
             editorRef.current?.toggleList('ol');
             onChange?.(getHtml());
+            updateFormatState();
           }}
+          active={formatState.orderedList}
         ></RichTextButton>
       </div>
       <div
@@ -208,7 +278,10 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
         className={`editor-content ${className || ''}`}
         contentEditable={!inputDisabled}
         tabIndex={0}
-        onInput={() => onChange?.(getHtml())}
+        onInput={() => {
+          onChange?.(getHtml());
+          updateFormatState();
+        }}
         onKeyDown={handleKeyDown}
         onPaste={handlePaste}
         ref={contentRef}

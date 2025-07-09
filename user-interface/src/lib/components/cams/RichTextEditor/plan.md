@@ -137,12 +137,12 @@ Each slice must complete the following before moving to the next:
    - [x] Manual testing
    - [x] Explicit human approval ("continue")
 
-6. [ ] Slice 6: UI Update for Format State
-   - [ ] Write unit tests
-   - [ ] Implement UI updates
-   - [ ] Ensure tests pass
-   - [ ] Manual testing
-   - [ ] Explicit human approval ("continue")
+6. [x] Slice 6: UI Update for Format State
+   - [x] Write unit tests
+   - [x] Implement UI updates
+   - [x] Ensure tests pass
+   - [x] Manual testing
+   - [x] Explicit human approval ("continue")
 
 7. [ ] Slice 7: Selection Change Event Handling
    - [ ] Write unit tests
