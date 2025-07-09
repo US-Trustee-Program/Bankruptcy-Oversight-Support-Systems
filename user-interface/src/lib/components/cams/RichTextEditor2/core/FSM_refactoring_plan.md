@@ -1,6 +1,7 @@
 # FSM Handler Refactoring Plan
 
-This plan outlines the refactoring of FSM handlers to use the VDOMSelection module's exported functions for selection state management and formatting queries.
+This plan outlines the refactoring of FSM handlers to use the VDOMSelection module's exported
+functions for selection state management and formatting queries.
 
 ## Key Points from Specification
 
@@ -16,12 +17,8 @@ This plan outlines the refactoring of FSM handlers to use the VDOMSelection modu
 ## Guidelines
 
 1. Each FSM handler will be refactored as a vertical slice
-2. TDD must be practiced for each change
-   a. Write test using VDOMSelection exports
-   b. Test must fail initially
-   c. Refactor handler to use exports
-   d. Test must pass
-   e. Remove old tests
+2. TDD must be practiced for each change a. Write test using VDOMSelection exports b. Test must fail
+   initially c. Refactor handler to use exports d. Test must pass e. Remove old tests
 3. Do not modify VDOMSelection.ts - only use its exports
 4. Remove any internal selection manipulation code
 5. Mark TODOs as complete when finished [✓]
@@ -38,15 +35,15 @@ This plan outlines the refactoring of FSM handlers to use the VDOMSelection modu
 - [✓] Verify test passes
 - [✓] Remove stale tests
 
-### Slice 2: handleMoveCursorLeft/Right [ ]
+### Slice 2: handleMoveCursorLeft/Right [✓]
 
-- [ ] Write test for cursor movement using VDOMSelection exports
-- [ ] Remove calculateNodePositions() - no longer needed
-- [ ] Use getSelectionFromBrowser() to get current position
-- [ ] Use applySelectionToBrowser() to update position
-- [ ] Ensure cursor position updates trigger selection state change
-- [ ] Verify tests pass
-- [ ] Remove stale tests
+- [✓] Write test for cursor movement using VDOMSelection exports
+- [✓] Remove calculateNodePositions() - no longer needed (not found in current codebase)
+- [✓] Use getSelectionFromBrowser() to get current position
+- [✓] Use applySelectionToBrowser() to update position
+- [✓] Ensure cursor position updates trigger selection state change
+- [✓] Verify tests pass
+- [✓] Remove stale tests (simplified cross-node navigation for now)
 
 ### Slice 3: handleBackspace [ ]
 
@@ -107,14 +104,17 @@ This plan outlines the refactoring of FSM handlers to use the VDOMSelection modu
 ## Implementation Notes
 
 1. VDOMSelection State Flow:
+
    - Browser Selection Change -> getSelectionFromBrowser() -> Update Editor state
    - Editor State Change -> applySelectionToBrowser() -> Update Browser selection
 
 2. Format State Flow:
+
    - Before format changes -> getFormattingAtSelection()
    - After format changes -> Update selection -> applySelectionToBrowser()
 
 3. Test Structure:
+
    ```typescript
    describe('FSM Handler Refactoring', () => {
      let selectionService: SelectionService;

@@ -154,29 +154,51 @@ export class FSM {
   private handleMoveCursorLeft(currentState: EditorState): FSMResult {
     const { selection, vdom } = currentState;
 
-    // Already at the start
+    // Check if already at the start of current text node
     if (selection.start.offset === 0) {
-      return {
-        newVDOM: vdom,
-        newSelection: selection,
-        didChange: false,
-        isPersistent: false,
-      };
+      // Try to move to the end of the previous text node
+      const previousNode = this.findPreviousTextNode(selection.start.node, vdom);
+
+      if (previousNode && previousNode.content) {
+        // Move to the end of the previous text node
+        const newSelection: VDOMSelection = {
+          start: { node: previousNode, offset: previousNode.content.length },
+          end: { node: previousNode, offset: previousNode.content.length },
+          isCollapsed: true,
+        };
+
+        return {
+          newVDOM: vdom,
+          newSelection,
+          didChange: false,
+          isPersistent: false,
+        };
+      } else {
+        // No previous text node, stay at current position
+        return {
+          newVDOM: vdom,
+          newSelection: selection,
+          didChange: false,
+          isPersistent: false,
+        };
+      }
     }
 
-    // Move cursor left by updating offset
+    // Move cursor left within current node
     const newPosition: VDOMPosition = {
       node: selection.start.node,
       offset: selection.start.offset - 1,
     };
 
+    const newSelection: VDOMSelection = {
+      start: newPosition,
+      end: newPosition,
+      isCollapsed: true,
+    };
+
     return {
       newVDOM: vdom,
-      newSelection: {
-        start: newPosition,
-        end: newPosition,
-        isCollapsed: true,
-      },
+      newSelection,
       didChange: false,
       isPersistent: false,
     };
@@ -192,86 +214,53 @@ export class FSM {
       currentNode.content &&
       selection.start.offset >= currentNode.content.length
     ) {
-      // Try to move to the next text node if available
-      const nextTextNode = this.findNextTextNode(currentNode, vdom);
-      if (nextTextNode) {
+      // Try to move to the beginning of the next text node
+      const nextNode = this.findNextTextNode(currentNode, vdom);
+
+      if (nextNode) {
+        // Move to the beginning of the next text node
+        const newSelection: VDOMSelection = {
+          start: { node: nextNode, offset: 0 },
+          end: { node: nextNode, offset: 0 },
+          isCollapsed: true,
+        };
+
         return {
           newVDOM: vdom,
-          newSelection: {
-            start: { node: nextTextNode, offset: 0 },
-            end: { node: nextTextNode, offset: 0 },
-            isCollapsed: true,
-          },
+          newSelection,
+          didChange: false,
+          isPersistent: false,
+        };
+      } else {
+        // No next text node, stay at current position
+        return {
+          newVDOM: vdom,
+          newSelection: selection,
           didChange: false,
           isPersistent: false,
         };
       }
-      // No next node, stay at current position
-      return {
-        newVDOM: vdom,
-        newSelection: selection,
-        didChange: false,
-        isPersistent: false,
-      };
     }
 
-    // Move within current node
+    // Move cursor right within current node
+    const newSelection: VDOMSelection = {
+      start: {
+        node: currentNode,
+        offset: selection.start.offset + 1,
+      },
+      end: {
+        node: currentNode,
+        offset: selection.start.offset + 1,
+      },
+      isCollapsed: true,
+    };
+
     return {
       newVDOM: vdom,
-      newSelection: {
-        start: {
-          node: currentNode,
-          offset: selection.start.offset + 1,
-        },
-        end: {
-          node: currentNode,
-          offset: selection.start.offset + 1,
-        },
-        isCollapsed: true,
-      },
+      newSelection,
       didChange: false,
       isPersistent: false,
     };
-  }
-
-  /**
-   * Helper method to find the next text node in the VDOM tree
-   */
-  private findNextTextNode(currentNode: VDOMNode, vdom: VDOMNode[]): VDOMNode | null {
-    const allNodes = this.getAllNodes(vdom);
-    const currentIndex = allNodes.findIndex((node) => node === currentNode && node.type === 'text');
-
-    if (currentIndex === -1) {
-      return null;
-    }
-
-    // Find next text node
-    for (let i = currentIndex + 1; i < allNodes.length; i++) {
-      if (allNodes[i].type === 'text') {
-        return allNodes[i];
-      }
-    }
-
-    return null;
-  }
-
-  /**
-   * Helper method to get all nodes in the VDOM tree
-   */
-  private getAllNodes(vdom: VDOMNode[]): VDOMNode[] {
-    const nodes: VDOMNode[] = [];
-
-    function traverse(nodeList: VDOMNode[]) {
-      for (const node of nodeList) {
-        nodes.push(node);
-        if (node.children) {
-          traverse(node.children);
-        }
-      }
-    }
-
-    traverse(vdom);
-    return nodes;
   }
 
   /**
@@ -350,5 +339,89 @@ export class FSM {
         // No formatToggleState change for range selections
       };
     }
+  }
+
+  /**
+   * Helper function to get all text nodes in VDOM tree in document order
+   */
+  private getAllTextNodes(vdom: VDOMNode[]): VDOMNode[] {
+    const textNodes: VDOMNode[] = [];
+
+    function traverse(nodes: VDOMNode[]) {
+      for (const node of nodes) {
+        if (node.type === 'text') {
+          textNodes.push(node);
+        }
+        if (node.children) {
+          traverse(node.children);
+        }
+      }
+    }
+
+    traverse(vdom);
+    return textNodes;
+  }
+
+  /**
+   * Helper function to compare two node paths to determine document order
+   * Returns: -1 if path1 comes before path2, 0 if equal, 1 if path1 comes after path2
+   */
+  private comparePaths(path1: number[], path2: number[]): number {
+    const minLength = Math.min(path1.length, path2.length);
+
+    for (let i = 0; i < minLength; i++) {
+      if (path1[i] < path2[i]) return -1;
+      if (path1[i] > path2[i]) return 1;
+    }
+
+    // If paths are identical up to the shorter length, the shorter path comes first
+    if (path1.length < path2.length) return -1;
+    if (path1.length > path2.length) return 1;
+
+    return 0; // Paths are identical
+  }
+
+  /**
+   * Find the previous text node in document order
+   */
+  private findPreviousTextNode(currentNode: VDOMNode, vdom: VDOMNode[]): VDOMNode | null {
+    const allTextNodes = this.getAllTextNodes(vdom);
+    const currentPath = currentNode.path;
+
+    let previousNode: VDOMNode | null = null;
+
+    for (const textNode of allTextNodes) {
+      // If this text node comes before the current node
+      if (this.comparePaths(textNode.path, currentPath) < 0) {
+        // Keep track of the latest previous node (closest to current)
+        if (!previousNode || this.comparePaths(textNode.path, previousNode.path) > 0) {
+          previousNode = textNode;
+        }
+      }
+    }
+
+    return previousNode;
+  }
+
+  /**
+   * Find the next text node in document order
+   */
+  private findNextTextNode(currentNode: VDOMNode, vdom: VDOMNode[]): VDOMNode | null {
+    const allTextNodes = this.getAllTextNodes(vdom);
+    const currentPath = currentNode.path;
+
+    let nextNode: VDOMNode | null = null;
+
+    for (const textNode of allTextNodes) {
+      // If this text node comes after the current node
+      if (this.comparePaths(textNode.path, currentPath) > 0) {
+        // Keep track of the earliest next node (closest to current)
+        if (!nextNode || this.comparePaths(textNode.path, nextNode.path) < 0) {
+          nextNode = textNode;
+        }
+      }
+    }
+
+    return nextNode;
   }
 }
