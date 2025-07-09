@@ -3,17 +3,17 @@ import {
   EditorState,
   FSMResult,
   VDOMNode,
-  VDOM_NODE_TYPES,
   VDOMSelection,
   FormatStateValue,
+  VDOMPosition,
 } from './types';
 import {
   getFormatStateAtCursorPosition,
   insertTextWithFormatting,
   toggleBoldInSelection,
 } from './model/VDOMFormatting';
-import { textContentOffsetToNodeOffset, getTextOffsetInVDOM } from './model/VDOMSelection';
 import { deleteContentWithCleanup } from './model/VDOMMutations';
+import { ZERO_WIDTH_SPACE } from '../RichTextEditor.constants';
 
 // TODO: Future options for FSM configuration
 export type FSMOptions = object;
@@ -57,10 +57,6 @@ export class FSM {
           didChange: false,
           isPersistent: false,
         };
-
-      case 'SET_CURSOR_POSITION':
-        return this.handleSetCursorPosition(command.payload, currentState);
-
       case 'TOGGLE_BOLD':
         return this.handleToggleBold(currentState);
 
@@ -95,241 +91,187 @@ export class FSM {
   }
 
   private handleBackspace(currentState: EditorState): FSMResult {
-    // Phase 1: Hybrid approach - convert absolute selection to node-based selection,
-    // then use VDOMMutations.deleteContent, then convert result back to absolute
+    const { selection, vdom } = currentState;
 
-    // Step 1: For BACKSPACE, we need to delete the character BEFORE the cursor
-    // So we convert the position of the character to delete, not the cursor position
-    const cursorPosition = currentState.selection.start.offset;
-
-    // Handle edge case: can't delete if at beginning of document
-    if (cursorPosition <= 0) {
+    // If we're at the start of the document, nothing to delete
+    if (selection.start.offset === 0) {
       return {
-        newVDOM: currentState.vdom,
-        newSelection: currentState.selection,
+        newVDOM: vdom,
+        newSelection: selection,
         didChange: false,
         isPersistent: false,
       };
     }
 
-    // Handle malformed selections gracefully by checking bounds
-    const textContent = this.getTextContent(currentState.vdom);
-    if (cursorPosition > textContent.length) {
-      // Out of bounds selection - return original state with no changes
-      return {
-        newVDOM: currentState.vdom,
-        newSelection: currentState.selection,
-        didChange: false,
-        isPersistent: false,
-      };
-    }
-
-    // Convert the position of the character to delete (cursor - 1)
-    const deletePosition = cursorPosition - 1;
-    const nodeStartPos = textContentOffsetToNodeOffset(currentState.vdom, deletePosition);
-
-    // Step 2: Handle conversion failures with fallback
-    if (!nodeStartPos) {
-      return this.handleBackspaceFallback(currentState);
-    }
-
-    // Step 3: Create node-based selection for VDOMMutations
-    // For BACKSPACE, we create a range selection that deletes one character
-    const nodeBasedSelection: VDOMSelection = {
-      start: { nodeId: nodeStartPos.nodeId, offset: nodeStartPos.offset },
-      end: { nodeId: nodeStartPos.nodeId, offset: nodeStartPos.offset + 1 },
-      isCollapsed: false, // Range selection to delete the character
+    // Create a selection that covers the character to delete
+    const deleteSelection: VDOMSelection = {
+      start: {
+        node: selection.start.node,
+        offset: selection.start.offset - 1,
+      },
+      end: selection.start,
+      isCollapsed: false,
     };
 
-    // Step 4: Use VDOMMutations.deleteContentWithCleanup for BACKSPACE
-    const mutationResult = deleteContentWithCleanup(currentState.vdom, nodeBasedSelection);
-
-    // Step 5: Convert result selection back to absolute positioning
-    const absoluteStartOffset = getTextOffsetInVDOM(
-      mutationResult.newVDOM,
-      mutationResult.newSelection.start.nodeId!,
-      mutationResult.newSelection.start.offset,
-    );
-
-    const absoluteSelection: VDOMSelection = {
-      start: { offset: absoluteStartOffset },
-      end: { offset: absoluteStartOffset },
-      isCollapsed: true,
-    };
+    // Use VDOMMutations to delete the content
+    const result = deleteContentWithCleanup(vdom, deleteSelection);
 
     return {
-      newVDOM: mutationResult.newVDOM,
-      newSelection: absoluteSelection,
-      didChange: true,
-      isPersistent: true,
-    };
-  }
-
-  private handleBackspaceFallback(currentState: EditorState): FSMResult {
-    // Original implementation as fallback
-    // Use the selection state to determine cursor position
-    const cursorPosition = currentState.selection.start.offset;
-
-    // Only delete if cursor is not at the beginning
-    if (cursorPosition <= 0) {
-      return {
-        newVDOM: currentState.vdom,
-        newSelection: currentState.selection,
-        didChange: false,
-        isPersistent: false,
-      };
-    }
-
-    // Get current text and remove character before cursor
-    const currentText = this.getTextContent(currentState.vdom);
-    const newText = currentText.slice(0, cursorPosition - 1) + currentText.slice(cursorPosition);
-
-    // Calculate new cursor position
-    const newCursorPosition = Math.max(0, cursorPosition - 1);
-
-    // Create new VDOM with updated text
-    const newVDOM = newText
-      ? [
-          {
-            id: `text-${Date.now()}-${Math.random()}`,
-            type: VDOM_NODE_TYPES.TEXT,
-            content: newText,
-          },
-        ]
-      : [];
-
-    // Create new selection at the updated cursor position
-    const newSelection = {
-      start: { offset: newCursorPosition },
-      end: { offset: newCursorPosition },
-      isCollapsed: true,
-    };
-
-    return {
-      newVDOM,
-      newSelection,
+      ...result,
       didChange: true,
       isPersistent: true,
     };
   }
 
   private handleEnterKey(currentState: EditorState): FSMResult {
-    // Add a line break node
-    const brNode: VDOMNode = {
-      id: `br-${Date.now()}-${Math.random()}`,
-      type: VDOM_NODE_TYPES.BR,
+    const { vdom } = currentState;
+
+    // Create a new paragraph with an empty text node
+    const newTextNode: VDOMNode = {
+      type: 'text',
+      path: [vdom.length, 0],
+      content: ZERO_WIDTH_SPACE,
     };
 
-    const newVDOM = [...currentState.vdom, brNode];
+    const newParagraph: VDOMNode = {
+      type: 'paragraph',
+      path: [vdom.length],
+      children: [newTextNode],
+    };
 
     return {
-      newVDOM,
-      newSelection: currentState.selection,
+      newVDOM: [...vdom, newParagraph],
+      newSelection: {
+        start: { node: newTextNode, offset: 0 },
+        end: { node: newTextNode, offset: 0 },
+        isCollapsed: true,
+      },
       didChange: true,
       isPersistent: true,
     };
   }
 
   private handleMoveCursorLeft(currentState: EditorState): FSMResult {
-    // Use the selection state to determine current cursor position
-    const currentCursorPosition = currentState.selection.start.offset;
+    const { selection, vdom } = currentState;
 
-    // Calculate node positions to find the correct cursor position
-    const nodePositions = this.calculateNodePositions(currentState.vdom);
-
-    // Check if we're at a formatting boundary
-    const newCursorPosition = Math.max(0, currentCursorPosition - 1);
-
-    // Find if the new position is exactly at a node boundary and adjust if needed
-    const boundaryNode = nodePositions.find((pos) => pos.start === newCursorPosition);
-    if (boundaryNode) {
-      // If we're at the boundary between formatted and unformatted text,
-      // ensure the cursor is positioned properly on the character
-      console.log('Cursor at boundary between nodes:', boundaryNode);
+    // Already at the start
+    if (selection.start.offset === 0) {
+      return {
+        newVDOM: vdom,
+        newSelection: selection,
+        didChange: false,
+        isPersistent: false,
+      };
     }
 
-    // Create new selection with updated cursor position
-    const newSelection = {
-      start: { offset: newCursorPosition },
-      end: { offset: newCursorPosition },
-      isCollapsed: true,
+    // Move cursor left by updating offset
+    const newPosition: VDOMPosition = {
+      node: selection.start.node,
+      offset: selection.start.offset - 1,
     };
 
     return {
-      newVDOM: currentState.vdom,
-      newSelection,
-      didChange: false, // No content change, just cursor movement
+      newVDOM: vdom,
+      newSelection: {
+        start: newPosition,
+        end: newPosition,
+        isCollapsed: true,
+      },
+      didChange: false,
       isPersistent: false,
     };
   }
 
   private handleMoveCursorRight(currentState: EditorState): FSMResult {
-    // Use the selection state to determine current cursor position
-    const currentCursorPosition = currentState.selection.start.offset;
+    const { selection, vdom } = currentState;
+    const currentNode = selection.start.node;
 
-    // Calculate node positions to find the correct cursor position
-    const nodePositions = this.calculateNodePositions(currentState.vdom);
-
-    // Calculate total text length
-    let textLength = 0;
-    if (nodePositions.length > 0) {
-      const lastNode = nodePositions[nodePositions.length - 1];
-      textLength = lastNode.end;
-    }
-
-    // Move cursor right by one position, but not beyond text length
-    const newCursorPosition = Math.min(textLength, currentCursorPosition + 1);
-
-    // Find if the new position is exactly at a node boundary and adjust if needed
-    const boundaryNode = nodePositions.find((pos) => pos.end === newCursorPosition);
-    if (boundaryNode) {
-      // If we're at the boundary between formatted and unformatted text,
-      // ensure the cursor is positioned properly on the character
-      console.log('Cursor at boundary between nodes:', boundaryNode);
-    }
-
-    // Create new selection with updated cursor position
-    const newSelection = {
-      start: { offset: newCursorPosition },
-      end: { offset: newCursorPosition },
-      isCollapsed: true,
-    };
-
-    return {
-      newVDOM: currentState.vdom,
-      newSelection,
-      didChange: false, // No content change, just cursor movement
-      isPersistent: false,
-    };
-  }
-
-  private handleSetCursorPosition(position: unknown, currentState: EditorState): FSMResult {
-    // Set cursor to the specified position
-    if (typeof position === 'number') {
-      const textLength = this.getTextContent(currentState.vdom).length;
-      const newCursorPosition = Math.max(0, Math.min(position, textLength));
-
-      // Create selection object with cursor at specified position
-      const newSelection = {
-        start: { offset: newCursorPosition },
-        end: { offset: newCursorPosition },
-        isCollapsed: true,
-      };
-
+    // If we're at the end of the current text node
+    if (
+      currentNode.type === 'text' &&
+      currentNode.content &&
+      selection.start.offset >= currentNode.content.length
+    ) {
+      // Try to move to the next text node if available
+      const nextTextNode = this.findNextTextNode(currentNode, vdom);
+      if (nextTextNode) {
+        return {
+          newVDOM: vdom,
+          newSelection: {
+            start: { node: nextTextNode, offset: 0 },
+            end: { node: nextTextNode, offset: 0 },
+            isCollapsed: true,
+          },
+          didChange: false,
+          isPersistent: false,
+        };
+      }
+      // No next node, stay at current position
       return {
-        newVDOM: currentState.vdom,
-        newSelection,
-        didChange: false, // No content change, just cursor movement
+        newVDOM: vdom,
+        newSelection: selection,
+        didChange: false,
         isPersistent: false,
       };
     }
 
+    // Move within current node
     return {
-      newVDOM: currentState.vdom,
-      newSelection: currentState.selection,
-      didChange: false, // No content change, just cursor movement
+      newVDOM: vdom,
+      newSelection: {
+        start: {
+          node: currentNode,
+          offset: selection.start.offset + 1,
+        },
+        end: {
+          node: currentNode,
+          offset: selection.start.offset + 1,
+        },
+        isCollapsed: true,
+      },
+      didChange: false,
       isPersistent: false,
     };
+  }
+
+  /**
+   * Helper method to find the next text node in the VDOM tree
+   */
+  private findNextTextNode(currentNode: VDOMNode, vdom: VDOMNode[]): VDOMNode | null {
+    const allNodes = this.getAllNodes(vdom);
+    const currentIndex = allNodes.findIndex((node) => node === currentNode && node.type === 'text');
+
+    if (currentIndex === -1) {
+      return null;
+    }
+
+    // Find next text node
+    for (let i = currentIndex + 1; i < allNodes.length; i++) {
+      if (allNodes[i].type === 'text') {
+        return allNodes[i];
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Helper method to get all nodes in the VDOM tree
+   */
+  private getAllNodes(vdom: VDOMNode[]): VDOMNode[] {
+    const nodes: VDOMNode[] = [];
+
+    function traverse(nodeList: VDOMNode[]) {
+      for (const node of nodeList) {
+        nodes.push(node);
+        if (node.children) {
+          traverse(node.children);
+        }
+      }
+    }
+
+    traverse(vdom);
+    return nodes;
   }
 
   /**
@@ -358,13 +300,12 @@ export class FSM {
    * Handle the TOGGLE_BOLD command
    */
   private handleToggleBold(currentState: EditorState): FSMResult {
-    const selection = currentState.selection;
+    const { selection, formatToggleState } = currentState;
 
     // For collapsed selections (cursor), we should only update the toggle state
-    // without modifying the VDOM structure
     if (selection.isCollapsed) {
       // Check if there's already a pending toggle state
-      const currentToggleState = currentState.formatToggleState.bold;
+      const currentToggleState = formatToggleState.bold;
 
       let newBoldState: FormatStateValue;
 
@@ -409,69 +350,5 @@ export class FSM {
         // No formatToggleState change for range selections
       };
     }
-  }
-
-  /**
-   * Calculate the positions of each node in the VDOM
-   * This helps with mapping cursor positions between different node types
-   * with different formatting
-   */
-  private calculateNodePositions(vdom: VDOMNode[]): Array<{
-    node: VDOMNode;
-    start: number;
-    end: number;
-  }> {
-    const positions: Array<{
-      node: VDOMNode;
-      start: number;
-      end: number;
-    }> = [];
-
-    let currentOffset = 0;
-
-    for (const node of vdom) {
-      if (node.type === VDOM_NODE_TYPES.TEXT) {
-        const length = node.content?.length || 0;
-        positions.push({
-          node,
-          start: currentOffset,
-          end: currentOffset + length,
-        });
-        currentOffset += length;
-      } else if (node.type === 'strong' && node.children) {
-        // Handle formatted nodes
-        for (const child of node.children) {
-          if (child.type === VDOM_NODE_TYPES.TEXT) {
-            const length = child.content?.length || 0;
-            positions.push({
-              node: child,
-              start: currentOffset,
-              end: currentOffset + length,
-            });
-            currentOffset += length;
-          }
-        }
-      }
-    }
-
-    return positions;
-  }
-
-  public getTextContent(vdom: VDOMNode[]): string {
-    // Extract all text content from VDOM nodes, recursively traversing formatting containers
-    let result = '';
-
-    function traverse(nodes: VDOMNode[]): void {
-      for (const node of nodes) {
-        if (node.type === VDOM_NODE_TYPES.TEXT) {
-          result += node.content || '';
-        } else if (node.children) {
-          traverse(node.children);
-        }
-      }
-    }
-
-    traverse(vdom);
-    return result;
   }
 }

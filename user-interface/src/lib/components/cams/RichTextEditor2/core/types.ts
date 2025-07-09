@@ -72,7 +72,6 @@ export type EditorCommandType =
   | 'MOVE_CURSOR_RIGHT'
   | 'MOVE_CURSOR_UP'
   | 'MOVE_CURSOR_DOWN'
-  | 'SET_CURSOR_POSITION'
   | 'SET_SELECTION';
 
 export interface EditorCommand {

@@ -28,15 +28,15 @@ This plan outlines the refactoring of FSM handlers to use the VDOMSelection modu
 
 ## TODO List by Vertical Slice [ ]
 
-### Slice 1: handleSetCursorPosition [ ]
+### Slice 1: handleSetCursorPosition [✓]
 
-- [ ] Write test to verify cursor position updates VDOMSelection
-- [ ] Refactor to use getSelectionFromBrowser()
-- [ ] Use applySelectionToBrowser() to sync browser state
-- [ ] Remove getTextContent() function - no longer needed
-- [ ] Remove direct DOM position calculations
-- [ ] Verify test passes
-- [ ] Remove stale tests
+- [✓] Write test to verify cursor position updates VDOMSelection
+- [✓] Refactor to use getSelectionFromBrowser()
+- [✓] Use applySelectionToBrowser() to sync browser state
+- [✓] Remove getTextContent() function - no longer needed
+- [✓] Remove direct DOM position calculations
+- [✓] Verify test passes
+- [✓] Remove stale tests
 
 ### Slice 2: handleMoveCursorLeft/Right [ ]
 
