@@ -14,6 +14,32 @@ export class ListNavigationService {
     this.listUtilities = listUtilities;
   }
 
+  /**
+   * Normalizes an empty list item to ensure consistent representation across list types
+   * This addresses issues where browsers represent empty list items differently
+   * (e.g., <br> in bullet lists, multiple zero-width spaces in ordered lists)
+   */
+  private normalizeEmptyListItem(listItem: HTMLLIElement): void {
+    // Check if the list item is already empty using our detection criteria
+    const trimmedTextContent = listItem.textContent?.trim();
+    const isEmpty =
+      // Check for empty string or only zero-width space(s)
+      trimmedTextContent === ZERO_WIDTH_SPACE ||
+      trimmedTextContent === '' ||
+      // Check if it contains only zero-width spaces (could be multiple)
+      trimmedTextContent?.split('').every((char) => char === ZERO_WIDTH_SPACE) ||
+      // Check if it contains only a BR element
+      (listItem.childNodes.length === 1 && listItem.firstElementChild?.tagName === 'BR');
+
+    if (isEmpty) {
+      // Clear the list item
+      safelySetHtml(listItem, '');
+
+      // Use consistent representation for empty items: single zero-width space
+      listItem.appendChild(this.selectionService.createTextNode(ZERO_WIDTH_SPACE));
+    }
+  }
+
   public handleEnterKey(e: React.KeyboardEvent<HTMLDivElement>): boolean {
     const selection = this.selectionService.getCurrentSelection();
     if (!selection || !selection.rangeCount) {
@@ -32,8 +58,18 @@ export class ListNavigationService {
     );
 
     if (listItem) {
+      // Normalize the list item before checking if it's empty
+      this.normalizeEmptyListItem(listItem);
+
+      // Check if list item is empty
       const trimmedTextContent = listItem.textContent?.trim();
-      const isEmpty = trimmedTextContent === ZERO_WIDTH_SPACE || trimmedTextContent === '';
+      const isEmpty =
+        // Check for empty string or only zero-width space
+        trimmedTextContent === ZERO_WIDTH_SPACE ||
+        trimmedTextContent === '' ||
+        // Check if it contains only a BR element
+        (listItem.childNodes.length === 1 && listItem.firstElementChild?.tagName === 'BR');
+
       if (isEmpty) {
         e.preventDefault();
 
@@ -174,7 +210,9 @@ export class ListNavigationService {
 
     while (current && current !== originalRoot) {
       const parent = current.parentNode;
-      if (!parent) break;
+      if (!parent) {
+        break;
+      }
 
       const index = Array.from(parent.childNodes).indexOf(current as ChildNode);
       path.unshift(index);
@@ -239,14 +277,17 @@ export class ListNavigationService {
 
     e.preventDefault();
 
-    const listItemContents = currentListItem.childNodes;
+    // Normalize the list item before checking if it's empty
+    this.normalizeEmptyListItem(currentListItem);
+
     // Check if the list item is empty or contains only a BR element
-    if (
-      !listItemContents.length ||
-      (listItemContents.length === 1 &&
-        listItemContents[0].nodeType === Node.ELEMENT_NODE &&
-        (listItemContents[0] as Element).tagName === 'BR')
-    ) {
+    const isEmpty =
+      currentListItem.textContent?.trim() === ZERO_WIDTH_SPACE ||
+      currentListItem.textContent?.trim() === '' ||
+      (currentListItem.childNodes.length === 1 &&
+        currentListItem.firstChild instanceof HTMLBRElement);
+
+    if (isEmpty) {
       currentListItem.remove();
       if (parentList.childNodes.length === 0) {
         parentList.remove();

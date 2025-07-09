@@ -151,24 +151,31 @@ Each slice must complete the following before moving to the next:
    - [x] Manual testing
    - [x] Explicit human approval ("continue")
 
-8. [ ] Bug Fix: Formatting Removal Bug
-   - [ ] Fixed issue where toggling bold/underline results in nested tags that cannot be removed
-   - [ ] Created specific test cases to reproduce and verify the bug fix
-   - [ ] Improved FormattingService to handle all cases of formatting removal
-   - [ ] Ensured text content is preserved when removing formatting
-   - [ ] Manual testing and verification needed
+8. [ ] Bug Fix: Exiting Numbered List (Simple)
+   - [ ] Write test case to reproduce the issue with exiting numbered lists
+   - [ ] Implement fix for exiting numbered lists when Enter is pressed on an empty list item
+   - [ ] Ensure tests pass
+   - [ ] Manual testing and verification
+   - [ ] Explicit human approval ("continue")
 
-9. [ ] Bug Fix: Nested Formatting Issue
-   - [ ] Fixed bug where toggling bold/underline formatting results in nested tags that cannot be removed
-      - Fixed by improving the FormattingService to properly handle removing formatting elements
-      - Added special case detection for toggling formatting off from an entire formatting element
-      - Improved the text content preservation when replacing formatting elements
-      - Enhanced removeFormatFromFragment to be more robust in handling nested elements
-      - All FormatBugReproduction tests now pass
+9. [ ] Bug Fix: Formatting Removal Bug (Moderate)
+   - [ ] Create specific test cases to reproduce the issue
+   - [ ] Analyze the root cause in FormattingService
+   - [ ] Implement basic fix for simple formatting removal
+   - [ ] Ensure text content is preserved when removing formatting
+   - [ ] Ensure tests pass
+   - [ ] Manual testing and verification
+   - [ ] Explicit human approval ("continue")
 
-10. [ ] Bug Fix: exiting numbered list
-
-- [ ] In a bullet list, if I am on a blank list item and I hit Enter key, it ends the bullet list and places me inside a new paragraph. This is correct. However, numbered list should work the same way. But currently, if I'm in a numbered list, pressing Enter on an empty list item just adds another list item.
+10. [ ] Bug Fix: Nested Formatting Issue (Complex)
+   - [ ] Create test cases for nested formatting scenarios
+   - [ ] Implement special case detection for toggling formatting off from an entire formatting element
+   - [ ] Improve text content preservation when replacing formatting elements
+   - [ ] Enhance removeFormatFromFragment to be more robust in handling nested elements
+   - [ ] Fix handling of partial formatting selection
+   - [ ] Ensure all tests pass including FormatBugReproduction tests
+   - [ ] Manual testing and verification
+   - [ ] Explicit human approval ("continue")
 
 ## Manual Testing Instructions
 

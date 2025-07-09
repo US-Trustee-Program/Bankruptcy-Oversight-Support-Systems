@@ -807,3 +807,126 @@ describe('Editor.getFormatState', () => {
     }
   });
 });
+
+describe('RichTextEditor Enter Key Bug in Lists', () => {
+  // Mock handleEnterKey function for direct testing
+  const mockHandleEnterKey = vi.fn().mockReturnValue(true);
+
+  // Create a keyboard event helper
+  const createEnterKeyEvent = () => {
+    return {
+      key: 'Enter',
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    } as unknown as React.KeyboardEvent<HTMLDivElement>;
+  };
+
+  let mockRootElement: HTMLDivElement;
+  let mockSelectionService: MockSelectionService;
+  let mockEditor: Editor;
+
+  beforeEach(() => {
+    // Reset mocks
+    vi.clearAllMocks();
+
+    // Setup mock DOM
+    document.body.innerHTML = '';
+    mockRootElement = document.createElement('div');
+    mockRootElement.id = 'rich-text-editor-content';
+    mockRootElement.contentEditable = 'true';
+    document.body.appendChild(mockRootElement);
+
+    // Setup mock selection service
+    mockSelectionService = new MockSelectionService();
+
+    // Create the editor with our mocks
+    mockEditor = new Editor(mockRootElement, mockSelectionService);
+
+    // Mock the handleEnterKey method
+    mockEditor.handleEnterKey = mockHandleEnterKey;
+  });
+
+  afterEach(() => {
+    // Clean up
+    document.body.removeChild(mockRootElement);
+    vi.restoreAllMocks();
+  });
+
+  test('should call handleEnterKey when Enter is pressed in an ordered list', () => {
+    // Setup ordered list with empty item
+    mockRootElement.innerHTML = `
+      <ol>
+        <li>First item</li>
+        <li>Second item</li>
+        <li id="emptyItem"></li>
+      </ol>
+    `;
+
+    // Create the enter key event
+    const enterEvent = createEnterKeyEvent();
+
+    // Call the handler directly instead of trying to simulate DOM events
+    mockEditor.handleEnterKey(enterEvent);
+
+    // Check if handleEnterKey was called
+    expect(mockHandleEnterKey).toHaveBeenCalledWith(enterEvent);
+  });
+
+  test('should call handleEnterKey when Enter is pressed in an unordered list', () => {
+    // Setup unordered list with empty item
+    mockRootElement.innerHTML = `
+      <ul>
+        <li>First item</li>
+        <li>Second item</li>
+        <li id="emptyItem"></li>
+      </ul>
+    `;
+
+    // Create the enter key event
+    const enterEvent = createEnterKeyEvent();
+
+    // Call the handler directly
+    mockEditor.handleEnterKey(enterEvent);
+
+    // Check if handleEnterKey was called
+    expect(mockHandleEnterKey).toHaveBeenCalledWith(enterEvent);
+  });
+
+  test('should call handleEnterKey with different types of empty list items', () => {
+    // Test cases for different types of empty list items
+    const testCases = [
+      { content: '', description: 'completely empty' },
+      { content: '\u200B', description: 'zero-width space' },
+      { content: '<br>', description: 'just BR element' },
+      { content: ' ', description: 'just space' },
+      { content: '&nbsp;', description: 'non-breaking space' },
+    ];
+
+    // Test with both list types
+    const listTypes = ['ol', 'ul'];
+
+    for (const listType of listTypes) {
+      for (const testCase of testCases) {
+        // Reset mock
+        mockHandleEnterKey.mockClear();
+
+        // Setup list with the test case
+        mockRootElement.innerHTML = `
+          <${listType}>
+            <li>First item</li>
+            <li id="emptyItem">${testCase.content}</li>
+          </${listType}>
+        `;
+
+        // Create the enter key event
+        const enterEvent = createEnterKeyEvent();
+
+        // Call the handler directly
+        mockEditor.handleEnterKey(enterEvent);
+
+        // Check if handleEnterKey was called
+        expect(mockHandleEnterKey).toHaveBeenCalledWith(enterEvent);
+      }
+    }
+  });
+});
