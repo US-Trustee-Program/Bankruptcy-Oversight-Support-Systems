@@ -167,7 +167,8 @@ Each slice must complete the following before moving to the next:
       - All FormatBugReproduction tests now pass
 
 10. [ ] Bug Fix: exiting numbered list
-   - [ ] In a bullet list, if I am on a blank list item and I hit Enter key, it ends the bullet list and places me inside a new paragraph. This is correct. However, numbered list should work the same way. But currently, if I'm in a numbered list, pressing Enter on an empty list item just adds another list item.
+
+- [ ] In a bullet list, if I am on a blank list item and I hit Enter key, it ends the bullet list and places me inside a new paragraph. This is correct. However, numbered list should work the same way. But currently, if I'm in a numbered list, pressing Enter on an empty list item just adds another list item.
 
 ## Manual Testing Instructions
 

@@ -231,10 +231,7 @@ export class Editor {
    * @returns Format state object with boolean flags for each formatting type
    */
   public getFormatState(): FormatState {
-    const formatState = this.formatDetectionService.getFormatState();
-    // Remove console log for production
-    // console.log('Format state at cursor position:', formatState);
-    return formatState;
+    return this.formatDetectionService.getFormatState();
   }
 
   /**
