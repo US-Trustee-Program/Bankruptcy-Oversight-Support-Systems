@@ -23,18 +23,16 @@ export class FSM {
     // Future initialization
   }
 
-  processCommand(
-    command: EditorCommand | { type: 'SET_SELECTION'; payload: VDOMSelection },
-    currentState: EditorState,
-  ): FSMResult {
+  // TODO: We probably need to model a discriminated union for the EditorCommand to get the type right here.
+  processCommand(command: EditorCommand, currentState: EditorState): FSMResult {
     console.log('FSM.processCommand called with command type:', command.type);
 
     switch (command.type) {
       case 'SET_SELECTION':
-        return this.handleSetSelection(command.payload, currentState);
+        // TODO: Make sure the payload is typed as VDOMSelection when the command is to set selection. Remove the type cast.
+        return this.handleSetSelection(command.payload as VDOMSelection, currentState);
 
       case 'INSERT_TEXT':
-        // TODO: We probably need to model a discriminated union for the EditorCommand to get the type right here.
         // TODO: Make sure the payload is typed as string when the command is to insert text. Remove the type cast.
         return this.handleInsertText(command.payload as string, currentState);
 

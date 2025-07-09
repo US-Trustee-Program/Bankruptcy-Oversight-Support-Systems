@@ -347,38 +347,39 @@ export class Editor {
   }
 
   handleClick(event: MouseEvent): void {
+    if (event.type !== 'click') {
+      return;
+    }
+
     // Sync selection from browser after click
+    // This uses DOM range/selection APIs to get the current browser selection
+    // and convert it to a VDOM selection
     this.syncSelectionFromBrowser();
 
-    // For now, implement a simple approach to position cursor based on click
-    // In a real implementation, this would use DOM range/selection APIs
-    // For the test case, we'll position cursor between "Hello" and "world"
-    const target = event.target as HTMLElement;
-    if (target) {
-      // For testing purposes, if we have content "Hello world", position cursor at 6
-      const currentText = this.fsm.getTextContent(this.state.vdom);
-      if (currentText === 'Hello world') {
-        const command: EditorCommand = {
-          type: 'SET_CURSOR_POSITION',
-          payload: 6, // Position after "Hello "
-        };
+    // The browser has already updated its selection based on the click
+    // We just need to notify of the selection change
 
-        const result = this.fsm.processCommand(command, this.state);
+    // Create a command to set the selection explicitly
+    const command: EditorCommand = {
+      type: 'SET_SELECTION',
+      payload: this.state.selection,
+    };
 
-        // Always update state for cursor positioning, even if content didn't change
-        this.state.vdom = result.newVDOM;
-        this.state.selection = result.newSelection;
+    // Process the command through the FSM
+    const result = this.fsm.processCommand(command, this.state);
 
-        // Only notify of content changes if content actually changed
-        if (result.didChange) {
-          this.notifyChange();
-        }
+    // Update state with the result
+    this.state.vdom = result.newVDOM;
+    this.state.selection = result.newSelection;
 
-        // Always notify of selection changes after click
-        this.notifySelectionChange();
-        this.notifyFormattingChange();
-      }
+    // Only notify of content changes if content actually changed
+    if (result.didChange) {
+      this.notifyChange();
     }
+
+    // Always notify of selection changes after click
+    this.notifySelectionChange();
+    this.notifyFormattingChange();
   }
 
   private notifyChange(): void {
@@ -387,15 +388,8 @@ export class Editor {
     // Don't update DOM innerHTML during beforeinput events as it interferes with testing library
     // The DOM will be updated naturally by the browser for insertText events
     // We only need to update for other types of changes
-    if (this.rootElement) {
-      // Compare actual HTML content instead of just text content
-      // This ensures formatting changes (like bold toggle) are properly detected
-      const currentHTML = this.rootElement.innerHTML;
-      const expectedHTML = html;
-
-      if (currentHTML !== expectedHTML) {
-        this.rootElement.innerHTML = html;
-      }
+    if (this.rootElement && this.rootElement.innerHTML !== html) {
+      this.rootElement.innerHTML = html;
     }
 
     this.onChange(html);
