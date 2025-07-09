@@ -33,9 +33,9 @@ This plan outlines the enhancements to be made to the RichTextEditor.tsx compone
 
 ## Enhancement Goals
 
-1. [ ] Create functionality to determine the formatting state at the current cursor position or for selected text
+1. [x] Create functionality to determine the formatting state at the current cursor position or for selected text
 2. [ ] Update toolbar UI to reflect the active formatting states
-3. [ ] Handle mixed formatting states appropriately
+3. [x] Handle mixed formatting states appropriately
 
 ## Vertical Slices
 
@@ -127,14 +127,15 @@ Each slice must complete the following before moving to the next:
      - [x] Fixed issue where content was being placed directly in list elements without proper list item tags
      - [x] Improved insertList method to be more robust in handling different DOM structures
    - [x] Manual testing
-   - [ ] Explicit human approval ("continue")
+   - [x] Explicit human approval ("continue")
 
-5. [ ] Slice 5: Format Detection for Text Selection
-   - [ ] Write unit tests
-   - [ ] Implement the function
-   - [ ] Ensure tests pass
-   - [ ] Manual testing
-   - [ ] Explicit human approval ("continue")
+5. [x] Slice 5: Format Detection for Text Selection
+   - [x] Write unit tests
+   - [x] Implement the function
+   - [x] Handle mixed formatting detection for selections
+   - [x] Ensure tests pass
+   - [x] Manual testing
+   - [x] Explicit human approval ("continue")
 
 6. [ ] Slice 6: UI Update for Format State
    - [ ] Write unit tests

@@ -478,4 +478,168 @@ describe('FormatDetectionService', () => {
       expect(result.unorderedList).toBe(false);
     });
   });
+
+  describe('Slice 5: Format Detection for Text Selection', () => {
+    it('should detect fully bold text selection', () => {
+      // Arrange
+      root.innerHTML = '<p><strong>This is bold text</strong></p>';
+      const range = document.createRange();
+      const boldText = root.querySelector('strong')!.firstChild!;
+      range.setStart(boldText, 0);
+      range.setEnd(boldText, 5); // "This " part of "This is bold text"
+
+      const mockRange = {
+        ...range,
+        collapsed: false,
+        startContainer: range.startContainer,
+        endContainer: range.endContainer
+      };
+
+      const selection = {
+        rangeCount: 1,
+        getRangeAt: vi.fn().mockReturnValue(mockRange),
+      } as unknown as Selection;
+
+      (mockSelectionService.getCurrentSelection as unknown as MockFunction).mockReturnValue(selection);
+
+      // Act
+      const result = formatDetectionService.getFormatState();
+
+      // Assert
+      expect(result.bold).toBe(true);
+      expect(result.italic).toBe(false);
+      expect(result.underline).toBe(false);
+    });
+
+    it('should detect fully italic text selection', () => {
+      // Arrange
+      root.innerHTML = '<p><em>This is italic text</em></p>';
+      const range = document.createRange();
+      const italicText = root.querySelector('em')!.firstChild!;
+      range.setStart(italicText, 0);
+      range.setEnd(italicText, 5); // "This " part of "This is italic text"
+
+      const mockRange = {
+        ...range,
+        collapsed: false,
+        startContainer: range.startContainer,
+        endContainer: range.endContainer
+      };
+
+      const selection = {
+        rangeCount: 1,
+        getRangeAt: vi.fn().mockReturnValue(mockRange),
+      } as unknown as Selection;
+
+      (mockSelectionService.getCurrentSelection as unknown as MockFunction).mockReturnValue(selection);
+
+      // Act
+      const result = formatDetectionService.getFormatState();
+
+      // Assert
+      expect(result.bold).toBe(false);
+      expect(result.italic).toBe(true);
+      expect(result.underline).toBe(false);
+    });
+
+    it('should detect mixed formatting in a selection (partially bold)', () => {
+      // Arrange
+      root.innerHTML = '<p>This is <strong>bold</strong> text</p>';
+      const paragraph = root.querySelector('p')!;
+      const range = document.createRange();
+
+      // Select "is bold te" (part normal, part bold, part normal)
+      range.setStart(paragraph.firstChild!, 5); // Start at "is " in "This is "
+      range.setEnd(paragraph.lastChild!, 3); // End at "te" in " text"
+
+      const mockRange = {
+        ...range,
+        collapsed: false,
+        startContainer: range.startContainer,
+        endContainer: range.endContainer
+      };
+
+      const selection = {
+        rangeCount: 1,
+        getRangeAt: vi.fn().mockReturnValue(mockRange),
+      } as unknown as Selection;
+
+      (mockSelectionService.getCurrentSelection as unknown as MockFunction).mockReturnValue(selection);
+
+      // Act
+      const result = formatDetectionService.getFormatState();
+
+      // Assert
+      expect(result.bold).toBe(true); // Should be true if any part of the selection is bold
+      expect(result.italic).toBe(false);
+      expect(result.underline).toBe(false);
+    });
+
+    it('should detect mixed list and non-list content in a selection', () => {
+      // Arrange
+      root.innerHTML = '<p>Text before</p><ul><li>List item 1</li><li>List item 2</li></ul><p>Text after</p>';
+      const startParagraph = root.querySelector('p')!;
+      const listItem = root.querySelector('li')!;
+      const range = document.createRange();
+
+      // Select from paragraph through first list item
+      range.setStart(startParagraph.firstChild!, 5); // Start in "Text before"
+      range.setEnd(listItem.firstChild!, 5); // End in "List item 1"
+
+      const mockRange = {
+        ...range,
+        collapsed: false,
+        startContainer: range.startContainer,
+        endContainer: range.endContainer
+      };
+
+      const selection = {
+        rangeCount: 1,
+        getRangeAt: vi.fn().mockReturnValue(mockRange),
+      } as unknown as Selection;
+
+      (mockSelectionService.getCurrentSelection as unknown as MockFunction).mockReturnValue(selection);
+
+      // Act
+      const result = formatDetectionService.getFormatState();
+
+      // Assert
+      expect(result.unorderedList).toBe(true); // Any part of the selection is in an unordered list
+      expect(result.orderedList).toBe(false);
+    });
+
+    it('should handle complex mixed formatting scenarios', () => {
+      // Arrange
+      root.innerHTML = '<p><strong>Bold</strong> and <em>italic</em> and <span class="underline">underline</span></p>';
+      const paragraph = root.querySelector('p')!;
+      const range = document.createRange();
+
+      // Select the entire paragraph content
+      range.selectNodeContents(paragraph);
+
+      const mockRange = {
+        ...range,
+        collapsed: false,
+        startContainer: range.startContainer,
+        endContainer: range.endContainer
+      };
+
+      const selection = {
+        rangeCount: 1,
+        getRangeAt: vi.fn().mockReturnValue(mockRange),
+      } as unknown as Selection;
+
+      (mockSelectionService.getCurrentSelection as unknown as MockFunction).mockReturnValue(selection);
+
+      // Act
+      const result = formatDetectionService.getFormatState();
+
+      // Assert - all formatting types should be detected
+      expect(result.bold).toBe(true);
+      expect(result.italic).toBe(true);
+      expect(result.underline).toBe(true);
+      expect(result.orderedList).toBe(false);
+      expect(result.unorderedList).toBe(false);
+    });
+  });
 });

@@ -789,7 +789,6 @@ describe('Editor.getFormatState', () => {
       getFormatState: vi.fn().mockReturnValue(mockFormatState),
     };
 
-    // @ts-expect-error - Accessing private property for testing
     const originalService = editor['formatDetectionService'];
     // @ts-expect-error - Replacing private property for testing
     editor['formatDetectionService'] = mockFormatDetectionService;
@@ -804,7 +803,6 @@ describe('Editor.getFormatState', () => {
       expect(result.bold).toBe(true);
     } finally {
       // Clean up by restoring the original service
-      // @ts-expect-error - Restoring private property after test
       editor['formatDetectionService'] = originalService;
     }
   });
