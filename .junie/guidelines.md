@@ -1,1 +1,1 @@
-docs/ai-guidelines/guidelines.md
+../docs/ai-guidelines/guidelines.md
