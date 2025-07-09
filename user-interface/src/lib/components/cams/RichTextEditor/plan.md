@@ -151,12 +151,15 @@ Each slice must complete the following before moving to the next:
    - [x] Manual testing
    - [x] Explicit human approval ("continue")
 
-8. [ ] Bug Fix: Exiting Numbered List (Simple)
-   - [ ] Write test case to reproduce the issue with exiting numbered lists
-   - [ ] Implement fix for exiting numbered lists when Enter is pressed on an empty list item
-   - [ ] Ensure tests pass
-   - [ ] Manual testing and verification
-   - [ ] Explicit human approval ("continue")
+8. [x] Bug Fix: Exiting Numbered List (Simple)
+   - [x] Write test case to reproduce the issue with exiting numbered lists
+   - [x] Implement fix for exiting numbered lists when Enter is pressed on an empty list item
+   - [x] Consolidated related test files into ListNavigationService.test.ts
+   - [x] Moved RichTextEditorEnterKeyBug.test.ts into Editor.test.ts
+   - [x] Deleted redundant test files after ensuring all tests pass
+   - [x] Ensure tests pass
+   - [x] Manual testing and verification
+   - [x] Explicit human approval ("continue")
 
 9. [ ] Bug Fix: Formatting Removal Bug (Moderate)
    - [ ] Create specific test cases to reproduce the issue
@@ -168,14 +171,15 @@ Each slice must complete the following before moving to the next:
    - [ ] Explicit human approval ("continue")
 
 10. [ ] Bug Fix: Nested Formatting Issue (Complex)
-   - [ ] Create test cases for nested formatting scenarios
-   - [ ] Implement special case detection for toggling formatting off from an entire formatting element
-   - [ ] Improve text content preservation when replacing formatting elements
-   - [ ] Enhance removeFormatFromFragment to be more robust in handling nested elements
-   - [ ] Fix handling of partial formatting selection
-   - [ ] Ensure all tests pass including FormatBugReproduction tests
-   - [ ] Manual testing and verification
-   - [ ] Explicit human approval ("continue")
+
+- [ ] Create test cases for nested formatting scenarios
+- [ ] Implement special case detection for toggling formatting off from an entire formatting element
+- [ ] Improve text content preservation when replacing formatting elements
+- [ ] Enhance removeFormatFromFragment to be more robust in handling nested elements
+- [ ] Fix handling of partial formatting selection
+- [ ] Ensure all tests pass including FormatBugReproduction tests
+- [ ] Manual testing and verification
+- [ ] Explicit human approval ("continue")
 
 ## Manual Testing Instructions
 
