@@ -57,7 +57,6 @@ import MockUserGroupGateway from './testing/mock-gateways/mock-user-group-gatewa
 import { getCamsErrorWithStack } from './common-errors/error-utilities';
 import { OfficeAssigneeMongoRepository } from './adapters/gateways/mongo/office-assignee.mongo.repository';
 import StorageQueueGateway from './adapters/gateways/storage-queue/storage-queue-gateway';
-import ConsolidationOrdersMigrationMongoRepository from './adapters/gateways/mongo/consolidations-migration.mongo.repository';
 
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
@@ -327,15 +326,6 @@ export const getQueueGateway = (_ignore: ApplicationContext): QueueGateway => {
   return StorageQueueGateway;
 };
 
-// TODO: Delete this function once the consolidation order `consolidationId` values have been migrated.
-const getConsolidationOrdersMigrationMongoRepository = (
-  context: ApplicationContext,
-): ConsolidationOrdersMigrationMongoRepository => {
-  const repo = ConsolidationOrdersMigrationMongoRepository.getInstance(context);
-  deferRelease(repo, context);
-  return repo;
-};
-
 export const Factory = {
   getAcmsGateway,
   getAttorneyGateway,
@@ -362,7 +352,6 @@ export const Factory = {
   getUserGroupGateway,
   getUsersRepository,
   getQueueGateway,
-  getConsolidationOrdersMigrationMongoRepository,
 };
 
 export default Factory;

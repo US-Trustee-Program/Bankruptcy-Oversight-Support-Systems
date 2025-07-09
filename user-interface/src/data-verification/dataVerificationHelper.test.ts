@@ -113,7 +113,6 @@ describe('data verification helper tests', () => {
         courtDivisionName: 'New York 1',
         regionId: '02',
         regionName: 'NEW YORK',
-        isLegacy: true,
       },
     ];
 
