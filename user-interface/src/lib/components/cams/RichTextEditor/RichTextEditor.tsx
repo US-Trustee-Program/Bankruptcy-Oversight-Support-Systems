@@ -51,7 +51,7 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
   // Update the format state when the selection changes
   const updateFormatState = () => {
     if (editorRef.current) {
-      setFormatState(editorRef.current.getFormatState());
+      setFormatState(editorRef.current.handleSelectionChange());
     }
   };
 
@@ -70,20 +70,34 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
       }
     };
 
+    // Debounce function to prevent excessive updates
+    const debounce = (func: () => void, delay: number) => {
+      let timeoutId: ReturnType<typeof setTimeout>;
+      return () => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          func();
+        }, delay);
+      };
+    };
+
+    // Create debounced event handlers for better performance
+    const debouncedUpdateFormatState = debounce(updateFormatState, 100);
+
     // Listen for selection changes
     document.addEventListener('selectionchange', handleSelectionChange);
 
     // Also update format state on mouse up, key up, and input events
     editorContent.addEventListener('mouseup', updateFormatState);
-    editorContent.addEventListener('keyup', updateFormatState);
-    editorContent.addEventListener('input', updateFormatState);
+    editorContent.addEventListener('keyup', debouncedUpdateFormatState);
+    editorContent.addEventListener('input', debouncedUpdateFormatState);
 
     // Clean up event listeners
     return () => {
       document.removeEventListener('selectionchange', handleSelectionChange);
       editorContent.removeEventListener('mouseup', updateFormatState);
-      editorContent.removeEventListener('keyup', updateFormatState);
-      editorContent.removeEventListener('input', updateFormatState);
+      editorContent.removeEventListener('keyup', debouncedUpdateFormatState);
+      editorContent.removeEventListener('input', debouncedUpdateFormatState);
     };
   }, []);
 

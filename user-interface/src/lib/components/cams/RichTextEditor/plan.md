@@ -2,7 +2,7 @@
 
 ## Implementation Rules
 
-1. Always follow TDD, YAGNI, KISS, DRY, and implementing code using well defined names.
+1. Always follow TDD, YAGNI, KISS, DRY, and implementing code using well define
 2. Always ask questions if there are unclear requirements or multiple implementation options.
 3. Write implementation according to the concept of vertical slices — each implementation should allow the end user to accomplish a small task in the browser.
 4. Each vertical slice must be completed fully and tested before moving to the next slice.
@@ -34,7 +34,7 @@ This plan outlines the enhancements to be made to the RichTextEditor.tsx compone
 ## Enhancement Goals
 
 1. [x] Create functionality to determine the formatting state at the current cursor position or for selected text
-2. [ ] Update toolbar UI to reflect the active formatting states
+2. [x] Update toolbar UI to reflect the active formatting states
 3. [x] Handle mixed formatting states appropriately
 
 ## Vertical Slices
@@ -144,12 +144,30 @@ Each slice must complete the following before moving to the next:
    - [x] Manual testing
    - [x] Explicit human approval ("continue")
 
-7. [ ] Slice 7: Selection Change Event Handling
-   - [ ] Write unit tests
-   - [ ] Implement event listeners
-   - [ ] Ensure tests pass
-   - [ ] Manual testing
-   - [ ] Explicit human approval ("continue")
+7. [x] Slice 7: Selection Change Event Handling
+   - [x] Write unit tests
+   - [x] Implement event listeners
+   - [x] Ensure tests pass
+   - [x] Manual testing
+   - [x] Explicit human approval ("continue")
+
+8. [ ] Bug Fix: Formatting Removal Bug
+   - [ ] Fixed issue where toggling bold/underline results in nested tags that cannot be removed
+   - [ ] Created specific test cases to reproduce and verify the bug fix
+   - [ ] Improved FormattingService to handle all cases of formatting removal
+   - [ ] Ensured text content is preserved when removing formatting
+   - [ ] Manual testing and verification needed
+
+9. [ ] Bug Fix: Nested Formatting Issue
+   - [ ] Fixed bug where toggling bold/underline formatting results in nested tags that cannot be removed
+      - Fixed by improving the FormattingService to properly handle removing formatting elements
+      - Added special case detection for toggling formatting off from an entire formatting element
+      - Improved the text content preservation when replacing formatting elements
+      - Enhanced removeFormatFromFragment to be more robust in handling nested elements
+      - All FormatBugReproduction tests now pass
+
+10. [ ] Bug Fix: exiting numbered list
+   - [ ] In a bullet list, if I am on a blank list item and I hit Enter key, it ends the bullet list and places me inside a new paragraph. This is correct. However, numbered list should work the same way. But currently, if I'm in a numbered list, pressing Enter on an empty list item just adds another list item.
 
 ## Manual Testing Instructions
 
@@ -424,3 +442,94 @@ List detection now works correctly in both unit tests and browser contexts:
 - Code is clean and production-ready
 
 The fix enables proper visual indication of active list formatting in the toolbar, completing Slice 4's requirements.
+
+### Manual Testing for Bug Fix: Nested Formatting Removal
+
+To verify that the nested formatting bug has been fixed:
+
+1. Build and run the application using:
+
+   ```bash
+   npm run dev
+   ```
+
+2. Navigate to a page with the rich text editor
+3. Test the following scenarios:
+
+   **Scenario 1: Simple Bold Toggle**
+   - Type some text (e.g., "Test text")
+   - Select all of the text
+   - Apply bold formatting (Ctrl+B or click Bold button)
+   - The text should now be bold
+   - Select all of the bold text again
+   - Remove bold formatting (Ctrl+B or click Bold button again)
+   - Verify the text is no longer bold but is still present
+
+   **Scenario 2: Nested Formatting Bug Test**
+   - Type a word (e.g., "Initial")
+   - Select the word and make it bold
+   - Place cursor at the end of the bold text
+   - Type more text (e.g., " text") - now you have "Initial text" with "Initial" being bold
+   - Select just the word "text" (not the bold part)
+   - Apply underline formatting (Ctrl+U or click Underline button)
+   - Type more text inside the underlined section (e.g., " more") - now you have "Initial text more" with "Initial" being bold and "text more" being underlined
+   - Select just the word "more"
+   - Remove underline formatting (Ctrl+U or click Underline button)
+   - Type additional text (e.g., " final") - now you have "Initial text more final" with formatting applied to different parts
+   - Select the entire text
+   - Remove bold formatting (Ctrl+B or click Bold button)
+   - Verify all bold formatting is completely removed (no nested formatting tags)
+   - The text should still be "Initial text more final" with only appropriate formatting remaining
+
+4. Open the browser's developer tools (F12)
+5. Inspect the HTML structure in the editor to verify there are no nested formatting tags
+6. Check that removing formatting properly preserves the text content
+
+If the formatting is properly removed in all scenarios, and no nested tags remain in the HTML structure, the bug has been successfully fixed.
+
+### Manual Testing for Slice 7: Selection Change Event Handling
+
+For this slice, we need to verify that the editor properly updates the toolbar button states when the cursor moves or text is selected.
+
+1. Build and run the application using:
+
+   ```bash
+   npm run dev
+   ```
+
+2. Navigate to a page with the rich text editor
+3. Test the following scenarios:
+
+   **Scenario 1: Cursor Movement Between Formats**
+   - Type some text and apply different formatting to different parts:
+     - Make some text bold (Ctrl+B or Bold button)
+     - Make some text italic (Ctrl+I or Italic button)
+     - Make some text underlined (Ctrl+U or Underline button)
+   - Move your cursor through the text using arrow keys or mouse clicks
+   - Verify that the toolbar buttons update to show the active formatting at the current cursor position:
+     - The Bold button should be active (highlighted) when the cursor is in bold text
+     - The Italic button should be active when the cursor is in italic text
+     - The Underline button should be active when the cursor is in underlined text
+
+   **Scenario 2: Text Selection**
+   - Select a range of text that has mixed formatting
+   - Verify that the toolbar buttons reflect the formatting of the selected text
+   - If the entire selection has bold formatting, the Bold button should be active
+   - If only part of the selection has italic formatting, the Italic button should still be active
+
+   **Scenario 3: List Detection**
+   - Create both ordered and unordered lists in the editor
+   - Click inside different list items
+   - Verify that the corresponding list button shows as active when the cursor is inside that list type
+   - Move between list types and verify the active button changes accordingly
+
+   **Scenario 4: Performance**
+   - Rapidly type text and move the cursor
+   - Verify that the UI remains responsive
+   - Verify that the format state updates appropriately without excessive performance impact
+
+4. Open the browser's developer tools (F12)
+5. In the Console tab, check for any errors related to selection change events
+6. Verify that there are no performance warnings or excessive re-renders
+7. If all scenarios work correctly and the format state updates reliably when moving the cursor or selecting text, then this slice is complete
+8. Provide explicit "continue" to proceed to the next slice

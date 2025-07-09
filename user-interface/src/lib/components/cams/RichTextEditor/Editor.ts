@@ -232,7 +232,17 @@ export class Editor {
    */
   public getFormatState(): FormatState {
     const formatState = this.formatDetectionService.getFormatState();
-    console.log('Format state at cursor position:', formatState);
+    // Remove console log for production
+    // console.log('Format state at cursor position:', formatState);
     return formatState;
+  }
+
+  /**
+   * Handles selection change events and cursor movements
+   * This method should be called whenever the selection changes to update format state
+   * @returns The current format state after the selection change
+   */
+  public handleSelectionChange(): FormatState {
+    return this.getFormatState();
   }
 }
