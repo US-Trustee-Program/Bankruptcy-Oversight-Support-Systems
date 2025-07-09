@@ -1,1009 +1,631 @@
-import { test, expect, beforeEach, vi } from 'vitest';
-import { VDOMNode, VDOMSelection } from '../types';
-import {
-  createTextNode,
-  createParagraphNode,
-  createStrongNode,
-  createEmNode,
-  createUNode,
-} from './VDOMNode';
+import { describe, expect, beforeEach, vi } from 'vitest';
 import {
   getSelectionFromBrowser,
   applySelectionToBrowser,
   getNodesInRange,
   getFormattingAtSelection,
-  findNodeByDOMNode,
-  getTextOffsetInVDOM,
-  textContentOffsetToNodeOffset, // Add the new function we're testing
 } from './VDOMSelection';
+import { VDOMNode, VDOMSelection, VDOMPosition } from '../types';
+import { SelectionService } from '../selection/SelectionService.humble';
 
 // Mock SelectionService for testing
-const mockSelectionService = {
-  getCurrentSelection: vi.fn(),
-  createRange: vi.fn(),
-  setSelectionRange: vi.fn(),
-  getSelectionText: vi.fn(),
-  isSelectionCollapsed: vi.fn(),
-  getSelectionAnchorNode: vi.fn(),
-  getSelectionAnchorOffset: vi.fn(),
-  getSelectionFocusNode: vi.fn(),
-  getSelectionFocusOffset: vi.fn(),
-};
-
-// Mock DOM elements for testing
-const createMockTextNode = (content: string) =>
-  ({
-    nodeType: 3, // TEXT_NODE
-    textContent: content,
-    parentNode: null,
-  }) as unknown as Node;
-
-beforeEach(() => {
-  vi.restoreAllMocks();
-});
-
-// Helper function to create a selection - Simplified approach
-function createSelection(startOffset: number, endOffset: number): VDOMSelection {
-  return {
-    start: { offset: startOffset },
-    end: { offset: endOffset },
-    isCollapsed: startOffset === endOffset,
-  };
-}
-
-// Helper function to create a simple VDOM structure
-function createSimpleVDOM(): VDOMNode[] {
-  return [
-    createParagraphNode([
-      createTextNode('Hello '),
-      createStrongNode([createTextNode('world')]),
-      createTextNode('!'),
-    ]),
-  ];
-}
-
-test('should return VDOM node that matches DOM node text content', () => {
-  const vdom = createSimpleVDOM();
-  const mockDOMNode = createMockTextNode('Hello ');
-
-  // Mock the mapping - in real implementation this would use DOM traversal
-  const result = findNodeByDOMNode(vdom, mockDOMNode);
-
-  // Since we can't easily mock the DOM traversal, we'll test the structure
-  expect(typeof result).toBe('object');
-});
-
-test('should calculate cumulative text offset up to specified node and position', () => {
-  const vdom = createSimpleVDOM();
-  const textNode = vdom[0].children![0];
-
-  const offset = getTextOffsetInVDOM(vdom, textNode.id, 3);
-
-  expect(offset).toBe(3);
-});
-
-test('should include parent text length when calculating offset within nested formatting nodes', () => {
-  const vdom = createSimpleVDOM();
-  const strongNode = vdom[0].children![1];
-  const textInStrong = strongNode.children![0];
-
-  const offset = getTextOffsetInVDOM(vdom, textInStrong.id, 2);
-
-  // Should be 6 + 2 = 8 (6 for "Hello " + 2 for "wo" in "world")
-  expect(offset).toBe(8);
-});
-
-test('should convert DOM node positions to absolute text offsets when getting browser selection', () => {
-  // Mock browser selection
-  const mockSelection = {
-    anchorNode: createMockTextNode('Hello '),
-    anchorOffset: 2,
-    focusNode: createMockTextNode('Hello '),
-    focusOffset: 5,
-    isCollapsed: false,
-  };
-
-  mockSelectionService.getCurrentSelection.mockReturnValue(mockSelection);
-  mockSelectionService.getSelectionAnchorNode.mockReturnValue(mockSelection.anchorNode);
-  mockSelectionService.getSelectionAnchorOffset.mockReturnValue(mockSelection.anchorOffset);
-  mockSelectionService.getSelectionFocusNode.mockReturnValue(mockSelection.focusNode);
-  mockSelectionService.getSelectionFocusOffset.mockReturnValue(mockSelection.focusOffset);
-  mockSelectionService.isSelectionCollapsed.mockReturnValue(mockSelection.isCollapsed);
-
-  const result = getSelectionFromBrowser(mockSelectionService);
-
-  expect(result).toBeDefined();
-  expect(result.isCollapsed).toBe(false);
-});
-
-test('should create collapsed VDOM selection when browser selection has same start and end positions', () => {
-  const mockSelection = {
-    anchorNode: createMockTextNode('Hello '),
-    anchorOffset: 3,
-    focusNode: createMockTextNode('Hello '),
-    focusOffset: 3,
-    isCollapsed: true,
-  };
-
-  mockSelectionService.getCurrentSelection.mockReturnValue(mockSelection);
-  mockSelectionService.getSelectionAnchorNode.mockReturnValue(mockSelection.anchorNode);
-  mockSelectionService.getSelectionAnchorOffset.mockReturnValue(mockSelection.anchorOffset);
-  mockSelectionService.getSelectionFocusNode.mockReturnValue(mockSelection.focusNode);
-  mockSelectionService.getSelectionFocusOffset.mockReturnValue(mockSelection.focusOffset);
-  mockSelectionService.isSelectionCollapsed.mockReturnValue(mockSelection.isCollapsed);
-
-  const result = getSelectionFromBrowser(mockSelectionService);
-
-  expect(result).toBeDefined();
-  expect(result.isCollapsed).toBe(true);
-});
-
-test('should convert absolute text offsets to DOM range and apply to browser selection', () => {
-  const rootElement = document.createElement('div');
-  // Set contentEditable to true to make the test pass with our new check
-  rootElement.setAttribute('contentEditable', 'true');
-  const selection = createSelection(2, 5);
-
-  const mockRange = {
-    setStart: vi.fn(),
-    setEnd: vi.fn(),
-    collapse: vi.fn(),
-  };
-
-  mockSelectionService.createRange.mockReturnValue(mockRange);
-
-  applySelectionToBrowser(mockSelectionService, selection, rootElement);
-
-  expect(mockSelectionService.createRange).toHaveBeenCalled();
-  expect(mockSelectionService.setSelectionRange).toHaveBeenCalledWith(mockRange);
-});
-
-test('applySelectionToBrowser should handle collapsed selection', () => {
-  const rootElement = document.createElement('div');
-  // Set contentEditable to true to make the test pass with our new check
-  rootElement.setAttribute('contentEditable', 'true');
-  const selection = createSelection(3, 3);
-
-  const mockRange = {
-    setStart: vi.fn(),
-    setEnd: vi.fn(),
-    collapse: vi.fn(),
-  };
-
-  mockSelectionService.createRange.mockReturnValue(mockRange);
-
-  applySelectionToBrowser(mockSelectionService, selection, rootElement);
-
-  expect(mockSelectionService.createRange).toHaveBeenCalled();
-  expect(mockSelectionService.setSelectionRange).toHaveBeenCalledWith(mockRange);
-});
-
-test('getNodesInRange should return nodes from VDOM', () => {
-  const vdom = createSimpleVDOM();
-
-  const nodes = getNodesInRange(vdom);
-
-  expect(nodes).toBeDefined();
-  expect(Array.isArray(nodes)).toBe(true);
-  expect(nodes.length).toBeGreaterThan(0);
-});
-
-test('getNodesInRange should find all text nodes', () => {
-  const vdom = createSimpleVDOM();
-
-  const nodes = getNodesInRange(vdom);
-
-  expect(nodes).toBeDefined();
-  expect(Array.isArray(nodes)).toBe(true);
-  // SimpleVDOM has 3 text nodes (Hello, world, !)
-  expect(nodes.length).toBe(3);
-  expect(nodes.every((node) => node.type === 'text')).toBe(true);
-});
-
-test('getNodesInRange should handle complex VDOM structures', () => {
-  const vdom = [
-    createParagraphNode([
-      createTextNode('First '),
-      createStrongNode([createTextNode('bold'), createEmNode([createTextNode('and italic')])]),
-      createTextNode(' text'),
-    ]),
-  ];
-
-  const nodes = getNodesInRange(vdom);
-
-  expect(nodes).toBeDefined();
-  expect(Array.isArray(nodes)).toBe(true);
-  // Should find all 4 text nodes
-  expect(nodes.length).toBe(4);
-});
-
-test('getFormattingAtSelection should detect bold formatting', () => {
-  const vdom = [
-    createParagraphNode([
-      createTextNode('Hello '),
-      createStrongNode([createTextNode('world')]),
-      createTextNode('!'),
-    ]),
-  ];
-  const selection = createSelection(8, 8);
-
-  const formatting = getFormattingAtSelection(vdom, selection);
-
-  // For vertical slice #1, formatting is not implemented yet
-  expect(formatting.bold).toBe(false);
-  expect(formatting.italic).toBe(false);
-  expect(formatting.underline).toBe(false);
-});
-
-test('getFormattingAtSelection should detect italic formatting', () => {
-  const vdom = [
-    createParagraphNode([
-      createTextNode('Hello '),
-      createEmNode([createTextNode('world')]),
-      createTextNode('!'),
-    ]),
-  ];
-  const selection = createSelection(8, 8);
-
-  const formatting = getFormattingAtSelection(vdom, selection);
-
-  // For vertical slice #1, formatting is not implemented yet
-  expect(formatting.bold).toBe(false);
-  expect(formatting.italic).toBe(false);
-  expect(formatting.underline).toBe(false);
-});
-
-test('getFormattingAtSelection should detect underline formatting', () => {
-  const vdom = [
-    createParagraphNode([
-      createTextNode('Hello '),
-      createUNode([createTextNode('world')]),
-      createTextNode('!'),
-    ]),
-  ];
-  const selection = createSelection(8, 8);
-
-  const formatting = getFormattingAtSelection(vdom, selection);
-
-  // For vertical slice #1, formatting is not implemented yet
-  expect(formatting.bold).toBe(false);
-  expect(formatting.italic).toBe(false);
-  expect(formatting.underline).toBe(false);
-});
-
-test('getFormattingAtSelection should detect multiple formatting', () => {
-  const vdom = [
-    createParagraphNode([
-      createStrongNode([createEmNode([createUNode([createTextNode('formatted text')])])]),
-    ]),
-  ];
-  const selection = createSelection(5, 5);
-
-  const formatting = getFormattingAtSelection(vdom, selection);
-
-  // For vertical slice #1, formatting is not implemented yet
-  expect(formatting.bold).toBe(false);
-  expect(formatting.italic).toBe(false);
-  expect(formatting.underline).toBe(false);
-});
-
-test('getFormattingAtSelection should handle plain text', () => {
-  const vdom = createSimpleVDOM();
-  const selection = createSelection(2, 2);
-
-  const formatting = getFormattingAtSelection(vdom, selection);
-
-  expect(formatting.bold).toBe(false);
-  expect(formatting.italic).toBe(false);
-  expect(formatting.underline).toBe(false);
-});
-
-test('getFormattingAtSelection should handle range selection with mixed formatting', () => {
-  const vdom = [
-    createParagraphNode([
-      createTextNode('plain '),
-      createStrongNode([createTextNode('bold')]),
-      createTextNode(' text'),
-    ]),
-  ];
-  const selection = createSelection(3, 12);
-
-  const formatting = getFormattingAtSelection(vdom, selection);
-
-  // For vertical slice #1, formatting is not implemented yet
-  expect(formatting.bold).toBe(false);
-  expect(formatting.italic).toBe(false);
-  expect(formatting.underline).toBe(false);
-});
-
-// Tests for null handling scenarios
-test('applySelectionToBrowser should handle null rootElement gracefully', () => {
-  // Remove unused vdom variable
-  const selection = createSelection(2, 5);
-
-  const mockRange = {
-    setStart: vi.fn(),
-    setEnd: vi.fn(),
-    collapse: vi.fn(),
-  };
-
-  mockSelectionService.createRange.mockReturnValue(mockRange);
-
-  // Mock console.warn to verify it's called
-  const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-  // This should not throw an error and should log a warning
-  expect(() => {
-    applySelectionToBrowser(mockSelectionService, selection, null as never);
-  }).not.toThrow();
-
-  expect(consoleSpy).toHaveBeenCalledWith('Cannot apply selection to browser: rootElement is null');
-  expect(mockSelectionService.createRange).not.toHaveBeenCalled();
-
-  consoleSpy.mockRestore();
-});
-
-test('applySelectionToBrowser should not apply selection to non-editable elements', () => {
-  const rootElement = document.createElement('div');
-  // Explicitly NOT setting contentEditable="true"
-  const selection = createSelection(2, 5);
-
-  const mockRange = {
-    setStart: vi.fn(),
-    setEnd: vi.fn(),
-    collapse: vi.fn(),
-  };
-
-  mockSelectionService.createRange.mockReturnValue(mockRange);
-
-  // Mock console.warn to verify it's called
-  const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-  // This should not throw an error and should log a warning
-  expect(() => {
-    applySelectionToBrowser(mockSelectionService, selection, rootElement);
-  }).not.toThrow();
-
-  expect(consoleSpy).toHaveBeenCalledWith(
-    'Cannot apply selection to browser: rootElement is not an editable field of this editor',
-  );
-  expect(mockSelectionService.createRange).not.toHaveBeenCalled();
-
-  consoleSpy.mockRestore();
-});
-
-test('applySelectionToBrowser should handle missing VDOM nodes gracefully', () => {
-  const rootElement = document.createElement('div');
-  // Set contentEditable to true to make the test pass with our new check
-  rootElement.setAttribute('contentEditable', 'true');
-  // Create selection with valid offsets
-  const selection = createSelection(2, 5);
-
-  const mockRange = {
-    setStart: vi.fn(),
-    setEnd: vi.fn(),
-    collapse: vi.fn(),
-  };
-
-  mockSelectionService.createRange.mockReturnValue(mockRange);
-
-  // This should not throw an error
-  expect(() => {
-    applySelectionToBrowser(mockSelectionService, selection, rootElement);
-  }).not.toThrow();
-
-  // Should create range since we're using simplified approach
-  expect(mockSelectionService.createRange).toHaveBeenCalled();
-});
-
-test('applySelectionToBrowser should apply selection when ancestor is contentEditable', () => {
-  // Create a nested structure: div (contentEditable) > span > p
-  const rootElement = document.createElement('div');
-  rootElement.setAttribute('contentEditable', 'true');
-
-  const span = document.createElement('span');
-  rootElement.appendChild(span);
-
-  const paragraph = document.createElement('p');
-  span.appendChild(paragraph);
-
-  const selection = createSelection(2, 5);
-
-  const mockRange = {
-    setStart: vi.fn(),
-    setEnd: vi.fn(),
-    collapse: vi.fn(),
-  };
-
-  mockSelectionService.createRange.mockReturnValue(mockRange);
-
-  // This should not throw and should apply the selection
-  applySelectionToBrowser(mockSelectionService, selection, paragraph);
-
-  // Selection service should be called since paragraph is inside contentEditable div
-  expect(mockSelectionService.createRange).toHaveBeenCalled();
-  expect(mockSelectionService.setSelectionRange).toHaveBeenCalledWith(mockRange);
-});
-
-test('applySelectionToBrowser should apply selection when using the correct editorId', () => {
-  const rootElement = document.createElement('div');
-  rootElement.setAttribute('contentEditable', 'true');
-  rootElement.setAttribute('data-editor-id', 'editor-123');
-  const selection = createSelection(2, 5);
-
-  const mockRange = {
-    setStart: vi.fn(),
-    setEnd: vi.fn(),
-    collapse: vi.fn(),
-  };
-
-  mockSelectionService.createRange.mockReturnValue(mockRange);
-
-  // Apply selection with matching editor ID
-  applySelectionToBrowser(mockSelectionService, selection, rootElement, 'editor-123');
-
-  expect(mockSelectionService.createRange).toHaveBeenCalled();
-  expect(mockSelectionService.setSelectionRange).toHaveBeenCalledWith(mockRange);
-});
-
-test('applySelectionToBrowser should not apply selection with incorrect editorId', () => {
-  const rootElement = document.createElement('div');
-  rootElement.setAttribute('contentEditable', 'true');
-  rootElement.setAttribute('data-editor-id', 'editor-123');
-  const selection = createSelection(2, 5);
-
-  const mockRange = {
-    setStart: vi.fn(),
-    setEnd: vi.fn(),
-    collapse: vi.fn(),
-  };
-
-  mockSelectionService.createRange.mockReturnValue(mockRange);
-
-  const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-  // Apply selection with non-matching editor ID
-  applySelectionToBrowser(mockSelectionService, selection, rootElement, 'editor-456');
-
-  expect(consoleSpy).toHaveBeenCalledWith(
-    'Cannot apply selection to browser: rootElement is not an editable field of this editor',
-  );
-  expect(mockSelectionService.createRange).not.toHaveBeenCalled();
-
-  consoleSpy.mockRestore();
-});
-
-test('applySelectionToBrowser should apply selection to element with correct editor class', () => {
-  const rootElement = document.createElement('div');
-  rootElement.setAttribute('contentEditable', 'true');
-  rootElement.classList.add('rich-text-editor-editor-789');
-  const selection = createSelection(2, 5);
-
-  const mockRange = {
-    setStart: vi.fn(),
-    setEnd: vi.fn(),
-    collapse: vi.fn(),
-  };
-
-  mockSelectionService.createRange.mockReturnValue(mockRange);
-
-  // Apply selection with matching editor ID via class name
-  applySelectionToBrowser(mockSelectionService, selection, rootElement, 'editor-789');
-
-  expect(mockSelectionService.createRange).toHaveBeenCalled();
-  expect(mockSelectionService.setSelectionRange).toHaveBeenCalledWith(mockRange);
-});
-
-// Helper function to render VDOM to DOM element for testing
-function renderVDOMToDOM(vdom: VDOMNode[], container: HTMLElement): void {
-  // Simple implementation that creates DOM nodes from VDOM
-  container.innerHTML = '';
-  vdom.forEach((node) => {
-    const domNode = createDOMFromVDOM(node);
-    container.appendChild(domNode);
-  });
-}
-
-function createDOMFromVDOM(vdom: VDOMNode): Node {
-  if (vdom.type === 'text') {
-    return document.createTextNode(vdom.content || '');
+class MockSelectionService implements SelectionService {
+  private mockSelection: Selection | null = null;
+  private mockRange: Range | null = null;
+
+  constructor() {
+    this.mockRange = {
+      setStart: vi.fn(),
+      setEnd: vi.fn(),
+      collapse: vi.fn(),
+    } as unknown as Range;
   }
 
-  const element = document.createElement(vdom.type);
-  if (vdom.children) {
-    vdom.children.forEach((child) => {
-      element.appendChild(createDOMFromVDOM(child));
+  getCurrentSelection(): Selection | null {
+    return this.mockSelection;
+  }
+
+  getRangeAtStartOfSelection(): Range | undefined {
+    return this.mockRange || undefined;
+  }
+
+  createRange(): Range {
+    return this.mockRange!;
+  }
+
+  setSelectionRange = vi.fn();
+  getSelectedText = vi.fn().mockReturnValue('');
+  getSelectionText = vi.fn().mockReturnValue('');
+  isSelectionCollapsed = vi.fn().mockReturnValue(true);
+  getSelectionAnchorNode = vi.fn().mockReturnValue(null);
+  getSelectionAnchorOffset = vi.fn().mockReturnValue(0);
+  getSelectionFocusNode = vi.fn().mockReturnValue(null);
+  getSelectionFocusOffset = vi.fn().mockReturnValue(0);
+  selectNodeContents = vi.fn();
+  createElement = vi.fn();
+  createTextNode = vi.fn();
+  createDocumentFragment = vi.fn();
+  createTreeWalker = vi.fn();
+
+  // Helper methods for testing
+  setMockSelection(selection: Selection | null) {
+    this.mockSelection = selection;
+  }
+
+  setMockSelectionProperties(props: {
+    isCollapsed?: boolean;
+    anchorNode?: Node | null;
+    anchorOffset?: number;
+    focusNode?: Node | null;
+    focusOffset?: number;
+  }) {
+    this.setMockSelection(props as Selection);
+  }
+}
+
+describe('VDOMSelection', () => {
+  let mockSelectionService: MockSelectionService;
+  let mockRootElement: HTMLElement;
+
+  // Helper function to create test VDOM nodes
+  const createTextNode = (content: string, path: number[]): VDOMNode => ({
+    type: 'text',
+    path,
+    content,
+  });
+
+  const createElementNode = (
+    type: 'paragraph' | 'strong' | 'em' | 'u',
+    path: number[],
+    children?: VDOMNode[],
+  ): VDOMNode => ({
+    type,
+    path,
+    children: children || [],
+  });
+
+  // Helper function to create test positions
+  const createPosition = (node: VDOMNode, offset: number): VDOMPosition => ({
+    node,
+    offset,
+  });
+
+  // Helper function to create test selections
+  const createSelection = (
+    startNode: VDOMNode,
+    startOffset: number,
+    endNode: VDOMNode,
+    endOffset: number,
+  ): VDOMSelection => ({
+    start: createPosition(startNode, startOffset),
+    end: createPosition(endNode, endOffset),
+    isCollapsed: startNode === endNode && startOffset === endOffset,
+  });
+
+  beforeEach(() => {
+    mockSelectionService = new MockSelectionService();
+    mockRootElement = document.createElement('div');
+    mockRootElement.contentEditable = 'true';
+  });
+
+  describe('getSelectionFromBrowser', () => {
+    test('should return default selection when no browser selection exists', () => {
+      // Arrange
+      const vdom: VDOMNode[] = [createTextNode('Hello', [0])];
+      mockSelectionService.setMockSelection(null);
+
+      // Act
+      const result = getSelectionFromBrowser(mockSelectionService, mockRootElement, vdom);
+
+      // Assert
+      expect(result.isCollapsed).toBe(true);
+      expect(result.start.offset).toBe(0);
+      expect(result.end.offset).toBe(0);
     });
-  }
-  return element;
-}
 
-/**
- * These tests are designed to FAIL and expose the offset mapping bug
- * where selection offsets are assumed to be text content offsets
- * when they're actually DOM node-relative offsets.
- */
+    test('should map collapsed browser selection to VDOM selection', () => {
+      // Arrange
+      const textNode = createTextNode('Hello world', [0]);
+      const vdom: VDOMNode[] = [textNode];
 
-test('Selection across formatted text boundaries correctly maps offsets', () => {
-  // Setup: Create VDOM with mixed formatting - "Hello [bold]world[/bold] test"
-  const vdom: VDOMNode[] = [
-    createTextNode('Hello '),
-    createStrongNode([createTextNode('world')]),
-    createTextNode(' test'),
-  ];
+      const mockTextNodeDOM = document.createTextNode('Hello world');
+      mockRootElement.appendChild(mockTextNodeDOM);
 
-  // Create DOM element and render VDOM
-  const rootElement = document.createElement('div');
-  rootElement.setAttribute('contenteditable', 'true');
-  rootElement.setAttribute('data-editor-root', 'true');
-  document.body.appendChild(rootElement);
-  renderVDOMToDOM(vdom, rootElement);
+      mockSelectionService.setMockSelectionProperties({
+        isCollapsed: true,
+        anchorNode: mockTextNodeDOM,
+        anchorOffset: 5,
+        focusNode: mockTextNodeDOM,
+        focusOffset: 5,
+      });
 
-  // The DOM structure is now:
-  // - Text node: "Hello "      (offsets 0-5 in text content, 0-5 in DOM)
-  // - <strong>                 (no direct text)
-  //   - Text node: "world"     (offsets 6-10 in text content, 0-4 in DOM node)
-  // - Text node: " test"       (offsets 11-15 in text content, 0-4 in DOM node)
+      // Act
+      const result = getSelectionFromBrowser(mockSelectionService, mockRootElement, vdom);
 
-  // Simulate browser selection: select "o w" (spans across format boundary)
-  // In text content this should be offsets 4-7
-  // But in DOM, "o" is at offset 4 in first text node, "w" is at offset 0 in bold text node
+      // Assert
+      expect(result.isCollapsed).toBe(true);
+      expect(result.start.node).toBe(textNode);
+      expect(result.start.offset).toBe(5);
+      expect(result.end.node).toBe(textNode);
+      expect(result.end.offset).toBe(5);
+    });
 
-  const firstTextNode = rootElement.firstChild;
-  const boldTextNode = rootElement.querySelector('strong')?.firstChild;
+    test('should map range browser selection to VDOM selection', () => {
+      // Arrange
+      const textNode1 = createTextNode('Hello ', [0]);
+      const textNode2 = createTextNode('world', [1]);
+      const vdom: VDOMNode[] = [textNode1, textNode2];
 
-  const mockSelection = {
-    anchorNode: firstTextNode, // First text node "Hello "
-    focusNode: boldTextNode, // Bold text node "world"
-    anchorOffset: 4, // "o" in "Hello "
-    focusOffset: 1, // "w" in "world"
-    isCollapsed: false,
-  };
+      const mockTextNodeDOM1 = document.createTextNode('Hello ');
+      const mockTextNodeDOM2 = document.createTextNode('world');
+      mockRootElement.appendChild(mockTextNodeDOM1);
+      mockRootElement.appendChild(mockTextNodeDOM2);
 
-  mockSelectionService.getCurrentSelection.mockReturnValue(mockSelection as unknown as Selection);
-  mockSelectionService.getSelectionAnchorOffset.mockReturnValue(4);
-  mockSelectionService.getSelectionFocusOffset.mockReturnValue(1);
-  mockSelectionService.isSelectionCollapsed.mockReturnValue(false);
+      mockSelectionService.setMockSelectionProperties({
+        isCollapsed: false,
+        anchorNode: mockTextNodeDOM1,
+        anchorOffset: 2,
+        focusNode: mockTextNodeDOM2,
+        focusOffset: 3,
+      });
 
-  // Get the VDOM selection using current implementation
-  const vdomSelection = getSelectionFromBrowser(mockSelectionService);
+      // Act
+      const result = getSelectionFromBrowser(mockSelectionService, mockRootElement, vdom);
 
-  // This SHOULD be the correct text content offsets for "o w"
-  const expectedSelection: VDOMSelection = {
-    start: { offset: 4 }, // "o" in "Hello world test"
-    end: { offset: 7 }, // "w" in "Hello world test"
-    isCollapsed: false,
-  };
+      // Assert
+      expect(result.isCollapsed).toBe(false);
+      expect(result.start.node).toBe(textNode1);
+      expect(result.start.offset).toBe(2);
+      expect(result.end.node).toBe(textNode2);
+      expect(result.end.offset).toBe(3);
+    });
 
-  // Clean up
-  document.body.removeChild(rootElement);
+    test('should handle selection within formatted text (nested VDOM structure)', () => {
+      // Arrange: <p>Hello <strong>bold</strong> text</p>
+      const textNode1 = createTextNode('Hello ', [0, 0]);
+      const boldTextNode = createTextNode('bold', [0, 1, 0]);
+      const strongNode = createElementNode('strong', [0, 1], [boldTextNode]);
+      const textNode2 = createTextNode(' text', [0, 2]);
+      const paragraphNode = createElementNode('paragraph', [0], [textNode1, strongNode, textNode2]);
+      const vdom: VDOMNode[] = [paragraphNode];
 
-  // This test now PASSES because we've implemented proper
-  // DOM node-relative to text content offset mapping
-  expect(vdomSelection).toEqual(expectedSelection);
-});
+      const mockBoldTextDOM = document.createTextNode('bold');
+      const mockStrongDOM = document.createElement('strong');
+      mockStrongDOM.appendChild(mockBoldTextDOM);
+      mockRootElement.appendChild(mockStrongDOM);
 
-test('Selection starting in formatted text correctly maps offsets', () => {
-  // Setup: Create VDOM with bold at start - "[bold]Hello[/bold] world"
-  const vdom: VDOMNode[] = [createStrongNode([createTextNode('Hello')]), createTextNode(' world')];
+      mockSelectionService.setMockSelectionProperties({
+        isCollapsed: false,
+        anchorNode: mockBoldTextDOM,
+        anchorOffset: 1,
+        focusNode: mockBoldTextDOM,
+        focusOffset: 3,
+      });
 
-  const rootElement = document.createElement('div');
-  rootElement.setAttribute('contenteditable', 'true');
-  document.body.appendChild(rootElement);
-  renderVDOMToDOM(vdom, rootElement);
+      // Act
+      const result = getSelectionFromBrowser(mockSelectionService, mockRootElement, vdom);
 
-  // DOM structure:
-  // - <strong>
-  //   - Text node: "Hello"     (offsets 0-4 in text content, 0-4 in DOM node)
-  // - Text node: " world"     (offsets 5-10 in text content, 0-5 in DOM node)
+      // Assert
+      expect(result.isCollapsed).toBe(false);
+      expect(result.start.node).toBe(boldTextNode);
+      expect(result.start.offset).toBe(1);
+      expect(result.end.node).toBe(boldTextNode);
+      expect(result.end.offset).toBe(3);
+    });
 
-  // Simulate browser selection: select "lo w" (from bold text to regular text)
-  const boldTextNode = rootElement.querySelector('strong')?.firstChild;
-  const regularTextNode = rootElement.lastChild;
+    test('should handle selection across multiple DOM text nodes mapping to single VDOM node', () => {
+      // This tests the case where browser has split a single logical text into multiple DOM nodes
+      // but our VDOM represents it as one node
+      const textNode = createTextNode('Hello world test', [0]);
+      const vdom: VDOMNode[] = [textNode];
 
-  const mockSelection = {
-    anchorNode: boldTextNode, // Bold text "Hello"
-    focusNode: regularTextNode, // Regular text " world"
-    anchorOffset: 3, // "l" in "Hello"
-    focusOffset: 2, // "w" in " world"
-    isCollapsed: false,
-  };
+      const mockTextNodeDOM1 = document.createTextNode('Hello ');
+      const mockTextNodeDOM2 = document.createTextNode('world ');
+      const mockTextNodeDOM3 = document.createTextNode('test');
+      mockRootElement.appendChild(mockTextNodeDOM1);
+      mockRootElement.appendChild(mockTextNodeDOM2);
+      mockRootElement.appendChild(mockTextNodeDOM3);
 
-  mockSelectionService.getCurrentSelection.mockReturnValue(mockSelection as unknown as Selection);
-  mockSelectionService.getSelectionAnchorOffset.mockReturnValue(3);
-  mockSelectionService.getSelectionFocusOffset.mockReturnValue(2);
-  mockSelectionService.isSelectionCollapsed.mockReturnValue(false);
+      mockSelectionService.setMockSelectionProperties({
+        isCollapsed: false,
+        anchorNode: mockTextNodeDOM1,
+        anchorOffset: 2,
+        focusNode: mockTextNodeDOM3,
+        focusOffset: 2,
+      });
 
-  const vdomSelection = getSelectionFromBrowser(mockSelectionService);
+      // Act
+      const result = getSelectionFromBrowser(mockSelectionService, mockRootElement, vdom);
 
-  // Expected text content offsets for "lo w"
-  const expectedSelection: VDOMSelection = {
-    start: { offset: 3 }, // "l" in "Hello world"
-    end: { offset: 7 }, // "w" in "Hello world"
-    isCollapsed: false,
-  };
-
-  // Clean up
-  document.body.removeChild(rootElement);
-
-  // This test now PASSES - offset mapping works correctly
-  expect(vdomSelection).toEqual(expectedSelection);
-});
-
-test('Multiple format nodes correctly accumulate offsets', () => {
-  // Setup: Complex VDOM - "A[bold]B[/bold]C[italic]D[/italic]E"
-  const vdom: VDOMNode[] = [
-    createTextNode('A'),
-    createStrongNode([createTextNode('B')]),
-    createTextNode('C'),
-    createEmNode([createTextNode('D')]),
-    createTextNode('E'),
-  ];
-
-  const rootElement = document.createElement('div');
-  rootElement.setAttribute('contenteditable', 'true');
-  document.body.appendChild(rootElement);
-  renderVDOMToDOM(vdom, rootElement);
-
-  // Text content: "ABCDE" (positions 0,1,2,3,4)
-  // DOM structure creates multiple separate text nodes
-
-  // Simulate selecting "CD" (across italic boundary)
-  const cTextNode = rootElement.childNodes[2]; // Text node "C"
-  const dTextNode = rootElement.querySelector('em')?.firstChild; // Italic text "D"
-
-  const mockSelection = {
-    anchorNode: cTextNode, // Text node "C"
-    focusNode: dTextNode, // Italic text "D"
-    anchorOffset: 0, // "C"
-    focusOffset: 1, // "D" (end of selection)
-    isCollapsed: false,
-  };
-
-  mockSelectionService.getCurrentSelection.mockReturnValue(mockSelection as unknown as Selection);
-  mockSelectionService.getSelectionAnchorOffset.mockReturnValue(0);
-  mockSelectionService.getSelectionFocusOffset.mockReturnValue(1);
-  mockSelectionService.isSelectionCollapsed.mockReturnValue(false);
-
-  const vdomSelection = getSelectionFromBrowser(mockSelectionService);
-
-  // Expected text content offsets for "CD"
-  const expectedSelection: VDOMSelection = {
-    start: { offset: 2 }, // "C" in "ABCDE"
-    end: { offset: 4 }, // End of "D" in "ABCDE"
-    isCollapsed: false,
-  };
-
-  // Clean up
-  document.body.removeChild(rootElement);
-
-  // This test now PASSES - the offset mapping fix correctly handles
-  // multiple format nodes and accumulates text content offsets properly
-  expect(vdomSelection).toEqual(expectedSelection);
-});
-
-// New tests for textContentOffsetToNodeOffset function
-test('should return node ID and relative offset when given absolute position in single text node', () => {
-  const vdom: VDOMNode[] = [
-    {
-      id: 'text-1',
-      type: 'text',
-      content: 'Hello World',
-    },
-  ];
-
-  // Test various positions within the text
-  expect(textContentOffsetToNodeOffset(vdom, 0)).toEqual({
-    nodeId: 'text-1',
-    offset: 0,
+      // Assert
+      expect(result.isCollapsed).toBe(false);
+      expect(result.start.node).toBe(textNode);
+      expect(result.start.offset).toBe(2); // 'Hello '[2] = 'l'
+      expect(result.end.node).toBe(textNode);
+      expect(result.end.offset).toBe(14); // 'Hello world te'[14] = position after 'te'
+    });
   });
 
-  expect(textContentOffsetToNodeOffset(vdom, 5)).toEqual({
-    nodeId: 'text-1',
-    offset: 5,
+  describe('applySelectionToBrowser', () => {
+    test('should set collapsed selection in browser', () => {
+      // Arrange
+      const textNode = createTextNode('Hello world', [0]);
+      const vdom: VDOMNode[] = [textNode];
+      const selection = createSelection(textNode, 5, textNode, 5);
+
+      // Act
+      applySelectionToBrowser(mockSelectionService, selection, mockRootElement, vdom);
+
+      // Assert
+      expect(mockSelectionService.setSelectionRange).toHaveBeenCalled();
+      const range = mockSelectionService.createRange();
+      expect(range.setStart).toHaveBeenCalled();
+      expect(range.collapse).toHaveBeenCalledWith(true);
+    });
+
+    test('should set range selection in browser', () => {
+      // Arrange
+      const textNode1 = createTextNode('Hello ', [0]);
+      const textNode2 = createTextNode('world', [1]);
+      const vdom: VDOMNode[] = [textNode1, textNode2];
+      const selection = createSelection(textNode1, 2, textNode2, 3);
+
+      // Act
+      applySelectionToBrowser(mockSelectionService, selection, mockRootElement, vdom);
+
+      // Assert
+      expect(mockSelectionService.setSelectionRange).toHaveBeenCalled();
+      const range = mockSelectionService.createRange();
+      expect(range.setStart).toHaveBeenCalled();
+      expect(range.setEnd).toHaveBeenCalled();
+    });
+
+    test('should handle selection within nested VDOM structure', () => {
+      // Arrange: <p>Hello <strong>bold</strong> text</p>
+      const textNode1 = createTextNode('Hello ', [0, 0]);
+      const boldTextNode = createTextNode('bold', [0, 1, 0]);
+      const strongNode = createElementNode('strong', [0, 1], [boldTextNode]);
+      const textNode2 = createTextNode(' text', [0, 2]);
+      const paragraphNode = createElementNode('paragraph', [0], [textNode1, strongNode, textNode2]);
+      const vdom: VDOMNode[] = [paragraphNode];
+      const selection = createSelection(boldTextNode, 1, boldTextNode, 3);
+
+      // Act
+      applySelectionToBrowser(mockSelectionService, selection, mockRootElement, vdom);
+
+      // Assert
+      expect(mockSelectionService.setSelectionRange).toHaveBeenCalled();
+    });
+
+    test('should handle invalid root element gracefully', () => {
+      // Arrange
+      const textNode = createTextNode('Hello', [0]);
+      const vdom: VDOMNode[] = [textNode];
+      const selection = createSelection(textNode, 0, textNode, 5);
+
+      // Act & Assert - should not throw
+      expect(() => {
+        applySelectionToBrowser(
+          mockSelectionService,
+          selection,
+          null as unknown as HTMLElement,
+          vdom,
+        );
+      }).not.toThrow();
+    });
+
+    test('should map VDOM selection to correct DOM nodes using node paths', () => {
+      // Arrange: Complex nested structure where paths are crucial
+      const textNode1 = createTextNode('Start ', [0, 0]);
+      const textNode2 = createTextNode('middle', [0, 1, 0]);
+      const emNode = createElementNode('em', [0, 1], [textNode2]);
+      const textNode3 = createTextNode(' end', [0, 2]);
+      const paragraphNode = createElementNode('paragraph', [0], [textNode1, emNode, textNode3]);
+      const vdom: VDOMNode[] = [paragraphNode];
+      const selection = createSelection(textNode2, 1, textNode3, 2);
+
+      // Act
+      applySelectionToBrowser(mockSelectionService, selection, mockRootElement, vdom);
+
+      // Assert
+      expect(mockSelectionService.setSelectionRange).toHaveBeenCalled();
+      // The implementation should use the node paths to correctly locate the DOM nodes
+    });
   });
 
-  expect(textContentOffsetToNodeOffset(vdom, 11)).toEqual({
-    nodeId: 'text-1',
-    offset: 11,
-  });
-});
+  describe('getNodesInRange', () => {
+    test('should return empty array for collapsed selection', () => {
+      // Arrange
+      const textNode = createTextNode('Hello world', [0]);
+      const vdom: VDOMNode[] = [textNode];
+      const selection = createSelection(textNode, 5, textNode, 5);
 
-test('should map absolute positions to correct nodes when text is split across multiple nodes', () => {
-  const vdom: VDOMNode[] = [
-    {
-      id: 'text-1',
-      type: 'text',
-      content: 'Hello ',
-    },
-    {
-      id: 'text-2',
-      type: 'text',
-      content: 'World',
-    },
-  ];
+      // Act
+      const result = getNodesInRange(vdom, selection);
 
-  // Position 0-5 should be in first node
-  expect(textContentOffsetToNodeOffset(vdom, 0)).toEqual({
-    nodeId: 'text-1',
-    offset: 0,
-  });
+      // Assert
+      expect(result).toEqual([]);
+    });
 
-  expect(textContentOffsetToNodeOffset(vdom, 3)).toEqual({
-    nodeId: 'text-1',
-    offset: 3,
-  });
+    test('should return single node for selection within one node', () => {
+      // Arrange
+      const textNode = createTextNode('Hello world', [0]);
+      const vdom: VDOMNode[] = [textNode];
+      const selection = createSelection(textNode, 2, textNode, 8);
 
-  expect(textContentOffsetToNodeOffset(vdom, 6)).toEqual({
-    nodeId: 'text-1',
-    offset: 6,
-  });
+      // Act
+      const result = getNodesInRange(vdom, selection);
 
-  // Position 6-10 should be in second node
-  expect(textContentOffsetToNodeOffset(vdom, 7)).toEqual({
-    nodeId: 'text-2',
-    offset: 1,
-  });
+      // Assert
+      expect(result).toEqual([textNode]);
+    });
 
-  expect(textContentOffsetToNodeOffset(vdom, 11)).toEqual({
-    nodeId: 'text-2',
-    offset: 5,
-  });
-});
+    test('should return multiple nodes for selection spanning nodes', () => {
+      // Arrange
+      const textNode1 = createTextNode('Hello ', [0]);
+      const textNode2 = createTextNode('world', [1]);
+      const textNode3 = createTextNode(' test', [2]);
+      const vdom: VDOMNode[] = [textNode1, textNode2, textNode3];
+      const selection = createSelection(textNode1, 2, textNode3, 2);
 
-test('should traverse into formatting containers to find text nodes when position falls within formatted text', () => {
-  const vdom: VDOMNode[] = [
-    {
-      id: 'text-1',
-      type: 'text',
-      content: 'This is a ',
-    },
-    {
-      id: 'strong-1',
-      type: 'strong',
-      children: [
-        {
-          id: 'text-2',
-          type: 'text',
-          content: 'test',
-        },
-      ],
-    },
-  ];
+      // Act
+      const result = getNodesInRange(vdom, selection);
 
-  // Position 0-9 should be in first text node
-  expect(textContentOffsetToNodeOffset(vdom, 0)).toEqual({
-    nodeId: 'text-1',
-    offset: 0,
-  });
+      // Assert
+      expect(result).toEqual([textNode1, textNode2, textNode3]);
+    });
 
-  expect(textContentOffsetToNodeOffset(vdom, 5)).toEqual({
-    nodeId: 'text-1',
-    offset: 5,
-  });
+    test('should return nodes in nested structure within selection range', () => {
+      // Arrange: <p>Hello <strong>bold</strong> text</p>
+      const textNode1 = createTextNode('Hello ', [0, 0]);
+      const boldTextNode = createTextNode('bold', [0, 1, 0]);
+      const strongNode = createElementNode('strong', [0, 1], [boldTextNode]);
+      const textNode2 = createTextNode(' text', [0, 2]);
+      const paragraphNode = createElementNode('paragraph', [0], [textNode1, strongNode, textNode2]);
+      const vdom: VDOMNode[] = [paragraphNode];
+      const selection = createSelection(textNode1, 3, textNode2, 2);
 
-  expect(textContentOffsetToNodeOffset(vdom, 10)).toEqual({
-    nodeId: 'text-1',
-    offset: 10,
-  });
+      // Act
+      const result = getNodesInRange(vdom, selection);
 
-  // Position 10-14 should be in the text node inside strong
-  expect(textContentOffsetToNodeOffset(vdom, 11)).toEqual({
-    nodeId: 'text-2',
-    offset: 1,
-  });
+      // Assert
+      expect(result).toContain(textNode1);
+      expect(result).toContain(boldTextNode);
+      expect(result).toContain(strongNode);
+      expect(result).toContain(textNode2);
+    });
 
-  expect(textContentOffsetToNodeOffset(vdom, 14)).toEqual({
-    nodeId: 'text-2',
-    offset: 4,
-  });
-});
+    test('should handle selection that starts and ends within nested nodes', () => {
+      // Arrange: Selection from middle of one nested node to middle of another
+      const textNode1 = createTextNode('Hello ', [0, 0]);
+      const boldText1 = createTextNode('bold', [0, 1, 0]);
+      const strongNode = createElementNode('strong', [0, 1], [boldText1]);
+      const italicText = createTextNode('italic', [0, 2, 0]);
+      const emNode = createElementNode('em', [0, 2], [italicText]);
+      const textNode2 = createTextNode(' end', [0, 3]);
+      const paragraphNode = createElementNode(
+        'paragraph',
+        [0],
+        [textNode1, strongNode, emNode, textNode2],
+      );
+      const vdom: VDOMNode[] = [paragraphNode];
+      const selection = createSelection(boldText1, 1, italicText, 3);
 
-test('should place cursor at end of previous text node when position falls exactly at node boundary', () => {
-  // This is the exact scenario from our bug report
-  const vdom: VDOMNode[] = [
-    {
-      id: 'text-1',
-      type: 'text',
-      content: 'This is a ',
-    },
-    {
-      id: 'strong-1',
-      type: 'strong',
-      children: [
-        {
-          id: 'text-2',
-          type: 'text',
-          content: 'test',
-        },
-      ],
-    },
-  ];
+      // Act
+      const result = getNodesInRange(vdom, selection);
 
-  // Position 10 is exactly at the boundary between "This is a " and "test"
-  // We should favor placing cursor at the end of the first node for insertion
-  expect(textContentOffsetToNodeOffset(vdom, 10)).toEqual({
-    nodeId: 'text-1',
-    offset: 10,
+      // Assert
+      expect(result).toContain(boldText1);
+      expect(result).toContain(strongNode);
+      expect(result).toContain(italicText);
+      expect(result).toContain(emNode);
+    });
+
+    test('should use node paths to determine range inclusion', () => {
+      // This test ensures the implementation correctly uses the path information
+      // to determine which nodes fall within the selection range
+      const node1 = createTextNode('First', [0]);
+      const node2 = createTextNode('Second', [1, 0]);
+      const container = createElementNode('paragraph', [1], [node2]);
+      const node3 = createTextNode('Third', [2]);
+      const vdom: VDOMNode[] = [node1, container, node3];
+      const selection = createSelection(node1, 2, node3, 2);
+
+      // Act
+      const result = getNodesInRange(vdom, selection);
+
+      // Assert
+      expect(result).toContain(node1);
+      expect(result).toContain(node2);
+      expect(result).toContain(container);
+      expect(result).toContain(node3);
+    });
   });
 
-  // Position 14 is at the very end of document - should be at end of last text node
-  expect(textContentOffsetToNodeOffset(vdom, 14)).toEqual({
-    nodeId: 'text-2',
-    offset: 4,
-  });
-});
+  describe('getFormattingAtSelection', () => {
+    test('should return inactive formatting for collapsed selection in plain text', () => {
+      // Arrange
+      const textNode = createTextNode('Hello world', [0]);
+      const vdom: VDOMNode[] = [textNode];
+      const selection = createSelection(textNode, 5, textNode, 5);
 
-test('should traverse multiple levels of nested formatting to find correct text node', () => {
-  const vdom: VDOMNode[] = [
-    {
-      id: 'text-1',
-      type: 'text',
-      content: 'Plain ',
-    },
-    {
-      id: 'strong-1',
-      type: 'strong',
-      children: [
-        {
-          id: 'text-2',
-          type: 'text',
-          content: 'bold ',
-        },
-        {
-          id: 'em-1',
-          type: 'em',
-          children: [
-            {
-              id: 'text-3',
-              type: 'text',
-              content: 'italic',
-            },
-          ],
-        },
-      ],
-    },
-    {
-      id: 'text-4',
-      type: 'text',
-      content: ' end',
-    },
-  ];
+      // Act
+      const result = getFormattingAtSelection(vdom, selection);
 
-  // "Plain " = 6 chars
-  expect(textContentOffsetToNodeOffset(vdom, 3)).toEqual({
-    nodeId: 'text-1',
-    offset: 3,
-  });
+      // Assert
+      expect(result).toEqual({
+        bold: 'inactive',
+        italic: 'inactive',
+        underline: 'inactive',
+      });
+    });
 
-  // "Plain bold " = 11 chars, position 8 should be in "bold " text
-  expect(textContentOffsetToNodeOffset(vdom, 8)).toEqual({
-    nodeId: 'text-2',
-    offset: 2,
-  });
+    test('should return active formatting for selection within formatted text', () => {
+      // Arrange: Selection within <strong>bold</strong>
+      const boldTextNode = createTextNode('bold text', [0, 0]);
+      const strongNode = createElementNode('strong', [0], [boldTextNode]);
+      const vdom: VDOMNode[] = [strongNode];
+      const selection = createSelection(boldTextNode, 1, boldTextNode, 4);
 
-  // "Plain bold italic" = 17 chars, position 13 should be in "italic" text
-  expect(textContentOffsetToNodeOffset(vdom, 13)).toEqual({
-    nodeId: 'text-3',
-    offset: 2,
-  });
+      // Act
+      const result = getFormattingAtSelection(vdom, selection);
 
-  // Position 18 should be in final " end" text
-  expect(textContentOffsetToNodeOffset(vdom, 18)).toEqual({
-    nodeId: 'text-4',
-    offset: 1,
-  });
-});
+      // Assert
+      expect(result.bold).toBe('active');
+      expect(result.italic).toBe('inactive');
+      expect(result.underline).toBe('inactive');
+    });
 
-test('should return null when given invalid positions outside document bounds', () => {
-  const vdom: VDOMNode[] = [
-    {
-      id: 'text-1',
-      type: 'text',
-      content: 'Hello',
-    },
-  ];
+    test('should return mixed formatting for selection spanning formatted and unformatted text', () => {
+      // Arrange: Selection from plain text into <strong>bold</strong>
+      const plainTextNode = createTextNode('plain ', [0]);
+      const boldTextNode = createTextNode('bold', [1, 0]);
+      const strongNode = createElementNode('strong', [1], [boldTextNode]);
+      const vdom: VDOMNode[] = [plainTextNode, strongNode];
+      const selection = createSelection(plainTextNode, 3, boldTextNode, 2);
 
-  // Position beyond end of content should return null
-  expect(textContentOffsetToNodeOffset(vdom, 10)).toBeNull();
+      // Act
+      const result = getFormattingAtSelection(vdom, selection);
 
-  // Negative position should return null
-  expect(textContentOffsetToNodeOffset(vdom, -1)).toBeNull();
-});
+      // Assert
+      expect(result.bold).toBe('mixed');
+      expect(result.italic).toBe('inactive');
+      expect(result.underline).toBe('inactive');
+    });
 
-test('should return null when document contains no content', () => {
-  const vdom: VDOMNode[] = [];
+    test('should handle multiple overlapping formats', () => {
+      // Arrange: <strong><em>bold and italic</em></strong>
+      const textNode = createTextNode('bold and italic', [0, 0, 0]);
+      const emNode = createElementNode('em', [0, 0], [textNode]);
+      const strongNode = createElementNode('strong', [0], [emNode]);
+      const vdom: VDOMNode[] = [strongNode];
+      const selection = createSelection(textNode, 5, textNode, 8);
 
-  expect(textContentOffsetToNodeOffset(vdom, 0)).toBeNull();
-  expect(textContentOffsetToNodeOffset(vdom, 5)).toBeNull();
-});
+      // Act
+      const result = getFormattingAtSelection(vdom, selection);
 
-test('should handle empty text nodes by placing cursor at their zero position', () => {
-  const vdom: VDOMNode[] = [
-    {
-      id: 'text-1',
-      type: 'text',
-      content: '',
-    },
-    {
-      id: 'text-2',
-      type: 'text',
-      content: 'Hello',
-    },
-  ];
+      // Assert
+      expect(result.bold).toBe('active');
+      expect(result.italic).toBe('active');
+      expect(result.underline).toBe('inactive');
+    });
 
-  // Position 0 should be in the empty text node
-  expect(textContentOffsetToNodeOffset(vdom, 0)).toEqual({
-    nodeId: 'text-1',
-    offset: 0,
-  });
+    test('should return correct formatting for complex nested selection', () => {
+      // Arrange: Selection across multiple formatting levels
+      // <p>Plain <strong>bold <em>both</em></strong> <u>underline</u></p>
+      const plainText = createTextNode('Plain ', [0, 0]);
+      const boldText = createTextNode('bold ', [0, 1, 0]);
+      const bothText = createTextNode('both', [0, 1, 1, 0]);
+      const emNode = createElementNode('em', [0, 1, 1], [bothText]);
+      const strongNode = createElementNode('strong', [0, 1], [boldText, emNode]);
+      const spaceText = createTextNode(' ', [0, 2]);
+      const underlineText = createTextNode('underline', [0, 3, 0]);
+      const uNode = createElementNode('u', [0, 3], [underlineText]);
+      const paragraphNode = createElementNode(
+        'paragraph',
+        [0],
+        [plainText, strongNode, spaceText, uNode],
+      );
+      const vdom: VDOMNode[] = [paragraphNode];
 
-  // Position 1 should be in the second text node
-  expect(textContentOffsetToNodeOffset(vdom, 1)).toEqual({
-    nodeId: 'text-2',
-    offset: 1,
-  });
-});
+      // Selection from "bold" to "underline"
+      const selection = createSelection(boldText, 1, underlineText, 5);
 
-test('should skip non-text nodes when calculating text positions', () => {
-  const vdom: VDOMNode[] = [
-    {
-      id: 'text-1',
-      type: 'text',
-      content: 'Hello',
-    },
-    {
-      id: 'br-1',
-      type: 'br',
-    },
-    {
-      id: 'text-2',
-      type: 'text',
-      content: 'World',
-    },
-  ];
+      // Act
+      const result = getFormattingAtSelection(vdom, selection);
 
-  // BR nodes don't contribute to text content, so positions should skip them
-  expect(textContentOffsetToNodeOffset(vdom, 3)).toEqual({
-    nodeId: 'text-1',
-    offset: 3,
+      // Assert
+      expect(result.bold).toBe('mixed'); // Some bold, some not
+      expect(result.italic).toBe('mixed'); // Some italic, some not
+      expect(result.underline).toBe('mixed'); // Some underlined, some not
+    });
+
+    test('should handle empty selection range', () => {
+      // Arrange
+      const textNode = createTextNode('Hello', [0]);
+      const vdom: VDOMNode[] = [textNode];
+      const selection = createSelection(textNode, 0, textNode, 0);
+
+      // Act
+      const result = getFormattingAtSelection(vdom, selection);
+
+      // Assert
+      expect(result).toEqual({
+        bold: 'inactive',
+        italic: 'inactive',
+        underline: 'inactive',
+      });
+    });
+
+    test('should analyze formatting based on selected nodes and their ancestors', () => {
+      // This test ensures the implementation correctly traverses up the VDOM tree
+      // using node paths to determine inherited formatting
+      const textNode = createTextNode('nested text', [0, 0, 0]);
+      const uNode = createElementNode('u', [0, 0], [textNode]);
+      const strongNode = createElementNode('strong', [0], [uNode]);
+      const vdom: VDOMNode[] = [strongNode];
+      const selection = createSelection(textNode, 2, textNode, 6);
+
+      // Act
+      const result = getFormattingAtSelection(vdom, selection);
+
+      // Assert
+      expect(result.bold).toBe('active'); // Inherited from strong ancestor
+      expect(result.underline).toBe('active'); // Inherited from u ancestor
+      expect(result.italic).toBe('inactive');
+    });
   });
 
-  expect(textContentOffsetToNodeOffset(vdom, 7)).toEqual({
-    nodeId: 'text-2',
-    offset: 2,
+  describe('edge cases and error handling', () => {
+    test('should handle empty VDOM gracefully', () => {
+      // Arrange
+      const vdom: VDOMNode[] = [];
+
+      // Act & Assert
+      expect(() => {
+        getSelectionFromBrowser(mockSelectionService, mockRootElement, vdom);
+      }).not.toThrow();
+
+      expect(() => {
+        getNodesInRange(vdom, {} as VDOMSelection);
+      }).not.toThrow();
+
+      expect(() => {
+        getFormattingAtSelection(vdom, {} as VDOMSelection);
+      }).not.toThrow();
+    });
+
+    test('should handle malformed node paths', () => {
+      // Arrange
+      const textNode = createTextNode('Hello', [-1, 999]); // Invalid path
+      const vdom: VDOMNode[] = [textNode];
+      const selection = createSelection(textNode, 0, textNode, 5);
+
+      // Act & Assert - should not throw
+      expect(() => {
+        getNodesInRange(vdom, selection);
+      }).not.toThrow();
+
+      expect(() => {
+        getFormattingAtSelection(vdom, selection);
+      }).not.toThrow();
+    });
+
+    test('should handle selection with nodes not in provided VDOM', () => {
+      // Arrange
+      const vdomNode = createTextNode('Hello', [0]);
+      const orphanNode = createTextNode('World', [999]); // Not in VDOM
+      const vdom: VDOMNode[] = [vdomNode];
+      const selection = createSelection(orphanNode, 0, orphanNode, 5);
+
+      // Act & Assert - should handle gracefully
+      expect(() => {
+        getNodesInRange(vdom, selection);
+      }).not.toThrow();
+
+      expect(() => {
+        getFormattingAtSelection(vdom, selection);
+      }).not.toThrow();
+    });
   });
-});
-
-test('should maintain position accuracy when converting between absolute and node-based selections', () => {
-  const vdom: VDOMNode[] = [
-    {
-      id: 'text-1',
-      type: 'text',
-      content: 'This is a ',
-    },
-    {
-      id: 'strong-1',
-      type: 'strong',
-      children: [
-        {
-          id: 'text-2',
-          type: 'text',
-          content: 'test',
-        },
-      ],
-    },
-  ];
-
-  // Test round-trip conversion for various positions
-  const testPositions = [0, 3, 7, 10, 11, 13, 14];
-
-  for (const absolutePos of testPositions) {
-    const nodePos = textContentOffsetToNodeOffset(vdom, absolutePos);
-
-    if (nodePos) {
-      const backToAbsolute = getTextOffsetInVDOM(vdom, nodePos.nodeId, nodePos.offset);
-      expect(backToAbsolute).toBe(absolutePos);
-    }
-  }
 });

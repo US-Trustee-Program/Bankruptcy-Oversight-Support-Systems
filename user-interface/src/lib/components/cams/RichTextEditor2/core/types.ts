@@ -15,8 +15,8 @@ export type VDOMNodeType =
   | 'a';
 
 export interface VDOMNode {
-  id: string;
   type: VDOMNodeType;
+  path: number[]; // Path to the node in the VDOM tree
   content?: string; // For text nodes
   children?: VDOMNode[];
   attributes?: Record<string, string>; // For elements with attributes (e.g., href for links)
@@ -25,7 +25,7 @@ export interface VDOMNode {
 // VDOM Selection Types
 export interface VDOMPosition {
   offset: number; // Offset in the text content
-  nodeId?: string; // Optional node ID for node-based selections (used by VDOMMutations)
+  node: VDOMNode; // The node where the position is located
 }
 
 export interface VDOMSelection {
@@ -83,7 +83,7 @@ export interface EditorCommand {
 // Editor State Types
 export interface EditorState {
   vdom: VDOMNode[];
-  selection: VDOMSelection;
+  selection: VDOMSelection; // Current selection in the VDOM
   canUndo: boolean;
   canRedo: boolean;
   formatToggleState: FormatToggleState;

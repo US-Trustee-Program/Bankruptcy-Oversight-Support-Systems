@@ -94,45 +94,6 @@ export class FSM {
     };
   }
 
-  private handleInsertTextFallback(text: string, currentState: EditorState): FSMResult {
-    // Original implementation as fallback
-    const currentText = this.getTextContent(currentState.vdom);
-    const cursorPosition = currentState.selection.start.offset;
-    const newText = currentText.slice(0, cursorPosition) + text + currentText.slice(cursorPosition);
-    const newCursorPosition = cursorPosition + text.length;
-
-    let textNode: VDOMNode;
-    const existingTextNode = currentState.vdom.find((node) => node.type === VDOM_NODE_TYPES.TEXT);
-
-    if (existingTextNode) {
-      textNode = {
-        id: existingTextNode.id,
-        type: VDOM_NODE_TYPES.TEXT,
-        content: newText,
-      };
-    } else {
-      textNode = {
-        id: `text-${Date.now()}-${Math.random()}`,
-        type: VDOM_NODE_TYPES.TEXT,
-        content: newText,
-      };
-    }
-
-    const newVDOM = [textNode];
-    const newSelection = {
-      start: { offset: newCursorPosition },
-      end: { offset: newCursorPosition },
-      isCollapsed: true,
-    };
-
-    return {
-      newVDOM,
-      newSelection,
-      didChange: true,
-      isPersistent: true,
-    };
-  }
-
   private handleBackspace(currentState: EditorState): FSMResult {
     // Phase 1: Hybrid approach - convert absolute selection to node-based selection,
     // then use VDOMMutations.deleteContent, then convert result back to absolute
@@ -157,11 +118,7 @@ export class FSM {
       // Out of bounds selection - return original state with no changes
       return {
         newVDOM: currentState.vdom,
-        newSelection: {
-          start: { offset: textContent.length },
-          end: { offset: textContent.length },
-          isCollapsed: true,
-        },
+        newSelection: currentState.selection,
         didChange: false,
         isPersistent: false,
       };

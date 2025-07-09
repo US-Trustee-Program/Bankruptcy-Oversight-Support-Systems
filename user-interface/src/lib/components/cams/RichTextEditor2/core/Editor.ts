@@ -14,7 +14,7 @@ import { SelectionService } from './selection/SelectionService.humble';
 import {
   getSelectionFromBrowser,
   applySelectionToBrowser,
-  getFormatStateAtSelection,
+  getFormattingAtSelection,
 } from './model/VDOMSelection';
 
 export interface EditorOptions {
@@ -45,8 +45,8 @@ export class Editor {
 
     // Initialize with empty state
     const emptySelection: VDOMSelection = {
-      start: { offset: 0 },
-      end: { offset: 0 },
+      start: { offset: 0, node: { type: 'text', path: [0], content: '' } },
+      end: { offset: 0, node: { type: 'text', path: [0], content: '' } },
       isCollapsed: true,
     };
 
@@ -90,9 +90,9 @@ export class Editor {
     this.state.vdom = [];
     if (value) {
       const textNode: VDOMNode = {
-        id: `text-${Date.now()}`,
         type: 'text',
         content: value,
+        path: [0],
       };
       this.state.vdom = [textNode];
     }
@@ -206,8 +206,8 @@ export class Editor {
       didChange: result.didChange,
       oldSelection: this.state.selection,
       newSelection: result.newSelection,
-      oldVDOM: this.state.vdom.map((n) => ({ id: n.id, type: n.type, content: n.content })),
-      newVDOM: result.newVDOM.map((n) => ({ id: n.id, type: n.type, content: n.content })),
+      oldVDOM: this.state.vdom.map((n) => ({ type: n.type, content: n.content })),
+      newVDOM: result.newVDOM.map((n) => ({ type: n.type, content: n.content })),
     });
 
     if (result.didChange) {
@@ -229,13 +229,21 @@ export class Editor {
    * Synchronizes the selection from the browser to the VDOM
    */
   private syncSelectionFromBrowser(): void {
+    if (!this.rootElement) {
+      return;
+    }
+
     if (!this.selectionService) {
       return;
     }
 
     try {
       // Get selection from browser and update VDOM selection
-      this.state.selection = getSelectionFromBrowser(this.selectionService);
+      this.state.selection = getSelectionFromBrowser(
+        this.selectionService,
+        this.rootElement,
+        this.state.vdom,
+      );
     } catch (error) {
       console.error('Error synchronizing selection:', error);
     }
@@ -405,7 +413,12 @@ export class Editor {
     }
 
     if (this.rootElement) {
-      applySelectionToBrowser(this.selectionService, this.state.selection, this.rootElement);
+      applySelectionToBrowser(
+        this.selectionService,
+        this.state.selection,
+        this.rootElement,
+        this.state.vdom,
+      );
     }
 
     if (this.onSelectionChange) {
@@ -418,7 +431,7 @@ export class Editor {
    */
   private notifyFormattingChange(): void {
     if (this.onFormattingChange) {
-      const currentFormatting = getFormatStateAtSelection(this.state.vdom, this.state.selection);
+      const currentFormatting = getFormattingAtSelection(this.state.vdom, this.state.selection);
       const combinedState = {
         currentFormatting,
         toggleState: this.state.formatToggleState,
