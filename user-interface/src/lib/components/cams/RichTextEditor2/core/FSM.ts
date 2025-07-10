@@ -7,13 +7,10 @@ import {
   FormatStateValue,
   VDOMPosition,
 } from './types';
-import {
-  getFormatStateAtCursorPosition,
-  insertTextWithFormatting,
-  toggleBoldInSelection,
-} from './model/VDOMFormatting';
+import { insertTextWithFormatting, toggleBoldInSelection } from './model/VDOMFormatting';
 import { deleteContentWithCleanup } from './model/VDOMMutations';
 import { ZERO_WIDTH_SPACE } from '../RichTextEditor.constants';
+import { getFormattingAtSelection } from './model/VDOMSelection';
 
 // TODO: Future options for FSM configuration
 export type FSMOptions = object;
@@ -72,12 +69,18 @@ export class FSM {
   }
 
   private handleInsertText(text: string, currentState: EditorState): FSMResult {
-    // Use the new insertTextWithFormatting function that respects toggle state
+    // Get current formatting at selection using VDOMSelection's implementation
+    const formattingAtSelection = getFormattingAtSelection(
+      currentState.vdom,
+      currentState.selection,
+    );
+
+    // Use the formatting function that respects format state
     const result = insertTextWithFormatting(
       currentState.vdom,
       currentState.selection,
       text,
-      currentState.formatToggleState,
+      formattingAtSelection,
     );
 
     return {
@@ -85,8 +88,6 @@ export class FSM {
       newSelection: result.newSelection,
       didChange: true,
       isPersistent: true,
-      // Note: Toggle state should be reset after text insertion
-      // but we'll handle that in the Editor when it receives the FSM result
     };
   }
 
@@ -339,13 +340,9 @@ export class FSM {
         // If there's already a pending toggle, cancel it (set back to inactive)
         newBoldState = 'inactive';
       } else {
-        // If no pending toggle, determine new state based on current cursor position
-        const currentBoldState = getFormatStateAtCursorPosition(
-          currentState.vdom,
-          selection,
-          'bold',
-        );
-        newBoldState = currentBoldState === 'active' ? 'inactive' : 'active';
+        // If no pending toggle, determine new state based on current formatting
+        const currentFormatting = getFormattingAtSelection(currentState.vdom, selection);
+        newBoldState = currentFormatting.bold === 'active' ? 'inactive' : 'active';
       }
 
       const newToggleState = {

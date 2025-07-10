@@ -60,14 +60,13 @@ functions for selection state management and formatting queries.
 - [✓] Verify test passes
 - [✓] Remove stale tests
 
-### Slice 4: handleInsertText [ ]
+### Slice 4: handleInsertText [✓]
 
-- [ ] Write test to verify VDOMSelection is properly updated
-- [ ] Use getSelectionFromBrowser() to get insert position
-- [ ] Apply formatting based on getFormattingAtSelection()
-- [ ] Use applySelectionToBrowser() after insertion
-- [ ] Verify test passes
-- [ ] Remove stale tests
+- [✓] Write test to verify VDOMSelection is properly updated
+- [✓] Apply formatting based on getFormattingAtSelection()
+- [✓] Use applySelectionToBrowser() after insertion
+- [✓] Verify test passes
+- [✓] Remove stale tests
 
 ### Slice 5: handleToggleBold [ ]
 

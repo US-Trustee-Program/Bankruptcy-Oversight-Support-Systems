@@ -182,6 +182,12 @@ export class Editor {
         type: 'INSERT_TEXT',
         payload: event.data,
       };
+
+      // Process command - FSM will get formatting state from current state
+      const result = this.fsm.processCommand(command, this.state);
+      event.preventDefault();
+      this.handleFSMResult(result);
+      return true;
     } else if (event.inputType === 'deleteContentBackward') {
       command = {
         type: 'BACKSPACE',
@@ -195,7 +201,7 @@ export class Editor {
       return false;
     }
 
-    // Delegate to FSM
+    // Delegate to FSM for non-insert commands
     const result = this.fsm.processCommand(command, this.state);
     event.preventDefault();
 
