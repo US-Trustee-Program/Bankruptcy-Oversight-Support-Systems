@@ -110,6 +110,36 @@ CAMS follows the Option-enabling Software Architecture (OeSA) approach, which in
   });
   ```
 
+### Mock Implementations
+
+- Mock implementations should never be included in concrete implementations
+- Mocks should be located in test files
+- Example of what to avoid:
+  ```typescript
+  import SomePackage from './path/to/some-package';
+
+  export class MyClass {
+    dep: SomePackage;
+
+    constructor() {
+      const isTestEnv = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
+      if (isTestEnv) {
+        this.dep = {
+          foo: 'mock',
+        };
+      } else {
+        this.dep = {
+          foo: 'real',
+        }
+      }
+    }
+  }
+  ```
+- Simplified implementations for non-test purposes (like local development) may sometimes be needed
+- For determining which of multiple real implementations to use:
+  - In the backend project, use the factory pattern as described in `backend/.junie/guidelines.md`
+  - In other contexts, use appropriate dependency injection techniques
+
 ### End-to-End Testing
 
 - E2E tests use Playwright
