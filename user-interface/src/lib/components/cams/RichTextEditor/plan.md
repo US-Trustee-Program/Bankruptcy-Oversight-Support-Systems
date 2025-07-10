@@ -161,25 +161,19 @@ Each slice must complete the following before moving to the next:
    - [x] Manual testing and verification
    - [x] Explicit human approval ("continue")
 
-9. [ ] Bug Fix: Formatting Removal Bug (Moderate)
-   - [ ] Create specific test cases to reproduce the issue
-   - [ ] Analyze the root cause in FormattingService
-   - [ ] Implement basic fix for simple formatting removal
-   - [ ] Ensure text content is preserved when removing formatting
-   - [ ] Ensure tests pass
-   - [ ] Manual testing and verification
+9. [ ] Bug Fix: Formatting Structure and Removal Issue (Complex)
+   - [ ] Create comprehensive test cases to reproduce the issues
+   - [ ] Analyze the DOM structure in problem.html to understand formatting nesting issues
+   - [ ] Refactor removeFormatFromFragment to properly handle deeply nested elements
+   - [ ] Implement special case detection for redundant nested tags (like nested strong tags)
+   - [ ] Add sanitization to prevent excessive nesting depth
+   - [ ] Fix handling of partial formatting selection
+   - [ ] Ensure proper text content preservation during format removal
+   - [ ] Enhance formatting element creation to avoid redundancy
+   - [ ] Optimize handling of mixed formatting (bold + italic + underline combinations)
+   - [ ] Ensure all tests pass including FormatBugReproduction tests
+   - [ ] Manual testing with scenarios from problem.html
    - [ ] Explicit human approval ("continue")
-
-10. [ ] Bug Fix: Nested Formatting Issue (Complex)
-
-- [ ] Create test cases for nested formatting scenarios
-- [ ] Implement special case detection for toggling formatting off from an entire formatting element
-- [ ] Improve text content preservation when replacing formatting elements
-- [ ] Enhance removeFormatFromFragment to be more robust in handling nested elements
-- [ ] Fix handling of partial formatting selection
-- [ ] Ensure all tests pass including FormatBugReproduction tests
-- [ ] Manual testing and verification
-- [ ] Explicit human approval ("continue")
 
 ## Manual Testing Instructions
 
@@ -545,3 +539,49 @@ For this slice, we need to verify that the editor properly updates the toolbar b
 6. Verify that there are no performance warnings or excessive re-renders
 7. If all scenarios work correctly and the format state updates reliably when moving the cursor or selecting text, then this slice is complete
 8. Provide explicit "continue" to proceed to the next slice
+
+### Formatting Structure Bug Analysis
+
+After analyzing the problem.html file, we've identified several critical issues with the rich text editor's formatting implementation:
+
+1. **Excessive Nesting**: Formatting elements are being nested to extreme depths (20+ levels deep), creating a DOM structure that is nearly impossible to maintain.
+
+2. **Redundant Tags**: The same formatting tags are being repeatedly nested (e.g., `strong` inside `strong`), which serves no semantic purpose.
+
+3. **Inconsistent Formatting Removal**: When toggling formatting off, not all relevant formatting elements are properly removed, especially in complex mixed formatting scenarios.
+
+4. **Content Preservation Issues**: During formatting removal, text content isn't always properly preserved, particularly with nested elements.
+
+5. **Format State Detection Problems**: The excessive nesting makes it difficult to accurately detect the current formatting state, affecting the toolbar's display of active formatting.
+
+The goal of this bug fix is to:
+
+- Clean up the DOM structure to have a more reasonable nesting depth
+- Prevent redundant formatting elements
+- Ensure proper preservation of text content during formatting operations
+- Make the removal of formatting more reliable, especially with mixed formatting
+- Improve the efficiency of the formatting services
+
+### Implementation Approach for Formatting Bug Fix
+
+Based on the analysis of the problem.html file and the current code, we will implement the following approach to fix the formatting issues:
+
+1. **Create a dedicated FormattingRemovalService**: This service will specialize in handling the removal of formatting, with enhanced capabilities for dealing with nested elements.
+
+2. **Implementation Rules**:
+   - **No Same-Type Nesting**: Formatting elements of the same type should never be nested within each other (e.g., no `<strong>` inside another `<strong>`).
+   - **Inside-Out Processing**: When removing formatting, process from innermost elements outward to properly handle nested structures.
+   - **Text Content Preservation**: Ensure all text content is preserved when modifying formatting structure.
+   - **Element Flattening**: Flatten redundant nesting before removing formatting to simplify DOM operations.
+   - **Complete Removal**: When toggling formatting off, ensure all instances of that formatting are completely removed.
+
+3. **Two-Pass Approach**:
+   - First Pass: Flatten and normalize the DOM structure by removing redundant nesting.
+   - Second Pass: Remove all instances of the target format while preserving other formatting types.
+
+4. **Integration with Existing Services**:
+   - Update FormattingService to use the new FormattingRemovalService
+   - Enhance toggleSelection method to handle complex formatting scenarios
+   - Add normalization after formatting operations to maintain a clean DOM structure
+
+These changes will ensure the editor maintains a clean, predictable HTML structure without redundant nesting, making it more reliable and easier to maintain.
