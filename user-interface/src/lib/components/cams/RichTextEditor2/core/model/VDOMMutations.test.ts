@@ -7,14 +7,7 @@ import {
   createEmptyParagraphNode,
   createStrongNode,
 } from './VDOMNode';
-import {
-  insertText,
-  deleteContent,
-  splitNode,
-  mergeNodes,
-  findNodeById,
-  getTextLength,
-} from './VDOMMutations';
+import { insertText, deleteContent, splitNode, mergeNodes, getTextLength } from './VDOMMutations';
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -22,63 +15,60 @@ beforeEach(() => {
 
 // Helper function to create a simple VDOM structure for testing
 function createSimpleVDOM(): VDOMNode[] {
-  return [
-    createParagraphNode([
-      createTextNode('Hello '),
-      createStrongNode([createTextNode('world')]),
-      createTextNode('!'),
-    ]),
-  ];
+  const textNode1 = createTextNode('Hello ');
+  textNode1.path = [0, 0];
+
+  const strongTextNode = createTextNode('world');
+  strongTextNode.path = [0, 1, 0];
+
+  const strongNode = createStrongNode([strongTextNode]);
+  strongNode.path = [0, 1];
+
+  const textNode2 = createTextNode('!');
+  textNode2.path = [0, 2];
+
+  const paragraphNode = createParagraphNode([textNode1, strongNode, textNode2]);
+  paragraphNode.path = [0];
+
+  return [paragraphNode];
 }
 
-// Helper function to create a selection
+// Helper function to create a selection using node references
 function createSelection(
-  startNodeId: string,
+  startNode: VDOMNode,
   startOffset: number,
-  endNodeId: string,
+  endNode: VDOMNode,
   endOffset: number,
 ): VDOMSelection {
   return {
-    start: { nodeId: startNodeId, offset: startOffset },
-    end: { nodeId: endNodeId, offset: endOffset },
-    isCollapsed: startNodeId === endNodeId && startOffset === endOffset,
+    start: { node: startNode, offset: startOffset },
+    end: { node: endNode, offset: endOffset },
+    isCollapsed: startNode === endNode && startOffset === endOffset,
   };
 }
 
-test('findNodeById should find a node by its ID', () => {
-  const vdom = createSimpleVDOM();
-  const textNode = vdom[0].children![0];
-
-  const found = findNodeById(vdom, textNode.id);
-  expect(found).toBe(textNode);
-});
-
-test('findNodeById should return null for non-existent ID', () => {
-  const vdom = createSimpleVDOM();
-
-  const found = findNodeById(vdom, 'non-existent-id');
-  expect(found).toBeNull();
-});
-
 test('getTextLength should return correct length for text node', () => {
   const textNode = createTextNode('Hello world');
+  textNode.path = [0];
   expect(getTextLength(textNode)).toBe(11);
 });
 
 test('getTextLength should return 0 for non-text node', () => {
   const paragraphNode = createParagraphNode();
+  paragraphNode.path = [0];
   expect(getTextLength(paragraphNode)).toBe(0);
 });
 
 test('getTextLength should handle empty text node', () => {
   const textNode = createTextNode('');
+  textNode.path = [0];
   expect(getTextLength(textNode)).toBe(0);
 });
 
 test('insertText should insert text at the beginning of a text node', () => {
   const vdom = createSimpleVDOM();
   const textNode = vdom[0].children![0];
-  const selection = createSelection(textNode.id, 0, textNode.id, 0);
+  const selection = createSelection(textNode, 0, textNode, 0);
 
   const result = insertText(vdom, selection, 'Hi ');
 
@@ -92,7 +82,7 @@ test('insertText should insert text at the beginning of a text node', () => {
 test('insertText should insert text in the middle of a text node', () => {
   const vdom = createSimpleVDOM();
   const textNode = vdom[0].children![0];
-  const selection = createSelection(textNode.id, 3, textNode.id, 3);
+  const selection = createSelection(textNode, 3, textNode, 3);
 
   const result = insertText(vdom, selection, 'there ');
 
@@ -105,9 +95,9 @@ test('insertText should insert text at the end of a text node', () => {
   const vdom = createSimpleVDOM();
   const textNode = vdom[0].children![0];
   const selection = createSelection(
-    textNode.id,
+    textNode,
     textNode.content!.length,
-    textNode.id,
+    textNode,
     textNode.content!.length,
   );
 
@@ -121,7 +111,7 @@ test('insertText should insert text at the end of a text node', () => {
 test('insertText should replace selected text', () => {
   const vdom = createSimpleVDOM();
   const textNode = vdom[0].children![0];
-  const selection = createSelection(textNode.id, 0, textNode.id, 5);
+  const selection = createSelection(textNode, 0, textNode, 5);
 
   const result = insertText(vdom, selection, 'Hi');
 
@@ -131,9 +121,12 @@ test('insertText should replace selected text', () => {
 });
 
 test('insertText should handle empty paragraph with zero-width space', () => {
-  const vdom = [createEmptyParagraphNode()];
+  const emptyParagraph = createEmptyParagraphNode();
+  emptyParagraph.path = [0];
+  emptyParagraph.children![0].path = [0, 0];
+  const vdom = [emptyParagraph];
   const textNode = vdom[0].children![0];
-  const selection = createSelection(textNode.id, 0, textNode.id, 1);
+  const selection = createSelection(textNode, 0, textNode, 1);
 
   const result = insertText(vdom, selection, 'Hello');
 
@@ -145,7 +138,7 @@ test('insertText should handle empty paragraph with zero-width space', () => {
 test('deleteContent should delete characters from a text node', () => {
   const vdom = createSimpleVDOM();
   const textNode = vdom[0].children![0];
-  const selection = createSelection(textNode.id, 0, textNode.id, 3);
+  const selection = createSelection(textNode, 0, textNode, 3);
 
   const result = deleteContent(vdom, selection);
 
@@ -156,9 +149,12 @@ test('deleteContent should delete characters from a text node', () => {
 });
 
 test('deleteContent should handle deleting entire text node content', () => {
-  const vdom = [createParagraphNode([createTextNode('Hello')])];
-  const textNode = vdom[0].children![0];
-  const selection = createSelection(textNode.id, 0, textNode.id, 5);
+  const textNode = createTextNode('Hello');
+  textNode.path = [0, 0];
+  const paragraphNode = createParagraphNode([textNode]);
+  paragraphNode.path = [0];
+  const vdom = [paragraphNode];
+  const selection = createSelection(textNode, 0, textNode, 5);
 
   const result = deleteContent(vdom, selection);
 
@@ -170,7 +166,7 @@ test('deleteContent should handle deleting entire text node content', () => {
 test('deleteContent should handle collapsed selection (backspace behavior)', () => {
   const vdom = createSimpleVDOM();
   const textNode = vdom[0].children![0];
-  const selection = createSelection(textNode.id, 3, textNode.id, 3);
+  const selection = createSelection(textNode, 3, textNode, 3);
 
   const result = deleteContent(vdom, selection);
 
@@ -182,7 +178,7 @@ test('deleteContent should handle collapsed selection (backspace behavior)', () 
 test('deleteContent should not delete when at beginning of text with collapsed selection', () => {
   const vdom = createSimpleVDOM();
   const textNode = vdom[0].children![0];
-  const selection = createSelection(textNode.id, 0, textNode.id, 0);
+  const selection = createSelection(textNode, 0, textNode, 0);
 
   const result = deleteContent(vdom, selection);
 
@@ -192,23 +188,29 @@ test('deleteContent should not delete when at beginning of text with collapsed s
 });
 
 test('splitNode should split a text node at the specified position', () => {
-  const vdom = [createParagraphNode([createTextNode('Hello world')])];
-  const textNode = vdom[0].children![0];
-  const position = { nodeId: textNode.id, offset: 6 };
+  const textNode = createTextNode('Hello world');
+  textNode.path = [0, 0];
+  const paragraphNode = createParagraphNode([textNode]);
+  paragraphNode.path = [0];
+  const vdom = [paragraphNode];
+  const position = { node: textNode, offset: 6 };
 
   const result = splitNode(vdom, position);
 
   expect(result.newVDOM[0].children).toHaveLength(2);
   expect(result.newVDOM[0].children![0].content).toBe('Hello ');
   expect(result.newVDOM[0].children![1].content).toBe('world');
-  expect(result.newSelection.start.nodeId).toBe(result.newVDOM[0].children![1].id);
+  expect(result.newSelection.start.node).toBe(result.newVDOM[0].children![1]);
   expect(result.newSelection.start.offset).toBe(0);
 });
 
 test('splitNode should handle splitting at the beginning', () => {
-  const vdom = [createParagraphNode([createTextNode('Hello')])];
-  const textNode = vdom[0].children![0];
-  const position = { nodeId: textNode.id, offset: 0 };
+  const textNode = createTextNode('Hello');
+  textNode.path = [0, 0];
+  const paragraphNode = createParagraphNode([textNode]);
+  paragraphNode.path = [0];
+  const vdom = [paragraphNode];
+  const position = { node: textNode, offset: 0 };
 
   const result = splitNode(vdom, position);
 
@@ -218,9 +220,12 @@ test('splitNode should handle splitting at the beginning', () => {
 });
 
 test('splitNode should handle splitting at the end', () => {
-  const vdom = [createParagraphNode([createTextNode('Hello')])];
-  const textNode = vdom[0].children![0];
-  const position = { nodeId: textNode.id, offset: 5 };
+  const textNode = createTextNode('Hello');
+  textNode.path = [0, 0];
+  const paragraphNode = createParagraphNode([textNode]);
+  paragraphNode.path = [0];
+  const vdom = [paragraphNode];
+  const position = { node: textNode, offset: 5 };
 
   const result = splitNode(vdom, position);
 
@@ -230,11 +235,15 @@ test('splitNode should handle splitting at the end', () => {
 });
 
 test('mergeNodes should merge two adjacent text nodes', () => {
-  const vdom = [createParagraphNode([createTextNode('Hello '), createTextNode('world')])];
-  const firstNode = vdom[0].children![0];
-  const secondNode = vdom[0].children![1];
+  const firstNode = createTextNode('Hello ');
+  firstNode.path = [0, 0];
+  const secondNode = createTextNode('world');
+  secondNode.path = [0, 1];
+  const paragraphNode = createParagraphNode([firstNode, secondNode]);
+  paragraphNode.path = [0];
+  const vdom = [paragraphNode];
 
-  const result = mergeNodes(vdom, firstNode.id, secondNode.id);
+  const result = mergeNodes(vdom, firstNode.path, secondNode.path);
 
   expect(result.newVDOM[0].children).toHaveLength(1);
   expect(result.newVDOM[0].children![0].content).toBe('Hello world');
@@ -242,11 +251,15 @@ test('mergeNodes should merge two adjacent text nodes', () => {
 });
 
 test('mergeNodes should handle merging empty text nodes', () => {
-  const vdom = [createParagraphNode([createTextNode(''), createTextNode('Hello')])];
-  const firstNode = vdom[0].children![0];
-  const secondNode = vdom[0].children![1];
+  const firstNode = createTextNode('');
+  firstNode.path = [0, 0];
+  const secondNode = createTextNode('Hello');
+  secondNode.path = [0, 1];
+  const paragraphNode = createParagraphNode([firstNode, secondNode]);
+  paragraphNode.path = [0];
+  const vdom = [paragraphNode];
 
-  const result = mergeNodes(vdom, firstNode.id, secondNode.id);
+  const result = mergeNodes(vdom, firstNode.path, secondNode.path);
 
   expect(result.newVDOM[0].children).toHaveLength(1);
   expect(result.newVDOM[0].children![0].content).toBe('Hello');
@@ -254,11 +267,15 @@ test('mergeNodes should handle merging empty text nodes', () => {
 });
 
 test('mergeNodes should handle merging with zero-width space', () => {
-  const vdom = [createParagraphNode([createTextNode(ZERO_WIDTH_SPACE), createTextNode('Hello')])];
-  const firstNode = vdom[0].children![0];
-  const secondNode = vdom[0].children![1];
+  const firstNode = createTextNode(ZERO_WIDTH_SPACE);
+  firstNode.path = [0, 0];
+  const secondNode = createTextNode('Hello');
+  secondNode.path = [0, 1];
+  const paragraphNode = createParagraphNode([firstNode, secondNode]);
+  paragraphNode.path = [0];
+  const vdom = [paragraphNode];
 
-  const result = mergeNodes(vdom, firstNode.id, secondNode.id);
+  const result = mergeNodes(vdom, firstNode.path, secondNode.path);
 
   expect(result.newVDOM[0].children).toHaveLength(1);
   expect(result.newVDOM[0].children![0].content).toBe('Hello');

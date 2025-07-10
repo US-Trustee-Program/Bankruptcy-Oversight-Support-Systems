@@ -5,29 +5,31 @@ import { VDOMNode, VDOMSelection } from '../types';
 describe('VDOMMutations.deleteContent - BACKSPACE Formatting Preservation', () => {
   describe('Single Character Deletion Within Formatted Text', () => {
     test('should delete character from within bold text while preserving bold formatting', () => {
+      const textNode1: VDOMNode = {
+        type: 'text',
+        path: [0],
+        content: 'Hello ',
+      };
+
+      const textNode2: VDOMNode = {
+        type: 'text',
+        path: [1, 0],
+        content: 'world',
+      };
+
       const vdom: VDOMNode[] = [
+        textNode1,
         {
-          id: 'text-1',
-          type: 'text',
-          content: 'Hello ',
-        },
-        {
-          id: 'strong-1',
           type: 'strong',
-          children: [
-            {
-              id: 'text-2',
-              type: 'text',
-              content: 'world',
-            },
-          ],
+          path: [1],
+          children: [textNode2],
         },
       ];
 
       // Delete 'd' from "world" (position within the bold text)
       const selection: VDOMSelection = {
-        start: { nodeId: 'text-2', offset: 4 }, // Before 'd'
-        end: { nodeId: 'text-2', offset: 5 }, // After 'd'
+        start: { node: textNode2, offset: 4 }, // Before 'd'
+        end: { node: textNode2, offset: 5 }, // After 'd'
         isCollapsed: false,
       };
 
@@ -39,40 +41,44 @@ describe('VDOMMutations.deleteContent - BACKSPACE Formatting Preservation', () =
       expect(result.newVDOM[1].children![0].content).toBe('worl');
 
       // Selection should be collapsed at the deletion point
-      expect(result.newSelection.start.nodeId).toBe('text-2');
+      expect(result.newSelection.start.node.path).toEqual([1, 0]);
       expect(result.newSelection.start.offset).toBe(4);
       expect(result.newSelection.isCollapsed).toBe(true);
     });
 
     test('should delete character from within italic text while preserving italic formatting', () => {
+      const textNode1: VDOMNode = {
+        type: 'text',
+        path: [0],
+        content: 'This is ',
+      };
+
+      const textNode2: VDOMNode = {
+        type: 'text',
+        path: [1, 0],
+        content: 'italic',
+      };
+
+      const textNode3: VDOMNode = {
+        type: 'text',
+        path: [2],
+        content: ' text',
+      };
+
       const vdom: VDOMNode[] = [
+        textNode1,
         {
-          id: 'text-1',
-          type: 'text',
-          content: 'This is ',
-        },
-        {
-          id: 'em-1',
           type: 'em',
-          children: [
-            {
-              id: 'text-2',
-              type: 'text',
-              content: 'italic',
-            },
-          ],
+          path: [1],
+          children: [textNode2],
         },
-        {
-          id: 'text-3',
-          type: 'text',
-          content: ' text',
-        },
+        textNode3,
       ];
 
       // Delete 'i' from "italic"
       const selection: VDOMSelection = {
-        start: { nodeId: 'text-2', offset: 0 },
-        end: { nodeId: 'text-2', offset: 1 },
+        start: { node: textNode2, offset: 0 },
+        end: { node: textNode2, offset: 1 },
         isCollapsed: false,
       };
 
@@ -84,24 +90,24 @@ describe('VDOMMutations.deleteContent - BACKSPACE Formatting Preservation', () =
     });
 
     test('should delete character from within underlined text while preserving underline formatting', () => {
+      const textNode1: VDOMNode = {
+        type: 'text',
+        path: [0, 0],
+        content: 'underlined',
+      };
+
       const vdom: VDOMNode[] = [
         {
-          id: 'u-1',
           type: 'u',
-          children: [
-            {
-              id: 'text-1',
-              type: 'text',
-              content: 'underlined',
-            },
-          ],
+          path: [0],
+          children: [textNode1],
         },
       ];
 
       // Delete 'n' from "underlined"
       const selection: VDOMSelection = {
-        start: { nodeId: 'text-1', offset: 5 },
-        end: { nodeId: 'text-1', offset: 6 },
+        start: { node: textNode1, offset: 5 },
+        end: { node: textNode1, offset: 6 },
         isCollapsed: false,
       };
 
@@ -115,34 +121,38 @@ describe('VDOMMutations.deleteContent - BACKSPACE Formatting Preservation', () =
 
   describe('Empty Container Cleanup After Deletion', () => {
     test('should remove empty strong container when all text is deleted', () => {
+      const textNode1: VDOMNode = {
+        type: 'text',
+        path: [0],
+        content: 'Before ',
+      };
+
+      const textNode2: VDOMNode = {
+        type: 'text',
+        path: [1, 0],
+        content: 'a', // Single character to be deleted
+      };
+
+      const textNode3: VDOMNode = {
+        type: 'text',
+        path: [2],
+        content: ' after',
+      };
+
       const vdom: VDOMNode[] = [
+        textNode1,
         {
-          id: 'text-1',
-          type: 'text',
-          content: 'Before ',
-        },
-        {
-          id: 'strong-1',
           type: 'strong',
-          children: [
-            {
-              id: 'text-2',
-              type: 'text',
-              content: 'a', // Single character to be deleted
-            },
-          ],
+          path: [1],
+          children: [textNode2],
         },
-        {
-          id: 'text-3',
-          type: 'text',
-          content: ' after',
-        },
+        textNode3,
       ];
 
       // Delete the entire content of the strong node
       const selection: VDOMSelection = {
-        start: { nodeId: 'text-2', offset: 0 },
-        end: { nodeId: 'text-2', offset: 1 },
+        start: { node: textNode2, offset: 0 },
+        end: { node: textNode2, offset: 1 },
         isCollapsed: false,
       };
 
@@ -157,33 +167,37 @@ describe('VDOMMutations.deleteContent - BACKSPACE Formatting Preservation', () =
     });
 
     test('should remove empty italic container and merge adjacent text nodes', () => {
+      const textNode1: VDOMNode = {
+        type: 'text',
+        path: [0],
+        content: 'Hello',
+      };
+
+      const textNode2: VDOMNode = {
+        type: 'text',
+        path: [1, 0],
+        content: 'x', // Single character to be deleted
+      };
+
+      const textNode3: VDOMNode = {
+        type: 'text',
+        path: [2],
+        content: 'world',
+      };
+
       const vdom: VDOMNode[] = [
+        textNode1,
         {
-          id: 'text-1',
-          type: 'text',
-          content: 'Hello',
-        },
-        {
-          id: 'em-1',
           type: 'em',
-          children: [
-            {
-              id: 'text-2',
-              type: 'text',
-              content: 'x', // Single character to be deleted
-            },
-          ],
+          path: [1],
+          children: [textNode2],
         },
-        {
-          id: 'text-3',
-          type: 'text',
-          content: 'world',
-        },
+        textNode3,
       ];
 
       const selection: VDOMSelection = {
-        start: { nodeId: 'text-2', offset: 0 },
-        end: { nodeId: 'text-2', offset: 1 },
+        start: { node: textNode2, offset: 0 },
+        end: { node: textNode2, offset: 1 },
         isCollapsed: false,
       };
 
@@ -200,39 +214,43 @@ describe('VDOMMutations.deleteContent - BACKSPACE Formatting Preservation', () =
     });
 
     test('should handle nested formatting containers when inner container becomes empty', () => {
+      const textNode1: VDOMNode = {
+        type: 'text',
+        path: [0, 0],
+        content: 'bold ',
+      };
+
+      const textNode2: VDOMNode = {
+        type: 'text',
+        path: [0, 1, 0],
+        content: 'x', // This will be deleted, making em-1 empty
+      };
+
+      const textNode3: VDOMNode = {
+        type: 'text',
+        path: [0, 2],
+        content: ' more',
+      };
+
       const vdom: VDOMNode[] = [
         {
-          id: 'strong-1',
           type: 'strong',
+          path: [0],
           children: [
+            textNode1,
             {
-              id: 'text-1',
-              type: 'text',
-              content: 'bold ',
-            },
-            {
-              id: 'em-1',
               type: 'em',
-              children: [
-                {
-                  id: 'text-2',
-                  type: 'text',
-                  content: 'x', // This will be deleted, making em-1 empty
-                },
-              ],
+              path: [0, 1],
+              children: [textNode2],
             },
-            {
-              id: 'text-3',
-              type: 'text',
-              content: ' more',
-            },
+            textNode3,
           ],
         },
       ];
 
       const selection: VDOMSelection = {
-        start: { nodeId: 'text-2', offset: 0 },
-        end: { nodeId: 'text-2', offset: 1 },
+        start: { node: textNode2, offset: 0 },
+        end: { node: textNode2, offset: 1 },
         isCollapsed: false,
       };
 
@@ -251,29 +269,31 @@ describe('VDOMMutations.deleteContent - BACKSPACE Formatting Preservation', () =
 
   describe('Deletion at Formatting Boundaries', () => {
     test('should handle deletion at boundary between plain and formatted text', () => {
+      const textNode1: VDOMNode = {
+        type: 'text',
+        path: [0],
+        content: 'Hello ',
+      };
+
+      const textNode2: VDOMNode = {
+        type: 'text',
+        path: [1, 0],
+        content: 'world',
+      };
+
       const vdom: VDOMNode[] = [
+        textNode1,
         {
-          id: 'text-1',
-          type: 'text',
-          content: 'Hello ',
-        },
-        {
-          id: 'strong-1',
           type: 'strong',
-          children: [
-            {
-              id: 'text-2',
-              type: 'text',
-              content: 'world',
-            },
-          ],
+          path: [1],
+          children: [textNode2],
         },
       ];
 
       // Delete the space between "Hello" and "world" (at boundary)
       const selection: VDOMSelection = {
-        start: { nodeId: 'text-1', offset: 5 },
-        end: { nodeId: 'text-1', offset: 6 },
+        start: { node: textNode1, offset: 5 },
+        end: { node: textNode1, offset: 6 },
         isCollapsed: false,
       };
 
@@ -286,35 +306,35 @@ describe('VDOMMutations.deleteContent - BACKSPACE Formatting Preservation', () =
     });
 
     test('should handle deletion at boundary between two different formatting types', () => {
+      const textNode1: VDOMNode = {
+        type: 'text',
+        path: [0, 0],
+        content: 'bold',
+      };
+
+      const textNode2: VDOMNode = {
+        type: 'text',
+        path: [1, 0],
+        content: 'italic',
+      };
+
       const vdom: VDOMNode[] = [
         {
-          id: 'strong-1',
           type: 'strong',
-          children: [
-            {
-              id: 'text-1',
-              type: 'text',
-              content: 'bold',
-            },
-          ],
+          path: [0],
+          children: [textNode1],
         },
         {
-          id: 'em-1',
           type: 'em',
-          children: [
-            {
-              id: 'text-2',
-              type: 'text',
-              content: 'italic',
-            },
-          ],
+          path: [1],
+          children: [textNode2],
         },
       ];
 
       // Delete last character of bold text
       const selection: VDOMSelection = {
-        start: { nodeId: 'text-1', offset: 3 },
-        end: { nodeId: 'text-1', offset: 4 },
+        start: { node: textNode1, offset: 3 },
+        end: { node: textNode1, offset: 4 },
         isCollapsed: false,
       };
 
@@ -330,51 +350,57 @@ describe('VDOMMutations.deleteContent - BACKSPACE Formatting Preservation', () =
 
   describe('Complex Multi-Node Deletion Scenarios', () => {
     test('should handle deletion across multiple formatting boundaries', () => {
+      const textNode1: VDOMNode = {
+        type: 'text',
+        path: [0],
+        content: 'Start ',
+      };
+
+      const textNode2: VDOMNode = {
+        type: 'text',
+        path: [1, 0],
+        content: 'bold',
+      };
+
+      const textNode3: VDOMNode = {
+        type: 'text',
+        path: [2],
+        content: ' and ',
+      };
+
+      const textNode4: VDOMNode = {
+        type: 'text',
+        path: [3, 0],
+        content: 'italic',
+      };
+
+      const textNode5: VDOMNode = {
+        type: 'text',
+        path: [4],
+        content: ' end',
+      };
+
       const vdom: VDOMNode[] = [
+        textNode1,
         {
-          id: 'text-1',
-          type: 'text',
-          content: 'Start ',
-        },
-        {
-          id: 'strong-1',
           type: 'strong',
-          children: [
-            {
-              id: 'text-2',
-              type: 'text',
-              content: 'bold',
-            },
-          ],
+          path: [1],
+          children: [textNode2],
         },
+        textNode3,
         {
-          id: 'text-3',
-          type: 'text',
-          content: ' and ',
-        },
-        {
-          id: 'em-1',
           type: 'em',
-          children: [
-            {
-              id: 'text-4',
-              type: 'text',
-              content: 'italic',
-            },
-          ],
+          path: [3],
+          children: [textNode4],
         },
-        {
-          id: 'text-5',
-          type: 'text',
-          content: ' end',
-        },
+        textNode5,
       ];
 
       // Delete from middle of "bold" through middle of "italic"
       // This should delete "ld and ita" leaving "bo" + "lic"
       const selection: VDOMSelection = {
-        start: { nodeId: 'text-2', offset: 2 }, // After "bo" in "bold"
-        end: { nodeId: 'text-4', offset: 3 }, // After "ita" in "italic"
+        start: { node: textNode2, offset: 2 }, // After "bo" in "bold"
+        end: { node: textNode4, offset: 3 }, // After "ita" in "italic"
         isCollapsed: false,
       };
 
@@ -393,34 +419,38 @@ describe('VDOMMutations.deleteContent - BACKSPACE Formatting Preservation', () =
     });
 
     test('should handle deletion that completely removes middle formatting sections', () => {
+      const textNode1: VDOMNode = {
+        type: 'text',
+        path: [0],
+        content: 'Keep ',
+      };
+
+      const textNode2: VDOMNode = {
+        type: 'text',
+        path: [1, 0],
+        content: 'delete this',
+      };
+
+      const textNode3: VDOMNode = {
+        type: 'text',
+        path: [2],
+        content: ' keep',
+      };
+
       const vdom: VDOMNode[] = [
+        textNode1,
         {
-          id: 'text-1',
-          type: 'text',
-          content: 'Keep ',
-        },
-        {
-          id: 'strong-1',
           type: 'strong',
-          children: [
-            {
-              id: 'text-2',
-              type: 'text',
-              content: 'delete this',
-            },
-          ],
+          path: [1],
+          children: [textNode2],
         },
-        {
-          id: 'text-3',
-          type: 'text',
-          content: ' keep',
-        },
+        textNode3,
       ];
 
       // Delete the entire strong section
       const selection: VDOMSelection = {
-        start: { nodeId: 'text-2', offset: 0 },
-        end: { nodeId: 'text-2', offset: 11 },
+        start: { node: textNode2, offset: 0 },
+        end: { node: textNode2, offset: 11 },
         isCollapsed: false,
       };
 
@@ -439,23 +469,23 @@ describe('VDOMMutations.deleteContent - BACKSPACE Formatting Preservation', () =
 
   describe('Edge Cases and Error Handling', () => {
     test('should handle deletion from empty text node gracefully', () => {
+      const textNode1: VDOMNode = {
+        type: 'text',
+        path: [0, 0],
+        content: '', // Empty text node
+      };
+
       const vdom: VDOMNode[] = [
         {
-          id: 'strong-1',
           type: 'strong',
-          children: [
-            {
-              id: 'text-1',
-              type: 'text',
-              content: '', // Empty text node
-            },
-          ],
+          path: [0],
+          children: [textNode1],
         },
       ];
 
       const selection: VDOMSelection = {
-        start: { nodeId: 'text-1', offset: 0 },
-        end: { nodeId: 'text-1', offset: 0 },
+        start: { node: textNode1, offset: 0 },
+        end: { node: textNode1, offset: 0 },
         isCollapsed: true,
       };
 
@@ -468,17 +498,23 @@ describe('VDOMMutations.deleteContent - BACKSPACE Formatting Preservation', () =
     });
 
     test('should handle deletion with invalid node references', () => {
-      const vdom: VDOMNode[] = [
-        {
-          id: 'text-1',
-          type: 'text',
-          content: 'Hello world',
-        },
-      ];
+      const textNode1: VDOMNode = {
+        type: 'text',
+        path: [0],
+        content: 'Hello world',
+      };
+
+      const nonExistentNode: VDOMNode = {
+        type: 'text',
+        path: [999], // Non-existent path
+        content: 'fake',
+      };
+
+      const vdom: VDOMNode[] = [textNode1];
 
       const selection: VDOMSelection = {
-        start: { nodeId: 'non-existent-node', offset: 0 },
-        end: { nodeId: 'non-existent-node', offset: 1 },
+        start: { node: nonExistentNode, offset: 0 },
+        end: { node: nonExistentNode, offset: 1 },
         isCollapsed: false,
       };
 
@@ -488,17 +524,17 @@ describe('VDOMMutations.deleteContent - BACKSPACE Formatting Preservation', () =
     });
 
     test('should handle deletion with out-of-bounds offsets', () => {
-      const vdom: VDOMNode[] = [
-        {
-          id: 'text-1',
-          type: 'text',
-          content: 'Hi',
-        },
-      ];
+      const textNode1: VDOMNode = {
+        type: 'text',
+        path: [0],
+        content: 'Hi',
+      };
+
+      const vdom: VDOMNode[] = [textNode1];
 
       const selection: VDOMSelection = {
-        start: { nodeId: 'text-1', offset: 10 }, // Beyond text length
-        end: { nodeId: 'text-1', offset: 15 },
+        start: { node: textNode1, offset: 10 }, // Beyond text length
+        end: { node: textNode1, offset: 15 },
         isCollapsed: false,
       };
 
@@ -511,33 +547,37 @@ describe('VDOMMutations.deleteContent - BACKSPACE Formatting Preservation', () =
 
   describe('Adjacent Node Merging After Deletion', () => {
     test('should merge adjacent text nodes after removing formatting container between them', () => {
+      const textNode1: VDOMNode = {
+        type: 'text',
+        path: [0],
+        content: 'Hello',
+      };
+
+      const textNode2: VDOMNode = {
+        type: 'text',
+        path: [1, 0],
+        content: 'X', // Will be deleted
+      };
+
+      const textNode3: VDOMNode = {
+        type: 'text',
+        path: [2],
+        content: 'world',
+      };
+
       const vdom: VDOMNode[] = [
+        textNode1,
         {
-          id: 'text-1',
-          type: 'text',
-          content: 'Hello',
-        },
-        {
-          id: 'strong-1',
           type: 'strong',
-          children: [
-            {
-              id: 'text-2',
-              type: 'text',
-              content: 'X', // Will be deleted
-            },
-          ],
+          path: [1],
+          children: [textNode2],
         },
-        {
-          id: 'text-3',
-          type: 'text',
-          content: 'world',
-        },
+        textNode3,
       ];
 
       const selection: VDOMSelection = {
-        start: { nodeId: 'text-2', offset: 0 },
-        end: { nodeId: 'text-2', offset: 1 },
+        start: { node: textNode2, offset: 0 },
+        end: { node: textNode2, offset: 1 },
         isCollapsed: false,
       };
 
@@ -554,34 +594,38 @@ describe('VDOMMutations.deleteContent - BACKSPACE Formatting Preservation', () =
     });
 
     test('should not merge text nodes that have formatting between them', () => {
+      const textNode1: VDOMNode = {
+        type: 'text',
+        path: [0],
+        content: 'Hello',
+      };
+
+      const textNode2: VDOMNode = {
+        type: 'text',
+        path: [1, 0],
+        content: 'keep this',
+      };
+
+      const textNode3: VDOMNode = {
+        type: 'text',
+        path: [2],
+        content: 'world',
+      };
+
       const vdom: VDOMNode[] = [
+        textNode1,
         {
-          id: 'text-1',
-          type: 'text',
-          content: 'Hello',
-        },
-        {
-          id: 'strong-1',
           type: 'strong',
-          children: [
-            {
-              id: 'text-2',
-              type: 'text',
-              content: 'keep this',
-            },
-          ],
+          path: [1],
+          children: [textNode2],
         },
-        {
-          id: 'text-3',
-          type: 'text',
-          content: 'world',
-        },
+        textNode3,
       ];
 
       // Delete from the middle of the strong text (not all of it)
       const selection: VDOMSelection = {
-        start: { nodeId: 'text-2', offset: 2 },
-        end: { nodeId: 'text-2', offset: 4 },
+        start: { node: textNode2, offset: 2 },
+        end: { node: textNode2, offset: 4 },
         isCollapsed: false,
       };
 
