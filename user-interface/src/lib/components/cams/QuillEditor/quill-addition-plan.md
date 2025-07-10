@@ -95,6 +95,7 @@ Always abide by the applicable `.guidelines.md` files.
     - Updated the CSS to style the `<u>` tag directly instead of using a custom class
     - Kept the same text-decoration properties to ensure consistent styling
   - Test Coverage: The existing tests for the underline button should continue to pass as they verify the button's existence and behavior, but not the HTML structure of the underlined text.
+- [] The unordered list button is inserting `<ol>` tags rather than `<ul>` tags.
 
 ## Test Coverage
 
@@ -104,6 +105,10 @@ All fixes have been verified with appropriate tests in QuillEditor.test.tsx:
 2. Test for tooltip visibility: Verifies that elements with classes `ql-tooltip` and `ql-hidden` have the appropriate CSS classes that would hide them in a browser.
 3. Test for bold button styling: Verifies that the bold button has the text "B" and a title attribute of "Bold".
 4. Test for bold button wiring: Verifies that the bold button exists and has the correct initial state.
+5. Test for ordered list button styling: Verifies that the ordered list button has the text "OL" and a title attribute of "Ordered List".
+6. Test for ordered list button wiring: Verifies that the ordered list button exists and has the correct initial state.
+7. Test for unordered list button styling: Verifies that the unordered list button has the text "UL" and a title attribute of "Unordered List".
+8. Test for unordered list button wiring: Verifies that the unordered list button exists and has the correct initial state.
 
 Additionally, the test suite includes tests for basic functionality:
 - Rendering with label and aria description

@@ -382,6 +382,13 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   });
 
   useEffect(() => {
+    console.log('CaseNoteFormModal mounted', props.modalId);
+    return () => {
+      console.log('CaseNoteFormModal unmounted', props.modalId);
+    };
+  }, []);
+
+  useEffect(() => {
     disableSubmitButton(true);
   }, []);
 

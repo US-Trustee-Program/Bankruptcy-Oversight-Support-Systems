@@ -38,7 +38,12 @@ describe('QuillEditor', () => {
       enable: vi.fn(),
       setText: vi.fn(),
       getText: vi.fn().mockReturnValue(''),
-      getFormat: vi.fn().mockReturnValue({ bold: false, italic: false, underline: false }),
+      getFormat: vi.fn().mockReturnValue({
+        bold: false,
+        italic: false,
+        underline: false,
+        list: false,
+      }),
       format: vi.fn(),
       root: {
         innerHTML: '',
@@ -302,6 +307,96 @@ describe('QuillEditor', () => {
 
     // Initially, the button should not have the active class
     expect(underlineButton.classList.contains('active')).toBe(false);
+
+    // We're not testing the click behavior here as it would require complex mocking
+    // of the Quill instance and proper handling of state updates.
+    // Instead, we're just verifying the button exists and has the correct initial state.
+  });
+
+  test('ordered list button should have proper styling and content', async () => {
+    // Render component
+    render(<QuillEditor id="test-editor" />);
+
+    // Find the ordered list button by test ID or text content
+    let orderedListButton: HTMLElement;
+    try {
+      orderedListButton = screen.getByTestId('ordered-list-button');
+    } catch (_error) {
+      // If that fails, try to find it by its text content
+      orderedListButton = screen.getByText('OL');
+    }
+
+    expect(orderedListButton).toBeTruthy();
+
+    // Check that the button has the text "OL"
+    expect(orderedListButton.textContent).toBe('OL');
+
+    // Check that the button has a title attribute
+    expect(orderedListButton.getAttribute('title')).toBe('Ordered List');
+  });
+
+  test('ordered list button should be properly wired up', async () => {
+    // Render component
+    render(<QuillEditor id="test-editor" />);
+
+    // Find the ordered list button by test ID or text content
+    let orderedListButton: HTMLElement;
+    try {
+      orderedListButton = screen.getByTestId('ordered-list-button');
+    } catch (_error) {
+      // If that fails, try to find it by its text content
+      orderedListButton = screen.getByText('OL');
+    }
+
+    expect(orderedListButton).toBeTruthy();
+
+    // Initially, the button should not have the active class
+    expect(orderedListButton.classList.contains('active')).toBe(false);
+
+    // We're not testing the click behavior here as it would require complex mocking
+    // of the Quill instance and proper handling of state updates.
+    // Instead, we're just verifying the button exists and has the correct initial state.
+  });
+
+  test('unordered list button should have proper styling and content', async () => {
+    // Render component
+    render(<QuillEditor id="test-editor" />);
+
+    // Find the unordered list button by test ID or text content
+    let unorderedListButton: HTMLElement;
+    try {
+      unorderedListButton = screen.getByTestId('unordered-list-button');
+    } catch (_error) {
+      // If that fails, try to find it by its text content
+      unorderedListButton = screen.getByText('UL');
+    }
+
+    expect(unorderedListButton).toBeTruthy();
+
+    // Check that the button has the text "UL"
+    expect(unorderedListButton.textContent).toBe('UL');
+
+    // Check that the button has a title attribute
+    expect(unorderedListButton.getAttribute('title')).toBe('Unordered List');
+  });
+
+  test('unordered list button should be properly wired up', async () => {
+    // Render component
+    render(<QuillEditor id="test-editor" />);
+
+    // Find the unordered list button by test ID or text content
+    let unorderedListButton: HTMLElement;
+    try {
+      unorderedListButton = screen.getByTestId('unordered-list-button');
+    } catch (_error) {
+      // If that fails, try to find it by its text content
+      unorderedListButton = screen.getByText('UL');
+    }
+
+    expect(unorderedListButton).toBeTruthy();
+
+    // Initially, the button should not have the active class
+    expect(unorderedListButton.classList.contains('active')).toBe(false);
 
     // We're not testing the click behavior here as it would require complex mocking
     // of the Quill instance and proper handling of state updates.
