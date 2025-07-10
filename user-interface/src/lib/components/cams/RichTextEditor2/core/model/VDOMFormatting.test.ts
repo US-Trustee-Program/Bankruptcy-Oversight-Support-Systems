@@ -1,584 +1,540 @@
-import { test, expect, describe } from 'vitest';
+import { describe, it, expect } from 'vitest';
+import { toggleBold, toggleBoldInSelection } from './VDOMFormatting';
 import { VDOMNode, VDOMSelection } from '../types';
-import { createTextNode, createParagraphNode, createStrongNode, createEmNode } from './VDOMNode';
-import {
-  getFormattingAtSelection,
-  getNodeFormatState,
-  toggleBoldInSelection,
-  isTextNodeBold,
-} from './VDOMFormatting';
-
-// Remove temporary function declarations since they're now implemented
 
 describe('VDOMFormatting', () => {
-  describe('getNodeFormatState', () => {
-    test('should detect bold formatting on a strong node', () => {
-      // Arrange
-      const strongNode = createStrongNode([createTextNode('bold text')]);
+  describe('toggleBold', () => {
+    it('should wrap plain text in strong tag', () => {
+      const vdom: VDOMNode[] = [
+        {
+          type: 'paragraph',
+          path: [0],
+          children: [
+            {
+              type: 'text',
+              path: [0, 0],
+              content: 'Hello world',
+            },
+          ],
+        },
+      ];
 
-      // Act
-      const result = getNodeFormatState(strongNode);
-
-      // Assert
-      expect(result.bold).toBe('active');
-      expect(result.italic).toBeUndefined();
-      expect(result.underline).toBeUndefined();
-    });
-
-    test('should detect italic formatting on an em node', () => {
-      // Arrange
-      const emNode = createEmNode([createTextNode('italic text')]);
-
-      // Act
-      const result = getNodeFormatState(emNode);
-
-      // Assert
-      expect(result.bold).toBeUndefined();
-      expect(result.italic).toBe('active');
-      expect(result.underline).toBeUndefined();
-    });
-
-    test('should detect underline formatting on a u node', () => {
-      // Arrange
-      const node: VDOMNode = {
-        id: '1',
-        type: 'u',
-        children: [
-          {
-            id: '2',
-            type: 'text',
-            content: 'Underlined text',
-          },
-        ],
+      const selection: VDOMSelection = {
+        start: { node: vdom[0].children![0], offset: 0 },
+        end: { node: vdom[0].children![0], offset: 5 },
+        isCollapsed: false,
       };
 
-      // Act
-      const result = getNodeFormatState(node);
+      const result = toggleBold(vdom, selection);
 
-      // Assert
-      expect(result.underline).toBe('active');
-      expect(result.bold).toBeUndefined();
-      expect(result.italic).toBeUndefined();
+      expect(result.vdom[0].children![0]).toEqual({
+        type: 'strong',
+        path: [0, 0],
+        children: [
+          {
+            type: 'text',
+            path: [0, 0, 0],
+            content: 'Hello',
+          },
+        ],
+      });
+      expect(result.vdom[0].children![1]).toEqual({
+        type: 'text',
+        path: [0, 1],
+        content: ' world',
+      });
     });
 
-    test('should not detect any formatting on a text node', () => {
-      // Arrange
-      const textNode = createTextNode('plain text');
-
-      // Act
-      const result = getNodeFormatState(textNode);
-
-      // Assert
-      expect(result.bold).toBeUndefined();
-      expect(result.italic).toBeUndefined();
-      expect(result.underline).toBeUndefined();
-    });
-
-    test('should not detect any formatting on a paragraph node', () => {
-      // Arrange
-      const paragraphNode = createParagraphNode([createTextNode('plain text')]);
-
-      // Act
-      const result = getNodeFormatState(paragraphNode);
-
-      // Assert
-      expect(result.bold).toBeUndefined();
-      expect(result.italic).toBeUndefined();
-      expect(result.underline).toBeUndefined();
-    });
-  });
-
-  describe('getFormattingAtSelection', () => {
-    test('should return all inactive when no nodes are selected', () => {
-      // Arrange
-      const nodes: VDOMNode[] = [];
-
-      // Act
-      const result = getFormattingAtSelection(nodes);
-
-      // Assert
-      expect(result.bold).toBe('inactive');
-      expect(result.italic).toBe('inactive');
-      expect(result.underline).toBe('inactive');
-    });
-
-    test('should return active for formats that all selected nodes have', () => {
-      // Arrange
-      const nodes: VDOMNode[] = [
-        createStrongNode([createTextNode('bold text')]),
-        createStrongNode([createTextNode('more bold text')]),
+    it('should unwrap text from strong tag', () => {
+      const vdom: VDOMNode[] = [
+        {
+          type: 'paragraph',
+          path: [0],
+          children: [
+            {
+              type: 'strong',
+              path: [0, 0],
+              children: [
+                {
+                  type: 'text',
+                  path: [0, 0, 0],
+                  content: 'Hello',
+                },
+              ],
+            },
+          ],
+        },
       ];
 
-      // Act
-      const result = getFormattingAtSelection(nodes);
+      const selection: VDOMSelection = {
+        start: { node: vdom[0].children![0].children![0], offset: 0 },
+        end: { node: vdom[0].children![0].children![0], offset: 5 },
+        isCollapsed: false,
+      };
 
-      // Assert
-      expect(result.bold).toBe('active');
-      expect(result.italic).toBe('inactive');
-      expect(result.underline).toBe('inactive');
+      const result = toggleBold(vdom, selection);
+
+      expect(result.vdom[0].children![0]).toEqual({
+        type: 'text',
+        path: [0, 0],
+        content: 'Hello',
+      });
     });
 
-    test('should return mixed when some nodes have a format and others do not', () => {
-      // Arrange
-      const nodes: VDOMNode[] = [
-        createStrongNode([createTextNode('bold text')]),
-        createTextNode('plain text'),
+    it('should merge adjacent strong tags', () => {
+      const vdom: VDOMNode[] = [
+        {
+          type: 'paragraph',
+          path: [0],
+          children: [
+            {
+              type: 'strong',
+              path: [0, 0],
+              children: [
+                {
+                  type: 'text',
+                  path: [0, 0, 0],
+                  content: 'Hello',
+                },
+              ],
+            },
+            {
+              type: 'text',
+              path: [0, 1],
+              content: ' ',
+            },
+            {
+              type: 'strong',
+              path: [0, 2],
+              children: [
+                {
+                  type: 'text',
+                  path: [0, 2, 0],
+                  content: 'world',
+                },
+              ],
+            },
+          ],
+        },
       ];
 
-      // Act
-      const result = getFormattingAtSelection(nodes);
+      const selection: VDOMSelection = {
+        start: { node: vdom[0].children![1], offset: 0 },
+        end: { node: vdom[0].children![1], offset: 1 },
+        isCollapsed: false,
+      };
 
-      // Assert
-      expect(result.bold).toBe('mixed');
-      expect(result.italic).toBe('inactive');
-      expect(result.underline).toBe('inactive');
+      const result = toggleBold(vdom, selection);
+
+      expect(result.vdom[0].children!.length).toBe(1);
+      expect(result.vdom[0].children![0]).toEqual({
+        type: 'strong',
+        path: [0, 0],
+        children: [
+          {
+            type: 'text',
+            path: [0, 0, 0],
+            content: 'Hello world',
+          },
+        ],
+      });
     });
 
-    test('should return inactive for nodes with no formatting', () => {
-      // Arrange
-      const nodes: VDOMNode[] = [createTextNode('plain text'), createTextNode('more plain text')];
+    it('should expand cursor selection to word boundaries', () => {
+      const vdom: VDOMNode[] = [
+        {
+          type: 'paragraph',
+          path: [0],
+          children: [
+            {
+              type: 'text',
+              path: [0, 0],
+              content: 'Hello world',
+            },
+          ],
+        },
+      ];
 
-      // Act
-      const result = getFormattingAtSelection(nodes);
+      const selection: VDOMSelection = {
+        start: { node: vdom[0].children![0], offset: 2 },
+        end: { node: vdom[0].children![0], offset: 2 },
+        isCollapsed: true,
+      };
 
-      // Assert
-      expect(result.bold).toBe('inactive');
-      expect(result.italic).toBe('inactive');
-      expect(result.underline).toBe('inactive');
+      const result = toggleBold(vdom, selection);
+
+      expect(result.vdom[0].children![0]).toEqual({
+        type: 'strong',
+        path: [0, 0],
+        children: [
+          {
+            type: 'text',
+            path: [0, 0, 0],
+            content: 'Hello',
+          },
+        ],
+      });
+      expect(result.vdom[0].children![1]).toEqual({
+        type: 'text',
+        path: [0, 1],
+        content: ' world',
+      });
+    });
+
+    it('should consolidate nested strong tags', () => {
+      const vdom: VDOMNode[] = [
+        {
+          type: 'paragraph',
+          path: [0],
+          children: [
+            {
+              type: 'strong',
+              path: [0, 0],
+              children: [
+                {
+                  type: 'text',
+                  path: [0, 0, 0],
+                  content: 'Hello ',
+                },
+                {
+                  type: 'strong',
+                  path: [0, 0, 1],
+                  children: [
+                    {
+                      type: 'text',
+                      path: [0, 0, 1, 0],
+                      content: 'nested',
+                    },
+                  ],
+                },
+                {
+                  type: 'text',
+                  path: [0, 0, 2],
+                  content: ' world',
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      const selection: VDOMSelection = {
+        start: { node: vdom[0].children![0].children![1].children![0], offset: 0 },
+        end: { node: vdom[0].children![0].children![1].children![0], offset: 6 },
+        isCollapsed: false,
+      };
+
+      const result = toggleBold(vdom, selection);
+
+      expect(result.vdom[0].children![0]).toEqual({
+        type: 'strong',
+        path: [0, 0],
+        children: [
+          {
+            type: 'text',
+            path: [0, 0, 0],
+            content: 'Hello nested world',
+          },
+        ],
+      });
+    });
+
+    it('should wrap selection in strong when not in strong node', () => {
+      const vdom: VDOMNode[] = [
+        {
+          type: 'paragraph',
+          path: [0],
+          children: [
+            {
+              type: 'text',
+              path: [0, 0],
+              content: 'Hello world',
+            },
+          ],
+        },
+      ];
+
+      const selection: VDOMSelection = {
+        start: { node: vdom[0].children![0], offset: 0 },
+        end: { node: vdom[0].children![0], offset: 5 },
+        isCollapsed: false,
+      };
+
+      const result = toggleBold(vdom, selection);
+
+      expect(result.vdom[0].children![0]).toEqual({
+        type: 'strong',
+        path: [0, 0],
+        children: [
+          {
+            type: 'text',
+            path: [0, 0, 0],
+            content: 'Hello',
+          },
+        ],
+      });
+    });
+
+    it('should unwrap text from strong node when fully selected', () => {
+      const vdom: VDOMNode[] = [
+        {
+          type: 'paragraph',
+          path: [0],
+          children: [
+            {
+              type: 'strong',
+              path: [0, 0],
+              children: [
+                {
+                  type: 'text',
+                  path: [0, 0, 0],
+                  content: 'Hello',
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      const selection: VDOMSelection = {
+        start: { node: vdom[0].children![0].children![0], offset: 0 },
+        end: { node: vdom[0].children![0].children![0], offset: 5 },
+        isCollapsed: false,
+      };
+
+      const result = toggleBold(vdom, selection);
+
+      expect(result.vdom[0].children![0]).toEqual({
+        type: 'text',
+        path: [0, 0],
+        content: 'Hello',
+      });
+    });
+
+    it('should wrap entire selection in strong when partially in strong', () => {
+      const vdom: VDOMNode[] = [
+        {
+          type: 'paragraph',
+          path: [0],
+          children: [
+            {
+              type: 'strong',
+              path: [0, 0],
+              children: [
+                {
+                  type: 'text',
+                  path: [0, 0, 0],
+                  content: 'Hello',
+                },
+              ],
+            },
+            {
+              type: 'text',
+              path: [0, 1],
+              content: ' world',
+            },
+          ],
+        },
+      ];
+
+      const selection: VDOMSelection = {
+        start: { node: vdom[0].children![0].children![0], offset: 3 },
+        end: { node: vdom[0].children![1], offset: 3 },
+        isCollapsed: false,
+      };
+
+      const result = toggleBold(vdom, selection);
+
+      expect(result.vdom[0].children![0]).toEqual({
+        type: 'strong',
+        path: [0, 0],
+        children: [
+          {
+            type: 'text',
+            path: [0, 0, 0],
+            content: 'Hello wor',
+          },
+        ],
+      });
+    });
+
+    it('should expand cursor to word boundaries when selection is collapsed', () => {
+      const vdom: VDOMNode[] = [
+        {
+          type: 'paragraph',
+          path: [0],
+          children: [
+            {
+              type: 'text',
+              path: [0, 0],
+              content: 'Hello world',
+            },
+          ],
+        },
+      ];
+
+      const selection: VDOMSelection = {
+        start: { node: vdom[0].children![0], offset: 2 },
+        end: { node: vdom[0].children![0], offset: 2 },
+        isCollapsed: true,
+      };
+
+      const result = toggleBold(vdom, selection);
+
+      expect(result.vdom[0].children![0]).toEqual({
+        type: 'strong',
+        path: [0, 0],
+        children: [
+          {
+            type: 'text',
+            path: [0, 0, 0],
+            content: 'Hello',
+          },
+        ],
+      });
+    });
+
+    it('should merge adjacent strong nodes', () => {
+      const vdom: VDOMNode[] = [
+        {
+          type: 'paragraph',
+          path: [0],
+          children: [
+            {
+              type: 'strong',
+              path: [0, 0],
+              children: [
+                {
+                  type: 'text',
+                  path: [0, 0, 0],
+                  content: 'Hello',
+                },
+              ],
+            },
+            {
+              type: 'text',
+              path: [0, 1],
+              content: ' ',
+            },
+            {
+              type: 'strong',
+              path: [0, 2],
+              children: [
+                {
+                  type: 'text',
+                  path: [0, 2, 0],
+                  content: 'world',
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      const selection: VDOMSelection = {
+        start: { node: vdom[0].children![1], offset: 0 },
+        end: { node: vdom[0].children![1], offset: 1 },
+        isCollapsed: false,
+      };
+
+      const result = toggleBold(vdom, selection);
+
+      expect(result.vdom[0].children).toHaveLength(1);
+      expect(result.vdom[0].children![0]).toEqual({
+        type: 'strong',
+        path: [0, 0],
+        children: [
+          {
+            type: 'text',
+            path: [0, 0, 0],
+            content: 'Hello world',
+          },
+        ],
+      });
     });
   });
 
   describe('toggleBoldInSelection', () => {
-    test('should wrap a plain text node with strong formatting', () => {
-      // Arrange
-      const textNode = createTextNode('Hello world');
-      const vdom = [textNode];
+    it('should return newVDOM and newSelection with the correct shape', () => {
+      const vdom: VDOMNode[] = [
+        {
+          type: 'paragraph',
+          path: [0],
+          children: [
+            {
+              type: 'text',
+              path: [0, 0],
+              content: 'Hello world',
+            },
+          ],
+        },
+      ];
+
       const selection: VDOMSelection = {
-        start: { offset: 0 },
-        end: { offset: 11 },
+        start: { node: vdom[0].children![0], offset: 0 },
+        end: { node: vdom[0].children![0], offset: 5 },
         isCollapsed: false,
       };
 
-      // Act
       const result = toggleBoldInSelection(vdom, selection);
 
-      // Assert
-      expect(result).toHaveLength(1);
-      expect(result[0].type).toBe('strong');
-      expect(result[0].children).toHaveLength(1);
-      expect(result[0].children![0].type).toBe('text');
-      expect(result[0].children![0].content).toBe('Hello world');
+      // Test shape of return value matches FSM requirements
+      expect(result).toHaveProperty('newVDOM');
+      expect(result).toHaveProperty('newSelection');
+      expect(Array.isArray(result.newVDOM)).toBe(true);
+      expect(result.newSelection).toHaveProperty('start');
+      expect(result.newSelection).toHaveProperty('end');
+      expect(result.newSelection).toHaveProperty('isCollapsed');
+
+      // Test actual transformation
+      expect(result.newVDOM[0].children![0]).toEqual({
+        type: 'strong',
+        path: [0, 0],
+        children: [
+          {
+            type: 'text',
+            path: [0, 0, 0],
+            content: 'Hello',
+          },
+        ],
+      });
     });
 
-    test('should unwrap text from strong formatting when already bold', () => {
-      // Arrange
-      const textNode = createTextNode('Bold text');
-      const strongNode = createStrongNode([textNode]);
-      const vdom = [strongNode];
+    it('should handle selection inside strong tag', () => {
+      const vdom: VDOMNode[] = [
+        {
+          type: 'paragraph',
+          path: [0],
+          children: [
+            {
+              type: 'strong',
+              path: [0, 0],
+              children: [
+                {
+                  type: 'text',
+                  path: [0, 0, 0],
+                  content: 'Hello',
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
       const selection: VDOMSelection = {
-        start: { offset: 0 },
-        end: { offset: 9 },
+        start: { node: vdom[0].children![0].children![0], offset: 0 },
+        end: { node: vdom[0].children![0].children![0], offset: 5 },
         isCollapsed: false,
       };
 
-      // Act
       const result = toggleBoldInSelection(vdom, selection);
 
-      // Assert
-      expect(result).toHaveLength(1);
-      expect(result[0].type).toBe('text');
-      expect(result[0].content).toBe('Bold text');
-      expect(result[0].children).toBeUndefined();
-    });
-
-    test('should handle collapsed selection by toggling entire text node', () => {
-      // Arrange
-      const textNode = createTextNode('Hello');
-      const vdom = [textNode];
-      const selection: VDOMSelection = {
-        start: { offset: 2 },
-        end: { offset: 2 },
-        isCollapsed: true,
-      };
-
-      // Act
-      const result = toggleBoldInSelection(vdom, selection);
-
-      // Assert
-      expect(result).toHaveLength(1);
-      expect(result[0].type).toBe('strong');
-      expect(result[0].children![0].content).toBe('Hello');
-    });
-
-    test('should handle empty vdom array', () => {
-      // Arrange
-      const vdom: VDOMNode[] = [];
-      const selection: VDOMSelection = {
-        start: { offset: 0 },
-        end: { offset: 0 },
-        isCollapsed: true,
-      };
-
-      // Act
-      const result = toggleBoldInSelection(vdom, selection);
-
-      // Assert
-      expect(result).toEqual([]);
-    });
-
-    test('should only affect text nodes within selection range', () => {
-      // Arrange
-      const textNode1 = createTextNode('First');
-      const textNode2 = createTextNode('Second');
-      const vdom = [textNode1, textNode2];
-      const selection: VDOMSelection = {
-        start: { offset: 0 },
-        end: { offset: 5 }, // Only covers first text node
-        isCollapsed: false,
-      };
-
-      // Act
-      const result = toggleBoldInSelection(vdom, selection);
-
-      // Assert
-      expect(result).toHaveLength(2);
-      expect(result[0].type).toBe('strong'); // First node should be wrapped
-      expect(result[1].type).toBe('text'); // Second node should remain unchanged
-      expect(result[1].content).toBe('Second');
-    });
-  });
-
-  describe('toggleBoldInSelection - Partial Text Selection', () => {
-    test('should only toggle bold on selected portion of text node (beginning)', () => {
-      // Arrange: "Hello world" with selection on "Hello" (0-5)
-      const textNode = createTextNode('Hello world');
-      const vdom = [textNode];
-      const selection: VDOMSelection = {
-        start: { offset: 0 },
-        end: { offset: 5 },
-        isCollapsed: false,
-      };
-
-      // Act
-      const result = toggleBoldInSelection(vdom, selection);
-
-      // Assert: Should split into bold "Hello" + plain " world"
-      expect(result).toHaveLength(2);
-      expect(result[0].type).toBe('strong');
-      expect(result[0].children![0].content).toBe('Hello');
-      expect(result[1].type).toBe('text');
-      expect(result[1].content).toBe(' world');
-    });
-
-    test('should only toggle bold on selected portion of text node (middle)', () => {
-      // Arrange: "Hello world" with selection on "lo wo" (3-8)
-      const textNode = createTextNode('Hello world');
-      const vdom = [textNode];
-      const selection: VDOMSelection = {
-        start: { offset: 3 },
-        end: { offset: 8 },
-        isCollapsed: false,
-      };
-
-      // Act
-      const result = toggleBoldInSelection(vdom, selection);
-
-      // Assert: Should split into "Hel" + bold "lo wo" + "rld"
-      expect(result).toHaveLength(3);
-      expect(result[0].type).toBe('text');
-      expect(result[0].content).toBe('Hel');
-      expect(result[1].type).toBe('strong');
-      expect(result[1].children![0].content).toBe('lo wo');
-      expect(result[2].type).toBe('text');
-      expect(result[2].content).toBe('rld');
-    });
-
-    test('should only toggle bold on selected portion of text node (end)', () => {
-      // Arrange: "Hello world" with selection on "world" (6-11)
-      const textNode = createTextNode('Hello world');
-      const vdom = [textNode];
-      const selection: VDOMSelection = {
-        start: { offset: 6 },
-        end: { offset: 11 },
-        isCollapsed: false,
-      };
-
-      // Act
-      const result = toggleBoldInSelection(vdom, selection);
-
-      // Assert: Should split into "Hello " + bold "world"
-      expect(result).toHaveLength(2);
-      expect(result[0].type).toBe('text');
-      expect(result[0].content).toBe('Hello ');
-      expect(result[1].type).toBe('strong');
-      expect(result[1].children![0].content).toBe('world');
-    });
-  });
-
-  describe('toggleBoldInSelection - Toggle Off Scenarios', () => {
-    test('should remove bold from fully selected bold text', () => {
-      // Arrange: Bold "Hello world" with full selection
-      const textNode = createTextNode('Hello world');
-      const strongNode = createStrongNode([textNode]);
-      const vdom = [strongNode];
-      const selection: VDOMSelection = {
-        start: { offset: 0 },
-        end: { offset: 11 },
-        isCollapsed: false,
-      };
-
-      // Act
-      const result = toggleBoldInSelection(vdom, selection);
-
-      // Assert: Should unwrap to plain text
-      expect(result).toHaveLength(1);
-      expect(result[0].type).toBe('text');
-      expect(result[0].content).toBe('Hello world');
-    });
-
-    test('should remove bold from partial selection within bold text (beginning)', () => {
-      // Arrange: Bold "Hello world" with selection on "Hello" (0-5)
-      const textNode = createTextNode('Hello world');
-      const strongNode = createStrongNode([textNode]);
-      const vdom = [strongNode];
-      const selection: VDOMSelection = {
-        start: { offset: 0 },
-        end: { offset: 5 },
-        isCollapsed: false,
-      };
-
-      // Act
-      const result = toggleBoldInSelection(vdom, selection);
-
-      // Assert: Should split into plain "Hello" + bold " world"
-      expect(result).toHaveLength(2);
-      expect(result[0].type).toBe('text');
-      expect(result[0].content).toBe('Hello');
-      expect(result[1].type).toBe('strong');
-      expect(result[1].children![0].content).toBe(' world');
-    });
-
-    test('should remove bold from partial selection within bold text (middle)', () => {
-      // Arrange: Bold "Hello world" with selection on "lo wo" (3-8)
-      const textNode = createTextNode('Hello world');
-      const strongNode = createStrongNode([textNode]);
-      const vdom = [strongNode];
-      const selection: VDOMSelection = {
-        start: { offset: 3 },
-        end: { offset: 8 },
-        isCollapsed: false,
-      };
-
-      // Act
-      const result = toggleBoldInSelection(vdom, selection);
-
-      // Assert: Should split into bold "Hel" + plain "lo wo" + bold "rld"
-      expect(result).toHaveLength(3);
-      expect(result[0].type).toBe('strong');
-      expect(result[0].children![0].content).toBe('Hel');
-      expect(result[1].type).toBe('text');
-      expect(result[1].content).toBe('lo wo');
-      expect(result[2].type).toBe('strong');
-      expect(result[2].children![0].content).toBe('rld');
-    });
-
-    test('should remove bold from partial selection within bold text (end)', () => {
-      // Arrange: Bold "Hello world" with selection on "world" (6-11)
-      const textNode = createTextNode('Hello world');
-      const strongNode = createStrongNode([textNode]);
-      const vdom = [strongNode];
-      const selection: VDOMSelection = {
-        start: { offset: 6 },
-        end: { offset: 11 },
-        isCollapsed: false,
-      };
-
-      // Act
-      const result = toggleBoldInSelection(vdom, selection);
-
-      // Assert: Should split into bold "Hello " + plain "world"
-      expect(result).toHaveLength(2);
-      expect(result[0].type).toBe('strong');
-      expect(result[0].children![0].content).toBe('Hello ');
-      expect(result[1].type).toBe('text');
-      expect(result[1].content).toBe('world');
-    });
-
-    test('should handle collapsed selection within bold text', () => {
-      // Arrange: Bold "Hello world" with collapsed selection at position 5
-      const textNode = createTextNode('Hello world');
-      const strongNode = createStrongNode([textNode]);
-      const vdom = [strongNode];
-      const selection: VDOMSelection = {
-        start: { offset: 5 },
-        end: { offset: 5 },
-        isCollapsed: true,
-      };
-
-      // Act
-      const result = toggleBoldInSelection(vdom, selection);
-
-      // Assert: Should unwrap entire bold text (current behavior expectation)
-      expect(result).toHaveLength(1);
-      expect(result[0].type).toBe('text');
-      expect(result[0].content).toBe('Hello world');
-    });
-  });
-
-  describe('toggleBoldInSelection - Complex Multi-Node Scenarios', () => {
-    test('should handle selection spanning multiple text nodes', () => {
-      // Arrange: Two text nodes "Hello " and "world" with selection spanning both
-      const textNode1 = createTextNode('Hello ');
-      const textNode2 = createTextNode('world');
-      const vdom = [textNode1, textNode2];
-      const selection: VDOMSelection = {
-        start: { offset: 3 }, // Middle of first node (position 3 = "l")
-        end: { offset: 8 }, // Middle of second node (position 8 = "o" in "world")
-        isCollapsed: false,
-      };
-      // Total text: "Hello world" (positions 0-10)
-      // Selection covers: "lo wo" (positions 3-7, inclusive)
-
-      // Act
-      const result = toggleBoldInSelection(vdom, selection);
-
-      // Assert: Should split and format affected portions
-      expect(result).toHaveLength(3);
-      expect(result[0].type).toBe('text');
-      expect(result[0].content).toBe('Hel'); // Before selection
-      expect(result[1].type).toBe('strong');
-      expect(result[1].children![0].content).toBe('lo wo'); // Selected text
-      expect(result[2].type).toBe('text');
-      expect(result[2].content).toBe('rld'); // After selection
-    });
-
-    test('should handle mixed formatting state correctly', () => {
-      // Arrange: Bold "Hello " and plain "world" with selection spanning both
-      const textNode1 = createTextNode('Hello ');
-      const strongNode = createStrongNode([textNode1]);
-      const textNode2 = createTextNode('world');
-      const vdom = [strongNode, textNode2];
-      const selection: VDOMSelection = {
-        start: { offset: 3 }, // Middle of bold text
-        end: { offset: 8 }, // Middle of plain text (6 + 2)
-        isCollapsed: false,
-      };
-
-      // Act
-      const result = toggleBoldInSelection(vdom, selection);
-
-      // Assert: Should determine dominant formatting and apply consistently
-      // This test helps verify the logic for mixed format detection
-      expect(result.length).toBeGreaterThan(0);
-      // Specific expectations will depend on the implemented behavior
-    });
-  });
-
-  describe('isTextNodeBold', () => {
-    test('should return true for text node wrapped in strong', () => {
-      // Arrange
-      const textNode = createTextNode('Bold text');
-      const strongNode = createStrongNode([textNode]);
-
-      // Act
-      const result = isTextNodeBold(textNode, [strongNode]);
-
-      // Assert
-      expect(result).toBe(true);
-    });
-
-    test('should return false for plain text node', () => {
-      // Arrange
-      const textNode = createTextNode('Plain text');
-
-      // Act
-      const result = isTextNodeBold(textNode, [textNode]);
-
-      // Assert
-      expect(result).toBe(false);
-    });
-
-    test('should return false for text node in non-strong container', () => {
-      // Arrange
-      const textNode = createTextNode('Italic text');
-      const emNode = createEmNode([textNode]);
-
-      // Act
-      const result = isTextNodeBold(textNode, [emNode]);
-
-      // Assert
-      expect(result).toBe(false);
-    });
-  });
-
-  test('should toggle OFF bold when entire bold text is selected', () => {
-    // Start with bold text - this is the problematic scenario
-    const initialVdom: VDOMNode[] = [createStrongNode([createTextNode('This is a test')])];
-
-    // Select the entire text (0 to 14)
-    const selection: VDOMSelection = {
-      start: { offset: 0 },
-      end: { offset: 14 },
-      isCollapsed: false,
-    };
-
-    // Toggle bold - should REMOVE bold since text is already bold
-    const result = toggleBoldInSelection(initialVdom, selection);
-
-    // Expected: Should return plain text node (ignoring ID)
-    expect(result).toHaveLength(1);
-    expect(result[0].type).toBe('text');
-    expect(result[0].content).toBe('This is a test');
-    expect(result[0].children).toBeUndefined();
-  });
-
-  describe('toggleBoldInSelection - Partial Bold Toggling', () => {
-    test('should make partially bold selection fully bold', () => {
-      // Arrange: "Hello world" where "He" is bold and the rest is plain
-      const boldTextNode = createTextNode('He');
-      const strongNode = createStrongNode([boldTextNode]);
-      const plainTextNode = createTextNode('llo world');
-      const vdom = [strongNode, plainTextNode];
-
-      // Select the entire text "Hello world"
-      const selection: VDOMSelection = {
-        start: { offset: 0 },
-        end: { offset: 11 }, // "Hello world" length
-        isCollapsed: false,
-      };
-
-      // Act
-      const result = toggleBoldInSelection(vdom, selection);
-
-      // Assert: The entire selection should become bold (not plain)
-      expect(result).toHaveLength(1);
-      expect(result[0].type).toBe('strong');
-      expect(result[0].children![0].content).toBe('Hello world');
-    });
-
-    test('should make selection fully bold when it contains mixed formatting', () => {
-      // Arrange: "Hello world everyone" where "Hello" is bold, the rest is plain
-      const boldTextNode = createTextNode('Hello');
-      const strongNode = createStrongNode([boldTextNode]);
-      const plainTextNode = createTextNode(' world everyone');
-      const vdom = [strongNode, plainTextNode];
-
-      // Select "Hello world" (leaving "everyone" unselected)
-      const selection: VDOMSelection = {
-        start: { offset: 0 },
-        end: { offset: 11 }, // "Hello world" length
-        isCollapsed: false,
-      };
-
-      // Act
-      const result = toggleBoldInSelection(vdom, selection);
-
-      // Assert: The selected text should become bold, unselected text stays plain
-      expect(result).toHaveLength(2);
-      expect(result[0].type).toBe('strong');
-      expect(result[0].children![0].content).toBe('Hello world');
-      expect(result[1].type).toBe('text');
-      expect(result[1].content).toBe(' everyone');
+      // Should unwrap from strong
+      expect(result.newVDOM[0].children![0]).toEqual({
+        type: 'text',
+        path: [0, 0],
+        content: 'Hello',
+      });
     });
   });
 });

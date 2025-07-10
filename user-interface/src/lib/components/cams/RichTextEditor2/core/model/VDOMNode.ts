@@ -2,20 +2,13 @@ import { VDOMNode, VDOMNodeType, ListType } from '../types';
 import { ZERO_WIDTH_SPACE } from '../../RichTextEditor.constants';
 
 /**
- * Generates a unique ID for VDOM nodes using crypto.randomUUID()
- */
-export function generateNodeId(): string {
-  return crypto.randomUUID();
-}
-
-/**
  * Creates a text node with the specified content
  */
 export function createTextNode(content: string = ''): VDOMNode {
   return {
-    id: generateNodeId(),
     type: 'text',
     content,
+    path: [],
   };
 }
 
@@ -28,9 +21,9 @@ export function createElementNode(
   attributes?: Record<string, string>,
 ): VDOMNode {
   const node: VDOMNode = {
-    id: generateNodeId(),
     type,
     children,
+    path: [],
   };
 
   if (attributes) {
@@ -87,29 +80,4 @@ export function createListNode(children: VDOMNode[] = [], listType: ListType = '
  */
 export function createListItemNode(children: VDOMNode[] = []): VDOMNode {
   return createElementNode('li', children);
-}
-
-/**
- * Creates a break (br) element node
- */
-export function createBreakNode(): VDOMNode {
-  return createElementNode('br', []);
-}
-
-/**
- * Creates a span element node
- */
-export function createSpanNode(
-  children: VDOMNode[] = [],
-  attributes?: Record<string, string>,
-): VDOMNode {
-  return createElementNode('span', children, attributes);
-}
-
-/**
- * Creates an anchor (a) element node
- */
-export function createAnchorNode(children: VDOMNode[] = [], href?: string): VDOMNode {
-  const attributes = href ? { href } : undefined;
-  return createElementNode('a', children, attributes);
 }

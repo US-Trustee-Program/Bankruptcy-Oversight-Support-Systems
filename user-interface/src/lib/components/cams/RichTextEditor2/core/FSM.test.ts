@@ -1,6 +1,7 @@
-import { describe, beforeEach, test, expect } from 'vitest';
+import { describe, beforeEach, test, expect, vi } from 'vitest';
 import { FSM } from './FSM';
 import { EditorState, VDOMNode, VDOMSelection } from './types';
+import * as VDOMSelection from './model/VDOMSelection';
 
 describe('FSM', () => {
   let fsm: FSM;
@@ -725,6 +726,259 @@ describe('FSM', () => {
       expect(result.newSelection.end.offset).toBe(9);
       expect(result.didChange).toBe(true);
       expect(result.isPersistent).toBe(true);
+    });
+  });
+
+  describe('Slice 5: handleToggleBold', () => {
+    test('should use getFormattingAtSelection to determine toggle action for collapsed selection', () => {
+      // Setup a spy on getFormattingAtSelection
+      const getFormattingSpy = vi.spyOn(VDOMSelection, 'getFormattingAtSelection');
+
+      // Mock return value for getFormattingAtSelection
+      getFormattingSpy.mockReturnValue({
+        bold: 'inactive',
+        italic: 'inactive',
+        underline: 'inactive',
+      });
+
+      // Setup VDOM with text content
+      const textNode: VDOMNode = {
+        type: 'text',
+        path: [0],
+        content: 'Hello World',
+      };
+
+      const vdom: VDOMNode[] = [textNode];
+
+      // Setup collapsed selection (cursor)
+      const selection: VDOMSelection = {
+        start: { node: textNode, offset: 5 },
+        end: { node: textNode, offset: 5 },
+        isCollapsed: true,
+      };
+
+      const currentState: EditorState = {
+        vdom,
+        selection,
+        canUndo: false,
+        canRedo: false,
+        formatToggleState: {
+          bold: 'inactive',
+          italic: 'inactive',
+          underline: 'inactive',
+        },
+      };
+
+      // Execute the command
+      const result = fsm.processCommand({ type: 'TOGGLE_BOLD' }, currentState);
+
+      // Verify getFormattingAtSelection was called with correct arguments
+      expect(getFormattingSpy).toHaveBeenCalledWith(vdom, selection);
+
+      // Verify the toggle state was updated correctly (inactive -> active)
+      expect(result.formatToggleState?.bold).toBe('active');
+
+      // Verify VDOM was not changed for collapsed selection
+      expect(result.newVDOM).toBe(vdom);
+      expect(result.didChange).toBe(false);
+      expect(result.isPersistent).toBe(false);
+
+      // Restore the spy
+      getFormattingSpy.mockRestore();
+    });
+
+    test('should toggle formatToggleState from active to inactive for collapsed selection', () => {
+      // Setup a spy on getFormattingAtSelection
+      const getFormattingSpy = vi.spyOn(VDOMSelection, 'getFormattingAtSelection');
+
+      // Mock return value for getFormattingAtSelection - bold is active
+      getFormattingSpy.mockReturnValue({
+        bold: 'active',
+        italic: 'inactive',
+        underline: 'inactive',
+      });
+
+      // Setup VDOM with text in a strong node
+      const textNode: VDOMNode = {
+        type: 'text',
+        path: [0, 0],
+        content: 'Bold Text',
+      };
+
+      const strongNode: VDOMNode = {
+        type: 'strong',
+        path: [0],
+        children: [textNode],
+      };
+
+      const vdom: VDOMNode[] = [strongNode];
+
+      // Setup collapsed selection (cursor)
+      const selection: VDOMSelection = {
+        start: { node: textNode, offset: 5 },
+        end: { node: textNode, offset: 5 },
+        isCollapsed: true,
+      };
+
+      const currentState: EditorState = {
+        vdom,
+        selection,
+        canUndo: false,
+        canRedo: false,
+        formatToggleState: {
+          bold: 'inactive',
+          italic: 'inactive',
+          underline: 'inactive',
+        },
+      };
+
+      // Execute the command
+      const result = fsm.processCommand({ type: 'TOGGLE_BOLD' }, currentState);
+
+      // Verify getFormattingAtSelection was called
+      expect(getFormattingSpy).toHaveBeenCalledWith(vdom, selection);
+
+      // Verify the toggle state was updated correctly (active -> inactive)
+      expect(result.formatToggleState?.bold).toBe('inactive');
+
+      // Verify VDOM was not changed for collapsed selection
+      expect(result.newVDOM).toBe(vdom);
+      expect(result.didChange).toBe(false);
+      expect(result.isPersistent).toBe(false);
+
+      // Restore the spy
+      getFormattingSpy.mockRestore();
+    });
+
+    test('should cancel pending toggle state when toggled twice', () => {
+      // Setup VDOM with text content
+      const textNode: VDOMNode = {
+        type: 'text',
+        path: [0],
+        content: 'Hello World',
+      };
+
+      const vdom: VDOMNode[] = [textNode];
+
+      // Setup collapsed selection (cursor)
+      const selection: VDOMSelection = {
+        start: { node: textNode, offset: 5 },
+        end: { node: textNode, offset: 5 },
+        isCollapsed: true,
+      };
+
+      // Start with an active toggle state
+      const currentState: EditorState = {
+        vdom,
+        selection,
+        canUndo: false,
+        canRedo: false,
+        formatToggleState: {
+          bold: 'active', // Already toggled on
+          italic: 'inactive',
+          underline: 'inactive',
+        },
+      };
+
+      // Execute the command
+      const result = fsm.processCommand({ type: 'TOGGLE_BOLD' }, currentState);
+
+      // Verify the toggle state was reset to inactive
+      expect(result.formatToggleState?.bold).toBe('inactive');
+
+      // Verify VDOM was not changed
+      expect(result.newVDOM).toBe(vdom);
+      expect(result.didChange).toBe(false);
+      expect(result.isPersistent).toBe(false);
+    });
+
+    test('should apply bold formatting to range selection', () => {
+      // Setup VDOM with text content
+      const textNode: VDOMNode = {
+        type: 'text',
+        path: [0],
+        content: 'Hello World',
+      };
+
+      const vdom: VDOMNode[] = [textNode];
+
+      // Setup range selection
+      const selection: VDOMSelection = {
+        start: { node: textNode, offset: 0 },
+        end: { node: textNode, offset: 5 },
+        isCollapsed: false,
+      };
+
+      const currentState: EditorState = {
+        vdom,
+        selection,
+        canUndo: false,
+        canRedo: false,
+        formatToggleState: {
+          bold: 'inactive',
+          italic: 'inactive',
+          underline: 'inactive',
+        },
+      };
+
+      // Execute the command
+      const result = fsm.processCommand({ type: 'TOGGLE_BOLD' }, currentState);
+
+      // Verify VDOM was changed - first node should now be a strong node
+      expect(result.didChange).toBe(true);
+      expect(result.isPersistent).toBe(true);
+      expect(result.newVDOM[0].type).toBe('strong');
+
+      // Verify no formatToggleState was returned for range selection
+      expect(result.formatToggleState).toBeUndefined();
+    });
+
+    test('should remove bold formatting from range selection inside strong node', () => {
+      // Setup VDOM with text in a strong node
+      const textNode: VDOMNode = {
+        type: 'text',
+        path: [0, 0],
+        content: 'Bold Text',
+      };
+
+      const strongNode: VDOMNode = {
+        type: 'strong',
+        path: [0],
+        children: [textNode],
+      };
+
+      const vdom: VDOMNode[] = [strongNode];
+
+      // Setup range selection
+      const selection: VDOMSelection = {
+        start: { node: textNode, offset: 0 },
+        end: { node: textNode, offset: 9 },
+        isCollapsed: false,
+      };
+
+      const currentState: EditorState = {
+        vdom,
+        selection,
+        canUndo: false,
+        canRedo: false,
+        formatToggleState: {
+          bold: 'inactive',
+          italic: 'inactive',
+          underline: 'inactive',
+        },
+      };
+
+      // Execute the command
+      const result = fsm.processCommand({ type: 'TOGGLE_BOLD' }, currentState);
+
+      // Verify VDOM was changed - strong node should be unwrapped
+      expect(result.didChange).toBe(true);
+      expect(result.isPersistent).toBe(true);
+      expect(result.newVDOM[0].type).toBe('text');
+      expect(result.newVDOM[0].content).toBe('Bold Text');
+
+      // Verify no formatToggleState was returned for range selection
+      expect(result.formatToggleState).toBeUndefined();
     });
   });
 });

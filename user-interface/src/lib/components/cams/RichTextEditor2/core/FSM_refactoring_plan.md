@@ -60,22 +60,28 @@ functions for selection state management and formatting queries.
 - [✓] Verify test passes
 - [✓] Remove stale tests
 
-### Slice 4: handleInsertText [✓]
+### Slice 4: handleInsertText [ ]
 
-- [✓] Write test to verify VDOMSelection is properly updated
-- [✓] Apply formatting based on getFormattingAtSelection()
-- [✓] Use applySelectionToBrowser() after insertion
-- [✓] Verify test passes
-- [✓] Remove stale tests
-
-### Slice 5: handleToggleBold [ ]
-
-- [ ] Write test using getFormattingAtSelection() for state checks
-- [ ] Remove internal format state checks
-- [ ] Use getFormattingAtSelection() to determine toggle action
-- [ ] Update selection after toggle using applySelectionToBrowser()
+- [ ] Write test to verify VDOMSelection is properly updated
+- [ ] Apply formatting based on getFormattingAtSelection()
+- [ ] Use applySelectionToBrowser() after insertion
 - [ ] Verify test passes
 - [ ] Remove stale tests
+
+### Slice 5: handleToggleBold [✓]
+
+The handler must toggle a given selection according to the following rules:
+
+1. If the selection is not a descendant of a strong node then wrap the selection in a strong node.
+2. If the selection is a descendant of a strong node the remove or split the strong node containing the selection.
+3. If the selection is is partially contained by a strong node then wrap the entire selection in a strong node.
+
+- [✓] Write test using getFormattingAtSelection() from VDOMSelection module for state checks
+- [✓] Remove internal format state checks
+- [✓] Use getFormattingAtSelection() to determine toggle action
+- [✓] Update selection after toggle using applySelectionToBrowser()
+- [✓] Verify test passes
+- [✓] Remove stale tests
 
 ### Slice 6: handleEnterKey [ ]
 

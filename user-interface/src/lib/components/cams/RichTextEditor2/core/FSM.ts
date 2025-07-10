@@ -7,8 +7,8 @@ import {
   FormatStateValue,
   VDOMPosition,
 } from './types';
-import { insertTextWithFormatting, toggleBoldInSelection } from './model/VDOMFormatting';
-import { deleteContentWithCleanup } from './model/VDOMMutations';
+import { toggleBold } from './model/VDOMFormatting';
+import { deleteContentWithCleanup, insertText } from './model/VDOMMutations';
 import { ZERO_WIDTH_SPACE } from '../RichTextEditor.constants';
 import { getFormattingAtSelection } from './model/VDOMSelection';
 
@@ -69,13 +69,7 @@ export class FSM {
   }
 
   private handleInsertText(text: string, currentState: EditorState): FSMResult {
-    // Use the formatting function that respects format toggle state
-    const result = insertTextWithFormatting(
-      currentState.vdom,
-      currentState.selection,
-      text,
-      currentState.formatToggleState,
-    );
+    const result = insertText(currentState.vdom, currentState.selection, text);
 
     return {
       newVDOM: result.newVDOM,
@@ -353,15 +347,15 @@ export class FSM {
         formatToggleState: newToggleState, // Update the toggle state
       };
     } else {
-      // For range selections, apply formatting immediately using the old function
-      const newVDOM = toggleBoldInSelection(currentState.vdom, selection);
+      // For range selections, apply formatting immediately
+      const result = toggleBold(currentState.vdom, selection);
 
       // Check if there was actually a change
-      const didChange = JSON.stringify(newVDOM) !== JSON.stringify(currentState.vdom);
+      const didChange = JSON.stringify(result.vdom) !== JSON.stringify(currentState.vdom);
 
       return {
-        newVDOM,
-        newSelection: selection,
+        newVDOM: result.vdom,
+        newSelection: result.selection,
         didChange,
         isPersistent: didChange,
         // No formatToggleState change for range selections
