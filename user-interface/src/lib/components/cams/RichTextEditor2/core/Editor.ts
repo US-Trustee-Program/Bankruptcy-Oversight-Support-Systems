@@ -16,6 +16,7 @@ import {
   applySelectionToBrowser,
   getFormattingAtSelection,
 } from './model/VDOMSelection';
+import { createEmptyParagraphNode, createParagraphNode } from './model/VDOMNode';
 
 export interface EditorOptions {
   rootElement?: HTMLDivElement | null;
@@ -43,16 +44,26 @@ export class Editor {
     this.fsm = new FSM();
     this.rootElement = options.rootElement || null;
 
-    // Initialize with empty state
-    const emptySelection: VDOMSelection = {
-      start: { offset: 0, node: { type: 'text', path: [0], content: '' } },
-      end: { offset: 0, node: { type: 'text', path: [0], content: '' } },
+    // Initialize VDOM with a single paragraph containing a text node with ZERO_WIDTH_SPACE
+    const initialParagraph = createEmptyParagraphNode();
+
+    // Set proper paths for the paragraph and its text node
+    initialParagraph.path = [0];
+    if (initialParagraph.children && initialParagraph.children[0]) {
+      initialParagraph.children[0].path = [0, 0];
+    }
+
+    // Initialize selection to point to the text node at offset 0
+    const initialTextNode = initialParagraph.children![0];
+    const initialSelection: VDOMSelection = {
+      start: { offset: 0, node: initialTextNode },
+      end: { offset: 0, node: initialTextNode },
       isCollapsed: true,
     };
 
     this.state = {
-      vdom: [],
-      selection: emptySelection,
+      vdom: [initialParagraph],
+      selection: initialSelection,
       canUndo: false,
       canRedo: false,
       formatToggleState: {
@@ -87,20 +98,81 @@ export class Editor {
   setValue(value: string): void {
     // For now, just clear the VDOM and set as plain text
     // TODO: Implement HTML to VDOM conversion
-    this.state.vdom = [];
     if (value) {
+      // Create a paragraph node containing the text value
       const textNode: VDOMNode = {
         type: 'text',
         content: value,
-        path: [0],
+        path: [0, 0],
       };
-      this.state.vdom = [textNode];
+      const paragraphNode = createParagraphNode([textNode]);
+      paragraphNode.path = [0];
+      this.state.vdom = [paragraphNode];
+
+      // Update selection to point to the end of the text
+      this.state.selection = {
+        start: {
+          offset: value.length,
+          node: textNode,
+        },
+        end: {
+          offset: value.length,
+          node: textNode,
+        },
+        isCollapsed: true,
+      };
+    } else {
+      // Set to empty paragraph with zero-width space
+      const emptyParagraph = createEmptyParagraphNode();
+      emptyParagraph.path = [0];
+      if (emptyParagraph.children) {
+        emptyParagraph.children[0].path = [0, 0];
+      }
+      this.state.vdom = [emptyParagraph];
+
+      // Update selection to point to the start of the empty paragraph
+      const textNode = emptyParagraph.children?.[0];
+      if (textNode) {
+        this.state.selection = {
+          start: {
+            offset: 0,
+            node: textNode,
+          },
+          end: {
+            offset: 0,
+            node: textNode,
+          },
+          isCollapsed: true,
+        };
+      }
     }
     this.notifyChange();
   }
 
   clearValue(): void {
-    this.state.vdom = [];
+    // Set to empty paragraph with zero-width space
+    const emptyParagraph = createEmptyParagraphNode();
+    emptyParagraph.path = [0];
+    if (emptyParagraph.children) {
+      emptyParagraph.children[0].path = [0, 0];
+    }
+    this.state.vdom = [emptyParagraph];
+
+    // Update selection to point to the start of the empty paragraph
+    const textNode = emptyParagraph.children?.[0];
+    if (textNode) {
+      this.state.selection = {
+        start: {
+          offset: 0,
+          node: textNode,
+        },
+        end: {
+          offset: 0,
+          node: textNode,
+        },
+        isCollapsed: true,
+      };
+    }
     this.notifyChange();
   }
 
@@ -182,12 +254,6 @@ export class Editor {
         type: 'INSERT_TEXT',
         payload: event.data,
       };
-
-      // Process command - FSM will get formatting state from current state
-      // const result = this.fsm.processCommand(command, this.state);
-      // event.preventDefault();
-      // this.handleFSMResult(result);
-      // return true;
     } else if (event.inputType === 'deleteContentBackward') {
       command = {
         type: 'BACKSPACE',

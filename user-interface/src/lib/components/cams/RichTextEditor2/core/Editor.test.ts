@@ -110,8 +110,8 @@ describe('Editor with Selection Tracking', () => {
   test('should track selection state', () => {
     // Mock a selection change
     const mockSelection: VDOMSelection = {
-      start: { offset: 1 },
-      end: { offset: 5 },
+      start: { offset: 1, node: { type: 'text', path: [0], content: 'Hello World' } },
+      end: { offset: 5, node: { type: 'text', path: [0], content: 'Hello World' } },
       isCollapsed: false,
     };
 
@@ -125,8 +125,8 @@ describe('Editor with Selection Tracking', () => {
   test('should include selection state when processing commands', () => {
     // Setup initial selection state
     const initialSelection: VDOMSelection = {
-      start: { offset: 2 },
-      end: { offset: 5 },
+      start: { offset: 2, node: { type: 'text', path: [0], content: 'Hello World' } },
+      end: { offset: 5, node: { type: 'text', path: [0], content: 'Hello World' } },
       isCollapsed: false,
     };
 
@@ -159,8 +159,8 @@ describe('Editor with Selection Tracking', () => {
   test('should update selection from FSM result', () => {
     // Setup mock FSM response with new selection
     const newSelection: VDOMSelection = {
-      start: { offset: 3 },
-      end: { offset: 3 },
+      start: { offset: 3, node: { type: 'text', path: [0], content: 'Hello World' } },
+      end: { offset: 3, node: { type: 'text', path: [0], content: 'Hello World' } },
       isCollapsed: true,
     };
 
@@ -187,42 +187,35 @@ describe('Editor with Selection Tracking', () => {
       // Arrange
       const initialVDOM: VDOMNode[] = [
         {
-          id: 'p1',
           type: 'paragraph',
+          path: [0],
           children: [
             {
-              id: 'text1',
               type: 'text',
               content: 'Hello',
+              path: [0, 0],
             },
           ],
-        } as VDOMNode,
+        },
       ];
 
       const initialSelection: VDOMSelection = {
-        start: { offset: 5 },
-        end: { offset: 5 },
+        start: { offset: 5, node: initialVDOM[0].children![0] },
+        end: { offset: 5, node: initialVDOM[0].children![0] },
         isCollapsed: true,
       };
 
       // Setup FSM to return a modified VDOM with the text inserted
       const newVDOM: VDOMNode[] = [
         {
-          id: 'p1',
-          type: 'paragraph',
-          children: [
-            {
-              id: 'text1',
-              type: 'text',
-              content: 'Hello World',
-            },
-          ],
-        } as VDOMNode,
+          ...initialVDOM[0],
+          children: [{ ...initialVDOM[0].children![0], content: 'Hello World' }],
+        },
       ];
 
       const newSelection: VDOMSelection = {
-        start: { offset: 11 },
-        end: { offset: 11 },
+        start: { offset: 11, node: newVDOM[0].children![0] },
+        end: { offset: 11, node: newVDOM[0].children![0] },
         isCollapsed: true,
       };
 
@@ -263,7 +256,7 @@ describe('Editor with Selection Tracking', () => {
       // Assert - We need to verify the command type, but the state might be modified by the time
       // the test assertion runs due to how the FSM is mocked and how the Editor updates state
       expect(mockProcessCommand).toHaveBeenCalledWith(
-        { type: 'INSERT_TEXT', payload: { text: ' World' } },
+        { type: 'INSERT_TEXT', payload: ' World' },
         expect.any(Object), // We're only asserting that FSM was called with the right command
       );
 
@@ -284,11 +277,11 @@ describe('Editor with Selection Tracking', () => {
       const mockResult = {
         newVDOM: [
           {
-            id: 'strong-1',
             type: 'strong' as const,
+            path: [0],
             children: [
               {
-                id: 'text-1',
+                path: [0, 0],
                 type: 'text' as const,
                 content: 'Bold text',
               },
@@ -316,7 +309,7 @@ describe('Editor with Selection Tracking', () => {
 
       // Assert
       expect(mockProcessCommand).toHaveBeenCalledWith(
-        { type: 'TOGGLE_BOLD' },
+        { type: 'TOGGLE_BOLD', payload: null },
         expect.objectContaining({
           vdom: expect.any(Array),
           selection: expect.any(Object),
@@ -351,7 +344,7 @@ describe('Editor with Selection Tracking', () => {
 
       // Assert
       expect(mockProcessCommand).toHaveBeenCalledWith(
-        { type: 'TOGGLE_BOLD' },
+        { type: 'TOGGLE_BOLD', payload: null },
         expect.objectContaining({
           vdom: expect.any(Array),
           selection: expect.any(Object),

@@ -29,6 +29,16 @@ functions for selection state management and formatting queries.
 
 ## TODO List by Vertical Slice [ ]
 
+### Foundation: VDOM Initialization [✓]
+
+- [✓] Update Editor constructor to initialize VDOM with single paragraph node
+- [✓] Ensure paragraph contains single text node with ZERO_WIDTH_SPACE
+- [✓] Set proper paths for paragraph ([0]) and text node ([0, 0])
+- [✓] Update initial selection to reference the actual text node in VDOM
+- [✓] Verify HTML generation produces correct output: `<p>​</p>`
+- [✓] Add comprehensive tests for initialization behavior
+- [✓] Ensure existing tests still pass (some test expectations may need updates)
+
 ### Slice 1: handleSetCursorPosition [✓]
 
 - [✓] Write test to verify cursor position updates VDOMSelection
