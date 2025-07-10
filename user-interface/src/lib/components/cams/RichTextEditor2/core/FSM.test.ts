@@ -1,7 +1,7 @@
 import { describe, beforeEach, test, expect, vi } from 'vitest';
 import { FSM } from './FSM';
 import { EditorState, VDOMNode, VDOMSelection } from './types';
-import * as VDOMSelection from './model/VDOMSelection';
+import * as VDOMSelectionModule from './model/VDOMSelection';
 
 describe('FSM', () => {
   let fsm: FSM;
@@ -727,12 +727,62 @@ describe('FSM', () => {
       expect(result.didChange).toBe(true);
       expect(result.isPersistent).toBe(true);
     });
+
+    test('should use getFormattingAtSelection to determine formatting for inserted text', () => {
+      // Setup a spy on getFormattingAtSelection
+      const getFormattingSpy = vi.spyOn(VDOMSelectionModule, 'getFormattingAtSelection');
+
+      // Mock return value for getFormattingAtSelection
+      getFormattingSpy.mockReturnValue({
+        bold: 'active',
+        italic: 'inactive',
+        underline: 'inactive',
+      });
+
+      // Setup VDOM with text content
+      const textNode: VDOMNode = {
+        type: 'text',
+        path: [0],
+        content: 'Hello World',
+      };
+
+      const vdom: VDOMNode[] = [textNode];
+
+      // Setup selection
+      const selection: VDOMSelection = {
+        start: { node: textNode, offset: 5 },
+        end: { node: textNode, offset: 5 },
+        isCollapsed: true,
+      };
+
+      const currentState: EditorState = {
+        vdom,
+        selection,
+        canUndo: false,
+        canRedo: false,
+        formatToggleState: {
+          bold: 'inactive',
+          italic: 'inactive',
+          underline: 'inactive',
+        },
+      };
+
+      // Execute the command
+      const result = fsm.processCommand({ type: 'INSERT_TEXT', payload: ' there' }, currentState);
+
+      // Verify getFormattingAtSelection was called with correct arguments
+      expect(getFormattingSpy).toHaveBeenCalledWith(vdom, selection);
+
+      // Verify the result has the correct formatting
+      expect(result.didChange).toBe(true);
+      expect(result.isPersistent).toBe(true);
+    });
   });
 
   describe('Slice 5: handleToggleBold', () => {
     test('should use getFormattingAtSelection to determine toggle action for collapsed selection', () => {
       // Setup a spy on getFormattingAtSelection
-      const getFormattingSpy = vi.spyOn(VDOMSelection, 'getFormattingAtSelection');
+      const getFormattingSpy = vi.spyOn(VDOMSelectionModule, 'getFormattingAtSelection');
 
       // Mock return value for getFormattingAtSelection
       getFormattingSpy.mockReturnValue({
@@ -789,7 +839,7 @@ describe('FSM', () => {
 
     test('should toggle formatToggleState from active to inactive for collapsed selection', () => {
       // Setup a spy on getFormattingAtSelection
-      const getFormattingSpy = vi.spyOn(VDOMSelection, 'getFormattingAtSelection');
+      const getFormattingSpy = vi.spyOn(VDOMSelectionModule, 'getFormattingAtSelection');
 
       // Mock return value for getFormattingAtSelection - bold is active
       getFormattingSpy.mockReturnValue({

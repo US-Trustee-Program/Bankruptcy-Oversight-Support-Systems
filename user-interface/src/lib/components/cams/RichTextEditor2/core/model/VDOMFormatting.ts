@@ -23,7 +23,7 @@ function expandSelectionToWord(selection: VDOMSelection): VDOMSelection {
     return selection;
   }
 
-  const { start, end } = findWordBoundaries(selection.start.node.content, selection.start.offset);
+  const { start, end } = findWordBoundaries(selection.start.node.content!, selection.start.offset);
 
   return {
     start: { ...selection.start, offset: start },
@@ -33,7 +33,7 @@ function expandSelectionToWord(selection: VDOMSelection): VDOMSelection {
 }
 
 function findAncestorStrong(node: VDOMNode, vdom: VDOMNode[]): VDOMNode | null {
-  function findInChildren(nodes: VDOMNode[], target: VDOMNode): VDOMNode | null {
+  const findInChildren = (nodes: VDOMNode[], target: VDOMNode): VDOMNode | null => {
     for (const n of nodes) {
       if (
         n.type === 'strong' &&
@@ -43,11 +43,13 @@ function findAncestorStrong(node: VDOMNode, vdom: VDOMNode[]): VDOMNode | null {
       }
       if (n.children) {
         const found = findInChildren(n.children, target);
-        if (found) return found;
+        if (found) {
+          return found;
+        }
       }
     }
     return null;
-  }
+  };
 
   return findInChildren(vdom, node);
 }
@@ -72,7 +74,7 @@ function mergeAdjacentStrong(nodes: VDOMNode[]): VDOMNode[] {
         currentStrong = node;
         result.push(currentStrong);
       }
-    } else if (node.type === 'text' && node.content.trim() === '') {
+    } else if (node.type === 'text' && node.content?.trim() === '') {
       // For whitespace, check if we're between two strong tags
       const nextNode = nodes[i + 1];
       if (currentStrong && nextNode && nextNode.type === 'strong') {
@@ -102,7 +104,7 @@ function consolidateNestedStrong(node: VDOMNode): VDOMNode {
   const flattenedChildren: VDOMNode[] = [];
   let currentText = '';
 
-  function processNode(n: VDOMNode) {
+  const processNode = (n: VDOMNode) => {
     if (n.type === 'text') {
       currentText += n.content;
     } else if (n.type === 'strong' && n.children) {
@@ -121,7 +123,7 @@ function consolidateNestedStrong(node: VDOMNode): VDOMNode {
         path: [...node.path, flattenedChildren.length],
       });
     }
-  }
+  };
 
   node.children.forEach(processNode);
 
@@ -161,7 +163,7 @@ function getNodesInRange(startNode: VDOMNode, endNode: VDOMNode, vdom: VDOMNode[
   const result: VDOMNode[] = [];
   let inRange = false;
 
-  function traverse(nodes: VDOMNode[]) {
+  const traverse = (nodes: VDOMNode[]) => {
     for (const node of nodes) {
       if (node === startNode) {
         inRange = true;
@@ -179,7 +181,7 @@ function getNodesInRange(startNode: VDOMNode, endNode: VDOMNode, vdom: VDOMNode[
         inRange = false;
       }
     }
-  }
+  };
 
   traverse(vdom);
   return result;
@@ -211,7 +213,7 @@ export function toggleBold(vdom: VDOMNode[], selection: VDOMSelection): ToggleRe
     });
   } else if (startStrong === endStrong) {
     // Case 2: Inside strong -> Remove strong
-    const strongNode = startStrong;
+    const strongNode = startStrong!;
     const path = strongNode.path.slice(0, -1);
     const index = strongNode.path[strongNode.path.length - 1];
     const parent = path.reduce((acc, i) => acc[i].children!, newVdom);
@@ -229,8 +231,8 @@ export function toggleBold(vdom: VDOMNode[], selection: VDOMSelection): ToggleRe
   }
 
   // Process each container node to merge adjacent strong tags and consolidate nested ones
-  function processContainer(nodes: VDOMNode[]): VDOMNode[] {
-    return mergeAdjacentStrong(
+  const processContainer = (nodes: VDOMNode[]): VDOMNode[] =>
+    mergeAdjacentStrong(
       nodes.map((node) => {
         if (node.children) {
           return {
@@ -241,7 +243,6 @@ export function toggleBold(vdom: VDOMNode[], selection: VDOMSelection): ToggleRe
         return node;
       }),
     ).map((node) => (node.type === 'strong' ? consolidateNestedStrong(node) : node));
-  }
 
   newVdom = newVdom.map((node) => {
     if (node.children) {

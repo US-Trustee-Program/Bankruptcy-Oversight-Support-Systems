@@ -8,7 +8,7 @@ import {
   VDOMPosition,
 } from './types';
 import { toggleBold } from './model/VDOMFormatting';
-import { deleteContentWithCleanup, insertText } from './model/VDOMMutations';
+import { deleteContentWithCleanup, insertTextWithFormatting } from './model/VDOMMutations';
 import { ZERO_WIDTH_SPACE } from '../RichTextEditor.constants';
 import { getFormattingAtSelection } from './model/VDOMSelection';
 
@@ -69,7 +69,17 @@ export class FSM {
   }
 
   private handleInsertText(text: string, currentState: EditorState): FSMResult {
-    const result = insertText(currentState.vdom, currentState.selection, text);
+    // Get formatting at current selection
+    const formatting = getFormattingAtSelection(currentState.vdom, currentState.selection);
+
+    // Insert text with current formatting and format toggle state
+    const result = insertTextWithFormatting(
+      currentState.vdom,
+      currentState.selection,
+      text,
+      formatting,
+      currentState.formatToggleState,
+    );
 
     return {
       newVDOM: result.newVDOM,

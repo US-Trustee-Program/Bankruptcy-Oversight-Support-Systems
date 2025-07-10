@@ -1,6 +1,18 @@
-import { VDOMNode, VDOMSelection, VDOMPosition } from '../types';
+import {
+  VDOMNode,
+  VDOMSelection,
+  VDOMPosition,
+  RichTextFormatState,
+  FormatToggleState,
+} from '../types';
 import { ZERO_WIDTH_SPACE } from '../../RichTextEditor.constants';
-import { createTextNode } from './VDOMNode';
+import {
+  createTextNode,
+  createStrongNode,
+  createEmNode,
+  createUNode,
+  createParagraphNode,
+} from './VDOMNode';
 
 /**
  * Result type for mutation operations
@@ -85,6 +97,23 @@ function findParentAndIndex(
 }
 
 /**
+ * Updates the paths of all children of a node recursively
+ */
+function updateChildPaths(node: VDOMNode): void {
+  if (!node.children) {
+    return;
+  }
+
+  for (let i = 0; i < node.children.length; i++) {
+    const child = node.children[i];
+    child.path = [...node.path, i];
+    if (child.children) {
+      updateChildPaths(child);
+    }
+  }
+}
+
+/**
  * Inserts text at the specified selection, replacing any selected content
  */
 export function insertText(
@@ -115,9 +144,8 @@ export function insertText(
   // Insert text by replacing the selected range
   const beforeText = currentContent.substring(0, actualStartOffset);
   const afterText = currentContent.substring(actualEndOffset);
-  const newContent = beforeText + text + afterText;
 
-  targetNode.content = newContent;
+  targetNode.content = beforeText + text + afterText;
 
   // Update selection to be at the end of the inserted text
   const newOffset = actualStartOffset + text.length;
@@ -128,6 +156,175 @@ export function insertText(
   };
 
   return { newVDOM, newSelection };
+}
+
+/**
+ * Inserts text at the specified selection with the given formatting
+ *
+ * @param vdom - The current VDOM
+ * @param selection - The current selection
+ * @param text - The text to insert
+ * @param currentFormatting - The formatting at the current selection
+ * @param formatToggleState - The active format toggle state
+ * @returns The updated VDOM and selection
+ */
+export function insertTextWithFormatting(
+  vdom: VDOMNode[],
+  selection: VDOMSelection,
+  text: string,
+  currentFormatting: RichTextFormatState,
+  formatToggleState: FormatToggleState,
+): MutationResult {
+  // If selection is not collapsed, we need to delete the selected content first
+  if (!selection.isCollapsed) {
+    // For now, we'll just handle collapsed selections
+    // In a real implementation, we would delete the selected content first
+    return insertText(vdom, selection, text);
+  }
+
+  // If no active formatting toggles, just use the regular insertText
+  const hasActiveFormatting = Object.values(formatToggleState).some((state) => state === 'active');
+  if (!hasActiveFormatting) {
+    return insertText(vdom, selection, text);
+  }
+
+  // If we're already in a formatting node that matches our toggle state, use regular insertText
+  const isInMatchingFormattingNode =
+    (formatToggleState.bold === 'active' && currentFormatting.bold === 'active') ||
+    (formatToggleState.italic === 'active' && currentFormatting.italic === 'active') ||
+    (formatToggleState.underline === 'active' && currentFormatting.underline === 'active');
+  if (isInMatchingFormattingNode) {
+    return insertText(vdom, selection, text);
+  }
+
+  // We need to split the text node and insert a formatted node
+  const targetNode = selection.start.node;
+  if (targetNode.type !== 'text') {
+    // For non-text nodes, fall back to regular insertText
+    return insertText(vdom, selection, text);
+  }
+
+  // Clone the VDOM to avoid mutating the original
+  const newVDOM = [...vdom];
+
+  // Find the parent node and the index of the target node
+  const parentPath = targetNode.path.slice(0, -1);
+  const nodeIndex = targetNode.path[targetNode.path.length - 1];
+
+  // Get the parent node
+  let parentNode: VDOMNode;
+  if (parentPath.length === 0) {
+    // Target node is at the root level, create a paragraph to contain it
+    parentNode = createParagraphNode([]);
+    parentNode.path = [nodeIndex];
+    newVDOM[nodeIndex] = parentNode;
+  } else {
+    // Find the parent node in the VDOM
+    let currentNodes = newVDOM;
+    let currentNode: VDOMNode | undefined;
+
+    for (let i = 0; i < parentPath.length; i++) {
+      const index = parentPath[i];
+      currentNode = currentNodes[index];
+      if (currentNode && currentNode.children) {
+        currentNodes = currentNode.children;
+      } else {
+        // Parent node not found, fall back to regular insertText
+        return insertText(vdom, selection, text);
+      }
+    }
+
+    parentNode = currentNode!;
+  }
+
+  // Split the text content at the selection point
+  const beforeText = targetNode.content?.substring(0, selection.start.offset) ?? '';
+  const afterText = targetNode.content?.substring(selection.start.offset) ?? '';
+
+  // Create the new nodes
+  const beforeTextNode = createTextNode(beforeText);
+  const afterTextNode = createTextNode(afterText);
+
+  // Apply formatting to the inserted text node based on formatToggleState
+  let formattedNode: VDOMNode = createTextNode(text);
+
+  if (formatToggleState.bold === 'active') {
+    formattedNode = createStrongNode([formattedNode]);
+  }
+
+  if (formatToggleState.italic === 'active') {
+    formattedNode = createEmNode([formattedNode]);
+  }
+
+  if (formatToggleState.underline === 'active') {
+    formattedNode = createUNode([formattedNode]);
+  }
+
+  // Replace the original node with the three new nodes
+  if (parentNode.children) {
+    // Remove the original node
+    parentNode.children.splice(nodeIndex, 1);
+
+    // Add the new nodes
+    if (beforeText) {
+      beforeTextNode.path = [...parentPath, nodeIndex];
+      parentNode.children.splice(nodeIndex, 0, beforeTextNode);
+    }
+
+    // Add the formatted node
+    const formattedNodeIndex = beforeText ? nodeIndex + 1 : nodeIndex;
+    formattedNode.path = [...parentPath, formattedNodeIndex];
+
+    // Update paths for all children of the formatted node
+    if (formattedNode.children) {
+      updateChildPaths(formattedNode);
+    }
+
+    parentNode.children.splice(formattedNodeIndex, 0, formattedNode);
+
+    // Add the after text node
+    if (afterText) {
+      const afterTextNodeIndex = formattedNodeIndex + 1;
+      afterTextNode.path = [...parentPath, afterTextNodeIndex];
+      parentNode.children.splice(afterTextNodeIndex, 0, afterTextNode);
+    }
+
+    // Update paths for all subsequent siblings
+    for (
+      let i = afterText ? formattedNodeIndex + 2 : formattedNodeIndex + 1;
+      i < parentNode.children.length;
+      i++
+    ) {
+      parentNode.children[i].path = [...parentPath, i];
+      if (parentNode.children[i].children) {
+        updateChildPaths(parentNode.children[i]);
+      }
+    }
+  }
+
+  // Find the deepest text node in the formatted node to set the selection
+  let selectionNode = formattedNode;
+  while (selectionNode.children && selectionNode.children.length > 0) {
+    selectionNode = selectionNode.children[0];
+  }
+
+  // Create the new selection at the end of the inserted text
+  const newSelection: VDOMSelection = {
+    start: {
+      node: selectionNode,
+      offset: text.length,
+    },
+    end: {
+      node: selectionNode,
+      offset: text.length,
+    },
+    isCollapsed: true,
+  };
+
+  return {
+    newVDOM,
+    newSelection,
+  };
 }
 
 /**
@@ -414,7 +611,9 @@ function findNodeByPath(vdom: VDOMNode[], targetPath: number[]): VDOMNode | null
       }
       if (node.children) {
         const found = traverse(node.children);
-        if (found) return found;
+        if (found) {
+          return found;
+        }
       }
     }
     return null;
@@ -426,7 +625,9 @@ function findNodeByPath(vdom: VDOMNode[], targetPath: number[]): VDOMNode | null
  * Checks if two paths are equal
  */
 function pathsEqual(path1: number[], path2: number[]): boolean {
-  if (path1.length !== path2.length) return false;
+  if (path1.length !== path2.length) {
+    return false;
+  }
   return path1.every((value, index) => value === path2[index]);
 }
 
