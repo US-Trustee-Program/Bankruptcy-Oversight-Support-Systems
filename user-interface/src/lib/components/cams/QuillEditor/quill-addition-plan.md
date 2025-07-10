@@ -7,7 +7,7 @@ Always abide by the applicable `.guidelines.md` files.
 - [x] Implement a humble object or wrapper for the Quill editor.
 - [x] Implement bold formatting.
 - [x] Implement italic formatting.
-- [] Implement underline formatting.
+- [x] Implement underline formatting.
 - [] Implement keyboard shortcuts (e.g., ctrl + {character} to toggle formats).
 - [x] Implement converting to and from HTML for persistence/display from persistence.
 - [] Implement ordered and unordered lists.
@@ -75,6 +75,26 @@ Always abide by the applicable `.guidelines.md` files.
   - Solution: Modified the component to use different IDs for the container and wrapper elements.
   - Implementation: Changed the ID of the wrapper div from `${id}-container` to `${id}-wrapper` to make it distinct from the container ID.
   - Test Coverage: Manual testing with pa11y confirms that the duplicate ID issue is resolved.
+- [x] Fixed: The underline formatting was using the legacy `<u>` tag instead of CSS styling with a `<span>` element.
+  - Solution: Customized Quill's underline format to use a `<span>` element with CSS styling instead of the `<u>` tag.
+  - Implementation:
+    - Registered a custom format for underline that uses a `<span>` element with a CSS class of 'custom-underline'
+    - Updated the CSS to style the 'custom-underline' class with text-decoration properties
+    - Removed the styling for the `<u>` tag since it's no longer being used
+  - Test Coverage: The existing tests for the underline button should continue to pass as they verify the button's existence and behavior, but not the HTML structure of the underlined text.
+- [x] Fixed: The underline button was not producing a span tag around the text.
+  - Solution: Modified the registration of the custom underline format to properly override the default format.
+  - Implementation:
+    - Added `true` as the second parameter to `Quill.register(UnderlineBlot, true)` to force Quill to use our custom format instead of the default one
+    - This ensures that the custom format with the span tag is used instead of the default format with the u tag
+  - Test Coverage: Manual testing confirms that the span tag with the 'custom-underline' class is now being used instead of the u tag.
+- [x] Reverted: Decided to accept the non-semantic use of the `<u>` tag for underlining since that's what Quill is designed to do.
+  - Solution: Removed the custom UnderlineBlot class and reverted to using Quill's default underline format.
+  - Implementation:
+    - Removed the custom UnderlineBlot class and the Quill.register call
+    - Updated the CSS to style the `<u>` tag directly instead of using a custom class
+    - Kept the same text-decoration properties to ensure consistent styling
+  - Test Coverage: The existing tests for the underline button should continue to pass as they verify the button's existence and behavior, but not the HTML structure of the underlined text.
 
 ## Test Coverage
 

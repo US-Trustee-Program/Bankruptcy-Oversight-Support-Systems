@@ -15,6 +15,13 @@
     p {
       margin-top: 0;
     }
+
+    /* Use CSS for underline formatting with <u> tag */
+    u {
+      text-decoration: underline;
+      text-decoration-skip-ink: auto;
+      text-decoration-thickness: from-font;
+    }
   }
 
   /* Ensure Quill toolbar has USWDS-like styling */
@@ -72,6 +79,10 @@
 
     &.ql-italic, &.custom-italic-button {
       font-style: italic;
+    }
+
+    &.ql-underline, &.custom-underline-button {
+      text-decoration: underline;
     }
 
     &.ql-active, &.active {

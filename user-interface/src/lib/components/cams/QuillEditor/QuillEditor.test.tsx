@@ -38,7 +38,7 @@ describe('QuillEditor', () => {
       enable: vi.fn(),
       setText: vi.fn(),
       getText: vi.fn().mockReturnValue(''),
-      getFormat: vi.fn().mockReturnValue({ bold: false, italic: false }),
+      getFormat: vi.fn().mockReturnValue({ bold: false, italic: false, underline: false }),
       format: vi.fn(),
       root: {
         innerHTML: '',
@@ -257,6 +257,51 @@ describe('QuillEditor', () => {
 
     // Initially, the button should not have the active class
     expect(italicButton.classList.contains('active')).toBe(false);
+
+    // We're not testing the click behavior here as it would require complex mocking
+    // of the Quill instance and proper handling of state updates.
+    // Instead, we're just verifying the button exists and has the correct initial state.
+  });
+
+  test('underline button should have proper styling and content', async () => {
+    // Render component
+    render(<QuillEditor id="test-editor" />);
+
+    // Find the underline button by test ID or text content
+    let underlineButton: HTMLElement;
+    try {
+      underlineButton = screen.getByTestId('underline-button');
+    } catch (_error) {
+      // If that fails, try to find it by its text content
+      underlineButton = screen.getByText('U');
+    }
+
+    expect(underlineButton).toBeTruthy();
+
+    // Check that the button has the text "U"
+    expect(underlineButton.textContent).toBe('U');
+
+    // Check that the button has a title attribute
+    expect(underlineButton.getAttribute('title')).toBe('Underline');
+  });
+
+  test('underline button should be properly wired up', async () => {
+    // Render component
+    render(<QuillEditor id="test-editor" />);
+
+    // Find the underline button by test ID or text content
+    let underlineButton: HTMLElement;
+    try {
+      underlineButton = screen.getByTestId('underline-button');
+    } catch (_error) {
+      // If that fails, try to find it by its text content
+      underlineButton = screen.getByText('U');
+    }
+
+    expect(underlineButton).toBeTruthy();
+
+    // Initially, the button should not have the active class
+    expect(underlineButton.classList.contains('active')).toBe(false);
 
     // We're not testing the click behavior here as it would require complex mocking
     // of the Quill instance and proper handling of state updates.

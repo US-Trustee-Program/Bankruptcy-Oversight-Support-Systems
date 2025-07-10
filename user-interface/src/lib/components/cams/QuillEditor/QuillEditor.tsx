@@ -34,6 +34,7 @@ function _QuillEditor(props: QuillEditorProps, ref: React.Ref<QuillEditorRef>) {
   const [_inputDisabled, setInputDisabled] = useState<boolean>(disabled || false);
   const [isBold, setIsBold] = useState<boolean>(false);
   const [isItalic, setIsItalic] = useState<boolean>(false);
+  const [isUnderline, setIsUnderline] = useState<boolean>(false);
 
   const toolbarRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
@@ -62,9 +63,10 @@ function _QuillEditor(props: QuillEditorProps, ref: React.Ref<QuillEditorRef>) {
             if (range) {
               // Get the format at the current selection
               const format = quillRef.current?.getFormat(range);
-              // Update bold and italic states
+              // Update bold, italic, and underline states
               setIsBold(!!format?.bold);
               setIsItalic(!!format?.italic);
+              setIsUnderline(!!format?.underline);
             }
           });
         }
@@ -246,6 +248,28 @@ function _QuillEditor(props: QuillEditorProps, ref: React.Ref<QuillEditorRef>) {
             }}
           >
             I
+          </Button>
+          <Button
+            type="button"
+            aria-label="Set underline formatting"
+            title="Underline"
+            className={`usa-button rich-text-button custom-underline-button ${isUnderline ? 'active' : ''}`}
+            data-testid="underline-button"
+            onClick={() => {
+              if (quillRef.current) {
+                try {
+                  const format = quillRef.current.getFormat();
+                  const newUnderlineValue = !format.underline;
+                  quillRef.current.format('underline', newUnderlineValue);
+                  // Update state immediately
+                  setIsUnderline(newUnderlineValue);
+                } catch (error) {
+                  console.error('Error toggling underline format:', error);
+                }
+              }
+            }}
+          >
+            U
           </Button>
         </div>
 
