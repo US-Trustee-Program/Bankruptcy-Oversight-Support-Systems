@@ -528,16 +528,16 @@ function insertPlainText(
     const textNode = vdom[0];
     const newContent = textContent.slice(0, offset) + text + textContent.slice(offset);
 
+    const newTextNode = {
+      ...textNode,
+      content: newContent,
+    };
+
     return {
-      newVDOM: [
-        {
-          ...textNode,
-          content: newContent,
-        },
-      ],
+      newVDOM: [newTextNode],
       newSelection: {
-        start: { offset: offset + text.length },
-        end: { offset: offset + text.length },
+        start: { node: newTextNode, offset: offset + text.length },
+        end: { node: newTextNode, offset: offset + text.length },
         isCollapsed: true,
       },
     };
@@ -582,17 +582,19 @@ function insertPlainText(
         text +
         (targetNode.content || '').slice(insertCharOffset);
 
-      const newVDOM = [...vdom];
-      newVDOM[insertNodeIndex] = {
+      const newTextNode = {
         ...targetNode,
         content: newContent,
       };
 
+      const newVDOM = [...vdom];
+      newVDOM[insertNodeIndex] = newTextNode;
+
       return {
         newVDOM,
         newSelection: {
-          start: { offset: offset + text.length },
-          end: { offset: offset + text.length },
+          start: { node: newTextNode, offset: offset + text.length },
+          end: { node: newTextNode, offset: offset + text.length },
           isCollapsed: true,
         },
       };
@@ -607,17 +609,19 @@ function insertPlainText(
       const prevNode = vdom[insertNodeIndex - 1];
       const newContent = (prevNode.content || '') + text;
 
-      const newVDOM = [...vdom];
-      newVDOM[insertNodeIndex - 1] = {
+      const newTextNode = {
         ...prevNode,
         content: newContent,
       };
 
+      const newVDOM = [...vdom];
+      newVDOM[insertNodeIndex - 1] = newTextNode;
+
       return {
         newVDOM,
         newSelection: {
-          start: { offset: offset + text.length },
-          end: { offset: offset + text.length },
+          start: { node: newTextNode, offset: offset + text.length },
+          end: { node: newTextNode, offset: offset + text.length },
           isCollapsed: true,
         },
       };
@@ -649,8 +653,8 @@ function insertPlainText(
   return {
     newVDOM: result,
     newSelection: {
-      start: { offset: offset + text.length },
-      end: { offset: offset + text.length },
+      start: { node: insertedTextNode, offset: offset + text.length },
+      end: { node: insertedTextNode, offset: offset + text.length },
       isCollapsed: true,
     },
   };
@@ -740,14 +744,14 @@ function extendBoldFormatting(
       const newContent =
         strongTextContent.slice(0, relativeOffset) + text + strongTextContent.slice(relativeOffset);
 
+      const newTextNode = {
+        ...targetNode.children[0],
+        content: newContent,
+      };
+
       const newStrongNode: VDOMNode = {
         ...targetNode,
-        children: [
-          {
-            ...targetNode.children[0],
-            content: newContent,
-          },
-        ],
+        children: [newTextNode],
       };
 
       // Rebuild VDOM with the extended strong node
@@ -757,8 +761,8 @@ function extendBoldFormatting(
       return {
         newVDOM,
         newSelection: {
-          start: { offset: offset + text.length },
-          end: { offset: offset + text.length },
+          start: { node: newTextNode, offset: offset + text.length },
+          end: { node: newTextNode, offset: offset + text.length },
           isCollapsed: true,
         },
       };
@@ -793,11 +797,21 @@ function splitAndInsertBold(
       });
     }
 
-    result.push({
-      id: `strong-${Date.now()}-${Math.random()}`,
-      type: 'strong',
-      children: [createTextNode(text)],
-    });
+    const boldTextNode = createTextNode(text);
+    const boldNode = {
+      type: 'strong' as const,
+      path: [], // Will be set properly when VDOM is finalized
+      children: [boldTextNode],
+    };
+
+    if (beforeText) {
+      result.push({
+        ...textNode,
+        content: beforeText,
+      });
+    }
+
+    result.push(boldNode);
 
     if (afterText) {
       result.push(createTextNode(afterText));
@@ -806,8 +820,8 @@ function splitAndInsertBold(
     return {
       newVDOM: result,
       newSelection: {
-        start: { offset: offset + text.length },
-        end: { offset: offset + text.length },
+        start: { node: boldTextNode, offset: text.length },
+        end: { node: boldTextNode, offset: text.length },
         isCollapsed: true,
       },
     };
@@ -828,8 +842,8 @@ function splitAndInsertBold(
   // Add inserted text as bold
   const insertedTextNode = createTextNode(text);
   const strongNode: VDOMNode = {
-    id: `strong-${Date.now()}-${Math.random()}`,
     type: 'strong',
+    path: [], // Will be set properly when VDOM is finalized
     children: [insertedTextNode],
   };
   result.push(strongNode);
@@ -843,8 +857,8 @@ function splitAndInsertBold(
   return {
     newVDOM: result,
     newSelection: {
-      start: { offset: offset + text.length },
-      end: { offset: offset + text.length },
+      start: { node: insertedTextNode, offset: text.length },
+      end: { node: insertedTextNode, offset: text.length },
       isCollapsed: true,
     },
   };

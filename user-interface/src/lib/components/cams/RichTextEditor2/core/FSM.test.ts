@@ -675,6 +675,7 @@ describe('FSM', () => {
       const result = fsm.processCommand({ type: 'INSERT_TEXT', payload: ' there' }, currentState);
 
       expect(result.newVDOM[0].content).toBe('Hello there World');
+      expect(result.newSelection.start.node).toBe(result.newVDOM[0]); // Should refer to the new node in the VDOM
       expect(result.newSelection.start.offset).toBe(11);
       expect(result.newSelection.end.offset).toBe(11);
       expect(result.newSelection.isCollapsed).toBe(true);
@@ -718,7 +719,8 @@ describe('FSM', () => {
 
       // Verify text was inserted and remained bold
       expect(result.newVDOM[0].type).toBe('strong');
-      expect((result.newVDOM[0] as VDOMNode).children[0].content).toBe('bold very text');
+      expect((result.newVDOM[0] as VDOMNode).children![0].content).toBe('bold very text');
+      expect(result.newSelection.start.node).toBe((result.newVDOM[0] as VDOMNode).children![0]); // Should refer to the new text node within the bold container
       expect(result.newSelection.start.offset).toBe(9);
       expect(result.newSelection.end.offset).toBe(9);
       expect(result.didChange).toBe(true);

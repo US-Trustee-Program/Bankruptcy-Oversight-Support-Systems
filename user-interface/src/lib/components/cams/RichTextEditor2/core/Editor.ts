@@ -184,10 +184,10 @@ export class Editor {
       };
 
       // Process command - FSM will get formatting state from current state
-      const result = this.fsm.processCommand(command, this.state);
-      event.preventDefault();
-      this.handleFSMResult(result);
-      return true;
+      // const result = this.fsm.processCommand(command, this.state);
+      // event.preventDefault();
+      // this.handleFSMResult(result);
+      // return true;
     } else if (event.inputType === 'deleteContentBackward') {
       command = {
         type: 'BACKSPACE',
@@ -216,16 +216,7 @@ export class Editor {
       newVDOM: result.newVDOM.map((n) => ({ type: n.type, content: n.content })),
     });
 
-    if (result.didChange) {
-      this.state.vdom = result.newVDOM;
-      this.state.selection = result.newSelection;
-      this.notifyChange();
-      this.notifySelectionChange();
-    } else if (result.newSelection !== this.state.selection) {
-      // If only selection changed but not content
-      this.state.selection = result.newSelection;
-      this.notifySelectionChange();
-    }
+    this.handleFSMResult(result);
 
     // Return true to indicate we handled the event
     return true;

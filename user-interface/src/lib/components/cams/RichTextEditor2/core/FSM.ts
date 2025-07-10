@@ -69,18 +69,12 @@ export class FSM {
   }
 
   private handleInsertText(text: string, currentState: EditorState): FSMResult {
-    // Get current formatting at selection using VDOMSelection's implementation
-    const formattingAtSelection = getFormattingAtSelection(
-      currentState.vdom,
-      currentState.selection,
-    );
-
-    // Use the formatting function that respects format state
+    // Use the formatting function that respects format toggle state
     const result = insertTextWithFormatting(
       currentState.vdom,
       currentState.selection,
       text,
-      formattingAtSelection,
+      currentState.formatToggleState,
     );
 
     return {
