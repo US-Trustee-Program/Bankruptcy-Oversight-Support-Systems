@@ -93,29 +93,66 @@ export class FSM {
   private handleBackspace(currentState: EditorState): FSMResult {
     const { selection, vdom } = currentState;
 
-    // If we're at the start of the document, nothing to delete
-    if (selection.start.offset === 0) {
+    // If we have a range selection, delete the selected content
+    if (!selection.isCollapsed) {
+      const result = deleteContentWithCleanup(vdom, selection);
       return {
-        newVDOM: vdom,
-        newSelection: selection,
-        didChange: false,
-        isPersistent: false,
+        ...result,
+        didChange: true,
+        isPersistent: true,
       };
     }
 
-    // Create a selection that covers the character to delete
+    // For collapsed selection, handle single character deletion
+    const { start } = selection;
+
+    // If we're at the start of the current text node, check for cross-node navigation
+    if (start.offset === 0) {
+      // Find the previous text node
+      const previousNode = this.findPreviousTextNode(start.node, vdom);
+
+      if (previousNode && previousNode.content) {
+        // Delete the last character from the previous node
+        const deleteSelection: VDOMSelection = {
+          start: {
+            node: previousNode,
+            offset: previousNode.content.length - 1,
+          },
+          end: {
+            node: previousNode,
+            offset: previousNode.content.length,
+          },
+          isCollapsed: false,
+        };
+
+        const result = deleteContentWithCleanup(vdom, deleteSelection);
+        return {
+          ...result,
+          didChange: true,
+          isPersistent: true,
+        };
+      } else {
+        // No previous node or it's empty - can't delete anything
+        return {
+          newVDOM: vdom,
+          newSelection: selection,
+          didChange: false,
+          isPersistent: false,
+        };
+      }
+    }
+
+    // Delete character to the left of cursor within current node
     const deleteSelection: VDOMSelection = {
       start: {
-        node: selection.start.node,
-        offset: selection.start.offset - 1,
+        node: start.node,
+        offset: start.offset - 1,
       },
-      end: selection.start,
+      end: start,
       isCollapsed: false,
     };
 
-    // Use VDOMMutations to delete the content
     const result = deleteContentWithCleanup(vdom, deleteSelection);
-
     return {
       ...result,
       didChange: true,

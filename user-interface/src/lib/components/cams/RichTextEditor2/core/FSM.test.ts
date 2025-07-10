@@ -427,4 +427,640 @@ describe('FSM', () => {
       expect(result.newSelection.isCollapsed).toBe(true);
     });
   });
+
+  describe('Slice 3: handleBackspace', () => {
+    test('handleBackspace should delete single character in middle of text', () => {
+      // Setup VDOM with text content
+      const textNode: VDOMNode = {
+        type: 'text',
+        path: [0],
+        content: 'Hello World',
+      };
+
+      const vdom: VDOMNode[] = [textNode];
+
+      // Setup initial selection at position 5 (after "Hello")
+      const initialSelection: VDOMSelection = {
+        start: { node: textNode, offset: 5 },
+        end: { node: textNode, offset: 5 },
+        isCollapsed: true,
+      };
+
+      const currentState: EditorState = {
+        vdom,
+        selection: initialSelection,
+        canUndo: false,
+        canRedo: false,
+        formatToggleState: {
+          bold: 'inactive',
+          italic: 'inactive',
+          underline: 'inactive',
+        },
+      };
+
+      // Execute the command
+      const result = fsm.processCommand({ type: 'BACKSPACE' }, currentState);
+
+      // Verify the character was deleted and cursor moved back
+      expect(result.didChange).toBe(true);
+      expect(result.isPersistent).toBe(true);
+      expect(result.newVDOM[0].content).toBe('Hell World'); // 'o' should be deleted
+      expect(result.newSelection.start.offset).toBe(4);
+      expect(result.newSelection.end.offset).toBe(4);
+      expect(result.newSelection.isCollapsed).toBe(true);
+    });
+
+    test('handleBackspace at start of text node should not delete when at document start', () => {
+      // Setup VDOM with text content
+      const textNode: VDOMNode = {
+        type: 'text',
+        path: [0],
+        content: 'Hello World',
+      };
+
+      const vdom: VDOMNode[] = [textNode];
+
+      // Setup initial selection at position 0 (start of text)
+      const initialSelection: VDOMSelection = {
+        start: { node: textNode, offset: 0 },
+        end: { node: textNode, offset: 0 },
+        isCollapsed: true,
+      };
+
+      const currentState: EditorState = {
+        vdom,
+        selection: initialSelection,
+        canUndo: false,
+        canRedo: false,
+        formatToggleState: {
+          bold: 'inactive',
+          italic: 'inactive',
+          underline: 'inactive',
+        },
+      };
+
+      // Execute the command
+      const result = fsm.processCommand({ type: 'BACKSPACE' }, currentState);
+
+      // Verify nothing was deleted at document start
+      expect(result.didChange).toBe(false);
+      expect(result.isPersistent).toBe(false);
+      expect(result.newVDOM[0].content).toBe('Hello World'); // Content unchanged
+      expect(result.newSelection.start.offset).toBe(0);
+      expect(result.newSelection.end.offset).toBe(0);
+      expect(result.newSelection.isCollapsed).toBe(true);
+    });
+
+    test('handleBackspace at start of second text node should delete from end of first node', () => {
+      // Setup VDOM with multiple text nodes
+      const firstTextNode: VDOMNode = {
+        type: 'text',
+        path: [0],
+        content: 'First',
+      };
+
+      const secondTextNode: VDOMNode = {
+        type: 'text',
+        path: [1],
+        content: 'Second',
+      };
+
+      const vdom: VDOMNode[] = [firstTextNode, secondTextNode];
+
+      // Setup initial selection at start of second text node
+      const initialSelection: VDOMSelection = {
+        start: { node: secondTextNode, offset: 0 },
+        end: { node: secondTextNode, offset: 0 },
+        isCollapsed: true,
+      };
+
+      const currentState: EditorState = {
+        vdom,
+        selection: initialSelection,
+        canUndo: false,
+        canRedo: false,
+        formatToggleState: {
+          bold: 'inactive',
+          italic: 'inactive',
+          underline: 'inactive',
+        },
+      };
+
+      // Execute the command
+      const result = fsm.processCommand({ type: 'BACKSPACE' }, currentState);
+
+      // Verify the last character of first node was deleted
+      expect(result.didChange).toBe(true);
+      expect(result.isPersistent).toBe(true);
+
+      // After deletion, the cleanup process should merge adjacent text nodes
+      // So we expect "First" -> "Firs" + "Second" = "FirsSecond"
+      expect(result.newVDOM).toHaveLength(1);
+      expect(result.newVDOM[0].content).toBe('FirsSecond'); // 't' deleted and nodes merged
+
+      // Cursor should be positioned at end of "Firs" (position 4)
+      expect(result.newSelection.start.offset).toBe(4);
+      expect(result.newSelection.end.offset).toBe(4);
+      expect(result.newSelection.isCollapsed).toBe(true);
+    });
+
+    test('handleBackspace should handle zero-width space replacement', () => {
+      // Setup VDOM with zero-width space content
+      const textNode: VDOMNode = {
+        type: 'text',
+        path: [0],
+        content: '\u200B', // Zero-width space
+      };
+
+      const vdom: VDOMNode[] = [textNode];
+
+      // Setup initial selection at position 1 (after zero-width space)
+      const initialSelection: VDOMSelection = {
+        start: { node: textNode, offset: 1 },
+        end: { node: textNode, offset: 1 },
+        isCollapsed: true,
+      };
+
+      const currentState: EditorState = {
+        vdom,
+        selection: initialSelection,
+        canUndo: false,
+        canRedo: false,
+        formatToggleState: {
+          bold: 'inactive',
+          italic: 'inactive',
+          underline: 'inactive',
+        },
+      };
+
+      // Execute the command
+      const result = fsm.processCommand({ type: 'BACKSPACE' }, currentState);
+
+      // Verify the zero-width space was handled properly
+      expect(result.didChange).toBe(true);
+      expect(result.isPersistent).toBe(true);
+      expect(result.newSelection.start.offset).toBe(0);
+      expect(result.newSelection.isCollapsed).toBe(true);
+    });
+
+    test('handleBackspace with range selection should delete selected content', () => {
+      // Setup VDOM with text content
+      const textNode: VDOMNode = {
+        type: 'text',
+        path: [0],
+        content: 'Hello World',
+      };
+
+      const vdom: VDOMNode[] = [textNode];
+
+      // Setup range selection (select "llo W")
+      const rangeSelection: VDOMSelection = {
+        start: { node: textNode, offset: 2 },
+        end: { node: textNode, offset: 7 },
+        isCollapsed: false,
+      };
+
+      const currentState: EditorState = {
+        vdom,
+        selection: rangeSelection,
+        canUndo: false,
+        canRedo: false,
+        formatToggleState: {
+          bold: 'inactive',
+          italic: 'inactive',
+          underline: 'inactive',
+        },
+      };
+
+      // Execute the command
+      const result = fsm.processCommand({ type: 'BACKSPACE' }, currentState);
+
+      // Verify the selected content was deleted
+      expect(result.didChange).toBe(true);
+      expect(result.isPersistent).toBe(true);
+      expect(result.newVDOM[0].content).toBe('Heorld'); // "llo W" should be deleted
+      expect(result.newSelection.start.offset).toBe(2);
+      expect(result.newSelection.end.offset).toBe(2);
+      expect(result.newSelection.isCollapsed).toBe(true);
+    });
+  });
+
+  describe('Slice 2: handleMoveCursorLeft/Right', () => {
+    test('handleMoveCursorLeft should move cursor left by one position', () => {
+      // Setup VDOM with text content
+      const textNode: VDOMNode = {
+        type: 'text',
+        path: [0],
+        content: 'Hello World',
+      };
+
+      const vdom: VDOMNode[] = [textNode];
+
+      // Setup initial selection at position 5 (middle of "Hello World")
+      const initialSelection: VDOMSelection = {
+        start: { node: textNode, offset: 5 },
+        end: { node: textNode, offset: 5 },
+        isCollapsed: true,
+      };
+
+      const currentState: EditorState = {
+        vdom,
+        selection: initialSelection,
+        canUndo: false,
+        canRedo: false,
+        formatToggleState: {
+          bold: 'inactive',
+          italic: 'inactive',
+          underline: 'inactive',
+        },
+      };
+
+      // Execute the command
+      const result = fsm.processCommand({ type: 'MOVE_CURSOR_LEFT' }, currentState);
+
+      // Verify the cursor moved left by one position
+      expect(result.newSelection.start.offset).toBe(4);
+      expect(result.newSelection.end.offset).toBe(4);
+      expect(result.newSelection.isCollapsed).toBe(true);
+      expect(result.didChange).toBe(false);
+      expect(result.isPersistent).toBe(false);
+    });
+
+    test('handleMoveCursorRight should move cursor right by one position', () => {
+      // Setup VDOM with text content
+      const textNode: VDOMNode = {
+        type: 'text',
+        path: [0],
+        content: 'Hello World',
+      };
+
+      const vdom: VDOMNode[] = [textNode];
+
+      // Setup initial selection at position 5 (middle of "Hello World")
+      const initialSelection: VDOMSelection = {
+        start: { node: textNode, offset: 5 },
+        end: { node: textNode, offset: 5 },
+        isCollapsed: true,
+      };
+
+      const currentState: EditorState = {
+        vdom,
+        selection: initialSelection,
+        canUndo: false,
+        canRedo: false,
+        formatToggleState: {
+          bold: 'inactive',
+          italic: 'inactive',
+          underline: 'inactive',
+        },
+      };
+
+      // Execute the command
+      const result = fsm.processCommand({ type: 'MOVE_CURSOR_RIGHT' }, currentState);
+
+      // Verify the cursor moved right by one position
+      expect(result.newSelection.start.offset).toBe(6);
+      expect(result.newSelection.end.offset).toBe(6);
+      expect(result.newSelection.isCollapsed).toBe(true);
+      expect(result.didChange).toBe(false);
+      expect(result.isPersistent).toBe(false);
+    });
+
+    test('handleMoveCursorLeft at start of document should not move', () => {
+      // Setup VDOM with text content
+      const textNode: VDOMNode = {
+        type: 'text',
+        path: [0],
+        content: 'Hello World',
+      };
+
+      const vdom: VDOMNode[] = [textNode];
+
+      // Setup initial selection at position 0 (start of text)
+      const initialSelection: VDOMSelection = {
+        start: { node: textNode, offset: 0 },
+        end: { node: textNode, offset: 0 },
+        isCollapsed: true,
+      };
+
+      const currentState: EditorState = {
+        vdom,
+        selection: initialSelection,
+        canUndo: false,
+        canRedo: false,
+        formatToggleState: {
+          bold: 'inactive',
+          italic: 'inactive',
+          underline: 'inactive',
+        },
+      };
+
+      // Execute the command
+      const result = fsm.processCommand({ type: 'MOVE_CURSOR_LEFT' }, currentState);
+
+      // Verify the cursor stayed at position 0
+      expect(result.newSelection.start.offset).toBe(0);
+      expect(result.newSelection.end.offset).toBe(0);
+      expect(result.newSelection.isCollapsed).toBe(true);
+      expect(result.didChange).toBe(false);
+      expect(result.isPersistent).toBe(false);
+    });
+
+    test('handleMoveCursorRight at end of text should not move beyond', () => {
+      // Setup VDOM with text content
+      const textNode: VDOMNode = {
+        type: 'text',
+        path: [0],
+        content: 'Hello World',
+      };
+
+      const vdom: VDOMNode[] = [textNode];
+
+      // Setup initial selection at end of text (position 11)
+      const initialSelection: VDOMSelection = {
+        start: { node: textNode, offset: 11 },
+        end: { node: textNode, offset: 11 },
+        isCollapsed: true,
+      };
+
+      const currentState: EditorState = {
+        vdom,
+        selection: initialSelection,
+        canUndo: false,
+        canRedo: false,
+        formatToggleState: {
+          bold: 'inactive',
+          italic: 'inactive',
+          underline: 'inactive',
+        },
+      };
+
+      // Execute the command
+      const result = fsm.processCommand({ type: 'MOVE_CURSOR_RIGHT' }, currentState);
+
+      // Verify the cursor stayed at the end position
+      expect(result.newSelection.start.offset).toBe(11);
+      expect(result.newSelection.end.offset).toBe(11);
+      expect(result.newSelection.isCollapsed).toBe(true);
+      expect(result.didChange).toBe(false);
+      expect(result.isPersistent).toBe(false);
+    });
+
+    // Tests for cross-node navigation
+    test('handleMoveCursorLeft at start of second text node should move to end of first text node', () => {
+      // Setup VDOM with multiple text nodes
+      const firstTextNode: VDOMNode = {
+        type: 'text',
+        path: [0],
+        content: 'First',
+      };
+
+      const secondTextNode: VDOMNode = {
+        type: 'text',
+        path: [1],
+        content: 'Second',
+      };
+
+      const vdom: VDOMNode[] = [firstTextNode, secondTextNode];
+
+      // Setup initial selection at start of second text node (position 0)
+      const initialSelection: VDOMSelection = {
+        start: { node: secondTextNode, offset: 0 },
+        end: { node: secondTextNode, offset: 0 },
+        isCollapsed: true,
+      };
+
+      const currentState: EditorState = {
+        vdom,
+        selection: initialSelection,
+        canUndo: false,
+        canRedo: false,
+        formatToggleState: {
+          bold: 'inactive',
+          italic: 'inactive',
+          underline: 'inactive',
+        },
+      };
+
+      // Execute the command
+      const result = fsm.processCommand({ type: 'MOVE_CURSOR_LEFT' }, currentState);
+
+      // Verify the cursor moved to end of first text node
+      expect(result.newSelection.start.node).toBe(firstTextNode);
+      expect(result.newSelection.start.offset).toBe(5); // End of "First"
+      expect(result.newSelection.end.node).toBe(firstTextNode);
+      expect(result.newSelection.end.offset).toBe(5);
+      expect(result.newSelection.isCollapsed).toBe(true);
+      expect(result.didChange).toBe(false);
+      expect(result.isPersistent).toBe(false);
+    });
+
+    test('handleMoveCursorRight at end of first text node should move to start of second text node', () => {
+      // Setup VDOM with multiple text nodes
+      const firstTextNode: VDOMNode = {
+        type: 'text',
+        path: [0],
+        content: 'First',
+      };
+
+      const secondTextNode: VDOMNode = {
+        type: 'text',
+        path: [1],
+        content: 'Second',
+      };
+
+      const vdom: VDOMNode[] = [firstTextNode, secondTextNode];
+
+      // Setup initial selection at end of first text node (position 5)
+      const initialSelection: VDOMSelection = {
+        start: { node: firstTextNode, offset: 5 },
+        end: { node: firstTextNode, offset: 5 },
+        isCollapsed: true,
+      };
+
+      const currentState: EditorState = {
+        vdom,
+        selection: initialSelection,
+        canUndo: false,
+        canRedo: false,
+        formatToggleState: {
+          bold: 'inactive',
+          italic: 'inactive',
+          underline: 'inactive',
+        },
+      };
+
+      // Execute the command
+      const result = fsm.processCommand({ type: 'MOVE_CURSOR_RIGHT' }, currentState);
+
+      // Verify the cursor moved to start of second text node
+      expect(result.newSelection.start.node).toBe(secondTextNode);
+      expect(result.newSelection.start.offset).toBe(0);
+      expect(result.newSelection.end.node).toBe(secondTextNode);
+      expect(result.newSelection.end.offset).toBe(0);
+      expect(result.newSelection.isCollapsed).toBe(true);
+      expect(result.didChange).toBe(false);
+      expect(result.isPersistent).toBe(false);
+    });
+
+    test('handleMoveCursorLeft at start of first text node should not move', () => {
+      // Setup VDOM with multiple text nodes
+      const firstTextNode: VDOMNode = {
+        type: 'text',
+        path: [0],
+        content: 'First',
+      };
+
+      const secondTextNode: VDOMNode = {
+        type: 'text',
+        path: [1],
+        content: 'Second',
+      };
+
+      const vdom: VDOMNode[] = [firstTextNode, secondTextNode];
+
+      // Setup initial selection at start of first text node (position 0)
+      const initialSelection: VDOMSelection = {
+        start: { node: firstTextNode, offset: 0 },
+        end: { node: firstTextNode, offset: 0 },
+        isCollapsed: true,
+      };
+
+      const currentState: EditorState = {
+        vdom,
+        selection: initialSelection,
+        canUndo: false,
+        canRedo: false,
+        formatToggleState: {
+          bold: 'inactive',
+          italic: 'inactive',
+          underline: 'inactive',
+        },
+      };
+
+      // Execute the command
+      const result = fsm.processCommand({ type: 'MOVE_CURSOR_LEFT' }, currentState);
+
+      // Verify the cursor stayed at the start position
+      expect(result.newSelection.start.node).toBe(firstTextNode);
+      expect(result.newSelection.start.offset).toBe(0);
+      expect(result.newSelection.end.node).toBe(firstTextNode);
+      expect(result.newSelection.end.offset).toBe(0);
+      expect(result.newSelection.isCollapsed).toBe(true);
+      expect(result.didChange).toBe(false);
+      expect(result.isPersistent).toBe(false);
+    });
+
+    test('handleMoveCursorRight at end of last text node should not move', () => {
+      // Setup VDOM with multiple text nodes
+      const firstTextNode: VDOMNode = {
+        type: 'text',
+        path: [0],
+        content: 'First',
+      };
+
+      const secondTextNode: VDOMNode = {
+        type: 'text',
+        path: [1],
+        content: 'Second',
+      };
+
+      const vdom: VDOMNode[] = [firstTextNode, secondTextNode];
+
+      // Setup initial selection at end of second text node (position 6)
+      const initialSelection: VDOMSelection = {
+        start: { node: secondTextNode, offset: 6 },
+        end: { node: secondTextNode, offset: 6 },
+        isCollapsed: true,
+      };
+
+      const currentState: EditorState = {
+        vdom,
+        selection: initialSelection,
+        canUndo: false,
+        canRedo: false,
+        formatToggleState: {
+          bold: 'inactive',
+          italic: 'inactive',
+          underline: 'inactive',
+        },
+      };
+
+      // Execute the command
+      const result = fsm.processCommand({ type: 'MOVE_CURSOR_RIGHT' }, currentState);
+
+      // Verify the cursor stayed at the end position
+      expect(result.newSelection.start.node).toBe(secondTextNode);
+      expect(result.newSelection.start.offset).toBe(6);
+      expect(result.newSelection.end.node).toBe(secondTextNode);
+      expect(result.newSelection.end.offset).toBe(6);
+      expect(result.newSelection.isCollapsed).toBe(true);
+      expect(result.didChange).toBe(false);
+      expect(result.isPersistent).toBe(false);
+    });
+
+    test('should handle complex nested structure with correct path ordering', () => {
+      // Setup VDOM with nested structure like: paragraph -> [text1, strong -> text2, text3]
+      const text1: VDOMNode = {
+        type: 'text',
+        path: [0, 0],
+        content: 'Before ',
+      };
+
+      const text2: VDOMNode = {
+        type: 'text',
+        path: [0, 1, 0],
+        content: 'bold',
+      };
+
+      const strongNode: VDOMNode = {
+        type: 'strong',
+        path: [0, 1],
+        children: [text2],
+      };
+
+      const text3: VDOMNode = {
+        type: 'text',
+        path: [0, 2],
+        content: ' after',
+      };
+
+      const paragraphNode: VDOMNode = {
+        type: 'paragraph',
+        path: [0],
+        children: [text1, strongNode, text3],
+      };
+
+      const vdom: VDOMNode[] = [paragraphNode];
+
+      // Test moving right from end of text1 to start of text2
+      const initialSelection: VDOMSelection = {
+        start: { node: text1, offset: 7 }, // End of "Before "
+        end: { node: text1, offset: 7 },
+        isCollapsed: true,
+      };
+
+      const currentState: EditorState = {
+        vdom,
+        selection: initialSelection,
+        canUndo: false,
+        canRedo: false,
+        formatToggleState: {
+          bold: 'inactive',
+          italic: 'inactive',
+          underline: 'inactive',
+        },
+      };
+
+      // Execute the command
+      const result = fsm.processCommand({ type: 'MOVE_CURSOR_RIGHT' }, currentState);
+
+      // Verify the cursor moved to start of text2 (inside strong)
+      expect(result.newSelection.start.node).toBe(text2);
+      expect(result.newSelection.start.offset).toBe(0);
+      expect(result.newSelection.end.node).toBe(text2);
+      expect(result.newSelection.end.offset).toBe(0);
+      expect(result.newSelection.isCollapsed).toBe(true);
+    });
+  });
 });

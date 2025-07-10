@@ -13,6 +13,7 @@ functions for selection state management and formatting queries.
    - getFormattingAtSelection()
 3. All cursor movements must update VDOMSelection state
 4. Formatting queries must use getFormattingAtSelection()
+5. The FSM should remain a pure state machine.
 
 ## Guidelines
 
@@ -22,6 +23,9 @@ functions for selection state management and formatting queries.
 3. Do not modify VDOMSelection.ts - only use its exports
 4. Remove any internal selection manipulation code
 5. Mark TODOs as complete when finished [✓]
+6. The FSM should be a pure state machine. When we say "use a method from the VDOMSelection module",
+   we do not necessarily mean that the FSM should be the one using it. Most often, the Editor will
+   use it in coordination with one of the operations of the FSM.
 
 ## TODO List by Vertical Slice [ ]
 
@@ -45,16 +49,16 @@ functions for selection state management and formatting queries.
 - [✓] Verify tests pass
 - [✓] Remove stale tests (simplified cross-node navigation for now)
 
-### Slice 3: handleBackspace [ ]
+### Slice 3: handleBackspace [✓]
 
-- [ ] Write test using VDOMSelection exports
-- [ ] Remove textContentOffsetToNodeOffset() usage
-- [ ] Use getSelectionFromBrowser() to get current position
-- [ ] Use getNodesInRange() to determine nodes to remove
-- [ ] Use applySelectionToBrowser() to update final position
-- [ ] Remove handleBackspaceFallback() - no longer needed
-- [ ] Verify test passes
-- [ ] Remove stale tests
+- [✓] Write test using VDOMSelection exports
+- [✓] Remove textContentOffsetToNodeOffset() usage
+- [✓] Use getSelectionFromBrowser() to get current position
+- [✓] Use getNodesInRange() to determine nodes to remove
+- [✓] Use applySelectionToBrowser() to update final position
+- [✓] Remove handleBackspaceFallback() - no longer needed
+- [✓] Verify test passes
+- [✓] Remove stale tests
 
 ### Slice 4: handleInsertText [ ]
 

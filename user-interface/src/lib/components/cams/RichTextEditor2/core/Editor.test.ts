@@ -414,4 +414,244 @@ describe('Editor with Selection Tracking', () => {
       expect(mockProcessCommand).not.toHaveBeenCalled();
     });
   });
+
+  describe('Backspace Integration Tests', () => {
+    test('should handle backspace with VDOMSelection coordination', () => {
+      // Use setValue to set up initial content and state properly
+      editor.setValue('Hello World');
+
+      // Setup initial selection at position 5 in "Hello World"
+      const initialSelection: VDOMSelection = {
+        start: { offset: 5, node: { type: 'text', path: [0], content: 'Hello World' } },
+        end: { offset: 5, node: { type: 'text', path: [0], content: 'Hello World' } },
+        isCollapsed: true,
+      };
+      editor.updateSelection(initialSelection);
+
+      // Clear mocks after initial setup
+      vi.clearAllMocks();
+
+      // Setup: Mock the FSM to return a realistic backspace result
+      const mockBackspaceResult = {
+        newVDOM: [
+          {
+            type: 'text' as const,
+            path: [0],
+            content: 'Hell World', // 'o' deleted from "Hello World"
+          },
+        ],
+        newSelection: {
+          start: { offset: 4, node: { type: 'text' as const, path: [0], content: 'Hell World' } },
+          end: { offset: 4, node: { type: 'text' as const, path: [0], content: 'Hell World' } },
+          isCollapsed: true,
+        },
+        didChange: true,
+        isPersistent: true,
+      };
+
+      mockProcessCommand.mockReturnValue(mockBackspaceResult);
+
+      // Simulate backspace via beforeinput event
+      const inputEvent = new InputEvent('beforeinput', {
+        inputType: 'deleteContentBackward',
+      });
+
+      // Act
+      editor.handleBeforeInput(inputEvent);
+
+      // Assert: FSM was called with BACKSPACE command
+      expect(mockProcessCommand).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'BACKSPACE' }),
+        expect.any(Object), // The state object structure
+      );
+
+      // Assert: FSM was called exactly once
+      expect(mockProcessCommand).toHaveBeenCalledTimes(1);
+
+      // Assert: onChange callback was called with updated content
+      expect(mockOnChange).toHaveBeenCalledWith('<p>mocked html</p>');
+
+      // Assert: onSelectionChange callback was called with new selection
+      expect(mockOnSelectionChange).toHaveBeenCalledWith(mockBackspaceResult.newSelection);
+    });
+
+    test('should sync selection from browser before processing backspace via beforeinput', () => {
+      // Setup: Mock getSelectionFromBrowser to return a specific selection
+      const browserSelection: VDOMSelection = {
+        start: { offset: 3, node: { type: 'text', path: [0], content: 'Hello' } },
+        end: { offset: 3, node: { type: 'text', path: [0], content: 'Hello' } },
+        isCollapsed: true,
+      };
+
+      vi.mocked(VDOMSelectionModule.getSelectionFromBrowser).mockReturnValue(browserSelection);
+
+      // Setup: Create mock root element
+      const mockRootElement = document.createElement('div');
+      editor.setRootElement(mockRootElement);
+
+      // Setup initial content
+      editor.setValue('Hello');
+
+      // Clear mocks after setup
+      vi.clearAllMocks();
+
+      // Setup: Mock FSM to return no-change result (as if at document start)
+      mockProcessCommand.mockReturnValue({
+        newVDOM: [{ type: 'text', path: [0], content: 'Hello' }],
+        newSelection: browserSelection,
+        didChange: false,
+        isPersistent: false,
+      });
+
+      // Note: Backspace is handled via beforeinput, not keydown
+      // The selection sync happens in handleClick or when explicitly called
+      // Let's test the click flow which syncs selection from browser
+      const clickEvent = new MouseEvent('click', {
+        bubbles: true,
+      });
+
+      // Act - this will sync selection from browser
+      editor.handleClick(clickEvent);
+
+      // Now simulate backspace via beforeinput event
+      const inputEvent = new InputEvent('beforeinput', {
+        inputType: 'deleteContentBackward',
+      });
+
+      editor.handleBeforeInput(inputEvent);
+
+      // Assert: getSelectionFromBrowser was called to sync selection during click
+      expect(VDOMSelectionModule.getSelectionFromBrowser).toHaveBeenCalledWith(
+        mockSelectionService,
+        mockRootElement,
+        expect.any(Array),
+      );
+
+      // Assert: FSM was called with BACKSPACE command
+      expect(mockProcessCommand).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'BACKSPACE' }),
+        expect.objectContaining({
+          selection: browserSelection,
+          vdom: expect.any(Array),
+        }),
+      );
+    });
+
+    test('should handle cross-node backspace properly', () => {
+      // Setup initial content with two text nodes
+      // We'll simulate this by setting initial VDOM state that represents two nodes
+      // that will be merged after backspace
+      editor.setValue('FirstSecond'); // This represents the final merged state
+
+      // Setup initial selection at start of second text node (position 5, start of "Second")
+      const initialSelection: VDOMSelection = {
+        start: { offset: 5, node: { type: 'text', path: [0], content: 'FirstSecond' } },
+        end: { offset: 5, node: { type: 'text', path: [0], content: 'FirstSecond' } },
+        isCollapsed: true,
+      };
+      editor.updateSelection(initialSelection);
+
+      // Clear mocks after setup
+      vi.clearAllMocks();
+
+      // Setup: Mock the FSM to return a cross-node backspace result
+      const mockCrossNodeResult = {
+        newVDOM: [
+          {
+            type: 'text' as const,
+            path: [0],
+            content: 'FirsSecond', // 't' deleted from "First" and merged with "Second"
+          },
+        ],
+        newSelection: {
+          start: { offset: 4, node: { type: 'text' as const, path: [0], content: 'FirsSecond' } },
+          end: { offset: 4, node: { type: 'text' as const, path: [0], content: 'FirsSecond' } },
+          isCollapsed: true,
+        },
+        didChange: true,
+        isPersistent: true,
+      };
+
+      mockProcessCommand.mockReturnValue(mockCrossNodeResult);
+
+      // Simulate backspace via beforeinput event
+      const inputEvent = new InputEvent('beforeinput', {
+        inputType: 'deleteContentBackward',
+      });
+
+      // Act
+      editor.handleBeforeInput(inputEvent);
+
+      // Assert: FSM was called with BACKSPACE command
+      expect(mockProcessCommand).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'BACKSPACE' }),
+        expect.any(Object), // The state object structure
+      );
+
+      // Assert: FSM was called exactly once
+      expect(mockProcessCommand).toHaveBeenCalledTimes(1);
+
+      // Assert: Selection was properly updated after cross-node deletion
+      expect(mockOnSelectionChange).toHaveBeenCalledWith(mockCrossNodeResult.newSelection);
+
+      // Assert: Content was properly updated
+      expect(mockOnChange).toHaveBeenCalledWith('<p>mocked html</p>');
+    });
+
+    test('should handle range selection backspace', () => {
+      // Setup initial content
+      editor.setValue('Hello World');
+
+      // Setup initial state with range selection
+      const initialSelection: VDOMSelection = {
+        start: { offset: 2, node: { type: 'text', path: [0], content: 'Hello World' } },
+        end: { offset: 7, node: { type: 'text', path: [0], content: 'Hello World' } },
+        isCollapsed: false,
+      };
+      editor.updateSelection(initialSelection);
+
+      // Clear mocks after setup
+      vi.clearAllMocks();
+
+      // Setup: Mock the FSM to return a range deletion result
+      const mockRangeResult = {
+        newVDOM: [
+          {
+            type: 'text' as const,
+            path: [0],
+            content: 'Heorld', // "llo W" deleted from "Hello World"
+          },
+        ],
+        newSelection: {
+          start: { offset: 2, node: { type: 'text' as const, path: [0], content: 'Heorld' } },
+          end: { offset: 2, node: { type: 'text' as const, path: [0], content: 'Heorld' } },
+          isCollapsed: true,
+        },
+        didChange: true,
+        isPersistent: true,
+      };
+
+      mockProcessCommand.mockReturnValue(mockRangeResult);
+
+      // Simulate backspace via beforeinput event
+      const inputEvent = new InputEvent('beforeinput', {
+        inputType: 'deleteContentBackward',
+      });
+
+      // Act
+      editor.handleBeforeInput(inputEvent);
+
+      // Assert: FSM was called with BACKSPACE command and range selection
+      expect(mockProcessCommand).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'BACKSPACE' }),
+        expect.any(Object), // The state object structure
+      );
+
+      // Assert: FSM was called exactly once
+      expect(mockProcessCommand).toHaveBeenCalledTimes(1);
+
+      // Assert: Selection was collapsed to the deletion point
+      expect(mockOnSelectionChange).toHaveBeenCalledWith(mockRangeResult.newSelection);
+    });
+  });
 });
