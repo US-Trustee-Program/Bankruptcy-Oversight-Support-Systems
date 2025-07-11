@@ -2,6 +2,7 @@ import './TiptapEditor.scss';
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import Underline from '@tiptap/extension-underline';
 
 export interface TiptapEditorRef {
   clearValue: () => void;
@@ -28,7 +29,7 @@ function _TiptapEditor(props: TiptapEditorProps, ref: React.Ref<TiptapEditorRef>
   const [inputDisabled, setInputDisabled] = useState<boolean>(disabled || false);
 
   const editor = useEditor({
-    extensions: [StarterKit],
+    extensions: [StarterKit, Underline],
     content: '',
     editable: !inputDisabled,
     onUpdate: ({ editor }) => {
@@ -110,9 +111,45 @@ function _TiptapEditor(props: TiptapEditorProps, ref: React.Ref<TiptapEditorRef>
       )}
 
       <div className="tiptap-editor-wrapper">
+        {/* Toolbar */}
+        <div className="tiptap-editor-toolbar">
+          <button
+            type="button"
+            aria-label="Bold"
+            title="Bold"
+            onClick={() => editor?.chain().focus().toggleBold().run()}
+            className={editor?.isActive('bold') ? 'is-active' : ''}
+            disabled={inputDisabled || !editor?.isEditable}
+          >
+            B
+          </button>
+          <button
+            type="button"
+            aria-label="Italic"
+            title="Italic"
+            onClick={() => editor?.chain().focus().toggleItalic().run()}
+            className={editor?.isActive('italic') ? 'is-active' : ''}
+            disabled={inputDisabled || !editor?.isEditable}
+          >
+            I
+          </button>
+          <button
+            type="button"
+            aria-label="Underline"
+            title="Underline"
+            onClick={() => editor?.chain().focus().toggleUnderline().run()}
+            className={editor?.isActive('underline') ? 'is-active' : ''}
+            disabled={inputDisabled || !editor?.isEditable}
+          >
+            U
+          </button>
+        </div>
+
         <EditorContent
           editor={editor}
-          className={`tiptap-editor ${inputDisabled ? 'disabled' : ''}`}
+          className={`editor-content tiptap-editor${inputDisabled ? ' disabled' : ''}`}
+          data-testid="tiptap-editor-content"
+          aria-labelledby={label ? `editor-label-${id}` : undefined}
         />
       </div>
     </div>
