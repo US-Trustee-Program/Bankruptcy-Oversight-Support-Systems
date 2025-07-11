@@ -7,20 +7,19 @@ We want to evaluate the [Tiptap editor](https://tiptap.dev/docs/editor/getting-s
 ## Steps
 
 - [x] Implement a humble object or wrapper for the Tiptap editor.
-    - [x] Ensure editor content is semantically-correct HTML prior to persistence.
-        - [x] If it is not automatically semantically-correct we need to convert and then when editing an existing note ingest the stored semantically-correct content mapped to whatever Tiptap uses.
+  - [x] Ensure editor content is semantically-correct HTML prior to persistence.
+    - [x] If it is not automatically semantically-correct we need to convert and then when editing an existing note ingest the stored semantically-correct content mapped to whatever Tiptap uses.
 - [] Integrate the various components included in SimpleEditor
-    - [x] Bold, italic, underline
-    - [] Other components incrementally
-- [x] Integrate TiptapEditor into `CaseNoteFormModal` and mock it for tests to avoid jsdom/ProseMirror issues.
-- [x] Update tests to use the ref-based API of the mock editor and ensure state updates are flushed with `waitFor` after ref-based changes.
-- [x] Fix circular dependency and module mocking issues in test setup.
-- [x] All tests green: **2 tests remain failing** (button enable/disable and form cache restore after modal reopen).
-    - [x] Investigate and fix why the submit button is not disabled/enabled as expected after ref-based content changes.
-    - [x] Investigate and fix why the form cache is not restoring the title value after modal reopen.
+  - [x] Bold, italic, underline
+  - [x] Ordered list, bullet list
+  - [] Other components incrementally
+- [x] Integrate TiptapEditor into `CaseNoteFormModal` and mock it for tests to avoid
+      jsdom/ProseMirror issues.
 - [] Ensure that draft note content is added to the editor properly.
 
 **Current status:**
+
 - TiptapEditor is integrated and working in the UI.
-- Most tests pass, but two remain failing as described above.
-- Next step: debug and resolve the remaining test failures for full green.
+- Ordered and bullet lists are implemented and working in both tests and the browser.
+- All tests are green for these features.
+- Next step: continue with further SimpleEditor features or polish as needed.

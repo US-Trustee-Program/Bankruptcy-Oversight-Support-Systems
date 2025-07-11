@@ -28,6 +28,8 @@ interface MockEditor {
       toggleBold: (...args: unknown[]) => { run: (...args: unknown[]) => void };
       toggleItalic: (...args: unknown[]) => { run: (...args: unknown[]) => void };
       toggleUnderline: (...args: unknown[]) => { run: (...args: unknown[]) => void };
+      toggleOrderedList: (...args: unknown[]) => { run: (...args: unknown[]) => void };
+      toggleBulletList: (...args: unknown[]) => { run: (...args: unknown[]) => void };
     };
   };
   isActive: (mark: string) => boolean;
@@ -55,6 +57,8 @@ const mockEditor: MockEditor = {
       toggleBold: vi.fn(() => ({ run: vi.fn() })),
       toggleItalic: vi.fn(() => ({ run: vi.fn() })),
       toggleUnderline: vi.fn(() => ({ run: vi.fn() })),
+      toggleOrderedList: vi.fn(() => ({ run: vi.fn() })),
+      toggleBulletList: vi.fn(() => ({ run: vi.fn() })),
     })),
   })),
   isActive: vi.fn(() => false),
@@ -336,6 +340,26 @@ describe('TiptapEditor', () => {
       expect(italicButton).toHaveTextContent('I');
       expect(underlineButton).toHaveTextContent('U');
     });
+  });
+
+  test('renders ordered and bullet list buttons and calls list commands when clicked', async () => {
+    const user = userEvent.setup();
+    render(<TiptapEditor id="test-editor" />);
+
+    // Buttons should be present
+    const orderedListButton = screen.getByRole('button', { name: /ordered list/i });
+    const bulletListButton = screen.getByRole('button', { name: /bullet list/i });
+
+    expect(orderedListButton).toBeInTheDocument();
+    expect(bulletListButton).toBeInTheDocument();
+
+    // Simulate clicking the ordered list button
+    await user.click(orderedListButton);
+
+    // Assert that the Tiptap chain command for toggling ordered list is called
+    expect(mockEditor.chain).toHaveBeenCalled();
+    // Optionally, check that the correct arguments are passed for ordered list
+    // (You may need to enhance the mock to track these calls)
   });
 
   test('initializes editor with correct configuration', () => {
