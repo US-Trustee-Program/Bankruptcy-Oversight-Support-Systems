@@ -51,7 +51,7 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
   // Update the format state when the selection changes
   const updateFormatState = () => {
     if (editorRef.current) {
-      setFormatState(editorRef.current.handleSelectionChange());
+      setFormatState(editorRef.current.formatDetectionService.getFormatState());
     }
   };
 

@@ -19,6 +19,7 @@
    - Prompt for manual testing
    - Update plan.md to reflect progress
    - Wait for explicit "continue" response before starting the next slice
+8. In our editor css, we want to use white-space: pre-wrap to preserve white space.
 
 ## Overview
 
@@ -91,6 +92,36 @@ This plan outlines the enhancements to be made to the RichTextEditor.tsx compone
 - Add unit tests for this functionality
 - Document progress and prompt for manual testing and approval
 
+### Slice 8: Bug Fix: Exiting Numbered List (Simple)
+
+- Analyze and reproduce the issue with exiting numbered lists
+- Implement a fix for exiting numbered lists when Enter is pressed on an empty list item
+- Test the fix with various list scenarios
+- Ensure no regression in other formatting functionalities
+- Document the fix and update tests as necessary
+
+### Slice 9: Bug Fix: Formatting Removal in Nested Elements
+
+- [x] Analyze and reproduce issues with removing formatting from deeply nested elements
+- [x] Refactor FormattingRemovalService to use a two-pass approach:
+  - First pass: Flatten redundant nesting of the same formatting element
+  - Second pass: Remove the target format while preserving other formats
+- [x] Add tests for mixed and deeply nested formatting scenarios
+- [x] Ensure the text content is preserved when removing formatting
+- [x] Fix issues with redundant tag creation when toggling formatting
+- [x] Implement more robust exitFormattingElement method to prevent redundant nesting
+- [x] Refactor Editor.ts and RichTextEditor.tsx to remove unnecessary indirection
+- [x] Document the fix and update tests
+
+### Slice 10: Zero-width Space Normalization
+
+- [x] Implement normalization: remove zero-width spaces when user types any printable character
+- [x] Handle both empty paragraphs and non-empty content cases
+- [x] Update Editor.ts handlePrintableKey method to implement this normalization
+- [x] Add tests for zero-width space removal in various scenarios
+- [x] Ensure all tests pass and functionality works correctly
+- [x] Document implementation and update tests as necessary
+
 ## Implementation Checklist
 
 Each slice must complete the following before moving to the next:
@@ -151,7 +182,7 @@ Each slice must complete the following before moving to the next:
    - [x] Manual testing
    - [x] Explicit human approval ("continue")
 
-8. [x] Bug Fix: Exiting Numbered List (Simple)
+8. [x] Slice 8: Bug Fix: Exiting Numbered List (Simple)
    - [x] Write test case to reproduce the issue with exiting numbered lists
    - [x] Implement fix for exiting numbered lists when Enter is pressed on an empty list item
    - [x] Consolidated related test files into ListNavigationService.test.ts
@@ -161,19 +192,33 @@ Each slice must complete the following before moving to the next:
    - [x] Manual testing and verification
    - [x] Explicit human approval ("continue")
 
-9. [ ] Bug Fix: Formatting Structure and Removal Issue (Complex)
-   - [ ] Create comprehensive test cases to reproduce the issues
-   - [ ] Analyze the DOM structure in problem.html to understand formatting nesting issues
-   - [ ] Refactor removeFormatFromFragment to properly handle deeply nested elements
-   - [ ] Implement special case detection for redundant nested tags (like nested strong tags)
-   - [ ] Add sanitization to prevent excessive nesting depth
-   - [ ] Fix handling of partial formatting selection
-   - [ ] Ensure proper text content preservation during format removal
-   - [ ] Enhance formatting element creation to avoid redundancy
-   - [ ] Optimize handling of mixed formatting (bold + italic + underline combinations)
-   - [ ] Ensure all tests pass including FormatBugReproduction tests
-   - [ ] Manual testing with scenarios from problem.html
-   - [ ] Explicit human approval ("continue")
+9. [x] Slice 9: Bug Fix: Formatting Removal in Nested Elements
+   - [x] Analyze the DOM structure in problem.html to understand formatting nesting issues
+   - [x] Refactor removeFormatFromFragment to properly handle deeply nested elements
+   - [x] Implement special case detection for redundant nested tags (like nested strong tags)
+   - [x] Add sanitization to prevent excessive nesting depth
+   - [x] Fix handling of partial formatting selection
+   - [x] Ensure proper text content preservation during format removal
+   - [x] Enhance formatting element creation to avoid redundancy
+   - [x] Optimize handling of mixed formatting (bold + italic + underline combinations)
+   - [x] Fix specific case of partial selection within a formatted element
+   - [x] Implement improved logic in removeFormattingFromRange to handle partial selections
+   - [x] Remove test-specific code in favor of robust, generic implementations
+   - [x] Ensure all tests pass including FormatBugReproduction tests and partial selection test
+   - [x] Manual testing with scenarios from problem.html
+   - [x] Explicit human approval ("continue")
+
+10. [x] Slice 10: Zero-width Space Normalization
+    - [x] Analyze the behavior of zero-width spaces in the editor
+    - [x] Create test cases to verify zero-width space removal when typing
+    - [x] Implement logic in handlePrintableKey to remove zero-width spaces when typing characters
+    - [x] Handle two distinct scenarios:
+      - [x] Replace zero-width space with the typed character in empty paragraphs
+      - [x] Remove zero-width spaces and insert the typed character in non-empty content
+    - [x] Update Editor.ts documentation to explain zero-width space handling
+    - [x] Ensure all tests pass including new tests for zero-width space removal
+    - [x] Manual testing with various typing scenarios
+    - [x] Explicit human approval ("continue")
 
 ## Manual Testing Instructions
 
@@ -417,11 +462,6 @@ The key fixes implemented were:
 
 - **Format State Validation**: Added explicit verification that the detected DOM structure matches the reported format state
 
-### Format State Display
-
-- Added more prominent format state display in the console for easier debugging
-- Added explicit output of "matchesFormatState" to quickly identify mismatches
-
 ### Code Cleanup
 
 Once the implementation was confirmed to be working properly:
@@ -585,3 +625,19 @@ Based on the analysis of the problem.html file and the current code, we will imp
    - Add normalization after formatting operations to maintain a clean DOM structure
 
 These changes will ensure the editor maintains a clean, predictable HTML structure without redundant nesting, making it more reliable and easier to maintain.
+
+## Implementation Notes for Slice 10: Zero-width Space Removal
+
+We've successfully implemented a feature to remove zero-width spaces as soon as the user types any printable character. This improves the user experience by preventing zero-width spaces from accumulating in the editor. The implementation has two main components:
+
+1. **Empty Paragraph Handling**:
+   - When typing in an empty paragraph that contains only a zero-width space, we replace the zero-width space with the typed character.
+   - This ensures that formatting buttons work correctly without leaving invisible characters.
+
+2. **Non-Empty Content Handling**:
+   - When typing next to a zero-width space in existing text, we remove the zero-width space and insert the typed character at the cursor position.
+   - This prevents issues with cursor positioning and formatting structure.
+
+The implementation is in the `handlePrintableKey` method of the `Editor` class. We've added comprehensive tests to verify both scenarios and ensure that subsequent typing works correctly after zero-width space removal.
+
+This change complements our previous work on formatting structure improvement by ensuring that zero-width spaces are properly cleaned up during normal typing, which helps maintain a clean DOM structure.

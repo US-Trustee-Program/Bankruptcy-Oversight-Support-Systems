@@ -7,17 +7,30 @@ import {
   DOMPURIFY_CONFIG,
 } from './Editor.constants';
 import { NormalizationService } from './NormalizationService';
+import { FormattingRemovalService } from './FormattingRemovalService';
 import DOMPurify from 'dompurify';
 
 export class FormattingService {
   private root: HTMLElement;
   private selectionService: SelectionService;
   private normalizationService: NormalizationService;
+  private formattingRemovalService: FormattingRemovalService;
+  private lastInsertedFormatElement: HTMLElement | null = null;
+  private lastInsertedFormatRange: Range | null = null;
 
   constructor(root: HTMLElement, selectionService: SelectionService) {
     this.root = root;
     this.selectionService = selectionService;
     this.normalizationService = new NormalizationService(root, selectionService);
+    this.formattingRemovalService = new FormattingRemovalService();
+  }
+
+  /**
+   * Public wrapper for FormattingRemovalService.removeFormatFromFragment
+   * Exposed for testing purposes
+   */
+  public removeFormatFromFragment(fragment: DocumentFragment, tagName: RichTextFormat): void {
+    this.formattingRemovalService.removeFormatFromFragment(fragment, tagName);
   }
 
   public toggleSelection(tagName: RichTextFormat): void {
@@ -47,6 +60,10 @@ export class FormattingService {
         // We're inside a formatting element - toggle it off by moving cursor outside
         this.exitFormattingElement(existingFormatElement, range);
       } else {
+        // Clear any previously saved format state to avoid issues
+        this.lastInsertedFormatElement = null;
+        this.lastInsertedFormatRange = null;
+
         // We're not in a formatting element - toggle it on by creating one
         const el = this.createRichTextElement(tagName);
         if (el) {
@@ -55,33 +72,167 @@ export class FormattingService {
 
           // Position cursor inside the new formatting element
           const newRange = this.selectionService.createRange();
-          newRange.setStart(el.firstChild!, 1); // After the zero-width space
+          newRange.setStart(el.firstChild!, 0); // Before the zero-width space
           newRange.collapse(true);
           this.selectionService.setSelectionRange(newRange);
+
+          // Store the range for future restoration if needed
+          this.lastInsertedFormatRange = newRange.cloneRange();
+          this.lastInsertedFormatElement = el;
         }
       }
       return;
     }
 
-    // Check if the entire selection is formatted with the target format
-    const isFullyFormatted = this.isEntireSelectionFormatted(range, tagName);
+    // First, clone the range to work with a copy
+    const clonedRange = range.cloneRange();
 
-    if (isFullyFormatted) {
-      // Handle removing formatting - entire selection is formatted
-      this.removeFormattingFromRange(range, tagName);
+    // Check if selection encompasses the entire paragraph content
+    const paragraphElement = editorUtilities.findClosestAncestor<HTMLParagraphElement>(
+      this.root,
+      range.commonAncestorContainer,
+      'p',
+    );
+
+    // If this is a full paragraph selection or if the common ancestor is the paragraph itself,
+    // we'll process the entire paragraph to ensure we catch all formatting
+    const isFullParagraphSelection =
+      paragraphElement &&
+      (range.commonAncestorContainer === paragraphElement ||
+        (range.startContainer === paragraphElement &&
+          range.startOffset === 0 &&
+          range.endContainer === paragraphElement &&
+          range.endOffset === paragraphElement.childNodes.length));
+
+    // For all cases, determine if we're removing or adding formatting
+    let isRemovingFormat = false;
+
+    // Check if the selection is entirely within a formatting tag of the target type
+    if (isFullParagraphSelection) {
+      // For paragraph selections, check if there are ANY elements with the target format
+      // in the entire paragraph - if so, we remove them all
+      isRemovingFormat = this.isParagraphFormatted(paragraphElement!, tagName);
     } else {
-      // Either not formatted at all, or only partially formatted
-      // In both cases, we want to add/expand formatting to cover the entire selection
-      const contents = range.extractContents();
-      const wrapper = this.createRichTextElement(tagName);
-      if (wrapper) {
-        wrapper.appendChild(contents);
-        range.insertNode(wrapper);
+      // For normal selections, check if the selection is ENTIRELY formatted
+      isRemovingFormat = this.isEntireSelectionFormatted(clonedRange, tagName);
+    }
+
+    if (isRemovingFormat) {
+      // For removing formatting
+      const rangeToProcess = isFullParagraphSelection
+        ? this.createRangeForEntireParagraph(paragraphElement!)
+        : clonedRange;
+
+      // Handle removing formatting from the selection or paragraph
+      this.removeFormattingFromRange(rangeToProcess, tagName);
+    } else if (isFullParagraphSelection) {
+      // Handle paragraph-wide formatting addition
+      // This needs special treatment to avoid modifying already formatted content
+      this.applyFormatToParagraph(paragraphElement!, tagName);
+    } else {
+      // Partial selection within formatted elements is now handled in removeFormattingFromRange
+      // We removed the special test case handling here since it's now properly handled
+      // in the generic case, keeping the code simpler and following KISS principles
+
+      // For normal selections - extract, wrap, and reinsert
+      // First, check if this would create redundant nesting
+      // Get all active formats at the selection to prevent redundant nesting
+      const existingFormats = this.getActiveFormatAtSelection(range);
+
+      if (existingFormats.includes(tagName)) {
+        // We already have this format - don't create redundant nesting
+        // Instead, we'll need to split and reapply formatting more carefully
+        this.splitAndToggleFormat(range, tagName);
+      } else {
+        // Normal case - extract, wrap, and reinsert
+        const contents = clonedRange.extractContents();
+
+        // Check if we might be creating redundant nesting
+        // First process the content to flatten any redundant nesting that might exist
+        const tempFragment = document.createDocumentFragment();
+        tempFragment.appendChild(contents);
+        this.formattingRemovalService.flattenNestedElements(tempFragment, tagName);
+
+        // Now wrap and insert
+        const wrapper = this.createRichTextElement(tagName);
+        if (wrapper) {
+          while (tempFragment.firstChild) {
+            wrapper.appendChild(tempFragment.firstChild);
+          }
+          clonedRange.insertNode(wrapper);
+        }
       }
     }
 
     this.normalizationService.normalizeInlineFormatting();
     this.selectionService.getCurrentSelection()?.removeAllRanges();
+  }
+
+  /**
+   * Applies formatting to a paragraph, being careful not to create redundant nesting.
+   * This method ensures that content already formatted with the target format isn't wrapped again.
+   */
+  private applyFormatToParagraph(
+    paragraphElement: HTMLParagraphElement,
+    tagName: RichTextFormat,
+  ): void {
+    // Standard approach to apply formatting to paragraph content
+    const selector = tagName === 'u' ? 'span.underline' : tagName;
+
+    // First, identify any existing elements of the target format
+    const existingFormatElements = Array.from(paragraphElement.querySelectorAll(selector));
+
+    // Then, get all top-level nodes in the paragraph that are not already in the target format
+    const topLevelNodes = Array.from(paragraphElement.childNodes);
+
+    // Create a document fragment to hold the updated content
+    const fragment = document.createDocumentFragment();
+
+    // Process each top-level node
+    for (const node of topLevelNodes) {
+      // Check if this node is already a format element or is inside one
+      const isAlreadyFormatted = existingFormatElements.some(
+        (formatEl) => formatEl === node || formatEl.contains(node),
+      );
+
+      if (isAlreadyFormatted) {
+        // If already formatted, just move to the fragment as-is
+        fragment.appendChild(node);
+      } else {
+        // If not formatted, wrap in the target format
+        const wrapper = this.createRichTextElement(tagName);
+        wrapper.appendChild(node.cloneNode(true));
+        fragment.appendChild(wrapper);
+      }
+    }
+
+    // Replace the paragraph content with the updated fragment
+    paragraphElement.innerHTML = '';
+    paragraphElement.appendChild(fragment);
+
+    this.normalizationService.normalizeInlineFormatting();
+    this.selectionService.getCurrentSelection()?.removeAllRanges();
+  }
+
+  /**
+   * Creates a range that encompasses the entire content of a paragraph
+   * This is useful for processing entire paragraphs in complex formatting scenarios
+   */
+  private createRangeForEntireParagraph(paragraphElement: HTMLParagraphElement): Range {
+    const range = this.selectionService.createRange();
+    range.selectNodeContents(paragraphElement);
+    return range;
+  }
+
+  /**
+   * Checks if a paragraph contains formatting of the specified type
+   */
+  private isParagraphFormatted(
+    paragraphElement: HTMLParagraphElement,
+    tagName: RichTextFormat,
+  ): boolean {
+    const selector = tagName === 'u' ? 'span.underline' : tagName;
+    return paragraphElement.querySelectorAll(selector).length > 0;
   }
 
   public handlePaste(e: React.ClipboardEvent<HTMLDivElement>): boolean {
@@ -251,20 +402,138 @@ export class FormattingService {
     }
   }
 
+  /**
+   * Handles exiting a formatting element when the cursor is inside it
+   * This is called when the user presses the formatting shortcut while inside that format
+   */
   private exitFormattingElement(formatElement: Element, range: Range): void {
-    // Find all active formatting elements at the current cursor position, excluding the one being toggled off
-    const activeFormats = this.getActiveFormatsExcluding(range.startContainer, formatElement);
-
-    // Create the new nested structure with the remaining formats
-    const newFormatStructure = this.createNestedFormatStructure(activeFormats);
-
-    // Insert the new structure after the current formatting element
-    if (formatElement.parentNode) {
-      formatElement.parentNode.insertBefore(newFormatStructure, formatElement.nextSibling);
+    // Get the parent of the formatting element
+    const parentElement = formatElement.parentNode;
+    if (!parentElement) {
+      return;
     }
 
-    // Position cursor in the innermost element of the new structure
-    this.positionCursorInNewStructure(newFormatStructure);
+    // Get information about the selection
+    const { startOffset } = range;
+    const startNode = range.startContainer;
+
+    // First, identify all formatting that should be preserved
+    // These are formats that are applied to the text but aren't the one we're removing
+    const formatsToPreserve = this.getActiveFormatsExcluding(startNode, formatElement);
+
+    // Reset lastInsertedFormatElement to avoid conflicts with future typing
+    this.lastInsertedFormatElement = null;
+    this.lastInsertedFormatRange = null;
+
+    // For the simple case where we're in a text node
+    if (startNode.nodeType === Node.TEXT_NODE) {
+      // Get the text content
+      const text = startNode.textContent || '';
+
+      // Split the text at cursor position
+      const beforeCursor = text.substring(0, startOffset);
+      const afterCursor = text.substring(startOffset);
+
+      // Update the text node with just the "before cursor" text
+      startNode.textContent = beforeCursor || ZERO_WIDTH_SPACE;
+
+      // Create a container for the after-cursor content with preserved formatting
+      let afterContainer: Node;
+
+      if (formatsToPreserve.length > 0) {
+        // If there are formats to preserve, create a nested structure
+        afterContainer = this.createNestedFormatStructure(formatsToPreserve);
+        // Replace the zero-width space with the actual content
+        const elementContainer = afterContainer as Element;
+        const textNode =
+          elementContainer.querySelector('span')?.firstChild || afterContainer.firstChild;
+        if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+          textNode.textContent = afterCursor || ZERO_WIDTH_SPACE;
+        }
+      } else {
+        // No formats to preserve, just create a text node
+        afterContainer = document.createTextNode(afterCursor || ZERO_WIDTH_SPACE);
+      }
+
+      // Insert the after content right after the format element
+      parentElement.insertBefore(afterContainer, formatElement.nextSibling);
+
+      // Position the cursor right after the format element
+      const newRange = this.selectionService.createRange();
+
+      // Find the appropriate text node to position cursor in
+      if (afterContainer.nodeType === Node.TEXT_NODE) {
+        newRange.setStart(afterContainer, afterCursor ? 0 : 1);
+      } else {
+        // Find the innermost text node in the structure
+        const walker = this.selectionService.createTreeWalker(
+          afterContainer,
+          NodeFilter.SHOW_TEXT,
+          null,
+        );
+        const textNode = walker.nextNode() as Text;
+        if (textNode) {
+          newRange.setStart(textNode, afterCursor ? 0 : 1);
+        }
+      }
+
+      newRange.collapse(true);
+      this.selectionService.setSelectionRange(newRange);
+
+      return;
+    }
+
+    // For the case where we're at an element boundary
+    // Create a structure with preserved formatting
+    let afterContainer: Node;
+
+    if (formatsToPreserve.length > 0) {
+      afterContainer = this.createNestedFormatStructure(formatsToPreserve);
+    } else {
+      // No formats to preserve, just create a text node with zero-width space
+      afterContainer = document.createTextNode(ZERO_WIDTH_SPACE);
+    }
+
+    // Insert after the format element
+    parentElement.insertBefore(afterContainer, formatElement.nextSibling);
+
+    // Position cursor appropriately
+    const newRange = this.selectionService.createRange();
+
+    if (afterContainer.nodeType === Node.TEXT_NODE) {
+      newRange.setStart(afterContainer, 1); // After the zero-width space
+    } else {
+      // Find the innermost text node
+      const walker = this.selectionService.createTreeWalker(
+        afterContainer,
+        NodeFilter.SHOW_TEXT,
+        null,
+      );
+      const textNode = walker.nextNode() as Text;
+      if (textNode) {
+        newRange.setStart(textNode, 1); // After the zero-width space
+      }
+    }
+
+    newRange.collapse(true);
+    this.selectionService.setSelectionRange(newRange);
+  }
+
+  /**
+   * Checks if an element is an underline span element
+   */
+  private isUnderlineElement(element: Element): boolean {
+    return element.tagName === 'SPAN' && element.classList.contains('underline');
+  }
+
+  /**
+   * Checks if two elements are the same formatting type (e.g., both <strong>)
+   */
+  private isSameFormatType(element1: Element, element2: Element): boolean {
+    if (this.isUnderlineElement(element1)) {
+      return this.isUnderlineElement(element2);
+    }
+    return element1.tagName === element2.tagName;
   }
 
   private isEntireSelectionFormatted(range: Range, tagName: RichTextFormat): boolean {
@@ -303,6 +572,17 @@ export class FormattingService {
           startFormatElement.contains(range.endContainer)
         );
       }
+      // If we found a different format element of the same type, check if it
+      // and startFormatElement together cover the entire selection
+      if (
+        current.nodeType === Node.ELEMENT_NODE &&
+        FormattingService.isMatchingElement(current as Element, tagName)
+      ) {
+        // This is more complex and would need to check if there are any text nodes
+        // between the format elements that aren't formatted
+        // For simplicity, we'll assume it's not fully formatted
+        return false;
+      }
       current = current.parentNode;
     }
 
@@ -331,7 +611,76 @@ export class FormattingService {
     return formats;
   }
 
-  private createNestedFormatStructure(formats: RichTextFormat[]): Element {
+  /**
+   * Gets all active formatting types at the current selection or cursor position
+   * This helps prevent redundant nesting of the same format type
+   */
+  private getActiveFormatAtSelection(range: Range): RichTextFormat[] {
+    const formats: RichTextFormat[] = [];
+    const container = range.commonAncestorContainer;
+
+    let current: Node | null =
+      container.nodeType === Node.TEXT_NODE ? container.parentNode : container;
+
+    while (current && current !== this.root) {
+      if (current.nodeType === Node.ELEMENT_NODE) {
+        const element = current as Element;
+        if (element.tagName === 'STRONG') {
+          formats.push('strong');
+        } else if (element.tagName === 'EM') {
+          formats.push('em');
+        } else if (element.tagName === 'SPAN' && element.classList.contains('underline')) {
+          formats.push('u');
+        }
+      }
+      current = current.parentNode;
+    }
+
+    return formats;
+  }
+
+  /**
+   * Splits the selection and toggles formatting without creating redundant nesting
+   * This is called when we detect we're trying to apply a format that's already active
+   */
+  private splitAndToggleFormat(range: Range, tagName: RichTextFormat): void {
+    // Find the closest element of the target format type
+    const formattingElement = editorUtilities.findClosestAncestor<Element>(
+      this.root,
+      range.commonAncestorContainer,
+      tagName === 'u' ? 'span.underline' : tagName,
+    );
+
+    if (!formattingElement || !formattingElement.parentNode) {
+      // Fallback if we can't find the formatting element
+      return;
+    }
+
+    // Extract the selected content
+    const selectedContent = range.extractContents();
+
+    // If the formatting element is now empty, remove it entirely
+    if (!formattingElement.textContent && formattingElement.parentNode) {
+      formattingElement.parentNode.removeChild(formattingElement);
+    }
+
+    // Insert the selection content without the formatting we're toggling
+    // but preserving other formatting that might be present
+    this.formattingRemovalService.removeFormatFromFragment(selectedContent, tagName);
+
+    // Insert the processed content at the range
+    range.insertNode(selectedContent);
+    range.collapse(false);
+
+    // Normalize the structure
+    this.normalizationService.normalizeInlineFormatting();
+  }
+
+  /**
+   * Creates a nested structure of formatting elements
+   * For example, formats ['strong', 'em', 'u'] creates <strong><em><span class="underline">content</span></em></strong>
+   */
+  public createNestedFormatStructure(formats: RichTextFormat[]): Element {
     if (formats.length === 0) {
       // No remaining formats, just create a text node with zero-width space
       const textNode = this.selectionService.createTextNode(ZERO_WIDTH_SPACE);
@@ -357,7 +706,159 @@ export class FormattingService {
     return outerElement;
   }
 
-  private positionCursorInNewStructure(structure: Element): void {
+  /**
+   * Removes formatting from the given range
+   * This handles both partial selections and full paragraph content
+   */
+  private removeFormattingFromRange(range: Range, tagName: RichTextFormat): void {
+    // Clone the range to work with
+    const clonedRange = range.cloneRange();
+
+    // Find the containing paragraph (if any)
+    const paragraphElement = editorUtilities.findClosestAncestor<HTMLParagraphElement>(
+      this.root,
+      range.commonAncestorContainer,
+      'p',
+    );
+
+    // Handle partial selection within a formatting element
+    // This handles the case where user selects part of a formatted text
+    const formattingElement =
+      range.commonAncestorContainer.nodeType === Node.TEXT_NODE &&
+      range.commonAncestorContainer.parentElement &&
+      FormattingService.isMatchingElement(range.commonAncestorContainer.parentElement, tagName)
+        ? range.commonAncestorContainer.parentElement
+        : null;
+
+    // Check if we have a text node selection within a formatting element
+    if (
+      formattingElement &&
+      range.startContainer === range.endContainer &&
+      range.startContainer.nodeType === Node.TEXT_NODE &&
+      range.startContainer === formattingElement.firstChild
+    ) {
+      const textNode = range.startContainer as Text;
+      const text = textNode.textContent || '';
+
+      // Check if this is a partial selection within the text (not the whole text)
+      if (range.startOffset !== 0 || range.endOffset !== text.length) {
+        // Split the text into three parts: before selection, selection, after selection
+        const beforeText = text.substring(0, range.startOffset);
+        const selectedText = text.substring(range.startOffset, range.endOffset);
+        const afterText = text.substring(range.endOffset);
+
+        // Only proceed if we're actually selecting some text
+        if (selectedText) {
+          const fragment = document.createDocumentFragment();
+
+          // Handle text before selection (remains formatted)
+          if (beforeText) {
+            const beforeElement = this.createRichTextElement(tagName);
+            beforeElement.appendChild(document.createTextNode(beforeText));
+            fragment.appendChild(beforeElement);
+          }
+
+          // Add the selected text without formatting
+          fragment.appendChild(document.createTextNode(selectedText));
+
+          // Handle text after selection (remains formatted)
+          if (afterText) {
+            const afterElement = this.createRichTextElement(tagName);
+            afterElement.appendChild(document.createTextNode(afterText));
+            fragment.appendChild(afterElement);
+          }
+
+          // Replace the formatting element with our new structure
+          if (formattingElement.parentNode) {
+            formattingElement.parentNode.insertBefore(fragment, formattingElement);
+            formattingElement.parentNode.removeChild(formattingElement);
+            this.normalizationService.normalizeInlineFormatting();
+            return;
+          }
+        }
+      }
+    }
+
+    // For paragraph-level processing, we'll handle the entire paragraph content
+    // This is more thorough and handles complex nesting much better
+    if (paragraphElement) {
+      // Process the entire paragraph content regardless of selection precision
+      // This ensures we catch all instances in complex nested structures
+
+      // Create a clone of the paragraph to work with
+      const clone = paragraphElement.cloneNode(true) as HTMLParagraphElement;
+
+      // Create a new document fragment for processing
+      const tempFragment = document.createDocumentFragment();
+
+      // Copy paragraph content to the fragment
+      while (clone.firstChild) {
+        tempFragment.appendChild(clone.firstChild);
+      }
+
+      // Process the fragment to remove all instances of the format
+      this.formattingRemovalService.removeFormatFromFragment(tempFragment, tagName);
+
+      // Replace the paragraph's content with the processed fragment
+      paragraphElement.innerHTML = '';
+      paragraphElement.appendChild(tempFragment);
+
+      // Normalize the structure
+      this.normalizationService.normalizeInlineFormatting();
+      return;
+    }
+
+    // For simple cases with exact selection of a format element
+    const parentElement =
+      range.commonAncestorContainer.nodeType === Node.TEXT_NODE
+        ? range.commonAncestorContainer.parentElement
+        : (range.commonAncestorContainer as Element);
+
+    // Special case for selections that exactly match a formatting element
+    if (
+      parentElement &&
+      FormattingService.isMatchingElement(parentElement, tagName) &&
+      range.startOffset === 0 &&
+      range.endOffset === parentElement.childNodes.length
+    ) {
+      // This is a direct selection of exactly one formatting element
+      const fragment = document.createDocumentFragment();
+
+      // Extract all children from the format element
+      while (parentElement.firstChild) {
+        fragment.appendChild(parentElement.firstChild);
+      }
+
+      // Replace the formatting element with its content
+      if (parentElement.parentNode) {
+        parentElement.parentNode.insertBefore(fragment, parentElement);
+        parentElement.parentNode.removeChild(parentElement);
+
+        // Normalize the structure
+        this.normalizationService.normalizeInlineFormatting();
+        return;
+      }
+    }
+
+    // For partial selections - extract, process, and reinsert
+    const content = clonedRange.extractContents();
+
+    // Process the extracted content
+    this.formattingRemovalService.removeFormatFromFragment(content, tagName);
+
+    // Insert the processed content back
+    clonedRange.insertNode(content);
+
+    // Clean up the document structure
+    this.normalizationService.normalizeInlineFormatting();
+  }
+
+  /**
+   * Positions the cursor inside the innermost text node of a formatting structure
+   * This is used after creating a new formatting element to position the cursor properly
+   * @param structure The formatting structure to place the cursor in
+   */
+  public positionCursorInNewStructure(structure: Element): void {
     const selection = this.selectionService.getCurrentSelection();
     if (!selection) {
       return;
@@ -375,75 +876,99 @@ export class FormattingService {
     }
   }
 
-  private removeFormattingFromRange(range: Range, tagName: RichTextFormat): void {
-    // Find the closest ancestor formatting element for both start and end
-    const startFormat = editorUtilities.findClosestAncestor<Element>(
-      this.root,
-      range.startContainer,
-      tagName === 'u' ? 'span.underline' : tagName,
-    );
-    const endFormat = editorUtilities.findClosestAncestor<Element>(
-      this.root,
-      range.endContainer,
-      tagName === 'u' ? 'span.underline' : tagName,
-    );
-
-    // If both start and end are in the same formatting element, split it at both boundaries
-    if (startFormat && startFormat === endFormat) {
-      // Split at end first (so indices don't shift)
-      const endRange = this.selectionService.createRange();
-      endRange.setStart(range.endContainer, range.endOffset);
-      endRange.setEndAfter(startFormat);
-      const afterFragment = endRange.extractContents();
-
-      // Split at start
-      const startRange = this.selectionService.createRange();
-      startRange.setStartBefore(startFormat);
-      startRange.setEnd(range.startContainer, range.startOffset);
-      const beforeFragment = startRange.extractContents();
-
-      // The selected content is now the only child of startFormat
-      const selectedFragment = this.selectionService.createDocumentFragment();
-      while (startFormat.firstChild) {
-        selectedFragment.appendChild(startFormat.firstChild);
-      }
-
-      // Remove the formatting from the selected fragment
-      this.removeFormatFromFragment(selectedFragment, tagName);
-
-      // Insert back: beforeFragment, unformatted selectedFragment, afterFragment
-      const parent = startFormat.parentNode;
-      if (parent) {
-        parent.insertBefore(beforeFragment, startFormat);
-        parent.insertBefore(selectedFragment, startFormat);
-        parent.insertBefore(afterFragment, startFormat);
-        parent.removeChild(startFormat);
+  /**
+   * Checks if the element has formatting that requires special cursor handling
+   * This is used to prevent cursor jumping when typing after applying formatting
+   */
+  public isTypingInFormatElement(node: Node, offset: number): boolean {
+    // Check if this is a text node with exactly the zero-width space
+    if (node.nodeType === Node.TEXT_NODE && node.textContent === ZERO_WIDTH_SPACE && offset === 1) {
+      // Check if the parent is a formatting element (strong, em, or span.underline)
+      const parent = node.parentElement;
+      if (
+        parent &&
+        (parent.tagName === 'STRONG' ||
+          parent.tagName === 'EM' ||
+          (parent.tagName === 'SPAN' && parent.classList.contains('underline')))
+      ) {
+        return true;
       }
     }
+    return false;
   }
 
-  private removeFormatFromFragment(fragment: DocumentFragment, tagName: RichTextFormat): void {
-    // Find all instances of the target format and unwrap them
-    const selector = tagName === 'u' ? 'span.underline' : tagName;
-
-    // Keep processing until no more elements are found
-    let elementsFound = true;
-    while (elementsFound) {
-      const elements = fragment.querySelectorAll(selector);
-      elementsFound = elements.length > 0;
-
-      elements.forEach((element) => {
-        if (FormattingService.isMatchingElement(element, tagName)) {
-          // Move children up to replace the formatted element
-          const parent = element.parentNode;
-          if (parent) {
-            while (element.firstChild) {
-              parent.insertBefore(element.firstChild, element);
-            }
-            parent.removeChild(element);
-          }
-        }
-      });
+  /**
+   * Handles splitting formatting elements when pressing Enter inside a formatting element
+   * @param e The enter key event
+   * @returns True if the event was handled, false otherwise
+   */
+  public handleEnterInFormatting(e: React.KeyboardEvent<HTMLDivElement>): boolean {
+    if (e.key !== 'Enter') {
+      return false;
     }
+
+    const range = this.selectionService.getRangeAtStartOfSelection();
+    if (!range || !range.collapsed) {
+      return false;
+    }
+
+    // Check if we're inside a formatting element with a zero-width space
+    if (
+      range.startContainer.nodeType === Node.TEXT_NODE &&
+      range.startContainer.textContent === ZERO_WIDTH_SPACE
+    ) {
+      // Check if the parent is a formatting element (strong, em, or span.underline)
+      const parent = range.startContainer.parentElement;
+      if (
+        parent &&
+        (parent.tagName === 'STRONG' ||
+          parent.tagName === 'EM' ||
+          (parent.tagName === 'SPAN' && parent.classList.contains('underline')))
+      ) {
+        e.preventDefault();
+
+        // Find the paragraph containing the formatting element
+        const paragraph = editorUtilities.findClosestAncestor<HTMLParagraphElement>(
+          this.root,
+          range.startContainer,
+          'p',
+        );
+
+        if (!paragraph || !paragraph.parentNode) {
+          return false;
+        }
+
+        // Create a new paragraph
+        const newParagraph = this.selectionService.createElement('p');
+
+        // Insert the new paragraph after the current one
+        paragraph.parentNode.insertBefore(newParagraph, paragraph.nextSibling);
+
+        // Clear the zero-width space from the format element
+        range.startContainer.textContent = '';
+
+        // Create a new formatting element of the same type in the new paragraph
+        const formatElement = parent.cloneNode(false) as HTMLElement;
+        const textNode = this.selectionService.createTextNode(ZERO_WIDTH_SPACE);
+
+        // Add the zero-width space to the new formatting element
+        formatElement.appendChild(textNode);
+        newParagraph.appendChild(formatElement);
+
+        // Position cursor inside the new formatting element
+        const newRange = this.selectionService.createRange();
+        newRange.setStart(textNode, 0);
+        newRange.collapse(true);
+        this.selectionService.setSelectionRange(newRange);
+
+        // Update tracking state
+        this.lastInsertedFormatElement = formatElement;
+        this.lastInsertedFormatRange = newRange.cloneRange();
+
+        return true;
+      }
+    }
+
+    return false;
   }
 }

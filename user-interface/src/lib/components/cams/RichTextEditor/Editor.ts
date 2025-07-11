@@ -16,7 +16,7 @@ export class Editor {
   private selectionService: SelectionService;
   private listService: ListService;
   private formattingService: FormattingService;
-  private formatDetectionService: FormatDetectionService;
+  public formatDetectionService: FormatDetectionService;
 
   constructor(root: HTMLElement, selectionService: SelectionService) {
     this.root = root;
@@ -53,6 +53,12 @@ export class Editor {
   }
 
   public handleEnterKey(e: React.KeyboardEvent<HTMLDivElement>): boolean {
+    // First check if we're inside a formatting element with zero-width space
+    if (this.formattingService.handleEnterInFormatting(e)) {
+      return true;
+    }
+
+    // If not in a formatting element, let the list service handle it
     // TODO we should consider whether we want something called ListService
     // handling ALL enter key behavior, or only that within a list.
     return this.listService.handleEnterKey(e);
@@ -146,6 +152,20 @@ export class Editor {
     return false;
   }
 
+  /**
+   * Handles printable key events in the editor.
+   *
+   * Special behaviors:
+   * 1. When typing in an empty paragraph (with only a zero-width space), replaces the zero-width space with the typed character
+   * 2. When typing next to a zero-width space in non-empty content, removes the zero-width space and inserts the character
+   * 3. When typing directly in the root (without a block element), creates a new paragraph with the typed character
+   *
+   * This is a normalization feature to prevent zero-width spaces from accumulating in the editor
+   * and ensures they're automatically removed as soon as the user starts typing actual content.
+   *
+   * @param e - The keyboard event
+   * @returns true if the event was handled, false otherwise
+   */
   public handlePrintableKey(e: React.KeyboardEvent<HTMLDivElement>): boolean {
     const isPrintableKey = e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey;
     if (!isPrintableKey) {
@@ -166,10 +186,70 @@ export class Editor {
       'p',
     );
 
+    // Handle typing after formatting was applied
+    // This fixes the issue where cursor jumps to wrong position after applying formatting
+    if (this.formattingService.isTypingInFormatElement(range.startContainer, range.startOffset)) {
+      // We're typing directly in a formatting element with zero-width space
+      e.preventDefault();
+
+      // Replace the zero-width space with the typed character
+      range.startContainer.textContent = e.key;
+
+      // Position cursor after the newly typed character
+      const newRange = this.selectionService.createRange();
+      newRange.setStart(range.startContainer, 1);
+      newRange.collapse(true);
+      this.selectionService.setSelectionRange(newRange);
+
+      return true;
+    }
+
     if (currentParagraph && editorUtilities.isEmptyContent(this.root)) {
-      // We're typing in the empty paragraph - let the browser handle it naturally
-      // The zero-width space will be replaced by the typed character
+      // We're typing in the empty paragraph that contains only zero-width space
+      // Let's replace the zero-width space with the actual character
+      if (
+        range.startContainer.nodeType === Node.TEXT_NODE &&
+        range.startContainer.textContent === ZERO_WIDTH_SPACE
+      ) {
+        e.preventDefault();
+        range.startContainer.textContent = e.key;
+
+        // Position cursor after the newly typed character
+        const newRange = this.selectionService.createRange();
+        newRange.setStart(range.startContainer, 1);
+        newRange.collapse(true);
+        this.selectionService.setSelectionRange(newRange);
+
+        return true;
+      }
+
+      // For any other case, let the browser handle it naturally
       return false;
+    }
+
+    // Check if we're typing next to a zero-width space and remove it
+    if (range.startContainer.nodeType === Node.TEXT_NODE) {
+      const textNode = range.startContainer as Text;
+      if (textNode.textContent && textNode.textContent.includes(ZERO_WIDTH_SPACE)) {
+        e.preventDefault();
+
+        // Replace the zero-width space with empty string
+        const newText = textNode.textContent.replace(ZERO_WIDTH_SPACE_REGEX, '');
+
+        // Insert the character at the right position
+        const cursorPosition = range.startOffset;
+        const beforeCursor = newText.substring(0, cursorPosition);
+        const afterCursor = newText.substring(cursorPosition);
+        textNode.textContent = beforeCursor + e.key + afterCursor;
+
+        // Position cursor after the newly typed character
+        const newRange = this.selectionService.createRange();
+        newRange.setStart(textNode, cursorPosition + 1);
+        newRange.collapse(true);
+        this.selectionService.setSelectionRange(newRange);
+
+        return true;
+      }
     }
 
     if (this.root.contains(range.startContainer)) {
@@ -226,20 +306,5 @@ export class Editor {
     return null;
   }
 
-  /**
-   * Gets the current formatting state at the cursor position or for selected text
-   * @returns Format state object with boolean flags for each formatting type
-   */
-  public getFormatState(): FormatState {
-    return this.formatDetectionService.getFormatState();
-  }
-
-  /**
-   * Handles selection change events and cursor movements
-   * This method should be called whenever the selection changes to update format state
-   * @returns The current format state after the selection change
-   */
-  public handleSelectionChange(): FormatState {
-    return this.getFormatState();
-  }
+  // No need for a wrapper method since formatDetectionService is now public
 }
