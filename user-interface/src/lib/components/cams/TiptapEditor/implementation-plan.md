@@ -12,6 +12,7 @@ We want to evaluate the [Tiptap editor](https://tiptap.dev/docs/editor/getting-s
 - [] Integrate the various components included in SimpleEditor
   - [x] Bold, italic, underline
   - [x] Ordered list, bullet list
+  - [] Links
   - [] Other components incrementally
 - [x] Integrate TiptapEditor into `CaseNoteFormModal` and mock it for tests to avoid
       jsdom/ProseMirror issues.

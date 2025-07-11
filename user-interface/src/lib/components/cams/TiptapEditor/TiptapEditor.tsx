@@ -3,6 +3,9 @@ import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
+import Link from '@tiptap/extension-link';
+import Button from '@/lib/components/uswds/Button';
+import IconButton from '@/lib/components/IconButton';
 
 export interface TiptapEditorRef {
   clearValue: () => void;
@@ -29,7 +32,7 @@ function _TiptapEditor(props: TiptapEditorProps, ref: React.Ref<TiptapEditorRef>
   const [inputDisabled, setInputDisabled] = useState<boolean>(disabled || false);
 
   const editor = useEditor({
-    extensions: [StarterKit, Underline],
+    extensions: [StarterKit, Underline, Link],
     content: '',
     editable: !inputDisabled,
     onUpdate: ({ editor }) => {
@@ -83,6 +86,12 @@ function _TiptapEditor(props: TiptapEditorProps, ref: React.Ref<TiptapEditorRef>
     }
   };
 
+  // Suppress linter for use of 'any' due to missing type for toggleLink
+  const handleLinkClick = () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (editor?.chain().focus() as any).toggleLink({ href: 'https://example.com' }).run();
+  };
+
   useImperativeHandle(ref, () => ({
     clearValue,
     getValue,
@@ -113,58 +122,59 @@ function _TiptapEditor(props: TiptapEditorProps, ref: React.Ref<TiptapEditorRef>
       <div className="tiptap-editor-wrapper">
         {/* Toolbar */}
         <div className="tiptap-editor-toolbar">
-          <button
-            type="button"
+          <Button
             aria-label="Bold"
             title="Bold"
             onClick={() => editor?.chain().focus().toggleBold().run()}
-            className={editor?.isActive('bold') ? 'is-active' : ''}
+            className={`rich-text-button${editor?.isActive('bold') ? ' is-active' : ''}`}
             disabled={inputDisabled || !editor?.isEditable}
           >
             B
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
             aria-label="Italic"
             title="Italic"
             onClick={() => editor?.chain().focus().toggleItalic().run()}
-            className={editor?.isActive('italic') ? 'is-active' : ''}
+            className={`rich-text-button${editor?.isActive('italic') ? ' is-active' : ''}`}
             disabled={inputDisabled || !editor?.isEditable}
           >
-            I
-          </button>
-          <button
-            type="button"
+            <em>I</em>
+          </Button>
+          <Button
             aria-label="Underline"
             title="Underline"
             onClick={() => editor?.chain().focus().toggleUnderline().run()}
-            className={editor?.isActive('underline') ? 'is-active' : ''}
+            className={`rich-text-button${editor?.isActive('underline') ? ' is-active' : ''}`}
             disabled={inputDisabled || !editor?.isEditable}
           >
             U
-          </button>
-          {/* Add Ordered List button */}
-          <button
-            type="button"
+          </Button>
+          <Button
             aria-label="Ordered List"
             title="Ordered List"
             onClick={() => editor?.chain().focus().toggleOrderedList().run()}
-            className={editor?.isActive('orderedList') ? 'is-active' : ''}
+            className={`rich-text-button${editor?.isActive('orderedList') ? ' is-active' : ''}`}
             disabled={inputDisabled || !editor?.isEditable}
           >
-            OL
-          </button>
-          {/* Add Bullet List button */}
-          <button
-            type="button"
+            <img src="/numbered-list.svg" alt="numbered list icon" />
+          </Button>
+          <Button
             aria-label="Bullet List"
             title="Bullet List"
             onClick={() => editor?.chain().focus().toggleBulletList().run()}
-            className={editor?.isActive('bulletList') ? 'is-active' : ''}
+            className={`rich-text-button${editor?.isActive('bulletList') ? ' is-active' : ''}`}
             disabled={inputDisabled || !editor?.isEditable}
           >
-            UL
-          </button>
+            <img src="/bullet-list.svg" alt="bulleted list icon" />
+          </Button>
+          <IconButton
+            aria-label="Link"
+            title="Link"
+            icon="link"
+            onClick={handleLinkClick}
+            className={`rich-text-button${editor?.isActive('link') ? ' is-active' : ''}`}
+            disabled={inputDisabled || !editor?.isEditable}
+          />
         </div>
 
         <EditorContent

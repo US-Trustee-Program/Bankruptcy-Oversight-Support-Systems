@@ -11,6 +11,7 @@
     "@okta/okta-auth-js": "^7.12.1",
     "@okta/okta-react": "^6.10.0",
     "@tiptap/extension-history": "^2.25.1",
+    "@tiptap/extension-link": "^2.26.0",
     "@tiptap/extension-task-item": "^2.25.1",
     "@tiptap/extension-task-list": "^2.25.1",
     "@tiptap/extension-text-align": "^2.25.1",
