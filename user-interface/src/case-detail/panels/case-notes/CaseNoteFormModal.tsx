@@ -178,7 +178,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     });
   }
 
-  function handleRichTextContentChange(value: string) {
+  function handleTiptapContentChange(value: string) {
     saveFormData({
       caseId: modalOpenOptions.caseId,
       title: getCaseNotesTitleValue(titleInputRef.current),
