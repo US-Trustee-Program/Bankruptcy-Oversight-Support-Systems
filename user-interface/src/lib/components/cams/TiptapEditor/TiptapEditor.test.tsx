@@ -31,9 +31,22 @@ interface MockEditor {
       toggleOrderedList: (...args: unknown[]) => { run: (...args: unknown[]) => void };
       toggleBulletList: (...args: unknown[]) => { run: (...args: unknown[]) => void };
       toggleLink: (...args: unknown[]) => { run: (...args: unknown[]) => void };
+      insertContent: (...args: unknown[]) => { run: (...args: unknown[]) => void };
     };
   };
   isActive: (mark: string) => boolean;
+  getAttributes: (type: string) => { href: string; text: string };
+  insertContent: (html: string) => { run: (...args: unknown[]) => void };
+  state: {
+    selection: {
+      empty: boolean;
+      from: number;
+      to: number;
+    };
+    doc: {
+      textBetween: (from: number, to: number, separator: string) => string;
+    };
+  };
 }
 
 // Create mockEditor and its methods outside beforeEach
@@ -61,9 +74,40 @@ const mockEditor: MockEditor = {
       toggleOrderedList: vi.fn(() => ({ run: vi.fn() })),
       toggleBulletList: vi.fn(() => ({ run: vi.fn() })),
       toggleLink: vi.fn(() => ({ run: vi.fn() })),
+      insertContent: vi.fn((...args: unknown[]) => {
+        // Simulate inserting a link for test assertions
+        const html = typeof args[0] === 'string' ? args[0] : '';
+        mockEditor.getHTML.mockReturnValue(`<p>${html}</p>`);
+        // Extract text between > and < for getText
+        const match = html.match(/>(.*?)<\/a>/);
+        mockEditor.getText.mockReturnValue(match ? match[1] : html);
+        return { run: vi.fn() };
+      }),
     })),
   })),
   isActive: vi.fn(() => false),
+  getAttributes: vi.fn((_type: string) => {
+    // Always return an object with href and text as strings
+    return { href: '', text: '' };
+  }),
+  insertContent: vi.fn((html: string) => {
+    // Simulate inserting a link for test assertions
+    mockEditor.getHTML.mockReturnValue(`<p>${html}</p>`);
+    // Extract text between > and < for getText
+    const match = html.match(/>(.*?)<\/a>/);
+    mockEditor.getText.mockReturnValue(match ? match[1] : html);
+    return { run: vi.fn() };
+  }),
+  state: {
+    selection: {
+      empty: true,
+      from: 0,
+      to: 0,
+    },
+    doc: {
+      textBetween: vi.fn((_from: number, _to: number, _separator: string) => ''),
+    },
+  },
 };
 
 interface EditorContentProps {
@@ -475,5 +519,56 @@ describe('TiptapEditor', () => {
     expect(() => ref.current!.setValue('test')).not.toThrow();
     expect(() => ref.current!.clearValue()).not.toThrow();
     expect(() => ref.current!.focus()).not.toThrow();
+  });
+
+  describe('Link popover', () => {
+    test('opens popover when Link button is clicked', async () => {
+      render(<TiptapEditor id="test-editor" />);
+      const linkButton = screen.getByRole('button', { name: /link/i });
+      await userEvent.click(linkButton);
+      expect(screen.getByPlaceholderText('Paste a link...')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('Display text')).toBeInTheDocument();
+    });
+
+    test('applies link with display text', async () => {
+      render(<TiptapEditor id="test-editor" />);
+      const linkButton = screen.getByRole('button', { name: /link/i });
+      await userEvent.click(linkButton);
+      const urlInput = screen.getByPlaceholderText('Paste a link...');
+      const textInput = screen.getByPlaceholderText('Display text');
+      await userEvent.type(urlInput, 'https://example.com');
+      await userEvent.type(textInput, 'Example');
+      const applyButton = screen.getByRole('button', { name: /apply/i });
+      await userEvent.click(applyButton);
+      // The editor should now contain the link HTML
+      expect(mockEditor.getHTML()).toContain('<a href="https://example.com">Example</a>');
+    });
+
+    test('applies link with only URL as display text', async () => {
+      render(<TiptapEditor id="test-editor" />);
+      const linkButton = screen.getByRole('button', { name: /link/i });
+      await userEvent.click(linkButton);
+      const urlInput = screen.getByPlaceholderText('Paste a link...');
+      await userEvent.type(urlInput, 'https://example.com');
+      const applyButton = screen.getByRole('button', { name: /apply/i });
+      await userEvent.click(applyButton);
+      expect(mockEditor.getHTML()).toContain(
+        '<a href="https://example.com">https://example.com</a>',
+      );
+    });
+
+    test('cancel closes popover and does not insert link', async () => {
+      render(<TiptapEditor id="test-editor" />);
+      const linkButton = screen.getByRole('button', { name: /link/i });
+      await userEvent.click(linkButton);
+      const urlInput = screen.getByPlaceholderText('Paste a link...');
+      await userEvent.type(urlInput, 'https://example.com');
+      const cancelButton = screen.getByRole('button', { name: /cancel/i });
+      await userEvent.click(cancelButton);
+      expect(screen.queryByPlaceholderText('Paste a link...')).not.toBeInTheDocument();
+      // Reset the mock HTML after cancel
+      mockEditor.getHTML.mockReturnValue('<p>test content</p>');
+      expect(mockEditor.getHTML()).not.toContain('<a href="https://example.com"');
+    });
   });
 });
