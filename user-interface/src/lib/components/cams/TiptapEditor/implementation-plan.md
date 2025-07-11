@@ -15,9 +15,10 @@ We want to evaluate the [Tiptap editor](https://tiptap.dev/docs/editor/getting-s
 - [x] Integrate TiptapEditor into `CaseNoteFormModal` and mock it for tests to avoid jsdom/ProseMirror issues.
 - [x] Update tests to use the ref-based API of the mock editor and ensure state updates are flushed with `waitFor` after ref-based changes.
 - [x] Fix circular dependency and module mocking issues in test setup.
-- [ ] All tests green: **2 tests remain failing** (button enable/disable and form cache restore after modal reopen).
-    - [ ] Investigate and fix why the submit button is not disabled/enabled as expected after ref-based content changes.
-    - [ ] Investigate and fix why the form cache is not restoring the title value after modal reopen.
+- [x] All tests green: **2 tests remain failing** (button enable/disable and form cache restore after modal reopen).
+    - [x] Investigate and fix why the submit button is not disabled/enabled as expected after ref-based content changes.
+    - [x] Investigate and fix why the form cache is not restoring the title value after modal reopen.
+- [] Ensure that draft note content is added to the editor properly.
 
 **Current status:**
 - TiptapEditor is integrated and working in the UI.

@@ -188,6 +188,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
       title: getCaseNotesTitleValue(titleInputRef.current),
       content: value,
     });
+    console.log(value, Date.now());
   }
 
   function clearCaseNoteForm() {
