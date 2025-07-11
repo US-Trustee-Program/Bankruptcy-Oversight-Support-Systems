@@ -143,6 +143,28 @@ function _TiptapEditor(props: TiptapEditorProps, ref: React.Ref<TiptapEditorRef>
           >
             U
           </button>
+          {/* Add Ordered List button */}
+          <button
+            type="button"
+            aria-label="Ordered List"
+            title="Ordered List"
+            onClick={() => editor?.chain().focus().toggleOrderedList().run()}
+            className={editor?.isActive('orderedList') ? 'is-active' : ''}
+            disabled={inputDisabled || !editor?.isEditable}
+          >
+            OL
+          </button>
+          {/* Add Bullet List button */}
+          <button
+            type="button"
+            aria-label="Bullet List"
+            title="Bullet List"
+            onClick={() => editor?.chain().focus().toggleBulletList().run()}
+            className={editor?.isActive('bulletList') ? 'is-active' : ''}
+            disabled={inputDisabled || !editor?.isEditable}
+          >
+            UL
+          </button>
         </div>
 
         <EditorContent
