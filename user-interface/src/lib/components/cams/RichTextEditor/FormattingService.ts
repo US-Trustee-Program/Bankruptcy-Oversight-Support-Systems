@@ -408,7 +408,7 @@ export class FormattingService {
    */
   private exitFormattingElement(formatElement: Element, range: Range): void {
     // Get the parent of the formatting element
-    const parentElement = formatElement.parentNode;
+    const parentElement = formatElement.parentElement;
     if (!parentElement) {
       return;
     }
@@ -416,10 +416,6 @@ export class FormattingService {
     // Get information about the selection
     const { startOffset } = range;
     const startNode = range.startContainer;
-
-    // First, identify all formatting that should be preserved
-    // These are formats that are applied to the text but aren't the one we're removing
-    const formatsToPreserve = this.getActiveFormatsExcluding(startNode, formatElement);
 
     // Reset lastInsertedFormatElement to avoid conflicts with future typing
     this.lastInsertedFormatElement = null;
@@ -437,46 +433,17 @@ export class FormattingService {
       // Update the text node with just the "before cursor" text
       startNode.textContent = beforeCursor || ZERO_WIDTH_SPACE;
 
-      // Create a container for the after-cursor content with preserved formatting
-      let afterContainer: Node;
+      // Create a text node for the after-cursor content
+      const afterTextNode = document.createTextNode(afterCursor || ZERO_WIDTH_SPACE);
 
-      if (formatsToPreserve.length > 0) {
-        // If there are formats to preserve, create a nested structure
-        afterContainer = this.createNestedFormatStructure(formatsToPreserve);
-        // Replace the zero-width space with the actual content
-        const elementContainer = afterContainer as Element;
-        const textNode =
-          elementContainer.querySelector('span')?.firstChild || afterContainer.firstChild;
-        if (textNode && textNode.nodeType === Node.TEXT_NODE) {
-          textNode.textContent = afterCursor || ZERO_WIDTH_SPACE;
-        }
-      } else {
-        // No formats to preserve, just create a text node
-        afterContainer = document.createTextNode(afterCursor || ZERO_WIDTH_SPACE);
-      }
+      // Insert after the formatting element
+      // Simply insert it to the parent which may already have other formatting
+      // This ensures we don't create redundant formatting elements
+      parentElement.insertBefore(afterTextNode, formatElement.nextSibling);
 
-      // Insert the after content right after the format element
-      parentElement.insertBefore(afterContainer, formatElement.nextSibling);
-
-      // Position the cursor right after the format element
+      // Position the cursor at the beginning of the new text
       const newRange = this.selectionService.createRange();
-
-      // Find the appropriate text node to position cursor in
-      if (afterContainer.nodeType === Node.TEXT_NODE) {
-        newRange.setStart(afterContainer, afterCursor ? 0 : 1);
-      } else {
-        // Find the innermost text node in the structure
-        const walker = this.selectionService.createTreeWalker(
-          afterContainer,
-          NodeFilter.SHOW_TEXT,
-          null,
-        );
-        const textNode = walker.nextNode() as Text;
-        if (textNode) {
-          newRange.setStart(textNode, afterCursor ? 0 : 1);
-        }
-      }
-
+      newRange.setStart(afterTextNode, 0);
       newRange.collapse(true);
       this.selectionService.setSelectionRange(newRange);
 
@@ -484,37 +451,16 @@ export class FormattingService {
     }
 
     // For the case where we're at an element boundary
-    // Create a structure with preserved formatting
-    let afterContainer: Node;
+    // Create a text node with zero-width space
+    const afterTextNode = document.createTextNode(ZERO_WIDTH_SPACE);
 
-    if (formatsToPreserve.length > 0) {
-      afterContainer = this.createNestedFormatStructure(formatsToPreserve);
-    } else {
-      // No formats to preserve, just create a text node with zero-width space
-      afterContainer = document.createTextNode(ZERO_WIDTH_SPACE);
-    }
+    // Insert after the format element within the parent element
+    // which maintains any existing formatting from parent elements
+    parentElement.insertBefore(afterTextNode, formatElement.nextSibling);
 
-    // Insert after the format element
-    parentElement.insertBefore(afterContainer, formatElement.nextSibling);
-
-    // Position cursor appropriately
+    // Position cursor after the zero-width space
     const newRange = this.selectionService.createRange();
-
-    if (afterContainer.nodeType === Node.TEXT_NODE) {
-      newRange.setStart(afterContainer, 1); // After the zero-width space
-    } else {
-      // Find the innermost text node
-      const walker = this.selectionService.createTreeWalker(
-        afterContainer,
-        NodeFilter.SHOW_TEXT,
-        null,
-      );
-      const textNode = walker.nextNode() as Text;
-      if (textNode) {
-        newRange.setStart(textNode, 1); // After the zero-width space
-      }
-    }
-
+    newRange.setStart(afterTextNode, 1);
     newRange.collapse(true);
     this.selectionService.setSelectionRange(newRange);
   }
