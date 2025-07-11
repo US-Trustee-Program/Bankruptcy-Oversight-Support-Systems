@@ -16,6 +16,7 @@ import LocalFormCache from '@/lib/utils/local-form-cache';
 import RichTextEditor, {
   RichTextEditorRef,
 } from '@/lib/components/cams/RichTextEditor/RichTextEditor';
+import { TiptapEditor, TiptapEditorRef } from '@/lib/components/cams/TiptapEditor';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
 import useFeatureFlags, { FORMAT_CASE_NOTES } from '@/lib/hooks/UseFeatureFlags';
 import TextArea from '@/lib/components/uswds/TextArea';
@@ -49,6 +50,10 @@ export function getCaseNotesContentValue(ref: InputRef | null) {
 }
 
 export function getCaseNotesRichTextContentValue(ref: RichTextEditorRef | null) {
+  return ref?.getHtml() ?? '';
+}
+
+export function getCaseNotesTiptapContentValue(ref: TiptapEditorRef | null) {
   return ref?.getHtml() ?? '';
 }
 
@@ -123,6 +128,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   const session = LocalStorage.getSession();
 
   const richTextContentInputRef = useRef<RichTextEditorRef>(null);
+  const tiptapContentInputRef = useRef<TiptapEditorRef>(null);
 
   function disableSubmitButton(disable: boolean) {
     const buttons = modalRef.current?.buttons;
@@ -136,7 +142,8 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
       let currentContent = contentInputRef.current?.getValue();
       let currentTitle = titleInputRef.current?.getValue();
       if (featureFlags[FORMAT_CASE_NOTES]) {
-        currentContent = richTextContentInputRef.current?.getHtml();
+        // For now, we'll use the Tiptap editor content
+        currentContent = tiptapContentInputRef.current?.getHtml();
         currentTitle = titleInputRef.current?.getValue();
       }
       const notSavable =
@@ -173,7 +180,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     });
   }
 
-  function handleRichTextContentChange(value: string) {
+  function handleTiptapContentChange(value: string) {
     saveFormData({
       caseId: modalOpenOptions.caseId,
       title: getCaseNotesTitleValue(titleInputRef.current),
@@ -184,7 +191,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   function clearCaseNoteForm() {
     titleInputRef.current?.clearValue();
     if (featureFlags[FORMAT_CASE_NOTES]) {
-      richTextContentInputRef.current?.clearValue();
+      tiptapContentInputRef.current?.clearValue();
     } else {
       contentInputRef.current?.clearValue();
     }
@@ -198,7 +205,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   function disableFormFields(disabled: boolean) {
     titleInputRef.current?.disable(disabled);
     if (featureFlags[FORMAT_CASE_NOTES]) {
-      richTextContentInputRef.current?.disable(disabled);
+      tiptapContentInputRef.current?.disable(disabled);
     } else {
       contentInputRef.current?.disable(disabled);
     }
@@ -267,7 +274,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     let content = getCaseNotesContentValue(contentInputRef.current);
     if (featureFlags[FORMAT_CASE_NOTES]) {
       title = getCaseNotesTitleValue(titleInputRef.current);
-      content = getCaseNotesRichTextContentValue(richTextContentInputRef.current);
+      content = getCaseNotesTiptapContentValue(tiptapContentInputRef.current);
     }
 
     if (mode === 'create' && session?.user) {
@@ -325,7 +332,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
       titleInputRef.current?.setValue(showProps.title ?? '');
 
       if (featureFlags[FORMAT_CASE_NOTES]) {
-        richTextContentInputRef.current?.setValue(showProps.content ?? '');
+        tiptapContentInputRef.current?.setValue(showProps.content ?? '');
       } else {
         contentInputRef.current?.setValue(showProps.content ?? '');
       }
@@ -393,13 +400,24 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
             ref={titleInputRef}
           />
           {featureFlags[FORMAT_CASE_NOTES] ? (
-            <RichTextEditor
-              id="case-note-formatted-editor"
-              label="Note Text"
-              required={true}
-              onChange={handleRichTextContentChange}
-              ref={richTextContentInputRef}
-            />
+            <>
+              <h3>DIY</h3>
+              <RichTextEditor
+                id="case-note-formatted-editor"
+                label="Note Text"
+                required={true}
+                onChange={handleTiptapContentChange}
+                ref={richTextContentInputRef}
+              />
+              <h3>Tiptap</h3>
+              <TiptapEditor
+                id="case-note-tiptap-editor"
+                label="Note Text"
+                required={true}
+                onChange={handleTiptapContentChange}
+                ref={tiptapContentInputRef}
+              />
+            </>
           ) : (
             <TextArea
               id="note-content"

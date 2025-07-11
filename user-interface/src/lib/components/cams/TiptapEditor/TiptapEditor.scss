@@ -1,0 +1,49 @@
+.tiptap-editor-container {
+  .tiptap-editor-wrapper {
+    border: 1px solid #565c65;
+    border-radius: 0.25rem;
+    min-height: 120px;
+
+    .tiptap-editor {
+      padding: 0.75rem;
+      min-height: 120px;
+      outline: none;
+
+      &.disabled {
+        background-color: #f0f0f0;
+        color: #565c65;
+        cursor: not-allowed;
+      }
+
+      // Basic content styling
+      p {
+        margin: 0 0 0.5rem 0;
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+      }
+
+      ul, ol {
+        margin: 0.5rem 0;
+        padding-left: 1.5rem;
+      }
+
+      li {
+        margin: 0.25rem 0;
+      }
+
+      strong {
+        font-weight: bold;
+      }
+
+      em {
+        font-style: italic;
+      }
+
+      u {
+        text-decoration: underline;
+      }
+    }
+  }
+}
