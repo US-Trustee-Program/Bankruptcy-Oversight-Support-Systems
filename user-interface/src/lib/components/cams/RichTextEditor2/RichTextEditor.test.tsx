@@ -22,11 +22,11 @@ describe('RichTextEditor', () => {
       expect(editorElement).toBeInTheDocument();
 
       // When: User types a character
-      await user.click(editorElement);
       await user.type(editorElement, 'H');
 
       // Then: The character should be rendered in the editor content
       expect(editorElement).toHaveTextContent('H');
+      expect(editorElement.innerHTML).toEqual('<p>H</p>');
     });
 
     test('should capture and render multiple typed characters', async () => {
@@ -37,11 +37,11 @@ describe('RichTextEditor', () => {
       const editorElement = screen.getByTestId('test-editor');
 
       // When: User types multiple characters
-      await user.click(editorElement);
       await user.type(editorElement, 'Hello');
 
       // Then: All characters should be rendered in the editor content
       expect(editorElement).toHaveTextContent('Hello');
+      expect(editorElement.innerHTML).toEqual('<p>Hello</p>');
     });
 
     test('should handle backspace key events', async () => {
@@ -50,7 +50,6 @@ describe('RichTextEditor', () => {
       render(<RichTextEditor id="test-editor" label="Test Editor" ref={editorRef} />);
 
       const editorElement = screen.getByTestId('test-editor');
-      await user.click(editorElement);
       await user.type(editorElement, 'Hello');
 
       // When: User presses backspace
@@ -58,6 +57,7 @@ describe('RichTextEditor', () => {
 
       // Then: The last character should be removed
       expect(editorElement).toHaveTextContent('Hell');
+      expect(editorElement.innerHTML).toEqual('<p>Hell</p>');
     });
 
     test('should handle enter key events', async () => {
@@ -66,16 +66,16 @@ describe('RichTextEditor', () => {
       render(<RichTextEditor id="test-editor" label="Test Editor" ref={editorRef} />);
 
       const editorElement = screen.getByTestId('test-editor');
-      await user.click(editorElement);
       await user.type(editorElement, 'First line');
 
       // When: User presses enter
       await user.keyboard('{Enter}');
-      await user.type(editorElement, 'Second line');
+      await user.keyboard('Second line');
 
       // Then: Content should be on separate lines
       expect(editorElement.innerHTML).toContain('First line');
       expect(editorElement.innerHTML).toContain('Second line');
+      expect(editorElement.innerHTML).toEqual('<p>First line</p><p>Second line</p>');
     });
 
     test('should handle cursor positioning and text insertion at cursor position', async () => {
@@ -84,9 +84,8 @@ describe('RichTextEditor', () => {
       render(<RichTextEditor id="test-editor" label="Test Editor" ref={editorRef} />);
 
       const editorElement = screen.getByTestId('test-editor');
-      await user.click(editorElement);
 
-      // When: User types a two word sentence
+      // When: User types a two-word sentence
       await user.type(editorElement, 'Hello world');
 
       // Then: The sentence should be rendered in the component
@@ -98,10 +97,11 @@ describe('RichTextEditor', () => {
       await user.keyboard('{ArrowLeft}{ArrowLeft}{ArrowLeft}{ArrowLeft}{ArrowLeft}');
 
       // And: User types a third word between the first two words
-      await user.type(editorElement, 'beautiful ');
+      await user.keyboard('beautiful ');
 
-      // Then: The three word sentence should be rendered
+      // Then: The three-word sentence should be rendered
       expect(editorElement).toHaveTextContent('Hello beautiful world');
+      expect(editorElement.innerHTML).toEqual('<p>Hello beautiful world</p>');
     });
 
     test('should handle cursor positioning with mouse click and text insertion at cursor position', async () => {
@@ -110,9 +110,8 @@ describe('RichTextEditor', () => {
       render(<RichTextEditor id="test-editor" label="Test Editor" ref={editorRef} />);
 
       const editorElement = screen.getByTestId('test-editor');
-      await user.click(editorElement);
 
-      // When: User types a two word sentence
+      // When: User types a two-word sentence
       await user.type(editorElement, 'Hello world');
 
       // Then: The sentence should be rendered in the component
@@ -121,20 +120,19 @@ describe('RichTextEditor', () => {
       // When: User clicks between the two words to position cursor
       // We'll simulate clicking at the position between "Hello" and "world"
       // For testing purposes, we'll click at a specific position in the element
-      const rect = editorElement.getBoundingClientRect();
-      const clickX = rect.left + rect.width * 0.5; // Click roughly in the middle
-      const clickY = rect.top + rect.height * 0.5;
+      const paragraph = editorElement.children[0];
       await user.pointer({
         keys: '[MouseLeft]',
-        target: editorElement,
-        coords: { x: clickX, y: clickY },
+        target: paragraph,
+        offset: 6,
       });
 
       // And: User types a third word between the first two words
-      await user.type(editorElement, 'beautiful ');
+      await user.keyboard('beautiful ');
 
-      // Then: The three word sentence should be rendered
+      // Then: The three-word sentence should be rendered
       expect(editorElement).toHaveTextContent('Hello beautiful world');
+      expect(editorElement.innerHTML).toEqual('<p>Hello beautiful world</p>');
     });
   });
 
