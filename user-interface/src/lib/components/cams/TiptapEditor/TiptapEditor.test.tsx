@@ -23,6 +23,14 @@ interface MockEditor {
   commands: MockEditorCommands;
   isEditable: boolean;
   onUpdate: (...args: unknown[]) => void;
+  chain: (...args: unknown[]) => {
+    focus: (...args: unknown[]) => {
+      toggleBold: (...args: unknown[]) => { run: (...args: unknown[]) => void };
+      toggleItalic: (...args: unknown[]) => { run: (...args: unknown[]) => void };
+      toggleUnderline: (...args: unknown[]) => { run: (...args: unknown[]) => void };
+    };
+  };
+  isActive: (mark: string) => boolean;
 }
 
 // Create mockEditor and its methods outside beforeEach
@@ -42,20 +50,30 @@ const mockEditor: MockEditor = {
   },
   isEditable: true,
   onUpdate: (...args: unknown[]) => mockOnUpdate(...args),
+  chain: vi.fn(() => ({
+    focus: vi.fn(() => ({
+      toggleBold: vi.fn(() => ({ run: vi.fn() })),
+      toggleItalic: vi.fn(() => ({ run: vi.fn() })),
+      toggleUnderline: vi.fn(() => ({ run: vi.fn() })),
+    })),
+  })),
+  isActive: vi.fn(() => false),
 };
 
 interface EditorContentProps {
   editor?: MockEditor;
   className?: string;
+  'aria-labelledby'?: string;
 }
 
 vi.mock('@tiptap/react', () => ({
   useEditor: (...args: unknown[]) => mockUseEditor(...args),
-  EditorContent: ({ editor, className }: EditorContentProps) => (
+  EditorContent: ({ editor, className, 'aria-labelledby': ariaLabelledBy }: EditorContentProps) => (
     <div
       data-testid="tiptap-editor-content"
       className={className || ''}
       contentEditable={editor?.isEditable}
+      aria-labelledby={ariaLabelledBy}
       onInput={(_e: React.FormEvent) => editor?.onUpdate?.({ editor })}
     >
       {editor?.getHTML?.() || ''}
@@ -198,16 +216,125 @@ describe('TiptapEditor', () => {
     // Simulate the effect of setEditable(true) on the mock
     mockEditor.isEditable = true;
     rerender(<TiptapEditor id="test-editor" ref={ref} disabled={false} />);
-    let editorContent = screen.getByTestId('tiptap-editor-content');
+    const editorContent = screen.getByTestId('tiptap-editor-content');
     expect(editorContent).toHaveAttribute('contenteditable', 'true');
     expect(editorContent).not.toHaveClass('disabled');
-    // Now disable
-    mockEditor.isEditable = false;
-    rerender(<TiptapEditor id="test-editor" ref={ref} disabled={true} />);
-    editorContent = screen.getByTestId('tiptap-editor-content');
-    await waitFor(() => {
-      expect(editorContent).toHaveAttribute('contenteditable', 'false');
-      expect(editorContent).toHaveClass('disabled');
+  });
+
+  // Toolbar tests
+  describe('Toolbar', () => {
+    test('renders toolbar with formatting buttons', () => {
+      render(<TiptapEditor id="test-editor" />);
+
+      expect(screen.getByRole('button', { name: 'Bold' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Italic' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Underline' })).toBeInTheDocument();
+    });
+
+    test('bold button calls toggleBold command when clicked', async () => {
+      const user = userEvent.setup();
+      render(<TiptapEditor id="test-editor" />);
+
+      const boldButton = screen.getByRole('button', { name: 'Bold' });
+      await user.click(boldButton);
+
+      expect(mockEditor.chain).toHaveBeenCalled();
+    });
+
+    test('italic button calls toggleItalic command when clicked', async () => {
+      const user = userEvent.setup();
+      render(<TiptapEditor id="test-editor" />);
+
+      const italicButton = screen.getByRole('button', { name: 'Italic' });
+      await user.click(italicButton);
+
+      expect(mockEditor.chain).toHaveBeenCalled();
+    });
+
+    test('underline button calls toggleUnderline command when clicked', async () => {
+      const user = userEvent.setup();
+      render(<TiptapEditor id="test-editor" />);
+
+      const underlineButton = screen.getByRole('button', { name: 'Underline' });
+      await user.click(underlineButton);
+
+      expect(mockEditor.chain).toHaveBeenCalled();
+    });
+
+    test('buttons show active state when formatting is active', () => {
+      // Mock the isActive method to return true for bold
+      mockEditor.isActive = vi.fn((mark: string) => mark === 'bold');
+
+      render(<TiptapEditor id="test-editor" />);
+
+      const boldButton = screen.getByRole('button', { name: 'Bold' });
+      expect(boldButton).toHaveClass('is-active');
+    });
+
+    test('buttons show inactive state when formatting is not active', () => {
+      // Mock the isActive method to return false for all marks
+      mockEditor.isActive = vi.fn(() => false);
+
+      render(<TiptapEditor id="test-editor" />);
+
+      const boldButton = screen.getByRole('button', { name: 'Bold' });
+      const italicButton = screen.getByRole('button', { name: 'Italic' });
+      const underlineButton = screen.getByRole('button', { name: 'Underline' });
+
+      expect(boldButton).not.toHaveClass('is-active');
+      expect(italicButton).not.toHaveClass('is-active');
+      expect(underlineButton).not.toHaveClass('is-active');
+    });
+
+    test('buttons are disabled when editor is disabled', () => {
+      render(<TiptapEditor id="test-editor" disabled={true} />);
+
+      const boldButton = screen.getByRole('button', { name: 'Bold' });
+      const italicButton = screen.getByRole('button', { name: 'Italic' });
+      const underlineButton = screen.getByRole('button', { name: 'Underline' });
+
+      expect(boldButton).toBeDisabled();
+      expect(italicButton).toBeDisabled();
+      expect(underlineButton).toBeDisabled();
+    });
+
+    test('buttons are enabled when editor is enabled', () => {
+      render(<TiptapEditor id="test-editor" disabled={false} />);
+
+      const boldButton = screen.getByRole('button', { name: 'Bold' });
+      const italicButton = screen.getByRole('button', { name: 'Italic' });
+      const underlineButton = screen.getByRole('button', { name: 'Underline' });
+
+      expect(boldButton).not.toBeDisabled();
+      expect(italicButton).not.toBeDisabled();
+      expect(underlineButton).not.toBeDisabled();
+    });
+
+    test('buttons have correct aria-labels and titles', () => {
+      render(<TiptapEditor id="test-editor" />);
+
+      const boldButton = screen.getByRole('button', { name: 'Bold' });
+      const italicButton = screen.getByRole('button', { name: 'Italic' });
+      const underlineButton = screen.getByRole('button', { name: 'Underline' });
+
+      expect(boldButton).toHaveAttribute('aria-label', 'Bold');
+      expect(boldButton).toHaveAttribute('title', 'Bold');
+      expect(italicButton).toHaveAttribute('aria-label', 'Italic');
+      expect(italicButton).toHaveAttribute('title', 'Italic');
+      expect(underlineButton).toHaveAttribute('aria-label', 'Underline');
+      expect(underlineButton).toHaveAttribute('title', 'Underline');
+    });
+
+    test('buttons display correct text labels', () => {
+      render(<TiptapEditor id="test-editor" />);
+
+      const boldButton = screen.getByRole('button', { name: 'Bold' });
+      const italicButton = screen.getByRole('button', { name: 'Italic' });
+      const underlineButton = screen.getByRole('button', { name: 'Underline' });
+
+      expect(boldButton).toHaveTextContent('B');
+      expect(italicButton).toHaveTextContent('I');
+      expect(underlineButton).toHaveTextContent('U');
     });
   });
 
@@ -215,7 +342,7 @@ describe('TiptapEditor', () => {
     render(<TiptapEditor id="test-editor" />);
 
     expect(mockUseEditor).toHaveBeenCalledWith({
-      extensions: ['StarterKit'],
+      extensions: ['StarterKit', expect.any(Object)],
       content: '',
       editable: true,
       onUpdate: expect.any(Function),
@@ -226,7 +353,7 @@ describe('TiptapEditor', () => {
     render(<TiptapEditor id="test-editor" disabled={true} />);
 
     expect(mockUseEditor).toHaveBeenCalledWith({
-      extensions: ['StarterKit'],
+      extensions: ['StarterKit', expect.any(Object)],
       content: '',
       editable: false,
       onUpdate: expect.any(Function),

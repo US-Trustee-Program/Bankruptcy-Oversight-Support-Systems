@@ -4,6 +4,45 @@
     border-radius: 0.25rem;
     min-height: 120px;
 
+    .tiptap-editor-toolbar {
+      display: flex;
+      gap: 0.25rem;
+      padding: 0.5rem;
+      border-bottom: 1px solid #e0e0e0;
+      background-color: #f8f9fa;
+      flex-wrap: wrap;
+
+      button {
+        font-weight: bold;
+        min-width: 2.5rem;
+        padding: 0.5rem;
+        margin-right: 0;
+        border: 1px solid #ccc;
+        background-color: white;
+        border-radius: 0.25rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:hover:not(:disabled) {
+          background-color: #e9ecef;
+          border-color: #adb5bd;
+        }
+
+        &.is-active {
+          background-color: #0071bc;
+          color: white;
+          border-color: #0071bc;
+        }
+
+        &:disabled {
+          background-color: #f0f0f0;
+          color: #565c65;
+          cursor: not-allowed;
+          border-color: #ccc;
+        }
+      }
+    }
+
     .tiptap-editor {
       padding: 0.75rem;
       min-height: 120px;
