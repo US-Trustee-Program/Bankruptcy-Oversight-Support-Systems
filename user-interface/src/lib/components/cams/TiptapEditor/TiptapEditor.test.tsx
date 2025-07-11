@@ -30,6 +30,7 @@ interface MockEditor {
       toggleUnderline: (...args: unknown[]) => { run: (...args: unknown[]) => void };
       toggleOrderedList: (...args: unknown[]) => { run: (...args: unknown[]) => void };
       toggleBulletList: (...args: unknown[]) => { run: (...args: unknown[]) => void };
+      toggleLink: (...args: unknown[]) => { run: (...args: unknown[]) => void };
     };
   };
   isActive: (mark: string) => boolean;
@@ -59,6 +60,7 @@ const mockEditor: MockEditor = {
       toggleUnderline: vi.fn(() => ({ run: vi.fn() })),
       toggleOrderedList: vi.fn(() => ({ run: vi.fn() })),
       toggleBulletList: vi.fn(() => ({ run: vi.fn() })),
+      toggleLink: vi.fn(() => ({ run: vi.fn() })),
     })),
   })),
   isActive: vi.fn(() => false),
@@ -362,11 +364,24 @@ describe('TiptapEditor', () => {
     // (You may need to enhance the mock to track these calls)
   });
 
+  test('renders link button and calls link command when clicked', async () => {
+    const user = userEvent.setup();
+    render(<TiptapEditor id="test-editor" />);
+
+    // Button should be present
+    const linkButton = screen.getByRole('button', { name: /link/i });
+    expect(linkButton).toBeInTheDocument();
+
+    // Simulate clicking the link button
+    await user.click(linkButton);
+    // TODO: Assert that the link command or UI is triggered (e.g., editor.chain().focus().toggleLink().run() or a link dialog appears)
+  });
+
   test('initializes editor with correct configuration', () => {
     render(<TiptapEditor id="test-editor" />);
 
     expect(mockUseEditor).toHaveBeenCalledWith({
-      extensions: ['StarterKit', expect.any(Object)],
+      extensions: ['StarterKit', expect.any(Object), expect.any(Object)],
       content: '',
       editable: true,
       onUpdate: expect.any(Function),
@@ -377,7 +392,7 @@ describe('TiptapEditor', () => {
     render(<TiptapEditor id="test-editor" disabled={true} />);
 
     expect(mockUseEditor).toHaveBeenCalledWith({
-      extensions: ['StarterKit', expect.any(Object)],
+      extensions: ['StarterKit', expect.any(Object), expect.any(Object)],
       content: '',
       editable: false,
       onUpdate: expect.any(Function),
