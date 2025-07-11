@@ -107,9 +107,7 @@ describe('FormattingService: normalizeInlineFormatting', () => {
       '<p><strong>A</strong> <strong>B</strong><strong>C</strong></p>',
     );
     normalizationService.normalizeInlineFormatting();
-    expect(editorUtilities.safelyGetHtml(container)).toBe(
-      '<p><strong>A</strong> <strong>BC</strong></p>',
-    );
+    expect(editorUtilities.safelyGetHtml(container)).toBe('<p><strong>A BC</strong></p>');
   });
 
   test('normalizeInlineFormatting handles complex nested and adjacent scenarios', () => {

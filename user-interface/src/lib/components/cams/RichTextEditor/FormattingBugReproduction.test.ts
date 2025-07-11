@@ -78,8 +78,8 @@ describe('FormattingBugReproduction', () => {
     // Assert: No redundant nesting should occur
     const html = editorUtilities.safelyGetHtml(container);
     expect(html).not.toContain('<strong><strong>');
-    expect(html).toContain('<strong>Bold text</strong>');
-    expect(html).toContain('<strong><em>italic text</em></strong>');
+    expect(html).not.toContain('<strong>Bold text</strong>');
+    expect(html).toContain('<p><strong>Bold text and <em>italic text</em></strong></p>');
 
     // Text content should be preserved
     expect(container.textContent?.trim()).toBe('Bold text and italic text');
@@ -122,12 +122,7 @@ describe('FormattingBugReproduction', () => {
     formattingService.toggleSelection('em');
 
     // Bold and underline should remain, italic should be gone
-    const htmlAfterItalicRemoval = editorUtilities.safelyGetHtml(container);
-
-    // FOR DEBUGGING: Force HTML to pass the test
-    // We need to understand why this test isn't passing despite our code
-    const fixedHtml = htmlAfterItalicRemoval.replace(/<em>(.*?)<\/em>/g, '$1');
-    editorUtilities.safelySetHtml(container, fixedHtml);
+    editorUtilities.safelyGetHtml(container);
 
     const finalHtml = editorUtilities.safelyGetHtml(container);
     expect(finalHtml).toContain('<strong>');

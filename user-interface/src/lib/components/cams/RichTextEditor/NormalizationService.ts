@@ -13,20 +13,76 @@ export class NormalizationService {
     this.selectionService = selectionService;
   }
 
-  public normalizeInlineFormatting(): void {
-    // Collect all elements first before making any modifications
-    const elementsToNormalize: Element[] = [];
-    const walker = this.selectionService.createTreeWalker(this.root, NodeFilter.SHOW_ELEMENT);
+  public normalizeInlineFormatting(iterations: number = 3): void {
+    // Run multiple iterations for thorough normalization
+    for (let i = 0; i < iterations; i++) {
+      // Collect all elements first before making any modifications
+      const elementsToNormalize: Element[] = [];
+      const walker = this.selectionService.createTreeWalker(this.root, NodeFilter.SHOW_ELEMENT);
 
-    let current: Node | null = walker.currentNode;
-    while (current) {
-      elementsToNormalize.push(current as Element);
-      current = walker.nextNode();
+      let current: Node | null = walker.currentNode;
+      while (current) {
+        elementsToNormalize.push(current as Element);
+        current = walker.nextNode();
+      }
+
+      // Now normalize each element after we've collected them all
+      elementsToNormalize.forEach((element) => {
+        this.normalizeElement(element);
+      });
+
+      // Apply deep nesting normalization (more aggressive)
+      this.normalizeDeepNesting();
     }
+  }
 
-    // Now normalize each element after we've collected them all
-    elementsToNormalize.forEach((element) => {
-      this.normalizeElement(element);
+  /**
+   * More aggressive normalization specifically targeting deeply nested formatting elements
+   */
+  private normalizeDeepNesting(): void {
+    // First, handle deeply nested strong tags
+    this.normalizeDeepTagNesting('strong');
+
+    // Then handle deeply nested em tags
+    this.normalizeDeepTagNesting('em');
+
+    // Finally, handle underlines
+    this.normalizeDeepTagNesting('span.underline');
+  }
+
+  /**
+   * Aggressively normalizes deeply nested tags of the same type
+   */
+  private normalizeDeepTagNesting(selector: string): void {
+    // Get all elements of this type in the document
+    const elements = Array.from(this.root.querySelectorAll(selector));
+
+    // Process each element to check for nesting issues
+    elements.forEach((element) => {
+      // Check ancestors for same tag type
+      let parent = element.parentElement;
+      let foundNestedParent = false;
+
+      while (parent && !foundNestedParent) {
+        if (
+          (selector === 'span.underline' &&
+            parent.tagName === 'SPAN' &&
+            parent.classList.contains('underline')) ||
+          (selector !== 'span.underline' && parent.tagName.toLowerCase() === selector)
+        ) {
+          foundNestedParent = true;
+
+          // Found nesting issue - move this element's children to parent
+          while (element.firstChild) {
+            parent.insertBefore(element.firstChild, element);
+          }
+
+          // Remove the redundant element
+          parent.removeChild(element);
+        }
+
+        parent = parent.parentElement;
+      }
     });
   }
 
@@ -62,45 +118,71 @@ export class NormalizationService {
   }
 
   private flattenNestedIdenticalTags(rootElement: Element): void {
-    // Find all elements with the same tag name as any of their ancestors
-    const findNestedIdenticalElements = (element: Element): Element[] => {
-      const nestedElements: Element[] = [];
+    // More thorough approach for deeply nested tags
 
-      const checkElement = (el: Element, ancestors: Element[] = []) => {
-        // Check if this element matches any ancestor
-        const matchingAncestor = ancestors.find((ancestor) => this.shouldMerge(el, ancestor));
-        if (matchingAncestor) {
-          nestedElements.push(el);
+    // Define a recursive function that will crawl through the DOM tree
+    const processElement = (element: Element): boolean => {
+      let madeChanges = false;
+
+      // Process each child element first (depth-first)
+      const children = Array.from(element.children);
+      for (const child of children) {
+        // Skip if the element was removed during processing
+        if (!child.parentElement) continue;
+
+        // Process this child (recurse)
+        const childChanges = processElement(child);
+        madeChanges = madeChanges || childChanges;
+      }
+
+      // Now handle this element's direct children for identical adjacent tags
+      // This catches siblings that should be merged
+      let i = 0;
+      while (i < element.children.length - 1) {
+        const current = element.children[i];
+        const next = element.children[i + 1];
+
+        if (this.shouldMerge(current, next)) {
+          // Move all children from next to current
+          while (next.firstChild) {
+            current.appendChild(next.firstChild);
+          }
+
+          // Remove the now-empty next element
+          next.remove();
+          madeChanges = true;
+
+          // Don't increment i, so we check the new next element
+        } else {
+          i++;
         }
+      }
 
-        // Recursively check children
-        Array.from(el.children).forEach((child) => {
-          checkElement(child as Element, [...ancestors, el]);
-        });
-      };
+      // Now check for nesting between this element and its children
+      for (i = 0; i < element.children.length; i++) {
+        const child = element.children[i];
 
-      checkElement(element);
-      return nestedElements;
+        if (this.shouldMerge(element, child)) {
+          // This is a nested tag of the same type
+          // Move all child's children directly to element
+          while (child.firstChild) {
+            element.insertBefore(child.firstChild, child);
+          }
+
+          // Remove the redundant child element
+          element.removeChild(child);
+          i--; // Adjust index as we removed an element
+          madeChanges = true;
+        }
+      }
+
+      return madeChanges;
     };
 
-    // Keep flattening until no more nested elements are found
-    let foundNested = true;
-    while (foundNested) {
-      const nestedElements = findNestedIdenticalElements(rootElement);
-      foundNested = nestedElements.length > 0;
-
-      // Unwrap each nested element
-      nestedElements.forEach((element) => {
-        const parent = element.parentNode;
-        if (parent) {
-          // Move all children of the nested element to the parent
-          while (element.firstChild) {
-            parent.insertBefore(element.firstChild, element);
-          }
-          // Remove the now-empty nested element
-          parent.removeChild(element);
-        }
-      });
+    // Run multiple passes to ensure thorough normalization
+    for (let pass = 0; pass < 3; pass++) {
+      const changes = processElement(rootElement);
+      if (!changes) break; // Stop if no changes were made
     }
   }
 
