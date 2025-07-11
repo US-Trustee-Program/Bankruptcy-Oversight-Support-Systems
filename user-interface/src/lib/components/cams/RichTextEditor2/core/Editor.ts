@@ -271,17 +271,6 @@ export class Editor {
     const result = this.fsm.processCommand(command, this.state);
     event.preventDefault();
 
-    // Debug logging
-    console.log('FSM result:', {
-      command: command.type,
-      payload: command.payload,
-      didChange: result.didChange,
-      oldSelection: this.state.selection,
-      newSelection: result.newSelection,
-      oldVDOM: this.state.vdom.map((n) => ({ type: n.type, content: n.content })),
-      newVDOM: result.newVDOM.map((n) => ({ type: n.type, content: n.content })),
-    });
-
     this.handleFSMResult(result);
 
     // Return true to indicate we handled the event
@@ -371,11 +360,6 @@ export class Editor {
       console.log('Sending command to FSM:', command);
 
       const result = this.fsm.processCommand(command, this.state);
-      console.log('FSM result received:', {
-        didChange: result.didChange,
-        newVDOM: result.newVDOM,
-        selectionChanged: result.newSelection !== this.state.selection,
-      });
 
       this.handleFSMResult(result);
     }

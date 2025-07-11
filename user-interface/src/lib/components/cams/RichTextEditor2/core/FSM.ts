@@ -7,7 +7,7 @@ import {
   FormatStateValue,
   VDOMPosition,
 } from './types';
-import { toggleBold } from './model/VDOMFormatting';
+import { toggleBoldSimple } from './model/VDOMFormattingSimple';
 import { deleteContentWithCleanup, insertTextWithFormatting } from './model/VDOMMutations';
 import { ZERO_WIDTH_SPACE } from '../RichTextEditor.constants';
 import { getFormattingAtSelection } from './model/VDOMSelection';
@@ -24,48 +24,53 @@ export class FSM {
   processCommand(command: EditorCommand, currentState: EditorState): FSMResult {
     console.log('FSM.processCommand called with command type:', command.type);
 
+    let result;
+
     switch (command.type) {
       case 'SET_SELECTION':
         // TODO: Make sure the payload is typed as VDOMSelection when the command is to set selection. Remove the type cast.
-        return this.handleSetSelection(command.payload as VDOMSelection, currentState);
+        result = this.handleSetSelection(command.payload as VDOMSelection, currentState);
+        break;
 
       case 'INSERT_TEXT':
         // TODO: Make sure the payload is typed as string when the command is to insert text. Remove the type cast.
-        return this.handleInsertText(command.payload as string, currentState);
+        result = this.handleInsertText(command.payload as string, currentState);
+        break;
 
       case 'BACKSPACE':
-        return this.handleBackspace(currentState);
+        result = this.handleBackspace(currentState);
+        break;
 
       case 'ENTER_KEY':
-        return this.handleEnterKey(currentState);
+        result = this.handleEnterKey(currentState);
+        break;
 
       case 'MOVE_CURSOR_LEFT':
-        return this.handleMoveCursorLeft(currentState);
+        result = this.handleMoveCursorLeft(currentState);
+        break;
 
       case 'MOVE_CURSOR_RIGHT':
-        return this.handleMoveCursorRight(currentState);
+        result = this.handleMoveCursorRight(currentState);
+        break;
 
-      case 'MOVE_CURSOR_UP':
-      case 'MOVE_CURSOR_DOWN':
-        // For now, up/down movement is not implemented
-        return {
-          newVDOM: currentState.vdom,
-          newSelection: currentState.selection,
-          didChange: false,
-          isPersistent: false,
-        };
       case 'TOGGLE_BOLD':
-        return this.handleToggleBold(currentState);
+        result = this.handleToggleBold(currentState);
+        break;
 
       default:
         // For unhandled commands, return current state unchanged
-        return {
+        result = {
           newVDOM: currentState.vdom,
           newSelection: currentState.selection,
           didChange: false,
           isPersistent: false,
         };
+        break;
     }
+
+    console.log('FSM.processCommand result:', result);
+
+    return result;
   }
 
   private handleInsertText(text: string, currentState: EditorState): FSMResult {
@@ -323,6 +328,10 @@ export class FSM {
 
   /**
    * Handle the TOGGLE_BOLD command
+   *
+   * Slice 5 Implementation: Uses VDOMSelection's getFormattingAtSelection() for
+   * determining formatting state and delegates complex VDOM manipulation to
+   * VDOMFormattingSimple module which properly handles partial text selections.
    */
   private handleToggleBold(currentState: EditorState): FSMResult {
     const { selection, formatToggleState } = currentState;
@@ -358,14 +367,14 @@ export class FSM {
       };
     } else {
       // For range selections, apply formatting immediately
-      const result = toggleBold(currentState.vdom, selection);
+      const result = toggleBoldSimple(currentState.vdom, selection);
 
       // Check if there was actually a change
-      const didChange = JSON.stringify(result.vdom) !== JSON.stringify(currentState.vdom);
+      const didChange = JSON.stringify(result.newVDOM) !== JSON.stringify(currentState.vdom);
 
       return {
-        newVDOM: result.vdom,
-        newSelection: result.selection,
+        newVDOM: result.newVDOM,
+        newSelection: result.newSelection,
         didChange,
         isPersistent: didChange,
         // No formatToggleState change for range selections

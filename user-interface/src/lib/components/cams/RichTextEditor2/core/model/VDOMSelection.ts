@@ -101,24 +101,52 @@ function mapDOMPositionToVDOM(
 
 /**
  * Helper function to find the DOM node that corresponds to a VDOM node
- * This is a simplified implementation that works with the test setup
+ * Uses the path-based approach to traverse the DOM tree systematically
  */
 function findDOMNodeForVDOMNode(vdomNode: VDOMNode, rootElement: HTMLElement): Node | null {
-  // For testing purposes, we'll use a simple approach
-  // In a real implementation, this would use the node paths to traverse the DOM
-  if (vdomNode.type === 'text') {
-    // Find text nodes in the root element
-    const walker = document.createTreeWalker(rootElement, NodeFilter.SHOW_TEXT, null);
+  if (!vdomNode.path || vdomNode.path.length === 0) {
+    return null;
+  }
 
-    let textNode = walker.nextNode();
-    while (textNode) {
-      if (textNode.textContent === vdomNode.content) {
-        return textNode;
-      }
-      textNode = walker.nextNode();
+  let currentNode: Node = rootElement;
+
+  // Traverse the DOM tree following the VDOM path
+  for (let i = 0; i < vdomNode.path.length; i++) {
+    const childIndex = vdomNode.path[i];
+
+    // Get child nodes - for text nodes we need to consider all children,
+    // not just element children
+    const childNodes = Array.from(currentNode.childNodes);
+
+    if (childIndex >= childNodes.length) {
+      return null;
+    }
+
+    currentNode = childNodes[childIndex];
+
+    if (!currentNode) {
+      return null;
     }
   }
-  return null;
+
+  // Additional validation: for text nodes, verify the content matches
+  if (vdomNode.type === 'text' && currentNode.nodeType === Node.TEXT_NODE) {
+    // Allow for slight variations in whitespace/zero-width characters
+    const domContent = currentNode.textContent || '';
+    const vdomContent = vdomNode.content || '';
+
+    // If content doesn't match, this might not be the right node
+    if (domContent !== vdomContent) {
+      // In development, we might want to log this for debugging
+      console.warn('Content mismatch between VDOM and DOM node:', {
+        vdomContent,
+        domContent,
+        path: vdomNode.path,
+      });
+    }
+  }
+
+  return currentNode;
 }
 
 /**
@@ -128,27 +156,9 @@ function _mapVDOMPositionToDOM(
   vdomPosition: VDOMPosition,
   rootElement: HTMLElement,
 ): { node: Node; offset: number } | null {
-  // Create a simple DOM representation if it doesn't exist
-  // This is mainly for test scenarios
-  if (rootElement.childNodes.length === 0) {
-    // Create a text node for the VDOM content if needed
-    if (vdomPosition.node.type === 'text' && vdomPosition.node.content) {
-      const textNode = document.createTextNode(vdomPosition.node.content);
-      rootElement.appendChild(textNode);
-      return { node: textNode, offset: vdomPosition.offset };
-    }
-  }
-
   const domNode = findDOMNodeForVDOMNode(vdomPosition.node, rootElement);
   if (domNode) {
     return { node: domNode, offset: vdomPosition.offset };
-  }
-
-  // Fallback: create a text node if we can't find the corresponding DOM node
-  if (vdomPosition.node.type === 'text' && vdomPosition.node.content) {
-    const textNode = document.createTextNode(vdomPosition.node.content);
-    rootElement.appendChild(textNode);
-    return { node: textNode, offset: vdomPosition.offset };
   }
 
   return null;
