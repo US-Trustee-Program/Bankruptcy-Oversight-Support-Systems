@@ -4,8 +4,7 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
-import Button from '@/lib/components/uswds/Button';
-import IconButton from '@/lib/components/IconButton';
+import { NumberedListIcon, BulletListIcon, LinkIcon } from './RichTextIcon';
 
 export interface TiptapEditorRef {
   clearValue: () => void;
@@ -158,16 +157,18 @@ function _TiptapEditor(props: TiptapEditorProps, ref: React.Ref<TiptapEditorRef>
       <div className="tiptap-editor-wrapper">
         {/* Toolbar */}
         <div className="tiptap-editor-toolbar">
-          <Button
-            aria-label="Bold"
-            title="Bold"
-            onClick={() => editor?.chain().focus().toggleBold().run()}
+          <button
+            type="button"
             className={`rich-text-button${editor?.isActive('bold') ? ' is-active' : ''}`}
             disabled={inputDisabled || !editor?.isEditable}
+            aria-disabled={inputDisabled || !editor?.isEditable}
+            title="Bold"
+            onClick={() => editor?.chain().focus().toggleBold().run()}
           >
-            B
-          </Button>
-          <Button
+            <strong>B</strong>
+          </button>
+          <button
+            type="button"
             aria-label="Italic"
             title="Italic"
             onClick={() => editor?.chain().focus().toggleItalic().run()}
@@ -175,8 +176,9 @@ function _TiptapEditor(props: TiptapEditorProps, ref: React.Ref<TiptapEditorRef>
             disabled={inputDisabled || !editor?.isEditable}
           >
             <em>I</em>
-          </Button>
-          <Button
+          </button>
+          <button
+            type="button"
             aria-label="Underline"
             title="Underline"
             onClick={() => editor?.chain().focus().toggleUnderline().run()}
@@ -184,32 +186,34 @@ function _TiptapEditor(props: TiptapEditorProps, ref: React.Ref<TiptapEditorRef>
             disabled={inputDisabled || !editor?.isEditable}
           >
             U
-          </Button>
-          <Button
+          </button>
+          <button
             aria-label="Ordered List"
             title="Ordered List"
             onClick={() => editor?.chain().focus().toggleOrderedList().run()}
             className={`rich-text-button${editor?.isActive('orderedList') ? ' is-active' : ''}`}
             disabled={inputDisabled || !editor?.isEditable}
           >
-            OL
-          </Button>
-          <IconButton
+            <NumberedListIcon />
+          </button>
+          <button
             aria-label="Bullet List"
             title="Bullet List"
-            icon="list"
             onClick={() => editor?.chain().focus().toggleBulletList().run()}
             className={`rich-text-button${editor?.isActive('bulletList') ? ' is-active' : ''}`}
             disabled={inputDisabled || !editor?.isEditable}
-          />
-          <IconButton
+          >
+            <BulletListIcon />
+          </button>
+          <button
             aria-label="Link"
             title="Link"
-            icon="link"
             onClick={handleLinkButtonClick}
             className={`rich-text-button${editor?.isActive('link') ? ' is-active' : ''}`}
             disabled={inputDisabled || !editor?.isEditable}
-          />
+          >
+            <LinkIcon />
+          </button>
           {showLinkPopover && (
             <div className="tiptap-link-popover">
               <input
