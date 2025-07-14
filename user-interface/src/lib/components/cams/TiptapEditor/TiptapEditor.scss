@@ -5,6 +5,7 @@
     min-height: 120px;
 
     .tiptap-editor-toolbar {
+      position: relative;
       display: flex;
       gap: 0.25rem;
       padding: 0.5rem;
@@ -53,10 +54,57 @@
           fill: #ffffff;
         }
       }
+
+      .tiptap-link-popover {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        top: 3.5rem;
+        left: 1rem;
+        z-index: 10;
+        background-color: #f0f0f0;
+        border: 1px solid #ccc;
+        border-radius: 0.25rem;
+        padding: 0.5rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        width: calc(100% - 2rem);
+
+        .display-text-input {
+          margin-left: 0.5rem;
+        }
+
+        input {
+          width: 50%;
+        }
+
+        button {
+          display: inline;
+        }
+        button:hover {
+          background-color: #005ea2;
+          svg {
+            fill: #ffffff;
+          }
+        }
+      }
+
+      .tiptap-link-apply, .tiptap-link-delete {
+        border: none;
+        border-radius: 0.25rem;
+        padding: 0.1rem 0.1rem;
+        margin-left: 0.5rem;
+        width: 1.5rem;
+        height: 1.5rem;
+
+        &:hover {
+          color: #005ea6;
+          cursor: pointer;
+        }
+      }
     }
 
     .tiptap-editor {
-      min-height: 120px;
+      height: 12rem;
       outline: none;
       display: flex;
 

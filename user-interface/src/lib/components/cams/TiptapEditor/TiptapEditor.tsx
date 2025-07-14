@@ -5,6 +5,8 @@ import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
 import { NumberedListIcon, BulletListIcon, LinkIcon } from './RichTextIcon';
+import Icon from '../../uswds/Icon';
+import useOutsideClick from '@/lib/hooks/UseOutsideClick';
 
 export interface TiptapEditorRef {
   clearValue: () => void;
@@ -32,8 +34,11 @@ function _TiptapEditor(props: TiptapEditorProps, ref: React.Ref<TiptapEditorRef>
   const [showLinkPopover, setShowLinkPopover] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
   const [linkText, setLinkText] = useState('');
+  const linkPopoverRef = useRef<HTMLDivElement>(null);
   const linkInputRef = useRef<HTMLInputElement>(null);
   const linkTextInputRef = useRef<HTMLInputElement>(null);
+
+  useOutsideClick([linkPopoverRef], isOutsideClick);
 
   const editor = useEditor({
     extensions: [StarterKit, Underline, Link],
@@ -90,14 +95,34 @@ function _TiptapEditor(props: TiptapEditorProps, ref: React.Ref<TiptapEditorRef>
     }
   };
 
+  function isOutsideClick(ev: MouseEvent) {
+    if (linkPopoverRef.current && showLinkPopover) {
+      const boundingRect = (linkPopoverRef.current as HTMLDivElement).getBoundingClientRect();
+      const containerRight = boundingRect.x + boundingRect.width;
+      const containerBottom = boundingRect.y + boundingRect.height;
+      const targetX = ev.clientX;
+      const targetY = ev.clientY;
+      if (
+        targetX < boundingRect.x ||
+        targetX > containerRight ||
+        targetY < boundingRect.y ||
+        targetY > containerBottom
+      ) {
+        setShowLinkPopover(false);
+      }
+    }
+  }
+
   const handleLinkButtonClick = () => {
-    if (!editor) return;
+    if (!editor) {
+      return;
+    }
     setShowLinkPopover(true);
     // Pre-fill with current link if selection has one
     const currentLink = editor.getAttributes('link').href || '';
     setLinkUrl(currentLink);
     // Pre-fill display text with selection or link text
-    const selection = editor.state.selection;
+    const { selection } = editor.state;
     let selectedText = '';
     if (!selection.empty) {
       selectedText = editor.state.doc.textBetween(selection.from, selection.to, ' ');
@@ -127,6 +152,12 @@ function _TiptapEditor(props: TiptapEditorProps, ref: React.Ref<TiptapEditorRef>
     setLinkText('');
   };
 
+  const handleLinkKeyDown = (e: KeyboardEvent) => {
+    if (showLinkPopover && e.key === 'Escape') {
+      handleLinkCancel();
+    }
+  };
+
   useImperativeHandle(ref, () => ({
     clearValue,
     getValue,
@@ -135,6 +166,13 @@ function _TiptapEditor(props: TiptapEditorProps, ref: React.Ref<TiptapEditorRef>
     disable,
     focus,
   }));
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleLinkKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleLinkKeyDown);
+    };
+  }, [showLinkPopover]);
 
   return (
     <div id={`${id}-container`} className="usa-form-group tiptap-editor-container">
@@ -215,16 +253,7 @@ function _TiptapEditor(props: TiptapEditorProps, ref: React.Ref<TiptapEditorRef>
             <LinkIcon />
           </button>
           {showLinkPopover && (
-            <div className="tiptap-link-popover">
-              <input
-                ref={linkTextInputRef}
-                type="text"
-                value={linkText}
-                onChange={(e) => setLinkText(e.target.value)}
-                placeholder="Display text"
-                className="tiptap-link-input"
-                style={{ marginBottom: 4 }}
-              />
+            <div className="tiptap-link-popover" ref={linkPopoverRef}>
               <input
                 ref={linkInputRef}
                 type="text"
@@ -233,11 +262,19 @@ function _TiptapEditor(props: TiptapEditorProps, ref: React.Ref<TiptapEditorRef>
                 placeholder="Paste a link..."
                 className="tiptap-link-input"
               />
+              <input
+                ref={linkTextInputRef}
+                type="text"
+                value={linkText}
+                onChange={(e) => setLinkText(e.target.value)}
+                placeholder="Display text"
+                className="tiptap-link-input display-text-input"
+              />
               <button type="button" onClick={handleLinkApply} className="tiptap-link-apply">
-                Apply
+                <Icon name="check" />
               </button>
-              <button type="button" onClick={handleLinkCancel} className="tiptap-link-cancel">
-                Cancel
+              <button type="button" onClick={handleLinkCancel} className="tiptap-link-delete">
+                <Icon name="delete" />
               </button>
             </div>
           )}
