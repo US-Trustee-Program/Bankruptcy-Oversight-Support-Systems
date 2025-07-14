@@ -21,6 +21,7 @@ We want to evaluate the [Tiptap editor](https://tiptap.dev/docs/editor/getting-s
     - [] Dependency rule.
     - [] Good fences rule.
     - [] Invasive species rule.
+- [] Remove index.ts.
 
 **Current status:**
 
