@@ -117,7 +117,7 @@ describe('data verification helper tests', () => {
     ];
 
     const expectedOptions: Array<Record<string, string>> = [
-      { value: '002', label: 'B (New York 1) Legacy', selectedLabel: 'New York 1, NY' },
+      { value: '002', label: 'B (New York 1)', selectedLabel: 'New York 1, NY' },
     ];
 
     const actualOptions = getDivisionComboOptions(testOffices);
