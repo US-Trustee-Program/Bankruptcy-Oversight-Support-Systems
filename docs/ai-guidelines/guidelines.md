@@ -137,19 +137,19 @@ CAMS follows the Option-enabling Software Architecture (OeSA) approach, which in
   ```
 - Simplified implementations for non-test purposes (like local development) may sometimes be needed
 - For determining which of multiple real implementations to use:
-  - In the backend project, use the factory pattern as described in `backend/.junie/guidelines.md`
-  - In other contexts, use appropriate dependency injection techniques
+    - In the backend project, use the factory pattern as described in `backend/.junie/guidelines.md`
+    - In other contexts, use appropriate dependency injection techniques
 
 ### End-to-End Testing
 
 - E2E tests use Playwright
 - Configure the appropriate environment variables in the `.env` file
 - For local testing:
-  - Ensure NodeApi is running against a clean e2e database
-  - Set `CAMS_LOGIN_PROVIDER=mock` in both backend and UI environments
+    - Ensure NodeApi is running against a clean e2e database
+    - Set `CAMS_LOGIN_PROVIDER=mock` in both backend and UI environments
 - Run tests using:
-  - Headless mode: `npm run headless`
-  - With UI: `npm run ui`
+    - Headless mode: `npm run headless`
+    - With UI: `npm run ui`
 
 ## ESLint Configuration
 
