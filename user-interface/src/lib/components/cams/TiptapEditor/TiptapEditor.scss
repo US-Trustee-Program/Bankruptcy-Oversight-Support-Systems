@@ -9,14 +9,29 @@
       gap: 0.25rem;
       padding: 0.5rem;
       border-bottom: 1px solid #e0e0e0;
-      background-color: #f8f9fa;
+      //background-color: #f8f9fa;
+      background-color: #ffffff;
       flex-wrap: wrap;
 
       button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
         font-weight: bold;
-        min-width: 2.5rem;
-        padding: 0.5rem;
+        width: 2.5rem;
+        height: 2.5rem;
+        padding: 0 0.5rem;
         margin-right: 0;
+        border: none;
+        border-radius: 0.25rem;
+        background-color: transparent;
+        color: #1b1b1b;
+
+        svg {
+          width: 1.2rem;
+          height: 1.2rem;
+          fill: #1b1b1b;
+        }
 
         &:nth-child(2) {
           font-style: italic;
@@ -26,17 +41,34 @@
           text-decoration: underline;
         }
       }
+      button:hover {
+        background-color: #e9ecef;
+        color: #1b1b1b;
+        cursor: pointer;
+      }
+      button.is-active {
+        background-color: #71767a;
+        color: #ffffff;
+        svg {
+          fill: #ffffff;
+        }
+      }
     }
 
     .tiptap-editor {
-      padding: 0.75rem;
       min-height: 120px;
       outline: none;
+      display: flex;
 
       &.disabled {
         background-color: #f0f0f0;
         color: #565c65;
         cursor: not-allowed;
+      }
+
+      .tiptap {
+        flex-basis: 100%;
+        padding: 0.75rem;
       }
 
       // Basic content styling
