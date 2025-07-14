@@ -7,16 +7,20 @@ We want to evaluate the [Tiptap editor](https://tiptap.dev/docs/editor/getting-s
 ## Steps
 
 - [x] Implement a humble object or wrapper for the Tiptap editor.
-  - [x] Ensure editor content is semantically-correct HTML prior to persistence.
-    - [x] If it is not automatically semantically-correct we need to convert and then when editing an existing note ingest the stored semantically-correct content mapped to whatever Tiptap uses.
+    - [x] Ensure editor content is semantically-correct HTML prior to persistence.
+        - [x] If it is not automatically semantically-correct we need to convert and then when editing an existing note ingest the stored semantically-correct content mapped to whatever Tiptap uses.
 - [] Integrate the various components included in SimpleEditor
-  - [x] Bold, italic, underline
-  - [x] Ordered list, bullet list
-  - [x] Links
-  - [] Other components incrementally
+    - [x] Bold, italic, underline
+    - [x] Ordered list, bullet list
+    - [x] Links
+    - [] Other components incrementally
 - [x] Integrate TiptapEditor into `CaseNoteFormModal` and mock it for tests to avoid
       jsdom/ProseMirror issues.
 - [] Ensure that draft note content is added to the editor properly.
+- [] Ensure that we have followed OeA practices.
+    - [] Dependency rule.
+    - [] Good fences rule.
+    - [] Invasive species rule.
 
 **Current status:**
 
@@ -24,3 +28,7 @@ We want to evaluate the [Tiptap editor](https://tiptap.dev/docs/editor/getting-s
 - Ordered and bullet lists are implemented and working in both tests and the browser.
 - All tests are green for these features.
 - Next step: continue with further SimpleEditor features or polish as needed.
+
+## Problems
+
+- [] pa11y test times out on notes test
