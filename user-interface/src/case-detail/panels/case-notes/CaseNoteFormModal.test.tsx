@@ -21,7 +21,7 @@ import LocalFormCache from '@/lib/utils/local-form-cache';
 import { CamsSession } from '@common/cams/session';
 import { randomUUID } from 'crypto';
 
-interface TiptapEditorRef {
+interface RichTextEditorRef {
   clearValue: () => void;
   getValue: () => string;
   getHtml: () => string;
@@ -30,20 +30,21 @@ interface TiptapEditorRef {
   focus: () => void;
 }
 
-vi.mock('@/lib/components/cams/TiptapEditor', async () => {
+vi.mock('@/lib/components/cams/RichTextEditor/RichTextEditor', async () => {
   const React = await vi.importActual<typeof import('react')>('react');
-  const MockTiptapEditor = React.forwardRef(
+  const MockRichTextEditor = React.forwardRef(
     (
       props: {
-        value?: string;
-        disabled?: boolean;
+        id: string;
+        label?: string;
         onChange?: (value: string) => void;
+        disabled?: boolean;
+        required?: boolean;
+        className?: string;
       },
-      ref: React.Ref<TiptapEditorRef>,
+      ref: React.Ref<RichTextEditorRef>,
     ) => {
-      const [content, setContent] = React.useState(
-        props.value || '<p><br class="ProseMirror-trailingBreak"></p>',
-      );
+      const [content, setContent] = React.useState('<p><br class="ProseMirror-trailingBreak"></p>');
       const [disabled, setDisabled] = React.useState(props.disabled || false);
 
       // Helper function to check if content is effectively empty
@@ -59,25 +60,29 @@ vi.mock('@/lib/components/cams/TiptapEditor', async () => {
       React.useImperativeHandle(ref, () => ({
         clearValue: () => {
           setContent('<p><br class="ProseMirror-trailingBreak"></p>');
-          props.onChange?.('<p><br class="ProseMirror-trailingBreak"></p>');
+          props.onChange?.('');
         },
         getValue: () => content,
         getHtml: () => (isEmptyContent(content) ? '' : content),
         setValue: (value: string) => {
-          const newContent = value || '<p><br class="ProseMirror-trailingBreak"></p>';
-          setContent(newContent);
-          props.onChange?.(newContent);
-          console.log(Date.now());
+          if (!value || value.trim() === '') {
+            const emptyContent = '<p><br class="ProseMirror-trailingBreak"></p>';
+            setContent(emptyContent);
+            props.onChange?.(emptyContent);
+          } else if (value.startsWith('<')) {
+            // Already HTML formatted
+            setContent(value);
+            props.onChange?.(value);
+          } else {
+            // Plain text - wrap in p tag like rich text editor does
+            const wrappedContent = `<p>${value}</p>`;
+            setContent(wrappedContent);
+            props.onChange?.(wrappedContent);
+          }
         },
         disable: (value: boolean) => setDisabled(value),
         focus: () => {},
       }));
-
-      React.useEffect(() => {
-        if (props.value !== undefined) {
-          setContent(props.value || '<p><br class="ProseMirror-trailingBreak"></p>');
-        }
-      }, [props.value]);
 
       React.useEffect(() => {
         setDisabled(props.disabled || false);
@@ -91,7 +96,17 @@ vi.mock('@/lib/components/cams/TiptapEditor', async () => {
 
       return React.createElement(
         'div',
-        { className: 'editor-container' },
+        { className: 'usa-form-group editor-container', id: `${props.id}-container` },
+        props.label &&
+          React.createElement(
+            'label',
+            {
+              id: `editor-label-${props.id}`,
+              className: 'usa-label',
+            },
+            props.label,
+            props.required && React.createElement('span', { className: 'required-form-field' }),
+          ),
         React.createElement(
           'div',
           { className: 'editor-wrapper' },
@@ -126,20 +141,18 @@ vi.mock('@/lib/components/cams/TiptapEditor', async () => {
     },
   );
 
-  MockTiptapEditor.displayName = 'MockTiptapEditor';
-  const MockTiptapEditorRef = React.forwardRef(() => null);
-  MockTiptapEditorRef.displayName = 'MockTiptapEditorRef';
+  MockRichTextEditor.displayName = 'MockRichTextEditor';
 
   return {
-    TiptapEditor: MockTiptapEditor,
-    TiptapEditorRef: MockTiptapEditorRef,
+    default: MockRichTextEditor,
+    RichTextEditor: MockRichTextEditor,
   };
 });
 
 const MODAL_ID = 'modal-case-note-form';
 const TITLE_INPUT_ID = 'case-note-title-input';
 const CONTENT_INPUT_SELECTOR = '.rich-text-editor-container .editor-content';
-const TIPTAP_CONTENT_INPUT_SELECTOR = '.editor-container .editor-content';
+const RICH_TEXT_CONTENT_INPUT_SELECTOR = '.editor-container .editor-content';
 const OPEN_BUTTON_ID = 'open-modal-button';
 const CANCEL_BUTTON_ID = 'button-case-note-form-cancel-button';
 const SUBMIT_BUTTON_ID = 'button-case-note-form-submit-button';
@@ -154,15 +167,15 @@ const getContentInput = () => {
   const isFeatureEnabled = mockFeatureFlags[FeatureFlagHook.FORMAT_CASE_NOTES];
 
   if (isFeatureEnabled) {
-    // For mocked TiptapEditor, we can target the contentEditable div directly
-    return document.querySelector(TIPTAP_CONTENT_INPUT_SELECTOR);
+    // For mocked RichTextEditor, we can target the contentEditable div directly
+    return document.querySelector(RICH_TEXT_CONTENT_INPUT_SELECTOR);
   }
   return document.querySelector(CONTENT_INPUT_SELECTOR);
 };
 
 /**
- * NOTE: We mock TiptapEditor to avoid jsdom/ProseMirror compatibility issues.
- * The mock provides the same interface as the real TiptapEditor but uses a simple
+ * NOTE: We mock RichTextEditor to avoid jsdom/ProseMirror compatibility issues.
+ * The mock provides the same interface as the real RichTextEditor but uses a simple
  * contentEditable div instead of ProseMirror.
  */
 
@@ -170,7 +183,7 @@ const renderComponent = (
   modalRef: React.RefObject<CaseNoteFormModalRef>,
   modalProps: Partial<CaseNoteFormModalProps> = {},
   openProps: Partial<CaseNoteFormModalOpenProps> = {},
-  tiptapRef: React.RefObject<TiptapEditorRef> | undefined = undefined,
+  richTextEditorRef: React.RefObject<RichTextEditorRef> | undefined = undefined,
 ) => {
   const defaultOpenProps = {
     caseId: TEST_CASE_ID,
@@ -201,7 +214,7 @@ const renderComponent = (
             modalId={MODAL_ID}
             {...modalProps}
             ref={modalRef}
-            tiptapEditorRef={tiptapRef}
+            RichTextEditorRef={richTextEditorRef}
           />
         </>
       </BrowserRouter>
@@ -245,8 +258,8 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     postNoteSpy.mockResolvedValue();
 
     const modalRef = React.createRef<CaseNoteFormModalRef>();
-    const tiptapRef = React.createRef<TiptapEditorRef>();
-    renderComponent(modalRef, {}, undefined, tiptapRef);
+    const richTextEditorRef = React.createRef<RichTextEditorRef>();
+    renderComponent(modalRef, {}, undefined, richTextEditorRef);
 
     const openButton = screen.getByTestId(OPEN_BUTTON_ID);
     await userEvent.click(openButton);
@@ -254,14 +267,14 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
     const newTitle = 'New Note Title';
     const newContent = 'New Note Content';
-    const expectedContent = 'New Note Content';
+    const expectedContent = '<p>New Note Content</p>';
 
     await userEvent.type(titleInput, newTitle);
-    tiptapRef.current?.setValue(newContent);
+    richTextEditorRef.current?.setValue(newContent);
 
     const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
     await waitFor(() => {
-      expect(tiptapRef.current?.getHtml()).toBe(newContent);
+      expect(richTextEditorRef.current?.getHtml()).toBe('<p>New Note Content</p>');
       expect(submitButton).toBeEnabled();
     });
     await userEvent.click(submitButton);
@@ -280,7 +293,7 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     putNoteSpy.mockResolvedValue(note.id);
 
     const modalRef = React.createRef<CaseNoteFormModalRef>();
-    const tiptapRef = React.createRef<TiptapEditorRef>();
+    const richTextEditorRef = React.createRef<RichTextEditorRef>();
     renderComponent(
       modalRef,
       {},
@@ -291,7 +304,7 @@ describe('CaseNoteFormModal - Simple Tests', () => {
         content: note.content,
         mode: 'edit',
       },
-      tiptapRef,
+      richTextEditorRef,
     );
 
     const openButton = screen.getByTestId(OPEN_BUTTON_ID);
@@ -300,15 +313,15 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
     const editedTitle = 'Edited Note Title';
     const editedContent = 'Edited Note Content';
-    const expectedContent = 'Edited Note Content';
+    const expectedContent = '<p>Edited Note Content</p>';
 
     await userEvent.clear(titleInput);
     await userEvent.type(titleInput, editedTitle);
-    tiptapRef.current?.setValue(editedContent);
+    richTextEditorRef.current?.setValue(editedContent);
 
     const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
     await waitFor(() => {
-      expect(tiptapRef.current?.getHtml()).toBe(editedContent);
+      expect(richTextEditorRef.current?.getHtml()).toBe('<p>Edited Note Content</p>');
       expect(submitButton).toBeEnabled();
     });
     await userEvent.click(submitButton);
@@ -393,7 +406,7 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
     const contentInput = getContentInput();
     await userEvent.clear(titleInput);
-    // For TiptapEditor, we need to clear content differently
+    // For RichTextEditor, we need to clear content differently
     if (contentInput?.querySelector('.ProseMirror')) {
       await userEvent.click(contentInput);
       await userEvent.keyboard('{Control}a');
@@ -506,7 +519,8 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     const contentInput = getContentInput();
 
     expect(titleInput).toHaveValue(initialTitle);
-    expect(contentInput?.innerHTML).toBe(initialContent); // Plain text, not wrapped in p tags
+    // RichTextEditor wraps content in HTML, so we need to check the editor content
+    expect(contentInput?.innerHTML).toBe(`<p>${initialContent}</p>`);
 
     const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
     await waitFor(() => {
@@ -516,8 +530,8 @@ describe('CaseNoteFormModal - Simple Tests', () => {
 
   test('should disable Save button unless both Title and Content have non-empty values', async () => {
     const modalRef = React.createRef<CaseNoteFormModalRef>();
-    const tiptapRef = React.createRef<TiptapEditorRef>();
-    renderComponent(modalRef, {}, undefined, tiptapRef);
+    const richTextEditorRef = React.createRef<RichTextEditorRef>();
+    renderComponent(modalRef, {}, undefined, richTextEditorRef);
 
     const openButton = screen.getByTestId(OPEN_BUTTON_ID);
     await userEvent.click(openButton);
@@ -527,7 +541,7 @@ describe('CaseNoteFormModal - Simple Tests', () => {
 
     expect(titleInput).toHaveValue('');
     await waitFor(() => {
-      expect(tiptapRef.current?.getHtml()).toBe('');
+      expect(richTextEditorRef.current?.getHtml()).toBe('');
     });
     await waitFor(() => {
       expect(submitButton).toBeDisabled();
@@ -535,14 +549,14 @@ describe('CaseNoteFormModal - Simple Tests', () => {
 
     await userEvent.type(titleInput, 'Test Title');
     expect(titleInput).toHaveValue('Test Title');
-    expect(tiptapRef.current?.getHtml()).toBe('');
+    expect(richTextEditorRef.current?.getHtml()).toBe('');
     await waitFor(() => {
       expect(submitButton).toBeDisabled();
     });
 
-    tiptapRef.current?.setValue('Test Content');
+    richTextEditorRef.current?.setValue('Test Content');
     await waitFor(() => {
-      expect(tiptapRef.current?.getHtml()).toBe('Test Content');
+      expect(richTextEditorRef.current?.getHtml()).toBe('<p>Test Content</p>');
       expect(submitButton).toBeEnabled();
     });
 
@@ -550,7 +564,7 @@ describe('CaseNoteFormModal - Simple Tests', () => {
 
     await userEvent.clear(titleInput);
     expect(titleInput).toHaveValue('');
-    expect(tiptapRef.current?.getHtml()).toBe('Test Content');
+    expect(richTextEditorRef.current?.getHtml()).toBe('<p>Test Content</p>');
     await waitFor(() => {
       expect(submitButton).toBeDisabled();
     });
@@ -567,8 +581,8 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     });
 
     const modalRef = React.createRef<CaseNoteFormModalRef>();
-    const tiptapRef = React.createRef<TiptapEditorRef>();
-    renderComponent(modalRef, {}, undefined, tiptapRef);
+    const richTextEditorRef = React.createRef<RichTextEditorRef>();
+    renderComponent(modalRef, {}, undefined, richTextEditorRef);
 
     const openButton = screen.getByTestId(OPEN_BUTTON_ID);
     await userEvent.click(openButton);
@@ -576,7 +590,7 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     // Wait for form to rehydrate from cache
     await waitFor(() => {
       expect(screen.getByTestId(TITLE_INPUT_ID)).toHaveValue(newTitle);
-      expect(tiptapRef.current?.getHtml()).toBe(newContent);
+      expect(richTextEditorRef.current?.getHtml()).toBe(`<p>${newContent}</p>`);
     });
   });
 
@@ -638,6 +652,7 @@ describe('CaseNoteFormModal - Simple Tests', () => {
 
     // Check that form data is cleared
     expect(screen.getByTestId(TITLE_INPUT_ID)).toHaveValue('');
+    // Check the editor content is cleared to empty state
     expect(getContentInput()?.innerHTML).toBe('<p><br class="ProseMirror-trailingBreak"></p>');
   });
 

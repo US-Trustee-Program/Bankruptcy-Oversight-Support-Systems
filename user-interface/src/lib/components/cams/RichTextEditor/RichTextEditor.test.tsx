@@ -2,7 +2,7 @@ import { describe, expect, beforeEach, vi, test } from 'vitest';
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import TiptapEditor, { RichTextEditorRef } from './RichTextEditor';
+import RichTextEditor, { RichTextEditorRef } from './RichTextEditor';
 
 // Create a mock function outside the factory
 const mockUseEditor = vi.fn();
@@ -135,7 +135,13 @@ vi.mock('@tiptap/starter-kit', () => ({
   default: 'StarterKit',
 }));
 
-describe('TiptapEditor', () => {
+// Mock the useOutsideClick hook
+const mockUseOutsideClick = vi.fn();
+vi.mock('@/lib/hooks/UseOutsideClick', () => ({
+  default: (...args: unknown[]) => mockUseOutsideClick(...args),
+}));
+
+describe('RichTextEditor', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     Object.values(mockEditor).forEach((v) => {
@@ -148,12 +154,28 @@ describe('TiptapEditor', () => {
         (v as { mockClear: () => void }).mockClear();
       }
     });
+
+    // Reset all mock functions to their default state
     mockEditor.isEditable = true;
+    mockEditor.getHTML.mockReturnValue('<p>test content</p>');
+    mockEditor.getText.mockReturnValue('test content');
+    (mockEditor.isActive as ReturnType<typeof vi.fn>).mockReturnValue(false);
+    (mockEditor.getAttributes as ReturnType<typeof vi.fn>).mockReturnValue({ href: '', text: '' });
+    mockEditor.state.selection.empty = true;
+    mockEditor.state.selection.from = 0;
+    mockEditor.state.selection.to = 0;
+    (mockEditor.state.doc.textBetween as ReturnType<typeof vi.fn>).mockReturnValue('');
+
+    // Reset the useOutsideClick mock to its default behavior
+    mockUseOutsideClick.mockReset();
+
     mockUseEditor.mockReturnValue(mockEditor);
   });
 
   test('renders with label and aria description', () => {
-    render(<TiptapEditor id="test-editor" label="Test Label" ariaDescription="Test description" />);
+    render(
+      <RichTextEditor id="test-editor" label="Test Label" ariaDescription="Test description" />,
+    );
 
     expect(screen.getByText('Test Label')).toBeInTheDocument();
     expect(screen.getByText('Test description')).toBeInTheDocument();
@@ -161,14 +183,14 @@ describe('TiptapEditor', () => {
   });
 
   test('renders without label and aria description', () => {
-    render(<TiptapEditor id="test-editor" />);
+    render(<RichTextEditor id="test-editor" />);
 
     expect(screen.queryByText('Test Label')).not.toBeInTheDocument();
     expect(screen.queryByText('Test description')).not.toBeInTheDocument();
   });
 
   test('shows required indicator when required prop is true', () => {
-    render(<TiptapEditor id="test-editor" label="Test Label" required={true} />);
+    render(<RichTextEditor id="test-editor" label="Test Label" required={true} />);
 
     expect(screen.getByText('Test Label')).toBeInTheDocument();
     expect(
@@ -177,7 +199,7 @@ describe('TiptapEditor', () => {
   });
 
   test('does not show required indicator when required prop is false', () => {
-    render(<TiptapEditor id="test-editor" label="Test Label" required={false} />);
+    render(<RichTextEditor id="test-editor" label="Test Label" required={false} />);
 
     expect(screen.getByText('Test Label')).toBeInTheDocument();
     expect(
@@ -187,17 +209,17 @@ describe('TiptapEditor', () => {
 
   test('calls onChange when editor content changes', async () => {
     const onChange = vi.fn();
-    render(<TiptapEditor id="test-editor" onChange={onChange} />);
+    render(<RichTextEditor id="test-editor" onChange={onChange} />);
     const editorContent = screen.getByTestId('editor-content');
     await userEvent.type(editorContent, 'hello');
-    // Simulate Tiptap's update event
+    // Simulate rich text editor's update event
     onChange('<p>test content</p>');
     expect(onChange).toHaveBeenCalled();
   });
 
   test('exposes imperative methods via ref', async () => {
     const ref = React.createRef<RichTextEditorRef>();
-    render(<TiptapEditor id="test-editor" ref={ref} />);
+    render(<RichTextEditor id="test-editor" ref={ref} />);
 
     // Test setValue
     ref.current!.setValue('<p>test content</p>');
@@ -236,7 +258,7 @@ describe('TiptapEditor', () => {
 
   test('disable method updates editor editable state', async () => {
     const ref = React.createRef<RichTextEditorRef>();
-    render(<TiptapEditor id="test-editor" ref={ref} />);
+    render(<RichTextEditor id="test-editor" ref={ref} />);
 
     ref.current!.disable(true);
     await waitFor(() => {
@@ -251,10 +273,10 @@ describe('TiptapEditor', () => {
 
   test('handles disabled state correctly', async () => {
     const ref = React.createRef<RichTextEditorRef>();
-    const { rerender } = render(<TiptapEditor id="test-editor" ref={ref} disabled={true} />);
+    const { rerender } = render(<RichTextEditor id="test-editor" ref={ref} disabled={true} />);
     // Simulate the effect of setEditable(false) on the mock
     mockEditor.isEditable = false;
-    rerender(<TiptapEditor id="test-editor" ref={ref} disabled={true} />);
+    rerender(<RichTextEditor id="test-editor" ref={ref} disabled={true} />);
     const editorContent = screen.getByTestId('editor-content');
     expect(editorContent).toHaveAttribute('contenteditable', 'false');
     expect(editorContent).toHaveClass('disabled');
@@ -262,10 +284,10 @@ describe('TiptapEditor', () => {
 
   test('updates disabled state when prop changes', async () => {
     const ref = React.createRef<RichTextEditorRef>();
-    const { rerender } = render(<TiptapEditor id="test-editor" ref={ref} disabled={false} />);
+    const { rerender } = render(<RichTextEditor id="test-editor" ref={ref} disabled={false} />);
     // Simulate the effect of setEditable(true) on the mock
     mockEditor.isEditable = true;
-    rerender(<TiptapEditor id="test-editor" ref={ref} disabled={false} />);
+    rerender(<RichTextEditor id="test-editor" ref={ref} disabled={false} />);
     const editorContent = screen.getByTestId('editor-content');
     expect(editorContent).toHaveAttribute('contenteditable', 'true');
     expect(editorContent).not.toHaveClass('disabled');
@@ -274,7 +296,7 @@ describe('TiptapEditor', () => {
   // Toolbar tests
   describe('Toolbar', () => {
     test('renders toolbar with formatting buttons', () => {
-      render(<TiptapEditor id="test-editor" />);
+      render(<RichTextEditor id="test-editor" />);
 
       expect(screen.getByRole('button', { name: 'Bold' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Italic' })).toBeInTheDocument();
@@ -283,7 +305,7 @@ describe('TiptapEditor', () => {
 
     test('bold button calls toggleBold command when clicked', async () => {
       const user = userEvent.setup();
-      render(<TiptapEditor id="test-editor" />);
+      render(<RichTextEditor id="test-editor" />);
 
       const boldButton = screen.getByRole('button', { name: 'Bold' });
       await user.click(boldButton);
@@ -293,7 +315,7 @@ describe('TiptapEditor', () => {
 
     test('italic button calls toggleItalic command when clicked', async () => {
       const user = userEvent.setup();
-      render(<TiptapEditor id="test-editor" />);
+      render(<RichTextEditor id="test-editor" />);
 
       const italicButton = screen.getByRole('button', { name: 'Italic' });
       await user.click(italicButton);
@@ -303,7 +325,7 @@ describe('TiptapEditor', () => {
 
     test('underline button calls toggleUnderline command when clicked', async () => {
       const user = userEvent.setup();
-      render(<TiptapEditor id="test-editor" />);
+      render(<RichTextEditor id="test-editor" />);
 
       const underlineButton = screen.getByRole('button', { name: 'Underline' });
       await user.click(underlineButton);
@@ -315,7 +337,7 @@ describe('TiptapEditor', () => {
       // Mock the isActive method to return true for bold
       mockEditor.isActive = vi.fn((mark: string) => mark === 'bold');
 
-      render(<TiptapEditor id="test-editor" />);
+      render(<RichTextEditor id="test-editor" />);
 
       const boldButton = screen.getByRole('button', { name: 'Bold' });
       expect(boldButton).toHaveClass('is-active');
@@ -325,7 +347,7 @@ describe('TiptapEditor', () => {
       // Mock the isActive method to return false for all marks
       mockEditor.isActive = vi.fn(() => false);
 
-      render(<TiptapEditor id="test-editor" />);
+      render(<RichTextEditor id="test-editor" />);
 
       const boldButton = screen.getByRole('button', { name: 'Bold' });
       const italicButton = screen.getByRole('button', { name: 'Italic' });
@@ -337,7 +359,7 @@ describe('TiptapEditor', () => {
     });
 
     test('buttons are disabled when editor is disabled', () => {
-      render(<TiptapEditor id="test-editor" disabled={true} />);
+      render(<RichTextEditor id="test-editor" disabled={true} />);
 
       const boldButton = screen.getByRole('button', { name: 'Bold' });
       const italicButton = screen.getByRole('button', { name: 'Italic' });
@@ -349,7 +371,7 @@ describe('TiptapEditor', () => {
     });
 
     test('buttons are enabled when editor is enabled', () => {
-      render(<TiptapEditor id="test-editor" disabled={false} />);
+      render(<RichTextEditor id="test-editor" disabled={false} />);
 
       const boldButton = screen.getByRole('button', { name: 'Bold' });
       const italicButton = screen.getByRole('button', { name: 'Italic' });
@@ -361,7 +383,7 @@ describe('TiptapEditor', () => {
     });
 
     test('buttons have correct aria-labels and titles', () => {
-      render(<TiptapEditor id="test-editor" />);
+      render(<RichTextEditor id="test-editor" />);
 
       const boldButton = screen.getByRole('button', { name: 'Bold' });
       const italicButton = screen.getByRole('button', { name: 'Italic' });
@@ -376,7 +398,7 @@ describe('TiptapEditor', () => {
     });
 
     test('buttons display correct text labels', () => {
-      render(<TiptapEditor id="test-editor" />);
+      render(<RichTextEditor id="test-editor" />);
 
       const boldButton = screen.getByRole('button', { name: 'Bold' });
       const italicButton = screen.getByRole('button', { name: 'Italic' });
@@ -390,7 +412,7 @@ describe('TiptapEditor', () => {
 
   test('renders ordered and bullet list buttons and calls list commands when clicked', async () => {
     const user = userEvent.setup();
-    render(<TiptapEditor id="test-editor" />);
+    render(<RichTextEditor id="test-editor" />);
 
     // Buttons should be present
     const orderedListButton = screen.getByRole('button', { name: /ordered list/i });
@@ -402,7 +424,7 @@ describe('TiptapEditor', () => {
     // Simulate clicking the ordered list button
     await user.click(orderedListButton);
 
-    // Assert that the Tiptap chain command for toggling ordered list is called
+    // Assert that the rich text editor chain command for toggling ordered list is called
     expect(mockEditor.chain).toHaveBeenCalled();
     // Optionally, check that the correct arguments are passed for ordered list
     // (You may need to enhance the mock to track these calls)
@@ -410,7 +432,7 @@ describe('TiptapEditor', () => {
 
   test('renders link button and calls link command when clicked', async () => {
     const user = userEvent.setup();
-    render(<TiptapEditor id="test-editor" />);
+    render(<RichTextEditor id="test-editor" />);
 
     // Button should be present
     const linkButton = screen.getByRole('button', { name: /link/i });
@@ -422,7 +444,7 @@ describe('TiptapEditor', () => {
   });
 
   test('initializes editor with correct configuration', () => {
-    render(<TiptapEditor id="test-editor" />);
+    render(<RichTextEditor id="test-editor" />);
 
     expect(mockUseEditor).toHaveBeenCalledWith({
       extensions: ['StarterKit', expect.any(Object), expect.any(Object)],
@@ -433,7 +455,7 @@ describe('TiptapEditor', () => {
   });
 
   test('initializes editor with disabled state when disabled prop is true', () => {
-    render(<TiptapEditor id="test-editor" disabled={true} />);
+    render(<RichTextEditor id="test-editor" disabled={true} />);
 
     expect(mockUseEditor).toHaveBeenCalledWith({
       extensions: ['StarterKit', expect.any(Object), expect.any(Object)],
@@ -445,7 +467,7 @@ describe('TiptapEditor', () => {
 
   test('calls onChange with HTML content when editor updates', () => {
     const onChange = vi.fn();
-    render(<TiptapEditor id="test-editor" onChange={onChange} />);
+    render(<RichTextEditor id="test-editor" onChange={onChange} />);
 
     // Simulate editor update
     const onUpdate = mockUseEditor.mock.calls[0][0].onUpdate;
@@ -459,7 +481,7 @@ describe('TiptapEditor', () => {
     mockEditor.getText.mockReturnValue('');
 
     const onChange = vi.fn();
-    render(<TiptapEditor id="test-editor" onChange={onChange} />);
+    render(<RichTextEditor id="test-editor" onChange={onChange} />);
 
     const onUpdate = mockUseEditor.mock.calls[0][0].onUpdate;
     onUpdate({ editor: mockEditor });
@@ -469,7 +491,7 @@ describe('TiptapEditor', () => {
 
   test('setValue handles empty string correctly', () => {
     const ref = React.createRef<RichTextEditorRef>();
-    render(<TiptapEditor id="test-editor" ref={ref} />);
+    render(<RichTextEditor id="test-editor" ref={ref} />);
 
     ref.current!.setValue('');
     expect(mockEditor.commands.clearContent).toHaveBeenCalled();
@@ -477,7 +499,7 @@ describe('TiptapEditor', () => {
 
   test('setValue handles whitespace-only string correctly', () => {
     const ref = React.createRef<RichTextEditorRef>();
-    render(<TiptapEditor id="test-editor" ref={ref} />);
+    render(<RichTextEditor id="test-editor" ref={ref} />);
 
     ref.current!.setValue('   ');
     expect(mockEditor.commands.clearContent).toHaveBeenCalled();
@@ -485,7 +507,7 @@ describe('TiptapEditor', () => {
 
   test('setValue handles non-empty content correctly', () => {
     const ref = React.createRef<RichTextEditorRef>();
-    render(<TiptapEditor id="test-editor" ref={ref} />);
+    render(<RichTextEditor id="test-editor" ref={ref} />);
 
     ref.current!.setValue('<p>new content</p>');
     expect(mockEditor.commands.setContent).toHaveBeenCalledWith('<p>new content</p>');
@@ -494,7 +516,7 @@ describe('TiptapEditor', () => {
   test('clearValue calls editor clearContent command and onChange', () => {
     const onChange = vi.fn();
     const ref = React.createRef<RichTextEditorRef>();
-    render(<TiptapEditor id="test-editor" ref={ref} onChange={onChange} />);
+    render(<RichTextEditor id="test-editor" ref={ref} onChange={onChange} />);
 
     ref.current!.clearValue();
     expect(mockEditor.commands.clearContent).toHaveBeenCalled();
@@ -502,7 +524,7 @@ describe('TiptapEditor', () => {
   });
 
   test('renders with custom className', () => {
-    render(<TiptapEditor id="test-editor" className="custom-class" />);
+    render(<RichTextEditor id="test-editor" className="custom-class" />);
 
     const container = screen.getByTestId('editor-content');
     expect(container).toHaveClass('editor');
@@ -511,7 +533,7 @@ describe('TiptapEditor', () => {
   test('handles editor not being available gracefully', () => {
     mockUseEditor.mockReturnValue(null);
     const ref = React.createRef<RichTextEditorRef>();
-    render(<TiptapEditor id="test-editor" ref={ref} />);
+    render(<RichTextEditor id="test-editor" ref={ref} />);
 
     // These should not throw errors
     expect(() => ref.current!.getValue()).not.toThrow();
@@ -523,7 +545,7 @@ describe('TiptapEditor', () => {
 
   describe('Link popover', () => {
     test('opens popover when Link button is clicked', async () => {
-      render(<TiptapEditor id="test-editor" />);
+      render(<RichTextEditor id="test-editor" />);
       const linkButton = screen.getByRole('button', { name: /link/i });
       await userEvent.click(linkButton);
       expect(screen.getByPlaceholderText('Paste a link...')).toBeInTheDocument();
@@ -531,7 +553,7 @@ describe('TiptapEditor', () => {
     });
 
     test('applies link with display text', async () => {
-      render(<TiptapEditor id="test-editor" />);
+      render(<RichTextEditor id="test-editor" />);
       const linkButton = screen.getByRole('button', { name: /link/i });
       await userEvent.click(linkButton);
       const urlInput = screen.getByPlaceholderText('Paste a link...');
@@ -547,7 +569,7 @@ describe('TiptapEditor', () => {
     });
 
     test('applies link with only URL as display text', async () => {
-      render(<TiptapEditor id="test-editor" />);
+      render(<RichTextEditor id="test-editor" />);
       const linkButton = screen.getByRole('button', { name: /link/i });
       await userEvent.click(linkButton);
       const urlInput = screen.getByPlaceholderText('Paste a link...');
@@ -562,7 +584,7 @@ describe('TiptapEditor', () => {
     });
 
     test('cancel closes popover and does not insert link', async () => {
-      render(<TiptapEditor id="test-editor" />);
+      render(<RichTextEditor id="test-editor" />);
       const linkButton = screen.getByRole('button', { name: /link/i });
       await userEvent.click(linkButton);
       const urlInput = screen.getByPlaceholderText('Paste a link...');
@@ -575,6 +597,224 @@ describe('TiptapEditor', () => {
       // Reset the mock HTML after cancel
       mockEditor.getHTML.mockReturnValue('<p>test content</p>');
       expect(mockEditor.getHTML()).not.toContain('<a href="https://example.com"');
+    });
+
+    test('closes popover when escape key is pressed while popover is open', async () => {
+      render(<RichTextEditor id="test-editor" />);
+
+      // Open the popover first
+      const linkButton = screen.getByRole('button', { name: /link/i });
+      await userEvent.click(linkButton);
+      expect(screen.getByPlaceholderText('Paste a link...')).toBeInTheDocument();
+
+      // Press escape key to close popover
+      await userEvent.keyboard('{Escape}');
+
+      // Popover should be closed
+      expect(screen.queryByPlaceholderText('Paste a link...')).not.toBeInTheDocument();
+      expect(screen.queryByPlaceholderText('Display text')).not.toBeInTheDocument();
+    });
+
+    test('pre-fills display text with selected text when link button is clicked with text selected', async () => {
+      // Mock the editor state to have a non-empty selection
+      mockEditor.state.selection.empty = false;
+      mockEditor.state.selection.from = 0;
+      mockEditor.state.selection.to = 5;
+      (mockEditor.state.doc.textBetween as ReturnType<typeof vi.fn>).mockReturnValue(
+        'selected text',
+      );
+
+      render(<RichTextEditor id="test-editor" />);
+
+      // Click the link button
+      const linkButton = screen.getByRole('button', { name: /link/i });
+      await userEvent.click(linkButton);
+
+      // The display text input should be pre-filled with the selected text
+      const displayTextInput = screen.getByPlaceholderText('Display text');
+      expect(displayTextInput).toHaveValue('selected text');
+      expect(mockEditor.state.doc.textBetween).toHaveBeenCalledWith(0, 5, ' ');
+    });
+
+    test('pre-fills inputs with existing link when cursor is positioned within a link', async () => {
+      // Mock the editor state to have empty selection but existing link attributes
+      mockEditor.state.selection.empty = true;
+      (mockEditor.getAttributes as ReturnType<typeof vi.fn>).mockReturnValue({
+        href: 'https://existing.com',
+        text: 'existing link text',
+      });
+
+      render(<RichTextEditor id="test-editor" />);
+
+      // Click the link button
+      const linkButton = screen.getByRole('button', { name: /link/i });
+      await userEvent.click(linkButton);
+
+      // Both inputs should be pre-filled with existing link data
+      const urlInput = screen.getByPlaceholderText('Paste a link...');
+      const displayTextInput = screen.getByPlaceholderText('Display text');
+
+      expect(urlInput).toHaveValue('https://existing.com');
+      expect(displayTextInput).toHaveValue('existing link text');
+      expect(mockEditor.getAttributes).toHaveBeenCalledWith('link');
+    });
+    //   // Test the exact logic from lines 118-119 in handleLinkButtonClick
+    //   const simulateHandleLinkButtonClick = (editor: MockEditor | null | undefined) => {
+    //     if (!editor) {
+    //       return; // This simulates lines 118-119
+    //     }
+    //     // Rest of the function logic would go here
+    //   };
+
+    //   // Call with null editor to test the early return path
+    //   const result = simulateHandleLinkButtonClick(null);
+
+    //   // The function should return undefined (early return) when editor is null
+    //   expect(result).toBeUndefined();
+
+    //   // Also test with undefined editor
+    //   const resultUndefined = simulateHandleLinkButtonClick(undefined);
+    //   expect(resultUndefined).toBeUndefined();
+    // });
+
+    test('closes link popover when clicking outside the popover area', async () => {
+      // Capture the callback passed to useOutsideClick
+      let outsideClickCallback: ((ev: MouseEvent) => void) | null = null;
+      mockUseOutsideClick.mockImplementation(
+        (_refs: unknown[], callback: (ev: MouseEvent) => void) => {
+          outsideClickCallback = callback;
+        },
+      );
+
+      // Mock getBoundingClientRect to return specific coordinates
+      const mockGetBoundingClientRect = vi.fn().mockReturnValue({
+        x: 100,
+        y: 100,
+        width: 200,
+        height: 150,
+      });
+
+      render(<RichTextEditor id="test-editor" />);
+
+      // Open the link popover
+      const linkButton = screen.getByRole('button', { name: /link/i });
+      await userEvent.click(linkButton);
+      expect(screen.getByPlaceholderText('Paste a link...')).toBeInTheDocument();
+
+      // Get the popover element and mock its getBoundingClientRect
+      const popover = document.querySelector('.editor-link-popover') as HTMLDivElement;
+      expect(popover).toBeInTheDocument();
+      popover.getBoundingClientRect = mockGetBoundingClientRect;
+
+      // Simulate a mousedown outside the popover bounds (outside x: 100-300, y: 100-250)
+      const outsideClickEvent = new MouseEvent('mousedown', {
+        clientX: 50, // Outside left boundary (< 100)
+        clientY: 50, // Outside top boundary (< 100)
+        bubbles: true,
+      });
+
+      // Trigger the outside click using the captured callback
+      if (outsideClickCallback) {
+        (outsideClickCallback as (ev: MouseEvent) => void)(outsideClickEvent);
+      }
+
+      // Wait for the popover to close
+      await waitFor(() => {
+        expect(screen.queryByPlaceholderText('Paste a link...')).not.toBeInTheDocument();
+      });
+    });
+
+    test('keeps link popover open when clicking inside the popover area', async () => {
+      // Capture the callback passed to useOutsideClick
+      let outsideClickCallback: ((ev: MouseEvent) => void) | null = null;
+      mockUseOutsideClick.mockImplementation(
+        (_refs: unknown[], callback: (ev: MouseEvent) => void) => {
+          outsideClickCallback = callback;
+        },
+      );
+
+      // Mock getBoundingClientRect to return specific coordinates
+      const mockGetBoundingClientRect = vi.fn().mockReturnValue({
+        x: 100,
+        y: 100,
+        width: 200,
+        height: 150,
+      });
+
+      render(<RichTextEditor id="test-editor" />);
+
+      // Open the link popover
+      const linkButton = screen.getByRole('button', { name: /link/i });
+      await userEvent.click(linkButton);
+      expect(screen.getByPlaceholderText('Paste a link...')).toBeInTheDocument();
+
+      // Get the popover element and mock its getBoundingClientRect
+      const popover = document.querySelector('.editor-link-popover') as HTMLDivElement;
+      expect(popover).toBeInTheDocument();
+      popover.getBoundingClientRect = mockGetBoundingClientRect;
+
+      // Simulate a mousedown inside the popover bounds (within x: 100-300, y: 100-250)
+      const insideClickEvent = new MouseEvent('mousedown', {
+        clientX: 150, // Inside the boundaries
+        clientY: 150, // Inside the boundaries
+        bubbles: true,
+      });
+
+      // Trigger the inside click using the captured callback
+      if (outsideClickCallback) {
+        (outsideClickCallback as (ev: MouseEvent) => void)(insideClickEvent);
+      }
+
+      // Popover should remain open
+      expect(screen.getByPlaceholderText('Paste a link...')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('Display text')).toBeInTheDocument();
+    });
+
+    test('closes link popover when clicking beyond right boundary of popover', async () => {
+      // Capture the callback passed to useOutsideClick
+      let outsideClickCallback: ((ev: MouseEvent) => void) | null = null;
+      mockUseOutsideClick.mockImplementation(
+        (_refs: unknown[], callback: (ev: MouseEvent) => void) => {
+          outsideClickCallback = callback;
+        },
+      );
+
+      // Mock getBoundingClientRect to return specific coordinates
+      const mockGetBoundingClientRect = vi.fn().mockReturnValue({
+        x: 100,
+        y: 100,
+        width: 200,
+        height: 150,
+      });
+
+      render(<RichTextEditor id="test-editor" />);
+
+      // Open the link popover
+      const linkButton = screen.getByRole('button', { name: /link/i });
+      await userEvent.click(linkButton);
+      expect(screen.getByPlaceholderText('Paste a link...')).toBeInTheDocument();
+
+      // Get the popover element and mock its getBoundingClientRect
+      const popover = document.querySelector('.editor-link-popover') as HTMLDivElement;
+      expect(popover).toBeInTheDocument();
+      popover.getBoundingClientRect = mockGetBoundingClientRect;
+
+      // Simulate a mousedown outside the right boundary (containerRight = x + width = 100 + 200 = 300)
+      const outsideRightClickEvent = new MouseEvent('mousedown', {
+        clientX: 301, // Outside right boundary (> 300)
+        clientY: 150, // Inside vertical boundaries
+        bubbles: true,
+      });
+
+      // Trigger the outside click using the captured callback
+      if (outsideClickCallback) {
+        (outsideClickCallback as (ev: MouseEvent) => void)(outsideRightClickEvent);
+      }
+
+      // Wait for the popover to close
+      await waitFor(() => {
+        expect(screen.queryByPlaceholderText('Paste a link...')).not.toBeInTheDocument();
+      });
     });
   });
 });
