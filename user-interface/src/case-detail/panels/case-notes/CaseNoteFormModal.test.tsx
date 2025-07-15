@@ -522,9 +522,8 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     // RichTextEditor wraps content in HTML, so we need to check the editor content
     expect(contentInput?.innerHTML).toBe(`<p>${initialContent}</p>`);
 
-    const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
     await waitFor(() => {
-      expect(submitButton).toBeDisabled();
+      expect(screen.getByTestId(SUBMIT_BUTTON_ID)).toBeDisabled();
     });
   });
 
