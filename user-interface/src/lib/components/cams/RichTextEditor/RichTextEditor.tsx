@@ -146,6 +146,10 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
     }
   };
 
+  const getToggleButtonClass = (formatType: string) => {
+    return `rich-text-button${editor.isActive(formatType) ? ' is-active' : ''}`;
+  };
+
   useImperativeHandle(ref, () => ({
     clearValue,
     getValue,
@@ -167,6 +171,7 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
       {label && (
         <label
           id={`editor-label-${id}`}
+          data-testid={`editor-label-${id}`}
           className={`usa-label ${className ? `${className}-label` : ''}`}
         >
           {label}
@@ -200,7 +205,7 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
             aria-label="Italic"
             title="Italic"
             onClick={() => editor.chain().focus().toggleItalic().run()}
-            className={`rich-text-button${editor.isActive('italic') ? ' is-active' : ''}`}
+            className={getToggleButtonClass('italic')}
             disabled={inputDisabled || !editor.isEditable}
           >
             <em>I</em>
@@ -210,7 +215,7 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
             aria-label="Underline"
             title="Underline"
             onClick={() => editor.chain().focus().toggleUnderline().run()}
-            className={`rich-text-button${editor.isActive('underline') ? ' is-active' : ''}`}
+            className={getToggleButtonClass('underline')}
             disabled={inputDisabled || !editor.isEditable}
           >
             U
@@ -219,7 +224,7 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
             aria-label="Ordered List"
             title="Ordered List"
             onClick={() => editor.chain().focus().toggleOrderedList().run()}
-            className={`rich-text-button${editor.isActive('orderedList') ? ' is-active' : ''}`}
+            className={getToggleButtonClass('orderedList')}
             disabled={inputDisabled || !editor.isEditable}
           >
             <NumberedListIcon />
@@ -228,7 +233,7 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
             aria-label="Bullet List"
             title="Bullet List"
             onClick={() => editor.chain().focus().toggleBulletList().run()}
-            className={`rich-text-button${editor.isActive('bulletList') ? ' is-active' : ''}`}
+            className={getToggleButtonClass('bulletList')}
             disabled={inputDisabled || !editor.isEditable}
           >
             <BulletListIcon />
@@ -237,7 +242,7 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
             aria-label="Link"
             title="Link"
             onClick={handleLinkButtonClick}
-            className={`rich-text-button${editor.isActive('link') ? ' is-active' : ''}`}
+            className={getToggleButtonClass('link')}
             disabled={inputDisabled || !editor.isEditable}
             data-testid="rich-text-link-button"
           >

@@ -172,14 +172,20 @@ describe('RichTextEditor', () => {
     mockUseEditor.mockReturnValue(mockEditor);
   });
 
-  test('renders with label and aria description', () => {
+  test('renders with label, aria description, and className', () => {
     render(
-      <RichTextEditor id="test-editor" label="Test Label" ariaDescription="Test description" />,
+      <RichTextEditor
+        id="test-editor"
+        label="Test Label"
+        ariaDescription="Test description"
+        className="test-class"
+      />,
     );
 
     expect(screen.getByText('Test Label')).toBeInTheDocument();
     expect(screen.getByText('Test description')).toBeInTheDocument();
     expect(screen.getByLabelText('Test Label')).toBeInTheDocument();
+    expect(screen.getByTestId('editor-label-test-editor')).toHaveClass('test-class-label');
   });
 
   test('renders without label and aria description', () => {
@@ -358,6 +364,21 @@ describe('RichTextEditor', () => {
       expect(underlineButton).not.toHaveClass('is-active');
     });
 
+    test('buttons show inactive state when formatting is not active', () => {
+      // Mock the isActive method to return false for all marks
+      mockEditor.isActive = vi.fn(() => true);
+
+      render(<RichTextEditor id="test-editor" />);
+
+      const boldButton = screen.getByRole('button', { name: 'Bold' });
+      const italicButton = screen.getByRole('button', { name: 'Italic' });
+      const underlineButton = screen.getByRole('button', { name: 'Underline' });
+
+      expect(boldButton).toHaveClass('is-active');
+      expect(italicButton).toHaveClass('is-active');
+      expect(underlineButton).toHaveClass('is-active');
+    });
+
     test('buttons are disabled when editor is disabled', () => {
       render(<RichTextEditor id="test-editor" disabled={true} />);
 
@@ -531,19 +552,6 @@ describe('RichTextEditor', () => {
     const container = screen.getByTestId('editor-content');
     expect(container).toHaveClass('editor');
   });
-
-  // test('handles editor not being available gracefully', () => {
-  //   mockUseEditor.mockReturnValue(null);
-  //   const ref = React.createRef<RichTextEditorRef>();
-  //   render(<RichTextEditor id="test-editor" ref={ref} />);
-
-  //   // These should not throw errors
-  //   expect(() => ref.current!.getValue()).not.toThrow();
-  //   expect(() => ref.current!.getHtml()).not.toThrow();
-  //   expect(() => ref.current!.setValue('test')).not.toThrow();
-  //   expect(() => ref.current!.clearValue()).not.toThrow();
-  //   expect(() => ref.current!.focus()).not.toThrow();
-  // });
 
   describe('Link popover', () => {
     test('opens popover when Link button is clicked', async () => {
