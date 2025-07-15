@@ -1,4 +1,4 @@
-import { describe, expect, beforeEach, vi } from 'vitest';
+import { describe, expect, beforeEach, vi, test } from 'vitest';
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -538,7 +538,9 @@ describe('TiptapEditor', () => {
       const textInput = screen.getByPlaceholderText('Display text');
       await userEvent.type(urlInput, 'https://example.com');
       await userEvent.type(textInput, 'Example');
-      const applyButton = screen.getByRole('button', { name: /apply/i });
+      // Use querySelector since the apply button doesn't have an accessible name
+      const applyButton = document.querySelector('.editor-link-apply') as HTMLButtonElement;
+      expect(applyButton).toBeInTheDocument();
       await userEvent.click(applyButton);
       // The editor should now contain the link HTML
       expect(mockEditor.getHTML()).toContain('<a href="https://example.com">Example</a>');
@@ -550,7 +552,9 @@ describe('TiptapEditor', () => {
       await userEvent.click(linkButton);
       const urlInput = screen.getByPlaceholderText('Paste a link...');
       await userEvent.type(urlInput, 'https://example.com');
-      const applyButton = screen.getByRole('button', { name: /apply/i });
+      // Use querySelector since the apply button doesn't have an accessible name
+      const applyButton = document.querySelector('.editor-link-apply') as HTMLButtonElement;
+      expect(applyButton).toBeInTheDocument();
       await userEvent.click(applyButton);
       expect(mockEditor.getHTML()).toContain(
         '<a href="https://example.com">https://example.com</a>',
@@ -563,7 +567,9 @@ describe('TiptapEditor', () => {
       await userEvent.click(linkButton);
       const urlInput = screen.getByPlaceholderText('Paste a link...');
       await userEvent.type(urlInput, 'https://example.com');
-      const cancelButton = screen.getByRole('button', { name: /cancel/i });
+      // Use querySelector since the cancel button doesn't have an accessible name
+      const cancelButton = document.querySelector('.editor-link-delete') as HTMLButtonElement;
+      expect(cancelButton).toBeInTheDocument();
       await userEvent.click(cancelButton);
       expect(screen.queryByPlaceholderText('Paste a link...')).not.toBeInTheDocument();
       // Reset the mock HTML after cancel
