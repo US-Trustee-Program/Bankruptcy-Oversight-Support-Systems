@@ -46,8 +46,10 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
     content: '',
     editable: !inputDisabled,
     onUpdate: ({ editor }) => {
-      const html = editor.getHTML();
-      onChange?.(html);
+      if (editor) {
+        const html = editor.getHTML();
+        onChange?.(html);
+      }
     },
   });
 
@@ -56,27 +58,31 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
   }, [disabled]);
 
   useEffect(() => {
-    editor.setEditable(!inputDisabled);
+    if (editor) {
+      editor.setEditable(!inputDisabled);
+    }
   }, [inputDisabled, editor]);
 
   const clearValue = () => {
-    editor.commands.clearContent();
-    onChange?.('');
+    if (editor) {
+      editor.commands.clearContent();
+      onChange?.('');
+    }
   };
 
   const getValue = () => {
-    return editor.getText() || '';
+    return editor?.getText() || '';
   };
 
   const getHtml = () => {
-    return editor.getHTML() || '';
+    return editor?.getHTML() || '';
   };
 
   const setValue = (html: string) => {
     if (html.trim() === '') {
-      editor.commands.clearContent();
+      editor?.commands.clearContent();
     } else {
-      editor.commands.setContent(html);
+      editor?.commands.setContent(html);
     }
   };
 
@@ -85,7 +91,7 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
   };
 
   const focus = () => {
-    editor.commands.focus();
+    editor?.commands.focus();
   };
 
   function isOutsideClick(ev: MouseEvent) {
@@ -107,27 +113,29 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
   }
 
   const handleLinkButtonClick = () => {
-    setShowLinkPopover(true);
-    // Pre-fill with current link if selection has one
-    const currentLink = editor.getAttributes('link').href || '';
-    setLinkUrl(currentLink);
-    // Pre-fill display text with selection or link text
-    const { selection } = editor.state;
-    let selectedText = '';
-    if (!selection.empty) {
-      selectedText = editor.state.doc.textBetween(selection.from, selection.to, ' ');
-    } else if (currentLink) {
-      // If cursor is in a link, get the link text
-      selectedText = editor.getAttributes('link').text || '';
+    if (editor) {
+      setShowLinkPopover(true);
+      // Pre-fill with current link if selection has one
+      const currentLink = editor?.getAttributes('link').href || '';
+      setLinkUrl(currentLink);
+      // Pre-fill display text with selection or link text
+      const { selection } = editor.state;
+      let selectedText = '';
+      if (!selection.empty) {
+        selectedText = editor.state.doc.textBetween(selection.from, selection.to, ' ');
+      } else if (currentLink) {
+        // If cursor is in a link, get the link text
+        selectedText = editor.getAttributes('link').text || '';
+      }
+      setLinkText(selectedText);
     }
-    setLinkText(selectedText);
     setTimeout(() => linkInputRef.current?.focus(), 0);
   };
 
   const handleLinkApply = () => {
     const display = linkText || linkUrl;
     if (display) {
-      editor.chain().focus().insertContent(`<a href="${linkUrl}">${display}</a>`).run();
+      editor?.chain().focus().insertContent(`<a href="${linkUrl}">${display}</a>`).run();
     }
     setShowLinkPopover(false);
     setLinkUrl('');
@@ -147,7 +155,7 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
   };
 
   const getToggleButtonClass = (formatType: string) => {
-    return `rich-text-button${editor.isActive(formatType) ? ' is-active' : ''}`;
+    return `rich-text-button${editor?.isActive(formatType) ? ' is-active' : ''}`;
   };
 
   useImperativeHandle(ref, () => ({
@@ -167,7 +175,7 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
   }, [showLinkPopover]);
 
   return (
-    <div id={`${id}-container`} className="usa-form-group editor-container">
+    <div id={`${id}-container`} className={`usa-form-group editor-container ${className || ''}`}>
       {label && (
         <label
           id={`editor-label-${id}`}
@@ -190,12 +198,12 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
         <div className="editor-toolbar">
           <button
             type="button"
-            className={`rich-text-button${editor.isActive('bold') ? ' is-active' : ''}`}
+            className={`rich-text-button${editor?.isActive('bold') ? ' is-active' : ''}`}
             disabled={inputDisabled || !editor.isEditable}
             aria-disabled={inputDisabled || !editor.isEditable}
             aria-label="Bold"
             title="Bold"
-            onClick={() => editor.chain().focus().toggleBold().run()}
+            onClick={() => editor?.chain().focus().toggleBold().run()}
             data-testid="rich-text-bold-button"
           >
             <strong>B</strong>
@@ -204,7 +212,7 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
             type="button"
             aria-label="Italic"
             title="Italic"
-            onClick={() => editor.chain().focus().toggleItalic().run()}
+            onClick={() => editor?.chain().focus().toggleItalic().run()}
             className={getToggleButtonClass('italic')}
             disabled={inputDisabled || !editor.isEditable}
           >
@@ -214,7 +222,7 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
             type="button"
             aria-label="Underline"
             title="Underline"
-            onClick={() => editor.chain().focus().toggleUnderline().run()}
+            onClick={() => editor?.chain().focus().toggleUnderline().run()}
             className={getToggleButtonClass('underline')}
             disabled={inputDisabled || !editor.isEditable}
           >
@@ -223,7 +231,7 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
           <button
             aria-label="Ordered List"
             title="Ordered List"
-            onClick={() => editor.chain().focus().toggleOrderedList().run()}
+            onClick={() => editor?.chain().focus().toggleOrderedList().run()}
             className={getToggleButtonClass('orderedList')}
             disabled={inputDisabled || !editor.isEditable}
           >
@@ -232,7 +240,7 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
           <button
             aria-label="Bullet List"
             title="Bullet List"
-            onClick={() => editor.chain().focus().toggleBulletList().run()}
+            onClick={() => editor?.chain().focus().toggleBulletList().run()}
             className={getToggleButtonClass('bulletList')}
             disabled={inputDisabled || !editor.isEditable}
           >
