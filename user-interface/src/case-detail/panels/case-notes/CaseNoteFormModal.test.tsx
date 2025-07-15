@@ -570,19 +570,20 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     });
   });
 
-  test.skip('should cache form data when typing', async () => {
+  test('should cache form data when typing', async () => {
     const newTitle = 'New Note Title';
     const newContent = 'New Note Content';
-    // Put the form data in the cache BEFORE rendering/opening the modal
-    LocalFormCache.saveForm(buildCaseNoteFormKey(TEST_CASE_ID, 'create', ''), {
+
+    const openModalProps: Partial<CaseNoteFormModalOpenProps> = {
       title: newTitle,
       content: newContent,
       caseId: TEST_CASE_ID,
-    });
+      mode: 'create',
+    };
 
     const modalRef = React.createRef<CaseNoteFormModalRef>();
     const richTextEditorRef = React.createRef<RichTextEditorRef>();
-    renderComponent(modalRef, {}, undefined, richTextEditorRef);
+    renderComponent(modalRef, {}, openModalProps, richTextEditorRef);
 
     const openButton = screen.getByTestId(OPEN_BUTTON_ID);
     await userEvent.click(openButton);
