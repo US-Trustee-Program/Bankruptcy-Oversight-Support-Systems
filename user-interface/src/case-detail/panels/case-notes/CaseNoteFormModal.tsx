@@ -19,6 +19,8 @@ import TextArea from '@/lib/components/uswds/TextArea';
 import RichTextEditor, {
   RichTextEditorRef,
 } from '@/lib/components/cams/RichTextEditor/RichTextEditor';
+import { DOMPURIFY_CONFIG } from '@/lib/utils/sanitize-text';
+import DOMPurify from 'dompurify';
 
 const useThrottleCallback = (callback: () => void, delay: number) => {
   const isThrottled = useRef(false);
@@ -49,7 +51,8 @@ export function getCaseNotesContentValue(ref: InputRef | null) {
 }
 
 export function getCaseNotesRichTextContentValue(ref: RichTextEditorRef | null) {
-  return ref?.getHtml() ?? '';
+  const unsafeHtml = ref?.getHtml() ?? '';
+  return DOMPurify.sanitize(unsafeHtml, DOMPURIFY_CONFIG);
 }
 
 export function buildCaseNoteFormKey(caseId: string, mode: CaseNoteFormMode, id: string) {
@@ -83,7 +86,7 @@ export type CaseNoteFormModalProps = {
   modalId: string;
   alertMessage?: AlertDetails;
   onModalClosed?: (caseId: string, mode: CaseNoteFormMode) => void;
-  RichTextEditorRef?: React.RefObject<RichTextEditorRef>; // <-- add this line
+  RichTextEditorRef?: React.RefObject<RichTextEditorRef>;
 };
 
 const defaultModalOpenOptions: CaseNoteFormModalOpenProps = {
@@ -124,6 +127,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   const session = LocalStorage.getSession();
 
   const richTextContentInputRef = useRef<RichTextEditorRef>(null);
+  const richTextRef = props.RichTextEditorRef || richTextContentInputRef;
 
   function disableSubmitButton(disable: boolean) {
     const buttons = modalRef.current?.buttons;
@@ -137,8 +141,6 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
       let currentContent = contentInputRef.current?.getValue();
       let currentTitle = titleInputRef.current?.getValue();
       if (featureFlags[FORMAT_CASE_NOTES]) {
-        // Use the correct rich text editor ref (external or internal)
-        const richTextRef = props.RichTextEditorRef || richTextContentInputRef;
         currentContent = richTextRef.current?.getHtml();
         currentTitle = titleInputRef.current?.getValue();
       }
@@ -187,8 +189,6 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   function clearCaseNoteForm() {
     titleInputRef.current?.clearValue();
     if (featureFlags[FORMAT_CASE_NOTES]) {
-      // Use the correct rich text editor ref (external or internal)
-      const richTextRef = props.RichTextEditorRef || richTextContentInputRef;
       richTextRef.current?.clearValue();
     } else {
       contentInputRef.current?.clearValue();
@@ -203,8 +203,6 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   function disableFormFields(disabled: boolean) {
     titleInputRef.current?.disable(disabled);
     if (featureFlags[FORMAT_CASE_NOTES]) {
-      // Use the correct rich text editor ref (external or internal)
-      const richTextRef = props.RichTextEditorRef || richTextContentInputRef;
       richTextRef.current?.disable(disabled);
     } else {
       contentInputRef.current?.disable(disabled);
@@ -274,8 +272,6 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     let content = getCaseNotesContentValue(contentInputRef.current);
     if (featureFlags[FORMAT_CASE_NOTES]) {
       title = getCaseNotesTitleValue(titleInputRef.current);
-      // Use the correct rich text editor ref (external or internal)
-      const richTextRef = props.RichTextEditorRef || richTextContentInputRef;
       content = getCaseNotesRichTextContentValue(richTextRef.current);
     }
 
@@ -334,8 +330,6 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
       titleInputRef.current?.setValue(showProps.title ?? '');
 
       if (featureFlags[FORMAT_CASE_NOTES]) {
-        // Use the correct rich text editor ref (external or internal)
-        const richTextRef = props.RichTextEditorRef || richTextContentInputRef;
         richTextRef.current?.setValue(showProps.content ?? '');
       } else {
         contentInputRef.current?.setValue(showProps.content ?? '');
