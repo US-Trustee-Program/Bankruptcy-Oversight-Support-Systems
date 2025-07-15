@@ -42,6 +42,7 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
 
   const editor = useEditor({
     extensions: [StarterKit, Underline, Link],
+    immediatelyRender: true,
     content: '',
     editable: !inputDisabled,
     onUpdate: ({ editor }) => {
@@ -55,33 +56,27 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
   }, [disabled]);
 
   useEffect(() => {
-    if (editor) {
-      editor.setEditable(!inputDisabled);
-    }
+    editor.setEditable(!inputDisabled);
   }, [inputDisabled, editor]);
 
   const clearValue = () => {
-    if (editor) {
-      editor.commands.clearContent();
-      onChange?.('');
-    }
+    editor.commands.clearContent();
+    onChange?.('');
   };
 
   const getValue = () => {
-    return editor?.getText() || '';
+    return editor.getText() || '';
   };
 
   const getHtml = () => {
-    return editor?.getHTML() || '';
+    return editor.getHTML() || '';
   };
 
   const setValue = (html: string) => {
-    if (editor) {
-      if (html.trim() === '') {
-        editor.commands.clearContent();
-      } else {
-        editor.commands.setContent(html);
-      }
+    if (html.trim() === '') {
+      editor.commands.clearContent();
+    } else {
+      editor.commands.setContent(html);
     }
   };
 
@@ -90,9 +85,7 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
   };
 
   const focus = () => {
-    if (editor) {
-      editor.commands.focus();
-    }
+    editor.commands.focus();
   };
 
   function isOutsideClick(ev: MouseEvent) {
@@ -114,9 +107,6 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
   }
 
   const handleLinkButtonClick = () => {
-    if (!editor) {
-      return;
-    }
     setShowLinkPopover(true);
     // Pre-fill with current link if selection has one
     const currentLink = editor.getAttributes('link').href || '';
@@ -135,11 +125,9 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
   };
 
   const handleLinkApply = () => {
-    if (editor) {
-      const display = linkText || linkUrl;
-      if (display) {
-        editor.chain().focus().insertContent(`<a href="${linkUrl}">${display}</a>`).run();
-      }
+    const display = linkText || linkUrl;
+    if (display) {
+      editor.chain().focus().insertContent(`<a href="${linkUrl}">${display}</a>`).run();
     }
     setShowLinkPopover(false);
     setLinkUrl('');
@@ -197,12 +185,12 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
         <div className="editor-toolbar">
           <button
             type="button"
-            className={`rich-text-button${editor?.isActive('bold') ? ' is-active' : ''}`}
-            disabled={inputDisabled || !editor?.isEditable}
-            aria-disabled={inputDisabled || !editor?.isEditable}
+            className={`rich-text-button${editor.isActive('bold') ? ' is-active' : ''}`}
+            disabled={inputDisabled || !editor.isEditable}
+            aria-disabled={inputDisabled || !editor.isEditable}
             aria-label="Bold"
             title="Bold"
-            onClick={() => editor?.chain().focus().toggleBold().run()}
+            onClick={() => editor.chain().focus().toggleBold().run()}
           >
             <strong>B</strong>
           </button>
@@ -210,9 +198,9 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
             type="button"
             aria-label="Italic"
             title="Italic"
-            onClick={() => editor?.chain().focus().toggleItalic().run()}
-            className={`rich-text-button${editor?.isActive('italic') ? ' is-active' : ''}`}
-            disabled={inputDisabled || !editor?.isEditable}
+            onClick={() => editor.chain().focus().toggleItalic().run()}
+            className={`rich-text-button${editor.isActive('italic') ? ' is-active' : ''}`}
+            disabled={inputDisabled || !editor.isEditable}
           >
             <em>I</em>
           </button>
@@ -220,27 +208,27 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
             type="button"
             aria-label="Underline"
             title="Underline"
-            onClick={() => editor?.chain().focus().toggleUnderline().run()}
-            className={`rich-text-button${editor?.isActive('underline') ? ' is-active' : ''}`}
-            disabled={inputDisabled || !editor?.isEditable}
+            onClick={() => editor.chain().focus().toggleUnderline().run()}
+            className={`rich-text-button${editor.isActive('underline') ? ' is-active' : ''}`}
+            disabled={inputDisabled || !editor.isEditable}
           >
             U
           </button>
           <button
             aria-label="Ordered List"
             title="Ordered List"
-            onClick={() => editor?.chain().focus().toggleOrderedList().run()}
-            className={`rich-text-button${editor?.isActive('orderedList') ? ' is-active' : ''}`}
-            disabled={inputDisabled || !editor?.isEditable}
+            onClick={() => editor.chain().focus().toggleOrderedList().run()}
+            className={`rich-text-button${editor.isActive('orderedList') ? ' is-active' : ''}`}
+            disabled={inputDisabled || !editor.isEditable}
           >
             <NumberedListIcon />
           </button>
           <button
             aria-label="Bullet List"
             title="Bullet List"
-            onClick={() => editor?.chain().focus().toggleBulletList().run()}
-            className={`rich-text-button${editor?.isActive('bulletList') ? ' is-active' : ''}`}
-            disabled={inputDisabled || !editor?.isEditable}
+            onClick={() => editor.chain().focus().toggleBulletList().run()}
+            className={`rich-text-button${editor.isActive('bulletList') ? ' is-active' : ''}`}
+            disabled={inputDisabled || !editor.isEditable}
           >
             <BulletListIcon />
           </button>
@@ -248,8 +236,8 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
             aria-label="Link"
             title="Link"
             onClick={handleLinkButtonClick}
-            className={`rich-text-button${editor?.isActive('link') ? ' is-active' : ''}`}
-            disabled={inputDisabled || !editor?.isEditable}
+            className={`rich-text-button${editor.isActive('link') ? ' is-active' : ''}`}
+            disabled={inputDisabled || !editor.isEditable}
           >
             <LinkIcon />
           </button>
