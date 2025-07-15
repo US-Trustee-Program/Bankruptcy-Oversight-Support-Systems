@@ -123,7 +123,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   const notesSubmissionErrorMessage = 'There was a problem submitting the case note.';
   const session = LocalStorage.getSession();
 
-  const tiptapContentInputRef = useRef<RichTextEditorRef>(null);
+  const richTextContentInputRef = useRef<RichTextEditorRef>(null);
 
   function disableSubmitButton(disable: boolean) {
     const buttons = modalRef.current?.buttons;
@@ -137,9 +137,9 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
       let currentContent = contentInputRef.current?.getValue();
       let currentTitle = titleInputRef.current?.getValue();
       if (featureFlags[FORMAT_CASE_NOTES]) {
-        // Use the correct Tiptap editor ref (external or internal)
-        const tiptapRef = props.RichTextEditorRef || tiptapContentInputRef;
-        currentContent = tiptapRef.current?.getHtml();
+        // Use the correct rich text editor ref (external or internal)
+        const richTextRef = props.RichTextEditorRef || richTextContentInputRef;
+        currentContent = richTextRef.current?.getHtml();
         currentTitle = titleInputRef.current?.getValue();
       }
       const notSavable =
@@ -176,7 +176,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     });
   }
 
-  function handleTiptapContentChange(value: string) {
+  function handleRichTextContentChange(value: string) {
     saveFormData({
       caseId: modalOpenOptions.caseId,
       title: getCaseNotesTitleValue(titleInputRef.current),
@@ -187,9 +187,9 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   function clearCaseNoteForm() {
     titleInputRef.current?.clearValue();
     if (featureFlags[FORMAT_CASE_NOTES]) {
-      // Use the correct Tiptap editor ref (external or internal)
-      const tiptapRef = props.RichTextEditorRef || tiptapContentInputRef;
-      tiptapRef.current?.clearValue();
+      // Use the correct rich text editor ref (external or internal)
+      const richTextRef = props.RichTextEditorRef || richTextContentInputRef;
+      richTextRef.current?.clearValue();
     } else {
       contentInputRef.current?.clearValue();
     }
@@ -203,9 +203,9 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   function disableFormFields(disabled: boolean) {
     titleInputRef.current?.disable(disabled);
     if (featureFlags[FORMAT_CASE_NOTES]) {
-      // Use the correct Tiptap editor ref (external or internal)
-      const tiptapRef = props.RichTextEditorRef || tiptapContentInputRef;
-      tiptapRef.current?.disable(disabled);
+      // Use the correct rich text editor ref (external or internal)
+      const richTextRef = props.RichTextEditorRef || richTextContentInputRef;
+      richTextRef.current?.disable(disabled);
     } else {
       contentInputRef.current?.disable(disabled);
     }
@@ -274,9 +274,9 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     let content = getCaseNotesContentValue(contentInputRef.current);
     if (featureFlags[FORMAT_CASE_NOTES]) {
       title = getCaseNotesTitleValue(titleInputRef.current);
-      // Use the correct Tiptap editor ref (external or internal)
-      const tiptapRef = props.RichTextEditorRef || tiptapContentInputRef;
-      content = getCaseNotesRichTextContentValue(tiptapRef.current);
+      // Use the correct rich text editor ref (external or internal)
+      const richTextRef = props.RichTextEditorRef || richTextContentInputRef;
+      content = getCaseNotesRichTextContentValue(richTextRef.current);
     }
 
     if (mode === 'create' && session?.user) {
@@ -334,9 +334,9 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
       titleInputRef.current?.setValue(showProps.title ?? '');
 
       if (featureFlags[FORMAT_CASE_NOTES]) {
-        // Use the correct Tiptap editor ref (external or internal)
-        const tiptapRef = props.RichTextEditorRef || tiptapContentInputRef;
-        tiptapRef.current?.setValue(showProps.content ?? '');
+        // Use the correct rich text editor ref (external or internal)
+        const richTextRef = props.RichTextEditorRef || richTextContentInputRef;
+        richTextRef.current?.setValue(showProps.content ?? '');
       } else {
         contentInputRef.current?.setValue(showProps.content ?? '');
       }
@@ -408,8 +408,8 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
               id="case-note-editor"
               label="Note Text"
               required={true}
-              onChange={handleTiptapContentChange}
-              ref={props.RichTextEditorRef || tiptapContentInputRef}
+              onChange={handleRichTextContentChange}
+              ref={props.RichTextEditorRef || richTextContentInputRef}
             />
           ) : (
             <TextArea
