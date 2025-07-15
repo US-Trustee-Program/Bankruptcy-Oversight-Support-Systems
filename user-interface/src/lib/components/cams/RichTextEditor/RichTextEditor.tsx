@@ -1,9 +1,12 @@
 import './RichTextEditor.scss';
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { Editor } from './Editor';
-import { BrowserSelectionService } from './SelectionService.humble';
-import { RichTextButton } from './RichTextButton';
-import editorUtilities, { safelyGetHtml, safelySetHtml } from './Editor.utilities';
+import { forwardRef, useEffect, useImperativeHandle, useState, useRef } from 'react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Underline from '@tiptap/extension-underline';
+import Link from '@tiptap/extension-link';
+import { NumberedListIcon, BulletListIcon, LinkIcon } from './RichTextIcon';
+import Icon from '../../uswds/Icon';
+import useOutsideClick from '@/lib/hooks/UseOutsideClick';
 
 export interface RichTextEditorRef {
   clearValue: () => void;
@@ -24,73 +27,134 @@ export interface RichTextEditorProps {
   className?: string;
 }
 
-function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditorRef>) {
+function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditorRef>) {
   const { id, label, ariaDescription, onChange, required, className, disabled } = props;
 
-  const contentRef = useRef<HTMLDivElement>(null);
-  const editorRef = useRef<Editor | null>(null);
   const [inputDisabled, setInputDisabled] = useState<boolean>(disabled || false);
-  const [selectionService] = useState<BrowserSelectionService>(
-    () => new BrowserSelectionService(window, document),
-  );
+  const [showLinkPopover, setShowLinkPopover] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
+  const [linkText, setLinkText] = useState('');
+  const linkPopoverRef = useRef<HTMLDivElement>(null);
+  const linkInputRef = useRef<HTMLInputElement>(null);
+  const linkTextInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (contentRef.current && !editorRef.current) {
-      editorRef.current = new Editor(contentRef.current, selectionService);
-    }
-  }, []);
+  useOutsideClick([linkPopoverRef], isOutsideClick);
+
+  const editor = useEditor({
+    extensions: [StarterKit, Underline, Link],
+    content: '',
+    editable: !inputDisabled,
+    onUpdate: ({ editor }) => {
+      const html = editor.getHTML();
+      onChange?.(html);
+    },
+  });
 
   useEffect(() => {
     setInputDisabled(disabled || false);
   }, [disabled]);
 
+  useEffect(() => {
+    if (editor) {
+      editor.setEditable(!inputDisabled);
+    }
+  }, [inputDisabled, editor]);
+
   const clearValue = () => {
-    if (contentRef.current && editorRef.current) {
-      contentRef.current.innerHTML = '';
-      // Re-initialize with empty paragraph
-      editorRef.current = new Editor(contentRef.current, selectionService);
+    if (editor) {
+      editor.commands.clearContent();
       onChange?.('');
     }
   };
 
-  const getValue = () => contentRef.current?.innerText || '';
+  const getValue = () => {
+    return editor?.getText() || '';
+  };
 
   const getHtml = () => {
-    return editorUtilities.cleanHtml(safelyGetHtml(contentRef.current));
+    return editor?.getHTML() || '';
   };
 
   const setValue = (html: string) => {
-    if (contentRef.current) {
+    if (editor) {
       if (html.trim() === '') {
-        // If setting empty content, reinitialize with empty paragraph
-        contentRef.current.innerHTML = '';
-        if (editorRef.current) {
-          editorRef.current = new Editor(contentRef.current, selectionService);
-        }
+        editor.commands.clearContent();
       } else {
-        safelySetHtml(contentRef.current, html);
+        editor.commands.setContent(html);
       }
     }
   };
-  const disable = (val: boolean) => setInputDisabled(val);
-  const focus = () => {
-    if (contentRef.current) {
-      contentRef.current.focus();
 
-      // If the editor is empty, position cursor in the empty paragraph
-      if (editorUtilities.isEmptyContent(contentRef.current)) {
-        const p = contentRef.current.querySelector('p');
-        if (p?.firstChild) {
-          const selection = window.getSelection();
-          if (selection) {
-            const range = document.createRange();
-            range.setStart(p.firstChild, 1); // After the zero-width space
-            range.collapse(true);
-            selection.removeAllRanges();
-            selection.addRange(range);
-          }
-        }
+  const disable = (val: boolean) => {
+    setInputDisabled(val);
+  };
+
+  const focus = () => {
+    if (editor) {
+      editor.commands.focus();
+    }
+  };
+
+  function isOutsideClick(ev: MouseEvent) {
+    if (linkPopoverRef.current && showLinkPopover) {
+      const boundingRect = (linkPopoverRef.current as HTMLDivElement).getBoundingClientRect();
+      const containerRight = boundingRect.x + boundingRect.width;
+      const containerBottom = boundingRect.y + boundingRect.height;
+      const targetX = ev.clientX;
+      const targetY = ev.clientY;
+      if (
+        targetX < boundingRect.x ||
+        targetX > containerRight ||
+        targetY < boundingRect.y ||
+        targetY > containerBottom
+      ) {
+        setShowLinkPopover(false);
       }
+    }
+  }
+
+  const handleLinkButtonClick = () => {
+    if (!editor) {
+      return;
+    }
+    setShowLinkPopover(true);
+    // Pre-fill with current link if selection has one
+    const currentLink = editor.getAttributes('link').href || '';
+    setLinkUrl(currentLink);
+    // Pre-fill display text with selection or link text
+    const { selection } = editor.state;
+    let selectedText = '';
+    if (!selection.empty) {
+      selectedText = editor.state.doc.textBetween(selection.from, selection.to, ' ');
+    } else if (currentLink) {
+      // If cursor is in a link, get the link text
+      selectedText = editor.getAttributes('link').text || '';
+    }
+    setLinkText(selectedText);
+    setTimeout(() => linkInputRef.current?.focus(), 0);
+  };
+
+  const handleLinkApply = () => {
+    if (editor) {
+      const display = linkText || linkUrl;
+      if (display) {
+        editor.chain().focus().insertContent(`<a href="${linkUrl}">${display}</a>`).run();
+      }
+    }
+    setShowLinkPopover(false);
+    setLinkUrl('');
+    setLinkText('');
+  };
+
+  const handleLinkCancel = () => {
+    setShowLinkPopover(false);
+    setLinkUrl('');
+    setLinkText('');
+  };
+
+  const handleLinkKeyDown = (e: KeyboardEvent) => {
+    if (showLinkPopover && e.key === 'Escape') {
+      handleLinkCancel();
     }
   };
 
@@ -103,46 +167,15 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
     focus,
   }));
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (editorRef.current?.handleCtrlKey(e)) {
-      return;
-    }
-
-    if (
-      editorRef.current?.handleBackspaceOnEmptyContent &&
-      editorRef.current.handleBackspaceOnEmptyContent(e)
-    ) {
-      return;
-    }
-
-    if (editorRef.current?.handleDentures(e)) {
-      onChange?.(getHtml());
-      return;
-    }
-
-    if (editorRef.current?.handleEnterKey(e)) {
-      return;
-    }
-
-    if (editorRef.current?.handleDeleteKeyOnList(e)) {
-      return;
-    }
-
-    if (editorRef.current?.handlePrintableKey(e)) {
-      onChange?.(getHtml());
-      return;
-    }
-  };
-
-  const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
-    if (editorRef.current?.handlePaste(e)) {
-      onChange?.(getHtml());
-      return;
-    }
-  };
+  useEffect(() => {
+    window.addEventListener('keydown', handleLinkKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleLinkKeyDown);
+    };
+  }, [showLinkPopover]);
 
   return (
-    <div id={`${id}-container`} className="usa-form-group rich-text-editor-container">
+    <div id={`${id}-container`} className="usa-form-group editor-container">
       {label && (
         <label
           id={`editor-label-${id}`}
@@ -159,68 +192,105 @@ function _RichTextEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEdit
         </div>
       )}
 
-      <div className="editor-toolbar">
-        <RichTextButton
-          title="Bold (Ctrl+B)"
-          ariaLabel="Set bold formatting"
-          onClick={() => editorRef.current?.toggleSelection('strong')}
-        >
-          B
-        </RichTextButton>
-        <RichTextButton
-          title="Italic (Ctrl+I)"
-          ariaLabel="Set italic formatting"
-          style={{ fontStyle: 'italic' }}
-          onClick={() => editorRef.current?.toggleSelection('em')}
-        >
-          I
-        </RichTextButton>
-        <RichTextButton
-          title="Underline (Ctrl+U)"
-          ariaLabel="Set underline formatting"
-          style={{ textDecoration: 'underline' }}
-          onClick={() => editorRef.current?.toggleSelection('u')}
-        >
-          U
-        </RichTextButton>
-        <RichTextButton
-          icon="bulleted-list"
-          title="Bulleted List"
-          ariaLabel="Insert bulleted list"
-          onClick={() => {
-            editorRef.current?.toggleList('ul');
-            onChange?.(getHtml());
-          }}
-        ></RichTextButton>
-        <RichTextButton
-          icon="numbered-list"
-          title="Numbered List"
-          ariaLabel="Insert numbered list"
-          onClick={() => {
-            editorRef.current?.toggleList('ol');
-            onChange?.(getHtml());
-          }}
-        ></RichTextButton>
+      <div className="editor-wrapper">
+        {/* Toolbar */}
+        <div className="editor-toolbar">
+          <button
+            type="button"
+            className={`rich-text-button${editor?.isActive('bold') ? ' is-active' : ''}`}
+            disabled={inputDisabled || !editor?.isEditable}
+            aria-disabled={inputDisabled || !editor?.isEditable}
+            title="Bold"
+            onClick={() => editor?.chain().focus().toggleBold().run()}
+          >
+            <strong>B</strong>
+          </button>
+          <button
+            type="button"
+            aria-label="Italic"
+            title="Italic"
+            onClick={() => editor?.chain().focus().toggleItalic().run()}
+            className={`rich-text-button${editor?.isActive('italic') ? ' is-active' : ''}`}
+            disabled={inputDisabled || !editor?.isEditable}
+          >
+            <em>I</em>
+          </button>
+          <button
+            type="button"
+            aria-label="Underline"
+            title="Underline"
+            onClick={() => editor?.chain().focus().toggleUnderline().run()}
+            className={`rich-text-button${editor?.isActive('underline') ? ' is-active' : ''}`}
+            disabled={inputDisabled || !editor?.isEditable}
+          >
+            U
+          </button>
+          <button
+            aria-label="Ordered List"
+            title="Ordered List"
+            onClick={() => editor?.chain().focus().toggleOrderedList().run()}
+            className={`rich-text-button${editor?.isActive('orderedList') ? ' is-active' : ''}`}
+            disabled={inputDisabled || !editor?.isEditable}
+          >
+            <NumberedListIcon />
+          </button>
+          <button
+            aria-label="Bullet List"
+            title="Bullet List"
+            onClick={() => editor?.chain().focus().toggleBulletList().run()}
+            className={`rich-text-button${editor?.isActive('bulletList') ? ' is-active' : ''}`}
+            disabled={inputDisabled || !editor?.isEditable}
+          >
+            <BulletListIcon />
+          </button>
+          <button
+            aria-label="Link"
+            title="Link"
+            onClick={handleLinkButtonClick}
+            className={`rich-text-button${editor?.isActive('link') ? ' is-active' : ''}`}
+            disabled={inputDisabled || !editor?.isEditable}
+          >
+            <LinkIcon />
+          </button>
+          {showLinkPopover && (
+            <div className="editor-link-popover" ref={linkPopoverRef}>
+              <input
+                ref={linkInputRef}
+                type="text"
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                placeholder="Paste a link..."
+                className="editor-link-input"
+              />
+              <input
+                ref={linkTextInputRef}
+                type="text"
+                value={linkText}
+                onChange={(e) => setLinkText(e.target.value)}
+                placeholder="Display text"
+                className="editor-link-input display-text-input"
+              />
+              <button type="button" onClick={handleLinkApply} className="editor-link-apply">
+                <Icon name="check" />
+              </button>
+              <button type="button" onClick={handleLinkCancel} className="editor-link-delete">
+                <Icon name="delete" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        <EditorContent
+          editor={editor}
+          className={`editor-content editor${inputDisabled ? ' disabled' : ''}`}
+          data-testid="editor-content"
+          aria-labelledby={label ? `editor-label-${id}` : undefined}
+        />
       </div>
-      <div
-        id={id}
-        data-testid={id}
-        className={`editor-content ${className || ''}`}
-        contentEditable={!inputDisabled}
-        tabIndex={0}
-        onInput={() => onChange?.(getHtml())}
-        onKeyDown={handleKeyDown}
-        onPaste={handlePaste}
-        ref={contentRef}
-        aria-labelledby={label ? `editor-label-${id}` : undefined}
-        aria-describedby={ariaDescription ? `editor-hint-${id}` : undefined}
-        role="textbox"
-        aria-multiline="true"
-        suppressContentEditableWarning
-      />
     </div>
   );
 }
 
-const RichTextEditor = forwardRef(_RichTextEditor);
+const RichTextEditor = forwardRef(_TiptapEditor);
+
 export default RichTextEditor;
