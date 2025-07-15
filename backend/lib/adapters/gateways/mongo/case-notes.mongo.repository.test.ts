@@ -179,4 +179,75 @@ describe('case notes repo tests', () => {
       expect(actual).toEqual(expected);
     });
   });
+
+  describe('branch and singleton logic', () => {
+    test('singleton getInstance and dropInstance logic', async () => {
+      // Ensure clean state using public API
+      while (CaseNotesMongoRepository['referenceCount'] > 0) {
+        await CaseNotesMongoRepository.dropInstance();
+      }
+      const context1 = await createMockApplicationContext();
+      const repo1 = CaseNotesMongoRepository.getInstance(context1);
+      expect(repo1).toBeDefined();
+      expect(CaseNotesMongoRepository['referenceCount']).toBe(1);
+      const context2 = await createMockApplicationContext();
+      const repo2 = CaseNotesMongoRepository.getInstance(context2);
+      expect(repo2).toBe(repo1); // Should be the same instance
+      expect(CaseNotesMongoRepository['referenceCount']).toBe(2);
+      // Drop once, should not close
+      const closeSpy = jest.spyOn(repo1['client'], 'close').mockResolvedValue();
+      CaseNotesMongoRepository.dropInstance();
+      expect(CaseNotesMongoRepository['referenceCount']).toBe(1);
+      expect(closeSpy).not.toHaveBeenCalled();
+      // Drop again, should close and null instance
+      CaseNotesMongoRepository.dropInstance();
+      expect(CaseNotesMongoRepository['referenceCount']).toBe(0);
+      // Wait for close to resolve
+      await Promise.resolve();
+      expect(closeSpy).toHaveBeenCalled();
+      expect(CaseNotesMongoRepository['instance']).toBeNull();
+    });
+
+    test('release calls dropInstance', async () => {
+      const dropSpy = jest.spyOn(CaseNotesMongoRepository, 'dropInstance');
+      repo.release();
+      expect(dropSpy).toHaveBeenCalled();
+      dropSpy.mockRestore();
+    });
+
+    test('getNotesByCaseId returns empty array if no notes', async () => {
+      jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+      const actual = await repo.getNotesByCaseId('some-case-id');
+      expect(actual).toEqual([]);
+    });
+
+    test('archiveCaseNote with minimal input', async () => {
+      const minimal = { caseId: 'case1', id: 'note1', archivedOn: new Date() };
+      const expectedQuery = and(
+        doc('documentType').equals('NOTE'),
+        doc('caseId').equals(minimal.caseId),
+        doc('id').equals(minimal.id),
+      );
+      const expectedDateParameter = { archivedOn: minimal.archivedOn, archivedBy: undefined };
+      const updateSpy = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'updateOne')
+        .mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
+      await repo.archiveCaseNote(minimal);
+      expect(updateSpy).toHaveBeenCalledWith(expectedQuery, expectedDateParameter);
+    });
+
+    test('update with only caseId and id calls updateOne with empty object', async () => {
+      const input = { caseId: 'case1', id: 'note1' };
+      const expectedQuery = and(
+        doc('documentType').equals('NOTE'),
+        doc('caseId').equals(input.caseId),
+        doc('id').equals(input.id),
+      );
+      const updateOneSpy = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'updateOne')
+        .mockResolvedValue({ modifiedCount: 1, matchedCount: 1 });
+      await repo.update({ ...input });
+      expect(updateOneSpy).toHaveBeenCalledWith(expectedQuery, {});
+    });
+  });
 });

@@ -47,7 +47,7 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
       OfficesMongoRepository.referenceCount--;
     }
     if (OfficesMongoRepository.referenceCount < 1) {
-      OfficesMongoRepository.instance.client.close().then();
+      OfficesMongoRepository.instance?.client.close().then();
       OfficesMongoRepository.instance = null;
     }
   }
@@ -151,10 +151,10 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
     if (predicate?.userId) {
       conditions.push(this.doc('id').equals(predicate.userId));
     }
-    if (predicate.officeCode) {
+    if (predicate?.officeCode) {
       conditions.push(this.doc('officeCode').equals(predicate.officeCode));
     }
-    if (predicate.role) {
+    if (predicate?.role) {
       conditions.push(this.doc('roles').contains([predicate.role as CamsRole]));
     }
 
