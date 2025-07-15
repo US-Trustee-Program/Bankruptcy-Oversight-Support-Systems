@@ -191,6 +191,7 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
             aria-label="Bold"
             title="Bold"
             onClick={() => editor.chain().focus().toggleBold().run()}
+            data-testid="rich-text-bold-button"
           >
             <strong>B</strong>
           </button>
@@ -238,6 +239,7 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
             onClick={handleLinkButtonClick}
             className={`rich-text-button${editor.isActive('link') ? ' is-active' : ''}`}
             disabled={inputDisabled || !editor.isEditable}
+            data-testid="rich-text-link-button"
           >
             <LinkIcon />
           </button>
