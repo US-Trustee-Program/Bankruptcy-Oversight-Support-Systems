@@ -11,6 +11,7 @@ export function NumberedListIcon() {
       xmlnsXlink="http://www.w3.org/1999/xlink"
       viewBox="0 0 94.479 94.479"
       xmlSpace="preserve"
+      aria-label="Numbered List Icon"
     >
       <g>
         <g>
@@ -68,6 +69,7 @@ export function BulletListIcon() {
       xmlnsXlink="http://www.w3.org/1999/xlink"
       viewBox="0 0 95.494 95.494"
       xmlSpace="preserve"
+      aria-label="Bullet List Icon"
     >
       <g>
         <g>

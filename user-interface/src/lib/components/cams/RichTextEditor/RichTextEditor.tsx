@@ -289,6 +289,8 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
           className={`editor-content editor${inputDisabled ? ' disabled' : ''}`}
           data-testid="editor-content"
           aria-labelledby={label ? `editor-label-${id}` : undefined}
+          role="textbox"
+          aria-multiline="true"
         />
       </div>
     </div>
