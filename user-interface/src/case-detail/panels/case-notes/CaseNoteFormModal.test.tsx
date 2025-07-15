@@ -91,13 +91,13 @@ vi.mock('@/lib/components/cams/TiptapEditor', async () => {
 
       return React.createElement(
         'div',
-        { className: 'tiptap-editor-container' },
+        { className: 'editor-container' },
         React.createElement(
           'div',
-          { className: 'tiptap-editor-wrapper' },
+          { className: 'editor-wrapper' },
           React.createElement(
             'div',
-            { className: 'tiptap-editor-toolbar' },
+            { className: 'editor-toolbar' },
             React.createElement(
               'button',
               { type: 'button', 'aria-label': 'Bold', title: 'Bold' },
@@ -115,8 +115,8 @@ vi.mock('@/lib/components/cams/TiptapEditor', async () => {
             ),
           ),
           React.createElement('div', {
-            className: 'editor-content tiptap-editor',
-            'data-testid': 'tiptap-editor-content',
+            className: 'editor-content editor',
+            'data-testid': 'editor-content',
             contentEditable: !disabled,
             onInput: handleInput,
             dangerouslySetInnerHTML: { __html: content },
@@ -139,7 +139,7 @@ vi.mock('@/lib/components/cams/TiptapEditor', async () => {
 const MODAL_ID = 'modal-case-note-form';
 const TITLE_INPUT_ID = 'case-note-title-input';
 const CONTENT_INPUT_SELECTOR = '.rich-text-editor-container .editor-content';
-const TIPTAP_CONTENT_INPUT_SELECTOR = '.tiptap-editor-container .editor-content';
+const TIPTAP_CONTENT_INPUT_SELECTOR = '.editor-container .editor-content';
 const OPEN_BUTTON_ID = 'open-modal-button';
 const CANCEL_BUTTON_ID = 'button-case-note-form-cancel-button';
 const SUBMIT_BUTTON_ID = 'button-case-note-form-submit-button';
