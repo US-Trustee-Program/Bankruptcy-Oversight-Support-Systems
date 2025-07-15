@@ -30,9 +30,11 @@ export class UsersMongoRepository extends BaseMongoRepository implements UsersRe
   }
 
   public static dropInstance() {
-    if (UsersMongoRepository.referenceCount > 0) UsersMongoRepository.referenceCount--;
+    if (UsersMongoRepository.referenceCount > 0) {
+      UsersMongoRepository.referenceCount--;
+    }
     if (UsersMongoRepository.referenceCount < 1) {
-      UsersMongoRepository.instance.client.close().then();
+      UsersMongoRepository.instance?.client.close().then();
       UsersMongoRepository.instance = null;
     }
   }

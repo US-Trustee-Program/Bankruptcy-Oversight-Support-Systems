@@ -94,10 +94,10 @@ describe('orders repo', () => {
       override: { docketSuggestedCaseNumber: undefined },
     });
     const transferOrder: TransferOrderAction = {
-      ...existing,
-      newCase: MockData.getCaseSummary(),
+      id: existing.id,
+      caseId: existing.caseId,
       orderType: 'transfer',
-      status: 'approved',
+      status: 'rejected', // not approved, and valid
     };
     jest
       .spyOn(MongoCollectionAdapter.prototype, 'findOne')
@@ -155,5 +155,58 @@ describe('orders repo', () => {
   test('should return empty array when createMany is supplied with an empty array', async () => {
     const actualArray = await repo.createMany([]);
     expect(actualArray).toEqual([]);
+  });
+
+  // --- Additional tests for full branch coverage ---
+  describe('Singleton logic', () => {
+    let context: ApplicationContext;
+    beforeEach(async () => {
+      context = await createMockApplicationContext();
+      OrdersMongoRepository['instance'] = null;
+      OrdersMongoRepository['referenceCount'] = 0;
+    });
+
+    test('getInstance returns the same instance and increments referenceCount', () => {
+      const first = OrdersMongoRepository.getInstance(context);
+      const second = OrdersMongoRepository.getInstance(context);
+      expect(first).toBe(second);
+      expect(OrdersMongoRepository['referenceCount']).toBe(2);
+    });
+
+    test('dropInstance does not throw if called when referenceCount is 0 and instance is null', () => {
+      OrdersMongoRepository['instance'] = null;
+      OrdersMongoRepository['referenceCount'] = 0;
+      expect(() => OrdersMongoRepository.dropInstance()).not.toThrow();
+    });
+
+    test('dropInstance closes client and sets instance to null when referenceCount drops below 1', async () => {
+      const mockClose = jest.fn().mockResolvedValue(undefined);
+      OrdersMongoRepository['instance'] = {
+        client: { close: mockClose },
+      } as unknown as OrdersMongoRepository;
+      OrdersMongoRepository['referenceCount'] = 1;
+      OrdersMongoRepository.dropInstance();
+      // Wait for the .then() to resolve
+      await Promise.resolve();
+      expect(mockClose).toHaveBeenCalled();
+      expect(OrdersMongoRepository['instance']).toBeNull();
+    });
+  });
+
+  test('update does not call replaceOne if status is not approved', async () => {
+    const existing = MockData.getTransferOrder({
+      override: { docketSuggestedCaseNumber: undefined },
+    });
+    const transferOrder: TransferOrderAction = {
+      ...existing,
+      newCase: MockData.getCaseSummary(),
+      orderType: 'transfer',
+      status: 'rejected', // not approved, and valid
+      caseId: existing.caseId,
+    };
+    jest.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(existing);
+    const replaceOne = jest.spyOn(MongoCollectionAdapter.prototype, 'replaceOne');
+    await repo.update(transferOrder);
+    expect(replaceOne).not.toHaveBeenCalled();
   });
 });
