@@ -102,3 +102,53 @@ describe('User session cache Cosmos repository tests', () => {
     await expect(repo.upsert(newSession)).rejects.toThrow();
   });
 });
+
+describe('UserSessionCacheMongoRepository singleton handling', () => {
+  let context: ApplicationContext;
+  beforeEach(async () => {
+    context = await createMockApplicationContext();
+    // Reset singleton state for isolation
+    UserSessionCacheMongoRepository['instance'] = null;
+    UserSessionCacheMongoRepository['referenceCount'] = 0;
+  });
+
+  test('getInstance returns the same instance and increments referenceCount', () => {
+    const repo1 = UserSessionCacheMongoRepository.getInstance(context);
+    const repo2 = UserSessionCacheMongoRepository.getInstance(context);
+    expect(repo1).toBe(repo2);
+    expect(UserSessionCacheMongoRepository['referenceCount']).toBe(2);
+  });
+
+  test('dropInstance decrements referenceCount and closes client at zero', async () => {
+    const repo = UserSessionCacheMongoRepository.getInstance(context);
+    UserSessionCacheMongoRepository.getInstance(context); // refCount = 2
+    // Mock client.close
+    const closeSpy = jest.spyOn(repo['client'], 'close').mockResolvedValue(undefined);
+    UserSessionCacheMongoRepository.dropInstance(); // refCount = 1
+    expect(UserSessionCacheMongoRepository['referenceCount']).toBe(1);
+    expect(closeSpy).not.toHaveBeenCalled();
+    UserSessionCacheMongoRepository.dropInstance(); // refCount = 0
+    expect(UserSessionCacheMongoRepository['referenceCount']).toBe(0);
+    // Wait for .then() in dropInstance
+    await Promise.resolve();
+    expect(closeSpy).toHaveBeenCalled();
+    expect(UserSessionCacheMongoRepository['instance']).toBeNull();
+  });
+
+  test('dropInstance does nothing if referenceCount is already zero', async () => {
+    // No instance created
+    expect(UserSessionCacheMongoRepository['referenceCount']).toBe(0);
+    expect(UserSessionCacheMongoRepository['instance']).toBeNull();
+    // Should not throw or call close
+    expect(() => UserSessionCacheMongoRepository.dropInstance()).not.toThrow();
+    expect(UserSessionCacheMongoRepository['referenceCount']).toBe(0);
+    expect(UserSessionCacheMongoRepository['instance']).toBeNull();
+  });
+
+  test('release calls dropInstance', () => {
+    const repo = UserSessionCacheMongoRepository.getInstance(context);
+    const dropSpy = jest.spyOn(UserSessionCacheMongoRepository, 'dropInstance');
+    repo.release();
+    expect(dropSpy).toHaveBeenCalled();
+  });
+});

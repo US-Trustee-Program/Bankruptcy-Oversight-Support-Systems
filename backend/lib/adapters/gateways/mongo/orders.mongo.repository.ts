@@ -32,7 +32,7 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
       OrdersMongoRepository.referenceCount--;
     }
     if (OrdersMongoRepository.referenceCount < 1) {
-      OrdersMongoRepository.instance.client.close().then();
+      OrdersMongoRepository.instance?.client.close().then();
       OrdersMongoRepository.instance = null;
     }
   }

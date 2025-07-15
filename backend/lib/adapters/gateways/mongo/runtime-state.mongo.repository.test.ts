@@ -52,6 +52,17 @@ describe('Runtime State Repo', () => {
     },
   );
 
+  test('should return undefined if upsert does not modify or upsert any document', async () => {
+    const replaceOne = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+      .mockResolvedValue({ id: expected.id, modifiedCount: 0, upsertedCount: 0 });
+    const toCreate = { ...expected };
+    delete toCreate.id;
+    const result = await repo.upsert(toCreate);
+    expect(replaceOne).toHaveBeenCalledWith(expect.anything(), expect.anything(), true);
+    expect(result).toBeUndefined();
+  });
+
   test('should throw any other error encountered', async () => {
     const someError = new Error('Some other unknown error');
     const findOneSpy = jest
