@@ -35,7 +35,7 @@ export class CaseAssignmentMongoRepository
       CaseAssignmentMongoRepository.referenceCount--;
     }
     if (CaseAssignmentMongoRepository.referenceCount < 1) {
-      CaseAssignmentMongoRepository.instance.client.close().then();
+      CaseAssignmentMongoRepository.instance?.client.close().then();
       CaseAssignmentMongoRepository.instance = null;
     }
   }

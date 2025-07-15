@@ -32,7 +32,7 @@ export class CaseNotesMongoRepository extends BaseMongoRepository implements Cas
       CaseNotesMongoRepository.referenceCount--;
     }
     if (CaseNotesMongoRepository.referenceCount < 1) {
-      CaseNotesMongoRepository.instance.client.close().then();
+      CaseNotesMongoRepository.instance?.client.close().then();
       CaseNotesMongoRepository.instance = null;
     }
   }

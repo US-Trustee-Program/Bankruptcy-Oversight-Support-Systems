@@ -81,6 +81,48 @@ describe('offices repo', () => {
     );
   });
 
+  test('putOfficeStaff uses existing.ttl if it is greater than provided ttl', async () => {
+    const officeCode = 'test-office';
+    const staff = { ...MockData.getCamsUserReference(), roles: [CamsRole.TrialAttorney] };
+    const existing = {
+      documentType: 'OFFICE_STAFF',
+      officeCode,
+      ...staff,
+      roles: [CamsRole.CaseAssignmentManager],
+      updatedBy: SYSTEM_USER_REFERENCE,
+      updatedOn: '2025-01-01',
+      ttl: 10000, // greater than provided ttl
+    };
+    jest.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(existing);
+    const replaceOneSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+      .mockResolvedValue({ id: 'inserted-id', modifiedCount: 1, upsertedCount: 0 });
+    await repo.putOfficeStaff(officeCode, staff, 5000);
+    const calledStaff = replaceOneSpy.mock.calls[0][1];
+    expect(calledStaff.ttl).toBe(10000);
+  });
+
+  test('putOfficeStaff uses provided ttl if it is greater than existing.ttl', async () => {
+    const officeCode = 'test-office';
+    const staff = { ...MockData.getCamsUserReference(), roles: [CamsRole.TrialAttorney] };
+    const existing = {
+      documentType: 'OFFICE_STAFF',
+      officeCode,
+      ...staff,
+      roles: [CamsRole.CaseAssignmentManager],
+      updatedBy: SYSTEM_USER_REFERENCE,
+      updatedOn: '2025-01-01',
+      ttl: 5000, // less than provided ttl
+    };
+    jest.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(existing);
+    const replaceOneSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+      .mockResolvedValue({ id: 'inserted-id', modifiedCount: 1, upsertedCount: 0 });
+    await repo.putOfficeStaff(officeCode, staff, 10000);
+    const calledStaff = replaceOneSpy.mock.calls[0][1];
+    expect(calledStaff.ttl).toBe(10000);
+  });
+
   test('should build correct query to delete staff', async () => {
     const deleteOneSpy = jest
       .spyOn(MongoCollectionAdapter.prototype, 'deleteOne')
@@ -166,6 +208,52 @@ describe('offices repo', () => {
     expect(replaceOneSpy).toHaveBeenCalledWith(expect.anything(), expectedStaff, true);
   });
 
+  test('putOrExtendOfficeStaff uses existing.ttl if it is greater than newTtl', async () => {
+    const officeCode = 'test-office';
+    const staff = { ...MockData.getCamsUserReference(), roles: [CamsRole.TrialAttorney] };
+    const existing = {
+      documentType: 'OFFICE_STAFF',
+      officeCode,
+      ...staff,
+      roles: [CamsRole.CaseAssignmentManager],
+      updatedBy: SYSTEM_USER_REFERENCE,
+      updatedOn: '2025-01-01',
+      ttl: 10000, // greater than newTtl
+    };
+    jest.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(existing);
+    const replaceOneSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+      .mockResolvedValue({ id: 'inserted-id', modifiedCount: 1, upsertedCount: 0 });
+    // newTtl is less than existing.ttl
+    const expires = new Date(Date.now() + 5000 * 1000).toISOString();
+    await repo.putOrExtendOfficeStaff(officeCode, staff, expires);
+    const calledStaff = replaceOneSpy.mock.calls[0][1];
+    expect(calledStaff.ttl).toBe(10000);
+  });
+
+  test('putOrExtendOfficeStaff uses newTtl if it is greater than existing.ttl', async () => {
+    const officeCode = 'test-office';
+    const staff = { ...MockData.getCamsUserReference(), roles: [CamsRole.TrialAttorney] };
+    const existing = {
+      documentType: 'OFFICE_STAFF',
+      officeCode,
+      ...staff,
+      roles: [CamsRole.CaseAssignmentManager],
+      updatedBy: SYSTEM_USER_REFERENCE,
+      updatedOn: '2025-01-01',
+      ttl: 5000, // less than newTtl
+    };
+    jest.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(existing);
+    const replaceOneSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+      .mockResolvedValue({ id: 'inserted-id', modifiedCount: 1, upsertedCount: 0 });
+    // newTtl is greater than existing.ttl
+    const expires = new Date(Date.now() + 10000 * 1000).toISOString();
+    await repo.putOrExtendOfficeStaff(officeCode, staff, expires);
+    const calledStaff = replaceOneSpy.mock.calls[0][1];
+    expect(calledStaff.ttl).toBeGreaterThan(9000); // allow for some clock drift
+  });
+
   test('should search', async () => {
     const findSpy = jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
     const predicate: OfficeUserRolesPredicate = {
@@ -189,6 +277,16 @@ describe('offices repo', () => {
         ]),
       }),
     );
+  });
+
+  test('search with no predicate calls find with null and returns result', async () => {
+    const expected = [{ id: 'a' }, { id: 'b' }];
+    const findSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'find')
+      .mockResolvedValue(expected);
+    const actual = await repo.search();
+    expect(findSpy).toHaveBeenCalledWith(null);
+    expect(actual).toBe(expected);
   });
 
   describe('error handling', () => {
@@ -296,6 +394,102 @@ describe('offices repo', () => {
 
       const actual = await repo.search(predicate);
       expect(actual).toEqual([]);
+    });
+  });
+
+  describe('branch and singleton logic', () => {
+    test('singleton getInstance and dropInstance logic', async () => {
+      // Ensure clean state using public API
+      while (OfficesMongoRepository['referenceCount'] > 0) {
+        await OfficesMongoRepository.dropInstance();
+      }
+      const context1 = await createMockApplicationContext();
+      const repo1 = OfficesMongoRepository.getInstance(context1);
+      expect(repo1).toBeDefined();
+      expect(OfficesMongoRepository['referenceCount']).toBe(1);
+      const context2 = await createMockApplicationContext();
+      const repo2 = OfficesMongoRepository.getInstance(context2);
+      expect(repo2).toBe(repo1); // Should be the same instance
+      expect(OfficesMongoRepository['referenceCount']).toBe(2);
+      // Drop once, should not close
+      const closeSpy = jest.spyOn(repo1['client'], 'close').mockResolvedValue();
+      OfficesMongoRepository.dropInstance();
+      expect(OfficesMongoRepository['referenceCount']).toBe(1);
+      expect(closeSpy).not.toHaveBeenCalled();
+      // Drop again, should close and null instance
+      OfficesMongoRepository.dropInstance();
+      expect(OfficesMongoRepository['referenceCount']).toBe(0);
+      // Wait for close to resolve
+      await Promise.resolve();
+      expect(closeSpy).toHaveBeenCalled();
+      expect(OfficesMongoRepository['instance']).toBeNull();
+    });
+
+    test('release calls dropInstance', async () => {
+      const dropSpy = jest.spyOn(OfficesMongoRepository, 'dropInstance');
+      repo.release();
+      expect(dropSpy).toHaveBeenCalled();
+      dropSpy.mockRestore();
+    });
+
+    test('getOfficeAttorneys returns empty array if no attorneys', async () => {
+      jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+      const actual = await repo.getOfficeAttorneys('some-office');
+      expect(actual).toEqual([]);
+    });
+
+    test('search returns empty array if no results', async () => {
+      jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+      const predicate = { userId: 'u', officeCode: 'o', role: CamsRole.TrialAttorney };
+      const actual = await repo.search(predicate);
+      expect(actual).toEqual([]);
+    });
+
+    test('findAndDeleteStaff throws if no staff found', async () => {
+      jest
+        .spyOn(MongoCollectionAdapter.prototype, 'deleteOne')
+        .mockRejectedValue(new NotFoundError('OFFICES-MONGO-REPOSITORY'));
+      await expect(repo.findAndDeleteStaff('office', 'user')).rejects.toThrow(NotFoundError);
+    });
+
+    test('putOrExtendOfficeStaff merges roles and updates TTL', async () => {
+      const staff = { ...MockData.getCamsUserReference(), roles: [CamsRole.TrialAttorney] };
+      const existing = {
+        documentType: 'OFFICE_STAFF',
+        officeCode: 'test-office',
+        ...staff,
+        roles: [CamsRole.CaseAssignmentManager],
+        updatedBy: SYSTEM_USER_REFERENCE,
+        updatedOn: '2025-01-01',
+        ttl: DEFAULT_STAFF_TTL,
+      };
+      const findOneSpy = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'findOne')
+        .mockResolvedValue(existing);
+      const replaceOneSpy = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+        .mockResolvedValue({ id: 'inserted-id', modifiedCount: 1, upsertedCount: 0 });
+      const expires = MockData.someDateAfterThisDate(new Date().toISOString(), 2);
+      await repo.putOrExtendOfficeStaff('test-office', staff, expires);
+      expect(findOneSpy).toHaveBeenCalled();
+      expect(replaceOneSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          roles: expect.arrayContaining([CamsRole.TrialAttorney, CamsRole.CaseAssignmentManager]),
+          ttl: expect.anything(),
+        }),
+        true,
+      );
+    });
+
+    test('getOfficeAttorneys throws error from find', async () => {
+      jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('fail'));
+      await expect(repo.getOfficeAttorneys('some-office')).rejects.toThrow('Unknown Error');
+    });
+
+    test('search throws non-NotFoundError from find', async () => {
+      jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('fail'));
+      await expect(repo.search({ userId: 'u' })).rejects.toThrow('Unknown Error');
     });
   });
 });
