@@ -200,6 +200,7 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
             className={`rich-text-button${editor?.isActive('bold') ? ' is-active' : ''}`}
             disabled={inputDisabled || !editor?.isEditable}
             aria-disabled={inputDisabled || !editor?.isEditable}
+            aria-label="Bold"
             title="Bold"
             onClick={() => editor?.chain().focus().toggleBold().run()}
           >
