@@ -3,112 +3,19 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RichTextEditor, { RichTextEditorRef } from './RichTextEditor';
+import {
+  createMockEditor,
+  resetMockEditor,
+  MockEditor,
+  FORMATTING_BUTTONS,
+  LIST_BUTTONS,
+} from '../../../testing/mock-editor';
 
 // Create a mock function outside the factory
 const mockUseEditor = vi.fn();
 
-// Define proper types for the mock editor
-interface MockEditorCommands {
-  focus: ReturnType<typeof vi.fn>;
-  clearContent: ReturnType<typeof vi.fn>;
-  setContent: ReturnType<typeof vi.fn>;
-}
-
-interface MockEditor {
-  getHTML: ReturnType<typeof vi.fn>;
-  getText: ReturnType<typeof vi.fn>;
-  setContent: ReturnType<typeof vi.fn>;
-  clearContent: ReturnType<typeof vi.fn>;
-  setEditable: ReturnType<typeof vi.fn>;
-  commands: MockEditorCommands;
-  isEditable: boolean;
-  onUpdate: (...args: unknown[]) => void;
-  chain: (...args: unknown[]) => {
-    focus: (...args: unknown[]) => {
-      toggleBold: (...args: unknown[]) => { run: (...args: unknown[]) => void };
-      toggleItalic: (...args: unknown[]) => { run: (...args: unknown[]) => void };
-      toggleUnderline: (...args: unknown[]) => { run: (...args: unknown[]) => void };
-      toggleOrderedList: (...args: unknown[]) => { run: (...args: unknown[]) => void };
-      toggleBulletList: (...args: unknown[]) => { run: (...args: unknown[]) => void };
-      toggleLink: (...args: unknown[]) => { run: (...args: unknown[]) => void };
-      insertContent: (...args: unknown[]) => { run: (...args: unknown[]) => void };
-    };
-  };
-  isActive: (mark: string) => boolean;
-  getAttributes: (type: string) => { href: string; text: string };
-  insertContent: (html: string) => { run: (...args: unknown[]) => void };
-  state: {
-    selection: {
-      empty: boolean;
-      from: number;
-      to: number;
-    };
-    doc: {
-      textBetween: (from: number, to: number, separator: string) => string;
-    };
-  };
-}
-
-// Create mockEditor and its methods outside beforeEach
-const mockOnUpdate = vi.fn();
-const mockEditor: MockEditor = {
-  getHTML: vi.fn().mockReturnValue('<p>test content</p>'),
-  getText: vi.fn().mockReturnValue('test content'),
-  setContent: vi.fn(),
-  clearContent: vi.fn(),
-  setEditable: vi.fn((val: boolean) => {
-    mockEditor.isEditable = val;
-  }),
-  commands: {
-    focus: vi.fn(),
-    clearContent: vi.fn(),
-    setContent: vi.fn(),
-  },
-  isEditable: true,
-  onUpdate: (...args: unknown[]) => mockOnUpdate(...args),
-  chain: vi.fn(() => ({
-    focus: vi.fn(() => ({
-      toggleBold: vi.fn(() => ({ run: vi.fn() })),
-      toggleItalic: vi.fn(() => ({ run: vi.fn() })),
-      toggleUnderline: vi.fn(() => ({ run: vi.fn() })),
-      toggleOrderedList: vi.fn(() => ({ run: vi.fn() })),
-      toggleBulletList: vi.fn(() => ({ run: vi.fn() })),
-      toggleLink: vi.fn(() => ({ run: vi.fn() })),
-      insertContent: vi.fn((...args: unknown[]) => {
-        // Simulate inserting a link for test assertions
-        const html = typeof args[0] === 'string' ? args[0] : '';
-        mockEditor.getHTML.mockReturnValue(`<p>${html}</p>`);
-        // Extract text between > and < for getText
-        const match = html.match(/>(.*?)<\/a>/);
-        mockEditor.getText.mockReturnValue(match ? match[1] : html);
-        return { run: vi.fn() };
-      }),
-    })),
-  })),
-  isActive: vi.fn(() => false),
-  getAttributes: vi.fn((_type: string) => {
-    // Always return an object with href and text as strings
-    return { href: '', text: '' };
-  }),
-  insertContent: vi.fn((html: string) => {
-    // Simulate inserting a link for test assertions
-    mockEditor.getHTML.mockReturnValue(`<p>${html}</p>`);
-    // Extract text between > and < for getText
-    const match = html.match(/>(.*?)<\/a>/);
-    mockEditor.getText.mockReturnValue(match ? match[1] : html);
-    return { run: vi.fn() };
-  }),
-  state: {
-    selection: {
-      empty: true,
-      from: 0,
-      to: 0,
-    },
-    doc: {
-      textBetween: vi.fn((_from: number, _to: number, _separator: string) => ''),
-    },
-  },
-};
+// Create mockEditor using the factory
+let mockEditor: MockEditor;
 
 interface EditorContentProps {
   editor?: MockEditor;
@@ -144,31 +51,9 @@ vi.mock('@/lib/hooks/UseOutsideClick', () => ({
 describe('RichTextEditor', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    Object.values(mockEditor).forEach((v) => {
-      if (typeof (v as { mockClear?: () => void })?.mockClear === 'function') {
-        (v as { mockClear: () => void }).mockClear();
-      }
-    });
-    Object.values(mockEditor.commands).forEach((v) => {
-      if (typeof (v as { mockClear?: () => void })?.mockClear === 'function') {
-        (v as { mockClear: () => void }).mockClear();
-      }
-    });
-
-    // Reset all mock functions to their default state
-    mockEditor.isEditable = true;
-    mockEditor.getHTML.mockReturnValue('<p>test content</p>');
-    mockEditor.getText.mockReturnValue('test content');
-    (mockEditor.isActive as ReturnType<typeof vi.fn>).mockReturnValue(false);
-    (mockEditor.getAttributes as ReturnType<typeof vi.fn>).mockReturnValue({ href: '', text: '' });
-    mockEditor.state.selection.empty = true;
-    mockEditor.state.selection.from = 0;
-    mockEditor.state.selection.to = 0;
-    (mockEditor.state.doc.textBetween as ReturnType<typeof vi.fn>).mockReturnValue('');
-
-    // Reset the useOutsideClick mock to its default behavior
+    mockEditor = createMockEditor();
+    resetMockEditor(mockEditor);
     mockUseOutsideClick.mockReset();
-
     mockUseEditor.mockReturnValue(mockEditor);
   });
 
@@ -301,167 +186,130 @@ describe('RichTextEditor', () => {
 
   // Toolbar tests
   describe('Toolbar', () => {
-    test('renders toolbar with formatting buttons', () => {
-      render(<RichTextEditor id="test-editor" />);
+    describe('Formatting buttons', () => {
+      test('renders toolbar with formatting buttons', () => {
+        render(<RichTextEditor id="test-editor" />);
 
-      expect(screen.getByRole('button', { name: 'Bold' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Italic' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Underline' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Bold' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Italic' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Underline' })).toBeInTheDocument();
+      });
+
+      test.each(FORMATTING_BUTTONS)(
+        '$name button calls $command when clicked',
+        async ({ name }) => {
+          const user = userEvent.setup();
+          render(<RichTextEditor id="test-editor" />);
+
+          const button = screen.getByRole('button', { name });
+          await user.click(button);
+
+          expect(mockEditor.chain).toHaveBeenCalled();
+        },
+      );
+
+      test.each(FORMATTING_BUTTONS)(
+        '$name button shows active state when $mark is active',
+        ({ name, mark }) => {
+          mockEditor.isActive = vi.fn((testMark: string) => testMark === mark);
+          render(<RichTextEditor id="test-editor" />);
+
+          const button = screen.getByRole('button', { name });
+          expect(button).toHaveClass('is-active');
+        },
+      );
+
+      test.each(FORMATTING_BUTTONS)(
+        '$name button shows inactive state when $mark is not active',
+        ({ name }) => {
+          mockEditor.isActive = vi.fn(() => false);
+          render(<RichTextEditor id="test-editor" />);
+
+          const button = screen.getByRole('button', { name });
+          expect(button).not.toHaveClass('is-active');
+        },
+      );
+
+      test.each(FORMATTING_BUTTONS)(
+        '$name button is disabled when editor is disabled',
+        ({ name }) => {
+          render(<RichTextEditor id="test-editor" disabled={true} />);
+
+          const button = screen.getByRole('button', { name });
+          expect(button).toBeDisabled();
+        },
+      );
+
+      test.each(FORMATTING_BUTTONS)(
+        '$name button is enabled when editor is enabled',
+        ({ name }) => {
+          render(<RichTextEditor id="test-editor" disabled={false} />);
+
+          const button = screen.getByRole('button', { name });
+          expect(button).not.toBeDisabled();
+        },
+      );
+
+      test.each(FORMATTING_BUTTONS)('$name button has correct aria-label and title', ({ name }) => {
+        render(<RichTextEditor id="test-editor" />);
+
+        const button = screen.getByRole('button', { name });
+        expect(button).toHaveAttribute('aria-label', name);
+        expect(button).toHaveAttribute('title', name);
+      });
+
+      test.each(FORMATTING_BUTTONS)(
+        '$name button displays correct text label',
+        ({ name, display }) => {
+          render(<RichTextEditor id="test-editor" />);
+
+          const button = screen.getByRole('button', { name });
+          expect(button).toHaveTextContent(display);
+        },
+      );
     });
 
-    test('bold button calls toggleBold command when clicked', async () => {
-      const user = userEvent.setup();
-      render(<RichTextEditor id="test-editor" />);
+    describe('List buttons', () => {
+      test.each(LIST_BUTTONS)(
+        '$name button is present and calls $command when clicked',
+        async ({ name }) => {
+          const user = userEvent.setup();
+          render(<RichTextEditor id="test-editor" />);
 
-      const boldButton = screen.getByRole('button', { name: 'Bold' });
-      await user.click(boldButton);
+          const button = screen.getByRole('button', { name: new RegExp(name, 'i') });
+          expect(button).toBeInTheDocument();
 
-      expect(mockEditor.chain).toHaveBeenCalled();
+          await user.click(button);
+          expect(mockEditor.chain).toHaveBeenCalled();
+        },
+      );
+
+      test.each(LIST_BUTTONS)(
+        '$name button shows active state when $mark is active',
+        ({ name, mark }) => {
+          mockEditor.isActive = vi.fn((testMark: string) => testMark === mark);
+          render(<RichTextEditor id="test-editor" />);
+
+          const button = screen.getByRole('button', { name: new RegExp(name, 'i') });
+          expect(button).toHaveClass('is-active');
+        },
+      );
     });
 
-    test('italic button calls toggleItalic command when clicked', async () => {
-      const user = userEvent.setup();
-      render(<RichTextEditor id="test-editor" />);
+    describe('Link button', () => {
+      test('renders link button and calls link command when clicked', async () => {
+        const user = userEvent.setup();
+        render(<RichTextEditor id="test-editor" />);
 
-      const italicButton = screen.getByRole('button', { name: 'Italic' });
-      await user.click(italicButton);
+        // Button should be present
+        const linkButton = screen.getByRole('button', { name: /link/i });
+        expect(linkButton).toBeInTheDocument();
 
-      expect(mockEditor.chain).toHaveBeenCalled();
+        // Simulate clicking the link button
+        await user.click(linkButton);
+        // TODO: Assert that the link command or UI is triggered (e.g., editor.chain().focus().toggleLink().run() or a link dialog appears)
+      });
     });
-
-    test('underline button calls toggleUnderline command when clicked', async () => {
-      const user = userEvent.setup();
-      render(<RichTextEditor id="test-editor" />);
-
-      const underlineButton = screen.getByRole('button', { name: 'Underline' });
-      await user.click(underlineButton);
-
-      expect(mockEditor.chain).toHaveBeenCalled();
-    });
-
-    test('buttons show active state when formatting is active', () => {
-      // Mock the isActive method to return true for bold
-      mockEditor.isActive = vi.fn((mark: string) => mark === 'bold');
-
-      render(<RichTextEditor id="test-editor" />);
-
-      const boldButton = screen.getByRole('button', { name: 'Bold' });
-      expect(boldButton).toHaveClass('is-active');
-    });
-
-    test('buttons show inactive state when formatting is not active', () => {
-      // Mock the isActive method to return false for all marks
-      mockEditor.isActive = vi.fn(() => false);
-
-      render(<RichTextEditor id="test-editor" />);
-
-      const boldButton = screen.getByRole('button', { name: 'Bold' });
-      const italicButton = screen.getByRole('button', { name: 'Italic' });
-      const underlineButton = screen.getByRole('button', { name: 'Underline' });
-
-      expect(boldButton).not.toHaveClass('is-active');
-      expect(italicButton).not.toHaveClass('is-active');
-      expect(underlineButton).not.toHaveClass('is-active');
-    });
-
-    test('buttons show inactive state when formatting is not active', () => {
-      // Mock the isActive method to return false for all marks
-      mockEditor.isActive = vi.fn(() => true);
-
-      render(<RichTextEditor id="test-editor" />);
-
-      const boldButton = screen.getByRole('button', { name: 'Bold' });
-      const italicButton = screen.getByRole('button', { name: 'Italic' });
-      const underlineButton = screen.getByRole('button', { name: 'Underline' });
-
-      expect(boldButton).toHaveClass('is-active');
-      expect(italicButton).toHaveClass('is-active');
-      expect(underlineButton).toHaveClass('is-active');
-    });
-
-    test('buttons are disabled when editor is disabled', () => {
-      render(<RichTextEditor id="test-editor" disabled={true} />);
-
-      const boldButton = screen.getByRole('button', { name: 'Bold' });
-      const italicButton = screen.getByRole('button', { name: 'Italic' });
-      const underlineButton = screen.getByRole('button', { name: 'Underline' });
-
-      expect(boldButton).toBeDisabled();
-      expect(italicButton).toBeDisabled();
-      expect(underlineButton).toBeDisabled();
-    });
-
-    test('buttons are enabled when editor is enabled', () => {
-      render(<RichTextEditor id="test-editor" disabled={false} />);
-
-      const boldButton = screen.getByRole('button', { name: 'Bold' });
-      const italicButton = screen.getByRole('button', { name: 'Italic' });
-      const underlineButton = screen.getByRole('button', { name: 'Underline' });
-
-      expect(boldButton).not.toBeDisabled();
-      expect(italicButton).not.toBeDisabled();
-      expect(underlineButton).not.toBeDisabled();
-    });
-
-    test('buttons have correct aria-labels and titles', () => {
-      render(<RichTextEditor id="test-editor" />);
-
-      const boldButton = screen.getByRole('button', { name: 'Bold' });
-      const italicButton = screen.getByRole('button', { name: 'Italic' });
-      const underlineButton = screen.getByRole('button', { name: 'Underline' });
-
-      expect(boldButton).toHaveAttribute('aria-label', 'Bold');
-      expect(boldButton).toHaveAttribute('title', 'Bold');
-      expect(italicButton).toHaveAttribute('aria-label', 'Italic');
-      expect(italicButton).toHaveAttribute('title', 'Italic');
-      expect(underlineButton).toHaveAttribute('aria-label', 'Underline');
-      expect(underlineButton).toHaveAttribute('title', 'Underline');
-    });
-
-    test('buttons display correct text labels', () => {
-      render(<RichTextEditor id="test-editor" />);
-
-      const boldButton = screen.getByRole('button', { name: 'Bold' });
-      const italicButton = screen.getByRole('button', { name: 'Italic' });
-      const underlineButton = screen.getByRole('button', { name: 'Underline' });
-
-      expect(boldButton).toHaveTextContent('B');
-      expect(italicButton).toHaveTextContent('I');
-      expect(underlineButton).toHaveTextContent('U');
-    });
-  });
-
-  test('renders ordered and bullet list buttons and calls list commands when clicked', async () => {
-    const user = userEvent.setup();
-    render(<RichTextEditor id="test-editor" />);
-
-    // Buttons should be present
-    const orderedListButton = screen.getByRole('button', { name: /ordered list/i });
-    const bulletListButton = screen.getByRole('button', { name: /bullet list/i });
-
-    expect(orderedListButton).toBeInTheDocument();
-    expect(bulletListButton).toBeInTheDocument();
-
-    // Simulate clicking the ordered list button
-    await user.click(orderedListButton);
-
-    // Assert that the rich text editor chain command for toggling ordered list is called
-    expect(mockEditor.chain).toHaveBeenCalled();
-    // Optionally, check that the correct arguments are passed for ordered list
-    // (You may need to enhance the mock to track these calls)
-  });
-
-  test('renders link button and calls link command when clicked', async () => {
-    const user = userEvent.setup();
-    render(<RichTextEditor id="test-editor" />);
-
-    // Button should be present
-    const linkButton = screen.getByRole('button', { name: /link/i });
-    expect(linkButton).toBeInTheDocument();
-
-    // Simulate clicking the link button
-    await user.click(linkButton);
-    // TODO: Assert that the link command or UI is triggered (e.g., editor.chain().focus().toggleLink().run() or a link dialog appears)
   });
 
   test('initializes editor with correct configuration', () => {

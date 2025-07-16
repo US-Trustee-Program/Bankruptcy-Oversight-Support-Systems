@@ -3,7 +3,6 @@ import Icon from '@/lib/components/uswds/Icon';
 export function NumberedListIcon() {
   return (
     <svg
-      fill="#ffffff"
       width="1rem"
       height="1rem"
       version="1.1"
@@ -61,7 +60,6 @@ export function NumberedListIcon() {
 export function BulletListIcon() {
   return (
     <svg
-      fill="#ffffff"
       width="1rem"
       height="1rem"
       version="1.1"
