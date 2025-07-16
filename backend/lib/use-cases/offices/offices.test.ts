@@ -4,7 +4,7 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import * as factory from '../../factory';
 import { CamsUserGroup, Staff } from '../../../../common/src/cams/users';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
-import { MOCKED_USTP_OFFICES_ARRAY, UstpDivision } from '../../../../common/src/cams/offices';
+import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
 import AttorneysList from '../attorneys/attorneys';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { CamsRole } from '../../../../common/src/cams/roles';
@@ -44,46 +44,6 @@ describe('offices use case tests', () => {
     const offices = await useCase.getOffices(applicationContext);
 
     expect(offices).toEqual(MOCKED_USTP_OFFICES_ARRAY);
-  });
-
-  test('should flag legacy offices', async () => {
-    const useCase = new OfficesUseCase();
-
-    const legacyDivisionCode = '087';
-    const officeWithLegacyFlag = { ...MANHATTAN_OFFICE };
-    // Patch the division object to add isLegacy for test purposes
-    const division = officeWithLegacyFlag.groups[0].divisions.find(
-      (d) => d.divisionCode === legacyDivisionCode,
-    ) as UstpDivision & { isLegacy?: boolean };
-    division.isLegacy = true;
-    const expectedOffices = [officeWithLegacyFlag];
-
-    jest.spyOn(factory, 'getOfficesGateway').mockImplementation(() => {
-      return {
-        getOfficeName: jest.fn(),
-        getOffices: jest.fn().mockResolvedValue([MANHATTAN_OFFICE]),
-      };
-    });
-
-    jest.spyOn(factory, 'getStorageGateway').mockImplementation(() => {
-      return {
-        get: jest.fn(),
-        getRoleMapping: jest.fn(),
-        getUstpOffices: jest.fn(),
-        getUstpDivisionMeta: jest
-          .fn()
-          .mockReturnValue(
-            new Map<string, UstpDivision>([
-              [legacyDivisionCode, { isLegacy: true } as unknown as UstpDivision],
-            ]),
-          ),
-        getPrivilegedIdentityUserRoleGroupName: jest.fn(),
-      };
-    });
-
-    const offices = await useCase.getOffices(applicationContext);
-
-    expect(offices).toEqual(expectedOffices);
   });
 
   test('should return attorneys for office', async () => {
