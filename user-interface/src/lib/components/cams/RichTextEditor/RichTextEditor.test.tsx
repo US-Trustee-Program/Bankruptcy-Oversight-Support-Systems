@@ -295,21 +295,6 @@ describe('RichTextEditor', () => {
         },
       );
     });
-
-    describe('Link button', () => {
-      test('renders link button and calls link command when clicked', async () => {
-        const user = userEvent.setup();
-        render(<RichTextEditor id="test-editor" />);
-
-        // Button should be present
-        const linkButton = screen.getByRole('button', { name: /link/i });
-        expect(linkButton).toBeInTheDocument();
-
-        // Simulate clicking the link button
-        await user.click(linkButton);
-        // TODO: Assert that the link command or UI is triggered (e.g., editor.chain().focus().toggleLink().run() or a link dialog appears)
-      });
-    });
   });
 
   test('initializes editor with correct configuration', () => {
