@@ -276,10 +276,20 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
                 placeholder="Display text"
                 className="editor-link-input display-text-input"
               />
-              <button type="button" onClick={handleLinkApply} className="editor-link-apply">
+              <button
+                type="button"
+                onClick={handleLinkApply}
+                className="editor-link-apply"
+                aria-label="Save Link"
+              >
                 <Icon name="check" />
               </button>
-              <button type="button" onClick={handleLinkCancel} className="editor-link-delete">
+              <button
+                type="button"
+                onClick={handleLinkCancel}
+                className="editor-link-delete"
+                aria-label="Delete Link"
+              >
                 <Icon name="delete" />
               </button>
             </div>
