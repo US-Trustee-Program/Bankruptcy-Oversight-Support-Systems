@@ -138,18 +138,18 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
 
   function toggleButtonOnDirtyForm(initialTitle: string, initialContent: string) {
     setTimeout(() => {
-      let currentContent = contentInputRef.current?.getValue();
-      let currentTitle = titleInputRef.current?.getValue();
-      if (featureFlags[FORMAT_CASE_NOTES]) {
-        currentContent = richTextRef.current?.getHtml();
-        currentTitle = titleInputRef.current?.getValue();
-      }
-      const notSavable =
-        currentTitle === '' ||
-        currentContent === '' ||
-        (initialTitle === currentTitle && initialContent === currentContent);
+      const currentTitle = titleInputRef.current?.getValue();
+      const hasTitle = !!currentTitle;
+      const hasTitleChanged = initialTitle !== currentTitle;
 
-      disableSubmitButton(notSavable);
+      const currentContent = featureFlags[FORMAT_CASE_NOTES]
+        ? richTextRef.current?.getHtml()
+        : contentInputRef.current?.getValue();
+      const hasContent = !(currentContent === '' || currentContent === '<p></p>');
+      const hasContentChanged = initialContent !== currentContent;
+
+      const isSavable = hasTitle && hasContent && (hasTitleChanged || hasContentChanged);
+      disableSubmitButton(!isSavable);
     }, 10);
   }
 
@@ -305,7 +305,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     submitButton: {
       label: 'Save',
       onClick: sendCaseNoteToApi,
-      disabled: false,
+      disabled: true,
       closeOnClick: false,
     },
     cancelButton: {
@@ -321,27 +321,26 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     setNoteModalTitle(`${showProps.mode === 'edit' ? 'Edit' : 'Create'} Case Note`);
     setMode(showProps.mode);
     setCancelButtonLabel(`${showProps.mode === 'edit' ? 'Cancel' : 'Discard'}`);
-    if (showProps) {
-      const formKey = buildCaseNoteFormKey(showProps.caseId, showProps.mode, showProps.id ?? '');
-      setFormKey(formKey);
-      setModalOpenOptions(showProps);
-      setInitialTitle(showProps.initialTitle);
-      setInitialContent(showProps.initialContent);
-      titleInputRef.current?.setValue(showProps.title ?? '');
 
-      if (featureFlags[FORMAT_CASE_NOTES]) {
-        richTextRef.current?.setValue(showProps.content ?? '');
-      } else {
-        contentInputRef.current?.setValue(showProps.content ?? '');
-      }
+    const formKey = buildCaseNoteFormKey(showProps.caseId, showProps.mode, showProps.id ?? '');
+    setFormKey(formKey);
+    setModalOpenOptions(showProps);
+    setInitialTitle(showProps.initialTitle);
+    setInitialContent(showProps.initialContent);
+    titleInputRef.current?.setValue(showProps.title ?? '');
 
-      if (modalRef.current?.show) {
-        const showOptions = {
-          openModalButtonRef: showProps.openModalButtonRef,
-        };
-        modalRef.current?.show(showOptions);
-        toggleButtonOnDirtyForm(showProps.initialTitle, showProps.initialContent);
-      }
+    if (featureFlags[FORMAT_CASE_NOTES]) {
+      richTextRef.current?.setValue(showProps.content ?? '');
+    } else {
+      contentInputRef.current?.setValue(showProps.content ?? '');
+    }
+
+    if (modalRef.current?.show) {
+      const showOptions = {
+        openModalButtonRef: showProps.openModalButtonRef,
+      };
+      modalRef.current?.show(showOptions);
+      toggleButtonOnDirtyForm(showProps.initialTitle, showProps.initialContent);
     }
   }
 
