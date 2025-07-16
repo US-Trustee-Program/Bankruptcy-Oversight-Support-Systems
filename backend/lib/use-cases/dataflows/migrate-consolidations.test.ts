@@ -1,5 +1,9 @@
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import AcmsOrders, { AcmsConsolidation, AcmsPredicate } from './migrate-consolidations';
+import AcmsOrders, {
+  AcmsConsolidation,
+  AcmsPredicate,
+  isAcmsEtlQueueItem,
+} from './migrate-consolidations';
 import { CasesMongoRepository } from '../../adapters/gateways/mongo/cases.mongo.repository';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { AcmsGatewayImpl } from '../../adapters/gateways/acms/acms.gateway';
@@ -9,6 +13,29 @@ import { ConsolidationType } from '../../../../common/src/cams/orders';
 import { CaseConsolidationHistory } from '../../../../common/src/cams/history';
 import { ACMS_SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditable';
 import { ConsolidationFrom } from '../../../../common/src/cams/events';
+
+describe('isAcmsEtlQueueItem', () => {
+  it('should return true for a valid AcmsEtlQueueItem', () => {
+    const item = { divisionCode: 'A', chapter: 'B', leadCaseId: '123' };
+    expect(isAcmsEtlQueueItem(item)).toBe(true);
+  });
+
+  it('should return false for an object missing leadCaseId', () => {
+    const item = { divisionCode: 'A', chapter: 'B' };
+    expect(isAcmsEtlQueueItem(item)).toBe(false);
+  });
+
+  it('should return false for null', () => {
+    expect(isAcmsEtlQueueItem(null)).toBe(false);
+  });
+
+  it('should return false for non-object types', () => {
+    expect(isAcmsEtlQueueItem('string')).toBe(false);
+    expect(isAcmsEtlQueueItem(123)).toBe(false);
+    expect(isAcmsEtlQueueItem(undefined)).toBe(false);
+    expect(isAcmsEtlQueueItem([])).toBe(false);
+  });
+});
 
 describe('ACMS Orders', () => {
   let context;
@@ -563,6 +590,32 @@ describe('ACMS Orders', () => {
     };
 
     await expect(useCase.getLeadCaseIds(context, predicateAndPage)).rejects.toThrow();
+  });
+
+  test('should throw a CamsError when getLeadCaseIds fails with a standard Error', async () => {
+    const useCase = new AcmsOrders();
+    const predicate: AcmsPredicate = { divisionCode: '001', chapter: '01' };
+    jest.spyOn(AcmsGatewayImpl.prototype, 'getLeadCaseIds').mockImplementation(() => {
+      throw new Error('Gateway failure');
+    });
+    await expect(useCase.getLeadCaseIds(context, predicate)).rejects.toMatchObject({
+      module: expect.any(String),
+      message: expect.stringContaining('Failed to get lead case ids from the ACMS gateway.'),
+      originalError: expect.stringContaining('Gateway failure'),
+    });
+  });
+
+  test('should throw a CamsError when getLeadCaseIds fails with a non-Error value', async () => {
+    const useCase = new AcmsOrders();
+    const predicate: AcmsPredicate = { divisionCode: '002', chapter: '02' };
+    jest.spyOn(AcmsGatewayImpl.prototype, 'getLeadCaseIds').mockImplementation(() => {
+      throw 'string error';
+    });
+    await expect(useCase.getLeadCaseIds(context, predicate)).rejects.toMatchObject({
+      module: expect.any(String),
+      message: expect.stringContaining('Failed to get lead case ids from the ACMS gateway.'),
+      originalError: "'string error'",
+    });
   });
 
   test('should not throw exceptions', async () => {

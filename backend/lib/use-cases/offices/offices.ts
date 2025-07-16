@@ -21,22 +21,7 @@ export const DEFAULT_STAFF_TTL = 60 * 60 * 25;
 export class OfficesUseCase {
   public async getOffices(context: ApplicationContext): Promise<UstpOfficeDetails[]> {
     const officesGateway = getOfficesGateway(context);
-    const offices = await officesGateway.getOffices(context);
-
-    const storageGateway = getStorageGateway(context);
-    const metas = storageGateway.getUstpDivisionMeta();
-
-    offices.forEach((ustpOffice) => {
-      ustpOffice.groups.forEach((group) => {
-        group.divisions.forEach((division) => {
-          if (metas.has(division.divisionCode)) {
-            division.isLegacy = metas.get(division.divisionCode).isLegacy;
-          }
-        });
-      });
-    });
-
-    return offices;
+    return await officesGateway.getOffices(context);
   }
 
   public async getOfficeAttorneys(

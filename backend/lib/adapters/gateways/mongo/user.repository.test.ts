@@ -146,3 +146,53 @@ describe('User repository tests', () => {
     );
   });
 });
+
+describe('UsersMongoRepository singleton handling', () => {
+  let context: ApplicationContext;
+  beforeEach(async () => {
+    context = await createMockApplicationContext();
+    // Reset singleton state for isolation
+    UsersMongoRepository['instance'] = null;
+    UsersMongoRepository['referenceCount'] = 0;
+  });
+
+  test('getInstance returns the same instance and increments referenceCount', () => {
+    const repo1 = UsersMongoRepository.getInstance(context);
+    const repo2 = UsersMongoRepository.getInstance(context);
+    expect(repo1).toBe(repo2);
+    expect(UsersMongoRepository['referenceCount']).toBe(2);
+  });
+
+  test('dropInstance decrements referenceCount and closes client at zero', async () => {
+    const repo = UsersMongoRepository.getInstance(context);
+    UsersMongoRepository.getInstance(context); // refCount = 2
+    // Mock client.close
+    const closeSpy = jest.spyOn(repo['client'], 'close').mockResolvedValue(undefined);
+    UsersMongoRepository.dropInstance(); // refCount = 1
+    expect(UsersMongoRepository['referenceCount']).toBe(1);
+    expect(closeSpy).not.toHaveBeenCalled();
+    UsersMongoRepository.dropInstance(); // refCount = 0
+    expect(UsersMongoRepository['referenceCount']).toBe(0);
+    // Wait for .then() in dropInstance
+    await Promise.resolve();
+    expect(closeSpy).toHaveBeenCalled();
+    expect(UsersMongoRepository['instance']).toBeNull();
+  });
+
+  test('dropInstance does nothing if referenceCount is already zero', async () => {
+    // No instance created
+    expect(UsersMongoRepository['referenceCount']).toBe(0);
+    expect(UsersMongoRepository['instance']).toBeNull();
+    // Should not throw or call close
+    expect(() => UsersMongoRepository.dropInstance()).not.toThrow();
+    expect(UsersMongoRepository['referenceCount']).toBe(0);
+    expect(UsersMongoRepository['instance']).toBeNull();
+  });
+
+  test('release calls dropInstance', () => {
+    const repo = UsersMongoRepository.getInstance(context);
+    const dropSpy = jest.spyOn(UsersMongoRepository, 'dropInstance');
+    repo.release();
+    expect(dropSpy).toHaveBeenCalled();
+  });
+});

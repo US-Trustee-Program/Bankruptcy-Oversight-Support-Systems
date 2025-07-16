@@ -122,6 +122,59 @@ describe('Consolidations Repository tests', () => {
     },
   );
 
+  test('should update a consolidation order', async () => {
+    const consolidationOrder = MockData.getConsolidationOrder({ override: { consolidationId } });
+    const updatedConsolidationOrder = {
+      ...consolidationOrder,
+      orderDate: '2023-01-01',
+      orderText: 'Updated order text',
+    };
+
+    const findOneSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'findOne')
+      .mockResolvedValue(consolidationOrder);
+
+    const replaceOneSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+      .mockResolvedValue({ modifiedCount: 1, id: consolidationOrder.id, upsertedCount: 0 });
+
+    const result = await repo.update(updatedConsolidationOrder);
+
+    expect(findOneSpy).toHaveBeenCalledWith(doc('consolidationId').equals(consolidationId));
+    expect(replaceOneSpy).toHaveBeenCalledWith(
+      doc('consolidationId').equals(consolidationId),
+      expect.objectContaining({
+        ...consolidationOrder,
+        orderDate: '2023-01-01',
+        orderText: 'Updated order text',
+      }),
+    );
+    expect(result).toEqual(
+      expect.objectContaining({
+        ...consolidationOrder,
+        orderDate: '2023-01-01',
+        orderText: 'Updated order text',
+      }),
+    );
+  });
+
+  test('should count consolidation orders with a specific key root', async () => {
+    const keyRoot = 'test-key';
+    const countSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'countDocuments')
+      .mockResolvedValue(5);
+
+    const result = await repo.count(keyRoot);
+
+    expect(countSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        condition: 'REGEX',
+        leftOperand: { name: 'consolidationId' },
+      }),
+    );
+    expect(result).toEqual(5);
+  });
+
   describe('error handling', () => {
     const error = new Error('some error');
     const camsError = getCamsError(error, 'COSMOS_DB_REPOSITORY_CONSOLIDATION_ORDERS');
@@ -160,6 +213,18 @@ describe('Consolidations Repository tests', () => {
       const consolidationOrders = MockData.buildArray(MockData.getConsolidationOrder, 3);
       jest.spyOn(MongoCollectionAdapter.prototype, 'insertMany').mockRejectedValue(error);
       await expect(() => repo.createMany(consolidationOrders)).rejects.toThrow(camsError);
+    });
+
+    test('should properly handle error when calling update', async () => {
+      const consolidationOrder = MockData.getConsolidationOrder({ override: { consolidationId } });
+      jest.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(error);
+      await expect(() => repo.update(consolidationOrder)).rejects.toThrow(camsError);
+    });
+
+    test('should properly handle error when calling count', async () => {
+      const keyRoot = 'test-key';
+      jest.spyOn(MongoCollectionAdapter.prototype, 'countDocuments').mockRejectedValue(error);
+      await expect(() => repo.count(keyRoot)).rejects.toThrow(camsError);
     });
   });
 });

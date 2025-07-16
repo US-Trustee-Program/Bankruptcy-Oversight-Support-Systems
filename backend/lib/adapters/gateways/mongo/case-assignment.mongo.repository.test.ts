@@ -128,4 +128,62 @@ describe('case assignment repo tests', () => {
       );
     });
   });
+
+  describe('branch and singleton logic', () => {
+    test('update returns undefined if modifiedCount is 0', async () => {
+      const fakeAttorney = MockData.getAttorneyUser();
+      const assignment = MockData.getAttorneyAssignment({ name: fakeAttorney.name });
+      jest
+        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+        .mockResolvedValue({ id: assignment.id, modifiedCount: 0, upsertedCount: 0 });
+      const actual = await repo.update(assignment);
+      expect(actual).toBeUndefined();
+    });
+
+    test('getAssignmentsForCases returns empty map if no assignments', async () => {
+      jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+      const actual = await repo.getAssignmentsForCases(['some-case-id']);
+      expect(actual).toEqual(new Map());
+    });
+
+    test('getAllActiveAssignments returns empty array if no assignments', async () => {
+      jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+      const actual = await repo.getAllActiveAssignments();
+      expect(actual).toEqual([]);
+    });
+
+    test('singleton getInstance and dropInstance logic', async () => {
+      // Ensure clean state using public API
+      while (CaseAssignmentMongoRepository['referenceCount'] > 0) {
+        await CaseAssignmentMongoRepository.dropInstance();
+      }
+      const context1 = await createMockApplicationContext();
+      const repo1 = CaseAssignmentMongoRepository.getInstance(context1);
+      expect(repo1).toBeDefined();
+      expect(CaseAssignmentMongoRepository['referenceCount']).toBe(1);
+      const context2 = await createMockApplicationContext();
+      const repo2 = CaseAssignmentMongoRepository.getInstance(context2);
+      expect(repo2).toBe(repo1); // Should be the same instance
+      expect(CaseAssignmentMongoRepository['referenceCount']).toBe(2);
+      // Drop once, should not close
+      const closeSpy = jest.spyOn(repo1['client'], 'close').mockResolvedValue();
+      CaseAssignmentMongoRepository.dropInstance();
+      expect(CaseAssignmentMongoRepository['referenceCount']).toBe(1);
+      expect(closeSpy).not.toHaveBeenCalled();
+      // Drop again, should close and null instance
+      CaseAssignmentMongoRepository.dropInstance();
+      expect(CaseAssignmentMongoRepository['referenceCount']).toBe(0);
+      // Wait for close to resolve
+      await Promise.resolve();
+      expect(closeSpy).toHaveBeenCalled();
+      expect(CaseAssignmentMongoRepository['instance']).toBeNull();
+    });
+
+    test('release calls dropInstance', async () => {
+      const dropSpy = jest.spyOn(CaseAssignmentMongoRepository, 'dropInstance');
+      repo.release();
+      expect(dropSpy).toHaveBeenCalled();
+      dropSpy.mockRestore();
+    });
+  });
 });

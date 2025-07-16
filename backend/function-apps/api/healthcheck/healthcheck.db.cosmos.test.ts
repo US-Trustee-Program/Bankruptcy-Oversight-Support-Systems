@@ -34,13 +34,18 @@ describe('healthcheck db tests', () => {
 
     expect(result.cosmosDbDeleteStatus).toEqual(true);
     expect(result.cosmosDbReadStatus).toEqual(true);
-
     expect(result.cosmosDbWriteStatus).toEqual(true);
   });
 
-  /* eslint-disable-next-line jest/expect-expect */
-  test('should handle no documents to delete', async () => {
-    // TODO: test this
+  test('should handle no documents', async () => {
+    jest.spyOn(MongoCollectionAdapter.prototype, 'getAll').mockResolvedValue([]);
+    jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue('id');
+    jest.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockResolvedValue(1);
+    const result = await healthcheckRepository.checkDocumentDb();
+
+    expect(result.cosmosDbDeleteStatus).toEqual(false);
+    expect(result.cosmosDbReadStatus).toEqual(false);
+    expect(result.cosmosDbWriteStatus).toEqual(true);
   });
 
   describe('error handling', () => {
