@@ -1,99 +1,154 @@
-.rich-text-editor-container {
-  margin-bottom: 1rem;
+.editor-container {
+  .editor-wrapper {
+    border: 1px solid #ccc; // match RichTextEditor border
+    border-radius: 0.25rem;
+    min-height: 120px;
 
-  label {
-    margin-bottom: 0.5rem;
-  }
-
-  .editor-toolbar {
-    display: flex;
-    gap: 0.25rem;
-    margin-bottom: 0.25rem;
-
-    button {
-      font-weight: bold;
-      min-width: 2.5rem;
+    .editor-toolbar {
+      position: relative;
+      display: flex;
+      gap: 0.25rem;
       padding: 0.5rem;
-      margin-right: 0;
+      border-bottom: 1px solid #e0e0e0;
+      background-color: #ffffff;
+      flex-wrap: wrap;
 
-      &:nth-child(2) {
+      button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        width: 2.5rem;
+        height: 2.5rem;
+        padding: 0 0.5rem;
+        margin-right: 0;
+        border: none;
+        border-radius: 0.25rem;
+        background-color: transparent;
+        color: #1b1b1b;
+
+        svg {
+          width: 1.2rem;
+          height: 1.2rem;
+          fill: #1b1b1b;
+        }
+
+        &:nth-child(2) {
+          font-style: italic;
+        }
+
+        &:nth-child(3) {
+          text-decoration: underline;
+        }
+      }
+      button:hover {
+        background-color: #e9ecef;
+        color: #1b1b1b;
+        cursor: pointer;
+      }
+      button.is-active {
+        background-color: #71767a;
+        color: #ffffff;
+        svg {
+          fill: #ffffff;
+        }
+      }
+
+      .editor-link-popover {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        top: 3.5rem;
+        left: 1rem;
+        z-index: 10;
+        background-color: #f0f0f0;
+        border: 1px solid #ccc;
+        border-radius: 0.25rem;
+        padding: 0.5rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        width: calc(100% - 2rem);
+
+        .display-text-input {
+          margin-left: 0.5rem;
+        }
+
+        input {
+          width: 50%;
+        }
+
+        button {
+          display: inline;
+        }
+        button:hover {
+          background-color: #005ea2;
+          svg {
+            fill: #ffffff;
+          }
+        }
+      }
+
+      .editor-link-apply,
+      .editor-link-delete {
+        border: none;
+        border-radius: 0.25rem;
+        padding: 0.1rem 0.1rem;
+        margin-left: 0.5rem;
+        width: 1.5rem;
+        height: 1.5rem;
+
+        &:hover {
+          color: #005ea6;
+          cursor: pointer;
+        }
+      }
+    }
+
+    .editor {
+      height: 12rem;
+      outline: none;
+      display: flex;
+
+      &.disabled {
+        background-color: #f0f0f0;
+        color: #565c65;
+        cursor: not-allowed;
+      }
+
+      .tiptap {
+        flex-basis: 100%;
+        padding: 0.75rem;
+        overflow-y: auto;
+      }
+
+      p {
+        margin: 0 0 0.5rem 0;
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+      }
+
+      ul,
+      ol {
+        margin: 0.5rem 0;
+        padding-left: 1.5rem;
+      }
+
+      li {
+        margin: 0.25rem 0;
+      }
+
+      strong {
+        font-weight: bold;
+      }
+
+      em {
         font-style: italic;
       }
 
-      &:nth-child(3) {
+      u {
         text-decoration: underline;
       }
     }
   }
-
-  .editor-content {
-    min-height: 150px;
-    max-height: 150px;
-    border: 1px solid rgb(204, 204, 204);
-    font-family: 'Source Sans Pro', 'Helvetica Neue', 'Helvetica', 'Roboto', 'Arial', sans-serif;
-    padding: 0.25rem;
-    resize: none;
-    overflow-x: hidden;
-    overflow-y: auto;
-  }
-}
-
-.editor-content {
-  p {
-    margin-top: 0;
-    margin-bottom: 0.25rem;
-    line-height: 1.25;
-  }
-
-  p:last-child {
-    margin-bottom: 0;
-  }
-
-  span.underline {
-    text-decoration: underline;
-  }
-
-  strong {
-    font-weight: bold;
-  }
-
-  em {
-    font-style: italic;
-  }
-
-  a {
-    color: #0050d8;
-    text-decoration: underline;
-
-    &:hover {
-      color: #1a4480;
-    }
-  }
-
-  ul,
-  ol {
-    margin-top: 0;
-    margin-bottom: 0.5rem;
-    padding-left: 2rem;
-    padding-top: 0.25rem;
-    padding-bottom: 0.25rem;
-
-    li {
-      margin-bottom: 0;
-      line-height: 1.25rem;
-    }
-  }
-
-  ul {
-    list-style-type: disc;
-  }
-
-  ol {
-    list-style-type: decimal;
-  }
-}
-
-.required-form-field::after {
-  content: ' *';
-  color: #e41d3d;
 }

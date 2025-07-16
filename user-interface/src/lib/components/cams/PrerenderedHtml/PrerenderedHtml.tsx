@@ -1,5 +1,5 @@
+import { DOMPURIFY_CONFIG } from '@/lib/utils/sanitize-text';
 import DOMPurify from 'dompurify';
-import { DOMPURIFY_CONFIG } from '../RichTextEditor/Editor.constants';
 
 type PrerenderedHtmlProps = {
   htmlString: string;

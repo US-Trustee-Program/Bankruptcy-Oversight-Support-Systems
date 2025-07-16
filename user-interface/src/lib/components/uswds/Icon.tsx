@@ -20,6 +20,7 @@ export default function Icon(props: IconProps) {
       focusable={isFocusable}
       role="img"
       data-testid="icon"
+      aria-label={`${props.name} icon`}
     >
       {props.tooltip && <title>{props.tooltip}</title>}
       <use xlinkHref={link}></use>
