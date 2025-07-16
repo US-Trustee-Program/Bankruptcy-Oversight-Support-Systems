@@ -57,7 +57,10 @@
 - [x] lib/adapters/gateways/mongo/user-session-cache.mongo.repository.ts - 62.5% branch
 - [x] lib/adapters/gateways/mongo/user.repository.ts - 75% branch
 - [x] lib/use-cases/dataflows/migrate-consolidations.ts - 78.57% branch
-- [ ] lib/adapters/gateways/mongo/office-assignee.mongo.repository.ts - 78.57% branch
-- [ ] lib/adapters/utils/database.ts - 75% branch
-- [ ] lib/configs/user-groups-gateway-configuration.ts - 75% branch
+- [] lib/adapters/gateways/mongo/office-assignee.mongo.repository.ts - 78.57% branch
+- [] lib/adapters/utils/database.ts - 75% branch
+- [] lib/configs/user-groups-gateway-configuration.ts - 75% branch
+- [] lib/use-cases/admin/admin.ts - 93.75% branch
+- [] lib/use-cases/case-assignment/case-assignment.ts - 83.78% branch
 - [x] lib/use-cases/offices/offices.ts - 80% branch
+- [] lib/use-cases/orders/orders.ts - 85.84% branch
