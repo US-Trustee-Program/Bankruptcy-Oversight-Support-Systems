@@ -69,6 +69,7 @@ else
 fi
 
 if [[ ${slot_name} == "initial" ]]; then
+  actualGitSha=expected_git_sha
   expected_git_sha="ProductionSlot"
 fi
 
@@ -117,8 +118,8 @@ except Exception as e:
     shaCheck="OK"
     webStatusCheck=$("${webCmd[@]}" || true)
     echo "webStatusCheck: $webStatusCheck"
-    if [[ $webStatusCheck == "200" && "$expected_git_sha" != "" ]]; then
-      shaFound=$(curl "$targetWebAppURL" -s | grep "$expected_git_sha" || true)
+    if [[ $webStatusCheck == "200" && "$actualGitSha" != "" ]]; then
+      shaFound=$(curl "$targetWebAppURL" -s | grep "$actualGitSha" || true)
       echo "shaFound: $shaFound"
       if [[ $shaFound == "" ]]; then
         echo "Expected SHA not found in webapp HTML."
