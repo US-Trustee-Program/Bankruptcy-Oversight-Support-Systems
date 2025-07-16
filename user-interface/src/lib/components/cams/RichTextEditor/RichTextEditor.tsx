@@ -7,6 +7,7 @@ import Link from '@tiptap/extension-link';
 import { NumberedListIcon, BulletListIcon, LinkIcon } from './RichTextIcon';
 import Icon from '../../uswds/Icon';
 import useOutsideClick from '@/lib/hooks/UseOutsideClick';
+import { sanitizeUrl } from '@common/cams/sanitization';
 
 export interface RichTextEditorRef {
   clearValue: () => void;
@@ -135,7 +136,11 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
   const handleLinkApply = () => {
     const display = linkText || linkUrl;
     if (display) {
-      editor?.chain().focus().insertContent(`<a href="${linkUrl}">${display}</a>`).run();
+      editor
+        ?.chain()
+        .focus()
+        .insertContent(`<a href="${sanitizeUrl(linkUrl)}">${display}</a>`)
+        .run();
     }
     setShowLinkPopover(false);
     setLinkUrl('');
