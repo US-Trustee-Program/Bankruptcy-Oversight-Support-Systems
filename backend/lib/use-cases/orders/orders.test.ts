@@ -39,7 +39,6 @@ import { CaseAssignmentUseCase } from '../case-assignment/case-assignment';
 import { REGION_02_GROUP_NY } from '../../../../common/src/cams/test-utilities/mock-user';
 import { getCourtDivisionCodes } from '../../../../common/src/cams/users';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
-import { UstpDivisionMeta } from '../../../../common/src/cams/offices';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 
 describe('Orders use case', () => {
@@ -1277,9 +1276,6 @@ describe('Orders use case', () => {
         get: jest.fn(),
         getRoleMapping: jest.fn(),
         getUstpOffices: jest.fn(),
-        getUstpDivisionMeta: jest.fn().mockImplementation(() => {
-          return new Map<string, UstpDivisionMeta>([[courtDivisionCode, { isLegacy: true }]]);
-        }),
       };
     });
 

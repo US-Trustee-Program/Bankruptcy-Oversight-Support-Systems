@@ -105,22 +105,8 @@ export class OrdersUseCase {
       throw new UnauthorizedError(MODULE_NAME);
     }
 
-    const storageGateway = Factory.getStorageGateway(this.context);
     const ordersRepo = Factory.getOrdersRepository(this.context);
     const casesRepo = Factory.getCasesRepository(this.context);
-
-    const divisionMeta = storageGateway.getUstpDivisionMeta();
-
-    const divisionCodeMaybe = data['newCase'] ? data['newCase'].courtDivisionCode : null;
-    if (
-      divisionCodeMaybe &&
-      divisionMeta.has(divisionCodeMaybe) &&
-      divisionMeta.get(divisionCodeMaybe).isLegacy
-    ) {
-      throw new BadRequestError(MODULE_NAME, {
-        message: 'Cannot transfer to legacy division.',
-      });
-    }
 
     context.logger.info(MODULE_NAME, 'Updating transfer order:', data);
     const initialOrder = await ordersRepo.read(id, data.caseId);

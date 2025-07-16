@@ -11,7 +11,6 @@ import MigrateConsolidations from './migrations/migrate-consolidations';
 import MigrateAssignees from './migrations/migrate-assignees';
 import CaseAssignmentEvent from './events/case-assignment-event';
 import CaseClosedEvent from './events/case-closed-event';
-import MigrateOrderIds from './migrations/migrate-order-ids';
 
 /*
 
@@ -105,7 +104,6 @@ dataflows.register(
   MigrateCases,
   MigrateConsolidations,
   MigrateAssignees,
-  MigrateOrderIds,
 );
 
 // Log the list of registered data flows.

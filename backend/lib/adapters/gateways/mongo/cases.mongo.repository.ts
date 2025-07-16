@@ -61,7 +61,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       CasesMongoRepository.referenceCount--;
     }
     if (CasesMongoRepository.referenceCount < 1) {
-      CasesMongoRepository.instance.client.close().then();
+      CasesMongoRepository.instance?.client?.close().then();
       CasesMongoRepository.instance = null;
     }
   }
@@ -214,32 +214,6 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
   }
 
-  async deleteSyncedCases(): Promise<void> {
-    const doc = using<SyncedCase>();
-    try {
-      const adapter = this.getAdapter<SyncedCase>();
-      const existingQuery = doc('documentType').equals('SYNCED_CASE');
-      const existingCount = await adapter.countDocuments(existingQuery);
-      let deletedCount = 0;
-      const limit = 10;
-      let offset = 0;
-      while (existingCount > deletedCount) {
-        const predicate: CasesSearchPredicate = { limit, offset };
-        const page = await this.searchCases(predicate);
-        const caseIds = page.data.map((bCase) => bCase.caseId);
-        const deleteQuery = and(
-          doc('documentType').equals('SYNCED_CASE'),
-          doc('caseId').contains(caseIds),
-        );
-        const deleted = await adapter.deleteMany(deleteQuery);
-        offset += limit;
-        deletedCount += deleted;
-      }
-    } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME);
-    }
-  }
-
   async getConsolidationChildCaseIds(predicate: CasesSearchPredicate): Promise<string[]> {
     const doc = using<ConsolidationTo>();
     try {
@@ -263,10 +237,8 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       const childConsolidations = await adapter.find(query);
 
       const childConsolidationCaseIds: string[] = [];
-      if (childConsolidations.length > 0) {
-        for (const consolidationTo of childConsolidations) {
-          childConsolidationCaseIds.push(consolidationTo.caseId);
-        }
+      for (const consolidationTo of childConsolidations) {
+        childConsolidationCaseIds.push(consolidationTo.caseId);
       }
       return childConsolidationCaseIds;
     } catch (originalError) {

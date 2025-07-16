@@ -1,0 +1,10 @@
+rules:
+  - id: no-it-tests
+    description: "Do not use 'it' in tests. Use 'test' instead."
+    pattern: it(${name}, ${fn})
+    replacement: test(${name}, ${fn})
+    tests:
+      - match: it("does something", fn)
+        expect: test("does something", fn)
+      - match: it("works", functionRef)
+        expect: test("works", functionRef)

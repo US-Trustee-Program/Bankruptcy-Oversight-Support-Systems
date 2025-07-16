@@ -44,7 +44,7 @@ export class UserSessionCacheMongoRepository
       UserSessionCacheMongoRepository.referenceCount--;
     }
     if (UserSessionCacheMongoRepository.referenceCount < 1) {
-      UserSessionCacheMongoRepository.instance.client.close().then();
+      UserSessionCacheMongoRepository.instance?.client.close().then();
       UserSessionCacheMongoRepository.instance = null;
     }
   }
