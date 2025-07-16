@@ -134,13 +134,10 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
   };
 
   const handleLinkApply = () => {
-    const display = linkText || linkUrl;
-    if (display) {
-      editor
-        ?.chain()
-        .focus()
-        .insertContent(`<a href="${sanitizeUrl(linkUrl)}">${display}</a>`)
-        .run();
+    const cleanUrl = sanitizeUrl(linkUrl);
+    const display = linkText || cleanUrl;
+    if (display && cleanUrl) {
+      editor?.chain().focus().insertContent(`<a href="${cleanUrl}">${display}</a>`).run();
     }
     setShowLinkPopover(false);
     setLinkUrl('');

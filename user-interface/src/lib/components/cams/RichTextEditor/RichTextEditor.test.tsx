@@ -689,6 +689,32 @@ describe('RichTextEditor', () => {
       expect(screen.queryByPlaceholderText('Paste a link...')).not.toBeInTheDocument();
     });
 
+    test('does not insert link when malformed URL is sanitized to empty string', async () => {
+      render(<RichTextEditor id="test-editor" />);
+      const linkButton = screen.getByRole('button', { name: /link/i });
+      await userEvent.click(linkButton);
+
+      const urlInput = screen.getByPlaceholderText('Paste a link...');
+      const textInput = screen.getByPlaceholderText('Display text');
+
+      // Enter a malformed URL that will be sanitized to empty string
+      await userEvent.type(urlInput, 'javascript:alert("xss")');
+      await userEvent.type(textInput, 'Malicious Link');
+
+      const applyButton = document.querySelector('.editor-link-apply') as HTMLButtonElement;
+      expect(applyButton).toBeInTheDocument();
+
+      // Clear the mock chain call count
+      (mockEditor.chain as ReturnType<typeof vi.fn>).mockClear();
+
+      await userEvent.click(applyButton);
+
+      // Should not call insertContent when sanitized URL becomes empty string
+      expect(mockEditor.chain).not.toHaveBeenCalled();
+      // Popover should still close
+      expect(screen.queryByPlaceholderText('Paste a link...')).not.toBeInTheDocument();
+    });
+
     test('uses empty string fallback when existing link text attribute is falsy', async () => {
       // Mock the editor state to have empty selection but existing link with falsy text
       mockEditor.state.selection.empty = true;
