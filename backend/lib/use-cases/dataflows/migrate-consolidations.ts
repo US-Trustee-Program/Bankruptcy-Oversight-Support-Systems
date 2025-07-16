@@ -27,7 +27,7 @@ export type AcmsEtlQueueItem = AcmsPredicate & {
 };
 
 export function isAcmsEtlQueueItem(item: unknown): item is AcmsEtlQueueItem {
-  return typeof item === 'object' && 'leadCaseId' in item;
+  return typeof item === 'object' && item !== null && 'leadCaseId' in item;
 }
 
 export type AcmsConsolidationChildCase = {
@@ -139,9 +139,8 @@ export class AcmsOrders {
         };
 
         const otherCase = await dxtr.getCaseSummary(context, childCase.caseId);
-        if (otherCase) {
-          context.logger.debug(MODULE_NAME, `Found case summary for: ${otherCase.caseId}.`);
-        }
+        context.logger.debug(MODULE_NAME, `Found case summary for: ${otherCase.caseId}.`);
+
         const fromLink: ConsolidationFrom = {
           caseId: basics.leadCaseId,
           consolidationType,
