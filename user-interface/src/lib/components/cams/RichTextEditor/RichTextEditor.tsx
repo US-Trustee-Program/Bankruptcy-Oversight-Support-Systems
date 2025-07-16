@@ -267,6 +267,7 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
                 onChange={(e) => setLinkUrl(e.target.value)}
                 placeholder="Paste a link..."
                 className="editor-link-input"
+                aria-label="Link URL"
               />
               <input
                 ref={linkTextInputRef}
@@ -275,6 +276,7 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
                 onChange={(e) => setLinkText(e.target.value)}
                 placeholder="Display text"
                 className="editor-link-input display-text-input"
+                aria-label="Link Display Text"
               />
               <button
                 type="button"
