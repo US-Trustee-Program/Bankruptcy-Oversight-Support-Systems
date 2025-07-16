@@ -52,3 +52,24 @@ export function maskToExtendedAscii(dirty: string, mask: string): string {
 export function filterToExtendedAscii(dirty: string): string {
   return maskToExtendedAscii(dirty, '');
 }
+
+export function sanitizeUrl(dirty: string): string {
+  // Regex pattern for valid URLs with http, https, and mailto protocols
+  const validUrlPattern =
+    /^(https?:\/\/(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)*[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?::\d{1,5})?(?:\/[^\s]*)?|mailto:[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})$/;
+
+  // Additional checks for common malformed patterns
+  if (
+    !dirty ||
+    dirty.includes(' ') ||
+    dirty.includes('..') ||
+    (dirty.startsWith('http://') && dirty.length <= 7) ||
+    (dirty.startsWith('https://') && dirty.length <= 8) ||
+    (dirty.startsWith('mailto:') && dirty.length <= 7) ||
+    dirty.endsWith('.')
+  ) {
+    return '';
+  }
+
+  return validUrlPattern.test(dirty) ? dirty : '';
+}

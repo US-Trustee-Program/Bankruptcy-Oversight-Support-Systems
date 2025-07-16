@@ -1,4 +1,9 @@
-import { maskToExtendedAscii, isValidUserInput, filterToExtendedAscii } from './sanitization';
+import {
+  maskToExtendedAscii,
+  isValidUserInput,
+  filterToExtendedAscii,
+  sanitizeUrl,
+} from './sanitization';
 
 describe('String sanitization functions', () => {
   describe('isValidInput', () => {
@@ -68,6 +73,51 @@ describe('String sanitization functions', () => {
 
     test.each(testStrings)('should filter %s', (dirty: string, expected: string) => {
       expect(filterToExtendedAscii(dirty)).toEqual(expected);
+    });
+  });
+
+  describe('sanitizeUrl', () => {
+    const validUrls = [
+      ['http://example.com', 'http://example.com'],
+      ['https://example.com', 'https://example.com'],
+      ['mailto:user@example.com', 'mailto:user@example.com'],
+      ['http://example.com/path', 'http://example.com/path'],
+      ['https://example.com/path?query=value', 'https://example.com/path?query=value'],
+      ['https://subdomain.example.com:8080/path', 'https://subdomain.example.com:8080/path'],
+      ['mailto:test.user+tag@example-domain.com', 'mailto:test.user+tag@example-domain.com'],
+      ['http://192.168.1.1', 'http://192.168.1.1'],
+      ['https://example.com/path#fragment', 'https://example.com/path#fragment'],
+    ];
+
+    test.each(validUrls)('should allow valid URL: %s', (input: string, expected: string) => {
+      expect(sanitizeUrl(input)).toEqual(expected);
+    });
+
+    const invalidUrls = [
+      ['javascript:alert("xss")'],
+      ['data:text/html,<script>alert("xss")</script>'],
+      ['ftp://example.com'],
+      ['file:///etc/passwd'],
+      ['vbscript:msgbox("xss")'],
+      ['about:blank'],
+      ['chrome://settings'],
+      [''],
+      ['not-a-url'],
+      ['http://'],
+      ['https://'],
+      ['mailto:'],
+      ['http:example.com'],
+      ['https:example.com'],
+      ['http//example.com'],
+      ['ht tp://example.com'],
+      ['http://exam ple.com'],
+      ['http://example..com'],
+      ['http://.example.com'],
+      ['http://example.com.'],
+    ];
+
+    test.each(invalidUrls)('should return empty string for invalid URL: %s', (input: string) => {
+      expect(sanitizeUrl(input)).toEqual('');
     });
   });
 });
