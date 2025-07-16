@@ -60,4 +60,4 @@
 - [ ] lib/adapters/gateways/mongo/office-assignee.mongo.repository.ts - 78.57% branch
 - [ ] lib/adapters/utils/database.ts - 75% branch
 - [ ] lib/configs/user-groups-gateway-configuration.ts - 75% branch
-- [ ] lib/use-cases/offices/offices.ts - 80% branch
+- [x] lib/use-cases/offices/offices.ts - 80% branch
