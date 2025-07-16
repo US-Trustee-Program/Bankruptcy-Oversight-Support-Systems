@@ -13,12 +13,14 @@ import { CaseNoteInput } from '@common/cams/cases';
 import { getCamsUserReference } from '@common/cams/session';
 import LocalStorage from '@/lib/utils/local-storage';
 import LocalFormCache from '@/lib/utils/local-form-cache';
-import RichTextEditor, {
-  RichTextEditorRef,
-} from '@/lib/components/cams/RichTextEditor/RichTextEditor';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
 import useFeatureFlags, { FORMAT_CASE_NOTES } from '@/lib/hooks/UseFeatureFlags';
 import TextArea from '@/lib/components/uswds/TextArea';
+import RichTextEditor, {
+  RichTextEditorRef,
+} from '@/lib/components/cams/RichTextEditor/RichTextEditor';
+import { DOMPURIFY_CONFIG } from '@/lib/utils/sanitize-text';
+import DOMPurify from 'dompurify';
 
 const useThrottleCallback = (callback: () => void, delay: number) => {
   const isThrottled = useRef(false);
@@ -49,7 +51,8 @@ export function getCaseNotesContentValue(ref: InputRef | null) {
 }
 
 export function getCaseNotesRichTextContentValue(ref: RichTextEditorRef | null) {
-  return ref?.getHtml() ?? '';
+  const unsafeHtml = ref?.getHtml() ?? '';
+  return DOMPurify.sanitize(unsafeHtml, DOMPURIFY_CONFIG);
 }
 
 export function buildCaseNoteFormKey(caseId: string, mode: CaseNoteFormMode, id: string) {
@@ -83,6 +86,7 @@ export type CaseNoteFormModalProps = {
   modalId: string;
   alertMessage?: AlertDetails;
   onModalClosed?: (caseId: string, mode: CaseNoteFormMode) => void;
+  RichTextEditorRef?: React.RefObject<RichTextEditorRef>;
 };
 
 const defaultModalOpenOptions: CaseNoteFormModalOpenProps = {
@@ -123,6 +127,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   const session = LocalStorage.getSession();
 
   const richTextContentInputRef = useRef<RichTextEditorRef>(null);
+  const richTextRef = props.RichTextEditorRef || richTextContentInputRef;
 
   function disableSubmitButton(disable: boolean) {
     const buttons = modalRef.current?.buttons;
@@ -133,18 +138,18 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
 
   function toggleButtonOnDirtyForm(initialTitle: string, initialContent: string) {
     setTimeout(() => {
-      let currentContent = contentInputRef.current?.getValue();
-      let currentTitle = titleInputRef.current?.getValue();
-      if (featureFlags[FORMAT_CASE_NOTES]) {
-        currentContent = richTextContentInputRef.current?.getHtml();
-        currentTitle = titleInputRef.current?.getValue();
-      }
-      const notSavable =
-        currentTitle === '' ||
-        currentContent === '' ||
-        (initialTitle === currentTitle && initialContent === currentContent);
+      const currentTitle = titleInputRef.current?.getValue();
+      const hasTitle = !!currentTitle;
+      const hasTitleChanged = initialTitle !== currentTitle;
 
-      disableSubmitButton(notSavable);
+      const currentContent = featureFlags[FORMAT_CASE_NOTES]
+        ? richTextRef.current?.getHtml()
+        : contentInputRef.current?.getValue();
+      const hasContent = !(currentContent === '' || currentContent === '<p></p>');
+      const hasContentChanged = initialContent !== currentContent;
+
+      const isSavable = hasTitle && hasContent && (hasTitleChanged || hasContentChanged);
+      disableSubmitButton(!isSavable);
     }, 10);
   }
 
@@ -184,7 +189,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   function clearCaseNoteForm() {
     titleInputRef.current?.clearValue();
     if (featureFlags[FORMAT_CASE_NOTES]) {
-      richTextContentInputRef.current?.clearValue();
+      richTextRef.current?.clearValue();
     } else {
       contentInputRef.current?.clearValue();
     }
@@ -198,7 +203,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   function disableFormFields(disabled: boolean) {
     titleInputRef.current?.disable(disabled);
     if (featureFlags[FORMAT_CASE_NOTES]) {
-      richTextContentInputRef.current?.disable(disabled);
+      richTextRef.current?.disable(disabled);
     } else {
       contentInputRef.current?.disable(disabled);
     }
@@ -267,7 +272,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     let content = getCaseNotesContentValue(contentInputRef.current);
     if (featureFlags[FORMAT_CASE_NOTES]) {
       title = getCaseNotesTitleValue(titleInputRef.current);
-      content = getCaseNotesRichTextContentValue(richTextContentInputRef.current);
+      content = getCaseNotesRichTextContentValue(richTextRef.current);
     }
 
     if (mode === 'create' && session?.user) {
@@ -300,7 +305,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     submitButton: {
       label: 'Save',
       onClick: sendCaseNoteToApi,
-      disabled: false,
+      disabled: true,
       closeOnClick: false,
     },
     cancelButton: {
@@ -316,27 +321,26 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     setNoteModalTitle(`${showProps.mode === 'edit' ? 'Edit' : 'Create'} Case Note`);
     setMode(showProps.mode);
     setCancelButtonLabel(`${showProps.mode === 'edit' ? 'Cancel' : 'Discard'}`);
-    if (showProps) {
-      const formKey = buildCaseNoteFormKey(showProps.caseId, showProps.mode, showProps.id ?? '');
-      setFormKey(formKey);
-      setModalOpenOptions(showProps);
-      setInitialTitle(showProps.initialTitle);
-      setInitialContent(showProps.initialContent);
-      titleInputRef.current?.setValue(showProps.title ?? '');
 
-      if (featureFlags[FORMAT_CASE_NOTES]) {
-        richTextContentInputRef.current?.setValue(showProps.content ?? '');
-      } else {
-        contentInputRef.current?.setValue(showProps.content ?? '');
-      }
+    const formKey = buildCaseNoteFormKey(showProps.caseId, showProps.mode, showProps.id ?? '');
+    setFormKey(formKey);
+    setModalOpenOptions(showProps);
+    setInitialTitle(showProps.initialTitle);
+    setInitialContent(showProps.initialContent);
+    titleInputRef.current?.setValue(showProps.title ?? '');
 
-      if (modalRef.current?.show) {
-        const showOptions = {
-          openModalButtonRef: showProps.openModalButtonRef,
-        };
-        modalRef.current?.show(showOptions);
-        toggleButtonOnDirtyForm(showProps.initialTitle, showProps.initialContent);
-      }
+    if (featureFlags[FORMAT_CASE_NOTES]) {
+      richTextRef.current?.setValue(showProps.content ?? '');
+    } else {
+      contentInputRef.current?.setValue(showProps.content ?? '');
+    }
+
+    if (modalRef.current?.show) {
+      const showOptions = {
+        openModalButtonRef: showProps.openModalButtonRef,
+      };
+      modalRef.current?.show(showOptions);
+      toggleButtonOnDirtyForm(showProps.initialTitle, showProps.initialContent);
     }
   }
 
@@ -394,11 +398,11 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
           />
           {featureFlags[FORMAT_CASE_NOTES] ? (
             <RichTextEditor
-              id="case-note-formatted-editor"
+              id="case-note-editor"
               label="Note Text"
               required={true}
               onChange={handleRichTextContentChange}
-              ref={richTextContentInputRef}
+              ref={props.RichTextEditorRef || richTextContentInputRef}
             />
           ) : (
             <TextArea
