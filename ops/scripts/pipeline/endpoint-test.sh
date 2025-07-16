@@ -68,8 +68,8 @@ else
   targetWebAppURL="https://${webapp_name}.azurewebsites.us"
 fi
 
+actualGitSha=$expected_git_sha
 if [[ ${slot_name} == "initial" ]]; then
-  actualGitSha=expected_git_sha
   expected_git_sha="ProductionSlot"
 fi
 
