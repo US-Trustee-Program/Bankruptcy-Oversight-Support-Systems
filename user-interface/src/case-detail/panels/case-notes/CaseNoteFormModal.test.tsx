@@ -151,7 +151,7 @@ vi.mock('@/lib/components/cams/RichTextEditor/RichTextEditor', async () => {
 
 const MODAL_ID = 'modal-case-note-form';
 const TITLE_INPUT_ID = 'case-note-title-input';
-const CONTENT_INPUT_SELECTOR = '.rich-text-editor-container .editor-content';
+const CONTENT_INPUT_SELECTOR = '#textarea-note-content';
 const RICH_TEXT_CONTENT_INPUT_SELECTOR = '.editor-container .editor-content';
 const OPEN_BUTTON_ID = 'open-modal-button';
 const CANCEL_BUTTON_ID = 'button-case-note-form-cancel-button';
@@ -160,17 +160,9 @@ const ERROR_MESSAGE = 'There was a problem submitting the case note.';
 const TEST_CASE_ID = '000-11-22222';
 
 // Helper function to get the correct content input based on feature flag
-const getContentInput = () => {
-  const mockFeatureFlags = {
-    [FeatureFlagHook.FORMAT_CASE_NOTES]: true,
-  };
-  const isFeatureEnabled = mockFeatureFlags[FeatureFlagHook.FORMAT_CASE_NOTES];
-
-  if (isFeatureEnabled) {
-    // For mocked RichTextEditor, we can target the contentEditable div directly
-    return document.querySelector(RICH_TEXT_CONTENT_INPUT_SELECTOR);
-  }
-  return document.querySelector(CONTENT_INPUT_SELECTOR);
+const getContentInput = (isFeatureEnabled: boolean = true) => {
+  const selector = isFeatureEnabled ? RICH_TEXT_CONTENT_INPUT_SELECTOR : CONTENT_INPUT_SELECTOR;
+  return document.querySelector(selector);
 };
 
 /**
@@ -494,38 +486,54 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     expect(clearFormSpy).toHaveBeenCalled();
   });
 
-  test('should initialize form with provided values', async () => {
-    const initialTitle = 'Initial Title';
-    const initialContent = 'Initial Content';
+  const featureFlagCases: { enabled: boolean; initialContent: string }[] = [
+    { enabled: false, initialContent: 'Initial Content' },
+    { enabled: true, initialContent: '<p>Initial Content</p>' },
+  ];
 
-    const modalRef = React.createRef<CaseNoteFormModalRef>();
-    renderComponent(
-      modalRef,
-      {},
-      {
-        caseId: TEST_CASE_ID,
-        title: initialTitle,
-        content: initialContent,
-        initialTitle: initialTitle,
-        initialContent: initialContent,
-        mode: 'create',
-      },
-    );
+  test.each(featureFlagCases)(
+    `should initialize form with provided values when RTE enabled = $enabled`,
+    async (args) => {
+      const initialTitle = 'Initial Title';
+      const { enabled, initialContent } = args;
 
-    const openButton = screen.getByTestId(OPEN_BUTTON_ID);
-    await userEvent.click(openButton);
+      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
+        [FeatureFlagHook.FORMAT_CASE_NOTES]: enabled,
+      });
 
-    const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-    const contentInput = getContentInput();
+      const modalRef = React.createRef<CaseNoteFormModalRef>();
+      renderComponent(
+        modalRef,
+        {},
+        {
+          caseId: TEST_CASE_ID,
+          title: initialTitle,
+          content: initialContent,
+          initialTitle: initialTitle,
+          initialContent: initialContent,
+          mode: 'create',
+        },
+      );
 
-    expect(titleInput).toHaveValue(initialTitle);
-    // RichTextEditor wraps content in HTML, so we need to check the editor content
-    expect(contentInput?.innerHTML).toBe(`<p>${initialContent}</p>`);
-
-    await waitFor(() => {
       expect(screen.getByTestId(SUBMIT_BUTTON_ID)).toBeDisabled();
-    });
-  });
+
+      const openButton = screen.getByTestId(OPEN_BUTTON_ID);
+      await userEvent.click(openButton);
+
+      const titleInput = screen.getByTestId(TITLE_INPUT_ID);
+      const contentInput = getContentInput(enabled);
+
+      expect(contentInput).toBeInTheDocument();
+
+      const content = enabled ? contentInput?.innerHTML : contentInput?.textContent;
+      expect(content).toEqual(initialContent);
+      expect(titleInput).toHaveValue(initialTitle);
+
+      await waitFor(() => {
+        expect(screen.getByTestId(SUBMIT_BUTTON_ID)).toBeDisabled();
+      });
+    },
+  );
 
   test('should disable Save button unless both Title and Content have non-empty values', async () => {
     const modalRef = React.createRef<CaseNoteFormModalRef>();
