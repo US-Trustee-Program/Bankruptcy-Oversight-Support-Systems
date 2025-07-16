@@ -1,4 +1,4 @@
-import { getCaseIdParts, isCaseClosed, isCaseOpen } from './cases';
+import { DxtrCase, getCaseIdParts, isCaseClosed, isCaseOpen } from './cases';
 
 describe('cases common functions tests', () => {
   test('should return true for re-closed case', () => {
@@ -42,5 +42,45 @@ describe('cases common functions tests', () => {
         expect(() => getCaseIdParts(caseId)).toThrow(`Invalid case ID: ${caseId}`);
       },
     );
+  });
+  describe('DxtrCase type', () => {
+    test('should validate DxtrCase structure', () => {
+      // Create a valid DxtrCase object
+      const dxtrCase: DxtrCase = {
+        // CaseSummary properties (which includes CaseBasics & FlatOfficeDetail)
+        dxtrId: '12345',
+        caseId: 'ABC-12-34567',
+        chapter: '7',
+        caseTitle: 'Test Case',
+        dateFiled: '2023-01-01',
+        officeName: 'Test Office',
+        officeCode: 'TO',
+        courtId: 'C123',
+        courtName: 'Test Court',
+        courtDivisionCode: 'TCD',
+        courtDivisionName: 'Test Court Division',
+        groupDesignator: 'TGD',
+        regionId: 'R1',
+        regionName: 'Test Region',
+        debtor: {
+          name: 'Test Debtor',
+          address1: '123 Main St',
+          cityStateZipCountry: 'Anytown, NY 12345',
+        },
+
+        // ClosedDismissedReopened properties
+        closedDate: '2023-12-31',
+        dismissedDate: undefined,
+        reopenedDate: undefined,
+      };
+
+      // Use the object in a way that exercises the type
+      const isClosed = isCaseClosed(dxtrCase);
+
+      // Make assertions to ensure the test code is executed
+      expect(isClosed).toBe(true);
+      expect(dxtrCase.caseId).toBe('ABC-12-34567');
+      expect(dxtrCase.debtor.name).toBe('Test Debtor');
+    });
   });
 });
