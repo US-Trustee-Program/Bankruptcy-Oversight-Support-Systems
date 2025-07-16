@@ -68,6 +68,7 @@ else
   targetWebAppURL="https://${webapp_name}.azurewebsites.us"
 fi
 
+actualGitSha=$expected_git_sha
 if [[ ${slot_name} == "initial" ]]; then
   expected_git_sha="ProductionSlot"
 fi
@@ -82,9 +83,11 @@ webCmd=(curl -q -o /dev/null -I -L -s -w "%{http_code}" --retry 5 --retry-delay 
 apiCmd=(curl -q -o /dev/null -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f "${targetApiURL}")
 
 echo "Checking Webapp endpoint: ${targetWebAppURL}"
-webStatusCode=$("${webCmd[@]}")
+webStatusCode=$("${webCmd[@]}" || true)
+echo "webStatusCode: $webStatusCode"
 echo "Checking API endpoint: ${targetApiURL}"
-apiStatusCode=$("${apiCmd[@]}")
+apiStatusCode=$("${apiCmd[@]}" || true)
+echo "apiStatusCode: $apiStatusCode"
 
 if [[ "${expected_git_sha}" != '' ]]; then
   echo "Expect sha ${expected_git_sha}"
@@ -92,11 +95,20 @@ if [[ "${expected_git_sha}" != '' ]]; then
   currentGitSha=""
   while [ "${expected_git_sha}" != "${currentGitSha}" ] && [ ${retry} -le 2 ]; do
     retry=$((retry+1))
-    curl "${targetApiURL}" -s | tee api_response.json
-    currentGitSha=$(python3 -c "import sys, json; print(json.load(open('api_response.json'))['data']['info']['sha'])")
+    echo "Retry attempt: $retry"
+    curl "${targetApiURL}" -s | tee api_response.json || true
+    echo "api_response.json contents:"
+    cat api_response.json
+    currentGitSha=$(python3 -c "import sys, json;
+try:
+    data = json.load(open('api_response.json'))
+    print(data['data']['info']['sha'] if 'data' in data and 'info' in data['data'] and 'sha' in data['data']['info'] else '')
+except Exception as e:
+    print('')" || true)
     echo "Current sha ${currentGitSha}"
+    echo "Comparing expected_git_sha: $expected_git_sha with currentGitSha: $currentGitSha"
     if [[ "${expected_git_sha}" == "${currentGitSha}" ]]; then
-      apiStatusCode=$("${apiCmd[@]}")
+      apiStatusCode=$("${apiCmd[@]}" || true)
     else
       apiStatusCode=0 # if version does not match set to a non 200 status code
       sleep 60
@@ -104,17 +116,21 @@ if [[ "${expected_git_sha}" != '' ]]; then
 
     # Check front end SHA meta tag
     shaCheck="OK"
-    if [[ $("${webCmd[@]}") == "200" && "$expected_git_sha" != "" ]]; then
-      shaFound=$(curl "$targetWebAppURL" -s | grep "$expected_git_sha")
+    webStatusCheck=$("${webCmd[@]}" || true)
+    echo "webStatusCheck: $webStatusCheck"
+    if [[ $webStatusCheck == "200" && "$actualGitSha" != "" ]]; then
+      shaFound=$(curl "$targetWebAppURL" -s | grep "$actualGitSha" || true)
+      echo "shaFound: $shaFound"
       if [[ $shaFound == "" ]]; then
+        echo "Expected SHA not found in webapp HTML."
         shaCheck="FAILED"
-        curl "$targetWebAppURL" -s | grep -i meta
+        curl "$targetWebAppURL" -s | grep -i meta || true
       fi
     fi
-
   done
-
 fi
+
+echo "Final check: webStatusCode=$webStatusCode apiStatusCode=$apiStatusCode shaCheck=$shaCheck"
 
 if [[ $webStatusCode = "200" && $apiStatusCode = "200" && $shaCheck = "OK" ]]; then
   exit 0
