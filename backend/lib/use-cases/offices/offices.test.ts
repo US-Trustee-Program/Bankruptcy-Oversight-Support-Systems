@@ -4,12 +4,13 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import * as factory from '../../factory';
 import { CamsUserGroup, Staff } from '../../../../common/src/cams/users';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
-import { MOCKED_USTP_OFFICES_ARRAY, UstpDivisionMeta } from '../../../../common/src/cams/offices';
+import { MOCKED_USTP_OFFICES_ARRAY, UstpDivision } from '../../../../common/src/cams/offices';
 import AttorneysList from '../attorneys/attorneys';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { CamsRole } from '../../../../common/src/cams/roles';
 import UsersHelpers from '../users/users.helpers';
 import MockUserGroupGateway from '../../testing/mock-gateways/mock-user-group-gateway';
+import { buildOfficeCode, getOfficeName } from './offices';
 
 const MANHATTAN_OFFICE = MOCKED_USTP_OFFICES_ARRAY.find(
   (office) => office.officeCode === 'USTP_CAMS_Region_2_Office_Manhattan',
@@ -50,9 +51,11 @@ describe('offices use case tests', () => {
 
     const legacyDivisionCode = '087';
     const officeWithLegacyFlag = { ...MANHATTAN_OFFICE };
-    officeWithLegacyFlag.groups[0].divisions.find(
+    // Patch the division object to add isLegacy for test purposes
+    const division = officeWithLegacyFlag.groups[0].divisions.find(
       (d) => d.divisionCode === legacyDivisionCode,
-    ).isLegacy = true;
+    ) as UstpDivision & { isLegacy?: boolean };
+    division.isLegacy = true;
     const expectedOffices = [officeWithLegacyFlag];
 
     jest.spyOn(factory, 'getOfficesGateway').mockImplementation(() => {
@@ -70,7 +73,9 @@ describe('offices use case tests', () => {
         getUstpDivisionMeta: jest
           .fn()
           .mockReturnValue(
-            new Map<string, UstpDivisionMeta>([[legacyDivisionCode, { isLegacy: true }]]),
+            new Map<string, UstpDivision>([
+              [legacyDivisionCode, { isLegacy: true } as unknown as UstpDivision],
+            ]),
           ),
         getPrivilegedIdentityUserRoleGroupName: jest.fn(),
       };
@@ -175,5 +180,89 @@ describe('offices use case tests', () => {
       expect.anything(),
       `Failed to sync 1 users to the Seattle office.`,
     );
+  });
+
+  test('should log only success when all users are synced successfully', async () => {
+    const officeGroup: CamsUserGroup = { id: 'three', name: 'USTP CAMS Region 18 Office Seattle' };
+    const users: Staff[] = MockData.buildArray(MockData.getAttorneyUser, 3);
+    jest.spyOn(MockUserGroupGateway.prototype, 'getUserGroups').mockResolvedValue([officeGroup]);
+    jest.spyOn(MockUserGroupGateway.prototype, 'getUserGroupUsers').mockResolvedValue(users);
+    jest
+      .spyOn(UsersHelpers, 'getPrivilegedIdentityUser')
+      .mockImplementation(async (_context, userId) => {
+        const user = users.find((u) => u.id === userId);
+        return { ...user };
+      });
+    const putSpy = jest
+      .spyOn(MockMongoRepository.prototype, 'putOfficeStaff')
+      .mockResolvedValue({});
+    const logSpy = jest.spyOn(applicationContext.logger, 'info').mockImplementation(() => {});
+    jest.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue('');
+    const useCase = new OfficesUseCase();
+    await useCase.syncOfficeStaff(applicationContext);
+    expect(putSpy).toHaveBeenCalledTimes(users.length);
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('Synced 3 users'),
+    );
+    expect(logSpy).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('Failed to sync'),
+    );
+  });
+
+  test('should log only failure when all users fail to sync', async () => {
+    const officeGroup: CamsUserGroup = { id: 'three', name: 'USTP CAMS Region 18 Office Seattle' };
+    const users: Staff[] = MockData.buildArray(MockData.getAttorneyUser, 2);
+    jest.spyOn(MockUserGroupGateway.prototype, 'getUserGroups').mockResolvedValue([officeGroup]);
+    jest.spyOn(MockUserGroupGateway.prototype, 'getUserGroupUsers').mockResolvedValue(users);
+    jest
+      .spyOn(UsersHelpers, 'getPrivilegedIdentityUser')
+      .mockImplementation(async (_context, userId) => {
+        const user = users.find((u) => u.id === userId);
+        return { ...user };
+      });
+    const putSpy = jest
+      .spyOn(MockMongoRepository.prototype, 'putOfficeStaff')
+      .mockRejectedValue(new Error('fail'));
+    const logSpy = jest.spyOn(applicationContext.logger, 'info').mockImplementation(() => {});
+    jest.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue('');
+    const useCase = new OfficesUseCase();
+    await useCase.syncOfficeStaff(applicationContext);
+    expect(putSpy).toHaveBeenCalledTimes(users.length);
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('Failed to sync 2 users'),
+    );
+    expect(logSpy).not.toHaveBeenCalledWith(expect.anything(), expect.stringContaining('Synced'));
+  });
+});
+
+describe('offices utility functions', () => {
+  // Use a real mapped division code from USTP_OFFICE_NAME_MAP
+  const mappedDivisionCode = '001'; // Portland (from real map)
+  const mappedOfficeName = 'Portland';
+  const unmappedDivisionCode = 'ZZZ';
+
+  test('buildOfficeCode returns expected AD group name for mapped and unmapped codes', () => {
+    expect(buildOfficeCode('2', mappedDivisionCode)).toBe(
+      `USTP_CAMS_Region_2_Office_${mappedOfficeName}`,
+    );
+    expect(buildOfficeCode('2', unmappedDivisionCode)).toBe(
+      'USTP_CAMS_Region_2_Office_UNKNOWN_ZZZ',
+    );
+  });
+
+  test('getOfficeName returns mapped name if present', () => {
+    expect(getOfficeName(mappedDivisionCode)).toBe(mappedOfficeName);
+  });
+
+  test('getOfficeName returns UNKNOWN_ if not mapped', () => {
+    expect(getOfficeName(unmappedDivisionCode)).toBe('UNKNOWN_ZZZ');
+  });
+
+  test('buildOfficeCode indirectly tests cleanOfficeName (spaces and special chars)', () => {
+    // This division code will be unmapped, so office name will be UNKNOWN_... and cleanOfficeName will run
+    expect(buildOfficeCode('2', 'A B C!@#')).toBe('USTP_CAMS_Region_2_Office_UNKNOWN_A_B_C');
   });
 });
