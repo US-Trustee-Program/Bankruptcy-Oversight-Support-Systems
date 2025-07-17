@@ -2,6 +2,7 @@ import {
   getTodaysIsoDate,
   isInvalidDate,
   isValidDateString,
+  nowInSeconds,
   sortDates,
   sortDatesReverse,
 } from './date-helper';
@@ -56,5 +57,24 @@ describe('date helper tests', () => {
     const expected = new Date().toISOString().split('T')[0];
     const actual = getTodaysIsoDate();
     expect(actual).toEqual(expected);
+  });
+
+  test('should convert current time to seconds', () => {
+    // Mock Date.now() to return a fixed timestamp
+    const mockTimestamp = 1609459200000; // 2021-01-01T00:00:00.000Z in milliseconds
+    const originalDateNow = Date.now;
+    Date.now = jest.fn(() => mockTimestamp);
+
+    try {
+      // Expected result is the timestamp in seconds (milliseconds / 1000, floored)
+      const expected = Math.floor(mockTimestamp / 1000);
+      const actual = nowInSeconds();
+
+      expect(actual).toEqual(expected);
+      expect(Date.now).toHaveBeenCalled();
+    } finally {
+      // Restore the original Date.now function
+      Date.now = originalDateNow;
+    }
   });
 });
