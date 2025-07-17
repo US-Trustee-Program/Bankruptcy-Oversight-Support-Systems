@@ -25,7 +25,7 @@
     "@types/react-dom": "^18.3.7",
     "@uswds/uswds": "^3.13.0",
     "dompurify": "^3.2.6",
-    "dotenv": "^16.6.1",
+    "dotenv": "^17.2.0",
     "launchdarkly-react-client-sdk": "^3.8.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
