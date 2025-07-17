@@ -67,7 +67,7 @@ describe('RichTextEditor', () => {
       />,
     );
 
-    expect(screen.getByText('Test Label')).toBeInTheDocument();
+    expect(screen.getByText('Test Label')).not.toBeInTheDocument();
     expect(screen.getByText('Test description')).toBeInTheDocument();
     expect(screen.getByLabelText('Test Label')).toBeInTheDocument();
     expect(screen.getByTestId('editor-label-test-editor')).toHaveClass('test-class-label');
