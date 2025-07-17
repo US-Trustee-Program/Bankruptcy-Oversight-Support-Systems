@@ -43,6 +43,7 @@ describe('cases common functions tests', () => {
       },
     );
   });
+
   describe('DxtrCase type', () => {
     test('should validate DxtrCase structure', () => {
       // Create a valid DxtrCase object
