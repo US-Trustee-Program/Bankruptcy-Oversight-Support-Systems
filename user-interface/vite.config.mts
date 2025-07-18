@@ -13,7 +13,6 @@ export default defineConfig({
   css: {
     preprocessorOptions: {
       scss: {
-        api: 'modern-compiler',
         loadPaths: [
           fileURLToPath(new URL('./node_modules/', import.meta.url)),
           fileURLToPath(new URL('./node_modules/@uswds/uswds/packages/', import.meta.url)),
