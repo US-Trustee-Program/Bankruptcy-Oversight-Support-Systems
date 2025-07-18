@@ -133,8 +133,19 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
   };
 
   const handleLinkApply = () => {
-    const cleanUrl = sanitizeUrl(linkUrl);
-    const display = linkText || cleanUrl;
+    let tempLinkUrl = linkUrl;
+    let tempLinkText = linkText;
+    // if there is no protocol, assume https://
+    if (
+      !linkUrl.startsWith('http://') &&
+      !linkUrl.startsWith('https://') &&
+      !linkUrl.startsWith('mailto:')
+    ) {
+      tempLinkUrl = 'https://' + linkUrl;
+      tempLinkText = linkUrl;
+    }
+    const cleanUrl = sanitizeUrl(tempLinkUrl);
+    const display = tempLinkText || cleanUrl;
     if (display && cleanUrl) {
       editor?.chain().focus().insertContent(`<a href="${cleanUrl}">${display}</a>`).run();
     }

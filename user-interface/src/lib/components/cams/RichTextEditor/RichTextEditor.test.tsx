@@ -428,6 +428,19 @@ describe('RichTextEditor', () => {
       );
     });
 
+    test('applies link with only URL with no protocolas display text, defaulting to https://', async () => {
+      render(<RichTextEditor id="test-editor" />);
+      const linkButton = screen.getByRole('button', { name: /link/i });
+      await userEvent.click(linkButton);
+      const urlInput = screen.getByPlaceholderText('Paste a link...');
+      await userEvent.type(urlInput, 'example.com');
+      // Use querySelector since the apply button doesn't have an accessible name
+      const applyButton = document.querySelector('.editor-link-apply') as HTMLButtonElement;
+      expect(applyButton).toBeInTheDocument();
+      await userEvent.click(applyButton);
+      expect(mockEditor.getHTML()).toContain('<a href="https://example.com">example.com</a>');
+    });
+
     test('cancel closes popover and does not insert link', async () => {
       render(<RichTextEditor id="test-editor" />);
       const linkButton = screen.getByRole('button', { name: /link/i });
