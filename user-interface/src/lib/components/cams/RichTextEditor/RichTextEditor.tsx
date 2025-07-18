@@ -2,8 +2,6 @@ import './RichTextEditor.scss';
 import { forwardRef, useEffect, useImperativeHandle, useState, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import Underline from '@tiptap/extension-underline';
-import Link from '@tiptap/extension-link';
 import { NumberedListIcon, BulletListIcon, LinkIcon } from './RichTextIcon';
 import Icon from '../../uswds/Icon';
 import useOutsideClick from '@/lib/hooks/UseOutsideClick';
@@ -42,7 +40,7 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
   useOutsideClick([linkPopoverRef], isOutsideClick);
 
   const editor = useEditor({
-    extensions: [StarterKit, Underline, Link],
+    extensions: [StarterKit],
     immediatelyRender: true,
     content: '',
     editable: !inputDisabled,
@@ -52,6 +50,7 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
         onChange?.(html);
       }
     },
+    shouldRerenderOnTransaction: true,
   });
 
   useEffect(() => {

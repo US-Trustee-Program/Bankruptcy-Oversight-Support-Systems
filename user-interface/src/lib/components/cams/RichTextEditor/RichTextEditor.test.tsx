@@ -301,11 +301,12 @@ describe('RichTextEditor', () => {
     render(<RichTextEditor id="test-editor" />);
 
     expect(mockUseEditor).toHaveBeenCalledWith({
-      extensions: ['StarterKit', expect.any(Object), expect.any(Object)],
+      extensions: expect.arrayContaining(['StarterKit']),
       content: '',
       immediatelyRender: true,
       editable: true,
       onUpdate: expect.any(Function),
+      shouldRerenderOnTransaction: true,
     });
   });
 
@@ -313,11 +314,12 @@ describe('RichTextEditor', () => {
     render(<RichTextEditor id="test-editor" disabled={true} />);
 
     expect(mockUseEditor).toHaveBeenCalledWith({
-      extensions: ['StarterKit', expect.any(Object), expect.any(Object)],
+      extensions: expect.arrayContaining(['StarterKit']),
       content: '',
       immediatelyRender: true,
       editable: false,
       onUpdate: expect.any(Function),
+      shouldRerenderOnTransaction: true,
     });
   });
 
