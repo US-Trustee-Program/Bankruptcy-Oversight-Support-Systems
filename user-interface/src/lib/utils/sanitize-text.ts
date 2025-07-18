@@ -5,7 +5,7 @@ import LocalStorage from './local-storage';
 import { filterToExtendedAscii } from '@common/cams/sanitization';
 
 export const DOMPURIFY_CONFIG = {
-  ALLOWED_TAGS: ['em', 'strong', 'p', 'ul', 'ol', 'li', 'br', 'span', 'a'],
+  ALLOWED_TAGS: ['em', 'strong', 'p', 'ul', 'ol', 'li', 'br', 'span', 'a', 'u'],
   ALLOWED_ATTR: ['href', 'class', 'target', 'rel'],
   ALLOW_DATA_ATTR: false,
   FORBID_TAGS: ['style', 'script', 'iframe', 'object', 'embed', 'form', 'input', 'button'],
