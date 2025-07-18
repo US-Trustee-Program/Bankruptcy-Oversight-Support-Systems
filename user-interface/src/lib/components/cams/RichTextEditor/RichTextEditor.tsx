@@ -6,6 +6,8 @@ import { NumberedListIcon, BulletListIcon, LinkIcon } from './RichTextIcon';
 import Icon from '../../uswds/Icon';
 import useOutsideClick from '@/lib/hooks/UseOutsideClick';
 import { sanitizeUrl } from '@common/cams/sanitization';
+import Input from '@/lib/components/uswds/Input';
+import { InputRef } from '@/lib/type-declarations/input-fields';
 
 export interface RichTextEditorRef {
   clearValue: () => void;
@@ -34,8 +36,8 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
   const [linkUrl, setLinkUrl] = useState('');
   const [linkText, setLinkText] = useState('');
   const linkPopoverRef = useRef<HTMLDivElement>(null);
-  const linkInputRef = useRef<HTMLInputElement>(null);
-  const linkTextInputRef = useRef<HTMLInputElement>(null);
+  const linkInputRef = useRef<InputRef>(null);
+  const linkTextInputRef = useRef<InputRef>(null);
 
   useOutsideClick([linkPopoverRef], isOutsideClick);
 
@@ -113,20 +115,28 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
   }
 
   const handleLinkButtonClick = () => {
-    if (editor) {
+    const windowSelection = window.getSelection();
+    if (editor && windowSelection && windowSelection.rangeCount > 0) {
       setShowLinkPopover(true);
-      // Pre-fill with current link if selection has one
-      const currentLink = editor?.getAttributes('link').href || '';
-      setLinkUrl(currentLink);
-      // Pre-fill display text with selection or link text
-      const { selection } = editor.state;
+
       let selectedText = '';
-      if (!selection.empty) {
+      const range = windowSelection.getRangeAt(0);
+      const node = range.startContainer;
+      const { selection } = editor.state;
+      let currentLink = '';
+
+      if (
+        node.nodeType === Node.TEXT_NODE &&
+        node.parentElement &&
+        node.parentElement.nodeName === 'A'
+      ) {
+        currentLink = node.parentElement.getAttribute('href') || '';
+        selectedText = node.parentElement.textContent ?? '';
+      } else if (!range.collapsed && !selection.empty) {
         selectedText = editor.state.doc.textBetween(selection.from, selection.to, ' ');
-      } else if (currentLink) {
-        // If cursor is in a link, get the link text
-        selectedText = editor.getAttributes('link').text || '';
       }
+      setLinkUrl(currentLink);
+
       setLinkText(selectedText);
     }
     setTimeout(() => linkInputRef.current?.focus(), 0);
@@ -134,7 +144,6 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
 
   const handleLinkApply = () => {
     let tempLinkUrl = linkUrl;
-    let tempLinkText = linkText;
     // if there is no protocol, assume https://
     if (
       !linkUrl.startsWith('http://') &&
@@ -142,10 +151,9 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
       !linkUrl.startsWith('mailto:')
     ) {
       tempLinkUrl = 'https://' + linkUrl;
-      tempLinkText = linkUrl;
     }
     const cleanUrl = sanitizeUrl(tempLinkUrl);
-    const display = tempLinkText || cleanUrl;
+    const display = linkText || linkUrl;
     if (display && cleanUrl) {
       editor?.chain().focus().insertContent(`<a href="${cleanUrl}">${display}</a>`).run();
     }
@@ -270,40 +278,46 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
           </button>
           {showLinkPopover && (
             <div className="editor-link-popover" ref={linkPopoverRef}>
-              <input
-                ref={linkInputRef}
-                type="text"
-                value={linkUrl}
+              <Input
+                id="editor-link-uri-input"
+                label="Paste link"
+                required={true}
+                includeClearButton={true}
                 onChange={(e) => setLinkUrl(e.target.value)}
-                placeholder="Paste a link..."
-                className="editor-link-input"
                 aria-label="Link URL"
+                className="editor-link-input"
+                ref={linkInputRef}
+                value={linkUrl}
               />
-              <input
-                ref={linkTextInputRef}
-                type="text"
-                value={linkText}
+              <Input
+                id="editor-link-display-input"
+                label="Display text"
+                required={false}
+                includeClearButton={true}
                 onChange={(e) => setLinkText(e.target.value)}
-                placeholder="Display text"
-                className="editor-link-input display-text-input"
                 aria-label="Link Display Text"
+                className="editor-link-input display-text-input"
+                ref={linkTextInputRef}
+                value={linkText}
               />
-              <button
-                type="button"
-                onClick={handleLinkApply}
-                className="editor-link-apply"
-                aria-label="Save Link"
-              >
-                <Icon name="check" />
-              </button>
-              <button
-                type="button"
-                onClick={handleLinkCancel}
-                className="editor-link-delete"
-                aria-label="Delete Link"
-              >
-                <Icon name="delete" />
-              </button>
+              <div className="button-group">
+                <button
+                  type="button"
+                  onClick={handleLinkApply}
+                  className="editor-link-apply"
+                  aria-label="Save Link"
+                >
+                  <Icon name="check" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLinkCancel}
+                  className="editor-link-delete"
+                  aria-label="Delete Link"
+                >
+                  <Icon name="delete" />
+                </button>
+              </div>
             </div>
           )}
         </div>

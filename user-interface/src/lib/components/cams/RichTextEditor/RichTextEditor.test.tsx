@@ -393,16 +393,22 @@ describe('RichTextEditor', () => {
       render(<RichTextEditor id="test-editor" />);
       const linkButton = screen.getByRole('button', { name: /link/i });
       await userEvent.click(linkButton);
-      expect(screen.getByPlaceholderText('Paste a link...')).toBeInTheDocument();
-      expect(screen.getByPlaceholderText('Display text')).toBeInTheDocument();
+      expect(document.querySelector('[data-testid="editor-link-uri-input"]')).toBeInTheDocument();
+      expect(
+        document.querySelector('[data-testid="editor-link-display-input"]'),
+      ).toBeInTheDocument();
     });
 
     test('applies link with display text', async () => {
       render(<RichTextEditor id="test-editor" />);
       const linkButton = screen.getByRole('button', { name: /link/i });
       await userEvent.click(linkButton);
-      const urlInput = screen.getByPlaceholderText('Paste a link...');
-      const textInput = screen.getByPlaceholderText('Display text');
+      const urlInput = document.querySelector(
+        '[data-testid="editor-link-uri-input"]',
+      ) as HTMLInputElement;
+      const textInput = document.querySelector(
+        '[data-testid="editor-link-display-input"]',
+      ) as HTMLInputElement;
       await userEvent.type(urlInput, 'https://example.com');
       await userEvent.type(textInput, 'Example');
       // Use querySelector since the apply button doesn't have an accessible name
@@ -417,7 +423,9 @@ describe('RichTextEditor', () => {
       render(<RichTextEditor id="test-editor" />);
       const linkButton = screen.getByRole('button', { name: /link/i });
       await userEvent.click(linkButton);
-      const urlInput = screen.getByPlaceholderText('Paste a link...');
+      const urlInput = document.querySelector(
+        '[data-testid="editor-link-uri-input"]',
+      ) as HTMLInputElement;
       await userEvent.type(urlInput, 'https://example.com');
       // Use querySelector since the apply button doesn't have an accessible name
       const applyButton = document.querySelector('.editor-link-apply') as HTMLButtonElement;
@@ -432,7 +440,9 @@ describe('RichTextEditor', () => {
       render(<RichTextEditor id="test-editor" />);
       const linkButton = screen.getByRole('button', { name: /link/i });
       await userEvent.click(linkButton);
-      const urlInput = screen.getByPlaceholderText('Paste a link...');
+      const urlInput = document.querySelector(
+        '[data-testid="editor-link-uri-input"]',
+      ) as HTMLInputElement;
       await userEvent.type(urlInput, 'example.com');
       // Use querySelector since the apply button doesn't have an accessible name
       const applyButton = document.querySelector('.editor-link-apply') as HTMLButtonElement;
@@ -445,13 +455,17 @@ describe('RichTextEditor', () => {
       render(<RichTextEditor id="test-editor" />);
       const linkButton = screen.getByRole('button', { name: /link/i });
       await userEvent.click(linkButton);
-      const urlInput = screen.getByPlaceholderText('Paste a link...');
+      const urlInput = document.querySelector(
+        '[data-testid="editor-link-uri-input"]',
+      ) as HTMLInputElement;
       await userEvent.type(urlInput, 'https://example.com');
       // Use querySelector since the cancel button doesn't have an accessible name
       const cancelButton = document.querySelector('.editor-link-delete') as HTMLButtonElement;
       expect(cancelButton).toBeInTheDocument();
       await userEvent.click(cancelButton);
-      expect(screen.queryByPlaceholderText('Paste a link...')).not.toBeInTheDocument();
+      expect(
+        document.querySelector('[data-testid="editor-link-uri-input"]'),
+      ).not.toBeInTheDocument();
       // Reset the mock HTML after cancel
       mockEditor.getHTML.mockReturnValue('<p>test content</p>');
       expect(mockEditor.getHTML()).not.toContain('<a href="https://example.com"');
@@ -463,21 +477,43 @@ describe('RichTextEditor', () => {
       // Open the popover first
       const linkButton = screen.getByRole('button', { name: /link/i });
       await userEvent.click(linkButton);
-      expect(screen.getByPlaceholderText('Paste a link...')).toBeInTheDocument();
+      expect(document.querySelector('[data-testid="editor-link-uri-input"]')).toBeInTheDocument();
 
       // Press escape key to close popover
       await userEvent.keyboard('{Escape}');
 
       // Popover should be closed
-      expect(screen.queryByPlaceholderText('Paste a link...')).not.toBeInTheDocument();
-      expect(screen.queryByPlaceholderText('Display text')).not.toBeInTheDocument();
+      expect(
+        document.querySelector('[data-testid="editor-link-uri-input"]'),
+      ).not.toBeInTheDocument();
+      expect(
+        document.querySelector('[data-testid="editor-link-display-input"]'),
+      ).not.toBeInTheDocument();
     });
 
-    test('pre-fills display text with selected text when link button is clicked with text selected', async () => {
+    test('when text is selected and link button is clicked, should pre-fill link display text with selected text', async () => {
       // Mock the editor state to have a non-empty selection
       mockEditor.state.selection.empty = false;
       mockEditor.state.selection.from = 0;
       mockEditor.state.selection.to = 5;
+
+      const mockRange = {
+        collapsed: false,
+        startContainer: {
+          nodeType: Node.TEXT_NODE,
+          parentElement: null,
+        },
+      };
+
+      const mockWindowSelection = {
+        rangeCount: 1,
+        getRangeAt: vi.fn().mockReturnValue(mockRange),
+      };
+
+      const originalGetSelection = window.getSelection;
+
+      window.getSelection = vi.fn().mockReturnValue(mockWindowSelection as unknown as Selection);
+
       (mockEditor.state.doc.textBetween as ReturnType<typeof vi.fn>).mockReturnValue(
         'selected text',
       );
@@ -489,32 +525,61 @@ describe('RichTextEditor', () => {
       await userEvent.click(linkButton);
 
       // The display text input should be pre-filled with the selected text
-      const displayTextInput = screen.getByPlaceholderText('Display text');
+      const displayTextInput = document.querySelector(
+        '[data-testid="editor-link-display-input"]',
+      ) as HTMLInputElement;
+      await waitFor(() => {
+        expect(displayTextInput).toBeInTheDocument();
+      });
       expect(displayTextInput).toHaveValue('selected text');
       expect(mockEditor.state.doc.textBetween).toHaveBeenCalledWith(0, 5, ' ');
+
+      window.getSelection = originalGetSelection; // Restore original function
     });
 
     test('pre-fills inputs with existing link when cursor is positioned within a link', async () => {
-      // Mock the editor state to have empty selection but existing link attributes
       mockEditor.state.selection.empty = true;
-      (mockEditor.getAttributes as ReturnType<typeof vi.fn>).mockReturnValue({
-        href: 'https://existing.com',
-        text: 'existing link text',
-      });
+
+      const mockAnchor = {
+        nodeName: 'A',
+        getAttribute: vi.fn().mockReturnValue('https://existing.com'),
+        textContent: 'existing link text',
+      };
+
+      const mockTextNode = {
+        nodeType: Node.TEXT_NODE,
+        parentElement: mockAnchor,
+      };
+
+      const mockRange = {
+        collapsed: true,
+        startContainer: mockTextNode,
+      };
+
+      const mockWindowSelection = {
+        rangeCount: 1,
+        getRangeAt: vi.fn().mockReturnValue(mockRange),
+      };
+
+      const originalGetSelection = window.getSelection;
+      window.getSelection = vi.fn().mockReturnValue(mockWindowSelection as unknown as Selection);
 
       render(<RichTextEditor id="test-editor" />);
 
-      // Click the link button
       const linkButton = screen.getByRole('button', { name: /link/i });
       await userEvent.click(linkButton);
 
-      // Both inputs should be pre-filled with existing link data
-      const urlInput = screen.getByPlaceholderText('Paste a link...');
-      const displayTextInput = screen.getByPlaceholderText('Display text');
+      const urlInput = document.querySelector(
+        '[data-testid="editor-link-uri-input"]',
+      ) as HTMLInputElement;
+      const displayTextInput = document.querySelector(
+        '[data-testid="editor-link-display-input"]',
+      ) as HTMLInputElement;
 
       expect(urlInput).toHaveValue('https://existing.com');
       expect(displayTextInput).toHaveValue('existing link text');
-      expect(mockEditor.getAttributes).toHaveBeenCalledWith('link');
+
+      window.getSelection = originalGetSelection;
     });
 
     test('does not insert link when both linkText and linkUrl are empty in handleLinkApply', async () => {
@@ -534,7 +599,9 @@ describe('RichTextEditor', () => {
       // Should not call insertContent when display is falsy
       expect(mockEditor.chain).not.toHaveBeenCalled();
       // Popover should still close
-      expect(screen.queryByPlaceholderText('Paste a link...')).not.toBeInTheDocument();
+      expect(
+        document.querySelector('[data-testid="editor-link-uri-input"]'),
+      ).not.toBeInTheDocument();
     });
 
     test('does not insert link when malformed URL is sanitized to empty string', async () => {
@@ -542,8 +609,12 @@ describe('RichTextEditor', () => {
       const linkButton = screen.getByRole('button', { name: /link/i });
       await userEvent.click(linkButton);
 
-      const urlInput = screen.getByPlaceholderText('Paste a link...');
-      const textInput = screen.getByPlaceholderText('Display text');
+      const urlInput = document.querySelector(
+        '[data-testid="editor-link-uri-input"]',
+      ) as HTMLInputElement;
+      const textInput = document.querySelector(
+        '[data-testid="editor-link-display-input"]',
+      ) as HTMLInputElement;
 
       // Enter a malformed URL that will be sanitized to empty string
       await userEvent.type(urlInput, 'javascript:alert("xss")');
@@ -560,7 +631,9 @@ describe('RichTextEditor', () => {
       // Should not call insertContent when sanitized URL becomes empty string
       expect(mockEditor.chain).not.toHaveBeenCalled();
       // Popover should still close
-      expect(screen.queryByPlaceholderText('Paste a link...')).not.toBeInTheDocument();
+      expect(
+        document.querySelector('[data-testid="editor-link-uri-input"]'),
+      ).not.toBeInTheDocument();
     });
 
     test('uses empty string fallback when existing link text attribute is falsy', async () => {
@@ -578,9 +651,10 @@ describe('RichTextEditor', () => {
       await userEvent.click(linkButton);
 
       // The display text input should have empty value due to fallback
-      const displayTextInput = screen.getByPlaceholderText('Display text');
+      const displayTextInput = document.querySelector(
+        '[data-testid="editor-link-display-input"]',
+      ) as HTMLInputElement;
       expect(displayTextInput).toHaveValue('');
-      expect(mockEditor.getAttributes).toHaveBeenCalledWith('link');
     });
 
     test('closes link popover when clicking outside the popover area', async () => {
@@ -605,7 +679,7 @@ describe('RichTextEditor', () => {
       // Open the link popover
       const linkButton = screen.getByRole('button', { name: /link/i });
       await userEvent.click(linkButton);
-      expect(screen.getByPlaceholderText('Paste a link...')).toBeInTheDocument();
+      expect(document.querySelector('[data-testid="editor-link-uri-input"]')).toBeInTheDocument();
 
       // Get the popover element and mock its getBoundingClientRect
       const popover = document.querySelector('.editor-link-popover') as HTMLDivElement;
@@ -626,7 +700,9 @@ describe('RichTextEditor', () => {
 
       // Wait for the popover to close
       await waitFor(() => {
-        expect(screen.queryByPlaceholderText('Paste a link...')).not.toBeInTheDocument();
+        expect(
+          document.querySelector('[data-testid="editor-link-uri-input"]'),
+        ).not.toBeInTheDocument();
       });
     });
 
@@ -652,7 +728,7 @@ describe('RichTextEditor', () => {
       // Open the link popover
       const linkButton = screen.getByRole('button', { name: /link/i });
       await userEvent.click(linkButton);
-      expect(screen.getByPlaceholderText('Paste a link...')).toBeInTheDocument();
+      expect(document.querySelector('[data-testid="editor-link-uri-input"]')).toBeInTheDocument();
 
       // Get the popover element and mock its getBoundingClientRect
       const popover = document.querySelector('.editor-link-popover') as HTMLDivElement;
@@ -672,8 +748,10 @@ describe('RichTextEditor', () => {
       }
 
       // Popover should remain open
-      expect(screen.getByPlaceholderText('Paste a link...')).toBeInTheDocument();
-      expect(screen.getByPlaceholderText('Display text')).toBeInTheDocument();
+      expect(document.querySelector('[data-testid="editor-link-uri-input"]')).toBeInTheDocument();
+      expect(
+        document.querySelector('[data-testid="editor-link-display-input"]'),
+      ).toBeInTheDocument();
     });
 
     test('closes link popover when clicking beyond right boundary of popover', async () => {
@@ -698,7 +776,7 @@ describe('RichTextEditor', () => {
       // Open the link popover
       const linkButton = screen.getByRole('button', { name: /link/i });
       await userEvent.click(linkButton);
-      expect(screen.getByPlaceholderText('Paste a link...')).toBeInTheDocument();
+      expect(document.querySelector('[data-testid="editor-link-uri-input"]')).toBeInTheDocument();
 
       // Get the popover element and mock its getBoundingClientRect
       const popover = document.querySelector('.editor-link-popover') as HTMLDivElement;
@@ -719,7 +797,9 @@ describe('RichTextEditor', () => {
 
       // Wait for the popover to close
       await waitFor(() => {
-        expect(screen.queryByPlaceholderText('Paste a link...')).not.toBeInTheDocument();
+        expect(
+          document.querySelector('[data-testid="editor-link-uri-input"]'),
+        ).not.toBeInTheDocument();
       });
     });
   });
