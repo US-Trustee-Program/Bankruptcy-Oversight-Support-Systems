@@ -1,0 +1,28 @@
+name: Stand Alone DAST Scan
+
+concurrency: ${{ github.ref }}-${{ github.workflow }}
+
+on: workflow_dispatch
+
+jobs:
+  setup:
+    name: Setup
+    uses: ./.github/workflows/reusable-build-info.yml
+    secrets: inherit # pragma: allowlist secret
+    with:
+      environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main-Gov' || 'Develop' }}
+      enableBicepDeployment: "true"
+
+  execute-dast-scan:
+    needs: [setup]
+    uses: ./.github/workflows/reusable-dast.yml
+    with:
+      apiFunctionName: ${{ needs.setup.outputs.apiFunctionName }}
+      slotName: ${{ needs.setup.outputs.slotName }}
+      webappName: ${{ needs.setup.outputs.webappName }}
+      stackName: ${{ needs.setup.outputs.stackName }}
+      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+      ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
+      branchHashId: ${{ needs.setup.outputs.environmentHash }}
+      e2eCosmosDbExists: true
+    secrets: inherit # pragma: allowlist secret
