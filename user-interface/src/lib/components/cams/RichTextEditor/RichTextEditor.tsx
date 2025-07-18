@@ -184,7 +184,7 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
           className={`usa-label ${className ? `${className}-label` : ''}`}
         >
           {label}
-          {required && <span className="required-form-field" />}
+          {required && <span className="required-form-field"> *</span>}
         </label>
       )}
 
