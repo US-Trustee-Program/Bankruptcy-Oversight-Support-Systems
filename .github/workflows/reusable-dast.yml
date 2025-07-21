@@ -1,0 +1,114 @@
+name: DAST Scan
+
+on:
+  workflow_call:
+    inputs:
+      apiFunctionName:
+        required: true
+        type: string
+      slotName:
+        required: true
+        type: string
+      webappName:
+        required: true
+        type: string
+      stackName:
+        required: true
+        type: string
+      azResourceGrpAppEncrypted:
+        required: true
+        type: string
+      ghaEnvironment:
+        required: true
+        type: string
+      branchHashId:
+        required: true
+        type: string
+      e2eCosmosDbExists:
+        required: true
+        type: string
+
+jobs:
+  zap-dast-scan:
+    environment: ${{ inputs.ghaEnvironment }}
+    runs-on: ubuntu-latest
+    env:
+      priority: 201
+    steps:
+      - name: Get source code
+        uses: actions/checkout@v3
+
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgApp
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ inputs.azResourceGrpAppEncrypted }}
+
+      - name: Enable GHA runner access
+        run: |
+          ./ops/scripts/pipeline/dev-add-allowed-ip.sh \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -s ${{ inputs.stackName }} \
+          -p ${{ env.priority }} \
+          --slot-name ${{ inputs.slotName }} \
+          --is-cicd
+
+          ./ops/scripts/pipeline/dev-add-allowed-ip.sh \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -s ${{ inputs.stackName }} \
+          -p ${{ env.priority }} \
+          --is-cicd
+
+          ./ops/scripts/pipeline/add-sql-firewall-rule.sh \
+          -g ${{ secrets.AZURE_RG }} \
+          --stack-name ${{ inputs.stackName }} \
+          --server-name ${{ secrets.AZ_SQL_SERVER_NAME }}
+
+      - name: Run ZAP DAST Scan
+        id: zap_scan
+        uses: zaproxy/action-full-scan@v0.10.0
+        with:
+          target: https://${{ inputs.webappName }}-${{ inputs.slotName }}.azurewebsites.us
+          cmd_options: '-a -j'
+          rules_file_name: 'test/dast/rules.tsv'
+          # context_file: 'test/dast/context.context'
+          # auth_script: 'test/dast/okta-login.js'
+          # auth_username: ${{ secrets.OKTA_USER_NAME }}
+          # auth_password: ${{ secrets.OKTA_PASSWORD }}
+          # allow_issue_warnings: true
+
+      - name: Upload ZAP Report
+        uses: actions/upload-artifact@v4.4.0
+        if: always()
+        with:
+          name: zap-report
+          path: report_html.html
+          retention-days: 30
+
+      - name: Disable GHA runner access
+        if: always()
+        run: |
+          name="gha-${{ env.priority }}-${{ inputs.stackName }}"
+          ./ops/scripts/pipeline/dev-rm-allowed-ip.sh \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -s ${{ inputs.stackName }} \
+          -r ${name:0:32} \
+          --slot-name ${{ inputs.slotName }}
+
+          name="gha-${{ env.priority }}-${{ inputs.stackName }}"
+          ./ops/scripts/pipeline/dev-rm-allowed-ip.sh \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -s ${{ inputs.stackName }} \
+          -r ${name:0:32}
+
+          ./ops/scripts/pipeline/add-sql-firewall-rule.sh \
+          -g ${{ secrets.AZURE_RG }} \
+          --stack-name ${{ inputs.stackName }} \
+          --server-name ${{ secrets.AZ_SQL_SERVER_NAME }} \
+          --delete
