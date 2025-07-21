@@ -56,8 +56,9 @@
         "wait for element [data-testid='case-note-title-input'] to be visible",
         "set field [data-testid='case-note-title-input'] to 'some Test title for pa11y'",
         "wait for element [data-testid='editor-content'] to be visible",
+        "click element .tiptap.ProseMirror",
+        "set field .tiptap.ProseMirror to 'This is a test case note for pa11y'",
         "click element [data-testid='rich-text-bold-button']",
-        "click element [data-testid='rich-text-link-button']",
         "wait for element [data-testid='button-case-note-form-submit-button'] to be visible",
         "click element [data-testid='button-case-note-form-submit-button']"
       ]
