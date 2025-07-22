@@ -31,7 +31,8 @@ export interface RichTextEditorProps {
 }
 
 function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditorRef>) {
-  const { id, label, ariaDescription, onChange, required, className, disabled } = props;
+  const { id, ariaDescription, onChange, required, className, disabled } = props;
+  const label = props.label || 'Text';
 
   const [inputDisabled, setInputDisabled] = useState<boolean>(disabled || false);
 
@@ -58,6 +59,12 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
       }
     },
     shouldRerenderOnTransaction: true,
+    editorProps: {
+      attributes: {
+        'aria-labelledby': `editor-label-${id}`,
+        role: 'textbox',
+      },
+    },
   });
 
   useEffect(() => {
@@ -116,16 +123,14 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
 
   return (
     <div id={`${id}-container`} className={`usa-form-group editor-container ${className || ''}`}>
-      {label && (
-        <label
-          id={`editor-label-${id}`}
-          data-testid={`editor-label-${id}`}
-          className={`usa-label ${className ? `${className}-label` : ''}`}
-        >
-          {label}
-          {required && <span className="required-form-field"> *</span>}
-        </label>
-      )}
+      <div
+        id={`editor-label-${id}`}
+        data-testid={`editor-label-${id}`}
+        className={`usa-label ${className ? `${className}-label` : ''}`}
+      >
+        {label}
+        {required && <span className="required-form-field"> *</span>}
+      </div>
 
       {ariaDescription && (
         <div className="usa-hint" id={`editor-hint-${id}`}>
@@ -191,9 +196,6 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
           editor={editor}
           className={`editor-content editor${inputDisabled ? ' disabled' : ''}`}
           data-testid="editor-content"
-          aria-labelledby={label ? `editor-label-${id}` : undefined}
-          role="textbox"
-          aria-multiline="true"
         />
       </div>
     </div>

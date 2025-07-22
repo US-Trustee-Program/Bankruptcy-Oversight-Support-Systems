@@ -1,6 +1,7 @@
 /// <reference types="vitest" />
 import { defineConfig } from 'vite';
 import { coverageConfigDefaults } from 'vitest/config';
+import { InlineConfig } from 'vitest/node';
 import * as path from 'path';
 
 export default defineConfig({
@@ -8,6 +9,15 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/setupTests.ts',
+    exclude: [
+      '**\/node_modules/**',
+      '**\/dist/**',
+      '**\/cypress/**',
+      '**\/.{idea,git,cache,output,temp}/**',
+      '**\/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build,eslint,prettier}.config.*',
+      'test/accessibility/**',
+    ],
+
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],

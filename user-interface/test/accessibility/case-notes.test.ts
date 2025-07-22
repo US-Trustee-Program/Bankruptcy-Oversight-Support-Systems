@@ -7,7 +7,7 @@ test.describe('Case Notes', () => {
   let addCaseNoteButton;
 
   test.beforeEach(async ({ page }) => {
-    await page.goto(`/case-detail/999-99-00001/notes`);
+    await page.goto(`http://localhost:3000/case-detail/999-99-00001/notes`);
 
     addCaseNoteButton = page.getByTestId('open-modal-button_case-note-add-button');
     await expect(addCaseNoteButton).toBeVisible();
@@ -27,6 +27,6 @@ test.describe('Case Notes', () => {
     await page.locator('[data-testid="rich-text-bold-button"]').click();
 
     const accessibilityScanResults = await new AxeBuilder({ page }).analyze();
-    expect(accessibilityScanResults.violations).toEqual([]);
+    expect(accessibilityScanResults.violations.length).toEqual(0);
   });
 });

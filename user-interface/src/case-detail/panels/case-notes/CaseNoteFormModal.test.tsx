@@ -150,12 +150,13 @@ vi.mock('@/lib/components/cams/RichTextEditor/RichTextEditor', async () => {
 });
 
 const MODAL_ID = 'modal-case-note-form';
+const MODAL_WRAPPER_ID = `modal-${MODAL_ID}`;
 const TITLE_INPUT_ID = 'case-note-title-input';
 const CONTENT_INPUT_SELECTOR = '#textarea-note-content';
 const RICH_TEXT_CONTENT_INPUT_SELECTOR = '.editor-container .editor-content';
 const OPEN_BUTTON_ID = 'open-modal-button';
-const CANCEL_BUTTON_ID = 'button-case-note-form-cancel-button';
-const SUBMIT_BUTTON_ID = 'button-case-note-form-submit-button';
+const CANCEL_BUTTON_ID = `button-${MODAL_ID}-cancel-button`;
+const SUBMIT_BUTTON_ID = `button-${MODAL_ID}-submit-button`;
 const ERROR_MESSAGE = 'There was a problem submitting the case note.';
 const TEST_CASE_ID = '000-11-22222';
 
@@ -236,7 +237,7 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     const modalRef = React.createRef<CaseNoteFormModalRef>();
     renderComponent(modalRef);
 
-    const modal = screen.getByTestId(MODAL_ID);
+    const modal = screen.getByTestId(MODAL_WRAPPER_ID);
     expect(modal).not.toHaveClass('is-visible');
 
     const openButton = screen.getByTestId(OPEN_BUTTON_ID);
@@ -334,7 +335,7 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     const openButton = screen.getByTestId(OPEN_BUTTON_ID);
     await userEvent.click(openButton);
 
-    const modal = screen.getByTestId(MODAL_ID);
+    const modal = screen.getByTestId(MODAL_WRAPPER_ID);
     expect(modal).toHaveClass('is-visible');
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
@@ -371,7 +372,7 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     expect(errorMessage).toBeVisible();
     expect(errorMessage).toHaveTextContent(ERROR_MESSAGE);
 
-    const modal = screen.getByTestId(MODAL_ID);
+    const modal = screen.getByTestId(MODAL_WRAPPER_ID);
     expect(modal).toHaveClass('is-visible');
   });
 
@@ -382,7 +383,9 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     const modalRef = React.createRef<CaseNoteFormModalRef>();
     renderComponent(
       modalRef,
-      {},
+      {
+        modalId: MODAL_ID,
+      },
       {
         id: noteId,
         caseId: TEST_CASE_ID,
@@ -418,7 +421,7 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     expect(errorMessage).toBeVisible();
     expect(errorMessage).toHaveTextContent(ERROR_MESSAGE);
 
-    const modal = screen.getByTestId(MODAL_ID);
+    const modal = screen.getByTestId(MODAL_WRAPPER_ID);
     expect(modal).toHaveClass('is-visible');
   });
 

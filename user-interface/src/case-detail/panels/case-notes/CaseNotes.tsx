@@ -54,7 +54,7 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
   const [editDrafts, setEditDrafts] = useState<Cacheable<CaseNoteInput>[] | null>(null);
   const removeConfirmationModalId = 'remove-note-modal';
   const editNoteModalId = 'edit-note-modal';
-  const addNoteModalId = 'add-note-modal';
+  const addNoteModalId = 'case-note-modal';
 
   const MINIMUM_SEARCH_CHARACTERS = 3;
 
@@ -109,9 +109,9 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
         <div className="grid-row">
           <div className="grid-col-12 case-note-content">
             <div
-              className="editor-content"
               data-testid={`case-note-${idx}-text`}
               aria-label="full text of case note"
+              role="note"
             >
               <PrerenderedHtml htmlString={note.content} />
             </div>
@@ -330,7 +330,7 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
       </div>
       <CaseNoteFormModal
         ref={caseNoteModalRef}
-        modalId="case-note-modal"
+        modalId={addNoteModalId}
         onModalClosed={handleModalClosed}
       ></CaseNoteFormModal>
       <CaseNoteRemovalModal
