@@ -77,6 +77,11 @@ jobs:
           target: https://${{ inputs.webappName }}-${{ inputs.slotName }}.azurewebsites.us
           cmd_options: '-a -j'
           rules_file_name: 'test/dast/rules.tsv'
+          fail_action: 'false'
+          allow_issue_writing: 'false'
+          issue_title: 'ZAP Full Scan Report'
+          artifact_name: 'dastscan'
+
           # context_file: 'test/dast/context.context'
           # auth_script: 'test/dast/okta-login.js'
           # auth_username: ${{ secrets.OKTA_USER_NAME }}
@@ -88,7 +93,7 @@ jobs:
         if: always()
         with:
           name: zap-report
-          path: report_html.html
+          path: dastscan.html
           retention-days: 30
 
       - name: Disable GHA runner access
