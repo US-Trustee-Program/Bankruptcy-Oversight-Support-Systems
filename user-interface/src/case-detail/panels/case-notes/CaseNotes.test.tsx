@@ -313,7 +313,7 @@ describe('case note tests', () => {
     await userEvent.click(addButton);
 
     await waitFor(() => {
-      const modal = screen.getByTestId('modal-content-case-note-form');
+      const modal = screen.getByTestId('modal-content-case-note-modal');
       expect(modal).toBeInTheDocument();
     });
 
@@ -366,15 +366,15 @@ describe('case note tests', () => {
 
     shouldReturnCachedEditNote = false;
 
-    const modal = screen.getByTestId('modal-case-note-form');
     const editButton = screen.getByTestId('open-modal-button_case-note-edit-button_0');
     await userEvent.click(editButton);
+    const modal = screen.getByTestId('modal-case-note-modal');
 
     await waitFor(() => {
       expect(modal).toHaveClass('is-visible');
     });
 
-    const cancelButton = screen.getByTestId('button-case-note-form-cancel-button');
+    const cancelButton = screen.getByTestId('button-case-note-modal-cancel-button');
     await userEvent.click(cancelButton);
     await waitFor(() => {
       expect(modal).toHaveClass('is-hidden');
