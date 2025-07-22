@@ -80,7 +80,7 @@ jobs:
           fail_action: 'false'
           allow_issue_writing: 'false'
           issue_title: 'ZAP Full Scan Report'
-          artifact_name: 'report_html.html'
+          artifact_name: 'zap-report.zip'
 
           # context_file: 'test/dast/context.context'
           # auth_script: 'test/dast/okta-login.js'
@@ -93,7 +93,7 @@ jobs:
         if: always()
         with:
           name: zap-report
-          path: report_html.html
+          path: zap-report.zip
           retention-days: 30
 
       - name: Disable GHA runner access
