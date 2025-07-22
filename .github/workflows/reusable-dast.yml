@@ -72,7 +72,7 @@ jobs:
 
       - name: Run ZAP DAST Scan
         id: zap_scan
-        uses: zaproxy/action-full-scan@v0.10.0
+        uses: zaproxy/action-full-scan@v0.12.0
         with:
           target: https://${{ inputs.webappName }}-${{ inputs.slotName }}.azurewebsites.us
           cmd_options: '-a -j'
