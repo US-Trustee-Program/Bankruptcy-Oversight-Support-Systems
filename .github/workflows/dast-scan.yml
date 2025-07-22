@@ -17,12 +17,33 @@ jobs:
     needs: [setup]
     uses: ./.github/workflows/reusable-dast.yml
     with:
-      apiFunctionName: ${{ needs.setup.outputs.apiFunctionName }}
+
+      #    Azure Plan Type: P1v2
+      #    Environment: Main-Gov
+      #    Target Azure Cloud: AzureUSGovernment
+      #    Git SHA: fa8338d5c0608cd00f27ae88474acfb8830f8d23
+      #    Env Hash:
+      #    Resource group appended with the following:
+      #    Stack Name: ustp-cams
+      #    Webapp Name: ustp-cams-webapp
+      #    Api Function Name: ustp-cams-node-api
+      #    Data Flows Function Name: ustp-cams-dataflows
+      #    Bicep Deployment Flag: true
+
+      apiFunctionName: ustp-cams-node-api
       slotName: ${{ needs.setup.outputs.slotName }}
-      webappName: ${{ needs.setup.outputs.webappName }}
-      stackName: ${{ needs.setup.outputs.stackName }}
+      webappName: ustp-cams-webapp
+      stackName: ustp-cams
       azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
-      ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
+      ghaEnvironment: Main-Gov
       branchHashId: ${{ needs.setup.outputs.environmentHash }}
+
+      #      apiFunctionName: ${{ needs.setup.outputs.apiFunctionName }}
+      #      slotName: ${{ needs.setup.outputs.slotName }}
+      #      webappName: ${{ needs.setup.outputs.webappName }}
+      #      stackName: ${{ needs.setup.outputs.stackName }}
+      #      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+      #      ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
+      #      branchHashId: ${{ needs.setup.outputs.environmentHash }}
       e2eCosmosDbExists: true
     secrets: inherit # pragma: allowlist secret
