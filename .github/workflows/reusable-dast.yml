@@ -80,7 +80,7 @@ jobs:
           fail_action: 'false'
           allow_issue_writing: 'false'
           issue_title: 'ZAP Full Scan Report'
-          artifact_name: 'zap-report.zip'
+          artifact_name: 'zap-report'
 
           # context_file: 'test/dast/context.context'
           # auth_script: 'test/dast/okta-login.js'
