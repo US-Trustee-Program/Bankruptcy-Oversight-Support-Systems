@@ -1,7 +1,6 @@
 /// <reference types="vitest" />
 import { defineConfig } from 'vite';
 import { coverageConfigDefaults } from 'vitest/config';
-import { InlineConfig } from 'vitest/node';
 import * as path from 'path';
 
 export default defineConfig({
@@ -12,9 +11,7 @@ export default defineConfig({
     exclude: [
       '**\/node_modules/**',
       '**\/dist/**',
-      '**\/cypress/**',
-      '**\/.{idea,git,cache,output,temp}/**',
-      '**\/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build,eslint,prettier}.config.*',
+      '**\/{vite,vitest,eslint,prettier}.config.*',
       'test/accessibility/**',
     ],
 
