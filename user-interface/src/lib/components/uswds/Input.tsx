@@ -87,7 +87,12 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
   return (
     <>
       <div className="usa-form-group">
-        <label className="usa-label" id={props.id + '-label'} htmlFor={props.id}>
+        <label
+          className="usa-label"
+          id={props.id + '-label'}
+          htmlFor={props.id}
+          aria-label={required ? `${props.label} is required` : props.label}
+        >
           {props.label}
         </label>
         {ariaDescription && (

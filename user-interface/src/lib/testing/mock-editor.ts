@@ -46,18 +46,43 @@ export interface MockEditor {
 export const FORMATTING_BUTTONS = [
   {
     name: 'Bold',
+    title: 'Bold (Ctrl+B)',
     command: 'toggleBold',
     mark: 'bold',
     display: 'B',
     testId: 'rich-text-bold-button',
   },
-  { name: 'Italic', command: 'toggleItalic', mark: 'italic', display: 'I' },
-  { name: 'Underline', command: 'toggleUnderline', mark: 'underline', display: 'U' },
+  {
+    name: 'Italic',
+    title: 'Italic (Ctrl+I)',
+    command: 'toggleItalic',
+    mark: 'italic',
+    display: 'I',
+    testId: 'rich-text-italic-button',
+  },
+  {
+    name: 'Underline',
+    title: 'Underline (Ctrl+U)',
+    command: 'toggleUnderline',
+    mark: 'underline',
+    display: 'U',
+    testId: 'rich-text-underline-button',
+  },
 ] as const;
 
 export const LIST_BUTTONS = [
-  { name: 'Ordered List', command: 'toggleOrderedList', mark: 'orderedList' },
-  { name: 'Bullet List', command: 'toggleBulletList', mark: 'bulletList' },
+  {
+    name: 'Ordered List',
+    command: 'toggleOrderedList',
+    mark: 'orderedList',
+    testId: 'rich-text-ordered-list-button',
+  },
+  {
+    name: 'Bullet List',
+    command: 'toggleBulletList',
+    mark: 'bulletList',
+    testId: 'rich-text-unordered-list-button',
+  },
 ] as const;
 
 // Mock editor factory function

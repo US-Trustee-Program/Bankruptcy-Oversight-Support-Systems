@@ -105,7 +105,7 @@ const defaultModalOpenOptions: CaseNoteFormModalOpenProps = {
 
 function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNoteFormModalRef>) {
   const api = Api2;
-  const noteModalId = 'case-note-form';
+  const noteModalId = props.modalId || 'case-note-form-modal';
   const featureFlags = useFeatureFlags();
 
   const [formKey, setFormKey] = useState<string>('');

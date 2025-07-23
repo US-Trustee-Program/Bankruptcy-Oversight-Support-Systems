@@ -1,11 +1,15 @@
 import './RichTextEditor.scss';
-import { forwardRef, useEffect, useImperativeHandle, useState, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import { NumberedListIcon, BulletListIcon, LinkIcon } from './RichTextIcon';
-import Icon from '../../uswds/Icon';
-import useOutsideClick from '@/lib/hooks/UseOutsideClick';
-import { sanitizeUrl } from '@common/cams/sanitization';
+import Bold from '@tiptap/extension-bold';
+import Italic from '@tiptap/extension-italic';
+import Paragraph from '@tiptap/extension-paragraph';
+import { NumberedListIcon, BulletListIcon } from './RichTextIcon';
+import Underline from '@tiptap/extension-underline';
+import { BulletList, ListItem, OrderedList } from '@tiptap/extension-list';
+import Text from '@tiptap/extension-text';
+import Document from '@tiptap/extension-document';
+import { UndoRedo } from '@tiptap/extensions';
 
 export interface RichTextEditorRef {
   clearValue: () => void;
@@ -27,20 +31,24 @@ export interface RichTextEditorProps {
 }
 
 function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditorRef>) {
-  const { id, label, ariaDescription, onChange, required, className, disabled } = props;
+  const { id, ariaDescription, onChange, required, className, disabled } = props;
+  const label = props.label || 'Text';
 
   const [inputDisabled, setInputDisabled] = useState<boolean>(disabled || false);
-  const [showLinkPopover, setShowLinkPopover] = useState(false);
-  const [linkUrl, setLinkUrl] = useState('');
-  const [linkText, setLinkText] = useState('');
-  const linkPopoverRef = useRef<HTMLDivElement>(null);
-  const linkInputRef = useRef<HTMLInputElement>(null);
-  const linkTextInputRef = useRef<HTMLInputElement>(null);
-
-  useOutsideClick([linkPopoverRef], isOutsideClick);
 
   const editor = useEditor({
-    extensions: [StarterKit],
+    extensions: [
+      Paragraph,
+      Bold,
+      Italic,
+      Underline,
+      OrderedList,
+      BulletList,
+      ListItem,
+      Text,
+      Document,
+      UndoRedo,
+    ],
     immediatelyRender: true,
     content: '',
     editable: !inputDisabled,
@@ -51,6 +59,12 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
       }
     },
     shouldRerenderOnTransaction: true,
+    editorProps: {
+      attributes: {
+        'aria-labelledby': `editor-label-${id}`,
+        role: 'textbox',
+      },
+    },
   });
 
   useEffect(() => {
@@ -94,67 +108,6 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
     editor?.commands.focus();
   };
 
-  function isOutsideClick(ev: MouseEvent) {
-    if (linkPopoverRef.current && showLinkPopover) {
-      const boundingRect = (linkPopoverRef.current as HTMLDivElement).getBoundingClientRect();
-      const containerRight = boundingRect.x + boundingRect.width;
-      const containerBottom = boundingRect.y + boundingRect.height;
-      const targetX = ev.clientX;
-      const targetY = ev.clientY;
-      if (
-        targetX < boundingRect.x ||
-        targetX > containerRight ||
-        targetY < boundingRect.y ||
-        targetY > containerBottom
-      ) {
-        setShowLinkPopover(false);
-      }
-    }
-  }
-
-  const handleLinkButtonClick = () => {
-    if (editor) {
-      setShowLinkPopover(true);
-      // Pre-fill with current link if selection has one
-      const currentLink = editor?.getAttributes('link').href || '';
-      setLinkUrl(currentLink);
-      // Pre-fill display text with selection or link text
-      const { selection } = editor.state;
-      let selectedText = '';
-      if (!selection.empty) {
-        selectedText = editor.state.doc.textBetween(selection.from, selection.to, ' ');
-      } else if (currentLink) {
-        // If cursor is in a link, get the link text
-        selectedText = editor.getAttributes('link').text || '';
-      }
-      setLinkText(selectedText);
-    }
-    setTimeout(() => linkInputRef.current?.focus(), 0);
-  };
-
-  const handleLinkApply = () => {
-    const cleanUrl = sanitizeUrl(linkUrl);
-    const display = linkText || cleanUrl;
-    if (display && cleanUrl) {
-      editor?.chain().focus().insertContent(`<a href="${cleanUrl}">${display}</a>`).run();
-    }
-    setShowLinkPopover(false);
-    setLinkUrl('');
-    setLinkText('');
-  };
-
-  const handleLinkCancel = () => {
-    setShowLinkPopover(false);
-    setLinkUrl('');
-    setLinkText('');
-  };
-
-  const handleLinkKeyDown = (e: KeyboardEvent) => {
-    if (showLinkPopover && e.key === 'Escape') {
-      handleLinkCancel();
-    }
-  };
-
   const getToggleButtonClass = (formatType: string) => {
     return `rich-text-button${editor?.isActive(formatType) ? ' is-active' : ''}`;
   };
@@ -168,25 +121,16 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
     focus,
   }));
 
-  useEffect(() => {
-    window.addEventListener('keydown', handleLinkKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleLinkKeyDown);
-    };
-  }, [showLinkPopover]);
-
   return (
     <div id={`${id}-container`} className={`usa-form-group editor-container ${className || ''}`}>
-      {label && (
-        <label
-          id={`editor-label-${id}`}
-          data-testid={`editor-label-${id}`}
-          className={`usa-label ${className ? `${className}-label` : ''}`}
-        >
-          {label}
-          {required && <span className="required-form-field" />}
-        </label>
-      )}
+      <div
+        id={`editor-label-${id}`}
+        data-testid={`editor-label-${id}`}
+        className={`usa-label ${className ? `${className}-label` : ''}`}
+      >
+        {label}
+        {required && <span className="required-form-field"> *</span>}
+      </div>
 
       {ariaDescription && (
         <div className="usa-hint" id={`editor-hint-${id}`}>
@@ -202,8 +146,8 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
             className={`rich-text-button${editor?.isActive('bold') ? ' is-active' : ''}`}
             disabled={inputDisabled || !editor.isEditable}
             aria-disabled={inputDisabled || !editor.isEditable}
-            aria-label="Bold"
-            title="Bold"
+            title="Bold (Ctrl+B)"
+            aria-label="Activate Bold with Ctrl+B"
             onClick={() => editor?.chain().focus().toggleBold().run()}
             data-testid="rich-text-bold-button"
           >
@@ -211,99 +155,52 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
           </button>
           <button
             type="button"
-            aria-label="Italic"
-            title="Italic"
+            title="Italic (Ctrl+I)"
+            aria-label="Activate Italic with Ctrl+I"
             onClick={() => editor?.chain().focus().toggleItalic().run()}
             className={getToggleButtonClass('italic')}
             disabled={inputDisabled || !editor.isEditable}
+            data-testid="rich-text-italic-button"
           >
             <em>I</em>
           </button>
           <button
             type="button"
-            aria-label="Underline"
-            title="Underline"
+            title="Underline (Ctrl+U)"
+            aria-label="Activate Underline with Ctrl+U"
             onClick={() => editor?.chain().focus().toggleUnderline().run()}
             className={getToggleButtonClass('underline')}
             disabled={inputDisabled || !editor.isEditable}
+            data-testid="rich-text-underline-button"
           >
             U
           </button>
           <button
-            aria-label="Ordered List"
-            title="Ordered List"
+            title="Ordered List (Ctrl+Shift+7)"
+            aria-label="Create Ordered List with Ctrl+Shift+7"
             onClick={() => editor?.chain().focus().toggleOrderedList().run()}
             className={getToggleButtonClass('orderedList')}
             disabled={inputDisabled || !editor.isEditable}
+            data-testid="rich-text-ordered-list-button"
           >
             <NumberedListIcon />
           </button>
           <button
-            aria-label="Bullet List"
-            title="Bullet List"
+            title="Bullet List (Ctrl+Shift+8)"
+            aria-label="Create Bullet List with Ctrl+Shift+8"
             onClick={() => editor?.chain().focus().toggleBulletList().run()}
             className={getToggleButtonClass('bulletList')}
             disabled={inputDisabled || !editor.isEditable}
+            data-testid="rich-text-unordered-list-button"
           >
             <BulletListIcon />
           </button>
-          <button
-            aria-label="Link"
-            title="Link"
-            onClick={handleLinkButtonClick}
-            className={getToggleButtonClass('link')}
-            disabled={inputDisabled || !editor.isEditable}
-            data-testid="rich-text-link-button"
-          >
-            <LinkIcon />
-          </button>
-          {showLinkPopover && (
-            <div className="editor-link-popover" ref={linkPopoverRef}>
-              <input
-                ref={linkInputRef}
-                type="text"
-                value={linkUrl}
-                onChange={(e) => setLinkUrl(e.target.value)}
-                placeholder="Paste a link..."
-                className="editor-link-input"
-                aria-label="Link URL"
-              />
-              <input
-                ref={linkTextInputRef}
-                type="text"
-                value={linkText}
-                onChange={(e) => setLinkText(e.target.value)}
-                placeholder="Display text"
-                className="editor-link-input display-text-input"
-                aria-label="Link Display Text"
-              />
-              <button
-                type="button"
-                onClick={handleLinkApply}
-                className="editor-link-apply"
-                aria-label="Save Link"
-              >
-                <Icon name="check" />
-              </button>
-              <button
-                type="button"
-                onClick={handleLinkCancel}
-                className="editor-link-delete"
-                aria-label="Delete Link"
-              >
-                <Icon name="delete" />
-              </button>
-            </div>
-          )}
         </div>
 
         <EditorContent
           editor={editor}
           className={`editor-content editor${inputDisabled ? ' disabled' : ''}`}
           data-testid="editor-content"
-          aria-labelledby={label ? `editor-label-${id}` : undefined}
-          role="textbox"
-          aria-multiline="true"
         />
       </div>
     </div>

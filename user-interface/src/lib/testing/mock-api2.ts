@@ -33,7 +33,23 @@ import {
 } from '@common/cams/privileged-identity';
 
 const caseDocketEntries = MockData.buildArray(MockData.getDocketEntry, 5);
-const caseNotes = MockData.buildArray(() => MockData.getCaseNote({ caseId: '101-12-12345' }), 5);
+const caseNoteGuids = [
+  '86531537-2350-463B-A28F-F218E122B458',
+  'A1B2C3D4-E5F6-7890-ABCD-EF1234567890',
+  '12345678-90AB-CDEF-1234-567890ABCDEF',
+  'FEDCBA98-7654-3210-FEDC-BA9876543210',
+  '11223344-5566-7788-99AA-BBCCDDEEFF00',
+];
+const caseNotes = caseNoteGuids.map((guid) =>
+  MockData.getCaseNote({ caseId: '101-12-12345', id: guid }),
+);
+
+const resourceActionCaseNotes = caseNotes.map((note) => {
+  return {
+    ...note,
+    _actions: [Actions.EditNote, Actions.RemoveNote],
+  };
+});
 const caseActions = [Actions.ManageAssignments];
 const caseDetails = MockData.getCaseDetail({
   override: {
@@ -41,6 +57,7 @@ const caseDetails = MockData.getCaseDetail({
     chapter: '15',
     caseTitle: 'Test Case Title',
     petitionLabel: 'Voluntary',
+    caseId: '101-12-12345',
   },
 });
 const courts = MockData.getCourts().slice(0, 5);
@@ -178,7 +195,7 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
     };
   } else if (path.match(/\/cases\/[A-Z\d-]+\/notes/)) {
     response = {
-      data: caseNotes,
+      data: resourceActionCaseNotes,
     };
   } else if (path.match(/\/cases\/[A-Z\d-]+\/summary/i)) {
     response = {

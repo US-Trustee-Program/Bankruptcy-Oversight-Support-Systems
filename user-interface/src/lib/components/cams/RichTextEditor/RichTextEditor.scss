@@ -68,21 +68,22 @@
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         width: calc(100% - 2rem);
 
-        .display-text-input {
+        .usa-form-group:nth-child(2) {
           margin-left: 0.5rem;
         }
 
-        input {
-          width: 50%;
-        }
+        .button-group {
+          align-self: end;
+          padding-bottom: 0.25rem;
 
-        button {
-          display: inline;
-        }
-        button:hover {
-          background-color: #005ea2;
-          svg {
-            fill: #ffffff;
+          button {
+            display: inline;
+          }
+          button:hover {
+            background-color: #005ea2;
+            svg {
+              fill: #ffffff;
+            }
           }
         }
       }
@@ -118,6 +119,7 @@
         flex-basis: 100%;
         padding: 0.75rem;
         overflow-y: auto;
+        z-index: 1;
       }
 
       p {

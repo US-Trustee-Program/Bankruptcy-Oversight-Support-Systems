@@ -47,7 +47,7 @@ import { Pagination } from '../../api/pagination';
 import { getIsoDate, getTodaysIsoDate, nowInSeconds, sortDates } from '../../date-helper';
 import { CamsRole } from '../roles';
 import { MOCKED_USTP_OFFICES_ARRAY } from '../offices';
-import { REGION_02_GROUP_NY } from './mock-user';
+import { REGION_02_GROUP_NY, SUPERUSER } from './mock-user';
 import { RoleAndOfficeGroupNames } from '../privileged-identity';
 import { SYSTEM_USER_REFERENCE } from '../auditable';
 import { CaseSyncEvent } from '../../queue/dataflow-types';
@@ -552,7 +552,10 @@ function getAttorneyAssignment(override: Partial<CaseAssignment> = {}): CaseAssi
 
 function getCaseNote(override: Partial<CaseNote> = {}): CaseNote {
   const firstDate = someDateAfterThisDate(`2023-01-01`, 28);
-  const user = getCamsUserReference();
+  const user = {
+    id: SUPERUSER.user.id,
+    name: SUPERUSER.user.name,
+  } as CamsUserReference;
   return {
     id: randomId(),
     title: 'Note Title',

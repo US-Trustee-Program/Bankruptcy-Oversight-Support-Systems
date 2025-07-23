@@ -389,7 +389,6 @@ const consolidationUseCase = (
     } else {
       store.setCaseToAddCaseNumber('');
       store.setCaseToAdd(null);
-      controls.disableButton(controls.approveButton, true);
     }
   };
 
@@ -400,7 +399,6 @@ const consolidationUseCase = (
     } else {
       store.setCaseToAddCourt('');
       store.setCaseToAdd(null);
-      controls.disableButton(controls.approveButton, true);
     }
   };
 
