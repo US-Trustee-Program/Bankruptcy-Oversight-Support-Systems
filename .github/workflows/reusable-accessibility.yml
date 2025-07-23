@@ -60,6 +60,11 @@ jobs:
           cache: 'npm'
           cache-dependency-path: ${{ inputs.path }}/package-lock.json
 
+      - name: CI Common
+        working-directory: common
+        run: |
+          npm ci
+
       - name: Install Node dependencies
         run: |
           npm ci
