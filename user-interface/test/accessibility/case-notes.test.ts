@@ -17,16 +17,34 @@ test.describe('Case Notes', () => {
     const testNoteTitle = 'Test Note Title';
     const testNoteContent = 'Test Note Content for E2E purposes';
 
-    //Open Add Note modal to create a new note and submit
+    // Create new draft
     await page.locator('[data-testid="open-modal-button_case-note-add-button"]').click();
     await expect(page.locator('[data-testid="modal-content-case-note-modal"]')).toBeVisible();
-
     await page.locator('[data-testid="case-note-title-input"]').fill(testNoteTitle);
     await page.locator('[data-testid="editor-content"] > div').fill(testNoteContent);
+    await page.reload();
+    await expect(page.locator('[data-testid="alert-message-draft-add-note"]')).toBeVisible();
 
+    // Create edit draft
+    const editButton = await page.locator(
+      '[data-testid="open-modal-button_case-note-edit-button_0"]',
+    );
+    await editButton.click();
+    const noteId = await editButton.getAttribute('data-noteid');
+    await expect(page.locator('[data-testid="modal-content-case-note-modal"]')).toBeVisible();
+    await page.locator('[data-testid="case-note-title-input"]').fill(testNoteTitle);
+    await page.locator('[data-testid="editor-content"] > div').fill(testNoteContent);
+    await page.reload();
+    await expect(
+      page.locator(`[data-testid="alert-message-draft-edit-note-${noteId}"]`),
+    ).toBeVisible();
+
+    await page.locator('[data-testid="open-modal-button_case-note-add-button"]').click();
+    await expect(page.locator('[data-testid="modal-content-case-note-modal"]')).toBeVisible();
     await page.locator('[data-testid="rich-text-bold-button"]').click();
+    await page.waitForTimeout(1000);
 
     const accessibilityScanResults = await new AxeBuilder({ page }).analyze();
-    expect(accessibilityScanResults.violations.length).toEqual(0);
+    expect(accessibilityScanResults.violations).toEqual([]);
   });
 });

@@ -53,8 +53,7 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
   const [draftNote, setDraftNote] = useState<Cacheable<CaseNoteInput> | null>(null);
   const [editDrafts, setEditDrafts] = useState<Cacheable<CaseNoteInput>[] | null>(null);
   const removeConfirmationModalId = 'remove-note-modal';
-  const editNoteModalId = 'edit-note-modal';
-  const addNoteModalId = 'case-note-modal';
+  const caseNoteModalId = 'case-note-modal';
 
   const MINIMUM_SEARCH_CHARACTERS = 3;
 
@@ -140,9 +139,10 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
               id={`case-note-edit-button`}
               buttonIndex={`${idx}`}
               uswdsStyle={UswdsButtonStyle.Unstyled}
-              modalId={editNoteModalId}
+              modalId={caseNoteModalId}
               modalRef={caseNoteModalRef}
               ref={openEditModalButtonRefs.current.get(note.id!)}
+              data-noteid={note.id}
               openProps={{
                 id: note.id,
                 caseId: note.caseId,
@@ -277,7 +277,7 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
           className="add-button"
           id={'case-note-add-button'}
           uswdsStyle={UswdsButtonStyle.Default}
-          modalId={addNoteModalId}
+          modalId={caseNoteModalId}
           modalRef={caseNoteModalRef}
           ref={openAddModalButtonRef}
           openProps={{
@@ -330,7 +330,7 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
       </div>
       <CaseNoteFormModal
         ref={caseNoteModalRef}
-        modalId={addNoteModalId}
+        modalId={caseNoteModalId}
         onModalClosed={handleModalClosed}
       ></CaseNoteFormModal>
       <CaseNoteRemovalModal
