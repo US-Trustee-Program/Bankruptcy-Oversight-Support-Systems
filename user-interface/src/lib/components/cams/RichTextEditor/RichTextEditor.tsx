@@ -147,6 +147,7 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
             disabled={inputDisabled || !editor.isEditable}
             aria-disabled={inputDisabled || !editor.isEditable}
             title="Bold (Ctrl+B)"
+            aria-label="Activate Bold with Ctrl+B"
             onClick={() => editor?.chain().focus().toggleBold().run()}
             data-testid="rich-text-bold-button"
           >
@@ -155,6 +156,7 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
           <button
             type="button"
             title="Italic (Ctrl+I)"
+            aria-label="Activate Italic with Ctrl+I"
             onClick={() => editor?.chain().focus().toggleItalic().run()}
             className={getToggleButtonClass('italic')}
             disabled={inputDisabled || !editor.isEditable}
@@ -165,6 +167,7 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
           <button
             type="button"
             title="Underline (Ctrl+U)"
+            aria-label="Activate Underline with Ctrl+U"
             onClick={() => editor?.chain().focus().toggleUnderline().run()}
             className={getToggleButtonClass('underline')}
             disabled={inputDisabled || !editor.isEditable}
@@ -174,6 +177,7 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
           </button>
           <button
             title="Ordered List (Ctrl+Shift+7)"
+            aria-label="Create Ordered List with Ctrl+Shift+7"
             onClick={() => editor?.chain().focus().toggleOrderedList().run()}
             className={getToggleButtonClass('orderedList')}
             disabled={inputDisabled || !editor.isEditable}
@@ -183,6 +187,7 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
           </button>
           <button
             title="Bullet List (Ctrl+Shift+8)"
+            aria-label="Create Bullet List with Ctrl+Shift+8"
             onClick={() => editor?.chain().focus().toggleBulletList().run()}
             className={getToggleButtonClass('bulletList')}
             disabled={inputDisabled || !editor.isEditable}
