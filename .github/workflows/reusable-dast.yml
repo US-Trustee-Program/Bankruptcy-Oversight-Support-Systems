@@ -70,23 +70,41 @@ jobs:
           --stack-name ${{ inputs.stackName }} \
           --server-name ${{ secrets.AZ_SQL_SERVER_NAME }}
 
+      - name: Prepare ZAP Context File
+        env:
+          BASE_URL: "https://${{ inputs.webappName }}-${{ inputs.slotName }}.azurewebsites.us"
+          OKTA_USERNAME: "${{ secrets.OKTA_USER_NAME }}"
+          OKTA_PASSWORD: "${{ secrets.OKTA_PASSWORD }}"
+        run: |
+          # Generate context and script files from templates using environment variables
+          envsubst < test/dast/templates/cams-ui.context.template > test/dast/cams-ui.context
+          envsubst < test/dast/templates/okta-auth.zst.template > test/dast/okta-auth.zst
+
       - name: Run ZAP DAST Scan
         id: zap_scan
         uses: zaproxy/action-full-scan@v0.12.0
         with:
           target: https://${{ inputs.webappName }}-${{ inputs.slotName }}.azurewebsites.us
-          cmd_options: '-a -j'
-          rules_file_name: 'test/dast/rules.tsv'
+          cmd_options: >-
+            -a
+            -j
+            -c test/dast/cams-ui.context
+            -z "-config script.scripts.okta-auth.enabled=true"
+            -z "-config script.scripts.okta-auth.engine=Oracle Nashorn"
+            -z "-config script.scripts.okta-auth.type=authentication"
+            -z "-config script.scripts.okta-auth.file=/test/dast/okta-auth.zst"
+            -z "-config ajaxSpider.browserId=chrome-headless"
+            -z "-config ajaxSpider.clickDefaultElems=true"
+            -z "-config ajaxSpider.clickElemsOnce=true"
+            -z "-config ajaxSpider.eventWait=5000"
+            -z "-config ajaxSpider.maxCrawlDepth=10"
+            -z "-config ajaxSpider.maxDuration=60"
+            -z "-config ajaxSpider.numberOfBrowsers=1"
+            -z "-config ajaxSpider.randomInputs=true"
+          rules_file_name: 'test/dast/dast-rules.tsv'
           fail_action: 'false'
           allow_issue_writing: 'false'
-          issue_title: 'ZAP Full Scan Report'
           artifact_name: 'zap-report'
-
-          # context_file: 'test/dast/context.context'
-          # auth_script: 'test/dast/okta-login.js'
-          # auth_username: ${{ secrets.OKTA_USER_NAME }}
-          # auth_password: ${{ secrets.OKTA_PASSWORD }}
-          # allow_issue_warnings: true
 
       - name: Disable GHA runner access
         if: always()
