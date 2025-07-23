@@ -1,0 +1,159 @@
+{
+  "about": "This is a Zest script. For more details about Zest visit https://github.com/zaproxy/zest/",
+  "zestVersion": "0.8",
+  "title": "okta-auth",
+  "description": "",
+  "prefix": "",
+  "type": "StandAlone",
+  "parameters": {
+    "tokenStart": "{{",
+    "tokenEnd": "}}",
+    "tokens": {},
+    "elementType": "ZestVariables"
+  },
+  "statements": [
+    {
+      "windowHandle": "windowHandle1",
+      "browserType": "chrome",
+      "url": "${BASE_URL}/login",
+      "capabilities": "",
+      "headless": false,
+      "profilePath": "",
+      "index": 1,
+      "enabled": true,
+      "elementType": "ZestClientLaunch"
+    },
+    {
+      "windowHandle": "windowHandle1",
+      "type": "id",
+      "element": "auo-confirm",
+      "waitForMsec": 5000,
+      "index": 2,
+      "enabled": true,
+      "elementType": "ZestClientElementScrollTo"
+    },
+    {
+      "windowHandle": "windowHandle1",
+      "type": "id",
+      "element": "auo-confirm",
+      "waitForMsec": 5000,
+      "index": 3,
+      "enabled": true,
+      "elementType": "ZestClientElementClick"
+    },
+    {
+      "windowHandle": "windowHandle1",
+      "type": "name",
+      "element": "identifier",
+      "waitForMsec": 5000,
+      "index": 4,
+      "enabled": true,
+      "elementType": "ZestClientElementScrollTo"
+    },
+    {
+      "value": "${OKTA_USERNAME}",
+      "windowHandle": "windowHandle1",
+      "type": "name",
+      "element": "identifier",
+      "waitForMsec": 10000,
+      "index": 5,
+      "enabled": true,
+      "elementType": "ZestClientElementSendKeys"
+    },
+    {
+      "windowHandle": "windowHandle1",
+      "type": "classname",
+      "element": "button-primary",
+      "waitForMsec": 5000,
+      "index": 6,
+      "enabled": true,
+      "elementType": "ZestClientElementScrollTo"
+    },
+    {
+      "windowHandle": "windowHandle1",
+      "type": "classname",
+      "element": "button-primary",
+      "waitForMsec": 5000,
+      "index": 7,
+      "enabled": true,
+      "elementType": "ZestClientElementClick"
+    },
+    {
+      "windowHandle": "windowHandle1",
+      "type": "className",
+      "element": "auth-content-inner",
+      "waitForMsec": 5000,
+      "index": 8,
+      "enabled": true,
+      "elementType": "ZestClientElementScrollTo"
+    },
+    {
+      "windowHandle": "windowHandle1",
+      "type": "className",
+      "element": "auth-content-inner",
+      "waitForMsec": 10000,
+      "index": 9,
+      "enabled": true,
+      "elementType": "ZestClientElementClick"
+    },
+    {
+      "windowHandle": "windowHandle1",
+      "type": "classname",
+      "element": "password-with-toggle",
+      "waitForMsec": 5000,
+      "index": 10,
+      "enabled": true,
+      "elementType": "ZestClientElementScrollTo"
+    },
+    {
+      "value": "${OKTA_PASSWORD}",
+      "windowHandle": "windowHandle1",
+      "type": "classname",
+      "element": "password-with-toggle",
+      "waitForMsec": 15000,
+      "index": 11,
+      "enabled": true,
+      "elementType": "ZestClientElementSendKeys"
+    },
+    {
+      "windowHandle": "windowHandle1",
+      "type": "classname",
+      "element": "button-primary",
+      "waitForMsec": 5000,
+      "index": 12,
+      "enabled": true,
+      "elementType": "ZestClientElementScrollTo"
+    },
+    {
+      "windowHandle": "windowHandle1",
+      "type": "classname",
+      "element": "button-primary",
+      "waitForMsec": 5000,
+      "index": 13,
+      "enabled": true,
+      "elementType": "ZestClientElementClick"
+    },
+    {
+      "windowHandle": "windowHandle1",
+      "type": "className",
+      "element": "auth-content-inner",
+      "waitForMsec": 5000,
+      "index": 14,
+      "enabled": true,
+      "elementType": "ZestClientElementScrollTo"
+    },
+    {
+      "windowHandle": "windowHandle1",
+      "type": "className",
+      "element": "auth-content-inner",
+      "waitForMsec": 5000,
+      "index": 15,
+      "enabled": true,
+      "elementType": "ZestClientElementClick"
+    }
+  ],
+  "authentication": [],
+  "index": 0,
+  "enabled": true,
+  "elementType": "ZestScript"
+}
