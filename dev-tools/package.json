@@ -18,10 +18,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@azure/cosmos": "^4.4.1",
+    "@azure/cosmos": "^4.5.0",
     "@azure/identity": "^4.10.2",
     "@faker-js/faker": "^9.9.0",
-    "@types/node": "^24.0.14",
+    "@types/node": "^24.1.0",
     "dotenv": "^17.2.0",
     "tsx": "^4.20.3"
   },
@@ -29,12 +29,12 @@
   "devDependencies": {
     "@eslint/js": "^9.17.0",
     "eslint": "^9.31.0",
-    "eslint-config-prettier": "^10.1.5",
+    "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-n": "^17.21.0",
-    "eslint-plugin-prettier": "^5.5.1",
+    "eslint-plugin-prettier": "^5.5.3",
     "eslint-plugin-promise": "^7.2.1",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.37.0"
+    "typescript-eslint": "^8.38.0"
   }
 }
