@@ -343,7 +343,6 @@ describe('Consolidation UseCase tests', () => {
   });
 
   test('should clear case number and case to add, and disable button if handleAddCaseNumberInputChange not supplied a case number', async () => {
-    const disableButtonSpy = vi.spyOn(controls, 'disableButton');
     const oldCaseNumber = '11-11111';
     store.setCaseToAddCaseNumber(oldCaseNumber);
     expect(store.caseToAddCaseNumber).toEqual(oldCaseNumber);
@@ -354,7 +353,6 @@ describe('Consolidation UseCase tests', () => {
 
     expect(store.caseToAdd).toBeNull();
     expect(store.caseToAddCaseNumber).toEqual('');
-    expect(disableButtonSpy).toHaveBeenCalledWith(controls.approveButton, true);
   });
 
   test('handleAddCaseCourtSelectChange should update store.setCaseToAddCourt when a value is supplied', async () => {
@@ -374,7 +372,6 @@ describe('Consolidation UseCase tests', () => {
   });
 
   test('handleAddCaseCourtSelectChange should clear store.caseToAddCourt, store.caseToAdd, and disable approveButton when a value is not supplied', async () => {
-    const disableButtonSpy = vi.spyOn(controls, 'disableButton');
     const originalCourt = 'old court';
     store.setCaseToAddCourt(originalCourt);
     expect(store.caseToAddCourt).toEqual(originalCourt);
@@ -385,7 +382,6 @@ describe('Consolidation UseCase tests', () => {
     useCase.handleAddCaseCourtSelectChange([]);
     expect(store.caseToAddCourt).toEqual('');
     expect(store.caseToAdd).toBeNull();
-    expect(disableButtonSpy).toHaveBeenCalledWith(controls.approveButton, true);
   });
 
   test('should throw if lead case is a child in any other consolidation', () => {

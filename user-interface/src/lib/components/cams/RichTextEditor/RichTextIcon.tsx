@@ -1,5 +1,3 @@
-import Icon from '@/lib/components/uswds/Icon';
-
 export function NumberedListIcon() {
   return (
     <svg
@@ -92,8 +90,4 @@ export function BulletListIcon() {
       </g>
     </svg>
   );
-}
-
-export function LinkIcon() {
-  return <Icon name="link"></Icon>;
 }
