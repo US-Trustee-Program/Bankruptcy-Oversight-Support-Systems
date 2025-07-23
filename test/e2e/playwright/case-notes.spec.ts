@@ -33,13 +33,15 @@ test.describe('Case Notes', () => {
 
     //Open Add Note modal to create a new note and submit
     await page.locator('[data-testid="open-modal-button_case-note-add-button"]').click();
-    await expect(page.locator('[data-testid="modal-content-case-note-form"]')).toBeVisible();
+    await expect(page.locator('[data-testid="modal-content-case-note-modal"]')).toBeVisible();
 
     await page.locator('[data-testid="case-note-title-input"]').fill(testNoteTitle);
     await page.locator('[data-testid="editor-content"] > div').fill(testNoteContent);
-    await expect(page.locator('[data-testid="button-case-note-form-submit-button"]')).toBeVisible();
-    await page.locator('[data-testid="button-case-note-form-submit-button"]').click();
-    await expect(page.locator('[data-testid="modal-content-case-note-form"]')).not.toBeVisible();
+    await expect(
+      page.locator('[data-testid="button-case-note-modal-submit-button"]'),
+    ).toBeVisible();
+    await page.locator('[data-testid="button-case-note-modal-submit-button"]').click();
+    await expect(page.locator('[data-testid="modal-content-case-note-modal"]')).not.toBeVisible();
 
     //Ensure Newly created Note is there
     caseNoteHeader = page.getByTestId('case-note-0-header');
@@ -60,12 +62,14 @@ test.describe('Case Notes', () => {
     await page.locator('[data-testid="editor-content"] > div').clear();
     await page.locator('[data-testid="editor-content"] > div').fill(noteContentEdit);
 
-    await expect(page.locator('[data-testid="button-case-note-form-submit-button"]')).toBeEnabled();
-    await page.locator('[data-testid="button-case-note-form-submit-button"]').click();
     await expect(
-      page.locator('[data-testid="button-case-note-form-submit-button"]'),
+      page.locator('[data-testid="button-case-note-modal-submit-button"]'),
+    ).toBeEnabled();
+    await page.locator('[data-testid="button-case-note-modal-submit-button"]').click();
+    await expect(
+      page.locator('[data-testid="button-case-note-modal-submit-button"]'),
     ).toBeDisabled();
-    await expect(page.locator('[data-testid="modal-content-case-note-form"]')).not.toBeVisible();
+    await expect(page.locator('[data-testid="modal-content-case-note-modal"]')).not.toBeVisible();
     caseNoteHeader = page.getByTestId('case-note-0-header');
     await expect(caseNoteHeader).toBeVisible();
     await expect(caseNoteHeader).toHaveText(noteTitleEdit);

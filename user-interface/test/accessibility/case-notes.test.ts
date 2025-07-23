@@ -19,7 +19,7 @@ test.describe('Case Notes', () => {
 
     //Open Add Note modal to create a new note and submit
     await page.locator('[data-testid="open-modal-button_case-note-add-button"]').click();
-    await expect(page.locator('[data-testid="modal-content-case-note-form"]')).toBeVisible();
+    await expect(page.locator('[data-testid="modal-content-case-note-modal"]')).toBeVisible();
 
     await page.locator('[data-testid="case-note-title-input"]').fill(testNoteTitle);
     await page.locator('[data-testid="editor-content"] > div').fill(testNoteContent);
