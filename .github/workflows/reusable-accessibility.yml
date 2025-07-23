@@ -71,7 +71,16 @@ jobs:
           npx playwright install chromium msedge
 
       - name: Run UI in mock mode
-        run: npm run start:pa11y
+        run: |
+          export CAMS_USE_FAKE_API=true
+          export CAMS_LOGIN_PROVIDER=none
+          npm run build
+          npm install serve -g
+          serve -s build &
+          if ! timeout 120s sh -c 'until nc -z localhost 3000; do sleep 1; done'; then
+              echo "Webapp check timed out"
+              exit 1
+          fi
 
       - name: Run Playwright a11y Tests
         id: playwrightA11yTests
