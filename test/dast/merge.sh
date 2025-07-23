@@ -10,5 +10,5 @@ set -a
 source .env
 set +a
 
-envsubst < templates/cams-ui.context.template > cams-ui.context
-envsubst < templates/okta-auth.zst.template > okta-auth.zst
+envsubst < templates/cams-ui.context.template > config/cams-ui.context
+envsubst < templates/okta-auth.zst.template > config/okta-auth.zst

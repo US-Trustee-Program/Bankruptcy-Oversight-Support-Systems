@@ -75,10 +75,7 @@ jobs:
           BASE_URL: "https://${{ inputs.webappName }}-${{ inputs.slotName }}.azurewebsites.us"
           OKTA_USERNAME: "${{ secrets.OKTA_USER_NAME }}"
           OKTA_PASSWORD: "${{ secrets.OKTA_PASSWORD }}"
-        run: |
-          # Generate context and script files from templates using environment variables
-          envsubst < test/dast/templates/cams-ui.context.template > test/dast/cams-ui.context
-          envsubst < test/dast/templates/okta-auth.zst.template > test/dast/okta-auth.zst
+        run: pushd test/dast && ./merge.sh && popd
 
       - name: Run ZAP DAST Scan
         id: zap_scan
