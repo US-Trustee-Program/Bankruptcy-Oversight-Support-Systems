@@ -16,7 +16,10 @@ export interface ModalOpenButtonProps {
 }
 
 function OpenModalButtonComponent(
-  {
+  props: ModalOpenButtonProps & ButtonProps & JSX.IntrinsicElements['button'],
+  ref: React.Ref<OpenModalButtonRef>,
+) {
+  const {
     id,
     children,
     buttonIndex,
@@ -29,19 +32,24 @@ function OpenModalButtonComponent(
     modalRef,
     title,
     ariaLabel,
-  }: ModalOpenButtonProps & ButtonProps & JSX.IntrinsicElements['button'],
-  ref: React.Ref<OpenModalButtonRef>,
-) {
+    ...otherProps
+  } = props;
   let dataTestidSuffix = id ? `_${id}` : '';
-  if (buttonIndex && buttonIndex.length) dataTestidSuffix += `_${buttonIndex}`;
+  if (buttonIndex && buttonIndex.length) {
+    dataTestidSuffix += `_${buttonIndex}`;
+  }
 
   let classes = BUTTON_BASE_CLASS;
   const [isDisabled, setIsDisabled] = useState<boolean>(!!disabled);
 
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  if (uswdsStyle) classes += ' ' + uswdsStyle;
-  if (className) classes += ' ' + className;
+  if (uswdsStyle) {
+    classes += ' ' + uswdsStyle;
+  }
+  if (className) {
+    classes += ' ' + className;
+  }
   classes = classes.trim();
 
   function disableButton(state: boolean) {
@@ -65,6 +73,7 @@ function OpenModalButtonComponent(
 
   return (
     <button
+      {...otherProps}
       type="button"
       aria-controls={modalId}
       className={classes}
