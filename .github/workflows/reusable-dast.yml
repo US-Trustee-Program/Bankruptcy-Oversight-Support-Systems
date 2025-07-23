@@ -85,11 +85,11 @@ jobs:
           cmd_options: >-
             -a
             -j
-            -c test/dast/cams-ui.context
+            -c test/dast/config/cams-ui.context
             -z "-config script.scripts.okta-auth.enabled=true"
             -z "-config script.scripts.okta-auth.engine=Oracle Nashorn"
             -z "-config script.scripts.okta-auth.type=authentication"
-            -z "-config script.scripts.okta-auth.file=/test/dast/okta-auth.zst"
+            -z "-config script.scripts.okta-auth.file=/test/dast/config/okta-auth.zst"
             -z "-config ajaxSpider.browserId=chrome-headless"
             -z "-config ajaxSpider.clickDefaultElems=true"
             -z "-config ajaxSpider.clickElemsOnce=true"
@@ -98,7 +98,7 @@ jobs:
             -z "-config ajaxSpider.maxDuration=60"
             -z "-config ajaxSpider.numberOfBrowsers=1"
             -z "-config ajaxSpider.randomInputs=true"
-          rules_file_name: 'test/dast/dast-rules.tsv'
+          rules_file_name: 'test/dast/config/dast-rules.tsv'
           fail_action: 'false'
           allow_issue_writing: 'false'
           artifact_name: 'zap-report'
