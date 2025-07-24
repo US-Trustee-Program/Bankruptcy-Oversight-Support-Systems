@@ -27,7 +27,7 @@ const caseNotes = [
 const openModalButtonRef = React.createRef<OpenModalButtonRef>();
 
 function renderWithProps(
-  modalRef: React.RefObject<CaseNoteRemovalModalRef>,
+  modalRef: React.RefObject<CaseNoteRemovalModalRef | null>,
   openProps?: Partial<CaseNoteRemovalModalOpenProps>,
   props?: Partial<CaseNoteRemovalProps>,
 ) {

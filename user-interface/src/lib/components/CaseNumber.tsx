@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
 import { getCaseNumber } from '../utils/caseNumber';
 
+import type { JSX } from 'react';
+
 export type CaseNumberProps = JSX.IntrinsicElements['span'] & {
   caseId: string;
   renderAs?: 'link' | 'span';

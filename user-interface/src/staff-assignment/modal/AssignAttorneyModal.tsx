@@ -34,7 +34,7 @@ function _AssignAttorneyModal(
 
   const actionButtonGroup = {
     modalId: props.modalId,
-    modalRef: ref as React.RefObject<ModalRefType>,
+    modalRef: ref as React.RefObject<ModalRefType | null>,
     submitButton: {
       label: 'Assign',
       onClick: () => useCase.submitValues(props.assignmentChangeCallback),

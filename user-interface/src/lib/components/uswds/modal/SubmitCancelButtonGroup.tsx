@@ -5,7 +5,7 @@ import { ModalRefType, SubmitCancelButtonGroupRef } from './modal-refs';
 
 export type SubmitCancelBtnProps = {
   modalId: string;
-  modalRef: React.RefObject<ModalRefType>;
+  modalRef: React.RefObject<ModalRefType | null>;
   className?: string;
   submitButton?: {
     label: string;

@@ -5,7 +5,7 @@ import { IconLabel } from './IconLabel/IconLabel';
 import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
 
 type ScreenInfoButtonProps = {
-  infoModalRef: React.RefObject<ModalRefType>;
+  infoModalRef: React.RefObject<ModalRefType | null>;
   modalId: string;
 };
 

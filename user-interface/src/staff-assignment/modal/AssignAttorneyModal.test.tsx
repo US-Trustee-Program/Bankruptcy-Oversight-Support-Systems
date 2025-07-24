@@ -37,7 +37,7 @@ describe('Test Assign Attorney Modal Component', () => {
   };
 
   function renderWithProps(
-    modalRef: React.RefObject<AssignAttorneyModalRef>,
+    modalRef: React.RefObject<AssignAttorneyModalRef | null>,
     props: Partial<AssignAttorneyModalProps> = {},
   ) {
     const defaults: AssignAttorneyModalProps = {

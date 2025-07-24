@@ -1,5 +1,5 @@
 import './Table.scss';
-import React, { forwardRef, PropsWithChildren } from 'react';
+import React, { forwardRef, PropsWithChildren, type JSX } from 'react';
 
 type TableHeaderDataProps = PropsWithChildren &
   JSX.IntrinsicElements['th'] & {

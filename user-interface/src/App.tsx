@@ -19,7 +19,9 @@ import { AdminScreen } from './admin/AdminScreen';
 import { GoHome } from './lib/components/GoHome';
 
 const featureFlagConfig = getFeatureFlagConfiguration();
-export const GlobalAlertContext = createContext<React.RefObject<GlobalAlertRef> | null>(null);
+export const GlobalAlertContext = createContext<React.RefObject<GlobalAlertRef | null> | null>(
+  null,
+);
 
 function App() {
   const { reactPlugin } = getAppInsights();

@@ -1,7 +1,7 @@
 import './forms.scss';
 import './DatePicker.scss';
 import { InputRef } from '@/lib/type-declarations/input-fields';
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useImperativeHandle, useRef, useState, type JSX } from 'react';
 import { getIsoDate, isInvalidDate } from '@common/date-helper';
 
 export type DatePickerProps = JSX.IntrinsicElements['input'] & {
