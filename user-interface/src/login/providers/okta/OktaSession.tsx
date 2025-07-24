@@ -8,6 +8,7 @@ import { registerRefreshOktaToken } from './okta-library';
 export type OktaSessionProps = PropsWithChildren;
 
 export function OktaSession(props: OktaSessionProps) {
+  console.log('Children:', props.children);
   const [redirectComplete, setRedirectComplete] = useState<boolean>(false);
   const [callbackError, setCallbackError] = useState<Error | null>(null);
 
