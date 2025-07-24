@@ -3,7 +3,7 @@ import { UswdsButtonStyle } from './Button';
 
 export type ButtonGroupProps = {
   id: string;
-  children: ReactElement | Array<ReactElement>;
+  children: ReactElement<any> | Array<ReactElement<any>>;
   activeButtonId: string;
   onButtonClick: (id: string) => void;
   className?: string;
@@ -30,13 +30,13 @@ export default function ButtonGroup({
   };
 
   const renderChildren = () => {
-    if (!children || (children as Array<ReactElement>).length == 0) {
+    if (!children || (children as Array<ReactElement<any>>).length == 0) {
       return;
     }
 
     return Children.map(children, (child, idx) => {
       if (isValidElement(child)) {
-        const typedChild = child as React.ReactElement;
+        const typedChild = child as React.ReactElement<any>;
 
         const childId = `${typedChild.props.id ?? `${id}-child-${idx}`}`;
 

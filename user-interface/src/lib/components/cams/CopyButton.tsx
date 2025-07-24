@@ -1,4 +1,4 @@
-import { forwardRef } from 'react';
+import { forwardRef, type JSX } from 'react';
 import IconButton from '../IconButton';
 import { ButtonRef } from '../uswds/Button';
 

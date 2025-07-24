@@ -10,7 +10,7 @@ import {
 import './Accordion.scss';
 
 interface AccordionGroupProps extends PropsWithChildren {
-  children?: ReactElement | Array<ReactElement>;
+  children?: ReactElement<any> | Array<ReactElement<any>>;
 }
 
 export const AccordionGroup: FunctionComponent<AccordionGroupProps> = (props) => {
@@ -40,7 +40,7 @@ export const AccordionGroup: FunctionComponent<AccordionGroupProps> = (props) =>
 
 interface AccordionProps extends PropsWithChildren {
   id: string;
-  children: Array<ReactElement | string>;
+  children: Array<ReactElement<any> | string>;
   expandedId?: string;
   onExpand?: (id: string) => void;
   onCollapse?: (id: string) => void;

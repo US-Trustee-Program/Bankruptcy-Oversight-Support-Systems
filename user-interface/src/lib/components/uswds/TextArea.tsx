@@ -1,7 +1,7 @@
 import './TextArea.scss';
 import './forms.scss';
 import { TextAreaRef } from '@/lib/type-declarations/input-fields';
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type JSX } from 'react';
 
 export type TextAreaProps = JSX.IntrinsicElements['textarea'] & {
   id: string;

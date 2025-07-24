@@ -71,7 +71,7 @@ describe('OktaSession', () => {
         accessToken,
         expires: expect.any(Number),
       },
-      {},
+      undefined,
     );
   });
 
@@ -223,12 +223,14 @@ describe('OktaSession', () => {
       </BrowserRouter>,
     );
     await waitFor(() => {
-      expect(accessDeniedSpy).toHaveBeenCalledWith(
-        {
-          message: 'Invalid issuer or expiration claims.',
-        },
-        {},
-      );
+      expect(accessDeniedSpy).toHaveBeenCalled();
     });
+    console.log('access denied called this many times', accessDeniedSpy.mock.calls.length);
+    expect(accessDeniedSpy).toHaveBeenCalledWith(
+      {
+        message: 'Invalid issuer or expiration claims.',
+      },
+      undefined,
+    );
   });
 });

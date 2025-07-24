@@ -12,7 +12,7 @@ import useComponent from '@/lib/hooks/UseComponent';
 import { ModalRefType, SubmitCancelButtonGroupRef, OpenModalButtonRef } from './modal-refs';
 
 export type ModalShowOptions = {
-  openModalButtonRef?: RefObject<OpenModalButtonRef>;
+  openModalButtonRef?: RefObject<OpenModalButtonRef | null>;
 };
 
 export interface ModalProps {
@@ -35,7 +35,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
   const { isVisible, show, hide } = useComponent();
   const headingTooltip = props.headingTooltip ?? undefined;
   const [openModalButtonRef, setOpenModalButtonRef] =
-    useState<React.RefObject<OpenModalButtonRef> | null>(null);
+    useState<React.RefObject<OpenModalButtonRef | null> | null>(null);
   const [firstElement, setFirstElement] = useState<HTMLElement | null>(null);
 
   const modalShellRef = useRef<HTMLInputElement | null>(null);
@@ -117,7 +117,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
       props.onOpen();
     }
     if ('openModalButtonRef' in options) {
-      const openRef = options.openModalButtonRef as React.RefObject<OpenModalButtonRef>;
+      const openRef = options.openModalButtonRef as React.RefObject<OpenModalButtonRef | null>;
       setOpenModalButtonRef(openRef);
     }
     show();
@@ -256,7 +256,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
                 <SubmitCancelButtonGroup
                   ref={submitCancelButtonGroupRef}
                   modalId={props.modalId}
-                  modalRef={ref as React.RefObject<ModalRefType>}
+                  modalRef={ref as React.RefObject<ModalRefType | null>}
                   submitButton={
                     props.actionButtonGroup.submitButton
                       ? {

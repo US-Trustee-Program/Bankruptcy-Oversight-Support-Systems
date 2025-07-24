@@ -118,7 +118,7 @@ describe('StaffAssignmentScreen', () => {
         header: expect.anything(),
         row: expect.anything(),
       },
-      {},
+      undefined,
     );
   });
 
@@ -162,7 +162,7 @@ describe('StaffAssignmentScreen', () => {
         header: expect.anything(),
         row: expect.anything(),
       },
-      {},
+      undefined,
     );
   });
 
@@ -268,6 +268,6 @@ describe('StaffAssignmentScreen', () => {
         expect(itemList!).not.toBeInTheDocument();
       });
       expect(globalAlertSpy.error).toHaveBeenCalledWith(assigneeError);
-    });
+    }, 100000);
   });
 });

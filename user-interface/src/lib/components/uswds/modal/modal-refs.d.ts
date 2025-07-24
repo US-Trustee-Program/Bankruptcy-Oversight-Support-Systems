@@ -3,7 +3,7 @@ import { RefObject } from 'react';
 export interface ModalRefType {
   show: (object) => void;
   hide: (object) => void;
-  buttons?: RefObject<SubmitCancelButtonGroupRef>;
+  buttons?: RefObject<SubmitCancelButtonGroupRef | null>;
 }
 
 export interface SubmitCancelButtonGroupRef {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type JSX } from 'react';
 import { useTrackEvent } from '@microsoft/applicationinsights-react-js';
 import { CaseBasics, SyncedCase } from '@common/cams/cases';
 import { Table, TableBody, TableRowProps } from '@/lib/components/uswds/Table';

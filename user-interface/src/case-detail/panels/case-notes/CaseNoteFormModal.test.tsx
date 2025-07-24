@@ -173,10 +173,10 @@ const getContentInput = (isFeatureEnabled: boolean = true) => {
  */
 
 const renderComponent = (
-  modalRef: React.RefObject<CaseNoteFormModalRef>,
+  modalRef: React.RefObject<CaseNoteFormModalRef | null>,
   modalProps: Partial<CaseNoteFormModalProps> = {},
   openProps: Partial<CaseNoteFormModalOpenProps> = {},
-  richTextEditorRef: React.RefObject<RichTextEditorRef> | undefined = undefined,
+  richTextEditorRef: React.RefObject<RichTextEditorRef | null> | undefined = undefined,
 ) => {
   const defaultOpenProps = {
     caseId: TEST_CASE_ID,

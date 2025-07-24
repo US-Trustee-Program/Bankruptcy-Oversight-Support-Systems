@@ -44,7 +44,7 @@ export function useConsolidationControlsReact(): ConsolidationControls {
     caseTableActions.current?.clearAllCheckboxes();
   };
 
-  const disableButton = (button: React.RefObject<ButtonRef>, state: boolean) => {
+  const disableButton = (button: React.RefObject<ButtonRef | null>, state: boolean) => {
     button.current?.disableButton(state);
   };
 
