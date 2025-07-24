@@ -50,7 +50,7 @@ export const MyCasesScreen = () => {
 
   const infoModalActionButtonGroup = {
     modalId: infoModalId,
-    modalRef: infoModalRef as React.RefObject<ModalRefType>,
+    modalRef: infoModalRef as React.RefObject<ModalRefType | null>,
     cancelButton: {
       label: 'Return',
       uswdsStyle: UswdsButtonStyle.Default,

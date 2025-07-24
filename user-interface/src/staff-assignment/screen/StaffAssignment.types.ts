@@ -11,7 +11,7 @@ import { CasesSearchPredicate } from '@common/api/search';
 import { CamsSession } from '@common/cams/session';
 import { CamsUser, CamsUserReference } from '@common/cams/users';
 import { FeatureFlagSet } from '@common/feature-flags';
-import { RefObject, ReactNode } from 'react';
+import { RefObject, ReactNode, type JSX } from 'react';
 
 interface StaffAssignmentStore {
   staffAssignmentFilter: StaffAssignmentScreenFilter | undefined;
@@ -19,9 +19,9 @@ interface StaffAssignmentStore {
 }
 
 interface StaffAssignmentControls {
-  infoModalRef: React.RefObject<ModalRefType>;
-  assignmentModalRef: RefObject<AssignAttorneyModalRef>;
-  filterRef: RefObject<StaffAssignmentFilterRef>;
+  infoModalRef: React.RefObject<ModalRefType | null>;
+  assignmentModalRef: RefObject<AssignAttorneyModalRef | null>;
+  filterRef: RefObject<StaffAssignmentFilterRef | null>;
 }
 
 interface StaffAssignmentViewModel {
@@ -33,7 +33,7 @@ interface StaffAssignmentViewModel {
   hasValidPermission: boolean;
   infoModalActionButtonGroup: SubmitCancelBtnProps;
   infoModalId: string;
-  infoModalRef: RefObject<ModalRefType>;
+  infoModalRef: RefObject<ModalRefType | null>;
   screenTitle: ReactNode;
   session: CamsSession | null;
   staffAssignmentFilter: StaffAssignmentScreenFilter | undefined;
