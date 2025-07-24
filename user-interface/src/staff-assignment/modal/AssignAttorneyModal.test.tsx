@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { AssignAttorneyModalProps, AssignAttorneyModalRef } from './assignAttorneyModal.types';
-import React from 'react';
+import React, { act } from 'react';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { CaseBasics } from '@common/cams/cases';
 import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
@@ -70,7 +70,7 @@ describe('Test Assign Attorney Modal Component', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('Should enable the submit button if changes are selected, otherwise disabled if no change.', async () => {
@@ -86,9 +86,11 @@ describe('Test Assign Attorney Modal Component', () => {
     });
     bCase.assignments = [];
 
-    modalRef.current?.show({
-      bCase,
-      callback,
+    act(() => {
+      modalRef.current?.show({
+        bCase,
+        callback,
+      });
     });
 
     const button = screen.getByTestId('open-modal-button');
@@ -147,9 +149,11 @@ describe('Test Assign Attorney Modal Component', () => {
     const modalRef = React.createRef<AssignAttorneyModalRef>();
     renderWithProps(modalRef, { assignmentChangeCallback });
 
-    modalRef.current?.show({
-      callback,
-      bCase: mockCase,
+    act(() => {
+      modalRef.current?.show({
+        callback,
+        bCase: mockCase,
+      });
     });
     const button = screen.getByTestId('open-modal-button');
     const modal = screen.getByTestId(`modal-${modalId}`);
@@ -212,15 +216,17 @@ describe('Test Assign Attorney Modal Component', () => {
     const modalRef = React.createRef<AssignAttorneyModalRef>();
     renderWithProps(modalRef);
 
-    modalRef.current?.show({
-      callback,
-      bCase: MockData.getCaseBasics({
-        override: {
-          caseId: '123',
-          caseTitle: 'Test Case',
-          dateFiled: '2024-01-01',
-        },
-      }),
+    act(() => {
+      modalRef.current?.show({
+        callback,
+        bCase: MockData.getCaseBasics({
+          override: {
+            caseId: '123',
+            caseTitle: 'Test Case',
+            dateFiled: '2024-01-01',
+          },
+        }),
+      });
     });
 
     const modal = screen.getByTestId(`modal-${modalId}`);
@@ -228,7 +234,9 @@ describe('Test Assign Attorney Modal Component', () => {
       expect(modal).toHaveClass('is-visible');
     });
 
-    modalRef.current?.hide();
+    act(() => {
+      modalRef.current?.hide();
+    });
     await waitFor(() => {
       expect(modal).not.toHaveClass('is-visible');
     });
@@ -241,15 +249,17 @@ describe('Test Assign Attorney Modal Component', () => {
     const modalRef = React.createRef<AssignAttorneyModalRef>();
     renderWithProps(modalRef, {});
 
-    modalRef.current?.show({
-      callback,
-      bCase: MockData.getCaseBasics({
-        override: {
-          caseId: '123',
-          caseTitle: 'Test Case',
-          dateFiled: '2024-01-01',
-        },
-      }),
+    act(() => {
+      modalRef.current?.show({
+        callback,
+        bCase: MockData.getCaseBasics({
+          override: {
+            caseId: '123',
+            caseTitle: 'Test Case',
+            dateFiled: '2024-01-01',
+          },
+        }),
+      });
     });
     const modal = screen.getByTestId(`modal-${modalId}`);
 
@@ -282,15 +292,17 @@ describe('Test Assign Attorney Modal Component', () => {
     const modalRef = React.createRef<AssignAttorneyModalRef>();
     renderWithProps(modalRef, {});
 
-    modalRef.current?.show({
-      callback,
-      bCase: MockData.getCaseBasics({
-        override: {
-          caseId: '123',
-          caseTitle: 'Test Case',
-          dateFiled: '2024-01-01',
-        },
-      }),
+    act(() => {
+      modalRef.current?.show({
+        callback,
+        bCase: MockData.getCaseBasics({
+          override: {
+            caseId: '123',
+            caseTitle: 'Test Case',
+            dateFiled: '2024-01-01',
+          },
+        }),
+      });
     });
 
     await waitFor(() => {

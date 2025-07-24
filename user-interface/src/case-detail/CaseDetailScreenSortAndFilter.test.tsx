@@ -5,8 +5,8 @@ import CaseDetailScreen, {
   findDocketLimits,
   getSummaryFacetList,
 } from './CaseDetailScreen';
+import * as ReactRouter from 'react-router';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-// import { vi } from 'vitest';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { CaseDocket, CaseNote } from '@common/cams/cases';
 import userEvent from '@testing-library/user-event';
@@ -109,9 +109,8 @@ describe('Case Detail sort, search, and filter tests', () => {
       });
     });
 
-    /*test('should not display sort and filter panel when navigated to basic info', async () => {
+    test('should not display sort and filter panel when navigated to basic info', async () => {
       vi.spyOn(ReactRouter, 'useParams').mockReturnValue({ caseId: testCaseId });
-
       const docketEntryPath = `/case-detail/${testCaseId}/court-docket`;
 
       render(
@@ -151,7 +150,7 @@ describe('Case Detail sort, search, and filter tests', () => {
         searchInput = screen.queryByTestId(searchInputId);
         expect(searchInput).not.toBeInTheDocument();
       });
-    }, 5000);*/
+    }, 5000);
 
     test('should display filter select when navigated to docket entries', async () => {
       const basicInfoPath = `/case-detail/${testCaseId}/`;
@@ -196,7 +195,7 @@ describe('Case Detail sort, search, and filter tests', () => {
       });
     }, 5000);
 
-    /*test('should not display filter select when navigated to basic info', async () => {
+    test('should not display filter select when navigated to basic info', async () => {
       vi.spyOn(ReactRouter, 'useParams').mockReturnValue({ caseId: testCaseId });
 
       const docketEntryPath = `/case-detail/${testCaseId}/court-docket`;
@@ -232,7 +231,7 @@ describe('Case Detail sort, search, and filter tests', () => {
         filterSelectElement = document.querySelector(filterSelectClass);
         expect(filterSelectElement).not.toBeInTheDocument();
       });
-    }, 5000);*/
+    }, 5000);
   });
 
   describe('sort, search, and filter tests', () => {
