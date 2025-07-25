@@ -72,12 +72,13 @@ jobs:
 
       - name: Prepare ZAP Context File
         env:
-          BASE_URL: "https://${{ inputs.webappName }}-${{ inputs.slotName }}.azurewebsites.us"
+          # BASE_URL: "https://${{ inputs.webappName }}-${{ inputs.slotName }}.azurewebsites.us"
+          BASE_URL: "https://ustp-cams-webapp.azurewebsites.us/"
           OKTA_USERNAME: "${{ secrets.OKTA_USER_NAME }}"
           OKTA_PASSWORD: "${{ secrets.OKTA_PASSWORD }}"
         run: pushd test/dast && ./merge.sh && popd
 
-      - name: Run ZAP DAST Scan
+      - name: Run ZAP DAST Full Scan
         id: zap_scan
         uses: zaproxy/action-full-scan@v0.12.0
         with:
