@@ -10,7 +10,7 @@ describe('SessionEnd', () => {
   const navigateTo = vi.fn();
   const navigatorMock = {
     navigateTo,
-    navigateToExternal: vi.fn(),
+    redirectTo: vi.fn(),
   };
 
   beforeEach(() => {
