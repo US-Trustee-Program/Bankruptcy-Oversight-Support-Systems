@@ -44,11 +44,11 @@ function App() {
               <Route path="/search" element={<SearchScreen />}></Route>
               <Route path="/staff-assignment" element={<StaffAssignmentScreen />}></Route>
               <Route path="/search/:caseId" element={<SearchScreen />}></Route>
-              <Route path="/case-detail/:caseId">
+              <Route path="/case-detail/:caseId" element={<CaseDetailScreen />}>
                 <Route path="*" element={<CaseDetailScreen />}></Route>
               </Route>
               <Route path="/data-verification" element={<DataVerificationScreen />}></Route>
-              <Route path="/admin">
+              <Route path="/admin" element={<AdminScreen />}>
                 <Route path="*" element={<AdminScreen />}></Route>
               </Route>
               <Route index element={<GoHome />}></Route>
