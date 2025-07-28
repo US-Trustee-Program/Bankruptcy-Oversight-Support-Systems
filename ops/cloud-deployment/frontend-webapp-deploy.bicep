@@ -182,6 +182,14 @@ var applicationSettings = concat(
       name: 'NGINX_URI_VAR_VALUE' // workaround to prevent $uri from getting subsituted when invoking envsubst
       value: '$uri'
     }
+    {
+      name: 'NGINX_REQUEST_URI_VAR_VALUE' // workaround to prevent $uri from getting subsituted when invoking envsubst
+      value: '$request_uri'
+    }
+    {
+      name: 'NGINX_BLOCK_SCAN_VAR_VALUE' // workaround to prevent $uri from getting subsituted when invoking envsubst
+      value: '$block_scan'
+    }
   ],
   createApplicationInsights
     ? [
