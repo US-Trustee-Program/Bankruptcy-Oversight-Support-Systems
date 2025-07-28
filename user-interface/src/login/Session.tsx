@@ -60,7 +60,6 @@ export function useStateAndActions() {
 export type SessionProps = Omit<CamsSession, 'user'> & PropsWithChildren & { user?: CamsUser };
 
 export function Session(props: SessionProps) {
-  console.log('Session props children:', props.children);
   const { accessToken, provider, expires, issuer } = props;
   const user = props.user ?? { id: '', name: '' };
   const navigator = useCamsNavigator();
