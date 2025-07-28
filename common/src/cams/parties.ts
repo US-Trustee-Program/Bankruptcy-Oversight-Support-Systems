@@ -22,3 +22,8 @@ export type DebtorAttorney = Omit<Party, 'taxId' | 'ssn'> & {
   email?: string;
   office?: string;
 };
+
+export type Trustee = Omit<Party, 'taxId' | 'ssn'> & {
+  phone?: string;
+  email?: string;
+};

@@ -27,6 +27,7 @@ import { useApi2 } from '@/lib/hooks/UseApi2';
 import { CaseAssignment } from '@common/cams/assignments';
 import { CamsRole } from '@common/cams/roles';
 import CaseNotes, { CaseNotesRef } from './panels/case-notes/CaseNotes';
+import CaseDetailTrusteeAndAssignedStaff from './panels/CaseDetailTrusteeAndAssignedStaff';
 
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailOverview = lazy(() => import('./panels/CaseDetailOverview'));
@@ -729,6 +730,19 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                           caseBasicInfo?.closedDate,
                         )}
                         onCaseAssignment={handleCaseAssignment}
+                      />
+                    }
+                  />
+                  <Route
+                    path="trustee-and-assigned-staff"
+                    element={
+                      <CaseDetailTrusteeAndAssignedStaff
+                        caseDetail={caseBasicInfo}
+                        onCaseAssignment={function (
+                          _props: AssignAttorneyModalCallbackProps,
+                        ): void {
+                          throw new Error('Function not implemented.');
+                        }}
                       />
                     }
                   />

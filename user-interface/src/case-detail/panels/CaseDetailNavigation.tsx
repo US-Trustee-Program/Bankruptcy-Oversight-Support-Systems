@@ -26,6 +26,7 @@ export interface CaseDetailNavigationProps {
 
 export enum NavState {
   CASE_OVERVIEW,
+  TRUSTEE_AND_ASSIGNED_STAFF,
   COURT_DOCKET,
   AUDIT_HISTORY,
   ASSOCIATED_CASES,
@@ -62,6 +63,20 @@ export default function CaseDetailNavigation({
               end
             >
               Case Overview
+            </NavLink>
+          </li>
+          <li className="usa-sidenav__item">
+            <NavLink
+              to={`/case-detail/${caseId}/trustee-and-assigned-staff`}
+              data-testid="case-trustee-and-assigned-staff-link"
+              className={
+                'usa-nav-link ' + setCurrentNav(activeNav, NavState.TRUSTEE_AND_ASSIGNED_STAFF)
+              }
+              onClick={() => setActiveNav(NavState.TRUSTEE_AND_ASSIGNED_STAFF)}
+              title="view trustee and assigned staff details for the current case"
+              end
+            >
+              Trustee & Assigned Staff
             </NavLink>
           </li>
           <li className="usa-sidenav__item">
