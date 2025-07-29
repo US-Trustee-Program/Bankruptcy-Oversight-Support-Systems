@@ -1,9 +1,0 @@
----
-description: General Rules
-globs: "**/*"
-alwaysApply: true
----
-
-AI Guidelines are centralized.
-
-@guidelines.md
