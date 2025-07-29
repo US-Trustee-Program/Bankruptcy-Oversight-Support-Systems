@@ -94,4 +94,8 @@ cams1.code-workspace
 **/.envrc
 
 # AI
+.voidrules
+.junie/
+.cursor/
 .serena/
+.ai

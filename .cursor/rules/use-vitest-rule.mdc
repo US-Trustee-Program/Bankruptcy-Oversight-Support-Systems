@@ -1,9 +1,0 @@
----
-description:
-globs: user-interface/**/*.test.ts[x]
-alwaysApply: false
----
-Use `vitest` for unit tests.
-Use the `test` function in place of the `it` function in unit tests.
-Use `testing-library` `userEvent` in place of `fireEvent`.
-Run the tests and fix any issues.
