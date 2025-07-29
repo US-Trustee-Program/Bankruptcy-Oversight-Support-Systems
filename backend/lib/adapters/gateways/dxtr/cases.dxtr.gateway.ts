@@ -22,7 +22,7 @@ import {
   CaseSummary,
   getCaseIdParts,
 } from '../../../../../common/src/cams/cases';
-import { Party, DebtorAttorney } from '../../../../../common/src/cams/parties';
+import { Party, DebtorAttorney, Trustee } from '../../../../../common/src/cams/parties';
 
 const MODULE_NAME = 'CASES-DXTR-GATEWAY';
 
@@ -64,6 +64,8 @@ export default class CasesDxtrGateway implements CasesInterface {
     if (transactionDates.transferDates.length > 0) {
       bCase.transferDate = getMonthDayYearStringFromDate(transactionDates.transferDates[0]);
     }
+
+    bCase.trustee = await this.queryTrustee(applicationContext, bCase.dxtrId, bCase.courtId);
 
     bCase.debtorAttorney = await this.queryDebtorAttorney(
       applicationContext,
@@ -466,7 +468,7 @@ export default class CasesDxtrGateway implements CasesInterface {
         message: `Case summary not found for case ID: ${caseId}.`,
       });
     }
-    bCase.debtor = await this.queryParties(applicationContext, bCase.dxtrId, bCase.courtId);
+    bCase.debtor = await this.queryDebtorParties(applicationContext, bCase.dxtrId, bCase.courtId);
     bCase.debtorTypeLabel = getDebtorTypeLabel(bCase.debtorTypeCode);
     bCase.petitionLabel = getPetitionInfo(bCase.petitionCode).petitionLabel;
     return bCase;
@@ -660,12 +662,35 @@ export default class CasesDxtrGateway implements CasesInterface {
     );
   }
 
-  private async queryParties(
+  private async queryDebtorParties(
     applicationContext: ApplicationContext,
     dxtrId: string,
     courtId: string,
   ): Promise<Party> {
     const debtorPartyCode = 'db';
+    return this.queryParties(applicationContext, dxtrId, courtId, debtorPartyCode);
+  }
+
+  private async queryTrustee(
+    applicationContext: ApplicationContext,
+    dxtrId: string,
+    courtId: string,
+  ): Promise<Trustee> {
+    const trusteePartyCode = 'tr';
+    return this.queryParties(
+      applicationContext,
+      dxtrId,
+      courtId,
+      trusteePartyCode,
+    ) as Promise<Trustee>;
+  }
+
+  private async queryParties(
+    applicationContext: ApplicationContext,
+    dxtrId: string,
+    courtId: string,
+    partyCode: string = 'db',
+  ): Promise<Party> {
     const input: DbTableFieldSpec[] = [];
 
     input.push({
@@ -681,9 +706,9 @@ export default class CasesDxtrGateway implements CasesInterface {
     });
 
     input.push({
-      name: 'debtorPartyCode',
+      name: 'partyCode',
       type: mssql.VarChar,
-      value: debtorPartyCode,
+      value: partyCode,
     });
 
     const query = `SELECT
@@ -714,8 +739,13 @@ export default class CasesDxtrGateway implements CasesInterface {
       WHERE
         CS_CASEID = @dxtrId AND
         COURT_ID = @courtId AND
-        PY_ROLE = @debtorPartyCode
+        PY_ROLE = @partyCode
     `;
+
+    //console.log('=== DXTR ID IS ', dxtrId);
+    //console.log('=== COURT ID IS ', courtId);
+    //console.log('=== PARTY CODE IS ', partyCode);
+    //console.log('=== QUERY IS ', query);
 
     const queryResult: QueryResults = await executeQuery(
       applicationContext,
