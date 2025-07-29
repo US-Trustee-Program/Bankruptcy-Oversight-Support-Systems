@@ -24,7 +24,7 @@ export type CaseNoteRemovalModalOpenProps = {
 
 export interface CaseNoteRemovalModalRef extends ModalRefType {
   show: (showProps: CaseNoteRemovalModalOpenProps) => void;
-  buttons?: RefObject<SubmitCancelButtonGroupRef>;
+  buttons?: RefObject<SubmitCancelButtonGroupRef | null>;
 }
 
 export interface CaseNoteRemovalProps {
@@ -44,7 +44,7 @@ function _CaseNoteRemovalModal(
   const globalAlert = useGlobalAlert();
   const removeConfirmationButtonGroup: SubmitCancelBtnProps = {
     modalId,
-    modalRef: modalRef as React.RefObject<ModalRefType>,
+    modalRef: modalRef as React.RefObject<ModalRefType | null>,
     submitButton: {
       label: 'Delete',
       onClick: handleRemoveSubmitButtonClick,

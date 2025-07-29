@@ -5,9 +5,8 @@ import CaseDetailScreen, {
   findDocketLimits,
   getSummaryFacetList,
 } from './CaseDetailScreen';
+import * as ReactRouter from 'react-router';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { vi } from 'vitest';
-import ReactRouter from 'react-router';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { CaseDocket, CaseNote } from '@common/cams/cases';
 import userEvent from '@testing-library/user-event';
@@ -112,7 +111,6 @@ describe('Case Detail sort, search, and filter tests', () => {
 
     test('should not display sort and filter panel when navigated to basic info', async () => {
       vi.spyOn(ReactRouter, 'useParams').mockReturnValue({ caseId: testCaseId });
-
       const docketEntryPath = `/case-detail/${testCaseId}/court-docket`;
 
       render(

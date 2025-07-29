@@ -18,7 +18,7 @@ import { AddCaseModalImperative } from '@/data-verification/consolidation/AddCas
 interface ConsolidationViewModel {
   // Non-function properties
   accordionFieldHeaders: string[];
-  addCaseModal: React.RefObject<AddCaseModalImperative>;
+  addCaseModal: React.RefObject<AddCaseModalImperative | null>;
   addCaseNumberError: string | null;
   caseToAddCaseNumber: string | null;
   caseToAddCourt: string | null;

@@ -1,5 +1,7 @@
 import './LoadingSpinner.scss';
 
+import type { JSX } from 'react';
+
 export type LoadingSpinnerProps = JSX.IntrinsicElements['div'] & {
   id?: string;
   caption?: string;

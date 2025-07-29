@@ -1,4 +1,4 @@
-import React, { LegacyRef } from 'react';
+import React, { Ref } from 'react';
 import ComboBox, { ComboBoxProps, ComboOption } from './ComboBox';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import { render, screen, waitFor } from '@testing-library/react';
@@ -82,7 +82,7 @@ describe('test cams combobox', () => {
   let defaultOptions: ComboOption[] = [];
   const updateFilterMock = vi.fn();
 
-  const renderWithProps = (props?: Partial<ComboBoxProps>, ref?: LegacyRef<ComboBoxRef>) => {
+  const renderWithProps = (props?: Partial<ComboBoxProps>, ref?: Ref<ComboBoxRef>) => {
     defaultOptions = getDefaultOptions();
 
     const defaultProps: ComboBoxProps = {

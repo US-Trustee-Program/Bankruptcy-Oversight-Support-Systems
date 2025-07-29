@@ -16,7 +16,7 @@ import { CaseAssignment } from '@common/cams/assignments';
 
 export type StaffAssignmentRowOptions = {
   modalId: string;
-  modalRef: React.RefObject<AssignAttorneyModalRef>;
+  modalRef: React.RefObject<AssignAttorneyModalRef | null>;
 };
 
 export type StaffAssignmentRowProps = SearchResultsRowProps & {

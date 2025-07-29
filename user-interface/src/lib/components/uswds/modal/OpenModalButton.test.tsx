@@ -19,7 +19,7 @@ describe('Toggle Modal Button tests', () => {
       },
     },
   };
-  let openButtonRef: React.RefObject<OpenModalButtonRef>;
+  let openButtonRef: React.RefObject<OpenModalButtonRef | null>;
 
   const renderWithoutProps = () => {
     openButtonRef = React.createRef<OpenModalButtonRef>();

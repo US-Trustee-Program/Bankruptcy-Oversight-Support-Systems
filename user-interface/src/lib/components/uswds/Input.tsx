@@ -1,5 +1,5 @@
 import './forms.scss';
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type JSX } from 'react';
 import { InputRef } from '../../type-declarations/input-fields';
 import Icon from './Icon';
 import Button, { UswdsButtonStyle } from './Button';

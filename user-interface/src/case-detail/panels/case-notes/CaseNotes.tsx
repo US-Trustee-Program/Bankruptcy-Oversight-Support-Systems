@@ -44,9 +44,11 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
   const { caseId, caseNotes, areCaseNotesLoading, searchString, onUpdateNoteRequest } = props;
   const removeConfirmationModalRef = useRef<CaseNoteRemovalModalRef>(null);
   const caseNoteModalRef = useRef<CaseNoteFormModalRef>(null);
-  const openArchiveModalButtonRefs = useRef<React.RefObject<OpenModalButtonRef>[]>([]);
+  const openArchiveModalButtonRefs = useRef<React.RefObject<OpenModalButtonRef | null>[]>([]);
   const openAddModalButtonRef = useRef<OpenModalButtonRef>(null);
-  const openEditModalButtonRefs = useRef(new Map<string, React.RefObject<OpenModalButtonRef>>());
+  const openEditModalButtonRefs = useRef(
+    new Map<string, React.RefObject<OpenModalButtonRef | null>>(),
+  );
   useMemo(mapArchiveButtonRefs, [caseNotes]);
   useMemo(mapEditButtonRefs, [caseNotes]);
   const [focusId, setFocusId] = useState<string | null>(null);
@@ -69,7 +71,7 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
       return;
     }
 
-    const newRefs = new Map<string, React.RefObject<OpenModalButtonRef>>();
+    const newRefs = new Map<string, React.RefObject<OpenModalButtonRef | null>>();
 
     caseNotes.forEach((caseNote) => {
       if (caseNote.id) {
