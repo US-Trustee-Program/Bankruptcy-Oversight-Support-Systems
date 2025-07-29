@@ -97,5 +97,7 @@ cams1.code-workspace
 .voidrules
 .junie/
 .cursor/
-.serena/
+.serena
+.serena/*
 .ai
+.ai/*
