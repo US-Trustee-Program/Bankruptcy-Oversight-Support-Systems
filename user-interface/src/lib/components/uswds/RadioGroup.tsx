@@ -5,7 +5,8 @@ export interface RadioGroupProps extends PropsWithChildren {
   label: string;
   required?: boolean;
   className?: string;
-  children?: ReactElement | Array<ReactElement>;
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+  children?: ReactElement<any> | Array<ReactElement<any>>;
 }
 
 export const RadioGroup = (props: RadioGroupProps) => {

@@ -7,7 +7,7 @@ import {
 import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
 import { CaseBasics } from '@common/cams/cases';
 import { AttorneyUser, CamsUserReference } from '@common/cams/users';
-import { RefObject } from 'react';
+import { RefObject, type JSX } from 'react';
 
 export interface AssignAttorneyModalStore {
   bCase: CaseBasics | null;
@@ -29,8 +29,8 @@ export interface AssignAttorneyModalStore {
 }
 
 export interface AssignAttorneyModalControls {
-  modalRef: RefObject<ModalRefType>;
-  tableContainerRef: RefObject<HTMLDivElement>;
+  modalRef: RefObject<ModalRefType | null>;
+  tableContainerRef: RefObject<HTMLDivElement | null>;
 }
 
 export interface AssignAttorneyModalViewModel {
@@ -44,10 +44,10 @@ export interface AssignAttorneyModalViewModel {
   isUpdatingAssignment: boolean;
   modalHeading: JSX.Element;
   modalId: string;
-  modalRef: RefObject<ModalRefType>;
+  modalRef: RefObject<ModalRefType | null>;
   onOpen(): void;
   sortAttorneys(a: AttorneyUser, b: AttorneyUser): number;
-  tableContainerRef: RefObject<HTMLDivElement>;
+  tableContainerRef: RefObject<HTMLDivElement | null>;
   updateCheckList(ev: React.ChangeEvent<HTMLInputElement>, attorney: AttorneyUser): void;
 }
 
@@ -84,7 +84,7 @@ export interface AssignAttorneyModalOpenProps {
 export interface AssignAttorneyModalRef {
   show: (showProps: AssignAttorneyModalOpenProps | undefined) => void;
   hide: () => void;
-  buttons?: RefObject<SubmitCancelButtonGroupRef>;
+  buttons?: RefObject<SubmitCancelButtonGroupRef | null>;
 }
 
 export interface AssignAttorneyModalProps {

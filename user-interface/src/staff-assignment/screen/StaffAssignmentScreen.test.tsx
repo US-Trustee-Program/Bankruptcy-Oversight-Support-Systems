@@ -118,7 +118,7 @@ describe('StaffAssignmentScreen', () => {
         header: expect.anything(),
         row: expect.anything(),
       },
-      {},
+      undefined,
     );
   });
 
@@ -162,7 +162,7 @@ describe('StaffAssignmentScreen', () => {
         header: expect.anything(),
         row: expect.anything(),
       },
-      {},
+      undefined,
     );
   });
 
@@ -265,9 +265,9 @@ describe('StaffAssignmentScreen', () => {
 
       await waitFor(() => {
         const itemList = document.querySelector('#staff-assignment-filter');
-        expect(itemList!).not.toBeInTheDocument();
+        expect(itemList).not.toBeInTheDocument();
+        expect(globalAlertSpy.error).toHaveBeenCalledWith(assigneeError);
       });
-      expect(globalAlertSpy.error).toHaveBeenCalledWith(assigneeError);
     });
   });
 });

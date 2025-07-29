@@ -22,7 +22,7 @@ interface StaffAssignmentFilterStore {
 }
 
 interface StaffAssignmentFilterControls {
-  assigneesFilterRef: React.RefObject<ComboBoxRef>;
+  assigneesFilterRef: React.RefObject<ComboBoxRef | null>;
 }
 
 type StaffAssignmentFilterViewProps = {
@@ -32,7 +32,7 @@ type StaffAssignmentFilterViewProps = {
 interface StaffAssignmentFilterViewModel {
   officeAssignees: CamsUserReference[];
   officeAssigneesError: boolean;
-  assigneesFilterRef: React.RefObject<ComboBoxRef>;
+  assigneesFilterRef: React.RefObject<ComboBoxRef | null>;
 
   assigneesToComboOptions(officeAssignees: CamsUserReference[]): ComboOption[];
   handleFilterAssignee(assignees: ComboOption[]): void;

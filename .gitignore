@@ -92,3 +92,6 @@ cams1.code-workspace
 
 # Environment Variable RC File
 **/.envrc
+
+# AI
+.serena/

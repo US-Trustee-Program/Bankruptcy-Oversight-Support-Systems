@@ -71,7 +71,9 @@ function PillBox(props: PillBoxProps) {
             onClick={onPillClick}
             disabled={disabled}
             wrapText={wrapPills}
-            ref={(el: HTMLButtonElement | null) => (pillRefs.current[idx] = el)}
+            ref={(el: HTMLButtonElement | null) => {
+              pillRefs.current[idx] = el;
+            }}
           ></Pill>
         </span>
       ))}

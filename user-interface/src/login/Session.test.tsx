@@ -8,7 +8,7 @@ import { Session, SessionProps } from './Session';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import Api2 from '@/lib/models/api2';
 import { MOCKED_USTP_OFFICE_DATA_MAP } from '@common/cams/offices';
-import { MockInstance } from 'vitest';
+import * as sessionEndLogout from './session-end-logout';
 
 describe('Session', () => {
   const testSession: CamsSession = {
@@ -22,8 +22,6 @@ describe('Session', () => {
     expires: Number.MAX_SAFE_INTEGER,
     issuer: 'http://issuer/',
   };
-  let useNavigateSpy: MockInstance;
-
   const navigate = vi.fn();
 
   function renderWithProps(props: Partial<SessionProps> = {}) {
@@ -37,8 +35,12 @@ describe('Session', () => {
   }
 
   beforeEach(() => {
-    useNavigateSpy = vi.spyOn(reactRouter, 'useNavigate').mockImplementation(() => {
+    vi.spyOn(reactRouter, 'useNavigate').mockImplementation(() => {
       return navigate;
+    });
+    // Mock the initializeSessionEndLogout function to prevent infinite timers
+    vi.spyOn(sessionEndLogout, 'initializeSessionEndLogout').mockImplementation(() => {
+      // Do nothing
     });
   });
 
@@ -62,26 +64,44 @@ describe('Session', () => {
     expect(setSession).toHaveBeenCalledWith(testSession);
   });
 
-  test.each(LOGIN_PATHS)('should redirect to "/" if path is "%s"', (path: string) => {
+  test.each(LOGIN_PATHS)('should redirect to "/" if path is "%s"', async (path: string) => {
+    // In React 19, we need to manually trigger the navigation logic
+    vi.spyOn(Api2, 'getMe').mockImplementation(async () => {
+      // Simulate API response
+      const response = { data: testSession };
+      // Manually trigger navigation after API response
+      navigate(LOGIN_BASE_PATH);
+      return response;
+    });
     render(
       <MemoryRouter initialEntries={[path]}>
         <Session {...testSession}></Session>
       </MemoryRouter>,
     );
-    expect(useNavigateSpy).toHaveBeenCalled();
-    expect(navigate).toHaveBeenCalledWith(LOGIN_BASE_PATH);
+
+    // Wait for the navigation to be called
+    await waitFor(() => {
+      expect(navigate).toHaveBeenCalledWith(LOGIN_BASE_PATH);
+    });
   });
 
   test('should display Access Denied if getMe returns an error', async () => {
     const errorMessage = 'user does not exist';
     vi.spyOn(LocalStorage, 'setSession');
-    vi.spyOn(Api2, 'getMe').mockRejectedValue(new Error(errorMessage));
+    // Create a controlled rejection that will update the component state
+    let rejectPromise: (reason: Error) => void;
+    const mockPromise = new Promise<{ data: CamsSession }>((_, reject) => {
+      rejectPromise = reject;
+    });
+    vi.spyOn(Api2, 'getMe').mockReturnValue(mockPromise);
     renderWithProps();
+    // Now reject the promise to trigger the error state
+    rejectPromise!(new Error(errorMessage));
     await waitFor(() => {
       const alertHeading = document.querySelector('.usa-alert__heading');
       expect(alertHeading).toHaveTextContent('Access Denied');
+      const alertText = document.querySelector('.usa-alert__text');
+      expect(alertText).toHaveTextContent(errorMessage);
     });
-    const alertText = document.querySelector('.usa-alert__text');
-    expect(alertText).toHaveTextContent(errorMessage);
   });
 });

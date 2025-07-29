@@ -7,6 +7,7 @@ import {
   useImperativeHandle,
   useRef,
   useState,
+  type JSX,
 } from 'react';
 import Icon from '../uswds/Icon';
 import Button, { UswdsButtonStyle } from '../uswds/Button';
@@ -210,7 +211,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   const navigateList = (
     direction: 'up' | 'down',
     currentIndex: number,
-    listRef: React.RefObject<HTMLUListElement>,
+    listRef: React.RefObject<HTMLUListElement | null>,
   ) => {
     const list = listRef.current!;
     const listContainer = list.parentElement!;

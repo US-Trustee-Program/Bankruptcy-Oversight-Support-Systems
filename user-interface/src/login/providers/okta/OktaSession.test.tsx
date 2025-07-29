@@ -71,7 +71,7 @@ describe('OktaSession', () => {
         accessToken,
         expires: expect.any(Number),
       },
-      {},
+      undefined,
     );
   });
 
@@ -227,7 +227,7 @@ describe('OktaSession', () => {
         {
           message: 'Invalid issuer or expiration claims.',
         },
-        {},
+        undefined,
       );
     });
   });

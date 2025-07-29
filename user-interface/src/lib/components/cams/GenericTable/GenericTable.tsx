@@ -8,6 +8,8 @@ import {
   TableRowData,
 } from '../../uswds/Table';
 
+import type { JSX } from 'react';
+
 const defaultTransformer = (v: unknown) => v?.toString() ?? '';
 
 type ColumnInfo<T> = {

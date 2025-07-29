@@ -1,5 +1,5 @@
 import { ButtonProps, BUTTON_BASE_CLASS, UswdsButtonStyle } from '../Button';
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useImperativeHandle, useRef, useState, type JSX } from 'react';
 import { ModalRefType, OpenModalButtonRef } from './modal-refs';
 
 export interface ModalOpenButtonProps {
@@ -10,7 +10,7 @@ export interface ModalOpenButtonProps {
   disabled?: boolean;
   openProps?: object;
   modalId: string;
-  modalRef: React.RefObject<ModalRefType>;
+  modalRef: React.RefObject<ModalRefType | null>;
   title?: string;
   ariaLabel?: string;
 }

@@ -86,7 +86,7 @@ export type CaseNoteFormModalProps = {
   modalId: string;
   alertMessage?: AlertDetails;
   onModalClosed?: (caseId: string, mode: CaseNoteFormMode) => void;
-  RichTextEditorRef?: React.RefObject<RichTextEditorRef>;
+  RichTextEditorRef?: React.RefObject<RichTextEditorRef | null>;
 };
 
 const defaultModalOpenOptions: CaseNoteFormModalOpenProps = {

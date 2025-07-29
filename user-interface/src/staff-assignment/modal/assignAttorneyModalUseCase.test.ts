@@ -35,7 +35,7 @@ const buildBoundingClientRect = (props: RectProps = {}): DOMRect => {
 };
 
 function useAssignAttorneyModalControlsMock(): AssignAttorneyModalControls {
-  const modalRef: React.RefObject<ModalRefType> = {
+  const modalRef: React.RefObject<ModalRefType | null> = {
     current: {
       show: () => {},
       hide: () => {},
@@ -47,7 +47,7 @@ function useAssignAttorneyModalControlsMock(): AssignAttorneyModalControls {
     },
   };
 
-  const tableContainerRef: React.RefObject<HTMLDivElement> = {
+  const tableContainerRef: React.RefObject<HTMLDivElement | null> = {
     current: {
       getBoundingClientRect: () => buildBoundingClientRect(),
       scrollTop: initialScrollTop,

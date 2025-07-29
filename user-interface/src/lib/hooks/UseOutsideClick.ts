@@ -7,7 +7,7 @@ import React from 'react';
 // (That's quite a run-on sentence huah?) By handling a "mousedown", the click
 // is then handled by the button.
 export default function useOutsideClick(
-  refs: Array<React.RefObject<HTMLElement>>,
+  refs: Array<React.RefObject<HTMLElement | null>>,
   callback: (event: MouseEvent) => void,
 ) {
   React.useEffect(() => {
