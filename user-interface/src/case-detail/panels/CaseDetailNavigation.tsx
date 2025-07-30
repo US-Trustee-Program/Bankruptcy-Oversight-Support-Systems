@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import useFeatureFlags, { VIEW_TRUSTEE } from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlags, { VIEW_TRUSTEE_ON_CASE } from '@/lib/hooks/UseFeatureFlags';
 
 export function mapNavState(path: string) {
   const cleanPath = path.replace(/\/$/, '').split('/');
@@ -68,7 +68,7 @@ export default function CaseDetailNavigation({
               Case Overview
             </NavLink>
           </li>
-          {featureFlags[VIEW_TRUSTEE] && (
+          {featureFlags[VIEW_TRUSTEE_ON_CASE] && (
             <li className="usa-sidenav__item">
               <NavLink
                 to={`/case-detail/${caseId}/trustee-and-assigned-staff`}
