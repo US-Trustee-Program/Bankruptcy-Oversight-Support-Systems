@@ -690,7 +690,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     dxtrId: string,
     courtId: string,
     partyCode: string = 'db',
-  ): Promise<Party> {
+  ): Promise<Party | Trustee> {
     const input: DbTableFieldSpec[] = [];
 
     input.push({
@@ -734,18 +734,15 @@ export default class CasesDxtrGateway implements CasesInterface {
           PY_COUNTRY
         )) as cityStateZipCountry,
         PY_TAXID as taxId,
-        PY_SSN as ssn
+        PY_SSN as ssn,
+        PY_PHONENO as phone,
+        PY_E_MAIL as email
       FROM [dbo].[AO_PY]
       WHERE
         CS_CASEID = @dxtrId AND
         COURT_ID = @courtId AND
         PY_ROLE = @partyCode
     `;
-
-    //console.log('=== DXTR ID IS ', dxtrId);
-    //console.log('=== COURT ID IS ', courtId);
-    //console.log('=== PARTY CODE IS ', partyCode);
-    //console.log('=== QUERY IS ', query);
 
     const queryResult: QueryResults = await executeQuery(
       applicationContext,
@@ -754,14 +751,25 @@ export default class CasesDxtrGateway implements CasesInterface {
       input,
     );
 
-    return Promise.resolve(
-      handleQueryResult<Party>(
-        applicationContext,
-        queryResult,
-        MODULE_NAME,
-        this.partyQueryCallback,
-      ),
-    );
+    if (partyCode === 'tr') {
+      return Promise.resolve(
+        handleQueryResult<Trustee>(
+          applicationContext,
+          queryResult,
+          MODULE_NAME,
+          this.trusteeQueryCallback,
+        ),
+      );
+    } else {
+      return Promise.resolve(
+        handleQueryResult<Party>(
+          applicationContext,
+          queryResult,
+          MODULE_NAME,
+          this.partyQueryCallback,
+        ),
+      );
+    }
   }
 
   private async queryDebtorAttorney(
@@ -863,6 +871,22 @@ export default class CasesDxtrGateway implements CasesInterface {
       debtor.ssn = record.ssn;
     });
     return debtor || null;
+  }
+
+  trusteeQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
+    let trustee: Trustee;
+    applicationContext.logger.debug(MODULE_NAME, `Trustee results received from DXTR`);
+
+    (queryResult.results as mssql.IResult<Trustee>).recordset.forEach((record) => {
+      trustee = { name: removeExtraSpaces(record.name) };
+      trustee.address1 = record.address1;
+      trustee.address2 = record.address2;
+      trustee.address3 = record.address3;
+      trustee.cityStateZipCountry = removeExtraSpaces(record.cityStateZipCountry);
+      trustee.phone = record.phone;
+      trustee.email = record.email;
+    });
+    return trustee || null;
   }
 
   transactionQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
