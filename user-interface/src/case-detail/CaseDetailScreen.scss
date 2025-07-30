@@ -1,9 +1,22 @@
 @use '../styles/theme';
 
 .case-detail {
+  h3 {
+    margin-top: 0;
+    line-height: 1.5;
+  }
+
   h4 {
     margin-block-start: 0;
     margin-block-end: 0;
+  }
+
+  .case-detail-content {
+    .grid-gap-lg {
+      .case-card-list:first-child {
+        padding-left: 0;
+      }
+    }
   }
 
   .link-icon {

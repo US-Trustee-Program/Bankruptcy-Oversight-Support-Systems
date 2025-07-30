@@ -38,39 +38,7 @@ export default function CaseDetailTrusteeAndAssignedStaff(
   return (
     <>
       <div className="grid-row grid-gap-lg">
-        <span className="case-card-list grid-col-6">
-          {caseDetail.trustee && (
-            <div className="assigned-staff-information padding-bottom-4 case-card">
-              <h3>Trustee</h3>
-              <span className="trustee-name">{caseDetail.trustee.name}</span>
-              <span className="trustee-phone-number">{caseDetail.trustee.phone}</span>
-              <span className="trustee-address">{caseDetail.trustee.address1}</span>
-              <span className="trustee-address">{caseDetail.trustee.address2}</span>
-              <span className="trustee-address">{caseDetail.trustee.address3}</span>
-              <div
-                className="city-state-postal-code"
-                aria-label="trustee city, state, zip, country"
-              >
-                <span className="trustee-city">{caseDetail.trustee.cityStateZipCountry}</span>,
-              </div>
-              {caseDetail.trustee.email && (
-                <div
-                  className="padding-bottom-1"
-                  data-testid="case-detail-trustee-email"
-                  aria-label="trustee email"
-                >
-                  <a
-                    href={`mailto:${caseDetail.trustee.email}?subject=${getCaseNumber(
-                      caseDetail.caseId,
-                    )} - ${caseDetail.caseTitle}`}
-                  >
-                    {caseDetail.trustee.email}
-                    <Icon className="link-icon" name="mail_outline" />
-                  </a>
-                </div>
-              )}
-            </div>
-          )}
+        <div className="case-card-list grid-col-6">
           <div className="assigned-staff-information padding-bottom-4 case-card">
             <h3>
               Assigned Staff{' '}
@@ -122,7 +90,45 @@ export default function CaseDetailTrusteeAndAssignedStaff(
               )}
             </div>
           </div>
-        </span>
+        </div>
+        <div className="case-card-list grid-col-6">
+          {caseDetail.trustee && (
+            <div className="assigned-staff-information padding-bottom-4 case-card">
+              <h3>Trustee</h3>
+              <div className="trustee-name padding-bottom-1">{caseDetail.trustee.name}</div>
+              {caseDetail.trustee.email && (
+                <div
+                  className="padding-bottom-1"
+                  data-testid="case-detail-trustee-email"
+                  aria-label="trustee email"
+                >
+                  <a
+                    href={`mailto:${caseDetail.trustee.email}?subject=${getCaseNumber(
+                      caseDetail.caseId,
+                    )} - ${caseDetail.caseTitle}`}
+                  >
+                    {caseDetail.trustee.email}
+                    <Icon className="link-icon" name="mail_outline" />
+                  </a>
+                </div>
+              )}
+              <div className="padding-bottom-1 trustee-phone-number">
+                {caseDetail.trustee.phone}
+              </div>
+              <div className="padding-bottom-1">
+                <div className="trustee-address">{caseDetail.trustee.address1}</div>
+                <div className="trustee-address">{caseDetail.trustee.address2}</div>
+                <div className="trustee-address">{caseDetail.trustee.address3}</div>
+                <div
+                  className="city-state-postal-code"
+                  aria-label="trustee city, state, zip, country"
+                >
+                  <span className="trustee-city">{caseDetail.trustee.cityStateZipCountry}</span>,
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
       <AssignAttorneyModal
         ref={assignmentModalRef}

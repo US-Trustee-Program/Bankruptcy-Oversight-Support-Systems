@@ -18,6 +18,7 @@ import { AttorneyUser } from '@common/cams/users';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import Icon from '@/lib/components/uswds/Icon';
 import { OpenModalButtonRef } from '../../lib/components/uswds/modal/modal-refs';
+import useFeatureFlags, { VIEW_TRUSTEE_ON_CASE } from '@/lib/hooks/UseFeatureFlags';
 
 const informationUnavailable = 'Information is not available.';
 const taxIdUnavailable = 'Tax ID information is not available.';
@@ -30,6 +31,7 @@ export interface CaseDetailOverviewProps {
 
 export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
   const { caseDetail, showReopenDate, onCaseAssignment } = props;
+  const featureFlags = useFeatureFlags();
 
   const assignmentModalRef = useRef<AssignAttorneyModalRef>(null);
   const openModalButtonRef = useRef<OpenModalButtonRef>(null);
@@ -90,57 +92,59 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
               </ul>
             </div>
           </div>
-          <div className="assigned-staff-information padding-bottom-4 case-card">
-            <h3>
-              Assigned Staff{' '}
-              {Actions.contains(caseDetail, Actions.ManageAssignments) &&
-                caseDetail.chapter === '15' && (
-                  <OpenModalButton
-                    uswdsStyle={UswdsButtonStyle.Unstyled}
-                    modalId={'assignmentModalId'}
-                    modalRef={assignmentModalRef}
-                    ref={openModalButtonRef}
-                    openProps={{ bCase: caseDetail, callback: handleCaseAssignment }}
-                    ariaLabel="Edit assigned staff"
-                    title="Open Staff Assignment window"
+          {!featureFlags[VIEW_TRUSTEE_ON_CASE] && (
+            <div className="assigned-staff-information padding-bottom-4 case-card">
+              <h3>
+                Assigned Staff{' '}
+                {Actions.contains(caseDetail, Actions.ManageAssignments) &&
+                  caseDetail.chapter === '15' && (
+                    <OpenModalButton
+                      uswdsStyle={UswdsButtonStyle.Unstyled}
+                      modalId={'assignmentModalId'}
+                      modalRef={assignmentModalRef}
+                      ref={openModalButtonRef}
+                      openProps={{ bCase: caseDetail, callback: handleCaseAssignment }}
+                      ariaLabel="Edit assigned staff"
+                      title="Open Staff Assignment window"
+                    >
+                      <IconLabel icon="edit" label="Edit" />
+                    </OpenModalButton>
+                  )}
+              </h3>
+              <div className="assigned-staff-list">
+                {caseDetail.regionId && (
+                  <div
+                    className="case-detail-region-id"
+                    data-testid="case-detail-region-id"
+                    aria-label="assigned region and office"
                   >
-                    <IconLabel icon="edit" label="Edit" />
-                  </OpenModalButton>
+                    Region {caseDetail.regionId.replace(/^0*/, '')} - {caseDetail.officeName} Office
+                  </div>
                 )}
-            </h3>
-            <div className="assigned-staff-list">
-              {caseDetail.regionId && (
-                <div
-                  className="case-detail-region-id"
-                  data-testid="case-detail-region-id"
-                  aria-label="assigned region and office"
-                >
-                  Region {caseDetail.regionId.replace(/^0*/, '')} - {caseDetail.officeName} Office
-                </div>
-              )}
-              {(typeof caseDetail.assignments === 'undefined' ||
-                caseDetail.assignments.length === 0) && (
-                <span className="unassigned-placeholder">(unassigned)</span>
-              )}
-              {caseDetail.assignments && caseDetail.assignments.length > 0 && (
-                <ul className="usa-list usa-list--unstyled">
-                  {caseDetail.assignments &&
-                    caseDetail.assignments.length > 0 &&
-                    (caseDetail.assignments as Array<AttorneyUser>)?.map(
-                      (staff: AttorneyUser, idx: number) => {
-                        return (
-                          <li key={idx} className="individual-assignee">
-                            <span className="assignee-name">{staff.name}</span>
-                            <span className="vertical-divider"> | </span>
-                            <span className="assignee-role">Trial Attorney</span>
-                          </li>
-                        );
-                      },
-                    )}
-                </ul>
-              )}
+                {(typeof caseDetail.assignments === 'undefined' ||
+                  caseDetail.assignments.length === 0) && (
+                  <span className="unassigned-placeholder">(unassigned)</span>
+                )}
+                {caseDetail.assignments && caseDetail.assignments.length > 0 && (
+                  <ul className="usa-list usa-list--unstyled">
+                    {caseDetail.assignments &&
+                      caseDetail.assignments.length > 0 &&
+                      (caseDetail.assignments as Array<AttorneyUser>)?.map(
+                        (staff: AttorneyUser, idx: number) => {
+                          return (
+                            <li key={idx} className="individual-assignee">
+                              <span className="assignee-name">{staff.name}</span>
+                              <span className="vertical-divider"> | </span>
+                              <span className="assignee-role">Trial Attorney</span>
+                            </li>
+                          );
+                        },
+                      )}
+                  </ul>
+                )}
+              </div>
             </div>
-          </div>
+          )}
           <div className="judge-information padding-bottom-4 case-card">
             <h3>Judge</h3>
             {caseDetail.judgeName && (
@@ -154,6 +158,8 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
               </div>
             )}
           </div>
+        </span>
+        <span className="case-card-list grid-col-6">
           <div className="debtor-information padding-bottom-4 case-card">
             <h3>Debtor</h3>
             <ul className="usa-list usa-list--unstyled">
@@ -298,8 +304,6 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
               </div>
             )}
           </div>
-        </span>
-        <span className="case-card-list grid-col-6">
           {!!caseDetail.consolidation?.length && caseDetail.consolidation.length > 0 && (
             <>
               <h3>Consolidation</h3>
