@@ -291,11 +291,11 @@ describe('Case detail basic information panel', () => {
       expect(screen.queryByTestId('verified-transfer-header')).not.toBeInTheDocument();
       const ambiguousTransferText = screen.queryByTestId('ambiguous-transfer-text');
       expect(ambiguousTransferText).toHaveTextContent(
-        'This case was transfered to another court. Review the docket for further details.',
+        'This case was transferred to another court. Review the docket for further details.',
       );
     });
 
-    test('should display information about case being transfered in when there is no verified transfer', async () => {
+    test('should display information about case being transferred in when there is no verified transfer', async () => {
       const transferredCase = {
         ...BASE_TEST_CASE_DETAIL,
         petitionCode: 'TI',
@@ -305,7 +305,7 @@ describe('Case detail basic information panel', () => {
       expect(screen.queryByTestId('verified-transfer-header')).not.toBeInTheDocument();
       const ambiguousTransferText = screen.queryByTestId('ambiguous-transfer-text');
       expect(ambiguousTransferText).toHaveTextContent(
-        'This case was transfered from another court. Review the docket for further details.',
+        'This case was transferred from another court. Review the docket for further details.',
       );
     });
 
