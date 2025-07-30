@@ -9,7 +9,7 @@ interface partyGeneratorProps {
   chapter?: string;
 }
 
-function generateTrustee() {
+function generateTrustee(): Partial<AO_PY_RecordProps> {
   return {
     PY_ROLE: 'TR',
     PY_LAST_NAME: faker.person.lastName(),
@@ -28,7 +28,9 @@ function generateTrustee() {
 }
 
 function recordGenerator(props: partyGeneratorProps, trustee: object): AO_PY_RecordProps {
-  if (!props.chapter) props.chapter = '15';
+  if (!props.chapter) {
+    props.chapter = '15';
+  }
   return {
     CS_CASEID: props.csCaseId,
     COURT_ID: props.courtId ?? '0208',
@@ -36,7 +38,7 @@ function recordGenerator(props: partyGeneratorProps, trustee: object): AO_PY_Rec
     PY_SSN: undefined,
     PY_PROSE: 'n',
     ...trustee,
-  };
+  } as AO_PY_RecordProps;
 }
 
 async function main() {
