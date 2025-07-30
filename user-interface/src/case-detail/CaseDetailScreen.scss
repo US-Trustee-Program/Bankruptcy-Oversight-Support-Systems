@@ -2,7 +2,7 @@
 
 .case-detail {
   h3 {
-    margin-top: 0;
+    margin: 0;
     line-height: 1.5;
   }
 
@@ -23,13 +23,20 @@
     margin-left: 0.25rem;
     vertical-align: middle;
   }
+  .case-detail-container {
+    display: flex;
+    column-gap: 5rem;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
   .case-card-list {
     .case-card {
       line-height: 1.5;
-
-      h3 {
-        margin-bottom: 0.5rem;
-      }
+      padding-bottom: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      row-gap: 0.5rem;
 
       li.transfer {
         margin-bottom: 1rem;
@@ -45,9 +52,6 @@
     }
   }
   .assigned-staff-list {
-    .case-detail-region-id {
-      padding-bottom: 0.5rem;
-    }
     .individual-assignee {
       .vertical-divider {
         padding: 0 0.5rem;

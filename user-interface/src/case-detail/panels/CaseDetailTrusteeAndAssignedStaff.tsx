@@ -37,9 +37,9 @@ export default function CaseDetailTrusteeAndAssignedStaff(
 
   return (
     <>
-      <div className="grid-row grid-gap-lg">
-        <div className="case-card-list grid-col-6">
-          <div className="assigned-staff-information padding-bottom-4 case-card">
+      <div className="grid-col-12 tablet:grid-col-10 desktop:grid-col-8 case-detail-container">
+        <div className="case-card-list">
+          <div className="assigned-staff-information case-card">
             <h3>
               Assigned Staff{' '}
               {Actions.contains(caseDetail, Actions.ManageAssignments) &&
@@ -57,16 +57,16 @@ export default function CaseDetailTrusteeAndAssignedStaff(
                   </OpenModalButton>
                 )}
             </h3>
+            {caseDetail.regionId && (
+              <div
+                className="case-detail-region-id"
+                data-testid="case-detail-region-id"
+                aria-label="assigned region and office"
+              >
+                Region {caseDetail.regionId.replace(/^0*/, '')} - {caseDetail.officeName} Office
+              </div>
+            )}
             <div className="assigned-staff-list">
-              {caseDetail.regionId && (
-                <div
-                  className="case-detail-region-id"
-                  data-testid="case-detail-region-id"
-                  aria-label="assigned region and office"
-                >
-                  Region {caseDetail.regionId.replace(/^0*/, '')} - {caseDetail.officeName} Office
-                </div>
-              )}
               {(typeof caseDetail.assignments === 'undefined' ||
                 caseDetail.assignments.length === 0) && (
                 <span className="unassigned-placeholder">(unassigned)</span>
@@ -91,17 +91,13 @@ export default function CaseDetailTrusteeAndAssignedStaff(
             </div>
           </div>
         </div>
-        <div className="case-card-list grid-col-6">
+        <div className="case-card-list">
           {caseDetail.trustee && (
-            <div className="assigned-staff-information padding-bottom-4 case-card">
+            <div className="assigned-staff-information case-card">
               <h3>Trustee</h3>
-              <div className="trustee-name padding-bottom-1">{caseDetail.trustee.name}</div>
+              <div className="trustee-name">{caseDetail.trustee.name}</div>
               {caseDetail.trustee.email && (
-                <div
-                  className="padding-bottom-1"
-                  data-testid="case-detail-trustee-email"
-                  aria-label="trustee email"
-                >
+                <div data-testid="case-detail-trustee-email" aria-label="trustee email">
                   <a
                     href={`mailto:${caseDetail.trustee.email}?subject=${getCaseNumber(
                       caseDetail.caseId,
@@ -112,10 +108,8 @@ export default function CaseDetailTrusteeAndAssignedStaff(
                   </a>
                 </div>
               )}
-              <div className="padding-bottom-1 trustee-phone-number">
-                {caseDetail.trustee.phone}
-              </div>
-              <div className="padding-bottom-1">
+              <div className="trustee-phone-number">{caseDetail.trustee.phone}</div>
+              <div>
                 <div className="trustee-address">{caseDetail.trustee.address1}</div>
                 <div className="trustee-address">{caseDetail.trustee.address2}</div>
                 <div className="trustee-address">{caseDetail.trustee.address3}</div>
