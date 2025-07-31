@@ -53,7 +53,7 @@ Example input file format:
 To run the script:
 
 ```sh
-ts-node test-data/scripts/caseParties.ts < input_file
+tsx test-data/scripts/caseParties.ts < input_file
 ```
 
 ### Update Case Party Addresses
@@ -76,7 +76,7 @@ To run the script:
 
 ```sh
 # Assumes the CSV input is in the `data` directory with file name `input_file.csv`.
-cat data/input_file.csv | ts-node test-data/scripts/updateCasePartyAddresses.ts > data/update.sql
+cat data/input_file.csv | tsx test-data/scripts/updateCasePartyAddresses.ts > data/update.sql
 ```
 
 ## Domain Models
