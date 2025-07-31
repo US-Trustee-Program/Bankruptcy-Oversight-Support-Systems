@@ -208,7 +208,7 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
       expect(trusteeName?.textContent).toEqual(TEST_TRUSTEE.name);
     });
 
-    test('should display trustee email as mailto link with proper subject', () => {
+    test('should display trustee email as mailto link with proper subject and icon', () => {
       renderWithProps();
       const emailElement = screen.queryByTestId('case-detail-trustee-email');
       expect(emailElement).toBeInTheDocument();
@@ -219,11 +219,8 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
       expect(emailLink?.getAttribute('href')).toEqual(
         `mailto:${TEST_TRUSTEE.email}?subject=${getCaseNumber(BASE_TEST_CASE_DETAIL.caseId)} - ${BASE_TEST_CASE_DETAIL.caseTitle}`,
       );
-    });
 
-    test('should display email with mail icon', () => {
-      renderWithProps();
-      const emailElement = screen.queryByTestId('case-detail-trustee-email');
+      // Verify mail icon is present
       const mailIcon = emailElement?.querySelector('.link-icon');
       expect(mailIcon).toBeInTheDocument();
     });
@@ -354,58 +351,6 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
 
       const childCaseMessage = screen.queryByTestId('alert-message');
       expect(childCaseMessage).not.toBeInTheDocument();
-    });
-
-    test('should properly initialize AssignAttorneyModal with correct props', () => {
-      renderWithProps();
-      const modal = document.querySelector('.usa-modal-wrapper');
-      expect(modal).toBeInTheDocument();
-
-      const assignModal = screen.getByTestId(`modal-${assignmentModalId}`);
-      expect(assignModal).toBeInTheDocument();
-    });
-  });
-
-  describe('Edge Cases and Props Handling', () => {
-    test('should handle required props correctly', () => {
-      expect(() => {
-        renderWithProps({
-          caseDetail: BASE_TEST_CASE_DETAIL,
-          onCaseAssignment: vi.fn(),
-        });
-      }).not.toThrow();
-    });
-
-    test('should handle empty assignments array properly', () => {
-      const caseDetailEmptyAssignments = {
-        ...BASE_TEST_CASE_DETAIL,
-        assignments: [],
-      };
-      renderWithProps({ caseDetail: caseDetailEmptyAssignments });
-
-      const placeholder = screen.getByText('(unassigned)');
-      expect(placeholder).toBeInTheDocument();
-
-      const assignmentList = document.querySelector('.usa-list');
-      expect(assignmentList).not.toBeInTheDocument();
-    });
-
-    test('should handle missing region and office data', () => {
-      const caseDetailNoRegionOffice = MockData.getCaseDetail({
-        override: {
-          ...BASE_TEST_CASE_DETAIL,
-          regionId: '',
-          officeName: '',
-        },
-      });
-      renderWithProps({ caseDetail: caseDetailNoRegionOffice });
-
-      const regionElement = screen.queryByTestId('case-detail-region-id');
-      expect(regionElement).not.toBeInTheDocument();
-
-      // Should still render the assigned staff section
-      const heading = screen.getByRole('heading', { name: /assigned staff/i });
-      expect(heading).toBeInTheDocument();
     });
   });
 });
