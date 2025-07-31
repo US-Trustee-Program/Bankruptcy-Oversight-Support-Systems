@@ -14,6 +14,7 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { ResponseBody } from '@common/api/response';
 import Api2 from '@/lib/models/api2';
 import testingUtilities from '@/lib/testing/testing-utilities';
+import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 
 const TEST_CASE_ID = '101-23-12345';
 const OLD_CASE_ID = '111-20-11111';
@@ -90,12 +91,32 @@ describe('Case detail basic information panel', () => {
     );
   }
 
+  beforeEach(() => {
+    const mockFeatureFlags = {
+      [FeatureFlagHook.VIEW_TRUSTEE_ON_CASE]: false,
+    };
+    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   describe('With expected case detail properties', () => {
     test('should show debtor counsel office', () => {
       renderWithProps();
       const element = screen.queryByTestId('case-detail-debtor-counsel-office');
       expect(element).toBeInTheDocument();
       expect(element?.textContent).toEqual(BASE_TEST_CASE_DETAIL.debtorAttorney?.office);
+    });
+
+    test('should not show assigned staff information if the feature flag is disabled', () => {
+      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
+        [FeatureFlagHook.VIEW_TRUSTEE_ON_CASE]: true,
+      });
+      renderWithProps();
+      const element = document.querySelector('.assigned-staff-information');
+      expect(element).not.toBeInTheDocument();
     });
 
     test('should show edit button and open the staff assignment modal if the user is a case assignment manager', () => {
