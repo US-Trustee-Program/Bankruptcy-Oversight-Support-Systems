@@ -22,7 +22,7 @@ import {
   CaseSummary,
   getCaseIdParts,
 } from '../../../../../common/src/cams/cases';
-import { Party, DebtorAttorney } from '../../../../../common/src/cams/parties';
+import { Party, DebtorAttorney, Trustee, Debtor } from '../../../../../common/src/cams/parties';
 
 const MODULE_NAME = 'CASES-DXTR-GATEWAY';
 
@@ -64,6 +64,8 @@ export default class CasesDxtrGateway implements CasesInterface {
     if (transactionDates.transferDates.length > 0) {
       bCase.transferDate = getMonthDayYearStringFromDate(transactionDates.transferDates[0]);
     }
+
+    bCase.trustee = await this.queryTrustee(applicationContext, bCase.dxtrId, bCase.courtId);
 
     bCase.debtorAttorney = await this.queryDebtorAttorney(
       applicationContext,
@@ -213,7 +215,11 @@ export default class CasesDxtrGateway implements CasesInterface {
         sCase.debtorTypeLabel = getDebtorTypeLabel(sCase.debtorTypeCode);
         sCase.petitionLabel = getPetitionInfo(sCase.petitionCode).petitionLabel;
         if (transferPetitionCode.includes(sCase.petitionCode)) {
-          sCase.debtor = await this.queryParties(applicationContext, sCase.dxtrId, sCase.courtId);
+          sCase.debtor = await this.queryDebtorParties(
+            applicationContext,
+            sCase.dxtrId,
+            sCase.courtId,
+          );
         }
       }
       return suggestedCases.filter((sc) => transferPetitionCode.includes(sc.petitionCode));
@@ -466,7 +472,7 @@ export default class CasesDxtrGateway implements CasesInterface {
         message: `Case summary not found for case ID: ${caseId}.`,
       });
     }
-    bCase.debtor = await this.queryParties(applicationContext, bCase.dxtrId, bCase.courtId);
+    bCase.debtor = await this.queryDebtorParties(applicationContext, bCase.dxtrId, bCase.courtId);
     bCase.debtorTypeLabel = getDebtorTypeLabel(bCase.debtorTypeCode);
     bCase.petitionLabel = getPetitionInfo(bCase.petitionCode).petitionLabel;
     return bCase;
@@ -660,12 +666,43 @@ export default class CasesDxtrGateway implements CasesInterface {
     );
   }
 
-  private async queryParties(
+  private async queryDebtorParties(
     applicationContext: ApplicationContext,
     dxtrId: string,
     courtId: string,
   ): Promise<Party> {
     const debtorPartyCode = 'db';
+    return this.queryParties<Debtor>(
+      applicationContext,
+      dxtrId,
+      courtId,
+      debtorPartyCode,
+      this.partyQueryCallback,
+    );
+  }
+
+  private async queryTrustee(
+    applicationContext: ApplicationContext,
+    dxtrId: string,
+    courtId: string,
+  ): Promise<Trustee> {
+    const trusteePartyCode = 'tr';
+    return this.queryParties<Trustee>(
+      applicationContext,
+      dxtrId,
+      courtId,
+      trusteePartyCode,
+      this.trusteeQueryCallback,
+    );
+  }
+
+  private async queryParties<T = Debtor | Trustee>(
+    applicationContext: ApplicationContext,
+    dxtrId: string,
+    courtId: string,
+    partyCode: string = 'db',
+    mapper: (context: ApplicationContext, queryResult: QueryResults) => T,
+  ): Promise<T> {
     const input: DbTableFieldSpec[] = [];
 
     input.push({
@@ -681,9 +718,9 @@ export default class CasesDxtrGateway implements CasesInterface {
     });
 
     input.push({
-      name: 'debtorPartyCode',
+      name: 'partyCode',
       type: mssql.VarChar,
-      value: debtorPartyCode,
+      value: partyCode,
     });
 
     const query = `SELECT
@@ -709,12 +746,14 @@ export default class CasesDxtrGateway implements CasesInterface {
           PY_COUNTRY
         )) as cityStateZipCountry,
         PY_TAXID as taxId,
-        PY_SSN as ssn
+        PY_SSN as ssn,
+        PY_PHONENO as phone,
+        PY_E_MAIL as email
       FROM [dbo].[AO_PY]
       WHERE
         CS_CASEID = @dxtrId AND
         COURT_ID = @courtId AND
-        PY_ROLE = @debtorPartyCode
+        PY_ROLE = @partyCode
     `;
 
     const queryResult: QueryResults = await executeQuery(
@@ -725,12 +764,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     );
 
     return Promise.resolve(
-      handleQueryResult<Party>(
-        applicationContext,
-        queryResult,
-        MODULE_NAME,
-        this.partyQueryCallback,
-      ),
+      handleQueryResult<T>(applicationContext, queryResult, MODULE_NAME, mapper),
     );
   }
 
@@ -833,6 +867,22 @@ export default class CasesDxtrGateway implements CasesInterface {
       debtor.ssn = record.ssn;
     });
     return debtor || null;
+  }
+
+  trusteeQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
+    let trustee: Trustee;
+    applicationContext.logger.debug(MODULE_NAME, `Trustee results received from DXTR`);
+
+    (queryResult.results as mssql.IResult<Trustee>).recordset.forEach((record) => {
+      trustee = { name: removeExtraSpaces(record.name) };
+      trustee.address1 = record.address1;
+      trustee.address2 = record.address2;
+      trustee.address3 = record.address3;
+      trustee.cityStateZipCountry = removeExtraSpaces(record.cityStateZipCountry);
+      trustee.phone = record.phone;
+      trustee.email = record.email;
+    });
+    return trustee || null;
   }
 
   transactionQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {

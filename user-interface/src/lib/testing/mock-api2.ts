@@ -58,6 +58,10 @@ const caseDetails = MockData.getCaseDetail({
     caseTitle: 'Test Case Title',
     petitionLabel: 'Voluntary',
     caseId: '101-12-12345',
+    trustee: {
+      name: 'Test Trustee',
+      cityStateZipCountry: 'New York, NY 10001, USA',
+    },
   },
 });
 const courts = MockData.getCourts().slice(0, 5);

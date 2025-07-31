@@ -10,6 +10,7 @@ import { MockAttorneys } from '@common/cams/test-utilities/attorneys.mock';
 import * as detailHeader from './panels/CaseDetailHeader';
 import MockData from '@common/cams/test-utilities/mock-data';
 import testingUtilities from '@/lib/testing/testing-utilities';
+import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import MockApi2 from '@/lib/testing/mock-api2';
 
 const caseId = '101-23-12345';
@@ -51,6 +52,10 @@ describe('Case Detail screen tests', () => {
       ...env,
       CAMS_USE_FAKE_API: 'true',
     };
+    const mockFeatureFlags = {
+      [FeatureFlagHook.VIEW_TRUSTEE_ON_CASE]: false,
+    };
+    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
   });
 
   function renderWithProps(props?: Partial<CaseDetail>, notes: CaseNote[] = []) {

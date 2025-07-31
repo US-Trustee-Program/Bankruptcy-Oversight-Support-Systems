@@ -14,4 +14,5 @@ export const testFeatureFlags: FeatureFlagSet = {
   'consolidations-enabled': true,
   'privileged-identity-management': true,
   'format-case-notes': true,
+  'view-trustee-on-case': true,
 };

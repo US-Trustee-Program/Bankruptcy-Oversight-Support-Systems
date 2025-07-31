@@ -123,43 +123,41 @@ export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProp
 
   return (
     <div className="case-audit-history">
-      <div className="history-type-title">
-        <h3>Change History</h3>
-        {isAuditHistoryLoading && <LoadingIndicator />}
-        {!isAuditHistoryLoading && (
-          <>
-            {caseHistory.length < 1 && (
-              <div data-testid="empty-assignments-test-id">
-                <Alert
-                  message="No changes have been made to this case."
-                  type={UswdsAlertStyle.Info}
-                  role={'status'}
-                  timeout={0}
-                  title=""
-                  show={true}
-                  inline={true}
-                />
-              </div>
-            )}
-            {caseHistory.length > 0 && (
-              <table data-testid="history-table" className="usa-table usa-table--borderless">
-                <thead>
-                  <tr>
-                    <th>Change</th>
-                    <th>Previous</th>
-                    <th>New</th>
-                    <th>Changed by</th>
-                    <th>Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <>{renderCaseHistory()}</>
-                </tbody>
-              </table>
-            )}
-          </>
-        )}
-      </div>
+      <h3>Change History</h3>
+      {isAuditHistoryLoading && <LoadingIndicator />}
+      {!isAuditHistoryLoading && (
+        <>
+          {caseHistory.length < 1 && (
+            <div data-testid="empty-assignments-test-id">
+              <Alert
+                message="No changes have been made to this case."
+                type={UswdsAlertStyle.Info}
+                role={'status'}
+                timeout={0}
+                title=""
+                show={true}
+                inline={true}
+              />
+            </div>
+          )}
+          {caseHistory.length > 0 && (
+            <table data-testid="history-table" className="usa-table usa-table--borderless">
+              <thead>
+                <tr>
+                  <th>Change</th>
+                  <th>Previous</th>
+                  <th>New</th>
+                  <th>Changed by</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                <>{renderCaseHistory()}</>
+              </tbody>
+            </table>
+          )}
+        </>
+      )}
     </div>
   );
 }

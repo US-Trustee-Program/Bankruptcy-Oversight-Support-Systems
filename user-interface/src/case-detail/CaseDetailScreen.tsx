@@ -27,6 +27,7 @@ import { useApi2 } from '@/lib/hooks/UseApi2';
 import { CaseAssignment } from '@common/cams/assignments';
 import { CamsRole } from '@common/cams/roles';
 import CaseNotes, { CaseNotesRef } from './panels/case-notes/CaseNotes';
+import CaseDetailTrusteeAndAssignedStaff from './panels/CaseDetailTrusteeAndAssignedStaff';
 
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailOverview = lazy(() => import('./panels/CaseDetailOverview'));
@@ -61,7 +62,9 @@ export function findDocketLimits(docket: CaseDocket): DocketLimits {
   const dateRange: DateRange = { start: undefined, end: undefined };
   const documentRange: DocumentRange = { first: 0, last: 0 };
 
-  if (!docket.length) return { dateRange, documentRange };
+  if (!docket.length) {
+    return { dateRange, documentRange };
+  }
 
   const firstEntryWithDocument = docket.find((entry) => {
     return !!entry.documentNumber;
@@ -98,8 +101,12 @@ export function notesSorterClosure(sortDirection: SortDirection) {
 }
 
 function dateRangeFilter(docketEntry: CaseDocketEntry, dateRange: DateRange) {
-  if (dateRange.start && docketEntry.dateFiled < dateRange.start) return false;
-  if (dateRange.end && docketEntry.dateFiled > dateRange.end) return false;
+  if (dateRange.start && docketEntry.dateFiled < dateRange.start) {
+    return false;
+  }
+  if (dateRange.end && docketEntry.dateFiled > dateRange.end) {
+    return false;
+  }
   return true;
 }
 
@@ -111,7 +118,9 @@ function docketSearchFilter(docketEntry: CaseDocketEntry, searchString: string) 
 }
 
 function documentNumberFilter(docketEntry: CaseDocketEntry, documentNumber: number) {
-  if (docketEntry.documentNumber === documentNumber) return docketEntry;
+  if (docketEntry.documentNumber === documentNumber) {
+    return docketEntry;
+  }
 }
 
 function notesSearchFilter(note: CaseNote, searchString: string) {
@@ -122,7 +131,9 @@ function notesSearchFilter(note: CaseNote, searchString: string) {
 }
 
 function facetFilter(docketEntry: CaseDocketEntry, selectedFacets: string[]) {
-  if (selectedFacets.length === 0) return docketEntry;
+  if (selectedFacets.length === 0) {
+    return docketEntry;
+  }
   return selectedFacets.includes(docketEntry.summaryText);
 }
 
@@ -198,7 +209,7 @@ export function applyDocketEntrySortAndFilters(
 function summaryTextFacetReducer(acc: CaseDocketSummaryFacets, de: CaseDocketEntry) {
   if (acc.has(de.summaryText)) {
     const facet = acc.get(de.summaryText)!;
-    facet.count = facet.count + 1;
+    facet.count += 1;
     acc.set(de.summaryText, facet);
   } else {
     acc.set(de.summaryText, { text: de.summaryText, count: 1 });
@@ -222,7 +233,9 @@ export function getSummaryFacetList(facets: CaseDocketSummaryFacets) {
     return { value: key, label: `${key} (${facet.count})` };
   });
   return facetOptions.sort((a, b) => {
-    if (a.label === b.label) return 0;
+    if (a.label === b.label) {
+      return 0;
+    }
     return a.label < b.label ? -1 : 1;
   });
 }
@@ -716,7 +729,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                 )}
               </div>
             </div>
-            <div className="grid-col-8" aria-live="polite">
+            <div className="grid-col-8 case-detail-content" aria-live="polite">
               <Suspense fallback={<LoadingSpinner />}>
                 <Routes>
                   <Route
@@ -729,6 +742,19 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                           caseBasicInfo?.closedDate,
                         )}
                         onCaseAssignment={handleCaseAssignment}
+                      />
+                    }
+                  />
+                  <Route
+                    path="trustee-and-assigned-staff"
+                    element={
+                      <CaseDetailTrusteeAndAssignedStaff
+                        caseDetail={caseBasicInfo}
+                        onCaseAssignment={function (
+                          _props: AssignAttorneyModalCallbackProps,
+                        ): void {
+                          throw new Error('Function not implemented.');
+                        }}
                       />
                     }
                   />
