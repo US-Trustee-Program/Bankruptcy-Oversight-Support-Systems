@@ -17,7 +17,6 @@
         "click element [data-testid='open-modal-button_0']"
       ]
     },
-    "http://localhost:3000/case-detail/101-23-44461/",
     {
       "url": "http://localhost:3000/case-detail/101-23-44461/court-docket/",
       "actions": [
