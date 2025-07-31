@@ -10,6 +10,7 @@ export const PRIVILEGED_IDENTITY_MANAGEMENT = 'privileged-identity-management';
 export const SYSTEM_MAINTENANCE_BANNER = 'system-maintenance-banner';
 export const TRANSFER_ORDERS_ENABLED = 'transfer-orders-enabled';
 export const FORMAT_CASE_NOTES = 'format-case-notes';
+export const VIEW_TRUSTEE_ON_CASE = 'view-trustee-on-case';
 
 export default function useFeatureFlags(): FeatureFlagSet {
   const config = getFeatureFlagConfiguration();

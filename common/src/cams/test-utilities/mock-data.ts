@@ -20,7 +20,7 @@ import {
   RawConsolidationOrder,
   TransferOrder,
 } from '../orders';
-import { DebtorAttorney, Party } from '../parties';
+import { DebtorAttorney, Party, Trustee } from '../parties';
 import { COURT_DIVISIONS } from './courts.mock';
 import { TRIAL_ATTORNEYS } from './attorneys.mock';
 import { ConsolidationOrderSummary } from '../history';
@@ -508,6 +508,21 @@ function getDocketEntry(override: Partial<CaseDocketEntry> = {}): CaseDocketEntr
   };
 }
 
+function getTrustee(override: Partial<Trustee> = {}): Trustee {
+  return {
+    name: faker.person.fullName(),
+    address1: faker.location.streetAddress(),
+    address2: faker.location.secondaryAddress(),
+    address3: '',
+    cityStateZipCountry: `${faker.location.city()}, ${faker.location.state({
+      abbreviated: true,
+    })}, ${faker.location.zipCode()}, US`,
+    phone: faker.phone.number(),
+    email: faker.internet.email(),
+    ...override,
+  };
+}
+
 function getStaffAssignee(override: Partial<Staff> = {}) {
   return {
     id: randomId(),
@@ -829,6 +844,7 @@ export const MockData = {
   someDateAfterThisDate,
   someDateBeforeThisDate,
   getCaseSyncEvent,
+  getTrustee,
 };
 
 export default MockData;
