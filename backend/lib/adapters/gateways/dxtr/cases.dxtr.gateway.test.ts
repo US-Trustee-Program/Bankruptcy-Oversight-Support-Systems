@@ -69,6 +69,16 @@ describe('Test DXTR Gateway', () => {
       taxId: '12-3456789',
     };
 
+    const expectedTrustee = {
+      name: 'John Q. Smith',
+      address1: '123 Main St',
+      address2: 'Apt 17',
+      address3: '',
+      cityStateZipCountry: 'Queens NY 12345 USA',
+      phone: '101-345-8765',
+      email: 'john.smith@example.com',
+    };
+
     const expectedDebtorAttorney = {
       name: 'James Brown Esq.',
       address1: '456 South St',
@@ -90,6 +100,7 @@ describe('Test DXTR Gateway', () => {
         debtorTypeCode: 'CB',
         debtorTypeLabel: expectedDebtorTypeLabel,
         regionId: '04',
+        trustee: expectedTrustee,
       },
     });
 
@@ -142,6 +153,14 @@ describe('Test DXTR Gateway', () => {
       message: '',
     };
 
+    const mockQueryTrustee: QueryResults = {
+      success: true,
+      results: {
+        recordset: [expectedTrustee],
+      },
+      message: '',
+    };
+
     const mockQueryDebtorAttorney: QueryResults = {
       success: true,
       results: {
@@ -160,6 +179,10 @@ describe('Test DXTR Gateway', () => {
 
     querySpy.mockImplementationOnce(async () => {
       return Promise.resolve(mockTransactionResults);
+    });
+
+    querySpy.mockImplementationOnce(async () => {
+      return Promise.resolve(mockQueryTrustee);
     });
 
     querySpy.mockImplementationOnce(async () => {
@@ -328,6 +351,22 @@ describe('Test DXTR Gateway', () => {
       message: '',
     };
 
+    const expectedTrustee = {
+      name: 'John Q. Smith',
+      address1: '123 Main St',
+      address2: 'Apt 17',
+      address3: '',
+      cityStateZipCountry: 'Queens NY 12345 USA',
+    };
+
+    const mockQueryTrustee: QueryResults = {
+      success: true,
+      results: {
+        recordset: [expectedTrustee],
+      },
+      message: '',
+    };
+
     const expectedDebtorAttorney = {
       name: 'James Brown Esq.',
       address1: '456 South St',
@@ -353,6 +392,10 @@ describe('Test DXTR Gateway', () => {
 
     querySpy.mockImplementationOnce(async () => {
       return Promise.resolve(mockTransactionResults);
+    });
+
+    querySpy.mockImplementationOnce(async () => {
+      return Promise.resolve(mockQueryTrustee);
     });
 
     querySpy.mockImplementationOnce(async () => {
