@@ -18,11 +18,11 @@ function generateTrustee(): Partial<AO_PY_RecordProps> {
     PY_GENERATION: '',
     PY_ADDRESS1: faker.location.streetAddress(),
     PY_CITY: faker.location.city(),
-    PY_STATE: faker.location.state(),
+    PY_STATE: faker.location.state({ abbreviated: true }),
     PY_ZIP: faker.location.zipCode(),
     PY_COUNTRY: 'USA',
-    PY_PHONENO: faker.phone.number(),
-    PY_FAX_PHONE: faker.phone.number(),
+    PY_PHONENO: faker.phone.number({ style: 'national' }),
+    PY_FAX_PHONE: faker.phone.number({ style: 'national' }),
     PY_E_MAIL: faker.internet.email(),
   };
 }
