@@ -6,6 +6,7 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import { ResourceActions } from '@common/cams/actions';
 import { CaseDetail } from '@common/cams/cases';
 import * as caseNumber from '@/lib/utils/caseNumber';
+import * as useFeatureFlagsModule from '@/lib/hooks/UseFeatureFlags';
 
 function basicRender(caseDetail: ResourceActions<CaseDetail>, isLoading: boolean) {
   render(
@@ -15,8 +16,16 @@ function basicRender(caseDetail: ResourceActions<CaseDetail>, isLoading: boolean
   );
 }
 
+const testCaseDetail = MockData.getCaseDetail();
+
 describe('Case Detail Header tests', () => {
-  const testCaseDetail = MockData.getCaseDetail();
+  beforeEach(() => {
+    vi.spyOn(useFeatureFlagsModule, 'default').mockReturnValue({ VIEW_TRUSTEE_ON_CASE: true });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
   test('should render loading info when isLoading is true', () => {
     basicRender(testCaseDetail, true);
@@ -122,5 +131,52 @@ describe('Case Detail Header tests', () => {
 
       expect(copySpy).toHaveBeenCalledWith(testCaseDetail.caseId);
     });
+  });
+});
+
+describe('feature flag true', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(useFeatureFlagsModule, 'default').mockReturnValue({ VIEW_TRUSTEE_ON_CASE: true });
+  });
+
+  test('should render properly when true', () => {
+    basicRender(testCaseDetail, false);
+    const isLoadingH1 = screen.getByTestId('case-detail-heading');
+    const isLoadingH2 = screen.getByTestId('case-detail-heading-title');
+    const isFinishedH2 = screen.getByTestId('h2-with-case-info');
+    const caseChapter = screen.getByTestId('case-chapter');
+
+    expect(isLoadingH1).toHaveClass('case-number');
+    expect(isLoadingH1).toHaveTextContent(testCaseDetail.caseId);
+    expect(screen.getByTitle('Copy Case ID to clipboard')).toBeInTheDocument();
+    expect(isLoadingH2).toContainHTML(testCaseDetail.caseTitle);
+    expect(isFinishedH2).toBeInTheDocument();
+    expect(caseChapter.innerHTML).toEqual(
+      `${testCaseDetail.petitionLabel} Chapter&nbsp;${testCaseDetail.chapter}`,
+    );
+  });
+});
+
+describe('feature flag false', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(useFeatureFlagsModule, 'default').mockReturnValue({ VIEW_TRUSTEE_ON_CASE: false });
+  });
+
+  test('should render properly with false', () => {
+    basicRender(testCaseDetail, false);
+
+    const isLoadingH1 = screen.getByTestId('case-detail-heading');
+    const isLoadingH2 = screen.getByTestId('case-detail-heading-title');
+    const isFinishedH2 = screen.getByTestId('h2-with-case-info');
+    const caseChapter = screen.getByTestId('case-chapter');
+
+    expect(isLoadingH1).toContainHTML('Case Detail');
+    expect(isLoadingH2).toContainHTML(testCaseDetail.caseTitle);
+    expect(isFinishedH2).toBeInTheDocument();
+    expect(caseChapter.innerHTML).toEqual(
+      `${testCaseDetail.petitionLabel} Chapter&nbsp;${testCaseDetail.chapter}`,
+    );
   });
 });
