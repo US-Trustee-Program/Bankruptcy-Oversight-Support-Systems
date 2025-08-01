@@ -35,8 +35,7 @@ export function StaffAssignmentScreenView(props: StaffAssignmentScreenViewProps)
     <MainContent className="staff-assignment case-list">
       <DocumentTitle name="Staff Assignment" />
       <div className="grid-row grid-gap-lg">
-        <div className="grid-col-1"></div>
-        <div className="grid-col-10">
+        <div className="grid-col-12">
           <div className="screen-heading">
             <h1 data-testid="case-list-heading">{viewModel.screenTitle}</h1>
             <ScreenInfoButton
@@ -76,7 +75,6 @@ export function StaffAssignmentScreenView(props: StaffAssignmentScreenViewProps)
             </>
           )}
         </div>
-        <div className="grid-col-1"></div>
       </div>
       <Modal
         ref={viewModel.infoModalRef}

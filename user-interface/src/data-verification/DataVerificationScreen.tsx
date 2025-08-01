@@ -217,8 +217,7 @@ export default function DataVerificationScreen() {
         timeout={reviewOrderAlert.timeOut}
       />
       <div className="grid-row grid-gap-lg">
-        <div className="grid-col-1"></div>
-        <div className="grid-col-10">
+        <div className="grid-col-12">
           <h1>Data Verification</h1>
           {!hasValidPermissions && (
             <Stop
@@ -333,7 +332,6 @@ export default function DataVerificationScreen() {
             </>
           )}
         </div>
-        <div className="grid-col-1"></div>
       </div>
     </MainContent>
   );
