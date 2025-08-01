@@ -508,7 +508,6 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
         <>
           <CaseDetailHeader isLoading={isLoading} caseId={caseId} />
           <div className="grid-row grid-gap-lg">
-            <div className="grid-col-1"></div>
             <div className="grid-col-2">
               <CaseDetailNavigation
                 caseId={caseId}
@@ -516,10 +515,9 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                 showAssociatedCasesList={false}
               />
             </div>
-            <div className="grid-col-8">
+            <div className="grid-col-10">
               <LoadingSpinner id="case-detail-loading-spinner" caption="Loading case details..." />
             </div>
-            <div className="grid-col-1"></div>
           </div>
         </>
       )}
