@@ -188,16 +188,13 @@ export default function SearchScreen() {
     <MainContent className="search-screen" data-testid="search">
       <DocumentTitle name="Case Search" />
       <div className="grid-row grid-gap-lg">
-        <div className="grid-col-1"></div>
-        <div className="grid-col-10">
+        <div className="grid-col-12">
           <h1>Case Search</h1>
           <ScreenInfoButton infoModalRef={infoModalRef} modalId={infoModalId} />
         </div>
-        <div className="grid-col-1"></div>
       </div>
       <div className="grid-row grid-gap-lg search-pane">
-        <div className="grid-col-1"></div>
-        <div className="grid-col-2">
+        <div className="grid-col-3">
           <h2>Search By</h2>
           <div className="filter-and-search" data-testid="filter-and-search-panel">
             <div className="case-number-search form-field" data-testid="case-number-search">
@@ -308,7 +305,6 @@ export default function SearchScreen() {
             />
           )}
         </div>
-        <div className="grid-col-1"></div>
       </div>
       <Modal
         ref={infoModalRef}

@@ -148,8 +148,7 @@ export const MyCasesScreen = () => {
     <MainContent className="my-cases case-list">
       <DocumentTitle name="My Cases" />
       <div className="grid-row grid-gap-lg">
-        <div className="grid-col-1"></div>
-        <div className="grid-col-10">
+        <div className="grid-col-12">
           <div className="screen-heading">
             <h1 data-testid="case-list-heading">{screenTitle}</h1>
             <ScreenInfoButton infoModalRef={infoModalRef} modalId={infoModalId} />
@@ -197,7 +196,6 @@ export const MyCasesScreen = () => {
             row={MyCasesResultsRow}
           ></SearchResults>
         </div>
-        <div className="grid-col-1"></div>
       </div>
       <Modal
         ref={infoModalRef}
