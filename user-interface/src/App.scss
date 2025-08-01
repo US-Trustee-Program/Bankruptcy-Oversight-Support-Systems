@@ -59,8 +59,8 @@ body {
     flex: 1;
     padding: 0 0 50px 0;
     margin: 0 auto;
-    width: calc(10 / 12 * 100%); // to stay consistent with previous 1 + 10 + 1 layout
-    max-width: 64rem;
+    width: 83.3333333333333%; // 10/12 * 100 to stay consistent with previous 1 + 10 + 1 layout
+    max-width: 82rem;
 
     h1,
     h2 {
