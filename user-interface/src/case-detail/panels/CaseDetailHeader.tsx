@@ -4,6 +4,7 @@ import useFixedPosition from '@/lib/hooks/UseFixedPosition';
 import { CaseDetail } from '@common/cams/cases';
 import { copyCaseNumber, getCaseNumber } from '@/lib/utils/caseNumber';
 import CopyButton from '@/lib/components/cams/CopyButton';
+import useFeatureFlags, { VIEW_TRUSTEE_ON_CASE } from '@/lib/hooks/UseFeatureFlags';
 
 export interface CaseDetailHeaderProps {
   isLoading: boolean;
@@ -18,6 +19,7 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
   const chapterInformation = `${props.caseDetail?.petitionLabel} Chapter\u00A0${props.caseDetail?.chapter}`;
   const appEl = document.querySelector('.App');
   const camsHeader = document.querySelector('.cams-header');
+  const featureFlags = useFeatureFlags();
 
   const modifyHeader = () => {
     if (camsHeader) {
@@ -35,25 +37,60 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
   };
 
   function printH1() {
-    return (
-      <h1 data-testid="case-detail-heading">
-        Case Details{' '}
-        <span data-testid="case-detail-heading-title"> - {props.caseDetail?.caseTitle}</span>
-      </h1>
-    );
+    let h1Contents;
+    if (featureFlags[VIEW_TRUSTEE_ON_CASE]) {
+      h1Contents = (
+        <h1
+          className="case-number text-no-wrap"
+          title="Case ID"
+          aria-label="Case ID"
+          data-testid="case-detail-heading"
+        >
+          {props.caseId}{' '}
+          <CopyButton
+            id="header-case-id"
+            onClick={() => copyCaseNumber(props.caseId)}
+            title="Copy Case ID to clipboard"
+          />
+        </h1>
+      );
+    } else {
+      h1Contents = (
+        <h1 data-testid="case-detail-heading">
+          Case Details{' '}
+          <span data-testid="case-detail-heading-title"> - {props.caseDetail?.caseTitle}</span>
+        </h1>
+      );
+    }
+    return h1Contents;
   }
 
-  function printCaseIdHeader() {
-    return (
-      <h2 className="case-number text-no-wrap" title="Case ID" aria-label="Case ID">
-        {props.caseId}{' '}
-        <CopyButton
-          id="header-case-id"
-          onClick={() => copyCaseNumber(props.caseId)}
-          title="Copy Case ID to clipboard"
-        />
-      </h2>
-    );
+  function printH2() {
+    let h2Contents;
+    if (featureFlags[VIEW_TRUSTEE_ON_CASE]) {
+      h2Contents = (
+        <h2
+          className="case-number text-no-wrap"
+          title="Case ID"
+          aria-label="Case ID"
+          data-testid="case-detail-heading-title"
+        >
+          {props.caseDetail?.caseTitle}
+        </h2>
+      );
+    } else {
+      h2Contents = (
+        <h2 className="case-number text-no-wrap" title="Case ID" aria-label="Case ID">
+          {props.caseId}{' '}
+          <CopyButton
+            id="header-case-id"
+            onClick={() => copyCaseNumber(props.caseId)}
+            title="Copy Case ID to clipboard"
+          />
+        </h2>
+      );
+    }
+    return h2Contents;
   }
 
   useEffect(() => {
@@ -124,13 +161,13 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
 
           {props.isLoading && (
             <div className="grid-row grid-gap-lg" data-testid="loading-h2">
-              <div className="grid-col-12">{printCaseIdHeader()}</div>
+              <div className="grid-col-12">{printH2()}</div>
             </div>
           )}
 
           {!props.isLoading && (
             <div className="grid-row grid-gap-lg" data-testid="h2-with-case-info">
-              <div className="grid-col-2">{printCaseIdHeader()}</div>
+              <div className="grid-col-2">{printH2()}</div>
               <div className="grid-col-6">
                 <h2
                   className="court-name"
