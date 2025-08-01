@@ -531,7 +531,6 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
             caseDetail={caseBasicInfo}
           />
           <div className="grid-row grid-gap-lg">
-            <div id="left-gutter" className="grid-col-1"></div>
             <div className="grid-col-2">
               <div className={'left-navigation-pane-container'}>
                 <CaseDetailNavigation
@@ -729,7 +728,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                 )}
               </div>
             </div>
-            <div className="grid-col-8 case-detail-content" aria-live="polite">
+            <div className="grid-col-10 case-detail-content" aria-live="polite">
               <Suspense fallback={<LoadingSpinner />}>
                 <Routes>
                   <Route
@@ -803,7 +802,6 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
               </Suspense>
               <Outlet />
             </div>
-            <div id="right-gutter" className="grid-col-1"></div>
           </div>
         </>
       )}

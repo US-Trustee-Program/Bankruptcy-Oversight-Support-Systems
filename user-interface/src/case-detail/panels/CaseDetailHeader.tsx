@@ -72,7 +72,6 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
         <>
           <div className="case-detail-header fixed" data-testid="case-detail-fixed-header">
             <div className="grid-row grid-gap-lg">
-              <div className="grid-col-1"></div>
               <div className="grid-col-4">
                 <h3
                   data-testid="case-detail-heading"
@@ -89,7 +88,7 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
                   {getCaseNumber(props.caseId)}
                 </h3>
               </div>
-              <div className="grid-col-3">
+              <div className="grid-col-4">
                 <h3
                   className="court-name"
                   title={`Court Name and District: ${courtInformation}`}
@@ -98,7 +97,7 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
                   {courtInformation}
                 </h3>
               </div>
-              <div className="grid-col-2">
+              <div className="grid-col-3">
                 <h3
                   className="case-chapter"
                   title={`Case Chapter: ${chapterInformation}`}
@@ -107,7 +106,6 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
                   {chapterInformation}
                 </h3>
               </div>
-              <div className="grid-col-1"></div>
             </div>
           </div>
           <div className="spacer-fixer"></div>
@@ -116,29 +114,24 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
       {!isFixed && (
         <div className="case-detail-header" data-testid="case-detail-header">
           <div className="grid-row grid-gap-lg">
-            <div className="grid-col-1"></div>
-            <div className="grid-col-10">
+            <div className="grid-col-12">
               {props.isLoading && (
                 <h1 data-testid="case-detail-heading">Loading Case Details...</h1>
               )}
               {!props.isLoading && props.caseDetail && printH1()}
             </div>
-            <div className="grid-col-1"></div>
           </div>
 
           {props.isLoading && (
             <div className="grid-row grid-gap-lg" data-testid="loading-h2">
-              <div className="grid-col-1"></div>
-              <div className="grid-col-10">{printCaseIdHeader()}</div>
-              <div className="grid-col-1"></div>
+              <div className="grid-col-12">{printCaseIdHeader()}</div>
             </div>
           )}
 
           {!props.isLoading && (
             <div className="grid-row grid-gap-lg" data-testid="h2-with-case-info">
-              <div className="grid-col-1"></div>
               <div className="grid-col-2">{printCaseIdHeader()}</div>
-              <div className="grid-col-5">
+              <div className="grid-col-6">
                 <h2
                   className="court-name"
                   title="Court Name and District"
@@ -147,12 +140,11 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
                   {courtInformation}
                 </h2>
               </div>
-              <div className="grid-col-3">
+              <div className="grid-col-4">
                 <h2 className="case-chapter" title="Case Chapter" data-testid="case-chapter">
                   {chapterInformation}
                 </h2>
               </div>
-              <div className="grid-col-1"></div>
             </div>
           )}
         </div>
