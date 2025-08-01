@@ -6,7 +6,7 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import { ResourceActions } from '@common/cams/actions';
 import { CaseDetail } from '@common/cams/cases';
 import * as caseNumber from '@/lib/utils/caseNumber';
-import * as useFeatureFlagsModule from '@/lib/hooks/UseFeatureFlags';
+import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 
 function basicRender(caseDetail: ResourceActions<CaseDetail>, isLoading: boolean) {
   render(
@@ -20,7 +20,10 @@ const testCaseDetail = MockData.getCaseDetail();
 
 describe('Case Detail Header tests', () => {
   beforeEach(() => {
-    vi.spyOn(useFeatureFlagsModule, 'default').mockReturnValue({ VIEW_TRUSTEE_ON_CASE: true });
+    const mockFeatureFlags = {
+      [FeatureFlagHook.VIEW_TRUSTEE_ON_CASE]: false,
+    };
+    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
   });
 
   afterEach(() => {
@@ -136,8 +139,10 @@ describe('Case Detail Header tests', () => {
 
 describe('feature flag true', () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
-    vi.spyOn(useFeatureFlagsModule, 'default').mockReturnValue({ VIEW_TRUSTEE_ON_CASE: true });
+    const mockFeatureFlags = {
+      [FeatureFlagHook.VIEW_TRUSTEE_ON_CASE]: true,
+    };
+    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
   });
 
   test('should render properly when true', () => {
@@ -160,8 +165,10 @@ describe('feature flag true', () => {
 
 describe('feature flag false', () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
-    vi.spyOn(useFeatureFlagsModule, 'default').mockReturnValue({ VIEW_TRUSTEE_ON_CASE: false });
+    const mockFeatureFlags = {
+      [FeatureFlagHook.VIEW_TRUSTEE_ON_CASE]: false,
+    };
+    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
   });
 
   test('should render properly with false', () => {
