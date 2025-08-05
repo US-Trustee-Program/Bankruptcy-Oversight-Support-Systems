@@ -16,7 +16,11 @@ function basicRender(caseDetail: ResourceActions<CaseDetail>, isLoading: boolean
   );
 }
 
-const testCaseDetail = MockData.getCaseDetail();
+const testCaseDetail = MockData.getCaseDetail({
+  override: {
+    petitionLabel: 'Voluntary',
+  },
+});
 
 describe('Case Detail Header tests', () => {
   beforeEach(() => {
@@ -52,7 +56,7 @@ describe('Case Detail Header tests', () => {
     expect(isLoadingH2).toContainHTML(testCaseDetail.caseTitle);
     expect(isFinishedH2).toBeInTheDocument();
     expect(caseChapter.innerHTML).toEqual(
-      `${testCaseDetail.petitionLabel} Chapter&nbsp;${testCaseDetail.chapter}`,
+      `${testCaseDetail.petitionLabel}&nbsp;Chapter&nbsp;${testCaseDetail.chapter}`,
     );
   });
 
@@ -150,7 +154,7 @@ describe('feature flag true', () => {
     const isLoadingH1 = screen.getByTestId('case-detail-heading');
     const isLoadingH2 = screen.getByTestId('case-detail-heading-title');
     const isFinishedH2 = screen.getByTestId('h2-with-case-info');
-    const caseChapter = screen.getByTestId('case-chapter');
+    const caseChapter = screen.getByTestId('tag-case-chapter');
 
     expect(isLoadingH1).toHaveClass('case-number');
     expect(isLoadingH1).toHaveTextContent(testCaseDetail.caseId);
@@ -158,7 +162,7 @@ describe('feature flag true', () => {
     expect(isLoadingH2).toContainHTML(testCaseDetail.caseTitle);
     expect(isFinishedH2).toBeInTheDocument();
     expect(caseChapter.innerHTML).toEqual(
-      `${testCaseDetail.petitionLabel} Chapter&nbsp;${testCaseDetail.chapter}`,
+      `${testCaseDetail.petitionLabel}&nbsp;Chapter&nbsp;${testCaseDetail.chapter}`,
     );
   });
 });
@@ -183,7 +187,7 @@ describe('feature flag false', () => {
     expect(isLoadingH2).toContainHTML(testCaseDetail.caseTitle);
     expect(isFinishedH2).toBeInTheDocument();
     expect(caseChapter.innerHTML).toEqual(
-      `${testCaseDetail.petitionLabel} Chapter&nbsp;${testCaseDetail.chapter}`,
+      `${testCaseDetail.petitionLabel}&nbsp;Chapter&nbsp;${testCaseDetail.chapter}`,
     );
   });
 });

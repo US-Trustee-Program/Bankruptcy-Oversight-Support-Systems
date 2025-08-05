@@ -98,7 +98,7 @@ describe('Case Detail screen tests', () => {
 
     await waitFor(() => {
       const chapter = screen.getByTestId('case-chapter');
-      expect(chapter.innerHTML).toEqual('Voluntary Chapter&nbsp;15');
+      expect(chapter.innerHTML).toEqual('Voluntary&nbsp;Chapter&nbsp;15');
     });
   });
 
