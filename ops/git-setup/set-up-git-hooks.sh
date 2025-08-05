@@ -15,8 +15,7 @@ while getopts ":sh" option; do
     h)
       usage
       ;;
-    \?)
-      usage
+    *)
       ;;
   esac
 done
