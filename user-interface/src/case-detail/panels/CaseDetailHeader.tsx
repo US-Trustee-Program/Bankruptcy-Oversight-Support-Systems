@@ -6,6 +6,7 @@ import { copyCaseNumber, getCaseNumber } from '@/lib/utils/caseNumber';
 import CopyButton from '@/lib/components/cams/CopyButton';
 import useFeatureFlags, { VIEW_TRUSTEE_ON_CASE } from '@/lib/hooks/UseFeatureFlags';
 import Tag, { UswdsTagStyle } from '@/lib/components/uswds/Tag';
+import { GavelIcon } from '@/lib/components/cams/RawSvgIcon';
 
 export interface CaseDetailHeaderProps {
   isLoading: boolean;
@@ -16,8 +17,18 @@ export interface CaseDetailHeaderProps {
 export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
   const { isFixed, fix, loosen } = useFixedPosition();
   const courtInformation = `${props.caseDetail?.courtName} (${props.caseDetail?.courtDivisionName})`;
+
+  const chapterInformationParts = [];
+  if (props.caseDetail?.petitionLabel) {
+    chapterInformationParts.push(props.caseDetail?.petitionLabel);
+  }
+  if (props.caseDetail?.chapter) {
+    chapterInformationParts.push('Chapter', props.caseDetail?.chapter);
+  }
   // u00A0 is a non-breaking space. Using &nbsp; in the string literal does not display correctly.
-  const chapterInformation = `${props.caseDetail?.petitionLabel} Chapter\u00A0${props.caseDetail?.chapter}`;
+  const chapterInformation = chapterInformationParts.join('\u00A0');
+
+  const judgeInformation = props.caseDetail?.judgeName;
   const appEl = document.querySelector('.App');
   const camsHeader = document.querySelector('.cams-header');
   const featureFlags = useFeatureFlags();
@@ -119,13 +130,19 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
                     />
                   </h1>
                   <Tag
-                    uswdsStyle={UswdsTagStyle.Base}
+                    uswdsStyle={UswdsTagStyle.Primary}
                     title="Court Name and District"
                     id="court-name-and-district"
                   >
                     {courtInformation}
                   </Tag>
-                  <Tag title="Case Chapter" id="case-chapter">
+                  {judgeInformation && (
+                    <Tag title="Judge" id="case-judge">
+                      <GavelIcon />
+                      {judgeInformation}
+                    </Tag>
+                  )}
+                  <Tag uswdsStyle={UswdsTagStyle.Cool} title="Case Chapter" id="case-chapter">
                     {chapterInformation}
                   </Tag>
                 </div>

@@ -1,5 +1,8 @@
 import { render, screen } from '@testing-library/react';
-import Tag, { UswdsTagStyle, TAG_BASE_CLASS } from './Tag';
+import Tag, { UswdsTagStyle } from './Tag';
+
+// Define constants for base classes
+const TAG_BASE_CLASS = 'usa-tag';
 
 describe('Tag', () => {
   test('should render basic tag with default props', () => {
@@ -10,6 +13,7 @@ describe('Tag', () => {
     expect(tag).toHaveTextContent('Test Tag');
     expect(tag.tagName).toBe('SPAN');
     expect(tag).toHaveClass(TAG_BASE_CLASS);
+    expect(tag).toHaveClass('usa-tag--big');
     expect(tag).toHaveAttribute('tabIndex', '0');
   });
 
@@ -33,24 +37,8 @@ describe('Tag', () => {
 
     const tag = screen.getByTestId('tag-test');
     expect(tag).toHaveClass(TAG_BASE_CLASS);
-    // Default style is empty string, so no additional class should be added
-    expect(tag.className).toBe(`${TAG_BASE_CLASS} ${TAG_BASE_CLASS}`);
-  });
-
-  test('should apply UswdsTagStyle.Unstyled correctly', () => {
-    render(<Tag uswdsStyle={UswdsTagStyle.Unstyled}>Test Tag</Tag>);
-
-    const tag = screen.getByTestId('tag-test');
-    expect(tag).toHaveClass(TAG_BASE_CLASS);
-    expect(tag).toHaveClass('usa-button--unstyled');
-  });
-
-  test('should apply UswdsTagStyle.Secondary correctly', () => {
-    render(<Tag uswdsStyle={UswdsTagStyle.Secondary}>Test Tag</Tag>);
-
-    const tag = screen.getByTestId('tag-test');
-    expect(tag).toHaveClass(TAG_BASE_CLASS);
-    expect(tag).toHaveClass('usa-button--secondary');
+    expect(tag).toHaveClass('usa-tag--big');
+    expect(tag).toHaveClass('bg-base');
   });
 
   test('should apply UswdsTagStyle.Cool correctly', () => {
@@ -58,56 +46,25 @@ describe('Tag', () => {
 
     const tag = screen.getByTestId('tag-test');
     expect(tag).toHaveClass(TAG_BASE_CLASS);
-    expect(tag).toHaveClass('usa-button--accent-cool');
+    expect(tag).toHaveClass('usa-tag--big');
+    expect(tag).toHaveClass('bg-accent-cool');
   });
 
-  test('should apply UswdsTagStyle.Warm correctly', () => {
-    render(<Tag uswdsStyle={UswdsTagStyle.Warm}>Test Tag</Tag>);
-
-    const tag = screen.getByTestId('tag-test');
-    expect(tag).toHaveClass(TAG_BASE_CLASS);
-    expect(tag).toHaveClass('usa-button--accent-warm');
-  });
-
-  test('should apply UswdsTagStyle.Base correctly', () => {
-    render(<Tag uswdsStyle={UswdsTagStyle.Base}>Test Tag</Tag>);
-
-    const tag = screen.getByTestId('tag-test');
-    expect(tag).toHaveClass(TAG_BASE_CLASS);
-    expect(tag).toHaveClass('usa-button--base');
-  });
-
-  test('should apply UswdsTagStyle.Outline correctly', () => {
-    render(<Tag uswdsStyle={UswdsTagStyle.Outline}>Test Tag</Tag>);
-
-    const tag = screen.getByTestId('tag-test');
-    expect(tag).toHaveClass(TAG_BASE_CLASS);
-    expect(tag).toHaveClass('usa-button--outline');
-  });
-
-  test('should apply UswdsTagStyle.Inverse correctly', () => {
-    render(<Tag uswdsStyle={UswdsTagStyle.Inverse}>Test Tag</Tag>);
-
-    const tag = screen.getByTestId('tag-test');
-    expect(tag).toHaveClass(TAG_BASE_CLASS);
-    expect(tag).toHaveClass('usa-button--outline');
-    expect(tag).toHaveClass('usa-button--inverse');
-  });
-
-  test('should apply big size correctly', () => {
-    render(<Tag size="big">Test Tag</Tag>);
+  test('should apply UswdsTagStyle.Primary correctly', () => {
+    render(<Tag uswdsStyle={UswdsTagStyle.Primary}>Test Tag</Tag>);
 
     const tag = screen.getByTestId('tag-test');
     expect(tag).toHaveClass(TAG_BASE_CLASS);
     expect(tag).toHaveClass('usa-tag--big');
+    expect(tag).toHaveClass('bg-primary');
   });
 
-  test('should not apply big class for default size', () => {
-    render(<Tag size="default">Test Tag</Tag>);
+  test('should always apply usa-tag--big class', () => {
+    render(<Tag>Test Tag</Tag>);
 
     const tag = screen.getByTestId('tag-test');
     expect(tag).toHaveClass(TAG_BASE_CLASS);
-    expect(tag).not.toHaveClass('usa-tag--big');
+    expect(tag).toHaveClass('usa-tag--big');
   });
 
   test('should apply custom className in addition to base classes', () => {
@@ -115,19 +72,20 @@ describe('Tag', () => {
 
     const tag = screen.getByTestId('tag-test');
     expect(tag).toHaveClass(TAG_BASE_CLASS);
+    expect(tag).toHaveClass('usa-tag--big');
     expect(tag).toHaveClass('custom-class');
   });
 
   test('should combine all classes correctly', () => {
     render(
-      <Tag uswdsStyle={UswdsTagStyle.Cool} size="big" className="custom-class">
+      <Tag uswdsStyle={UswdsTagStyle.Cool} className="custom-class">
         Test Tag
       </Tag>,
     );
 
     const tag = screen.getByTestId('tag-test');
     expect(tag).toHaveClass(TAG_BASE_CLASS);
-    expect(tag).toHaveClass('usa-button--accent-cool');
+    expect(tag).toHaveClass('bg-accent-cool');
     expect(tag).toHaveClass('usa-tag--big');
     expect(tag).toHaveClass('custom-class');
   });
@@ -195,12 +153,11 @@ describe('Tag', () => {
     expect(tag).toBeEmptyDOMElement();
   });
 
-  test('should handle complex styling combinations with inverse style', () => {
+  test('should handle complex styling combinations with primary style', () => {
     render(
       <Tag
         id="complex-tag"
-        uswdsStyle={UswdsTagStyle.Inverse}
-        size="big"
+        uswdsStyle={UswdsTagStyle.Primary}
         className="extra-custom-class another-class"
         title="Complex Tag"
         tabIndex={0}
@@ -212,8 +169,7 @@ describe('Tag', () => {
     const tag = screen.getByTestId('tag-complex-tag');
     expect(tag).toHaveAttribute('id', 'complex-tag');
     expect(tag).toHaveClass(TAG_BASE_CLASS);
-    expect(tag).toHaveClass('usa-button--outline');
-    expect(tag).toHaveClass('usa-button--inverse');
+    expect(tag).toHaveClass('bg-primary');
     expect(tag).toHaveClass('usa-tag--big');
     expect(tag).toHaveClass('extra-custom-class');
     expect(tag).toHaveClass('another-class');
