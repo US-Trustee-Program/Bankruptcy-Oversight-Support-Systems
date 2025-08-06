@@ -13,7 +13,7 @@ export type TagProps = JSX.IntrinsicElements['span'] & {
 const Tag = (props: TagProps) => {
   const { id, uswdsStyle, className, title, children, ...otherProps } = props;
 
-  const classes = ['usa-tag', 'usa-tag--big'];
+  const classes = ['usa-tag', 'usa-tag--big', 'text-no-uppercase'];
 
   if (uswdsStyle) {
     classes.push(uswdsStyle);

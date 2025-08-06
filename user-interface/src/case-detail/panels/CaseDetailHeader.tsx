@@ -49,60 +49,25 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
   };
 
   function printH1() {
-    let h1Contents;
-    if (featureFlags[VIEW_TRUSTEE_ON_CASE]) {
-      h1Contents = (
-        <h1
-          className="case-number text-no-wrap"
-          title="Case ID"
-          aria-label="Case ID"
-          data-testid="case-detail-heading"
-        >
-          {props.caseId}{' '}
-          <CopyButton
-            id="header-case-id"
-            onClick={() => copyCaseNumber(props.caseId)}
-            title="Copy Case ID to clipboard"
-          />
-        </h1>
-      );
-    } else {
-      h1Contents = (
-        <h1 data-testid="case-detail-heading">
-          Case Details{' '}
-          <span data-testid="case-detail-heading-title"> - {props.caseDetail?.caseTitle}</span>
-        </h1>
-      );
-    }
-    return h1Contents;
+    return (
+      <h1 data-testid="case-detail-heading">
+        Case Details{' '}
+        <span data-testid="case-detail-heading-title"> - {props.caseDetail?.caseTitle}</span>
+      </h1>
+    );
   }
 
   function printH2() {
-    let h2Contents;
-    if (featureFlags[VIEW_TRUSTEE_ON_CASE]) {
-      h2Contents = (
-        <h2
-          className="case-number text-no-wrap"
-          title="Case ID"
-          aria-label="Case ID"
-          data-testid="case-detail-heading-title"
-        >
-          {props.caseDetail?.caseTitle}
-        </h2>
-      );
-    } else {
-      h2Contents = (
-        <h2 className="case-number text-no-wrap" title="Case ID" aria-label="Case ID">
-          {props.caseId}{' '}
-          <CopyButton
-            id="header-case-id"
-            onClick={() => copyCaseNumber(props.caseId)}
-            title="Copy Case ID to clipboard"
-          />
-        </h2>
-      );
-    }
-    return h2Contents;
+    return (
+      <h2 className="case-number text-no-wrap" title="Case ID" aria-label="Case ID">
+        {props.caseId}{' '}
+        <CopyButton
+          id="header-case-id"
+          onClick={() => copyCaseNumber(props.caseId)}
+          title="Copy Case ID to clipboard"
+        />
+      </h2>
+    );
   }
 
   function renderHeader() {
