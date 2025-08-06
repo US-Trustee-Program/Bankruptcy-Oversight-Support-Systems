@@ -3,6 +3,8 @@ import { JSX } from 'react';
 export enum UswdsTagStyle {
   Default = 'bg-base',
   Cool = 'bg-accent-cool',
+  CoolLight = 'bg-accent-cool-light',
+  Warm = 'bg-accent-warm-dark',
   Primary = 'bg-primary',
 }
 
