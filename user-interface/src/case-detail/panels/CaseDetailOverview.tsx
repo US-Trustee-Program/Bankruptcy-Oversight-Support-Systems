@@ -2,7 +2,7 @@ import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { formatDate, sortByDateReverse } from '@/lib/utils/datetime';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { isJointAdministrationChildCase, Transfer } from '@common/cams/events';
-import { CaseDetail } from '@common/cams/cases';
+import { CaseDetail, isChildCase, isLeadCase } from '@common/cams/cases';
 import { consolidationTypeMap } from '@/lib/utils/labels';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import AssignAttorneyModal from '@/staff-assignment/modal/AssignAttorneyModal';
@@ -306,10 +306,10 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
               <div className="consolidation case-card">
                 <h4>{consolidationTypeMap.get(caseDetail.consolidation[0].consolidationType)}</h4>
                 <div>
-                  {caseDetail.consolidation[0].documentType === 'CONSOLIDATION_FROM' && (
+                  {isLeadCase(caseDetail) && (
                     <span className="case-detail-item-name">Lead Case: (this case)</span>
                   )}
-                  {caseDetail.consolidation[0].documentType === 'CONSOLIDATION_TO' && (
+                  {isChildCase(caseDetail) && (
                     <>
                       <span className="case-detail-item-name">Lead Case:</span>
                       <CaseNumber
@@ -323,7 +323,7 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
                     </>
                   )}
                 </div>
-                {caseDetail.consolidation[0].documentType === 'CONSOLIDATION_FROM' && (
+                {isLeadCase(caseDetail) && (
                   <div>
                     <span className="case-detail-consolidated-case-count">
                       Cases Consolidated: {caseDetail.consolidation.length + 1}
