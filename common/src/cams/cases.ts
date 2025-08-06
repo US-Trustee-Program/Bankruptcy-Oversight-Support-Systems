@@ -124,6 +124,14 @@ export function isCaseOpen<T extends ClosedDismissedReopened>(bCase: T) {
   return !isCaseClosed(bCase);
 }
 
+export function isLeadCase(bCase: CaseDetail) {
+  return bCase?.consolidation[0]?.documentType === 'CONSOLIDATION_FROM';
+}
+
+export function isChildCase(bCase: CaseDetail) {
+  return bCase?.consolidation[0]?.documentType === 'CONSOLIDATION_TO';
+}
+
 export function getCaseIdParts(caseId: string) {
   const parts = caseId.split('-');
   if (

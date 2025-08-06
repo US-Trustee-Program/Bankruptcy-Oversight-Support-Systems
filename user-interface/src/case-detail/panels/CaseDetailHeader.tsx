@@ -1,12 +1,12 @@
 import './CaseDetailHeader.scss';
 import { useEffect } from 'react';
 import useFixedPosition from '@/lib/hooks/UseFixedPosition';
-import { CaseDetail } from '@common/cams/cases';
+import { CaseDetail, isChildCase, isLeadCase } from '@common/cams/cases';
 import { copyCaseNumber, getCaseNumber } from '@/lib/utils/caseNumber';
 import CopyButton from '@/lib/components/cams/CopyButton';
 import useFeatureFlags, { VIEW_TRUSTEE_ON_CASE } from '@/lib/hooks/UseFeatureFlags';
 import Tag, { UswdsTagStyle } from '@/lib/components/uswds/Tag';
-import { GavelIcon } from '@/lib/components/cams/RawSvgIcon';
+import { GavelIcon, LeadCaseIcon, MemberCaseIcon } from '@/lib/components/cams/RawSvgIcon';
 
 export interface CaseDetailHeaderProps {
   isLoading: boolean;
@@ -14,7 +14,7 @@ export interface CaseDetailHeaderProps {
   caseDetail?: CaseDetail;
 }
 
-export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
+export default function CaseDetailHeader(props: Readonly<CaseDetailHeaderProps>) {
   const { isFixed, fix, loosen } = useFixedPosition();
   const courtInformation = `${props.caseDetail?.courtName} (${props.caseDetail?.courtDivisionName})`;
 
@@ -81,6 +81,8 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
               )}
               {!props.isLoading && props.caseDetail && (
                 <div className="display-flex flex-align-center">
+                  {isLeadCase(props.caseDetail) && <LeadCaseIcon />}
+                  {isChildCase(props.caseDetail) && <MemberCaseIcon />}
                   <h1
                     className="case-number text-no-wrap display-inline-block margin-right-1"
                     title="Case ID"
@@ -90,6 +92,7 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
                     {props.caseId}{' '}
                     <CopyButton
                       id="header-case-id"
+                      className="copy-button"
                       onClick={() => copyCaseNumber(props.caseId)}
                       title="Copy Case ID to clipboard"
                     />
