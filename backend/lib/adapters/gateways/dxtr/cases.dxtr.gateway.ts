@@ -739,7 +739,7 @@ export default class CasesDxtrGateway implements CasesInterface {
         PY_ADDRESS3 as address3,
         TRIM(CONCAT(
           PY_CITY,
-          ' ',
+          ', ',
           PY_STATE,
           ' ',
           PY_ZIP,
@@ -804,7 +804,7 @@ export default class CasesDxtrGateway implements CasesInterface {
         AT_ADDRESS3 as address3,
         TRIM(CONCAT(
           AT_CITY,
-          ' ',
+          ', ',
           AT_STATE,
           ' ',
           AT_ZIP,

@@ -21,7 +21,7 @@
   background-color: colors.$navy;
   border-bottom: 3px solid colors.$gold;
   width: 100%;
-  padding: 15px 50px;
+  padding: 10px 50px;
   position: relative;
 
   @include header-links;
@@ -48,17 +48,15 @@
       .usa-navbar {
         border-bottom: none;
         height: auto;
-        min-width: 125px;
 
         .cams-logo.usa-logo {
           flex: 0 0 auto;
           margin: 0px;
           .doj-logo {
             padding: 0;
-            height: 125px;
-            min-height: 125px;
-            width: 125px;
-            min-width: 125px;
+            height: 89px;
+            width: auto;
+            min-width: 89px;
           }
         }
       }
@@ -68,15 +66,20 @@
         flex-direction: column;
         justify-content: center;
         color: white;
-        padding: 0 30px;
-        min-height: 125px;
+        padding: 0 30px 0 0;
         margin-top: 0;
         margin-bottom: 0;
-        font-size: 2.5rem;
+
+        font-family: Source Serif Pro;
+        font-weight: 600;
+        font-style: SemiBold;
+        font-size: 1.5rem;
+        line-height: 100%;
+        letter-spacing: 0%;
 
         .sub-title {
           display: block;
-          font-size: 1.5rem;
+          font-size: 1.25rem;
         }
       }
     }
@@ -108,6 +111,8 @@
           background-color: colors.$gold;
         }
         ul.usa-nav__primary {
+          margin-block-start: 0;
+          margin-block-end: 0;
           list-style-type: none;
           li {
             a {
@@ -163,7 +168,58 @@
   }
 }
 
-@media screen and (min-width: 1024px) {
+@media screen and (max-width: 1400px) {
+  .cams-header.usa-header--basic {
+    .usa-nav-container {
+      .cams-logo-and-title {
+        .site-title.wide-screen {
+          display: none;
+        }
+        .site-title.small-screen {
+          display: flex;
+        }
+      }
+    }
+  }
+}
+
+@media (min-width: 1400px) {
+  .cams-header.usa-header--basic {
+    .usa-nav-container {
+      .cams-logo-and-title {
+        .site-title.wide-screen {
+          display: flex;
+        }
+        .site-title.small-screen {
+          display: none;
+        }
+      }
+    }
+  }
+}
+
+@media (min-width: 64em) and (max-width: 1150px) {
+  .cams-header.usa-header--basic {
+    .usa-nav-container {
+      display: block;
+    }
+    .usa-navbar {
+      position: relative;
+      width: auto;
+    }
+  }
+}
+
+@media screen and (min-width: 1150px) {
+  .cams-header.usa-header--basic {
+    .usa-nav-container {
+      display: flex;
+    }
+    .usa-navbar {
+      width: auto;
+    }
+  }
+
   .cams-header {
     .usa-nav-container {
       display: flex;
@@ -174,7 +230,6 @@
         .usa-navbar {
           display: flex;
           flex-flow: row;
-          width: 120px;
         }
       }
     }
@@ -182,12 +237,14 @@
 }
 
 /* below 1024px width, switch to vertically layered view */
-@media screen and (max-width: 63.99em) {
+@media screen and (max-width: 1149px) {
   .cams-header {
     padding: 15px 15px 15px 50px;
 
     .usa-nav-container {
       .cams-main-navigation {
+        padding: 0;
+
         .cams-nav-bar, .cams-user-nav {
           display: flex;
           position: relative;
@@ -202,12 +259,15 @@
           bottom: auto;
           left: auto;
 
+          padding: 0 16px 0 0;
+
           background: transparent;
           border-right: none;
           z-index: auto;
 
           ul.usa-nav__primary {
             display: inline-block;
+            padding-left: 0;
 
             li.usa-nav__primary-item {
               display: inline-block;
@@ -238,36 +298,6 @@
         .cams-user-nav {
           justify-content: flex-end;
           padding-right: 0;
-        }
-      }
-    }
-  }
-}
-
-@media screen and (max-width: 73.9em) {
-  .cams-header.usa-header--basic {
-    .usa-nav-container {
-      .cams-logo-and-title {
-        .site-title.wide-screen {
-          display: none;
-        }
-        .site-title.small-screen {
-          display: flex;
-        }
-      }
-    }
-  }
-}
-
-@media (min-width: 74em) {
-  .cams-header.usa-header--basic {
-    .usa-nav-container {
-      .cams-logo-and-title {
-        .site-title.wide-screen {
-          display: flex;
-        }
-        .site-title.small-screen {
-          display: none;
         }
       }
     }
