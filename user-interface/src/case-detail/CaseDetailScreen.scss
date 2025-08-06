@@ -26,7 +26,6 @@
   .case-detail-container {
     display: flex;
     column-gap: 5rem;
-    justify-content: space-between;
     flex-wrap: wrap;
   }
 
@@ -37,6 +36,7 @@
       display: flex;
       flex-direction: column;
       row-gap: 0.5rem;
+      min-width: 18rem;
 
       li.transfer {
         margin-bottom: 1rem;

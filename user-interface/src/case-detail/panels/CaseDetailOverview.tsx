@@ -56,7 +56,7 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
   return (
     <>
       <div className="grid-col-12 tablet:grid-col-10 desktop:grid-col-8 case-detail-container">
-        <span className="case-card-list">
+        <div className="case-card-list">
           <div className="date-information case-card">
             <h3>Dates</h3>
             <div className="date-list">
@@ -158,8 +158,8 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
               </div>
             )}
           </div>
-        </span>
-        <span className="case-card-list">
+        </div>
+        <div className="case-card-list">
           <div className="debtor-information case-card">
             <h3>Debtor</h3>
             <div data-testid="case-detail-debtor-name" aria-label="debtor name">
@@ -397,7 +397,7 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
               </ul>
             </>
           )}
-        </span>
+        </div>
       </div>
       <AssignAttorneyModal
         ref={assignmentModalRef}
