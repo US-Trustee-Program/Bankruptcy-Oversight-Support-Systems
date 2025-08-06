@@ -21,6 +21,7 @@ export function LeadCaseIcon() {
   return (
     <svg
       className="raw-svg-icon lead-case-icon"
+      data-testid="lead-case-icon"
       width="22"
       height="28"
       viewBox="0 0 22 28"
@@ -37,6 +38,7 @@ export function MemberCaseIcon() {
   return (
     <svg
       className="raw-svg-icon member-case-icon"
+      data-testid="member-case-icon"
       width="22"
       height="28"
       viewBox="0 0 22 28"

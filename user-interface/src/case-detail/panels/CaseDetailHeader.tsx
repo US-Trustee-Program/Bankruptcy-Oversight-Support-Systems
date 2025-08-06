@@ -110,7 +110,12 @@ export default function CaseDetailHeader(props: Readonly<CaseDetailHeaderProps>)
                       {judgeInformation}
                     </Tag>
                   )}
-                  <Tag uswdsStyle={UswdsTagStyle.Cool} title="Case Chapter" id="case-chapter">
+                  <Tag
+                    // className="text-ink"
+                    uswdsStyle={UswdsTagStyle.Warm}
+                    title="Case Chapter"
+                    id="case-chapter"
+                  >
                     {chapterInformation}
                   </Tag>
                 </div>
