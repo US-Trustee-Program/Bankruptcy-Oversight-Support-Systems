@@ -6,6 +6,7 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import { ResourceActions } from '@common/cams/actions';
 import { CaseDetail } from '@common/cams/cases';
 import * as caseNumber from '@/lib/utils/caseNumber';
+import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 
 function basicRender(caseDetail: ResourceActions<CaseDetail>, isLoading: boolean) {
   render(
@@ -15,8 +16,23 @@ function basicRender(caseDetail: ResourceActions<CaseDetail>, isLoading: boolean
   );
 }
 
+const testCaseDetail = MockData.getCaseDetail({
+  override: {
+    petitionLabel: 'Voluntary',
+  },
+});
+
 describe('Case Detail Header tests', () => {
-  const testCaseDetail = MockData.getCaseDetail();
+  beforeEach(() => {
+    const mockFeatureFlags = {
+      [FeatureFlagHook.VIEW_TRUSTEE_ON_CASE]: false,
+    };
+    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
   test('should render loading info when isLoading is true', () => {
     basicRender(testCaseDetail, true);
@@ -40,7 +56,7 @@ describe('Case Detail Header tests', () => {
     expect(isLoadingH2).toContainHTML(testCaseDetail.caseTitle);
     expect(isFinishedH2).toBeInTheDocument();
     expect(caseChapter.innerHTML).toEqual(
-      `${testCaseDetail.petitionLabel} Chapter&nbsp;${testCaseDetail.chapter}`,
+      `${testCaseDetail.petitionLabel}&nbsp;Chapter&nbsp;${testCaseDetail.chapter}`,
     );
   });
 
@@ -122,5 +138,99 @@ describe('Case Detail Header tests', () => {
 
       expect(copySpy).toHaveBeenCalledWith(testCaseDetail.caseId);
     });
+  });
+});
+
+describe('feature flag true', () => {
+  beforeEach(() => {
+    const mockFeatureFlags = {
+      [FeatureFlagHook.VIEW_TRUSTEE_ON_CASE]: true,
+    };
+    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
+  });
+
+  test('should render properly when true', () => {
+    basicRender(testCaseDetail, false);
+
+    const isLoadingH1 = screen.getByTestId('case-detail-heading');
+    const isLoadingH2 = screen.getByTestId('case-detail-heading-title');
+    const isFinishedH2 = screen.getByTestId('h2-with-case-info');
+    const caseChapter = screen.getByTestId('tag-case-chapter');
+
+    expect(isLoadingH1).toHaveClass('case-number');
+    expect(isLoadingH1).toHaveTextContent(testCaseDetail.caseId);
+    expect(screen.getByTitle('Copy Case ID to clipboard')).toBeInTheDocument();
+    expect(isLoadingH2).toContainHTML(testCaseDetail.caseTitle);
+    expect(isFinishedH2).toBeInTheDocument();
+    expect(caseChapter.innerHTML).toEqual(
+      `${testCaseDetail.petitionLabel}&nbsp;Chapter&nbsp;${testCaseDetail.chapter}`,
+    );
+  });
+
+  test('should render lead case icon when case is lead case', () => {
+    const leadCaseDetail = MockData.getCaseDetail({
+      override: {
+        petitionLabel: 'Voluntary',
+        consolidation: [
+          MockData.getConsolidationReference({ override: { documentType: 'CONSOLIDATION_FROM' } }),
+        ],
+      },
+    });
+
+    basicRender(leadCaseDetail, false);
+
+    const leadIcon = screen.getByTestId('lead-case-icon');
+    expect(leadIcon).toBeInTheDocument();
+  });
+
+  test('should render member case icon when case is member case', () => {
+    const childCaseDetail = MockData.getCaseDetail({
+      override: {
+        petitionLabel: 'Voluntary',
+        consolidation: [
+          MockData.getConsolidationReference({ override: { documentType: 'CONSOLIDATION_TO' } }),
+        ],
+      },
+    });
+
+    basicRender(childCaseDetail, false);
+
+    const childIcon = screen.getByTestId('member-case-icon');
+    expect(childIcon).toBeInTheDocument();
+  });
+
+  test('should render loading info when isLoading is true and VIEW_TRUSTEE_ON_CASE is enabled', () => {
+    basicRender(testCaseDetail, true);
+
+    const isLoadingH1 = screen.getByTestId('case-detail-heading');
+    const isLoadingH2 = screen.getByTestId('loading-h2');
+
+    expect(isLoadingH1).toContainHTML('Loading Case Details...');
+    expect(isLoadingH2).toBeInTheDocument();
+  });
+});
+
+describe('feature flag false', () => {
+  beforeEach(() => {
+    const mockFeatureFlags = {
+      [FeatureFlagHook.VIEW_TRUSTEE_ON_CASE]: false,
+    };
+    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
+  });
+
+  test('should render properly with false', () => {
+    basicRender(testCaseDetail, false);
+
+    const isLoadingH1 = screen.getByTestId('case-detail-heading');
+    const isLoadingH2 = screen.getByTestId('case-detail-heading-title');
+    const isFinishedH2 = screen.getByTestId('h2-with-case-info');
+    const caseChapter = screen.getByTestId('case-chapter');
+
+    expect(isLoadingH1).toContainHTML('Case Detail');
+    expect(isLoadingH2).toContainHTML(testCaseDetail.caseTitle);
+    expect(isFinishedH2).toBeInTheDocument();
+    expect(caseChapter.innerHTML).toEqual(
+      `${testCaseDetail.petitionLabel}&nbsp;Chapter&nbsp;${testCaseDetail.chapter}`,
+    );
   });
 });

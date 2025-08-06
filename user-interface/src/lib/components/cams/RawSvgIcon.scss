@@ -1,0 +1,20 @@
+@use 'styles/abstracts/colors';
+
+.raw-svg-icon {
+  &.lead-case-icon path {
+    fill: white;
+  }
+
+  &.lead-case-icon path:first-child {
+    fill: colors.$primary;
+  }
+
+
+  &.member-case-icon path {
+    fill: white;
+  }
+
+  &.member-case-icon path:first-child {
+    fill: colors.$primary;
+  }
+}

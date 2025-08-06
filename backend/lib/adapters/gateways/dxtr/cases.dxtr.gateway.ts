@@ -40,6 +40,7 @@ export default class CasesDxtrGateway implements CasesInterface {
   async getCaseDetail(applicationContext: ApplicationContext, caseId: string): Promise<CaseDetail> {
     const caseSummary = await this.getCaseSummary(applicationContext, caseId);
     const bCase: CaseDetail = {
+      consolidation: [],
       ...caseSummary,
     };
 
