@@ -208,22 +208,6 @@ describe('feature flag true', () => {
     expect(isLoadingH1).toContainHTML('Loading Case Details...');
     expect(isLoadingH2).toBeInTheDocument();
   });
-
-  // test('should render case detail info when isLoading is false and VIEW_TRUSTEE_ON_CASE is enabled', () => {
-  //   basicRender(testCaseDetail, false);
-
-  //   const isLoadingH1 = screen.getByTestId('case-detail-heading');
-  //   const isLoadingH2 = screen.getByTestId('case-detail-heading-title');
-  //   const isFinishedH2 = screen.getByTestId('h2-with-case-info');
-  //   const caseChapter = screen.getByTestId('tag-case-chapter');
-
-  //   expect(isLoadingH1).toContainHTML(testCaseDetail.caseId);
-  //   expect(isLoadingH2).toContainHTML(testCaseDetail.caseTitle);
-  //   expect(isFinishedH2).toBeInTheDocument();
-  //   expect(caseChapter.innerHTML).toEqual(
-  //     `${testCaseDetail.petitionLabel}&nbsp;Chapter&nbsp;${testCaseDetail.chapter}`,
-  //   );
-  // });
 });
 
 describe('feature flag false', () => {
