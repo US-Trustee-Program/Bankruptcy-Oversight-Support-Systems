@@ -43,7 +43,7 @@ export type CaseDetail = CaseSummary & {
   reopenedDate?: string;
   transferDate?: string;
   transfers?: Array<TransferFrom | TransferTo>;
-  consolidation?: Array<ConsolidationTo | ConsolidationFrom>;
+  consolidation: Array<ConsolidationTo | ConsolidationFrom>;
   debtorAttorney?: DebtorAttorney;
   judgeName?: string;
   trustee?: Trustee;
@@ -125,11 +125,11 @@ export function isCaseOpen<T extends ClosedDismissedReopened>(bCase: T) {
 }
 
 export function isLeadCase(bCase: CaseDetail) {
-  return bCase?.consolidation[0]?.documentType === 'CONSOLIDATION_FROM';
+  return bCase.consolidation[0]?.documentType === 'CONSOLIDATION_FROM';
 }
 
 export function isChildCase(bCase: CaseDetail) {
-  return bCase?.consolidation[0]?.documentType === 'CONSOLIDATION_TO';
+  return bCase.consolidation[0]?.documentType === 'CONSOLIDATION_TO';
 }
 
 export function getCaseIdParts(caseId: string) {
