@@ -45,21 +45,25 @@ body {
     Use this class anywhere you need screen readers to get more context, such as with aria-describedby sections.
   */
   .screen-reader-only {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0 0 0 0);
-      white-space: nowrap;
-      border: 0;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
   }
 
   .cams-content {
     flex: 1;
     padding: 0 0 50px 0;
+    margin: 0 auto;
+    width: 83.3333333333333%; // 10/12 * 100 to stay consistent with previous 1 + 10 + 1 layout
+    max-width: 82rem;
 
-    h1, h2 {
+    h1,
+    h2 {
       text-align: left;
     }
 
@@ -121,7 +125,7 @@ body {
     color: #61dafb;
   }
 
-  #assign-attorney-modal-overlay.usa-modal-overlay{
+  #assign-attorney-modal-overlay.usa-modal-overlay {
     overflow-y: scroll;
   }
 }
@@ -139,7 +143,10 @@ body {
       table {
         display: block;
 
-        thead, tbody, th, td,
+        thead,
+        tbody,
+        th,
+        td,
         tr {
           display: block;
         }
@@ -172,7 +179,6 @@ body {
           }
         }
       }
-
     }
   }
 }
