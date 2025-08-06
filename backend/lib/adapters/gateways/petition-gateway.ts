@@ -19,9 +19,7 @@ export interface PetitionInfo {
 export function getPetitionInfo(petitionCode: string | null): PetitionInfo {
   return {
     petitionCode: petitionCode ?? '',
-    petitionLabel: petitionLabelMap.has(petitionCode)
-      ? petitionLabelMap.get(petitionCode)
-      : 'Petition Not Available',
+    petitionLabel: petitionLabelMap.has(petitionCode) ? petitionLabelMap.get(petitionCode) : '',
     isVoluntary: voluntaryCodes.includes(petitionCode),
     isTransfer: transferCodes.includes(petitionCode),
   };

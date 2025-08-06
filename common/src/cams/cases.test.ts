@@ -1,4 +1,13 @@
-import { DxtrCase, getCaseIdParts, isCaseClosed, isCaseOpen } from './cases';
+import {
+  CaseDetail,
+  DxtrCase,
+  getCaseIdParts,
+  isCaseClosed,
+  isCaseOpen,
+  isChildCase,
+  isLeadCase,
+} from './cases';
+import MockData from './test-utilities/mock-data';
 
 describe('cases common functions tests', () => {
   test('should return true for re-closed case', () => {
@@ -42,13 +51,42 @@ describe('cases common functions tests', () => {
         expect(() => getCaseIdParts(caseId)).toThrow(`Invalid case ID: ${caseId}`);
       },
     );
+
+    const consolidationCases = [
+      [
+        'is lead',
+        { consolidation: [{ documentType: 'CONSOLIDATION_FROM' }] } as Partial<CaseDetail>,
+        true,
+        false,
+      ],
+      [
+        'is member',
+        { consolidation: [{ documentType: 'CONSOLIDATION_TO' }] } as Partial<CaseDetail>,
+        false,
+        true,
+      ],
+      ['is not consolidated', { consolidation: [] } as Partial<CaseDetail>, false, false],
+    ];
+    test.each(consolidationCases)(
+      'should return correctly for isLeadCase and isChildCase when case %s',
+      (
+        _caseName: string,
+        caseDetail: Partial<CaseDetail>,
+        leadResult: boolean,
+        childResult: boolean,
+      ) => {
+        const bCase = MockData.getCaseDetail({ override: caseDetail });
+        expect(isLeadCase(bCase)).toBe(leadResult);
+        expect(isChildCase(bCase)).toBe(childResult);
+      },
+    );
   });
 
   describe('DxtrCase type', () => {
     test('should validate DxtrCase structure', () => {
       // Create a valid DxtrCase object
       const dxtrCase: DxtrCase = {
-        // CaseSummary properties (which includes CaseBasics & FlatOfficeDetail)
+        // CaseSummary properties (includes CaseBasics & FlatOfficeDetail)
         dxtrId: '12345',
         caseId: 'ABC-12-34567',
         chapter: '7',

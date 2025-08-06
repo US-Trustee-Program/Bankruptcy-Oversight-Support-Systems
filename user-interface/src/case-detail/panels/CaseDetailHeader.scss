@@ -3,6 +3,19 @@
   top: auto;
   background-color: transparent;
 
+  .usa-tag {
+    margin-right: 0.5rem;
+  }
+
+  .copy-button {
+    vertical-align: text-bottom;
+    margin-bottom: 0.25rem;
+    svg {
+      width: 1.5rem;
+      height: 1.75rem;
+    }
+  }
+
   .back-button {
     display: inline-block;
     padding-top: 2rem;
@@ -12,31 +25,37 @@
       vertical-align: text-bottom;
     }
   }
-}
 
-.case-detail-header.fixed {
-  position: fixed;
-  width: 100%;
-  margin: 0;
-  top: 0;
-  background-color: #fefefe;
-  border: 1px solid #f0f0f0;
-  z-index: 20;
-  box-shadow: 0px 1px 5px #ddd;
-  padding-bottom: 1rem;
-
-  a.back-button {
-    padding-top: 1rem;
-    padding-bottom: 1rem;
+  .raw-svg-icon {
+    width: 1.25rem;
+    height: 1.5rem;
+    margin-right: 0.5rem;
   }
-  h3 {
+
+  svg {
+    vertical-align: -0.2rem;
+  }
+
+  &.fixed {
+    position: fixed;
+    width: 100%;
     margin: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-}
+    top: 0;
+    background-color: #fefefe;
+    border: 1px solid #f0f0f0;
+    z-index: 20;
+    box-shadow: 0px 1px 5px #ddd;
+    padding-bottom: 1rem;
 
-.spacer-fixer {
-  margin-top: 125px;
+    a.back-button {
+      padding-top: 1rem;
+      padding-bottom: 1rem;
+    }
+    h3 {
+      margin: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
 }
