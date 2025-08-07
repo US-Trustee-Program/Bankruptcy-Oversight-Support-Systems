@@ -94,7 +94,7 @@ export const Header = () => {
             </div>
             <div className="site-title wide-screen">
               <span className="text-no-wrap">U.S. Trustee Program</span>
-              <span className="sub-title text-no-wrap">CAse Management System (CAMS)</span>
+              <span className="sub-title text-no-wrap">Case Management System (CAMS)</span>
             </div>
             <div className="site-title small-screen">
               <span className="text-no-wrap" title="U.S. Trustee Program, Case Management System">

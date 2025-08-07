@@ -52,6 +52,7 @@
         .cams-logo.usa-logo {
           flex: 0 0 auto;
           margin: 0px;
+          line-height: 0;
           .doj-logo {
             padding: 0;
             height: 89px;
@@ -71,15 +72,14 @@
         margin-bottom: 0;
 
         font-family: Source Serif Pro;
-        font-weight: 600;
-        font-style: SemiBold;
+        font-weight: 700;
         font-size: 1.5rem;
         line-height: 100%;
-        letter-spacing: 0%;
 
         .sub-title {
           display: block;
           font-size: 1.25rem;
+          font-weight: 600;
         }
       }
     }
@@ -245,7 +245,8 @@
       .cams-main-navigation {
         padding: 0;
 
-        .cams-nav-bar, .cams-user-nav {
+        .cams-nav-bar,
+        .cams-user-nav {
           display: flex;
           position: relative;
           flex-direction: row;
@@ -289,7 +290,7 @@
               bottom: -0.25rem;
 
               border-radius: 0;
-              content: "";
+              content: '';
               display: block;
               position: absolute;
             }
