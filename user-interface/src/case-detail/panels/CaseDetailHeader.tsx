@@ -25,8 +25,7 @@ export default function CaseDetailHeader(props: Readonly<CaseDetailHeaderProps>)
   if (props.caseDetail?.chapter) {
     chapterInformationParts.push('Chapter', props.caseDetail?.chapter);
   }
-  // u00A0 is a non-breaking space. Using &nbsp; in the string literal does not display correctly.
-  const chapterInformation = chapterInformationParts.join('\u00A0');
+  const chapterInformation = chapterInformationParts.join(' ');
 
   const judgeInformation = props.caseDetail?.judgeName;
   const appEl = document.querySelector('.App');

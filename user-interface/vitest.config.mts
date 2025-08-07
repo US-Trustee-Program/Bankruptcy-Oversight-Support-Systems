@@ -42,6 +42,8 @@ export default defineConfig({
         ...coverageConfigDefaults.exclude,
         './src/initialize.ts',
         './envToConfig.js',
+        './playwright.config.ts',
+        './playwright-report/',
       ],
       thresholds: {
         branches: 90,
