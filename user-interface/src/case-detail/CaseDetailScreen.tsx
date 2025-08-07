@@ -535,8 +535,9 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                   caseId={caseId}
                   initiallySelectedNavLink={navState}
                   showAssociatedCasesList={
-                    caseBasicInfo.consolidation !== undefined &&
-                    caseBasicInfo.consolidation.length > 0
+                    (caseBasicInfo.consolidation !== undefined &&
+                      caseBasicInfo.consolidation.length > 0) ||
+                    (caseBasicInfo.transfers !== undefined && caseBasicInfo.transfers.length > 0)
                   }
                 />
                 {hasDocketEntries && navState === NavState.COURT_DOCKET && (
@@ -776,6 +777,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                     path="associated-cases"
                     element={
                       <CaseDetailAssociatedCases
+                        caseDetail={caseBasicInfo}
                         associatedCases={associatedCases}
                         isAssociatedCasesLoading={isAssociatedCasesLoading}
                       />
