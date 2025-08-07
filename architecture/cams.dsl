@@ -7,7 +7,7 @@ workspace {
         dataQualityAnalyst = person "Data Quality Analyst" "Verify case events"
 
         # System
-        cams = softwareSystem "CAMS" "CAse Management System" {
+        cams = softwareSystem "CAMS" "Case Management System" {
             okta = container "Okta" "SSO Provider for CAMS" {
                 oktaLoginScreen = component "Okta Login" "SSO for CAMS"
                 oktaRefreshToken = component "Okta Refresh token for the API"
