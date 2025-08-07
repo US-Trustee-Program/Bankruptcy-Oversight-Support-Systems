@@ -1,9 +1,8 @@
 @use '../styles/theme';
 
 .case-detail {
-  h3 {
-    margin: 0;
-    line-height: 1.5;
+  h1 {
+    margin: 1rem 0.5rem 1rem 0;
   }
 
   h2 {
@@ -11,8 +10,9 @@
     margin-bottom: 1rem;
   }
 
-  h1 {
-    margin: 1rem 0.5rem 1rem 0;
+  h3 {
+    margin: 0;
+    line-height: 1.5;
   }
 
   h4 {
