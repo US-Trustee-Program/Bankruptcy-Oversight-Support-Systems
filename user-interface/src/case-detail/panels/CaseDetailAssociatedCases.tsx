@@ -1,22 +1,37 @@
-import { Consolidation, EventCaseReference } from '@common/cams/events';
+import { Consolidation, EventCaseReference, Transfer } from '@common/cams/events';
 import LoadingIndicator from '@/lib/components/LoadingIndicator';
 import { CaseNumber } from '@/lib/components/CaseNumber';
-import { formatDate } from '@/lib/utils/datetime';
+import { formatDate, sortByDateReverse } from '@/lib/utils/datetime';
 import { consolidationTypeMap } from '@/lib/utils/labels';
 import './CaseDetailAssociatedCases.scss';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { CaseDetail } from '@common/cams/cases';
+import useFeatureFlags, { VIEW_TRUSTEE_ON_CASE } from '@/lib/hooks/UseFeatureFlags';
 
 export interface CaseDetailAssociatedCasesProps {
+  caseDetail: CaseDetail;
   associatedCases: EventCaseReference[];
   isAssociatedCasesLoading: boolean;
 }
 
 export default function CaseDetailAssociatedCases(props: CaseDetailAssociatedCasesProps) {
-  const { associatedCases, isAssociatedCasesLoading } = props;
+  const { caseDetail, associatedCases, isAssociatedCasesLoading } = props;
+  const featureFlags = useFeatureFlags();
   const consolidation = associatedCases.filter(
     (c) => c.documentType === 'CONSOLIDATION_FROM' || c.documentType === 'CONSOLIDATION_TO',
   ) as Consolidation[];
+
+  function sortTransfers(a: Transfer, b: Transfer) {
+    return sortByDateReverse(a.orderDate, b.orderDate);
+  }
+
+  const isAmbiguousTransferIn =
+    !!caseDetail.petitionCode && ['TI', 'TV'].includes(caseDetail.petitionCode);
+  const isAmbiguousTransferOut = !!caseDetail.transferDate;
+  const isAmbiguousTransfer =
+    caseDetail.transfers?.length === 0 && (isAmbiguousTransferIn || isAmbiguousTransferOut);
+  const isVerifiedTransfer = !!caseDetail.transfers?.length && caseDetail.transfers.length > 0;
 
   return (
     <div className="associated-cases">
@@ -29,10 +44,73 @@ export default function CaseDetailAssociatedCases(props: CaseDetailAssociatedCas
           message="We are unable to retrieve associated cases at this time. Please try again later. If the problem persists, please submit a feedback request describing the issue."
         ></Alert>
       )}
+      {featureFlags[VIEW_TRUSTEE_ON_CASE] && (
+        <>
+          {isAmbiguousTransfer && (
+            <>
+              <h3>Transferred Case</h3>
+              <p data-testid="ambiguous-transfer-text">
+                This case was transferred {isAmbiguousTransferOut ? 'to' : 'from'} another court.
+                Review the docket for further details.
+              </p>
+            </>
+          )}
+          {isVerifiedTransfer && (
+            <div className="case-card-list">
+              <ul className="usa-list usa-list--unstyled transfers case-card">
+                {caseDetail.transfers
+                  ?.sort(sortTransfers)
+                  .map((transfer: Transfer, idx: number) => {
+                    return (
+                      <li key={idx} className="transfer">
+                        <div className="case-card">
+                          <h3 data-testid={`verified-transfer-header_${idx}`}>
+                            Transferred {transfer.documentType === 'TRANSFER_FROM' ? 'from' : 'to'}
+                          </h3>
+                          <div>
+                            <span className="case-detail-item-name">Case Number:</span>
+                            <CaseNumber
+                              caseId={transfer.otherCase.caseId}
+                              className="usa-link case-detail-item-value"
+                              data-testid={`case-detail-transfer-link-${idx}`}
+                            />
+                          </div>
+                          <div className="transfer-court">
+                            <span className="case-detail-item-name">
+                              {transfer.documentType === 'TRANSFER_FROM' ? 'Previous' : 'New'}{' '}
+                              Court:
+                            </span>
+                            <span
+                              className="case-detail-item-value"
+                              data-testid={`case-detail-transfer-court-${idx}`}
+                            >
+                              {transfer.otherCase.courtName} -{' '}
+                              {transfer.otherCase.courtDivisionName}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="case-detail-item-name">Order Filed:</span>
+                            <span
+                              className="case-detail-item-value"
+                              data-testid={`case-detail-transfer-order-${idx}`}
+                            >
+                              {formatDate(transfer.orderDate)}
+                            </span>
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
+              </ul>
+            </div>
+          )}
+        </>
+      )}
       {!isAssociatedCasesLoading && consolidation.length > 0 && (
         <>
-          <h3>Consolidated cases ({consolidation.length})</h3>
-          <h4>{consolidationTypeMap.get(consolidation[0].consolidationType)}</h4>
+          <h3>
+            {consolidationTypeMap.get(consolidation[0].consolidationType)} ({consolidation.length})
+          </h3>
           <div className="grid-row grid-gap-lg">
             <div className="grid-col-12">
               <table

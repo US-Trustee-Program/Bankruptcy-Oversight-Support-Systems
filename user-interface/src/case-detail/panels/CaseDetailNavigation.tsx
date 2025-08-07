@@ -106,17 +106,6 @@ export default function CaseDetailNavigation({
               Case Notes
             </NavLink>
           </li>
-          <li className="usa-sidenav__item">
-            <NavLink
-              to={`/case-detail/${caseId}/audit-history`}
-              data-testid="audit-history-link"
-              className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.AUDIT_HISTORY)}
-              onClick={() => setActiveNav(NavState.AUDIT_HISTORY)}
-              title="view case audit history"
-            >
-              Change History
-            </NavLink>
-          </li>
           {showAssociatedCasesList && (
             <li className="usa-sidenav__item">
               <NavLink
@@ -130,6 +119,17 @@ export default function CaseDetailNavigation({
               </NavLink>
             </li>
           )}
+          <li className="usa-sidenav__item">
+            <NavLink
+              to={`/case-detail/${caseId}/audit-history`}
+              data-testid="audit-history-link"
+              className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.AUDIT_HISTORY)}
+              onClick={() => setActiveNav(NavState.AUDIT_HISTORY)}
+              title="view case audit history"
+            >
+              Change History
+            </NavLink>
+          </li>
         </ul>
       </nav>
     </>

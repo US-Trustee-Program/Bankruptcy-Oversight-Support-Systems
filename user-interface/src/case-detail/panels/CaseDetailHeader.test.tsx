@@ -56,7 +56,7 @@ describe('Case Detail Header tests', () => {
     expect(isLoadingH2).toContainHTML(testCaseDetail.caseTitle);
     expect(isFinishedH2).toBeInTheDocument();
     expect(caseChapter.innerHTML).toEqual(
-      `${testCaseDetail.petitionLabel}&nbsp;Chapter&nbsp;${testCaseDetail.chapter}`,
+      `${testCaseDetail.petitionLabel} Chapter ${testCaseDetail.chapter}`,
     );
   });
 
@@ -163,7 +163,7 @@ describe('feature flag true', () => {
     expect(isLoadingH2).toContainHTML(testCaseDetail.caseTitle);
     expect(isFinishedH2).toBeInTheDocument();
     expect(caseChapter.innerHTML).toEqual(
-      `${testCaseDetail.petitionLabel}&nbsp;Chapter&nbsp;${testCaseDetail.chapter}`,
+      `${testCaseDetail.petitionLabel} Chapter ${testCaseDetail.chapter}`,
     );
   });
 
@@ -230,7 +230,7 @@ describe('feature flag false', () => {
     expect(isLoadingH2).toContainHTML(testCaseDetail.caseTitle);
     expect(isFinishedH2).toBeInTheDocument();
     expect(caseChapter.innerHTML).toEqual(
-      `${testCaseDetail.petitionLabel}&nbsp;Chapter&nbsp;${testCaseDetail.chapter}`,
+      `${testCaseDetail.petitionLabel} Chapter ${testCaseDetail.chapter}`,
     );
   });
 });
