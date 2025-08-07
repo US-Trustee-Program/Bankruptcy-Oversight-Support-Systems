@@ -42,7 +42,7 @@ describe('Header', () => {
   test('should be rendered', async () => {
     renderWithoutProps();
     const mainTitle = await screen.findByText('U.S. Trustee Program');
-    const subTitle = await screen.findByText('CAse Management System (CAMS)');
+    const subTitle = await screen.findByText('Case Management System (CAMS)');
     const staffAssignmentMenu = await screen.findByTestId('header-staff-assignment-link');
 
     expect(mainTitle).toBeInTheDocument();

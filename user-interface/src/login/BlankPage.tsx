@@ -21,7 +21,7 @@ export function BlankPage(props: BlankPageProps) {
             </div>
             <div className="site-title">
               <span className="text-no-wrap">U.S. Trustee Program</span>
-              <span className="sub-title text-no-wrap">CAse Management System (CAMS)</span>
+              <span className="sub-title text-no-wrap">Case Management System (CAMS)</span>
             </div>
           </div>
         </div>

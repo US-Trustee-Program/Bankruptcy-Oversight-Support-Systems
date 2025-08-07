@@ -8,6 +8,7 @@ export function GavelIcon() {
       fill="currentColor"
       width="1rem"
       height="1rem"
+      className="gavel-icon"
     >
       {/*!Font
         Awesome Free v7.0.0 by @fontawesome - https://fontawesome.com License -
