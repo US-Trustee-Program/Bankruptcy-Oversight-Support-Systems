@@ -7,7 +7,6 @@ import './CaseDetailAssociatedCases.scss';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { CaseDetail } from '@common/cams/cases';
-import useFeatureFlags, { VIEW_TRUSTEE_ON_CASE } from '@/lib/hooks/UseFeatureFlags';
 
 export interface CaseDetailAssociatedCasesProps {
   caseDetail: CaseDetail;
@@ -17,7 +16,6 @@ export interface CaseDetailAssociatedCasesProps {
 
 export default function CaseDetailAssociatedCases(props: CaseDetailAssociatedCasesProps) {
   const { caseDetail, associatedCases, isAssociatedCasesLoading } = props;
-  const featureFlags = useFeatureFlags();
   const consolidation = associatedCases.filter(
     (c) => c.documentType === 'CONSOLIDATION_FROM' || c.documentType === 'CONSOLIDATION_TO',
   ) as Consolidation[];
@@ -44,67 +42,59 @@ export default function CaseDetailAssociatedCases(props: CaseDetailAssociatedCas
           message="We are unable to retrieve associated cases at this time. Please try again later. If the problem persists, please submit a feedback request describing the issue."
         ></Alert>
       )}
-      {featureFlags[VIEW_TRUSTEE_ON_CASE] && (
+      {isAmbiguousTransfer && (
         <>
-          {isAmbiguousTransfer && (
-            <>
-              <h3>Transferred Case</h3>
-              <p data-testid="ambiguous-transfer-text">
-                This case was transferred {isAmbiguousTransferOut ? 'to' : 'from'} another court.
-                Review the docket for further details.
-              </p>
-            </>
-          )}
-          {isVerifiedTransfer && (
-            <div className="case-card-list">
-              <ul className="usa-list usa-list--unstyled transfers case-card">
-                {caseDetail.transfers
-                  ?.sort(sortTransfers)
-                  .map((transfer: Transfer, idx: number) => {
-                    return (
-                      <li key={idx} className="transfer">
-                        <div className="case-card">
-                          <h3 data-testid={`verified-transfer-header_${idx}`}>
-                            Transferred {transfer.documentType === 'TRANSFER_FROM' ? 'from' : 'to'}
-                          </h3>
-                          <div>
-                            <span className="case-detail-item-name">Case Number:</span>
-                            <CaseNumber
-                              caseId={transfer.otherCase.caseId}
-                              className="usa-link case-detail-item-value"
-                              data-testid={`case-detail-transfer-link-${idx}`}
-                            />
-                          </div>
-                          <div className="transfer-court">
-                            <span className="case-detail-item-name">
-                              {transfer.documentType === 'TRANSFER_FROM' ? 'Previous' : 'New'}{' '}
-                              Court:
-                            </span>
-                            <span
-                              className="case-detail-item-value"
-                              data-testid={`case-detail-transfer-court-${idx}`}
-                            >
-                              {transfer.otherCase.courtName} -{' '}
-                              {transfer.otherCase.courtDivisionName}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="case-detail-item-name">Order Filed:</span>
-                            <span
-                              className="case-detail-item-value"
-                              data-testid={`case-detail-transfer-order-${idx}`}
-                            >
-                              {formatDate(transfer.orderDate)}
-                            </span>
-                          </div>
-                        </div>
-                      </li>
-                    );
-                  })}
-              </ul>
-            </div>
-          )}
+          <h3>Transferred Case</h3>
+          <p data-testid="ambiguous-transfer-text">
+            This case was transferred {isAmbiguousTransferOut ? 'to' : 'from'} another court. Review
+            the docket for further details.
+          </p>
         </>
+      )}
+      {isVerifiedTransfer && (
+        <div className="case-card-list">
+          <ul className="usa-list usa-list--unstyled transfers case-card">
+            {caseDetail.transfers?.sort(sortTransfers).map((transfer: Transfer, idx: number) => {
+              return (
+                <li key={idx} className="transfer">
+                  <div className="case-card">
+                    <h3 data-testid={`verified-transfer-header_${idx}`}>
+                      Transferred {transfer.documentType === 'TRANSFER_FROM' ? 'from' : 'to'}
+                    </h3>
+                    <div>
+                      <span className="case-detail-item-name">Case Number:</span>
+                      <CaseNumber
+                        caseId={transfer.otherCase.caseId}
+                        className="usa-link case-detail-item-value"
+                        data-testid={`case-detail-transfer-link-${idx}`}
+                      />
+                    </div>
+                    <div className="transfer-court">
+                      <span className="case-detail-item-name">
+                        {transfer.documentType === 'TRANSFER_FROM' ? 'Previous' : 'New'} Court:
+                      </span>
+                      <span
+                        className="case-detail-item-value"
+                        data-testid={`case-detail-transfer-court-${idx}`}
+                      >
+                        {transfer.otherCase.courtName} - {transfer.otherCase.courtDivisionName}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="case-detail-item-name">Order Filed:</span>
+                      <span
+                        className="case-detail-item-value"
+                        data-testid={`case-detail-transfer-order-${idx}`}
+                      >
+                        {formatDate(transfer.orderDate)}
+                      </span>
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       )}
       {!isAssociatedCasesLoading && consolidation.length > 0 && (
         <>
