@@ -85,7 +85,7 @@ export default function CaseDetailHeader(props: Readonly<CaseDetailHeaderProps>)
                   <h1
                     className="case-number text-no-wrap display-inline-block margin-right-1"
                     title="Case ID"
-                    aria-label="Case ID"
+                    aria-label={`Case ID ${props.caseId}`}
                     data-testid="case-detail-heading"
                   >
                     {props.caseId}{' '}
@@ -122,28 +122,13 @@ export default function CaseDetailHeader(props: Readonly<CaseDetailHeaderProps>)
             </div>
           </div>
 
-          {props.isLoading && (
-            <div className="grid-row grid-gap-lg" data-testid="loading-h2">
-              <div className="grid-col-12">
-                <h2
-                  className="case-number text-no-wrap"
-                  title="Case ID"
-                  aria-label="Case ID"
-                  data-testid="case-detail-heading-title"
-                >
-                  {props.caseDetail?.caseTitle}
-                </h2>
-              </div>
-            </div>
-          )}
-
           {!props.isLoading && (
             <div className="grid-row grid-gap-lg" data-testid="h2-with-case-info">
               <div className="grid-col">
                 <h2
                   className="case-number text-no-wrap"
-                  title="Case ID"
-                  aria-label="Case ID"
+                  title="Case title"
+                  aria-label={`Case title ${props.caseDetail?.caseTitle}`}
                   data-testid="case-detail-heading-title"
                 >
                   {props.caseDetail?.caseTitle}
