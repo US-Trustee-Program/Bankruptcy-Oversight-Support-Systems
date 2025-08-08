@@ -1,7 +1,7 @@
 import { getCaseNumber } from '@/lib/utils/caseNumber';
-import { formatDate, sortByDateReverse } from '@/lib/utils/datetime';
+import { formatDate } from '@/lib/utils/datetime';
 import { CaseNumber } from '@/lib/components/CaseNumber';
-import { isJointAdministrationChildCase, Transfer } from '@common/cams/events';
+import { isJointAdministrationChildCase } from '@common/cams/events';
 import { CaseDetail, isChildCase, isLeadCase } from '@common/cams/cases';
 import { consolidationTypeMap } from '@/lib/utils/labels';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
@@ -36,22 +36,11 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
   const assignmentModalRef = useRef<AssignAttorneyModalRef>(null);
   const openModalButtonRef = useRef<OpenModalButtonRef>(null);
 
-  function sortTransfers(a: Transfer, b: Transfer) {
-    return sortByDateReverse(a.orderDate, b.orderDate);
-  }
-
   function handleCaseAssignment(props: AssignAttorneyModalCallbackProps) {
     onCaseAssignment(props);
     assignmentModalRef.current?.hide();
     openModalButtonRef.current?.focus();
   }
-
-  const isAmbiguousTransferIn =
-    !!caseDetail.petitionCode && ['TI', 'TV'].includes(caseDetail.petitionCode);
-  const isAmbiguousTransferOut = !!caseDetail.transferDate;
-  const isAmbiguousTransfer =
-    caseDetail.transfers?.length === 0 && (isAmbiguousTransferIn || isAmbiguousTransferOut);
-  const isVerifiedTransfer = !!caseDetail.transfers?.length && caseDetail.transfers.length > 0;
 
   return (
     <>
@@ -342,68 +331,6 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
                   </span>
                 </div>
               </div>
-            </>
-          )}
-          {!featureFlags[VIEW_TRUSTEE_ON_CASE] && (
-            <>
-              {isAmbiguousTransfer && (
-                <>
-                  <h3>Transferred Case</h3>
-                  <p data-testid="ambiguous-transfer-text">
-                    This case was transferred {isAmbiguousTransferOut ? 'to' : 'from'} another
-                    court. Review the docket for further details.
-                  </p>
-                </>
-              )}
-              {isVerifiedTransfer && (
-                <>
-                  <h3 data-testid="verified-transfer-header">Transferred Case</h3>
-                  <ul className="usa-list usa-list--unstyled transfers case-card">
-                    {caseDetail.transfers
-                      ?.sort(sortTransfers)
-                      .map((transfer: Transfer, idx: number) => {
-                        return (
-                          <li key={idx} className="transfer">
-                            <h4>
-                              Transferred{' '}
-                              {transfer.documentType === 'TRANSFER_FROM' ? 'from' : 'to'}:
-                            </h4>
-                            <div>
-                              <span className="case-detail-item-name">Case Number:</span>
-                              <CaseNumber
-                                caseId={transfer.otherCase.caseId}
-                                className="usa-link case-detail-item-value"
-                                data-testid={`case-detail-transfer-link-${idx}`}
-                              />
-                            </div>
-                            <div className="transfer-court">
-                              <span className="case-detail-item-name">
-                                {transfer.documentType === 'TRANSFER_FROM' ? 'Previous' : 'New'}{' '}
-                                Court:
-                              </span>
-                              <span
-                                className="case-detail-item-value"
-                                data-testid={`case-detail-transfer-court-${idx}`}
-                              >
-                                {transfer.otherCase.courtName} -{' '}
-                                {transfer.otherCase.courtDivisionName}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="case-detail-item-name">Order Filed:</span>
-                              <span
-                                className="case-detail-item-value"
-                                data-testid={`case-detail-transfer-order-${idx}`}
-                              >
-                                {formatDate(transfer.orderDate)}
-                              </span>
-                            </div>
-                          </li>
-                        );
-                      })}
-                  </ul>
-                </>
-              )}
             </>
           )}
         </div>
