@@ -83,10 +83,6 @@ const mockStore: AssignAttorneyModalStore = {
 const useCase = assignAttorneyModalUseCase(mockStore, mockControls);
 
 describe('assignAttorneyModalUseCase tests', () => {
-  test.skip('', async () => {
-    //
-  });
-
   describe('test handleFocus', () => {
     test('handleFocus should scroll input element into view if the input is above the visible screen', async () => {
       const mockInput = document.createElement('input');
