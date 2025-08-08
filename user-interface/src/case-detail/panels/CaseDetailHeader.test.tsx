@@ -38,10 +38,8 @@ describe('Case Detail Header tests', () => {
     basicRender(testCaseDetail, true);
 
     const isLoadingH1 = screen.getByTestId('case-detail-heading');
-    const isLoadingH2 = screen.getByTestId('loading-h2');
 
     expect(isLoadingH1).toContainHTML('Loading Case Details...');
-    expect(isLoadingH2).toBeInTheDocument();
   });
 
   test('should render case detail info when isLoading is false', () => {
@@ -198,16 +196,6 @@ describe('feature flag true', () => {
     const childIcon = screen.getByTestId('member-case-icon');
     expect(childIcon).toBeInTheDocument();
   });
-
-  test('should render loading info when isLoading is true and VIEW_TRUSTEE_ON_CASE is enabled', () => {
-    basicRender(testCaseDetail, true);
-
-    const isLoadingH1 = screen.getByTestId('case-detail-heading');
-    const isLoadingH2 = screen.getByTestId('loading-h2');
-
-    expect(isLoadingH1).toContainHTML('Loading Case Details...');
-    expect(isLoadingH2).toBeInTheDocument();
-  });
 });
 
 describe('feature flag false', () => {
@@ -216,6 +204,16 @@ describe('feature flag false', () => {
       [FeatureFlagHook.VIEW_TRUSTEE_ON_CASE]: false,
     };
     vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
+  });
+
+  test('should render loading info when isLoading is true and VIEW_TRUSTEE_ON_CASE is disabled', () => {
+    basicRender(testCaseDetail, true);
+
+    const isLoadingH1 = screen.getByTestId('case-detail-heading');
+    const isLoadingH2 = screen.getByTestId('loading-h2');
+
+    expect(isLoadingH1).toContainHTML('Loading Case Details...');
+    expect(isLoadingH2).toBeInTheDocument();
   });
 
   test('should render properly with false', () => {

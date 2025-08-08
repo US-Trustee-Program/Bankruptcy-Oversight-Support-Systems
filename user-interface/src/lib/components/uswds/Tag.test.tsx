@@ -14,7 +14,6 @@ describe('Tag', () => {
     expect(tag.tagName).toBe('SPAN');
     expect(tag).toHaveClass(TAG_BASE_CLASS);
     expect(tag).toHaveClass('usa-tag--big');
-    expect(tag).toHaveAttribute('tabIndex', '0');
   });
 
   test('should use custom id when provided', () => {
@@ -97,20 +96,6 @@ describe('Tag', () => {
     expect(tag).toHaveAttribute('title', 'Custom Title');
   });
 
-  test('should apply custom tabIndex when provided', () => {
-    render(<Tag tabIndex={-1}>Test Tag</Tag>);
-
-    const tag = screen.getByTestId('tag-test');
-    expect(tag).toHaveAttribute('tabIndex', '-1');
-  });
-
-  test('should apply tabIndex 0 by default when not provided', () => {
-    render(<Tag>Test Tag</Tag>);
-
-    const tag = screen.getByTestId('tag-test');
-    expect(tag).toHaveAttribute('tabIndex', '0');
-  });
-
   test('should pass through other HTML span props', () => {
     render(
       <Tag role="button" aria-label="Custom Label" data-custom="custom-value">
@@ -160,7 +145,6 @@ describe('Tag', () => {
         uswdsStyle={UswdsTagStyle.Primary}
         className="extra-custom-class another-class"
         title="Complex Tag"
-        tabIndex={0}
       >
         Complex Content
       </Tag>,
@@ -174,7 +158,6 @@ describe('Tag', () => {
     expect(tag).toHaveClass('extra-custom-class');
     expect(tag).toHaveClass('another-class');
     expect(tag).toHaveAttribute('title', 'Complex Tag');
-    expect(tag).toHaveAttribute('tabIndex', '0');
     expect(tag).toHaveTextContent('Complex Content');
   });
 

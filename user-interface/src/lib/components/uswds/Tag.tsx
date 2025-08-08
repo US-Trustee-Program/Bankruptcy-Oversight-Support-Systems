@@ -25,8 +25,6 @@ const Tag = (props: TagProps) => {
     classes.push(className);
   }
 
-  const tabIndex = props.tabIndex ?? 0;
-
   const tagId = id ?? `tag-id-${Math.floor(Math.random() * 10000)}`;
   const testId = id ?? 'test';
   return (
@@ -36,7 +34,6 @@ const Tag = (props: TagProps) => {
       className={classes.join(' ')}
       data-testid={`tag-${testId}`}
       title={title}
-      tabIndex={tabIndex}
     >
       {children}
     </span>

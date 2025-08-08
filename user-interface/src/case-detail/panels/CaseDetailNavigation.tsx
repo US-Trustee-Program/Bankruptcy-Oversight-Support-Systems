@@ -80,7 +80,7 @@ export default function CaseDetailNavigation({
                 title="view trustee and assigned staff details for the current case"
                 end
               >
-                Trustee & Assigned Staff
+                Assigned Staff & Trustee
               </NavLink>
             </li>
           )}
