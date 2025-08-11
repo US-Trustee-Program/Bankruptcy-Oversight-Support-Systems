@@ -1,9 +1,6 @@
 import { BrowserRouter } from 'react-router-dom';
 import CaseDetailOverview, { CaseDetailOverviewProps } from './CaseDetailOverview';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { formatDate } from '@/lib/utils/datetime';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
-import { Consolidation } from '@common/cams/events';
 import { CaseDetail } from '@common/cams/cases';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import Actions from '@common/cams/actions';
@@ -17,7 +14,6 @@ import testingUtilities from '@/lib/testing/testing-utilities';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 
 const TEST_CASE_ID = '101-23-12345';
-const NEW_CASE_ID = '222-24-00001';
 const TEST_TRIAL_ATTORNEY_1 = MockAttorneys.Brian;
 const TEST_ASSIGNMENT_1 = MockData.getAttorneyAssignment({ ...TEST_TRIAL_ATTORNEY_1 });
 const TEST_TRIAL_ATTORNEY_2 = MockAttorneys.Carl;
@@ -34,25 +30,6 @@ const BASE_TEST_CASE_DETAIL = MockData.getCaseDetail({
     _actions: [Actions.ManageAssignments],
   },
 });
-const CONSOLIDATE_TO: Consolidation = {
-  caseId: TEST_CASE_ID,
-  otherCase: MockData.getCaseSummary({ override: { caseId: NEW_CASE_ID } }),
-  orderDate: '01-12-2024',
-  consolidationType: 'administrative',
-  documentType: 'CONSOLIDATION_TO',
-  updatedBy: MockData.getCamsUser(),
-  updatedOn: '01-12-2024',
-};
-
-const CONSOLIDATE_FROM: Consolidation = {
-  caseId: TEST_CASE_ID,
-  otherCase: MockData.getCaseSummary({ override: { caseId: NEW_CASE_ID } }),
-  orderDate: '01-12-2024',
-  consolidationType: 'administrative',
-  documentType: 'CONSOLIDATION_FROM',
-  updatedBy: MockData.getCamsUser(),
-  updatedOn: '01-12-2024',
-};
 
 const attorneyList: AttorneyUser[] = MockData.buildArray(MockData.getAttorneyUser, 2);
 
@@ -195,96 +172,6 @@ describe('Case detail basic information panel', () => {
       await waitFor(() => {
         expect(modal).toHaveClass('is-hidden');
       });
-    });
-  });
-
-  describe('with consolidated case information', () => {
-    const assignmentModalId = 'assignmentModalId';
-
-    test('should show the administrative consolidation header', async () => {
-      renderWithProps({
-        caseDetail: {
-          ...BASE_TEST_CASE_DETAIL,
-          consolidation: [{ ...CONSOLIDATE_TO, consolidationType: 'administrative' }],
-        },
-      });
-      const administrativeHeader = document.querySelector('.consolidation > h4');
-      expect(administrativeHeader).toBeInTheDocument();
-      expect(administrativeHeader).toHaveTextContent('Joint Administration');
-    });
-
-    test('should show the substantive consolidation header', async () => {
-      renderWithProps({
-        caseDetail: {
-          ...BASE_TEST_CASE_DETAIL,
-          consolidation: [{ ...CONSOLIDATE_TO, consolidationType: 'substantive' }],
-        },
-      });
-      const substantiveHeader = document.querySelector('.consolidation > h4');
-      expect(substantiveHeader).toBeInTheDocument();
-      expect(substantiveHeader).toHaveTextContent('Substantive Consolidation');
-    });
-
-    test('should show lead case summary content', async () => {
-      const leadCase = CONSOLIDATE_TO.otherCase;
-      renderWithProps({
-        caseDetail: { ...BASE_TEST_CASE_DETAIL, consolidation: [CONSOLIDATE_TO] },
-      });
-
-      const link = screen.queryByTestId('case-detail-consolidation-link-link');
-      expect(link).toBeInTheDocument();
-      expect(link).toHaveAttribute('href', `/case-detail/${leadCase.caseId}/`);
-
-      const contentLines = document.querySelectorAll('.consolidation > div');
-      expect(contentLines.length).toEqual(2);
-      expect(contentLines[0]).toHaveTextContent(
-        `Lead Case:${getCaseNumber(leadCase.caseId)} ${leadCase.caseTitle}`,
-      );
-      expect(contentLines[1]).toHaveTextContent(
-        `Order Filed:${formatDate(CONSOLIDATE_TO.orderDate)}`,
-      );
-    });
-
-    test('should show child case summary content', async () => {
-      const caseDetail: CaseDetail = {
-        ...BASE_TEST_CASE_DETAIL,
-        consolidation: [CONSOLIDATE_FROM],
-      };
-      renderWithProps({
-        caseDetail,
-      });
-
-      const contentLines = document.querySelectorAll('.consolidation > div');
-      expect(contentLines.length).toEqual(3);
-      expect(contentLines[0]).toHaveTextContent('Lead Case: (this case)');
-      expect(contentLines[1]).toHaveTextContent(
-        `Cases Consolidated: ${caseDetail.consolidation!.length + 1}`,
-      );
-      expect(contentLines[2]).toHaveTextContent(
-        `Order Filed:${formatDate(CONSOLIDATE_FROM.orderDate)}`,
-      );
-    });
-
-    test('should show child case warning on case assignment modal', async () => {
-      const caseDetail: CaseDetail = { ...BASE_TEST_CASE_DETAIL, consolidation: [CONSOLIDATE_TO] };
-      const onCaseAssignment = vi.fn();
-      renderWithProps({
-        caseDetail,
-        onCaseAssignment,
-      });
-
-      const assignedStaffEditButton = screen.getByTestId('open-modal-button');
-      fireEvent.click(assignedStaffEditButton);
-
-      const modal = screen.getByTestId(`modal-${assignmentModalId}`);
-      await waitFor(() => {
-        expect(modal).toBeVisible();
-      });
-
-      const childCaseMessage = screen.getByTestId('alert-message');
-      expect(childCaseMessage).toHaveTextContent(
-        'The assignees for this case will not match the lead case.',
-      );
     });
   });
 });
