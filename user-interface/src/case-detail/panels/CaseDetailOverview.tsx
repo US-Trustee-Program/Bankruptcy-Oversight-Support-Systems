@@ -1,9 +1,7 @@
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { formatDate } from '@/lib/utils/datetime';
-import { CaseNumber } from '@/lib/components/CaseNumber';
 import { isJointAdministrationChildCase } from '@common/cams/events';
-import { CaseDetail, isChildCase, isLeadCase } from '@common/cams/cases';
-import { consolidationTypeMap } from '@/lib/utils/labels';
+import { CaseDetail } from '@common/cams/cases';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import AssignAttorneyModal from '@/staff-assignment/modal/AssignAttorneyModal';
 import {
@@ -291,48 +289,6 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
               </div>
             )}
           </div>
-          {!!caseDetail.consolidation?.length && caseDetail.consolidation.length > 0 && (
-            <>
-              <h3>Consolidation</h3>
-              <div className="consolidation case-card">
-                <h4>{consolidationTypeMap.get(caseDetail.consolidation[0].consolidationType)}</h4>
-                <div>
-                  {isLeadCase(caseDetail) && (
-                    <span className="case-detail-item-name">Lead Case: (this case)</span>
-                  )}
-                  {isChildCase(caseDetail) && (
-                    <>
-                      <span className="case-detail-item-name">Lead Case:</span>
-                      <CaseNumber
-                        caseId={caseDetail.consolidation[0].otherCase.caseId}
-                        className="usa-link case-detail-item-value"
-                        data-testid={`case-detail-consolidation-link`}
-                      />{' '}
-                      <span className="case-detail-title-value">
-                        {caseDetail.consolidation[0].otherCase.caseTitle}
-                      </span>
-                    </>
-                  )}
-                </div>
-                {isLeadCase(caseDetail) && (
-                  <div>
-                    <span className="case-detail-consolidated-case-count">
-                      Cases Consolidated: {caseDetail.consolidation.length + 1}
-                    </span>
-                  </div>
-                )}
-                <div>
-                  <span className="case-detail-item-name">Order Filed:</span>
-                  <span
-                    className="case-detail-item-value"
-                    data-testid={`case-detail-consolidation-order`}
-                  >
-                    {formatDate(caseDetail.consolidation[0].orderDate)}
-                  </span>
-                </div>
-              </div>
-            </>
-          )}
         </div>
       </div>
       <AssignAttorneyModal
