@@ -519,6 +519,8 @@ function getTrustee(override: Partial<Trustee> = {}): Trustee {
     })}, ${faker.location.zipCode()}, US`,
     phone: faker.phone.number(),
     email: faker.internet.email(),
+    updatedOn: getDateBeforeToday().toISOString(),
+    updatedBy: getCamsUserReference(),
     ...override,
   };
 }
