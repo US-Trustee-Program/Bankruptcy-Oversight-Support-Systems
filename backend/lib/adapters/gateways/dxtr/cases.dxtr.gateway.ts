@@ -875,7 +875,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     applicationContext.logger.debug(MODULE_NAME, `Trustee results received from DXTR`);
 
     (queryResult.results as mssql.IResult<Trustee>).recordset.forEach((record) => {
-      trustee = { name: removeExtraSpaces(record.name) };
+      trustee = { name: removeExtraSpaces(record.name) } as Trustee;
       trustee.address1 = record.address1;
       trustee.address2 = record.address2;
       trustee.address3 = record.address3;

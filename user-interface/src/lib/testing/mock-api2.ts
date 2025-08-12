@@ -31,6 +31,7 @@ import {
   ElevatePrivilegedUserAction,
   RoleAndOfficeGroupNames,
 } from '@common/cams/privileged-identity';
+import { Trustee } from '@common/cams/parties';
 
 const caseDocketEntries = MockData.buildArray(MockData.getDocketEntry, 5);
 const caseNoteGuids = [
@@ -61,7 +62,7 @@ const caseDetails = MockData.getCaseDetail({
     trustee: {
       name: 'Test Trustee',
       cityStateZipCountry: 'New York, NY 10001, USA',
-    },
+    } as Trustee,
   },
 });
 const courts = MockData.getCourts().slice(0, 5);
