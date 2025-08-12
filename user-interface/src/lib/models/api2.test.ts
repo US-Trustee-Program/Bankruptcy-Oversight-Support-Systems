@@ -112,23 +112,27 @@ describe('_Api2 functions', async () => {
 
   test('should call putCaseNote api function', async () => {
     const putSpy = vi.spyOn(api.default, 'put').mockResolvedValue({ data: ['some-note'] });
-    api2.Api2.putCaseNote({
-      id: 'some-id',
-      caseId: 'some-id',
-      title: 'some title',
-      content: 'some note',
-    });
+    api2.Api2.putCaseNote(
+      MockData.getCaseNote({
+        id: 'some-id',
+        caseId: 'some-id',
+        title: 'some title',
+        content: 'some note',
+      }),
+    );
     expect(putSpy).toHaveBeenCalled();
   });
 
   test('should note call putCaseNote api function and handle error', async () => {
     const putSpy = vi.spyOn(api.default, 'put');
     await expect(
-      api2.Api2.putCaseNote({
-        caseId: 'some-id',
-        title: 'some title',
-        content: 'some note',
-      }),
+      api2.Api2.putCaseNote(
+        MockData.getCaseNote({
+          caseId: 'some-id',
+          title: 'some title',
+          content: 'some note',
+        }),
+      ),
     ).rejects.toThrow('Id must be provided');
     expect(putSpy).not.toHaveBeenCalled();
   });

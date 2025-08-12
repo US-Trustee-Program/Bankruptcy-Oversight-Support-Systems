@@ -97,6 +97,8 @@ describe('Export and Load Case Tests', () => {
         documentType: 'SYNCED_CASE',
         updatedBy: SYSTEM_USER_REFERENCE,
         updatedOn: expect.any(String),
+        createdBy: SYSTEM_USER_REFERENCE,
+        createdOn: expect.any(String),
       };
 
       const syncSpy = jest.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
