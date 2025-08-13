@@ -131,4 +131,83 @@ describe('Header', () => {
     const link = screen.queryByTestId('header-data-verification-link');
     expect(link).toBeInTheDocument();
   });
+
+  describe('Trustee navigation role-based access control', () => {
+    test('should not display trustees link when user lacks TrusteeAdmin role', () => {
+      // Current user has CaseAssignmentManager and DataVerifier but not TrusteeAdmin
+      vi.spyOn(FeatureFlags, 'default').mockReturnValue({
+        'transfer-orders-enabled': true,
+        'trustee-management': true, // Feature flag enabled
+      });
+
+      renderWithoutProps();
+
+      const link = screen.queryByTestId('header-trustees-link');
+      expect(link).not.toBeInTheDocument();
+    });
+
+    test('should not display trustees link when feature flag is disabled', () => {
+      const trusteeAdminUser = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
+      LocalStorage.setSession(MockData.getCamsSession({ user: trusteeAdminUser }));
+
+      vi.spyOn(FeatureFlags, 'default').mockReturnValue({
+        'transfer-orders-enabled': true,
+        'trustee-management': false, // Feature flag disabled
+      });
+
+      renderWithoutProps();
+
+      const link = screen.queryByTestId('header-trustees-link');
+      expect(link).not.toBeInTheDocument();
+    });
+
+    test('should display trustees link when user has TrusteeAdmin role and feature flag is enabled', () => {
+      const trusteeAdminUser = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
+      LocalStorage.setSession(MockData.getCamsSession({ user: trusteeAdminUser }));
+
+      vi.spyOn(FeatureFlags, 'default').mockReturnValue({
+        'transfer-orders-enabled': true,
+        'trustee-management': true, // Feature flag enabled
+      });
+
+      renderWithoutProps();
+
+      const link = screen.queryByTestId('header-trustees-link');
+      expect(link).toBeInTheDocument();
+    });
+
+    test('should not display trustees link when both role and feature flag requirements fail', () => {
+      // User without TrusteeAdmin role and feature flag disabled
+      vi.spyOn(FeatureFlags, 'default').mockReturnValue({
+        'transfer-orders-enabled': true,
+        'trustee-management': false,
+      });
+
+      renderWithoutProps();
+
+      const link = screen.queryByTestId('header-trustees-link');
+      expect(link).not.toBeInTheDocument();
+    });
+
+    test('should highlight trustees link when on trustees page', async () => {
+      const trusteeAdminUser = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
+      LocalStorage.setSession(MockData.getCamsSession({ user: trusteeAdminUser }));
+
+      vi.spyOn(FeatureFlags, 'default').mockReturnValue({
+        'transfer-orders-enabled': true,
+        'trustee-management': true,
+      });
+
+      renderWithHistory('/trustees');
+
+      const link = await screen.findByTestId('header-trustees-link');
+      expect(link).toBeInTheDocument();
+      await waitFor(() => {
+        expect(link).toHaveClass('usa-current current');
+      });
+
+      const current = document.querySelectorAll('.usa-current.current');
+      expect(current).toHaveLength(1);
+    });
+  });
 });
