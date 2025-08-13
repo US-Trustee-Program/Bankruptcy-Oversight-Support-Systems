@@ -71,7 +71,7 @@ export function isValidTrusteeStatus(status: string): status is TrusteeStatus {
   return ['active', 'inactive'].includes(status);
 }
 
-export function validateTrusteeCreationFields(trustee: Partial<Trustee>): string[] {
+export function validateTrusteeCreationFields(trustee: Partial<TrusteeInput>): string[] {
   const errors: string[] = [];
 
   if (!trustee.name || trustee.name.trim() === '') {
@@ -103,4 +103,52 @@ export function createDefaultTrusteeForCreation(name: string): Partial<Trustee> 
     districts: [],
     chapters: [],
   };
+}
+
+// Address validation functions
+export function isValidZipCode(zipCode: string): boolean {
+  // US ZIP code should be exactly 5 digits
+  return /^\d{5}$/.test(zipCode);
+}
+
+export function validateTrusteeAddress(address: Partial<Address>): string[] {
+  const errors: string[] = [];
+
+  if (!address.address1 || address.address1.trim() === '') {
+    errors.push('Address line 1 is required');
+  }
+
+  if (!address.city || address.city.trim() === '') {
+    errors.push('City is required');
+  }
+
+  if (!address.state || address.state.trim() === '') {
+    errors.push('State is required');
+  }
+
+  if (!address.zipCode || address.zipCode.trim() === '') {
+    errors.push('ZIP code is required');
+  } else if (!isValidZipCode(address.zipCode.trim())) {
+    errors.push('ZIP code must be exactly 5 digits');
+  }
+
+  return errors;
+}
+
+export function validateTrusteeCreationInput(input: Partial<TrusteeInput>): string[] {
+  const errors: string[] = [];
+
+  // Validate basic trustee fields
+  const trusteeErrors = validateTrusteeCreationFields(input);
+  errors.push(...trusteeErrors);
+
+  // Validate address if provided
+  if (input.address) {
+    const addressErrors = validateTrusteeAddress(input.address);
+    errors.push(...addressErrors);
+  } else {
+    errors.push('Address is required');
+  }
+
+  return errors;
 }

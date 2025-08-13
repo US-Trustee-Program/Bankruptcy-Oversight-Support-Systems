@@ -12,7 +12,8 @@ const ROLE_MAPPING =
   'USTP_CAMS_Privileged_Identity_Management,USTP CAMS Privileged Identity Management,PrivilegedIdentityUser\n' +
   'USTP_CAMS_Case_Assignment_Manager,USTP CAMS Case Assignment Manager,CaseAssignmentManager\n' +
   'USTP_CAMS_Trial_Attorney,USTP CAMS Trial Attorney,TrialAttorney\n' +
-  'USTP_CAMS_Data_Verifier,USTP CAMS Data Verifier,DataVerifier\n';
+  'USTP_CAMS_Data_Verifier,USTP CAMS Data Verifier,DataVerifier\n' +
+  'USTP_CAMS_Trustee_Admin,USTP CAMS Trustee Admin,TrusteeAdmin\n';
 
 // TODO: We should delete this. How are we handling AD group from Seattle mapped to SE and AK groups??
 // This mapping doesn't include Wilmington, DE which is not soft live. However, we see the office assigned in STG and PRD.

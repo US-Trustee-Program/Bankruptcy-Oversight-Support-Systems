@@ -3,7 +3,7 @@ import { TrusteesRepository } from '../gateways.types';
 import {
   Trustee,
   TrusteeInput,
-  validateTrusteeCreationFields,
+  validateTrusteeCreationInput,
 } from '../../../../common/src/cams/parties';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
 import { getCamsError } from '../../common-errors/error-utilities';
@@ -20,8 +20,8 @@ export class TrusteesUseCase {
 
   async createTrustee(context: ApplicationContext, trustee: TrusteeInput): Promise<Trustee> {
     try {
-      // Validate trustee creation fields
-      const validationErrors = validateTrusteeCreationFields(trustee);
+      // Validate trustee creation input including address
+      const validationErrors = validateTrusteeCreationInput(trustee);
       if (validationErrors.length > 0) {
         throw new Error(`Trustee validation failed: ${validationErrors.join(', ')}`);
       }
