@@ -31,7 +31,7 @@ import {
   ElevatePrivilegedUserAction,
   RoleAndOfficeGroupNames,
 } from '@common/cams/privileged-identity';
-import { Trustee } from '@common/cams/parties';
+import { Trustee, TrusteeInput } from '@common/cams/parties';
 
 const caseDocketEntries = MockData.buildArray(MockData.getDocketEntry, 5);
 const caseNoteGuids = [
@@ -175,6 +175,17 @@ async function post<T = unknown>(
       ];
     }
     return response as ResponseBody<ResourceActions<T>>;
+  } else if (path.match(/^\/trustees$/)) {
+    const input = body as TrusteeInput;
+    const created: Trustee = {
+      ...input,
+      id: MockData.randomId(),
+      createdBy: { id: 'user-1', name: 'Mock User' },
+      createdOn: new Date().toISOString(),
+      lastUpdatedBy: { id: 'user-1', name: 'Mock User' },
+      lastUpdatedOn: new Date().toISOString(),
+    } as unknown as Trustee;
+    return Promise.resolve({ data: created } as ResponseBody<T>);
   } else {
     return Promise.reject(new Error());
   }
@@ -417,7 +428,12 @@ async function deletePrivilegedIdentityUser(userId: string) {
   await _delete(`/dev-tools/privileged-identity/${userId}`);
 }
 
+async function postTrustee(trustee: TrusteeInput) {
+  return post('/trustees', trustee, {}) as unknown as Promise<ResponseBody<Trustee>>;
+}
+
 export const MockApi2 = {
+  postTrustee,
   deletePrivilegedIdentityUser,
   getAttorneys,
   getCaseDetail,
