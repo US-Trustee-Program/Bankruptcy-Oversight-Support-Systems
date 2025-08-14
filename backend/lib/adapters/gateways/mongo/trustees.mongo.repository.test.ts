@@ -180,25 +180,15 @@ describe('TrusteesMongoRepository', () => {
         },
       ];
 
-      mockAdapter.find.mockResolvedValue(mockTrustees);
+      mockAdapter.find.mockResolvedValue(mockTrustees as TrusteeDocument[]);
 
       const result = await repository.listTrustees();
 
-      expect(mockAdapter.find).toHaveBeenCalledWith(
-        {
-          condition: 'EQUALS',
-          leftOperand: { name: 'documentType' },
-          rightOperand: 'TRUSTEE',
-        },
-        {
-          fields: [
-            {
-              direction: 'DESCENDING',
-              field: { name: 'updatedOn' },
-            },
-          ],
-        },
-      );
+      expect(mockAdapter.find).toHaveBeenCalledWith({
+        condition: 'EQUALS',
+        leftOperand: { name: 'documentType' },
+        rightOperand: 'TRUSTEE',
+      });
       expect(result).toEqual(mockTrustees);
       expect(result).toHaveLength(2);
     });
@@ -208,21 +198,11 @@ describe('TrusteesMongoRepository', () => {
 
       const result = await repository.listTrustees();
 
-      expect(mockAdapter.find).toHaveBeenCalledWith(
-        {
-          condition: 'EQUALS',
-          leftOperand: { name: 'documentType' },
-          rightOperand: 'TRUSTEE',
-        },
-        {
-          fields: [
-            {
-              direction: 'DESCENDING',
-              field: { name: 'updatedOn' },
-            },
-          ],
-        },
-      );
+      expect(mockAdapter.find).toHaveBeenCalledWith({
+        condition: 'EQUALS',
+        leftOperand: { name: 'documentType' },
+        rightOperand: 'TRUSTEE',
+      });
       expect(result).toEqual([]);
       expect(result).toHaveLength(0);
     });
@@ -233,21 +213,96 @@ describe('TrusteesMongoRepository', () => {
 
       await expect(repository.listTrustees()).rejects.toThrow();
 
-      expect(mockAdapter.find).toHaveBeenCalledWith(
-        {
-          condition: 'EQUALS',
-          leftOperand: { name: 'documentType' },
-          rightOperand: 'TRUSTEE',
-        },
-        {
-          fields: [
-            {
-              direction: 'DESCENDING',
-              field: { name: 'updatedOn' },
-            },
-          ],
-        },
+      expect(mockAdapter.find).toHaveBeenCalledWith({
+        condition: 'EQUALS',
+        leftOperand: { name: 'documentType' },
+        rightOperand: 'TRUSTEE',
+      });
+    });
+  });
+
+  describe('getTrustee', () => {
+    test('should successfully retrieve a trustee by ID', async () => {
+      const trusteeId = 'trustee-123';
+      const mockTrustee = {
+        id: trusteeId,
+        name: 'John Doe',
+        address1: '123 Main St',
+        cityStateZipCountry: 'Anytown, NY 12345',
+        documentType: 'TRUSTEE',
+        createdOn: '2025-08-12T10:00:00Z',
+        createdBy: mockUser,
+      };
+
+      mockAdapter.findOne.mockResolvedValue(mockTrustee as TrusteeDocument);
+
+      const result = await repository.getTrustee(trusteeId);
+
+      expect(mockAdapter.findOne).toHaveBeenCalledWith({
+        conjunction: 'AND',
+        values: [
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'documentType' },
+            rightOperand: 'TRUSTEE',
+          },
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'id' },
+            rightOperand: trusteeId,
+          },
+        ],
+      });
+      expect(result).toEqual(mockTrustee);
+    });
+
+    test('should throw error when trustee is not found', async () => {
+      const trusteeId = 'nonexistent-id';
+      mockAdapter.findOne.mockResolvedValue(null);
+
+      await expect(repository.getTrustee(trusteeId)).rejects.toThrow(
+        'Failed to retrieve trustee with ID nonexistent-id.',
       );
+
+      expect(mockAdapter.findOne).toHaveBeenCalledWith({
+        conjunction: 'AND',
+        values: [
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'documentType' },
+            rightOperand: 'TRUSTEE',
+          },
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'id' },
+            rightOperand: trusteeId,
+          },
+        ],
+      });
+    });
+
+    test('should handle database errors when getting a trustee', async () => {
+      const trusteeId = 'trustee-123';
+      const error = new Error('Database connection failed');
+      mockAdapter.findOne.mockRejectedValue(error);
+
+      await expect(repository.getTrustee(trusteeId)).rejects.toThrow();
+
+      expect(mockAdapter.findOne).toHaveBeenCalledWith({
+        conjunction: 'AND',
+        values: [
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'documentType' },
+            rightOperand: 'TRUSTEE',
+          },
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'id' },
+            rightOperand: trusteeId,
+          },
+        ],
+      });
     });
   });
 

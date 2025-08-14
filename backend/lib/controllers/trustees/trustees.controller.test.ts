@@ -53,6 +53,7 @@ describe('TrusteesController', () => {
     mockUseCase = {
       createTrustee: jest.fn(),
       listTrustees: jest.fn(),
+      getTrustee: jest.fn(),
     } as unknown as jest.Mocked<TrusteesUseCase>;
 
     (TrusteesUseCase as jest.MockedClass<typeof TrusteesUseCase>).mockImplementation(
@@ -185,6 +186,34 @@ describe('TrusteesController', () => {
       expect(result.statusCode).toBe(200);
       expect(result.body?.data).toEqual(mockTrustees);
       expect(mockUseCase.listTrustees).toHaveBeenCalledWith(context);
+    });
+  });
+
+  describe('GET /api/trustees/:id', () => {
+    beforeEach(() => {
+      context.request.method = 'GET';
+    });
+
+    test('should return individual trustee for GET requests with ID', async () => {
+      const trusteeId = 'trustee-123';
+      mockUseCase.getTrustee.mockResolvedValue(sampleTrusteeDocument);
+      context.request.url = `/api/trustees/${trusteeId}`;
+
+      const result = await controller.handleRequest(context);
+
+      expect(result.statusCode).toBe(200);
+      expect(result.body?.data).toEqual(sampleTrusteeDocument);
+      expect(mockUseCase.getTrustee).toHaveBeenCalledWith(context, trusteeId);
+    });
+
+    test('should handle trustee not found errors', async () => {
+      const trusteeId = 'nonexistent-id';
+      mockUseCase.getTrustee.mockRejectedValue(
+        new Error('Trustee with ID nonexistent-id not found.'),
+      );
+      context.request.url = `/api/trustees/${trusteeId}`;
+
+      await expect(controller.handleRequest(context)).rejects.toThrow('Unknown Error');
     });
   });
 

@@ -60,4 +60,18 @@ export class TrusteesUseCase {
       throw getCamsError(originalError, MODULE_NAME);
     }
   }
+
+  async getTrustee(context: ApplicationContext, id: string): Promise<Trustee> {
+    try {
+      // Retrieve individual trustee from repository
+      const trustee = await this.trusteesRepository.getTrustee(id);
+
+      context.logger.info(MODULE_NAME, `Retrieved trustee ${id}`);
+      return trustee;
+    } catch (originalError) {
+      const errorMessage = `Failed to retrieve trustee with ID ${id}.`;
+      context.logger.error(MODULE_NAME, errorMessage, originalError);
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
 }

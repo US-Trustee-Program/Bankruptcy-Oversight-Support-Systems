@@ -41,7 +41,7 @@ export class TrusteesController implements CamsController {
         case 'POST':
           return await this.createTrustee(context);
         case 'GET':
-          return await this.listTrustees(context);
+          return await this.handleGetRequest(context);
         default:
           throw new BadRequestError(MODULE_NAME, {
             message: `HTTP method ${method} is not supported`,
@@ -71,6 +71,39 @@ export class TrusteesController implements CamsController {
           self: `${context.request.url}/${createdTrustee.id}`,
         },
         data: createdTrustee,
+      },
+    });
+  }
+
+  private async handleGetRequest(
+    context: ApplicationContext,
+  ): Promise<CamsHttpResponseInit<Trustee | Trustee[]>> {
+    const { url } = context.request;
+    const urlParts = url.split('/');
+    const trusteeId = urlParts[urlParts.length - 1];
+
+    // If the last part of the URL is 'trustees', this is a list request
+    // If it's something else, it's an individual trustee request
+    if (trusteeId === 'trustees') {
+      return await this.listTrustees(context);
+    } else {
+      return await this.getTrustee(context, trusteeId);
+    }
+  }
+
+  private async getTrustee(
+    context: ApplicationContext,
+    id: string,
+  ): Promise<CamsHttpResponseInit<Trustee>> {
+    const trustee = await this.useCase.getTrustee(context, id);
+
+    return httpSuccess({
+      statusCode: 200,
+      body: {
+        meta: {
+          self: context.request.url,
+        },
+        data: trustee,
       },
     });
   }

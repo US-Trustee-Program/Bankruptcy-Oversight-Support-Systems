@@ -11,7 +11,7 @@ import * as crypto from 'crypto';
 const MODULE_NAME = 'TRUSTEES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustees';
 
-const { orderBy, using } = QueryBuilder;
+const { using, and } = QueryBuilder;
 
 export type TrusteeDocument = Trustee & {
   documentType: 'TRUSTEE';
@@ -72,13 +72,28 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
     try {
       const doc = using<TrusteeDocument>();
       const query = doc('documentType').equals('TRUSTEE');
-      return await this.getAdapter<TrusteeDocument>().find(
-        query,
-        orderBy<TrusteeDocument>(['updatedOn', 'DESCENDING']),
-      );
+      return await this.getAdapter<TrusteeDocument>().find(query);
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: 'Failed to retrieve trustees list.',
+      });
+    }
+  }
+
+  async getTrustee(id: string): Promise<Trustee> {
+    try {
+      const doc = using<TrusteeDocument>();
+      const query = and(doc('documentType').equals('TRUSTEE'), doc('id').equals(id));
+      const trustee = await this.getAdapter<TrusteeDocument>().findOne(query);
+
+      if (!trustee) {
+        throw new Error(`Trustee with ID ${id} not found.`);
+      }
+
+      return trustee;
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to retrieve trustee with ID ${id}.`,
       });
     }
   }

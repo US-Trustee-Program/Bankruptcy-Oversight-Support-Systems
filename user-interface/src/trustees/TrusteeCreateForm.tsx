@@ -72,9 +72,9 @@ export default function TrusteeCreateForm(props: Props) {
         const districtMap = new Map<string, ComboOption>();
         courts.forEach((court: CourtDivisionDetails) => {
           // Use courtId as both value and create a readable label
-          const label = court.courtName || `District ${court.courtId}`;
-          districtMap.set(court.courtId, {
-            value: court.courtId,
+          const label = `${court.courtName} (${court.courtDivisionName})`;
+          districtMap.set(court.courtDivisionCode, {
+            value: court.courtDivisionCode,
             label: label,
           });
         });
@@ -92,13 +92,8 @@ export default function TrusteeCreateForm(props: Props) {
       }
     }
 
-    // Only load if we have the necessary permissions and feature flags
-    if (canManage && flags[TRUSTEE_MANAGEMENT]) {
-      loadDistricts();
-    } else {
-      setDistrictOptions([]);
-    }
-  }, [canManage, flags, api]);
+    loadDistricts();
+  }, [api]);
 
   if (!flags[TRUSTEE_MANAGEMENT]) {
     return <div data-testid="trustee-create-disabled">Trustee management is not enabled.</div>;
