@@ -37,12 +37,13 @@ describe('Trustee Type Extensions', () => {
   describe('TrusteeStatus validation', () => {
     test('should validate correct trustee status values', () => {
       expect(isValidTrusteeStatus('active')).toBe(true);
-      expect(isValidTrusteeStatus('inactive')).toBe(true);
+      expect(isValidTrusteeStatus('not active')).toBe(true);
+      expect(isValidTrusteeStatus('suspended')).toBe(true);
     });
 
     test('should reject invalid trustee status values', () => {
       expect(isValidTrusteeStatus('pending')).toBe(false);
-      expect(isValidTrusteeStatus('suspended')).toBe(false);
+      expect(isValidTrusteeStatus('inactive')).toBe(false);
       expect(isValidTrusteeStatus('')).toBe(false);
       expect(isValidTrusteeStatus('ACTIVE')).toBe(false);
     });

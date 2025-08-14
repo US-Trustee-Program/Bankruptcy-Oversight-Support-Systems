@@ -256,6 +256,14 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
     response = {
       data: courts,
     };
+  } else if (path.match(/\/trustees/)) {
+    response = {
+      data: [
+        MockData.getTrustee({ id: 'trustee-1', name: 'John Doe' }),
+        MockData.getTrustee({ id: 'trustee-2', name: 'Jane Smith' }),
+        MockData.getTrustee({ id: 'trustee-3', name: 'Bob Johnson' }),
+      ],
+    };
   } else if (path.match(/\/me/)) {
     response = {
       data: MockData.getCamsSession({ user: SUPERUSER.user }),
@@ -432,7 +440,12 @@ async function postTrustee(trustee: TrusteeInput) {
   return post('/trustees', trustee, {}) as unknown as Promise<ResponseBody<Trustee>>;
 }
 
+async function getTrustees() {
+  return get<Trustee[]>('/trustees');
+}
+
 export const MockApi2 = {
+  getTrustees,
   postTrustee,
   deletePrivilegedIdentityUser,
   getAttorneys,

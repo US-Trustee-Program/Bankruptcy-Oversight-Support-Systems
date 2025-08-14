@@ -69,12 +69,22 @@ describe('TrusteesUseCase', () => {
     status: 'active',
   };
 
+  const sampleTrustee = {
+    ...sampleTrusteeInput,
+    id: 'trustee-123',
+    createdOn: '2025-08-12T10:00:00Z',
+    createdBy: mockUserReference,
+    updatedOn: '2025-08-12T10:00:00Z',
+    updatedBy: mockUserReference,
+  };
+
   beforeEach(async () => {
     context = await createMockApplicationContext();
 
     mockTrusteesRepository = {
       createTrustee: jest.fn(),
       listTrustees: jest.fn(),
+      getTrustee: jest.fn(),
       release: jest.fn(),
     } as jest.Mocked<TrusteesRepository>;
 
@@ -204,6 +214,59 @@ describe('TrusteesUseCase', () => {
       await expect(useCase.createTrustee(context, sampleTrusteeInput)).rejects.toThrow(
         expectedCamsError,
       );
+
+      expect(mockGetCamsError).toHaveBeenCalledWith(repositoryError, 'TRUSTEES-USE-CASE');
+    });
+  });
+
+  describe('listTrustees', () => {
+    it('should successfully retrieve a list of trustees', async () => {
+      const mockTrustees = [sampleTrustee];
+      mockTrusteesRepository.listTrustees.mockResolvedValue(mockTrustees);
+
+      const result = await useCase.listTrustees(context);
+
+      expect(mockTrusteesRepository.listTrustees).toHaveBeenCalled();
+      expect(result).toEqual(mockTrustees);
+    });
+
+    it('should handle repository errors when listing trustees', async () => {
+      const repositoryError = new Error('Database connection failed');
+      const expectedCamsError = new CamsError('TRUSTEES-USE-CASE', {
+        message: 'Database connection failed',
+      });
+
+      mockTrusteesRepository.listTrustees.mockRejectedValue(repositoryError);
+      mockGetCamsError.mockReturnValue(expectedCamsError);
+
+      await expect(useCase.listTrustees(context)).rejects.toThrow(expectedCamsError);
+
+      expect(mockGetCamsError).toHaveBeenCalledWith(repositoryError, 'TRUSTEES-USE-CASE');
+    });
+  });
+
+  describe('getTrustee', () => {
+    it('should successfully retrieve a trustee by ID', async () => {
+      const trusteeId = 'trustee-123';
+      mockTrusteesRepository.getTrustee.mockResolvedValue(sampleTrustee);
+
+      const result = await useCase.getTrustee(context, trusteeId);
+
+      expect(mockTrusteesRepository.getTrustee).toHaveBeenCalledWith(trusteeId);
+      expect(result).toEqual(sampleTrustee);
+    });
+
+    it('should handle repository errors when getting a trustee', async () => {
+      const trusteeId = 'nonexistent-id';
+      const repositoryError = new Error('Trustee with ID nonexistent-id not found.');
+      const expectedCamsError = new CamsError('TRUSTEES-USE-CASE', {
+        message: 'Trustee with ID nonexistent-id not found.',
+      });
+
+      mockTrusteesRepository.getTrustee.mockRejectedValue(repositoryError);
+      mockGetCamsError.mockReturnValue(expectedCamsError);
+
+      await expect(useCase.getTrustee(context, trusteeId)).rejects.toThrow(expectedCamsError);
 
       expect(mockGetCamsError).toHaveBeenCalledWith(repositoryError, 'TRUSTEES-USE-CASE');
     });

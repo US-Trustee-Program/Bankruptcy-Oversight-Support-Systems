@@ -17,7 +17,7 @@ import GlobalAlert, { GlobalAlertRef } from './lib/components/cams/GlobalAlert/G
 import { UswdsAlertStyle } from './lib/components/uswds/Alert';
 import { AdminScreen } from './admin/AdminScreen';
 import { GoHome } from './lib/components/GoHome';
-import TrusteesPage from './trustees/TrusteesPage';
+import TrusteesScreen from './trustees/TrusteesScreen';
 import TrusteeCreateForm from './trustees/TrusteeCreateForm';
 
 const featureFlagConfig = getFeatureFlagConfiguration();
@@ -49,7 +49,7 @@ function App() {
               <Route path="/case-detail/:caseId/*" element={<CaseDetailScreen />}></Route>
               <Route path="/data-verification" element={<DataVerificationScreen />}></Route>
               <Route path="/admin/*" element={<AdminScreen />}></Route>
-              <Route path="/trustees" element={<TrusteesPage />}></Route>
+              <Route path="/trustees" element={<TrusteesScreen />}></Route>
               <Route path="/trustees/create" element={<TrusteeCreateForm />}></Route>
               <Route index element={<GoHome />}></Route>
               <Route path="*" element={<GoHome />}></Route>
