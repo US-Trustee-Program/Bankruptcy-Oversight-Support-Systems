@@ -624,6 +624,151 @@ describe('TrusteeCreateForm', () => {
       const submitButton = screen.getByRole('button', { name: /create trustee/i });
       expect(submitButton).not.toBeDisabled();
     });
+
+    test('includes districts and chapters in submission when selected', async () => {
+      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } });
+      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({
+          data: [
+            { courtId: 'NY', courtName: 'New York' },
+            { courtId: 'CA', courtName: 'California' },
+          ],
+        }),
+        postTrustee: mockPostTrustee,
+      } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
+
+      const onSuccess = vi.fn();
+      render(<TrusteeCreateForm onSuccess={onSuccess} />);
+
+      // Fill required fields
+      await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
+      await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
+      await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
+      await userEvent.type(screen.getByTestId('trustee-state'), 'IL');
+      await userEvent.type(screen.getByTestId('trustee-zip'), '62704');
+
+      // Select district from ComboBox
+      const districtCombobox = screen.getByRole('combobox', { name: /district/i });
+      await userEvent.click(districtCombobox);
+      await userEvent.click(screen.getByText('New York'));
+
+      // Select multiple chapters from ComboBox
+      const chaptersCombobox = screen.getByRole('combobox', { name: /chapter types/i });
+      await userEvent.click(chaptersCombobox);
+      await userEvent.click(screen.getByText('11 - Subchapter V'));
+      await userEvent.click(screen.getByText('13'));
+
+      await userEvent.click(screen.getByRole('button', { name: /create trustee/i }));
+
+      await vi.waitFor(() => {
+        expect(mockPostTrustee).toHaveBeenCalledWith({
+          name: 'Jane Doe',
+          address: {
+            address1: '123 Main St',
+            city: 'Springfield',
+            state: 'IL',
+            zipCode: '62704',
+            countryCode: 'US',
+          },
+          districts: ['NY'],
+          chapters: ['11-subchapter-v', '13'],
+        });
+        expect(onSuccess).toHaveBeenCalledWith('trustee-123');
+      });
+    });
+
+    test('handles extended chapter types correctly in payload', async () => {
+      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { id: 'trustee-456' } });
+      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({ data: [] }),
+        postTrustee: mockPostTrustee,
+      } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
+
+      render(<TrusteeCreateForm />);
+
+      // Fill required fields
+      await userEvent.type(screen.getByTestId('trustee-name'), 'John Smith');
+      await userEvent.type(screen.getByTestId('trustee-address1'), '456 Oak St');
+      await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
+      await userEvent.type(screen.getByTestId('trustee-state'), 'IL');
+      await userEvent.type(screen.getByTestId('trustee-zip'), '62705');
+
+      // Select extended chapter types that previously caused validation errors
+      const chaptersCombobox = screen.getByRole('combobox', { name: /chapter types/i });
+      await userEvent.click(chaptersCombobox);
+      await userEvent.click(screen.getByText('7 - Panel'));
+      await userEvent.click(screen.getByText('7 - Non-Panel'));
+      await userEvent.click(screen.getByText('11 - Subchapter V'));
+
+      await userEvent.click(screen.getByRole('button', { name: /create trustee/i }));
+
+      await vi.waitFor(() => {
+        expect(mockPostTrustee).toHaveBeenCalledWith({
+          name: 'John Smith',
+          address: {
+            address1: '456 Oak St',
+            city: 'Springfield',
+            state: 'IL',
+            zipCode: '62705',
+            countryCode: 'US',
+          },
+          chapters: ['7-panel', '7-non-panel', '11-subchapter-v'],
+        });
+      });
+    });
+
+    test('supports multi-select for districts', async () => {
+      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { id: 'trustee-789' } });
+      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({
+          data: [
+            { courtId: 'NY-E', courtName: 'New York Eastern' },
+            { courtId: 'NY-S', courtName: 'New York Southern' },
+            { courtId: 'CA-N', courtName: 'California Northern' },
+            { courtId: 'TX-S', courtName: 'Texas Southern' },
+          ],
+        }),
+        postTrustee: mockPostTrustee,
+      } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
+
+      const onSuccess = vi.fn();
+      render(<TrusteeCreateForm onSuccess={onSuccess} />);
+
+      // Fill required fields
+      await userEvent.type(screen.getByTestId('trustee-name'), 'Maria Rodriguez');
+      await userEvent.type(screen.getByTestId('trustee-address1'), '789 Federal Plaza');
+      await userEvent.type(screen.getByTestId('trustee-city'), 'Houston');
+      await userEvent.type(screen.getByTestId('trustee-state'), 'TX');
+      await userEvent.type(screen.getByTestId('trustee-zip'), '77002');
+
+      // SPECIFICATION: Districts ComboBox must support multiple selections
+      const districtCombobox = screen.getByRole('combobox', { name: /district/i });
+      await userEvent.click(districtCombobox);
+
+      // Select THREE different districts to verify multi-select functionality
+      await userEvent.click(screen.getByText('New York Eastern'));
+      await userEvent.click(screen.getByText('California Northern'));
+      await userEvent.click(screen.getByText('Texas Southern'));
+
+      await userEvent.click(screen.getByRole('button', { name: /create trustee/i }));
+
+      // EXECUTABLE SPECIFICATION: Payload must include all selected districts
+      await vi.waitFor(() => {
+        expect(mockPostTrustee).toHaveBeenCalledWith({
+          name: 'Maria Rodriguez',
+          address: {
+            address1: '789 Federal Plaza',
+            city: 'Houston',
+            state: 'TX',
+            zipCode: '77002',
+            countryCode: 'US',
+          },
+          // CRITICAL: Must support multiple districts (not just single district)
+          districts: ['NY-E', 'CA-N', 'TX-S'],
+        });
+        expect(onSuccess).toHaveBeenCalledWith('trustee-789');
+      });
+    });
   });
 
   describe('Enhanced Submit Button UX', () => {

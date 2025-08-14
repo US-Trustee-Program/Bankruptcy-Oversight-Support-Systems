@@ -8,7 +8,7 @@ export interface TrusteeFormData {
   phone?: string;
   extension?: string;
   email?: string;
-  district?: string;
+  districts?: string[];
   chapters?: string[];
 }
 
