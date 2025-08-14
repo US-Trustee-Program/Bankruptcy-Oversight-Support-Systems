@@ -2,7 +2,9 @@
   position: fixed;
   display: none;
   z-index: 10;
-  width: 100%;
+  width: fit-content;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .usa-alert-container.visible {
@@ -14,7 +16,7 @@
 }
 
 .usa-alert {
-  width: 75%;
+  width: auto;
   max-width: 800px;
   margin: 0.5rem auto;
   box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
