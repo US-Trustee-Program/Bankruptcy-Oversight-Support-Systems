@@ -1,7 +1,7 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteesController } from './trustees.controller';
 import { TrusteesUseCase } from '../../use-cases/trustees/trustees';
-import { Trustee } from '../../../../common/src/cams/parties';
+import { TrusteeInput } from '../../../../common/src/cams/parties';
 import { TrusteeDocument } from '../../adapters/gateways/mongo/trustees.mongo.repository';
 import { CamsUserReference } from '../../../../common/src/cams/users';
 import { CamsRole } from '../../../../common/src/cams/roles';
@@ -20,7 +20,7 @@ describe('TrusteesController', () => {
     name: 'Test User',
   };
 
-  const sampleTrustee: Trustee = {
+  const sampleTrustee: TrusteeInput = {
     name: 'John Doe',
     address1: '123 Main St',
     cityStateZipCountry: 'Anytown, NY 12345',
@@ -37,6 +37,8 @@ describe('TrusteesController', () => {
     documentType: 'TRUSTEE',
     createdOn: '2025-08-12T10:00:00Z',
     createdBy: mockUser,
+    updatedOn: '2025-08-12T10:00:00Z',
+    updatedBy: mockUser,
   };
 
   beforeEach(async () => {
@@ -50,6 +52,7 @@ describe('TrusteesController', () => {
 
     mockUseCase = {
       createTrustee: jest.fn(),
+      listTrustees: jest.fn(),
     } as unknown as jest.Mocked<TrusteesUseCase>;
 
     (TrusteesUseCase as jest.MockedClass<typeof TrusteesUseCase>).mockImplementation(
@@ -167,18 +170,21 @@ describe('TrusteesController', () => {
     });
   });
 
-  describe('GET /api/trustees/:id', () => {
+  describe('GET /api/trustees', () => {
     beforeEach(() => {
       context.request.method = 'GET';
     });
 
-    test('should return unsupported method error for GET requests', async () => {
-      context.request.params = { id: 'trustee-123' };
-      context.request.url = '/api/trustees/trustee-123';
+    test('should return list of trustees for GET requests', async () => {
+      const mockTrustees = [sampleTrusteeDocument];
+      mockUseCase.listTrustees.mockResolvedValue(mockTrustees);
+      context.request.url = '/api/trustees';
 
-      await expect(controller.handleRequest(context)).rejects.toThrow(
-        'HTTP method GET is not supported',
-      );
+      const result = await controller.handleRequest(context);
+
+      expect(result.statusCode).toBe(200);
+      expect(result.body?.data).toEqual(mockTrustees);
+      expect(mockUseCase.listTrustees).toHaveBeenCalledWith(context);
     });
   });
 

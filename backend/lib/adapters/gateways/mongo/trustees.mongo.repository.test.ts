@@ -184,7 +184,21 @@ describe('TrusteesMongoRepository', () => {
 
       const result = await repository.listTrustees();
 
-      expect(mockAdapter.find).toHaveBeenCalledWith({ documentType: 'TRUSTEE' }, { updatedOn: -1 });
+      expect(mockAdapter.find).toHaveBeenCalledWith(
+        {
+          condition: 'EQUALS',
+          leftOperand: { name: 'documentType' },
+          rightOperand: 'TRUSTEE',
+        },
+        {
+          fields: [
+            {
+              direction: 'DESCENDING',
+              field: { name: 'updatedOn' },
+            },
+          ],
+        },
+      );
       expect(result).toEqual(mockTrustees);
       expect(result).toHaveLength(2);
     });
@@ -194,7 +208,21 @@ describe('TrusteesMongoRepository', () => {
 
       const result = await repository.listTrustees();
 
-      expect(mockAdapter.find).toHaveBeenCalledWith({ documentType: 'TRUSTEE' }, { updatedOn: -1 });
+      expect(mockAdapter.find).toHaveBeenCalledWith(
+        {
+          condition: 'EQUALS',
+          leftOperand: { name: 'documentType' },
+          rightOperand: 'TRUSTEE',
+        },
+        {
+          fields: [
+            {
+              direction: 'DESCENDING',
+              field: { name: 'updatedOn' },
+            },
+          ],
+        },
+      );
       expect(result).toEqual([]);
       expect(result).toHaveLength(0);
     });
@@ -205,7 +233,21 @@ describe('TrusteesMongoRepository', () => {
 
       await expect(repository.listTrustees()).rejects.toThrow();
 
-      expect(mockAdapter.find).toHaveBeenCalledWith({ documentType: 'TRUSTEE' }, { updatedOn: -1 });
+      expect(mockAdapter.find).toHaveBeenCalledWith(
+        {
+          condition: 'EQUALS',
+          leftOperand: { name: 'documentType' },
+          rightOperand: 'TRUSTEE',
+        },
+        {
+          fields: [
+            {
+              direction: 'DESCENDING',
+              field: { name: 'updatedOn' },
+            },
+          ],
+        },
+      );
     });
   });
 
