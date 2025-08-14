@@ -9,21 +9,34 @@ import {
 /**
  * Validates individual form fields with specific business rules
  */
-function validateField(field: string, value: string): string | null {
-  const trimmedValue = value.trim();
+function validateField(field: string, value: string | string[] | undefined | null): string | null {
+  // Handle undefined/null values safely
+  if (value == null) {
+    return null; // Skip validation for optional fields that are null/undefined
+  }
+
+  // Handle array fields (like chapters)
+  if (Array.isArray(value)) {
+    // For now, we don't validate array fields in this function
+    return null;
+  }
+
+  // Convert to string and trim
+  const stringValue = String(value);
+  const trimmedValue = stringValue.trim();
 
   switch (field) {
     case 'name':
-      return !trimmedValue ? 'Trustee name is required' : null;
+      return trimmedValue ? null : 'Trustee name is required';
 
     case 'address1':
-      return !trimmedValue ? 'Address line 1 is required' : null;
+      return trimmedValue ? null : 'Address line 1 is required';
 
     case 'city':
-      return !trimmedValue ? 'City is required' : null;
+      return trimmedValue ? null : 'City is required';
 
     case 'state':
-      return !trimmedValue ? 'State is required' : null;
+      return trimmedValue ? null : 'State is required';
 
     case 'zipCode':
       if (!trimmedValue) {
@@ -55,10 +68,13 @@ export function useTrusteeFormValidation(): TrusteeFormValidation {
 
     // Validate each field
     Object.entries(formData).forEach(([field, value]) => {
-      const error = validateField(field, value);
-      if (error) {
-        errors.push({ field, message: error });
-        newFieldErrors[field] = error;
+      // Only validate non-undefined values for optional fields
+      if (value !== undefined) {
+        const error = validateField(field, value);
+        if (error) {
+          errors.push({ field, message: error });
+          newFieldErrors[field] = error;
+        }
       }
     });
 
@@ -107,6 +123,38 @@ export function useTrusteeFormValidation(): TrusteeFormValidation {
     });
   };
 
+  /**
+   * Checks if all required fields are filled
+   */
+  const areRequiredFieldsFilled = (formData: TrusteeFormData): boolean => {
+    const requiredFields = ['name', 'address1', 'city', 'state', 'zipCode'];
+    return requiredFields.every((field) => {
+      const value = formData[field as keyof TrusteeFormData];
+      return value && typeof value === 'string' && value.trim() !== '';
+    });
+  };
+
+  /**
+   * Checks if form is both valid (no errors) and complete (all required fields filled)
+   */
+  const isFormValidAndComplete = (formData: TrusteeFormData): boolean => {
+    // First check if all required fields are filled
+    if (!areRequiredFieldsFilled(formData)) {
+      return false;
+    }
+
+    // Then validate each field to check for any errors
+    const fieldsToValidate = ['name', 'address1', 'city', 'state', 'zipCode', 'phone', 'email'];
+    for (const field of fieldsToValidate) {
+      const value = formData[field as keyof TrusteeFormData] as string;
+      if (value && validateField(field, value)) {
+        return false; // Found a validation error
+      }
+    }
+
+    return true; // All required fields filled and no validation errors
+  };
+
   return {
     fieldErrors,
     errors: Object.entries(fieldErrors).map(([field, message]) => ({ field, message })),
@@ -114,6 +162,8 @@ export function useTrusteeFormValidation(): TrusteeFormValidation {
     validateFieldAndUpdate,
     clearErrors,
     clearFieldError,
+    areRequiredFieldsFilled,
+    isFormValidAndComplete,
   };
 }
 

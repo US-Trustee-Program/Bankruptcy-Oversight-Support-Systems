@@ -157,6 +157,58 @@ describe('TrusteesMongoRepository', () => {
     });
   });
 
+  describe('listTrustees', () => {
+    test('should retrieve list of trustees successfully', async () => {
+      const mockTrustees = [
+        {
+          id: 'trustee-1',
+          name: 'John Doe',
+          address1: '123 Main St',
+          cityStateZipCountry: 'Springfield, IL 62704',
+          documentType: 'TRUSTEE',
+          createdOn: '2025-08-12T10:00:00Z',
+          createdBy: mockUser,
+        },
+        {
+          id: 'trustee-2',
+          name: 'Jane Smith',
+          address1: '456 Oak Ave',
+          cityStateZipCountry: 'Chicago, IL 60601',
+          documentType: 'TRUSTEE',
+          createdOn: '2025-08-12T11:00:00Z',
+          createdBy: mockUser,
+        },
+      ];
+
+      mockAdapter.find.mockResolvedValue(mockTrustees);
+
+      const result = await repository.listTrustees();
+
+      expect(mockAdapter.find).toHaveBeenCalledWith({ documentType: 'TRUSTEE' }, { updatedOn: -1 });
+      expect(result).toEqual(mockTrustees);
+      expect(result).toHaveLength(2);
+    });
+
+    test('should return empty array when no trustees exist', async () => {
+      mockAdapter.find.mockResolvedValue([]);
+
+      const result = await repository.listTrustees();
+
+      expect(mockAdapter.find).toHaveBeenCalledWith({ documentType: 'TRUSTEE' }, { updatedOn: -1 });
+      expect(result).toEqual([]);
+      expect(result).toHaveLength(0);
+    });
+
+    test('should handle database errors when listing trustees', async () => {
+      const error = new Error('Database connection failed');
+      mockAdapter.find.mockRejectedValue(error);
+
+      await expect(repository.listTrustees()).rejects.toThrow();
+
+      expect(mockAdapter.find).toHaveBeenCalledWith({ documentType: 'TRUSTEE' }, { updatedOn: -1 });
+    });
+  });
+
   describe('singleton pattern', () => {
     test('should return same instance when called multiple times', () => {
       const instance1 = TrusteesMongoRepository.getInstance(context);

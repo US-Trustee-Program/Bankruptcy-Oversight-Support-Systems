@@ -203,4 +203,8 @@ export class MockMongoRepository
   createTrustee(_ignore: any): Promise<any> {
     throw new Error('Method not implemented.');
   }
+
+  listTrustees(): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
 }
