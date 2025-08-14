@@ -3,7 +3,7 @@ jest.mock('../../../../common/src/cams/parties', () => {
   const actualParties = jest.requireActual('../../../../common/src/cams/parties');
   return {
     ...actualParties,
-    validateTrusteeCreationFields: jest.fn(),
+    validateTrusteeCreationInput: jest.fn(),
   };
 });
 
@@ -27,7 +27,7 @@ import { closeDeferred } from '../../deferrable/defer-close';
 import { CamsError } from '../../common-errors/cams-error';
 import { getTrusteesRepository } from '../../factory';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
-import { validateTrusteeCreationFields } from '../../../../common/src/cams/parties';
+import { validateTrusteeCreationInput } from '../../../../common/src/cams/parties';
 
 const mockGetTrusteesRepository = getTrusteesRepository as jest.MockedFunction<
   typeof getTrusteesRepository
@@ -39,8 +39,8 @@ const mockGetCamsUserReference = getCamsUserReference as jest.MockedFunction<
   typeof getCamsUserReference
 >;
 
-const mockValidateTrusteeCreationFields = validateTrusteeCreationFields as jest.MockedFunction<
-  typeof validateTrusteeCreationFields
+const mockValidateTrusteeCreationInput = validateTrusteeCreationInput as jest.MockedFunction<
+  typeof validateTrusteeCreationInput
 >;
 
 describe('TrusteesUseCase', () => {
@@ -55,8 +55,13 @@ describe('TrusteesUseCase', () => {
 
   const sampleTrusteeInput: TrusteeInput = {
     name: 'John Doe',
-    address1: '123 Main St',
-    cityStateZipCountry: 'Anytown, NY 12345',
+    address: {
+      address1: '123 Main St',
+      city: 'Anytown',
+      state: 'NY',
+      zipCode: '12345',
+      countryCode: 'US',
+    },
     phone: '555-0123',
     email: 'john.doe@example.com',
     districts: ['NY'],
@@ -69,12 +74,13 @@ describe('TrusteesUseCase', () => {
 
     mockTrusteesRepository = {
       createTrustee: jest.fn(),
+      listTrustees: jest.fn(),
       release: jest.fn(),
     } as jest.Mocked<TrusteesRepository>;
 
     mockGetTrusteesRepository.mockReturnValue(mockTrusteesRepository);
     mockGetCamsUserReference.mockReturnValue(mockUserReference);
-    mockValidateTrusteeCreationFields.mockReturnValue([]);
+    mockValidateTrusteeCreationInput.mockReturnValue([]);
 
     // Set up getCamsError to return a proper CamsError
     mockGetCamsError.mockImplementation((originalError) => {
@@ -106,7 +112,7 @@ describe('TrusteesUseCase', () => {
 
       const result = await useCase.createTrustee(context, sampleTrusteeInput);
 
-      expect(mockValidateTrusteeCreationFields).toHaveBeenCalledWith(sampleTrusteeInput);
+      expect(mockValidateTrusteeCreationInput).toHaveBeenCalledWith(sampleTrusteeInput);
       expect(mockGetCamsUserReference).toHaveBeenCalledWith(context.session.user);
       expect(mockTrusteesRepository.createTrustee).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -123,8 +129,13 @@ describe('TrusteesUseCase', () => {
     it('should set default values for missing optional fields', async () => {
       const trusteeInputWithoutOptionalFields: TrusteeInput = {
         name: 'Jane Smith',
-        address1: '456 Oak St',
-        cityStateZipCountry: 'Somewhere, CA 90210',
+        address: {
+          address1: '456 Oak St',
+          city: 'Somewhere',
+          state: 'CA',
+          zipCode: '90210',
+          countryCode: 'US',
+        },
         phone: '555-0456',
         email: 'jane.smith@example.com',
       };
@@ -158,19 +169,24 @@ describe('TrusteesUseCase', () => {
     });
 
     it('should throw error when validation fails', async () => {
-      const validationErrors = ['Name is required', 'Email format is invalid'];
-      mockValidateTrusteeCreationFields.mockReturnValue(validationErrors);
+      const validationErrors = ['Trustee name is required', 'Please enter a valid email address'];
+      mockValidateTrusteeCreationInput.mockReturnValue(validationErrors);
 
       const invalidTrusteeInput: TrusteeInput = {
         name: '',
-        address1: '123 Main St',
-        cityStateZipCountry: 'Anytown, NY 12345',
+        address: {
+          address1: '123 Main St',
+          city: 'Anytown',
+          state: 'NY',
+          zipCode: '12345',
+          countryCode: 'US',
+        },
         phone: '555-0123',
         email: 'invalid-email',
       };
 
       await expect(useCase.createTrustee(context, invalidTrusteeInput)).rejects.toThrow(
-        'Trustee validation failed: Name is required, Email format is invalid',
+        'Trustee validation failed: Trustee name is required, Please enter a valid email address',
       );
 
       expect(mockTrusteesRepository.createTrustee).not.toHaveBeenCalled();
