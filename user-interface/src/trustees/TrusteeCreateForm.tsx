@@ -44,36 +44,23 @@ export default function TrusteeCreateForm(props: Props) {
   const [phone, setPhone] = useState('');
   const [extension, setExtension] = useState('');
   const [email, setEmail] = useState('');
-  const [district, setDistrict] = useState('');
+  const [districts, setDistricts] = useState<string[]>([]);
   const [chapters, setChapters] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // District options state and loading
+  // District options state
   const [districtOptions, setDistrictOptions] = useState<ComboOption[]>([]);
-  const [isLoadingDistricts, setIsLoadingDistricts] = useState(true);
   const [districtLoadError, setDistrictLoadError] = useState<string | null>(null);
 
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
 
   // Load district options from API
   useEffect(() => {
-    let isMounted = true;
-
     async function loadDistricts() {
-      if (!isMounted) {
-        return;
-      }
-
       try {
-        setIsLoadingDistricts(true);
         setDistrictLoadError(null);
-
         const response = await api.getCourts();
-
-        if (!isMounted) {
-          return;
-        }
 
         if (!response?.data) {
           throw new Error('No data received from getCourts API');
@@ -98,18 +85,10 @@ export default function TrusteeCreateForm(props: Props) {
 
         setDistrictOptions(options);
       } catch (error) {
-        if (!isMounted) {
-          return;
-        }
-
         setDistrictLoadError(
           `Failed to load district options: ${error instanceof Error ? error.message : 'Unknown error'}`,
         );
         setDistrictOptions([]);
-      } finally {
-        if (isMounted) {
-          setIsLoadingDistricts(false);
-        }
       }
     }
 
@@ -117,15 +96,9 @@ export default function TrusteeCreateForm(props: Props) {
     if (canManage && flags[TRUSTEE_MANAGEMENT]) {
       loadDistricts();
     } else {
-      // Reset loading state if conditions aren't met
-      setIsLoadingDistricts(false);
       setDistrictOptions([]);
     }
-
-    return () => {
-      isMounted = false;
-    };
-  }, [canManage, flags]); // Add dependencies back temporarily for debugging
+  }, [canManage, flags, api]);
 
   if (!flags[TRUSTEE_MANAGEMENT]) {
     return <div data-testid="trustee-create-disabled">Trustee management is not enabled.</div>;
@@ -150,7 +123,7 @@ export default function TrusteeCreateForm(props: Props) {
       phone: phone.trim() || undefined,
       extension: extension.trim() || undefined,
       email: email.trim() || undefined,
-      district: district.trim() || undefined,
+      districts: districts.length > 0 ? districts : undefined,
       chapters: chapters.length > 0 ? chapters : undefined,
     };
   }
@@ -187,7 +160,8 @@ export default function TrusteeCreateForm(props: Props) {
         },
         ...(formData.phone && { phone: formData.phone }),
         ...(formData.email && { email: formData.email }),
-        ...(formData.district && { districts: [formData.district] }),
+        ...(formData.districts &&
+          formData.districts.length > 0 && { districts: formData.districts }),
         ...(formData.chapters && formData.chapters.length > 0 && { chapters: formData.chapters }),
       } as unknown as TrusteeInput;
 
@@ -333,21 +307,14 @@ export default function TrusteeCreateForm(props: Props) {
         label="District"
         options={districtOptions}
         onUpdateSelection={(selectedOptions) => {
-          const selectedValue = selectedOptions.length > 0 ? selectedOptions[0].value : '';
-          setDistrict(selectedValue);
-          handleFieldChange('district', selectedValue);
+          const selectedValues = selectedOptions.map((option) => option.value);
+          setDistricts(selectedValues);
+          handleFieldChange('districts', selectedValues.join(','));
         }}
-        multiSelect={false}
+        multiSelect={true}
         singularLabel="district"
         pluralLabel="districts"
-        disabled={isLoadingDistricts}
-        placeholder={
-          isLoadingDistricts
-            ? 'Loading districts...'
-            : districtLoadError
-              ? 'Error loading districts'
-              : 'Select a district'
-        }
+        placeholder={districtLoadError ? 'Error loading districts' : 'Select districts'}
       />
 
       <ComboBox
