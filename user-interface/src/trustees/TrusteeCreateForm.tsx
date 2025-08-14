@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Input from '@/lib/components/uswds/Input';
 import Button from '@/lib/components/uswds/Button';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
@@ -10,22 +10,16 @@ import type { TrusteeFormData } from '@/lib/hooks/UseTrusteeFormValidation.types
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
+import { CourtDivisionDetails } from '@common/cams/courts';
 
-// District options (placeholder - will be replaced with actual data source later)
-const DISTRICT_OPTIONS: ComboOption[] = [
-  { value: 'district-01', label: 'District 01' },
-  { value: 'district-02', label: 'District 02' },
-  { value: 'district-03', label: 'District 03' },
-  { value: 'district-04', label: 'District 04' },
-  { value: 'district-05', label: 'District 05' },
-];
-
-// Chapter type options
+// Chapter type options - Complete list with Panel/Non-Panel distinctions
 const CHAPTER_OPTIONS: ComboOption[] = [
-  { value: '7', label: 'Chapter 7' },
-  { value: '11', label: 'Chapter 11' },
-  { value: '12', label: 'Chapter 12' },
-  { value: '13', label: 'Chapter 13' },
+  { value: '7-panel', label: '7 - Panel' },
+  { value: '7-non-panel', label: '7 - Non-Panel' },
+  { value: '11', label: '11' },
+  { value: '11-subchapter-v', label: '11 - Subchapter V' },
+  { value: '12', label: '12' },
+  { value: '13', label: '13' },
 ];
 
 type Props = {
@@ -38,7 +32,7 @@ export default function TrusteeCreateForm(props: Props) {
   const api = useApi2();
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
-  const { fieldErrors, validateForm, validateFieldAndUpdate, clearErrors } =
+  const { fieldErrors, validateForm, validateFieldAndUpdate, clearErrors, isFormValidAndComplete } =
     useTrusteeFormValidation();
 
   const [name, setName] = useState('');
@@ -55,7 +49,83 @@ export default function TrusteeCreateForm(props: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // District options state and loading
+  const [districtOptions, setDistrictOptions] = useState<ComboOption[]>([]);
+  const [isLoadingDistricts, setIsLoadingDistricts] = useState(true);
+  const [districtLoadError, setDistrictLoadError] = useState<string | null>(null);
+
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
+
+  // Load district options from API
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadDistricts() {
+      if (!isMounted) {
+        return;
+      }
+
+      try {
+        setIsLoadingDistricts(true);
+        setDistrictLoadError(null);
+
+        const response = await api.getCourts();
+
+        if (!isMounted) {
+          return;
+        }
+
+        if (!response?.data) {
+          throw new Error('No data received from getCourts API');
+        }
+
+        const courts = response.data;
+
+        // Transform court divisions to district options
+        const districtMap = new Map<string, ComboOption>();
+        courts.forEach((court: CourtDivisionDetails) => {
+          // Use courtId as both value and create a readable label
+          const label = court.courtName || `District ${court.courtId}`;
+          districtMap.set(court.courtId, {
+            value: court.courtId,
+            label: label,
+          });
+        });
+
+        const options = Array.from(districtMap.values()).sort((a, b) =>
+          a.label.localeCompare(b.label),
+        );
+
+        setDistrictOptions(options);
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        setDistrictLoadError(
+          `Failed to load district options: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        );
+        setDistrictOptions([]);
+      } finally {
+        if (isMounted) {
+          setIsLoadingDistricts(false);
+        }
+      }
+    }
+
+    // Only load if we have the necessary permissions and feature flags
+    if (canManage && flags[TRUSTEE_MANAGEMENT]) {
+      loadDistricts();
+    } else {
+      // Reset loading state if conditions aren't met
+      setIsLoadingDistricts(false);
+      setDistrictOptions([]);
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [canManage, flags]); // Add dependencies back temporarily for debugging
 
   if (!flags[TRUSTEE_MANAGEMENT]) {
     return <div data-testid="trustee-create-disabled">Trustee management is not enabled.</div>;
@@ -261,7 +331,7 @@ export default function TrusteeCreateForm(props: Props) {
       <ComboBox
         id="trustee-district"
         label="District"
-        options={DISTRICT_OPTIONS}
+        options={districtOptions}
         onUpdateSelection={(selectedOptions) => {
           const selectedValue = selectedOptions.length > 0 ? selectedOptions[0].value : '';
           setDistrict(selectedValue);
@@ -270,6 +340,14 @@ export default function TrusteeCreateForm(props: Props) {
         multiSelect={false}
         singularLabel="district"
         pluralLabel="districts"
+        disabled={isLoadingDistricts}
+        placeholder={
+          isLoadingDistricts
+            ? 'Loading districts...'
+            : districtLoadError
+              ? 'Error loading districts'
+              : 'Select a district'
+        }
       />
 
       <ComboBox
@@ -289,9 +367,9 @@ export default function TrusteeCreateForm(props: Props) {
       {errorMessage && <div role="alert">{errorMessage}</div>}
       <div className="usa-button-group">
         <Button
-          onClick={submit}
-          disabled={isSubmitting || Object.keys(fieldErrors).length > 0}
+          disabled={isSubmitting || !isFormValidAndComplete(getFormData())}
           type="submit"
+          onClick={submit}
         >
           {isSubmitting ? 'Creating…' : 'Create Trustee'}
         </Button>

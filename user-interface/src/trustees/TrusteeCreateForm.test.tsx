@@ -120,6 +120,18 @@ describe('TrusteeCreateForm', () => {
       currentFieldErrors = {};
     }),
     clearFieldError: vi.fn(),
+    areRequiredFieldsFilled: vi.fn((formData: TrusteeFormData): boolean => {
+      const requiredFields = ['name', 'address1', 'city', 'state', 'zipCode'];
+      return requiredFields.every((field) => {
+        const value = formData[field as keyof TrusteeFormData];
+        return value && typeof value === 'string' && value.trim() !== '';
+      });
+    }),
+    isFormValidAndComplete: vi.fn((formData: TrusteeFormData): boolean => {
+      const requiredFieldsFilled = mockValidation.areRequiredFieldsFilled(formData);
+      const hasNoErrors = Object.keys(currentFieldErrors).length === 0;
+      return requiredFieldsFilled && hasNoErrors;
+    }),
   };
 
   beforeEach(() => {
@@ -142,6 +154,14 @@ describe('TrusteeCreateForm', () => {
     vi.spyOn(UseTrusteeFormValidationModule, 'useTrusteeFormValidation').mockReturnValue(
       mockValidation,
     );
+
+    // Mock the useApi2 hook to include getCourts
+    vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+      getCourts: vi.fn().mockResolvedValue({
+        data: MockData.getCourts(),
+      }),
+      postTrustee: vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } }),
+    } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
   });
 
   test('renders disabled message when feature is off', () => {
@@ -197,6 +217,9 @@ describe('TrusteeCreateForm', () => {
     } as Record<string, boolean>);
 
     vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+      getCourts: vi.fn().mockResolvedValue({
+        data: MockData.getCourts(),
+      }),
       postTrustee: vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } }),
     } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
 
@@ -220,6 +243,9 @@ describe('TrusteeCreateForm', () => {
         [FeatureFlags.TRUSTEE_MANAGEMENT]: true,
       } as Record<string, boolean>);
       vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({
+          data: MockData.getCourts(),
+        }),
         postTrustee: vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } }),
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
     });
@@ -322,6 +348,9 @@ describe('TrusteeCreateForm', () => {
 
     test('shows success notification when trustee is created successfully', async () => {
       vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({
+          data: MockData.getCourts(),
+        }),
         postTrustee: vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } }),
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
 
@@ -346,6 +375,9 @@ describe('TrusteeCreateForm', () => {
     test('shows error notification when API call fails', async () => {
       const errorMessage = 'Network error occurred';
       vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({
+          data: MockData.getCourts(),
+        }),
         postTrustee: vi.fn().mockRejectedValue(new Error(errorMessage)),
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
 
@@ -389,6 +421,9 @@ describe('TrusteeCreateForm', () => {
         [FeatureFlags.TRUSTEE_MANAGEMENT]: true,
       } as Record<string, boolean>);
       vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({
+          data: MockData.getCourts(),
+        }),
         postTrustee: vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } }),
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
     });
@@ -487,6 +522,9 @@ describe('TrusteeCreateForm', () => {
     test('includes optional fields in form submission when provided', async () => {
       const mockPostTrustee = vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } });
       vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({
+          data: MockData.getCourts(),
+        }),
         postTrustee: mockPostTrustee,
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
 
@@ -529,6 +567,9 @@ describe('TrusteeCreateForm', () => {
     test('does not include empty optional fields in submission', async () => {
       const mockPostTrustee = vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } });
       vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({
+          data: MockData.getCourts(),
+        }),
         postTrustee: mockPostTrustee,
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
 
@@ -582,6 +623,94 @@ describe('TrusteeCreateForm', () => {
       // Form should be submittable
       const submitButton = screen.getByRole('button', { name: /create trustee/i });
       expect(submitButton).not.toBeDisabled();
+    });
+  });
+
+  describe('Enhanced Submit Button UX', () => {
+    beforeEach(() => {
+      vi.spyOn(FeatureFlags, 'default').mockReturnValue({
+        [FeatureFlags.TRUSTEE_MANAGEMENT]: true,
+      } as Record<string, boolean>);
+
+      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({
+          data: MockData.getCourts(),
+        }),
+        postTrustee: vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } }),
+      } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
+    });
+
+    test('submit button starts disabled and enables only when form is valid and complete', async () => {
+      render(<TrusteeCreateForm />);
+
+      const submitButton = screen.getByRole('button', { name: /create trustee/i });
+
+      // Submit button should start disabled
+      expect(submitButton).toBeDisabled();
+
+      // Fill some required fields, but not all
+      await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
+      await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
+
+      // Button should still be disabled (not all required fields filled)
+      expect(submitButton).toBeDisabled();
+
+      // Fill remaining required fields
+      await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
+      await userEvent.type(screen.getByTestId('trustee-state'), 'IL');
+      await userEvent.type(screen.getByTestId('trustee-zip'), '62704');
+
+      // Now button should be enabled (all required fields filled and valid)
+      expect(submitButton).not.toBeDisabled();
+
+      // Make a field invalid
+      await userEvent.clear(screen.getByTestId('trustee-zip'));
+      await userEvent.type(screen.getByTestId('trustee-zip'), '1234');
+
+      // Button should be disabled again (validation error)
+      expect(submitButton).toBeDisabled();
+
+      // Fix the validation error
+      await userEvent.clear(screen.getByTestId('trustee-zip'));
+      await userEvent.type(screen.getByTestId('trustee-zip'), '62704');
+
+      // Button should be enabled again
+      expect(submitButton).not.toBeDisabled();
+    });
+
+    test('does not double-submit when form is submitted via different mechanisms', async () => {
+      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } });
+      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({
+          data: MockData.getCourts(),
+        }),
+        postTrustee: mockPostTrustee,
+      } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
+
+      render(<TrusteeCreateForm />);
+
+      // Fill all required fields
+      await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
+      await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
+      await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
+      await userEvent.type(screen.getByTestId('trustee-state'), 'IL');
+      await userEvent.type(screen.getByTestId('trustee-zip'), '62704');
+
+      // Wait for button to be enabled
+      const submitButton = screen.getByRole('button', {
+        name: /create trustee/i,
+      }) as HTMLButtonElement;
+      await vi.waitFor(() => {
+        expect(submitButton).not.toBeDisabled();
+      });
+
+      // Submit the form
+      await userEvent.click(submitButton);
+
+      // API should be called exactly once, not twice
+      await vi.waitFor(() => {
+        expect(mockPostTrustee).toHaveBeenCalledTimes(1);
+      });
     });
   });
 });

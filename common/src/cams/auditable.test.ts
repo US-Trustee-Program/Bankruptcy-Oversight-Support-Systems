@@ -15,6 +15,8 @@ describe('auditable tests', () => {
       ...foo,
       updatedOn: expect.any(String),
       updatedBy: SYSTEM_USER_REFERENCE,
+      createdOn: expect.any(String),
+      createdBy: SYSTEM_USER_REFERENCE,
     };
     expect(createAuditRecord<Foo>(foo)).toEqual(expected);
   });
@@ -29,6 +31,8 @@ describe('auditable tests', () => {
       ...foo,
       updatedOn: expect.any(String),
       updatedBy: user,
+      createdOn: expect.any(String),
+      createdBy: user,
     };
     expect(createAuditRecord<Foo>(foo, user)).toEqual(expected);
   });

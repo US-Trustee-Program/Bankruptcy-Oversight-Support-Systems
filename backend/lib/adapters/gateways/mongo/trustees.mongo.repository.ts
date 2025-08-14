@@ -5,10 +5,13 @@ import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { TrusteesRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { CamsUserReference } from '../../../../../common/src/cams/users';
+import QueryBuilder from '../../../query/query-builder';
 import * as crypto from 'crypto';
 
 const MODULE_NAME = 'TRUSTEES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustees';
+
+const { orderBy, using } = QueryBuilder;
 
 export type TrusteeDocument = Trustee & {
   documentType: 'TRUSTEE';
@@ -61,6 +64,21 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to create trustee ${trustee.name}.`,
+      });
+    }
+  }
+
+  async listTrustees(): Promise<Trustee[]> {
+    try {
+      const doc = using<TrusteeDocument>();
+      const query = doc('documentType').equals('TRUSTEE');
+      return await this.getAdapter<TrusteeDocument>().find(
+        query,
+        orderBy<TrusteeDocument>(['updatedOn', 'DESCENDING']),
+      );
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: 'Failed to retrieve trustees list.',
       });
     }
   }
