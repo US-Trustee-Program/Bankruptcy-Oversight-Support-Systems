@@ -1,7 +1,7 @@
 import { Auditable } from './auditable';
 
 // Chapter types supported for trustee assignments
-export type ChapterType = '7' | '11' | '12' | '13';
+export type ChapterType = '7' | '7-panel' | '7-non-panel' | '11' | '11-subchapter-v' | '12' | '13';
 
 // Trustee status enumeration
 export type TrusteeStatus = 'active' | 'inactive';
@@ -64,7 +64,7 @@ export type Trustee = Auditable &
 export type TrusteeAssistant = Party;
 
 export function isValidChapterType(chapter: string): chapter is ChapterType {
-  return ['7', '11', '12', '13'].includes(chapter);
+  return ['7', '7-panel', '7-non-panel', '11', '11-subchapter-v', '12', '13'].includes(chapter);
 }
 
 export function isValidTrusteeStatus(status: string): status is TrusteeStatus {

@@ -18,7 +18,10 @@ describe('Trustee Type Extensions', () => {
   describe('ChapterType validation', () => {
     test('should validate correct chapter types', () => {
       expect(isValidChapterType('7')).toBe(true);
+      expect(isValidChapterType('7-panel')).toBe(true);
+      expect(isValidChapterType('7-non-panel')).toBe(true);
       expect(isValidChapterType('11')).toBe(true);
+      expect(isValidChapterType('11-subchapter-v')).toBe(true);
       expect(isValidChapterType('12')).toBe(true);
       expect(isValidChapterType('13')).toBe(true);
     });
