@@ -250,23 +250,6 @@ describe('TrusteeCreateForm', () => {
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
     });
 
-    test('displays error for required fields when empty', async () => {
-      render(<TrusteeCreateForm />);
-
-      // Try to submit empty form
-      await userEvent.click(screen.getByRole('button', { name: /create trustee/i }));
-
-      // Check for validation errors
-      expect(screen.getByText('Trustee name is required')).toBeInTheDocument();
-      expect(screen.getByText('Address line 1 is required')).toBeInTheDocument();
-      expect(screen.getByText('City is required')).toBeInTheDocument();
-      expect(screen.getByText('State is required')).toBeInTheDocument();
-      expect(screen.getByText('ZIP code is required')).toBeInTheDocument();
-      expect(
-        screen.getByText('Please correct the errors below before submitting.'),
-      ).toBeInTheDocument();
-    });
-
     test('displays error for invalid ZIP code format', async () => {
       render(<TrusteeCreateForm />);
 
@@ -821,6 +804,30 @@ describe('TrusteeCreateForm', () => {
 
       // Button should be enabled again
       expect(submitButton).not.toBeDisabled();
+    });
+
+    test('submit button remains disabled when only optional fields are filled', async () => {
+      render(<TrusteeCreateForm />);
+
+      const submitButton = screen.getByRole('button', { name: /create trustee/i });
+
+      // Submit button should start disabled
+      expect(submitButton).toBeDisabled();
+
+      // Fill only optional fields, leave all required fields empty
+      await userEvent.type(screen.getByTestId('trustee-address2'), 'Suite 100');
+      await userEvent.type(screen.getByTestId('trustee-phone'), '(555) 123-4567');
+      await userEvent.type(screen.getByTestId('trustee-extension'), '123');
+      await userEvent.type(screen.getByTestId('trustee-email'), 'test@example.com');
+
+      // Button should still be disabled (no required fields filled)
+      expect(submitButton).toBeDisabled();
+
+      // Fill one required field but not all
+      await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
+
+      // Button should still be disabled (not all required fields filled)
+      expect(submitButton).toBeDisabled();
     });
 
     test('does not double-submit when form is submitted via different mechanisms', async () => {
