@@ -46,4 +46,18 @@ export class TrusteesUseCase {
       throw getCamsError(originalError, MODULE_NAME);
     }
   }
+
+  async listTrustees(context: ApplicationContext): Promise<Trustee[]> {
+    try {
+      // Retrieve trustees list from repository
+      const trustees = await this.trusteesRepository.listTrustees();
+
+      context.logger.info(MODULE_NAME, `Retrieved ${trustees.length} trustees`);
+      return trustees;
+    } catch (originalError) {
+      const errorMessage = `Failed to retrieve trustees list.`;
+      context.logger.error(MODULE_NAME, errorMessage, originalError);
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
 }

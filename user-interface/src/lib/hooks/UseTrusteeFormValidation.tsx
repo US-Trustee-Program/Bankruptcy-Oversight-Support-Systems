@@ -21,7 +21,7 @@ export interface TrusteeFormData {
   phone?: string;
   extension?: string;
   email?: string;
-  district?: string;
+  districts?: string[];
   chapters?: string[];
 }
 
@@ -91,7 +91,7 @@ export function useTrusteeFormValidation() {
         return null; // Optional field, no validation needed beyond basic format
       case 'email':
         return validateEmail(value);
-      case 'district':
+      case 'districts':
         return null; // Optional field, handled by selection component
       case 'chapters':
         return null; // Optional field, handled by selection component
