@@ -236,6 +236,10 @@ async function postTrustee(trustee: TrusteeInput) {
   return api().post<Trustee, TrusteeInput>('/trustees', trustee);
 }
 
+async function getTrustees() {
+  return api().get<Trustee[]>('/trustees');
+}
+
 async function getCaseDetail(caseId: string) {
   return api().get<CaseDetail>(`/cases/${caseId}`);
 }
@@ -389,6 +393,7 @@ async function deletePrivilegedIdentityUser(userId: string) {
 }
 
 export const _Api2 = {
+  getTrustees,
   postTrustee,
   deletePrivilegedIdentityUser,
   getAttorneys,

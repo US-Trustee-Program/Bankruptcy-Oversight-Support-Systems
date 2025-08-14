@@ -613,8 +613,16 @@ describe('TrusteeCreateForm', () => {
       vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
         getCourts: vi.fn().mockResolvedValue({
           data: [
-            { courtId: 'NY', courtName: 'New York' },
-            { courtId: 'CA', courtName: 'California' },
+            {
+              courtDivisionCode: 'NY',
+              courtName: 'United States Bankruptcy Court for the Southern District of New York',
+              courtDivisionName: 'New York',
+            },
+            {
+              courtDivisionCode: 'CA',
+              courtName: 'United States Bankruptcy Court for the Central District of California',
+              courtDivisionName: 'California',
+            },
           ],
         }),
         postTrustee: mockPostTrustee,
@@ -633,7 +641,11 @@ describe('TrusteeCreateForm', () => {
       // Select district from ComboBox
       const districtCombobox = screen.getByRole('combobox', { name: /district/i });
       await userEvent.click(districtCombobox);
-      await userEvent.click(screen.getByText('New York'));
+      await userEvent.click(
+        screen.getByText(
+          'United States Bankruptcy Court for the Southern District of New York (New York)',
+        ),
+      );
 
       // Select multiple chapters from ComboBox
       const chaptersCombobox = screen.getByRole('combobox', { name: /chapter types/i });
@@ -705,10 +717,26 @@ describe('TrusteeCreateForm', () => {
       vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
         getCourts: vi.fn().mockResolvedValue({
           data: [
-            { courtId: 'NY-E', courtName: 'New York Eastern' },
-            { courtId: 'NY-S', courtName: 'New York Southern' },
-            { courtId: 'CA-N', courtName: 'California Northern' },
-            { courtId: 'TX-S', courtName: 'Texas Southern' },
+            {
+              courtDivisionCode: 'NY-E',
+              courtName: 'United States Bankruptcy Court for the Eastern District of New York',
+              courtDivisionName: 'New York Eastern',
+            },
+            {
+              courtDivisionCode: 'NY-S',
+              courtName: 'United States Bankruptcy Court for the Southern District of New York',
+              courtDivisionName: 'New York Southern',
+            },
+            {
+              courtDivisionCode: 'CA-N',
+              courtName: 'United States Bankruptcy Court for the Northern District of California',
+              courtDivisionName: 'California Northern',
+            },
+            {
+              courtDivisionCode: 'TX-S',
+              courtName: 'United States Bankruptcy Court for the Southern District of Texas',
+              courtDivisionName: 'Texas Southern',
+            },
           ],
         }),
         postTrustee: mockPostTrustee,
@@ -729,9 +757,21 @@ describe('TrusteeCreateForm', () => {
       await userEvent.click(districtCombobox);
 
       // Select THREE different districts to verify multi-select functionality
-      await userEvent.click(screen.getByText('New York Eastern'));
-      await userEvent.click(screen.getByText('California Northern'));
-      await userEvent.click(screen.getByText('Texas Southern'));
+      await userEvent.click(
+        screen.getByText(
+          'United States Bankruptcy Court for the Eastern District of New York (New York Eastern)',
+        ),
+      );
+      await userEvent.click(
+        screen.getByText(
+          'United States Bankruptcy Court for the Northern District of California (California Northern)',
+        ),
+      );
+      await userEvent.click(
+        screen.getByText(
+          'United States Bankruptcy Court for the Southern District of Texas (Texas Southern)',
+        ),
+      );
 
       await userEvent.click(screen.getByRole('button', { name: /create trustee/i }));
 

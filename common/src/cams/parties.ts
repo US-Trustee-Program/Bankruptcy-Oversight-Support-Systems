@@ -4,7 +4,7 @@ import { Auditable } from './auditable';
 export type ChapterType = '7' | '7-panel' | '7-non-panel' | '11' | '11-subchapter-v' | '12' | '13';
 
 // Trustee status enumeration
-export type TrusteeStatus = 'active' | 'inactive';
+export type TrusteeStatus = 'active' | 'not active' | 'suspended';
 export type Person = {
   firstName: string;
   lastName: string;
@@ -68,7 +68,7 @@ export function isValidChapterType(chapter: string): chapter is ChapterType {
 }
 
 export function isValidTrusteeStatus(status: string): status is TrusteeStatus {
-  return ['active', 'inactive'].includes(status);
+  return ['active', 'not active', 'suspended'].includes(status);
 }
 
 export function validateTrusteeCreationFields(trustee: Partial<TrusteeInput>): string[] {
