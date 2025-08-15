@@ -21,7 +21,7 @@ const TEST_TRIAL_ATTORNEY_1 = MockAttorneys.Brian;
 const TEST_ASSIGNMENT_1 = MockData.getAttorneyAssignment({ ...TEST_TRIAL_ATTORNEY_1 });
 const TEST_TRIAL_ATTORNEY_2 = MockAttorneys.Carl;
 const TEST_ASSIGNMENT_2 = MockData.getAttorneyAssignment({ ...TEST_TRIAL_ATTORNEY_2 });
-const TEST_TRUSTEE = MockData.getTrustee();
+const TEST_TRUSTEE = MockData.getLegacyTrustee();
 
 const BASE_TEST_CASE_DETAIL = MockData.getCaseDetail({
   override: {

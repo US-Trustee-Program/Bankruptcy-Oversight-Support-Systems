@@ -39,6 +39,7 @@ export type Party = LegacyAddress &
   TaxIds & {
     name: string;
     phone?: string;
+    extension?: string;
     email?: string;
     address?: Address;
   };

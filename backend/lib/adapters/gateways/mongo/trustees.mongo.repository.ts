@@ -80,7 +80,7 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
     }
   }
 
-  async getTrustee(id: string): Promise<Trustee> {
+  async read(id: string): Promise<Trustee> {
     try {
       const doc = using<TrusteeDocument>();
       const query = and(doc('documentType').equals('TRUSTEE'), doc('id').equals(id));
