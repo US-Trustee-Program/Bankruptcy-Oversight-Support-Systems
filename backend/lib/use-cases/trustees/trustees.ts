@@ -64,7 +64,7 @@ export class TrusteesUseCase {
   async getTrustee(context: ApplicationContext, id: string): Promise<Trustee> {
     try {
       // Retrieve individual trustee from repository
-      const trustee = await this.trusteesRepository.getTrustee(id);
+      const trustee = await this.trusteesRepository.read(id);
 
       context.logger.info(MODULE_NAME, `Retrieved trustee ${id}`);
       return trustee;

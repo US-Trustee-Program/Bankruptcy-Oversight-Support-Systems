@@ -240,6 +240,10 @@ async function getTrustees() {
   return api().get<Trustee[]>('/trustees');
 }
 
+async function getTrustee(id: string) {
+  return api().get<Trustee>(`/trustees/${id}`);
+}
+
 async function getCaseDetail(caseId: string) {
   return api().get<CaseDetail>(`/cases/${caseId}`);
 }
@@ -394,6 +398,7 @@ async function deletePrivilegedIdentityUser(userId: string) {
 
 export const _Api2 = {
   getTrustees,
+  getTrustee,
   postTrustee,
   deletePrivilegedIdentityUser,
   getAttorneys,

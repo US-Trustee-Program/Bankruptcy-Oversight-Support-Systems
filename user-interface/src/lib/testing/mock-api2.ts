@@ -259,9 +259,9 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
   } else if (path.match(/\/trustees/)) {
     response = {
       data: [
-        MockData.getTrustee({ id: 'trustee-1', name: 'John Doe' }),
-        MockData.getTrustee({ id: 'trustee-2', name: 'Jane Smith' }),
-        MockData.getTrustee({ id: 'trustee-3', name: 'Bob Johnson' }),
+        MockData.getLegacyTrustee({ id: 'trustee-1', name: 'John Doe' }),
+        MockData.getLegacyTrustee({ id: 'trustee-2', name: 'Jane Smith' }),
+        MockData.getLegacyTrustee({ id: 'trustee-3', name: 'Bob Johnson' }),
       ],
     };
   } else if (path.match(/\/me/)) {
@@ -444,8 +444,13 @@ async function getTrustees() {
   return get<Trustee[]>('/trustees');
 }
 
+async function getTrustee(id: string) {
+  return get<Trustee>(`/trustees/${id}`);
+}
+
 export const MockApi2 = {
   getTrustees,
+  getTrustee,
   postTrustee,
   deletePrivilegedIdentityUser,
   getAttorneys,

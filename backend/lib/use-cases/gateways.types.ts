@@ -198,10 +198,9 @@ export interface OfficeAssigneesRepository
   getDistinctAssigneesByOffice: (officeCode) => Promise<CamsUserReference[]>;
 }
 
-export interface TrusteesRepository extends Releasable {
+export interface TrusteesRepository extends Reads<Trustee>, Releasable {
   createTrustee(input: TrusteeInput, userRef: CamsUserReference): Promise<Trustee>;
   listTrustees(): Promise<Trustee[]>;
-  getTrustee(id: string): Promise<Trustee>;
 }
 
 export type RuntimeStateDocumentType =

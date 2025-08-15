@@ -20,7 +20,7 @@ import {
   RawConsolidationOrder,
   TransferOrder,
 } from '../orders';
-import { DebtorAttorney, Party, Trustee } from '../parties';
+import { Address, DebtorAttorney, Party, Trustee } from '../parties';
 import { COURT_DIVISIONS } from './courts.mock';
 import { TRIAL_ATTORNEYS } from './attorneys.mock';
 import { ConsolidationOrderSummary } from '../history';
@@ -511,6 +511,22 @@ function getDocketEntry(override: Partial<CaseDocketEntry> = {}): CaseDocketEntr
 function getTrustee(override: Partial<Trustee> = {}): Trustee {
   return {
     name: faker.person.fullName(),
+    phone: faker.phone.number(),
+    email: faker.internet.email(),
+    updatedOn: getDateBeforeToday().toISOString(),
+    updatedBy: getCamsUserReference(),
+    address: {} as unknown as Address,
+    ...override,
+    address1: undefined,
+    address2: undefined,
+    address3: undefined,
+    cityStateZipCountry: undefined,
+  };
+}
+
+function getLegacyTrustee(override: Partial<Trustee> = {}): Trustee {
+  return {
+    name: faker.person.fullName(),
     address1: faker.location.streetAddress(),
     address2: faker.location.secondaryAddress(),
     address3: '',
@@ -846,6 +862,7 @@ export const MockData = {
   someDateAfterThisDate,
   someDateBeforeThisDate,
   getCaseSyncEvent,
+  getLegacyTrustee,
   getTrustee,
 };
 
