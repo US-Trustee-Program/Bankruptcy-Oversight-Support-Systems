@@ -4,7 +4,6 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Icon from '@/lib/components/uswds/Icon';
 import useApi2 from '@/lib/hooks/UseApi2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
-import { ResponseBody } from '@common/api/response';
 import { Trustee } from '@common/cams/parties';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
@@ -55,44 +54,43 @@ export default function TrusteeDetailScreen() {
     async function fetchData() {
       if (trusteeId) {
         setIsLoading(true);
-        const [trusteeResponse, courtsResponse] = await Promise.all([
-          api.getTrustee(trusteeId),
-          api.getCourts(),
-        ]);
+        try {
+          const [trusteeResponse, courtsResponse] = await Promise.all([
+            api.getTrustee(trusteeId),
+            api.getCourts(),
+          ]);
 
-        setTrustee(trusteeResponse.data);
-        const trusteeDistricts: string[] = [];
-        trusteeResponse.data.districts?.map((district) => {
-          const court = courtsResponse.data.find((court) => court.courtDivisionCode === district);
-          if (court) {
-            trusteeDistricts.push(`${court.courtName} (${court.courtDivisionName})`);
-          }
-        });
-        setDistrictLabels(trusteeDistricts);
-        api
-          .getTrustee(trusteeId)
-          .then((response: ResponseBody<Trustee>) => {
-            setTrustee(response.data);
-            // {trustee.districts &&
-            //   trustee.districts.map((district) => <li key={district}>{district}</li>)}
-          })
-          .catch((_error) => {
-            globalAlert?.error('Could not get trustee details');
-          })
-          .finally(() => {
-            setIsLoading(false);
+          setTrustee(trusteeResponse.data);
+          const trusteeDistricts: string[] = [];
+          trusteeResponse.data.districts?.map((district) => {
+            const court = courtsResponse.data.find((court) => court.courtDivisionCode === district);
+            if (court) {
+              trusteeDistricts.push(`${court.courtName} (${court.courtDivisionName})`);
+            }
           });
+          setDistrictLabels(trusteeDistricts);
+        } catch (_error) {
+          globalAlert?.error('Could not get trustee details');
+        } finally {
+          setIsLoading(false);
+        }
       }
     }
     fetchData();
   }, [trusteeId]);
 
   return (
-    <>
-      {!!trustee && (
-        <MainContent className="record-detail" data-testid="record-detail">
-          <DocumentTitle name="Trustee Detail" />
-          <div className="trustee-detail-screen" data-testid="trustee-detail-screen">
+    <MainContent className="record-detail" data-testid="record-detail">
+      <DocumentTitle name="Trustee Detail" />
+      <div className="trustee-detail-screen" data-testid="trustee-detail-screen">
+        {(!trustee || isLoading) && (
+          <div className="screen-header display-flex flex-align-center">
+            <h1 className="text-no-wrap display-inline-block margin-right-1">Trustee Details</h1>
+            <LoadingSpinner />
+          </div>
+        )}
+        {!!trustee && !isLoading && (
+          <>
             <div className="screen-header display-flex flex-align-center">
               <h1 className="text-no-wrap display-inline-block margin-right-1">{trustee.name}</h1>
               <div className="tag-list">
@@ -132,51 +130,44 @@ export default function TrusteeDetailScreen() {
               <div className="record-detail-card-list">
                 <div className="trustee-contact-information record-detail-card">
                   <h3>Contact Information (Public)</h3>
-                  {isLoading && <LoadingSpinner />}
-                  {!isLoading && trustee && (
-                    <>
-                      <div className="trustee-name">{trustee.name}</div>
-                      <div>
-                        {trustee.address && (
-                          <>
-                            <div className="trustee-street-address">{trustee.address.address1}</div>
-                            <span className="trustee-city">{trustee.address.city}</span>
-                            <span className="trustee-state">, {trustee.address.state}</span>
-                            <span className="trustee-zip-code"> {trustee.address.zipCode}</span>
-                          </>
-                        )}
-                      </div>
-                      <div className="trustee-phone-number">{trustee.phone}</div>
-                      {trustee.email && (
-                        <div data-testid="trustee-email" aria-label="trustee email">
-                          <a href={`mailto:${trustee.email}`}>
-                            {trustee.email}
-                            <Icon className="link-icon" name="mail_outline" />
-                          </a>
-                        </div>
-                      )}
-                      <div className="trustee-districts" aria-label="districts">
-                        <ul>
-                          {districtLabels.map((label, index) => (
-                            <li key={index}>{label}</li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div className="trustee-chapters">
-                        <span>
-                          Chapter{trustee.chapters && trustee.chapters.length > 1 && 's'}:{' '}
-                        </span>
-                        {trustee.chapters && trustee.chapters.map(formatChapterType).join(', ')}
-                      </div>
-                      <div className="trustee-status">Status: {trustee.status}</div>
-                    </>
+                  <div className="trustee-name">{trustee.name}</div>
+                  <div>
+                    {trustee.address && (
+                      <>
+                        <div className="trustee-street-address">{trustee.address.address1}</div>
+                        <span className="trustee-city">{trustee.address.city}</span>
+                        <span className="trustee-state">, {trustee.address.state}</span>
+                        <span className="trustee-zip-code"> {trustee.address.zipCode}</span>
+                      </>
+                    )}
+                  </div>
+                  <div className="trustee-phone-number">{trustee.phone}</div>
+                  {trustee.email && (
+                    <div data-testid="trustee-email" aria-label="trustee email">
+                      <a href={`mailto:${trustee.email}`}>
+                        {trustee.email}
+                        <Icon className="link-icon" name="mail_outline" />
+                      </a>
+                    </div>
                   )}
+                  <div className="trustee-districts" aria-label="districts">
+                    <ul>
+                      {districtLabels.map((label, index) => (
+                        <li key={index}>{label}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="trustee-chapters">
+                    <span>Chapter{trustee.chapters && trustee.chapters.length > 1 && 's'}: </span>
+                    {trustee.chapters && trustee.chapters.map(formatChapterType).join(', ')}
+                  </div>
+                  <div className="trustee-status">Status: {trustee.status}</div>
                 </div>
               </div>
             </div>
-          </div>
-        </MainContent>
-      )}
-    </>
+          </>
+        )}
+      </div>
+    </MainContent>
   );
 }

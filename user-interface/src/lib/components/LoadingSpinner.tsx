@@ -20,6 +20,8 @@ export function LoadingSpinner(props: LoadingSpinnerProps) {
       id={id}
       className={`loading-spinner ${className ?? ''}`}
       data-testid={id}
+      role="status"
+      aria-live="polite"
       style={{
         display: hidden === true ? 'none' : 'flex',
         height: height ? height : undefined,
