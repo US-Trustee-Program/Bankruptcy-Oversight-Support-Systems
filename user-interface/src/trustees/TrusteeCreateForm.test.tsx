@@ -905,4 +905,63 @@ describe('TrusteeCreateForm', () => {
       });
     });
   });
+
+  describe('District Loading Error Handling', () => {
+    test('should handle getCourts API failure gracefully', async () => {
+      // Mock getCourts to reject
+      const mockGetCourts = vi.fn().mockRejectedValue(new Error('API Error'));
+      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: mockGetCourts,
+        postTrustee: vi.fn(),
+      } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
+
+      render(<TrusteeCreateForm />);
+
+      // Wait for the effect to run and error to be handled
+      await vi.waitFor(() => {
+        expect(mockGetCourts).toHaveBeenCalled();
+      });
+
+      // The form should still render even if district loading fails
+      expect(screen.getByTestId('trustee-name')).toBeInTheDocument();
+
+      // Verify the error handling completed successfully
+      expect(mockGetCourts).toHaveBeenCalled();
+    });
+
+    test('should handle getCourts returning undefined data', async () => {
+      // Mock getCourts to return response with no data
+      const mockGetCourts = vi.fn().mockResolvedValue({ data: null });
+      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: mockGetCourts,
+        postTrustee: vi.fn(),
+      } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
+
+      render(<TrusteeCreateForm />);
+
+      // Wait for the effect to run and error to be handled
+      await vi.waitFor(() => {
+        expect(mockGetCourts).toHaveBeenCalled();
+      });
+
+      // The form should still render
+      expect(screen.getByTestId('trustee-name')).toBeInTheDocument();
+    });
+  });
+
+  describe('Cancel Button Behavior', () => {
+    test('should handle cancel when onCancel prop is not provided', async () => {
+      const user = userEvent.setup();
+
+      // Render without onCancel prop
+      render(<TrusteeCreateForm />);
+
+      // Find and click cancel button
+      const cancelButton = screen.getByText('Cancel');
+      await user.click(cancelButton);
+
+      // Should not throw error - just verify form still exists
+      expect(screen.getByTestId('trustee-name')).toBeInTheDocument();
+    });
+  });
 });
