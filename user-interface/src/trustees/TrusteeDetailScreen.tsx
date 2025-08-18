@@ -13,6 +13,7 @@ import Tag, { UswdsTagStyle } from '@/lib/components/uswds/Tag';
 
 export default function TrusteeDetailScreen() {
   const { trusteeId } = useParams();
+  console.log(trusteeId);
   const [trustee, setTrustee] = useState<Trustee | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [districtLabels, setDistrictLabels] = useState<string[]>([]);
@@ -48,16 +49,6 @@ export default function TrusteeDetailScreen() {
 
     return chapterLabels[chapter] || chapter;
   }
-
-  // function formatDistricts(districts: string[] | undefined): string {
-  //   if (!districts || districts.length === 0) {
-  //     return 'No districts assigned';
-  //   }
-  //
-  //   const readableDistricts = districtLabels.map((code) => courtMap.get(code) || code).sort();
-  //
-  //   return readableDistricts.join(', ');
-  // }
 
   useEffect(() => {
     async function fetchData() {
