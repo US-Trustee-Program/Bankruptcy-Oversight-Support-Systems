@@ -149,10 +149,7 @@ var userAssignedIdentities = union(
   createSqlServerVnetRule ? { '${sqlIdentity.id}': {} } : {}
 )
 
-@description('API version for Microsoft.Web/sites resources')
-param webSitesApiVersion string = '2023-12-01'
-
-resource apiFunctionApp 'Microsoft.Web/sites@${webSitesApiVersion}' = {
+resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
   name: apiFunctionName
   location: location
   kind: 'functionapp,linux'
@@ -366,7 +363,7 @@ var ipSecurityRestrictionsRules = concat(
     : []
 )
 
-resource apiFunctionConfig 'Microsoft.Web/sites/config@${webSitesApiVersion}' = {
+resource apiFunctionConfig 'Microsoft.Web/sites/config@2023-12-01' = {
   parent: apiFunctionApp
   name: 'web'
   properties: {

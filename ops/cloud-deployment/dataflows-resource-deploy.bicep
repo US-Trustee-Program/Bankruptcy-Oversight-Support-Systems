@@ -159,7 +159,7 @@ var userAssignedIdentities = union(
   createSqlServerVnetRule ? { '${sqlIdentity.id}': {} } : {}
 )
 
-resource dataflowsFunctionApp 'Microsoft.Web/sites@${webSitesApiVersion}' = {
+resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
   name: dataflowsFunctionName
   location: location
   kind: 'functionapp,linux'
@@ -403,7 +403,7 @@ var middlewareIpSecurityRestrictionsRules = [
 
 var dataflowsIpSecurityRestrictionsRules = concat(ipSecurityRestrictionsRules, middlewareIpSecurityRestrictionsRules)
 
-resource dataflowsFunctionConfig 'Microsoft.Web/sites/config@${webSitesApiVersion}' = {
+resource dataflowsFunctionConfig 'Microsoft.Web/sites/config@2023-12-01' = {
   parent: dataflowsFunctionApp
   name: 'web'
   properties: {

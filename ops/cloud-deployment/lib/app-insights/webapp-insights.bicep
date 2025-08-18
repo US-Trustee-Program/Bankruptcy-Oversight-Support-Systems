@@ -1,6 +1,3 @@
-@description('API version for Microsoft.Web/sites resources')
-param webSitesApiVersion string = '2023-12-01'
-
 param webappName string
 
 param analyticsWorkspaceId string
@@ -13,7 +10,7 @@ param actionGroupName string
 
 param actionGroupResourceGroupName string
 
-resource webapp 'Microsoft.Web/sites@${webSitesApiVersion}' existing = {
+resource webapp 'Microsoft.Web/sites@2023-12-01' existing = {
   name: webappName
 }
 

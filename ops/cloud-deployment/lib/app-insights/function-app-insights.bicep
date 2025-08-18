@@ -10,10 +10,7 @@ param actionGroupName string
 
 param actionGroupResourceGroupName string
 
-@description('API version for Microsoft.Web/sites resources')
-param webSitesApiVersion string = '2023-12-01'
-
-resource functionApp 'Microsoft.Web/sites@${webSitesApiVersion}' existing = {
+resource functionApp 'Microsoft.Web/sites@2023-12-01' existing = {
   name: functionAppName
 }
 
