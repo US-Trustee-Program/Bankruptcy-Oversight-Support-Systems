@@ -377,3 +377,16 @@ if [[ "$(az_vnet_exists_func "${network_rg}" "${vnet_name}")" != true || "${depl
 fi
 
 az_deploy_func "${app_rg}" "${deployment_file}" "${deployment_parameters}"
+
+# Parse outputs.json for API versions
+WEBAPP_API_VERSION=$(jq -r '.webappApiVersion.value // empty' outputs.json)
+API_FUNCTION_APP_API_VERSION=$(jq -r '.apiFunctionAppApiVersion.value // empty' outputs.json)
+DATAFLOWS_FUNCTION_APP_API_VERSION=$(jq -r '.dataflowsFunctionAppApiVersion.value // empty' outputs.json)
+
+export WEBAPP_API_VERSION
+export API_FUNCTION_APP_API_VERSION
+export DATAFLOWS_FUNCTION_APP_API_VERSION
+
+echo "WEBAPP_API_VERSION: $WEBAPP_API_VERSION"
+echo "API_FUNCTION_APP_API_VERSION: $API_FUNCTION_APP_API_VERSION"
+echo "DATAFLOWS_FUNCTION_APP_API_VERSION: $DATAFLOWS_FUNCTION_APP_API_VERSION"

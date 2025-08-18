@@ -12,6 +12,9 @@
 # 10+ Validation check errors
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
+# Ensure API version variable is set
+: "${WEBAPP_API_VERSION:?WEBAPP_API_VERSION not set}"
+
 while [[ $# -gt 0 ]]; do
     case $1 in
     -h | --help)
@@ -61,7 +64,7 @@ done
 
 # WebApp Slot Deployment and configuration
 echo "Creating deployment slot for webapp: ${webapp_name}..."
-az webapp deployment slot create --name "$webapp_name" --resource-group "$app_rg" --slot "$slot_name" --configuration-source "$webapp_name"
+az webapp deployment slot create --name "$webapp_name" --resource-group "$app_rg" --slot "$slot_name" --configuration-source "$webapp_name" --api-version "$WEBAPP_API_VERSION"
 
 echo "Modifying app settings for deployment slot..."
 az webapp config appsettings set --resource-group "${app_rg}" --name "${webapp_name}" --slot "${slot_name}" --slot-settings CSP_API_SERVER_HOST="${api_name}.azurewebsites.us ${api_name}-${slot_name}.azurewebsites.us"

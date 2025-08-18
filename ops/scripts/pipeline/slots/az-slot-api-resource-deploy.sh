@@ -85,6 +85,11 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Ensure API version variables are set
+: "${WEBAPP_API_VERSION:?WEBAPP_API_VERSION not set}"
+: "${API_FUNCTION_APP_API_VERSION:?API_FUNCTION_APP_API_VERSION not set}"
+: "${DATAFLOWS_FUNCTION_APP_API_VERSION:?DATAFLOWS_FUNCTION_APP_API_VERSION not set}"
+
 #Function App Slot Deployment and Configuration
 echo "Creating Storage account for Node API Slot..."
 az storage account create --name "$api_storage_acc_name" --resource-group "$app_rg" -o json
@@ -96,10 +101,10 @@ dataflows_storage_acc_key=$(az storage account keys list -g "$app_rg" --account-
 
 
 echo "Creating API Function Staging Slot..."
-az functionapp deployment slot create --name "$api_function_name" --resource-group "$app_rg" --slot "$slot_name" --configuration-source "$api_function_name"
+az functionapp deployment slot create --name "$api_function_name" --resource-group "$app_rg" --slot "$slot_name" --configuration-source "$api_function_name" --api-version "$API_FUNCTION_APP_API_VERSION"
 
-echo "Creating Node API Function Staging Slot..."
-az functionapp deployment slot create --name "$dataflows_function_name" --resource-group "$app_rg" --slot "$slot_name" --configuration-source "$dataflows_function_name"
+echo "Creating Dataflows Function Staging Slot..."
+az functionapp deployment slot create --name "$dataflows_function_name" --resource-group "$app_rg" --slot "$slot_name" --configuration-source "$dataflows_function_name" --api-version "$DATAFLOWS_FUNCTION_APP_API_VERSION"
 
 echo "Setting deployment slot settings for storage account and cosmos database for e2e testing..."
 databaseName=$database_name
