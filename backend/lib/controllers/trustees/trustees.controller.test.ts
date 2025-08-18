@@ -129,6 +129,24 @@ describe('TrusteesController', () => {
         'User does not have permission to manage trustees',
       );
     });
+
+    test('should deny access when session.user is undefined', async () => {
+      delete context.session.user;
+      context.request.method = 'POST';
+
+      await expect(controller.handleRequest(context)).rejects.toThrow(
+        'User does not have permission to manage trustees',
+      );
+    });
+
+    test('should deny access when session is undefined', async () => {
+      delete context.session;
+      context.request.method = 'POST';
+
+      await expect(controller.handleRequest(context)).rejects.toThrow(
+        'User does not have permission to manage trustees',
+      );
+    });
   });
 
   describe('POST /api/trustees', () => {
