@@ -13,7 +13,6 @@ import Tag, { UswdsTagStyle } from '@/lib/components/uswds/Tag';
 
 export default function TrusteeDetailScreen() {
   const { trusteeId } = useParams();
-  console.log(trusteeId);
   const [trustee, setTrustee] = useState<Trustee | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [districtLabels, setDistrictLabels] = useState<string[]>([]);
