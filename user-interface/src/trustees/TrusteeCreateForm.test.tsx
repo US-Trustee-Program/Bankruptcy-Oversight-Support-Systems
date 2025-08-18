@@ -412,6 +412,33 @@ describe('TrusteeCreateForm', () => {
       });
     });
 
+    test('shows default error message when API call fails with non-Error object', async () => {
+      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({
+          data: MockData.getCourts(),
+        }),
+        postTrustee: vi.fn().mockRejectedValue('String error instead of Error object'),
+      } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
+
+      render(<TrusteeCreateForm />);
+
+      // Fill form with valid data
+      await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
+      await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
+      await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
+      await userEvent.type(screen.getByTestId('trustee-state'), 'IL');
+      await userEvent.type(screen.getByTestId('trustee-zip'), '12345');
+
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      await vi.waitFor(() => {
+        expect(mockGlobalAlert.error).toHaveBeenCalledWith(
+          'Failed to create trustee: Could not create trustee.',
+        );
+        expect(screen.getByText('Could not create trustee.')).toBeInTheDocument();
+      });
+    });
+
     test('clears validation errors when cancel is clicked', async () => {
       const onCancel = vi.fn();
       render(<TrusteeCreateForm onCancel={onCancel} />);
@@ -1040,6 +1067,251 @@ describe('TrusteeCreateForm', () => {
           phone: '(555) 123-4567',
           email: 'jane.doe@example.com',
         });
+      });
+    });
+  });
+  describe('District Loading', () => {
+    beforeEach(() => {
+      vi.spyOn(FeatureFlags, 'default').mockReturnValue({
+        [FeatureFlags.TRUSTEE_MANAGEMENT]: true,
+      } as Record<string, boolean>);
+    });
+
+    test('loads districts successfully on mount', async () => {
+      const mockCourts = [
+        {
+          courtDivisionCode: 'NY',
+          courtName: 'United States Bankruptcy Court for the Southern District of New York',
+          courtDivisionName: 'New York',
+        },
+        {
+          courtDivisionCode: 'CA',
+          courtName: 'United States Bankruptcy Court for the Central District of California',
+          courtDivisionName: 'California',
+        },
+      ];
+
+      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({
+          data: mockCourts,
+        }),
+        postTrustee: vi.fn(),
+      } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
+
+      render(<TrusteeCreateForm />);
+
+      // Wait for districts to load
+      await vi.waitFor(() => {
+        const districtCombobox = screen.getByRole('combobox', { name: /district/i });
+        expect(districtCombobox).toBeInTheDocument();
+      });
+
+      // Check that districts are available by clicking the combobox
+      const districtCombobox = screen.getByRole('combobox', { name: /district/i });
+      await userEvent.click(districtCombobox);
+
+      expect(
+        screen.getByText(
+          'United States Bankruptcy Court for the Central District of California (California)',
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'United States Bankruptcy Court for the Southern District of New York (New York)',
+        ),
+      ).toBeInTheDocument();
+    });
+
+    test('handles API error when loading districts', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockRejectedValue(new Error('Network error')),
+        postTrustee: vi.fn(),
+      } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
+
+      render(<TrusteeCreateForm />);
+
+      // Wait for error handling and click to expand combobox
+      await vi.waitFor(() => {
+        const districtCombobox = screen.getByRole('combobox', { name: /district/i });
+        expect(districtCombobox).toBeInTheDocument();
+      });
+
+      // Click to expand the combobox and reveal the input with placeholder
+      const districtCombobox = screen.getByRole('combobox', { name: /district/i });
+      await userEvent.click(districtCombobox);
+
+      // Check for the placeholder on the input field when expanded
+      await vi.waitFor(() => {
+        const inputField = screen.getByTestId('combo-box-input');
+        expect(inputField).toHaveAttribute('placeholder', 'Error loading districts');
+      });
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    test('handles empty response when loading districts', async () => {
+      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({
+          data: null,
+        }),
+        postTrustee: vi.fn(),
+      } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
+
+      render(<TrusteeCreateForm />);
+
+      // Wait for error handling and click to expand combobox
+      await vi.waitFor(() => {
+        const districtCombobox = screen.getByRole('combobox', { name: /district/i });
+        expect(districtCombobox).toBeInTheDocument();
+      });
+
+      // Click to expand the combobox and reveal the input with placeholder
+      const districtCombobox = screen.getByRole('combobox', { name: /district/i });
+      await userEvent.click(districtCombobox);
+
+      // Check for the placeholder on the input field when expanded
+      await vi.waitFor(() => {
+        const inputField = screen.getByTestId('combo-box-input');
+        expect(inputField).toHaveAttribute('placeholder', 'Error loading districts');
+      });
+    });
+
+    test('handles missing data property when loading districts', async () => {
+      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({}),
+        postTrustee: vi.fn(),
+      } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
+
+      render(<TrusteeCreateForm />);
+
+      // Wait for error handling and click to expand combobox
+      await vi.waitFor(() => {
+        const districtCombobox = screen.getByRole('combobox', { name: /district/i });
+        expect(districtCombobox).toBeInTheDocument();
+      });
+
+      // Click to expand the combobox and reveal the input with placeholder
+      const districtCombobox = screen.getByRole('combobox', { name: /district/i });
+      await userEvent.click(districtCombobox);
+
+      // Check for the placeholder on the input field when expanded
+      await vi.waitFor(() => {
+        const inputField = screen.getByTestId('combo-box-input');
+        expect(inputField).toHaveAttribute('placeholder', 'Error loading districts');
+      });
+    });
+
+    test('sorts district options alphabetically', async () => {
+      const mockCourts = [
+        {
+          courtDivisionCode: 'TX',
+          courtName: 'United States Bankruptcy Court for the Southern District of Texas',
+          courtDivisionName: 'Texas',
+        },
+        {
+          courtDivisionCode: 'AL',
+          courtName: 'United States Bankruptcy Court for the Northern District of Alabama',
+          courtDivisionName: 'Alabama',
+        },
+        {
+          courtDivisionCode: 'NY',
+          courtName: 'United States Bankruptcy Court for the Southern District of New York',
+          courtDivisionName: 'New York',
+        },
+      ];
+
+      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({
+          data: mockCourts,
+        }),
+        postTrustee: vi.fn(),
+      } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
+
+      render(<TrusteeCreateForm />);
+
+      // Wait for districts to load
+      await vi.waitFor(() => {
+        const districtCombobox = screen.getByRole('combobox', { name: /district/i });
+        expect(districtCombobox).toBeInTheDocument();
+      });
+
+      // Click combobox to see options
+      const districtCombobox = screen.getByRole('combobox', { name: /district/i });
+      await userEvent.click(districtCombobox);
+
+      // Get all option elements and verify they are sorted
+      const options = screen.getAllByRole('option');
+      const optionTexts = options.map((option) => option.textContent);
+
+      // Should be sorted alphabetically: Alabama, New York, Texas
+      expect(optionTexts[0]).toContain('Alabama');
+      expect(optionTexts[1]).toContain('New York');
+      expect(optionTexts[2]).toContain('Texas');
+    });
+
+    test('handles duplicate district codes by using Map', async () => {
+      const mockCourts = [
+        {
+          courtDivisionCode: 'NY',
+          courtName: 'United States Bankruptcy Court for the Southern District of New York',
+          courtDivisionName: 'New York',
+        },
+        {
+          courtDivisionCode: 'NY',
+          courtName: 'United States Bankruptcy Court for the Eastern District of New York',
+          courtDivisionName: 'New York East',
+        },
+      ];
+
+      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({
+          data: mockCourts,
+        }),
+        postTrustee: vi.fn(),
+      } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
+
+      render(<TrusteeCreateForm />);
+
+      // Wait for districts to load
+      await vi.waitFor(() => {
+        const districtCombobox = screen.getByRole('combobox', { name: /district/i });
+        expect(districtCombobox).toBeInTheDocument();
+      });
+
+      // Click combobox to see options
+      const districtCombobox = screen.getByRole('combobox', { name: /district/i });
+      await userEvent.click(districtCombobox);
+
+      // Should only have one NY option (the last one due to Map behavior)
+      const options = screen.getAllByRole('option');
+      expect(options).toHaveLength(1);
+      expect(options[0].textContent).toContain('New York East');
+    });
+
+    test('handles unknown error types when loading districts', async () => {
+      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockRejectedValue('String error instead of Error object'),
+        postTrustee: vi.fn(),
+      } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
+
+      render(<TrusteeCreateForm />);
+
+      // Wait for error handling and click to expand combobox
+      await vi.waitFor(() => {
+        const districtCombobox = screen.getByRole('combobox', { name: /district/i });
+        expect(districtCombobox).toBeInTheDocument();
+      });
+
+      // Click to expand the combobox and reveal the input with placeholder
+      const districtCombobox = screen.getByRole('combobox', { name: /district/i });
+      await userEvent.click(districtCombobox);
+
+      // Check for the placeholder on the input field when expanded
+      await vi.waitFor(() => {
+        const inputField = screen.getByTestId('combo-box-input');
+        expect(inputField).toHaveAttribute('placeholder', 'Error loading districts');
       });
     });
   });
