@@ -277,3 +277,5 @@ module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
     privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
   }
 }
+
+output webappApiVersion string = webapp.apiVersion
