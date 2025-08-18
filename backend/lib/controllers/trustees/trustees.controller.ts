@@ -68,7 +68,7 @@ export class TrusteesController implements CamsController {
       statusCode: 201,
       body: {
         meta: {
-          self: `${context.request.url}/${createdTrustee.id}`,
+          self: `${context.request.url}/${createdTrustee.trusteeId}`,
         },
         data: createdTrustee,
       },

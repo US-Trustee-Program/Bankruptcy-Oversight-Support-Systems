@@ -28,6 +28,11 @@
           "name": "runtime-state",
           "partitionKey1": "documentType",
           "partitionKeys": ["/documentType"]
+        },
+        {
+          "name": "trustees",
+          "partitionKey1": "trusteeId",
+          "partitionKeys": ["/trusteeId"]
         }
       ]
     }

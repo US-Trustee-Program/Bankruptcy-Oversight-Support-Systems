@@ -131,13 +131,13 @@ describe('TrusteesMongoRepository', () => {
       expect(mockAdapter.insertOne).toHaveBeenCalledWith(
         expect.objectContaining({
           ...sampleTrusteeInput,
-          id: 'mock-uuid-123',
+          trusteeId: 'mock-uuid-123',
           documentType: 'TRUSTEE',
           createdOn: '2025-08-12T10:00:00Z',
           createdBy: mockUser,
         }),
       );
-      expect(result.id).toBe('mock-uuid-123');
+      expect(result.trusteeId).toBe('mock-uuid-123');
       expect(result.name).toBe(sampleTrusteeInput.name);
     });
 
@@ -150,7 +150,7 @@ describe('TrusteesMongoRepository', () => {
       expect(mockAdapter.insertOne).toHaveBeenCalledWith(
         expect.objectContaining({
           ...sampleTrusteeInput,
-          id: 'mock-uuid-123',
+          trusteeId: 'mock-uuid-123',
           documentType: 'TRUSTEE',
         }),
       );
@@ -161,7 +161,7 @@ describe('TrusteesMongoRepository', () => {
     test('should retrieve list of trustees successfully', async () => {
       const mockTrustees = [
         {
-          id: 'trustee-1',
+          trusteeId: 'trustee-1',
           name: 'John Doe',
           address1: '123 Main St',
           cityStateZipCountry: 'Springfield, IL 62704',
@@ -170,7 +170,7 @@ describe('TrusteesMongoRepository', () => {
           createdBy: mockUser,
         },
         {
-          id: 'trustee-2',
+          trusteeId: 'trustee-2',
           name: 'Jane Smith',
           address1: '456 Oak Ave',
           cityStateZipCountry: 'Chicago, IL 60601',
@@ -225,7 +225,7 @@ describe('TrusteesMongoRepository', () => {
     test('should successfully retrieve a trustee by ID', async () => {
       const trusteeId = 'trustee-123';
       const mockTrustee = {
-        id: trusteeId,
+        trusteeId,
         name: 'John Doe',
         address1: '123 Main St',
         cityStateZipCountry: 'Anytown, NY 12345',
@@ -248,7 +248,7 @@ describe('TrusteesMongoRepository', () => {
           },
           {
             condition: 'EQUALS',
-            leftOperand: { name: 'id' },
+            leftOperand: { name: 'trusteeId' },
             rightOperand: trusteeId,
           },
         ],
@@ -274,7 +274,7 @@ describe('TrusteesMongoRepository', () => {
           },
           {
             condition: 'EQUALS',
-            leftOperand: { name: 'id' },
+            leftOperand: { name: 'trusteeId' },
             rightOperand: trusteeId,
           },
         ],
@@ -298,7 +298,7 @@ describe('TrusteesMongoRepository', () => {
           },
           {
             condition: 'EQUALS',
-            leftOperand: { name: 'id' },
+            leftOperand: { name: 'trusteeId' },
             rightOperand: trusteeId,
           },
         ],
