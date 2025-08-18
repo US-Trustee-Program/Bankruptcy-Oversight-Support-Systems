@@ -23,13 +23,13 @@ param virtualNetworkResourceGroupName string
 
 param privateEndpointSubnetId string
 
-param mssqlRequestTimeout string
+param mssqlRequestTimeout string = '30000'
 
 @description('Azure functions runtime environment')
 @allowed([
   'node'
 ])
-param functionsRuntime string
+param functionsRuntime string = 'node'
 
 // Provides mapping for runtime stack
 // Use the following query to check supported versions

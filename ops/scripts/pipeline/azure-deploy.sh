@@ -67,7 +67,7 @@ function az_deploy_func() {
     # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --parameter
     az deployment group create -w -g ${rg} --template-file ${templateFile} --parameter ${deploymentParameter}
     # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --parameter
-    az deployment group create -g ${rg} --template-file ${templateFile} --parameter $deploymentParameter -o json --query properties.outputs | tee outputs.json
+    az deployment group create -g ${rg} --template-file ${templateFile} --parameter ${deploymentParameter} -o json --query properties.outputs | tee outputs.json
 }
 
 

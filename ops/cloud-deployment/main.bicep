@@ -276,3 +276,7 @@ module ustpDatflowsFunction 'dataflows-resource-deploy.bicep' = {
     network
   ]
 }
+
+output webappApiVersion string = ustpWebapp.outputs.webappApiVersion
+output apiFunctionAppApiVersion string = ustpApiFunction.outputs.apiFunctionAppApiVersion
+output dataflowsFunctionAppApiVersion string = ustpDatflowsFunction.outputs.dataflowsFunctionAppApiVersion
