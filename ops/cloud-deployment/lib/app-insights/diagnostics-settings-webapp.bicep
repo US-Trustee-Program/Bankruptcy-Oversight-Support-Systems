@@ -13,7 +13,10 @@ param webappName string
 @description('OPTIONAL. Resource id of log analytics workspace which data will be ingested to.')
 param workspaceResourceId string = '' // For "Send to Log Analytics workspace"
 
-resource webapp 'Microsoft.Web/sites@2022-09-01' existing = {
+@description('API version for Microsoft.Web/sites resources')
+param webSitesApiVersion string = '2022-09-01'
+
+resource webapp 'Microsoft.Web/sites@${webSitesApiVersion}' existing = {
   name: webappName
 }
 

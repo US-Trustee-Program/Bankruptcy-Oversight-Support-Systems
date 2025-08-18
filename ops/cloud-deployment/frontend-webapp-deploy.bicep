@@ -133,7 +133,10 @@ resource serverFarm 'Microsoft.Web/serverfarms@2022-09-01' = {
 /*
   Create webapp
 */
-resource webapp 'Microsoft.Web/sites@2023-12-01' = {
+@description('API version for Microsoft.Web/sites resources')
+param webSitesApiVersion string = '2023-12-01'
+
+resource webapp 'Microsoft.Web/sites@${webSitesApiVersion}' = {
   name: webappName
   location: location
   kind: 'app'
@@ -219,7 +222,7 @@ var ipSecurityRestrictionsRules = concat(
       ]
     : []
 )
-resource webappConfig 'Microsoft.Web/sites/config@2023-12-01' = {
+resource webappConfig 'Microsoft.Web/sites/config@${webSitesApiVersion}' = {
   parent: webapp
   name: 'web'
   properties: union(

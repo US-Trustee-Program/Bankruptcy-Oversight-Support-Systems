@@ -12,6 +12,8 @@
 # 10+ Validation check errors
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
+WEBAPP_API_VERSION="2023-12-01"
+
 while [[ $# -gt 0 ]]; do
     case $1 in
     -h | --help)
@@ -61,17 +63,18 @@ done
 
 # WebApp Slot Deployment and configuration
 echo "Creating deployment slot for webapp: ${webapp_name}..."
-az webapp deployment slot create --name "$webapp_name" --resource-group "$app_rg" --slot "$slot_name" --configuration-source "$webapp_name"
+az webapp deployment slot create --name "$webapp_name" --resource-group "$app_rg" --slot "$slot_name" --configuration-source "$webapp_name" --api-version "$WEBAPP_API_VERSION"
 
 echo "Modifying app settings for deployment slot..."
-az webapp config appsettings set --resource-group "${app_rg}" --name "${webapp_name}" --slot "${slot_name}" --slot-settings CSP_API_SERVER_HOST="${api_name}.azurewebsites.us ${api_name}-${slot_name}.azurewebsites.us"
+az webapp config appsettings set --resource-group "${app_rg}" --name "${webapp_name}" --slot "${slot_name}" --slot-settings CSP_API_SERVER_HOST="${api_name}.azurewebsites.us ${api_name}-${slot_name}.azurewebsites.us" --api-version "$WEBAPP_API_VERSION"
 
-az webapp config set -g "${app_rg}" -n "${webapp_name}" --linux-fx-version "PHP|8.2" 1>/dev/null
+az webapp config set -g "${app_rg}" -n "${webapp_name}" --linux-fx-version "PHP|8.2" --api-version "$WEBAPP_API_VERSION" 1>/dev/null
 
 # shellcheck disable=SC2086
-az webapp traffic-routing set --distribution ${slot_name}=0 --name "${webapp_name}" --resource-group "${app_rg}"
+az webapp traffic-routing set --distribution ${slot_name}=0 --name "${webapp_name}" --resource-group "${app_rg}" --api-version "$WEBAPP_API_VERSION"
 
 # enable vnet integration for webapp
 az webapp vnet-integration add --name "${webapp_name}" --resource-group "${app_rg}" --slot "${slot_name}" \
     --subnet "/subscriptions/${subscription_id}/resourceGroups/${network_resource_group}/providers/Microsoft.Network/virtualNetworks/${vnet_name}/subnets/${subnet_name}" \
-    --vnet "/subscriptions/${subscription_id}/resourceGroups/${network_resource_group}/providers/Microsoft.Network/virtualNetworks/${vnet_name}"
+    --vnet "/subscriptions/${subscription_id}/resourceGroups/${network_resource_group}/providers/Microsoft.Network/virtualNetworks/${vnet_name}" \
+    --api-version "$WEBAPP_API_VERSION"
