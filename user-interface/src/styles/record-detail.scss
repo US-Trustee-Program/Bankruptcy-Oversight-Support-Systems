@@ -1,6 +1,6 @@
   .record-detail {
     h1 {
-      margin: 1rem 0.5rem 1rem 0;
+      margin: 1rem 0;
     }
 
     h2 {
@@ -24,6 +24,10 @@
           padding-left: 0;
         }
       }
+    }
+
+    .record-detail-header {
+      padding-top: 8px;
     }
 
     .link-icon {

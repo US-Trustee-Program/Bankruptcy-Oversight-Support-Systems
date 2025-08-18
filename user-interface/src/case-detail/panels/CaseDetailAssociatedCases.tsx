@@ -52,17 +52,17 @@ export default function CaseDetailAssociatedCases(props: CaseDetailAssociatedCas
         </>
       )}
       {isVerifiedTransfer && (
-        <div className="case-card-list">
-          <ul className="usa-list usa-list--unstyled transfers case-card">
+        <div className="record-detail-card-list">
+          <ul className="usa-list usa-list--unstyled transfers record-detail-card">
             {caseDetail.transfers?.sort(sortTransfers).map((transfer: Transfer, idx: number) => {
               return (
                 <li key={idx} className="transfer">
-                  <div className="case-card">
+                  <div className="record-detail-card">
                     <h3 data-testid={`verified-transfer-header_${idx}`}>
                       Transferred {transfer.documentType === 'TRANSFER_FROM' ? 'from' : 'to'}
                     </h3>
                     <div>
-                      <span className="case-detail-item-name">Case Number:</span>
+                      <span className="case-detail-item-name">Case Number: </span>
                       <CaseNumber
                         caseId={transfer.otherCase.caseId}
                         className="usa-link case-detail-item-value"
@@ -71,7 +71,7 @@ export default function CaseDetailAssociatedCases(props: CaseDetailAssociatedCas
                     </div>
                     <div className="transfer-court">
                       <span className="case-detail-item-name">
-                        {transfer.documentType === 'TRANSFER_FROM' ? 'Previous' : 'New'} Court:
+                        {transfer.documentType === 'TRANSFER_FROM' ? 'Previous' : 'New'} Court:{' '}
                       </span>
                       <span
                         className="case-detail-item-value"
@@ -81,7 +81,7 @@ export default function CaseDetailAssociatedCases(props: CaseDetailAssociatedCas
                       </span>
                     </div>
                     <div>
-                      <span className="case-detail-item-name">Order Filed:</span>
+                      <span className="case-detail-item-name">Order Filed: </span>
                       <span
                         className="case-detail-item-value"
                         data-testid={`case-detail-transfer-order-${idx}`}
