@@ -256,6 +256,15 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
     response = {
       data: courts,
     };
+  } else if (path.match(/\/trustees\/[A-Z\d-]+/i)) {
+    response = {
+      data: MockData.getTrustee({
+        id: 'trustee-1',
+        districts: ['710', '720'],
+        chapters: ['11', '7-non-panel'],
+      }),
+    };
+    console.log(response);
   } else if (path.match(/\/trustees/)) {
     response = {
       data: [
