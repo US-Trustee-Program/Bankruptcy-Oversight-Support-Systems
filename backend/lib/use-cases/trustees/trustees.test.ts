@@ -84,7 +84,7 @@ describe('TrusteesUseCase', () => {
     mockTrusteesRepository = {
       createTrustee: jest.fn(),
       listTrustees: jest.fn(),
-      getTrustee: jest.fn(),
+      read: jest.fn(),
       release: jest.fn(),
     } as jest.Mocked<TrusteesRepository>;
 
@@ -248,11 +248,11 @@ describe('TrusteesUseCase', () => {
   describe('getTrustee', () => {
     it('should successfully retrieve a trustee by ID', async () => {
       const trusteeId = 'trustee-123';
-      mockTrusteesRepository.getTrustee.mockResolvedValue(sampleTrustee);
+      mockTrusteesRepository.read.mockResolvedValue(sampleTrustee);
 
       const result = await useCase.getTrustee(context, trusteeId);
 
-      expect(mockTrusteesRepository.getTrustee).toHaveBeenCalledWith(trusteeId);
+      expect(mockTrusteesRepository.read).toHaveBeenCalledWith(trusteeId);
       expect(result).toEqual(sampleTrustee);
     });
 
@@ -263,7 +263,7 @@ describe('TrusteesUseCase', () => {
         message: 'Trustee with ID nonexistent-id not found.',
       });
 
-      mockTrusteesRepository.getTrustee.mockRejectedValue(repositoryError);
+      mockTrusteesRepository.read.mockRejectedValue(repositoryError);
       mockGetCamsError.mockReturnValue(expectedCamsError);
 
       await expect(useCase.getTrustee(context, trusteeId)).rejects.toThrow(expectedCamsError);

@@ -232,7 +232,7 @@ describe('TrusteeCreateForm', () => {
     await userEvent.type(screen.getByTestId('trustee-state'), 'IL');
     await userEvent.type(screen.getByTestId('trustee-zip'), '62704');
 
-    await userEvent.click(screen.getByRole('button', { name: /create trustee/i }));
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     await vi.waitFor(() => expect(onSuccess).toHaveBeenCalledWith('trustee-123'));
   });
@@ -260,7 +260,7 @@ describe('TrusteeCreateForm', () => {
       await userEvent.type(screen.getByTestId('trustee-state'), 'IL');
       await userEvent.type(screen.getByTestId('trustee-zip'), '1234'); // Invalid: only 4 digits
 
-      await userEvent.click(screen.getByRole('button', { name: /create trustee/i }));
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
       expect(screen.getByText('ZIP code must be exactly 5 digits')).toBeInTheDocument();
     });
@@ -292,7 +292,7 @@ describe('TrusteeCreateForm', () => {
     test('disables submit button when there are validation errors', async () => {
       render(<TrusteeCreateForm />);
 
-      const submitButton = screen.getByRole('button', { name: /create trustee/i });
+      const submitButton = screen.getByRole('button', { name: /save/i });
 
       // Enter invalid ZIP code
       await userEvent.type(screen.getByTestId('trustee-zip'), '1234');
@@ -319,6 +319,35 @@ describe('TrusteeCreateForm', () => {
       await userEvent.clear(zipInput);
       await userEvent.type(zipInput, '12345');
       expect(screen.queryByText('ZIP code must be exactly 5 digits')).not.toBeInTheDocument();
+    });
+
+    test('displays general error message when form validation fails during submission', async () => {
+      render(<TrusteeCreateForm />);
+
+      // Fill all required fields with valid data to enabled the submit button,
+      // then click the submit button with validation function mocked to return failures.
+      await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
+      await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
+      await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
+      await userEvent.type(screen.getByTestId('trustee-state'), 'IL');
+      await userEvent.type(screen.getByTestId('trustee-zip'), '12345');
+
+      await vi.waitFor(() => {
+        const submitButton = screen.getByRole('button', { name: /save/i });
+        expect(submitButton).not.toBeDisabled();
+      });
+
+      mockValidation.validateForm.mockReturnValueOnce({
+        isValid: false,
+        errors: [{ field: 'zipCode', message: 'ZIP code must be exactly 5 digits' }],
+        fieldErrors: { zipCode: 'ZIP code must be exactly 5 digits' },
+      });
+
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Please correct the errors below before submitting.',
+      );
     });
   });
 
@@ -347,7 +376,7 @@ describe('TrusteeCreateForm', () => {
       await userEvent.type(screen.getByTestId('trustee-state'), 'IL');
       await userEvent.type(screen.getByTestId('trustee-zip'), '12345');
 
-      await userEvent.click(screen.getByRole('button', { name: /create trustee/i }));
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
       await vi.waitFor(() => {
         expect(mockGlobalAlert.success).toHaveBeenCalledWith('Trustee created successfully.');
@@ -373,7 +402,7 @@ describe('TrusteeCreateForm', () => {
       await userEvent.type(screen.getByTestId('trustee-state'), 'IL');
       await userEvent.type(screen.getByTestId('trustee-zip'), '12345');
 
-      await userEvent.click(screen.getByRole('button', { name: /create trustee/i }));
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
       await vi.waitFor(() => {
         expect(mockGlobalAlert.error).toHaveBeenCalledWith(
@@ -434,7 +463,7 @@ describe('TrusteeCreateForm', () => {
       await userEvent.type(screen.getByTestId('trustee-state'), 'IL');
       await userEvent.type(screen.getByTestId('trustee-zip'), '62704');
 
-      await userEvent.click(screen.getByRole('button', { name: /create trustee/i }));
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
       await vi.waitFor(() => expect(onSuccess).toHaveBeenCalledWith('trustee-123'));
     });
@@ -527,7 +556,7 @@ describe('TrusteeCreateForm', () => {
       await userEvent.type(screen.getByTestId('trustee-extension'), '123');
       await userEvent.type(screen.getByTestId('trustee-email'), 'jane.doe@example.com');
 
-      await userEvent.click(screen.getByRole('button', { name: /create trustee/i }));
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
       await vi.waitFor(() => {
         expect(mockPostTrustee).toHaveBeenCalledWith({
@@ -566,7 +595,7 @@ describe('TrusteeCreateForm', () => {
       await userEvent.type(screen.getByTestId('trustee-state'), 'IL');
       await userEvent.type(screen.getByTestId('trustee-zip'), '62704');
 
-      await userEvent.click(screen.getByRole('button', { name: /create trustee/i }));
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
       await vi.waitFor(() => {
         const calledPayload = mockPostTrustee.mock.calls[0][0];
@@ -604,7 +633,7 @@ describe('TrusteeCreateForm', () => {
       expect(screen.queryByText('Please enter a valid phone number')).not.toBeInTheDocument();
 
       // Form should be submittable
-      const submitButton = screen.getByRole('button', { name: /create trustee/i });
+      const submitButton = screen.getByRole('button', { name: /save/i });
       expect(submitButton).not.toBeDisabled();
     });
 
@@ -653,7 +682,7 @@ describe('TrusteeCreateForm', () => {
       await userEvent.click(screen.getByText('11 - Subchapter V'));
       await userEvent.click(screen.getByText('13'));
 
-      await userEvent.click(screen.getByRole('button', { name: /create trustee/i }));
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
       await vi.waitFor(() => {
         expect(mockPostTrustee).toHaveBeenCalledWith({
@@ -695,7 +724,7 @@ describe('TrusteeCreateForm', () => {
       await userEvent.click(screen.getByText('7 - Non-Panel'));
       await userEvent.click(screen.getByText('11 - Subchapter V'));
 
-      await userEvent.click(screen.getByRole('button', { name: /create trustee/i }));
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
       await vi.waitFor(() => {
         expect(mockPostTrustee).toHaveBeenCalledWith({
@@ -773,7 +802,7 @@ describe('TrusteeCreateForm', () => {
         ),
       );
 
-      await userEvent.click(screen.getByRole('button', { name: /create trustee/i }));
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
       // EXECUTABLE SPECIFICATION: Payload must include all selected districts
       await vi.waitFor(() => {
@@ -811,7 +840,7 @@ describe('TrusteeCreateForm', () => {
     test('submit button starts disabled and enables only when form is valid and complete', async () => {
       render(<TrusteeCreateForm />);
 
-      const submitButton = screen.getByRole('button', { name: /create trustee/i });
+      const submitButton = screen.getByRole('button', { name: /save/i });
 
       // Submit button should start disabled
       expect(submitButton).toBeDisabled();
@@ -849,7 +878,7 @@ describe('TrusteeCreateForm', () => {
     test('submit button remains disabled when only optional fields are filled', async () => {
       render(<TrusteeCreateForm />);
 
-      const submitButton = screen.getByRole('button', { name: /create trustee/i });
+      const submitButton = screen.getByRole('button', { name: /save/i });
 
       // Submit button should start disabled
       expect(submitButton).toBeDisabled();
@@ -890,7 +919,7 @@ describe('TrusteeCreateForm', () => {
 
       // Wait for button to be enabled
       const submitButton = screen.getByRole('button', {
-        name: /create trustee/i,
+        name: /save/i,
       }) as HTMLButtonElement;
       await vi.waitFor(() => {
         expect(submitButton).not.toBeDisabled();

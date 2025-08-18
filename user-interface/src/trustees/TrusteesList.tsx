@@ -1,3 +1,4 @@
+import './TrusteesList.scss';
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { Trustee } from '@common/cams/parties';
@@ -141,7 +142,7 @@ export default function TrusteesList() {
         <tbody>
           {trustees.map((trustee) => (
             <tr key={trustee.id}>
-              <td>
+              <td className="trustee-name">
                 <NavLink
                   to={`/trustees/${trustee.id}`}
                   data-testid={`trustee-link-${trustee.id}`}
@@ -150,9 +151,9 @@ export default function TrusteesList() {
                   {trustee.name}
                 </NavLink>
               </td>
-              <td>{formatDistricts(trustee.districts)}</td>
-              <td>{formatChapterTypes(trustee.chapters)}</td>
-              <td>{formatTrusteeStatus(trustee.status || 'active')}</td>
+              <td className="trustee-districts">{formatDistricts(trustee.districts)}</td>
+              <td className="trustee-chapters">{formatChapterTypes(trustee.chapters)}</td>
+              <td className="trustee-status">{formatTrusteeStatus(trustee.status || 'active')}</td>
             </tr>
           ))}
         </tbody>

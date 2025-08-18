@@ -37,9 +37,9 @@ export default function CaseDetailTrusteeAndAssignedStaff(
 
   return (
     <>
-      <div className="grid-col-12 tablet:grid-col-10 desktop:grid-col-8 case-detail-container">
-        <div className="case-card-list">
-          <div className="assigned-staff-information case-card">
+      <div className="grid-col-12 tablet:grid-col-10 desktop:grid-col-8 record-detail-container">
+        <div className="record-detail-card-list">
+          <div className="assigned-staff-information record-detail-card">
             <h3>
               Assigned Staff{' '}
               {Actions.contains(caseDetail, Actions.ManageAssignments) &&
@@ -91,9 +91,9 @@ export default function CaseDetailTrusteeAndAssignedStaff(
             </div>
           </div>
         </div>
-        <div className="case-card-list">
+        <div className="record-detail-card-list">
           {caseDetail.trustee && (
-            <div className="assigned-staff-information case-card">
+            <div className="assigned-staff-information record-detail-card">
               <h3>Trustee</h3>
               <div className="trustee-name">{caseDetail.trustee.name}</div>
               {caseDetail.trustee.email && (

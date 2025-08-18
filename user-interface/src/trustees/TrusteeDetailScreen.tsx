@@ -20,11 +20,20 @@ export default function TrusteeDetailScreen() {
   const globalAlert = useGlobalAlert();
   const api = useApi2();
 
-  function formatTrusteeStatus(status: string): string {
+  function formatTrusteeStatusText(status: string): string {
     if (status === 'not active') {
       return 'Not Active';
     }
     return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+  }
+
+  function formatTrusteeStatusColor(status: string): UswdsTagStyle {
+    if (status === 'active') {
+      return UswdsTagStyle.Green;
+    } else if (status === 'suspended') {
+      return UswdsTagStyle.SecondaryDark;
+    }
+    return UswdsTagStyle.BaseDarkest;
   }
 
   function formatChapterType(chapter: string): React.ReactNode {
@@ -84,19 +93,23 @@ export default function TrusteeDetailScreen() {
       <DocumentTitle name="Trustee Detail" />
       <div className="trustee-detail-screen" data-testid="trustee-detail-screen">
         {(!trustee || isLoading) && (
-          <div className="screen-header display-flex flex-align-center">
+          <div className="record-detail-header display-flex flex-align-center">
             <h1 className="text-no-wrap display-inline-block margin-right-1">Trustee Details</h1>
             <LoadingSpinner />
           </div>
         )}
         {!!trustee && !isLoading && (
           <>
-            <div className="screen-header display-flex flex-align-center">
+            <div className="record-detail-header display-flex flex-align-center">
               <h1 className="text-no-wrap display-inline-block margin-right-1">{trustee.name}</h1>
               <div className="tag-list">
                 {trustee.status && (
-                  <Tag uswdsStyle={UswdsTagStyle.Green} title="Trustee status" id="trustee-status">
-                    {formatTrusteeStatus(trustee.status)}
+                  <Tag
+                    uswdsStyle={formatTrusteeStatusColor(trustee.status)}
+                    title="Trustee status"
+                    id="trustee-status"
+                  >
+                    {formatTrusteeStatusText(trustee.status)}
                   </Tag>
                 )}
                 {trustee.districts &&

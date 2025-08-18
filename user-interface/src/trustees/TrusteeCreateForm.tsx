@@ -1,6 +1,7 @@
+import './TrusteeCreateForm.scss';
 import { useState, useEffect } from 'react';
 import Input from '@/lib/components/uswds/Input';
-import Button from '@/lib/components/uswds/Button';
+import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 import { useApi2 } from '@/lib/hooks/UseApi2';
@@ -193,152 +194,192 @@ export default function TrusteeCreateForm(props: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} aria-label="Create Trustee" data-testid="trustee-create-form">
-      <Input
-        id="trustee-name"
-        label="Trustee Name"
-        value={name}
-        onChange={(e) => {
-          setName(e.target.value);
-          handleFieldChange('name', e.target.value);
-        }}
-        errorMessage={fieldErrors.name}
-        required
-      />
-      <Input
-        id="trustee-address1"
-        label="Address Line 1"
-        value={address1}
-        onChange={(e) => {
-          setAddress1(e.target.value);
-          handleFieldChange('address1', e.target.value);
-        }}
-        errorMessage={fieldErrors.address1}
-        required
-      />
-      <Input
-        id="trustee-city"
-        label="City"
-        value={city}
-        onChange={(e) => {
-          setCity(e.target.value);
-          handleFieldChange('city', e.target.value);
-        }}
-        errorMessage={fieldErrors.city}
-        required
-      />
-      <Input
-        id="trustee-state"
-        label="State"
-        value={state}
-        onChange={(e) => {
-          setState(e.target.value);
-          handleFieldChange('state', e.target.value);
-        }}
-        errorMessage={fieldErrors.state}
-        required
-      />
-      <Input
-        id="trustee-zip"
-        label="ZIP Code"
-        value={zipCode}
-        onChange={(e) => {
-          setZipCode(e.target.value);
-          handleFieldChange('zipCode', e.target.value);
-        }}
-        errorMessage={fieldErrors.zipCode}
-        required
-      />
-
-      {/* Optional Fields */}
-      <Input
-        id="trustee-address2"
-        label="Address Line 2"
-        value={address2}
-        onChange={(e) => {
-          setAddress2(e.target.value);
-          handleFieldChange('address2', e.target.value);
-        }}
-        errorMessage={fieldErrors.address2}
-      />
-
-      <Input
-        id="trustee-phone"
-        label="Phone Number"
-        value={phone}
-        onChange={(e) => {
-          setPhone(e.target.value);
-          handleFieldChange('phone', e.target.value);
-        }}
-        errorMessage={fieldErrors.phone}
-        type="tel"
-      />
-
-      <Input
-        id="trustee-extension"
-        label="Extension"
-        value={extension}
-        onChange={(e) => {
-          setExtension(e.target.value);
-          handleFieldChange('extension', e.target.value);
-        }}
-        errorMessage={fieldErrors.extension}
-      />
-
-      <Input
-        id="trustee-email"
-        label="Email Address"
-        value={email}
-        onChange={(e) => {
-          setEmail(e.target.value);
-          handleFieldChange('email', e.target.value);
-        }}
-        errorMessage={fieldErrors.email}
-        type="email"
-      />
-
-      <ComboBox
-        id="trustee-district"
-        label="District"
-        options={districtOptions}
-        onUpdateSelection={(selectedOptions) => {
-          const selectedValues = selectedOptions.map((option) => option.value);
-          setDistricts(selectedValues);
-          handleFieldChange('districts', selectedValues.join(','));
-        }}
-        multiSelect={true}
-        singularLabel="district"
-        pluralLabel="districts"
-        placeholder={districtLoadError ? 'Error loading districts' : 'Select districts'}
-      />
-
-      <ComboBox
-        id="trustee-chapters"
-        label="Chapter Types"
-        options={CHAPTER_OPTIONS}
-        onUpdateSelection={(selectedOptions) => {
-          const selectedValues = selectedOptions.map((option) => option.value);
-          setChapters(selectedValues);
-          handleFieldChange('chapters', selectedValues.join(','));
-        }}
-        multiSelect={true}
-        singularLabel="chapter"
-        pluralLabel="chapters"
-      />
-
-      {errorMessage && <div role="alert">{errorMessage}</div>}
-      <div className="usa-button-group">
-        <Button
-          disabled={isSubmitting || !isFormValidAndComplete(getFormData())}
-          type="submit"
-          onClick={submit}
-        >
-          {isSubmitting ? 'Creating…' : 'Create Trustee'}
-        </Button>
-        <Button type="button" onClick={handleCancel}>
-          Cancel
-        </Button>
+    <div className="create-trustee-screen">
+      <div className="grid-row grid-gap-lg">
+        <div className="grid-col-12">
+          <div className="grid-row grid-gap-lg">
+            <div className="grid-col-12">
+              <h1 className="text-no-wrap display-inline-block margin-right-1">
+                Add Trustee Profile
+              </h1>
+              <span>
+                A red asterisk (<span className="text-secondary-dark">*</span>) indicates a required
+                field.
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
-    </form>
+      <form onSubmit={handleSubmit} aria-label="Create Trustee" data-testid="trustee-create-form">
+        <div className="grid-row grid-gap-lg">
+          <div className="grid-col-6">
+            <div className="grid-row grid-gap-lg">
+              <div className="grid-col-8">
+                <Input
+                  id="trustee-name"
+                  label="Trustee Name"
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    handleFieldChange('name', e.target.value);
+                  }}
+                  errorMessage={fieldErrors.name}
+                  required
+                />
+                <Input
+                  id="trustee-address1"
+                  label="Address Line 1"
+                  value={address1}
+                  onChange={(e) => {
+                    setAddress1(e.target.value);
+                    handleFieldChange('address1', e.target.value);
+                  }}
+                  errorMessage={fieldErrors.address1}
+                  required
+                />
+                <Input
+                  id="trustee-address2"
+                  label="Address Line 2"
+                  value={address2}
+                  onChange={(e) => {
+                    setAddress2(e.target.value);
+                    handleFieldChange('address2', e.target.value);
+                  }}
+                  errorMessage={fieldErrors.address2}
+                />
+                <Input
+                  id="trustee-city"
+                  label="City"
+                  value={city}
+                  onChange={(e) => {
+                    setCity(e.target.value);
+                    handleFieldChange('city', e.target.value);
+                  }}
+                  errorMessage={fieldErrors.city}
+                  required
+                />
+              </div>
+            </div>
+            <div className="grid-row grid-gap-lg">
+              <div className="grid-col-4">
+                <Input
+                  id="trustee-state"
+                  label="State"
+                  value={state}
+                  onChange={(e) => {
+                    setState(e.target.value);
+                    handleFieldChange('state', e.target.value);
+                  }}
+                  errorMessage={fieldErrors.state}
+                  required
+                />
+                <Input
+                  id="trustee-zip"
+                  label="ZIP Code"
+                  value={zipCode}
+                  onChange={(e) => {
+                    setZipCode(e.target.value);
+                    handleFieldChange('zipCode', e.target.value);
+                  }}
+                  errorMessage={fieldErrors.zipCode}
+                  required
+                  ariaDescription="Example: 12345"
+                />
+              </div>
+            </div>
+          </div>
+          <div className="grid-col-6">
+            <div className="grid-row grid-gap-lg">
+              <div className="grid-col-4">
+                <Input
+                  id="trustee-phone"
+                  label="Phone Number"
+                  value={phone}
+                  onChange={(e) => {
+                    setPhone(e.target.value);
+                    handleFieldChange('phone', e.target.value);
+                  }}
+                  errorMessage={fieldErrors.phone}
+                  type="tel"
+                  ariaDescription="Example: (123)456-7890"
+                />
+              </div>
+              <div className="grid-col-4">
+                <Input
+                  id="trustee-extension"
+                  label="Extension"
+                  value={extension}
+                  onChange={(e) => {
+                    setExtension(e.target.value);
+                    handleFieldChange('extension', e.target.value);
+                  }}
+                  errorMessage={fieldErrors.extension}
+                  ariaDescription="Up to 6 digits"
+                />
+              </div>
+            </div>
+
+            <div className="grid-row grid-gap-lg">
+              <div className="grid-col-8">
+                <Input
+                  id="trustee-email"
+                  label="Email Address"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    handleFieldChange('email', e.target.value);
+                  }}
+                  errorMessage={fieldErrors.email}
+                  type="email"
+                />
+
+                <ComboBox
+                  id="trustee-district"
+                  label="District"
+                  options={districtOptions}
+                  onUpdateSelection={(selectedOptions) => {
+                    const selectedValues = selectedOptions.map((option) => option.value);
+                    setDistricts(selectedValues);
+                    handleFieldChange('districts', selectedValues.join(','));
+                  }}
+                  multiSelect={true}
+                  singularLabel="district"
+                  pluralLabel="districts"
+                  placeholder={districtLoadError ? 'Error loading districts' : 'Select districts'}
+                />
+
+                <ComboBox
+                  id="trustee-chapters"
+                  label="Chapter Types"
+                  options={CHAPTER_OPTIONS}
+                  onUpdateSelection={(selectedOptions) => {
+                    const selectedValues = selectedOptions.map((option) => option.value);
+                    setChapters(selectedValues);
+                    handleFieldChange('chapters', selectedValues.join(','));
+                  }}
+                  multiSelect={true}
+                  singularLabel="chapter"
+                  pluralLabel="chapters"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {errorMessage && <div role="alert">{errorMessage}</div>}
+        <div className="usa-button-group">
+          <Button
+            disabled={isSubmitting || !isFormValidAndComplete(getFormData())}
+            type="submit"
+            onClick={submit}
+          >
+            {isSubmitting ? 'Saving…' : 'Save'}
+          </Button>
+          <Button type="button" onClick={handleCancel} uswdsStyle={UswdsButtonStyle.Unstyled}>
+            Cancel
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 }

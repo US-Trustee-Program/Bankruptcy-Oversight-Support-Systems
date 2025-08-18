@@ -236,7 +236,7 @@ describe('TrusteesMongoRepository', () => {
 
       mockAdapter.findOne.mockResolvedValue(mockTrustee as TrusteeDocument);
 
-      const result = await repository.getTrustee(trusteeId);
+      const result = await repository.read(trusteeId);
 
       expect(mockAdapter.findOne).toHaveBeenCalledWith({
         conjunction: 'AND',
@@ -260,7 +260,7 @@ describe('TrusteesMongoRepository', () => {
       const trusteeId = 'nonexistent-id';
       mockAdapter.findOne.mockResolvedValue(null);
 
-      await expect(repository.getTrustee(trusteeId)).rejects.toThrow(
+      await expect(repository.read(trusteeId)).rejects.toThrow(
         'Failed to retrieve trustee with ID nonexistent-id.',
       );
 
@@ -286,7 +286,7 @@ describe('TrusteesMongoRepository', () => {
       const error = new Error('Database connection failed');
       mockAdapter.findOne.mockRejectedValue(error);
 
-      await expect(repository.getTrustee(trusteeId)).rejects.toThrow();
+      await expect(repository.read(trusteeId)).rejects.toThrow();
 
       expect(mockAdapter.findOne).toHaveBeenCalledWith({
         conjunction: 'AND',
