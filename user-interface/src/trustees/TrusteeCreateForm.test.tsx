@@ -993,4 +993,54 @@ describe('TrusteeCreateForm', () => {
       expect(screen.getByTestId('trustee-name')).toBeInTheDocument();
     });
   });
+
+  describe('Form Submission with Spy', () => {
+    test('submits form and calls postTrustee with expected payload', async () => {
+      // Spy on the postTrustee function and mock it to noop
+      const mockPostTrustee = vi.fn().mockImplementation(() => {
+        // noop - no operation
+      });
+
+      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({
+          data: MockData.getCourts(),
+        }),
+        postTrustee: mockPostTrustee,
+      } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
+
+      render(<TrusteeCreateForm />);
+
+      // Fill required fields to create a valid form
+      await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
+      await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
+      await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
+      await userEvent.type(screen.getByTestId('trustee-state'), 'IL');
+      await userEvent.type(screen.getByTestId('trustee-zip'), '62704');
+
+      // Fill optional fields
+      await userEvent.type(screen.getByTestId('trustee-address2'), 'Suite 100');
+      await userEvent.type(screen.getByTestId('trustee-phone'), '(555) 123-4567');
+      await userEvent.type(screen.getByTestId('trustee-email'), 'jane.doe@example.com');
+
+      // Submit the form
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      // Assert that postTrustee was called with the expected payload
+      await vi.waitFor(() => {
+        expect(mockPostTrustee).toHaveBeenCalledWith({
+          name: 'Jane Doe',
+          address: {
+            address1: '123 Main St',
+            address2: 'Suite 100',
+            city: 'Springfield',
+            state: 'IL',
+            zipCode: '62704',
+            countryCode: 'US',
+          },
+          phone: '(555) 123-4567',
+          email: 'jane.doe@example.com',
+        });
+      });
+    });
+  });
 });

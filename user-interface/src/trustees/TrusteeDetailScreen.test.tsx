@@ -3,6 +3,7 @@ import { vi, beforeEach } from 'vitest';
 import { useParams } from 'react-router-dom';
 import useApi2 from '@/lib/hooks/UseApi2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
+import { UswdsTagStyle } from '@/lib/components/uswds/Tag';
 import TrusteeDetailScreen from './TrusteeDetailScreen';
 
 // Mock the hooks and dependencies
@@ -285,3 +286,23 @@ test('should render email link with correct mailto href', async () => {
     expect(emailLink).toHaveAttribute('href', 'mailto:john.doe@example.com');
   });
 });
+
+test.each([
+  ['active', UswdsTagStyle.Green],
+  ['suspended', UswdsTagStyle.SecondaryDark],
+  ['', UswdsTagStyle.BaseDarkest],
+])(
+  'should format trustee status color for status "%s" with style "%s"',
+  async (status, expectedStyle) => {
+    const testTrustee = { ...mockTrustee, status };
+    mockGetTrustee.mockResolvedValue({ data: testTrustee });
+    mockGetCourts.mockResolvedValue({ data: mockCourts });
+
+    render(<TrusteeDetailScreen />);
+
+    await waitFor(() => {
+      const statusTag = screen.getByTestId('tag-trustee-status');
+      expect(statusTag).toHaveClass(expectedStyle);
+    });
+  },
+);

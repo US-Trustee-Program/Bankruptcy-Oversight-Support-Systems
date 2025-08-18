@@ -210,7 +210,7 @@ export default function TrusteeCreateForm(props: Props) {
           </div>
         </div>
       </div>
-      <form onSubmit={handleSubmit} aria-label="Create Trustee" data-testid="trustee-create-form">
+      <form aria-label="Create Trustee" data-testid="trustee-create-form">
         <div className="grid-row grid-gap-lg">
           <div className="grid-col-6">
             <div className="grid-row grid-gap-lg">
@@ -371,7 +371,7 @@ export default function TrusteeCreateForm(props: Props) {
           <Button
             disabled={isSubmitting || !isFormValidAndComplete(getFormData())}
             type="submit"
-            onClick={submit}
+            onClick={handleSubmit}
           >
             {isSubmitting ? 'Saving…' : 'Save'}
           </Button>

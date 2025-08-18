@@ -103,7 +103,7 @@ export default function TrusteeDetailScreen() {
             <div className="record-detail-header display-flex flex-align-center">
               <h1 className="text-no-wrap display-inline-block margin-right-1">{trustee.name}</h1>
               <div className="tag-list">
-                {trustee.status && (
+                {trustee.status !== undefined && (
                   <Tag
                     uswdsStyle={formatTrusteeStatusColor(trustee.status)}
                     title="Trustee status"
