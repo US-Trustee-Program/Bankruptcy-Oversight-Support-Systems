@@ -40,7 +40,7 @@ jobs:
   deploy-frontend-slot-resources:
     uses: ./.github/workflows/reusable-frontend-slot.yml
     with:
-      webappName: ${{ inputs.webappName }}
+      webAppName: ${{ inputs.webappName }}
       apiFunctionName: ${{ inputs.apiFunctionName }}
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
@@ -60,6 +60,6 @@ jobs:
       azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}
       slotName: ${{ inputs.slotName }}
       environmentHash: ${{ inputs.environmentHash }}
-      webappApiVersion: ${{ inputs.webappApiVersion }}
+      apiFunctionApiVersion: ${{ inputs.webappApiVersion }}
       dataflowsFunctionApiVersion: ${{ inputs.dataflowsFunctionApiVersion }}
     secrets: inherit # pragma: allowlist secret
