@@ -49,7 +49,7 @@ jobs:
 
           docker run --rm \
             -v ${{ github.workspace }}:/workspace \
-            -v ~/.azure:/root/.azure:ro \
+            -v ~/.azure:/root/.azure \
             -w /workspace \
             mcr.microsoft.com/azure-cli:2.71.0 \
             ./ops/scripts/pipeline/slots/az-slot-web-resource-deploy.sh \
