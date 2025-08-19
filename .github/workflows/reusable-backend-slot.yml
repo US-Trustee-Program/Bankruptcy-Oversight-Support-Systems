@@ -27,6 +27,12 @@ on:
       environmentHash:
         required: true
         type: string
+      apiFunctionApiVersion:
+        required: true
+        type: string
+      dataflowsFunctionApiVersion:
+        required: true
+        type: string
 
 jobs:
   deploy-backend-slot-resources:
@@ -69,4 +75,6 @@ jobs:
               --apiStorageAccName ${apiSlotStorageAccountName:0:24} \
               --dataflowsStorageAccName ${dataflowsSlotStorageAccountName:0:24} \
               --databaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
-              --infoSha ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }}
+              --infoSha ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }} \
+              --apiFunctionApiVersion ${{ inputs.apiFunctionApiVersion }} \
+              --dataflowsFunctionApiVersion ${{ inputs.dataflowsFunctionApiVersion }}

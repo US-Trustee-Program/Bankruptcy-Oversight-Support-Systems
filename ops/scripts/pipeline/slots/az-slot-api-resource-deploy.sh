@@ -25,32 +25,26 @@ while [[ $# -gt 0 ]]; do
         app_rg="${2}"
         shift 2
         ;;
-
     --idResourceGroup)
         id_rg="${2}"
         shift 2
         ;;
-
     --apiFunctionName)
         api_function_name="${2}"
         shift 2
         ;;
-
     --dataflowsFunctionName)
         dataflows_function_name="${2}"
         shift 2
         ;;
-
     --webappName)
         webapp_name="${2}"
         shift 2
         ;;
-
     --slotName)
         slot_name="${2}"
         shift 2
         ;;
-
     --kvIdName)
         kv_id_name="${2}"
         shift 2
@@ -79,6 +73,14 @@ while [[ $# -gt 0 ]]; do
         is_ustp_deployment=true
         shift
         ;;
+    --apiFunctionApiVersion)
+        api_function_api_version="${2}"
+        shift 2
+        ;;
+    --dataflowsFunctionApiVersion)
+        dataflows_function_api_version="${2}"
+        shift 2
+        ;;
     *)
         exit 2 # error on unknown flag/switch
         ;;
@@ -96,10 +98,10 @@ dataflows_storage_acc_key=$(az storage account keys list -g "$app_rg" --account-
 
 
 echo "Creating API Function Staging Slot..."
-az functionapp deployment slot create --name "$api_function_name" --resource-group "$app_rg" --slot "$slot_name" --configuration-source "$api_function_name"
+az functionapp deployment slot create --name "$api_function_name" --resource-group "$app_rg" --slot "$slot_name" --configuration-source "$api_function_name" --apiVersion "$api_function_api_version"
 
-echo "Creating Node API Function Staging Slot..."
-az functionapp deployment slot create --name "$dataflows_function_name" --resource-group "$app_rg" --slot "$slot_name" --configuration-source "$dataflows_function_name"
+echo "Creating Dataflows Function Staging Slot..."
+az functionapp deployment slot create --name "$dataflows_function_name" --resource-group "$app_rg" --slot "$slot_name" --configuration-source "$dataflows_function_name" --apiVersion "$dataflows_function_api_version"
 
 echo "Setting deployment slot settings for storage account and cosmos database for e2e testing..."
 databaseName=$database_name

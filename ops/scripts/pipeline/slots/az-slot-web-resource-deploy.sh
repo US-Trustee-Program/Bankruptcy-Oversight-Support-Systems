@@ -26,17 +26,14 @@ while [[ $# -gt 0 ]]; do
         webapp_name="${2}"
         shift 2
         ;;
-
     --apiFunctionName)
         api_name="${2}"
         shift 2
         ;;
-
     --slotName)
         slot_name="${2}"
         shift 2
         ;;
-
     --subscription)
         subscription_id="${2}"
         shift 2
@@ -53,6 +50,10 @@ while [[ $# -gt 0 ]]; do
         subnet_name="${2}"
         shift 2
         ;;
+    --webappApiVersion)
+        webapp_api_version="${2}"
+        shift 2
+        ;;
     *)
         exit 2 # error on unknown flag/switch
         ;;
@@ -61,7 +62,7 @@ done
 
 # WebApp Slot Deployment and configuration
 echo "Creating deployment slot for webapp: ${webapp_name}..."
-az webapp deployment slot create --name "$webapp_name" --resource-group "$app_rg" --slot "$slot_name" --configuration-source "$webapp_name"
+az webapp deployment slot create --name "$webapp_name" --resource-group "$app_rg" --slot "$slot_name" --configuration-source "$webapp_name" --apiVersion "$webapp_api_version"
 
 echo "Modifying app settings for deployment slot..."
 az webapp config appsettings set --resource-group "${app_rg}" --name "${webapp_name}" --slot "${slot_name}" --slot-settings CSP_API_SERVER_HOST="${api_name}.azurewebsites.us ${api_name}-${slot_name}.azurewebsites.us"

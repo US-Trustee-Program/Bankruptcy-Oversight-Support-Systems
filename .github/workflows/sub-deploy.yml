@@ -107,4 +107,7 @@ jobs:
       azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}
       slotName: ${{ inputs.slotName }}
       environmentHash: ${{ inputs.environmentHash }}
+      webappApiVersion: ${{ needs.deploy-infra.outputs.webapp_api_version }}
+      apiFunctionApiVersion: ${{ needs.deploy-infra.outputs.api_function_app_api_version }}
+      dataflowsFunctionApiVersion: ${{ needs.deploy-infra.outputs.dataflows_function_app_api_version }}
     secrets: inherit # pragma: allowlist secret

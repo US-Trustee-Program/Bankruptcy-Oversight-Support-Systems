@@ -27,6 +27,15 @@ on:
       environmentHash:
         required: true
         type: string
+      webappApiVersion:
+        required: true
+        type: string
+      apiFunctionApiVersion:
+        required: true
+        type: string
+      dataflowsFunctionApiVersion:
+        required: true
+        type: string
 jobs:
   deploy-frontend-slot-resources:
     uses: ./.github/workflows/reusable-frontend-slot.yml
@@ -37,6 +46,7 @@ jobs:
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
       azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}
       slotName: ${{ inputs.slotName }}
+      webappApiVersion: ${{ inputs.webappApiVersion }}
     secrets: inherit # pragma: allowlist secret
 
   deploy-backend-slot-resources:
@@ -50,4 +60,6 @@ jobs:
       azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}
       slotName: ${{ inputs.slotName }}
       environmentHash: ${{ inputs.environmentHash }}
+      webappApiVersion: ${{ inputs.webappApiVersion }}
+      dataflowsFunctionApiVersion: ${{ inputs.dataflowsFunctionApiVersion }}
     secrets: inherit # pragma: allowlist secret

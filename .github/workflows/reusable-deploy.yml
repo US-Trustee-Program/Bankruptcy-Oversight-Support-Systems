@@ -30,16 +30,16 @@ on:
     outputs:
       deployment_outputs:
         description: "JSON string containing all deployment outputs"
-        value: ${{ jobs.deploy-azure-infrastructure.outputs.deployment_outputs }}
+        value: ${{ jobs.deploy-azure-infrastructure.outputs.deploymentOutputs }}
       webapp_api_version:
         description: "API version of the webapp"
-        value: ${{ jobs.deploy-azure-infrastructure.outputs.webapp_api_version }}
+        value: ${{ jobs.deploy-azure-infrastructure.outputs.webappApiVersion }}
       api_function_app_api_version:
         description: "API version of the API function app"
-        value: ${{ jobs.deploy-azure-infrastructure.outputs.api_function_app_api_version }}
+        value: ${{ jobs.deploy-azure-infrastructure.outputs.apiFunctionAppApiVersion }}
       dataflows_function_app_api_version:
         description: "API version of the dataflows function app"
-        value: ${{ jobs.deploy-azure-infrastructure.outputs.dataflows_function_app_api_version }}
+        value: ${{ jobs.deploy-azure-infrastructure.outputs.dataflowsFunctionAppApiVersion }}
 
 jobs:
   deploy-azure-infrastructure:
@@ -47,9 +47,9 @@ jobs:
     environment: ${{ inputs.ghaEnvironment }}
     outputs:
       deployment_outputs: ${{ steps.parse-outputs.outputs.deployment_outputs }}
-      webapp_api_version: ${{ steps.parse-outputs.outputs.WEBAPP_API_VERSION }}
-      api_function_app_api_version: ${{ steps.parse-outputs.outputs.API_FUNCTION_APP_API_VERSION }}
-      dataflows_function_app_api_version: ${{ steps.parse-outputs.outputs.DATAFLOWS_FUNCTION_APP_API_VERSION }}
+      webappApiVersion: ${{ steps.parse-outputs.outputs.WEBAPP_API_VERSION }}
+      apiFunctionAppApiVersion: ${{ steps.parse-outputs.outputs.API_FUNCTION_APP_API_VERSION }}
+      dataflowsFunctionAppApiVersion: ${{ steps.parse-outputs.outputs.DATAFLOWS_FUNCTION_APP_API_VERSION }}
     steps:
       - uses: actions/checkout@main
 
@@ -119,24 +119,10 @@ jobs:
         id: parse-outputs
         if: inputs.deployBicep == 'true'
         run: |
-          if [ -f outputs.json ]; then
-            echo "deployment_outputs=$(cat outputs.json | jq -c .)" >> $GITHUB_OUTPUT
-
-            # Extract specific API versions from deployment outputs
-            export WEBAPP_API_VERSION=$(jq -r '.webappApiVersion.value // empty' outputs.json)
-            export API_FUNCTION_APP_API_VERSION=$(jq -r '.apiFunctionAppApiVersion.value // empty' outputs.json)
-            export DATAFLOWS_FUNCTION_APP_API_VERSION=$(jq -r '.dataflowsFunctionAppApiVersion.value // empty' outputs.json)
-            echo "WEBAPP_API_VERSION=$WEBAPP_API_VERSION"
-            echo "API_FUNCTION_APP_API_VERSION=$API_FUNCTION_APP_API_VERSION"
-            echo "DATAFLOWS_FUNCTION_APP_API_VERSION=$DATAFLOWS_FUNCTION_APP_API_VERSION"
-
-            # Make API versions available as job outputs
-            echo "WEBAPP_API_VERSION=$WEBAPP_API_VERSION" >> $GITHUB_OUTPUT
-            echo "API_FUNCTION_APP_API_VERSION=$API_FUNCTION_APP_API_VERSION" >> $GITHUB_OUTPUT
-            echo "DATAFLOWS_FUNCTION_APP_API_VERSION=$DATAFLOWS_FUNCTION_APP_API_VERSION" >> $GITHUB_OUTPUT
-          else
-            echo "deployment_outputs={}" >> $GITHUB_OUTPUT
-            echo "WEBAPP_API_VERSION=" >> $GITHUB_OUTPUT
-            echo "API_FUNCTION_APP_API_VERSION=" >> $GITHUB_OUTPUT
-            echo "DATAFLOWS_FUNCTION_APP_API_VERSION=" >> $GITHUB_OUTPUT
-          fi
+          echo "deployment_outputs=$(cat outputs.json | jq -c .)" >> $GITHUB_OUTPUT
+          export WEBAPP_API_VERSION=$(jq -r '.webappApiVersion.value // empty' outputs.json)
+          export API_FUNCTION_APP_API_VERSION=$(jq -r '.apiFunctionAppApiVersion.value // empty' outputs.json)
+          export DATAFLOWS_FUNCTION_APP_API_VERSION=$(jq -r '.dataflowsFunctionAppApiVersion.value // empty' outputs.json)
+          echo "WEBAPP_API_VERSION=$WEBAPP_API_VERSION" >> $GITHUB_OUTPUT
+          echo "API_FUNCTION_APP_API_VERSION=$API_FUNCTION_APP_API_VERSION" >> $GITHUB_OUTPUT
+          echo "DATAFLOWS_FUNCTION_APP_API_VERSION=$DATAFLOWS_FUNCTION_APP_API_VERSION" >> $GITHUB_OUTPUT
