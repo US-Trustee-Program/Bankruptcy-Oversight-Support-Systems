@@ -57,7 +57,15 @@ jobs:
           dataflowsSlotStorageAccountName=ustpslot${{ inputs.environmentHash }}
           apiSlotStorageAccountName=dataflowsslot${{ inputs.environmentHash }}
 
-          ./ops/scripts/pipeline/slots/az-slot-api-resource-deploy.sh \
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            -e AZURE_CLIENT_ID \
+            -e AZURE_CLIENT_SECRET \
+            -e AZURE_TENANT_ID \
+            -e AZURE_SUBSCRIPTION_ID \
+            mcr.microsoft.com/azure-cli:2.71.0 \
+            ./ops/scripts/pipeline/slots/az-slot-api-resource-deploy.sh \
               --resourceGroup ${{ steps.rgApp.outputs.out }} \
               --idResourceGroup ${{ secrets.AZURE_RG }} \
               --apiFunctionName ${{ inputs.apiFunctionName }} \
