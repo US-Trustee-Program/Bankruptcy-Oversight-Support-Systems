@@ -27,17 +27,12 @@ jobs:
     environment: ${{ inputs.ghaEnvironment }}
     steps:
       - uses: actions/checkout@v3
-      - uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-          environment: ${{ vars.AZURE_ENVIRONMENT }}
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgApp
         with:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
           in: ${{ inputs.azResourceGrpAppEncrypted }}
-
       - uses: cloudposse/github-action-secret-outputs@main
         id: rgNetwork
         with:
@@ -48,13 +43,15 @@ jobs:
         run: |
           webAppSubnetName="snet-${{ inputs.webAppName }}"
 
+          echo "${{ secrets.AZURE_CREDENTIALS }}" > env.json
+          AZURE_CLIENT_SECRET=$(jq -r '.clientSecret' env.json)
+          AZURE_SUBSCRIPTION_ID=$(jq -r '.subscriptionId' env.json)
+          AZURE_TENANT_ID=$(jq -r '.tenantId' env.json)
+          AZURE_CLIENT_ID=$(jq -r '.clientId' env.json)
+
           docker run --rm \
             -v ${{ github.workspace }}:/workspace \
             -w /workspace \
-            -e AZURE_CLIENT_ID \
-            -e AZURE_CLIENT_SECRET \
-            -e AZURE_TENANT_ID \
-            -e AZURE_SUBSCRIPTION_ID \
             mcr.microsoft.com/azure-cli:2.71.0 \
             bash -c '
               az login --service-principal -u "$AZURE_CLIENT_ID" -p "$AZURE_CLIENT_SECRET" --tenant "$AZURE_TENANT_ID"
