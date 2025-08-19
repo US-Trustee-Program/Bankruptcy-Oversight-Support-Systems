@@ -56,9 +56,9 @@ jobs:
             -e AZURE_TENANT_ID \
             -e AZURE_SUBSCRIPTION_ID \
             mcr.microsoft.com/azure-cli:2.71.0 \
-            bash -c "
-              az login --service-principal -u \$AZURE_CLIENT_ID -p \$AZURE_CLIENT_SECRET --tenant \$AZURE_TENANT_ID
-              az account set --subscription \$AZURE_SUBSCRIPTION_ID
+            bash -c '
+              az login --service-principal -u "$AZURE_CLIENT_ID" -p "$AZURE_CLIENT_SECRET" --tenant "$AZURE_TENANT_ID"
+              az account set --subscription "$AZURE_SUBSCRIPTION_ID"
               ./ops/scripts/pipeline/slots/az-slot-web-resource-deploy.sh \
                 --resourceGroup ${{ steps.rgApp.outputs.out }} \
                 --webappName ${{ inputs.webappName }} \
@@ -68,4 +68,4 @@ jobs:
                 --network-rg ${{ steps.rgNetwork.outputs.out }} \
                 --vnet ${{ vars.AZ_NETWORK_VNET_NAME }} \
                 --subnet $webAppSubnetName
-            "
+            '
