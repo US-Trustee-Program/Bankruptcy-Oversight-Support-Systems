@@ -39,14 +39,8 @@ jobs:
         run: |
           echo "container-image=ghcr.io/${GITHUB_REPOSITORY,,}/azure-cli-runner:azure-cli-2.71.0" >> "$GITHUB_OUTPUT"
 
-  build-azure-cli-image:
-    uses: ./.github/workflows/build-azure-cli-image.yml
-    permissions:
-      contents: read
-      packages: write
-
   deploy-frontend-slot-resources:
-    needs: [compute-container-image, build-azure-cli-image]
+    needs: [compute-container-image]
     uses: ./.github/workflows/reusable-frontend-slot.yml
     with:
       webAppName: ${{ inputs.webappName }}
@@ -59,7 +53,7 @@ jobs:
     secrets: inherit # pragma: allowlist secret
 
   deploy-backend-slot-resources:
-    needs: [compute-container-image, build-azure-cli-image]
+    needs: [compute-container-image]
     uses: ./.github/workflows/reusable-backend-slot.yml
     with:
       webappName: ${{ inputs.webappName }}
