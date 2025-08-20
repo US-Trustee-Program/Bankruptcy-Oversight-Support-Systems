@@ -28,18 +28,32 @@ on:
         required: true
         type: string
 jobs:
+  compute-container-image:
+    runs-on: ubuntu-latest
+    outputs:
+      container-image: ${{ steps.set.outputs.container-image }}
+    steps:
+      - name: Compute lowercase container image
+        id: set
+        shell: bash
+        run: |
+          echo "container-image=ghcr.io/${GITHUB_REPOSITORY,,}/azure-cli-runner:azure-cli-2.71.0" >> "$GITHUB_OUTPUT"
+
   deploy-frontend-slot-resources:
+    needs: [compute-container-image]
     uses: ./.github/workflows/reusable-frontend-slot.yml
     with:
-      webappName: ${{ inputs.webappName }}
+      webAppName: ${{ inputs.webappName }}
       apiFunctionName: ${{ inputs.apiFunctionName }}
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
       azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}
       slotName: ${{ inputs.slotName }}
+      containerImage: ${{ needs.compute-container-image.outputs.container-image }}
     secrets: inherit # pragma: allowlist secret
 
   deploy-backend-slot-resources:
+    needs: [compute-container-image]
     uses: ./.github/workflows/reusable-backend-slot.yml
     with:
       webappName: ${{ inputs.webappName }}
@@ -50,4 +64,5 @@ jobs:
       azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}
       slotName: ${{ inputs.slotName }}
       environmentHash: ${{ inputs.environmentHash }}
+      containerImage: ${{ needs.compute-container-image.outputs.container-image }}
     secrets: inherit # pragma: allowlist secret
