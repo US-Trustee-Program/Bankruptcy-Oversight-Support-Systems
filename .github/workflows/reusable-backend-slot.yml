@@ -57,6 +57,7 @@ jobs:
           in: ${{ inputs.azResourceGrpNetworkEncrypted  }}
 
       - name: Create API Slot Resource
+        shell: bash
         run: |
           dataflowsSlotStorageAccountName=ustpslot${{ inputs.environmentHash }}
           apiSlotStorageAccountName=dataflowsslot${{ inputs.environmentHash }}
