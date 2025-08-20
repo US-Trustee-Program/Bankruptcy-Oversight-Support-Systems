@@ -58,7 +58,8 @@ jobs:
               az login --service-principal \
                 --username \$(jq -r '.clientId' /tmp/azure-credentials.json) \
                 --password \$(jq -r '.clientSecret' /tmp/azure-credentials.json) \
-                --tenant \$(jq -r '.tenantId' /tmp/azure-credentials.json) && \
+                --tenant \$(jq -r '.tenantId' /tmp/azure-credentials.json) \
+                --subscription ${{ secrets.AZURE_SUBSCRIPTION }} && \
               ./ops/scripts/pipeline/slots/az-slot-web-resource-deploy.sh \
                 --resourceGroup ${{ steps.rgApp.outputs.out }} \
                 --webappName ${{ inputs.webappName }} \
@@ -67,7 +68,7 @@ jobs:
                 --subscription ${{ secrets.AZURE_SUBSCRIPTION }} \
                 --network-rg ${{ steps.rgNetwork.outputs.out }} \
                 --vnet ${{ vars.AZ_NETWORK_VNET_NAME }} \
-                --subnet $webAppSubnetName
+                --subnet snet-${{ inputs.webAppName }}
             "
 
           rm -f /tmp/azure-credentials.json

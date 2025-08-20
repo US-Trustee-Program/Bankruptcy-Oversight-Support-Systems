@@ -66,7 +66,8 @@ jobs:
               az login --service-principal \
                 --username \$(jq -r '.clientId' /tmp/azure-credentials.json) \
                 --password \$(jq -r '.clientSecret' /tmp/azure-credentials.json) \
-                --tenant \$(jq -r '.tenantId' /tmp/azure-credentials.json) && \
+                --tenant \$(jq -r '.tenantId' /tmp/azure-credentials.json) \
+                --subscription ${{ secrets.AZURE_SUBSCRIPTION }} && \
               ./ops/scripts/pipeline/slots/az-slot-api-resource-deploy.sh \
                 --resourceGroup ${{ steps.rgApp.outputs.out }} \
                 --idResourceGroup ${{ secrets.AZURE_RG }} \
@@ -76,8 +77,8 @@ jobs:
                 --slotName ${{ inputs.slotName }} \
                 --kvIdName ${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }} \
                 --sqlIdName ${{ secrets.AZ_SQL_IDENTITY_NAME }} \
-                --apiStorageAccName ${apiSlotStorageAccountName:0:24} \
-                --dataflowsStorageAccName ${dataflowsSlotStorageAccountName:0:24} \
+                --apiStorageAccName \${ustpslot${{ inputs.environmentHash }}:0:24} \
+                --dataflowsStorageAccName \${dataflowsslot${{ inputs.environmentHash }}:0:24} \
                 --databaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
                 --infoSha ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }}
             "
