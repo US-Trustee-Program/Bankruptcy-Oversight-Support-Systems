@@ -28,7 +28,14 @@ on:
         required: true
         type: string
 jobs:
+  build-azure-cli-image:
+    uses: ./.github/workflows/build-azure-cli-image.yml
+    permissions:
+      contents: read
+      packages: write
+
   deploy-frontend-slot-resources:
+    needs: build-azure-cli-image
     uses: ./.github/workflows/reusable-frontend-slot.yml
     with:
       webappName: ${{ inputs.webappName }}
@@ -40,6 +47,7 @@ jobs:
     secrets: inherit # pragma: allowlist secret
 
   deploy-backend-slot-resources:
+    needs: build-azure-cli-image
     uses: ./.github/workflows/reusable-backend-slot.yml
     with:
       webappName: ${{ inputs.webappName }}

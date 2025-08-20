@@ -6,6 +6,14 @@ on:
       - '.github/docker/Dockerfile.azure-cli'
     branches:
       - main
+  pull_request:
+    paths:
+      - '.github/docker/Dockerfile.azure-cli'
+  workflow_call:
+    outputs:
+      image-tag:
+        description: "The tag of the built image"
+        value: ${{ jobs.build-and-push.outputs.image-tag }}
   workflow_dispatch:
 
 env:
@@ -15,6 +23,8 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
     permissions:
       contents: read
       packages: write
@@ -36,6 +46,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=ref,event=branch
+            type=ref,event=pr
             type=sha,prefix={{branch}}-
             type=raw,value=azure-cli-2.71.0
             type=raw,value=latest
