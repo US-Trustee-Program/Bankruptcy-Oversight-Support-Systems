@@ -20,7 +20,7 @@ import {
   RawConsolidationOrder,
   TransferOrder,
 } from '../orders';
-import { Address, DebtorAttorney, Party, Trustee } from '../parties';
+import { DebtorAttorney, Party, Trustee } from '../parties';
 import { COURT_DIVISIONS } from './courts.mock';
 import { TRIAL_ATTORNEYS } from './attorneys.mock';
 import { ConsolidationOrderSummary } from '../history';
@@ -508,7 +508,11 @@ function getDocketEntry(override: Partial<CaseDocketEntry> = {}): CaseDocketEntr
   };
 }
 
-function getTrustee(override: Partial<Trustee> = {}): Trustee {
+function getTrustee(
+  override: Partial<
+    Omit<Trustee, 'address1' | 'address2' | 'address3' | 'cityStateZipCountry'>
+  > = {},
+): Trustee {
   return {
     name: faker.person.fullName(),
     phone: faker.phone.number(),
@@ -523,17 +527,13 @@ function getTrustee(override: Partial<Trustee> = {}): Trustee {
       state: faker.location.state({ abbreviated: true }),
       zipCode: faker.location.zipCode(),
       countryCode: 'US',
-    } as Address,
+    },
     status: 'active',
     ...override,
-    address1: undefined,
-    address2: undefined,
-    address3: undefined,
-    cityStateZipCountry: undefined,
   };
 }
 
-function getLegacyTrustee(override: Partial<Trustee> = {}): Trustee {
+function getLegacyTrustee(override: Partial<Omit<Trustee, 'address'>> = {}): Trustee {
   return {
     name: faker.person.fullName(),
     address1: faker.location.streetAddress(),
