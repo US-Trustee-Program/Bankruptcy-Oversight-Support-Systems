@@ -5,13 +5,13 @@ FROM ghcr.io/actions/actions-runner:latest
 USER root
 
 # Remove existing Azure CLI installation
-RUN apt-get update && \
-    apt-get remove -y azure-cli && \
+RUN rm -rf /opt/az /usr/lib/azure-cli ~/.azure /usr/local/bin/az 2>/dev/null || true && \
+    # Remove any az symlinks
+    find /usr/local/bin /usr/bin -name "az" -type l -delete 2>/dev/null || true && \
+    # Clean up any existing azure-cli apt package if it exists
+    (apt-get update && apt-get remove -y azure-cli 2>/dev/null || true) && \
     apt-get autoremove -y && \
-    rm -rf /var/lib/apt/lists/* && \
-    rm -rf /opt/az && \
-    rm -rf /usr/lib/azure-cli && \
-    rm -rf ~/.azure
+    rm -rf /var/lib/apt/lists/*
 
 # Dependencies are already present from existing Azure CLI installation
 
