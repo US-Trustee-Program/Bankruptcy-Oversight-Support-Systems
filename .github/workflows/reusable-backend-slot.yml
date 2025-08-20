@@ -55,21 +55,31 @@ jobs:
           dataflowsSlotStorageAccountName=ustpslot${{ inputs.environmentHash }}
           apiSlotStorageAccountName=dataflowsslot${{ inputs.environmentHash }}
 
+          echo '${{ secrets.AZURE_CREDENTIALS }}' > /tmp/azure-credentials.json
+
           docker run --rm \
             -v ${{ github.workspace }}:/workspace \
-            -v ~/.azure:/root/.azure \
+            -v /tmp/azure-credentials.json:/tmp/azure-credentials.json \
             -w /workspace \
             mcr.microsoft.com/azure-cli:2.71.0 \
-            ./ops/scripts/pipeline/slots/az-slot-api-resource-deploy.sh \
-              --resourceGroup ${{ steps.rgApp.outputs.out }} \
-              --idResourceGroup ${{ secrets.AZURE_RG }} \
-              --apiFunctionName ${{ inputs.apiFunctionName }} \
-              --dataflowsFunctionName ${{ inputs.dataflowsFunctionName }} \
-              --webappName ${{ inputs.webappName }} \
-              --slotName ${{ inputs.slotName }} \
-              --kvIdName ${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }} \
-              --sqlIdName ${{ secrets.AZ_SQL_IDENTITY_NAME }} \
-              --apiStorageAccName ${apiSlotStorageAccountName:0:24} \
-              --dataflowsStorageAccName ${dataflowsSlotStorageAccountName:0:24} \
-              --databaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
-              --infoSha ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }}
+            bash -c "
+              az login --service-principal \
+                --username \$(jq -r '.clientId' /tmp/azure-credentials.json) \
+                --password \$(jq -r '.clientSecret' /tmp/azure-credentials.json) \
+                --tenant \$(jq -r '.tenantId' /tmp/azure-credentials.json) && \
+              ./ops/scripts/pipeline/slots/az-slot-api-resource-deploy.sh \
+                --resourceGroup ${{ steps.rgApp.outputs.out }} \
+                --idResourceGroup ${{ secrets.AZURE_RG }} \
+                --apiFunctionName ${{ inputs.apiFunctionName }} \
+                --dataflowsFunctionName ${{ inputs.dataflowsFunctionName }} \
+                --webappName ${{ inputs.webappName }} \
+                --slotName ${{ inputs.slotName }} \
+                --kvIdName ${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }} \
+                --sqlIdName ${{ secrets.AZ_SQL_IDENTITY_NAME }} \
+                --apiStorageAccName ${apiSlotStorageAccountName:0:24} \
+                --dataflowsStorageAccName ${dataflowsSlotStorageAccountName:0:24} \
+                --databaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
+                --infoSha ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }}
+            "
+
+          rm -f /tmp/azure-credentials.json

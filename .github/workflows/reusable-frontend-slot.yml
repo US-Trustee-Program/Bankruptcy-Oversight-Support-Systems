@@ -47,17 +47,27 @@ jobs:
         run: |
           webAppSubnetName="snet-${{ inputs.webAppName }}"
 
+          echo '${{ secrets.AZURE_CREDENTIALS }}' > /tmp/azure-credentials.json
+
           docker run --rm \
             -v ${{ github.workspace }}:/workspace \
-            -v ~/.azure:/root/.azure \
+            -v /tmp/azure-credentials.json:/tmp/azure-credentials.json \
             -w /workspace \
             mcr.microsoft.com/azure-cli:2.71.0 \
-            ./ops/scripts/pipeline/slots/az-slot-web-resource-deploy.sh \
-              --resourceGroup ${{ steps.rgApp.outputs.out }} \
-              --webappName ${{ inputs.webappName }} \
-              --apiFunctionName ${{ inputs.apiFunctionName }} \
-              --slotName ${{ inputs.slotName }} \
-              --subscription ${{ secrets.AZURE_SUBSCRIPTION }} \
-              --network-rg ${{ steps.rgNetwork.outputs.out }} \
-              --vnet ${{ vars.AZ_NETWORK_VNET_NAME }} \
-              --subnet $webAppSubnetName
+            bash -c "
+              az login --service-principal \
+                --username \$(jq -r '.clientId' /tmp/azure-credentials.json) \
+                --password \$(jq -r '.clientSecret' /tmp/azure-credentials.json) \
+                --tenant \$(jq -r '.tenantId' /tmp/azure-credentials.json) && \
+              ./ops/scripts/pipeline/slots/az-slot-web-resource-deploy.sh \
+                --resourceGroup ${{ steps.rgApp.outputs.out }} \
+                --webappName ${{ inputs.webappName }} \
+                --apiFunctionName ${{ inputs.apiFunctionName }} \
+                --slotName ${{ inputs.slotName }} \
+                --subscription ${{ secrets.AZURE_SUBSCRIPTION }} \
+                --network-rg ${{ steps.rgNetwork.outputs.out }} \
+                --vnet ${{ vars.AZ_NETWORK_VNET_NAME }} \
+                --subnet $webAppSubnetName
+            "
+
+          rm -f /tmp/azure-credentials.json
