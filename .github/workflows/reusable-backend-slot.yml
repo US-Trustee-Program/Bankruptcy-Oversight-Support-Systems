@@ -63,6 +63,7 @@ jobs:
             -w /workspace \
             mcr.microsoft.com/azure-cli:2.71.0 \
             bash -c "
+              az cloud set --name AzureUSGovernment;
               echo 'Attempting login...';
               az login --verbose --service-principal \
                 --username \$(jq -r '.clientId' /tmp/azure-credentials.json) \
