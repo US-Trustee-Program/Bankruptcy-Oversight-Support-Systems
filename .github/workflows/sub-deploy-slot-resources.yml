@@ -38,7 +38,7 @@ jobs:
     needs: build-azure-cli-image
     uses: ./.github/workflows/reusable-frontend-slot.yml
     with:
-      webappName: ${{ inputs.webappName }}
+      webAppName: ${{ inputs.webappName }}
       apiFunctionName: ${{ inputs.apiFunctionName }}
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
