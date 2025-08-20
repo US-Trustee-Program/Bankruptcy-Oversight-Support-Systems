@@ -2,9 +2,12 @@ import { ApplicationContext } from '../../../backend/lib/adapters/types/basic';
 import {
   getConsolidationOrdersRepository,
   getOrdersRepository,
+  getTrusteesRepository,
 } from '../../../backend/lib/factory';
 import ExportAndLoadCase from '../../../backend/lib/use-cases/dataflows/export-and-load-case';
 import { ConsolidationOrder, TransferOrder } from '../../../common/src/cams/orders';
+import { Trustee } from '../../../common/src/cams/parties';
+import { CamsUserReference } from '../../../common/src/cams/users';
 import { CaseSyncEvent } from '../../../common/src/queue/dataflow-types';
 
 export async function insertConsolidationOrders(
@@ -32,4 +35,17 @@ export async function syncCases(context: ApplicationContext, caseIds: string[]) 
     return { type: 'CASE_CHANGED', caseId };
   });
   return await ExportAndLoadCase.exportAndLoad(context, events);
+}
+
+export async function insertTrustees(appContext: ApplicationContext, trustees: Trustee[]) {
+  const trusteeRepo = getTrusteesRepository(appContext);
+  const testUser = {
+    id: 'test-user',
+    name: 'Test User',
+  } as CamsUserReference;
+
+  for (const trustee of trustees) {
+    await trusteeRepo.createTrustee(trustee, testUser);
+  }
+  trusteeRepo.release();
 }
