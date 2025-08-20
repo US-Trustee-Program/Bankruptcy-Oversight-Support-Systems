@@ -86,7 +86,7 @@ jobs:
           export CAMS_INFO_SHA=${{ github.sha }}
           npm run build --if-present
 
-      - name: Generate Staging Slot Configuration
+      - name: Generate Slot Configuration
         run: |
           export CAMS_SERVER_HOSTNAME=${{ inputs.camsStagingHostname }}
           export CAMS_SERVER_PORT=${{ inputs.camsServerPort }}
@@ -98,8 +98,8 @@ jobs:
           export CAMS_LOGIN_PROVIDER=${{ vars.CAMS_LOGIN_PROVIDER }}
           export CAMS_LOGIN_PROVIDER_CONFIG='${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}'
           export CAMS_INFO_SHA=${{ github.sha }}
-          npm run stagingConfig
-          mv ./public/configuration-staging.json ./build/
+          npm run slotConfig
+          mv ./public/configuration-${SLOT_NAME:-staging}.json ./build/
 
       - name: Package
         if: inputs.isDeployment

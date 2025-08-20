@@ -62,7 +62,7 @@ param dataflowsFunctionPlanName string = 'plan-${stackName}-functions-dataflows'
 
 
 @description('Name of deployment slot for frontend and backend')
-param slotName string = 'staging'
+param slotName string
 
 param sqlServerName string = ''
 
