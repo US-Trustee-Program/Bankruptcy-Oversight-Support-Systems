@@ -55,11 +55,13 @@ jobs:
             -w /workspace \
             mcr.microsoft.com/azure-cli:2.71.0 \
             bash -c "
+              echo "Attempting login..."
               az login --service-principal \
                 --username \$(jq -r '.clientId' /tmp/azure-credentials.json) \
                 --password \$(jq -r '.clientSecret' /tmp/azure-credentials.json) \
-                --tenant \$(jq -r '.tenantId' /tmp/azure-credentials.json) \
-                --subscription ${{ secrets.AZURE_SUBSCRIPTION }} && \
+                --tenant \$(jq -r '.tenantId' /tmp/azure-credentials.json)
+
+              echo "Attempting web resource deploy..."
               ./ops/scripts/pipeline/slots/az-slot-web-resource-deploy.sh \
                 --resourceGroup ${{ steps.rgApp.outputs.out }} \
                 --webappName ${{ inputs.webappName }} \
