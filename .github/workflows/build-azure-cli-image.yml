@@ -1,19 +1,8 @@
 name: Build Custom Azure CLI Runner Image
 
 on:
-  push:
-    paths:
-      - '.github/docker/Dockerfile.azure-cli'
-    branches:
-      - main
-  pull_request:
-    paths:
-      - '.github/docker/Dockerfile.azure-cli'
-  workflow_call:
-    outputs:
-      image-tag:
-        description: "The tag of the built image"
-        value: ${{ jobs.build-and-push.outputs.image-tag }}
+  schedule:
+    - cron: '0 5 * * 0'  # Every Sunday at 5:00 AM UTC
   workflow_dispatch:
 
 env:
