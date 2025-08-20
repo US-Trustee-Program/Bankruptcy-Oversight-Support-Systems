@@ -48,8 +48,8 @@ if [[ -z "${app_rg}" || -z "${stack_name}" || -z "${rule_name}" ]]; then
 fi
 
 echo "Removing Ip allow rule by name (${rule_name})"
-if [[ ${slot_name} == 'staging' ]]; then
-    echo "Removing GHA IP from staging deployment slot..."
+if [[ -n ${slot_name} && ${slot_name} != "initial" ]]; then
+    echo "Removing GHA IP from ${slot_name} deployment slot..."
     az functionapp config access-restriction remove -g "${app_rg}" -n "${stack_name}"-node-api --slot "${slot_name}" --rule-name "${rule_name}" 1>/dev/null
     az webapp config access-restriction remove -g "${app_rg}" -n "${stack_name}"-webapp --slot "${slot_name}" --rule-name "${rule_name}" 1>/dev/null
 else
