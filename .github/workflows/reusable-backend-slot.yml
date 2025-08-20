@@ -52,12 +52,14 @@ jobs:
           environment: ${{ vars.AZURE_ENVIRONMENT }}
       - name: Create API Slot Resource
         run: |
+          COMMIT_SHA=$(git rev-parse HEAD)
           echo '${{ secrets.AZURE_CREDENTIALS }}' > /tmp/azure-credentials.json
 
           docker run --rm \
             -v ${{ github.workspace }}:/workspace \
             -v /tmp/azure-credentials.json:/tmp/azure-credentials.json \
             -w /workspace \
+            -e COMMIT_SHA=$COMMIT_SHA \
             mcr.microsoft.com/azure-cli:2.71.0 \
             bash -c "
               az cloud set --name AzureUSGovernment;
@@ -79,7 +81,8 @@ jobs:
                 --apiStorageAccName ustpslot${{ inputs.environmentHash }} \
                 --dataflowsStorageAccName dataflowsslot${{ inputs.environmentHash }} \
                 --databaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
-                --infoSha ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }}
+                --branchHashId ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }} \
+                --infoSha $COMMIT_SHA
             "
 
           rm -f /tmp/azure-credentials.json

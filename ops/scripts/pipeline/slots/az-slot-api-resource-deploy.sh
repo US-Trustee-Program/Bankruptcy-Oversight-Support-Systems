@@ -14,6 +14,7 @@ set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
 sql_id_name=''
 is_ustp_deployment=false
+branch_hash_id=''
 info_sha=''
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -71,6 +72,10 @@ while [[ $# -gt 0 ]]; do
         database_name="${2}"
         shift 2
         ;;
+    --branchHashId)
+        branch_hash_id="${2}"
+        shift 2
+        ;;
     --infoSha)
         info_sha="${2}"
         shift 2
@@ -109,18 +114,16 @@ if [[  ${is_ustp_deployment} == true ]]; then
     echo "USTP Deployment..."
 else
     databaseName="$databaseName-e2e"
-    if [[ ${info_sha} != 'DOES_NOT_EXIST' ]]; then
-        databaseName="$databaseName-$info_sha"
+    if [[ ${branch_hash_id} != 'DOES_NOT_EXIST' ]]; then
+        databaseName="$databaseName-$branch_hash_id"
     fi
 fi
 
 echo "Database Name :${databaseName}"
 
-commitSha=$(git rev-parse HEAD)
+az functionapp config appsettings set -g "$app_rg" -n "$api_function_name" --slot "$slot_name" --settings "INFO_SHA=$info_sha" --slot-settings COSMOS_DATABASE_NAME="$databaseName" MyTaskHub="${slot_name}" AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=${api_storage_acc_name};EndpointSuffix=core.usgovcloudapi.net;AccountKey=${api_storage_acc_key}"
 
-az functionapp config appsettings set -g "$app_rg" -n "$api_function_name" --slot "$slot_name" --settings "INFO_SHA=$commitSha" --slot-settings COSMOS_DATABASE_NAME="$databaseName" MyTaskHub="${slot_name}" AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=${api_storage_acc_name};EndpointSuffix=core.usgovcloudapi.net;AccountKey=${api_storage_acc_key}"
-
-az functionapp config appsettings set -g "$app_rg" -n "$dataflows_function_name" --slot "$slot_name" --settings "INFO_SHA=$commitSha" --slot-settings COSMOS_DATABASE_NAME="$databaseName" MyTaskHub="${slot_name}" AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=${dataflows_storage_acc_name};EndpointSuffix=core.usgovcloudapi.net;AccountKey=${dataflows_storage_acc_key}"
+az functionapp config.appsettings set -g "$app_rg" -n "$dataflows_function_name" --slot "$slot_name" --settings "INFO_SHA=$info_sha" --slot-settings COSMOS_DATABASE_NAME="$databaseName" MyTaskHub="${slot_name}" AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=${dataflows_storage_acc_name};EndpointSuffix=core.usgovcloudapi.net;AccountKey=${dataflows_storage_acc_key}"
 
 echo "Setting CORS Allowed origins for the API..."
 az functionapp cors add -g "$app_rg" --name "$api_function_name" --slot "$slot_name" --allowed-origins "https://${webapp_name}-${slot_name}.azurewebsites.us"
