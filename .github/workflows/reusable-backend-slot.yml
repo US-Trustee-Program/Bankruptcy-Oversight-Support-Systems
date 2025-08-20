@@ -31,6 +31,7 @@ on:
 jobs:
   deploy-backend-slot-resources:
     runs-on: ubuntu-latest
+    container: ghcr.io/${{ github.repository }}/azure-cli-runner:azure-cli-2.71.0
     environment: ${{ inputs.ghaEnvironment }}
     steps:
       - uses: actions/checkout@v3

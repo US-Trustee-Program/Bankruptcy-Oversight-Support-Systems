@@ -1,0 +1,43 @@
+# Use the latest GitHub Actions runner Ubuntu image
+FROM ghcr.io/actions/actions-runner:latest
+
+# Switch to root to perform installation tasks
+USER root
+
+# Remove existing Azure CLI installation
+RUN apt-get update && \
+    apt-get remove -y azure-cli && \
+    apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm -rf /opt/az && \
+    rm -rf /usr/lib/azure-cli && \
+    rm -rf ~/.azure
+
+# Dependencies are already present from existing Azure CLI installation
+
+# Add Microsoft's GPG key and repository
+RUN mkdir -p /etc/apt/keyrings && \
+    curl -sLS https://packages.microsoft.com/keys/microsoft.asc | \
+    gpg --dearmor | \
+    tee /etc/apt/keyrings/microsoft.gpg > /dev/null && \
+    chmod go+r /etc/apt/keyrings/microsoft.gpg
+
+RUN echo "deb [arch=`dpkg --print-architecture` signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/azure-cli/ $(lsb_release -cs) main" | \
+    tee /etc/apt/sources.list.d/azure-cli.list
+
+# Install specific version of Azure CLI (2.71.0)
+RUN apt-get update && \
+    apt-get install -y azure-cli=2.71.0-1~$(lsb_release -cs) && \
+    rm -rf /var/lib/apt/lists/*
+
+# Hold the azure-cli package to prevent automatic updates
+RUN apt-mark hold azure-cli
+
+# Verify installation
+RUN az version
+
+# Switch back to the runner user
+USER runner
+
+# Set working directory
+WORKDIR /home/runner
