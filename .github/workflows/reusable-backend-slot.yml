@@ -52,9 +52,6 @@ jobs:
           environment: ${{ vars.AZURE_ENVIRONMENT }}
       - name: Create API Slot Resource
         run: |
-          dataflowsSlotStorageAccountName=ustpslot${{ inputs.environmentHash }}
-          apiSlotStorageAccountName=dataflowsslot${{ inputs.environmentHash }}
-
           echo '${{ secrets.AZURE_CREDENTIALS }}' > /tmp/azure-credentials.json
 
           docker run --rm \
@@ -79,8 +76,8 @@ jobs:
                 --slotName ${{ inputs.slotName }} \
                 --kvIdName ${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }} \
                 --sqlIdName ${{ secrets.AZ_SQL_IDENTITY_NAME }} \
-                --apiStorageAccName \${ustpslot${{ inputs.environmentHash }}:0:24} \
-                --dataflowsStorageAccName \${dataflowsslot${{ inputs.environmentHash }}:0:24} \
+                --apiStorageAccName ustpslot${{ inputs.environmentHash }} \
+                --dataflowsStorageAccName dataflowsslot${{ inputs.environmentHash }} \
                 --databaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
                 --infoSha ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }}
             "
