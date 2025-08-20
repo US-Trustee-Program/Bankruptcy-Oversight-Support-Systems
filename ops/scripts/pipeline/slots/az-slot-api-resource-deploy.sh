@@ -123,7 +123,7 @@ echo "Database Name :${databaseName}"
 
 az functionapp config appsettings set -g "$app_rg" -n "$api_function_name" --slot "$slot_name" --settings "INFO_SHA=$info_sha" --slot-settings COSMOS_DATABASE_NAME="$databaseName" MyTaskHub="${slot_name}" AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=${api_storage_acc_name};EndpointSuffix=core.usgovcloudapi.net;AccountKey=${api_storage_acc_key}"
 
-az functionapp config.appsettings set -g "$app_rg" -n "$dataflows_function_name" --slot "$slot_name" --settings "INFO_SHA=$info_sha" --slot-settings COSMOS_DATABASE_NAME="$databaseName" MyTaskHub="${slot_name}" AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=${dataflows_storage_acc_name};EndpointSuffix=core.usgovcloudapi.net;AccountKey=${dataflows_storage_acc_key}"
+az functionapp config appsettings set -g "$app_rg" -n "$dataflows_function_name" --slot "$slot_name" --settings "INFO_SHA=$info_sha" --slot-settings COSMOS_DATABASE_NAME="$databaseName" MyTaskHub="${slot_name}" AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=${dataflows_storage_acc_name};EndpointSuffix=core.usgovcloudapi.net;AccountKey=${dataflows_storage_acc_key}"
 
 echo "Setting CORS Allowed origins for the API..."
 az functionapp cors add -g "$app_rg" --name "$api_function_name" --slot "$slot_name" --allowed-origins "https://${webapp_name}-${slot_name}.azurewebsites.us"
