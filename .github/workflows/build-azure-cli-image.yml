@@ -18,7 +18,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/azure-cli-runner
+  IMAGE_NAME: ${{ toLower(github.repository) }}/azure-cli-runner
 
 jobs:
   build-and-push:
