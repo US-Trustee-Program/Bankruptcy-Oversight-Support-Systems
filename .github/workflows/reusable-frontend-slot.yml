@@ -21,10 +21,13 @@ on:
       slotName:
         required: true
         type: string
+      containerImage:
+        required: true
+        type: string
 jobs:
   deploy-frontend-slot-resources:
     runs-on: ubuntu-latest
-    container: ghcr.io/${{ toLower(github.repository) }}/azure-cli-runner:azure-cli-2.71.0
+    container: ${{ inputs.containerImage }}
     environment: ${{ inputs.ghaEnvironment }}
     steps:
       - uses: actions/checkout@v3

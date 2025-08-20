@@ -18,7 +18,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ toLower(github.repository) }}/azure-cli-runner
 
 jobs:
   build-and-push:
@@ -32,6 +31,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set lowercase repository name
+        shell: bash
+        run: |
+          echo "REPO=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+
       - name: Log in to Container Registry
         uses: docker/login-action@v3
         with:
@@ -43,7 +47,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ env.REPO }}/azure-cli-runner
           tags: |
             type=ref,event=branch
             type=ref,event=pr
