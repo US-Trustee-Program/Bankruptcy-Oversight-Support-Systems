@@ -12,9 +12,7 @@ import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import { CourtDivisionDetails } from '@common/cams/courts';
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { mapNavState } from "@/case-detail/panels/CaseDetailNavigation";
-import useCamsNavigator from "@/lib/hooks/UseCamsNavigator";
+import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
 
 // Chapter type options - Complete list with Panel/Non-Panel distinctions
 const CHAPTER_OPTIONS: ComboOption[] = [
