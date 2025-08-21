@@ -159,12 +159,9 @@ export default function TrusteeCreateForm() {
       } as unknown as TrusteeInput;
 
       const response = await api.postTrustee(payload);
-      const createdId = (response as { data?: { id?: string } })?.data?.id;
+      const createdId = (response as { data?: { trusteeId?: string } })?.data?.trusteeId;
 
-      // Show success notification
-      globalAlert?.success('Trustee created successfully.');
-
-      navigate.navigateTo(`/trustee/${createdId}`);
+      navigate.navigateTo(`/trustees/${createdId}`);
     } catch (e) {
       const errorMsg = e instanceof Error ? e.message : 'Could not create trustee.';
       setErrorMessage(errorMsg);

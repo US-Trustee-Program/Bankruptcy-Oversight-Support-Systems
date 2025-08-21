@@ -5,6 +5,7 @@ import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import * as UseApi2Module from '@/lib/hooks/UseApi2';
 import * as UseGlobalAlertModule from '@/lib/hooks/UseGlobalAlert';
 import * as UseTrusteeFormValidationModule from '@/lib/hooks/UseTrusteeFormValidation';
+import * as useCamsNavigatorModule from '@/lib/hooks/UseCamsNavigator';
 import type {
   ValidationError,
   FormValidationResult,
@@ -13,8 +14,17 @@ import type {
 import LocalStorage from '@/lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole } from '@common/cams/roles';
+import { BrowserRouter } from 'react-router-dom';
 
 describe('TrusteeCreateForm', () => {
+  const renderWithRouter = () => {
+    return render(
+      <BrowserRouter>
+        <TrusteeCreateForm />
+      </BrowserRouter>,
+    );
+  };
+
   const mockGlobalAlert = {
     success: vi.fn(),
     error: vi.fn(),
@@ -22,6 +32,11 @@ describe('TrusteeCreateForm', () => {
     info: vi.fn(),
     show: vi.fn(),
     hide: vi.fn(),
+  };
+
+  const mockNavigate = {
+    navigateTo: vi.fn(),
+    redirectTo: vi.fn(),
   };
 
   // Real validation logic for testing
@@ -154,13 +169,14 @@ describe('TrusteeCreateForm', () => {
     vi.spyOn(UseTrusteeFormValidationModule, 'useTrusteeFormValidation').mockReturnValue(
       mockValidation,
     );
+    vi.spyOn(useCamsNavigatorModule, 'default').mockReturnValue(mockNavigate);
 
     // Mock the useApi2 hook to include getCourts
     vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
       getCourts: vi.fn().mockResolvedValue({
         data: MockData.getCourts(),
       }),
-      postTrustee: vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } }),
+      postTrustee: vi.fn().mockResolvedValue({ data: { trusteeId: 'trustee-123' } }),
     } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
   });
 
@@ -168,7 +184,7 @@ describe('TrusteeCreateForm', () => {
     vi.spyOn(FeatureFlags, 'default').mockReturnValue({
       [FeatureFlags.TRUSTEE_MANAGEMENT]: false,
     } as Record<string, boolean>);
-    render(<TrusteeCreateForm />);
+    renderWithRouter();
     expect(screen.getByTestId('trustee-create-disabled')).toBeInTheDocument();
   });
 
@@ -182,7 +198,7 @@ describe('TrusteeCreateForm', () => {
       [FeatureFlags.TRUSTEE_MANAGEMENT]: true,
     } as Record<string, boolean>);
 
-    render(<TrusteeCreateForm />);
+    renderWithRouter();
     expect(screen.getByTestId('trustee-create-unauthorized')).toBeInTheDocument();
     expect(screen.getByText('You do not have permission to manage trustees.')).toBeInTheDocument();
   });
@@ -197,13 +213,13 @@ describe('TrusteeCreateForm', () => {
       [FeatureFlags.TRUSTEE_MANAGEMENT]: true,
     } as Record<string, boolean>);
 
-    render(<TrusteeCreateForm />);
+    renderWithRouter();
     expect(screen.getByTestId('trustee-create-unauthorized')).toBeInTheDocument();
   });
 
   test('renders form when user has TrusteeAdmin role and feature flag is enabled', () => {
     // Uses default setup from beforeEach (TrusteeAdmin user and enabled feature flag)
-    render(<TrusteeCreateForm />);
+    renderWithRouter();
 
     // Should render the form, not authorization messages
     expect(screen.queryByTestId('trustee-create-disabled')).not.toBeInTheDocument();
@@ -220,11 +236,10 @@ describe('TrusteeCreateForm', () => {
       getCourts: vi.fn().mockResolvedValue({
         data: MockData.getCourts(),
       }),
-      postTrustee: vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } }),
+      postTrustee: vi.fn().mockResolvedValue({ data: { trusteeId: 'trustee-123' } }),
     } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
 
-    const onSuccess = vi.fn();
-    render(<TrusteeCreateForm onSuccess={onSuccess} />);
+    renderWithRouter();
 
     await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
     await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
@@ -234,7 +249,9 @@ describe('TrusteeCreateForm', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
-    await vi.waitFor(() => expect(onSuccess).toHaveBeenCalledWith('trustee-123'));
+    await vi.waitFor(() =>
+      expect(mockNavigate.navigateTo).toHaveBeenCalledWith('/trustees/trustee-123'),
+    );
   });
 
   describe('Form Validation', () => {
@@ -246,19 +263,19 @@ describe('TrusteeCreateForm', () => {
         getCourts: vi.fn().mockResolvedValue({
           data: MockData.getCourts(),
         }),
-        postTrustee: vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } }),
+        postTrustee: vi.fn().mockResolvedValue({ data: { trusteeId: 'trustee-123' } }),
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
     });
 
     test('displays error for invalid ZIP code format', async () => {
-      render(<TrusteeCreateForm />);
+      renderWithRouter();
 
       // Fill form with invalid ZIP code
       await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
       await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
       await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
       await userEvent.type(screen.getByTestId('trustee-state'), 'IL');
-      await userEvent.type(screen.getByTestId('trustee-zip'), '1234'); // Invalid: only 4 digits
+      await userEvent.type(screen.getByTestId('trustee-zip'), '1234'); // InvaltrusteeId: only 4 digits
 
       await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
@@ -266,7 +283,7 @@ describe('TrusteeCreateForm', () => {
     });
 
     test('displays real-time validation for ZIP code with letters', async () => {
-      render(<TrusteeCreateForm />);
+      renderWithRouter();
 
       await userEvent.type(screen.getByTestId('trustee-zip'), '1234a');
 
@@ -275,7 +292,7 @@ describe('TrusteeCreateForm', () => {
     });
 
     test('clears validation errors when valid input is provided', async () => {
-      render(<TrusteeCreateForm />);
+      renderWithRouter();
 
       // First enter invalid ZIP
       await userEvent.type(screen.getByTestId('trustee-zip'), '1234');
@@ -290,7 +307,7 @@ describe('TrusteeCreateForm', () => {
     });
 
     test('disables submit button when there are validation errors', async () => {
-      render(<TrusteeCreateForm />);
+      renderWithRouter();
 
       const submitButton = screen.getByRole('button', { name: /save/i });
 
@@ -302,7 +319,7 @@ describe('TrusteeCreateForm', () => {
     });
 
     test('validates ZIP code must be exactly 5 digits', async () => {
-      render(<TrusteeCreateForm />);
+      renderWithRouter();
 
       const zipInput = screen.getByTestId('trustee-zip');
 
@@ -322,7 +339,7 @@ describe('TrusteeCreateForm', () => {
     });
 
     test('displays general error message when form validation fails during submission', async () => {
-      render(<TrusteeCreateForm />);
+      renderWithRouter();
 
       // Fill all required fields with valid data to enabled the submit button,
       // then click the submit button with validation function mocked to return failures.
@@ -363,11 +380,10 @@ describe('TrusteeCreateForm', () => {
         getCourts: vi.fn().mockResolvedValue({
           data: MockData.getCourts(),
         }),
-        postTrustee: vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } }),
+        postTrustee: vi.fn().mockResolvedValue({ data: { trusteeId: 'trustee-123' } }),
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
 
-      const onSuccess = vi.fn();
-      render(<TrusteeCreateForm onSuccess={onSuccess} />);
+      renderWithRouter();
 
       // Fill form with valid data
       await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
@@ -379,8 +395,7 @@ describe('TrusteeCreateForm', () => {
       await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
       await vi.waitFor(() => {
-        expect(mockGlobalAlert.success).toHaveBeenCalledWith('Trustee created successfully.');
-        expect(onSuccess).toHaveBeenCalledWith('trustee-123');
+        expect(mockNavigate.navigateTo).toHaveBeenCalledWith('/trustees/trustee-123');
       });
     });
 
@@ -393,7 +408,7 @@ describe('TrusteeCreateForm', () => {
         postTrustee: vi.fn().mockRejectedValue(new Error(errorMessage)),
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
 
-      render(<TrusteeCreateForm />);
+      renderWithRouter();
 
       // Fill form with valid data
       await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
@@ -420,7 +435,7 @@ describe('TrusteeCreateForm', () => {
         postTrustee: vi.fn().mockRejectedValue('String error instead of Error object'),
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
 
-      render(<TrusteeCreateForm />);
+      renderWithRouter();
 
       // Fill form with valid data
       await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
@@ -440,8 +455,7 @@ describe('TrusteeCreateForm', () => {
     });
 
     test('clears validation errors when cancel is clicked', async () => {
-      const onCancel = vi.fn();
-      render(<TrusteeCreateForm onCancel={onCancel} />);
+      renderWithRouter();
 
       // Enter invalid data to generate errors
       await userEvent.type(screen.getByTestId('trustee-zip'), '1234');
@@ -450,7 +464,7 @@ describe('TrusteeCreateForm', () => {
       // Click cancel
       await userEvent.click(screen.getByRole('button', { name: /cancel/i }));
 
-      expect(onCancel).toHaveBeenCalled();
+      expect(mockNavigate.navigateTo).toHaveBeenCalledWith('/trustees');
     });
   });
 
@@ -463,12 +477,12 @@ describe('TrusteeCreateForm', () => {
         getCourts: vi.fn().mockResolvedValue({
           data: MockData.getCourts(),
         }),
-        postTrustee: vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } }),
+        postTrustee: vi.fn().mockResolvedValue({ data: { trusteeId: 'trustee-123' } }),
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
     });
 
     test('renders all optional fields', () => {
-      render(<TrusteeCreateForm />);
+      renderWithRouter();
 
       expect(screen.getByTestId('trustee-address2')).toBeInTheDocument();
       expect(screen.getByTestId('trustee-phone')).toBeInTheDocument();
@@ -480,8 +494,7 @@ describe('TrusteeCreateForm', () => {
     });
 
     test('allows form submission without optional fields', async () => {
-      const onSuccess = vi.fn();
-      render(<TrusteeCreateForm onSuccess={onSuccess} />);
+      renderWithRouter();
 
       // Fill only required fields
       await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
@@ -492,11 +505,13 @@ describe('TrusteeCreateForm', () => {
 
       await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
-      await vi.waitFor(() => expect(onSuccess).toHaveBeenCalledWith('trustee-123'));
+      await vi.waitFor(() =>
+        expect(mockNavigate.navigateTo).toHaveBeenCalledWith('/trustees/trustee-123'),
+      );
     });
 
     test('validates email format when provided', async () => {
-      render(<TrusteeCreateForm />);
+      renderWithRouter();
 
       const emailInput = screen.getByTestId('trustee-email');
 
@@ -531,7 +546,7 @@ describe('TrusteeCreateForm', () => {
     });
 
     test('validates phone format when provided', async () => {
-      render(<TrusteeCreateForm />);
+      renderWithRouter();
 
       const phoneInput = screen.getByTestId('trustee-phone');
 
@@ -559,7 +574,7 @@ describe('TrusteeCreateForm', () => {
     });
 
     test('includes optional fields in form submission when provided', async () => {
-      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } });
+      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { trusteeId: 'trustee-123' } });
       vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
         getCourts: vi.fn().mockResolvedValue({
           data: MockData.getCourts(),
@@ -567,8 +582,7 @@ describe('TrusteeCreateForm', () => {
         postTrustee: mockPostTrustee,
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
 
-      const onSuccess = vi.fn();
-      render(<TrusteeCreateForm onSuccess={onSuccess} />);
+      renderWithRouter();
 
       // Fill required fields
       await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
@@ -599,12 +613,12 @@ describe('TrusteeCreateForm', () => {
           phone: '(555) 123-4567',
           email: 'jane.doe@example.com',
         });
-        expect(onSuccess).toHaveBeenCalledWith('trustee-123');
+        expect(mockNavigate.navigateTo).toHaveBeenCalledWith('/trustees/trustee-123');
       });
     });
 
     test('does not include empty optional fields in submission', async () => {
-      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } });
+      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { trusteeId: 'trustee-123' } });
       vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
         getCourts: vi.fn().mockResolvedValue({
           data: MockData.getCourts(),
@@ -612,8 +626,7 @@ describe('TrusteeCreateForm', () => {
         postTrustee: mockPostTrustee,
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
 
-      const onSuccess = vi.fn();
-      render(<TrusteeCreateForm onSuccess={onSuccess} />);
+      renderWithRouter();
 
       // Fill only required fields
       await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
@@ -646,7 +659,7 @@ describe('TrusteeCreateForm', () => {
     });
 
     test('allows empty optional fields without validation errors', async () => {
-      render(<TrusteeCreateForm />);
+      renderWithRouter();
 
       // Fill required fields and leave optional fields empty
       await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
@@ -665,7 +678,7 @@ describe('TrusteeCreateForm', () => {
     });
 
     test('includes districts and chapters in submission when selected', async () => {
-      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } });
+      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { trusteeId: 'trustee-123' } });
       vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
         getCourts: vi.fn().mockResolvedValue({
           data: [
@@ -684,8 +697,7 @@ describe('TrusteeCreateForm', () => {
         postTrustee: mockPostTrustee,
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
 
-      const onSuccess = vi.fn();
-      render(<TrusteeCreateForm onSuccess={onSuccess} />);
+      renderWithRouter();
 
       // Fill required fields
       await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
@@ -724,18 +736,18 @@ describe('TrusteeCreateForm', () => {
           districts: ['NY'],
           chapters: ['11-subchapter-v', '13'],
         });
-        expect(onSuccess).toHaveBeenCalledWith('trustee-123');
+        expect(mockNavigate.navigateTo).toHaveBeenCalledWith('/trustees/trustee-123');
       });
     });
 
     test('handles extended chapter types correctly in payload', async () => {
-      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { id: 'trustee-456' } });
+      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { trusteeId: 'trustee-456' } });
       vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
         getCourts: vi.fn().mockResolvedValue({ data: [] }),
         postTrustee: mockPostTrustee,
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
 
-      render(<TrusteeCreateForm />);
+      renderWithRouter();
 
       // Fill required fields
       await userEvent.type(screen.getByTestId('trustee-name'), 'John Smith');
@@ -769,7 +781,7 @@ describe('TrusteeCreateForm', () => {
     });
 
     test('supports multi-select for districts', async () => {
-      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { id: 'trustee-789' } });
+      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { trusteeId: 'trustee-789' } });
       vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
         getCourts: vi.fn().mockResolvedValue({
           data: [
@@ -798,8 +810,7 @@ describe('TrusteeCreateForm', () => {
         postTrustee: mockPostTrustee,
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
 
-      const onSuccess = vi.fn();
-      render(<TrusteeCreateForm onSuccess={onSuccess} />);
+      renderWithRouter();
 
       // Fill required fields
       await userEvent.type(screen.getByTestId('trustee-name'), 'Maria Rodriguez');
@@ -845,7 +856,7 @@ describe('TrusteeCreateForm', () => {
           // CRITICAL: Must support multiple districts (not just single district)
           districts: ['NY-E', 'CA-N', 'TX-S'],
         });
-        expect(onSuccess).toHaveBeenCalledWith('trustee-789');
+        expect(mockNavigate.navigateTo).toHaveBeenCalledWith('/trustees/trustee-789');
       });
     });
   });
@@ -860,12 +871,12 @@ describe('TrusteeCreateForm', () => {
         getCourts: vi.fn().mockResolvedValue({
           data: MockData.getCourts(),
         }),
-        postTrustee: vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } }),
+        postTrustee: vi.fn().mockResolvedValue({ data: { trusteeId: 'trustee-123' } }),
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
     });
 
     test('submit button starts disabled and enables only when form is valid and complete', async () => {
-      render(<TrusteeCreateForm />);
+      renderWithRouter();
 
       const submitButton = screen.getByRole('button', { name: /save/i });
 
@@ -903,7 +914,7 @@ describe('TrusteeCreateForm', () => {
     });
 
     test('submit button remains disabled when only optional fields are filled', async () => {
-      render(<TrusteeCreateForm />);
+      renderWithRouter();
 
       const submitButton = screen.getByRole('button', { name: /save/i });
 
@@ -927,7 +938,7 @@ describe('TrusteeCreateForm', () => {
     });
 
     test('does not double-submit when form is submitted via different mechanisms', async () => {
-      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } });
+      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { trusteeId: 'trustee-123' } });
       vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
         getCourts: vi.fn().mockResolvedValue({
           data: MockData.getCourts(),
@@ -935,7 +946,7 @@ describe('TrusteeCreateForm', () => {
         postTrustee: mockPostTrustee,
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
 
-      render(<TrusteeCreateForm />);
+      renderWithRouter();
 
       // Fill all required fields
       await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
@@ -971,7 +982,7 @@ describe('TrusteeCreateForm', () => {
         postTrustee: vi.fn(),
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
 
-      render(<TrusteeCreateForm />);
+      renderWithRouter();
 
       // Wait for the effect to run and error to be handled
       await vi.waitFor(() => {
@@ -993,7 +1004,7 @@ describe('TrusteeCreateForm', () => {
         postTrustee: vi.fn(),
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
 
-      render(<TrusteeCreateForm />);
+      renderWithRouter();
 
       // Wait for the effect to run and error to be handled
       await vi.waitFor(() => {
@@ -1010,7 +1021,7 @@ describe('TrusteeCreateForm', () => {
       const user = userEvent.setup();
 
       // Render without onCancel prop
-      render(<TrusteeCreateForm />);
+      renderWithRouter();
 
       // Find and click cancel button
       const cancelButton = screen.getByText('Cancel');
@@ -1035,7 +1046,7 @@ describe('TrusteeCreateForm', () => {
         postTrustee: mockPostTrustee,
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
 
-      render(<TrusteeCreateForm />);
+      renderWithRouter();
 
       // Fill required fields to create a valid form
       await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
@@ -1098,7 +1109,7 @@ describe('TrusteeCreateForm', () => {
         postTrustee: vi.fn(),
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
 
-      render(<TrusteeCreateForm />);
+      renderWithRouter();
 
       // Wait for districts to load
       await vi.waitFor(() => {
@@ -1130,7 +1141,7 @@ describe('TrusteeCreateForm', () => {
         postTrustee: vi.fn(),
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
 
-      render(<TrusteeCreateForm />);
+      renderWithRouter();
 
       // Wait for error handling and click to expand combobox
       await vi.waitFor(() => {
@@ -1159,7 +1170,7 @@ describe('TrusteeCreateForm', () => {
         postTrustee: vi.fn(),
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
 
-      render(<TrusteeCreateForm />);
+      renderWithRouter();
 
       // Wait for error handling and click to expand combobox
       await vi.waitFor(() => {
@@ -1184,7 +1195,7 @@ describe('TrusteeCreateForm', () => {
         postTrustee: vi.fn(),
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
 
-      render(<TrusteeCreateForm />);
+      renderWithRouter();
 
       // Wait for error handling and click to expand combobox
       await vi.waitFor(() => {
@@ -1229,7 +1240,7 @@ describe('TrusteeCreateForm', () => {
         postTrustee: vi.fn(),
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
 
-      render(<TrusteeCreateForm />);
+      renderWithRouter();
 
       // Wait for districts to load
       await vi.waitFor(() => {
@@ -1272,7 +1283,7 @@ describe('TrusteeCreateForm', () => {
         postTrustee: vi.fn(),
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
 
-      render(<TrusteeCreateForm />);
+      renderWithRouter();
 
       // Wait for districts to load
       await vi.waitFor(() => {
@@ -1296,7 +1307,7 @@ describe('TrusteeCreateForm', () => {
         postTrustee: vi.fn(),
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
 
-      render(<TrusteeCreateForm />);
+      renderWithRouter();
 
       // Wait for error handling and click to expand combobox
       await vi.waitFor(() => {
