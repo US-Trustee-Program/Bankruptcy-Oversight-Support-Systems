@@ -98,8 +98,9 @@ jobs:
           export CAMS_LOGIN_PROVIDER=${{ vars.CAMS_LOGIN_PROVIDER }}
           export CAMS_LOGIN_PROVIDER_CONFIG='${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}'
           export CAMS_INFO_SHA=${{ github.sha }}
+          export SLOT_NAME=${{ vars.SLOT_NAME || 'staging' }}
           npm run slotConfig
-          mv ./public/configuration-${{ vars.SLOT_NAME || 'staging' }}.json ./build/
+          mv ./public/configuration-${SLOT_NAME}.json ./build/
 
       - name: Package
         if: inputs.isDeployment
