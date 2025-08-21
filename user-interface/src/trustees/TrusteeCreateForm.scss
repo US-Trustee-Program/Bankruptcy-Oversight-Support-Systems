@@ -3,14 +3,12 @@
     display: block;
   }
   .grid-row {
-    .grid-col-4, .grid-col-8 {
+    .grid-col-4,
+    .grid-col-8 {
       min-width: 194px;
     }
   }
   .usa-button-group {
     padding: 30px 24px;
-    .usa-button--unstyled {
-      padding-left: 8px;
-    }
   }
 }
