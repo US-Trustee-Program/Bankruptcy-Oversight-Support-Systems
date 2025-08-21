@@ -375,7 +375,12 @@ export default function TrusteeCreateForm(props: Props) {
           >
             {isSubmitting ? 'Saving…' : 'Save'}
           </Button>
-          <Button type="button" onClick={handleCancel} uswdsStyle={UswdsButtonStyle.Unstyled}>
+          <Button
+            className="unstyled-button"
+            type="button"
+            onClick={handleCancel}
+            uswdsStyle={UswdsButtonStyle.Unstyled}
+          >
             Cancel
           </Button>
         </div>

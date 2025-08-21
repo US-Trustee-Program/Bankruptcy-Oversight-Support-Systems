@@ -127,7 +127,7 @@ export default function TrusteeDetailScreen() {
               </div>
             </div>
             <div>
-              <h2>Trustees</h2>
+              <h2>Trustee</h2>
             </div>
             <div className="grid-col-12 tablet:grid-col-10 desktop:grid-col-8 record-detail-container">
               <div className="record-detail-card-list">
