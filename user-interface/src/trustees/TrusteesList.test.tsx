@@ -13,7 +13,7 @@ function renderWithRouter(component: React.ReactElement) {
 describe('TrusteesList Component', () => {
   const mockTrustees: Trustee[] = [
     {
-      trusteeId: 'trustee-1',
+      id: 'trustee-1',
       name: 'John Doe',
       address1: '123 Main St',
       cityStateZipCountry: 'New York, NY, 10001, US',
@@ -26,7 +26,7 @@ describe('TrusteesList Component', () => {
       updatedBy: { id: 'user-1', name: 'Admin User' },
     },
     {
-      trusteeId: 'trustee-2',
+      id: 'trustee-2',
       name: 'Jane Smith',
       address1: '456 Oak Ave',
       cityStateZipCountry: 'Los Angeles, CA, 90210, US',
@@ -157,7 +157,7 @@ describe('TrusteesList Component', () => {
 
   test('should handle trustees with missing optional fields', async () => {
     const minimalTrustee: Trustee = {
-      trusteeId: 'trustee-minimal',
+      id: 'trustee-minimal',
       name: 'Minimal Trustee',
       address1: '789 Pine St',
       cityStateZipCountry: 'Chicago, IL, 60601, US',
@@ -201,7 +201,7 @@ describe('TrusteesList Component', () => {
   test('should handle trustees with unknown chapter types', async () => {
     const trusteesWithUnknownChapters = [
       {
-        trusteeId: 'trustee-unknown',
+        id: 'trustee-unknown',
         name: 'Unknown Chapter Trustee',
         address1: '789 Pine St',
         cityStateZipCountry: 'Chicago, IL, 60601, US',

@@ -179,7 +179,7 @@ async function post<T = unknown>(
     const input = body as TrusteeInput;
     const created: Trustee = {
       ...input,
-      trusteeId: MockData.randomId(),
+      id: MockData.randomId(),
       createdBy: { id: 'user-1', name: 'Mock User' },
       createdOn: new Date().toISOString(),
       lastUpdatedBy: { id: 'user-1', name: 'Mock User' },
@@ -259,7 +259,7 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
   } else if (path.match(/\/trustees\/[A-Z\d-]+/i)) {
     response = {
       data: MockData.getTrustee({
-        trusteeId: 'trustee-1',
+        id: 'trustee-1',
         districts: ['710', '720'],
         chapters: ['11', '7-non-panel'],
       }),
@@ -268,9 +268,9 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
   } else if (path.match(/\/trustees/)) {
     response = {
       data: [
-        MockData.getLegacyTrustee({ trusteeId: 'trustee-1', name: 'John Doe' }),
-        MockData.getLegacyTrustee({ trusteeId: 'trustee-2', name: 'Jane Smith' }),
-        MockData.getLegacyTrustee({ trusteeId: 'trustee-3', name: 'Bob Johnson' }),
+        MockData.getLegacyTrustee({ id: 'trustee-1', name: 'John Doe' }),
+        MockData.getLegacyTrustee({ id: 'trustee-2', name: 'Jane Smith' }),
+        MockData.getLegacyTrustee({ id: 'trustee-3', name: 'Bob Johnson' }),
       ],
     };
   } else if (path.match(/\/me/)) {

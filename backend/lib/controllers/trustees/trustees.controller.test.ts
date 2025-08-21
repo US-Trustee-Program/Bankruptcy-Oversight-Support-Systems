@@ -33,7 +33,7 @@ describe('TrusteesController', () => {
 
   const sampleTrusteeDocument: TrusteeDocument = {
     ...sampleTrustee,
-    trusteeId: 'trustee-123',
+    id: 'trustee-123',
     documentType: 'TRUSTEE',
     createdOn: '2025-08-12T10:00:00Z',
     createdBy: mockUser,
@@ -213,23 +213,23 @@ describe('TrusteesController', () => {
     });
 
     test('should return individual trustee for GET requests with ID', async () => {
-      const trusteeId = 'trustee-123';
+      const id = 'trustee-123';
       mockUseCase.getTrustee.mockResolvedValue(sampleTrusteeDocument);
-      context.request.url = `/api/trustees/${trusteeId}`;
+      context.request.url = `/api/trustees/${id}`;
 
       const result = await controller.handleRequest(context);
 
       expect(result.statusCode).toBe(200);
       expect(result.body?.data).toEqual(sampleTrusteeDocument);
-      expect(mockUseCase.getTrustee).toHaveBeenCalledWith(context, trusteeId);
+      expect(mockUseCase.getTrustee).toHaveBeenCalledWith(context, id);
     });
 
     test('should handle trustee not found errors', async () => {
-      const trusteeId = 'nonexistent-id';
+      const id = 'nonexistent-id';
       mockUseCase.getTrustee.mockRejectedValue(
         new Error('Trustee with ID nonexistent-id not found.'),
       );
-      context.request.url = `/api/trustees/${trusteeId}`;
+      context.request.url = `/api/trustees/${id}`;
 
       await expect(controller.handleRequest(context)).rejects.toThrow('Unknown Error');
     });

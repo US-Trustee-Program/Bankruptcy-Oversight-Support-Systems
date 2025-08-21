@@ -57,7 +57,7 @@ describe('TrusteesMongoRepository', () => {
       expect(mockAdapter).toHaveBeenCalledWith(
         expect.objectContaining({
           ...sampleTrusteeInput,
-          trusteeId: expect.any(String),
+          id: expect.any(String),
           documentType: 'TRUSTEE',
           createdOn: expect.any(String),
           createdBy: mockUser,
@@ -77,7 +77,7 @@ describe('TrusteesMongoRepository', () => {
       expect(mockAdapter).toHaveBeenCalledWith(
         expect.objectContaining({
           ...sampleTrusteeInput,
-          trusteeId: expect.any(String),
+          id: expect.any(String),
           documentType: 'TRUSTEE',
         }),
       );
@@ -88,7 +88,7 @@ describe('TrusteesMongoRepository', () => {
     test('should retrieve list of trustees successfully', async () => {
       const mockTrustees = [
         {
-          trusteeId: 'trustee-1',
+          id: 'trustee-1',
           name: 'John Doe',
           address1: '123 Main St',
           cityStateZipCountry: 'Springfield, IL 62704',
@@ -97,7 +97,7 @@ describe('TrusteesMongoRepository', () => {
           createdBy: mockUser,
         },
         {
-          trusteeId: 'trustee-2',
+          id: 'trustee-2',
           name: 'Jane Smith',
           address1: '456 Oak Ave',
           cityStateZipCountry: 'Chicago, IL 60601',
@@ -156,9 +156,9 @@ describe('TrusteesMongoRepository', () => {
 
   describe('getTrustee', () => {
     test('should successfully retrieve a trustee by ID', async () => {
-      const trusteeId = 'trustee-123';
+      const id = 'trustee-123';
       const mockTrustee = {
-        trusteeId,
+        id,
         name: 'John Doe',
         address1: '123 Main St',
         cityStateZipCountry: 'Anytown, NY 12345',
@@ -171,7 +171,7 @@ describe('TrusteesMongoRepository', () => {
         .spyOn(MongoCollectionAdapter.prototype, 'findOne')
         .mockResolvedValue(mockTrustee as TrusteeDocument);
 
-      const result = await repository.read(trusteeId);
+      const result = await repository.read(id);
 
       expect(mockAdapter).toHaveBeenCalledWith({
         conjunction: 'AND',
@@ -183,8 +183,8 @@ describe('TrusteesMongoRepository', () => {
           },
           {
             condition: 'EQUALS',
-            leftOperand: { name: 'trusteeId' },
-            rightOperand: trusteeId,
+            leftOperand: { name: 'id' },
+            rightOperand: id,
           },
         ],
       });
@@ -192,12 +192,12 @@ describe('TrusteesMongoRepository', () => {
     });
 
     test('should throw error when trustee is not found', async () => {
-      const trusteeId = 'nonexistent-id';
+      const id = 'nonexistent-id';
       const mockAdapter = jest
         .spyOn(MongoCollectionAdapter.prototype, 'findOne')
         .mockResolvedValue(null);
 
-      await expect(repository.read(trusteeId)).rejects.toThrow(
+      await expect(repository.read(id)).rejects.toThrow(
         'Failed to retrieve trustee with ID nonexistent-id.',
       );
 
@@ -211,21 +211,21 @@ describe('TrusteesMongoRepository', () => {
           },
           {
             condition: 'EQUALS',
-            leftOperand: { name: 'trusteeId' },
-            rightOperand: trusteeId,
+            leftOperand: { name: 'id' },
+            rightOperand: id,
           },
         ],
       });
     });
 
     test('should handle database errors when getting a trustee', async () => {
-      const trusteeId = 'trustee-123';
+      const id = 'trustee-123';
       const error = new Error('Database connection failed');
       const mockAdapter = jest
         .spyOn(MongoCollectionAdapter.prototype, 'findOne')
         .mockRejectedValue(error);
 
-      await expect(repository.read(trusteeId)).rejects.toThrow();
+      await expect(repository.read(id)).rejects.toThrow();
 
       expect(mockAdapter).toHaveBeenCalledWith({
         conjunction: 'AND',
@@ -237,8 +237,8 @@ describe('TrusteesMongoRepository', () => {
           },
           {
             condition: 'EQUALS',
-            leftOperand: { name: 'trusteeId' },
-            rightOperand: trusteeId,
+            leftOperand: { name: 'id' },
+            rightOperand: id,
           },
         ],
       });

@@ -141,6 +141,7 @@ export default function TrusteeCreateForm() {
 
     setIsSubmitting(true);
     try {
+      // TODO is there a way we can avoid casting here?
       const payload: TrusteeInput = {
         name: formData.name,
         address: {
@@ -156,10 +157,10 @@ export default function TrusteeCreateForm() {
         ...(formData.districts &&
           formData.districts.length > 0 && { districts: formData.districts }),
         ...(formData.chapters && formData.chapters.length > 0 && { chapters: formData.chapters }),
-      } as unknown as TrusteeInput;
+      } as TrusteeInput;
 
       const response = await api.postTrustee(payload);
-      const createdId = (response as { data?: { trusteeId?: string } })?.data?.trusteeId;
+      const createdId = (response as { data?: { id?: string } })?.data?.id;
 
       navigate.navigateTo(`/trustees/${createdId}`);
     } catch (e) {

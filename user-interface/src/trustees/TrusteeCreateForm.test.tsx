@@ -176,7 +176,7 @@ describe('TrusteeCreateForm', () => {
       getCourts: vi.fn().mockResolvedValue({
         data: MockData.getCourts(),
       }),
-      postTrustee: vi.fn().mockResolvedValue({ data: { trusteeId: 'trustee-123' } }),
+      postTrustee: vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } }),
     } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
   });
 
@@ -236,7 +236,7 @@ describe('TrusteeCreateForm', () => {
       getCourts: vi.fn().mockResolvedValue({
         data: MockData.getCourts(),
       }),
-      postTrustee: vi.fn().mockResolvedValue({ data: { trusteeId: 'trustee-123' } }),
+      postTrustee: vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } }),
     } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
 
     renderWithRouter();
@@ -263,7 +263,7 @@ describe('TrusteeCreateForm', () => {
         getCourts: vi.fn().mockResolvedValue({
           data: MockData.getCourts(),
         }),
-        postTrustee: vi.fn().mockResolvedValue({ data: { trusteeId: 'trustee-123' } }),
+        postTrustee: vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } }),
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
     });
 
@@ -275,7 +275,7 @@ describe('TrusteeCreateForm', () => {
       await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
       await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
       await userEvent.type(screen.getByTestId('trustee-state'), 'IL');
-      await userEvent.type(screen.getByTestId('trustee-zip'), '1234'); // InvaltrusteeId: only 4 digits
+      await userEvent.type(screen.getByTestId('trustee-zip'), '1234'); // Invalid: only 4 digits
 
       await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
@@ -380,7 +380,7 @@ describe('TrusteeCreateForm', () => {
         getCourts: vi.fn().mockResolvedValue({
           data: MockData.getCourts(),
         }),
-        postTrustee: vi.fn().mockResolvedValue({ data: { trusteeId: 'trustee-123' } }),
+        postTrustee: vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } }),
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
 
       renderWithRouter();
@@ -477,7 +477,7 @@ describe('TrusteeCreateForm', () => {
         getCourts: vi.fn().mockResolvedValue({
           data: MockData.getCourts(),
         }),
-        postTrustee: vi.fn().mockResolvedValue({ data: { trusteeId: 'trustee-123' } }),
+        postTrustee: vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } }),
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
     });
 
@@ -574,7 +574,7 @@ describe('TrusteeCreateForm', () => {
     });
 
     test('includes optional fields in form submission when provided', async () => {
-      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { trusteeId: 'trustee-123' } });
+      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } });
       vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
         getCourts: vi.fn().mockResolvedValue({
           data: MockData.getCourts(),
@@ -618,7 +618,7 @@ describe('TrusteeCreateForm', () => {
     });
 
     test('does not include empty optional fields in submission', async () => {
-      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { trusteeId: 'trustee-123' } });
+      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } });
       vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
         getCourts: vi.fn().mockResolvedValue({
           data: MockData.getCourts(),
@@ -678,7 +678,7 @@ describe('TrusteeCreateForm', () => {
     });
 
     test('includes districts and chapters in submission when selected', async () => {
-      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { trusteeId: 'trustee-123' } });
+      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } });
       vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
         getCourts: vi.fn().mockResolvedValue({
           data: [
@@ -741,7 +741,7 @@ describe('TrusteeCreateForm', () => {
     });
 
     test('handles extended chapter types correctly in payload', async () => {
-      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { trusteeId: 'trustee-456' } });
+      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { id: 'trustee-456' } });
       vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
         getCourts: vi.fn().mockResolvedValue({ data: [] }),
         postTrustee: mockPostTrustee,
@@ -781,7 +781,7 @@ describe('TrusteeCreateForm', () => {
     });
 
     test('supports multi-select for districts', async () => {
-      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { trusteeId: 'trustee-789' } });
+      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { id: 'trustee-789' } });
       vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
         getCourts: vi.fn().mockResolvedValue({
           data: [
@@ -871,7 +871,7 @@ describe('TrusteeCreateForm', () => {
         getCourts: vi.fn().mockResolvedValue({
           data: MockData.getCourts(),
         }),
-        postTrustee: vi.fn().mockResolvedValue({ data: { trusteeId: 'trustee-123' } }),
+        postTrustee: vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } }),
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
     });
 
@@ -938,7 +938,7 @@ describe('TrusteeCreateForm', () => {
     });
 
     test('does not double-submit when form is submitted via different mechanisms', async () => {
-      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { trusteeId: 'trustee-123' } });
+      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } });
       vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
         getCourts: vi.fn().mockResolvedValue({
           data: MockData.getCourts(),

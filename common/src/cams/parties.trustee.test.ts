@@ -145,7 +145,7 @@ describe('Trustee Type Extensions', () => {
 
       // Should not cause type errors
       expect(existingTrustee.name).toBe('Legacy Trustee');
-      expect(existingTrustee.trusteeId).toBeUndefined();
+      expect(existingTrustee.id).toBeUndefined();
       expect(existingTrustee.status).toBeUndefined();
     });
 
@@ -153,7 +153,7 @@ describe('Trustee Type Extensions', () => {
       const mockUser: CamsUserReference = { id: 'user123', name: 'Admin User' };
 
       const newTrustee: Trustee = {
-        trusteeId: 'trustee-123',
+        id: 'trustee-123',
         name: 'New Trustee',
         address1: '456 Oak Ave',
         cityStateZipCountry: 'Other City, CA 90210',
@@ -168,7 +168,7 @@ describe('Trustee Type Extensions', () => {
         updatedBy: mockUser,
       };
 
-      expect(newTrustee.trusteeId).toBe('trustee-123');
+      expect(newTrustee.id).toBe('trustee-123');
       expect(newTrustee.status).toBe('active');
       expect(newTrustee.districts).toEqual(['CA', 'NV']);
       expect(newTrustee.chapters).toEqual(['7', '11', '13']);

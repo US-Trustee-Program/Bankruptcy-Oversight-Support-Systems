@@ -45,7 +45,7 @@ export async function generateTrustees(): Promise<Trustee[]> {
   const trusteeProfiles: Trustee[] = [];
 
   for (let i = 0; i < 5; i++) {
-    trusteeProfiles.push(MockData.getTrustee({ trusteeId: `test-trustee-${i}` }));
+    trusteeProfiles.push(MockData.getTrustee({ id: `test-trustee-${i}` }));
   }
 
   return trusteeProfiles;
