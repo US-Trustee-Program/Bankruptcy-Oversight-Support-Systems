@@ -12,6 +12,9 @@ import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import { CourtDivisionDetails } from '@common/cams/courts';
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { mapNavState } from "@/case-detail/panels/CaseDetailNavigation";
+import useCamsNavigator from "@/lib/hooks/UseCamsNavigator";
 
 // Chapter type options - Complete list with Panel/Non-Panel distinctions
 const CHAPTER_OPTIONS: ComboOption[] = [
@@ -23,12 +26,7 @@ const CHAPTER_OPTIONS: ComboOption[] = [
   { value: '13', label: '13' },
 ];
 
-type Props = {
-  onSuccess?: (id?: string) => void;
-  onCancel?: () => void;
-};
-
-export default function TrusteeCreateForm(props: Props) {
+export default function TrusteeCreateForm() {
   const flags = useFeatureFlags();
   const api = useApi2();
   const globalAlert = useGlobalAlert();
@@ -55,6 +53,7 @@ export default function TrusteeCreateForm(props: Props) {
   const [districtLoadError, setDistrictLoadError] = useState<string | null>(null);
 
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
+  const navigate = useCamsNavigator();
 
   // Load district options from API
   useEffect(() => {
@@ -167,9 +166,7 @@ export default function TrusteeCreateForm(props: Props) {
       // Show success notification
       globalAlert?.success('Trustee created successfully.');
 
-      if (props.onSuccess) {
-        props.onSuccess(createdId);
-      }
+      navigate.navigateTo(`/trustee/${createdId}`);
     } catch (e) {
       const errorMsg = e instanceof Error ? e.message : 'Could not create trustee.';
       setErrorMessage(errorMsg);
@@ -188,9 +185,7 @@ export default function TrusteeCreateForm(props: Props) {
 
   function handleCancel() {
     clearErrors();
-    if (props.onCancel) {
-      props.onCancel();
-    }
+    navigate.navigateTo('/trustees');
   }
 
   return (
