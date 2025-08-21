@@ -514,6 +514,7 @@ function getTrustee(
   > = {},
 ): Trustee {
   return {
+    id: faker.string.uuid(),
     name: faker.person.fullName(),
     phone: faker.phone.number(),
     email: faker.internet.email(),
@@ -535,6 +536,7 @@ function getTrustee(
 
 function getLegacyTrustee(override: Partial<Omit<Trustee, 'address'>> = {}): Trustee {
   return {
+    id: faker.string.uuid(),
     name: faker.person.fullName(),
     address1: faker.location.streetAddress(),
     address2: faker.location.secondaryAddress(),

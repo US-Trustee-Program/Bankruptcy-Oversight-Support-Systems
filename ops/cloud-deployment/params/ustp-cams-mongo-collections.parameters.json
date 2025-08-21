@@ -31,8 +31,8 @@
         },
         {
           "name": "trustees",
-          "partitionKey1": "trusteeId",
-          "partitionKeys": ["/trusteeId"]
+          "partitionKey1": "id",
+          "partitionKeys": ["/id"]
         }
       ]
     }

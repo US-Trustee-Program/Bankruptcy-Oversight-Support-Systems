@@ -48,11 +48,11 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
   }
 
   async createTrustee(trustee: TrusteeInput, user: CamsUserReference): Promise<Trustee> {
-    const trusteeId = crypto.randomUUID();
+    const id = crypto.randomUUID();
     const trusteeDocument = createAuditRecord<TrusteeDocument>(
       {
         ...trustee,
-        trusteeId,
+        id,
         documentType: 'TRUSTEE',
       },
       user,
@@ -83,7 +83,7 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
   async read(id: string): Promise<Trustee> {
     try {
       const doc = using<TrusteeDocument>();
-      const query = and(doc('documentType').equals('TRUSTEE'), doc('trusteeId').equals(id));
+      const query = and(doc('documentType').equals('TRUSTEE'), doc('id').equals(id));
       const trustee = await this.getAdapter<TrusteeDocument>().findOne(query);
 
       if (!trustee) {
