@@ -50,7 +50,7 @@ export default function TrusteeDetailScreen() {
   }
 
   useEffect(() => {
-    async function fetchData() {
+    const fetchData = async () => {
       if (trusteeId) {
         setIsLoading(true);
         try {
@@ -74,7 +74,7 @@ export default function TrusteeDetailScreen() {
           setIsLoading(false);
         }
       }
-    }
+    };
     fetchData();
   }, [trusteeId]);
 
