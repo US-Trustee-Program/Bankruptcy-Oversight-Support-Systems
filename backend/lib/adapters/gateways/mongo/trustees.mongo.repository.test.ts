@@ -1,53 +1,3 @@
-// Mock the factory module to prevent Okta/JWT imports
-jest.mock('../../../factory', () => ({
-  getUserSessionUseCase: jest.fn(),
-}));
-
-// Mock mongo-humble module components
-jest.mock('../../../humble-objects/mongo-humble', () => ({
-  DocumentClient: jest.fn(() => ({
-    isConnected: jest.fn(() => true),
-    connect: jest.fn(),
-    close: jest.fn(() => Promise.resolve()),
-  })),
-  CollectionHumble: jest.fn(() => ({
-    findOne: jest.fn(),
-    find: jest.fn(),
-    insertOne: jest.fn(),
-    updateOne: jest.fn(),
-    deleteOne: jest.fn(),
-    countDocuments: jest.fn(),
-  })),
-}));
-
-// Mock the crypto module
-jest.mock('crypto', () => ({
-  randomUUID: jest.fn(() => 'mock-uuid-123'),
-}));
-
-// Mock the createAuditRecord function
-jest.mock('../../../../../common/src/cams/auditable', () => ({
-  createAuditRecord: jest.fn((data, user) => ({
-    ...data,
-    createdOn: '2025-08-12T10:00:00Z',
-    createdBy: user,
-  })),
-}));
-
-// Mock the crypto module
-jest.mock('crypto', () => ({
-  randomUUID: jest.fn(() => 'mock-uuid-123'),
-}));
-
-// Mock the createAuditRecord function
-jest.mock('../../../../../common/src/cams/auditable', () => ({
-  createAuditRecord: jest.fn((data, user) => ({
-    ...data,
-    createdOn: '2025-08-12T10:00:00Z',
-    createdBy: user,
-  })),
-}));
-
 import { ApplicationContext } from '../../types/basic';
 import { TrusteesMongoRepository, TrusteeDocument } from './trustees.mongo.repository';
 import { TrusteeInput } from '../../../../../common/src/cams/parties';
@@ -59,7 +9,6 @@ import { closeDeferred } from '../../../deferrable/defer-close';
 describe('TrusteesMongoRepository', () => {
   let context: ApplicationContext;
   let repository: TrusteesMongoRepository;
-  let mockAdapter: jest.Mocked<MongoCollectionAdapter<TrusteeDocument>>;
 
   const mockUser: CamsUserReference = {
     id: 'user123',
@@ -85,31 +34,6 @@ describe('TrusteesMongoRepository', () => {
       },
     });
     repository = new TrusteesMongoRepository(context);
-
-    // Create a proper mock adapter - use unknown to bypass type checking for the mock
-    mockAdapter = {
-      insertOne: jest.fn(),
-      findOne: jest.fn(),
-      find: jest.fn(),
-      replaceOne: jest.fn(),
-      deleteOne: jest.fn(),
-      aggregate: jest.fn(),
-      paginate: jest.fn(),
-      getPage: jest.fn(),
-      getAll: jest.fn(),
-      countAllDocuments: jest.fn(),
-      updateOne: jest.fn(),
-      updateMany: jest.fn(),
-      deleteMany: jest.fn(),
-      createIndexes: jest.fn(),
-      putRecord: jest.fn(),
-      insertMany: jest.fn(),
-      countDocuments: jest.fn(),
-    } as unknown as jest.Mocked<MongoCollectionAdapter<TrusteeDocument>>;
-
-    // Mock the getAdapter method - TypeScript doesn't know about protected methods
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    jest.spyOn(repository, 'getAdapter' as any).mockReturnValue(mockAdapter);
   });
 
   afterEach(async () => {
@@ -124,33 +48,36 @@ describe('TrusteesMongoRepository', () => {
 
   describe('createTrustee', () => {
     test('should create trustee document with audit fields', async () => {
-      mockAdapter.insertOne.mockResolvedValue(undefined);
+      const mockAdapter = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
+        .mockResolvedValue(undefined);
 
       const result = await repository.createTrustee(sampleTrusteeInput, mockUser);
 
-      expect(mockAdapter.insertOne).toHaveBeenCalledWith(
+      expect(mockAdapter).toHaveBeenCalledWith(
         expect.objectContaining({
           ...sampleTrusteeInput,
-          trusteeId: 'mock-uuid-123',
+          trusteeId: expect.any(String),
           documentType: 'TRUSTEE',
-          createdOn: '2025-08-12T10:00:00Z',
+          createdOn: expect.any(String),
           createdBy: mockUser,
         }),
       );
-      expect(result.trusteeId).toBe('mock-uuid-123');
       expect(result.name).toBe(sampleTrusteeInput.name);
     });
 
     test('should handle creation errors', async () => {
       const error = new Error('Database connection failed');
-      mockAdapter.insertOne.mockRejectedValue(error);
+      const mockAdapter = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
+        .mockRejectedValue(error);
 
       await expect(repository.createTrustee(sampleTrusteeInput, mockUser)).rejects.toThrow();
 
-      expect(mockAdapter.insertOne).toHaveBeenCalledWith(
+      expect(mockAdapter).toHaveBeenCalledWith(
         expect.objectContaining({
           ...sampleTrusteeInput,
-          trusteeId: 'mock-uuid-123',
+          trusteeId: expect.any(String),
           documentType: 'TRUSTEE',
         }),
       );
@@ -180,11 +107,13 @@ describe('TrusteesMongoRepository', () => {
         },
       ];
 
-      mockAdapter.find.mockResolvedValue(mockTrustees as TrusteeDocument[]);
+      const mockAdapter = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue(mockTrustees as TrusteeDocument[]);
 
       const result = await repository.listTrustees();
 
-      expect(mockAdapter.find).toHaveBeenCalledWith({
+      expect(mockAdapter).toHaveBeenCalledWith({
         condition: 'EQUALS',
         leftOperand: { name: 'documentType' },
         rightOperand: 'TRUSTEE',
@@ -194,11 +123,13 @@ describe('TrusteesMongoRepository', () => {
     });
 
     test('should return empty array when no trustees exist', async () => {
-      mockAdapter.find.mockResolvedValue([]);
+      const mockAdapter = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue([]);
 
       const result = await repository.listTrustees();
 
-      expect(mockAdapter.find).toHaveBeenCalledWith({
+      expect(mockAdapter).toHaveBeenCalledWith({
         condition: 'EQUALS',
         leftOperand: { name: 'documentType' },
         rightOperand: 'TRUSTEE',
@@ -209,11 +140,13 @@ describe('TrusteesMongoRepository', () => {
 
     test('should handle database errors when listing trustees', async () => {
       const error = new Error('Database connection failed');
-      mockAdapter.find.mockRejectedValue(error);
+      const mockAdapter = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockRejectedValue(error);
 
       await expect(repository.listTrustees()).rejects.toThrow();
 
-      expect(mockAdapter.find).toHaveBeenCalledWith({
+      expect(mockAdapter).toHaveBeenCalledWith({
         condition: 'EQUALS',
         leftOperand: { name: 'documentType' },
         rightOperand: 'TRUSTEE',
@@ -234,11 +167,13 @@ describe('TrusteesMongoRepository', () => {
         createdBy: mockUser,
       };
 
-      mockAdapter.findOne.mockResolvedValue(mockTrustee as TrusteeDocument);
+      const mockAdapter = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'findOne')
+        .mockResolvedValue(mockTrustee as TrusteeDocument);
 
       const result = await repository.read(trusteeId);
 
-      expect(mockAdapter.findOne).toHaveBeenCalledWith({
+      expect(mockAdapter).toHaveBeenCalledWith({
         conjunction: 'AND',
         values: [
           {
@@ -258,13 +193,15 @@ describe('TrusteesMongoRepository', () => {
 
     test('should throw error when trustee is not found', async () => {
       const trusteeId = 'nonexistent-id';
-      mockAdapter.findOne.mockResolvedValue(null);
+      const mockAdapter = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'findOne')
+        .mockResolvedValue(null);
 
       await expect(repository.read(trusteeId)).rejects.toThrow(
         'Failed to retrieve trustee with ID nonexistent-id.',
       );
 
-      expect(mockAdapter.findOne).toHaveBeenCalledWith({
+      expect(mockAdapter).toHaveBeenCalledWith({
         conjunction: 'AND',
         values: [
           {
@@ -284,11 +221,13 @@ describe('TrusteesMongoRepository', () => {
     test('should handle database errors when getting a trustee', async () => {
       const trusteeId = 'trustee-123';
       const error = new Error('Database connection failed');
-      mockAdapter.findOne.mockRejectedValue(error);
+      const mockAdapter = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'findOne')
+        .mockRejectedValue(error);
 
       await expect(repository.read(trusteeId)).rejects.toThrow();
 
-      expect(mockAdapter.findOne).toHaveBeenCalledWith({
+      expect(mockAdapter).toHaveBeenCalledWith({
         conjunction: 'AND',
         values: [
           {
