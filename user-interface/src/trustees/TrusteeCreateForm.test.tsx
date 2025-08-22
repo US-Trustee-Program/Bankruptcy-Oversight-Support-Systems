@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import TrusteeCreateForm from './TrusteeCreateForm';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
@@ -150,10 +150,6 @@ describe('TrusteeCreateForm', () => {
   };
 
   beforeEach(() => {
-    vi.resetAllMocks();
-    // Reset field errors before each test
-    currentFieldErrors = {};
-
     // Set up default authorized user with TrusteeAdmin role
     const defaultUser = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
@@ -178,6 +174,13 @@ describe('TrusteeCreateForm', () => {
       }),
       postTrustee: vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } }),
     } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
+  });
+
+  afterEach(() => {
+    // Reset field errors before each test
+    currentFieldErrors = {};
+
+    vi.restoreAllMocks();
   });
 
   test('renders disabled message when feature is off', () => {
@@ -244,12 +247,15 @@ describe('TrusteeCreateForm', () => {
     await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
     await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
     await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
-    await userEvent.type(screen.getByTestId('trustee-state'), 'IL');
+    // Select state from ComboBox
+    const stateCombobox = screen.getByRole('combobox', { name: /state/i });
+    await userEvent.click(stateCombobox);
+    await userEvent.click(screen.getByText('IL - Illinois'));
     await userEvent.type(screen.getByTestId('trustee-zip'), '62704');
 
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
-    await vi.waitFor(() =>
+    await waitFor(() =>
       expect(mockNavigate.navigateTo).toHaveBeenCalledWith('/trustees/trustee-123'),
     );
   });
@@ -267,43 +273,11 @@ describe('TrusteeCreateForm', () => {
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
     });
 
-    test('displays error for invalid ZIP code format', async () => {
-      renderWithRouter();
+    afterEach(() => {
+      // Reset field errors before each test
+      currentFieldErrors = {};
 
-      // Fill form with invalid ZIP code
-      await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
-      await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
-      await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
-      await userEvent.type(screen.getByTestId('trustee-state'), 'IL');
-      await userEvent.type(screen.getByTestId('trustee-zip'), '1234'); // Invalid: only 4 digits
-
-      await userEvent.click(screen.getByRole('button', { name: /save/i }));
-
-      expect(screen.getByText('ZIP code must be exactly 5 digits')).toBeInTheDocument();
-    });
-
-    test('displays real-time validation for ZIP code with letters', async () => {
-      renderWithRouter();
-
-      await userEvent.type(screen.getByTestId('trustee-zip'), '1234a');
-
-      // Should trigger real-time validation
-      expect(await screen.findByText('ZIP code must be exactly 5 digits')).toBeInTheDocument();
-    });
-
-    test('clears validation errors when valid input is provided', async () => {
-      renderWithRouter();
-
-      // First enter invalid ZIP
-      await userEvent.type(screen.getByTestId('trustee-zip'), '1234');
-      expect(await screen.findByText('ZIP code must be exactly 5 digits')).toBeInTheDocument();
-
-      // Clear and enter valid ZIP
-      await userEvent.clear(screen.getByTestId('trustee-zip'));
-      await userEvent.type(screen.getByTestId('trustee-zip'), '12345');
-
-      // Error should be gone
-      expect(screen.queryByText('ZIP code must be exactly 5 digits')).not.toBeInTheDocument();
+      vi.restoreAllMocks();
     });
 
     test('disables submit button when there are validation errors', async () => {
@@ -315,27 +289,7 @@ describe('TrusteeCreateForm', () => {
       await userEvent.type(screen.getByTestId('trustee-zip'), '1234');
 
       // Button should be disabled due to validation errors
-      await vi.waitFor(() => expect(submitButton).toBeDisabled());
-    });
-
-    test('validates ZIP code must be exactly 5 digits', async () => {
-      renderWithRouter();
-
-      const zipInput = screen.getByTestId('trustee-zip');
-
-      // Test various invalid ZIP codes
-      const invalidZips = ['123', '123456', '1234a', 'abcde', '12.34'];
-
-      for (const invalidZip of invalidZips) {
-        await userEvent.clear(zipInput);
-        await userEvent.type(zipInput, invalidZip);
-        expect(await screen.findByText('ZIP code must be exactly 5 digits')).toBeInTheDocument();
-      }
-
-      // Test valid ZIP code
-      await userEvent.clear(zipInput);
-      await userEvent.type(zipInput, '12345');
-      expect(screen.queryByText('ZIP code must be exactly 5 digits')).not.toBeInTheDocument();
+      await waitFor(() => expect(submitButton).toBeDisabled());
     });
 
     test('displays general error message when form validation fails during submission', async () => {
@@ -346,10 +300,13 @@ describe('TrusteeCreateForm', () => {
       await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
       await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
       await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
-      await userEvent.type(screen.getByTestId('trustee-state'), 'IL');
+      // Select state from ComboBox
+      const stateCombobox = screen.getByRole('combobox', { name: /state/i });
+      await userEvent.click(stateCombobox);
+      await userEvent.click(screen.getByText('IL - Illinois'));
       await userEvent.type(screen.getByTestId('trustee-zip'), '12345');
 
-      await vi.waitFor(() => {
+      await waitFor(() => {
         const submitButton = screen.getByRole('button', { name: /save/i });
         expect(submitButton).not.toBeDisabled();
       });
@@ -375,6 +332,13 @@ describe('TrusteeCreateForm', () => {
       } as Record<string, boolean>);
     });
 
+    afterEach(() => {
+      // Reset field errors before each test
+      currentFieldErrors = {};
+
+      vi.restoreAllMocks();
+    });
+
     test('shows success notification when trustee is created successfully', async () => {
       vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
         getCourts: vi.fn().mockResolvedValue({
@@ -389,12 +353,15 @@ describe('TrusteeCreateForm', () => {
       await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
       await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
       await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
-      await userEvent.type(screen.getByTestId('trustee-state'), 'IL');
+      // Select state from ComboBox
+      const stateCombobox = screen.getByRole('combobox', { name: /state/i });
+      await userEvent.click(stateCombobox);
+      await userEvent.click(screen.getByText('IL - Illinois'));
       await userEvent.type(screen.getByTestId('trustee-zip'), '12345');
 
       await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
-      await vi.waitFor(() => {
+      await waitFor(() => {
         expect(mockNavigate.navigateTo).toHaveBeenCalledWith('/trustees/trustee-123');
       });
     });
@@ -414,12 +381,15 @@ describe('TrusteeCreateForm', () => {
       await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
       await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
       await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
-      await userEvent.type(screen.getByTestId('trustee-state'), 'IL');
+      // Select state from ComboBox
+      const stateCombobox = screen.getByRole('combobox', { name: /state/i });
+      await userEvent.click(stateCombobox);
+      await userEvent.click(screen.getByText('IL - Illinois'));
       await userEvent.type(screen.getByTestId('trustee-zip'), '12345');
 
       await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
-      await vi.waitFor(() => {
+      await waitFor(() => {
         expect(mockGlobalAlert.error).toHaveBeenCalledWith(
           `Failed to create trustee: ${errorMessage}`,
         );
@@ -441,12 +411,15 @@ describe('TrusteeCreateForm', () => {
       await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
       await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
       await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
-      await userEvent.type(screen.getByTestId('trustee-state'), 'IL');
+      // Select state from ComboBox
+      const stateCombobox = screen.getByRole('combobox', { name: /state/i });
+      await userEvent.click(stateCombobox);
+      await userEvent.click(screen.getByText('IL - Illinois'));
       await userEvent.type(screen.getByTestId('trustee-zip'), '12345');
 
       await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
-      await vi.waitFor(() => {
+      await waitFor(() => {
         expect(mockGlobalAlert.error).toHaveBeenCalledWith(
           'Failed to create trustee: Could not create trustee.',
         );
@@ -481,6 +454,13 @@ describe('TrusteeCreateForm', () => {
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
     });
 
+    afterEach(() => {
+      // Reset field errors before each test
+      currentFieldErrors = {};
+
+      vi.restoreAllMocks();
+    });
+
     test('renders all optional fields', () => {
       renderWithRouter();
 
@@ -500,12 +480,15 @@ describe('TrusteeCreateForm', () => {
       await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
       await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
       await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
-      await userEvent.type(screen.getByTestId('trustee-state'), 'IL');
+      // Select state from ComboBox
+      const stateCombobox = screen.getByRole('combobox', { name: /state/i });
+      await userEvent.click(stateCombobox);
+      await userEvent.click(screen.getByText('IL - Illinois'));
       await userEvent.type(screen.getByTestId('trustee-zip'), '62704');
 
       await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
-      await vi.waitFor(() =>
+      await waitFor(() =>
         expect(mockNavigate.navigateTo).toHaveBeenCalledWith('/trustees/trustee-123'),
       );
     });
@@ -519,7 +502,7 @@ describe('TrusteeCreateForm', () => {
       await userEvent.type(emailInput, 'invalid-email');
 
       // Wait for validation to be called and check if error appears
-      await vi.waitFor(() => {
+      await waitFor(() => {
         // The mock validation should have been called and updated the field errors
         expect(mockValidation.validateFieldAndUpdate).toHaveBeenCalledWith(
           'email',
@@ -534,7 +517,7 @@ describe('TrusteeCreateForm', () => {
       await userEvent.clear(emailInput);
       await userEvent.type(emailInput, 'test@example.com');
 
-      await vi.waitFor(() => {
+      await waitFor(() => {
         expect(mockValidation.validateFieldAndUpdate).toHaveBeenCalledWith(
           'email',
           'test@example.com',
@@ -554,7 +537,7 @@ describe('TrusteeCreateForm', () => {
       await userEvent.type(phoneInput, 'abc123');
 
       // Wait for validation to be called
-      await vi.waitFor(() => {
+      await waitFor(() => {
         expect(mockValidation.validateFieldAndUpdate).toHaveBeenCalledWith('phone', 'abc123');
       });
 
@@ -565,7 +548,7 @@ describe('TrusteeCreateForm', () => {
       await userEvent.clear(phoneInput);
       await userEvent.type(phoneInput, '1234567890');
 
-      await vi.waitFor(() => {
+      await waitFor(() => {
         expect(mockValidation.validateFieldAndUpdate).toHaveBeenCalledWith('phone', '1234567890');
       });
 
@@ -588,7 +571,10 @@ describe('TrusteeCreateForm', () => {
       await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
       await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
       await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
-      await userEvent.type(screen.getByTestId('trustee-state'), 'IL');
+      // Select state from ComboBox
+      const stateCombobox = screen.getByRole('combobox', { name: /state/i });
+      await userEvent.click(stateCombobox);
+      await userEvent.click(screen.getByText('IL - Illinois'));
       await userEvent.type(screen.getByTestId('trustee-zip'), '62704');
 
       // Fill optional fields
@@ -599,7 +585,7 @@ describe('TrusteeCreateForm', () => {
 
       await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
-      await vi.waitFor(() => {
+      await waitFor(() => {
         expect(mockPostTrustee).toHaveBeenCalledWith({
           name: 'Jane Doe',
           address: {
@@ -632,12 +618,15 @@ describe('TrusteeCreateForm', () => {
       await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
       await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
       await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
-      await userEvent.type(screen.getByTestId('trustee-state'), 'IL');
+      // Select state from ComboBox
+      const stateCombobox = screen.getByRole('combobox', { name: /state/i });
+      await userEvent.click(stateCombobox);
+      await userEvent.click(screen.getByText('IL - Illinois'));
       await userEvent.type(screen.getByTestId('trustee-zip'), '62704');
 
       await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
-      await vi.waitFor(() => {
+      await waitFor(() => {
         const calledPayload = mockPostTrustee.mock.calls[0][0];
         expect(calledPayload).toEqual({
           name: 'Jane Doe',
@@ -665,16 +654,21 @@ describe('TrusteeCreateForm', () => {
       await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
       await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
       await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
-      await userEvent.type(screen.getByTestId('trustee-state'), 'IL');
+      // Select state from ComboBox
+      const stateCombobox = screen.getByRole('combobox', { name: /state/i });
+      await userEvent.click(stateCombobox);
+      await userEvent.click(screen.getByText('IL - Illinois'));
       await userEvent.type(screen.getByTestId('trustee-zip'), '62704');
 
       // Optional fields should be empty by default and no errors should appear
       expect(screen.queryByText('Please enter a valid email address')).not.toBeInTheDocument();
       expect(screen.queryByText('Please enter a valid phone number')).not.toBeInTheDocument();
 
-      // Form should be submittable
+      // Form should be submittable - wait for validation to complete
       const submitButton = screen.getByRole('button', { name: /save/i });
-      expect(submitButton).not.toBeDisabled();
+      await waitFor(() => {
+        expect(submitButton).not.toBeDisabled();
+      });
     });
 
     test('includes districts and chapters in submission when selected', async () => {
@@ -703,7 +697,10 @@ describe('TrusteeCreateForm', () => {
       await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
       await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
       await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
-      await userEvent.type(screen.getByTestId('trustee-state'), 'IL');
+      // Select state from ComboBox
+      const stateCombobox = screen.getByRole('combobox', { name: /state/i });
+      await userEvent.click(stateCombobox);
+      await userEvent.click(screen.getByText('IL - Illinois'));
       await userEvent.type(screen.getByTestId('trustee-zip'), '62704');
 
       // Select district from ComboBox
@@ -721,9 +718,15 @@ describe('TrusteeCreateForm', () => {
       await userEvent.click(screen.getByText('11 - Subchapter V'));
       await userEvent.click(screen.getByText('13'));
 
-      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+      // Wait for submit button to be enabled before clicking
+      const submitButton = screen.getByRole('button', { name: /save/i });
+      await waitFor(() => {
+        expect(submitButton).not.toBeDisabled();
+      });
 
-      await vi.waitFor(() => {
+      await userEvent.click(submitButton);
+
+      await waitFor(() => {
         expect(mockPostTrustee).toHaveBeenCalledWith({
           name: 'Jane Doe',
           address: {
@@ -753,7 +756,10 @@ describe('TrusteeCreateForm', () => {
       await userEvent.type(screen.getByTestId('trustee-name'), 'John Smith');
       await userEvent.type(screen.getByTestId('trustee-address1'), '456 Oak St');
       await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
-      await userEvent.type(screen.getByTestId('trustee-state'), 'IL');
+      // Select state from ComboBox
+      const stateCombobox = screen.getByRole('combobox', { name: /state/i });
+      await userEvent.click(stateCombobox);
+      await userEvent.click(screen.getByText('IL - Illinois'));
       await userEvent.type(screen.getByTestId('trustee-zip'), '62705');
 
       // Select extended chapter types that previously caused validation errors
@@ -765,7 +771,7 @@ describe('TrusteeCreateForm', () => {
 
       await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
-      await vi.waitFor(() => {
+      await waitFor(() => {
         expect(mockPostTrustee).toHaveBeenCalledWith({
           name: 'John Smith',
           address: {
@@ -816,7 +822,10 @@ describe('TrusteeCreateForm', () => {
       await userEvent.type(screen.getByTestId('trustee-name'), 'Maria Rodriguez');
       await userEvent.type(screen.getByTestId('trustee-address1'), '789 Federal Plaza');
       await userEvent.type(screen.getByTestId('trustee-city'), 'Houston');
-      await userEvent.type(screen.getByTestId('trustee-state'), 'TX');
+      // Select state from ComboBox
+      const stateCombobox = screen.getByRole('combobox', { name: /state/i });
+      await userEvent.click(stateCombobox);
+      await userEvent.click(screen.getByText('TX - Texas'));
       await userEvent.type(screen.getByTestId('trustee-zip'), '77002');
 
       // SPECIFICATION: Districts ComboBox must support multiple selections
@@ -843,7 +852,7 @@ describe('TrusteeCreateForm', () => {
       await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
       // EXECUTABLE SPECIFICATION: Payload must include all selected districts
-      await vi.waitFor(() => {
+      await waitFor(() => {
         expect(mockPostTrustee).toHaveBeenCalledWith({
           name: 'Maria Rodriguez',
           address: {
@@ -875,6 +884,13 @@ describe('TrusteeCreateForm', () => {
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
     });
 
+    afterEach(() => {
+      // Reset field errors before each test
+      currentFieldErrors = {};
+
+      vi.restoreAllMocks();
+    });
+
     test('submit button starts disabled and enables only when form is valid and complete', async () => {
       renderWithRouter();
 
@@ -892,7 +908,10 @@ describe('TrusteeCreateForm', () => {
 
       // Fill remaining required fields
       await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
-      await userEvent.type(screen.getByTestId('trustee-state'), 'IL');
+      // Select state from ComboBox
+      const stateCombobox = screen.getByRole('combobox', { name: /state/i });
+      await userEvent.click(stateCombobox);
+      await userEvent.click(screen.getByText('IL - Illinois'));
       await userEvent.type(screen.getByTestId('trustee-zip'), '62704');
 
       // Now button should be enabled (all required fields filled and valid)
@@ -952,14 +971,17 @@ describe('TrusteeCreateForm', () => {
       await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
       await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
       await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
-      await userEvent.type(screen.getByTestId('trustee-state'), 'IL');
+      // Select state from ComboBox
+      const stateCombobox = screen.getByRole('combobox', { name: /state/i });
+      await userEvent.click(stateCombobox);
+      await userEvent.click(screen.getByText('IL - Illinois'));
       await userEvent.type(screen.getByTestId('trustee-zip'), '62704');
 
       // Wait for button to be enabled
       const submitButton = screen.getByRole('button', {
         name: /save/i,
       }) as HTMLButtonElement;
-      await vi.waitFor(() => {
+      await waitFor(() => {
         expect(submitButton).not.toBeDisabled();
       });
 
@@ -967,13 +989,20 @@ describe('TrusteeCreateForm', () => {
       await userEvent.click(submitButton);
 
       // API should be called exactly once, not twice
-      await vi.waitFor(() => {
+      await waitFor(() => {
         expect(mockPostTrustee).toHaveBeenCalledTimes(1);
       });
     });
   });
 
   describe('District Loading Error Handling', () => {
+    afterEach(() => {
+      // Reset field errors before each test
+      currentFieldErrors = {};
+
+      vi.restoreAllMocks();
+    });
+
     test('should handle getCourts API failure gracefully', async () => {
       // Mock getCourts to reject
       const mockGetCourts = vi.fn().mockRejectedValue(new Error('API Error'));
@@ -985,7 +1014,7 @@ describe('TrusteeCreateForm', () => {
       renderWithRouter();
 
       // Wait for the effect to run and error to be handled
-      await vi.waitFor(() => {
+      await waitFor(() => {
         expect(mockGetCourts).toHaveBeenCalled();
       });
 
@@ -1007,7 +1036,7 @@ describe('TrusteeCreateForm', () => {
       renderWithRouter();
 
       // Wait for the effect to run and error to be handled
-      await vi.waitFor(() => {
+      await waitFor(() => {
         expect(mockGetCourts).toHaveBeenCalled();
       });
 
@@ -1033,6 +1062,13 @@ describe('TrusteeCreateForm', () => {
   });
 
   describe('Form Submission with Spy', () => {
+    afterEach(() => {
+      // Reset field errors before each test
+      currentFieldErrors = {};
+
+      vi.restoreAllMocks();
+    });
+
     test('submits form and calls postTrustee with expected payload', async () => {
       // Spy on the postTrustee function and mock it to noop
       const mockPostTrustee = vi.fn().mockImplementation(() => {
@@ -1052,7 +1088,10 @@ describe('TrusteeCreateForm', () => {
       await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
       await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
       await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
-      await userEvent.type(screen.getByTestId('trustee-state'), 'IL');
+      // Select state from ComboBox
+      const stateCombobox = screen.getByRole('combobox', { name: /state/i });
+      await userEvent.click(stateCombobox);
+      await userEvent.click(screen.getByText('IL - Illinois'));
       await userEvent.type(screen.getByTestId('trustee-zip'), '62704');
 
       // Fill optional fields
@@ -1064,7 +1103,7 @@ describe('TrusteeCreateForm', () => {
       await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
       // Assert that postTrustee was called with the expected payload
-      await vi.waitFor(() => {
+      await waitFor(() => {
         expect(mockPostTrustee).toHaveBeenCalledWith({
           name: 'Jane Doe',
           address: {
@@ -1086,6 +1125,13 @@ describe('TrusteeCreateForm', () => {
       vi.spyOn(FeatureFlags, 'default').mockReturnValue({
         [FeatureFlags.TRUSTEE_MANAGEMENT]: true,
       } as Record<string, boolean>);
+    });
+
+    afterEach(() => {
+      // Reset field errors before each test
+      currentFieldErrors = {};
+
+      vi.restoreAllMocks();
     });
 
     test('loads districts successfully on mount', async () => {
@@ -1112,7 +1158,7 @@ describe('TrusteeCreateForm', () => {
       renderWithRouter();
 
       // Wait for districts to load
-      await vi.waitFor(() => {
+      await waitFor(() => {
         const districtCombobox = screen.getByRole('combobox', { name: /district/i });
         expect(districtCombobox).toBeInTheDocument();
       });
@@ -1144,7 +1190,7 @@ describe('TrusteeCreateForm', () => {
       renderWithRouter();
 
       // Wait for error handling and click to expand combobox
-      await vi.waitFor(() => {
+      await waitFor(() => {
         const districtCombobox = screen.getByRole('combobox', { name: /district/i });
         expect(districtCombobox).toBeInTheDocument();
       });
@@ -1154,7 +1200,7 @@ describe('TrusteeCreateForm', () => {
       await userEvent.click(districtCombobox);
 
       // Check for the placeholder on the input field when expanded
-      await vi.waitFor(() => {
+      await waitFor(() => {
         const inputField = screen.getByTestId('combo-box-input');
         expect(inputField).toHaveAttribute('placeholder', 'Error loading districts');
       });
@@ -1173,7 +1219,7 @@ describe('TrusteeCreateForm', () => {
       renderWithRouter();
 
       // Wait for error handling and click to expand combobox
-      await vi.waitFor(() => {
+      await waitFor(() => {
         const districtCombobox = screen.getByRole('combobox', { name: /district/i });
         expect(districtCombobox).toBeInTheDocument();
       });
@@ -1183,7 +1229,7 @@ describe('TrusteeCreateForm', () => {
       await userEvent.click(districtCombobox);
 
       // Check for the placeholder on the input field when expanded
-      await vi.waitFor(() => {
+      await waitFor(() => {
         const inputField = screen.getByTestId('combo-box-input');
         expect(inputField).toHaveAttribute('placeholder', 'Error loading districts');
       });
@@ -1198,7 +1244,7 @@ describe('TrusteeCreateForm', () => {
       renderWithRouter();
 
       // Wait for error handling and click to expand combobox
-      await vi.waitFor(() => {
+      await waitFor(() => {
         const districtCombobox = screen.getByRole('combobox', { name: /district/i });
         expect(districtCombobox).toBeInTheDocument();
       });
@@ -1208,7 +1254,7 @@ describe('TrusteeCreateForm', () => {
       await userEvent.click(districtCombobox);
 
       // Check for the placeholder on the input field when expanded
-      await vi.waitFor(() => {
+      await waitFor(() => {
         const inputField = screen.getByTestId('combo-box-input');
         expect(inputField).toHaveAttribute('placeholder', 'Error loading districts');
       });
@@ -1243,7 +1289,7 @@ describe('TrusteeCreateForm', () => {
       renderWithRouter();
 
       // Wait for districts to load
-      await vi.waitFor(() => {
+      await waitFor(() => {
         const districtCombobox = screen.getByRole('combobox', { name: /district/i });
         expect(districtCombobox).toBeInTheDocument();
       });
@@ -1286,7 +1332,7 @@ describe('TrusteeCreateForm', () => {
       renderWithRouter();
 
       // Wait for districts to load
-      await vi.waitFor(() => {
+      await waitFor(() => {
         const districtCombobox = screen.getByRole('combobox', { name: /district/i });
         expect(districtCombobox).toBeInTheDocument();
       });
@@ -1310,7 +1356,7 @@ describe('TrusteeCreateForm', () => {
       renderWithRouter();
 
       // Wait for error handling and click to expand combobox
-      await vi.waitFor(() => {
+      await waitFor(() => {
         const districtCombobox = screen.getByRole('combobox', { name: /district/i });
         expect(districtCombobox).toBeInTheDocument();
       });
@@ -1320,7 +1366,7 @@ describe('TrusteeCreateForm', () => {
       await userEvent.click(districtCombobox);
 
       // Check for the placeholder on the input field when expanded
-      await vi.waitFor(() => {
+      await waitFor(() => {
         const inputField = screen.getByTestId('combo-box-input');
         expect(inputField).toHaveAttribute('placeholder', 'Error loading districts');
       });

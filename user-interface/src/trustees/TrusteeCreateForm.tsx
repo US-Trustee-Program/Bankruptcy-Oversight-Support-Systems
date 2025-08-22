@@ -13,6 +13,7 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
+import UspsStatesComboBox from '@/lib/components/combobox/UspsStatesComboBox';
 
 // Chapter type options - Complete list with Panel/Non-Panel distinctions
 const CHAPTER_OPTIONS: ComboOption[] = [
@@ -215,6 +216,7 @@ export default function TrusteeCreateForm() {
                     handleFieldChange('name', e.target.value);
                   }}
                   errorMessage={fieldErrors.name}
+                  autoComplete="off"
                   required
                 />
                 <Input
@@ -226,6 +228,7 @@ export default function TrusteeCreateForm() {
                     handleFieldChange('address1', e.target.value);
                   }}
                   errorMessage={fieldErrors.address1}
+                  autoComplete="off"
                   required
                 />
                 <Input
@@ -237,6 +240,7 @@ export default function TrusteeCreateForm() {
                     handleFieldChange('address2', e.target.value);
                   }}
                   errorMessage={fieldErrors.address2}
+                  autoComplete="off"
                 />
                 <Input
                   id="trustee-city"
@@ -247,23 +251,28 @@ export default function TrusteeCreateForm() {
                     handleFieldChange('city', e.target.value);
                   }}
                   errorMessage={fieldErrors.city}
+                  autoComplete="off"
                   required
                 />
               </div>
             </div>
             <div className="grid-row grid-gap-lg">
-              <div className="grid-col-4">
-                <Input
+              <div className="grid-col-8">
+                <UspsStatesComboBox
                   id="trustee-state"
                   label="State"
-                  value={state}
-                  onChange={(e) => {
-                    setState(e.target.value);
-                    handleFieldChange('state', e.target.value);
+                  onUpdateSelection={(selectedOptions) => {
+                    const selectedValue = selectedOptions[0] ? selectedOptions[0].value : '';
+                    setState(selectedValue);
+                    handleFieldChange('state', selectedValue);
                   }}
-                  errorMessage={fieldErrors.state}
+                  autoComplete="off"
                   required
-                />
+                ></UspsStatesComboBox>
+              </div>
+            </div>
+            <div className="grid-row grid-gap-lg">
+              <div className="grid-col-4">
                 <Input
                   id="trustee-zip"
                   label="ZIP Code"
@@ -273,6 +282,7 @@ export default function TrusteeCreateForm() {
                     handleFieldChange('zipCode', e.target.value);
                   }}
                   errorMessage={fieldErrors.zipCode}
+                  autoComplete="off"
                   required
                   ariaDescription="Example: 12345"
                 />
@@ -291,6 +301,7 @@ export default function TrusteeCreateForm() {
                     handleFieldChange('phone', e.target.value);
                   }}
                   errorMessage={fieldErrors.phone}
+                  autoComplete="off"
                   type="tel"
                   ariaDescription="Example: (123)456-7890"
                 />
@@ -305,6 +316,7 @@ export default function TrusteeCreateForm() {
                     handleFieldChange('extension', e.target.value);
                   }}
                   errorMessage={fieldErrors.extension}
+                  autoComplete="off"
                   ariaDescription="Up to 6 digits"
                 />
               </div>
@@ -322,6 +334,7 @@ export default function TrusteeCreateForm() {
                   }}
                   errorMessage={fieldErrors.email}
                   type="email"
+                  autoComplete="off"
                 />
 
                 <ComboBox
@@ -337,6 +350,7 @@ export default function TrusteeCreateForm() {
                   singularLabel="district"
                   pluralLabel="districts"
                   placeholder={districtLoadError ? 'Error loading districts' : 'Select districts'}
+                  autoComplete="off"
                 />
 
                 <ComboBox
@@ -351,6 +365,7 @@ export default function TrusteeCreateForm() {
                   multiSelect={true}
                   singularLabel="chapter"
                   pluralLabel="chapters"
+                  autoComplete="off"
                 />
               </div>
             </div>
