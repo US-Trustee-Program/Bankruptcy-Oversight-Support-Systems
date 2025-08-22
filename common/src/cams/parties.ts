@@ -59,7 +59,7 @@ export type TrusteeInput = Party & {
 export type Trustee = Auditable &
   TrusteeInput & {
     assistant?: TrusteeAssistant;
-    id: string;
+    id?: string;
   };
 
 export type TrusteeAssistant = Party;

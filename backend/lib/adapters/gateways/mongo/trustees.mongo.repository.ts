@@ -6,7 +6,6 @@ import { TrusteesRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { CamsUserReference } from '../../../../../common/src/cams/users';
 import QueryBuilder from '../../../query/query-builder';
-import * as crypto from 'crypto';
 
 const MODULE_NAME = 'TRUSTEES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustees';
@@ -48,18 +47,16 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
   }
 
   async createTrustee(trustee: TrusteeInput, user: CamsUserReference): Promise<Trustee> {
-    const id = crypto.randomUUID();
     const trusteeDocument = createAuditRecord<TrusteeDocument>(
       {
         ...trustee,
-        id,
         documentType: 'TRUSTEE',
       },
       user,
     );
 
     try {
-      await this.getAdapter<TrusteeDocument>().insertOne(trusteeDocument);
+      trusteeDocument.id = await this.getAdapter<TrusteeDocument>().insertOne(trusteeDocument);
       return trusteeDocument;
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
