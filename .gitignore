@@ -11,6 +11,7 @@
 *.iws
 *.ipr
 .idea/
+qodana.yaml
 
 ## VSCODE
 
