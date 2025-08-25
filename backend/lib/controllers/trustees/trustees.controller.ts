@@ -20,32 +20,40 @@ export class TrusteesController implements CamsController {
   public async handleRequest(
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<Trustee | Trustee[]>> {
-    try {
-      // Check feature flag
-      if (!context.featureFlags['trustee-management']) {
-        return {
-          statusCode: 404,
-        };
-      }
+    // Check feature flag
+    if (!context.featureFlags['trustee-management']) {
+      return {
+        statusCode: 404,
+      };
+    }
 
-      // Check user authorization for trustee admin role
-      if (!this.hasRequiredRole(context)) {
-        throw new UnauthorizedError(MODULE_NAME, {
+    // Check user authorization for trustee admin role
+    if (!this.hasRequiredRole(context)) {
+      throw getCamsError(
+        new UnauthorizedError(MODULE_NAME, {
           message: 'User does not have permission to manage trustees',
-        });
-      }
+        }),
+        MODULE_NAME,
+      );
+    }
 
-      const { method } = context.request;
+    const { method } = context.request;
 
+    if (!['POST', 'GET'].includes(method)) {
+      throw getCamsError(
+        new BadRequestError(MODULE_NAME, {
+          message: `HTTP method ${method} is not supported`,
+        }),
+        MODULE_NAME,
+      );
+    }
+
+    try {
       switch (method) {
         case 'POST':
           return await this.createTrustee(context);
         case 'GET':
           return await this.handleGetRequest(context);
-        default:
-          throw new BadRequestError(MODULE_NAME, {
-            message: `HTTP method ${method} is not supported`,
-          });
       }
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
