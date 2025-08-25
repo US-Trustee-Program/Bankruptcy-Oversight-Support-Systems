@@ -57,10 +57,11 @@ describe('TrusteesMongoRepository', () => {
       expect(mockAdapter).toHaveBeenCalledWith(
         expect.objectContaining({
           ...sampleTrusteeInput,
-          id: expect.any(String),
           documentType: 'TRUSTEE',
           createdOn: expect.any(String),
           createdBy: mockUser,
+          updatedOn: expect.any(String),
+          updatedBy: mockUser,
         }),
       );
       expect(result.name).toBe(sampleTrusteeInput.name);
@@ -77,7 +78,6 @@ describe('TrusteesMongoRepository', () => {
       expect(mockAdapter).toHaveBeenCalledWith(
         expect.objectContaining({
           ...sampleTrusteeInput,
-          id: expect.any(String),
           documentType: 'TRUSTEE',
         }),
       );
