@@ -1,4 +1,5 @@
 import { Auditable } from './auditable';
+import { Identifiable } from './document';
 
 // Chapter types supported for trustee assignments
 export type ChapterType = '7' | '7-panel' | '7-non-panel' | '11' | '11-subchapter-v' | '12' | '13';
@@ -50,17 +51,16 @@ export type DebtorAttorney = Party & {
   office?: string;
 };
 
-export type TrusteeInput = Party & {
-  districts?: string[];
-  chapters?: ChapterType[];
-  status?: TrusteeStatus;
-};
-
 export type Trustee = Auditable &
-  TrusteeInput & {
+  Identifiable &
+  Party & {
+    districts?: string[];
+    chapters?: ChapterType[];
+    status?: TrusteeStatus;
     assistant?: TrusteeAssistant;
-    id?: string;
   };
+
+export type TrusteeInput = Omit<Trustee, keyof Auditable | keyof Identifiable>;
 
 export type TrusteeAssistant = Party;
 
