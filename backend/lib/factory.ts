@@ -24,6 +24,7 @@ import {
   QueueGateway,
   RuntimeState,
   RuntimeStateRepository,
+  TrusteesRepository,
   UserSessionCacheRepository,
   UsersRepository,
 } from './use-cases/gateways.types';
@@ -57,6 +58,7 @@ import MockUserGroupGateway from './testing/mock-gateways/mock-user-group-gatewa
 import { getCamsErrorWithStack } from './common-errors/error-utilities';
 import { OfficeAssigneeMongoRepository } from './adapters/gateways/mongo/office-assignee.mongo.repository';
 import StorageQueueGateway from './adapters/gateways/storage-queue/storage-queue-gateway';
+import { TrusteesMongoRepository } from './adapters/gateways/mongo/trustees.mongo.repository';
 
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
@@ -322,6 +324,15 @@ export const getOfficeAssigneesRepository = (
   return repo;
 };
 
+export const getTrusteesRepository = (context: ApplicationContext): TrusteesRepository => {
+  if (context.config.get('dbMock')) {
+    return new MockMongoRepository();
+  }
+  const repo = TrusteesMongoRepository.getInstance(context);
+  deferRelease(repo, context);
+  return repo;
+};
+
 export const getQueueGateway = (_ignore: ApplicationContext): QueueGateway => {
   return StorageQueueGateway;
 };
@@ -351,6 +362,7 @@ export const Factory = {
   getStorageGateway,
   getUserGroupGateway,
   getUsersRepository,
+  getTrusteesRepository,
   getQueueGateway,
 };
 

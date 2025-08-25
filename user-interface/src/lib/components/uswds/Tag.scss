@@ -1,0 +1,16 @@
+@use 'styles/abstracts/colors';
+
+.usa-tag {
+  white-space: nowrap;
+
+  .bg-success {
+    background-color: colors.$success;
+  }
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0 0.5rem;
+}

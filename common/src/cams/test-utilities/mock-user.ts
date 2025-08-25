@@ -154,6 +154,16 @@ export const MockUsers: MockUser[] = [
       offices: [],
     },
   },
+  {
+    sub: 'trusteeadmin@fake.com',
+    label: 'Terry - Trustee Admin (Manhattan)',
+    user: {
+      id: 'trusteeadmin',
+      name: 'Terry',
+      roles: [CamsRole.TrusteeAdmin],
+      offices: [REGION_02_GROUP_NY],
+    },
+  },
   SUPERUSER,
 ];
 

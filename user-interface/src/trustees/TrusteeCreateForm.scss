@@ -1,0 +1,14 @@
+.create-trustee-screen {
+  h1 {
+    display: block;
+  }
+  .grid-row {
+    .grid-col-4,
+    .grid-col-8 {
+      min-width: 194px;
+    }
+  }
+  .usa-button-group {
+    padding: 30px 24px;
+  }
+}

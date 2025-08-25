@@ -25,9 +25,12 @@ export function createAuditRecord<T extends Auditable>(
   record: Omit<T, 'updatedOn' | 'updatedBy'>,
   camsUser: CamsUserReference = SYSTEM_USER_REFERENCE,
 ): T {
+  const timestamp = new Date().toISOString();
   return {
     ...record,
-    updatedOn: new Date().toISOString(),
+    updatedOn: timestamp,
     updatedBy: getCamsUserReference(camsUser),
+    createdOn: timestamp,
+    createdBy: getCamsUserReference(camsUser),
   } as T;
 }

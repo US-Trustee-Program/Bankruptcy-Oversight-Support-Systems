@@ -17,6 +17,9 @@ import GlobalAlert, { GlobalAlertRef } from './lib/components/cams/GlobalAlert/G
 import { UswdsAlertStyle } from './lib/components/uswds/Alert';
 import { AdminScreen } from './admin/AdminScreen';
 import { GoHome } from './lib/components/GoHome';
+import TrusteesScreen from './trustees/TrusteesScreen';
+import TrusteeCreateForm from './trustees/TrusteeCreateForm';
+import TrusteeDetailScreen from './trustees/TrusteeDetailScreen';
 
 const featureFlagConfig = getFeatureFlagConfiguration();
 export const GlobalAlertContext = createContext<React.RefObject<GlobalAlertRef | null> | null>(
@@ -47,6 +50,9 @@ function App() {
               <Route path="/case-detail/:caseId/*" element={<CaseDetailScreen />}></Route>
               <Route path="/data-verification" element={<DataVerificationScreen />}></Route>
               <Route path="/admin/*" element={<AdminScreen />}></Route>
+              <Route path="/trustees" element={<TrusteesScreen />}></Route>
+              <Route path="/trustees/create" element={<TrusteeCreateForm />}></Route>
+              <Route path="/trustees/:trusteeId" element={<TrusteeDetailScreen />}></Route>
               <Route index element={<GoHome />}></Route>
               <Route path="*" element={<GoHome />}></Route>
             </Routes>

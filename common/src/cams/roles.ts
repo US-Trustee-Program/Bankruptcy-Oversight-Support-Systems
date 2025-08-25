@@ -4,6 +4,7 @@ export enum CamsRole {
   CaseAssignmentManager = 'CaseAssignmentManager',
   TrialAttorney = 'TrialAttorney',
   DataVerifier = 'DataVerifier',
+  TrusteeAdmin = 'TrusteeAdmin',
 }
 
 export enum AssignableRole {

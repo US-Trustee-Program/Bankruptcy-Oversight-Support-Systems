@@ -502,7 +502,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   });
 
   return (
-    <MainContent className="case-detail" data-testid="case-detail">
+    <MainContent className="record-detail" data-testid="case-detail">
       <DocumentTitle name="Case Detail" />
       {isLoading && (
         <>
@@ -727,7 +727,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                 )}
               </div>
             </div>
-            <div className="grid-col-10 case-detail-content" aria-live="polite">
+            <div className="grid-col-10 record-detail-content" aria-live="polite">
               <Suspense fallback={<LoadingSpinner />}>
                 <Routes>
                   <Route

@@ -1,3 +1,4 @@
+import './Tag.scss';
 import { JSX } from 'react';
 
 export enum UswdsTagStyle {
@@ -6,6 +7,10 @@ export enum UswdsTagStyle {
   CoolLight = 'bg-accent-cool-light',
   Warm = 'bg-accent-warm-dark',
   Primary = 'bg-primary',
+  Green = 'bg-success',
+  BaseDarkest = 'bg-base-darkest',
+  Secondary = 'bg-secondary',
+  SecondaryDark = 'bg-secondary-dark',
 }
 
 export type TagProps = JSX.IntrinsicElements['span'] & {
