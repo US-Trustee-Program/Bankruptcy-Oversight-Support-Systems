@@ -13,7 +13,7 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
-import UspsStatesComboBox from '@/lib/components/combobox/UspsStatesComboBox';
+import UsStatesComboBox from '@/lib/components/combobox/UsStatesComboBox';
 
 // Chapter type options - Complete list with Panel/Non-Panel distinctions
 const CHAPTER_OPTIONS: ComboOption[] = [
@@ -258,7 +258,7 @@ export default function TrusteeCreateForm() {
             </div>
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-8">
-                <UspsStatesComboBox
+                <UsStatesComboBox
                   id="trustee-state"
                   label="State"
                   onUpdateSelection={(selectedOptions) => {
@@ -268,7 +268,7 @@ export default function TrusteeCreateForm() {
                   }}
                   autoComplete="address-level1"
                   required
-                ></UspsStatesComboBox>
+                ></UsStatesComboBox>
               </div>
             </div>
             <div className="grid-row grid-gap-lg">

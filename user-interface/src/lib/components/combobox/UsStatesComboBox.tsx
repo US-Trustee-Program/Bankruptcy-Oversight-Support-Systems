@@ -1,16 +1,16 @@
 import React from 'react';
 import ComboBox, { ComboBoxProps, ComboOption } from '@/lib/components/combobox/ComboBox';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
-import { uspsStatesFull } from '@common/cams/usps-states';
+import { usStates } from '@common/cams/us-states';
 
-const usStateOptions: ComboOption[] = uspsStatesFull.map((state) => {
+const usStateOptions: ComboOption[] = usStates.map((state) => {
   return {
     label: `${state.code} - ${state.name}`,
     value: state.code,
   };
 });
 
-function _UspsStatesComboBox(props: Omit<ComboBoxProps, 'options'>, ref?: React.Ref<ComboBoxRef>) {
+function _UsStatesComboBox(props: Omit<ComboBoxProps, 'options'>, ref?: React.Ref<ComboBoxRef>) {
   return (
     <ComboBox
       {...props}
@@ -22,5 +22,5 @@ function _UspsStatesComboBox(props: Omit<ComboBoxProps, 'options'>, ref?: React.
   );
 }
 
-const UspsStatesComboBox = _UspsStatesComboBox;
-export default UspsStatesComboBox;
+const UsStatesComboBox = _UsStatesComboBox;
+export default UsStatesComboBox;
