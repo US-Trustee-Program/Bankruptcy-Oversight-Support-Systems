@@ -1,10 +1,5 @@
 @use '../styles/theme';
 
-/**
-  TODO: Much of this was placed into a global scss file in the styles/record-detail.scss file.
-  We should migrate the case detail to use those styles.
-  We called them record-detail, record-detail-card, and record-detail-card-list.
-*/
 .case-detail, .record-detail {
   .record-detail-card-list {
     .record-detail-card {
