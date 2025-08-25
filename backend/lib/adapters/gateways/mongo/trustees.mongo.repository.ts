@@ -6,6 +6,7 @@ import { TrusteesRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { CamsUserReference } from '../../../../../common/src/cams/users';
 import QueryBuilder from '../../../query/query-builder';
+import { Creatable } from '../../types/persistence.gateway';
 
 const MODULE_NAME = 'TRUSTEES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustees';
@@ -47,7 +48,7 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
   }
 
   async createTrustee(trustee: TrusteeInput, user: CamsUserReference): Promise<Trustee> {
-    const trusteeDocument = createAuditRecord<TrusteeDocument>(
+    const trusteeDocument = createAuditRecord<Creatable<TrusteeDocument>>(
       {
         ...trustee,
         documentType: 'TRUSTEE',
@@ -56,8 +57,8 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
     );
 
     try {
-      trusteeDocument.id = await this.getAdapter<TrusteeDocument>().insertOne(trusteeDocument);
-      return trusteeDocument;
+      const id = await this.getAdapter<Creatable<TrusteeDocument>>().insertOne(trusteeDocument);
+      return { id, ...trusteeDocument };
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to create trustee ${trustee.name}.`,
