@@ -16,7 +16,7 @@ export default function TrusteesScreen() {
 
   return (
     <MainContent data-testid="trustees">
-      <div className="grid-container">
+      <div>
         <div className="display-flex flex-justify flex-align-end">
           <h1 className="display-inline-block margin-bottom-0">Trustees</h1>
           <NavLink
