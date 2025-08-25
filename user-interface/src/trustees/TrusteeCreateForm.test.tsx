@@ -4,13 +4,13 @@ import TrusteeCreateForm from './TrusteeCreateForm';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import * as UseApi2Module from '@/lib/hooks/UseApi2';
 import * as UseGlobalAlertModule from '@/lib/hooks/UseGlobalAlert';
-import * as UseTrusteeFormValidationModule from '@/lib/hooks/UseTrusteeFormValidation';
+import * as UseTrusteeFormValidationModule from '@/trustees/UseTrusteeFormValidation';
 import * as useCamsNavigatorModule from '@/lib/hooks/UseCamsNavigator';
 import type {
   ValidationError,
   FormValidationResult,
   TrusteeFormData,
-} from '@/lib/hooks/UseTrusteeFormValidation.types';
+} from '@/trustees/UseTrusteeFormValidation.types';
 import LocalStorage from '@/lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole } from '@common/cams/roles';
