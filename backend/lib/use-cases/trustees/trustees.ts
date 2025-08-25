@@ -19,13 +19,16 @@ export class TrusteesUseCase {
   }
 
   async createTrustee(context: ApplicationContext, trustee: TrusteeInput): Promise<Trustee> {
-    try {
-      // Validate trustee creation input including address
-      const validationErrors = validateTrusteeCreationInput(trustee);
-      if (validationErrors.length > 0) {
-        throw new Error(`Trustee validation failed: ${validationErrors.join(', ')}`);
-      }
+    // Validate trustee creation input including address
+    const validationErrors = validateTrusteeCreationInput(trustee);
+    if (validationErrors.length > 0) {
+      throw getCamsError(
+        new Error(`Trustee validation failed: ${validationErrors.join(', ')}`),
+        MODULE_NAME,
+      );
+    }
 
+    try {
       // Prepare trustee for creation with audit fields
       const userReference = getCamsUserReference(context.session.user);
       const trusteeForCreation: TrusteeInput = {
@@ -35,13 +38,7 @@ export class TrusteesUseCase {
         chapters: trustee.chapters || [],
       };
 
-      // Create trustee in repository
-      const createdTrustee = await this.trusteesRepository.createTrustee(
-        trusteeForCreation,
-        userReference,
-      );
-
-      return createdTrustee;
+      return await this.trusteesRepository.createTrustee(trusteeForCreation, userReference);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
