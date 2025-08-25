@@ -216,7 +216,7 @@ export default function TrusteeCreateForm() {
                     handleFieldChange('name', e.target.value);
                   }}
                   errorMessage={fieldErrors.name}
-                  autoComplete="name"
+                  autoComplete="off"
                   required
                 />
                 <Input
@@ -228,7 +228,7 @@ export default function TrusteeCreateForm() {
                     handleFieldChange('address1', e.target.value);
                   }}
                   errorMessage={fieldErrors.address1}
-                  autoComplete="address-line1"
+                  autoComplete="off"
                   required
                 />
                 <Input
@@ -240,7 +240,7 @@ export default function TrusteeCreateForm() {
                     handleFieldChange('address2', e.target.value);
                   }}
                   errorMessage={fieldErrors.address2}
-                  autoComplete="address-line2"
+                  autoComplete="off"
                 />
                 <Input
                   id="trustee-city"
@@ -251,7 +251,7 @@ export default function TrusteeCreateForm() {
                     handleFieldChange('city', e.target.value);
                   }}
                   errorMessage={fieldErrors.city}
-                  autoComplete="address-level2"
+                  autoComplete="off"
                   required
                 />
               </div>
@@ -266,7 +266,7 @@ export default function TrusteeCreateForm() {
                     setState(selectedValue);
                     handleFieldChange('state', selectedValue);
                   }}
-                  autoComplete="address-level1"
+                  autoComplete="off"
                   required
                 ></UsStatesComboBox>
               </div>
@@ -282,7 +282,7 @@ export default function TrusteeCreateForm() {
                     handleFieldChange('zipCode', e.target.value);
                   }}
                   errorMessage={fieldErrors.zipCode}
-                  autoComplete="postal-code"
+                  autoComplete="off"
                   required
                   ariaDescription="Example: 12345"
                 />
@@ -301,7 +301,7 @@ export default function TrusteeCreateForm() {
                     handleFieldChange('phone', e.target.value);
                   }}
                   errorMessage={fieldErrors.phone}
-                  autoComplete="tel-national"
+                  autoComplete="off"
                   type="tel"
                   ariaDescription="Example: (123)456-7890"
                 />
@@ -316,7 +316,7 @@ export default function TrusteeCreateForm() {
                     handleFieldChange('extension', e.target.value);
                   }}
                   errorMessage={fieldErrors.extension}
-                  autoComplete="tel-extension"
+                  autoComplete="off"
                   ariaDescription="Up to 6 digits"
                 />
               </div>
