@@ -56,11 +56,10 @@ export default function TrusteeCreateForm() {
 
   // Load district options from API
   useEffect(() => {
-    async function loadDistricts() {
-      try {
-        setDistrictLoadError(null);
-        const response = await api.getCourts();
-
+    setDistrictLoadError(null);
+    api
+      .getCourts()
+      .then((response) => {
         if (!response?.data) {
           throw new Error('No data received from getCourts API');
         }
@@ -83,15 +82,13 @@ export default function TrusteeCreateForm() {
         );
 
         setDistrictOptions(options);
-      } catch (error) {
+      })
+      .catch((error) => {
         setDistrictLoadError(
           `Failed to load district options: ${error instanceof Error ? error.message : 'Unknown error'}`,
         );
         setDistrictOptions([]);
-      }
-    }
-
-    loadDistricts();
+      });
   }, [api]);
 
   if (!flags[TRUSTEE_MANAGEMENT]) {
