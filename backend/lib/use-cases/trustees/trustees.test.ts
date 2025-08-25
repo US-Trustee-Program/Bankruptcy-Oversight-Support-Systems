@@ -108,7 +108,7 @@ describe('TrusteesUseCase', () => {
   });
 
   describe('createTrustee', () => {
-    it('should create trustee successfully with valid input', async () => {
+    test('should create trustee successfully with valid input', async () => {
       const expectedTrustee = {
         id: 'trustee-123',
         ...sampleTrusteeInput,
@@ -136,7 +136,7 @@ describe('TrusteesUseCase', () => {
       expect(result).toEqual(expectedTrustee);
     });
 
-    it('should set default values for missing optional fields', async () => {
+    test('should set default values for missing optional fields', async () => {
       const trusteeInputWithoutOptionalFields: TrusteeInput = {
         name: 'Jane Smith',
         address: {
@@ -178,7 +178,7 @@ describe('TrusteesUseCase', () => {
       expect(result).toEqual(expectedTrustee);
     });
 
-    it('should throw error when validation fails', async () => {
+    test('should throw error when validation fails', async () => {
       const validationErrors = ['Trustee name is required', 'Please enter a valid email address'];
       mockValidateTrusteeCreationInput.mockReturnValue(validationErrors);
 
@@ -202,7 +202,7 @@ describe('TrusteesUseCase', () => {
       expect(mockTrusteesRepository.createTrustee).not.toHaveBeenCalled();
     });
 
-    it('should handle repository errors and convert them to CAMS errors', async () => {
+    test('should handle repository errors and convert them to CAMS errors', async () => {
       const repositoryError = new Error('Database connection failed');
       const expectedCamsError = new CamsError('TRUSTEES-USE-CASE', {
         message: 'Database connection failed',
@@ -220,7 +220,7 @@ describe('TrusteesUseCase', () => {
   });
 
   describe('listTrustees', () => {
-    it('should successfully retrieve a list of trustees', async () => {
+    test('should successfully retrieve a list of trustees', async () => {
       const mockTrustees = [sampleTrustee];
       mockTrusteesRepository.listTrustees.mockResolvedValue(mockTrustees);
 
@@ -230,7 +230,7 @@ describe('TrusteesUseCase', () => {
       expect(result).toEqual(mockTrustees);
     });
 
-    it('should handle repository errors when listing trustees', async () => {
+    test('should handle repository errors when listing trustees', async () => {
       const repositoryError = new Error('Database connection failed');
       const expectedCamsError = new CamsError('TRUSTEES-USE-CASE', {
         message: 'Database connection failed',
@@ -246,7 +246,7 @@ describe('TrusteesUseCase', () => {
   });
 
   describe('getTrustee', () => {
-    it('should successfully retrieve a trustee by ID', async () => {
+    test('should successfully retrieve a trustee by ID', async () => {
       const trusteeId = 'trustee-123';
       mockTrusteesRepository.read.mockResolvedValue(sampleTrustee);
 
@@ -256,7 +256,7 @@ describe('TrusteesUseCase', () => {
       expect(result).toEqual(sampleTrustee);
     });
 
-    it('should handle repository errors when getting a trustee', async () => {
+    test('should handle repository errors when getting a trustee', async () => {
       const trusteeId = 'nonexistent-id';
       const repositoryError = new Error('Trustee with ID nonexistent-id not found.');
       const expectedCamsError = new CamsError('TRUSTEES-USE-CASE', {
