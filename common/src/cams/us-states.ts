@@ -1,11 +1,12 @@
-type UspsState = {
+type UsState = {
   code: string;
   name: string;
 };
 
-export const uspsStates: UspsState[] = [
+export const usStates: UsState[] = [
   { code: 'AL', name: 'Alabama' },
   { code: 'AK', name: 'Alaska' },
+  { code: 'AS', name: 'American Samoa' },
   { code: 'AZ', name: 'Arizona' },
   { code: 'AR', name: 'Arkansas' },
   { code: 'CA', name: 'California' },
@@ -14,7 +15,9 @@ export const uspsStates: UspsState[] = [
   { code: 'DE', name: 'Delaware' },
   { code: 'DC', name: 'District of Columbia' },
   { code: 'FL', name: 'Florida' },
+  { code: 'FM', name: 'Federated States of Micronesia' },
   { code: 'GA', name: 'Georgia' },
+  { code: 'GU', name: 'Guam' },
   { code: 'HI', name: 'Hawaii' },
   { code: 'ID', name: 'Idaho' },
   { code: 'IL', name: 'Illinois' },
@@ -24,6 +27,7 @@ export const uspsStates: UspsState[] = [
   { code: 'KY', name: 'Kentucky' },
   { code: 'LA', name: 'Louisiana' },
   { code: 'ME', name: 'Maine' },
+  { code: 'MH', name: 'Marshall Islands' },
   { code: 'MD', name: 'Maryland' },
   { code: 'MA', name: 'Massachusetts' },
   { code: 'MI', name: 'Michigan' },
@@ -39,10 +43,13 @@ export const uspsStates: UspsState[] = [
   { code: 'NY', name: 'New York' },
   { code: 'NC', name: 'North Carolina' },
   { code: 'ND', name: 'North Dakota' },
+  { code: 'MP', name: 'Northern Mariana Islands' },
   { code: 'OH', name: 'Ohio' },
   { code: 'OK', name: 'Oklahoma' },
   { code: 'OR', name: 'Oregon' },
+  { code: 'PW', name: 'Palau' },
   { code: 'PA', name: 'Pennsylvania' },
+  { code: 'PR', name: 'Puerto Rico' },
   { code: 'RI', name: 'Rhode Island' },
   { code: 'SC', name: 'South Carolina' },
   { code: 'SD', name: 'South Dakota' },
@@ -57,14 +64,3 @@ export const uspsStates: UspsState[] = [
   { code: 'WI', name: 'Wisconsin' },
   { code: 'WY', name: 'Wyoming' },
 ];
-
-export const uspsStatesFull: UspsState[] = [
-  ...uspsStates,
-  { code: 'AS', name: 'American Samoa' },
-  { code: 'FM', name: 'Federated States of Micronesia' },
-  { code: 'GU', name: 'Guam' },
-  { code: 'MH', name: 'Marshall Islands' },
-  { code: 'MP', name: 'Northern Mariana Islands' },
-  { code: 'PW', name: 'Palau' },
-  { code: 'PR', name: 'Puerto Rico' },
-].sort((a: UspsState, b: UspsState) => a.name.localeCompare(b.name));
