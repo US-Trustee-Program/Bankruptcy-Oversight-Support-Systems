@@ -1,11 +1,11 @@
 import './TrusteeDetailScreen.scss';
 import '@/styles/record-detail.scss';
+import React, { useEffect, useState } from 'react';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Icon from '@/lib/components/uswds/Icon';
 import useApi2 from '@/lib/hooks/UseApi2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { Trustee } from '@common/cams/parties';
-import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
@@ -50,15 +50,10 @@ export default function TrusteeDetailScreen() {
   }
 
   useEffect(() => {
-    const fetchData = async () => {
-      if (trusteeId) {
-        setIsLoading(true);
-        try {
-          const [trusteeResponse, courtsResponse] = await Promise.all([
-            api.getTrustee(trusteeId),
-            api.getCourts(),
-          ]);
-
+    if (trusteeId) {
+      setIsLoading(true);
+      Promise.all([api.getTrustee(trusteeId), api.getCourts()])
+        .then(([trusteeResponse, courtsResponse]) => {
           setTrustee(trusteeResponse.data);
           const trusteeDistricts: string[] = [];
           trusteeResponse.data.districts?.map((district) => {
@@ -68,14 +63,14 @@ export default function TrusteeDetailScreen() {
             }
           });
           setDistrictLabels(trusteeDistricts);
-        } catch (_error) {
+        })
+        .catch(() => {
           globalAlert?.error('Could not get trustee details');
-        } finally {
+        })
+        .finally(() => {
           setIsLoading(false);
-        }
-      }
-    };
-    fetchData();
+        });
+    }
   }, [trusteeId]);
 
   return (
