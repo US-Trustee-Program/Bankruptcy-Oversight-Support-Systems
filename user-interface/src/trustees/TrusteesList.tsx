@@ -24,17 +24,9 @@ export default function TrusteesList() {
   const api = useApi2();
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        setLoading(true);
-
-        // Fetch both trustees and court information
-        const [trusteesResponse, courtsResponse] = await Promise.all([
-          api.getTrustees(),
-          api.getCourts(),
-        ]);
-
-        // Process trustees
+    setLoading(true);
+    Promise.all([api.getTrustees(), api.getCourts()])
+      .then(([trusteesResponse, courtsResponse]) => {
         setTrustees(trusteesResponse.data || []);
 
         // Process court information to create a mapping
@@ -48,16 +40,12 @@ export default function TrusteesList() {
         }
 
         setError(null);
-      } catch (err) {
-        console.error('Failed to fetch data:', err);
+      })
+      .catch(() => {
         setError('Failed to load trustees. Please try again later.');
         setTrustees([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchData();
+      })
+      .finally(() => setLoading(false));
   }, [api]);
 
   // Helper function to format trustee status in title case
