@@ -19,8 +19,7 @@ export default async function handler(
     });
 
     const controller = new CourtsController();
-    // Courts endpoint doesn't require authentication for dropdown data
-    // context.session = await ContextCreator.getApplicationContextSession(context);
+    context.session = await ContextCreator.getApplicationContextSession(context);
 
     const responseBody = await controller.handleRequest(context);
     return toAzureSuccess(responseBody);
