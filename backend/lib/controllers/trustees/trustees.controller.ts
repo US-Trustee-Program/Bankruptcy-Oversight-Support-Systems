@@ -86,16 +86,12 @@ export class TrusteesController implements CamsController {
   private async handleGetRequest(
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<Trustee | Trustee[]>> {
-    const { url } = context.request;
-    const urlParts = url.split('/');
-    const trusteeId = urlParts[urlParts.length - 1];
+    const trusteeId = context.request.params['id'];
 
-    // If the last part of the URL is 'trustees', this is a list request
-    // If it's something else, it's an individual trustee request
-    if (trusteeId === 'trustees') {
-      return await this.listTrustees(context);
-    } else {
+    if (trusteeId) {
       return await this.getTrustee(context, trusteeId);
+    } else {
+      return await this.listTrustees(context);
     }
   }
 

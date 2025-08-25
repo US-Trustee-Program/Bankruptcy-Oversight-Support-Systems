@@ -215,6 +215,8 @@ describe('TrusteesController', () => {
     test('should return individual trustee for GET requests with ID', async () => {
       const id = 'trustee-123';
       mockUseCase.getTrustee.mockResolvedValue(sampleTrusteeDocument);
+
+      context.request.params['id'] = id;
       context.request.url = `/api/trustees/${id}`;
 
       const result = await controller.handleRequest(context);
@@ -229,6 +231,7 @@ describe('TrusteesController', () => {
       mockUseCase.getTrustee.mockRejectedValue(
         new Error('Trustee with ID nonexistent-id not found.'),
       );
+      context.request.params['id'] = id;
       context.request.url = `/api/trustees/${id}`;
 
       await expect(controller.handleRequest(context)).rejects.toThrow('Unknown Error');
