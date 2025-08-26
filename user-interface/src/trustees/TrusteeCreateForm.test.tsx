@@ -6,11 +6,7 @@ import * as UseApi2Module from '@/lib/hooks/UseApi2';
 import * as UseGlobalAlertModule from '@/lib/hooks/UseGlobalAlert';
 import * as UseTrusteeFormValidationModule from '@/trustees/UseTrusteeFormValidation';
 import * as useCamsNavigatorModule from '@/lib/hooks/UseCamsNavigator';
-import type {
-  ValidationError,
-  FormValidationResult,
-  TrusteeFormData,
-} from '@/trustees/UseTrusteeFormValidation.types';
+import type { TrusteeFormData } from '@/trustees/UseTrusteeFormValidation.types';
 import LocalStorage from '@/lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole } from '@common/cams/roles';
@@ -100,27 +96,6 @@ describe('TrusteeCreateForm', () => {
       return currentFieldErrors;
     },
     errors: [],
-    validateForm: vi.fn((formData: TrusteeFormData): FormValidationResult => {
-      const errors: ValidationError[] = [];
-      const fieldErrors: Record<string, string> = {};
-
-      Object.entries(formData).forEach(([field, value]) => {
-        const error = validateField(field, value);
-        if (error) {
-          errors.push({ field, message: error });
-          fieldErrors[field] = error;
-        }
-      });
-
-      // Update current field errors
-      currentFieldErrors = fieldErrors;
-
-      return {
-        isValid: errors.length === 0,
-        errors,
-        fieldErrors,
-      };
-    }),
     validateFieldAndUpdate: vi.fn((field: string, value: string): string | null => {
       const error = validateField(field, value);
       if (error) {
@@ -290,38 +265,6 @@ describe('TrusteeCreateForm', () => {
 
       // Button should be disabled due to validation errors
       await waitFor(() => expect(submitButton).toBeDisabled());
-    });
-
-    test('displays general error message when form validation fails during submission', async () => {
-      renderWithRouter();
-
-      // Fill all required fields with valid data to enabled the submit button,
-      // then click the submit button with validation function mocked to return failures.
-      await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
-      await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
-      await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
-      // Select state from ComboBox
-      const stateCombobox = screen.getByRole('combobox', { name: /state/i });
-      await userEvent.click(stateCombobox);
-      await userEvent.click(screen.getByText('IL - Illinois'));
-      await userEvent.type(screen.getByTestId('trustee-zip'), '12345');
-
-      await waitFor(() => {
-        const submitButton = screen.getByRole('button', { name: /save/i });
-        expect(submitButton).not.toBeDisabled();
-      });
-
-      mockValidation.validateForm.mockReturnValueOnce({
-        isValid: false,
-        errors: [{ field: 'zipCode', message: 'ZIP code must be exactly 5 digits' }],
-        fieldErrors: { zipCode: 'ZIP code must be exactly 5 digits' },
-      });
-
-      await userEvent.click(screen.getByRole('button', { name: /save/i }));
-
-      expect(screen.getByRole('alert')).toHaveTextContent(
-        'Please correct the errors below before submitting.',
-      );
     });
   });
 

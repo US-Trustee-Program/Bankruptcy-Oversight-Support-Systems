@@ -30,7 +30,7 @@ export default function TrusteeCreateForm() {
   const api = useApi2();
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
-  const { fieldErrors, validateForm, validateFieldAndUpdate, clearErrors, isFormValidAndComplete } =
+  const { fieldErrors, validateFieldAndUpdate, clearErrors, isFormValidAndComplete } =
     useTrusteeFormValidation();
 
   const [name, setName] = useState('');
@@ -130,12 +130,6 @@ export default function TrusteeCreateForm() {
 
     // Validate form before submission
     const formData = getFormData();
-    const validationResult = validateForm(formData);
-
-    if (!validationResult.isValid) {
-      setErrorMessage('Please correct the errors below before submitting.');
-      return;
-    }
 
     setIsSubmitting(true);
     try {
