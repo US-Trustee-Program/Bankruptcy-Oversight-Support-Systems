@@ -13,17 +13,9 @@ describe('useTrusteeFormValidation', () => {
       zipCode: '',
     };
 
-    const validationResult = result.current.validateForm(formData);
+    const validationResult = result.current.isFormValidAndComplete(formData);
 
-    expect(validationResult.isValid).toBe(false);
-    expect(validationResult.errors).toHaveLength(5);
-    expect(validationResult.fieldErrors).toEqual({
-      name: 'Trustee name is required',
-      address1: 'Address line 1 is required',
-      city: 'City is required',
-      state: 'State is required',
-      zipCode: 'ZIP code is required',
-    });
+    expect(validationResult).toBe(false);
   });
 
   test('validates ZIP code format', () => {
@@ -41,14 +33,9 @@ describe('useTrusteeFormValidation', () => {
         zipCode,
       };
 
-      const validationResult = result.current.validateForm(formData);
+      const validationResult = result.current.isFormValidAndComplete(formData);
 
-      expect(validationResult.isValid).toBe(false);
-      if (zipCode === '') {
-        expect(validationResult.fieldErrors.zipCode).toBe('ZIP code is required');
-      } else {
-        expect(validationResult.fieldErrors.zipCode).toBe('ZIP code must be exactly 5 digits');
-      }
+      expect(validationResult).toBe(false);
     });
 
     // Test valid ZIP code
@@ -60,9 +47,8 @@ describe('useTrusteeFormValidation', () => {
       zipCode: '12345',
     };
 
-    const validationResult = result.current.validateForm(formData);
-    expect(validationResult.isValid).toBe(true);
-    expect(validationResult.fieldErrors.zipCode).toBeUndefined();
+    const validationResult = result.current.isFormValidAndComplete(formData);
+    expect(validationResult).toBe(true);
   });
 
   test('validates individual fields', () => {
@@ -134,11 +120,9 @@ describe('useTrusteeFormValidation', () => {
       zipCode: '62704',
     };
 
-    const validationResult = result.current.validateForm(validFormData);
+    const validationResult = result.current.isFormValidAndComplete(validFormData);
 
-    expect(validationResult.isValid).toBe(true);
-    expect(validationResult.errors).toHaveLength(0);
-    expect(validationResult.fieldErrors).toEqual({});
+    expect(validationResult).toBe(true);
   });
 
   test('validates trimmed values', () => {
@@ -153,15 +137,8 @@ describe('useTrusteeFormValidation', () => {
       zipCode: '  ',
     };
 
-    const validationResult = result.current.validateForm(formDataWithSpaces);
+    const validationResult = result.current.isFormValidAndComplete(formDataWithSpaces);
 
-    expect(validationResult.isValid).toBe(false);
-    expect(validationResult.errors).toHaveLength(5);
-    // All should be treated as required field errors since they're empty after trimming
-    expect(validationResult.fieldErrors.name).toBe('Trustee name is required');
-    expect(validationResult.fieldErrors.address1).toBe('Address line 1 is required');
-    expect(validationResult.fieldErrors.city).toBe('City is required');
-    expect(validationResult.fieldErrors.state).toBe('State is required');
-    expect(validationResult.fieldErrors.zipCode).toBe('ZIP code is required');
+    expect(validationResult).toBe(false);
   });
 });

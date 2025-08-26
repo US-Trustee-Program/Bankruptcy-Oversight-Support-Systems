@@ -17,16 +17,9 @@ export interface ValidationError {
   message: string;
 }
 
-export interface FormValidationResult {
-  isValid: boolean;
-  errors: ValidationError[];
-  fieldErrors: Record<string, string>;
-}
-
 export interface TrusteeFormValidation {
   fieldErrors: Record<string, string>;
   errors: ValidationError[];
-  validateForm: (formData: TrusteeFormData) => FormValidationResult;
   validateFieldAndUpdate: (field: string, value: string) => string | null;
   clearErrors: () => void;
   clearFieldError: (field: string) => void;

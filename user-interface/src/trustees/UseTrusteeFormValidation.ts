@@ -1,10 +1,5 @@
 import { useState } from 'react';
-import {
-  TrusteeFormData,
-  ValidationError,
-  FormValidationResult,
-  TrusteeFormValidation,
-} from './UseTrusteeFormValidation.types';
+import { TrusteeFormData, TrusteeFormValidation } from './UseTrusteeFormValidation.types';
 
 /**
  * Validates individual form fields with specific business rules
@@ -58,35 +53,6 @@ function validateField(field: string, value: string | string[] | undefined | nul
  */
 export function useTrusteeFormValidation(): TrusteeFormValidation {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-
-  /**
-   * Validates entire form and returns comprehensive validation result
-   */
-  const validateForm = (formData: TrusteeFormData): FormValidationResult => {
-    const errors: ValidationError[] = [];
-    const newFieldErrors: Record<string, string> = {};
-
-    // Validate each field
-    Object.entries(formData).forEach(([field, value]) => {
-      // Only validate non-undefined values for optional fields
-      if (value !== undefined) {
-        const error = validateField(field, value);
-        if (error) {
-          errors.push({ field, message: error });
-          newFieldErrors[field] = error;
-        }
-      }
-    });
-
-    // Update field errors state
-    setFieldErrors(newFieldErrors);
-
-    return {
-      isValid: errors.length === 0,
-      errors,
-      fieldErrors: newFieldErrors,
-    };
-  };
 
   /**
    * Validates a single field and updates the field errors state
@@ -143,14 +109,14 @@ export function useTrusteeFormValidation(): TrusteeFormValidation {
       return false;
     }
 
-    // Then validate each field to check for any errors
-    const fieldsToValidate = ['name', 'address1', 'city', 'state', 'zipCode', 'phone', 'email'];
-    for (const field of fieldsToValidate) {
-      const value = formData[field as keyof TrusteeFormData] as string;
-      if (value && validateField(field, value)) {
-        return false; // Found a validation error
+    Object.entries(formData).forEach(([field, value]) => {
+      if (value !== undefined) {
+        const error = validateField(field, value);
+        if (error) {
+          return false;
+        }
       }
-    }
+    });
 
     return true; // All required fields filled and no validation errors
   };
@@ -158,7 +124,6 @@ export function useTrusteeFormValidation(): TrusteeFormValidation {
   return {
     fieldErrors,
     errors: Object.entries(fieldErrors).map(([field, message]) => ({ field, message })),
-    validateForm,
     validateFieldAndUpdate,
     clearErrors,
     clearFieldError,
