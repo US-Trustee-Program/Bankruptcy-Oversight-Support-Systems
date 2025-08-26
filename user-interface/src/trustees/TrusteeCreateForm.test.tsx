@@ -4,9 +4,8 @@ import TrusteeCreateForm from './TrusteeCreateForm';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import * as UseApi2Module from '@/lib/hooks/UseApi2';
 import * as UseGlobalAlertModule from '@/lib/hooks/UseGlobalAlert';
-import * as UseTrusteeFormValidationModule from '@/trustees/UseTrusteeFormValidation';
 import * as useCamsNavigatorModule from '@/lib/hooks/UseCamsNavigator';
-import type { TrusteeFormData } from '@/trustees/UseTrusteeFormValidation.types';
+import * as UseDebounceModule from '@/lib/hooks/UseDebounce';
 import LocalStorage from '@/lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole } from '@common/cams/roles';
@@ -35,95 +34,6 @@ describe('TrusteeCreateForm', () => {
     redirectTo: vi.fn(),
   };
 
-  // Real validation logic for testing
-  const validateField = (field: string, value: string): string | null => {
-    switch (field) {
-      case 'name':
-        return !value || value.trim() === '' ? 'Trustee name is required' : null;
-      case 'address1':
-        return !value || value.trim() === '' ? 'Address line 1 is required' : null;
-      case 'address2':
-        return null; // Optional field
-      case 'city':
-        return !value || value.trim() === '' ? 'City is required' : null;
-      case 'state':
-        return !value || value.trim() === '' ? 'State is required' : null;
-      case 'zipCode':
-        if (!value || value.trim() === '') {
-          return 'ZIP code is required';
-        }
-        if (!/^\d{5}$/.test(value.trim())) {
-          return 'ZIP code must be exactly 5 digits';
-        }
-        return null;
-      case 'phone': {
-        if (!value || value.trim() === '') {
-          return null; // Phone is optional
-        }
-        const phoneRegex =
-          /^[()\s\-.]*\d[()\s\-.]*\d[()\s\-.]*\d[()\s\-.]*\d[()\s\-.]*\d[()\s\-.]*\d[()\s\-.]*\d[()\s\-.]*\d[()\s\-.]*\d[()\s\-.]*\d[()\s\-.]*$/;
-        if (!phoneRegex.test(value.trim())) {
-          return 'Please enter a valid phone number';
-        }
-        return null;
-      }
-      case 'extension':
-        return null; // Optional field
-      case 'email': {
-        if (!value || value.trim() === '') {
-          return null; // Email is optional
-        }
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(value.trim())) {
-          return 'Please enter a valid email address';
-        }
-        return null;
-      }
-      case 'district':
-        return null; // Optional field
-      case 'chapters':
-        return null; // Optional field
-      default:
-        return null;
-    }
-  };
-
-  // State for field errors that the mock can manipulate
-  let currentFieldErrors: Record<string, string> = {};
-
-  const mockValidation = {
-    get fieldErrors() {
-      return currentFieldErrors;
-    },
-    errors: [],
-    validateFieldAndUpdate: vi.fn((field: string, value: string): string | null => {
-      const error = validateField(field, value);
-      if (error) {
-        currentFieldErrors = { ...currentFieldErrors, [field]: error };
-      } else {
-        const { [field]: _, ...rest } = currentFieldErrors;
-        currentFieldErrors = rest;
-      }
-      return error;
-    }),
-    clearErrors: vi.fn(() => {
-      currentFieldErrors = {};
-    }),
-    clearFieldError: vi.fn(),
-    areRequiredFieldsFilled: vi.fn((formData: TrusteeFormData): boolean => {
-      const requiredFields = ['name', 'address1', 'city', 'state', 'zipCode'];
-      return requiredFields.every((field) => {
-        const value = formData[field as keyof TrusteeFormData];
-        return value && typeof value === 'string' && value.trim() !== '';
-      });
-    }),
-    isFormValidAndComplete: vi.fn((formData: TrusteeFormData): boolean => {
-      const requiredFieldsFilled = mockValidation.areRequiredFieldsFilled(formData);
-      const hasNoErrors = Object.keys(currentFieldErrors).length === 0;
-      return requiredFieldsFilled && hasNoErrors;
-    }),
-  };
-
   beforeEach(() => {
     // Set up default authorized user with TrusteeAdmin role
     const defaultUser = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
@@ -136,10 +46,16 @@ describe('TrusteeCreateForm', () => {
       [FeatureFlags.TRUSTEE_MANAGEMENT]: true,
     } as Record<string, boolean>);
 
-    vi.spyOn(UseGlobalAlertModule, 'useGlobalAlert').mockReturnValue(mockGlobalAlert);
-    vi.spyOn(UseTrusteeFormValidationModule, 'useTrusteeFormValidation').mockReturnValue(
-      mockValidation,
+    // Mock useDebounce to execute immediately for testing
+    vi.spyOn(UseDebounceModule, 'default').mockReturnValue(
+      (callback: () => void, _delay: number) => {
+        // Execute callback immediately in tests to avoid timing issues
+        callback();
+        return 0; // Return a dummy timer ID
+      },
     );
+
+    vi.spyOn(UseGlobalAlertModule, 'useGlobalAlert').mockReturnValue(mockGlobalAlert);
     vi.spyOn(useCamsNavigatorModule, 'default').mockReturnValue(mockNavigate);
 
     // Mock the useApi2 hook to include getCourts
@@ -152,9 +68,6 @@ describe('TrusteeCreateForm', () => {
   });
 
   afterEach(() => {
-    // Reset field errors before each test
-    currentFieldErrors = {};
-
     vi.restoreAllMocks();
   });
 
@@ -177,8 +90,8 @@ describe('TrusteeCreateForm', () => {
     } as Record<string, boolean>);
 
     renderWithRouter();
-    expect(screen.getByTestId('trustee-create-unauthorized')).toBeInTheDocument();
-    expect(screen.getByText('You do not have permission to manage trustees.')).toBeInTheDocument();
+    expect(screen.getByTestId('alert-container-forbidden-alert')).toBeInTheDocument();
+    expect(screen.getByText('You do not have permission to manage Trustees')).toBeInTheDocument();
   });
 
   test('renders unauthorized message when user has no roles', () => {
@@ -192,7 +105,7 @@ describe('TrusteeCreateForm', () => {
     } as Record<string, boolean>);
 
     renderWithRouter();
-    expect(screen.getByTestId('trustee-create-unauthorized')).toBeInTheDocument();
+    expect(screen.getByTestId('alert-container-forbidden-alert')).toBeInTheDocument();
   });
 
   test('renders form when user has TrusteeAdmin role and feature flag is enabled', () => {
@@ -248,13 +161,6 @@ describe('TrusteeCreateForm', () => {
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
     });
 
-    afterEach(() => {
-      // Reset field errors before each test
-      currentFieldErrors = {};
-
-      vi.restoreAllMocks();
-    });
-
     test('disables submit button when there are validation errors', async () => {
       renderWithRouter();
 
@@ -273,13 +179,6 @@ describe('TrusteeCreateForm', () => {
       vi.spyOn(FeatureFlags, 'default').mockReturnValue({
         [FeatureFlags.TRUSTEE_MANAGEMENT]: true,
       } as Record<string, boolean>);
-    });
-
-    afterEach(() => {
-      // Reset field errors before each test
-      currentFieldErrors = {};
-
-      vi.restoreAllMocks();
     });
 
     test('shows success notification when trustee is created successfully', async () => {
@@ -375,7 +274,11 @@ describe('TrusteeCreateForm', () => {
 
       // Enter invalid data to generate errors
       await userEvent.type(screen.getByTestId('trustee-zip'), '1234');
-      expect(await screen.findByText('ZIP code must be exactly 5 digits')).toBeInTheDocument();
+      await userEvent.tab(); // Trigger validation
+
+      expect(
+        await screen.findByText('ZIP code must be 5 digits or 9 digits with a hyphen'),
+      ).toBeInTheDocument();
 
       // Click cancel
       await userEvent.click(screen.getByRole('button', { name: /cancel/i }));
@@ -397,13 +300,6 @@ describe('TrusteeCreateForm', () => {
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
     });
 
-    afterEach(() => {
-      // Reset field errors before each test
-      currentFieldErrors = {};
-
-      vi.restoreAllMocks();
-    });
-
     test('renders all optional fields', () => {
       renderWithRouter();
 
@@ -412,7 +308,7 @@ describe('TrusteeCreateForm', () => {
       expect(screen.getByTestId('trustee-extension')).toBeInTheDocument();
       expect(screen.getByTestId('trustee-email')).toBeInTheDocument();
       // ComboBox components render with their ID as the container element ID
-      expect(document.getElementById('trustee-district')).toBeInTheDocument();
+      expect(document.getElementById('trustee-districts')).toBeInTheDocument();
       expect(document.getElementById('trustee-chapters')).toBeInTheDocument();
     });
 
@@ -441,34 +337,23 @@ describe('TrusteeCreateForm', () => {
 
       const emailInput = screen.getByTestId('trustee-email');
 
-      // Test one invalid email format
+      // Test invalid email format - should show error message
       await userEvent.type(emailInput, 'invalid-email');
+      await userEvent.tab(); // Trigger blur to activate validation
 
-      // Wait for validation to be called and check if error appears
+      // Wait for error message to appear in the UI
       await waitFor(() => {
-        // The mock validation should have been called and updated the field errors
-        expect(mockValidation.validateFieldAndUpdate).toHaveBeenCalledWith(
-          'email',
-          'invalid-email',
-        );
+        expect(screen.getByText('Email must be a valid email address')).toBeInTheDocument();
       });
 
-      // Check if error message is displayed - it should be in the fieldErrors
-      expect(currentFieldErrors.email).toBe('Please enter a valid email address');
-
-      // Test valid email
+      // Test valid email - error should disappear
       await userEvent.clear(emailInput);
       await userEvent.type(emailInput, 'test@example.com');
+      await userEvent.tab();
 
       await waitFor(() => {
-        expect(mockValidation.validateFieldAndUpdate).toHaveBeenCalledWith(
-          'email',
-          'test@example.com',
-        );
+        expect(screen.queryByText('Email must be a valid email address')).not.toBeInTheDocument();
       });
-
-      // Error should be cleared
-      expect(currentFieldErrors.email).toBeUndefined();
     });
 
     test('validates phone format when provided', async () => {
@@ -476,27 +361,45 @@ describe('TrusteeCreateForm', () => {
 
       const phoneInput = screen.getByTestId('trustee-phone');
 
-      // Test invalid phone format
+      // Test invalid phone format - should show error message
       await userEvent.type(phoneInput, 'abc123');
+      await userEvent.tab(); // Trigger blur
 
-      // Wait for validation to be called
       await waitFor(() => {
-        expect(mockValidation.validateFieldAndUpdate).toHaveBeenCalledWith('phone', 'abc123');
+        expect(screen.getByText('Please enter a valid phone number')).toBeInTheDocument();
       });
 
-      // Check if error message is in field errors
-      expect(currentFieldErrors.phone).toBe('Please enter a valid phone number');
-
-      // Test valid phone format
+      // Test valid phone format - error should disappear
       await userEvent.clear(phoneInput);
       await userEvent.type(phoneInput, '1234567890');
+      await userEvent.tab();
 
       await waitFor(() => {
-        expect(mockValidation.validateFieldAndUpdate).toHaveBeenCalledWith('phone', '1234567890');
+        expect(screen.queryByText('Please enter a valid phone number')).not.toBeInTheDocument();
+      });
+    });
+
+    test('validates extension format when provided', async () => {
+      renderWithRouter();
+
+      const extensionInput = screen.getByTestId('trustee-extension');
+
+      // Test invalid extension format (too many digits)
+      await userEvent.type(extensionInput, '1234567');
+      await userEvent.tab();
+
+      await waitFor(() => {
+        expect(screen.getByText('Extension must be 1 to 6 digits')).toBeInTheDocument();
       });
 
-      // Error should be cleared
-      expect(currentFieldErrors.phone).toBeUndefined();
+      // Test valid extension format - error should disappear
+      await userEvent.clear(extensionInput);
+      await userEvent.type(extensionInput, '123');
+      await userEvent.tab();
+
+      await waitFor(() => {
+        expect(screen.queryByText('Extension must be 1 to 6 digits')).not.toBeInTheDocument();
+      });
     });
 
     test('includes optional fields in form submission when provided', async () => {
@@ -637,14 +540,26 @@ describe('TrusteeCreateForm', () => {
       renderWithRouter();
 
       // Fill required fields
-      await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
-      await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
-      await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
+      const trusteeName = screen.getByTestId('trustee-name');
+      await userEvent.type(trusteeName, 'Jane Doe');
+      expect(trusteeName).toHaveValue('Jane Doe');
+
+      const trusteeAddress1 = screen.getByTestId('trustee-address1');
+      await userEvent.type(trusteeAddress1, '123 Main St');
+      expect(trusteeAddress1).toHaveValue('123 Main St');
+
+      const trusteeCity = screen.getByTestId('trustee-city');
+      await userEvent.type(trusteeCity, 'Springfield');
+      expect(trusteeCity).toHaveValue('Springfield');
+
       // Select state from ComboBox
       const stateCombobox = screen.getByRole('combobox', { name: /state/i });
       await userEvent.click(stateCombobox);
       await userEvent.click(screen.getByText('IL - Illinois'));
-      await userEvent.type(screen.getByTestId('trustee-zip'), '62704');
+
+      const trusteeZip = screen.getByTestId('trustee-zip');
+      await userEvent.type(trusteeZip, '62704');
+      expect(trusteeZip).toHaveValue('62704');
 
       // Select district from ComboBox
       const districtCombobox = screen.getByRole('combobox', { name: /district/i });
@@ -662,7 +577,7 @@ describe('TrusteeCreateForm', () => {
       await userEvent.click(screen.getByText('13'));
 
       // Wait for submit button to be enabled before clicking
-      const submitButton = screen.getByRole('button', { name: /save/i });
+      const submitButton = screen.getByTestId('button-submit-button');
       await waitFor(() => {
         expect(submitButton).not.toBeDisabled();
       });
@@ -827,13 +742,6 @@ describe('TrusteeCreateForm', () => {
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
     });
 
-    afterEach(() => {
-      // Reset field errors before each test
-      currentFieldErrors = {};
-
-      vi.restoreAllMocks();
-    });
-
     test('submit button starts disabled and enables only when form is valid and complete', async () => {
       renderWithRouter();
 
@@ -939,13 +847,6 @@ describe('TrusteeCreateForm', () => {
   });
 
   describe('District Loading Error Handling', () => {
-    afterEach(() => {
-      // Reset field errors before each test
-      currentFieldErrors = {};
-
-      vi.restoreAllMocks();
-    });
-
     test('should handle getCourts API failure gracefully', async () => {
       // Mock getCourts to reject
       const mockGetCourts = vi.fn().mockRejectedValue(new Error('API Error'));
@@ -1005,11 +906,15 @@ describe('TrusteeCreateForm', () => {
   });
 
   describe('Form Submission with Spy', () => {
-    afterEach(() => {
-      // Reset field errors before each test
-      currentFieldErrors = {};
-
-      vi.restoreAllMocks();
+    beforeEach(() => {
+      // Re-establish the useDebounce mock since this describe block restores all mocks
+      vi.spyOn(UseDebounceModule, 'default').mockReturnValue(
+        (callback: () => void, _delay: number) => {
+          // Execute callback immediately in tests to avoid timing issues
+          callback();
+          return 0; // Return a dummy timer ID
+        },
+      );
     });
 
     test('submits form and calls postTrustee with expected payload', async () => {
@@ -1068,13 +973,6 @@ describe('TrusteeCreateForm', () => {
       vi.spyOn(FeatureFlags, 'default').mockReturnValue({
         [FeatureFlags.TRUSTEE_MANAGEMENT]: true,
       } as Record<string, boolean>);
-    });
-
-    afterEach(() => {
-      // Reset field errors before each test
-      currentFieldErrors = {};
-
-      vi.restoreAllMocks();
     });
 
     test('loads districts successfully on mount', async () => {

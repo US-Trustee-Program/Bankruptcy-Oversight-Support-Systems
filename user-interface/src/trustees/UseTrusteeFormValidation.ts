@@ -1,21 +1,13 @@
 import { useState } from 'react';
 import { TrusteeFormData, TrusteeFormValidation } from './UseTrusteeFormValidation.types';
+import { isValidZipCode } from '@common/cams/parties';
+import { EMAIL_REGEX, PHONE_REGEX, EXTENSION_REGEX } from '@common/cams/regex';
 
 /**
  * Validates individual form fields with specific business rules
  */
-function validateField(field: string, value: string | string[] | undefined | null): string | null {
-  // Handle undefined/null values safely
-  if (value == null) {
-    return null; // Skip validation for optional fields that are null/undefined
-  }
 
-  // Handle array fields (like chapters)
-  if (Array.isArray(value)) {
-    // For now, we don't validate array fields in this function
-    return null;
-  }
-
+function validateField(field: string, value: string): string | null {
   // Convert to string and trim
   const stringValue = String(value);
   const trimmedValue = stringValue.trim();
@@ -37,9 +29,35 @@ function validateField(field: string, value: string | string[] | undefined | nul
       if (!trimmedValue) {
         return 'ZIP code is required';
       }
-      // ZIP code must be exactly 5 digits
-      if (!/^(\d{5}|\d{5}-\d{4})$/.test(trimmedValue)) {
-        return 'ZIP code must be exactly 5 digits';
+      if (!isValidZipCode(trimmedValue)) {
+        return 'ZIP code must be 5 digits or 9 digits with a hyphen';
+      }
+      return null;
+
+    case 'email':
+      if (!trimmedValue) {
+        return 'Email is required';
+      }
+      if (!EMAIL_REGEX.test(trimmedValue)) {
+        return 'Email must be a valid email address';
+      }
+      return null;
+
+    case 'phone':
+      if (!trimmedValue) {
+        return null; // Phone is optional
+      }
+      if (!PHONE_REGEX.test(trimmedValue)) {
+        return 'Please enter a valid phone number';
+      }
+      return null;
+
+    case 'extension':
+      if (!trimmedValue) {
+        return null; // Extension is optional
+      }
+      if (!EXTENSION_REGEX.test(trimmedValue)) {
+        return 'Extension must be 1 to 6 digits';
       }
       return null;
 

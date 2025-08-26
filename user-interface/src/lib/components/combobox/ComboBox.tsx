@@ -14,15 +14,15 @@ import Button, { UswdsButtonStyle } from '../uswds/Button';
 import useOutsideClick from '@/lib/hooks/UseOutsideClick';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 
-export type ComboOption = {
-  value: string;
+export type ComboOption<T = string> = {
+  value: T;
   label: string;
   selectedLabel?: string;
   divider?: boolean;
   isAriaDefault?: boolean;
 };
 
-export type ComboOptionList = ComboOption | Array<ComboOption>;
+export type ComboOptionList<T = string> = ComboOption<T> | Array<ComboOption<T>>;
 
 type InputProps = JSX.IntrinsicElements['input'] &
   JSX.IntrinsicElements['select'] &

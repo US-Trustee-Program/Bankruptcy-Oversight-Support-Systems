@@ -108,8 +108,8 @@ export function createDefaultTrusteeForCreation(name: string): Partial<Trustee> 
 
 // Address validation functions
 export function isValidZipCode(zipCode: string): boolean {
-  // US ZIP code should be exactly 5 digits
-  return /^\d{5}$/.test(zipCode);
+  // US ZIP code should be exactly 5 digits or 9 digits with a dash
+  return /^(\d{5}|\d{5}-\d{4})$/.test(zipCode.trim());
 }
 
 export function validateTrusteeAddress(address: Partial<Address>): string[] {

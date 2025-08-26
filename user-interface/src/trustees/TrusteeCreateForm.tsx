@@ -1,11 +1,11 @@
 import './TrusteeCreateForm.scss';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Input from '@/lib/components/uswds/Input';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 import { useApi2 } from '@/lib/hooks/UseApi2';
-import { TrusteeInput } from '@common/cams/parties';
+import { ChapterType, TrusteeInput } from '@common/cams/parties';
 import { useTrusteeFormValidation } from '@/trustees/UseTrusteeFormValidation';
 import type { TrusteeFormData } from '@/trustees/UseTrusteeFormValidation.types';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
@@ -14,9 +14,11 @@ import { CamsRole } from '@common/cams/roles';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
 import UsStatesComboBox from '@/lib/components/combobox/UsStatesComboBox';
+import useDebounce from '@/lib/hooks/UseDebounce';
+import { Stop } from '@/lib/components/Stop';
 
 // Chapter type options - Complete list with Panel/Non-Panel distinctions
-const CHAPTER_OPTIONS: ComboOption[] = [
+const CHAPTER_OPTIONS: ComboOption<ChapterType>[] = [
   { value: '7-panel', label: '7 - Panel' },
   { value: '7-non-panel', label: '7 - Non-Panel' },
   { value: '11', label: '11' },
@@ -32,6 +34,7 @@ export default function TrusteeCreateForm() {
   const session = LocalStorage.getSession();
   const { fieldErrors, validateFieldAndUpdate, clearErrors, isFormValidAndComplete } =
     useTrusteeFormValidation();
+  const debounce = useDebounce();
 
   const [name, setName] = useState('');
   const [address1, setAddress1] = useState('');
@@ -43,7 +46,7 @@ export default function TrusteeCreateForm() {
   const [extension, setExtension] = useState('');
   const [email, setEmail] = useState('');
   const [districts, setDistricts] = useState<string[]>([]);
-  const [chapters, setChapters] = useState<string[]>([]);
+  const [chapters, setChapters] = useState<ChapterType[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -97,9 +100,12 @@ export default function TrusteeCreateForm() {
 
   if (!canManage) {
     return (
-      <div data-testid="trustee-create-unauthorized">
-        You do not have permission to manage trustees.
-      </div>
+      <Stop
+        id="forbidden-alert"
+        title="Forbidden"
+        message="You do not have permission to manage Trustees"
+        asError
+      />
     );
   }
 
@@ -119,9 +125,15 @@ export default function TrusteeCreateForm() {
     };
   }
 
-  function handleFieldChange(field: string, value: string) {
-    // Real-time validation
-    validateFieldAndUpdate(field, value);
+  function handleFieldChange(
+    event: React.ChangeEvent<HTMLInputElement>,
+    setter: React.Dispatch<React.SetStateAction<string>>,
+  ) {
+    debounce(() => {
+      const { value, name } = event.target;
+      validateFieldAndUpdate(name, value);
+      setter(value);
+    }, 300);
   }
 
   async function submit() {
@@ -133,7 +145,6 @@ export default function TrusteeCreateForm() {
 
     setIsSubmitting(true);
     try {
-      // TODO is there a way we can avoid casting here?
       const payload: TrusteeInput = {
         name: formData.name,
         address: {
@@ -149,7 +160,7 @@ export default function TrusteeCreateForm() {
         ...(formData.districts &&
           formData.districts.length > 0 && { districts: formData.districts }),
         ...(formData.chapters && formData.chapters.length > 0 && { chapters: formData.chapters }),
-      } as TrusteeInput;
+      };
 
       const response = await api.postTrustee(payload);
       const createdId = (response as { data?: { id?: string } })?.data?.id;
@@ -185,63 +196,66 @@ export default function TrusteeCreateForm() {
               <h1 className="text-no-wrap display-inline-block margin-right-1">
                 Add Trustee Profile
               </h1>
-              <span>
-                A red asterisk (<span className="text-secondary-dark">*</span>) indicates a required
-                field.
-              </span>
+              {districtLoadError && (
+                <Stop id="trustee-stop" title="Error" message={districtLoadError} asError />
+              )}
             </div>
           </div>
         </div>
       </div>
       <form aria-label="Create Trustee" data-testid="trustee-create-form">
         <div className="grid-row grid-gap-lg">
+          <div className="grid-col-12">
+            <div className="grid-row grid-gap-lg">
+              <div className="grid-col-12">
+                <span>
+                  A red asterisk (<span className="text-secondary-dark">*</span>) indicates a
+                  required field.
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="grid-row grid-gap-lg">
           <div className="grid-col-6">
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-8">
                 <Input
                   id="trustee-name"
+                  name="name"
                   label="Trustee Name"
                   value={name}
-                  onChange={(e) => {
-                    setName(e.target.value);
-                    handleFieldChange('name', e.target.value);
-                  }}
-                  errorMessage={fieldErrors.name}
+                  onChange={(e) => handleFieldChange(e, setName)}
+                  errorMessage={fieldErrors['name']}
                   autoComplete="off"
                   required
                 />
                 <Input
                   id="trustee-address1"
+                  name="address1"
                   label="Address Line 1"
                   value={address1}
-                  onChange={(e) => {
-                    setAddress1(e.target.value);
-                    handleFieldChange('address1', e.target.value);
-                  }}
-                  errorMessage={fieldErrors.address1}
+                  onChange={(e) => handleFieldChange(e, setAddress1)}
+                  errorMessage={fieldErrors['address1']}
                   autoComplete="off"
                   required
                 />
                 <Input
                   id="trustee-address2"
+                  name="address2"
                   label="Address Line 2"
                   value={address2}
-                  onChange={(e) => {
-                    setAddress2(e.target.value);
-                    handleFieldChange('address2', e.target.value);
-                  }}
-                  errorMessage={fieldErrors.address2}
+                  onChange={(e) => handleFieldChange(e, setAddress2)}
+                  errorMessage={fieldErrors['address2']}
                   autoComplete="off"
                 />
                 <Input
                   id="trustee-city"
+                  name="city"
                   label="City"
                   value={city}
-                  onChange={(e) => {
-                    setCity(e.target.value);
-                    handleFieldChange('city', e.target.value);
-                  }}
-                  errorMessage={fieldErrors.city}
+                  onChange={(e) => handleFieldChange(e, setCity)}
+                  errorMessage={fieldErrors['city']}
                   autoComplete="off"
                   required
                 />
@@ -251,11 +265,14 @@ export default function TrusteeCreateForm() {
               <div className="grid-col-8">
                 <UsStatesComboBox
                   id="trustee-state"
+                  name="state"
                   label="State"
                   onUpdateSelection={(selectedOptions) => {
-                    const selectedValue = selectedOptions[0] ? selectedOptions[0].value : '';
-                    setState(selectedValue);
-                    handleFieldChange('state', selectedValue);
+                    debounce(() => {
+                      const selectedValue = selectedOptions[0] ? selectedOptions[0].value : '';
+                      validateFieldAndUpdate('state', selectedValue);
+                      setState(selectedValue);
+                    }, 300);
                   }}
                   autoComplete="off"
                   required
@@ -266,13 +283,17 @@ export default function TrusteeCreateForm() {
               <div className="grid-col-4">
                 <Input
                   id="trustee-zip"
+                  name="zip"
                   label="ZIP Code"
                   value={zipCode}
                   onChange={(e) => {
-                    setZipCode(e.target.value);
-                    handleFieldChange('zipCode', e.target.value);
+                    debounce(() => {
+                      const { value } = e.target;
+                      validateFieldAndUpdate('zipCode', value);
+                      setZipCode(value);
+                    }, 300);
                   }}
-                  errorMessage={fieldErrors.zipCode}
+                  errorMessage={fieldErrors['zipCode']}
                   autoComplete="off"
                   required
                   ariaDescription="Example: 12345"
@@ -285,13 +306,11 @@ export default function TrusteeCreateForm() {
               <div className="grid-col-4">
                 <Input
                   id="trustee-phone"
+                  name="phone"
                   label="Phone Number"
                   value={phone}
-                  onChange={(e) => {
-                    setPhone(e.target.value);
-                    handleFieldChange('phone', e.target.value);
-                  }}
-                  errorMessage={fieldErrors.phone}
+                  onChange={(e) => handleFieldChange(e, setPhone)}
+                  errorMessage={fieldErrors['phone']}
                   autoComplete="off"
                   type="tel"
                   ariaDescription="Example: (123)456-7890"
@@ -300,13 +319,11 @@ export default function TrusteeCreateForm() {
               <div className="grid-col-4">
                 <Input
                   id="trustee-extension"
+                  name="extension"
                   label="Extension"
                   value={extension}
-                  onChange={(e) => {
-                    setExtension(e.target.value);
-                    handleFieldChange('extension', e.target.value);
-                  }}
-                  errorMessage={fieldErrors.extension}
+                  onChange={(e) => handleFieldChange(e, setExtension)}
+                  errorMessage={fieldErrors['extension']}
                   autoComplete="off"
                   ariaDescription="Up to 6 digits"
                 />
@@ -317,25 +334,26 @@ export default function TrusteeCreateForm() {
               <div className="grid-col-8">
                 <Input
                   id="trustee-email"
+                  name="email"
                   label="Email Address"
                   value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    handleFieldChange('email', e.target.value);
-                  }}
-                  errorMessage={fieldErrors.email}
+                  onChange={(e) => handleFieldChange(e, setEmail)}
+                  errorMessage={fieldErrors['email']}
                   type="email"
                   autoComplete="off"
                 />
 
                 <ComboBox
-                  id="trustee-district"
+                  id="trustee-districts"
+                  name="districts"
                   label="District"
                   options={districtOptions}
                   onUpdateSelection={(selectedOptions) => {
-                    const selectedValues = selectedOptions.map((option) => option.value);
-                    setDistricts(selectedValues);
-                    handleFieldChange('districts', selectedValues.join(','));
+                    debounce(() => {
+                      const selectedValues = selectedOptions.map((option) => option.value);
+                      validateFieldAndUpdate('districts', selectedValues.join(','));
+                      setDistricts(selectedValues);
+                    }, 300);
                   }}
                   multiSelect={true}
                   singularLabel="district"
@@ -346,12 +364,17 @@ export default function TrusteeCreateForm() {
 
                 <ComboBox
                   id="trustee-chapters"
+                  name="chapters"
                   label="Chapter Types"
                   options={CHAPTER_OPTIONS}
                   onUpdateSelection={(selectedOptions) => {
-                    const selectedValues = selectedOptions.map((option) => option.value);
-                    setChapters(selectedValues);
-                    handleFieldChange('chapters', selectedValues.join(','));
+                    debounce(() => {
+                      const selectedValues = selectedOptions.map(
+                        (option) => option.value as ChapterType,
+                      );
+                      validateFieldAndUpdate('chapters', selectedValues.join(','));
+                      setChapters(selectedValues);
+                    }, 300);
                   }}
                   multiSelect={true}
                   singularLabel="chapter"
@@ -366,6 +389,7 @@ export default function TrusteeCreateForm() {
         {errorMessage && <div role="alert">{errorMessage}</div>}
         <div className="usa-button-group">
           <Button
+            id="submit-button"
             disabled={isSubmitting || !isFormValidAndComplete(getFormData())}
             type="submit"
             onClick={handleSubmit}

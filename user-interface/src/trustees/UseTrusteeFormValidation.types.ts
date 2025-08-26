@@ -1,3 +1,5 @@
+import { ChapterType } from '@common/cams/parties';
+
 export interface TrusteeFormData {
   name: string;
   address1: string;
@@ -9,7 +11,7 @@ export interface TrusteeFormData {
   extension?: string;
   email?: string;
   districts?: string[];
-  chapters?: string[];
+  chapters?: ChapterType[];
 }
 
 export interface ValidationError {
