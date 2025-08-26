@@ -129,10 +129,13 @@ export default function TrusteeCreateForm() {
     event: React.ChangeEvent<HTMLInputElement>,
     setter: React.Dispatch<React.SetStateAction<string>>,
   ) {
+    const { value, name } = event.target;
+    // Update state immediately for responsive UI
+    setter(value);
+
+    // Debounce only the validation to avoid excessive API calls
     debounce(() => {
-      const { value, name } = event.target;
       validateFieldAndUpdate(name, value);
-      setter(value);
     }, 300);
   }
 
@@ -268,10 +271,13 @@ export default function TrusteeCreateForm() {
                   name="state"
                   label="State"
                   onUpdateSelection={(selectedOptions) => {
+                    const selectedValue = selectedOptions[0] ? selectedOptions[0].value : '';
+                    // Update state immediately for responsive UI
+                    setState(selectedValue);
+
+                    // Debounce only the validation
                     debounce(() => {
-                      const selectedValue = selectedOptions[0] ? selectedOptions[0].value : '';
                       validateFieldAndUpdate('state', selectedValue);
-                      setState(selectedValue);
                     }, 300);
                   }}
                   autoComplete="off"
@@ -287,10 +293,13 @@ export default function TrusteeCreateForm() {
                   label="ZIP Code"
                   value={zipCode}
                   onChange={(e) => {
+                    const { value } = e.target;
+                    // Update state immediately for responsive UI
+                    setZipCode(value);
+
+                    // Debounce only the validation
                     debounce(() => {
-                      const { value } = e.target;
                       validateFieldAndUpdate('zipCode', value);
-                      setZipCode(value);
                     }, 300);
                   }}
                   errorMessage={fieldErrors['zipCode']}
