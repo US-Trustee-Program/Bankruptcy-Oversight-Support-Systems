@@ -18,33 +18,33 @@ describe('useTrusteeFormValidation', () => {
     expect(validationResult).toBe(false);
   });
 
-  test('validates ZIP code format', () => {
+  const invalidZipCodes = ['1234', '123456', '123456789', '1234a', 'abcde', '12.34', ''];
+  test.each(invalidZipCodes)('validates ZIP code format for %s', (zipCode) => {
     const { result } = renderHook(() => useTrusteeFormValidation());
 
-    // Test invalid ZIP codes
-    const invalidZipCodes = ['1234', '123456', '1234a', 'abcde', '12.34', ''];
-
-    invalidZipCodes.forEach((zipCode) => {
-      const formData = {
-        name: 'Jane Doe',
-        address1: '123 Main St',
-        city: 'Springfield',
-        state: 'IL',
-        zipCode,
-      };
-
-      const validationResult = result.current.isFormValidAndComplete(formData);
-
-      expect(validationResult).toBe(false);
-    });
-
-    // Test valid ZIP code
     const formData = {
       name: 'Jane Doe',
       address1: '123 Main St',
       city: 'Springfield',
       state: 'IL',
-      zipCode: '12345',
+      zipCode,
+    };
+
+    const validationResult = result.current.isFormValidAndComplete(formData);
+
+    expect(validationResult).toBe(false);
+  });
+
+  const validZipCodes = ['12345', '12345-6789'];
+  test.each(validZipCodes)('validates ZIP code format for %s', (zipCode) => {
+    const { result } = renderHook(() => useTrusteeFormValidation());
+
+    const formData = {
+      name: 'Jane Doe',
+      address1: '123 Main St',
+      city: 'Springfield',
+      state: 'IL',
+      zipCode,
     };
 
     const validationResult = result.current.isFormValidAndComplete(formData);
