@@ -116,7 +116,8 @@ describe('App Router Tests', () => {
       // Should show unauthorized message from TrusteeCreateForm component
       await waitFor(() => {
         expect(
-          document.querySelector('[data-testid="trustee-create-unauthorized"]'),
+          screen.getByTestId('alert-forbidden-alert'),
+          // document.querySelector('[data-testid="trustee-create-unauthorized"]'),
         ).toBeInTheDocument();
       });
     });

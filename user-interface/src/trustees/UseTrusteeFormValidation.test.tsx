@@ -51,20 +51,68 @@ describe('useTrusteeFormValidation', () => {
     expect(validationResult).toBe(true);
   });
 
-  test('validates individual fields', () => {
+  const fieldTests = [
+    { field: 'name', value: 'Fred', expectedValue: null },
+    { field: 'address1', value: '123 Main', expectedValue: null },
+    { field: 'city', value: 'Center City', expectedValue: null },
+    { field: 'state', value: 'PA', expectedValue: null },
+    { field: 'zipCode', value: '10110', expectedValue: null },
+    { field: 'name', value: '', expectedValue: 'Trustee name is required' },
+    { field: 'address1', value: '', expectedValue: 'Address line 1 is required' },
+    { field: 'city', value: '', expectedValue: 'City is required' },
+    { field: 'state', value: '', expectedValue: 'State is required' },
+    {
+      field: 'zipCode',
+      value: '12',
+      expectedValue: 'ZIP code must be 5 digits or 9 digits with a hyphen',
+    },
+    { field: 'zipCode', value: '', expectedValue: 'ZIP code is required' },
+    { field: 'email', value: 'test@example.com', expectedValue: null },
+    { field: 'email', value: 'user@domain.org', expectedValue: null },
+    { field: 'email', value: 'valid.email+tag@subdomain.example.com', expectedValue: null },
+    { field: 'email', value: '', expectedValue: 'Email is required' },
+    {
+      field: 'email',
+      value: 'invalid-email',
+      expectedValue: 'Email must be a valid email address',
+    },
+    {
+      field: 'email',
+      value: 'missing@domain',
+      expectedValue: 'Email must be a valid email address',
+    },
+    {
+      field: 'email',
+      value: 'user@@double.com',
+      expectedValue: 'Email must be a valid email address',
+    },
+    { field: 'phone', value: '(555) 123-4567', expectedValue: null },
+    { field: 'phone', value: '5551234567', expectedValue: null },
+    { field: 'phone', value: '555-123-4567', expectedValue: null },
+    { field: 'phone', value: '', expectedValue: null },
+    { field: 'phone', value: 'abc', expectedValue: 'Please enter a valid phone number' },
+    { field: 'phone', value: '123', expectedValue: 'Please enter a valid phone number' },
+    { field: 'extension', value: '123', expectedValue: null },
+    { field: 'extension', value: '1', expectedValue: null },
+    { field: 'extension', value: '123456', expectedValue: null },
+    { field: 'extension', value: '', expectedValue: null },
+    { field: 'extension', value: '1234567', expectedValue: 'Extension must be 1 to 6 digits' },
+    { field: 'extension', value: 'abc', expectedValue: 'Extension must be 1 to 6 digits' },
+    { field: 'extension', value: '12a', expectedValue: 'Extension must be 1 to 6 digits' },
+    { field: 'foo', value: '', expectedValue: null },
+  ];
+  test.each(fieldTests)('validates individual field $field=$value to be $expectedValue', (args) => {
     const { result } = renderHook(() => useTrusteeFormValidation());
 
     act(() => {
-      result.current.validateFieldAndUpdate('name', '');
+      result.current.validateFieldAndUpdate(args.field, args.value);
     });
 
-    expect(result.current.fieldErrors.name).toBe('Trustee name is required');
-
-    act(() => {
-      result.current.validateFieldAndUpdate('name', 'Jane Doe');
-    });
-
-    expect(result.current.fieldErrors.name).toBeUndefined();
+    if (args.expectedValue) {
+      expect(result.current.fieldErrors[args.field]).toEqual(args.expectedValue);
+    } else {
+      expect(result.current.fieldErrors[args.field]).toBeUndefined();
+    }
   });
 
   test('clears errors', () => {
@@ -77,7 +125,9 @@ describe('useTrusteeFormValidation', () => {
     });
 
     expect(result.current.fieldErrors.name).toBe('Trustee name is required');
-    expect(result.current.fieldErrors.zipCode).toBe('ZIP code must be exactly 5 digits');
+    expect(result.current.fieldErrors.zipCode).toBe(
+      'ZIP code must be 5 digits or 9 digits with a hyphen',
+    );
 
     // Clear all errors
     act(() => {
@@ -98,7 +148,9 @@ describe('useTrusteeFormValidation', () => {
     });
 
     expect(result.current.fieldErrors.name).toBe('Trustee name is required');
-    expect(result.current.fieldErrors.zipCode).toBe('ZIP code must be exactly 5 digits');
+    expect(result.current.fieldErrors.zipCode).toBe(
+      'ZIP code must be 5 digits or 9 digits with a hyphen',
+    );
 
     // Clear only the name field error
     act(() => {
@@ -106,7 +158,9 @@ describe('useTrusteeFormValidation', () => {
     });
 
     expect(result.current.fieldErrors.name).toBeUndefined();
-    expect(result.current.fieldErrors.zipCode).toBe('ZIP code must be exactly 5 digits');
+    expect(result.current.fieldErrors.zipCode).toBe(
+      'ZIP code must be 5 digits or 9 digits with a hyphen',
+    );
   });
 
   test('validates complete valid form', () => {

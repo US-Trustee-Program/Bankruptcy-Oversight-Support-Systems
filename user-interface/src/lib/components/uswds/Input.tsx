@@ -85,64 +85,62 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
   useImperativeHandle(ref, () => ({ clearValue, resetValue, setValue, getValue, disable, focus }));
 
   return (
-    <>
-      <div className="usa-form-group">
-        <label
-          className="usa-label"
-          id={props.id + '-label'}
-          htmlFor={props.id}
-          aria-label={required ? `${props.label} is required` : props.label}
-        >
-          {props.label}
-        </label>
-        {ariaDescription && (
-          <div className="usa-hint" id={ariaDescribedBy()}>
-            {ariaDescription}
+    <div className="usa-form-group">
+      <label
+        className="usa-label"
+        id={props.id + '-label'}
+        htmlFor={props.id}
+        aria-label={required ? `${props.label} is required` : props.label}
+      >
+        {props.label}
+      </label>
+      {ariaDescription && (
+        <div className="usa-hint" id={ariaDescribedBy()}>
+          {ariaDescription}
+        </div>
+      )}
+      <div
+        className={`usa-input-group ${errorMessage && errorMessage.length > 0 ? 'usa-input-group--error' : ''}`}
+      >
+        <input
+          {...otherProps}
+          required={required}
+          className={`usa-input usa-tooltip ${props.className ?? ''}`}
+          aria-invalid={errorMessage ? 'true' : undefined}
+          aria-errormessage={errorMessage ? `${props.id}-input__error-message` : undefined}
+          data-position={props.position ?? 'right'}
+          onChange={handleOnChange}
+          onFocus={handleFocus}
+          data-testid={props.id}
+          disabled={inputDisabled}
+          value={inputValue}
+          aria-describedby={ariaDescription ? ariaDescribedBy() : undefined}
+          ref={inputRef}
+        />
+        {includeClearButton && !inputDisabled && inputValue.length > 0 && (
+          <div className="usa-input-suffix">
+            <Button
+              id={`clear-${props.id}`}
+              uswdsStyle={UswdsButtonStyle.Unstyled}
+              onClick={clearValue}
+              aria-label="clear text input."
+            >
+              <Icon name="close"></Icon>
+            </Button>
           </div>
         )}
-        <div
-          className={`usa-input-group ${errorMessage && errorMessage.length > 0 ? 'usa-input-group--error' : ''}`}
-        >
-          <input
-            {...otherProps}
-            required={required}
-            className={`usa-input usa-tooltip ${props.className ?? ''}`}
-            aria-invalid={errorMessage ? 'true' : undefined}
-            aria-errormessage={errorMessage ? `${props.id}-input__error-message` : undefined}
-            data-position={props.position ?? 'right'}
-            onChange={handleOnChange}
-            onFocus={handleFocus}
-            data-testid={props.id}
-            disabled={inputDisabled}
-            value={inputValue}
-            aria-describedby={ariaDescription ? ariaDescribedBy() : undefined}
-            ref={inputRef}
-          />
-          {includeClearButton && !inputDisabled && inputValue.length > 0 && (
-            <div className="usa-input-suffix">
-              <Button
-                id={`clear-${props.id}`}
-                uswdsStyle={UswdsButtonStyle.Unstyled}
-                onClick={clearValue}
-                aria-label="clear text input."
-              >
-                <Icon name="close"></Icon>
-              </Button>
-            </div>
-          )}
-          {!includeClearButton && props.icon && (
-            <div className="usa-input-prefix" aria-hidden="true">
-              <Icon focusable={false} name={props.icon}></Icon>
-            </div>
-          )}
-        </div>
-        {errorMessage && errorMessage.length > 0 && (
-          <div id={`${props.id}-input__error-message`} className="usa-input__error-message">
-            {errorMessage}
+        {!includeClearButton && props.icon && (
+          <div className="usa-input-prefix" aria-hidden="true">
+            <Icon focusable={false} name={props.icon}></Icon>
           </div>
         )}
       </div>
-    </>
+      {errorMessage && errorMessage.length > 0 && (
+        <div id={`${props.id}-input__error-message`} className="usa-input__error-message">
+          {errorMessage}
+        </div>
+      )}
+    </div>
   );
 }
 
