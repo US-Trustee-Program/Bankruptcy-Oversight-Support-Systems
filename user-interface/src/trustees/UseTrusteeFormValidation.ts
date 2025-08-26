@@ -38,7 +38,7 @@ function validateField(field: string, value: string | string[] | undefined | nul
         return 'ZIP code is required';
       }
       // ZIP code must be exactly 5 digits
-      if (!/^\d{5}$/.test(trimmedValue)) {
+      if (!/^(\d{5}|\d{5}-\d{4})$/.test(trimmedValue)) {
         return 'ZIP code must be exactly 5 digits';
       }
       return null;
@@ -109,16 +109,17 @@ export function useTrusteeFormValidation(): TrusteeFormValidation {
       return false;
     }
 
+    let isValid = true;
     Object.entries(formData).forEach(([field, value]) => {
       if (value !== undefined) {
         const error = validateField(field, value);
         if (error) {
-          return false;
+          isValid = false;
         }
       }
     });
 
-    return true; // All required fields filled and no validation errors
+    return isValid; // All required fields filled and no validation errors
   };
 
   return {
