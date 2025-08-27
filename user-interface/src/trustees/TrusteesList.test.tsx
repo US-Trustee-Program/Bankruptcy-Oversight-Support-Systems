@@ -163,6 +163,9 @@ describe('TrusteesList Component', () => {
       cityStateZipCountry: 'Chicago, IL, 60601, US',
       updatedOn: '2025-08-14T08:00:00Z',
       updatedBy: { id: 'user-3', name: 'Admin User 3' },
+      status: 'active',
+      phone: '555-1234',
+      email: 'jane.doe@example.com',
     };
 
     const mockResponse: ResponseBody<Trustee[]> = {
