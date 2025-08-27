@@ -5,6 +5,8 @@ import sys
 import uuid
 from datetime import datetime
 
+let default_url = "https://www.zaproxy.org/"
+
 
 def strip_html(text):
     """Remove HTML tags from text and return clean text."""
@@ -22,7 +24,7 @@ def strip_html(text):
 def extract_first_url(reference_text):
     """Extract the first valid HTTP/HTTPS URL from reference text that may contain HTML."""
     if not reference_text:
-        return "https://www.zaproxy.org/"
+        return default_url
 
     # First strip HTML tags
     clean_text = strip_html(reference_text)
@@ -30,35 +32,17 @@ def extract_first_url(reference_text):
     # Split by whitespace to separate multiple URLs
     parts = clean_text.split()
 
-    # Find the first valid URL
-    for part in parts:
-        if part.startswith(('http://', 'https://')):
-            # Clean up any trailing punctuation
-            url = part.rstrip('.,;')
-            return url
-
-    # Fallback to default if no valid URL found
-    return "https://www.zaproxy.org/"
+    return next(
+        (
+            part.rstrip('.,;')
+            for part in parts
+            if part.startswith(('http://', 'https://'))
+        ),
+        default_url,
+    )
 
 
 def zap_json_to_sarif(zap_json):
-    sarif = {
-        "version": "2.1.0",
-        "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
-        "runs": [
-            {
-                "tool": {
-                    "driver": {
-                        "name": "OWASP ZAP",
-                        "informationUri": "https://www.zaproxy.org/",
-                        "rules": []
-                    }
-                },
-                "results": []
-            }
-        ]
-    }
-
     rule_ids = {}
     results = []
     rules = []
@@ -113,9 +97,23 @@ def zap_json_to_sarif(zap_json):
                 }
             results.append(result)
 
-    sarif["runs"][0]["tool"]["driver"]["rules"] = rules
-    sarif["runs"][0]["results"] = results
-    return sarif
+    # return the sarif document
+    return {
+        "version": "2.1.0",
+        "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+        "runs": [
+            {
+                "tool": {
+                    "driver": {
+                        "name": "OWASP ZAP",
+                        "informationUri": "https://www.zaproxy.org/",
+                        "rules": rules
+                    }
+                },
+                "results": results
+            }
+        ]
+    }
 
 def map_severity(severity):
     return {
