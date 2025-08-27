@@ -45,7 +45,7 @@ function validateField(field: string, value: string): string | null {
 
     case 'phone':
       if (!trimmedValue) {
-        return null; // Phone is optional
+        return 'Phone is required';
       }
       if (!PHONE_REGEX.test(trimmedValue)) {
         return 'Please enter a valid phone number';
@@ -60,6 +60,9 @@ function validateField(field: string, value: string): string | null {
         return 'Extension must be 1 to 6 digits';
       }
       return null;
+
+    case 'status':
+      return null; // Status is optional - API will set default if not supplied
 
     default:
       return null;
@@ -111,7 +114,7 @@ export function useTrusteeFormValidation(): TrusteeFormValidation {
    * Checks if all required fields are filled
    */
   const areRequiredFieldsFilled = (formData: TrusteeFormData): boolean => {
-    const requiredFields = ['name', 'address1', 'city', 'state', 'zipCode'];
+    const requiredFields = ['name', 'address1', 'city', 'state', 'zipCode', 'phone', 'email'];
     return requiredFields.every((field) => {
       const value = formData[field as keyof TrusteeFormData];
       return value && typeof value === 'string' && value.trim() !== '';

@@ -5,7 +5,7 @@ import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 import { useApi2 } from '@/lib/hooks/UseApi2';
-import { ChapterType, TrusteeInput } from '@common/cams/parties';
+import { ChapterType, TrusteeInput, TrusteeStatus } from '@common/cams/parties';
 import { useTrusteeFormValidation } from '@/trustees/UseTrusteeFormValidation';
 import type { TrusteeFormData } from '@/trustees/UseTrusteeFormValidation.types';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
@@ -16,6 +16,7 @@ import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
 import UsStatesComboBox from '@/lib/components/combobox/UsStatesComboBox';
 import useDebounce from '@/lib/hooks/UseDebounce';
 import { Stop } from '@/lib/components/Stop';
+import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 
 // Chapter type options - Complete list with Panel/Non-Panel distinctions
 const CHAPTER_OPTIONS: ComboOption<ChapterType>[] = [
@@ -27,6 +28,12 @@ const CHAPTER_OPTIONS: ComboOption<ChapterType>[] = [
   { value: '13', label: '13' },
 ];
 
+const STATUS_OPTIONS: ComboOption<TrusteeStatus>[] = [
+  { value: 'active', label: 'Active' },
+  { value: 'not active', label: 'Not Active' },
+  { value: 'suspended', label: 'Suspended' },
+];
+
 export default function TrusteeCreateForm() {
   const flags = useFeatureFlags();
   const api = useApi2();
@@ -35,6 +42,9 @@ export default function TrusteeCreateForm() {
   const { fieldErrors, validateFieldAndUpdate, clearErrors, isFormValidAndComplete } =
     useTrusteeFormValidation();
   const debounce = useDebounce();
+
+  const statusComboRef = React.useRef<ComboBoxRef | null>(null);
+  const statusInitialized = React.useRef(false);
 
   const [name, setName] = useState('');
   const [address1, setAddress1] = useState('');
@@ -47,6 +57,7 @@ export default function TrusteeCreateForm() {
   const [email, setEmail] = useState('');
   const [districts, setDistricts] = useState<string[]>([]);
   const [chapters, setChapters] = useState<ChapterType[]>([]);
+  const [status, setStatus] = useState<TrusteeStatus>('active');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -94,6 +105,15 @@ export default function TrusteeCreateForm() {
       });
   }, [api]);
 
+  const setStatusComboRef = (el: ComboBoxRef | null) => {
+    statusComboRef.current = el;
+
+    if (el && !statusInitialized.current) {
+      el.setSelections([STATUS_OPTIONS[0]]);
+      statusInitialized.current = true;
+    }
+  };
+
   if (!flags[TRUSTEE_MANAGEMENT]) {
     return <div data-testid="trustee-create-disabled">Trustee management is not enabled.</div>;
   }
@@ -117,11 +137,12 @@ export default function TrusteeCreateForm() {
       city: city.trim(),
       state: state.trim(),
       zipCode: zipCode.trim(),
-      phone: phone.trim() || undefined,
+      phone: phone.trim(),
       extension: extension.trim() || undefined,
-      email: email.trim() || undefined,
+      email: email.trim(),
       districts: districts.length > 0 ? districts : undefined,
       chapters: chapters.length > 0 ? chapters : undefined,
+      status: status,
     };
   }
 
@@ -158,11 +179,12 @@ export default function TrusteeCreateForm() {
           zipCode: formData.zipCode,
           countryCode: 'US',
         },
-        ...(formData.phone && { phone: formData.phone }),
-        ...(formData.email && { email: formData.email }),
+        phone: formData.phone,
+        email: formData.email,
         ...(formData.districts &&
           formData.districts.length > 0 && { districts: formData.districts }),
         ...(formData.chapters && formData.chapters.length > 0 && { chapters: formData.chapters }),
+        status: formData.status,
       };
 
       const response = await api.postTrustee(payload);
@@ -304,8 +326,8 @@ export default function TrusteeCreateForm() {
                   }}
                   errorMessage={fieldErrors['zipCode']}
                   autoComplete="off"
-                  required
                   ariaDescription="Example: 12345"
+                  required
                 />
               </div>
             </div>
@@ -316,13 +338,14 @@ export default function TrusteeCreateForm() {
                 <Input
                   id="trustee-phone"
                   name="phone"
-                  label="Phone Number"
+                  label="Phone"
                   value={phone}
                   onChange={(e) => handleFieldChange(e, setPhone)}
                   errorMessage={fieldErrors['phone']}
                   autoComplete="off"
                   type="tel"
                   ariaDescription="Example: (123)456-7890"
+                  required
                 />
               </div>
               <div className="grid-col-4">
@@ -344,12 +367,13 @@ export default function TrusteeCreateForm() {
                 <Input
                   id="trustee-email"
                   name="email"
-                  label="Email Address"
+                  label="Email"
                   value={email}
                   onChange={(e) => handleFieldChange(e, setEmail)}
                   errorMessage={fieldErrors['email']}
                   type="email"
                   autoComplete="off"
+                  required
                 />
 
                 <ComboBox
@@ -389,6 +413,25 @@ export default function TrusteeCreateForm() {
                   singularLabel="chapter"
                   pluralLabel="chapters"
                   autoComplete="off"
+                />
+
+                <ComboBox
+                  id="trustee-status"
+                  name="status"
+                  label="Status"
+                  options={STATUS_OPTIONS}
+                  onUpdateSelection={(selectedOptions) => {
+                    debounce(() => {
+                      const selectedValues = selectedOptions.map(
+                        (option) => option.value as TrusteeStatus,
+                      );
+                      validateFieldAndUpdate('status', selectedValues.join(','));
+                      setStatus(selectedValues[0]);
+                    }, 300);
+                  }}
+                  multiSelect={false}
+                  autoComplete="off"
+                  ref={setStatusComboRef}
                 />
               </div>
             </div>

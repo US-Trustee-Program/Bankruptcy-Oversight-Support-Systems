@@ -1,4 +1,4 @@
-import { ChapterType } from '@common/cams/parties';
+import { ChapterType, TrusteeStatus } from '@common/cams/parties';
 
 export interface TrusteeFormData {
   name: string;
@@ -7,11 +7,12 @@ export interface TrusteeFormData {
   city: string;
   state: string;
   zipCode: string;
-  phone?: string;
+  phone: string;
   extension?: string;
-  email?: string;
+  email: string;
   districts?: string[];
   chapters?: ChapterType[];
+  status: TrusteeStatus;
 }
 
 export interface ValidationError {
