@@ -778,6 +778,16 @@ function getManhattanTrialAttorneySession(): CamsSession {
   });
 }
 
+function getTrusteeAdminSession(): CamsSession {
+  return getCamsSession({
+    user: {
+      id: 'userId-Bob Jones',
+      name: 'Bob Jones',
+      roles: [CamsRole.TrusteeAdmin],
+    },
+  });
+}
+
 function getExpiration(): number {
   const NOW = nowInSeconds();
   const ONE_HOUR = 3600;
@@ -870,6 +880,7 @@ export const MockData = {
   getCamsSession,
   getManhattanAssignmentManagerSession,
   getManhattanTrialAttorneySession,
+  getTrusteeAdminSession,
   getJwt,
   someDateAfterThisDate,
   someDateBeforeThisDate,
