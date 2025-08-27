@@ -106,7 +106,6 @@ jobs:
 
       - name: Convert ZAP JSON to SARIF
         run: |
-#          chmod +x ${{ env.SCRIPT_RELATIVE_PATH }}
           python3 test/dast/zap_json_to_sarif.py ./report_json.json ./report.sarif
 
       - name: Upload SARIF file
