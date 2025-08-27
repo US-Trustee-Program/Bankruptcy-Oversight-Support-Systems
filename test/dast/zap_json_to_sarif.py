@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 
 default_url = "https://www.zaproxy.org/"
-placeholder_file = "test/dats/dast-scan-results.md"
+placeholder_file = "test/dast/dast-scan-results.md"
 
 def strip_html(text):
     """Remove HTML tags from text and return clean text."""
