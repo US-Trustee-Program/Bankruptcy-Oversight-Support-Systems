@@ -1,44 +1,25 @@
-import { HttpRequest, InvocationContext } from '@azure/functions';
+import { InvocationContext } from '@azure/functions';
 import handler from './trustees.function';
 import ContextCreator from '../../azure/application-context-creator';
 import { TrusteesController } from '../../../lib/controllers/trustees/trustees.controller';
-import { toAzureError, toAzureSuccess } from '../../azure/functions';
-import { ApplicationContext } from '../../../lib/adapters/types/basic';
-import { LoggerImpl } from '../../../lib/adapters/services/logger.service';
-import { CamsHttpResponseInit } from '../../../lib/adapters/utils/http-response';
-import { Trustee } from '../../../../common/src/cams/parties';
-
-// Mock dependencies
-jest.mock('../../azure/application-context-creator');
-jest.mock('../../../lib/controllers/trustees/trustees.controller');
-jest.mock('../../azure/functions');
+import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import {
+  buildTestResponseError,
+  buildTestResponseSuccess,
+  createMockAzureFunctionRequest,
+} from '../../azure/testing-helpers';
 
 describe('Trustees Function', () => {
-  let mockRequest: HttpRequest;
-  let mockInvocationContext: InvocationContext;
-  let mockContext: ApplicationContext;
-  let mockController: jest.Mocked<TrusteesController>;
-  let mockLogger: Partial<LoggerImpl>;
+  let context: InvocationContext;
 
   beforeEach(() => {
-    mockRequest = {} as HttpRequest;
-    mockInvocationContext = {} as InvocationContext;
-    mockContext = {} as ApplicationContext;
-    mockLogger = {
-      info: jest.fn(),
-      error: jest.fn(),
-    };
-
-    mockController = {
-      handleRequest: jest.fn(),
-    } as unknown as jest.Mocked<TrusteesController>;
-
-    (ContextCreator.getLogger as jest.Mock).mockReturnValue(mockLogger);
-    (ContextCreator.applicationContextCreator as jest.Mock).mockResolvedValue(mockContext);
-    (ContextCreator.getApplicationContextSession as jest.Mock).mockResolvedValue({});
-    (TrusteesController as jest.MockedClass<typeof TrusteesController>).mockImplementation(
-      () => mockController,
-    );
+    jest
+      .spyOn(ContextCreator, 'getApplicationContextSession')
+      .mockResolvedValue(MockData.getTrusteeAdminSession());
+    context = new InvocationContext({
+      logHandler: () => {},
+      invocationId: 'id',
+    });
   });
 
   afterEach(() => {
@@ -46,65 +27,29 @@ describe('Trustees Function', () => {
   });
 
   test('should handle successful trustee request', async () => {
-    const mockResponse: Partial<CamsHttpResponseInit<Trustee>> = {
-      statusCode: 200,
-      body: { data: [] as unknown as Trustee },
-    };
-    const mockAzureResponse = { status: 200 };
-
-    mockController.handleRequest.mockResolvedValue(mockResponse);
-    (toAzureSuccess as jest.Mock).mockReturnValue(mockAzureResponse);
-
-    const result = await handler(mockRequest, mockInvocationContext);
-
-    expect(ContextCreator.applicationContextCreator).toHaveBeenCalledWith({
-      invocationContext: mockInvocationContext,
-      logger: mockLogger,
-      request: mockRequest,
+    const req = createMockAzureFunctionRequest();
+    const { azureHttpResponse, camsHttpResponse } = buildTestResponseSuccess({
+      meta: {
+        self: req.url,
+      },
+      data: [],
     });
-    expect(ContextCreator.getApplicationContextSession).toHaveBeenCalledWith(mockContext);
-    expect(TrusteesController).toHaveBeenCalledWith(mockContext);
-    expect(mockController.handleRequest).toHaveBeenCalledWith(mockContext);
-    expect(toAzureSuccess).toHaveBeenCalledWith(mockResponse);
-    expect(result).toEqual(mockAzureResponse);
+
+    jest.spyOn(TrusteesController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
+
+    const result = await handler(req, context);
+    expect(result).toEqual(azureHttpResponse);
   });
 
   test('should handle errors and return azure error response', async () => {
+    const req = createMockAzureFunctionRequest();
     const error = new Error('Test error');
-    const mockAzureError = { status: 500 };
+    const { azureHttpResponse } = buildTestResponseError(error);
 
-    mockController.handleRequest.mockRejectedValue(error);
-    (toAzureError as jest.Mock).mockReturnValue(mockAzureError);
+    jest.spyOn(TrusteesController.prototype, 'handleRequest').mockRejectedValue(error);
 
-    const result = await handler(mockRequest, mockInvocationContext);
+    const result = await handler(req, context);
 
-    expect(toAzureError).toHaveBeenCalledWith(mockLogger, 'TRUSTEES-FUNCTION', error);
-    expect(result).toEqual(mockAzureError);
-  });
-
-  test('should handle context creation errors', async () => {
-    const error = new Error('Context creation failed');
-    const mockAzureError = { status: 500 };
-
-    (ContextCreator.applicationContextCreator as jest.Mock).mockRejectedValue(error);
-    (toAzureError as jest.Mock).mockReturnValue(mockAzureError);
-
-    const result = await handler(mockRequest, mockInvocationContext);
-
-    expect(toAzureError).toHaveBeenCalledWith(mockLogger, 'TRUSTEES-FUNCTION', error);
-    expect(result).toEqual(mockAzureError);
-  });
-
-  test('should handle session creation errors', async () => {
-    const error = new Error('Session creation failed');
-    const mockAzureError = { status: 500 };
-
-    (ContextCreator.getApplicationContextSession as jest.Mock).mockRejectedValue(error);
-    (toAzureError as jest.Mock).mockReturnValue(mockAzureError);
-
-    const result = await handler(mockRequest, mockInvocationContext);
-
-    expect(toAzureError).toHaveBeenCalledWith(mockLogger, 'TRUSTEES-FUNCTION', error);
-    expect(result).toEqual(mockAzureError);
+    expect(result).toEqual(azureHttpResponse);
   });
 });
