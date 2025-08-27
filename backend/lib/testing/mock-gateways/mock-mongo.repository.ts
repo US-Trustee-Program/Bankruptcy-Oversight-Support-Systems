@@ -199,4 +199,12 @@ export class MockMongoRepository
   count(_ignore: any): Promise<number> {
     throw new Error('Method not implemented.');
   }
+
+  createTrustee(_ignore: any): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
+  listTrustees(): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
 }

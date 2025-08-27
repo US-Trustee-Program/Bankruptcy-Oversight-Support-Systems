@@ -13,7 +13,9 @@ function getFinalDestination(
       .reduce<Record<string, string>>(
         (acc, item) => {
           const [key, val] = item.split('=');
-          if (key && val) acc[key] = val;
+          if (key && val) {
+            acc[key] = val;
+          }
           return acc;
         },
         {} as Record<string, string>,

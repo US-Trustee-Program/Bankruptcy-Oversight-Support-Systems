@@ -72,7 +72,7 @@ export default function CaseDetailHeader(props: Readonly<CaseDetailHeaderProps>)
   function renderHeader() {
     if (featureFlags[VIEW_TRUSTEE_ON_CASE]) {
       return (
-        <div className="case-detail-header" data-testid="case-detail-header">
+        <div className="record-detail-header" data-testid="case-detail-header">
           <div className="grid-row grid-gap-lg">
             <div className="grid-col-12">
               {props.isLoading && (
@@ -96,27 +96,29 @@ export default function CaseDetailHeader(props: Readonly<CaseDetailHeaderProps>)
                       title="Copy Case ID to clipboard"
                     />
                   </h1>
-                  <Tag
-                    uswdsStyle={UswdsTagStyle.Primary}
-                    title="Court Name and District"
-                    id="court-name-and-district"
-                  >
-                    {courtInformation}
-                  </Tag>
-                  {judgeInformation && (
-                    <Tag title="Judge" id="case-judge">
-                      <GavelIcon />
-                      {judgeInformation}
+                  <div className="tag-list">
+                    <Tag
+                      uswdsStyle={UswdsTagStyle.Primary}
+                      title="Court Name and District"
+                      id="court-name-and-district"
+                    >
+                      {courtInformation}
                     </Tag>
-                  )}
-                  <Tag
-                    // className="text-ink"
-                    uswdsStyle={UswdsTagStyle.Warm}
-                    title="Case Chapter"
-                    id="case-chapter"
-                  >
-                    {chapterInformation}
-                  </Tag>
+                    {judgeInformation && (
+                      <Tag title="Judge" id="case-judge">
+                        <GavelIcon />
+                        {judgeInformation}
+                      </Tag>
+                    )}
+                    <Tag
+                      // className="text-ink"
+                      uswdsStyle={UswdsTagStyle.Warm}
+                      title="Case Chapter"
+                      id="case-chapter"
+                    >
+                      {chapterInformation}
+                    </Tag>
+                  </div>
                 </div>
               )}
             </div>

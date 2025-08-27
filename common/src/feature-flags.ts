@@ -15,4 +15,5 @@ export const testFeatureFlags: FeatureFlagSet = {
   'privileged-identity-management': true,
   'format-case-notes': true,
   'view-trustee-on-case': true,
+  'trustee-management': true,
 };

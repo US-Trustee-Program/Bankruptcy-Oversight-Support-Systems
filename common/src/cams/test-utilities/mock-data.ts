@@ -508,8 +508,35 @@ function getDocketEntry(override: Partial<CaseDocketEntry> = {}): CaseDocketEntr
   };
 }
 
-function getTrustee(override: Partial<Trustee> = {}): Trustee {
+function getTrustee(
+  override: Partial<
+    Omit<Trustee, 'address1' | 'address2' | 'address3' | 'cityStateZipCountry'>
+  > = {},
+): Trustee {
   return {
+    id: faker.string.uuid(),
+    name: faker.person.fullName(),
+    phone: faker.phone.number(),
+    email: faker.internet.email(),
+    updatedOn: getDateBeforeToday().toISOString(),
+    updatedBy: getCamsUserReference(),
+    address: {
+      address1: faker.location.streetAddress(),
+      address2: faker.location.secondaryAddress(),
+      address3: '',
+      city: faker.location.city(),
+      state: faker.location.state({ abbreviated: true }),
+      zipCode: faker.location.zipCode(),
+      countryCode: 'US',
+    },
+    status: 'active',
+    ...override,
+  };
+}
+
+function getLegacyTrustee(override: Partial<Omit<Trustee, 'address'>> = {}): Trustee {
+  return {
+    id: faker.string.uuid(),
     name: faker.person.fullName(),
     address1: faker.location.streetAddress(),
     address2: faker.location.secondaryAddress(),
@@ -519,6 +546,9 @@ function getTrustee(override: Partial<Trustee> = {}): Trustee {
     })}, ${faker.location.zipCode()}, US`,
     phone: faker.phone.number(),
     email: faker.internet.email(),
+    updatedOn: getDateBeforeToday().toISOString(),
+    updatedBy: getCamsUserReference(),
+    status: 'active',
     ...override,
   };
 }
@@ -748,6 +778,16 @@ function getManhattanTrialAttorneySession(): CamsSession {
   });
 }
 
+function getTrusteeAdminSession(): CamsSession {
+  return getCamsSession({
+    user: {
+      id: 'userId-Bob Jones',
+      name: 'Bob Jones',
+      roles: [CamsRole.TrusteeAdmin],
+    },
+  });
+}
+
 function getExpiration(): number {
   const NOW = nowInSeconds();
   const ONE_HOUR = 3600;
@@ -840,10 +880,12 @@ export const MockData = {
   getCamsSession,
   getManhattanAssignmentManagerSession,
   getManhattanTrialAttorneySession,
+  getTrusteeAdminSession,
   getJwt,
   someDateAfterThisDate,
   someDateBeforeThisDate,
   getCaseSyncEvent,
+  getLegacyTrustee,
   getTrustee,
 };
 

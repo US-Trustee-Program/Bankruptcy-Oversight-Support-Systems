@@ -42,9 +42,9 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
 
   return (
     <>
-      <div className="grid-col-12 tablet:grid-col-10 desktop:grid-col-8 case-detail-container">
-        <div className="case-card-list">
-          <div className="date-information case-card">
+      <div className="grid-col-12 tablet:grid-col-10 desktop:grid-col-8 record-detail-container">
+        <div className="record-detail-card-list">
+          <div className="date-information record-detail-card">
             <h3>Dates</h3>
             <div className="date-list">
               <ul className="usa-list usa-list--unstyled">
@@ -80,7 +80,7 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
             </div>
           </div>
           {!featureFlags[VIEW_TRUSTEE_ON_CASE] && (
-            <div className="assigned-staff-information case-card">
+            <div className="assigned-staff-information record-detail-card">
               <h3>
                 Assigned Staff{' '}
                 {Actions.contains(caseDetail, Actions.ManageAssignments) &&
@@ -133,7 +133,7 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
             </div>
           )}
           {!featureFlags[VIEW_TRUSTEE_ON_CASE] && (
-            <div className="judge-information case-card">
+            <div className="judge-information record-detail-card">
               <h3>Judge</h3>
               {caseDetail.judgeName && (
                 <div className="case-detail-judge-name" data-testid="case-detail-judge-name">
@@ -148,8 +148,8 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
             </div>
           )}
         </div>
-        <div className="case-card-list">
-          <div className="debtor-information case-card">
+        <div className="record-detail-card-list">
+          <div className="debtor-information record-detail-card">
             <h3>Debtor</h3>
             <div data-testid="case-detail-debtor-name" aria-label="debtor name">
               {caseDetail.debtor.name}
@@ -209,7 +209,7 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
               )}
             </div>
           </div>
-          <div className="debtor-counsel-information case-card">
+          <div className="debtor-counsel-information record-detail-card">
             <h3>Debtor&apos;s Counsel</h3>
             {caseDetail.debtorAttorney && (
               <>
