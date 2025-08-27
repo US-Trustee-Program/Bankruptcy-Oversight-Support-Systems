@@ -102,7 +102,7 @@ jobs:
           rules_file_name: 'test/dast/config/dast-rules.tsv'
           fail_action: 'false'
           allow_issue_writing: 'false'
-          artifact_name: ''
+          artifact_name: 'zap-report'
 
       - name: Convert ZAP JSON to SARIF
         run: |
@@ -112,6 +112,32 @@ jobs:
         uses: github/codeql-action/upload-sarif@96f518a34f7a870018057716cc4d7a5c014bd61c # v3
         with:
           sarif_file: ./report.sarif
+
+      - name: Delete ZAP artifact
+        if: always()
+        run: |
+          # Get the artifact ID for the zap-report artifact
+          ARTIFACT_ID=$(curl -s -H "Authorization: token ${{ github.token }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts" | \
+            jq -r '.artifacts[] | select(.name == "zap-report") | .id')
+
+          # Delete the artifact if it exists
+          if [ ! -z "$ARTIFACT_ID" ] && [ "$ARTIFACT_ID" != "null" ]; then
+            curl -s -X DELETE \
+              -H "Authorization: token ${{ github.token }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/$ARTIFACT_ID"
+            echo "Deleted ZAP artifact with ID: $ARTIFACT_ID"
+          else
+            echo "No ZAP artifact found to delete"
+          fi
+
+      - name: Cleanup local ZAP files
+        if: always()
+        run: |
+          rm -f ./report_json.json
+          rm -f ./zap-report.zip
 
       - name: Disable GHA runner access
         if: always()
