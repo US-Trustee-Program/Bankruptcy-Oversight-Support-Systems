@@ -77,11 +77,6 @@ def zap_json_to_sarif(zap_json):
                 "message": {"text": name},
                 "locations": [
                     {
-                        "physicalLocation": {
-                            "artifactLocation": {
-                                "uri": uri
-                            }
-                        },
                         "logicalLocations": [
                             {
                                 "kind": "url",
