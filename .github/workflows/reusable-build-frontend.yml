@@ -88,6 +88,9 @@ jobs:
 
       - name: Generate Slot Configuration
         run: |
+          echo "Slot name: ${{ vars.SLOT_NAME }}"
+          echo "Staging hostname: ${{ inputs.camsStagingHostname }}"
+          appiString=$(az monitor app-insights component show --app appi-${{ inputs.webappName }} -g  ${{ steps.rgApp.outputs.out }} --query "connectionString" -o tsv || true)
           export CAMS_SERVER_HOSTNAME=${{ inputs.camsStagingHostname }}
           export CAMS_SERVER_PORT=${{ inputs.camsServerPort }}
           export CAMS_SERVER_PROTOCOL=${{ inputs.camsServerProtocol }}

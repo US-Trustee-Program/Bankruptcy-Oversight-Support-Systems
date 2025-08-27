@@ -34,6 +34,13 @@ on:
         required: true
         type: string
 jobs:
+  see-slot-name:
+    runs-on: ubuntu-latest
+    steps:
+      - name: See Slot Name
+        run: |
+          echo "Slot name: ${{ vars.SLOT_NAME }}"
+
   build-frontend-predeployment:
     name: Build Frontend Predeployment
     uses: ./.github/workflows/reusable-build-frontend.yml
