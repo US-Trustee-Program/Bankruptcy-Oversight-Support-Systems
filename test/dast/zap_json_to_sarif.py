@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 
 default_url = "https://www.zaproxy.org/"
-
+placeholder_file = "test/dats/dast-scan-results.md"
 
 def strip_html(text):
     """Remove HTML tags from text and return clean text."""
@@ -77,6 +77,15 @@ def zap_json_to_sarif(zap_json):
                 "message": {"text": name},
                 "locations": [
                     {
+                        "physicalLocation": {
+                            "artifactLocation": {
+                                "uri": placeholder_file
+                            },
+                            "region": {
+                                "startLine": 1,
+                                "startColumn": 1
+                            }
+                        },
                         "logicalLocations": [
                             {
                                 "kind": "url",
