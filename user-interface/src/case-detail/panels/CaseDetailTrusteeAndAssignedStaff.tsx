@@ -96,7 +96,7 @@ export default function CaseDetailTrusteeAndAssignedStaff(
             <div className="assigned-staff-information record-detail-card">
               <h3>Trustee</h3>
               <div className="trustee-name">{caseDetail.trustee.name}</div>
-              <div data-testid="case-detail-trustee-email" aria-label="trustee email">
+              <div data-testid="case-detail-trustee-email">
                 <a
                   href={`mailto:${caseDetail.trustee.email}?subject=${getCaseNumber(
                     caseDetail.caseId,
