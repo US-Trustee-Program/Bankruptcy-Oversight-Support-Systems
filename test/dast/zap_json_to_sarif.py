@@ -5,7 +5,7 @@ import sys
 import uuid
 from datetime import datetime
 
-let default_url = "https://www.zaproxy.org/"
+default_url = "https://www.zaproxy.org/"
 
 
 def strip_html(text):
