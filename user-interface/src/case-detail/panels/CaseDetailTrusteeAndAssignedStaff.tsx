@@ -96,18 +96,16 @@ export default function CaseDetailTrusteeAndAssignedStaff(
             <div className="assigned-staff-information record-detail-card">
               <h3>Trustee</h3>
               <div className="trustee-name">{caseDetail.trustee.name}</div>
-              {caseDetail.trustee.email && (
-                <div data-testid="case-detail-trustee-email" aria-label="trustee email">
-                  <a
-                    href={`mailto:${caseDetail.trustee.email}?subject=${getCaseNumber(
-                      caseDetail.caseId,
-                    )} - ${caseDetail.caseTitle}`}
-                  >
-                    {caseDetail.trustee.email}
-                    <Icon className="link-icon" name="mail_outline" />
-                  </a>
-                </div>
-              )}
+              <div data-testid="case-detail-trustee-email" aria-label="trustee email">
+                <a
+                  href={`mailto:${caseDetail.trustee.email}?subject=${getCaseNumber(
+                    caseDetail.caseId,
+                  )} - ${caseDetail.caseTitle}`}
+                >
+                  {caseDetail.trustee.email}
+                  <Icon className="link-icon" name="mail_outline" />
+                </a>
+              </div>
               <div className="trustee-phone-number">{caseDetail.trustee.phone}</div>
               <div>
                 <div className="trustee-address">{caseDetail.trustee.address1}</div>

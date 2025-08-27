@@ -225,17 +225,6 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
       expect(mailIcon).toBeInTheDocument();
     });
 
-    test('should not display email section when trustee has no email', () => {
-      const trusteeNoEmail = { ...TEST_TRUSTEE, email: undefined };
-      const caseDetailNoEmail = {
-        ...BASE_TEST_CASE_DETAIL,
-        trustee: trusteeNoEmail,
-      };
-      renderWithProps({ caseDetail: caseDetailNoEmail });
-      const emailElement = screen.queryByTestId('case-detail-trustee-email');
-      expect(emailElement).not.toBeInTheDocument();
-    });
-
     test('should display trustee phone number', () => {
       renderWithProps();
       const phoneElement = document.querySelector('.trustee-phone-number');
