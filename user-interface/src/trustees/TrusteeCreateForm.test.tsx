@@ -11,6 +11,73 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole } from '@common/cams/roles';
 import { BrowserRouter } from 'react-router-dom';
 
+// Test data constants
+const TEST_TRUSTEE_DATA = {
+  name: 'Jane Doe',
+  address1: '123 Main St',
+  address2: 'Suite 100',
+  city: 'Springfield',
+  state: 'IL',
+  stateLabel: 'IL - Illinois',
+  zipCode: '62704',
+  zipCodeAlternate: '12345',
+  phone: '555-123-4567',
+  email: 'jane.doe@example.com',
+  extension: '123',
+  invalidZip: '1234',
+} as const;
+
+// Alternative test personas for specific tests
+const TEST_PERSONAS = {
+  johnSmith: {
+    name: 'John Smith',
+    address1: '456 Oak St',
+    city: 'Springfield',
+    state: 'IL',
+    zipCode: '62705',
+    phone: '555-123-4567',
+    email: 'john.smith@example.com',
+  },
+  mariaRodriguez: {
+    name: 'Maria Rodriguez',
+    address1: '789 Federal Plaza',
+    city: 'Houston',
+    state: 'TX',
+    stateLabel: 'TX - Texas',
+    zipCode: '77002',
+    phone: '555-987-6543',
+    email: 'maria.rodriguez@example.com',
+  },
+} as const;
+
+// Helper function to fill common form fields
+async function fillBasicTrusteeForm(
+  overrides: Partial<{
+    name: string;
+    address1: string;
+    city: string;
+    stateLabel: string;
+    zipCode: string;
+    phone: string;
+    email: string;
+  }> = {},
+) {
+  const data = { ...TEST_TRUSTEE_DATA, ...overrides };
+
+  await userEvent.type(screen.getByTestId('trustee-name'), data.name);
+  await userEvent.type(screen.getByTestId('trustee-address1'), data.address1);
+  await userEvent.type(screen.getByTestId('trustee-city'), data.city);
+
+  // Select state from ComboBox
+  const stateCombobox = screen.getByRole('combobox', { name: /state/i });
+  await userEvent.click(stateCombobox);
+  await userEvent.click(screen.getByText(data.stateLabel));
+
+  await userEvent.type(screen.getByTestId('trustee-zip'), data.zipCode);
+  await userEvent.type(screen.getByTestId('trustee-phone'), data.phone);
+  await userEvent.type(screen.getByTestId('trustee-email'), data.email);
+}
+
 describe('TrusteeCreateForm', () => {
   const renderWithRouter = () => {
     return render(
@@ -132,14 +199,8 @@ describe('TrusteeCreateForm', () => {
 
     renderWithRouter();
 
-    await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
-    await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
-    await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
-    // Select state from ComboBox
-    const stateCombobox = screen.getByRole('combobox', { name: /state/i });
-    await userEvent.click(stateCombobox);
-    await userEvent.click(screen.getByText('IL - Illinois'));
-    await userEvent.type(screen.getByTestId('trustee-zip'), '62704');
+    await fillBasicTrusteeForm();
+    // Select status from ComboBox - status defaults to 'active' so it should already be selected
 
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
@@ -192,14 +253,7 @@ describe('TrusteeCreateForm', () => {
       renderWithRouter();
 
       // Fill form with valid data
-      await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
-      await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
-      await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
-      // Select state from ComboBox
-      const stateCombobox = screen.getByRole('combobox', { name: /state/i });
-      await userEvent.click(stateCombobox);
-      await userEvent.click(screen.getByText('IL - Illinois'));
-      await userEvent.type(screen.getByTestId('trustee-zip'), '12345');
+      await fillBasicTrusteeForm({ zipCode: TEST_TRUSTEE_DATA.zipCodeAlternate });
 
       await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
@@ -220,14 +274,7 @@ describe('TrusteeCreateForm', () => {
       renderWithRouter();
 
       // Fill form with valid data
-      await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
-      await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
-      await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
-      // Select state from ComboBox
-      const stateCombobox = screen.getByRole('combobox', { name: /state/i });
-      await userEvent.click(stateCombobox);
-      await userEvent.click(screen.getByText('IL - Illinois'));
-      await userEvent.type(screen.getByTestId('trustee-zip'), '12345');
+      await fillBasicTrusteeForm({ zipCode: '12345' });
 
       await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
@@ -250,14 +297,7 @@ describe('TrusteeCreateForm', () => {
       renderWithRouter();
 
       // Fill form with valid data
-      await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
-      await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
-      await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
-      // Select state from ComboBox
-      const stateCombobox = screen.getByRole('combobox', { name: /state/i });
-      await userEvent.click(stateCombobox);
-      await userEvent.click(screen.getByText('IL - Illinois'));
-      await userEvent.type(screen.getByTestId('trustee-zip'), '12345');
+      await fillBasicTrusteeForm({ zipCode: '12345' });
 
       await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
@@ -312,18 +352,11 @@ describe('TrusteeCreateForm', () => {
       expect(document.getElementById('trustee-chapters')).toBeInTheDocument();
     });
 
-    test('allows form submission without optional fields', async () => {
+    test('allows form submission with required fields', async () => {
       renderWithRouter();
 
-      // Fill only required fields
-      await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
-      await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
-      await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
-      // Select state from ComboBox
-      const stateCombobox = screen.getByRole('combobox', { name: /state/i });
-      await userEvent.click(stateCombobox);
-      await userEvent.click(screen.getByText('IL - Illinois'));
-      await userEvent.type(screen.getByTestId('trustee-zip'), '62704');
+      // Fill all required fields (including newly required phone and email)
+      await fillBasicTrusteeForm();
 
       await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
@@ -413,37 +446,40 @@ describe('TrusteeCreateForm', () => {
 
       renderWithRouter();
 
-      // Fill required fields
-      await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
-      await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
-      await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
+      // Fill all required fields
+      await userEvent.type(screen.getByTestId('trustee-name'), TEST_TRUSTEE_DATA.name);
+      await userEvent.type(screen.getByTestId('trustee-address1'), TEST_TRUSTEE_DATA.address1);
+      await userEvent.type(screen.getByTestId('trustee-city'), TEST_TRUSTEE_DATA.city);
       // Select state from ComboBox
       const stateCombobox = screen.getByRole('combobox', { name: /state/i });
       await userEvent.click(stateCombobox);
-      await userEvent.click(screen.getByText('IL - Illinois'));
-      await userEvent.type(screen.getByTestId('trustee-zip'), '62704');
+      await userEvent.click(screen.getByText(TEST_TRUSTEE_DATA.stateLabel));
+      await userEvent.type(screen.getByTestId('trustee-zip'), TEST_TRUSTEE_DATA.zipCode);
+
+      // Fill required phone and email fields
+      await userEvent.type(screen.getByTestId('trustee-phone'), '(555) 123-4567');
+      await userEvent.type(screen.getByTestId('trustee-email'), TEST_TRUSTEE_DATA.email);
 
       // Fill optional fields
-      await userEvent.type(screen.getByTestId('trustee-address2'), 'Suite 100');
-      await userEvent.type(screen.getByTestId('trustee-phone'), '(555) 123-4567');
-      await userEvent.type(screen.getByTestId('trustee-extension'), '123');
-      await userEvent.type(screen.getByTestId('trustee-email'), 'jane.doe@example.com');
+      await userEvent.type(screen.getByTestId('trustee-address2'), TEST_TRUSTEE_DATA.address2);
+      await userEvent.type(screen.getByTestId('trustee-extension'), TEST_TRUSTEE_DATA.extension);
 
       await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
       await waitFor(() => {
         expect(mockPostTrustee).toHaveBeenCalledWith({
-          name: 'Jane Doe',
+          name: TEST_TRUSTEE_DATA.name,
           address: {
-            address1: '123 Main St',
-            address2: 'Suite 100',
-            city: 'Springfield',
-            state: 'IL',
-            zipCode: '62704',
+            address1: TEST_TRUSTEE_DATA.address1,
+            address2: TEST_TRUSTEE_DATA.address2,
+            city: TEST_TRUSTEE_DATA.city,
+            state: TEST_TRUSTEE_DATA.state,
+            zipCode: TEST_TRUSTEE_DATA.zipCode,
             countryCode: 'US',
           },
           phone: '(555) 123-4567',
-          email: 'jane.doe@example.com',
+          email: TEST_TRUSTEE_DATA.email,
+          status: 'active',
         });
         expect(mockNavigate.navigateTo).toHaveBeenCalledWith('/trustees/trustee-123');
       });
@@ -460,33 +496,38 @@ describe('TrusteeCreateForm', () => {
 
       renderWithRouter();
 
-      // Fill only required fields
-      await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
-      await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
-      await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
+      // Fill all required fields (including newly required phone and email)
+      await userEvent.type(screen.getByTestId('trustee-name'), TEST_TRUSTEE_DATA.name);
+      await userEvent.type(screen.getByTestId('trustee-address1'), TEST_TRUSTEE_DATA.address1);
+      await userEvent.type(screen.getByTestId('trustee-city'), TEST_TRUSTEE_DATA.city);
       // Select state from ComboBox
       const stateCombobox = screen.getByRole('combobox', { name: /state/i });
       await userEvent.click(stateCombobox);
-      await userEvent.click(screen.getByText('IL - Illinois'));
-      await userEvent.type(screen.getByTestId('trustee-zip'), '62704');
+      await userEvent.click(screen.getByText(TEST_TRUSTEE_DATA.stateLabel));
+      await userEvent.type(screen.getByTestId('trustee-zip'), TEST_TRUSTEE_DATA.zipCode);
+
+      // Add the new required fields
+      await userEvent.type(screen.getByTestId('trustee-phone'), '(555) 123-4567');
+      await userEvent.type(screen.getByTestId('trustee-email'), TEST_TRUSTEE_DATA.email);
 
       await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
       await waitFor(() => {
         const calledPayload = mockPostTrustee.mock.calls[0][0];
         expect(calledPayload).toEqual({
-          name: 'Jane Doe',
+          name: TEST_TRUSTEE_DATA.name,
           address: {
-            address1: '123 Main St',
-            city: 'Springfield',
-            state: 'IL',
-            zipCode: '62704',
+            address1: TEST_TRUSTEE_DATA.address1,
+            city: TEST_TRUSTEE_DATA.city,
+            state: TEST_TRUSTEE_DATA.state,
+            zipCode: TEST_TRUSTEE_DATA.zipCode,
             countryCode: 'US',
           },
+          phone: '(555) 123-4567',
+          email: TEST_TRUSTEE_DATA.email,
+          status: 'active',
         });
-        // Should not include phone, email, districts, chapters when not provided
-        expect(calledPayload.phone).toBeUndefined();
-        expect(calledPayload.email).toBeUndefined();
+        // Should not include districts, chapters, address2 when not provided
         expect(calledPayload.districts).toBeUndefined();
         expect(calledPayload.chapters).toBeUndefined();
         expect(calledPayload.address.address2).toBeUndefined();
@@ -496,19 +537,11 @@ describe('TrusteeCreateForm', () => {
     test('allows empty optional fields without validation errors', async () => {
       renderWithRouter();
 
-      // Fill required fields and leave optional fields empty
-      await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
-      await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
-      await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
-      // Select state from ComboBox
-      const stateCombobox = screen.getByRole('combobox', { name: /state/i });
-      await userEvent.click(stateCombobox);
-      await userEvent.click(screen.getByText('IL - Illinois'));
-      await userEvent.type(screen.getByTestId('trustee-zip'), '62704');
+      // Fill all required fields (including newly required phone and email)
+      await fillBasicTrusteeForm();
 
-      // Optional fields should be empty by default and no errors should appear
-      expect(screen.queryByText('Please enter a valid email address')).not.toBeInTheDocument();
-      expect(screen.queryByText('Please enter a valid phone number')).not.toBeInTheDocument();
+      // Optional fields (address2, extension) should be empty by default and no errors should appear
+      expect(screen.queryByText('Extension must be 1 to 6 digits')).not.toBeInTheDocument();
 
       // Form should be submittable - wait for validation to complete
       const submitButton = screen.getByRole('button', { name: /save/i });
@@ -541,25 +574,29 @@ describe('TrusteeCreateForm', () => {
 
       // Fill required fields
       const trusteeName = screen.getByTestId('trustee-name');
-      await userEvent.type(trusteeName, 'Jane Doe');
-      expect(trusteeName).toHaveValue('Jane Doe');
+      await userEvent.type(trusteeName, TEST_TRUSTEE_DATA.name);
+      expect(trusteeName).toHaveValue(TEST_TRUSTEE_DATA.name);
 
       const trusteeAddress1 = screen.getByTestId('trustee-address1');
-      await userEvent.type(trusteeAddress1, '123 Main St');
-      expect(trusteeAddress1).toHaveValue('123 Main St');
+      await userEvent.type(trusteeAddress1, TEST_TRUSTEE_DATA.address1);
+      expect(trusteeAddress1).toHaveValue(TEST_TRUSTEE_DATA.address1);
 
       const trusteeCity = screen.getByTestId('trustee-city');
-      await userEvent.type(trusteeCity, 'Springfield');
-      expect(trusteeCity).toHaveValue('Springfield');
+      await userEvent.type(trusteeCity, TEST_TRUSTEE_DATA.city);
+      expect(trusteeCity).toHaveValue(TEST_TRUSTEE_DATA.city);
 
       // Select state from ComboBox
       const stateCombobox = screen.getByRole('combobox', { name: /state/i });
       await userEvent.click(stateCombobox);
-      await userEvent.click(screen.getByText('IL - Illinois'));
+      await userEvent.click(screen.getByText(TEST_TRUSTEE_DATA.stateLabel));
 
       const trusteeZip = screen.getByTestId('trustee-zip');
-      await userEvent.type(trusteeZip, '62704');
-      expect(trusteeZip).toHaveValue('62704');
+      await userEvent.type(trusteeZip, TEST_TRUSTEE_DATA.zipCode);
+      expect(trusteeZip).toHaveValue(TEST_TRUSTEE_DATA.zipCode);
+
+      // Add the new required fields
+      await userEvent.type(screen.getByTestId('trustee-phone'), TEST_TRUSTEE_DATA.phone);
+      await userEvent.type(screen.getByTestId('trustee-email'), TEST_TRUSTEE_DATA.email);
 
       // Select district from ComboBox
       const districtCombobox = screen.getByRole('combobox', { name: /district/i });
@@ -586,16 +623,19 @@ describe('TrusteeCreateForm', () => {
 
       await waitFor(() => {
         expect(mockPostTrustee).toHaveBeenCalledWith({
-          name: 'Jane Doe',
+          name: TEST_TRUSTEE_DATA.name,
           address: {
-            address1: '123 Main St',
-            city: 'Springfield',
-            state: 'IL',
-            zipCode: '62704',
+            address1: TEST_TRUSTEE_DATA.address1,
+            city: TEST_TRUSTEE_DATA.city,
+            state: TEST_TRUSTEE_DATA.state,
+            zipCode: TEST_TRUSTEE_DATA.zipCode,
             countryCode: 'US',
           },
+          phone: TEST_TRUSTEE_DATA.phone,
+          email: TEST_TRUSTEE_DATA.email,
           districts: ['NY'],
           chapters: ['11-subchapter-v', '13'],
+          status: 'active',
         });
         expect(mockNavigate.navigateTo).toHaveBeenCalledWith('/trustees/trustee-123');
       });
@@ -611,14 +651,21 @@ describe('TrusteeCreateForm', () => {
       renderWithRouter();
 
       // Fill required fields
-      await userEvent.type(screen.getByTestId('trustee-name'), 'John Smith');
-      await userEvent.type(screen.getByTestId('trustee-address1'), '456 Oak St');
-      await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
+      await userEvent.type(screen.getByTestId('trustee-name'), TEST_PERSONAS.johnSmith.name);
+      await userEvent.type(
+        screen.getByTestId('trustee-address1'),
+        TEST_PERSONAS.johnSmith.address1,
+      );
+      await userEvent.type(screen.getByTestId('trustee-city'), TEST_PERSONAS.johnSmith.city);
       // Select state from ComboBox
       const stateCombobox = screen.getByRole('combobox', { name: /state/i });
       await userEvent.click(stateCombobox);
       await userEvent.click(screen.getByText('IL - Illinois'));
-      await userEvent.type(screen.getByTestId('trustee-zip'), '62705');
+      await userEvent.type(screen.getByTestId('trustee-zip'), TEST_PERSONAS.johnSmith.zipCode);
+
+      // Add the new required fields
+      await userEvent.type(screen.getByTestId('trustee-phone'), TEST_PERSONAS.johnSmith.phone);
+      await userEvent.type(screen.getByTestId('trustee-email'), TEST_PERSONAS.johnSmith.email);
 
       // Select extended chapter types that previously caused validation errors
       const chaptersCombobox = screen.getByRole('combobox', { name: /chapter types/i });
@@ -631,15 +678,18 @@ describe('TrusteeCreateForm', () => {
 
       await waitFor(() => {
         expect(mockPostTrustee).toHaveBeenCalledWith({
-          name: 'John Smith',
+          name: TEST_PERSONAS.johnSmith.name,
           address: {
-            address1: '456 Oak St',
-            city: 'Springfield',
-            state: 'IL',
-            zipCode: '62705',
+            address1: TEST_PERSONAS.johnSmith.address1,
+            city: TEST_PERSONAS.johnSmith.city,
+            state: TEST_PERSONAS.johnSmith.state,
+            zipCode: TEST_PERSONAS.johnSmith.zipCode,
             countryCode: 'US',
           },
+          phone: TEST_PERSONAS.johnSmith.phone,
+          email: TEST_PERSONAS.johnSmith.email,
           chapters: ['7-panel', '7-non-panel', '11-subchapter-v'],
+          status: 'active',
         });
       });
     });
@@ -677,14 +727,21 @@ describe('TrusteeCreateForm', () => {
       renderWithRouter();
 
       // Fill required fields
-      await userEvent.type(screen.getByTestId('trustee-name'), 'Maria Rodriguez');
-      await userEvent.type(screen.getByTestId('trustee-address1'), '789 Federal Plaza');
-      await userEvent.type(screen.getByTestId('trustee-city'), 'Houston');
+      await userEvent.type(screen.getByTestId('trustee-name'), TEST_PERSONAS.mariaRodriguez.name);
+      await userEvent.type(
+        screen.getByTestId('trustee-address1'),
+        TEST_PERSONAS.mariaRodriguez.address1,
+      );
+      await userEvent.type(screen.getByTestId('trustee-city'), TEST_PERSONAS.mariaRodriguez.city);
       // Select state from ComboBox
       const stateCombobox = screen.getByRole('combobox', { name: /state/i });
       await userEvent.click(stateCombobox);
-      await userEvent.click(screen.getByText('TX - Texas'));
-      await userEvent.type(screen.getByTestId('trustee-zip'), '77002');
+      await userEvent.click(screen.getByText(TEST_PERSONAS.mariaRodriguez.stateLabel));
+      await userEvent.type(screen.getByTestId('trustee-zip'), TEST_PERSONAS.mariaRodriguez.zipCode);
+
+      // Add the new required fields
+      await userEvent.type(screen.getByTestId('trustee-phone'), TEST_PERSONAS.mariaRodriguez.phone);
+      await userEvent.type(screen.getByTestId('trustee-email'), TEST_PERSONAS.mariaRodriguez.email);
 
       // SPECIFICATION: Districts ComboBox must support multiple selections
       const districtCombobox = screen.getByRole('combobox', { name: /district/i });
@@ -712,16 +769,19 @@ describe('TrusteeCreateForm', () => {
       // EXECUTABLE SPECIFICATION: Payload must include all selected districts
       await waitFor(() => {
         expect(mockPostTrustee).toHaveBeenCalledWith({
-          name: 'Maria Rodriguez',
+          name: TEST_PERSONAS.mariaRodriguez.name,
           address: {
-            address1: '789 Federal Plaza',
-            city: 'Houston',
-            state: 'TX',
-            zipCode: '77002',
+            address1: TEST_PERSONAS.mariaRodriguez.address1,
+            city: TEST_PERSONAS.mariaRodriguez.city,
+            state: TEST_PERSONAS.mariaRodriguez.state,
+            zipCode: TEST_PERSONAS.mariaRodriguez.zipCode,
             countryCode: 'US',
           },
+          phone: TEST_PERSONAS.mariaRodriguez.phone,
+          email: TEST_PERSONAS.mariaRodriguez.email,
           // CRITICAL: Must support multiple districts (not just single district)
           districts: ['NY-E', 'CA-N', 'TX-S'],
+          status: 'active',
         });
         expect(mockNavigate.navigateTo).toHaveBeenCalledWith('/trustees/trustee-789');
       });
@@ -751,26 +811,30 @@ describe('TrusteeCreateForm', () => {
       expect(submitButton).toBeDisabled();
 
       // Fill some required fields, but not all
-      await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
-      await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
+      await userEvent.type(screen.getByTestId('trustee-name'), TEST_TRUSTEE_DATA.name);
+      await userEvent.type(screen.getByTestId('trustee-address1'), TEST_TRUSTEE_DATA.address1);
 
       // Button should still be disabled (not all required fields filled)
       expect(submitButton).toBeDisabled();
 
       // Fill remaining required fields
-      await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
+      await userEvent.type(screen.getByTestId('trustee-city'), TEST_TRUSTEE_DATA.city);
       // Select state from ComboBox
       const stateCombobox = screen.getByRole('combobox', { name: /state/i });
       await userEvent.click(stateCombobox);
-      await userEvent.click(screen.getByText('IL - Illinois'));
-      await userEvent.type(screen.getByTestId('trustee-zip'), '62704');
+      await userEvent.click(screen.getByText(TEST_TRUSTEE_DATA.stateLabel));
+      await userEvent.type(screen.getByTestId('trustee-zip'), TEST_TRUSTEE_DATA.zipCode);
+
+      // Add the new required fields
+      await userEvent.type(screen.getByTestId('trustee-phone'), TEST_TRUSTEE_DATA.phone);
+      await userEvent.type(screen.getByTestId('trustee-email'), TEST_TRUSTEE_DATA.email);
 
       // Now button should be enabled (all required fields filled and valid)
       expect(submitButton).not.toBeDisabled();
 
       // Make a field invalid
       await userEvent.clear(screen.getByTestId('trustee-zip'));
-      await userEvent.type(screen.getByTestId('trustee-zip'), '1234');
+      await userEvent.type(screen.getByTestId('trustee-zip'), TEST_TRUSTEE_DATA.invalidZip);
 
       // Button should be disabled again (validation error)
       expect(submitButton).toBeDisabled();
@@ -792,16 +856,14 @@ describe('TrusteeCreateForm', () => {
       expect(submitButton).toBeDisabled();
 
       // Fill only optional fields, leave all required fields empty
-      await userEvent.type(screen.getByTestId('trustee-address2'), 'Suite 100');
-      await userEvent.type(screen.getByTestId('trustee-phone'), '(555) 123-4567');
-      await userEvent.type(screen.getByTestId('trustee-extension'), '123');
-      await userEvent.type(screen.getByTestId('trustee-email'), 'test@example.com');
+      await userEvent.type(screen.getByTestId('trustee-address2'), TEST_TRUSTEE_DATA.address2);
+      await userEvent.type(screen.getByTestId('trustee-extension'), TEST_TRUSTEE_DATA.extension);
 
       // Button should still be disabled (no required fields filled)
       expect(submitButton).toBeDisabled();
 
       // Fill one required field but not all
-      await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
+      await userEvent.type(screen.getByTestId('trustee-name'), TEST_TRUSTEE_DATA.name);
 
       // Button should still be disabled (not all required fields filled)
       expect(submitButton).toBeDisabled();
@@ -819,14 +881,7 @@ describe('TrusteeCreateForm', () => {
       renderWithRouter();
 
       // Fill all required fields
-      await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
-      await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
-      await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
-      // Select state from ComboBox
-      const stateCombobox = screen.getByRole('combobox', { name: /state/i });
-      await userEvent.click(stateCombobox);
-      await userEvent.click(screen.getByText('IL - Illinois'));
-      await userEvent.type(screen.getByTestId('trustee-zip'), '62704');
+      await fillBasicTrusteeForm();
 
       // Wait for button to be enabled
       const submitButton = screen.getByRole('button', {
@@ -933,19 +988,19 @@ describe('TrusteeCreateForm', () => {
       renderWithRouter();
 
       // Fill required fields to create a valid form
-      await userEvent.type(screen.getByTestId('trustee-name'), 'Jane Doe');
-      await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
-      await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
+      await userEvent.type(screen.getByTestId('trustee-name'), TEST_TRUSTEE_DATA.name);
+      await userEvent.type(screen.getByTestId('trustee-address1'), TEST_TRUSTEE_DATA.address1);
+      await userEvent.type(screen.getByTestId('trustee-city'), TEST_TRUSTEE_DATA.city);
       // Select state from ComboBox
       const stateCombobox = screen.getByRole('combobox', { name: /state/i });
       await userEvent.click(stateCombobox);
-      await userEvent.click(screen.getByText('IL - Illinois'));
-      await userEvent.type(screen.getByTestId('trustee-zip'), '62704');
+      await userEvent.click(screen.getByText(TEST_TRUSTEE_DATA.stateLabel));
+      await userEvent.type(screen.getByTestId('trustee-zip'), TEST_TRUSTEE_DATA.zipCode);
 
       // Fill optional fields
-      await userEvent.type(screen.getByTestId('trustee-address2'), 'Suite 100');
+      await userEvent.type(screen.getByTestId('trustee-address2'), TEST_TRUSTEE_DATA.address2);
       await userEvent.type(screen.getByTestId('trustee-phone'), '(555) 123-4567');
-      await userEvent.type(screen.getByTestId('trustee-email'), 'jane.doe@example.com');
+      await userEvent.type(screen.getByTestId('trustee-email'), TEST_TRUSTEE_DATA.email);
 
       // Submit the form
       await userEvent.click(screen.getByRole('button', { name: /save/i }));
@@ -953,21 +1008,23 @@ describe('TrusteeCreateForm', () => {
       // Assert that postTrustee was called with the expected payload
       await waitFor(() => {
         expect(mockPostTrustee).toHaveBeenCalledWith({
-          name: 'Jane Doe',
+          name: TEST_TRUSTEE_DATA.name,
           address: {
-            address1: '123 Main St',
-            address2: 'Suite 100',
-            city: 'Springfield',
-            state: 'IL',
-            zipCode: '62704',
+            address1: TEST_TRUSTEE_DATA.address1,
+            address2: TEST_TRUSTEE_DATA.address2,
+            city: TEST_TRUSTEE_DATA.city,
+            state: TEST_TRUSTEE_DATA.state,
+            zipCode: TEST_TRUSTEE_DATA.zipCode,
             countryCode: 'US',
           },
           phone: '(555) 123-4567',
-          email: 'jane.doe@example.com',
+          email: TEST_TRUSTEE_DATA.email,
+          status: 'active',
         });
       });
     });
   });
+
   describe('District Loading', () => {
     beforeEach(() => {
       vi.spyOn(FeatureFlags, 'default').mockReturnValue({

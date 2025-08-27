@@ -56,8 +56,10 @@ export type Trustee = Auditable &
   Party & {
     districts?: string[];
     chapters?: ChapterType[];
-    status?: TrusteeStatus;
     assistant?: TrusteeAssistant;
+    phone: string;
+    email: string;
+    status: TrusteeStatus;
   };
 
 export type TrusteeInput = Omit<Trustee, keyof Auditable | keyof Identifiable>;
