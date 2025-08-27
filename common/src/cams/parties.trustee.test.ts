@@ -263,6 +263,8 @@ describe('Trustee Type Extensions', () => {
         status: 'active',
         districts: ['IL'],
         chapters: ['7', '11'],
+        phone: '555-1234',
+        email: 'jane.doe@example.com',
       };
 
       const errors = validateTrusteeCreationInput(validTrusteeInput);

@@ -548,6 +548,7 @@ function getLegacyTrustee(override: Partial<Omit<Trustee, 'address'>> = {}): Tru
     email: faker.internet.email(),
     updatedOn: getDateBeforeToday().toISOString(),
     updatedBy: getCamsUserReference(),
+    status: 'active',
     ...override,
   };
 }
