@@ -31,6 +31,7 @@ import {
   ElevatePrivilegedUserAction,
   RoleAndOfficeGroupNames,
 } from '@common/cams/privileged-identity';
+import { Trustee, TrusteeInput } from '@common/cams/parties';
 
 const caseDocketEntries = MockData.buildArray(MockData.getDocketEntry, 5);
 const caseNoteGuids = [
@@ -58,10 +59,7 @@ const caseDetails = MockData.getCaseDetail({
     caseTitle: 'Test Case Title',
     petitionLabel: 'Voluntary',
     caseId: '101-12-12345',
-    trustee: {
-      name: 'Test Trustee',
-      cityStateZipCountry: 'New York, NY 10001, USA',
-    },
+    trustee: MockData.getLegacyTrustee(),
   },
 });
 const courts = MockData.getCourts().slice(0, 5);
@@ -174,6 +172,17 @@ async function post<T = unknown>(
       ];
     }
     return response as ResponseBody<ResourceActions<T>>;
+  } else if (path.match(/^\/trustees$/)) {
+    const input = body as TrusteeInput;
+    const created: Trustee = {
+      ...input,
+      id: MockData.randomId(),
+      createdBy: { id: 'user-1', name: 'Mock User' },
+      createdOn: new Date().toISOString(),
+      lastUpdatedBy: { id: 'user-1', name: 'Mock User' },
+      lastUpdatedOn: new Date().toISOString(),
+    } as unknown as Trustee;
+    return Promise.resolve({ data: created } as ResponseBody<T>);
   } else {
     return Promise.reject(new Error());
   }
@@ -243,6 +252,23 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
   } else if (path.match(/\/courts/)) {
     response = {
       data: courts,
+    };
+  } else if (path.match(/\/trustees\/[A-Z\d-]+/i)) {
+    response = {
+      data: MockData.getTrustee({
+        id: 'trustee-1',
+        districts: ['710', '720'],
+        chapters: ['11', '7-non-panel'],
+      }),
+    };
+    console.log(response);
+  } else if (path.match(/\/trustees/)) {
+    response = {
+      data: [
+        MockData.getLegacyTrustee({ id: 'trustee-1', name: 'John Doe' }),
+        MockData.getLegacyTrustee({ id: 'trustee-2', name: 'Jane Smith' }),
+        MockData.getLegacyTrustee({ id: 'trustee-3', name: 'Bob Johnson' }),
+      ],
     };
   } else if (path.match(/\/me/)) {
     response = {
@@ -416,7 +442,22 @@ async function deletePrivilegedIdentityUser(userId: string) {
   await _delete(`/dev-tools/privileged-identity/${userId}`);
 }
 
+async function postTrustee(trustee: TrusteeInput) {
+  return post('/trustees', trustee, {}) as unknown as Promise<ResponseBody<Trustee>>;
+}
+
+async function getTrustees() {
+  return get<Trustee[]>('/trustees');
+}
+
+async function getTrustee(id: string) {
+  return get<Trustee>(`/trustees/${id}`);
+}
+
 export const MockApi2 = {
+  getTrustees,
+  getTrustee,
+  postTrustee,
   deletePrivilegedIdentityUser,
   getAttorneys,
   getCaseDetail,

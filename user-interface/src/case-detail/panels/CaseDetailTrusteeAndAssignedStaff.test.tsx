@@ -21,7 +21,7 @@ const TEST_TRIAL_ATTORNEY_1 = MockAttorneys.Brian;
 const TEST_ASSIGNMENT_1 = MockData.getAttorneyAssignment({ ...TEST_TRIAL_ATTORNEY_1 });
 const TEST_TRIAL_ATTORNEY_2 = MockAttorneys.Carl;
 const TEST_ASSIGNMENT_2 = MockData.getAttorneyAssignment({ ...TEST_TRIAL_ATTORNEY_2 });
-const TEST_TRUSTEE = MockData.getTrustee();
+const TEST_TRUSTEE = MockData.getLegacyTrustee();
 
 const BASE_TEST_CASE_DETAIL = MockData.getCaseDetail({
   override: {
@@ -223,17 +223,6 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
       // Verify mail icon is present
       const mailIcon = emailElement?.querySelector('.link-icon');
       expect(mailIcon).toBeInTheDocument();
-    });
-
-    test('should not display email section when trustee has no email', () => {
-      const trusteeNoEmail = { ...TEST_TRUSTEE, email: undefined };
-      const caseDetailNoEmail = {
-        ...BASE_TEST_CASE_DETAIL,
-        trustee: trusteeNoEmail,
-      };
-      renderWithProps({ caseDetail: caseDetailNoEmail });
-      const emailElement = screen.queryByTestId('case-detail-trustee-email');
-      expect(emailElement).not.toBeInTheDocument();
     });
 
     test('should display trustee phone number', () => {

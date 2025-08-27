@@ -5,6 +5,7 @@ import useFeatureFlags, {
   PRIVILEGED_IDENTITY_MANAGEMENT,
   TRANSFER_ORDERS_ENABLED,
   SYSTEM_MAINTENANCE_BANNER,
+  TRUSTEE_MANAGEMENT,
 } from '../hooks/UseFeatureFlags';
 import { Banner } from './uswds/Banner';
 import { useEffect, useState } from 'react';
@@ -23,6 +24,7 @@ export enum NavState {
   SEARCH,
   STAFF_ASSIGNMENT,
   USER,
+  TRUSTEES,
 }
 
 function mapNavState(path: string) {
@@ -38,6 +40,8 @@ function mapNavState(path: string) {
       return NavState.SEARCH;
     case 'staff-assignment':
       return NavState.STAFF_ASSIGNMENT;
+    case 'trustees':
+      return NavState.TRUSTEES;
     default:
       return NavState.DEFAULT;
   }
@@ -135,6 +139,22 @@ export const Header = () => {
                     </NavLink>
                   </li>
                 )}
+
+                {session &&
+                  flags[TRUSTEE_MANAGEMENT] &&
+                  session.user.roles?.includes(CamsRole.TrusteeAdmin) && (
+                    <li className="usa-nav__primary-item">
+                      <NavLink
+                        to="/trustees"
+                        data-testid="header-trustees-link"
+                        className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.TRUSTEES)}
+                        onClick={() => setActiveNav(NavState.TRUSTEES)}
+                        title="manage trustee profiles"
+                      >
+                        Trustees
+                      </NavLink>
+                    </li>
+                  )}
 
                 {session &&
                   session.user.roles?.includes(CamsRole.DataVerifier) &&

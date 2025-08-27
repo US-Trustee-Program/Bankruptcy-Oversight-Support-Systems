@@ -1,52 +1,8 @@
 @use '../styles/theme';
 
-.case-detail {
-  h1 {
-    margin: 1rem 0.5rem 1rem 0;
-  }
-
-  h2 {
-    margin-top: 0;
-    margin-bottom: 1rem;
-  }
-
-  h3 {
-    margin: 0;
-    line-height: 1.5;
-  }
-
-  h4 {
-    margin-block-start: 0;
-    margin-block-end: 0;
-  }
-
-  .case-detail-content {
-    .grid-gap-lg {
-      .case-card-list:first-child {
-        padding-left: 0;
-      }
-    }
-  }
-
-  .link-icon {
-    margin-left: 0.25rem;
-    vertical-align: middle;
-  }
-  .case-detail-container {
-    display: flex;
-    column-gap: 5rem;
-    flex-wrap: wrap;
-  }
-
-  .case-card-list {
-    .case-card {
-      line-height: 1.5;
-      padding-bottom: 1.5rem;
-      display: flex;
-      flex-direction: column;
-      row-gap: 0.5rem;
-      min-width: 18rem;
-
+.case-detail, .record-detail {
+  .record-detail-card-list {
+    .record-detail-card {
       li.transfer {
         margin-bottom: 1rem;
       }

@@ -7,7 +7,13 @@ import MockData from '../../../common/src/cams/test-utilities/mock-data';
 import { OrdersUseCase } from '../../../backend/lib/use-cases/orders/orders';
 import { ConsolidationOrder, TransferOrder } from '../../../common/src/cams/orders';
 import { extractAndPrepareSqlData } from './dxtr-utils';
-import { insertConsolidationOrders, insertTransferOrders, syncCases } from './cosmos-utils';
+import {
+  insertConsolidationOrders,
+  insertTransferOrders,
+  insertTrustees,
+  syncCases,
+} from './cosmos-utils';
+import { Trustee } from '../../../common/src/cams/parties';
 
 export const KNOWN_GOOD_TRANSFER_FROM_CASE_NUMBER = '65-67641';
 export const KNOWN_GOOD_TRANSFER_FROM_CASE_ID = '081-' + KNOWN_GOOD_TRANSFER_FROM_CASE_NUMBER;
@@ -30,6 +36,19 @@ export async function seedCosmosE2eDatabase() {
 
   const transferOrders = generateTransferOrders(dxtrCases.slice(25, 45), transferTo, transferFrom);
   await insertTransferOrders(appContext, transferOrders);
+
+  const trustees = await generateTrustees();
+  await insertTrustees(appContext, trustees);
+}
+
+export async function generateTrustees(): Promise<Trustee[]> {
+  const trusteeProfiles: Trustee[] = [];
+
+  for (let i = 0; i < 5; i++) {
+    trusteeProfiles.push(MockData.getTrustee({ id: `test-trustee-${i}` }));
+  }
+
+  return trusteeProfiles;
 }
 
 async function generateConsolidationOrders(

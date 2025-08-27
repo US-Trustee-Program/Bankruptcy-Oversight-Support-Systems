@@ -76,7 +76,12 @@ describe('offices repo', () => {
     await repo.putOfficeStaff(officeCode, session.user);
     expect(replaceOneSpy).toHaveBeenCalledWith(
       expect.anything(),
-      { ...staff, updatedOn: expect.anything() },
+      {
+        ...staff,
+        updatedOn: expect.anything(),
+        createdBy: expect.anything(),
+        createdOn: expect.anything(),
+      },
       true,
     );
   });
@@ -173,6 +178,8 @@ describe('offices repo', () => {
         roles: expect.arrayContaining(expectedRoles),
         updatedBy: expect.anything(),
         updatedOn: expect.anything(),
+        createdBy: expect.anything(),
+        createdOn: expect.anything(),
         ttl: expect.anything(),
       };
 
@@ -197,6 +204,8 @@ describe('offices repo', () => {
       roles: [CamsRole.TrialAttorney],
       updatedBy: expect.anything(),
       updatedOn: expect.anything(),
+      createdBy: expect.anything(),
+      createdOn: expect.anything(),
       ttl: expect.anything(),
     };
 
