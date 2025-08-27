@@ -102,7 +102,7 @@ jobs:
           rules_file_name: 'test/dast/config/dast-rules.tsv'
           fail_action: 'false'
           allow_issue_writing: 'false'
-          artifact_name: 'zap-report'
+          artifact_name: ''
 
       - name: Convert ZAP JSON to SARIF
         run: |
