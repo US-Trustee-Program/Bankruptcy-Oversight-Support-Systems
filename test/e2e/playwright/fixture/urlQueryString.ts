@@ -11,10 +11,15 @@ export const test = base.extend({
     function modifiedGoto(url: string, options: unknown) {
       if (!url.includes('localhost') && url.length > 0) {
         url += (url as string).includes('?') ? '&' : '?'; // checks if query string already exists
-        // TODO: Purpose of this fixture is to include x-ms-routing-name to route traffic to Azure slot environment named 'staging'
-        // TODO: Parameterize this to add flexibility target slot environment. Note that passing 'self' will target production slot
+        // Use SLOT_NAME environment variable to route traffic to the specified Azure slot environment
+        // Note that passing 'self' will target production slot
+        const slotName =
+          process.env.SLOT_NAME ||
+          (() => {
+            throw new Error('SLOT_NAME environment variable is required for E2E tests');
+          })();
         if (url) {
-          url += 'x-ms-routing-name=staging';
+          url += `x-ms-routing-name=${slotName}`;
         }
       }
       return goto(url, options);

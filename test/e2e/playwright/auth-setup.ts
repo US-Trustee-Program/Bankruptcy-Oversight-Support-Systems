@@ -56,7 +56,12 @@ async function oktaLogin(page: Page) {
   await page.goto(TARGET_HOST);
   const expectedHost = TARGET_HOST.includes('localhost:3000')
     ? TARGET_HOST
-    : `${TARGET_HOST}/?x-ms-routing-name=staging`;
+    : `${TARGET_HOST}/?x-ms-routing-name=${
+        process.env.SLOT_NAME ||
+        (() => {
+          throw new Error('SLOT_NAME environment variable is required for E2E tests');
+        })()
+      }`;
   await page.waitForURL(expectedHost);
   await expect(page.getByTestId('app-component-test-id')).toBeVisible();
 }
