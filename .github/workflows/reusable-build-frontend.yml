@@ -86,8 +86,11 @@ jobs:
           export CAMS_INFO_SHA=${{ github.sha }}
           npm run build --if-present
 
-      - name: Generate Staging Slot Configuration
+      - name: Generate Slot Configuration
         run: |
+          echo "Slot name: ${{ vars.SLOT_NAME }}"
+          echo "Staging hostname: ${{ inputs.camsStagingHostname }}"
+          appiString=$(az monitor app-insights component show --app appi-${{ inputs.webappName }} -g  ${{ steps.rgApp.outputs.out }} --query "connectionString" -o tsv || true)
           export CAMS_SERVER_HOSTNAME=${{ inputs.camsStagingHostname }}
           export CAMS_SERVER_PORT=${{ inputs.camsServerPort }}
           export CAMS_SERVER_PROTOCOL=${{ inputs.camsServerProtocol }}
@@ -98,8 +101,9 @@ jobs:
           export CAMS_LOGIN_PROVIDER=${{ vars.CAMS_LOGIN_PROVIDER }}
           export CAMS_LOGIN_PROVIDER_CONFIG='${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}'
           export CAMS_INFO_SHA=${{ github.sha }}
-          npm run stagingConfig
-          mv ./public/configuration-staging.json ./build/
+          export SLOT_NAME=${{ vars.SLOT_NAME || 'staging' }}
+          npm run slotConfig
+          mv ./public/configuration-${SLOT_NAME}.json ./build/
 
       - name: Package
         if: inputs.isDeployment

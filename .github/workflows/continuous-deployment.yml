@@ -86,6 +86,7 @@ jobs:
       environment: ${{ needs.setup.outputs.ghaEnvironment }}
       launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
       azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+      slotName: ${{ needs.setup.outputs.slotName }}
 
   deploy:
     name: Cloud Resource Deployment
