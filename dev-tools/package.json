@@ -23,18 +23,18 @@
     "@faker-js/faker": "^9.9.0",
     "@types/node": "^24.3.0",
     "dotenv": "^17.2.1",
-    "tsx": "^4.20.4"
+    "tsx": "^4.20.5"
   },
   "type": "module",
   "devDependencies": {
     "@eslint/js": "^9.17.0",
-    "eslint": "^9.33.0",
+    "eslint": "^9.34.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-n": "^17.21.3",
     "eslint-plugin-prettier": "^5.5.4",
     "eslint-plugin-promise": "^7.2.1",
     "typescript": "^5.9.2",
-    "typescript-eslint": "^8.40.0"
+    "typescript-eslint": "^8.41.0"
   }
 }
