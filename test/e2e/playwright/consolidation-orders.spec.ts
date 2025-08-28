@@ -2,7 +2,6 @@ import { expect } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
 import { Order, ConsolidationOrder } from '../../../common/src/cams/orders';
 import { logout } from './login/login-helpers';
-import { KNOWN_GOOD_TRANSFER_FROM_CASE_NUMBER } from '../scripts/data-generation-utils';
 
 const timeoutOption = { timeout: 30000 };
 
@@ -150,9 +149,8 @@ test.describe('Consolidation Orders', () => {
       .getByTestId('open-modal-button')
       .click();
 
-    await page
-      .getByTestId(`add-case-input-${pendingConsolidationOrder.id}`)
-      .fill(KNOWN_GOOD_TRANSFER_FROM_CASE_NUMBER);
+    const caseNumber = '29-56291';
+    await page.getByTestId(`add-case-input-${pendingConsolidationOrder.id}`).fill(caseNumber);
 
     await expect(
       page.getByTestId(`button-add-case-modal-${pendingConsolidationOrder.id}-submit-button`),
