@@ -2,7 +2,11 @@ name: Stand Alone DAST Scan
 
 concurrency: ${{ github.ref }}-${{ github.workflow }}
 
-on: workflow_dispatch
+on:
+  schedule:
+    - cron: '0 13 * * 1'
+      # Every Monday morning at 8 AM ET
+  workflow_dispatch:
 
 jobs:
   setup:
