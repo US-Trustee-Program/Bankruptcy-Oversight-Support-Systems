@@ -7,9 +7,8 @@ on:
         required: true
         type: string
       slotName:
-        required: false
+        required: true
         type: string
-        default: 'initial'
       webappName:
         required: true
         type: string
