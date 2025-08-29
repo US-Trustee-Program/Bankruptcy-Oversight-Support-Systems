@@ -17,6 +17,7 @@ import UsStatesComboBox from '@/lib/components/combobox/UsStatesComboBox';
 import useDebounce from '@/lib/hooks/UseDebounce';
 import { Stop } from '@/lib/components/Stop';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
+import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 
 // Chapter type options - Complete list with Panel/Non-Panel distinctions
 const CHAPTER_OPTIONS: ComboOption<ChapterType>[] = [
@@ -335,16 +336,22 @@ export default function TrusteeCreateForm() {
           <div className="grid-col-6">
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-4">
-                <Input
+                {/* Replace plain Input with PhoneNumberInput for formatted phone numbers */}
+                <PhoneNumberInput
                   id="trustee-phone"
                   name="phone"
                   label="Phone"
-                  value={phone}
-                  onChange={(e) => handleFieldChange(e, setPhone)}
+                  onChange={(value) => {
+                    const next = value ?? '';
+                    setPhone(next);
+                    debounce(() => {
+                      // Validate using the string as-is; shared PHONE_REGEX accepts formatted numbers
+                      validateFieldAndUpdate('phone', next);
+                    }, 300);
+                  }}
                   errorMessage={fieldErrors['phone']}
                   autoComplete="off"
-                  type="tel"
-                  ariaDescription="Example: (123)456-7890"
+                  ariaDescription="Example: 123-456-7890"
                   required
                 />
               </div>

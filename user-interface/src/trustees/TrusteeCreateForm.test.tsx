@@ -389,7 +389,7 @@ describe('TrusteeCreateForm', () => {
       });
     });
 
-    test('validates phone format when provided', async () => {
+    test('validates phone format', async () => {
       renderWithRouter();
 
       const phoneInput = screen.getByTestId('trustee-phone');
@@ -399,7 +399,7 @@ describe('TrusteeCreateForm', () => {
       await userEvent.tab(); // Trigger blur
 
       await waitFor(() => {
-        expect(screen.getByText('Please enter a valid phone number')).toBeInTheDocument();
+        expect(screen.getByText('Phone is required')).toBeInTheDocument();
       });
 
       // Test valid phone format - error should disappear
@@ -408,7 +408,7 @@ describe('TrusteeCreateForm', () => {
       await userEvent.tab();
 
       await waitFor(() => {
-        expect(screen.queryByText('Please enter a valid phone number')).not.toBeInTheDocument();
+        expect(screen.queryByText('Phone is required')).not.toBeInTheDocument();
       });
     });
 
@@ -477,7 +477,7 @@ describe('TrusteeCreateForm', () => {
             zipCode: TEST_TRUSTEE_DATA.zipCode,
             countryCode: 'US',
           },
-          phone: '(555) 123-4567',
+          phone: '555-123-4567',
           email: TEST_TRUSTEE_DATA.email,
           status: 'active',
         });
@@ -523,7 +523,7 @@ describe('TrusteeCreateForm', () => {
             zipCode: TEST_TRUSTEE_DATA.zipCode,
             countryCode: 'US',
           },
-          phone: '(555) 123-4567',
+          phone: '555-123-4567',
           email: TEST_TRUSTEE_DATA.email,
           status: 'active',
         });
@@ -1017,7 +1017,7 @@ describe('TrusteeCreateForm', () => {
             zipCode: TEST_TRUSTEE_DATA.zipCode,
             countryCode: 'US',
           },
-          phone: '(555) 123-4567',
+          phone: '555-123-4567',
           email: TEST_TRUSTEE_DATA.email,
           status: 'active',
         });
