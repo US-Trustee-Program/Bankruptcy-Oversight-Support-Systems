@@ -79,18 +79,43 @@ function validateObject<T>(spec: ValidationSpec<T>, obj: T): ValidatorResultsSet
 
 // TODO: Need to support dates, numbers. Nullable and undefined. Required vs. optional.
 
+/**
+ * Validates whether a value is a string.
+ *
+ * @param {unknown} value - The value to be validated
+ * @returns {ValidatorResult} Object containing validation status and reason for failure if invalid
+ */
 function isString(value: unknown): ValidatorResult {
   return typeof value === 'string' ? { valid: true } : { valid: false, reason: 'Must be a string' };
 }
 
+/**
+ * Creates a validator function that checks if a string or array has at least a minimum length.
+ *
+ * @param {number} min - The minimum required length
+ * @returns {ValidatorFunction} A validator function that checks minimum length
+ */
 function minLength(min: number): ValidatorFunction {
   return length(min, Infinity);
 }
 
+/**
+ * Creates a validator function that checks if a string or array has at most a maximum length.
+ *
+ * @param {number} max - The maximum allowed length
+ * @returns {ValidatorFunction} A validator function that checks maximum length
+ */
 function maxLength(max: number): ValidatorFunction {
   return length(0, max);
 }
 
+/**
+ * Creates a validator function that checks if a string or array length is within a specified range.
+ *
+ * @param {number} min - The minimum required length
+ * @param {number} max - The maximum allowed length
+ * @returns {ValidatorFunction} A validator function that checks length within the specified range
+ */
 function length(min: number, max: number): ValidatorFunction {
   return (value: unknown): ValidatorResult => {
     if (value === null) {
@@ -130,6 +155,12 @@ function length(min: number, max: number): ValidatorFunction {
   };
 }
 
+/**
+ * Creates a validator function that checks whether a value is in a set of allowed strings.
+ *
+ * @param {string[]} set
+ * @param {string} [reason]
+ */
 function isInSet(set: string[], reason?: string): ValidatorFunction {
   return (value: unknown): ValidatorResult => {
     return typeof value === 'string' && set.includes(value)
@@ -138,6 +169,13 @@ function isInSet(set: string[], reason?: string): ValidatorFunction {
   };
 }
 
+/**
+ * Creates a validator function that checks if a string value matches a regular expression pattern.
+ *
+ * @param {RegExp} regex - The regular expression pattern to match against
+ * @param {string} [error] - Optional custom error message to display when validation fails
+ * @returns {ValidatorFunction} A validator function that checks pattern matching
+ */
 function matches(regex: RegExp, error?: string): ValidatorFunction {
   return (value: unknown): ValidatorResult => {
     return typeof value === 'string' && regex.test(value)
@@ -146,10 +184,22 @@ function matches(regex: RegExp, error?: string): ValidatorFunction {
   };
 }
 
+/**
+ * Validates whether a value is a valid email address format.
+ *
+ * @param {unknown} value - The value to be validated as an email address
+ * @returns {ValidatorResult} Object containing validation status and reason for failure if invalid
+ */
 function isEmailAddress(value: unknown): ValidatorResult {
   return matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Must be a valid email address')(value);
 }
 
+/**
+ * Validates whether a value is a valid 10-digit phone number format.
+ *
+ * @param {unknown} value - The value to be validated as a phone number
+ * @returns {ValidatorResult} Object containing validation status and reason for failure if invalid
+ */
 function isPhoneNumber(value: unknown): ValidatorResult {
   return matches(/^\d{10}$/, 'Must be a valid phone number')(value);
 }
