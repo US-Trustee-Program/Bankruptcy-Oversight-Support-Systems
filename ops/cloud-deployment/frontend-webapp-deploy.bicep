@@ -38,6 +38,7 @@ var planTypeToSkuMap = {
 }
 
 param webappName string
+param slotName string = 'staging'
 
 @description('Determine host instance operating system type. false for Windows OS and true for Linux OS.')
 param hostOSType bool = true
@@ -63,8 +64,8 @@ param oktaUrl string = ''
 param nginxConfigFilename string = 'nginx.conf'
 var appCommandLine = 'rm /etc/nginx/sites-enabled/default;envsubst < /home/site/wwwroot/${nginxConfigFilename} > /etc/nginx/sites-enabled/default;service nginx restart'
 
-@description('The prefered minimum TLS Cipher Suite to set for SSL negotiation. NOTE: Azure feature still in preview and limited to Premium plans')
-param preferedMinTLSCipherSuite string = 'TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256'
+@description('The preferred minimum TLS Cipher Suite to set for SSL negotiation. NOTE: Azure feature still in preview and limited to Premium plans')
+param preferredMinTLSCipherSuite string = 'TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256'
 
 @description('Flag to enable Vercode access')
 param allowVeracodeScan bool = false
@@ -143,6 +144,26 @@ resource webapp 'Microsoft.Web/sites@2023-12-01' = {
     httpsOnly: true
     virtualNetworkSubnetId: webappSubnetId
   }
+
+  resource webappConfig 'config' = {
+    name: 'web'
+    properties: webappConfigProperties
+  }
+
+  resource slot 'slots' = {
+      location: location
+      name: slotName
+      properties: {
+        serverFarmId: webapp.properties.serverFarmId
+        enabled: webapp.properties.enabled
+        httpsOnly: webapp.properties.httpsOnly
+        virtualNetworkSubnetId: webapp.properties.virtualNetworkSubnetId
+      }
+      resource slotWebAppConfig 'config' = {
+        name: 'web'
+        properties: webappConfigProperties
+      }
+  }
 }
 
 module webappInsights 'lib/app-insights/webapp-insights.bicep' = {
@@ -219,10 +240,8 @@ var ipSecurityRestrictionsRules = concat(
       ]
     : []
 )
-resource webappConfig 'Microsoft.Web/sites/config@2023-12-01' = {
-  parent: webapp
-  name: 'web'
-  properties: union(
+
+var webappConfigProperties = union(
     {
       appSettings: applicationSettings
       numberOfWorkers: 1
@@ -260,9 +279,9 @@ resource webappConfig 'Microsoft.Web/sites/config@2023-12-01' = {
       linuxFxVersion: linuxFxVersionMap['${appServiceRuntime}']
       appCommandLine: appCommandLine
     },
-    isPremiumPlanType ? { minTlsCipherSuite: preferedMinTLSCipherSuite } : {}
-  )
-}
+    isPremiumPlanType ? { minTlsCipherSuite: preferredMinTLSCipherSuite } : {}
+)
+
 module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
   name: '${webappName}-pep-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)

@@ -39,19 +39,6 @@ jobs:
         run: |
           echo "container-image=ghcr.io/${GITHUB_REPOSITORY,,}/azure-cli-runner:azure-cli-2.71.0" >> "$GITHUB_OUTPUT"
 
-  deploy-frontend-slot-resources:
-    needs: [compute-container-image]
-    uses: ./.github/workflows/reusable-frontend-slot.yml
-    with:
-      webAppName: ${{ inputs.webappName }}
-      apiFunctionName: ${{ inputs.apiFunctionName }}
-      ghaEnvironment: ${{ inputs.ghaEnvironment }}
-      azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
-      azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}
-      slotName: ${{ inputs.slotName }}
-      containerImage: ${{ needs.compute-container-image.outputs.container-image }}
-    secrets: inherit # pragma: allowlist secret
-
   deploy-backend-slot-resources:
     needs: [compute-container-image]
     uses: ./.github/workflows/reusable-backend-slot.yml
