@@ -56,13 +56,13 @@ describe('validation', () => {
         description: 'should return invalid for string shorter than minimum length',
         minLength: 10,
         value: 'hello',
-        expected: { valid: false, reason: 'Must be at least 10 characters long' },
+        expected: { valid: false, reason: 'Must contain at least 10 characters' },
       },
       {
         description: 'should return invalid for empty string when minimum is greater than 0',
         minLength: 1,
         value: '',
-        expected: { valid: false, reason: 'Must be at least 1 characters long' },
+        expected: { valid: false, reason: 'Must contain at least 1 characters' },
       },
       {
         description: 'should return valid for empty string when minimum is 0',
@@ -74,7 +74,7 @@ describe('validation', () => {
         description: 'should return invalid for non-string values',
         minLength: 3,
         value: 123,
-        expected: { valid: false, reason: 'Must be at least 3 characters long' },
+        expected: { valid: false, reason: 'Value does not have a length' },
       },
     ];
     test.each(testCases)('$description', (testCase) => {
@@ -100,7 +100,7 @@ describe('validation', () => {
         description: 'should return invalid for string longer than maximum length',
         maxLength: 3,
         value: 'hello',
-        expected: { valid: false, reason: 'Must be no more than 3 characters long' },
+        expected: { valid: false, reason: 'Must contain at most 3 characters' },
       },
       {
         description: 'should return valid for empty string',
@@ -112,13 +112,13 @@ describe('validation', () => {
         description: 'should return invalid for non-string values',
         maxLength: 5,
         value: 123,
-        expected: { valid: false, reason: 'Must be no more than 5 characters long' },
+        expected: { valid: false, reason: 'Value does not have a length' },
       },
       {
         description: 'should return invalid for null values',
         maxLength: 5,
         value: null,
-        expected: { valid: false, reason: 'Must be no more than 5 characters long' },
+        expected: { valid: false, reason: 'Value is null' },
       },
     ];
     test.each(testCases)('$description', (testCase) => {
@@ -154,14 +154,14 @@ describe('validation', () => {
         min: 10,
         max: 15,
         value: 'hello',
-        expected: { valid: false, reason: 'Must be between 10 and 15 characters long' },
+        expected: { valid: false, reason: 'Must contain between 10 and 15 characters' },
       },
       {
         description: 'should return invalid for string longer than maximum',
         min: 1,
         max: 3,
         value: 'hello',
-        expected: { valid: false, reason: 'Must be between 1 and 3 characters long' },
+        expected: { valid: false, reason: 'Must contain between 1 and 3 characters' },
       },
       {
         description: 'should return valid for array within length bounds',
@@ -175,14 +175,14 @@ describe('validation', () => {
         min: 5,
         max: 10,
         value: ['a', 'b'],
-        expected: { valid: false, reason: 'List must contain between 5 and 10 elements' },
+        expected: { valid: false, reason: 'Must contain between 5 and 10 selections' },
       },
       {
         description: 'should return invalid for array longer than maximum',
         min: 1,
         max: 2,
         value: ['a', 'b', 'c'],
-        expected: { valid: false, reason: 'List must contain between 1 and 2 elements' },
+        expected: { valid: false, reason: 'Must contain between 1 and 2 selections' },
       },
       {
         description: 'should return invalid for non-string, non-array values',
@@ -460,19 +460,7 @@ describe('validation', () => {
         description: 'should return failure for factory validator functions',
         validator: V.minLength(10),
         value: 'short',
-        expected: { valid: false, reason: 'Must be at least 10 characters long' },
-      },
-      {
-        description: 'should work with email validator',
-        validator: V.isEmailAddress,
-        value: 'test@example.com',
-        expected: { valid: true },
-      },
-      {
-        description: 'should return failure for invalid email',
-        validator: V.isEmailAddress,
-        value: 'invalid-email',
-        expected: { valid: false, reason: 'Must be a valid email address' },
+        expected: { valid: false, reason: 'Must contain at least 10 characters' },
       },
     ];
     test.each(testCases)('$description', (testCase) => {
@@ -491,7 +479,7 @@ describe('validation', () => {
         description: 'should return invalid with single reason when one validator fails',
         validators: [V.isString, V.minLength(10)],
         value: 'hello',
-        expected: { valid: false, reasons: ['Must be at least 10 characters long'] },
+        expected: { valid: false, reasons: ['Must contain at least 10 characters'] },
       },
       {
         description: 'should return invalid with multiple reasons when multiple validators fail',
@@ -499,10 +487,7 @@ describe('validation', () => {
         value: 'hello',
         expected: {
           valid: false,
-          reasons: [
-            'Must be at least 10 characters long',
-            'Must be no more than 3 characters long',
-          ],
+          reasons: ['Must contain at least 10 characters', 'Must contain at most 3 characters'],
         },
       },
       {
@@ -517,7 +502,7 @@ describe('validation', () => {
         value: 'hello',
         expected: {
           valid: false,
-          reasons: ['Must be at least 10 characters long', 'Must match the pattern /^\\d+$/'],
+          reasons: ['Must contain at least 10 characters', 'Must match the pattern /^\\d+$/'],
         },
       },
       {
@@ -555,7 +540,7 @@ describe('validation', () => {
       const obj = { name: 'Jo' };
       expect(V.validateKey(spec, 'name', obj)).toEqual({
         valid: false,
-        reasons: ['Must be at least 5 characters long'],
+        reasons: ['Must contain at least 5 characters'],
       });
     });
 
@@ -564,7 +549,7 @@ describe('validation', () => {
       const obj = { name: 'John' };
       expect(V.validateKey(spec, 'name', obj)).toEqual({
         valid: false,
-        reasons: ['Must be at least 10 characters long', 'Must match the pattern /^\\d+$/'],
+        reasons: ['Must contain at least 10 characters', 'Must match the pattern /^\\d+$/'],
       });
     });
 
@@ -633,8 +618,8 @@ describe('validation', () => {
         expected: {
           valid: false,
           reasons: {
-            firstName: { valid: false, reasons: ['Must be at least 1 characters long'] },
-            lastName: { valid: false, reasons: ['Must be between 1 and 100 characters long'] },
+            firstName: { valid: false, reasons: ['Must contain at least 1 characters'] },
+            lastName: { valid: false, reasons: ['Must contain between 1 and 100 characters'] },
             email: { valid: false, reasons: ['Must be a valid email address'] },
             phone: { valid: false, reasons: ['Must be a valid phone number'] },
             code: { valid: false, reasons: ['Must be one of a, b'] },
