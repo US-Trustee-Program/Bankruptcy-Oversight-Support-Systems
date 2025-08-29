@@ -42,7 +42,7 @@ describe('validation', () => {
     const testCases = [
       {
         description: 'should return valid for string meeting minimum length',
-        minLength: 3,
+        minLength: 5,
         value: 'hello',
         expected: { valid: true },
       },
@@ -98,9 +98,9 @@ describe('validation', () => {
       },
       {
         description: 'should return invalid for string longer than maximum length',
-        maxLength: 3,
+        maxLength: 4,
         value: 'hello',
-        expected: { valid: false, reason: 'Must contain at most 3 characters' },
+        expected: { valid: false, reason: 'Must contain at most 4 characters' },
       },
       {
         description: 'should return valid for empty string',
