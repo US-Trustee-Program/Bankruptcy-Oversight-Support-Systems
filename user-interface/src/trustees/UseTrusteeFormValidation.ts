@@ -44,11 +44,8 @@ function validateField(field: string, value: string): string | null {
       return null;
 
     case 'phone':
-      if (!trimmedValue) {
+      if (!trimmedValue || !PHONE_REGEX.test(trimmedValue)) {
         return 'Phone is required';
-      }
-      if (!PHONE_REGEX.test(trimmedValue)) {
-        return 'Please enter a valid phone number';
       }
       return null;
 

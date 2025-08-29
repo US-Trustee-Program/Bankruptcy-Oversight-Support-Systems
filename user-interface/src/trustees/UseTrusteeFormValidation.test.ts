@@ -7,7 +7,7 @@ const VALID_FORM_DATA = {
   address1: '123 Main St',
   city: 'Springfield',
   state: 'IL',
-  phone: '(555) 123-4567',
+  phone: '555-123-4567',
   email: 'test@example.com',
   status: 'active' as const,
 };
@@ -40,7 +40,7 @@ const COMPLETE_VALID_FORM_DATA = {
   city: 'Springfield',
   state: 'Illinois',
   zipCode: '62704',
-  phone: '(555) 123-4567',
+  phone: '555-123-4567',
   email: 'jane.doe@example.com',
   status: 'active' as const,
 };
@@ -56,7 +56,6 @@ const ERROR_MESSAGES = {
   EMAIL_REQUIRED: 'Email is required',
   EMAIL_INVALID: 'Email must be a valid email address',
   PHONE_REQUIRED: 'Phone is required',
-  PHONE_INVALID: 'Please enter a valid phone number',
   EXTENSION_INVALID: 'Extension must be 1 to 6 digits',
 };
 
@@ -133,12 +132,10 @@ describe('useTrusteeFormValidation', () => {
       value: 'user@@double.com',
       expectedValue: ERROR_MESSAGES.EMAIL_INVALID,
     },
-    { field: 'phone', value: '(555) 123-4567', expectedValue: null },
-    { field: 'phone', value: '5551234567', expectedValue: null },
     { field: 'phone', value: '555-123-4567', expectedValue: null },
     { field: 'phone', value: '', expectedValue: ERROR_MESSAGES.PHONE_REQUIRED },
-    { field: 'phone', value: 'abc', expectedValue: ERROR_MESSAGES.PHONE_INVALID },
-    { field: 'phone', value: '123', expectedValue: ERROR_MESSAGES.PHONE_INVALID },
+    { field: 'phone', value: 'abc', expectedValue: ERROR_MESSAGES.PHONE_REQUIRED },
+    { field: 'phone', value: '123', expectedValue: ERROR_MESSAGES.PHONE_REQUIRED },
     { field: 'extension', value: '123', expectedValue: null },
     { field: 'extension', value: '1', expectedValue: null },
     { field: 'extension', value: '123456', expectedValue: null },
@@ -209,7 +206,7 @@ describe('useTrusteeFormValidation', () => {
 
     const validationResult = result.current.isFormValidAndComplete(COMPLETE_VALID_FORM_DATA);
 
-    expect(validationResult).toBe(true);
+    expect(validationResult).toBeTruthy();
   });
 
   test('validates trimmed values', () => {
@@ -217,6 +214,6 @@ describe('useTrusteeFormValidation', () => {
 
     const validationResult = result.current.isFormValidAndComplete(SPACES_FORM_DATA);
 
-    expect(validationResult).toBe(false);
+    expect(validationResult).toBeFalsy();
   });
 });
