@@ -84,29 +84,12 @@ function isString(value: unknown): ValidatorResult {
   return typeof value === 'string' ? { valid: true } : { valid: false, reason: 'Must be a string' };
 }
 
-// TODO: Refactor the length function to handle the special 0 and Infiity cases when generating reasons
-// function minLength(min: number, reason?: string): ValidatorFunction {
-//   return length(min, Infinity, reason);
-// }
-//
-// function maxLength(max: number, reason?: string): ValidatorFunction {
-//   return length(0, max, reason);
-// }
-
-function minLength(length: number): ValidatorFunction {
-  return (value: unknown): ValidatorResult => {
-    return typeof value === 'string' && value.length >= length
-      ? { valid: true }
-      : { valid: false, reason: `Must be at least ${length} characters long` };
-  };
+function minLength(min: number, reason?: string): ValidatorFunction {
+  return length(min, Infinity, reason);
 }
 
-function maxLength(length: number): ValidatorFunction {
-  return (value: unknown): ValidatorResult => {
-    return typeof value === 'string' && value.length <= length
-      ? { valid: true }
-      : { valid: false, reason: `Must be no more than ${length} characters long` };
-  };
+function maxLength(max: number, reason?: string): ValidatorFunction {
+  return length(0, max, reason);
 }
 
 function length(min: number, max: number, reason?: string): ValidatorFunction {
@@ -117,17 +100,34 @@ function length(min: number, max: number, reason?: string): ValidatorFunction {
       return { valid: false, reason: reason ?? `Value is undefined` };
     }
 
-    if (Array.isArray(value)) {
-      return value.length >= min && value.length <= max
-        ? { valid: true }
-        : {
-            valid: false,
-            reason: reason ?? `List must contain between ${min} and ${max} elements`,
-          };
-    } else if (typeof value === 'string') {
-      return value.length >= min && value.length <= max
-        ? { valid: true }
-        : { valid: false, reason: reason ?? `Must be between ${min} and ${max} characters long` };
+    const valueIsString = typeof value === 'string';
+    const valueIsArray = Array.isArray(value);
+
+    if (valueIsString || valueIsArray) {
+      if (value.length >= min && value.length <= max) {
+        return { valid: true };
+      } else {
+        const reasonText = () => {
+          if (reason) {
+            return reason;
+          }
+
+          let rangeText = `between ${min} and ${max}`;
+          if (min === 0) {
+            rangeText = `at most ${max}`;
+          } else if (max === Infinity) {
+            rangeText = `at least ${min}`;
+          }
+
+          const unitText = valueIsString ? 'characters' : 'selections';
+          return `Must contain ${rangeText} ${unitText}`;
+        };
+
+        return {
+          valid: false,
+          reason: reasonText(),
+        };
+      }
     } else {
       return { valid: false, reason: reason ?? 'Value does not have a length' };
     }
