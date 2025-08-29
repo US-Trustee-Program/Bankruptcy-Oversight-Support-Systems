@@ -189,7 +189,7 @@ describe('validation', () => {
         min: 1,
         max: 5,
         value: 123,
-        expected: { valid: false, reason: 'Type does not have a length' },
+        expected: { valid: false, reason: 'Value does not have a length' },
       },
       {
         description: 'should use custom reason when provided',
@@ -198,6 +198,20 @@ describe('validation', () => {
         value: 'toolong',
         reason: 'Custom error message',
         expected: { valid: false, reason: 'Custom error message' },
+      },
+      {
+        description: 'should return invalid for null values',
+        min: 1,
+        max: 5,
+        value: null,
+        expected: { valid: false, reason: 'Value is null' },
+      },
+      {
+        description: 'should return invalid for undefined values',
+        min: 1,
+        max: 5,
+        value: undefined,
+        expected: { valid: false, reason: 'Value is undefined' },
       },
     ];
     test.each(testCases)('$description', (testCase) => {
