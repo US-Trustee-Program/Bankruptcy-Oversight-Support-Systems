@@ -14,6 +14,7 @@ param functionsVersion string = '~4'
 param apiFunctionStorageName string = 'ustpfunc${uniqueString(resourceGroup().id, apiFunctionName)}'
 
 param apiFunctionName string
+// param slotName string = 'staging'
 
 param apiFunctionSubnetId string
 
@@ -168,7 +169,56 @@ resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
     appConfigIdentity
     sqlIdentity
   ]
+
+  resource apiFunctionConfig 'config' = {
+  name: 'web'
+  properties: apiFunctionAppConfigProperties
 }
+
+  // resource slot 'slots' = {
+  //   location: location
+  //   name: '${apiFunctionName}-${slotName}'
+  //   resource apiFunctionConfig 'config' = {
+  //     name: 'web'
+  //     properties: apiFunctionAppConfigProperties
+  //   }
+  //   properties: {
+  //     serverFarmId: apiFunctionApp.properties.serverFarmId
+  //     enabled: apiFunctionApp.properties.enabled
+  //     httpsOnly: apiFunctionApp.properties.httpsOnly
+  //     virtualNetworkSubnetId: apiFunctionApp.properties.virtualNetworkSubnetId
+  //     keyVaultReferenceIdentity: apiFunctionApp.properties.keyVaultReferenceIdentity
+  //   }
+  // }
+}
+
+var apiFunctionAppConfigProperties = {
+    cors: {
+      allowedOrigins: apiCorsAllowOrigins
+    }
+    numberOfWorkers: 1
+    alwaysOn: true
+    http20Enabled: true
+    functionAppScaleLimit: 1
+    minimumElasticInstanceCount: 1
+    publicNetworkAccess: 'Enabled'
+    ipSecurityRestrictions: ipSecurityRestrictionsRules
+    ipSecurityRestrictionsDefaultAction: 'Deny'
+    scmIpSecurityRestrictions: [
+      {
+        ipAddress: 'Any'
+        action: 'Deny'
+        priority: 2147483647
+        name: 'Deny all'
+        description: 'Deny all access'
+      }
+    ]
+    scmIpSecurityRestrictionsDefaultAction: 'Deny'
+    scmIpSecurityRestrictionsUseMain: false
+    linuxFxVersion: linuxFxVersionMap['${functionsRuntime}']
+    appSettings: apiApplicationSettings
+    ftpsState: 'Disabled'
+  }
 
 //Create App Insights
 module apiFunctionAppInsights 'lib/app-insights/function-app-insights.bicep' = {
@@ -362,38 +412,6 @@ var ipSecurityRestrictionsRules = concat(
       ]
     : []
 )
-
-resource apiFunctionConfig 'Microsoft.Web/sites/config@2023-12-01' = {
-  parent: apiFunctionApp
-  name: 'web'
-  properties: {
-    cors: {
-      allowedOrigins: apiCorsAllowOrigins
-    }
-    numberOfWorkers: 1
-    alwaysOn: true
-    http20Enabled: true
-    functionAppScaleLimit: 1
-    minimumElasticInstanceCount: 1
-    publicNetworkAccess: 'Enabled'
-    ipSecurityRestrictions: ipSecurityRestrictionsRules
-    ipSecurityRestrictionsDefaultAction: 'Deny'
-    scmIpSecurityRestrictions: [
-      {
-        ipAddress: 'Any'
-        action: 'Deny'
-        priority: 2147483647
-        name: 'Deny all'
-        description: 'Deny all access'
-      }
-    ]
-    scmIpSecurityRestrictionsDefaultAction: 'Deny'
-    scmIpSecurityRestrictionsUseMain: false
-    linuxFxVersion: linuxFxVersionMap['${functionsRuntime}']
-    appSettings: apiApplicationSettings
-    ftpsState: 'Disabled'
-  }
-}
 
 //Private Endpoints
 module apiPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = {

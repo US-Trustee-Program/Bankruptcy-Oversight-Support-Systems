@@ -189,10 +189,8 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = {
       privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
       privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
       oktaUrl: oktaUrl
+      slotName: slotName
     }
-    dependsOn: [
-      network
-    ]
 }
 
 module ustpApiFunction 'backend-api-deploy.bicep' = {
@@ -231,9 +229,6 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
       maxObjectDepth: maxObjectDepth
       maxObjectKeyCount: maxObjectKeyCount
     }
-    dependsOn: [
-      network
-    ]
 }
 
 module ustpDatflowsFunction 'dataflows-resource-deploy.bicep' = {
@@ -272,7 +267,4 @@ module ustpDatflowsFunction 'dataflows-resource-deploy.bicep' = {
     mssqlRequestTimeout: mssqlRequestTimeout
     enabledDataflows: enabledDataflows
   }
-  dependsOn: [
-    network
-  ]
 }
