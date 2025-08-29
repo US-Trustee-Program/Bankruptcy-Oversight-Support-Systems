@@ -521,13 +521,13 @@ describe('validation', () => {
     });
   });
   describe('validateKey', () => {
-    it('should return valid when key validation passes', () => {
+    test('should return valid when key validation passes', () => {
       const spec = { name: [V.isString, V.minLength(2)] };
       const obj = { name: 'John' };
       expect(V.validateKey(spec, 'name', obj)).toEqual({ valid: true });
     });
 
-    it('should return invalid with reasons when key validation fails', () => {
+    test('should return invalid with reasons when key validation fails', () => {
       const spec = { name: [V.isString, V.minLength(5)] };
       const obj = { name: 'Jo' };
       expect(V.validateKey(spec, 'name', obj)).toEqual({
@@ -536,7 +536,7 @@ describe('validation', () => {
       });
     });
 
-    it('should handle multiple validators with multiple failures', () => {
+    test('should handle multiple validators with multiple failures', () => {
       const spec = { name: [V.minLength(10), V.matches(/^\d+$/)] };
       const obj = { name: 'John' };
       expect(V.validateKey(spec, 'name', obj)).toEqual({
@@ -545,13 +545,13 @@ describe('validation', () => {
       });
     });
 
-    it('should validate email key correctly', () => {
+    test('should validate email key correctly', () => {
       const spec = { email: [V.isEmailAddress] };
       const obj = { email: 'test@example.com' };
       expect(V.validateKey(spec, 'email', obj)).toEqual({ valid: true });
     });
 
-    it('should return invalid for bad email format', () => {
+    test('should return invalid for bad email format', () => {
       const spec = { email: [V.isEmailAddress] };
       const obj = { email: 'invalid-email' };
       expect(V.validateKey(spec, 'email', obj)).toEqual({
@@ -560,7 +560,7 @@ describe('validation', () => {
       });
     });
 
-    it('should handle single validator successfully', () => {
+    test('should handle single validator successfully', () => {
       const spec = { name: [V.isString] };
       const obj = { name: 'Alice' };
       expect(V.validateKey(spec, 'name', obj)).toEqual({ valid: true });
