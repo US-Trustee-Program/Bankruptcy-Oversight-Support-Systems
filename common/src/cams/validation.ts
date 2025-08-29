@@ -25,19 +25,30 @@ function maxLength(length: number): ValidatorFunction {
   };
 }
 
-function length(min: number, max: number): ValidatorFunction {
+function length(min: number, max: number, reason?: string): ValidatorFunction {
   return (value: unknown): ValidatorResult => {
-    return typeof value === 'string' && value.length >= min && value.length <= max
-      ? { valid: true }
-      : { valid: false, reason: `Must be between ${min} and ${max} characters long` };
+    if (Array.isArray(value)) {
+      return value.length >= min && value.length <= max
+        ? { valid: true }
+        : {
+            valid: false,
+            reason: reason ?? `List must contain between ${min} and ${max} elements`,
+          };
+    } else if (typeof value === 'string') {
+      return value.length >= min && value.length <= max
+        ? { valid: true }
+        : { valid: false, reason: reason ?? `Must be between ${min} and ${max} characters long` };
+    } else {
+      return { valid: false, reason: reason ?? 'Type does not have a length' };
+    }
   };
 }
 
-function isInSet(set: string[]): ValidatorFunction {
+function isInSet(set: string[], reason?: string): ValidatorFunction {
   return (value: unknown): ValidatorResult => {
     return typeof value === 'string' && set.includes(value)
       ? { valid: true }
-      : { valid: false, reason: `Must be one of ${set.join(', ')}` };
+      : { valid: false, reason: reason ?? `Must be one of ${set.join(', ')}` };
   };
 }
 
@@ -50,15 +61,11 @@ function matches(regex: RegExp, error?: string): ValidatorFunction {
 }
 
 function isEmailAddress(value: unknown): ValidatorResult {
-  return typeof value === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
-    ? { valid: true }
-    : { valid: false, reason: 'Must be a valid email address' };
+  return matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Must be a valid email address')(value);
 }
 
 function isPhoneNumber(value: unknown): ValidatorResult {
-  return typeof value === 'string' && /^\d{10}$/.test(value)
-    ? { valid: true }
-    : { valid: false, reason: 'Must be a valid phone number' };
+  return matches(/^\d{10}$/, 'Must be a valid phone number')(value);
 }
 
 function validate(func: ValidatorFunction, value: unknown): ValidatorResult {
