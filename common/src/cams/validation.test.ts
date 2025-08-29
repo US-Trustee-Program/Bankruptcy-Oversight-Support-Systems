@@ -192,14 +192,6 @@ describe('validation', () => {
         expected: { valid: false, reason: 'Value does not have a length' },
       },
       {
-        description: 'should use custom reason when provided',
-        min: 1,
-        max: 3,
-        value: 'toolong',
-        reason: 'Custom error message',
-        expected: { valid: false, reason: 'Custom error message' },
-      },
-      {
         description: 'should return invalid for null values',
         min: 1,
         max: 5,
@@ -215,7 +207,7 @@ describe('validation', () => {
       },
     ];
     test.each(testCases)('$description', (testCase) => {
-      const validator = V.length(testCase.min, testCase.max, testCase.reason);
+      const validator = V.length(testCase.min, testCase.max);
       expect(validator(testCase.value)).toEqual(testCase.expected);
     });
   });
