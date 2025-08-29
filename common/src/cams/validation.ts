@@ -111,6 +111,12 @@ function maxLength(length: number): ValidatorFunction {
 
 function length(min: number, max: number, reason?: string): ValidatorFunction {
   return (value: unknown): ValidatorResult => {
+    if (value === null) {
+      return { valid: false, reason: reason ?? `Value is null` };
+    } else if (value === undefined) {
+      return { valid: false, reason: reason ?? `Value is undefined` };
+    }
+
     if (Array.isArray(value)) {
       return value.length >= min && value.length <= max
         ? { valid: true }
@@ -123,7 +129,7 @@ function length(min: number, max: number, reason?: string): ValidatorFunction {
         ? { valid: true }
         : { valid: false, reason: reason ?? `Must be between ${min} and ${max} characters long` };
     } else {
-      return { valid: false, reason: reason ?? 'Type does not have a length' };
+      return { valid: false, reason: reason ?? 'Value does not have a length' };
     }
   };
 }
