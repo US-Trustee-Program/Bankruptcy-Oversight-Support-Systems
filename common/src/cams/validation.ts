@@ -1,12 +1,12 @@
 /********************************************************************************
  * Core Validation Library Types and Functions
  ********************************************************************************/
+const validResult = { valid: true } as const;
 
-type ValidatorResult = { valid: true } | { valid: false; reason: string };
-type ValidatorResults = { valid: true } | { valid: false; reasons: string[] };
-type ValidatorResultsSet<T> =
+type ValidatorResult = { valid: true } | { valid: false; reasons: string[] };
+type ValidatorResultSet<T> =
   | { valid: true }
-  | { valid: false; reasons: Record<keyof T, ValidatorResults> };
+  | { valid: false; reasons: Record<keyof T, ValidatorResult> };
 
 export type ValidatorFunction = (value: unknown) => ValidatorResult;
 export type ValidationSpec<T> = Record<keyof T, ValidatorFunction[]>;
@@ -28,13 +28,14 @@ function validate(func: ValidatorFunction, value: unknown): ValidatorResult {
  * @param value - The value to be validated
  * @returns ValidatorResults object containing validation status and reasons for failure
  */
-function validateEach(functions: ValidatorFunction[], value: unknown): ValidatorResults {
+function validateEach(functions: ValidatorFunction[], value: unknown): ValidatorResult {
   const reasons = functions
     .map((f) => f(value))
     .filter((r) => !r.valid)
-    .map((r) => (r as { valid: false; reason: string }).reason);
+    .map((r) => (r as { valid: false; reasons: string[] }).reasons)
+    .flat();
 
-  return reasons.length > 0 ? { valid: false, reasons } : { valid: true };
+  return reasons.length > 0 ? { valid: false, reasons } : validResult;
 }
 
 /**
@@ -44,9 +45,9 @@ function validateEach(functions: ValidatorFunction[], value: unknown): Validator
  * @param spec - The validation specification defining rules for object properties
  * @param key - The specific key/property of the object to validate
  * @param obj - The object containing the property to be validated
- * @returns ValidatorResults object containing validation status and reasons for failure
+ * @returns ValidatorResults an object containing validation status and reasons for failure
  */
-function validateKey<T>(spec: ValidationSpec<T>, key: keyof T, obj: T): ValidatorResults {
+function validateKey<T>(spec: ValidationSpec<T>, key: keyof T, obj: T): ValidatorResult {
   return validateEach(spec[key], obj[key]);
 }
 
@@ -58,7 +59,7 @@ function validateKey<T>(spec: ValidationSpec<T>, key: keyof T, obj: T): Validato
  * @param obj - The object to be validated
  * @returns ValidatorResultsSet object containing validation status and property-specific reasons for failure
  */
-function validateObject<T>(spec: ValidationSpec<T>, obj: T): ValidatorResultsSet<T> {
+function validateObject<T>(spec: ValidationSpec<T>, obj: T): ValidatorResultSet<T> {
   const reasons = (Object.keys(spec) as (keyof T)[]).reduce(
     (acc, key) => {
       const result = validateEach(spec[key], obj[key]);
@@ -67,17 +68,51 @@ function validateObject<T>(spec: ValidationSpec<T>, obj: T): ValidatorResultsSet
       }
       return acc;
     },
-    {} as Record<keyof T, ValidatorResults>,
+    {} as Record<keyof T, ValidatorResult>,
   );
 
-  return Object.keys(reasons).length > 0 ? { valid: false, reasons } : { valid: true };
+  return Object.keys(reasons).length > 0 ? { valid: false, reasons } : validResult;
 }
 
 /********************************************************************************
  * Common Validator Functions
  ********************************************************************************/
 
-// TODO: Need to support dates, numbers. Nullable and undefined. Required vs. optional.
+// TODO: Need to support dates, numbers.
+
+/**
+ * Creates a validator function that treats undefined values as valid and applies other validators otherwise.
+ * This allows for optional fields in validation schemas where undefined values are acceptable.
+ *
+ * @param {...ValidatorFunction[]} validators - Variable number of validator functions to apply when value is not undefined
+ * @returns {ValidatorFunction} A validator function that allows undefined values and validates defined values
+ */
+function optional(...validators: ValidatorFunction[]): ValidatorFunction {
+  return (value: unknown): ValidatorResult => {
+    if (value === undefined) {
+      return validResult;
+    } else {
+      return validateEach(validators, value);
+    }
+  };
+}
+
+/**
+ * Creates a validator function that treats null values as valid and applies other validators otherwise.
+ * This allows for nullable fields in validation schemas where null values are acceptable.
+ *
+ * @param {...ValidatorFunction[]} validators - Variable number of validator functions to apply when value is not null
+ * @returns {ValidatorFunction} A validator function that allows null values and validates non-null values
+ */
+function nullable(...validators: ValidatorFunction[]): ValidatorFunction {
+  return (value: unknown): ValidatorResult => {
+    if (value === null) {
+      return validResult;
+    } else {
+      return validateEach(validators, value);
+    }
+  };
+}
 
 /**
  * Validates whether a value is a string.
@@ -86,7 +121,7 @@ function validateObject<T>(spec: ValidationSpec<T>, obj: T): ValidatorResultsSet
  * @returns {ValidatorResult} Object containing validation status and reason for failure if invalid
  */
 function isString(value: unknown): ValidatorResult {
-  return typeof value === 'string' ? { valid: true } : { valid: false, reason: 'Must be a string' };
+  return typeof value === 'string' ? validResult : { valid: false, reasons: ['Must be a string'] };
 }
 
 /**
@@ -119,9 +154,9 @@ function maxLength(max: number): ValidatorFunction {
 function length(min: number, max: number): ValidatorFunction {
   return (value: unknown): ValidatorResult => {
     if (value === null) {
-      return { valid: false, reason: `Value is null` };
+      return { valid: false, reasons: [`Value is null`] };
     } else if (value === undefined) {
-      return { valid: false, reason: `Value is undefined` };
+      return { valid: false, reasons: [`Value is undefined`] };
     }
 
     const valueIsString = typeof value === 'string';
@@ -129,11 +164,11 @@ function length(min: number, max: number): ValidatorFunction {
     const isTypeWithLength = valueIsString || valueIsArray;
 
     if (!isTypeWithLength) {
-      return { valid: false, reason: 'Value does not have a length' };
+      return { valid: false, reasons: ['Value does not have a length'] };
     }
 
     if (value.length >= min && value.length <= max) {
-      return { valid: true };
+      return validResult;
     }
 
     const reasonText = () => {
@@ -150,7 +185,7 @@ function length(min: number, max: number): ValidatorFunction {
 
     return {
       valid: false,
-      reason: reasonText(),
+      reasons: [reasonText()],
     };
   };
 }
@@ -164,8 +199,8 @@ function length(min: number, max: number): ValidatorFunction {
 function isInSet(set: string[], reason?: string): ValidatorFunction {
   return (value: unknown): ValidatorResult => {
     return typeof value === 'string' && set.includes(value)
-      ? { valid: true }
-      : { valid: false, reason: reason ?? `Must be one of ${set.join(', ')}` };
+      ? validResult
+      : { valid: false, reasons: [reason ?? `Must be one of ${set.join(', ')}`] };
   };
 }
 
@@ -179,8 +214,8 @@ function isInSet(set: string[], reason?: string): ValidatorFunction {
 function matches(regex: RegExp, error?: string): ValidatorFunction {
   return (value: unknown): ValidatorResult => {
     return typeof value === 'string' && regex.test(value)
-      ? { valid: true }
-      : { valid: false, reason: error ?? `Must match the pattern ${regex}` };
+      ? validResult
+      : { valid: false, reasons: [error ?? `Must match the pattern ${regex}`] };
   };
 }
 
@@ -213,10 +248,13 @@ const V = {
   matches,
   maxLength,
   minLength,
+  nullable,
+  optional,
   validate,
   validateEach,
   validateKey,
   validateObject,
+  validResult,
 };
 
 export default V;
