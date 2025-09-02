@@ -186,7 +186,12 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
   ]
 
   resource slot 'slots' = {
+    location: location
     name: slotName
+    identity: {
+      type: 'UserAssigned'
+      userAssignedIdentities: userAssignedIdentities
+    }
     properties: {
       serverFarmId: dataflowsFunctionApp.properties.serverFarmId
       enabled: dataflowsFunctionApp.properties.enabled
