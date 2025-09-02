@@ -27,50 +27,69 @@ describe('PhoneNumberInput', () => {
   });
 
   test('should properly handle value imperatives', async () => {
-    const ref = React.createRef<InputRef>();
-    render(
-      <PhoneNumberInput onChange={vi.fn()} id={'phone-number-input'} ref={ref}></PhoneNumberInput>,
-    );
+    const id = 'phone-number-input';
+    const outputId = 'phone-number-output';
+    const phoneNumber = '123-456-7890';
+    const blank = '';
 
-    ref.current?.setValue('123-456-7890');
-    await waitFor(() => {
-      expect(ref.current?.getValue()).toBe('123-456-7890');
-    });
-    ref.current?.clearValue();
-    await waitFor(() => {
-      expect(ref.current?.getValue()).toBe('');
-    });
-    ref.current?.setValue('123-456-7890');
-    await waitFor(() => {
-      expect(ref.current?.getValue()).toBe('123-456-7890');
-    });
-    ref.current?.resetValue();
-    await waitFor(() => {
-      expect(ref.current?.getValue()).toBe('');
-    });
-  });
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
-  test('should properly handle reset with value in props', async () => {
-    const ref = React.createRef<InputRef>();
-    render(
-      <PhoneNumberInput
-        onChange={vi.fn()}
-        id={'phone-number-input'}
-        ref={ref}
-        value={'123-456-7890'}
-      ></PhoneNumberInput>,
-    );
+    const Wrapper = () => {
+      const ref = React.createRef<InputRef>();
 
+      return (
+        <>
+          <div id={outputId} data-testid={outputId}></div>
+          <PhoneNumberInput
+            onChange={vi.fn()}
+            id={'phone-number-input'}
+            data-testid={id}
+            ref={ref}
+          ></PhoneNumberInput>
+          <button onClick={() => ref.current?.setValue(phoneNumber)}>Set Value</button>
+          <button onClick={() => ref.current?.clearValue()}>Clear Value</button>
+          <button onClick={() => ref.current?.resetValue()}>Reset Value</button>
+          <button
+            onClick={() => {
+              window.alert(ref.current!.getValue());
+            }}
+          >
+            Get Value
+          </button>
+        </>
+      );
+    };
+
+    render(<Wrapper />);
+
+    await user.click(screen.getByText('Set Value'));
     await waitFor(() => {
-      expect(ref.current?.getValue()).toBe('123-456-7890');
+      expect(screen.getByTestId(id)).toHaveValue(phoneNumber);
     });
-    ref.current?.clearValue();
+
+    await user.click(screen.getByText('Clear Value'));
     await waitFor(() => {
-      expect(ref.current?.getValue()).toBe('');
+      expect(screen.getByTestId(id)).toHaveValue(blank);
     });
-    ref.current?.resetValue();
+
+    await user.click(screen.getByText('Set Value'));
     await waitFor(() => {
-      expect(ref.current?.getValue()).toBe('123-456-7890');
+      expect(screen.getByTestId(id)).toHaveValue(phoneNumber);
+    });
+
+    await user.click(screen.getByText('Clear Value'));
+    await waitFor(() => {
+      expect(screen.getByTestId(id)).toHaveValue(blank);
+    });
+
+    await user.click(screen.getByText('Set Value'));
+    await waitFor(() => {
+      expect(screen.getByTestId(id)).toHaveValue(phoneNumber);
+    });
+
+    await user.click(screen.getByText('Get Value'));
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith(phoneNumber);
     });
   });
 });

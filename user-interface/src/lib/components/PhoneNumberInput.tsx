@@ -1,9 +1,14 @@
 import React, { forwardRef, useImperativeHandle, useRef } from 'react';
 import Input, { InputProps } from './uswds/Input';
 import { InputRef } from '../type-declarations/input-fields';
+import { PHONE_REGEX } from '@common/cams/regex';
 
-export function validatePhoneNumberInput(ev: React.ChangeEvent<HTMLInputElement>) {
-  const digitsOnly = (ev.target.value.match(/\d/g) ?? []).slice(0, 10);
+export function validatePhoneNumberInputEvent(ev: React.ChangeEvent<HTMLInputElement>) {
+  return validatePhoneNumberInput(ev.target.value);
+}
+
+function validatePhoneNumberInput(value: string) {
+  const digitsOnly = (value.match(/\d/g) ?? []).slice(0, 10);
 
   let joinedInput = '';
   const len = digitsOnly.length;
@@ -21,8 +26,7 @@ export function validatePhoneNumberInput(ev: React.ChangeEvent<HTMLInputElement>
     joinedInput = '';
   }
 
-  const fullPhonePattern = /^\d{3}-\d{3}-\d{4}$/;
-  const phoneNumber = fullPhonePattern.test(joinedInput) ? joinedInput : undefined;
+  const phoneNumber = PHONE_REGEX.test(joinedInput) ? joinedInput : undefined;
   return { phoneNumber, joinedInput };
 }
 
@@ -35,35 +39,33 @@ function PhoneNumberInputComponent(props: PhoneNumberInputProps, ref: React.Ref<
   const { onChange, ...otherProps } = props;
 
   const forwardedRef = useRef<InputRef>(null);
-  const clearValue = () => forwardedRef.current?.clearValue();
-  const resetValue = () => forwardedRef.current?.resetValue();
-  const setValue = (value: string) => forwardedRef.current?.setValue(value);
-  const getValue = () => forwardedRef.current?.getValue() ?? '';
-  const disable = (value: boolean) => forwardedRef.current?.disable(value);
-  const focus = () => forwardedRef.current?.focus();
-
-  useImperativeHandle(ref, () => ({
-    clearValue,
-    resetValue,
-    setValue,
-    getValue,
-    disable,
-    focus,
-  }));
+  useImperativeHandle(
+    ref,
+    () => ({
+      setValue: (value: string) => {
+        const { joinedInput } = validatePhoneNumberInput(value);
+        forwardedRef.current?.setValue(joinedInput);
+      },
+      clearValue: () => forwardedRef.current?.clearValue(),
+      resetValue: () => forwardedRef.current?.resetValue(),
+      getValue: () => forwardedRef.current?.getValue() ?? '',
+      disable: (value: boolean) => forwardedRef.current?.disable(value),
+      focus: () => forwardedRef.current?.focus(),
+    }),
+    [],
+  );
 
   return (
     <Input
       {...otherProps}
       ref={forwardedRef}
       onChange={(ev) => {
-        const { phoneNumber, joinedInput } = validatePhoneNumberInput(ev);
+        const { phoneNumber, joinedInput } = validatePhoneNumberInputEvent(ev);
         forwardedRef?.current?.setValue(joinedInput);
         onChange(phoneNumber);
       }}
       includeClearButton={true}
       ariaDescription="Example: 123-456-7890"
-      placeholder="___-___-____"
-      aria-placeholder=""
       type="tel"
       inputMode="numeric"
     ></Input>
