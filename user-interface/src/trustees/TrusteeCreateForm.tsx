@@ -17,8 +17,8 @@ import UsStatesComboBox from '@/lib/components/combobox/UsStatesComboBox';
 import useDebounce from '@/lib/hooks/UseDebounce';
 import { Stop } from '@/lib/components/Stop';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
+import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 
-// Chapter type options - Complete list with Panel/Non-Panel distinctions
 const CHAPTER_OPTIONS: ComboOption<ChapterType>[] = [
   { value: '7-panel', label: '7 - Panel' },
   { value: '7-non-panel', label: '7 - Non-Panel' },
@@ -61,14 +61,12 @@ export default function TrusteeCreateForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // District options state
   const [districtOptions, setDistrictOptions] = useState<ComboOption[]>([]);
   const [districtLoadError, setDistrictLoadError] = useState<string | null>(null);
 
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
   const navigate = useCamsNavigator();
 
-  // Load district options from API
   useEffect(() => {
     setDistrictLoadError(null);
     api
@@ -80,10 +78,8 @@ export default function TrusteeCreateForm() {
 
         const courts = response.data;
 
-        // Transform court divisions to district options
         const districtMap = new Map<string, ComboOption>();
         courts.forEach((court: CourtDivisionDetails) => {
-          // Use courtId as both value and create a readable label
           const label = `${court.courtName} (${court.courtDivisionName})`;
           districtMap.set(court.courtDivisionCode, {
             value: court.courtDivisionCode,
@@ -151,10 +147,8 @@ export default function TrusteeCreateForm() {
     setter: React.Dispatch<React.SetStateAction<string>>,
   ) {
     const { value, name } = event.target;
-    // Update state immediately for responsive UI
     setter(value);
 
-    // Debounce only the validation to avoid excessive API calls
     debounce(() => {
       validateFieldAndUpdate(name, value);
     }, 300);
@@ -164,7 +158,6 @@ export default function TrusteeCreateForm() {
     setErrorMessage(null);
     clearErrors();
 
-    // Validate form before submission
     const formData = getFormData();
 
     setIsSubmitting(true);
@@ -194,8 +187,6 @@ export default function TrusteeCreateForm() {
     } catch (e) {
       const errorMsg = e instanceof Error ? e.message : 'Could not create trustee.';
       setErrorMessage(errorMsg);
-
-      // Show error notification
       globalAlert?.error(`Failed to create trustee: ${errorMsg}`);
     } finally {
       setIsSubmitting(false);
@@ -294,10 +285,7 @@ export default function TrusteeCreateForm() {
                   label="State"
                   onUpdateSelection={(selectedOptions) => {
                     const selectedValue = selectedOptions[0] ? selectedOptions[0].value : '';
-                    // Update state immediately for responsive UI
                     setState(selectedValue);
-
-                    // Debounce only the validation
                     debounce(() => {
                       validateFieldAndUpdate('state', selectedValue);
                     }, 300);
@@ -316,10 +304,7 @@ export default function TrusteeCreateForm() {
                   value={zipCode}
                   onChange={(e) => {
                     const { value } = e.target;
-                    // Update state immediately for responsive UI
                     setZipCode(value);
-
-                    // Debounce only the validation
                     debounce(() => {
                       validateFieldAndUpdate('zipCode', value);
                     }, 300);
@@ -335,16 +320,20 @@ export default function TrusteeCreateForm() {
           <div className="grid-col-6">
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-4">
-                <Input
+                <PhoneNumberInput
                   id="trustee-phone"
                   name="phone"
                   label="Phone"
-                  value={phone}
-                  onChange={(e) => handleFieldChange(e, setPhone)}
+                  onChange={(value) => {
+                    const next = value ?? '';
+                    setPhone(next);
+                    debounce(() => {
+                      validateFieldAndUpdate('phone', next);
+                    }, 300);
+                  }}
                   errorMessage={fieldErrors['phone']}
                   autoComplete="off"
-                  type="tel"
-                  ariaDescription="Example: (123)456-7890"
+                  ariaDescription="Example: 123-456-7890"
                   required
                 />
               </div>
