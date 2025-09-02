@@ -17,6 +17,8 @@ param dataflowsFunctionName string
 
 param apiFunctionName string
 
+param slotName string
+
 param dataflowsFunctionSubnetId string
 
 param virtualNetworkResourceGroupName string
@@ -174,11 +176,61 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
     virtualNetworkSubnetId: dataflowsFunctionSubnetId
     keyVaultReferenceIdentity: appConfigIdentity.id
   }
+  resource dataflowsFunctionConfig 'config' = {
+    name: 'web'
+    properties: dataflowsFunctionConfigProperties
+  }
   dependsOn: [
     appConfigIdentity
     sqlIdentity
   ]
+
+  resource slot 'slots' = {
+    name: slotName
+    properties: {
+      serverFarmId: dataflowsFunctionApp.properties.serverFarmId
+      enabled: dataflowsFunctionApp.properties.enabled
+      httpsOnly: dataflowsFunctionApp.properties.httpsOnly
+      virtualNetworkSubnetId: dataflowsFunctionApp.properties.virtualNetworkSubnetId
+      keyVaultReferenceIdentity: dataflowsFunctionApp.properties.keyVaultReferenceIdentity
+    }
+    resource dataflowsFunctionConfig 'config' = {
+      name: 'web'
+      properties: dataflowsFunctionConfigProperties
+    }
+  }
 }
+
+var dataflowsFunctionConfigProperties = {
+    cors: {
+      allowedOrigins: dataflowsCorsAllowOrigins
+    }
+    numberOfWorkers: 4
+    alwaysOn: false
+    http20Enabled: true
+    functionAppScaleLimit: 4
+    minimumElasticInstanceCount: 1
+    publicNetworkAccess: 'Enabled'
+    ipSecurityRestrictions: dataflowsIpSecurityRestrictionsRules
+    ipSecurityRestrictionsDefaultAction: 'Deny'
+    scmIpSecurityRestrictions: concat(
+      [
+        {
+          ipAddress: 'Any'
+          action: 'Deny'
+          priority: 2147483647
+          name: 'Deny all'
+          description: 'Deny all access'
+        }
+      ],
+      middlewareIpSecurityRestrictionsRules
+    )
+    scmIpSecurityRestrictionsDefaultAction: 'Deny'
+    scmIpSecurityRestrictionsUseMain: false
+    linuxFxVersion: linuxFxVersionMap['${functionsRuntime}']
+    appSettings: dataflowsApplicationSettings
+    ftpsState: 'Disabled'
+  }
 
 //Create App Insights
 
@@ -402,41 +454,6 @@ var middlewareIpSecurityRestrictionsRules = [
 ]
 
 var dataflowsIpSecurityRestrictionsRules = concat(ipSecurityRestrictionsRules, middlewareIpSecurityRestrictionsRules)
-
-resource dataflowsFunctionConfig 'Microsoft.Web/sites/config@2023-12-01' = {
-  parent: dataflowsFunctionApp
-  name: 'web'
-  properties: {
-    cors: {
-      allowedOrigins: dataflowsCorsAllowOrigins
-    }
-    numberOfWorkers: 4
-    alwaysOn: false
-    http20Enabled: true
-    functionAppScaleLimit: 4
-    minimumElasticInstanceCount: 1
-    publicNetworkAccess: 'Enabled'
-    ipSecurityRestrictions: dataflowsIpSecurityRestrictionsRules
-    ipSecurityRestrictionsDefaultAction: 'Deny'
-    scmIpSecurityRestrictions: concat(
-      [
-        {
-          ipAddress: 'Any'
-          action: 'Deny'
-          priority: 2147483647
-          name: 'Deny all'
-          description: 'Deny all access'
-        }
-      ],
-      middlewareIpSecurityRestrictionsRules
-    )
-    scmIpSecurityRestrictionsDefaultAction: 'Deny'
-    scmIpSecurityRestrictionsUseMain: false
-    linuxFxVersion: linuxFxVersionMap['${functionsRuntime}']
-    appSettings: dataflowsApplicationSettings
-    ftpsState: 'Disabled'
-  }
-}
 
 //Private Endpoints
 

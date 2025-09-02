@@ -38,7 +38,7 @@ var planTypeToSkuMap = {
 }
 
 param webappName string
-param slotName string = 'staging'
+param slotName string
 
 @description('Determine host instance operating system type. false for Windows OS and true for Linux OS.')
 param hostOSType bool = true
