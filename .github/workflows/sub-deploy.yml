@@ -41,7 +41,7 @@ on:
         type: string
     outputs:
       e2eCosmosDbExists:
-        description: "Does E2E Cosmos DB Already Exists before deployment"
+        description: 'Does E2E Cosmos DB Already Exists before deployment'
         value: ${{ jobs.deploy-db.outputs.e2eCosmosDbExists }}
 
 jobs:
@@ -91,20 +91,4 @@ jobs:
       environmentHash: ${{ inputs.environmentHash }}
       apiFunctionName: ${{ inputs.apiFunctionName }}
       dataflowsFunctionName: ${{ inputs.dataflowsFunctionName }}
-    secrets: inherit # pragma: allowlist secret
-
-  deploy-slot-resources:
-    name: Slot Resources
-    uses: ./.github/workflows/sub-deploy-slot-resources.yml
-    needs: [deploy-infra]
-    if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
-    with:
-      webappName: ${{ inputs.webappName }}
-      apiFunctionName: ${{ inputs.apiFunctionName }}
-      dataflowsFunctionName: ${{ inputs.dataflowsFunctionName }}
-      ghaEnvironment: ${{ inputs.ghaEnvironment }}
-      azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
-      azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}
-      slotName: ${{ inputs.slotName }}
-      environmentHash: ${{ inputs.environmentHash }}
     secrets: inherit # pragma: allowlist secret

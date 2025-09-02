@@ -14,7 +14,7 @@ param functionsVersion string = '~4'
 param apiFunctionStorageName string = 'ustpfunc${uniqueString(resourceGroup().id, apiFunctionName)}'
 
 param apiFunctionName string
-// param slotName string = 'staging'
+param slotName string
 
 param apiFunctionSubnetId string
 
@@ -46,6 +46,8 @@ param isUstpDeployment bool
 
 @description('List of origins to allow. Need to include protocol')
 param apiCorsAllowOrigins array = []
+@description('List of origins to allow on the API non-production deployment slot. Need to include protocol')
+param apiSlotCorsAllowOrigins array = []
 
 param sqlServerResourceGroupName string = ''
 
@@ -172,30 +174,27 @@ resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
 
   resource apiFunctionConfig 'config' = {
   name: 'web'
-  properties: apiFunctionAppConfigProperties
+  properties: prodFunctionAppConfigProperties
 }
 
-  // resource slot 'slots' = {
-  //   location: location
-  //   name: '${apiFunctionName}-${slotName}'
-  //   resource apiFunctionConfig 'config' = {
-  //     name: 'web'
-  //     properties: apiFunctionAppConfigProperties
-  //   }
-  //   properties: {
-  //     serverFarmId: apiFunctionApp.properties.serverFarmId
-  //     enabled: apiFunctionApp.properties.enabled
-  //     httpsOnly: apiFunctionApp.properties.httpsOnly
-  //     virtualNetworkSubnetId: apiFunctionApp.properties.virtualNetworkSubnetId
-  //     keyVaultReferenceIdentity: apiFunctionApp.properties.keyVaultReferenceIdentity
-  //   }
-  // }
-}
-
-var apiFunctionAppConfigProperties = {
-    cors: {
-      allowedOrigins: apiCorsAllowOrigins
+  resource slot 'slots' = {
+    location: location
+    name: slotName
+    resource apiFunctionConfig 'config' = {
+      name: 'web'
+      properties: slotFunctionAppConfigProperties
     }
+    properties: {
+      serverFarmId: apiFunctionApp.properties.serverFarmId
+      enabled: apiFunctionApp.properties.enabled
+      httpsOnly: apiFunctionApp.properties.httpsOnly
+      virtualNetworkSubnetId: apiFunctionApp.properties.virtualNetworkSubnetId
+      keyVaultReferenceIdentity: apiFunctionApp.properties.keyVaultReferenceIdentity
+    }
+  }
+}
+
+var baseApiFunctionAppConfigProperties = {
     numberOfWorkers: 1
     alwaysOn: true
     http20Enabled: true
@@ -219,6 +218,18 @@ var apiFunctionAppConfigProperties = {
     appSettings: apiApplicationSettings
     ftpsState: 'Disabled'
   }
+
+  var prodFunctionAppConfigProperties = union(baseApiFunctionAppConfigProperties, {
+    cors: {
+      allowedOrigins: apiCorsAllowOrigins
+    }
+  })
+
+  var slotFunctionAppConfigProperties = union(baseApiFunctionAppConfigProperties, {
+    cors: {
+      allowedOrigins: apiSlotCorsAllowOrigins
+    }
+  })
 
 //Create App Insights
 module apiFunctionAppInsights 'lib/app-insights/function-app-insights.bicep' = {

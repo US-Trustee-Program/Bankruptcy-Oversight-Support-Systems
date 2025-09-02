@@ -202,6 +202,7 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
       location: location
       apiPlanName: apiFunctionPlanName
       apiFunctionName: apiFunctionName
+      slotName: slotName
       apiFunctionSubnetId: network.outputs.apiFunctionSubnetId
       functionsRuntime: 'node'
       sqlServerName: sqlServerName
@@ -209,6 +210,7 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
       sqlServerIdentityName: sqlServerIdentityName
       sqlServerIdentityResourceGroupName: sqlServerIdentityResourceGroupName
       apiCorsAllowOrigins: ['https://${webappName}.azurewebsites.us','https://portal.azure.us']
+      apiSlotCorsAllowOrigins: ['https://${webappName}-${slotName}.azurewebsites.us','https://portal.azure.us']
       allowVeracodeScan: allowVeracodeScan
       idKeyvaultAppConfiguration: idKeyvaultAppConfiguration
       kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
@@ -241,13 +243,14 @@ module ustpDatflowsFunction 'dataflows-resource-deploy.bicep' = {
     dataflowsPlanName: dataflowsFunctionPlanName
     apiFunctionName: apiFunctionName
     dataflowsFunctionName: dataflowsFunctionName
+    slotName: slotName
     dataflowsFunctionSubnetId: network.outputs.dataflowsFunctionSubnetId
     functionsRuntime: 'node'
     sqlServerName: sqlServerName
     sqlServerResourceGroupName: sqlServerResourceGroupName
     sqlServerIdentityName: sqlServerIdentityName
     sqlServerIdentityResourceGroupName: sqlServerIdentityResourceGroupName
-    dataflowsCorsAllowOrigins: ['https://${webappName}.azurewebsites.us','https://portal.azure.us']
+    dataflowsCorsAllowOrigins: ['https://portal.azure.us']
     allowVeracodeScan: allowVeracodeScan
     idKeyvaultAppConfiguration: idKeyvaultAppConfiguration
     kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
