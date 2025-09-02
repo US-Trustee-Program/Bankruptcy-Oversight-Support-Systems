@@ -180,10 +180,15 @@ resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
   resource slot 'slots' = {
     location: location
     name: slotName
+    identity: {
+      type: 'UserAssigned'
+      userAssignedIdentities: userAssignedIdentities
+    }
     resource apiFunctionConfig 'config' = {
       name: 'web'
       properties: slotFunctionAppConfigProperties
     }
+
     properties: {
       serverFarmId: apiFunctionApp.properties.serverFarmId
       enabled: apiFunctionApp.properties.enabled
