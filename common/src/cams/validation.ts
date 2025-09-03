@@ -3,13 +3,13 @@
  ********************************************************************************/
 const validResult = { valid: true } as const;
 
-type ValidatorResult = { valid: true } | { valid: false; reasons: string[] };
-type ValidatorResultSet<T> =
+export type ValidatorResult = { valid: true } | { valid: false; reasons: string[] };
+export type ValidatorResultSet<T> =
   | { valid: true }
   | { valid: false; reasons: Record<keyof T, ValidatorResult> };
 
 export type ValidatorFunction = (value: unknown) => ValidatorResult;
-export type ValidationSpec<T> = Record<keyof T, ValidatorFunction[]>;
+export type ValidationSpec<T> = Partial<Record<keyof T, ValidatorFunction[]>>;
 
 /**
  * Validate a value against a validator function.
@@ -29,6 +29,9 @@ function validate(func: ValidatorFunction, value: unknown): ValidatorResult {
  * @returns ValidatorResults object containing validation status and reasons for failure
  */
 function validateEach(functions: ValidatorFunction[], value: unknown): ValidatorResult {
+  if (!functions) {
+    return validResult;
+  }
   const reasons = functions
     .map((f) => f(value))
     .filter((r) => !r.valid)
@@ -61,6 +64,7 @@ function validateKey<T>(spec: ValidationSpec<T>, key: keyof T, obj: T): Validato
  */
 function validateObject<T>(spec: ValidationSpec<T>, obj: T): ValidatorResultSet<T> {
   const reasons = (Object.keys(spec) as (keyof T)[]).reduce(
+    // if spec[key] is a spec, we need to recurse
     (acc, key) => {
       const result = validateEach(spec[key], obj[key]);
       if (!result.valid) {
@@ -97,6 +101,12 @@ function optional(...validators: ValidatorFunction[]): ValidatorFunction {
   };
 }
 
+function notSet(value: unknown): ValidatorResult {
+  return value === undefined || value === null
+    ? validResult
+    : { valid: false, reasons: ['Must not be set'] };
+}
+
 /**
  * Creates a validator function that treats null values as valid and applies other validators otherwise.
  * This allows for nullable fields in validation schemas where null values are acceptable.
@@ -118,30 +128,37 @@ function nullable(...validators: ValidatorFunction[]): ValidatorFunction {
  * Validates whether a value is a string.
  *
  * @param {unknown} value - The value to be validated
+ * @param {string} reason - Optional custom error message to display when validation fails
  * @returns {ValidatorResult} Object containing validation status and reason for failure if invalid
  */
-function isString(value: unknown): ValidatorResult {
-  return typeof value === 'string' ? validResult : { valid: false, reasons: ['Must be a string'] };
+function isString(value: unknown, reason: string = 'Must be a string'): ValidatorResult {
+  return typeof value === 'string' ? validResult : { valid: false, reasons: [reason] };
 }
 
 /**
  * Creates a validator function that checks if a string or array has at least a minimum length.
  *
  * @param {number} min - The minimum required length
+ * @param {string} reason - Optional custom error message to display when validation fails
  * @returns {ValidatorFunction} A validator function that checks minimum length
  */
-function minLength(min: number): ValidatorFunction {
-  return length(min, Infinity);
+function minLength(min: number, reason?: string): ValidatorFunction {
+  return length(min, Infinity, reason);
 }
 
 /**
  * Creates a validator function that checks if a string or array has at most a maximum length.
  *
  * @param {number} max - The maximum allowed length
+ * @param {string} reason
  * @returns {ValidatorFunction} A validator function that checks maximum length
  */
-function maxLength(max: number): ValidatorFunction {
-  return length(0, max);
+function maxLength(max: number, reason?: string): ValidatorFunction {
+  return length(0, max, reason);
+}
+
+function fixedLength(len: number, reason?: string): ValidatorFunction {
+  return length(len, len, reason);
 }
 
 /**
@@ -149,9 +166,10 @@ function maxLength(max: number): ValidatorFunction {
  *
  * @param {number} min - The minimum required length
  * @param {number} max - The maximum allowed length
+ * @param {string} [reason] - Optional custom error message to display when validation fails
  * @returns {ValidatorFunction} A validator function that checks length within the specified range
  */
-function length(min: number, max: number): ValidatorFunction {
+function length(min: number, max: number, reason?: string): ValidatorFunction {
   return (value: unknown): ValidatorResult => {
     if (value === null) {
       return { valid: false, reasons: [`Value is null`] };
@@ -170,13 +188,18 @@ function length(min: number, max: number): ValidatorFunction {
     if (value.length >= min && value.length <= max) {
       return validResult;
     }
-
     const reasonText = () => {
+      if (reason) {
+        return reason;
+      }
+
       let rangeText = `between ${min} and ${max}`;
       if (min === 0) {
         rangeText = `at most ${max}`;
       } else if (max === Infinity) {
         rangeText = `at least ${min}`;
+      } else if (min === max) {
+        rangeText = `exactly ${min}`;
       }
 
       const unitText = valueIsString ? 'characters' : 'selections';
@@ -196,9 +219,9 @@ function length(min: number, max: number): ValidatorFunction {
  * @param {string[]} set
  * @param {string} [reason]
  */
-function isInSet(set: string[], reason?: string): ValidatorFunction {
+function isInSet<T>(set: T[], reason?: string): ValidatorFunction {
   return (value: unknown): ValidatorResult => {
-    return typeof value === 'string' && set.includes(value)
+    return set.includes(value as T)
       ? validResult
       : { valid: false, reasons: [reason ?? `Must be one of ${set.join(', ')}`] };
   };
@@ -240,6 +263,7 @@ function isPhoneNumber(value: unknown): ValidatorResult {
 }
 
 const V = {
+  fixedLength,
   isEmailAddress,
   isInSet,
   isPhoneNumber,
@@ -248,6 +272,7 @@ const V = {
   matches,
   maxLength,
   minLength,
+  notSet,
   nullable,
   optional,
   validate,

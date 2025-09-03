@@ -1,69 +1,36 @@
 import { useState } from 'react';
 import { TrusteeFormData, TrusteeFormValidation } from './UseTrusteeFormValidation.types';
-import { isValidZipCode } from '@common/cams/parties';
-import { EMAIL_REGEX, PHONE_REGEX, EXTENSION_REGEX } from '@common/cams/regex';
+import { TRUSTEE_STATUS_VALUES, TrusteeStatus } from '@common/cams/parties';
+import { EMAIL_REGEX, PHONE_REGEX, EXTENSION_REGEX, ZIP_REGEX } from '@common/cams/regex';
+import V, { ValidationSpec } from '@common/cams/validation';
+
+const trusteeFormDataSpec: ValidationSpec<TrusteeFormData> = {
+  name: [V.minLength(1, 'Trustee name is required')],
+  address1: [V.minLength(1, 'Address is required')],
+  address2: [V.optional(V.maxLength(50))],
+  city: [V.minLength(1, 'City is required')],
+  state: [V.fixedLength(2, 'State is required')],
+  zipCode: [V.matches(ZIP_REGEX, 'ZIP code must be 5 digits or 9 digits with a hyphen')],
+  email: [V.matches(EMAIL_REGEX, 'Email must be a valid email address')],
+  phone: [V.matches(PHONE_REGEX, 'Phone is required')],
+  extension: [V.optional(V.matches(EXTENSION_REGEX, 'Extension must be 1 to 6 digits'))],
+  status: [V.isInSet<TrusteeStatus>([...TRUSTEE_STATUS_VALUES])],
+};
 
 /**
  * Validates individual form fields with specific business rules
  */
-
-function validateField(field: string, value: string): string | null {
+function validateField(field: keyof TrusteeFormData, value: string): string | null {
   // Convert to string and trim
   const stringValue = String(value);
   const trimmedValue = stringValue.trim();
 
-  switch (field) {
-    case 'name':
-      return trimmedValue ? null : 'Trustee name is required';
-
-    case 'address1':
-      return trimmedValue ? null : 'Address line 1 is required';
-
-    case 'city':
-      return trimmedValue ? null : 'City is required';
-
-    case 'state':
-      return trimmedValue ? null : 'State is required';
-
-    case 'zipCode':
-      if (!trimmedValue) {
-        return 'ZIP code is required';
-      }
-      if (!isValidZipCode(trimmedValue)) {
-        return 'ZIP code must be 5 digits or 9 digits with a hyphen';
-      }
-      return null;
-
-    case 'email':
-      if (!trimmedValue) {
-        return 'Email is required';
-      }
-      if (!EMAIL_REGEX.test(trimmedValue)) {
-        return 'Email must be a valid email address';
-      }
-      return null;
-
-    case 'phone':
-      if (!trimmedValue || !PHONE_REGEX.test(trimmedValue)) {
-        return 'Phone is required';
-      }
-      return null;
-
-    case 'extension':
-      if (!trimmedValue) {
-        return null; // Extension is optional
-      }
-      if (!EXTENSION_REGEX.test(trimmedValue)) {
-        return 'Extension must be 1 to 6 digits';
-      }
-      return null;
-
-    case 'status':
-      return null; // Status is optional - API will set default if not supplied
-
-    default:
-      return null;
+  if (field === 'status' || (field === 'extension' && !trimmedValue)) {
+    return null;
   }
+
+  const result = V.validateEach(trusteeFormDataSpec[field]!, trimmedValue);
+  return result.valid ? null : result.reasons.join('. ');
 }
 
 /**
@@ -75,7 +42,7 @@ export function useTrusteeFormValidation(): TrusteeFormValidation {
   /**
    * Validates a single field and updates the field errors state
    */
-  const validateFieldAndUpdate = (field: string, value: string): string | null => {
+  const validateFieldAndUpdate = (field: keyof TrusteeFormData, value: string): string | null => {
     const error = validateField(field, value);
 
     setFieldErrors((prevErrors) => {
@@ -122,22 +89,8 @@ export function useTrusteeFormValidation(): TrusteeFormValidation {
    * Checks if form is both valid (no errors) and complete (all required fields filled)
    */
   const isFormValidAndComplete = (formData: TrusteeFormData): boolean => {
-    // First check if all required fields are filled
-    if (!areRequiredFieldsFilled(formData)) {
-      return false;
-    }
-
-    let isValid = true;
-    Object.entries(formData).forEach(([field, value]) => {
-      if (value !== undefined) {
-        const error = validateField(field, value);
-        if (error) {
-          isValid = false;
-        }
-      }
-    });
-
-    return isValid; // All required fields filled and no validation errors
+    const result = V.validateObject<TrusteeFormData>(trusteeFormDataSpec, formData);
+    return result.valid;
   };
 
   return {

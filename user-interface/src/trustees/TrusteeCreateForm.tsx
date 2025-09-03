@@ -291,6 +291,7 @@ export default function TrusteeCreateForm() {
                     }, 300);
                   }}
                   autoComplete="off"
+                  errorMessage={fieldErrors['state']}
                   required
                 ></UsStatesComboBox>
               </div>
