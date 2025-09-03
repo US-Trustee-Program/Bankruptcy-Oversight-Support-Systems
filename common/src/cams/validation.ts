@@ -1,15 +1,18 @@
 /********************************************************************************
  * Core Validation Library Types and Functions
  ********************************************************************************/
-const validResult = { valid: true } as const;
+type ValidValidatorResult = { valid: true };
+type InvalidValidatorResult = { valid: false; reasons: string[] };
 
-export type ValidatorResult = { valid: true } | { valid: false; reasons: string[] };
+export type ValidatorResult = ValidValidatorResult | InvalidValidatorResult;
 export type ValidatorResultSet<T> =
-  | { valid: true }
+  | ValidValidatorResult
   | { valid: false; reasons: Record<keyof T, ValidatorResult> };
 
 export type ValidatorFunction = (value: unknown) => ValidatorResult;
 export type ValidationSpec<T> = Partial<Record<keyof T, ValidatorFunction[]>>;
+
+const validResult: ValidValidatorResult = { valid: true } as const;
 
 /**
  * Validate a value against a validator function.
@@ -35,7 +38,7 @@ function validateEach(functions: ValidatorFunction[], value: unknown): Validator
   const reasons = functions
     .map((f) => f(value))
     .filter((r) => !r.valid)
-    .map((r) => (r as { valid: false; reasons: string[] }).reasons)
+    .map((r) => (r as InvalidValidatorResult).reasons)
     .flat();
 
   return reasons.length > 0 ? { valid: false, reasons } : validResult;
