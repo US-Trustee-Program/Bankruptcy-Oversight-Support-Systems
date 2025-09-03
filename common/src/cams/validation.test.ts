@@ -244,7 +244,7 @@ describe('Simple Validation Library', () => {
     });
 
     describe('validateField', () => {
-      const spec: ValidationSpec<Person> = {
+      const spec: ValidationSpec = {
         firstName: [V.required(), V.isString(), V.minLength(2)],
         email: [V.required(), V.email()],
       };
@@ -263,7 +263,7 @@ describe('Simple Validation Library', () => {
     });
 
     describe('validateObject', () => {
-      const spec: ValidationSpec<Person> = {
+      const spec: ValidationSpec = {
         firstName: [V.required(), V.minLength(2)],
         lastName: [V.required(), V.minLength(2)],
         email: [V.required(), V.email()],
@@ -359,7 +359,7 @@ describe('Simple Validation Library', () => {
 
   describe('Complex validation scenarios', () => {
     test('should handle form validation workflow', () => {
-      const formSpec: ValidationSpec<Person> = {
+      const formSpec: ValidationSpec = {
         firstName: [
           V.required('First name is required'),
           V.minLength(2, 'First name must be at least 2 characters'),
@@ -402,7 +402,7 @@ describe('Simple Validation Library', () => {
   describe('Edge cases for better coverage', () => {
     test('should handle specs with falsy validators', () => {
       // Create a spec and then delete a property to make it undefined
-      const spec: ValidationSpec<{ name: string; age: string }> = {
+      const spec: ValidationSpec = {
         name: [V.required()],
         age: [V.required()],
       };

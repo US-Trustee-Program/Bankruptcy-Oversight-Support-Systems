@@ -1,11 +1,6 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteesRepository } from '../gateways.types';
-import {
-  Trustee,
-  TRUSTEE_STATUS_VALUES,
-  TrusteeInput,
-  TrusteeStatus,
-} from '../../../../common/src/cams/parties';
+import { Trustee, TRUSTEE_STATUS_VALUES, TrusteeInput } from '../../../../common/src/cams/parties';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { getTrusteesRepository } from '../../factory';
@@ -27,7 +22,7 @@ export class TrusteesUseCase {
   }
 
   async createTrustee(context: ApplicationContext, trustee: TrusteeInput): Promise<Trustee> {
-    const errors = V.validateObject(trusteeSpec, trustee);
+    const errors = V.validateObject(trusteeSpec, trustee as unknown as Record<string, unknown>);
 
     // Validate trustee creation input
     if (V.hasErrors(errors)) {
@@ -81,14 +76,14 @@ export class TrusteesUseCase {
   }
 }
 
-const trusteeSpec: ValidationSpec<TrusteeInput> = {
+const trusteeSpec: ValidationSpec = {
   name: [V.isString(), V.required()],
   email: [V.matches(EMAIL_REGEX, 'Provided email does not match regular expression')],
   phone: [V.matches(PHONE_REGEX, 'Provided phone number does not match regular expression')],
   extension: [
     V.optional(V.matches(EXTENSION_REGEX, 'Provided extension does not match regular expression')),
   ],
-  status: [V.oneOf<TrusteeStatus>([...TRUSTEE_STATUS_VALUES])],
+  status: [V.oneOf([...TRUSTEE_STATUS_VALUES])],
 
   // Legacy address fields - these should be empty when using structured address
   address1: [V.optional(V.isString())],

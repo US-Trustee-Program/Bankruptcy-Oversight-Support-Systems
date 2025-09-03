@@ -15,8 +15,8 @@ export type FieldValidationResult = {
 export type ValidatorFunction = (value: unknown) => ValidationResult;
 
 // Validation spec for objects
-export type ValidationSpec<T> = {
-  [K in keyof T]?: ValidatorFunction[];
+export type ValidationSpec = {
+  [field: string]: ValidatorFunction[];
 };
 
 // Constants
@@ -51,7 +51,7 @@ function validateValue(validators: ValidatorFunction[], value: unknown): Validat
  * Validates an object against a validation spec.
  * Returns field-level errors for any invalid fields.
  */
-function validateObject<T>(spec: ValidationSpec<T>, obj: Partial<T>): FieldValidationResult {
+function validateObject(spec: ValidationSpec, obj: Record<string, unknown>): FieldValidationResult {
   const errors: FieldValidationResult = {};
 
   for (const fieldName in spec) {
@@ -75,11 +75,7 @@ function validateObject<T>(spec: ValidationSpec<T>, obj: Partial<T>): FieldValid
  * Validates a single field of an object.
  * Useful for real-time validation as user types.
  */
-function validateField<T>(
-  spec: ValidationSpec<T>,
-  fieldName: keyof T,
-  value: unknown,
-): ValidationResult {
+function validateField(spec: ValidationSpec, fieldName: string, value: unknown): ValidationResult {
   const validators = spec[fieldName];
   if (!validators) {
     return VALID;
@@ -210,9 +206,9 @@ function matches(regex: RegExp, message?: string): ValidatorFunction {
 /**
  * Validates that a value is one of the allowed options
  */
-function oneOf<T>(options: T[], message?: string): ValidatorFunction {
+function oneOf(options: unknown[], message?: string): ValidatorFunction {
   return (value: unknown): ValidationResult => {
-    if (!options.includes(value as T)) {
+    if (!options.includes(value)) {
       return {
         valid: false,
         error: message || `Must be one of: ${options.join(', ')}`,

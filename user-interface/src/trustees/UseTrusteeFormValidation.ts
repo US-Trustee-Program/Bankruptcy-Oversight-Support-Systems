@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { TrusteeFormData, TrusteeFormValidation } from './UseTrusteeFormValidation.types';
-import { TRUSTEE_STATUS_VALUES, TrusteeStatus } from '@common/cams/parties';
+import { TRUSTEE_STATUS_VALUES } from '@common/cams/parties';
 import { EMAIL_REGEX, PHONE_REGEX, EXTENSION_REGEX, ZIP_REGEX } from '@common/cams/regex';
 import V, { ValidationSpec } from '@common/cams/validation';
 
-const trusteeFormDataSpec: ValidationSpec<TrusteeFormData> = {
+const trusteeFormDataSpec: ValidationSpec = {
   name: [V.required('Trustee name is required')],
   address1: [V.required('Address is required')],
   address2: [V.optional(V.maxLength(50))],
@@ -14,7 +14,7 @@ const trusteeFormDataSpec: ValidationSpec<TrusteeFormData> = {
   email: [V.matches(EMAIL_REGEX, 'Email must be a valid email address')],
   phone: [V.matches(PHONE_REGEX, 'Phone is required')],
   extension: [V.optional(V.matches(EXTENSION_REGEX, 'Extension must be 1 to 6 digits'))],
-  status: [V.oneOf<TrusteeStatus>([...TRUSTEE_STATUS_VALUES])],
+  status: [V.oneOf([...TRUSTEE_STATUS_VALUES])],
 };
 
 /**
@@ -90,7 +90,10 @@ export function useTrusteeFormValidation(): TrusteeFormValidation {
    * WITHOUT updating state - safe to use in render
    */
   const isFormValidAndCompleteReadOnly = (formData: TrusteeFormData): boolean => {
-    const errors = V.validateObject(trusteeFormDataSpec, formData);
+    const errors = V.validateObject(
+      trusteeFormDataSpec,
+      formData as unknown as Record<string, unknown>,
+    );
 
     if (V.hasErrors(errors)) {
       return false;
@@ -108,7 +111,10 @@ export function useTrusteeFormValidation(): TrusteeFormValidation {
       return false;
     }
 
-    const errors = V.validateObject(trusteeFormDataSpec, formData);
+    const errors = V.validateObject(
+      trusteeFormDataSpec,
+      formData as unknown as Record<string, unknown>,
+    );
 
     if (V.hasErrors(errors)) {
       // Convert undefined values to empty strings for the state
