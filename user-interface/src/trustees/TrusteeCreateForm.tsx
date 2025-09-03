@@ -150,7 +150,7 @@ export default function TrusteeCreateForm() {
     setter(value);
 
     debounce(() => {
-      validateFieldAndUpdate(name, value);
+      validateFieldAndUpdate(name as keyof TrusteeFormData, value);
     }, 300);
   }
 
