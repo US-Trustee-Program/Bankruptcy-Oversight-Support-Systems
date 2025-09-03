@@ -32,14 +32,7 @@ export class TrusteesUseCase {
 
     // Validate trustee creation input including address
     if (validatorResult.valid === false) {
-      const validationErrors: string[] = [];
-      for (const field in validatorResult.reasonsMap) {
-        if (!validatorResult.reasonsMap[field].valid) {
-          validationErrors.push(
-            `${field}: ${validatorResult.reasonsMap[field].reasons.join(', ')}.`,
-          );
-        }
-      }
+      const validationErrors = V.extractValidationErrors(validatorResult);
       const collectedErrors = 'Trustee validation failed: ' + validationErrors.join(', ');
       throw getCamsError(new Error(collectedErrors), MODULE_NAME);
     }
@@ -100,24 +93,9 @@ const addressSpec: ValidationSpec<Address> = {
 };
 
 // TODO: Add the rest of the fields
-// const trusteeSpec: ValidationSpec<TrusteeInput> = {
-//   name: [V.isString, V.minLength(1)],
-//   address: addressSpec,
-//   address1: [V.notSet],
-//   address2: [V.notSet],
-//   address3: [V.notSet],
-//   cityStateZipCountry: [V.notSet],
-//   email: [V.matches(EMAIL_REGEX, 'Provided email does not match regular expression')],
-//   phone: [V.matches(PHONE_REGEX, 'Provided phone number does not match regular expression')],
-//   extension: [
-//     V.optional(V.matches(EXTENSION_REGEX, 'Provided extension does not match regular expression')),
-//   ],
-//   status: [V.isInSet<TrusteeStatus>([...TRUSTEE_STATUS_VALUES])],
-// };
-
 const trusteeSpec: ValidationSpec<TrusteeInput> = {
   name: [V.isString, V.minLength(1)],
-  address: [V.optional(V.spec(addressSpec))],
+  address: addressSpec,
   address1: [V.notSet],
   address2: [V.notSet],
   address3: [V.notSet],

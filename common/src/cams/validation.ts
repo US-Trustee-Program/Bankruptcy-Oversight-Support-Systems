@@ -1,22 +1,32 @@
 /********************************************************************************
  * Core Validation Library Types and Functions
- ********************************************************************************/
-export type ValidatorReason = { reason: string; key?: string };
-export type ValidValidatorResult = { valid: true };
-// export type InvalidValidatorResult = { valid: false; reasons: string[] };
-export type InvalidValidatorResult<T = unknown> = { valid: false } & ValidatorReason;
+ **************************************************************************/
 
-// Option 0.5
-// Recursively _assemble_ a list of validator function.
-// Execute each function
-// result if invalid is a list of results {'key': 'keyName', 'reason': 'error message'}
+// Base result for leaf node validation (array of validator functions applied to a single property)
+export type LeafValidatorResult =
+  | {
+      valid: true;
+    }
+  | {
+      valid: false;
+      reasons: string[];
+    };
 
-export type ValidatorResult = ValidValidatorResult | InvalidValidatorResult;
-export type ValidatorResultSet =
-  | ValidValidatorResult
-  | { valid: false; reasonsMap: Record<string, ValidatorResult> };
+// Result for validating an entire object - maps property names to their validation results
+export type ObjectValidatorResult =
+  | {
+      valid: true;
+    }
+  | {
+      valid: false;
+      reasonsMap: Record<string, ValidatorResult>;
+    };
 
-export type ValidatorFunction = (value: unknown) => ValidatorResult | ValidatorResultSet;
+// Union type representing any validator result (leaf or object)
+export type ValidatorResult = LeafValidatorResult | ObjectValidatorResult;
+
+// Function signature for individual validator functions (always return leaf results)
+export type ValidatorFunction = (value: unknown) => LeafValidatorResult;
 
 // Type for nested validation specs - allows for recursive object validation
 export type ValidationSpec<T> = {
@@ -25,7 +35,7 @@ export type ValidationSpec<T> = {
     : ValidatorFunction[];
 };
 
-const VALID_RESULT: ValidValidatorResult = { valid: true } as const;
+const VALID_RESULT: LeafValidatorResult = { valid: true } as const;
 
 /**
  * Validate a value against a validator function.
@@ -33,7 +43,7 @@ const VALID_RESULT: ValidValidatorResult = { valid: true } as const;
  * @param func
  * @param value
  */
-function validate(func: ValidatorFunction, value: unknown): ValidatorResult {
+function validate(func: ValidatorFunction, value: unknown): LeafValidatorResult {
   return func(value);
 }
 
@@ -42,16 +52,16 @@ function validate(func: ValidatorFunction, value: unknown): ValidatorResult {
  *
  * @param functions - Array of validator functions to apply to the value
  * @param value - The value to be validated
- * @returns ValidatorResults object containing validation status and reasons for failure
+ * @returns LeafValidatorResult object containing validation status and reasons for failure
  */
-function validateEach(functions: ValidatorFunction[], value: unknown): ValidatorResult {
+function validateEach(functions: ValidatorFunction[], value: unknown): LeafValidatorResult {
   if (!functions) {
     return VALID_RESULT;
   }
   const reasons = functions
     .map((f) => f(value))
     .filter((r) => !r.valid)
-    .map((r) => (r as InvalidValidatorResult).reasons)
+    .map((r) => (r as { valid: false; reasons: string[] }).reasons)
     .flat();
 
   return reasons.length > 0 ? { valid: false, reasons } : VALID_RESULT;
@@ -65,7 +75,7 @@ function validateEach(functions: ValidatorFunction[], value: unknown): Validator
  * @param spec - The validation specification defining rules for object properties
  * @param key - The specific key/property of the object to validate
  * @param obj - The object containing the property to be validated
- * @returns ValidatorResults an object containing validation status and reasons for failure
+ * @returns ValidatorResult containing validation status and reasons for failure
  */
 function validateKey<T>(spec: ValidationSpec<T>, key: keyof T, obj: T): ValidatorResult {
   const rule = spec[key];
@@ -78,28 +88,7 @@ function validateKey<T>(spec: ValidationSpec<T>, key: keyof T, obj: T): Validato
     return validateEach(rule, obj[key]);
   } else {
     // rule is a nested ValidationSpec, recursively validate the nested object
-    const nestedResult = validateObject(rule as ValidationSpec<unknown>, obj[key]);
-    // TODO: strongly consider removing this. I think we want validation to not roll up reasons and leave that to helper
-    // functions run after the fact.
-    if (nestedResult.valid) {
-      return VALID_RESULT;
-    } else {
-      // Convert nested validation results to a flat list of reasons
-      // TODO unsure about this approach?
-      const reasons: string[] = [];
-      const reasonsMap = (
-        nestedResult as { valid: false; reasonsMap: Partial<Record<string, ValidatorResult>> }
-      ).reasonsMap;
-      for (const field in reasonsMap) {
-        const fieldResult = reasonsMap[field];
-        if (fieldResult && !fieldResult.valid) {
-          reasons.push(
-            `${String(field)}: ${(fieldResult as InvalidValidatorResult).reasons.join(', ')}`,
-          );
-        }
-      }
-      return { valid: false, reasons };
-    }
+    return validateObject(rule as ValidationSpec<unknown>, obj[key]);
   }
 }
 
@@ -110,57 +99,66 @@ function validateKey<T>(spec: ValidationSpec<T>, key: keyof T, obj: T): Validato
  * @template T - The type of the object being validated
  * @param spec - The validation specification defining rules for all object properties
  * @param obj - The object to be validated
- * @returns ValidatorResultsSet object containing validation status and property-specific reasons for failure
+ * @returns ObjectValidatorResult containing validation status and property-specific reasons for failure
  */
-function validateObject(spec: ValidationSpec<unknown>, obj: unknown): ValidatorResultSet<T> {
-  const reasonsMap = (Object.keys(spec) as (keyof T)[]).reduce(
-    (acc, key) => {
-      const rule = spec[key];
-      if (!rule) {
-        return acc;
+function validateObject<T>(spec: ValidationSpec<T>, obj: unknown): ObjectValidatorResult {
+  const reasonsMap: Record<string, ValidatorResult> = {};
+
+  for (const key of Object.keys(spec) as (keyof T)[]) {
+    const rule = spec[key];
+    if (!rule) {
+      continue;
+    }
+
+    let result: ValidatorResult;
+
+    // Check if rule is an array of validator functions
+    if (Array.isArray(rule)) {
+      result = validateEach(rule, (obj as Record<string, unknown>)[String(key)]);
+    } else {
+      // rule is a nested ValidationSpec - directly use the result
+      result = validateObject(
+        rule as ValidationSpec<unknown>,
+        (obj as Record<string, unknown>)[String(key)],
+      );
+    }
+
+    if (!result.valid) {
+      reasonsMap[String(key)] = result;
+    }
+  }
+
+  return Object.keys(reasonsMap).length > 0 ? { valid: false, reasonsMap } : { valid: true };
+}
+
+/**
+ * Recursively extracts all validation error messages from a ValidatorResult.
+ * Handles both leaf results (with string reasons) and nested object results.
+ */
+function extractValidationErrors(result: ValidatorResult, fieldPath = ''): string[] {
+  const errors: string[] = [];
+
+  if (!result.valid) {
+    // Check if this is a leaf result with string reasons
+    if ('reasons' in result && Array.isArray(result.reasons)) {
+      const prefix = fieldPath ? `${fieldPath}: ` : '';
+      errors.push(...result.reasons.map((reason) => `${prefix}${reason}`));
+    }
+    // Check if this is an object result with nested reasonsMap
+    else if ('reasonsMap' in result) {
+      for (const [field, fieldResult] of Object.entries(result.reasonsMap)) {
+        const nestedPath = fieldPath ? `${fieldPath}.${field}` : field;
+        errors.push(...extractValidationErrors(fieldResult, nestedPath));
       }
+    }
+  }
 
-      let results: ValidatorResult[] | ValidatorResultSet<T>;
-
-      // Check if rule is an array of validator functions
-      if (Array.isArray(rule)) {
-        result = validateEach(rule, obj[key]);
-      } else {
-        // rule is a nested ValidationSpec
-        result = validateObject(rule as ValidationSpec<unknown>, obj[key]);
-      }
-
-      if (!result.valid) {
-        acc[key] = result;
-      }
-      return acc;
-    },
-    {} as Partial<Record<keyof T, ValidatorResult>>,
-  );
-
-  return Object.keys(reasonsMap).length > 0 ? { valid: false, reasonsMap } : VALID_RESULT;
+  return errors;
 }
 
 /********************************************************************************
  * Common Validator Functions
  ********************************************************************************/
-
-// TODO: Need to support dates, numbers.
-
-function spec2funcs(spec: ValidationSpec<unknown>): ValidatorFunction {
-  return (value: unknown)ValidatorResultSet => {
-    Object.keys(v)
-    // here we gather the validator functions. then execute.
-  }
-}
-
-
-
-function spec(s: ValidationSpec<unknown>): ValidatorFunction {
-  return (obj: unknown): ValidatorResultSet => {
-    return validateObject(s, obj);
-  };
-}
 
 /**
  * Creates a validator function that treats undefined values as valid and applies other validators otherwise.
@@ -170,7 +168,7 @@ function spec(s: ValidationSpec<unknown>): ValidatorFunction {
  * @returns {ValidatorFunction} A validator function that allows undefined values and validates defined values
  */
 function optional(...validators: ValidatorFunction[]): ValidatorFunction {
-  return (value: unknown): ValidatorResult => {
+  return (value: unknown): LeafValidatorResult => {
     if (value === undefined) {
       return VALID_RESULT;
     } else {
@@ -179,7 +177,7 @@ function optional(...validators: ValidatorFunction[]): ValidatorFunction {
   };
 }
 
-function notSet(value: unknown): ValidatorResult {
+function notSet(value: unknown): LeafValidatorResult {
   return value === undefined || value === null
     ? VALID_RESULT
     : { valid: false, reasons: ['Must not be set'] };
@@ -193,7 +191,7 @@ function notSet(value: unknown): ValidatorResult {
  * @returns {ValidatorFunction} A validator function that allows null values and validates non-null values
  */
 function nullable(...validators: ValidatorFunction[]): ValidatorFunction {
-  return (value: unknown): ValidatorResult => {
+  return (value: unknown): LeafValidatorResult => {
     if (value === null) {
       return VALID_RESULT;
     } else {
@@ -207,9 +205,9 @@ function nullable(...validators: ValidatorFunction[]): ValidatorFunction {
  *
  * @param {unknown} value - The value to be validated
  * @param {string} reason - Optional custom error message to display when validation fails
- * @returns {ValidatorResult} Object containing validation status and reason for failure if invalid
+ * @returns {LeafValidatorResult} Object containing validation status and reason for failure if invalid
  */
-function isString(value: unknown, reason: string = 'Must be a string'): ValidatorResult {
+function isString(value: unknown, reason: string = 'Must be a string'): LeafValidatorResult {
   return typeof value === 'string' ? VALID_RESULT : { valid: false, reasons: [reason] };
 }
 
@@ -248,7 +246,7 @@ function fixedLength(len: number, reason?: string): ValidatorFunction {
  * @returns {ValidatorFunction} A validator function that checks length within the specified range
  */
 function length(min: number, max: number, reason?: string): ValidatorFunction {
-  return (value: unknown): ValidatorResult => {
+  return (value: unknown): LeafValidatorResult => {
     if (value === null) {
       return { valid: false, reasons: [`Value is null`] };
     } else if (value === undefined) {
@@ -298,7 +296,7 @@ function length(min: number, max: number, reason?: string): ValidatorFunction {
  * @param {string} [reason]
  */
 function isInSet<T>(set: T[], reason?: string): ValidatorFunction {
-  return (value: unknown): ValidatorResult => {
+  return (value: unknown): LeafValidatorResult => {
     return set.includes(value as T)
       ? VALID_RESULT
       : { valid: false, reasons: [reason ?? `Must be one of ${set.join(', ')}`] };
@@ -313,7 +311,7 @@ function isInSet<T>(set: T[], reason?: string): ValidatorFunction {
  * @returns {ValidatorFunction} A validator function that checks pattern matching
  */
 function matches(regex: RegExp, error?: string): ValidatorFunction {
-  return (value: unknown): ValidatorResult => {
+  return (value: unknown): LeafValidatorResult => {
     return typeof value === 'string' && regex.test(value)
       ? VALID_RESULT
       : { valid: false, reasons: [error ?? `Must match the pattern ${regex}`] };
@@ -324,9 +322,9 @@ function matches(regex: RegExp, error?: string): ValidatorFunction {
  * Validates whether a value is a valid email address format.
  *
  * @param {unknown} value - The value to be validated as an email address
- * @returns {ValidatorResult} Object containing validation status and reason for failure if invalid
+ * @returns {LeafValidatorResult} Object containing validation status and reason for failure if invalid
  */
-function isEmailAddress(value: unknown): ValidatorResult {
+function isEmailAddress(value: unknown): LeafValidatorResult {
   return matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Must be a valid email address')(value);
 }
 
@@ -334,13 +332,14 @@ function isEmailAddress(value: unknown): ValidatorResult {
  * Validates whether a value is a valid 10-digit phone number format.
  *
  * @param {unknown} value - The value to be validated as a phone number
- * @returns {ValidatorResult} Object containing validation status and reason for failure if invalid
+ * @returns {LeafValidatorResult} Object containing validation status and reason for failure if invalid
  */
-function isPhoneNumber(value: unknown): ValidatorResult {
+function isPhoneNumber(value: unknown): LeafValidatorResult {
   return matches(/^\d{10}$/, 'Must be a valid phone number')(value);
 }
 
 const V = {
+  extractValidationErrors,
   fixedLength,
   isEmailAddress,
   isInSet,
@@ -352,7 +351,6 @@ const V = {
   minLength,
   notSet,
   nullable,
-  spec,
   optional,
   validate,
   validateEach,
