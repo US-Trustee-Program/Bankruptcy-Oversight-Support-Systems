@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { TrusteeFormData, TrusteeFormValidation } from './UseTrusteeFormValidation.types';
 import { TRUSTEE_STATUS_VALUES, TrusteeStatus } from '@common/cams/parties';
 import { EMAIL_REGEX, PHONE_REGEX, EXTENSION_REGEX, ZIP_REGEX } from '@common/cams/regex';
-import V, { ValidationSpec } from '@common/cams/validation';
+import V, { InvalidValidatorResult, ValidationSpec } from '@common/cams/validation';
 
 const trusteeFormDataSpec: ValidationSpec<TrusteeFormData> = {
   name: [V.minLength(1, 'Trustee name is required')],
@@ -89,8 +89,19 @@ export function useTrusteeFormValidation(): TrusteeFormValidation {
    * Checks if form is both valid (no errors) and complete (all required fields filled)
    */
   const isFormValidAndComplete = (formData: TrusteeFormData): boolean => {
-    const result = V.validateObject<TrusteeFormData>(trusteeFormDataSpec, formData);
-    return result.valid;
+    const resultsSet = V.validateObject<TrusteeFormData>(trusteeFormDataSpec, formData);
+    if (!resultsSet.valid) {
+      const newFieldErrors = Object.fromEntries(
+        Object.entries(resultsSet.reasonsMap)
+          .filter(([_, results]) => !results.valid)
+          .map(([fieldName, results]) => [
+            fieldName,
+            (results as InvalidValidatorResult).reasons.join(' '),
+          ]),
+      );
+      setFieldErrors(newFieldErrors);
+    }
+    return resultsSet.valid;
   };
 
   return {

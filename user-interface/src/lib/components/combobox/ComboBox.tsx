@@ -422,7 +422,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       </div>
       <div className="usa-combo-box">
         <div
-          className={`input-container usa-input ${comboboxDisabled ? 'disabled' : ''}`}
+          className={`input-container usa-input ${comboboxDisabled ? 'disabled' : ''} ${errorMessage && errorMessage.length > 0 ? 'usa-input-group--error' : ''}`}
           role="combobox"
           aria-haspopup="listbox"
           aria-owns={`${comboBoxId}-item-list`}

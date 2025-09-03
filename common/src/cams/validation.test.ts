@@ -8,7 +8,7 @@ type Person = {
   code: string;
 };
 
-const { validResult } = V;
+const { VALID_RESULT } = V;
 const invalidResult = expect.objectContaining({ valid: false });
 
 describe('validation', () => {
@@ -17,7 +17,7 @@ describe('validation', () => {
       {
         description: 'should return valid for string values',
         value: 'hello',
-        expected: validResult,
+        expected: VALID_RESULT,
       },
       {
         description: 'should return invalid for number values',
@@ -42,7 +42,7 @@ describe('validation', () => {
       {
         description: 'should return valid for empty string',
         value: '',
-        expected: validResult,
+        expected: VALID_RESULT,
       },
     ];
     test.each(testCases)('$description', (testCase) => {
@@ -56,13 +56,13 @@ describe('validation', () => {
         description: 'should return valid for string meeting minimum length',
         minLength: 5,
         value: 'hello',
-        expected: validResult,
+        expected: VALID_RESULT,
       },
       {
         description: 'should return valid for string exactly at minimum length',
         minLength: 5,
         value: 'hello',
-        expected: validResult,
+        expected: VALID_RESULT,
       },
       {
         description: 'should return invalid for string shorter than minimum length',
@@ -80,7 +80,7 @@ describe('validation', () => {
         description: 'should return valid for empty string when minimum is 0',
         minLength: 0,
         value: '',
-        expected: validResult,
+        expected: VALID_RESULT,
       },
       {
         description: 'should return invalid for non-string values',
@@ -101,13 +101,13 @@ describe('validation', () => {
         description: 'should return valid for string under maximum length',
         maxLength: 10,
         value: 'hello',
-        expected: validResult,
+        expected: VALID_RESULT,
       },
       {
         description: 'should return valid for string exactly at maximum length',
         maxLength: 5,
         value: 'hello',
-        expected: validResult,
+        expected: VALID_RESULT,
       },
       {
         description: 'should return invalid for string longer than maximum length',
@@ -119,7 +119,7 @@ describe('validation', () => {
         description: 'should return valid for empty string',
         maxLength: 5,
         value: '',
-        expected: validResult,
+        expected: VALID_RESULT,
       },
       {
         description: 'should return invalid for non-string values',
@@ -147,21 +147,21 @@ describe('validation', () => {
         min: 2,
         max: 10,
         value: 'hello',
-        expected: validResult,
+        expected: VALID_RESULT,
       },
       {
         description: 'should return valid for string at minimum length',
         min: 5,
         max: 10,
         value: 'hello',
-        expected: validResult,
+        expected: VALID_RESULT,
       },
       {
         description: 'should return valid for string at maximum length',
         min: 2,
         max: 5,
         value: 'hello',
-        expected: validResult,
+        expected: VALID_RESULT,
       },
       {
         description: 'should return invalid for string shorter than minimum',
@@ -182,7 +182,7 @@ describe('validation', () => {
         min: 2,
         max: 5,
         value: ['a', 'b', 'c'],
-        expected: validResult,
+        expected: VALID_RESULT,
       },
       {
         description: 'should return invalid for array shorter than minimum',
@@ -232,7 +232,7 @@ describe('validation', () => {
         description: 'should return valid for string matching regex pattern',
         regex: /^[a-z]+$/,
         value: 'hello',
-        expected: validResult,
+        expected: VALID_RESULT,
       },
       {
         description: 'should return invalid for string not matching regex pattern',
@@ -251,7 +251,7 @@ describe('validation', () => {
         description: 'should return valid for string matching digit pattern',
         regex: /^\d+$/,
         value: '12345',
-        expected: validResult,
+        expected: VALID_RESULT,
       },
       {
         description: 'should return invalid for empty string when pattern requires content',
@@ -277,17 +277,17 @@ describe('validation', () => {
       {
         description: 'should return valid for properly formatted email',
         value: 'test@example.com',
-        expected: validResult,
+        expected: VALID_RESULT,
       },
       {
         description: 'should return valid for email with subdomain',
         value: 'user@mail.example.com',
-        expected: validResult,
+        expected: VALID_RESULT,
       },
       {
         description: 'should return valid for email with numbers',
         value: 'user123@example123.com',
-        expected: validResult,
+        expected: VALID_RESULT,
       },
       {
         description: 'should return invalid for email without @ symbol',
@@ -330,12 +330,12 @@ describe('validation', () => {
       {
         description: 'should return valid for 10-digit phone number',
         value: '1234567890',
-        expected: validResult,
+        expected: VALID_RESULT,
       },
       {
         description: 'should return valid for another 10-digit phone number',
         value: '9876543210',
-        expected: validResult,
+        expected: VALID_RESULT,
       },
       {
         description: 'should return invalid for phone number with less than 10 digits',
@@ -389,13 +389,13 @@ describe('validation', () => {
         description: 'should return valid for value in allowed set',
         set: ['red', 'green', 'blue'],
         value: 'red',
-        expected: validResult,
+        expected: VALID_RESULT,
       },
       {
         description: 'should return valid for another value in allowed set',
         set: ['cat', 'dog', 'bird'],
         value: 'dog',
-        expected: validResult,
+        expected: VALID_RESULT,
       },
       {
         description: 'should return invalid for value not in allowed set',
@@ -426,7 +426,7 @@ describe('validation', () => {
         description: 'should return valid for empty string if in set',
         set: ['', 'red', 'green'],
         value: '',
-        expected: validResult,
+        expected: VALID_RESULT,
       },
       {
         description: 'should return invalid for non-string values',
@@ -457,8 +457,8 @@ describe('validation', () => {
     };
 
     const testCases = [
-      { obj: { name: 'John' }, expected: validResult },
-      { obj: { name: null }, expected: validResult },
+      { obj: { name: 'John' }, expected: VALID_RESULT },
+      { obj: { name: null }, expected: VALID_RESULT },
       { obj: {}, expected: invalidResult },
     ];
 
@@ -477,9 +477,9 @@ describe('validation', () => {
     };
 
     const testCases = [
-      { obj: { name: 'John' }, expected: validResult },
+      { obj: { name: 'John' }, expected: VALID_RESULT },
       { obj: { name: null }, expected: invalidResult },
-      { obj: {}, expected: validResult },
+      { obj: {}, expected: VALID_RESULT },
     ];
 
     test.each(testCases)('should handle optional values for $obj.name', (testCase) => {
@@ -493,7 +493,7 @@ describe('validation', () => {
         description: 'should return valid result when validator passes',
         validator: V.isString,
         value: 'hello',
-        expected: validResult,
+        expected: VALID_RESULT,
       },
       {
         description: 'should return invalid result when validator fails',
@@ -505,7 +505,7 @@ describe('validation', () => {
         description: 'should work with factory validator functions',
         validator: V.minLength(5),
         value: 'hello world',
-        expected: validResult,
+        expected: VALID_RESULT,
       },
       {
         description: 'should return failure for factory validator functions',
@@ -525,7 +525,7 @@ describe('validation', () => {
         description: 'should return valid when all validators pass',
         validators: [V.isString, V.minLength(3)],
         value: 'hello',
-        expected: validResult,
+        expected: VALID_RESULT,
       },
       {
         description: 'should return invalid with single reason when one validator fails',
@@ -546,7 +546,7 @@ describe('validation', () => {
         description: 'should work with mix of direct and factory validators',
         validators: [V.isString, V.length(3, 10), V.matches(/^[a-z]+$/)],
         value: 'hello',
-        expected: validResult,
+        expected: VALID_RESULT,
       },
       {
         description: 'should accumulate all failure reasons',
@@ -561,13 +561,13 @@ describe('validation', () => {
         description: 'should handle empty validator array',
         validators: [],
         value: 'anything',
-        expected: validResult,
+        expected: VALID_RESULT,
       },
       {
         description: 'should handle single validator',
         validators: [V.isEmailAddress],
         value: 'test@example.com',
-        expected: validResult,
+        expected: VALID_RESULT,
       },
       {
         description: 'should handle single failing validator',
@@ -585,7 +585,7 @@ describe('validation', () => {
     test('should return valid when key validation passes', () => {
       const spec = { name: [V.isString, V.minLength(2)] };
       const obj = { name: 'John' };
-      expect(V.validateKey(spec, 'name', obj)).toEqual(validResult);
+      expect(V.validateKey(spec, 'name', obj)).toEqual(VALID_RESULT);
     });
 
     test('should return invalid with reasons when key validation fails', () => {
@@ -609,7 +609,7 @@ describe('validation', () => {
     test('should validate email key correctly', () => {
       const spec = { email: [V.isEmailAddress] };
       const obj = { email: 'test@example.com' };
-      expect(V.validateKey(spec, 'email', obj)).toEqual(validResult);
+      expect(V.validateKey(spec, 'email', obj)).toEqual(VALID_RESULT);
     });
 
     test('should return invalid for bad email format', () => {
@@ -624,7 +624,7 @@ describe('validation', () => {
     test('should handle single validator successfully', () => {
       const spec = { name: [V.isString] };
       const obj = { name: 'Alice' };
-      expect(V.validateKey(spec, 'name', obj)).toEqual(validResult);
+      expect(V.validateKey(spec, 'name', obj)).toEqual(VALID_RESULT);
     });
   });
 
@@ -677,6 +677,135 @@ describe('validation', () => {
       expect(V.validateObject(spec, testCase.obj)).toEqual(
         expect.objectContaining(testCase.expected),
       );
+    });
+  });
+
+  describe('nested object validation', () => {
+    type Address = {
+      street: string;
+      city: string;
+      zipCode: string;
+      country?: string;
+    };
+
+    type PersonWithAddress = {
+      name: string;
+      address: Address;
+      email?: string;
+    };
+
+    const addressSpec: ValidationSpec<Address> = {
+      street: [V.isString, V.minLength(1)],
+      city: [V.isString, V.minLength(1)],
+      zipCode: [V.isString, V.matches(/^\d{5}$/, 'ZIP code must be 5 digits')],
+      country: [V.optional(V.isString, V.minLength(2))],
+    };
+
+    const personWithAddressSpec: ValidationSpec<PersonWithAddress> = {
+      name: [V.isString, V.minLength(1)],
+      address: addressSpec, // This is a nested ValidationSpec
+      email: [V.optional(V.isEmailAddress)],
+    };
+
+    const testCases = [
+      {
+        description: 'should validate valid nested object',
+        obj: {
+          name: 'John Doe',
+          address: {
+            street: '123 Main St',
+            city: 'Anytown',
+            zipCode: '12345',
+          },
+          email: 'john@example.com',
+        },
+        expected: VALID_RESULT,
+      },
+      {
+        description: 'should validate nested object with optional field',
+        obj: {
+          name: 'Jane Smith',
+          address: {
+            street: '456 Oak Ave',
+            city: 'Springfield',
+            zipCode: '67890',
+            country: 'US',
+          },
+        },
+        expected: VALID_RESULT,
+      },
+      {
+        description: 'should return errors for invalid nested object fields',
+        obj: {
+          name: '', // Invalid: empty name
+          address: {
+            street: '', // Invalid: empty street
+            city: 'Valid City',
+            zipCode: '1234', // Invalid: wrong ZIP format
+          },
+          email: 'invalid-email', // Invalid: not a valid email
+        },
+        expected: {
+          valid: false,
+          reasonsMap: expect.objectContaining({
+            name: { valid: false, reasons: ['Must contain at least 1 characters'] },
+            address: {
+              valid: false,
+              reasons: [
+                'street: Must contain at least 1 characters',
+                'zipCode: ZIP code must be 5 digits',
+              ],
+            },
+            email: { valid: false, reasons: ['Must be a valid email address'] },
+          }),
+        },
+      },
+      {
+        description: 'should handle nested object with single validation error',
+        obj: {
+          name: 'Valid Name',
+          address: {
+            street: 'Valid Street',
+            city: 'Valid City',
+            zipCode: 'INVALID', // Only this field is invalid
+          },
+        },
+        expected: {
+          valid: false,
+          reasonsMap: expect.objectContaining({
+            address: {
+              valid: false,
+              reasons: ['zipCode: ZIP code must be 5 digits'],
+            },
+          }),
+        },
+      },
+      {
+        description: 'should handle deeply nested validation with optional country',
+        obj: {
+          name: 'Test User',
+          address: {
+            street: '789 Pine St',
+            city: 'TestCity',
+            zipCode: '54321',
+            country: 'A', // Invalid: too short
+          },
+        },
+        expected: {
+          valid: false,
+          reasonsMap: expect.objectContaining({
+            address: {
+              valid: false,
+              reasons: ['country: Must contain at least 2 characters'],
+            },
+          }),
+        },
+      },
+    ];
+
+    test.each(testCases)('$description', (testCase) => {
+      const result = V.validateObject(personWithAddressSpec, testCase.obj);
+      expect(result).toEqual(testCase.expected);
     });
   });
 });
