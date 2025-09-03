@@ -319,7 +319,7 @@ export default function TrusteeCreateForm() {
           </div>
           <div className="grid-col-6">
             <div className="grid-row grid-gap-lg">
-              <div className="grid-col-4">
+              <div className="grid-col-5">
                 <PhoneNumberInput
                   id="trustee-phone"
                   name="phone"
@@ -337,7 +337,7 @@ export default function TrusteeCreateForm() {
                   required
                 />
               </div>
-              <div className="grid-col-4">
+              <div className="grid-col-3">
                 <Input
                   id="trustee-extension"
                   name="extension"
