@@ -2,14 +2,20 @@ import { useState } from 'react';
 import { TrusteeFormData, TrusteeFormValidation } from './UseTrusteeFormValidation.types';
 import { TRUSTEE_STATUS_VALUES, TrusteeStatus } from '@common/cams/parties';
 import { EMAIL_REGEX, PHONE_REGEX, EXTENSION_REGEX, ZIP_REGEX } from '@common/cams/regex';
-import V, { InvalidValidatorResult, ValidationSpec } from '@common/cams/validation';
+import V from '@common/cams/validators';
+import {
+  ValidationSpec,
+  flattenReasonMap,
+  validateEach,
+  validateObject,
+} from '@common/cams/validation';
 
 const trusteeFormDataSpec: ValidationSpec<TrusteeFormData> = {
   name: [V.minLength(1, 'Trustee name is required')],
   address1: [V.minLength(1, 'Address is required')],
   address2: [V.optional(V.maxLength(50))],
   city: [V.minLength(1, 'City is required')],
-  state: [V.fixedLength(2, 'State is required')],
+  state: [V.exactLength(2, 'State is required')],
   zipCode: [V.matches(ZIP_REGEX, 'ZIP code must be 5 digits or 9 digits with a hyphen')],
   email: [V.matches(EMAIL_REGEX, 'Email must be a valid email address')],
   phone: [V.matches(PHONE_REGEX, 'Phone is required')],
@@ -29,8 +35,8 @@ function validateField(field: keyof TrusteeFormData, value: string): string | nu
     return null;
   }
 
-  const result = V.validateEach(trusteeFormDataSpec[field]!, trimmedValue);
-  return result.valid ? null : result.reasons.join('. ');
+  const result = validateEach(trusteeFormDataSpec[field]!, trimmedValue);
+  return result.valid ? null : result.reason!;
 }
 
 /**
@@ -89,19 +95,16 @@ export function useTrusteeFormValidation(): TrusteeFormValidation {
    * Checks if form is both valid (no errors) and complete (all required fields filled)
    */
   const isFormValidAndComplete = (formData: TrusteeFormData): boolean => {
-    const resultsSet = V.validateObject<TrusteeFormData>(trusteeFormDataSpec, formData);
-    if (!resultsSet.valid) {
+    const results = validateObject(trusteeFormDataSpec, formData);
+    if (!results.valid) {
       const newFieldErrors = Object.fromEntries(
-        Object.entries(resultsSet.reasonsMap)
-          .filter(([_, results]) => !results.valid)
-          .map(([fieldName, results]) => [
-            fieldName,
-            (results as InvalidValidatorResult).reasons.join(' '),
-          ]),
+        Object.entries(flattenReasonMap(results.reasonMap!)).map(([field, reason]) => {
+          return [field, reason.join('., ') + '.'];
+        }),
       );
       setFieldErrors(newFieldErrors);
     }
-    return resultsSet.valid;
+    return !!results.valid;
   };
 
   return {
