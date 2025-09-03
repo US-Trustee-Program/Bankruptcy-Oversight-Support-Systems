@@ -1,9 +1,33 @@
-@counter-style parenthesized {
-  system: extends numeric;
-  prefix: "(";
-  suffix: ") ";
-}
+.authorized-use-only {
+  @counter-style parenthesized {
+    system: extends numeric;
+    prefix: "(";
+    suffix: ") ";
+  }
 
-ol {
-  list-style: parenthesized;
+  .usa-card {
+    margin-top: 2rem;
+  }
+
+  .grid-container {
+    padding: 0;
+
+    .grid-col {
+      p {
+        font-size: 1rem;
+      }
+
+      ul {
+        padding-left: 1rem;
+
+        li {
+          font-size: 1rem;
+        }
+      }
+    }
+  }
+
+  .grid-col:first-child {
+    padding-right: 2rem;
+  }
 }
