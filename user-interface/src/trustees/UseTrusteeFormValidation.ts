@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { TrusteeFormData, TrusteeFormValidation } from './UseTrusteeFormValidation.types';
 import { TRUSTEE_STATUS_VALUES, TrusteeStatus } from '@common/cams/parties';
 import { EMAIL_REGEX, PHONE_REGEX, EXTENSION_REGEX, ZIP_REGEX } from '@common/cams/regex';
-import V, { InvalidValidatorResult, ValidationSpec } from '@common/cams/validation';
+import V, { ValidationSpec } from '@common/cams/validation';
 
 const trusteeFormDataSpec: ValidationSpec<TrusteeFormData> = {
   name: [V.minLength(1, 'Trustee name is required')],
@@ -94,10 +94,7 @@ export function useTrusteeFormValidation(): TrusteeFormValidation {
       const newFieldErrors = Object.fromEntries(
         Object.entries(resultsSet.reasonsMap)
           .filter(([_, results]) => !results.valid)
-          .map(([fieldName, results]) => [
-            fieldName,
-            (results as InvalidValidatorResult).reasons.join(' '),
-          ]),
+          .map(([fieldName, results]) => [fieldName, V.extractValidationErrors(results).join(' ')]),
       );
       setFieldErrors(newFieldErrors);
     }
