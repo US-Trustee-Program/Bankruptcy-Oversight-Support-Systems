@@ -139,13 +139,13 @@ describe('TrusteesUseCase', () => {
           zipCode: '123456',
           countryCode: 'US',
         },
-        phone: '555-0123',
+        phone: '123', // Invalid phone number - too short
         email: 'invalid-email',
         status: 'active',
       };
 
       await expect(useCase.createTrustee(context, invalidTrusteeInput)).rejects.toThrow(
-        'Trustee validation failed: name: Must contain at least 1 characters., email: Provided email does not match regular expression., phone: Provided phone number does not match regular expression.',
+        'Trustee validation failed: This field is required, Provided email does not match regular expression, Provided phone number does not match regular expression, ZIP code must be valid (5 digits or 5+4 format)',
       );
 
       expect(mockTrusteesRepository.createTrustee).not.toHaveBeenCalled();
@@ -165,6 +165,110 @@ describe('TrusteesUseCase', () => {
       );
 
       expect(mockGetCamsError).toHaveBeenCalledWith(repositoryError, 'TRUSTEES-USE-CASE');
+    });
+
+    test('should validate address object - missing address1', async () => {
+      const invalidTrusteeInput: TrusteeInput = {
+        name: 'John Doe',
+        address: {
+          address1: '', // Empty address1 should fail
+          city: 'Anytown',
+          state: 'NY',
+          zipCode: '12345',
+          countryCode: 'US',
+        },
+        phone: '3335550123', // Valid phone format (digits only)
+        email: 'john.doe@example.com',
+        status: 'active',
+      };
+
+      await expect(useCase.createTrustee(context, invalidTrusteeInput)).rejects.toThrow(
+        'Trustee validation failed: Address line 1 is required',
+      );
+
+      expect(mockTrusteesRepository.createTrustee).not.toHaveBeenCalled();
+    });
+
+    test('should validate address object - missing city', async () => {
+      const invalidTrusteeInput: TrusteeInput = {
+        name: 'John Doe',
+        address: {
+          address1: '123 Main St',
+          city: '', // Empty city should fail
+          state: 'NY',
+          zipCode: '12345',
+          countryCode: 'US',
+        },
+        phone: '(333) 555-0123', // Valid phone format (with parentheses)
+        email: 'john.doe@example.com',
+        status: 'active',
+      };
+
+      await expect(useCase.createTrustee(context, invalidTrusteeInput)).rejects.toThrow(
+        'Trustee validation failed: City is required',
+      );
+
+      expect(mockTrusteesRepository.createTrustee).not.toHaveBeenCalled();
+    });
+
+    test('should validate address object - invalid state', async () => {
+      const invalidTrusteeInput: TrusteeInput = {
+        name: 'John Doe',
+        address: {
+          address1: '123 Main St',
+          city: 'Anytown',
+          state: 'NEW YORK', // Invalid state format - should be 2 chars
+          zipCode: '12345',
+          countryCode: 'US',
+        },
+        phone: '333.555.0123', // Valid phone format (with dots)
+        email: 'john.doe@example.com',
+        status: 'active',
+      };
+
+      await expect(useCase.createTrustee(context, invalidTrusteeInput)).rejects.toThrow(
+        'Trustee validation failed: State must be a 2-character code',
+      );
+
+      expect(mockTrusteesRepository.createTrustee).not.toHaveBeenCalled();
+    });
+
+    test('should validate address object - invalid zipCode', async () => {
+      const invalidTrusteeInput: TrusteeInput = {
+        name: 'John Doe',
+        address: {
+          address1: '123 Main St',
+          city: 'Anytown',
+          state: 'NY',
+          zipCode: '1234', // Invalid ZIP format
+          countryCode: 'US',
+        },
+        phone: '333 555 0123', // Valid phone format (with spaces)
+        email: 'john.doe@example.com',
+        status: 'active',
+      };
+
+      await expect(useCase.createTrustee(context, invalidTrusteeInput)).rejects.toThrow(
+        'Trustee validation failed: ZIP code must be valid (5 digits or 5+4 format)',
+      );
+
+      expect(mockTrusteesRepository.createTrustee).not.toHaveBeenCalled();
+    });
+
+    test('should validate address object - invalid address type', async () => {
+      const invalidTrusteeInput: TrusteeInput = {
+        name: 'John Doe',
+        address: 'invalid address' as unknown as TrusteeInput['address'], // Address should be object, not string
+        phone: '333 555 0123', // Valid phone format (with spaces)
+        email: 'john.doe@example.com',
+        status: 'active',
+      };
+
+      await expect(useCase.createTrustee(context, invalidTrusteeInput)).rejects.toThrow(
+        'Trustee validation failed: Address must be a valid object if provided',
+      );
+
+      expect(mockTrusteesRepository.createTrustee).not.toHaveBeenCalled();
     });
   });
 

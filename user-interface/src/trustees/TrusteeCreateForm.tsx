@@ -1,5 +1,5 @@
 import './TrusteeCreateForm.scss';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Input from '@/lib/components/uswds/Input';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
@@ -39,8 +39,13 @@ export default function TrusteeCreateForm() {
   const api = useApi2();
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
-  const { fieldErrors, validateFieldAndUpdate, clearErrors, isFormValidAndComplete } =
-    useTrusteeFormValidation();
+  const {
+    fieldErrors,
+    validateFieldAndUpdate,
+    clearErrors,
+    isFormValidAndComplete,
+    isFormValidAndCompleteReadOnly,
+  } = useTrusteeFormValidation();
   const debounce = useDebounce();
 
   const statusComboRef = React.useRef<ComboBoxRef | null>(null);
@@ -66,6 +71,40 @@ export default function TrusteeCreateForm() {
 
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
   const navigate = useCamsNavigator();
+
+  // Memoize the disabled state to prevent infinite re-renders
+  const isSubmitDisabled = useMemo(() => {
+    const formData = {
+      name: name.trim(),
+      address1: address1.trim(),
+      address2: address2.trim() || undefined,
+      city: city.trim(),
+      state: state.trim(),
+      zipCode: zipCode.trim(),
+      phone: phone.trim(),
+      extension: extension.trim() || undefined,
+      email: email.trim(),
+      districts: districts.length > 0 ? districts : undefined,
+      chapters: chapters.length > 0 ? chapters : undefined,
+      status: status,
+    };
+    return !isFormValidAndCompleteReadOnly(formData) || isSubmitting;
+  }, [
+    name,
+    address1,
+    address2,
+    city,
+    state,
+    zipCode,
+    phone,
+    extension,
+    email,
+    districts,
+    chapters,
+    status,
+    isSubmitting,
+    isFormValidAndCompleteReadOnly,
+  ]);
 
   useEffect(() => {
     setDistrictLoadError(null);
@@ -432,7 +471,12 @@ export default function TrusteeCreateForm() {
 
         {errorMessage && <div role="alert">{errorMessage}</div>}
         <div className="usa-button-group">
-          <Button id="submit-button" type="submit" onClick={handleSubmit}>
+          <Button
+            id="submit-button"
+            type="submit"
+            onClick={handleSubmit}
+            disabled={isSubmitDisabled}
+          >
             {isSubmitting ? 'Saving…' : 'Save'}
           </Button>
           <Button

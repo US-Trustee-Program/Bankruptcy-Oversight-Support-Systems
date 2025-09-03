@@ -1,364 +1,307 @@
 /********************************************************************************
- * Core Validation Library Types and Functions
+ * Simple Validation Library
  ********************************************************************************/
-export type ValidatorReason = { reason: string; key?: string };
-export type ValidValidatorResult = { valid: true };
-// export type InvalidValidatorResult = { valid: false; reasons: string[] };
-export type InvalidValidatorResult<T = unknown> = { valid: false } & ValidatorReason;
 
-// Option 0.5
-// Recursively _assemble_ a list of validator function.
-// Execute each function
-// result if invalid is a list of results {'key': 'keyName', 'reason': 'error message'}
-
-export type ValidatorResult = ValidValidatorResult | InvalidValidatorResult;
-export type ValidatorResultSet =
-  | ValidValidatorResult
-  | { valid: false; reasonsMap: Record<string, ValidatorResult> };
-
-export type ValidatorFunction = (value: unknown) => ValidatorResult | ValidatorResultSet;
-
-// Type for nested validation specs - allows for recursive object validation
-export type ValidationSpec<T> = {
-  [K in keyof T]?: T[K] extends object
-    ? ValidatorFunction[] | ValidationSpec<T[K]>
-    : ValidatorFunction[];
+// Core types
+export type ValidationResult = {
+  valid: boolean;
+  error?: string;
 };
 
-const VALID_RESULT: ValidValidatorResult = { valid: true } as const;
+export type FieldValidationResult = {
+  [field: string]: string | undefined; // field name -> error message (undefined if valid)
+};
+
+export type ValidatorFunction = (value: unknown) => ValidationResult;
+
+// Validation spec for objects
+export type ValidationSpec<T> = {
+  [K in keyof T]?: ValidatorFunction[];
+};
+
+// Constants
+const VALID: ValidationResult = { valid: true } as const;
+
+/********************************************************************************
+ * Core Validation Functions
+ ********************************************************************************/
 
 /**
- * Validate a value against a validator function.
- *
- * @param func
- * @param value
+ * Runs a single validator function against a value
  */
-function validate(func: ValidatorFunction, value: unknown): ValidatorResult {
-  return func(value);
+function validate(validator: ValidatorFunction, value: unknown): ValidationResult {
+  return validator(value);
 }
 
 /**
- * Validates a value against multiple validator functions and returns aggregated results.
- *
- * @param functions - Array of validator functions to apply to the value
- * @param value - The value to be validated
- * @returns ValidatorResults object containing validation status and reasons for failure
+ * Runs multiple validators against a single value.
+ * Returns the first error encountered, or valid if all pass.
  */
-function validateEach(functions: ValidatorFunction[], value: unknown): ValidatorResult {
-  if (!functions) {
-    return VALID_RESULT;
-  }
-  const reasons = functions
-    .map((f) => f(value))
-    .filter((r) => !r.valid)
-    .map((r) => (r as InvalidValidatorResult).reasons)
-    .flat();
-
-  return reasons.length > 0 ? { valid: false, reasons } : VALID_RESULT;
-}
-
-/**
- * Validates a specific key of an object using a validation specification.
- * Handles both validator function arrays and nested validation specs.
- *
- * @template T - The type of the object being validated
- * @param spec - The validation specification defining rules for object properties
- * @param key - The specific key/property of the object to validate
- * @param obj - The object containing the property to be validated
- * @returns ValidatorResults an object containing validation status and reasons for failure
- */
-function validateKey<T>(spec: ValidationSpec<T>, key: keyof T, obj: T): ValidatorResult {
-  const rule = spec[key];
-  if (!rule) {
-    return VALID_RESULT;
-  }
-
-  // Check if rule is an array of validator functions
-  if (Array.isArray(rule)) {
-    return validateEach(rule, obj[key]);
-  } else {
-    // rule is a nested ValidationSpec, recursively validate the nested object
-    const nestedResult = validateObject(rule as ValidationSpec<unknown>, obj[key]);
-    // TODO: strongly consider removing this. I think we want validation to not roll up reasons and leave that to helper
-    // functions run after the fact.
-    if (nestedResult.valid) {
-      return VALID_RESULT;
-    } else {
-      // Convert nested validation results to a flat list of reasons
-      // TODO unsure about this approach?
-      const reasons: string[] = [];
-      const reasonsMap = (
-        nestedResult as { valid: false; reasonsMap: Partial<Record<string, ValidatorResult>> }
-      ).reasonsMap;
-      for (const field in reasonsMap) {
-        const fieldResult = reasonsMap[field];
-        if (fieldResult && !fieldResult.valid) {
-          reasons.push(
-            `${String(field)}: ${(fieldResult as InvalidValidatorResult).reasons.join(', ')}`,
-          );
-        }
-      }
-      return { valid: false, reasons };
+function validateValue(validators: ValidatorFunction[], value: unknown): ValidationResult {
+  for (const validator of validators) {
+    const result = validator(value);
+    if (!result.valid) {
+      return result;
     }
   }
+  return VALID;
 }
 
 /**
- * Validates all properties of an object against a validation specification.
- * Handles both validator function arrays and nested validation specs.
- *
- * @template T - The type of the object being validated
- * @param spec - The validation specification defining rules for all object properties
- * @param obj - The object to be validated
- * @returns ValidatorResultsSet object containing validation status and property-specific reasons for failure
+ * Validates an object against a validation spec.
+ * Returns field-level errors for any invalid fields.
  */
-function validateObject(spec: ValidationSpec<unknown>, obj: unknown): ValidatorResultSet<T> {
-  const reasonsMap = (Object.keys(spec) as (keyof T)[]).reduce(
-    (acc, key) => {
-      const rule = spec[key];
-      if (!rule) {
-        return acc;
-      }
+function validateObject<T>(spec: ValidationSpec<T>, obj: Partial<T>): FieldValidationResult {
+  const errors: FieldValidationResult = {};
 
-      let results: ValidatorResult[] | ValidatorResultSet<T>;
+  for (const fieldName in spec) {
+    const validators = spec[fieldName];
+    if (!validators) {
+      continue;
+    }
 
-      // Check if rule is an array of validator functions
-      if (Array.isArray(rule)) {
-        result = validateEach(rule, obj[key]);
-      } else {
-        // rule is a nested ValidationSpec
-        result = validateObject(rule as ValidationSpec<unknown>, obj[key]);
-      }
+    const value = obj[fieldName];
+    const result = validateValue(validators, value);
 
-      if (!result.valid) {
-        acc[key] = result;
-      }
-      return acc;
-    },
-    {} as Partial<Record<keyof T, ValidatorResult>>,
-  );
+    if (!result.valid) {
+      errors[fieldName as string] = result.error;
+    }
+  }
 
-  return Object.keys(reasonsMap).length > 0 ? { valid: false, reasonsMap } : VALID_RESULT;
+  return errors;
+}
+
+/**
+ * Validates a single field of an object.
+ * Useful for real-time validation as user types.
+ */
+function validateField<T>(
+  spec: ValidationSpec<T>,
+  fieldName: keyof T,
+  value: unknown,
+): ValidationResult {
+  const validators = spec[fieldName];
+  if (!validators) {
+    return VALID;
+  }
+  return validateValue(validators, value);
+}
+
+/**
+ * Checks if validation results contain any errors
+ */
+function hasErrors(results: FieldValidationResult): boolean {
+  return Object.values(results).some((error) => error !== undefined);
+}
+
+/**
+ * Gets all error messages from validation results as an array
+ */
+function getErrors(results: FieldValidationResult): string[] {
+  return Object.values(results).filter((error): error is string => error !== undefined);
 }
 
 /********************************************************************************
- * Common Validator Functions
+ * Validator Functions
  ********************************************************************************/
 
-// TODO: Need to support dates, numbers.
-
-function spec2funcs(spec: ValidationSpec<unknown>): ValidatorFunction {
-  return (value: unknown)ValidatorResultSet => {
-    Object.keys(v)
-    // here we gather the validator functions. then execute.
-  }
-}
-
-
-
-function spec(s: ValidationSpec<unknown>): ValidatorFunction {
-  return (obj: unknown): ValidatorResultSet => {
-    return validateObject(s, obj);
+/**
+ * Validates that a value is required (not undefined, null, or empty string)
+ */
+function required(message: string = 'This field is required'): ValidatorFunction {
+  return (value: unknown): ValidationResult => {
+    if (value === undefined || value === null || value === '') {
+      return { valid: false, error: message };
+    }
+    return VALID;
   };
 }
 
 /**
- * Creates a validator function that treats undefined values as valid and applies other validators otherwise.
- * This allows for optional fields in validation schemas where undefined values are acceptable.
- *
- * @param {...ValidatorFunction[]} validators - Variable number of validator functions to apply when value is not undefined
- * @returns {ValidatorFunction} A validator function that allows undefined values and validates defined values
+ * Validates that a value is a string
+ */
+function isString(message: string = 'Must be a string'): ValidatorFunction {
+  return (value: unknown): ValidationResult => {
+    if (typeof value !== 'string') {
+      return { valid: false, error: message };
+    }
+    return VALID;
+  };
+}
+
+/**
+ * Validates minimum length for strings and arrays
+ */
+function minLength(min: number, message?: string): ValidatorFunction {
+  return (value: unknown): ValidationResult => {
+    if (value === null || value === undefined) {
+      return { valid: false, error: message || `Must have at least ${min} characters` };
+    }
+
+    const hasLength = typeof value === 'string' || Array.isArray(value);
+    if (!hasLength) {
+      return { valid: false, error: 'Value must have a length property' };
+    }
+
+    if (value.length < min) {
+      const unit = typeof value === 'string' ? 'characters' : 'items';
+      return { valid: false, error: message || `Must have at least ${min} ${unit}` };
+    }
+
+    return VALID;
+  };
+}
+
+/**
+ * Validates maximum length for strings and arrays
+ */
+function maxLength(max: number, message?: string): ValidatorFunction {
+  return (value: unknown): ValidationResult => {
+    const hasLength = typeof value === 'string' || Array.isArray(value);
+    if (!hasLength) {
+      return { valid: false, error: 'Value must have a length property' };
+    }
+
+    if (value.length > max) {
+      const unit = typeof value === 'string' ? 'characters' : 'items';
+      return { valid: false, error: message || `Must have at most ${max} ${unit}` };
+    }
+
+    return VALID;
+  };
+}
+
+/**
+ * Validates exact length for strings and arrays
+ */
+function exactLength(length: number, message?: string): ValidatorFunction {
+  return (value: unknown): ValidationResult => {
+    const hasLength = typeof value === 'string' || Array.isArray(value);
+    if (!hasLength) {
+      return { valid: false, error: 'Value must have a length property' };
+    }
+
+    if (value.length !== length) {
+      const unit = typeof value === 'string' ? 'characters' : 'items';
+      return { valid: false, error: message || `Must have exactly ${length} ${unit}` };
+    }
+
+    return VALID;
+  };
+}
+
+/**
+ * Validates that a string matches a regular expression
+ */
+function matches(regex: RegExp, message?: string): ValidatorFunction {
+  return (value: unknown): ValidationResult => {
+    if (typeof value !== 'string') {
+      return { valid: false, error: 'Value must be a string' };
+    }
+
+    if (!regex.test(value)) {
+      return { valid: false, error: message || `Must match pattern ${regex}` };
+    }
+
+    return VALID;
+  };
+}
+
+/**
+ * Validates that a value is one of the allowed options
+ */
+function oneOf<T>(options: T[], message?: string): ValidatorFunction {
+  return (value: unknown): ValidationResult => {
+    if (!options.includes(value as T)) {
+      return {
+        valid: false,
+        error: message || `Must be one of: ${options.join(', ')}`,
+      };
+    }
+    return VALID;
+  };
+}
+
+/**
+ * Makes a validator optional - passes if value is undefined, otherwise applies validators
  */
 function optional(...validators: ValidatorFunction[]): ValidatorFunction {
-  return (value: unknown): ValidatorResult => {
+  return (value: unknown): ValidationResult => {
     if (value === undefined) {
-      return VALID_RESULT;
-    } else {
-      return validateEach(validators, value);
+      return VALID;
     }
+    return validateValue(validators, value);
   };
 }
 
-function notSet(value: unknown): ValidatorResult {
-  return value === undefined || value === null
-    ? VALID_RESULT
-    : { valid: false, reasons: ['Must not be set'] };
-}
-
 /**
- * Creates a validator function that treats null values as valid and applies other validators otherwise.
- * This allows for nullable fields in validation schemas where null values are acceptable.
- *
- * @param {...ValidatorFunction[]} validators - Variable number of validator functions to apply when value is not null
- * @returns {ValidatorFunction} A validator function that allows null values and validates non-null values
+ * Makes a validator nullable - passes if value is null, otherwise applies validators
  */
 function nullable(...validators: ValidatorFunction[]): ValidatorFunction {
-  return (value: unknown): ValidatorResult => {
+  return (value: unknown): ValidationResult => {
     if (value === null) {
-      return VALID_RESULT;
-    } else {
-      return validateEach(validators, value);
+      return VALID;
     }
+    return validateValue(validators, value);
   };
 }
 
-/**
- * Validates whether a value is a string.
- *
- * @param {unknown} value - The value to be validated
- * @param {string} reason - Optional custom error message to display when validation fails
- * @returns {ValidatorResult} Object containing validation status and reason for failure if invalid
- */
-function isString(value: unknown, reason: string = 'Must be a string'): ValidatorResult {
-  return typeof value === 'string' ? VALID_RESULT : { valid: false, reasons: [reason] };
-}
+/********************************************************************************
+ * Common Validation Patterns
+ ********************************************************************************/
 
 /**
- * Creates a validator function that checks if a string or array has at least a minimum length.
- *
- * @param {number} min - The minimum required length
- * @param {string} reason - Optional custom error message to display when validation fails
- * @returns {ValidatorFunction} A validator function that checks minimum length
+ * Email validation
  */
-function minLength(min: number, reason?: string): ValidatorFunction {
-  return length(min, Infinity, reason);
+function email(message: string = 'Must be a valid email address'): ValidatorFunction {
+  return matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, message);
 }
 
 /**
- * Creates a validator function that checks if a string or array has at most a maximum length.
- *
- * @param {number} max - The maximum allowed length
- * @param {string} reason
- * @returns {ValidatorFunction} A validator function that checks maximum length
+ * Phone number validation (10 digits)
  */
-function maxLength(max: number, reason?: string): ValidatorFunction {
-  return length(0, max, reason);
-}
-
-function fixedLength(len: number, reason?: string): ValidatorFunction {
-  return length(len, len, reason);
+function phoneNumber(message: string = 'Must be a valid 10-digit phone number'): ValidatorFunction {
+  return matches(/^\d{10}$/, message);
 }
 
 /**
- * Creates a validator function that checks if a string or array length is within a specified range.
- *
- * @param {number} min - The minimum required length
- * @param {number} max - The maximum allowed length
- * @param {string} [reason] - Optional custom error message to display when validation fails
- * @returns {ValidatorFunction} A validator function that checks length within the specified range
+ * US ZIP code validation (5 digits or 5+4 format)
  */
-function length(min: number, max: number, reason?: string): ValidatorFunction {
-  return (value: unknown): ValidatorResult => {
-    if (value === null) {
-      return { valid: false, reasons: [`Value is null`] };
-    } else if (value === undefined) {
-      return { valid: false, reasons: [`Value is undefined`] };
-    }
-
-    const valueIsString = typeof value === 'string';
-    const valueIsArray = Array.isArray(value);
-    const isTypeWithLength = valueIsString || valueIsArray;
-
-    if (!isTypeWithLength) {
-      return { valid: false, reasons: ['Value does not have a length'] };
-    }
-
-    if (value.length >= min && value.length <= max) {
-      return VALID_RESULT;
-    }
-    const reasonText = () => {
-      if (reason) {
-        return reason;
-      }
-
-      let rangeText = `between ${min} and ${max}`;
-      if (min === 0) {
-        rangeText = `at most ${max}`;
-      } else if (max === Infinity) {
-        rangeText = `at least ${min}`;
-      } else if (min === max) {
-        rangeText = `exactly ${min}`;
-      }
-
-      const unitText = valueIsString ? 'characters' : 'selections';
-      return `Must contain ${rangeText} ${unitText}`;
-    };
-
-    return {
-      valid: false,
-      reasons: [reasonText()],
-    };
-  };
+function zipCode(message: string = 'Must be a valid ZIP code'): ValidatorFunction {
+  return matches(/^\d{5}(-\d{4})?$/, message);
 }
 
-/**
- * Creates a validator function that checks whether a value is in a set of allowed strings.
- *
- * @param {string[]} set
- * @param {string} [reason]
- */
-function isInSet<T>(set: T[], reason?: string): ValidatorFunction {
-  return (value: unknown): ValidatorResult => {
-    return set.includes(value as T)
-      ? VALID_RESULT
-      : { valid: false, reasons: [reason ?? `Must be one of ${set.join(', ')}`] };
-  };
-}
+/********************************************************************************
+ * Export API
+ ********************************************************************************/
 
-/**
- * Creates a validator function that checks if a string value matches a regular expression pattern.
- *
- * @param {RegExp} regex - The regular expression pattern to match against
- * @param {string} [error] - Optional custom error message to display when validation fails
- * @returns {ValidatorFunction} A validator function that checks pattern matching
- */
-function matches(regex: RegExp, error?: string): ValidatorFunction {
-  return (value: unknown): ValidatorResult => {
-    return typeof value === 'string' && regex.test(value)
-      ? VALID_RESULT
-      : { valid: false, reasons: [error ?? `Must match the pattern ${regex}`] };
-  };
-}
-
-/**
- * Validates whether a value is a valid email address format.
- *
- * @param {unknown} value - The value to be validated as an email address
- * @returns {ValidatorResult} Object containing validation status and reason for failure if invalid
- */
-function isEmailAddress(value: unknown): ValidatorResult {
-  return matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Must be a valid email address')(value);
-}
-
-/**
- * Validates whether a value is a valid 10-digit phone number format.
- *
- * @param {unknown} value - The value to be validated as a phone number
- * @returns {ValidatorResult} Object containing validation status and reason for failure if invalid
- */
-function isPhoneNumber(value: unknown): ValidatorResult {
-  return matches(/^\d{10}$/, 'Must be a valid phone number')(value);
-}
-
-const V = {
-  fixedLength,
-  isEmailAddress,
-  isInSet,
-  isPhoneNumber,
-  isString,
-  length,
-  matches,
-  maxLength,
-  minLength,
-  notSet,
-  nullable,
-  spec,
-  optional,
+export const V = {
+  // Core functions
   validate,
-  validateEach,
-  validateKey,
+  validateValue,
   validateObject,
-  VALID_RESULT,
+  validateField,
+  hasErrors,
+  getErrors,
+
+  // Basic validators
+  required,
+  isString,
+  minLength,
+  maxLength,
+  exactLength,
+  matches,
+  oneOf,
+  optional,
+  nullable,
+
+  // Common patterns
+  email,
+  phoneNumber,
+  zipCode,
+
+  // Constant
+  VALID,
 };
 
 export default V;

@@ -1,7 +1,6 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteesRepository } from '../gateways.types';
 import {
-  Address,
   Trustee,
   TRUSTEE_STATUS_VALUES,
   TrusteeInput,
@@ -28,19 +27,12 @@ export class TrusteesUseCase {
   }
 
   async createTrustee(context: ApplicationContext, trustee: TrusteeInput): Promise<Trustee> {
-    const validatorResult = V.validateObject<TrusteeInput>(trusteeSpec, trustee);
+    const errors = V.validateObject(trusteeSpec, trustee);
 
-    // Validate trustee creation input including address
-    if (validatorResult.valid === false) {
-      const validationErrors: string[] = [];
-      for (const field in validatorResult.reasonsMap) {
-        if (!validatorResult.reasonsMap[field].valid) {
-          validationErrors.push(
-            `${field}: ${validatorResult.reasonsMap[field].reasons.join(', ')}.`,
-          );
-        }
-      }
-      const collectedErrors = 'Trustee validation failed: ' + validationErrors.join(', ');
+    // Validate trustee creation input
+    if (V.hasErrors(errors)) {
+      const errorMessages = V.getErrors(errors);
+      const collectedErrors = 'Trustee validation failed: ' + errorMessages.join(', ');
       throw getCamsError(new Error(collectedErrors), MODULE_NAME);
     }
 
@@ -89,43 +81,48 @@ export class TrusteesUseCase {
   }
 }
 
-const addressSpec: ValidationSpec<Address> = {
-  address1: [V.isString, V.minLength(1)],
-  address2: [V.optional(V.maxLength(50))],
-  address3: [V.optional(V.maxLength(50))],
-  city: [V.isString, V.minLength(1)],
-  state: [V.isString, V.fixedLength(2)],
-  zipCode: [V.isString, V.matches(ZIP_REGEX)],
-  countryCode: [V.isString, V.fixedLength(2)],
-};
-
-// TODO: Add the rest of the fields
-// const trusteeSpec: ValidationSpec<TrusteeInput> = {
-//   name: [V.isString, V.minLength(1)],
-//   address: addressSpec,
-//   address1: [V.notSet],
-//   address2: [V.notSet],
-//   address3: [V.notSet],
-//   cityStateZipCountry: [V.notSet],
-//   email: [V.matches(EMAIL_REGEX, 'Provided email does not match regular expression')],
-//   phone: [V.matches(PHONE_REGEX, 'Provided phone number does not match regular expression')],
-//   extension: [
-//     V.optional(V.matches(EXTENSION_REGEX, 'Provided extension does not match regular expression')),
-//   ],
-//   status: [V.isInSet<TrusteeStatus>([...TRUSTEE_STATUS_VALUES])],
-// };
-
 const trusteeSpec: ValidationSpec<TrusteeInput> = {
-  name: [V.isString, V.minLength(1)],
-  address: [V.optional(V.spec(addressSpec))],
-  address1: [V.notSet],
-  address2: [V.notSet],
-  address3: [V.notSet],
-  cityStateZipCountry: [V.notSet],
+  name: [V.isString(), V.required()],
   email: [V.matches(EMAIL_REGEX, 'Provided email does not match regular expression')],
   phone: [V.matches(PHONE_REGEX, 'Provided phone number does not match regular expression')],
   extension: [
     V.optional(V.matches(EXTENSION_REGEX, 'Provided extension does not match regular expression')),
   ],
-  status: [V.isInSet<TrusteeStatus>([...TRUSTEE_STATUS_VALUES])],
+  status: [V.oneOf<TrusteeStatus>([...TRUSTEE_STATUS_VALUES])],
+
+  // Legacy address fields - these should be empty when using structured address
+  address1: [V.optional(V.isString())],
+  address2: [V.optional(V.isString())],
+  address3: [V.optional(V.isString())],
+  cityStateZipCountry: [V.optional(V.isString())],
+
+  // Structured address - optional but if provided should be valid
+  address: [
+    V.optional((value: unknown) => {
+      if (!value || typeof value !== 'object') {
+        return { valid: false, error: 'Address must be a valid object if provided' };
+      }
+
+      const addr = value as Record<string, unknown>;
+
+      // Validate required address fields
+      if (!addr.address1 || typeof addr.address1 !== 'string') {
+        return { valid: false, error: 'Address line 1 is required' };
+      }
+
+      if (!addr.city || typeof addr.city !== 'string') {
+        return { valid: false, error: 'City is required' };
+      }
+
+      if (!addr.state || typeof addr.state !== 'string' || addr.state.length !== 2) {
+        return { valid: false, error: 'State must be a 2-character code' };
+      }
+
+      if (!addr.zipCode || typeof addr.zipCode !== 'string' || !ZIP_REGEX.test(addr.zipCode)) {
+        return { valid: false, error: 'ZIP code must be valid (5 digits or 5+4 format)' };
+      }
+
+      return V.VALID;
+    }),
+  ],
 };
