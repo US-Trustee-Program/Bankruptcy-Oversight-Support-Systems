@@ -5,7 +5,9 @@ import { Identifiable } from './document';
 export type ChapterType = '7' | '7-panel' | '7-non-panel' | '11' | '11-subchapter-v' | '12' | '13';
 
 // Trustee status enumeration
-export type TrusteeStatus = 'active' | 'not active' | 'suspended';
+export const TRUSTEE_STATUS_VALUES = ['active', 'not active', 'suspended'] as const;
+export type TrusteeStatus = (typeof TRUSTEE_STATUS_VALUES)[number];
+
 export type Person = {
   firstName: string;
   lastName: string;

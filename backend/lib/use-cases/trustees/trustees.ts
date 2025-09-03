@@ -8,6 +8,9 @@ import {
 import { getCamsUserReference } from '../../../../common/src/cams/session';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { getTrusteesRepository } from '../../factory';
+import V, { ValidationSpec, ValidatorResult } from '../../../../common/src/cams/validation';
+import { ZIP_REGEX } from '../../../../common/src/cams/regex';
+import { Address } from '../../../../common/src/cams/parties';
 
 const MODULE_NAME = 'TRUSTEES-USE-CASE';
 
@@ -19,6 +22,9 @@ export class TrusteesUseCase {
   }
 
   async createTrustee(context: ApplicationContext, trustee: TrusteeInput): Promise<Trustee> {
+    // TODO: Use the new validation
+    const _newValidatorResult = V.validateObject<TrusteeInput>(trusteeSpec, trustee);
+
     // Validate trustee creation input including address
     const validationErrors = validateTrusteeCreationInput(trustee);
     if (validationErrors.length > 0) {
@@ -72,3 +78,34 @@ export class TrusteesUseCase {
     }
   }
 }
+
+const addressSpec: ValidationSpec<Address> = {
+  address1: [V.isString, V.minLength(1)],
+  address2: [V.maxLength(50)],
+  address3: [V.maxLength(50)],
+  city: [V.isString, V.minLength(1)],
+  state: [V.isString, V.fixedLength(2)],
+  zipCode: [V.isString, V.matches(ZIP_REGEX)],
+  countryCode: [V.isString, V.fixedLength(2)],
+};
+
+const trusteeSpec: ValidationSpec<TrusteeInput> = {
+  name: [V.isString, V.minLength(1)],
+  address: [
+    (value: unknown): ValidatorResult => {
+      const resultSet = V.validateObject<Address>(addressSpec, value as Address);
+      if (resultSet.valid) {
+        return V.validResult;
+      } else {
+        return {
+          valid: false,
+          reasons: ['this is temp. we need to support returning result SETs'],
+        };
+      }
+    },
+  ],
+  address1: [V.notSet],
+  address2: [V.notSet],
+  address3: [V.notSet],
+  cityStateZipCountry: [V.notSet],
+};
