@@ -11,9 +11,6 @@ import {
 /********************************************************************************
  * Common Validator Functions
  ********************************************************************************/
-
-// TODO: Need to support dates, numbers.
-
 function spec(s: ValidationSpec<unknown>): ValidatorFunction {
   return (obj: unknown): ValidatorResult => {
     return validateObject(s, obj);
