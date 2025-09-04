@@ -32,8 +32,6 @@ export class TrusteesUseCase {
   async createTrustee(context: ApplicationContext, trustee: TrusteeInput): Promise<Trustee> {
     const validatorResult = validateObject(trusteeSpec, trustee);
 
-    // Helper function to recursively collect validation errors
-
     // Validate trustee creation input including address
     if (!validatorResult.valid) {
       const validationErrors = flatten(validatorResult.reasonMap || {});
