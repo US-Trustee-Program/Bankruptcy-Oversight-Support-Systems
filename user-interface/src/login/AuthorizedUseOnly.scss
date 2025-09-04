@@ -6,7 +6,7 @@
   }
 
   .usa-card {
-    margin-top: 2rem;
+    margin-top: 1.5rem;
   }
 
   .grid-container {
@@ -14,6 +14,7 @@
 
     .grid-col {
       p {
+        margin-top: 0;
         font-size: 1rem;
       }
 
@@ -28,6 +29,6 @@
   }
 
   .grid-col:first-child {
-    padding-right: 2rem;
+    padding-right: 1rem;
   }
 }
