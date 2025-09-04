@@ -37,7 +37,7 @@ export class TrusteesUseCase {
     if (!validatorResult.valid) {
       const validationErrors = flatten(validatorResult.reasonMap || {});
       const collectedErrors = 'Trustee validation failed: ' + validationErrors.join('., ') + '.';
-      throw getCamsError(new Error(collectedErrors), MODULE_NAME);
+      throw getCamsError(new Error(collectedErrors), MODULE_NAME, collectedErrors);
     }
 
     try {
