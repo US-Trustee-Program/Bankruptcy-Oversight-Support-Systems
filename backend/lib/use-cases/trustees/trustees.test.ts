@@ -145,7 +145,7 @@ describe('TrusteesUseCase', () => {
       };
 
       await expect(useCase.createTrustee(context, invalidTrusteeInput)).rejects.toThrow(
-        'Trustee validation failed: $.name: Must contain at least 1 characters., $.address.zipCode: Must be valid zip code., $.email: Provided email does not match regular expression., $.phone: Provided phone number does not match regular expression.',
+        'Trustee validation failed: $.name: Must contain at least 1 characters. $.address.zipCode: Must be valid zip code. $.email: Provided email does not match regular expression. $.phone: Provided phone number does not match regular expression.',
       );
 
       expect(mockTrusteesRepository.createTrustee).not.toHaveBeenCalled();

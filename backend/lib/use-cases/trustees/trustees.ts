@@ -35,7 +35,7 @@ export class TrusteesUseCase {
     // Validate trustee creation input including address
     if (!validatorResult.valid) {
       const validationErrors = flatten(validatorResult.reasonMap || {});
-      const collectedErrors = 'Trustee validation failed: ' + validationErrors.join('., ') + '.';
+      const collectedErrors = 'Trustee validation failed: ' + validationErrors.join('. ') + '.';
       throw new BadRequestError(MODULE_NAME, { message: collectedErrors });
     }
 
