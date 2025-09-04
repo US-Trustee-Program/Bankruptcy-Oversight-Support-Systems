@@ -71,6 +71,7 @@ export const Header = () => {
 
   const [activeNav, setActiveNav] = useState<NavState>(mapNavState(location.pathname));
 
+  // This logic flow doesn't make perfect sense to me. Can we combine the two conditionals?
   if (flags[PRIVILEGED_IDENTITY_MANAGEMENT] && session?.user.roles?.includes(CamsRole.SuperUser)) {
     if (!userMenuItems.find((menuItem) => menuItem.label === 'Admin')) {
       userMenuItems.unshift({
