@@ -126,8 +126,9 @@ export function flatten(reasonMap: Record<string, ValidatorResult>): string[] {
   const flatMap = flattenReasonMap(reasonMap);
   const pathsAndReasons = [];
   for (const [path, reasons] of Object.entries(flatMap)) {
+    const jsonPath = `$.${path}`;
     reasons.forEach((reason) => {
-      pathsAndReasons.push(`${path}: ${reason}`);
+      pathsAndReasons.push(`${jsonPath}: ${reason}`);
     });
   }
   return pathsAndReasons;
