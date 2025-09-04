@@ -18,6 +18,7 @@ import {
   PHONE_REGEX,
   ZIP_REGEX,
 } from '../../../../common/src/cams/regex';
+import { BadRequestError } from '../../common-errors/bad-request';
 
 const MODULE_NAME = 'TRUSTEES-USE-CASE';
 
@@ -37,7 +38,7 @@ export class TrusteesUseCase {
     if (!validatorResult.valid) {
       const validationErrors = flatten(validatorResult.reasonMap || {});
       const collectedErrors = 'Trustee validation failed: ' + validationErrors.join('., ') + '.';
-      throw getCamsError(new Error(collectedErrors), MODULE_NAME, collectedErrors);
+      throw new BadRequestError(MODULE_NAME, { message: collectedErrors });
     }
 
     try {
