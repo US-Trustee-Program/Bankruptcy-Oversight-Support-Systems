@@ -35,13 +35,13 @@ describe('validators', () => {
         description: 'should return invalid for string shorter than minimum length',
         minLength: 10,
         value: 'hello',
-        expected: { reason: 'Must contain at least 10 characters' },
+        expected: { reasons: ['Must contain at least 10 characters'] },
       },
       {
         description: 'should return invalid for empty string when minimum is greater than 0',
         minLength: 1,
         value: '',
-        expected: { reason: 'Must contain at least 1 characters' },
+        expected: { reasons: ['Must contain at least 1 characters'] },
       },
       {
         description: 'should return valid for empty string when minimum is 0',
@@ -53,7 +53,7 @@ describe('validators', () => {
         description: 'should return invalid for non-string values',
         minLength: 3,
         value: 123,
-        expected: { reason: 'Value does not have a length' },
+        expected: { reasons: ['Value does not have a length'] },
       },
     ];
     test.each(testCases)('$description', (testCase) => {
@@ -80,7 +80,7 @@ describe('validators', () => {
         description: 'should return invalid for string longer than maximum length',
         maxLength: 4,
         value: 'hello',
-        expected: { reason: 'Must contain at most 4 characters' },
+        expected: { reasons: ['Must contain at most 4 characters'] },
       },
       {
         description: 'should return valid for empty string',
@@ -92,13 +92,13 @@ describe('validators', () => {
         description: 'should return invalid for non-string values',
         maxLength: 5,
         value: 123,
-        expected: { reason: 'Value does not have a length' },
+        expected: { reasons: ['Value does not have a length'] },
       },
       {
         description: 'should return invalid for null values',
         maxLength: 5,
         value: null,
-        expected: { reason: 'Value is null' },
+        expected: { reasons: ['Value is null'] },
       },
     ];
     test.each(testCases)('$description', (testCase) => {
@@ -135,14 +135,14 @@ describe('validators', () => {
         min: 10,
         max: 15,
         value: 'hello',
-        expected: { reason: 'Must contain between 10 and 15 characters' },
+        expected: { reasons: ['Must contain between 10 and 15 characters'] },
       },
       {
         description: 'should return invalid for string longer than maximum',
         min: 1,
         max: 3,
         value: 'hello',
-        expected: { reason: 'Must contain between 1 and 3 characters' },
+        expected: { reasons: ['Must contain between 1 and 3 characters'] },
       },
       {
         description: 'should return valid for array within length bounds',
@@ -156,35 +156,35 @@ describe('validators', () => {
         min: 5,
         max: 10,
         value: ['a', 'b'],
-        expected: { reason: 'Must contain between 5 and 10 selections' },
+        expected: { reasons: ['Must contain between 5 and 10 selections'] },
       },
       {
         description: 'should return invalid for array longer than maximum',
         min: 1,
         max: 2,
         value: ['a', 'b', 'c'],
-        expected: { reason: 'Must contain between 1 and 2 selections' },
+        expected: { reasons: ['Must contain between 1 and 2 selections'] },
       },
       {
         description: 'should return invalid for non-string, non-array values',
         min: 1,
         max: 5,
         value: 123,
-        expected: { reason: 'Value does not have a length' },
+        expected: { reasons: ['Value does not have a length'] },
       },
       {
         description: 'should return invalid for null values',
         min: 1,
         max: 5,
         value: null,
-        expected: { reason: 'Value is null' },
+        expected: { reasons: ['Value is null'] },
       },
       {
         description: 'should return invalid for undefined values',
         min: 1,
         max: 5,
         value: undefined,
-        expected: { reason: 'Value is undefined' },
+        expected: { reasons: ['Value is undefined'] },
       },
     ];
     test.each(testCases)('$description', (testCase) => {
@@ -205,14 +205,14 @@ describe('validators', () => {
         description: 'should return invalid for string not matching regex pattern',
         regex: /^[a-z]+$/,
         value: 'Hello123',
-        expected: { reason: 'Must match the pattern /^[a-z]+$/' },
+        expected: { reasons: ['Must match the pattern /^[a-z]+$/'] },
       },
       {
         description: 'should use custom error message when provided',
         regex: /^\d+$/,
         error: 'Must be only digits',
         value: 'abc',
-        expected: { reason: 'Must be only digits' },
+        expected: { reasons: ['Must be only digits'] },
       },
       {
         description: 'should return valid for string matching digit pattern',
@@ -224,13 +224,13 @@ describe('validators', () => {
         description: 'should return invalid for empty string when pattern requires content',
         regex: /^.+$/,
         value: '',
-        expected: { reason: 'Must match the pattern /^.+$/' },
+        expected: { reasons: ['Must match the pattern /^.+$/'] },
       },
       {
         description: 'should return invalid for non-string values',
         regex: /^[a-z]+$/,
         value: 123,
-        expected: { reason: 'Must match the pattern /^[a-z]+$/' },
+        expected: { reasons: ['Must match the pattern /^[a-z]+$/'] },
       },
     ];
     test.each(testCases)('$description', (testCase) => {
@@ -259,32 +259,32 @@ describe('validators', () => {
       {
         description: 'should return invalid for email without @ symbol',
         value: 'userexample.com',
-        expected: { reason: 'Must be a valid email address' },
+        expected: { reasons: ['Must be a valid email address'] },
       },
       {
         description: 'should return invalid for email without domain',
         value: 'user@',
-        expected: { reason: 'Must be a valid email address' },
+        expected: { reasons: ['Must be a valid email address'] },
       },
       {
         description: 'should return invalid for email without username',
         value: '@example.com',
-        expected: { reason: 'Must be a valid email address' },
+        expected: { reasons: ['Must be a valid email address'] },
       },
       {
         description: 'should return invalid for email with spaces',
         value: 'user @example.com',
-        expected: { reason: 'Must be a valid email address' },
+        expected: { reasons: ['Must be a valid email address'] },
       },
       {
         description: 'should return invalid for empty string',
         value: '',
-        expected: { reason: 'Must be a valid email address' },
+        expected: { reasons: ['Must be a valid email address'] },
       },
       {
         description: 'should return invalid for non-string values',
         value: 123,
-        expected: { reason: 'Must be a valid email address' },
+        expected: { reasons: ['Must be a valid email address'] },
       },
     ];
     test.each(testCases)('$description', (testCase) => {
@@ -307,37 +307,37 @@ describe('validators', () => {
       {
         description: 'should return invalid for phone number with less than 10 digits',
         value: '123456789',
-        expected: { reason: 'Must be a valid phone number' },
+        expected: { reasons: ['Must be a valid phone number'] },
       },
       {
         description: 'should return invalid for phone number with more than 10 digits',
         value: '12345678901',
-        expected: { reason: 'Must be a valid phone number' },
+        expected: { reasons: ['Must be a valid phone number'] },
       },
       {
         description: 'should return invalid for phone number with spaces',
         value: '123 456 7890',
-        expected: { reason: 'Must be a valid phone number' },
+        expected: { reasons: ['Must be a valid phone number'] },
       },
       {
         description: 'should return invalid for phone number with parentheses',
         value: '(123) 456-7890',
-        expected: { reason: 'Must be a valid phone number' },
+        expected: { reasons: ['Must be a valid phone number'] },
       },
       {
         description: 'should return invalid for phone number with letters',
         value: 'abc',
-        expected: { reason: 'Must be a valid phone number' },
+        expected: { reasons: ['Must be a valid phone number'] },
       },
       {
         description: 'should return invalid for empty string',
         value: '',
-        expected: { reason: 'Must be a valid phone number' },
+        expected: { reasons: ['Must be a valid phone number'] },
       },
       {
         description: 'should return invalid for non-string values',
         value: 1234567890,
-        expected: { reason: 'Must be a valid phone number' },
+        expected: { reasons: ['Must be a valid phone number'] },
       },
     ];
     test.each(testCases)('$description', (testCase) => {
@@ -363,26 +363,26 @@ describe('validators', () => {
         description: 'should return invalid for value not in allowed set',
         set: ['red', 'green', 'blue'],
         value: 'yellow',
-        expected: { reason: 'Must be one of red, green, blue' },
+        expected: { reasons: ['Must be one of red, green, blue'] },
       },
       {
         description: 'should return invalid for case-sensitive mismatch',
         set: ['red', 'green', 'blue'],
         value: 'Red',
-        expected: { reason: 'Must be one of red, green, blue' },
+        expected: { reasons: ['Must be one of red, green, blue'] },
       },
       {
         description: 'should use custom reason when provided',
         set: ['a', 'b', 'c'],
         reason: 'Must be a valid option',
         value: 'd',
-        expected: { reason: 'Must be a valid option' },
+        expected: { reasons: ['Must be a valid option'] },
       },
       {
         description: 'should return invalid for empty string when not in set',
         set: ['red', 'green', 'blue'],
         value: '',
-        expected: { reason: 'Must be one of red, green, blue' },
+        expected: { reasons: ['Must be one of red, green, blue'] },
       },
       {
         description: 'should return valid for empty string if in set',
@@ -394,13 +394,13 @@ describe('validators', () => {
         description: 'should return invalid for non-string values',
         set: ['red', 'green', 'blue'],
         value: 123,
-        expected: { reason: 'Must be one of red, green, blue' },
+        expected: { reasons: ['Must be one of red, green, blue'] },
       },
       {
         description: 'should return invalid for null values',
         set: ['red', 'green', 'blue'],
         value: null,
-        expected: { reason: 'Must be one of red, green, blue' },
+        expected: { reasons: ['Must be one of red, green, blue'] },
       },
     ];
     test.each(testCases)('$description', (testCase) => {
@@ -423,7 +423,7 @@ describe('validators', () => {
       { obj: { name: null }, expected: VALID },
       {
         obj: {},
-        expected: expect.objectContaining({ reasonMap: { name: { reason: expect.any(String) } } }),
+        expected: expect.objectContaining({ reasonMap: { name: { reasons: expect.any(Array) } } }),
       },
     ];
 
@@ -445,7 +445,7 @@ describe('validators', () => {
       { obj: { name: 'John' }, expected: VALID },
       {
         obj: { name: null },
-        expected: expect.objectContaining({ reasonMap: { name: { reason: expect.any(String) } } }),
+        expected: expect.objectContaining({ reasonMap: { name: { reasons: expect.any(Array) } } }),
       },
       { obj: {}, expected: VALID },
     ];
@@ -467,7 +467,7 @@ describe('validators', () => {
         description: 'should return failure for factory validator functions',
         validator: Validators.minLength(10),
         value: 'short',
-        expected: { reason: 'Must contain at least 10 characters' },
+        expected: { reasons: ['Must contain at least 10 characters'] },
       },
     ];
     test.each(testCases)('$description', (testCase) => {
@@ -487,14 +487,14 @@ describe('validators', () => {
         description: 'should return invalid with single reason when one validator fails',
         validators: [Validators.minLength(10)],
         value: 'hello',
-        expected: { reason: 'Must contain at least 10 characters' },
+        expected: { reasons: ['Must contain at least 10 characters'] },
       },
       {
         description: 'should return invalid with multiple reasons when multiple validators fail',
         validators: [Validators.minLength(10), Validators.maxLength(3)],
         value: 'hello',
         expected: {
-          reason: 'Must contain at least 10 characters',
+          reasons: ['Must contain at least 10 characters', 'Must contain at most 3 characters'],
         },
       },
       {
@@ -508,7 +508,7 @@ describe('validators', () => {
         validators: [Validators.minLength(10), Validators.matches(/^\d+$/)],
         value: 'hello',
         expected: {
-          reason: 'Must contain at least 10 characters',
+          reasons: ['Must contain at least 10 characters', 'Must match the pattern /^\\d+$/'],
         },
       },
       {
@@ -527,7 +527,7 @@ describe('validators', () => {
         description: 'should handle single failing validator',
         validators: [Validators.isEmailAddress],
         value: 'invalid-email',
-        expected: { reason: 'Must be a valid email address' },
+        expected: { reasons: ['Must be a valid email address'] },
       },
     ];
     test.each(testCases)('$description', (testCase) => {
@@ -546,7 +546,7 @@ describe('validators', () => {
       const spec = { name: [Validators.minLength(5)] };
       const obj = { name: 'Jo' };
       expect(validateKey(spec, 'name', obj)).toEqual({
-        reason: 'Must contain at least 5 characters',
+        reasons: ['Must contain at least 5 characters'],
       });
     });
 
@@ -554,7 +554,7 @@ describe('validators', () => {
       const spec = { name: [Validators.minLength(10), Validators.matches(/^\d+$/)] };
       const obj = { name: 'John' };
       expect(validateKey(spec, 'name', obj)).toEqual({
-        reason: 'Must contain at least 10 characters',
+        reasons: ['Must contain at least 10 characters', 'Must match the pattern /^\\d+$/'],
       });
     });
 
@@ -568,7 +568,7 @@ describe('validators', () => {
       const spec = { email: [Validators.isEmailAddress] };
       const obj = { email: 'invalid-email' };
       expect(validateKey(spec, 'email', obj)).toEqual({
-        reason: 'Must be a valid email address',
+        reasons: ['Must be a valid email address'],
       });
     });
 
@@ -612,11 +612,11 @@ describe('validators', () => {
         },
         expected: {
           reasonMap: {
-            firstName: { reason: 'Must contain at least 1 characters' },
-            lastName: { reason: 'Must contain between 1 and 100 characters' },
-            email: { reason: 'Must be a valid email address' },
-            phone: { reason: 'Must be a valid phone number' },
-            code: { reason: 'Must be one of a, b' },
+            firstName: { reasons: ['Must contain at least 1 characters'] },
+            lastName: { reasons: ['Must contain between 1 and 100 characters'] },
+            email: { reasons: ['Must be a valid email address'] },
+            phone: { reasons: ['Must be a valid phone number'] },
+            code: { reasons: ['Must be one of a, b'] },
           },
         },
       },
@@ -625,6 +625,190 @@ describe('validators', () => {
       expect(validateObject(spec, testCase.obj)).toEqual(
         expect.objectContaining(testCase.expected),
       );
+    });
+  });
+
+  describe('spec', () => {
+    const testCases = [
+      {
+        description: 'should return valid for object that passes all validations',
+        spec: {
+          name: [Validators.minLength(1)],
+          email: [Validators.isEmailAddress],
+        },
+        value: { name: 'John', email: 'john@example.com' },
+        expected: VALID,
+      },
+      {
+        description: 'should return invalid with reasons for object that fails validation',
+        spec: {
+          name: [Validators.minLength(5)],
+          email: [Validators.isEmailAddress],
+        },
+        value: { name: 'Jo', email: 'invalid-email' },
+        expected: {
+          reasonMap: {
+            name: { reasons: ['Must contain at least 5 characters'] },
+            email: { reasons: ['Must be a valid email address'] },
+          },
+        },
+      },
+      {
+        description: 'should handle empty object with required fields',
+        spec: {
+          name: [Validators.minLength(1)],
+          email: [Validators.isEmailAddress],
+        },
+        value: {},
+        expected: {
+          reasonMap: {
+            name: { reasons: ['Value is undefined'] },
+            email: { reasons: ['Must be a valid email address'] },
+          },
+        },
+      },
+      {
+        description: 'should validate object with optional fields when present',
+        spec: {
+          name: [Validators.minLength(1)],
+          email: [Validators.optional(Validators.isEmailAddress)],
+          phone: [Validators.optional(Validators.isPhoneNumber)],
+        },
+        value: { name: 'Alice', email: 'alice@example.com', phone: '123-456-7890' },
+        expected: VALID,
+      },
+      {
+        description: 'should validate object with optional fields when missing',
+        spec: {
+          name: [Validators.minLength(1)],
+          email: [Validators.optional(Validators.isEmailAddress)],
+          phone: [Validators.optional(Validators.isPhoneNumber)],
+        },
+        value: { name: 'Bob' },
+        expected: VALID,
+      },
+      {
+        description: 'should handle mixed validation results with optional fields',
+        spec: {
+          name: [Validators.minLength(3)],
+          email: [Validators.optional(Validators.isEmailAddress)],
+          phone: [Validators.optional(Validators.isPhoneNumber)],
+        },
+        value: { name: 'Al', email: 'invalid-email', phone: '123-456-7890' },
+        expected: {
+          reasonMap: {
+            name: { reasons: ['Must contain at least 3 characters'] },
+            email: { reasons: ['Must be a valid email address'] },
+          },
+        },
+      },
+      {
+        description: 'should work with complex validation rules',
+        spec: {
+          name: [Validators.minLength(2), Validators.maxLength(50)],
+          email: [Validators.isEmailAddress],
+          code: [Validators.isInSet(['A', 'B', 'C'])],
+        },
+        value: { name: 'Charlie', email: 'charlie@test.com', code: 'B' },
+        expected: VALID,
+      },
+      {
+        description: 'should return invalid when multiple validators fail on same field',
+        spec: {
+          name: [Validators.minLength(10), Validators.matches(/^[A-Z]/)],
+        },
+        value: { name: 'short' },
+        expected: {
+          reasonMap: {
+            name: {
+              reasons: ['Must contain at least 10 characters', 'Must match the pattern /^[A-Z]/'],
+            },
+          },
+        },
+      },
+      {
+        description: 'should handle null input object',
+        spec: {
+          name: [Validators.minLength(1)],
+        },
+        value: null,
+        expected: {
+          reasons: ['Value must be an object'],
+        },
+      },
+      {
+        description: 'should handle undefined input object',
+        spec: {
+          name: [Validators.minLength(1)],
+        },
+        value: undefined,
+        expected: {
+          reasons: ['Value must be an object'],
+        },
+      },
+      {
+        description: 'should work with empty spec',
+        spec: {},
+        value: { anyField: 'anyValue' },
+        expected: VALID,
+      },
+    ];
+
+    test.each(testCases)('$description', (testCase) => {
+      const validator = Validators.spec(testCase.spec);
+      const result = validator(testCase.value);
+      expect(result).toEqual(testCase.expected);
+    });
+
+    test('should return a function that can be called multiple times', () => {
+      const spec = { name: [Validators.minLength(1)] };
+      const validator = Validators.spec(spec);
+
+      expect(typeof validator).toBe('function');
+      expect(validator({ name: 'Valid' })).toEqual(VALID);
+      expect(validator({ name: '' })).toEqual({
+        reasonMap: {
+          name: { reasons: ['Must contain at least 1 characters'] },
+        },
+      });
+    });
+
+    test('should work with nested object specifications', () => {
+      const profileSpec = {
+        age: [Validators.matches(/^\d+$/, 'Age must be a number')],
+        city: [Validators.minLength(1)],
+      };
+
+      const userSpec = {
+        name: [Validators.minLength(1)],
+        profile: profileSpec,
+      };
+
+      const validator = Validators.spec(userSpec);
+
+      expect(
+        validator({
+          name: 'John',
+          profile: { age: '25', city: 'NYC' },
+        }),
+      ).toEqual(VALID);
+
+      expect(
+        validator({
+          name: '',
+          profile: { age: 'invalid', city: '' },
+        }),
+      ).toEqual({
+        reasonMap: {
+          name: { reasons: ['Must contain at least 1 characters'] },
+          profile: {
+            reasonMap: {
+              age: { reasons: ['Age must be a number'] },
+              city: { reasons: ['Must contain at least 1 characters'] },
+            },
+          },
+        },
+      });
     });
   });
 
@@ -651,7 +835,7 @@ describe('validators', () => {
 
     const personWithAddressSpec: ValidationSpec<PersonWithAddress> = {
       name: [Validators.minLength(1)],
-      address: [Validators.spec(addressSpec)], // This is a nested ValidationSpec
+      address: addressSpec, // This is a nested ValidationSpec
       email: [Validators.optional(Validators.isEmailAddress)],
     };
 
@@ -695,14 +879,14 @@ describe('validators', () => {
         },
         expected: {
           reasonMap: expect.objectContaining({
-            name: { reason: 'Must contain at least 1 characters' },
+            name: { reasons: ['Must contain at least 1 characters'] },
             address: {
               reasonMap: {
-                street: { reason: 'Must contain at least 1 characters' },
-                zipCode: { reason: 'ZIP code must be 5 digits' },
+                street: { reasons: ['Must contain at least 1 characters'] },
+                zipCode: { reasons: ['ZIP code must be 5 digits'] },
               },
             },
-            email: { reason: 'Must be a valid email address' },
+            email: { reasons: ['Must be a valid email address'] },
           }),
         },
       },
@@ -720,7 +904,7 @@ describe('validators', () => {
           reasonMap: expect.objectContaining({
             address: {
               reasonMap: {
-                zipCode: { reason: 'ZIP code must be 5 digits' },
+                zipCode: { reasons: ['ZIP code must be 5 digits'] },
               },
             },
           }),
@@ -741,7 +925,7 @@ describe('validators', () => {
           reasonMap: expect.objectContaining({
             address: {
               reasonMap: {
-                country: { reason: 'Must contain at least 2 characters' },
+                country: { reasons: ['Must contain at least 2 characters'] },
               },
             },
           }),
