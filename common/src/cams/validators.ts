@@ -1,36 +1,28 @@
 import { EMAIL_REGEX, PHONE_REGEX } from './regex';
 import {
-  validateEach,
   ValidatorFunction,
   ValidatorResult,
-  VALID,
   ValidationSpec,
+  validateEach,
   validateObject,
+  VALID,
 } from './validation';
 
 /********************************************************************************
  * Common Validator Functions
  ********************************************************************************/
+
+/**
+ * Creates a validator function from a validation specification.
+ * This function takes a validation specification object and returns a validator function
+ * that can be used to validate objects against that specification.
+ *
+ * @param {ValidationSpec<unknown>} s - The validation specification object defining the validation rules
+ * @returns {ValidatorFunction} A validator function that validates objects against the provided specification
+ */
 function spec(s: ValidationSpec<unknown>): ValidatorFunction {
   return (obj: unknown): ValidatorResult => {
     return validateObject(s, obj);
-  };
-}
-
-/**
- * Creates a validator function that treats undefined values as valid and applies other validators otherwise.
- * This allows for optional fields in validation schemas where undefined values are acceptable.
- *
- * @param {...ValidatorFunction[]} validators - Variable number of validator functions to apply when value is not undefined
- * @returns {ValidatorFunction} A validator function that allows undefined values and validates defined values
- */
-function optional(...validators: ValidatorFunction[]): ValidatorFunction {
-  return (value: unknown): ValidatorResult => {
-    if (value === undefined) {
-      return VALID;
-    } else {
-      return validateEach(validators, value);
-    }
   };
 }
 
@@ -46,21 +38,41 @@ function notSet(value: unknown): ValidatorResult {
 }
 
 /**
+ * Creates a conditional validator that skips validation based on a predicate function.
+ * If the predicate function returns true for a given value, validation is skipped and the value is considered valid.
+ * Otherwise, the provided validators are applied to the value.
+ *
+ * @param {(value: unknown) => boolean} func - The predicate function that determines whether to skip validation
+ * @param {ValidatorFunction[]} validators - Array of validator functions to apply when the predicate returns false
+ * @returns {ValidatorFunction} A validator function that conditionally applies validation based on the predicate
+ */
+function skip(
+  func: (value: unknown) => boolean,
+  validators: ValidatorFunction[],
+): ValidatorFunction {
+  return (value: unknown): ValidatorResult => {
+    return func(value) ? VALID : validateEach(validators, value);
+  };
+}
+/**
  * Creates a validator function that treats null values as valid and applies other validators otherwise.
  * This allows for nullable fields in validation schemas where null values are acceptable.
  *
  * @param {...ValidatorFunction[]} validators - Variable number of validator functions to apply when value is not null
  * @returns {ValidatorFunction} A validator function that allows null values and validates non-null values
  */
-function nullable(...validators: ValidatorFunction[]): ValidatorFunction {
-  return (value: unknown): ValidatorResult => {
-    if (value === null) {
-      return VALID;
-    } else {
-      return validateEach(validators, value);
-    }
-  };
-}
+const nullable = (...validators: ValidatorFunction[]): ValidatorFunction =>
+  skip((v) => v === null, validators);
+
+/**
+ * Creates a validator function that treats undefined values as valid and applies other validators otherwise.
+ * This allows for optional fields in validation schemas where undefined values are acceptable.
+ *
+ * @param {...ValidatorFunction[]} validators - Variable number of validator functions to apply when value is not undefined
+ * @returns {ValidatorFunction} A validator function that allows undefined values and validates defined values
+ */
+const optional = (...validators: ValidatorFunction[]): ValidatorFunction =>
+  skip((v) => v === undefined, validators);
 
 /**
  * Creates a validator function that checks if a string or array has at least a minimum length.
@@ -204,6 +216,7 @@ const Validators = {
   minLength,
   notSet,
   nullable,
+  skip,
   spec,
   optional,
 };
