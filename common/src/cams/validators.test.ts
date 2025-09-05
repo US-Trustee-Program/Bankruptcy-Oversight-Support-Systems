@@ -5,22 +5,16 @@ describe('validators', () => {
   describe('minLength', () => {
     const testCases = [
       {
-        description: 'should return valid for string meeting minimum length',
-        minLength: 5,
-        value: 'hello',
-        expected: VALID,
-      },
-      {
         description: 'should return valid for string exactly at minimum length',
         minLength: 5,
         value: 'hello',
         expected: VALID,
       },
       {
-        description: 'should return invalid for string shorter than minimum length',
-        minLength: 10,
+        description: 'should return invalid for string one character shorter than minimum length',
+        minLength: 6,
         value: 'hello',
-        expected: { reasons: ['Must contain at least 10 characters'] },
+        expected: { reasons: ['Must contain at least 6 characters'] },
       },
       {
         description: 'should return invalid for empty string when minimum is greater than 0',
@@ -49,12 +43,6 @@ describe('validators', () => {
 
   describe('maxLength', () => {
     const testCases = [
-      {
-        description: 'should return valid for string under maximum length',
-        maxLength: 10,
-        value: 'hello',
-        expected: VALID,
-      },
       {
         description: 'should return valid for string exactly at maximum length',
         maxLength: 5,
@@ -116,18 +104,18 @@ describe('validators', () => {
         expected: VALID,
       },
       {
-        description: 'should return invalid for string shorter than minimum',
-        min: 10,
-        max: 15,
+        description: 'should return invalid for string one character shorter than minimum length',
+        min: 6,
+        max: 10,
         value: 'hello',
-        expected: { reasons: ['Must contain between 10 and 15 characters'] },
+        expected: { reasons: ['Must contain between 6 and 10 characters'] },
       },
       {
-        description: 'should return invalid for string longer than maximum',
-        min: 1,
-        max: 3,
+        description: 'should return invalid for string one character longer than maximum length',
+        min: 2,
+        max: 4,
         value: 'hello',
-        expected: { reasons: ['Must contain between 1 and 3 characters'] },
+        expected: { reasons: ['Must contain between 2 and 4 characters'] },
       },
       {
         description: 'should return valid for array within length bounds',
@@ -138,10 +126,10 @@ describe('validators', () => {
       },
       {
         description: 'should return invalid for array shorter than minimum',
-        min: 5,
+        min: 3,
         max: 10,
         value: ['a', 'b'],
-        expected: { reasons: ['Must contain between 5 and 10 selections'] },
+        expected: { reasons: ['Must contain between 3 and 10 selections'] },
       },
       {
         description: 'should return invalid for array longer than maximum',
