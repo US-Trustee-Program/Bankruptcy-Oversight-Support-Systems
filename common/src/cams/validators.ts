@@ -77,7 +77,7 @@ function minLength(min: number, reason?: string): ValidatorFunction {
  * Creates a validator function that checks if a string or array has at most a maximum length.
  *
  * @param {number} max - The maximum allowed length
- * @param {string} reason
+ * @param {string} reason - Optional custom error message to display when validation fails
  * @returns {ValidatorFunction} A validator function that checks maximum length
  */
 function maxLength(max: number, reason?: string): ValidatorFunction {
@@ -91,7 +91,8 @@ function exactLength(len: number, reason?: string): ValidatorFunction {
 /**
  * Type predicate to check if a value has a length property.
  *
- * @param value
+ * @param value - The value to check for a length property
+ * @returns {boolean} True if the value has a length property, false otherwise
  */
 function hasLength(value: unknown): value is { length: number } {
   return (
@@ -145,8 +146,9 @@ function length(min: number, max: number, reason?: string): ValidatorFunction {
 /**
  * Creates a validator function that checks whether a value is in a set of allowed strings.
  *
- * @param {string[]} set
- * @param {string} [reason]
+ * @param {string[]} set - The array of allowed values
+ * @param {string} [reason] - Optional custom error message to display when validation fails
+ * @returns {ValidatorFunction} A validator function that checks if value is in the allowed set
  */
 function isInSet<T>(set: T[], reason?: string): ValidatorFunction {
   return (value: unknown): ValidatorResult => {
