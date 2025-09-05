@@ -527,7 +527,7 @@ describe('DateRangePicker additional coverage tests', () => {
     expect(endDateInput).toHaveValue('2024-12-31');
   });
 
-  it('should handle invalid date formatting gracefully in aria description', () => {
+  test('should handle invalid date formatting gracefully in aria description', () => {
     // This test should trigger the formatDateRange catch block
     // by providing an invalid date format
     render(
@@ -565,7 +565,7 @@ describe('DateRangePicker additional coverage tests', () => {
     expect(result).toBeUndefined();
   });
 
-  it('should execute debounced clearValue calls in clearValue method', () => {
+  test('should execute debounced clearValue calls in clearValue method', () => {
     const ref = React.createRef<DateRangePickerRef>();
 
     render(
@@ -597,7 +597,7 @@ describe('DateRangePicker additional coverage tests', () => {
     setTimeoutSpy.mockRestore();
   });
 
-  it('should handle edge case in formatDateForVoiceOver with invalid date components', async () => {
+  test('should handle edge case in formatDateForVoiceOver with invalid date components', async () => {
     const module = await import('./DateRangePicker');
     const { formatDateForVoiceOver } = module;
 
