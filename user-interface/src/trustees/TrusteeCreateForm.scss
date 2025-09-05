@@ -2,13 +2,86 @@
   h1 {
     display: block;
   }
+
   .grid-row {
     .grid-col-4,
     .grid-col-8 {
       min-width: 194px;
     }
   }
+
   .usa-button-group {
     padding: 30px 24px;
+  }
+
+  /* Prevent horizontal overflow */
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Responsive grid layout */
+@media screen and (max-width: 800px) and (min-width: 551px) {
+  .create-trustee-screen form[data-testid="trustee-create-form"] {
+    .grid-row.grid-gap-lg {
+      /* Force 2 main columns to stay side by side */
+      display: flex;
+      flex-wrap: nowrap;
+      column-gap: 0.5rem; /* Smaller gap for tablet */
+
+      > .grid-col-6 {
+        width: 50%;
+        max-width: 350px;
+        flex: 0 0 50%;
+
+        /* Sub-columns within each main column should stack */
+        > .grid-row.grid-gap-lg {
+          display: flex;
+          flex-direction: column;
+
+          > .grid-col-5,
+          > .grid-col-3,
+          > .grid-col-4,
+          > .grid-col-8 {
+            width: 100%;
+            max-width: 350px;
+            flex: 0 0 100%;
+          }
+        }
+      }
+    }
+  }
+}
+
+@media screen and (max-width: 550px) {
+  .create-trustee-screen form[data-testid="trustee-create-form"] {
+    .grid-row.grid-gap-lg {
+      /* Single column layout */
+      display: flex;
+      flex-direction: column;
+      column-gap: 0; /* No gap needed for single column */
+
+      > .grid-col-6,
+      > .grid-col-12 {
+        width: 95%;
+        max-width: none;
+        margin: 0 auto;
+        flex: 0 0 95%;
+
+        > .grid-row.grid-gap-lg {
+          display: flex;
+          flex-direction: column;
+
+          > .grid-col-5,
+          > .grid-col-3,
+          > .grid-col-4,
+          > .grid-col-8 {
+            width: 95%;
+            max-width: none;
+            flex: 0 0 95%;
+          }
+        }
+      }
+    }
   }
 }
