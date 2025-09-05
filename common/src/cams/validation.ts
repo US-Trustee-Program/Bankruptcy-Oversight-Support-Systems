@@ -21,8 +21,9 @@ export const VALID: ValidatorResult = { valid: true } as const;
 /**
  * Validate a value against a validator function.
  *
- * @param func
- * @param value
+ * @param func - The validator function to apply
+ * @param value - The value to be validated
+ * @returns {ValidatorResult} The result of the validation
  */
 export function validate(func: ValidatorFunction, value: unknown): ValidatorResult {
   return func(value);
@@ -59,7 +60,7 @@ export function validateEach(functions: ValidatorFunction[], value: unknown): Va
  * @param spec - The validation specification defining rules for object properties
  * @param key - The specific key/property of the object to validate
  * @param obj - The object containing the property to be validated
- * @returns ValidatorResults an object containing validation status and reasons for failure
+ * @returns {ValidatorResult} An object containing validation status and reasons for failure
  */
 export function validateKey(
   spec: ValidationSpec<unknown>,
@@ -82,7 +83,7 @@ export function validateKey(
  * @template T - The type of the object being validated
  * @param spec - The validation specification defining rules for all object properties
  * @param obj - The object to be validated
- * @returns ValidatorResultsSet object containing validation status and property-specific reasons for failure
+ * @returns {ValidatorResult} Object containing validation status and property-specific reasons for failure
  */
 export function validateObject(spec: ValidationSpec<unknown>, obj: unknown): ValidatorResult {
   if (typeof obj !== 'object' || obj === null) {
