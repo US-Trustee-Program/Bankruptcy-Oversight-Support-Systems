@@ -38,6 +38,14 @@ describe('AuthorizedUseOnly', () => {
     expect(screen.getByRole('button', { name: 'Confirm' })).toBeInTheDocument();
   });
 
+  test('should render warning heading as h1 element', () => {
+    render(<AuthorizedUseOnly></AuthorizedUseOnly>);
+
+    const warningHeading = screen.getByText('Warning');
+    expect(warningHeading.tagName.toLowerCase()).toBe('h1');
+    expect(warningHeading).toHaveClass('usa-card__heading');
+  });
+
   test('should render children when skip prop is true', async () => {
     render(
       <AuthorizedUseOnly skip={true}>
