@@ -23,7 +23,9 @@ export function AuthorizedUseOnly(props: AuthorizedUseOnlyProps) {
   }, [acknowledged]);
 
   useEffect(() => {
-    setAcknowledged(LocalStorage.getAck());
+    if (!props.skip) {
+      setAcknowledged(LocalStorage.getAck());
+    }
   }, []);
 
   if (acknowledged && isStoredInLocalStorage) {
