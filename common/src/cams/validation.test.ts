@@ -1,12 +1,135 @@
 import {
-  ValidationSpec,
   validate,
   validateEach,
   validateKey,
   validateObject,
   VALID,
+  ValidationSpec,
+  ValidatorFunction,
+  ValidatorResult,
 } from './validation';
-import V from './validators';
+import { EMAIL_REGEX, PHONE_REGEX } from './regex';
+
+function hasLength(value: unknown): value is { length: number } {
+  return (
+    typeof value === 'string' || (typeof value === 'object' && value !== null && 'length' in value)
+  );
+}
+
+// validatorA: Handles length validations (minLength, maxLength, length)
+function validatorA(
+  type: 'min' | 'max' | 'exact',
+  param1: number,
+  param2?: number,
+  reason?: string,
+): ValidatorFunction {
+  return (value: unknown): ValidatorResult => {
+    if (!hasLength(value)) {
+      if (value === null) {
+        return { reasons: [`Value is null`] };
+      } else if (value === undefined) {
+        return { reasons: [`Value is undefined`] };
+      } else {
+        return { reasons: ['Value does not have a length'] };
+      }
+    }
+
+    let min: number, max: number;
+
+    if (type === 'min') {
+      min = param1;
+      max = Infinity;
+    } else if (type === 'max') {
+      min = 0;
+      max = param1;
+    } else if (type === 'exact') {
+      min = param1;
+      max = param2 ?? param1;
+    }
+
+    if (value.length >= min && value.length <= max) {
+      return VALID;
+    }
+
+    if (reason) {
+      return { reasons: [reason] };
+    }
+
+    let rangeText: string;
+    if (type === 'min') {
+      rangeText = `at least ${min}`;
+    } else if (type === 'max') {
+      rangeText = `at most ${max}`;
+    } else if (min === max) {
+      rangeText = `exactly ${min}`;
+    } else {
+      rangeText = `between ${min} and ${max}`;
+    }
+
+    const unitText = typeof value === 'string' ? 'characters' : 'selections';
+    return { reasons: [`Must contain ${rangeText} ${unitText}`] };
+  };
+}
+
+// validatorB: Handles pattern matching (matches, isEmailAddress, isPhoneNumber)
+function validatorB(
+  type: 'regex' | 'email' | 'phone',
+  pattern?: RegExp,
+  reason?: string,
+): ValidatorFunction {
+  return (value: unknown): ValidatorResult => {
+    let regex: RegExp;
+    let defaultReason: string;
+
+    if (type === 'email') {
+      regex = EMAIL_REGEX;
+      defaultReason = 'Must be a valid email address';
+    } else if (type === 'phone') {
+      regex = PHONE_REGEX;
+      defaultReason = 'Must be a valid phone number';
+    } else if (type === 'regex' && pattern) {
+      regex = pattern;
+      defaultReason = `Must match the pattern ${regex}`;
+    } else {
+      return { reasons: ['Invalid validator configuration'] };
+    }
+
+    return typeof value === 'string' && regex.test(value)
+      ? VALID
+      : { reasons: [reason ?? defaultReason] };
+  };
+}
+
+// validatorC: Handles set validation and optional wrapper (isInSet, optional)
+function validatorC<T>(
+  type: 'inSet' | 'optional',
+  param1?: T[] | ValidatorFunction[],
+  reason?: string,
+): ValidatorFunction {
+  return (value: unknown): ValidatorResult => {
+    if (type === 'inSet') {
+      const set = param1 as T[];
+      return set.includes(value as T)
+        ? VALID
+        : { reasons: [reason ?? `Must be one of ${set.join(', ')}`] };
+    } else if (type === 'optional') {
+      const validators = param1 as ValidatorFunction[];
+      return value === undefined ? VALID : validateEach(validators, value);
+    } else {
+      return { reasons: ['Invalid validator configuration'] };
+    }
+  };
+}
+
+// Helper functions to maintain compatibility with existing test code
+const minLength = (min: number, reason?: string) => validatorA('min', min, undefined, reason);
+const maxLength = (max: number, reason?: string) => validatorA('max', max, undefined, reason);
+const length = (min: number, max: number, reason?: string) => validatorA('exact', min, max, reason);
+const matches = (regex: RegExp, reason?: string) => validatorB('regex', regex, reason);
+const isEmailAddress = (value: unknown) => validatorB('email')(value);
+const isPhoneNumber = (value: unknown) => validatorB('phone')(value);
+const isInSet = <T>(set: T[], reason?: string) => validatorC<T>('inSet', set, reason);
+const optional = (...validators: ValidatorFunction[]) => validatorC('optional', validators);
 
 type TestPerson = {
   firstName: string;
@@ -21,13 +144,13 @@ describe('validation', () => {
     const testCases = [
       {
         description: 'should work with factory validator functions',
-        validator: V.minLength(5),
+        validator: minLength(5),
         value: 'hello world',
         expected: VALID,
       },
       {
         description: 'should return failure for factory validator functions',
-        validator: V.minLength(10),
+        validator: minLength(10),
         value: 'short',
         expected: { reasons: ['Must contain at least 10 characters'] },
       },
@@ -41,19 +164,19 @@ describe('validation', () => {
     const testCases = [
       {
         description: 'should return valid when all validators pass',
-        validators: [V.minLength(3)],
+        validators: [minLength(3)],
         value: 'hello',
         expected: VALID,
       },
       {
         description: 'should return invalid with single reason when one validator fails',
-        validators: [V.minLength(10)],
+        validators: [minLength(10)],
         value: 'hello',
         expected: { reasons: ['Must contain at least 10 characters'] },
       },
       {
         description: 'should return invalid with multiple reasons when multiple validators fail',
-        validators: [V.minLength(10), V.maxLength(3)],
+        validators: [minLength(10), maxLength(3)],
         value: 'hello',
         expected: {
           reasons: ['Must contain at least 10 characters', 'Must contain at most 3 characters'],
@@ -61,13 +184,13 @@ describe('validation', () => {
       },
       {
         description: 'should work with mix of direct and factory validators',
-        validators: [V.length(3, 10), V.matches(/^[a-z]+$/)],
+        validators: [length(3, 10), matches(/^[a-z]+$/)],
         value: 'hello',
         expected: VALID,
       },
       {
         description: 'should accumulate all failure reasons',
-        validators: [V.minLength(10), V.matches(/^\d+$/)],
+        validators: [minLength(10), matches(/^\d+$/)],
         value: 'hello',
         expected: {
           reasons: ['Must contain at least 10 characters', 'Must match the pattern /^\\d+$/'],
@@ -81,13 +204,13 @@ describe('validation', () => {
       },
       {
         description: 'should handle single validator',
-        validators: [V.isEmailAddress],
+        validators: [isEmailAddress],
         value: 'test@example.com',
         expected: VALID,
       },
       {
         description: 'should handle single failing validator',
-        validators: [V.isEmailAddress],
+        validators: [isEmailAddress],
         value: 'invalid-email',
         expected: { reasons: ['Must be a valid email address'] },
       },
@@ -99,13 +222,13 @@ describe('validation', () => {
 
   describe('validateKey', () => {
     test('should return valid when key validation passes', () => {
-      const spec = { name: [V.minLength(2)] };
+      const spec = { name: [minLength(2)] };
       const obj = { name: 'John' };
       expect(validateKey(spec, 'name', obj)).toEqual(VALID);
     });
 
     test('should return invalid with reasons when key validation fails', () => {
-      const spec = { name: [V.minLength(5)] };
+      const spec = { name: [minLength(5)] };
       const obj = { name: 'Jo' };
       expect(validateKey(spec, 'name', obj)).toEqual({
         reasons: ['Must contain at least 5 characters'],
@@ -113,7 +236,7 @@ describe('validation', () => {
     });
 
     test('should handle multiple validators with multiple failures', () => {
-      const spec = { name: [V.minLength(10), V.matches(/^\d+$/)] };
+      const spec = { name: [minLength(10), matches(/^\d+$/)] };
       const obj = { name: 'John' };
       expect(validateKey(spec, 'name', obj)).toEqual({
         reasons: ['Must contain at least 10 characters', 'Must match the pattern /^\\d+$/'],
@@ -121,13 +244,13 @@ describe('validation', () => {
     });
 
     test('should validate email key correctly', () => {
-      const spec = { email: [V.isEmailAddress] };
+      const spec = { email: [isEmailAddress] };
       const obj = { email: 'test@example.com' };
       expect(validateKey(spec, 'email', obj)).toEqual(VALID);
     });
 
     test('should return invalid for bad email format', () => {
-      const spec = { email: [V.isEmailAddress] };
+      const spec = { email: [isEmailAddress] };
       const obj = { email: 'invalid-email' };
       expect(validateKey(spec, 'email', obj)).toEqual({
         reasons: ['Must be a valid email address'],
@@ -135,7 +258,7 @@ describe('validation', () => {
     });
 
     test('should handle single validator successfully', () => {
-      const spec = { name: [V.minLength(1)] };
+      const spec = { name: [minLength(1)] };
       const obj = { name: 'Alice' };
       expect(validateKey(spec, 'name', obj)).toEqual(VALID);
     });
@@ -144,11 +267,11 @@ describe('validation', () => {
   describe('validateObject', () => {
     const validCodes = ['a', 'b'];
     const spec: ValidationSpec<TestPerson> = {
-      firstName: [V.minLength(1)],
-      lastName: [V.length(1, 100)],
-      phone: [V.isPhoneNumber],
-      email: [V.isEmailAddress],
-      code: [V.isInSet(validCodes)],
+      firstName: [minLength(1)],
+      lastName: [length(1, 100)],
+      phone: [isPhoneNumber],
+      email: [isEmailAddress],
+      code: [isInSet(validCodes)],
     };
 
     const testCases = [
@@ -205,16 +328,16 @@ describe('validation', () => {
     };
 
     const addressSpec: ValidationSpec<Address> = {
-      street: [V.minLength(1)],
-      city: [V.minLength(1)],
-      zipCode: [V.matches(/^\d{5}$/, 'ZIP code must be 5 digits')],
-      country: [V.optional(V.minLength(2))],
+      street: [minLength(1)],
+      city: [minLength(1)],
+      zipCode: [matches(/^\d{5}$/, 'ZIP code must be 5 digits')],
+      country: [optional(minLength(2))],
     };
 
     const personWithAddressSpec: ValidationSpec<PersonWithAddress> = {
-      name: [V.minLength(1)],
+      name: [minLength(1)],
       address: addressSpec, // This is a nested ValidationSpec
-      email: [V.optional(V.isEmailAddress)],
+      email: [optional(isEmailAddress)],
     };
 
     const testCases = [
