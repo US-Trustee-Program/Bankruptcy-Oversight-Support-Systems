@@ -7,6 +7,13 @@
 
   .usa-card {
     margin-top: 1.5rem;
+
+    // Make h1 heading look like h4 to maintain visual consistency
+    .usa-card__heading {
+      font-size: 1.25rem; // Same as USWDS h4 size
+      font-weight: 600; // Same as USWDS h4 weight
+      line-height: 1.3; // Same as USWDS h4 line-height
+    }
   }
 
   .grid-container {

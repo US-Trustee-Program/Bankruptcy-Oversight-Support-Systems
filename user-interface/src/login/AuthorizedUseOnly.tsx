@@ -35,7 +35,7 @@ export function AuthorizedUseOnly(props: AuthorizedUseOnlyProps) {
   return (
     <BlankPage>
       <div className="authorized-use-only">
-        <Card>
+        <Card headingLevel="h1">
           <CardHeading>Warning</CardHeading>
           <CardBody>
             <div className="grid-container">
