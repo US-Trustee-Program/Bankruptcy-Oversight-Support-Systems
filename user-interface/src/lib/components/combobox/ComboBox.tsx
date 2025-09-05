@@ -408,7 +408,11 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   // ========== JSX ==========
 
   return (
-    <div id={comboBoxId} className="usa-form-group combo-box-form-group" ref={comboBoxRef}>
+    <div
+      id={comboBoxId}
+      className={`usa-form-group combo-box-form-group ${props.className ?? ''}`}
+      ref={comboBoxRef}
+    >
       <div className={`combo-box-label ${multiSelect === true ? 'multi-select' : 'single-select'}`}>
         <label
           className="usa-label"

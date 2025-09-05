@@ -37,8 +37,8 @@
     padding-right: 0;
     flex-flow: row;
     justify-content: space-between;
-    max-width: none;
-    min-width: calc(100vw - 100px);
+    max-width: 100%;
+    width: 100%; /* Use full width instead of forced min-width */
     margin: 0;
 
     .cams-logo-and-title {
