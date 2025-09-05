@@ -222,6 +222,10 @@ describe('TrusteeCreateForm', () => {
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
     });
 
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
     test('disables submit button when there are validation errors', async () => {
       renderWithRouter();
 
@@ -240,6 +244,10 @@ describe('TrusteeCreateForm', () => {
       vi.spyOn(FeatureFlags, 'default').mockReturnValue({
         [FeatureFlags.TRUSTEE_MANAGEMENT]: true,
       } as Record<string, boolean>);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
     });
 
     test('shows success notification when trustee is created successfully', async () => {
@@ -338,6 +346,10 @@ describe('TrusteeCreateForm', () => {
         }),
         postTrustee: vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } }),
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
     });
 
     test('renders all optional fields', () => {
@@ -802,6 +814,10 @@ describe('TrusteeCreateForm', () => {
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
     });
 
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
     test('submit button starts disabled and enables only when form is valid and complete', async () => {
       renderWithRouter();
 
@@ -902,6 +918,10 @@ describe('TrusteeCreateForm', () => {
   });
 
   describe('District Loading Error Handling', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
     test('should handle getCourts API failure gracefully', async () => {
       // Mock getCourts to reject
       const mockGetCourts = vi.fn().mockRejectedValue(new Error('API Error'));
@@ -945,6 +965,10 @@ describe('TrusteeCreateForm', () => {
   });
 
   describe('Cancel Button Behavior', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
     test('should handle cancel when onCancel prop is not provided', async () => {
       const user = userEvent.setup();
 
@@ -970,6 +994,10 @@ describe('TrusteeCreateForm', () => {
           return 0; // Return a dummy timer ID
         },
       );
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
     });
 
     test('submits form and calls postTrustee with expected payload', async () => {
@@ -1030,6 +1058,10 @@ describe('TrusteeCreateForm', () => {
       vi.spyOn(FeatureFlags, 'default').mockReturnValue({
         [FeatureFlags.TRUSTEE_MANAGEMENT]: true,
       } as Record<string, boolean>);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
     });
 
     test('loads districts successfully on mount', async () => {
