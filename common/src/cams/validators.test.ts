@@ -1,20 +1,5 @@
-import {
-  ValidationSpec,
-  validateObject,
-  validateKey,
-  validate,
-  validateEach,
-  VALID,
-} from './validation';
+import { ValidationSpec, validateObject, VALID } from './validation';
 import Validators from './validators';
-
-type Person = {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  code: string;
-};
 
 describe('validators', () => {
   describe('minLength', () => {
@@ -455,179 +440,6 @@ describe('validators', () => {
     });
   });
 
-  describe('validate', () => {
-    const testCases = [
-      {
-        description: 'should work with factory validator functions',
-        validator: Validators.minLength(5),
-        value: 'hello world',
-        expected: VALID,
-      },
-      {
-        description: 'should return failure for factory validator functions',
-        validator: Validators.minLength(10),
-        value: 'short',
-        expected: { reasons: ['Must contain at least 10 characters'] },
-      },
-    ];
-    test.each(testCases)('$description', (testCase) => {
-      expect(validate(testCase.validator, testCase.value)).toEqual(testCase.expected);
-    });
-  });
-
-  describe('validateEach', () => {
-    const testCases = [
-      {
-        description: 'should return valid when all validators pass',
-        validators: [Validators.minLength(3)],
-        value: 'hello',
-        expected: VALID,
-      },
-      {
-        description: 'should return invalid with single reason when one validator fails',
-        validators: [Validators.minLength(10)],
-        value: 'hello',
-        expected: { reasons: ['Must contain at least 10 characters'] },
-      },
-      {
-        description: 'should return invalid with multiple reasons when multiple validators fail',
-        validators: [Validators.minLength(10), Validators.maxLength(3)],
-        value: 'hello',
-        expected: {
-          reasons: ['Must contain at least 10 characters', 'Must contain at most 3 characters'],
-        },
-      },
-      {
-        description: 'should work with mix of direct and factory validators',
-        validators: [Validators.length(3, 10), Validators.matches(/^[a-z]+$/)],
-        value: 'hello',
-        expected: VALID,
-      },
-      {
-        description: 'should accumulate all failure reasons',
-        validators: [Validators.minLength(10), Validators.matches(/^\d+$/)],
-        value: 'hello',
-        expected: {
-          reasons: ['Must contain at least 10 characters', 'Must match the pattern /^\\d+$/'],
-        },
-      },
-      {
-        description: 'should handle empty validator array',
-        validators: [],
-        value: 'anything',
-        expected: VALID,
-      },
-      {
-        description: 'should handle single validator',
-        validators: [Validators.isEmailAddress],
-        value: 'test@example.com',
-        expected: VALID,
-      },
-      {
-        description: 'should handle single failing validator',
-        validators: [Validators.isEmailAddress],
-        value: 'invalid-email',
-        expected: { reasons: ['Must be a valid email address'] },
-      },
-    ];
-    test.each(testCases)('$description', (testCase) => {
-      expect(validateEach(testCase.validators, testCase.value)).toEqual(testCase.expected);
-    });
-  });
-
-  describe('validateKey', () => {
-    test('should return valid when key validation passes', () => {
-      const spec = { name: [Validators.minLength(2)] };
-      const obj = { name: 'John' };
-      expect(validateKey(spec, 'name', obj)).toEqual(VALID);
-    });
-
-    test('should return invalid with reasons when key validation fails', () => {
-      const spec = { name: [Validators.minLength(5)] };
-      const obj = { name: 'Jo' };
-      expect(validateKey(spec, 'name', obj)).toEqual({
-        reasons: ['Must contain at least 5 characters'],
-      });
-    });
-
-    test('should handle multiple validators with multiple failures', () => {
-      const spec = { name: [Validators.minLength(10), Validators.matches(/^\d+$/)] };
-      const obj = { name: 'John' };
-      expect(validateKey(spec, 'name', obj)).toEqual({
-        reasons: ['Must contain at least 10 characters', 'Must match the pattern /^\\d+$/'],
-      });
-    });
-
-    test('should validate email key correctly', () => {
-      const spec = { email: [Validators.isEmailAddress] };
-      const obj = { email: 'test@example.com' };
-      expect(validateKey(spec, 'email', obj)).toEqual(VALID);
-    });
-
-    test('should return invalid for bad email format', () => {
-      const spec = { email: [Validators.isEmailAddress] };
-      const obj = { email: 'invalid-email' };
-      expect(validateKey(spec, 'email', obj)).toEqual({
-        reasons: ['Must be a valid email address'],
-      });
-    });
-
-    test('should handle single validator successfully', () => {
-      const spec = { name: [Validators.minLength(1)] };
-      const obj = { name: 'Alice' };
-      expect(validateKey(spec, 'name', obj)).toEqual(VALID);
-    });
-  });
-
-  describe('validateObject', () => {
-    const validCodes = ['a', 'b'];
-    const spec: ValidationSpec<Person> = {
-      firstName: [Validators.minLength(1)],
-      lastName: [Validators.length(1, 100)],
-      phone: [Validators.isPhoneNumber],
-      email: [Validators.isEmailAddress],
-      code: [Validators.isInSet(validCodes)],
-    };
-
-    const testCases = [
-      {
-        description: 'should validate a valid object',
-        obj: {
-          firstName: 'John',
-          lastName: 'Doe',
-          email: 'john@doe.com',
-          phone: '123-456-7890',
-          code: 'a',
-        },
-        expected: VALID,
-      },
-      {
-        description: 'should validate a invalid object',
-        obj: {
-          firstName: '',
-          lastName: '',
-          email: '',
-          phone: '',
-          code: 'c',
-        },
-        expected: {
-          reasonMap: {
-            firstName: { reasons: ['Must contain at least 1 characters'] },
-            lastName: { reasons: ['Must contain between 1 and 100 characters'] },
-            email: { reasons: ['Must be a valid email address'] },
-            phone: { reasons: ['Must be a valid phone number'] },
-            code: { reasons: ['Must be one of a, b'] },
-          },
-        },
-      },
-    ];
-    test.each(testCases)('$description', (testCase) => {
-      expect(validateObject(spec, testCase.obj)).toEqual(
-        expect.objectContaining(testCase.expected),
-      );
-    });
-  });
-
   describe('spec', () => {
     const testCases = [
       {
@@ -812,130 +624,86 @@ describe('validators', () => {
     });
   });
 
-  describe('nested object validation', () => {
-    type Address = {
-      street: string;
-      city: string;
-      zipCode: string;
-      country?: string;
-    };
-
-    type PersonWithAddress = {
-      name: string;
-      address: Address;
-      email?: string;
-    };
-
-    const addressSpec: ValidationSpec<Address> = {
-      street: [Validators.minLength(1)],
-      city: [Validators.minLength(1)],
-      zipCode: [Validators.matches(/^\d{5}$/, 'ZIP code must be 5 digits')],
-      country: [Validators.optional(Validators.minLength(2))],
-    };
-
-    const personWithAddressSpec: ValidationSpec<PersonWithAddress> = {
-      name: [Validators.minLength(1)],
-      address: addressSpec, // This is a nested ValidationSpec
-      email: [Validators.optional(Validators.isEmailAddress)],
-    };
-
+  describe('notSet', () => {
     const testCases = [
       {
-        description: 'should validate valid nested object',
-        obj: {
-          name: 'John Doe',
-          address: {
-            street: '123 Main St',
-            city: 'Anytown',
-            zipCode: '12345',
-          },
-          email: 'john@example.com',
-        },
+        description: 'should return valid for undefined values',
+        value: undefined,
         expected: VALID,
       },
       {
-        description: 'should validate nested object with optional field',
-        obj: {
-          name: 'Jane Smith',
-          address: {
-            street: '456 Oak Ave',
-            city: 'Springfield',
-            zipCode: '67890',
-            country: 'US',
-          },
-        },
+        description: 'should return valid for null values',
+        value: null,
         expected: VALID,
       },
       {
-        description: 'should return errors for invalid nested object fields',
-        obj: {
-          name: '', // Invalid: empty name
-          address: {
-            street: '', // Invalid: empty street
-            city: 'Valid City',
-            zipCode: '1234', // Invalid: wrong ZIP format
-          },
-          email: 'invalid-email', // Invalid: not a valid email
-        },
-        expected: {
-          reasonMap: expect.objectContaining({
-            name: { reasons: ['Must contain at least 1 characters'] },
-            address: {
-              reasonMap: {
-                street: { reasons: ['Must contain at least 1 characters'] },
-                zipCode: { reasons: ['ZIP code must be 5 digits'] },
-              },
-            },
-            email: { reasons: ['Must be a valid email address'] },
-          }),
-        },
+        description: 'should return invalid for any other values',
+        value: 'some value',
+        expected: { reasons: ['Must not be set'] },
       },
       {
-        description: 'should handle nested object with single validation error',
-        obj: {
-          name: 'Valid Name',
-          address: {
-            street: 'Valid Street',
-            city: 'Valid City',
-            zipCode: 'INVALID', // Only this field is invalid
-          },
-        },
-        expected: {
-          reasonMap: expect.objectContaining({
-            address: {
-              reasonMap: {
-                zipCode: { reasons: ['ZIP code must be 5 digits'] },
-              },
-            },
-          }),
-        },
+        description: 'should return invalid for empty string',
+        value: '',
+        expected: { reasons: ['Must not be set'] },
       },
       {
-        description: 'should handle deeply nested validation with optional country',
-        obj: {
-          name: 'Test User',
-          address: {
-            street: '789 Pine St',
-            city: 'TestCity',
-            zipCode: '54321',
-            country: 'A', // Invalid: too short
-          },
-        },
-        expected: {
-          reasonMap: expect.objectContaining({
-            address: {
-              reasonMap: {
-                country: { reasons: ['Must contain at least 2 characters'] },
-              },
-            },
-          }),
-        },
+        description: 'should return invalid for number values',
+        value: 0,
+        expected: { reasons: ['Must not be set'] },
       },
     ];
 
     test.each(testCases)('$description', (testCase) => {
-      const result = validateObject(personWithAddressSpec, testCase.obj);
-      expect(result).toEqual(testCase.expected);
+      expect(Validators.notSet(testCase.value)).toEqual(testCase.expected);
+    });
+  });
+
+  describe('exactLength', () => {
+    const testCases = [
+      {
+        description: 'should return valid for string with exact length',
+        length: 5,
+        value: 'hello',
+        expected: VALID,
+      },
+      {
+        description: 'should return invalid for string shorter than exact length',
+        length: 10,
+        value: 'hello',
+        expected: { reasons: ['Must contain exactly 10 characters'] },
+      },
+      {
+        description: 'should return invalid for string longer than exact length',
+        length: 3,
+        value: 'hello',
+        expected: { reasons: ['Must contain exactly 3 characters'] },
+      },
+      {
+        description: 'should return valid for array with exact length',
+        length: 3,
+        value: ['a', 'b', 'c'],
+        expected: VALID,
+      },
+      {
+        description: 'should use custom reason when provided',
+        length: 5,
+        reason: 'Custom length error',
+        value: 'hi',
+        expected: { reasons: ['Custom length error'] },
+      },
+    ];
+
+    test.each(testCases)('$description', (testCase) => {
+      const validator = Validators.exactLength(testCase.length, testCase.reason);
+      expect(validator(testCase.value)).toEqual(testCase.expected);
+    });
+  });
+
+  describe('length with custom reason', () => {
+    test('should use custom reason when length validation fails', () => {
+      const validator = Validators.length(5, 10, 'Custom length message');
+      const result = validator('hi');
+      expect(result).toEqual({ reasons: ['Custom length message'] });
     });
   });
 });
