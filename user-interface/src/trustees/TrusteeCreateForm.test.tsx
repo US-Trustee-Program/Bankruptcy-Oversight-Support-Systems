@@ -10,6 +10,7 @@ import LocalStorage from '@/lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole } from '@common/cams/roles';
 import { BrowserRouter } from 'react-router-dom';
+import { MockedFunction } from 'vitest';
 
 // Test data constants
 const TEST_TRUSTEE_DATA = {
@@ -101,6 +102,8 @@ describe('TrusteeCreateForm', () => {
     redirectTo: vi.fn(),
   };
 
+  let postTrusteeSpy: MockedFunction<() => unknown>;
+
   beforeEach(() => {
     // Set up default authorized user with TrusteeAdmin role
     const defaultUser = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
@@ -118,7 +121,7 @@ describe('TrusteeCreateForm', () => {
       (callback: () => void, _delay: number) => {
         // Execute callback immediately in tests to avoid timing issues
         callback();
-        return 0; // Return a dummy timer ID
+        return 0; // Return a fake timer ID
       },
     );
 
@@ -126,16 +129,58 @@ describe('TrusteeCreateForm', () => {
     vi.spyOn(useCamsNavigatorModule, 'default').mockReturnValue(mockNavigate);
 
     // Mock the useApi2 hook to include getCourts
+    postTrusteeSpy = vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } });
     vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
       getCourts: vi.fn().mockResolvedValue({
         data: MockData.getCourts(),
       }),
-      postTrustee: vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } }),
+      postTrustee: postTrusteeSpy,
     } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  test('should not call the API when the submit button is clicked until the form is valid', async () => {
+    renderWithRouter();
+
+    expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /save/i })).toBeEnabled();
+
+    // Click before entering data
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => {
+      expect(document.querySelector('.usa-input__error-message')).toBeInTheDocument();
+    });
+    expect(postTrusteeSpy).not.toHaveBeenCalled();
+
+    // Enter some data
+    await userEvent.type(screen.getByTestId('trustee-name'), TEST_TRUSTEE_DATA.name);
+    await userEvent.type(screen.getByTestId('trustee-address1'), TEST_TRUSTEE_DATA.address1);
+
+    // Click again
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => {
+      expect(document.querySelector('.usa-input__error-message')).toBeInTheDocument();
+    });
+    expect(postTrusteeSpy).not.toHaveBeenCalled();
+
+    // Finish filling out the form
+    await userEvent.type(screen.getByTestId('trustee-city'), TEST_TRUSTEE_DATA.city);
+    const stateCombobox = screen.getByRole('combobox', { name: /state/i });
+    await userEvent.click(stateCombobox);
+    await userEvent.click(screen.getByText(TEST_TRUSTEE_DATA.stateLabel));
+    await userEvent.type(screen.getByTestId('trustee-zip'), TEST_TRUSTEE_DATA.zipCode);
+    await userEvent.type(screen.getByTestId('trustee-phone'), TEST_TRUSTEE_DATA.phone);
+    await userEvent.type(screen.getByTestId('trustee-email'), TEST_TRUSTEE_DATA.email);
+
+    // One last click to submit
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => {
+      expect(document.querySelector('.usa-input__error-message')).not.toBeInTheDocument();
+    });
+    expect(postTrusteeSpy).toHaveBeenCalled();
   });
 
   test('renders disabled message when feature is off', () => {

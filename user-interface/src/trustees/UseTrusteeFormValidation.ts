@@ -98,7 +98,8 @@ export function useTrusteeFormValidation(): TrusteeFormValidation {
     const results = validateObject(trusteeFormDataSpec, formData);
     if (!results.valid && results.reasonMap) {
       const newFieldErrors = Object.fromEntries(
-        Object.entries(flattenReasonMap(results.reasonMap)).map(([field, reason]) => {
+        Object.entries(flattenReasonMap(results.reasonMap)).map(([jsonPath, reason]) => {
+          const field = jsonPath.split('.')[1];
           return [field, reason.join('., ') + '.'];
         }),
       );
