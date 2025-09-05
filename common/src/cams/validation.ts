@@ -4,7 +4,7 @@
 
 export type ValidatorResult = {
   valid?: true;
-  reason?: string;
+  reasons?: string[];
   reasonMap?: Record<string, ValidatorResult>;
 };
 
@@ -41,11 +41,14 @@ export function validateEach(functions: ValidatorFunction[], value: unknown): Va
   }
   const reasons = functions.map((f) => f(value)).filter((r) => !r.valid);
 
-  if (reasons.length > 0) {
-    return reasons[0];
+  if (!reasons.length) {
+    return VALID;
   }
-
-  return VALID;
+  if (reasons[0].reasonMap) {
+    return reasons[0];
+  } else {
+    return { reasons: reasons.map((r) => r.reasons).flat() };
+  }
 }
 
 /**
@@ -83,7 +86,7 @@ export function validateKey(
  */
 export function validateObject(spec: ValidationSpec<unknown>, obj: unknown): ValidatorResult {
   if (typeof obj !== 'object' || obj === null) {
-    return { reason: 'Value must be an object' };
+    return { reasons: ['Value must be an object'] };
   }
 
   const reasonMap = Object.keys(spec).reduce((acc, key) => {
@@ -107,8 +110,9 @@ export function flattenReasonMap(
     if (result && !result.valid) {
       const fieldPath = prefix ? `${prefix}.${field}` : field;
 
-      if (result.reason) {
-        errors.push([fieldPath, [result.reason]]);
+      if (result.reasons) {
+        const jsonPath = `$.${fieldPath}`;
+        errors.push([jsonPath, result.reasons]);
       }
 
       if (result.reasonMap) {
@@ -125,8 +129,7 @@ export function flattenReasonMap(
 export function flatten(reasonMap: Record<string, ValidatorResult>): string[] {
   const flatMap = flattenReasonMap(reasonMap);
   const pathsAndReasons = [];
-  for (const [path, reasons] of Object.entries(flatMap)) {
-    const jsonPath = `$.${path}`;
+  for (const [jsonPath, reasons] of Object.entries(flatMap)) {
     reasons.forEach((reason) => {
       pathsAndReasons.push(`${jsonPath}: ${reason}`);
     });

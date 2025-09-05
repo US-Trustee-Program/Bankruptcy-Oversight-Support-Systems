@@ -36,7 +36,7 @@ function validateField(field: keyof TrusteeFormData, value: string): string | nu
   }
 
   const result = validateEach(trusteeFormDataSpec[field]!, trimmedValue);
-  return result.valid ? null : result.reason!;
+  return result.valid ? null : result.reasons!.join(' ');
 }
 
 /**

@@ -1,11 +1,11 @@
 import { EMAIL_REGEX, PHONE_REGEX } from './regex';
 import {
-  ValidationSpec,
   validateEach,
-  validateObject,
   ValidatorFunction,
   ValidatorResult,
   VALID,
+  ValidationSpec,
+  validateObject,
 } from './validation';
 
 /********************************************************************************
@@ -34,8 +34,15 @@ function optional(...validators: ValidatorFunction[]): ValidatorFunction {
   };
 }
 
+/**
+ * Validates that a value is not set (either undefined or null).
+ * This validator ensures that a field remains unset/empty, useful for fields that should not be provided.
+ *
+ * @param {unknown} value - The value to validate as not being set
+ * @returns {ValidatorResult} Object containing validation status and reason for failure if the value is set
+ */
 function notSet(value: unknown): ValidatorResult {
-  return value === undefined || value === null ? VALID : { reason: 'Must not be set' };
+  return value === undefined || value === null ? VALID : { reasons: ['Must not be set'] };
 }
 
 /**
@@ -108,7 +115,7 @@ function length(min: number, max: number, reason?: string): ValidatorFunction {
       }
 
       if (reason) {
-        return { reason };
+        return { reasons: [reason] };
       }
 
       let rangeText = `between ${min} and ${max}`;
@@ -122,15 +129,15 @@ function length(min: number, max: number, reason?: string): ValidatorFunction {
 
       const unitText = typeof value === 'string' ? 'characters' : 'selections';
 
-      return { reason: `Must contain ${rangeText} ${unitText}` };
+      return { reasons: [`Must contain ${rangeText} ${unitText}`] };
     }
 
     if (value === null) {
-      return { reason: `Value is null` };
+      return { reasons: [`Value is null`] };
     } else if (value === undefined) {
-      return { reason: `Value is undefined` };
+      return { reasons: [`Value is undefined`] };
     } else {
-      return { reason: 'Value does not have a length' };
+      return { reasons: ['Value does not have a length'] };
     }
   };
 }
@@ -145,7 +152,7 @@ function isInSet<T>(set: T[], reason?: string): ValidatorFunction {
   return (value: unknown): ValidatorResult => {
     return set.includes(value as T)
       ? VALID
-      : { reason: reason ?? `Must be one of ${set.join(', ')}` };
+      : { reasons: [reason ?? `Must be one of ${set.join(', ')}`] };
   };
 }
 
@@ -160,7 +167,7 @@ function matches(regex: RegExp, reason?: string): ValidatorFunction {
   return (value: unknown): ValidatorResult => {
     return typeof value === 'string' && regex.test(value)
       ? VALID
-      : { reason: reason ?? `Must match the pattern ${regex}` };
+      : { reasons: [reason ?? `Must match the pattern ${regex}`] };
   };
 }
 

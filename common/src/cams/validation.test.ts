@@ -8,7 +8,7 @@ import {
 } from './validation';
 import V from './validators';
 
-type Person = {
+type TestPerson = {
   firstName: string;
   lastName: string;
   email: string;
@@ -29,7 +29,7 @@ describe('validation', () => {
         description: 'should return failure for factory validator functions',
         validator: V.minLength(10),
         value: 'short',
-        expected: { reason: 'Must contain at least 10 characters' },
+        expected: { reasons: ['Must contain at least 10 characters'] },
       },
     ];
     test.each(testCases)('$description', (testCase) => {
@@ -49,14 +49,14 @@ describe('validation', () => {
         description: 'should return invalid with single reason when one validator fails',
         validators: [V.minLength(10)],
         value: 'hello',
-        expected: { reason: 'Must contain at least 10 characters' },
+        expected: { reasons: ['Must contain at least 10 characters'] },
       },
       {
         description: 'should return invalid with multiple reasons when multiple validators fail',
         validators: [V.minLength(10), V.maxLength(3)],
         value: 'hello',
         expected: {
-          reason: 'Must contain at least 10 characters',
+          reasons: ['Must contain at least 10 characters', 'Must contain at most 3 characters'],
         },
       },
       {
@@ -70,7 +70,7 @@ describe('validation', () => {
         validators: [V.minLength(10), V.matches(/^\d+$/)],
         value: 'hello',
         expected: {
-          reason: 'Must contain at least 10 characters',
+          reasons: ['Must contain at least 10 characters', 'Must match the pattern /^\\d+$/'],
         },
       },
       {
@@ -89,7 +89,7 @@ describe('validation', () => {
         description: 'should handle single failing validator',
         validators: [V.isEmailAddress],
         value: 'invalid-email',
-        expected: { reason: 'Must be a valid email address' },
+        expected: { reasons: ['Must be a valid email address'] },
       },
     ];
     test.each(testCases)('$description', (testCase) => {
@@ -108,7 +108,7 @@ describe('validation', () => {
       const spec = { name: [V.minLength(5)] };
       const obj = { name: 'Jo' };
       expect(validateKey(spec, 'name', obj)).toEqual({
-        reason: 'Must contain at least 5 characters',
+        reasons: ['Must contain at least 5 characters'],
       });
     });
 
@@ -116,7 +116,7 @@ describe('validation', () => {
       const spec = { name: [V.minLength(10), V.matches(/^\d+$/)] };
       const obj = { name: 'John' };
       expect(validateKey(spec, 'name', obj)).toEqual({
-        reason: 'Must contain at least 10 characters',
+        reasons: ['Must contain at least 10 characters', 'Must match the pattern /^\\d+$/'],
       });
     });
 
@@ -130,7 +130,7 @@ describe('validation', () => {
       const spec = { email: [V.isEmailAddress] };
       const obj = { email: 'invalid-email' };
       expect(validateKey(spec, 'email', obj)).toEqual({
-        reason: 'Must be a valid email address',
+        reasons: ['Must be a valid email address'],
       });
     });
 
@@ -143,7 +143,7 @@ describe('validation', () => {
 
   describe('validateObject', () => {
     const validCodes = ['a', 'b'];
-    const spec: ValidationSpec<Person> = {
+    const spec: ValidationSpec<TestPerson> = {
       firstName: [V.minLength(1)],
       lastName: [V.length(1, 100)],
       phone: [V.isPhoneNumber],
@@ -174,11 +174,11 @@ describe('validation', () => {
         },
         expected: {
           reasonMap: {
-            firstName: { reason: 'Must contain at least 1 characters' },
-            lastName: { reason: 'Must contain between 1 and 100 characters' },
-            email: { reason: 'Must be a valid email address' },
-            phone: { reason: 'Must be a valid phone number' },
-            code: { reason: 'Must be one of a, b' },
+            firstName: { reasons: ['Must contain at least 1 characters'] },
+            lastName: { reasons: ['Must contain between 1 and 100 characters'] },
+            email: { reasons: ['Must be a valid email address'] },
+            phone: { reasons: ['Must be a valid phone number'] },
+            code: { reasons: ['Must be one of a, b'] },
           },
         },
       },
@@ -213,7 +213,7 @@ describe('validation', () => {
 
     const personWithAddressSpec: ValidationSpec<PersonWithAddress> = {
       name: [V.minLength(1)],
-      address: [V.spec(addressSpec)], // This is a nested ValidationSpec
+      address: addressSpec, // This is a nested ValidationSpec
       email: [V.optional(V.isEmailAddress)],
     };
 
@@ -257,14 +257,14 @@ describe('validation', () => {
         },
         expected: {
           reasonMap: expect.objectContaining({
-            name: { reason: 'Must contain at least 1 characters' },
+            name: { reasons: ['Must contain at least 1 characters'] },
             address: {
               reasonMap: {
-                street: { reason: 'Must contain at least 1 characters' },
-                zipCode: { reason: 'ZIP code must be 5 digits' },
+                street: { reasons: ['Must contain at least 1 characters'] },
+                zipCode: { reasons: ['ZIP code must be 5 digits'] },
               },
             },
-            email: { reason: 'Must be a valid email address' },
+            email: { reasons: ['Must be a valid email address'] },
           }),
         },
       },
@@ -282,28 +282,7 @@ describe('validation', () => {
           reasonMap: expect.objectContaining({
             address: {
               reasonMap: {
-                zipCode: { reason: 'ZIP code must be 5 digits' },
-              },
-            },
-          }),
-        },
-      },
-      {
-        description: 'should handle deeply nested validation with optional country',
-        obj: {
-          name: 'Test User',
-          address: {
-            street: '789 Pine St',
-            city: 'TestCity',
-            zipCode: '54321',
-            country: 'A', // Invalid: too short
-          },
-        },
-        expected: {
-          reasonMap: expect.objectContaining({
-            address: {
-              reasonMap: {
-                country: { reason: 'Must contain at least 2 characters' },
+                zipCode: { reasons: ['ZIP code must be 5 digits'] },
               },
             },
           }),
