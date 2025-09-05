@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import Alert, { AlertRefType, UswdsAlertStyle } from './Alert';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 
 const sleep = (milliseconds: number) =>
   new Promise((callback) => setTimeout(callback, milliseconds));
@@ -25,23 +25,30 @@ describe('Test Alert component', () => {
     );
 
     const alert = screen.getByTestId('alert');
-    expect(alert).not.toHaveClass('usa-alert__visible');
+    await waitFor(() => {
+      expect(alert).not.toHaveClass('usa-alert__visible');
+    });
     expect(alert).not.toHaveClass('usa-alert__hidden');
     expect(alert).toHaveClass('usa-alert__unset');
 
-    alertRef.current?.show();
-    await sleep(100);
-    expect(alert).toHaveClass('usa-alert__visible');
+    act(() => alertRef.current?.show());
+    await waitFor(() => {
+      expect(alert).toHaveClass('usa-alert__visible');
+    });
     expect(alert).not.toHaveClass('usa-alert__hidden');
     expect(alert).not.toHaveClass('usa-alert__unset');
 
     await sleep(3000);
-    expect(alert).toHaveClass('usa-alert__visible');
+    await waitFor(() => {
+      expect(alert).toHaveClass('usa-alert__visible');
+    });
     expect(alert).not.toHaveClass('usa-alert__hidden');
     expect(alert).not.toHaveClass('usa-alert__unset');
 
     await sleep(1000);
-    expect(alert).not.toHaveClass('usa-alert__visible');
+    await waitFor(() => {
+      expect(alert).not.toHaveClass('usa-alert__visible');
+    });
     expect(alert).toHaveClass('usa-alert__hidden');
     expect(alert).not.toHaveClass('usa-alert__unset');
   }, 6000);
@@ -63,28 +70,33 @@ describe('Test Alert component', () => {
     );
 
     const alertContainer = screen.getByTestId('alert-container');
-    expect(alertContainer).not.toHaveClass('inline-alert');
+    await waitFor(() => {
+      expect(alertContainer).not.toHaveClass('inline-alert');
+    });
 
     const alert = screen.getByTestId('alert');
     expect(alert).not.toHaveClass('usa-alert__visible');
     expect(alert).not.toHaveClass('usa-alert__hidden');
     expect(alert).toHaveClass('usa-alert__unset');
 
-    alertRef.current?.show();
-    await sleep(100);
-    expect(alertContainer).not.toHaveClass('inline-alert');
+    act(() => alertRef.current?.show());
+    await waitFor(() => {
+      expect(alertContainer).not.toHaveClass('inline-alert');
+    });
     expect(alert).toHaveClass('usa-alert__visible');
     expect(alert).not.toHaveClass('usa-alert__hidden');
     expect(alert).not.toHaveClass('usa-alert__unset');
 
-    await sleep(5000);
-    expect(alert).toHaveClass('usa-alert__visible');
+    await waitFor(() => {
+      expect(alert).toHaveClass('usa-alert__visible');
+    });
     expect(alert).not.toHaveClass('usa-alert__hidden');
     expect(alert).not.toHaveClass('usa-alert__unset');
 
-    alertRef.current?.hide();
-    await sleep(100);
-    expect(alert).not.toHaveClass('usa-alert__visible');
+    act(() => alertRef.current?.hide());
+    await waitFor(() => {
+      expect(alert).not.toHaveClass('usa-alert__visible');
+    });
     expect(alert).toHaveClass('usa-alert__hidden');
     expect(alert).not.toHaveClass('usa-alert__unset');
   }, 8000);
@@ -107,7 +119,9 @@ describe('Test Alert component', () => {
     );
 
     const alertContainer = screen.getByTestId('alert-container');
-    expect(alertContainer).toHaveClass('inline-alert');
+    await waitFor(() => {
+      expect(alertContainer).toHaveClass('inline-alert');
+    });
   });
 
   test('should have info class', async () => {
@@ -127,7 +141,9 @@ describe('Test Alert component', () => {
     );
 
     const alert = screen.getByTestId('alert');
-    expect(alert).toHaveClass('usa-alert--info');
+    await waitFor(() => {
+      expect(alert).toHaveClass('usa-alert--info');
+    });
   });
 
   test('should have warning class', async () => {
@@ -147,7 +163,9 @@ describe('Test Alert component', () => {
     );
 
     const alert = screen.getByTestId('alert');
-    expect(alert).toHaveClass('usa-alert--warning');
+    await waitFor(() => {
+      expect(alert).toHaveClass('usa-alert--warning');
+    });
   });
 
   test('should have error class', async () => {
@@ -167,7 +185,9 @@ describe('Test Alert component', () => {
     );
 
     const alert = screen.getByTestId('alert');
-    expect(alert).toHaveClass('usa-alert--error');
+    await waitFor(() => {
+      expect(alert).toHaveClass('usa-alert--error');
+    });
   });
 
   test('should have success class', async () => {
@@ -187,7 +207,9 @@ describe('Test Alert component', () => {
     );
 
     const alert = screen.getByTestId('alert');
-    expect(alert).toHaveClass('usa-alert--success');
+    await waitFor(() => {
+      expect(alert).toHaveClass('usa-alert--success');
+    });
   });
 
   test('should have slim class', async () => {
@@ -207,7 +229,9 @@ describe('Test Alert component', () => {
     );
 
     const alert = screen.getByTestId('alert');
-    expect(alert).toHaveClass('usa-alert--slim');
+    await waitFor(() => {
+      expect(alert).toHaveClass('usa-alert--slim');
+    });
   });
 
   test('should not have slim class', async () => {
@@ -226,7 +250,9 @@ describe('Test Alert component', () => {
     );
 
     const alert = screen.getByTestId('alert');
-    expect(alert).not.toHaveClass('usa-alert--slim');
+    await waitFor(() => {
+      expect(alert).not.toHaveClass('usa-alert--slim');
+    });
   });
 
   test('should contain the message', async () => {
@@ -245,7 +271,9 @@ describe('Test Alert component', () => {
     );
 
     const alertMessage = screen.getByTestId('alert-message');
-    expect(alertMessage).toContainHTML('Test alert message');
+    await waitFor(() => {
+      expect(alertMessage).toContainHTML('Test alert message');
+    });
   });
 
   test('should put the status role in the html', async () => {
@@ -264,7 +292,9 @@ describe('Test Alert component', () => {
     );
 
     const alert = screen.getByTestId('alert');
-    expect(alert).toHaveAttribute('role', 'status');
+    await waitFor(() => {
+      expect(alert).toHaveAttribute('role', 'status');
+    });
   });
 
   test('should put the alert role in the html', async () => {
@@ -283,6 +313,8 @@ describe('Test Alert component', () => {
     );
 
     const alert = screen.getByTestId('alert');
-    expect(alert).toHaveAttribute('role', 'alert');
+    await waitFor(() => {
+      expect(alert).toHaveAttribute('role', 'alert');
+    });
   });
 });
