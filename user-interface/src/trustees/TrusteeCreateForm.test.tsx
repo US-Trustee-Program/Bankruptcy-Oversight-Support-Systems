@@ -138,15 +138,19 @@ describe('TrusteeCreateForm', () => {
     vi.restoreAllMocks();
   });
 
-  test('renders disabled message when feature is off', () => {
+  test('renders disabled message when feature is off', async () => {
     vi.spyOn(FeatureFlags, 'default').mockReturnValue({
       [FeatureFlags.TRUSTEE_MANAGEMENT]: false,
     } as Record<string, boolean>);
+
     renderWithRouter();
-    expect(screen.getByTestId('trustee-create-disabled')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-create-disabled')).toBeInTheDocument();
+    });
   });
 
-  test('renders unauthorized message when user lacks TrusteeAdmin role', () => {
+  test('renders unauthorized message when user lacks TrusteeAdmin role', async () => {
     // Set up a user without TrusteeAdmin role
     const user = MockData.getCamsUser({ roles: [CamsRole.CaseAssignmentManager] });
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
@@ -157,11 +161,14 @@ describe('TrusteeCreateForm', () => {
     } as Record<string, boolean>);
 
     renderWithRouter();
-    expect(screen.getByTestId('alert-container-forbidden-alert')).toBeInTheDocument();
-    expect(screen.getByText('You do not have permission to manage Trustees')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('alert-container-forbidden-alert')).toBeInTheDocument();
+      expect(screen.getByText('You do not have permission to manage Trustees')).toBeInTheDocument();
+    });
   });
 
-  test('renders unauthorized message when user has no roles', () => {
+  test('renders unauthorized message when user has no roles', async () => {
     // Set up a user with no roles
     const user = MockData.getCamsUser({ roles: [] });
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
@@ -172,17 +179,22 @@ describe('TrusteeCreateForm', () => {
     } as Record<string, boolean>);
 
     renderWithRouter();
-    expect(screen.getByTestId('alert-container-forbidden-alert')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('alert-container-forbidden-alert')).toBeInTheDocument();
+    });
   });
 
-  test('renders form when user has TrusteeAdmin role and feature flag is enabled', () => {
+  test('renders form when user has TrusteeAdmin role and feature flag is enabled', async () => {
     // Uses default setup from beforeEach (TrusteeAdmin user and enabled feature flag)
     renderWithRouter();
 
     // Should render the form, not authorization messages
-    expect(screen.queryByTestId('trustee-create-disabled')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('trustee-create-unauthorized')).not.toBeInTheDocument();
-    expect(screen.getByTestId('trustee-create-form')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByTestId('trustee-create-disabled')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('trustee-create-unauthorized')).not.toBeInTheDocument();
+      expect(screen.getByTestId('trustee-create-form')).toBeInTheDocument();
+    });
   });
 
   test('submits required fields and calls onSuccess', async () => {
@@ -352,10 +364,12 @@ describe('TrusteeCreateForm', () => {
       vi.restoreAllMocks();
     });
 
-    test('renders all optional fields', () => {
+    test('renders all optional fields', async () => {
       renderWithRouter();
 
-      expect(screen.getByTestId('trustee-address2')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-address2')).toBeInTheDocument();
+      });
       expect(screen.getByTestId('trustee-phone')).toBeInTheDocument();
       expect(screen.getByTestId('trustee-extension')).toBeInTheDocument();
       expect(screen.getByTestId('trustee-email')).toBeInTheDocument();
