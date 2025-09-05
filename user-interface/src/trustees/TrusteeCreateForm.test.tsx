@@ -10,6 +10,7 @@ import LocalStorage from '@/lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole } from '@common/cams/roles';
 import { BrowserRouter } from 'react-router-dom';
+import { MockedFunction } from 'vitest';
 
 // Test data constants
 const TEST_TRUSTEE_DATA = {
@@ -101,6 +102,8 @@ describe('TrusteeCreateForm', () => {
     redirectTo: vi.fn(),
   };
 
+  let postTrusteeSpy: MockedFunction<() => unknown>;
+
   beforeEach(() => {
     // Set up default authorized user with TrusteeAdmin role
     const defaultUser = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
@@ -118,7 +121,7 @@ describe('TrusteeCreateForm', () => {
       (callback: () => void, _delay: number) => {
         // Execute callback immediately in tests to avoid timing issues
         callback();
-        return 0; // Return a dummy timer ID
+        return 0; // Return a fake timer ID
       },
     );
 
@@ -126,16 +129,58 @@ describe('TrusteeCreateForm', () => {
     vi.spyOn(useCamsNavigatorModule, 'default').mockReturnValue(mockNavigate);
 
     // Mock the useApi2 hook to include getCourts
+    postTrusteeSpy = vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } });
     vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
       getCourts: vi.fn().mockResolvedValue({
         data: MockData.getCourts(),
       }),
-      postTrustee: vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } }),
+      postTrustee: postTrusteeSpy,
     } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  test('should not call the API when the submit button is clicked until the form is valid', async () => {
+    renderWithRouter();
+
+    expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /save/i })).toBeEnabled();
+
+    // Click before entering data
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => {
+      expect(document.querySelector('.usa-input__error-message')).toBeInTheDocument();
+    });
+    expect(postTrusteeSpy).not.toHaveBeenCalled();
+
+    // Enter some data
+    await userEvent.type(screen.getByTestId('trustee-name'), TEST_TRUSTEE_DATA.name);
+    await userEvent.type(screen.getByTestId('trustee-address1'), TEST_TRUSTEE_DATA.address1);
+
+    // Click again
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => {
+      expect(document.querySelector('.usa-input__error-message')).toBeInTheDocument();
+    });
+    expect(postTrusteeSpy).not.toHaveBeenCalled();
+
+    // Finish filling out the form
+    await userEvent.type(screen.getByTestId('trustee-city'), TEST_TRUSTEE_DATA.city);
+    const stateCombobox = screen.getByRole('combobox', { name: /state/i });
+    await userEvent.click(stateCombobox);
+    await userEvent.click(screen.getByText(TEST_TRUSTEE_DATA.stateLabel));
+    await userEvent.type(screen.getByTestId('trustee-zip'), TEST_TRUSTEE_DATA.zipCode);
+    await userEvent.type(screen.getByTestId('trustee-phone'), TEST_TRUSTEE_DATA.phone);
+    await userEvent.type(screen.getByTestId('trustee-email'), TEST_TRUSTEE_DATA.email);
+
+    // One last click to submit
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => {
+      expect(document.querySelector('.usa-input__error-message')).not.toBeInTheDocument();
+    });
+    expect(postTrusteeSpy).toHaveBeenCalled();
   });
 
   test('renders disabled message when feature is off', () => {
@@ -207,36 +252,6 @@ describe('TrusteeCreateForm', () => {
     await waitFor(() =>
       expect(mockNavigate.navigateTo).toHaveBeenCalledWith('/trustees/trustee-123'),
     );
-  });
-
-  describe('Form Validation', () => {
-    beforeEach(() => {
-      vi.spyOn(FeatureFlags, 'default').mockReturnValue({
-        [FeatureFlags.TRUSTEE_MANAGEMENT]: true,
-      } as Record<string, boolean>);
-      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
-        getCourts: vi.fn().mockResolvedValue({
-          data: MockData.getCourts(),
-        }),
-        postTrustee: vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } }),
-      } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
-    });
-
-    afterEach(() => {
-      vi.restoreAllMocks();
-    });
-
-    test('disables submit button when there are validation errors', async () => {
-      renderWithRouter();
-
-      const submitButton = screen.getByRole('button', { name: /save/i });
-
-      // Enter invalid ZIP code
-      await userEvent.type(screen.getByTestId('trustee-zip'), '1234');
-
-      // Button should be disabled due to validation errors
-      await waitFor(() => expect(submitButton).toBeDisabled());
-    });
   });
 
   describe('Success and Error Handling', () => {
@@ -812,77 +827,6 @@ describe('TrusteeCreateForm', () => {
         }),
         postTrustee: vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } }),
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
-    });
-
-    afterEach(() => {
-      vi.restoreAllMocks();
-    });
-
-    test('submit button starts disabled and enables only when form is valid and complete', async () => {
-      renderWithRouter();
-
-      const submitButton = screen.getByRole('button', { name: /save/i });
-
-      // Submit button should start disabled
-      expect(submitButton).toBeDisabled();
-
-      // Fill some required fields, but not all
-      await userEvent.type(screen.getByTestId('trustee-name'), TEST_TRUSTEE_DATA.name);
-      await userEvent.type(screen.getByTestId('trustee-address1'), TEST_TRUSTEE_DATA.address1);
-
-      // Button should still be disabled (not all required fields filled)
-      expect(submitButton).toBeDisabled();
-
-      // Fill remaining required fields
-      await userEvent.type(screen.getByTestId('trustee-city'), TEST_TRUSTEE_DATA.city);
-      // Select state from ComboBox
-      const stateCombobox = screen.getByRole('combobox', { name: /state/i });
-      await userEvent.click(stateCombobox);
-      await userEvent.click(screen.getByText(TEST_TRUSTEE_DATA.stateLabel));
-      await userEvent.type(screen.getByTestId('trustee-zip'), TEST_TRUSTEE_DATA.zipCode);
-
-      // Add the new required fields
-      await userEvent.type(screen.getByTestId('trustee-phone'), TEST_TRUSTEE_DATA.phone);
-      await userEvent.type(screen.getByTestId('trustee-email'), TEST_TRUSTEE_DATA.email);
-
-      // Now button should be enabled (all required fields filled and valid)
-      expect(submitButton).not.toBeDisabled();
-
-      // Make a field invalid
-      await userEvent.clear(screen.getByTestId('trustee-zip'));
-      await userEvent.type(screen.getByTestId('trustee-zip'), TEST_TRUSTEE_DATA.invalidZip);
-
-      // Button should be disabled again (validation error)
-      expect(submitButton).toBeDisabled();
-
-      // Fix the validation error
-      await userEvent.clear(screen.getByTestId('trustee-zip'));
-      await userEvent.type(screen.getByTestId('trustee-zip'), '62704');
-
-      // Button should be enabled again
-      expect(submitButton).not.toBeDisabled();
-    });
-
-    test('submit button remains disabled when only optional fields are filled', async () => {
-      renderWithRouter();
-
-      const submitButton = screen.getByRole('button', { name: /save/i });
-
-      // Submit button should start disabled
-      expect(submitButton).toBeDisabled();
-
-      // Fill only optional fields, leave all required fields empty
-      await userEvent.type(screen.getByTestId('trustee-address2'), TEST_TRUSTEE_DATA.address2);
-      await userEvent.type(screen.getByTestId('trustee-extension'), TEST_TRUSTEE_DATA.extension);
-
-      // Button should still be disabled (no required fields filled)
-      expect(submitButton).toBeDisabled();
-
-      // Fill one required field but not all
-      await userEvent.type(screen.getByTestId('trustee-name'), TEST_TRUSTEE_DATA.name);
-
-      // Button should still be disabled (not all required fields filled)
-      expect(submitButton).toBeDisabled();
     });
 
     test('does not double-submit when form is submitted via different mechanisms', async () => {
