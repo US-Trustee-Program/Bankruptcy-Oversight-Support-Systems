@@ -45,13 +45,15 @@ describe('Test Alert component', () => {
     expect(alert).not.toHaveClass('usa-alert__hidden');
     expect(alert).not.toHaveClass('usa-alert__unset');
 
-    await sleep(1000);
-    await waitFor(() => {
-      expect(alert).not.toHaveClass('usa-alert__visible');
-    });
+    await waitFor(
+      () => {
+        expect(alert).not.toHaveClass('usa-alert__visible');
+      },
+      { timeout: 2000 },
+    );
     expect(alert).toHaveClass('usa-alert__hidden');
     expect(alert).not.toHaveClass('usa-alert__unset');
-  }, 6000);
+  }, 8000);
 
   test('should be visible until hide is called if no timeout is provided', async () => {
     const alertRef = React.createRef<AlertRefType>();
