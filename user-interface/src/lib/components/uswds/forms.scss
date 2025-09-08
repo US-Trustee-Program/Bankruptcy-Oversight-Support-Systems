@@ -29,6 +29,11 @@ button.unstyled-button {
     content: ' *';
     color: $secondary-dark;
   }
+  .usa-input-group {
+    input {
+      padding-right: 0.5rem;
+    }
+  }
   .usa-input-prefix {
     z-index: 1;
   }
@@ -47,6 +52,9 @@ button.unstyled-button {
     position: absolute;
     left: 0;
     right: auto;
+  }
+  .usa-input[data-position=right] + .usa-input-suffix {
+    padding-right: 2.5rem;
   }
 }
 .usa-input-group.usa-input-group--error {

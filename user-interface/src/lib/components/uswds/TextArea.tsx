@@ -70,7 +70,7 @@ function TextAreaComponent(props: TextAreaProps, ref: React.Ref<TextAreaRef>) {
   useImperativeHandle(ref, () => ({ clearValue, resetValue, setValue, getValue, disable, focus }));
 
   return (
-    <div className="usa-form-group textarea-container">
+    <div className={`usa-form-group textarea-container ${props.className ?? ''}`}>
       <label
         htmlFor={textAreaId}
         id={labelId}

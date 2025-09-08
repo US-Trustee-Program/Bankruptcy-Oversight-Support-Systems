@@ -21,7 +21,8 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
   const [inputValue, setInputValue] = useState<string>(props.value || '');
   const [inputDisabled, setInputDisabled] = useState<boolean>(props.disabled ?? false);
 
-  const { includeClearButton, ariaDescription, errorMessage, required, ...otherProps } = props;
+  const { includeClearButton, label, ariaDescription, errorMessage, required, ...otherProps } =
+    props;
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -85,14 +86,9 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
   useImperativeHandle(ref, () => ({ clearValue, resetValue, setValue, getValue, disable, focus }));
 
   return (
-    <div className="usa-form-group">
-      <label
-        className="usa-label"
-        id={props.id + '-label'}
-        htmlFor={props.id}
-        aria-label={required ? `${props.label} is required` : props.label}
-      >
-        {props.label}
+    <div className={`usa-form-group ${props.className ?? ''}`}>
+      <label className="usa-label" id={props.id + '-label'} htmlFor={props.id}>
+        {label}
       </label>
       {ariaDescription && (
         <div className="usa-hint" id={ariaDescribedBy()}>

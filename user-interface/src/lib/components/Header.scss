@@ -37,8 +37,7 @@
     padding-right: 0;
     flex-flow: row;
     justify-content: space-between;
-    max-width: none;
-    min-width: calc(100vw - 100px);
+    width: 100%;
     margin: 0;
 
     .cams-logo-and-title {
@@ -236,7 +235,6 @@
   }
 }
 
-/* below 1024px width, switch to vertically layered view */
 @media screen and (max-width: 1149px) {
   .cams-header {
     padding: 15px 15px 15px 50px;

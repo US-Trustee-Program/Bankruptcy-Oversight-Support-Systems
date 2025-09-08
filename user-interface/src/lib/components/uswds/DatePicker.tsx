@@ -71,25 +71,23 @@ function DatePickerComponent(props: DatePickerProps, ref: React.Ref<InputRef>) {
 
   function handleChange(ev: React.ChangeEvent<HTMLInputElement>) {
     const value = new Date(ev.target.value);
-    if (isInvalidDate(value)) {
-      if (props.onChange) {
-        ev.persist();
-        let newValue: string = '';
-        if (props.value) {
-          newValue = props.value;
-        }
-
-        // Modify the event value as needed
-        const modifiedEvent = {
-          ...ev,
-          target: {
-            ...ev.target,
-            value: newValue,
-          },
-        };
-
-        props.onChange(modifiedEvent);
+    if (isInvalidDate(value) && props.onChange) {
+      ev.persist();
+      let newValue: string = '';
+      if (props.value) {
+        newValue = props.value;
       }
+
+      // Modify the event value as needed
+      const modifiedEvent = {
+        ...ev,
+        target: {
+          ...ev.target,
+          value: newValue,
+        },
+      };
+
+      props.onChange(modifiedEvent);
     }
 
     if (props.minDate && props.minDate.length > 0) {
@@ -134,7 +132,7 @@ function DatePickerComponent(props: DatePickerProps, ref: React.Ref<InputRef>) {
   });
 
   return (
-    <div className="usa-form-group date-picker">
+    <div className={`usa-form-group date-picker ${props.className ?? ''}`}>
       <label className="usa-label" id={id + '-date-label'} htmlFor={id + '-date'}>
         {label || ''}
       </label>
@@ -151,7 +149,7 @@ function DatePickerComponent(props: DatePickerProps, ref: React.Ref<InputRef>) {
           data-testid={id}
           min={minDate}
           max={maxDate}
-          value={dateValue ?? undefined}
+          value={dateValue ?? ''}
           disabled={isDisabled}
           required={props.required}
           ref={inputRef}
