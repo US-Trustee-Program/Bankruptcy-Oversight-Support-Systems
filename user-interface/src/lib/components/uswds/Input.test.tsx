@@ -174,3 +174,175 @@ describe('Tests for USWDS Input component when no value is initially set.', () =
     });
   });
 });
+
+describe('Input additional coverage tests', () => {
+  const ref = React.createRef<InputRef>();
+  const mockOnChange = vi.fn();
+  const mockOnFocus = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test('should handle ariaDescription prop', () => {
+    const description = 'This is a test description';
+    render(<Input id="test-aria" ariaDescription={description} onChange={mockOnChange} />);
+
+    const inputEl = screen.getByTestId('test-aria');
+    const hintEl = document.querySelector('.usa-hint');
+
+    expect(hintEl).toBeInTheDocument();
+    expect(hintEl).toHaveTextContent(description);
+    expect(inputEl).toHaveAttribute('aria-describedby', expect.stringContaining('input-hint-'));
+  });
+
+  test('should handle focus method and onFocus prop', async () => {
+    render(
+      <Input
+        ref={ref}
+        id="test-focus"
+        label="Test Focus"
+        onFocus={mockOnFocus}
+        onChange={mockOnChange}
+      />,
+    );
+
+    const inputEl = screen.getByTestId('test-focus');
+
+    // Test ref focus method
+    ref.current?.focus();
+    await waitFor(() => {
+      expect(inputEl).toHaveFocus();
+    });
+
+    // Test onFocus prop
+    fireEvent.focus(inputEl);
+    expect(mockOnFocus).toHaveBeenCalled();
+  });
+
+  test('should handle disable/enable via ref', async () => {
+    render(<Input ref={ref} id="test-disable" onChange={mockOnChange} />);
+
+    const inputEl = screen.getByTestId('test-disable');
+    expect(inputEl).not.toBeDisabled();
+
+    ref.current?.disable(true);
+    await waitFor(() => {
+      expect(inputEl).toBeDisabled();
+    });
+
+    ref.current?.disable(false);
+    await waitFor(() => {
+      expect(inputEl).not.toBeDisabled();
+    });
+  });
+
+  test('should handle getValue method', () => {
+    render(<Input ref={ref} id="test-get-value" value="initial value" onChange={mockOnChange} />);
+
+    expect(ref.current?.getValue()).toBe('initial value');
+  });
+
+  test('should handle icon prop without clear button', () => {
+    render(
+      <Input id="test-icon" icon="search" includeClearButton={false} onChange={mockOnChange} />,
+    );
+
+    const iconContainer = document.querySelector('.usa-input-prefix');
+    const icon = document.querySelector('.usa-icon');
+
+    expect(iconContainer).toBeInTheDocument();
+    expect(icon).toBeInTheDocument();
+    expect(iconContainer).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  test('should handle clear button functionality', async () => {
+    render(
+      <Input
+        ref={ref}
+        id="test-clear-functionality"
+        value="some text"
+        includeClearButton={true}
+        onChange={mockOnChange}
+      />,
+    );
+
+    const inputEl = screen.getByTestId('test-clear-functionality');
+    const clearButton = screen.getByTestId('button-clear-test-clear-functionality');
+
+    expect(clearButton).toBeInTheDocument();
+    expect(inputEl).toHaveValue('some text');
+
+    await userEvent.click(clearButton);
+
+    await waitFor(() => {
+      expect(inputEl).toHaveValue('');
+      expect(inputEl).toHaveFocus();
+    });
+  });
+
+  test('should not show clear button when disabled', () => {
+    render(
+      <Input
+        id="test-clear-disabled"
+        value="some text"
+        includeClearButton={true}
+        disabled={true}
+        onChange={mockOnChange}
+      />,
+    );
+
+    const clearButton = screen.queryByTestId('button-clear-test-clear-disabled');
+    expect(clearButton).not.toBeInTheDocument();
+  });
+
+  test('should handle required prop properly', () => {
+    render(<Input id="test-required" label="Test Label" required={true} onChange={mockOnChange} />);
+    const input = document.getElementById('test-required') as HTMLInputElement;
+    expect(input).toBeRequired();
+  });
+
+  test('should handle error input group styling', () => {
+    render(<Input id="test-error-group" errorMessage="Test error" onChange={mockOnChange} />);
+
+    const inputGroup = document.querySelector('.usa-input-group');
+    expect(inputGroup).toHaveClass('usa-input-group--error');
+  });
+
+  test('should generate aria-describedby when no id provided', () => {
+    // Test the fallback for ariaDescribedBy when no id is provided
+    render(<Input ariaDescription="Test description" onChange={mockOnChange} />);
+
+    const hintElement = document.querySelector('.usa-hint');
+    expect(hintElement).toBeInTheDocument();
+    expect(hintElement?.id).toMatch(/input-hint-[a-z0-9]+/);
+  });
+
+  test('should handle various input types and autoComplete', () => {
+    render(
+      <Input
+        id="test-types"
+        type="email"
+        autoComplete="off"
+        inputMode="email"
+        onChange={mockOnChange}
+      />,
+    );
+
+    const inputEl = screen.getByTestId('test-types');
+    expect(inputEl).toHaveAttribute('type', 'email');
+    expect(inputEl).toHaveAttribute('autocomplete', 'off');
+    expect(inputEl).toHaveAttribute('inputmode', 'email');
+  });
+
+  test('should handle className prop on form group and input', () => {
+    const customClass = 'my-custom-class';
+    render(<Input id="test-class" className={customClass} onChange={mockOnChange} />);
+
+    const formGroup = document.querySelector('.usa-form-group');
+    const inputEl = screen.getByTestId('test-class');
+
+    expect(formGroup).toHaveClass(customClass);
+    expect(inputEl).toHaveClass(`usa-input usa-tooltip ${customClass}`);
+  });
+});
