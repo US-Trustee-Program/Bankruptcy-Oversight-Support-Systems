@@ -7,7 +7,7 @@ import { render, waitFor } from '@testing-library/react';
 import { AddCaseModel } from '@/data-verification/consolidation/consolidationViewModel';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { BrowserRouter } from 'react-router-dom';
-import React from 'react';
+import React, { act } from 'react';
 
 describe('AddCaseModal', () => {
   const handleAddCaseCourtSelectChange = vi.fn().mockReturnValue(undefined);
@@ -70,7 +70,9 @@ describe('AddCaseModal', () => {
 
   test('should set the selected court division equal to the default division code', async () => {
     const { ref, viewModel } = renderWithProps({ defaultDivisionCode: '081' });
-    ref.current!.show({});
+    act(() => {
+      ref.current!.show({});
+    });
     await waitFor(() => {
       expect(viewModel.additionalCaseDivisionRef.current!.getSelections()).toEqual([
         { value: '081', label: 'label' },
@@ -80,7 +82,9 @@ describe('AddCaseModal', () => {
 
   test('should not set a court division if the default division code is bad', async () => {
     const { ref, viewModel } = renderWithProps({ defaultDivisionCode: 'bad' });
-    ref.current!.show({});
+    act(() => {
+      ref.current!.show({});
+    });
     await waitFor(() => {
       expect(viewModel.additionalCaseDivisionRef.current!.getSelections()).toEqual([]);
     });
@@ -88,7 +92,9 @@ describe('AddCaseModal', () => {
 
   test('should delegate reset to the view model', async () => {
     const { ref } = renderWithProps();
-    ref.current!.hide(true);
+    act(() => {
+      ref.current!.hide(true);
+    });
     expect(handleAddCaseReset).toHaveBeenCalled();
   });
 

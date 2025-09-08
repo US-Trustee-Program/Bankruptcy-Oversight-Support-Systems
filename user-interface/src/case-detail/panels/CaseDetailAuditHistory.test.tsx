@@ -121,8 +121,10 @@ describe('audit history tests', () => {
 
     render(<CaseDetailAuditHistory caseId={caseId} />);
 
-    const historyTable = screen.queryByTestId('loading-indicator');
-    expect(historyTable).toBeInTheDocument();
+    await waitFor(() => {
+      const loading = screen.queryByTestId('loading-indicator');
+      expect(loading).toBeInTheDocument();
+    });
   });
 
   test('should display no assignments message if no history exists', async () => {
@@ -186,14 +188,18 @@ describe('audit history tests', () => {
 
     render(<CaseDetailAuditHistory caseId={caseId} />);
 
+    let previousElement;
     await waitFor(() => {
-      const previousElement = screen.queryByTestId('previous-assignment-0');
+      previousElement = screen.queryByTestId('previous-assignment-0');
       expect(previousElement).toBeInTheDocument();
-      expect(previousElement).toHaveTextContent('(none)');
     });
+    expect(previousElement).toHaveTextContent('(none)');
 
-    const newElement = screen.queryByTestId('new-assignment-0');
-    expect(newElement).toBeInTheDocument();
+    let newElement;
+    await waitFor(() => {
+      newElement = screen.queryByTestId('new-assignment-0');
+      expect(newElement).toBeInTheDocument();
+    });
     expect(newElement).toHaveTextContent('(none)');
   });
 
@@ -224,28 +230,46 @@ describe('audit history tests', () => {
 
     render(<CaseDetailAuditHistory caseId={caseId} />);
 
+    let previousElement1;
     await waitFor(() => {
-      const previousElement1 = screen.queryByTestId('previous-order-0');
+      previousElement1 = screen.queryByTestId('previous-order-0');
       expect(previousElement1).toBeInTheDocument();
-      expect(previousElement1).toHaveTextContent('Pending Review');
     });
+    expect(previousElement1).toHaveTextContent('Pending Review');
 
-    const newElement1 = screen.queryByTestId('new-order-0');
-    expect(newElement1).toBeInTheDocument();
+    let newElement1;
+    await waitFor(() => {
+      newElement1 = screen.queryByTestId('new-order-0');
+      expect(newElement1).toBeInTheDocument();
+    });
     expect(newElement1).toHaveTextContent('Verified');
 
-    const changeDate1 = screen.queryByTestId('change-date-0');
+    let changeDate1;
+    await waitFor(() => {
+      changeDate1 = screen.queryByTestId('change-date-0');
+      expect(changeDate1).toBeInTheDocument();
+    });
     expect(changeDate1).toHaveTextContent('01/31/2024');
 
-    const previousElement2 = screen.queryByTestId('previous-order-1');
-    expect(previousElement2).toBeInTheDocument();
+    let previousElement2;
+    await waitFor(() => {
+      previousElement2 = screen.queryByTestId('previous-order-1');
+      expect(previousElement2).toBeInTheDocument();
+    });
     expect(previousElement2).toHaveTextContent('(none)');
 
-    const newElement2 = screen.queryByTestId('new-order-1');
-    expect(newElement2).toBeInTheDocument();
+    let newElement2;
+    await waitFor(() => {
+      newElement2 = screen.queryByTestId('new-order-1');
+      expect(newElement2).toBeInTheDocument();
+    });
     expect(newElement2).toHaveTextContent('Pending Review');
 
-    const changeDate2 = screen.queryByTestId('change-date-1');
+    let changeDate2;
+    await waitFor(() => {
+      changeDate2 = screen.queryByTestId('change-date-1');
+      expect(changeDate2).toBeInTheDocument();
+    });
     expect(changeDate2).toHaveTextContent('01/29/2024');
   });
 });

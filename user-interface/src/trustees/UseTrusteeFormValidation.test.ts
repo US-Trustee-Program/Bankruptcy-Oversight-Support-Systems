@@ -62,7 +62,10 @@ describe('useTrusteeFormValidation', () => {
   test('validates required fields', () => {
     const { result } = renderHook(() => useTrusteeFormValidation());
 
-    const validationResult = result.current.isFormValidAndComplete(EMPTY_FORM_DATA);
+    let validationResult;
+    act(() => {
+      validationResult = result.current.isFormValidAndComplete(EMPTY_FORM_DATA);
+    });
 
     expect(validationResult).toBe(false);
   });
@@ -76,7 +79,10 @@ describe('useTrusteeFormValidation', () => {
       zipCode,
     };
 
-    const validationResult = result.current.isFormValidAndComplete(formData);
+    let validationResult;
+    act(() => {
+      validationResult = result.current.isFormValidAndComplete(formData);
+    });
 
     expect(validationResult).toBe(false);
   });
@@ -90,7 +96,10 @@ describe('useTrusteeFormValidation', () => {
       zipCode,
     };
 
-    const validationResult = result.current.isFormValidAndComplete(formData);
+    let validationResult;
+    act(() => {
+      validationResult = result.current.isFormValidAndComplete(formData);
+    });
     expect(validationResult).toBe(true);
   });
 
@@ -212,7 +221,10 @@ describe('useTrusteeFormValidation', () => {
   test('validates trimmed values', () => {
     const { result } = renderHook(() => useTrusteeFormValidation());
 
-    const validationResult = result.current.isFormValidAndComplete(SPACES_FORM_DATA);
+    let validationResult;
+    act(() => {
+      validationResult = result.current.isFormValidAndComplete(SPACES_FORM_DATA);
+    });
 
     expect(validationResult).toBeFalsy();
   });
