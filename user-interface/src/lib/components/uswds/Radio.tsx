@@ -28,12 +28,16 @@ function RadioComponent(props: RadioProps, ref: React.Ref<RadioRef>) {
   }
 
   function check(value: boolean) {
-    if (inputRef.current) inputRef.current.checked = value;
+    if (inputRef.current) {
+      inputRef.current.checked = value;
+    }
   }
 
   function handleOnClick(_ev: React.MouseEvent<HTMLButtonElement>) {
     // clicking a radio button should always select it.  You should not be able to unselect by clicking a selected radio.
-    if (inputRef.current?.checked !== undefined) inputRef.current.checked = true;
+    if (inputRef.current?.checked !== undefined) {
+      inputRef.current.checked = true;
+    }
 
     if (props.onChange && inputRef.current?.value) {
       props.onChange(inputRef.current?.value);

@@ -23,7 +23,7 @@ export interface ValidationError {
 export interface TrusteeFormValidation {
   fieldErrors: Record<string, string>;
   errors: ValidationError[];
-  validateFieldAndUpdate: (field: string, value: string) => string | null;
+  validateFieldAndUpdate: (field: keyof TrusteeFormData, value: string) => string | null;
   clearErrors: () => void;
   clearFieldError: (field: string) => void;
   areRequiredFieldsFilled: (formData: TrusteeFormData) => boolean;

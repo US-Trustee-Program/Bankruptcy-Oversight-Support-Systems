@@ -45,6 +45,7 @@ export interface ComboBoxProps extends Omit<InputProps, 'onChange' | 'onFocus' |
   singularLabel?: string;
   pluralLabel?: string;
   overflowStrategy?: 'ellipsis';
+  errorMessage?: string;
 }
 
 function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
@@ -63,6 +64,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     singularLabel,
     pluralLabel,
     overflowStrategy,
+    errorMessage,
     ...otherProps
   } = props;
 
@@ -350,7 +352,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   }
 
   function handleToggleKeyDown(ev: React.KeyboardEvent) {
-    if (!comboboxDisabled && ev.key === 'ArrowDown') {
+    if (!comboboxDisabled && (ev.key === 'ArrowDown' || ev.key === 'Enter')) {
       handleToggleDropdown();
     }
   }
@@ -408,7 +410,11 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   // ========== JSX ==========
 
   return (
-    <div id={comboBoxId} className="usa-form-group combo-box-form-group" ref={comboBoxRef}>
+    <div
+      id={comboBoxId}
+      className={`usa-form-group combo-box-form-group ${props.className ?? ''}`}
+      ref={comboBoxRef}
+    >
       <div className={`combo-box-label ${multiSelect === true ? 'multi-select' : 'single-select'}`}>
         <label
           className="usa-label"
@@ -420,7 +426,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       </div>
       <div className="usa-combo-box">
         <div
-          className={`input-container usa-input ${comboboxDisabled ? 'disabled' : ''}`}
+          className={`input-container usa-input ${comboboxDisabled ? 'disabled' : ''} ${errorMessage && errorMessage.length > 0 ? 'usa-input-group--error' : ''}`}
           role="combobox"
           aria-haspopup="listbox"
           aria-owns={`${comboBoxId}-item-list`}
@@ -433,11 +439,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           onKeyDown={handleToggleKeyDown}
           ref={containerRef}
         >
-          <span id={`${comboBoxId}-aria-description`} className="screen-reader-only">
-            Combo box {multiSelect ? 'multi-select ' : ''}
-            {ariaDescription ? `${ariaDescription}. ` : ''}
-            {getSelectedItemsDescription()}
-          </span>
           <div className="combo-box-input-container" role="presentation">
             {expanded ? (
               <>
@@ -473,6 +474,16 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
               </span>
             )}
           </div>
+          <span id={`${comboBoxId}-aria-description`} className="screen-reader-only">
+            {label && label + '. '}
+            Combo box {multiSelect ? 'multi-select ' : ''}
+            {props.required ? 'required. ' : ''}
+            {ariaDescription ? `${ariaDescription}. ` : ''}
+            {getSelectedItemsDescription()}
+            {!comboboxDisabled
+              ? 'Press Enter or Down Arrow key to open the dropdown list.'
+              : 'Combo box is disabled.'}
+          </span>
           <Button
             id={`${comboBoxId}-expand`}
             className="expand-button"
@@ -482,7 +493,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
             disabled={comboboxDisabled}
             tabIndex={-1}
             type="button"
-            aria-label="Press down arrow key to expand dropdown."
             aria-disabled={comboboxDisabled}
           >
             <Icon name={expanded ? 'expand_less' : 'expand_more'}></Icon>
@@ -543,6 +553,11 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         >
           clear
         </Button>
+      )}
+      {errorMessage && errorMessage.length > 0 && (
+        <div id={`${props.id}-input__error-message`} className="usa-input__error-message">
+          {errorMessage}
+        </div>
       )}
     </div>
   );
