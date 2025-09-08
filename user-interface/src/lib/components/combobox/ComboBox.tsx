@@ -45,6 +45,7 @@ export interface ComboBoxProps extends Omit<InputProps, 'onChange' | 'onFocus' |
   singularLabel?: string;
   pluralLabel?: string;
   overflowStrategy?: 'ellipsis';
+  errorMessage?: string;
 }
 
 function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
@@ -63,6 +64,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     singularLabel,
     pluralLabel,
     overflowStrategy,
+    errorMessage,
     ...otherProps
   } = props;
 
@@ -424,7 +426,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       </div>
       <div className="usa-combo-box">
         <div
-          className={`input-container usa-input ${comboboxDisabled ? 'disabled' : ''}`}
+          className={`input-container usa-input ${comboboxDisabled ? 'disabled' : ''} ${errorMessage && errorMessage.length > 0 ? 'usa-input-group--error' : ''}`}
           role="combobox"
           aria-haspopup="listbox"
           aria-owns={`${comboBoxId}-item-list`}
@@ -547,6 +549,11 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         >
           clear
         </Button>
+      )}
+      {errorMessage && errorMessage.length > 0 && (
+        <div id={`${props.id}-input__error-message`} className="usa-input__error-message">
+          {errorMessage}
+        </div>
       )}
     </div>
   );

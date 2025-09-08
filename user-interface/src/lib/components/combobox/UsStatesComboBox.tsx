@@ -18,6 +18,7 @@ function _UsStatesComboBox(props: Omit<ComboBoxProps, 'options'>, ref?: React.Re
       options={usStateOptions}
       singularLabel="state"
       pluralLabel="states"
+      errorMessage={props.errorMessage}
     />
   );
 }

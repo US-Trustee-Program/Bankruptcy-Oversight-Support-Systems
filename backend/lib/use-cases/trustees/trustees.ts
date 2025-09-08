@@ -1,31 +1,42 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteesRepository } from '../gateways.types';
 import {
+  Address,
   Trustee,
+  TRUSTEE_STATUS_VALUES,
   TrusteeInput,
-  validateTrusteeCreationInput,
+  TrusteeStatus,
 } from '../../../../common/src/cams/parties';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { getTrusteesRepository } from '../../factory';
+import { ValidationSpec, validateObject, flatten } from '../../../../common/src/cams/validation';
+import V from '../../../../common/src/cams/validators';
+import {
+  EMAIL_REGEX,
+  EXTENSION_REGEX,
+  PHONE_REGEX,
+  ZIP_REGEX,
+} from '../../../../common/src/cams/regex';
+import { BadRequestError } from '../../common-errors/bad-request';
 
 const MODULE_NAME = 'TRUSTEES-USE-CASE';
 
 export class TrusteesUseCase {
-  private trusteesRepository: TrusteesRepository;
+  private readonly trusteesRepository: TrusteesRepository;
 
   constructor(context: ApplicationContext) {
     this.trusteesRepository = getTrusteesRepository(context);
   }
 
   async createTrustee(context: ApplicationContext, trustee: TrusteeInput): Promise<Trustee> {
+    const validatorResult = validateObject(trusteeSpec, trustee);
+
     // Validate trustee creation input including address
-    const validationErrors = validateTrusteeCreationInput(trustee);
-    if (validationErrors.length > 0) {
-      throw getCamsError(
-        new Error(`Trustee validation failed: ${validationErrors.join(', ')}`),
-        MODULE_NAME,
-      );
+    if (!validatorResult.valid) {
+      const validationErrors = flatten(validatorResult.reasonMap || {});
+      const collectedErrors = 'Trustee validation failed: ' + validationErrors.join('. ') + '.';
+      throw new BadRequestError(MODULE_NAME, { message: collectedErrors });
     }
 
     try {
@@ -33,7 +44,7 @@ export class TrusteesUseCase {
       const userReference = getCamsUserReference(context.session.user);
       const trusteeForCreation: TrusteeInput = {
         ...trustee,
-        status: trustee.status || 'active',
+        status: trustee.status,
         districts: trustee.districts || [],
         chapters: trustee.chapters || [],
       };
@@ -72,3 +83,28 @@ export class TrusteesUseCase {
     }
   }
 }
+
+const addressSpec: ValidationSpec<Address> = {
+  address1: [V.minLength(1)],
+  address2: [V.optional(V.maxLength(50))],
+  address3: [V.optional(V.maxLength(50))],
+  city: [V.minLength(1)],
+  state: [V.exactLength(2)],
+  zipCode: [V.matches(ZIP_REGEX, 'Must be valid zip code')],
+  countryCode: [V.exactLength(2)],
+};
+
+const trusteeSpec: ValidationSpec<TrusteeInput> = {
+  name: [V.minLength(1)],
+  address: [V.optional(V.spec(addressSpec))],
+  address1: [V.notSet],
+  address2: [V.notSet],
+  address3: [V.notSet],
+  cityStateZipCountry: [V.notSet],
+  email: [V.matches(EMAIL_REGEX, 'Provided email does not match regular expression')],
+  phone: [V.matches(PHONE_REGEX, 'Provided phone number does not match regular expression')],
+  extension: [
+    V.optional(V.matches(EXTENSION_REGEX, 'Provided extension does not match regular expression')),
+  ],
+  status: [V.isInSet<TrusteeStatus>([...TRUSTEE_STATUS_VALUES])],
+};
