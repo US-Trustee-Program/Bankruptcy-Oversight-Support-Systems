@@ -81,7 +81,6 @@ export const Header = () => {
 
   const [activeNav, setActiveNav] = useState<NavState>(mapNavState(location.pathname));
 
-  // This logic flow doesn't make perfect sense to me. Can we combine the two conditionals?
   if (isAdmin(session, flags)) {
     userMenuItems.unshift({
       label: 'Admin',
