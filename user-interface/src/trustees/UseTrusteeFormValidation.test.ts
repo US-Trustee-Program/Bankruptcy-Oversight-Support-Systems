@@ -1,5 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 import { useTrusteeFormValidation } from './UseTrusteeFormValidation';
+import { TrusteeFormData } from '@/trustees/UseTrusteeFormValidation.types';
 
 // Test constants for form validation
 const VALID_FORM_DATA = {
@@ -38,7 +39,7 @@ const COMPLETE_VALID_FORM_DATA = {
   name: 'Jane Doe',
   address1: '123 Main Street',
   city: 'Springfield',
-  state: 'Illinois',
+  state: 'IL',
   zipCode: '62704',
   phone: '555-123-4567',
   email: 'jane.doe@example.com',
@@ -48,12 +49,10 @@ const COMPLETE_VALID_FORM_DATA = {
 // Error message constants
 const ERROR_MESSAGES = {
   TRUSTEE_NAME_REQUIRED: 'Trustee name is required',
-  ADDRESS_REQUIRED: 'Address line 1 is required',
+  ADDRESS_REQUIRED: 'Address is required',
   CITY_REQUIRED: 'City is required',
   STATE_REQUIRED: 'State is required',
-  ZIP_CODE_REQUIRED: 'ZIP code is required',
   ZIP_CODE_INVALID: 'ZIP code must be 5 digits or 9 digits with a hyphen',
-  EMAIL_REQUIRED: 'Email is required',
   EMAIL_INVALID: 'Email must be a valid email address',
   PHONE_REQUIRED: 'Phone is required',
   EXTENSION_INVALID: 'Extension must be 1 to 6 digits',
@@ -63,9 +62,7 @@ describe('useTrusteeFormValidation', () => {
   test('validates required fields', () => {
     const { result } = renderHook(() => useTrusteeFormValidation());
 
-    const formData = EMPTY_FORM_DATA;
-
-    const validationResult = result.current.isFormValidAndComplete(formData);
+    const validationResult = result.current.isFormValidAndComplete(EMPTY_FORM_DATA);
 
     expect(validationResult).toBe(false);
   });
@@ -97,7 +94,11 @@ describe('useTrusteeFormValidation', () => {
     expect(validationResult).toBe(true);
   });
 
-  const fieldTests = [
+  const fieldTests: {
+    field: keyof TrusteeFormData;
+    value: string;
+    expectedValue: null | string;
+  }[] = [
     { field: 'name', value: 'Fred', expectedValue: null },
     { field: 'address1', value: '123 Main', expectedValue: null },
     { field: 'city', value: 'Center City', expectedValue: null },
@@ -112,11 +113,11 @@ describe('useTrusteeFormValidation', () => {
       value: '12',
       expectedValue: ERROR_MESSAGES.ZIP_CODE_INVALID,
     },
-    { field: 'zipCode', value: '', expectedValue: ERROR_MESSAGES.ZIP_CODE_REQUIRED },
+    { field: 'zipCode', value: '', expectedValue: ERROR_MESSAGES.ZIP_CODE_INVALID },
     { field: 'email', value: 'test@example.com', expectedValue: null },
     { field: 'email', value: 'user@domain.org', expectedValue: null },
     { field: 'email', value: 'valid.email+tag@subdomain.example.com', expectedValue: null },
-    { field: 'email', value: '', expectedValue: ERROR_MESSAGES.EMAIL_REQUIRED },
+    { field: 'email', value: '', expectedValue: ERROR_MESSAGES.EMAIL_INVALID },
     {
       field: 'email',
       value: 'invalid-email',
@@ -143,7 +144,6 @@ describe('useTrusteeFormValidation', () => {
     { field: 'extension', value: '1234567', expectedValue: ERROR_MESSAGES.EXTENSION_INVALID },
     { field: 'extension', value: 'abc', expectedValue: ERROR_MESSAGES.EXTENSION_INVALID },
     { field: 'extension', value: '12a', expectedValue: ERROR_MESSAGES.EXTENSION_INVALID },
-    { field: 'foo', value: '', expectedValue: null },
   ];
   test.each(fieldTests)('validates individual field $field=$value to be $expectedValue', (args) => {
     const { result } = renderHook(() => useTrusteeFormValidation());

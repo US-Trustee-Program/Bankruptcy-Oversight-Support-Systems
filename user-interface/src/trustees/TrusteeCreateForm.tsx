@@ -150,7 +150,7 @@ export default function TrusteeCreateForm() {
     setter(value);
 
     debounce(() => {
-      validateFieldAndUpdate(name, value);
+      validateFieldAndUpdate(name as keyof TrusteeFormData, value);
     }, 300);
   }
 
@@ -194,8 +194,10 @@ export default function TrusteeCreateForm() {
   }
 
   async function handleSubmit(ev: React.FormEvent) {
-    ev.preventDefault();
-    await submit();
+    if (isFormValidAndComplete(getFormData())) {
+      ev.preventDefault();
+      await submit();
+    }
   }
 
   function handleCancel() {
@@ -262,7 +264,7 @@ export default function TrusteeCreateForm() {
                 autoComplete="off"
               />
             </div>
-
+            
             <div className="field-group">
               <Input
                 id="trustee-city"
@@ -291,6 +293,7 @@ export default function TrusteeCreateForm() {
                   }, 300);
                 }}
                 autoComplete="off"
+                errorMessage={fieldErrors['state']}
                 required
               ></UsStatesComboBox>
             </div>
@@ -435,12 +438,7 @@ export default function TrusteeCreateForm() {
 
         {errorMessage && <div role="alert">{errorMessage}</div>}
         <div className="usa-button-group">
-          <Button
-            id="submit-button"
-            disabled={isSubmitting || !isFormValidAndComplete(getFormData())}
-            type="submit"
-            onClick={handleSubmit}
-          >
+          <Button id="submit-button" type="submit" onClick={handleSubmit}>
             {isSubmitting ? 'Saving…' : 'Save'}
           </Button>
           <Button
