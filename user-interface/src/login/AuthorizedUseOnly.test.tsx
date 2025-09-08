@@ -18,8 +18,11 @@ const mockSetAck = LocalStorage.setAck as MockedFunction<typeof LocalStorage.set
 
 describe('AuthorizedUseOnly', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     mockGetAck.mockReturnValue(false);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   test('should render warning card with government use message', () => {
