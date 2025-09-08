@@ -1,5 +1,7 @@
 import { Auditable } from './auditable';
 import { Identifiable } from './document';
+import { ValidationSpec, Validators } from './validation';
+import { ZIP_REGEX } from './regex';
 
 // Chapter types supported for trustee assignments
 export type ChapterType = '7' | '7-panel' | '7-non-panel' | '11' | '11-subchapter-v' | '12' | '13';
@@ -157,3 +159,30 @@ export function validateTrusteeCreationInput(input: Partial<TrusteeInput>): stri
 
   return errors;
 }
+
+const validators: Validators;
+const addressSpec: ValidationSpec<Address> = {
+  address1: [validators.maxLength(1)],
+  address1: [Validators.minLength(1)],
+  address2: [V.optional(V.maxLength(50))],
+  address3: [V.optional(V.maxLength(50))],
+  city: [V.minLength(1)],
+  state: [V.exactLength(2)],
+  zipCode: [V.matches(ZIP_REGEX, 'Must be valid zip code')],
+  countryCode: [V.exactLength(2)],
+};
+
+const trusteeSpec: ValidationSpec<TrusteeInput> = {
+  name: [V.minLength(1)],
+  address: [V.optional(V.spec(addressSpec))],
+  address1: [V.notSet],
+  address2: [V.notSet],
+  address3: [V.notSet],
+  cityStateZipCountry: [V.notSet],
+  email: [V.matches(EMAIL_REGEX, 'Provided email does not match regular expression')],
+  phone: [V.matches(PHONE_REGEX, 'Provided phone number does not match regular expression')],
+  extension: [
+    V.optional(V.matches(EXTENSION_REGEX, 'Provided extension does not match regular expression')),
+  ],
+  status: [V.isInSet<TrusteeStatus>([...TRUSTEE_STATUS_VALUES])],
+};

@@ -59,6 +59,8 @@ import { getCamsErrorWithStack } from './common-errors/error-utilities';
 import { OfficeAssigneeMongoRepository } from './adapters/gateways/mongo/office-assignee.mongo.repository';
 import StorageQueueGateway from './adapters/gateways/storage-queue/storage-queue-gateway';
 import { TrusteesMongoRepository } from './adapters/gateways/mongo/trustees.mongo.repository';
+import { Validator } from '../../common/src/cams/validation';
+import V from '../../common/src/libs/validation/validator';
 
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
@@ -333,6 +335,10 @@ export const getTrusteesRepository = (context: ApplicationContext): TrusteesRepo
   return repo;
 };
 
+export const getValidator = (): Validator => {
+  return V;
+};
+
 export const getQueueGateway = (_ignore: ApplicationContext): QueueGateway => {
   return StorageQueueGateway;
 };
@@ -363,6 +369,7 @@ export const Factory = {
   getUserGroupGateway,
   getUsersRepository,
   getTrusteesRepository,
+  getValidator,
   getQueueGateway,
 };
 
