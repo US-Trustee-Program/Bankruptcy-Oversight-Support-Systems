@@ -352,7 +352,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   }
 
   function handleToggleKeyDown(ev: React.KeyboardEvent) {
-    if (!comboboxDisabled && ev.key === 'ArrowDown') {
+    if (!comboboxDisabled && (ev.key === 'ArrowDown' || ev.key === 'Enter')) {
       handleToggleDropdown();
     }
   }
@@ -439,11 +439,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           onKeyDown={handleToggleKeyDown}
           ref={containerRef}
         >
-          <span id={`${comboBoxId}-aria-description`} className="screen-reader-only">
-            Combo box {multiSelect ? 'multi-select ' : ''}
-            {ariaDescription ? `${ariaDescription}. ` : ''}
-            {getSelectedItemsDescription()}
-          </span>
           <div className="combo-box-input-container" role="presentation">
             {expanded ? (
               <>
@@ -479,6 +474,16 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
               </span>
             )}
           </div>
+          <span id={`${comboBoxId}-aria-description`} className="screen-reader-only">
+            {label && label + '. '}
+            Combo box {multiSelect ? 'multi-select ' : ''}
+            {props.required ? 'required. ' : ''}
+            {ariaDescription ? `${ariaDescription}. ` : ''}
+            {getSelectedItemsDescription()}
+            {!comboboxDisabled
+              ? 'Press Enter or Down Arrow key to open the dropdown list.'
+              : 'Combo box is disabled.'}
+          </span>
           <Button
             id={`${comboBoxId}-expand`}
             className="expand-button"
@@ -488,7 +493,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
             disabled={comboboxDisabled}
             tabIndex={-1}
             type="button"
-            aria-label="Press down arrow key to expand dropdown."
             aria-disabled={comboboxDisabled}
           >
             <Icon name={expanded ? 'expand_less' : 'expand_more'}></Icon>
