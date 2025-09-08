@@ -95,13 +95,16 @@ test.describe('Trustees', () => {
       // Select the first available district option
       await districtOptions.first().click();
     }
+    const districtsExpandButton = page.locator('#trustee-districts-expand');
+    await districtsExpandButton.click();
 
     // Test chapter types selection dropdown
     const chaptersCombobox = page.locator('#trustee-chapters');
     await expect(chaptersCombobox).toBeVisible();
 
     // Click to open the dropdown
-    await chaptersCombobox.click();
+    const chaptersExpandButton = page.locator('#trustee-chapters-expand');
+    await chaptersExpandButton.click();
 
     // Verify chapter options are visible
     const chapterOptions = page.locator(

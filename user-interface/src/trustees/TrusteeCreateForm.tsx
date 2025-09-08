@@ -150,7 +150,7 @@ export default function TrusteeCreateForm() {
     setter(value);
 
     debounce(() => {
-      validateFieldAndUpdate(name, value);
+      validateFieldAndUpdate(name as keyof TrusteeFormData, value);
     }, 300);
   }
 
@@ -194,8 +194,10 @@ export default function TrusteeCreateForm() {
   }
 
   async function handleSubmit(ev: React.FormEvent) {
-    ev.preventDefault();
-    await submit();
+    if (isFormValidAndComplete(getFormData())) {
+      ev.preventDefault();
+      await submit();
+    }
   }
 
   function handleCancel() {
@@ -205,236 +207,238 @@ export default function TrusteeCreateForm() {
 
   return (
     <div className="create-trustee-screen">
-      <div className="grid-row grid-gap-lg">
-        <div className="grid-col-12">
-          <div className="grid-row grid-gap-lg">
-            <div className="grid-col-12">
-              <h1 className="text-no-wrap display-inline-block margin-right-1">
-                Add Trustee Profile
-              </h1>
-              {districtLoadError && (
-                <Stop id="trustee-stop" title="Error" message={districtLoadError} asError />
-              )}
-            </div>
-          </div>
-        </div>
+      <div className="form-header">
+        <h1 className="text-no-wrap display-inline-block margin-right-1">Add Trustee Profile</h1>
+        {districtLoadError && (
+          <Stop id="trustee-stop" title="Error" message={districtLoadError} asError />
+        )}
       </div>
+
       <form aria-label="Create Trustee" data-testid="trustee-create-form">
-        <div className="grid-row grid-gap-lg">
-          <div className="grid-col-12">
-            <div className="grid-row grid-gap-lg">
-              <div className="grid-col-12">
-                <span>
-                  A red asterisk (<span className="text-secondary-dark">*</span>) indicates a
-                  required field.
-                </span>
-              </div>
-            </div>
-          </div>
+        <div className="form-header">
+          <span>
+            A red asterisk (<span className="text-secondary-dark">*</span>) indicates a required
+            field.
+          </span>
         </div>
-        <div className="grid-row grid-gap-lg">
-          <div className="grid-col-6">
-            <div className="grid-row grid-gap-lg">
-              <div className="grid-col-8">
-                <Input
-                  id="trustee-name"
-                  name="name"
-                  label="Trustee Name"
-                  value={name}
-                  onChange={(e) => handleFieldChange(e, setName)}
-                  errorMessage={fieldErrors['name']}
-                  autoComplete="off"
-                  required
-                />
-                <Input
-                  id="trustee-address1"
-                  name="address1"
-                  label="Address Line 1"
-                  value={address1}
-                  onChange={(e) => handleFieldChange(e, setAddress1)}
-                  errorMessage={fieldErrors['address1']}
-                  autoComplete="off"
-                  required
-                />
-                <Input
-                  id="trustee-address2"
-                  name="address2"
-                  label="Address Line 2"
-                  value={address2}
-                  onChange={(e) => handleFieldChange(e, setAddress2)}
-                  errorMessage={fieldErrors['address2']}
-                  autoComplete="off"
-                />
-                <Input
-                  id="trustee-city"
-                  name="city"
-                  label="City"
-                  value={city}
-                  onChange={(e) => handleFieldChange(e, setCity)}
-                  errorMessage={fieldErrors['city']}
-                  autoComplete="off"
-                  required
-                />
-              </div>
+
+        <div className="form-container">
+          <div className="form-column">
+            <div className="field-group">
+              <Input
+                id="trustee-name"
+                className="trustee-name-input"
+                name="name"
+                label="Trustee Name"
+                value={name}
+                onChange={(e) => handleFieldChange(e, setName)}
+                errorMessage={fieldErrors['name']}
+                autoComplete="off"
+                required
+              />
             </div>
-            <div className="grid-row grid-gap-lg">
-              <div className="grid-col-8">
-                <UsStatesComboBox
-                  id="trustee-state"
-                  name="state"
-                  label="State"
-                  onUpdateSelection={(selectedOptions) => {
-                    const selectedValue = selectedOptions[0] ? selectedOptions[0].value : '';
-                    setState(selectedValue);
-                    debounce(() => {
-                      validateFieldAndUpdate('state', selectedValue);
-                    }, 300);
-                  }}
-                  autoComplete="off"
-                  required
-                ></UsStatesComboBox>
-              </div>
+
+            <div className="field-group">
+              <Input
+                id="trustee-address1"
+                className="trustee-address1-input"
+                name="address1"
+                label="Address Line 1"
+                value={address1}
+                onChange={(e) => handleFieldChange(e, setAddress1)}
+                errorMessage={fieldErrors['address1']}
+                autoComplete="off"
+                required
+              />
             </div>
-            <div className="grid-row grid-gap-lg">
-              <div className="grid-col-4">
-                <Input
-                  id="trustee-zip"
-                  name="zip"
-                  label="ZIP Code"
-                  value={zipCode}
-                  onChange={(e) => {
-                    const { value } = e.target;
-                    setZipCode(value);
-                    debounce(() => {
-                      validateFieldAndUpdate('zipCode', value);
-                    }, 300);
-                  }}
-                  errorMessage={fieldErrors['zipCode']}
-                  autoComplete="off"
-                  ariaDescription="Example: 12345"
-                  required
-                />
-              </div>
+
+            <div className="field-group">
+              <Input
+                id="trustee-address2"
+                className="trustee-address2-input"
+                name="address2"
+                label="Address Line 2"
+                value={address2}
+                onChange={(e) => handleFieldChange(e, setAddress2)}
+                errorMessage={fieldErrors['address2']}
+                autoComplete="off"
+              />
+            </div>
+
+            <div className="field-group">
+              <Input
+                id="trustee-city"
+                className="trustee-city-input"
+                name="city"
+                label="City"
+                value={city}
+                onChange={(e) => handleFieldChange(e, setCity)}
+                errorMessage={fieldErrors['city']}
+                autoComplete="off"
+                required
+              />
+            </div>
+
+            <div className="field-group">
+              <UsStatesComboBox
+                id="trustee-state"
+                className="trustee-state-input"
+                name="state"
+                label="State"
+                onUpdateSelection={(selectedOptions) => {
+                  const selectedValue = selectedOptions[0] ? selectedOptions[0].value : '';
+                  setState(selectedValue);
+                  debounce(() => {
+                    validateFieldAndUpdate('state', selectedValue);
+                  }, 300);
+                }}
+                autoComplete="off"
+                errorMessage={fieldErrors['state']}
+                required
+              ></UsStatesComboBox>
+            </div>
+
+            <div className="field-group">
+              <Input
+                id="trustee-zip"
+                className="trustee-zip-input"
+                name="zip"
+                label="ZIP Code"
+                value={zipCode}
+                onChange={(e) => {
+                  const { value } = e.target;
+                  setZipCode(value);
+                  debounce(() => {
+                    validateFieldAndUpdate('zipCode', value);
+                  }, 300);
+                }}
+                errorMessage={fieldErrors['zipCode']}
+                autoComplete="off"
+                ariaDescription="Example: 12345"
+                required
+              />
             </div>
           </div>
-          <div className="grid-col-6">
-            <div className="grid-row grid-gap-lg">
-              <div className="grid-col-4">
-                <PhoneNumberInput
-                  id="trustee-phone"
-                  name="phone"
-                  label="Phone"
-                  onChange={(value) => {
-                    const next = value ?? '';
-                    setPhone(next);
-                    debounce(() => {
-                      validateFieldAndUpdate('phone', next);
-                    }, 300);
-                  }}
-                  errorMessage={fieldErrors['phone']}
-                  autoComplete="off"
-                  ariaDescription="Example: 123-456-7890"
-                  required
-                />
-              </div>
-              <div className="grid-col-4">
-                <Input
-                  id="trustee-extension"
-                  name="extension"
-                  label="Extension"
-                  value={extension}
-                  onChange={(e) => handleFieldChange(e, setExtension)}
-                  errorMessage={fieldErrors['extension']}
-                  autoComplete="off"
-                  ariaDescription="Up to 6 digits"
-                />
-              </div>
+
+          <div className="form-column">
+            <div className="field-group">
+              <PhoneNumberInput
+                id="trustee-phone"
+                className="trustee-phone-input"
+                name="phone"
+                label="Phone"
+                onChange={(value) => {
+                  const next = value ?? '';
+                  setPhone(next);
+                  debounce(() => {
+                    validateFieldAndUpdate('phone', next);
+                  }, 300);
+                }}
+                errorMessage={fieldErrors['phone']}
+                autoComplete="off"
+                ariaDescription="Example: 123-456-7890"
+                required
+              />
+              <Input
+                id="trustee-extension"
+                className="trustee-extension-input"
+                name="extension"
+                label="Extension"
+                value={extension}
+                onChange={(e) => handleFieldChange(e, setExtension)}
+                errorMessage={fieldErrors['extension']}
+                autoComplete="off"
+                ariaDescription="Up to 6 digits"
+              />
             </div>
 
-            <div className="grid-row grid-gap-lg">
-              <div className="grid-col-8">
-                <Input
-                  id="trustee-email"
-                  name="email"
-                  label="Email"
-                  value={email}
-                  onChange={(e) => handleFieldChange(e, setEmail)}
-                  errorMessage={fieldErrors['email']}
-                  type="email"
-                  autoComplete="off"
-                  required
-                />
+            <div className="field-group">
+              <Input
+                id="trustee-email"
+                className="trustee-email-input"
+                name="email"
+                label="Email"
+                value={email}
+                onChange={(e) => handleFieldChange(e, setEmail)}
+                errorMessage={fieldErrors['email']}
+                type="email"
+                autoComplete="off"
+                required
+              />
+            </div>
 
-                <ComboBox
-                  id="trustee-districts"
-                  name="districts"
-                  label="District"
-                  options={districtOptions}
-                  onUpdateSelection={(selectedOptions) => {
-                    debounce(() => {
-                      const selectedValues = selectedOptions.map((option) => option.value);
-                      validateFieldAndUpdate('districts', selectedValues.join(','));
-                      setDistricts(selectedValues);
-                    }, 300);
-                  }}
-                  multiSelect={true}
-                  singularLabel="district"
-                  pluralLabel="districts"
-                  placeholder={districtLoadError ? 'Error loading districts' : 'Select districts'}
-                  autoComplete="off"
-                />
+            <div className="field-group">
+              <ComboBox
+                id="trustee-districts"
+                className="trustee-districts-input"
+                name="districts"
+                label="District"
+                options={districtOptions}
+                onUpdateSelection={(selectedOptions) => {
+                  debounce(() => {
+                    const selectedValues = selectedOptions.map((option) => option.value);
+                    validateFieldAndUpdate('districts', selectedValues.join(','));
+                    setDistricts(selectedValues);
+                  }, 300);
+                }}
+                multiSelect={true}
+                singularLabel="district"
+                pluralLabel="districts"
+                placeholder={districtLoadError ? 'Error loading districts' : 'Select districts'}
+                autoComplete="off"
+              />
+            </div>
 
-                <ComboBox
-                  id="trustee-chapters"
-                  name="chapters"
-                  label="Chapter Types"
-                  options={CHAPTER_OPTIONS}
-                  onUpdateSelection={(selectedOptions) => {
-                    debounce(() => {
-                      const selectedValues = selectedOptions.map(
-                        (option) => option.value as ChapterType,
-                      );
-                      validateFieldAndUpdate('chapters', selectedValues.join(','));
-                      setChapters(selectedValues);
-                    }, 300);
-                  }}
-                  multiSelect={true}
-                  singularLabel="chapter"
-                  pluralLabel="chapters"
-                  autoComplete="off"
-                />
+            <div className="field-group">
+              <ComboBox
+                id="trustee-chapters"
+                className="trustee-chapters-input"
+                name="chapters"
+                label="Chapter Types"
+                options={CHAPTER_OPTIONS}
+                onUpdateSelection={(selectedOptions) => {
+                  debounce(() => {
+                    const selectedValues = selectedOptions.map(
+                      (option) => option.value as ChapterType,
+                    );
+                    validateFieldAndUpdate('chapters', selectedValues.join(','));
+                    setChapters(selectedValues);
+                  }, 300);
+                }}
+                multiSelect={true}
+                singularLabel="chapter"
+                pluralLabel="chapters"
+                autoComplete="off"
+              />
+            </div>
 
-                <ComboBox
-                  id="trustee-status"
-                  name="status"
-                  label="Status"
-                  options={STATUS_OPTIONS}
-                  onUpdateSelection={(selectedOptions) => {
-                    debounce(() => {
-                      const selectedValues = selectedOptions.map(
-                        (option) => option.value as TrusteeStatus,
-                      );
-                      validateFieldAndUpdate('status', selectedValues.join(','));
-                      setStatus(selectedValues[0]);
-                    }, 300);
-                  }}
-                  multiSelect={false}
-                  autoComplete="off"
-                  ref={setStatusComboRef}
-                />
-              </div>
+            <div className="field-group">
+              <ComboBox
+                id="trustee-status"
+                className="trustee-status-input"
+                name="status"
+                label="Status"
+                options={STATUS_OPTIONS}
+                onUpdateSelection={(selectedOptions) => {
+                  debounce(() => {
+                    const selectedValues = selectedOptions.map(
+                      (option) => option.value as TrusteeStatus,
+                    );
+                    validateFieldAndUpdate('status', selectedValues.join(','));
+                    setStatus(selectedValues[0]);
+                  }, 300);
+                }}
+                multiSelect={false}
+                autoComplete="off"
+                ref={setStatusComboRef}
+              />
             </div>
           </div>
         </div>
 
         {errorMessage && <div role="alert">{errorMessage}</div>}
         <div className="usa-button-group">
-          <Button
-            id="submit-button"
-            disabled={isSubmitting || !isFormValidAndComplete(getFormData())}
-            type="submit"
-            onClick={handleSubmit}
-          >
+          <Button id="submit-button" type="submit" onClick={handleSubmit}>
             {isSubmitting ? 'Saving…' : 'Save'}
           </Button>
           <Button

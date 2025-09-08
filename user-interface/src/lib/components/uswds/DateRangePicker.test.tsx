@@ -154,4 +154,458 @@ describe('Test DateRangePicker component', async () => {
       expect(endDateText).toHaveValue(initialEndDate);
     });
   });
+
+  test('should handle aria description rendering', async () => {
+    // This test checks that the component renders properly with values
+    const value = { start: '2024-06-15', end: '2024-06-16' };
+
+    render(
+      <DateRangePicker
+        id="date-picker-voice"
+        value={value}
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const startDate = screen.getByTestId('date-picker-voice-date-start');
+    const endDate = screen.getByTestId('date-picker-voice-date-end');
+
+    expect(startDate).toHaveValue('2024-06-15');
+    expect(endDate).toHaveValue('2024-06-16');
+  });
+});
+
+describe('DateRangePicker additional coverage tests', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test('should handle disabled prop', () => {
+    render(
+      <DateRangePicker
+        id="date-picker-disabled"
+        disabled={true}
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const startDate = screen.getByTestId('date-picker-disabled-date-start');
+    const endDate = screen.getByTestId('date-picker-disabled-date-end');
+
+    expect(startDate).toBeDisabled();
+    expect(endDate).toBeDisabled();
+  });
+
+  test('should handle required prop', () => {
+    render(
+      <DateRangePicker
+        id="date-picker-required"
+        required={true}
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const startDate = screen.getByTestId('date-picker-required-date-start');
+    const endDate = screen.getByTestId('date-picker-required-date-end');
+
+    expect(startDate).toHaveAttribute('required');
+    expect(endDate).toHaveAttribute('required');
+  });
+
+  test('should handle aria-description', () => {
+    const ariaDescription = 'Select a date range for your search';
+    render(
+      <DateRangePicker
+        id="date-picker-aria"
+        ariaDescription={ariaDescription}
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const ariaElement = document.querySelector('#date-picker-aria-aria-description');
+    expect(ariaElement).toBeInTheDocument();
+    expect(ariaElement).toHaveAttribute('aria-live', 'polite');
+    expect(ariaElement).toHaveAttribute('hidden');
+  });
+
+  test('should handle initial value prop', () => {
+    const initialValue = { start: '2024-01-01', end: '2024-12-31' };
+    render(
+      <DateRangePicker
+        id="date-picker-value"
+        value={initialValue}
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const startDate = screen.getByTestId('date-picker-value-date-start');
+    const endDate = screen.getByTestId('date-picker-value-date-end');
+
+    expect(startDate).toHaveValue(initialValue.start);
+    expect(endDate).toHaveValue(initialValue.end);
+  });
+
+  test('should display aria descriptions for date range', () => {
+    const minDate = '2024-01-01';
+    const maxDate = '2024-12-31';
+
+    render(
+      <DateRangePicker
+        id="date-picker-range"
+        minDate={minDate}
+        maxDate={maxDate}
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const ariaElement = document.querySelector('#date-picker-range-aria-description');
+
+    // Check for format instruction
+    expect(ariaElement).toHaveTextContent('Format: numeric month / numeric day / 4-digit year.');
+
+    // Check for date range description
+    expect(ariaElement).toHaveTextContent('within 2024-01-01 and 2024-12-31');
+  });
+
+  test('should handle ref methods', async () => {
+    const rangeRef = React.createRef<DateRangePickerRef>();
+    const initialValue = { start: '2024-01-01', end: '2024-12-31' };
+
+    render(
+      <DateRangePicker
+        ref={rangeRef}
+        id="date-picker-ref"
+        value={initialValue}
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const startDate = screen.getByTestId('date-picker-ref-date-start');
+    const endDate = screen.getByTestId('date-picker-ref-date-end');
+
+    // Test setValue
+    const newValue = { start: '2024-02-01', end: '2024-11-30' };
+    rangeRef.current?.setValue(newValue);
+
+    await waitFor(() => {
+      expect(startDate).toHaveValue(newValue.start);
+      expect(endDate).toHaveValue(newValue.end);
+    });
+
+    // Test resetValue
+    rangeRef.current?.resetValue();
+    await waitFor(() => {
+      expect(startDate).toHaveValue(initialValue.start);
+      expect(endDate).toHaveValue(initialValue.end);
+    });
+
+    // Test clearValue
+    rangeRef.current?.clearValue();
+    await waitFor(() => {
+      expect(startDate).toHaveValue('');
+      expect(endDate).toHaveValue('');
+    });
+  });
+
+  test('should handle edge case with only minDate', () => {
+    const minDate = '2024-01-01';
+
+    render(
+      <DateRangePicker
+        id="date-picker-min-only"
+        minDate={minDate}
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const ariaElement = document.querySelector('#date-picker-min-only-aria-description');
+    expect(ariaElement).toHaveTextContent('2024-01-01');
+  });
+
+  test('should handle edge case with only maxDate', () => {
+    const maxDate = '2024-12-31';
+
+    render(
+      <DateRangePicker
+        id="date-picker-max-only"
+        maxDate={maxDate}
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const ariaElement = document.querySelector('#date-picker-max-only-aria-description');
+    expect(ariaElement).toHaveTextContent('Valid date range is on or before 2024-12-31');
+  });
+
+  test('should handle date formatting error gracefully', () => {
+    render(
+      <DateRangePicker
+        id="date-picker-format"
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    // The formatDate function should handle invalid dates gracefully
+    // This is tested by the fact that the component renders without throwing
+    expect(screen.getByLabelText('Start Date')).toBeInTheDocument();
+  });
+
+  test('should support getValue method but throw error', () => {
+    const rangeRef = React.createRef<DateRangePickerRef>();
+    render(
+      <DateRangePicker
+        id="date-picker-getvalue"
+        ref={rangeRef}
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    expect(() => rangeRef.current?.getValue()).toThrow('Not implemented');
+  });
+
+  test('should support disable method', async () => {
+    const rangeRef = React.createRef<DateRangePickerRef>();
+    render(
+      <DateRangePicker
+        id="date-picker-disable"
+        ref={rangeRef}
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const startDateInput = screen.getByTestId('date-picker-disable-date-start');
+    const endDateInput = screen.getByTestId('date-picker-disable-date-end');
+
+    // Initially should not be disabled
+    expect(startDateInput).not.toBeDisabled();
+    expect(endDateInput).not.toBeDisabled();
+
+    // Disable both inputs
+    rangeRef.current?.disable(true);
+
+    await waitFor(() => {
+      expect(startDateInput).toBeDisabled();
+      expect(endDateInput).toBeDisabled();
+    });
+
+    // Re-enable
+    rangeRef.current?.disable(false);
+
+    await waitFor(() => {
+      expect(startDateInput).not.toBeDisabled();
+      expect(endDateInput).not.toBeDisabled();
+    });
+  });
+
+  test('should support focus method', () => {
+    const rangeRef = React.createRef<DateRangePickerRef>();
+    render(
+      <DateRangePicker
+        id="date-picker-focus"
+        ref={rangeRef}
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const startDateInput = screen.getByTestId('date-picker-focus-date-start');
+
+    rangeRef.current?.focus();
+
+    expect(startDateInput).toHaveFocus();
+  });
+
+  test('should handle setValue with partial options', async () => {
+    const rangeRef = React.createRef<DateRangePickerRef>();
+    render(
+      <DateRangePicker
+        id="date-picker-setvalue"
+        ref={rangeRef}
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const startDateInput = screen.getByTestId('date-picker-setvalue-date-start');
+    const endDateInput = screen.getByTestId('date-picker-setvalue-date-end');
+
+    // Set only start date
+    rangeRef.current?.setValue({ start: '2024-01-01' });
+    await waitFor(() => {
+      expect(startDateInput).toHaveValue('2024-01-01');
+    });
+
+    // Set only end date
+    rangeRef.current?.setValue({ end: '2024-12-31' });
+    await waitFor(() => {
+      expect(endDateInput).toHaveValue('2024-12-31');
+    });
+
+    // Set both
+    rangeRef.current?.setValue({ start: '2024-06-01', end: '2024-06-30' });
+    await waitFor(() => {
+      expect(startDateInput).toHaveValue('2024-06-01');
+      expect(endDateInput).toHaveValue('2024-06-30');
+    });
+
+    // Set with empty object (should set empty strings)
+    rangeRef.current?.setValue({});
+    await waitFor(() => {
+      expect(startDateInput).toHaveValue('');
+      expect(endDateInput).toHaveValue('');
+    });
+  });
+
+  test('should handle clearValue with debounce', async () => {
+    const rangeRef = React.createRef<DateRangePickerRef>();
+    render(
+      <DateRangePicker
+        id="date-picker-clear"
+        ref={rangeRef}
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const startDateInput = screen.getByTestId('date-picker-clear-date-start');
+    const endDateInput = screen.getByTestId('date-picker-clear-date-end');
+
+    // Set some values first
+    rangeRef.current?.setValue({ start: '2024-01-01', end: '2024-12-31' });
+
+    // Clear values
+    rangeRef.current?.clearValue();
+
+    // Should clear immediately
+    expect(startDateInput).toHaveValue('');
+    expect(endDateInput).toHaveValue('');
+
+    // Wait for debounced clear
+    await waitFor(
+      () => {
+        expect(startDateInput).toHaveValue('');
+        expect(endDateInput).toHaveValue('');
+      },
+      { timeout: 300 },
+    );
+  });
+
+  test('should handle resetValue method with initial values', () => {
+    const rangeRef = React.createRef<DateRangePickerRef>();
+    render(
+      <DateRangePicker
+        id="date-picker-reset"
+        ref={rangeRef}
+        value={{ start: '2024-01-01', end: '2024-12-31' }}
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const startDateInput = screen.getByTestId('date-picker-reset-date-start');
+    const endDateInput = screen.getByTestId('date-picker-reset-date-end');
+
+    // Change the values
+    rangeRef.current?.setValue({ start: '2024-06-01', end: '2024-06-30' });
+
+    // Reset should go back to original values
+    rangeRef.current?.resetValue();
+
+    expect(startDateInput).toHaveValue('2024-01-01');
+    expect(endDateInput).toHaveValue('2024-12-31');
+  });
+
+  test('should handle invalid date formatting gracefully in aria description', () => {
+    // This test should trigger the formatDateRange catch block
+    // by providing an invalid date format
+    render(
+      <DateRangePicker
+        id="test-invalid-format"
+        minDate="invalid-date-format"
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    // The component should still render and not crash
+    const startInput = screen.getByLabelText(/start date/i);
+    const endInput = screen.getByLabelText(/end date/i);
+
+    expect(startInput).toBeInTheDocument();
+    expect(endInput).toBeInTheDocument();
+
+    // The aria description should handle the invalid date gracefully
+    const ariaElement = document.querySelector('#test-invalid-format-aria-description');
+    expect(ariaElement).toBeInTheDocument();
+  });
+
+  test('should trigger formatDateForVoiceOver catch block with malformed date', async () => {
+    // Create a malformed date that will cause an error
+    const malformedDate = null; // This will cause split to fail
+
+    // Dynamically import the function to test it directly
+    const { formatDateForVoiceOver } = await import('./DateRangePicker');
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = formatDateForVoiceOver(malformedDate as any);
+
+    // Should return undefined due to catch block
+    expect(result).toBeUndefined();
+  });
+
+  test('should execute debounced clearValue calls in clearValue method', () => {
+    const ref = React.createRef<DateRangePickerRef>();
+
+    render(
+      <DateRangePicker
+        id="test-debounced-clear"
+        ref={ref}
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    // Set some values first
+    ref.current?.setValue({ start: '2024-01-01', end: '2024-01-31' });
+
+    // Spy on setTimeout to see if debounced function is called
+    const setTimeoutSpy = vi.spyOn(window, 'setTimeout');
+
+    // Call clearValue which should trigger the debounced function
+    ref.current?.clearValue();
+
+    // Verify setTimeout was called (which means the debounced function will execute)
+    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), expect.any(Number));
+
+    // Manually trigger the callback to execute the code inside debounce
+    const callback = setTimeoutSpy.mock.calls[0][0] as () => void;
+    callback();
+
+    // Clean up
+    setTimeoutSpy.mockRestore();
+  });
+
+  test('should handle edge case in formatDateForVoiceOver with invalid date components', async () => {
+    const module = await import('./DateRangePicker');
+    const { formatDateForVoiceOver } = module;
+
+    // Test with null that will cause split to fail
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = formatDateForVoiceOver(null as any);
+
+    // Should return undefined due to catch block
+    expect(result).toBeUndefined();
+  });
 });

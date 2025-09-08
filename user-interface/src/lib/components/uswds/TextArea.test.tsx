@@ -193,3 +193,149 @@ describe('Test in odd cases', () => {
     expect(inputEl).toHaveFocus();
   });
 });
+
+describe('TextArea additional coverage tests', () => {
+  const ref = React.createRef<TextAreaRef>();
+  const mockOnChange = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test('should handle disabled prop properly', async () => {
+    render(
+      <TextArea
+        ref={ref}
+        id="test-disabled"
+        label="Test Disabled"
+        disabled={true}
+        onChange={mockOnChange}
+      />,
+    );
+
+    const textareaEl = screen.getByTestId('textarea-test-disabled');
+    expect(textareaEl).toBeDisabled();
+
+    // Should be able to enable/disable via ref
+    ref.current?.disable(false);
+    await waitFor(() => {
+      expect(textareaEl).not.toBeDisabled();
+    });
+
+    ref.current?.disable(true);
+    await waitFor(() => {
+      expect(textareaEl).toBeDisabled();
+    });
+  });
+
+  test('should handle focus method', async () => {
+    render(<TextArea ref={ref} id="test-focus" label="Test Focus" onChange={mockOnChange} />);
+
+    const textareaEl = screen.getByTestId('textarea-test-focus');
+    expect(textareaEl).not.toHaveFocus();
+
+    ref.current?.focus();
+    await waitFor(() => {
+      expect(textareaEl).toHaveFocus();
+    });
+  });
+
+  test('should handle required prop and show required indicator', () => {
+    render(
+      <TextArea id="test-required" label="Test Required" required={true} onChange={mockOnChange} />,
+    );
+
+    const requiredIndicator = document.querySelector('.required-form-field');
+    expect(requiredIndicator).toBeInTheDocument();
+  });
+
+  test('should apply className to form group and label correctly', () => {
+    const customClass = 'my-custom-class';
+    render(
+      <TextArea
+        id="test-classname"
+        label="Test ClassName"
+        className={customClass}
+        onChange={mockOnChange}
+      />,
+    );
+
+    const formGroup = document.querySelector('.usa-form-group.textarea-container');
+    const label = screen.getByTestId('textarea-label-test-classname');
+
+    expect(formGroup).toHaveClass(customClass);
+    expect(label).toHaveClass(`usa-label ${customClass}-label`);
+  });
+
+  test('should handle value prop changes', async () => {
+    const { rerender } = render(
+      <TextArea
+        ref={ref}
+        id="test-value-change"
+        label="Test Value Change"
+        value="initial"
+        onChange={mockOnChange}
+      />,
+    );
+
+    const textareaEl = screen.getByTestId('textarea-test-value-change');
+    expect(textareaEl).toHaveValue('initial');
+
+    // Change the prop value
+    rerender(
+      <TextArea
+        ref={ref}
+        id="test-value-change"
+        label="Test Value Change"
+        value="updated"
+        onChange={mockOnChange}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(textareaEl).toHaveValue('updated');
+    });
+  });
+
+  test('should handle all standard textarea props', () => {
+    render(
+      <TextArea
+        id="test-props"
+        label="Test Props"
+        placeholder="Enter text here"
+        rows={5}
+        cols={50}
+        maxLength={100}
+        onChange={mockOnChange}
+      />,
+    );
+
+    const textareaEl = screen.getByTestId('textarea-test-props');
+    expect(textareaEl).toHaveAttribute('placeholder', 'Enter text here');
+    expect(textareaEl).toHaveAttribute('rows', '5');
+    expect(textareaEl).toHaveAttribute('cols', '50');
+    expect(textareaEl).toHaveAttribute('maxlength', '100');
+  });
+
+  test('should handle clearValue emitting change event', async () => {
+    render(
+      <TextArea
+        ref={ref}
+        id="test-clear-emit"
+        label="Test Clear Emit"
+        value="some text"
+        onChange={mockOnChange}
+      />,
+    );
+
+    ref.current?.clearValue();
+
+    await waitFor(() => {
+      expect(mockOnChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          target: expect.objectContaining({ value: '' }),
+        }),
+      );
+    });
+  });
+});
