@@ -1,4 +1,4 @@
-import { render, waitFor } from '@testing-library/react';
+import { act, render, waitFor } from '@testing-library/react';
 import { OpenModalButton } from './OpenModalButton';
 import React from 'react';
 import { OpenModalButtonRef } from './modal-refs';
@@ -39,9 +39,11 @@ describe('Toggle Modal Button tests', () => {
 
   test('calling ref.disable should disable button', async () => {
     renderWithoutProps();
-    expect(button).not.toHaveAttribute('disabled');
+    await waitFor(() => {
+      expect(button).not.toHaveAttribute('disabled');
+    });
 
-    openButtonRef?.current?.disableButton(true);
+    act(() => openButtonRef?.current?.disableButton(true));
 
     await waitFor(() => {
       expect(button).toHaveAttribute('disabled');
@@ -50,9 +52,11 @@ describe('Toggle Modal Button tests', () => {
 
   test('should focus on button when ref.focus is called', async () => {
     renderWithoutProps();
-    expect(document.activeElement).toBe(document.body);
+    await waitFor(() => {
+      expect(document.activeElement).toBe(document.body);
+    });
 
-    openButtonRef?.current?.focus();
+    act(() => openButtonRef?.current?.focus());
 
     await waitFor(() => {
       expect(document.activeElement).toBe(button);
