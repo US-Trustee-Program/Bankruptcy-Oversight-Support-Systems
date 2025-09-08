@@ -15,6 +15,8 @@ import Icon from './uswds/Icon';
 import { DropdownMenu, MenuItem } from './cams/DropdownMenu/DropdownMenu';
 import { ADMIN_PATH } from '@/admin/admin-config';
 import Alert, { UswdsAlertStyle } from './uswds/Alert';
+import { FeatureFlagSet } from '@common/feature-flags';
+import { CamsSession } from '@common/cams/session';
 
 export enum NavState {
   DEFAULT,
@@ -59,6 +61,14 @@ const userMenuItems: MenuItem[] = [
   },
 ];
 
+export function isAdmin(session: CamsSession | null, flags: FeatureFlagSet): boolean {
+  return (
+    !!flags[PRIVILEGED_IDENTITY_MANAGEMENT] &&
+    !!session?.user.roles?.includes(CamsRole.SuperUser) &&
+    userMenuItems.find((menuItem) => menuItem.label === 'Admin') !== undefined
+  );
+}
+
 export function setCurrentNav(activeNav: NavState, stateToCheck: NavState): string {
   return activeNav === stateToCheck ? 'usa-current current' : '';
 }
@@ -72,13 +82,11 @@ export const Header = () => {
   const [activeNav, setActiveNav] = useState<NavState>(mapNavState(location.pathname));
 
   // This logic flow doesn't make perfect sense to me. Can we combine the two conditionals?
-  if (flags[PRIVILEGED_IDENTITY_MANAGEMENT] && session?.user.roles?.includes(CamsRole.SuperUser)) {
-    if (!userMenuItems.find((menuItem) => menuItem.label === 'Admin')) {
-      userMenuItems.unshift({
-        label: 'Admin',
-        address: ADMIN_PATH,
-      });
-    }
+  if (isAdmin(session, flags)) {
+    userMenuItems.unshift({
+      label: 'Admin',
+      address: ADMIN_PATH,
+    });
   }
 
   useEffect(() => {
@@ -209,7 +217,7 @@ export const Header = () => {
           </div>
         </div>
       </header>
-      {flags[SYSTEM_MAINTENANCE_BANNER] && (
+      {!!flags[SYSTEM_MAINTENANCE_BANNER] && (
         <div className="system-maintenance-banner grid-row">
           <div className="grid-col-1"></div>
           <div className="grid-col-10">
