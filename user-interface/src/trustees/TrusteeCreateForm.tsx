@@ -264,7 +264,7 @@ export default function TrusteeCreateForm() {
                 autoComplete="off"
               />
             </div>
-            
+
             <div className="field-group">
               <Input
                 id="trustee-city"
