@@ -296,11 +296,10 @@ describe('Input additional coverage tests', () => {
     expect(clearButton).not.toBeInTheDocument();
   });
 
-  test('should handle required prop and aria-label', () => {
+  test('should handle required prop properly', () => {
     render(<Input id="test-required" label="Test Label" required={true} onChange={mockOnChange} />);
-
-    const label = document.getElementById('test-required-label');
-    expect(label).toHaveAttribute('aria-label', 'Test Label is required');
+    const input = document.getElementById('test-required') as HTMLInputElement;
+    expect(input).toBeRequired();
   });
 
   test('should handle error input group styling', () => {

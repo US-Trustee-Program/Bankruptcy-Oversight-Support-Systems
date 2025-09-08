@@ -34,7 +34,9 @@ export function PaginationButton({
     ariaLabel = 'Next page';
   } else {
     classes.push(BUTTON_BASE_CLASS);
-    if (isCurrent) classes.push('usa-current');
+    if (isCurrent) {
+      classes.push('usa-current');
+    }
     ariaLabel = `Page ${children}`;
   }
 
