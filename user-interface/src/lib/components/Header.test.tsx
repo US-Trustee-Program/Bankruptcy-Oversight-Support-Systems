@@ -215,11 +215,15 @@ describe('Header', () => {
   });
 
   describe('menuNeedsAdmin', () => {
-    const mockSession: CamsSession = MockData.getCamsSession({
+    const superUser: CamsSession = MockData.getCamsSession({
       user: MockData.getCamsUser({ roles: [CamsRole.SuperUser] }),
     });
 
-    const mockFlags: FeatureFlagSet = {
+    const caseMgr: CamsSession = MockData.getCamsSession({
+      user: MockData.getCamsUser({ roles: [CamsRole.CaseAssignmentManager] }),
+    });
+
+    const defaultFlags: FeatureFlagSet = {
       [PRIVILEGED_IDENTITY_MANAGEMENT]: true,
     };
 
@@ -235,66 +239,42 @@ describe('Header', () => {
     });
 
     afterEach(() => {
-      // Clean up any mocks
-      vi.clearAllMocks();
+      vi.restoreAllMocks();
     });
 
-    test('should return true when all conditions are met', () => {
-      const result = menuNeedsAdmin(mockSession, mockFlags);
-      expect(result).toBe(true);
-    });
-
-    test('should return false when PRIVILEGED_IDENTITY_MANAGEMENT flag is false', () => {
-      const flagsWithoutPIM: FeatureFlagSet = {
-        [PRIVILEGED_IDENTITY_MANAGEMENT]: false,
-      };
-      const result = menuNeedsAdmin(mockSession, flagsWithoutPIM);
-      expect(result).toBe(false);
-    });
-
-    test('should return false when PRIVILEGED_IDENTITY_MANAGEMENT flag is undefined', () => {
-      const flagsWithoutPIM: FeatureFlagSet = {};
-      const result = menuNeedsAdmin(mockSession, flagsWithoutPIM);
-      expect(result).toBe(false);
-    });
-
-    test('should return false when session is null', () => {
-      const result = menuNeedsAdmin(null, mockFlags);
-      expect(result).toBe(false);
-    });
-
-    test('should return false when user does not have SuperUser role', () => {
-      const sessionWithoutSuperUser: CamsSession = MockData.getCamsSession({
-        user: MockData.getCamsUser({ roles: [CamsRole.CaseAssignmentManager] }),
-      });
-      const result = menuNeedsAdmin(sessionWithoutSuperUser, mockFlags);
-      expect(result).toBe(false);
-    });
-
-    test('should return false when user has no roles', () => {
-      const sessionWithoutRoles: CamsSession = MockData.getCamsSession({
-        user: MockData.getCamsUser({ roles: [] }),
-      });
-      const result = menuNeedsAdmin(sessionWithoutRoles, mockFlags);
-      expect(result).toBe(false);
-    });
-
-    test('should return false when user roles is undefined', () => {
-      const sessionWithUndefinedRoles: CamsSession = MockData.getCamsSession({
-        user: { ...MockData.getCamsUser(), roles: undefined },
-      });
-      const result = menuNeedsAdmin(sessionWithUndefinedRoles, mockFlags);
-      expect(result).toBe(false);
-    });
-
-    test('should return true when user has SuperUser among multiple roles', () => {
-      const sessionWithMultipleRoles: CamsSession = MockData.getCamsSession({
-        user: MockData.getCamsUser({
-          roles: [CamsRole.CaseAssignmentManager, CamsRole.SuperUser, CamsRole.DataVerifier],
+    type Row = [string, CamsSession | null, FeatureFlagSet, boolean];
+    const rows: Row[] = [
+      ['all conditions met', superUser, defaultFlags, true],
+      ['flag = false', superUser, { [PRIVILEGED_IDENTITY_MANAGEMENT]: false }, false],
+      ['flag = undefined', superUser, {}, false],
+      ['session = null', null, defaultFlags, false],
+      ['no superuser role', caseMgr, defaultFlags, false],
+      [
+        'no roles',
+        MockData.getCamsSession({ user: MockData.getCamsUser({ roles: [] }) }),
+        defaultFlags,
+        false,
+      ],
+      [
+        'roles = undefined',
+        MockData.getCamsSession({ user: { ...MockData.getCamsUser(), roles: undefined } }),
+        defaultFlags,
+        false,
+      ],
+      [
+        'multiple roles including superuser',
+        MockData.getCamsSession({
+          user: MockData.getCamsUser({
+            roles: [CamsRole.CaseAssignmentManager, CamsRole.SuperUser, CamsRole.DataVerifier],
+          }),
         }),
-      });
-      const result = menuNeedsAdmin(sessionWithMultipleRoles, mockFlags);
-      expect(result).toBe(true);
+        defaultFlags,
+        true,
+      ],
+    ];
+
+    test.each(rows)('%s', (_name, session, flags, expected) => {
+      expect(menuNeedsAdmin(session, flags)).toBe(expected);
     });
 
     test('should return false when userMenuItems already contains Admin item', () => {
