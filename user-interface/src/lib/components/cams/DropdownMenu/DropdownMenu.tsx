@@ -31,7 +31,9 @@ export function DropdownMenu(props: DropdownMenuProps) {
 
   function handleToggleExpand() {
     setExpanded(!expanded);
-    if (props.onClick) props.onClick();
+    if (props.onClick) {
+      props.onClick();
+    }
   }
 
   function handleClickOutside(ev: MouseEvent) {
@@ -52,26 +54,38 @@ export function DropdownMenu(props: DropdownMenuProps) {
       );
       if (ev.key === 'ArrowDown') {
         if (ev.currentTarget === lastItem) {
-          if (firstItem) firstItem.focus();
+          if (firstItem) {
+            firstItem.focus();
+          }
         } else {
           const nextItem = ev.currentTarget.parentElement?.nextElementSibling;
-          if (nextItem) (nextItem.children[0] as HTMLLIElement).focus();
+          if (nextItem) {
+            (nextItem.children[0] as HTMLLIElement).focus();
+          }
         }
         ev.preventDefault();
       } else if (ev.key === 'ArrowUp') {
         if (ev.currentTarget === firstItem) {
-          if (lastItem) lastItem.focus();
+          if (lastItem) {
+            lastItem.focus();
+          }
         } else {
           const previousItem = ev.currentTarget.parentElement?.previousElementSibling;
-          if (previousItem) (previousItem.children[0] as HTMLLIElement).focus();
+          if (previousItem) {
+            (previousItem.children[0] as HTMLLIElement).focus();
+          }
         }
         ev.preventDefault();
       } else if (ev.key === 'Home') {
         ev.preventDefault();
-        if (firstItem) firstItem.focus();
+        if (firstItem) {
+          firstItem.focus();
+        }
       } else if (ev.key === 'End') {
         ev.preventDefault();
-        if (lastItem) lastItem.focus();
+        if (lastItem) {
+          lastItem.focus();
+        }
       } else if (ev.key === 'Tab') {
         handleToggleExpand();
       } else if (ev.key === ' ' || ev.key === 'Enter') {
@@ -83,7 +97,9 @@ export function DropdownMenu(props: DropdownMenuProps) {
             const menuItem: HTMLLinkElement | null = document.querySelector(
               `#menu-link-${id}-${index}`,
             );
-            if (menuItem) menuItem.focus();
+            if (menuItem) {
+              menuItem.focus();
+            }
           }
         });
       }
@@ -103,7 +119,9 @@ export function DropdownMenu(props: DropdownMenuProps) {
 
       // move focus to first item in list
       const firstItem: HTMLElement | null = document.querySelector(`#menu-link-${id}-0`);
-      if (firstItem) firstItem.focus();
+      if (firstItem) {
+        firstItem.focus();
+      }
     } else {
       document.removeEventListener('mousedown', handleClickOutside);
     }
