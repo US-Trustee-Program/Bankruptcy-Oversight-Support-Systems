@@ -494,6 +494,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
             tabIndex={-1}
             type="button"
             aria-disabled={comboboxDisabled}
+            title={`Toggle ${label || 'dropdown'} options`}
           >
             <Icon name={expanded ? 'expand_less' : 'expand_more'}></Icon>
           </Button>
