@@ -3,7 +3,7 @@ import {
   TransferConfirmationModal,
   TransferConfirmationModalProps,
 } from './TransferConfirmationModal';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import React from 'react';
@@ -42,8 +42,10 @@ describe('TransferConfirmationModal component', () => {
   test('should call onCancel callback when cancelled', async () => {
     const { onCancel, modalRef } = renderWithProps();
 
-    modalRef.current?.show({
-      status: 'approved',
+    act(() => {
+      modalRef.current?.show({
+        status: 'approved',
+      });
     });
 
     const cancelButton = screen.getByTestId(`button-confirm-modal-${modalId}-cancel-button`);
@@ -62,8 +64,10 @@ describe('TransferConfirmationModal component', () => {
   test('should call onConfirm callback when approved', async () => {
     const { onConfirm, modalRef } = renderWithProps();
 
-    modalRef.current?.show({
-      status: 'approved',
+    act(() => {
+      modalRef.current?.show({
+        status: 'approved',
+      });
     });
 
     const confirmButton = screen.getByTestId(`button-confirm-modal-${modalId}-submit-button`);
@@ -83,8 +87,10 @@ describe('TransferConfirmationModal component', () => {
     const expectedText = `This will verify the transfer of case ${getCaseNumber(fromCase.caseId)} in ${fromCase.courtName} (${fromCase.courtDivisionName}) to case ${getCaseNumber(toCase.caseId)} in ${toCase.courtName} (${toCase.courtDivisionName}).`;
     const { modalRef } = renderWithProps();
 
-    modalRef.current?.show({
-      status: 'approved',
+    act(() => {
+      modalRef.current?.show({
+        status: 'approved',
+      });
     });
 
     await waitFor(() => {
@@ -104,20 +110,26 @@ describe('TransferConfirmationModal component', () => {
       toDivisionName: undefined,
     });
 
-    modalRef.current?.show({
-      status: 'rejected',
+    act(() => {
+      modalRef.current?.show({
+        status: 'rejected',
+      });
     });
 
     const textBlock = document.querySelector('.usa-modal__main section');
-    expect(textBlock).toHaveTextContent(expectedText);
+    await waitFor(() => {
+      expect(textBlock).toHaveTextContent(expectedText);
+    });
   });
 
   test('should display static text for rejection modal with destination court and case number', async () => {
     const expectedText = `This will stop the transfer of case ${getCaseNumber(fromCase.caseId)} in ${fromCase.courtName} (${fromCase.courtDivisionName}) to case ${getCaseNumber(toCase.caseId)} in ${toCase.courtName} (${toCase.courtDivisionName}).`;
     const { modalRef, onConfirm } = renderWithProps();
 
-    modalRef.current?.show({
-      status: 'rejected',
+    act(() => {
+      modalRef.current?.show({
+        status: 'rejected',
+      });
     });
 
     await waitFor(() => {

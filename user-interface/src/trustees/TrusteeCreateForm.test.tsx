@@ -10,7 +10,7 @@ import LocalStorage from '@/lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole } from '@common/cams/roles';
 import { BrowserRouter } from 'react-router-dom';
-import { MockedFunction } from 'vitest';
+import { Mock } from 'vitest';
 
 // Test data constants
 const TEST_TRUSTEE_DATA = {
@@ -102,7 +102,7 @@ describe('TrusteeCreateForm', () => {
     redirectTo: vi.fn(),
   };
 
-  let postTrusteeSpy: MockedFunction<() => unknown>;
+  let postTrusteeSpy: Mock<(...args: unknown[]) => unknown>;
 
   beforeEach(() => {
     // Set up default authorized user with TrusteeAdmin role
@@ -128,8 +128,9 @@ describe('TrusteeCreateForm', () => {
     vi.spyOn(UseGlobalAlertModule, 'useGlobalAlert').mockReturnValue(mockGlobalAlert);
     vi.spyOn(useCamsNavigatorModule, 'default').mockReturnValue(mockNavigate);
 
-    // Mock the useApi2 hook to include getCourts
     postTrusteeSpy = vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } });
+
+    // Mock the useApi2 hook to include getCourts
     vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
       getCourts: vi.fn().mockResolvedValue({
         data: MockData.getCourts(),
@@ -183,15 +184,18 @@ describe('TrusteeCreateForm', () => {
     expect(postTrusteeSpy).toHaveBeenCalled();
   });
 
-  test('renders disabled message when feature is off', () => {
+  test('renders disabled message when feature is off', async () => {
     vi.spyOn(FeatureFlags, 'default').mockReturnValue({
       [FeatureFlags.TRUSTEE_MANAGEMENT]: false,
     } as Record<string, boolean>);
     renderWithRouter();
-    expect(screen.getByTestId('trustee-create-disabled')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-create-disabled')).toBeInTheDocument();
+    });
   });
 
-  test('renders unauthorized message when user lacks TrusteeAdmin role', () => {
+  test('renders unauthorized message when user lacks TrusteeAdmin role', async () => {
     // Set up a user without TrusteeAdmin role
     const user = MockData.getCamsUser({ roles: [CamsRole.CaseAssignmentManager] });
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
@@ -202,11 +206,14 @@ describe('TrusteeCreateForm', () => {
     } as Record<string, boolean>);
 
     renderWithRouter();
-    expect(screen.getByTestId('alert-container-forbidden-alert')).toBeInTheDocument();
-    expect(screen.getByText('You do not have permission to manage Trustees')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('alert-container-forbidden-alert')).toBeInTheDocument();
+      expect(screen.getByText('You do not have permission to manage Trustees')).toBeInTheDocument();
+    });
   });
 
-  test('renders unauthorized message when user has no roles', () => {
+  test('renders unauthorized message when user has no roles', async () => {
     // Set up a user with no roles
     const user = MockData.getCamsUser({ roles: [] });
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
@@ -217,17 +224,22 @@ describe('TrusteeCreateForm', () => {
     } as Record<string, boolean>);
 
     renderWithRouter();
-    expect(screen.getByTestId('alert-container-forbidden-alert')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('alert-container-forbidden-alert')).toBeInTheDocument();
+    });
   });
 
-  test('renders form when user has TrusteeAdmin role and feature flag is enabled', () => {
+  test('renders form when user has TrusteeAdmin role and feature flag is enabled', async () => {
     // Uses default setup from beforeEach (TrusteeAdmin user and enabled feature flag)
     renderWithRouter();
 
     // Should render the form, not authorization messages
-    expect(screen.queryByTestId('trustee-create-disabled')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('trustee-create-unauthorized')).not.toBeInTheDocument();
-    expect(screen.getByTestId('trustee-create-form')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByTestId('trustee-create-disabled')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('trustee-create-unauthorized')).not.toBeInTheDocument();
+      expect(screen.getByTestId('trustee-create-form')).toBeInTheDocument();
+    });
   });
 
   test('submits required fields and calls onSuccess', async () => {
@@ -367,10 +379,12 @@ describe('TrusteeCreateForm', () => {
       vi.restoreAllMocks();
     });
 
-    test('renders all optional fields', () => {
+    test('renders all optional fields', async () => {
       renderWithRouter();
 
-      expect(screen.getByTestId('trustee-address2')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-address2')).toBeInTheDocument();
+      });
       expect(screen.getByTestId('trustee-phone')).toBeInTheDocument();
       expect(screen.getByTestId('trustee-extension')).toBeInTheDocument();
       expect(screen.getByTestId('trustee-email')).toBeInTheDocument();
@@ -827,6 +841,10 @@ describe('TrusteeCreateForm', () => {
         }),
         postTrustee: vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } }),
       } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
     });
 
     test('does not double-submit when form is submitted via different mechanisms', async () => {
