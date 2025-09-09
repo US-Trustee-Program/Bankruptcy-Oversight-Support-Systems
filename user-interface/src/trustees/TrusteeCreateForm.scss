@@ -50,7 +50,7 @@
   }
 
   .usa-button-group {
-    padding: 30px 24px;
+    padding: 30px 5px;
   }
 
   width: 100%;
@@ -103,6 +103,9 @@
           }
         }
       }
+    }
+    .usa-button-group {
+      padding: 30px 15px;
     }
   }
 }
