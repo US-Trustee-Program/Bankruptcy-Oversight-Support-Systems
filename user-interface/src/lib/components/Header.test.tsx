@@ -1,12 +1,15 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
-import { Header } from './Header';
+import { Header, menuNeedsAdmin } from './Header';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import LocalStorage from '../utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole } from '@common/cams/roles';
 import userEvent from '@testing-library/user-event';
+import { PRIVILEGED_IDENTITY_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
+import { FeatureFlagSet } from '@common/feature-flags';
+import { CamsSession } from '@common/cams/session';
 
 describe('Header', () => {
   const uiUser = userEvent.setup();
@@ -208,6 +211,125 @@ describe('Header', () => {
 
       const current = document.querySelectorAll('.usa-current.current');
       expect(current).toHaveLength(1);
+    });
+  });
+
+  describe('menuNeedsAdmin', () => {
+    const mockSession: CamsSession = MockData.getCamsSession({
+      user: MockData.getCamsUser({ roles: [CamsRole.SuperUser] }),
+    });
+
+    const mockFlags: FeatureFlagSet = {
+      [PRIVILEGED_IDENTITY_MANAGEMENT]: true,
+    };
+
+    // Clean up any modifications to userMenuItems between tests
+    beforeEach(() => {
+      // Reset LocalStorage session for each test
+      LocalStorage.setSession(MockData.getCamsSession({ user: MockData.getCamsUser() }));
+
+      // Reset feature flags
+      vi.spyOn(FeatureFlags, 'default').mockReturnValue({
+        'transfer-orders-enabled': true,
+      });
+    });
+
+    afterEach(() => {
+      // Clean up any mocks
+      vi.clearAllMocks();
+    });
+
+    test('should return true when all conditions are met', () => {
+      const result = menuNeedsAdmin(mockSession, mockFlags);
+      expect(result).toBe(true);
+    });
+
+    test('should return false when PRIVILEGED_IDENTITY_MANAGEMENT flag is false', () => {
+      const flagsWithoutPIM: FeatureFlagSet = {
+        [PRIVILEGED_IDENTITY_MANAGEMENT]: false,
+      };
+      const result = menuNeedsAdmin(mockSession, flagsWithoutPIM);
+      expect(result).toBe(false);
+    });
+
+    test('should return false when PRIVILEGED_IDENTITY_MANAGEMENT flag is undefined', () => {
+      const flagsWithoutPIM: FeatureFlagSet = {};
+      const result = menuNeedsAdmin(mockSession, flagsWithoutPIM);
+      expect(result).toBe(false);
+    });
+
+    test('should return false when session is null', () => {
+      const result = menuNeedsAdmin(null, mockFlags);
+      expect(result).toBe(false);
+    });
+
+    test('should return false when user does not have SuperUser role', () => {
+      const sessionWithoutSuperUser: CamsSession = MockData.getCamsSession({
+        user: MockData.getCamsUser({ roles: [CamsRole.CaseAssignmentManager] }),
+      });
+      const result = menuNeedsAdmin(sessionWithoutSuperUser, mockFlags);
+      expect(result).toBe(false);
+    });
+
+    test('should return false when user has no roles', () => {
+      const sessionWithoutRoles: CamsSession = MockData.getCamsSession({
+        user: MockData.getCamsUser({ roles: [] }),
+      });
+      const result = menuNeedsAdmin(sessionWithoutRoles, mockFlags);
+      expect(result).toBe(false);
+    });
+
+    test('should return false when user roles is undefined', () => {
+      const sessionWithUndefinedRoles: CamsSession = MockData.getCamsSession({
+        user: { ...MockData.getCamsUser(), roles: undefined },
+      });
+      const result = menuNeedsAdmin(sessionWithUndefinedRoles, mockFlags);
+      expect(result).toBe(false);
+    });
+
+    test('should return true when user has SuperUser among multiple roles', () => {
+      const sessionWithMultipleRoles: CamsSession = MockData.getCamsSession({
+        user: MockData.getCamsUser({
+          roles: [CamsRole.CaseAssignmentManager, CamsRole.SuperUser, CamsRole.DataVerifier],
+        }),
+      });
+      const result = menuNeedsAdmin(sessionWithMultipleRoles, mockFlags);
+      expect(result).toBe(true);
+    });
+
+    test('should return false when userMenuItems already contains Admin item', () => {
+      // This test simulates the scenario where the Header component has already been rendered
+      // and the Admin item has been added to userMenuItems
+
+      const session: CamsSession = MockData.getCamsSession({
+        user: MockData.getCamsUser({ roles: [CamsRole.SuperUser] }),
+      });
+      const flags: FeatureFlagSet = {
+        [PRIVILEGED_IDENTITY_MANAGEMENT]: true,
+      };
+
+      // First, verify that menuNeedsAdmin returns true initially
+      const initialResult = menuNeedsAdmin(session, flags);
+      expect(initialResult).toBe(true);
+
+      // Mock LocalStorage to return the session with SuperUser role
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+
+      // Mock feature flags to enable PRIVILEGED_IDENTITY_MANAGEMENT
+      vi.spyOn(FeatureFlags, 'default').mockReturnValue(flags);
+
+      // Render the Header component which will call menuNeedsAdmin and add Admin to userMenuItems
+      render(
+        <React.StrictMode>
+          <BrowserRouter>
+            <Header />
+          </BrowserRouter>
+        </React.StrictMode>,
+      );
+
+      // Now call menuNeedsAdmin again - it should return false because Admin item is now present
+      const resultAfterRender = menuNeedsAdmin(session, flags);
+      expect(resultAfterRender).toBe(false);
     });
   });
 });

@@ -61,11 +61,11 @@ const userMenuItems: MenuItem[] = [
   },
 ];
 
-export function isAdmin(session: CamsSession | null, flags: FeatureFlagSet): boolean {
+export function menuNeedsAdmin(session: CamsSession | null, flags: FeatureFlagSet): boolean {
   return (
     !!flags[PRIVILEGED_IDENTITY_MANAGEMENT] &&
     !!session?.user.roles?.includes(CamsRole.SuperUser) &&
-    userMenuItems.find((menuItem) => menuItem.label === 'Admin') !== undefined
+    !userMenuItems.find((menuItem) => menuItem.label === 'Admin')
   );
 }
 
@@ -81,7 +81,7 @@ export const Header = () => {
 
   const [activeNav, setActiveNav] = useState<NavState>(mapNavState(location.pathname));
 
-  if (isAdmin(session, flags)) {
+  if (menuNeedsAdmin(session, flags)) {
     userMenuItems.unshift({
       label: 'Admin',
       address: ADMIN_PATH,
