@@ -47,59 +47,61 @@ def zap_json_to_sarif(zap_json):
     results = []
     rules = []
 
-    for alert in zap_json.get("site", [{}])[0].get("alerts", []):
-        rule_id = alert["pluginid"]
-        name = alert["name"]
-        severity = alert["riskdesc"].split(" ")[0].lower()
-        description = strip_html(alert["desc"])  # Strip HTML from description
-        help_uri = extract_first_url(alert.get("reference", ""))  # Extract first URL
+    # Iterate through all sites instead of just the first one
+    for site in zap_json.get("site", []):
+        for alert in site.get("alerts", []):
+            rule_id = alert["pluginid"]
+            name = alert["name"]
+            severity = alert["riskdesc"].split(" ")[0].lower()
+            description = strip_html(alert["desc"])  # Strip HTML from description
+            help_uri = extract_first_url(alert.get("reference", ""))  # Extract first URL
 
-        if rule_id not in rule_ids:
-            rule = {
-                "id": rule_id,
-                "name": name,
-                "shortDescription": {"text": name},
-                "fullDescription": {"text": description},
-                "helpUri": help_uri,
-                "properties": {
-                    "severity": severity
-                }
-            }
-            rule_ids[rule_id] = True
-            rules.append(rule)
-
-        for instance in alert.get("instances", []):
-            uri = instance.get("uri", "unknown")
-            evidence = instance.get("evidence", "")
-            result = {
-                "ruleId": rule_id,
-                "level": map_severity(severity),
-                "message": {"text": name},
-                "locations": [
-                    {
-                        "physicalLocation": {
-                            "artifactLocation": {
-                                "uri": placeholder_file
-                            },
-                            "region": {
-                                "startLine": 1,
-                                "startColumn": 1
-                            }
-                        },
-                        "logicalLocations": [
-                            {
-                                "kind": "url",
-                                "name": uri
-                            }
-                        ]
+            if rule_id not in rule_ids:
+                rule = {
+                    "id": rule_id,
+                    "name": name,
+                    "shortDescription": {"text": name},
+                    "fullDescription": {"text": description},
+                    "helpUri": help_uri,
+                    "properties": {
+                        "severity": severity
                     }
-                ]
-            }
-            if evidence:
-                result["partialFingerprints"] = {
-                    "evidence": str(uuid.uuid5(uuid.NAMESPACE_URL, evidence))
                 }
-            results.append(result)
+                rule_ids[rule_id] = True
+                rules.append(rule)
+
+            for instance in alert.get("instances", []):
+                uri = instance.get("uri", "unknown")
+                evidence = instance.get("evidence", "")
+                result = {
+                    "ruleId": rule_id,
+                    "level": map_severity(severity),
+                    "message": {"text": name},
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": placeholder_file
+                                },
+                                "region": {
+                                    "startLine": 1,
+                                    "startColumn": 1
+                                }
+                            },
+                            "logicalLocations": [
+                                {
+                                    "kind": "url",
+                                    "name": uri
+                                }
+                            ]
+                        }
+                    ]
+                }
+                if evidence:
+                    result["partialFingerprints"] = {
+                        "evidence": str(uuid.uuid5(uuid.NAMESPACE_URL, evidence))
+                    }
+                results.append(result)
 
     # return the sarif document
     return {
