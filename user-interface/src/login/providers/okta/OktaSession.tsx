@@ -4,10 +4,12 @@ import { Session } from '@/login/Session';
 import { useOktaAuth } from '@okta/okta-react';
 import { PropsWithChildren, useEffect, useState } from 'react';
 import { registerRefreshOktaToken } from './okta-library';
+import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 
 export type OktaSessionProps = PropsWithChildren;
 
 export function OktaSession(props: OktaSessionProps) {
+  const { appInsights } = getAppInsights();
   const [redirectComplete, setRedirectComplete] = useState<boolean>(false);
   const [callbackError, setCallbackError] = useState<Error | null>(null);
 
@@ -18,9 +20,11 @@ export function OktaSession(props: OktaSessionProps) {
       .handleLoginRedirect()
       .then(() => {
         setRedirectComplete(true);
+        appInsights.trackEvent({ name: 'Okta redirect complete' }, { status: 'success' });
       })
       .catch((e) => {
         const error = e as Error;
+        appInsights.trackEvent({ name: 'Okta redirect error' }, { status: 'error level 0' });
         // Only report if the error is not the parse error during the continuation redirects.
         if (error.message !== 'Unable to parse a token from the url') {
           setCallbackError(error);
@@ -29,7 +33,9 @@ export function OktaSession(props: OktaSessionProps) {
   }, [oktaAuth, !authState?.error]);
 
   if (authState?.error || callbackError) {
-    return <AccessDenied message={authState?.error?.message ?? callbackError?.message} />;
+    const message = authState?.error?.message ?? callbackError?.message;
+    appInsights.trackEvent({ name: 'Access Denied' }, { message });
+    return <AccessDenied message={message} />;
   }
 
   if (!redirectComplete) {
@@ -39,12 +45,18 @@ export function OktaSession(props: OktaSessionProps) {
   const accessToken = oktaAuth.getAccessToken();
 
   if (!accessToken) {
+    appInsights.trackEvent(
+      { name: 'Access Denied' },
+      { message: 'Could not get access token from auth client.' },
+    );
     return <AccessDenied />;
   }
   const oktaJwt = oktaAuth.token.decode(accessToken);
 
   if (!oktaJwt.payload.iss || !oktaJwt.payload.exp) {
-    return <AccessDenied message="Invalid issuer or expiration claims." />;
+    const message = 'Invalid issuer or expiration claims.';
+    appInsights.trackEvent({ name: 'Access Denied' }, { message });
+    return <AccessDenied message={message} />;
   }
 
   const expires = oktaJwt.payload.exp;
@@ -52,6 +64,7 @@ export function OktaSession(props: OktaSessionProps) {
 
   registerRefreshOktaToken(oktaAuth);
 
+  appInsights.trackEvent({ name: 'Okta session established' }, { status: 'success' });
   return (
     <Session provider="okta" accessToken={accessToken} expires={expires} issuer={issuer}>
       {props.children}
