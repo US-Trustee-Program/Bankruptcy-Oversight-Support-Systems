@@ -1,9 +1,13 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import DateRangePicker from './DateRangePicker';
 import { DateRangePickerRef } from '@/lib/type-declarations/input-fields';
 
-describe('Test DateRangePicker component', async () => {
+describe('Test DateRangePicker component', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   test('should call change handlers when either date is changed', async () => {
     const mockHandlerStart = vi.fn();
     const mockHandlerEnd = vi.fn();
@@ -20,7 +24,9 @@ describe('Test DateRangePicker component', async () => {
     );
 
     const startDateText = screen.getByTestId('date-picker-date-start');
-    expect(startDateText).toBeInTheDocument();
+    await waitFor(() => {
+      expect(startDateText).toBeInTheDocument();
+    });
 
     fireEvent.change(startDateText, { target: { value: '2020-01-01' } });
     expect(mockHandlerStart).toHaveBeenCalled();
@@ -43,7 +49,9 @@ describe('Test DateRangePicker component', async () => {
     );
 
     const startDateText = screen.getByTestId('date-picker-date-start');
-    expect(startDateText).toBeInTheDocument();
+    await waitFor(() => {
+      expect(startDateText).toBeInTheDocument();
+    });
     expect(startDateText).toHaveAttribute('min', '2024-01-01');
     expect(startDateText).toHaveAttribute('max', '2025-01-01');
 
@@ -66,7 +74,9 @@ describe('Test DateRangePicker component', async () => {
 
     let startDateText = screen.getByTestId('date-picker-date-start');
     let endDateText = screen.getByTestId('date-picker-date-end');
-    expect(startDateText).toBeInTheDocument();
+    await waitFor(() => {
+      expect(startDateText).toBeInTheDocument();
+    });
     expect(startDateText).toHaveAttribute('max', '2035-01-01');
     expect(endDateText).toHaveAttribute('min', '2020-01-01');
 
@@ -121,7 +131,9 @@ describe('Test DateRangePicker component', async () => {
     );
 
     const startDateText = screen.getByTestId('date-picker-date-start');
-    expect(startDateText).toBeInTheDocument();
+    await waitFor(() => {
+      expect(startDateText).toBeInTheDocument();
+    });
     expect(startDateText).toHaveValue(initialStartDate);
 
     const endDateText = screen.getByTestId('date-picker-date-end');
@@ -148,7 +160,7 @@ describe('Test DateRangePicker component', async () => {
     });
     */
 
-    rangeRef.current?.resetValue();
+    act(() => rangeRef.current?.resetValue());
     await waitFor(() => {
       expect(startDateText).toHaveValue(initialStartDate);
       expect(endDateText).toHaveValue(initialEndDate);
@@ -171,17 +183,19 @@ describe('Test DateRangePicker component', async () => {
     const startDate = screen.getByTestId('date-picker-voice-date-start');
     const endDate = screen.getByTestId('date-picker-voice-date-end');
 
-    expect(startDate).toHaveValue('2024-06-15');
+    await waitFor(() => {
+      expect(startDate).toHaveValue('2024-06-15');
+    });
     expect(endDate).toHaveValue('2024-06-16');
   });
 });
 
 describe('DateRangePicker additional coverage tests', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
-  test('should handle disabled prop', () => {
+  test('should handle disabled prop', async () => {
     render(
       <DateRangePicker
         id="date-picker-disabled"
@@ -194,11 +208,13 @@ describe('DateRangePicker additional coverage tests', () => {
     const startDate = screen.getByTestId('date-picker-disabled-date-start');
     const endDate = screen.getByTestId('date-picker-disabled-date-end');
 
-    expect(startDate).toBeDisabled();
+    await waitFor(() => {
+      expect(startDate).toBeDisabled();
+    });
     expect(endDate).toBeDisabled();
   });
 
-  test('should handle required prop', () => {
+  test('should handle required prop', async () => {
     render(
       <DateRangePicker
         id="date-picker-required"
@@ -211,11 +227,13 @@ describe('DateRangePicker additional coverage tests', () => {
     const startDate = screen.getByTestId('date-picker-required-date-start');
     const endDate = screen.getByTestId('date-picker-required-date-end');
 
-    expect(startDate).toHaveAttribute('required');
+    await waitFor(() => {
+      expect(startDate).toHaveAttribute('required');
+    });
     expect(endDate).toHaveAttribute('required');
   });
 
-  test('should handle aria-description', () => {
+  test('should handle aria-description', async () => {
     const ariaDescription = 'Select a date range for your search';
     render(
       <DateRangePicker
@@ -227,12 +245,14 @@ describe('DateRangePicker additional coverage tests', () => {
     );
 
     const ariaElement = document.querySelector('#date-picker-aria-aria-description');
-    expect(ariaElement).toBeInTheDocument();
+    await waitFor(() => {
+      expect(ariaElement).toBeInTheDocument();
+    });
     expect(ariaElement).toHaveAttribute('aria-live', 'polite');
     expect(ariaElement).toHaveAttribute('hidden');
   });
 
-  test('should handle initial value prop', () => {
+  test('should handle initial value prop', async () => {
     const initialValue = { start: '2024-01-01', end: '2024-12-31' };
     render(
       <DateRangePicker
@@ -246,11 +266,13 @@ describe('DateRangePicker additional coverage tests', () => {
     const startDate = screen.getByTestId('date-picker-value-date-start');
     const endDate = screen.getByTestId('date-picker-value-date-end');
 
-    expect(startDate).toHaveValue(initialValue.start);
+    await waitFor(() => {
+      expect(startDate).toHaveValue(initialValue.start);
+    });
     expect(endDate).toHaveValue(initialValue.end);
   });
 
-  test('should display aria descriptions for date range', () => {
+  test('should display aria descriptions for date range', async () => {
     const minDate = '2024-01-01';
     const maxDate = '2024-12-31';
 
@@ -267,7 +289,9 @@ describe('DateRangePicker additional coverage tests', () => {
     const ariaElement = document.querySelector('#date-picker-range-aria-description');
 
     // Check for format instruction
-    expect(ariaElement).toHaveTextContent('Format: numeric month / numeric day / 4-digit year.');
+    await waitFor(() => {
+      expect(ariaElement).toHaveTextContent('Format: numeric month / numeric day / 4-digit year.');
+    });
 
     // Check for date range description
     expect(ariaElement).toHaveTextContent('within 2024-01-01 and 2024-12-31');
@@ -289,10 +313,13 @@ describe('DateRangePicker additional coverage tests', () => {
 
     const startDate = screen.getByTestId('date-picker-ref-date-start');
     const endDate = screen.getByTestId('date-picker-ref-date-end');
+    await waitFor(() => {
+      expect(startDate).toHaveValue(initialValue.start);
+    });
 
     // Test setValue
     const newValue = { start: '2024-02-01', end: '2024-11-30' };
-    rangeRef.current?.setValue(newValue);
+    act(() => rangeRef.current?.setValue(newValue));
 
     await waitFor(() => {
       expect(startDate).toHaveValue(newValue.start);
@@ -300,21 +327,21 @@ describe('DateRangePicker additional coverage tests', () => {
     });
 
     // Test resetValue
-    rangeRef.current?.resetValue();
+    act(() => rangeRef.current?.resetValue());
     await waitFor(() => {
       expect(startDate).toHaveValue(initialValue.start);
       expect(endDate).toHaveValue(initialValue.end);
     });
 
     // Test clearValue
-    rangeRef.current?.clearValue();
+    act(() => rangeRef.current?.clearValue());
     await waitFor(() => {
       expect(startDate).toHaveValue('');
       expect(endDate).toHaveValue('');
     });
   });
 
-  test('should handle edge case with only minDate', () => {
+  test('should handle edge case with only minDate', async () => {
     const minDate = '2024-01-01';
 
     render(
@@ -327,10 +354,12 @@ describe('DateRangePicker additional coverage tests', () => {
     );
 
     const ariaElement = document.querySelector('#date-picker-min-only-aria-description');
-    expect(ariaElement).toHaveTextContent('2024-01-01');
+    await waitFor(() => {
+      expect(ariaElement).toHaveTextContent('2024-01-01');
+    });
   });
 
-  test('should handle edge case with only maxDate', () => {
+  test('should handle edge case with only maxDate', async () => {
     const maxDate = '2024-12-31';
 
     render(
@@ -343,10 +372,12 @@ describe('DateRangePicker additional coverage tests', () => {
     );
 
     const ariaElement = document.querySelector('#date-picker-max-only-aria-description');
-    expect(ariaElement).toHaveTextContent('Valid date range is on or before 2024-12-31');
+    await waitFor(() => {
+      expect(ariaElement).toHaveTextContent('Valid date range is on or before 2024-12-31');
+    });
   });
 
-  test('should handle date formatting error gracefully', () => {
+  test('should handle date formatting error gracefully', async () => {
     render(
       <DateRangePicker
         id="date-picker-format"
@@ -357,7 +388,9 @@ describe('DateRangePicker additional coverage tests', () => {
 
     // The formatDate function should handle invalid dates gracefully
     // This is tested by the fact that the component renders without throwing
-    expect(screen.getByLabelText('Start Date')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByLabelText('Start Date')).toBeInTheDocument();
+    });
   });
 
   test('should support getValue method but throw error', () => {
@@ -389,11 +422,13 @@ describe('DateRangePicker additional coverage tests', () => {
     const endDateInput = screen.getByTestId('date-picker-disable-date-end');
 
     // Initially should not be disabled
-    expect(startDateInput).not.toBeDisabled();
+    await waitFor(() => {
+      expect(startDateInput).not.toBeDisabled();
+    });
     expect(endDateInput).not.toBeDisabled();
 
     // Disable both inputs
-    rangeRef.current?.disable(true);
+    act(() => rangeRef.current?.disable(true));
 
     await waitFor(() => {
       expect(startDateInput).toBeDisabled();
@@ -401,7 +436,7 @@ describe('DateRangePicker additional coverage tests', () => {
     });
 
     // Re-enable
-    rangeRef.current?.disable(false);
+    act(() => rangeRef.current?.disable(false));
 
     await waitFor(() => {
       expect(startDateInput).not.toBeDisabled();
@@ -442,26 +477,26 @@ describe('DateRangePicker additional coverage tests', () => {
     const endDateInput = screen.getByTestId('date-picker-setvalue-date-end');
 
     // Set only start date
-    rangeRef.current?.setValue({ start: '2024-01-01' });
+    act(() => rangeRef.current?.setValue({ start: '2024-01-01' }));
     await waitFor(() => {
       expect(startDateInput).toHaveValue('2024-01-01');
     });
 
     // Set only end date
-    rangeRef.current?.setValue({ end: '2024-12-31' });
+    act(() => rangeRef.current?.setValue({ end: '2024-12-31' }));
     await waitFor(() => {
       expect(endDateInput).toHaveValue('2024-12-31');
     });
 
     // Set both
-    rangeRef.current?.setValue({ start: '2024-06-01', end: '2024-06-30' });
+    act(() => rangeRef.current?.setValue({ start: '2024-06-01', end: '2024-06-30' }));
     await waitFor(() => {
       expect(startDateInput).toHaveValue('2024-06-01');
       expect(endDateInput).toHaveValue('2024-06-30');
     });
 
     // Set with empty object (should set empty strings)
-    rangeRef.current?.setValue({});
+    act(() => rangeRef.current?.setValue({}));
     await waitFor(() => {
       expect(startDateInput).toHaveValue('');
       expect(endDateInput).toHaveValue('');
@@ -483,10 +518,11 @@ describe('DateRangePicker additional coverage tests', () => {
     const endDateInput = screen.getByTestId('date-picker-clear-date-end');
 
     // Set some values first
-    rangeRef.current?.setValue({ start: '2024-01-01', end: '2024-12-31' });
+    act(() => rangeRef.current?.setValue({ start: '2024-01-01', end: '2024-12-31' }));
+    expect(startDateInput).toHaveValue('2024-01-01');
 
     // Clear values
-    rangeRef.current?.clearValue();
+    act(() => rangeRef.current?.clearValue());
 
     // Should clear immediately
     expect(startDateInput).toHaveValue('');
@@ -502,7 +538,7 @@ describe('DateRangePicker additional coverage tests', () => {
     );
   });
 
-  test('should handle resetValue method with initial values', () => {
+  test('should handle resetValue method with initial values', async () => {
     const rangeRef = React.createRef<DateRangePickerRef>();
     render(
       <DateRangePicker
@@ -516,18 +552,24 @@ describe('DateRangePicker additional coverage tests', () => {
 
     const startDateInput = screen.getByTestId('date-picker-reset-date-start');
     const endDateInput = screen.getByTestId('date-picker-reset-date-end');
+    await waitFor(() => {
+      expect(startDateInput).toHaveValue('2024-01-01');
+      expect(endDateInput).toHaveValue('2024-12-31');
+    });
 
     // Change the values
-    rangeRef.current?.setValue({ start: '2024-06-01', end: '2024-06-30' });
+    act(() => rangeRef.current?.setValue({ start: '2024-06-01', end: '2024-06-30' }));
+    expect(startDateInput).toHaveValue('2024-06-01');
+    expect(endDateInput).toHaveValue('2024-06-30');
 
     // Reset should go back to original values
-    rangeRef.current?.resetValue();
+    act(() => rangeRef.current?.resetValue());
 
     expect(startDateInput).toHaveValue('2024-01-01');
     expect(endDateInput).toHaveValue('2024-12-31');
   });
 
-  test('should handle invalid date formatting gracefully in aria description', () => {
+  test('should handle invalid date formatting gracefully in aria description', async () => {
     // This test should trigger the formatDateRange catch block
     // by providing an invalid date format
     render(
@@ -543,7 +585,9 @@ describe('DateRangePicker additional coverage tests', () => {
     const startInput = screen.getByLabelText(/start date/i);
     const endInput = screen.getByLabelText(/end date/i);
 
-    expect(startInput).toBeInTheDocument();
+    await waitFor(() => {
+      expect(startInput).toBeInTheDocument();
+    });
     expect(endInput).toBeInTheDocument();
 
     // The aria description should handle the invalid date gracefully
@@ -578,23 +622,20 @@ describe('DateRangePicker additional coverage tests', () => {
     );
 
     // Set some values first
-    ref.current?.setValue({ start: '2024-01-01', end: '2024-01-31' });
+    act(() => ref.current?.setValue({ start: '2024-01-01', end: '2024-01-31' }));
 
     // Spy on setTimeout to see if debounced function is called
     const setTimeoutSpy = vi.spyOn(window, 'setTimeout');
 
     // Call clearValue which should trigger the debounced function
-    ref.current?.clearValue();
+    act(() => ref.current?.clearValue());
 
     // Verify setTimeout was called (which means the debounced function will execute)
     expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), expect.any(Number));
 
     // Manually trigger the callback to execute the code inside debounce
     const callback = setTimeoutSpy.mock.calls[0][0] as () => void;
-    callback();
-
-    // Clean up
-    setTimeoutSpy.mockRestore();
+    act(() => callback());
   });
 
   test('should handle edge case in formatDateForVoiceOver with invalid date components', async () => {
