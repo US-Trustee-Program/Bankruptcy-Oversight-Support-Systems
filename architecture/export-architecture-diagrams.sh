@@ -61,4 +61,13 @@ mermaid_file="./structurizr-FunctionsAPI.mmd"
 } > temp_file.md
 mv temp_file.md ../docs/architecture/diagrams/cams-function-apps-api-components.md
 
+## CAMS Dataflows Components
+mermaid_file="./structurizr-Dataflows.mmd"
+{
+  printf "# CAMS Dataflows Components\n\n\`\`\`mermaid\n"
+  cat "$mermaid_file"
+  printf "\n\`\`\`\n"
+} > temp_file.md
+mv temp_file.md ../docs/architecture/diagrams/cams-dataflows-components.md
+
 popd || exit
