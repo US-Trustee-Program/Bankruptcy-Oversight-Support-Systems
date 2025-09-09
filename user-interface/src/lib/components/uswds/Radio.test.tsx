@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { RadioRef } from '@/lib/type-declarations/input-fields';
 import Radio, { RadioProps } from './Radio';
 import testingUtilities from '@/lib/testing/testing-utilities';
@@ -32,10 +32,12 @@ describe('Tests for USWDS Input component.', () => {
     expect(radioButton).toBeChecked();
   });
 
-  test('should render the radio button label', () => {
+  test('should render the radio button label', async () => {
     renderWithoutProps();
     const radioButtonLabel = document.querySelector('.usa-radio__label');
-    expect(radioButtonLabel).toHaveTextContent(defaultProps.label);
+    await waitFor(() => {
+      expect(radioButtonLabel).toHaveTextContent(defaultProps.label);
+    });
   });
 
   test('should be able to check/uncheck programmatically', async () => {
@@ -44,13 +46,13 @@ describe('Tests for USWDS Input component.', () => {
     expect(radioButton).not.toBeChecked();
 
     expect(ref.current?.isChecked()).toBeFalsy();
-    ref.current?.check(true);
+    act(() => ref.current?.check(true));
     await waitFor(() => {
       expect(radioButton).toBeChecked();
     });
     expect(ref.current?.isChecked()).toBeTruthy();
 
-    ref.current?.check(false);
+    act(() => ref.current?.check(false));
     await waitFor(() => {
       expect(radioButton).not.toBeChecked();
     });
@@ -62,12 +64,12 @@ describe('Tests for USWDS Input component.', () => {
     const radioButton = screen.getByTestId(radioTestId);
     expect(radioButton).not.toBeDisabled();
 
-    ref.current?.disable(true);
+    act(() => ref.current?.disable(true));
     await waitFor(() => {
       expect(radioButton).toBeDisabled();
     });
 
-    ref.current?.disable(false);
+    act(() => ref.current?.disable(false));
     await waitFor(() => {
       expect(radioButton).not.toBeDisabled();
     });
