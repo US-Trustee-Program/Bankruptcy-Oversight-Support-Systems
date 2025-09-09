@@ -45,7 +45,7 @@ export function OktaSession(props: OktaSessionProps) {
   const accessToken = oktaAuth.getAccessToken();
 
   if (!accessToken) {
-    appInsights.trackEvent({ name: 'Access Denied' }, { message: 'access token error' });
+    appInsights.trackEvent({ name: 'Access Denied' }, { message: 'Could not get access token from auth client.' });
     return <AccessDenied />;
   }
   const oktaJwt = oktaAuth.token.decode(accessToken);
