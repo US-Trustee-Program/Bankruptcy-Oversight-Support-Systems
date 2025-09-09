@@ -5,17 +5,22 @@ workspace {
         aust = person "AUST" "Assistant United States Trustee - manages a USTP office"
         attorney = person "Trial Attorney" "Represents USTP in court regarding bankruptcy cases"
         dataQualityAnalyst = person "Data Quality Analyst" "Verify case events"
+        trusteeAdmin = person "Trustee Admin" "Manage trustee profile information"
+        authorizedUser = person "Authorized User"
 
         # System
         cams = softwareSystem "CAMS" "Case Management System" {
-            okta = container "Okta" "SSO Provider for CAMS" {
+            okta = container "Okta Adapter" "SSO Provider for CAMS" {
                 oktaLoginScreen = component "Okta Login" "SSO for CAMS"
                 oktaRefreshToken = component "Okta Refresh token for the API"
             }
             webapp = container "Webapp" "The user interface for CAMS" {
                 caseAssignmentsScreen = component "Assignments Screen" "Displays case assignment data and provides for creating assignments"
                 caseDetailsScreen = component "Case Details Screen" "Displays case data including dates and assigned staff, court docket, and audit history"
+                caseSearchScreen = component "Case Search Screen" "Displays list of cases matching provided filters"
                 dataVerificationScreen = component "Data Verification Screen" "Displays case events for data quality analysts to review"
+                trusteesScreen = component "Trustees Screen" "Displays list of trustees"
+                trusteeProfileScreen = component "Trustee Profile Screen" "Displays trustee profile"
             }
             nodeapi = container "API" "An Azure Functions App (Node.js)" {
                 attorneys = component "Attorneys" "Attorneys API"
@@ -26,33 +31,49 @@ workspace {
                 caseSummary = component "Case Summary" "Case Summary API"
                 offices = component "Offices" "Offices API"
                 orders = component "Orders" "Orders API"
-                ordersManualSync = component "Orders Manual Sync" "Orders Manual Sync API"
                 ordersSuggestions = component "Orders Suggestions" "Orders Suggestions API"
-                ordersSync = component "Sync" "Creates events in CAMS based on orders to transfer transactions in DXTR"
                 consolidations = component "Consolidations" "Consolidation Orders API"
                 associatedCases = component "Associated Cases" "Associated Cases API"
                 me = component "Me" "User Info API"
                 contextCreator = component "Context Creator" "API Application Context Manager"
+                trustees = component "Trustees" "Trustees API"
+                caseNotes = component "Case Notes" "Case Notes API"
+                courts = component "Courts" "Courts API"
+            }
+            dataflows = container "Dataflows" "An Azure Functions App (Node.js)" {
+                casesSync = component "Cases Sync" "Syncs DXTR case info into CAMS"
+                officeStaffSync = component "Office Staff Sync" "Syncs user offices and roles into CAMS"
+                ordersManualSync = component "Orders Manual Sync" "Orders Manual Sync API"
+                ordersSync = component "Orders Sync" "Creates events in CAMS based on orders to transfer transactions in DXTR"
             }
             dxtrsql = container "DXTR DB" "DXTR SQL Database"
+            acmssql = container "ACMS DB" "ACMS SQL Database"
             cosmos = container "Cosmos DB" "NoSQL Database" {
                 assignmentsCosmosContainer = component "Case Assignments Container" "Stores case assignments"
                 casesCosmosContainer = component "Cases Container" "Stores case transfer records and audit logs"
-                ordersCosmosContainer = component "Orders Container" "Stores case events"
                 consolidationsCosmosContainer = component "Consolidations Container" "Stores consolidation orders"
+                officeAssigneesContainer = component "Office Assignees Container" "Stores association of users to offices"
+                officesContainer = component "Offices Container" "Stores users with their roles by office"
+                ordersCosmosContainer = component "Orders Container" "Stores case events"
                 runtimeStateCosmosContainer = component "Runtime State Container" "Stores tracking information for automation"
                 sessionCacheCosmosContainer = component "Session Cache" "Stores active sessions"
+                trusteesCosmosContainer = component "Trustees Container" "Stores trustee profiles"
             }
         }
 
         # Relationships
         ## People to system components
         aust -> webapp "Assigns cases to attorneys"
+        aust -> caseDetailsScreen "Creates case notes"
         attorney -> webapp "Views bankruptcy cases"
         attorney -> caseDetailsScreen "Views bankruptcy cases"
+        attorney -> caseDetailsScreen "Creates case notes"
         aust -> caseAssignmentsScreen "Assigns cases to attorneys"
         attorney -> caseAssignmentsScreen "Views cases assigned to them"
         dataQualityAnalyst -> dataVerificationScreen "Reviews, approves, and rejects case events"
+        authorizedUser -> caseSearchScreen "Searches for cases"
+        trusteeAdmin -> trusteesScreen "Creates, updates trustee profiles"
+        trusteeAdmin -> trusteeProfileScreen "Views trustee profile"
 
         ## SSO to System Components
         webapp -> oktaLoginScreen "Allows user to authenticate"
@@ -75,6 +96,7 @@ workspace {
         webapp -> consolidations "Reads and writes consolidation order data"
         webapp -> associatedCases "Reads associated orders from consolidation"
         webapp -> me "Reads the authenticated user's session"
+        webapp -> trustees "Reads and writes trustee profile information"
 
         nodeapi -> cosmos "Reads and writes case assignments, orders, cases, etc."
 
@@ -113,6 +135,13 @@ workspace {
         me -> sessionCacheCosmosContainer "Reads authenticated user's session from the session cache"
 
         contextCreator -> sessionCacheCosmosContainer "Reads and writes authenticated user's session from/to the session cache"
+
+        casesSync -> casesCosmosContainer "Writes case information from court"
+
+        officeStaffSync -> officeAssigneesContainer "Writes associations of user to office"
+        officeStaffSync -> officesContainer "Writes user and roles by office"
+
+        trustees -> trusteesCosmosContainer "Reads and writes trustee profile information"
     }
 
     views {
@@ -153,6 +182,18 @@ workspace {
                 caseAssignments
                 dxtrsql
                 cosmos
+                trustees
+            }
+            autolayout
+        }
+
+        component dataflows "Dataflows" {
+            include *
+            animation {
+                casesSync
+                officeStaffSync
+                ordersManualSync
+                ordersSync
             }
             autolayout
         }
