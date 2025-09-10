@@ -96,4 +96,5 @@ jobs:
             --mssqlRequestTimeout ${{ vars.MSSQL_REQUEST_TIMEOUT }} \
             --enabledDataflows ${{ vars.CAMS_ENABLED_DATAFLOWS }} \
             --maxObjectDepth ${{ vars.MAX_OBJECT_DEPTH }} \
-            --maxObjectKeyCount ${{ vars.MAX_OBJECT_KEY_COUNT }}
+            --maxObjectKeyCount ${{ vars.MAX_OBJECT_KEY_COUNT }} \
+            --gitSha ${{ github.sha }}

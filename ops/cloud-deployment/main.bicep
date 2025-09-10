@@ -126,6 +126,8 @@ param cosmosDatabaseName string
 @description('Comma delimited list of data flow names to enable.')
 param enabledDataflows string = ''
 
+param gitSha string
+
 module actionGroup './lib/monitoring-alerts/alert-action-group.bicep' =
   if (createAlerts) {
     name: '${actionGroupName}-action-group-module'
@@ -230,6 +232,7 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
       mssqlRequestTimeout: mssqlRequestTimeout
       maxObjectDepth: maxObjectDepth
       maxObjectKeyCount: maxObjectKeyCount
+      gitSha: gitSha
     }
 }
 
@@ -269,5 +272,6 @@ module ustpDatflowsFunction 'dataflows-resource-deploy.bicep' = {
     isUstpDeployment: isUstpDeployment
     mssqlRequestTimeout: mssqlRequestTimeout
     enabledDataflows: enabledDataflows
+    gitSha: gitSha
   }
 }
