@@ -1,6 +1,6 @@
-import { Party } from '../../../../common/src/cams/parties';
+import { Debtor } from '../../../../common/src/cams/parties';
 
-export const DEBTORS = new Map<string, Party>([
+export const DEBTORS = new Map<string, Debtor>([
   [
     '081-22-23587',
     {

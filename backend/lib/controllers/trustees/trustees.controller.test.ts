@@ -1,7 +1,7 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteesController } from './trustees.controller';
 import { TrusteesUseCase } from '../../use-cases/trustees/trustees';
-import { TrusteeInput } from '../../../../common/src/cams/parties';
+import { TrusteeInput } from '../../../../common/src/cams/trustees';
 import { TrusteeDocument } from '../../adapters/gateways/mongo/trustees.mongo.repository';
 import { CamsUserReference } from '../../../../common/src/cams/users';
 import { CamsRole } from '../../../../common/src/cams/roles';

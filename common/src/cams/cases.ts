@@ -1,8 +1,9 @@
-import { DebtorAttorney, Party, Trustee } from './parties';
+import { DebtorAttorney, Debtor } from './parties';
 import { ConsolidationFrom, ConsolidationTo, TransferFrom, TransferTo } from './events';
 import { CaseAssignment } from './assignments';
 import { Auditable } from './auditable';
 import { CamsUserReference } from './users';
+import { Trustee } from './trustees';
 
 export const VALID_CASEID_PATTERN = RegExp(/^[\dA-Z]{3}-\d{2}-\d{5}$/);
 
@@ -34,7 +35,7 @@ export type CaseBasics = FlatOfficeDetail & {
 };
 
 export type CaseSummary = CaseBasics & {
-  debtor: Party;
+  debtor: Debtor;
 };
 
 export type CaseDetail = CaseSummary & {
