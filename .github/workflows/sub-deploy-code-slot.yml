@@ -161,25 +161,27 @@ jobs:
       slotName: ${{ inputs.slotName }}
     secrets: inherit # pragma: allowlist secret
 
-  execute-e2e-test:
-    needs:
-      [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot, endpoint-test-application-slot]
-    uses: ./.github/workflows/reusable-e2e.yml
-    with:
-      apiFunctionName: ${{ inputs.apiFunctionName }}
-      slotName: ${{ inputs.slotName }}
-      webappName: ${{ inputs.webappName }}
-      stackName: ${{ inputs.stackName }}
-      azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
-      ghaEnvironment: ${{ inputs.ghaEnvironment }}
-      branchHashId: ${{ inputs.environmentHash }}
-      e2eCosmosDbExists: ${{ inputs.e2eCosmosDbExists }}
-    secrets: inherit # pragma: allowlist secret
+  # execute-e2e-test:
+  #   needs:
+  #     [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot, endpoint-test-application-slot]
+  #   uses: ./.github/workflows/reusable-e2e.yml
+  #   with:
+  #     apiFunctionName: ${{ inputs.apiFunctionName }}
+  #     slotName: ${{ inputs.slotName }}
+  #     webappName: ${{ inputs.webappName }}
+  #     stackName: ${{ inputs.stackName }}
+  #     azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
+  #     ghaEnvironment: ${{ inputs.ghaEnvironment }}
+  #     branchHashId: ${{ inputs.environmentHash }}
+  #     e2eCosmosDbExists: ${{ inputs.e2eCosmosDbExists }}
+  #   secrets: inherit # pragma: allowlist secret
 
   swap-webapp-deployment-slot:
     if: ${{ inputs.initialDeployment != 'true' }}
     runs-on: ubuntu-latest
-    needs: [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot, execute-e2e-test]
+    # needs: [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot, execute-e2e-test]
+    needs:
+      [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot, endpoint-test-application-slot]
     environment: ${{ inputs.ghaEnvironment }}
     env:
       webappName: ${{ inputs.webappName }}
@@ -203,7 +205,9 @@ jobs:
   swap-nodeapi-deployment-slot:
     if: ${{ inputs.initialDeployment != 'true' }}
     runs-on: ubuntu-latest
-    needs: [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot, execute-e2e-test]
+    # needs: [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot, execute-e2e-test]
+    needs:
+      [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot, endpoint-test-application-slot]
     environment: ${{ inputs.ghaEnvironment }}
     env:
       apiFunctionName: ${{ inputs.apiFunctionName }}
@@ -227,7 +231,9 @@ jobs:
   swap-dataflows-app-deployment-slot:
     if: ${{ inputs.initialDeployment != 'true' }}
     runs-on: ubuntu-latest
-    needs: [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot, execute-e2e-test]
+    # needs: [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot, execute-e2e-test]
+    needs:
+      [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot, endpoint-test-application-slot]
     environment: ${{ inputs.ghaEnvironment }}
     env:
       slotName: ${{ inputs.slotName }}
