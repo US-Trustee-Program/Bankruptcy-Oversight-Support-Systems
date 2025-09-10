@@ -6,19 +6,26 @@ import Icon from '@/lib/components/uswds/Icon';
 import useApi2 from '@/lib/hooks/UseApi2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { Trustee } from '@common/cams/parties';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import Tag, { UswdsTagStyle } from '@/lib/components/uswds/Tag';
+import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
+import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 
 export default function TrusteeDetailScreen() {
   const { trusteeId } = useParams();
   const [trustee, setTrustee] = useState<Trustee | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [districtLabels, setDistrictLabels] = useState<string[]>([]);
+  const navigate = useNavigate();
 
   const globalAlert = useGlobalAlert();
   const api = useApi2();
+
+  function openEditPublicProfile() {
+    navigate(`/trustees/${trusteeId}/edit-public-profile`);
+  }
 
   function formatTrusteeStatusText(status: string): string {
     if (status === 'not active') {
@@ -127,7 +134,23 @@ export default function TrusteeDetailScreen() {
             <div className="grid-col-12 tablet:grid-col-10 desktop:grid-col-8 record-detail-container">
               <div className="record-detail-card-list">
                 <div className="trustee-contact-information record-detail-card">
-                  <h3>Contact Information (Public)</h3>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <h3>Contact Information (Public)</h3>
+                    <Button
+                      uswdsStyle={UswdsButtonStyle.Unstyled}
+                      aria-label="Edit trustee contact information"
+                      title="Edit trustee contact information"
+                      onClick={openEditPublicProfile}
+                    >
+                      <IconLabel icon="edit" label="Edit" />
+                    </Button>
+                  </div>
                   <div className="trustee-name">{trustee.name}</div>
                   <div>
                     {trustee.address && (
