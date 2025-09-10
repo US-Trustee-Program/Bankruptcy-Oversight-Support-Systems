@@ -96,6 +96,8 @@ param privateDnsZoneResourceGroup string = virtualNetworkResourceGroupName
 @description('DNS Zone Subscription ID. USTP uses a different subscription for prod deployment.')
 param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 
+param gitSha string
+
 var createApplicationInsights = deployAppInsights && !empty(analyticsWorkspaceId)
 
 resource appConfigIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
@@ -178,7 +180,18 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
   }
   resource dataflowsFunctionConfig 'config' = {
     name: 'web'
-    properties: dataflowsFunctionConfigProperties
+    properties: union(dataflowsFunctionConfigProperties, {
+      appSettings: concat(dataflowsFunctionConfigProperties.appSettings, [
+        {
+          name: 'INFO_SHA'
+          value: 'ProductionSlot'
+        }
+        {
+          name: 'MyTaskHub'
+          value: 'main'
+        }
+      ])
+    })
   }
   dependsOn: [
     appConfigIdentity
@@ -201,7 +214,18 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
     }
     resource dataflowsFunctionConfig 'config' = {
       name: 'web'
-      properties: dataflowsFunctionConfigProperties
+      properties: union(dataflowsFunctionConfigProperties, {
+        appSettings: concat(dataflowsFunctionConfigProperties.appSettings, [
+          {
+            name: 'INFO_SHA'
+            value: gitSha
+          }
+          {
+            name: 'MyTaskHub'
+            value: slotName
+          }
+        ])
+      })
     }
   }
 }
@@ -292,10 +316,6 @@ var baseApplicationSettings = concat(
       value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MONGO-CONNECTION-STRING)'
     }
     {
-      name: 'INFO_SHA'
-      value: 'ProductionSlot'
-    }
-    {
       name: 'WEBSITE_RUN_FROM_PACKAGE'
       value: '1'
     }
@@ -362,10 +382,6 @@ var baseApplicationSettings = concat(
     {
       name: 'CAMS_ENABLED_DATAFLOWS'
       value: enabledDataflows
-    }
-    {
-      name: 'MyTaskHub'
-      value: 'main'
     }
   ],
   isUstpDeployment

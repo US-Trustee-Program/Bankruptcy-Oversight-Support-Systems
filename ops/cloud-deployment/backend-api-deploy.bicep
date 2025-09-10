@@ -96,6 +96,8 @@ param maxObjectDepth string
 
 param maxObjectKeyCount string
 
+param gitSha string
+
 var createApplicationInsights = deployAppInsights && !empty(analyticsWorkspaceId)
 
 resource appConfigIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
@@ -173,9 +175,9 @@ resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
   ]
 
   resource apiFunctionConfig 'config' = {
-  name: 'web'
-  properties: prodFunctionAppConfigProperties
-}
+    name: 'web'
+    properties: prodFunctionAppConfigProperties
+  }
 
   resource slot 'slots' = {
     location: location
@@ -225,12 +227,32 @@ var baseApiFunctionAppConfigProperties = {
   }
 
   var prodFunctionAppConfigProperties = union(baseApiFunctionAppConfigProperties, {
+    appSettings: concat(baseApiFunctionAppConfigProperties.appSettings, [
+      {
+        name: 'INFO_SHA'
+        value: 'ProductionSlot'
+      }
+      {
+        name: 'MyTaskHub'
+        value: 'main'
+      }
+    ])
     cors: {
       allowedOrigins: apiCorsAllowOrigins
     }
   })
 
   var slotFunctionAppConfigProperties = union(baseApiFunctionAppConfigProperties, {
+    appSettings: concat(baseApiFunctionAppConfigProperties.appSettings, [
+      {
+        name: 'INFO_SHA'
+        value: gitSha
+      }
+      {
+        name: 'MyTaskHub'
+        value: slotName
+      }
+    ])
     cors: {
       allowedOrigins: apiSlotCorsAllowOrigins
     }
@@ -288,10 +310,6 @@ var baseApplicationSettings = concat(
     {
       name: 'MONGO_CONNECTION_STRING'
       value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MONGO-CONNECTION-STRING)'
-    }
-    {
-      name: 'INFO_SHA'
-      value: 'ProductionSlot'
     }
     {
       name: 'WEBSITE_RUN_FROM_PACKAGE'
@@ -356,10 +374,6 @@ var baseApplicationSettings = concat(
     {
       name: 'OKTA_API_KEY'
       value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=OKTA-API-KEY)'
-    }
-    {
-      name: 'MyTaskHub'
-      value: 'main'
     }
     {
       name: 'MAX_OBJECT_DEPTH'
