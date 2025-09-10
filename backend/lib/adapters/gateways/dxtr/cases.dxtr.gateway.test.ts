@@ -8,6 +8,7 @@ import { NotFoundError } from '../../../common-errors/not-found-error';
 import { CASE_SUMMARIES } from '../../../testing/mock-data/case-summaries.mock';
 import { DEBTORS } from '../../../testing/mock-data/debtors.mock';
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
+import { Trustee } from '../../../../../common/src/cams/trustees';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { TransactionIdRangeForDate } from '../../../use-cases/cases/cases.interface';
 
@@ -69,7 +70,7 @@ describe('Test DXTR Gateway', () => {
       taxId: '12-3456789',
     };
 
-    const expectedTrustee = {
+    const expectedTrusteeRecord = {
       name: 'John Q. Smith',
       address1: '123 Main St',
       address2: 'Apt 17',
@@ -100,7 +101,7 @@ describe('Test DXTR Gateway', () => {
         debtorTypeCode: 'CB',
         debtorTypeLabel: expectedDebtorTypeLabel,
         regionId: '04',
-        trustee: expectedTrustee,
+        trustee: MockData.getTrustee({ name: 'placeholder' }), // This will be replaced by gateway
       },
     });
 
@@ -156,7 +157,7 @@ describe('Test DXTR Gateway', () => {
     const mockQueryTrustee: QueryResults = {
       success: true,
       results: {
-        recordset: [expectedTrustee],
+        recordset: [expectedTrusteeRecord],
       },
       message: '',
     };
@@ -200,6 +201,16 @@ describe('Test DXTR Gateway', () => {
       dismissedDate,
       reopenedDate,
       transferDate,
+      trustee: {
+        name: 'John Q. Smith',
+        legacy: {
+          address1: '123 Main St',
+          address2: 'Apt 17',
+          address3: '',
+          cityStateZipCountry: 'Queens NY 12345 USA',
+        },
+        status: 'active' as const,
+      } as Trustee,
     };
 
     expect(actualResult).toStrictEqual(expectedResult);
@@ -351,7 +362,7 @@ describe('Test DXTR Gateway', () => {
       message: '',
     };
 
-    const expectedTrustee = {
+    const expectedTrusteeRecord = {
       name: 'John Q. Smith',
       address1: '123 Main St',
       address2: 'Apt 17',
@@ -362,7 +373,7 @@ describe('Test DXTR Gateway', () => {
     const mockQueryTrustee: QueryResults = {
       success: true,
       results: {
-        recordset: [expectedTrustee],
+        recordset: [expectedTrusteeRecord],
       },
       message: '',
     };

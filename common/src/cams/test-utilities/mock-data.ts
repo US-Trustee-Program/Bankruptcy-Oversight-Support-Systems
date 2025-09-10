@@ -20,7 +20,9 @@ import {
   RawConsolidationOrder,
   TransferOrder,
 } from '../orders';
-import { DebtorAttorney, Party, Trustee } from '../parties';
+import { Debtor, DebtorAttorney, Party, LegacyAddress } from '../parties';
+import { PhoneNumber, Address, ContactInformation } from '../contact';
+import { Trustee } from '../trustees';
 import { COURT_DIVISIONS } from './courts.mock';
 import { TRIAL_ATTORNEYS } from './attorneys.mock';
 import { ConsolidationOrderSummary } from '../history';
@@ -129,7 +131,9 @@ function randomOffice() {
 }
 
 function getOffice(courtDivisionCode?: string) {
-  if (!courtDivisionCode) return null;
+  if (!courtDivisionCode) {
+    return null;
+  }
   return COURT_DIVISIONS.find((office) => office.courtDivisionCode === courtDivisionCode);
 }
 
@@ -404,12 +408,10 @@ function getSortedOrders(count: number = 10): Order[] {
     consolidationCount = count - transferCount;
   }
 
-  const orderList = [
+  return [
     ...buildArray(MockData.getTransferOrder, transferCount),
     ...buildArray(MockData.getConsolidationOrder, consolidationCount),
   ].sort((a, b) => sortDates(a.orderDate, b.orderDate));
-
-  return orderList;
 }
 
 function getRawConsolidationOrder(
@@ -464,21 +466,69 @@ function getConsolidationFrom(
   }) as ConsolidationFrom;
 }
 
-function getParty(options: Options<Party> = { override: {} }): Party {
-  const { entityType, override } = options;
-  const party: Party = {
-    name: entityType === 'company' ? faker.company.name() : faker.person.fullName(),
+function getPhone(override: Partial<PhoneNumber> = {}): PhoneNumber {
+  return {
+    number: faker.phone.number(),
+    extension: randomTruth() ? faker.string.numeric(6) : undefined,
+    ...override,
+  };
+}
+
+function getAddress(override: Partial<Address> = {}): Address {
+  return {
+    address1: faker.location.streetAddress(),
+    address2: faker.location.secondaryAddress(),
+    address3: '',
+    city: faker.location.city(),
+    state: faker.location.state({ abbreviated: true }),
+    zipCode: faker.location.zipCode(),
+    countryCode: 'US',
+    ...override,
+  };
+}
+
+function getLegacyAddress(override: Partial<LegacyAddress> = {}): LegacyAddress {
+  return {
     address1: faker.location.streetAddress(),
     address2: randomTruth() ? faker.location.secondaryAddress() : undefined,
     address3: undefined,
     cityStateZipCountry: `${faker.location.city()}, ${faker.location.state({
       abbreviated: true,
     })}, ${faker.location.zipCode()}, US`,
-    taxId: entityType === 'company' ? randomEin() : undefined,
-    ssn: entityType === 'person' ? randomSsn() : undefined,
+    ...override,
+  };
+}
+
+function getContactInformation(override: Partial<ContactInformation> = {}): ContactInformation {
+  return {
+    phone: getPhone(),
+    email: faker.internet.email(),
+    address: getAddress(),
+    ...override,
+  };
+}
+
+function getParty(options: Options<Party> = { override: {} }): Party {
+  const { entityType, override } = options;
+  const party: Party = {
+    name: entityType === 'company' ? faker.company.name() : faker.person.fullName(),
+    ...getLegacyAddress(),
+    phone: faker.phone.number(),
+    extension: randomTruth() ? faker.string.numeric(6) : undefined,
+    email: faker.internet.email(),
   };
   return {
     ...party,
+    ...override,
+  };
+}
+
+function getDebtor(options: Options<Debtor> = { override: {} }): Debtor {
+  const { entityType, override } = options;
+  return {
+    taxId: entityType === 'company' ? randomEin() : undefined,
+    ssn: entityType === 'person' ? randomSsn() : undefined,
+    ...getParty(options),
     ...override,
   };
 }
@@ -508,44 +558,12 @@ function getDocketEntry(override: Partial<CaseDocketEntry> = {}): CaseDocketEntr
   };
 }
 
-function getTrustee(
-  override: Partial<
-    Omit<Trustee, 'address1' | 'address2' | 'address3' | 'cityStateZipCountry'>
-  > = {},
-): Trustee {
+function getTrustee(override: Partial<Trustee> = {}): Trustee {
   return {
     id: faker.string.uuid(),
     name: faker.person.fullName(),
-    phone: faker.phone.number(),
-    email: faker.internet.email(),
-    updatedOn: getDateBeforeToday().toISOString(),
-    updatedBy: getCamsUserReference(),
-    address: {
-      address1: faker.location.streetAddress(),
-      address2: faker.location.secondaryAddress(),
-      address3: '',
-      city: faker.location.city(),
-      state: faker.location.state({ abbreviated: true }),
-      zipCode: faker.location.zipCode(),
-      countryCode: 'US',
-    },
-    status: 'active',
-    ...override,
-  };
-}
-
-function getLegacyTrustee(override: Partial<Omit<Trustee, 'address'>> = {}): Trustee {
-  return {
-    id: faker.string.uuid(),
-    name: faker.person.fullName(),
-    address1: faker.location.streetAddress(),
-    address2: faker.location.secondaryAddress(),
-    address3: '',
-    cityStateZipCountry: `${faker.location.city()}, ${faker.location.state({
-      abbreviated: true,
-    })}, ${faker.location.zipCode()}, US`,
-    phone: faker.phone.number(),
-    email: faker.internet.email(),
+    public: getContactInformation(),
+    legacy: getLegacyAddress(),
     updatedOn: getDateBeforeToday().toISOString(),
     updatedBy: getCamsUserReference(),
     status: 'active',
@@ -563,15 +581,7 @@ function getStaffAssignee(override: Partial<Staff> = {}) {
 
 function getDebtorAttorney(override: Partial<DebtorAttorney> = {}): DebtorAttorney {
   return {
-    name: faker.person.fullName(),
-    address1: faker.location.streetAddress(),
-    address2: faker.location.secondaryAddress(),
-    address3: '',
-    cityStateZipCountry: `${faker.location.city()}, ${faker.location.state({
-      abbreviated: true,
-    })}, ${faker.location.zipCode()}, US`,
-    phone: faker.phone.number(),
-    email: faker.internet.email(),
+    ...getParty({ entityType: 'person' }),
     office: faker.company.name(),
     ...override,
   };
@@ -836,6 +846,10 @@ export const MockData = {
   randomOffice,
   randomSsn,
   randomUstpOffice,
+  getAddress,
+  getContactInformation,
+  getLegacyAddress,
+  getPhone,
   getStaffAssignee,
   getAttorneyAssignment,
   getCaseNote,
@@ -852,6 +866,7 @@ export const MockData = {
   getOffices,
   getOfficeWithStaff,
   getParty,
+  getDebtor,
   getDocketEntry,
   getNonPaginatedResponseBody,
   getPaginatedResponseBody,
@@ -885,7 +900,6 @@ export const MockData = {
   someDateAfterThisDate,
   someDateBeforeThisDate,
   getCaseSyncEvent,
-  getLegacyTrustee,
   getTrustee,
 };
 
