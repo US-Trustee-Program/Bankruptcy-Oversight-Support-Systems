@@ -5,7 +5,6 @@ import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 import { useApi2 } from '@/lib/hooks/UseApi2';
-import { ChapterType, TrusteeInput, TrusteeStatus } from '@common/cams/parties';
 import { useTrusteeFormValidation } from '@/trustees/UseTrusteeFormValidation';
 import type { TrusteeFormData } from '@/trustees/UseTrusteeFormValidation.types';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
@@ -18,6 +17,7 @@ import useDebounce from '@/lib/hooks/UseDebounce';
 import { Stop } from '@/lib/components/Stop';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
+import { ChapterType, TrusteeInput, TrusteeStatus } from '@common/cams/trustees';
 
 const CHAPTER_OPTIONS: ComboOption<ChapterType>[] = [
   { value: '7-panel', label: '7 - Panel' },
@@ -164,16 +164,18 @@ export default function TrusteeCreateForm() {
     try {
       const payload: TrusteeInput = {
         name: formData.name,
-        address: {
-          address1: formData.address1,
-          ...(formData.address2 && { address2: formData.address2 }),
-          city: formData.city,
-          state: formData.state,
-          zipCode: formData.zipCode,
-          countryCode: 'US',
+        public: {
+          address: {
+            address1: formData.address1,
+            ...(formData.address2 && { address2: formData.address2 }),
+            city: formData.city,
+            state: formData.state,
+            zipCode: formData.zipCode,
+            countryCode: 'US',
+          },
+          phone: { number: formData.phone },
+          email: formData.email,
         },
-        phone: formData.phone,
-        email: formData.email,
         ...(formData.districts &&
           formData.districts.length > 0 && { districts: formData.districts }),
         ...(formData.chapters && formData.chapters.length > 0 && { chapters: formData.chapters }),

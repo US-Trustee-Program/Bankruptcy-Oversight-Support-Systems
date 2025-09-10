@@ -1,7 +1,7 @@
 import './TrusteesList.scss';
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Trustee } from '@common/cams/parties';
+import { Trustee } from '@common/cams/trustees';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import useApi2 from '@/lib/hooks/UseApi2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';

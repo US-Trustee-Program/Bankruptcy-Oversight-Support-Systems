@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import TrusteesList from './TrusteesList';
 import Api2 from '@/lib/models/api2';
-import { Trustee } from '@common/cams/parties';
+import { Trustee } from '@common/cams/trustees';
 import { ResponseBody } from '@common/api/response';
 import { vi } from 'vitest';
 
@@ -15,26 +15,34 @@ describe('TrusteesList Component', () => {
     {
       id: 'trustee-1',
       name: 'John Doe',
-      address1: '123 Main St',
-      cityStateZipCountry: 'New York, NY, 10001, US',
+      public: {
+        phone: { number: '555-123-4567' },
+        email: 'john.doe@example.com',
+      },
+      legacy: {
+        address1: '123 Main St',
+        cityStateZipCountry: 'New York, NY, 10001, US',
+      },
       districts: ['NY'],
       chapters: ['7-panel', '11'],
       status: 'active',
-      phone: '555-123-4567',
-      email: 'john.doe@example.com',
       updatedOn: '2025-08-14T10:00:00Z',
       updatedBy: { id: 'user-1', name: 'Admin User' },
     },
     {
       id: 'trustee-2',
       name: 'Jane Smith',
-      address1: '456 Oak Ave',
-      cityStateZipCountry: 'Los Angeles, CA, 90210, US',
+      public: {
+        phone: { number: '555-987-6543' },
+        email: 'jane.smith@example.com',
+      },
+      legacy: {
+        address1: '456 Oak Ave',
+        cityStateZipCountry: 'Los Angeles, CA, 90210, US',
+      },
       districts: ['CA'],
       chapters: ['13'],
       status: 'not active',
-      phone: '555-987-6543',
-      email: 'jane.smith@example.com',
       updatedOn: '2025-08-14T09:00:00Z',
       updatedBy: { id: 'user-2', name: 'Admin User 2' },
     },
@@ -159,13 +167,17 @@ describe('TrusteesList Component', () => {
     const minimalTrustee: Trustee = {
       id: 'trustee-minimal',
       name: 'Minimal Trustee',
-      address1: '789 Pine St',
-      cityStateZipCountry: 'Chicago, IL, 60601, US',
+      public: {
+        phone: { number: '555-1234' },
+        email: 'jane.doe@example.com',
+      },
+      legacy: {
+        address1: '789 Pine St',
+        cityStateZipCountry: 'Chicago, IL, 60601, US',
+      },
       updatedOn: '2025-08-14T08:00:00Z',
       updatedBy: { id: 'user-3', name: 'Admin User 3' },
       status: 'active',
-      phone: '555-1234',
-      email: 'jane.doe@example.com',
     };
 
     const mockResponse: ResponseBody<Trustee[]> = {

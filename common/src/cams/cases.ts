@@ -1,9 +1,8 @@
-import { DebtorAttorney, Debtor } from './parties';
+import { DebtorAttorney, Debtor, LegacyTrustee } from './parties';
 import { ConsolidationFrom, ConsolidationTo, TransferFrom, TransferTo } from './events';
 import { CaseAssignment } from './assignments';
 import { Auditable } from './auditable';
 import { CamsUserReference } from './users';
-import { Trustee } from './trustees';
 
 export const VALID_CASEID_PATTERN = RegExp(/^[\dA-Z]{3}-\d{2}-\d{5}$/);
 
@@ -47,7 +46,7 @@ export type CaseDetail = CaseSummary & {
   consolidation: Array<ConsolidationTo | ConsolidationFrom>;
   debtorAttorney?: DebtorAttorney;
   judgeName?: string;
-  trustee?: Trustee;
+  trustee?: LegacyTrustee;
 };
 
 export type CaseDocketEntryDocument = {

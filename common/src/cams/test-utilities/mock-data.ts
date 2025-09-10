@@ -20,7 +20,7 @@ import {
   RawConsolidationOrder,
   TransferOrder,
 } from '../orders';
-import { Debtor, DebtorAttorney, Party, LegacyAddress } from '../parties';
+import { Debtor, DebtorAttorney, Party, LegacyAddress, LegacyTrustee } from '../parties';
 import { PhoneNumber, Address, ContactInformation } from '../contact';
 import { Trustee } from '../trustees';
 import { COURT_DIVISIONS } from './courts.mock';
@@ -490,8 +490,8 @@ function getAddress(override: Partial<Address> = {}): Address {
 function getLegacyAddress(override: Partial<LegacyAddress> = {}): LegacyAddress {
   return {
     address1: faker.location.streetAddress(),
-    address2: randomTruth() ? faker.location.secondaryAddress() : undefined,
-    address3: undefined,
+    address2: faker.location.secondaryAddress(),
+    address3: 'suite 100',
     cityStateZipCountry: `${faker.location.city()}, ${faker.location.state({
       abbreviated: true,
     })}, ${faker.location.zipCode()}, US`,
@@ -563,10 +563,21 @@ function getTrustee(override: Partial<Trustee> = {}): Trustee {
     id: faker.string.uuid(),
     name: faker.person.fullName(),
     public: getContactInformation(),
-    legacy: getLegacyAddress(),
     updatedOn: getDateBeforeToday().toISOString(),
     updatedBy: getCamsUserReference(),
     status: 'active',
+    ...override,
+  };
+}
+
+function getLegacyTrustee(override: Partial<LegacyTrustee> = {}): LegacyTrustee {
+  return {
+    name: faker.person.fullName(),
+    legacy: {
+      ...getLegacyAddress(),
+      phone: faker.phone.number(),
+      email: faker.internet.email(),
+    },
     ...override,
   };
 }
@@ -901,6 +912,7 @@ export const MockData = {
   someDateBeforeThisDate,
   getCaseSyncEvent,
   getTrustee,
+  getLegacyTrustee,
 };
 
 export default MockData;
