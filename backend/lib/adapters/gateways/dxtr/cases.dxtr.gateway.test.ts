@@ -209,7 +209,6 @@ describe('Test DXTR Gateway', () => {
           address3: '',
           cityStateZipCountry: 'Queens NY 12345 USA',
         },
-        status: 'active' as const,
       } as Trustee,
     };
 
