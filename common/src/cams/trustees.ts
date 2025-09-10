@@ -15,7 +15,10 @@ export type Trustee = Auditable &
     name: string;
     public?: ContactInformation;
     private?: ContactInformation;
-    legacy: LegacyAddress;
+    legacy?: LegacyAddress & {
+      phone?: string;
+      email?: string;
+    };
 
     districts?: string[];
     chapters?: ChapterType[];

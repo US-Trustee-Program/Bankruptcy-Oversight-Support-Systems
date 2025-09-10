@@ -27,3 +27,11 @@ export type Debtor = Party & TaxIds;
 export type DebtorAttorney = Party & {
   office?: string;
 };
+
+export type LegacyTrustee = {
+  name: string;
+  legacy?: LegacyAddress & {
+    phone?: string;
+    email?: string;
+  };
+};

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { TrusteeFormData, TrusteeFormValidation } from './UseTrusteeFormValidation.types';
-import { TRUSTEE_STATUS_VALUES, TrusteeStatus } from '@common/cams/parties';
+import { TRUSTEE_STATUS_VALUES, TrusteeStatus } from '@common/cams/trustees';
 import { EMAIL_REGEX, PHONE_REGEX, EXTENSION_REGEX, ZIP_REGEX } from '@common/cams/regex';
 import V from '@common/cams/validators';
 import {

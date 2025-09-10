@@ -21,7 +21,7 @@ export type Address = {
 };
 
 export type ContactInformation = {
-  address: Address;
+  address?: Address;
   phone?: PhoneNumber;
   email?: string;
 };
