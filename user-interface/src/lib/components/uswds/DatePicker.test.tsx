@@ -12,8 +12,8 @@ describe('Test DatePicker component', async () => {
   const DEFAULT_ID = 'test-datepicker';
   const onChangeSpy = vi.fn();
 
-  beforeEach(() => {
-    vi.clearAllMocks();
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   function renderWithProps(props?: Partial<DatePickerProps>): InputRef {
@@ -43,7 +43,7 @@ describe('Test DatePicker component', async () => {
     const step1 = datePicker.attributes.getNamedItem('value')?.value;
     expect(step1).toEqual(initialValue);
 
-    view.clearValue();
+    act(() => view.clearValue());
     await waitFor(() => {
       const step2 = datePicker.attributes.getNamedItem('value')?.value;
       expect(step2).toEqual('');
@@ -60,7 +60,7 @@ describe('Test DatePicker component', async () => {
     const step1 = datePicker.attributes.getNamedItem('value')?.value;
     expect(step1).toEqual(initialValue);
 
-    view.setValue(updatedValue);
+    act(() => view.setValue(updatedValue));
     await waitFor(() => {
       const step2 = datePicker.attributes.getNamedItem('value')?.value;
       expect(step2).toEqual(updatedValue);
@@ -76,13 +76,13 @@ describe('Test DatePicker component', async () => {
     const step1 = datePicker.attributes.getNamedItem('value')?.value;
     expect(step1).toEqual(initialValue);
 
-    view.setValue(updatedValue);
+    act(() => view.setValue(updatedValue));
     await waitFor(() => {
       const step2 = datePicker.attributes.getNamedItem('value')?.value;
       expect(step2).toEqual(updatedValue);
     });
 
-    view.resetValue();
+    act(() => view.resetValue());
     await waitFor(() => {
       const step3 = datePicker.attributes.getNamedItem('value')?.value;
       expect(step3).toEqual(initialValue);
@@ -95,12 +95,12 @@ describe('Test DatePicker component', async () => {
     const datePicker = screen.getByTestId(DEFAULT_ID);
     expect(datePicker).toBeEnabled();
 
-    view.disable(true);
+    act(() => view.disable(true));
     await waitFor(() => {
       expect(datePicker).not.toBeEnabled();
     });
 
-    view.disable(false);
+    act(() => view.disable(false));
     await waitFor(() => {
       expect(datePicker).toBeEnabled();
     });
@@ -111,8 +111,8 @@ describe('DatePicker additional coverage tests', () => {
   const DEFAULT_ID = 'test-datepicker';
   const mockOnChange = vi.fn();
 
-  beforeEach(() => {
-    vi.clearAllMocks();
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   test('should handle className prop on form group and input', () => {
@@ -208,7 +208,7 @@ describe('DatePicker additional coverage tests', () => {
     fireEvent.change(inputEl, { target: { value: '2024-02-15' } });
 
     // Then reset - should go to minDate since no initial value was provided
-    view.resetValue();
+    act(() => view.resetValue());
 
     await waitFor(() => {
       expect(inputEl).toHaveValue('2024-01-01');
@@ -272,7 +272,7 @@ describe('DatePicker additional coverage tests', () => {
     fireEvent.change(inputEl, { target: { value: '2024-02-15' } });
 
     // Then reset - should clear since no initial value and no minDate
-    view.resetValue();
+    act(() => view.resetValue());
 
     await waitFor(() => {
       expect(inputEl).toHaveValue('');
@@ -305,7 +305,7 @@ describe('DatePicker additional coverage tests', () => {
     });
   });
 
-  it('should handle clearDateValue setTimeout behavior', () => {
+  test('should handle clearDateValue setTimeout behavior', () => {
     const spy = vi.spyOn(window, 'setTimeout');
 
     render(<DatePicker id="test-setTimeout" />);
@@ -316,7 +316,7 @@ describe('DatePicker additional coverage tests', () => {
     spy.mockRestore();
   });
 
-  it('should execute setTimeout callback in clearDateValue', async () => {
+  test('should execute setTimeout callback in clearDateValue', async () => {
     const setTimeoutSpy = vi.spyOn(window, 'setTimeout');
 
     const ref = React.createRef<InputRef>();
@@ -332,12 +332,12 @@ describe('DatePicker additional coverage tests', () => {
 
     // Manually execute the callback to cover line 37 (setDateValue(null))
     const callback = setTimeoutSpy.mock.calls[0][0] as () => void;
-    callback();
+    act(() => callback());
 
     setTimeoutSpy.mockRestore();
   });
 
-  it('should test getValue method through ref', () => {
+  test('should test getValue method through ref', () => {
     const ref = React.createRef<InputRef>();
     render(<DatePicker id="test-date-picker" ref={ref} value="2024-01-15" />);
 
@@ -346,7 +346,7 @@ describe('DatePicker additional coverage tests', () => {
     });
   });
 
-  it('should return empty string from getValue when no value', () => {
+  test('should return empty string from getValue when no value', () => {
     const ref = React.createRef<InputRef>();
     render(<DatePicker id="test-date-picker-empty" ref={ref} />);
 
