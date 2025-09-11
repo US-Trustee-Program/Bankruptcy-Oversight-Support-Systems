@@ -31,7 +31,7 @@ import {
   ElevatePrivilegedUserAction,
   RoleAndOfficeGroupNames,
 } from '@common/cams/privileged-identity';
-import { Trustee, TrusteeInput } from '@common/cams/parties';
+import { Trustee, TrusteeInput } from '@common/cams/trustees';
 
 const caseDocketEntries = MockData.buildArray(MockData.getDocketEntry, 5);
 const caseNoteGuids = [
@@ -265,9 +265,9 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
   } else if (path.match(/\/trustees/)) {
     response = {
       data: [
-        MockData.getLegacyTrustee({ id: 'trustee-1', name: 'John Doe' }),
-        MockData.getLegacyTrustee({ id: 'trustee-2', name: 'Jane Smith' }),
-        MockData.getLegacyTrustee({ id: 'trustee-3', name: 'Bob Johnson' }),
+        MockData.getLegacyTrustee({ name: 'John Doe' }),
+        MockData.getLegacyTrustee({ name: 'Jane Smith' }),
+        MockData.getLegacyTrustee({ name: 'Bob Johnson' }),
       ],
     };
   } else if (path.match(/\/me/)) {

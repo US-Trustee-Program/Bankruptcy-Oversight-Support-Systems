@@ -510,16 +510,18 @@ describe('TrusteeCreateForm', () => {
       await waitFor(() => {
         expect(mockPostTrustee).toHaveBeenCalledWith({
           name: TEST_TRUSTEE_DATA.name,
-          address: {
-            address1: TEST_TRUSTEE_DATA.address1,
-            address2: TEST_TRUSTEE_DATA.address2,
-            city: TEST_TRUSTEE_DATA.city,
-            state: TEST_TRUSTEE_DATA.state,
-            zipCode: TEST_TRUSTEE_DATA.zipCode,
-            countryCode: 'US',
+          public: {
+            address: {
+              address1: TEST_TRUSTEE_DATA.address1,
+              address2: TEST_TRUSTEE_DATA.address2,
+              city: TEST_TRUSTEE_DATA.city,
+              state: TEST_TRUSTEE_DATA.state,
+              zipCode: TEST_TRUSTEE_DATA.zipCode,
+              countryCode: 'US',
+            },
+            phone: { number: '555-123-4567' },
+            email: TEST_TRUSTEE_DATA.email,
           },
-          phone: '555-123-4567',
-          email: TEST_TRUSTEE_DATA.email,
           status: 'active',
         });
         expect(mockNavigate.navigateTo).toHaveBeenCalledWith('/trustees/trustee-123');
@@ -557,21 +559,23 @@ describe('TrusteeCreateForm', () => {
         const calledPayload = mockPostTrustee.mock.calls[0][0];
         expect(calledPayload).toEqual({
           name: TEST_TRUSTEE_DATA.name,
-          address: {
-            address1: TEST_TRUSTEE_DATA.address1,
-            city: TEST_TRUSTEE_DATA.city,
-            state: TEST_TRUSTEE_DATA.state,
-            zipCode: TEST_TRUSTEE_DATA.zipCode,
-            countryCode: 'US',
+          public: {
+            address: {
+              address1: TEST_TRUSTEE_DATA.address1,
+              city: TEST_TRUSTEE_DATA.city,
+              state: TEST_TRUSTEE_DATA.state,
+              zipCode: TEST_TRUSTEE_DATA.zipCode,
+              countryCode: 'US',
+            },
+            phone: { number: '555-123-4567' },
+            email: TEST_TRUSTEE_DATA.email,
           },
-          phone: '555-123-4567',
-          email: TEST_TRUSTEE_DATA.email,
           status: 'active',
         });
         // Should not include districts, chapters, address2 when not provided
         expect(calledPayload.districts).toBeUndefined();
         expect(calledPayload.chapters).toBeUndefined();
-        expect(calledPayload.address.address2).toBeUndefined();
+        expect(calledPayload.public.address.address2).toBeUndefined();
       });
     });
 
@@ -665,15 +669,17 @@ describe('TrusteeCreateForm', () => {
       await waitFor(() => {
         expect(mockPostTrustee).toHaveBeenCalledWith({
           name: TEST_TRUSTEE_DATA.name,
-          address: {
-            address1: TEST_TRUSTEE_DATA.address1,
-            city: TEST_TRUSTEE_DATA.city,
-            state: TEST_TRUSTEE_DATA.state,
-            zipCode: TEST_TRUSTEE_DATA.zipCode,
-            countryCode: 'US',
+          public: {
+            address: {
+              address1: TEST_TRUSTEE_DATA.address1,
+              city: TEST_TRUSTEE_DATA.city,
+              state: TEST_TRUSTEE_DATA.state,
+              zipCode: TEST_TRUSTEE_DATA.zipCode,
+              countryCode: 'US',
+            },
+            phone: { number: TEST_TRUSTEE_DATA.phone },
+            email: TEST_TRUSTEE_DATA.email,
           },
-          phone: TEST_TRUSTEE_DATA.phone,
-          email: TEST_TRUSTEE_DATA.email,
           districts: ['NY'],
           chapters: ['11-subchapter-v', '13'],
           status: 'active',
@@ -720,15 +726,17 @@ describe('TrusteeCreateForm', () => {
       await waitFor(() => {
         expect(mockPostTrustee).toHaveBeenCalledWith({
           name: TEST_PERSONAS.johnSmith.name,
-          address: {
-            address1: TEST_PERSONAS.johnSmith.address1,
-            city: TEST_PERSONAS.johnSmith.city,
-            state: TEST_PERSONAS.johnSmith.state,
-            zipCode: TEST_PERSONAS.johnSmith.zipCode,
-            countryCode: 'US',
+          public: {
+            address: {
+              address1: TEST_PERSONAS.johnSmith.address1,
+              city: TEST_PERSONAS.johnSmith.city,
+              state: TEST_PERSONAS.johnSmith.state,
+              zipCode: TEST_PERSONAS.johnSmith.zipCode,
+              countryCode: 'US',
+            },
+            phone: { number: TEST_PERSONAS.johnSmith.phone },
+            email: TEST_PERSONAS.johnSmith.email,
           },
-          phone: TEST_PERSONAS.johnSmith.phone,
-          email: TEST_PERSONAS.johnSmith.email,
           chapters: ['7-panel', '7-non-panel', '11-subchapter-v'],
           status: 'active',
         });
@@ -811,15 +819,17 @@ describe('TrusteeCreateForm', () => {
       await waitFor(() => {
         expect(mockPostTrustee).toHaveBeenCalledWith({
           name: TEST_PERSONAS.mariaRodriguez.name,
-          address: {
-            address1: TEST_PERSONAS.mariaRodriguez.address1,
-            city: TEST_PERSONAS.mariaRodriguez.city,
-            state: TEST_PERSONAS.mariaRodriguez.state,
-            zipCode: TEST_PERSONAS.mariaRodriguez.zipCode,
-            countryCode: 'US',
+          public: {
+            address: {
+              address1: TEST_PERSONAS.mariaRodriguez.address1,
+              city: TEST_PERSONAS.mariaRodriguez.city,
+              state: TEST_PERSONAS.mariaRodriguez.state,
+              zipCode: TEST_PERSONAS.mariaRodriguez.zipCode,
+              countryCode: 'US',
+            },
+            phone: { number: TEST_PERSONAS.mariaRodriguez.phone },
+            email: TEST_PERSONAS.mariaRodriguez.email,
           },
-          phone: TEST_PERSONAS.mariaRodriguez.phone,
-          email: TEST_PERSONAS.mariaRodriguez.email,
           // CRITICAL: Must support multiple districts (not just single district)
           districts: ['NY-E', 'CA-N', 'TX-S'],
           status: 'active',
@@ -999,16 +1009,18 @@ describe('TrusteeCreateForm', () => {
       await waitFor(() => {
         expect(mockPostTrustee).toHaveBeenCalledWith({
           name: TEST_TRUSTEE_DATA.name,
-          address: {
-            address1: TEST_TRUSTEE_DATA.address1,
-            address2: TEST_TRUSTEE_DATA.address2,
-            city: TEST_TRUSTEE_DATA.city,
-            state: TEST_TRUSTEE_DATA.state,
-            zipCode: TEST_TRUSTEE_DATA.zipCode,
-            countryCode: 'US',
+          public: {
+            address: {
+              address1: TEST_TRUSTEE_DATA.address1,
+              address2: TEST_TRUSTEE_DATA.address2,
+              city: TEST_TRUSTEE_DATA.city,
+              state: TEST_TRUSTEE_DATA.state,
+              zipCode: TEST_TRUSTEE_DATA.zipCode,
+              countryCode: 'US',
+            },
+            phone: { number: '555-123-4567' },
+            email: TEST_TRUSTEE_DATA.email,
           },
-          phone: '555-123-4567',
-          email: TEST_TRUSTEE_DATA.email,
           status: 'active',
         });
       });

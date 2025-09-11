@@ -5,20 +5,27 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Icon from '@/lib/components/uswds/Icon';
 import useApi2 from '@/lib/hooks/UseApi2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
-import { Trustee } from '@common/cams/parties';
-import { useParams } from 'react-router-dom';
+import { Trustee } from '@common/cams/trustees';
+import { useNavigate, useParams } from 'react-router-dom';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import Tag, { UswdsTagStyle } from '@/lib/components/uswds/Tag';
+import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
+import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 
 export default function TrusteeDetailScreen() {
   const { trusteeId } = useParams();
   const [trustee, setTrustee] = useState<Trustee | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [districtLabels, setDistrictLabels] = useState<string[]>([]);
+  const navigate = useNavigate();
 
   const globalAlert = useGlobalAlert();
   const api = useApi2();
+
+  function openEditPublicProfile() {
+    navigate(`/trustees/${trusteeId}/edit-public-profile`);
+  }
 
   function formatTrusteeStatusText(status: string): string {
     if (status === 'not active') {
@@ -56,7 +63,7 @@ export default function TrusteeDetailScreen() {
         .then(([trusteeResponse, courtsResponse]) => {
           setTrustee(trusteeResponse.data);
           const trusteeDistricts: string[] = [];
-          trusteeResponse.data.districts?.map((district) => {
+          trusteeResponse.data.districts?.map((district: string) => {
             const court = courtsResponse.data.find((court) => court.courtDivisionCode === district);
             if (court) {
               trusteeDistricts.push(`${court.courtName} (${court.courtDivisionName})`);
@@ -108,17 +115,16 @@ export default function TrusteeDetailScreen() {
                       {label}
                     </Tag>
                   ))}
-                {trustee.chapters &&
-                  trustee.chapters.map((chapter, index) => (
-                    <Tag
-                      key={index}
-                      uswdsStyle={UswdsTagStyle.Warm}
-                      title="Chapter Type"
-                      id={`chapter-${index}`}
-                    >
-                      Chapter {formatChapterType(chapter)}
-                    </Tag>
-                  ))}
+                {trustee.chapters?.map((chapter, index) => (
+                  <Tag
+                    key={index}
+                    uswdsStyle={UswdsTagStyle.Warm}
+                    title="Chapter Type"
+                    id={`chapter-${index}`}
+                  >
+                    Chapter {formatChapterType(chapter)}
+                  </Tag>
+                ))}
               </div>
             </div>
             <div>
@@ -127,23 +133,46 @@ export default function TrusteeDetailScreen() {
             <div className="grid-col-12 tablet:grid-col-10 desktop:grid-col-8 record-detail-container">
               <div className="record-detail-card-list">
                 <div className="trustee-contact-information record-detail-card">
-                  <h3>Contact Information (Public)</h3>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <h3>Contact Information (Public)</h3>
+                    <Button
+                      uswdsStyle={UswdsButtonStyle.Unstyled}
+                      aria-label="Edit trustee contact information"
+                      title="Edit trustee contact information"
+                      onClick={openEditPublicProfile}
+                    >
+                      <IconLabel icon="edit" label="Edit" />
+                    </Button>
+                  </div>
                   <div className="trustee-name">{trustee.name}</div>
                   <div>
-                    {trustee.address && (
+                    {trustee.public?.address && (
                       <>
-                        <div className="trustee-street-address">{trustee.address.address1}</div>
-                        <span className="trustee-city">{trustee.address.city}</span>
-                        <span className="trustee-state">, {trustee.address.state}</span>
-                        <span className="trustee-zip-code"> {trustee.address.zipCode}</span>
+                        <div className="trustee-street-address">
+                          {trustee.public.address.address1}
+                        </div>
+                        <span className="trustee-city">{trustee.public.address.city}</span>
+                        <span className="trustee-state">, {trustee.public.address.state}</span>
+                        <span className="trustee-zip-code"> {trustee.public.address.zipCode}</span>
                       </>
                     )}
                   </div>
-                  <div className="trustee-phone-number">{trustee.phone}</div>
-                  {trustee.email && (
+                  {trustee.public?.phone && (
+                    <div className="trustee-phone-number">
+                      {trustee.public.phone.number}
+                      {trustee.public.phone.extension ? ` x${trustee.public.phone.extension}` : ''}
+                    </div>
+                  )}
+                  {trustee.public?.email && (
                     <div data-testid="trustee-email" aria-label="trustee email">
-                      <a href={`mailto:${trustee.email}`}>
-                        {trustee.email}
+                      <a href={`mailto:${trustee.public.email}`}>
+                        {trustee.public.email}
                         <Icon className="link-icon" name="mail_outline" />
                       </a>
                     </div>
@@ -157,7 +186,7 @@ export default function TrusteeDetailScreen() {
                   </div>
                   <div className="trustee-chapters">
                     <span>Chapter{trustee.chapters && trustee.chapters.length > 1 && 's'}: </span>
-                    {trustee.chapters && trustee.chapters.map(formatChapterType).join(', ')}
+                    {trustee.chapters?.map(formatChapterType).join(', ')}
                   </div>
                   <div className="trustee-status">Status: {trustee.status}</div>
                 </div>

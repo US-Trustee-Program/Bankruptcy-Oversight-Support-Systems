@@ -1,6 +1,6 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteesUseCase } from '../../use-cases/trustees/trustees';
-import { Trustee, TrusteeInput } from '../../../../common/src/cams/parties';
+import { Trustee, TrusteeInput } from '../../../../common/src/cams/trustees';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsController } from '../controller';

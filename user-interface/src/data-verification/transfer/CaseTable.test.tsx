@@ -19,7 +19,7 @@ function getNumberOfColumns(table: HTMLElement) {
 describe('CaseTable component', () => {
   describe('in common', () => {
     test('should render a missing ssn / tax ID as an empty string', () => {
-      const debtor = MockData.getParty({ override: { ssn: undefined, taxId: undefined } });
+      const debtor = MockData.getDebtor({ override: { ssn: undefined, taxId: undefined } });
       const bCase = MockData.getCaseSummary({ override: { debtor } });
       render(
         <BrowserRouter>

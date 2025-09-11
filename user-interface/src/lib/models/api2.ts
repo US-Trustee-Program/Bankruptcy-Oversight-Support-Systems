@@ -31,13 +31,13 @@ import MockApi2 from '../testing/mock-api2';
 import LocalCache from '../utils/local-cache';
 import { DAY, MINUTE } from '../utils/datetime';
 import { sanitizeText } from '../utils/sanitize-text';
-import { isValidUserInput } from '../../../../common/src/cams/sanitization';
+import { isValidUserInput } from '@common/cams/sanitization';
 import {
   ElevatePrivilegedUserAction,
   RoleAndOfficeGroupNames,
-} from '../../../../common/src/cams/privileged-identity';
+} from '@common/cams/privileged-identity';
 import getAppConfiguration from '@/configuration/appConfiguration';
-import { Trustee, TrusteeInput } from '@common/cams/parties';
+import { Trustee, TrusteeInput } from '@common/cams/trustees';
 
 export const API_CACHE_NAMESPACE = 'api:';
 
