@@ -881,13 +881,12 @@ export class CasesDxtrGateway implements CasesInterface {
     applicationContext.logger.debug(MODULE_NAME, `Trustee results received from DXTR`);
 
     (queryResult.results as mssql.IResult<Party>).recordset.forEach((record: Party) => {
+      const { name, cityStateZipCountry, ...rest } = record;
       trustee = {
-        name: removeExtraSpaces(record.name),
+        name: removeExtraSpaces(name),
         legacy: {
-          address1: record.address1,
-          address2: record.address2,
-          address3: record.address3,
-          cityStateZipCountry: removeExtraSpaces(record.cityStateZipCountry),
+          ...rest,
+          cityStateZipCountry: removeExtraSpaces(cityStateZipCountry),
         },
       } as LegacyTrustee;
     });

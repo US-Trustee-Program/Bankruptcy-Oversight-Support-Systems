@@ -64,10 +64,6 @@ describe('TrusteesUseCase', () => {
       },
       email: 'john.doe@example.com',
     },
-    legacy: {
-      address1: '123 Main St',
-      cityStateZipCountry: 'Anytown NY 12345 US',
-    },
     districts: ['NY'],
     chapters: ['7', '11'],
     status: 'active',

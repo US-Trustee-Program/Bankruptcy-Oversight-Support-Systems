@@ -5,6 +5,7 @@ import Api2 from '@/lib/models/api2';
 import { Trustee } from '@common/cams/trustees';
 import { ResponseBody } from '@common/api/response';
 import { vi } from 'vitest';
+import MockData from '@common/cams/test-utilities/mock-data';
 
 function renderWithRouter(component: React.ReactElement) {
   return render(<BrowserRouter>{component}</BrowserRouter>);
@@ -16,12 +17,9 @@ describe('TrusteesList Component', () => {
       id: 'trustee-1',
       name: 'John Doe',
       public: {
+        address: MockData.getAddress(),
         phone: { number: '555-123-4567' },
         email: 'john.doe@example.com',
-      },
-      legacy: {
-        address1: '123 Main St',
-        cityStateZipCountry: 'New York, NY, 10001, US',
       },
       districts: ['NY'],
       chapters: ['7-panel', '11'],
@@ -33,12 +31,9 @@ describe('TrusteesList Component', () => {
       id: 'trustee-2',
       name: 'Jane Smith',
       public: {
+        address: MockData.getAddress(),
         phone: { number: '555-987-6543' },
         email: 'jane.smith@example.com',
-      },
-      legacy: {
-        address1: '456 Oak Ave',
-        cityStateZipCountry: 'Los Angeles, CA, 90210, US',
       },
       districts: ['CA'],
       chapters: ['13'],
