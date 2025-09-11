@@ -18,8 +18,10 @@ import { UswdsAlertStyle } from './lib/components/uswds/Alert';
 import { AdminScreen } from './admin/AdminScreen';
 import { GoHome } from './lib/components/GoHome';
 import TrusteesScreen from './trustees/TrusteesScreen';
-import TrusteeCreateForm from './trustees/TrusteeCreateForm';
 import TrusteeDetailScreen from './trustees/TrusteeDetailScreen';
+import TrusteeEditInternal from '@/trustees/TrusteeEditInternal';
+import TrusteeCreate from '@/trustees/TrusteeCreate';
+import TrusteeEditPublic from '@/trustees/TrusteeEditPublic';
 
 const featureFlagConfig = getFeatureFlagConfiguration();
 export const GlobalAlertContext = createContext<React.RefObject<GlobalAlertRef | null> | null>(
@@ -51,8 +53,16 @@ function App() {
               <Route path="/data-verification" element={<DataVerificationScreen />}></Route>
               <Route path="/admin/*" element={<AdminScreen />}></Route>
               <Route path="/trustees" element={<TrusteesScreen />}></Route>
-              <Route path="/trustees/create" element={<TrusteeCreateForm />}></Route>
+              <Route path="/trustees/create" element={<TrusteeCreate />}></Route>
               <Route path="/trustees/:trusteeId" element={<TrusteeDetailScreen />}></Route>
+              <Route
+                path="/trustees/:trusteeId/edit-public"
+                element={<TrusteeEditPublic />}
+              ></Route>
+              <Route
+                path="/trustees/:trusteeId/edit-internal"
+                element={<TrusteeEditInternal />}
+              ></Route>
               <Route index element={<GoHome />}></Route>
               <Route path="*" element={<GoHome />}></Route>
             </Routes>

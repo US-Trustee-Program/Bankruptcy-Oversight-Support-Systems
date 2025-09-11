@@ -110,6 +110,6 @@ const contactInformationSpec: ValidationSpec<ContactInformation> = {
 const trusteeSpec: ValidationSpec<TrusteeInput> = {
   name: [V.minLength(1)],
   public: [V.optional(V.spec(contactInformationSpec))],
-  private: [V.optional(V.spec(contactInformationSpec))],
+  internal: [V.optional(V.spec(contactInformationSpec))],
   status: [V.isInSet<TrusteeStatus>([...TRUSTEE_STATUS_VALUES])],
 };

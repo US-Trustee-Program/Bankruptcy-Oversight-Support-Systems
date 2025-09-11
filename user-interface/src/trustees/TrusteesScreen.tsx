@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
@@ -9,6 +9,8 @@ export default function TrusteesScreen() {
   const flags = useFeatureFlags();
   const session = LocalStorage.getSession();
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
+
+  const location = useLocation();
 
   if (!flags[TRUSTEE_MANAGEMENT] || !canManage) {
     return null;
@@ -21,6 +23,7 @@ export default function TrusteesScreen() {
           <h1 className="display-inline-block margin-bottom-0">Trustees</h1>
           <NavLink
             to="/trustees/create"
+            state={{ cancelTo: location.pathname }}
             data-testid="trustees-add-link"
             className="usa-button flex-shrink-0 margin-right-0"
           >
