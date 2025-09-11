@@ -79,6 +79,8 @@ az functionapp config access-restriction add -g "${app_rg}" -n "${app_name}" --s
 az functionapp config access-restriction add -g "${app_rg}" -n "${app_name}" --rule-name "${rule_name}" --action Allow --ip-address "${agent_ip}" --priority 232 --scm-site true 1>/dev/null
 # Configure info sha
 az functionapp config appsettings set -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --settings "INFO_SHA=${commitSha}"
+# Gives some extra time for prior management operation to complete before starting deployment
+sleep 10
 # Construct and execute deployment command
 cmd="az functionapp deployment source config-zip -g ${app_rg} -n ${app_name} --slot ${slot_name} --src ${artifact_path}"
 if [[ ${enable_debug} == 'true' ]]; then
