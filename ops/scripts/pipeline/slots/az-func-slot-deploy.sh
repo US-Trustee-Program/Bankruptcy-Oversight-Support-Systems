@@ -45,6 +45,11 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
 
+    --commitSha)
+        commitSha="${2}"
+        shift 2
+        ;;
+
     *)
         exit 2 # error on unknown flag/switch
         ;;
@@ -72,6 +77,8 @@ agent_ip=$(curl -s --retry 3 --retry-delay 30 --retry-all-errors https://api.ipi
 echo "Adding rule: ${rule_name} to webapp"
 az functionapp config access-restriction add -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "${rule_name}" --action Allow --ip-address "${agent_ip}" --priority 232 --scm-site true 1>/dev/null
 az functionapp config access-restriction add -g "${app_rg}" -n "${app_name}" --rule-name "${rule_name}" --action Allow --ip-address "${agent_ip}" --priority 232 --scm-site true 1>/dev/null
+# Configure info sha
+az functionapp config appsettings set -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --settings "INFO_SHA=${commitSha}"
 # Construct and execute deployment command
 cmd="az functionapp deployment source config-zip -g ${app_rg} -n ${app_name} --slot ${slot_name} --src ${artifact_path}"
 if [[ ${enable_debug} == 'true' ]]; then
