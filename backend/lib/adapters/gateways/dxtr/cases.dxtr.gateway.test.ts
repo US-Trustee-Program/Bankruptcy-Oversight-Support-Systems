@@ -8,7 +8,7 @@ import { NotFoundError } from '../../../common-errors/not-found-error';
 import { CASE_SUMMARIES } from '../../../testing/mock-data/case-summaries.mock';
 import { DEBTORS } from '../../../testing/mock-data/debtors.mock';
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
-import { Trustee } from '../../../../../common/src/cams/trustees';
+import { LegacyTrustee } from '../../../../../common/src/cams/parties';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { TransactionIdRangeForDate } from '../../../use-cases/cases/cases.interface';
 
@@ -101,7 +101,7 @@ describe('Test DXTR Gateway', () => {
         debtorTypeCode: 'CB',
         debtorTypeLabel: expectedDebtorTypeLabel,
         regionId: '04',
-        trustee: MockData.getTrustee({ name: 'placeholder' }), // This will be replaced by gateway
+        trustee: MockData.getLegacyTrustee({ name: 'placeholder' }), // This will be replaced by gateway
       },
     });
 
@@ -209,7 +209,7 @@ describe('Test DXTR Gateway', () => {
           address3: '',
           cityStateZipCountry: 'Queens NY 12345 USA',
         },
-      } as Trustee,
+      } as LegacyTrustee,
     };
 
     expect(actualResult).toStrictEqual(expectedResult);
