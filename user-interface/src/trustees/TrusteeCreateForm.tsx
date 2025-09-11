@@ -17,7 +17,8 @@ import useDebounce from '@/lib/hooks/UseDebounce';
 import { Stop } from '@/lib/components/Stop';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
-import { ChapterType, TrusteeInput, TrusteeStatus } from '@common/cams/trustees';
+import { ChapterType, Trustee, TrusteeInput, TrusteeStatus } from '@common/cams/trustees';
+import { ContactInformation } from '@common/cams/contact';
 
 const CHAPTER_OPTIONS: ComboOption<ChapterType>[] = [
   { value: '7-panel', label: '7 - Panel' },
@@ -34,7 +35,13 @@ const STATUS_OPTIONS: ComboOption<TrusteeStatus>[] = [
   { value: 'suspended', label: 'Suspended' },
 ];
 
-export default function TrusteeCreateForm() {
+type TrusteeCreateFormProps = {
+  trustee?: Trustee;
+  contactInformation?: 'public' | 'internal';
+  cancelTo: string;
+};
+
+export default function TrusteeCreateForm(props: Readonly<TrusteeCreateFormProps>) {
   const flags = useFeatureFlags();
   const api = useApi2();
   const globalAlert = useGlobalAlert();
@@ -46,18 +53,27 @@ export default function TrusteeCreateForm() {
   const statusComboRef = React.useRef<ComboBoxRef | null>(null);
   const statusInitialized = React.useRef(false);
 
-  const [name, setName] = useState('');
-  const [address1, setAddress1] = useState('');
-  const [address2, setAddress2] = useState('');
-  const [city, setCity] = useState('');
-  const [state, setState] = useState('');
-  const [zipCode, setZipCode] = useState('');
-  const [phone, setPhone] = useState('');
-  const [extension, setExtension] = useState('');
-  const [email, setEmail] = useState('');
-  const [districts, setDistricts] = useState<string[]>([]);
-  const [chapters, setChapters] = useState<ChapterType[]>([]);
-  const [status, setStatus] = useState<TrusteeStatus>('active');
+  let info: ContactInformation | null = null;
+  if (props.trustee?.internal && props.contactInformation === 'internal') {
+    info = props.trustee.internal;
+  } else if (props.trustee?.public && props.contactInformation === 'public') {
+    info = props.trustee.public;
+  }
+
+  const doShowStatusAndAssignments = !!props.trustee && props.contactInformation === 'public';
+
+  const [name, setName] = useState(props.trustee?.name ?? '');
+  const [address1, setAddress1] = useState(info?.address?.address1 ?? '');
+  const [address2, setAddress2] = useState(info?.address?.address2 ?? '');
+  const [city, setCity] = useState(info?.address?.city ?? '');
+  const [state, setState] = useState(info?.address?.state ?? '');
+  const [zipCode, setZipCode] = useState(info?.address?.zipCode ?? '');
+  const [phone, setPhone] = useState(info?.phone?.number ?? '');
+  const [extension, setExtension] = useState(info?.phone?.extension ?? '');
+  const [email, setEmail] = useState(info?.email ?? '');
+  const [districts, setDistricts] = useState<string[]>(props.trustee?.districts ?? []);
+  const [chapters, setChapters] = useState<ChapterType[]>(props.trustee?.chapters ?? []);
+  const [status, setStatus] = useState<TrusteeStatus>(props.trustee?.status ?? 'active');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -204,7 +220,7 @@ export default function TrusteeCreateForm() {
 
   function handleCancel() {
     clearErrors();
-    navigate.navigateTo('/trustees');
+    navigate.navigateTo(props.cancelTo);
   }
 
   return (
@@ -369,72 +385,76 @@ export default function TrusteeCreateForm() {
               />
             </div>
 
-            <div className="field-group">
-              <ComboBox
-                id="trustee-districts"
-                className="trustee-districts-input"
-                name="districts"
-                label="District"
-                options={districtOptions}
-                onUpdateSelection={(selectedOptions) => {
-                  debounce(() => {
-                    const selectedValues = selectedOptions.map((option) => option.value);
-                    validateFieldAndUpdate('districts', selectedValues.join(','));
-                    setDistricts(selectedValues);
-                  }, 300);
-                }}
-                multiSelect={true}
-                singularLabel="district"
-                pluralLabel="districts"
-                placeholder={districtLoadError ? 'Error loading districts' : 'Select districts'}
-                autoComplete="off"
-              />
-            </div>
+            {doShowStatusAndAssignments && (
+              <>
+                <div className="field-group">
+                  <ComboBox
+                    id="trustee-districts"
+                    className="trustee-districts-input"
+                    name="districts"
+                    label="District"
+                    options={districtOptions}
+                    onUpdateSelection={(selectedOptions) => {
+                      debounce(() => {
+                        const selectedValues = selectedOptions.map((option) => option.value);
+                        validateFieldAndUpdate('districts', selectedValues.join(','));
+                        setDistricts(selectedValues);
+                      }, 300);
+                    }}
+                    multiSelect={true}
+                    singularLabel="district"
+                    pluralLabel="districts"
+                    placeholder={districtLoadError ? 'Error loading districts' : 'Select districts'}
+                    autoComplete="off"
+                  />
+                </div>
 
-            <div className="field-group">
-              <ComboBox
-                id="trustee-chapters"
-                className="trustee-chapters-input"
-                name="chapters"
-                label="Chapter Types"
-                options={CHAPTER_OPTIONS}
-                onUpdateSelection={(selectedOptions) => {
-                  debounce(() => {
-                    const selectedValues = selectedOptions.map(
-                      (option) => option.value as ChapterType,
-                    );
-                    validateFieldAndUpdate('chapters', selectedValues.join(','));
-                    setChapters(selectedValues);
-                  }, 300);
-                }}
-                multiSelect={true}
-                singularLabel="chapter"
-                pluralLabel="chapters"
-                autoComplete="off"
-              />
-            </div>
+                <div className="field-group">
+                  <ComboBox
+                    id="trustee-chapters"
+                    className="trustee-chapters-input"
+                    name="chapters"
+                    label="Chapter Types"
+                    options={CHAPTER_OPTIONS}
+                    onUpdateSelection={(selectedOptions) => {
+                      debounce(() => {
+                        const selectedValues = selectedOptions.map(
+                          (option) => option.value as ChapterType,
+                        );
+                        validateFieldAndUpdate('chapters', selectedValues.join(','));
+                        setChapters(selectedValues);
+                      }, 300);
+                    }}
+                    multiSelect={true}
+                    singularLabel="chapter"
+                    pluralLabel="chapters"
+                    autoComplete="off"
+                  />
+                </div>
 
-            <div className="field-group">
-              <ComboBox
-                id="trustee-status"
-                className="trustee-status-input"
-                name="status"
-                label="Status"
-                options={STATUS_OPTIONS}
-                onUpdateSelection={(selectedOptions) => {
-                  debounce(() => {
-                    const selectedValues = selectedOptions.map(
-                      (option) => option.value as TrusteeStatus,
-                    );
-                    validateFieldAndUpdate('status', selectedValues.join(','));
-                    setStatus(selectedValues[0]);
-                  }, 300);
-                }}
-                multiSelect={false}
-                autoComplete="off"
-                ref={setStatusComboRef}
-              />
-            </div>
+                <div className="field-group">
+                  <ComboBox
+                    id="trustee-status"
+                    className="trustee-status-input"
+                    name="status"
+                    label="Status"
+                    options={STATUS_OPTIONS}
+                    onUpdateSelection={(selectedOptions) => {
+                      debounce(() => {
+                        const selectedValues = selectedOptions.map(
+                          (option) => option.value as TrusteeStatus,
+                        );
+                        validateFieldAndUpdate('status', selectedValues.join(','));
+                        setStatus(selectedValues[0]);
+                      }, 300);
+                    }}
+                    multiSelect={false}
+                    autoComplete="off"
+                    ref={setStatusComboRef}
+                  />
+                </div>
+              </>
+            )}
           </div>
         </div>
 

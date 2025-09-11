@@ -6,7 +6,7 @@ import Icon from '@/lib/components/uswds/Icon';
 import useApi2 from '@/lib/hooks/UseApi2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { Trustee } from '@common/cams/trustees';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import Tag, { UswdsTagStyle } from '@/lib/components/uswds/Tag';
@@ -18,13 +18,23 @@ export default function TrusteeDetailScreen() {
   const [trustee, setTrustee] = useState<Trustee | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [districtLabels, setDistrictLabels] = useState<string[]>([]);
+
   const navigate = useNavigate();
+  const location = useLocation();
 
   const globalAlert = useGlobalAlert();
   const api = useApi2();
 
   function openEditPublicProfile() {
-    navigate(`/trustees/${trusteeId}/edit-public-profile`);
+    navigate(`/trustees/${trusteeId}/edit-public`, {
+      state: { trustee, cancelTo: location.pathname },
+    });
+  }
+
+  function openEditInternalProfile() {
+    navigate(`/trustees/${trusteeId}/edit-internal`, {
+      state: { trustee, cancelTo: location.pathname },
+    });
   }
 
   function formatTrusteeStatusText(status: string): string {
@@ -191,6 +201,16 @@ export default function TrusteeDetailScreen() {
                   <div className="trustee-status">Status: {trustee.status}</div>
                 </div>
               </div>
+            </div>
+            <div>
+              <Button
+                uswdsStyle={UswdsButtonStyle.Unstyled}
+                aria-label="Edit trustee contact information"
+                title="Edit trustee contact information"
+                onClick={openEditInternalProfile}
+              >
+                <IconLabel icon="edit" label="Edit Internal" />
+              </Button>
             </div>
           </>
         )}
