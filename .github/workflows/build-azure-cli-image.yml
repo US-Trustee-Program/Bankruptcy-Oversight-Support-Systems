@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: '0 5 * * 0'  # Every Sunday at 5:00 AM UTC
   workflow_dispatch:
+    inputs:
+      azure_cli_version:
+        description: 'Azure CLI version to install (use "latest" or leave empty for repository default)'
+        required: false
+        type: string
 
 env:
   REGISTRY: ghcr.io
@@ -19,6 +24,18 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Set Azure CLI version
+        shell: bash
+        run: |
+          INPUT_VERSION="${{ github.event.inputs.azure_cli_version }}"
+
+          if [ -z "$INPUT_VERSION" ]; then
+            # No input provided, use repository variable
+            echo "AZURE_CLI_VERSION=${{ vars.AZURE_CLI_VERSION }}" >> "$GITHUB_ENV"
+          else
+            echo "AZURE_CLI_VERSION=$INPUT_VERSION" >> "$GITHUB_ENV"
+          fi
 
       - name: Set lowercase repository name
         shell: bash
@@ -41,7 +58,7 @@ jobs:
             type=ref,event=branch
             type=ref,event=pr
             type=sha,prefix={{branch}}-
-            type=raw,value=azure-cli-2.71.0
+            type=raw,value=azure-cli-${{ env.AZURE_CLI_VERSION || 'latest' }}
             type=raw,value=latest
 
       - name: Build and push Docker image
@@ -52,3 +69,5 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            AZURE_CLI_VERSION=${{ env.AZURE_CLI_VERSION }}

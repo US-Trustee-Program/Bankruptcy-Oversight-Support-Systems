@@ -14,6 +14,7 @@ param functionsVersion string = '~4'
 param apiFunctionStorageName string = 'ustpfunc${uniqueString(resourceGroup().id, apiFunctionName)}'
 
 param apiFunctionName string
+param slotName string
 
 param apiFunctionSubnetId string
 
@@ -45,6 +46,8 @@ param isUstpDeployment bool
 
 @description('List of origins to allow. Need to include protocol')
 param apiCorsAllowOrigins array = []
+@description('List of origins to allow on the API non-production deployment slot. Need to include protocol')
+param apiSlotCorsAllowOrigins array = []
 
 param sqlServerResourceGroupName string = ''
 
@@ -92,6 +95,8 @@ param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 param maxObjectDepth string
 
 param maxObjectKeyCount string
+
+param gitSha string
 
 var createApplicationInsights = deployAppInsights && !empty(analyticsWorkspaceId)
 
@@ -168,7 +173,90 @@ resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
     appConfigIdentity
     sqlIdentity
   ]
+
+  resource apiFunctionConfig 'config' = {
+    name: 'web'
+    properties: prodFunctionAppConfigProperties
+  }
+
+  resource slot 'slots' = {
+    location: location
+    name: slotName
+    identity: {
+      type: 'UserAssigned'
+      userAssignedIdentities: userAssignedIdentities
+    }
+    resource apiFunctionConfig 'config' = {
+      name: 'web'
+      properties: slotFunctionAppConfigProperties
+    }
+
+    properties: {
+      serverFarmId: apiFunctionApp.properties.serverFarmId
+      enabled: apiFunctionApp.properties.enabled
+      httpsOnly: apiFunctionApp.properties.httpsOnly
+      virtualNetworkSubnetId: apiFunctionApp.properties.virtualNetworkSubnetId
+      keyVaultReferenceIdentity: apiFunctionApp.properties.keyVaultReferenceIdentity
+    }
+  }
 }
+
+var baseApiFunctionAppConfigProperties = {
+    numberOfWorkers: 1
+    alwaysOn: true
+    http20Enabled: true
+    functionAppScaleLimit: 1
+    minimumElasticInstanceCount: 1
+    publicNetworkAccess: 'Enabled'
+    ipSecurityRestrictions: ipSecurityRestrictionsRules
+    ipSecurityRestrictionsDefaultAction: 'Deny'
+    scmIpSecurityRestrictions: [
+      {
+        ipAddress: 'Any'
+        action: 'Deny'
+        priority: 2147483647
+        name: 'Deny all'
+        description: 'Deny all access'
+      }
+    ]
+    scmIpSecurityRestrictionsDefaultAction: 'Deny'
+    scmIpSecurityRestrictionsUseMain: false
+    linuxFxVersion: linuxFxVersionMap['${functionsRuntime}']
+    appSettings: apiApplicationSettings
+    ftpsState: 'Disabled'
+  }
+
+  var prodFunctionAppConfigProperties = union(baseApiFunctionAppConfigProperties, {
+    appSettings: concat(baseApiFunctionAppConfigProperties.appSettings, [
+      {
+        name: 'INFO_SHA'
+        value: 'ProductionSlot'
+      }
+      {
+        name: 'MyTaskHub'
+        value: 'main'
+      }
+    ])
+    cors: {
+      allowedOrigins: apiCorsAllowOrigins
+    }
+  })
+
+  var slotFunctionAppConfigProperties = union(baseApiFunctionAppConfigProperties, {
+    appSettings: concat(baseApiFunctionAppConfigProperties.appSettings, [
+      {
+        name: 'INFO_SHA'
+        value: gitSha
+      }
+      {
+        name: 'MyTaskHub'
+        value: slotName
+      }
+    ])
+    cors: {
+      allowedOrigins: apiSlotCorsAllowOrigins
+    }
+  })
 
 //Create App Insights
 module apiFunctionAppInsights 'lib/app-insights/function-app-insights.bicep' = {
@@ -222,10 +310,6 @@ var baseApplicationSettings = concat(
     {
       name: 'MONGO_CONNECTION_STRING'
       value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MONGO-CONNECTION-STRING)'
-    }
-    {
-      name: 'INFO_SHA'
-      value: 'ProductionSlot'
     }
     {
       name: 'WEBSITE_RUN_FROM_PACKAGE'
@@ -290,10 +374,6 @@ var baseApplicationSettings = concat(
     {
       name: 'OKTA_API_KEY'
       value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=OKTA-API-KEY)'
-    }
-    {
-      name: 'MyTaskHub'
-      value: 'main'
     }
     {
       name: 'MAX_OBJECT_DEPTH'
@@ -362,38 +442,6 @@ var ipSecurityRestrictionsRules = concat(
       ]
     : []
 )
-
-resource apiFunctionConfig 'Microsoft.Web/sites/config@2023-12-01' = {
-  parent: apiFunctionApp
-  name: 'web'
-  properties: {
-    cors: {
-      allowedOrigins: apiCorsAllowOrigins
-    }
-    numberOfWorkers: 1
-    alwaysOn: true
-    http20Enabled: true
-    functionAppScaleLimit: 1
-    minimumElasticInstanceCount: 1
-    publicNetworkAccess: 'Enabled'
-    ipSecurityRestrictions: ipSecurityRestrictionsRules
-    ipSecurityRestrictionsDefaultAction: 'Deny'
-    scmIpSecurityRestrictions: [
-      {
-        ipAddress: 'Any'
-        action: 'Deny'
-        priority: 2147483647
-        name: 'Deny all'
-        description: 'Deny all access'
-      }
-    ]
-    scmIpSecurityRestrictionsDefaultAction: 'Deny'
-    scmIpSecurityRestrictionsUseMain: false
-    linuxFxVersion: linuxFxVersionMap['${functionsRuntime}']
-    appSettings: apiApplicationSettings
-    ftpsState: 'Disabled'
-  }
-}
 
 //Private Endpoints
 module apiPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
