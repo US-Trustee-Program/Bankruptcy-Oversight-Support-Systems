@@ -163,12 +163,9 @@ describe('TrusteesList Component', () => {
       id: 'trustee-minimal',
       name: 'Minimal Trustee',
       public: {
+        address: MockData.getAddress(),
         phone: { number: '555-1234' },
         email: 'jane.doe@example.com',
-      },
-      legacy: {
-        address1: '789 Pine St',
-        cityStateZipCountry: 'Chicago, IL, 60601, US',
       },
       updatedOn: '2025-08-14T08:00:00Z',
       updatedBy: { id: 'user-3', name: 'Admin User 3' },
