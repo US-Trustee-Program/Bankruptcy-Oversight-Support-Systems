@@ -1,6 +1,9 @@
 # Use the latest GitHub Actions runner Ubuntu image
 FROM ghcr.io/actions/actions-runner:latest
 
+# Build argument for Azure CLI version (defaults to latest if not specified)
+ARG AZURE_CLI_VERSION="latest"
+
 # Switch to root to perform installation tasks
 USER root
 
@@ -24,9 +27,15 @@ RUN mkdir -p /etc/apt/keyrings && \
 RUN echo "deb [arch=`dpkg --print-architecture` signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/azure-cli/ $(lsb_release -cs) main" | \
     tee /etc/apt/sources.list.d/azure-cli.list
 
-# Install specific version of Azure CLI (2.71.0)
+# Install Azure CLI - either specific version or latest
 RUN apt-get update && \
-    apt-get install -y azure-cli=2.71.0-1~$(lsb_release -cs) && \
+    if [ "$AZURE_CLI_VERSION" != "latest" ]; then \
+        echo "Installing Azure CLI version $AZURE_CLI_VERSION" && \
+        apt-get install -y azure-cli=${AZURE_CLI_VERSION}-1~$(lsb_release -cs); \
+    else \
+        echo "Installing latest Azure CLI version" && \
+        apt-get install -y azure-cli; \
+    fi && \
     rm -rf /var/lib/apt/lists/*
 
 # Hold the azure-cli package to prevent automatic updates

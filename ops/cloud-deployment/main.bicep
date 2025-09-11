@@ -126,6 +126,8 @@ param cosmosDatabaseName string
 @description('Comma delimited list of data flow names to enable.')
 param enabledDataflows string = ''
 
+param gitSha string
+
 module actionGroup './lib/monitoring-alerts/alert-action-group.bicep' =
   if (createAlerts) {
     name: '${actionGroupName}-action-group-module'
@@ -189,10 +191,8 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = {
       privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
       privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
       oktaUrl: oktaUrl
+      slotName: slotName
     }
-    dependsOn: [
-      network
-    ]
 }
 
 module ustpApiFunction 'backend-api-deploy.bicep' = {
@@ -204,6 +204,7 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
       location: location
       apiPlanName: apiFunctionPlanName
       apiFunctionName: apiFunctionName
+      slotName: slotName
       apiFunctionSubnetId: network.outputs.apiFunctionSubnetId
       functionsRuntime: 'node'
       sqlServerName: sqlServerName
@@ -211,6 +212,7 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
       sqlServerIdentityName: sqlServerIdentityName
       sqlServerIdentityResourceGroupName: sqlServerIdentityResourceGroupName
       apiCorsAllowOrigins: ['https://${webappName}.azurewebsites.us','https://portal.azure.us']
+      apiSlotCorsAllowOrigins: ['https://${webappName}-${slotName}.azurewebsites.us','https://portal.azure.us']
       allowVeracodeScan: allowVeracodeScan
       idKeyvaultAppConfiguration: idKeyvaultAppConfiguration
       kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
@@ -230,10 +232,8 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
       mssqlRequestTimeout: mssqlRequestTimeout
       maxObjectDepth: maxObjectDepth
       maxObjectKeyCount: maxObjectKeyCount
+      gitSha: gitSha
     }
-    dependsOn: [
-      network
-    ]
 }
 
 module ustpDatflowsFunction 'dataflows-resource-deploy.bicep' = {
@@ -246,13 +246,14 @@ module ustpDatflowsFunction 'dataflows-resource-deploy.bicep' = {
     dataflowsPlanName: dataflowsFunctionPlanName
     apiFunctionName: apiFunctionName
     dataflowsFunctionName: dataflowsFunctionName
+    slotName: slotName
     dataflowsFunctionSubnetId: network.outputs.dataflowsFunctionSubnetId
     functionsRuntime: 'node'
     sqlServerName: sqlServerName
     sqlServerResourceGroupName: sqlServerResourceGroupName
     sqlServerIdentityName: sqlServerIdentityName
     sqlServerIdentityResourceGroupName: sqlServerIdentityResourceGroupName
-    dataflowsCorsAllowOrigins: ['https://${webappName}.azurewebsites.us','https://portal.azure.us']
+    dataflowsCorsAllowOrigins: ['https://portal.azure.us']
     allowVeracodeScan: allowVeracodeScan
     idKeyvaultAppConfiguration: idKeyvaultAppConfiguration
     kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
@@ -271,8 +272,6 @@ module ustpDatflowsFunction 'dataflows-resource-deploy.bicep' = {
     isUstpDeployment: isUstpDeployment
     mssqlRequestTimeout: mssqlRequestTimeout
     enabledDataflows: enabledDataflows
+    gitSha: gitSha
   }
-  dependsOn: [
-    network
-  ]
 }

@@ -17,6 +17,8 @@ param dataflowsFunctionName string
 
 param apiFunctionName string
 
+param slotName string
+
 param dataflowsFunctionSubnetId string
 
 param virtualNetworkResourceGroupName string
@@ -93,6 +95,8 @@ param privateDnsZoneResourceGroup string = virtualNetworkResourceGroupName
 
 @description('DNS Zone Subscription ID. USTP uses a different subscription for prod deployment.')
 param privateDnsZoneSubscriptionId string = subscription().subscriptionId
+
+param gitSha string
 
 var createApplicationInsights = deployAppInsights && !empty(analyticsWorkspaceId)
 
@@ -174,11 +178,88 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
     virtualNetworkSubnetId: dataflowsFunctionSubnetId
     keyVaultReferenceIdentity: appConfigIdentity.id
   }
+  resource dataflowsFunctionConfig 'config' = {
+    name: 'web'
+    properties: union(dataflowsFunctionConfigProperties, {
+      appSettings: concat(dataflowsFunctionConfigProperties.appSettings, [
+        {
+          name: 'INFO_SHA'
+          value: 'ProductionSlot'
+        }
+        {
+          name: 'MyTaskHub'
+          value: 'main'
+        }
+      ])
+    })
+  }
   dependsOn: [
     appConfigIdentity
     sqlIdentity
   ]
+
+  resource slot 'slots' = {
+    location: location
+    name: slotName
+    identity: {
+      type: 'UserAssigned'
+      userAssignedIdentities: userAssignedIdentities
+    }
+    properties: {
+      serverFarmId: dataflowsFunctionApp.properties.serverFarmId
+      enabled: dataflowsFunctionApp.properties.enabled
+      httpsOnly: dataflowsFunctionApp.properties.httpsOnly
+      virtualNetworkSubnetId: dataflowsFunctionApp.properties.virtualNetworkSubnetId
+      keyVaultReferenceIdentity: dataflowsFunctionApp.properties.keyVaultReferenceIdentity
+    }
+    resource dataflowsFunctionConfig 'config' = {
+      name: 'web'
+      properties: union(dataflowsFunctionConfigProperties, {
+        appSettings: concat(dataflowsFunctionConfigProperties.appSettings, [
+          {
+            name: 'INFO_SHA'
+            value: gitSha
+          }
+          {
+            name: 'MyTaskHub'
+            value: slotName
+          }
+        ])
+      })
+    }
+  }
 }
+
+var dataflowsFunctionConfigProperties = {
+    cors: {
+      allowedOrigins: dataflowsCorsAllowOrigins
+    }
+    numberOfWorkers: 4
+    alwaysOn: false
+    http20Enabled: true
+    functionAppScaleLimit: 4
+    minimumElasticInstanceCount: 1
+    publicNetworkAccess: 'Enabled'
+    ipSecurityRestrictions: dataflowsIpSecurityRestrictionsRules
+    ipSecurityRestrictionsDefaultAction: 'Deny'
+    scmIpSecurityRestrictions: concat(
+      [
+        {
+          ipAddress: 'Any'
+          action: 'Deny'
+          priority: 2147483647
+          name: 'Deny all'
+          description: 'Deny all access'
+        }
+      ],
+      middlewareIpSecurityRestrictionsRules
+    )
+    scmIpSecurityRestrictionsDefaultAction: 'Deny'
+    scmIpSecurityRestrictionsUseMain: false
+    linuxFxVersion: linuxFxVersionMap['${functionsRuntime}']
+    appSettings: dataflowsApplicationSettings
+    ftpsState: 'Disabled'
+  }
 
 //Create App Insights
 
@@ -233,10 +314,6 @@ var baseApplicationSettings = concat(
     {
       name: 'MONGO_CONNECTION_STRING'
       value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MONGO-CONNECTION-STRING)'
-    }
-    {
-      name: 'INFO_SHA'
-      value: 'ProductionSlot'
     }
     {
       name: 'WEBSITE_RUN_FROM_PACKAGE'
@@ -305,10 +382,6 @@ var baseApplicationSettings = concat(
     {
       name: 'CAMS_ENABLED_DATAFLOWS'
       value: enabledDataflows
-    }
-    {
-      name: 'MyTaskHub'
-      value: 'main'
     }
   ],
   isUstpDeployment
@@ -402,41 +475,6 @@ var middlewareIpSecurityRestrictionsRules = [
 ]
 
 var dataflowsIpSecurityRestrictionsRules = concat(ipSecurityRestrictionsRules, middlewareIpSecurityRestrictionsRules)
-
-resource dataflowsFunctionConfig 'Microsoft.Web/sites/config@2023-12-01' = {
-  parent: dataflowsFunctionApp
-  name: 'web'
-  properties: {
-    cors: {
-      allowedOrigins: dataflowsCorsAllowOrigins
-    }
-    numberOfWorkers: 4
-    alwaysOn: false
-    http20Enabled: true
-    functionAppScaleLimit: 4
-    minimumElasticInstanceCount: 1
-    publicNetworkAccess: 'Enabled'
-    ipSecurityRestrictions: dataflowsIpSecurityRestrictionsRules
-    ipSecurityRestrictionsDefaultAction: 'Deny'
-    scmIpSecurityRestrictions: concat(
-      [
-        {
-          ipAddress: 'Any'
-          action: 'Deny'
-          priority: 2147483647
-          name: 'Deny all'
-          description: 'Deny all access'
-        }
-      ],
-      middlewareIpSecurityRestrictionsRules
-    )
-    scmIpSecurityRestrictionsDefaultAction: 'Deny'
-    scmIpSecurityRestrictionsUseMain: false
-    linuxFxVersion: linuxFxVersionMap['${functionsRuntime}']
-    appSettings: dataflowsApplicationSettings
-    ftpsState: 'Disabled'
-  }
-}
 
 //Private Endpoints
 
