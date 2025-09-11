@@ -208,6 +208,8 @@ describe('Test DXTR Gateway', () => {
           address2: 'Apt 17',
           address3: '',
           cityStateZipCountry: 'Queens NY 12345 USA',
+          email: 'john.smith@example.com',
+          phone: '101-345-8765',
         },
       } as LegacyTrustee,
     };

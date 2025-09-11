@@ -13,7 +13,7 @@ export type TrusteeStatus = (typeof TRUSTEE_STATUS_VALUES)[number];
 export type Trustee = Auditable &
   Identifiable & {
     name: string;
-    public?: ContactInformation;
+    public: ContactInformation;
     private?: ContactInformation;
     legacy?: LegacyAddress & {
       phone?: string;

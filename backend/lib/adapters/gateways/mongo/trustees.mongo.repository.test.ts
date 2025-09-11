@@ -30,10 +30,6 @@ describe('TrusteesMongoRepository', () => {
       },
       email: 'john.doe@example.com',
     },
-    legacy: {
-      address1: '123 Main St',
-      cityStateZipCountry: 'Anytown, NY 12345',
-    },
     districts: ['NY'],
     chapters: ['7', '11'],
     status: 'active',
@@ -116,10 +112,6 @@ describe('TrusteesMongoRepository', () => {
               number: '555-0123',
             },
           },
-          legacy: {
-            address1: '123 Main St',
-            cityStateZipCountry: 'Springfield, IL 62704',
-          },
           status: 'active',
           documentType: 'TRUSTEE',
           createdOn: '2025-08-12T10:00:00Z',
@@ -142,10 +134,6 @@ describe('TrusteesMongoRepository', () => {
             phone: {
               number: '555-0456',
             },
-          },
-          legacy: {
-            address1: '456 Oak Ave',
-            cityStateZipCountry: 'Chicago, IL 60601',
           },
           status: 'active',
           documentType: 'TRUSTEE',
@@ -221,10 +209,6 @@ describe('TrusteesMongoRepository', () => {
           phone: {
             number: '555-0123',
           },
-        },
-        legacy: {
-          address1: '123 Main St',
-          cityStateZipCountry: 'Anytown, NY 12345',
         },
         status: 'active',
         documentType: 'TRUSTEE',
