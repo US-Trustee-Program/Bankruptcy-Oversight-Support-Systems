@@ -2,7 +2,7 @@
 FROM ghcr.io/actions/actions-runner:latest
 
 # Build argument for Azure CLI version (defaults to latest if not specified)
-ARG AZURE_CLI_VERSION=""
+ARG AZURE_CLI_VERSION="latest"
 
 # Switch to root to perform installation tasks
 USER root
@@ -29,7 +29,7 @@ RUN echo "deb [arch=`dpkg --print-architecture` signed-by=/etc/apt/keyrings/micr
 
 # Install Azure CLI - either specific version or latest
 RUN apt-get update && \
-    if [ -n "$AZURE_CLI_VERSION" ]; then \
+    if [ "$AZURE_CLI_VERSION" != "latest" ]; then \
         echo "Installing Azure CLI version $AZURE_CLI_VERSION" && \
         apt-get install -y azure-cli=${AZURE_CLI_VERSION}-1~$(lsb_release -cs); \
     else \

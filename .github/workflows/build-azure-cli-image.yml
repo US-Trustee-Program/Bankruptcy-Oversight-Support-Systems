@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       azure_cli_version:
-        description: 'Azure CLI version to install (leave empty for repository default or latest)'
+        description: 'Azure CLI version to install (use "latest" or leave empty for repository default)'
         required: false
         type: string
 
@@ -28,16 +28,13 @@ jobs:
       - name: Set Azure CLI version
         shell: bash
         run: |
-          # Priority: workflow input > repository variable > latest
-          if [ -n "${{ github.event.inputs.azure_cli_version }}" ]; then
-            echo "AZURE_CLI_VERSION=${{ github.event.inputs.azure_cli_version }}" >> "$GITHUB_ENV"
-            echo "Using Azure CLI version from workflow input: ${{ github.event.inputs.azure_cli_version }}"
-          elif [ -n "${{ vars.AZURE_CLI_VERSION }}" ]; then
+          INPUT_VERSION="${{ github.event.inputs.azure_cli_version }}"
+
+          if [ -z "$INPUT_VERSION" ]; then
+            # No input provided, use repository variable
             echo "AZURE_CLI_VERSION=${{ vars.AZURE_CLI_VERSION }}" >> "$GITHUB_ENV"
-            echo "Using Azure CLI version from repository variable: ${{ vars.AZURE_CLI_VERSION }}"
           else
-            echo "AZURE_CLI_VERSION=" >> "$GITHUB_ENV"
-            echo "Using latest Azure CLI version"
+            echo "AZURE_CLI_VERSION=$INPUT_VERSION" >> "$GITHUB_ENV"
           fi
 
       - name: Set lowercase repository name
