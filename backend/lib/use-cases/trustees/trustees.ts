@@ -13,7 +13,6 @@ import {
 } from '../../../../common/src/cams/regex';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { Address, ContactInformation, PhoneNumber } from '../../../../common/src/cams/contact';
-import { LegacyAddress } from '../../../../common/src/cams/parties';
 import {
   Trustee,
   TRUSTEE_STATUS_VALUES,
@@ -108,16 +107,8 @@ const contactInformationSpec: ValidationSpec<ContactInformation> = {
   email: [V.optional(V.matches(EMAIL_REGEX, 'Provided email does not match regular expression'))],
 };
 
-const legacyAddressSpec: ValidationSpec<LegacyAddress> = {
-  address1: [V.optional(V.minLength(1))],
-  address2: [V.optional(V.maxLength(50))],
-  address3: [V.optional(V.maxLength(50))],
-  cityStateZipCountry: [V.optional(V.minLength(1))],
-};
-
 const trusteeSpec: ValidationSpec<TrusteeInput> = {
   name: [V.minLength(1)],
-  legacy: [V.optional(V.spec(legacyAddressSpec))],
   public: [V.optional(V.spec(contactInformationSpec))],
   private: [V.optional(V.spec(contactInformationSpec))],
   status: [V.isInSet<TrusteeStatus>([...TRUSTEE_STATUS_VALUES])],
