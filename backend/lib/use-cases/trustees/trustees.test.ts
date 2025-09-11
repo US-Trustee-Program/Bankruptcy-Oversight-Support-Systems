@@ -19,7 +19,7 @@ jest.mock('../../../../common/src/cams/session');
 import { TrusteesUseCase } from './trustees';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteesRepository } from '../gateways.types';
-import { TrusteeInput } from '../../../../common/src/cams/parties';
+import { TrusteeInput } from '../../../../common/src/cams/trustees';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsUserReference } from '../../../../common/src/cams/users';
@@ -27,6 +27,7 @@ import { closeDeferred } from '../../deferrable/defer-close';
 import { CamsError } from '../../common-errors/cams-error';
 import { getTrusteesRepository } from '../../factory';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
+import * as validationModule from '../../../../common/src/cams/validation';
 
 const mockGetTrusteesRepository = getTrusteesRepository as jest.MockedFunction<
   typeof getTrusteesRepository
@@ -50,15 +51,19 @@ describe('TrusteesUseCase', () => {
 
   const sampleTrusteeInput: TrusteeInput = {
     name: 'John Doe',
-    address: {
-      address1: '123 Main St',
-      city: 'Anytown',
-      state: 'NY',
-      zipCode: '12345',
-      countryCode: 'US',
+    public: {
+      address: {
+        address1: '123 Main St',
+        city: 'Anytown',
+        state: 'NY',
+        zipCode: '12345',
+        countryCode: 'US',
+      },
+      phone: {
+        number: '333-555-0123',
+      },
+      email: 'john.doe@example.com',
     },
-    phone: '333-555-0123',
-    email: 'john.doe@example.com',
     districts: ['NY'],
     chapters: ['7', '11'],
     status: 'active',
@@ -132,20 +137,28 @@ describe('TrusteesUseCase', () => {
     test('should throw error when validation fails', async () => {
       const invalidTrusteeInput: TrusteeInput = {
         name: '',
-        address: {
-          address1: '123 Main St',
-          city: 'Anytown',
-          state: 'NY',
-          zipCode: '123456',
-          countryCode: 'US',
+        public: {
+          address: {
+            address1: '123 Main St',
+            city: 'Anytown',
+            state: 'NY',
+            zipCode: '123456', // Invalid zip code
+            countryCode: 'US',
+          },
+          phone: {
+            number: '555-0123', // Invalid phone format
+          },
+          email: 'invalid-email', // Invalid email
         },
-        phone: '555-0123',
-        email: 'invalid-email',
+        legacy: {
+          address1: '123 Main St',
+          cityStateZipCountry: 'Anytown NY 123456 US',
+        },
         status: 'active',
       };
 
       await expect(useCase.createTrustee(context, invalidTrusteeInput)).rejects.toThrow(
-        'Trustee validation failed: $.name: Must contain at least 1 characters. $.address.zipCode: Must be valid zip code. $.email: Provided email does not match regular expression. $.phone: Provided phone number does not match regular expression.',
+        'Trustee validation failed: $.name: Must contain at least 1 characters. $.public.address.zipCode: Must be valid zip code. $.public.phone.number: Provided phone number does not match regular expression. $.public.email: Provided email does not match regular expression.',
       );
 
       expect(mockTrusteesRepository.createTrustee).not.toHaveBeenCalled();
@@ -165,6 +178,72 @@ describe('TrusteesUseCase', () => {
       );
 
       expect(mockGetCamsError).toHaveBeenCalledWith(repositoryError, 'TRUSTEES-USE-CASE');
+    });
+
+    test('should handle trustee input with undefined districts and chapters', async () => {
+      const trusteeInputWithoutArrays: TrusteeInput = {
+        name: 'John Doe',
+        public: {
+          address: {
+            address1: '123 Main St',
+            city: 'Anytown',
+            state: 'NY',
+            zipCode: '12345',
+            countryCode: 'US',
+          },
+          phone: {
+            number: '333-555-0123',
+          },
+          email: 'john.doe@example.com',
+        },
+        legacy: {
+          address1: '123 Main St',
+          cityStateZipCountry: 'Anytown NY 12345 US',
+        },
+        status: 'active',
+        // districts: undefined, // explicitly test undefined
+        // chapters: undefined,  // explicitly test undefined
+      };
+
+      const expectedTrustee = {
+        ...trusteeInputWithoutArrays,
+        id: 'trustee-123',
+        districts: [],
+        chapters: [],
+        createdOn: '2025-08-12T10:00:00Z',
+        createdBy: mockUserReference,
+        updatedOn: '2025-08-12T10:00:00Z',
+        updatedBy: mockUserReference,
+      };
+
+      mockTrusteesRepository.createTrustee.mockResolvedValue(expectedTrustee);
+
+      const result = await useCase.createTrustee(context, trusteeInputWithoutArrays);
+
+      expect(mockTrusteesRepository.createTrustee).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...trusteeInputWithoutArrays,
+          districts: [], // Should default to empty array
+          chapters: [], // Should default to empty array
+        }),
+        mockUserReference,
+      );
+      expect(result).toEqual(expectedTrustee);
+    });
+
+    test('should handle validation error with undefined reasonMap', async () => {
+      mockTrusteesRepository.createTrustee.mockRejectedValue(new Error('should not be called'));
+
+      const mockValidationResult = { reasonMap: undefined };
+      jest.spyOn(validationModule, 'validateObject').mockReturnValue(mockValidationResult);
+
+      const invalidInput = { name: '', status: 'active' } as TrusteeInput;
+
+      await expect(useCase.createTrustee(context, invalidInput)).rejects.toThrow(
+        'Trustee validation failed: .',
+      );
+
+      expect(mockTrusteesRepository.createTrustee).not.toHaveBeenCalled();
     });
   });
 

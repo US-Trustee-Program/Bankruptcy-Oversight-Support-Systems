@@ -1,4 +1,4 @@
-import { ChapterType, TrusteeStatus } from '@common/cams/parties';
+import { ChapterType, TrusteeStatus } from '@common/cams/trustees';
 
 export interface TrusteeFormData {
   name: string;

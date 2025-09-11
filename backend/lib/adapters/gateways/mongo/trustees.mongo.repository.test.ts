@@ -1,6 +1,6 @@
 import { ApplicationContext } from '../../types/basic';
 import { TrusteesMongoRepository, TrusteeDocument } from './trustees.mongo.repository';
-import { TrusteeInput } from '../../../../../common/src/cams/parties';
+import { TrusteeInput } from '../../../../../common/src/cams/trustees';
 import { CamsUserReference } from '../../../../../common/src/cams/users';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
@@ -17,10 +17,19 @@ describe('TrusteesMongoRepository', () => {
 
   const sampleTrusteeInput: TrusteeInput = {
     name: 'John Doe',
-    address1: '123 Main St',
-    cityStateZipCountry: 'Anytown, NY 12345',
-    phone: '555-0123',
-    email: 'john.doe@example.com',
+    public: {
+      address: {
+        address1: '123 Main St',
+        city: 'Anytown',
+        state: 'NY',
+        zipCode: '12345',
+        countryCode: 'US',
+      },
+      phone: {
+        number: '555-0123',
+      },
+      email: 'john.doe@example.com',
+    },
     districts: ['NY'],
     chapters: ['7', '11'],
     status: 'active',
@@ -90,20 +99,48 @@ describe('TrusteesMongoRepository', () => {
         {
           id: 'trustee-1',
           name: 'John Doe',
-          address1: '123 Main St',
-          cityStateZipCountry: 'Springfield, IL 62704',
+          public: {
+            address: {
+              address1: '123 Main St',
+              city: 'Springfield',
+              state: 'IL',
+              zipCode: '62704',
+              countryCode: 'US',
+            },
+            email: 'john.doe@example.com',
+            phone: {
+              number: '555-0123',
+            },
+          },
+          status: 'active',
           documentType: 'TRUSTEE',
           createdOn: '2025-08-12T10:00:00Z',
           createdBy: mockUser,
+          updatedOn: '2025-08-12T10:00:00Z',
+          updatedBy: mockUser,
         },
         {
           id: 'trustee-2',
           name: 'Jane Smith',
-          address1: '456 Oak Ave',
-          cityStateZipCountry: 'Chicago, IL 60601',
+          public: {
+            address: {
+              address1: '456 Oak Ave',
+              city: 'Chicago',
+              state: 'IL',
+              zipCode: '60601',
+              countryCode: 'US',
+            },
+            email: 'jane.smith@example.com',
+            phone: {
+              number: '555-0456',
+            },
+          },
+          status: 'active',
           documentType: 'TRUSTEE',
           createdOn: '2025-08-12T11:00:00Z',
           createdBy: mockUser,
+          updatedOn: '2025-08-12T11:00:00Z',
+          updatedBy: mockUser,
         },
       ];
 
@@ -160,11 +197,25 @@ describe('TrusteesMongoRepository', () => {
       const mockTrustee = {
         id,
         name: 'John Doe',
-        address1: '123 Main St',
-        cityStateZipCountry: 'Anytown, NY 12345',
+        public: {
+          address: {
+            address1: '123 Main St',
+            city: 'Anytown',
+            state: 'NY',
+            zipCode: '12345',
+            countryCode: 'US',
+          },
+          email: 'john.doe@example.com',
+          phone: {
+            number: '555-0123',
+          },
+        },
+        status: 'active',
         documentType: 'TRUSTEE',
         createdOn: '2025-08-12T10:00:00Z',
         createdBy: mockUser,
+        updatedOn: '2025-08-12T10:00:00Z',
+        updatedBy: mockUser,
       };
 
       const mockAdapter = jest

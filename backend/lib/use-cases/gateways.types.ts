@@ -34,7 +34,7 @@ import { AcmsConsolidation, AcmsPredicate } from './dataflows/migrate-consolidat
 import { Pipeline } from '../query/query-pipeline';
 import { ResourceActions } from '../../../common/src/cams/actions';
 import { OfficeStaff } from '../adapters/gateways/mongo/offices.mongo.repository';
-import { Trustee, TrusteeInput } from '../../../common/src/cams/parties';
+import { Trustee, TrusteeInput } from '../../../common/src/cams/trustees';
 
 export type ReplaceResult = {
   id: string;

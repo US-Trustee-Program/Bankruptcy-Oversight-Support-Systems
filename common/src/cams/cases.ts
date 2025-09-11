@@ -1,4 +1,4 @@
-import { DebtorAttorney, Party, Trustee } from './parties';
+import { DebtorAttorney, Debtor, LegacyTrustee } from './parties';
 import { ConsolidationFrom, ConsolidationTo, TransferFrom, TransferTo } from './events';
 import { CaseAssignment } from './assignments';
 import { Auditable } from './auditable';
@@ -34,7 +34,7 @@ export type CaseBasics = FlatOfficeDetail & {
 };
 
 export type CaseSummary = CaseBasics & {
-  debtor: Party;
+  debtor: Debtor;
 };
 
 export type CaseDetail = CaseSummary & {
@@ -46,7 +46,7 @@ export type CaseDetail = CaseSummary & {
   consolidation: Array<ConsolidationTo | ConsolidationFrom>;
   debtorAttorney?: DebtorAttorney;
   judgeName?: string;
-  trustee?: Trustee;
+  trustee?: LegacyTrustee;
 };
 
 export type CaseDocketEntryDocument = {

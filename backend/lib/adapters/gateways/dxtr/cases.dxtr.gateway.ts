@@ -22,7 +22,13 @@ import {
   CaseSummary,
   getCaseIdParts,
 } from '../../../../../common/src/cams/cases';
-import { Party, DebtorAttorney, Trustee, Debtor } from '../../../../../common/src/cams/parties';
+import {
+  DebtorAttorney,
+  Debtor,
+  Party,
+  LegacyTrustee,
+} from '../../../../../common/src/cams/parties';
+import { Trustee } from '../../../../../common/src/cams/trustees';
 
 const MODULE_NAME = 'CASES-DXTR-GATEWAY';
 
@@ -36,7 +42,7 @@ const NOT_FOUND = -1;
 type RawCaseIdAndMaxId = { caseId: string; maxTxId: number };
 type CaseIdRecord = { caseId: string };
 
-export default class CasesDxtrGateway implements CasesInterface {
+export class CasesDxtrGateway implements CasesInterface {
   async getCaseDetail(applicationContext: ApplicationContext, caseId: string): Promise<CaseDetail> {
     const caseSummary = await this.getCaseSummary(applicationContext, caseId);
     const bCase: CaseDetail = {
@@ -671,7 +677,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     applicationContext: ApplicationContext,
     dxtrId: string,
     courtId: string,
-  ): Promise<Party> {
+  ): Promise<Debtor> {
     const debtorPartyCode = 'db';
     return this.queryParties<Debtor>(
       applicationContext,
@@ -686,9 +692,9 @@ export default class CasesDxtrGateway implements CasesInterface {
     applicationContext: ApplicationContext,
     dxtrId: string,
     courtId: string,
-  ): Promise<Trustee> {
+  ): Promise<LegacyTrustee> {
     const trusteePartyCode = 'tr';
-    return this.queryParties<Trustee>(
+    return this.queryParties<LegacyTrustee>(
       applicationContext,
       dxtrId,
       courtId,
@@ -855,10 +861,10 @@ export default class CasesDxtrGateway implements CasesInterface {
   }
 
   partyQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
-    let debtor: Party;
+    let debtor: Debtor;
     applicationContext.logger.debug(MODULE_NAME, `Party results received from DXTR`);
 
-    (queryResult.results as mssql.IResult<Party>).recordset.forEach((record) => {
+    (queryResult.results as mssql.IResult<Debtor>).recordset.forEach((record) => {
       debtor = { name: removeExtraSpaces(record.name) };
       debtor.address1 = record.address1;
       debtor.address2 = record.address2;
@@ -871,15 +877,18 @@ export default class CasesDxtrGateway implements CasesInterface {
   }
 
   trusteeQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
-    let trustee: Trustee;
+    let trustee: LegacyTrustee;
     applicationContext.logger.debug(MODULE_NAME, `Trustee results received from DXTR`);
 
-    (queryResult.results as mssql.IResult<Trustee>).recordset.forEach((record) => {
+    (queryResult.results as mssql.IResult<Party>).recordset.forEach((record: Party) => {
+      const { name, cityStateZipCountry, ...rest } = record;
       trustee = {
-        ...record,
-        name: removeExtraSpaces(record.name),
-        cityStateZipCountry: removeExtraSpaces(record.cityStateZipCountry),
-      };
+        name: removeExtraSpaces(name),
+        legacy: {
+          ...rest,
+          cityStateZipCountry: removeExtraSpaces(cityStateZipCountry),
+        },
+      } as LegacyTrustee;
     });
     return trustee || null;
   }
@@ -945,3 +954,5 @@ export default class CasesDxtrGateway implements CasesInterface {
     return (queryResult.results as mssql.IResult<CaseIdRecord[]>).recordset;
   }
 }
+
+export default CasesDxtrGateway;

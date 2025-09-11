@@ -1,37 +1,40 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { vi, beforeEach } from 'vitest';
-import { useParams } from 'react-router-dom';
 import useApi2 from '@/lib/hooks/UseApi2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { UswdsTagStyle } from '@/lib/components/uswds/Tag';
 import TrusteeDetailScreen from './TrusteeDetailScreen';
 
 // Mock the hooks and dependencies
+const mockUseParams = vi.hoisted(() => vi.fn());
+const mockUseNavigate = vi.hoisted(() => vi.fn());
+
 vi.mock('react-router-dom', () => ({
-  useParams: vi.fn(),
+  useParams: mockUseParams,
+  useNavigate: mockUseNavigate,
 }));
 
 vi.mock('@/lib/hooks/UseApi2');
 vi.mock('@/lib/hooks/UseGlobalAlert');
-
-const mockUseParams = vi.mocked(useParams);
 const mockUseApi2 = vi.mocked(useApi2);
 const mockUseGlobalAlert = vi.mocked(useGlobalAlert);
 
 const mockTrustee = {
   id: '123',
   name: 'John Doe',
-  status: 'active',
-  phone: '555-123-4567',
-  email: 'john.doe@example.com',
-  address: {
-    address1: '123 Main St',
-    city: 'Anytown',
-    state: 'NY',
-    zipCode: '12345',
+  public: {
+    address: {
+      address1: '123 Main St',
+      city: 'Anytown',
+      state: 'NY',
+      zipCode: '12345',
+    },
+    phone: { number: '555-123-4567' },
+    email: 'john.doe@example.com',
   },
   districts: ['NYEB', 'NYWB'],
   chapters: ['7-panel', '11', '13'],
+  status: 'active',
 };
 
 const mockCourts = [
@@ -160,7 +163,10 @@ test('should format "not active" status correctly', async () => {
 });
 
 test('should handle trustee without email', async () => {
-  const trusteeWithoutEmail = { ...mockTrustee, email: undefined };
+  const trusteeWithoutEmail = {
+    ...mockTrustee,
+    public: { ...mockTrustee.public, email: undefined },
+  };
   mockGetTrustee.mockResolvedValue({ data: trusteeWithoutEmail });
   mockGetCourts.mockResolvedValue({ data: mockCourts });
 
@@ -174,7 +180,10 @@ test('should handle trustee without email', async () => {
 });
 
 test('should handle trustee without address', async () => {
-  const trusteeWithoutAddress = { ...mockTrustee, address: undefined };
+  const trusteeWithoutAddress = {
+    ...mockTrustee,
+    public: { ...mockTrustee.public, address: undefined },
+  };
   mockGetTrustee.mockResolvedValue({ data: trusteeWithoutAddress });
   mockGetCourts.mockResolvedValue({ data: mockCourts });
 
