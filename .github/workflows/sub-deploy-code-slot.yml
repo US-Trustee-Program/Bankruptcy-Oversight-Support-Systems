@@ -112,7 +112,8 @@ jobs:
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ inputs.apiFunctionName }} \
           --src ./${{ inputs.apiFunctionName }}.zip \
-          --slotName ${{ inputs.slotName }}
+          --slotName ${{ inputs.slotName }} \
+          --commitSha ${{ github.sha }}
 
   deploy-dataflows-slot:
     runs-on: ubuntu-latest
@@ -146,7 +147,8 @@ jobs:
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ inputs.dataflowsFunctionName }} \
           --src ./${{ inputs.dataflowsFunctionName }}.zip \
-          --slotName ${{ inputs.slotName }}
+          --slotName ${{ inputs.slotName }} \
+          --commitSha ${{ github.sha }}
 
   endpoint-test-application-slot:
     needs: [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot]
