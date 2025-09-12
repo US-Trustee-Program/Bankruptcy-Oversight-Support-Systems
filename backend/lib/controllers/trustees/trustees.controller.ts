@@ -39,7 +39,7 @@ export class TrusteesController implements CamsController {
 
     const { method } = context.request;
 
-    if (!['POST', 'GET'].includes(method)) {
+    if (!['POST', 'GET', 'PATCH'].includes(method)) {
       throw getCamsError(
         new BadRequestError(MODULE_NAME, {
           message: `HTTP method ${method} is not supported`,
@@ -54,6 +54,8 @@ export class TrusteesController implements CamsController {
           return await this.createTrustee(context);
         case 'GET':
           return await this.handleGetRequest(context);
+        case 'PATCH':
+          return await this.updateTrustee(context);
       }
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
@@ -124,6 +126,30 @@ export class TrusteesController implements CamsController {
           self: context.request.url,
         },
         data: trustees,
+      },
+    });
+  }
+
+  private async updateTrustee(context: ApplicationContext): Promise<CamsHttpResponseInit<Trustee>> {
+    const { body } = context.request;
+    const trusteeId = context.request.params['id'];
+
+    if (!body) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: 'Request body is required for trustee update',
+      });
+    }
+
+    const updateData = body as Partial<TrusteeInput>;
+    const updatedTrustee = await this.useCase.updateTrustee(context, trusteeId, updateData);
+
+    return httpSuccess({
+      statusCode: 200,
+      body: {
+        meta: {
+          self: context.request.url,
+        },
+        data: updatedTrustee,
       },
     });
   }

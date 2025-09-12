@@ -7,6 +7,7 @@ import { CamsUserReference } from '../../../../../common/src/cams/users';
 import QueryBuilder from '../../../query/query-builder';
 import { Creatable } from '../../types/persistence.gateway';
 import { Trustee, TrusteeInput } from '../../../../../common/src/cams/trustees';
+import { NotFoundError } from '../../../common-errors/not-found-error';
 
 const MODULE_NAME = 'TRUSTEES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustees';
@@ -92,6 +93,39 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to retrieve trustee with ID ${id}.`,
+      });
+    }
+  }
+
+  async updateTrustee(
+    id: string,
+    input: Partial<TrusteeInput>,
+    userRef: CamsUserReference,
+  ): Promise<Trustee> {
+    try {
+      const doc = using<TrusteeDocument>();
+      const query = and(doc('documentType').equals('TRUSTEE'), doc('id').equals(id));
+
+      const updateData = {
+        ...input,
+        updatedOn: new Date().toISOString(),
+        updatedBy: userRef,
+      };
+
+      const result = await this.getAdapter<TrusteeDocument>().updateOne(query, updateData);
+
+      if (result.modifiedCount === 0) {
+        throw new NotFoundError(MODULE_NAME);
+      }
+
+      // Return the updated trustee by reading it back
+      return await this.read(id);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          module: MODULE_NAME,
+          message: `Failed to update trustee with ID ${id}.`,
+        },
       });
     }
   }

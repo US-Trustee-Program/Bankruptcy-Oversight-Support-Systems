@@ -24,7 +24,7 @@ export default function TrusteeCreate() {
             zipCode: formData.zipCode,
             countryCode: 'US',
           },
-          phone: { number: formData.phone },
+          phone: { number: formData.phone, extension: formData.extension },
           email: formData.email,
         },
         ...(formData.districts &&

@@ -6,6 +6,8 @@ import { TrusteeDocument } from '../../adapters/gateways/mongo/trustees.mongo.re
 import { CamsUserReference } from '../../../../common/src/cams/users';
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
+import { NotFoundError } from '../../common-errors/not-found-error';
+import { BadRequestError } from '../../common-errors/bad-request';
 
 // Mock the use case
 jest.mock('../../use-cases/trustees/trustees');
@@ -22,10 +24,19 @@ describe('TrusteesController', () => {
 
   const sampleTrustee: TrusteeInput = {
     name: 'John Doe',
-    address1: '123 Main St',
-    cityStateZipCountry: 'Anytown, NY 12345',
-    phone: '555-0123',
-    email: 'john.doe@example.com',
+    public: {
+      address: {
+        address1: '123 Main St',
+        city: 'Anytown',
+        state: 'NY',
+        zipCode: '12345',
+        countryCode: 'US',
+      },
+      phone: {
+        number: '555-0123',
+      },
+      email: 'john.doe@example.com',
+    },
     districts: ['NY'],
     chapters: ['7', '11'],
     status: 'active',
@@ -54,6 +65,7 @@ describe('TrusteesController', () => {
       createTrustee: jest.fn(),
       listTrustees: jest.fn(),
       getTrustee: jest.fn(),
+      updateTrustee: jest.fn(),
     } as unknown as jest.Mocked<TrusteesUseCase>;
 
     (TrusteesUseCase as jest.MockedClass<typeof TrusteesUseCase>).mockImplementation(
@@ -226,6 +238,7 @@ describe('TrusteesController', () => {
       expect(mockUseCase.getTrustee).toHaveBeenCalledWith(context, id);
     });
 
+    // TODO maybe do this differently? e.g. not found.
     test('should handle trustee not found errors', async () => {
       const id = 'nonexistent-id';
       mockUseCase.getTrustee.mockRejectedValue(
@@ -235,6 +248,65 @@ describe('TrusteesController', () => {
       context.request.url = `/api/trustees/${id}`;
 
       await expect(controller.handleRequest(context)).rejects.toThrow('Unknown Error');
+    });
+  });
+
+  describe('PATCH /api/trustees/:id', () => {
+    beforeEach(() => {
+      context.request.method = 'PATCH';
+    });
+
+    test('should update trustee successfully', async () => {
+      const id = 'trustee-123';
+      context.request.params['id'] = id;
+      context.request.url = `/api/trustees/${id}`;
+      context.request.body = { name: 'John Smith' }; // Update name
+      mockUseCase.updateTrustee.mockResolvedValue(sampleTrusteeDocument);
+
+      const result = await controller.handleRequest(context);
+
+      expect(mockUseCase.updateTrustee).toHaveBeenCalledWith(context, id, context.request.body);
+      expect(result.statusCode).toBe(200);
+      expect(result.body).toEqual({
+        meta: {
+          self: '/api/trustees/trustee-123',
+        },
+        data: sampleTrusteeDocument,
+      });
+    });
+
+    test('should throw NotFoundError when trustee to update is not found', async () => {
+      const id = 'nonexistent-id';
+      context.request.params['id'] = id;
+      context.request.url = `/api/trustees/${id}`;
+      context.request.body = { name: 'John Smith' };
+      mockUseCase.updateTrustee.mockRejectedValue(
+        new NotFoundError('Trustee with ID nonexistent-id not found.'),
+      );
+
+      await expect(controller.handleRequest(context)).rejects.toThrow('Not found');
+    });
+
+    test('should handle validation errors', async () => {
+      const id = 'trustee-123';
+      context.request.params['id'] = id;
+      context.request.url = `/api/trustees/${id}`;
+      context.request.body = { name: '' }; // Invalid name
+      mockUseCase.updateTrustee.mockRejectedValue(
+        new Error('Trustee validation failed: Trustee name is required'),
+      );
+
+      await expect(controller.handleRequest(context)).rejects.toThrow();
+    });
+
+    test('should handle bad request errors', async () => {
+      const id = 'trustee-123';
+      context.request.params['id'] = id;
+      context.request.url = `/api/trustees/${id}`;
+      mockUseCase.updateTrustee.mockRejectedValue(
+        new Error('Request body is required for trustee update'),
+      );
+      await expect(controller.handleRequest(context)).rejects.toThrow(BadRequestError);
     });
   });
 
