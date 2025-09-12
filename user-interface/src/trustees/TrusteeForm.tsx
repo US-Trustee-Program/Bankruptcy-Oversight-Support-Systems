@@ -1,5 +1,5 @@
 import './TrusteeForm.scss';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Input from '@/lib/components/uswds/Input';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
@@ -48,7 +48,7 @@ type TrusteeFormProps = {
   onSubmit: (formData: TrusteeFormData) => Promise<SubmissionResult>;
 };
 
-export default function TrusteeForm(props: Readonly<TrusteeFormProps>) {
+function TrusteeForm(props: Readonly<TrusteeFormProps>) {
   const flags = useFeatureFlags();
   const api = useApi2();
   const globalAlert = useGlobalAlert();
@@ -148,6 +148,133 @@ export default function TrusteeForm(props: Readonly<TrusteeFormProps>) {
     }
   };
 
+  // React hooks must be called before any conditional returns
+  const chapterSelections = useMemo(() => {
+    return chapters.reduce((acc, selection) => {
+      const option = CHAPTER_OPTIONS.find((option) => option.value === selection);
+      if (option) {
+        acc.push(option);
+      }
+      return acc;
+    }, [] as ComboOption[]);
+  }, [chapters]);
+
+  const getFormData = useCallback((): TrusteeFormData => {
+    return {
+      name: name.trim(),
+      address1: address1.trim(),
+      address2: address2.trim() || undefined,
+      city: city.trim(),
+      state: state.trim(),
+      zipCode: zipCode.trim(),
+      phone: phone.trim(),
+      extension: extension.trim() || undefined,
+      email: email.trim(),
+      districts: districts.length > 0 ? districts : undefined,
+      chapters: chapters.length > 0 ? chapters : undefined,
+      status: status,
+    };
+  }, [
+    name,
+    address1,
+    address2,
+    city,
+    state,
+    zipCode,
+    phone,
+    extension,
+    email,
+    districts,
+    chapters,
+    status,
+  ]);
+
+  const handleFieldChange = useCallback(
+    (
+      event: React.ChangeEvent<HTMLInputElement>,
+      setter: React.Dispatch<React.SetStateAction<string>>,
+    ) => {
+      const { value, name } = event.target;
+      setter(value);
+
+      debounce(() => {
+        validateFieldAndUpdate(name as keyof TrusteeFormData, value);
+      }, 300);
+    },
+    [debounce, validateFieldAndUpdate],
+  );
+
+  const handleSubmit = useCallback(
+    async (ev: React.FormEvent) => {
+      ev.preventDefault();
+
+      if (isFormValidAndComplete(getFormData())) {
+        setErrorMessage(null);
+        clearErrors();
+
+        const formData = getFormData();
+
+        setIsSubmitting(true);
+
+        try {
+          // Create the trustee payload
+          const payload = {
+            name: formData.name,
+            public: {
+              address: {
+                address1: formData.address1,
+                address2: formData.address2,
+                city: formData.city,
+                state: formData.state,
+                zipCode: formData.zipCode,
+                countryCode: 'US' as const,
+              },
+              phone: { number: formData.phone },
+              email: formData.email,
+            },
+            districts: formData.districts,
+            chapters: formData.chapters,
+            status: formData.status,
+          };
+
+          // Remove undefined fields
+          if (!payload.public.address.address2) {
+            delete payload.public.address.address2;
+          }
+          if (!payload.districts) {
+            delete payload.districts;
+          }
+          if (!payload.chapters) {
+            delete payload.chapters;
+          }
+
+          const response = await api.postTrustee(payload);
+
+          if (response?.data?.id) {
+            navigate.navigateTo(`/trustees/${response.data.id}`);
+          }
+
+          const result = await props.onSubmit(formData);
+          if (!result.success) {
+            globalAlert?.error(`Failed to create trustee: ${result.message}`);
+          }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Could not create trustee.';
+          globalAlert?.error(`Failed to create trustee: ${errorMessage}`);
+          setErrorMessage(errorMessage);
+        } finally {
+          setIsSubmitting(false);
+        }
+      }
+    },
+    [isFormValidAndComplete, getFormData, clearErrors, api, navigate, props.onSubmit, globalAlert],
+  );
+
+  const handleCancel = useCallback(() => {
+    clearErrors();
+    navigate.navigateTo(props.cancelTo);
+  }, [clearErrors, navigate, props.cancelTo]);
+
   function handleComboBoxUpdate<T>(
     fieldName: keyof TrusteeFormData,
     setter: React.Dispatch<React.SetStateAction<T[]>>,
@@ -190,113 +317,6 @@ export default function TrusteeForm(props: Readonly<TrusteeFormProps>) {
         asError
       />
     );
-  }
-
-  function getChapterSelections() {
-    return chapters.reduce((acc, selection) => {
-      const option = CHAPTER_OPTIONS.find((option) => option.value === selection);
-      if (option) {
-        acc.push(option);
-      }
-      return acc;
-    }, [] as ComboOption[]);
-  }
-
-  function getFormData(): TrusteeFormData {
-    return {
-      name: name.trim(),
-      address1: address1.trim(),
-      address2: address2.trim() || undefined,
-      city: city.trim(),
-      state: state.trim(),
-      zipCode: zipCode.trim(),
-      phone: phone.trim(),
-      extension: extension.trim() || undefined,
-      email: email.trim(),
-      districts: districts.length > 0 ? districts : undefined,
-      chapters: chapters.length > 0 ? chapters : undefined,
-      status: status,
-    };
-  }
-
-  function handleFieldChange(
-    event: React.ChangeEvent<HTMLInputElement>,
-    setter: React.Dispatch<React.SetStateAction<string>>,
-  ) {
-    const { value, name } = event.target;
-    setter(value);
-
-    debounce(() => {
-      validateFieldAndUpdate(name as keyof TrusteeFormData, value);
-    }, 300);
-  }
-
-  async function handleSubmit(ev: React.FormEvent) {
-    ev.preventDefault();
-
-    if (isFormValidAndComplete(getFormData())) {
-      setErrorMessage(null);
-      clearErrors();
-
-      const formData = getFormData();
-
-      setIsSubmitting(true);
-
-      try {
-        // Create the trustee payload
-        const payload = {
-          name: formData.name,
-          public: {
-            address: {
-              address1: formData.address1,
-              address2: formData.address2,
-              city: formData.city,
-              state: formData.state,
-              zipCode: formData.zipCode,
-              countryCode: 'US' as const,
-            },
-            phone: { number: formData.phone },
-            email: formData.email,
-          },
-          districts: formData.districts,
-          chapters: formData.chapters,
-          status: formData.status,
-        };
-
-        // Remove undefined fields
-        if (!payload.public.address.address2) {
-          delete payload.public.address.address2;
-        }
-        if (!payload.districts) {
-          delete payload.districts;
-        }
-        if (!payload.chapters) {
-          delete payload.chapters;
-        }
-
-        const response = await api.postTrustee(payload);
-
-        if (response?.data?.id) {
-          navigate.navigateTo(`/trustees/${response.data.id}`);
-        }
-
-        const result = await props.onSubmit(formData);
-        if (!result.success) {
-          globalAlert?.error(`Failed to create trustee: ${result.message}`);
-        }
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Could not create trustee.';
-        globalAlert?.error(`Failed to create trustee: ${errorMessage}`);
-        setErrorMessage(errorMessage);
-      } finally {
-        setIsSubmitting(false);
-      }
-    }
-  }
-
-  function handleCancel() {
-    clearErrors();
-    navigate.navigateTo(props.cancelTo);
   }
 
   return (
@@ -384,13 +404,16 @@ export default function TrusteeForm(props: Readonly<TrusteeFormProps>) {
                 name="state"
                 label="State"
                 selections={[state]}
-                onUpdateSelection={(selectedOptions) => {
-                  const selectedValue = selectedOptions[0] ? selectedOptions[0].value : '';
-                  setState(selectedValue);
-                  debounce(() => {
-                    validateFieldAndUpdate('state', selectedValue);
-                  }, 300);
-                }}
+                onUpdateSelection={useCallback(
+                  (selectedOptions: ComboOption[]) => {
+                    const selectedValue = selectedOptions[0] ? selectedOptions[0].value : '';
+                    setState(selectedValue);
+                    debounce(() => {
+                      validateFieldAndUpdate('state', selectedValue);
+                    }, 300);
+                  },
+                  [debounce, validateFieldAndUpdate],
+                )}
                 autoComplete="off"
                 errorMessage={fieldErrors['state']}
                 required
@@ -497,7 +520,7 @@ export default function TrusteeForm(props: Readonly<TrusteeFormProps>) {
                     name="chapters"
                     label="Chapter Types"
                     options={CHAPTER_OPTIONS}
-                    selections={getChapterSelections()}
+                    selections={chapterSelections}
                     onUpdateSelection={handleComboBoxUpdate<ChapterType>(
                       'chapters',
                       setChapters,
@@ -550,3 +573,5 @@ export default function TrusteeForm(props: Readonly<TrusteeFormProps>) {
     </div>
   );
 }
+
+export default React.memo(TrusteeForm);

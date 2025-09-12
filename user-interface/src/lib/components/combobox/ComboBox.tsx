@@ -87,6 +87,9 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   );
   const [filter, setFilter] = useState<string | null>(null);
 
+  // Track when selections are being set imperatively to prevent callback loops
+  const isImperativeUpdateRef = useRef<boolean>(false);
+
   // ========== REFS ==========
 
   const comboBoxRef = useRef(null);
@@ -142,6 +145,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   }
 
   function setSelections(values: ComboOption[]) {
+    isImperativeUpdateRef.current = true;
     setSelectedMap(new Map(values.map((value) => [value.value, value])));
   }
 
@@ -396,6 +400,12 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   // ========== USE EFFECTS ==========
 
   useEffect(() => {
+    // Skip callback if this is an imperative update to prevent infinite loops
+    if (isImperativeUpdateRef.current) {
+      isImperativeUpdateRef.current = false;
+      return;
+    }
+
     if (props.onUpdateSelection && !selectedMapCompleted) {
       props.onUpdateSelection([...selectedMap.values()]);
       setSelectedMapCompleted(true);
