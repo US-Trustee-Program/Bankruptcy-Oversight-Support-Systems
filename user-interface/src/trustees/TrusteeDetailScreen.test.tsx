@@ -8,10 +8,12 @@ import TrusteeDetailScreen from './TrusteeDetailScreen';
 // Mock the hooks and dependencies
 const mockUseParams = vi.hoisted(() => vi.fn());
 const mockUseNavigate = vi.hoisted(() => vi.fn());
+const mockUseLocation = vi.hoisted(() => vi.fn());
 
 vi.mock('react-router-dom', () => ({
   useParams: mockUseParams,
   useNavigate: mockUseNavigate,
+  useLocation: mockUseLocation,
 }));
 
 vi.mock('@/lib/hooks/UseApi2');
