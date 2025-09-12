@@ -29,7 +29,7 @@ export default async function handler(
 }
 
 app.http('trustees', {
-  methods: ['GET', 'POST'],
+  methods: ['GET', 'PATCH', 'POST'],
   authLevel: 'anonymous',
   handler,
   route: 'trustees/{id?}',

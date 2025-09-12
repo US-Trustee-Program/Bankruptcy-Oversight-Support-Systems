@@ -27,7 +27,7 @@ function _UsStatesComboBox(
       {...props}
       ref={ref}
       options={usStateOptions}
-      selections={selections}
+      selections={selections.length > 0 ? selections : undefined}
       singularLabel="state"
       pluralLabel="states"
       errorMessage={props.errorMessage}

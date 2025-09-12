@@ -3,7 +3,12 @@ import { TrusteesRepository } from '../gateways.types';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { getTrusteesRepository } from '../../factory';
-import { ValidationSpec, validateObject, flatten } from '../../../../common/src/cams/validation';
+import {
+  ValidationSpec,
+  validateObject,
+  flatten,
+  ValidatorResult,
+} from '../../../../common/src/cams/validation';
 import V from '../../../../common/src/cams/validators';
 import {
   EMAIL_REGEX,
@@ -29,15 +34,16 @@ export class TrusteesUseCase {
     this.trusteesRepository = getTrusteesRepository(context);
   }
 
-  async createTrustee(context: ApplicationContext, trustee: TrusteeInput): Promise<Trustee> {
-    const validatorResult = validateObject(trusteeSpec, trustee);
-
-    // Validate trustee creation input including address
+  private checkValidation(validatorResult: ValidatorResult) {
     if (!validatorResult.valid) {
       const validationErrors = flatten(validatorResult.reasonMap || {});
       const collectedErrors = 'Trustee validation failed: ' + validationErrors.join('. ') + '.';
       throw new BadRequestError(MODULE_NAME, { message: collectedErrors });
     }
+  }
+
+  async createTrustee(context: ApplicationContext, trustee: TrusteeInput): Promise<Trustee> {
+    this.checkValidation(validateObject(trusteeSpec, trustee));
 
     try {
       // Prepare trustee for creation with audit fields
@@ -79,6 +85,28 @@ export class TrusteesUseCase {
     } catch (originalError) {
       const errorMessage = `Failed to retrieve trustee with ID ${id}.`;
       context.logger.error(MODULE_NAME, errorMessage, originalError);
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  async updateTrustee(
+    context: ApplicationContext,
+    id: string,
+    trustee: Partial<TrusteeInput>,
+  ): Promise<Trustee> {
+    try {
+      if (trustee.internal) {
+        this.checkValidation(validateObject(trusteeSpec.internal, trustee.internal));
+      } else {
+        this.checkValidation(validateObject(trusteeSpec, trustee));
+      }
+
+      return await this.trusteesRepository.updateTrustee(
+        id,
+        trustee,
+        getCamsUserReference(context.session.user),
+      );
+    } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
   }

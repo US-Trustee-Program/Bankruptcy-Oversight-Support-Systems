@@ -201,6 +201,11 @@ export interface OfficeAssigneesRepository
 export interface TrusteesRepository extends Reads<Trustee>, Releasable {
   createTrustee(input: TrusteeInput, userRef: CamsUserReference): Promise<Trustee>;
   listTrustees(): Promise<Trustee[]>;
+  updateTrustee(
+    id: string,
+    input: Partial<TrusteeInput>,
+    userRef: CamsUserReference,
+  ): Promise<Trustee>;
 }
 
 export type RuntimeStateDocumentType =
