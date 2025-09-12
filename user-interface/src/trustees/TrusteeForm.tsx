@@ -1,4 +1,4 @@
-import './TrusteeCreateForm.scss';
+import './TrusteeForm.scss';
 import React, { useState, useEffect } from 'react';
 import Input from '@/lib/components/uswds/Input';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
@@ -17,7 +17,7 @@ import useDebounce from '@/lib/hooks/UseDebounce';
 import { Stop } from '@/lib/components/Stop';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
-import { ChapterType, Trustee, TrusteeInput, TrusteeStatus } from '@common/cams/trustees';
+import { ChapterType, TrusteeInput, TrusteeStatus } from '@common/cams/trustees';
 import { ContactInformation } from '@common/cams/contact';
 
 const CHAPTER_OPTIONS: ComboOption<ChapterType>[] = [
@@ -35,13 +35,20 @@ const STATUS_OPTIONS: ComboOption<TrusteeStatus>[] = [
   { value: 'suspended', label: 'Suspended' },
 ];
 
-type TrusteeCreateFormProps = {
-  trustee?: Trustee;
-  contactInformation?: 'public' | 'internal';
-  cancelTo: string;
+export type SubmissionResult = {
+  success: boolean;
+  message?: string;
 };
 
-export default function TrusteeCreateForm(props: Readonly<TrusteeCreateFormProps>) {
+type TrusteeFormProps = {
+  action: 'create' | 'edit';
+  trustee?: TrusteeInput;
+  contactInformation: 'public' | 'internal';
+  cancelTo: string;
+  onSubmit: (formData: TrusteeFormData) => Promise<SubmissionResult>;
+};
+
+export default function TrusteeForm(props: Readonly<TrusteeFormProps>) {
   const flags = useFeatureFlags();
   const api = useApi2();
   const globalAlert = useGlobalAlert();
@@ -170,51 +177,21 @@ export default function TrusteeCreateForm(props: Readonly<TrusteeCreateFormProps
     }, 300);
   }
 
-  async function submit() {
-    setErrorMessage(null);
-    clearErrors();
-
-    const formData = getFormData();
-
-    setIsSubmitting(true);
-    try {
-      const payload: TrusteeInput = {
-        name: formData.name,
-        public: {
-          address: {
-            address1: formData.address1,
-            ...(formData.address2 && { address2: formData.address2 }),
-            city: formData.city,
-            state: formData.state,
-            zipCode: formData.zipCode,
-            countryCode: 'US',
-          },
-          phone: { number: formData.phone },
-          email: formData.email,
-        },
-        ...(formData.districts &&
-          formData.districts.length > 0 && { districts: formData.districts }),
-        ...(formData.chapters && formData.chapters.length > 0 && { chapters: formData.chapters }),
-        status: formData.status,
-      };
-
-      const response = await api.postTrustee(payload);
-      const createdId = (response as { data?: { id?: string } })?.data?.id;
-
-      navigate.navigateTo(`/trustees/${createdId}`);
-    } catch (e) {
-      const errorMsg = e instanceof Error ? e.message : 'Could not create trustee.';
-      setErrorMessage(errorMsg);
-      globalAlert?.error(`Failed to create trustee: ${errorMsg}`);
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
   async function handleSubmit(ev: React.FormEvent) {
     if (isFormValidAndComplete(getFormData())) {
       ev.preventDefault();
-      await submit();
+      setErrorMessage(null);
+      clearErrors();
+
+      const formData = getFormData();
+
+      setIsSubmitting(true);
+
+      const result = await props.onSubmit(formData);
+      if (!result.success) {
+        globalAlert?.error(`Failed to create trustee: ${result.message}`);
+      }
+      setIsSubmitting(false);
     }
   }
 
@@ -224,9 +201,12 @@ export default function TrusteeCreateForm(props: Readonly<TrusteeCreateFormProps
   }
 
   return (
-    <div className="create-trustee-screen">
+    <div className="trustee-form-screen">
       <div className="form-header">
-        <h1 className="text-no-wrap display-inline-block margin-right-1">Add Trustee Profile</h1>
+        <h1 className="text-no-wrap display-inline-block margin-right-1">
+          {props.action === 'create' ? 'Add Trustee Profile' : 'Edit Trustee Profile'}
+          {props.contactInformation === 'internal' ? ' (USTP Internal)' : ' (Public)'}
+        </h1>
         {districtLoadError && (
           <Stop id="trustee-stop" title="Error" message={districtLoadError} asError />
         )}

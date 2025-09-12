@@ -1,4 +1,4 @@
-.create-trustee-screen {
+.trustee-form-screen {
   h1 {
     display: block;
   }
@@ -61,7 +61,7 @@
 }
 
 @media screen and (max-width: 1023px) {
-  .create-trustee-screen form {
+  .trustee-form-screen form {
     .form-container {
       .form-column {
         min-width: 200px;
@@ -78,7 +78,7 @@
 }
 
 @media screen and (max-width: 599px) {
-  .create-trustee-screen form {
+  .trustee-form-screen form {
     .form-container {
       flex-direction: column;
       gap: 1rem;
