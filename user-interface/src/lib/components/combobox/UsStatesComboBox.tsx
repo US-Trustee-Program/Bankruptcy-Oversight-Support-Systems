@@ -10,12 +10,24 @@ const usStateOptions: ComboOption[] = usStates.map((state) => {
   };
 });
 
-function _UsStatesComboBox(props: Omit<ComboBoxProps, 'options'>, ref?: React.Ref<ComboBoxRef>) {
+function _UsStatesComboBox(
+  props: Omit<ComboBoxProps, 'options' | 'selections'> & { selections: string[] },
+  ref?: React.Ref<ComboBoxRef>,
+) {
+  const selections = (props.selections ?? []).reduce((acc, selection) => {
+    const option = usStateOptions.find((option) => option.value === selection);
+    if (option) {
+      acc.push(option);
+    }
+    return acc;
+  }, [] as ComboOption[]);
+
   return (
     <ComboBox
       {...props}
       ref={ref}
       options={usStateOptions}
+      selections={selections}
       singularLabel="state"
       pluralLabel="states"
       errorMessage={props.errorMessage}

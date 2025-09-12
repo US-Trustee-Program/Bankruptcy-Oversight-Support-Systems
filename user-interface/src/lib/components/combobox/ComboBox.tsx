@@ -36,6 +36,7 @@ export interface ComboBoxProps extends Omit<InputProps, 'onChange' | 'onFocus' |
   autoComplete?: 'off';
   icon?: string;
   options: ComboOption[];
+  selections?: ComboOption[];
   onUpdateSelection?: (options: ComboOption[]) => void;
   onUpdateFilter?: (value: string) => void;
   onClose?: (options: ComboOption[]) => void;
@@ -61,6 +62,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     ariaLabelPrefix,
     ariaDescription,
     options: _options,
+    selections,
     singularLabel,
     pluralLabel,
     overflowStrategy,
@@ -75,7 +77,14 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   const [dropdownLocation, setDropdownLocation] = useState<{ bottom: number } | null>(null);
   const [currentListItem, setCurrentListItem] = useState<string | null>(null);
 
-  const [selectedMap, setSelectedMap] = useState<Map<string, ComboOption>>(new Map());
+  const [selectedMapCompleted, setSelectedMapCompleted] = useState<boolean>(false);
+  const [selectedMap, setSelectedMap] = useState<Map<string, ComboOption>>(
+    new Map(
+      selections?.map((selection) => {
+        return [selection.value, selection];
+      }),
+    ),
+  );
   const [filter, setFilter] = useState<string | null>(null);
 
   // ========== REFS ==========
@@ -387,8 +396,9 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   // ========== USE EFFECTS ==========
 
   useEffect(() => {
-    if (props.onUpdateSelection) {
+    if (props.onUpdateSelection && !selectedMapCompleted) {
       props.onUpdateSelection([...selectedMap.values()]);
+      setSelectedMapCompleted(true);
     }
   }, [selectedMap]);
 

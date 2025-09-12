@@ -57,6 +57,7 @@ export default function TrusteeForm(props: Readonly<TrusteeFormProps>) {
     useTrusteeFormValidation();
   const debounce = useDebounce();
 
+  const districtComboRef = React.useRef<ComboBoxRef | null>(null);
   const statusComboRef = React.useRef<ComboBoxRef | null>(null);
   const statusInitialized = React.useRef(false);
 
@@ -125,6 +126,19 @@ export default function TrusteeForm(props: Readonly<TrusteeFormProps>) {
       });
   }, [api]);
 
+  useEffect(() => {
+    if (districtComboRef.current) {
+      const selections = districts.reduce((acc, selection) => {
+        const option = districtOptions.find((option) => option.value === selection);
+        if (option) {
+          acc.push(option);
+        }
+        return acc;
+      }, [] as ComboOption[]);
+      districtComboRef.current.setSelections(selections);
+    }
+  }, [districtOptions, props.trustee?.districts, districtComboRef.current]);
+
   const setStatusComboRef = (el: ComboBoxRef | null) => {
     statusComboRef.current = el;
 
@@ -133,6 +147,35 @@ export default function TrusteeForm(props: Readonly<TrusteeFormProps>) {
       statusInitialized.current = true;
     }
   };
+
+  function handleComboBoxUpdate<T>(
+    fieldName: keyof TrusteeFormData,
+    setter: React.Dispatch<React.SetStateAction<T[]>>,
+    isMultiSelect: true,
+  ): (selectedOptions: ComboOption[]) => void;
+  function handleComboBoxUpdate<T>(
+    fieldName: keyof TrusteeFormData,
+    setter: React.Dispatch<React.SetStateAction<T>>,
+    isMultiSelect: false,
+  ): (selectedOptions: ComboOption[]) => void;
+  function handleComboBoxUpdate<T>(
+    fieldName: keyof TrusteeFormData,
+    setter: React.Dispatch<React.SetStateAction<T[] | T>>,
+    isMultiSelect: boolean,
+  ) {
+    return (selectedOptions: ComboOption[]) => {
+      debounce(() => {
+        const selectedValues = selectedOptions.map((option) => option.value as T);
+        validateFieldAndUpdate(fieldName, selectedValues.join(','));
+
+        if (isMultiSelect) {
+          (setter as React.Dispatch<React.SetStateAction<T[]>>)(selectedValues);
+        } else {
+          (setter as React.Dispatch<React.SetStateAction<T>>)(selectedValues[0]);
+        }
+      }, 300);
+    };
+  }
 
   if (!flags[TRUSTEE_MANAGEMENT]) {
     return <div data-testid="trustee-create-disabled">Trustee management is not enabled.</div>;
@@ -147,6 +190,16 @@ export default function TrusteeForm(props: Readonly<TrusteeFormProps>) {
         asError
       />
     );
+  }
+
+  function getChapterSelections() {
+    return chapters.reduce((acc, selection) => {
+      const option = CHAPTER_OPTIONS.find((option) => option.value === selection);
+      if (option) {
+        acc.push(option);
+      }
+      return acc;
+    }, [] as ComboOption[]);
   }
 
   function getFormData(): TrusteeFormData {
@@ -330,6 +383,7 @@ export default function TrusteeForm(props: Readonly<TrusteeFormProps>) {
                 className="trustee-state-input"
                 name="state"
                 label="State"
+                selections={[state]}
                 onUpdateSelection={(selectedOptions) => {
                   const selectedValue = selectedOptions[0] ? selectedOptions[0].value : '';
                   setState(selectedValue);
@@ -369,6 +423,7 @@ export default function TrusteeForm(props: Readonly<TrusteeFormProps>) {
             <div className="field-group">
               <PhoneNumberInput
                 id="trustee-phone"
+                value={phone}
                 className="trustee-phone-input"
                 name="phone"
                 label="Phone"
@@ -419,20 +474,19 @@ export default function TrusteeForm(props: Readonly<TrusteeFormProps>) {
                     id="trustee-districts"
                     className="trustee-districts-input"
                     name="districts"
-                    label="District"
+                    label="District (Division)"
                     options={districtOptions}
-                    onUpdateSelection={(selectedOptions) => {
-                      debounce(() => {
-                        const selectedValues = selectedOptions.map((option) => option.value);
-                        validateFieldAndUpdate('districts', selectedValues.join(','));
-                        setDistricts(selectedValues);
-                      }, 300);
-                    }}
+                    onUpdateSelection={handleComboBoxUpdate<string>(
+                      'districts',
+                      setDistricts,
+                      true,
+                    )}
                     multiSelect={true}
                     singularLabel="district"
                     pluralLabel="districts"
                     placeholder={districtLoadError ? 'Error loading districts' : 'Select districts'}
                     autoComplete="off"
+                    ref={districtComboRef}
                   />
                 </div>
 
@@ -443,15 +497,12 @@ export default function TrusteeForm(props: Readonly<TrusteeFormProps>) {
                     name="chapters"
                     label="Chapter Types"
                     options={CHAPTER_OPTIONS}
-                    onUpdateSelection={(selectedOptions) => {
-                      debounce(() => {
-                        const selectedValues = selectedOptions.map(
-                          (option) => option.value as ChapterType,
-                        );
-                        validateFieldAndUpdate('chapters', selectedValues.join(','));
-                        setChapters(selectedValues);
-                      }, 300);
-                    }}
+                    selections={getChapterSelections()}
+                    onUpdateSelection={handleComboBoxUpdate<ChapterType>(
+                      'chapters',
+                      setChapters,
+                      true,
+                    )}
                     multiSelect={true}
                     singularLabel="chapter"
                     pluralLabel="chapters"
@@ -466,15 +517,11 @@ export default function TrusteeForm(props: Readonly<TrusteeFormProps>) {
                     name="status"
                     label="Status"
                     options={STATUS_OPTIONS}
-                    onUpdateSelection={(selectedOptions) => {
-                      debounce(() => {
-                        const selectedValues = selectedOptions.map(
-                          (option) => option.value as TrusteeStatus,
-                        );
-                        validateFieldAndUpdate('status', selectedValues.join(','));
-                        setStatus(selectedValues[0]);
-                      }, 300);
-                    }}
+                    onUpdateSelection={handleComboBoxUpdate<TrusteeStatus>(
+                      'status',
+                      setStatus,
+                      false,
+                    )}
                     multiSelect={false}
                     autoComplete="off"
                     ref={setStatusComboRef}
