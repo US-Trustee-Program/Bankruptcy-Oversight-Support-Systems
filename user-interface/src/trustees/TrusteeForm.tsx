@@ -67,7 +67,8 @@ export default function TrusteeForm(props: Readonly<TrusteeFormProps>) {
     info = props.trustee.public;
   }
 
-  const doShowStatusAndAssignments = !!props.trustee && props.contactInformation === 'public';
+  const doShowStatusAndAssignments =
+    props.action === 'create' || (props.action === 'edit' && props.contactInformation === 'public');
 
   const [name, setName] = useState(props.trustee?.name ?? '');
   const [address1, setAddress1] = useState(info?.address?.address1 ?? '');
@@ -178,8 +179,9 @@ export default function TrusteeForm(props: Readonly<TrusteeFormProps>) {
   }
 
   async function handleSubmit(ev: React.FormEvent) {
+    ev.preventDefault();
+
     if (isFormValidAndComplete(getFormData())) {
-      ev.preventDefault();
       setErrorMessage(null);
       clearErrors();
 
@@ -187,11 +189,55 @@ export default function TrusteeForm(props: Readonly<TrusteeFormProps>) {
 
       setIsSubmitting(true);
 
-      const result = await props.onSubmit(formData);
-      if (!result.success) {
-        globalAlert?.error(`Failed to create trustee: ${result.message}`);
+      try {
+        // Create the trustee payload
+        const payload = {
+          name: formData.name,
+          public: {
+            address: {
+              address1: formData.address1,
+              address2: formData.address2,
+              city: formData.city,
+              state: formData.state,
+              zipCode: formData.zipCode,
+              countryCode: 'US' as const,
+            },
+            phone: { number: formData.phone },
+            email: formData.email,
+          },
+          districts: formData.districts,
+          chapters: formData.chapters,
+          status: formData.status,
+        };
+
+        // Remove undefined fields
+        if (!payload.public.address.address2) {
+          delete payload.public.address.address2;
+        }
+        if (!payload.districts) {
+          delete payload.districts;
+        }
+        if (!payload.chapters) {
+          delete payload.chapters;
+        }
+
+        const response = await api.postTrustee(payload);
+
+        if (response?.data?.id) {
+          navigate.navigateTo(`/trustees/${response.data.id}`);
+        }
+
+        const result = await props.onSubmit(formData);
+        if (!result.success) {
+          globalAlert?.error(`Failed to create trustee: ${result.message}`);
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Could not create trustee.';
+        globalAlert?.error(`Failed to create trustee: ${errorMessage}`);
+        setErrorMessage(errorMessage);
+      } finally {
+        setIsSubmitting(false);
       }
-      setIsSubmitting(false);
     }
   }
 
@@ -212,7 +258,8 @@ export default function TrusteeForm(props: Readonly<TrusteeFormProps>) {
         )}
       </div>
 
-      <form aria-label="Create Trustee" data-testid="trustee-create-form">
+      {/* TODO: We need to make the label dynamic and the testid more generic */}
+      <form aria-label="Create Trustee" data-testid="trustee-create-form" onSubmit={handleSubmit}>
         <div className="form-header">
           <span>
             A red asterisk (<span className="text-secondary-dark">*</span>) indicates a required

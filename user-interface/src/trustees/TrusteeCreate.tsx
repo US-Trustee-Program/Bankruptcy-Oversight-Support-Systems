@@ -10,7 +10,7 @@ export default function TrusteeCreate() {
   const location = useLocation();
   const navigate = useCamsNavigator();
 
-  async function submit(formData: TrusteeFormData): Promise<SubmissionResult> {
+  const submit = async (formData: TrusteeFormData): Promise<SubmissionResult> => {
     const result: SubmissionResult = { success: true };
     try {
       const payload: TrusteeInput = {
@@ -42,13 +42,13 @@ export default function TrusteeCreate() {
       result.message = e instanceof Error ? e.message : 'Could not create trustee.';
     }
     return result;
-  }
+  };
 
   return (
     <TrusteeForm
       action="create"
       contactInformation="public"
-      cancelTo={location.state.cancelTo}
+      cancelTo={location.state?.cancelTo ?? '/trustees'}
       onSubmit={submit}
     ></TrusteeForm>
   );

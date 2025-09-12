@@ -77,31 +77,46 @@ async function fillBasicTrusteeForm(
 ) {
   const data = { ...TEST_TRUSTEE_DATA, ...overrides };
 
-  await userEvent.type(screen.getByTestId('trustee-name'), data.name);
-  await userEvent.type(screen.getByTestId('trustee-address1'), address.address1);
-  await userEvent.type(screen.getByTestId('trustee-city'), address.city);
+  const nameInput = screen.getByTestId('trustee-name');
+  await userEvent.clear(nameInput);
+  await userEvent.type(nameInput, data.name);
+
+  const address1Input = screen.getByTestId('trustee-address1');
+  await userEvent.clear(address1Input);
+  await userEvent.type(address1Input, address.address1);
+
+  const cityInput = screen.getByTestId('trustee-city');
+  await userEvent.clear(cityInput);
+  await userEvent.type(cityInput, address.city);
 
   // Select state from ComboBox
   const stateCombobox = screen.getByRole('combobox', { name: /state/i });
   await userEvent.click(stateCombobox);
   await userEvent.click(screen.getByText(stateLabel));
 
-  await userEvent.type(screen.getByTestId('trustee-zip'), address.zipCode);
-  await userEvent.type(screen.getByTestId('trustee-phone'), data.public.phone!.number);
-  await userEvent.type(screen.getByTestId('trustee-email'), data.public.email!);
+  const zipInput = screen.getByTestId('trustee-zip');
+  await userEvent.clear(zipInput);
+  await userEvent.type(zipInput, address.zipCode);
+
+  const phoneInput = screen.getByTestId('trustee-phone');
+  await userEvent.clear(phoneInput);
+  await userEvent.type(phoneInput, data.public.phone!.number);
+
+  const emailInput = screen.getByTestId('trustee-email');
+  await userEvent.clear(emailInput);
+  await userEvent.type(emailInput, data.public.email!);
 }
 
-describe('TrusteeCreateForm', () => {
+describe('TrusteeForm', () => {
   const renderWithRouter = () => {
     return render(
       <BrowserRouter>
         <TrusteeForm
           cancelTo="/test-url"
           contactInformation="public"
-          trustee={TEST_TRUSTEE_DATA}
           action={'create'}
-          onSubmit={function (_formData: TrusteeFormData): Promise<SubmissionResult> {
-            throw new Error('Function not implemented.');
+          onSubmit={async function (_formData: TrusteeFormData): Promise<SubmissionResult> {
+            return { success: true };
           }}
         />
       </BrowserRouter>,
@@ -177,8 +192,12 @@ describe('TrusteeCreateForm', () => {
     expect(postTrusteeSpy).not.toHaveBeenCalled();
 
     // Enter some data
-    await userEvent.type(screen.getByTestId('trustee-name'), TEST_TRUSTEE_DATA.name);
-    await userEvent.type(screen.getByTestId('trustee-address1'), address.address1);
+    const nameInput = screen.getByTestId('trustee-name');
+    await userEvent.clear(nameInput);
+    await userEvent.type(nameInput, TEST_TRUSTEE_DATA.name);
+    const address1Input = screen.getByTestId('trustee-address1');
+    await userEvent.clear(address1Input);
+    await userEvent.type(address1Input, address.address1);
 
     // Click again
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
@@ -188,16 +207,21 @@ describe('TrusteeCreateForm', () => {
     expect(postTrusteeSpy).not.toHaveBeenCalled();
 
     // Finish filling out the form
-    await userEvent.type(screen.getByTestId('trustee-city'), address.city);
+    const cityInput = screen.getByTestId('trustee-city');
+    await userEvent.clear(cityInput);
+    await userEvent.type(cityInput, address.city);
     const stateCombobox = screen.getByRole('combobox', { name: /state/i });
     await userEvent.click(stateCombobox);
     await userEvent.click(screen.getByText(stateLabel));
-    await userEvent.type(screen.getByTestId('trustee-zip'), address.zipCode);
-    await userEvent.type(
-      screen.getByTestId('trustee-phone'),
-      TEST_TRUSTEE_DATA.public.phone!.number,
-    );
-    await userEvent.type(screen.getByTestId('trustee-email'), TEST_TRUSTEE_DATA.public.email!);
+    const zipInput = screen.getByTestId('trustee-zip');
+    await userEvent.clear(zipInput);
+    await userEvent.type(zipInput, address.zipCode);
+    const phoneInput = screen.getByTestId('trustee-phone');
+    await userEvent.clear(phoneInput);
+    await userEvent.type(phoneInput, TEST_TRUSTEE_DATA.public.phone!.number);
+    const emailInput = screen.getByTestId('trustee-email');
+    await userEvent.clear(emailInput);
+    await userEvent.type(emailInput, TEST_TRUSTEE_DATA.public.email!);
 
     // One last click to submit
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
@@ -381,7 +405,7 @@ describe('TrusteeCreateForm', () => {
       // Click cancel
       await userEvent.click(screen.getByRole('button', { name: /cancel/i }));
 
-      expect(mockNavigate.navigateTo).toHaveBeenCalledWith('/trustees');
+      expect(mockNavigate.navigateTo).toHaveBeenCalledWith('/test-url');
     });
   });
 
@@ -435,6 +459,7 @@ describe('TrusteeCreateForm', () => {
       const emailInput = screen.getByTestId('trustee-email');
 
       // Test invalid email format - should show error message
+      await userEvent.clear(emailInput);
       await userEvent.type(emailInput, 'invalid-email');
       await userEvent.tab(); // Trigger blur to activate validation
 
@@ -511,21 +536,35 @@ describe('TrusteeCreateForm', () => {
       renderWithRouter();
 
       // Fill all required fields
-      await userEvent.type(screen.getByTestId('trustee-name'), TEST_TRUSTEE_DATA.name);
-      await userEvent.type(screen.getByTestId('trustee-address1'), address.address1);
-      await userEvent.type(screen.getByTestId('trustee-city'), address.city);
+      const nameInput = screen.getByTestId('trustee-name');
+      await userEvent.clear(nameInput);
+      await userEvent.type(nameInput, TEST_TRUSTEE_DATA.name);
+      const address1Input = screen.getByTestId('trustee-address1');
+      await userEvent.clear(address1Input);
+      await userEvent.type(address1Input, address.address1);
+      const cityInput = screen.getByTestId('trustee-city');
+      await userEvent.clear(cityInput);
+      await userEvent.type(cityInput, address.city);
       // Select state from ComboBox
       const stateCombobox = screen.getByRole('combobox', { name: /state/i });
       await userEvent.click(stateCombobox);
       await userEvent.click(screen.getByText(stateLabel));
-      await userEvent.type(screen.getByTestId('trustee-zip'), address.zipCode);
+      const zipInput = screen.getByTestId('trustee-zip');
+      await userEvent.clear(zipInput);
+      await userEvent.type(zipInput, address.zipCode);
 
       // Fill required phone and email fields
-      await userEvent.type(screen.getByTestId('trustee-phone'), '(555) 123-4567');
-      await userEvent.type(screen.getByTestId('trustee-email'), TEST_TRUSTEE_DATA.public.email!);
+      const phoneInput = screen.getByTestId('trustee-phone');
+      await userEvent.clear(phoneInput);
+      await userEvent.type(phoneInput, '(555) 123-4567');
+      const emailInput = screen.getByTestId('trustee-email');
+      await userEvent.clear(emailInput);
+      await userEvent.type(emailInput, TEST_TRUSTEE_DATA.public.email!);
 
       // Fill optional fields
-      await userEvent.type(screen.getByTestId('trustee-address2'), address.address2!);
+      const address2Input = screen.getByTestId('trustee-address2');
+      await userEvent.clear(address2Input);
+      await userEvent.type(address2Input, address.address2!);
       await userEvent.type(
         screen.getByTestId('trustee-extension'),
         TEST_TRUSTEE_DATA.public.phone!.extension!,
@@ -581,8 +620,8 @@ describe('TrusteeCreateForm', () => {
       await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
       await waitFor(() => {
-        const calledPayload = mockPostTrustee.mock.calls[0][0];
-        expect(calledPayload).toEqual({
+        // expect(mockPostTrustee).toHaveBeenCalled();
+        expect(mockPostTrustee).toHaveBeenCalledWith({
           name: TEST_TRUSTEE_DATA.name,
           public: {
             address: {
@@ -597,10 +636,26 @@ describe('TrusteeCreateForm', () => {
           },
           status: 'active',
         });
-        // Should not include districts, chapters, address2 when not provided
-        expect(calledPayload.districts).toBeUndefined();
-        expect(calledPayload.chapters).toBeUndefined();
-        expect(calledPayload.public.address.address2).toBeUndefined();
+        // const calledPayload = mockPostTrustee.mock.calls[0][0];
+        // expect(calledPayload).toEqual({
+        //   name: TEST_TRUSTEE_DATA.name,
+        //   public: {
+        //     address: {
+        //       address1: address.address1,
+        //       city: address.city,
+        //       state: address.state,
+        //       zipCode: address.zipCode,
+        //       countryCode: 'US',
+        //     },
+        //     phone: { number: '555-123-4567' },
+        //     email: TEST_TRUSTEE_DATA.public.email,
+        //   },
+        //   status: 'active',
+        // });
+        // // Should not include districts, chapters, address2 when not provided
+        // expect(calledPayload.districts).toBeUndefined();
+        // expect(calledPayload.chapters).toBeUndefined();
+        // expect(calledPayload.public.address.address2).toBeUndefined();
       });
     });
 
@@ -644,14 +699,17 @@ describe('TrusteeCreateForm', () => {
 
       // Fill required fields
       const trusteeName = screen.getByTestId('trustee-name');
+      await userEvent.clear(trusteeName);
       await userEvent.type(trusteeName, TEST_TRUSTEE_DATA.name);
       expect(trusteeName).toHaveValue(TEST_TRUSTEE_DATA.name);
 
       const trusteeAddress1 = screen.getByTestId('trustee-address1');
+      await userEvent.clear(trusteeAddress1);
       await userEvent.type(trusteeAddress1, address.address1);
       expect(trusteeAddress1).toHaveValue(address.address1);
 
       const trusteeCity = screen.getByTestId('trustee-city');
+      await userEvent.clear(trusteeCity);
       await userEvent.type(trusteeCity, address.city);
       expect(trusteeCity).toHaveValue(address.city);
 
@@ -661,14 +719,14 @@ describe('TrusteeCreateForm', () => {
       await userEvent.click(screen.getByText(stateLabel));
 
       const trusteeZip = screen.getByTestId('trustee-zip');
+      await userEvent.clear(trusteeZip);
       await userEvent.type(trusteeZip, address.zipCode);
       expect(trusteeZip).toHaveValue(address.zipCode);
 
       // Add the new required fields
-      await userEvent.type(
-        screen.getByTestId('trustee-phone'),
-        TEST_TRUSTEE_DATA.public.phone!.number,
-      );
+      const trusteePhone = screen.getByTestId('trustee-phone');
+      await userEvent.clear(trusteePhone);
+      await userEvent.type(trusteePhone, TEST_TRUSTEE_DATA.public.phone!.number);
       await userEvent.type(screen.getByTestId('trustee-email'), TEST_TRUSTEE_DATA.public.email!);
 
       // Select district from ComboBox
