@@ -1,6 +1,6 @@
 import './TrusteeForm.scss';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import Input from '@/lib/components/uswds/Input';
+import Input, { InputProps } from '@/lib/components/uswds/Input';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
@@ -39,6 +39,43 @@ export type SubmissionResult = {
   success: boolean;
   message?: string;
 };
+
+type FieldGroupProps<T> = {
+  children: React.ReactNode | React.ReactNode[];
+  hiddenFields?: (keyof T)[];
+  disabledFields?: (keyof T)[];
+};
+
+/**
+ * This is a prototype for a component that can disable or hide fields dynamically
+ * in a form based on properties passed to the component. It is named FieldGroup
+ * because it is aligned with an existing div wrapper for the field elements in
+ * this Trustee form.
+ */
+function FieldGroup<T>(props: Readonly<FieldGroupProps<T>>) {
+  const children = React.Children.toArray(props.children)
+    .filter((child) => {
+      const castChild = child as unknown as { props?: InputProps };
+      if (castChild.props) {
+        return !props.hiddenFields?.includes(castChild.props.name as keyof T);
+      }
+      return true;
+    })
+    .map((child) => {
+      if (React.isValidElement(child) && child.type === Input) {
+        const castChild = child as unknown as { props?: InputProps };
+        // Clone element with disabled property if needed
+        if (props.disabledFields?.includes(castChild.props?.name as keyof T)) {
+          return React.cloneElement(child, {
+            ...castChild.props,
+            disabled: true,
+          } as Partial<unknown>);
+        }
+      }
+      return child;
+    });
+  return <div className="field-group">{children}</div>;
+}
 
 type TrusteeFormProps = {
   action: 'create' | 'edit';
@@ -303,6 +340,11 @@ function TrusteeForm(props: Readonly<TrusteeFormProps>) {
     );
   }
 
+  const hiddenAndDisabledFields = {
+    hiddenFields: props.hiddenFields,
+    disabledFields: props.disabledFields,
+  };
+
   return (
     <div className="trustee-form-screen">
       <div className="form-header">
@@ -326,12 +368,11 @@ function TrusteeForm(props: Readonly<TrusteeFormProps>) {
 
         <div className="form-container">
           <div className="form-column">
-            <div className="field-group">
+            <FieldGroup {...hiddenAndDisabledFields}>
               <Input
                 id="trustee-name"
                 className="trustee-name-input"
                 name="name"
-                disabled={props.disabledFields?.includes('name')}
                 label="Trustee Name"
                 value={name}
                 onChange={(e) => handleFieldChange(e, setName)}
@@ -339,9 +380,9 @@ function TrusteeForm(props: Readonly<TrusteeFormProps>) {
                 autoComplete="off"
                 required
               />
-            </div>
+            </FieldGroup>
 
-            <div className="field-group">
+            <FieldGroup {...hiddenAndDisabledFields}>
               <Input
                 id="trustee-address1"
                 className="trustee-address1-input"
@@ -353,9 +394,9 @@ function TrusteeForm(props: Readonly<TrusteeFormProps>) {
                 autoComplete="off"
                 required
               />
-            </div>
+            </FieldGroup>
 
-            <div className="field-group">
+            <FieldGroup {...hiddenAndDisabledFields}>
               <Input
                 id="trustee-address2"
                 className="trustee-address2-input"
@@ -366,9 +407,9 @@ function TrusteeForm(props: Readonly<TrusteeFormProps>) {
                 errorMessage={fieldErrors['address2']}
                 autoComplete="off"
               />
-            </div>
+            </FieldGroup>
 
-            <div className="field-group">
+            <FieldGroup {...hiddenAndDisabledFields}>
               <Input
                 id="trustee-city"
                 className="trustee-city-input"
@@ -380,9 +421,9 @@ function TrusteeForm(props: Readonly<TrusteeFormProps>) {
                 autoComplete="off"
                 required
               />
-            </div>
+            </FieldGroup>
 
-            <div className="field-group">
+            <FieldGroup {...hiddenAndDisabledFields}>
               <UsStatesComboBox
                 id="trustee-state"
                 className="trustee-state-input"
@@ -394,9 +435,9 @@ function TrusteeForm(props: Readonly<TrusteeFormProps>) {
                 errorMessage={fieldErrors['state']}
                 required
               ></UsStatesComboBox>
-            </div>
+            </FieldGroup>
 
-            <div className="field-group">
+            <FieldGroup {...hiddenAndDisabledFields}>
               <Input
                 id="trustee-zip"
                 className="trustee-zip-input"
@@ -415,11 +456,11 @@ function TrusteeForm(props: Readonly<TrusteeFormProps>) {
                 ariaDescription="Example: 12345"
                 required
               />
-            </div>
+            </FieldGroup>
           </div>
 
           <div className="form-column">
-            <div className="field-group">
+            <FieldGroup {...hiddenAndDisabledFields}>
               <PhoneNumberInput
                 id="trustee-phone"
                 value={phone}
@@ -449,9 +490,9 @@ function TrusteeForm(props: Readonly<TrusteeFormProps>) {
                 autoComplete="off"
                 ariaDescription="Up to 6 digits"
               />
-            </div>
+            </FieldGroup>
 
-            <div className="field-group">
+            <FieldGroup {...hiddenAndDisabledFields}>
               <Input
                 id="trustee-email"
                 className="trustee-email-input"
@@ -464,71 +505,55 @@ function TrusteeForm(props: Readonly<TrusteeFormProps>) {
                 autoComplete="off"
                 required
               />
-            </div>
+            </FieldGroup>
 
-            {!props.hiddenFields?.includes('districts') && (
-              <div className="field-group">
-                <ComboBox
-                  id="trustee-districts"
-                  className="trustee-districts-input"
-                  name="districts"
-                  label="District (Division)"
-                  options={districtOptions}
-                  onUpdateSelection={handleComboBoxUpdate<string>('districts', setDistricts, true)}
-                  multiSelect={true}
-                  singularLabel="district"
-                  pluralLabel="districts"
-                  placeholder={districtLoadError ? 'Error loading districts' : 'Select districts'}
-                  autoComplete="off"
-                  ref={districtComboRef}
-                />
-              </div>
-            )}
+            <FieldGroup {...hiddenAndDisabledFields}>
+              <ComboBox
+                id="trustee-districts"
+                className="trustee-districts-input"
+                name="districts"
+                label="District (Division)"
+                options={districtOptions}
+                onUpdateSelection={handleComboBoxUpdate<string>('districts', setDistricts, true)}
+                multiSelect={true}
+                singularLabel="district"
+                pluralLabel="districts"
+                placeholder={districtLoadError ? 'Error loading districts' : 'Select districts'}
+                autoComplete="off"
+                ref={districtComboRef}
+              />
+            </FieldGroup>
 
-            {!props.hiddenFields?.includes('chapters') && (
-              <div className="field-group">
-                <ComboBox
-                  id="trustee-chapters"
-                  className="trustee-chapters-input"
-                  name="chapters"
-                  hidden={props.hiddenFields?.includes('chapters')}
-                  label="Chapter Types"
-                  options={CHAPTER_OPTIONS}
-                  selections={chapterSelections}
-                  onUpdateSelection={handleComboBoxUpdate<ChapterType>(
-                    'chapters',
-                    setChapters,
-                    true,
-                  )}
-                  multiSelect={true}
-                  singularLabel="chapter"
-                  pluralLabel="chapters"
-                  autoComplete="off"
-                />
-              </div>
-            )}
+            <FieldGroup {...hiddenAndDisabledFields}>
+              <ComboBox
+                id="trustee-chapters"
+                className="trustee-chapters-input"
+                name="chapters"
+                label="Chapter Types"
+                options={CHAPTER_OPTIONS}
+                selections={chapterSelections}
+                onUpdateSelection={handleComboBoxUpdate<ChapterType>('chapters', setChapters, true)}
+                multiSelect={true}
+                singularLabel="chapter"
+                pluralLabel="chapters"
+                autoComplete="off"
+              />
+            </FieldGroup>
 
-            {!props.hiddenFields?.includes('status') && (
-              <div className="field-group">
-                <ComboBox
-                  id="trustee-status"
-                  className="trustee-status-input"
-                  name="status"
-                  hidden={props.hiddenFields?.includes('status')}
-                  label="Status"
-                  options={STATUS_OPTIONS}
-                  selections={[statusSelection]}
-                  onUpdateSelection={handleComboBoxUpdate<TrusteeStatus>(
-                    'status',
-                    setStatus,
-                    false,
-                  )}
-                  multiSelect={false}
-                  autoComplete="off"
-                  ref={setStatusComboRef}
-                />
-              </div>
-            )}
+            <FieldGroup {...hiddenAndDisabledFields}>
+              <ComboBox
+                id="trustee-status"
+                className="trustee-status-input"
+                name="status"
+                label="Status"
+                options={STATUS_OPTIONS}
+                selections={[statusSelection]}
+                onUpdateSelection={handleComboBoxUpdate<TrusteeStatus>('status', setStatus, false)}
+                multiSelect={false}
+                autoComplete="off"
+                ref={setStatusComboRef}
+              />
+            </FieldGroup>
           </div>
         </div>
 
