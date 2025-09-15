@@ -17,14 +17,15 @@ import useDebounce from '@/lib/hooks/UseDebounce';
 import { Stop } from '@/lib/components/Stop';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
-import { ChapterType, Trustee, TrusteeInput, TrusteeStatus } from '@common/cams/trustees';
+import { ChapterType, TrusteeInput, TrusteeStatus } from '@common/cams/trustees';
 import { ContactInformation } from '@common/cams/contact';
 import { useLocation } from 'react-router-dom';
 
 export type TrusteeFormState = {
   action: 'create' | 'edit';
   cancelTo: string;
-  trustee?: Trustee;
+  trusteeId?: string;
+  trustee?: Partial<TrusteeInput>;
   contactInformation?: 'internal' | 'public';
 };
 
@@ -145,8 +146,8 @@ function TrusteeForm() {
         const createdId = (response as { data?: { id?: string } })?.data?.id;
         navigate.navigateTo(`/trustees/${createdId}`);
       } else {
-        await api.patchTrustee(passedState.trustee?.id || '', payload);
-        navigate.navigateTo(`/trustees/${passedState.trustee?.id}`);
+        await api.patchTrustee(passedState.trusteeId || '', payload);
+        navigate.navigateTo(`/trustees/${passedState.trusteeId}`);
       }
     } catch (e) {
       result.success = false;
