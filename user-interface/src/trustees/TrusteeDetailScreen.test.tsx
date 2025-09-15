@@ -1,9 +1,11 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { vi, beforeEach } from 'vitest';
 import useApi2 from '@/lib/hooks/UseApi2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { UswdsTagStyle } from '@/lib/components/uswds/Tag';
 import TrusteeDetailScreen from './TrusteeDetailScreen';
+import { TrusteeFormState } from './TrusteeForm';
 import { Trustee } from '@common/cams/trustees';
 import { ContactInformation } from '@common/cams/contact';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
@@ -94,8 +96,13 @@ const mockGlobalAlert = {
 };
 
 describe('TrusteeDetailScreen', () => {
+  const mockNavigate = vi.fn();
+  const mockLocation = { pathname: '/trustees/123' };
+
   beforeEach(() => {
     mockUseParams.mockReturnValue({ trusteeId: '123' });
+    mockUseNavigate.mockReturnValue(mockNavigate);
+    mockUseLocation.mockReturnValue(mockLocation);
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
     mockUseApi2.mockReturnValue(mockApi as any); // Cast to any to avoid type complexity in tests
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
@@ -149,6 +156,102 @@ describe('TrusteeDetailScreen', () => {
     expect(screen.queryByTestId(mockInternal.address.countryCode)).not.toBeInTheDocument();
     expect(screen.getByText(new RegExp(mockInternal.phone!.number))).toBeInTheDocument();
     expect(screen.getByRole('link', { name: mockInternal.email })).toBeInTheDocument();
+  });
+
+  test('should render "No information added." when no internal trustee data is supplied', async () => {
+    // Mock trustee data without internal information
+    mockGetTrustee.mockResolvedValue({ data: mockTrustee });
+    mockGetCourts.mockResolvedValue({ data: mockCourts });
+
+    render(<TrusteeDetailScreen />);
+
+    // Wait for the component to load, then find the container with the internal contact information
+    const internalContactContainer = await waitFor(() => {
+      const heading = screen.getByRole('heading', {
+        level: 3,
+        name: 'Contact Information (USTP Internal)',
+      });
+      return heading.closest('.trustee-internal-contact-information');
+    });
+
+    // Verify that "No information added." text appears within this container
+    expect(internalContactContainer).toBeInTheDocument();
+    expect(internalContactContainer).toHaveTextContent('No information added.');
+
+    // Verify that the warning alert is present
+    const warningAlert = screen.getByRole('status');
+    expect(warningAlert).toBeInTheDocument();
+    expect(warningAlert).toHaveTextContent('USTP Internal information is for internal use only.');
+  });
+
+  test('should call openEditPublicProfile when public edit button is clicked', async () => {
+    const user = userEvent.setup();
+    mockGetTrustee.mockResolvedValue({ data: mockTrustee });
+    mockGetCourts.mockResolvedValue({ data: mockCourts });
+
+    render(<TrusteeDetailScreen />);
+
+    // Wait for the component to load and find the public edit button specifically
+    const publicEditButton = await screen.findByRole('button', {
+      name: 'Edit trustee public overview information',
+    });
+
+    // Click the public edit button
+    await user.click(publicEditButton);
+
+    // Verify that navigate was called with the correct parameters
+    const expectedState: TrusteeFormState = {
+      trusteeId: '123',
+      trustee: mockTrustee,
+      cancelTo: '/trustees/123',
+      action: 'edit',
+      contactInformation: 'public',
+    };
+
+    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/edit', { state: expectedState });
+  });
+
+  test('should call openEditInternalProfile when internal edit button is clicked', async () => {
+    const user = userEvent.setup();
+    const trusteeWithInternal = {
+      ...mockTrustee,
+      internal: {
+        address: {
+          address1: '456 Internal St',
+          city: 'Internal City',
+          state: 'CA',
+          zipCode: '54321',
+          countryCode: 'US' as const,
+        },
+        phone: { number: '555-987-6543' },
+        email: 'john.doe.internal@example.com',
+      },
+    };
+
+    mockGetTrustee.mockResolvedValue({ data: trusteeWithInternal });
+    mockGetCourts.mockResolvedValue({ data: mockCourts });
+
+    render(<TrusteeDetailScreen />);
+
+    // Wait for the component to load and find the internal edit button
+    // We need to look for the internal section edit button specifically
+    const internalEditButton = await screen.findByRole('button', {
+      name: 'Edit trustee internal contact information',
+    });
+
+    // Click the internal edit button
+    await user.click(internalEditButton);
+
+    // Verify that navigate was called with the correct parameters
+    const expectedState: TrusteeFormState = {
+      trusteeId: '123',
+      trustee: trusteeWithInternal,
+      cancelTo: '/trustees/123',
+      action: 'edit',
+      contactInformation: 'internal',
+    };
+
+    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/edit', { state: expectedState });
   });
 
   test('should render district tags with court names', async () => {
@@ -360,4 +463,27 @@ describe('TrusteeDetailScreen', () => {
       });
     },
   );
+
+  test('should render phone number without extension', async () => {
+    const trusteeWithPhoneNoExtension = {
+      ...mockTrustee,
+      public: {
+        ...mockTrustee.public,
+        phone: { number: '555-999-8888' }, // Phone without extension
+      },
+    };
+
+    mockGetTrustee.mockResolvedValue({ data: trusteeWithPhoneNoExtension });
+    mockGetCourts.mockResolvedValue({ data: mockCourts });
+
+    render(<TrusteeDetailScreen />);
+
+    // Wait for the component to load and check that phone number is displayed without extension
+    await waitFor(() => {
+      const phoneElement = screen.getByText('555-999-8888');
+      expect(phoneElement).toBeInTheDocument();
+      // Verify no "x" extension text is present
+      expect(screen.queryByText(/x\d/)).not.toBeInTheDocument();
+    });
+  });
 });
