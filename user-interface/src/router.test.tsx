@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
+import * as ReactRouterDOM from 'react-router-dom';
 import App from './App';
 import { vi } from 'vitest';
 import LocalStorage from './lib/utils/local-storage';
@@ -9,6 +10,33 @@ import { CamsRole } from '@common/cams/roles';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
 
 describe('App Router Tests', () => {
+  // Mock useLocation before all tests
+  vi.mock('react-router-dom', async () => {
+    const actual = await vi.importActual('react-router-dom');
+    return {
+      ...(actual as typeof actual),
+      // By default, return basic location info that will be overridden in tests
+      useLocation: vi.fn().mockReturnValue({
+        pathname: '/',
+        search: '',
+        hash: '',
+        state: null,
+        key: 'default',
+      }),
+    };
+  });
+
+  const setUseLocationMock = (pathname: string = '/', state: object | undefined = undefined) => {
+    // Set the mock return value for a specific test
+    vi.mocked(ReactRouterDOM.useLocation).mockReturnValue({
+      pathname,
+      search: '',
+      hash: '',
+      state,
+      key: 'default',
+    });
+  };
+
   beforeAll(async () => {
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
   });
@@ -43,6 +71,12 @@ describe('App Router Tests', () => {
 
     vi.spyOn(FeatureFlags, 'default').mockReturnValue({
       'trustee-management': true,
+    });
+
+    // Use the helper function to set the useLocation mock
+    setUseLocationMock('/trustees/create', {
+      action: 'create',
+      cancelTo: '/trustees',
     });
 
     render(
@@ -107,6 +141,12 @@ describe('App Router Tests', () => {
         'trustee-management': true, // Feature flag enabled
       });
 
+      // Use the helper function to set the useLocation mock
+      setUseLocationMock('/trustees/create', {
+        action: 'create',
+        cancelTo: '/trustees',
+      });
+
       render(
         <MemoryRouter initialEntries={['/trustees/create']}>
           <App />
@@ -131,6 +171,12 @@ describe('App Router Tests', () => {
 
       vi.spyOn(FeatureFlags, 'default').mockReturnValue({
         'trustee-management': false, // Feature flag disabled
+      });
+
+      // Use the helper function to set the useLocation mock
+      setUseLocationMock('/trustees/create', {
+        action: 'create',
+        cancelTo: '/trustees',
       });
 
       render(
