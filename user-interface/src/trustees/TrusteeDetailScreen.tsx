@@ -159,7 +159,7 @@ export default function TrusteeDetailScreen() {
                     <h3>Trustee Overview (Public)</h3>
                     <Button
                       uswdsStyle={UswdsButtonStyle.Unstyled}
-                      aria-label="Edit trustee contact information"
+                      aria-label="Edit trustee public overview information"
                       title="Edit trustee contact information"
                       onClick={openEditPublicProfile}
                     >
@@ -227,7 +227,7 @@ export default function TrusteeDetailScreen() {
                     <h3>Contact Information (USTP Internal)</h3>
                     <Button
                       uswdsStyle={UswdsButtonStyle.Unstyled}
-                      aria-label="Edit trustee contact information"
+                      aria-label="Edit trustee internal contact information"
                       title="Edit trustee contact information"
                       onClick={openEditInternalProfile}
                     >
