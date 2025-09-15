@@ -12,7 +12,7 @@ import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import Tag, { UswdsTagStyle } from '@/lib/components/uswds/Tag';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
-import { TrusteeFormState } from '@/trustees/TrusteeForm';
+import { TrusteeFormState } from './TrusteeForm';
 
 export default function TrusteeDetailScreen() {
   const { trusteeId } = useParams();
@@ -149,17 +149,11 @@ export default function TrusteeDetailScreen() {
             <div>
               <h2>Trustee</h2>
             </div>
-            <div className="grid-col-12 tablet:grid-col-10 desktop:grid-col-8 record-detail-container">
+            <div className="record-detail-container">
               <div className="record-detail-card-list">
                 <div className="trustee-contact-information record-detail-card">
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <h3>Contact Information (Public)</h3>
+                  <div className="title-bar">
+                    <h3>Trustee Overview (Public)</h3>
                     <Button
                       uswdsStyle={UswdsButtonStyle.Unstyled}
                       aria-label="Edit trustee contact information"
@@ -210,16 +204,22 @@ export default function TrusteeDetailScreen() {
                   <div className="trustee-status">Status: {trustee.status}</div>
                 </div>
               </div>
-            </div>
-            <div>
-              <Button
-                uswdsStyle={UswdsButtonStyle.Unstyled}
-                aria-label="Edit trustee contact information"
-                title="Edit trustee contact information"
-                onClick={openEditInternalProfile}
-              >
-                <IconLabel icon="edit" label="Edit Internal" />
-              </Button>
+              <div className="record-detail-card-list">
+                <div className="trustee-internal-contact-information record-detail-card">
+                  <div className="title-bar">
+                    <h3>Contact Information (USTP Internal)</h3>
+                    <Button
+                      uswdsStyle={UswdsButtonStyle.Unstyled}
+                      aria-label="Edit trustee contact information"
+                      title="Edit trustee contact information"
+                      onClick={openEditInternalProfile}
+                    >
+                      <IconLabel icon="edit" label="Edit Internal" />
+                    </Button>
+                  </div>
+                  {!trustee.internal && <div>No internal contact information available</div>}
+                </div>
+              </div>
             </div>
           </>
         )}
