@@ -52,7 +52,7 @@ describe('App Router Tests', () => {
     );
 
     await waitFor(() => {
-      expect(document.querySelector('[data-testid="trustee-create-form"]')).toBeInTheDocument();
+      expect(document.querySelector('[data-testid="trustee-form"]')).toBeInTheDocument();
     });
   });
 

@@ -12,6 +12,7 @@ import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import Tag, { UswdsTagStyle } from '@/lib/components/uswds/Tag';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
+import { TrusteeFormState } from '@/trustees/TrusteeForm';
 
 export default function TrusteeDetailScreen() {
   const { trusteeId } = useParams();
@@ -26,15 +27,23 @@ export default function TrusteeDetailScreen() {
   const api = useApi2();
 
   function openEditPublicProfile() {
-    navigate(`/trustees/${trusteeId}/edit-public`, {
-      state: { trustee, cancelTo: location.pathname },
-    });
+    const state: TrusteeFormState = {
+      trustee: trustee || undefined,
+      cancelTo: location.pathname,
+      action: 'edit',
+      contactInformation: 'public',
+    };
+    navigate(`/trustees/${trusteeId}/edit`, { state });
   }
 
   function openEditInternalProfile() {
-    navigate(`/trustees/${trusteeId}/edit-internal`, {
-      state: { trustee, cancelTo: location.pathname },
-    });
+    const state: TrusteeFormState = {
+      trustee: trustee || undefined,
+      cancelTo: location.pathname,
+      action: 'edit',
+      contactInformation: 'internal',
+    };
+    navigate(`/trustees/${trusteeId}/edit`, { state });
   }
 
   function formatTrusteeStatusText(status: string): string {

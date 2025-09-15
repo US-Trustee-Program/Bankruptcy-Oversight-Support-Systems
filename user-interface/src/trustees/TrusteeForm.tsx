@@ -17,8 +17,16 @@ import useDebounce from '@/lib/hooks/UseDebounce';
 import { Stop } from '@/lib/components/Stop';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
-import { ChapterType, TrusteeInput, TrusteeStatus } from '@common/cams/trustees';
+import { ChapterType, Trustee, TrusteeInput, TrusteeStatus } from '@common/cams/trustees';
 import { ContactInformation } from '@common/cams/contact';
+import { useLocation } from 'react-router-dom';
+
+export type TrusteeFormState = {
+  action: 'create' | 'edit';
+  cancelTo: string;
+  trustee?: Trustee;
+  contactInformation?: 'internal' | 'public';
+};
 
 const CHAPTER_OPTIONS: ComboOption<ChapterType>[] = [
   { value: '7-panel', label: '7 - Panel' },
@@ -40,17 +48,7 @@ export type SubmissionResult = {
   message?: string;
 };
 
-type TrusteeFormProps = {
-  action: 'create' | 'edit';
-  trustee?: TrusteeInput;
-  contactInformation: 'public' | 'internal';
-  cancelTo: string;
-  onSubmit: (formData: TrusteeFormData) => Promise<SubmissionResult>;
-  hiddenFields?: (keyof TrusteeFormData)[];
-  disabledFields?: (keyof TrusteeFormData)[];
-};
-
-function TrusteeForm(props: Readonly<TrusteeFormProps>) {
+function TrusteeForm() {
   const flags = useFeatureFlags();
   const api = useApi2();
   const globalAlert = useGlobalAlert();
@@ -63,14 +61,24 @@ function TrusteeForm(props: Readonly<TrusteeFormProps>) {
   const statusComboRef = React.useRef<ComboBoxRef | null>(null);
   const statusInitialized = React.useRef(false);
 
+  const location = useLocation();
+  const passedState = location.state as TrusteeFormState;
+
+  const doEditInternalProfile =
+    passedState.action === 'edit' && passedState.contactInformation === 'internal';
+  const doEditPublicProfile =
+    passedState.action === 'edit' && passedState.contactInformation === 'public';
+  const doCreate = passedState.action === 'create';
+  const { cancelTo } = passedState;
+
   let info: ContactInformation | null = null;
-  if (props.trustee?.internal && props.contactInformation === 'internal') {
-    info = props.trustee.internal;
-  } else if (props.trustee?.public && props.contactInformation === 'public') {
-    info = props.trustee.public;
+  if (doEditInternalProfile && passedState.trustee?.internal) {
+    info = passedState.trustee.internal;
+  } else if (doEditPublicProfile && passedState.trustee?.public) {
+    info = passedState.trustee.public;
   }
 
-  const [name, setName] = useState(props.trustee?.name ?? '');
+  const [name, setName] = useState(passedState.trustee?.name ?? '');
   const [address1, setAddress1] = useState(info?.address?.address1 ?? '');
   const [address2, setAddress2] = useState(info?.address?.address2 ?? '');
   const [city, setCity] = useState(info?.address?.city ?? '');
@@ -79,29 +87,78 @@ function TrusteeForm(props: Readonly<TrusteeFormProps>) {
   const [phone, setPhone] = useState(info?.phone?.number ?? '');
   const [extension, setExtension] = useState(info?.phone?.extension ?? '');
   const [email, setEmail] = useState(info?.email ?? '');
-  const [districts, setDistricts] = useState<string[]>(props.trustee?.districts ?? []);
-  const [chapters, setChapters] = useState<ChapterType[]>(props.trustee?.chapters ?? []);
-  const [status, setStatus] = useState<TrusteeStatus>(props.trustee?.status ?? 'active');
+  const [districts, setDistricts] = useState<string[]>(passedState.trustee?.districts ?? []);
+  const [chapters, setChapters] = useState<ChapterType[]>(passedState.trustee?.chapters ?? []);
+  const [status, setStatus] = useState<TrusteeStatus>(passedState.trustee?.status ?? 'active');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [districtOptions, setDistrictOptions] = useState<ComboOption[]>([]);
   const [districtLoadError, setDistrictLoadError] = useState<string | null>(null);
 
-  // WARNING: We cannot understand why when first rendering the "internal" contact information
-  // the state field validates. No other field does this on the form. Neither does the state
-  // field validate when the "public" contact information is first rendered.
-  // So this is gross. -- James 09/12/2025.
-  //
-  // Increment the number of hours you have wasted trying to figure this out if unsuccessful:
-  //    Hours wasted: 3
-  //
-  const [stateValueDirty, setStateValueDirty] = useState<boolean>(!!info?.address?.state);
-  //
-  // End gross.
-
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
   const navigate = useCamsNavigator();
+
+  const onSubmit = async (formData: TrusteeFormData): Promise<SubmissionResult> => {
+    const result: SubmissionResult = { success: true };
+    let payload;
+    if (doCreate || doEditPublicProfile) {
+      payload = {
+        name: formData.name,
+        public: {
+          address: {
+            address1: formData.address1,
+            ...(formData.address2 && { address2: formData.address2 }),
+            city: formData.city,
+            state: formData.state,
+            zipCode: formData.zipCode,
+            countryCode: 'US',
+          },
+          phone: { number: formData.phone, extension: formData.extension },
+          email: formData.email,
+        },
+        ...(formData.districts &&
+          formData.districts.length > 0 && { districts: formData.districts }),
+        ...(formData.chapters && formData.chapters.length > 0 && { chapters: formData.chapters }),
+        status: formData.status,
+      } satisfies TrusteeInput;
+    } else {
+      payload = {
+        internal: {
+          address: {
+            address1: formData.address1,
+            ...(formData.address2 && { address2: formData.address2 }),
+            city: formData.city,
+            state: formData.state,
+            zipCode: formData.zipCode,
+            countryCode: 'US',
+          },
+          phone: { number: formData.phone, extension: formData.extension },
+          email: formData.email,
+        },
+      } satisfies Partial<TrusteeInput>;
+    }
+
+    try {
+      if (doCreate) {
+        const response = await api.postTrustee(payload as TrusteeInput);
+        const createdId = (response as { data?: { id?: string } })?.data?.id;
+        navigate.navigateTo(`/trustees/${createdId}`);
+      } else {
+        await api.patchTrustee(passedState.trustee?.id || '', payload);
+        navigate.navigateTo(`/trustees/${passedState.trustee?.id}`);
+      }
+    } catch (e) {
+      result.success = false;
+
+      if (e instanceof Error) {
+        result.message = e.message;
+      } else {
+        result.message = doCreate ? 'Could not create trustee.' : 'Could not edit trustee.';
+      }
+    }
+    return result;
+  };
 
   useEffect(() => {
     setDistrictLoadError(null);
@@ -148,7 +205,7 @@ function TrusteeForm(props: Readonly<TrusteeFormProps>) {
       }, [] as ComboOption[]);
       districtComboRef.current.setSelections(selections);
     }
-  }, [districtOptions, props.trustee?.districts, districtComboRef.current]);
+  }, [districtOptions, passedState.trustee?.districts, districtComboRef.current]);
 
   const setStatusComboRef = (el: ComboBoxRef | null) => {
     statusComboRef.current = el;
@@ -210,20 +267,17 @@ function TrusteeForm(props: Readonly<TrusteeFormProps>) {
     status,
   ]);
 
-  const handleFieldChange = useCallback(
-    (
-      event: React.ChangeEvent<HTMLInputElement>,
-      setter: React.Dispatch<React.SetStateAction<string>>,
-    ) => {
-      const { value, name } = event.target;
-      setter(value);
+  const handleFieldChange = (
+    event: React.ChangeEvent<HTMLInputElement>,
+    setter: React.Dispatch<React.SetStateAction<string>>,
+  ) => {
+    const { value, name } = event.target;
+    setter(value);
 
-      debounce(() => {
-        validateFieldAndUpdate(name as keyof TrusteeFormData, value);
-      }, 300);
-    },
-    [debounce, validateFieldAndUpdate],
-  );
+    debounce(() => {
+      validateFieldAndUpdate(name as keyof TrusteeFormData, value);
+    }, 300);
+  };
 
   const handleSubmit = async (ev: React.FormEvent) => {
     ev.preventDefault();
@@ -235,7 +289,7 @@ function TrusteeForm(props: Readonly<TrusteeFormProps>) {
       setIsSubmitting(true);
 
       try {
-        const result = await props.onSubmit(formData);
+        const result = await onSubmit(formData);
         if (!result.success) {
           globalAlert?.error(`Failed to create trustee: ${result.message}`);
         }
@@ -251,8 +305,8 @@ function TrusteeForm(props: Readonly<TrusteeFormProps>) {
 
   const handleCancel = useCallback(() => {
     clearErrors();
-    navigate.navigateTo(props.cancelTo);
-  }, [clearErrors, navigate, props.cancelTo]);
+    navigate.navigateTo(cancelTo);
+  }, [clearErrors, navigate, cancelTo]);
 
   function handleComboBoxUpdate<T>(
     fieldName: keyof TrusteeFormData,
@@ -272,17 +326,12 @@ function TrusteeForm(props: Readonly<TrusteeFormProps>) {
     return (selectedOptions: ComboOption[]) => {
       debounce(() => {
         const selectedValues = selectedOptions.map((option) => option.value as T);
-        if (fieldName === 'state') {
-          setStateValueDirty(true);
-        }
-        if (fieldName !== 'state' || stateValueDirty) {
-          validateFieldAndUpdate(fieldName, selectedValues.join(','));
+        validateFieldAndUpdate(fieldName, selectedValues.join(','));
 
-          if (isMultiSelect) {
-            (setter as React.Dispatch<React.SetStateAction<T[]>>)(selectedValues);
-          } else {
-            (setter as React.Dispatch<React.SetStateAction<T>>)(selectedValues[0]);
-          }
+        if (isMultiSelect) {
+          (setter as React.Dispatch<React.SetStateAction<T[]>>)(selectedValues);
+        } else {
+          (setter as React.Dispatch<React.SetStateAction<T>>)(selectedValues[0]);
         }
       }, 300);
     };
@@ -307,16 +356,15 @@ function TrusteeForm(props: Readonly<TrusteeFormProps>) {
     <div className="trustee-form-screen">
       <div className="form-header">
         <h1 className="text-no-wrap display-inline-block margin-right-1">
-          {props.action === 'create' ? 'Add Trustee Profile' : 'Edit Trustee Profile'}
-          {props.contactInformation === 'internal' ? ' (USTP Internal)' : ' (Public)'}
+          {passedState.action === 'create' ? 'Add Trustee Profile' : 'Edit Trustee Profile'}
+          {passedState.contactInformation === 'internal' ? ' (USTP Internal)' : ' (Public)'}
         </h1>
         {districtLoadError && (
           <Stop id="trustee-stop" title="Error" message={districtLoadError} asError />
         )}
       </div>
 
-      {/* TODO: We need to make the label dynamic and the testid more generic */}
-      <form aria-label="Create Trustee" data-testid="trustee-create-form" onSubmit={handleSubmit}>
+      <form aria-label="Create Trustee" data-testid="trustee-form" onSubmit={handleSubmit}>
         <div className="form-header">
           <span>
             A red asterisk (<span className="text-secondary-dark">*</span>) indicates a required
@@ -331,7 +379,7 @@ function TrusteeForm(props: Readonly<TrusteeFormProps>) {
                 id="trustee-name"
                 className="trustee-name-input"
                 name="name"
-                disabled={props.disabledFields?.includes('name')}
+                disabled={passedState.contactInformation === 'internal'}
                 label="Trustee Name"
                 value={name}
                 onChange={(e) => handleFieldChange(e, setName)}
@@ -466,68 +514,68 @@ function TrusteeForm(props: Readonly<TrusteeFormProps>) {
               />
             </div>
 
-            {!props.hiddenFields?.includes('districts') && (
-              <div className="field-group">
-                <ComboBox
-                  id="trustee-districts"
-                  className="trustee-districts-input"
-                  name="districts"
-                  label="District (Division)"
-                  options={districtOptions}
-                  onUpdateSelection={handleComboBoxUpdate<string>('districts', setDistricts, true)}
-                  multiSelect={true}
-                  singularLabel="district"
-                  pluralLabel="districts"
-                  placeholder={districtLoadError ? 'Error loading districts' : 'Select districts'}
-                  autoComplete="off"
-                  ref={districtComboRef}
-                />
-              </div>
-            )}
+            {(doCreate || doEditPublicProfile) && (
+              <>
+                <div className="field-group">
+                  <ComboBox
+                    id="trustee-districts"
+                    className="trustee-districts-input"
+                    name="districts"
+                    label="District (Division)"
+                    options={districtOptions}
+                    onUpdateSelection={handleComboBoxUpdate<string>(
+                      'districts',
+                      setDistricts,
+                      true,
+                    )}
+                    multiSelect={true}
+                    singularLabel="district"
+                    pluralLabel="districts"
+                    placeholder={districtLoadError ? 'Error loading districts' : 'Select districts'}
+                    autoComplete="off"
+                    ref={districtComboRef}
+                  />
+                </div>
 
-            {!props.hiddenFields?.includes('chapters') && (
-              <div className="field-group">
-                <ComboBox
-                  id="trustee-chapters"
-                  className="trustee-chapters-input"
-                  name="chapters"
-                  hidden={props.hiddenFields?.includes('chapters')}
-                  label="Chapter Types"
-                  options={CHAPTER_OPTIONS}
-                  selections={chapterSelections}
-                  onUpdateSelection={handleComboBoxUpdate<ChapterType>(
-                    'chapters',
-                    setChapters,
-                    true,
-                  )}
-                  multiSelect={true}
-                  singularLabel="chapter"
-                  pluralLabel="chapters"
-                  autoComplete="off"
-                />
-              </div>
-            )}
+                <div className="field-group">
+                  <ComboBox
+                    id="trustee-chapters"
+                    className="trustee-chapters-input"
+                    name="chapters"
+                    label="Chapter Types"
+                    options={CHAPTER_OPTIONS}
+                    selections={chapterSelections}
+                    onUpdateSelection={handleComboBoxUpdate<ChapterType>(
+                      'chapters',
+                      setChapters,
+                      true,
+                    )}
+                    multiSelect={true}
+                    singularLabel="chapter"
+                    pluralLabel="chapters"
+                    autoComplete="off"
+                  />
+                </div>
 
-            {!props.hiddenFields?.includes('status') && (
-              <div className="field-group">
-                <ComboBox
-                  id="trustee-status"
-                  className="trustee-status-input"
-                  name="status"
-                  hidden={props.hiddenFields?.includes('status')}
-                  label="Status"
-                  options={STATUS_OPTIONS}
-                  selections={[statusSelection]}
-                  onUpdateSelection={handleComboBoxUpdate<TrusteeStatus>(
-                    'status',
-                    setStatus,
-                    false,
-                  )}
-                  multiSelect={false}
-                  autoComplete="off"
-                  ref={setStatusComboRef}
-                />
-              </div>
+                <div className="field-group">
+                  <ComboBox
+                    id="trustee-status"
+                    className="trustee-status-input"
+                    name="status"
+                    label="Status"
+                    options={STATUS_OPTIONS}
+                    selections={[statusSelection]}
+                    onUpdateSelection={handleComboBoxUpdate<TrusteeStatus>(
+                      'status',
+                      setStatus,
+                      false,
+                    )}
+                    multiSelect={false}
+                    autoComplete="off"
+                    ref={setStatusComboRef}
+                  />
+                </div>
+              </>
             )}
           </div>
         </div>

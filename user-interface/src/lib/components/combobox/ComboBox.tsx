@@ -406,8 +406,9 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       return;
     }
 
-    if (props.onUpdateSelection && !selectedMapCompleted) {
+    if (props.onUpdateSelection && selectedMapCompleted) {
       props.onUpdateSelection([...selectedMap.values()]);
+    } else {
       setSelectedMapCompleted(true);
     }
   }, [selectedMap]);
