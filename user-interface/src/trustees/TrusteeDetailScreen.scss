@@ -7,6 +7,14 @@
     margin: 0;
     padding: 0;
   }
+  .record-detail-container {
+    justify-content: space-around;
+  }
+  .title-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
   .trustee-status {
     text-transform: capitalize
   }
