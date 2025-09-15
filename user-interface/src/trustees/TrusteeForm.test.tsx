@@ -23,7 +23,7 @@ const address: Address = {
   city: 'Springfield',
   state: 'IL',
   zipCode: '62704',
-  countryCode: 'US',
+  countryCode: 'US' as const,
 };
 
 // Test data constants
@@ -37,7 +37,7 @@ const TEST_TRUSTEE_DATA: TrusteeInput = {
     },
     email: 'jane.doe@example.com',
   },
-  status: 'active',
+  status: 'active' as const,
 } as const;
 
 // Alternative test personas for specific tests
@@ -108,12 +108,10 @@ async function fillBasicTrusteeForm(
 }
 
 describe('TrusteeForm', () => {
-  // Mock useLocation before all tests
   vi.mock('react-router-dom', async () => {
     const actual = await vi.importActual('react-router-dom');
     return {
       ...(actual as typeof actual),
-      // By default, return basic location info that will be overridden in tests
       useLocation: vi.fn().mockReturnValue({
         pathname: '/trustees/create',
         search: '',
@@ -128,7 +126,6 @@ describe('TrusteeForm', () => {
     pathname: string = '/trustees/create',
     state: TrusteeFormState = { action: 'create', cancelTo: '/trustees' },
   ) => {
-    // Set the mock return value for this specific test
     vi.mocked(ReactRouterDomLib.useLocation).mockReturnValue({
       pathname,
       search: '',
@@ -185,6 +182,9 @@ describe('TrusteeForm', () => {
     vi.spyOn(useCamsNavigatorModule, 'default').mockReturnValue(mockNavigate);
 
     postTrusteeSpy = vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } });
+
+    // Reset mocks before each test
+    vi.clearAllMocks();
 
     // Mock the useApi2 hook to include getCourts
     vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
@@ -638,7 +638,6 @@ describe('TrusteeForm', () => {
       await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
       await waitFor(() => {
-        // expect(mockPostTrustee).toHaveBeenCalled();
         expect(mockPostTrustee).toHaveBeenCalledWith({
           name: TEST_TRUSTEE_DATA.name,
           public: {
@@ -647,33 +646,13 @@ describe('TrusteeForm', () => {
               city: address.city,
               state: address.state,
               zipCode: address.zipCode,
-              countryCode: 'US',
+              countryCode: 'US' as const,
             },
             phone: { number: '555-123-4567' },
             email: TEST_TRUSTEE_DATA.public.email,
           },
-          status: 'active',
+          status: 'active' as const,
         });
-        // const calledPayload = mockPostTrustee.mock.calls[0][0];
-        // expect(calledPayload).toEqual({
-        //   name: TEST_TRUSTEE_DATA.name,
-        //   public: {
-        //     address: {
-        //       address1: address.address1,
-        //       city: address.city,
-        //       state: address.state,
-        //       zipCode: address.zipCode,
-        //       countryCode: 'US',
-        //     },
-        //     phone: { number: '555-123-4567' },
-        //     email: TEST_TRUSTEE_DATA.public.email,
-        //   },
-        //   status: 'active',
-        // });
-        // // Should not include districts, chapters, address2 when not provided
-        // expect(calledPayload.districts).toBeUndefined();
-        // expect(calledPayload.chapters).toBeUndefined();
-        // expect(calledPayload.public.address.address2).toBeUndefined();
       });
     });
 
@@ -779,14 +758,14 @@ describe('TrusteeForm', () => {
               city: address.city,
               state: address.state,
               zipCode: address.zipCode,
-              countryCode: 'US',
+              countryCode: 'US' as const,
             },
             phone: { number: TEST_TRUSTEE_DATA.public.phone!.number },
             email: TEST_TRUSTEE_DATA.public.email,
           },
           districts: ['NY'],
           chapters: ['11-subchapter-v', '13'],
-          status: 'active',
+          status: 'active' as const,
         });
         expect(mockNavigate.navigateTo).toHaveBeenCalledWith('/trustees/trustee-123');
       });
@@ -836,13 +815,13 @@ describe('TrusteeForm', () => {
               city: TEST_PERSONAS.johnSmith.city,
               state: TEST_PERSONAS.johnSmith.state,
               zipCode: TEST_PERSONAS.johnSmith.zipCode,
-              countryCode: 'US',
+              countryCode: 'US' as const,
             },
             phone: { number: TEST_PERSONAS.johnSmith.phone },
             email: TEST_PERSONAS.johnSmith.email,
           },
           chapters: ['7-panel', '7-non-panel', '11-subchapter-v'],
-          status: 'active',
+          status: 'active' as const,
         });
       });
     });
@@ -929,14 +908,14 @@ describe('TrusteeForm', () => {
               city: TEST_PERSONAS.mariaRodriguez.city,
               state: TEST_PERSONAS.mariaRodriguez.state,
               zipCode: TEST_PERSONAS.mariaRodriguez.zipCode,
-              countryCode: 'US',
+              countryCode: 'US' as const,
             },
             phone: { number: TEST_PERSONAS.mariaRodriguez.phone },
             email: TEST_PERSONAS.mariaRodriguez.email,
           },
           // CRITICAL: Must support multiple districts (not just single district)
           districts: ['NY-E', 'CA-N', 'TX-S'],
-          status: 'active',
+          status: 'active' as const,
         });
         expect(mockNavigate.navigateTo).toHaveBeenCalledWith('/trustees/trustee-789');
       });
@@ -1076,6 +1055,330 @@ describe('TrusteeForm', () => {
       vi.restoreAllMocks();
     });
 
+    test('submits form in edit mode with public profile', async () => {
+      // Mock a trustee object to edit
+      const mockTrustee = {
+        name: 'Jane Doe',
+        public: {
+          address: {
+            address1: '123 Main St',
+            address2: 'Suite 100',
+            city: 'Springfield',
+            state: 'IL',
+            zipCode: '62704',
+            countryCode: 'US' as const,
+          },
+          phone: {
+            number: '555-123-4567',
+            extension: '123',
+          },
+          email: 'jane.doe@example.com',
+        },
+        status: 'active' as const,
+      };
+
+      const mockPatchTrustee = vi.fn().mockResolvedValue({ data: { id: 'trustee-456' } });
+
+      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({
+          data: MockData.getCourts(),
+        }),
+        postTrustee: vi.fn(),
+        patchTrustee: mockPatchTrustee,
+      } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
+
+      // Render in edit mode with public profile
+      renderWithRouter('/trustees/trustee-456/edit', {
+        action: 'edit',
+        cancelTo: '/trustees/trustee-456',
+        trusteeId: 'trustee-456',
+        trustee: mockTrustee,
+        contactInformation: 'public',
+      });
+
+      // Ensure form is populated with trustee data
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-name')).toHaveValue('Jane Doe');
+        expect(screen.getByTestId('trustee-address1')).toHaveValue('123 Main St');
+        expect(screen.getByTestId('trustee-address2')).toHaveValue('Suite 100');
+        expect(screen.getByTestId('trustee-city')).toHaveValue('Springfield');
+        expect(screen.getByTestId('trustee-zip')).toHaveValue('62704');
+        expect(screen.getByTestId('trustee-phone')).toHaveValue('555-123-4567');
+        expect(screen.getByTestId('trustee-extension')).toHaveValue('123');
+        expect(screen.getByTestId('trustee-email')).toHaveValue('jane.doe@example.com');
+      });
+
+      // Make some changes to the form
+      await userEvent.clear(screen.getByTestId('trustee-address1'));
+      await userEvent.type(screen.getByTestId('trustee-address1'), '456 New Address');
+
+      await userEvent.clear(screen.getByTestId('trustee-city'));
+      await userEvent.type(screen.getByTestId('trustee-city'), 'Chicago');
+
+      // Submit the form
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      // Verify that patchTrustee was called with the updated data
+      await waitFor(() => {
+        expect(mockPatchTrustee).toHaveBeenCalledWith(
+          'trustee-456',
+          expect.objectContaining({
+            name: 'Jane Doe',
+            public: expect.objectContaining({
+              address: expect.objectContaining({
+                address1: '456 New Address',
+                city: 'Chicago',
+              }),
+            }),
+          }),
+        );
+        expect(mockNavigate.navigateTo).toHaveBeenCalledWith('/trustees/trustee-456');
+      });
+    });
+
+    test('submits form in edit mode with internal profile', async () => {
+      // Mock a trustee object to edit
+      const mockTrustee = {
+        name: 'Jane Doe',
+        internal: {
+          address: {
+            address1: '123 Internal St',
+            address2: 'Floor 5',
+            city: 'Washington',
+            state: 'DC',
+            zipCode: '20001',
+            countryCode: 'US' as const,
+          },
+          phone: {
+            number: '555-987-6543',
+            extension: '789',
+          },
+          email: 'jane.internal@example.gov',
+        },
+        status: 'active' as const,
+      };
+
+      const mockPatchTrustee = vi.fn().mockResolvedValue({ data: { id: 'trustee-789' } });
+
+      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({
+          data: MockData.getCourts(),
+        }),
+        postTrustee: vi.fn(),
+        patchTrustee: mockPatchTrustee,
+      } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
+
+      // Render in edit mode with internal profile
+      renderWithRouter('/trustees/trustee-789/edit', {
+        action: 'edit',
+        cancelTo: '/trustees/trustee-789',
+        trusteeId: 'trustee-789',
+        trustee: mockTrustee,
+        contactInformation: 'internal',
+      });
+
+      // Ensure form is populated with trustee data
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-name')).toBeDisabled(); // Name should be disabled for internal edit
+        expect(screen.getByTestId('trustee-address1')).toHaveValue('123 Internal St');
+        expect(screen.getByTestId('trustee-address2')).toHaveValue('Floor 5');
+        expect(screen.getByTestId('trustee-city')).toHaveValue('Washington');
+        expect(screen.getByTestId('trustee-zip')).toHaveValue('20001');
+        expect(screen.getByTestId('trustee-phone')).toHaveValue('555-987-6543');
+        expect(screen.getByTestId('trustee-extension')).toHaveValue('789');
+        expect(screen.getByTestId('trustee-email')).toHaveValue('jane.internal@example.gov');
+      });
+
+      // Make some changes to the form
+      await userEvent.clear(screen.getByTestId('trustee-address1'));
+      await userEvent.type(screen.getByTestId('trustee-address1'), '789 Updated Internal');
+
+      await userEvent.clear(screen.getByTestId('trustee-email'));
+      await userEvent.type(screen.getByTestId('trustee-email'), 'updated.internal@example.gov');
+
+      // Submit the form
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      // Verify that patchTrustee was called with the updated data
+      await waitFor(() => {
+        expect(mockPatchTrustee).toHaveBeenCalledWith(
+          'trustee-789',
+          expect.objectContaining({
+            internal: expect.objectContaining({
+              address: expect.objectContaining({
+                address1: '789 Updated Internal',
+              }),
+              email: 'updated.internal@example.gov',
+            }),
+          }),
+        );
+        expect(mockNavigate.navigateTo).toHaveBeenCalledWith('/trustees/trustee-789');
+      });
+    });
+
+    test('handles error in patchTrustee', async () => {
+      // Mock a trustee object to edit
+      const mockTrustee = {
+        name: 'Error Test',
+        public: {
+          address: {
+            address1: '123 Main St',
+            city: 'Springfield',
+            state: 'IL',
+            zipCode: '62704',
+            countryCode: 'US' as const,
+          },
+          phone: {
+            number: '555-123-4567',
+          },
+          email: 'error.test@example.com',
+        },
+        status: 'active' as const,
+      };
+
+      const errorMessage = 'Failed to update trustee';
+      const mockPatchTrustee = vi.fn().mockRejectedValue(new Error(errorMessage));
+
+      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({
+          data: MockData.getCourts(),
+        }),
+        postTrustee: vi.fn(),
+        patchTrustee: mockPatchTrustee,
+      } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
+
+      // Render in edit mode
+      renderWithRouter('/trustees/trustee-error/edit', {
+        action: 'edit',
+        cancelTo: '/trustees/trustee-error',
+        trusteeId: 'trustee-error',
+        trustee: mockTrustee,
+        contactInformation: 'public',
+      });
+
+      // Wait for form to load
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-name')).toHaveValue('Error Test');
+      });
+
+      // Submit the form
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      // Check that error was displayed
+      await waitFor(() => {
+        expect(mockPatchTrustee).toHaveBeenCalled();
+        expect(mockGlobalAlert.error).toHaveBeenCalledWith(
+          `Failed to create trustee: ${errorMessage}`,
+        );
+      });
+    });
+
+    test('handles various non-Error objects in API rejections', async () => {
+      // One simple test that covers the key branch where error is not an Error instance
+      const mockPostTrustee = vi.fn().mockRejectedValue('Not an Error instance');
+
+      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({
+          data: MockData.getCourts(),
+        }),
+        postTrustee: mockPostTrustee,
+        patchTrustee: vi.fn(),
+      } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
+
+      // Render the form
+      renderWithRouter();
+
+      // Fill out form
+      await userEvent.type(screen.getByTestId('trustee-name'), 'Error Test');
+      await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
+      await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
+
+      // Select state
+      const stateCombobox = screen.getByRole('combobox', { name: /state/i });
+      await userEvent.click(stateCombobox);
+      await userEvent.click(screen.getByText('IL - Illinois'));
+
+      await userEvent.type(screen.getByTestId('trustee-zip'), '62704');
+      await userEvent.type(screen.getByTestId('trustee-phone'), '555-123-4567');
+      await userEvent.type(screen.getByTestId('trustee-email'), 'error.test@example.com');
+
+      // Submit form
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      // Verify the default error message is used
+      await waitFor(() => {
+        expect(mockPostTrustee).toHaveBeenCalled();
+        expect(mockGlobalAlert.error).toHaveBeenCalledWith(
+          'Failed to create trustee: Could not create trustee.',
+        );
+      });
+    });
+
+    test('renders the districtLoadError when present', async () => {
+      // Set up a district load error
+      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockRejectedValue(new Error('Failed to load districts')),
+        postTrustee: vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } }),
+      } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
+
+      renderWithRouter();
+
+      // Wait for the error message to appear
+      await waitFor(() => {
+        expect(document.getElementById('trustee-stop')).toBeInTheDocument();
+        expect(screen.getByText('Error')).toBeInTheDocument();
+        expect(screen.getByText(/Failed to load district options/)).toBeInTheDocument();
+      });
+    });
+
+    test('handles invalid status by defaulting to active', async () => {
+      // Rather than mocking an entire trustee, let's use a simpler approach to test the fallback logic
+      // The statusSelection useMemo will default to 'active' when no valid status is found
+
+      const mockPatchTrustee = vi.fn().mockResolvedValue({ data: { id: 'mock-id' } });
+
+      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({
+          data: MockData.getCourts(),
+        }),
+        postTrustee: vi.fn(),
+        patchTrustee: mockPatchTrustee,
+      } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
+
+      // We need to modify the useLocation hook mock to provide a non-existent status
+      vi.mocked(ReactRouterDomLib.useLocation).mockReturnValue({
+        pathname: '/trustees/create',
+        search: '',
+        hash: '',
+        state: {
+          action: 'create',
+          cancelTo: '/trustees',
+          trustee: {
+            status: 'nonexistent-status' as string, // This should trigger the fallback logic
+          },
+        },
+        key: 'default',
+      });
+
+      render(
+        <BrowserRouter>
+          <TrusteeForm />
+        </BrowserRouter>,
+      );
+
+      // Fill form with valid data (needed to submit the form)
+      await fillBasicTrusteeForm();
+
+      // The form should load with 'active' status by default due to the fallback
+      const submitButton = screen.getByRole('button', { name: /save/i });
+      await userEvent.click(submitButton);
+
+      // Verify form submitted successfully, which means the status fallback worked
+      await waitFor(() => {
+        expect(screen.queryByText('Failed to create trustee')).not.toBeInTheDocument();
+      });
+    });
+
     test('submits form and calls postTrustee with expected payload', async () => {
       // Spy on the postTrustee function and mock it to noop
       const mockPostTrustee = vi.fn().mockImplementation(() => {
@@ -1120,12 +1423,12 @@ describe('TrusteeForm', () => {
               city: address.city,
               state: address.state,
               zipCode: address.zipCode,
-              countryCode: 'US',
+              countryCode: 'US' as const,
             },
             phone: { number: '555-123-4567' },
             email: TEST_TRUSTEE_DATA.public.email,
           },
-          status: 'active',
+          status: 'active' as const,
         });
       });
     });

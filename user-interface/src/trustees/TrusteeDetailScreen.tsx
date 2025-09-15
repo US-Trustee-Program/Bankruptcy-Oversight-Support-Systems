@@ -28,6 +28,7 @@ export default function TrusteeDetailScreen() {
 
   function openEditPublicProfile() {
     const state: TrusteeFormState = {
+      trusteeId,
       trustee: trustee || undefined,
       cancelTo: location.pathname,
       action: 'edit',
@@ -38,6 +39,7 @@ export default function TrusteeDetailScreen() {
 
   function openEditInternalProfile() {
     const state: TrusteeFormState = {
+      trusteeId,
       trustee: trustee || undefined,
       cancelTo: location.pathname,
       action: 'edit',
