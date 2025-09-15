@@ -295,7 +295,7 @@ function TrusteeForm() {
           globalAlert?.error(`Failed to create trustee: ${result.message}`);
         }
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Could not create trustee.';
+        const errorMessage = (error as Error).message;
         globalAlert?.error(`Failed to create trustee: ${errorMessage}`);
         setErrorMessage(errorMessage);
       } finally {

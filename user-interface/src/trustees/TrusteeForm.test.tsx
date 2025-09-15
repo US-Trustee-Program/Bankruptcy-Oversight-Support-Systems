@@ -365,8 +365,8 @@ describe('TrusteeForm', () => {
       });
     });
 
-    test('shows error notification when API call fails', async () => {
-      const errorMessage = 'Network error occurred';
+    test('shows error notification from API when API call fails', async () => {
+      const errorMessage = 'Validation error occurred';
       vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
         getCourts: vi.fn().mockResolvedValue({
           data: MockData.getCourts(),
@@ -385,29 +385,6 @@ describe('TrusteeForm', () => {
         // Check that the global alert was called with the expected message
         expect(mockGlobalAlert.error).toHaveBeenCalledWith(
           `Failed to create trustee: ${errorMessage}`,
-        );
-      });
-    });
-
-    test('shows default error message when API call fails with non-Error object', async () => {
-      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
-        getCourts: vi.fn().mockResolvedValue({
-          data: MockData.getCourts(),
-        }),
-        postTrustee: vi.fn().mockRejectedValue('String error instead of Error object'),
-      } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
-
-      renderWithRouter();
-
-      // Fill form with valid data
-      await fillBasicTrusteeForm({ zipCode: '12345' });
-
-      await userEvent.click(screen.getByRole('button', { name: /save/i }));
-
-      await waitFor(() => {
-        // Check that the global alert was called with the expected message
-        expect(mockGlobalAlert.error).toHaveBeenCalledWith(
-          'Failed to create trustee: Could not create trustee.',
         );
       });
     });
