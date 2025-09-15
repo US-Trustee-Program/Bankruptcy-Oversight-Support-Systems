@@ -13,6 +13,7 @@ import Tag, { UswdsTagStyle } from '@/lib/components/uswds/Tag';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import { TrusteeFormState } from './TrusteeForm';
+import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 export default function TrusteeDetailScreen() {
   const { trusteeId } = useParams();
@@ -172,6 +173,12 @@ export default function TrusteeDetailScreen() {
                         <div className="trustee-street-address">
                           {trustee.public.address.address1}
                         </div>
+                        <div className="trustee-street-address-two">
+                          {trustee.public.address.address2}
+                        </div>
+                        <div className="trustee-street-address-three">
+                          {trustee.public.address.address3}
+                        </div>
                         <span className="trustee-city">{trustee.public.address.city}</span>
                         <span className="trustee-state">, {trustee.public.address.state}</span>
                         <span className="trustee-zip-code"> {trustee.public.address.zipCode}</span>
@@ -207,6 +214,14 @@ export default function TrusteeDetailScreen() {
                 </div>
               </div>
               <div className="record-detail-card-list">
+                <Alert
+                  message={'USTP Internal information is for internal use only.'}
+                  slim={true}
+                  role={'status'}
+                  inline={true}
+                  show={true /*!!trustee.internal*/}
+                  type={UswdsAlertStyle.Warning}
+                ></Alert>
                 <div className="trustee-internal-contact-information record-detail-card">
                   <div className="title-bar">
                     <h3>Contact Information (USTP Internal)</h3>
@@ -216,10 +231,47 @@ export default function TrusteeDetailScreen() {
                       title="Edit trustee contact information"
                       onClick={openEditInternalProfile}
                     >
-                      <IconLabel icon="edit" label="Edit Internal" />
+                      <IconLabel icon="edit" label="Edit" />
                     </Button>
                   </div>
-                  {!trustee.internal && <div>No internal contact information available</div>}
+                  {!trustee.internal && <div>No information added.</div>}
+                  {!!trustee.internal && (
+                    <>
+                      <div>
+                        {trustee.internal?.address && (
+                          <>
+                            <div className="trustee-street-address">
+                              {trustee.internal.address.address1}
+                            </div>
+                            <span className="trustee-city">{trustee.internal.address.city}</span>
+                            <span className="trustee-state">
+                              , {trustee.internal.address.state}
+                            </span>
+                            <span className="trustee-zip-code">
+                              {' '}
+                              {trustee.internal.address.zipCode}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      {trustee.internal?.phone && (
+                        <div className="trustee-phone-number">
+                          {trustee.internal.phone.number}
+                          {trustee.internal.phone.extension
+                            ? ` x${trustee.internal.phone.extension}`
+                            : ''}
+                        </div>
+                      )}
+                      {trustee.internal?.email && (
+                        <div data-testid="trustee-email" aria-label="trustee email">
+                          <a href={`mailto:${trustee.internal.email}`}>
+                            {trustee.internal.email}
+                            <Icon className="link-icon" name="mail_outline" />
+                          </a>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
             </div>
