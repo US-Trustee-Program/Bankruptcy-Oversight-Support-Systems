@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import TrusteeForm, { SubmissionResult } from './TrusteeForm';
+import TrusteeForm, { TrusteeFormState } from './TrusteeForm';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import * as UseApi2Module from '@/lib/hooks/UseApi2';
 import * as UseGlobalAlertModule from '@/lib/hooks/UseGlobalAlert';
@@ -9,10 +9,10 @@ import * as UseDebounceModule from '@/lib/hooks/UseDebounce';
 import LocalStorage from '@/lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole } from '@common/cams/roles';
+import * as ReactRouterDomLib from 'react-router-dom';
 import { BrowserRouter } from 'react-router-dom';
 import { Mock } from 'vitest';
 import { TrusteeInput } from '@common/cams/trustees';
-import { TrusteeFormData } from './UseTrusteeFormValidation.types';
 import { Address } from '@common/cams/contact';
 
 const zipCodeAlternate = '12345';
@@ -108,17 +108,22 @@ async function fillBasicTrusteeForm(
 }
 
 describe('TrusteeForm', () => {
-  const renderWithRouter = () => {
+  const renderWithRouter = (
+    pathname: string = '/trustees/create',
+    state: TrusteeFormState = { action: 'create', cancelTo: '/trustees' },
+  ) => {
+    // Create a spy for useLocation to set the state while preserving other properties
+    vi.spyOn(ReactRouterDomLib, 'useLocation').mockReturnValue({
+      pathname,
+      search: '',
+      hash: '',
+      state,
+      key: 'default',
+    });
+
     return render(
       <BrowserRouter>
-        <TrusteeForm
-          cancelTo="/test-url"
-          contactInformation="public"
-          action={'create'}
-          onSubmit={async function (_formData: TrusteeFormData): Promise<SubmissionResult> {
-            return { success: true };
-          }}
-        />
+        <TrusteeForm />
       </BrowserRouter>,
     );
   };
@@ -285,7 +290,7 @@ describe('TrusteeForm', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('trustee-create-disabled')).not.toBeInTheDocument();
       expect(screen.queryByTestId('trustee-create-unauthorized')).not.toBeInTheDocument();
-      expect(screen.getByTestId('trustee-create-form')).toBeInTheDocument();
+      expect(screen.getByTestId('trustee-form')).toBeInTheDocument();
     });
   });
 

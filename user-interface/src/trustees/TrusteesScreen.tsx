@@ -4,6 +4,7 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import TrusteesList from './TrusteesList';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
+import { TrusteeFormState } from '@/trustees/TrusteeForm';
 
 export default function TrusteesScreen() {
   const flags = useFeatureFlags();
@@ -23,7 +24,7 @@ export default function TrusteesScreen() {
           <h1 className="display-inline-block margin-bottom-0">Trustees</h1>
           <NavLink
             to="/trustees/create"
-            state={{ cancelTo: location.pathname }}
+            state={{ cancelTo: location.pathname, action: 'create' } as TrusteeFormState}
             data-testid="trustees-add-link"
             className="usa-button flex-shrink-0 margin-right-0"
           >
