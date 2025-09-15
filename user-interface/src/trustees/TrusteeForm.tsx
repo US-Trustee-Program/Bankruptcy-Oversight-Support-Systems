@@ -19,6 +19,7 @@ import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import { ChapterType, TrusteeInput, TrusteeStatus } from '@common/cams/trustees';
 import { ContactInformation } from '@common/cams/contact';
+import {FormColumn, FormContainer} from "@/lib/components/cams/CamsForm";
 
 const CHAPTER_OPTIONS: ComboOption<ChapterType>[] = [
   { value: '7-panel', label: '7 - Panel' },
@@ -366,9 +367,9 @@ function TrusteeForm(props: Readonly<TrusteeFormProps>) {
           </span>
         </div>
 
-        <div className="form-container">
-          <div className="form-column">
-            <FieldGroup {...hiddenAndDisabledFields}>
+        <FormContainer {...hiddenAndDisabledFields}>
+          <FormColumn>
+            <FieldGroup>
               <Input
                 id="trustee-name"
                 className="trustee-name-input"
@@ -382,7 +383,7 @@ function TrusteeForm(props: Readonly<TrusteeFormProps>) {
               />
             </FieldGroup>
 
-            <FieldGroup {...hiddenAndDisabledFields}>
+            <FieldGroup>
               <Input
                 id="trustee-address1"
                 className="trustee-address1-input"
@@ -396,7 +397,7 @@ function TrusteeForm(props: Readonly<TrusteeFormProps>) {
               />
             </FieldGroup>
 
-            <FieldGroup {...hiddenAndDisabledFields}>
+            <FieldGroup>
               <Input
                 id="trustee-address2"
                 className="trustee-address2-input"
@@ -409,7 +410,7 @@ function TrusteeForm(props: Readonly<TrusteeFormProps>) {
               />
             </FieldGroup>
 
-            <FieldGroup {...hiddenAndDisabledFields}>
+            <FieldGroup>
               <Input
                 id="trustee-city"
                 className="trustee-city-input"
@@ -423,7 +424,7 @@ function TrusteeForm(props: Readonly<TrusteeFormProps>) {
               />
             </FieldGroup>
 
-            <FieldGroup {...hiddenAndDisabledFields}>
+            <FieldGroup>
               <UsStatesComboBox
                 id="trustee-state"
                 className="trustee-state-input"
@@ -437,7 +438,7 @@ function TrusteeForm(props: Readonly<TrusteeFormProps>) {
               ></UsStatesComboBox>
             </FieldGroup>
 
-            <FieldGroup {...hiddenAndDisabledFields}>
+            <FieldGroup>
               <Input
                 id="trustee-zip"
                 className="trustee-zip-input"
@@ -457,10 +458,10 @@ function TrusteeForm(props: Readonly<TrusteeFormProps>) {
                 required
               />
             </FieldGroup>
-          </div>
+          </FormColumn>
 
-          <div className="form-column">
-            <FieldGroup {...hiddenAndDisabledFields}>
+          <FormColumn>
+            <FieldGroup>
               <PhoneNumberInput
                 id="trustee-phone"
                 value={phone}
@@ -492,7 +493,7 @@ function TrusteeForm(props: Readonly<TrusteeFormProps>) {
               />
             </FieldGroup>
 
-            <FieldGroup {...hiddenAndDisabledFields}>
+            <FieldGroup>
               <Input
                 id="trustee-email"
                 className="trustee-email-input"
@@ -507,7 +508,7 @@ function TrusteeForm(props: Readonly<TrusteeFormProps>) {
               />
             </FieldGroup>
 
-            <FieldGroup {...hiddenAndDisabledFields}>
+            <FieldGroup>
               <ComboBox
                 id="trustee-districts"
                 className="trustee-districts-input"
@@ -524,7 +525,7 @@ function TrusteeForm(props: Readonly<TrusteeFormProps>) {
               />
             </FieldGroup>
 
-            <FieldGroup {...hiddenAndDisabledFields}>
+            <FieldGroup>
               <ComboBox
                 id="trustee-chapters"
                 className="trustee-chapters-input"
@@ -540,7 +541,7 @@ function TrusteeForm(props: Readonly<TrusteeFormProps>) {
               />
             </FieldGroup>
 
-            <FieldGroup {...hiddenAndDisabledFields}>
+            <FieldGroup>
               <ComboBox
                 id="trustee-status"
                 className="trustee-status-input"
@@ -554,8 +555,8 @@ function TrusteeForm(props: Readonly<TrusteeFormProps>) {
                 ref={setStatusComboRef}
               />
             </FieldGroup>
-          </div>
-        </div>
+          </FormColumn>
+        </FormContainer>
 
         {errorMessage && <div role="alert">{errorMessage}</div>}
         <div className="usa-button-group">
