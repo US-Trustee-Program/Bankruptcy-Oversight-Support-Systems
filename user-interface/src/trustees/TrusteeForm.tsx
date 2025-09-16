@@ -44,11 +44,6 @@ const STATUS_OPTIONS: ComboOption<TrusteeStatus>[] = [
   { value: 'suspended', label: 'Suspended' },
 ];
 
-export type SubmissionResult = {
-  success: boolean;
-  message?: string;
-};
-
 function TrusteeForm() {
   const flags = useFeatureFlags();
   const api = useApi2();
@@ -350,7 +345,11 @@ function TrusteeForm() {
         )}
       </div>
 
-      <form aria-label="Create Trustee" data-testid="trustee-form" onSubmit={handleSubmit}>
+      <form
+        aria-label={`${passedState.action === 'create' ? 'Create' : 'Edit'} Trustee`}
+        data-testid="trustee-form"
+        onSubmit={handleSubmit}
+      >
         <div className="form-header">
           <span>
             A red asterisk (<span className="text-secondary-dark">*</span>) indicates a required
