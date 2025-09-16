@@ -100,8 +100,7 @@ function TrusteeForm() {
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
   const navigate = useCamsNavigator();
 
-  const onSubmit = async (formData: TrusteeFormData): Promise<SubmissionResult> => {
-    const result: SubmissionResult = { success: true };
+  const mapPayload = (formData: TrusteeFormData) => {
     let payload;
     if (doCreate || doEditPublicProfile) {
       payload = {
@@ -139,26 +138,36 @@ function TrusteeForm() {
         },
       } satisfies Partial<TrusteeInput>;
     }
+    return payload;
+  };
 
-    try {
-      if (doCreate) {
-        const response = await api.postTrustee(payload as TrusteeInput);
-        const createdId = (response as { data?: { id?: string } })?.data?.id;
-        navigate.navigateTo(`/trustees/${createdId}`);
-      } else {
-        await api.patchTrustee(passedState.trusteeId || '', payload);
-        navigate.navigateTo(`/trustees/${passedState.trusteeId}`);
-      }
-    } catch (e) {
-      result.success = false;
+  const handleSubmit = async (ev: React.FormEvent): Promise<void> => {
+    ev.preventDefault();
+    const formData = getFormData();
 
-      if (e instanceof Error) {
-        result.message = e.message;
-      } else {
-        result.message = doCreate ? 'Could not create trustee.' : 'Could not edit trustee.';
+    if (isFormValidAndComplete(formData)) {
+      setErrorMessage(null);
+      clearErrors();
+      setIsSubmitting(true);
+
+      const payload = mapPayload(formData);
+      try {
+        if (doCreate) {
+          const response = await api.postTrustee(payload as TrusteeInput);
+          const createdId = (response as { data?: { id?: string } })?.data?.id;
+          navigate.navigateTo(`/trustees/${createdId}`);
+        } else {
+          await api.patchTrustee(passedState.trusteeId || '', payload);
+          navigate.navigateTo(`/trustees/${passedState.trusteeId}`);
+        }
+      } catch (e) {
+        globalAlert?.error(
+          `Failed to ${doCreate ? 'create' : 'update'} trustee: ${(e as Error).message}`,
+        );
+      } finally {
+        setIsSubmitting(false);
       }
     }
-    return result;
   };
 
   useEffect(() => {
@@ -278,30 +287,6 @@ function TrusteeForm() {
     debounce(() => {
       validateFieldAndUpdate(name as keyof TrusteeFormData, value);
     }, 300);
-  };
-
-  const handleSubmit = async (ev: React.FormEvent) => {
-    ev.preventDefault();
-
-    const formData = getFormData();
-    if (isFormValidAndComplete(formData)) {
-      setErrorMessage(null);
-      clearErrors();
-      setIsSubmitting(true);
-
-      try {
-        const result = await onSubmit(formData);
-        if (!result.success) {
-          globalAlert?.error(`Failed to create trustee: ${result.message}`);
-        }
-      } catch (error) {
-        const errorMessage = (error as Error).message;
-        globalAlert?.error(`Failed to create trustee: ${errorMessage}`);
-        setErrorMessage(errorMessage);
-      } finally {
-        setIsSubmitting(false);
-      }
-    }
   };
 
   const handleCancel = useCallback(() => {
