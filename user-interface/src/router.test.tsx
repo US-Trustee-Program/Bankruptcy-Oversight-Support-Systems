@@ -10,12 +10,10 @@ import { CamsRole } from '@common/cams/roles';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
 
 describe('App Router Tests', () => {
-  // Mock useLocation before all tests
   vi.mock('react-router-dom', async () => {
     const actual = await vi.importActual('react-router-dom');
     return {
       ...(actual as typeof actual),
-      // By default, return basic location info that will be overridden in tests
       useLocation: vi.fn().mockReturnValue({
         pathname: '/',
         search: '',
@@ -27,7 +25,6 @@ describe('App Router Tests', () => {
   });
 
   const setUseLocationMock = (pathname: string = '/', state: object | undefined = undefined) => {
-    // Set the mock return value for a specific test
     vi.mocked(ReactRouterDOM.useLocation).mockReturnValue({
       pathname,
       search: '',
@@ -42,7 +39,6 @@ describe('App Router Tests', () => {
   });
 
   beforeEach(() => {
-    // Default user setup - can be overridden in individual tests
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
       MockData.getCamsSession({
         user: MockData.getCamsUser({
@@ -65,7 +61,6 @@ describe('App Router Tests', () => {
   });
 
   test('should route /trustees/create to TrusteeCreateForm when feature flag and role allow', async () => {
-    // Override default mock with authorized user
     const user = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
 
@@ -73,7 +68,6 @@ describe('App Router Tests', () => {
       'trustee-management': true,
     });
 
-    // Use the helper function to set the useLocation mock
     setUseLocationMock('/trustees/create', {
       action: 'create',
       cancelTo: '/trustees',
@@ -108,7 +102,6 @@ describe('App Router Tests', () => {
 
   describe('Trustee route unauthorized access tests', () => {
     test('should show unauthorized message when accessing /trustees without TrusteeAdmin role', async () => {
-      // Override default mock with user without TrusteeAdmin role
       const unauthorizedUser = MockData.getCamsUser({ roles: [CamsRole.CaseAssignmentManager] });
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
         MockData.getCamsSession({ user: unauthorizedUser }),
@@ -124,14 +117,12 @@ describe('App Router Tests', () => {
         </MemoryRouter>,
       );
 
-      // Should not render the trustees page content, but should handle gracefully
       await waitFor(() => {
         expect(document.querySelector('[data-testid="trustees-add-link"]')).not.toBeInTheDocument();
       });
     });
 
     test('should show unauthorized message when accessing /trustees/create without TrusteeAdmin role', async () => {
-      // Override default mock with user without TrusteeAdmin role
       const unauthorizedUser = MockData.getCamsUser({ roles: [CamsRole.DataVerifier] });
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
         MockData.getCamsSession({ user: unauthorizedUser }),
@@ -141,7 +132,6 @@ describe('App Router Tests', () => {
         'trustee-management': true, // Feature flag enabled
       });
 
-      // Use the helper function to set the useLocation mock
       setUseLocationMock('/trustees/create', {
         action: 'create',
         cancelTo: '/trustees',
@@ -153,17 +143,12 @@ describe('App Router Tests', () => {
         </MemoryRouter>,
       );
 
-      // Should show unauthorized message from TrusteeCreateForm component
       await waitFor(() => {
-        expect(
-          screen.getByTestId('alert-forbidden-alert'),
-          // document.querySelector('[data-testid="trustee-create-unauthorized"]'),
-        ).toBeInTheDocument();
+        expect(screen.getByTestId('alert-forbidden-alert')).toBeInTheDocument();
       });
     });
 
     test('should show disabled message when accessing /trustees/create with feature flag disabled', async () => {
-      // Override default mock with user with TrusteeAdmin role but feature disabled
       const authorizedUser = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
         MockData.getCamsSession({ user: authorizedUser }),
@@ -173,7 +158,6 @@ describe('App Router Tests', () => {
         'trustee-management': false, // Feature flag disabled
       });
 
-      // Use the helper function to set the useLocation mock
       setUseLocationMock('/trustees/create', {
         action: 'create',
         cancelTo: '/trustees',
@@ -185,7 +169,6 @@ describe('App Router Tests', () => {
         </MemoryRouter>,
       );
 
-      // Should show disabled message from TrusteeCreateForm component
       await waitFor(() => {
         expect(
           document.querySelector('[data-testid="trustee-create-disabled"]'),
