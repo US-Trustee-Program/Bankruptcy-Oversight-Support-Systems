@@ -81,17 +81,6 @@ export function useTrusteeFormValidation(): TrusteeFormValidation {
   };
 
   /**
-   * Checks if all required fields are filled
-   */
-  const areRequiredFieldsFilled = (formData: TrusteeFormData): boolean => {
-    const requiredFields = ['name', 'address1', 'city', 'state', 'zipCode', 'phone', 'email'];
-    return requiredFields.every((field) => {
-      const value = formData[field as keyof TrusteeFormData];
-      return value && typeof value === 'string' && value.trim() !== '';
-    });
-  };
-
-  /**
    * Checks if form is both valid (no errors) and complete (all required fields filled)
    */
   const isFormValidAndComplete = (formData: TrusteeFormData): boolean => {
@@ -114,7 +103,6 @@ export function useTrusteeFormValidation(): TrusteeFormValidation {
     validateFieldAndUpdate,
     clearErrors,
     clearFieldError,
-    areRequiredFieldsFilled,
     isFormValidAndComplete,
   };
 }

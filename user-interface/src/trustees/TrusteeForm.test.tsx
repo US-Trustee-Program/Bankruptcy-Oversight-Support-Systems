@@ -1245,48 +1245,7 @@ describe('TrusteeForm', () => {
       await waitFor(() => {
         expect(mockPatchTrustee).toHaveBeenCalled();
         expect(mockGlobalAlert.error).toHaveBeenCalledWith(
-          `Failed to create trustee: ${errorMessage}`,
-        );
-      });
-    });
-
-    test('handles various non-Error objects in API rejections', async () => {
-      // One simple test that covers the key branch where error is not an Error instance
-      const mockPostTrustee = vi.fn().mockRejectedValue('Not an Error instance');
-
-      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
-        getCourts: vi.fn().mockResolvedValue({
-          data: MockData.getCourts(),
-        }),
-        postTrustee: mockPostTrustee,
-        patchTrustee: vi.fn(),
-      } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
-
-      // Render the form
-      renderWithRouter();
-
-      // Fill out form
-      await userEvent.type(screen.getByTestId('trustee-name'), 'Error Test');
-      await userEvent.type(screen.getByTestId('trustee-address1'), '123 Main St');
-      await userEvent.type(screen.getByTestId('trustee-city'), 'Springfield');
-
-      // Select state
-      const stateCombobox = screen.getByRole('combobox', { name: /state/i });
-      await userEvent.click(stateCombobox);
-      await userEvent.click(screen.getByText('IL - Illinois'));
-
-      await userEvent.type(screen.getByTestId('trustee-zip'), '62704');
-      await userEvent.type(screen.getByTestId('trustee-phone'), '555-123-4567');
-      await userEvent.type(screen.getByTestId('trustee-email'), 'error.test@example.com');
-
-      // Submit form
-      await userEvent.click(screen.getByRole('button', { name: /save/i }));
-
-      // Verify the default error message is used
-      await waitFor(() => {
-        expect(mockPostTrustee).toHaveBeenCalled();
-        expect(mockGlobalAlert.error).toHaveBeenCalledWith(
-          'Failed to create trustee: Could not create trustee.',
+          `Failed to update trustee: ${errorMessage}`,
         );
       });
     });

@@ -339,6 +339,53 @@ describe('TrusteesUseCase', () => {
       expect(result).toEqual(expectedUpdatedTrustee);
     });
 
+    test('should update trustee successfully with internal contact information', async () => {
+      const trusteeId = 'trustee-123';
+      const updatedTrusteeInputWithInternal: Partial<TrusteeInput> = {
+        name: 'Jane Doe With Internal',
+        internal: {
+          address: {
+            address1: '789 Internal St',
+            city: 'Internal City',
+            state: 'TX',
+            zipCode: '75001',
+            countryCode: 'US',
+          },
+          phone: {
+            number: '214-555-0199',
+            extension: '1234',
+          },
+          email: 'jane.internal@trustee.gov',
+        },
+        status: 'active',
+      };
+
+      const expectedUpdatedTrustee = {
+        id: trusteeId,
+        ...updatedTrusteeInputWithInternal,
+        createdOn: '2025-08-12T10:00:00Z',
+        createdBy: mockUserReference,
+        updatedOn: '2025-08-12T11:00:00Z',
+        updatedBy: mockUserReference,
+      };
+
+      mockTrusteesRepository.updateTrustee = jest.fn().mockResolvedValue(expectedUpdatedTrustee);
+
+      const result = await useCase.updateTrustee(
+        context,
+        trusteeId,
+        updatedTrusteeInputWithInternal,
+      );
+
+      expect(mockGetCamsUserReference).toHaveBeenCalledWith(context.session.user);
+      expect(mockTrusteesRepository.updateTrustee).toHaveBeenCalledWith(
+        trusteeId,
+        updatedTrusteeInputWithInternal,
+        mockUserReference,
+      );
+      expect(result).toEqual(expectedUpdatedTrustee);
+    });
+
     test('should throw error when validation fails for update', async () => {
       const trusteeId = 'trustee-123';
       const invalidTrusteeInput: TrusteeInput = {

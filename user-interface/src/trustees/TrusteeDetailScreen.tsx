@@ -170,23 +170,26 @@ export default function TrusteeDetailScreen() {
                   <div>
                     {trustee.public?.address && (
                       <>
-                        <div className="trustee-street-address">
+                        <div data-testid="trustee-street-address">
                           {trustee.public.address.address1}
                         </div>
-                        <div className="trustee-street-address-two">
+                        <div data-testid="trustee-street-address-line-2">
                           {trustee.public.address.address2}
                         </div>
-                        <div className="trustee-street-address-three">
+                        <div data-testid="trustee-street-address-line-3">
                           {trustee.public.address.address3}
                         </div>
-                        <span className="trustee-city">{trustee.public.address.city}</span>
-                        <span className="trustee-state">, {trustee.public.address.state}</span>
-                        <span className="trustee-zip-code"> {trustee.public.address.zipCode}</span>
+                        <span data-testid="trustee-city">{trustee.public.address.city}</span>
+                        <span data-testid="trustee-state">, {trustee.public.address.state}</span>
+                        <span data-testid="trustee-zip-code">
+                          {' '}
+                          {trustee.public.address.zipCode}
+                        </span>
                       </>
                     )}
                   </div>
                   {trustee.public?.phone && (
-                    <div className="trustee-phone-number">
+                    <div data-testid="trustee-phone-number">
                       {trustee.public.phone.number}
                       {trustee.public.phone.extension ? ` x${trustee.public.phone.extension}` : ''}
                     </div>
@@ -199,14 +202,14 @@ export default function TrusteeDetailScreen() {
                       </a>
                     </div>
                   )}
-                  <div className="trustee-districts" aria-label="districts">
+                  <div data-testid="trustee-districts" aria-label="districts">
                     <ul>
                       {districtLabels.map((label, index) => (
                         <li key={index}>{label}</li>
                       ))}
                     </ul>
                   </div>
-                  <div className="trustee-chapters">
+                  <div data-testid="trustee-chapters">
                     <span>Chapter{trustee.chapters && trustee.chapters.length > 1 && 's'}: </span>
                     {trustee.chapters?.map(formatChapterType).join(', ')}
                   </div>
@@ -240,14 +243,19 @@ export default function TrusteeDetailScreen() {
                       <div>
                         {trustee.internal?.address && (
                           <>
-                            <div className="trustee-street-address">
+                            <div data-testid="trustee-internal-street-address">
                               {trustee.internal.address.address1}
                             </div>
-                            <span className="trustee-city">{trustee.internal.address.city}</span>
-                            <span className="trustee-state">
+                            <div data-testid="trustee-internal-street-address-two">
+                              {trustee.internal.address.address2}
+                            </div>
+                            <span data-testid="trustee-internal-city">
+                              {trustee.internal.address.city}
+                            </span>
+                            <span data-testid="trustee-internal-state">
                               , {trustee.internal.address.state}
                             </span>
-                            <span className="trustee-zip-code">
+                            <span data-testid="trustee-internal-zip-code">
                               {' '}
                               {trustee.internal.address.zipCode}
                             </span>
@@ -255,7 +263,7 @@ export default function TrusteeDetailScreen() {
                         )}
                       </div>
                       {trustee.internal?.phone && (
-                        <div className="trustee-phone-number">
+                        <div data-testid="trustee-internal-phone-number">
                           {trustee.internal.phone.number}
                           {trustee.internal.phone.extension
                             ? ` x${trustee.internal.phone.extension}`

@@ -26,6 +26,5 @@ export interface TrusteeFormValidation {
   validateFieldAndUpdate: (field: keyof TrusteeFormData, value: string) => string | null;
   clearErrors: () => void;
   clearFieldError: (field: string) => void;
-  areRequiredFieldsFilled: (formData: TrusteeFormData) => boolean;
   isFormValidAndComplete: (formData: TrusteeFormData) => boolean;
 }

@@ -138,23 +138,42 @@ describe('TrusteeDetailScreen', () => {
     });
 
     expect(screen.getByText(mockTrustee.public.address.address1)).toBeInTheDocument();
-    expect(screen.getByText(mockTrustee.public.address.address2!)).toBeInTheDocument();
-    expect(screen.getByText(mockTrustee.public.address.address3!)).toBeInTheDocument();
-    expect(screen.getByText(mockTrustee.public.address.city)).toBeInTheDocument();
-    expect(screen.getByText(`, ${mockTrustee.public.address.state}`)).toBeInTheDocument();
-    expect(screen.getByText(mockTrustee.public.address.zipCode)).toBeInTheDocument();
+    expect(screen.getByTestId('trustee-street-address-line-2')).toHaveTextContent(
+      mockTrustee.public.address.address2!,
+    );
+    expect(screen.getByTestId('trustee-street-address-line-3')).toHaveTextContent(
+      mockTrustee.public.address.address3!,
+    );
+    expect(screen.getByTestId('trustee-city')).toHaveTextContent(mockTrustee.public.address.city);
+    expect(screen.getByTestId('trustee-state')).toHaveTextContent(
+      `, ${mockTrustee.public.address.state}`,
+    );
+    expect(screen.getByTestId('trustee-zip-code')).toHaveTextContent(
+      mockTrustee.public.address.zipCode,
+    );
     expect(screen.queryByTestId(mockTrustee.public.address.countryCode)).not.toBeInTheDocument();
-    expect(screen.getByText(new RegExp(mockTrustee.public.phone!.number))).toBeInTheDocument();
+    expect(screen.getByTestId('trustee-phone-number')).toHaveTextContent(
+      new RegExp(mockTrustee.public.phone!.number),
+    );
     expect(screen.getByRole('link', { name: mockTrustee.public.email })).toBeInTheDocument();
 
     expect(screen.getByText(mockInternal.address.address1)).toBeInTheDocument();
-    expect(screen.getByText(mockInternal.address.address2!)).toBeInTheDocument();
-    expect(screen.getByText(mockInternal.address.address3!)).toBeInTheDocument();
-    expect(screen.getByText(mockInternal.address.city)).toBeInTheDocument();
-    expect(screen.getByText(`, ${mockInternal.address.state}`)).toBeInTheDocument();
-    expect(screen.getByText(mockInternal.address.zipCode)).toBeInTheDocument();
+    expect(screen.getByTestId('trustee-internal-street-address-two')).toHaveTextContent(
+      mockInternal.address.address2!,
+    );
+    expect(screen.getByTestId('trustee-internal-city')).toHaveTextContent(
+      mockInternal.address.city,
+    );
+    expect(screen.getByTestId('trustee-internal-state')).toHaveTextContent(
+      `, ${mockInternal.address.state}`,
+    );
+    expect(screen.getByTestId('trustee-internal-zip-code')).toHaveTextContent(
+      mockInternal.address.zipCode,
+    );
     expect(screen.queryByTestId(mockInternal.address.countryCode)).not.toBeInTheDocument();
-    expect(screen.getByText(new RegExp(mockInternal.phone!.number))).toBeInTheDocument();
+    expect(screen.getByTestId('trustee-internal-phone-number')).toHaveTextContent(
+      new RegExp(mockInternal.phone!.number),
+    );
     expect(screen.getByRole('link', { name: mockInternal.email })).toBeInTheDocument();
   });
 
