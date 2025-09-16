@@ -20,6 +20,7 @@ describe('UsStatesComboBox', () => {
       id: 'test-states',
       label: 'Select States',
       onUpdateSelection: vi.fn(),
+      selections: [],
     };
 
     render(<UsStatesComboBox {...props} />);

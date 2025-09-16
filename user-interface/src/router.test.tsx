@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
+import * as ReactRouterDOM from 'react-router-dom';
 import App from './App';
 import { vi } from 'vitest';
 import LocalStorage from './lib/utils/local-storage';
@@ -9,12 +10,35 @@ import { CamsRole } from '@common/cams/roles';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
 
 describe('App Router Tests', () => {
+  vi.mock('react-router-dom', async () => {
+    const actual = await vi.importActual('react-router-dom');
+    return {
+      ...(actual as typeof actual),
+      useLocation: vi.fn().mockReturnValue({
+        pathname: '/',
+        search: '',
+        hash: '',
+        state: null,
+        key: 'default',
+      }),
+    };
+  });
+
+  const setUseLocationMock = (pathname: string = '/', state: object | undefined = undefined) => {
+    vi.mocked(ReactRouterDOM.useLocation).mockReturnValue({
+      pathname,
+      search: '',
+      hash: '',
+      state,
+      key: 'default',
+    });
+  };
+
   beforeAll(async () => {
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
   });
 
   beforeEach(() => {
-    // Default user setup - can be overridden in individual tests
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
       MockData.getCamsSession({
         user: MockData.getCamsUser({
@@ -37,12 +61,16 @@ describe('App Router Tests', () => {
   });
 
   test('should route /trustees/create to TrusteeCreateForm when feature flag and role allow', async () => {
-    // Override default mock with authorized user
     const user = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
 
     vi.spyOn(FeatureFlags, 'default').mockReturnValue({
       'trustee-management': true,
+    });
+
+    setUseLocationMock('/trustees/create', {
+      action: 'create',
+      cancelTo: '/trustees',
     });
 
     render(
@@ -52,7 +80,7 @@ describe('App Router Tests', () => {
     );
 
     await waitFor(() => {
-      expect(document.querySelector('[data-testid="trustee-create-form"]')).toBeInTheDocument();
+      expect(document.querySelector('[data-testid="trustee-form"]')).toBeInTheDocument();
     });
   });
 
@@ -74,7 +102,6 @@ describe('App Router Tests', () => {
 
   describe('Trustee route unauthorized access tests', () => {
     test('should show unauthorized message when accessing /trustees without TrusteeAdmin role', async () => {
-      // Override default mock with user without TrusteeAdmin role
       const unauthorizedUser = MockData.getCamsUser({ roles: [CamsRole.CaseAssignmentManager] });
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
         MockData.getCamsSession({ user: unauthorizedUser }),
@@ -90,14 +117,12 @@ describe('App Router Tests', () => {
         </MemoryRouter>,
       );
 
-      // Should not render the trustees page content, but should handle gracefully
       await waitFor(() => {
         expect(document.querySelector('[data-testid="trustees-add-link"]')).not.toBeInTheDocument();
       });
     });
 
     test('should show unauthorized message when accessing /trustees/create without TrusteeAdmin role', async () => {
-      // Override default mock with user without TrusteeAdmin role
       const unauthorizedUser = MockData.getCamsUser({ roles: [CamsRole.DataVerifier] });
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
         MockData.getCamsSession({ user: unauthorizedUser }),
@@ -107,23 +132,23 @@ describe('App Router Tests', () => {
         'trustee-management': true, // Feature flag enabled
       });
 
+      setUseLocationMock('/trustees/create', {
+        action: 'create',
+        cancelTo: '/trustees',
+      });
+
       render(
         <MemoryRouter initialEntries={['/trustees/create']}>
           <App />
         </MemoryRouter>,
       );
 
-      // Should show unauthorized message from TrusteeCreateForm component
       await waitFor(() => {
-        expect(
-          screen.getByTestId('alert-forbidden-alert'),
-          // document.querySelector('[data-testid="trustee-create-unauthorized"]'),
-        ).toBeInTheDocument();
+        expect(screen.getByTestId('alert-forbidden-alert')).toBeInTheDocument();
       });
     });
 
     test('should show disabled message when accessing /trustees/create with feature flag disabled', async () => {
-      // Override default mock with user with TrusteeAdmin role but feature disabled
       const authorizedUser = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
         MockData.getCamsSession({ user: authorizedUser }),
@@ -133,13 +158,17 @@ describe('App Router Tests', () => {
         'trustee-management': false, // Feature flag disabled
       });
 
+      setUseLocationMock('/trustees/create', {
+        action: 'create',
+        cancelTo: '/trustees',
+      });
+
       render(
         <MemoryRouter initialEntries={['/trustees/create']}>
           <App />
         </MemoryRouter>,
       );
 
-      // Should show disabled message from TrusteeCreateForm component
       await waitFor(() => {
         expect(
           document.querySelector('[data-testid="trustee-create-disabled"]'),

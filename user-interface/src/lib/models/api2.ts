@@ -236,6 +236,10 @@ async function postTrustee(trustee: TrusteeInput) {
   return api().post<Trustee, TrusteeInput>('/trustees', trustee);
 }
 
+async function patchTrustee(id: string, trustee: Partial<TrusteeInput>) {
+  return api().patch<Trustee, Partial<TrusteeInput>>(`/trustees/${id}`, trustee);
+}
+
 async function getTrustees() {
   return api().get<Trustee[]>('/trustees');
 }
@@ -400,6 +404,7 @@ export const _Api2 = {
   getTrustees,
   getTrustee,
   postTrustee,
+  patchTrustee,
   deletePrivilegedIdentityUser,
   getAttorneys,
   getCaseDetail,

@@ -6,25 +6,47 @@ import Icon from '@/lib/components/uswds/Icon';
 import useApi2 from '@/lib/hooks/UseApi2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { Trustee } from '@common/cams/trustees';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import Tag, { UswdsTagStyle } from '@/lib/components/uswds/Tag';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
+import { TrusteeFormState } from './TrusteeForm';
+import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 export default function TrusteeDetailScreen() {
   const { trusteeId } = useParams();
   const [trustee, setTrustee] = useState<Trustee | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [districtLabels, setDistrictLabels] = useState<string[]>([]);
+
   const navigate = useNavigate();
+  const location = useLocation();
 
   const globalAlert = useGlobalAlert();
   const api = useApi2();
 
   function openEditPublicProfile() {
-    navigate(`/trustees/${trusteeId}/edit-public-profile`);
+    const state: TrusteeFormState = {
+      trusteeId,
+      trustee: trustee || undefined,
+      cancelTo: location.pathname,
+      action: 'edit',
+      contactInformation: 'public',
+    };
+    navigate(`/trustees/${trusteeId}/edit`, { state });
+  }
+
+  function openEditInternalProfile() {
+    const state: TrusteeFormState = {
+      trusteeId,
+      trustee: trustee || undefined,
+      cancelTo: location.pathname,
+      action: 'edit',
+      contactInformation: 'internal',
+    };
+    navigate(`/trustees/${trusteeId}/edit`, { state });
   }
 
   function formatTrusteeStatusText(status: string): string {
@@ -130,20 +152,14 @@ export default function TrusteeDetailScreen() {
             <div>
               <h2>Trustee</h2>
             </div>
-            <div className="grid-col-12 tablet:grid-col-10 desktop:grid-col-8 record-detail-container">
+            <div className="record-detail-container">
               <div className="record-detail-card-list">
                 <div className="trustee-contact-information record-detail-card">
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <h3>Contact Information (Public)</h3>
+                  <div className="title-bar">
+                    <h3>Trustee Overview (Public)</h3>
                     <Button
                       uswdsStyle={UswdsButtonStyle.Unstyled}
-                      aria-label="Edit trustee contact information"
+                      aria-label="Edit trustee public overview information"
                       title="Edit trustee contact information"
                       onClick={openEditPublicProfile}
                     >
@@ -154,17 +170,26 @@ export default function TrusteeDetailScreen() {
                   <div>
                     {trustee.public?.address && (
                       <>
-                        <div className="trustee-street-address">
+                        <div data-testid="trustee-street-address">
                           {trustee.public.address.address1}
                         </div>
-                        <span className="trustee-city">{trustee.public.address.city}</span>
-                        <span className="trustee-state">, {trustee.public.address.state}</span>
-                        <span className="trustee-zip-code"> {trustee.public.address.zipCode}</span>
+                        <div data-testid="trustee-street-address-line-2">
+                          {trustee.public.address.address2}
+                        </div>
+                        <div data-testid="trustee-street-address-line-3">
+                          {trustee.public.address.address3}
+                        </div>
+                        <span data-testid="trustee-city">{trustee.public.address.city}</span>
+                        <span data-testid="trustee-state">, {trustee.public.address.state}</span>
+                        <span data-testid="trustee-zip-code">
+                          {' '}
+                          {trustee.public.address.zipCode}
+                        </span>
                       </>
                     )}
                   </div>
                   {trustee.public?.phone && (
-                    <div className="trustee-phone-number">
+                    <div data-testid="trustee-phone-number">
                       {trustee.public.phone.number}
                       {trustee.public.phone.extension ? ` x${trustee.public.phone.extension}` : ''}
                     </div>
@@ -177,18 +202,84 @@ export default function TrusteeDetailScreen() {
                       </a>
                     </div>
                   )}
-                  <div className="trustee-districts" aria-label="districts">
+                  <div data-testid="trustee-districts" aria-label="districts">
                     <ul>
                       {districtLabels.map((label, index) => (
                         <li key={index}>{label}</li>
                       ))}
                     </ul>
                   </div>
-                  <div className="trustee-chapters">
+                  <div data-testid="trustee-chapters">
                     <span>Chapter{trustee.chapters && trustee.chapters.length > 1 && 's'}: </span>
                     {trustee.chapters?.map(formatChapterType).join(', ')}
                   </div>
                   <div className="trustee-status">Status: {trustee.status}</div>
+                </div>
+              </div>
+              <div className="record-detail-card-list">
+                <Alert
+                  message={'USTP Internal information is for internal use only.'}
+                  slim={true}
+                  role={'status'}
+                  inline={true}
+                  show={true /*!!trustee.internal*/}
+                  type={UswdsAlertStyle.Warning}
+                ></Alert>
+                <div className="trustee-internal-contact-information record-detail-card">
+                  <div className="title-bar">
+                    <h3>Contact Information (USTP Internal)</h3>
+                    <Button
+                      uswdsStyle={UswdsButtonStyle.Unstyled}
+                      aria-label="Edit trustee internal contact information"
+                      title="Edit trustee contact information"
+                      onClick={openEditInternalProfile}
+                    >
+                      <IconLabel icon="edit" label="Edit" />
+                    </Button>
+                  </div>
+                  {!trustee.internal && <div>No information added.</div>}
+                  {!!trustee.internal && (
+                    <>
+                      <div>
+                        {trustee.internal?.address && (
+                          <>
+                            <div data-testid="trustee-internal-street-address">
+                              {trustee.internal.address.address1}
+                            </div>
+                            <div data-testid="trustee-internal-street-address-two">
+                              {trustee.internal.address.address2}
+                            </div>
+                            <span data-testid="trustee-internal-city">
+                              {trustee.internal.address.city}
+                            </span>
+                            <span data-testid="trustee-internal-state">
+                              , {trustee.internal.address.state}
+                            </span>
+                            <span data-testid="trustee-internal-zip-code">
+                              {' '}
+                              {trustee.internal.address.zipCode}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      {trustee.internal?.phone && (
+                        <div data-testid="trustee-internal-phone-number">
+                          {trustee.internal.phone.number}
+                          {trustee.internal.phone.extension
+                            ? ` x${trustee.internal.phone.extension}`
+                            : ''}
+                        </div>
+                      )}
+                      {trustee.internal?.email && (
+                        <div data-testid="trustee-email" aria-label="trustee email">
+                          <a href={`mailto:${trustee.internal.email}`}>
+                            {trustee.internal.email}
+                            <Icon className="link-icon" name="mail_outline" />
+                          </a>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
             </div>

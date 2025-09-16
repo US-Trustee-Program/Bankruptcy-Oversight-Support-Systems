@@ -2,7 +2,10 @@ import { ApplicationContext } from '../../types/basic';
 import { TrusteesMongoRepository, TrusteeDocument } from './trustees.mongo.repository';
 import { TrusteeInput } from '../../../../../common/src/cams/trustees';
 import { CamsUserReference } from '../../../../../common/src/cams/users';
-import { createMockApplicationContext } from '../../../testing/testing-utilities';
+import {
+  createMockApplicationContext,
+  getTheThrownError,
+} from '../../../testing/testing-utilities';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import { closeDeferred } from '../../../deferrable/defer-close';
 
@@ -293,6 +296,151 @@ describe('TrusteesMongoRepository', () => {
           },
         ],
       });
+    });
+  });
+
+  describe('updateTrustee', () => {
+    test('should update trustee successfully with audit fields', async () => {
+      const trusteeId = 'trustee-123';
+      const updatedTrusteeInput: Partial<TrusteeInput> = {
+        name: 'Jane Doe Updated',
+        public: {
+          address: {
+            address1: '456 Updated St',
+            city: 'Newtown',
+            state: 'CA',
+            zipCode: '54321',
+            countryCode: 'US',
+          },
+          phone: {
+            number: '333-555-9876',
+          },
+          email: 'jane.updated@example.com',
+        },
+        status: 'not active',
+      };
+
+      const mockAdapter = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'updateOne')
+        .mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
+
+      jest.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue({
+        id: trusteeId,
+        ...updatedTrusteeInput,
+        documentType: 'TRUSTEE',
+        createdOn: '2025-08-12T10:00:00Z',
+        createdBy: mockUser,
+        updatedOn: expect.any(String),
+        updatedBy: mockUser,
+      } as TrusteeDocument);
+
+      const result = await repository.updateTrustee(trusteeId, updatedTrusteeInput, mockUser);
+
+      expect(mockAdapter).toHaveBeenCalledWith(
+        {
+          conjunction: 'AND',
+          values: [
+            {
+              condition: 'EQUALS',
+              leftOperand: { name: 'documentType' },
+              rightOperand: 'TRUSTEE',
+            },
+            {
+              condition: 'EQUALS',
+              leftOperand: { name: 'id' },
+              rightOperand: trusteeId,
+            },
+          ],
+        },
+        expect.objectContaining({
+          ...updatedTrusteeInput,
+          updatedOn: expect.any(String),
+          updatedBy: mockUser,
+        }),
+      );
+      expect(result.id).toBe(trusteeId);
+      expect(result.name).toBe(updatedTrusteeInput.name);
+    });
+
+    test('should throw error when trustee to update is not found', async () => {
+      const trusteeId = 'nonexistent-id';
+      const updatedTrusteeInput: Partial<TrusteeInput> = {
+        name: 'Updated Name',
+      };
+
+      const mockAdapter = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'updateOne')
+        .mockResolvedValue({ matchedCount: 0, modifiedCount: 0 });
+
+      const actual = await getTheThrownError(async () => {
+        await repository.updateTrustee(trusteeId, updatedTrusteeInput, mockUser);
+      });
+
+      await expect(actual.camsStack[0]).toEqual(
+        expect.objectContaining({ message: `Failed to update trustee with ID ${trusteeId}.` }),
+      );
+
+      expect(mockAdapter).toHaveBeenCalledWith(
+        {
+          conjunction: 'AND',
+          values: [
+            {
+              condition: 'EQUALS',
+              leftOperand: { name: 'documentType' },
+              rightOperand: 'TRUSTEE',
+            },
+            {
+              condition: 'EQUALS',
+              leftOperand: { name: 'id' },
+              rightOperand: trusteeId,
+            },
+          ],
+        },
+        expect.objectContaining({
+          ...updatedTrusteeInput,
+          updatedOn: expect.any(String),
+          updatedBy: mockUser,
+        }),
+      );
+    });
+
+    test('should handle database errors when updating trustee', async () => {
+      const trusteeId = 'trustee-123';
+      const updatedTrusteeInput: Partial<TrusteeInput> = {
+        name: 'Updated Name',
+      };
+      const error = new Error('Database connection failed');
+
+      const mockAdapter = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'updateOne')
+        .mockRejectedValue(error);
+
+      await expect(
+        repository.updateTrustee(trusteeId, updatedTrusteeInput, mockUser),
+      ).rejects.toThrow();
+
+      expect(mockAdapter).toHaveBeenCalledWith(
+        {
+          conjunction: 'AND',
+          values: [
+            {
+              condition: 'EQUALS',
+              leftOperand: { name: 'documentType' },
+              rightOperand: 'TRUSTEE',
+            },
+            {
+              condition: 'EQUALS',
+              leftOperand: { name: 'id' },
+              rightOperand: trusteeId,
+            },
+          ],
+        },
+        expect.objectContaining({
+          ...updatedTrusteeInput,
+          updatedOn: expect.any(String),
+          updatedBy: mockUser,
+        }),
+      );
     });
   });
 

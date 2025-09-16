@@ -7,6 +7,25 @@
     margin: 0;
     padding: 0;
   }
+  .record-detail-container {
+    .record-detail-card-list:first-child {
+      margin-right: 5rem;
+    }
+    .usa-alert {
+      margin-top: 0;
+      margin-bottom: 1.2rem;
+    }
+  }
+  .title-bar {
+    display: flex;
+    align-items: center;
+    h3 {
+      margin-right: 0.75rem;
+    }
+    .usa-button {
+      line-height: 2rem;
+    }
+  }
   .trustee-status {
     text-transform: capitalize
   }

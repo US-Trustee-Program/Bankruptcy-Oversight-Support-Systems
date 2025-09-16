@@ -84,6 +84,7 @@ describe('TrusteesUseCase', () => {
     mockTrusteesRepository = {
       createTrustee: jest.fn(),
       listTrustees: jest.fn(),
+      updateTrustee: jest.fn(),
       read: jest.fn(),
       release: jest.fn(),
     } as jest.Mocked<TrusteesRepository>;
@@ -150,10 +151,6 @@ describe('TrusteesUseCase', () => {
           },
           email: 'invalid-email', // Invalid email
         },
-        legacy: {
-          address1: '123 Main St',
-          cityStateZipCountry: 'Anytown NY 123456 US',
-        },
         status: 'active',
       };
 
@@ -196,13 +193,7 @@ describe('TrusteesUseCase', () => {
           },
           email: 'john.doe@example.com',
         },
-        legacy: {
-          address1: '123 Main St',
-          cityStateZipCountry: 'Anytown NY 12345 US',
-        },
         status: 'active',
-        // districts: undefined, // explicitly test undefined
-        // chapters: undefined,  // explicitly test undefined
       };
 
       const expectedTrustee = {
@@ -295,6 +286,224 @@ describe('TrusteesUseCase', () => {
       mockGetCamsError.mockReturnValue(expectedCamsError);
 
       await expect(useCase.getTrustee(context, trusteeId)).rejects.toThrow(expectedCamsError);
+
+      expect(mockGetCamsError).toHaveBeenCalledWith(repositoryError, 'TRUSTEES-USE-CASE');
+    });
+  });
+
+  describe('updateTrustee', () => {
+    test('should update trustee successfully with valid input', async () => {
+      const trusteeId = 'trustee-123';
+      const updatedTrusteeInput: TrusteeInput = {
+        ...sampleTrusteeInput,
+        name: 'Jane Doe Updated',
+        public: {
+          address: {
+            address1: '456 Updated St',
+            city: 'Newtown',
+            state: 'CA',
+            zipCode: '54321',
+            countryCode: 'US',
+          },
+          phone: {
+            number: '333-555-9876',
+          },
+          email: 'jane.updated@example.com',
+        },
+        status: 'not active',
+      };
+
+      const expectedUpdatedTrustee = {
+        id: trusteeId,
+        ...updatedTrusteeInput,
+        createdOn: '2025-08-12T10:00:00Z',
+        createdBy: mockUserReference,
+        updatedOn: '2025-08-12T11:00:00Z',
+        updatedBy: mockUserReference,
+      };
+
+      mockTrusteesRepository.updateTrustee = jest.fn().mockResolvedValue(expectedUpdatedTrustee);
+
+      const result = await useCase.updateTrustee(context, trusteeId, updatedTrusteeInput);
+
+      expect(mockGetCamsUserReference).toHaveBeenCalledWith(context.session.user);
+      expect(mockTrusteesRepository.updateTrustee).toHaveBeenCalledWith(
+        trusteeId,
+        expect.objectContaining({
+          ...updatedTrusteeInput,
+          districts: ['NY'],
+          chapters: ['7', '11'],
+        }),
+        mockUserReference,
+      );
+      expect(result).toEqual(expectedUpdatedTrustee);
+    });
+
+    test('should update trustee successfully with internal contact information', async () => {
+      const trusteeId = 'trustee-123';
+      const updatedTrusteeInputWithInternal: Partial<TrusteeInput> = {
+        name: 'Jane Doe With Internal',
+        internal: {
+          address: {
+            address1: '789 Internal St',
+            city: 'Internal City',
+            state: 'TX',
+            zipCode: '75001',
+            countryCode: 'US',
+          },
+          phone: {
+            number: '214-555-0199',
+            extension: '1234',
+          },
+          email: 'jane.internal@trustee.gov',
+        },
+        status: 'active',
+      };
+
+      const expectedUpdatedTrustee = {
+        id: trusteeId,
+        ...updatedTrusteeInputWithInternal,
+        createdOn: '2025-08-12T10:00:00Z',
+        createdBy: mockUserReference,
+        updatedOn: '2025-08-12T11:00:00Z',
+        updatedBy: mockUserReference,
+      };
+
+      mockTrusteesRepository.updateTrustee = jest.fn().mockResolvedValue(expectedUpdatedTrustee);
+
+      const result = await useCase.updateTrustee(
+        context,
+        trusteeId,
+        updatedTrusteeInputWithInternal,
+      );
+
+      expect(mockGetCamsUserReference).toHaveBeenCalledWith(context.session.user);
+      expect(mockTrusteesRepository.updateTrustee).toHaveBeenCalledWith(
+        trusteeId,
+        updatedTrusteeInputWithInternal,
+        mockUserReference,
+      );
+      expect(result).toEqual(expectedUpdatedTrustee);
+    });
+
+    test('should throw error when validation fails for update', async () => {
+      const trusteeId = 'trustee-123';
+      const invalidTrusteeInput: TrusteeInput = {
+        name: '',
+        public: {
+          address: {
+            address1: '123 Main St',
+            city: 'Anytown',
+            state: 'NY',
+            zipCode: '123456', // Invalid zip code
+            countryCode: 'US',
+          },
+          phone: {
+            number: '555-0123', // Invalid phone format
+          },
+          email: 'invalid-email', // Invalid email
+        },
+        status: 'active',
+      };
+
+      mockTrusteesRepository.updateTrustee = jest.fn();
+
+      await expect(useCase.updateTrustee(context, trusteeId, invalidTrusteeInput)).rejects.toThrow(
+        'Trustee validation failed: $.name: Must contain at least 1 characters. $.public.address.zipCode: Must be valid zip code. $.public.phone.number: Provided phone number does not match regular expression. $.public.email: Provided email does not match regular expression.',
+      );
+
+      expect(mockTrusteesRepository.updateTrustee).not.toHaveBeenCalled();
+    });
+
+    test('should handle repository errors and convert them to CAMS errors for update', async () => {
+      const trusteeId = 'trustee-123';
+      const repositoryError = new Error('Database connection failed');
+      const expectedCamsError = new CamsError('TRUSTEES-USE-CASE', {
+        message: 'Database connection failed',
+      });
+
+      mockTrusteesRepository.updateTrustee = jest.fn().mockRejectedValue(repositoryError);
+      mockGetCamsError.mockReturnValue(expectedCamsError);
+
+      await expect(useCase.updateTrustee(context, trusteeId, sampleTrusteeInput)).rejects.toThrow(
+        expectedCamsError,
+      );
+
+      expect(mockGetCamsError).toHaveBeenCalledWith(repositoryError, 'TRUSTEES-USE-CASE');
+    });
+
+    test('should handle trustee update input with undefined districts and chapters', async () => {
+      const trusteeId = 'trustee-123';
+      const trusteeInputWithoutArrays: TrusteeInput = {
+        name: 'John Doe Updated',
+        public: {
+          address: {
+            address1: '789 Update Ave',
+            city: 'Updatetown',
+            state: 'TX',
+            zipCode: '67890',
+            countryCode: 'US',
+          },
+          phone: {
+            number: '333-555-4567',
+          },
+          email: 'john.updated@example.com',
+        },
+        status: 'active',
+      };
+
+      const expectedUpdatedTrustee = {
+        ...trusteeInputWithoutArrays,
+        id: trusteeId,
+        createdOn: '2025-08-12T10:00:00Z',
+        createdBy: mockUserReference,
+        updatedOn: '2025-08-12T11:00:00Z',
+        updatedBy: mockUserReference,
+      };
+
+      mockTrusteesRepository.updateTrustee = jest.fn().mockResolvedValue(expectedUpdatedTrustee);
+
+      const result = await useCase.updateTrustee(context, trusteeId, trusteeInputWithoutArrays);
+
+      expect(mockTrusteesRepository.updateTrustee).toHaveBeenCalledWith(
+        trusteeId,
+        trusteeInputWithoutArrays,
+        mockUserReference,
+      );
+      expect(result).toEqual(expectedUpdatedTrustee);
+    });
+
+    test('should handle validation error with undefined reasonMap for update', async () => {
+      const trusteeId = 'trustee-123';
+      mockTrusteesRepository.updateTrustee = jest
+        .fn()
+        .mockRejectedValue(new Error('should not be called'));
+
+      const mockValidationResult = { reasonMap: undefined };
+      jest.spyOn(validationModule, 'validateObject').mockReturnValue(mockValidationResult);
+
+      const invalidInput = { name: '', status: 'active' } as TrusteeInput;
+
+      await expect(useCase.updateTrustee(context, trusteeId, invalidInput)).rejects.toThrow(
+        'Trustee validation failed: .',
+      );
+
+      expect(mockTrusteesRepository.updateTrustee).not.toHaveBeenCalled();
+    });
+
+    test('should handle trustee not found error', async () => {
+      const trusteeId = 'nonexistent-trustee';
+      const repositoryError = new Error(`Trustee with ID ${trusteeId} not found.`);
+      const expectedCamsError = new CamsError('TRUSTEES-USE-CASE', {
+        message: `Trustee with ID ${trusteeId} not found.`,
+      });
+
+      mockTrusteesRepository.updateTrustee = jest.fn().mockRejectedValue(repositoryError);
+      mockGetCamsError.mockReturnValue(expectedCamsError);
+
+      await expect(useCase.updateTrustee(context, trusteeId, sampleTrusteeInput)).rejects.toThrow(
+        expectedCamsError,
+      );
 
       expect(mockGetCamsError).toHaveBeenCalledWith(repositoryError, 'TRUSTEES-USE-CASE');
     });
