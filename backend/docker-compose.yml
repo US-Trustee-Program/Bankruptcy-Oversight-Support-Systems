@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  bankruptcy-api:
+    build:
+      context: ..
+      dockerfile: backend/Containerfile
+    ports:
+      - '8080:80'
+    environment:
+      - PORT=80
+      - NODE_ENV=development
+      # Add other environment variables as needed
+      # - COSMOS_DB_CONNECTION_STRING=
+      # - SQL_CONNECTION_STRING=
+      # - OKTA_DOMAIN=
+      # - APPLICATION_INSIGHTS_CONNECTION_STRING=
+    volumes:
+      # Mount a volume for logs if needed
+      - ./logs:/app/backend/logs
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "const http = require('http'); const options = { hostname: 'localhost', port: 80, path:
+          '/api/healthcheck', timeout: 5000 }; const req = http.get(options, (res) => { if
+          (res.statusCode === 200) process.exit(0); else process.exit(1); }); req.on('error', () =>
+          process.exit(1)); req.on('timeout', () => { req.destroy(); process.exit(1); });",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+  # Optional: Add database services for local development
+  # cosmos-emulator:
+  #   image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
+  #   ports:
+  #     - "8081:8081"
+  #     - "10251-10254:10251-10254"
+  #   environment:
+  #     - AZURE_COSMOS_EMULATOR_PARTITION_COUNT=10
+  #     - AZURE_COSMOS_EMULATOR_ENABLE_DATA_PERSISTENCE=true
+
+networks:
+  default:
+    name: bankruptcy-network
