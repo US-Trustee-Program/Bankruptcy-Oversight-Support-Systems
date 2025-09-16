@@ -25,7 +25,7 @@ From the `backend/function-apps/api` directory:
 ### Container Details
 
 - **Base Image**: `node:20-alpine`
-- **Port**: 8080
+- **Port**: 7071
 - **Health Check**: `/health`
 - **Readiness Check**: `/ready`
 - **API Base Path**: `/api`
@@ -35,7 +35,7 @@ From the `backend/function-apps/api` directory:
 The container accepts the same environment variables as the original Azure Functions:
 
 ```bash
-docker run -p 8080:8080 \
+docker run -p 7071:7071 \
   -e CAMS_LOGIN_PROVIDER=mock \
   -e DATABASE_MOCK=true \
   -e NODE_ENV=development \
@@ -127,9 +127,9 @@ docker logs -f cams-api-test
 
 The container approach provides:
 
-✅ **Cost Savings**: Scale-to-zero capability in non-production environments  
-✅ **Flexibility**: Standard container deployment patterns  
-✅ **Consistency**: Same runtime behavior across environments  
+✅ **Cost Savings**: Scale-to-zero capability in non-production environments
+✅ **Flexibility**: Standard container deployment patterns
+✅ **Consistency**: Same runtime behavior across environments
 ✅ **Compatibility**: Existing API contracts and business logic preserved
 
 ### Deployment Integration
