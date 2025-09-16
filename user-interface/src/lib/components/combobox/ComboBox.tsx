@@ -36,6 +36,7 @@ export interface ComboBoxProps extends Omit<InputProps, 'onChange' | 'onFocus' |
   autoComplete?: 'off';
   icon?: string;
   options: ComboOption[];
+  selections?: ComboOption[];
   onUpdateSelection?: (options: ComboOption[]) => void;
   onUpdateFilter?: (value: string) => void;
   onClose?: (options: ComboOption[]) => void;
@@ -61,6 +62,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     ariaLabelPrefix,
     ariaDescription,
     options: _options,
+    selections,
     singularLabel,
     pluralLabel,
     overflowStrategy,
@@ -75,8 +77,17 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   const [dropdownLocation, setDropdownLocation] = useState<{ bottom: number } | null>(null);
   const [currentListItem, setCurrentListItem] = useState<string | null>(null);
 
-  const [selectedMap, setSelectedMap] = useState<Map<string, ComboOption>>(new Map());
+  const [selectedMap, setSelectedMap] = useState<Map<string, ComboOption>>(
+    new Map(
+      selections?.map((selection) => {
+        return [selection.value, selection];
+      }),
+    ),
+  );
   const [filter, setFilter] = useState<string | null>(null);
+
+  // Track when selections are being set imperatively to prevent callback loops
+  const isImperativeUpdateRef = useRef<boolean>(false);
 
   // ========== REFS ==========
 
@@ -133,6 +144,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   }
 
   function setSelections(values: ComboOption[]) {
+    isImperativeUpdateRef.current = true;
     setSelectedMap(new Map(values.map((value) => [value.value, value])));
   }
 
@@ -385,12 +397,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   }
 
   // ========== USE EFFECTS ==========
-
-  useEffect(() => {
-    if (props.onUpdateSelection) {
-      props.onUpdateSelection([...selectedMap.values()]);
-    }
-  }, [selectedMap]);
 
   useEffect(() => {
     if (expanded) {

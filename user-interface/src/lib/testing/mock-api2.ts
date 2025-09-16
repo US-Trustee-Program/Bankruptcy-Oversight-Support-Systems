@@ -290,7 +290,7 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
   return Promise.resolve(response as ResponseBody<T>);
 }
 
-async function _patch<T = unknown>(
+async function patch<T = unknown>(
   _path: string,
   data: object,
   _options?: ObjectKeyVal,
@@ -446,6 +446,10 @@ async function postTrustee(trustee: TrusteeInput) {
   return post('/trustees', trustee, {}) as unknown as Promise<ResponseBody<Trustee>>;
 }
 
+async function patchTrustee(id: string, trustee: Partial<TrusteeInput>) {
+  return patch(`/trustees/${id}`, trustee, {}) as unknown as Promise<ResponseBody<Trustee>>;
+}
+
 async function getTrustees() {
   return get<Trustee[]>('/trustees');
 }
@@ -458,6 +462,7 @@ export const MockApi2 = {
   getTrustees,
   getTrustee,
   postTrustee,
+  patchTrustee,
   deletePrivilegedIdentityUser,
   getAttorneys,
   getCaseDetail,

@@ -1,17 +1,24 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { vi, beforeEach } from 'vitest';
 import useApi2 from '@/lib/hooks/UseApi2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { UswdsTagStyle } from '@/lib/components/uswds/Tag';
 import TrusteeDetailScreen from './TrusteeDetailScreen';
+import { TrusteeFormState } from './TrusteeForm';
+import { Trustee } from '@common/cams/trustees';
+import { ContactInformation } from '@common/cams/contact';
+import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 
 // Mock the hooks and dependencies
 const mockUseParams = vi.hoisted(() => vi.fn());
 const mockUseNavigate = vi.hoisted(() => vi.fn());
+const mockUseLocation = vi.hoisted(() => vi.fn());
 
 vi.mock('react-router-dom', () => ({
   useParams: mockUseParams,
   useNavigate: mockUseNavigate,
+  useLocation: mockUseLocation,
 }));
 
 vi.mock('@/lib/hooks/UseApi2');
@@ -19,22 +26,43 @@ vi.mock('@/lib/hooks/UseGlobalAlert');
 const mockUseApi2 = vi.mocked(useApi2);
 const mockUseGlobalAlert = vi.mocked(useGlobalAlert);
 
-const mockTrustee = {
+const mockTrustee: Trustee = {
   id: '123',
   name: 'John Doe',
   public: {
     address: {
       address1: '123 Main St',
+      address2: 'c/o John Smith',
+      address3: 'Ch 7',
       city: 'Anytown',
       state: 'NY',
       zipCode: '12345',
+      countryCode: 'US',
     },
-    phone: { number: '555-123-4567' },
-    email: 'john.doe@example.com',
+    phone: { number: '555-123-4567', extension: '1234' },
+    email: 'john.doe.public@example.com',
   },
   districts: ['NYEB', 'NYWB'],
   chapters: ['7-panel', '11', '13'],
   status: 'active',
+  updatedBy: SYSTEM_USER_REFERENCE,
+  updatedOn: '2025-08-14T10:00:00Z',
+  createdBy: SYSTEM_USER_REFERENCE,
+  createdOn: '2025-08-14T09:00:00Z',
+};
+
+const mockInternal: ContactInformation = {
+  address: {
+    address1: '9876 2nd Ave',
+    address2: 'c/o John Smith',
+    address3: 'Ch 7',
+    city: 'Specific Town',
+    state: 'NJ',
+    zipCode: '02345',
+    countryCode: 'US',
+  },
+  phone: { number: '111-123-4567', extension: '4578' },
+  email: 'john.doe.private@example.com',
 };
 
 const mockCourts = [
@@ -67,251 +95,414 @@ const mockGlobalAlert = {
   warning: vi.fn(),
 };
 
-beforeEach(() => {
-  vi.clearAllMocks();
-  mockUseParams.mockReturnValue({ trusteeId: '123' });
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-  mockUseApi2.mockReturnValue(mockApi as any); // Cast to any to avoid type complexity in tests
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-  mockUseGlobalAlert.mockReturnValue(mockGlobalAlert as any); // Cast to any to avoid type complexity in tests
-});
+describe('TrusteeDetailScreen', () => {
+  const mockNavigate = vi.fn();
+  const mockLocation = { pathname: '/trustees/123' };
 
-test('should display loading spinner while fetching data', async () => {
-  // Mock the API to delay resolution so we can test loading state
-  mockGetTrustee.mockImplementation(() => new Promise(() => {})); // Never resolves
-  mockGetCourts.mockImplementation(() => new Promise(() => {}));
-
-  render(<TrusteeDetailScreen />);
-
-  await waitFor(() => {
-    expect(screen.getByRole('status')).toBeInTheDocument(); // LoadingSpinner now has role="status"
-    expect(screen.getByText('Trustee Details')).toBeInTheDocument(); // Loading header
-  });
-});
-
-test('should render trustee details when data is loaded', async () => {
-  mockGetTrustee.mockResolvedValue({ data: mockTrustee });
-  mockGetCourts.mockResolvedValue({ data: mockCourts });
-
-  render(<TrusteeDetailScreen />);
-
-  // Use getByRole to specifically target the h1 heading
-  await waitFor(() => {
-    expect(screen.getByRole('heading', { level: 1, name: 'John Doe' })).toBeInTheDocument();
+  beforeEach(() => {
+    mockUseParams.mockReturnValue({ trusteeId: '123' });
+    mockUseNavigate.mockReturnValue(mockNavigate);
+    mockUseLocation.mockReturnValue(mockLocation);
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+    mockUseApi2.mockReturnValue(mockApi as any); // Cast to any to avoid type complexity in tests
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+    mockUseGlobalAlert.mockReturnValue(mockGlobalAlert as any); // Cast to any to avoid type complexity in tests
   });
 
-  expect(screen.getByText('123 Main St')).toBeInTheDocument();
-  expect(screen.getByText('Anytown')).toBeInTheDocument();
-  expect(screen.getByText(', NY')).toBeInTheDocument();
-  expect(screen.getByText(/12345/)).toBeInTheDocument();
-  expect(screen.getByText('555-123-4567')).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: /john\.doe@example\.com/ })).toBeInTheDocument();
-});
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
-test('should render district tags with court names', async () => {
-  mockGetTrustee.mockResolvedValue({ data: mockTrustee });
-  mockGetCourts.mockResolvedValue({ data: mockCourts });
+  test('should display loading spinner while fetching data', async () => {
+    // Mock the API to delay resolution so we can test loading state
+    mockGetTrustee.mockImplementation(() => new Promise(() => {})); // Never resolves
+    mockGetCourts.mockImplementation(() => new Promise(() => {}));
 
-  render(<TrusteeDetailScreen />);
+    render(<TrusteeDetailScreen />);
 
-  await waitFor(() => {
-    expect(screen.getByTestId('tag-district-0')).toHaveTextContent(
-      'Eastern District of New York (Brooklyn)',
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toBeInTheDocument(); // LoadingSpinner now has role="status"
+      expect(screen.getByText('Trustee Details')).toBeInTheDocument(); // Loading header
+    });
+  });
+
+  test('should render trustee details when data is loaded', async () => {
+    mockGetTrustee.mockResolvedValue({ data: { ...mockTrustee, internal: mockInternal } });
+    mockGetCourts.mockResolvedValue({ data: mockCourts });
+
+    render(<TrusteeDetailScreen />);
+
+    // Use getByRole to specifically target the h1 heading
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1, name: 'John Doe' })).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(mockTrustee.public.address.address1)).toBeInTheDocument();
+    expect(screen.getByTestId('trustee-street-address-line-2')).toHaveTextContent(
+      mockTrustee.public.address.address2!,
     );
+    expect(screen.getByTestId('trustee-street-address-line-3')).toHaveTextContent(
+      mockTrustee.public.address.address3!,
+    );
+    expect(screen.getByTestId('trustee-city')).toHaveTextContent(mockTrustee.public.address.city);
+    expect(screen.getByTestId('trustee-state')).toHaveTextContent(
+      `, ${mockTrustee.public.address.state}`,
+    );
+    expect(screen.getByTestId('trustee-zip-code')).toHaveTextContent(
+      mockTrustee.public.address.zipCode,
+    );
+    expect(screen.queryByTestId(mockTrustee.public.address.countryCode)).not.toBeInTheDocument();
+    expect(screen.getByTestId('trustee-phone-number')).toHaveTextContent(
+      new RegExp(mockTrustee.public.phone!.number),
+    );
+    expect(screen.getByRole('link', { name: mockTrustee.public.email })).toBeInTheDocument();
+
+    expect(screen.getByText(mockInternal.address.address1)).toBeInTheDocument();
+    expect(screen.getByTestId('trustee-internal-street-address-two')).toHaveTextContent(
+      mockInternal.address.address2!,
+    );
+    expect(screen.getByTestId('trustee-internal-city')).toHaveTextContent(
+      mockInternal.address.city,
+    );
+    expect(screen.getByTestId('trustee-internal-state')).toHaveTextContent(
+      `, ${mockInternal.address.state}`,
+    );
+    expect(screen.getByTestId('trustee-internal-zip-code')).toHaveTextContent(
+      mockInternal.address.zipCode,
+    );
+    expect(screen.queryByTestId(mockInternal.address.countryCode)).not.toBeInTheDocument();
+    expect(screen.getByTestId('trustee-internal-phone-number')).toHaveTextContent(
+      new RegExp(mockInternal.phone!.number),
+    );
+    expect(screen.getByRole('link', { name: mockInternal.email })).toBeInTheDocument();
   });
 
-  expect(screen.getByTestId('tag-district-1')).toHaveTextContent(
-    'Western District of New York (Buffalo)',
-  );
-});
+  test('should render "No information added." when no internal trustee data is supplied', async () => {
+    // Mock trustee data without internal information
+    mockGetTrustee.mockResolvedValue({ data: mockTrustee });
+    mockGetCourts.mockResolvedValue({ data: mockCourts });
 
-test('should render chapter tags with formatted names', async () => {
-  mockGetTrustee.mockResolvedValue({ data: mockTrustee });
-  mockGetCourts.mockResolvedValue({ data: mockCourts });
+    render(<TrusteeDetailScreen />);
 
-  render(<TrusteeDetailScreen />);
+    // Wait for the component to load, then find the container with the internal contact information
+    const internalContactContainer = await waitFor(() => {
+      const heading = screen.getByRole('heading', {
+        level: 3,
+        name: 'Contact Information (USTP Internal)',
+      });
+      return heading.closest('.trustee-internal-contact-information');
+    });
 
-  await waitFor(() => {
-    expect(screen.getByText('Chapter 7 - Panel')).toBeInTheDocument();
+    // Verify that "No information added." text appears within this container
+    expect(internalContactContainer).toBeInTheDocument();
+    expect(internalContactContainer).toHaveTextContent('No information added.');
+
+    // Verify that the warning alert is present
+    const warningAlert = screen.getByRole('status');
+    expect(warningAlert).toBeInTheDocument();
+    expect(warningAlert).toHaveTextContent('USTP Internal information is for internal use only.');
   });
 
-  expect(screen.getByText('Chapter 11')).toBeInTheDocument();
-  expect(screen.getByText('Chapter 13')).toBeInTheDocument();
-});
+  test('should call openEditPublicProfile when public edit button is clicked', async () => {
+    const user = userEvent.setup();
+    mockGetTrustee.mockResolvedValue({ data: mockTrustee });
+    mockGetCourts.mockResolvedValue({ data: mockCourts });
 
-test('should render status tag with formatted status', async () => {
-  mockGetTrustee.mockResolvedValue({ data: mockTrustee });
-  mockGetCourts.mockResolvedValue({ data: mockCourts });
+    render(<TrusteeDetailScreen />);
 
-  render(<TrusteeDetailScreen />);
+    // Wait for the component to load and find the public edit button specifically
+    const publicEditButton = await screen.findByRole('button', {
+      name: 'Edit trustee public overview information',
+    });
 
-  await waitFor(() => {
-    expect(screen.getByText('Active')).toBeInTheDocument();
-  });
-});
+    // Click the public edit button
+    await user.click(publicEditButton);
 
-test('should format "not active" status correctly', async () => {
-  const inactiveTrustee = { ...mockTrustee, status: 'not active' };
-  mockGetTrustee.mockResolvedValue({ data: inactiveTrustee });
-  mockGetCourts.mockResolvedValue({ data: mockCourts });
+    // Verify that navigate was called with the correct parameters
+    const expectedState: TrusteeFormState = {
+      trusteeId: '123',
+      trustee: mockTrustee,
+      cancelTo: '/trustees/123',
+      action: 'edit',
+      contactInformation: 'public',
+    };
 
-  render(<TrusteeDetailScreen />);
-
-  await waitFor(() => {
-    expect(screen.getByText('Not Active')).toBeInTheDocument();
-  });
-});
-
-test('should handle trustee without email', async () => {
-  const trusteeWithoutEmail = {
-    ...mockTrustee,
-    public: { ...mockTrustee.public, email: undefined },
-  };
-  mockGetTrustee.mockResolvedValue({ data: trusteeWithoutEmail });
-  mockGetCourts.mockResolvedValue({ data: mockCourts });
-
-  render(<TrusteeDetailScreen />);
-
-  await waitFor(() => {
-    expect(screen.getByRole('heading', { level: 1, name: 'John Doe' })).toBeInTheDocument();
+    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/edit', { state: expectedState });
   });
 
-  expect(screen.queryByTestId('trustee-email')).not.toBeInTheDocument();
-});
+  test('should call openEditInternalProfile when internal edit button is clicked', async () => {
+    const user = userEvent.setup();
+    const trusteeWithInternal = {
+      ...mockTrustee,
+      internal: {
+        address: {
+          address1: '456 Internal St',
+          city: 'Internal City',
+          state: 'CA',
+          zipCode: '54321',
+          countryCode: 'US' as const,
+        },
+        phone: { number: '555-987-6543' },
+        email: 'john.doe.internal@example.com',
+      },
+    };
 
-test('should handle trustee without address', async () => {
-  const trusteeWithoutAddress = {
-    ...mockTrustee,
-    public: { ...mockTrustee.public, address: undefined },
-  };
-  mockGetTrustee.mockResolvedValue({ data: trusteeWithoutAddress });
-  mockGetCourts.mockResolvedValue({ data: mockCourts });
+    mockGetTrustee.mockResolvedValue({ data: trusteeWithInternal });
+    mockGetCourts.mockResolvedValue({ data: mockCourts });
 
-  render(<TrusteeDetailScreen />);
+    render(<TrusteeDetailScreen />);
 
-  await waitFor(() => {
-    expect(screen.getByRole('heading', { level: 1, name: 'John Doe' })).toBeInTheDocument();
+    // Wait for the component to load and find the internal edit button
+    // We need to look for the internal section edit button specifically
+    const internalEditButton = await screen.findByRole('button', {
+      name: 'Edit trustee internal contact information',
+    });
+
+    // Click the internal edit button
+    await user.click(internalEditButton);
+
+    // Verify that navigate was called with the correct parameters
+    const expectedState: TrusteeFormState = {
+      trusteeId: '123',
+      trustee: trusteeWithInternal,
+      cancelTo: '/trustees/123',
+      action: 'edit',
+      contactInformation: 'internal',
+    };
+
+    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/edit', { state: expectedState });
   });
 
-  expect(screen.queryByText('123 Main St')).not.toBeInTheDocument();
-});
-
-test('should handle API errors gracefully', async () => {
-  // Suppress console errors for this test to prevent unhandled rejection noise
-  const originalConsoleError = console.error;
-  console.error = vi.fn();
-
-  // Mock API call to reject
-  mockGetTrustee.mockRejectedValue(new Error('API Error'));
-  mockGetCourts.mockResolvedValue({ data: mockCourts });
-
-  render(<TrusteeDetailScreen />);
-
-  // The component should still render the basic structure
-  await waitFor(() => {
-    expect(screen.getByTestId('trustee-detail-screen')).toBeInTheDocument();
-    expect(screen.getByText('Trustee Details')).toBeInTheDocument(); // Loading/error header
-  });
-
-  // Wait for the error handling to complete and check that global alert was called
-  await waitFor(() => {
-    expect(mockGlobalAlert.error).toHaveBeenCalledWith('Could not get trustee details');
-  });
-
-  // After error, trustee remains null so loading UI is still shown (this is expected behavior)
-  expect(screen.getByRole('status')).toBeInTheDocument(); // Loading spinner still shows because !trustee
-  expect(screen.queryByText('John Doe')).not.toBeInTheDocument(); // No trustee name
-
-  // Restore console.error
-  console.error = originalConsoleError;
-});
-
-test('should render plural "Chapters" when trustee has multiple chapters', async () => {
-  mockGetTrustee.mockResolvedValue({ data: mockTrustee });
-  mockGetCourts.mockResolvedValue({ data: mockCourts });
-
-  render(<TrusteeDetailScreen />);
-
-  await waitFor(() => {
-    expect(screen.getByText(/Chapters:/)).toBeInTheDocument();
-  });
-});
-
-test('should render singular "Chapter" when trustee has one chapter', async () => {
-  const trusteeWithOneChapter = { ...mockTrustee, chapters: ['11'] };
-  mockGetTrustee.mockResolvedValue({ data: trusteeWithOneChapter });
-  mockGetCourts.mockResolvedValue({ data: mockCourts });
-
-  render(<TrusteeDetailScreen />);
-
-  await waitFor(() => {
-    expect(screen.getByText(/^Chapter:/)).toBeInTheDocument();
-  });
-});
-
-test('should render basic structure when no trusteeId is provided', () => {
-  mockUseParams.mockReturnValue({});
-
-  render(<TrusteeDetailScreen />);
-
-  // Component should render basic structure even without trusteeId
-  expect(screen.getByTestId('trustee-detail-screen')).toBeInTheDocument();
-  // Should show loading state since no data will be fetched
-  expect(screen.getByText('Trustee Details')).toBeInTheDocument();
-});
-
-test('should format chapter type correctly for subchapter V', async () => {
-  const trusteeWithSubchapterV = { ...mockTrustee, chapters: ['11-subchapter-v'] };
-  mockGetTrustee.mockResolvedValue({ data: trusteeWithSubchapterV });
-  mockGetCourts.mockResolvedValue({ data: mockCourts });
-
-  render(<TrusteeDetailScreen />);
-
-  await waitFor(() => {
-    expect(screen.getByText('Chapter 11 - Subchapter V')).toBeInTheDocument();
-  });
-});
-
-test('should handle unknown chapter types', async () => {
-  const trusteeWithUnknownChapter = { ...mockTrustee, chapters: ['unknown-chapter'] };
-  mockGetTrustee.mockResolvedValue({ data: trusteeWithUnknownChapter });
-  mockGetCourts.mockResolvedValue({ data: mockCourts });
-
-  render(<TrusteeDetailScreen />);
-
-  await waitFor(() => {
-    expect(screen.getByText('Chapter unknown-chapter')).toBeInTheDocument();
-  });
-});
-
-test('should render email link with correct mailto href', async () => {
-  mockGetTrustee.mockResolvedValue({ data: mockTrustee });
-  mockGetCourts.mockResolvedValue({ data: mockCourts });
-
-  render(<TrusteeDetailScreen />);
-
-  await waitFor(() => {
-    const emailLink = screen.getByRole('link', { name: /john\.doe@example\.com/ });
-    expect(emailLink).toHaveAttribute('href', 'mailto:john.doe@example.com');
-  });
-});
-
-test.each([
-  ['active', UswdsTagStyle.Green],
-  ['suspended', UswdsTagStyle.SecondaryDark],
-  ['', UswdsTagStyle.BaseDarkest],
-])(
-  'should format trustee status color for status "%s" with style "%s"',
-  async (status, expectedStyle) => {
-    const testTrustee = { ...mockTrustee, status };
-    mockGetTrustee.mockResolvedValue({ data: testTrustee });
+  test('should render district tags with court names', async () => {
+    mockGetTrustee.mockResolvedValue({ data: mockTrustee });
     mockGetCourts.mockResolvedValue({ data: mockCourts });
 
     render(<TrusteeDetailScreen />);
 
     await waitFor(() => {
-      const statusTag = screen.getByTestId('tag-trustee-status');
-      expect(statusTag).toHaveClass(expectedStyle);
+      expect(screen.getByTestId('tag-district-0')).toHaveTextContent(
+        'Eastern District of New York (Brooklyn)',
+      );
     });
-  },
-);
+
+    expect(screen.getByTestId('tag-district-1')).toHaveTextContent(
+      'Western District of New York (Buffalo)',
+    );
+  });
+
+  test('should render chapter tags with formatted names', async () => {
+    mockGetTrustee.mockResolvedValue({ data: mockTrustee });
+    mockGetCourts.mockResolvedValue({ data: mockCourts });
+
+    render(<TrusteeDetailScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Chapter 7 - Panel')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Chapter 11')).toBeInTheDocument();
+    expect(screen.getByText('Chapter 13')).toBeInTheDocument();
+  });
+
+  test('should render status tag with formatted status', async () => {
+    mockGetTrustee.mockResolvedValue({ data: mockTrustee });
+    mockGetCourts.mockResolvedValue({ data: mockCourts });
+
+    render(<TrusteeDetailScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Active')).toBeInTheDocument();
+    });
+  });
+
+  test('should format "not active" status correctly', async () => {
+    const inactiveTrustee = { ...mockTrustee, status: 'not active' };
+    mockGetTrustee.mockResolvedValue({ data: inactiveTrustee });
+    mockGetCourts.mockResolvedValue({ data: mockCourts });
+
+    render(<TrusteeDetailScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Not Active')).toBeInTheDocument();
+    });
+  });
+
+  test('should handle trustee without email', async () => {
+    const trusteeWithoutEmail = {
+      ...mockTrustee,
+      public: { ...mockTrustee.public, email: undefined },
+    };
+    mockGetTrustee.mockResolvedValue({ data: trusteeWithoutEmail });
+    mockGetCourts.mockResolvedValue({ data: mockCourts });
+
+    render(<TrusteeDetailScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1, name: 'John Doe' })).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId('trustee-email')).not.toBeInTheDocument();
+  });
+
+  test('should handle trustee without address', async () => {
+    const trusteeWithoutAddress = {
+      ...mockTrustee,
+      public: { ...mockTrustee.public, address: undefined },
+    };
+    mockGetTrustee.mockResolvedValue({ data: trusteeWithoutAddress });
+    mockGetCourts.mockResolvedValue({ data: mockCourts });
+
+    render(<TrusteeDetailScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1, name: 'John Doe' })).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('123 Main St')).not.toBeInTheDocument();
+  });
+
+  test('should handle API errors gracefully', async () => {
+    // Suppress console errors for this test to prevent unhandled rejection noise
+    const originalConsoleError = console.error;
+    console.error = vi.fn();
+
+    // Mock API call to reject
+    mockGetTrustee.mockRejectedValue(new Error('API Error'));
+    mockGetCourts.mockResolvedValue({ data: mockCourts });
+
+    render(<TrusteeDetailScreen />);
+
+    // The component should still render the basic structure
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-detail-screen')).toBeInTheDocument();
+      expect(screen.getByText('Trustee Details')).toBeInTheDocument(); // Loading/error header
+    });
+
+    // Wait for the error handling to complete and check that global alert was called
+    await waitFor(() => {
+      expect(mockGlobalAlert.error).toHaveBeenCalledWith('Could not get trustee details');
+    });
+
+    // After error, trustee remains null so loading UI is still shown (this is expected behavior)
+    expect(screen.getByRole('status')).toBeInTheDocument(); // Loading spinner still shows because !trustee
+    expect(screen.queryByText('John Doe')).not.toBeInTheDocument(); // No trustee name
+
+    // Restore console.error
+    console.error = originalConsoleError;
+  });
+
+  test('should render plural "Chapters" when trustee has multiple chapters', async () => {
+    mockGetTrustee.mockResolvedValue({ data: mockTrustee });
+    mockGetCourts.mockResolvedValue({ data: mockCourts });
+
+    render(<TrusteeDetailScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Chapters:/)).toBeInTheDocument();
+    });
+  });
+
+  test('should render singular "Chapter" when trustee has one chapter', async () => {
+    const trusteeWithOneChapter = { ...mockTrustee, chapters: ['11'] };
+    mockGetTrustee.mockResolvedValue({ data: trusteeWithOneChapter });
+    mockGetCourts.mockResolvedValue({ data: mockCourts });
+
+    render(<TrusteeDetailScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/^Chapter:/)).toBeInTheDocument();
+    });
+  });
+
+  test('should render basic structure when no trusteeId is provided', () => {
+    mockUseParams.mockReturnValue({});
+
+    render(<TrusteeDetailScreen />);
+
+    // Component should render basic structure even without trusteeId
+    expect(screen.getByTestId('trustee-detail-screen')).toBeInTheDocument();
+    // Should show loading state since no data will be fetched
+    expect(screen.getByText('Trustee Details')).toBeInTheDocument();
+  });
+
+  test('should format chapter type correctly for subchapter V', async () => {
+    const trusteeWithSubchapterV = { ...mockTrustee, chapters: ['11-subchapter-v'] };
+    mockGetTrustee.mockResolvedValue({ data: trusteeWithSubchapterV });
+    mockGetCourts.mockResolvedValue({ data: mockCourts });
+
+    render(<TrusteeDetailScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Chapter 11 - Subchapter V')).toBeInTheDocument();
+    });
+  });
+
+  test('should handle unknown chapter types', async () => {
+    const trusteeWithUnknownChapter = { ...mockTrustee, chapters: ['unknown-chapter'] };
+    mockGetTrustee.mockResolvedValue({ data: trusteeWithUnknownChapter });
+    mockGetCourts.mockResolvedValue({ data: mockCourts });
+
+    render(<TrusteeDetailScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Chapter unknown-chapter')).toBeInTheDocument();
+    });
+  });
+
+  test('should render email links with correct mailto href', async () => {
+    mockGetTrustee.mockResolvedValue({ data: { ...mockTrustee, internal: mockInternal } });
+    mockGetCourts.mockResolvedValue({ data: mockCourts });
+
+    render(<TrusteeDetailScreen />);
+
+    await waitFor(() => {
+      const emailLink = screen.getByRole('link', { name: mockTrustee.public.email });
+      expect(emailLink).toHaveAttribute('href', `mailto:${mockTrustee.public.email}`);
+      const internalEmailLink = screen.getByRole('link', { name: mockInternal.email });
+      expect(internalEmailLink).toHaveAttribute('href', `mailto:${mockInternal.email}`);
+    });
+  });
+
+  test.each([
+    ['active', UswdsTagStyle.Green],
+    ['suspended', UswdsTagStyle.SecondaryDark],
+    ['', UswdsTagStyle.BaseDarkest],
+  ])(
+    'should format trustee status color for status "%s" with style "%s"',
+    async (status, expectedStyle) => {
+      const testTrustee = { ...mockTrustee, status };
+      mockGetTrustee.mockResolvedValue({ data: testTrustee });
+      mockGetCourts.mockResolvedValue({ data: mockCourts });
+
+      render(<TrusteeDetailScreen />);
+
+      await waitFor(() => {
+        const statusTag = screen.getByTestId('tag-trustee-status');
+        expect(statusTag).toHaveClass(expectedStyle);
+      });
+    },
+  );
+
+  test('should render phone number without extension', async () => {
+    const trusteeWithPhoneNoExtension = {
+      ...mockTrustee,
+      public: {
+        ...mockTrustee.public,
+        phone: { number: '555-999-8888' }, // Phone without extension
+      },
+    };
+
+    mockGetTrustee.mockResolvedValue({ data: trusteeWithPhoneNoExtension });
+    mockGetCourts.mockResolvedValue({ data: mockCourts });
+
+    render(<TrusteeDetailScreen />);
+
+    // Wait for the component to load and check that phone number is displayed without extension
+    await waitFor(() => {
+      const phoneElement = screen.getByText('555-999-8888');
+      expect(phoneElement).toBeInTheDocument();
+      // Verify no "x" extension text is present
+      expect(screen.queryByText(/x\d/)).not.toBeInTheDocument();
+    });
+  });
+});
