@@ -242,7 +242,7 @@ function TrusteeForm() {
     }
   }, [status]);
 
-  const getFormData = useCallback((): TrusteeFormData => {
+  const getFormData = (): TrusteeFormData => {
     return {
       name: name.trim(),
       address1: address1.trim(),
@@ -257,20 +257,7 @@ function TrusteeForm() {
       chapters: chapters.length > 0 ? chapters : undefined,
       status: status,
     };
-  }, [
-    name,
-    address1,
-    address2,
-    city,
-    state,
-    zipCode,
-    phone,
-    extension,
-    email,
-    districts,
-    chapters,
-    status,
-  ]);
+  };
 
   const handleFieldChange = (
     event: React.ChangeEvent<HTMLInputElement>,

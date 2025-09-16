@@ -77,7 +77,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   const [dropdownLocation, setDropdownLocation] = useState<{ bottom: number } | null>(null);
   const [currentListItem, setCurrentListItem] = useState<string | null>(null);
 
-  const [selectedMapCompleted, setSelectedMapCompleted] = useState<boolean>(false);
   const [selectedMap, setSelectedMap] = useState<Map<string, ComboOption>>(
     new Map(
       selections?.map((selection) => {
@@ -398,20 +397,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   }
 
   // ========== USE EFFECTS ==========
-
-  useEffect(() => {
-    // Skip callback if this is an imperative update to prevent infinite loops
-    if (isImperativeUpdateRef.current) {
-      isImperativeUpdateRef.current = false;
-      return;
-    }
-
-    if (props.onUpdateSelection && selectedMapCompleted) {
-      props.onUpdateSelection([...selectedMap.values()]);
-    } else {
-      setSelectedMapCompleted(true);
-    }
-  }, [selectedMap]);
 
   useEffect(() => {
     if (expanded) {
