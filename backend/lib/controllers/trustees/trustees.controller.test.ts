@@ -238,7 +238,6 @@ describe('TrusteesController', () => {
       expect(mockUseCase.getTrustee).toHaveBeenCalledWith(context, id);
     });
 
-    // TODO maybe do this differently? e.g. not found.
     test('should handle trustee not found errors', async () => {
       const id = 'nonexistent-id';
       mockUseCase.getTrustee.mockRejectedValue(
