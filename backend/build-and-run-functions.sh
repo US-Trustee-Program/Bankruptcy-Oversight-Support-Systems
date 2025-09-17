@@ -27,7 +27,7 @@ if podman ps -a --format "{{.Names}}" | grep -q "^${CONTAINER_NAME}$"; then
     echo -e "${YELLOW}🛑 Stopping existing container...${NC}"
     podman stop $CONTAINER_NAME
     podman rm $CONTAINER_NAME
-    
+
     # Clean up existing secrets
     echo -e "${YELLOW}🔐 Cleaning up existing secrets...${NC}"
     for secret in $(podman secret ls --format "{{.Name}}" | grep "^${CONTAINER_NAME}_"); do
@@ -91,16 +91,16 @@ while IFS='=' read -r key value || [ -n "$key" ]; do
     # Skip comments and empty lines
     [[ "$key" =~ ^[[:space:]]*# ]] && continue
     [[ -z "$key" ]] && continue
-    
+
     # Remove leading/trailing whitespace
     key=$(echo "$key" | xargs)
     value=$(echo "$value" | xargs)
-    
+
     # Check if this key is in our list
     for var in "${ENV_VARS[@]}"; do
         if [[ "$key" == "$var" ]]; then
             secret_name="${CONTAINER_NAME}_$(echo "$key" | tr '[:upper:]' '[:lower:]')" # Convert to lowercase
-            
+
             if [[ -n "$value" ]]; then
                 echo "  🔑 Creating secret: $secret_name"
                 echo -n "$value" | podman secret create "$secret_name" -
@@ -131,10 +131,10 @@ if podman ps --format "{{.Names}}" | grep -q "^${CONTAINER_NAME}$"; then
     echo -e "${GREEN}✅ Container started successfully!${NC}"
     echo -e "${GREEN}📊 Container Status:${NC}"
     podman ps --filter "name=$CONTAINER_NAME" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-    
+
     echo -e "\n${GREEN}🔍 Testing health endpoint...${NC}"
     sleep 10  # Azure Functions runtime takes longer to start
-    
+
     if curl -f http://localhost:$PORT/api/healthcheck > /dev/null 2>&1; then
         echo -e "${GREEN}✅ Health check passed!${NC}"
     else
@@ -142,7 +142,7 @@ if podman ps --format "{{.Names}}" | grep -q "^${CONTAINER_NAME}$"; then
         echo -e "${YELLOW}    Try: curl http://localhost:$PORT/api/healthcheck${NC}"
         echo -e "${YELLOW}    Or check logs: podman logs -f $CONTAINER_NAME${NC}"
     fi
-    
+
     echo -e "\n${GREEN}📋 Useful commands:${NC}"
     echo "  View logs:        podman logs -f $CONTAINER_NAME"
     echo "  Stop container:   podman stop $CONTAINER_NAME"

@@ -170,6 +170,6 @@ jobs:
         run: |
           # Enable access for webapp
           az webapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.webappName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
-          
+
           # Container Apps access restrictions are handled differently - this might need adjustment
           echo "Container app access restrictions managed through Bicep template"

@@ -72,7 +72,7 @@ jobs:
 
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
-    
+
     outputs:
       image-tag: ${{ steps.meta.outputs.tags }}
       image-digest: ${{ steps.build.outputs.digest }}

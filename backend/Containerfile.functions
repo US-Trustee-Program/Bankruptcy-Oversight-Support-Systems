@@ -12,7 +12,7 @@ COPY backend/package*.json ./backend/
 # Install dependencies for common first
 RUN cd common && npm ci
 
-# Install backend dependencies  
+# Install backend dependencies
 RUN cd backend && npm ci
 
 # Copy source code

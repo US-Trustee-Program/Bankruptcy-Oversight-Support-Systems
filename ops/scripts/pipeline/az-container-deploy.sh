@@ -45,7 +45,7 @@ while [[ $# -gt 0 ]]; do
         traffic_percentage="${2}"
         shift 2
         ;;
-        
+
     *)
         echo "Unknown option $1"
         exit 2 # error on unknown flag/switch
@@ -97,20 +97,20 @@ eval "${cmd}"
 # If traffic percentage is less than 100%, set up traffic splitting
 if [ "${traffic_percentage}" -lt "100" ]; then
     echo "Setting up traffic splitting: ${traffic_percentage}% to new revision"
-    
+
     # Get the latest revision name
     latest_revision=$(az containerapp revision list \
         --resource-group "${app_rg}" \
         --name "${app_name}" \
         --query '[0].name' \
         --output tsv)
-    
+
     # Set traffic weights (this is a simplified approach)
     az containerapp ingress traffic set \
         --resource-group "${app_rg}" \
         --name "${app_name}" \
         --revision-weight "${latest_revision}=${traffic_percentage}"
-    
+
     echo "Traffic splitting configured: ${traffic_percentage}% to revision ${latest_revision}"
 else
     echo "Routing 100% traffic to new revision"
