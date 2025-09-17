@@ -60,6 +60,17 @@ param apiFunctionPlanName string = 'plan-${stackName}-functions-api'
 
 param dataflowsFunctionPlanName string = 'plan-${stackName}-functions-dataflows'
 
+@description('Flag: Deploy container apps instead of Azure Functions for the API')
+param deployContainerApp bool = false
+
+@description('Container Apps Environment name')
+param containerAppsEnvironmentName string = 'env-${stackName}-container-apps'
+
+@description('Container Registry name')
+param containerRegistryName string = 'cr${replace(stackName, '-', '')}'
+
+@description('Container image tag for deployment')
+param containerImageTag string = 'latest'
 
 @description('Name of deployment slot for frontend and backend')
 param slotName string
@@ -195,7 +206,7 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = {
     }
 }
 
-module ustpApiFunction 'backend-api-deploy.bicep' = {
+module ustpApiFunction 'backend-api-deploy.bicep' = if (!deployContainerApp) {
     name: '${stackName}-function-module'
     scope: resourceGroup(appResourceGroup)
     params: {
@@ -233,6 +244,48 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
       maxObjectDepth: maxObjectDepth
       maxObjectKeyCount: maxObjectKeyCount
       gitSha: gitSha
+    }
+}
+
+module ustpApiContainerApp 'backend-container-app-deploy.bicep' = if (deployContainerApp) {
+    name: '${stackName}-container-app-module'
+    scope: resourceGroup(appResourceGroup)
+    params: {
+      stackName: stackName
+      location: location
+      apiContainerAppName: apiFunctionName  // Use the same name for backwards compatibility
+      containerAppsEnvironmentName: containerAppsEnvironmentName
+      containerRegistryName: containerRegistryName
+      containerImageTag: containerImageTag
+      apiContainerSubnetId: network.outputs.apiFunctionSubnetId  // Reuse the same subnet
+      virtualNetworkResourceGroupName: networkResourceGroupName
+      privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
+      mssqlRequestTimeout: mssqlRequestTimeout
+      slotName: slotName
+      loginProviderConfig: loginProviderConfig
+      loginProvider: loginProvider
+      isUstpDeployment: isUstpDeployment
+      apiCorsAllowOrigins: ['https://${webappName}.azurewebsites.us','https://portal.azure.us']
+      sqlServerName: sqlServerName
+      sqlServerResourceGroupName: sqlServerResourceGroupName
+      sqlServerIdentityName: sqlServerIdentityName
+      sqlServerIdentityResourceGroupName: sqlServerIdentityResourceGroupName
+      allowVeracodeScan: allowVeracodeScan
+      idKeyvaultAppConfiguration: idKeyvaultAppConfiguration
+      kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
+      cosmosDatabaseName: cosmosDatabaseName
+      deployAppInsights: deployAppInsights
+      analyticsWorkspaceId: analyticsWorkspaceId
+      actionGroupName: actionGroupName
+      actionGroupResourceGroupName: analyticsResourceGroupName
+      createAlerts: createAlerts
+      privateDnsZoneName: privateDnsZoneName
+      privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
+      privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
+      maxObjectDepth: maxObjectDepth
+      maxObjectKeyCount: maxObjectKeyCount
+      gitSha: gitSha
+      kvAppConfigName: kvAppConfigName
     }
 }
 

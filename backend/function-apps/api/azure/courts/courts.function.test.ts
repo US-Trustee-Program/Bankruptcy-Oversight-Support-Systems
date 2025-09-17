@@ -1,14 +1,14 @@
-import { CamsError } from '../../../lib/common-errors/cams-error';
-import handler from './courts.function';
+import { CourtDivisionDetails } from '../../../../../common/src/cams/courts';
+import { COURT_DIVISIONS } from '../../../../../common/src/cams/test-utilities/courts.mock';
+import { CamsError } from '../../../../lib/common-errors/cams-error';
+import { CourtsController } from '../../../../lib/controllers/courts/courts.controller';
 import {
-  buildTestResponseError,
-  buildTestResponseSuccess,
-  createMockAzureFunctionContext,
   createMockAzureFunctionRequest,
-} from '../../azure/testing-helpers';
-import { CourtsController } from '../../../lib/controllers/courts/courts.controller';
-import { CourtDivisionDetails } from '../../../../common/src/cams/courts';
-import { COURT_DIVISIONS } from '../../../../common/src/cams/test-utilities/courts.mock';
+  createMockAzureFunctionContext,
+  buildTestResponseSuccess,
+  buildTestResponseError,
+} from '../../../azure/testing-helpers';
+import handler from './courts.function';
 
 describe('Courts Function tests', () => {
   let request;

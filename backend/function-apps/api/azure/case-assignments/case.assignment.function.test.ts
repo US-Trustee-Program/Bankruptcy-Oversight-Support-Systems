@@ -1,19 +1,19 @@
-import handler from './case.assignment.function';
-import { CaseAssignmentController } from '../../../lib/controllers/case-assignment/case.assignment.controller';
-import ContextCreator from '../../azure/application-context-creator';
-import { CaseAssignment } from '../../../../common/src/cams/assignments';
-import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
-import { CamsHttpRequest } from '../../../lib/adapters/types/http';
 import { InvocationContext } from '@azure/functions';
-import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
+import HttpStatusCodes from '../../../../../common/src/api/http-status-codes';
+import { CaseAssignment } from '../../../../../common/src/cams/assignments';
+import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
+import { CamsHttpRequest } from '../../../../lib/adapters/types/http';
+import { CamsError } from '../../../../lib/common-errors/cams-error';
+import { UnknownError } from '../../../../lib/common-errors/unknown-error';
+import { CaseAssignmentController } from '../../../../lib/controllers/case-assignment/case.assignment.controller';
+import { createMockApplicationContext } from '../../../../lib/testing/testing-utilities';
+import ContextCreator from '../../../azure/application-context-creator';
 import {
-  buildTestResponseError,
   buildTestResponseSuccess,
   createMockAzureFunctionRequest,
-} from '../../azure/testing-helpers';
-import { CamsError } from '../../../lib/common-errors/cams-error';
-import { UnknownError } from '../../../lib/common-errors/unknown-error';
-import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
+  buildTestResponseError,
+} from '../../../azure/testing-helpers';
+import handler from './case.assignment.function';
 
 describe('Case Assignment Function Tests', () => {
   const defaultRequestProps: Partial<CamsHttpRequest> = {

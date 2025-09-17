@@ -1,9 +1,9 @@
 import { app, InvocationContext, HttpRequest, HttpResponseInit } from '@azure/functions';
-import { CaseAssignmentController } from '../../../lib/controllers/case-assignment/case.assignment.controller';
-import ContextCreator from '../../azure/application-context-creator';
-import { initializeApplicationInsights } from '../../azure/app-insights';
-import { toAzureError, toAzureSuccess } from '../../azure/functions';
-import { extraOutputs } from '../queue-outputs';
+import { CaseAssignmentController } from '../../../../lib/controllers/case-assignment/case.assignment.controller';
+import { initializeApplicationInsights } from '../../../azure/app-insights';
+import ContextCreator from '../../../azure/application-context-creator';
+import { toAzureSuccess, toAzureError } from '../../../azure/functions';
+import { extraOutputs } from '../../queue-outputs';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT-FUNCTION';
 

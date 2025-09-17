@@ -1,11 +1,12 @@
 import { InvocationContext } from '@azure/functions';
-import { PrivilegedIdentityAdminController } from '../../../lib/controllers/admin/privileged-identity-admin.controller';
-import {
-  buildTestResponseError,
-  buildTestResponseSuccess,
-  createMockAzureFunctionRequest,
-} from '../../azure/testing-helpers';
+
 import handler from './privileged-identity-admin.function';
+import { PrivilegedIdentityAdminController } from '../../../../lib/controllers/admin/privileged-identity-admin.controller';
+import {
+  createMockAzureFunctionRequest,
+  buildTestResponseSuccess,
+  buildTestResponseError,
+} from '../../../azure/testing-helpers';
 
 describe('Privileged identity admin Function tests', () => {
   const context = new InvocationContext();

@@ -1,7 +1,7 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import ContextCreator from '../../azure/application-context-creator';
-import { TrusteesController } from '../../../lib/controllers/trustees/trustees.controller';
-import { toAzureError, toAzureSuccess } from '../../azure/functions';
+import { TrusteesController } from '../../../../lib/controllers/trustees/trustees.controller';
+import ContextCreator from '../../../azure/application-context-creator';
+import { toAzureSuccess, toAzureError } from '../../../azure/functions';
 
 const MODULE_NAME = 'TRUSTEES-FUNCTION';
 

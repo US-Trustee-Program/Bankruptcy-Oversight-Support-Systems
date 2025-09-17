@@ -1,0 +1,175 @@
+name: Deploy Container App
+
+on:
+  workflow_call:
+    inputs:
+      ghaEnvironment:
+        required: true
+        type: string
+      environmentHash:
+        required: true
+        type: string
+      stackName:
+        required: true
+        type: string
+      webappName:
+        required: true
+        type: string
+      apiContainerAppName:
+        required: true
+        type: string
+      containerRegistryName:
+        required: true
+        type: string
+      dataflowsFunctionName:
+        required: true
+        type: string
+      azResourceGrpAppEncrypted:
+        required: true
+        type: string
+
+jobs:
+  deploy-webapp:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.ghaEnvironment }}
+    steps:
+      - uses: actions/checkout@main
+
+      - name: Download artifact from build job
+        uses: actions/download-artifact@v4.1.7
+        with:
+          name: ${{ inputs.webappName }}-build
+
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgApp
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ inputs.azResourceGrpAppEncrypted }}
+
+      - name: Deploy to Azure WebApp
+        id: deploy-webapp-step
+        run: |
+          ./ops/scripts/pipeline/az-app-deploy.sh \
+          --src ./${{ inputs.webappName }}.zip \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -n ${{ inputs.webappName }}
+
+  deploy-container-app:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.ghaEnvironment }}
+    steps:
+      - uses: actions/checkout@main
+
+      - name: Download container image info
+        uses: actions/download-artifact@v4.1.7
+        with:
+          name: ${{ inputs.apiContainerAppName }}-container-info
+
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgApp
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ inputs.azResourceGrpAppEncrypted }}
+
+      - name: Extract image information
+        id: extract-image
+        run: |
+          # Get the built image tag from the metadata
+          IMAGE_TAG=$(cat metadata.json | jq -r '.tags[0]' | cut -d':' -f2)
+          echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+          echo "Using image tag: ${IMAGE_TAG}"
+
+      - name: Deploy Container App
+        id: deploy-container-app-step
+        run: |
+          sleep 30 &&
+          ./ops/scripts/pipeline/az-container-deploy.sh \
+          --registry ${{ inputs.containerRegistryName }} \
+          --image ${{ inputs.apiContainerAppName }}:${{ steps.extract-image.outputs.IMAGE_TAG }} \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -n ${{ inputs.apiContainerAppName }}
+
+  deploy-dataflows-app:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.ghaEnvironment }}
+    steps:
+      - uses: actions/checkout@main
+
+      - name: Download artifact from build job
+        uses: actions/download-artifact@v4.1.7
+        with:
+          name: ${{ inputs.dataflowsFunctionName }}-build
+
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgApp
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ inputs.azResourceGrpAppEncrypted }}
+
+      - name: Deploy Data Flows Azure Function App
+        id: deploy-dataflows-app-step
+        run: |
+          sleep 30 &&
+          ./ops/scripts/pipeline/az-func-deploy.sh \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -n ${{ inputs.dataflowsFunctionName }} \
+          --src ./${{ inputs.dataflowsFunctionName }}.zip
+
+  endpoint-test-application:
+    needs: [deploy-webapp, deploy-container-app, deploy-dataflows-app]
+    uses: ./.github/workflows/reusable-endpoint-test.yml
+    with:
+      stackName: ${{ inputs.stackName }}
+      webappName: ${{ inputs.webappName }}
+      apiFunctionName: ${{ inputs.apiContainerAppName }}  # Use container app name for testing
+      branchHashId: ${{ inputs.environmentHash }}
+      ghaEnvironment: ${{ inputs.ghaEnvironment }}
+      azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
+      slotName: 'initial'
+    secrets: inherit # pragma: allowlist secret
+
+  enable-access:
+    runs-on: ubuntu-latest
+    needs: [endpoint-test-application]
+    environment: ${{ inputs.ghaEnvironment }}
+    env:
+      webappName: ${{ inputs.webappName }}
+      apiContainerAppName: ${{ inputs.apiContainerAppName }}
+    steps:
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgApp
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ inputs.azResourceGrpAppEncrypted }}
+
+      - name: Enable production access
+        run: |
+          # Enable access for webapp
+          az webapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.webappName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
+          
+          # Container Apps access restrictions are handled differently - this might need adjustment
+          echo "Container app access restrictions managed through Bicep template"

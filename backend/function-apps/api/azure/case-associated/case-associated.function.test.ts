@@ -1,15 +1,15 @@
-import { NotFoundError } from '../../../lib/common-errors/not-found-error';
-import { CaseAssociatedController } from '../../../lib/controllers/case-associated/case-associated.controller';
-import handler from './case-associated.function';
-import ContextCreator from '../../azure/application-context-creator';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { InvocationContext } from '@azure/functions';
+import { EventCaseReference } from '../../../../../common/src/cams/events';
+import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
+import { NotFoundError } from '../../../../lib/common-errors/not-found-error';
+import { CaseAssociatedController } from '../../../../lib/controllers/case-associated/case-associated.controller';
+import ContextCreator from '../../../azure/application-context-creator';
 import {
-  buildTestResponseError,
-  buildTestResponseSuccess,
   createMockAzureFunctionRequest,
-} from '../../azure/testing-helpers';
-import { EventCaseReference } from '../../../../common/src/cams/events';
+  buildTestResponseSuccess,
+  buildTestResponseError,
+} from '../../../azure/testing-helpers';
+import handler from './case-associated.function';
 
 describe('Case summary function', () => {
   jest

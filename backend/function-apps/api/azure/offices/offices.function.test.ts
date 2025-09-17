@@ -1,15 +1,18 @@
-import { CamsError } from '../../../lib/common-errors/cams-error';
-import ContextCreator from '../../azure/application-context-creator';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
-import handler from './offices.function';
 import {
-  buildTestResponseError,
-  buildTestResponseSuccess,
-  createMockAzureFunctionContext,
+  UstpOfficeDetails,
+  MOCKED_USTP_OFFICES_ARRAY,
+} from '../../../../../common/src/cams/offices';
+import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
+import { CamsError } from '../../../../lib/common-errors/cams-error';
+import { OfficesController } from '../../../../lib/controllers/offices/offices.controller';
+import ContextCreator from '../../../azure/application-context-creator';
+import {
   createMockAzureFunctionRequest,
-} from '../../azure/testing-helpers';
-import { OfficesController } from '../../../lib/controllers/offices/offices.controller';
-import { MOCKED_USTP_OFFICES_ARRAY, UstpOfficeDetails } from '../../../../common/src/cams/offices';
+  createMockAzureFunctionContext,
+  buildTestResponseSuccess,
+  buildTestResponseError,
+} from '../../../azure/testing-helpers';
+import handler from './offices.function';
 
 describe('offices Function tests', () => {
   let request;

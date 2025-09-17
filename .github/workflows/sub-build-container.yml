@@ -1,0 +1,151 @@
+name: Build Container App
+
+on:
+  workflow_call:
+    inputs:
+      nodeVersion:
+        required: true
+        type: string
+      apiContainerAppName:
+        required: true
+        type: string
+      dataflowsFunctionName:
+        required: true
+        type: string
+      containerRegistryName:
+        required: true
+        type: string
+      camsServerPort:
+        required: true
+        type: string
+      camsServerProtocol:
+        required: true
+        type: string
+      camsBasePath:
+        required: true
+        type: string
+      webappName:
+        required: true
+        type: string
+      environment:
+        required: true
+        type: string
+      launchDarklyEnvironment:
+        required: true
+        type: string
+      azResourceGrpAppEncrypted:
+        required: true
+        type: string
+      slotName:
+        required: true
+        type: string
+
+jobs:
+  see-slot-name:
+    runs-on: ubuntu-latest
+    steps:
+      - name: See Slot Name
+        run: |
+          echo "Slot name: ${{ inputs.slotName }}"
+
+  build-frontend-predeployment:
+    name: Build Frontend Predeployment
+    uses: ./.github/workflows/reusable-build-frontend.yml
+    secrets: inherit # pragma: allowlist secret
+    with:
+      nodeVersion: ${{ vars.NODE_VERSION }}
+      # Use container app hostname instead of function app
+      camsServerHostname: ${{ inputs.apiContainerAppName }}.azurecontainerapps.us
+      camsStagingHostname: ${{ inputs.apiContainerAppName }}-${{ inputs.slotName }}.azurecontainerapps.us
+      camsServerPort: ${{ vars.CAMS_SERVER_PORT }}
+      camsServerProtocol: ${{ vars.CAMS_SERVER_PROTOCOL }}
+      camsBasePath: ${{ vars.CAMS_BASE_PATH }}
+      webappName: ${{ inputs.webappName }}
+      environment: ${{ inputs.environment }}
+      launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
+      azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
+
+  backend-container:
+    defaults:
+      run:
+        working-directory: backend
+
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ inputs.containerRegistryName }}.azurecr.us/${{ inputs.apiContainerAppName }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Log in to Azure Container Registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ inputs.containerRegistryName }}.azurecr.us
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Build and push container image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./backend/Containerfile.functions
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+      - name: Upload Container Image Info
+        uses: actions/upload-artifact@v4.4.0
+        with:
+          name: ${{ inputs.apiContainerAppName }}-container-info
+          path: |
+            ${{ steps.meta.outputs.json }}
+          if-no-files-found: error
+
+  # Keep the dataflows function build as-is for now
+  backend-dataflows:
+    defaults:
+      run:
+        working-directory: backend
+
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Execute Build
+        run: |
+          npm run build-common
+          npm ci
+          npm run build:dataflows
+
+      - name: Package Data Flow Artifact
+        run: OUT=${{ inputs.dataflowsFunctionName }} npm run pack:dataflows
+
+      - name: Upload Data Flows Azure Functions Artifact
+        uses: actions/upload-artifact@v4.4.0
+        with:
+          name: ${{ inputs.dataflowsFunctionName }}-build
+          path: backend/function-apps/dataflows/${{ inputs.dataflowsFunctionName }}.zip
+          if-no-files-found: error

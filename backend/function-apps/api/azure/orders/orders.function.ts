@@ -1,9 +1,9 @@
 import * as dotenv from 'dotenv';
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import ContextCreator from '../../azure/application-context-creator';
-import { initializeApplicationInsights } from '../../azure/app-insights';
-import { OrdersController } from '../../../lib/controllers/orders/orders.controller';
-import { toAzureError, toAzureSuccess } from '../../azure/functions';
+import { OrdersController } from '../../../../lib/controllers/orders/orders.controller';
+import { initializeApplicationInsights } from '../../../azure/app-insights';
+import ContextCreator from '../../../azure/application-context-creator';
+import { toAzureSuccess, toAzureError } from '../../../azure/functions';
 
 const MODULE_NAME = 'ORDERS-FUNCTION';
 

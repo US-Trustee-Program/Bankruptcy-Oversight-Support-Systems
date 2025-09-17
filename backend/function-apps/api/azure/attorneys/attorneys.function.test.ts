@@ -1,17 +1,16 @@
-import { AttorneysController } from '../../../lib/controllers/attorneys/attorneys.controller';
-import { CamsError } from '../../../lib/common-errors/cams-error';
-import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
+import { InvocationContext } from '@azure/functions';
+import { ResponseBody } from '@okta/okta-sdk-nodejs';
+import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
+import { AttorneyUser } from '../../../../../common/src/cams/users';
+import { CamsError } from '../../../../lib/common-errors/cams-error';
+import { AttorneysController } from '../../../../lib/controllers/attorneys/attorneys.controller';
+import ContextCreator from '../../../azure/application-context-creator';
 import {
+  createMockAzureFunctionRequest,
   buildTestResponseError,
   buildTestResponseSuccess,
-  createMockAzureFunctionRequest,
-} from '../../azure/testing-helpers';
-import AttorneyList from '../../../lib/use-cases/attorneys/attorneys';
+} from '../../../azure/testing-helpers';
 import handler from './attorneys.function';
-import { InvocationContext } from '@azure/functions';
-import { ResponseBody } from '../../../../common/src/api/response';
-import { AttorneyUser } from '../../../../common/src/cams/users';
-import ContextCreator from '../../azure/application-context-creator';
 
 describe('Attorneys Azure Function tests', () => {
   const request = createMockAzureFunctionRequest();

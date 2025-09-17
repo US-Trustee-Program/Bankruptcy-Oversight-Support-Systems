@@ -1,16 +1,16 @@
-import {
-  buildTestResponseError,
-  buildTestResponseSuccess,
-  createMockAzureFunctionRequest,
-} from '../../azure/testing-helpers';
-import ContextCreator from '../../azure/application-context-creator';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
-import { ForbiddenError } from '../../../lib/common-errors/forbidden-error';
-import handler from './me.function';
 import { InvocationContext } from '@azure/functions';
-import { CamsSession } from '../../../../common/src/cams/session';
-import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
-import { MeController } from '../../../lib/controllers/me/me.controller';
+import { CamsSession } from '../../../../../common/src/cams/session';
+import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
+import { ForbiddenError } from '../../../../lib/common-errors/forbidden-error';
+import { MeController } from '../../../../lib/controllers/me/me.controller';
+import { createMockApplicationContext } from '../../../../lib/testing/testing-utilities';
+import ContextCreator from '../../../azure/application-context-creator';
+import {
+  createMockAzureFunctionRequest,
+  buildTestResponseSuccess,
+  buildTestResponseError,
+} from '../../../azure/testing-helpers';
+import handler from './me.function';
 
 describe('me Function test', () => {
   const context = new InvocationContext({

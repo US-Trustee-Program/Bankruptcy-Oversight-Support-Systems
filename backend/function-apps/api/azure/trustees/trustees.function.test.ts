@@ -1,13 +1,13 @@
 import { InvocationContext } from '@azure/functions';
 import handler from './trustees.function';
-import ContextCreator from '../../azure/application-context-creator';
-import { TrusteesController } from '../../../lib/controllers/trustees/trustees.controller';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
+import { TrusteesController } from '../../../../lib/controllers/trustees/trustees.controller';
+import ContextCreator from '../../../azure/application-context-creator';
 import {
-  buildTestResponseError,
-  buildTestResponseSuccess,
   createMockAzureFunctionRequest,
-} from '../../azure/testing-helpers';
+  buildTestResponseSuccess,
+  buildTestResponseError,
+} from '../../../azure/testing-helpers';
 
 describe('Trustees Function', () => {
   let context: InvocationContext;

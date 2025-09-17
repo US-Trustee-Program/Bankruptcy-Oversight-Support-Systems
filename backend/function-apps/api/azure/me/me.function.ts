@@ -1,7 +1,7 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import ContextCreator from '../../azure/application-context-creator';
-import { toAzureError, toAzureSuccess } from '../../azure/functions';
-import { MeController } from '../../../lib/controllers/me/me.controller';
+import { MeController } from '../../../../lib/controllers/me/me.controller';
+import ContextCreator from '../../../azure/application-context-creator';
+import { toAzureSuccess, toAzureError } from '../../../azure/functions';
 
 const MODULE_NAME = 'ME-FUNCTION';
 

@@ -1,7 +1,7 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import ContextCreator from '../../azure/application-context-creator';
-import { toAzureError, toAzureSuccess } from '../../azure/functions';
-import { PrivilegedIdentityAdminController } from '../../../lib/controllers/admin/privileged-identity-admin.controller';
+import { PrivilegedIdentityAdminController } from '../../../../lib/controllers/admin/privileged-identity-admin.controller';
+import ContextCreator from '../../../azure/application-context-creator';
+import { toAzureSuccess, toAzureError } from '../../../azure/functions';
 
 const MODULE_NAME = 'PRIVILEGED-IDENTITY-ADMIN-FUNCTION';
 

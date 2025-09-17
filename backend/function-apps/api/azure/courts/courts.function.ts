@@ -1,7 +1,7 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import ContextCreator from '../../azure/application-context-creator';
-import { toAzureError, toAzureSuccess } from '../../azure/functions';
-import { CourtsController } from '../../../lib/controllers/courts/courts.controller';
+import { CourtsController } from '../../../../lib/controllers/courts/courts.controller';
+import ContextCreator from '../../../azure/application-context-creator';
+import { toAzureSuccess, toAzureError } from '../../../azure/functions';
 
 const MODULE_NAME = 'COURTS-FUNCTION';
 

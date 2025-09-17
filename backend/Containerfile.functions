@@ -1,0 +1,49 @@
+# Multi-stage build using Azure Functions Runtime
+# Use official Azure Functions Node.js runtime image with platform specification
+FROM --platform=linux/amd64 mcr.microsoft.com/azure-functions/node:4-node20 AS builder
+
+# Set working directory
+WORKDIR /home/site/wwwroot
+
+# Copy package files first for better Docker layer caching
+COPY common/package*.json ./common/
+COPY backend/package*.json ./backend/
+
+# Install dependencies for common first
+RUN cd common && npm ci
+
+# Install backend dependencies  
+RUN cd backend && npm ci
+
+# Copy source code
+COPY common/ ./common/
+COPY backend/ ./backend/
+
+# Build the TypeScript projects in correct order (common first, then backend)
+RUN cd backend && npm run build:api
+
+# Production stage
+FROM --platform=linux/amd64 mcr.microsoft.com/azure-functions/node:4-node20 AS production
+
+# Set working directory to Functions runtime standard location
+WORKDIR /home/site/wwwroot
+
+# Copy package.json (needed for Functions runtime to find entry point)
+COPY --from=builder /home/site/wwwroot/backend/function-apps/api/package.json ./package.json
+
+# Copy built common package and backend code
+COPY --from=builder /home/site/wwwroot/backend/node_modules ./node_modules
+
+# Copy Azure Functions configuration files
+COPY --from=builder /home/site/wwwroot/backend/function-apps/api/host.json ./host.json
+
+# Copy the compiled JavaScript functions (from dist/)
+COPY --from=builder /home/site/wwwroot/backend/function-apps/api/dist ./dist
+
+# The Azure Functions runtime will automatically discover and run functions
+# No need to specify CMD - the base image handles this
+
+# Environment variables for production
+ENV AzureWebJobsScriptRoot=/home/site/wwwroot
+ENV AzureFunctionsJobHost__Logging__Console__IsEnabled=true
+ENV FUNCTIONS_WORKER_RUNTIME=node
