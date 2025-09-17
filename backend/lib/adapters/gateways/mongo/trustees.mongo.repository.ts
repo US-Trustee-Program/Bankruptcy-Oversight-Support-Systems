@@ -69,7 +69,7 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
 
   async createTrusteeHistory(history: TrusteeHistory) {
     try {
-      await this.getAdapter<TrusteeHistory>().insertOne(history);
+      await this.getAdapter<TrusteeHistory>().insertOne(history, { useProvidedId: true });
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: {
