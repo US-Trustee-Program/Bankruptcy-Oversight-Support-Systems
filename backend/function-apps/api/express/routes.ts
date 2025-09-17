@@ -2,36 +2,36 @@ import { Router, Request, Response } from 'express';
 import * as dotenv from 'dotenv';
 
 // Import controllers
-import { AttorneysController } from '../../lib/controllers/attorneys/attorneys.controller';
-import { CaseAssignmentController } from '../../lib/controllers/case-assignment/case.assignment.controller';
-import { CasesController } from '../../lib/controllers/cases/cases.controller';
-import { CourtsController } from '../../lib/controllers/courts/courts.controller';
-import { MeController } from '../../lib/controllers/me/me.controller';
-import { OfficesController } from '../../lib/controllers/offices/offices.controller';
-import { OrdersController } from '../../lib/controllers/orders/orders.controller';
-import { TrusteesController } from '../../lib/controllers/trustees/trustees.controller';
-import { CaseDocketController } from '../../lib/controllers/case-docket/case-docket.controller';
-import { CaseHistoryController } from '../../lib/controllers/case-history/case-history.controller';
-import { CaseNotesController } from '../../lib/controllers/case-notes/case.notes.controller';
-import { CaseSummaryController } from '../../lib/controllers/case-summary/case-summary.controller';
-import { CaseAssociatedController } from '../../lib/controllers/case-associated/case-associated.controller';
-import { PrivilegedIdentityAdminController } from '../../lib/controllers/admin/privileged-identity-admin.controller';
+import { AttorneysController } from '../../../lib/controllers/attorneys/attorneys.controller';
+import { CaseAssignmentController } from '../../../lib/controllers/case-assignment/case.assignment.controller';
+import { CasesController } from '../../../lib/controllers/cases/cases.controller';
+import { CourtsController } from '../../../lib/controllers/courts/courts.controller';
+import { MeController } from '../../../lib/controllers/me/me.controller';
+import { OfficesController } from '../../../lib/controllers/offices/offices.controller';
+import { OrdersController } from '../../../lib/controllers/orders/orders.controller';
+import { TrusteesController } from '../../../lib/controllers/trustees/trustees.controller';
+import { CaseDocketController } from '../../../lib/controllers/case-docket/case-docket.controller';
+import { CaseHistoryController } from '../../../lib/controllers/case-history/case-history.controller';
+import { CaseNotesController } from '../../../lib/controllers/case-notes/case.notes.controller';
+import { CaseSummaryController } from '../../../lib/controllers/case-summary/case-summary.controller';
+import { CaseAssociatedController } from '../../../lib/controllers/case-associated/case-associated.controller';
+import { PrivilegedIdentityAdminController } from '../../../lib/controllers/admin/privileged-identity-admin.controller';
 
 // Import mock authentication function for oauth2
-import { mockAuthentication } from '../../lib/testing/mock-gateways/mock-oauth2-gateway';
+import { mockAuthentication } from '../../../lib/testing/mock-gateways/mock-oauth2-gateway';
 
 // Import healthcheck modules
-import HealthcheckCosmosDb from './azure/healthcheck/healthcheck.db.cosmos';
-import HealthcheckSqlDb from './azure/healthcheck/healthcheck.db.sql';
-import HealthcheckInfo from './azure/healthcheck/healthcheck.info';
-import { closeDeferred } from '../../lib/deferrable/defer-close';
-import { httpSuccess } from '../../lib/adapters/utils/http-response';
-import HttpStatusCodes from '../../../common/src/api/http-status-codes';
+import HealthcheckCosmosDb from '../azure/healthcheck/healthcheck.db.cosmos';
+import HealthcheckSqlDb from '../azure/healthcheck/healthcheck.db.sql';
+import HealthcheckInfo from '../azure/healthcheck/healthcheck.info';
+import { closeDeferred } from '../../../lib/deferrable/defer-close';
+import { httpSuccess } from '../../../lib/adapters/utils/http-response';
+import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
 
 // Import Express-specific utilities
-import ContextCreator from '../express/application-context-creator';
-import { toExpressError, toExpressSuccess } from '../express/functions';
-import { ApplicationContext } from '../../lib/adapters/types/basic';
+import ContextCreator from '../../express/application-context-creator';
+import { toExpressError, toExpressSuccess } from '../../express/functions';
+import { ApplicationContext } from '../../../lib/adapters/types/basic';
 
 dotenv.config();
 

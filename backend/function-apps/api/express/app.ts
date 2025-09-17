@@ -1,8 +1,8 @@
-import express from 'express';
-import cors from 'cors';
+import * as express from 'express';
+import * as cors from 'cors';
 import * as dotenv from 'dotenv';
 import router from './routes';
-import { initializeApplicationInsights } from '../azure/app-insights';
+import { initializeApplicationInsights } from '../../azure/app-insights';
 
 dotenv.config();
 
