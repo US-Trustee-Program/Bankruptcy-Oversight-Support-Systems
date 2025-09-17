@@ -1,4 +1,4 @@
-import { deepEqual } from './objectEquality';
+import { deepEqual } from './object-equality';
 
 describe('objectEquality tests', () => {
   test('should return false if comparing simple arrays that are not equal', () => {
