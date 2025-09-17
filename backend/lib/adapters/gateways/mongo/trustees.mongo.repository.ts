@@ -67,7 +67,7 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
     }
   }
 
-  async createHistory(history: TrusteeHistory) {
+  async createTrusteeHistory(history: TrusteeHistory) {
     try {
       await this.getAdapter<TrusteeHistory>().insertOne(history);
     } catch (originalError) {
@@ -93,7 +93,7 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
     }
   }
 
-  async listHistory(id: string): Promise<TrusteeHistory[]> {
+  async listTrusteeHistory(id: string): Promise<TrusteeHistory[]> {
     const doc = using<TrusteeHistory>();
     try {
       const query = and(doc('documentType').regex('^AUDIT_'), doc('id').equals(id));

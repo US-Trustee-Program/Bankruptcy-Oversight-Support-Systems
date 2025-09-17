@@ -253,7 +253,7 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
     response = {
       data: courts,
     };
-  } else if (path.match(/\/trustees\/[A-Z\d-]+/i)) {
+  } else if (path.match(/\/trustees\/[A-Z\d-]+\/history/i)) {
     response = {
       data: MockData.getTrustee({
         id: 'trustee-1',
@@ -261,7 +261,6 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
         chapters: ['11', '7-non-panel'],
       }),
     };
-    console.log(response);
   } else if (path.match(/\/trustees/)) {
     response = {
       data: [
@@ -458,9 +457,16 @@ async function getTrustee(id: string) {
   return get<Trustee>(`/trustees/${id}`);
 }
 
+async function getTrusteeHistory(_ignore: string) {
+  return {
+    data: MockData.getTrusteeHistory(),
+  };
+}
+
 export const MockApi2 = {
   getTrustees,
   getTrustee,
+  getTrusteeHistory,
   postTrustee,
   patchTrustee,
   deletePrivilegedIdentityUser,

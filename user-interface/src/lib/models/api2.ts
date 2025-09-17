@@ -37,7 +37,7 @@ import {
   RoleAndOfficeGroupNames,
 } from '@common/cams/privileged-identity';
 import getAppConfiguration from '@/configuration/appConfiguration';
-import { Trustee, TrusteeInput } from '@common/cams/trustees';
+import { Trustee, TrusteeHistory, TrusteeInput } from '@common/cams/trustees';
 
 export const API_CACHE_NAMESPACE = 'api:';
 
@@ -248,6 +248,10 @@ async function getTrustee(id: string) {
   return api().get<Trustee>(`/trustees/${id}`);
 }
 
+async function getTrusteeHistory(id: string) {
+  return api().get<TrusteeHistory[]>(`/trustees/${id}/history`);
+}
+
 async function getCaseDetail(caseId: string) {
   return api().get<CaseDetail>(`/cases/${caseId}`);
 }
@@ -403,6 +407,7 @@ async function deletePrivilegedIdentityUser(userId: string) {
 export const _Api2 = {
   getTrustees,
   getTrustee,
+  getTrusteeHistory,
   postTrustee,
   patchTrustee,
   deletePrivilegedIdentityUser,

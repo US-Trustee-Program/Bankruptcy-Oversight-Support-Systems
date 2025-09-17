@@ -96,9 +96,9 @@ describe('TrusteesUseCase', () => {
 
     mockTrusteesRepository = {
       createTrustee: jest.fn(),
-      createHistory: jest.fn(),
+      createTrusteeHistory: jest.fn(),
       listTrustees: jest.fn(),
-      listHistory: jest.fn(),
+      listTrusteeHistory: jest.fn(),
       updateTrustee: jest.fn(),
       read: jest.fn(),
       release: jest.fn(),
@@ -149,7 +149,7 @@ describe('TrusteesUseCase', () => {
       );
 
       // Verify createHistory is called for the name audit record
-      expect(mockTrusteesRepository.createHistory).toHaveBeenCalledWith(
+      expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_NAME',
           id: expectedTrustee.id,
@@ -160,7 +160,7 @@ describe('TrusteesUseCase', () => {
       );
 
       // Verify createHistory is called for the public contact audit record
-      expect(mockTrusteesRepository.createHistory).toHaveBeenCalledWith(
+      expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_PUBLIC_CONTACT',
           id: expectedTrustee.id,
@@ -392,13 +392,13 @@ describe('TrusteesUseCase', () => {
       // Mock repository behavior
       mockTrusteesRepository.read.mockResolvedValue(existingTrustee);
       mockTrusteesRepository.updateTrustee.mockResolvedValue(updatedTrustee);
-      mockTrusteesRepository.createHistory.mockResolvedValue(undefined);
+      mockTrusteesRepository.createTrusteeHistory.mockResolvedValue(undefined);
 
       // Execute the function
       await useCase.updateTrustee(context, trusteeId, updateInput);
 
       // Verify createHistory is called for the name audit record
-      expect(mockTrusteesRepository.createHistory).toHaveBeenCalledWith(
+      expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_NAME',
           id: trusteeId,
@@ -408,7 +408,7 @@ describe('TrusteesUseCase', () => {
       );
 
       // Verify createHistory is called for the public contact audit record
-      expect(mockTrusteesRepository.createHistory).toHaveBeenCalledWith(
+      expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_PUBLIC_CONTACT',
           id: trusteeId,
@@ -473,13 +473,13 @@ describe('TrusteesUseCase', () => {
       // Mock repository behavior
       mockTrusteesRepository.read.mockResolvedValue(existingTrustee);
       mockTrusteesRepository.updateTrustee.mockResolvedValue(updatedTrustee);
-      mockTrusteesRepository.createHistory.mockResolvedValue(undefined);
+      mockTrusteesRepository.createTrusteeHistory.mockResolvedValue(undefined);
 
       // Execute the function
       await useCase.updateTrustee(context, trusteeId, updateInput);
 
       // Verify createHistory is called for the name audit record
-      expect(mockTrusteesRepository.createHistory).toHaveBeenCalledWith(
+      expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_NAME',
           id: trusteeId,
@@ -489,7 +489,7 @@ describe('TrusteesUseCase', () => {
       );
 
       // Verify createHistory is called for the internal contact audit record
-      expect(mockTrusteesRepository.createHistory).toHaveBeenCalledWith(
+      expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_INTERNAL_CONTACT',
           id: trusteeId,
@@ -605,13 +605,13 @@ describe('TrusteesUseCase', () => {
       // Mock repository behavior
       mockTrusteesRepository.read.mockResolvedValue(existingTrustee);
       mockTrusteesRepository.updateTrustee.mockResolvedValue(updatedTrustee);
-      mockTrusteesRepository.createHistory.mockResolvedValue(undefined);
+      mockTrusteesRepository.createTrusteeHistory.mockResolvedValue(undefined);
 
       // Execute the function
       await useCase.updateTrustee(context, trusteeId, updateInput);
 
       // Verify createHistory is called for the name audit record
-      expect(mockTrusteesRepository.createHistory).toHaveBeenCalledWith(
+      expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_NAME',
           id: trusteeId,
@@ -621,7 +621,7 @@ describe('TrusteesUseCase', () => {
       );
 
       // Verify createHistory is called for the public contact audit record
-      expect(mockTrusteesRepository.createHistory).toHaveBeenCalledWith(
+      expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_PUBLIC_CONTACT',
           id: trusteeId,
@@ -695,20 +695,20 @@ describe('TrusteesUseCase', () => {
       // Mock repository behavior
       mockTrusteesRepository.read.mockResolvedValue(existingTrustee);
       mockTrusteesRepository.updateTrustee.mockResolvedValue(updatedTrustee);
-      mockTrusteesRepository.createHistory.mockResolvedValue(undefined);
+      mockTrusteesRepository.createTrusteeHistory.mockResolvedValue(undefined);
 
       // Execute the function
       await useCase.updateTrustee(context, trusteeId, updateInput);
 
       // Verify createHistory is NOT called for name (should never receive AUDIT_NAME document type)
-      expect(mockTrusteesRepository.createHistory).not.toHaveBeenCalledWith(
+      expect(mockTrusteesRepository.createTrusteeHistory).not.toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_NAME',
         }),
       );
 
       // Verify createHistory IS called for the public contact audit record
-      expect(mockTrusteesRepository.createHistory).toHaveBeenCalledWith(
+      expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_PUBLIC_CONTACT',
           id: trusteeId,
@@ -718,7 +718,7 @@ describe('TrusteesUseCase', () => {
       );
 
       // Verify total number of createHistory calls (should be 1 for public contact only)
-      expect(mockTrusteesRepository.createHistory).toHaveBeenCalledTimes(1);
+      expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledTimes(1);
     });
 
     test('should handle validation error with undefined reasonMap for update', async () => {
@@ -820,13 +820,13 @@ describe('TrusteesUseCase', () => {
       // Mock repository behavior
       mockTrusteesRepository.read.mockResolvedValue(existingTrustee);
       mockTrusteesRepository.updateTrustee.mockResolvedValue(updatedTrustee);
-      mockTrusteesRepository.createHistory.mockResolvedValue(undefined);
+      mockTrusteesRepository.createTrusteeHistory.mockResolvedValue(undefined);
 
       // Execute the function
       await useCase.updateTrustee(context, trusteeId, updateInput);
 
       // Verify createHistory IS called for name (since name changed)
-      expect(mockTrusteesRepository.createHistory).toHaveBeenCalledWith(
+      expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_NAME',
           id: trusteeId,
@@ -836,14 +836,14 @@ describe('TrusteesUseCase', () => {
       );
 
       // Verify createHistory is NOT called for public contact (should never receive AUDIT_PUBLIC_CONTACT document type)
-      expect(mockTrusteesRepository.createHistory).not.toHaveBeenCalledWith(
+      expect(mockTrusteesRepository.createTrusteeHistory).not.toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_PUBLIC_CONTACT',
         }),
       );
 
       // Verify total number of createHistory calls (should be 1 for name only)
-      expect(mockTrusteesRepository.createHistory).toHaveBeenCalledTimes(1);
+      expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -885,11 +885,11 @@ describe('TrusteesUseCase', () => {
         },
       ];
 
-      mockTrusteesRepository.listHistory.mockResolvedValue(mockHistory);
+      mockTrusteesRepository.listTrusteeHistory.mockResolvedValue(mockHistory);
 
-      const result = await useCase.listHistory(context, trusteeId);
+      const result = await useCase.listTrusteeHistory(context, trusteeId);
 
-      expect(mockTrusteesRepository.listHistory).toHaveBeenCalledWith(trusteeId);
+      expect(mockTrusteesRepository.listTrusteeHistory).toHaveBeenCalledWith(trusteeId);
       expect(result).toEqual(mockHistory);
     });
 
@@ -900,10 +900,12 @@ describe('TrusteesUseCase', () => {
         message: 'Database connection failed',
       });
 
-      mockTrusteesRepository.listHistory.mockRejectedValue(repositoryError);
+      mockTrusteesRepository.listTrusteeHistory.mockRejectedValue(repositoryError);
       mockGetCamsError.mockReturnValue(expectedCamsError);
 
-      await expect(useCase.listHistory(context, trusteeId)).rejects.toThrow(expectedCamsError);
+      await expect(useCase.listTrusteeHistory(context, trusteeId)).rejects.toThrow(
+        expectedCamsError,
+      );
 
       expect(mockGetCamsError).toHaveBeenCalledWith(repositoryError, 'TRUSTEES-USE-CASE');
     });
