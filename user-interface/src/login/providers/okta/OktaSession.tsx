@@ -28,7 +28,10 @@ export function OktaSession(props: Readonly<OktaSessionProps>) {
         if (error.message !== 'Unable to parse a token from the url') {
           appInsights.trackEvent(
             { name: 'Okta redirect error' },
-            { ...error, note: `Access Denied log entry will follow this one.` },
+            {
+              error: { message: error.message, name: error.name },
+              note: `Access Denied log entry will follow this one.`,
+            },
           );
           setCallbackError(error);
         }
