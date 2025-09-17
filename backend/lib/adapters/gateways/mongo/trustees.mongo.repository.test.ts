@@ -463,7 +463,7 @@ describe('TrusteesMongoRepository', () => {
 
       await repository.createTrusteeHistory(mockHistory);
 
-      expect(mockAdapter).toHaveBeenCalledWith(mockHistory);
+      expect(mockAdapter).toHaveBeenCalledWith(mockHistory, { useProvidedId: true });
     });
 
     test('should handle database errors when creating history', async () => {
@@ -485,7 +485,7 @@ describe('TrusteesMongoRepository', () => {
 
       await expect(repository.createTrusteeHistory(mockHistory)).rejects.toThrow();
 
-      expect(mockAdapter).toHaveBeenCalledWith(mockHistory);
+      expect(mockAdapter).toHaveBeenCalledWith(mockHistory, { useProvidedId: true });
     });
   });
 
