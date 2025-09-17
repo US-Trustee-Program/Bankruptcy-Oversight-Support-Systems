@@ -3,6 +3,14 @@ function isObject(ob: object) {
 }
 
 export function deepEqual(object1: object, object2: object) {
+  if (object1 === object2) {
+    return true;
+  }
+
+  if (!isObject(object1) || !isObject(object2)) {
+    return false;
+  }
+
   const keys1: string[] = Object.keys(object1);
   const keys2: string[] = Object.keys(object2);
 
