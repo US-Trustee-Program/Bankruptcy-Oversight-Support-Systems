@@ -3,5 +3,5 @@
     "outDir": "dist"
   },
   "extends": "../../tsconfig.json",
-  "exclude": ["**/*.test.ts", "**/testing*", "**/fake*", "**/testing/*"]
+  "exclude": ["**/*.test.ts", "**/testing*", "**/fake*", "**/testing/*", "azure"]
 }

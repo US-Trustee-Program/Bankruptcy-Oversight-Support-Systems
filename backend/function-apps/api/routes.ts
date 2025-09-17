@@ -21,16 +21,16 @@ import { PrivilegedIdentityAdminController } from '../../lib/controllers/admin/p
 import { mockAuthentication } from '../../lib/testing/mock-gateways/mock-oauth2-gateway';
 
 // Import healthcheck modules
-import HealthcheckCosmosDb from '../api/healthcheck/healthcheck.db.cosmos';
-import HealthcheckSqlDb from '../api/healthcheck/healthcheck.db.sql';
-import HealthcheckInfo from '../api/healthcheck/healthcheck.info';
+import HealthcheckCosmosDb from './azure/healthcheck/healthcheck.db.cosmos';
+import HealthcheckSqlDb from './azure/healthcheck/healthcheck.db.sql';
+import HealthcheckInfo from './azure/healthcheck/healthcheck.info';
 import { closeDeferred } from '../../lib/deferrable/defer-close';
 import { httpSuccess } from '../../lib/adapters/utils/http-response';
 import HttpStatusCodes from '../../../common/src/api/http-status-codes';
 
 // Import Express-specific utilities
-import ContextCreator from './application-context-creator';
-import { toExpressError, toExpressSuccess } from './functions';
+import ContextCreator from '../express/application-context-creator';
+import { toExpressError, toExpressSuccess } from '../express/functions';
 import { ApplicationContext } from '../../lib/adapters/types/basic';
 
 dotenv.config();

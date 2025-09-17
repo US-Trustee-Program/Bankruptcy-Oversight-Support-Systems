@@ -1,7 +1,6 @@
-import { ApplicationContext } from '../../../lib/adapters/types/basic';
-import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
-import { closeDeferred } from '../../../lib/deferrable/defer-close';
-
+import { ApplicationContext } from '../../../../lib/adapters/types/basic';
+import { closeDeferred } from '../../../../lib/deferrable/defer-close';
+import { createMockApplicationContext } from '../../../../lib/testing/testing-utilities';
 import HealthcheckSqlDb from './healthcheck.db.sql';
 
 const mockRequestFunc = jest.fn().mockImplementation(() => ({
