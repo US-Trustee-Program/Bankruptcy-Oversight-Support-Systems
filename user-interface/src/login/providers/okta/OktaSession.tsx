@@ -8,7 +8,7 @@ import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 
 export type OktaSessionProps = PropsWithChildren;
 
-export function OktaSession(props: OktaSessionProps) {
+export function OktaSession(props: Readonly<OktaSessionProps>) {
   const { appInsights } = getAppInsights();
   const [redirectComplete, setRedirectComplete] = useState<boolean>(false);
   const [callbackError, setCallbackError] = useState<Error | null>(null);
@@ -24,9 +24,15 @@ export function OktaSession(props: OktaSessionProps) {
       })
       .catch((e) => {
         const error = e as Error;
-        appInsights.trackEvent({ name: 'Okta redirect error' }, { status: 'error level 0' });
         // Only report if the error is not the parse error during the continuation redirects.
         if (error.message !== 'Unable to parse a token from the url') {
+          appInsights.trackEvent(
+            { name: 'Okta redirect error' },
+            {
+              error: { message: error.message, name: error.name },
+              note: `Access Denied log entry will follow this one.`,
+            },
+          );
           setCallbackError(error);
         }
       });
