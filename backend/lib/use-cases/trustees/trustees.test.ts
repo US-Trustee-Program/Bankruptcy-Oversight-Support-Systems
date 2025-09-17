@@ -98,6 +98,7 @@ describe('TrusteesUseCase', () => {
       createTrustee: jest.fn(),
       createHistory: jest.fn(),
       listTrustees: jest.fn(),
+      listHistory: jest.fn(),
       updateTrustee: jest.fn(),
       read: jest.fn(),
       release: jest.fn(),
@@ -843,6 +844,68 @@ describe('TrusteesUseCase', () => {
 
       // Verify total number of createHistory calls (should be 1 for name only)
       expect(mockTrusteesRepository.createHistory).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('listHistory', () => {
+    test('should successfully retrieve history for a trustee by ID', async () => {
+      const trusteeId = 'trustee-123';
+      const mockHistory = [
+        {
+          documentType: 'AUDIT_NAME',
+          id: trusteeId,
+          before: 'John Doe',
+          after: 'John Smith',
+          createdOn: '2025-08-12T10:00:00Z',
+          createdBy: mockUserReference,
+        },
+        {
+          documentType: 'AUDIT_PUBLIC_CONTACT',
+          id: trusteeId,
+          before: {
+            address: {
+              address1: '123 Old St',
+              city: 'Oldtown',
+              state: 'NY',
+              zipCode: '12345',
+              countryCode: 'US' as const,
+            },
+          },
+          after: {
+            address: {
+              address1: '456 New St',
+              city: 'Newtown',
+              state: 'CA',
+              zipCode: '54321',
+              countryCode: 'US' as const,
+            },
+          },
+          createdOn: '2025-08-12T10:00:00Z',
+          createdBy: mockUserReference,
+        },
+      ];
+
+      mockTrusteesRepository.listHistory.mockResolvedValue(mockHistory);
+
+      const result = await useCase.listHistory(context, trusteeId);
+
+      expect(mockTrusteesRepository.listHistory).toHaveBeenCalledWith(trusteeId);
+      expect(result).toEqual(mockHistory);
+    });
+
+    test('should handle repository errors when retrieving history', async () => {
+      const trusteeId = 'trustee-123';
+      const repositoryError = new Error('Database connection failed');
+      const expectedCamsError = new CamsError('TRUSTEES-USE-CASE', {
+        message: 'Database connection failed',
+      });
+
+      mockTrusteesRepository.listHistory.mockRejectedValue(repositoryError);
+      mockGetCamsError.mockReturnValue(expectedCamsError);
+
+      await expect(useCase.listHistory(context, trusteeId)).rejects.toThrow(expectedCamsError);
+
+      expect(mockGetCamsError).toHaveBeenCalledWith(repositoryError, 'TRUSTEES-USE-CASE');
     });
   });
 });
