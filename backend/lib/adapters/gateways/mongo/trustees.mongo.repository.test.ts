@@ -1,6 +1,6 @@
 import { ApplicationContext } from '../../types/basic';
 import { TrusteesMongoRepository, TrusteeDocument } from './trustees.mongo.repository';
-import { TrusteeInput } from '../../../../../common/src/cams/trustees';
+import { TrusteeInput, TrusteeNameHistory } from '../../../../../common/src/cams/trustees';
 import { CamsUserReference } from '../../../../../common/src/cams/users';
 import {
   createMockApplicationContext,
@@ -441,6 +441,51 @@ describe('TrusteesMongoRepository', () => {
           updatedBy: mockUser,
         }),
       );
+    });
+  });
+
+  describe('createHistory', () => {
+    test('should create trustee history successfully', async () => {
+      const mockHistory: TrusteeNameHistory = {
+        id: 'trustee-123',
+        documentType: 'AUDIT_NAME',
+        before: 'John Doe',
+        after: 'John Smith',
+        createdOn: '2025-09-17T15:12:00Z',
+        createdBy: mockUser,
+        updatedOn: '2025-09-17T15:12:00Z',
+        updatedBy: mockUser,
+      };
+
+      const mockAdapter = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
+        .mockResolvedValue(undefined);
+
+      await repository.createHistory(mockHistory);
+
+      expect(mockAdapter).toHaveBeenCalledWith(mockHistory);
+    });
+
+    test('should handle database errors when creating history', async () => {
+      const mockHistory: TrusteeNameHistory = {
+        id: 'trustee-123',
+        documentType: 'AUDIT_NAME',
+        before: 'John Doe',
+        after: 'John Smith',
+        createdOn: '2025-09-17T15:12:00Z',
+        createdBy: mockUser,
+        updatedOn: '2025-09-17T15:12:00Z',
+        updatedBy: mockUser,
+      };
+
+      const error = new Error('Database connection failed');
+      const mockAdapter = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
+        .mockRejectedValue(error);
+
+      await expect(repository.createHistory(mockHistory)).rejects.toThrow();
+
+      expect(mockAdapter).toHaveBeenCalledWith(mockHistory);
     });
   });
 

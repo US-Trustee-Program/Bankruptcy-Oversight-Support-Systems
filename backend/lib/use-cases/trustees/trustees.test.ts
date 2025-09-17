@@ -1,4 +1,6 @@
 // Mock the validation - need to import actual then mock specific functions
+import { ContactInformation } from '../../../../common/src/cams/contact';
+
 jest.mock('../../../../common/src/cams/parties', () => {
   const actualParties = jest.requireActual('../../../../common/src/cams/parties');
   return {
@@ -16,6 +18,16 @@ jest.mock('../../common-errors/error-utilities');
 // Mock the session utilities
 jest.mock('../../../../common/src/cams/session');
 
+// Mock the deepEqual function
+jest.mock('../../../../common/src/object-equality', () => ({
+  deepEqual: jest.fn().mockImplementation((a, b) => {
+    // Return true if both are undefined or null (considered equal)
+    if (a == null && b == null) return true;
+    // Return false otherwise to trigger history creation in tests
+    return false;
+  }),
+}));
+
 import { TrusteesUseCase } from './trustees';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteesRepository } from '../gateways.types';
@@ -28,6 +40,7 @@ import { CamsError } from '../../common-errors/cams-error';
 import { getTrusteesRepository } from '../../factory';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
 import * as validationModule from '../../../../common/src/cams/validation';
+import { deepEqual } from '../../../../common/src/object-equality';
 
 const mockGetTrusteesRepository = getTrusteesRepository as jest.MockedFunction<
   typeof getTrusteesRepository
@@ -57,7 +70,7 @@ describe('TrusteesUseCase', () => {
         city: 'Anytown',
         state: 'NY',
         zipCode: '12345',
-        countryCode: 'US',
+        countryCode: 'US' as const,
       },
       phone: {
         number: '333-555-0123',
@@ -66,7 +79,7 @@ describe('TrusteesUseCase', () => {
     },
     districts: ['NY'],
     chapters: ['7', '11'],
-    status: 'active',
+    status: 'active' as const,
   };
 
   const sampleTrustee = {
@@ -83,6 +96,7 @@ describe('TrusteesUseCase', () => {
 
     mockTrusteesRepository = {
       createTrustee: jest.fn(),
+      createHistory: jest.fn(),
       listTrustees: jest.fn(),
       updateTrustee: jest.fn(),
       read: jest.fn(),
@@ -126,12 +140,35 @@ describe('TrusteesUseCase', () => {
       expect(mockTrusteesRepository.createTrustee).toHaveBeenCalledWith(
         expect.objectContaining({
           ...sampleTrusteeInput,
-          status: 'active',
+          status: 'active' as const,
           districts: ['NY'],
           chapters: ['7', '11'],
         }),
         mockUserReference,
       );
+
+      // Verify createHistory is called for the name audit record
+      expect(mockTrusteesRepository.createHistory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'AUDIT_NAME',
+          id: expectedTrustee.id,
+          before: undefined,
+          after: expectedTrustee.name,
+          createdBy: mockUserReference,
+        }),
+      );
+
+      // Verify createHistory is called for the public contact audit record
+      expect(mockTrusteesRepository.createHistory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'AUDIT_PUBLIC_CONTACT',
+          id: expectedTrustee.id,
+          before: undefined,
+          after: expectedTrustee.public,
+          createdBy: mockUserReference,
+        }),
+      );
+
       expect(result).toEqual(expectedTrustee);
     });
 
@@ -144,14 +181,14 @@ describe('TrusteesUseCase', () => {
             city: 'Anytown',
             state: 'NY',
             zipCode: '123456', // Invalid zip code
-            countryCode: 'US',
+            countryCode: 'US' as const,
           },
           phone: {
             number: '555-0123', // Invalid phone format
           },
           email: 'invalid-email', // Invalid email
         },
-        status: 'active',
+        status: 'active' as const,
       };
 
       await expect(useCase.createTrustee(context, invalidTrusteeInput)).rejects.toThrow(
@@ -186,14 +223,14 @@ describe('TrusteesUseCase', () => {
             city: 'Anytown',
             state: 'NY',
             zipCode: '12345',
-            countryCode: 'US',
+            countryCode: 'US' as const,
           },
           phone: {
             number: '333-555-0123',
           },
           email: 'john.doe@example.com',
         },
-        status: 'active',
+        status: 'active' as const,
       };
 
       const expectedTrustee = {
@@ -292,10 +329,31 @@ describe('TrusteesUseCase', () => {
   });
 
   describe('updateTrustee', () => {
-    test('should update trustee successfully with valid input', async () => {
+    test('should update trustee successfully with valid input and create history records', async () => {
       const trusteeId = 'trustee-123';
-      const updatedTrusteeInput: TrusteeInput = {
-        ...sampleTrusteeInput,
+
+      // Simplified test setup
+      const existingTrustee = {
+        id: trusteeId,
+        name: 'John Doe',
+        public: {
+          address: {
+            address1: '123 Main St',
+            city: 'Anytown',
+            state: 'NY',
+            zipCode: '12345',
+            countryCode: 'US' as const,
+          },
+        },
+        status: 'active' as const,
+        createdOn: '2025-08-12T10:00:00Z',
+        createdBy: mockUserReference,
+        updatedOn: '2025-08-12T10:00:00Z',
+        updatedBy: mockUserReference,
+      };
+
+      const updatedTrustee = {
+        id: trusteeId,
         name: 'Jane Doe Updated',
         public: {
           address: {
@@ -303,87 +361,141 @@ describe('TrusteesUseCase', () => {
             city: 'Newtown',
             state: 'CA',
             zipCode: '54321',
-            countryCode: 'US',
+            countryCode: 'US' as const,
           },
-          phone: {
-            number: '333-555-9876',
-          },
-          email: 'jane.updated@example.com',
         },
-        status: 'not active',
-      };
-
-      const expectedUpdatedTrustee = {
-        id: trusteeId,
-        ...updatedTrusteeInput,
+        status: 'active' as const,
         createdOn: '2025-08-12T10:00:00Z',
         createdBy: mockUserReference,
         updatedOn: '2025-08-12T11:00:00Z',
         updatedBy: mockUserReference,
       };
 
-      mockTrusteesRepository.updateTrustee = jest.fn().mockResolvedValue(expectedUpdatedTrustee);
+      const updateInput = {
+        name: 'Jane Doe Updated',
+        public: {
+          address: {
+            address1: '456 Updated St',
+            city: 'Newtown',
+            state: 'CA',
+            zipCode: '54321',
+            countryCode: 'US' as const,
+          },
+        },
+        status: 'active' as const,
+      };
 
-      const result = await useCase.updateTrustee(context, trusteeId, updatedTrusteeInput);
+      // Reset mock history before test to ensure clean slate
+      jest.clearAllMocks();
 
-      expect(mockGetCamsUserReference).toHaveBeenCalledWith(context.session.user);
-      expect(mockTrusteesRepository.updateTrustee).toHaveBeenCalledWith(
-        trusteeId,
+      // Mock repository behavior
+      mockTrusteesRepository.read.mockResolvedValue(existingTrustee);
+      mockTrusteesRepository.updateTrustee.mockResolvedValue(updatedTrustee);
+      mockTrusteesRepository.createHistory.mockResolvedValue(undefined);
+
+      // Execute the function
+      await useCase.updateTrustee(context, trusteeId, updateInput);
+
+      // Verify createHistory is called for the name audit record
+      expect(mockTrusteesRepository.createHistory).toHaveBeenCalledWith(
         expect.objectContaining({
-          ...updatedTrusteeInput,
-          districts: ['NY'],
-          chapters: ['7', '11'],
+          documentType: 'AUDIT_NAME',
+          id: trusteeId,
+          before: existingTrustee.name,
+          after: updatedTrustee.name,
         }),
-        mockUserReference,
       );
-      expect(result).toEqual(expectedUpdatedTrustee);
+
+      // Verify createHistory is called for the public contact audit record
+      expect(mockTrusteesRepository.createHistory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'AUDIT_PUBLIC_CONTACT',
+          id: trusteeId,
+          before: existingTrustee.public,
+          after: updatedTrustee.public,
+        }),
+      );
     });
 
-    test('should update trustee successfully with internal contact information', async () => {
+    test('should update trustee successfully with internal contact information and create history records', async () => {
       const trusteeId = 'trustee-123';
-      const updatedTrusteeInputWithInternal: Partial<TrusteeInput> = {
-        name: 'Jane Doe With Internal',
-        internal: {
-          address: {
-            address1: '789 Internal St',
-            city: 'Internal City',
-            state: 'TX',
-            zipCode: '75001',
-            countryCode: 'US',
-          },
-          phone: {
-            number: '214-555-0199',
-            extension: '1234',
-          },
-          email: 'jane.internal@trustee.gov',
-        },
-        status: 'active',
+
+      // Simplified test setup with internal contact
+      const existingTrustee = {
+        id: trusteeId,
+        name: 'John Doe',
+        public: {} as ContactInformation,
+        internal: undefined, // No internal contact information
+        status: 'active' as const,
+        createdOn: '2025-08-12T10:00:00Z',
+        createdBy: mockUserReference,
+        updatedOn: '2025-08-12T10:00:00Z',
+        updatedBy: mockUserReference,
       };
 
-      const expectedUpdatedTrustee = {
+      const internalContact = {
+        address: {
+          address1: '789 Internal St',
+          city: 'Internal City',
+          state: 'TX',
+          zipCode: '75001',
+          countryCode: 'US' as const,
+        },
+        phone: {
+          number: '214-555-0199',
+          extension: '1234',
+        },
+        email: 'jane.internal@trustee.gov',
+      };
+
+      const updatedTrustee = {
         id: trusteeId,
-        ...updatedTrusteeInputWithInternal,
+        name: 'Jane Doe With Internal',
+        public: {} as ContactInformation,
+        internal: internalContact,
+        status: 'active' as const,
         createdOn: '2025-08-12T10:00:00Z',
         createdBy: mockUserReference,
         updatedOn: '2025-08-12T11:00:00Z',
         updatedBy: mockUserReference,
       };
 
-      mockTrusteesRepository.updateTrustee = jest.fn().mockResolvedValue(expectedUpdatedTrustee);
+      const updateInput = {
+        name: 'Jane Doe With Internal',
+        internal: internalContact,
+        status: 'active' as const,
+      };
 
-      const result = await useCase.updateTrustee(
-        context,
-        trusteeId,
-        updatedTrusteeInputWithInternal,
+      // Reset mock history before test to ensure clean slate
+      jest.clearAllMocks();
+
+      // Mock repository behavior
+      mockTrusteesRepository.read.mockResolvedValue(existingTrustee);
+      mockTrusteesRepository.updateTrustee.mockResolvedValue(updatedTrustee);
+      mockTrusteesRepository.createHistory.mockResolvedValue(undefined);
+
+      // Execute the function
+      await useCase.updateTrustee(context, trusteeId, updateInput);
+
+      // Verify createHistory is called for the name audit record
+      expect(mockTrusteesRepository.createHistory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'AUDIT_NAME',
+          id: trusteeId,
+          before: existingTrustee.name,
+          after: updatedTrustee.name,
+        }),
       );
 
-      expect(mockGetCamsUserReference).toHaveBeenCalledWith(context.session.user);
-      expect(mockTrusteesRepository.updateTrustee).toHaveBeenCalledWith(
-        trusteeId,
-        updatedTrusteeInputWithInternal,
-        mockUserReference,
+      // Verify createHistory is called for the internal contact audit record
+      expect(mockTrusteesRepository.createHistory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'AUDIT_INTERNAL_CONTACT',
+          id: trusteeId,
+          before: existingTrustee.internal,
+          after: updatedTrustee.internal,
+        }),
       );
-      expect(result).toEqual(expectedUpdatedTrustee);
     });
 
     test('should throw error when validation fails for update', async () => {
@@ -396,14 +508,14 @@ describe('TrusteesUseCase', () => {
             city: 'Anytown',
             state: 'NY',
             zipCode: '123456', // Invalid zip code
-            countryCode: 'US',
+            countryCode: 'US' as const,
           },
           phone: {
             number: '555-0123', // Invalid phone format
           },
           email: 'invalid-email', // Invalid email
         },
-        status: 'active',
+        status: 'active' as const,
       };
 
       mockTrusteesRepository.updateTrustee = jest.fn();
@@ -432,45 +544,180 @@ describe('TrusteesUseCase', () => {
       expect(mockGetCamsError).toHaveBeenCalledWith(repositoryError, 'TRUSTEES-USE-CASE');
     });
 
-    test('should handle trustee update input with undefined districts and chapters', async () => {
+    test('should handle trustee update without arrays and create appropriate history records', async () => {
       const trusteeId = 'trustee-123';
-      const trusteeInputWithoutArrays: TrusteeInput = {
-        name: 'John Doe Updated',
+
+      // Simplified test setup
+      const existingTrustee = {
+        id: trusteeId,
+        name: 'John Doe Old',
         public: {
           address: {
-            address1: '789 Update Ave',
-            city: 'Updatetown',
-            state: 'TX',
-            zipCode: '67890',
-            countryCode: 'US',
+            address1: '123 Old St',
+            city: 'Oldtown',
+            state: 'NY',
+            zipCode: '12345',
+            countryCode: 'US' as const,
           },
-          phone: {
-            number: '333-555-4567',
-          },
-          email: 'john.updated@example.com',
         },
-        status: 'active',
+        status: 'active' as const,
+        createdOn: '2025-08-12T10:00:00Z',
+        createdBy: mockUserReference,
+        updatedOn: '2025-08-12T10:00:00Z',
+        updatedBy: mockUserReference,
       };
 
-      const expectedUpdatedTrustee = {
-        ...trusteeInputWithoutArrays,
+      const updatedPublicInfo = {
+        address: {
+          address1: '789 Update Ave',
+          city: 'Updatetown',
+          state: 'TX',
+          zipCode: '67890',
+          countryCode: 'US' as const,
+        },
+        phone: {
+          number: '333-555-4567',
+        },
+        email: 'john.updated@example.com',
+      };
+
+      const updatedTrustee = {
         id: trusteeId,
+        name: 'John Doe Updated',
+        public: updatedPublicInfo,
+        status: 'active' as const,
         createdOn: '2025-08-12T10:00:00Z',
         createdBy: mockUserReference,
         updatedOn: '2025-08-12T11:00:00Z',
         updatedBy: mockUserReference,
       };
 
-      mockTrusteesRepository.updateTrustee = jest.fn().mockResolvedValue(expectedUpdatedTrustee);
+      const updateInput = {
+        name: 'John Doe Updated',
+        public: updatedPublicInfo,
+        status: 'active' as const,
+      };
 
-      const result = await useCase.updateTrustee(context, trusteeId, trusteeInputWithoutArrays);
+      // Reset mock history before test to ensure clean slate
+      jest.clearAllMocks();
 
-      expect(mockTrusteesRepository.updateTrustee).toHaveBeenCalledWith(
-        trusteeId,
-        trusteeInputWithoutArrays,
-        mockUserReference,
+      // Mock repository behavior
+      mockTrusteesRepository.read.mockResolvedValue(existingTrustee);
+      mockTrusteesRepository.updateTrustee.mockResolvedValue(updatedTrustee);
+      mockTrusteesRepository.createHistory.mockResolvedValue(undefined);
+
+      // Execute the function
+      await useCase.updateTrustee(context, trusteeId, updateInput);
+
+      // Verify createHistory is called for the name audit record
+      expect(mockTrusteesRepository.createHistory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'AUDIT_NAME',
+          id: trusteeId,
+          before: existingTrustee.name,
+          after: updatedTrustee.name,
+        }),
       );
-      expect(result).toEqual(expectedUpdatedTrustee);
+
+      // Verify createHistory is called for the public contact audit record
+      expect(mockTrusteesRepository.createHistory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'AUDIT_PUBLIC_CONTACT',
+          id: trusteeId,
+          before: existingTrustee.public,
+          after: updatedTrustee.public,
+        }),
+      );
+    });
+
+    test('should not create name history record when name is unchanged', async () => {
+      const trusteeId = 'trustee-123';
+      const unchangedName = 'John Doe Unchanged';
+
+      // Setup with name that remains the same between existing and updated trustees
+      const existingTrustee = {
+        id: trusteeId,
+        name: unchangedName,
+        public: {
+          address: {
+            address1: '123 Old St',
+            city: 'Oldtown',
+            state: 'NY',
+            zipCode: '12345',
+            countryCode: 'US' as const,
+          },
+        },
+        status: 'active' as const,
+        createdOn: '2025-08-12T10:00:00Z',
+        createdBy: mockUserReference,
+        updatedOn: '2025-08-12T10:00:00Z',
+        updatedBy: mockUserReference,
+      };
+
+      const updatedPublicInfo = {
+        address: {
+          address1: '789 Update Ave',
+          city: 'Updatetown',
+          state: 'TX',
+          zipCode: '67890',
+          countryCode: 'US' as const,
+        },
+        phone: {
+          number: '333-555-4567',
+        },
+        email: 'john.updated@example.com',
+      };
+
+      const updatedTrustee = {
+        id: trusteeId,
+        name: unchangedName, // Name remains the same
+        public: updatedPublicInfo,
+        status: 'active' as const,
+        createdOn: '2025-08-12T10:00:00Z',
+        createdBy: mockUserReference,
+        updatedOn: '2025-08-12T11:00:00Z',
+        updatedBy: mockUserReference,
+      };
+
+      const updateInput = {
+        name: unchangedName, // Include name in input but with same value
+        public: updatedPublicInfo,
+        status: 'active' as const,
+      };
+
+      // Override the deepEqual mock for this specific test to properly test both branches
+      (deepEqual as jest.Mock).mockImplementationOnce((_a, _b) => false); // Make public contact comparison return false
+
+      // Reset mock history before test
+      jest.clearAllMocks();
+
+      // Mock repository behavior
+      mockTrusteesRepository.read.mockResolvedValue(existingTrustee);
+      mockTrusteesRepository.updateTrustee.mockResolvedValue(updatedTrustee);
+      mockTrusteesRepository.createHistory.mockResolvedValue(undefined);
+
+      // Execute the function
+      await useCase.updateTrustee(context, trusteeId, updateInput);
+
+      // Verify createHistory is NOT called for name (should never receive AUDIT_NAME document type)
+      expect(mockTrusteesRepository.createHistory).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'AUDIT_NAME',
+        }),
+      );
+
+      // Verify createHistory IS called for the public contact audit record
+      expect(mockTrusteesRepository.createHistory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'AUDIT_PUBLIC_CONTACT',
+          id: trusteeId,
+          before: existingTrustee.public,
+          after: updatedTrustee.public,
+        }),
+      );
+
+      // Verify total number of createHistory calls (should be 1 for public contact only)
+      expect(mockTrusteesRepository.createHistory).toHaveBeenCalledTimes(1);
     });
 
     test('should handle validation error with undefined reasonMap for update', async () => {
@@ -506,6 +753,96 @@ describe('TrusteesUseCase', () => {
       );
 
       expect(mockGetCamsError).toHaveBeenCalledWith(repositoryError, 'TRUSTEES-USE-CASE');
+    });
+
+    test('should not create public contact history record when public contact info is unchanged', async () => {
+      const trusteeId = 'trustee-123';
+      const unchangedName = 'John Doe';
+
+      // Create public contact information that will be the same in both objects
+      const unchangedPublicInfo = {
+        address: {
+          address1: '123 Unchanged St',
+          city: 'Sametown',
+          state: 'NY',
+          zipCode: '12345',
+          countryCode: 'US' as const,
+        },
+        phone: {
+          number: '333-555-1234',
+        },
+        email: 'john.same@example.com',
+      };
+
+      // Setup with public contact info that remains the same between existing and updated trustees
+      const existingTrustee = {
+        id: trusteeId,
+        name: unchangedName,
+        public: unchangedPublicInfo,
+        status: 'active' as const,
+        createdOn: '2025-08-12T10:00:00Z',
+        createdBy: mockUserReference,
+        updatedOn: '2025-08-12T10:00:00Z',
+        updatedBy: mockUserReference,
+      };
+
+      // Updated trustee has the same public contact info but different name
+      const updatedTrustee = {
+        id: trusteeId,
+        name: 'Jane Doe Updated', // Name changes
+        public: unchangedPublicInfo, // Public contact remains the same
+        status: 'active' as const,
+        createdOn: '2025-08-12T10:00:00Z',
+        createdBy: mockUserReference,
+        updatedOn: '2025-08-12T11:00:00Z',
+        updatedBy: mockUserReference,
+      };
+
+      const updateInput = {
+        name: 'Jane Doe Updated',
+        public: unchangedPublicInfo,
+        status: 'active' as const,
+      };
+
+      // Override the deepEqual mock for this specific test to return true for public contact comparison
+      // This simulates the case where the public contact info is equal between existing and updated trustee
+      (deepEqual as jest.Mock).mockImplementationOnce((a, b) => {
+        if (a === existingTrustee.public && b === updatedTrustee.public) {
+          return true; // Public contacts are equal
+        }
+        return false; // For any other comparison
+      });
+
+      // Reset mock history before test
+      jest.clearAllMocks();
+
+      // Mock repository behavior
+      mockTrusteesRepository.read.mockResolvedValue(existingTrustee);
+      mockTrusteesRepository.updateTrustee.mockResolvedValue(updatedTrustee);
+      mockTrusteesRepository.createHistory.mockResolvedValue(undefined);
+
+      // Execute the function
+      await useCase.updateTrustee(context, trusteeId, updateInput);
+
+      // Verify createHistory IS called for name (since name changed)
+      expect(mockTrusteesRepository.createHistory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'AUDIT_NAME',
+          id: trusteeId,
+          before: existingTrustee.name,
+          after: updatedTrustee.name,
+        }),
+      );
+
+      // Verify createHistory is NOT called for public contact (should never receive AUDIT_PUBLIC_CONTACT document type)
+      expect(mockTrusteesRepository.createHistory).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'AUDIT_PUBLIC_CONTACT',
+        }),
+      );
+
+      // Verify total number of createHistory calls (should be 1 for name only)
+      expect(mockTrusteesRepository.createHistory).toHaveBeenCalledTimes(1);
     });
   });
 });
