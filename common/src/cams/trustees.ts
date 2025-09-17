@@ -26,3 +26,32 @@ export type Trustee = Auditable &
   };
 
 export type TrusteeInput = Omit<Trustee, 'legacy' | keyof Auditable | keyof Identifiable>;
+
+type AbstractTrusteeHistory<B, A> = Auditable & {
+  id: string;
+  before: B | undefined;
+  after: A | undefined;
+};
+
+export type TrusteeNameHistory = AbstractTrusteeHistory<string, string> & {
+  documentType: 'AUDIT_NAME';
+};
+
+export type TrusteePublicContactHistory = AbstractTrusteeHistory<
+  ContactInformation,
+  ContactInformation
+> & {
+  documentType: 'AUDIT_PUBLIC_CONTACT';
+};
+
+export type TrusteeInternalContactHistory = AbstractTrusteeHistory<
+  ContactInformation,
+  ContactInformation
+> & {
+  documentType: 'AUDIT_INTERNAL_CONTACT';
+};
+
+export type TrusteeHistory =
+  | TrusteeNameHistory
+  | TrusteePublicContactHistory
+  | TrusteeInternalContactHistory;
