@@ -259,18 +259,11 @@ module ustpApiContainerApp 'backend-container-app-deploy.bicep' = if (deployCont
       containerImageTag: containerImageTag
       apiContainerSubnetId: network.outputs.apiFunctionSubnetId  // Reuse the same subnet
       virtualNetworkResourceGroupName: networkResourceGroupName
-      privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
       mssqlRequestTimeout: mssqlRequestTimeout
-      slotName: slotName
       loginProviderConfig: loginProviderConfig
       loginProvider: loginProvider
       isUstpDeployment: isUstpDeployment
       apiCorsAllowOrigins: ['https://${webappName}.azurewebsites.us','https://portal.azure.us']
-      sqlServerName: sqlServerName
-      sqlServerResourceGroupName: sqlServerResourceGroupName
-      sqlServerIdentityName: sqlServerIdentityName
-      sqlServerIdentityResourceGroupName: sqlServerIdentityResourceGroupName
-      allowVeracodeScan: allowVeracodeScan
       idKeyvaultAppConfiguration: idKeyvaultAppConfiguration
       kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
       cosmosDatabaseName: cosmosDatabaseName
@@ -279,9 +272,6 @@ module ustpApiContainerApp 'backend-container-app-deploy.bicep' = if (deployCont
       actionGroupName: actionGroupName
       actionGroupResourceGroupName: analyticsResourceGroupName
       createAlerts: createAlerts
-      privateDnsZoneName: privateDnsZoneName
-      privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
-      privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
       maxObjectDepth: maxObjectDepth
       maxObjectKeyCount: maxObjectKeyCount
       gitSha: gitSha

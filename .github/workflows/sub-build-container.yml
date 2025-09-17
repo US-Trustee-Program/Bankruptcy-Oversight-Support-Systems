@@ -114,12 +114,16 @@ jobs:
           cache-to: type=gha,mode=max
           platforms: linux/amd64
 
+      - name: Create metadata file
+        run: |
+          echo '${{ steps.meta.outputs.json }}' > metadata.json
+
       - name: Upload Container Image Info
         uses: actions/upload-artifact@v4.4.0
         with:
           name: ${{ inputs.apiContainerAppName }}-container-info
           path: |
-            ${{ steps.meta.outputs.json }}
+            metadata.json
           if-no-files-found: error
 
   # Keep the dataflows function build as-is for now

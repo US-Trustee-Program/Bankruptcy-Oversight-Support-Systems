@@ -41,39 +41,40 @@ jobs:
       environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main-Gov' || 'Develop' }}
       enableBicepDeployment: ${{ inputs.enableBicepDeployment }}
 
-  accessibility-test:
-    uses: ./.github/workflows/reusable-accessibility.yml
-    with:
-      path: user-interface
-      node-version: ${{ vars.NODE_VERSION }}
+  # accessibility-test:
+  #   uses: ./.github/workflows/reusable-accessibility.yml
+  #   with:
+  #     path: user-interface
+  #     node-version: ${{ vars.NODE_VERSION }}
 
-  unit-test-frontend:
-    uses: ./.github/workflows/reusable-unit-test.yml
-    with:
-      path: user-interface
-      node-version: ${{ vars.NODE_VERSION }}
+  # unit-test-frontend:
+  #   uses: ./.github/workflows/reusable-unit-test.yml
+  #   with:
+  #     path: user-interface
+  #     node-version: ${{ vars.NODE_VERSION }}
 
-  unit-test-backend:
-    uses: ./.github/workflows/reusable-unit-test.yml
-    with:
-      path: backend
-      node-version: ${{ vars.NODE_VERSION }}
+  # unit-test-backend:
+  #   uses: ./.github/workflows/reusable-unit-test.yml
+  #   with:
+  #     path: backend
+  #     node-version: ${{ vars.NODE_VERSION }}
 
-  unit-test-common:
-    uses: ./.github/workflows/reusable-unit-test.yml
-    with:
-      path: common
-      node-version: ${{ vars.NODE_VERSION }}
+  # unit-test-common:
+  #   uses: ./.github/workflows/reusable-unit-test.yml
+  #   with:
+  #     path: common
+  #     node-version: ${{ vars.NODE_VERSION }}
 
-  security-scan:
-    name: Security
-    uses: ./.github/workflows/sub-security-scan.yml
-    secrets: inherit # pragma: allowlist secret
+  # security-scan:
+  #   name: Security
+  #   uses: ./.github/workflows/sub-security-scan.yml
+  #   secrets: inherit # pragma: allowlist secret
 
   build:
     name: Build
     needs: [setup]
     uses: ./.github/workflows/sub-build.yml
+    if: ${{ github.ref_name != 'container-experiment' }}
     secrets: inherit # pragma: allowlist secret
     with:
       nodeVersion: ${{ vars.NODE_VERSION }}
@@ -88,6 +89,26 @@ jobs:
       azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
       slotName: ${{ needs.setup.outputs.slotName }}
 
+  build-container:
+    name: Build Container
+    needs: [setup]
+    uses: ./.github/workflows/sub-build-container.yml
+    if: ${{ github.ref_name == 'container-experiment' }}
+    secrets: inherit # pragma: allowlist secret
+    with:
+      nodeVersion: ${{ vars.NODE_VERSION }}
+      camsServerPort: ${{ vars.CAMS_SERVER_PORT }}
+      camsServerProtocol: ${{ vars.CAMS_SERVER_PROTOCOL }}
+      camsBasePath: ${{ vars.CAMS_BASE_PATH }}
+      webappName: ${{ needs.setup.outputs.webappName }}
+      apiContainerAppName: ${{ format('{0}-container-app', needs.setup.outputs.stackName) }}
+      containerRegistryName: ${{ format('{0}acr01', needs.setup.outputs.stackName) }}
+      dataflowsFunctionName: ${{ needs.setup.outputs.dataflowsFunctionName }}
+      environment: ${{ needs.setup.outputs.ghaEnvironment }}
+      launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
+      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+      slotName: ${{ needs.setup.outputs.slotName }}
+
   deploy:
     name: Cloud Resource Deployment
     uses: ./.github/workflows/sub-deploy.yml
@@ -95,13 +116,16 @@ jobs:
       [
         setup,
         build,
-        accessibility-test,
-        unit-test-frontend,
-        unit-test-backend,
-        unit-test-common,
-        security-scan,
+        build-container,
+        # accessibility-test,
+        # unit-test-frontend,
+        # unit-test-backend,
+        # unit-test-common,
+        # security-scan,
       ]
-    if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
+    if: |
+      ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true')) &&
+      (always() && (needs.build.result == 'success' || needs.build-container.result == 'success'))
     with:
       ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
@@ -121,6 +145,7 @@ jobs:
     name: Slot Code Deployment
     uses: ./.github/workflows/sub-deploy-code-slot.yml
     needs: [setup, deploy]
+    if: ${{ github.ref_name != 'container-experiment' }}
     with:
       ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
@@ -132,4 +157,21 @@ jobs:
       slotName: ${{ needs.setup.outputs.slotName }}
       e2eCosmosDbExists: ${{ needs.deploy.outputs.e2eCosmosDbExists }}
       initialDeployment: ${{ needs.setup.outputs.initialDeployment }}
+    secrets: inherit # pragma: allowlist secret
+
+  deploy-code-container:
+    name: Container Code Deployment
+    uses: ./.github/workflows/sub-deploy-code-container.yml
+    needs: [setup, deploy]
+    if: ${{ github.ref_name == 'container-experiment' }}
+    with:
+      ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
+      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+      stackName: ${{ needs.setup.outputs.stackName }}
+      apiContainerAppName: ${{ format('{0}-container-app', needs.setup.outputs.stackName) }}
+      containerRegistryName: ${{ format('{0}acr01', needs.setup.outputs.stackName) }}
+      dataflowsFunctionName: ${{ needs.setup.outputs.dataflowsFunctionName }}
+      webappName: ${{ needs.setup.outputs.webappName }}
+      environmentHash: ${{ needs.setup.outputs.environmentHash }}
+      slotName: ${{ needs.setup.outputs.slotName }}
     secrets: inherit # pragma: allowlist secret

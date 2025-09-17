@@ -6,14 +6,31 @@ param createAlerts bool = false
 param actionGroupName string = ''
 param actionGroupResourceGroupName string = ''
 
-resource applicationInsights 'Microsoft.Insights/components@2020-02-02' = if (createApplicationInsights) {
-  name: 'appi-${containerAppName}'
-  location: location
-  kind: 'web'
-  properties: {
-    Application_Type: 'web'
-    WorkspaceResourceId: analyticsWorkspaceId
+resource containerApp 'Microsoft.App/containerApps@2024-03-01' existing = {
+  name: containerAppName
+}
+
+module appInsights '../app-insights/app-insights.bicep' = {
+  name: '${containerAppName}-application-insights-module'
+  params: {
+    location: location
+    kind: 'web'
+    appInsightsName: 'appi-${containerAppName}'
+    applicationType: 'web'
+    workspaceResourceId: analyticsWorkspaceId
   }
+}
+
+module diagnosticSettings '../app-insights/diagnostics-settings-container.bicep' = if (createApplicationInsights) {
+  name: '${containerAppName}-diagnostic-settings-module'
+  params: {
+    containerAppName: containerAppName
+    workspaceResourceId: analyticsWorkspaceId
+  }
+  dependsOn: [
+    appInsights
+    containerApp
+  ]
 }
 
 // Create alerts for the container app if requested
@@ -22,10 +39,10 @@ module containerAppAlerts '../monitoring-alerts/container-app-alerts.bicep' = if
   scope: resourceGroup(actionGroupResourceGroupName)
   params: {
     containerAppName: containerAppName
-    applicationInsightsName: createApplicationInsights ? applicationInsights.name : ''
+    applicationInsightsName: 'appi-${containerAppName}' // Use the same name as defined in appInsights module
     actionGroupName: actionGroupName
   }
 }
 
-output connectionString string = createApplicationInsights ? applicationInsights.properties.ConnectionString : ''
-output instrumentationKey string = createApplicationInsights ? applicationInsights.properties.InstrumentationKey : ''
+output connectionString string = appInsights.outputs.connectionString
+output instrumentationKey string = appInsights.outputs.instrumentationKey

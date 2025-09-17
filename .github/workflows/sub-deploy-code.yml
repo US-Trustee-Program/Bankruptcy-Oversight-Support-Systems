@@ -57,37 +57,37 @@ jobs:
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ inputs.webappName }}
 
-  deploy-api:
-    runs-on: ubuntu-latest
-    environment: ${{ inputs.ghaEnvironment }}
-    steps:
-      - uses: actions/checkout@main
+  # deploy-api:
+  #   runs-on: ubuntu-latest
+  #   environment: ${{ inputs.ghaEnvironment }}
+  #   steps:
+  #     - uses: actions/checkout@main
 
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v4.1.7
-        with:
-          name: ${{ inputs.apiFunctionName }}-build
+  #     - name: Download artifact from build job
+  #       uses: actions/download-artifact@v4.1.7
+  #       with:
+  #         name: ${{ inputs.apiFunctionName }}-build
 
-      - uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-          environment: ${{ vars.AZURE_ENVIRONMENT }}
+  #     - uses: azure/login@v2
+  #       with:
+  #         creds: ${{ secrets.AZURE_CREDENTIALS }}
+  #         environment: ${{ vars.AZURE_ENVIRONMENT }}
 
-      - uses: cloudposse/github-action-secret-outputs@main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ inputs.azResourceGrpAppEncrypted }}
+  #     - uses: cloudposse/github-action-secret-outputs@main
+  #       id: rgApp
+  #       with:
+  #         secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+  #         op: decode
+  #         in: ${{ inputs.azResourceGrpAppEncrypted }}
 
-      - name: Deploy Azure Functions API
-        id: deploy-backend-api-step
-        run: |
-          sleep 30 &&
-          ./ops/scripts/pipeline/az-func-deploy.sh \
-          -g ${{ steps.rgApp.outputs.out }} \
-          -n ${{ inputs.apiFunctionName }} \
-          --src ./${{ inputs.apiFunctionName }}.zip
+  #     - name: Deploy Azure Functions API
+  #       id: deploy-backend-api-step
+  #       run: |
+  #         sleep 30 &&
+  #         ./ops/scripts/pipeline/az-func-deploy.sh \
+  #         -g ${{ steps.rgApp.outputs.out }} \
+  #         -n ${{ inputs.apiFunctionName }} \
+  #         --src ./${{ inputs.apiFunctionName }}.zip
 
   deploy-dataflows-app:
     runs-on: ubuntu-latest
@@ -122,7 +122,8 @@ jobs:
           --src ./${{ inputs.dataflowsFunctionName }}.zip
 
   endpoint-test-application: # TODO: healthcheck/endpoint test on new dataflows function app?
-    needs: [deploy-webapp, deploy-api, deploy-dataflows-app]
+    # needs: [deploy-webapp, deploy-api, deploy-dataflows-app]
+    needs: [deploy-webapp, deploy-dataflows-app]
     uses: ./.github/workflows/reusable-endpoint-test.yml
     with:
       stackName: ${{ inputs.stackName }}
@@ -157,4 +158,3 @@ jobs:
       - name: Enable production slot access
         run: |
           az webapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.webappName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
-          az functionapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.apiFunctionName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true

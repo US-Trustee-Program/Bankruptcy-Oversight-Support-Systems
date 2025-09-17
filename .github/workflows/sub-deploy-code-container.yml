@@ -27,6 +27,9 @@ on:
       azResourceGrpAppEncrypted:
         required: true
         type: string
+      slotName:
+        required: true
+        type: string
 
 jobs:
   deploy-webapp:
