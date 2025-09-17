@@ -489,6 +489,111 @@ describe('TrusteesMongoRepository', () => {
     });
   });
 
+  describe('listHistory', () => {
+    test('should retrieve history records for a trustee successfully', async () => {
+      const trusteeId = 'trustee-123';
+      const mockHistoryRecords = [
+        {
+          id: trusteeId,
+          documentType: 'AUDIT_NAME',
+          before: 'John Doe',
+          after: 'John Smith',
+          createdOn: '2025-09-17T15:12:00Z',
+          createdBy: mockUser,
+          updatedOn: '2025-09-17T15:12:00Z',
+          updatedBy: mockUser,
+        },
+        {
+          id: trusteeId,
+          documentType: 'AUDIT_STATUS',
+          before: 'active',
+          after: 'inactive',
+          createdOn: '2025-09-17T15:15:00Z',
+          createdBy: mockUser,
+          updatedOn: '2025-09-17T15:15:00Z',
+          updatedBy: mockUser,
+        },
+      ];
+
+      const mockAdapter = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue(mockHistoryRecords);
+
+      const result = await repository.listHistory(trusteeId);
+
+      expect(mockAdapter).toHaveBeenCalledWith({
+        conjunction: 'AND',
+        values: [
+          {
+            condition: 'REGEX',
+            leftOperand: { name: 'documentType' },
+            rightOperand: '^AUDIT_',
+          },
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'id' },
+            rightOperand: trusteeId,
+          },
+        ],
+      });
+      expect(result).toEqual(mockHistoryRecords);
+      expect(result).toHaveLength(2);
+    });
+
+    test('should return empty array when no history exists for the trustee', async () => {
+      const trusteeId = 'trustee-no-history';
+      const mockAdapter = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue([]);
+
+      const result = await repository.listHistory(trusteeId);
+
+      expect(mockAdapter).toHaveBeenCalledWith({
+        conjunction: 'AND',
+        values: [
+          {
+            condition: 'REGEX',
+            leftOperand: { name: 'documentType' },
+            rightOperand: '^AUDIT_',
+          },
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'id' },
+            rightOperand: trusteeId,
+          },
+        ],
+      });
+      expect(result).toEqual([]);
+      expect(result).toHaveLength(0);
+    });
+
+    test('should handle database errors when retrieving history', async () => {
+      const trusteeId = 'trustee-123';
+      const error = new Error('Database connection failed');
+      const mockAdapter = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockRejectedValue(error);
+
+      await expect(repository.listHistory(trusteeId)).rejects.toThrow();
+
+      expect(mockAdapter).toHaveBeenCalledWith({
+        conjunction: 'AND',
+        values: [
+          {
+            condition: 'REGEX',
+            leftOperand: { name: 'documentType' },
+            rightOperand: '^AUDIT_',
+          },
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'id' },
+            rightOperand: trusteeId,
+          },
+        ],
+      });
+    });
+  });
+
   describe('singleton pattern', () => {
     test('should return same instance when called multiple times', () => {
       const instance1 = TrusteesMongoRepository.getInstance(context);

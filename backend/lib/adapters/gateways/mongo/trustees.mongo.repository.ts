@@ -93,6 +93,22 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
     }
   }
 
+  async listHistory(id: string): Promise<TrusteeHistory[]> {
+    const doc = using<TrusteeHistory>();
+    try {
+      const query = and(doc('documentType').regex('^AUDIT_'), doc('id').equals(id));
+      const adapter = this.getAdapter<TrusteeHistory>();
+      return await adapter.find(query);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          message: `Failed to get trustee history for ${id}.`,
+          module: MODULE_NAME,
+        },
+      });
+    }
+  }
+
   async read(id: string): Promise<Trustee> {
     try {
       const doc = using<TrusteeDocument>();

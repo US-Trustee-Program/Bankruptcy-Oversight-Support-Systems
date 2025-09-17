@@ -21,6 +21,7 @@ import { Address, ContactInformation, PhoneNumber } from '../../../../common/src
 import {
   Trustee,
   TRUSTEE_STATUS_VALUES,
+  TrusteeHistory,
   TrusteeInput,
   TrusteeStatus,
 } from '../../../../common/src/cams/trustees';
@@ -99,6 +100,22 @@ export class TrusteesUseCase {
 
       context.logger.info(MODULE_NAME, `Retrieved ${trustees.length} trustees`);
       return trustees;
+    } catch (originalError) {
+      const errorMessage = `Failed to retrieve trustees list.`;
+      context.logger.error(MODULE_NAME, errorMessage, originalError);
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  async listHistory(context: ApplicationContext, trusteeId: string): Promise<TrusteeHistory[]> {
+    try {
+      const history = await this.trusteesRepository.listHistory(trusteeId);
+
+      context.logger.info(
+        MODULE_NAME,
+        `Retrieved ${history.length} trustee histories for trustee ${trusteeId}`,
+      );
+      return history;
     } catch (originalError) {
       const errorMessage = `Failed to retrieve trustees list.`;
       context.logger.error(MODULE_NAME, errorMessage, originalError);
