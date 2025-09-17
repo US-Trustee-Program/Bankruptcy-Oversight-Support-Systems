@@ -19,7 +19,7 @@ export class TrusteeHistoryController implements CamsController {
   ): Promise<CamsHttpResponseInit<TrusteeHistory[]>> {
     try {
       const { trusteeId } = context.request.params;
-      const history = await this.useCase.listHistory(context, trusteeId);
+      const history = await this.useCase.listTrusteeHistory(context, trusteeId);
       return httpSuccess({
         body: {
           meta: {

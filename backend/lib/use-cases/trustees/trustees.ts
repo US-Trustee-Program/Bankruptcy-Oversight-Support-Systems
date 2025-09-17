@@ -63,7 +63,7 @@ export class TrusteesUseCase {
         userReference,
       );
 
-      await this.trusteesRepository.createHistory(
+      await this.trusteesRepository.createTrusteeHistory(
         createAuditRecord(
           {
             documentType: 'AUDIT_NAME',
@@ -75,7 +75,7 @@ export class TrusteesUseCase {
         ),
       );
 
-      await this.trusteesRepository.createHistory(
+      await this.trusteesRepository.createTrusteeHistory(
         createAuditRecord(
           {
             documentType: 'AUDIT_PUBLIC_CONTACT',
@@ -107,9 +107,12 @@ export class TrusteesUseCase {
     }
   }
 
-  async listHistory(context: ApplicationContext, trusteeId: string): Promise<TrusteeHistory[]> {
+  async listTrusteeHistory(
+    context: ApplicationContext,
+    trusteeId: string,
+  ): Promise<TrusteeHistory[]> {
     try {
-      const history = await this.trusteesRepository.listHistory(trusteeId);
+      const history = await this.trusteesRepository.listTrusteeHistory(trusteeId);
 
       context.logger.info(
         MODULE_NAME,
@@ -159,7 +162,7 @@ export class TrusteesUseCase {
       );
 
       if (existingTrustee.name !== updatedTrustee.name) {
-        await this.trusteesRepository.createHistory(
+        await this.trusteesRepository.createTrusteeHistory(
           createAuditRecord(
             {
               documentType: 'AUDIT_NAME',
@@ -173,7 +176,7 @@ export class TrusteesUseCase {
       }
 
       if (!deepEqual(existingTrustee.public, updatedTrustee.public)) {
-        await this.trusteesRepository.createHistory(
+        await this.trusteesRepository.createTrusteeHistory(
           createAuditRecord(
             {
               documentType: 'AUDIT_PUBLIC_CONTACT',
@@ -187,7 +190,7 @@ export class TrusteesUseCase {
       }
 
       if (!deepEqual(existingTrustee.internal, updatedTrustee.internal)) {
-        await this.trusteesRepository.createHistory(
+        await this.trusteesRepository.createTrusteeHistory(
           createAuditRecord(
             {
               documentType: 'AUDIT_INTERNAL_CONTACT',

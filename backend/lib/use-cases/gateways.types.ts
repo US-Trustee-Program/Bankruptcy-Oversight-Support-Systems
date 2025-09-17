@@ -200,8 +200,8 @@ export interface OfficeAssigneesRepository
 
 export interface TrusteesRepository extends Reads<Trustee>, Releasable {
   createTrustee(input: TrusteeInput, userRef: CamsUserReference): Promise<Trustee>;
-  createHistory(history: TrusteeHistory): Promise<void>;
-  listHistory(id: string): Promise<TrusteeHistory[]>;
+  createTrusteeHistory(history: TrusteeHistory): Promise<void>;
+  listTrusteeHistory(id: string): Promise<TrusteeHistory[]>;
   listTrustees(): Promise<Trustee[]>;
   updateTrustee(
     id: string,

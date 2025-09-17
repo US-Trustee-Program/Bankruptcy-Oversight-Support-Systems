@@ -461,7 +461,7 @@ describe('TrusteesMongoRepository', () => {
         .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
         .mockResolvedValue(undefined);
 
-      await repository.createHistory(mockHistory);
+      await repository.createTrusteeHistory(mockHistory);
 
       expect(mockAdapter).toHaveBeenCalledWith(mockHistory);
     });
@@ -483,7 +483,7 @@ describe('TrusteesMongoRepository', () => {
         .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
         .mockRejectedValue(error);
 
-      await expect(repository.createHistory(mockHistory)).rejects.toThrow();
+      await expect(repository.createTrusteeHistory(mockHistory)).rejects.toThrow();
 
       expect(mockAdapter).toHaveBeenCalledWith(mockHistory);
     });
@@ -519,7 +519,7 @@ describe('TrusteesMongoRepository', () => {
         .spyOn(MongoCollectionAdapter.prototype, 'find')
         .mockResolvedValue(mockHistoryRecords);
 
-      const result = await repository.listHistory(trusteeId);
+      const result = await repository.listTrusteeHistory(trusteeId);
 
       expect(mockAdapter).toHaveBeenCalledWith({
         conjunction: 'AND',
@@ -546,7 +546,7 @@ describe('TrusteesMongoRepository', () => {
         .spyOn(MongoCollectionAdapter.prototype, 'find')
         .mockResolvedValue([]);
 
-      const result = await repository.listHistory(trusteeId);
+      const result = await repository.listTrusteeHistory(trusteeId);
 
       expect(mockAdapter).toHaveBeenCalledWith({
         conjunction: 'AND',
@@ -574,7 +574,7 @@ describe('TrusteesMongoRepository', () => {
         .spyOn(MongoCollectionAdapter.prototype, 'find')
         .mockRejectedValue(error);
 
-      await expect(repository.listHistory(trusteeId)).rejects.toThrow();
+      await expect(repository.listTrusteeHistory(trusteeId)).rejects.toThrow();
 
       expect(mockAdapter).toHaveBeenCalledWith({
         conjunction: 'AND',

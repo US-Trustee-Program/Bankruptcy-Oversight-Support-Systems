@@ -1,4 +1,3 @@
-import { TRUSTEE_HISTORY } from '../../../lib/testing/mock-data/trustee-history.mock';
 import {
   NORMAL_TRUSTEE_ID,
   NOT_FOUND_ERROR_TRUSTEE_ID,
@@ -17,6 +16,8 @@ import {
 } from '../../azure/testing-helpers';
 import { TrusteeHistory } from '../../../../common/src/cams/trustees';
 
+const TRUSTEE_HISTORY = MockData.getTrusteeHistory();
+
 describe('Trustee History Function Tests', () => {
   const defaultRequestProps: Partial<CamsHttpRequest> = {
     method: 'GET',
@@ -34,10 +35,9 @@ describe('Trustee History Function Tests', () => {
   });
 
   test('Should return trustee history for an existing trustee ID', async () => {
-    const trusteeId = NORMAL_TRUSTEE_ID;
     const requestOverride: Partial<CamsHttpRequest> = {
       params: {
-        id: trusteeId,
+        id: NORMAL_TRUSTEE_ID,
       },
     };
     const request = createMockAzureFunctionRequest({
