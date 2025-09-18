@@ -4,12 +4,13 @@ import { useEffect, useState } from 'react';
 import useApi2 from '@/lib/hooks/UseApi2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { Trustee } from '@common/cams/trustees';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, Routes, Route } from 'react-router-dom';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { TrusteeFormState } from './TrusteeForm';
 import TrusteeDetailHeader from './TrusteeDetailHeader';
-import TrusteeDetailProfile from './TrusteeDetailProfile';
+import TrusteeDetailProfile from './panels/TrusteeDetailProfile';
+import TrusteeDetailAuditHistory from './panels/TrusteeDetailAuditHistory';
 import TrusteeDetailNavigation, { mapTrusteeDetailNavState } from './TrusteeDetailNavigation';
 
 export default function TrusteeDetailScreen() {
@@ -93,12 +94,23 @@ export default function TrusteeDetailScreen() {
                   initiallySelectedNavLink={navState}
                 />
               </div>
-              <TrusteeDetailProfile
-                trustee={trustee}
-                districtLabels={districtLabels}
-                onEditPublicProfile={openEditPublicProfile}
-                onEditInternalProfile={openEditInternalProfile}
-              />
+              <Routes>
+                <Route
+                  path="/"
+                  element={
+                    <TrusteeDetailProfile
+                      trustee={trustee}
+                      districtLabels={districtLabels}
+                      onEditPublicProfile={openEditPublicProfile}
+                      onEditInternalProfile={openEditInternalProfile}
+                    />
+                  }
+                />
+                <Route
+                  path="/audit-history"
+                  element={<TrusteeDetailAuditHistory trusteeId={trusteeId || ''} />}
+                />
+              </Routes>
             </div>
           </>
         )}
