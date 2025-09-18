@@ -78,6 +78,7 @@ export default function TrusteeDetailAuditHistory(props: TrusteeDetailAuditHisto
             contact={history.after}
             className="trustee-audit-history__address-after"
             testIdPrefix={`new-contact-${idx}`}
+            emailAsLink={false}
           />
         </td>
         <td data-testid={`changed-by-${idx}`}>
