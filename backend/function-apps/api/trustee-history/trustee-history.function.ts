@@ -36,5 +36,5 @@ app.http('trustee-history', {
   methods: ['GET'],
   authLevel: 'anonymous',
   handler,
-  route: 'trustees/{id?}/history',
+  route: 'trustees/{trusteeId?}/history',
 });
