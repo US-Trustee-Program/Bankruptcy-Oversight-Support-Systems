@@ -36,20 +36,26 @@ export default function TrusteeDetailProfile({
             </div>
             <div className="trustee-name">{trustee.name}</div>
             <div>
-              {trustee.public?.address && (
-                <>
-                  <div data-testid="trustee-street-address">{trustee.public.address.address1}</div>
-                  <div data-testid="trustee-street-address-line-2">
-                    {trustee.public.address.address2}
-                  </div>
-                  <div data-testid="trustee-street-address-line-3">
-                    {trustee.public.address.address3}
-                  </div>
-                  <span data-testid="trustee-city">{trustee.public.address.city}</span>
-                  <span data-testid="trustee-state">, {trustee.public.address.state}</span>
-                  <span data-testid="trustee-zip-code"> {trustee.public.address.zipCode}</span>
-                </>
-              )}
+              {trustee.public?.address &&
+                (trustee.public.address.address1 ||
+                  trustee.public.address.city ||
+                  trustee.public.address.state ||
+                  trustee.public.address.zipCode) && (
+                  <>
+                    <div data-testid="trustee-street-address">
+                      {trustee.public.address.address1}
+                    </div>
+                    <div data-testid="trustee-street-address-line-2">
+                      {trustee.public.address.address2}
+                    </div>
+                    <div data-testid="trustee-street-address-line-3">
+                      {trustee.public.address.address3}
+                    </div>
+                    <span data-testid="trustee-city">{trustee.public.address.city}</span>
+                    <span data-testid="trustee-state">, {trustee.public.address.state}</span>
+                    <span data-testid="trustee-zip-code"> {trustee.public.address.zipCode}</span>
+                  </>
+                )}
             </div>
             {trustee.public?.phone && (
               <div data-testid="trustee-phone-number">
