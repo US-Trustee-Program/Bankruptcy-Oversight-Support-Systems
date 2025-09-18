@@ -105,8 +105,10 @@ describe('TrusteeDetailProfile', () => {
     expect(screen.getByTestId('trustee-phone-number')).toHaveTextContent('555-123-4567 x1234');
 
     // Email
-    const emailElements = screen.getAllByTestId('trustee-email');
-    expect(emailElements).toHaveLength(2); // Both public and internal
+    const publicEmailElement = screen.getByTestId('trustee-email');
+    expect(publicEmailElement).toBeInTheDocument();
+    const internalEmailElement = screen.getByTestId('trustee-internal-email');
+    expect(internalEmailElement).toBeInTheDocument();
     const emailLink = screen.getByRole('link', { name: /john.doe.public@example.com/ });
     expect(emailLink).toHaveAttribute('href', 'mailto:john.doe.public@example.com');
   });

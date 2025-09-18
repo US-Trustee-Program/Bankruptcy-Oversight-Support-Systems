@@ -227,7 +227,7 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
 
     test('should display trustee phone number', () => {
       renderWithProps();
-      const phoneElement = document.querySelector('.trustee-phone-number');
+      const phoneElement = screen.getByTestId('case-detail-trustee-phone-number');
       expect(phoneElement).toBeInTheDocument();
       expect(phoneElement?.textContent).toEqual(TEST_TRUSTEE.legacy?.phone);
     });
@@ -235,13 +235,19 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
     test('should display all trustee address fields', () => {
       renderWithProps();
 
-      const addressElements = document.querySelectorAll('.trustee-address');
-      expect(addressElements).toHaveLength(3);
-      expect(addressElements[0]?.textContent).toEqual(TEST_TRUSTEE.legacy?.address1);
-      expect(addressElements[1]?.textContent).toEqual(TEST_TRUSTEE.legacy?.address2);
-      expect(addressElements[2]?.textContent).toEqual(TEST_TRUSTEE.legacy?.address3);
+      const address1Element = screen.getByTestId('case-detail-trustee-address1');
+      const address2Element = screen.getByTestId('case-detail-trustee-address2');
+      const address3Element = screen.getByTestId('case-detail-trustee-address3');
 
-      const cityStateElement = document.querySelector('.trustee-city');
+      expect(address1Element).toBeInTheDocument();
+      expect(address2Element).toBeInTheDocument();
+      expect(address3Element).toBeInTheDocument();
+
+      expect(address1Element?.textContent).toEqual(TEST_TRUSTEE.legacy?.address1);
+      expect(address2Element?.textContent).toEqual(TEST_TRUSTEE.legacy?.address2);
+      expect(address3Element?.textContent).toEqual(TEST_TRUSTEE.legacy?.address3);
+
+      const cityStateElement = screen.getByTestId('case-detail-trustee-city-state-zip');
       expect(cityStateElement).toBeInTheDocument();
       expect(cityStateElement?.textContent).toEqual(TEST_TRUSTEE.legacy?.cityStateZipCountry);
     });
@@ -261,11 +267,14 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
       };
       renderWithProps({ caseDetail: caseDetailPartialAddress });
 
-      const addressElements = document.querySelectorAll('.trustee-address');
-      expect(addressElements).toHaveLength(3); // Elements still exist
-      expect(addressElements[0]?.textContent).toEqual(partialTrustee.legacy?.address1);
-      expect(addressElements[1]?.textContent).toEqual(''); // Empty for undefined address2
-      expect(addressElements[2]?.textContent).toEqual(''); // Empty for undefined address3
+      // Only address1 should be present since address2 and address3 are undefined
+      const address1Element = screen.getByTestId('case-detail-trustee-address1');
+      expect(address1Element).toBeInTheDocument();
+      expect(address1Element?.textContent).toEqual(partialTrustee.legacy?.address1);
+
+      // address2 and address3 should not be rendered when undefined
+      expect(screen.queryByTestId('case-detail-trustee-address2')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('case-detail-trustee-address3')).not.toBeInTheDocument();
     });
   });
 

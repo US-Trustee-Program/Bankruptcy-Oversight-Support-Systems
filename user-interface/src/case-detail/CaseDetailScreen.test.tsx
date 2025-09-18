@@ -217,7 +217,10 @@ describe('Case Detail screen tests', () => {
         ];
 
         properties.forEach((property) => {
-          const testId = `case-detail-debtor-${property}`;
+          let testId = `case-detail-debtor-${property}`;
+          if (property === 'cityStateZipCountry') {
+            testId = 'case-detail-debtor-city-state-zip';
+          }
           if (defaultTestCaseDetail.debtor[property]) {
             const element = screen.getByTestId(testId);
             expect(element.innerHTML).toEqual(defaultTestCaseDetail.debtor[property]);
@@ -302,7 +305,10 @@ describe('Case Detail screen tests', () => {
             'cityStateZipCountry',
           ];
           properties.forEach((property) => {
-            const testId = `case-detail-debtor-${property}`;
+            let testId = `case-detail-debtor-${property}`;
+            if (property === 'cityStateZipCountry') {
+              testId = 'case-detail-debtor-city-state-zip';
+            }
             if (testCaseDetail.debtor[property]) {
               const element = screen.getByTestId(testId);
               expect(element.innerHTML).toEqual(testCaseDetail.debtor[property]);
@@ -577,12 +583,12 @@ describe('Case Detail screen tests', () => {
           }
           if (expectedAttorney?.cityStateZipCountry) {
             const cityStateZipCountry = screen.queryByTestId(
-              'case-detail-debtor-counsel-cityStateZipCountry',
+              'case-detail-debtor-counsel-city-state-zip',
             );
             expect(cityStateZipCountry).toBeInTheDocument();
           }
           if (expectedAttorney?.phone) {
-            const phone = screen.queryByTestId('case-detail-debtor-counsel-phone');
+            const phone = screen.queryByTestId('case-detail-debtor-counsel-phone-number');
             expect(phone).toBeInTheDocument();
           }
           if (expectedAttorney?.email) {
