@@ -10,7 +10,7 @@ import {
   TrusteePublicContactHistory,
   TrusteeInternalContactHistory,
 } from '@common/cams/trustees';
-import { ContactInformation } from '@common/cams/contact';
+import FormattedAddress from '@/lib/components/cams/FormattedAddress';
 
 export interface TrusteeDetailAuditHistoryProps {
   trusteeId: string;
@@ -55,45 +55,6 @@ export default function TrusteeDetailAuditHistory(props: TrusteeDetailAuditHisto
     );
   }
 
-  function formatContactInformation(contact?: ContactInformation): string {
-    if (!contact) {
-      return '(none)';
-    }
-
-    const parts: string[] = [];
-
-    if (contact.email) {
-      parts.push(`Email: ${contact.email}`);
-    }
-
-    if (contact.phone?.number) {
-      const phone = contact.phone.extension
-        ? `${contact.phone.number} x${contact.phone.extension}`
-        : contact.phone.number;
-      parts.push(`Phone: ${phone}`);
-    }
-
-    if (contact.address) {
-      // Build city, state zipCode string only if at least one is present
-      const cityState = [contact.address.city, contact.address.state].filter(Boolean).join(', ');
-      const cityStateZip = [cityState, contact.address.zipCode].filter(Boolean).join(' ');
-
-      const address = [
-        contact.address.address1,
-        contact.address.address2,
-        contact.address.address3,
-        cityStateZip,
-      ]
-        .filter(Boolean)
-        .join(', ');
-      if (address) {
-        parts.push(`Address: ${address}`);
-      }
-    }
-
-    return parts.length > 0 ? parts.join('; ') : '(none)';
-  }
-
   function showTrusteeContactHistory(
     history: TrusteePublicContactHistory | TrusteeInternalContactHistory,
     idx: number,
@@ -104,8 +65,21 @@ export default function TrusteeDetailAuditHistory(props: TrusteeDetailAuditHisto
     return (
       <tr key={idx}>
         <td>{changeType}</td>
-        <td data-testid={`previous-contact-${idx}`}>{formatContactInformation(history.before)}</td>
-        <td data-testid={`new-contact-${idx}`}>{formatContactInformation(history.after)}</td>
+        <td data-testid={`previous-contact-${idx}`}>
+          <FormattedAddress
+            contact={history.before}
+            className="trustee-audit-history__address-before"
+            testIdPrefix={`previous-contact-${idx}`}
+            emailAsLink={false}
+          />
+        </td>
+        <td data-testid={`new-contact-${idx}`}>
+          <FormattedAddress
+            contact={history.after}
+            className="trustee-audit-history__address-after"
+            testIdPrefix={`new-contact-${idx}`}
+          />
+        </td>
         <td data-testid={`changed-by-${idx}`}>
           {history.updatedBy && <>{history.updatedBy.name}</>}
         </td>

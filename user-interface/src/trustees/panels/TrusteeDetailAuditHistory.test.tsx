@@ -4,6 +4,7 @@ import TrusteeDetailAuditHistory, {
   TrusteeDetailAuditHistoryProps,
 } from './TrusteeDetailAuditHistory';
 import {
+  TrusteeHistory,
   TrusteeNameHistory,
   TrusteePublicContactHistory,
   TrusteeInternalContactHistory,
@@ -189,12 +190,23 @@ describe('TrusteeDetailAuditHistory', () => {
 
     // Check public contact change row
     expect(screen.getByText('Public Contact')).toBeInTheDocument();
-    expect(screen.getByTestId('previous-contact-0')).toHaveTextContent(
-      'Email: old@example.com; Phone: 555-123-4567 x123; Address: 123 Old St, Old City, NY 12345',
+
+    // Check individual contact elements using CSS classes
+    const previousContact = screen.getByTestId('previous-contact-0');
+    const newContact = screen.getByTestId('new-contact-0');
+
+    expect(previousContact.querySelector('.address1')).toHaveTextContent('123 Old St');
+    expect(previousContact.querySelector('.city-state-zip')).toHaveTextContent(
+      'Old City, NY 12345',
     );
-    expect(screen.getByTestId('new-contact-0')).toHaveTextContent(
-      'Email: new@example.com; Phone: 555-987-6543 x456; Address: 456 New St, Suite 100, New City, CA 54321',
-    );
+    expect(previousContact.querySelector('.phone')).toHaveTextContent('555-123-4567 x123');
+    expect(previousContact.querySelector('.email')).toHaveTextContent('old@example.com');
+
+    expect(newContact.querySelector('.address1')).toHaveTextContent('456 New St');
+    expect(newContact.querySelector('.address2')).toHaveTextContent('Suite 100');
+    expect(newContact.querySelector('.city-state-zip')).toHaveTextContent('New City, CA 54321');
+    expect(newContact.querySelector('.phone')).toHaveTextContent('555-987-6543 x456');
+    expect(newContact.querySelector('.email')).toHaveTextContent('new@example.com');
     expect(screen.getByTestId('changed-by-0')).toHaveTextContent('SYSTEM');
     expect(screen.getByTestId('change-date-0')).toHaveTextContent('formatted-2024-01-16T11:00:00Z');
   });
@@ -212,7 +224,7 @@ describe('TrusteeDetailAuditHistory', () => {
     expect(screen.getByText('Internal Contact')).toBeInTheDocument();
     expect(screen.getByTestId('previous-contact-0')).toHaveTextContent('(none)');
     expect(screen.getByTestId('new-contact-0')).toHaveTextContent(
-      'Email: internal@example.com; Phone: 555-111-2222; Address: 789 Internal St, Internal City, TX 78901',
+      '789 Internal StInternal City, TX 78901555-111-2222internal@example.com',
     );
     expect(screen.getByTestId('changed-by-0')).toHaveTextContent('Jane Admin');
     expect(screen.getByTestId('change-date-0')).toHaveTextContent('formatted-2024-01-17T12:00:00Z');
@@ -235,7 +247,15 @@ describe('TrusteeDetailAuditHistory', () => {
 
     // Check that each row has the correct data (order depends on sorting)
     expect(screen.getByTestId('previous-name-2')).toHaveTextContent('John Smith');
-    expect(screen.getByTestId('previous-contact-1')).toHaveTextContent('Email: old@example.com');
+
+    // Check public contact elements using CSS classes
+    const previousContact1 = screen.getByTestId('previous-contact-1');
+    expect(previousContact1.querySelector('.address')).toHaveTextContent('123 Old St');
+    expect(previousContact1.querySelector('.city-state-zip')).toHaveTextContent(
+      'Old City, NY 12345',
+    );
+    expect(previousContact1.querySelector('.phone')).toHaveTextContent('555-123-4567 x123');
+    expect(previousContact1.querySelector('.email')).toHaveTextContent('old@example.com');
     expect(screen.getByTestId('previous-contact-0')).toHaveTextContent('(none)');
   });
 
@@ -261,16 +281,29 @@ describe('TrusteeDetailAuditHistory', () => {
       expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('previous-contact-0')).toHaveTextContent('Email: email@example.com');
-    expect(screen.getByTestId('new-contact-0')).toHaveTextContent('Phone: 555-123-4567');
+    // Check individual components of the contact information
+    const previousContact = screen.getByTestId('previous-contact-0');
+    const newContact = screen.getByTestId('new-contact-0');
+
+    // Previous contact should have email only
+    expect(previousContact.querySelector('.email')).toHaveTextContent('email@example.com');
+    expect(previousContact.querySelector('.phone')).not.toBeInTheDocument();
+    expect(previousContact.querySelector('.address1')).not.toBeInTheDocument();
+    expect(previousContact.querySelector('.city-state-zip')).not.toBeInTheDocument();
+
+    // New contact should have phone only
+    expect(newContact.querySelector('.phone')).toHaveTextContent('555-123-4567');
+    expect(newContact.querySelector('.email')).not.toBeInTheDocument();
+    expect(newContact.querySelector('.address1')).not.toBeInTheDocument();
+    expect(newContact.querySelector('.city-state-zip')).not.toBeInTheDocument();
   });
 
   test('should handle completely empty contact information', async () => {
     const contactHistoryEmpty: TrusteePublicContactHistory = {
       id: 'audit-5',
       documentType: 'AUDIT_PUBLIC_CONTACT',
-      before: createPartialContactInfo({}),
-      after: createPartialContactInfo({}),
+      before: undefined,
+      after: undefined,
       updatedOn: '2024-01-18T13:00:00Z',
       updatedBy: SYSTEM_USER_REFERENCE,
     };
@@ -352,8 +385,12 @@ describe('TrusteeDetailAuditHistory', () => {
       expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('previous-contact-0')).toHaveTextContent('Phone: 555-123-4567');
-    expect(screen.getByTestId('new-contact-0')).toHaveTextContent('Phone: 555-987-6543');
+    // Check individual phone elements using CSS classes
+    const previousContact = screen.getByTestId('previous-contact-0');
+    const newContact = screen.getByTestId('new-contact-0');
+
+    expect(previousContact.querySelector('.phone')).toHaveTextContent('555-123-4567');
+    expect(newContact.querySelector('.phone')).toHaveTextContent('555-987-6543');
   });
 
   test('should handle missing updatedBy field', async () => {
@@ -375,5 +412,379 @@ describe('TrusteeDetailAuditHistory', () => {
     });
 
     expect(screen.getByTestId('changed-by-0')).toHaveTextContent('');
+  });
+
+  test('should handle contact with only address1 and zipCode', async () => {
+    const contactHistoryPartialAddress: TrusteePublicContactHistory = {
+      id: 'audit-9',
+      documentType: 'AUDIT_PUBLIC_CONTACT',
+      before: createPartialContactInfo({
+        address: {
+          address1: '123 Main St',
+          city: '',
+          state: '',
+          zipCode: '12345',
+          countryCode: 'US',
+        },
+      }),
+      after: createPartialContactInfo({}),
+      updatedOn: '2024-01-19T10:00:00Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
+    };
+
+    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistoryPartialAddress] });
+
+    renderWithProps({});
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+    });
+
+    // Check individual address elements using CSS classes
+    const previousContact = screen.getByTestId('previous-contact-0');
+    const newContact = screen.getByTestId('new-contact-0');
+
+    expect(previousContact.querySelector('.address1')).toHaveTextContent('123 Main St');
+    expect(previousContact.querySelector('.city-state-zip')).toHaveTextContent('12345');
+
+    // New contact is empty (createPartialContactInfo({}) creates empty contact object)
+    expect(newContact.querySelector('.address1')).not.toBeInTheDocument();
+    expect(newContact.querySelector('.city-state-zip')).not.toBeInTheDocument();
+    expect(newContact.querySelector('.phone')).not.toBeInTheDocument();
+    expect(newContact.querySelector('.email')).not.toBeInTheDocument();
+  });
+
+  test('should handle contact with address2 and address3', async () => {
+    const contactHistoryWithAllAddressFields: TrusteePublicContactHistory = {
+      id: 'audit-10',
+      documentType: 'AUDIT_PUBLIC_CONTACT',
+      before: createPartialContactInfo({
+        address: {
+          address1: '123 Main St',
+          address2: 'Suite 200',
+          address3: 'Building A',
+          city: 'Test City',
+          state: 'TX',
+          zipCode: '78901',
+          countryCode: 'US',
+        },
+      }),
+      after: createPartialContactInfo({}),
+      updatedOn: '2024-01-19T11:00:00Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
+    };
+
+    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistoryWithAllAddressFields] });
+
+    renderWithProps({});
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+    });
+
+    // Check individual address elements using CSS classes
+    const previousContact = screen.getByTestId('previous-contact-0');
+
+    expect(previousContact.querySelector('.address1')).toHaveTextContent('123 Main St');
+    expect(previousContact.querySelector('.address2')).toHaveTextContent('Suite 200');
+    expect(previousContact.querySelector('.address3')).toHaveTextContent('Building A');
+    expect(previousContact.querySelector('.city-state-zip')).toHaveTextContent(
+      'Test City, TX 78901',
+    );
+  });
+
+  test('should handle contact with only city and state', async () => {
+    const contactHistoryCityState: TrusteePublicContactHistory = {
+      id: 'audit-11',
+      documentType: 'AUDIT_PUBLIC_CONTACT',
+      before: createPartialContactInfo({
+        address: {
+          address1: '',
+          city: 'Los Angeles',
+          state: 'CA',
+          zipCode: '',
+          countryCode: 'US',
+        },
+      }),
+      after: createPartialContactInfo({}),
+      updatedOn: '2024-01-19T12:00:00Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
+    };
+
+    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistoryCityState] });
+
+    renderWithProps({});
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+    });
+
+    // Check individual address elements using CSS classes
+    const previousContact = screen.getByTestId('previous-contact-0');
+
+    expect(previousContact.querySelector('.city-state-zip')).toHaveTextContent('Los Angeles, CA');
+  });
+
+  test('should handle contact with only state', async () => {
+    const contactHistoryStateOnly: TrusteePublicContactHistory = {
+      id: 'audit-12',
+      documentType: 'AUDIT_PUBLIC_CONTACT',
+      before: createPartialContactInfo({
+        address: {
+          address1: '',
+          city: '',
+          state: 'FL',
+          zipCode: '',
+          countryCode: 'US',
+        },
+      }),
+      after: createPartialContactInfo({}),
+      updatedOn: '2024-01-19T13:00:00Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
+    };
+
+    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistoryStateOnly] });
+
+    renderWithProps({});
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+    });
+
+    // Check individual address elements using CSS classes
+    const previousContact = screen.getByTestId('previous-contact-0');
+
+    expect(previousContact.querySelector('.city-state-zip')).toHaveTextContent('FL');
+  });
+
+  test('should handle contact with only city', async () => {
+    const contactHistoryCityOnly: TrusteePublicContactHistory = {
+      id: 'audit-13',
+      documentType: 'AUDIT_PUBLIC_CONTACT',
+      before: createPartialContactInfo({
+        address: {
+          address1: '',
+          city: 'Chicago',
+          state: '',
+          zipCode: '',
+          countryCode: 'US',
+        },
+      }),
+      after: createPartialContactInfo({}),
+      updatedOn: '2024-01-19T14:00:00Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
+    };
+
+    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistoryCityOnly] });
+
+    renderWithProps({});
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+    });
+
+    // Check individual address elements using CSS classes
+    const previousContact = screen.getByTestId('previous-contact-0');
+
+    expect(previousContact.querySelector('.city-state-zip')).toHaveTextContent('Chicago');
+  });
+
+  test('should handle contact with undefined address', async () => {
+    const contactHistoryUndefinedAddress: TrusteePublicContactHistory = {
+      id: 'audit-14',
+      documentType: 'AUDIT_PUBLIC_CONTACT',
+      before: {
+        email: 'test@example.com',
+        phone: { number: '555-123-4567' },
+      } as unknown as ContactInformation,
+      after: createPartialContactInfo({}),
+      updatedOn: '2024-01-19T15:00:00Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
+    };
+
+    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistoryUndefinedAddress] });
+
+    renderWithProps({});
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+    });
+
+    // Check individual contact elements using CSS classes
+    const previousContact = screen.getByTestId('previous-contact-0');
+
+    expect(previousContact.querySelector('.email')).toHaveTextContent('test@example.com');
+    expect(previousContact.querySelector('.phone')).toHaveTextContent('555-123-4567');
+    expect(previousContact.querySelector('.address')).toBeNull();
+  });
+
+  test('should handle contact with undefined phone', async () => {
+    const contactHistoryUndefinedPhone: TrusteePublicContactHistory = {
+      id: 'audit-15',
+      documentType: 'AUDIT_PUBLIC_CONTACT',
+      before: {
+        email: 'test@example.com',
+        phone: undefined,
+        address: {
+          address1: '123 Test St',
+          city: 'Test City',
+          state: 'TX',
+          zipCode: '12345',
+          countryCode: 'US',
+        },
+      } as ContactInformation,
+      after: createPartialContactInfo({}),
+      updatedOn: '2024-01-19T16:00:00Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
+    };
+
+    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistoryUndefinedPhone] });
+
+    renderWithProps({});
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+    });
+
+    // Check individual address elements using CSS classes
+    const previousContact = screen.getByTestId('previous-contact-0');
+
+    expect(previousContact.querySelector('.email')).toHaveTextContent('test@example.com');
+    expect(previousContact.querySelector('.address1')).toHaveTextContent('123 Test St');
+    expect(previousContact.querySelector('.city-state-zip')).toHaveTextContent(
+      'Test City, TX 12345',
+    );
+    expect(previousContact.querySelector('.phone')).toBeNull();
+  });
+
+  test('should handle contact with phone number but undefined extension', async () => {
+    const contactHistoryPhoneNoExtension: TrusteePublicContactHistory = {
+      id: 'audit-16',
+      documentType: 'AUDIT_PUBLIC_CONTACT',
+      before: createPartialContactInfo({
+        phone: { number: '555-999-8888', extension: undefined },
+      }),
+      after: createPartialContactInfo({}),
+      updatedOn: '2024-01-19T17:00:00Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
+    };
+
+    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistoryPhoneNoExtension] });
+
+    renderWithProps({});
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+    });
+
+    // Check individual phone elements using CSS classes
+    const previousContact = screen.getByTestId('previous-contact-0');
+
+    expect(previousContact.querySelector('.phone')).toHaveTextContent('555-999-8888');
+    expect(previousContact.querySelector('.phone')).not.toHaveTextContent('x');
+  });
+
+  test('should handle completely undefined contact information', async () => {
+    const contactHistoryUndefinedContact: TrusteePublicContactHistory = {
+      id: 'audit-17',
+      documentType: 'AUDIT_PUBLIC_CONTACT',
+      before: undefined,
+      after: undefined,
+      updatedOn: '2024-01-19T18:00:00Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
+    };
+
+    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistoryUndefinedContact] });
+
+    renderWithProps({});
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('previous-contact-0')).toHaveTextContent('(none)');
+    expect(screen.getByTestId('new-contact-0')).toHaveTextContent('(none)');
+  });
+
+  test('should handle empty string in name history', async () => {
+    const nameHistoryEmptyStrings: TrusteeNameHistory = {
+      id: 'audit-18',
+      documentType: 'AUDIT_NAME',
+      before: '',
+      after: '',
+      updatedOn: '2024-01-19T19:00:00Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
+    };
+
+    mockGetTrusteeHistory.mockResolvedValue({ data: [nameHistoryEmptyStrings] });
+
+    renderWithProps({});
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('previous-name-0')).toHaveTextContent('(none)');
+    expect(screen.getByTestId('new-name-0')).toHaveTextContent('(none)');
+  });
+
+  test('should handle API response with null data', async () => {
+    mockGetTrusteeHistory.mockResolvedValue(null);
+
+    renderWithProps({});
+
+    // The component should stay in loading state when response is null
+    // because it doesn't set loading to false in that case
+    expect(screen.getByTestId('loading-indicator')).toBeInTheDocument();
+
+    // Wait a bit to ensure the promise resolves and still shows loading
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(screen.getByTestId('loading-indicator')).toBeInTheDocument();
+  });
+
+  test('should handle component unmounting during API call', async () => {
+    let resolvePromise: ((value: { data: TrusteeHistory[] }) => void) | undefined;
+    const promise = new Promise<{ data: TrusteeHistory[] }>((resolve) => {
+      resolvePromise = resolve;
+    });
+
+    mockGetTrusteeHistory.mockReturnValue(promise);
+
+    const { unmount } = render(<TrusteeDetailAuditHistory trusteeId={mockTrusteeId} />);
+
+    // Unmount component before API resolves
+    unmount();
+
+    // Resolve the promise after unmounting
+    resolvePromise?.({ data: [mockNameHistory] });
+
+    // No assertion needed - just ensuring no memory leaks or errors
+  });
+
+  test('should render correct component structure with all elements', async () => {
+    mockGetTrusteeHistory.mockResolvedValue({ data: [mockNameHistory] });
+
+    renderWithProps({});
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+    });
+
+    // Verify the component structure
+    expect(screen.getByText('Change History')).toBeInTheDocument();
+    expect(screen.getByRole('table')).toBeInTheDocument();
+    expect(screen.getByRole('table')).toHaveClass('usa-table', 'usa-table--borderless');
+
+    // Verify table structure
+    const table = screen.getByTestId('trustee-history-table');
+    expect(table.querySelector('thead')).toBeInTheDocument();
+    expect(table.querySelector('tbody')).toBeInTheDocument();
+
+    // Verify all column headers are present
+    expect(screen.getByRole('columnheader', { name: 'Change' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Previous' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'New' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Changed by' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Date' })).toBeInTheDocument();
   });
 });

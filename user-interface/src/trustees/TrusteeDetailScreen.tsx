@@ -1,5 +1,6 @@
 import './TrusteeDetailScreen.scss';
 import '@/styles/record-detail.scss';
+import '@/styles/left-navigation-pane.scss';
 import { useEffect, useState } from 'react';
 import useApi2 from '@/lib/hooks/UseApi2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';

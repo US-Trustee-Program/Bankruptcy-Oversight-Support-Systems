@@ -1,9 +1,9 @@
 import { Trustee } from '@common/cams/trustees';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
-import Icon from '@/lib/components/uswds/Icon';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { formatChapterType } from '@/lib/utils/chapters';
+import FormattedAddress from '@/lib/components/cams/FormattedAddress';
 
 export interface TrusteeDetailProfileProps {
   trustee: Trustee;
@@ -35,42 +35,7 @@ export default function TrusteeDetailProfile({
               </Button>
             </div>
             <div className="trustee-name">{trustee.name}</div>
-            <div>
-              {trustee.public?.address &&
-                (trustee.public.address.address1 ||
-                  trustee.public.address.city ||
-                  trustee.public.address.state ||
-                  trustee.public.address.zipCode) && (
-                  <>
-                    <div data-testid="trustee-street-address">
-                      {trustee.public.address.address1}
-                    </div>
-                    <div data-testid="trustee-street-address-line-2">
-                      {trustee.public.address.address2}
-                    </div>
-                    <div data-testid="trustee-street-address-line-3">
-                      {trustee.public.address.address3}
-                    </div>
-                    <span data-testid="trustee-city">{trustee.public.address.city}</span>
-                    <span data-testid="trustee-state">, {trustee.public.address.state}</span>
-                    <span data-testid="trustee-zip-code"> {trustee.public.address.zipCode}</span>
-                  </>
-                )}
-            </div>
-            {trustee.public?.phone && (
-              <div data-testid="trustee-phone-number">
-                {trustee.public.phone.number}
-                {trustee.public.phone.extension ? ` x${trustee.public.phone.extension}` : ''}
-              </div>
-            )}
-            {trustee.public?.email && (
-              <div data-testid="trustee-email" aria-label="trustee email">
-                <a href={`mailto:${trustee.public.email}`}>
-                  {trustee.public.email}
-                  <Icon className="link-icon" name="mail_outline" />
-                </a>
-              </div>
-            )}
+            <FormattedAddress contact={trustee.public} testIdPrefix="trustee" />
             <div data-testid="trustee-districts" aria-label="districts">
               <ul>
                 {districtLabels.map((label, index) => (
@@ -108,46 +73,7 @@ export default function TrusteeDetailProfile({
             </div>
             {!trustee.internal && <div>No information added.</div>}
             {!!trustee.internal && (
-              <>
-                <div>
-                  {trustee.internal?.address && (
-                    <>
-                      <div data-testid="trustee-internal-street-address">
-                        {trustee.internal.address.address1}
-                      </div>
-                      <div data-testid="trustee-internal-street-address-two">
-                        {trustee.internal.address.address2}
-                      </div>
-                      <span data-testid="trustee-internal-city">
-                        {trustee.internal.address.city}
-                      </span>
-                      <span data-testid="trustee-internal-state">
-                        , {trustee.internal.address.state}
-                      </span>
-                      <span data-testid="trustee-internal-zip-code">
-                        {' '}
-                        {trustee.internal.address.zipCode}
-                      </span>
-                    </>
-                  )}
-                </div>
-                {trustee.internal?.phone && (
-                  <div data-testid="trustee-internal-phone-number">
-                    {trustee.internal.phone.number}
-                    {trustee.internal.phone.extension
-                      ? ` x${trustee.internal.phone.extension}`
-                      : ''}
-                  </div>
-                )}
-                {trustee.internal?.email && (
-                  <div data-testid="trustee-email" aria-label="trustee email">
-                    <a href={`mailto:${trustee.internal.email}`}>
-                      {trustee.internal.email}
-                      <Icon className="link-icon" name="mail_outline" />
-                    </a>
-                  </div>
-                )}
-              </>
+              <FormattedAddress contact={trustee.internal} testIdPrefix="trustee-internal" />
             )}
           </div>
         </div>
