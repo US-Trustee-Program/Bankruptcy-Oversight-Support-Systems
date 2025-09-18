@@ -86,33 +86,28 @@ export default function TrusteeDetailScreen() {
           districtLabels={districtLabels}
         />
         {!!trustee && !isLoading && (
-          <>
-            <div className="trustee-detail-screen-content-container">
-              <div className="left-navigation-pane-container">
-                <TrusteeDetailNavigation
-                  trusteeId={trusteeId}
-                  initiallySelectedNavLink={navState}
-                />
-              </div>
-              <Routes>
-                <Route
-                  path="/"
-                  element={
-                    <TrusteeDetailProfile
-                      trustee={trustee}
-                      districtLabels={districtLabels}
-                      onEditPublicProfile={openEditPublicProfile}
-                      onEditInternalProfile={openEditInternalProfile}
-                    />
-                  }
-                />
-                <Route
-                  path="/audit-history"
-                  element={<TrusteeDetailAuditHistory trusteeId={trusteeId || ''} />}
-                />
-              </Routes>
+          <div className="trustee-detail-screen-content-container">
+            <div className="left-navigation-pane-container">
+              <TrusteeDetailNavigation trusteeId={trusteeId} initiallySelectedNavLink={navState} />
             </div>
-          </>
+            <Routes>
+              <Route
+                path="/"
+                element={
+                  <TrusteeDetailProfile
+                    trustee={trustee}
+                    districtLabels={districtLabels}
+                    onEditPublicProfile={openEditPublicProfile}
+                    onEditInternalProfile={openEditInternalProfile}
+                  />
+                }
+              />
+              <Route
+                path="/audit-history"
+                element={<TrusteeDetailAuditHistory trusteeId={trusteeId || ''} />}
+              />
+            </Routes>
+          </div>
         )}
       </div>
     </MainContent>
