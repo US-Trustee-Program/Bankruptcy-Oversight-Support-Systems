@@ -19,10 +19,12 @@ import {
   OrdersRepository,
   RuntimeState,
   RuntimeStateRepository,
+  TrusteesRepository,
   UpdateResult,
   UserSessionCacheRepository,
   UsersRepository,
 } from '../../use-cases/gateways.types';
+import { TrusteeHistory } from '../../../../common/src/cams/trustees';
 
 export class MockMongoRepository
   implements
@@ -34,7 +36,8 @@ export class MockMongoRepository
     RuntimeStateRepository,
     UsersRepository,
     UserSessionCacheRepository,
-    OfficeAssigneesRepository
+    OfficeAssigneesRepository,
+    TrusteesRepository
 {
   deleteSyncedCases(): Promise<void> {
     throw new Error('Method not implemented.');
@@ -209,6 +212,14 @@ export class MockMongoRepository
   }
 
   listTrustees(): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  createTrusteeHistory(_ignore: TrusteeHistory): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
+  listTrusteeHistory(_ignore: string): Promise<TrusteeHistory[]> {
     throw new Error('Method not implemented.');
   }
 }

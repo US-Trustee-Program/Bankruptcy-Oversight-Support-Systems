@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import TrusteesList from './TrusteesList';
 import Api2 from '@/lib/models/api2';
-import { Trustee } from '@common/cams/trustees';
+import { Trustee, ChapterType } from '@common/cams/trustees';
 import { ResponseBody } from '@common/api/response';
 import { vi } from 'vitest';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -78,7 +78,6 @@ describe('TrusteesList Component', () => {
     expect(screen.getByText('Jane Smith')).toBeInTheDocument();
     expect(screen.getByText('NY')).toBeInTheDocument();
     expect(screen.getByText('CA')).toBeInTheDocument();
-    // Chapter types are now in separate spans, so we need to check for text content that includes comma
     expect(
       screen.getByText((_content, element) => {
         return element?.textContent === '11, ' || false;
@@ -121,7 +120,6 @@ describe('TrusteesList Component', () => {
       expect(screen.getByText('Active')).toBeInTheDocument();
     });
 
-    // Check that status text is displayed correctly
     expect(screen.getByText('Active')).toBeInTheDocument();
     expect(screen.getByText('Not Active')).toBeInTheDocument();
   });
@@ -186,13 +184,13 @@ describe('TrusteesList Component', () => {
 
     expect(screen.getByText('No districts assigned')).toBeInTheDocument();
     expect(screen.getByText('No chapters assigned')).toBeInTheDocument();
-    expect(screen.getByText('Active')).toBeInTheDocument(); // Default status
+    expect(screen.getByText('Active')).toBeInTheDocument();
   });
 
   test('should handle API response with undefined data field', async () => {
-    const mockResponse = {
-      data: undefined, // Explicitly undefined to trigger || [] fallback
-    } as unknown as ResponseBody<Trustee[]>;
+    const mockResponse: ResponseBody<Trustee[]> = {
+      data: undefined as unknown as Trustee[],
+    };
 
     vi.spyOn(Api2, 'getTrustees').mockResolvedValue(mockResponse);
 
@@ -206,21 +204,22 @@ describe('TrusteesList Component', () => {
   });
 
   test('should handle trustees with unknown chapter types', async () => {
-    const trusteesWithUnknownChapters = [
+    const trusteesWithUnknownChapters: Trustee[] = [
       {
         id: 'trustee-unknown',
         name: 'Unknown Chapter Trustee',
-        address1: '789 Pine St',
-        cityStateZipCountry: 'Chicago, IL, 60601, US',
+        public: {
+          address: MockData.getAddress(),
+          phone: { number: '555-111-2222' },
+          email: 'unknown@example.com',
+        },
         districts: ['IL'],
-        chapters: ['unknown-chapter-type'], // This should trigger || chapter fallback
+        chapters: ['unknown-chapter-type' as ChapterType],
         status: 'active',
-        phone: '555-111-2222',
-        email: 'unknown@example.com',
         updatedOn: '2025-08-14T11:00:00Z',
         updatedBy: { id: 'user-3', name: 'Admin User 3' },
       },
-    ] as unknown as Trustee[];
+    ];
 
     const mockResponse: ResponseBody<Trustee[]> = {
       data: trusteesWithUnknownChapters,
@@ -234,7 +233,6 @@ describe('TrusteesList Component', () => {
       expect(screen.getByText('Unknown Chapter Trustee')).toBeInTheDocument();
     });
 
-    // Should display the original chapter value since it's not in CHAPTER_LABELS
     expect(screen.getByText('unknown-chapter-type')).toBeInTheDocument();
   });
 });
