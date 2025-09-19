@@ -14,7 +14,6 @@ import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import { TrusteeFormState } from './TrusteeForm';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import CommsLink from '@/lib/components/cams/CommsLink/CommsLink';
 
 export default function TrusteeDetailScreen() {
   const { trusteeId } = useParams();
@@ -279,17 +278,6 @@ export default function TrusteeDetailScreen() {
                           </a>
                         </div>
                       )}
-                      {/*This div is for demonstration purposes only and should be removed.*/}
-                      <div>
-                        <CommsLink contact={trustee.internal} mode="teams-chat" />
-                        <br />
-                        <CommsLink contact={trustee.internal} mode="teams-call" />
-                        <br />
-                        <CommsLink contact={trustee.internal} mode="phone-dialer" />
-                        <br />
-                        <CommsLink contact={trustee.internal} mode="email" />
-                        <br />
-                      </div>
                     </>
                   )}
                 </div>
