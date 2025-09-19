@@ -10,7 +10,7 @@ import {
   validateObject,
 } from '@common/cams/validation';
 
-const trusteeFormDataSpec: ValidationSpec<TrusteeFormData> = {
+export const trusteeFormDataSpec: Readonly<ValidationSpec<TrusteeFormData>> = {
   name: [V.minLength(1, 'Trustee name is required')],
   address1: [V.minLength(1, 'Address is required')],
   address2: [V.optional(V.maxLength(50))],
@@ -26,7 +26,11 @@ const trusteeFormDataSpec: ValidationSpec<TrusteeFormData> = {
 /**
  * Validates individual form fields with specific business rules
  */
-function validateField(field: keyof TrusteeFormData, value: string): string | null {
+function validateField(
+  field: keyof TrusteeFormData,
+  value: string,
+  spec: Partial<typeof trusteeFormDataSpec>,
+): string | null {
   // Convert to string and trim
   const stringValue = String(value);
   const trimmedValue = stringValue.trim();
@@ -35,7 +39,7 @@ function validateField(field: keyof TrusteeFormData, value: string): string | nu
     return null;
   }
 
-  const result = validateEach(trusteeFormDataSpec[field]!, trimmedValue);
+  const result = validateEach(spec[field]!, trimmedValue);
   return result.valid ? null : result.reasons!.join(' ');
 }
 
@@ -48,8 +52,12 @@ export function useTrusteeFormValidation(): TrusteeFormValidation {
   /**
    * Validates a single field and updates the field errors state
    */
-  const validateFieldAndUpdate = (field: keyof TrusteeFormData, value: string): string | null => {
-    const error = validateField(field, value);
+  const validateFieldAndUpdate = (
+    field: keyof TrusteeFormData,
+    value: string,
+    spec: Partial<typeof trusteeFormDataSpec>,
+  ): string | null => {
+    const error = validateField(field, value, spec);
 
     setFieldErrors((prevErrors) => {
       if (error) {
@@ -83,8 +91,11 @@ export function useTrusteeFormValidation(): TrusteeFormValidation {
   /**
    * Checks if form is both valid (no errors) and complete (all required fields filled)
    */
-  const isFormValidAndComplete = (formData: TrusteeFormData): boolean => {
-    const results = validateObject(trusteeFormDataSpec, formData);
+  const isFormValidAndComplete = (
+    formData: TrusteeFormData,
+    spec: Partial<typeof trusteeFormDataSpec>,
+  ): boolean => {
+    const results = validateObject(spec, formData);
     if (!results.valid && results.reasonMap) {
       const newFieldErrors = Object.fromEntries(
         Object.entries(flattenReasonMap(results.reasonMap)).map(([jsonPath, reasons]) => {

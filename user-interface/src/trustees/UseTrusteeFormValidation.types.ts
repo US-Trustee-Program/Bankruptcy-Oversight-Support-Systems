@@ -1,4 +1,5 @@
 import { ChapterType, TrusteeStatus } from '@common/cams/trustees';
+import { trusteeFormDataSpec } from './UseTrusteeFormValidation';
 
 export interface TrusteeFormData {
   name: string;
@@ -23,8 +24,15 @@ export interface ValidationError {
 export interface TrusteeFormValidation {
   fieldErrors: Record<string, string>;
   errors: ValidationError[];
-  validateFieldAndUpdate: (field: keyof TrusteeFormData, value: string) => string | null;
+  validateFieldAndUpdate: (
+    field: keyof TrusteeFormData,
+    value: string,
+    spec: Partial<typeof trusteeFormDataSpec>,
+  ) => string | null;
   clearErrors: () => void;
   clearFieldError: (field: string) => void;
-  isFormValidAndComplete: (formData: TrusteeFormData) => boolean;
+  isFormValidAndComplete: (
+    formData: TrusteeFormData,
+    spec: Partial<typeof trusteeFormDataSpec>,
+  ) => boolean;
 }
