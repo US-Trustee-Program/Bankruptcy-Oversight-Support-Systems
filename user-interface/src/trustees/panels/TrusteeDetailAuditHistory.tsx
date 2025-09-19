@@ -83,11 +83,7 @@ function RenderTrusteeHistory(props: Readonly<{ trusteeHistory: TrusteeHistory[]
         switch (history.documentType) {
           case 'AUDIT_NAME':
             return (
-              <ShowTrusteeNameHistory
-                key={window.crypto.randomUUID()}
-                history={history}
-                idx={idx}
-              />
+              <ShowTrusteeNameHistory key={`${history.id}-${idx}`} history={history} idx={idx} />
             );
           case 'AUDIT_PUBLIC_CONTACT':
           case 'AUDIT_INTERNAL_CONTACT':
