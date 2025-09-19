@@ -18,14 +18,14 @@ export function IconLabel(props: IconLabelProps) {
     <span className={`cams-icon-label ${props.className ?? ''}`}>
       {location === 'left' && (
         <>
-          <Icon name={props.icon} />
+          <Icon className={props.className ?? undefined} name={props.icon} />
           <span>{props.label}</span>
         </>
       )}
       {location === 'right' && (
         <>
           <span>{props.label}</span>
-          <Icon name={props.icon} />
+          <Icon className={props.className ?? undefined} name={props.icon} />
         </>
       )}
     </span>

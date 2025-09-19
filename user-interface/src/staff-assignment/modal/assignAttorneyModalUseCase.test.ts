@@ -165,7 +165,7 @@ describe('assignAttorneyModalUseCase tests', () => {
   });
 
   test('submitValues should throw an error when no case is supplied.', async () => {
-    expect(useCase.submitValues(() => {})).rejects.toThrow(
+    await expect(useCase.submitValues(() => {})).rejects.toThrow(
       'No bankruptcy case was supplied. Can not set attorneys without a case.',
     );
   });

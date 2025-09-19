@@ -766,7 +766,13 @@ describe('TrusteeForm', () => {
       await userEvent.click(screen.getByText('7 - Non-Panel'));
       await userEvent.click(screen.getByText('11 - Subchapter V'));
 
-      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+      // Wait for submit button to be enabled
+      const submitButton = screen.getByRole('button', { name: /save/i });
+      await waitFor(() => {
+        expect(submitButton).not.toBeDisabled();
+      });
+
+      await userEvent.click(submitButton);
 
       await waitFor(() => {
         expect(mockPostTrustee).toHaveBeenCalledWith({

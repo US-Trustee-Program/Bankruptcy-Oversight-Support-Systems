@@ -221,7 +221,7 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
       );
 
       // Verify mail icon is present
-      const mailIcon = emailElement?.querySelector('.link-icon');
+      const mailIcon = emailElement?.querySelector('.usa-icon');
       expect(mailIcon).toBeInTheDocument();
     });
 
