@@ -1,5 +1,6 @@
 import { ContactInformation } from '@common/cams/contact';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
+import Validators from '@common/cams/validators';
 
 type CommsLinkProps = {
   contact: Omit<ContactInformation, 'address'>;
@@ -23,44 +24,46 @@ function toTelephoneUri(number: string, extension?: string) {
 
 function CommsLink(props: Readonly<CommsLinkProps>) {
   const { contact, mode, label, icon, emailSubject } = props;
-  const { number, extension } = contact.phone ?? { number: '' };
-  const { email } = contact;
+  const { email, phone } = contact;
+  const { number, extension } = phone ?? {};
 
-  let href = '#';
-  let labelToUse = '';
-  let iconToUse = icon;
+  const isValidEmail = Validators.isEmailAddress(email).valid;
+  const isValidPhoneNumber = Validators.isPhoneNumber(number).valid;
 
-  switch (mode) {
-    case 'teams-chat':
-      href = `msteams://teams.microsoft.com/l/chat/0/0?users=${email}`;
-      labelToUse = label ?? 'Chat';
-      iconToUse = iconToUse ?? 'chat';
-      break;
-    case 'teams-call':
-      href = `msteams://teams.microsoft.com/l/call/0/0?users=${email}`;
-      labelToUse = label ?? 'Talk';
-      iconToUse = iconToUse ?? 'forum';
-      break;
-    case 'phone-dialer':
-      href = toTelephoneUri(number, extension);
-      labelToUse = label ?? (extension ? `${number} x${extension}` : number);
-      iconToUse = iconToUse ?? 'phone';
-      break;
-    case 'email':
-      href = `mailto:${email}`;
-      if (emailSubject) {
-        href += `?subject=${encodeURIComponent(emailSubject)}`;
-      }
-      labelToUse = label ?? email ?? 'Email';
-      iconToUse = iconToUse ?? 'mail';
-      break;
+  let href = '';
+  let labelToUse = label ?? '';
+  let iconToUse = 'error';
+
+  if (isValidEmail && mode === 'teams-chat') {
+    href = `msteams://teams.microsoft.com/l/chat/0/0?users=${email}`;
+    labelToUse = label ?? 'Chat';
+    iconToUse = icon ?? 'chat';
+  } else if (isValidEmail && mode === 'teams-call') {
+    href = `msteams://teams.microsoft.com/l/call/0/0?users=${email}`;
+    labelToUse = label ?? 'Talk';
+    iconToUse = icon ?? 'forum';
+  } else if (isValidEmail && mode === 'email') {
+    href = `mailto:${email}`;
+    if (emailSubject) {
+      href += `?subject=${encodeURIComponent(emailSubject)}`;
+    }
+    labelToUse = label ?? email!;
+    iconToUse = icon ?? 'mail';
+  } else if (isValidPhoneNumber && mode === 'phone-dialer') {
+    href = toTelephoneUri(number!, extension);
+    labelToUse = label ?? (extension ? `${number} x${extension}` : number!);
+    iconToUse = icon ?? 'phone';
   }
 
-  return (
-    <a href={href} className="usa-link">
-      <IconLabel label={labelToUse} icon={iconToUse} location="left" />
-    </a>
-  );
+  if (href) {
+    return (
+      <a href={href} className="usa-link">
+        <IconLabel label={labelToUse} icon={iconToUse} location="left" />
+      </a>
+    );
+  } else {
+    return <IconLabel label={labelToUse} icon={iconToUse} location="left" />;
+  }
 }
 
 export default CommsLink;
