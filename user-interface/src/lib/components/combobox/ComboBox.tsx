@@ -343,8 +343,10 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       case 'Enter':
       case ' ':
         if (!(ev.target as HTMLInputElement).classList.contains('combo-box-input')) {
-          handleDropdownItemSelection(option as ComboOption);
-          setCurrentListItem(null);
+          if (option) {
+            handleDropdownItemSelection(option);
+            setCurrentListItem(null);
+          }
           ev.preventDefault();
         }
         break;
@@ -363,9 +365,30 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     ev.stopPropagation();
   }
 
-  function handleToggleKeyDown(ev: React.KeyboardEvent) {
-    if (!comboboxDisabled && (ev.key === 'ArrowDown' || ev.key === 'Enter')) {
-      handleToggleDropdown();
+  function handleKeyDownOnToggleButton(ev: React.KeyboardEvent) {
+    if (!comboboxDisabled) {
+      if (ev.key === 'ArrowDown' || ev.key === 'Enter') {
+        handleToggleDropdown();
+      } else if (!expanded && /^[a-zA-Z0-9]$/.test(ev.key)) {
+        handleToggleDropdown();
+
+        // Set the character in the input field and update filter state
+        setTimeout(() => {
+          if (filterRef.current) {
+            filterRef.current.value = ev.key;
+            setFilter(ev.key);
+            if (onUpdateFilter) {
+              onUpdateFilter(ev.key);
+            }
+            // Position cursor after the character
+            filterRef.current.setSelectionRange(1, 1);
+            filterRef.current.focus();
+          }
+        }, 0);
+      } else if (ev.key === 'ArrowUp') {
+        ev.preventDefault();
+        ev.stopPropagation();
+      }
     }
   }
 
@@ -442,7 +465,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           aria-describedby={`${comboBoxId}-aria-description`}
           tabIndex={0}
           onClick={() => handleToggleDropdown()}
-          onKeyDown={handleToggleKeyDown}
+          onKeyDown={handleKeyDownOnToggleButton}
           ref={containerRef}
         >
           <div className="combo-box-input-container" role="presentation">
