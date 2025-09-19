@@ -289,12 +289,12 @@ describe('CommsLink Component', () => {
         />,
       );
 
-      const link = screen.getByRole('link');
-      expect(link.getAttribute('href')).toBe('mailto:undefined');
+      const link = screen.queryByRole('link');
+      expect(link).not.toBeInTheDocument();
 
       const iconLabel = screen.getByTestId('icon-label');
-      expect(iconLabel).toHaveTextContent('Email');
-      expect(iconLabel.getAttribute('data-icon')).toBe('mail');
+      expect(iconLabel).toHaveTextContent('');
+      expect(iconLabel.getAttribute('data-icon')).toBe('error');
     });
   });
 
