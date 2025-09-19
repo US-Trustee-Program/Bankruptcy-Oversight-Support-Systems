@@ -1,8 +1,7 @@
-import { Trustee } from '@common/cams/trustees';
+import { Trustee, formatChapterType } from '@common/cams/trustees';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { formatChapterType } from '@/lib/utils/chapters';
 import FormattedAddress from '@/lib/components/cams/FormattedAddress';
 
 export interface TrusteeDetailProfileProps {

@@ -6,7 +6,7 @@ import TrusteeDetailProfile, { TrusteeDetailProfileProps } from './TrusteeDetail
 import { Trustee, ChapterType } from '@common/cams/trustees';
 
 // Mock the chapters utility
-vi.mock('@/lib/utils/chapters', () => ({
+vi.mock('@common/cams/trustees', () => ({
   formatChapterType: vi.fn((chapter: string) => {
     switch (chapter) {
       case '7-panel':

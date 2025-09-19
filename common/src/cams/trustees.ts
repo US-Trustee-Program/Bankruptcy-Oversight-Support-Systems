@@ -4,7 +4,20 @@ import { LegacyAddress } from './parties';
 import { ContactInformation } from './contact';
 
 // Chapter types supported for trustee assignments
-export type ChapterType = '7' | '7-panel' | '7-non-panel' | '11' | '11-subchapter-v' | '12' | '13';
+export type ChapterType = '7-panel' | '7-non-panel' | '11' | '11-subchapter-v' | '12' | '13';
+
+export function formatChapterType(chapter: string): string {
+  const chapterLabels: Record<ChapterType, string> = {
+    '7-panel': '7 - Panel',
+    '7-non-panel': '7 - Non-Panel',
+    '11': '11',
+    '11-subchapter-v': '11 - Subchapter V',
+    '12': '12',
+    '13': '13',
+  };
+
+  return chapterLabels[chapter] || chapter;
+}
 
 // Trustee status enumeration
 export const TRUSTEE_STATUS_VALUES = ['active', 'not active', 'suspended'] as const;

@@ -1,7 +1,6 @@
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Tag, { UswdsTagStyle } from '@/lib/components/uswds/Tag';
-import { Trustee } from '@common/cams/trustees';
-import { formatChapterType } from '@/lib/utils/chapters';
+import { Trustee, formatChapterType } from '@common/cams/trustees';
 
 export interface TrusteeDetailHeaderProps {
   trustee: Trustee | null;
