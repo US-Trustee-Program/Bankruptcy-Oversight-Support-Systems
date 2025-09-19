@@ -8,7 +8,7 @@ export type IconLabelProps = {
   location?: 'left' | 'right';
 };
 
-export function IconLabel(props: IconLabelProps) {
+export function IconLabel(props: Readonly<IconLabelProps>) {
   let location = 'left';
   if (props.location) {
     location = props.location;
