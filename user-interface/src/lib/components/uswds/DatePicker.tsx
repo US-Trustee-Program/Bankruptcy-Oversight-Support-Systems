@@ -1,7 +1,7 @@
 import './forms.scss';
 import './DatePicker.scss';
 import { InputRef } from '@/lib/type-declarations/input-fields';
-import { forwardRef, useImperativeHandle, useRef, useState, type JSX } from 'react';
+import { forwardRef, useImperativeHandle, useRef, useState, useEffect, type JSX } from 'react';
 import { getIsoDate, isInvalidDate } from '@common/date-helper';
 
 export type DatePickerProps = JSX.IntrinsicElements['input'] & {
@@ -21,19 +21,34 @@ function DatePickerComponent(props: DatePickerProps, ref: React.Ref<InputRef>) {
   const defaultErrorMessage = 'Date is not within allowed range. Enter a valid date.';
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [isDisabled, setIsDisabled] = useState<boolean>(!!props.disabled);
   const [dateValue, setDateValue] = useState<string | null>(props.value ?? null);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   function setClassName() {
     return `usa-input ${props.className} ${errorMessage.length ? 'usa-input--error' : ''}`;
   }
 
   function clearDateValue() {
+    // Clear any existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
     // This is one wierd trick to make the DatePicker work. The data value must be set to '' then a moment later set to null.
     setDateValue('');
-    setTimeout(() => {
+    timeoutRef.current = setTimeout(() => {
       setDateValue(null);
     }, 100);
   }

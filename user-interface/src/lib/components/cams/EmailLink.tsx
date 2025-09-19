@@ -1,5 +1,5 @@
-import Icon from '@/lib/components/uswds/Icon';
 import { JSX } from 'react';
+import { IconLabel } from './IconLabel/IconLabel';
 
 export type EmailLinkProps = {
   email: string;
@@ -17,8 +17,7 @@ export default function EmailLink(props: EmailLinkProps): JSX.Element {
   return (
     <div data-testid={dataTestId} aria-label={ariaLabel} className={className}>
       <a href={href}>
-        {email}
-        <Icon className="link-icon" name="mail_outline" />
+        <IconLabel icon="mail_outline" label={email} />
       </a>
     </div>
   );
