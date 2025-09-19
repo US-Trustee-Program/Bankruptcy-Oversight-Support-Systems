@@ -74,6 +74,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
   const [comboboxDisabled, setComboboxDisabled] = useState<boolean>(!!disabled);
   const [expanded, setExpanded] = useState<boolean>(false);
+  const [toggleKey, setToggleKey] = useState<string | null>(null);
   const [dropdownLocation, setDropdownLocation] = useState<{ bottom: number } | null>(null);
   const [currentListItem, setCurrentListItem] = useState<string | null>(null);
 
@@ -305,8 +306,28 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   function handleKeyDown(ev: React.KeyboardEvent, index: number, option?: ComboOption) {
     switch (ev.key) {
       case 'Tab':
+        // If has filter text and currently focused on input, check if there are filtered results
+        if (filter && filter.trim().length > 0 && index === 0) {
+          const filteredOptions = props.options.filter((option) =>
+            option.label.toLowerCase().includes(filter.toLowerCase()),
+          );
+
+          // Only move focus to first item if there are actually filtered results
+          if (filteredOptions.length > 0) {
+            ev.preventDefault(); // Prevent default tab behavior
+            ev.stopPropagation();
+            // Behave like ArrowDown - move to first item in the list
+            const newId = navigateList('down', index - 1, comboBoxListRef);
+            if (newId) {
+              setCurrentListItem(newId);
+            }
+            return;
+          }
+        }
+        // If already on a list item, no filter text, or no filtered results, close dropdown and allow normal tab behavior
         closeDropdown(false);
         setCurrentListItem(null);
+        // Don't prevent default - let Tab move to next element naturally
         break;
       case 'Escape':
         closeDropdown(true);
@@ -366,31 +387,29 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   }
 
   function handleKeyDownOnToggleButton(ev: React.KeyboardEvent) {
-    if (!comboboxDisabled) {
-      if (ev.key === 'ArrowDown' || ev.key === 'Enter') {
-        handleToggleDropdown();
-      } else if (!expanded && /^[a-zA-Z0-9]$/.test(ev.key)) {
-        handleToggleDropdown();
+    if (comboboxDisabled) {
+      return;
+    }
 
-        // Set the character in the input field and update filter state
-        setTimeout(() => {
-          if (filterRef.current) {
-            filterRef.current.value = ev.key;
-            setFilter(ev.key);
-            if (onUpdateFilter) {
-              onUpdateFilter(ev.key);
-            }
-            // Position cursor after the character
-            filterRef.current.setSelectionRange(1, 1);
-            filterRef.current.focus();
-          }
-        }, 0);
-      } else if (ev.key === 'ArrowUp') {
+    switch (ev.key) {
+      case 'ArrowDown':
+      case 'Enter':
+        handleToggleDropdown();
+        break;
+      case 'ArrowUp':
         ev.preventDefault();
         ev.stopPropagation();
-      }
+        break;
+
+      default:
+        if (!expanded && isAlphanumeric(ev.key)) {
+          setToggleKey(ev.key);
+          handleToggleDropdown();
+        }
     }
   }
+
+  const isAlphanumeric = (key: string) => /^[a-zA-Z0-9]$/.test(key);
 
   function handleToggleDropdown() {
     if (comboboxDisabled) {
@@ -426,6 +445,18 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       focusInput();
     }
   }, [expanded]);
+
+  useEffect(() => {
+    if (expanded && toggleKey && filterRef.current) {
+      setFilter(toggleKey);
+      if (onUpdateFilter) {
+        onUpdateFilter(toggleKey);
+      }
+      filterRef.current.setSelectionRange(1, 1);
+      filterRef.current.focus();
+      setToggleKey(null);
+    }
+  }, [expanded, toggleKey, setFilter, onUpdateFilter]);
 
   useImperativeHandle(ref, () => ({
     setSelections,
