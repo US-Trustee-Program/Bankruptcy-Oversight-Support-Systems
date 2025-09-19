@@ -26,7 +26,7 @@ function CommsLink(props: Readonly<CommsLinkProps>) {
   const { number, extension } = contact.phone ?? { number: '' };
   const { email } = contact;
 
-  let href = 'javascript:void(0);';
+  let href = '#';
   let labelToUse = '';
   let iconToUse = icon;
 
