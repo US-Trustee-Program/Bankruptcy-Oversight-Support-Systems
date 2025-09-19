@@ -70,7 +70,7 @@ function CommsLink(props: Readonly<CommsLinkProps>) {
 
   return (
     <a href={href} className="usa-link">
-      {iconToUse ? <IconLabel label={labelToUse} icon={iconToUse} location="left" /> : labelToUse}
+      <IconLabel label={labelToUse} icon={iconToUse} location="left" />
     </a>
   );
 }
