@@ -5,7 +5,7 @@ import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 import { useApi2 } from '@/lib/hooks/UseApi2';
-import { useTrusteeFormValidation } from '@/trustees/UseTrusteeFormValidation';
+import { trusteeFormDataSpec, useTrusteeFormValidation } from '@/trustees/UseTrusteeFormValidation';
 import type { TrusteeFormData } from '@/trustees/UseTrusteeFormValidation.types';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import LocalStorage from '@/lib/utils/local-storage';
@@ -20,6 +20,9 @@ import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import { ChapterType, TrusteeInput, TrusteeStatus } from '@common/cams/trustees';
 import { ContactInformation } from '@common/cams/contact';
 import { useLocation } from 'react-router-dom';
+import { ValidationSpec } from '@common/cams/validation';
+
+export type TrusteeFormFields = keyof TrusteeFormData;
 
 export type TrusteeFormState = {
   action: 'create' | 'edit';
@@ -49,8 +52,6 @@ function TrusteeForm() {
   const api = useApi2();
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
-  const { fieldErrors, validateFieldAndUpdate, clearErrors, isFormValidAndComplete } =
-    useTrusteeFormValidation();
   const debounce = useDebounce();
 
   const districtComboRef = React.useRef<ComboBoxRef | null>(null);
@@ -65,6 +66,9 @@ function TrusteeForm() {
     passedState.action === 'edit' && passedState.contactInformation === 'public';
   const doCreate = passedState.action === 'create';
   const { cancelTo } = passedState;
+
+  const { fieldErrors, validateFieldAndUpdate, clearErrors, isFormValidAndComplete } =
+    useTrusteeFormValidation();
 
   let info: ContactInformation | null = null;
   if (doEditInternalProfile && passedState.trustee?.internal) {
@@ -140,7 +144,7 @@ function TrusteeForm() {
     ev.preventDefault();
     const formData = getFormData();
 
-    if (isFormValidAndComplete(formData)) {
+    if (isFormValidAndComplete(formData, getDynamicSpec())) {
       setErrorMessage(null);
       clearErrors();
       setIsSubmitting(true);
@@ -245,6 +249,38 @@ function TrusteeForm() {
     };
   };
 
+  const isRequired = (field: keyof TrusteeFormData): { required?: true } => {
+    const fullActualFields = ['name', 'address1', 'city', 'state', 'zipCode', 'phone', 'email'];
+    const dynamicSpecFields = Object.keys(getDynamicSpec());
+    const requiredFields =
+      doCreate || doEditPublicProfile
+        ? fullActualFields
+        : dynamicSpecFields.filter((f) => fullActualFields.includes(f));
+    return requiredFields.includes(field) ? { required: true } : {};
+  };
+
+  const getDynamicSpec = () => {
+    const spec: Partial<ValidationSpec<TrusteeFormData>> = { ...trusteeFormDataSpec };
+    const formData = getFormData();
+    if (doEditInternalProfile) {
+      delete spec.name;
+      if (!formData.address1 && !formData.city && !formData.state && !formData.zipCode) {
+        delete spec.address1;
+        delete spec.city;
+        delete spec.state;
+        delete spec.zipCode;
+      }
+      if (!formData.phone) {
+        delete spec.phone;
+      }
+      if (!formData.email) {
+        delete spec.email;
+      }
+    }
+
+    return spec;
+  };
+
   const handleFieldChange = (
     event: React.ChangeEvent<HTMLInputElement>,
     setter: React.Dispatch<React.SetStateAction<string>>,
@@ -252,8 +288,18 @@ function TrusteeForm() {
     const { value, name } = event.target;
     setter(value);
 
+    // TODO: We can't alter the validation spec based on fields being filled out (using getFormData())
+    // TODO: because the changed value is on the event and is just being set in this function.
+    // THIS below should work because we are adding the spec for this field to the spec object
+    // before using it in the validation function. BUT this doesn't quite work....
+    const spec = getDynamicSpec();
+    if (name in trusteeFormDataSpec) {
+      const key = name as keyof TrusteeFormData;
+      spec[key] = trusteeFormDataSpec[key];
+    }
+
     debounce(() => {
-      validateFieldAndUpdate(name as keyof TrusteeFormData, value);
+      validateFieldAndUpdate(name as keyof TrusteeFormData, value, spec);
     }, 300);
   };
 
@@ -280,7 +326,7 @@ function TrusteeForm() {
     return (selectedOptions: ComboOption[]) => {
       debounce(() => {
         const selectedValues = selectedOptions.map((option) => option.value as T);
-        validateFieldAndUpdate(fieldName, selectedValues.join(','));
+        validateFieldAndUpdate(fieldName, selectedValues.join(','), getDynamicSpec());
 
         if (isMultiSelect) {
           (setter as React.Dispatch<React.SetStateAction<T[]>>)(selectedValues);
@@ -343,7 +389,7 @@ function TrusteeForm() {
                 onChange={(e) => handleFieldChange(e, setName)}
                 errorMessage={fieldErrors['name']}
                 autoComplete="off"
-                required
+                {...isRequired('name')}
               />
             </div>
 
@@ -357,7 +403,7 @@ function TrusteeForm() {
                 onChange={(e) => handleFieldChange(e, setAddress1)}
                 errorMessage={fieldErrors['address1']}
                 autoComplete="off"
-                required
+                {...isRequired('address1')}
               />
             </div>
 
@@ -371,6 +417,7 @@ function TrusteeForm() {
                 onChange={(e) => handleFieldChange(e, setAddress2)}
                 errorMessage={fieldErrors['address2']}
                 autoComplete="off"
+                {...isRequired('address2')}
               />
             </div>
 
@@ -384,7 +431,7 @@ function TrusteeForm() {
                 onChange={(e) => handleFieldChange(e, setCity)}
                 errorMessage={fieldErrors['city']}
                 autoComplete="off"
-                required
+                {...isRequired('city')}
               />
             </div>
 
@@ -398,7 +445,7 @@ function TrusteeForm() {
                 onUpdateSelection={handleComboBoxUpdate<string>('state', setState, false)}
                 autoComplete="off"
                 errorMessage={fieldErrors['state']}
-                required
+                {...isRequired('state')}
               ></UsStatesComboBox>
             </div>
 
@@ -413,13 +460,13 @@ function TrusteeForm() {
                   const { value } = e.target;
                   setZipCode(value);
                   debounce(() => {
-                    validateFieldAndUpdate('zipCode', value);
+                    validateFieldAndUpdate('zipCode', value, getDynamicSpec());
                   }, 300);
                 }}
                 errorMessage={fieldErrors['zipCode']}
                 autoComplete="off"
                 ariaDescription="Example: 12345"
-                required
+                {...isRequired('zipCode')}
               />
             </div>
           </div>
@@ -436,13 +483,13 @@ function TrusteeForm() {
                   const next = value ?? '';
                   setPhone(next);
                   debounce(() => {
-                    validateFieldAndUpdate('phone', next);
+                    validateFieldAndUpdate('phone', next, getDynamicSpec());
                   }, 300);
                 }}
                 errorMessage={fieldErrors['phone']}
                 autoComplete="off"
                 ariaDescription="Example: 123-456-7890"
-                required
+                {...isRequired('phone')}
               />
               <Input
                 id="trustee-extension"
@@ -454,6 +501,7 @@ function TrusteeForm() {
                 errorMessage={fieldErrors['extension']}
                 autoComplete="off"
                 ariaDescription="Up to 6 digits"
+                {...isRequired('extension')}
               />
             </div>
 
@@ -468,7 +516,7 @@ function TrusteeForm() {
                 errorMessage={fieldErrors['email']}
                 type="email"
                 autoComplete="off"
-                required
+                {...isRequired('email')}
               />
             </div>
 
@@ -493,6 +541,7 @@ function TrusteeForm() {
                     placeholder={districtLoadError ? 'Error loading districts' : 'Select districts'}
                     autoComplete="off"
                     ref={districtComboRef}
+                    {...isRequired('districts')}
                   />
                 </div>
 
@@ -513,6 +562,7 @@ function TrusteeForm() {
                     singularLabel="chapter"
                     pluralLabel="chapters"
                     autoComplete="off"
+                    {...isRequired('chapters')}
                   />
                 </div>
 
@@ -532,6 +582,7 @@ function TrusteeForm() {
                     multiSelect={false}
                     autoComplete="off"
                     ref={statusComboRef}
+                    {...isRequired('status')}
                   />
                 </div>
               </>
