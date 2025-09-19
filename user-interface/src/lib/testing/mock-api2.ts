@@ -253,7 +253,7 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
     response = {
       data: courts,
     };
-  } else if (path.match(/\/trustees\/[A-Z\d-]+\/history/i)) {
+  } else if (path.match(/\/trustees\/[A-Z\d-]+/i)) {
     response = {
       data: MockData.getTrustee({
         id: 'trustee-1',
