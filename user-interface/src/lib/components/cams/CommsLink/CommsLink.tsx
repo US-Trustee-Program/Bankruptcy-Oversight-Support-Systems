@@ -6,40 +6,25 @@ type CommsLinkProps = {
   mode: 'teams-chat' | 'teams-call' | 'phone-dialer' | 'email';
   label?: string;
   icon?: string;
+  emailSubject?: string;
 };
 
+const NON_DIGITS = /\D/g;
+
 function toTelephoneUri(number: string, extension?: string) {
-  const strippedNumber = number.replace(/[^\d]/g, '');
-  if (extension) {
-    return `tel:+1${strippedNumber};ext=${extension}`;
+  const strippedNumber = number.replace(NON_DIGITS, '');
+  const strippedExtension = extension?.replace(NON_DIGITS, '');
+  if (strippedExtension) {
+    return `tel:+1${strippedNumber};ext=${strippedExtension}`;
   } else {
     return `tel:+1${strippedNumber}`;
   }
 }
 
 function CommsLink(props: Readonly<CommsLinkProps>) {
-  const { contact, mode, label, icon } = props;
+  const { contact, mode, label, icon, emailSubject } = props;
   const { number, extension } = contact.phone ?? { number: '' };
   const { email } = contact;
-
-  // TODO: Sanity check the content to make sure we are not opening a malicious link.
-
-  // TODO: Add detection if teams link isn't available. Example code:
-  // function tryTeamsOrTel(phone) {
-  //   const teamsUrl = `msteams://teams.microsoft.com/l/call/0/0?users=${encodeURIComponent(phone)}`;
-  //   const telUrl   = `tel:${phone}`;
-  //
-  //   let launched = false;
-  //   const timeout = setTimeout(() => {
-  //     if (!launched) {
-  //       window.location.href = telUrl; // fallback
-  //     }
-  //   }, 1500);
-  //
-  //   window.location.href = teamsUrl;
-  //   // If Teams handles it, the browser leaves and never runs fallback.
-  //   // If not, timeout fires and we redirect to tel:
-  // }
 
   let href = 'javascript:void(0);';
   let labelToUse = '';
@@ -63,6 +48,9 @@ function CommsLink(props: Readonly<CommsLinkProps>) {
       break;
     case 'email':
       href = `mailto:${email}`;
+      if (emailSubject) {
+        href += `?subject=${encodeURIComponent(emailSubject)}`;
+      }
       labelToUse = label ?? email ?? 'Email';
       iconToUse = iconToUse ?? 'mail';
       break;
