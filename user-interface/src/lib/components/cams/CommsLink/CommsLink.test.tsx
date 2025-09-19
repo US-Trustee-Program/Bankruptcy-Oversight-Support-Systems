@@ -241,6 +241,42 @@ describe('CommsLink Component', () => {
       expect(iconLabel.getAttribute('data-icon')).toBe('custom-icon');
     });
 
+    test('renders email link with emailSubject', () => {
+      render(
+        <CommsLink
+          contact={emailContact as Omit<ContactInformation, 'address'>}
+          mode="email"
+          emailSubject="Test Subject"
+        />,
+      );
+
+      const link = screen.getByRole('link');
+      expect(link.getAttribute('href')).toBe('mailto:test@example.com?subject=Test%20Subject');
+
+      const iconLabel = screen.getByTestId('icon-label');
+      expect(iconLabel).toHaveTextContent('test@example.com');
+      expect(iconLabel.getAttribute('data-icon')).toBe('mail');
+    });
+
+    test('renders email link with emailSubject containing special characters', () => {
+      render(
+        <CommsLink
+          contact={emailContact as Omit<ContactInformation, 'address'>}
+          mode="email"
+          emailSubject="Test & Subject: With Special Characters?"
+        />,
+      );
+
+      const link = screen.getByRole('link');
+      expect(link.getAttribute('href')).toBe(
+        'mailto:test@example.com?subject=Test%20%26%20Subject%3A%20With%20Special%20Characters%3F',
+      );
+
+      const iconLabel = screen.getByTestId('icon-label');
+      expect(iconLabel).toHaveTextContent('test@example.com');
+      expect(iconLabel.getAttribute('data-icon')).toBe('mail');
+    });
+
     test('renders email link with fallback label when email is missing', () => {
       const contactWithoutEmail: Partial<ContactInformation> = {
         phone: { number: '555-123-4567' },
