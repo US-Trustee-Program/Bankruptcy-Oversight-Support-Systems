@@ -5,7 +5,7 @@ import { Trustee, ChapterType } from '@common/cams/trustees';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 
 // Mock the chapters utility
-vi.mock('@/lib/utils/chapters', () => ({
+vi.mock('@common/cams/trustees', () => ({
   formatChapterType: vi.fn((chapter: string) => {
     switch (chapter) {
       case '7-panel':
