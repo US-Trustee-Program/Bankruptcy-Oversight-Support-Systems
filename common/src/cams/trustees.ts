@@ -4,7 +4,20 @@ import { LegacyAddress } from './parties';
 import { ContactInformation } from './contact';
 
 // Chapter types supported for trustee assignments
-export type ChapterType = '7' | '7-panel' | '7-non-panel' | '11' | '11-subchapter-v' | '12' | '13';
+export type ChapterType = '7-panel' | '7-non-panel' | '11' | '11-subchapter-v' | '12' | '13';
+
+export function formatChapterType(chapter: string): string {
+  const chapterLabels: Record<ChapterType, string> = {
+    '7-panel': '7 - Panel',
+    '7-non-panel': '7 - Non-Panel',
+    '11': '11',
+    '11-subchapter-v': '11 - Subchapter V',
+    '12': '12',
+    '13': '13',
+  };
+
+  return chapterLabels[chapter] || chapter;
+}
 
 // Trustee status enumeration
 export const TRUSTEE_STATUS_VALUES = ['active', 'not active', 'suspended'] as const;
@@ -26,3 +39,32 @@ export type Trustee = Auditable &
   };
 
 export type TrusteeInput = Omit<Trustee, 'legacy' | keyof Auditable | keyof Identifiable>;
+
+type AbstractTrusteeHistory<B, A> = Auditable & {
+  id: string;
+  before: B | undefined;
+  after: A | undefined;
+};
+
+export type TrusteeNameHistory = AbstractTrusteeHistory<string, string> & {
+  documentType: 'AUDIT_NAME';
+};
+
+export type TrusteePublicContactHistory = AbstractTrusteeHistory<
+  ContactInformation,
+  ContactInformation
+> & {
+  documentType: 'AUDIT_PUBLIC_CONTACT';
+};
+
+export type TrusteeInternalContactHistory = AbstractTrusteeHistory<
+  ContactInformation,
+  ContactInformation
+> & {
+  documentType: 'AUDIT_INTERNAL_CONTACT';
+};
+
+export type TrusteeHistory =
+  | TrusteeNameHistory
+  | TrusteePublicContactHistory
+  | TrusteeInternalContactHistory;

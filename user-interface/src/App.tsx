@@ -52,8 +52,8 @@ function App() {
               <Route path="/admin/*" element={<AdminScreen />}></Route>
               <Route path="/trustees" element={<TrusteesScreen />}></Route>
               <Route path="/trustees/create" element={<TrusteeForm />}></Route>
-              <Route path="/trustees/:trusteeId" element={<TrusteeDetailScreen />}></Route>
               <Route path="/trustees/:trusteeId/edit" element={<TrusteeForm />}></Route>
+              <Route path="/trustees/:trusteeId/*" element={<TrusteeDetailScreen />}></Route>
               <Route index element={<GoHome />}></Route>
               <Route path="*" element={<GoHome />}></Route>
             </Routes>
