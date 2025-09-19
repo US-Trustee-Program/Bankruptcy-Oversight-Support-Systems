@@ -16,7 +16,82 @@ export interface TrusteeDetailAuditHistoryProps {
   trusteeId: string;
 }
 
-export default function TrusteeDetailAuditHistory(props: TrusteeDetailAuditHistoryProps) {
+type ShowTrusteeNameHistoryProps = Readonly<{ history: TrusteeNameHistory; idx: number }>;
+
+function ShowTrusteeNameHistory(props: ShowTrusteeNameHistoryProps) {
+  const { history, idx } = props;
+  return (
+    <tr key={idx}>
+      <td>Name</td>
+      <td data-testid={`previous-name-${idx}`}>{history.before || '(none)'}</td>
+      <td data-testid={`new-name-${idx}`}>{history.after || '(none)'}</td>
+      <td data-testid={`changed-by-${idx}`}>
+        {history.updatedBy && <>{history.updatedBy.name}</>}
+      </td>
+      <td data-testid={`change-date-${idx}`}>
+        <span className="text-no-wrap">{formatDate(history.updatedOn)}</span>
+      </td>
+    </tr>
+  );
+}
+
+type ShowTrusteeContactHistoryProps = Readonly<{
+  history: TrusteePublicContactHistory | TrusteeInternalContactHistory;
+  idx: number;
+}>;
+
+function ShowTrusteeContactHistory(props: ShowTrusteeContactHistoryProps) {
+  const { history, idx } = props;
+  const changeType =
+    history.documentType === 'AUDIT_PUBLIC_CONTACT' ? 'Public Contact' : 'Internal Contact';
+
+  return (
+    <tr key={idx}>
+      <td>{changeType}</td>
+      <td data-testid={`previous-contact-${idx}`}>
+        <FormattedAddress
+          contact={history.before}
+          className="trustee-audit-history__address-before"
+          testIdPrefix={`previous-contact-${idx}`}
+          emailAsLink={false}
+        />
+      </td>
+      <td data-testid={`new-contact-${idx}`}>
+        <FormattedAddress
+          contact={history.after}
+          className="trustee-audit-history__address-after"
+          testIdPrefix={`new-contact-${idx}`}
+          emailAsLink={false}
+        />
+      </td>
+      <td data-testid={`changed-by-${idx}`}>
+        {history.updatedBy && <>{history.updatedBy.name}</>}
+      </td>
+      <td data-testid={`change-date-${idx}`}>
+        <span className="text-no-wrap">{formatDate(history.updatedOn)}</span>
+      </td>
+    </tr>
+  );
+}
+
+function RenderTrusteeHistory(props: Readonly<{ trusteeHistory: TrusteeHistory[] }>) {
+  const { trusteeHistory } = props;
+  return (
+    <>
+      {trusteeHistory.map((history, idx: number) => {
+        switch (history.documentType) {
+          case 'AUDIT_NAME':
+            return <ShowTrusteeNameHistory history={history} idx={idx} />;
+          case 'AUDIT_PUBLIC_CONTACT':
+          case 'AUDIT_INTERNAL_CONTACT':
+            return <ShowTrusteeContactHistory history={history} idx={idx} />;
+        }
+      })}{' '}
+    </>
+  );
+}
+
+export default function TrusteeDetailAuditHistory(props: Readonly<TrusteeDetailAuditHistoryProps>) {
   const [trusteeHistory, setTrusteeHistory] = useState<TrusteeHistory[]>([]);
   const [isAuditHistoryLoading, setIsAuditHistoryLoading] = useState<boolean>(false);
   const api = useApi2();
@@ -37,70 +112,6 @@ export default function TrusteeDetailAuditHistory(props: TrusteeDetailAuditHisto
         setTrusteeHistory([]);
         setIsAuditHistoryLoading(false);
       });
-  }
-
-  function showTrusteeNameHistory(history: TrusteeNameHistory, idx: number) {
-    return (
-      <tr key={idx}>
-        <td>Name</td>
-        <td data-testid={`previous-name-${idx}`}>{history.before || '(none)'}</td>
-        <td data-testid={`new-name-${idx}`}>{history.after || '(none)'}</td>
-        <td data-testid={`changed-by-${idx}`}>
-          {history.updatedBy && <>{history.updatedBy.name}</>}
-        </td>
-        <td data-testid={`change-date-${idx}`}>
-          <span className="text-no-wrap">{formatDate(history.updatedOn)}</span>
-        </td>
-      </tr>
-    );
-  }
-
-  function showTrusteeContactHistory(
-    history: TrusteePublicContactHistory | TrusteeInternalContactHistory,
-    idx: number,
-  ) {
-    const changeType =
-      history.documentType === 'AUDIT_PUBLIC_CONTACT' ? 'Public Contact' : 'Internal Contact';
-
-    return (
-      <tr key={idx}>
-        <td>{changeType}</td>
-        <td data-testid={`previous-contact-${idx}`}>
-          <FormattedAddress
-            contact={history.before}
-            className="trustee-audit-history__address-before"
-            testIdPrefix={`previous-contact-${idx}`}
-            emailAsLink={false}
-          />
-        </td>
-        <td data-testid={`new-contact-${idx}`}>
-          <FormattedAddress
-            contact={history.after}
-            className="trustee-audit-history__address-after"
-            testIdPrefix={`new-contact-${idx}`}
-            emailAsLink={false}
-          />
-        </td>
-        <td data-testid={`changed-by-${idx}`}>
-          {history.updatedBy && <>{history.updatedBy.name}</>}
-        </td>
-        <td data-testid={`change-date-${idx}`}>
-          <span className="text-no-wrap">{formatDate(history.updatedOn)}</span>
-        </td>
-      </tr>
-    );
-  }
-
-  function renderTrusteeHistory() {
-    return trusteeHistory.map((history, idx: number) => {
-      switch (history.documentType) {
-        case 'AUDIT_NAME':
-          return showTrusteeNameHistory(history, idx);
-        case 'AUDIT_PUBLIC_CONTACT':
-        case 'AUDIT_INTERNAL_CONTACT':
-          return showTrusteeContactHistory(history, idx);
-      }
-    });
   }
 
   useEffect(() => {
@@ -138,7 +149,7 @@ export default function TrusteeDetailAuditHistory(props: TrusteeDetailAuditHisto
                 </tr>
               </thead>
               <tbody>
-                <>{renderTrusteeHistory()}</>
+                <RenderTrusteeHistory trusteeHistory={trusteeHistory} />
               </tbody>
             </table>
           )}
