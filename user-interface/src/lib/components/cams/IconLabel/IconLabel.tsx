@@ -8,7 +8,7 @@ export type IconLabelProps = {
   location?: 'left' | 'right';
 };
 
-export function IconLabel(props: IconLabelProps) {
+export function IconLabel(props: Readonly<IconLabelProps>) {
   let location = 'left';
   if (props.location) {
     location = props.location;
@@ -18,14 +18,14 @@ export function IconLabel(props: IconLabelProps) {
     <span className={`cams-icon-label ${props.className ?? ''}`}>
       {location === 'left' && (
         <>
-          <Icon name={props.icon} />
+          <Icon className={props.className ?? undefined} name={props.icon} />
           <span>{props.label}</span>
         </>
       )}
       {location === 'right' && (
         <>
           <span>{props.label}</span>
-          <Icon name={props.icon} />
+          <Icon className={props.className ?? undefined} name={props.icon} />
         </>
       )}
     </span>

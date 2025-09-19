@@ -1,5 +1,5 @@
 import { AttorneyUser, CamsUserReference } from '@common/cams/users';
-import { deepEqual } from '@/lib/utils/objectEquality';
+import { deepEqual } from '@common/object-equality';
 import useApi2 from '@/lib/hooks/UseApi2';
 import { ResponseBody } from '@common/api/response';
 import { CamsRole } from '@common/cams/roles';

@@ -1,18 +1,19 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import CaseDetailNavigation, { NavState, mapNavState, setCurrentNav } from './CaseDetailNavigation';
+import CaseDetailNavigation, { CaseNavState, mapNavState } from './CaseDetailNavigation';
+import { setCurrentNav } from '@/lib/utils/navigation';
 import { BrowserRouter } from 'react-router-dom';
 
 describe('Navigation tests', () => {
   const activeNavClass = 'usa-current current';
 
   test(`should return ${activeNavClass} when the activeNav equals the stateToCheck`, () => {
-    const result = setCurrentNav(NavState.CASE_OVERVIEW, NavState.CASE_OVERVIEW);
+    const result = setCurrentNav(CaseNavState.CASE_OVERVIEW, CaseNavState.CASE_OVERVIEW);
 
     expect(result).toEqual(activeNavClass);
   });
 
   test('should return an empty string when the activeNav does not equal the stateToCheck', () => {
-    const result = setCurrentNav(NavState.CASE_OVERVIEW, NavState.COURT_DOCKET);
+    const result = setCurrentNav(CaseNavState.CASE_OVERVIEW, CaseNavState.COURT_DOCKET);
 
     expect(result).toEqual('');
   });
@@ -28,7 +29,7 @@ describe('Navigation tests', () => {
       <BrowserRouter>
         <CaseDetailNavigation
           caseId="12345"
-          initiallySelectedNavLink={NavState.CASE_OVERVIEW}
+          initiallySelectedNavLink={CaseNavState.CASE_OVERVIEW}
           showAssociatedCasesList={true}
         />
       </BrowserRouter>,
@@ -46,27 +47,27 @@ describe('Navigation tests', () => {
     });
   });
 
-  test(`mapNavState should return ${NavState.CASE_OVERVIEW} when the url does not contain a path after the case number`, () => {
-    const result = mapNavState('case-detail/1234');
-
-    expect(result).toEqual(NavState.CASE_OVERVIEW);
+  test(`mapNavState should return ${CaseNavState.CASE_OVERVIEW} when the url does not contain a path after the case number`, () => {
+    const url = '/case-detail/021-23-07890/';
+    const result = mapNavState(url);
+    expect(result).toEqual(CaseNavState.CASE_OVERVIEW);
   });
 
-  test(`mapNavState should return ${NavState.COURT_DOCKET} when the url path contains 'court-docket' after the case number`, () => {
-    const result = mapNavState('case-detail/1234/court-docket/');
-
-    expect(result).toEqual(NavState.COURT_DOCKET);
+  test(`mapNavState should return ${CaseNavState.COURT_DOCKET} when the url path contains 'court-docket' after the case number`, () => {
+    const url = '/case-detail/021-23-07890/court-docket';
+    const result = mapNavState(url);
+    expect(result).toEqual(CaseNavState.COURT_DOCKET);
   });
 
-  test(`mapNavState should return ${NavState.AUDIT_HISTORY} when the url path contains 'audit-history' after the case number`, () => {
-    const result = mapNavState('case-detail/1234/audit-history');
-
-    expect(result).toEqual(NavState.AUDIT_HISTORY);
+  test(`mapNavState should return ${CaseNavState.AUDIT_HISTORY} when the url path contains 'audit-history' after the case number`, () => {
+    const url = '/case-detail/021-23-07890/audit-history';
+    const result = mapNavState(url);
+    expect(result).toEqual(CaseNavState.AUDIT_HISTORY);
   });
 
-  test(`mapNavState should return ${NavState.ASSOCIATED_CASES} when the url path contains 'associated-cases' after the case number`, () => {
-    const result = mapNavState('case-detail/1234/associated-cases');
-
-    expect(result).toEqual(NavState.ASSOCIATED_CASES);
+  test(`mapNavState should return ${CaseNavState.ASSOCIATED_CASES} when the url path contains 'associated-cases' after the case number`, () => {
+    const url = '/case-detail/021-23-07890/associated-cases';
+    const result = mapNavState(url);
+    expect(result).toEqual(CaseNavState.ASSOCIATED_CASES);
   });
 });

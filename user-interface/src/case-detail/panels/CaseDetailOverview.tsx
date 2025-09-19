@@ -14,9 +14,9 @@ import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Actions from '@common/cams/actions';
 import { AttorneyUser } from '@common/cams/users';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
-import Icon from '@/lib/components/uswds/Icon';
 import { OpenModalButtonRef } from '../../lib/components/uswds/modal/modal-refs';
 import useFeatureFlags, { VIEW_TRUSTEE_ON_CASE } from '@/lib/hooks/UseFeatureFlags';
+import LegacyFormattedAddress from '@/lib/components/cams/LegacyFormattedAddress';
 
 const informationUnavailable = 'Information is not available.';
 const taxIdUnavailable = 'Tax ID information is not available.';
@@ -183,31 +183,7 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
             <div data-testid="case-detail-debtor-type" aria-label="debtor type">
               {caseDetail.debtorTypeLabel}
             </div>
-            <div>
-              {caseDetail.debtor.address1 && (
-                <div data-testid="case-detail-debtor-address1" aria-label="debtor address line 1">
-                  {caseDetail.debtor.address1}
-                </div>
-              )}
-              {caseDetail.debtor.address2 && (
-                <div data-testid="case-detail-debtor-address2" aria-label="debtor address line 2">
-                  {caseDetail.debtor.address2}
-                </div>
-              )}
-              {caseDetail.debtor.address3 && (
-                <div data-testid="case-detail-debtor-address3" aria-label="debtor address line 3">
-                  {caseDetail.debtor.address3}
-                </div>
-              )}
-              {caseDetail.debtor.cityStateZipCountry && (
-                <div
-                  data-testid="case-detail-debtor-cityStateZipCountry"
-                  aria-label="debtor city, state, zip, country"
-                >
-                  {caseDetail.debtor.cityStateZipCountry}
-                </div>
-              )}
-            </div>
+            <LegacyFormattedAddress legacy={caseDetail.debtor} testIdPrefix="case-detail-debtor" />
           </div>
           <div className="debtor-counsel-information record-detail-card">
             <h3>Debtor&apos;s Counsel</h3>
@@ -224,63 +200,11 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
                     {caseDetail.debtorAttorney.office}
                   </div>
                 )}
-                <div>
-                  {caseDetail.debtorAttorney.address1 && (
-                    <div
-                      data-testid="case-detail-debtor-counsel-address1"
-                      aria-label="debtor counsel address line 1"
-                    >
-                      {caseDetail.debtorAttorney.address1}
-                    </div>
-                  )}
-                  {caseDetail.debtorAttorney.address2 && (
-                    <div
-                      data-testid="case-detail-debtor-counsel-address2"
-                      aria-label="debtor counsel address line 2"
-                    >
-                      {caseDetail.debtorAttorney.address2}
-                    </div>
-                  )}
-                  {caseDetail.debtorAttorney.address3 && (
-                    <div
-                      data-testid="case-detail-debtor-counsel-address3"
-                      aria-label="debtor counsel address line 3"
-                    >
-                      {caseDetail.debtorAttorney.address3}
-                    </div>
-                  )}
-                  {caseDetail.debtorAttorney.cityStateZipCountry && (
-                    <div
-                      data-testid="case-detail-debtor-counsel-cityStateZipCountry"
-                      aria-label="debtor counsel city, state, zip, country"
-                    >
-                      {caseDetail.debtorAttorney.cityStateZipCountry}
-                    </div>
-                  )}
-                </div>
-                {caseDetail.debtorAttorney.phone && (
-                  <div
-                    data-testid="case-detail-debtor-counsel-phone"
-                    aria-label="debtor counsel phone"
-                  >
-                    {caseDetail.debtorAttorney.phone}
-                  </div>
-                )}
-                {caseDetail.debtorAttorney.email && (
-                  <div
-                    data-testid="case-detail-debtor-counsel-email"
-                    aria-label="debtor counsel email"
-                  >
-                    <a
-                      href={`mailto:${caseDetail.debtorAttorney.email}?subject=${getCaseNumber(
-                        caseDetail.caseId,
-                      )} - ${caseDetail.caseTitle}`}
-                    >
-                      {caseDetail.debtorAttorney.email}
-                      <Icon className="link-icon" name="mail_outline" />
-                    </a>
-                  </div>
-                )}
+                <LegacyFormattedAddress
+                  legacy={caseDetail.debtorAttorney}
+                  testIdPrefix="case-detail-debtor-counsel"
+                  emailSubject={`${getCaseNumber(caseDetail.caseId)} - ${caseDetail.caseTitle}`}
+                />
               </>
             )}
             {!caseDetail.debtorAttorney && (

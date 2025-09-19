@@ -1,6 +1,34 @@
-import { deepEqual } from './objectEquality';
+import { deepEqual } from './object-equality';
 
 describe('objectEquality tests', () => {
+  test('should return true when objects are the same reference', () => {
+    const object = { a: 1, b: 2 };
+
+    expect(deepEqual(object, object)).toEqual(true);
+  });
+
+  test('should return false when parameters are not objects', () => {
+    const object = { a: 1, b: 2 };
+
+    expect(deepEqual(null, object)).toEqual(false);
+    expect(deepEqual(object, null)).toEqual(false);
+    expect(deepEqual(undefined, object)).toEqual(false);
+    // @ts-expect-error: Testing with non-object parameters
+    expect(deepEqual('string', 123)).toEqual(false);
+  });
+  test('should return false when objects have different number of keys', () => {
+    const object1 = {
+      one: 'one',
+      two: 'two',
+      three: 'three',
+    };
+    const object2 = {
+      one: 'one',
+      two: 'two',
+    };
+
+    expect(deepEqual(object1, object2)).toEqual(false);
+  });
   test('should return false if comparing simple arrays that are not equal', () => {
     const array1 = ['one', 'two', 'three'];
     const array2 = ['three', 'two', 'one'];

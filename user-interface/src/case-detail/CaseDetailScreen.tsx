@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { Route, useParams, useLocation, Outlet, Routes } from 'react-router-dom';
-import CaseDetailNavigation, { mapNavState, NavState } from './panels/CaseDetailNavigation';
+import CaseDetailNavigation, { mapNavState, CaseNavState } from './panels/CaseDetailNavigation';
 import { CaseDocketSummaryFacets } from '@/case-detail/panels/CaseDetailCourtDocket';
 import Icon from '@/lib/components/uswds/Icon';
 import Input from '@/lib/components/uswds/Input';
@@ -248,12 +248,13 @@ export interface CaseDetailProps {
 }
 
 export default function CaseDetailScreen(props: CaseDetailProps) {
+  const api = useApi2();
   const { caseId } = useParams();
+
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isDocketLoading, setIsDocketLoading] = useState<boolean>(false);
   const [areCaseNotesLoading, setAreCaseNotesLoading] = useState<boolean>(false);
   const [isAssociatedCasesLoading, setIsAssociatedCasesLoading] = useState<boolean>(false);
-  const api = useApi2();
   const [caseBasicInfo, setCaseBasicInfo] = useState<CaseDetail>();
   const [caseDocketEntries, setCaseDocketEntries] = useState<CaseDocketEntry[]>();
   const [caseNotes, setCaseNotes] = useState<CaseNote[]>([]);
@@ -272,12 +273,14 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   const [selectedDateRange, setSelectedDateRange] = useState<DateRange>({});
   const [documentRange, setDocumentRange] = useState<DocumentRange>({ first: 0, last: 0 });
   const [documentNumberError, setDocumentNumberError] = useState<boolean>(false);
+
   const findInDocketRef = useRef<InputRef>(null);
   const caseNoteTitleSearchRef = useRef<InputRef>(null);
   const findByDocketNumberRef = useRef<InputRef>(null);
   const dateRangeRef = useRef<DateRangePickerRef>(null);
   const facetPickerRef = useRef<ComboBoxRef>(null);
   const caseNotesRef = useRef<CaseNotesRef>(null);
+
   let hasDocketEntries = caseDocketEntries && !!caseDocketEntries.length;
   const hasCaseNotes = caseNotes && !!caseNotes.length;
 
@@ -480,7 +483,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
 
   useEffect(() => {
     setNavState(mapNavState(location.pathname));
-    if (navState !== NavState.COURT_DOCKET) {
+    if (navState !== CaseNavState.COURT_DOCKET) {
       setSelectedFacets([]);
     }
   }, [location]);
@@ -530,7 +533,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
           />
           <div className="grid-row grid-gap-lg">
             <div className="grid-col-2">
-              <div className={'left-navigation-pane-container'}>
+              <div className="left-navigation-pane-container">
                 <CaseDetailNavigation
                   caseId={caseId}
                   initiallySelectedNavLink={navState}
@@ -540,7 +543,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                     (caseBasicInfo.transfers !== undefined && caseBasicInfo.transfers.length > 0)
                   }
                 />
-                {hasDocketEntries && navState === NavState.COURT_DOCKET && (
+                {hasDocketEntries && navState === CaseNavState.COURT_DOCKET && (
                   <div
                     className={`filter-and-search padding-y-4`}
                     data-testid="filter-and-search-panel"
@@ -660,7 +663,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                     </div>
                   </div>
                 )}
-                {hasCaseNotes && navState === NavState.CASE_NOTES && (
+                {hasCaseNotes && navState === CaseNavState.CASE_NOTES && (
                   <div
                     className={`filter-and-search padding-y-4`}
                     data-testid="case-notes-filter-and-search-panel"

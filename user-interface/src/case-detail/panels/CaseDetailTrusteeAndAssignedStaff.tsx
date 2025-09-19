@@ -14,7 +14,7 @@ import { AttorneyUser } from '@common/cams/users';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
-import Icon from '@/lib/components/uswds/Icon';
+import LegacyFormattedAddress from '@/lib/components/cams/LegacyFormattedAddress';
 
 export interface CaseDetailTrusteeAndAssignedStaffProps {
   caseDetail: CaseDetail;
@@ -96,31 +96,11 @@ export default function CaseDetailTrusteeAndAssignedStaff(
             <div className="assigned-staff-information record-detail-card">
               <h3>Trustee</h3>
               <div className="trustee-name">{caseDetail.trustee.name}</div>
-              <div data-testid="case-detail-trustee-email">
-                <a
-                  href={`mailto:${caseDetail.trustee.legacy?.email}?subject=${getCaseNumber(
-                    caseDetail.caseId,
-                  )} - ${caseDetail.caseTitle}`}
-                >
-                  {caseDetail.trustee.legacy?.email}
-                  <Icon className="link-icon" name="mail_outline" />
-                </a>
-              </div>
-              <div className="trustee-phone-number">{caseDetail.trustee.legacy?.phone}</div>
-              <div>
-                <div className="trustee-address">{caseDetail.trustee.legacy?.address1}</div>
-                <div className="trustee-address">{caseDetail.trustee.legacy?.address2}</div>
-                <div className="trustee-address">{caseDetail.trustee.legacy?.address3}</div>
-                <div
-                  className="city-state-postal-code"
-                  aria-label="trustee city, state, zip, country"
-                >
-                  <span className="trustee-city">
-                    {caseDetail.trustee.legacy?.cityStateZipCountry}
-                  </span>
-                  ,
-                </div>
-              </div>
+              <LegacyFormattedAddress
+                legacy={caseDetail.trustee.legacy}
+                testIdPrefix="case-detail-trustee"
+                emailSubject={`${getCaseNumber(caseDetail.caseId)} - ${caseDetail.caseTitle}`}
+              />
             </div>
           )}
         </div>

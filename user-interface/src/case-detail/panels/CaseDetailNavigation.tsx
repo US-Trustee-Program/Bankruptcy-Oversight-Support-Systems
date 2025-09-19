@@ -1,31 +1,9 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import useFeatureFlags, { VIEW_TRUSTEE_ON_CASE } from '@/lib/hooks/UseFeatureFlags';
+import { setCurrentNav, createNavStateMapper } from '@/lib/utils/navigation';
 
-export function mapNavState(path: string) {
-  const cleanPath = path.replace(/\/$/, '').split('/');
-  switch (cleanPath[cleanPath.length - 1]) {
-    case 'court-docket':
-      return NavState.COURT_DOCKET;
-    case 'audit-history':
-      return NavState.AUDIT_HISTORY;
-    case 'associated-cases':
-      return NavState.ASSOCIATED_CASES;
-    case 'notes':
-      return NavState.CASE_NOTES;
-    default:
-      return NavState.CASE_OVERVIEW;
-  }
-}
-
-export interface CaseDetailNavigationProps {
-  caseId: string | undefined;
-  showAssociatedCasesList: boolean;
-  initiallySelectedNavLink: NavState;
-  className?: string;
-}
-
-export enum NavState {
+export enum CaseNavState {
   CASE_OVERVIEW,
   TRUSTEE_AND_ASSIGNED_STAFF,
   COURT_DOCKET,
@@ -34,8 +12,21 @@ export enum NavState {
   CASE_NOTES,
 }
 
-export function setCurrentNav(activeNav: NavState, stateToCheck: NavState): string {
-  return activeNav === stateToCheck ? 'usa-current current' : '';
+export const mapNavState = createNavStateMapper<CaseNavState>(
+  {
+    'court-docket': CaseNavState.COURT_DOCKET,
+    'audit-history': CaseNavState.AUDIT_HISTORY,
+    'associated-cases': CaseNavState.ASSOCIATED_CASES,
+    notes: CaseNavState.CASE_NOTES,
+  },
+  CaseNavState.CASE_OVERVIEW,
+);
+
+export interface CaseDetailNavigationProps {
+  caseId: string | undefined;
+  showAssociatedCasesList: boolean;
+  initiallySelectedNavLink: CaseNavState;
+  className?: string;
 }
 
 export default function CaseDetailNavigation({
@@ -44,7 +35,7 @@ export default function CaseDetailNavigation({
   initiallySelectedNavLink,
   className,
 }: CaseDetailNavigationProps) {
-  const [activeNav, setActiveNav] = useState<NavState>(initiallySelectedNavLink);
+  const [activeNav, setActiveNav] = useState<CaseNavState>(initiallySelectedNavLink);
 
   const featureFlags = useFeatureFlags();
 
@@ -60,8 +51,10 @@ export default function CaseDetailNavigation({
             <NavLink
               to={`/case-detail/${caseId}/`}
               data-testid="case-overview-link"
-              className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.CASE_OVERVIEW)}
-              onClick={() => setActiveNav(NavState.CASE_OVERVIEW)}
+              className={
+                'usa-sidenav__link ' + setCurrentNav(activeNav, CaseNavState.CASE_OVERVIEW)
+              }
+              onClick={() => setActiveNav(CaseNavState.CASE_OVERVIEW)}
               title="view basic details about the current case"
               end
             >
@@ -74,9 +67,10 @@ export default function CaseDetailNavigation({
                 to={`/case-detail/${caseId}/trustee-and-assigned-staff`}
                 data-testid="case-trustee-and-assigned-staff-link"
                 className={
-                  'usa-nav-link ' + setCurrentNav(activeNav, NavState.TRUSTEE_AND_ASSIGNED_STAFF)
+                  'usa-sidenav__link ' +
+                  setCurrentNav(activeNav, CaseNavState.TRUSTEE_AND_ASSIGNED_STAFF)
                 }
-                onClick={() => setActiveNav(NavState.TRUSTEE_AND_ASSIGNED_STAFF)}
+                onClick={() => setActiveNav(CaseNavState.TRUSTEE_AND_ASSIGNED_STAFF)}
                 title="view trustee and assigned staff details for the current case"
                 end
               >
@@ -88,8 +82,8 @@ export default function CaseDetailNavigation({
             <NavLink
               to={`/case-detail/${caseId}/court-docket`}
               data-testid="court-docket-link"
-              className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.COURT_DOCKET)}
-              onClick={() => setActiveNav(NavState.COURT_DOCKET)}
+              className={'usa-sidenav__link ' + setCurrentNav(activeNav, CaseNavState.COURT_DOCKET)}
+              onClick={() => setActiveNav(CaseNavState.COURT_DOCKET)}
               title="view court docket entries"
             >
               Court Docket
@@ -99,8 +93,8 @@ export default function CaseDetailNavigation({
             <NavLink
               to={`/case-detail/${caseId}/notes`}
               data-testid="case-notes-link"
-              className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.CASE_NOTES)}
-              onClick={() => setActiveNav(NavState.CASE_NOTES)}
+              className={'usa-sidenav__link ' + setCurrentNav(activeNav, CaseNavState.CASE_NOTES)}
+              onClick={() => setActiveNav(CaseNavState.CASE_NOTES)}
               title="view case notes"
             >
               Case Notes
@@ -111,8 +105,10 @@ export default function CaseDetailNavigation({
               <NavLink
                 to={`/case-detail/${caseId}/associated-cases`}
                 data-testid="associated-cases-link"
-                className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.ASSOCIATED_CASES)}
-                onClick={() => setActiveNav(NavState.ASSOCIATED_CASES)}
+                className={
+                  'usa-sidenav__link ' + setCurrentNav(activeNav, CaseNavState.ASSOCIATED_CASES)
+                }
+                onClick={() => setActiveNav(CaseNavState.ASSOCIATED_CASES)}
                 title="view associated cases"
               >
                 Associated Cases
@@ -123,8 +119,10 @@ export default function CaseDetailNavigation({
             <NavLink
               to={`/case-detail/${caseId}/audit-history`}
               data-testid="audit-history-link"
-              className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.AUDIT_HISTORY)}
-              onClick={() => setActiveNav(NavState.AUDIT_HISTORY)}
+              className={
+                'usa-sidenav__link ' + setCurrentNav(activeNav, CaseNavState.AUDIT_HISTORY)
+              }
+              onClick={() => setActiveNav(CaseNavState.AUDIT_HISTORY)}
               title="view case audit history"
             >
               Change History
