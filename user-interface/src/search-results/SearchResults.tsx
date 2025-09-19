@@ -7,11 +7,11 @@ import Alert, { AlertDetails, AlertProps, UswdsAlertStyle } from '@/lib/componen
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { Pagination } from '@/lib/components/uswds/Pagination';
-import { deepEqual } from '@/lib/utils/objectEquality';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import { ResponseBody } from '@common/api/response';
 import './SearchResults.scss';
 import { Pagination as PaginationModel } from '@common/api/pagination';
+import { deepEqual } from '@common/object-equality';
 
 export function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): boolean {
   if (Object.keys(searchPredicate).length === 0) {

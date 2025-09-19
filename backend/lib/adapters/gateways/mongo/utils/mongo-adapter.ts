@@ -220,10 +220,14 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     }
   }
 
-  public async insertOne(item: T) {
+  public async insertOne(item: T, options: { useProvidedId?: true } = {}) {
     try {
-      const cleanItem = removeIds(item);
-      const mongoItem = createOrGetId<T>(cleanItem);
+      let mongoItem: CamsItem<T>;
+      if (options.useProvidedId && typeof item === 'object' && !!item['id']) {
+        mongoItem = item as CamsItem<T>;
+      } else {
+        mongoItem = createOrGetId<T>(removeIds(item));
+      }
       const result = await this.collectionHumble.insertOne(mongoItem);
       if (!result.acknowledged) {
         throw new UnknownError(this.moduleName, {
