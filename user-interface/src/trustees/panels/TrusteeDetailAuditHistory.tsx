@@ -54,7 +54,7 @@ function ShowTrusteeContactHistory(props: ShowTrusteeContactHistoryProps) {
           contact={history.before}
           className="trustee-audit-history__address-before"
           testIdPrefix={`previous-contact-${idx}`}
-          emailAsLink={false}
+          showLinks={false}
         />
       </td>
       <td data-testid={`new-contact-${idx}`}>
@@ -62,7 +62,7 @@ function ShowTrusteeContactHistory(props: ShowTrusteeContactHistoryProps) {
           contact={history.after}
           className="trustee-audit-history__address-after"
           testIdPrefix={`new-contact-${idx}`}
-          emailAsLink={false}
+          showLinks={false}
         />
       </td>
       <td data-testid={`changed-by-${idx}`}>

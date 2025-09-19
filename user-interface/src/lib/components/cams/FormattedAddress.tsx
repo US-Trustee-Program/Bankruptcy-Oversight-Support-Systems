@@ -6,12 +6,12 @@ import EmailLink from './EmailLink';
 export type FormattedAddressProps = {
   className?: string;
   contact?: ContactInformation;
-  emailAsLink?: boolean;
+  showLinks?: boolean;
   testIdPrefix?: string;
 };
 
-export default function FormattedAddress(props: FormattedAddressProps): JSX.Element {
-  const { contact, className, emailAsLink = true, testIdPrefix } = props;
+export default function FormattedAddress(props: Readonly<FormattedAddressProps>): JSX.Element {
+  const { contact, className, showLinks = true, testIdPrefix } = props;
 
   const getTestId = (suffix: string) => (testIdPrefix ? `${testIdPrefix}-${suffix}` : undefined);
 
@@ -75,7 +75,7 @@ export default function FormattedAddress(props: FormattedAddressProps): JSX.Elem
   }
 
   if (contact.email) {
-    if (emailAsLink) {
+    if (showLinks) {
       parts.push(
         <EmailLink
           key="email"
