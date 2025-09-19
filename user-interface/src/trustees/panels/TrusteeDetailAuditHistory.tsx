@@ -11,6 +11,7 @@ import {
   TrusteeInternalContactHistory,
 } from '@common/cams/trustees';
 import FormattedAddress from '@/lib/components/cams/FormattedAddress';
+import { Auditable } from '@common/cams/auditable';
 
 export interface TrusteeDetailAuditHistoryProps {
   trusteeId: string;
@@ -21,7 +22,7 @@ type ShowTrusteeNameHistoryProps = Readonly<{ history: TrusteeNameHistory; idx: 
 function ShowTrusteeNameHistory(props: ShowTrusteeNameHistoryProps) {
   const { history, idx } = props;
   return (
-    <tr key={idx}>
+    <tr>
       <td>Name</td>
       <td data-testid={`previous-name-${idx}`}>{history.before || '(none)'}</td>
       <td data-testid={`new-name-${idx}`}>{history.after || '(none)'}</td>
@@ -46,7 +47,7 @@ function ShowTrusteeContactHistory(props: ShowTrusteeContactHistoryProps) {
     history.documentType === 'AUDIT_PUBLIC_CONTACT' ? 'Public Contact' : 'Internal Contact';
 
   return (
-    <tr key={idx}>
+    <tr>
       <td>{changeType}</td>
       <td data-testid={`previous-contact-${idx}`}>
         <FormattedAddress
@@ -81,12 +82,24 @@ function RenderTrusteeHistory(props: Readonly<{ trusteeHistory: TrusteeHistory[]
       {trusteeHistory.map((history, idx: number) => {
         switch (history.documentType) {
           case 'AUDIT_NAME':
-            return <ShowTrusteeNameHistory history={history} idx={idx} />;
+            return (
+              <ShowTrusteeNameHistory
+                key={window.crypto.randomUUID()}
+                history={history}
+                idx={idx}
+              />
+            );
           case 'AUDIT_PUBLIC_CONTACT':
           case 'AUDIT_INTERNAL_CONTACT':
-            return <ShowTrusteeContactHistory history={history} idx={idx} />;
+            return (
+              <ShowTrusteeContactHistory
+                key={window.crypto.randomUUID()}
+                history={history}
+                idx={idx}
+              />
+            );
         }
-      })}{' '}
+      })}
     </>
   );
 }
@@ -103,7 +116,9 @@ export default function TrusteeDetailAuditHistory(props: Readonly<TrusteeDetailA
       .then((response) => {
         if (response) {
           setTrusteeHistory(
-            response.data.sort((a, b) => sortByDateReverse(a.updatedOn, b.updatedOn)),
+            response.data.sort((a: Auditable, b: Auditable) =>
+              sortByDateReverse(a.updatedOn, b.updatedOn),
+            ),
           );
           setIsAuditHistoryLoading(false);
         }
@@ -140,7 +155,7 @@ export default function TrusteeDetailAuditHistory(props: Readonly<TrusteeDetailA
           {trusteeHistory.length > 0 && (
             <table data-testid="trustee-history-table" className="usa-table usa-table--borderless">
               <thead>
-                <tr>
+                <tr key="history-header">
                   <th>Change</th>
                   <th>Previous</th>
                   <th>New</th>
