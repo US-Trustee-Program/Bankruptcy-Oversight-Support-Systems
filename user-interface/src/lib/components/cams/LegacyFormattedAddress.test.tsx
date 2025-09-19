@@ -17,14 +17,14 @@ describe('LegacyFormattedAddress component', () => {
   };
 
   describe('when legacy is undefined', () => {
-    it('should display "(none)"', () => {
+    test('should display "(none)"', () => {
       renderComponent({ legacy: undefined });
       expect(screen.getByText('(none)')).toBeInTheDocument();
     });
   });
 
   describe('when legacy is provided', () => {
-    it('should render complete legacy contact information with all fields', () => {
+    test('should render complete legacy contact information with all fields', () => {
       renderComponent({ legacy: mockFullLegacy, testIdPrefix: 'test' });
 
       // Address fields
@@ -42,7 +42,7 @@ describe('LegacyFormattedAddress component', () => {
       expect(emailLink).toHaveAttribute('href', 'mailto:legacy@example.com');
     });
 
-    it('should render legacy contact with partial address information', () => {
+    test('should render legacy contact with partial address information', () => {
       const partialLegacy: LegacyAddress & { phone?: string; email?: string } = {
         address1: '456 Partial Ave',
         cityStateZipCountry: 'Austin, TX 78701',
@@ -59,7 +59,7 @@ describe('LegacyFormattedAddress component', () => {
       expect(screen.getByTestId('partial-email')).toBeInTheDocument();
     });
 
-    it('should render only phone when provided', () => {
+    test('should render only phone when provided', () => {
       const phoneOnlyLegacy: LegacyAddress & { phone?: string; email?: string } = {
         phone: '555-987-6543',
       };
@@ -71,7 +71,7 @@ describe('LegacyFormattedAddress component', () => {
       expect(screen.queryByTestId('phone-only-email')).not.toBeInTheDocument();
     });
 
-    it('should render email as plain text when emailAsLink is false', () => {
+    test('should render email as plain text when emailAsLink is false', () => {
       const emailOnlyLegacy: LegacyAddress & { phone?: string; email?: string } = {
         email: 'plaintext@example.com',
       };
@@ -86,7 +86,7 @@ describe('LegacyFormattedAddress component', () => {
       expect(screen.queryByRole('link')).not.toBeInTheDocument();
     });
 
-    it('should render email link with custom subject', () => {
+    test('should render email link with custom subject', () => {
       const emailLegacy: LegacyAddress & { phone?: string; email?: string } = {
         email: 'subject@example.com',
       };
@@ -104,21 +104,21 @@ describe('LegacyFormattedAddress component', () => {
       );
     });
 
-    it('should apply custom className', () => {
+    test('should apply custom className', () => {
       renderComponent({ legacy: mockFullLegacy, className: 'custom-legacy-style' });
 
       const container = screen.getByText('123 Legacy St').closest('.formatted-address');
       expect(container).toHaveClass('custom-legacy-style', 'formatted-address');
     });
 
-    it('should not render test IDs when testIdPrefix is not provided', () => {
+    test('should not render test IDs when testIdPrefix is not provided', () => {
       renderComponent({ legacy: mockFullLegacy });
 
       expect(screen.getByText('123 Legacy St')).not.toHaveAttribute('data-testid');
       expect(screen.getByText('214-555-0123 x456')).not.toHaveAttribute('data-testid');
     });
 
-    it('should handle legacy with only address1', () => {
+    test('should handle legacy with only address1', () => {
       const address1OnlyLegacy: LegacyAddress = {
         address1: '789 Solo St',
       };
@@ -131,7 +131,7 @@ describe('LegacyFormattedAddress component', () => {
       expect(screen.queryByTestId('address1-only-city-state-zip')).not.toBeInTheDocument();
     });
 
-    it('should handle legacy with only address2', () => {
+    test('should handle legacy with only address2', () => {
       const address2OnlyLegacy: LegacyAddress = {
         address2: 'Apt 42',
       };
@@ -144,7 +144,7 @@ describe('LegacyFormattedAddress component', () => {
       expect(screen.queryByTestId('address2-only-city-state-zip')).not.toBeInTheDocument();
     });
 
-    it('should handle legacy with only address3', () => {
+    test('should handle legacy with only address3', () => {
       const address3OnlyLegacy: LegacyAddress = {
         address3: 'Floor 10',
       };
@@ -157,7 +157,7 @@ describe('LegacyFormattedAddress component', () => {
       expect(screen.queryByTestId('address3-only-city-state-zip')).not.toBeInTheDocument();
     });
 
-    it('should handle legacy with only cityStateZipCountry', () => {
+    test('should handle legacy with only cityStateZipCountry', () => {
       const cityStateZipOnlyLegacy: LegacyAddress = {
         cityStateZipCountry: 'Phoenix, AZ 85001',
       };
@@ -172,7 +172,7 @@ describe('LegacyFormattedAddress component', () => {
       expect(screen.queryByTestId('city-state-zip-only-address3')).not.toBeInTheDocument();
     });
 
-    it('should handle legacy with empty phone', () => {
+    test('should handle legacy with empty phone', () => {
       const emptyPhoneLegacy: LegacyAddress & { phone?: string; email?: string } = {
         address1: '123 No Phone St',
         phone: '',
@@ -186,7 +186,7 @@ describe('LegacyFormattedAddress component', () => {
       expect(screen.getByTestId('empty-phone-email')).toBeInTheDocument();
     });
 
-    it('should handle legacy with empty email', () => {
+    test('should handle legacy with empty email', () => {
       const emptyEmailLegacy: LegacyAddress & { phone?: string; email?: string } = {
         address1: '123 No Email St',
         phone: '555-111-2222',
@@ -200,7 +200,7 @@ describe('LegacyFormattedAddress component', () => {
       expect(screen.getByTestId('empty-email-phone-number')).toHaveTextContent('555-111-2222');
     });
 
-    it('should handle completely empty legacy object', () => {
+    test('should handle completely empty legacy object', () => {
       const emptyLegacy: LegacyAddress = {};
 
       renderComponent({ legacy: emptyLegacy });
@@ -211,7 +211,7 @@ describe('LegacyFormattedAddress component', () => {
       expect(screen.queryByText('legacy@example.com')).not.toBeInTheDocument();
     });
 
-    it('should handle legacy with all empty string fields', () => {
+    test('should handle legacy with all empty string fields', () => {
       const allEmptyLegacy: LegacyAddress & { phone?: string; email?: string } = {
         address1: '',
         address2: '',
@@ -233,14 +233,14 @@ describe('LegacyFormattedAddress component', () => {
   });
 
   describe('styling and layout', () => {
-    it('should have the correct CSS classes', () => {
+    test('should have the correct CSS classes', () => {
       renderComponent({ legacy: mockFullLegacy });
 
       const container = screen.getByText('123 Legacy St').closest('.formatted-address');
       expect(container).toHaveClass('formatted-address');
     });
 
-    it('should properly structure address parts', () => {
+    test('should properly structure address parts', () => {
       renderComponent({ legacy: mockFullLegacy });
 
       const address1 = screen.getByText('123 Legacy St');
@@ -254,7 +254,7 @@ describe('LegacyFormattedAddress component', () => {
       expect(cityStateZip).toHaveClass('city-state-zip');
     });
 
-    it('should structure phone and email correctly', () => {
+    test('should structure phone and email correctly', () => {
       renderComponent({ legacy: mockFullLegacy });
 
       const phone = screen.getByText('214-555-0123 x456');
