@@ -114,7 +114,7 @@ describe('FormattedAddress component', () => {
 
       renderComponent({
         contact: emailOnlyContact,
-        emailAsLink: false,
+        showLinks: false,
         testIdPrefix: 'plain-email',
       });
 
