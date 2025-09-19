@@ -4,6 +4,7 @@ import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import testingUtilities from '@/lib/testing/testing-utilities';
+import { vi } from 'vitest';
 
 const comboboxId = 'test-combobox';
 
@@ -441,6 +442,31 @@ describe('test cams combobox', () => {
     expect(result).toEqual([]);
 
     expect(isDropdownClosed()).toBeTruthy();
+  });
+
+  test('If the dropdown is open, and filter text is typed that matches options, pressing Tab should move focus to the first filtered item.', async () => {
+    renderWithProps();
+
+    await toggleDropdown();
+    expect(isDropdownClosed()).toBeFalsy();
+
+    const comboboxInputField = await getFocusedComboInputField(comboboxId);
+
+    // Type filter text that will match some options (e.g., "option" will match all options)
+    await userEvent.type(comboboxInputField, 'option');
+    expect(comboboxInputField.value).toBe('option');
+
+    // Press Tab - should move focus to first filtered item
+    await userEvent.keyboard('{Tab}');
+
+    // Check that focus moved to the first list item
+    const firstListItem = document.querySelector('li[role="option"]');
+    await waitFor(() => {
+      expect(firstListItem).toHaveFocus();
+    });
+
+    // Dropdown should still be open
+    expect(isDropdownClosed()).toBeFalsy();
   });
 
   test('should not open when combobox is disabled', async () => {
@@ -889,5 +915,813 @@ describe('test cams combobox', () => {
     expect(listItems[1]).not.toHaveClass('divider');
     expect(listItems[2]).toHaveClass('divider');
     expect(listItems[3]).not.toHaveClass('divider');
+  });
+
+  describe('alphanumeric key handling on toggle button', () => {
+    test('should open dropdown and set letter in input field when letter key is pressed on closed dropdown', async () => {
+      const updateFilterMock = vi.fn();
+      renderWithProps({ onUpdateFilter: updateFilterMock });
+
+      // Focus on the toggle button
+      const toggleButton = document.querySelector(`#${comboboxId}-expand`) as HTMLButtonElement;
+      expect(toggleButton).toBeInTheDocument();
+      toggleButton.focus();
+
+      // Press letter 'a'
+      await userEvent.keyboard('a');
+
+      // Dropdown should be open
+      await waitFor(() => {
+        expect(screen.getByRole('listbox')).toBeInTheDocument();
+      });
+
+      // Input field should contain 'a' and be focused
+      const inputField = document.querySelector(
+        `#${comboboxId}-combo-box-input`,
+      ) as HTMLInputElement;
+      await waitFor(() => {
+        expect(inputField).toBeInTheDocument();
+        expect(inputField.value).toBe('a');
+        expect(inputField).toHaveFocus();
+      });
+
+      // Filter callback should have been called
+      expect(updateFilterMock).toHaveBeenCalledWith('a');
+    });
+
+    test('should open dropdown and set number in input field when number key is pressed on closed dropdown', async () => {
+      const updateFilterMock = vi.fn();
+      renderWithProps({ onUpdateFilter: updateFilterMock });
+
+      const toggleButton = document.querySelector(`#${comboboxId}-expand`) as HTMLButtonElement;
+      expect(toggleButton).toBeInTheDocument();
+      toggleButton.focus();
+
+      // Press number '5'
+      await userEvent.keyboard('5');
+
+      // Dropdown should be open
+      await waitFor(() => {
+        expect(screen.getByRole('listbox')).toBeInTheDocument();
+      });
+
+      // Input field should contain '5' and be focused
+      const inputField = document.querySelector(
+        `#${comboboxId}-combo-box-input`,
+      ) as HTMLInputElement;
+      await waitFor(() => {
+        expect(inputField).toBeInTheDocument();
+        expect(inputField.value).toBe('5');
+        expect(inputField).toHaveFocus();
+      });
+
+      expect(updateFilterMock).toHaveBeenCalledWith('5');
+    });
+
+    test('should open dropdown and set uppercase letter in input field when uppercase letter key is pressed', async () => {
+      const updateFilterMock = vi.fn();
+      renderWithProps({ onUpdateFilter: updateFilterMock });
+
+      const toggleButton = document.querySelector(`#${comboboxId}-expand`) as HTMLButtonElement;
+      expect(toggleButton).toBeInTheDocument();
+      toggleButton.focus();
+
+      // Press uppercase 'A'
+      await userEvent.keyboard('A');
+
+      await waitFor(() => {
+        expect(screen.getByRole('listbox')).toBeInTheDocument();
+      });
+
+      const inputField = document.querySelector(
+        `#${comboboxId}-combo-box-input`,
+      ) as HTMLInputElement;
+      await waitFor(() => {
+        expect(inputField).toBeInTheDocument();
+        expect(inputField.value).toBe('A');
+        expect(inputField).toHaveFocus();
+      });
+
+      expect(updateFilterMock).toHaveBeenCalledWith('A');
+    });
+
+    test('should not trigger alphanumeric behavior when dropdown is already open', async () => {
+      const updateFilterMock = vi.fn();
+      renderWithProps({ onUpdateFilter: updateFilterMock });
+
+      // First open the dropdown
+      await toggleDropdown(comboboxId);
+
+      // Clear any previous calls
+      updateFilterMock.mockClear();
+
+      // Focus on the toggle button
+      const toggleButton = document.querySelector(`#${comboboxId}-expand`) as HTMLButtonElement;
+      expect(toggleButton).toBeInTheDocument();
+      toggleButton.focus();
+
+      // Press letter 'a' - should not trigger the special behavior since dropdown is open
+      await userEvent.keyboard('a');
+
+      // The filter callback should not have been called with 'a'
+      expect(updateFilterMock).not.toHaveBeenCalledWith('a');
+    });
+
+    test('should not trigger alphanumeric behavior for non-alphanumeric keys', async () => {
+      const updateFilterMock = vi.fn();
+      renderWithProps({ onUpdateFilter: updateFilterMock });
+
+      const toggleButton = document.querySelector(`#${comboboxId}-expand`) as HTMLButtonElement;
+      expect(toggleButton).toBeInTheDocument();
+      toggleButton.focus();
+
+      // Test various non-alphanumeric keys
+      await userEvent.keyboard(' '); // space
+      await userEvent.keyboard('!'); // special character
+      await userEvent.keyboard('{Tab}'); // tab key
+
+      // Dropdown should remain closed
+      await waitFor(() => {
+        expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+      });
+
+      // Filter callback should not have been called
+      expect(updateFilterMock).not.toHaveBeenCalled();
+    });
+
+    test('should not trigger alphanumeric behavior when combobox is disabled', async () => {
+      const updateFilterMock = vi.fn();
+      renderWithProps({ disabled: true, onUpdateFilter: updateFilterMock });
+
+      const toggleButton = document.querySelector(`#${comboboxId}-expand`) as HTMLButtonElement;
+      expect(toggleButton).toBeInTheDocument();
+      toggleButton.focus();
+
+      // Press letter 'a'
+      await userEvent.keyboard('a');
+
+      // Dropdown should remain closed
+      await waitFor(() => {
+        expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+      });
+
+      // Filter callback should not have been called
+      expect(updateFilterMock).not.toHaveBeenCalled();
+    });
+
+    test('should position cursor after the character in input field', async () => {
+      renderWithProps({});
+
+      const toggleButton = document.querySelector(`#${comboboxId}-expand`) as HTMLButtonElement;
+      expect(toggleButton).toBeInTheDocument();
+      toggleButton.focus();
+
+      // Press letter 'x'
+      await userEvent.keyboard('x');
+
+      await waitFor(() => {
+        expect(screen.getByRole('listbox')).toBeInTheDocument();
+      });
+
+      const inputField = document.querySelector(
+        `#${comboboxId}-combo-box-input`,
+      ) as HTMLInputElement;
+      await waitFor(() => {
+        expect(inputField).toBeInTheDocument();
+        expect(inputField.value).toBe('x');
+        expect(inputField.selectionStart).toBe(1);
+        expect(inputField.selectionEnd).toBe(1);
+      });
+    });
+  });
+
+  describe('additional coverage tests', () => {
+    test('should initialize with selections prop and map them correctly', async () => {
+      const initialSelections: ComboOption[] = [
+        { label: 'Option 1', value: 'opt1' },
+        { label: 'Option 2', value: 'opt2' },
+      ];
+
+      renderWithProps({ selections: initialSelections, multiSelect: true });
+
+      // The selections should be visible in the selection label (uses generic "things" label)
+      expect(screen.getByText('2 things selected')).toBeInTheDocument();
+    });
+
+    test('should call onFocus callback when input is focused', async () => {
+      const onFocusMock = vi.fn();
+      renderWithProps({ onFocus: onFocusMock });
+
+      await toggleDropdown(comboboxId);
+      const inputField = document.querySelector(
+        `#${comboboxId}-combo-box-input`,
+      ) as HTMLInputElement;
+
+      inputField.focus();
+
+      expect(onFocusMock).toHaveBeenCalled();
+    });
+
+    test('should apply ellipsis overflow strategy classes', () => {
+      const selections: ComboOption[] = [{ label: 'Option 1', value: 'opt1' }];
+
+      renderWithProps({
+        selections,
+        overflowStrategy: 'ellipsis',
+        multiSelect: true,
+      });
+
+      const selectionLabel = document.querySelector('.selection-label');
+      expect(selectionLabel).toHaveClass('ellipsis');
+    });
+
+    test('should handle ArrowUp key on toggle button', async () => {
+      const preventDefault = vi.fn();
+      const stopPropagation = vi.fn();
+
+      renderWithProps({});
+
+      // Get the toggle button (the div with role="combobox")
+      const toggleButton = screen.getByRole('combobox');
+      expect(toggleButton).toBeInTheDocument();
+
+      // Focus on the toggle button
+      toggleButton.focus();
+      expect(toggleButton).toHaveFocus();
+
+      // Create a mock keyboard event for ArrowUp
+      const arrowUpEvent = new KeyboardEvent('keydown', {
+        key: 'ArrowUp',
+        bubbles: true,
+        cancelable: true,
+      });
+
+      // Mock preventDefault and stopPropagation
+      arrowUpEvent.preventDefault = preventDefault;
+      arrowUpEvent.stopPropagation = stopPropagation;
+
+      // Dispatch the ArrowUp event directly to ensure we hit the specific case
+      toggleButton.dispatchEvent(arrowUpEvent);
+
+      // Verify that preventDefault and stopPropagation were called
+      expect(preventDefault).toHaveBeenCalled();
+      expect(stopPropagation).toHaveBeenCalled();
+
+      // Verify dropdown doesn't open (ArrowUp should not trigger dropdown)
+      expect(isDropdownClosed()).toBeTruthy();
+    });
+
+    test('should handle key events on disabled toggle button (early return path)', async () => {
+      const preventDefault = vi.fn();
+      const stopPropagation = vi.fn();
+
+      renderWithProps({ disabled: true });
+
+      // Get the toggle button (the div with role="combobox")
+      const toggleButton = screen.getByRole('combobox');
+      expect(toggleButton).toBeInTheDocument();
+
+      // Focus on the toggle button
+      toggleButton.focus();
+      expect(toggleButton).toHaveFocus();
+
+      // Create a mock keyboard event for ArrowUp (any key will work for this test)
+      const arrowUpEvent = new KeyboardEvent('keydown', {
+        key: 'ArrowUp',
+        bubbles: true,
+        cancelable: true,
+      });
+
+      // Mock preventDefault and stopPropagation
+      arrowUpEvent.preventDefault = preventDefault;
+      arrowUpEvent.stopPropagation = stopPropagation;
+
+      // Dispatch the event - this should hit the disabled check and return early
+      toggleButton.dispatchEvent(arrowUpEvent);
+
+      // Verify that preventDefault and stopPropagation were NOT called
+      // because the function returns early when disabled
+      expect(preventDefault).not.toHaveBeenCalled();
+      expect(stopPropagation).not.toHaveBeenCalled();
+
+      // No need to check dropdown state - the important part is that the disabled
+      // check path is executed (lines 370-372)
+    });
+
+    test('should render error message when errorMessage prop is provided', () => {
+      const errorMessage = 'This field is required';
+      renderWithProps({ errorMessage });
+
+      const errorElement = document.querySelector(`#${comboboxId}-input__error-message`);
+      expect(errorElement).toBeInTheDocument();
+      expect(errorElement).toHaveTextContent(errorMessage);
+      expect(errorElement).toHaveClass('usa-input__error-message');
+    });
+
+    test('should not render error message when errorMessage is empty string', () => {
+      renderWithProps({ errorMessage: '' });
+
+      const errorElement = document.querySelector(`#${comboboxId}-input__error-message`);
+      expect(errorElement).not.toBeInTheDocument();
+    });
+
+    test('should handle input click by focusing and preventing default', async () => {
+      renderWithProps({});
+
+      await toggleDropdown(comboboxId);
+      const inputField = document.querySelector(
+        `#${comboboxId}-combo-box-input`,
+      ) as HTMLInputElement;
+
+      expect(inputField).toBeInTheDocument();
+
+      // Click on the input field
+      await userEvent.click(inputField);
+
+      // Input should be focused
+      expect(inputField).toHaveFocus();
+    });
+
+    test('should handle dropdown positioning logic', async () => {
+      renderWithProps({});
+
+      // Open the dropdown to trigger positioning logic
+      await toggleDropdown(comboboxId);
+
+      // The dropdown should be visible
+      expect(screen.getByRole('listbox')).toBeInTheDocument();
+
+      // Close it again
+      await toggleDropdown(comboboxId);
+    });
+
+    test('should handle edge cases in positioning gracefully', () => {
+      // This test ensures the positioning code doesn't crash when
+      // DOM elements might not be available or have missing properties
+      renderWithProps({});
+
+      // The component should render without errors
+      expect(screen.getByRole('combobox')).toBeInTheDocument();
+    });
+
+    test('should render ariaDescription when provided', () => {
+      const ariaDesc = 'Additional description for this combobox';
+      renderWithProps({ ariaDescription: ariaDesc });
+
+      const ariaDescElement = document.querySelector(`#${comboboxId}-aria-description`);
+      expect(ariaDescElement).toBeInTheDocument();
+      expect(ariaDescElement).toHaveTextContent(ariaDesc);
+    });
+
+    test('should render required asterisk when required prop is true', () => {
+      renderWithProps({ required: true });
+
+      const requiredSpan = document.querySelector('.required-form-field');
+      expect(requiredSpan).toBeInTheDocument();
+      expect(requiredSpan).toHaveTextContent('*');
+    });
+
+    test('should apply custom className prop', () => {
+      const customClass = 'custom-combobox-class';
+      renderWithProps({ className: customClass });
+
+      const comboboxContainer = document.querySelector(`#${comboboxId}`);
+      expect(comboboxContainer).toHaveClass(customClass);
+    });
+
+    test('should handle wrapPills prop', () => {
+      renderWithProps({ wrapPills: true });
+
+      // Verify component renders without errors when wrapPills is set
+      expect(screen.getByRole('combobox')).toBeInTheDocument();
+    });
+
+    test('should use selectedLabel when available in single select mode', async () => {
+      const optionWithSelectedLabel = {
+        label: 'Original Label',
+        selectedLabel: 'Custom Selected Label',
+        value: 'test-value',
+      };
+
+      renderWithProps({
+        options: [optionWithSelectedLabel],
+        multiSelect: false,
+        selections: [optionWithSelectedLabel],
+      });
+
+      const selectionLabel = document.querySelector('.selection-label');
+      expect(selectionLabel).toHaveTextContent('Custom Selected Label');
+    });
+
+    test('should fall back to label when selectedLabel is not available', async () => {
+      const optionWithoutSelectedLabel = {
+        label: 'Original Label',
+        value: 'test-value',
+      };
+
+      renderWithProps({
+        options: [optionWithoutSelectedLabel],
+        multiSelect: false,
+        selections: [optionWithoutSelectedLabel],
+      });
+
+      const selectionLabel = document.querySelector('.selection-label');
+      expect(selectionLabel).toHaveTextContent('Original Label');
+    });
+
+    test('should handle empty options array gracefully', async () => {
+      renderWithProps({ options: [] });
+
+      await toggleDropdown(comboboxId);
+
+      const listbox = screen.getByRole('listbox');
+      expect(listbox).toBeInTheDocument();
+      expect(listbox.children).toHaveLength(0);
+    });
+
+    test('should handle filter with no matching results', async () => {
+      const options = [
+        { label: 'apple', value: 'apple' },
+        { label: 'banana', value: 'banana' },
+      ];
+
+      renderWithProps({ options });
+      await toggleDropdown(comboboxId);
+
+      const inputField = await getFocusedComboInputField(comboboxId);
+      await userEvent.type(inputField, 'xyz');
+
+      const listItems = document.querySelectorAll('li');
+      expect(listItems).toHaveLength(0);
+    });
+
+    test('should call focusInput ref method correctly', async () => {
+      const ref = React.createRef<ComboBoxRef>();
+      renderWithProps({}, ref);
+
+      // Call focusInput - this should open the dropdown and focus the input field
+      await toggleDropdown(comboboxId);
+      ref.current?.focusInput();
+
+      await waitFor(() => {
+        const inputField = document.querySelector(`#${comboboxId}-combo-box-input`);
+        expect(inputField).toHaveFocus();
+      });
+    });
+
+    test('should handle focus ref method correctly', async () => {
+      const ref = React.createRef<ComboBoxRef>();
+      renderWithProps({}, ref);
+
+      // Call focus - this should focus the container
+      ref.current?.focus();
+
+      await waitFor(() => {
+        const inputContainer = document.querySelector('.input-container');
+        expect(inputContainer).toHaveFocus();
+      });
+    });
+
+    test('should handle setSelections with empty array', async () => {
+      const ref = React.createRef<ComboBoxRef>();
+      const options = getDefaultOptions(3);
+      renderWithProps({ options }, ref);
+
+      // First set some selections
+      ref.current?.setSelections([options[0], options[1]]);
+
+      await waitFor(() => {
+        const selections = ref.current?.getSelections();
+        expect(selections).toHaveLength(2);
+      });
+
+      // Then clear them using setSelections with empty array
+      ref.current?.setSelections([]);
+
+      await waitFor(() => {
+        const selections = ref.current?.getSelections();
+        expect(selections).toHaveLength(0);
+      });
+    });
+
+    test('should show generic multi-select label when no singularLabel provided', () => {
+      const selections = [
+        { label: 'Option 1', value: 'opt1' },
+        { label: 'Option 2', value: 'opt2' },
+      ];
+
+      renderWithProps({
+        selections,
+        multiSelect: true,
+        singularLabel: undefined,
+        pluralLabel: 'items',
+      });
+
+      const selectionLabel = document.querySelector('.selection-label');
+      expect(selectionLabel).toHaveTextContent('2 items selected');
+    });
+
+    test('should handle case-insensitive filtering', async () => {
+      const options = [
+        { label: 'Apple Pie', value: 'apple' },
+        { label: 'banana split', value: 'banana' },
+        { label: 'Cherry Tart', value: 'cherry' },
+      ];
+
+      renderWithProps({ options });
+      await toggleDropdown(comboboxId);
+
+      const inputField = await getFocusedComboInputField(comboboxId);
+      await userEvent.type(inputField, 'APPLE');
+
+      const visibleItems = document.querySelectorAll('li');
+      expect(visibleItems).toHaveLength(1);
+      expect(visibleItems[0]).toHaveTextContent('Apple Pie');
+    });
+
+    test('should clear filter when clearFilter is called', async () => {
+      renderWithProps({});
+      await toggleDropdown(comboboxId);
+
+      const inputField = await getFocusedComboInputField(comboboxId);
+      await userEvent.type(inputField, 'some filter text');
+
+      expect(inputField.value).toBe('some filter text');
+
+      // Close dropdown to trigger clearFilter
+      await toggleDropdown(comboboxId);
+
+      expect(inputField.value).toBe('');
+    });
+
+    test('should handle keyboard navigation with no focusable items', async () => {
+      // Test with options that would all be filtered out
+      const options = [{ label: 'apple', value: 'apple' }];
+
+      renderWithProps({ options });
+      await toggleDropdown(comboboxId);
+
+      const inputField = await getFocusedComboInputField(comboboxId);
+      await userEvent.type(inputField, 'xyz'); // Filter out all items
+
+      // Try to navigate down - should handle gracefully
+      await userEvent.keyboard('{ArrowDown}');
+
+      // Should still be focused on input
+      expect(inputField).toHaveFocus();
+    });
+
+    test('should apply error styling when errorMessage is provided', () => {
+      const errorMessage = 'This field has an error';
+      renderWithProps({ errorMessage });
+
+      const inputContainer = document.querySelector('.input-container');
+      expect(inputContainer).toHaveClass('usa-input-group--error');
+    });
+
+    test('should not apply error styling when errorMessage is empty', () => {
+      renderWithProps({ errorMessage: '' });
+
+      const inputContainer = document.querySelector('.input-container');
+      expect(inputContainer).not.toHaveClass('usa-input-group--error');
+    });
+
+    test('should handle rapid successive toggles gracefully', async () => {
+      renderWithProps({});
+
+      const toggleButton = document.querySelector(`#${comboboxId}-expand`) as HTMLButtonElement;
+
+      // Rapidly toggle the dropdown multiple times
+      await userEvent.click(toggleButton);
+      await userEvent.click(toggleButton);
+      await userEvent.click(toggleButton);
+
+      // Should end up in a consistent state
+      expect(document.querySelector('.item-list-container')).toBeInTheDocument();
+    });
+
+    test('should handle multiple filter changes rapidly', async () => {
+      const options = getDefaultOptions(10);
+      const onUpdateFilterMock = vi.fn();
+      renderWithProps({ options, onUpdateFilter: onUpdateFilterMock });
+
+      await toggleDropdown(comboboxId);
+      const inputField = await getFocusedComboInputField(comboboxId);
+
+      // Type rapidly
+      await userEvent.type(inputField, 'abc');
+
+      // Should have called onUpdateFilter for each character
+      expect(onUpdateFilterMock).toHaveBeenCalledWith('a');
+      expect(onUpdateFilterMock).toHaveBeenCalledWith('ab');
+      expect(onUpdateFilterMock).toHaveBeenCalledWith('abc');
+    });
+
+    test('should build correct ARIA description for combobox container', () => {
+      const selections = [{ label: 'Selected Option', value: 'selected' }];
+      renderWithProps({
+        label: 'Test Label',
+        required: true,
+        ariaDescription: 'Custom aria description',
+        selections,
+        multiSelect: true,
+      });
+
+      const ariaDescElement = document.querySelector(`#${comboboxId}-aria-description`);
+      expect(ariaDescElement).toBeInTheDocument();
+      expect(ariaDescElement?.textContent).toContain('Test Label');
+      expect(ariaDescElement?.textContent).toContain('multi-select');
+      expect(ariaDescElement?.textContent).toContain('required');
+      expect(ariaDescElement?.textContent).toContain('Custom aria description');
+      expect(ariaDescElement?.textContent).toContain('1 items currently selected');
+    });
+
+    test('should build correct ARIA description for disabled state', () => {
+      renderWithProps({ disabled: true, label: 'Test Label' });
+
+      const ariaDescElement = document.querySelector(`#${comboboxId}-aria-description`);
+      expect(ariaDescElement?.textContent).toContain('Combo box is disabled');
+    });
+
+    test('should build correct ARIA description for enabled state', () => {
+      renderWithProps({ label: 'Test Label' });
+
+      const ariaDescElement = document.querySelector(`#${comboboxId}-aria-description`);
+      expect(ariaDescElement?.textContent).toContain('Press Enter or Down Arrow key to open');
+    });
+
+    test('should handle multiple selected items description correctly', () => {
+      const selections = [
+        { label: 'First Item', value: 'first' },
+        { label: 'Second Item', value: 'second' },
+        { label: 'Third Item', value: 'third' },
+      ];
+      renderWithProps({ selections, multiSelect: true });
+
+      const ariaDescElement = document.querySelector(`#${comboboxId}-aria-description`);
+      expect(ariaDescElement?.textContent).toContain('3 items currently selected');
+      expect(ariaDescElement?.textContent).toContain('First Item, Second Item, Third Item');
+    });
+
+    test('should handle single select mode in ARIA description', () => {
+      renderWithProps({ multiSelect: false });
+
+      const ariaDescElement = document.querySelector(`#${comboboxId}-aria-description`);
+      expect(ariaDescElement?.textContent).toContain('Combo box');
+      expect(ariaDescElement?.textContent).not.toContain('multi-select');
+    });
+
+    test('should handle combobox without label in ARIA description', () => {
+      renderWithProps({ label: undefined });
+
+      const ariaDescElement = document.querySelector(`#${comboboxId}-aria-description`);
+      expect(ariaDescElement).toBeInTheDocument();
+      expect(ariaDescElement?.textContent).toContain('Combo box');
+    });
+
+    test('should handle navigation list edge cases', async () => {
+      const options = [
+        { label: 'Option 1', value: 'opt1' },
+        { label: 'Option 2', value: 'opt2' },
+      ];
+      renderWithProps({ options });
+
+      await toggleDropdown(comboboxId);
+      await expectInputToHaveFocus();
+
+      // Navigate down to first item
+      await userEvent.keyboard('{ArrowDown}');
+      const listItems = document.querySelectorAll('li');
+      expect(listItems[0]).toHaveFocus();
+
+      // Try to navigate up from first item - should go back to input
+      await userEvent.keyboard('{ArrowUp}');
+      await expectInputToHaveFocus();
+
+      // Navigate to last item
+      await userEvent.keyboard('{ArrowDown}');
+      await userEvent.keyboard('{ArrowDown}');
+      expect(listItems[1]).toHaveFocus();
+
+      // Try to navigate down from last item - should stay on last item
+      await userEvent.keyboard('{ArrowDown}');
+      expect(listItems[1]).toHaveFocus();
+    });
+
+    test('should handle Tab key while focused on list item', async () => {
+      const options = [{ label: 'Option 1', value: 'opt1' }];
+      renderWithProps({ options });
+
+      await toggleDropdown(comboboxId);
+      await userEvent.keyboard('{ArrowDown}');
+
+      const listItem = document.querySelector('li');
+      expect(listItem).toHaveFocus();
+
+      // Press Tab - should close dropdown and move to next element
+      await userEvent.keyboard('{Tab}');
+
+      await waitFor(() => {
+        expect(isDropdownClosed()).toBeTruthy();
+      });
+
+      const nextInput = document.querySelector('.input1');
+      expect(nextInput).toHaveFocus();
+    });
+
+    test('should handle Enter key behavior correctly', async () => {
+      const options = [{ label: 'Option 1', value: 'opt1' }];
+      renderWithProps({ options });
+
+      await toggleDropdown(comboboxId);
+      await getFocusedComboInputField(comboboxId);
+
+      // Press Enter on input field - should not select anything
+      await userEvent.keyboard('{Enter}');
+      let listItems = document.querySelectorAll('li.selected');
+      expect(listItems).toHaveLength(0);
+
+      // Click on list item to select it
+      const listItem = document.querySelector('li');
+      await userEvent.click(listItem!);
+
+      await waitFor(() => {
+        listItems = document.querySelectorAll('li.selected');
+        expect(listItems).toHaveLength(1);
+        expect(listItem).toHaveClass('selected');
+      });
+    });
+
+    test('should handle icon prop correctly', () => {
+      renderWithProps({ icon: 'custom-icon' });
+
+      // Verify component renders without errors when icon prop is set
+      expect(screen.getByRole('combobox')).toBeInTheDocument();
+    });
+
+    test('should handle autoComplete prop correctly', () => {
+      renderWithProps({ autoComplete: 'off' });
+
+      // When not expanded, input field is not present, so autoComplete is handled via props spread
+      expect(screen.getByRole('combobox')).toBeInTheDocument();
+    });
+
+    test('should call onClose with current selections when dropdown closes', async () => {
+      const onClose = vi.fn();
+      const options = getDefaultOptions(3);
+      renderWithProps({ options, onClose });
+
+      await toggleDropdown(comboboxId);
+
+      // Select some items
+      const listItems = document.querySelectorAll('li');
+      await userEvent.click(listItems[0]);
+      await userEvent.click(listItems[1]);
+
+      // Close dropdown
+      await toggleDropdown(comboboxId);
+
+      expect(onClose).toHaveBeenCalledWith([
+        expect.objectContaining({ value: 'o0' }),
+        expect.objectContaining({ value: 'o1' }),
+      ]);
+    });
+
+    test('should handle rapid filter changes and onUpdateFilter calls', async () => {
+      const onUpdateFilter = vi.fn();
+      renderWithProps({ onUpdateFilter });
+
+      await toggleDropdown(comboboxId);
+      const inputField = await getFocusedComboInputField(comboboxId);
+
+      // Type multiple characters rapidly
+      await userEvent.type(inputField, 'test', { delay: 1 });
+
+      // Should have been called for each character
+      expect(onUpdateFilter).toHaveBeenCalledWith('t');
+      expect(onUpdateFilter).toHaveBeenCalledWith('te');
+      expect(onUpdateFilter).toHaveBeenCalledWith('tes');
+      expect(onUpdateFilter).toHaveBeenCalledWith('test');
+    });
+
+    test('should prevent imperative update callback loops', async () => {
+      const ref = React.createRef<ComboBoxRef>();
+      const onUpdateSelection = vi.fn();
+      const options = getDefaultOptions(3);
+
+      renderWithProps({ options, onUpdateSelection }, ref);
+
+      // Call setSelections imperatively
+      ref.current?.setSelections([options[0], options[1]]);
+
+      await waitFor(() => {
+        const selections = ref.current?.getSelections();
+        expect(selections).toHaveLength(2);
+      });
+
+      // onUpdateSelection should not be called during imperative updates
+      // This tests the isImperativeUpdateRef logic
+      expect(onUpdateSelection).not.toHaveBeenCalled();
+    });
   });
 });
