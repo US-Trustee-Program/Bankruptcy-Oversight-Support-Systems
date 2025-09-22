@@ -30,8 +30,7 @@ function validatePhoneNumberInput(value: string) {
   return { phoneNumber, joinedInput };
 }
 
-type PhoneNumberInputProps = Omit<InputProps, 'onChange' | 'onFocus'> & {
-  onChange: (phoneNumber?: string) => void;
+type PhoneNumberInputProps = Omit<InputProps, 'onFocus'> & {
   onFocus?: (ev: React.FocusEvent<HTMLElement>) => void;
 };
 
@@ -60,9 +59,10 @@ function PhoneNumberInputComponent(props: PhoneNumberInputProps, ref: React.Ref<
       {...otherProps}
       ref={forwardedRef}
       onChange={(ev) => {
-        const { phoneNumber, joinedInput } = validatePhoneNumberInputEvent(ev);
+        const { joinedInput } = validatePhoneNumberInputEvent(ev);
         forwardedRef?.current?.setValue(joinedInput);
-        onChange(phoneNumber);
+        ev.target.value = joinedInput;
+        props.onChange?.(ev);
       }}
       includeClearButton={true}
       ariaDescription="Example: 123-456-7890"
