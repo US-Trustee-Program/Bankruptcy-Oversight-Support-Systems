@@ -18,7 +18,7 @@ export const trusteeFormDataSpec: Readonly<ValidationSpec<TrusteeFormData>> = {
   state: [V.exactLength(2, 'State is required')],
   zipCode: [V.matches(ZIP_REGEX, 'ZIP code must be 5 digits or 9 digits with a hyphen')],
   email: [V.matches(EMAIL_REGEX, 'Email must be a valid email address')],
-  phone: [V.matches(PHONE_REGEX, 'Phone is required')],
+  phone: [V.matches(PHONE_REGEX, 'Phone must be a valid phone number')],
   extension: [V.optional(V.matches(EXTENSION_REGEX, 'Extension must be 1 to 6 digits'))],
   status: [V.isInSet<TrusteeStatus>([...TRUSTEE_STATUS_VALUES])],
 };
