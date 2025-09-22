@@ -14,7 +14,6 @@ Logic:
 import os
 import subprocess
 import sys
-from pathlib import Path
 
 # Configuration constants
 WORKFLOW_DIRECTORY = '.github/workflows/'
@@ -43,11 +42,10 @@ def get_staged_files():
 
 def has_workflow_changes(staged_files):
     """Check if any workflow files are being committed."""
-    for file_path in staged_files:
-        if WORKFLOW_DIRECTORY in file_path:
-            if any(file_path.endswith(ext) for ext in WORKFLOW_EXTENSIONS):
-                return True
-    return False
+    return any(
+        WORKFLOW_DIRECTORY in file_path and any(file_path.endswith(ext) for ext in WORKFLOW_EXTENSIONS)
+        for file_path in staged_files
+    )
 
 
 def has_diagram_changes(staged_files):
@@ -56,11 +54,14 @@ def has_diagram_changes(staged_files):
 
 
 def run_diagram_generator():
-    """Run the workflow diagram generator script."""
-    # Get the repository root (where this script should be executed from)
+    """Run the workflow diagram generator script.
+
+    Uses sys.executable explicitly and avoids shell=True; arguments are static.
+    Returns True on success, False on failure.
+    """
     try:
         repo_root = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
+            ("git", "rev-parse", "--show-toplevel"),
             capture_output=True,
             text=True,
             check=True
@@ -69,25 +70,26 @@ def run_diagram_generator():
         print("Error: Could not determine repository root")
         return False
 
-    # Change to repository root and run the script
     original_dir = os.getcwd()
     try:
         os.chdir(repo_root)
-        result = subprocess.run([
-            sys.executable,
-            GENERATOR_SCRIPT
-        ], capture_output=True, text=True)
-
+        result = subprocess.run(
+            (sys.executable, GENERATOR_SCRIPT),
+            capture_output=True,
+            text=True,
+            check=False
+        )
         if result.returncode == 0:
             print("Workflow diagrams generated successfully")
             return True
-        else:
-            print("Error generating workflow diagrams:")
-            print(result.stderr)
-            return False
-
-    except Exception as e:
-        print(f"Error running diagram generator: {e}")
+        print("Error generating workflow diagrams:")
+        if result.stdout:
+            print("stdout:", result.stdout)
+        if result.stderr:
+            print("stderr:", result.stderr)
+        return False
+    except Exception as exc:  # defensive
+        print(f"Error running diagram generator: {exc}")
         return False
     finally:
         os.chdir(original_dir)
@@ -110,12 +112,9 @@ def main():
 
     print("Workflow diagram needs updating...")
 
-    if run_diagram_generator():
-        print("!!! Commit blocked: Please review and stage the updated workflow diagram")
-        return EXIT_FAILURE
-    else:
-        print("Failed to generate workflow diagrams")
-        return EXIT_FAILURE
+    success = run_diagram_generator()
+    print("!!! Commit blocked: Please review and stage the updated workflow diagram" if success else "Failed to generate workflow diagrams")
+    return EXIT_FAILURE
 
 
 if __name__ == "__main__":

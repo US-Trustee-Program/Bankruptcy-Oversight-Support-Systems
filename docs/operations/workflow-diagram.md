@@ -1,8 +1,8 @@
 # GitHub Actions Workflow Analysis
 
 ## Summary
-- **Total Workflows**: 25
-- **Main Workflows**: 11
+- **Total Workflows**: 24
+- **Main Workflows**: 10
 - **Reusable Workflows**: 14
 
 ## Legend
@@ -72,30 +72,6 @@ flowchart LR
     class azure_remove_branch_yml_list job
     class azure_remove_branch_yml_check job
     class azure_remove_branch_yml_clean_up job
-```
-
-### Pull_request Triggered Workflows
-
-Workflows triggered by `pull_request`:
-- **Update Workflow Diagrams** (`update-workflow-diagrams.yml`)
-
-```mermaid
-flowchart LR
-    trigger_pull_request(["pull_request"])
-    update_workflow_diagrams_yml["Update Workflow Diagrams"]
-    update_workflow_diagrams_yml_update_workflow_diagrams["Update Workflow Diagrams"]
-
-    trigger_pull_request --> update_workflow_diagrams_yml
-    update_workflow_diagrams_yml --> update_workflow_diagrams_yml_update_workflow_diagrams
-
-    classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
-    classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
-    classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
-    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
-
-    class trigger_pull_request trigger
-    class update_workflow_diagrams_yml mainWorkflow
-    class update_workflow_diagrams_yml_update_workflow_diagrams job
 ```
 
 ### Push Triggered Workflows
@@ -311,7 +287,7 @@ flowchart LR
     class sub_deploy_code_slot_yml_enable_access job
 ```
 
-#### Continuous Deployment - Job Dependencies
+##### Continuous Deployment - Job Dependencies
 
 This diagram shows the explicit and implicit dependencies between jobs in the continuous deployment workflow:
 
@@ -321,11 +297,11 @@ flowchart LR
         Workflow_Inputs["Workflow Inputs"]
         Workflow_Inputs_enableBicepDeployment["enableBicepDeployment"]
         Variables["Variables"]
-        Variables_CAMS_LAUNCH_DARKLY_ENV["CAMS_LAUNCH_DARKLY_ENV"]
         Variables_CAMS_BASE_PATH["CAMS_BASE_PATH"]
-        Variables_NODE_VERSION["NODE_VERSION"]
-        Variables_CAMS_SERVER_PROTOCOL["CAMS_SERVER_PROTOCOL"]
+        Variables_CAMS_LAUNCH_DARKLY_ENV["CAMS_LAUNCH_DARKLY_ENV"]
         Variables_CAMS_SERVER_PORT["CAMS_SERVER_PORT"]
+        Variables_CAMS_SERVER_PROTOCOL["CAMS_SERVER_PROTOCOL"]
+        Variables_NODE_VERSION["NODE_VERSION"]
     end
 
     subgraph continuous_deployment_workflow["Continuous Deployment"]
@@ -346,10 +322,14 @@ flowchart LR
         end
         security_scan["Security"]
         subgraph build_subgraph["Build"]
-            build_vars["CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>NODE_VERSION"]
+            build_vars["CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>NODE_VERSION<br/>apiFunctionName<br/>azResourceGrpAppEncrypted<br/>dataflowsFunctionName<br/>ghaEnvironment<br/>slotName<br/>webappName"]
         end
-        deploy["Cloud Resource Deployment"]
-        deploy_code_slot["Slot Code Deployment"]
+        subgraph deploy_subgraph["Cloud Resource Deployment"]
+            deploy_vars["apiFunctionName<br/>azResourceGrpAppEncrypted<br/>azResourceGrpNetworkEncrypted<br/>dataflowsFunctionName<br/>deployBicep<br/>deployVnet<br/>environmentHash<br/>ghaEnvironment<br/>slotName<br/>stackName<br/>webappName"]
+        end
+        subgraph deploy_code_slot_subgraph["Slot Code Deployment"]
+            deploy_code_slot_vars["apiFunctionName<br/>azResourceGrpAppEncrypted<br/>dataflowsFunctionName<br/>e2eCosmosDbExists<br/>environmentHash<br/>ghaEnvironment<br/>initialDeployment<br/>slotName<br/>stackName<br/>webappName"]
+        end
     end
 
         Variables --> Variables_CAMS_BASE_PATH
@@ -368,24 +348,21 @@ flowchart LR
     Variables_NODE_VERSION -.-> unit_test_common_subgraph
     Variables_NODE_VERSION -.-> unit_test_frontend_subgraph
     Workflow_Inputs_enableBicepDeployment -.-> setup_subgraph
-    accessibility_test_subgraph ==>|"needs"| deploy
-    build_subgraph ==>|"needs"| deploy
-    deploy ==>|"needs"| deploy_code_slot
-    security_scan ==>|"needs"| deploy
+    accessibility_test_subgraph ==>|"needs"| deploy_subgraph
+    build_subgraph ==>|"needs"| deploy_subgraph
+    deploy_subgraph ==>|"needs"| deploy_code_slot_subgraph
+    security_scan ==>|"needs"| deploy_subgraph
     setup_subgraph ==>|"needs"| build_subgraph
-    setup_subgraph ==>|"needs"| deploy
-    setup_subgraph ==>|"needs"| deploy_code_slot
-    unit_test_backend_subgraph ==>|"needs"| deploy
-    unit_test_common_subgraph ==>|"needs"| deploy
-    unit_test_frontend_subgraph ==>|"needs"| deploy
+    setup_subgraph ==>|"needs"| deploy_code_slot_subgraph
+    setup_subgraph ==>|"needs"| deploy_subgraph
+    unit_test_backend_subgraph ==>|"needs"| deploy_subgraph
+    unit_test_common_subgraph ==>|"needs"| deploy_subgraph
+    unit_test_frontend_subgraph ==>|"needs"| deploy_subgraph
 
     classDef external fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
-    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:2px,color:#000000
+    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
     classDef mainWorkflow fill:#f3e5f5,fill-opacity:0.15,stroke:#f3e5f5,stroke-width:1px,color:#ffffff
     classDef jobSubgraph fill:#f1f8e9,stroke:#33691e,stroke-width:2px,color:#000000
-    classDef explicit stroke:#2196F3,stroke-width:3px
-    classDef dataflow stroke:#FF9800,stroke-dasharray: 5 5
-
     class continuous_deployment_workflow mainWorkflow
     class Workflow_Inputs external
     class Variables external
@@ -396,17 +373,30 @@ flowchart LR
     class unit_test_common_subgraph jobSubgraph
     class security_scan job
     class build_subgraph jobSubgraph
-    class deploy job
-    class deploy_code_slot job
+    class deploy_subgraph jobSubgraph
+    class deploy_code_slot_subgraph jobSubgraph
 ```
 
-#### Deploy code for slot - Job Dependencies
+##### Deploy code for slot - Job Dependencies
 
-This diagram shows the explicit and implicit dependencies between jobs in the sub deploy code slot workflow:
+This diagram shows the explicit and implicit dependencies between jobs in the deploy code for slot workflow:
 
 ```mermaid
 flowchart LR
-    subgraph sub_deploy_code_slot_workflow["Sub Deploy Code Slot"]
+    subgraph "External Inputs"
+        Workflow_Inputs["Workflow Inputs"]
+        Workflow_Inputs_webappName["webappName"]
+        Workflow_Inputs_apiFunctionName["apiFunctionName"]
+        Workflow_Inputs_dataflowsFunctionName["dataflowsFunctionName"]
+        Workflow_Inputs_azResourceGrpAppEncrypted["azResourceGrpAppEncrypted"]
+        Workflow_Inputs_e2eCosmosDbExists["e2eCosmosDbExists"]
+        Workflow_Inputs_slotName["slotName"]
+        Workflow_Inputs_ghaEnvironment["ghaEnvironment"]
+        Workflow_Inputs_stackName["stackName"]
+        Workflow_Inputs_environmentHash["environmentHash"]
+    end
+
+    subgraph sub_deploy_code_slot_workflow["Deploy code for slot"]
         subgraph deploy_code_subgraph["Slot Code Deployment"]
             deploy_code_vars["apiFunctionName<br/>azResourceGrpAppEncrypted<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
         end
@@ -426,19 +416,6 @@ flowchart LR
             endpoint_test_application_post_swap_vars["apiFunctionName<br/>azResourceGrpAppEncrypted<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
         end
         enable_access["enable-access"]
-    end
-
-    subgraph "External Inputs"
-        Workflow_Inputs["Workflow Inputs"]
-        Workflow_Inputs_ghaEnvironment["ghaEnvironment"]
-        Workflow_Inputs_dataflowsFunctionName["dataflowsFunctionName"]
-        Workflow_Inputs_stackName["stackName"]
-        Workflow_Inputs_azResourceGrpAppEncrypted["azResourceGrpAppEncrypted"]
-        Workflow_Inputs_environmentHash["environmentHash"]
-        Workflow_Inputs_slotName["slotName"]
-        Workflow_Inputs_apiFunctionName["apiFunctionName"]
-        Workflow_Inputs_e2eCosmosDbExists["e2eCosmosDbExists"]
-        Workflow_Inputs_webappName["webappName"]
     end
 
         Workflow_Inputs --> Workflow_Inputs_apiFunctionName
@@ -503,12 +480,9 @@ flowchart LR
     swap_webapp_deployment_slot ==>|"needs"| endpoint_test_application_post_swap_subgraph
 
     classDef external fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
-    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:2px,color:#000000
+    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
     classDef mainWorkflow fill:#f3e5f5,fill-opacity:0.15,stroke:#f3e5f5,stroke-width:1px,color:#ffffff
     classDef jobSubgraph fill:#f1f8e9,stroke:#33691e,stroke-width:2px,color:#000000
-    classDef explicit stroke:#2196F3,stroke-width:3px
-    classDef dataflow stroke:#FF9800,stroke-dasharray: 5 5
-
     class sub_deploy_code_slot_workflow mainWorkflow
     class Workflow_Inputs external
     class deploy_code_subgraph jobSubgraph
@@ -918,11 +892,11 @@ flowchart LR
         Workflow_Inputs["Workflow Inputs"]
         Workflow_Inputs_enableBicepDeployment["enableBicepDeployment"]
         Variables["Variables"]
-        Variables_CAMS_LAUNCH_DARKLY_ENV["CAMS_LAUNCH_DARKLY_ENV"]
         Variables_CAMS_BASE_PATH["CAMS_BASE_PATH"]
-        Variables_NODE_VERSION["NODE_VERSION"]
-        Variables_CAMS_SERVER_PROTOCOL["CAMS_SERVER_PROTOCOL"]
+        Variables_CAMS_LAUNCH_DARKLY_ENV["CAMS_LAUNCH_DARKLY_ENV"]
         Variables_CAMS_SERVER_PORT["CAMS_SERVER_PORT"]
+        Variables_CAMS_SERVER_PROTOCOL["CAMS_SERVER_PROTOCOL"]
+        Variables_NODE_VERSION["NODE_VERSION"]
     end
 
     subgraph continuous_deployment_workflow["Continuous Deployment"]
@@ -943,10 +917,14 @@ flowchart LR
         end
         security_scan["Security"]
         subgraph build_subgraph["Build"]
-            build_vars["CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>NODE_VERSION"]
+            build_vars["CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>NODE_VERSION<br/>apiFunctionName<br/>azResourceGrpAppEncrypted<br/>dataflowsFunctionName<br/>ghaEnvironment<br/>slotName<br/>webappName"]
         end
-        deploy["Cloud Resource Deployment"]
-        deploy_code_slot["Slot Code Deployment"]
+        subgraph deploy_subgraph["Cloud Resource Deployment"]
+            deploy_vars["apiFunctionName<br/>azResourceGrpAppEncrypted<br/>azResourceGrpNetworkEncrypted<br/>dataflowsFunctionName<br/>deployBicep<br/>deployVnet<br/>environmentHash<br/>ghaEnvironment<br/>slotName<br/>stackName<br/>webappName"]
+        end
+        subgraph deploy_code_slot_subgraph["Slot Code Deployment"]
+            deploy_code_slot_vars["apiFunctionName<br/>azResourceGrpAppEncrypted<br/>dataflowsFunctionName<br/>e2eCosmosDbExists<br/>environmentHash<br/>ghaEnvironment<br/>initialDeployment<br/>slotName<br/>stackName<br/>webappName"]
+        end
     end
 
         Variables --> Variables_CAMS_BASE_PATH
@@ -965,24 +943,21 @@ flowchart LR
     Variables_NODE_VERSION -.-> unit_test_common_subgraph
     Variables_NODE_VERSION -.-> unit_test_frontend_subgraph
     Workflow_Inputs_enableBicepDeployment -.-> setup_subgraph
-    accessibility_test_subgraph ==>|"needs"| deploy
-    build_subgraph ==>|"needs"| deploy
-    deploy ==>|"needs"| deploy_code_slot
-    security_scan ==>|"needs"| deploy
+    accessibility_test_subgraph ==>|"needs"| deploy_subgraph
+    build_subgraph ==>|"needs"| deploy_subgraph
+    deploy_subgraph ==>|"needs"| deploy_code_slot_subgraph
+    security_scan ==>|"needs"| deploy_subgraph
     setup_subgraph ==>|"needs"| build_subgraph
-    setup_subgraph ==>|"needs"| deploy
-    setup_subgraph ==>|"needs"| deploy_code_slot
-    unit_test_backend_subgraph ==>|"needs"| deploy
-    unit_test_common_subgraph ==>|"needs"| deploy
-    unit_test_frontend_subgraph ==>|"needs"| deploy
+    setup_subgraph ==>|"needs"| deploy_code_slot_subgraph
+    setup_subgraph ==>|"needs"| deploy_subgraph
+    unit_test_backend_subgraph ==>|"needs"| deploy_subgraph
+    unit_test_common_subgraph ==>|"needs"| deploy_subgraph
+    unit_test_frontend_subgraph ==>|"needs"| deploy_subgraph
 
     classDef external fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
-    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:2px,color:#000000
+    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
     classDef mainWorkflow fill:#f3e5f5,fill-opacity:0.15,stroke:#f3e5f5,stroke-width:1px,color:#ffffff
     classDef jobSubgraph fill:#f1f8e9,stroke:#33691e,stroke-width:2px,color:#000000
-    classDef explicit stroke:#2196F3,stroke-width:3px
-    classDef dataflow stroke:#FF9800,stroke-dasharray: 5 5
-
     class continuous_deployment_workflow mainWorkflow
     class Workflow_Inputs external
     class Variables external
@@ -993,17 +968,30 @@ flowchart LR
     class unit_test_common_subgraph jobSubgraph
     class security_scan job
     class build_subgraph jobSubgraph
-    class deploy job
-    class deploy_code_slot job
+    class deploy_subgraph jobSubgraph
+    class deploy_code_slot_subgraph jobSubgraph
 ```
 
 ##### Deploy code for slot - Job Dependencies
 
-This diagram shows the explicit and implicit dependencies between jobs in the sub deploy code slot workflow:
+This diagram shows the explicit and implicit dependencies between jobs in the deploy code for slot workflow:
 
 ```mermaid
 flowchart LR
-    subgraph sub_deploy_code_slot_workflow["Sub Deploy Code Slot"]
+    subgraph "External Inputs"
+        Workflow_Inputs["Workflow Inputs"]
+        Workflow_Inputs_webappName["webappName"]
+        Workflow_Inputs_apiFunctionName["apiFunctionName"]
+        Workflow_Inputs_dataflowsFunctionName["dataflowsFunctionName"]
+        Workflow_Inputs_azResourceGrpAppEncrypted["azResourceGrpAppEncrypted"]
+        Workflow_Inputs_e2eCosmosDbExists["e2eCosmosDbExists"]
+        Workflow_Inputs_slotName["slotName"]
+        Workflow_Inputs_ghaEnvironment["ghaEnvironment"]
+        Workflow_Inputs_stackName["stackName"]
+        Workflow_Inputs_environmentHash["environmentHash"]
+    end
+
+    subgraph sub_deploy_code_slot_workflow["Deploy code for slot"]
         subgraph deploy_code_subgraph["Slot Code Deployment"]
             deploy_code_vars["apiFunctionName<br/>azResourceGrpAppEncrypted<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
         end
@@ -1023,19 +1011,6 @@ flowchart LR
             endpoint_test_application_post_swap_vars["apiFunctionName<br/>azResourceGrpAppEncrypted<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
         end
         enable_access["enable-access"]
-    end
-
-    subgraph "External Inputs"
-        Workflow_Inputs["Workflow Inputs"]
-        Workflow_Inputs_ghaEnvironment["ghaEnvironment"]
-        Workflow_Inputs_dataflowsFunctionName["dataflowsFunctionName"]
-        Workflow_Inputs_stackName["stackName"]
-        Workflow_Inputs_azResourceGrpAppEncrypted["azResourceGrpAppEncrypted"]
-        Workflow_Inputs_environmentHash["environmentHash"]
-        Workflow_Inputs_slotName["slotName"]
-        Workflow_Inputs_apiFunctionName["apiFunctionName"]
-        Workflow_Inputs_e2eCosmosDbExists["e2eCosmosDbExists"]
-        Workflow_Inputs_webappName["webappName"]
     end
 
         Workflow_Inputs --> Workflow_Inputs_apiFunctionName
@@ -1100,12 +1075,9 @@ flowchart LR
     swap_webapp_deployment_slot ==>|"needs"| endpoint_test_application_post_swap_subgraph
 
     classDef external fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
-    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:2px,color:#000000
+    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
     classDef mainWorkflow fill:#f3e5f5,fill-opacity:0.15,stroke:#f3e5f5,stroke-width:1px,color:#ffffff
     classDef jobSubgraph fill:#f1f8e9,stroke:#33691e,stroke-width:2px,color:#000000
-    classDef explicit stroke:#2196F3,stroke-width:3px
-    classDef dataflow stroke:#FF9800,stroke-dasharray: 5 5
-
     class sub_deploy_code_slot_workflow mainWorkflow
     class Workflow_Inputs external
     class deploy_code_subgraph jobSubgraph
@@ -1313,8 +1285,6 @@ flowchart LR
     build_azure_cli_image_yml["Build Custom Azure CLI Runner Image"]
     dast_scan_yml["Stand Alone DAST Scan"]
     update_dependencies_yml["NPM Package Updates"]
-    trigger_pull_request(["pull_request"])
-    update_workflow_diagrams_yml["Update Workflow Diagrams"]
     trigger_push(["push"])
     continuous_deployment_yml["Continuous Deployment"]
     trigger_workflow_run(["workflow_run"])
@@ -1335,7 +1305,6 @@ flowchart LR
     trigger_schedule --> build_azure_cli_image_yml
     trigger_schedule --> dast_scan_yml
     trigger_schedule --> update_dependencies_yml
-    trigger_pull_request --> update_workflow_diagrams_yml
     trigger_push --> continuous_deployment_yml
     trigger_workflow_run --> slack_notification_yml
 
@@ -1346,14 +1315,12 @@ flowchart LR
     class trigger_workflow_dispatch trigger
     class trigger_delete trigger
     class trigger_schedule trigger
-    class trigger_pull_request trigger
     class trigger_push trigger
     class trigger_workflow_run trigger
     class sub_security_scan_yml mainWorkflow
     class e2e_test_yml mainWorkflow
     class azure_remove_branch_yml mainWorkflow
     class veracode_dast_scan_yml mainWorkflow
-    class update_workflow_diagrams_yml mainWorkflow
     class veracode_sast_upload_yml mainWorkflow
     class continuous_deployment_yml mainWorkflow
     class build_azure_cli_image_yml mainWorkflow
@@ -1376,9 +1343,6 @@ flowchart LR
   - Jobs: 3
 - **Veracode Dynamic Analysis Scan** (`veracode-dast-scan.yml`)
   - Triggers: schedule, workflow_dispatch
-  - Jobs: 1
-- **Update Workflow Diagrams** (`update-workflow-diagrams.yml`)
-  - Triggers: pull_request
   - Jobs: 1
 - **Veracode Static Analysis Scan** (`veracode-sast-upload.yml`)
   - Triggers: schedule, workflow_dispatch
