@@ -39,7 +39,6 @@ jobs:
     secrets: inherit # pragma: allowlist secret
 
   sast-pipeline-scan:
-    if: false
     name: SAST Pipeline Scan
     runs-on: ubuntu-latest
     steps:
