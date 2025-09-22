@@ -232,8 +232,8 @@ function TrusteeForm() {
     }
   }, [status]);
 
-  const getFormData = (): TrusteeFormData => {
-    return {
+  const getFormData = (override?: { name: string; value: string }): TrusteeFormData => {
+    const formData = {
       name: name.trim(),
       address1: address1.trim(),
       address2: address2.trim() || undefined,
@@ -247,25 +247,31 @@ function TrusteeForm() {
       chapters: chapters.length > 0 ? chapters : undefined,
       status: status,
     };
+    if (override) {
+      return { ...formData, [override.name]: override.value } as TrusteeFormData;
+    }
+    return formData;
   };
 
   const isRequired = (field: keyof TrusteeFormData): { required?: true } => {
-    const fullActualFields = ['name', 'address1', 'city', 'state', 'zipCode', 'phone', 'email'];
+    const commonRequiredFields = ['name', 'address1', 'city', 'state', 'zipCode'];
+    const fullActualFields = [...commonRequiredFields, 'phone', 'email'];
     const dynamicSpecFields = Object.keys(getDynamicSpec());
     const requiredFields =
       doCreate || doEditPublicProfile
         ? fullActualFields
-        : dynamicSpecFields.filter((f) => fullActualFields.includes(f));
+        : dynamicSpecFields.filter((f) => commonRequiredFields.includes(f));
     return requiredFields.includes(field) ? { required: true } : {};
   };
 
-  const getDynamicSpec = () => {
+  const getDynamicSpec = (override?: { name: keyof TrusteeFormData; value: string }) => {
     const spec: Partial<ValidationSpec<TrusteeFormData>> = { ...trusteeFormDataSpec };
-    const formData = getFormData();
+    const formData = getFormData(override);
     if (doEditInternalProfile) {
       delete spec.name;
       if (!formData.address1 && !formData.city && !formData.state && !formData.zipCode) {
         delete spec.address1;
+        delete spec.address2;
         delete spec.city;
         delete spec.state;
         delete spec.zipCode;
@@ -288,15 +294,7 @@ function TrusteeForm() {
     const { value, name } = event.target;
     setter(value);
 
-    // TODO: We can't alter the validation spec based on fields being filled out (using getFormData())
-    // TODO: because the changed value is on the event and is just being set in this function.
-    // THIS below should work because we are adding the spec for this field to the spec object
-    // before using it in the validation function. BUT this doesn't quite work....
-    const spec = getDynamicSpec();
-    if (name in trusteeFormDataSpec) {
-      const key = name as keyof TrusteeFormData;
-      spec[key] = trusteeFormDataSpec[key];
-    }
+    const spec = getDynamicSpec({ name: name as keyof TrusteeFormData, value });
 
     debounce(() => {
       validateFieldAndUpdate(name as keyof TrusteeFormData, value, spec);
