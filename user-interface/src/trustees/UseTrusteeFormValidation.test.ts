@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react';
-import { useTrusteeFormValidation } from './UseTrusteeFormValidation';
+import { trusteeFormDataSpec, useTrusteeFormValidation } from './UseTrusteeFormValidation';
 import { TrusteeFormData } from '@/trustees/UseTrusteeFormValidation.types';
 
 // Test constants for form validation
@@ -54,7 +54,7 @@ const ERROR_MESSAGES = {
   STATE_REQUIRED: 'State is required',
   ZIP_CODE_INVALID: 'ZIP code must be 5 digits or 9 digits with a hyphen',
   EMAIL_INVALID: 'Email must be a valid email address',
-  PHONE_REQUIRED: 'Phone is required',
+  PHONE_REQUIRED: 'Phone must be a valid phone number',
   EXTENSION_INVALID: 'Extension must be 1 to 6 digits',
 };
 
@@ -64,7 +64,10 @@ describe('useTrusteeFormValidation', () => {
 
     let validationResult;
     act(() => {
-      validationResult = result.current.isFormValidAndComplete(EMPTY_FORM_DATA);
+      validationResult = result.current.isFormValidAndComplete(
+        EMPTY_FORM_DATA,
+        trusteeFormDataSpec,
+      );
     });
 
     expect(validationResult).toBe(false);
@@ -81,7 +84,7 @@ describe('useTrusteeFormValidation', () => {
 
     let validationResult;
     act(() => {
-      validationResult = result.current.isFormValidAndComplete(formData);
+      validationResult = result.current.isFormValidAndComplete(formData, trusteeFormDataSpec);
     });
 
     expect(validationResult).toBe(false);
@@ -98,7 +101,7 @@ describe('useTrusteeFormValidation', () => {
 
     let validationResult;
     act(() => {
-      validationResult = result.current.isFormValidAndComplete(formData);
+      validationResult = result.current.isFormValidAndComplete(formData, trusteeFormDataSpec);
     });
     expect(validationResult).toBe(true);
   });
@@ -158,7 +161,7 @@ describe('useTrusteeFormValidation', () => {
     const { result } = renderHook(() => useTrusteeFormValidation());
 
     act(() => {
-      result.current.validateFieldAndUpdate(args.field, args.value);
+      result.current.validateFieldAndUpdate(args.field, args.value, trusteeFormDataSpec);
     });
 
     if (args.expectedValue) {
@@ -173,8 +176,8 @@ describe('useTrusteeFormValidation', () => {
 
     // First generate some errors
     act(() => {
-      result.current.validateFieldAndUpdate('name', '');
-      result.current.validateFieldAndUpdate('zipCode', '1234');
+      result.current.validateFieldAndUpdate('name', '', trusteeFormDataSpec);
+      result.current.validateFieldAndUpdate('zipCode', '1234', trusteeFormDataSpec);
     });
 
     expect(result.current.fieldErrors.name).toBe(ERROR_MESSAGES.TRUSTEE_NAME_REQUIRED);
@@ -194,8 +197,8 @@ describe('useTrusteeFormValidation', () => {
 
     // Generate errors for multiple fields
     act(() => {
-      result.current.validateFieldAndUpdate('name', '');
-      result.current.validateFieldAndUpdate('zipCode', '1234');
+      result.current.validateFieldAndUpdate('name', '', trusteeFormDataSpec);
+      result.current.validateFieldAndUpdate('zipCode', '1234', trusteeFormDataSpec);
     });
 
     expect(result.current.fieldErrors.name).toBe(ERROR_MESSAGES.TRUSTEE_NAME_REQUIRED);
@@ -213,7 +216,10 @@ describe('useTrusteeFormValidation', () => {
   test('validates complete valid form', () => {
     const { result } = renderHook(() => useTrusteeFormValidation());
 
-    const validationResult = result.current.isFormValidAndComplete(COMPLETE_VALID_FORM_DATA);
+    const validationResult = result.current.isFormValidAndComplete(
+      COMPLETE_VALID_FORM_DATA,
+      trusteeFormDataSpec,
+    );
 
     expect(validationResult).toBeTruthy();
   });
@@ -223,7 +229,10 @@ describe('useTrusteeFormValidation', () => {
 
     let validationResult;
     act(() => {
-      validationResult = result.current.isFormValidAndComplete(SPACES_FORM_DATA);
+      validationResult = result.current.isFormValidAndComplete(
+        SPACES_FORM_DATA,
+        trusteeFormDataSpec,
+      );
     });
 
     expect(validationResult).toBeFalsy();
