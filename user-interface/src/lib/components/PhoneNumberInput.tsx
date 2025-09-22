@@ -1,33 +1,31 @@
 import React, { forwardRef, useImperativeHandle, useRef } from 'react';
 import Input, { InputProps } from './uswds/Input';
 import { InputRef } from '../type-declarations/input-fields';
-import { PHONE_REGEX } from '@common/cams/regex';
 
 export function validatePhoneNumberInputEvent(ev: React.ChangeEvent<HTMLInputElement>) {
-  return validatePhoneNumberInput(ev.target.value);
+  return formatPhoneNumberInput(ev.target.value);
 }
 
-function validatePhoneNumberInput(value: string) {
+function formatPhoneNumberInput(value: string) {
   const digitsOnly = (value.match(/\d/g) ?? []).slice(0, 10);
 
-  let joinedInput = '';
+  let formattedPhoneNumber = '';
   const len = digitsOnly.length;
   if (len > 0) {
-    joinedInput = digitsOnly.slice(0, Math.min(3, len)).join('');
+    formattedPhoneNumber = digitsOnly.slice(0, Math.min(3, len)).join('');
   }
   if (len >= 4) {
-    joinedInput += '-' + digitsOnly.slice(3, Math.min(6, len)).join('');
+    formattedPhoneNumber += '-' + digitsOnly.slice(3, Math.min(6, len)).join('');
   }
   if (len >= 7) {
-    joinedInput += '-' + digitsOnly.slice(6, 10).join('');
+    formattedPhoneNumber += '-' + digitsOnly.slice(6, 10).join('');
   }
 
   if (len === 0) {
-    joinedInput = '';
+    formattedPhoneNumber = '';
   }
 
-  const phoneNumber = PHONE_REGEX.test(joinedInput) ? joinedInput : undefined;
-  return { phoneNumber, joinedInput };
+  return { formattedPhoneNumber };
 }
 
 type PhoneNumberInputProps = Omit<InputProps, 'onFocus'> & {
@@ -42,8 +40,8 @@ function PhoneNumberInputComponent(props: PhoneNumberInputProps, ref: React.Ref<
     ref,
     () => ({
       setValue: (value: string) => {
-        const { joinedInput } = validatePhoneNumberInput(value);
-        forwardedRef.current?.setValue(joinedInput);
+        const { formattedPhoneNumber } = formatPhoneNumberInput(value);
+        forwardedRef.current?.setValue(formattedPhoneNumber);
       },
       clearValue: () => forwardedRef.current?.clearValue(),
       resetValue: () => forwardedRef.current?.resetValue(),
@@ -59,9 +57,9 @@ function PhoneNumberInputComponent(props: PhoneNumberInputProps, ref: React.Ref<
       {...otherProps}
       ref={forwardedRef}
       onChange={(ev) => {
-        const { joinedInput } = validatePhoneNumberInputEvent(ev);
-        forwardedRef?.current?.setValue(joinedInput);
-        ev.target.value = joinedInput;
+        const { formattedPhoneNumber } = validatePhoneNumberInputEvent(ev);
+        forwardedRef?.current?.setValue(formattedPhoneNumber);
+        ev.target.value = formattedPhoneNumber;
         props.onChange?.(ev);
       }}
       includeClearButton={true}
