@@ -4,1173 +4,745 @@ import os
 import re
 import sys
 import yaml
-from pathlib import Path
-from typing import Dict, List, Set, Tuple, Any, Optional, Union
+from typing import Dict, List, Set, Tuple, Optional, Iterable, Any
 
+# -----------------------------
+# Configuration and Constants
+# -----------------------------
+# Directory paths (relative to this script)
+WORKFLOWS_DIR_RELATIVE = '../../../.github/workflows'
+OUTPUT_FILE_RELATIVE = '../../../docs/operations/workflow-diagram.md'
 
-class WorkflowParser:
-    def __init__(self, workflows_dir: str):
-        self.workflows_dir = workflows_dir
-        self.workflows: Dict[str, Dict] = {}
+# File extensions and patterns
+WORKFLOW_FILE_EXTENSIONS = ('.yml', '.yaml')
+YML_EXTENSION = '.yml'
+GITHUB_WORKFLOWS_PATTERN = r'\.github/workflows/([^@]+)'
+NODE_ID_PATTERN = r'^\s+(\w+)[\[(]'
+WORKFLOW_NODE_PATTERN = '_yml'
 
-    def parse_all_workflows(self) -> None:
-        """Parse all workflow files in the directory"""
-        try:
-            files = [f for f in os.listdir(self.workflows_dir)
-                    if f.endswith('.yml') or f.endswith('.yaml')]
-        except OSError:
-            files = []
+# GitHub Actions trigger types
+TRIGGER_KEYS = {
+    'push', 'pull_request', 'workflow_dispatch', 'schedule', 'workflow_call',
+    'workflow_run', 'delete', 'create', 'release'
+}
 
-        for file in files:
-            try:
-                workflow = self.parse_workflow_file(file)
-                self.workflows[file] = workflow
-            except Exception as error:
-                print(f"Error parsing {file}: {str(error)}", file=sys.stderr)
+# GitHub Actions expression patterns for dependency analysis
+JOB_OUTPUT_PATTERN = re.compile(r'\$\{\{\s*needs\.(\w+)\.outputs\.(\w+)\s*\}\}')
+SECRET_PATTERN = re.compile(r'\$\{\{\s*secrets\.(\w+)\s*\}\}')
+VARS_PATTERN = re.compile(r'\$\{\{\s*vars\.(\w+)\s*\}\}')
+GITHUB_CONTEXT_PATTERN = re.compile(r'\$\{\{\s*github\.(\w+)\s*\}\}')
+INPUTS_PATTERN = re.compile(r'\$\{\{\s*inputs\.(\w+)\s*\}\}')
 
-    def parse_workflow_file(self, filename: str) -> Dict:
-        """Parse a single workflow file"""
-        file_path = os.path.join(self.workflows_dir, filename)
+# Workflow files that should have dependency diagrams generated
+DEPENDENCY_DIAGRAM_WORKFLOWS = [
+    'continuous-deployment.yml',
+    'sub-deploy-code-slot.yml'
+]
 
-        with open(file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
+# Mermaid diagram constants
+MERMAID_FLOWCHART = "flowchart LR\n"
+MERMAID_INDENT = "    "
+MERMAID_DOUBLE_INDENT = "        "
 
-        workflow_data = yaml.safe_load(content)
+# CSS styling definitions for mermaid diagrams
+CSS_STYLES = {
+    'reusable': 'fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000',
+    'mainWorkflow': 'fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000',
+    'trigger': 'fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000',
+    'job': 'fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000',
+    'external': 'fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000',
+    'jobSubgraph': 'fill:#f1f8e9,stroke:#33691e,stroke-width:2px,color:#000000',
+    'mainWorkflowSubgraph': 'fill:#f3e5f5,fill-opacity:0.15,stroke:#f3e5f5,stroke-width:1px,color:#ffffff'
+}
 
-        # Handle YAML parsing quirk where 'on:' can be parsed as True
-        on_section = workflow_data.get('on') or workflow_data.get(True)
+def get_css_definitions() -> str:
+    """Generate CSS class definitions for mermaid diagrams"""
+    return ("\n" +
+            f"{MERMAID_INDENT}classDef reusable {CSS_STYLES['reusable']}\n" +
+            f"{MERMAID_INDENT}classDef mainWorkflow {CSS_STYLES['mainWorkflow']}\n" +
+            f"{MERMAID_INDENT}classDef trigger {CSS_STYLES['trigger']}\n" +
+            f"{MERMAID_INDENT}classDef job {CSS_STYLES['job']}\n\n")
 
-        is_reusable = (on_section is not None and
-                      isinstance(on_section, dict) and
-                      on_section.get('workflow_call') is not None)
-        triggers = self.extract_triggers(on_section)
+def get_dependency_css_definitions() -> str:
+    """Generate CSS class definitions specifically for dependency diagrams"""
+    return (f"{MERMAID_INDENT}classDef external {CSS_STYLES['external']}\n" +
+            f"{MERMAID_INDENT}classDef job {CSS_STYLES['job']}\n" +
+            f"{MERMAID_INDENT}classDef mainWorkflow {CSS_STYLES['mainWorkflowSubgraph']}\n" +
+            f"{MERMAID_INDENT}classDef jobSubgraph {CSS_STYLES['jobSubgraph']}\n")
 
-        jobs = {}
+def get_overview_css_definitions() -> str:
+    """Generate CSS class definitions for overview diagrams"""
+    return ("\n" +
+            f"{MERMAID_INDENT}classDef mainWorkflow {CSS_STYLES['mainWorkflow']}\n" +
+            f"{MERMAID_INDENT}classDef trigger {CSS_STYLES['trigger']}\n\n")
 
-        if workflow_data.get('jobs'):
-            for job_id, job in workflow_data['jobs'].items():
-                jobs[job_id] = {
-                    'name': job.get('name'),
-                    'uses': job.get('uses'),
-                    'needs': self.normalize_needs(job.get('needs')),
-                    'condition': job.get('if'),
-                    'with': job.get('with'),
-                    'secrets': job.get('secrets'),
-                }
+# -----------------------------
+# Functional Parsing Utilities
+# -----------------------------
 
-        return {
-            'filename': filename,
-            'name': workflow_data.get('name') or re.sub(r'\.(yml|yaml)$', '', filename),
-            'isReusable': is_reusable,
-            'jobs': jobs,
-            'triggers': triggers,
-        }
-
-    def extract_triggers(self, on: Union[str, List, Dict, None]) -> List[str]:
-        """Extract trigger events from workflow 'on' section"""
-        if not on:
-            return []
-
-        if isinstance(on, str):
-            return [on]
-
+def parse_workflow_file(workflows_dir: str, filename: str) -> Dict:
+    """Parse a single GitHub Actions workflow file and extract metadata"""
+    file_path = os.path.join(workflows_dir, filename)
+    with open(file_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+    workflow_data = yaml.safe_load(content) or {}
+    on_section = workflow_data.get(True)
+    is_reusable = (
+        on_section is not None and isinstance(on_section, dict) and on_section.get('workflow_call') is not None
+    )
+    # Extract triggers from on_section
+    if not on_section:
         triggers = []
-
-        if isinstance(on, list):
-            return on
-
-        if isinstance(on, dict):
-            # Filter out non-trigger keys that might be parsed incorrectly
-            trigger_keys = [
-                'push',
-                'pull_request',
-                'workflow_dispatch',
-                'schedule',
-                'workflow_call',
-                'workflow_run',
-                'delete',
-                'create',
-                'release',
-            ]
-
-            for key in on.keys():
-                if key in trigger_keys:
-                    triggers.append(key)
-
-        return triggers
-
-    def normalize_needs(self, needs: Union[str, List, None]) -> List[str]:
-        """Normalize 'needs' field to always be an array"""
+    elif isinstance(on_section, str):
+        triggers = [on_section]
+    elif isinstance(on_section, list):
+        triggers = list(on_section)
+    elif isinstance(on_section, dict):
+        triggers = [k for k in on_section.keys() if k in TRIGGER_KEYS]
+    else:
+        triggers = []
+    jobs: Dict[str, Dict] = {}
+    for job_id, job in (workflow_data.get('jobs') or {}).items():
+        # Normalize 'needs' field to always be a list
+        needs = job.get('needs')
         if not needs:
-            return []
-        if isinstance(needs, str):
-            return [needs]
-        if isinstance(needs, list):
-            return needs
-        return []
+            normalized_needs = []
+        elif isinstance(needs, str):
+            normalized_needs = [needs]
+        else:
+            normalized_needs = needs if isinstance(needs, list) else []
 
-    def get_all_triggers(self) -> List[str]:
-        """Get all unique triggers across workflows"""
-        triggers = set()
-        for workflow in self.workflows.values():
-            if not workflow['isReusable']:
-                for trigger in workflow['triggers']:
-                    triggers.add(trigger)
-        return sorted(list(triggers))
+        jobs[job_id] = {
+            'name': job.get('name'),
+            'uses': job.get('uses'),
+            'needs': normalized_needs,
+            'condition': job.get('if'),
+            'with': job.get('with'),
+            'secrets': job.get('secrets'),
+        }
+    return {
+        'filename': filename,
+        'name': workflow_data.get('name') or re.sub(r'\.(yml|yaml)$', '', filename),
+        'isReusable': is_reusable,
+        'jobs': jobs,
+        'triggers': triggers,
+    }
 
-    def get_workflows_for_trigger(self, trigger_type: str) -> List[Tuple[str, Dict]]:
-        """Get workflows triggered by a specific trigger"""
-        return [(filename, workflow) for filename, workflow in self.workflows.items()
-                if not workflow['isReusable'] and trigger_type in workflow['triggers']]
 
-    def generate_workflow_dispatch_diagram(self, filename: str, workflow: Dict) -> str:
-        """Generate diagram for a specific workflow triggered by workflow_dispatch"""
-        diagram = "flowchart LR\n"
-        nodes = []
-        edges = []
-        processed_workflows = set()
-        reusable_workflows = {}
+def load_workflows(workflows_dir: str) -> Dict[str, Dict]:
+    """Load and parse all workflow files from the specified directory"""
+    workflows: Dict[str, Dict] = {}
+    try:
+        workflow_files = [f for f in os.listdir(workflows_dir) if f.endswith(WORKFLOW_FILE_EXTENSIONS)]
+    except OSError:
+        workflow_files = []
 
-        # Add trigger and main workflow
-        trigger_id = "trigger_workflow_dispatch"
-        workflow_id = self.sanitize_id(filename)
+    for filename in workflow_files:
+        try:
+            workflows[filename] = parse_workflow_file(workflows_dir, filename)
+        except Exception as error:  # parity with original behavior
+            print(f"Error parsing {filename}: {error}", file=sys.stderr)
+    return workflows
 
-        nodes.append(f"    {trigger_id}([\"workflow_dispatch\"])")
-        nodes.append(f"    {workflow_id}[\"{workflow['name']}\"]")
-        edges.append(f"    {trigger_id} --> {workflow_id}")
 
-        # Add all dependencies for this workflow
-        self.add_workflow_dependencies(
-            filename,
-            workflow,
-            nodes,
-            edges,
-            processed_workflows,
-            reusable_workflows,
+# ----------------------------------
+# Diagram Helpers
+# ----------------------------------
+
+def process_job_for_diagram(job_id: str, job: Dict, workflow_id: str, nodes: List[str], edges: List[str], reusable_workflows: Dict[str, Dict], workflows: Dict[str, Dict], processed_workflows: Set[str]):
+    """Process a single job for diagram generation, handling both regular jobs and reusable workflow calls"""
+    job_node_id = f"{workflow_id}_{sanitize_id(job_id)}"
+    job_label = job.get('name') or job_id
+    nodes.append(f"{MERMAID_INDENT}{job_node_id}[\"{job_label}\"]")
+    edges.append(f"{MERMAID_INDENT}{workflow_id} --> {job_node_id}")
+
+    # Handle reusable workflow calls
+    if job.get('uses'):
+        called_workflow_file = find_workflow_by_uses(job['uses'])
+        if called_workflow_file and called_workflow_file in workflows:
+            called_workflow = workflows[called_workflow_file]
+            called_workflow_id = sanitize_id(called_workflow_file)
+            if called_workflow_id not in reusable_workflows:
+                workflow_label = (called_workflow_file if called_workflow['isReusable'] else called_workflow['name'])
+                nodes.append(f"{MERMAID_INDENT}{called_workflow_id}[\"{workflow_label}\"]")
+                reusable_workflows[called_workflow_id] = called_workflow
+                add_reusable_workflow_jobs(called_workflow_file, called_workflow, called_workflow_id, nodes, edges, processed_workflows, reusable_workflows, workflows)
+            edges.append(f"{MERMAID_INDENT}{job_node_id} --> {called_workflow_id}")
+
+def sanitize_id(string: str) -> str:
+    """Convert a string to a valid mermaid diagram identifier"""
+    return re.sub(r'_{2,}', '_', re.sub(r'[^a-zA-Z0-9_]', '_', string))
+
+
+def find_workflow_by_uses(uses_path: str) -> Optional[str]:
+    if match := re.search(GITHUB_WORKFLOWS_PATTERN, uses_path):
+        return match[1]
+    return None
+
+
+def is_workflow_node(node_id: str) -> bool:
+    if re.match(r'^\w+_yml$', node_id):
+        return True
+    return WORKFLOW_NODE_PATTERN in node_id and node_id.endswith(WORKFLOW_NODE_PATTERN)
+
+
+def get_workflow_type_from_node_id(node_id: str, workflows: Dict[str, Dict]) -> str:
+    filename = ''
+    if re.match(r'^\w+_yml$', node_id):
+        filename = re.sub(r'_yml$', YML_EXTENSION, node_id).replace('_', '-')
+    elif WORKFLOW_NODE_PATTERN in node_id and node_id.endswith(WORKFLOW_NODE_PATTERN):
+        filename = re.sub(r'_yml$', YML_EXTENSION, node_id).replace('_', '-')
+    if workflow := workflows.get(filename):
+        return 'reusable' if workflow['isReusable'] else 'main'
+    return 'unknown'
+
+
+def generate_styling(nodes: List[str], workflows: Dict[str, Dict]) -> str:
+    styling = get_css_definitions()
+    for node in nodes:
+        if regular_match := re.search(NODE_ID_PATTERN, node):
+            node_id = regular_match[1]
+            if node_id.startswith('trigger_'):
+                styling += f"{MERMAID_INDENT}class {node_id} trigger\n"
+            elif is_workflow_node(node_id):
+                wtype = get_workflow_type_from_node_id(node_id, workflows)
+                if wtype == 'reusable':
+                    styling += f"{MERMAID_INDENT}class {node_id} reusable\n"
+                elif wtype == 'main':
+                    styling += f"{MERMAID_INDENT}class {node_id} mainWorkflow\n"
+            else:
+                styling += f"{MERMAID_INDENT}class {node_id} job\n"
+    return styling
+
+
+def add_reusable_workflow_jobs(filename: str, workflow: Dict, workflow_id: str, nodes: List[str], edges: List[str], processed_workflows: Set[str], reusable_workflows: Dict[str, Dict], workflows: Dict[str, Dict]):
+    """Add jobs from a reusable workflow to the diagram"""
+    for job_id, job in workflow['jobs'].items():
+        process_job_for_diagram(job_id, job, workflow_id, nodes, edges, reusable_workflows, workflows, processed_workflows)
+
+
+def add_workflow_dependencies(filename: str, workflow: Dict, nodes: List[str], edges: List[str], processed_workflows: Set[str], reusable_workflows: Dict[str, Dict], workflows: Dict[str, Dict]):
+    """Add a workflow and its dependencies to the diagram"""
+    workflow_id = sanitize_id(filename)
+    if workflow_id in processed_workflows:
+        return
+    processed_workflows.add(workflow_id)
+    for job_id, job in workflow['jobs'].items():
+        process_job_for_diagram(job_id, job, workflow_id, nodes, edges, reusable_workflows, workflows, processed_workflows)
+
+
+def get_all_triggers(workflows: Dict[str, Dict]) -> List[str]:
+    triggers: Set[str] = set()
+    for workflow in workflows.values():
+        if not workflow['isReusable']:
+            triggers.update(workflow['triggers'])
+    return sorted(triggers)
+
+
+def get_workflows_for_trigger(trigger_type: str, workflows: Dict[str, Dict]) -> List[Tuple[str, Dict]]:
+    return [item for item in workflows.items() if not item[1]['isReusable'] and trigger_type in item[1]['triggers']]
+
+
+def generate_workflow_dispatch_diagram(filename: str, workflow: Dict, workflows: Dict[str, Dict]) -> str:
+    diagram = MERMAID_FLOWCHART
+    nodes: List[str] = []
+    edges: List[str] = []
+    processed_workflows: Set[str] = set()
+    reusable_workflows: Dict[str, Dict] = {}
+    trigger_id = "trigger_workflow_dispatch"
+    workflow_id = sanitize_id(filename)
+    nodes.append(f"{MERMAID_INDENT}{trigger_id}([\"workflow_dispatch\"])\n".rstrip())
+    nodes.append(f"{MERMAID_INDENT}{workflow_id}[\"{workflow['name']}\"]")
+    edges.append(f"{MERMAID_INDENT}{trigger_id} --> {workflow_id}")
+    add_workflow_dependencies(filename, workflow, nodes, edges, processed_workflows, reusable_workflows, workflows)
+    diagram += "\n".join(nodes) + "\n\n" + "\n".join(edges) + "\n"
+    diagram += generate_styling(nodes, workflows)
+    return diagram
+
+
+def generate_workflow_dispatch_diagrams(workflows: Dict[str, Dict]) -> Dict[str, Dict]:
+    diagrams: Dict[str, Dict] = {
+        filename: {
+            'workflow': workflow,
+            'diagram': generate_workflow_dispatch_diagram(filename, workflow, workflows),
+        }
+        for filename, workflow in workflows.items()
+        if 'workflow_dispatch' in workflow['triggers'] and not workflow['isReusable']
+    }
+    return diagrams
+
+
+def generate_trigger_diagram(trigger_type: str, workflows: Dict[str, Dict]) -> str:
+    triggered_workflows = get_workflows_for_trigger(trigger_type, workflows)
+    if not triggered_workflows:
+        return ''
+    diagram = MERMAID_FLOWCHART
+    nodes: List[str] = []
+    edges: List[str] = []
+    processed_workflows: Set[str] = set()
+    reusable_workflows: Dict[str, Dict] = {}
+    trigger_id = f"trigger_{sanitize_id(trigger_type)}"
+    nodes.append(f"{MERMAID_INDENT}{trigger_id}([\"{trigger_type}\"])\n".rstrip())
+    for filename, workflow in triggered_workflows:
+        workflow_id = sanitize_id(filename)
+        nodes.append(f"{MERMAID_INDENT}{workflow_id}[\"{workflow['name']}\"]")
+        edges.append(f"{MERMAID_INDENT}{trigger_id} --> {workflow_id}")
+        add_workflow_dependencies(filename, workflow, nodes, edges, processed_workflows, reusable_workflows, workflows)
+    diagram += "\n".join(nodes) + "\n\n" + "\n".join(edges) + "\n"
+    diagram += generate_styling(nodes, workflows)
+    return diagram
+
+
+def generate_all_trigger_diagrams(workflows: Dict[str, Dict]) -> Dict[str, str]:
+    diagrams: Dict[str, str] = {}
+    for trigger in get_all_triggers(workflows):
+        if diagram := generate_trigger_diagram(trigger, workflows):
+            diagrams[trigger] = diagram
+    return diagrams
+
+
+def generate_overview_diagram(workflows: Dict[str, Dict]) -> str:
+    diagram = MERMAID_FLOWCHART
+    nodes: List[str] = []
+    edges: List[str] = []
+    trigger_groups: Dict[str, List[Tuple[str, Dict]]] = {}
+    for filename, workflow in workflows.items():
+        if not workflow['isReusable']:
+            for trigger in workflow['triggers']:
+                trigger_groups.setdefault(trigger, []).append((filename, workflow))
+    for trigger, group in trigger_groups.items():
+        trigger_id = f"trigger_{sanitize_id(trigger)}"
+        nodes.append(f"{MERMAID_INDENT}{trigger_id}([\"{trigger}\"])\n".rstrip())
+        for filename, workflow in group:
+            workflow_id = sanitize_id(filename)
+            nodes.append(f"{MERMAID_INDENT}{workflow_id}[\"{workflow['name']}\"]")
+            edges.append(f"{MERMAID_INDENT}{trigger_id} --> {workflow_id}")
+    diagram += "\n".join(nodes) + "\n\n" + "\n".join(edges) + "\n"
+    diagram += get_overview_css_definitions()
+    for trigger in trigger_groups:
+        diagram += f"{MERMAID_INDENT}class trigger_{sanitize_id(trigger)} trigger\n"
+    for filename, workflow in workflows.items():
+        if not workflow['isReusable']:
+            diagram += f"{MERMAID_INDENT}class {sanitize_id(filename)} mainWorkflow\n"
+    return diagram
+
+
+# ----------------------------------
+# Workflow Analysis and Processing
+# ----------------------------------
+
+
+def traverse_string_values(node: Any) -> Iterable[str]:
+    """Traverse nested dict/list structures yielding each string (scalar) value once."""
+    if isinstance(node, str):
+        yield node
+    elif isinstance(node, dict):
+        for val in node.values():
+            yield from traverse_string_values(val)
+    elif isinstance(node, list):
+        for item in node:
+            yield from traverse_string_values(item)
+
+
+def extract_inputs_from_needed_job(job: Dict, needed_job: str) -> List[str]:
+    """Return list of output variable names referenced from a needed job.
+
+    Traverses the YAML-derived job structure (dict/list/scalars) and applies
+    a regex only to string leaves, rather than serializing the entire job.
+    This reduces false positives and avoids depending on JSON formatting.
+    """
+    pattern = re.compile(rf'\$\{{\{{\s*needs\.{needed_job}\.outputs\.(\w+)\s*\}}\}}')
+    found: Set[str] = set()
+    for value in traverse_string_values(job):
+        for match in pattern.findall(value):
+            found.add(match)
+    return sorted(found)
+
+
+def analyze_dependencies(workflow: Dict) -> Dict:
+    """Analyze job dependencies within a workflow (YAML-structure aware).
+
+    Strategy:
+      * Explicit deps: from 'needs' list
+      * Inputs from explicit deps: regex search only across string leaves
+      * Implicit deps: references to needs.<job>.outputs.X for jobs not in explicit needs
+      * External refs: secrets.*, vars.*, github.*, inputs.* gathered per job
+    """
+    explicit_deps: Dict[str, List[Dict]] = {}
+    implicit_deps: Dict[str, List[Dict]] = {}
+    external_deps: Dict[str, List[Dict]] = {}
+    external_inputs: Dict[str, Set[str]] = {}
+    for job_id, job in workflow['jobs'].items():
+        needs_list = job.get('needs') or []
+        if needs_list:
+            explicit_deps[job_id] = [
+                {'job': needed_job, 'inputs': extract_inputs_from_needed_job(job, needed_job)}
+                for needed_job in needs_list
+            ]
+        # Collect matches from each string leaf
+        seen_implicit: Set[Tuple[str, str]] = set()
+        job_external: List[Dict] = []
+        for value in traverse_string_values(job):
+            for source_job, output_var in JOB_OUTPUT_PATTERN.findall(value):
+                if source_job not in needs_list:
+                    seen_implicit.add((source_job, output_var))
+            for pattern, category in [
+                (SECRET_PATTERN, 'Secrets'),
+                (VARS_PATTERN, 'Variables'),
+                (GITHUB_CONTEXT_PATTERN, 'GitHub Context'),
+                (INPUTS_PATTERN, 'Workflow Inputs'),
+            ]:
+                for name in pattern.findall(value):
+                    job_external.append({'category': category, 'variable': name})
+                    external_inputs.setdefault(category, set()).add(name)
+        if seen_implicit:
+            implicit_deps[job_id] = [
+                {'sourceJob': sj, 'variable': var, 'type': 'job_output'}
+                for sj, var in sorted(seen_implicit)
+            ]
+        if job_external:
+            # De-duplicate while preserving first-seen order
+            dedup: List[Dict] = []
+            seen_pairs: Set[Tuple[str, str]] = set()
+            for entry in job_external:
+                key = (entry['category'], entry['variable'])
+                if key not in seen_pairs:
+                    seen_pairs.add(key)
+                    dedup.append(entry)
+            external_deps[job_id] = dedup
+    return {
+        'explicitDeps': explicit_deps,
+        'implicitDeps': implicit_deps,
+        'externalDeps': external_deps,
+        'externalInputs': external_inputs,
+    }
+
+
+def _render_external_inputs_block(external_inputs: Dict[str, Set[str]]) -> Tuple[str, List[str]]:
+    """Render the External Inputs subgraph and return its text plus the edges created.
+
+    Preserves existing ordering (iteration order of dict & sets as previously used).
+    """
+    if not external_inputs:
+        return '', []
+    block = f'{MERMAID_INDENT}subgraph "External Inputs"\n'
+    edges: List[str] = []
+    for category, variables in external_inputs.items():
+        category_id = sanitize_id(category)
+        block += f'{MERMAID_DOUBLE_INDENT}{category_id}["{category}"]\n'
+        for var_name in variables:
+            var_id = sanitize_id(f"{category_id}_{var_name}")
+            block += f'{MERMAID_DOUBLE_INDENT}{var_id}["{var_name}"]\n'
+            edges.append(f'{MERMAID_DOUBLE_INDENT}{category_id} --> {var_id}')
+    block += f'{MERMAID_INDENT}end\n\n'
+    return block, edges
+
+
+def _compute_job_variables(dependencies: Dict) -> Dict[str, Set[str]]:
+    """Compute variables used by each job from explicit and external dependencies (same logic as inline)."""
+    job_variables: Dict[str, Set[str]] = {}
+    for job_id, explicit in dependencies['explicitDeps'].items():
+        bucket = job_variables.setdefault(job_id, set())
+        for dep in explicit:
+            for inp in dep['inputs']:
+                bucket.add(inp)
+    for job_id, external in dependencies['externalDeps'].items():
+        bucket = job_variables.setdefault(job_id, set())
+        for dep in external:
+            bucket.add(dep['variable'])
+    return job_variables
+
+
+def _render_workflow_jobs_subgraph(workflow_id: str, title: str, workflow: Dict, job_variables: Dict[str, Set[str]]) -> str:
+    """Render the main workflow subgraph including nested job subgraphs for jobs with variables."""
+    block = f'{MERMAID_INDENT}subgraph {workflow_id}["{title}"]\n'
+    for job_id, job_info in workflow['jobs'].items():
+        job_node_id = sanitize_id(job_id)
+        job_label = job_info.get('name') or job_id
+        used_vars = job_variables.get(job_id, set())
+        if used_vars:
+            block += f'{MERMAID_DOUBLE_INDENT}subgraph {job_node_id}_subgraph["{job_label}"]\n'
+            vars_node_id = sanitize_id(f"{job_id}_vars")
+            vars_label = '<br/>'.join(sorted(used_vars))
+            block += f'{MERMAID_INDENT}{MERMAID_DOUBLE_INDENT}{vars_node_id}["{vars_label}"]\n'
+            block += f'{MERMAID_DOUBLE_INDENT}end\n'
+        else:
+            block += f'{MERMAID_DOUBLE_INDENT}{job_node_id}["{job_label}"]\n'
+    block += f'{MERMAID_INDENT}end\n\n'
+    return block
+
+
+def _build_explicit_edges(explicit_deps: Dict[str, List[Dict]], job_variables: Dict[str, Set[str]]) -> List[str]:
+    edges: List[str] = []
+    for job_id, explicit in explicit_deps.items():
+        job_node_id = sanitize_id(job_id)
+        target_id = f"{job_node_id}_subgraph" if job_variables.get(job_id) else job_node_id
+        for dep in explicit:
+            needed_job_id = sanitize_id(dep['job'])
+            source_id = f"{needed_job_id}_subgraph" if job_variables.get(dep['job']) else needed_job_id
+            edges.append(f'{MERMAID_INDENT}{source_id} ==>|"needs"| {target_id}')
+    return edges
+
+
+def _build_implicit_edges(implicit_deps: Dict[str, List[Dict]], job_variables: Dict[str, Set[str]]) -> List[str]:
+    edges: List[str] = []
+    for job_id, implicit in implicit_deps.items():
+        job_node_id = sanitize_id(job_id)
+        target_id = f"{job_node_id}_subgraph" if job_variables.get(job_id) else job_node_id
+        for dep in implicit:
+            source_job_id = sanitize_id(dep['sourceJob'])
+            source_id = f"{source_job_id}_subgraph" if job_variables.get(dep['sourceJob']) else source_job_id
+            edges.append(f'{MERMAID_INDENT}{source_id} -.->|"{dep["variable"]}"| {target_id}')
+    return edges
+
+
+def _build_external_edges(external_deps: Dict[str, List[Dict]], job_variables: Dict[str, Set[str]]) -> List[str]:
+    edges: List[str] = []
+    for job_id, external in external_deps.items():
+        job_node_id = sanitize_id(job_id)
+        target_id = f"{job_node_id}_subgraph" if job_variables.get(job_id) else job_node_id
+        for dep in external:
+            category_id = sanitize_id(dep['category'])
+            var_id = sanitize_id(f"{category_id}_{dep['variable']}")
+            edges.append(f'{MERMAID_INDENT}{var_id} -.-> {target_id}')
+    return edges
+
+
+def _build_css_classes(workflow_id: str, workflow: Dict, job_variables: Dict[str, Set[str]], external_inputs: Dict[str, Set[str]]) -> str:
+    css = get_dependency_css_definitions()
+    css += f"{MERMAID_INDENT}class {workflow_id} mainWorkflow\n"
+    for category in external_inputs:
+        css += f"{MERMAID_INDENT}class {sanitize_id(category)} external\n"
+    for job_id in workflow['jobs'].keys():
+        job_node_id = sanitize_id(job_id)
+        if job_variables.get(job_id):
+            css += f"{MERMAID_INDENT}class {job_node_id}_subgraph jobSubgraph\n"
+        else:
+            css += f"{MERMAID_INDENT}class {job_node_id} job\n"
+    return css
+
+def build_dependency_diagram(workflow_filename: str, title: str, workflow: Dict, dependencies: Dict) -> str:
+    """Build a mermaid diagram showing job dependencies within a workflow"""
+    if not workflow:
+        return ''
+    diagram = MERMAID_FLOWCHART
+    workflow_id = sanitize_id(workflow_filename.replace(YML_EXTENSION, '_workflow'))
+    # External inputs block
+    external_block, external_edges = _render_external_inputs_block(dependencies['externalInputs'])
+    diagram += external_block
+    # Job variables
+    job_variables = _compute_job_variables(dependencies)
+    # Workflow jobs subgraph
+    diagram += _render_workflow_jobs_subgraph(workflow_id, title, workflow, job_variables)
+    # Edge construction
+    edges: List[str] = []
+    edges.extend(external_edges)
+    edges.extend(_build_explicit_edges(dependencies['explicitDeps'], job_variables))
+    edges.extend(_build_implicit_edges(dependencies['implicitDeps'], job_variables))
+    edges.extend(_build_external_edges(dependencies['externalDeps'], job_variables))
+    if edges:
+        # Preserve prior behavior: edges sorted, then blank line
+        diagram += "\n".join(sorted(edges)) + "\n\n"
+    # CSS / class assignments
+    diagram += _build_css_classes(workflow_id, workflow, job_variables, dependencies['externalInputs'])
+    return diagram
+
+
+def generate_dependency_diagram(workflow_filename: str, workflows: Dict[str, Dict], title_override: Optional[str] = None) -> str:
+    workflow = workflows.get(workflow_filename)
+    if not workflow:
+        return ''
+    deps = analyze_dependencies(workflow)
+    title = title_override or workflow.get('name') or workflow_filename
+    return build_dependency_diagram(workflow_filename, title, workflow, deps)
+
+
+# ----------------------------------
+# Summary / Details
+# ----------------------------------
+
+def generate_summary(workflows: Dict[str, Dict]) -> str:
+    total = len(workflows)
+    reusable = len([w for w in workflows.values() if w['isReusable']])
+    main_workflows = total - reusable
+    summary = ("# GitHub Actions Workflow Analysis\n\n"
+               "## Summary\n"
+               f"- **Total Workflows**: {total}\n"
+               f"- **Main Workflows**: {main_workflows}\n"
+               f"- **Reusable Workflows**: {reusable}\n\n")
+    summary += "## Legend\n\n"
+    summary += "The diagrams use color coding to distinguish different types of workflow components:\n\n"
+    summary += "**Triggers** - Event triggers that start workflows:\n"
+    summary += "```mermaid\nflowchart LR\n    trigger_example([\"trigger (push, schedule, etc.)\"])\n    classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000\n    class trigger_example trigger\n```\n\n"
+    summary += "**Main Workflows** - Primary workflow files that can be triggered directly:\n"
+    summary += "```mermaid\nflowchart LR\n    main_workflow_example[\"Main Workflow\"]\n    classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000\n    class main_workflow_example mainWorkflow\n```\n\n"
+    summary += "**Reusable Workflows** - Workflow files that are called by other workflows:\n"
+    summary += "```mermaid\nflowchart LR\n    reusable_workflow_example[\"Reusable Workflow\"]\n    classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000\n    class reusable_workflow_example reusable\n```\n\n"
+    summary += "**Jobs** - Individual jobs within workflows showing internal dependencies:\n"
+    summary += "```mermaid\nflowchart LR\n    job_example[\"job-name\"]\n    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000\n    class job_example job\n```\n\n"
+    return summary
+
+
+def generate_workflow_details(workflows: Dict[str, Dict]) -> str:
+    details = "## Workflow Details\n\n"
+    main_workflows_list = [(fn, wf) for fn, wf in workflows.items() if not wf['isReusable']]
+    reusable_workflows_list = [(fn, wf) for fn, wf in workflows.items() if wf['isReusable']]
+    if main_workflows_list:
+        details += "### Main Workflows\n"
+        for filename, workflow in main_workflows_list:
+            details += f"- **{workflow['name']}** (`{filename}`)\n"
+            if workflow['triggers']:
+                details += f"  - Triggers: {', '.join(workflow['triggers'])}\n"
+            details += f"  - Jobs: {len(workflow['jobs'])}\n"
+        details += "\n"
+    if reusable_workflows_list:
+        details += "### Reusable Workflows\n"
+        for filename, workflow in reusable_workflows_list:
+            details += f"- **{workflow['name']}** (`{filename}`)\n"
+            details += f"  - Jobs: {len(workflow['jobs'])}\n"
+        details += "\n"
+    return details
+
+# ----------------------------------
+# Main Execution
+# ----------------------------------
+
+def generate_dependency_diagrams_for_workflows(workflows: Dict[str, Dict], workflow_files: List[str]) -> str:
+    """Generate dependency diagrams for specified workflow files"""
+    output = ""
+    for workflow_file in workflow_files:
+        if not (workflow := workflows.get(workflow_file)):
+            continue
+        title = workflow.get('name', workflow_file.replace(YML_EXTENSION, '').replace('-', ' ').title())
+        if dep_diagram := generate_dependency_diagram(workflow_file, workflows, title):
+            output += f"##### {title} - Job Dependencies\n\n"
+            output += f"This diagram shows the explicit and implicit dependencies between jobs in the {title.lower()} workflow:\n\n"
+            output += "```mermaid\n" + dep_diagram + "```\n\n"
+
+    return output
+
+
+def generate_related_dependency_diagrams(workflows: Dict[str, Dict], main_workflow_file: str) -> str:
+    """Generate dependency diagrams for workflows related to the main workflow"""
+    output = ""
+    main_workflow = workflows.get(main_workflow_file)
+    if not main_workflow:
+        return output
+
+    # Find reusable workflows called by this main workflow that are in our dependency list
+    related_workflows = []
+    for job_id, job in main_workflow['jobs'].items():
+        if (job.get('uses') and
+            (called_workflow_file := find_workflow_by_uses(job['uses'])) and
+            called_workflow_file in workflows and
+            called_workflow_file in DEPENDENCY_DIAGRAM_WORKFLOWS and
+            called_workflow_file != main_workflow_file and
+            called_workflow_file not in related_workflows):
+            related_workflows.append(called_workflow_file)
+
+    # Generate dependency diagrams for related workflows
+    if related_workflows:
+        output += generate_dependency_diagrams_for_workflows(workflows, related_workflows)
+
+    return output
+
+
+def add_dependency_diagrams_if_configured(workflows: Dict[str, Dict], filename: str) -> str:
+    """Generate dependency diagrams for a workflow file if it's configured for dependency diagram generation"""
+    if filename in DEPENDENCY_DIAGRAM_WORKFLOWS:
+        output = generate_dependency_diagrams_for_workflows(workflows, [filename])
+        output += generate_related_dependency_diagrams(workflows, filename)
+        return output
+    return ""
+
+
+def compute_default_paths() -> Tuple[str, str]:
+    try:
+        import subprocess
+        result = subprocess.run(
+            ['git', 'rev-parse', '--show-toplevel'],
+            capture_output=True,
+            text=True,
+            check=True
         )
+    except Exception as exc:
+        print(f"Failed to determine repository root via git: {exc}", file=sys.stderr)
+        sys.exit(1)
+    repo_root = result.stdout.strip()
+    if not repo_root:
+        print("git rev-parse returned empty repository root", file=sys.stderr)
+        sys.exit(1)
+    workflows_dir = os.path.join(repo_root, '.github', 'workflows')
+    output_file = os.path.join(repo_root, 'docs', 'operations', 'workflow-diagram.md')
+    return workflows_dir, output_file
+
+
+def build_trigger_sections(workflows: Dict[str, Dict], trigger_diagrams: Dict[str, str], workflow_dispatch_diagrams: Dict[str, Dict]) -> Tuple[str, List[str]]:
+    section_output = ""
+    sorted_triggers = sorted(trigger_diagrams.keys())
+    if not sorted_triggers:
+        return section_output, []
+    section_output += "## Workflow Flow Diagrams by Trigger\n\n"
+    for trig in sorted_triggers:
+        if trig == 'workflow_dispatch':
+            section_output += f"### {trig.capitalize()} Triggered Workflows\n\n"
+            section_output += f"The `{trig}` trigger allows manual execution of workflows. Each workflow is shown individually below:\n\n"
+            for filename, data in sorted(workflow_dispatch_diagrams.items(), key=lambda x: x[0]):
+                wf = data['workflow']
+                section_output += f"#### {wf['name']}\n\n"
+                section_output += f"Manual execution of `{filename}`\n\n"
+                section_output += "```mermaid\n" + data['diagram'] + "```\n\n"
+                section_output += add_dependency_diagrams_if_configured(workflows, filename)
+        else:
+            trig_diagram = trigger_diagrams[trig]
+            trig_wfs = get_workflows_for_trigger(trig, workflows)
+            section_output += f"### {trig.capitalize()} Triggered Workflows\n\n"
+            section_output += f"Workflows triggered by `{trig}`:\n"
+            section_output += ''.join(f"- **{wf['name']}** (`{fname}`)\n" for fname, wf in trig_wfs)
+            section_output += "\n```mermaid\n" + trig_diagram + "```\n\n"
+            for fname, _ in trig_wfs:
+                section_output += add_dependency_diagrams_if_configured(workflows, fname)
+    return section_output, sorted_triggers
+
+
+def compile_output(summary: str, workflows: Dict[str, Dict], trigger_diagrams: Dict[str, str], workflow_dispatch_diagrams: Dict[str, Dict]) -> Tuple[str, List[str]]:
+    trigger_section, trig_list = build_trigger_sections(workflows, trigger_diagrams, workflow_dispatch_diagrams)
+    out = summary + "\n" + trigger_section
+    out += "## Overview: All Triggers and Main Workflows\n\n"
+    out += "```mermaid\n" + generate_overview_diagram(workflows) + "```\n\n"
+    out += generate_workflow_details(workflows)
+    return out, trig_list
 
-        # Add nodes and edges
-        diagram += "\n".join(nodes) + "\n\n"
-        diagram += "\n".join(edges) + "\n"
 
-        # Add styling with workflow context
-        diagram += self.generate_styling(nodes, processed_workflows)
-
-        return diagram
-
-    def generate_workflow_dispatch_diagrams(self) -> Dict[str, Dict]:
-        """Generate all workflow_dispatch individual diagrams"""
-        workflow_dispatch_workflows = self.get_workflows_for_trigger('workflow_dispatch')
-        diagrams = {}
-
-        for filename, workflow in workflow_dispatch_workflows:
-            diagram = self.generate_workflow_dispatch_diagram(filename, workflow)
-            diagrams[filename] = {
-                'workflow': workflow,
-                'diagram': diagram,
-            }
-
-        return diagrams
-
-    def generate_trigger_diagram(self, trigger_type: str) -> str:
-        """Generate Mermaid flowchart diagram for a specific trigger"""
-        triggered_workflows = self.get_workflows_for_trigger(trigger_type)
-        if not triggered_workflows:
-            return ''
-
-        diagram = "flowchart LR\n"
-        nodes = []
-        edges = []
-        processed_workflows = set()
-        reusable_workflows = {}
-
-        # Add trigger node
-        trigger_id = f"trigger_{self.sanitize_id(trigger_type)}"
-        nodes.append(f"    {trigger_id}([\"{trigger_type}\"])")
-
-        # Process each workflow triggered by this trigger
-        for filename, workflow in triggered_workflows:
-            workflow_id = self.sanitize_id(filename)
-
-            # Add main workflow node
-            nodes.append(f"    {workflow_id}[\"{workflow['name']}\"]")
-            edges.append(f"    {trigger_id} --> {workflow_id}")
-
-            # Recursively add called workflows
-            self.add_workflow_dependencies(
-                filename,
-                workflow,
-                nodes,
-                edges,
-                processed_workflows,
-                reusable_workflows,
-            )
-
-        # Add all nodes and edges
-        diagram += "\n".join(nodes) + "\n\n"
-        diagram += "\n".join(edges) + "\n"
-
-        # Add styling with workflow context
-        diagram += self.generate_styling(nodes, processed_workflows)
-
-        return diagram
-
-    def add_workflow_dependencies(
-        self,
-        filename: str,
-        workflow: Dict,
-        nodes: List[str],
-        edges: List[str],
-        processed_workflows: Set[str],
-        reusable_workflows: Optional[Dict] = None,
-    ) -> None:
-        """
-        Recursively add workflow dependencies to the diagram
-        NOTE: This method now deduplicates reusable workflow nodes to prevent
-        the same reusable workflow from appearing multiple times in diagrams.
-        Instead of creating unique IDs for each usage, reusable workflows now
-        appear once and multiple jobs connect to the same node.
-        """
-        if reusable_workflows is None:
-            reusable_workflows = {}
-
-        workflow_id = self.sanitize_id(filename)
-
-        if workflow_id in processed_workflows:
-            return
-        processed_workflows.add(workflow_id)
-
-        # Add all jobs for this workflow
-        for job_id, job in workflow['jobs'].items():
-            job_node_id = f"{workflow_id}_{self.sanitize_id(job_id)}"
-            job_label = job.get('name') or job_id
-
-            # Add job node
-            nodes.append(f"    {job_node_id}[\"{job_label}\"]")
-
-            # Add edge from workflow to job (workflow "has" job)
-            edges.append(f"    {workflow_id} --> {job_node_id}")
-
-            # If job uses a reusable workflow, add that workflow and connect
-            if job.get('uses'):
-                called_workflow_file = self.find_workflow_by_path(job['uses'])
-                if called_workflow_file and called_workflow_file in self.workflows:
-                    called_workflow = self.workflows[called_workflow_file]
-
-                    # Use a single node ID for each reusable workflow (deduplicated)
-                    called_workflow_id = self.sanitize_id(called_workflow_file)
-
-                    # Only add the reusable workflow node once
-                    if called_workflow_id not in reusable_workflows:
-                        workflow_label = (called_workflow_file if called_workflow['isReusable']
-                                        else called_workflow['name'])
-                        nodes.append(f"    {called_workflow_id}[\"{workflow_label}\"]")
-                        reusable_workflows[called_workflow_id] = called_workflow
-
-                        # Recursively process the called workflow jobs
-                        self.add_reusable_workflow_jobs(
-                            called_workflow_file,
-                            called_workflow,
-                            called_workflow_id,
-                            nodes,
-                            edges,
-                            processed_workflows,
-                            reusable_workflows,
-                        )
-
-                    # Add edge from job to workflow (job "uses" workflow)
-                    edges.append(f"    {job_node_id} --> {called_workflow_id}")
-
-    def add_reusable_workflow_jobs(
-        self,
-        filename: str,
-        workflow: Dict,
-        workflow_id: str,
-        nodes: List[str],
-        edges: List[str],
-        processed_workflows: Set[str],
-        reusable_workflows: Dict,
-    ) -> None:
-        """Add jobs for a reusable workflow (used for deduplication)"""
-        # Add all jobs for this reusable workflow
-        for job_id, job in workflow['jobs'].items():
-            job_node_id = f"{workflow_id}_{self.sanitize_id(job_id)}"
-            job_label = job.get('name') or job_id
-
-            # Add job node
-            nodes.append(f"    {job_node_id}[\"{job_label}\"]")
-
-            # Add edge from workflow to job (workflow "has" job)
-            edges.append(f"    {workflow_id} --> {job_node_id}")
-
-            # If job uses another reusable workflow, add that workflow and connect
-            if job.get('uses'):
-                called_workflow_file = self.find_workflow_by_path(job['uses'])
-                if called_workflow_file and called_workflow_file in self.workflows:
-                    called_workflow = self.workflows[called_workflow_file]
-
-                    # Use a single node ID for each reusable workflow (deduplicated)
-                    called_workflow_id = self.sanitize_id(called_workflow_file)
-
-                    # Only add the reusable workflow node once
-                    if called_workflow_id not in reusable_workflows:
-                        workflow_label = (called_workflow_file if called_workflow['isReusable']
-                                        else called_workflow['name'])
-                        nodes.append(f"    {called_workflow_id}[\"{workflow_label}\"]")
-                        reusable_workflows[called_workflow_id] = called_workflow
-
-                        # Recursively process the called workflow jobs
-                        self.add_reusable_workflow_jobs(
-                            called_workflow_file,
-                            called_workflow,
-                            called_workflow_id,
-                            nodes,
-                            edges,
-                            processed_workflows,
-                            reusable_workflows,
-                        )
-
-                    # Add edge from job to workflow (job "uses" workflow)
-                    edges.append(f"    {job_node_id} --> {called_workflow_id}")
-
-    def generate_styling(self, nodes: List[str], processed_workflows: Optional[Set[str]] = None) -> str:
-        """Generate styling for the diagram"""
-        if processed_workflows is None:
-            processed_workflows = set()
-
-        styling = "\n"
-        styling += "    classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000\n"
-        styling += "    classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000\n"
-        styling += "    classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000\n"
-        styling += "    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000\n\n"
-
-        # Apply styles based on node content and structure
-        for node in nodes:
-            regular_match = re.search(r'^\s+(\w+)[\[\(]', node)
-            if regular_match:
-                node_id = regular_match.group(1)
-
-                if node_id.startswith('trigger_'):
-                    styling += f"    class {node_id} trigger\n"
-                elif self.is_workflow_node(node_id):
-                    # This is a workflow node - determine if it's reusable or main
-                    workflow_type = self.get_workflow_type_from_node_id(node_id)
-                    if workflow_type == 'reusable':
-                        styling += f"    class {node_id} reusable\n"
-                    elif workflow_type == 'main':
-                        styling += f"    class {node_id} mainWorkflow\n"
-                else:
-                    # This is a job node
-                    styling += f"    class {node_id} job\n"
-
-        return styling
-
-    def is_workflow_node(self, node_id: str) -> bool:
-        """Check if a node ID represents a workflow node"""
-        # Original workflow files (ends with _yml and no additional underscores after that)
-        if re.match(r'^\w+_yml$', node_id):
-            return True
-
-        # Instantiated workflow files (has pattern like workflowId_jobId_workflowfile_yml)
-        if '_yml' in node_id and node_id.endswith('_yml'):
-            return True
-
-        return False
-
-    def get_workflow_type_from_node_id(self, node_id: str) -> str:
-        """Determine workflow type from node ID"""
-        # Extract the original workflow filename from the node ID
-        filename = ''
-
-        if re.match(r'^\w+_yml$', node_id):
-            # Simple case: continuous_deployment_yml -> continuous-deployment.yml
-            filename = re.sub(r'_yml$', '.yml', node_id).replace('_', '-')
-        elif '_yml' in node_id and node_id.endswith('_yml'):
-            # For reusable workflows, the nodeId should now be just the workflow filename
-            # e.g., reusable_build_frontend_yml -> reusable-build-frontend.yml
-            filename = re.sub(r'_yml$', '.yml', node_id).replace('_', '-')
-
-        workflow = self.workflows.get(filename)
-        if workflow:
-            return 'reusable' if workflow['isReusable'] else 'main'
-
-        return 'unknown'
-
-    def generate_overview_diagram(self) -> str:
-        """Generate overview diagram showing all triggers and main workflows"""
-        diagram = "flowchart LR\n"
-        nodes = []
-        edges = []
-
-        # Group workflows by trigger
-        trigger_groups = {}
-
-        for filename, workflow in self.workflows.items():
-            if not workflow['isReusable']:
-                for trigger in workflow['triggers']:
-                    if trigger not in trigger_groups:
-                        trigger_groups[trigger] = []
-                    trigger_groups[trigger].append((filename, workflow))
-
-        # Add trigger nodes and connect to workflows
-        for trigger, workflows in trigger_groups.items():
-            trigger_id = f"trigger_{self.sanitize_id(trigger)}"
-            nodes.append(f"    {trigger_id}([\"{trigger}\"])")
-
-            for filename, workflow in workflows:
-                workflow_id = self.sanitize_id(filename)
-                nodes.append(f"    {workflow_id}[\"{workflow['name']}\"]")
-                edges.append(f"    {trigger_id} --> {workflow_id}")
-
-        # Add nodes and edges
-        diagram += "\n".join(nodes) + "\n\n"
-        diagram += "\n".join(edges) + "\n"
-
-        # Add styling
-        diagram += "\n"
-        diagram += "    classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000\n"
-        diagram += "    classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000\n\n"
-
-        # Apply styles
-        for trigger in trigger_groups.keys():
-            trigger_id = f"trigger_{self.sanitize_id(trigger)}"
-            diagram += f"    class {trigger_id} trigger\n"
-
-        for filename, workflow in self.workflows.items():
-            if not workflow['isReusable']:
-                workflow_id = self.sanitize_id(filename)
-                diagram += f"    class {workflow_id} mainWorkflow\n"
-
-        return diagram
-
-    def generate_all_trigger_diagrams(self) -> Dict[str, str]:
-        """Generate all trigger-specific diagrams"""
-        triggers = self.get_all_triggers()
-        diagrams = {}
-
-        for trigger in triggers:
-            diagram = self.generate_trigger_diagram(trigger)
-            if diagram:
-                diagrams[trigger] = diagram
-
-        return diagrams
-
-    def find_workflow_by_path(self, uses_path: str) -> Optional[str]:
-        """Find workflow filename by its uses path"""
-        # Extract workflow path from uses (e.g., "./.github/workflows/reusable-build.yml")
-        match = re.search(r'\.github/workflows/([^@]+)', uses_path)
-        if match:
-            return match.group(1)
-        return None
-
-    def sanitize_id(self, string: str) -> str:
-        """Sanitize string for use as Mermaid node ID"""
-        return re.sub(r'_{2,}', '_', re.sub(r'[^a-zA-Z0-9_]', '_', string))
-
-    def generate_summary(self) -> str:
-        """Generate summary statistics"""
-        total = len(self.workflows)
-        reusable = len([w for w in self.workflows.values() if w['isReusable']])
-        main_workflows = total - reusable
-
-        summary = "# GitHub Actions Workflow Analysis\n\n"
-        summary += "## Summary\n"
-        summary += f"- **Total Workflows**: {total}\n"
-        summary += f"- **Main Workflows**: {main_workflows}\n"
-        summary += f"- **Reusable Workflows**: {reusable}\n\n"
-
-        # Add legend
-        summary += "## Legend\n\n"
-        summary += "The diagrams use color coding to distinguish different types of workflow components:\n\n"
-
-        summary += "**Triggers** - Event triggers that start workflows:\n"
-        summary += "```mermaid\n"
-        summary += "flowchart LR\n"
-        summary += '    trigger_example(["trigger (push, schedule, etc.)"])\n'
-        summary += "    classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000\n"
-        summary += "    class trigger_example trigger\n"
-        summary += "```\n\n"
-
-        summary += "**Main Workflows** - Primary workflow files that can be triggered directly:\n"
-        summary += "```mermaid\n"
-        summary += "flowchart LR\n"
-        summary += '    main_workflow_example["Main Workflow"]\n'
-        summary += "    classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000\n"
-        summary += "    class main_workflow_example mainWorkflow\n"
-        summary += "```\n\n"
-
-        summary += "**Reusable Workflows** - Workflow files that are called by other workflows:\n"
-        summary += "```mermaid\n"
-        summary += "flowchart LR\n"
-        summary += '    reusable_workflow_example["Reusable Workflow"]\n'
-        summary += "    classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000\n"
-        summary += "    class reusable_workflow_example reusable\n"
-        summary += "```\n\n"
-
-        summary += "**Jobs** - Individual jobs within workflows showing internal dependencies:\n"
-        summary += "```mermaid\n"
-        summary += "flowchart LR\n"
-        summary += '    job_example["job-name"]\n'
-        summary += "    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000\n"
-        summary += "    class job_example job\n"
-        summary += "```\n\n"
-
-        return summary
-
-    def generate_continuous_deployment_dependency_diagram(self) -> str:
-        """Generate dependency diagram for continuous deployment workflow"""
-        cd_workflow = self.workflows.get('continuous-deployment.yml')
-        if not cd_workflow:
-            return ''
-
-        # Use dynamic analysis instead of hardcoded dependencies
-        dependencies = self.analyze_continuous_deployment_dependencies(cd_workflow)
-
-        diagram = "flowchart LR\n"
-        nodes = []
-        edges = []
-
-        # Add main workflow node
-        workflow_id = 'continuous_deployment_workflow'
-
-        # Add external inputs section with proper hierarchy
-        if dependencies['externalInputs']:
-            diagram += '    subgraph "External Inputs"\n'
-
-            for category, variables in dependencies['externalInputs'].items():
-                category_id = self.sanitize_id(category)
-                diagram += f'        {category_id}["{category}"]\n'
-
-                for var_name in variables:
-                    var_id = self.sanitize_id(f"{category_id}_{var_name}")
-                    diagram += f'        {var_id}["{var_name}"]\n'
-                    edges.append(f'        {category_id} --> {var_id}')
-
-            diagram += "    end\n\n"
-
-        # Add job nodes with their used variables as subgraphs
-        job_variables = {}  # jobId -> Set of variables used
-
-        # Collect all variables used by each job
-        for job_id, explicit_deps in dependencies['explicitDeps'].items():
-            if job_id not in job_variables:
-                job_variables[job_id] = set()
-            for dep in explicit_deps:
-                for input_var in dep['inputs']:
-                    job_variables[job_id].add(input_var)
-
-        for job_id, external_deps in dependencies['externalDeps'].items():
-            if job_id not in job_variables:
-                job_variables[job_id] = set()
-            for dep in external_deps:
-                job_variables[job_id].add(dep['variable'])
-
-        # Add main workflow as subgraph containing all jobs
-        diagram += f'    subgraph {workflow_id}["Continuous Deployment"]\n'
-
-        # Create subgraphs for jobs with their variables inside the main workflow
-        for job_id, job_info in cd_workflow['jobs'].items():
-            job_node_id = self.sanitize_id(job_id)
-            job_label = job_info.get('name') or job_id
-            used_vars = job_variables.get(job_id, set())
-
-            if used_vars:
-                # Create subgraph for job with variables inside main workflow
-                diagram += f'        subgraph {job_node_id}_subgraph["{job_label}"]\n'
-
-                vars_array = sorted(list(used_vars))
-                vars_node_id = self.sanitize_id(f"{job_id}_vars")
-                # Use <br/> for HTML line breaks in Mermaid
-                vars_label = '<br/>'.join(vars_array)
-                diagram += f'            {vars_node_id}["{vars_label}"]\n'
-
-                diagram += "        end\n"
-            else:
-                # Simple job node without variables inside main workflow
-                diagram += f'        {job_node_id}["{job_label}"]\n'
-
-        diagram += "    end\n\n"
-
-        # Add explicit dependencies (needs relationships) - simplified edge labels
-        for job_id, explicit_deps in dependencies['explicitDeps'].items():
-            job_node_id = self.sanitize_id(job_id)
-            used_vars = job_variables.get(job_id, set())
-            target_id = f"{job_node_id}_subgraph" if used_vars else job_node_id
-
-            for dep in explicit_deps:
-                needed_job_id = self.sanitize_id(dep['job'])
-                needed_used_vars = job_variables.get(dep['job'], set())
-                source_id = f"{needed_job_id}_subgraph" if needed_used_vars else needed_job_id
-
-                # Simple needs relationship without variable details on edge
-                edges.append(f'    {source_id} ==>|"needs"| {target_id}')
-
-        # Add implicit dependencies (data flows via outputs) - simplified
-        for job_id, implicit_deps in dependencies['implicitDeps'].items():
-            job_node_id = self.sanitize_id(job_id)
-            used_vars = job_variables.get(job_id, set())
-            target_id = f"{job_node_id}_subgraph" if used_vars else job_node_id
-
-            for dep in implicit_deps:
-                source_job_id = self.sanitize_id(dep['sourceJob'])
-                source_used_vars = job_variables.get(dep['sourceJob'], set())
-                source_id = f"{source_job_id}_subgraph" if source_used_vars else source_job_id
-
-                edges.append(f'    {source_id} -.->|"{dep["variable"]}"| {target_id}')
-
-        # Add external dependencies - connect external vars to job subgraphs
-        for job_id, external_deps in dependencies['externalDeps'].items():
-            job_node_id = self.sanitize_id(job_id)
-            used_vars = job_variables.get(job_id, set())
-            target_id = f"{job_node_id}_subgraph" if used_vars else job_node_id
-
-            for dep in external_deps:
-                category_id = self.sanitize_id(dep['category'])
-                var_id = self.sanitize_id(f"{category_id}_{dep['variable']}")
-                edges.append(f'    {var_id} -.-> {target_id}')
-
-        # Combine all parts
-        if nodes:
-            diagram += "\n".join(nodes) + "\n\n"
-        if edges:
-            diagram += "\n".join(sorted(edges)) + "\n\n"
-
-        # Add styling - use same color scheme as other diagrams
-        diagram += "    classDef external fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000\n"
-        diagram += "    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:2px,color:#000000\n"
-        diagram += "    classDef mainWorkflow fill:#f3e5f5,fill-opacity:0.15,stroke:#f3e5f5,stroke-width:1px,color:#ffffff\n"
-        diagram += "    classDef jobSubgraph fill:#f1f8e9,stroke:#33691e,stroke-width:2px,color:#000000\n"
-        diagram += "    classDef explicit stroke:#2196F3,stroke-width:3px\n"
-        diagram += "    classDef dataflow stroke:#FF9800,stroke-dasharray: 5 5\n\n"
-
-        # Apply classes to nodes
-        diagram += f"    class {workflow_id} mainWorkflow\n"
-
-        for category, variables in dependencies['externalInputs'].items():
-            category_id = self.sanitize_id(category)
-            diagram += f"    class {category_id} external\n"
-
-            # Don't style individual variable nodes - let them use default styling
-            # This prevents confusion with trigger colors
-
-        # Apply styling to maintain consistency
-        for job_id, job_info in cd_workflow['jobs'].items():
-            job_node_id = self.sanitize_id(job_id)
-            used_vars = job_variables.get(job_id, set())
-
-            if used_vars:
-                # Job with variables - style the subgraph to look like job nodes
-                subgraph_id = f"{job_node_id}_subgraph"
-                diagram += f"    class {subgraph_id} jobSubgraph\n"
-                # Variable nodes use default styling (no class applied)
-            else:
-                # Simple job node without variables - apply job styling
-                diagram += f"    class {job_node_id} job\n"
-
-        return diagram
-
-    def analyze_continuous_deployment_dependencies(self, workflow: Dict) -> Dict:
-        """Analyze dependencies in the continuous deployment workflow"""
-        explicit_deps = {}  # jobId -> [{job, inputs}]
-        implicit_deps = {}  # jobId -> [{sourceJob, variable, type}]
-        external_deps = {}  # jobId -> [{category, variable}]
-        external_inputs = {}  # category -> Set of variables
-
-        for job_id, job in workflow['jobs'].items():
-            # Analyze explicit dependencies (needs)
-            if job.get('needs'):
-                job_explicit_deps = []
-                for needed_job in job['needs']:
-                    inputs = self.extract_inputs_from_needed_job(job, needed_job)
-                    job_explicit_deps.append({'job': needed_job, 'inputs': inputs})
-                explicit_deps[job_id] = job_explicit_deps
-
-            # Analyze implicit dependencies and external inputs
-            import json
-            job_content = json.dumps(job)
-
-            # Look for job outputs references
-            job_output_matches = re.findall(r'\$\{\{\s*needs\.(\w+)\.outputs\.(\w+)\s*\}\}', job_content)
-            if job_output_matches:
-                job_implicit_deps = []
-                for source_job, output_var in job_output_matches:
-                    # Only add as implicit if not already in explicit needs
-                    needs_jobs = job.get('needs', [])
-                    if source_job not in needs_jobs:
-                        job_implicit_deps.append({
-                            'sourceJob': source_job,
-                            'variable': output_var,
-                            'type': 'job_output',
-                        })
-                if job_implicit_deps:
-                    implicit_deps[job_id] = job_implicit_deps
-
-            # Look for external inputs
-            job_external_deps = []
-
-            # Secrets
-            secret_matches = re.findall(r'\$\{\{\s*secrets\.(\w+)\s*\}\}', job_content)
-            if secret_matches:
-                for secret_name in secret_matches:
-                    job_external_deps.append({'category': 'Secrets', 'variable': secret_name})
-                    if 'Secrets' not in external_inputs:
-                        external_inputs['Secrets'] = set()
-                    external_inputs['Secrets'].add(secret_name)
-
-            # Variables
-            var_matches = re.findall(r'\$\{\{\s*vars\.(\w+)\s*\}\}', job_content)
-            if var_matches:
-                for var_name in var_matches:
-                    job_external_deps.append({'category': 'Variables', 'variable': var_name})
-                    if 'Variables' not in external_inputs:
-                        external_inputs['Variables'] = set()
-                    external_inputs['Variables'].add(var_name)
-
-            # GitHub context
-            github_matches = re.findall(r'\$\{\{\s*github\.(\w+)\s*\}\}', job_content)
-            if github_matches:
-                for context_var in github_matches:
-                    job_external_deps.append({'category': 'GitHub Context', 'variable': context_var})
-                    if 'GitHub Context' not in external_inputs:
-                        external_inputs['GitHub Context'] = set()
-                    external_inputs['GitHub Context'].add(context_var)
-
-            # Inputs (for workflow_dispatch)
-            input_matches = re.findall(r'\$\{\{\s*inputs\.(\w+)\s*\}\}', job_content)
-            if input_matches:
-                for input_name in input_matches:
-                    job_external_deps.append({'category': 'Workflow Inputs', 'variable': input_name})
-                    if 'Workflow Inputs' not in external_inputs:
-                        external_inputs['Workflow Inputs'] = set()
-                    external_inputs['Workflow Inputs'].add(input_name)
-
-            if job_external_deps:
-                external_deps[job_id] = job_external_deps
-
-        return {
-            'explicitDeps': explicit_deps,
-            'implicitDeps': implicit_deps,
-            'externalDeps': external_deps,
-            'externalInputs': external_inputs,
-        }
-
-    def generate_sub_deploy_code_slot_dependency_diagram(self) -> str:
-        """Generate dependency diagram for sub-deploy-code-slot workflow"""
-        workflow = self.workflows.get('sub-deploy-code-slot.yml')
-        if not workflow:
-            return ''
-
-        # Use dynamic analysis instead of hardcoded dependencies
-        dependencies = self.analyze_sub_deploy_code_slot_dependencies(workflow)
-
-        diagram = "flowchart LR\n"  # Revert back to LR for side-by-side layout
-        nodes = []
-        edges = []
-
-        # Add main workflow node
-        workflow_id = 'sub_deploy_code_slot_workflow'
-
-        # Add job nodes with their used variables as subgraphs
-        job_variables = {}  # jobId -> Set of variables used
-
-        # Collect all variables used by each job
-        for job_id, explicit_deps in dependencies['explicitDeps'].items():
-            if job_id not in job_variables:
-                job_variables[job_id] = set()
-            for dep in explicit_deps:
-                for input_var in dep['inputs']:
-                    job_variables[job_id].add(input_var)
-
-        for job_id, external_deps in dependencies['externalDeps'].items():
-            if job_id not in job_variables:
-                job_variables[job_id] = set()
-            for dep in external_deps:
-                job_variables[job_id].add(dep['variable'])
-
-        # Add main workflow as subgraph containing all jobs FIRST
-        diagram += f'    subgraph {workflow_id}["Sub Deploy Code Slot"]\n'
-
-        # Create subgraphs for jobs with their variables inside the main workflow
-        for job_id, job_info in workflow['jobs'].items():
-            job_node_id = self.sanitize_id(job_id)
-            job_label = job_info.get('name') or job_id
-            used_vars = job_variables.get(job_id, set())
-
-            if used_vars:
-                # Create subgraph for job with variables inside main workflow
-                diagram += f'        subgraph {job_node_id}_subgraph["{job_label}"]\n'
-
-                vars_array = sorted(list(used_vars))
-                vars_node_id = self.sanitize_id(f"{job_id}_vars")
-                # Use <br/> for HTML line breaks in Mermaid
-                vars_label = '<br/>'.join(vars_array)
-                diagram += f'            {vars_node_id}["{vars_label}"]\n'
-
-                diagram += "        end\n"
-            else:
-                # Simple job node without variables inside main workflow
-                diagram += f'        {job_node_id}["{job_label}"]\n'
-
-        diagram += "    end\n\n"
-
-        # Add external inputs section AFTER main workflow
-        if dependencies['externalInputs']:
-            diagram += '    subgraph "External Inputs"\n'
-
-            for category, variables in dependencies['externalInputs'].items():
-                category_id = self.sanitize_id(category)
-                diagram += f'        {category_id}["{category}"]\n'
-
-                for var_name in variables:
-                    var_id = self.sanitize_id(f"{category_id}_{var_name}")
-                    diagram += f'        {var_id}["{var_name}"]\n'
-                    edges.append(f'        {category_id} --> {var_id}')
-
-            diagram += "    end\n\n"
-
-        # Add explicit dependencies (needs relationships) - simplified edge labels
-        for job_id, explicit_deps in dependencies['explicitDeps'].items():
-            job_node_id = self.sanitize_id(job_id)
-            used_vars = job_variables.get(job_id, set())
-            target_id = f"{job_node_id}_subgraph" if used_vars else job_node_id
-
-            for dep in explicit_deps:
-                needed_job_id = self.sanitize_id(dep['job'])
-                needed_used_vars = job_variables.get(dep['job'], set())
-                source_id = f"{needed_job_id}_subgraph" if needed_used_vars else needed_job_id
-
-                # Simple needs relationship without variable details on edge
-                edges.append(f'    {source_id} ==>|"needs"| {target_id}')
-
-        # Add implicit dependencies (data flows via outputs) - simplified
-        for job_id, implicit_deps in dependencies['implicitDeps'].items():
-            job_node_id = self.sanitize_id(job_id)
-            used_vars = job_variables.get(job_id, set())
-            target_id = f"{job_node_id}_subgraph" if used_vars else job_node_id
-
-            for dep in implicit_deps:
-                source_job_id = self.sanitize_id(dep['sourceJob'])
-                source_used_vars = job_variables.get(dep['sourceJob'], set())
-                source_id = f"{source_job_id}_subgraph" if source_used_vars else source_job_id
-
-                edges.append(f'    {source_id} -.->|"{dep["variable"]}"| {target_id}')
-
-        # Add external dependencies - connect external vars to job subgraphs
-        for job_id, external_deps in dependencies['externalDeps'].items():
-            job_node_id = self.sanitize_id(job_id)
-            used_vars = job_variables.get(job_id, set())
-            target_id = f"{job_node_id}_subgraph" if used_vars else job_node_id
-
-            for dep in external_deps:
-                category_id = self.sanitize_id(dep['category'])
-                var_id = self.sanitize_id(f"{category_id}_{dep['variable']}")
-                edges.append(f'    {var_id} -.-> {target_id}')
-
-        # Combine all parts
-        if nodes:
-            diagram += "\n".join(nodes) + "\n\n"
-        if edges:
-            diagram += "\n".join(sorted(edges)) + "\n\n"
-
-        # Add styling - use same color scheme as other diagrams
-        diagram += "    classDef external fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000\n"
-        diagram += "    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:2px,color:#000000\n"
-        diagram += "    classDef mainWorkflow fill:#f3e5f5,fill-opacity:0.15,stroke:#f3e5f5,stroke-width:1px,color:#ffffff\n"
-        diagram += "    classDef jobSubgraph fill:#f1f8e9,stroke:#33691e,stroke-width:2px,color:#000000\n"
-        diagram += "    classDef explicit stroke:#2196F3,stroke-width:3px\n"
-        diagram += "    classDef dataflow stroke:#FF9800,stroke-dasharray: 5 5\n\n"
-
-        # Apply classes to nodes
-        diagram += f"    class {workflow_id} mainWorkflow\n"
-
-        for category, variables in dependencies['externalInputs'].items():
-            category_id = self.sanitize_id(category)
-            diagram += f"    class {category_id} external\n"
-
-            # Don't style individual variable nodes - let them use default styling
-            # This prevents confusion with trigger colors
-
-        # Apply styling to maintain consistency
-        for job_id, job_info in workflow['jobs'].items():
-            job_node_id = self.sanitize_id(job_id)
-            used_vars = job_variables.get(job_id, set())
-
-            if used_vars:
-                # Job with variables - style the subgraph to look like job nodes
-                subgraph_id = f"{job_node_id}_subgraph"
-                diagram += f"    class {subgraph_id} jobSubgraph\n"
-                # Variable nodes use default styling (no class applied)
-            else:
-                # Simple job node without variables - apply job styling
-                diagram += f"    class {job_node_id} job\n"
-
-        return diagram
-
-    def analyze_sub_deploy_code_slot_dependencies(self, workflow: Dict) -> Dict:
-        """Analyze dependencies in the sub-deploy-code-slot workflow"""
-        explicit_deps = {}  # jobId -> [{job, inputs}]
-        implicit_deps = {}  # jobId -> [{sourceJob, variable, type}]
-        external_deps = {}  # jobId -> [{category, variable}]
-        external_inputs = {}  # category -> Set of variables
-
-        for job_id, job in workflow['jobs'].items():
-            # Analyze explicit dependencies (needs)
-            if job.get('needs'):
-                job_explicit_deps = []
-                for needed_job in job['needs']:
-                    inputs = self.extract_inputs_from_needed_job(job, needed_job)
-                    job_explicit_deps.append({'job': needed_job, 'inputs': inputs})
-                explicit_deps[job_id] = job_explicit_deps
-
-            # Analyze implicit dependencies and external inputs
-            import json
-            job_content = json.dumps(job)
-
-            # Look for job outputs references
-            job_output_matches = re.findall(r'\$\{\{\s*needs\.(\w+)\.outputs\.(\w+)\s*\}\}', job_content)
-            if job_output_matches:
-                job_implicit_deps = []
-                for source_job, output_var in job_output_matches:
-                    # Only add as implicit if not already in explicit needs
-                    needs_jobs = job.get('needs', [])
-                    if source_job not in needs_jobs:
-                        job_implicit_deps.append({
-                            'sourceJob': source_job,
-                            'variable': output_var,
-                            'type': 'job_output',
-                        })
-                if job_implicit_deps:
-                    implicit_deps[job_id] = job_implicit_deps
-
-            # Look for external inputs
-            job_external_deps = []
-
-            # Secrets
-            secret_matches = re.findall(r'\$\{\{\s*secrets\.(\w+)\s*\}\}', job_content)
-            if secret_matches:
-                for secret_name in secret_matches:
-                    job_external_deps.append({'category': 'Secrets', 'variable': secret_name})
-                    if 'Secrets' not in external_inputs:
-                        external_inputs['Secrets'] = set()
-                    external_inputs['Secrets'].add(secret_name)
-
-            # Variables
-            var_matches = re.findall(r'\$\{\{\s*vars\.(\w+)\s*\}\}', job_content)
-            if var_matches:
-                for var_name in var_matches:
-                    job_external_deps.append({'category': 'Variables', 'variable': var_name})
-                    if 'Variables' not in external_inputs:
-                        external_inputs['Variables'] = set()
-                    external_inputs['Variables'].add(var_name)
-
-            # GitHub context
-            github_matches = re.findall(r'\$\{\{\s*github\.(\w+)\s*\}\}', job_content)
-            if github_matches:
-                for context_var in github_matches:
-                    job_external_deps.append({'category': 'GitHub Context', 'variable': context_var})
-                    if 'GitHub Context' not in external_inputs:
-                        external_inputs['GitHub Context'] = set()
-                    external_inputs['GitHub Context'].add(context_var)
-
-            # Inputs (for workflow_call)
-            input_matches = re.findall(r'\$\{\{\s*inputs\.(\w+)\s*\}\}', job_content)
-            if input_matches:
-                for input_name in input_matches:
-                    job_external_deps.append({'category': 'Workflow Inputs', 'variable': input_name})
-                    if 'Workflow Inputs' not in external_inputs:
-                        external_inputs['Workflow Inputs'] = set()
-                    external_inputs['Workflow Inputs'].add(input_name)
-
-            if job_external_deps:
-                external_deps[job_id] = job_external_deps
-
-        return {
-            'explicitDeps': explicit_deps,
-            'implicitDeps': implicit_deps,
-            'externalDeps': external_deps,
-            'externalInputs': external_inputs,
-        }
-
-    def extract_inputs_from_needed_job(self, job: Dict, needed_job: str) -> List[str]:
-        """Extract specific inputs a job receives from a needed job"""
-        inputs = []
-        import json
-        job_content = json.dumps(job)
-
-        # Look for outputs from the specific needed job
-        pattern = rf'\$\{{\{{s*needs\.{needed_job}\.outputs\.(\w+)\s*\}}\}}'
-        matches = re.findall(pattern, job_content)
-        inputs.extend(matches)
-
-        return inputs
-
-    def generate_workflow_details(self) -> str:
-        """Generate workflow details section"""
-        details = "## Workflow Details\n\n"
-
-        # Group by type
-        main_workflows_list = [(filename, workflow) for filename, workflow in self.workflows.items()
-                              if not workflow['isReusable']]
-        reusable_workflows = [(filename, workflow) for filename, workflow in self.workflows.items()
-                             if workflow['isReusable']]
-
-        if main_workflows_list:
-            details += "### Main Workflows\n"
-            for filename, workflow in main_workflows_list:
-                details += f"- **{workflow['name']}** (`{filename}`)\n"
-                if workflow['triggers']:
-                    details += f"  - Triggers: {', '.join(workflow['triggers'])}\n"
-                details += f"  - Jobs: {len(workflow['jobs'])}\n"
-            details += "\n"
-
-        if reusable_workflows:
-            details += "### Reusable Workflows\n"
-            for filename, workflow in reusable_workflows:
-                details += f"- **{workflow['name']}** (`{filename}`)\n"
-                details += f"  - Jobs: {len(workflow['jobs'])}\n"
-            details += "\n"
-
-        return details
-
-
-# Main execution
 def main():
-    workflows_dir = os.path.join(os.path.dirname(__file__), '../../../.github', 'workflows')
-
+    workflows_dir, output_file = compute_default_paths()
     if not os.path.exists(workflows_dir):
         print(f"Workflows directory not found: {workflows_dir}", file=sys.stderr)
         sys.exit(1)
-
-    parser = WorkflowParser(workflows_dir)
-    parser.parse_all_workflows()
-
-    # Generate summary
-    summary = parser.generate_summary()
-
-    # Generate trigger-specific diagrams
-    trigger_diagrams = parser.generate_all_trigger_diagrams()
-
-    # Generate individual workflow_dispatch diagrams
-    workflow_dispatch_diagrams = parser.generate_workflow_dispatch_diagrams()
-
-    # Build output with separate diagrams per trigger
-    output = summary + "\n"
-
-    triggers = sorted(trigger_diagrams.keys())
-
-    if triggers:
-        output += "## Workflow Flow Diagrams by Trigger\n\n"
-
-        for trigger in triggers:
-            if trigger == 'workflow_dispatch':
-                # Special handling for workflow_dispatch - individual diagrams per workflow
-                output += f"### {trigger.capitalize()} Triggered Workflows\n\n"
-                output += f"The `{trigger}` trigger allows manual execution of workflows. Each workflow is shown individually below:\n\n"
-
-                sorted_workflows = sorted(workflow_dispatch_diagrams.items(), key=lambda x: x[0])
-
-                for filename, data in sorted_workflows:
-                    workflow = data['workflow']
-                    diagram = data['diagram']
-
-                    output += f"#### {workflow['name']}\n\n"
-                    output += f"Manual execution of `{filename}`\n\n"
-                    output += "```mermaid\n"
-                    output += diagram
-                    output += "```\n\n"
-
-                    # Add dependency diagram for continuous deployment workflow
-                    if filename == 'continuous-deployment.yml':
-                        dep_diagram = parser.generate_continuous_deployment_dependency_diagram()
-                        if dep_diagram:
-                            output += f"##### {workflow['name']} - Job Dependencies\n\n"
-                            output += "This diagram shows the explicit and implicit dependencies between jobs in the continuous deployment workflow:\n\n"
-                            output += "```mermaid\n"
-                            output += dep_diagram
-                            output += "```\n\n"
-
-                        # Add sub-deploy-code-slot dependency diagram right after continuous deployment
-                        sub_deploy_dep_diagram = parser.generate_sub_deploy_code_slot_dependency_diagram()
-                        if sub_deploy_dep_diagram:
-                            sub_deploy_workflow = parser.workflows.get('sub-deploy-code-slot.yml')
-                            if sub_deploy_workflow:
-                                output += f"##### {sub_deploy_workflow['name']} - Job Dependencies\n\n"
-                                output += "This diagram shows the explicit and implicit dependencies between jobs in the sub deploy code slot workflow:\n\n"
-                                output += "```mermaid\n"
-                                output += sub_deploy_dep_diagram
-                                output += "```\n\n"
-            else:
-                # Regular trigger handling for other triggers
-                diagram = trigger_diagrams[trigger]
-                trigger_workflows = parser.get_workflows_for_trigger(trigger)
-
-                output += f"### {trigger.capitalize()} Triggered Workflows\n\n"
-                output += f"Workflows triggered by `{trigger}`:\n"
-                for filename, workflow in trigger_workflows:
-                    output += f"- **{workflow['name']}** (`{filename}`)\n"
-                output += "\n"
-                output += "```mermaid\n"
-                output += diagram
-                output += "```\n\n"
-
-                # Add dependency diagram for continuous deployment workflow if present
-                cd_workflow = next(((filename, workflow) for filename, workflow in trigger_workflows
-                                  if filename == 'continuous-deployment.yml'), None)
-                if cd_workflow:
-                    dep_diagram = parser.generate_continuous_deployment_dependency_diagram()
-                    if dep_diagram:
-                        output += f"#### {cd_workflow[1]['name']} - Job Dependencies\n\n"
-                        output += "This diagram shows the explicit and implicit dependencies between jobs in the continuous deployment workflow:\n\n"
-                        output += "```mermaid\n"
-                        output += dep_diagram
-                        output += "```\n\n"
-
-                    # Add sub-deploy-code-slot dependency diagram right after continuous deployment
-                    sub_deploy_dep_diagram = parser.generate_sub_deploy_code_slot_dependency_diagram()
-                    if sub_deploy_dep_diagram:
-                        sub_deploy_workflow = parser.workflows.get('sub-deploy-code-slot.yml')
-                        if sub_deploy_workflow:
-                            output += f"#### {sub_deploy_workflow['name']} - Job Dependencies\n\n"
-                            output += "This diagram shows the explicit and implicit dependencies between jobs in the sub deploy code slot workflow:\n\n"
-                            output += "```mermaid\n"
-                            output += sub_deploy_dep_diagram
-                            output += "```\n\n"
-
-    # Also generate overview diagram showing all triggers and main workflows
-    output += "## Overview: All Triggers and Main Workflows\n\n"
-    output += "```mermaid\n"
-    output += parser.generate_overview_diagram()
-    output += "```\n\n"
-
-    # Add workflow details at the bottom
-    output += parser.generate_workflow_details()
-
-    # Write to file
-    output_file = os.path.join(os.path.dirname(__file__), '../../../docs/operations/workflow-diagram.md')
+    workflows = load_workflows(workflows_dir)
+    summary = generate_summary(workflows)
+    trigger_diagrams = generate_all_trigger_diagrams(workflows)
+    workflow_dispatch_diagrams = generate_workflow_dispatch_diagrams(workflows)
+    output_text, triggers = compile_output(summary, workflows, trigger_diagrams, workflow_dispatch_diagrams)
     with open(output_file, 'w', encoding='utf-8') as f:
-        f.write(output)
-
+        f.write(output_text)
     print(f"Workflow diagrams generated: {output_file}")
-    print(f"\nGenerated diagrams:")
-
+    print("\nGenerated diagrams:")
     total_diagrams = 0
-    for trigger in triggers:
-        count = len(parser.get_workflows_for_trigger(trigger))
-        if trigger == 'workflow_dispatch':
-            print(f"  - {trigger}: {count} individual workflow diagrams")
+    for trig in triggers:
+        count = len(get_workflows_for_trigger(trig, workflows))
+        if trig == 'workflow_dispatch':
+            print(f"  - {trig}: {count} individual workflow diagrams")
             total_diagrams += count
         else:
-            workflow_s = "workflow" if count == 1 else "workflows"
-            print(f"  - {trigger}: 1 combined diagram ({count} {workflow_s})")
+            wf_word = 'workflow' if count == 1 else 'workflows'
+            print(f"  - {trig}: 1 combined diagram ({count} {wf_word})")
             total_diagrams += 1
-
     print("  - overview: 1 diagram")
     total_diagrams += 1
-
     print(f"\nTotal: {total_diagrams} diagrams generated\n")
     print(summary)
 
 
-# Run if this is the main module
 if __name__ == "__main__":
     main()
