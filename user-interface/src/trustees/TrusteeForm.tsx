@@ -292,12 +292,11 @@ function TrusteeForm() {
     setter: React.Dispatch<React.SetStateAction<string>>,
   ) => {
     const { value, name } = event.target;
-    setter(value);
-
     const spec = getDynamicSpec({ name: name as keyof TrusteeFormData, value });
 
     debounce(() => {
       validateFieldAndUpdate(name as keyof TrusteeFormData, value, spec);
+      setter(value);
     }, 300);
   };
 
