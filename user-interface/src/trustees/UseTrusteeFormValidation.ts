@@ -39,8 +39,12 @@ function validateField(
     return null;
   }
 
-  const result = validateEach(spec[field]!, trimmedValue);
-  return result.valid ? null : result.reasons!.join(' ');
+  if (spec?.[field]) {
+    const result = validateEach(spec[field], trimmedValue);
+    return result.valid ? null : result.reasons!.join(' ');
+  } else {
+    return null;
+  }
 }
 
 /**

@@ -231,6 +231,13 @@ describe('validation', () => {
         reasons: ['Value must be an object'],
       });
     });
+
+    test('should return VALID for falsy spec values', () => {
+      const validObj = { someProperty: 'any value' };
+
+      expect(validateObject(null, validObj)).toEqual(VALID);
+      expect(validateObject(undefined, validObj)).toEqual(VALID);
+    });
   });
 
   describe('nested object validation', () => {

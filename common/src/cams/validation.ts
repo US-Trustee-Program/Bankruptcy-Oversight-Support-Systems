@@ -90,6 +90,10 @@ export function validateObject(spec: ValidationSpec<unknown>, obj: unknown): Val
     return { reasons: ['Value must be an object'] };
   }
 
+  if (!spec) {
+    return VALID;
+  }
+
   const reasonMap = Object.keys(spec).reduce((acc, key) => {
     const result = validateKey(spec, key, obj);
     if (!result.valid) {

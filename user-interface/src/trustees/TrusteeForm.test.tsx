@@ -469,7 +469,7 @@ describe('TrusteeForm', () => {
       await userEvent.tab();
 
       await waitFor(() => {
-        expect(screen.getByText('Phone is required')).toBeInTheDocument();
+        expect(screen.getByText('Phone must be a valid phone number')).toBeInTheDocument();
       });
 
       await userEvent.clear(phoneInput);
@@ -477,7 +477,7 @@ describe('TrusteeForm', () => {
       await userEvent.tab();
 
       await waitFor(() => {
-        expect(screen.queryByText('Phone is required')).not.toBeInTheDocument();
+        expect(screen.queryByText('Phone must be a valid phone number')).not.toBeInTheDocument();
       });
     });
 
