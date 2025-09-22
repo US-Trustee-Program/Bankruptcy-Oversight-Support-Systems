@@ -1,4 +1,4 @@
-import { ChapterType, TrusteeStatus } from '@common/cams/trustees';
+import { ChapterType, TrusteeInput, TrusteeStatus } from '@common/cams/trustees';
 import { trusteeFormDataSpec } from './UseTrusteeFormValidation';
 
 export interface TrusteeFormData {
@@ -36,3 +36,11 @@ export interface TrusteeFormValidation {
     spec: Partial<typeof trusteeFormDataSpec>,
   ) => boolean;
 }
+
+export type TrusteeFormState = {
+  action: 'create' | 'edit';
+  cancelTo: string;
+  trusteeId?: string;
+  trustee?: Partial<TrusteeInput>;
+  contactInformation?: 'internal' | 'public';
+};
