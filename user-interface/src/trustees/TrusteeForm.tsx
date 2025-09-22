@@ -479,13 +479,7 @@ function TrusteeForm() {
                 className="trustee-phone-input"
                 name="phone"
                 label="Phone"
-                onChange={(value) => {
-                  const next = value ?? '';
-                  setPhone(next);
-                  debounce(() => {
-                    validateFieldAndUpdate('phone', next, getDynamicSpec());
-                  }, 300);
-                }}
+                onChange={(e) => handleFieldChange(e, setPhone)}
                 errorMessage={fieldErrors['phone']}
                 autoComplete="off"
                 ariaDescription="Example: 123-456-7890"
