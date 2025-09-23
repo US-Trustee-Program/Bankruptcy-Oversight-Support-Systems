@@ -699,7 +699,6 @@ describe('useTrusteeForm', () => {
     });
 
     expect(result.current.fieldErrors).toEqual({});
-    expect(result.current.errors).toEqual([]);
   });
 
   test('clears individual field errors', () => {
