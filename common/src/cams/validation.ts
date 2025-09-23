@@ -90,8 +90,8 @@ export function validateObject(spec: ValidationSpec<unknown>, obj: unknown): Val
     return { reasons: ['Value must be an object'] };
   }
 
-  if (!spec) {
-    return VALID;
+  if (spec === null || spec === undefined) {
+    return { reasons: ['No validation specification provided'] };
   }
 
   const reasonMap = Object.keys(spec).reduce((acc, key) => {
