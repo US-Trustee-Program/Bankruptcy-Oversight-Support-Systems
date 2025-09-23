@@ -973,6 +973,141 @@ describe('TrusteeForm', () => {
       vi.restoreAllMocks();
     });
 
+    test('clears address field errors when all address fields are empty in internal profile editing', async () => {
+      // Mock a trustee object to edit with internal profile
+      const mockTrustee = {
+        name: 'Jane Doe',
+        internal: {
+          address: {
+            address1: '123 Internal St',
+            city: 'Washington',
+            state: 'DC',
+            zipCode: '20001',
+            countryCode: 'US' as const,
+          },
+          phone: {
+            number: '555-987-6543',
+          },
+          email: 'jane.internal@example.gov',
+        },
+        status: 'active' as const,
+      };
+
+      // Mock the clearFieldError function to track calls
+      const mockClearFieldError = vi.fn();
+
+      // Import the UseTrusteeForm module to mock its functions
+      const UseTrusteeFormModule = await import('./UseTrusteeForm');
+
+      // Save the original function to restore later
+      const originalUseTrusteeForm = UseTrusteeFormModule.useTrusteeForm;
+
+      // Mock the useTrusteeForm hook to inject our spy
+      vi.spyOn(UseTrusteeFormModule, 'useTrusteeForm').mockImplementation((props) => {
+        const hookResult = originalUseTrusteeForm(props);
+
+        // Create a function that returns empty address fields to simulate the condition
+        const getFormDataFn = (options?: { name?: string; value?: unknown }) => {
+          // This mimics the behavior in lines 255-256 to make allAddressFieldsEmpty true
+          return {
+            ...hookResult.formData,
+            address1: '',
+            city: '',
+            state: '',
+            zipCode: '',
+            ...(options?.name && { [options.name]: options.value }),
+          };
+        };
+
+        return {
+          ...hookResult,
+          clearFieldError: mockClearFieldError,
+          // This is crucial to provide the correct formData for the component
+          getFormData: getFormDataFn,
+        };
+      });
+
+      // Render in edit mode with internal profile
+      renderWithRouter('/trustees/trustee-789/edit', {
+        action: 'edit',
+        cancelTo: '/trustees/trustee-789',
+        trusteeId: 'trustee-789',
+        trustee: mockTrustee,
+        contactInformation: 'internal',
+      });
+
+      // Wait for form to be rendered
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-address1')).toBeInTheDocument();
+      });
+
+      // Find the address field and change it
+      // This will trigger handleFieldChange which contains our target code (lines 260-263)
+      const address1Input = screen.getByTestId('trustee-address1');
+
+      // First make sure input has some value
+      await userEvent.clear(address1Input);
+      await userEvent.type(address1Input, 'Some value');
+
+      // Then clear it to trigger the code path we want
+      await userEvent.clear(address1Input);
+
+      // Verify clearFieldError was called for each address field
+      // The code in lines 260-263 uses forEach to clear errors for all required address fields
+      await waitFor(() => {
+        expect(mockClearFieldError).toHaveBeenCalledWith('address1');
+        expect(mockClearFieldError).toHaveBeenCalledWith('city');
+        expect(mockClearFieldError).toHaveBeenCalledWith('state');
+        expect(mockClearFieldError).toHaveBeenCalledWith('zipCode');
+      });
+    });
+
+    test('updates field with single value when handleComboBoxUpdate is called with isMultiSelect=false', async () => {
+      // Mock the updateField function
+      const mockUpdateField = vi.fn();
+
+      // Import the UseTrusteeForm module to mock its functions
+      const UseTrusteeFormModule = await import('./UseTrusteeForm');
+
+      // Save the original function to restore later
+      const originalUseTrusteeForm = UseTrusteeFormModule.useTrusteeForm;
+
+      // Mock the useTrusteeForm hook to inject our spy
+      vi.spyOn(UseTrusteeFormModule, 'useTrusteeForm').mockImplementation((props) => {
+        const hookResult = originalUseTrusteeForm(props);
+        return {
+          ...hookResult,
+          updateField: mockUpdateField,
+          validateFieldAndUpdate: vi.fn(),
+        };
+      });
+
+      // Render in create mode
+      renderWithRouter('/trustees/create', {
+        action: 'create',
+        cancelTo: '/trustees',
+      });
+
+      // Wait for form to be rendered
+      await waitFor(() => {
+        expect(screen.getByRole('combobox', { name: /status/i })).toBeInTheDocument();
+      });
+
+      // Find the status ComboBox (single-select)
+      const statusCombobox = screen.getByRole('combobox', { name: /status/i });
+      await userEvent.click(statusCombobox);
+
+      // Select "Suspended" status
+      await userEvent.click(screen.getByText('Suspended'));
+
+      // This specifically tests lines 285-286 in handleComboBoxUpdate function
+      // which updates a field with a single value when isMultiSelect is false
+      await waitFor(() => {
+        // For a single select, updateField should be called with the first value
+        expect(mockUpdateField).toHaveBeenCalledWith('status', 'suspended');
+      });
+    });
+
     test('submits form in edit mode with public profile', async () => {
       // Mock a trustee object to edit
       const mockTrustee = {
