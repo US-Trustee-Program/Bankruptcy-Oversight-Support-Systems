@@ -16,13 +16,13 @@ import V from '@common/cams/validators';
 import { EMAIL_REGEX, EXTENSION_REGEX, PHONE_REGEX, ZIP_REGEX } from '@common/cams/regex';
 
 export const TRUSTEE_SPEC: Readonly<ValidationSpec<TrusteeFormData>> = {
-  name: [V.minLength(1, 'Trustee name is required')],
-  address1: [V.minLength(1, 'Address is required')],
-  address2: [V.optional(V.maxLength(50))],
-  city: [V.minLength(1, 'City is required')],
+  name: [V.minLength(1, 'Trustee name is required'), V.maxLength(50)],
+  address1: [V.minLength(1, 'Address is required'), V.maxLength(40)],
+  address2: [V.optional(V.maxLength(40))],
+  city: [V.minLength(1, 'City is required'), V.maxLength(50)],
   state: [V.exactLength(2, 'State is required')],
   zipCode: [V.matches(ZIP_REGEX, 'ZIP code must be 5 digits or 9 digits with a hyphen')],
-  email: [V.matches(EMAIL_REGEX, 'Email must be a valid email address')],
+  email: [V.matches(EMAIL_REGEX, 'Email must be a valid email address'), V.maxLength(50)],
   phone: [V.matches(PHONE_REGEX, 'Phone must be a valid phone number')],
   extension: [V.optional(V.matches(EXTENSION_REGEX, 'Extension must be 1 to 6 digits'))],
   status: [V.isInSet<TrusteeStatus>([...TRUSTEE_STATUS_VALUES])],
@@ -41,27 +41,6 @@ export interface TrusteeFormData {
   districts?: string[];
   chapters?: ChapterType[];
   status: TrusteeStatus;
-}
-
-export interface ValidationError {
-  field: string;
-  message: string;
-}
-
-export interface TrusteeFormValidation {
-  fieldErrors: Record<string, string>;
-  errors: ValidationError[];
-  validateFieldAndUpdate: (
-    field: keyof TrusteeFormData,
-    value: string,
-    spec: Partial<typeof TRUSTEE_SPEC>,
-  ) => string | null;
-  clearErrors: () => void;
-  clearFieldError: (field: string) => void;
-  isFormValidAndComplete: (
-    formData: TrusteeFormData,
-    spec: Partial<typeof TRUSTEE_SPEC>,
-  ) => boolean;
 }
 
 export type TrusteeFormState = {
@@ -101,12 +80,13 @@ function validateField(
 }
 
 export function useTrusteeForm({ initialState }: UseTrusteeFormProps) {
+  const doEditInternalProfile =
+    initialState.action === 'edit' && initialState.contactInformation === 'internal';
+  const doEditPublicProfile =
+    initialState.action === 'edit' && initialState.contactInformation === 'public';
+
   const getInitialFormData = (): TrusteeFormData => {
     let info: ContactInformation | null = null;
-    const doEditInternalProfile =
-      initialState.action === 'edit' && initialState.contactInformation === 'internal';
-    const doEditPublicProfile =
-      initialState.action === 'edit' && initialState.contactInformation === 'public';
 
     if (doEditInternalProfile && initialState.trustee?.internal) {
       info = initialState.trustee.internal;
@@ -226,15 +206,47 @@ export function useTrusteeForm({ initialState }: UseTrusteeFormProps) {
     return !!results.valid;
   };
 
+  /**
+   * Dynamically creates a validation spec based on form state
+   * Particularly useful for internal profile editing where certain fields may not be required
+   */
+  const getDynamicSpec = (override?: { name: keyof TrusteeFormData; value: string }) => {
+    const spec: Partial<ValidationSpec<TrusteeFormData>> = { ...TRUSTEE_SPEC };
+    const currentFormData = getFormData(override);
+
+    if (doEditInternalProfile) {
+      delete spec.name;
+      if (
+        !currentFormData.address1 &&
+        !currentFormData.city &&
+        !currentFormData.state &&
+        !currentFormData.zipCode
+      ) {
+        delete spec.address1;
+        delete spec.address2;
+        delete spec.city;
+        delete spec.state;
+        delete spec.zipCode;
+      }
+      if (!currentFormData.phone) {
+        delete spec.phone;
+      }
+      if (!currentFormData.email) {
+        delete spec.email;
+      }
+    }
+
+    return spec;
+  };
+
   return {
     formData,
     updateField,
     updateMultipleFields,
     resetForm,
     getFormData,
-
+    getDynamicSpec,
     fieldErrors,
-    errors: Object.entries(fieldErrors).map(([field, message]) => ({ field, message })),
     validateFieldAndUpdate,
     clearErrors,
     clearFieldError,
