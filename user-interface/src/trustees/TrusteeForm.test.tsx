@@ -439,69 +439,8 @@ describe('TrusteeForm', () => {
       );
     });
 
-    test('validates email format when provided', async () => {
-      renderWithRouter();
-
-      const emailInput = screen.getByTestId('trustee-email');
-
-      await userEvent.clear(emailInput);
-      await userEvent.type(emailInput, 'invalid-email');
-      await userEvent.tab();
-
-      await waitFor(() => {
-        expect(screen.getByText('Email must be a valid email address')).toBeInTheDocument();
-      });
-
-      await userEvent.clear(emailInput);
-      await userEvent.type(emailInput, 'test@example.com');
-      await userEvent.tab();
-
-      await waitFor(() => {
-        expect(screen.queryByText('Email must be a valid email address')).not.toBeInTheDocument();
-      });
-    });
-
-    test('validates phone format', async () => {
-      renderWithRouter();
-
-      const phoneInput = screen.getByTestId('trustee-phone');
-
-      await userEvent.type(phoneInput, 'abc123');
-      await userEvent.tab();
-
-      await waitFor(() => {
-        expect(screen.getByText('Phone must be a valid phone number')).toBeInTheDocument();
-      });
-
-      await userEvent.clear(phoneInput);
-      await userEvent.type(phoneInput, '1234567890');
-      await userEvent.tab();
-
-      await waitFor(() => {
-        expect(screen.queryByText('Phone must be a valid phone number')).not.toBeInTheDocument();
-      });
-    });
-
-    test('validates extension format when provided', async () => {
-      renderWithRouter();
-
-      const extensionInput = screen.getByTestId('trustee-extension');
-
-      await userEvent.type(extensionInput, '1234567');
-      await userEvent.tab();
-
-      await waitFor(() => {
-        expect(screen.getByText('Extension must be 1 to 6 digits')).toBeInTheDocument();
-      });
-
-      await userEvent.clear(extensionInput);
-      await userEvent.type(extensionInput, '123');
-      await userEvent.tab();
-
-      await waitFor(() => {
-        expect(screen.queryByText('Extension must be 1 to 6 digits')).not.toBeInTheDocument();
-      });
-    });
+    // Tests for email, phone, and extension validation have been removed
+    // as they duplicate functionality already tested in UseTrusteeForm.test.tsx
 
     test('includes optional fields in form submission when provided', async () => {
       const mockPostTrustee = vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } });
