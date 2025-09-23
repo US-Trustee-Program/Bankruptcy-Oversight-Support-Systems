@@ -234,9 +234,10 @@ describe('validation', () => {
 
     test('should return VALID for falsy spec values', () => {
       const validObj = { someProperty: 'any value' };
+      const expected = { reasons: ['No validation specification provided'] };
 
-      expect(validateObject(null, validObj)).toEqual(VALID);
-      expect(validateObject(undefined, validObj)).toEqual(VALID);
+      expect(validateObject(null, validObj)).toEqual(expected);
+      expect(validateObject(undefined, validObj)).toEqual(expected);
     });
   });
 
