@@ -959,12 +959,10 @@ describe('TrusteeForm', () => {
 
   describe('Form Submission with Spy', () => {
     beforeEach(() => {
-      // Re-establish the useDebounce mock since this describe block restores all mocks
       vi.spyOn(UseDebounceModule, 'default').mockReturnValue(
         (callback: () => void, _delay: number) => {
-          // Execute callback immediately in tests to avoid timing issues
           callback();
-          return 0; // Return a dummy timer ID
+          return 0;
         },
       );
     });
