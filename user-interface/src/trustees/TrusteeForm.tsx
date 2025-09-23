@@ -5,12 +5,7 @@ import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 import { useApi2 } from '@/lib/hooks/UseApi2';
-import {
-  TrusteeFormData,
-  TRUSTEE_SPEC,
-  TrusteeFormState,
-  useTrusteeForm,
-} from '@/trustees/UseTrusteeForm';
+import { TrusteeFormData, TrusteeFormState, useTrusteeForm } from '@/trustees/UseTrusteeForm';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
@@ -23,7 +18,6 @@ import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import { ChapterType, TrusteeInput, TrusteeStatus } from '@common/cams/trustees';
 import { useLocation } from 'react-router-dom';
-import { ValidationSpec } from '@common/cams/validation';
 
 const CHAPTER_OPTIONS: ComboOption<ChapterType>[] = [
   { value: '7-panel', label: '7 - Panel' },
@@ -53,8 +47,6 @@ function TrusteeForm() {
   const location = useLocation();
   const passedState = location.state as TrusteeFormState;
 
-  const doEditInternalProfile =
-    passedState.action === 'edit' && passedState.contactInformation === 'internal';
   const doEditPublicProfile =
     passedState.action === 'edit' && passedState.contactInformation === 'public';
   const doCreate = passedState.action === 'create';
@@ -68,6 +60,7 @@ function TrusteeForm() {
     validateFieldAndUpdate,
     clearErrors,
     isFormValidAndComplete,
+    getDynamicSpec,
   } = useTrusteeForm({ initialState: passedState });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -224,34 +217,6 @@ function TrusteeForm() {
     return requiredFields.includes(field) ? { required: true } : {};
   };
 
-  const getDynamicSpec = (override?: { name: keyof TrusteeFormData; value: string }) => {
-    const spec: Partial<ValidationSpec<TrusteeFormData>> = { ...TRUSTEE_SPEC };
-    const currentFormData = getFormData(override);
-    if (doEditInternalProfile) {
-      delete spec.name;
-      if (
-        !currentFormData.address1 &&
-        !currentFormData.city &&
-        !currentFormData.state &&
-        !currentFormData.zipCode
-      ) {
-        delete spec.address1;
-        delete spec.address2;
-        delete spec.city;
-        delete spec.state;
-        delete spec.zipCode;
-      }
-      if (!currentFormData.phone) {
-        delete spec.phone;
-      }
-      if (!currentFormData.email) {
-        delete spec.email;
-      }
-    }
-
-    return spec;
-  };
-
   const handleFieldChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { value, name } = event.target;
     const spec = getDynamicSpec({ name: name as keyof TrusteeFormData, value });
@@ -392,7 +357,7 @@ function TrusteeForm() {
                 selections={[formData.state]}
                 onUpdateSelection={(selectedOptions) => {
                   debounce(() => {
-                    const value = selectedOptions[0]?.value as string;
+                    const value = selectedOptions[0]?.value;
                     validateFieldAndUpdate('state', value, getDynamicSpec());
                     updateField('state', value);
                   }, 300);
