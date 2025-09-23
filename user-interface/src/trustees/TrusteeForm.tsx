@@ -59,6 +59,7 @@ function TrusteeForm() {
     fieldErrors,
     validateFieldAndUpdate,
     clearErrors,
+    clearFieldError,
     isFormValidAndComplete,
     getDynamicSpec,
   } = useTrusteeForm({ initialState: passedState });
@@ -219,11 +220,34 @@ function TrusteeForm() {
 
   const handleFieldChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { value, name } = event.target;
-    const spec = getDynamicSpec({ name: name as keyof TrusteeFormData, value });
+    const fieldName = name as keyof TrusteeFormData;
+    const spec = getDynamicSpec({ name: fieldName, value });
+
+    const requiredAddressFields = ['address1', 'city', 'state', 'zipCode'];
+
+    // Check if this is an address-related field
+    const isAddressField = requiredAddressFields.includes(fieldName);
 
     debounce(() => {
-      validateFieldAndUpdate(name as keyof TrusteeFormData, value, spec);
-      updateField(name as keyof TrusteeFormData, value);
+      validateFieldAndUpdate(fieldName, value, spec);
+      updateField(fieldName, value);
+
+      // For internal profile editing when a field is cleared, check if we need to clear address validation errors
+      if (passedState.contactInformation === 'internal' && isAddressField && value.trim() === '') {
+        // Get current form data with this field's new value
+        const currentData = getFormData({ name: fieldName, value });
+
+        // Check if all address fields are now empty
+        const allAddressFieldsEmpty =
+          !currentData.address1 && !currentData.city && !currentData.state && !currentData.zipCode;
+
+        // If all address fields are empty, clear any remaining address field errors
+        if (allAddressFieldsEmpty) {
+          requiredAddressFields.forEach((field) => {
+            clearFieldError(field);
+          });
+        }
+      }
     }, 300);
   };
 
