@@ -12,7 +12,7 @@ import TrusteeDetailHeader from './TrusteeDetailHeader';
 import TrusteeDetailProfile from './panels/TrusteeDetailProfile';
 import TrusteeDetailAuditHistory from './panels/TrusteeDetailAuditHistory';
 import TrusteeDetailNavigation, { mapTrusteeDetailNavState } from './TrusteeDetailNavigation';
-import { TrusteeFormState } from '@/trustees/UseTrusteeFormValidation.types';
+import { TrusteeFormState } from '@/trustees/UseTrusteeForm';
 
 export default function TrusteeDetailScreen() {
   const { trusteeId } = useParams();

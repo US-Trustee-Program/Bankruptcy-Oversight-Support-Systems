@@ -5,8 +5,12 @@ import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 import { useApi2 } from '@/lib/hooks/UseApi2';
-import { trusteeFormDataSpec, useTrusteeFormValidation } from '@/trustees/UseTrusteeFormValidation';
-import type { TrusteeFormData, TrusteeFormState } from '@/trustees/UseTrusteeForm';
+import {
+  TrusteeFormData,
+  TRUSTEE_SPEC,
+  TrusteeFormState,
+  useTrusteeForm,
+} from '@/trustees/UseTrusteeForm';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
@@ -20,7 +24,6 @@ import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import { ChapterType, TrusteeInput, TrusteeStatus } from '@common/cams/trustees';
 import { useLocation } from 'react-router-dom';
 import { ValidationSpec } from '@common/cams/validation';
-import { useTrusteeForm } from '@/trustees/UseTrusteeForm';
 
 const CHAPTER_OPTIONS: ComboOption<ChapterType>[] = [
   { value: '7-panel', label: '7 - Panel' },
@@ -57,10 +60,15 @@ function TrusteeForm() {
   const doCreate = passedState.action === 'create';
   const { cancelTo } = passedState;
 
-  const { fieldErrors, validateFieldAndUpdate, clearErrors, isFormValidAndComplete } =
-    useTrusteeFormValidation();
-
-  const { formData, updateField, getFormData } = useTrusteeForm({ initialState: passedState });
+  const {
+    formData,
+    updateField,
+    getFormData,
+    fieldErrors,
+    validateFieldAndUpdate,
+    clearErrors,
+    isFormValidAndComplete,
+  } = useTrusteeForm({ initialState: passedState });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -217,7 +225,7 @@ function TrusteeForm() {
   };
 
   const getDynamicSpec = (override?: { name: keyof TrusteeFormData; value: string }) => {
-    const spec: Partial<ValidationSpec<TrusteeFormData>> = { ...trusteeFormDataSpec };
+    const spec: Partial<ValidationSpec<TrusteeFormData>> = { ...TRUSTEE_SPEC };
     const currentFormData = getFormData(override);
     if (doEditInternalProfile) {
       delete spec.name;
