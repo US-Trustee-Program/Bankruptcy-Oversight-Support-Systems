@@ -46,6 +46,7 @@ async function oktaLogin(page: Page) {
 
   const password = page.locator('input[name="credentials.passcode"]').first();
   await expect(password).toBeVisible();
+  await page.waitForTimeout(300);
   await password.fill(OKTA_PASSWORD);
 
   const submit = page.locator('input[type=submit]').first();
