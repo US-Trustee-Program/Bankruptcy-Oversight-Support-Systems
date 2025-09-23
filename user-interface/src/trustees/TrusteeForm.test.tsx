@@ -15,7 +15,7 @@ import { Mock } from 'vitest';
 import { TrusteeInput, Trustee } from '@common/cams/trustees';
 import { Address } from '@common/cams/contact';
 import { ResponseBody } from '@common/api/response';
-import { TrusteeFormState } from '@/trustees/UseTrusteeFormValidation.types';
+import { TrusteeFormState } from './UseTrusteeForm';
 
 type MockApiShape = Partial<ReturnType<typeof UseApi2Module.useApi2>>;
 const createMockApi = (methods: MockApiShape): ReturnType<typeof UseApi2Module.useApi2> => {

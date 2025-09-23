@@ -1,10 +1,55 @@
 import { useState } from 'react';
-import { TrusteeFormData, TrusteeFormState } from './UseTrusteeFormValidation.types';
 import { ContactInformation } from '@common/cams/contact';
+import { trusteeFormDataSpec } from './UseTrusteeFormValidation';
+import { ChapterType, TrusteeInput, TrusteeStatus } from '@common/cams/trustees';
 
-interface UseTrusteeFormProps {
-  initialState: TrusteeFormState;
+export interface TrusteeFormData {
+  name: string;
+  address1: string;
+  address2?: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  phone: string;
+  extension?: string;
+  email: string;
+  districts?: string[];
+  chapters?: ChapterType[];
+  status: TrusteeStatus;
 }
+
+export interface ValidationError {
+  field: string;
+  message: string;
+}
+
+export interface TrusteeFormValidation {
+  fieldErrors: Record<string, string>;
+  errors: ValidationError[];
+  validateFieldAndUpdate: (
+    field: keyof TrusteeFormData,
+    value: string,
+    spec: Partial<typeof trusteeFormDataSpec>,
+  ) => string | null;
+  clearErrors: () => void;
+  clearFieldError: (field: string) => void;
+  isFormValidAndComplete: (
+    formData: TrusteeFormData,
+    spec: Partial<typeof trusteeFormDataSpec>,
+  ) => boolean;
+}
+
+export type TrusteeFormState = {
+  action: 'create' | 'edit';
+  cancelTo: string;
+  trusteeId?: string;
+  trustee?: Partial<TrusteeInput>;
+  contactInformation?: 'internal' | 'public';
+};
+
+type UseTrusteeFormProps = {
+  initialState: TrusteeFormState;
+};
 
 export function useTrusteeForm({ initialState }: UseTrusteeFormProps) {
   const getInitialFormData = (): TrusteeFormData => {

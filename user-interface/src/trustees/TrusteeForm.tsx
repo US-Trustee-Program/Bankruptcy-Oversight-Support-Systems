@@ -6,7 +6,7 @@ import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import { trusteeFormDataSpec, useTrusteeFormValidation } from '@/trustees/UseTrusteeFormValidation';
-import type { TrusteeFormData, TrusteeFormState } from '@/trustees/UseTrusteeFormValidation.types';
+import type { TrusteeFormData, TrusteeFormState } from '@/trustees/UseTrusteeForm';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
