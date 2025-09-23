@@ -505,6 +505,231 @@ describe('useTrusteeForm', () => {
     });
   });
 
+  describe('getDynamicSpec', () => {
+    test('should exclude address validation when all address fields are empty in internal edit mode', () => {
+      // Test for lines 222-223 and 225-230
+      const initialState: TrusteeFormState = {
+        action: 'edit',
+        cancelTo: '/trustees/1',
+        trusteeId: '1',
+        contactInformation: 'internal',
+        trustee: {
+          name: 'Test Trustee',
+          status: 'active',
+        },
+      };
+
+      const { result } = renderHook(() => useTrusteeForm({ initialState }));
+
+      // Make sure all address fields are empty
+      act(() => {
+        result.current.updateMultipleFields({
+          address1: '',
+          city: '',
+          state: '',
+          zipCode: '',
+        });
+      });
+
+      // Get the dynamic spec
+      const dynamicSpec = result.current.getDynamicSpec();
+
+      // Check that address-related validations are excluded
+      expect(dynamicSpec.name).toBeUndefined(); // Name is always excluded in internal edit mode
+      expect(dynamicSpec.address1).toBeUndefined();
+      expect(dynamicSpec.address2).toBeUndefined();
+      expect(dynamicSpec.city).toBeUndefined();
+      expect(dynamicSpec.state).toBeUndefined();
+      expect(dynamicSpec.zipCode).toBeUndefined();
+
+      // Status should still be included
+      expect(dynamicSpec.status).toBeDefined();
+    });
+
+    test('should include address validation when some address fields are populated in internal edit mode', () => {
+      const initialState: TrusteeFormState = {
+        action: 'edit',
+        cancelTo: '/trustees/1',
+        trusteeId: '1',
+        contactInformation: 'internal',
+        trustee: {
+          name: 'Test Trustee',
+          status: 'active',
+        },
+      };
+
+      const { result } = renderHook(() => useTrusteeForm({ initialState }));
+
+      // Set one address field to be non-empty
+      act(() => {
+        result.current.updateMultipleFields({
+          address1: '123 Main St',
+          city: '',
+          state: '',
+          zipCode: '',
+        });
+      });
+
+      // Get the dynamic spec
+      const dynamicSpec = result.current.getDynamicSpec();
+
+      // Check that address-related validations are included
+      expect(dynamicSpec.name).toBeUndefined(); // Name is always excluded in internal edit mode
+      expect(dynamicSpec.address1).toBeDefined();
+      expect(dynamicSpec.address2).toBeDefined();
+      expect(dynamicSpec.city).toBeDefined();
+      expect(dynamicSpec.state).toBeDefined();
+      expect(dynamicSpec.zipCode).toBeDefined();
+    });
+
+    test('should exclude phone validation when phone is empty in internal edit mode', () => {
+      // Test for lines 232-233
+      const initialState: TrusteeFormState = {
+        action: 'edit',
+        cancelTo: '/trustees/1',
+        trusteeId: '1',
+        contactInformation: 'internal',
+        trustee: {
+          name: 'Test Trustee',
+          status: 'active',
+        },
+      };
+
+      const { result } = renderHook(() => useTrusteeForm({ initialState }));
+
+      // Make sure phone is empty
+      act(() => {
+        result.current.updateField('phone', '');
+      });
+
+      // Get the dynamic spec
+      const dynamicSpec = result.current.getDynamicSpec();
+
+      // Check that phone validation is excluded
+      expect(dynamicSpec.phone).toBeUndefined();
+
+      // Extension is not excluded because it's optional anyway
+      expect(dynamicSpec.extension).toBeDefined();
+    });
+
+    test('should include phone validation when phone is populated in internal edit mode', () => {
+      const initialState: TrusteeFormState = {
+        action: 'edit',
+        cancelTo: '/trustees/1',
+        trusteeId: '1',
+        contactInformation: 'internal',
+        trustee: {
+          name: 'Test Trustee',
+          status: 'active',
+        },
+      };
+
+      const { result } = renderHook(() => useTrusteeForm({ initialState }));
+
+      // Set phone to be non-empty
+      act(() => {
+        result.current.updateField('phone', '555-123-4567');
+      });
+
+      // Get the dynamic spec
+      const dynamicSpec = result.current.getDynamicSpec();
+
+      // Check that phone validation is included
+      expect(dynamicSpec.phone).toBeDefined();
+    });
+
+    test('should exclude email validation when email is empty in internal edit mode', () => {
+      // Test for lines 234-236
+      const initialState: TrusteeFormState = {
+        action: 'edit',
+        cancelTo: '/trustees/1',
+        trusteeId: '1',
+        contactInformation: 'internal',
+        trustee: {
+          name: 'Test Trustee',
+          status: 'active',
+        },
+      };
+
+      const { result } = renderHook(() => useTrusteeForm({ initialState }));
+
+      // Make sure email is empty
+      act(() => {
+        result.current.updateField('email', '');
+      });
+
+      // Get the dynamic spec
+      const dynamicSpec = result.current.getDynamicSpec();
+
+      // Check that email validation is excluded
+      expect(dynamicSpec.email).toBeUndefined();
+    });
+
+    test('should include email validation when email is populated in internal edit mode', () => {
+      const initialState: TrusteeFormState = {
+        action: 'edit',
+        cancelTo: '/trustees/1',
+        trusteeId: '1',
+        contactInformation: 'internal',
+        trustee: {
+          name: 'Test Trustee',
+          status: 'active',
+        },
+      };
+
+      const { result } = renderHook(() => useTrusteeForm({ initialState }));
+
+      // Set email to be non-empty
+      act(() => {
+        result.current.updateField('email', 'test@example.com');
+      });
+
+      // Get the dynamic spec
+      const dynamicSpec = result.current.getDynamicSpec();
+
+      // Check that email validation is included
+      expect(dynamicSpec.email).toBeDefined();
+    });
+
+    test('should not modify validation spec when not in internal edit mode', () => {
+      // Test that the function behaves differently outside internal edit mode
+      const initialState: TrusteeFormState = {
+        action: 'create',
+        cancelTo: '/trustees',
+        trustee: {
+          name: 'Test Trustee',
+          status: 'active',
+        },
+      };
+
+      const { result } = renderHook(() => useTrusteeForm({ initialState }));
+
+      // Set empty values
+      act(() => {
+        result.current.updateMultipleFields({
+          address1: '',
+          city: '',
+          state: '',
+          zipCode: '',
+          phone: '',
+          email: '',
+        });
+      });
+
+      // Get the dynamic spec
+      const dynamicSpec = result.current.getDynamicSpec();
+
+      // Check that all validations are still included
+      expect(dynamicSpec.name).toBeDefined();
+      expect(dynamicSpec.address1).toBeDefined();
+      expect(dynamicSpec.city).toBeDefined();
+      expect(dynamicSpec.state).toBeDefined();
+      expect(dynamicSpec.zipCode).toBeDefined();
+      expect(dynamicSpec.phone).toBeDefined();
+      expect(dynamicSpec.email).toBeDefined();
+    });
+  });
+
   // Test the complete hook implementation including all functions
   test('should work with all functions together', () => {
     const initialState: TrusteeFormState = {
