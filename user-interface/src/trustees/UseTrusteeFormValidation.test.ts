@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 import { trusteeFormDataSpec, useTrusteeFormValidation } from './UseTrusteeFormValidation';
-import { TrusteeFormData } from '@/trustees/UseTrusteeFormValidation.types';
+import { TrusteeFormData } from '@/trustees/UseTrusteeForm';
 
 // Test constants for form validation
 const VALID_FORM_DATA = {
