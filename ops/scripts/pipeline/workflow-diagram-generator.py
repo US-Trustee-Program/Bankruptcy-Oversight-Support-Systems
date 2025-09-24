@@ -86,6 +86,7 @@ def parse_workflow_file(workflows_dir: str, filename: str) -> Dict:
     with open(file_path, 'r', encoding='utf-8') as f:
         content = f.read()
     workflow_data = yaml.safe_load(content) or {}
+    # The YAML parser interprets the "on" key as a boolean True
     on_section = workflow_data.get(True)
     is_reusable = (
         on_section is not None and isinstance(on_section, dict) and on_section.get('workflow_call') is not None
@@ -251,8 +252,8 @@ def generate_workflow_dispatch_diagram(filename: str, workflow: Dict, workflows:
     reusable_workflows: Dict[str, Dict] = {}
     trigger_id = "trigger_workflow_dispatch"
     workflow_id = sanitize_id(filename)
-    nodes.append(f"{MERMAID_INDENT}{trigger_id}([\"workflow_dispatch\"])\n".rstrip())
-    nodes.append(f"{MERMAID_INDENT}{workflow_id}[\"{workflow['name']}\"]")
+    nodes.extend((f"{MERMAID_INDENT}{trigger_id}([\"workflow_dispatch\"])\n".rstrip(),
+                  f"{MERMAID_INDENT}{workflow_id}[\"{workflow['name']}\"]"))
     edges.append(f"{MERMAID_INDENT}{trigger_id} --> {workflow_id}")
     add_workflow_dependencies(filename, workflow, nodes, edges, processed_workflows, reusable_workflows, workflows)
     diagram += "\n".join(nodes) + "\n\n" + "\n".join(edges) + "\n"
@@ -459,8 +460,7 @@ def _render_workflow_jobs_subgraph(workflow_id: str, title: str, workflow: Dict,
     for job_id, job_info in workflow['jobs'].items():
         job_node_id = sanitize_id(job_id)
         job_label = job_info.get('name') or job_id
-        used_vars = job_variables.get(job_id, set())
-        if used_vars:
+        if used_vars := job_variables.get(job_id, set()):
             block += f'{MERMAID_DOUBLE_INDENT}subgraph {job_node_id}_subgraph["{job_label}"]\n'
             vars_node_id = sanitize_id(f"{job_id}_vars")
             vars_label = '<br/>'.join(sorted(used_vars))
