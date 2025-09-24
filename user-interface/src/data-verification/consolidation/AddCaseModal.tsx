@@ -43,6 +43,9 @@ function AddCaseForm(viewModel: AddCaseModel) {
           aria-describedby="add-case-form-instructions"
           onUpdateSelection={viewModel.handleAddCaseCourtSelectChange}
           options={viewModel.filteredOfficeRecords!}
+          selections={viewModel.filteredOfficeRecords!.filter(
+            (option) => option.value === viewModel.caseToAddCourt,
+          )}
           required={true}
           multiSelect={false}
           disabled={viewModel.isLookingForCase}
@@ -53,7 +56,6 @@ function AddCaseForm(viewModel: AddCaseModel) {
         <CaseNumberInput
           id={`add-case-input-${viewModel.orderId}`}
           data-testid={`add-case-input-${viewModel.orderId}`}
-          className="usa-input"
           onChange={viewModel.handleAddCaseNumberInputChange}
           allowPartialCaseNumber={false}
           required={true}
