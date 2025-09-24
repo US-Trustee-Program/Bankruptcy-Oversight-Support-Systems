@@ -208,19 +208,6 @@ function TrusteeForm() {
       });
   }, [api, districts]);
 
-  // useEffect(() => {
-  //   if (districtComboRef.current) {
-  //     const selections = districts.reduce((acc, selection) => {
-  //       const option = districtOptions.find((option) => option.value === selection);
-  //       if (option) {
-  //         acc.push(option);
-  //       }
-  //       return acc;
-  //     }, [] as ComboOption[]);
-  //     districtComboRef.current.setSelections(selections);
-  //   }
-  // }, [districtOptions, passedState.trustee?.districts, districtComboRef.current]);
-
   // React hooks must be called before any conditional returns
   const chapterSelections = useMemo(() => {
     return chapters.reduce((acc, selection) => {
