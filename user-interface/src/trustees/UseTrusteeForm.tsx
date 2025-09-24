@@ -189,7 +189,7 @@ export function useTrusteeForm({ initialState }: UseTrusteeFormProps) {
   /**
    * Checks if form is both valid (no errors) and complete (all required fields filled)
    */
-  const isFormValidAndComplete = (
+  const validateFormAndUpdateErrors = (
     formData: TrusteeFormData,
     spec: Partial<typeof TRUSTEE_SPEC>,
   ): boolean => {
@@ -250,6 +250,6 @@ export function useTrusteeForm({ initialState }: UseTrusteeFormProps) {
     validateFieldAndUpdate,
     clearErrors,
     clearFieldError,
-    isFormValidAndComplete,
+    validateFormAndUpdateErrors,
   };
 }

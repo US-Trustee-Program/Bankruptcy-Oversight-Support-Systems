@@ -782,7 +782,7 @@ describe('useTrusteeForm', () => {
 
     let validationResult;
     act(() => {
-      validationResult = result.current.isFormValidAndComplete(EMPTY_FORM_DATA, TRUSTEE_SPEC);
+      validationResult = result.current.validateFormAndUpdateErrors(EMPTY_FORM_DATA, TRUSTEE_SPEC);
     });
 
     expect(validationResult).toBe(false);
@@ -804,7 +804,7 @@ describe('useTrusteeForm', () => {
 
     let validationResult;
     act(() => {
-      validationResult = result.current.isFormValidAndComplete(formData, TRUSTEE_SPEC);
+      validationResult = result.current.validateFormAndUpdateErrors(formData, TRUSTEE_SPEC);
     });
 
     expect(validationResult).toBe(false);
@@ -826,7 +826,7 @@ describe('useTrusteeForm', () => {
 
     let validationResult;
     act(() => {
-      validationResult = result.current.isFormValidAndComplete(formData, TRUSTEE_SPEC);
+      validationResult = result.current.validateFormAndUpdateErrors(formData, TRUSTEE_SPEC);
     });
     expect(validationResult).toBe(true);
   });
@@ -960,7 +960,7 @@ describe('useTrusteeForm', () => {
 
     const { result } = renderHook(() => useTrusteeForm({ initialState }));
 
-    const validationResult = result.current.isFormValidAndComplete(
+    const validationResult = result.current.validateFormAndUpdateErrors(
       COMPLETE_VALID_FORM_DATA,
       TRUSTEE_SPEC,
     );
@@ -978,7 +978,7 @@ describe('useTrusteeForm', () => {
 
     let validationResult;
     act(() => {
-      validationResult = result.current.isFormValidAndComplete(SPACES_FORM_DATA, TRUSTEE_SPEC);
+      validationResult = result.current.validateFormAndUpdateErrors(SPACES_FORM_DATA, TRUSTEE_SPEC);
     });
 
     expect(validationResult).toBeFalsy();

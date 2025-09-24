@@ -60,7 +60,7 @@ function TrusteeForm() {
     validateFieldAndUpdate,
     clearErrors,
     clearFieldError,
-    isFormValidAndComplete,
+    validateFormAndUpdateErrors,
     getDynamicSpec,
   } = useTrusteeForm({ initialState: passedState });
 
@@ -119,7 +119,7 @@ function TrusteeForm() {
     ev.preventDefault();
     const currentFormData = getFormData();
 
-    if (isFormValidAndComplete(currentFormData, getDynamicSpec())) {
+    if (validateFormAndUpdateErrors(currentFormData, getDynamicSpec())) {
       setErrorMessage(null);
       clearErrors();
       setIsSubmitting(true);
