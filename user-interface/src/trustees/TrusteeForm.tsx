@@ -208,7 +208,6 @@ function TrusteeForm() {
       });
   }, [api, districts]);
 
-  // React hooks must be called before any conditional returns
   const chapterSelections = useMemo(() => {
     return chapters.reduce((acc, selection) => {
       const option = CHAPTER_OPTIONS.find((option) => option.value === selection);
