@@ -231,6 +231,14 @@ describe('validation', () => {
         reasons: ['Value must be an object'],
       });
     });
+
+    test('should return a failed validation if a validation spec is not provided', () => {
+      const validObj = { someProperty: 'any value' };
+      const expected = { reasons: ['No validation specification provided'] };
+
+      expect(validateObject(null, validObj)).toEqual(expected);
+      expect(validateObject(undefined, validObj)).toEqual(expected);
+    });
   });
 
   describe('nested object validation', () => {
