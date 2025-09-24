@@ -19,7 +19,6 @@ import sys
 WORKFLOW_DIRECTORY = '.github/workflows/'
 WORKFLOW_EXTENSIONS = ['.yml', '.yaml']
 DIAGRAM_FILE = 'docs/operations/workflow-diagram.md'
-GENERATOR_SCRIPT = 'ops/scripts/pipeline/workflow-diagram-generator.py'
 
 # Exit codes
 EXIT_SUCCESS = 0
@@ -74,7 +73,7 @@ def run_diagram_generator():
     try:
         os.chdir(repo_root)
         result = subprocess.run(
-            (sys.executable, GENERATOR_SCRIPT),
+            (sys.executable, "ops/scripts/pipeline/workflow-diagram-generator.py"),
             capture_output=True,
             text=True,
             check=False
