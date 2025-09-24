@@ -157,6 +157,7 @@ function _SuggestedTransferCases(
     setNewCaseNumber(order.docketSuggestedCaseNumber || null);
     setNewCaseDivision(null);
     courtSelectionRef.current?.clearSelections();
+    handleCourtSelection([]);
     caseNumberRef.current?.resetValue();
   }
 
@@ -272,7 +273,6 @@ function _SuggestedTransferCases(
                   <CaseNumberInput
                     id={`new-case-input-${order.id}`}
                     data-testid={`new-case-input-${order.id}`}
-                    className="usa-input"
                     value={order.docketSuggestedCaseNumber}
                     onChange={handleCaseInputChange}
                     allowPartialCaseNumber={false}

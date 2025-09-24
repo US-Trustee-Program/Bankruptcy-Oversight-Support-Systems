@@ -55,7 +55,6 @@ function TrusteeForm() {
 
   const districtComboRef = React.useRef<ComboBoxRef | null>(null);
   const statusComboRef = React.useRef<ComboBoxRef | null>(null);
-  const statusInitialized = React.useRef(false);
 
   const location = useLocation();
   const passedState = location.state as TrusteeFormState;
@@ -90,6 +89,7 @@ function TrusteeForm() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [districtOptions, setDistrictOptions] = useState<ComboOption[]>([]);
+  const [selectedDistrictOptions, setSelectedDistrictOptions] = useState<ComboOption[]>([]);
   const [districtLoadError, setDistrictLoadError] = useState<string | null>(null);
 
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
@@ -189,7 +189,16 @@ function TrusteeForm() {
           a.label.localeCompare(b.label),
         );
 
+        const selectedOptions = districts.reduce((acc, selection) => {
+          const option = options.find((option) => option.value === selection);
+          if (option) {
+            acc.push(option);
+          }
+          return acc;
+        }, [] as ComboOption[]);
+
         setDistrictOptions(options);
+        setSelectedDistrictOptions(selectedOptions);
       })
       .catch((error) => {
         setDistrictLoadError(
@@ -197,31 +206,8 @@ function TrusteeForm() {
         );
         setDistrictOptions([]);
       });
-  }, [api]);
+  }, [api, districts]);
 
-  useEffect(() => {
-    if (districtComboRef.current) {
-      const selections = districts.reduce((acc, selection) => {
-        const option = districtOptions.find((option) => option.value === selection);
-        if (option) {
-          acc.push(option);
-        }
-        return acc;
-      }, [] as ComboOption[]);
-      districtComboRef.current.setSelections(selections);
-    }
-  }, [districtOptions, passedState.trustee?.districts, districtComboRef.current]);
-
-  const setStatusComboRef = (el: ComboBoxRef | null) => {
-    statusComboRef.current = el;
-
-    if (el && !statusInitialized.current) {
-      el.setSelections([STATUS_OPTIONS[0]]);
-      statusInitialized.current = true;
-    }
-  };
-
-  // React hooks must be called before any conditional returns
   const chapterSelections = useMemo(() => {
     return chapters.reduce((acc, selection) => {
       const option = CHAPTER_OPTIONS.find((option) => option.value === selection);
@@ -495,6 +481,7 @@ function TrusteeForm() {
                     name="districts"
                     label="District (Division)"
                     options={districtOptions}
+                    selections={selectedDistrictOptions}
                     onUpdateSelection={handleComboBoxUpdate<string>(
                       'districts',
                       setDistricts,
@@ -544,7 +531,7 @@ function TrusteeForm() {
                     )}
                     multiSelect={false}
                     autoComplete="off"
-                    ref={setStatusComboRef}
+                    ref={statusComboRef}
                   />
                 </div>
               </>
