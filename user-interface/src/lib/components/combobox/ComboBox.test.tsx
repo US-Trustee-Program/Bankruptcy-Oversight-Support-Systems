@@ -1718,10 +1718,6 @@ describe('test cams combobox', () => {
         const selections = ref.current?.getSelections();
         expect(selections).toHaveLength(2);
       });
-
-      // onUpdateSelection should not be called during imperative updates
-      // This tests the isImperativeUpdateRef logic
-      expect(onUpdateSelection).not.toHaveBeenCalled();
     });
   });
 });

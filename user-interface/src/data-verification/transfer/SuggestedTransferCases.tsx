@@ -157,6 +157,7 @@ function _SuggestedTransferCases(
     setNewCaseNumber(order.docketSuggestedCaseNumber || null);
     setNewCaseDivision(null);
     courtSelectionRef.current?.clearSelections();
+    handleCourtSelection([]);
     caseNumberRef.current?.resetValue();
   }
 
