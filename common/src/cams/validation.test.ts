@@ -232,7 +232,7 @@ describe('validation', () => {
       });
     });
 
-    test('should return VALID for falsy spec values', () => {
+    test('should return an failed validation if a validation spec is not provided', () => {
       const validObj = { someProperty: 'any value' };
       const expected = { reasons: ['No validation specification provided'] };
 
