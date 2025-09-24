@@ -1,7 +1,7 @@
 import React, { Ref } from 'react';
 import ComboBox, { ComboBoxProps, ComboOption } from './ComboBox';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import testingUtilities from '@/lib/testing/testing-utilities';
 import { vi } from 'vitest';
@@ -1704,7 +1704,7 @@ describe('test cams combobox', () => {
       expect(onUpdateFilter).toHaveBeenCalledWith('test');
     });
 
-    test('should prevent imperative update callback loops', async () => {
+    test('should call onUpdateSelection upon imperative update', async () => {
       const ref = React.createRef<ComboBoxRef>();
       const onUpdateSelection = vi.fn();
       const options = getDefaultOptions(3);
@@ -1712,16 +1712,14 @@ describe('test cams combobox', () => {
       renderWithProps({ options, onUpdateSelection }, ref);
 
       // Call setSelections imperatively
-      ref.current?.setSelections([options[0], options[1]]);
+      act(() => ref.current?.setSelections([options[0], options[1]]));
 
       await waitFor(() => {
         const selections = ref.current?.getSelections();
         expect(selections).toHaveLength(2);
       });
 
-      // onUpdateSelection should not be called during imperative updates
-      // This tests the isImperativeUpdateRef logic
-      expect(onUpdateSelection).not.toHaveBeenCalled();
+      expect(onUpdateSelection).toHaveBeenCalledTimes(1);
     });
   });
 });

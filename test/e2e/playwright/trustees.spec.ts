@@ -69,16 +69,16 @@ test.describe('Trustees', () => {
     await expect(page).toHaveURL('/trustees/create');
 
     // Verify the create form is visible
-    await expect(page.getByTestId('trustee-create-form')).toBeVisible(timeoutOption);
+    await expect(page.getByTestId('trustee-form')).toBeVisible(timeoutOption);
 
     // Verify the form title
-    await expect(page.locator('h1')).toHaveText('Add Trustee Profile');
+    await expect(page.locator('h1')).toHaveText('Add Trustee Profile (Public)');
   });
 
   test('should test form field interactions and dropdowns', async ({ page }) => {
     // Navigate to create trustee form
     await page.getByTestId('trustees-add-link').click();
-    await expect(page.getByTestId('trustee-create-form')).toBeVisible(timeoutOption);
+    await expect(page.getByTestId('trustee-form')).toBeVisible(timeoutOption);
 
     // Test district selection dropdown
     const districtCombobox = page.locator('#trustee-districts');
@@ -128,7 +128,7 @@ test.describe('Trustees', () => {
   test('should test address fields on create form', async ({ page }) => {
     // Navigate to create trustee form
     await page.getByTestId('trustees-add-link').click();
-    await expect(page.getByTestId('trustee-create-form')).toBeVisible(timeoutOption);
+    await expect(page.getByTestId('trustee-form')).toBeVisible(timeoutOption);
 
     // Test address fields
     const address1Input = page.locator('#trustee-address1');
