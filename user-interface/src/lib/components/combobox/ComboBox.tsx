@@ -147,6 +147,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   function setSelections(values: ComboOption[]) {
     isImperativeUpdateRef.current = true;
     setSelectedMap(new Map(values.map((value) => [value.value, value])));
+    props?.onUpdateSelection?.(values);
   }
 
   function clearSelections() {
