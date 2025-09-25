@@ -53,7 +53,6 @@ function AddCaseForm(viewModel: AddCaseModel) {
         <CaseNumberInput
           id={`add-case-input-${viewModel.orderId}`}
           data-testid={`add-case-input-${viewModel.orderId}`}
-          className="usa-input"
           onChange={viewModel.handleAddCaseNumberInputChange}
           allowPartialCaseNumber={false}
           required={true}

@@ -8,11 +8,11 @@ import { Trustee } from '@common/cams/trustees';
 import { useLocation, useNavigate, useParams, Routes, Route } from 'react-router-dom';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
-import { TrusteeFormState } from './TrusteeForm';
 import TrusteeDetailHeader from './TrusteeDetailHeader';
 import TrusteeDetailProfile from './panels/TrusteeDetailProfile';
 import TrusteeDetailAuditHistory from './panels/TrusteeDetailAuditHistory';
 import TrusteeDetailNavigation, { mapTrusteeDetailNavState } from './TrusteeDetailNavigation';
+import { TrusteeFormState } from '@/trustees/UseTrusteeForm';
 
 export default function TrusteeDetailScreen() {
   const { trusteeId } = useParams();
@@ -30,7 +30,7 @@ export default function TrusteeDetailScreen() {
   function openEditPublicProfile() {
     const state: TrusteeFormState = {
       trusteeId,
-      trustee: trustee || undefined,
+      trustee: trustee ?? undefined,
       cancelTo: location.pathname,
       action: 'edit',
       contactInformation: 'public',
@@ -41,7 +41,7 @@ export default function TrusteeDetailScreen() {
   function openEditInternalProfile() {
     const state: TrusteeFormState = {
       trusteeId,
-      trustee: trustee || undefined,
+      trustee: trustee ?? undefined,
       cancelTo: location.pathname,
       action: 'edit',
       contactInformation: 'internal',
@@ -105,7 +105,7 @@ export default function TrusteeDetailScreen() {
               />
               <Route
                 path="/audit-history"
-                element={<TrusteeDetailAuditHistory trusteeId={trusteeId || ''} />}
+                element={<TrusteeDetailAuditHistory trusteeId={trusteeId ?? 'unknown'} />}
               />
             </Routes>
           </div>

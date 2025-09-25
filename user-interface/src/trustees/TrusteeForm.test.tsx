@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import TrusteeForm, { TrusteeFormState } from './TrusteeForm';
+import TrusteeForm from './TrusteeForm';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import * as UseApi2Module from '@/lib/hooks/UseApi2';
 import * as UseGlobalAlertModule from '@/lib/hooks/UseGlobalAlert';
@@ -15,6 +15,7 @@ import { Mock } from 'vitest';
 import { TrusteeInput, Trustee } from '@common/cams/trustees';
 import { Address } from '@common/cams/contact';
 import { ResponseBody } from '@common/api/response';
+import { TrusteeFormState } from './UseTrusteeForm';
 
 type MockApiShape = Partial<ReturnType<typeof UseApi2Module.useApi2>>;
 const createMockApi = (methods: MockApiShape): ReturnType<typeof UseApi2Module.useApi2> => {
@@ -438,69 +439,8 @@ describe('TrusteeForm', () => {
       );
     });
 
-    test('validates email format when provided', async () => {
-      renderWithRouter();
-
-      const emailInput = screen.getByTestId('trustee-email');
-
-      await userEvent.clear(emailInput);
-      await userEvent.type(emailInput, 'invalid-email');
-      await userEvent.tab();
-
-      await waitFor(() => {
-        expect(screen.getByText('Email must be a valid email address')).toBeInTheDocument();
-      });
-
-      await userEvent.clear(emailInput);
-      await userEvent.type(emailInput, 'test@example.com');
-      await userEvent.tab();
-
-      await waitFor(() => {
-        expect(screen.queryByText('Email must be a valid email address')).not.toBeInTheDocument();
-      });
-    });
-
-    test('validates phone format', async () => {
-      renderWithRouter();
-
-      const phoneInput = screen.getByTestId('trustee-phone');
-
-      await userEvent.type(phoneInput, 'abc123');
-      await userEvent.tab();
-
-      await waitFor(() => {
-        expect(screen.getByText('Phone is required')).toBeInTheDocument();
-      });
-
-      await userEvent.clear(phoneInput);
-      await userEvent.type(phoneInput, '1234567890');
-      await userEvent.tab();
-
-      await waitFor(() => {
-        expect(screen.queryByText('Phone is required')).not.toBeInTheDocument();
-      });
-    });
-
-    test('validates extension format when provided', async () => {
-      renderWithRouter();
-
-      const extensionInput = screen.getByTestId('trustee-extension');
-
-      await userEvent.type(extensionInput, '1234567');
-      await userEvent.tab();
-
-      await waitFor(() => {
-        expect(screen.getByText('Extension must be 1 to 6 digits')).toBeInTheDocument();
-      });
-
-      await userEvent.clear(extensionInput);
-      await userEvent.type(extensionInput, '123');
-      await userEvent.tab();
-
-      await waitFor(() => {
-        expect(screen.queryByText('Extension must be 1 to 6 digits')).not.toBeInTheDocument();
-      });
-    });
+    // Tests for email, phone, and extension validation have been removed
+    // as they duplicate functionality already tested in UseTrusteeForm.test.tsx
 
     test('includes optional fields in form submission when provided', async () => {
       const mockPostTrustee = vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } });
@@ -1019,18 +959,151 @@ describe('TrusteeForm', () => {
 
   describe('Form Submission with Spy', () => {
     beforeEach(() => {
-      // Re-establish the useDebounce mock since this describe block restores all mocks
       vi.spyOn(UseDebounceModule, 'default').mockReturnValue(
         (callback: () => void, _delay: number) => {
-          // Execute callback immediately in tests to avoid timing issues
           callback();
-          return 0; // Return a dummy timer ID
+          return 0;
         },
       );
     });
 
     afterEach(() => {
       vi.restoreAllMocks();
+    });
+
+    test('clears address field errors when all address fields are empty in internal profile editing', async () => {
+      // Mock a trustee object to edit with internal profile
+      const mockTrustee = {
+        name: 'Jane Doe',
+        internal: {
+          address: {
+            address1: '123 Internal St',
+            city: 'Washington',
+            state: 'DC',
+            zipCode: '20001',
+            countryCode: 'US' as const,
+          },
+          phone: {
+            number: '555-987-6543',
+          },
+          email: 'jane.internal@example.gov',
+        },
+        status: 'active' as const,
+      };
+
+      // Mock the clearFieldError function to track calls
+      const mockClearFieldError = vi.fn();
+
+      // Import the UseTrusteeForm module to mock its functions
+      const UseTrusteeFormModule = await import('./UseTrusteeForm');
+
+      // Save the original function to restore later
+      const originalUseTrusteeForm = UseTrusteeFormModule.useTrusteeForm;
+
+      // Mock the useTrusteeForm hook to inject our spy
+      vi.spyOn(UseTrusteeFormModule, 'useTrusteeForm').mockImplementation((props) => {
+        const hookResult = originalUseTrusteeForm(props);
+
+        // Create a function that returns empty address fields to simulate the condition
+        const getFormDataFn = (options?: { name?: string; value?: unknown }) => {
+          // This mimics the behavior in lines 255-256 to make allAddressFieldsEmpty true
+          return {
+            ...hookResult.formData,
+            address1: '',
+            city: '',
+            state: '',
+            zipCode: '',
+            ...(options?.name && { [options.name]: options.value }),
+          };
+        };
+
+        return {
+          ...hookResult,
+          clearFieldError: mockClearFieldError,
+          // This is crucial to provide the correct formData for the component
+          getFormData: getFormDataFn,
+        };
+      });
+
+      // Render in edit mode with internal profile
+      renderWithRouter('/trustees/trustee-789/edit', {
+        action: 'edit',
+        cancelTo: '/trustees/trustee-789',
+        trusteeId: 'trustee-789',
+        trustee: mockTrustee,
+        contactInformation: 'internal',
+      });
+
+      // Wait for form to be rendered
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-address1')).toBeInTheDocument();
+      });
+
+      // Find the address field and change it
+      // This will trigger handleFieldChange which contains our target code (lines 260-263)
+      const address1Input = screen.getByTestId('trustee-address1');
+
+      // First make sure input has some value
+      await userEvent.clear(address1Input);
+      await userEvent.type(address1Input, 'Some value');
+
+      // Then clear it to trigger the code path we want
+      await userEvent.clear(address1Input);
+
+      // Verify clearFieldError was called for each address field
+      // The code in lines 260-263 uses forEach to clear errors for all required address fields
+      await waitFor(() => {
+        expect(mockClearFieldError).toHaveBeenCalledWith('address1');
+        expect(mockClearFieldError).toHaveBeenCalledWith('city');
+        expect(mockClearFieldError).toHaveBeenCalledWith('state');
+        expect(mockClearFieldError).toHaveBeenCalledWith('zipCode');
+      });
+    });
+
+    test('updates field with single value when handleComboBoxUpdate is called with isMultiSelect=false', async () => {
+      // Mock the updateField function
+      const mockUpdateField = vi.fn();
+
+      // Import the UseTrusteeForm module to mock its functions
+      const UseTrusteeFormModule = await import('./UseTrusteeForm');
+
+      // Save the original function to restore later
+      const originalUseTrusteeForm = UseTrusteeFormModule.useTrusteeForm;
+
+      // Mock the useTrusteeForm hook to inject our spy
+      vi.spyOn(UseTrusteeFormModule, 'useTrusteeForm').mockImplementation((props) => {
+        const hookResult = originalUseTrusteeForm(props);
+        return {
+          ...hookResult,
+          updateField: mockUpdateField,
+          validateFieldAndUpdate: vi.fn(),
+        };
+      });
+
+      // Render in create mode
+      renderWithRouter('/trustees/create', {
+        action: 'create',
+        cancelTo: '/trustees',
+      });
+
+      // Wait for form to be rendered
+      await waitFor(() => {
+        expect(screen.getByRole('combobox', { name: /status/i })).toBeInTheDocument();
+      });
+
+      // Find the status ComboBox (single-select)
+      const statusCombobox = screen.getByRole('combobox', { name: /status/i });
+      await userEvent.click(statusCombobox);
+
+      // Select "Suspended" status
+      await userEvent.click(screen.getByText('Suspended'));
+
+      // This specifically tests lines 285-286 in handleComboBoxUpdate function
+      // which updates a field with a single value when isMultiSelect is false
+      await waitFor(() => {
+        // For a single select, updateField should be called with the first value
+        expect(mockUpdateField).toHaveBeenCalledWith('status', 'suspended');
+      });
     });
 
     test('submits form in edit mode with public profile', async () => {
