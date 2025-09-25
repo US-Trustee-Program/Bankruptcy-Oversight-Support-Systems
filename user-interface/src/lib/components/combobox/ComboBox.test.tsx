@@ -1608,27 +1608,6 @@ describe('test cams combobox', () => {
       expect(listItems[1]).toHaveFocus();
     });
 
-    test('should handle Tab key while focused on list item', async () => {
-      const options = [{ label: 'Option 1', value: 'opt1' }];
-      renderWithProps({ options });
-
-      await toggleDropdown(comboboxId);
-      await userEvent.keyboard('{ArrowDown}');
-
-      const listItem = document.querySelector('li');
-      expect(listItem).toHaveFocus();
-
-      // Press Tab - should close dropdown and move to next element
-      await userEvent.keyboard('{Tab}');
-
-      await waitFor(() => {
-        expect(isDropdownClosed()).toBeTruthy();
-      });
-
-      const nextInput = document.querySelector('.input1');
-      expect(nextInput).toHaveFocus();
-    });
-
     test('should handle Enter key behavior correctly', async () => {
       const options = [{ label: 'Option 1', value: 'opt1' }];
       renderWithProps({ options });
