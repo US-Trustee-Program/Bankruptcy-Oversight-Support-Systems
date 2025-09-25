@@ -179,6 +179,17 @@ resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
     properties: prodFunctionAppConfigProperties
   }
 
+  resource slotConfigNames 'config' = {
+    name: 'slotConfigNames'
+    properties: {
+      appSettingNames: [
+        'AzureWebJobsStorage'
+        'COSMOS_DATABASE_NAME'
+        'MyTaskHub'
+      ]
+    }
+  }
+
   resource slot 'slots' = {
     location: location
     name: slotName
@@ -236,6 +247,10 @@ var baseApiFunctionAppConfigProperties = {
         name: 'MyTaskHub'
         value: 'main'
       }
+      {
+        name: 'COSMOS_DATABASE_NAME'
+        value: cosmosDatabaseName
+      }
     ])
     cors: {
       allowedOrigins: apiCorsAllowOrigins
@@ -251,6 +266,10 @@ var baseApiFunctionAppConfigProperties = {
       {
         name: 'MyTaskHub'
         value: slotName
+      }
+      {
+        name: 'COSMOS_DATABASE_NAME'
+        value: '${cosmosDatabaseName}-e2e'
       }
     ])
     cors: {
@@ -302,10 +321,6 @@ var baseApplicationSettings = concat(
     {
       name: 'ADMIN_KEY'
       value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ADMIN-KEY)'
-    }
-    {
-      name: 'COSMOS_DATABASE_NAME'
-      value: cosmosDatabaseName
     }
     {
       name: 'MONGO_CONNECTION_STRING'

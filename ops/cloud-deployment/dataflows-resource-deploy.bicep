@@ -190,6 +190,10 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
           name: 'MyTaskHub'
           value: 'main'
         }
+        {
+          name: 'COSMOS_DATABASE_NAME'
+          value: cosmosDatabaseName
+        }
       ])
     })
   }
@@ -197,6 +201,17 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
     appConfigIdentity
     sqlIdentity
   ]
+
+  resource slotConfigName 'config' = {
+    name: 'slotConfigNames'
+    properties: {
+      appSettingNames: [
+        'INFO_SHA'
+        'MyTaskHub'
+        'COSMOS_DATABASE_NAME'
+      ]
+    }
+  }
 
   resource slot 'slots' = {
     location: location
@@ -223,6 +238,10 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
           {
             name: 'MyTaskHub'
             value: slotName
+          }
+          {
+            name: 'COSMOS_DATABASE_NAME'
+            value: '${cosmosDatabaseName}-e2e'
           }
         ])
       })
@@ -306,10 +325,6 @@ var baseApplicationSettings = concat(
     {
       name: 'ADMIN_KEY'
       value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ADMIN-KEY)'
-    }
-    {
-      name: 'COSMOS_DATABASE_NAME'
-      value: cosmosDatabaseName
     }
     {
       name: 'MONGO_CONNECTION_STRING'
