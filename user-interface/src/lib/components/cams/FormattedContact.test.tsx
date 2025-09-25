@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { ContactInformation } from '@common/cams/contact';
-import FormattedAddress, { FormattedAddressProps } from './FormattedAddress';
+import FormattedContact, { FormattedContactProps } from './FormattedContact';
 
 describe('FormattedAddress component', () => {
   const mockFullContact: ContactInformation = {
@@ -20,8 +20,8 @@ describe('FormattedAddress component', () => {
     email: 'john.doe@example.com',
   };
 
-  const renderComponent = (props: FormattedAddressProps) => {
-    return render(<FormattedAddress {...props} />);
+  const renderComponent = (props: FormattedContactProps) => {
+    return render(<FormattedContact {...props} />);
   };
 
   describe('when contact is undefined', () => {
@@ -48,11 +48,11 @@ describe('FormattedAddress component', () => {
       expect(zipElement.textContent).toContain('10001');
 
       // Phone with extension
-      expect(screen.getByTestId('test-phone-number')).toHaveTextContent('555-123-4567 x123');
+      expect(screen.getByTestId('test-phone-number')).toHaveTextContent('555-123-4567, ext. 123');
 
       // Email as link (default behavior)
       expect(screen.getByTestId('test-email')).toBeInTheDocument();
-      const emailLink = screen.getByRole('link');
+      const emailLink = screen.getByRole('link', { name: /john\.doe@example\.com/ });
       expect(emailLink).toHaveAttribute('href', 'mailto:john.doe@example.com');
     });
 
@@ -133,7 +133,7 @@ describe('FormattedAddress component', () => {
       renderComponent({ contact: mockFullContact });
 
       expect(screen.getByText('123 Main St')).not.toHaveAttribute('data-testid');
-      expect(screen.getByText('555-123-4567 x123')).not.toHaveAttribute('data-testid');
+      expect(screen.getByText('555-123-4567, ext. 123')).not.toHaveAttribute('data-testid');
     });
 
     it('should handle contact with only address1 and no city/state/zip', () => {

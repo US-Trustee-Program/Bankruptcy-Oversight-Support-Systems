@@ -1,3 +1,4 @@
+import './CommsLink.scss';
 import { ContactInformation } from '@common/cams/contact';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import Validators from '@common/cams/validators';
@@ -51,13 +52,13 @@ function CommsLink(props: Readonly<CommsLinkProps>) {
     iconToUse = icon ?? 'mail';
   } else if (isValidPhoneNumber && mode === 'phone-dialer') {
     href = toTelephoneUri(number!, extension);
-    labelToUse = label ?? (extension ? `${number} x${extension}` : number!);
+    labelToUse = label ?? (extension ? `${number}, ext. ${extension}` : number!);
     iconToUse = icon ?? 'phone';
   }
 
   if (href) {
     return (
-      <a href={href} className="usa-link">
+      <a href={href} className="usa-link comms-link">
         <IconLabel label={labelToUse} icon={iconToUse} location="left" />
       </a>
     );

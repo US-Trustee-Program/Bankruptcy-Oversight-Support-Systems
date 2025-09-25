@@ -1,9 +1,9 @@
-import './FormattedAddress.scss';
+import './FormattedContact.scss';
 import { LegacyAddress } from '@common/cams/parties';
 import { JSX } from 'react';
 import EmailLink from './EmailLink';
 
-export type LegacyFormattedAddressProps = {
+export type LegacyFormattedContactProps = {
   className?: string;
   legacy?: LegacyAddress & {
     phone?: string;
@@ -14,7 +14,7 @@ export type LegacyFormattedAddressProps = {
   emailSubject?: string;
 };
 
-export default function LegacyFormattedAddress(props: LegacyFormattedAddressProps): JSX.Element {
+export default function LegacyFormattedContact(props: LegacyFormattedContactProps): JSX.Element {
   const { legacy, className, emailAsLink = true, testIdPrefix, emailSubject } = props;
 
   const getTestId = (suffix: string) => (testIdPrefix ? `${testIdPrefix}-${suffix}` : undefined);

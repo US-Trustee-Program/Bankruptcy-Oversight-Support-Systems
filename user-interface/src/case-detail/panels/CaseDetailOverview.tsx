@@ -16,7 +16,7 @@ import { AttorneyUser } from '@common/cams/users';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import { OpenModalButtonRef } from '../../lib/components/uswds/modal/modal-refs';
 import useFeatureFlags, { VIEW_TRUSTEE_ON_CASE } from '@/lib/hooks/UseFeatureFlags';
-import LegacyFormattedAddress from '@/lib/components/cams/LegacyFormattedAddress';
+import LegacyFormattedContact from '@/lib/components/cams/LegacyFormattedContact';
 
 const informationUnavailable = 'Information is not available.';
 const taxIdUnavailable = 'Tax ID information is not available.';
@@ -183,7 +183,7 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
             <div data-testid="case-detail-debtor-type" aria-label="debtor type">
               {caseDetail.debtorTypeLabel}
             </div>
-            <LegacyFormattedAddress legacy={caseDetail.debtor} testIdPrefix="case-detail-debtor" />
+            <LegacyFormattedContact legacy={caseDetail.debtor} testIdPrefix="case-detail-debtor" />
           </div>
           <div className="debtor-counsel-information record-detail-card">
             <h3>Debtor&apos;s Counsel</h3>
@@ -200,7 +200,7 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
                     {caseDetail.debtorAttorney.office}
                   </div>
                 )}
-                <LegacyFormattedAddress
+                <LegacyFormattedContact
                   legacy={caseDetail.debtorAttorney}
                   testIdPrefix="case-detail-debtor-counsel"
                   emailSubject={`${getCaseNumber(caseDetail.caseId)} - ${caseDetail.caseTitle}`}

@@ -1,16 +1,16 @@
-import './FormattedAddress.scss';
+import './FormattedContact.scss';
 import { ContactInformation } from '@common/cams/contact';
 import { JSX } from 'react';
-import EmailLink from './EmailLink';
+import CommsLink from '@/lib/components/cams/CommsLink/CommsLink';
 
-export type FormattedAddressProps = {
+export type FormattedContactProps = {
   className?: string;
   contact?: ContactInformation;
   showLinks?: boolean;
   testIdPrefix?: string;
 };
 
-export default function FormattedAddress(props: Readonly<FormattedAddressProps>): JSX.Element {
+export default function FormattedContact(props: Readonly<FormattedContactProps>): JSX.Element {
   const { contact, className, showLinks = true, testIdPrefix } = props;
 
   const getTestId = (suffix: string) => (testIdPrefix ? `${testIdPrefix}-${suffix}` : undefined);
@@ -64,12 +64,9 @@ export default function FormattedAddress(props: Readonly<FormattedAddressProps>)
   }
 
   if (contact.phone?.number) {
-    const phone = contact.phone.extension
-      ? `${contact.phone.number} x${contact.phone.extension}`
-      : contact.phone.number;
     parts.push(
       <div key="phone" className="phone" data-testid={getTestId('phone-number')}>
-        {phone}
+        <CommsLink contact={contact} mode={'phone-dialer'} />
       </div>,
     );
   }
@@ -77,12 +74,9 @@ export default function FormattedAddress(props: Readonly<FormattedAddressProps>)
   if (contact.email) {
     if (showLinks) {
       parts.push(
-        <EmailLink
-          key="email"
-          email={contact.email}
-          className="email"
-          data-testid={getTestId('email')}
-        />,
+        <div key="email" className="email" data-testid={getTestId('email')}>
+          <CommsLink contact={contact} mode={'email'} />
+        </div>,
       );
     } else {
       parts.push(

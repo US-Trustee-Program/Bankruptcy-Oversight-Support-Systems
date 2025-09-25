@@ -199,13 +199,13 @@ describe('TrusteeDetailAuditHistory', () => {
     expect(previousContact.querySelector('.city-state-zip')).toHaveTextContent(
       'Old City, NY 12345',
     );
-    expect(previousContact.querySelector('.phone')).toHaveTextContent('555-123-4567 x123');
+    expect(previousContact.querySelector('.phone')).toHaveTextContent('555-123-4567, ext. 123');
     expect(previousContact.querySelector('.email')).toHaveTextContent('old@example.com');
 
     expect(newContact.querySelector('.address1')).toHaveTextContent('456 New St');
     expect(newContact.querySelector('.address2')).toHaveTextContent('Suite 100');
     expect(newContact.querySelector('.city-state-zip')).toHaveTextContent('New City, CA 54321');
-    expect(newContact.querySelector('.phone')).toHaveTextContent('555-987-6543 x456');
+    expect(newContact.querySelector('.phone')).toHaveTextContent('555-987-6543, ext. 456');
     expect(newContact.querySelector('.email')).toHaveTextContent('new@example.com');
     expect(screen.getByTestId('changed-by-0')).toHaveTextContent('SYSTEM');
     expect(screen.getByTestId('change-date-0')).toHaveTextContent('formatted-2024-01-16T11:00:00Z');
@@ -254,7 +254,7 @@ describe('TrusteeDetailAuditHistory', () => {
     expect(previousContact1.querySelector('.city-state-zip')).toHaveTextContent(
       'Old City, NY 12345',
     );
-    expect(previousContact1.querySelector('.phone')).toHaveTextContent('555-123-4567 x123');
+    expect(previousContact1.querySelector('.phone')).toHaveTextContent('555-123-4567, ext. 123');
     expect(previousContact1.querySelector('.email')).toHaveTextContent('old@example.com');
     expect(screen.getByTestId('previous-contact-0')).toHaveTextContent('(none)');
   });
