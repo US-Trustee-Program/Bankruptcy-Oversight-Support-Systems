@@ -115,5 +115,5 @@ export default function FormattedContact(props: Readonly<FormattedContactProps>)
     return acc;
   }, [] as React.ReactNode[]);
 
-  return <div className={`${className ? className + ' ' : ''}formatted-address`}>{children}</div>;
+  return <div className={`${className ? className + ' ' : ''}formatted-contact`}>{children}</div>;
 }

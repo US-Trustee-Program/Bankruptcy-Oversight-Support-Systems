@@ -25,14 +25,14 @@ describe('FormattedAddress component', () => {
   };
 
   describe('when contact is undefined', () => {
-    it('should display "(none)"', () => {
+    test('should display "(none)"', () => {
       renderComponent({ contact: undefined });
       expect(screen.getByText('(none)')).toBeInTheDocument();
     });
   });
 
   describe('when contact is provided', () => {
-    it('should render complete contact information with all fields', () => {
+    test('should render complete contact information with all fields', () => {
       renderComponent({ contact: mockFullContact, testIdPrefix: 'test' });
 
       // Address fields
@@ -56,7 +56,7 @@ describe('FormattedAddress component', () => {
       expect(emailLink).toHaveAttribute('href', 'mailto:john.doe@example.com');
     });
 
-    it('should render contact with partial address information', () => {
+    test('should render contact with partial address information', () => {
       const partialContact: ContactInformation = {
         address: {
           address1: '456 Oak Ave',
@@ -80,7 +80,7 @@ describe('FormattedAddress component', () => {
       expect(screen.getByTestId('partial-email')).toBeInTheDocument();
     });
 
-    it('should render phone number without extension', () => {
+    test('should render phone number without extension', () => {
       const contactWithPhoneOnly: ContactInformation = {
         address: {
           address1: '789 Phone St',
@@ -100,7 +100,7 @@ describe('FormattedAddress component', () => {
       expect(screen.queryByText('x')).not.toBeInTheDocument();
     });
 
-    it('should render email as plain text when emailAsLink is false', () => {
+    test('should render email as plain text when emailAsLink is false', () => {
       const emailOnlyContact: ContactInformation = {
         address: {
           address1: '321 Email Ave',
@@ -122,21 +122,21 @@ describe('FormattedAddress component', () => {
       expect(screen.queryByRole('link')).not.toBeInTheDocument();
     });
 
-    it('should apply custom className', () => {
+    test('should apply custom className', () => {
       renderComponent({ contact: mockFullContact, className: 'custom-style' });
 
-      const container = screen.getByText('123 Main St').closest('.formatted-address');
-      expect(container).toHaveClass('custom-style', 'formatted-address');
+      const container = screen.getByText('123 Main St').closest('.formatted-contact');
+      expect(container).toHaveClass('custom-style', 'formatted-contact');
     });
 
-    it('should not render test IDs when testIdPrefix is not provided', () => {
+    test('should not render test IDs when testIdPrefix is not provided', () => {
       renderComponent({ contact: mockFullContact });
 
       expect(screen.getByText('123 Main St')).not.toHaveAttribute('data-testid');
       expect(screen.getByText('555-123-4567, ext. 123')).not.toHaveAttribute('data-testid');
     });
 
-    it('should handle contact with only address1 and no city/state/zip', () => {
+    test('should handle contact with only address1 and no city/state/zip', () => {
       const minimalAddress: ContactInformation = {
         address: {
           address1: '789 Minimal St',
@@ -155,7 +155,7 @@ describe('FormattedAddress component', () => {
       expect(screen.queryByTestId('minimal-zip-code')).not.toBeInTheDocument();
     });
 
-    it('should handle contact with only city', () => {
+    test('should handle contact with only city', () => {
       const cityOnlyContact: ContactInformation = {
         address: {
           address1: '',
@@ -173,7 +173,7 @@ describe('FormattedAddress component', () => {
       expect(screen.getByTestId('city-only-zip-code')).toHaveTextContent('');
     });
 
-    it('should handle contact with only state', () => {
+    test('should handle contact with only state', () => {
       const stateOnlyContact: ContactInformation = {
         address: {
           address1: '',
@@ -191,7 +191,7 @@ describe('FormattedAddress component', () => {
       expect(screen.getByTestId('state-only-zip-code')).toHaveTextContent('');
     });
 
-    it('should handle contact with only zip code', () => {
+    test('should handle contact with only zip code', () => {
       const zipOnlyContact: ContactInformation = {
         address: {
           address1: '',
@@ -213,7 +213,7 @@ describe('FormattedAddress component', () => {
       expect(zipElement.textContent).toContain('90210');
     });
 
-    it('should handle contact with empty address object', () => {
+    test('should handle contact with empty address object', () => {
       const emptyAddressContact: ContactInformation = {
         address: {
           address1: '',
@@ -232,7 +232,7 @@ describe('FormattedAddress component', () => {
       expect(screen.getByTestId('empty-addr-email')).toBeInTheDocument();
     });
 
-    it('should handle contact with phone number that has empty extension', () => {
+    test('should handle contact with phone number that has empty extension', () => {
       const phoneWithEmptyExtension: ContactInformation = {
         address: {
           address1: '555 Extension St',
@@ -253,7 +253,7 @@ describe('FormattedAddress component', () => {
       expect(screen.queryByText('x')).not.toBeInTheDocument();
     });
 
-    it('should handle contact with empty phone number', () => {
+    test('should handle contact with empty phone number', () => {
       const emptyPhoneContact: ContactInformation = {
         address: {
           address1: '123 No Phone St',
@@ -275,7 +275,7 @@ describe('FormattedAddress component', () => {
       expect(screen.getByTestId('empty-phone-email')).toBeInTheDocument();
     });
 
-    it('should handle completely empty contact object', () => {
+    test('should handle completely empty contact object', () => {
       const emptyContact: ContactInformation = {
         address: {
           address1: '',
@@ -296,14 +296,14 @@ describe('FormattedAddress component', () => {
   });
 
   describe('styling and layout', () => {
-    it('should have the correct CSS classes', () => {
+    test('should have the correct CSS classes', () => {
       renderComponent({ contact: mockFullContact });
 
-      const container = screen.getByText('123 Main St').closest('.formatted-address');
-      expect(container).toHaveClass('formatted-address');
+      const container = screen.getByText('123 Main St').closest('.formatted-contact');
+      expect(container).toHaveClass('formatted-contact');
     });
 
-    it('should properly structure address parts', () => {
+    test('should properly structure address parts', () => {
       renderComponent({ contact: mockFullContact });
 
       const address1 = screen.getByText('123 Main St');
@@ -315,7 +315,7 @@ describe('FormattedAddress component', () => {
       expect(address3).toHaveClass('address3');
     });
 
-    it('should structure city-state-zip correctly', () => {
+    test('should structure city-state-zip correctly', () => {
       renderComponent({ contact: mockFullContact, testIdPrefix: 'layout' });
 
       const cityStateZipContainer = screen.getByTestId('layout-city').parentElement;
