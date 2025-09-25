@@ -10,7 +10,7 @@ import {
   TrusteePublicContactHistory,
   TrusteeInternalContactHistory,
 } from '@common/cams/trustees';
-import FormattedAddress from '@/lib/components/cams/FormattedAddress';
+import FormattedContact from '@/lib/components/cams/FormattedContact';
 import { Auditable } from '@common/cams/auditable';
 
 export interface TrusteeDetailAuditHistoryProps {
@@ -50,19 +50,19 @@ function ShowTrusteeContactHistory(props: ShowTrusteeContactHistoryProps) {
     <tr>
       <td>{changeType}</td>
       <td data-testid={`previous-contact-${idx}`}>
-        <FormattedAddress
+        <FormattedContact
           contact={history.before}
           className="trustee-audit-history__address-before"
           testIdPrefix={`previous-contact-${idx}`}
-          emailAsLink={false}
+          showLinks={false}
         />
       </td>
       <td data-testid={`new-contact-${idx}`}>
-        <FormattedAddress
+        <FormattedContact
           contact={history.after}
           className="trustee-audit-history__address-after"
           testIdPrefix={`new-contact-${idx}`}
-          emailAsLink={false}
+          showLinks={false}
         />
       </td>
       <td data-testid={`changed-by-${idx}`}>

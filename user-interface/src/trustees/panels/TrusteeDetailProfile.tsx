@@ -2,7 +2,7 @@ import { Trustee, formatChapterType } from '@common/cams/trustees';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import FormattedAddress from '@/lib/components/cams/FormattedAddress';
+import FormattedContact from '@/lib/components/cams/FormattedContact';
 
 export interface TrusteeDetailProfileProps {
   trustee: Trustee;
@@ -16,7 +16,7 @@ export default function TrusteeDetailProfile({
   districtLabels,
   onEditPublicProfile,
   onEditInternalProfile,
-}: TrusteeDetailProfileProps) {
+}: Readonly<TrusteeDetailProfileProps>) {
   return (
     <div className="right-side-screen-content">
       <div className="record-detail-container">
@@ -34,7 +34,7 @@ export default function TrusteeDetailProfile({
               </Button>
             </div>
             <div className="trustee-name">{trustee.name}</div>
-            <FormattedAddress contact={trustee.public} testIdPrefix="trustee" />
+            <FormattedContact contact={trustee.public} testIdPrefix="trustee" />
             <div data-testid="trustee-districts" aria-label="districts">
               <ul>
                 {districtLabels.map((label, index) => (
@@ -72,7 +72,7 @@ export default function TrusteeDetailProfile({
             </div>
             {!trustee.internal && <div>No information added.</div>}
             {!!trustee.internal && (
-              <FormattedAddress contact={trustee.internal} testIdPrefix="trustee-internal" />
+              <FormattedContact contact={trustee.internal} testIdPrefix="trustee-internal" />
             )}
           </div>
         </div>

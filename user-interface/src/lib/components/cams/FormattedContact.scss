@@ -1,12 +1,9 @@
 .formatted-address {
   > div {
     line-height: 1.15;
-    padding-bottom: 0.625rem;
+    padding-bottom: 0.5rem;
     display: flex;
     flex-direction: column;
     row-gap: 0.15rem;
-  }
-  > div:last-child {
-    padding-bottom: 0;
   }
 }
