@@ -122,6 +122,7 @@ param ustpIssueCollectorHash string = ''
 param camsReactSelectHash string
 
 param cosmosDatabaseName string
+param e2eDatabaseName string = cosmosDatabaseName
 
 @description('Comma delimited list of data flow names to enable.')
 param enabledDataflows string = ''
@@ -227,6 +228,7 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
       loginProviderConfig: loginProviderConfig
       loginProvider: loginProvider
       cosmosDatabaseName: cosmosDatabaseName
+      e2eDatabaseName: e2eDatabaseName
       kvAppConfigName: kvAppConfigName
       isUstpDeployment: isUstpDeployment
       mssqlRequestTimeout: mssqlRequestTimeout
@@ -236,7 +238,7 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
     }
 }
 
-module ustpDatflowsFunction 'dataflows-resource-deploy.bicep' = {
+module ustpDataflowsFunction 'dataflows-resource-deploy.bicep' = {
   name: '${stackName}-dataflows-module'
   scope: resourceGroup(appResourceGroup)
   params: {
@@ -268,6 +270,7 @@ module ustpDatflowsFunction 'dataflows-resource-deploy.bicep' = {
     loginProviderConfig: loginProviderConfig
     loginProvider: loginProvider
     cosmosDatabaseName: cosmosDatabaseName
+    e2eDatabaseName: e2eDatabaseName
     kvAppConfigName: kvAppConfigName
     isUstpDeployment: isUstpDeployment
     mssqlRequestTimeout: mssqlRequestTimeout
