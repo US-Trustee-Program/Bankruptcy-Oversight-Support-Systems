@@ -14,7 +14,7 @@ import { AttorneyUser } from '@common/cams/users';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
-import LegacyFormattedAddress from '@/lib/components/cams/LegacyFormattedAddress';
+import LegacyFormattedContact from '@/lib/components/cams/LegacyFormattedContact';
 
 export interface CaseDetailTrusteeAndAssignedStaffProps {
   caseDetail: CaseDetail;
@@ -96,7 +96,7 @@ export default function CaseDetailTrusteeAndAssignedStaff(
             <div className="assigned-staff-information record-detail-card">
               <h3>Trustee</h3>
               <div className="trustee-name">{caseDetail.trustee.name}</div>
-              <LegacyFormattedAddress
+              <LegacyFormattedContact
                 legacy={caseDetail.trustee.legacy}
                 testIdPrefix="case-detail-trustee"
                 emailSubject={`${getCaseNumber(caseDetail.caseId)} - ${caseDetail.caseTitle}`}

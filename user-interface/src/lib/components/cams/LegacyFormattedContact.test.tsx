@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { LegacyAddress } from '@common/cams/parties';
-import LegacyFormattedAddress, { LegacyFormattedAddressProps } from './LegacyFormattedAddress';
+import LegacyFormattedContact, { LegacyFormattedContactProps } from './LegacyFormattedContact';
 
 describe('LegacyFormattedAddress component', () => {
   const mockFullLegacy: LegacyAddress & { phone?: string; email?: string } = {
@@ -12,8 +12,8 @@ describe('LegacyFormattedAddress component', () => {
     email: 'legacy@example.com',
   };
 
-  const renderComponent = (props: LegacyFormattedAddressProps) => {
-    return render(<LegacyFormattedAddress {...props} />);
+  const renderComponent = (props: LegacyFormattedContactProps) => {
+    return render(<LegacyFormattedContact {...props} />);
   };
 
   describe('when legacy is undefined', () => {
