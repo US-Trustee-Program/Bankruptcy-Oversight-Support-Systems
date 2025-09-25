@@ -206,7 +206,6 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
     name: 'slotConfigNames'
     properties: {
       appSettingNames: [
-        'INFO_SHA'
         'MyTaskHub'
         'COSMOS_DATABASE_NAME'
       ]
