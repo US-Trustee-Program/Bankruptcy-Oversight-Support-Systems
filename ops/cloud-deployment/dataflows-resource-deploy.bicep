@@ -11,7 +11,11 @@ param functionsVersion string = '~4'
 @description('Storage account name. Default creates unique name from resource group id and stack name')
 @minLength(3)
 @maxLength(24)
-param dataflowsFunctionStorageName string = 'dataflows${uniqueString(resourceGroup().id, dataflowsFunctionName)}'
+param dataflowsFunctionStorageName string = 'datafunc${uniqueString(resourceGroup().id, dataflowsFunctionName)}'
+@description('Slot storage account name. Default creates unique name from resource group id and stack name')
+@minLength(3)
+@maxLength(24)
+param dataflowsFunctionSlotStorageName string = 'dataslot${uniqueString(resourceGroup().id, dataflowsFunctionName)}'
 
 param dataflowsFunctionName string
 
@@ -72,6 +76,7 @@ param allowVeracodeScan bool = false
 param idKeyvaultAppConfiguration string
 
 param cosmosDatabaseName string
+param e2eDatabaseName string
 
 @description('boolean to determine creation and configuration of Application Insights for the Azure Function')
 param deployAppInsights bool = false
@@ -145,10 +150,36 @@ resource dataflowsFunctionStorageAccount 'Microsoft.Storage/storageAccounts@2022
   }
 }
 
+resource dataflowsFunctionSlotStorageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
+  name: dataflowsFunctionSlotStorageName
+  location: location
+  tags: {
+    'Stack Name': dataflowsFunctionName
+  }
+  sku: {
+    name: 'Standard_LRS'
+  }
+  kind: 'Storage'
+  properties: {
+    supportsHttpsTrafficOnly: true
+    defaultToOAuthAuthentication: true
+  }
+}
+
 module dataflowsQueues './lib/storage/storage-queues.bicep' = {
   name: 'dataflows-queues-module'
   params: {
     storageAccountName: dataflowsFunctionStorageName
+  }
+  dependsOn: [
+    dataflowsFunctionStorageAccount
+  ]
+}
+
+module dataflowsSlotQueues './lib/storage/storage-queues.bicep' = {
+  name: 'dataflows-slot-queues-module'
+  params: {
+    storageAccountName: dataflowsFunctionSlotStorageName
   }
   dependsOn: [
     dataflowsFunctionStorageAccount
@@ -194,6 +225,10 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
           name: 'COSMOS_DATABASE_NAME'
           value: cosmosDatabaseName
         }
+        {
+          name: 'AzureWebJobsStorage'
+          value: 'DefaultEndpointsProtocol=https;AccountName=${dataflowsFunctionStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${dataflowsFunctionStorageAccount.listKeys().keys[0].value}'
+        }
       ])
     })
   }
@@ -206,6 +241,7 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
     name: 'slotConfigNames'
     properties: {
       appSettingNames: [
+        'AzureWebJobsStorage'
         'MyTaskHub'
         'COSMOS_DATABASE_NAME'
       ]
@@ -240,7 +276,11 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
           }
           {
             name: 'COSMOS_DATABASE_NAME'
-            value: '${cosmosDatabaseName}-e2e'
+            value: e2eDatabaseName
+          }
+          {
+            name: 'AzureWebJobsStorage'
+            value: 'DefaultEndpointsProtocol=https;AccountName=${dataflowsFunctionSlotStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${dataflowsFunctionSlotStorageAccount.listKeys().keys[0].value}'
           }
         ])
       })

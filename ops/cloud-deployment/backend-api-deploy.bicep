@@ -12,6 +12,10 @@ param functionsVersion string = '~4'
 @minLength(3)
 @maxLength(24)
 param apiFunctionStorageName string = 'ustpfunc${uniqueString(resourceGroup().id, apiFunctionName)}'
+@description('Slot storage account name. Default creates unique name from resource group id and stack name')
+@minLength(3)
+@maxLength(24)
+param apiFunctionSlotStorageName string = 'ustpslot${uniqueString(resourceGroup().id, apiFunctionName)}'
 
 param apiFunctionName string
 param slotName string
@@ -71,6 +75,7 @@ param allowVeracodeScan bool = false
 param idKeyvaultAppConfiguration string
 
 param cosmosDatabaseName string
+param e2eDatabaseName string
 
 @description('boolean to determine creation and configuration of Application Insights for the Azure Function')
 param deployAppInsights bool = false
@@ -146,6 +151,22 @@ resource apiFunctionStorageAccount 'Microsoft.Storage/storageAccounts@2022-09-01
   }
 }
 
+resource apiFunctionSlotStorageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
+  name: apiFunctionSlotStorageName
+  location: location
+  tags: {
+    'Stack Name': apiFunctionName
+  }
+  sku: {
+    name: 'Standard_LRS'
+  }
+  kind: 'Storage'
+  properties: {
+    supportsHttpsTrafficOnly: true
+    defaultToOAuthAuthentication: true
+  }
+}
+
 //Function App Resources
 var userAssignedIdentities = union(
   {
@@ -184,8 +205,8 @@ resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
     properties: {
       appSettingNames: [
         'AzureWebJobsStorage'
-        'COSMOS_DATABASE_NAME'
         'MyTaskHub'
+        'COSMOS_DATABASE_NAME'
       ]
     }
   }
@@ -251,6 +272,10 @@ var baseApiFunctionAppConfigProperties = {
         name: 'COSMOS_DATABASE_NAME'
         value: cosmosDatabaseName
       }
+      {
+        name: 'AzureWebJobsStorage'
+        value: 'DefaultEndpointsProtocol=https;AccountName=${apiFunctionStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${apiFunctionStorageAccount.listKeys().keys[0].value}'
+      }
     ])
     cors: {
       allowedOrigins: apiCorsAllowOrigins
@@ -269,7 +294,11 @@ var baseApiFunctionAppConfigProperties = {
       }
       {
         name: 'COSMOS_DATABASE_NAME'
-        value: '${cosmosDatabaseName}-e2e'
+        value: e2eDatabaseName
+      }
+      {
+        name: 'AzureWebJobsStorage'
+        value: 'DefaultEndpointsProtocol=https;AccountName=${apiFunctionSlotStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${apiFunctionSlotStorageAccount.listKeys().keys[0].value}'
       }
     ])
     cors: {

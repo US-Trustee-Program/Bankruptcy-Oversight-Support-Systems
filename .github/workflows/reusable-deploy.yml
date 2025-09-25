@@ -80,6 +80,7 @@ jobs:
             --kvAppConfigResourceGroupName ${{secrets.AZURE_RG }} \
             --kvAppConfigName ${{ secrets.AZ_KV_APP_CONFIG_NAME }} \
             --cosmosDatabaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
+            --e2eDatabaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }}-e2e${{ inputs.environmentHash && format('-{0}', inputs.environmentHash) || '' }} \
             --deployVnet ${{ inputs.deployVnet }} \
             --camsReactSelectHash ${{ secrets.CAMS_REACT_SELECT_HASH }} \
             --ustpIssueCollectorHash ${{ secrets.USTP_ISSUE_COLLECTOR_HASH }} \
