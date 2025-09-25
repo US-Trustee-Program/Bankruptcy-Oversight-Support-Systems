@@ -16,7 +16,7 @@ export default function TrusteeDetailProfile({
   districtLabels,
   onEditPublicProfile,
   onEditInternalProfile,
-}: TrusteeDetailProfileProps) {
+}: Readonly<TrusteeDetailProfileProps>) {
   return (
     <div className="right-side-screen-content">
       <div className="record-detail-container">
