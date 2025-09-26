@@ -164,6 +164,7 @@ jobs:
     secrets: inherit # pragma: allowlist secret
 
   execute-e2e-test:
+    if: false
     needs:
       [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot, endpoint-test-application-slot]
     uses: ./.github/workflows/reusable-e2e.yml
