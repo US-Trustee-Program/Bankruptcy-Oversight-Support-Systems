@@ -680,12 +680,7 @@ describe('TrusteeForm', () => {
       const websiteInput = screen.getByTestId('trustee-website');
 
       // Test invalid website URLs
-      const invalidUrls = [
-        'not-a-url',
-        'ftp://invalid-protocol.com',
-        'just-text',
-        'www.no-protocol.com',
-      ];
+      const invalidUrls = ['not-a-url', 'ftp://invalid-protocol.com', 'just-text'];
 
       for (const url of invalidUrls) {
         await userEvent.clear(websiteInput);
@@ -716,6 +711,69 @@ describe('TrusteeForm', () => {
 
       // Should not show validation error for empty website
       expect(screen.queryByText('Website must be a valid URL')).not.toBeInTheDocument();
+    });
+
+    test('accepts URLs without protocol and normalizes them on form submission', async () => {
+      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } });
+      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({
+          data: MockData.getCourts(),
+        }),
+        postTrustee: mockPostTrustee,
+      } as Partial<ReturnType<typeof UseApi2Module.useApi2>> as ReturnType<
+        typeof UseApi2Module.useApi2
+      >);
+
+      renderWithRouter();
+
+      // Test website URL without protocol
+      const websiteWithoutProtocol = 'www.trustee-website.com';
+      const expectedWebsiteWithProtocol = 'https://www.trustee-website.com';
+
+      // Fill all required fields with website without protocol
+      await fillBasicTrusteeForm({ website: websiteWithoutProtocol });
+
+      // Verify that the form accepts the URL without protocol (no validation error)
+      const websiteInput = screen.getByTestId('trustee-website');
+      expect(websiteInput).toHaveValue(websiteWithoutProtocol);
+      expect(screen.queryByText('Website must be a valid URL')).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      // Verify that the API was called with the normalized URL (with protocol)
+      await waitFor(() => {
+        const calledArg = mockPostTrustee.mock.calls[0][0];
+        expect(calledArg.public.website).toBe(expectedWebsiteWithProtocol);
+      });
+    });
+
+    test('validates and accepts URLs without protocol during form input', async () => {
+      renderWithRouter();
+
+      // Fill required fields first
+      await fillBasicTrusteeForm({ website: '' });
+
+      const websiteInput = screen.getByTestId('trustee-website');
+
+      // Test URLs without protocol that should be accepted
+      const validUrlsWithoutProtocol = [
+        'www.example.com',
+        'example.org',
+        'subdomain.example.com/path',
+        'example.com/path?query=1#section',
+        'trustee-website.com',
+        'jane-smith-trustee.com',
+      ];
+
+      // Test each URL without protocol - they should all pass validation
+      for (const url of validUrlsWithoutProtocol) {
+        await userEvent.clear(websiteInput);
+        await userEvent.type(websiteInput, url);
+        await userEvent.tab(); // Trigger validation
+
+        // Should not show validation error for URLs without protocol
+        expect(screen.queryByText('Website must be a valid URL')).not.toBeInTheDocument();
+      }
     });
 
     test('includes districts and chapters in submission when selected', async () => {

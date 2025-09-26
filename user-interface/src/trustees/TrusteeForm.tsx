@@ -18,6 +18,7 @@ import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import { ChapterType, TrusteeInput, TrusteeStatus } from '@common/cams/trustees';
 import { useLocation } from 'react-router-dom';
+import { normalizeWebsiteUrl } from '@common/cams/regex';
 
 const CHAPTER_OPTIONS: ComboOption<ChapterType>[] = [
   { value: '7-panel', label: '7 - Panel' },
@@ -77,6 +78,9 @@ function TrusteeForm() {
   const mapPayload = (formData: TrusteeFormData) => {
     let payload;
     if (doCreate || doEditPublicProfile) {
+      // Normalize website URL by adding protocol if missing
+      const normalizedWebsite = normalizeWebsiteUrl(formData.website);
+
       payload = {
         name: formData.name,
         public: {
@@ -90,7 +94,7 @@ function TrusteeForm() {
           },
           phone: { number: formData.phone, extension: formData.extension },
           email: formData.email,
-          website: formData.website,
+          ...(normalizedWebsite && { website: normalizedWebsite }),
         },
         ...(formData.districts &&
           formData.districts.length > 0 && { districts: formData.districts }),
