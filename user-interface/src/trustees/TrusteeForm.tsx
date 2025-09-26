@@ -94,7 +94,7 @@ function TrusteeForm() {
           },
           phone: { number: formData.phone, extension: formData.extension },
           email: formData.email,
-          ...(normalizedWebsite && { website: normalizedWebsite }),
+          ...(normalizedWebsite && normalizedWebsite.length > 0 && { website: normalizedWebsite }),
         },
         ...(formData.districts &&
           formData.districts.length > 0 && { districts: formData.districts }),

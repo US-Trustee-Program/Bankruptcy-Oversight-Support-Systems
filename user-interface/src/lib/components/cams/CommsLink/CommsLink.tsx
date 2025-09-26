@@ -65,7 +65,7 @@ function CommsLink(props: Readonly<CommsLinkProps>) {
 
   if (href) {
     return (
-      <a href={href} className="usa-link comms-link" target={target} rel="noreferrer">
+      <a href={href} className="usa-link comms-link" target={target} rel="noopener noreferrer">
         <IconLabel label={labelToUse} icon={iconToUse} location="left" />
       </a>
     );

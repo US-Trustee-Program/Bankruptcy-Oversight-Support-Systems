@@ -56,6 +56,14 @@ describe('regex', () => {
       expect(normalizeWebsiteUrl('  www.example.com  ')).toBe('https://www.example.com');
       expect(normalizeWebsiteUrl('  https://example.com  ')).toBe('https://example.com');
     });
+
+    test('should return empty string for unsupported protocols', () => {
+      expect(normalizeWebsiteUrl('ftp://example.com')).toBe('');
+      expect(normalizeWebsiteUrl('mailto:test@example.com')).toBe('');
+      expect(normalizeWebsiteUrl('file://localfile.txt')).toBe('');
+      expect(normalizeWebsiteUrl('ssh://server.com')).toBe('');
+      expect(normalizeWebsiteUrl('telnet://server.com')).toBe('');
+    });
   });
 
   describe('WEBSITE_RELAXED_REGEX', () => {
