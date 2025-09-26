@@ -99,11 +99,11 @@ async function fillBasicTrusteeForm(
 
   const stateCombobox = screen.getByRole('combobox', { name: /state/i });
   await userEvent.click(stateCombobox);
-  await userEvent.click(screen.getByText(overrides.stateLabel || stateLabel));
+  await userEvent.click(screen.getByText(overrides.stateLabel ?? stateLabel));
 
   const zipInput = screen.getByTestId('trustee-zip');
   await userEvent.clear(zipInput);
-  await userEvent.type(zipInput, overrides.zipCode || data.public.address.zipCode);
+  await userEvent.type(zipInput, overrides.zipCode ?? data.public.address.zipCode);
 
   const phoneInput = screen.getByTestId('trustee-phone');
   await userEvent.clear(phoneInput);
@@ -116,16 +116,10 @@ async function fillBasicTrusteeForm(
   const websiteInput = screen.getByTestId('trustee-website');
   await userEvent.clear(websiteInput);
 
-  // Only fill website if explicitly provided in overrides or if overrides don't specify website at all AND default data has it
-  if (overrides.website !== undefined) {
-    // If website is explicitly in overrides (even if empty string), use that value
-    if (overrides.website) {
-      await userEvent.type(websiteInput, overrides.website);
-    }
-    // If overrides.website is '', leave field empty (already cleared)
-  } else if (data.public.website) {
-    // Only use default data if overrides don't specify website at all
-    await userEvent.type(websiteInput, data.public.website);
+  // Use null-coalescing to simplify website handling
+  const websiteValue = overrides.website ?? data.public.website ?? '';
+  if (websiteValue) {
+    await userEvent.type(websiteInput, websiteValue);
   }
 }
 
@@ -641,57 +635,47 @@ describe('TrusteeForm', () => {
       });
     });
 
-    test('validates website field with valid URLs', async () => {
-      renderWithRouter();
+    test.each([
+      { url: 'https://www.example.com', description: 'basic HTTPS URL' },
+      { url: 'http://example.org', description: 'basic HTTP URL' },
+      {
+        url: 'https://trustee-law.com/services/bankruptcy?ref=homepage#consultation',
+        description: 'URL with paths and query parameters',
+      },
+      { url: 'https://legal.example.co.uk/trustees', description: 'URL with different TLD' },
+    ])(
+      'validates website field with valid URLs - $description',
+      async ({ url }) => {
+        renderWithRouter();
+        await fillBasicTrusteeForm({ website: '' });
 
-      // Fill required fields first
-      await fillBasicTrusteeForm({ website: '' });
-
-      const websiteInput = screen.getByTestId('trustee-website');
-
-      // Test comprehensive set of valid website URLs
-      const validUrls = [
-        // Basic formats
-        'https://www.example.com',
-        'http://example.org',
-        // URLs with paths and query parameters
-        'https://trustee-law.com/services/bankruptcy?ref=homepage#consultation',
-        // Different TLDs
-        'https://legal.example.co.uk/trustees',
-      ];
-
-      // Test each valid URL - they should all pass validation
-      for (const url of validUrls) {
+        const websiteInput = screen.getByTestId('trustee-website');
         await userEvent.clear(websiteInput);
         await userEvent.type(websiteInput, url);
         await userEvent.tab(); // Trigger validation
 
         // Should not show validation error for valid URLs
         expect(screen.queryByText('Website must be a valid URL')).not.toBeInTheDocument();
-      }
-    }, 10000);
+      },
+      10000,
+    );
 
-    test('shows validation error for invalid website URLs', async () => {
+    test.each([
+      { url: 'not-a-url', description: 'invalid text without URL structure' },
+      { url: 'just-text', description: 'plain text' },
+    ])('shows validation error for invalid website URLs - $description', async ({ url }) => {
       renderWithRouter();
-
-      // Fill required fields first
       await fillBasicTrusteeForm({ website: '' });
 
       const websiteInput = screen.getByTestId('trustee-website');
+      await userEvent.clear(websiteInput);
+      await userEvent.type(websiteInput, url);
+      await userEvent.tab(); // Trigger validation
 
-      // Test invalid website URLs
-      const invalidUrls = ['not-a-url', 'just-text'];
-
-      for (const url of invalidUrls) {
-        await userEvent.clear(websiteInput);
-        await userEvent.type(websiteInput, url);
-        await userEvent.tab(); // Trigger validation
-
-        // Should show validation error for invalid URLs
-        await waitFor(() => {
-          expect(screen.getByText('Website must be a valid URL')).toBeInTheDocument();
-        });
-      }
+      // Should show validation error for invalid URLs
+      await waitFor(() => {
+        expect(screen.getByText('Website must be a valid URL')).toBeInTheDocument();
+      });
     });
 
     test('allows empty website field as it is optional', async () => {
@@ -747,33 +731,24 @@ describe('TrusteeForm', () => {
       });
     });
 
-    test('validates and accepts URLs without protocol during form input', async () => {
+    test.each([
+      { url: 'www.example.com', description: 'www subdomain' },
+      { url: 'example.org', description: 'basic domain' },
+      { url: 'subdomain.example.com/path', description: 'subdomain with path' },
+      { url: 'example.com/path?query=1#section', description: 'domain with query parameters' },
+      { url: 'trustee-website.com', description: 'domain with hyphens' },
+      { url: 'jane-smith-trustee.com', description: 'complex domain with hyphens' },
+    ])('validates and accepts URLs without protocol - $description', async ({ url }) => {
       renderWithRouter();
-
-      // Fill required fields first
       await fillBasicTrusteeForm({ website: '' });
 
       const websiteInput = screen.getByTestId('trustee-website');
+      await userEvent.clear(websiteInput);
+      await userEvent.type(websiteInput, url);
+      await userEvent.tab(); // Trigger validation
 
-      // Test URLs without protocol that should be accepted
-      const validUrlsWithoutProtocol = [
-        'www.example.com',
-        'example.org',
-        'subdomain.example.com/path',
-        'example.com/path?query=1#section',
-        'trustee-website.com',
-        'jane-smith-trustee.com',
-      ];
-
-      // Test each URL without protocol - they should all pass validation
-      for (const url of validUrlsWithoutProtocol) {
-        await userEvent.clear(websiteInput);
-        await userEvent.type(websiteInput, url);
-        await userEvent.tab(); // Trigger validation
-
-        // Should not show validation error for URLs without protocol
-        expect(screen.queryByText('Website must be a valid URL')).not.toBeInTheDocument();
-      }
+      // Should not show validation error for URLs without protocol
+      expect(screen.queryByText('Website must be a valid URL')).not.toBeInTheDocument();
     });
 
     test('shows validation error for unsupported protocols', async () => {
