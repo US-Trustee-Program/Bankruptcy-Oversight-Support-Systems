@@ -3,15 +3,15 @@ import { initializeApplicationInsights } from '../azure/app-insights';
 
 import { LoggerImpl } from '../../lib/adapters/services/logger.service';
 
+import CaseAssignmentEvent from './events/case-assignment-event';
+import CaseClosedEvent from './events/case-closed-event';
+import LoadE2eDb from './e2e/load-e2e-db';
+import MigrateAssignees from './migrations/migrate-assignees';
+import MigrateCases from './migrations/migrate-cases';
+import MigrateConsolidations from './migrations/migrate-consolidations';
 import SyncCases from './import/sync-cases';
 import SyncOrders from './import/sync-orders';
 import SyncOfficeStaff from './import/sync-office-staff';
-import MigrateCases from './migrations/migrate-cases';
-import MigrateConsolidations from './migrations/migrate-consolidations';
-import MigrateAssignees from './migrations/migrate-assignees';
-import CaseAssignmentEvent from './events/case-assignment-event';
-import CaseClosedEvent from './events/case-closed-event';
-
 /*
 
 dataflows.ts
@@ -98,12 +98,13 @@ initializeApplicationInsights();
 dataflows.register(
   CaseAssignmentEvent,
   CaseClosedEvent,
+  LoadE2eDb,
+  MigrateAssignees,
+  MigrateCases,
+  MigrateConsolidations,
   SyncCases,
   SyncOfficeStaff,
   SyncOrders,
-  MigrateCases,
-  MigrateConsolidations,
-  MigrateAssignees,
 );
 
 // Log the list of registered data flows.
