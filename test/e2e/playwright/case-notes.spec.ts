@@ -1,4 +1,4 @@
-import { KNOWN_GOOD_TRANSFER_TO_CASE_ID } from '../scripts/data-generation-utils';
+import { KNOWN_GOOD_TRANSFER_TO_CASE_ID } from '../../../backend/function-apps/dataflows/e2e/data-generation-utils';
 import { expect } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
 import { logout } from './login/login-helpers';
