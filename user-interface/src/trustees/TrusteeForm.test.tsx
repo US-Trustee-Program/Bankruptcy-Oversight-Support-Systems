@@ -1764,11 +1764,32 @@ describe('TrusteeForm', () => {
       ).toBeInTheDocument();
     });
 
-    test('handles API error when loading districts', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    // Parameterized tests for district loading error scenarios
+    const districtLoadingErrorCases = [
+      {
+        name: 'handles API error when loading districts',
+        mockImplementation: () => vi.fn().mockRejectedValue(new Error('Network error')),
+        needsConsoleErrorSpy: true,
+      },
+      {
+        name: 'handles empty response when loading districts',
+        mockImplementation: () => vi.fn().mockResolvedValue({ data: null }),
+        needsConsoleErrorSpy: false,
+      },
+      {
+        name: 'handles missing data property when loading districts',
+        mockImplementation: () => vi.fn().mockResolvedValue({}),
+        needsConsoleErrorSpy: false,
+      },
+    ];
+
+    test.each(districtLoadingErrorCases)('$name', async (testCase) => {
+      const consoleErrorSpy = testCase.needsConsoleErrorSpy
+        ? vi.spyOn(console, 'error').mockImplementation(() => {})
+        : null;
 
       vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
-        getCourts: vi.fn().mockRejectedValue(new Error('Network error')),
+        getCourts: testCase.mockImplementation(),
         postTrustee: vi.fn(),
       } as Partial<ReturnType<typeof UseApi2Module.useApi2>> as ReturnType<
         typeof UseApi2Module.useApi2
@@ -1792,63 +1813,9 @@ describe('TrusteeForm', () => {
         expect(inputField).toHaveAttribute('placeholder', 'Error loading districts');
       });
 
-      consoleErrorSpy.mockRestore();
-    });
-
-    test('handles empty response when loading districts', async () => {
-      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
-        getCourts: vi.fn().mockResolvedValue({
-          data: null,
-        }),
-        postTrustee: vi.fn(),
-      } as Partial<ReturnType<typeof UseApi2Module.useApi2>> as ReturnType<
-        typeof UseApi2Module.useApi2
-      >);
-
-      renderWithRouter();
-
-      // Wait for error handling and click to expand combobox
-      await waitFor(() => {
-        const districtCombobox = screen.getByRole('combobox', { name: /district/i });
-        expect(districtCombobox).toBeInTheDocument();
-      });
-
-      // Click to expand the combobox and reveal the input with placeholder
-      const districtCombobox = screen.getByRole('combobox', { name: /district/i });
-      await userEvent.click(districtCombobox);
-
-      // Check for the placeholder on the input field when expanded
-      await waitFor(() => {
-        const inputField = screen.getByTestId('combo-box-input');
-        expect(inputField).toHaveAttribute('placeholder', 'Error loading districts');
-      });
-    });
-
-    test('handles missing data property when loading districts', async () => {
-      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
-        getCourts: vi.fn().mockResolvedValue({}),
-        postTrustee: vi.fn(),
-      } as Partial<ReturnType<typeof UseApi2Module.useApi2>> as ReturnType<
-        typeof UseApi2Module.useApi2
-      >);
-
-      renderWithRouter();
-
-      // Wait for error handling and click to expand combobox
-      await waitFor(() => {
-        const districtCombobox = screen.getByRole('combobox', { name: /district/i });
-        expect(districtCombobox).toBeInTheDocument();
-      });
-
-      // Click to expand the combobox and reveal the input with placeholder
-      const districtCombobox = screen.getByRole('combobox', { name: /district/i });
-      await userEvent.click(districtCombobox);
-
-      // Check for the placeholder on the input field when expanded
-      await waitFor(() => {
-        const inputField = screen.getByTestId('combo-box-input');
-        expect(inputField).toHaveAttribute('placeholder', 'Error loading districts');
-      });
+      if (consoleErrorSpy) {
+        consoleErrorSpy.mockRestore();
+      }
     });
 
     test('sorts district options alphabetically', async () => {

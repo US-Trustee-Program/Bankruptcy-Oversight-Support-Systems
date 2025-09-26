@@ -64,6 +64,15 @@ describe('regex', () => {
       expect(normalizeWebsiteUrl('ssh://server.com')).toBe('');
       expect(normalizeWebsiteUrl('telnet://server.com')).toBe('');
     });
+
+    test('should return empty string for URLs with embedded protocols', () => {
+      // These are malformed URLs that could bypass security checks
+      expect(normalizeWebsiteUrl('http://mailto:foobar')).toBe('');
+      expect(normalizeWebsiteUrl('http://ftp://embedded-protocol.com')).toBe('');
+      expect(normalizeWebsiteUrl('https://ftp://badsite.com')).toBe('');
+      expect(normalizeWebsiteUrl('http://file://localfile.txt')).toBe('');
+      expect(normalizeWebsiteUrl('https://ssh://server.com')).toBe('');
+    });
   });
 
   describe('WEBSITE_RELAXED_REGEX', () => {
