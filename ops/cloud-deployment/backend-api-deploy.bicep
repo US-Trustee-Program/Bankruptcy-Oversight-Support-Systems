@@ -452,12 +452,6 @@ var baseApplicationSettings = concat(
 
 //API Function Application Settings
 var apiApplicationSettings = concat(
-  [
-    {
-      name: 'AzureWebJobsStorage'
-      value: 'DefaultEndpointsProtocol=https;AccountName=${apiFunctionStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${apiFunctionStorageAccount.listKeys().keys[0].value}'
-    }
-  ],
   baseApplicationSettings,
   createApplicationInsights
     ? [{ name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: apiFunctionAppInsights.outputs.connectionString }]
