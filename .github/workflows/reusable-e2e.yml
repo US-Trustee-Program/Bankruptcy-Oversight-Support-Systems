@@ -95,13 +95,13 @@ jobs:
             e2eDatabaseName="${e2eDatabaseName}-${{ inputs.branchHashId }}"
           fi
 
-          export CAMS_LOGIN_PROVIDER="mock"
+          export CAMS_LOGIN_PROVIDER=${{ secrets.CAMS_LOGIN_PROVIDER }}
           export MSSQL_HOST=${{ secrets.MSSQL_HOST }}
           export MSSQL_DATABASE_DXTR=${{ secrets.MSSQL_DATABASE_DXTR }}
           export MSSQL_USER=${{ secrets.MSSQL_USER }}
           export MSSQL_PASS=${{ secrets.MSSQL_PASS }}
           export MSSQL_ENCRYPT=true
-          export MSSQL_TRUST_UNSIGNED_CERT=true
+          export MSSQL_TRUST_UNSIGNED_CERT=${{ secrets.MSSQL_TRUST_UNSIGNED_CERT }}
           export MONGO_CONNECTION_STRING="${{ secrets.MONGO_CONNECTION_STRING }}"
           export COSMOS_DATABASE_NAME="${e2eDatabaseName}"
           export DATABASE_MOCK=false

@@ -6,9 +6,9 @@ import {
 } from '../../../backend/lib/factory';
 import ExportAndLoadCase from '../../../backend/lib/use-cases/dataflows/export-and-load-case';
 import { ConsolidationOrder, TransferOrder } from '../../../common/src/cams/orders';
-import { Trustee } from '../../../common/src/cams/parties';
 import { CamsUserReference } from '../../../common/src/cams/users';
 import { CaseSyncEvent } from '../../../common/src/queue/dataflow-types';
+import { Trustee } from '../../../common/src/cams/trustees';
 
 export async function insertConsolidationOrders(
   appContext: ApplicationContext,
