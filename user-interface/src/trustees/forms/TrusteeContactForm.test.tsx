@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import TrusteeForm from './TrusteeForm';
+import TrusteeContactForm from './TrusteeContactForm';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import * as UseApi2Module from '@/lib/hooks/UseApi2';
 import * as UseGlobalAlertModule from '@/lib/hooks/UseGlobalAlert';
@@ -15,7 +15,7 @@ import { Mock } from 'vitest';
 import { TrusteeInput, Trustee } from '@common/cams/trustees';
 import { Address } from '@common/cams/contact';
 import { ResponseBody } from '@common/api/response';
-import { TrusteeFormState } from './UseTrusteeForm';
+import { TrusteeFormState } from './UseTrusteeContactForm';
 
 type MockApiShape = Partial<ReturnType<typeof UseApi2Module.useApi2>>;
 const createMockApi = (methods: MockApiShape): ReturnType<typeof UseApi2Module.useApi2> => {
@@ -152,7 +152,7 @@ describe('TrusteeForm', () => {
 
     return render(
       <BrowserRouter>
-        <TrusteeForm />
+        <TrusteeContactForm />
       </BrowserRouter>,
     );
   };
@@ -1222,10 +1222,10 @@ describe('TrusteeForm', () => {
       const mockClearFieldError = vi.fn();
 
       // Import the UseTrusteeForm module to mock its functions
-      const UseTrusteeFormModule = await import('./UseTrusteeForm');
+      const UseTrusteeFormModule = await import('./UseTrusteeContactForm');
 
       // Save the original function to restore later
-      const originalUseTrusteeForm = UseTrusteeFormModule.useTrusteeForm;
+      const originalUseTrusteeForm = UseTrusteeFormModule.useTrusteeContactForm;
 
       // Mock the useTrusteeForm hook to inject our spy
       vi.spyOn(UseTrusteeFormModule, 'useTrusteeForm').mockImplementation((props) => {
@@ -1292,10 +1292,10 @@ describe('TrusteeForm', () => {
       const mockUpdateField = vi.fn();
 
       // Import the UseTrusteeForm module to mock its functions
-      const UseTrusteeFormModule = await import('./UseTrusteeForm');
+      const UseTrusteeFormModule = await import('./UseTrusteeContactForm');
 
       // Save the original function to restore later
-      const originalUseTrusteeForm = UseTrusteeFormModule.useTrusteeForm;
+      const originalUseTrusteeForm = UseTrusteeFormModule.useTrusteeContactForm;
 
       // Mock the useTrusteeForm hook to inject our spy
       vi.spyOn(UseTrusteeFormModule, 'useTrusteeForm').mockImplementation((props) => {
@@ -1609,7 +1609,7 @@ describe('TrusteeForm', () => {
 
       render(
         <BrowserRouter>
-          <TrusteeForm />
+          <TrusteeContactForm />
         </BrowserRouter>,
       );
 

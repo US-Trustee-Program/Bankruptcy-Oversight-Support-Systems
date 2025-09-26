@@ -93,7 +93,7 @@ function validateField(
   }
 }
 
-export function useTrusteeForm({ initialState }: UseTrusteeFormProps) {
+export function useTrusteeContactForm({ initialState }: UseTrusteeFormProps) {
   const doEditInternalProfile =
     initialState.action === 'edit' && initialState.contactInformation === 'internal';
   const doEditPublicProfile =

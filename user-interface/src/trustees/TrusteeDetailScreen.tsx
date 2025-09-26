@@ -12,7 +12,9 @@ import TrusteeDetailHeader from './TrusteeDetailHeader';
 import TrusteeDetailProfile from './panels/TrusteeDetailProfile';
 import TrusteeDetailAuditHistory from './panels/TrusteeDetailAuditHistory';
 import TrusteeDetailNavigation, { mapTrusteeDetailNavState } from './TrusteeDetailNavigation';
-import { TrusteeFormState } from '@/trustees/UseTrusteeForm';
+import { TrusteeFormState } from '@/trustees/forms/UseTrusteeContactForm';
+import TrusteeContactForm from './forms/TrusteeContactForm';
+import TrusteeOtherInfoForm from './forms/TrusteeOtherInfoForm';
 
 export default function TrusteeDetailScreen() {
   const { trusteeId } = useParams();
@@ -35,7 +37,7 @@ export default function TrusteeDetailScreen() {
       action: 'edit',
       contactInformation: 'public',
     };
-    navigate(`/trustees/${trusteeId}/edit`, { state });
+    navigate(`/trustees/${trusteeId}/contact/edit`, { state });
   }
 
   function openEditInternalProfile() {
@@ -46,7 +48,17 @@ export default function TrusteeDetailScreen() {
       action: 'edit',
       contactInformation: 'internal',
     };
-    navigate(`/trustees/${trusteeId}/edit`, { state });
+    navigate(`/trustees/${trusteeId}/contact/edit`, { state });
+  }
+
+  function openEditOtherInformation() {
+    const state: TrusteeFormState = {
+      trusteeId,
+      trustee: trustee ?? undefined,
+      cancelTo: location.pathname,
+      action: 'edit',
+    };
+    navigate(`/trustees/${trusteeId}/other/edit`, { state });
   }
 
   useEffect(() => {
@@ -100,9 +112,15 @@ export default function TrusteeDetailScreen() {
                     districtLabels={districtLabels}
                     onEditPublicProfile={openEditPublicProfile}
                     onEditInternalProfile={openEditInternalProfile}
+                    onEditOtherInformation={openEditOtherInformation}
                   />
                 }
               />
+              <Route path="/contact/edit" element={<TrusteeContactForm />}></Route>
+              <Route
+                path="/other/edit"
+                element={<TrusteeOtherInfoForm banks={trustee.banks} trusteeId={trustee.id} />}
+              ></Route>
               <Route
                 path="/audit-history"
                 element={<TrusteeDetailAuditHistory trusteeId={trusteeId ?? 'unknown'} />}
