@@ -39,7 +39,7 @@ export function OktaSession(props: Readonly<OktaSessionProps>) {
             { name: 'Okta redirect error' },
             {
               error: { message: error.message, name: error.name },
-              note: `We do ignore this specific error and continue to login the user.`,
+              note: `We ignore this specific error and continue to login the user.`,
             },
           );
         }
