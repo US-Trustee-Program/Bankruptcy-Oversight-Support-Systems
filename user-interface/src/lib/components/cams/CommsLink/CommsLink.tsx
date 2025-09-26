@@ -5,7 +5,7 @@ import Validators from '@common/cams/validators';
 
 type CommsLinkProps = {
   contact: Omit<ContactInformation, 'address'>;
-  mode: 'teams-chat' | 'teams-call' | 'phone-dialer' | 'email';
+  mode: 'teams-chat' | 'teams-call' | 'phone-dialer' | 'email' | 'website';
   label?: string;
   icon?: string;
   emailSubject?: string;
@@ -25,15 +25,17 @@ function toTelephoneUri(number: string, extension?: string) {
 
 function CommsLink(props: Readonly<CommsLinkProps>) {
   const { contact, mode, label, icon, emailSubject } = props;
-  const { email, phone } = contact;
+  const { email, website, phone } = contact;
   const { number, extension } = phone ?? {};
 
   const isValidEmail = Validators.isEmailAddress(email).valid;
+  const isValidWebsite = Validators.isWebsiteAddress(website).valid;
   const isValidPhoneNumber = Validators.isPhoneNumber(number).valid;
 
   let href = '';
   let labelToUse = label ?? '';
   let iconToUse = 'error';
+  let target = undefined;
 
   if (isValidEmail && mode === 'teams-chat') {
     href = `msteams://teams.microsoft.com/l/chat/0/0?users=${email}`;
@@ -50,6 +52,11 @@ function CommsLink(props: Readonly<CommsLinkProps>) {
     }
     labelToUse = label ?? email!;
     iconToUse = icon ?? 'mail';
+  } else if (isValidWebsite && mode === 'website' && website) {
+    href = website;
+    target = '_blank';
+    labelToUse = label ?? website!;
+    iconToUse = icon ?? 'launch';
   } else if (isValidPhoneNumber && mode === 'phone-dialer') {
     href = toTelephoneUri(number!, extension);
     labelToUse = label ?? (extension ? `${number}, ext. ${extension}` : number!);
@@ -58,7 +65,7 @@ function CommsLink(props: Readonly<CommsLinkProps>) {
 
   if (href) {
     return (
-      <a href={href} className="usa-link comms-link">
+      <a href={href} className="usa-link comms-link" target={target} rel="noreferrer">
         <IconLabel label={labelToUse} icon={iconToUse} location="left" />
       </a>
     );

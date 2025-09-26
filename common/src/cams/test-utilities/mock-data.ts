@@ -504,6 +504,10 @@ function getContactInformation(override: Partial<ContactInformation> = {}): Cont
     phone: getPhone(),
     email: faker.internet.email(),
     address: getAddress(),
+    // Randomly include website ~30% of the time to simulate real-world data
+    ...(faker.datatype.boolean({ probability: 0.3 }) && {
+      website: `https://www.${faker.internet.domainName()}`,
+    }),
     ...override,
   };
 }
@@ -566,6 +570,29 @@ function getTrustee(override: Partial<Trustee> = {}): Trustee {
     updatedOn: getDateBeforeToday().toISOString(),
     updatedBy: getCamsUserReference(),
     status: 'active',
+    ...override,
+  };
+}
+
+function getChapter13Trustee(override: Partial<Trustee> = {}): Trustee {
+  const trusteeLastName = faker.person.lastName().toLowerCase().replace(/\s/g, '-');
+  const publicContact = getContactInformation({
+    website: `https://www.${trusteeLastName}-ch13.com`,
+  });
+  const internalContact = getContactInformation({
+    website: `https://internal.${trusteeLastName}-ch13.com`,
+  });
+
+  return {
+    id: faker.string.uuid(),
+    name: faker.person.fullName(),
+    public: publicContact,
+    internal: internalContact,
+    updatedOn: getDateBeforeToday().toISOString(),
+    updatedBy: getCamsUserReference(),
+    status: 'active',
+    chapters: ['13'],
+    districts: [faker.location.state({ abbreviated: true })],
     ...override,
   };
 }
@@ -995,6 +1022,7 @@ export const MockData = {
   someDateBeforeThisDate,
   getCaseSyncEvent,
   getTrustee,
+  getChapter13Trustee,
   getTrusteeHistory,
   getLegacyTrustee,
 };
