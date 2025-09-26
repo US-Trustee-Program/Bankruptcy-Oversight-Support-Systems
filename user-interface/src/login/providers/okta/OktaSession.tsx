@@ -34,6 +34,14 @@ export function OktaSession(props: Readonly<OktaSessionProps>) {
             },
           );
           setCallbackError(error);
+        } else {
+          appInsights.trackEvent(
+            { name: 'Okta redirect error' },
+            {
+              error: { message: error.message, name: error.name },
+              note: `We do ignore this specific error and continue to login the user.`,
+            },
+          );
         }
       });
   }, [oktaAuth, !authState?.error]);
