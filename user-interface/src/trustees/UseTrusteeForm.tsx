@@ -17,7 +17,7 @@ import {
   EMAIL_REGEX,
   EXTENSION_REGEX,
   PHONE_REGEX,
-  WEBSITE_REGEX,
+  WEBSITE_RELAXED_REGEX,
   ZIP_REGEX,
 } from '@common/cams/regex';
 
@@ -29,7 +29,9 @@ export const TRUSTEE_SPEC: Readonly<ValidationSpec<TrusteeFormData>> = {
   state: [V.exactLength(2, 'State is required')],
   zipCode: [V.matches(ZIP_REGEX, 'ZIP code must be 5 digits or 9 digits with a hyphen')],
   email: [V.matches(EMAIL_REGEX, 'Email must be a valid email address'), V.maxLength(50)],
-  website: [V.optional(V.matches(WEBSITE_REGEX, 'Website must be a valid URL'), V.maxLength(255))],
+  website: [
+    V.optional(V.matches(WEBSITE_RELAXED_REGEX, 'Website must be a valid URL'), V.maxLength(255)),
+  ],
   phone: [V.matches(PHONE_REGEX, 'Phone must be a valid phone number')],
   extension: [V.optional(V.matches(EXTENSION_REGEX, 'Extension must be 1 to 6 digits'))],
   status: [V.isInSet<TrusteeStatus>([...TRUSTEE_STATUS_VALUES])],
