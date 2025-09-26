@@ -1,4 +1,4 @@
-import { EMAIL_REGEX, PHONE_REGEX } from './regex';
+import { EMAIL_REGEX, PHONE_REGEX, WEBSITE_REGEX } from './regex';
 import {
   ValidatorFunction,
   ValidatorResult,
@@ -196,6 +196,16 @@ function isEmailAddress(value: unknown): ValidatorResult {
 }
 
 /**
+ * Validates whether a value is a valid website address format.
+ *
+ * @param {unknown} value - The value to be validated as a website address
+ * @returns {ValidatorResult} Object containing validation status and reason for failure if invalid
+ */
+function isWebsiteAddress(value: unknown): ValidatorResult {
+  return matches(WEBSITE_REGEX, 'Must be a valid website address')(value);
+}
+
+/**
  * Validates whether a value is a valid 10-digit phone number format.
  *
  * @param {unknown} value - The value to be validated as a phone number
@@ -208,6 +218,7 @@ function isPhoneNumber(value: unknown): ValidatorResult {
 const Validators = {
   exactLength,
   isEmailAddress,
+  isWebsiteAddress,
   isInSet,
   isPhoneNumber,
   length,

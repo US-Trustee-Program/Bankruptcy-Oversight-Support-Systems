@@ -42,6 +42,7 @@ const mockTrustee: Trustee = {
     },
     phone: { number: '555-123-4567', extension: '1234' },
     email: 'john.doe.public@example.com',
+    website: 'https://www.johndoe-trustee.com',
   },
   internal: {
     address: {
@@ -53,6 +54,7 @@ const mockTrustee: Trustee = {
     },
     phone: { number: '555-987-6543', extension: '5678' },
     email: 'john.doe.internal@example.com',
+    website: 'https://internal.johndoe-trustee.com',
   },
   districts: ['NYEB', 'NYWB'],
   chapters: ['7-panel', '11', '13'],
@@ -111,6 +113,11 @@ describe('TrusteeDetailProfile', () => {
     expect(internalEmailElement).toBeInTheDocument();
     const emailLink = screen.getByRole('link', { name: /john.doe.public@example.com/ });
     expect(emailLink).toHaveAttribute('href', 'mailto:john.doe.public@example.com');
+
+    // Website
+    expect(screen.getByTestId('trustee-website')).toBeInTheDocument();
+    const websiteLink = screen.getByRole('link', { name: /www\.johndoe-trustee\.com/ });
+    expect(websiteLink).toHaveAttribute('href', 'https://www.johndoe-trustee.com');
   });
 
   test('should render district information', () => {
@@ -171,6 +178,13 @@ describe('TrusteeDetailProfile', () => {
     // Internal email
     const internalEmailLink = screen.getByRole('link', { name: /john.doe.internal@example.com/ });
     expect(internalEmailLink).toHaveAttribute('href', 'mailto:john.doe.internal@example.com');
+
+    // Internal website
+    expect(screen.getByTestId('trustee-internal-website')).toBeInTheDocument();
+    const internalWebsiteLink = screen.getByRole('link', {
+      name: /internal\.johndoe-trustee\.com/,
+    });
+    expect(internalWebsiteLink).toHaveAttribute('href', 'https://internal.johndoe-trustee.com');
   });
 
   test('should show "No information added" when internal contact is missing', () => {
@@ -248,6 +262,39 @@ describe('TrusteeDetailProfile', () => {
 
     expect(
       screen.queryByRole('link', { name: /john.doe.public@example.com/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  test('should handle missing public website', () => {
+    const trusteeWithoutPublicWebsite = {
+      ...mockTrustee,
+      public: { ...mockTrustee.public, website: undefined },
+    };
+
+    renderWithProps({ trustee: trusteeWithoutPublicWebsite });
+
+    expect(screen.queryByTestId('trustee-website')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: /www\.johndoe-trustee\.com/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  test('should handle missing internal website', () => {
+    const trusteeWithoutInternalWebsite: Trustee = {
+      ...mockTrustee,
+      internal: {
+        address: mockTrustee.internal!.address,
+        phone: mockTrustee.internal!.phone,
+        email: mockTrustee.internal!.email,
+        // website intentionally omitted
+      },
+    };
+
+    renderWithProps({ trustee: trusteeWithoutInternalWebsite });
+
+    expect(screen.queryByTestId('trustee-internal-website')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: /internal\.johndoe-trustee\.com/ }),
     ).not.toBeInTheDocument();
   });
 

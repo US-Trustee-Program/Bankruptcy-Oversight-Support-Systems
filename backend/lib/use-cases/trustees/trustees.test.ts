@@ -22,7 +22,9 @@ jest.mock('../../../../common/src/cams/session');
 jest.mock('../../../../common/src/object-equality', () => ({
   deepEqual: jest.fn().mockImplementation((a, b) => {
     // Return true if both are undefined or null (considered equal)
-    if (a == null && b == null) return true;
+    if (a == null && b == null) {
+      return true;
+    }
     // Return false otherwise to trigger history creation in tests
     return false;
   }),
@@ -52,6 +54,140 @@ const mockGetCamsUserReference = getCamsUserReference as jest.MockedFunction<
   typeof getCamsUserReference
 >;
 
+// Test helper types and functions for parameterized tests
+type WebsiteTestCase = {
+  description: string;
+  trusteeInput: TrusteeInput;
+  expectedId: string;
+  expectedPublicWebsite?: string;
+  expectedInternalWebsite?: string;
+};
+
+type UpdateWebsiteTestCase = {
+  description: string;
+  trusteeId: string;
+  existingTrustee: unknown;
+  updateInput: TrusteeInput;
+  expectedPublicWebsite?: string;
+  expectedInternalWebsite?: string;
+};
+
+// Website test scenarios for parameterized testing
+const websiteTestCases: WebsiteTestCase[] = [
+  {
+    description: 'should create Chapter 13 trustee with website information successfully',
+    expectedId: 'trustee-456',
+    trusteeInput: {
+      name: 'Jane Smith',
+      public: {
+        address: {
+          address1: '789 Chapter 13 Ave',
+          city: 'Consumer City',
+          state: 'TX',
+          zipCode: '77001',
+          countryCode: 'US' as const,
+        },
+        phone: {
+          number: '713-555-0199',
+          extension: '456',
+        },
+        email: 'jane.smith@ch13-trustee.com',
+        website: 'https://www.janesmith-ch13.com',
+      },
+      internal: {
+        address: {
+          address1: '321 Internal Ave',
+          city: 'Houston',
+          state: 'TX',
+          zipCode: '77002',
+          countryCode: 'US' as const,
+        },
+        phone: {
+          number: '713-555-0100',
+        },
+        email: 'jane.smith.internal@ustp.gov',
+        website: 'https://internal.janesmith-ch13.com',
+      },
+      districts: ['TX'],
+      chapters: ['13'],
+      status: 'active' as const,
+    },
+    expectedPublicWebsite: 'https://www.janesmith-ch13.com',
+    expectedInternalWebsite: 'https://internal.janesmith-ch13.com',
+  },
+  {
+    description: 'should create trustee with public website but no internal website',
+    expectedId: 'trustee-789',
+    trusteeInput: {
+      name: 'Bob Johnson',
+      public: {
+        address: {
+          address1: '456 Public Ave',
+          city: 'Public City',
+          state: 'FL',
+          zipCode: '33101',
+          countryCode: 'US' as const,
+        },
+        phone: {
+          number: '305-555-0123',
+        },
+        email: 'bob.johnson@ch13-trustee.com',
+        website: 'https://www.bobjohnson-ch13.com',
+      },
+      internal: {
+        address: {
+          address1: '654 Internal St',
+          city: 'Miami',
+          state: 'FL',
+          zipCode: '33102',
+          countryCode: 'US' as const,
+        },
+        email: 'bob.johnson.internal@ustp.gov',
+      },
+      districts: ['FL'],
+      chapters: ['13'],
+      status: 'active' as const,
+    },
+    expectedPublicWebsite: 'https://www.bobjohnson-ch13.com',
+    expectedInternalWebsite: undefined,
+  },
+  {
+    description: 'should create trustee without any website information',
+    expectedId: 'trustee-101',
+    trusteeInput: {
+      name: 'Alice Wilson',
+      public: {
+        address: {
+          address1: '123 No Website St',
+          city: 'Traditional City',
+          state: 'CA',
+          zipCode: '90210',
+          countryCode: 'US' as const,
+        },
+        phone: {
+          number: '310-555-0199',
+        },
+        email: 'alice.wilson@traditional-trustee.com',
+      },
+      districts: ['CA'],
+      chapters: ['7-panel'],
+      status: 'active' as const,
+    },
+    expectedPublicWebsite: undefined,
+    expectedInternalWebsite: undefined,
+  },
+];
+
+// Helper function to create expected trustee from test case
+const createExpectedTrusteeFromCase = (testCase: WebsiteTestCase, userRef: CamsUserReference) => ({
+  id: testCase.expectedId,
+  ...testCase.trusteeInput,
+  createdOn: '2025-08-12T10:00:00Z',
+  createdBy: userRef,
+  updatedOn: '2025-08-12T10:00:00Z',
+  updatedBy: userRef,
+});
+
 describe('TrusteesUseCase', () => {
   let context: ApplicationContext;
   let useCase: TrusteesUseCase;
@@ -76,9 +212,25 @@ describe('TrusteesUseCase', () => {
         number: '333-555-0123',
       },
       email: 'john.doe@example.com',
+      website: 'https://www.johndoe-ch13-trustee.com',
+    },
+    internal: {
+      address: {
+        address1: '456 Internal St',
+        city: 'Internal City',
+        state: 'CA',
+        zipCode: '54321',
+        countryCode: 'US' as const,
+      },
+      phone: {
+        number: '333-555-9876',
+        extension: '123',
+      },
+      email: 'john.doe.internal@example.com',
+      website: 'https://internal.johndoe-ch13-trustee.com',
     },
     districts: ['NY'],
-    chapters: ['7', '11'],
+    chapters: ['13'],
     status: 'active' as const,
   };
 
@@ -143,7 +295,7 @@ describe('TrusteesUseCase', () => {
           ...sampleTrusteeInput,
           status: 'active' as const,
           districts: ['NY'],
-          chapters: ['7', '11'],
+          chapters: ['13'],
         }),
         mockUserReference,
       );
@@ -274,6 +426,27 @@ describe('TrusteesUseCase', () => {
 
       expect(mockTrusteesRepository.createTrustee).not.toHaveBeenCalled();
     });
+
+    test.each(websiteTestCases)('$description', async (testCase) => {
+      const expectedTrustee = createExpectedTrusteeFromCase(testCase, mockUserReference);
+
+      mockTrusteesRepository.createTrustee.mockResolvedValue(expectedTrustee);
+
+      const result = await useCase.createTrustee(context, testCase.trusteeInput);
+
+      expect(result).toEqual(expectedTrustee);
+      expect(mockTrusteesRepository.createTrustee).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...testCase.trusteeInput,
+          status: 'active' as const,
+        }),
+        mockUserReference,
+      );
+
+      // Verify website information is preserved correctly
+      expect(result.public.website).toBe(testCase.expectedPublicWebsite);
+      expect(result.internal?.website).toBe(testCase.expectedInternalWebsite);
+    });
   });
 
   describe('listTrustees', () => {
@@ -330,6 +503,192 @@ describe('TrusteesUseCase', () => {
   });
 
   describe('updateTrustee', () => {
+    // Test cases for website update scenarios
+    const updateWebsiteTestCases: UpdateWebsiteTestCase[] = [
+      {
+        description:
+          'should update Chapter 13 trustee website information and create history record',
+        trusteeId: 'trustee-456',
+        existingTrustee: {
+          id: 'trustee-456',
+          name: 'Jane Smith',
+          public: {
+            address: {
+              address1: '789 Chapter 13 Ave',
+              city: 'Consumer City',
+              state: 'TX',
+              zipCode: '77001',
+              countryCode: 'US' as const,
+            },
+            phone: {
+              number: '713-555-0199',
+              extension: '456',
+            },
+            email: 'jane.smith@ch13-trustee.com',
+            website: 'https://www.oldwebsite-ch13.com',
+          },
+          internal: {
+            address: {
+              address1: '321 Internal Ave',
+              city: 'Houston',
+              state: 'TX',
+              zipCode: '77002',
+              countryCode: 'US' as const,
+            },
+            phone: {
+              number: '713-555-0100',
+            },
+            email: 'jane.smith.internal@ustp.gov',
+            website: 'https://old-internal.janesmith-ch13.com',
+          },
+          districts: ['TX'],
+          chapters: ['13'],
+          status: 'active' as const,
+          createdOn: '2025-08-12T10:00:00Z',
+          createdBy: mockUserReference,
+          updatedOn: '2025-08-12T10:00:00Z',
+          updatedBy: mockUserReference,
+        },
+        updateInput: {
+          name: 'Jane Smith',
+          public: {
+            address: {
+              address1: '789 Chapter 13 Ave',
+              city: 'Consumer City',
+              state: 'TX',
+              zipCode: '77001',
+              countryCode: 'US' as const,
+            },
+            phone: {
+              number: '713-555-0199',
+              extension: '456',
+            },
+            email: 'jane.smith@ch13-trustee.com',
+            website: 'https://www.newwebsite-ch13.com',
+          },
+          internal: {
+            address: {
+              address1: '321 Internal Ave',
+              city: 'Houston',
+              state: 'TX',
+              zipCode: '77002',
+              countryCode: 'US' as const,
+            },
+            phone: {
+              number: '713-555-0100',
+            },
+            email: 'jane.smith.internal@ustp.gov',
+            website: 'https://new-internal.janesmith-ch13.com',
+          },
+          districts: ['TX'],
+          chapters: ['13'],
+          status: 'active' as const,
+        },
+        expectedPublicWebsite: 'https://www.newwebsite-ch13.com',
+        expectedInternalWebsite: 'https://new-internal.janesmith-ch13.com',
+      },
+      {
+        description: 'should add website to trustee that previously had no website',
+        trusteeId: 'trustee-789',
+        existingTrustee: {
+          id: 'trustee-789',
+          name: 'Bob Johnson',
+          public: {
+            address: {
+              address1: '456 Public Ave',
+              city: 'Public City',
+              state: 'FL',
+              zipCode: '33101',
+              countryCode: 'US' as const,
+            },
+            phone: {
+              number: '305-555-0123',
+            },
+            email: 'bob.johnson@ch13-trustee.com',
+          },
+          districts: ['FL'],
+          chapters: ['13'],
+          status: 'active' as const,
+          createdOn: '2025-08-12T10:00:00Z',
+          createdBy: mockUserReference,
+          updatedOn: '2025-08-12T10:00:00Z',
+          updatedBy: mockUserReference,
+        },
+        updateInput: {
+          name: 'Bob Johnson',
+          public: {
+            address: {
+              address1: '456 Public Ave',
+              city: 'Public City',
+              state: 'FL',
+              zipCode: '33101',
+              countryCode: 'US' as const,
+            },
+            phone: {
+              number: '305-555-0123',
+            },
+            email: 'bob.johnson@ch13-trustee.com',
+            website: 'https://www.bobjohnson-ch13.com',
+          },
+          districts: ['FL'],
+          chapters: ['13'],
+          status: 'active' as const,
+        },
+        expectedPublicWebsite: 'https://www.bobjohnson-ch13.com',
+        expectedInternalWebsite: undefined,
+      },
+      {
+        description: 'should remove website from trustee',
+        trusteeId: 'trustee-888',
+        existingTrustee: {
+          id: 'trustee-888',
+          name: 'Carol Davis',
+          public: {
+            address: {
+              address1: '999 Website St',
+              city: 'Web City',
+              state: 'WA',
+              zipCode: '98101',
+              countryCode: 'US' as const,
+            },
+            phone: {
+              number: '206-555-0199',
+            },
+            email: 'carol.davis@ch13-trustee.com',
+            website: 'https://www.caroldavis-ch13.com',
+          },
+          districts: ['WA'],
+          chapters: ['13'],
+          status: 'active' as const,
+          createdOn: '2025-08-12T10:00:00Z',
+          createdBy: mockUserReference,
+          updatedOn: '2025-08-12T10:00:00Z',
+          updatedBy: mockUserReference,
+        },
+        updateInput: {
+          name: 'Carol Davis',
+          public: {
+            address: {
+              address1: '999 Website St',
+              city: 'Web City',
+              state: 'WA',
+              zipCode: '98101',
+              countryCode: 'US' as const,
+            },
+            phone: {
+              number: '206-555-0199',
+            },
+            email: 'carol.davis@ch13-trustee.com',
+          },
+          districts: ['WA'],
+          chapters: ['13'],
+          status: 'active' as const,
+        },
+        expectedPublicWebsite: undefined,
+        expectedInternalWebsite: undefined,
+      },
+    ];
+
     test('should update trustee successfully with valid input and create history records', async () => {
       const trusteeId = 'trustee-123';
 
@@ -845,6 +1204,40 @@ describe('TrusteesUseCase', () => {
       // Verify total number of createHistory calls (should be 1 for name only)
       expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledTimes(1);
     });
+
+    test.each(updateWebsiteTestCases)('$description', async (testCase) => {
+      const updatedTrustee = {
+        ...testCase.updateInput,
+        id: testCase.trusteeId,
+        createdOn: '2025-08-12T10:00:00Z',
+        createdBy: mockUserReference,
+        updatedOn: '2025-08-12T11:00:00Z',
+        updatedBy: mockUserReference,
+      };
+
+      mockTrusteesRepository.read.mockResolvedValue(
+        testCase.existingTrustee as typeof sampleTrustee,
+      );
+      mockTrusteesRepository.updateTrustee.mockResolvedValue(updatedTrustee);
+
+      const result = await useCase.updateTrustee(context, testCase.trusteeId, testCase.updateInput);
+
+      expect(result).toEqual(updatedTrustee);
+      expect(result.public.website).toBe(testCase.expectedPublicWebsite);
+      expect(result.internal?.website).toBe(testCase.expectedInternalWebsite);
+
+      const existingTrusteeTyped = testCase.existingTrustee as typeof sampleTrustee;
+
+      // Verify contact history record is created for website changes
+      expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'AUDIT_PUBLIC_CONTACT',
+          id: testCase.trusteeId,
+          before: existingTrusteeTyped.public,
+          after: testCase.updateInput.public,
+        }),
+      );
+    });
   });
 
   describe('listHistory', () => {
@@ -852,15 +1245,17 @@ describe('TrusteesUseCase', () => {
       const trusteeId = 'trustee-123';
       const mockHistory = [
         {
-          documentType: 'AUDIT_NAME',
+          documentType: 'AUDIT_NAME' as const,
           id: trusteeId,
           before: 'John Doe',
           after: 'John Smith',
           createdOn: '2025-08-12T10:00:00Z',
           createdBy: mockUserReference,
+          updatedOn: '2025-08-12T10:00:00Z',
+          updatedBy: mockUserReference,
         },
         {
-          documentType: 'AUDIT_PUBLIC_CONTACT',
+          documentType: 'AUDIT_PUBLIC_CONTACT' as const,
           id: trusteeId,
           before: {
             address: {
@@ -882,6 +1277,8 @@ describe('TrusteesUseCase', () => {
           },
           createdOn: '2025-08-12T10:00:00Z',
           createdBy: mockUserReference,
+          updatedOn: '2025-08-12T10:00:00Z',
+          updatedBy: mockUserReference,
         },
       ];
 

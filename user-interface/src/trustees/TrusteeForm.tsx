@@ -18,6 +18,7 @@ import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import { ChapterType, TrusteeInput, TrusteeStatus } from '@common/cams/trustees';
 import { useLocation } from 'react-router-dom';
+import { normalizeWebsiteUrl } from '@common/cams/regex';
 
 const CHAPTER_OPTIONS: ComboOption<ChapterType>[] = [
   { value: '7-panel', label: '7 - Panel' },
@@ -77,6 +78,9 @@ function TrusteeForm() {
   const mapPayload = (formData: TrusteeFormData) => {
     let payload;
     if (doCreate || doEditPublicProfile) {
+      // Normalize website URL by adding protocol if missing
+      const normalizedWebsite = normalizeWebsiteUrl(formData.website);
+
       payload = {
         name: formData.name,
         public: {
@@ -90,6 +94,7 @@ function TrusteeForm() {
           },
           phone: { number: formData.phone, extension: formData.extension },
           email: formData.email,
+          ...(normalizedWebsite && normalizedWebsite.length > 0 && { website: normalizedWebsite }),
         },
         ...(formData.districts &&
           formData.districts.length > 0 && { districts: formData.districts }),
@@ -459,6 +464,21 @@ function TrusteeForm() {
 
             {(doCreate || doEditPublicProfile) && (
               <>
+                <div className="field-group">
+                  <Input
+                    id="trustee-website"
+                    className="trustee-website-input"
+                    name="website"
+                    label="Website"
+                    value={formData.website || ''}
+                    onChange={handleFieldChange}
+                    errorMessage={fieldErrors['website']}
+                    type="website"
+                    autoComplete="off"
+                    {...isRequired('website')}
+                  />
+                </div>
+
                 <div className="field-group">
                   <ComboBox
                     id="trustee-districts"

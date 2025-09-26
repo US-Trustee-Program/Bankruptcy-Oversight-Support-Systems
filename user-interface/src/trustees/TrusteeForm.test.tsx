@@ -42,6 +42,7 @@ const TEST_TRUSTEE_DATA: TrusteeInput = {
       extension: '123',
     },
     email: 'jane.doe@example.com',
+    website: 'https://www.janedoe.com',
   },
   status: 'active' as const,
 } as const;
@@ -55,6 +56,7 @@ const TEST_PERSONAS = {
     zipCode: '62705',
     phone: '555-123-4567',
     email: 'john.smith@example.com',
+    website: 'https://www.johnsmith-trustee.com',
   },
   mariaRodriguez: {
     name: 'Maria Rodriguez',
@@ -65,6 +67,7 @@ const TEST_PERSONAS = {
     zipCode: '77002',
     phone: '555-987-6543',
     email: 'maria.rodriguez@example.com',
+    website: 'https://www.rodriguez-law.com',
   },
 } as const;
 
@@ -77,6 +80,7 @@ async function fillBasicTrusteeForm(
     zipCode: string;
     phone: string;
     email: string;
+    website: string;
   }> = {},
 ) {
   const data = { ...TEST_TRUSTEE_DATA, ...overrides };
@@ -87,19 +91,19 @@ async function fillBasicTrusteeForm(
 
   const address1Input = screen.getByTestId('trustee-address1');
   await userEvent.clear(address1Input);
-  await userEvent.type(address1Input, address.address1);
+  await userEvent.type(address1Input, data.public.address.address1);
 
   const cityInput = screen.getByTestId('trustee-city');
   await userEvent.clear(cityInput);
-  await userEvent.type(cityInput, address.city);
+  await userEvent.type(cityInput, data.public.address.city);
 
   const stateCombobox = screen.getByRole('combobox', { name: /state/i });
   await userEvent.click(stateCombobox);
-  await userEvent.click(screen.getByText(stateLabel));
+  await userEvent.click(screen.getByText(overrides.stateLabel ?? stateLabel));
 
   const zipInput = screen.getByTestId('trustee-zip');
   await userEvent.clear(zipInput);
-  await userEvent.type(zipInput, address.zipCode);
+  await userEvent.type(zipInput, overrides.zipCode ?? data.public.address.zipCode);
 
   const phoneInput = screen.getByTestId('trustee-phone');
   await userEvent.clear(phoneInput);
@@ -108,6 +112,15 @@ async function fillBasicTrusteeForm(
   const emailInput = screen.getByTestId('trustee-email');
   await userEvent.clear(emailInput);
   await userEvent.type(emailInput, data.public.email!);
+
+  const websiteInput = screen.getByTestId('trustee-website');
+  await userEvent.clear(websiteInput);
+
+  // Use null-coalescing to simplify website handling
+  const websiteValue = overrides.website ?? data.public.website ?? '';
+  if (websiteValue) {
+    await userEvent.type(websiteInput, websiteValue);
+  }
 }
 
 describe('TrusteeForm', () => {
@@ -423,6 +436,7 @@ describe('TrusteeForm', () => {
       expect(screen.getByTestId('trustee-phone')).toBeInTheDocument();
       expect(screen.getByTestId('trustee-extension')).toBeInTheDocument();
       expect(screen.getByTestId('trustee-email')).toBeInTheDocument();
+      expect(screen.getByTestId('trustee-website')).toBeInTheDocument();
       expect(document.getElementById('trustee-districts')).toBeInTheDocument();
       expect(document.getElementById('trustee-chapters')).toBeInTheDocument();
     });
@@ -548,9 +562,60 @@ describe('TrusteeForm', () => {
             },
             phone: { number: '555-123-4567' },
             email: TEST_TRUSTEE_DATA.public.email,
+            // website should NOT be included when the field is left empty
           },
           status: 'active' as const,
         });
+      });
+    });
+
+    test('includes website in form submission when provided', async () => {
+      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } });
+      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({
+          data: MockData.getCourts(),
+        }),
+        postTrustee: mockPostTrustee,
+      } as Partial<ReturnType<typeof UseApi2Module.useApi2>> as ReturnType<
+        typeof UseApi2Module.useApi2
+      >);
+
+      renderWithRouter();
+
+      const testWebsite = 'https://www.test-trustee-website.com';
+
+      // Fill all required fields and website
+      await fillBasicTrusteeForm({ website: testWebsite });
+
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      await waitFor(() => {
+        const calledArg = mockPostTrustee.mock.calls[0][0];
+        expect(calledArg.public.website).toBe(testWebsite);
+      });
+    });
+
+    test('excludes website from form submission when empty', async () => {
+      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } });
+      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({
+          data: MockData.getCourts(),
+        }),
+        postTrustee: mockPostTrustee,
+      } as Partial<ReturnType<typeof UseApi2Module.useApi2>> as ReturnType<
+        typeof UseApi2Module.useApi2
+      >);
+
+      renderWithRouter();
+
+      // Fill required fields without website
+      await fillBasicTrusteeForm({ website: '' });
+
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      await waitFor(() => {
+        const calledArg = mockPostTrustee.mock.calls[0][0];
+        expect(calledArg.public.website).toBeUndefined();
       });
     });
 
@@ -567,6 +632,168 @@ describe('TrusteeForm', () => {
       const submitButton = screen.getByRole('button', { name: /save/i });
       await waitFor(() => {
         expect(submitButton).not.toBeDisabled();
+      });
+    });
+
+    test.each([
+      { url: 'https://www.example.com', description: 'basic HTTPS URL' },
+      { url: 'http://example.org', description: 'basic HTTP URL' },
+      {
+        url: 'https://trustee-law.com/services/bankruptcy?ref=homepage#consultation',
+        description: 'URL with paths and query parameters',
+      },
+      { url: 'https://legal.example.co.uk/trustees', description: 'URL with different TLD' },
+    ])(
+      'validates website field with valid URLs - $description',
+      async ({ url }) => {
+        renderWithRouter();
+        await fillBasicTrusteeForm({ website: '' });
+
+        const websiteInput = screen.getByTestId('trustee-website');
+        await userEvent.clear(websiteInput);
+        await userEvent.type(websiteInput, url);
+        await userEvent.tab(); // Trigger validation
+
+        // Should not show validation error for valid URLs
+        expect(screen.queryByText('Website must be a valid URL')).not.toBeInTheDocument();
+      },
+      10000,
+    );
+
+    test.each([
+      { url: 'not-a-url', description: 'invalid text without URL structure' },
+      { url: 'just-text', description: 'plain text' },
+    ])('shows validation error for invalid website URLs - $description', async ({ url }) => {
+      renderWithRouter();
+      await fillBasicTrusteeForm({ website: '' });
+
+      const websiteInput = screen.getByTestId('trustee-website');
+      await userEvent.clear(websiteInput);
+      await userEvent.type(websiteInput, url);
+      await userEvent.tab(); // Trigger validation
+
+      // Should show validation error for invalid URLs
+      await waitFor(() => {
+        expect(screen.getByText('Website must be a valid URL')).toBeInTheDocument();
+      });
+    });
+
+    test('allows empty website field as it is optional', async () => {
+      renderWithRouter();
+
+      // Fill required fields without website
+      await fillBasicTrusteeForm({ website: '' });
+
+      const websiteInput = screen.getByTestId('trustee-website');
+      expect(websiteInput).toHaveValue('');
+
+      // Form should be submittable without website
+      const submitButton = screen.getByRole('button', { name: /save/i });
+      await waitFor(() => {
+        expect(submitButton).not.toBeDisabled();
+      });
+
+      // Should not show validation error for empty website
+      expect(screen.queryByText('Website must be a valid URL')).not.toBeInTheDocument();
+    });
+
+    test('accepts URLs without protocol and normalizes them on form submission', async () => {
+      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } });
+      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({
+          data: MockData.getCourts(),
+        }),
+        postTrustee: mockPostTrustee,
+      } as Partial<ReturnType<typeof UseApi2Module.useApi2>> as ReturnType<
+        typeof UseApi2Module.useApi2
+      >);
+
+      renderWithRouter();
+
+      // Test website URL without protocol
+      const websiteWithoutProtocol = 'www.trustee-website.com';
+      const expectedWebsiteWithProtocol = 'https://www.trustee-website.com';
+
+      // Fill all required fields with website without protocol
+      await fillBasicTrusteeForm({ website: websiteWithoutProtocol });
+
+      // Verify that the form accepts the URL without protocol (no validation error)
+      const websiteInput = screen.getByTestId('trustee-website');
+      expect(websiteInput).toHaveValue(websiteWithoutProtocol);
+      expect(screen.queryByText('Website must be a valid URL')).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      // Verify that the API was called with the normalized URL (with protocol)
+      await waitFor(() => {
+        const calledArg = mockPostTrustee.mock.calls[0][0];
+        expect(calledArg.public.website).toBe(expectedWebsiteWithProtocol);
+      });
+    });
+
+    test.each([
+      { url: 'www.example.com', description: 'www subdomain' },
+      { url: 'example.org', description: 'basic domain' },
+      { url: 'subdomain.example.com/path', description: 'subdomain with path' },
+      { url: 'example.com/path?query=1#section', description: 'domain with query parameters' },
+      { url: 'trustee-website.com', description: 'domain with hyphens' },
+      { url: 'jane-smith-trustee.com', description: 'complex domain with hyphens' },
+    ])('validates and accepts URLs without protocol - $description', async ({ url }) => {
+      renderWithRouter();
+      await fillBasicTrusteeForm({ website: '' });
+
+      const websiteInput = screen.getByTestId('trustee-website');
+      await userEvent.clear(websiteInput);
+      await userEvent.type(websiteInput, url);
+      await userEvent.tab(); // Trigger validation
+
+      // Should not show validation error for URLs without protocol
+      expect(screen.queryByText('Website must be a valid URL')).not.toBeInTheDocument();
+    });
+
+    test('shows validation error for unsupported protocols', async () => {
+      renderWithRouter();
+
+      // Fill required fields first
+      await fillBasicTrusteeForm({ website: '' });
+
+      const websiteInput = screen.getByTestId('trustee-website');
+
+      // Test unsupported protocol URLs that should show validation errors
+      await userEvent.clear(websiteInput);
+      await userEvent.type(websiteInput, 'ftp://example.com');
+      await userEvent.tab(); // Trigger validation
+
+      // Should show validation error for unsupported protocols
+      await waitFor(() => {
+        expect(screen.getByText('Website must be a valid URL')).toBeInTheDocument();
+      });
+    });
+
+    test('excludes website field entirely when website contains only whitespace', async () => {
+      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } });
+
+      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({
+          data: MockData.getCourts(),
+        }),
+        postTrustee: mockPostTrustee,
+      } as Partial<ReturnType<typeof UseApi2Module.useApi2>> as ReturnType<
+        typeof UseApi2Module.useApi2
+      >);
+
+      renderWithRouter();
+
+      // Fill required fields but with whitespace-only website (which normalizes to empty string)
+      await fillBasicTrusteeForm({ website: '   ' });
+
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      // Verify that the website field is completely excluded from the payload
+      await waitFor(() => {
+        const calledArg = mockPostTrustee.mock.calls[0][0];
+        expect(calledArg.public).not.toHaveProperty('website');
+        expect('website' in calledArg.public).toBe(false);
       });
     });
 
@@ -1512,11 +1739,32 @@ describe('TrusteeForm', () => {
       ).toBeInTheDocument();
     });
 
-    test('handles API error when loading districts', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    // Parameterized tests for district loading error scenarios
+    const districtLoadingErrorCases = [
+      {
+        name: 'handles API error when loading districts',
+        mockImplementation: () => vi.fn().mockRejectedValue(new Error('Network error')),
+        needsConsoleErrorSpy: true,
+      },
+      {
+        name: 'handles empty response when loading districts',
+        mockImplementation: () => vi.fn().mockResolvedValue({ data: null }),
+        needsConsoleErrorSpy: false,
+      },
+      {
+        name: 'handles missing data property when loading districts',
+        mockImplementation: () => vi.fn().mockResolvedValue({}),
+        needsConsoleErrorSpy: false,
+      },
+    ];
+
+    test.each(districtLoadingErrorCases)('$name', async (testCase) => {
+      const consoleErrorSpy = testCase.needsConsoleErrorSpy
+        ? vi.spyOn(console, 'error').mockImplementation(() => {})
+        : null;
 
       vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
-        getCourts: vi.fn().mockRejectedValue(new Error('Network error')),
+        getCourts: testCase.mockImplementation(),
         postTrustee: vi.fn(),
       } as Partial<ReturnType<typeof UseApi2Module.useApi2>> as ReturnType<
         typeof UseApi2Module.useApi2
@@ -1540,63 +1788,9 @@ describe('TrusteeForm', () => {
         expect(inputField).toHaveAttribute('placeholder', 'Error loading districts');
       });
 
-      consoleErrorSpy.mockRestore();
-    });
-
-    test('handles empty response when loading districts', async () => {
-      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
-        getCourts: vi.fn().mockResolvedValue({
-          data: null,
-        }),
-        postTrustee: vi.fn(),
-      } as Partial<ReturnType<typeof UseApi2Module.useApi2>> as ReturnType<
-        typeof UseApi2Module.useApi2
-      >);
-
-      renderWithRouter();
-
-      // Wait for error handling and click to expand combobox
-      await waitFor(() => {
-        const districtCombobox = screen.getByRole('combobox', { name: /district/i });
-        expect(districtCombobox).toBeInTheDocument();
-      });
-
-      // Click to expand the combobox and reveal the input with placeholder
-      const districtCombobox = screen.getByRole('combobox', { name: /district/i });
-      await userEvent.click(districtCombobox);
-
-      // Check for the placeholder on the input field when expanded
-      await waitFor(() => {
-        const inputField = screen.getByTestId('combo-box-input');
-        expect(inputField).toHaveAttribute('placeholder', 'Error loading districts');
-      });
-    });
-
-    test('handles missing data property when loading districts', async () => {
-      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
-        getCourts: vi.fn().mockResolvedValue({}),
-        postTrustee: vi.fn(),
-      } as Partial<ReturnType<typeof UseApi2Module.useApi2>> as ReturnType<
-        typeof UseApi2Module.useApi2
-      >);
-
-      renderWithRouter();
-
-      // Wait for error handling and click to expand combobox
-      await waitFor(() => {
-        const districtCombobox = screen.getByRole('combobox', { name: /district/i });
-        expect(districtCombobox).toBeInTheDocument();
-      });
-
-      // Click to expand the combobox and reveal the input with placeholder
-      const districtCombobox = screen.getByRole('combobox', { name: /district/i });
-      await userEvent.click(districtCombobox);
-
-      // Check for the placeholder on the input field when expanded
-      await waitFor(() => {
-        const inputField = screen.getByTestId('combo-box-input');
-        expect(inputField).toHaveAttribute('placeholder', 'Error loading districts');
-      });
+      if (consoleErrorSpy) {
+        consoleErrorSpy.mockRestore();
+      }
     });
 
     test('sorts district options alphabetically', async () => {
