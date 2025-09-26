@@ -9,6 +9,7 @@ import { CamsSession } from '@common/cams/session';
 import { CamsUser } from '@common/cams/users';
 import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
 import { initializeSessionEndLogout } from './session-end-logout';
+import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 
 type SessionState = {
   isLoaded: boolean;
@@ -65,6 +66,7 @@ export function Session(props: SessionProps) {
   const navigator = useCamsNavigator();
   const location = useLocation();
   const { state, actions } = useStateAndActions();
+  const { appInsights } = getAppInsights();
 
   useEffect(() => {
     const preflight: CamsSession = { accessToken, provider, user, expires, issuer };
@@ -85,6 +87,13 @@ export function Session(props: SessionProps) {
   }
 
   if (state.isError) {
+    appInsights.trackEvent(
+      { name: 'Session state error' },
+      {
+        error: { message: state.errorMessage },
+        note: `This is a session state error. This did not occur during login.`,
+      },
+    );
     return <AccessDenied message={state.errorMessage ?? undefined}></AccessDenied>;
   }
 
