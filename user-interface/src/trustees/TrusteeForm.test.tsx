@@ -680,7 +680,7 @@ describe('TrusteeForm', () => {
       const websiteInput = screen.getByTestId('trustee-website');
 
       // Test invalid website URLs
-      const invalidUrls = ['not-a-url', 'ftp://invalid-protocol.com', 'just-text'];
+      const invalidUrls = ['not-a-url', 'just-text'];
 
       for (const url of invalidUrls) {
         await userEvent.clear(websiteInput);
@@ -774,6 +774,52 @@ describe('TrusteeForm', () => {
         // Should not show validation error for URLs without protocol
         expect(screen.queryByText('Website must be a valid URL')).not.toBeInTheDocument();
       }
+    });
+
+    test('shows validation error for unsupported protocols', async () => {
+      renderWithRouter();
+
+      // Fill required fields first
+      await fillBasicTrusteeForm({ website: '' });
+
+      const websiteInput = screen.getByTestId('trustee-website');
+
+      // Test unsupported protocol URLs that should show validation errors
+      await userEvent.clear(websiteInput);
+      await userEvent.type(websiteInput, 'ftp://example.com');
+      await userEvent.tab(); // Trigger validation
+
+      // Should show validation error for unsupported protocols
+      await waitFor(() => {
+        expect(screen.getByText('Website must be a valid URL')).toBeInTheDocument();
+      });
+    });
+
+    test('excludes website field entirely when website contains only whitespace', async () => {
+      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } });
+
+      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({
+          data: MockData.getCourts(),
+        }),
+        postTrustee: mockPostTrustee,
+      } as Partial<ReturnType<typeof UseApi2Module.useApi2>> as ReturnType<
+        typeof UseApi2Module.useApi2
+      >);
+
+      renderWithRouter();
+
+      // Fill required fields but with whitespace-only website (which normalizes to empty string)
+      await fillBasicTrusteeForm({ website: '   ' });
+
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      // Verify that the website field is completely excluded from the payload
+      await waitFor(() => {
+        const calledArg = mockPostTrustee.mock.calls[0][0];
+        expect(calledArg.public).not.toHaveProperty('website');
+        expect('website' in calledArg.public).toBe(false);
+      });
     });
 
     test('includes districts and chapters in submission when selected', async () => {

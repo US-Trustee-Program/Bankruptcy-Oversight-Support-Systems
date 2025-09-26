@@ -20,7 +20,7 @@ export const WEBSITE_RELAXED_REGEX =
 /**
  * Normalizes a website URL by adding https:// protocol if it doesn't exist
  * @param url - The URL to normalize
- * @returns The normalized URL with protocol, or empty string if input was empty/invalid
+ * @returns The normalized URL with protocol, or empty string if input was empty/invalid or has unsupported protocol
  */
 export function normalizeWebsiteUrl(url: string | undefined): string {
   if (!url || typeof url !== 'string') {
@@ -32,10 +32,17 @@ export function normalizeWebsiteUrl(url: string | undefined): string {
     return '';
   }
 
-  // If it already has a protocol, return as-is
+  // Check if it already has a supported protocol (http or https)
   if (/^https?:\/\//.test(trimmedUrl)) {
     return trimmedUrl;
   }
 
+  // Check if it has any protocol at all (e.g., ftp://, mailto:, etc.)
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmedUrl)) {
+    // Has an unsupported protocol, return empty string to indicate invalid input
+    return '';
+  }
+
+  // No protocol found, add https://
   return `https://${trimmedUrl}`;
 }
