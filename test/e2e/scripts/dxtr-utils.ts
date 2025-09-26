@@ -5,7 +5,7 @@ import { CaseBasics } from '../../../common/src/cams/cases';
 import {
   KNOWN_GOOD_TRANSFER_FROM_CASE_ID,
   KNOWN_GOOD_TRANSFER_TO_CASE_ID,
-} from './data-generation-utils';
+} from '../../../backend/function-apps/dataflows/e2e/data-generation-utils';
 
 export async function getCasesFromDxtr(appContext: ApplicationContext) {
   const casesGateway = getCasesGateway(appContext);
