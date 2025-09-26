@@ -9,6 +9,7 @@ export interface TrusteeDetailProfileProps {
   districtLabels: string[];
   onEditPublicProfile: () => void;
   onEditInternalProfile: () => void;
+  onEditOtherInformation: () => void;
 }
 
 export default function TrusteeDetailProfile({
@@ -16,6 +17,7 @@ export default function TrusteeDetailProfile({
   districtLabels,
   onEditPublicProfile,
   onEditInternalProfile,
+  onEditOtherInformation,
 }: Readonly<TrusteeDetailProfileProps>) {
   return (
     <div className="right-side-screen-content">
@@ -47,6 +49,25 @@ export default function TrusteeDetailProfile({
               {trustee.chapters?.map(formatChapterType).join(', ')}
             </div>
             <div className="trustee-status">Status: {trustee.status}</div>
+          </div>
+          <div className="trustee-other-information record-detail-card">
+            <div className="title-bar">
+              <h3>Other Information</h3>
+              <Button
+                uswdsStyle={UswdsButtonStyle.Unstyled}
+                aria-label="Edit other trustee information"
+                title="Edit other trustee information"
+                onClick={onEditOtherInformation}
+              >
+                <IconLabel icon="edit" label="Edit" />
+              </Button>
+            </div>
+            {trustee.banks &&
+              trustee.banks.map((bank, index) => (
+                <div key={index} className="trustee-bank">
+                  Bank: {bank}
+                </div>
+              ))}
           </div>
         </div>
         <div className="record-detail-card-list">

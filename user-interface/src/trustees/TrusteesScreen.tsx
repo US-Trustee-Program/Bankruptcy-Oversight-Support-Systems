@@ -4,7 +4,7 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import TrusteesList from './TrusteesList';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
-import { TrusteeFormState } from '@/trustees/UseTrusteeForm';
+import { TrusteeFormState } from '@/trustees/forms/UseTrusteeContactForm';
 
 export default function TrusteesScreen() {
   const flags = useFeatureFlags();
