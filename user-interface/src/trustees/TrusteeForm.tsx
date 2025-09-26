@@ -90,6 +90,7 @@ function TrusteeForm() {
           },
           phone: { number: formData.phone, extension: formData.extension },
           email: formData.email,
+          website: formData.website,
         },
         ...(formData.districts &&
           formData.districts.length > 0 && { districts: formData.districts }),
@@ -459,6 +460,21 @@ function TrusteeForm() {
 
             {(doCreate || doEditPublicProfile) && (
               <>
+                <div className="field-group">
+                  <Input
+                    id="trustee-website"
+                    className="trustee-website-input"
+                    name="website"
+                    label="Website"
+                    value={formData.website || ''}
+                    onChange={handleFieldChange}
+                    errorMessage={fieldErrors['website']}
+                    type="website"
+                    autoComplete="off"
+                    {...isRequired('website')}
+                  />
+                </div>
+
                 <div className="field-group">
                   <ComboBox
                     id="trustee-districts"

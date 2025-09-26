@@ -295,6 +295,141 @@ describe('FormattedAddress component', () => {
     });
   });
 
+  describe('website display', () => {
+    test('should render website as link when showLinks is true (default)', () => {
+      const contactWithWebsite: ContactInformation = {
+        address: {
+          address1: '123 Website St',
+          city: 'Austin',
+          state: 'TX',
+          zipCode: '78701',
+          countryCode: 'US',
+        },
+        website: 'https://www.example-trustee.com',
+      };
+
+      renderComponent({ contact: contactWithWebsite, testIdPrefix: 'website-link' });
+
+      expect(screen.getByTestId('website-link-website')).toBeInTheDocument();
+      const websiteLink = screen.getByRole('link', { name: /www\.example-trustee\.com/ });
+      expect(websiteLink).toHaveAttribute('href', 'https://www.example-trustee.com');
+    });
+
+    test('should render website as plain text when showLinks is false', () => {
+      const contactWithWebsite: ContactInformation = {
+        address: {
+          address1: '123 Website St',
+          city: 'Austin',
+          state: 'TX',
+          zipCode: '78701',
+          countryCode: 'US',
+        },
+        website: 'https://www.example-trustee.com',
+      };
+
+      renderComponent({
+        contact: contactWithWebsite,
+        showLinks: false,
+        testIdPrefix: 'website-text',
+      });
+
+      expect(screen.getByTestId('website-text-website')).toHaveTextContent(
+        'https://www.example-trustee.com',
+      );
+      expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    });
+
+    test('should not render website element when website is undefined', () => {
+      const contactWithoutWebsite: ContactInformation = {
+        address: {
+          address1: '123 No Website St',
+          city: 'Denver',
+          state: 'CO',
+          zipCode: '80202',
+          countryCode: 'US',
+        },
+        email: 'no-website@example.com',
+      };
+
+      renderComponent({ contact: contactWithoutWebsite, testIdPrefix: 'no-website' });
+
+      expect(screen.queryByTestId('no-website-website')).not.toBeInTheDocument();
+      expect(screen.getByTestId('no-website-email')).toBeInTheDocument();
+    });
+
+    test('should not render website element when website is empty string', () => {
+      const contactWithEmptyWebsite: ContactInformation = {
+        address: {
+          address1: '123 Empty Website St',
+          city: 'Phoenix',
+          state: 'AZ',
+          zipCode: '85001',
+          countryCode: 'US',
+        },
+        website: '',
+        email: 'empty-website@example.com',
+      };
+
+      renderComponent({ contact: contactWithEmptyWebsite, testIdPrefix: 'empty-website' });
+
+      expect(screen.queryByTestId('empty-website-website')).not.toBeInTheDocument();
+      expect(screen.getByTestId('empty-website-email')).toBeInTheDocument();
+    });
+
+    test('should generate correct testId when testIdPrefix is provided', () => {
+      const contactWithWebsite: ContactInformation = {
+        address: {
+          address1: '123 TestId St',
+          city: 'Portland',
+          state: 'OR',
+          zipCode: '97201',
+          countryCode: 'US',
+        },
+        website: 'https://www.testid-example.com',
+      };
+
+      renderComponent({ contact: contactWithWebsite, testIdPrefix: 'custom-prefix' });
+
+      expect(screen.getByTestId('custom-prefix-website')).toBeInTheDocument();
+    });
+
+    test('should not have testId when testIdPrefix is not provided', () => {
+      const contactWithWebsite: ContactInformation = {
+        address: {
+          address1: '123 No TestId St',
+          city: 'Seattle',
+          state: 'WA',
+          zipCode: '98101',
+          countryCode: 'US',
+        },
+        website: 'https://www.no-testid.com',
+      };
+
+      renderComponent({ contact: contactWithWebsite });
+
+      const websiteElement = screen.getByText('https://www.no-testid.com').closest('.website');
+      expect(websiteElement).not.toHaveAttribute('data-testid');
+    });
+
+    test('should have correct CSS class for website element', () => {
+      const contactWithWebsite: ContactInformation = {
+        address: {
+          address1: '123 CSS Class St',
+          city: 'Miami',
+          state: 'FL',
+          zipCode: '33101',
+          countryCode: 'US',
+        },
+        website: 'https://www.css-class-test.com',
+      };
+
+      renderComponent({ contact: contactWithWebsite });
+
+      const websiteElement = screen.getByText('https://www.css-class-test.com').closest('.website');
+      expect(websiteElement).toHaveClass('website');
+    });
+  });
+
   describe('styling and layout', () => {
     test('should have the correct CSS classes', () => {
       renderComponent({ contact: mockFullContact });

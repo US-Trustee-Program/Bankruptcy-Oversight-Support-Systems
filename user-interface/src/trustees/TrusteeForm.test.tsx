@@ -42,6 +42,7 @@ const TEST_TRUSTEE_DATA: TrusteeInput = {
       extension: '123',
     },
     email: 'jane.doe@example.com',
+    website: 'https://www.janedoe.com',
   },
   status: 'active' as const,
 } as const;
@@ -55,6 +56,7 @@ const TEST_PERSONAS = {
     zipCode: '62705',
     phone: '555-123-4567',
     email: 'john.smith@example.com',
+    website: 'https://www.johnsmith-trustee.com',
   },
   mariaRodriguez: {
     name: 'Maria Rodriguez',
@@ -65,6 +67,7 @@ const TEST_PERSONAS = {
     zipCode: '77002',
     phone: '555-987-6543',
     email: 'maria.rodriguez@example.com',
+    website: 'https://www.rodriguez-law.com',
   },
 } as const;
 
@@ -77,6 +80,7 @@ async function fillBasicTrusteeForm(
     zipCode: string;
     phone: string;
     email: string;
+    website: string;
   }> = {},
 ) {
   const data = { ...TEST_TRUSTEE_DATA, ...overrides };
@@ -87,19 +91,19 @@ async function fillBasicTrusteeForm(
 
   const address1Input = screen.getByTestId('trustee-address1');
   await userEvent.clear(address1Input);
-  await userEvent.type(address1Input, address.address1);
+  await userEvent.type(address1Input, data.public.address.address1);
 
   const cityInput = screen.getByTestId('trustee-city');
   await userEvent.clear(cityInput);
-  await userEvent.type(cityInput, address.city);
+  await userEvent.type(cityInput, data.public.address.city);
 
   const stateCombobox = screen.getByRole('combobox', { name: /state/i });
   await userEvent.click(stateCombobox);
-  await userEvent.click(screen.getByText(stateLabel));
+  await userEvent.click(screen.getByText(overrides.stateLabel || stateLabel));
 
   const zipInput = screen.getByTestId('trustee-zip');
   await userEvent.clear(zipInput);
-  await userEvent.type(zipInput, address.zipCode);
+  await userEvent.type(zipInput, overrides.zipCode || data.public.address.zipCode);
 
   const phoneInput = screen.getByTestId('trustee-phone');
   await userEvent.clear(phoneInput);
@@ -108,6 +112,21 @@ async function fillBasicTrusteeForm(
   const emailInput = screen.getByTestId('trustee-email');
   await userEvent.clear(emailInput);
   await userEvent.type(emailInput, data.public.email!);
+
+  const websiteInput = screen.getByTestId('trustee-website');
+  await userEvent.clear(websiteInput);
+
+  // Only fill website if explicitly provided in overrides or if overrides don't specify website at all AND default data has it
+  if (overrides.website !== undefined) {
+    // If website is explicitly in overrides (even if empty string), use that value
+    if (overrides.website) {
+      await userEvent.type(websiteInput, overrides.website);
+    }
+    // If overrides.website is '', leave field empty (already cleared)
+  } else if (data.public.website) {
+    // Only use default data if overrides don't specify website at all
+    await userEvent.type(websiteInput, data.public.website);
+  }
 }
 
 describe('TrusteeForm', () => {
@@ -423,6 +442,7 @@ describe('TrusteeForm', () => {
       expect(screen.getByTestId('trustee-phone')).toBeInTheDocument();
       expect(screen.getByTestId('trustee-extension')).toBeInTheDocument();
       expect(screen.getByTestId('trustee-email')).toBeInTheDocument();
+      expect(screen.getByTestId('trustee-website')).toBeInTheDocument();
       expect(document.getElementById('trustee-districts')).toBeInTheDocument();
       expect(document.getElementById('trustee-chapters')).toBeInTheDocument();
     });
@@ -548,9 +568,60 @@ describe('TrusteeForm', () => {
             },
             phone: { number: '555-123-4567' },
             email: TEST_TRUSTEE_DATA.public.email,
+            // website should NOT be included when the field is left empty
           },
           status: 'active' as const,
         });
+      });
+    });
+
+    test('includes website in form submission when provided', async () => {
+      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } });
+      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({
+          data: MockData.getCourts(),
+        }),
+        postTrustee: mockPostTrustee,
+      } as Partial<ReturnType<typeof UseApi2Module.useApi2>> as ReturnType<
+        typeof UseApi2Module.useApi2
+      >);
+
+      renderWithRouter();
+
+      const testWebsite = 'https://www.test-trustee-website.com';
+
+      // Fill all required fields and website
+      await fillBasicTrusteeForm({ website: testWebsite });
+
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      await waitFor(() => {
+        const calledArg = mockPostTrustee.mock.calls[0][0];
+        expect(calledArg.public.website).toBe(testWebsite);
+      });
+    });
+
+    test('excludes website from form submission when empty', async () => {
+      const mockPostTrustee = vi.fn().mockResolvedValue({ data: { id: 'trustee-123' } });
+      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({
+          data: MockData.getCourts(),
+        }),
+        postTrustee: mockPostTrustee,
+      } as Partial<ReturnType<typeof UseApi2Module.useApi2>> as ReturnType<
+        typeof UseApi2Module.useApi2
+      >);
+
+      renderWithRouter();
+
+      // Fill required fields without website
+      await fillBasicTrusteeForm({ website: '' });
+
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      await waitFor(() => {
+        const calledArg = mockPostTrustee.mock.calls[0][0];
+        expect(calledArg.public.website).toBeUndefined();
       });
     });
 
@@ -568,6 +639,83 @@ describe('TrusteeForm', () => {
       await waitFor(() => {
         expect(submitButton).not.toBeDisabled();
       });
+    });
+
+    test('validates website field with valid URLs', async () => {
+      renderWithRouter();
+
+      // Fill required fields first
+      await fillBasicTrusteeForm({ website: '' });
+
+      const websiteInput = screen.getByTestId('trustee-website');
+
+      // Test comprehensive set of valid website URLs
+      const validUrls = [
+        // Basic formats
+        'https://www.example.com',
+        'http://example.org',
+        // URLs with paths and query parameters
+        'https://trustee-law.com/services/bankruptcy?ref=homepage#consultation',
+        // Different TLDs
+        'https://legal.example.co.uk/trustees',
+      ];
+
+      // Test each valid URL - they should all pass validation
+      for (const url of validUrls) {
+        await userEvent.clear(websiteInput);
+        await userEvent.type(websiteInput, url);
+        await userEvent.tab(); // Trigger validation
+
+        // Should not show validation error for valid URLs
+        expect(screen.queryByText('Website must be a valid URL')).not.toBeInTheDocument();
+      }
+    }, 10000);
+
+    test('shows validation error for invalid website URLs', async () => {
+      renderWithRouter();
+
+      // Fill required fields first
+      await fillBasicTrusteeForm({ website: '' });
+
+      const websiteInput = screen.getByTestId('trustee-website');
+
+      // Test invalid website URLs
+      const invalidUrls = [
+        'not-a-url',
+        'ftp://invalid-protocol.com',
+        'just-text',
+        'www.no-protocol.com',
+      ];
+
+      for (const url of invalidUrls) {
+        await userEvent.clear(websiteInput);
+        await userEvent.type(websiteInput, url);
+        await userEvent.tab(); // Trigger validation
+
+        // Should show validation error for invalid URLs
+        await waitFor(() => {
+          expect(screen.getByText('Website must be a valid URL')).toBeInTheDocument();
+        });
+      }
+    });
+
+    test('allows empty website field as it is optional', async () => {
+      renderWithRouter();
+
+      // Fill required fields without website
+      await fillBasicTrusteeForm({ website: '' });
+
+      const websiteInput = screen.getByTestId('trustee-website');
+      expect(websiteInput).toHaveValue('');
+
+      // Form should be submittable without website
+      const submitButton = screen.getByRole('button', { name: /save/i });
+      await waitFor(() => {
+        expect(submitButton).not.toBeDisabled();
+      });
+
+      // Should not show validation error for empty website
+      expect(screen.queryByText('Website must be a valid URL')).not.toBeInTheDocument();
     });
 
     test('includes districts and chapters in submission when selected', async () => {

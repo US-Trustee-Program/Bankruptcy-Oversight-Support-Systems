@@ -13,7 +13,13 @@ import {
   ValidationSpec,
 } from '@common/cams/validation';
 import V from '@common/cams/validators';
-import { EMAIL_REGEX, EXTENSION_REGEX, PHONE_REGEX, ZIP_REGEX } from '@common/cams/regex';
+import {
+  EMAIL_REGEX,
+  EXTENSION_REGEX,
+  PHONE_REGEX,
+  WEBSITE_REGEX,
+  ZIP_REGEX,
+} from '@common/cams/regex';
 
 export const TRUSTEE_SPEC: Readonly<ValidationSpec<TrusteeFormData>> = {
   name: [V.minLength(1, 'Trustee name is required'), V.maxLength(50)],
@@ -23,6 +29,7 @@ export const TRUSTEE_SPEC: Readonly<ValidationSpec<TrusteeFormData>> = {
   state: [V.exactLength(2, 'State is required')],
   zipCode: [V.matches(ZIP_REGEX, 'ZIP code must be 5 digits or 9 digits with a hyphen')],
   email: [V.matches(EMAIL_REGEX, 'Email must be a valid email address'), V.maxLength(50)],
+  website: [V.optional(V.matches(WEBSITE_REGEX, 'Website must be a valid URL'), V.maxLength(255))],
   phone: [V.matches(PHONE_REGEX, 'Phone must be a valid phone number')],
   extension: [V.optional(V.matches(EXTENSION_REGEX, 'Extension must be 1 to 6 digits'))],
   status: [V.isInSet<TrusteeStatus>([...TRUSTEE_STATUS_VALUES])],
@@ -38,6 +45,7 @@ export interface TrusteeFormData {
   phone: string;
   extension?: string;
   email: string;
+  website?: string;
   districts?: string[];
   chapters?: ChapterType[];
   status: TrusteeStatus;
@@ -67,7 +75,11 @@ function validateField(
   const stringValue = String(value);
   const trimmedValue = stringValue.trim();
 
-  if (field === 'status' || (field === 'extension' && !trimmedValue)) {
+  if (
+    field === 'status' ||
+    (field === 'extension' && !trimmedValue) ||
+    (field === 'website' && !trimmedValue)
+  ) {
     return null;
   }
 
@@ -104,6 +116,7 @@ export function useTrusteeForm({ initialState }: UseTrusteeFormProps) {
       phone: info?.phone?.number ?? '',
       extension: info?.phone?.extension ?? '',
       email: info?.email ?? '',
+      website: info?.website ?? '',
       districts: initialState.trustee?.districts ?? [],
       chapters: initialState.trustee?.chapters ?? [],
       status: initialState.trustee?.status ?? 'active',
@@ -136,6 +149,7 @@ export function useTrusteeForm({ initialState }: UseTrusteeFormProps) {
       phone: formData.phone.trim(),
       extension: formData.extension?.trim() || undefined,
       email: formData.email.trim(),
+      website: formData.website?.trim() || undefined,
       districts:
         formData.districts && formData.districts.length > 0 ? formData.districts : undefined,
       chapters: formData.chapters && formData.chapters.length > 0 ? formData.chapters : undefined,

@@ -90,6 +90,20 @@ const formatEmail = (
   }
 };
 
+const formatWebsite = (
+  contact: ContactInformation,
+  showLinks: boolean,
+  getTestId: (s: string) => string | undefined,
+): React.ReactNode | undefined => {
+  if (contact.website) {
+    return (
+      <div key="website" className="website" data-testid={getTestId('website')}>
+        {showLinks ? <CommsLink contact={contact} mode={'website'} /> : contact.website}
+      </div>
+    );
+  }
+};
+
 export type FormattedContactProps = {
   className?: string;
   contact?: ContactInformation;
@@ -104,7 +118,7 @@ export default function FormattedContact(props: Readonly<FormattedContactProps>)
     return <>(none)</>;
   }
 
-  const formatters = [formatAddress, formatPhone, formatEmail];
+  const formatters = [formatAddress, formatPhone, formatEmail, formatWebsite];
   const getTestId = (suffix: string) => (testIdPrefix ? `${testIdPrefix}-${suffix}` : undefined);
 
   const children = formatters.reduce((acc, formatter) => {

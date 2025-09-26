@@ -14,6 +14,7 @@ import {
   EMAIL_REGEX,
   EXTENSION_REGEX,
   PHONE_REGEX,
+  WEBSITE_REGEX,
   ZIP_REGEX,
 } from '../../../../common/src/cams/regex';
 import { BadRequestError } from '../../common-errors/bad-request';
@@ -231,6 +232,9 @@ const contactInformationSpec: ValidationSpec<ContactInformation> = {
   address: [V.spec(addressSpec)],
   phone: [V.optional(V.spec(phoneSpec))],
   email: [V.optional(V.matches(EMAIL_REGEX, 'Provided email does not match regular expression'))],
+  website: [
+    V.optional(V.matches(WEBSITE_REGEX, 'Provided website does not match regular expression')),
+  ],
 };
 
 const trusteeSpec: ValidationSpec<TrusteeInput> = {

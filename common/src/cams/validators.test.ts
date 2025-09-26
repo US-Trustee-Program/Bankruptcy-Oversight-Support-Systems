@@ -318,6 +318,99 @@ describe('validators', () => {
     });
   });
 
+  describe('isWebsiteAddress', () => {
+    const testCases = [
+      {
+        description: 'should return valid for properly formatted http website',
+        value: 'http://www.example.com',
+        expected: VALID,
+      },
+      {
+        description: 'should return valid for properly formatted https website',
+        value: 'https://www.example.com',
+        expected: VALID,
+      },
+      {
+        description: 'should return valid for website without www',
+        value: 'https://example.com',
+        expected: VALID,
+      },
+      {
+        description: 'should return valid for website with subdomain',
+        value: 'https://mail.example.com',
+        expected: VALID,
+      },
+      {
+        description: 'should return valid for website with path',
+        value: 'https://www.example.com/path/to/page',
+        expected: VALID,
+      },
+      {
+        description: 'should return valid for website with query parameters',
+        value: 'https://www.example.com/search?q=test&sort=name',
+        expected: VALID,
+      },
+      {
+        description: 'should return valid for website with fragment',
+        value: 'https://www.example.com/page#section',
+        expected: VALID,
+      },
+      {
+        description: 'should return invalid for website with port (not supported by current regex)',
+        value: 'https://www.example.com:8080',
+        expected: { reasons: ['Must be a valid website address'] },
+      },
+      {
+        description: 'should return valid for Chapter 13 trustee website example',
+        value: 'https://www.ch13-trustee.com',
+        expected: VALID,
+      },
+      {
+        description: 'should return valid for trustee website with hyphen',
+        value: 'https://jane-smith-trustee.com',
+        expected: VALID,
+      },
+      {
+        description: 'should return invalid for website without protocol',
+        value: 'www.example.com',
+        expected: { reasons: ['Must be a valid website address'] },
+      },
+      {
+        description: 'should return invalid for website with only protocol',
+        value: 'https://',
+        expected: { reasons: ['Must be a valid website address'] },
+      },
+      {
+        description: 'should return invalid for website without domain',
+        value: 'https://www',
+        expected: { reasons: ['Must be a valid website address'] },
+      },
+      {
+        description: 'should return invalid for website with invalid protocol',
+        value: 'ftp://www.example.com',
+        expected: { reasons: ['Must be a valid website address'] },
+      },
+      {
+        description: 'should return invalid for website with spaces',
+        value: 'https://www.example .com',
+        expected: { reasons: ['Must be a valid website address'] },
+      },
+      {
+        description: 'should return invalid for empty string',
+        value: '',
+        expected: { reasons: ['Must be a valid website address'] },
+      },
+      {
+        description: 'should return invalid for non-string values',
+        value: 123,
+        expected: { reasons: ['Must be a valid website address'] },
+      },
+    ];
+    test.each(testCases)('$description', (testCase) => {
+      expect(Validators.isWebsiteAddress(testCase.value)).toEqual(testCase.expected);
+    });
+  });
+
   describe('isInSet', () => {
     const testCases = [
       {
