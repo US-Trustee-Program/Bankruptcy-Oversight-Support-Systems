@@ -86,8 +86,16 @@ jobs:
           npm ci
           npx playwright install chromium msedge
 
-      - name: Seed e2e database ##If E2E CosmosDB exists and has been seeded, we do not want to seed again
-        if: ${{ inputs.e2eCosmosDbExists == 'false' }}
+      - name: Set Dataflow Import Endpoint
+        run: |
+          # Build the endpoint for the dataflow import using workflow inputs
+          if [[ "${{ inputs.slotName }}" == "production" ]]; then
+            echo "DATAFLOW_IMPORT_URL=https://${{ inputs.dataflowsFunctionName }}.azurewebsites.net/import/load-e2e-db" >> $GITHUB_ENV
+          else
+            echo "DATAFLOW_IMPORT_URL=https://${{ inputs.dataflowsFunctionName }}-${{ inputs.slotName }}.azurewebsites.net/import/load-e2e-db" >> $GITHUB_ENV
+          fi
+
+      - name: Seed e2e database
         run: |
           e2eDatabaseName="${{ secrets.AZ_COSMOS_DATABASE_NAME }}-e2e"
           if [[ ${{ inputs.ghaEnvironment }} != "Main-Gov" ]]; then
