@@ -375,7 +375,7 @@ while [[ $# -gt 0 ]]; do
 
     --e2eDatabaseName)
         inputParams+=("${1}")
-        e2eDatabaseName="e2eDatabaseName=-${2}"
+        e2eDatabaseName="e2eDatabaseName=${2}"
         deployment_parameters="${deployment_parameters} ${e2eDatabaseName}"
         shift 2
         ;;
