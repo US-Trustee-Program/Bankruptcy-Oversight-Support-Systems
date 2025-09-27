@@ -462,12 +462,6 @@ var baseApplicationSettings = concat(
 
 //Data Flows Function Application Settings
 var dataflowsApplicationSettings = concat(
-  [
-    {
-      name: 'AzureWebJobsStorage'
-      value: 'DefaultEndpointsProtocol=https;AccountName=${dataflowsFunctionStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${dataflowsFunctionStorageAccount.listKeys().keys[0].value}'
-    }
-  ],
   baseApplicationSettings,
   createApplicationInsights
     ? [{ name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: dataflowsFunctionAppInsights.outputs.connectionString }]
