@@ -1,11 +1,11 @@
-import { ApplicationContext } from '../../../backend/lib/adapters/types/basic';
-import { getCasesGateway } from '../../../backend/lib/factory';
-import { CasesSearchPredicate } from '../../../common/src/api/search';
-import { CaseBasics } from '../../../common/src/cams/cases';
+import { ApplicationContext } from '../../../lib/adapters/types/basic';
+import { getCasesGateway } from '../../../lib/factory';
+import { CasesSearchPredicate } from '../../../../common/src/api/search';
+import { CaseBasics } from '../../../../common/src/cams/cases';
 import {
   KNOWN_GOOD_TRANSFER_FROM_CASE_ID,
   KNOWN_GOOD_TRANSFER_TO_CASE_ID,
-} from '../../../backend/function-apps/dataflows/e2e/data-generation-utils';
+} from './data-generation-utils';
 
 export async function getCasesFromDxtr(appContext: ApplicationContext) {
   const casesGateway = getCasesGateway(appContext);
