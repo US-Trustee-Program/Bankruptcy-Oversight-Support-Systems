@@ -6,13 +6,13 @@ import { CaseBasics, CaseSummary, getCaseIdParts } from '../../../../common/src/
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { OrdersUseCase } from '../../../lib/use-cases/orders/orders';
 import { ConsolidationOrder, TransferOrder } from '../../../../common/src/cams/orders';
-import { extractAndPrepareSqlData } from '../../../../test/e2e/scripts/dxtr-utils';
+import { extractAndPrepareSqlData } from './dxtr-utils';
 import {
   insertConsolidationOrders,
   insertTransferOrders,
   insertTrustees,
   syncCases,
-} from '../../../../test/e2e/scripts/cosmos-utils';
+} from './db-utils';
 import { Trustee } from '../../../../common/src/cams/trustees';
 
 export const KNOWN_GOOD_TRANSFER_FROM_CASE_NUMBER = '65-67641';
