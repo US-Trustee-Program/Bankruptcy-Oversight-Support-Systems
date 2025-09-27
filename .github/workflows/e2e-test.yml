@@ -25,4 +25,5 @@ jobs:
       ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
       branchHashId: ${{ needs.setup.outputs.environmentHash }}
       e2eCosmosDbExists: true
+      dataflowsFunctionName: ${{ needs.setup.outputs.dataflowsFunctionName }}
     secrets: inherit # pragma: allowlist secret

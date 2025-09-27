@@ -1,7 +1,22 @@
-import { seedCosmosE2eDatabase } from '../../../backend/function-apps/dataflows/e2e/data-generation-utils';
+// Send an http POST request to '{dataflows base url}/import/load-e2e-db'
+// curl --location --request POST 'http://localhost:7072/import/load-e2e-db'
 
-// Replace this with http request to '{dataflows base url}/import/load-e2e-db'
-// Do not remove this though, move it to ../../../backend/function-apps/dataflows/e2e/load-e2e-db.ts
-seedCosmosE2eDatabase().then(() => {
-  process.exit();
-});
+const endpoint = process.env.DATAFLOW_IMPORT_URL;
+
+if (!endpoint) {
+  console.error('DATAFLOW_IMPORT_URL environment variable is not set.');
+  process.exit(1);
+}
+
+(async () => {
+  try {
+    const response = await fetch(endpoint, { method: 'POST' });
+    if (!response.ok) {
+      throw new Error(`Request failed: ${response.status} ${response.statusText}`);
+    }
+    console.log('E2E CosmosDB seeded successfully.');
+  } catch (err) {
+    console.error('Error seeding E2E CosmosDB:', err);
+    process.exit(1);
+  }
+})();
