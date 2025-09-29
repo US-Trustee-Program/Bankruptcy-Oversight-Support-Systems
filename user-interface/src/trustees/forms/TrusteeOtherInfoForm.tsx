@@ -27,8 +27,16 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
   const handleBankRemove = (index: number) => {
     return (_: React.MouseEvent<HTMLButtonElement>) => {
       setBanks((current) => {
+        if (index === 0) {
+          // For the first bank input, clear the value but keep the field
+          const updated = [...current];
+          updated[0] = '';
+          return updated;
+        }
+
+        // For other bank inputs, remove the entire field
         const updated = [...current];
-        current.splice(index, 1);
+        updated.splice(index, 1);
         return updated;
       });
     };
@@ -58,36 +66,22 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
       <form data-testid="trustee-other-info-form" onSubmit={handleSubmit}>
         <div className="form-container">
           <div className="form-column">
-            {banks.length === 1 && banks[0] === '' ? (
-              <div className="field-group">
-                <Input
-                  id={`trustee-banks-0`}
-                  className="trustee-bank-input"
-                  name="bank-0"
-                  value={''}
-                  label="Bank"
-                  onChange={(e) => handleBankChange(0, e.target.value)}
-                  autoComplete="off"
-                />
-              </div>
-            ) : (
-              banks.map((bank, index) => {
-                return (
-                  <div className="field-group" key={`bank-${bank.toLowerCase().replace(' ', '')}`}>
-                    <Input
-                      id={`trustee-banks-${index}`}
-                      className="trustee-bank-input"
-                      name={`bank-${index}`}
-                      value={bank}
-                      label="Bank"
-                      onChange={(e) => handleBankChange(index, e.target.value)}
-                      autoComplete="off"
-                    />
-                    <Button onClick={handleBankRemove(index)}>Remove Bank</Button>
-                  </div>
-                );
-              })
-            )}
+            {banks.map((bank, index) => {
+              return (
+                <div className="field-group" key={`bank-${index}`}>
+                  <Input
+                    id={`trustee-banks-${index}`}
+                    className="trustee-bank-input"
+                    name={`bank-${index}`}
+                    value={bank}
+                    label="Bank"
+                    onChange={(e) => handleBankChange(index, e.target.value)}
+                    autoComplete="off"
+                  />
+                  <Button onClick={handleBankRemove(index)}>Remove Bank</Button>
+                </div>
+              );
+            })}
             <Button onClick={handleBankAdd} uswdsStyle={UswdsButtonStyle.Unstyled}>
               <Icon name="add_circle" />
               Add another bank
