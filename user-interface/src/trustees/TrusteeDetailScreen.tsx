@@ -89,6 +89,12 @@ export default function TrusteeDetailScreen() {
     setNavState(mapTrusteeDetailNavState(location.pathname));
   }, [location]);
 
+  useEffect(() => {
+    if (location.state?.trustee) {
+      setTrustee(location.state.trustee as Trustee);
+    }
+  }, [location.state?.trustee]);
+
   return (
     <MainContent className="record-detail" data-testid="record-detail">
       <DocumentTitle name="Trustee Detail" />

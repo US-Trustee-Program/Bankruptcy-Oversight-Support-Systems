@@ -1,4 +1,4 @@
-import { useLocation, useNavigate, Location } from 'react-router-dom';
+import { useLocation, useNavigate, Location, NavigateOptions } from 'react-router-dom';
 
 function getFinalDestination(
   destination: string,
@@ -38,8 +38,8 @@ export default function useCamsNavigator() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const navigateTo = (destination: string) => {
-    navigate(getFinalDestination(destination, location));
+  const navigateTo = (destination: string, state?: object) => {
+    navigate(getFinalDestination(destination, location), { state } as NavigateOptions);
   };
 
   return {
