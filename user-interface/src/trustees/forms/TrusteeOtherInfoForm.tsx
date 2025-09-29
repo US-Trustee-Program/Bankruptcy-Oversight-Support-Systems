@@ -113,7 +113,7 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
           </div>
         </div>
         <div className="usa-button-group">
-          <Button id="submit-button" onClick={handleSubmit}>
+          <Button id="submit-button" onClick={handleSubmit} disabled={isSubmitting}>
             {isSubmitting ? 'Saving…' : 'Save'}
           </Button>
           <Button

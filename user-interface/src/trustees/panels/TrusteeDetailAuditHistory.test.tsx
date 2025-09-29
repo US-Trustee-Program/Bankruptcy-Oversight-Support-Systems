@@ -949,7 +949,7 @@ describe('TrusteeDetailAuditHistory', () => {
       expect(previousBanks).toHaveTextContent('Second Trust Bank');
     });
 
-    test('should render banks with line breaks between them', async () => {
+    test('should render banks as an unordered list', async () => {
       const bankHistoryMultiple = {
         ...mockBankHistory,
         before: ['Bank A', 'Bank B', 'Bank C'],
@@ -964,17 +964,17 @@ describe('TrusteeDetailAuditHistory', () => {
         expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
       });
 
-      // Check that banks are rendered with line breaks
+      // Check that banks are rendered as unordered lists
       const previousBanks = screen.getByTestId('previous-banks-0');
       const newBanks = screen.getByTestId('new-banks-0');
 
-      // Verify spans exist for each bank
-      expect(previousBanks.querySelectorAll('span')).toHaveLength(3);
-      expect(newBanks.querySelectorAll('span')).toHaveLength(2);
+      // Verify unordered lists exist
+      expect(previousBanks.querySelector('ul')).toBeInTheDocument();
+      expect(newBanks.querySelector('ul')).toBeInTheDocument();
 
-      // Verify br elements exist between banks
-      expect(previousBanks.querySelectorAll('br')).toHaveLength(3);
-      expect(newBanks.querySelectorAll('br')).toHaveLength(2);
+      // Verify list items exist for each bank
+      expect(previousBanks.querySelectorAll('li')).toHaveLength(3);
+      expect(newBanks.querySelectorAll('li')).toHaveLength(2);
 
       // Check text content
       expect(previousBanks).toHaveTextContent('Bank A');

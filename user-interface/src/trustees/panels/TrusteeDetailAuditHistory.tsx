@@ -76,6 +76,19 @@ function ShowTrusteeContactHistory(props: ShowTrusteeContactHistoryProps) {
   );
 }
 
+function BankList({ banks }: { banks?: string[] }) {
+  if (!banks || banks.length === 0) {
+    return <>(none)</>;
+  }
+  return (
+    <ul className="usa-list--unstyled">
+      {banks.map((bank) => (
+        <li key={bank}>{bank}</li>
+      ))}
+    </ul>
+  );
+}
+
 type ShowTrusteeBankHistoryProps = Readonly<{
   history: TrusteeBankHistory;
   idx: number;
@@ -88,24 +101,10 @@ function ShowTrusteeBankHistory(props: ShowTrusteeBankHistoryProps) {
     <tr>
       <td>Bank(s)</td>
       <td data-testid={`previous-banks-${idx}`}>
-        {history.before && history.before.length > 0
-          ? history.before.map((bank) => (
-              <>
-                <span key={bank}>{bank}</span>
-                <br />
-              </>
-            ))
-          : '(none)'}
+        <BankList banks={history.before} />
       </td>
       <td data-testid={`new-banks-${idx}`}>
-        {history.after && history.after.length > 0
-          ? history.after.map((bank) => (
-              <>
-                <span key={bank}>{bank}</span>
-                <br />
-              </>
-            ))
-          : '(none)'}
+        <BankList banks={history.after} />
       </td>
       <td data-testid={`changed-by-${idx}`}>
         {history.updatedBy && <>{history.updatedBy.name}</>}
