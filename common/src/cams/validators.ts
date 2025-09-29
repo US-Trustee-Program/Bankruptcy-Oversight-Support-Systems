@@ -75,6 +75,33 @@ const optional = (...validators: ValidatorFunction[]): ValidatorFunction =>
   skip((v) => v === undefined, validators);
 
 /**
+ * Creates a validator function that checks if all elements in an array pass the provided validators.
+ * Returns all validation errors from all invalid elements in the array.
+ *
+ * @param {...ValidatorFunction[]} validators - Variable number of validator functions to apply to each array element
+ * @returns {ValidatorFunction} A validator function that validates each element in an array and collects all validation errors
+ */
+const arrayOf = (...validators: ValidatorFunction[]): ValidatorFunction => {
+  return (value: unknown): ValidatorResult => {
+    if (!Array.isArray(value)) {
+      return { reasons: ['Value is not an array'] };
+    }
+
+    const allErrors: string[] = [];
+
+    value.forEach((element, index) => {
+      const result = validateEach(validators, element);
+      if (!result.valid) {
+        const reasons = result.reasons.map((r) => `Element at index ${index}: ${r}`);
+        allErrors.push(...reasons);
+      }
+    });
+
+    return allErrors.length > 0 ? { reasons: allErrors } : VALID;
+  };
+};
+
+/**
  * Creates a validator function that checks if a string or array has at least a minimum length.
  *
  * @param {number} min - The minimum required length
@@ -216,6 +243,7 @@ function isPhoneNumber(value: unknown): ValidatorResult {
 }
 
 const Validators = {
+  arrayOf,
   exactLength,
   isEmailAddress,
   isWebsiteAddress,

@@ -147,18 +147,18 @@ export class TrusteesUseCase {
     trustee: Partial<TrusteeInput>,
   ): Promise<Trustee> {
     try {
-      if (trustee.internal) {
-        this.checkValidation(validateObject(trusteeSpec.internal, trustee.internal));
-      } else {
-        this.checkValidation(validateObject(trusteeSpec, trustee));
-      }
-
       const existingTrustee = await this.trusteesRepository.read(id);
+      const trusteeToUpdate = { ...existingTrustee, ...trustee };
+      if (trustee.internal) {
+        this.checkValidation(validateObject(trusteeSpec.internal, trusteeToUpdate.internal));
+      } else {
+        this.checkValidation(validateObject(trusteeSpec, trusteeToUpdate));
+      }
 
       const userReference = getCamsUserReference(context.session.user);
       const updatedTrustee = await this.trusteesRepository.updateTrustee(
         id,
-        trustee,
+        trusteeToUpdate,
         userReference,
       );
 
@@ -242,4 +242,5 @@ const trusteeSpec: ValidationSpec<TrusteeInput> = {
   public: [V.optional(V.spec(contactInformationSpec))],
   internal: [V.optional(V.spec(contactInformationSpec))],
   status: [V.isInSet<TrusteeStatus>([...TRUSTEE_STATUS_VALUES])],
+  banks: [V.optional(V.arrayOf(V.minLength(1)))],
 };
