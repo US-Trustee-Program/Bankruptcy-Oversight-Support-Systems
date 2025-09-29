@@ -4,6 +4,7 @@ import Input from '@/lib/components/uswds/Input';
 import useApi2 from '@/lib/hooks/UseApi2';
 import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
+import { Trustee } from '@common/cams/trustees';
 import { useState } from 'react';
 
 type TrusteeOtherInfoFormProps = {
@@ -47,10 +48,12 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
   async function handleSubmit(): Promise<void> {
     setIsSubmitting(true);
     try {
-      await api.patchTrustee(trusteeId || '', {
+      const response = await api.patchTrustee(trusteeId || '', {
         banks: banks.filter((bank) => bank.trim() !== ''),
       });
-      navigate.navigateTo(`/trustees/${trusteeId}`);
+      if (response?.data) {
+        navigate.navigateTo(`/trustees/${trusteeId}`, { trustee: response.data as Trustee });
+      }
     } catch (e) {
       globalAlert?.error(`Failed to update trustee banks: ${(e as Error).message}`);
     } finally {
