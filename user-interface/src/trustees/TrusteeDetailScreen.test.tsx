@@ -437,4 +437,48 @@ describe('TrusteeDetailScreen', () => {
       },
     });
   });
+
+  test('should call navigate with correct state when other information edit button is clicked', async () => {
+    mockGetTrustee.mockResolvedValue({ data: mockTrustee });
+    mockGetCourts.mockResolvedValue({ data: mockCourts });
+
+    renderWithRouter();
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
+    });
+
+    const otherInfoEditButton = screen.getByLabelText('Edit other trustee information');
+    otherInfoEditButton.click();
+
+    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/other/edit', {
+      state: {
+        trusteeId: '123',
+        trustee: mockTrustee,
+        cancelTo: '/trustees/123',
+        action: 'edit',
+      },
+    });
+  });
+
+  test('should set trustee from location state when available', async () => {
+    const locationWithState = {
+      pathname: '/trustees/123',
+      state: { trustee: mockTrustee },
+    };
+
+    mockUseLocation.mockReturnValue(locationWithState);
+    mockGetTrustee.mockResolvedValue({ data: mockTrustee });
+    mockGetCourts.mockResolvedValue({ data: mockCourts });
+
+    renderWithRouter();
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
+    });
+
+    // Verify that the trustee data is used from location state
+    expect(screen.getByText('123 Main St')).toBeInTheDocument();
+    expect(screen.getByText('john.doe.public@example.com')).toBeInTheDocument();
+  });
 });

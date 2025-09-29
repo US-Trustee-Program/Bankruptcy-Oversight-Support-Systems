@@ -787,4 +787,201 @@ describe('TrusteeDetailAuditHistory', () => {
     expect(screen.getByRole('columnheader', { name: 'Changed by' })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'Date' })).toBeInTheDocument();
   });
+
+  describe('Bank History Tests', () => {
+    const mockBankHistory = {
+      id: 'audit-bank-1',
+      documentType: 'AUDIT_BANKS' as const,
+      before: ['First National Bank', 'Second Trust Bank'],
+      after: ['First National Bank', 'Third Community Bank', 'Fourth Federal Bank'],
+      updatedOn: '2024-01-20T10:00:00Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
+    };
+
+    test('should display bank change history correctly', async () => {
+      mockGetTrusteeHistory.mockResolvedValue({ data: [mockBankHistory] });
+
+      renderWithProps({});
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
+
+      // Check bank change row
+      expect(screen.getByText('Bank(s)')).toBeInTheDocument();
+
+      // Check previous banks
+      const previousBanks = screen.getByTestId('previous-banks-0');
+      expect(previousBanks).toHaveTextContent('First National Bank');
+      expect(previousBanks).toHaveTextContent('Second Trust Bank');
+
+      // Check new banks
+      const newBanks = screen.getByTestId('new-banks-0');
+      expect(newBanks).toHaveTextContent('First National Bank');
+      expect(newBanks).toHaveTextContent('Third Community Bank');
+      expect(newBanks).toHaveTextContent('Fourth Federal Bank');
+
+      expect(screen.getByTestId('changed-by-0')).toHaveTextContent('SYSTEM');
+      expect(screen.getByTestId('change-date-0')).toHaveTextContent(
+        'formatted-2024-01-20T10:00:00Z',
+      );
+    });
+
+    test('should display bank history with no previous banks', async () => {
+      const bankHistoryNoPrevious = {
+        ...mockBankHistory,
+        before: undefined,
+        after: ['New Bank One', 'New Bank Two'],
+      };
+
+      mockGetTrusteeHistory.mockResolvedValue({ data: [bankHistoryNoPrevious] });
+
+      renderWithProps({});
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('previous-banks-0')).toHaveTextContent('(none)');
+
+      const newBanks = screen.getByTestId('new-banks-0');
+      expect(newBanks).toHaveTextContent('New Bank One');
+      expect(newBanks).toHaveTextContent('New Bank Two');
+    });
+
+    test('should display bank history with no new banks', async () => {
+      const bankHistoryNoAfter = {
+        ...mockBankHistory,
+        before: ['Old Bank One', 'Old Bank Two'],
+        after: undefined,
+      };
+
+      mockGetTrusteeHistory.mockResolvedValue({ data: [bankHistoryNoAfter] });
+
+      renderWithProps({});
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
+
+      const previousBanks = screen.getByTestId('previous-banks-0');
+      expect(previousBanks).toHaveTextContent('Old Bank One');
+      expect(previousBanks).toHaveTextContent('Old Bank Two');
+
+      expect(screen.getByTestId('new-banks-0')).toHaveTextContent('(none)');
+    });
+
+    test('should display bank history with empty bank arrays', async () => {
+      const bankHistoryEmptyArrays = {
+        ...mockBankHistory,
+        before: [],
+        after: [],
+      };
+
+      mockGetTrusteeHistory.mockResolvedValue({ data: [bankHistoryEmptyArrays] });
+
+      renderWithProps({});
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
+
+      // Both empty arrays and undefined should show "(none)"
+      expect(screen.getByTestId('previous-banks-0')).toHaveTextContent('(none)');
+      expect(screen.getByTestId('new-banks-0')).toHaveTextContent('(none)');
+    });
+
+    test('should display bank history with single bank', async () => {
+      const bankHistorySingle = {
+        ...mockBankHistory,
+        before: ['Single Old Bank'],
+        after: ['Single New Bank'],
+      };
+
+      mockGetTrusteeHistory.mockResolvedValue({ data: [bankHistorySingle] });
+
+      renderWithProps({});
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('previous-banks-0')).toHaveTextContent('Single Old Bank');
+      expect(screen.getByTestId('new-banks-0')).toHaveTextContent('Single New Bank');
+    });
+
+    test('should handle bank history with missing updatedBy', async () => {
+      const bankHistoryNoUpdatedBy = {
+        ...mockBankHistory,
+        updatedBy: { id: '', name: '' },
+      };
+
+      mockGetTrusteeHistory.mockResolvedValue({ data: [bankHistoryNoUpdatedBy] });
+
+      renderWithProps({});
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('changed-by-0')).toHaveTextContent('');
+    });
+
+    test('should display mixed history types including banks', async () => {
+      const mixedHistory = [mockNameHistory, mockPublicContactHistory, mockBankHistory];
+
+      mockGetTrusteeHistory.mockResolvedValue({ data: mixedHistory });
+
+      renderWithProps({});
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
+
+      // Check that all three types are rendered
+      expect(screen.getByText('Name')).toBeInTheDocument();
+      expect(screen.getByText('Public Contact')).toBeInTheDocument();
+      expect(screen.getByText('Bank(s)')).toBeInTheDocument();
+
+      // Verify bank history data is correct
+      const previousBanks = screen.getByTestId('previous-banks-0');
+      expect(previousBanks).toHaveTextContent('First National Bank');
+      expect(previousBanks).toHaveTextContent('Second Trust Bank');
+    });
+
+    test('should render banks with line breaks between them', async () => {
+      const bankHistoryMultiple = {
+        ...mockBankHistory,
+        before: ['Bank A', 'Bank B', 'Bank C'],
+        after: ['Bank X', 'Bank Y'],
+      };
+
+      mockGetTrusteeHistory.mockResolvedValue({ data: [bankHistoryMultiple] });
+
+      renderWithProps({});
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
+
+      // Check that banks are rendered with line breaks
+      const previousBanks = screen.getByTestId('previous-banks-0');
+      const newBanks = screen.getByTestId('new-banks-0');
+
+      // Verify spans exist for each bank
+      expect(previousBanks.querySelectorAll('span')).toHaveLength(3);
+      expect(newBanks.querySelectorAll('span')).toHaveLength(2);
+
+      // Verify br elements exist between banks
+      expect(previousBanks.querySelectorAll('br')).toHaveLength(3);
+      expect(newBanks.querySelectorAll('br')).toHaveLength(2);
+
+      // Check text content
+      expect(previousBanks).toHaveTextContent('Bank A');
+      expect(previousBanks).toHaveTextContent('Bank B');
+      expect(previousBanks).toHaveTextContent('Bank C');
+      expect(newBanks).toHaveTextContent('Bank X');
+      expect(newBanks).toHaveTextContent('Bank Y');
+    });
+  });
 });
