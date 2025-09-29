@@ -1,7 +1,9 @@
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import Icon from '@/lib/components/uswds/Icon';
 import Input from '@/lib/components/uswds/Input';
+import useApi2 from '@/lib/hooks/UseApi2';
 import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
+import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { useState } from 'react';
 
 type TrusteeOtherInfoFormProps = {
@@ -10,6 +12,8 @@ type TrusteeOtherInfoFormProps = {
 };
 
 function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
+  const api = useApi2();
+  const globalAlert = useGlobalAlert();
   const { trusteeId } = props;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [banks, setBanks] = useState<string[]>(props.banks || ['']);
@@ -48,14 +52,22 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
     });
   };
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>): void {
-    event.preventDefault();
+  async function handleSubmit(): Promise<void> {
     setIsSubmitting(true);
-    throw new Error('Function not implemented.');
+    try {
+      await api.patchTrustee(trusteeId || '', {
+        banks: banks.filter((bank) => bank.trim() !== ''),
+      });
+      navigate.navigateTo(`/trustees/${trusteeId}`);
+    } catch (e) {
+      globalAlert?.error(`Failed to update trustee banks: ${(e as Error).message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   function handleCancel(_event: React.MouseEvent<HTMLButtonElement, MouseEvent>): void {
-    navigate.navigateTo(trusteeId);
+    navigate.navigateTo(`/trustees/${trusteeId}`);
   }
 
   return (
@@ -63,7 +75,7 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
       <div className="form-header">
         <h1 className="text-no-wrap display-inline-block margin-right-1">Edit Other Information</h1>
       </div>
-      <form data-testid="trustee-other-info-form" onSubmit={handleSubmit}>
+      <form data-testid="trustee-other-info-form">
         <div className="form-container">
           <div className="form-column">
             {banks.map((bank, index) => {
@@ -89,7 +101,7 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
           </div>
         </div>
         <div className="usa-button-group">
-          <Button id="submit-button" type="submit">
+          <Button id="submit-button" onClick={() => handleSubmit()}>
             {isSubmitting ? 'Saving…' : 'Save'}
           </Button>
           <Button
