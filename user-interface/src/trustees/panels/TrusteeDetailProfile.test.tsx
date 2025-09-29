@@ -67,6 +67,7 @@ const mockDistrictLabels = ['Eastern District of New York', 'Central District of
 
 const mockOnEditPublicProfile = vi.fn();
 const mockOnEditInternalProfile = vi.fn();
+const mockOnEditOtherInformation = vi.fn();
 
 function renderWithProps(props?: Partial<TrusteeDetailProfileProps>) {
   const defaultProps: TrusteeDetailProfileProps = {
@@ -74,6 +75,7 @@ function renderWithProps(props?: Partial<TrusteeDetailProfileProps>) {
     districtLabels: mockDistrictLabels,
     onEditPublicProfile: mockOnEditPublicProfile,
     onEditInternalProfile: mockOnEditInternalProfile,
+    onEditOtherInformation: mockOnEditOtherInformation,
   };
 
   const renderProps = { ...defaultProps, ...props };
@@ -331,6 +333,6 @@ describe('TrusteeDetailProfile', () => {
   test('should render edit button labels correctly', () => {
     renderWithProps({});
 
-    expect(screen.getAllByText('Edit')).toHaveLength(2); // Two edit buttons
+    expect(screen.getAllByText('Edit')).toHaveLength(3); // Three edit buttons: Public, Other Information, Internal
   });
 });
