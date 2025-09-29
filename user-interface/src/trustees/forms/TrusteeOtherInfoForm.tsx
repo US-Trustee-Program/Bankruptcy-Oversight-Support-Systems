@@ -4,7 +4,6 @@ import Input from '@/lib/components/uswds/Input';
 import useApi2 from '@/lib/hooks/UseApi2';
 import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
-import { Trustee } from '@common/cams/trustees';
 import { useState } from 'react';
 
 type TrusteeOtherInfoFormProps = {
@@ -45,14 +44,17 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
     });
   };
 
-  async function handleSubmit(): Promise<void> {
+  async function handleSubmit(event?: React.MouseEvent<HTMLButtonElement>): Promise<void> {
+    if (event) {
+      event.preventDefault();
+    }
     setIsSubmitting(true);
     try {
       const response = await api.patchTrustee(trusteeId || '', {
         banks: banks.filter((bank) => bank.trim() !== ''),
       });
       if (response?.data) {
-        navigate.navigateTo(`/trustees/${trusteeId}`, { trustee: response.data as Trustee });
+        navigate.navigateTo(`/trustees/${trusteeId}`, { trustee: response.data });
       }
     } catch (e) {
       globalAlert?.error(`Failed to update trustee banks: ${(e as Error).message}`);
@@ -96,7 +98,7 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
           </div>
         </div>
         <div className="usa-button-group">
-          <Button id="submit-button" onClick={() => handleSubmit()}>
+          <Button id="submit-button" onClick={handleSubmit}>
             {isSubmitting ? 'Saving…' : 'Save'}
           </Button>
           <Button

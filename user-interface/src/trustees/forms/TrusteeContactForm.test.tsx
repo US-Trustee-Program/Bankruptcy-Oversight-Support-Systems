@@ -1228,7 +1228,7 @@ describe('TrusteeForm', () => {
       const originalUseTrusteeForm = UseTrusteeFormModule.useTrusteeContactForm;
 
       // Mock the useTrusteeForm hook to inject our spy
-      vi.spyOn(UseTrusteeFormModule, 'useTrusteeForm').mockImplementation((props) => {
+      vi.spyOn(UseTrusteeFormModule, 'useTrusteeContactForm').mockImplementation((props) => {
         const hookResult = originalUseTrusteeForm(props);
 
         // Create a function that returns empty address fields to simulate the condition
@@ -1298,7 +1298,7 @@ describe('TrusteeForm', () => {
       const originalUseTrusteeForm = UseTrusteeFormModule.useTrusteeContactForm;
 
       // Mock the useTrusteeForm hook to inject our spy
-      vi.spyOn(UseTrusteeFormModule, 'useTrusteeForm').mockImplementation((props) => {
+      vi.spyOn(UseTrusteeFormModule, 'useTrusteeContactForm').mockImplementation((props) => {
         const hookResult = originalUseTrusteeForm(props);
         return {
           ...hookResult,

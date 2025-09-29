@@ -403,7 +403,7 @@ describe('TrusteeDetailScreen', () => {
     const publicEditButton = screen.getByLabelText('Edit trustee public overview information');
     publicEditButton.click();
 
-    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/edit', {
+    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/contact/edit', {
       state: {
         trusteeId: '123',
         trustee: mockTrustee,
@@ -427,7 +427,7 @@ describe('TrusteeDetailScreen', () => {
     const internalEditButton = screen.getByLabelText('Edit trustee internal contact information');
     internalEditButton.click();
 
-    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/edit', {
+    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/contact/edit', {
       state: {
         trusteeId: '123',
         trustee: mockTrustee,

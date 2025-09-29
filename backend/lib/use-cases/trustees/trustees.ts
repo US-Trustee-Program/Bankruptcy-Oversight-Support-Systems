@@ -204,6 +204,20 @@ export class TrusteesUseCase {
         );
       }
 
+      if (!deepEqual(existingTrustee.banks, updatedTrustee.banks)) {
+        await this.trusteesRepository.createTrusteeHistory(
+          createAuditRecord(
+            {
+              documentType: 'AUDIT_BANKS',
+              id,
+              before: existingTrustee.banks,
+              after: updatedTrustee.banks,
+            },
+            userReference,
+          ),
+        );
+      }
+
       return updatedTrustee;
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
