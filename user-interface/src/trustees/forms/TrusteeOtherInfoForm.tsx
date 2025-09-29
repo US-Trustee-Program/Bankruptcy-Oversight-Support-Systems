@@ -1,3 +1,4 @@
+import './TrusteeOtherInfoForm.scss';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import Icon from '@/lib/components/uswds/Icon';
 import Input from '@/lib/components/uswds/Input';
@@ -87,11 +88,24 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
                     onChange={(e) => handleBankChange(index, e.target.value)}
                     autoComplete="off"
                   />
-                  {index > 0 && <Button onClick={handleBankRemove(index)}>Remove Bank</Button>}
+                  {index > 0 && (
+                    <Button
+                      className="remove-bank-button"
+                      uswdsStyle={UswdsButtonStyle.Unstyled}
+                      onClick={handleBankRemove(index)}
+                    >
+                      <Icon name="cancel" />
+                      Remove Bank
+                    </Button>
+                  )}
                 </div>
               );
             })}
-            <Button onClick={handleBankAdd} uswdsStyle={UswdsButtonStyle.Unstyled}>
+            <Button
+              className="add-bank-button"
+              onClick={handleBankAdd}
+              uswdsStyle={UswdsButtonStyle.Unstyled}
+            >
               <Icon name="add_circle" />
               Add another bank
             </Button>

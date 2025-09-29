@@ -109,29 +109,31 @@ export default function TrusteeDetailScreen() {
             <div className="left-navigation-pane-container">
               <TrusteeDetailNavigation trusteeId={trusteeId} initiallySelectedNavLink={navState} />
             </div>
-            <Routes>
-              <Route
-                path="/"
-                element={
-                  <TrusteeDetailProfile
-                    trustee={trustee}
-                    districtLabels={districtLabels}
-                    onEditPublicProfile={openEditPublicProfile}
-                    onEditInternalProfile={openEditInternalProfile}
-                    onEditOtherInformation={openEditOtherInformation}
-                  />
-                }
-              />
-              <Route path="/contact/edit" element={<TrusteeContactForm />}></Route>
-              <Route
-                path="/other/edit"
-                element={<TrusteeOtherInfoForm banks={trustee.banks} trusteeId={trustee.id} />}
-              ></Route>
-              <Route
-                path="/audit-history"
-                element={<TrusteeDetailAuditHistory trusteeId={trusteeId ?? 'unknown'} />}
-              />
-            </Routes>
+            <div className="main-content-area">
+              <Routes>
+                <Route
+                  path="/"
+                  element={
+                    <TrusteeDetailProfile
+                      trustee={trustee}
+                      districtLabels={districtLabels}
+                      onEditPublicProfile={openEditPublicProfile}
+                      onEditInternalProfile={openEditInternalProfile}
+                      onEditOtherInformation={openEditOtherInformation}
+                    />
+                  }
+                />
+                <Route path="/contact/edit" element={<TrusteeContactForm />}></Route>
+                <Route
+                  path="/other/edit"
+                  element={<TrusteeOtherInfoForm banks={trustee.banks} trusteeId={trustee.id} />}
+                ></Route>
+                <Route
+                  path="/audit-history"
+                  element={<TrusteeDetailAuditHistory trusteeId={trusteeId ?? 'unknown'} />}
+                />
+              </Routes>
+            </div>
           </div>
         )}
       </div>
