@@ -68,6 +68,7 @@ export default function TrusteeDetailProfile({
                   Bank: {bank}
                 </div>
               ))}
+            {!trustee.banks && <div>No information has been entered.</div>}
           </div>
         </div>
         <div className="record-detail-card-list">
