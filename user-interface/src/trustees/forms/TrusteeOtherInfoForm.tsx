@@ -31,14 +31,6 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
   const handleBankRemove = (index: number) => {
     return (_: React.MouseEvent<HTMLButtonElement>) => {
       setBanks((current) => {
-        if (index === 0) {
-          // For the first bank input, clear the value but keep the field
-          const updated = [...current];
-          updated[0] = '';
-          return updated;
-        }
-
-        // For other bank inputs, remove the entire field
         const updated = [...current];
         updated.splice(index, 1);
         return updated;
@@ -90,7 +82,7 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
                     onChange={(e) => handleBankChange(index, e.target.value)}
                     autoComplete="off"
                   />
-                  <Button onClick={handleBankRemove(index)}>Remove Bank</Button>
+                  {index > 0 && <Button onClick={handleBankRemove(index)}>Remove Bank</Button>}
                 </div>
               );
             })}
