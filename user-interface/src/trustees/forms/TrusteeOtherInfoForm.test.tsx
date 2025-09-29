@@ -204,6 +204,44 @@ describe('TrusteeOtherInfoForm', () => {
     });
   });
 
+  test('disables submit button during form submission', async () => {
+    // Mock the API call to be slow so we can test the disabled state
+    patchTrusteeSpy.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          setTimeout(() => {
+            resolve({ data: TRUSTEE });
+          }, 100);
+        }),
+    );
+
+    render(<TrusteeOtherInfoForm trusteeId={TEST_TRUSTEE_ID} banks={TEST_BANKS} />);
+
+    const submitButton = screen.getByTestId('button-submit-button');
+
+    // Submit button should initially be enabled
+    expect(submitButton).not.toBeDisabled();
+    expect(submitButton).toHaveTextContent('Save');
+
+    // Click the submit button
+    await userEvent.click(submitButton);
+
+    // Button should be disabled and show "Saving..." during submission
+    expect(submitButton).toBeDisabled();
+    expect(submitButton).toHaveTextContent('Saving…');
+
+    // Wait for the API call to complete
+    await waitFor(() => {
+      expect(patchTrusteeSpy).toHaveBeenCalled();
+    });
+
+    // Button should be re-enabled after submission completes
+    await waitFor(() => {
+      expect(submitButton).not.toBeDisabled();
+      expect(submitButton).toHaveTextContent('Save');
+    });
+  });
+
   test('navigates to trustee page when cancel is clicked', async () => {
     render(<TrusteeOtherInfoForm trusteeId={TEST_TRUSTEE_ID} banks={TEST_BANKS} />);
 
