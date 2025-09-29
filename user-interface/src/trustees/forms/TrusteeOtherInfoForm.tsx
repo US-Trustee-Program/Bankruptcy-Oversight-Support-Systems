@@ -16,8 +16,9 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
   const api = useApi2();
   const globalAlert = useGlobalAlert();
   const { trusteeId } = props;
+  const initialBanks = props.banks?.filter((b) => b.trim() !== '') ?? [];
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [banks, setBanks] = useState<string[]>(props.banks || ['']);
+  const [banks, setBanks] = useState<string[]>(initialBanks.length > 0 ? initialBanks : ['']);
 
   const navigate = useCamsNavigator();
 
