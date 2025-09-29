@@ -787,4 +787,226 @@ describe('validators', () => {
       expect(result).toEqual({ reasons: ['Custom length message'] });
     });
   });
+
+  describe('arrayOf', () => {
+    const testCases = [
+      {
+        description: 'should return valid for empty array',
+        validators: [Validators.minLength(1)],
+        value: [],
+        expected: VALID,
+      },
+      {
+        description: 'should return valid for array where all elements pass validation',
+        validators: [Validators.minLength(2)],
+        value: ['hello', 'world', 'test'],
+        expected: VALID,
+      },
+      {
+        description: 'should return invalid for non-array values',
+        validators: [Validators.minLength(1)],
+        value: 'not an array',
+        expected: { reasons: ['Value is not an array'] },
+      },
+      {
+        description: 'should return invalid for null values',
+        validators: [Validators.minLength(1)],
+        value: null,
+        expected: { reasons: ['Value is not an array'] },
+      },
+      {
+        description: 'should return invalid for undefined values',
+        validators: [Validators.minLength(1)],
+        value: undefined,
+        expected: { reasons: ['Value is not an array'] },
+      },
+      {
+        description: 'should return invalid for numeric values',
+        validators: [Validators.minLength(1)],
+        value: 123,
+        expected: { reasons: ['Value is not an array'] },
+      },
+      {
+        description: 'should return single error for array with one invalid element',
+        validators: [Validators.minLength(5)],
+        value: ['hello', 'hi', 'world'],
+        expected: { reasons: ['Element at index 1: Must contain at least 5 characters'] },
+      },
+      {
+        description: 'should return all errors for array with multiple invalid elements',
+        validators: [Validators.minLength(5)],
+        value: ['hello', 'hi', 'ok', 'world'],
+        expected: {
+          reasons: [
+            'Element at index 1: Must contain at least 5 characters',
+            'Element at index 2: Must contain at least 5 characters',
+          ],
+        },
+      },
+      {
+        description: 'should work with multiple validators per element',
+        validators: [Validators.minLength(3), Validators.maxLength(10)],
+        value: ['hello', 'world', 'test'],
+        expected: VALID,
+      },
+      {
+        description: 'should return all validation failures from multiple validators',
+        validators: [
+          Validators.minLength(5),
+          Validators.matches(/^[A-Z]/, 'Must start with uppercase'),
+        ],
+        value: ['Hi', 'ok'],
+        expected: {
+          reasons: [
+            'Element at index 0: Must contain at least 5 characters',
+            'Element at index 1: Must contain at least 5 characters',
+            'Element at index 1: Must start with uppercase',
+          ],
+        },
+      },
+      {
+        description: 'should work with email validation',
+        validators: [Validators.isEmailAddress],
+        value: ['test@example.com', 'user@domain.org'],
+        expected: VALID,
+      },
+      {
+        description: 'should return errors for invalid emails',
+        validators: [Validators.isEmailAddress],
+        value: ['test@example.com', 'invalid-email', 'another@valid.com', 'also-invalid'],
+        expected: {
+          reasons: [
+            'Element at index 1: Must be a valid email address',
+            'Element at index 3: Must be a valid email address',
+          ],
+        },
+      },
+      {
+        description: 'should work with phone number validation',
+        validators: [Validators.isPhoneNumber],
+        value: ['123-456-7890', '987-654-3210'],
+        expected: VALID,
+      },
+      {
+        description: 'should return errors for invalid phone numbers',
+        validators: [Validators.isPhoneNumber],
+        value: ['123-456-7890', '123456', '987-654-3210'],
+        expected: {
+          reasons: ['Element at index 1: Must be a valid phone number'],
+        },
+      },
+      {
+        description: 'should work with isInSet validation',
+        validators: [Validators.isInSet(['red', 'green', 'blue'])],
+        value: ['red', 'blue', 'green'],
+        expected: VALID,
+      },
+      {
+        description: 'should return errors for values not in set',
+        validators: [Validators.isInSet(['red', 'green', 'blue'])],
+        value: ['red', 'yellow', 'blue', 'purple'],
+        expected: {
+          reasons: [
+            'Element at index 1: Must be one of red, green, blue',
+            'Element at index 3: Must be one of red, green, blue',
+          ],
+        },
+      },
+      {
+        description: 'should work with mixed data types when validators support them',
+        validators: [Validators.minLength(1)],
+        value: ['hello', ['a', 'b'], 'world'],
+        expected: VALID,
+      },
+      {
+        description: 'should handle arrays with null/undefined elements',
+        validators: [Validators.nullable(Validators.minLength(2))],
+        value: ['hello', null, 'world'],
+        expected: VALID,
+      },
+      {
+        description: 'should return errors for invalid null/undefined elements',
+        validators: [Validators.minLength(2)],
+        value: ['hello', null, 'world', undefined],
+        expected: {
+          reasons: ['Element at index 1: Value is null', 'Element at index 3: Value is undefined'],
+        },
+      },
+      {
+        description: 'should work with optional validators',
+        validators: [Validators.optional(Validators.minLength(5))],
+        value: ['hello', undefined, 'world'],
+        expected: VALID,
+      },
+      {
+        description: 'should return errors when optional validation fails',
+        validators: [Validators.optional(Validators.minLength(5))],
+        value: ['hello', 'hi', undefined, 'world'],
+        expected: {
+          reasons: ['Element at index 1: Must contain at least 5 characters'],
+        },
+      },
+      {
+        description: 'should work with nested arrayOf validators',
+        validators: [Validators.arrayOf(Validators.minLength(2))],
+        value: [
+          ['hello', 'world'],
+          ['test', 'case'],
+        ],
+        expected: VALID,
+      },
+      {
+        description: 'should return errors from nested arrayOf validators',
+        validators: [Validators.arrayOf(Validators.minLength(5))],
+        value: [
+          ['hello', 'world'],
+          ['hi', 'ok'],
+        ],
+        expected: {
+          reasons: [
+            'Element at index 1: Element at index 0: Must contain at least 5 characters',
+            'Element at index 1: Element at index 1: Must contain at least 5 characters',
+          ],
+        },
+      },
+    ];
+
+    test.each(testCases)('$description', (testCase) => {
+      const validator = Validators.arrayOf(...testCase.validators);
+      const result = validator(testCase.value);
+      expect(result).toEqual(testCase.expected);
+    });
+
+    test('should preserve order of validation errors', () => {
+      const validator = Validators.arrayOf(Validators.minLength(10));
+      const result = validator(['short1', 'short2', 'short3']);
+
+      expect(result).toEqual({
+        reasons: [
+          'Element at index 0: Must contain at least 10 characters',
+          'Element at index 1: Must contain at least 10 characters',
+          'Element at index 2: Must contain at least 10 characters',
+        ],
+      });
+    });
+
+    test('should handle large arrays efficiently', () => {
+      const largeArray = Array(1000).fill('valid');
+      const validator = Validators.arrayOf(Validators.minLength(1));
+      const result = validator(largeArray);
+
+      expect(result).toEqual(VALID);
+    });
+
+    test('should stop collecting errors appropriately for large arrays with many failures', () => {
+      const largeInvalidArray = Array(1000).fill(''); // Empty strings fail minLength(1)
+      const validator = Validators.arrayOf(Validators.minLength(1));
+      const result = validator(largeInvalidArray);
+
+      expect(result.valid).not.toBe(true);
+      expect(result.reasons).toHaveLength(1000);
+      expect(result.reasons![0]).toBe('Element at index 0: Must contain at least 1 characters');
+      expect(result.reasons![999]).toBe('Element at index 999: Must contain at least 1 characters');
+    });
+  });
 });
