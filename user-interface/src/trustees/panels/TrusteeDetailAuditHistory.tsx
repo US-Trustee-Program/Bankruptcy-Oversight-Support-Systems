@@ -88,20 +88,24 @@ function ShowTrusteeBankHistory(props: ShowTrusteeBankHistoryProps) {
     <tr>
       <td>Bank(s)</td>
       <td data-testid={`previous-banks-${idx}`}>
-        {history.before?.map((bank) => (
-          <>
-            <span key={bank}>{bank}</span>
-            <br />
-          </>
-        )) ?? '(none)'}
+        {history.before && history.before.length > 0
+          ? history.before.map((bank) => (
+              <>
+                <span key={bank}>{bank}</span>
+                <br />
+              </>
+            ))
+          : '(none)'}
       </td>
       <td data-testid={`new-banks-${idx}`}>
-        {history.after?.map((bank) => (
-          <>
-            <span key={bank}>{bank}</span>
-            <br />
-          </>
-        )) ?? '(none)'}
+        {history.after && history.after.length > 0
+          ? history.after.map((bank) => (
+              <>
+                <span key={bank}>{bank}</span>
+                <br />
+              </>
+            ))
+          : '(none)'}
       </td>
       <td data-testid={`changed-by-${idx}`}>
         {history.updatedBy && <>{history.updatedBy.name}</>}

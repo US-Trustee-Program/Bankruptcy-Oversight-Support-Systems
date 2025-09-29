@@ -335,4 +335,64 @@ describe('TrusteeDetailProfile', () => {
 
     expect(screen.getAllByText('Edit')).toHaveLength(3); // Three edit buttons: Public, Other Information, Internal
   });
+
+  test('should render bank information when banks are present', () => {
+    const trusteeWithBanks = {
+      ...mockTrustee,
+      banks: ['First National Bank', 'Second Trust Bank'],
+    };
+
+    renderWithProps({ trustee: trusteeWithBanks });
+
+    expect(screen.getByText('Bank: First National Bank')).toBeInTheDocument();
+    expect(screen.getByText('Bank: Second Trust Bank')).toBeInTheDocument();
+  });
+
+  test('should render single bank when only one bank is present', () => {
+    const trusteeWithOneBank = {
+      ...mockTrustee,
+      banks: ['Single Trust Bank'],
+    };
+
+    renderWithProps({ trustee: trusteeWithOneBank });
+
+    expect(screen.getByText('Bank: Single Trust Bank')).toBeInTheDocument();
+  });
+
+  test('should render "No information has been entered" when banks array is undefined', () => {
+    const trusteeWithoutBanks = {
+      ...mockTrustee,
+      banks: undefined,
+    };
+
+    renderWithProps({ trustee: trusteeWithoutBanks });
+
+    expect(screen.getByText('No information has been entered.')).toBeInTheDocument();
+    expect(screen.queryByText(/Bank: /)).not.toBeInTheDocument();
+  });
+
+  test('should render "No information has been entered" when banks array is empty', () => {
+    const trusteeWithEmptyBanks = {
+      ...mockTrustee,
+      banks: [],
+    };
+
+    renderWithProps({ trustee: trusteeWithEmptyBanks });
+
+    expect(screen.getByText('No information has been entered.')).toBeInTheDocument();
+    expect(screen.queryByText(/Bank: /)).not.toBeInTheDocument();
+  });
+
+  test('should call onEditOtherInformation when other information edit button is clicked', async () => {
+    const user = userEvent.setup();
+
+    renderWithProps({});
+
+    const otherInfoEditButton = screen.getByRole('button', {
+      name: 'Edit other trustee information',
+    });
+    await user.click(otherInfoEditButton);
+
+    expect(mockOnEditOtherInformation).toHaveBeenCalledTimes(1);
+  });
 });

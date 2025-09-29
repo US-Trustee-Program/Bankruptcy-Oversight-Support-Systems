@@ -63,12 +63,15 @@ export default function TrusteeDetailProfile({
               </Button>
             </div>
             {trustee.banks &&
+              trustee.banks.length > 0 &&
               trustee.banks.map((bank, index) => (
                 <div key={index} className="trustee-bank">
                   Bank: {bank}
                 </div>
               ))}
-            {!trustee.banks && <div>No information has been entered.</div>}
+            {(!trustee.banks || trustee.banks.length === 0) && (
+              <div>No information has been entered.</div>
+            )}
           </div>
         </div>
         <div className="record-detail-card-list">
