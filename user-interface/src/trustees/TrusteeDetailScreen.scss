@@ -2,6 +2,14 @@
   .trustee-detail-screen-content-container {
     display: flex;
     column-gap: 1.5rem;
+
+    .left-navigation-pane-container {
+      flex-shrink: 0;
+    }
+
+    .main-content-area {
+      flex: 1;
+    }
   }
   ul {
     padding: 0;
