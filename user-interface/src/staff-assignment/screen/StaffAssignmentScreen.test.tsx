@@ -192,8 +192,11 @@ describe('StaffAssignmentScreen', () => {
       expect(filterContainer).toBeInTheDocument();
     });
 
-    const unassignedFilter = document.querySelector('#option-UNASSIGNED');
-    expect(unassignedFilter).toBeInTheDocument();
+    let unassignedFilter: Element | null;
+    await waitFor(() => {
+      unassignedFilter = document.querySelector('#option-UNASSIGNED');
+      expect(unassignedFilter).toBeInTheDocument();
+    });
     await userEvent.click(unassignedFilter!);
 
     const expectedPredicate: CasesSearchPredicate = {

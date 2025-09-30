@@ -274,6 +274,12 @@ describe('Test Assign Attorney Modal Component', () => {
     await testingUtilities.selectCheckbox('3-checkbox');
     await userEvent.click(submitButton);
 
+    // First wait for callback to be called at all
+    await waitFor(() => {
+      expect(callback).toHaveBeenCalled();
+    });
+
+    // Then verify it was called with the correct parameters
     await waitFor(() => {
       expect(callback).toHaveBeenCalledWith(
         expect.objectContaining({

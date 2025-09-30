@@ -538,7 +538,11 @@ describe('test cams combobox', () => {
     let listItems;
     await waitFor(() => {
       listItems = document.querySelectorAll('li');
-      expect(listItems[0]).toHaveFocus();
+      // First ensure listItems exist and have the expected length
+      expect(listItems).toHaveLength(2);
+    });
+    await waitFor(() => {
+      expect(listItems![0]).toHaveFocus();
     });
 
     await userEvent.keyboard('{ArrowDown}');

@@ -10,7 +10,7 @@ export const LAST_INTERACTION_KEY = 'cams:last-interaction';
 function getSession(): CamsSession | null {
   let session: CamsSession | null = null;
   try {
-    if (window.localStorage) {
+    if (typeof window !== 'undefined' && window.localStorage) {
       const sessionJson = window.localStorage.getItem(LOGIN_LOCAL_STORAGE_SESSION_KEY);
       if (sessionJson) {
         session = JSON.parse(sessionJson);
@@ -23,20 +23,20 @@ function getSession(): CamsSession | null {
 }
 
 function setSession(session: CamsSession) {
-  if (window.localStorage) {
+  if (typeof window !== 'undefined' && window.localStorage) {
     window.localStorage.setItem(LOGIN_LOCAL_STORAGE_SESSION_KEY, JSON.stringify(session));
   }
 }
 
 function removeSession() {
-  if (window.localStorage) {
+  if (typeof window !== 'undefined' && window.localStorage) {
     window.localStorage.removeItem(LOGIN_LOCAL_STORAGE_SESSION_KEY);
   }
 }
 
 function getAck(): boolean {
   let ack = false;
-  if (window.localStorage) {
+  if (typeof window !== 'undefined' && window.localStorage) {
     const ackValue = window.localStorage.getItem(LOGIN_LOCAL_STORAGE_ACK_KEY);
     if (ackValue) {
       ack = ackValue.toLowerCase() === 'true';
@@ -46,7 +46,7 @@ function getAck(): boolean {
 }
 
 function setAck(ack: boolean) {
-  if (window.localStorage) {
+  if (typeof window !== 'undefined' && window.localStorage) {
     if (ack.toString() === 'true') {
       window.localStorage.setItem(LOGIN_LOCAL_STORAGE_ACK_KEY, ack.toString());
     } else {
@@ -56,20 +56,21 @@ function setAck(ack: boolean) {
 }
 
 function removeAck() {
-  if (window.localStorage) {
+  if (typeof window !== 'undefined' && window.localStorage) {
     window.localStorage.removeItem(LOGIN_LOCAL_STORAGE_ACK_KEY);
   }
 }
 
 function isTokenBeingRefreshed() {
-  if (window.localStorage) {
+  if (typeof window !== 'undefined' && window.localStorage) {
     const alreadyRefreshing = window.localStorage.getItem(REFRESHING_TOKEN);
     return alreadyRefreshing === 'true';
   }
+  return false;
 }
 
 function setRefreshingToken() {
-  if (window.localStorage) {
+  if (typeof window !== 'undefined' && window.localStorage) {
     const alreadyRefreshing = window.localStorage.getItem(REFRESHING_TOKEN);
     if (alreadyRefreshing !== 'true') {
       window.localStorage.setItem(REFRESHING_TOKEN, 'true');
@@ -78,10 +79,11 @@ function setRefreshingToken() {
       return false;
     }
   }
+  return false;
 }
 
 function removeRefreshingToken() {
-  if (window.localStorage) {
+  if (typeof window !== 'undefined' && window.localStorage) {
     window.localStorage.removeItem(REFRESHING_TOKEN);
   }
 }
@@ -95,14 +97,21 @@ function setLastInteraction(timestamp: number) {
 }
 
 function getNumber(key: string): number | null {
-  const value = localStorage.getItem(key);
-  if (!value) return null;
-  const parsed = Number.parseInt(value);
-  return isNaN(parsed) ? null : parsed;
+  if (typeof window !== 'undefined' && window.localStorage) {
+    const value = window.localStorage.getItem(key);
+    if (!value) {
+      return null;
+    }
+    const parsed = Number.parseInt(value);
+    return isNaN(parsed) ? null : parsed;
+  }
+  return null;
 }
 
 function setNumber(key: string, value: number) {
-  localStorage.setItem(key, value.toString());
+  if (typeof window !== 'undefined' && window.localStorage) {
+    window.localStorage.setItem(key, value.toString());
+  }
 }
 
 export const LocalStorage = {

@@ -8,6 +8,17 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/setupTests.ts',
+    // Ensure proper jsdom initialization timing
+    environmentOptions: {
+      jsdom: {
+        resources: 'usable',
+        // Ensure jsdom is fully ready before tests
+        pretendToBeVisual: true,
+        // Generic URL for jsdom - doesn't need to be a real server
+        // This just sets window.location.href for tests, no actual network connection
+        url: process.env.VITEST_JSDOM_URL || 'http://test.example.com'
+      }
+    },
     exclude: [
       '**\/node_modules/**',
       '**\/dist/**',

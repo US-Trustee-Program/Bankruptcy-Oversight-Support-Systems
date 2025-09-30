@@ -147,7 +147,16 @@ describe('search screen', () => {
       expect(comboBox).toBeInTheDocument();
     });
 
-    const options = comboBox!.querySelectorAll('li');
+    // Wait for options to be populated with specific office names
+    let options;
+    await waitFor(() => {
+      options = comboBox!.querySelectorAll('li');
+      expect(options.length).toBeGreaterThanOrEqual(officeNames.length);
+      // Ensure at least the first two expected options exist
+      expect(options[0]).toBeInTheDocument();
+      expect(options[1]).toBeInTheDocument();
+    });
+
     expect(options![0]).toHaveTextContent(officeNames[0]);
     expect(options![1]).toHaveTextContent(officeNames[1]);
   });

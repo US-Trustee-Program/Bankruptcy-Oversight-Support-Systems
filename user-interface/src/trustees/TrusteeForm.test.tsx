@@ -1659,7 +1659,12 @@ describe('TrusteeForm', () => {
       // Submit the form
       await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
-      // Assert that postTrustee was called with the expected payload
+      // First wait for the mock to be called (ensures form submission started)
+      await waitFor(() => {
+        expect(mockPostTrustee).toHaveBeenCalled();
+      });
+
+      // Then assert that postTrustee was called with the expected payload
       await waitFor(() => {
         expect(mockPostTrustee).toHaveBeenCalledWith({
           name: TEST_TRUSTEE_DATA.name,
