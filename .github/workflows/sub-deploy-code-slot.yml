@@ -169,6 +169,7 @@ jobs:
     uses: ./.github/workflows/reusable-e2e.yml
     with:
       apiFunctionName: ${{ inputs.apiFunctionName }}
+      dataflowsFunctionName: ${{ inputs.dataflowsFunctionName }}
       slotName: ${{ inputs.slotName }}
       webappName: ${{ inputs.webappName }}
       stackName: ${{ inputs.stackName }}

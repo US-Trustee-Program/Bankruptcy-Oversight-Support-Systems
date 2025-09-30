@@ -6,6 +6,9 @@ on:
       apiFunctionName:
         required: true
         type: string
+      dataflowsFunctionName:
+        required: true
+        type: string
       slotName:
         required: true
         type: string
