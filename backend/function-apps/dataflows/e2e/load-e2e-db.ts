@@ -1,20 +1,20 @@
-import { app, HttpResponseInit, InvocationContext, HttpRequest } from '@azure/functions';
-import { buildFunctionName } from '../dataflows-common';
+import { app, InvocationContext, HttpRequest } from '@azure/functions';
+import { buildFunctionName, buildHttpTrigger } from '../dataflows-common';
 import ContextCreator from '../../azure/application-context-creator';
 import { ApplicationContext } from '../../../lib/adapters/types/basic';
 
 const MODULE_NAME = 'LOAD-E2E-DB';
 const HTTP_TRIGGER = buildFunctionName(MODULE_NAME, 'httpTrigger');
 
-async function handleStart(
-  _request: HttpRequest,
-  invocationContext: InvocationContext,
-): Promise<HttpResponseInit> {
-  const context = await ContextCreator.getApplicationContext({ invocationContext });
-  await clearDatabase(context);
-  await loadData(context);
-  return { status: 200 };
-}
+const httpTrigger = buildHttpTrigger(
+  MODULE_NAME,
+  async (invocationContext: InvocationContext, _request: HttpRequest) => {
+    const context = await ContextCreator.getApplicationContext({ invocationContext });
+    await clearDatabase(context);
+    await loadData(context);
+    return { status: 200 };
+  },
+);
 
 async function clearDatabase(context: ApplicationContext) {
   const { clearAllCollections } = await import('./db-utils');
@@ -30,7 +30,7 @@ function setup() {
   app.http(HTTP_TRIGGER, {
     route: 'load-e2e-db',
     methods: ['POST'],
-    handler: handleStart,
+    handler: httpTrigger,
   });
 }
 
