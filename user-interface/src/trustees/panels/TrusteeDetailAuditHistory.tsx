@@ -82,8 +82,8 @@ function BankList({ banks }: { banks?: string[] }) {
   }
   return (
     <ul className="usa-list--unstyled">
-      {banks.map((bank) => (
-        <li key={bank}>{bank}</li>
+      {banks.map((bank, index) => (
+        <li key={`${bank}-${index}`}>{bank}</li>
       ))}
     </ul>
   );
