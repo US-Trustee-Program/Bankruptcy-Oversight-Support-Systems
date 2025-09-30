@@ -1,4 +1,3 @@
-// Imports
 import { ContactInformation } from '../../../../common/src/cams/contact';
 import { TrusteesUseCase } from './trustees';
 import { ApplicationContext } from '../../adapters/types/basic';
@@ -14,7 +13,6 @@ import { getCamsUserReference } from '../../../../common/src/cams/session';
 import * as validationModule from '../../../../common/src/cams/validation';
 import { deepEqual } from '../../../../common/src/object-equality';
 
-// Mocks
 // Mock the validation - need to import actual then mock specific functions
 jest.mock('../../../../common/src/cams/parties', () => {
   const actualParties = jest.requireActual('../../../../common/src/cams/parties');
