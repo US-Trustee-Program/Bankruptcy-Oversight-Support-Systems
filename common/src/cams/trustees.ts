@@ -35,6 +35,7 @@ export type Trustee = Auditable &
 
     districts?: string[];
     chapters?: ChapterType[];
+    banks?: string[];
     status: TrusteeStatus;
   };
 
@@ -64,7 +65,12 @@ export type TrusteeInternalContactHistory = AbstractTrusteeHistory<
   documentType: 'AUDIT_INTERNAL_CONTACT';
 };
 
+export type TrusteeBankHistory = AbstractTrusteeHistory<string[], string[]> & {
+  documentType: 'AUDIT_BANKS';
+};
+
 export type TrusteeHistory =
   | TrusteeNameHistory
   | TrusteePublicContactHistory
-  | TrusteeInternalContactHistory;
+  | TrusteeInternalContactHistory
+  | TrusteeBankHistory;
