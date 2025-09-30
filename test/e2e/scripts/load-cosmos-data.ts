@@ -2,15 +2,25 @@
 // curl --location --request POST 'http://localhost:7072/import/load-e2e-db'
 
 const endpoint = process.env.DATAFLOW_IMPORT_URL;
+const adminKey = process.env.ADMIN_KEY;
 
 if (!endpoint) {
   console.error('DATAFLOW_IMPORT_URL environment variable is not set.');
   process.exit(1);
 }
+if (!adminKey) {
+  console.error('ADMIN_KEY environment variable is not set.');
+  process.exit(1);
+}
 
 (async () => {
   try {
-    const response = await fetch(endpoint, { method: 'POST' });
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        Authorization: `ApiKey ${adminKey}`,
+      },
+    });
     if (!response.ok) {
       throw new Error(`Request failed: ${response.status} ${response.statusText}`);
     }
