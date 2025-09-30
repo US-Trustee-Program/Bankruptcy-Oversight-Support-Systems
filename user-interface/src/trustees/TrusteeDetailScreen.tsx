@@ -12,7 +12,9 @@ import TrusteeDetailHeader from './TrusteeDetailHeader';
 import TrusteeDetailProfile from './panels/TrusteeDetailProfile';
 import TrusteeDetailAuditHistory from './panels/TrusteeDetailAuditHistory';
 import TrusteeDetailNavigation, { mapTrusteeDetailNavState } from './TrusteeDetailNavigation';
-import { TrusteeFormState } from '@/trustees/UseTrusteeForm';
+import { TrusteeFormState } from '@/trustees/forms/UseTrusteeContactForm';
+import TrusteeContactForm from './forms/TrusteeContactForm';
+import TrusteeOtherInfoForm from './forms/TrusteeOtherInfoForm';
 
 export default function TrusteeDetailScreen() {
   const { trusteeId } = useParams();
@@ -35,7 +37,7 @@ export default function TrusteeDetailScreen() {
       action: 'edit',
       contactInformation: 'public',
     };
-    navigate(`/trustees/${trusteeId}/edit`, { state });
+    navigate(`/trustees/${trusteeId}/contact/edit`, { state });
   }
 
   function openEditInternalProfile() {
@@ -46,7 +48,17 @@ export default function TrusteeDetailScreen() {
       action: 'edit',
       contactInformation: 'internal',
     };
-    navigate(`/trustees/${trusteeId}/edit`, { state });
+    navigate(`/trustees/${trusteeId}/contact/edit`, { state });
+  }
+
+  function openEditOtherInformation() {
+    const state: TrusteeFormState = {
+      trusteeId,
+      trustee: trustee ?? undefined,
+      cancelTo: location.pathname,
+      action: 'edit',
+    };
+    navigate(`/trustees/${trusteeId}/other/edit`, { state });
   }
 
   useEffect(() => {
@@ -77,6 +89,12 @@ export default function TrusteeDetailScreen() {
     setNavState(mapTrusteeDetailNavState(location.pathname));
   }, [location]);
 
+  useEffect(() => {
+    if (location.state?.trustee) {
+      setTrustee(location.state.trustee as Trustee);
+    }
+  }, [location.state?.trustee]);
+
   return (
     <MainContent className="record-detail" data-testid="record-detail">
       <DocumentTitle name="Trustee Detail" />
@@ -91,23 +109,31 @@ export default function TrusteeDetailScreen() {
             <div className="left-navigation-pane-container">
               <TrusteeDetailNavigation trusteeId={trusteeId} initiallySelectedNavLink={navState} />
             </div>
-            <Routes>
-              <Route
-                path="/"
-                element={
-                  <TrusteeDetailProfile
-                    trustee={trustee}
-                    districtLabels={districtLabels}
-                    onEditPublicProfile={openEditPublicProfile}
-                    onEditInternalProfile={openEditInternalProfile}
-                  />
-                }
-              />
-              <Route
-                path="/audit-history"
-                element={<TrusteeDetailAuditHistory trusteeId={trusteeId ?? 'unknown'} />}
-              />
-            </Routes>
+            <div className="main-content-area">
+              <Routes>
+                <Route
+                  path="/"
+                  element={
+                    <TrusteeDetailProfile
+                      trustee={trustee}
+                      districtLabels={districtLabels}
+                      onEditPublicProfile={openEditPublicProfile}
+                      onEditInternalProfile={openEditInternalProfile}
+                      onEditOtherInformation={openEditOtherInformation}
+                    />
+                  }
+                />
+                <Route path="/contact/edit" element={<TrusteeContactForm />}></Route>
+                <Route
+                  path="/other/edit"
+                  element={<TrusteeOtherInfoForm banks={trustee.banks} trusteeId={trustee.id} />}
+                ></Route>
+                <Route
+                  path="/audit-history"
+                  element={<TrusteeDetailAuditHistory trusteeId={trusteeId ?? 'unknown'} />}
+                />
+              </Routes>
+            </div>
           </div>
         )}
       </div>

@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
-import { useTrusteeForm, TRUSTEE_SPEC } from './UseTrusteeForm';
-import { TrusteeFormData, TrusteeFormState } from './UseTrusteeForm';
+import { useTrusteeContactForm, TRUSTEE_SPEC } from './UseTrusteeContactForm';
+import { TrusteeFormData, TrusteeFormState } from './UseTrusteeContactForm';
 import { ContactInformation } from '@common/cams/contact';
 import { ChapterType } from '@common/cams/trustees';
 
@@ -104,7 +104,7 @@ describe('useTrusteeForm', () => {
         cancelTo: '/trustees',
       };
 
-      const { result } = renderHook(() => useTrusteeForm({ initialState }));
+      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
 
       expect(result.current.formData).toEqual({
         name: '',
@@ -135,7 +135,7 @@ describe('useTrusteeForm', () => {
         },
       };
 
-      const { result } = renderHook(() => useTrusteeForm({ initialState }));
+      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
 
       expect(result.current.formData).toEqual({
         name: 'Test Trustee',
@@ -169,7 +169,7 @@ describe('useTrusteeForm', () => {
         },
       };
 
-      const { result } = renderHook(() => useTrusteeForm({ initialState }));
+      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
 
       expect(result.current.formData).toEqual({
         name: 'Internal Trustee',
@@ -203,7 +203,7 @@ describe('useTrusteeForm', () => {
         },
       };
 
-      const { result } = renderHook(() => useTrusteeForm({ initialState }));
+      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
 
       expect(result.current.formData).toEqual({
         name: 'Public Trustee',
@@ -237,7 +237,7 @@ describe('useTrusteeForm', () => {
         },
       };
 
-      const { result } = renderHook(() => useTrusteeForm({ initialState }));
+      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
 
       expect(result.current.formData).toEqual({
         name: 'Missing Contact Trustee',
@@ -264,7 +264,7 @@ describe('useTrusteeForm', () => {
         cancelTo: '/trustees',
       };
 
-      const { result } = renderHook(() => useTrusteeForm({ initialState }));
+      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
 
       act(() => {
         result.current.updateField('name', 'Updated Name');
@@ -279,7 +279,7 @@ describe('useTrusteeForm', () => {
         cancelTo: '/trustees',
       };
 
-      const { result } = renderHook(() => useTrusteeForm({ initialState }));
+      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
 
       // Test with string
       act(() => {
@@ -315,7 +315,7 @@ describe('useTrusteeForm', () => {
         cancelTo: '/trustees',
       };
 
-      const { result } = renderHook(() => useTrusteeForm({ initialState }));
+      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
 
       const updates = {
         name: 'Multiple Update',
@@ -343,7 +343,7 @@ describe('useTrusteeForm', () => {
         },
       };
 
-      const { result } = renderHook(() => useTrusteeForm({ initialState }));
+      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
 
       act(() => {
         result.current.updateMultipleFields({});
@@ -363,7 +363,7 @@ describe('useTrusteeForm', () => {
         },
       };
 
-      const { result } = renderHook(() => useTrusteeForm({ initialState }));
+      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
 
       // First update some values
       act(() => {
@@ -391,7 +391,7 @@ describe('useTrusteeForm', () => {
         cancelTo: '/trustees',
       };
 
-      const { result } = renderHook(() => useTrusteeForm({ initialState }));
+      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
 
       // Update with values with spaces
       act(() => {
@@ -425,7 +425,7 @@ describe('useTrusteeForm', () => {
         cancelTo: '/trustees',
       };
 
-      const { result } = renderHook(() => useTrusteeForm({ initialState }));
+      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
 
       act(() => {
         result.current.updateMultipleFields({
@@ -453,7 +453,7 @@ describe('useTrusteeForm', () => {
         cancelTo: '/trustees',
       };
 
-      const { result } = renderHook(() => useTrusteeForm({ initialState }));
+      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
 
       act(() => {
         result.current.updateMultipleFields({
@@ -475,7 +475,7 @@ describe('useTrusteeForm', () => {
         cancelTo: '/trustees',
       };
 
-      const { result } = renderHook(() => useTrusteeForm({ initialState }));
+      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
 
       act(() => {
         result.current.updateField('name', 'Original Name');
@@ -501,7 +501,7 @@ describe('useTrusteeForm', () => {
         },
       };
 
-      const { result } = renderHook(() => useTrusteeForm({ initialState }));
+      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
 
       const trimmedData = result.current.getFormData();
 
@@ -524,7 +524,7 @@ describe('useTrusteeForm', () => {
         },
       };
 
-      const { result } = renderHook(() => useTrusteeForm({ initialState }));
+      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
 
       // Make sure all address fields are empty
       act(() => {
@@ -563,7 +563,7 @@ describe('useTrusteeForm', () => {
         },
       };
 
-      const { result } = renderHook(() => useTrusteeForm({ initialState }));
+      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
 
       // Set one address field to be non-empty
       act(() => {
@@ -600,7 +600,7 @@ describe('useTrusteeForm', () => {
         },
       };
 
-      const { result } = renderHook(() => useTrusteeForm({ initialState }));
+      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
 
       // Make sure phone is empty
       act(() => {
@@ -629,7 +629,7 @@ describe('useTrusteeForm', () => {
         },
       };
 
-      const { result } = renderHook(() => useTrusteeForm({ initialState }));
+      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
 
       // Set phone to be non-empty
       act(() => {
@@ -656,7 +656,7 @@ describe('useTrusteeForm', () => {
         },
       };
 
-      const { result } = renderHook(() => useTrusteeForm({ initialState }));
+      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
 
       // Make sure email is empty
       act(() => {
@@ -682,7 +682,7 @@ describe('useTrusteeForm', () => {
         },
       };
 
-      const { result } = renderHook(() => useTrusteeForm({ initialState }));
+      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
 
       // Set email to be non-empty
       act(() => {
@@ -707,7 +707,7 @@ describe('useTrusteeForm', () => {
         },
       };
 
-      const { result } = renderHook(() => useTrusteeForm({ initialState }));
+      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
 
       // Set empty values
       act(() => {
@@ -742,7 +742,7 @@ describe('useTrusteeForm', () => {
       cancelTo: '/trustees',
     };
 
-    const { result } = renderHook(() => useTrusteeForm({ initialState }));
+    const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
 
     // Update fields
     act(() => {
@@ -783,7 +783,7 @@ describe('useTrusteeForm', () => {
       cancelTo: '/trustees',
     };
 
-    const { result } = renderHook(() => useTrusteeForm({ initialState }));
+    const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
 
     let validationResult;
     act(() => {
@@ -800,7 +800,7 @@ describe('useTrusteeForm', () => {
       cancelTo: '/trustees',
     };
 
-    const { result } = renderHook(() => useTrusteeForm({ initialState }));
+    const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
 
     const formData = {
       ...VALID_FORM_DATA,
@@ -822,7 +822,7 @@ describe('useTrusteeForm', () => {
       cancelTo: '/trustees',
     };
 
-    const { result } = renderHook(() => useTrusteeForm({ initialState }));
+    const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
 
     const formData = {
       ...VALID_FORM_DATA,
@@ -893,7 +893,7 @@ describe('useTrusteeForm', () => {
       cancelTo: '/trustees',
     };
 
-    const { result } = renderHook(() => useTrusteeForm({ initialState }));
+    const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
 
     act(() => {
       result.current.validateFieldAndUpdate(args.field, args.value, TRUSTEE_SPEC);
@@ -912,7 +912,7 @@ describe('useTrusteeForm', () => {
       cancelTo: '/trustees',
     };
 
-    const { result } = renderHook(() => useTrusteeForm({ initialState }));
+    const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
 
     // First generate some errors
     act(() => {
@@ -937,7 +937,7 @@ describe('useTrusteeForm', () => {
       cancelTo: '/trustees',
     };
 
-    const { result } = renderHook(() => useTrusteeForm({ initialState }));
+    const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
 
     // Generate errors for multiple fields
     act(() => {
@@ -963,7 +963,7 @@ describe('useTrusteeForm', () => {
       cancelTo: '/trustees',
     };
 
-    const { result } = renderHook(() => useTrusteeForm({ initialState }));
+    const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
 
     const validationResult = result.current.validateFormAndUpdateErrors(
       COMPLETE_VALID_FORM_DATA,
@@ -979,7 +979,7 @@ describe('useTrusteeForm', () => {
       cancelTo: '/trustees',
     };
 
-    const { result } = renderHook(() => useTrusteeForm({ initialState }));
+    const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
 
     let validationResult;
     act(() => {

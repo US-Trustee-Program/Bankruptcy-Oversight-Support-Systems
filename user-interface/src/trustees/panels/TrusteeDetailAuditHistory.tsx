@@ -9,6 +9,7 @@ import {
   TrusteeNameHistory,
   TrusteePublicContactHistory,
   TrusteeInternalContactHistory,
+  TrusteeBankHistory,
 } from '@common/cams/trustees';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
 import { Auditable } from '@common/cams/auditable';
@@ -75,6 +76,46 @@ function ShowTrusteeContactHistory(props: ShowTrusteeContactHistoryProps) {
   );
 }
 
+function BankList({ banks }: { banks?: string[] }) {
+  if (!banks || banks.length === 0) {
+    return <>(none)</>;
+  }
+  return (
+    <ul className="usa-list--unstyled">
+      {banks.map((bank, index) => (
+        <li key={`${bank}-${index}`}>{bank}</li>
+      ))}
+    </ul>
+  );
+}
+
+type ShowTrusteeBankHistoryProps = Readonly<{
+  history: TrusteeBankHistory;
+  idx: number;
+}>;
+
+function ShowTrusteeBankHistory(props: ShowTrusteeBankHistoryProps) {
+  const { history, idx } = props;
+
+  return (
+    <tr>
+      <td>Bank(s)</td>
+      <td data-testid={`previous-banks-${idx}`}>
+        <BankList banks={history.before} />
+      </td>
+      <td data-testid={`new-banks-${idx}`}>
+        <BankList banks={history.after} />
+      </td>
+      <td data-testid={`changed-by-${idx}`}>
+        {history.updatedBy && <>{history.updatedBy.name}</>}
+      </td>
+      <td data-testid={`change-date-${idx}`}>
+        <span className="text-no-wrap">{formatDate(history.updatedOn)}</span>
+      </td>
+    </tr>
+  );
+}
+
 function RenderTrusteeHistory(props: Readonly<{ trusteeHistory: TrusteeHistory[] }>) {
   const { trusteeHistory } = props;
   return (
@@ -89,6 +130,14 @@ function RenderTrusteeHistory(props: Readonly<{ trusteeHistory: TrusteeHistory[]
           case 'AUDIT_INTERNAL_CONTACT':
             return (
               <ShowTrusteeContactHistory
+                key={window.crypto.randomUUID()}
+                history={history}
+                idx={idx}
+              />
+            );
+          case 'AUDIT_BANKS':
+            return (
+              <ShowTrusteeBankHistory
                 key={window.crypto.randomUUID()}
                 history={history}
                 idx={idx}

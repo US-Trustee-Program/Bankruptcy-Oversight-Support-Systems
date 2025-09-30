@@ -1,6 +1,19 @@
-// Mock the validation - need to import actual then mock specific functions
 import { ContactInformation } from '../../../../common/src/cams/contact';
+import { TrusteesUseCase } from './trustees';
+import { ApplicationContext } from '../../adapters/types/basic';
+import { TrusteesRepository } from '../gateways.types';
+import { TrusteeInput, Trustee } from '../../../../common/src/cams/trustees';
+import { createMockApplicationContext } from '../../testing/testing-utilities';
+import { getCamsError } from '../../common-errors/error-utilities';
+import { CamsUserReference } from '../../../../common/src/cams/users';
+import { closeDeferred } from '../../deferrable/defer-close';
+import { CamsError } from '../../common-errors/cams-error';
+import { getTrusteesRepository } from '../../factory';
+import { getCamsUserReference } from '../../../../common/src/cams/session';
+import * as validationModule from '../../../../common/src/cams/validation';
+import { deepEqual } from '../../../../common/src/object-equality';
 
+// Mock the validation - need to import actual then mock specific functions
 jest.mock('../../../../common/src/cams/parties', () => {
   const actualParties = jest.requireActual('../../../../common/src/cams/parties');
   return {
@@ -29,20 +42,6 @@ jest.mock('../../../../common/src/object-equality', () => ({
     return false;
   }),
 }));
-
-import { TrusteesUseCase } from './trustees';
-import { ApplicationContext } from '../../adapters/types/basic';
-import { TrusteesRepository } from '../gateways.types';
-import { TrusteeInput } from '../../../../common/src/cams/trustees';
-import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { getCamsError } from '../../common-errors/error-utilities';
-import { CamsUserReference } from '../../../../common/src/cams/users';
-import { closeDeferred } from '../../deferrable/defer-close';
-import { CamsError } from '../../common-errors/cams-error';
-import { getTrusteesRepository } from '../../factory';
-import { getCamsUserReference } from '../../../../common/src/cams/session';
-import * as validationModule from '../../../../common/src/cams/validation';
-import { deepEqual } from '../../../../common/src/object-equality';
 
 const mockGetTrusteesRepository = getTrusteesRepository as jest.MockedFunction<
   typeof getTrusteesRepository
@@ -188,15 +187,38 @@ const createExpectedTrusteeFromCase = (testCase: WebsiteTestCase, userRef: CamsU
   updatedBy: userRef,
 });
 
+// Mock user reference for testing
+const mockUserReference: CamsUserReference = {
+  id: 'user123',
+  name: 'Test User',
+};
+
+// Base trustee factory to reduce duplication
+const makeTrustee = (overrides: Partial<Trustee> = {}): Trustee => ({
+  id: 'trustee-123',
+  name: 'John Doe',
+  public: {
+    address: {
+      address1: '123 Main St',
+      city: 'Anytown',
+      state: 'NY',
+      zipCode: '12345',
+      countryCode: 'US' as const,
+    },
+  },
+  banks: undefined,
+  status: 'active' as const,
+  createdOn: '2025-08-12T10:00:00Z',
+  createdBy: mockUserReference,
+  updatedOn: '2025-08-12T10:00:00Z',
+  updatedBy: mockUserReference,
+  ...overrides,
+});
+
 describe('TrusteesUseCase', () => {
   let context: ApplicationContext;
   let useCase: TrusteesUseCase;
   let mockTrusteesRepository: jest.Mocked<TrusteesRepository>;
-
-  const mockUserReference: CamsUserReference = {
-    id: 'user123',
-    name: 'Test User',
-  };
 
   const sampleTrusteeInput: TrusteeInput = {
     name: 'John Doe',
@@ -1167,10 +1189,7 @@ describe('TrusteesUseCase', () => {
       // Override the deepEqual mock for this specific test to return true for public contact comparison
       // This simulates the case where the public contact info is equal between existing and updated trustee
       (deepEqual as jest.Mock).mockImplementationOnce((a, b) => {
-        if (a === existingTrustee.public && b === updatedTrustee.public) {
-          return true; // Public contacts are equal
-        }
-        return false; // For any other comparison
+        return a === existingTrustee.public && b === updatedTrustee.public;
       });
 
       // Reset mock history before test
@@ -1238,6 +1257,147 @@ describe('TrusteesUseCase', () => {
         }),
       );
     });
+
+    // Bank audit history tests - refactored using table-driven approach
+    type BankCase = {
+      description: string;
+      existingBanks: string[] | undefined;
+      updatedBanks: string[];
+      deepEqual: (a: unknown, b: unknown) => boolean;
+      expectDocs: string[];
+      notDocs: string[];
+      totalCalls: number;
+    };
+
+    const bankCases: BankCase[] = [
+      {
+        description: 'creates AUDIT_BANKS when banks added',
+        existingBanks: ['BOA', 'Chase'],
+        updatedBanks: ['BOA', 'Chase', 'Wells Fargo'],
+        deepEqual: (a, b) =>
+          Array.isArray(a) && Array.isArray(b) ? !b.includes('Wells Fargo') : true,
+        expectDocs: ['AUDIT_BANKS'],
+        notDocs: ['AUDIT_NAME', 'AUDIT_PUBLIC_CONTACT', 'AUDIT_INTERNAL_CONTACT'],
+        totalCalls: 1,
+      },
+      {
+        description: 'no AUDIT_BANKS when banks unchanged',
+        existingBanks: ['BOA', 'Chase'],
+        updatedBanks: ['BOA', 'Chase'],
+        deepEqual: (a, b) => {
+          // Banks are equal
+          if (
+            Array.isArray(a) &&
+            Array.isArray(b) &&
+            a.length === b.length &&
+            a.every((val, index) => val === b[index])
+          ) {
+            return true;
+          }
+          // Name and public contact are different
+          return false;
+        },
+        expectDocs: [], // no bank doc
+        notDocs: ['AUDIT_BANKS'],
+        totalCalls: 3, // name + public + internal (unchanged-only)
+      },
+      {
+        description: 'creates AUDIT_BANKS when adding banks to trustee that had none',
+        existingBanks: undefined,
+        updatedBanks: ['Citibank', 'US Bank'],
+        deepEqual: (a, b) => {
+          // For banks comparison (undefined vs array), return false
+          if (a === undefined && Array.isArray(b) && b.includes('Citibank')) {
+            return false;
+          }
+          // For other comparisons, return true to indicate no changes
+          return true;
+        },
+        expectDocs: ['AUDIT_BANKS'],
+        notDocs: ['AUDIT_NAME', 'AUDIT_PUBLIC_CONTACT', 'AUDIT_INTERNAL_CONTACT'],
+        totalCalls: 1,
+      },
+      {
+        description: 'creates AUDIT_BANKS when removing all banks from trustee',
+        existingBanks: ['TD Bank', 'Capital One'],
+        updatedBanks: [],
+        deepEqual: (a, b) => {
+          // For banks comparison (array vs empty array), return false
+          if (Array.isArray(a) && a.includes('TD Bank') && Array.isArray(b) && b.length === 0) {
+            return false;
+          }
+          // For other comparisons, return true to indicate no changes
+          return true;
+        },
+        expectDocs: ['AUDIT_BANKS'],
+        notDocs: ['AUDIT_NAME', 'AUDIT_PUBLIC_CONTACT', 'AUDIT_INTERNAL_CONTACT'],
+        totalCalls: 1,
+      },
+    ];
+
+    // Bank audit history tests - parameterized using test.each
+    test.each(bankCases)(
+      '$description',
+      async ({
+        existingBanks,
+        updatedBanks,
+        deepEqual: deepEqualFn,
+        expectDocs,
+        notDocs,
+        totalCalls,
+      }) => {
+        jest.clearAllMocks();
+        (deepEqual as jest.Mock).mockImplementation(deepEqualFn);
+
+        const existing = makeTrustee({ banks: existingBanks });
+        const updated = makeTrustee({
+          banks: updatedBanks,
+          updatedOn: '2025-08-12T11:00:00Z',
+          // For the "no AUDIT_BANKS when banks unchanged" test, make name and public different
+          ...(totalCalls === 3 && {
+            name: 'Jane Doe Updated',
+            public: {
+              address: {
+                address1: '456 New St',
+                city: 'Newtown',
+                state: 'CA',
+                zipCode: '54321',
+                countryCode: 'US' as const,
+              },
+            },
+          }),
+        });
+
+        mockTrusteesRepository.read.mockResolvedValue(existing);
+        mockTrusteesRepository.updateTrustee.mockResolvedValue(updated);
+        mockTrusteesRepository.createTrusteeHistory.mockResolvedValue(undefined);
+
+        await useCase.updateTrustee(context, existing.id, {
+          name: updated.name,
+          public: updated.public,
+          banks: updated.banks,
+          status: updated.status,
+        });
+
+        expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledTimes(totalCalls);
+
+        expectDocs.forEach((doc) =>
+          expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
+            expect.objectContaining({
+              documentType: doc,
+              id: existing.id,
+              before: existing.banks,
+              after: updated.banks,
+            }),
+          ),
+        );
+        notDocs.forEach((doc) =>
+          expect(mockTrusteesRepository.createTrusteeHistory).not.toHaveBeenCalledWith(
+            expect.objectContaining({ documentType: doc }),
+          ),
+        );
+      },
+    );
   });
 
   describe('listHistory', () => {

@@ -1,11 +1,15 @@
-import './TrusteeForm.scss';
+import './TrusteeContactForm.scss';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Input from '@/lib/components/uswds/Input';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 import { useApi2 } from '@/lib/hooks/UseApi2';
-import { TrusteeFormData, TrusteeFormState, useTrusteeForm } from '@/trustees/UseTrusteeForm';
+import {
+  TrusteeFormData,
+  TrusteeFormState,
+  useTrusteeContactForm,
+} from '@/trustees/forms/UseTrusteeContactForm';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
@@ -35,7 +39,7 @@ const STATUS_OPTIONS: ComboOption<TrusteeStatus>[] = [
   { value: 'suspended', label: 'Suspended' },
 ];
 
-function TrusteeForm() {
+function TrusteeContactForm() {
   const flags = useFeatureFlags();
   const api = useApi2();
   const globalAlert = useGlobalAlert();
@@ -63,7 +67,7 @@ function TrusteeForm() {
     clearFieldError,
     validateFormAndUpdateErrors,
     getDynamicSpec,
-  } = useTrusteeForm({ initialState: passedState });
+  } = useTrusteeContactForm({ initialState: passedState });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -554,4 +558,4 @@ function TrusteeForm() {
   );
 }
 
-export default React.memo(TrusteeForm);
+export default React.memo(TrusteeContactForm);
