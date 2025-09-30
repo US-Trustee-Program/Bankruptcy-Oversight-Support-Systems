@@ -49,3 +49,4 @@ repos:
         language: python
         files: '^\.github/workflows/.*\.(yml|yaml)$'
         verbose: true
+        additional_dependencies: ['PyYAML']
