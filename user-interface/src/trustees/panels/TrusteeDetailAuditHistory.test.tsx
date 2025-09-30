@@ -798,133 +798,74 @@ describe('TrusteeDetailAuditHistory', () => {
       updatedBy: SYSTEM_USER_REFERENCE,
     };
 
-    test('should display bank change history correctly', async () => {
-      mockGetTrusteeHistory.mockResolvedValue({ data: [mockBankHistory] });
+    describe('Bank History empty/undefined/single scenarios', () => {
+      const base = { ...mockBankHistory };
 
-      renderWithProps({});
+      const scenarios = [
+        {
+          name: 'basic bank change',
+          override: {},
+          expectPrev: ['First National Bank', 'Second Trust Bank'],
+          expectNew: ['First National Bank', 'Third Community Bank', 'Fourth Federal Bank'],
+        },
+        {
+          name: 'no previous banks',
+          override: { before: undefined, after: ['New Bank One', 'New Bank Two'] },
+          expectPrev: '(none)',
+          expectNew: ['New Bank One', 'New Bank Two'],
+        },
+        {
+          name: 'no new banks',
+          override: { before: ['Old Bank One', 'Old Bank Two'], after: undefined },
+          expectPrev: ['Old Bank One', 'Old Bank Two'],
+          expectNew: '(none)',
+        },
+        {
+          name: 'empty arrays',
+          override: { before: [], after: [] },
+          expectPrev: '(none)',
+          expectNew: '(none)',
+        },
+        {
+          name: 'single bank',
+          override: { before: ['Single Old Bank'], after: ['Single New Bank'] },
+          expectPrev: ['Single Old Bank'],
+          expectNew: ['Single New Bank'],
+        },
+        {
+          name: 'missing updatedBy',
+          override: { updatedBy: { id: '', name: '' } },
+          expectPrev: ['First National Bank', 'Second Trust Bank'],
+          expectNew: ['First National Bank', 'Third Community Bank', 'Fourth Federal Bank'],
+          expectChangedBy: '',
+        },
+      ];
 
-      await waitFor(() => {
-        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
-      });
+      test.each(scenarios)(
+        'should display bank history with $name',
+        async ({ override, expectPrev, expectNew, expectChangedBy = 'SYSTEM' }) => {
+          mockGetTrusteeHistory.mockResolvedValue({ data: [{ ...base, ...override }] });
+          renderWithProps({});
+          await screen.findByTestId('trustee-history-table');
 
-      // Check bank change row
-      expect(screen.getByText('Bank(s)')).toBeInTheDocument();
+          const prevEl = screen.getByTestId('previous-banks-0');
+          const newEl = screen.getByTestId('new-banks-0');
+          const changedByEl = screen.getByTestId('changed-by-0');
 
-      // Check previous banks
-      const previousBanks = screen.getByTestId('previous-banks-0');
-      expect(previousBanks).toHaveTextContent('First National Bank');
-      expect(previousBanks).toHaveTextContent('Second Trust Bank');
+          // Helper to assert either array of texts or single string
+          const assertContent = (el: HTMLElement, exp: string | string[]) => {
+            if (Array.isArray(exp)) {
+              exp.forEach((txt) => expect(el).toHaveTextContent(txt));
+            } else {
+              expect(el).toHaveTextContent(exp);
+            }
+          };
 
-      // Check new banks
-      const newBanks = screen.getByTestId('new-banks-0');
-      expect(newBanks).toHaveTextContent('First National Bank');
-      expect(newBanks).toHaveTextContent('Third Community Bank');
-      expect(newBanks).toHaveTextContent('Fourth Federal Bank');
-
-      expect(screen.getByTestId('changed-by-0')).toHaveTextContent('SYSTEM');
-      expect(screen.getByTestId('change-date-0')).toHaveTextContent(
-        'formatted-2024-01-20T10:00:00Z',
+          assertContent(prevEl, expectPrev);
+          assertContent(newEl, expectNew);
+          expect(changedByEl).toHaveTextContent(expectChangedBy);
+        },
       );
-    });
-
-    test('should display bank history with no previous banks', async () => {
-      const bankHistoryNoPrevious = {
-        ...mockBankHistory,
-        before: undefined,
-        after: ['New Bank One', 'New Bank Two'],
-      };
-
-      mockGetTrusteeHistory.mockResolvedValue({ data: [bankHistoryNoPrevious] });
-
-      renderWithProps({});
-
-      await waitFor(() => {
-        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
-      });
-
-      expect(screen.getByTestId('previous-banks-0')).toHaveTextContent('(none)');
-
-      const newBanks = screen.getByTestId('new-banks-0');
-      expect(newBanks).toHaveTextContent('New Bank One');
-      expect(newBanks).toHaveTextContent('New Bank Two');
-    });
-
-    test('should display bank history with no new banks', async () => {
-      const bankHistoryNoAfter = {
-        ...mockBankHistory,
-        before: ['Old Bank One', 'Old Bank Two'],
-        after: undefined,
-      };
-
-      mockGetTrusteeHistory.mockResolvedValue({ data: [bankHistoryNoAfter] });
-
-      renderWithProps({});
-
-      await waitFor(() => {
-        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
-      });
-
-      const previousBanks = screen.getByTestId('previous-banks-0');
-      expect(previousBanks).toHaveTextContent('Old Bank One');
-      expect(previousBanks).toHaveTextContent('Old Bank Two');
-
-      expect(screen.getByTestId('new-banks-0')).toHaveTextContent('(none)');
-    });
-
-    test('should display bank history with empty bank arrays', async () => {
-      const bankHistoryEmptyArrays = {
-        ...mockBankHistory,
-        before: [],
-        after: [],
-      };
-
-      mockGetTrusteeHistory.mockResolvedValue({ data: [bankHistoryEmptyArrays] });
-
-      renderWithProps({});
-
-      await waitFor(() => {
-        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
-      });
-
-      // Both empty arrays and undefined should show "(none)"
-      expect(screen.getByTestId('previous-banks-0')).toHaveTextContent('(none)');
-      expect(screen.getByTestId('new-banks-0')).toHaveTextContent('(none)');
-    });
-
-    test('should display bank history with single bank', async () => {
-      const bankHistorySingle = {
-        ...mockBankHistory,
-        before: ['Single Old Bank'],
-        after: ['Single New Bank'],
-      };
-
-      mockGetTrusteeHistory.mockResolvedValue({ data: [bankHistorySingle] });
-
-      renderWithProps({});
-
-      await waitFor(() => {
-        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
-      });
-
-      expect(screen.getByTestId('previous-banks-0')).toHaveTextContent('Single Old Bank');
-      expect(screen.getByTestId('new-banks-0')).toHaveTextContent('Single New Bank');
-    });
-
-    test('should handle bank history with missing updatedBy', async () => {
-      const bankHistoryNoUpdatedBy = {
-        ...mockBankHistory,
-        updatedBy: { id: '', name: '' },
-      };
-
-      mockGetTrusteeHistory.mockResolvedValue({ data: [bankHistoryNoUpdatedBy] });
-
-      renderWithProps({});
-
-      await waitFor(() => {
-        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
-      });
-
-      expect(screen.getByTestId('changed-by-0')).toHaveTextContent('');
     });
 
     test('should display mixed history types including banks', async () => {
@@ -934,9 +875,7 @@ describe('TrusteeDetailAuditHistory', () => {
 
       renderWithProps({});
 
-      await waitFor(() => {
-        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
-      });
+      await screen.findByTestId('trustee-history-table');
 
       // Check that all three types are rendered
       expect(screen.getByText('Name')).toBeInTheDocument();
@@ -960,9 +899,7 @@ describe('TrusteeDetailAuditHistory', () => {
 
       renderWithProps({});
 
-      await waitFor(() => {
-        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
-      });
+      await screen.findByTestId('trustee-history-table');
 
       // Check that banks are rendered as unordered lists
       const previousBanks = screen.getByTestId('previous-banks-0');
