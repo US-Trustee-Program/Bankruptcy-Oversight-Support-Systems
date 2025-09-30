@@ -1,6 +1,21 @@
-// Mock the validation - need to import actual then mock specific functions
+// Imports
 import { ContactInformation } from '../../../../common/src/cams/contact';
+import { TrusteesUseCase } from './trustees';
+import { ApplicationContext } from '../../adapters/types/basic';
+import { TrusteesRepository } from '../gateways.types';
+import { TrusteeInput, Trustee } from '../../../../common/src/cams/trustees';
+import { createMockApplicationContext } from '../../testing/testing-utilities';
+import { getCamsError } from '../../common-errors/error-utilities';
+import { CamsUserReference } from '../../../../common/src/cams/users';
+import { closeDeferred } from '../../deferrable/defer-close';
+import { CamsError } from '../../common-errors/cams-error';
+import { getTrusteesRepository } from '../../factory';
+import { getCamsUserReference } from '../../../../common/src/cams/session';
+import * as validationModule from '../../../../common/src/cams/validation';
+import { deepEqual } from '../../../../common/src/object-equality';
 
+// Mocks
+// Mock the validation - need to import actual then mock specific functions
 jest.mock('../../../../common/src/cams/parties', () => {
   const actualParties = jest.requireActual('../../../../common/src/cams/parties');
   return {
@@ -29,20 +44,6 @@ jest.mock('../../../../common/src/object-equality', () => ({
     return false;
   }),
 }));
-
-import { TrusteesUseCase } from './trustees';
-import { ApplicationContext } from '../../adapters/types/basic';
-import { TrusteesRepository } from '../gateways.types';
-import { TrusteeInput } from '../../../../common/src/cams/trustees';
-import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { getCamsError } from '../../common-errors/error-utilities';
-import { CamsUserReference } from '../../../../common/src/cams/users';
-import { closeDeferred } from '../../deferrable/defer-close';
-import { CamsError } from '../../common-errors/cams-error';
-import { getTrusteesRepository } from '../../factory';
-import { getCamsUserReference } from '../../../../common/src/cams/session';
-import * as validationModule from '../../../../common/src/cams/validation';
-import { deepEqual } from '../../../../common/src/object-equality';
 
 const mockGetTrusteesRepository = getTrusteesRepository as jest.MockedFunction<
   typeof getTrusteesRepository
@@ -188,15 +189,38 @@ const createExpectedTrusteeFromCase = (testCase: WebsiteTestCase, userRef: CamsU
   updatedBy: userRef,
 });
 
+// Mock user reference for testing
+const mockUserReference: CamsUserReference = {
+  id: 'user123',
+  name: 'Test User',
+};
+
+// Base trustee factory to reduce duplication
+const makeTrustee = (overrides: Partial<Trustee> = {}): Trustee => ({
+  id: 'trustee-123',
+  name: 'John Doe',
+  public: {
+    address: {
+      address1: '123 Main St',
+      city: 'Anytown',
+      state: 'NY',
+      zipCode: '12345',
+      countryCode: 'US' as const,
+    },
+  },
+  banks: undefined,
+  status: 'active' as const,
+  createdOn: '2025-08-12T10:00:00Z',
+  createdBy: mockUserReference,
+  updatedOn: '2025-08-12T10:00:00Z',
+  updatedBy: mockUserReference,
+  ...overrides,
+});
+
 describe('TrusteesUseCase', () => {
   let context: ApplicationContext;
   let useCase: TrusteesUseCase;
   let mockTrusteesRepository: jest.Mocked<TrusteesRepository>;
-
-  const mockUserReference: CamsUserReference = {
-    id: 'user123',
-    name: 'Test User',
-  };
 
   const sampleTrusteeInput: TrusteeInput = {
     name: 'John Doe',
@@ -1236,430 +1260,146 @@ describe('TrusteesUseCase', () => {
       );
     });
 
-    // Bank audit history tests
-    test('should update trustee banks and create banks audit history record', async () => {
-      const trusteeId = 'trustee-123';
+    // Bank audit history tests - refactored using table-driven approach
+    type BankCase = {
+      description: string;
+      existingBanks: string[] | undefined;
+      updatedBanks: string[];
+      deepEqual: (a: unknown, b: unknown) => boolean;
+      expectDocs: string[];
+      notDocs: string[];
+      totalCalls: number;
+    };
 
-      // Simplified test setup with banks
-      const existingTrustee = {
-        id: trusteeId,
-        name: 'John Doe',
-        public: {
-          address: {
-            address1: '123 Main St',
-            city: 'Anytown',
-            state: 'NY',
-            zipCode: '12345',
-            countryCode: 'US' as const,
-          },
+    const bankCases: BankCase[] = [
+      {
+        description: 'creates AUDIT_BANKS when banks added',
+        existingBanks: ['BOA', 'Chase'],
+        updatedBanks: ['BOA', 'Chase', 'Wells Fargo'],
+        deepEqual: (a, b) =>
+          Array.isArray(a) && Array.isArray(b) ? !b.includes('Wells Fargo') : true,
+        expectDocs: ['AUDIT_BANKS'],
+        notDocs: ['AUDIT_NAME', 'AUDIT_PUBLIC_CONTACT', 'AUDIT_INTERNAL_CONTACT'],
+        totalCalls: 1,
+      },
+      {
+        description: 'no AUDIT_BANKS when banks unchanged',
+        existingBanks: ['BOA', 'Chase'],
+        updatedBanks: ['BOA', 'Chase'],
+        deepEqual: (a, b) => {
+          // Banks are equal
+          if (
+            Array.isArray(a) &&
+            Array.isArray(b) &&
+            a.length === b.length &&
+            a.every((val, index) => val === b[index])
+          ) {
+            return true;
+          }
+          // Name and public contact are different
+          return false;
         },
-        banks: ['Bank of America', 'Chase'], // Initial banks
-        status: 'active' as const,
-        createdOn: '2025-08-12T10:00:00Z',
-        createdBy: mockUserReference,
-        updatedOn: '2025-08-12T10:00:00Z',
-        updatedBy: mockUserReference,
-      };
-
-      const updatedTrustee = {
-        id: trusteeId,
-        name: 'John Doe',
-        public: {
-          address: {
-            address1: '123 Main St',
-            city: 'Anytown',
-            state: 'NY',
-            zipCode: '12345',
-            countryCode: 'US' as const,
-          },
-        },
-        banks: ['Bank of America', 'Chase', 'Wells Fargo'], // Updated banks with new entry
-        status: 'active' as const,
-        createdOn: '2025-08-12T10:00:00Z',
-        createdBy: mockUserReference,
-        updatedOn: '2025-08-12T11:00:00Z',
-        updatedBy: mockUserReference,
-      };
-
-      const updateInput = {
-        name: 'John Doe',
-        public: {
-          address: {
-            address1: '123 Main St',
-            city: 'Anytown',
-            state: 'NY',
-            zipCode: '12345',
-            countryCode: 'US' as const,
-          },
-        },
-        banks: ['Bank of America', 'Chase', 'Wells Fargo'], // Updated banks
-        status: 'active' as const,
-      };
-
-      // Reset mock history before test to ensure clean slate
-      jest.clearAllMocks();
-
-      // Override deepEqual specifically for this test to control its behavior
-      (deepEqual as jest.Mock).mockImplementation((a, b) => {
-        // Return false only for the banks comparison
-        if (
-          Array.isArray(a) &&
-          Array.isArray(b) &&
-          a.includes('Bank of America') &&
-          b.includes('Wells Fargo')
-        ) {
-          return false; // Make banks comparison different
-        }
-        // For all other comparisons (like name or public), return true to indicate no changes
-        return true;
-      });
-
-      // Mock repository behavior
-      mockTrusteesRepository.read.mockResolvedValue(existingTrustee);
-      mockTrusteesRepository.updateTrustee.mockResolvedValue(updatedTrustee);
-      mockTrusteesRepository.createTrusteeHistory.mockResolvedValue(undefined);
-
-      // Execute the function
-      await useCase.updateTrustee(context, trusteeId, updateInput);
-
-      // Verify createTrusteeHistory is called for the banks audit record
-      expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
-        expect.objectContaining({
-          documentType: 'AUDIT_BANKS',
-          id: trusteeId,
-          before: existingTrustee.banks,
-          after: updatedTrustee.banks,
-        }),
-      );
-
-      // Verify no other history records were created
-      expect(mockTrusteesRepository.createTrusteeHistory).not.toHaveBeenCalledWith(
-        expect.objectContaining({
-          documentType: 'AUDIT_NAME',
-        }),
-      );
-      expect(mockTrusteesRepository.createTrusteeHistory).not.toHaveBeenCalledWith(
-        expect.objectContaining({
-          documentType: 'AUDIT_PUBLIC_CONTACT',
-        }),
-      );
-      expect(mockTrusteesRepository.createTrusteeHistory).not.toHaveBeenCalledWith(
-        expect.objectContaining({
-          documentType: 'AUDIT_INTERNAL_CONTACT',
-        }),
-      );
-
-      // Verify total number of createHistory calls (should be 1 for banks only)
-      expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledTimes(1);
-    });
-
-    test('should not create banks audit history when banks are unchanged', async () => {
-      const trusteeId = 'trustee-123';
-      const unchangedBanks = ['Bank of America', 'Chase'];
-
-      // Setup with banks that remain the same between existing and updated trustees
-      const existingTrustee = {
-        id: trusteeId,
-        name: 'John Doe',
-        public: {
-          address: {
-            address1: '123 Old St',
-            city: 'Oldtown',
-            state: 'NY',
-            zipCode: '12345',
-            countryCode: 'US' as const,
-          },
-        },
-        banks: unchangedBanks,
-        status: 'active' as const,
-        createdOn: '2025-08-12T10:00:00Z',
-        createdBy: mockUserReference,
-        updatedOn: '2025-08-12T10:00:00Z',
-        updatedBy: mockUserReference,
-      };
-
-      const updatedTrustee = {
-        id: trusteeId,
-        name: 'Jane Doe Updated', // Name changes
-        public: {
-          address: {
-            address1: '456 New St', // Address changes
-            city: 'Newtown',
-            state: 'CA',
-            zipCode: '54321',
-            countryCode: 'US' as const,
-          },
-        },
-        banks: unchangedBanks, // Banks remain the same
-        status: 'active' as const,
-        createdOn: '2025-08-12T10:00:00Z',
-        createdBy: mockUserReference,
-        updatedOn: '2025-08-12T11:00:00Z',
-        updatedBy: mockUserReference,
-      };
-
-      const updateInput = {
-        name: 'Jane Doe Updated',
-        public: {
-          address: {
-            address1: '456 New St',
-            city: 'Newtown',
-            state: 'CA',
-            zipCode: '54321',
-            countryCode: 'US' as const,
-          },
-        },
-        banks: unchangedBanks,
-        status: 'active' as const,
-      };
-
-      // Reset mock history before test
-      jest.clearAllMocks();
-
-      // Override the deepEqual mock for this specific test to control when history records are created
-      (deepEqual as jest.Mock).mockImplementation((a, b) => {
-        // Banks are equal
-        if (
-          Array.isArray(a) &&
-          Array.isArray(b) &&
-          a.length === b.length &&
-          a.every((val, index) => val === b[index])
-        ) {
+        expectDocs: [], // no bank doc
+        notDocs: ['AUDIT_BANKS'],
+        totalCalls: 3, // name + public + internal (unchanged-only)
+      },
+      {
+        description: 'creates AUDIT_BANKS when adding banks to trustee that had none',
+        existingBanks: undefined,
+        updatedBanks: ['Citibank', 'US Bank'],
+        deepEqual: (a, b) => {
+          // For banks comparison (undefined vs array), return false
+          if (a === undefined && Array.isArray(b) && b.includes('Citibank')) {
+            return false;
+          }
+          // For other comparisons, return true to indicate no changes
           return true;
-        }
-        // Name and public contact are different
-        return false;
-      });
-
-      // Mock repository behavior
-      mockTrusteesRepository.read.mockResolvedValue(existingTrustee);
-      mockTrusteesRepository.updateTrustee.mockResolvedValue(updatedTrustee);
-      mockTrusteesRepository.createTrusteeHistory.mockResolvedValue(undefined);
-
-      // Execute the function
-      await useCase.updateTrustee(context, trusteeId, updateInput);
-
-      // Verify createHistory is called for name and public contact (since they changed)
-      expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
-        expect.objectContaining({
-          documentType: 'AUDIT_NAME',
-          id: trusteeId,
-          before: existingTrustee.name,
-          after: updatedTrustee.name,
-        }),
-      );
-
-      expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
-        expect.objectContaining({
-          documentType: 'AUDIT_PUBLIC_CONTACT',
-          id: trusteeId,
-          before: existingTrustee.public,
-          after: updatedTrustee.public,
-        }),
-      );
-
-      // Verify createHistory is NOT called for banks (should never receive AUDIT_BANKS document type)
-      expect(mockTrusteesRepository.createTrusteeHistory).not.toHaveBeenCalledWith(
-        expect.objectContaining({
-          documentType: 'AUDIT_BANKS',
-        }),
-      );
-
-      // We expect 3 history records when we change name and public contact
-      expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledTimes(3);
-    });
-
-    test('should handle adding banks to a trustee that had none', async () => {
-      const trusteeId = 'trustee-456';
-
-      // Trustee with no banks initially
-      const existingTrustee = {
-        id: trusteeId,
-        name: 'Jane Smith',
-        public: {
-          address: {
-            address1: '789 Main St',
-            city: 'Banktown',
-            state: 'CA',
-            zipCode: '90210',
-            countryCode: 'US' as const,
-          },
         },
-        banks: undefined, // No banks initially
-        status: 'active' as const,
-        createdOn: '2025-08-12T10:00:00Z',
-        createdBy: mockUserReference,
-        updatedOn: '2025-08-12T10:00:00Z',
-        updatedBy: mockUserReference,
-      };
-
-      // Add banks in the update
-      const newBanks = ['Citibank', 'US Bank'];
-
-      const updatedTrustee = {
-        id: trusteeId,
-        name: 'Jane Smith',
-        public: {
-          address: {
-            address1: '789 Main St',
-            city: 'Banktown',
-            state: 'CA',
-            zipCode: '90210',
-            countryCode: 'US' as const,
-          },
+        expectDocs: ['AUDIT_BANKS'],
+        notDocs: ['AUDIT_NAME', 'AUDIT_PUBLIC_CONTACT', 'AUDIT_INTERNAL_CONTACT'],
+        totalCalls: 1,
+      },
+      {
+        description: 'creates AUDIT_BANKS when removing all banks from trustee',
+        existingBanks: ['TD Bank', 'Capital One'],
+        updatedBanks: [],
+        deepEqual: (a, b) => {
+          // For banks comparison (array vs empty array), return false
+          if (Array.isArray(a) && a.includes('TD Bank') && Array.isArray(b) && b.length === 0) {
+            return false;
+          }
+          // For other comparisons, return true to indicate no changes
+          return true;
         },
-        banks: newBanks, // Banks added
-        status: 'active' as const,
-        createdOn: '2025-08-12T10:00:00Z',
-        createdBy: mockUserReference,
-        updatedOn: '2025-08-12T11:00:00Z',
-        updatedBy: mockUserReference,
-      };
+        expectDocs: ['AUDIT_BANKS'],
+        notDocs: ['AUDIT_NAME', 'AUDIT_PUBLIC_CONTACT', 'AUDIT_INTERNAL_CONTACT'],
+        totalCalls: 1,
+      },
+    ];
 
-      const updateInput = {
-        name: 'Jane Smith',
-        public: {
-          address: {
-            address1: '789 Main St',
-            city: 'Banktown',
-            state: 'CA',
-            zipCode: '90210',
-            countryCode: 'US' as const,
-          },
-        },
-        banks: newBanks,
-        status: 'active' as const,
-      };
+    // Bank audit history tests - parameterized using test.each
+    test.each(bankCases)(
+      '$description',
+      async ({
+        existingBanks,
+        updatedBanks,
+        deepEqual: deepEqualFn,
+        expectDocs,
+        notDocs,
+        totalCalls,
+      }) => {
+        jest.clearAllMocks();
+        (deepEqual as jest.Mock).mockImplementation(deepEqualFn);
 
-      // Reset mock history before test to ensure clean slate
-      jest.clearAllMocks();
+        const existing = makeTrustee({ banks: existingBanks });
+        const updated = makeTrustee({
+          banks: updatedBanks,
+          updatedOn: '2025-08-12T11:00:00Z',
+          // For the "no AUDIT_BANKS when banks unchanged" test, make name and public different
+          ...(totalCalls === 3 && {
+            name: 'Jane Doe Updated',
+            public: {
+              address: {
+                address1: '456 New St',
+                city: 'Newtown',
+                state: 'CA',
+                zipCode: '54321',
+                countryCode: 'US' as const,
+              },
+            },
+          }),
+        });
 
-      // Override deepEqual specifically for this test
-      (deepEqual as jest.Mock).mockImplementation((a, b) => {
-        // For banks comparison (undefined vs array), return false
-        if (a === undefined && Array.isArray(b) && b.includes('Citibank')) {
-          return false;
-        }
-        // For other comparisons, return true to indicate no changes
-        return true;
-      });
+        mockTrusteesRepository.read.mockResolvedValue(existing);
+        mockTrusteesRepository.updateTrustee.mockResolvedValue(updated);
+        mockTrusteesRepository.createTrusteeHistory.mockResolvedValue(undefined);
 
-      // Mock repository behavior
-      mockTrusteesRepository.read.mockResolvedValue(existingTrustee);
-      mockTrusteesRepository.updateTrustee.mockResolvedValue(updatedTrustee);
-      mockTrusteesRepository.createTrusteeHistory.mockResolvedValue(undefined);
+        await useCase.updateTrustee(context, existing.id, {
+          name: updated.name,
+          public: updated.public,
+          banks: updated.banks,
+          status: updated.status,
+        });
 
-      // Execute the function
-      await useCase.updateTrustee(context, trusteeId, updateInput);
+        expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledTimes(totalCalls);
 
-      // Verify createTrusteeHistory is called for the banks audit record
-      expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
-        expect.objectContaining({
-          documentType: 'AUDIT_BANKS',
-          id: trusteeId,
-          before: existingTrustee.banks, // undefined
-          after: updatedTrustee.banks, // ['Citibank', 'US Bank']
-        }),
-      );
-
-      // Verify total number of createHistory calls (should be 1 for banks only)
-      expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledTimes(1);
-    });
-
-    test('should handle removing all banks from a trustee', async () => {
-      const trusteeId = 'trustee-789';
-
-      // Trustee with banks initially
-      const existingTrustee = {
-        id: trusteeId,
-        name: 'Bob Johnson',
-        public: {
-          address: {
-            address1: '321 Bank St',
-            city: 'Finance City',
-            state: 'NY',
-            zipCode: '10001',
-            countryCode: 'US' as const,
-          },
-        },
-        banks: ['TD Bank', 'Capital One'], // Has banks initially
-        status: 'active' as const,
-        createdOn: '2025-08-12T10:00:00Z',
-        createdBy: mockUserReference,
-        updatedOn: '2025-08-12T10:00:00Z',
-        updatedBy: mockUserReference,
-      };
-
-      // Remove all banks in the update
-      const updatedTrustee = {
-        id: trusteeId,
-        name: 'Bob Johnson',
-        public: {
-          address: {
-            address1: '321 Bank St',
-            city: 'Finance City',
-            state: 'NY',
-            zipCode: '10001',
-            countryCode: 'US' as const,
-          },
-        },
-        banks: [], // Banks removed (empty array)
-        status: 'active' as const,
-        createdOn: '2025-08-12T10:00:00Z',
-        createdBy: mockUserReference,
-        updatedOn: '2025-08-12T11:00:00Z',
-        updatedBy: mockUserReference,
-      };
-
-      const updateInput = {
-        name: 'Bob Johnson',
-        public: {
-          address: {
-            address1: '321 Bank St',
-            city: 'Finance City',
-            state: 'NY',
-            zipCode: '10001',
-            countryCode: 'US' as const,
-          },
-        },
-        banks: [], // Empty banks array
-        status: 'active' as const,
-      };
-
-      // Reset mock history before test to ensure clean slate
-      jest.clearAllMocks();
-
-      // Override deepEqual specifically for this test
-      (deepEqual as jest.Mock).mockImplementation((a, b) => {
-        // For banks comparison (array vs empty array), return false
-        if (Array.isArray(a) && a.includes('TD Bank') && Array.isArray(b) && b.length === 0) {
-          return false;
-        }
-        // For other comparisons, return true to indicate no changes
-        return true;
-      });
-
-      // Mock repository behavior
-      mockTrusteesRepository.read.mockResolvedValue(existingTrustee);
-      mockTrusteesRepository.updateTrustee.mockResolvedValue(updatedTrustee);
-      mockTrusteesRepository.createTrusteeHistory.mockResolvedValue(undefined);
-
-      // Execute the function
-      await useCase.updateTrustee(context, trusteeId, updateInput);
-
-      // Verify createTrusteeHistory is called for the banks audit record
-      expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
-        expect.objectContaining({
-          documentType: 'AUDIT_BANKS',
-          id: trusteeId,
-          before: existingTrustee.banks, // ['TD Bank', 'Capital One']
-          after: updatedTrustee.banks, // []
-        }),
-      );
-
-      // Verify total number of createHistory calls (should be 1 for banks only)
-      expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledTimes(1);
-    });
+        expectDocs.forEach((doc) =>
+          expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
+            expect.objectContaining({
+              documentType: doc,
+              id: existing.id,
+              before: existing.banks,
+              after: updated.banks,
+            }),
+          ),
+        );
+        notDocs.forEach((doc) =>
+          expect(mockTrusteesRepository.createTrusteeHistory).not.toHaveBeenCalledWith(
+            expect.objectContaining({ documentType: doc }),
+          ),
+        );
+      },
+    );
   });
 
   describe('listHistory', () => {
