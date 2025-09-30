@@ -251,4 +251,26 @@ describe('TrusteeOtherInfoForm', () => {
     // Check that navigation occurred to the correct page
     expect(mockNavigate.navigateTo).toHaveBeenCalledWith(`/trustees/${TEST_TRUSTEE_ID}`);
   });
+
+  test('shows error and prevents submission when trusteeId is empty', async () => {
+    render(<TrusteeOtherInfoForm trusteeId="" banks={TEST_BANKS} />);
+
+    // Submit the form
+    await userEvent.click(screen.getByTestId('button-submit-button'));
+
+    // Should show error message and not call API
+    expect(mockGlobalAlert.error).toHaveBeenCalledWith('Cannot save banks: Trustee ID is missing');
+    expect(patchTrusteeSpy).not.toHaveBeenCalled();
+  });
+
+  test('shows error and prevents submission when trusteeId is whitespace only', async () => {
+    render(<TrusteeOtherInfoForm trusteeId="   " banks={TEST_BANKS} />);
+
+    // Submit the form
+    await userEvent.click(screen.getByTestId('button-submit-button'));
+
+    // Should show error message and not call API
+    expect(mockGlobalAlert.error).toHaveBeenCalledWith('Cannot save banks: Trustee ID is missing');
+    expect(patchTrusteeSpy).not.toHaveBeenCalled();
+  });
 });
