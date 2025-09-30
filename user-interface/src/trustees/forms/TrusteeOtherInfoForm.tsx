@@ -50,9 +50,16 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
     if (event) {
       event.preventDefault();
     }
+
+    // Guard clause: prevent submission if trusteeId is missing
+    if (!trusteeId || trusteeId.trim() === '') {
+      globalAlert?.error('Cannot save banks: Trustee ID is missing');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const response = await api.patchTrustee(trusteeId || '', {
+      const response = await api.patchTrustee(trusteeId, {
         banks: banks.filter((bank) => bank.trim() !== ''),
       });
       if (response?.data) {
