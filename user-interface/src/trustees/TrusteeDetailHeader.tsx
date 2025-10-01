@@ -6,7 +6,7 @@ export interface TrusteeDetailHeaderProps {
   trustee: Trustee | null;
   isLoading: boolean;
   districtLabels: string[];
-  subHeading: string;
+  subHeading?: string;
 }
 
 function formatTrusteeStatusText(status: string): string {
@@ -76,9 +76,11 @@ export default function TrusteeDetailHeader({
               ))}
             </div>
           </div>
-          <div>
-            <h2>{subHeading}</h2>
-          </div>
+          {subHeading && (
+            <div>
+              <h2>{subHeading}</h2>
+            </div>
+          )}
         </>
       )}
     </div>
