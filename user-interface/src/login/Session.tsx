@@ -18,21 +18,24 @@ type SessionState = {
 };
 
 export function useStateAndActions() {
+  const { appInsights } = getAppInsights();
   const [state, setState] = useState<SessionState>({
     isLoaded: false,
     isError: false,
     errorMessage: '',
   });
 
-  function postLoginTasks(session: CamsSession) {
+  const postLoginTasks = (session: CamsSession) => {
     initializeSessionEndLogout(session);
     session.user.offices?.forEach((office) => {
       Api2.getOfficeAttorneys(office.officeCode);
     });
-  }
+  };
 
-  function getMe() {
-    if (state.isLoaded) return;
+  const getMe = () => {
+    if (state.isLoaded) {
+      return;
+    }
     const newState = { ...state };
     Api2.getMe()
       .then((response) => {
@@ -43,12 +46,26 @@ export function useStateAndActions() {
       .catch((error) => {
         newState.isError = true;
         newState.errorMessage = error.message;
+
+        const localStorageSession = LocalStorage.getSession();
+        appInsights.trackEvent(
+          { name: 'Api2.getMe() error' },
+          {
+            error,
+            note: `This error was caught while calling the me endpoint.`,
+            localStorageSession: {
+              user: localStorageSession?.user,
+              provider: localStorageSession?.provider,
+              issuer: localStorageSession?.issuer,
+            },
+          },
+        );
       })
       .finally(() => {
         newState.isLoaded = true;
         setState(newState);
       });
-  }
+  };
 
   return {
     state,
@@ -90,8 +107,8 @@ export function Session(props: SessionProps) {
     appInsights.trackEvent(
       { name: 'Session state error' },
       {
-        error: { message: state.errorMessage },
-        note: `This is a session state error. This did not occur during login.`,
+        error: { message: state.errorMessage ?? 'Unknown error. No error message provided.' },
+        note: `This is a session state error after the 'me' endpoint is called.`,
       },
     );
     return <AccessDenied message={state.errorMessage ?? undefined}></AccessDenied>;
