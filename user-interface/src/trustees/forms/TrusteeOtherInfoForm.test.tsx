@@ -54,8 +54,6 @@ describe('TrusteeOtherInfoForm', () => {
 
   test('renders the form with initial bank fields', () => {
     render(<TrusteeOtherInfoForm trusteeId={TEST_TRUSTEE_ID} banks={TEST_BANKS} />);
-
-    expect(screen.getByText('Edit Other Information')).toBeInTheDocument();
     expect(screen.getByTestId('trustee-other-info-form')).toBeInTheDocument();
 
     // Check all initial bank fields are rendered

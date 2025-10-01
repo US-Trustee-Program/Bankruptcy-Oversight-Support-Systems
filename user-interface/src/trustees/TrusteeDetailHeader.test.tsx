@@ -77,7 +77,7 @@ describe('TrusteeDetailHeader', () => {
   });
 
   test('should render trustee header with name when loaded', () => {
-    renderWithProps({});
+    renderWithProps({ subHeading: 'Trustee' });
 
     expect(screen.getByRole('heading', { level: 1, name: 'John Doe' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 2, name: 'Trustee' })).toBeInTheDocument();

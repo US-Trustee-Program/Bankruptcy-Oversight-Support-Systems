@@ -86,10 +86,12 @@ const mockCourts = [
 
 const mockGetTrustee = vi.fn();
 const mockGetCourts = vi.fn();
+const mockGetTrusteeHistory = vi.fn();
 
 const mockApi = {
   getTrustee: mockGetTrustee,
   getCourts: mockGetCourts,
+  getTrusteeHistory: mockGetTrusteeHistory,
 } as Partial<ReturnType<typeof useApi2>> as ReturnType<typeof useApi2>;
 
 const mockGlobalAlert: GlobalAlertRef = {
@@ -123,6 +125,7 @@ describe('TrusteeDetailScreen', () => {
 
     mockOnEditPublicProfile.mockClear();
     mockOnEditInternalProfile.mockClear();
+    mockGetTrusteeHistory.mockClear();
   });
 
   afterEach(() => {
@@ -157,25 +160,6 @@ describe('TrusteeDetailScreen', () => {
     });
 
     expect(screen.getByRole('navigation')).toBeInTheDocument();
-  });
-
-  test('should handle API error gracefully', async () => {
-    const originalConsoleError = console.error;
-    console.error = vi.fn();
-
-    mockGetTrustee.mockRejectedValue(new Error('API Error'));
-    mockGetCourts.mockResolvedValue({ data: mockCourts });
-
-    renderWithRouter();
-
-    await waitFor(() => {
-      expect(mockGlobalAlert.error).toHaveBeenCalledWith('Could not get trustee details');
-    });
-
-    expect(screen.getByRole('status')).toBeInTheDocument();
-    expect(screen.queryByText('John Doe')).not.toBeInTheDocument();
-
-    console.error = originalConsoleError;
   });
 
   test('should render district tags with court names', async () => {
@@ -284,7 +268,7 @@ describe('TrusteeDetailScreen', () => {
       expect(mockGlobalAlert.error).toHaveBeenCalledWith('Could not get trustee details');
     });
 
-    expect(screen.getByRole('status')).toBeInTheDocument();
+    expect(screen.getByTestId('404-NotFound')).toBeInTheDocument();
     expect(screen.queryByText('John Doe')).not.toBeInTheDocument();
 
     console.error = originalConsoleError;
@@ -317,13 +301,28 @@ describe('TrusteeDetailScreen', () => {
     });
   });
 
-  test('should render basic structure when no trusteeId is provided', () => {
+  test('should render NotFound when no trusteeId is provided', () => {
     mockUseParams.mockReturnValue({});
 
     renderWithRouter();
 
-    expect(screen.getByTestId('trustee-detail-screen')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Trustee Details');
+    expect(screen.getByText('404 - Not Found')).toBeInTheDocument();
+  });
+
+  test('should render NotFound when trustee is not found and not loading', async () => {
+    mockUseParams.mockReturnValue({ trusteeId: '123' });
+    // Mock API returning null data to simulate trustee not found
+    mockGetTrustee.mockResolvedValue({ data: null });
+    mockGetCourts.mockResolvedValue({ data: mockCourts });
+
+    renderWithRouter();
+
+    // Wait for loading to finish
+    await waitFor(() => {
+      expect(mockGetTrustee).toHaveBeenCalledWith('123');
+    });
+
+    expect(screen.getByText('404 - Not Found')).toBeInTheDocument();
   });
 
   test('should format chapter type correctly for subchapter V', async () => {
@@ -403,7 +402,7 @@ describe('TrusteeDetailScreen', () => {
     const publicEditButton = screen.getByLabelText('Edit trustee public overview information');
     publicEditButton.click();
 
-    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/contact/edit', {
+    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/contact/edit/public', {
       state: {
         trusteeId: '123',
         trustee: mockTrustee,
@@ -427,7 +426,7 @@ describe('TrusteeDetailScreen', () => {
     const internalEditButton = screen.getByLabelText('Edit trustee internal contact information');
     internalEditButton.click();
 
-    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/contact/edit', {
+    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/contact/edit/internal', {
       state: {
         trusteeId: '123',
         trustee: mockTrustee,
@@ -585,4 +584,82 @@ describe('TrusteeDetailScreen', () => {
     expect(screen.getByText('555-111-2222, ext. 1111')).toBeInTheDocument();
     expect(screen.queryByText('john.doe.public@example.com')).not.toBeInTheDocument();
   });
+
+  test.each([
+    {
+      route: '/trustees/123/contact/edit/public',
+      expectedSubheader: 'Edit Trustee Profile (Public)',
+      description:
+        'should render subheader "Edit Trustee Profile (Public)" for /contact/edit/public route',
+      needsLocationState: true,
+      locationState: {
+        pathname: '/trustees/123/contact/edit/public',
+        state: {
+          trusteeId: '123',
+          trustee: mockTrustee,
+          cancelTo: '/trustees/123',
+          action: 'edit',
+          contactInformation: 'public',
+        },
+      },
+    },
+    {
+      route: '/trustees/123/contact/edit/internal',
+      expectedSubheader: 'Edit Trustee Profile (USTP Internal)',
+      description:
+        'should render subheader "Edit Trustee Profile (USTP Internal)" for /contact/edit/internal route',
+      needsLocationState: true,
+      locationState: {
+        pathname: '/trustees/123/contact/edit/internal',
+        state: {
+          trusteeId: '123',
+          trustee: mockTrustee,
+          cancelTo: '/trustees/123',
+          action: 'edit',
+          contactInformation: 'internal',
+        },
+      },
+    },
+    {
+      route: '/trustees/123/other/edit',
+      expectedSubheader: 'Edit Other Trustee Information',
+      description: 'should render subheader "Edit Other Trustee Information" for /other/edit route',
+      needsLocationState: false,
+    },
+    {
+      route: '/trustees/123/audit-history',
+      expectedSubheader: 'Trustee',
+      description: 'should render subheader "Trustee" for /audit-history route',
+      needsLocationState: false,
+      needsHistoryMock: true,
+    },
+    {
+      route: '/trustees/123',
+      expectedSubheader: 'Trustee',
+      description: 'should render subheader "Trustee" for default route',
+      needsLocationState: false,
+    },
+  ])(
+    '$description',
+    async ({ route, expectedSubheader, needsLocationState, locationState, needsHistoryMock }) => {
+      // Set up location state if needed for contact forms
+      if (needsLocationState && locationState) {
+        mockUseLocation.mockReturnValue(locationState);
+      }
+
+      // Set up API mocks
+      mockGetTrustee.mockResolvedValue({ data: mockTrustee });
+      mockGetCourts.mockResolvedValue({ data: mockCourts });
+
+      if (needsHistoryMock) {
+        mockGetTrusteeHistory.mockResolvedValue({ data: [] });
+      }
+
+      renderWithRouter([route]);
+
+      await waitFor(() => {
+        expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(expectedSubheader);
+      });
+    },
+  );
 });

@@ -306,10 +306,11 @@ function TrusteeContactForm() {
   return (
     <div className="trustee-form-screen">
       <div className="form-header">
-        <h1 className="text-no-wrap display-inline-block margin-right-1">
-          {passedState.action === 'create' ? 'Add Trustee Profile' : 'Edit Trustee Profile'}
-          {passedState.contactInformation === 'internal' ? ' (USTP Internal)' : ' (Public)'}
-        </h1>
+        {passedState.action === 'create' && (
+          <h1 className="text-no-wrap display-inline-block margin-right-1 create-trustee">
+            Add Trustee Profile
+          </h1>
+        )}
         {districtLoadError && (
           <Stop id="trustee-stop" title="Error" message={districtLoadError} asError />
         )}
