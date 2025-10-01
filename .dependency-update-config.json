@@ -4,6 +4,11 @@
     "majorVersionLock": {}
   },
   "minPackageAgeDays": 30,
-  "allowedPackages": ["eslint"],
+  "allowedPackages": [
+    "eslint",
+    "prettier",
+    "@typescript-eslint/eslint-plugin",
+    "@typescript-eslint/parser"
+  ],
   "projects": ["backend", "common", "dev-tools", "test/e2e", "user-interface"]
 }
