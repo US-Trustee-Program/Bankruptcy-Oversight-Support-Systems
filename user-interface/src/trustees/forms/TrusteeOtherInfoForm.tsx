@@ -9,12 +9,14 @@ import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { useState } from 'react';
 
 const SOFTWARE_OPTIONS: ComboOption[] = [
-  { value: '', label: 'No software specified' },
-  { value: 'QuickBooks', label: 'QuickBooks' },
-  { value: 'Excel', label: 'Excel' },
-  { value: 'Sage', label: 'Sage' },
-  { value: 'Xero', label: 'Xero' },
-  { value: 'Other', label: 'Other' },
+  { value: 'Axos', label: 'Axos' },
+  { value: 'BlueStylus', label: 'BlueStylus' },
+  { value: 'BSS 13Software', label: 'BSS 13Software' },
+  { value: 'Epiq', label: 'Epiq' },
+  { value: 'Satori', label: 'Satori' },
+  { value: 'Stretto', label: 'Stretto' },
+  { value: 'TrusteSolutions', label: 'TrusteSolutions' },
+  { value: 'Verita Title XI', label: 'Verita Title XI' },
 ];
 
 type TrusteeOtherInfoFormProps = {
