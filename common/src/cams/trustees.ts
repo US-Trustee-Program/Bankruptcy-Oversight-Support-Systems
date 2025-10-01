@@ -70,8 +70,13 @@ export type TrusteeBankHistory = AbstractTrusteeHistory<string[], string[]> & {
   documentType: 'AUDIT_BANKS';
 };
 
+export type TrusteeSoftwareHistory = AbstractTrusteeHistory<string, string> & {
+  documentType: 'AUDIT_SOFTWARE';
+};
+
 export type TrusteeHistory =
   | TrusteeNameHistory
   | TrusteePublicContactHistory
   | TrusteeInternalContactHistory
-  | TrusteeBankHistory;
+  | TrusteeBankHistory
+  | TrusteeSoftwareHistory;

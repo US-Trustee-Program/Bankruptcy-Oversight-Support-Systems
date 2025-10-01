@@ -218,6 +218,20 @@ export class TrusteesUseCase {
         );
       }
 
+      if (existingTrustee.software !== updatedTrustee.software) {
+        await this.trusteesRepository.createTrusteeHistory(
+          createAuditRecord(
+            {
+              documentType: 'AUDIT_SOFTWARE',
+              id,
+              before: existingTrustee.software,
+              after: updatedTrustee.software,
+            },
+            userReference,
+          ),
+        );
+      }
+
       return updatedTrustee;
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
@@ -256,6 +270,6 @@ const trusteeSpec: ValidationSpec<TrusteeInput> = {
   public: [V.optional(V.spec(contactInformationSpec))],
   internal: [V.optional(V.spec(contactInformationSpec))],
   status: [V.isInSet<TrusteeStatus>([...TRUSTEE_STATUS_VALUES])],
-  banks: [V.optional(V.arrayOf(V.minLength(1)))],
-  software: [V.optional(V.maxLength(100))],
+  banks: [V.optional(V.arrayOf(V.length(1, 100)))],
+  software: [V.optional(V.length(1, 100))],
 };
