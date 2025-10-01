@@ -1,0 +1,9 @@
+{
+  "constraints": {
+    "pinned": [],
+    "majorVersionLock": {}
+  },
+  "minPackageAgeDays": 30,
+  "allowedPackages": ["eslint"],
+  "projects": ["backend", "common", "dev-tools", "test/e2e", "user-interface"]
+}
