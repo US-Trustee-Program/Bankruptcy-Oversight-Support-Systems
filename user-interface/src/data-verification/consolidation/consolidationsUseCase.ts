@@ -423,24 +423,35 @@ const consolidationUseCase = (
     }
     if (!store.isDataEnhanced) {
       let isDataEnhanced = true;
+      const assignmentCalls = [];
+      const associationCalls = [];
       for (const bCase of store.order.childCases) {
-        try {
-          const assignmentsResponse = await api2.getCaseAssignments(bCase.caseId);
-          bCase.attorneyAssignments = assignmentsResponse.data;
-        } catch {
-          // The child case assignments are not critical to perform the consolidation. Catch any error
-          // and don't set the attorney assignment for this specific case.
-        }
-
-        try {
-          const associatedResponse = await api2.getCaseAssociations(bCase.caseId);
-          bCase.associations = associatedResponse.data;
-          bCase.isLeadCase = isLeadCase(bCase.caseId, bCase.associations);
-          bCase.isChildCase = isChildCase(bCase.caseId, bCase.associations);
-        } catch {
-          isDataEnhanced = false;
-        }
+        assignmentCalls.push(
+          api2
+            .getCaseAssignments(bCase.caseId)
+            .then((response) => {
+              bCase.attorneyAssignments = response.data;
+            })
+            .catch(() => {
+              // The child case assignments are not critical to perform the consolidation. Catch any error
+              // and don't set the attorney assignment for this specific case.
+            }),
+        );
+        associationCalls.push(
+          api2
+            .getCaseAssociations(bCase.caseId)
+            .then((response) => {
+              bCase.associations = response.data;
+              bCase.isLeadCase = isLeadCase(bCase.caseId, bCase.associations);
+              bCase.isChildCase = isChildCase(bCase.caseId, bCase.associations);
+            })
+            .catch(() => {
+              isDataEnhanced = false;
+            }),
+        );
       }
+
+      await Promise.allSettled([...assignmentCalls, ...associationCalls]);
       setOrderWithDataEnhancement(store.order);
       store.setIsDataEnhanced(isDataEnhanced);
     }
