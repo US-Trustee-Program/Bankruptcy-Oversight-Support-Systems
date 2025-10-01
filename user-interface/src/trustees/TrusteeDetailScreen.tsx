@@ -135,101 +135,79 @@ export default function TrusteeDetailScreen() {
     );
   }
 
+  const routeConfigs = [
+    {
+      path: '/',
+      subHeading: 'Trustee',
+      content: (
+        <div className="trustee-detail-screen-info-container">
+          <div className="left-navigation-pane-container">
+            <TrusteeDetailNavigation trusteeId={trusteeId} initiallySelectedNavLink={navState} />
+          </div>
+          <div className="main-content-area">
+            <TrusteeDetailProfile
+              trustee={trustee}
+              districtLabels={districtLabels}
+              onEditPublicProfile={openEditPublicProfile}
+              onEditInternalProfile={openEditInternalProfile}
+              onEditOtherInformation={openEditOtherInformation}
+            />
+          </div>
+        </div>
+      ),
+    },
+    {
+      path: 'contact/edit/public',
+      subHeading: 'Edit Trustee Profile (Public)',
+      content: <TrusteeContactForm />,
+    },
+    {
+      path: 'contact/edit/internal',
+      subHeading: 'Edit Trustee Profile (USTP Internal)',
+      content: <TrusteeContactForm />,
+    },
+    {
+      path: 'other/edit',
+      subHeading: 'Edit Other Trustee Information',
+      content: <TrusteeOtherInfoForm banks={trustee.banks} trusteeId={trustee.id} />,
+    },
+    {
+      path: 'audit-history',
+      subHeading: 'Trustee',
+      content: (
+        <div className="trustee-detail-screen-info-container">
+          <div className="left-navigation-pane-container">
+            <TrusteeDetailNavigation trusteeId={trusteeId} initiallySelectedNavLink={navState} />
+          </div>
+          <div className="main-content-area">
+            <TrusteeDetailAuditHistory trusteeId={trusteeId!} />
+          </div>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <MainContent className="record-detail" data-testid="record-detail">
       <DocumentTitle name="Trustee Detail" />
+
       <Routes>
-        <Route
-          path="/contact/edit/public"
-          element={
-            <TrusteeHeader
-              trustee={trustee}
-              isLoading={isLoading}
-              districtLabels={districtLabels}
-              subHeading="Edit Trustee Profile (Public)"
-            >
-              <TrusteeContactForm />
-            </TrusteeHeader>
-          }
-        ></Route>
-        <Route
-          path="/contact/edit/internal"
-          element={
-            <TrusteeHeader
-              trustee={trustee}
-              isLoading={isLoading}
-              districtLabels={districtLabels}
-              subHeading="Edit Trustee Profile (USTP Internal)"
-            >
-              <TrusteeContactForm />
-            </TrusteeHeader>
-          }
-        ></Route>
-        <Route
-          path="/other/edit"
-          element={
-            <TrusteeHeader
-              trustee={trustee}
-              isLoading={isLoading}
-              districtLabels={districtLabels}
-              subHeading="Edit Other Trustee Information"
-            >
-              <TrusteeOtherInfoForm banks={trustee.banks} trusteeId={trustee.id} />
-            </TrusteeHeader>
-          }
-        ></Route>
-        <Route
-          path="/audit-history"
-          element={
-            <TrusteeHeader
-              trustee={trustee}
-              isLoading={isLoading}
-              districtLabels={districtLabels}
-              subHeading="Trustee"
-            >
-              <div className="trustee-detail-screen-info-container">
-                <div className="left-navigation-pane-container">
-                  <TrusteeDetailNavigation
-                    trusteeId={trusteeId}
-                    initiallySelectedNavLink={navState}
-                  />
-                </div>
-                <div className="main-content-area">
-                  <TrusteeDetailAuditHistory trusteeId={trusteeId ?? 'unknown'} />
-                </div>
-              </div>
-            </TrusteeHeader>
-          }
-        />
-        <Route
-          path="/"
-          element={
-            <TrusteeHeader
-              trustee={trustee}
-              isLoading={isLoading}
-              districtLabels={districtLabels}
-              subHeading="Trustee"
-            >
-              <div className="trustee-detail-screen-info-container">
-                <div className="left-navigation-pane-container">
-                  <TrusteeDetailNavigation
-                    trusteeId={trusteeId}
-                    initiallySelectedNavLink={navState}
-                  />
-                </div>
-                <div className="main-content-area">
-                  <TrusteeDetailProfile
-                    trustee={trustee}
-                    districtLabels={districtLabels}
-                    onEditPublicProfile={openEditPublicProfile}
-                    onEditInternalProfile={openEditInternalProfile}
-                    onEditOtherInformation={openEditOtherInformation}
-                  />
-                </div>
-              </div>
-            </TrusteeHeader>
-          }
-        />
+        {routeConfigs.map(({ path, subHeading, content }) => (
+          <Route
+            key={path}
+            path={path}
+            element={
+              <TrusteeHeader
+                trustee={trustee}
+                isLoading={isLoading}
+                districtLabels={districtLabels}
+                subHeading={subHeading}
+              >
+                {content}
+              </TrusteeHeader>
+            }
+          />
+        ))}
       </Routes>
     </MainContent>
   );
