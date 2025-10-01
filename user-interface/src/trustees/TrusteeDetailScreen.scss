@@ -1,14 +1,28 @@
-.trustee-detail-screen {
-  .trustee-detail-screen-content-container {
-    display: flex;
-    column-gap: 1.5rem;
-
-    .left-navigation-pane-container {
-      flex-shrink: 0;
+.record-detail .trustee-detail-screen {
+  h2 {
+    margin-bottom: 1rem;
+  }
+}
+.trustee-detail-screen, .trustee-form-screen {
+  .field-group {
+    margin-bottom: 1.5rem;
+    .usa-form-group {
+      margin-top: 0;
     }
-
-    .main-content-area {
+  }
+  .trustee-detail-screen-content-container {
+    .trustee-detail-screen-info-container {
+      display: flex;
+      column-gap: 1.5rem;
       flex: 1;
+
+      .left-navigation-pane-container {
+        flex-shrink: 0;
+      }
+
+      .main-content-area {
+        flex: 1;
+      }
     }
   }
   ul {
