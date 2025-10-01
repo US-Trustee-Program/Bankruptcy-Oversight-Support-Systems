@@ -15,6 +15,7 @@ import TrusteeDetailNavigation, { mapTrusteeDetailNavState } from './TrusteeDeta
 import { TrusteeFormState } from '@/trustees/forms/UseTrusteeContactForm';
 import TrusteeContactForm from './forms/TrusteeContactForm';
 import TrusteeOtherInfoForm from './forms/TrusteeOtherInfoForm';
+import NotFound from '@/lib/components/NotFound';
 
 type TrusteeHeaderProps = JSX.IntrinsicElements['div'] & {
   trustee: Trustee | null;
@@ -121,6 +122,15 @@ export default function TrusteeDetailScreen() {
       setTrustee(location.state.trustee as Trustee);
     }
   }, [location.state?.trustee]);
+
+  if (!trusteeId || (!isLoading && !trustee)) {
+    return (
+      <MainContent className="record-detail" data-testid="record-detail">
+        <DocumentTitle name="Trustee Detail" />
+        <NotFound />
+      </MainContent>
+    );
+  }
 
   if (!trustee || isLoading) {
     return (
