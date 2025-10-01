@@ -20,7 +20,7 @@ Help()
    echo "h     Print this Help and exit."
    echo "r     Run the script but remain on dependency-updates branch."
    echo "u     Run the script but keep the existing dependency-updates branch."
-   echo "t     Test mode: run on current branch without switching (for development/testing)."
+   echo "t     Test mode: run on current branch without switching, committing, or pushing."
    echo
 }
 
@@ -183,11 +183,14 @@ update_package_individually() {
     if npm install --save-exact "$package_name@$target_version"; then
         popd >/dev/null || return 1
 
-        # Create individual commit
-        git add "$project_dir/package.json" "$project_dir/package-lock.json"
-        git commit -m "Update $package_name to $target_version in $project_dir"
-
-        echo "Successfully updated $package_name to $target_version in $project_dir"
+        # Create individual commit only if not in test mode
+        if [[ -z "${TEST}" ]]; then
+            git add "$project_dir/package.json" "$project_dir/package-lock.json"
+            git commit -m "Update $package_name to $target_version in $project_dir"
+            echo "Successfully updated $package_name to $target_version in $project_dir"
+        else
+            echo "TEST MODE: Updated $package_name to $target_version in $project_dir (no commit)"
+        fi
         return 0
     else
         popd >/dev/null || return 1
