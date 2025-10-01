@@ -4,7 +4,7 @@
 
 # Usage
 #   From the root directory, run the following command:
-#     ./ops/scripts/utility/update-dependencies.sh [-c|h|r|u]
+#     ./ops/scripts/utility/update-dependencies.sh [-c|h|r|u|t]
 
 ############################################################
 # Help                                                     #
@@ -14,12 +14,13 @@ Help()
    # Display Help
    echo "This script processes outdated npm packages individually with age-based safety controls."
    echo
-   echo "Syntax: ./ops/scripts/utility/update-dependencies.sh [-c|h|r|u]"
+   echo "Syntax: ./ops/scripts/utility/update-dependencies.sh [-c|h|r|u|t]"
    echo "options:"
    echo "c     Run this script from a CI/CD workflow. Incompatible with other options."
    echo "h     Print this Help and exit."
    echo "r     Run the script but remain on dependency-updates branch."
    echo "u     Run the script but keep the existing dependency-updates branch."
+   echo "t     Test mode: run on current branch without switching (for development/testing)."
    echo
 }
 
@@ -265,7 +266,7 @@ process_project_packages() {
 # Main program                                             #
 ############################################################
 ############################################################
-while getopts ":chru" option; do
+while getopts ":chrut" option; do
   case $option in
     c) # CI/CD
       CICD=true
@@ -279,6 +280,9 @@ while getopts ":chru" option; do
     u) # update existing dependency-updates branch
       UPDATE=true
       ;;
+    t) # test mode
+      TEST=true
+      ;;
     \?) # Invalid option
       echo "Run with the '-h' option to see valid usage."
       exit 1
@@ -291,7 +295,12 @@ load_config
 
 BRANCH_NAME="dependency-updates"
 
-if [[ -n "${CICD}" ]]; then
+if [[ -n "${TEST}" ]]; then
+  # Test mode: stay on current branch, no Git operations
+  echo "TEST MODE: Running on current branch without switching"
+  CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+  echo "Current branch: $CURRENT_BRANCH"
+elif [[ -n "${CICD}" ]]; then
   BRANCH_NAME="dependency-updates-auto"
   git switch -c "${BRANCH_NAME}"
 else
@@ -351,18 +360,27 @@ done
 
 echo "Total packages updated: $total_updates"
 
-if [[ $total_updates -gt 0 ]]; then
-    git push -u origin "${BRANCH_NAME}"
-    echo "Changes pushed to $BRANCH_NAME branch"
+if [[ -n "${TEST}" ]]; then
+  # Test mode: no Git push or branch switching
+  echo "TEST MODE: Skipping Git push and branch operations"
+  if [[ $total_updates -gt 0 ]]; then
+    echo "In normal mode, would push $total_updates updates to $BRANCH_NAME branch"
+  fi
+elif [[ $total_updates -gt 0 ]]; then
+  git push -u origin "${BRANCH_NAME}"
+  echo "Changes pushed to $BRANCH_NAME branch"
 else
-    echo "No packages were updated - no changes to push"
+  echo "No packages were updated - no changes to push"
 fi
 
 if [[ -n "${CICD}" ]]; then
   exit 0
 fi
 
-if [[ -z "${REMAIN}" ]]; then
+if [[ -n "${TEST}" ]]; then
+  # Test mode: no branch switching back
+  echo "TEST MODE: Staying on current branch ($CURRENT_BRANCH)"
+elif [[ -z "${REMAIN}" ]]; then
   git switch "$CURRENT_BRANCH"
   if [[ -n "${STASHED_CHANGE}" ]]; then
     git stash pop
@@ -371,7 +389,7 @@ elif [[ -n "${STASHED_CHANGE}" ]]; then
   echo "Remaining on '${BRANCH_NAME}' branch, but don't forget you have changes to ${CURRENT_BRANCH} that were stashed."
 fi
 
-if [[ -z "${CICD}" ]] && [[ $total_updates -gt 0 ]]; then
+if [[ -z "${CICD}" ]] && [[ -z "${TEST}" ]] && [[ $total_updates -gt 0 ]]; then
   open "https://github.com/US-Trustee-Program/Bankruptcy-Oversight-Support-Systems/compare/main...${BRANCH_NAME}?template=dependencies.md";
 fi
 
