@@ -477,8 +477,112 @@ describe('TrusteeDetailScreen', () => {
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
     });
 
-    // Verify that the trustee data is used from location state
     expect(screen.getByText('123 Main St')).toBeInTheDocument();
     expect(screen.getByText('john.doe.public@example.com')).toBeInTheDocument();
+  });
+
+  test('should use location state trustee when present and avoid unnecessary API calls', async () => {
+    const updatedTrustee: Trustee = {
+      ...mockTrustee,
+      name: 'John Doe Updated',
+      public: {
+        ...mockTrustee.public,
+        address: {
+          ...mockTrustee.public.address,
+          address1: '456 Updated Street',
+          city: 'New City',
+        },
+        phone: { number: '555-999-8888', extension: '9999' },
+        email: 'john.updated@example.com',
+      },
+    };
+
+    const locationWithUpdatedState = {
+      pathname: '/trustees/123',
+      state: { trustee: updatedTrustee },
+    };
+
+    mockUseLocation.mockReturnValue(locationWithUpdatedState);
+    mockGetTrustee.mockResolvedValue({ data: mockTrustee });
+    mockGetCourts.mockResolvedValue({ data: mockCourts });
+
+    renderWithRouter();
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe Updated');
+    });
+
+    expect(screen.getByText('456 Updated Street')).toBeInTheDocument();
+    expect(screen.getByText('New City')).toBeInTheDocument();
+    expect(screen.getByText('john.updated@example.com')).toBeInTheDocument();
+    expect(screen.getByText('555-999-8888, ext. 9999')).toBeInTheDocument();
+
+    expect(screen.queryByText('123 Main St')).not.toBeInTheDocument();
+    expect(screen.queryByText('john.doe.public@example.com')).not.toBeInTheDocument();
+  });
+
+  test('should load from API when no location state is present', async () => {
+    mockUseLocation.mockReturnValue({
+      pathname: '/trustees/123',
+      state: null,
+    });
+
+    mockGetTrustee.mockResolvedValue({ data: mockTrustee });
+    mockGetCourts.mockResolvedValue({ data: mockCourts });
+
+    renderWithRouter();
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
+    });
+
+    expect(screen.getByText('123 Main St')).toBeInTheDocument();
+    expect(screen.getByText('john.doe.public@example.com')).toBeInTheDocument();
+
+    expect(mockGetTrustee).toHaveBeenCalledWith('123');
+  });
+
+  test('should handle transition from API data to location state data', async () => {
+    mockUseLocation.mockReturnValue({
+      pathname: '/trustees/123',
+      state: null,
+    });
+    mockGetTrustee.mockResolvedValue({ data: mockTrustee });
+    mockGetCourts.mockResolvedValue({ data: mockCourts });
+
+    const { rerender } = renderWithRouter();
+
+    await waitFor(() => {
+      expect(screen.getByText('john.doe.public@example.com')).toBeInTheDocument();
+    });
+
+    const updatedTrustee = {
+      ...mockTrustee,
+      public: {
+        ...mockTrustee.public,
+        phone: { number: '555-111-2222', extension: '1111' },
+        email: 'newemail@example.com',
+      },
+    };
+
+    mockUseLocation.mockReturnValue({
+      pathname: '/trustees/123',
+      state: { trustee: updatedTrustee },
+    });
+
+    rerender(
+      <MemoryRouter initialEntries={['/trustees/123']}>
+        <Routes>
+          <Route path="/trustees/:trusteeId/*" element={<TrusteeDetailScreen />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('newemail@example.com')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('555-111-2222, ext. 1111')).toBeInTheDocument();
+    expect(screen.queryByText('john.doe.public@example.com')).not.toBeInTheDocument();
   });
 });
