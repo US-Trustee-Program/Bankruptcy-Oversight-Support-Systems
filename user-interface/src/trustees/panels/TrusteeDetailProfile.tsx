@@ -62,6 +62,9 @@ export default function TrusteeDetailProfile({
                 <IconLabel icon="edit" label="Edit" />
               </Button>
             </div>
+            {trustee.software && (
+              <div className="trustee-software">Software: {trustee.software}</div>
+            )}
             {trustee.banks &&
               trustee.banks.length > 0 &&
               trustee.banks.map((bank, index) => (
@@ -69,7 +72,7 @@ export default function TrusteeDetailProfile({
                   Bank: {bank}
                 </div>
               ))}
-            {(!trustee.banks || trustee.banks.length === 0) && (
+            {!trustee.software && (!trustee.banks || trustee.banks.length === 0) && (
               <div>No information has been entered.</div>
             )}
           </div>

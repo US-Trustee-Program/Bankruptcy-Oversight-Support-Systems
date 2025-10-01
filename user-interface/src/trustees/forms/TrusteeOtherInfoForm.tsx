@@ -2,14 +2,25 @@ import './TrusteeOtherInfoForm.scss';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import Icon from '@/lib/components/uswds/Icon';
 import Input from '@/lib/components/uswds/Input';
+import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import useApi2 from '@/lib/hooks/UseApi2';
 import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { useState } from 'react';
 
+const SOFTWARE_OPTIONS: ComboOption[] = [
+  { value: '', label: 'No software specified' },
+  { value: 'QuickBooks', label: 'QuickBooks' },
+  { value: 'Excel', label: 'Excel' },
+  { value: 'Sage', label: 'Sage' },
+  { value: 'Xero', label: 'Xero' },
+  { value: 'Other', label: 'Other' },
+];
+
 type TrusteeOtherInfoFormProps = {
   trusteeId: string;
   banks?: string[];
+  software?: string;
 };
 
 function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
@@ -19,6 +30,7 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
   const initialBanks = props.banks?.filter((b) => b.trim() !== '') ?? [];
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [banks, setBanks] = useState<string[]>(initialBanks.length > 0 ? initialBanks : ['']);
+  const [software, setSoftware] = useState<string>(props.software ?? '');
 
   const navigate = useCamsNavigator();
 
@@ -46,6 +58,11 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
     });
   };
 
+  const handleSoftwareChange = (selections: ComboOption[]) => {
+    const selectedValue = selections.length > 0 ? selections[0].value : '';
+    setSoftware(selectedValue);
+  };
+
   async function handleSubmit(event?: React.MouseEvent<HTMLButtonElement>): Promise<void> {
     if (event) {
       event.preventDefault();
@@ -53,7 +70,7 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
 
     // Guard clause: prevent submission if trusteeId is missing
     if (!trusteeId || trusteeId.trim() === '') {
-      globalAlert?.error('Cannot save banks: Trustee ID is missing');
+      globalAlert?.error('Cannot save trustee information: Trustee ID is missing');
       return;
     }
 
@@ -61,12 +78,13 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
     try {
       const response = await api.patchTrustee(trusteeId, {
         banks: banks.filter((bank) => bank.trim() !== ''),
+        software: software || undefined,
       });
       if (response?.data) {
         navigate.navigateTo(`/trustees/${trusteeId}`, { trustee: response.data });
       }
     } catch (e) {
-      globalAlert?.error(`Failed to update trustee banks: ${(e as Error).message}`);
+      globalAlert?.error(`Failed to update trustee information: ${(e as Error).message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -81,6 +99,29 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
       <form data-testid="trustee-other-info-form">
         <div className="form-container">
           <div className="form-column">
+            <div className="field-group">
+              <ComboBox
+                id="trustee-software"
+                className="trustee-software-input"
+                name="software"
+                label="Software"
+                options={SOFTWARE_OPTIONS}
+                selections={
+                  software
+                    ? [
+                        {
+                          value: software,
+                          label:
+                            SOFTWARE_OPTIONS.find((opt) => opt.value === software)?.label ??
+                            software,
+                        },
+                      ]
+                    : []
+                }
+                onUpdateSelection={handleSoftwareChange}
+                autoComplete="off"
+              />
+            </div>
             {banks.map((bank, index) => {
               return (
                 <div className="field-group" key={`bank-${index}`}>

@@ -177,7 +177,13 @@ export default function TrusteeDetailScreen() {
     {
       path: 'other/edit',
       subHeading: 'Edit Other Trustee Information',
-      content: <TrusteeOtherInfoForm banks={trustee.banks} trusteeId={trustee.id} />,
+      content: (
+        <TrusteeOtherInfoForm
+          banks={trustee.banks}
+          software={trustee.software}
+          trusteeId={trustee.id}
+        />
+      ),
     },
     {
       path: 'audit-history',

@@ -36,6 +36,7 @@ export type Trustee = Auditable &
     districts?: string[];
     chapters?: ChapterType[];
     banks?: string[];
+    software?: string;
     status: TrusteeStatus;
   };
 

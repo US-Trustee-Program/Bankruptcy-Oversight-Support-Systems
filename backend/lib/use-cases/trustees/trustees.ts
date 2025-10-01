@@ -257,4 +257,5 @@ const trusteeSpec: ValidationSpec<TrusteeInput> = {
   internal: [V.optional(V.spec(contactInformationSpec))],
   status: [V.isInSet<TrusteeStatus>([...TRUSTEE_STATUS_VALUES])],
   banks: [V.optional(V.arrayOf(V.minLength(1)))],
+  software: [V.optional(V.maxLength(100))],
 };
