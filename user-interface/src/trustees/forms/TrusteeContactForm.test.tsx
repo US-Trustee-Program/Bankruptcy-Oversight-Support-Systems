@@ -1412,7 +1412,9 @@ describe('TrusteeForm', () => {
             }),
           }),
         );
-        expect(mockNavigate.navigateTo).toHaveBeenCalledWith('/trustees/trustee-456');
+        expect(mockNavigate.navigateTo).toHaveBeenCalledWith('/trustees/trustee-456', {
+          trustee: { id: 'trustee-456' },
+        });
       });
     });
 
@@ -1494,7 +1496,9 @@ describe('TrusteeForm', () => {
             }),
           }),
         );
-        expect(mockNavigate.navigateTo).toHaveBeenCalledWith('/trustees/trustee-789');
+        expect(mockNavigate.navigateTo).toHaveBeenCalledWith('/trustees/trustee-789', {
+          trustee: { id: 'trustee-789' },
+        });
       });
     });
 

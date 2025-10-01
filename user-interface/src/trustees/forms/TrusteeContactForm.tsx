@@ -140,8 +140,13 @@ function TrusteeContactForm() {
           const createdId = (response as { data?: { id?: string } })?.data?.id;
           navigate.navigateTo(`/trustees/${createdId}`);
         } else {
-          await api.patchTrustee(passedState.trusteeId || '', payload);
-          navigate.navigateTo(`/trustees/${passedState.trusteeId}`);
+          const updateTrusteeResponse = await api.patchTrustee(
+            passedState.trusteeId || '',
+            payload,
+          );
+          navigate.navigateTo(`/trustees/${passedState.trusteeId}`, {
+            trustee: updateTrusteeResponse?.data,
+          });
         }
       } catch (e) {
         globalAlert?.error(
