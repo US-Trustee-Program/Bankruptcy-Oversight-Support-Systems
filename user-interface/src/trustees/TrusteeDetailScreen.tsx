@@ -62,7 +62,7 @@ export default function TrusteeDetailScreen() {
   }
 
   useEffect(() => {
-    if (trusteeId) {
+    if (trusteeId && !location.state?.trustee) {
       setIsLoading(true);
       Promise.all([api.getTrustee(trusteeId), api.getCourts()])
         .then(([trusteeResponse, courtsResponse]) => {
@@ -83,7 +83,7 @@ export default function TrusteeDetailScreen() {
           setIsLoading(false);
         });
     }
-  }, [trusteeId]);
+  }, [trusteeId, location.state?.trustee]);
 
   useEffect(() => {
     setNavState(mapTrusteeDetailNavState(location.pathname));
