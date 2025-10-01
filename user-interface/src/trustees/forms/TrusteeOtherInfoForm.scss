@@ -1,6 +1,11 @@
 @import '@/lib/components/uswds/forms.scss';
 
 .trustee-other-info-form-screen {
+  .form-container {
+    .field-group:last-of-type {
+      margin-bottom: 1rem;
+    }
+  }
   .trustee-bank-input {
     display: inline-block;
     width: 100%;
@@ -11,7 +16,7 @@
     color: $secondary-dark;
   }
   .add-bank-button {
-    margin: 1rem 0 2rem 0;
+    margin: 0 0 2.5rem 0;
   }
 }
 

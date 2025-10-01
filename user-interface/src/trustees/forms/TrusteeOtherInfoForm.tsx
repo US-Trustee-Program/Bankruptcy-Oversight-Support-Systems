@@ -78,9 +78,6 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
 
   return (
     <div className="trustee-other-info-form-screen">
-      <div className="form-header">
-        <h1 className="text-no-wrap display-inline-block margin-right-1">Edit Other Information</h1>
-      </div>
       <form data-testid="trustee-other-info-form">
         <div className="form-container">
           <div className="form-column">

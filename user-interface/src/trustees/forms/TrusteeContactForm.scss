@@ -1,6 +1,7 @@
 .trustee-form-screen {
-  h1 {
+  h1.create-trustee {
     display: block;
+    margin: 1rem 0 1.5rem 0;
   }
 
   form {
@@ -50,7 +51,7 @@
   }
 
   .usa-button-group {
-    padding: 30px 5px;
+    padding: 1rem 5px;
   }
 
   width: 100%;
@@ -106,7 +107,7 @@
       }
     }
     .usa-button-group {
-      padding: 30px 15px;
+      padding: 1rem 15px;
     }
   }
 }
