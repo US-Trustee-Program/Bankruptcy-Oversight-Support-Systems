@@ -6,7 +6,7 @@ export interface TrusteeDetailHeaderProps {
   trustee: Trustee | null;
   isLoading: boolean;
   districtLabels: string[];
-  subHeading?: string;
+  subHeading: string;
 }
 
 function formatTrusteeStatusText(status: string): string {
@@ -30,7 +30,7 @@ export default function TrusteeDetailHeader({
   isLoading,
   districtLabels,
   subHeading,
-}: TrusteeDetailHeaderProps) {
+}: Readonly<TrusteeDetailHeaderProps>) {
   return (
     <div className="trustee-detail-screen-heading">
       {(!trustee || isLoading) && (

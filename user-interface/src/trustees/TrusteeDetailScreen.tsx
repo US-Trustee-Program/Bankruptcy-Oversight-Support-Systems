@@ -20,7 +20,7 @@ type TrusteeHeaderProps = JSX.IntrinsicElements['div'] & {
   trustee: Trustee | null;
   isLoading: boolean;
   districtLabels: string[];
-  subHeading?: string;
+  subHeading: string;
 };
 
 function TrusteeHeader({
@@ -31,17 +31,15 @@ function TrusteeHeader({
   children,
 }: TrusteeHeaderProps) {
   return (
-    <>
-      <div className="trustee-detail-screen" data-testid="trustee-detail-screen">
-        <TrusteeDetailHeader
-          trustee={trustee}
-          isLoading={isLoading}
-          districtLabels={districtLabels}
-          subHeading={subHeading}
-        />
-        <div className="trustee-detail-screen-content-container">{children}</div>
-      </div>
-    </>
+    <div className="trustee-detail-screen" data-testid="trustee-detail-screen">
+      <TrusteeDetailHeader
+        trustee={trustee}
+        isLoading={isLoading}
+        districtLabels={districtLabels}
+        subHeading={subHeading}
+      />
+      <div className="trustee-detail-screen-content-container">{children}</div>
+    </div>
   );
 }
 
