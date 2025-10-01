@@ -162,25 +162,6 @@ describe('TrusteeDetailScreen', () => {
     expect(screen.getByRole('navigation')).toBeInTheDocument();
   });
 
-  test('should handle API error gracefully', async () => {
-    const originalConsoleError = console.error;
-    console.error = vi.fn();
-
-    mockGetTrustee.mockRejectedValue(new Error('API Error'));
-    mockGetCourts.mockResolvedValue({ data: mockCourts });
-
-    renderWithRouter();
-
-    await waitFor(() => {
-      expect(mockGlobalAlert.error).toHaveBeenCalledWith('Could not get trustee details');
-    });
-
-    expect(screen.getByRole('status')).toBeInTheDocument();
-    expect(screen.queryByText('John Doe')).not.toBeInTheDocument();
-
-    console.error = originalConsoleError;
-  });
-
   test('should render district tags with court names', async () => {
     mockGetTrustee.mockResolvedValue({ data: mockTrustee });
     mockGetCourts.mockResolvedValue({ data: mockCourts });
@@ -287,7 +268,7 @@ describe('TrusteeDetailScreen', () => {
       expect(mockGlobalAlert.error).toHaveBeenCalledWith('Could not get trustee details');
     });
 
-    expect(screen.getByRole('status')).toBeInTheDocument();
+    expect(screen.getByTestId('404-NotFound')).toBeInTheDocument();
     expect(screen.queryByText('John Doe')).not.toBeInTheDocument();
 
     console.error = originalConsoleError;
@@ -320,13 +301,28 @@ describe('TrusteeDetailScreen', () => {
     });
   });
 
-  test('should render basic structure when no trusteeId is provided', () => {
+  test('should render NotFound when no trusteeId is provided', () => {
     mockUseParams.mockReturnValue({});
 
     renderWithRouter();
 
-    expect(screen.getByTestId('trustee-detail-screen')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Trustee Details');
+    expect(screen.getByText('404 - Not Found')).toBeInTheDocument();
+  });
+
+  test('should render NotFound when trustee is not found and not loading', async () => {
+    mockUseParams.mockReturnValue({ trusteeId: '123' });
+    // Mock API returning null data to simulate trustee not found
+    mockGetTrustee.mockResolvedValue({ data: null });
+    mockGetCourts.mockResolvedValue({ data: mockCourts });
+
+    renderWithRouter();
+
+    // Wait for loading to finish
+    await waitFor(() => {
+      expect(mockGetTrustee).toHaveBeenCalledWith('123');
+    });
+
+    expect(screen.getByText('404 - Not Found')).toBeInTheDocument();
   });
 
   test('should format chapter type correctly for subchapter V', async () => {

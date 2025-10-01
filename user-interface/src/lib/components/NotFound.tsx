@@ -1,5 +1,9 @@
 function NotFound() {
-  return <div className="not-found-404">404 - Not Found</div>;
+  return (
+    <output className="not-found-404" data-testid="404-NotFound">
+      404 - Not Found
+    </output>
+  );
 }
 
 export default NotFound;
