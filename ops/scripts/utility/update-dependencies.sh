@@ -69,6 +69,16 @@ get_package_times() {
 ############################################################
 # Version Filtering with Age Safety                       #
 ############################################################
+is_stable_version() {
+    local version="$1"
+    # Check if version matches stable semver pattern: major.minor.patch (digits only)
+    if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
 filter_safe_versions() {
     local package_name="$1"
     local current_version="$2"
@@ -126,9 +136,15 @@ filter_safe_versions() {
 
     echo "Found ${#newer_versions[@]} newer versions to evaluate" >&2
 
-    # Start from the newest and work backwards to find the first version that meets age requirement
+    # Start from the newest and work backwards to find the first stable version that meets age requirement
     for ((i=${#newer_versions[@]}-1; i>=0; i--)); do
         local version="${newer_versions[$i]}"
+
+        # Skip non-stable versions (alpha, beta, rc, etc.)
+        if ! is_stable_version "$version"; then
+            echo "Skipping $package_name@$version (not a stable version)" >&2
+            continue
+        fi
 
         # Declare and assign separately to avoid masking return values
         local pub_date
@@ -149,7 +165,7 @@ filter_safe_versions() {
         fi
     done
 
-    echo "No safe versions found for $package_name (all newer versions are too recent)" >&2
+    echo "No safe stable versions found for $package_name (all newer stable versions are too recent)" >&2
     return 1
 }
 
