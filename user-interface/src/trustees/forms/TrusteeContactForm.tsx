@@ -79,7 +79,7 @@ function TrusteeContactForm() {
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
   const navigate = useCamsNavigator();
 
-  const mapPayload = (formData: TrusteeFormData) => {
+  const mapPayload = (formData: TrusteeFormData): Partial<TrusteeInput> => {
     let payload;
     if (doCreate || doEditPublicProfile) {
       // Normalize website URL by adding protocol if missing
@@ -104,22 +104,27 @@ function TrusteeContactForm() {
           formData.districts.length > 0 && { districts: formData.districts }),
         ...(formData.chapters && formData.chapters.length > 0 && { chapters: formData.chapters }),
         status: formData.status,
-      } satisfies TrusteeInput;
+      } as TrusteeInput;
     } else {
       payload = {
         internal: {
-          address: {
-            address1: formData.address1,
-            ...(formData.address2 && { address2: formData.address2 }),
-            city: formData.city,
-            state: formData.state,
-            zipCode: formData.zipCode,
-            countryCode: 'US',
-          },
-          phone: { number: formData.phone, extension: formData.extension },
+          address:
+            formData.address1 && formData.city && formData.state && formData.zipCode
+              ? {
+                  address1: formData.address1,
+                  ...(formData.address2 && { address2: formData.address2 }),
+                  city: formData.city,
+                  state: formData.state,
+                  zipCode: formData.zipCode,
+                  countryCode: 'US',
+                }
+              : undefined,
+          phone: formData.phone
+            ? { number: formData.phone, extension: formData.extension }
+            : undefined,
           email: formData.email,
         },
-      } satisfies Partial<TrusteeInput>;
+      } as Partial<TrusteeInput>;
     }
     return payload;
   };
@@ -393,7 +398,7 @@ function TrusteeContactForm() {
                 className="trustee-state-input"
                 name="state"
                 label="State"
-                selections={[formData.state]}
+                selections={formData.state ? [formData.state] : []}
                 onUpdateSelection={(selectedOptions) => {
                   debounce(() => {
                     const value = selectedOptions[0]?.value;

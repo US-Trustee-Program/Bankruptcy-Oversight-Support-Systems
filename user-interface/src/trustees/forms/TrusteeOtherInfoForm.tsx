@@ -8,6 +8,7 @@ import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { useState } from 'react';
 
+// TODO: Migrate these into the mongo DB
 const SOFTWARE_OPTIONS: ComboOption[] = [
   { value: 'Axos', label: 'Axos' },
   { value: 'BlueStylus', label: 'BlueStylus' },
@@ -101,29 +102,6 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
       <form data-testid="trustee-other-info-form">
         <div className="form-container">
           <div className="form-column">
-            <div className="field-group">
-              <ComboBox
-                id="trustee-software"
-                className="trustee-software-input"
-                name="software"
-                label="Software"
-                options={SOFTWARE_OPTIONS}
-                selections={
-                  software
-                    ? [
-                        {
-                          value: software,
-                          label:
-                            SOFTWARE_OPTIONS.find((opt) => opt.value === software)?.label ??
-                            software,
-                        },
-                      ]
-                    : []
-                }
-                onUpdateSelection={handleSoftwareChange}
-                autoComplete="off"
-              />
-            </div>
             {banks.map((bank, index) => {
               return (
                 <div className="field-group" key={`bank-${index}`}>
@@ -157,6 +135,18 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
               <Icon name="add_circle" />
               Add another bank
             </Button>
+          </div>
+          <div className="field-group">
+            <ComboBox
+              id="trustee-software"
+              className="trustee-software-input"
+              name="software"
+              label="Bankruptcy Software"
+              options={SOFTWARE_OPTIONS}
+              selections={SOFTWARE_OPTIONS.filter((option) => option.value === software)}
+              onUpdateSelection={handleSoftwareChange}
+              autoComplete="off"
+            />
           </div>
         </div>
         <div className="usa-button-group">

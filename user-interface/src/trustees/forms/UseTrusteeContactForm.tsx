@@ -38,19 +38,19 @@ export const TRUSTEE_SPEC: Readonly<ValidationSpec<TrusteeFormData>> = {
 };
 
 export interface TrusteeFormData {
-  name: string;
-  address1: string;
+  name?: string;
+  address1?: string;
   address2?: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  phone: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  phone?: string;
   extension?: string;
-  email: string;
+  email?: string;
   website?: string;
   districts?: string[];
   chapters?: ChapterType[];
-  status: TrusteeStatus;
+  status?: TrusteeStatus;
 }
 
 export type TrusteeFormState = {
@@ -109,18 +109,18 @@ export function useTrusteeContactForm({ initialState }: UseTrusteeFormProps) {
     }
 
     return {
-      name: initialState.trustee?.name ?? '',
-      address1: info?.address?.address1 ?? '',
-      address2: info?.address?.address2 ?? '',
-      city: info?.address?.city ?? '',
-      state: info?.address?.state ?? '',
-      zipCode: info?.address?.zipCode ?? '',
-      phone: info?.phone?.number ?? '',
-      extension: info?.phone?.extension ?? '',
-      email: info?.email ?? '',
-      website: info?.website ?? '',
-      districts: initialState.trustee?.districts ?? [],
-      chapters: initialState.trustee?.chapters ?? [],
+      name: initialState.trustee?.name,
+      address1: info?.address?.address1,
+      address2: info?.address?.address2,
+      city: info?.address?.city,
+      state: info?.address?.state,
+      zipCode: info?.address?.zipCode,
+      phone: info?.phone?.number,
+      extension: info?.phone?.extension,
+      email: info?.email,
+      website: info?.website,
+      districts: initialState.trustee?.districts,
+      chapters: initialState.trustee?.chapters,
       status: initialState.trustee?.status ?? 'active',
     };
   };
@@ -143,18 +143,19 @@ export function useTrusteeContactForm({ initialState }: UseTrusteeFormProps) {
   const getFormData = (override?: { name: keyof TrusteeFormData; value: string }) => {
     const trimmedData = {
       ...formData,
-      name: formData.name.trim(),
-      address1: formData.address1.trim(),
-      address2: formData.address2?.trim() || undefined,
-      city: formData.city.trim(),
-      zipCode: formData.zipCode.trim(),
-      phone: formData.phone.trim(),
-      extension: formData.extension?.trim() || undefined,
-      email: formData.email.trim(),
-      website: formData.website?.trim() || undefined,
+      name: formData.name?.trim(),
+      address1: formData.address1?.trim(),
+      address2: formData.address2?.trim(),
+      city: formData.city?.trim(),
+      zipCode: formData.zipCode?.trim(),
+      phone: formData.phone?.trim(),
+      extension: formData.extension?.trim(),
+      email: formData.email?.trim(),
+      website: formData.website?.trim(),
       districts:
         formData.districts && formData.districts.length > 0 ? formData.districts : undefined,
       chapters: formData.chapters && formData.chapters.length > 0 ? formData.chapters : undefined,
+      status: formData.status,
     };
 
     if (override) {
