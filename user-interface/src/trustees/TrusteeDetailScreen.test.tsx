@@ -86,10 +86,12 @@ const mockCourts = [
 
 const mockGetTrustee = vi.fn();
 const mockGetCourts = vi.fn();
+const mockGetTrusteeHistory = vi.fn();
 
 const mockApi = {
   getTrustee: mockGetTrustee,
   getCourts: mockGetCourts,
+  getTrusteeHistory: mockGetTrusteeHistory,
 } as Partial<ReturnType<typeof useApi2>> as ReturnType<typeof useApi2>;
 
 const mockGlobalAlert: GlobalAlertRef = {
@@ -123,6 +125,7 @@ describe('TrusteeDetailScreen', () => {
 
     mockOnEditPublicProfile.mockClear();
     mockOnEditInternalProfile.mockClear();
+    mockGetTrusteeHistory.mockClear();
   });
 
   afterEach(() => {
@@ -403,7 +406,7 @@ describe('TrusteeDetailScreen', () => {
     const publicEditButton = screen.getByLabelText('Edit trustee public overview information');
     publicEditButton.click();
 
-    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/contact/edit', {
+    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/contact/edit/public', {
       state: {
         trusteeId: '123',
         trustee: mockTrustee,
@@ -427,7 +430,7 @@ describe('TrusteeDetailScreen', () => {
     const internalEditButton = screen.getByLabelText('Edit trustee internal contact information');
     internalEditButton.click();
 
-    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/contact/edit', {
+    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/contact/edit/internal', {
       state: {
         trusteeId: '123',
         trustee: mockTrustee,
@@ -585,4 +588,82 @@ describe('TrusteeDetailScreen', () => {
     expect(screen.getByText('555-111-2222, ext. 1111')).toBeInTheDocument();
     expect(screen.queryByText('john.doe.public@example.com')).not.toBeInTheDocument();
   });
+
+  test.each([
+    {
+      route: '/trustees/123/contact/edit/public',
+      expectedSubheader: 'Edit Trustee Profile (Public)',
+      description:
+        'should render subheader "Edit Trustee Profile (Public)" for /contact/edit/public route',
+      needsLocationState: true,
+      locationState: {
+        pathname: '/trustees/123/contact/edit/public',
+        state: {
+          trusteeId: '123',
+          trustee: mockTrustee,
+          cancelTo: '/trustees/123',
+          action: 'edit',
+          contactInformation: 'public',
+        },
+      },
+    },
+    {
+      route: '/trustees/123/contact/edit/internal',
+      expectedSubheader: 'Edit Trustee Profile (USTP Internal)',
+      description:
+        'should render subheader "Edit Trustee Profile (USTP Internal)" for /contact/edit/internal route',
+      needsLocationState: true,
+      locationState: {
+        pathname: '/trustees/123/contact/edit/internal',
+        state: {
+          trusteeId: '123',
+          trustee: mockTrustee,
+          cancelTo: '/trustees/123',
+          action: 'edit',
+          contactInformation: 'internal',
+        },
+      },
+    },
+    {
+      route: '/trustees/123/other/edit',
+      expectedSubheader: 'Edit Other Trustee Information',
+      description: 'should render subheader "Edit Other Trustee Information" for /other/edit route',
+      needsLocationState: false,
+    },
+    {
+      route: '/trustees/123/audit-history',
+      expectedSubheader: 'Trustee',
+      description: 'should render subheader "Trustee" for /audit-history route',
+      needsLocationState: false,
+      needsHistoryMock: true,
+    },
+    {
+      route: '/trustees/123',
+      expectedSubheader: 'Trustee',
+      description: 'should render subheader "Trustee" for default route',
+      needsLocationState: false,
+    },
+  ])(
+    '$description',
+    async ({ route, expectedSubheader, needsLocationState, locationState, needsHistoryMock }) => {
+      // Set up location state if needed for contact forms
+      if (needsLocationState && locationState) {
+        mockUseLocation.mockReturnValue(locationState);
+      }
+
+      // Set up API mocks
+      mockGetTrustee.mockResolvedValue({ data: mockTrustee });
+      mockGetCourts.mockResolvedValue({ data: mockCourts });
+
+      if (needsHistoryMock) {
+        mockGetTrusteeHistory.mockResolvedValue({ data: [] });
+      }
+
+      renderWithRouter([route]);
+
+      await waitFor(() => {
+        expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(expectedSubheader);
+      });
+    },
+  );
 });
