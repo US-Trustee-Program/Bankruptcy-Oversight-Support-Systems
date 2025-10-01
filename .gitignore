@@ -103,3 +103,5 @@ cams1.code-workspace
 .ai
 .ai/*
 .github/copilot-instructions.md
+
+.gitmodules
