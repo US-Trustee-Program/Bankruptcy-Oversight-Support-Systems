@@ -29,7 +29,7 @@
     "launchdarkly-react-client-sdk": "3.8.1",
     "react": "19.1.1",
     "react-dom": "19.1.1",
-    "react-router-dom": "7.9.1"
+    "react-router-dom": "7.9.2"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.10.2",
