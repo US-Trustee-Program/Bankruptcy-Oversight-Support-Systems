@@ -115,6 +115,7 @@ load_config() {
         echo "Warning: Configuration file $config_file not found. Using defaults."
         MIN_PACKAGE_AGE_DAYS=30
         ALLOWED_PACKAGES=("eslint")
+        USE_ALLOWLIST=true
         PROJECTS=("backend" "common" "dev-tools" "test/e2e" "user-interface")
         PINNED_PACKAGES=()
         declare -gA MAJOR_VERSION_LOCKS
@@ -129,8 +130,22 @@ load_config() {
 
     MIN_PACKAGE_AGE_DAYS=$(jq -r '.minPackageAgeDays // 30' "$config_file")
 
-    # Use mapfile to properly handle array assignment
-    mapfile -t ALLOWED_PACKAGES < <(jq -r '.allowedPackages[]?' "$config_file")
+    # Check if allowedPackages is defined
+    local has_allowed
+    has_allowed=$(jq 'has("allowedPackages")' "$config_file")
+
+    if [[ "$has_allowed" == "true" ]]; then
+        # Allowlist mode: use the specified allowed packages
+        USE_ALLOWLIST=true
+        mapfile -t ALLOWED_PACKAGES < <(jq -r '.allowedPackages[]?' "$config_file")
+        echo "Using allowlist mode: processing only ${#ALLOWED_PACKAGES[@]} allowed packages"
+    else
+        # Permissive mode: process all packages (constraints provide safety)
+        USE_ALLOWLIST=false
+        ALLOWED_PACKAGES=()
+        echo "Using permissive mode: processing all packages (constraints provide safety)"
+    fi
+
     mapfile -t PROJECTS < <(jq -r '.projects[]?' "$config_file")
 
     # Load constraints
@@ -152,7 +167,13 @@ load_config() {
         fi
     done < <(jq -r '.constraints.majorVersionDelay | to_entries[] | "\(.key)=\(.value)"' "$config_file" 2>/dev/null || true)
 
-    echo "Loaded configuration: ${#ALLOWED_PACKAGES[@]} allowed packages, ${MIN_PACKAGE_AGE_DAYS}-day minimum age"
+    # Display configuration summary
+    echo "Loaded configuration: ${MIN_PACKAGE_AGE_DAYS}-day minimum age"
+    if [[ "$USE_ALLOWLIST" == "true" ]]; then
+        echo "Allowed packages: ${ALLOWED_PACKAGES[*]}"
+    else
+        echo "Processing all packages (permissive mode)"
+    fi
     if [[ ${#PINNED_PACKAGES[@]} -gt 0 ]]; then
         echo "Pinned packages (will be skipped): ${PINNED_PACKAGES[*]}"
     fi
@@ -358,12 +379,18 @@ filter_safe_versions() {
 check_package_allowed() {
     local package_name="$1"
 
-    for allowed in "${ALLOWED_PACKAGES[@]}"; do
-        if [[ "$package_name" == "$allowed" ]]; then
-            return 0
-        fi
-    done
-    return 1
+    if [[ "$USE_ALLOWLIST" == "true" ]]; then
+        # Allowlist mode: only allow packages in ALLOWED_PACKAGES
+        for allowed in "${ALLOWED_PACKAGES[@]}"; do
+            if [[ "$package_name" == "$allowed" ]]; then
+                return 0  # Package is allowed
+            fi
+        done
+        return 1  # Package is not in allowlist
+    else
+        # Permissive mode: allow all packages (constraints provide safety)
+        return 0  # All packages are allowed
+    fi
 }
 
 ############################################################
