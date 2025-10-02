@@ -19,7 +19,7 @@
     "@playwright/test": "1.55.0",
     "@types/node": "24.5.1",
     "dotenv": "17.2.2",
-    "eslint": "9.35.0",
+    "eslint": "9.36.0",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-import": "2.32.0",
     "eslint-plugin-n": "17.23.0",
