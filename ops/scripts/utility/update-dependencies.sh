@@ -518,25 +518,25 @@ process_project_packages() {
         # No outdated packages
         if [[ "$outdated_json" == "{}" || -z "$outdated_json" ]]; then
             echo "No outdated packages found in $project_dir"
-            return 0
+            return $updated_count
         fi
     elif [[ $npm_exit_code -eq 1 ]]; then
         # Outdated packages found - this is expected, continue processing
         if [[ -z "$outdated_json" || "$outdated_json" == "{}" ]]; then
             echo "No outdated packages found in $project_dir (empty result despite exit code 1)"
-            return 0
+            return $updated_count
         fi
     else
         # Actual error (network issues, permission problems, etc.)
         echo "ERROR: Failed to get outdated packages for $project_dir (exit code: $npm_exit_code)" >&2
-        return 1
+        return $updated_count
     fi
 
     # Declare and assign separately to avoid masking return values
     local packages
     if ! packages=$(echo "$outdated_json" | jq -r 'keys[]?' 2>/dev/null); then
         echo "ERROR: Failed to parse outdated packages JSON for $project_dir" >&2
-        return 1
+        return $updated_count
     fi
 
     local packages_processed=0
@@ -684,10 +684,9 @@ for project in "${PROJECTS[@]}"; do
         if [[ -f "package.json" ]]; then
             echo "Processing root level packages"
             npm ci
-            if process_project_packages "."; then
-                project_updates=$?
-                ((total_updates += project_updates))
-            fi
+            process_project_packages "."
+            project_updates=$?
+            ((total_updates += project_updates))
         else
             echo "Skipping root (no package.json found)"
         fi
@@ -710,10 +709,9 @@ for project in "${PROJECTS[@]}"; do
 
                 popd >/dev/null || return 1
 
-                if process_project_packages "$expanded_path"; then
-                    project_updates=$?
-                    ((total_updates += project_updates))
-                fi
+                process_project_packages "$expanded_path"
+                project_updates=$?
+                ((total_updates += project_updates))
             fi
         done
         continue
@@ -732,10 +730,9 @@ for project in "${PROJECTS[@]}"; do
 
         popd >/dev/null || return 1
 
-        if process_project_packages "$project"; then
-            project_updates=$?
-            ((total_updates += project_updates))
-        fi
+        process_project_packages "$project"
+        project_updates=$?
+        ((total_updates += project_updates))
     else
         echo "Skipping $project (not found or no package.json)"
     fi
