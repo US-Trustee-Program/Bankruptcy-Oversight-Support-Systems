@@ -67,6 +67,49 @@ The dependency update script uses `.dependency-update-config.json` in the reposi
 }
 ```
 
+### Production Configuration Structure
+
+```json
+{
+  "minPackageAgeDays": 7,
+  "allowedPackages": [
+    "eslint",
+    "prettier",
+    "@typescript-eslint/eslint-plugin",
+    "@typescript-eslint/parser",
+    "@types/node",
+    "@types/jest",
+    "typescript",
+    "jest",
+    "vite",
+    "react",
+    "react-dom"
+  ],
+  "projects": [
+    "root",
+    "backend",
+    "common",
+    "dev-tools",
+    "test/e2e",
+    "user-interface"
+  ],
+  "constraints": {
+    "pinned": [
+      "applicationinsights"
+    ],
+    "majorVersionLock": {
+      "react": "18",
+      "eslint": "9"
+    },
+    "majorVersionDelay": {
+      "*": 30,
+      "react": 60,
+      "typescript": 45
+    }
+  }
+}
+```
+
 ### Configuration Options
 
 #### `minPackageAgeDays`
@@ -173,6 +216,65 @@ Object mapping package names to additional aging days for x.0.0 versions. This i
 - `eslint@10.1.0`: Can be adopted after 30 days (standard aging)
 
 This strategy ensures that x.0.0 releases have time for community adoption and initial bug fixes before we adopt them.
+
+## Troubleshooting
+
+### Common Issues and Solutions
+
+#### No Packages Being Updated
+**Symptoms**: Script runs but reports "No packages were updated"
+
+**Common Causes & Solutions**:
+- **All packages filtered by allowlist**: Add more packages to `allowedPackages` if safe
+- **Age requirements too strict**: Lower `minPackageAgeDays` (carefully)
+- **Packages pinned or version-locked**: Review constraints configuration
+
+#### Packages Consistently Skipped Due to Age
+**Symptoms**: Packages show as "No safe version found (age requirements not met)"
+
+**Solutions**:
+1. Wait for packages to meet age requirements naturally
+2. Lower `minPackageAgeDays` temporarily for urgent security updates
+3. Manually update critical security patches
+
+#### Package Updates Failing with Dependency Conflicts
+**Symptoms**: Packages fail with "Dependency resolution conflict" (ERESOLVE)
+
+**Solutions**:
+1. Add major version locks to prevent breaking changes
+2. Check if packages need to be updated together
+3. Verify peer dependencies don't need updating first
+
+### Emergency Procedures
+
+#### Rollback Updates
+```bash
+# Single commit rollback
+git revert <commit-hash>
+
+# Manual package downgrade
+npm install --save-exact <package-name>@<previous-version>
+```
+
+### Configuration Examples
+
+#### Conservative
+```json
+{
+  "minPackageAgeDays": 21,
+  "allowedPackages": ["eslint", "prettier"],
+  "constraints": { "majorVersionDelay": { "*": 60 } }
+}
+```
+
+#### Aggressive
+```json
+{
+  "minPackageAgeDays": 3,
+  "allowedPackages": ["eslint", "@types/node", "jest"],
+  "constraints": { "majorVersionDelay": { "*": 14 } }
+}
+```
 
 ## Commit Signing
 
