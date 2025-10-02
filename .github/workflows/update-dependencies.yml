@@ -25,28 +25,43 @@ jobs:
           git_user_signingkey: true
 
       - name: Update Dependencies
+        id: update-deps
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GIT_AUTHOR_NAME: ${{ steps.import-gpg.outputs.name }}
           GIT_AUTHOR_EMAIL: ${{ steps.import-gpg.outputs.email }}
-        run: ./ops/scripts/utility/update-dependencies.sh -c
+        run: |
+          ./ops/scripts/utility/update-dependencies.sh -c
+          # Capture the manifest content if it exists
+          if [ -f "dependency-update-manifest.md" ]; then
+            echo "MANIFEST_CONTENT<<EOF" >> $GITHUB_OUTPUT
+            cat dependency-update-manifest.md >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            echo "manifest_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "manifest_exists=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Check for Changes and Create PR
         id: create-pr
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Check if there are any changes to commit
-          if [ -n "$(git status --porcelain)" ]; then
+          # Check if there are any changes to commit (excluding the manifest file)
+          if [ -n "$(git status --porcelain | grep -v 'dependency-update-manifest.md')" ]; then
             echo "changes_made=true" >> $GITHUB_OUTPUT
-            if [ -f "dependency-update-manifest.md" ]; then
-              gh pr create --title "Update NPM packages" --body-file dependency-update-manifest.md
-              echo "pr_created=true" >> $GITHUB_OUTPUT
+
+            # Create PR with manifest content or default message
+            if [ "${{ steps.update-deps.outputs.manifest_exists }}" = "true" ]; then
+              # Create a temporary file with the manifest content
+              echo '${{ steps.update-deps.outputs.MANIFEST_CONTENT }}' > temp_pr_body.md
+              gh pr create --title "Update NPM packages" --body-file temp_pr_body.md
+              rm temp_pr_body.md
             else
               echo "No manifest file found, but changes exist - creating PR with default message"
-              gh pr create --title "Update NPM packages" --body "Automated dependency update - manifest generation failed"
-              echo "pr_created=true" >> $GITHUB_OUTPUT
+              gh pr create --title "Update NPM packages" --body "Automated dependency update - manifest generation may have failed"
             fi
+            echo "pr_created=true" >> $GITHUB_OUTPUT
           else
             echo "changes_made=false" >> $GITHUB_OUTPUT
             echo "pr_created=false" >> $GITHUB_OUTPUT

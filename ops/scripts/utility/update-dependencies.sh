@@ -753,9 +753,7 @@ else
   echo "No packages were updated - no changes to push"
 fi
 
-if [[ -n "${CICD}" ]]; then
-  exit 0
-fi
+# Continue to manifest generation for all modes
 
 if [[ -n "${TEST}" ]]; then
   # Test mode: no branch switching back
