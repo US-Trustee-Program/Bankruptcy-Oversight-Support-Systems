@@ -11,7 +11,7 @@
       "typescript": 60
     }
   },
-  "minPackageAgeDays": 15,
+  "minPackageAgeDays": 10,
   "allowedPackages": [
     "eslint",
     "prettier",
