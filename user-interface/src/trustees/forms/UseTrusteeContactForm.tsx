@@ -100,7 +100,7 @@ export function useTrusteeContactForm({ initialState }: UseTrusteeFormProps) {
     initialState.action === 'edit' && initialState.contactInformation === 'public';
 
   const getInitialFormData = (): TrusteeFormData => {
-    let info: ContactInformation | null = null;
+    let info: Partial<ContactInformation> | undefined;
 
     if (doEditInternalProfile && initialState.trustee?.internal) {
       info = initialState.trustee.internal;
