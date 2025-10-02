@@ -27,7 +27,7 @@ export type Trustee = Auditable &
   Identifiable & {
     name: string;
     public: ContactInformation;
-    internal?: ContactInformation;
+    internal?: Partial<ContactInformation>;
     legacy?: LegacyAddress & {
       phone?: string;
       email?: string;
