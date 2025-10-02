@@ -14,6 +14,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
       - name: Import GPG
         id: import-gpg
         uses: crazy-max/ghaction-import-gpg@v6.1.0
@@ -31,15 +40,27 @@ jobs:
           GIT_AUTHOR_NAME: ${{ steps.import-gpg.outputs.name }}
           GIT_AUTHOR_EMAIL: ${{ steps.import-gpg.outputs.email }}
         run: |
-          ./ops/scripts/utility/update-dependencies.sh -c
-          # Capture the manifest content if it exists
+          # Run the dependency update script and capture output
+          SCRIPT_OUTPUT=$(./ops/scripts/utility/update-dependencies.sh -c 2>&1)
+          echo "$SCRIPT_OUTPUT"
+
+          # Get the count of updated packages from the script output
+          UPDATED_COUNT=$(echo "$SCRIPT_OUTPUT" | grep "Total packages updated:" | tail -1 | cut -d: -f2 | xargs)
+          echo "updated_count=$UPDATED_COUNT" >> $GITHUB_OUTPUT
+
+          # Check if manifest file was created and capture its content
           if [ -f "dependency-update-manifest.md" ]; then
-            echo "MANIFEST_CONTENT<<EOF" >> $GITHUB_OUTPUT
-            cat dependency-update-manifest.md >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
             echo "manifest_exists=true" >> $GITHUB_OUTPUT
+            # Use a more reliable method to capture multiline content
+            {
+              echo "MANIFEST_CONTENT<<MANIFEST_EOF"
+              cat dependency-update-manifest.md
+              echo "MANIFEST_EOF"
+            } >> $GITHUB_OUTPUT
           else
             echo "manifest_exists=false" >> $GITHUB_OUTPUT
+            echo "Warning: Manifest file not found at $(pwd)/dependency-update-manifest.md"
+            ls -la | grep -E "(dependency|manifest)" || echo "No manifest-related files found"
           fi
 
       - name: Check for Changes and Create PR
@@ -47,25 +68,36 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Check if there are any changes to commit (excluding the manifest file)
-          if [ -n "$(git status --porcelain | grep -v 'dependency-update-manifest.md')" ]; then
+          # Check if there are actual changes to package files (excluding the manifest)
+          if git diff --name-only HEAD | grep -E "(package\.json|package-lock\.json)" > /dev/null; then
             echo "changes_made=true" >> $GITHUB_OUTPUT
 
-            # Create PR with manifest content or default message
+            # Create PR with manifest content if available
             if [ "${{ steps.update-deps.outputs.manifest_exists }}" = "true" ]; then
-              # Create a temporary file with the manifest content
+              echo "Creating PR with manifest content..."
+              # Create temporary file for PR body
               echo '${{ steps.update-deps.outputs.MANIFEST_CONTENT }}' > temp_pr_body.md
-              gh pr create --title "Update NPM packages" --body-file temp_pr_body.md
+
+              gh pr create \
+                --title "Automated NPM Package Updates" \
+                --body-file temp_pr_body.md \
+                --head "dependency-updates-auto" \
+                --base "main"
+
               rm temp_pr_body.md
             else
-              echo "No manifest file found, but changes exist - creating PR with default message"
-              gh pr create --title "Update NPM packages" --body "Automated dependency update - manifest generation may have failed"
+              echo "Creating PR with default message (manifest not found)..."
+              gh pr create \
+                --title "Automated NPM Package Updates" \
+                --body "Automated dependency updates completed. Updated ${{ steps.update-deps.outputs.updated_count }} packages. Manifest generation may have failed - check workflow logs for details." \
+                --head "dependency-updates-auto" \
+                --base "main"
             fi
             echo "pr_created=true" >> $GITHUB_OUTPUT
           else
             echo "changes_made=false" >> $GITHUB_OUTPUT
             echo "pr_created=false" >> $GITHUB_OUTPUT
-            echo "No changes made to dependencies - skipping PR creation and remaining steps"
+            echo "No changes made to dependencies - skipping PR creation"
           fi
 
       - name: Audit
@@ -78,7 +110,7 @@ jobs:
         if: steps.create-pr.outputs.pr_created == 'true'
         uses: benc-uk/workflow-dispatch@v1
         with:
-            workflow: continuous-deployment.yml
-            repo: US-Trustee-Program/Bankruptcy-Oversight-Support-Systems
-            ref: 'refs/heads/dependency-updates-auto'
-            inputs: '{"deployBranch": "true", "enableBicepDeployment": "true"}'
+          workflow: continuous-deployment.yml
+          repo: US-Trustee-Program/Bankruptcy-Oversight-Support-Systems
+          ref: 'refs/heads/dependency-updates-auto'
+          inputs: '{"deployBranch": "true", "enableBicepDeployment": "true"}'

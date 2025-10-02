@@ -981,4 +981,15 @@ generate_update_manifest
 # Generate summary report
 generate_execution_summary
 
-exit 0
+# Exit with appropriate code based on whether packages were updated
+total_updated=${#UPDATED_PACKAGES[@]}
+echo "Total packages updated: $total_updated"
+
+# Return 0 for success, 1 for failure (don't use package count as exit code)
+if [[ $total_updated -gt 0 ]]; then
+    echo "SUCCESS: $total_updated packages were updated"
+    exit 0
+else
+    echo "INFO: No packages were updated"
+    exit 0
+fi
