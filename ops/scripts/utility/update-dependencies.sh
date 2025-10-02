@@ -610,7 +610,7 @@ process_project_packages() {
     done <<< "$packages"
 
     echo "Completed processing $project_dir: $updated_count updated, $packages_failed failed, $packages_processed total packages"
-    return 0
+    return $updated_count
 }
 
 ############################################################
