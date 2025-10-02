@@ -21,7 +21,7 @@
   "devDependencies": {
     "@eslint/js": "10.0.0",
     "@faker-js/faker": "9.9.0",
-    "@types/jest": "29.5.14",
+    "@types/jest": "30.0.0",
     "@types/node": "24.5.1",
     "@typescript-eslint/parser": "8.18.2",
     "dependency-cruiser": "17.0.1",
