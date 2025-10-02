@@ -33,7 +33,7 @@
     "applicationinsights": "3.10.0",
     "dotenv": "17.2.2",
     "jsonwebtoken": "9.0.2",
-    "mongodb": "6.19.0",
+    "mongodb": "6.20.0",
     "mssql": "10.0.4"
   },
   "overrides": {
