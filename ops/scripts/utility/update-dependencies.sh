@@ -7,6 +7,87 @@
 #     ./ops/scripts/utility/update-dependencies.sh [-c|h|r|u|t]
 
 ############################################################
+# Global Variables for Tracking                           #
+############################################################
+declare -a UPDATED_PACKAGES
+declare -a SKIPPED_PACKAGES
+declare -a FAILED_PACKAGES
+
+############################################################
+# Manifest Tracking Functions                             #
+############################################################
+add_updated_package() {
+    local package_name="$1"
+    local old_version="$2"
+    local new_version="$3"
+    local project="$4"
+
+    UPDATED_PACKAGES+=("$package_name|$old_version|$new_version|$project")
+}
+
+add_skipped_package() {
+    local package_name="$1"
+    local current_version="$2"
+    local reason="$3"
+    local project="$4"
+
+    SKIPPED_PACKAGES+=("$package_name|$current_version|$reason|$project")
+}
+
+add_failed_package() {
+    local package_name="$1"
+    local current_version="$2"
+    local target_version="$3"
+    local error_details="$4"
+    local project="$5"
+
+    FAILED_PACKAGES+=("$package_name|$current_version|$target_version|$error_details|$project")
+}
+
+############################################################
+# Error Handling Functions                                #
+############################################################
+handle_npm_command_error() {
+    local command="$1"
+    local package_name="$2"
+    local exit_code="$3"
+    local error_output="$4"
+
+    echo "ERROR: NPM command failed - $command" >&2
+    echo "Package: $package_name" >&2
+    echo "Exit code: $exit_code" >&2
+    if [[ -n "$error_output" ]]; then
+        echo "Error output: $error_output" >&2
+    fi
+
+    return "$exit_code"
+}
+
+safe_npm_command() {
+    local command_description="$1"
+    shift
+    local command_args=("$@")
+
+    echo "Executing: npm ${command_args[*]}" >&2
+
+    local output
+    local exit_code
+
+    # Capture both stdout and stderr, and get exit code
+    if output=$(npm "${command_args[@]}" 2>&1); then
+        echo "$output"
+        return 0
+    else
+        exit_code=$?
+        echo "NPM command failed: $command_description" >&2
+        echo "Command: npm ${command_args[*]}" >&2
+        echo "Exit code: $exit_code" >&2
+        echo "Output: $output" >&2
+        return $exit_code
+    fi
+}
+
+############################################################
 # Help                                                     #
 ############################################################
 Help()
@@ -88,12 +169,32 @@ load_config() {
 ############################################################
 get_package_versions() {
     local package_name="$1"
-    npm view "$package_name" versions --json 2>/dev/null
+    local output
+    local exit_code
+
+    if output=$(safe_npm_command "get package versions for $package_name" view "$package_name" versions --json); then
+        echo "$output"
+        return 0
+    else
+        exit_code=$?
+        echo "Failed to get versions for $package_name" >&2
+        return $exit_code
+    fi
 }
 
 get_package_times() {
     local package_name="$1"
-    npm view "$package_name" time --json 2>/dev/null
+    local output
+    local exit_code
+
+    if output=$(safe_npm_command "get package times for $package_name" view "$package_name" time --json); then
+        echo "$output"
+        return 0
+    else
+        exit_code=$?
+        echo "Failed to get package times for $package_name" >&2
+        return $exit_code
+    fi
 }
 
 ############################################################
@@ -323,27 +424,60 @@ update_package_individually() {
     local package_name="$1"
     local target_version="$2"
     local project_dir="$3"
+    local current_version="$4"
 
     echo "Updating $package_name to $target_version in $project_dir"
 
-    pushd "$project_dir" >/dev/null || return 1
+    pushd "$project_dir" >/dev/null || {
+        local error_msg="Failed to change directory to $project_dir"
+        echo "$error_msg" >&2
+        add_failed_package "$package_name" "$current_version" "$target_version" "$error_msg" "$project_dir"
+        return 1
+    }
 
-    # Install exact version
-    if npm install --save-exact "$package_name@$target_version"; then
+    # Install exact version with enhanced error handling
+    local npm_output
+    local npm_exit_code
+
+    if npm_output=$(safe_npm_command "install $package_name@$target_version" install --save-exact "$package_name@$target_version" 2>&1); then
         popd >/dev/null || return 1
 
         # Create individual commit only if not in test mode
         if [[ -z "${TEST}" ]]; then
-            git add "$project_dir/package.json" "$project_dir/package-lock.json"
-            git commit -m "Update $package_name to $target_version in $project_dir"
-            echo "Successfully updated $package_name to $target_version in $project_dir"
+            if git add "$project_dir/package.json" "$project_dir/package-lock.json" && \
+               git commit -m "Update $package_name to $target_version in $project_dir"; then
+                echo "Successfully updated $package_name to $target_version in $project_dir"
+                add_updated_package "$package_name" "$current_version" "$target_version" "$project_dir"
+                return 0
+            else
+                local git_error="Git commit failed for $package_name update"
+                echo "$git_error" >&2
+                add_failed_package "$package_name" "$current_version" "$target_version" "$git_error" "$project_dir"
+                return 1
+            fi
         else
             echo "TEST MODE: Updated $package_name to $target_version in $project_dir (no commit)"
+            add_updated_package "$package_name" "$current_version" "$target_version" "$project_dir"
+            return 0
         fi
-        return 0
     else
+        npm_exit_code=$?
         popd >/dev/null || return 1
-        echo "Failed to update $package_name to $target_version in $project_dir"
+
+        # Extract meaningful error from npm output
+        local error_summary="NPM install failed (exit code: $npm_exit_code)"
+        if [[ "$npm_output" == *"ERESOLVE"* ]]; then
+            error_summary="Dependency resolution conflict"
+        elif [[ "$npm_output" == *"404"* ]]; then
+            error_summary="Package version not found"
+        elif [[ "$npm_output" == *"EACCES"* ]]; then
+            error_summary="Permission denied"
+        elif [[ "$npm_output" == *"ENOTFOUND"* ]]; then
+            error_summary="Network/DNS error"
+        fi
+
+        echo "Failed to update $package_name to $target_version in $project_dir: $error_summary" >&2
+        add_failed_package "$package_name" "$current_version" "$target_version" "$error_summary" "$project_dir"
         return 1
     fi
 }
@@ -357,31 +491,67 @@ process_project_packages() {
 
     echo "Processing packages in $project_dir"
 
-    pushd "$project_dir" >/dev/null || return 1
+    pushd "$project_dir" >/dev/null || {
+        echo "ERROR: Failed to change directory to $project_dir" >&2
+        return 1
+    }
 
-    # Declare and assign separately to avoid masking return values
+    # Handle npm outdated specially - it returns exit code 1 when packages are outdated
     local outdated_json
-    outdated_json=$(npm outdated --json 2>/dev/null || echo "{}")
+    local npm_exit_code
+
+    # Run npm outdated directly without the safe_npm_command wrapper
+    if outdated_json=$(npm outdated --json 2>/dev/null); then
+        # npm outdated succeeded (no outdated packages)
+        npm_exit_code=0
+    else
+        npm_exit_code=$?
+        # npm outdated returns 1 when there are outdated packages, which is expected
+        # Capture the output even with exit code 1
+        outdated_json=$(npm outdated --json 2>/dev/null || echo "{}")
+    fi
 
     popd >/dev/null || return 1
 
-    if [[ "$outdated_json" == "{}" ]]; then
-        echo "No outdated packages found in $project_dir"
-        return 0
+    # Handle different exit codes appropriately
+    if [[ $npm_exit_code -eq 0 ]]; then
+        # No outdated packages
+        if [[ "$outdated_json" == "{}" || -z "$outdated_json" ]]; then
+            echo "No outdated packages found in $project_dir"
+            return 0
+        fi
+    elif [[ $npm_exit_code -eq 1 ]]; then
+        # Outdated packages found - this is expected, continue processing
+        if [[ -z "$outdated_json" || "$outdated_json" == "{}" ]]; then
+            echo "No outdated packages found in $project_dir (empty result despite exit code 1)"
+            return 0
+        fi
+    else
+        # Actual error (network issues, permission problems, etc.)
+        echo "ERROR: Failed to get outdated packages for $project_dir (exit code: $npm_exit_code)" >&2
+        return 1
     fi
 
     # Declare and assign separately to avoid masking return values
     local packages
-    packages=$(echo "$outdated_json" | jq -r 'keys[]?')
+    if ! packages=$(echo "$outdated_json" | jq -r 'keys[]?' 2>/dev/null); then
+        echo "ERROR: Failed to parse outdated packages JSON for $project_dir" >&2
+        return 1
+    fi
+
+    local packages_processed=0
+    local packages_failed=0
 
     while IFS= read -r package_name; do
         [[ -z "$package_name" ]] && continue
+        ((packages_processed++))
 
-        echo "Checking package: $package_name"
+        echo "Checking package: $package_name in $project_dir"
 
         # Check if package is in allowed list
         if ! check_package_allowed "$package_name"; then
             echo "Skipping $package_name (not in allowed packages list)"
+            add_skipped_package "$package_name" "unknown" "Not in allowed packages list" "$project_dir"
             continue
         fi
 
@@ -391,30 +561,55 @@ process_project_packages() {
 
         if [[ -z "$current_version" ]]; then
             echo "Could not determine current version for $package_name"
+            add_failed_package "$package_name" "unknown" "unknown" "Could not determine current version" "$project_dir"
+            ((packages_failed++))
             continue
         fi
 
         # Find safe version to update to
         local safe_version
-        if safe_version=$(filter_safe_versions "$package_name" "$current_version"); then
+        if safe_version=$(filter_safe_versions "$package_name" "$current_version" 2>/dev/null); then
             echo "Found safe version for $package_name: $safe_version"
 
             # Check constraints before updating
             if check_constraints "$package_name" "$current_version" "$safe_version"; then
-                # Update the package
-                if update_package_individually "$package_name" "$safe_version" "$project_dir"; then
+                # Update the package - continue processing even if this fails
+                if update_package_individually "$package_name" "$safe_version" "$project_dir" "$current_version"; then
                     ((updated_count++))
+                    echo "✅ Successfully updated $package_name from $current_version to $safe_version in $project_dir"
+                else
+                    ((packages_failed++))
+                    echo "❌ Failed to update $package_name from $current_version to $safe_version in $project_dir"
                 fi
             else
-                echo "Constraints not met for $package_name (skipping update)"
+                local constraint_reason="Constraints not met"
+                # Check which constraint failed for better messaging
+                for pinned in "${PINNED_PACKAGES[@]}"; do
+                    if [[ "$package_name" == "$pinned" ]]; then
+                        constraint_reason="Pinned package - updates disabled"
+                        break
+                    fi
+                done
+
+                if [[ -n "${MAJOR_VERSION_LOCKS[$package_name]}" ]]; then
+                    local locked_major="${MAJOR_VERSION_LOCKS[$package_name]}"
+                    local target_major="${safe_version%%.*}"
+                    if [[ "$target_major" != "$locked_major" ]]; then
+                        constraint_reason="Major version lock violation (locked to v$locked_major, target v$target_major)"
+                    fi
+                fi
+
+                echo "Skipping $package_name: $constraint_reason"
+                add_skipped_package "$package_name" "$current_version" "$constraint_reason" "$project_dir"
             fi
         else
-            echo "No safe version found for $package_name"
+            echo "No safe version found for $package_name (age requirements not met)"
+            add_skipped_package "$package_name" "$current_version" "No safe version found (age requirements not met)" "$project_dir"
         fi
 
     done <<< "$packages"
 
-    echo "Updated $updated_count packages in $project_dir"
+    echo "Completed processing $project_dir: $updated_count updated, $packages_failed failed, $packages_processed total packages"
     return 0
 }
 
@@ -580,5 +775,75 @@ fi
 if [[ -z "${CICD}" ]] && [[ -z "${TEST}" ]] && [[ $total_updates -gt 0 ]]; then
   open "https://github.com/US-Trustee-Program/Bankruptcy-Oversight-Support-Systems/compare/main...${BRANCH_NAME}?template=dependencies.md";
 fi
+
+############################################################
+# Summary and Reporting Functions                         #
+############################################################
+generate_execution_summary() {
+    echo ""
+    echo "=============================================="
+    echo "DEPENDENCY UPDATE EXECUTION SUMMARY"
+    echo "=============================================="
+
+    local total_updated=${#UPDATED_PACKAGES[@]}
+    local total_skipped=${#SKIPPED_PACKAGES[@]}
+    local total_failed=${#FAILED_PACKAGES[@]}
+    local total_processed=$((total_updated + total_skipped + total_failed))
+
+    echo "📊 STATISTICS:"
+    echo "   Total packages processed: $total_processed"
+    echo "   ✅ Successfully updated: $total_updated"
+    echo "   ⏭️ Skipped: $total_skipped"
+    echo "   ❌ Failed: $total_failed"
+    echo ""
+
+    if [[ $total_updated -gt 0 ]]; then
+        echo "✅ SUCCESSFULLY UPDATED PACKAGES:"
+        for entry in "${UPDATED_PACKAGES[@]}"; do
+            IFS='|' read -r package old_version new_version project <<< "$entry"
+            echo "   • $package: $old_version → $new_version ($project)"
+        done
+        echo ""
+    fi
+
+    if [[ $total_skipped -gt 0 ]]; then
+        echo "⏭️ SKIPPED PACKAGES:"
+        for entry in "${SKIPPED_PACKAGES[@]}"; do
+            IFS='|' read -r package current_version reason project <<< "$entry"
+            echo "   • $package@$current_version in $project: $reason"
+        done
+        echo ""
+    fi
+
+    if [[ $total_failed -gt 0 ]]; then
+        echo "❌ FAILED PACKAGE UPDATES:"
+        for entry in "${FAILED_PACKAGES[@]}"; do
+            IFS='|' read -r package current_version target_version error_details project <<< "$entry"
+            echo "   • $package: $current_version → $target_version ($project)"
+            echo "     Error: $error_details"
+        done
+        echo ""
+    fi
+
+    echo "=============================================="
+
+    # Return appropriate exit code
+    if [[ $total_failed -gt 0 ]]; then
+        echo "⚠️  Some package updates failed, but processing continued."
+        if [[ $total_updated -gt 0 ]]; then
+            echo "✅ $total_updated packages were successfully updated despite the failures."
+        fi
+        return 1
+    elif [[ $total_updated -gt 0 ]]; then
+        echo "🎉 All attempted package updates completed successfully!"
+        return 0
+    else
+        echo "ℹ️  No packages were updated (all were skipped or no updates available)."
+        return 0
+    fi
+}
+
+# Generate summary report
+generate_execution_summary
 
 exit 0
