@@ -829,11 +829,17 @@ EOF
         declare -A package_updates
         for entry in "${UPDATED_PACKAGES[@]}"; do
             IFS='|' read -r package old_version new_version project <<< "$entry"
+            # Convert "." to "root" for better readability
+            local display_project="$project"
+            if [[ "$project" == "." ]]; then
+                display_project="root"
+            fi
+
             local update_key="${package}|${old_version}|${new_version}"
             if [[ -n "${package_updates[$update_key]}" ]]; then
-                package_updates[$update_key]="${package_updates[$update_key]}, $project"
+                package_updates[$update_key]="${package_updates[$update_key]}, $display_project"
             else
-                package_updates[$update_key]="$project"
+                package_updates[$update_key]="$display_project"
             fi
         done
 
