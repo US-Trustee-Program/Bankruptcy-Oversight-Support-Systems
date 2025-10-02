@@ -22,7 +22,7 @@
     "@eslint/js": "10.0.0",
     "@faker-js/faker": "9.9.0",
     "@types/jest": "30.0.0",
-    "@types/node": "24.5.1",
+    "@types/node": "24.5.2",
     "@typescript-eslint/parser": "8.44.0",
     "dependency-cruiser": "17.0.1",
     "eslint": "9.35.0",
