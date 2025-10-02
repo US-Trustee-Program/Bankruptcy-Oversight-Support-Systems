@@ -60,8 +60,8 @@ export type TrusteePublicContactHistory = AbstractTrusteeHistory<
 };
 
 export type TrusteeInternalContactHistory = AbstractTrusteeHistory<
-  ContactInformation,
-  ContactInformation
+  Partial<ContactInformation>,
+  Partial<ContactInformation>
 > & {
   documentType: 'AUDIT_INTERNAL_CONTACT';
 };
