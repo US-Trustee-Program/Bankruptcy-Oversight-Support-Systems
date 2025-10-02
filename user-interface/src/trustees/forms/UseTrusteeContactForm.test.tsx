@@ -107,18 +107,18 @@ describe('useTrusteeForm', () => {
       const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
 
       expect(result.current.formData).toEqual({
-        name: '',
-        address1: '',
-        address2: '',
-        city: '',
-        state: '',
-        zipCode: '',
-        phone: '',
-        extension: '',
-        email: '',
-        website: '',
-        districts: [],
-        chapters: [],
+        name: undefined,
+        address1: undefined,
+        address2: undefined,
+        city: undefined,
+        state: undefined,
+        zipCode: undefined,
+        phone: undefined,
+        extension: undefined,
+        email: undefined,
+        website: undefined,
+        districts: undefined,
+        chapters: undefined,
         status: 'active',
       });
     });
@@ -139,15 +139,15 @@ describe('useTrusteeForm', () => {
 
       expect(result.current.formData).toEqual({
         name: 'Test Trustee',
-        address1: '',
-        address2: '',
-        city: '',
-        state: '',
-        zipCode: '',
-        phone: '',
-        extension: '',
-        email: '',
-        website: '',
+        address1: undefined,
+        address2: undefined,
+        city: undefined,
+        state: undefined,
+        zipCode: undefined,
+        phone: undefined,
+        extension: undefined,
+        email: undefined,
+        website: undefined,
         districts: mockDistricts,
         chapters: mockChapters,
         status: 'active',
@@ -181,7 +181,7 @@ describe('useTrusteeForm', () => {
         phone: mockInternalContact.phone?.number,
         extension: mockInternalContact.phone?.extension,
         email: mockInternalContact.email,
-        website: '',
+        website: undefined,
         districts: mockDistricts,
         chapters: mockChapters,
         status: 'active',
@@ -215,7 +215,7 @@ describe('useTrusteeForm', () => {
         phone: mockPublicContact.phone?.number,
         extension: mockPublicContact.phone?.extension,
         email: mockPublicContact.email,
-        website: '',
+        website: undefined,
         districts: mockDistricts,
         chapters: mockChapters,
         status: 'active',
@@ -241,15 +241,15 @@ describe('useTrusteeForm', () => {
 
       expect(result.current.formData).toEqual({
         name: 'Missing Contact Trustee',
-        address1: '',
-        address2: '',
-        city: '',
-        state: '',
-        zipCode: '',
-        phone: '',
-        extension: '',
-        email: '',
-        website: '',
+        address1: undefined,
+        address2: undefined,
+        city: undefined,
+        state: undefined,
+        zipCode: undefined,
+        phone: undefined,
+        extension: undefined,
+        email: undefined,
+        website: undefined,
         districts: mockDistricts,
         chapters: mockChapters,
         status: 'active',
@@ -380,7 +380,7 @@ describe('useTrusteeForm', () => {
       });
 
       expect(result.current.formData.name).toBe('Initial Name');
-      expect(result.current.formData.address1).toBe('');
+      expect(result.current.formData.address1).toBeUndefined();
     });
   });
 
@@ -773,8 +773,8 @@ describe('useTrusteeForm', () => {
       result.current.resetForm();
     });
 
-    expect(result.current.formData.name).toBe('');
-    expect(result.current.formData.address1).toBe('');
+    expect(result.current.formData.name).toBeUndefined();
+    expect(result.current.formData.address1).toBeUndefined();
   });
 
   test('validates required fields', () => {
