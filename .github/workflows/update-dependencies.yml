@@ -68,8 +68,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Check if there are actual changes to package files (excluding the manifest)
-          if git diff --name-only HEAD | grep -E "(package\.json|package-lock\.json)" > /dev/null; then
+          # Check if there are actual changes by comparing with the remote main branch
+          # First fetch the latest main to ensure we have the right reference
+          git fetch origin main
+
+          # Check if there are commits on the current branch that aren't on main
+          COMMIT_COUNT=$(git rev-list --count origin/main..HEAD)
+          echo "Commits ahead of main: $COMMIT_COUNT"
+
+          # If we have commits ahead of main, they must be our dependency updates
+          if [ "$COMMIT_COUNT" -gt 0 ]; then
             echo "changes_made=true" >> $GITHUB_OUTPUT
 
             # Create PR with manifest content if available
@@ -97,7 +105,7 @@ jobs:
           else
             echo "changes_made=false" >> $GITHUB_OUTPUT
             echo "pr_created=false" >> $GITHUB_OUTPUT
-            echo "No changes made to dependencies - skipping PR creation"
+            echo "No commits found ahead of main - skipping PR creation"
           fi
 
       - name: Audit
