@@ -1,19 +1,178 @@
-# NPM Pack Updates
+# NPM Package Updates
 
-We have a GitHub Actions Workflow that automatically runs every Wednesday at 10 UTC. This workflow does several things:
+We have an automated dependency update system that helps maintain package security and stability while providing fine-grained control over update behavior.
+
+## Automated GitHub Actions Workflow
+
+We have a GitHub Actions Workflow that automatically runs every Wednesday at 10 UTC (5 AM ET). This workflow uses our dependency update script at `ops/scripts/utility/update-dependencies.sh` with the following features:
+
+- Age-based safety controls (packages must be at least 30 days old by default)
+- Individual commits per package update for easier review and rollback
+- Constraint-based controls for managing risky updates
+- Stable version filtering (excludes alpha, beta, rc releases)
+- Selective package updating (only processes allowed packages)
+
+### Workflow Process
 
 1. Sets up the GitHub runner with commit-signing information
-1. Iterates over NPM projects
-    1. Runs `npm update --save`
-1. Commits the changes
-1. Pushes to the repository
-1. Creates a pull request
-1. Iterates over NPM projects
-    1. Runs `npm outdated`, storing the output
-1. Adds a comment to the pull request noting any packages that are outdated
-1. Iterates over NPM projects
-    1. Runs `npm audit`, storing the output
-1. Adds a comment to the pull request noting any projects that had audit findings
+1. Runs the individual package update script in CI/CD mode (`-c` flag)
+1. Creates individual commits for each package update
+1. Pushes changes to a new branch
+1. Creates a pull request with the dependency updates
+1. Adds comments noting any remaining outdated packages
+1. Adds comments noting any audit findings
+
+### Manual Execution
+
+The same script can also be run manually for testing or ad-hoc updates:
+
+```bash
+# Test mode (no commits, no branch changes)
+./ops/scripts/utility/update-dependencies.sh -t
+
+# Normal mode (creates dependency-updates branch)
+./ops/scripts/utility/update-dependencies.sh
+
+# Stay on dependency-updates branch after completion
+./ops/scripts/utility/update-dependencies.sh -r
+
+# Update existing dependency-updates branch
+./ops/scripts/utility/update-dependencies.sh -u
+
+# CI/CD mode (used by GitHub Actions)
+./ops/scripts/utility/update-dependencies.sh -c
+```
+
+## Configuration
+
+The dependency update script uses `.dependency-update-config.json` in the repository root for configuration. This file controls which packages can be updated and applies various safety constraints.
+
+### Basic Configuration Structure
+
+```json
+{
+  "constraints": {
+    "pinned": [],
+    "majorVersionLock": {},
+    "majorVersionDelay": {}
+  },
+  "minPackageAgeDays": 7,
+  "allowedPackages": [
+    "eslint",
+    "prettier",
+    "@typescript-eslint/eslint-plugin",
+    "@typescript-eslint/parser"
+  ],
+  "projects": ["backend", "common", "dev-tools", "test/e2e", "user-interface"]
+}
+```
+
+### Configuration Options
+
+#### `minPackageAgeDays`
+Minimum number of days a package version must be published before it's considered for updates. Default: 30 days.
+
+This helps avoid adopting packages with critical bugs that are quickly patched.
+
+#### `allowedPackages`
+Array of package names that are permitted to be updated. Only packages in this list will be processed for updates.
+
+This provides explicit control over which dependencies can be automatically updated.
+
+#### `projects`
+Array of directory paths containing package.json files to process. The script will check each of these locations for outdated packages.
+
+**Special Keywords:**
+- `"root"`: Processes the repository root directory (where the main package.json is located)
+
+**Glob Pattern Support:**
+The projects array supports glob patterns for flexible directory matching:
+- `"test/*"`: Matches all directories under test/ (e.g., test/e2e, test/unit)
+- `"**/package.json"`: Would match any directory containing package.json
+- `"lib-*"`: Matches directories starting with "lib-"
+
+**Examples:**
+```json
+{
+  "projects": [
+    "root",
+    "backend",
+    "frontend",
+    "test/*",
+    "lib-*"
+  ]
+}
+```
+
+This configuration would process:
+- The root directory package.json
+- The backend/ directory
+- The frontend/ directory
+- All subdirectories under test/ that contain package.json
+- All directories starting with "lib-" that contain package.json
+
+### Constraint Types
+
+The constraints system provides fine-grained control over package update behavior to prevent breaking changes and manage risk.
+
+#### Pinned Packages (`constraints.pinned`)
+Array of package names that should never be updated automatically.
+
+```json
+{
+  "constraints": {
+    "pinned": ["legacy-package", "custom-fork"]
+  }
+}
+```
+
+Use this for:
+- Packages with known compatibility issues
+- Custom forks or modified packages
+- Dependencies that require manual testing
+
+#### Major Version Locks (`constraints.majorVersionLock`)
+Object mapping package names to their locked major version numbers. Prevents updates that would change the major version.
+
+```json
+{
+  "constraints": {
+    "majorVersionLock": {
+      "mssql": "10",
+      "react": "18"
+    }
+  }
+}
+```
+
+Use this for:
+- Packages that introduced breaking changes in newer major versions
+- Dependencies that require significant code changes to upgrade
+- Critical packages where major version stability is essential
+
+#### Major Version Delays (`constraints.majorVersionDelay`)
+Object mapping package names to additional aging days for x.0.0 versions. This implements a conservative strategy where new major versions (x.0.0) require extra time before adoption. It supports different delays by package.
+
+```json
+{
+  "constraints": {
+    "majorVersionDelay": {
+      "eslint": 90
+    }
+  }
+}
+```
+
+**How it works:**
+- Normal versions (x.1.0, x.0.1): Use standard `minPackageAgeDays` (30 days)
+- Major x.0.0 versions: Require additional aging specified in `majorVersionDelay`
+
+**Example:** If `eslint` releases version 10.0.0:
+- `eslint@10.0.0`: Must wait 90 days before adoption
+- `eslint@10.0.1`: Can be adopted after 30 days (standard aging)
+- `eslint@10.1.0`: Can be adopted after 30 days (standard aging)
+
+This strategy ensures that x.0.0 releases have time for community adoption and initial bug fixes before we adopt them.
 
 ## Commit Signing
 

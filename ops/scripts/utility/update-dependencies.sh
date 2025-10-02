@@ -35,6 +35,8 @@ load_config() {
         MIN_PACKAGE_AGE_DAYS=30
         ALLOWED_PACKAGES=("eslint")
         PROJECTS=("backend" "common" "dev-tools" "test/e2e" "user-interface")
+        PINNED_PACKAGES=()
+        declare -gA MAJOR_VERSION_LOCKS
         return
     fi
 
@@ -50,7 +52,35 @@ load_config() {
     mapfile -t ALLOWED_PACKAGES < <(jq -r '.allowedPackages[]?' "$config_file")
     mapfile -t PROJECTS < <(jq -r '.projects[]?' "$config_file")
 
+    # Load constraints
+    mapfile -t PINNED_PACKAGES < <(jq -r '.constraints.pinned[]?' "$config_file")
+
+    # Load major version locks into associative array
+    declare -gA MAJOR_VERSION_LOCKS
+    while IFS="=" read -r key value; do
+        if [[ -n "$key" && -n "$value" ]]; then
+            MAJOR_VERSION_LOCKS["$key"]="$value"
+        fi
+    done < <(jq -r '.constraints.majorVersionLock | to_entries[] | "\(.key)=\(.value)"' "$config_file" 2>/dev/null || true)
+
+    # Load major version delay constraints
+    declare -gA MAJOR_VERSION_DELAY_DAYS
+    while IFS="=" read -r key value; do
+        if [[ -n "$key" && -n "$value" ]]; then
+            MAJOR_VERSION_DELAY_DAYS["$key"]="$value"
+        fi
+    done < <(jq -r '.constraints.majorVersionDelay | to_entries[] | "\(.key)=\(.value)"' "$config_file" 2>/dev/null || true)
+
     echo "Loaded configuration: ${#ALLOWED_PACKAGES[@]} allowed packages, ${MIN_PACKAGE_AGE_DAYS}-day minimum age"
+    if [[ ${#PINNED_PACKAGES[@]} -gt 0 ]]; then
+        echo "Pinned packages (will be skipped): ${PINNED_PACKAGES[*]}"
+    fi
+    if [[ ${#MAJOR_VERSION_LOCKS[@]} -gt 0 ]]; then
+        echo "Major version locks configured for ${#MAJOR_VERSION_LOCKS[@]} packages"
+    fi
+    if [[ ${#MAJOR_VERSION_DELAY_DAYS[@]} -gt 0 ]]; then
+        echo "Major version delay constraints configured for ${#MAJOR_VERSION_DELAY_DAYS[@]} packages"
+    fi
 }
 
 ############################################################
@@ -157,6 +187,58 @@ filter_safe_versions() {
 
         # Check if version is old enough
         if [[ "$pub_date" < "$cutoff_date" ]]; then
+            # Check for major version delay constraints
+            local delay_days=""
+
+            # First check for package-specific delay
+            if [[ -n "${MAJOR_VERSION_DELAY_DAYS[$package_name]}" ]]; then
+                delay_days="${MAJOR_VERSION_DELAY_DAYS[$package_name]}"
+            # Fall back to wildcard delay if no specific override
+            elif [[ -n "${MAJOR_VERSION_DELAY_DAYS["*"]}" ]]; then
+                delay_days="${MAJOR_VERSION_DELAY_DAYS["*"]}"
+            fi
+
+            if [[ -n "$delay_days" ]]; then
+                local current_major="${current_version%%.*}"
+                local target_major="${version%%.*}"
+
+                # If this is a major version change, check if it's a x.0.0 version
+                if [[ "$current_major" != "$target_major" ]]; then
+                    local minor_patch="${version#*.}"  # Get everything after first dot
+                    local minor="${minor_patch%%.*}"   # Get minor version
+                    local patch="${minor_patch#*.}"    # Get patch version
+
+                    # If this is a x.0.0 version, apply additional delay
+                    if [[ "$minor" == "0" && "$patch" == "0" ]]; then
+                        # Calculate extended cutoff date for x.0.0 versions
+                        local extended_cutoff_date
+                        if [[ "$OSTYPE" == "darwin"* ]]; then
+                            extended_cutoff_date=$(date -v-"${delay_days}"d -u +"%Y-%m-%dT%H:%M:%S.000Z")
+                        else
+                            extended_cutoff_date=$(date -u -d "${delay_days} days ago" +"%Y-%m-%dT%H:%M:%S.000Z")
+                        fi
+
+                        if [[ "$pub_date" < "$extended_cutoff_date" ]]; then
+                            # Determine if using package-specific or wildcard delay
+                            local delay_source="package-specific"
+                            if [[ -z "${MAJOR_VERSION_DELAY_DAYS[$package_name]}" ]]; then
+                                delay_source="default wildcard"
+                            fi
+                            echo "Found safe major version: $package_name@$version (published: $pub_date, waited $delay_days days for x.0.0, $delay_source)" >&2
+                            echo "$version"
+                            return 0
+                        else
+                            echo "Skipping $package_name@$version (major version x.0.0 needs $delay_days days, published: $pub_date)" >&2
+                            continue
+                        fi
+                    else
+                        echo "Found safe major version: $package_name@$version (published: $pub_date, not x.0.0 so no extra delay)" >&2
+                        echo "$version"
+                        return 0
+                    fi
+                fi
+            fi
+
             echo "Found safe version: $package_name@$version (published: $pub_date)" >&2
             echo "$version"
             return 0
@@ -181,6 +263,57 @@ check_package_allowed() {
         fi
     done
     return 1
+}
+
+############################################################
+# Constraints Checking Functions                          #
+############################################################
+check_constraints() {
+    local package_name="$1"
+    local current_version="$2"
+    local target_version="$3"
+
+    # Check if package is pinned
+    for pinned in "${PINNED_PACKAGES[@]}"; do
+        if [[ "$package_name" == "$pinned" ]]; then
+            echo "Skipping $package_name (pinned package - updates disabled)"
+            return 1
+        fi
+    done
+
+    # Check major version lock constraints
+    if [[ -n "${MAJOR_VERSION_LOCKS[$package_name]}" ]]; then
+        local locked_major="${MAJOR_VERSION_LOCKS[$package_name]}"
+        local current_major="${current_version%%.*}"
+        local target_major="${target_version%%.*}"
+
+        # Verify current version matches the locked major version
+        if [[ "$current_major" != "$locked_major" ]]; then
+            echo "Warning: $package_name current version $current_version doesn't match locked major version $locked_major"
+        fi
+
+        # Check if target version would violate major version lock
+        if [[ "$target_major" != "$locked_major" ]]; then
+            echo "Skipping $package_name (major version lock: locked to v$locked_major, target v$target_major)"
+            return 1
+        fi
+
+        echo "Constraint check passed for $package_name: target v$target_version respects major version lock v$locked_major"
+    fi
+
+    # Check major version delay constraints
+    if [[ -n "${MAJOR_VERSION_DELAY_DAYS[$package_name]}" ]]; then
+        local delay_days="${MAJOR_VERSION_DELAY_DAYS[$package_name]}"
+        local current_major="${current_version%%.*}"
+        local target_major="${target_version%%.*}"
+
+        # Only warn if the major version is changing
+        if [[ "$current_major" != "$target_major" ]]; then
+            echo "Warning: $package_name major version change from $current_major to $target_major may be delayed by $delay_days days"
+        fi
+    fi
+
+    return 0
 }
 
 ############################################################
@@ -266,9 +399,14 @@ process_project_packages() {
         if safe_version=$(filter_safe_versions "$package_name" "$current_version"); then
             echo "Found safe version for $package_name: $safe_version"
 
-            # Update the package
-            if update_package_individually "$package_name" "$safe_version" "$project_dir"; then
-                ((updated_count++))
+            # Check constraints before updating
+            if check_constraints "$package_name" "$current_version" "$safe_version"; then
+                # Update the package
+                if update_package_individually "$package_name" "$safe_version" "$project_dir"; then
+                    ((updated_count++))
+                fi
+            else
+                echo "Constraints not met for $package_name (skipping update)"
             fi
         else
             echo "No safe version found for $package_name"
@@ -344,18 +482,49 @@ echo "Allowed packages: ${ALLOWED_PACKAGES[*]}"
 
 total_updates=0
 
-# Process root level if it has package.json
-if [[ -f "package.json" ]]; then
-    echo "Processing root level packages"
-    npm ci
-    if process_project_packages "."; then
-        root_updates=$?
-        ((total_updates += root_updates))
-    fi
-fi
-
-# Process sub-projects
+# Process projects from configuration
 for project in "${PROJECTS[@]}"; do
+    # Handle special "root" keyword
+    if [[ "$project" == "root" ]]; then
+        if [[ -f "package.json" ]]; then
+            echo "Processing root level packages"
+            npm ci
+            if process_project_packages "."; then
+                project_updates=$?
+                ((total_updates += project_updates))
+            fi
+        else
+            echo "Skipping root (no package.json found)"
+        fi
+        continue
+    fi
+
+    # Handle glob patterns
+    if [[ "$project" == *"*"* ]]; then
+        # Expand glob pattern
+        for expanded_path in $project; do
+            if [[ -d "$expanded_path" && -f "$expanded_path/package.json" ]]; then
+                echo "Processing project: $expanded_path (from glob: $project)"
+                pushd "$expanded_path" >/dev/null || continue
+
+                # Clean and install dependencies first
+                if command -v npm run clean &> /dev/null; then
+                    npm run clean 2>/dev/null || true
+                fi
+                npm ci
+
+                popd >/dev/null || return 1
+
+                if process_project_packages "$expanded_path"; then
+                    project_updates=$?
+                    ((total_updates += project_updates))
+                fi
+            fi
+        done
+        continue
+    fi
+
+    # Handle regular directory paths
     if [[ -d "$project" && -f "$project/package.json" ]]; then
         echo "Processing project: $project"
         pushd "$project" >/dev/null || continue
