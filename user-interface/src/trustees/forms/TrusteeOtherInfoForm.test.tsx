@@ -177,7 +177,7 @@ describe('TrusteeOtherInfoForm', () => {
     // Wait for the async operation to complete
     await waitFor(() => {
       expect(mockGlobalAlert.error).toHaveBeenCalledWith(
-        `Failed to update trustee banks: ${errorMessage}`,
+        `Failed to update trustee information: ${errorMessage}`,
       );
     });
   });
@@ -257,7 +257,9 @@ describe('TrusteeOtherInfoForm', () => {
     await userEvent.click(screen.getByTestId('button-submit-button'));
 
     // Should show error message and not call API
-    expect(mockGlobalAlert.error).toHaveBeenCalledWith('Cannot save banks: Trustee ID is missing');
+    expect(mockGlobalAlert.error).toHaveBeenCalledWith(
+      'Cannot save trustee information: Trustee ID is missing',
+    );
     expect(patchTrusteeSpy).not.toHaveBeenCalled();
   });
 
@@ -268,7 +270,9 @@ describe('TrusteeOtherInfoForm', () => {
     await userEvent.click(screen.getByTestId('button-submit-button'));
 
     // Should show error message and not call API
-    expect(mockGlobalAlert.error).toHaveBeenCalledWith('Cannot save banks: Trustee ID is missing');
+    expect(mockGlobalAlert.error).toHaveBeenCalledWith(
+      'Cannot save trustee information: Trustee ID is missing',
+    );
     expect(patchTrusteeSpy).not.toHaveBeenCalled();
   });
 });
