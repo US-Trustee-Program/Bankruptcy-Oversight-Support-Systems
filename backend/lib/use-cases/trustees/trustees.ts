@@ -200,8 +200,10 @@ export class TrusteesUseCase {
             {
               documentType: 'AUDIT_INTERNAL_CONTACT',
               id,
-              before: existingTrustee.internal,
-              after: updatedTrustee.internal,
+              before: deepEqual(existingTrustee.internal, {})
+                ? undefined
+                : existingTrustee.internal,
+              after: deepEqual(updatedTrustee.internal, {}) ? undefined : updatedTrustee.internal,
             },
             userReference,
           ),
