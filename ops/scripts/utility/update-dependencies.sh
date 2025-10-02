@@ -779,6 +779,143 @@ fi
 ############################################################
 # Summary and Reporting Functions                         #
 ############################################################
+generate_update_manifest() {
+    local manifest_file="dependency-update-manifest.md"
+
+    echo "Generating update manifest: $manifest_file"
+
+    # Create manifest file
+    cat > "$manifest_file" << 'EOF'
+# Dependency Update Report
+
+This PR contains automated dependency updates with safety controls applied.
+
+## Configuration Summary
+
+EOF
+
+    # Add configuration details
+    {
+        echo "- **Minimum package age**: ${MIN_PACKAGE_AGE_DAYS} days"
+        echo "- **Allowed packages**: ${#ALLOWED_PACKAGES[@]} packages configured"
+        echo "- **Projects processed**: ${#PROJECTS[@]} projects"
+        if [[ ${#PINNED_PACKAGES[@]} -gt 0 ]]; then
+            echo "- **Pinned packages**: ${#PINNED_PACKAGES[@]} packages blocked from updates"
+        fi
+        if [[ ${#MAJOR_VERSION_LOCKS[@]} -gt 0 ]]; then
+            echo "- **Major version locks**: ${#MAJOR_VERSION_LOCKS[@]} packages with major version constraints"
+        fi
+        if [[ ${#MAJOR_VERSION_DELAY_DAYS[@]} -gt 0 ]]; then
+            echo "- **Major version delays**: ${#MAJOR_VERSION_DELAY_DAYS[@]} packages with x.0.0 version delays"
+        fi
+        echo ""
+    } >> "$manifest_file"
+
+    local total_updated=${#UPDATED_PACKAGES[@]}
+    local total_skipped=${#SKIPPED_PACKAGES[@]}
+    local total_failed=${#FAILED_PACKAGES[@]}
+
+    # Add statistics
+    {
+        echo "## Summary Statistics"
+        echo ""
+        echo "- ✅ **Successfully updated**: $total_updated package instances"
+        echo "- ⏭️ **Skipped**: $total_skipped package instances"
+        echo "- ❌ **Failed**: $total_failed package instances"
+        echo ""
+    } >> "$manifest_file"
+
+    # Group updated packages by name across projects
+    if [[ $total_updated -gt 0 ]]; then
+        echo "## ✅ Updated Packages" >> "$manifest_file"
+        echo "" >> "$manifest_file"
+
+        # Create associative array to group packages
+        declare -A package_updates
+        for entry in "${UPDATED_PACKAGES[@]}"; do
+            IFS='|' read -r package old_version new_version project <<< "$entry"
+            local update_key="${package}|${old_version}|${new_version}"
+            if [[ -n "${package_updates[$update_key]}" ]]; then
+                package_updates[$update_key]="${package_updates[$update_key]}, $project"
+            else
+                package_updates[$update_key]="$project"
+            fi
+        done
+
+        # Output grouped packages
+        for update_key in "${!package_updates[@]}"; do
+            IFS='|' read -r package old_version new_version <<< "$update_key"
+            local projects="${package_updates[$update_key]}"
+            echo "- **$package**: \`$old_version\` → \`$new_version\` (in: $projects)" >> "$manifest_file"
+        done
+        echo "" >> "$manifest_file"
+    fi
+
+    # Add skipped packages with reasons
+    if [[ $total_skipped -gt 0 ]]; then
+        {
+            echo "## ⏭️ Skipped Packages"
+            echo ""
+            echo "The following packages were skipped for safety or policy reasons:"
+            echo ""
+        } >> "$manifest_file"
+
+        # Group skipped packages by reason
+        declare -A skip_reasons
+        for entry in "${SKIPPED_PACKAGES[@]}"; do
+            IFS='|' read -r package current_version reason project <<< "$entry"
+            local skip_key="$reason"
+            if [[ -n "${skip_reasons[$skip_key]}" ]]; then
+                skip_reasons[$skip_key]="${skip_reasons[$skip_key]}, $package@$current_version ($project)"
+            else
+                skip_reasons[$skip_key]="$package@$current_version ($project)"
+            fi
+        done
+
+        # Output grouped skipped packages
+        for reason in "${!skip_reasons[@]}"; do
+            local packages="${skip_reasons[$reason]}"
+            {
+                echo "### $reason"
+                echo "- $packages"
+                echo ""
+            } >> "$manifest_file"
+        done
+    fi
+
+    # Add failed packages if any
+    if [[ $total_failed -gt 0 ]]; then
+        {
+            echo "## ❌ Failed Updates"
+            echo ""
+            echo "The following package updates failed and require manual attention:"
+            echo ""
+        } >> "$manifest_file"
+
+        for entry in "${FAILED_PACKAGES[@]}"; do
+            IFS='|' read -r package current_version target_version error_details project <<< "$entry"
+            echo "- **$package** in $project: \`$current_version\` → \`$target_version\`" >> "$manifest_file"
+            echo "  - Error: $error_details" >> "$manifest_file"
+        done
+        echo "" >> "$manifest_file"
+    fi
+
+    # Add footer
+    {
+        echo "## Notes"
+        echo ""
+        echo "- All updates respect the configured ${MIN_PACKAGE_AGE_DAYS}-day minimum age requirement"
+        echo "- Only packages in the allowed list are considered for updates"
+        echo "- Major version locks and other constraints are enforced"
+        echo "- Each package update is committed individually for easy review and rollback"
+        echo ""
+        echo "---"
+        echo "*Generated by automated dependency update script on $(date)*"
+    } >> "$manifest_file"
+
+    echo "Manifest generated: $manifest_file"
+}
+
 generate_execution_summary() {
     echo ""
     echo "=============================================="
@@ -842,6 +979,9 @@ generate_execution_summary() {
         return 0
     fi
 }
+
+# Generate update manifest for PR description
+generate_update_manifest
 
 # Generate summary report
 generate_execution_summary
