@@ -148,17 +148,21 @@ export class TrusteesUseCase {
   ): Promise<Trustee> {
     try {
       const existingTrustee = await this.trusteesRepository.read(id);
-      const trusteeToUpdate = { ...existingTrustee, ...trustee };
-      if (trustee.internal) {
-        this.checkValidation(validateObject(trusteeSpec.internal, trusteeToUpdate.internal));
-      } else {
-        this.checkValidation(validateObject(trusteeSpec, trusteeToUpdate));
+
+      const dynamicSpec: ValidationSpec<Partial<TrusteeInput>> = {};
+      const specKeys = Object.keys(trusteeSpec);
+      for (const key of Object.keys(trustee)) {
+        if (specKeys.includes(key)) {
+          dynamicSpec[key] = trusteeSpec[key as keyof typeof trusteeSpec];
+        }
       }
+
+      this.checkValidation(validateObject(dynamicSpec, trustee));
 
       const userReference = getCamsUserReference(context.session.user);
       const updatedTrustee = await this.trusteesRepository.updateTrustee(
         id,
-        trusteeToUpdate,
+        trustee,
         userReference,
       );
 
@@ -265,7 +269,7 @@ const contactInformationSpec: ValidationSpec<ContactInformation> = {
   ],
 };
 
-const internalContactInformationSpec: ValidationSpec<ContactInformation> = {
+export const internalContactInformationSpec: ValidationSpec<ContactInformation> = {
   address: [V.optional(V.spec(addressSpec))],
   phone: [V.optional(V.spec(phoneSpec))],
   email: [V.optional(V.matches(EMAIL_REGEX, 'Provided email does not match regular expression'))],
@@ -274,7 +278,7 @@ const internalContactInformationSpec: ValidationSpec<ContactInformation> = {
   ],
 };
 
-const trusteeSpec: ValidationSpec<TrusteeInput> = {
+export const trusteeSpec: ValidationSpec<TrusteeInput> = {
   name: [V.minLength(1)],
   public: [V.optional(V.spec(contactInformationSpec))],
   internal: [V.optional(V.spec(internalContactInformationSpec))],

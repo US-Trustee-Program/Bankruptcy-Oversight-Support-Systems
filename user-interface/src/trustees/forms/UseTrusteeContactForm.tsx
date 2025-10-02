@@ -158,6 +158,12 @@ export function useTrusteeContactForm({ initialState }: UseTrusteeFormProps) {
       status: formData.status,
     };
 
+    Object.keys(trimmedData).forEach((key) => {
+      if (trimmedData[key as keyof TrusteeFormData] === '') {
+        trimmedData[key as keyof TrusteeFormData] = undefined;
+      }
+    });
+
     if (override) {
       return { ...trimmedData, [override.name]: override.value } as TrusteeFormData;
     }

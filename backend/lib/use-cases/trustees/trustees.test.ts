@@ -1,5 +1,5 @@
 import { ContactInformation } from '../../../../common/src/cams/contact';
-import { TrusteesUseCase } from './trustees';
+import { trusteeSpec, TrusteesUseCase } from './trustees';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteesRepository } from '../gateways.types';
 import { TrusteeInput, Trustee } from '../../../../common/src/cams/trustees';
@@ -12,6 +12,7 @@ import { getTrusteesRepository } from '../../factory';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
 import * as validationModule from '../../../../common/src/cams/validation';
 import { deepEqual } from '../../../../common/src/object-equality';
+import { validateKey, validateObject } from '../../../../common/src/cams/validation';
 
 // Mock the validation - need to import actual then mock specific functions
 jest.mock('../../../../common/src/cams/parties', () => {
@@ -1466,5 +1467,74 @@ describe('TrusteesUseCase', () => {
 
       expect(mockGetCamsError).toHaveBeenCalledWith(repositoryError, 'TRUSTEES-USE-CASE');
     });
+  });
+});
+
+describe('trusteeSpec', () => {
+  const internalSpecParams: [object, boolean][] = [
+    [{}, true],
+    [{ internal: undefined }, true],
+    [{ internal: {} }, true],
+    [{ internal: { address: {} } }, false],
+    [{ internal: { phone: { number: '' } } }, false],
+    [{ internal: { email: '' } }, false],
+    [
+      {
+        internal: {
+          address: {
+            address1: '123 Main',
+            city: 'Anytown',
+            state: 'CA',
+            zipCode: '12345',
+            countryCode: 'US',
+          },
+          phone: { number: '111-222-3333' },
+          email: 'test@example.com',
+        },
+      },
+      true,
+    ],
+  ];
+
+  test.each(internalSpecParams)(
+    'Internal contact spec tests should return expected result',
+    (input, expected) => {
+      expect(!!validateKey(trusteeSpec, 'internal', input).valid).toBe(expected);
+    },
+  );
+
+  const validTrustee: Trustee = {
+    id: 'trusteeId',
+    updatedBy: {
+      id: 'userid',
+      name: 'Some User',
+    },
+    updatedOn: '2000-01-01T00:00:00Z',
+    status: 'active',
+    name: 'A Name',
+    public: {
+      address: {
+        address1: '123 Main',
+        city: 'Anytown',
+        state: 'CA',
+        zipCode: '12345',
+        countryCode: 'US',
+      },
+      phone: { number: '111-222-3333' },
+      email: 'test@example.com',
+    },
+  };
+
+  test('should return true for valid trustee', () => {
+    expect(!!validateObject(trusteeSpec, validTrustee).valid).toBe(true);
+  });
+
+  const fullTrusteeParams = internalSpecParams.map(([partial, expected]) => {
+    return [{ ...validTrustee, ...partial }, expected];
+  });
+
+  test.each(fullTrusteeParams)('Complete trustee', (input, expected) => {
+    const result = validateObject(trusteeSpec, input);
+    expect(!!result.valid).toBe(expected);
   });
 });
