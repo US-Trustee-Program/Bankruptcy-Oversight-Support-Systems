@@ -1,14 +1,22 @@
 {
   "constraints": {
     "pinned": [],
-    "majorVersionLock": {}
+    "majorVersionLock": {
+      "mssql": "10"
+    },
+    "majorVersionDelay": {
+      "*": 30,
+      "eslint": 90,
+      "react": 120,
+      "typescript": 60
+    }
   },
-  "minPackageAgeDays": 30,
+  "minPackageAgeDays": 15,
   "allowedPackages": [
     "eslint",
     "prettier",
     "@typescript-eslint/eslint-plugin",
     "@typescript-eslint/parser"
   ],
-  "projects": ["backend", "common", "dev-tools", "test/e2e", "user-interface"]
+  "projects": ["root", "backend", "common", "dev-tools", "test/e2e", "user-interface"]
 }
