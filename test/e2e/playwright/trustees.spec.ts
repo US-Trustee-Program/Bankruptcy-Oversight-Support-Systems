@@ -72,7 +72,7 @@ test.describe('Trustees', () => {
     await expect(page.getByTestId('trustee-form')).toBeVisible(timeoutOption);
 
     // Verify the form title
-    await expect(page.locator('h1')).toHaveText('Add Trustee Profile (Public)');
+    await expect(page.locator('h1')).toHaveText('Add Trustee Profile');
   });
 
   test('should test form field interactions and dropdowns', async ({ page }) => {
