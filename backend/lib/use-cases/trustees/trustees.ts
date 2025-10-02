@@ -265,10 +265,19 @@ const contactInformationSpec: ValidationSpec<ContactInformation> = {
   ],
 };
 
+const internalContactInformationSpec: ValidationSpec<ContactInformation> = {
+  address: [V.optional(V.spec(addressSpec))],
+  phone: [V.optional(V.spec(phoneSpec))],
+  email: [V.optional(V.matches(EMAIL_REGEX, 'Provided email does not match regular expression'))],
+  website: [
+    V.optional(V.matches(WEBSITE_REGEX, 'Provided website does not match regular expression')),
+  ],
+};
+
 const trusteeSpec: ValidationSpec<TrusteeInput> = {
   name: [V.minLength(1)],
   public: [V.optional(V.spec(contactInformationSpec))],
-  internal: [V.optional(V.spec(contactInformationSpec))],
+  internal: [V.optional(V.spec(internalContactInformationSpec))],
   status: [V.isInSet<TrusteeStatus>([...TRUSTEE_STATUS_VALUES])],
   banks: [V.optional(V.arrayOf(V.length(1, 100)))],
   software: [V.optional(V.length(1, 100))],
