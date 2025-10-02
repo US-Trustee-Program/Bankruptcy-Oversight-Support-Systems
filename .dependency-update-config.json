@@ -1,5 +1,5 @@
 {
-  "minPackageAgeDays": 10,
+  "minPackageAgeDays": 7,
   "projects": [
     "root",
     "backend",
@@ -9,9 +9,10 @@
     "user-interface"
   ],
   "constraints": {
-    "pinned": [],
+    "pinned": ["@types/mssql"],
     "majorVersionLock": {
-      "mssql": "10"
+      "mssql": "10",
+      "pa11y-ci": "3"
     },
     "majorVersionDelay": {
       "*": 30
