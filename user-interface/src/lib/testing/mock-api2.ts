@@ -32,6 +32,8 @@ import {
   RoleAndOfficeGroupNames,
 } from '@common/cams/privileged-identity';
 import { Trustee, TrusteeInput } from '@common/cams/trustees';
+import { Creatable } from '@common/cams/creatable';
+import { BankruptcySoftwareListItem } from '@common/cams/lists';
 
 const caseDocketEntries = MockData.buildArray(MockData.getDocketEntry, 5);
 const caseNoteGuids = [
@@ -488,7 +490,7 @@ async function getBankruptcySoftwareList() {
   };
 }
 
-async function postBankruptcySoftware(_software: string) {
+async function postBankruptcySoftware(_software: Creatable<BankruptcySoftwareListItem>) {
   return Promise.resolve();
 }
 

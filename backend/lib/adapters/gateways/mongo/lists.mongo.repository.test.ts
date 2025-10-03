@@ -1,9 +1,15 @@
 import { ApplicationContext } from '../../types/basic';
 import { ListsMongoRepository } from './lists.mongo.repository';
-import { BankList, BankruptcySoftwareList } from '../../../../../common/src/cams/lists';
+import {
+  BankList,
+  BankruptcySoftwareList,
+  BankruptcySoftwareListItem,
+  BankListItem,
+} from '../../../../../common/src/cams/lists';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import { closeDeferred } from '../../../deferrable/defer-close';
+import { Creatable } from '../../../../../common/src/cams/creatable';
 
 describe('ListsMongoRepository', () => {
   let context: ApplicationContext;
@@ -163,6 +169,84 @@ describe('ListsMongoRepository', () => {
       jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
 
       await expect(repository.getBankruptcySoftwareList()).rejects.toThrow();
+    });
+  });
+
+  describe('postBankruptcySoftware', () => {
+    test('should create bankruptcy software item in database', async () => {
+      const mockItemId = '12345';
+      const itemToCreate: Creatable<BankruptcySoftwareListItem> = {
+        list: 'bankruptcy-software' as const,
+        key: 'new-software',
+        value: 'New Software',
+      };
+
+      // Mock the adapter's insertOne method
+      const mockAdapter = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
+        .mockResolvedValue(mockItemId);
+
+      const result = await repository.postBankruptcySoftware(itemToCreate);
+
+      expect(mockAdapter).toHaveBeenCalledWith(
+        expect.objectContaining({
+          key: 'new-software',
+          value: 'New Software',
+        }),
+      );
+      expect(result).toEqual(mockItemId);
+    });
+
+    test('should handle database errors when creating bankruptcy software', async () => {
+      const error = new Error('Failed to create bankruptcy software');
+      const itemToCreate: Creatable<BankruptcySoftwareListItem> = {
+        list: 'bankruptcy-software' as const,
+        key: 'new-software',
+        value: 'New Software',
+      };
+
+      jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(error);
+
+      await expect(repository.postBankruptcySoftware(itemToCreate)).rejects.toThrow();
+    });
+  });
+
+  describe('postBank', () => {
+    test('should create bank item in database', async () => {
+      const mockItemId = '67890';
+      const itemToCreate: Creatable<BankListItem> = {
+        list: 'banks' as const,
+        key: 'new-bank',
+        value: 'New Bank',
+      };
+
+      // Mock the adapter's insertOne method
+      const mockAdapter = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
+        .mockResolvedValue(mockItemId);
+
+      const result = await repository.postBank(itemToCreate);
+
+      expect(mockAdapter).toHaveBeenCalledWith(
+        expect.objectContaining({
+          key: 'new-bank',
+          value: 'New Bank',
+        }),
+      );
+      expect(result).toEqual(mockItemId);
+    });
+
+    test('should handle database errors when creating bank', async () => {
+      const error = new Error('Failed to create bank');
+      const itemToCreate: Creatable<BankListItem> = {
+        list: 'banks' as const,
+        key: 'new-bank',
+        value: 'New Bank',
+      };
+
+      jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(error);
+
+      await expect(repository.postBank(itemToCreate)).rejects.toThrow();
     });
   });
 });

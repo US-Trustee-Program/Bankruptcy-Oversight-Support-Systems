@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 
 export enum AdminNavState {
+  UNKNOWN,
   PRIVILEGED_IDENTITY,
   BANKRUPTCY_SOFTWARE,
-  UNKNOWN,
 }
 
 export function setCurrentAdminNav(activeNav: AdminNavState, stateToCheck: AdminNavState): string {
@@ -15,7 +15,7 @@ export interface AdminScreenNavigationProps {
   initiallySelectedNavLink: AdminNavState;
 }
 
-export function AdminScreenNavigation(props: AdminScreenNavigationProps) {
+export function AdminScreenNavigation(props: Readonly<AdminScreenNavigationProps>) {
   const { initiallySelectedNavLink } = props;
   const [activeNav, setActiveNav] = useState<AdminNavState>(initiallySelectedNavLink);
 

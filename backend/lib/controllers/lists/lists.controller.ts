@@ -4,8 +4,10 @@ import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsController } from '../controller';
 import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
 import ListsUseCase from '../../use-cases/lists/lists';
+import { BankListItem, BankruptcySoftwareListItem } from '../../../../common/src/cams/lists';
+import { Creatable } from '../../../../common/src/cams/creatable';
 
-const MODULE_NAME = 'COURTS-CONTROLLER';
+const MODULE_NAME = 'LISTS-CONTROLLER';
 
 export class ListsController implements CamsController {
   private readonly useCase: ListsUseCase;
@@ -14,17 +16,28 @@ export class ListsController implements CamsController {
     this.useCase = new ListsUseCase();
   }
 
-  public async handleRequest(
-    context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<unknown[]>> {
+  public async handleRequest(context: ApplicationContext): Promise<CamsHttpResponseInit<object>> {
     const { listName } = context.request.params;
+    const { method } = context.request;
 
     try {
-      let data: unknown[] = [];
-      if (listName === 'banks') {
+      let data: object;
+      if (method === 'GET' && listName === 'banks') {
         data = await this.useCase.getBanksList(context);
-      } else if (listName === 'bankruptcy-software') {
+      } else if (method === 'GET' && listName === 'bankruptcy-software') {
         data = await this.useCase.getBankruptcySoftwareList(context);
+      } else if (method === 'POST' && listName === 'banks') {
+        const _id = await this.useCase.createBank(
+          context,
+          context.request.body as Creatable<BankListItem>,
+        );
+        data = { _id };
+      } else if (method === 'POST' && listName === 'bankruptcy-software') {
+        const _id = await this.useCase.createBankruptcySoftware(
+          context,
+          context.request.body as Creatable<BankruptcySoftwareListItem>,
+        );
+        data = { _id };
       } else {
         throw new Error('Invalid list name');
       }

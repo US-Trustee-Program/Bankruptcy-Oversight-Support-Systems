@@ -14,6 +14,7 @@ import {
   CaseAssignmentRepository,
   CasesRepository,
   ConsolidationOrdersRepository,
+  ListsRepository,
   OfficeAssigneesRepository,
   OfficesRepository,
   OrdersRepository,
@@ -25,7 +26,13 @@ import {
   UsersRepository,
 } from '../../use-cases/gateways.types';
 import { TrusteeHistory } from '../../../../common/src/cams/trustees';
-import { BankList, BankruptcySoftwareList } from '../../../../common/src/cams/lists';
+import {
+  BankList,
+  BankListItem,
+  BankruptcySoftwareList,
+  BankruptcySoftwareListItem,
+} from '../../../../common/src/cams/lists';
+import { Creatable } from '../../../../common/src/cams/creatable';
 
 export class MockMongoRepository
   implements
@@ -38,7 +45,8 @@ export class MockMongoRepository
     UsersRepository,
     UserSessionCacheRepository,
     OfficeAssigneesRepository,
-    TrusteesRepository
+    TrusteesRepository,
+    ListsRepository
 {
   deleteSyncedCases(): Promise<void> {
     throw new Error('Method not implemented.');
@@ -228,7 +236,15 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  postBankruptcySoftware(_ignore: Creatable<BankruptcySoftwareListItem>): Promise<string> {
+    throw new Error('Method not implemented.');
+  }
+
   getBankList(): Promise<BankList> {
+    throw new Error('Method not implemented.');
+  }
+
+  postBank(_ignore: Creatable<BankListItem>): Promise<string> {
     throw new Error('Method not implemented.');
   }
 }
