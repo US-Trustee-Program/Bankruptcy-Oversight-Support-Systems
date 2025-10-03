@@ -1287,6 +1287,75 @@ describe('TrusteeForm', () => {
       });
     });
 
+    test('sends undefined address when at least one required address field is empty', async () => {
+      const mockTrustee = {
+        name: 'Jane Doe',
+        internal: {
+          address: {
+            address1: '123 Internal St',
+            city: '',
+            state: 'DC',
+            zipCode: '20001',
+            countryCode: 'US' as const,
+          },
+          email: 'jane.internal@example.gov',
+        },
+        status: 'active' as const,
+      };
+
+      const mockPatchTrustee = vi.fn().mockResolvedValue({ data: { id: 'trustee-790' } });
+
+      const UseTrusteeFormModule = await import('./UseTrusteeContactForm');
+      const originalUseTrusteeForm = UseTrusteeFormModule.useTrusteeContactForm;
+
+      vi.spyOn(UseTrusteeFormModule, 'useTrusteeContactForm').mockImplementation((props) => {
+        const hookResult = originalUseTrusteeForm(props);
+
+        // Override validation to always return true (allow submission)
+        return {
+          ...hookResult,
+          validateFormAndUpdateErrors: vi.fn().mockReturnValue(true),
+          fieldErrors: {},
+        };
+      });
+
+      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({
+          data: MockData.getCourts(),
+        }),
+        postTrustee: vi.fn(),
+        patchTrustee: mockPatchTrustee,
+      } as Partial<ReturnType<typeof UseApi2Module.useApi2>> as ReturnType<
+        typeof UseApi2Module.useApi2
+      >);
+
+      renderWithRouter('/trustees/trustee-790/edit', {
+        action: 'edit',
+        cancelTo: '/trustees/trustee-790',
+        trusteeId: 'trustee-790',
+        trustee: mockTrustee,
+        contactInformation: 'internal',
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-city')).toHaveValue('');
+      });
+
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      await waitFor(() => {
+        expect(mockPatchTrustee).toHaveBeenCalledWith(
+          'trustee-790',
+          expect.objectContaining({
+            internal: expect.objectContaining({
+              address: undefined,
+              email: 'jane.internal@example.gov',
+            }),
+          }),
+        );
+      });
+    });
+
     test('updates field with single value when handleComboBoxUpdate is called with isMultiSelect=false', async () => {
       // Mock the updateField function
       const mockUpdateField = vi.fn();
@@ -1499,6 +1568,60 @@ describe('TrusteeForm', () => {
         expect(mockNavigate.navigateTo).toHaveBeenCalledWith('/trustees/trustee-789', {
           trustee: { id: 'trustee-789' },
         });
+      });
+    });
+
+    test('verifies internal profile payload with undefined phone when phone field is empty', async () => {
+      const mockTrustee = {
+        name: 'Jane Doe',
+        internal: {
+          address: {
+            address1: '123 Internal St',
+            city: 'Washington',
+            state: 'DC',
+            zipCode: '20001',
+            countryCode: 'US' as const,
+          },
+          email: 'jane.internal@example.gov',
+        },
+        status: 'active' as const,
+      };
+
+      const mockPatchTrustee = vi.fn().mockResolvedValue({ data: { id: 'trustee-790' } });
+
+      vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+        getCourts: vi.fn().mockResolvedValue({
+          data: MockData.getCourts(),
+        }),
+        postTrustee: vi.fn(),
+        patchTrustee: mockPatchTrustee,
+      } as Partial<ReturnType<typeof UseApi2Module.useApi2>> as ReturnType<
+        typeof UseApi2Module.useApi2
+      >);
+
+      renderWithRouter('/trustees/trustee-790/edit', {
+        action: 'edit',
+        cancelTo: '/trustees/trustee-790',
+        trusteeId: 'trustee-790',
+        trustee: mockTrustee,
+        contactInformation: 'internal',
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-phone')).toHaveValue('');
+      });
+
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      await waitFor(() => {
+        expect(mockPatchTrustee).toHaveBeenCalledWith(
+          'trustee-790',
+          expect.objectContaining({
+            internal: expect.objectContaining({
+              phone: undefined,
+            }),
+          }),
+        );
       });
     });
 
