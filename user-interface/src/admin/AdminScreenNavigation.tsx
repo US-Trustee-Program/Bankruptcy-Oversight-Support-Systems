@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 
 export enum AdminNavState {
   PRIVILEGED_IDENTITY,
+  BANKRUPTCY_SOFTWARE,
   UNKNOWN,
 }
 
@@ -32,6 +33,19 @@ export function AdminScreenNavigation(props: AdminScreenNavigationProps) {
             title="manage privileged identity"
           >
             Privileged Identity
+          </NavLink>
+        </li>
+        <li className="usa-sidenav__item">
+          <NavLink
+            to={`/admin/bankruptcy-software`}
+            data-testid="bankruptcy-software-nav-link"
+            className={
+              'usa-nav-link ' + setCurrentAdminNav(activeNav, AdminNavState.BANKRUPTCY_SOFTWARE)
+            }
+            onClick={() => setActiveNav(AdminNavState.BANKRUPTCY_SOFTWARE)}
+            title="manage bankruptcy software"
+          >
+            Bankruptcy Software
           </NavLink>
         </li>
       </ul>

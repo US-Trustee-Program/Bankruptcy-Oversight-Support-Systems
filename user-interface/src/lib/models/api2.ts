@@ -409,8 +409,24 @@ async function getBankruptcySoftwareList() {
   return api().get<BankruptcySoftwareList>('/lists/bankruptcy-software');
 }
 
+async function postBankruptcySoftware(software: string) {
+  return api().post('/lists/bankruptcy-software', { software });
+}
+
+async function deleteBankruptcySoftware(id: string) {
+  return api().delete(`/lists/bankruptcy-software/${id}`);
+}
+
 async function getBanks() {
   return api().get<BankList>('/lists/banks');
+}
+
+async function postBank(bank: string) {
+  return api().post('/lists/banks', { bank });
+}
+
+async function deleteBank(id: string) {
+  return api().delete(`/lists/banks/${id}`);
 }
 
 export const _Api2 = {
@@ -449,7 +465,11 @@ export const _Api2 = {
   putPrivilegedIdentityUser,
   searchCases,
   getBanks,
+  postBank,
+  deleteBank,
   getBankruptcySoftwareList,
+  postBankruptcySoftware,
+  deleteBankruptcySoftware,
 };
 
 export const Api2 = getAppConfiguration().useFakeApi ? MockApi2 : _Api2;
