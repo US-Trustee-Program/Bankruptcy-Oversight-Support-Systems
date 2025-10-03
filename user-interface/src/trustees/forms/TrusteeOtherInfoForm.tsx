@@ -6,19 +6,16 @@ import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import useApi2 from '@/lib/hooks/UseApi2';
 import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { BankruptcySoftwareList } from '@common/cams/lists';
 
-// TODO: Migrate these into the mongo DB
-const SOFTWARE_OPTIONS: ComboOption[] = [
-  { value: 'Axos', label: 'Axos' },
-  { value: 'BlueStylus', label: 'BlueStylus' },
-  { value: 'BSS 13Software', label: 'BSS 13Software' },
-  { value: 'Epiq', label: 'Epiq' },
-  { value: 'Satori', label: 'Satori' },
-  { value: 'Stretto', label: 'Stretto' },
-  { value: 'TrusteSolutions', label: 'TrusteSolutions' },
-  { value: 'Verita Title XI', label: 'Verita Title XI' },
-];
+// Transform backend software list to ComboOption format
+const transformSoftwareList = (items: BankruptcySoftwareList): ComboOption[] => {
+  return items.map((item: { key: string; value: string }) => ({
+    value: item.key,
+    label: item.value,
+  }));
+};
 
 type TrusteeOtherInfoFormProps = {
   trusteeId: string;
@@ -34,8 +31,27 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [banks, setBanks] = useState<string[]>(initialBanks.length > 0 ? initialBanks : ['']);
   const [software, setSoftware] = useState<string>(props.software ?? '');
+  const [softwareOptions, setSoftwareOptions] = useState<ComboOption[]>([]);
 
   const navigate = useCamsNavigator();
+
+  useEffect(() => {
+    const fetchSoftwareOptions = async () => {
+      try {
+        const response = await api.getBankruptcySoftwareList();
+        if (response?.data) {
+          const transformedOptions = transformSoftwareList(response.data as BankruptcySoftwareList);
+          setSoftwareOptions(transformedOptions);
+        }
+      } catch (error) {
+        // Fall back to empty array on error - form remains functional
+        console.error('Failed to fetch software options:', error);
+        setSoftwareOptions([]);
+      }
+    };
+
+    fetchSoftwareOptions();
+  }, [api]);
 
   const handleBankChange = (index: number, value: string) => {
     const newBanks = [...banks];
@@ -142,8 +158,8 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
               className="trustee-software-input"
               name="software"
               label="Bankruptcy Software"
-              options={SOFTWARE_OPTIONS}
-              selections={SOFTWARE_OPTIONS.filter((option) => option.value === software)}
+              options={softwareOptions}
+              selections={softwareOptions.filter((option) => option.value === software)}
               onUpdateSelection={handleSoftwareChange}
               autoComplete="off"
             />
