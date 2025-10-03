@@ -44,19 +44,15 @@ jobs:
           SCRIPT_OUTPUT=$(./ops/scripts/utility/update-dependencies.sh -c 2>&1)
           echo "$SCRIPT_OUTPUT"
 
-          # Get the count of updated packages from the script output
-          UPDATED_COUNT=$(echo "$SCRIPT_OUTPUT" | grep "Total packages updated:" | tail -1 | cut -d: -f2 | xargs)
+          # Parse updated_count from JSON output
+          JSON_OUTPUT=$(echo "$SCRIPT_OUTPUT" | grep -E '^\{.*"updated_count".*\}$' | tail -1)
+          UPDATED_COUNT=$(echo "$JSON_OUTPUT" | jq -r '.updated_count')
           echo "updated_count=$UPDATED_COUNT" >> $GITHUB_OUTPUT
 
-          # Check if manifest file was created and capture its content
+          # Check if manifest file was created
           if [ -f "dependency-update-manifest.md" ]; then
             echo "manifest_exists=true" >> $GITHUB_OUTPUT
-            # Use a more reliable method to capture multiline content
-            {
-              echo "MANIFEST_CONTENT<<MANIFEST_EOF"
-              cat dependency-update-manifest.md
-              echo "MANIFEST_EOF"
-            } >> $GITHUB_OUTPUT
+            echo "Manifest file found at: $(pwd)/dependency-update-manifest.md"
           else
             echo "manifest_exists=false" >> $GITHUB_OUTPUT
             echo "Warning: Manifest file not found at $(pwd)/dependency-update-manifest.md"
@@ -83,21 +79,16 @@ jobs:
             # Create PR with manifest content if available
             if [ "${{ steps.update-deps.outputs.manifest_exists }}" = "true" ]; then
               echo "Creating PR with manifest content..."
-              # Create temporary file for PR body
-              echo '${{ steps.update-deps.outputs.MANIFEST_CONTENT }}' > temp_pr_body.md
-
               gh pr create \
                 --title "Automated NPM Package Updates" \
-                --body-file temp_pr_body.md \
+                --body-file "dependency-update-manifest.md" \
                 --head "dependency-updates-auto" \
                 --base "main"
-
-              rm temp_pr_body.md
             else
-              echo "Creating PR with default message (manifest not found)..."
+              echo "Creating PR with default message..."
               gh pr create \
                 --title "Automated NPM Package Updates" \
-                --body "Automated dependency updates completed. Updated ${{ steps.update-deps.outputs.updated_count }} packages. Manifest generation may have failed - check workflow logs for details." \
+                --body "Automated dependency updates completed. Updated ${{ steps.update-deps.outputs.updated_count }} packages." \
                 --head "dependency-updates-auto" \
                 --base "main"
             fi

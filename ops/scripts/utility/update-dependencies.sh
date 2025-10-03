@@ -7,6 +7,21 @@
 #     ./ops/scripts/utility/update-dependencies.sh [-c|h|r|u|t]
 
 ############################################################
+# Bash Version Compatibility Check                        #
+############################################################
+check_bash_version() {
+    # Check for Bash 4.0+ (required for associative arrays)
+    if ((BASH_VERSINFO[0] < 4)); then
+        echo "ERROR: This script requires Bash 4.0 or newer for associative array support." >&2
+        echo "Current version: $BASH_VERSION" >&2
+        exit 1
+    fi
+}
+
+# Check Bash version before proceeding
+check_bash_version
+
+############################################################
 # Global Variables for Tracking                           #
 ############################################################
 declare -a UPDATED_PACKAGES
@@ -729,7 +744,7 @@ for project in "${PROJECTS[@]}"; do
                 pushd "$expanded_path" >/dev/null || continue
 
                 # Clean and install dependencies first
-                if command -v npm run clean &> /dev/null; then
+                if npm run | grep -q '^  clean '; then
                     npm run clean 2>/dev/null || true
                 fi
                 npm ci
@@ -750,7 +765,7 @@ for project in "${PROJECTS[@]}"; do
         pushd "$project" >/dev/null || continue
 
         # Clean and install dependencies first
-        if command -v npm run clean &> /dev/null; then
+        if npm run | grep -q '^  clean '; then
             npm run clean 2>/dev/null || true
         fi
         npm ci
@@ -1016,7 +1031,13 @@ generate_execution_summary
 
 # Exit with appropriate code based on whether packages were updated
 total_updated=${#UPDATED_PACKAGES[@]}
+total_skipped=${#SKIPPED_PACKAGES[@]}
+total_failed=${#FAILED_PACKAGES[@]}
+
 echo "Total packages updated: $total_updated"
+
+# Output JSON statistics for automation consumption
+echo "{\"updated_count\": $total_updated, \"skipped_count\": $total_skipped, \"failed_count\": $total_failed, \"total_processed\": $((total_updated + total_skipped + total_failed))}"
 
 # Return 0 for success, 1 for failure (don't use package count as exit code)
 if [[ $total_updated -gt 0 ]]; then
