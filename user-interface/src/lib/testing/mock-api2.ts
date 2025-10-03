@@ -488,6 +488,14 @@ async function getBankruptcySoftwareList() {
   };
 }
 
+async function postBankruptcySoftware(_software: string) {
+  return Promise.resolve();
+}
+
+async function deleteBankruptcySoftware(_id: string) {
+  return Promise.resolve();
+}
+
 async function getBanks() {
   return {
     data: [
@@ -511,6 +519,14 @@ async function getBanks() {
       },
     ],
   };
+}
+
+async function postBank(_bank: string) {
+  return Promise.resolve();
+}
+
+async function deleteBank(_id: string) {
+  return Promise.resolve();
 }
 
 export const MockApi2 = {
@@ -549,6 +565,10 @@ export const MockApi2 = {
   putPrivilegedIdentityUser,
   searchCases,
   getBankruptcySoftwareList,
+  postBankruptcySoftware,
+  deleteBankruptcySoftware,
+  deleteBank,
+  postBank,
   getBanks,
 };
 
