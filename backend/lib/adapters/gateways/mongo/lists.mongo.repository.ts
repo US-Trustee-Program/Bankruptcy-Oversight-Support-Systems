@@ -4,11 +4,14 @@ import { getCamsError } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import {
   BankList,
+  BankListItem,
   BankruptcySoftwareList,
+  BankruptcySoftwareListItem,
   ListItem,
   ListNames,
 } from '../../../../../common/src/cams/lists';
 import { ListsRepository } from '../../../use-cases/gateways.types';
+import { Creatable } from '../../../../../common/src/cams/creatable';
 
 const MODULE_NAME = 'LISTS-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'lists';
@@ -56,11 +59,29 @@ export class ListsMongoRepository extends BaseMongoRepository implements ListsRe
     }
   }
 
+  private async postListItem<T = ListItem>(item: Creatable<T>): Promise<string> {
+    try {
+      return await this.getAdapter<Creatable<T>>().insertOne(item);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
   public async getBankruptcySoftwareList(): Promise<BankruptcySoftwareList> {
     return this.getList<BankruptcySoftwareList>('bankruptcy-software');
   }
 
+  public async postBankruptcySoftware(
+    item: Creatable<BankruptcySoftwareListItem>,
+  ): Promise<string> {
+    return this.postListItem<BankruptcySoftwareListItem>(item);
+  }
+
   public async getBankList(): Promise<BankList> {
     return this.getList<BankList>('banks');
+  }
+
+  public async postBank(item: Creatable<BankListItem>): Promise<string> {
+    return this.postListItem<BankListItem>(item);
   }
 }

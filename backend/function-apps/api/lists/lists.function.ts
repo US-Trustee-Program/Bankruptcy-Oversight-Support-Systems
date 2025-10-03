@@ -29,7 +29,7 @@ export default async function handler(
 }
 
 app.http('lists', {
-  methods: ['GET'],
+  methods: ['GET', 'POST'],
   authLevel: 'anonymous',
   handler,
   route: 'lists/{listName}',

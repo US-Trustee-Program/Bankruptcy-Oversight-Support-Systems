@@ -7,6 +7,7 @@ import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import { BankruptcySoftwareList, BankruptcySoftwareListItem } from '@common/cams/lists';
 import React, { useEffect, useRef, useState } from 'react';
+import { Creatable } from '@common/cams/creatable';
 
 export function BankruptcySoftware() {
   const api = useApi2();
@@ -24,13 +25,21 @@ export function BankruptcySoftware() {
   }
 
   async function handleSave() {
-    if (newSoftwareName.trim().length === 0) {
+    const trimmedName = newSoftwareName.trim();
+
+    if (trimmedName.length === 0) {
       alert?.warning('Software name cannot be empty.');
       return;
     }
 
+    const payload: Creatable<BankruptcySoftwareListItem> = {
+      list: 'bankruptcy-software' as const,
+      key: trimmedName,
+      value: trimmedName,
+    };
+
     try {
-      await api.postBankruptcySoftware(newSoftwareName.trim());
+      await api.postBankruptcySoftware(payload);
       alert?.success('Bankruptcy software added successfully.');
       setNewSoftwareName('');
       loadSoftwareList();
@@ -111,6 +120,7 @@ export function BankruptcySoftware() {
                 label="Add New Software"
                 value={newSoftwareName}
                 onChange={handleSoftwareNameChange}
+                autoComplete="off"
                 ref={softwareInputRef}
               ></Input>
             </div>

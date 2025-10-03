@@ -3,7 +3,13 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ListsRepository } from '../gateways.types';
 import Factory from '../../factory';
-import { BankList, BankruptcySoftwareList } from '../../../../common/src/cams/lists';
+import {
+  BankList,
+  BankruptcySoftwareList,
+  BankruptcySoftwareListItem,
+  BankListItem,
+} from '../../../../common/src/cams/lists';
+import { Creatable } from '../../../../common/src/cams/creatable';
 
 describe('ListsUseCase tests', () => {
   let useCase: ListsUseCase;
@@ -18,6 +24,8 @@ describe('ListsUseCase tests', () => {
     mockListsRepository = {
       getBankruptcySoftwareList: jest.fn(),
       getBankList: jest.fn(),
+      postBankruptcySoftware: jest.fn(),
+      postBank: jest.fn(),
       release: jest.fn(),
     };
 
@@ -86,6 +94,78 @@ describe('ListsUseCase tests', () => {
       await expect(useCase.getBanksList(context)).rejects.toThrow(errorMessage);
       expect(Factory.getListsGateway).toHaveBeenCalledWith(context);
       expect(mockListsRepository.getBankList).toHaveBeenCalled();
+    });
+  });
+
+  describe('createBankruptcySoftware', () => {
+    test('should create bankruptcy software item through the repository', async () => {
+      // Arrange
+      const mockItemId = '12345';
+      const itemToCreate: Creatable<BankruptcySoftwareListItem> = {
+        key: 'new-software',
+        value: 'New Software',
+      };
+      mockListsRepository.postBankruptcySoftware.mockResolvedValue(mockItemId);
+
+      // Act
+      const result = await useCase.createBankruptcySoftware(context, itemToCreate);
+
+      // Assert
+      expect(Factory.getListsGateway).toHaveBeenCalledWith(context);
+      expect(mockListsRepository.postBankruptcySoftware).toHaveBeenCalledWith(itemToCreate);
+      expect(result).toEqual(mockItemId);
+    });
+
+    test('should propagate errors from the repository', async () => {
+      // Arrange
+      const errorMessage = 'Failed to create bankruptcy software';
+      const itemToCreate: Creatable<BankruptcySoftwareListItem> = {
+        key: 'new-software',
+        value: 'New Software',
+      };
+      mockListsRepository.postBankruptcySoftware.mockRejectedValue(new Error(errorMessage));
+
+      // Act & Assert
+      await expect(useCase.createBankruptcySoftware(context, itemToCreate)).rejects.toThrow(
+        errorMessage,
+      );
+      expect(Factory.getListsGateway).toHaveBeenCalledWith(context);
+      expect(mockListsRepository.postBankruptcySoftware).toHaveBeenCalledWith(itemToCreate);
+    });
+  });
+
+  describe('createBank', () => {
+    test('should create bank item through the repository', async () => {
+      // Arrange
+      const mockItemId = '67890';
+      const itemToCreate: Creatable<BankListItem> = {
+        key: 'new-bank',
+        value: 'New Bank',
+      };
+      mockListsRepository.postBank.mockResolvedValue(mockItemId);
+
+      // Act
+      const result = await useCase.createBank(context, itemToCreate);
+
+      // Assert
+      expect(Factory.getListsGateway).toHaveBeenCalledWith(context);
+      expect(mockListsRepository.postBank).toHaveBeenCalledWith(itemToCreate);
+      expect(result).toEqual(mockItemId);
+    });
+
+    test('should propagate errors from the repository', async () => {
+      // Arrange
+      const errorMessage = 'Failed to create bank';
+      const itemToCreate: Creatable<BankListItem> = {
+        key: 'new-bank',
+        value: 'New Bank',
+      };
+      mockListsRepository.postBank.mockRejectedValue(new Error(errorMessage));
+
+      // Act & Assert
+      await expect(useCase.createBank(context, itemToCreate)).rejects.toThrow(errorMessage);
+      expect(Factory.getListsGateway).toHaveBeenCalledWith(context);
+      expect(mockListsRepository.postBank).toHaveBeenCalledWith(itemToCreate);
     });
   });
 });

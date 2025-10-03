@@ -38,7 +38,13 @@ import {
 } from '@common/cams/privileged-identity';
 import getAppConfiguration from '@/configuration/appConfiguration';
 import { Trustee, TrusteeHistory, TrusteeInput } from '@common/cams/trustees';
-import { BankList, BankruptcySoftwareList } from '@common/cams/lists';
+import {
+  BankList,
+  BankListItem,
+  BankruptcySoftwareList,
+  BankruptcySoftwareListItem,
+} from '@common/cams/lists';
+import { Creatable } from '@common/cams/creatable';
 
 export const API_CACHE_NAMESPACE = 'api:';
 
@@ -409,8 +415,8 @@ async function getBankruptcySoftwareList() {
   return api().get<BankruptcySoftwareList>('/lists/bankruptcy-software');
 }
 
-async function postBankruptcySoftware(software: string) {
-  return api().post('/lists/bankruptcy-software', { software });
+async function postBankruptcySoftware(item: Creatable<BankruptcySoftwareListItem>) {
+  return api().post('/lists/bankruptcy-software', item);
 }
 
 async function deleteBankruptcySoftware(id: string) {
@@ -421,8 +427,8 @@ async function getBanks() {
   return api().get<BankList>('/lists/banks');
 }
 
-async function postBank(bank: string) {
-  return api().post('/lists/banks', { bank });
+async function postBank(item: Creatable<BankListItem>) {
+  return api().post('/lists/banks', item);
 }
 
 async function deleteBank(id: string) {
