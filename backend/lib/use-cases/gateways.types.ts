@@ -35,6 +35,7 @@ import { Pipeline } from '../query/query-pipeline';
 import { ResourceActions } from '../../../common/src/cams/actions';
 import { OfficeStaff } from '../adapters/gateways/mongo/offices.mongo.repository';
 import { Trustee, TrusteeHistory, TrusteeInput } from '../../../common/src/cams/trustees';
+import { BankList, BankruptcySoftwareList } from '../../../common/src/cams/lists';
 
 export type ReplaceResult = {
   id: string;
@@ -179,6 +180,11 @@ export interface OfficesRepository
   getOfficeAttorneys(officeCode: string): Promise<AttorneyUser[]>;
   putOfficeStaff(officeCode: string, user: CamsUserReference, ttl?: number): Promise<ReplaceResult>;
   findAndDeleteStaff(officeCode: string, id: string): Promise<void>;
+}
+
+export interface ListsRepository extends Releasable {
+  getBankruptcySoftwareList(): Promise<BankruptcySoftwareList>;
+  getBankList(): Promise<BankList>;
 }
 
 export interface UsersRepository extends Releasable {

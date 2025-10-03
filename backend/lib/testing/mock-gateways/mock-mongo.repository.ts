@@ -25,6 +25,7 @@ import {
   UsersRepository,
 } from '../../use-cases/gateways.types';
 import { TrusteeHistory } from '../../../../common/src/cams/trustees';
+import { BankList, BankruptcySoftwareList } from '../../../../common/src/cams/lists';
 
 export class MockMongoRepository
   implements
@@ -220,6 +221,14 @@ export class MockMongoRepository
   }
 
   listTrusteeHistory(_ignore: string): Promise<TrusteeHistory[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  getBankruptcySoftwareList(): Promise<BankruptcySoftwareList> {
+    throw new Error('Method not implemented.');
+  }
+
+  getBankList(): Promise<BankList> {
     throw new Error('Method not implemented.');
   }
 }

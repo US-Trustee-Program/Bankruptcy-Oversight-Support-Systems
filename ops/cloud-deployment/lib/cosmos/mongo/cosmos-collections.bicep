@@ -278,3 +278,33 @@ resource officeAssigneesCollection 'Microsoft.DocumentDB/databaseAccounts/mongod
     }
   }
 }
+
+resource officeAssigneesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
+  parent: database
+  name: 'lists'
+  properties: {
+    resource: {
+      id: 'lists'
+      shardKey: {
+        list: 'Hash'
+      }
+      indexes: [
+        {
+          key: {
+            keys: ['_id']
+          }
+        }
+        {
+          key: {
+            keys: ['list']
+          }
+        }
+        {
+          key: {
+            keys: ['key']
+          }
+        }
+      ]
+    }
+  }
+}
