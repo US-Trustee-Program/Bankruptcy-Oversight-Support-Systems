@@ -463,6 +463,56 @@ async function getTrusteeHistory(_ignore: string) {
   };
 }
 
+async function getBankruptcySoftwareList() {
+  return {
+    data: [
+      {
+        _id: '1',
+        list: 'bankruptcy-software',
+        key: 'Axos',
+        value: 'Axos',
+      },
+      {
+        _id: '2',
+        list: 'bankruptcy-software',
+        key: 'BlueStylus',
+        value: 'BlueStylus',
+      },
+      {
+        _id: '3',
+        list: 'bankruptcy-software',
+        key: 'Epiq',
+        value: 'Epiq',
+      },
+    ],
+  };
+}
+
+async function getBanks() {
+  return {
+    data: [
+      {
+        _id: '1',
+        list: 'banks',
+        key: 'Bank of America',
+        value: 'Bank of America',
+      },
+      {
+        _id: '2',
+        list: 'banks',
+        key: 'JP Morgan Chase',
+        value: 'JP Morgan Chase',
+      },
+      {
+        _id: '3',
+        list: 'banks',
+        key: 'Truist Bank',
+        value: 'Truist Bank',
+      },
+    ],
+  };
+}
+
 export const MockApi2 = {
   getTrustees,
   getTrustee,
@@ -498,6 +548,8 @@ export const MockApi2 = {
   putConsolidationOrderRejection,
   putPrivilegedIdentityUser,
   searchCases,
+  getBankruptcySoftwareList,
+  getBanks,
 };
 
 export default MockApi2;
