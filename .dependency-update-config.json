@@ -1,0 +1,21 @@
+{
+  "minPackageAgeDays": 7,
+  "projects": [
+    "root",
+    "backend",
+    "common",
+    "dev-tools",
+    "test/e2e",
+    "user-interface"
+  ],
+  "constraints": {
+    "pinned": ["@types/mssql"],
+    "majorVersionLock": {
+      "mssql": "10",
+      "pa11y-ci": "3"
+    },
+    "majorVersionDelay": {
+      "*": 30
+    }
+  }
+}
