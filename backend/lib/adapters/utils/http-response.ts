@@ -20,6 +20,8 @@ export function httpSuccess<T extends object = undefined>(
     statusCode:
       response.statusCode ?? (response.body ? HttpStatusCodes.OK : HttpStatusCodes.NO_CONTENT),
   };
-  if (response.body) camsResponse.body = response.body;
+  if (response.body) {
+    camsResponse.body = response.body;
+  }
   return camsResponse;
 }

@@ -15,6 +15,7 @@ import {
   CasesRepository,
   CasesSyncState,
   ConsolidationOrdersRepository,
+  ListsRepository,
   OfficeAssigneesRepository,
   OfficesRepository,
   OfficeStaffSyncState,
@@ -59,6 +60,7 @@ import { getCamsErrorWithStack } from './common-errors/error-utilities';
 import { OfficeAssigneeMongoRepository } from './adapters/gateways/mongo/office-assignee.mongo.repository';
 import StorageQueueGateway from './adapters/gateways/storage-queue/storage-queue-gateway';
 import { TrusteesMongoRepository } from './adapters/gateways/mongo/trustees.mongo.repository';
+import { ListsMongoRepository } from './adapters/gateways/mongo/lists.mongo.repository';
 
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
@@ -337,6 +339,15 @@ export const getQueueGateway = (_ignore: ApplicationContext): QueueGateway => {
   return StorageQueueGateway;
 };
 
+export const getListsGateway = (context: ApplicationContext): ListsRepository => {
+  if (context.config.get('dbMock')) {
+    return new MockMongoRepository();
+  }
+  const repo = ListsMongoRepository.getInstance(context);
+  deferRelease(repo, context);
+  return repo;
+};
+
 export const Factory = {
   getAcmsGateway,
   getAttorneyGateway,
@@ -364,6 +375,7 @@ export const Factory = {
   getUsersRepository,
   getTrusteesRepository,
   getQueueGateway,
+  getListsGateway,
 };
 
 export default Factory;

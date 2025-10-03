@@ -38,6 +38,7 @@ import {
 } from '@common/cams/privileged-identity';
 import getAppConfiguration from '@/configuration/appConfiguration';
 import { Trustee, TrusteeHistory, TrusteeInput } from '@common/cams/trustees';
+import { BankList, BankruptcySoftwareList } from '@common/cams/lists';
 
 export const API_CACHE_NAMESPACE = 'api:';
 
@@ -215,11 +216,11 @@ function withCache(cacheOptions: CacheOptions): Pick<GenericApiClient, 'get'> {
       if (LocalCache.isCacheEnabled()) {
         const cached = LocalCache.get<ResponseBody<T>>(key);
         if (cached) {
-          return Promise.resolve(cached.value);
+          return cached.value;
         } else {
           const response = await api().get<T>(path, options);
           LocalCache.set<ResponseBody<T>>(key, response, cacheOptions.ttl);
-          return Promise.resolve(response);
+          return response;
         }
       } else {
         return api().get<T>(path, options);
@@ -404,6 +405,14 @@ async function deletePrivilegedIdentityUser(userId: string) {
   await api().delete(`/dev-tools/privileged-identity/${userId}`);
 }
 
+async function getBankruptcySoftwareList() {
+  return api().get<BankruptcySoftwareList>('/lists/bankruptcy-software');
+}
+
+async function getBanks() {
+  return api().get<BankList>('/lists/banks');
+}
+
 export const _Api2 = {
   getTrustees,
   getTrustee,
@@ -439,6 +448,8 @@ export const _Api2 = {
   putConsolidationOrderRejection,
   putPrivilegedIdentityUser,
   searchCases,
+  getBanks,
+  getBankruptcySoftwareList,
 };
 
 export const Api2 = getAppConfiguration().useFakeApi ? MockApi2 : _Api2;
