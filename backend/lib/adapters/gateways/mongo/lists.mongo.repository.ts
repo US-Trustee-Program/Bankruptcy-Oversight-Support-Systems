@@ -12,6 +12,7 @@ import {
 } from '../../../../../common/src/cams/lists';
 import { ListsRepository } from '../../../use-cases/gateways.types';
 import { Creatable } from '../../../../../common/src/cams/creatable';
+import QueryPipeline from '../../../query/query-pipeline';
 
 const MODULE_NAME = 'LISTS-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'lists';
@@ -50,10 +51,15 @@ export class ListsMongoRepository extends BaseMongoRepository implements ListsRe
     ListsMongoRepository.dropInstance();
   }
 
-  private async getList<T = ListItem[]>(listName: ListNames): Promise<T> {
+  private async getList<T = ListItem>(listName: ListNames): Promise<T[]> {
     const query = this.doc('list').equals(listName);
+    const pipeline = QueryPipeline.pipeline(
+      QueryPipeline.match(query),
+      QueryPipeline.sort({ field: { name: 'value' }, direction: 'ASCENDING' }),
+    );
+
     try {
-      return (await this.getAdapter<ListItem>().find(query)) as T;
+      return await this.getAdapter<T>().aggregate(pipeline);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
@@ -68,7 +74,7 @@ export class ListsMongoRepository extends BaseMongoRepository implements ListsRe
   }
 
   public async getBankruptcySoftwareList(): Promise<BankruptcySoftwareList> {
-    return this.getList<BankruptcySoftwareList>('bankruptcy-software');
+    return this.getList<BankruptcySoftwareListItem>('bankruptcy-software');
   }
 
   public async postBankruptcySoftware(
@@ -78,7 +84,7 @@ export class ListsMongoRepository extends BaseMongoRepository implements ListsRe
   }
 
   public async getBankList(): Promise<BankList> {
-    return this.getList<BankList>('banks');
+    return this.getList<BankListItem>('banks');
   }
 
   public async postBank(item: Creatable<BankListItem>): Promise<string> {
