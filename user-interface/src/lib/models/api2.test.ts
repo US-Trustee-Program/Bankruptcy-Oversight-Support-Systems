@@ -95,6 +95,11 @@ describe('_Api2 functions', async () => {
     await callApiFunction(api2.Api2.getPrivilegedIdentityUser, 'some-id', api);
     await callApiFunction(api2.Api2.deletePrivilegedIdentityUser, 'some-id', api);
     await callApiFunction(api2.Api2.getRoleAndOfficeGroupNames, 'some-id', api);
+    await callApiFunction(api2.Api2.getTrustees, null, api);
+    await callApiFunction(api2.Api2.getTrustee, 'some-id', api);
+    await callApiFunction(api2.Api2.getTrusteeHistory, 'some-id', api);
+    await callApiFunction(api2.Api2.getBanks, null, api);
+    await callApiFunction(api2.Api2.getBankruptcySoftwareList, null, api);
   });
 
   test('should call api.put function when calling putPrivilegedIdentityUser', () => {
@@ -226,6 +231,26 @@ describe('_Api2 functions', async () => {
     expect(postSpy).toHaveBeenCalledWith(path, cleanConsolidationOrder, {});
   });
 
+  test('should handle undefined reason in putConsolidationOrderRejection', () => {
+    const putSpy = vi.spyOn(api.default, 'put').mockResolvedValue({ data: '' });
+    const path = '/consolidations/reject';
+    const baseOrder = MockData.getConsolidationOrder();
+    const consolidationOrderWithUndefinedReason: ConsolidationOrderActionRejection = {
+      consolidationId: baseOrder.consolidationId,
+      rejectedCases: [baseOrder.childCases[0].caseId],
+      reason: undefined,
+    };
+
+    const expectedOrderWithEmptyReason = {
+      consolidationId: baseOrder.consolidationId,
+      rejectedCases: [baseOrder.childCases[0].caseId],
+      reason: '',
+    };
+
+    api2.Api2.putConsolidationOrderRejection(consolidationOrderWithUndefinedReason);
+    expect(putSpy).toHaveBeenCalledWith(path, expectedOrderWithEmptyReason, {});
+  });
+
   test('should call patchTransferOrderRejection with purified malicious input', () => {
     const postSpy = vi.spyOn(api.default, 'patch').mockResolvedValue({ data: '' });
     const dirtyTransferOrder: TransferOrderActionRejection = {
@@ -296,6 +321,11 @@ describe('_Api2 functions', async () => {
     );
     await expect(api2.Api2.searchCases({})).rejects.toThrow(error);
     await expect(api2.Api2.deletePrivilegedIdentityUser('userId')).rejects.toThrow(error);
+    await expect(api2.Api2.getTrustees()).rejects.toThrow(error);
+    await expect(api2.Api2.getTrustee('trustee-id')).rejects.toThrow(error);
+    await expect(api2.Api2.getTrusteeHistory('trustee-id')).rejects.toThrow(error);
+    await expect(api2.Api2.getBanks()).rejects.toThrow(error);
+    await expect(api2.Api2.getBankruptcySoftwareList()).rejects.toThrow(error);
     const mockOrder = MockData.getConsolidationOrder();
     await expect(
       api2.Api2.putConsolidationOrderApproval({
@@ -305,6 +335,55 @@ describe('_Api2 functions', async () => {
         leadCase: MockData.getCaseSummary(),
       }),
     ).rejects.toThrow(error);
+  });
+
+  test('should call api.post function when calling postTrustee', () => {
+    const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: { id: 'trustee-id' } });
+    const trusteeInput = MockData.getTrustee();
+    api2.Api2.postTrustee(trusteeInput);
+    expect(postSpy).toHaveBeenCalledWith('/trustees', trusteeInput, {});
+  });
+
+  test('should call api.patch function when calling patchTrustee', () => {
+    const patchSpy = vi
+      .spyOn(api.default, 'patch')
+      .mockResolvedValue({ data: { id: 'trustee-id' } });
+    const trusteeId = 'trustee-id';
+    const trusteeInput = { name: 'Updated Trustee' };
+    api2.Api2.patchTrustee(trusteeId, trusteeInput);
+    expect(patchSpy).toHaveBeenCalledWith(`/trustees/${trusteeId}`, trusteeInput, {});
+  });
+
+  test('should call api.get function when calling getTrustees', () => {
+    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [{ id: 'trustee-id' }] });
+    api2.Api2.getTrustees();
+    expect(getSpy).toHaveBeenCalledWith('/trustees', {});
+  });
+
+  test('should call api.get function when calling getTrustee', () => {
+    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: { id: 'trustee-id' } });
+    const trusteeId = 'trustee-id';
+    api2.Api2.getTrustee(trusteeId);
+    expect(getSpy).toHaveBeenCalledWith(`/trustees/${trusteeId}`, {});
+  });
+
+  test('should call api.get function when calling getTrusteeHistory', () => {
+    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [{ id: 'history-id' }] });
+    const trusteeId = 'trustee-id';
+    api2.Api2.getTrusteeHistory(trusteeId);
+    expect(getSpy).toHaveBeenCalledWith(`/trustees/${trusteeId}/history`, {});
+  });
+
+  test('should call api.get function when calling getBankruptcySoftwareList', () => {
+    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: { items: [] } });
+    api2.Api2.getBankruptcySoftwareList();
+    expect(getSpy).toHaveBeenCalledWith('/lists/bankruptcy-software', {});
+  });
+
+  test('should call api.get function when calling getBanks', () => {
+    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: { items: [] } });
+    api2.Api2.getBanks();
+    expect(getSpy).toHaveBeenCalledWith('/lists/banks', {});
   });
 });
 
