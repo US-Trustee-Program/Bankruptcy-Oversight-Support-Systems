@@ -411,7 +411,7 @@ describe('_Api2 functions', async () => {
   test('should call api.post function when calling postBank', () => {
     const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: { id: 'bank-id' } });
     const bankItem: Creatable<BankListItem> = {
-      list: 'banks',
+      list: 'banks' as const,
       key: 'Test Bank',
       value: 'Test Bank',
     };
