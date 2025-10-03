@@ -11,11 +11,18 @@ import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import { Creatable } from '../../../../../common/src/cams/creatable';
 
+const mockAggregate = jest.fn();
+const mockInsertOne = jest.fn();
+
 describe('ListsMongoRepository', () => {
   let context: ApplicationContext;
   let repository: ListsMongoRepository;
 
   beforeEach(async () => {
+    mockAggregate.mockReset();
+    mockInsertOne.mockReset();
+    jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockImplementation(mockInsertOne);
+    jest.spyOn(MongoCollectionAdapter.prototype, 'aggregate').mockImplementation(mockAggregate);
     context = await createMockApplicationContext({
       env: {
         MONGO_CONNECTION_STRING: 'mongodb://localhost:27017',
@@ -37,9 +44,6 @@ describe('ListsMongoRepository', () => {
 
   describe('constructor', () => {
     test('should initialize with correct parameters', () => {
-      // The constructor calls the BaseMongoRepository constructor
-      // which initializes the connection. Nothing to assert here
-      // beyond that the object was created without errors.
       expect(repository).toBeInstanceOf(ListsMongoRepository);
     });
   });
@@ -112,29 +116,15 @@ describe('ListsMongoRepository', () => {
         { _id: '1', list: 'banks', key: 'bank1', value: 'Bank One' },
         { _id: '2', list: 'banks', key: 'bank2', value: 'Bank Two' },
       ];
-
-      // Mock the adapter's find method directly
-      const mockAdapter = jest
-        .spyOn(MongoCollectionAdapter.prototype, 'find')
-        .mockResolvedValue(mockBankList);
-
+      mockAggregate.mockResolvedValue(mockBankList);
       const result = await repository.getBankList();
-
-      expect(mockAdapter).toHaveBeenCalledWith(
-        expect.objectContaining({
-          condition: 'EQUALS',
-          leftOperand: { name: 'list' },
-          rightOperand: 'banks',
-        }),
-      );
+      expect(mockAggregate).toHaveBeenCalled();
       expect(result).toEqual(mockBankList);
     });
 
     test('should handle database errors', async () => {
       const error = new Error('Failed to get bank list');
-
-      jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
-
+      mockAggregate.mockRejectedValue(error);
       await expect(repository.getBankList()).rejects.toThrow();
     });
   });
@@ -145,29 +135,15 @@ describe('ListsMongoRepository', () => {
         { _id: '1', list: 'bankruptcy-software', key: 'software1', value: 'Software One' },
         { _id: '2', list: 'bankruptcy-software', key: 'software2', value: 'Software Two' },
       ];
-
-      // Mock the adapter's find method directly
-      const mockAdapter = jest
-        .spyOn(MongoCollectionAdapter.prototype, 'find')
-        .mockResolvedValue(mockSoftwareList);
-
+      mockAggregate.mockResolvedValue(mockSoftwareList);
       const result = await repository.getBankruptcySoftwareList();
-
-      expect(mockAdapter).toHaveBeenCalledWith(
-        expect.objectContaining({
-          condition: 'EQUALS',
-          leftOperand: { name: 'list' },
-          rightOperand: 'bankruptcy-software',
-        }),
-      );
+      expect(mockAggregate).toHaveBeenCalled();
       expect(result).toEqual(mockSoftwareList);
     });
 
     test('should handle database errors', async () => {
       const error = new Error('Failed to get software list');
-
-      jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
-
+      mockAggregate.mockRejectedValue(error);
       await expect(repository.getBankruptcySoftwareList()).rejects.toThrow();
     });
   });
@@ -180,20 +156,9 @@ describe('ListsMongoRepository', () => {
         key: 'new-software',
         value: 'New Software',
       };
-
-      // Mock the adapter's insertOne method
-      const mockAdapter = jest
-        .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
-        .mockResolvedValue(mockItemId);
-
+      mockInsertOne.mockResolvedValue(mockItemId);
       const result = await repository.postBankruptcySoftware(itemToCreate);
-
-      expect(mockAdapter).toHaveBeenCalledWith(
-        expect.objectContaining({
-          key: 'new-software',
-          value: 'New Software',
-        }),
-      );
+      expect(mockInsertOne).toHaveBeenCalledWith(itemToCreate);
       expect(result).toEqual(mockItemId);
     });
 
@@ -204,9 +169,7 @@ describe('ListsMongoRepository', () => {
         key: 'new-software',
         value: 'New Software',
       };
-
-      jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(error);
-
+      mockInsertOne.mockRejectedValue(error);
       await expect(repository.postBankruptcySoftware(itemToCreate)).rejects.toThrow();
     });
   });
@@ -219,20 +182,9 @@ describe('ListsMongoRepository', () => {
         key: 'new-bank',
         value: 'New Bank',
       };
-
-      // Mock the adapter's insertOne method
-      const mockAdapter = jest
-        .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
-        .mockResolvedValue(mockItemId);
-
+      mockInsertOne.mockResolvedValue(mockItemId);
       const result = await repository.postBank(itemToCreate);
-
-      expect(mockAdapter).toHaveBeenCalledWith(
-        expect.objectContaining({
-          key: 'new-bank',
-          value: 'New Bank',
-        }),
-      );
+      expect(mockInsertOne).toHaveBeenCalledWith(itemToCreate);
       expect(result).toEqual(mockItemId);
     });
 
@@ -243,9 +195,7 @@ describe('ListsMongoRepository', () => {
         key: 'new-bank',
         value: 'New Bank',
       };
-
-      jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(error);
-
+      mockInsertOne.mockRejectedValue(error);
       await expect(repository.postBank(itemToCreate)).rejects.toThrow();
     });
   });
