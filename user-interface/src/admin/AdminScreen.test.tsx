@@ -5,14 +5,6 @@ import LocalStorage from '@/lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole } from '@common/cams/roles';
 
-vi.mock('./privileged-identity/PrivilegedIdentity', () => {
-  return {
-    PrivilegedIdentity: () => {
-      return <div data-testid="privileged-identity-component"></div>;
-    },
-  };
-});
-
 describe('Admin screen tests', () => {
   beforeEach(async () => {
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
@@ -47,8 +39,8 @@ describe('Admin screen tests', () => {
     expect(document.querySelector('.admin-screen-navigation')).toBeInTheDocument();
   });
 
-  test('should show privileged identity admin', async () => {
+  test('should show no admin by default', async () => {
     renderWithoutProps();
-    expect(screen.getByTestId('privileged-identity-component')).toBeInTheDocument();
+    expect(screen.getByTestId('no-admin-panel-selected')).toBeInTheDocument();
   });
 });

@@ -20,7 +20,10 @@ export function AdminScreen() {
     if (location.pathname.includes('/admin/bankruptcy-software')) {
       return AdminNavState.BANKRUPTCY_SOFTWARE;
     }
-    return AdminNavState.PRIVILEGED_IDENTITY;
+    if (location.pathname.includes('/admin/privileged-identity')) {
+      return AdminNavState.PRIVILEGED_IDENTITY;
+    }
+    return AdminNavState.UNKNOWN;
   };
 
   return (
@@ -52,7 +55,7 @@ export function AdminScreen() {
               <Routes>
                 <Route path="privileged-identity" element={<PrivilegedIdentity />} />
                 <Route path="bankruptcy-software" element={<BankruptcySoftware />} />
-                <Route path="*" element={<PrivilegedIdentity />} />
+                <Route path="*" element={<div data-testid={'no-admin-panel-selected'} />} />
               </Routes>
             </div>
           </>

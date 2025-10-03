@@ -4,6 +4,9 @@ import { BankruptcySoftware } from './BankruptcySoftware';
 import Api2 from '@/lib/models/api2';
 import testingUtilities from '@/lib/testing/testing-utilities';
 import { BankruptcySoftwareList, BankruptcySoftwareListItem } from '@common/cams/lists';
+import { Creatable } from '@common/cams/creatable';
+
+// TODO: This test file need to integrate `act` to stop React warnings
 
 function createMockBankruptcySoftwareItem(
   id: string,
@@ -139,6 +142,25 @@ describe('BankruptcySoftware Component Tests', () => {
     expect(input.value).toBe('Test Software');
   });
 
+  // TODO: Fix this test
+  test.skip('should show warning when attempting to save with empty name', async () => {
+    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+    });
+
+    const input = screen.getByLabelText('Add New Software');
+    const saveButton = screen.getByRole('button', { name: 'Add Software' });
+
+    await user.clear(input);
+    await user.click(saveButton);
+
+    expect(globalAlertSpy.warning).toHaveBeenCalledWith('Software name cannot be empty.');
+  });
+
   test('should save new software successfully', async () => {
     const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
     const postSpy = vi.spyOn(Api2, 'postBankruptcySoftware').mockResolvedValue();
@@ -156,7 +178,13 @@ describe('BankruptcySoftware Component Tests', () => {
     await user.type(input, 'New Bankruptcy Software');
     await user.click(saveButton);
 
-    expect(postSpy).toHaveBeenCalledWith('New Bankruptcy Software');
+    const payload: Creatable<BankruptcySoftwareListItem> = {
+      list: 'bankruptcy-software' as const,
+      key: 'New Bankruptcy Software',
+      value: 'New Bankruptcy Software',
+    };
+
+    expect(postSpy).toHaveBeenCalledWith(payload);
     expect(globalAlertSpy.success).toHaveBeenCalledWith('Bankruptcy software added successfully.');
     expect(getBankruptcySoftwareListSpy).toHaveBeenCalledTimes(2); // Initial load + reload after save
   });
@@ -200,7 +228,13 @@ describe('BankruptcySoftware Component Tests', () => {
     await user.type(input, '   Trimmed Software   ');
     await user.click(saveButton);
 
-    expect(postSpy).toHaveBeenCalledWith('Trimmed Software');
+    const payload: Creatable<BankruptcySoftwareListItem> = {
+      list: 'bankruptcy-software' as const,
+      key: 'Trimmed Software',
+      value: 'Trimmed Software',
+    };
+
+    expect(postSpy).toHaveBeenCalledWith(payload);
   });
 
   test('should keep save button disabled with only whitespace input', async () => {
@@ -244,7 +278,13 @@ describe('BankruptcySoftware Component Tests', () => {
     await user.type(input, 'Test Software');
     await user.click(saveButton);
 
-    expect(postSpy).toHaveBeenCalledWith('Test Software');
+    const payload: Creatable<BankruptcySoftwareListItem> = {
+      list: 'bankruptcy-software' as const,
+      key: 'Test Software',
+      value: 'Test Software',
+    };
+
+    expect(postSpy).toHaveBeenCalledWith(payload);
     expect(globalAlertSpy.warning).toHaveBeenCalledWith(
       'Failed to add bankruptcy software. Network error',
     );

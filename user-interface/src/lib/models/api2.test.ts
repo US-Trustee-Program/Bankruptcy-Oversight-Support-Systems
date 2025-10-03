@@ -12,6 +12,8 @@ import {
 } from '@common/cams/orders';
 import LocalStorage from '@/lib/utils/local-storage';
 import { blankConfiguration } from '../testing/mock-configuration';
+import { BankruptcySoftwareListItem, BankListItem } from '@common/cams/lists';
+import { Creatable } from '@common/cams/creatable';
 
 type ApiType = {
   addApiBeforeHook: typeof addApiBeforeHook;
@@ -384,6 +386,44 @@ describe('_Api2 functions', async () => {
     const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: { items: [] } });
     api2.Api2.getBanks();
     expect(getSpy).toHaveBeenCalledWith('/lists/banks', {});
+  });
+
+  test('should call api.post function when calling postBankruptcySoftware', () => {
+    const postSpy = vi
+      .spyOn(api.default, 'post')
+      .mockResolvedValue({ data: { id: 'software-id' } });
+    const softwareItem: Creatable<BankruptcySoftwareListItem> = {
+      list: 'bankruptcy-software',
+      key: 'Test Software',
+      value: 'Test Software',
+    };
+    api2.Api2.postBankruptcySoftware(softwareItem);
+    expect(postSpy).toHaveBeenCalledWith('/lists/bankruptcy-software', softwareItem, {});
+  });
+
+  test('should call api.delete function when calling deleteBankruptcySoftware', () => {
+    const deleteSpy = vi.spyOn(api.default, 'delete').mockResolvedValue({ data: null });
+    const softwareId = 'software-id';
+    api2.Api2.deleteBankruptcySoftware(softwareId);
+    expect(deleteSpy).toHaveBeenCalledWith(`/lists/bankruptcy-software/${softwareId}`, {});
+  });
+
+  test('should call api.post function when calling postBank', () => {
+    const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: { id: 'bank-id' } });
+    const bankItem: Creatable<BankListItem> = {
+      list: 'banks',
+      key: 'Test Bank',
+      value: 'Test Bank',
+    };
+    api2.Api2.postBank(bankItem);
+    expect(postSpy).toHaveBeenCalledWith('/lists/banks', bankItem, {});
+  });
+
+  test('should call api.delete function when calling deleteBank', () => {
+    const deleteSpy = vi.spyOn(api.default, 'delete').mockResolvedValue({ data: null });
+    const bankId = 'bank-id';
+    api2.Api2.deleteBank(bankId);
+    expect(deleteSpy).toHaveBeenCalledWith(`/lists/banks/${bankId}`, {});
   });
 });
 

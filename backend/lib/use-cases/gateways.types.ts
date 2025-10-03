@@ -35,7 +35,13 @@ import { Pipeline } from '../query/query-pipeline';
 import { ResourceActions } from '../../../common/src/cams/actions';
 import { OfficeStaff } from '../adapters/gateways/mongo/offices.mongo.repository';
 import { Trustee, TrusteeHistory, TrusteeInput } from '../../../common/src/cams/trustees';
-import { BankList, BankruptcySoftwareList } from '../../../common/src/cams/lists';
+import {
+  BankList,
+  BankListItem,
+  BankruptcySoftwareList,
+  BankruptcySoftwareListItem,
+} from '../../../common/src/cams/lists';
+import { Creatable } from '../../../common/src/cams/creatable';
 
 export type ReplaceResult = {
   id: string;
@@ -184,7 +190,9 @@ export interface OfficesRepository
 
 export interface ListsRepository extends Releasable {
   getBankruptcySoftwareList(): Promise<BankruptcySoftwareList>;
+  postBankruptcySoftware(item: Creatable<BankruptcySoftwareListItem>): Promise<string>;
   getBankList(): Promise<BankList>;
+  postBank(item: Creatable<BankListItem>): Promise<string>;
 }
 
 export interface UsersRepository extends Releasable {
