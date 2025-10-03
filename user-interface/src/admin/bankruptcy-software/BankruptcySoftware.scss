@@ -1,0 +1,36 @@
+.bankruptcy-software-admin-panel {
+  .software-list {
+    list-style-type: none;
+    margin-left: 0;
+    padding-left: 0;
+
+    li {
+      margin-bottom: 0.5rem;
+      padding: 0.75rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background-color: #f9f9f9;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      span {
+        font-weight: 500;
+        color: #333;
+      }
+
+      button {
+        margin-left: 1rem;
+        min-width: auto;
+      }
+    }
+  }
+
+  .button-bar {
+    margin-top: 1rem;
+
+    .button-container {
+      margin-right: 1rem;
+    }
+  }
+}

@@ -4,13 +4,24 @@ import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import { PrivilegedIdentity } from './privileged-identity/PrivilegedIdentity';
+import { BankruptcySoftware } from './bankruptcy-software/BankruptcySoftware';
 import { Stop } from '@/lib/components/Stop';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import useFeatureFlags, { PRIVILEGED_IDENTITY_MANAGEMENT } from '../lib/hooks/UseFeatureFlags';
 
 export function AdminScreen() {
   const session = LocalStorage.getSession();
   const hasInvalidPermission = !session?.user?.roles?.includes(CamsRole.SuperUser);
   const flags = useFeatureFlags();
+  const location = useLocation();
+
+  // Determine which nav item should be initially selected based on the current path
+  const getInitialNavState = () => {
+    if (location.pathname.includes('/admin/bankruptcy-software')) {
+      return AdminNavState.BANKRUPTCY_SOFTWARE;
+    }
+    return AdminNavState.PRIVILEGED_IDENTITY;
+  };
 
   return (
     <MainContent className="admin-screen" data-testid="admin-screen">
@@ -34,13 +45,15 @@ export function AdminScreen() {
           <>
             <div className="grid-col-2">
               <div className={'left-navigation-pane-container'}>
-                <AdminScreenNavigation
-                  initiallySelectedNavLink={AdminNavState.PRIVILEGED_IDENTITY}
-                />
+                <AdminScreenNavigation initiallySelectedNavLink={getInitialNavState()} />
               </div>
             </div>
             <div className="grid-col-10">
-              <PrivilegedIdentity />
+              <Routes>
+                <Route path="privileged-identity" element={<PrivilegedIdentity />} />
+                <Route path="bankruptcy-software" element={<BankruptcySoftware />} />
+                <Route path="*" element={<PrivilegedIdentity />} />
+              </Routes>
             </div>
           </>
         )}
