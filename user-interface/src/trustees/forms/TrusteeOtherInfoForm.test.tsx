@@ -275,4 +275,81 @@ describe('TrusteeOtherInfoForm', () => {
     );
     expect(patchTrusteeSpy).not.toHaveBeenCalled();
   });
+
+  test('updates software value when a software option is selected from ComboBox', async () => {
+    const initialSoftware = 'Axos';
+    const newSoftware = 'Stretto';
+
+    render(<TrusteeOtherInfoForm trusteeId={TEST_TRUSTEE_ID} software={initialSoftware} />);
+
+    // Verify initial software selection is displayed in the selection label
+    const selectionLabel = document.querySelector('.selection-label');
+    expect(selectionLabel).toHaveTextContent(initialSoftware);
+
+    // Open the ComboBox dropdown
+    const expandButton = document.querySelector('#trustee-software-expand') as HTMLButtonElement;
+    await userEvent.click(expandButton);
+
+    // Wait for dropdown to open and find the Stretto option
+    await waitFor(() => {
+      expect(screen.getByRole('listbox')).toBeInTheDocument();
+    });
+
+    // Select Stretto option - find it by its data-value attribute
+    const strettoOption = document.querySelector('[data-value="Stretto"]') as HTMLLIElement;
+    expect(strettoOption).toBeInTheDocument();
+    await userEvent.click(strettoOption);
+
+    // Submit the form to verify the software state was updated
+    await userEvent.click(screen.getByTestId('button-submit-button'));
+
+    // Verify API was called with the new software value
+    await waitFor(() => {
+      expect(patchTrusteeSpy).toHaveBeenCalledWith(
+        TEST_TRUSTEE_ID,
+        expect.objectContaining({
+          software: newSoftware,
+        }),
+      );
+    });
+
+    // Check that navigation occurred
+    await waitFor(() => {
+      expect(mockNavigate.navigateTo).toHaveBeenCalledWith(
+        `/trustees/${TEST_TRUSTEE_ID}`,
+        expect.any(Object),
+      );
+    });
+  });
+
+  test('clears software value when ComboBox clear button is clicked', async () => {
+    const initialSoftware = 'Epiq';
+
+    render(<TrusteeOtherInfoForm trusteeId={TEST_TRUSTEE_ID} software={initialSoftware} />);
+
+    const selectionLabel = document.querySelector('.selection-label');
+    expect(selectionLabel).toHaveTextContent(initialSoftware);
+
+    const clearButton = document.querySelector('#trustee-software-clear-all') as HTMLButtonElement;
+    expect(clearButton).toBeInTheDocument();
+    await userEvent.click(clearButton);
+
+    await userEvent.click(screen.getByTestId('button-submit-button'));
+
+    await waitFor(() => {
+      expect(patchTrusteeSpy).toHaveBeenCalledWith(
+        TEST_TRUSTEE_ID,
+        expect.objectContaining({
+          software: undefined,
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(mockNavigate.navigateTo).toHaveBeenCalledWith(
+        `/trustees/${TEST_TRUSTEE_ID}`,
+        expect.any(Object),
+      );
+    });
+  });
 });
