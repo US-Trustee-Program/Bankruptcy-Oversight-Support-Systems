@@ -33,7 +33,7 @@ import {
 } from '@common/cams/privileged-identity';
 import { Trustee, TrusteeInput } from '@common/cams/trustees';
 import { Creatable } from '@common/cams/creatable';
-import { BankruptcySoftwareListItem } from '@common/cams/lists';
+import { BankListItem, BankruptcySoftwareListItem } from '@common/cams/lists';
 
 const caseDocketEntries = MockData.buildArray(MockData.getDocketEntry, 5);
 const caseNoteGuids = [
@@ -490,11 +490,11 @@ async function getBankruptcySoftwareList() {
   };
 }
 
-async function postBankruptcySoftware(_software: Creatable<BankruptcySoftwareListItem>) {
+async function postBankruptcySoftware(_ignore: Creatable<BankruptcySoftwareListItem>) {
   return Promise.resolve();
 }
 
-async function deleteBankruptcySoftware(_id: string) {
+async function deleteBankruptcySoftware(_gnore: string) {
   return Promise.resolve();
 }
 
@@ -523,11 +523,11 @@ async function getBanks() {
   };
 }
 
-async function postBank(_bank: string) {
+async function postBank(_ignore: Creatable<BankListItem>) {
   return Promise.resolve();
 }
 
-async function deleteBank(_id: string) {
+async function deleteBank(_ignore: string) {
   return Promise.resolve();
 }
 
