@@ -297,19 +297,11 @@ flowchart LR
         Workflow_Inputs["Workflow Inputs"]
         Workflow_Inputs_enableBicepDeployment["enableBicepDeployment"]
         Variables["Variables"]
-<<<<<<< HEAD
-        Variables_NODE_VERSION["NODE_VERSION"]
-        Variables_CAMS_BASE_PATH["CAMS_BASE_PATH"]
         Variables_CAMS_SERVER_PROTOCOL["CAMS_SERVER_PROTOCOL"]
         Variables_CAMS_SERVER_PORT["CAMS_SERVER_PORT"]
         Variables_CAMS_LAUNCH_DARKLY_ENV["CAMS_LAUNCH_DARKLY_ENV"]
-=======
-        Variables_CAMS_SERVER_PROTOCOL["CAMS_SERVER_PROTOCOL"]
-        Variables_CAMS_LAUNCH_DARKLY_ENV["CAMS_LAUNCH_DARKLY_ENV"]
-        Variables_CAMS_BASE_PATH["CAMS_BASE_PATH"]
         Variables_NODE_VERSION["NODE_VERSION"]
-        Variables_CAMS_SERVER_PORT["CAMS_SERVER_PORT"]
->>>>>>> 8e12fafde (Fix tld)
+        Variables_CAMS_BASE_PATH["CAMS_BASE_PATH"]
     end
 
     subgraph continuous_deployment_workflow["Continuous Deployment"]
@@ -393,27 +385,15 @@ This diagram shows the explicit and implicit dependencies between jobs in the de
 flowchart LR
     subgraph "External Inputs"
         Workflow_Inputs["Workflow Inputs"]
-<<<<<<< HEAD
-        Workflow_Inputs_e2eCosmosDbExists["e2eCosmosDbExists"]
-        Workflow_Inputs_slotName["slotName"]
         Workflow_Inputs_azResourceGrpAppEncrypted["azResourceGrpAppEncrypted"]
-        Workflow_Inputs_webappName["webappName"]
-        Workflow_Inputs_apiFunctionName["apiFunctionName"]
-        Workflow_Inputs_environmentHash["environmentHash"]
         Workflow_Inputs_stackName["stackName"]
-        Workflow_Inputs_ghaEnvironment["ghaEnvironment"]
-        Workflow_Inputs_dataflowsFunctionName["dataflowsFunctionName"]
-=======
-        Workflow_Inputs_environmentHash["environmentHash"]
-        Workflow_Inputs_apiFunctionName["apiFunctionName"]
-        Workflow_Inputs_stackName["stackName"]
-        Workflow_Inputs_e2eCosmosDbExists["e2eCosmosDbExists"]
-        Workflow_Inputs_azResourceGrpAppEncrypted["azResourceGrpAppEncrypted"]
-        Workflow_Inputs_dataflowsFunctionName["dataflowsFunctionName"]
         Workflow_Inputs_slotName["slotName"]
-        Workflow_Inputs_ghaEnvironment["ghaEnvironment"]
+        Workflow_Inputs_environmentHash["environmentHash"]
+        Workflow_Inputs_e2eCosmosDbExists["e2eCosmosDbExists"]
+        Workflow_Inputs_apiFunctionName["apiFunctionName"]
+        Workflow_Inputs_dataflowsFunctionName["dataflowsFunctionName"]
         Workflow_Inputs_webappName["webappName"]
->>>>>>> 8e12fafde (Fix tld)
+        Workflow_Inputs_ghaEnvironment["ghaEnvironment"]
     end
 
     subgraph sub_deploy_code_slot_workflow["Deploy code for slot"]
@@ -913,19 +893,11 @@ flowchart LR
         Workflow_Inputs["Workflow Inputs"]
         Workflow_Inputs_enableBicepDeployment["enableBicepDeployment"]
         Variables["Variables"]
-<<<<<<< HEAD
-        Variables_NODE_VERSION["NODE_VERSION"]
-        Variables_CAMS_BASE_PATH["CAMS_BASE_PATH"]
         Variables_CAMS_SERVER_PROTOCOL["CAMS_SERVER_PROTOCOL"]
         Variables_CAMS_SERVER_PORT["CAMS_SERVER_PORT"]
         Variables_CAMS_LAUNCH_DARKLY_ENV["CAMS_LAUNCH_DARKLY_ENV"]
-=======
-        Variables_CAMS_SERVER_PROTOCOL["CAMS_SERVER_PROTOCOL"]
-        Variables_CAMS_LAUNCH_DARKLY_ENV["CAMS_LAUNCH_DARKLY_ENV"]
-        Variables_CAMS_BASE_PATH["CAMS_BASE_PATH"]
         Variables_NODE_VERSION["NODE_VERSION"]
-        Variables_CAMS_SERVER_PORT["CAMS_SERVER_PORT"]
->>>>>>> 8e12fafde (Fix tld)
+        Variables_CAMS_BASE_PATH["CAMS_BASE_PATH"]
     end
 
     subgraph continuous_deployment_workflow["Continuous Deployment"]
@@ -1009,27 +981,15 @@ This diagram shows the explicit and implicit dependencies between jobs in the de
 flowchart LR
     subgraph "External Inputs"
         Workflow_Inputs["Workflow Inputs"]
-<<<<<<< HEAD
-        Workflow_Inputs_e2eCosmosDbExists["e2eCosmosDbExists"]
-        Workflow_Inputs_slotName["slotName"]
         Workflow_Inputs_azResourceGrpAppEncrypted["azResourceGrpAppEncrypted"]
-        Workflow_Inputs_webappName["webappName"]
-        Workflow_Inputs_apiFunctionName["apiFunctionName"]
-        Workflow_Inputs_environmentHash["environmentHash"]
         Workflow_Inputs_stackName["stackName"]
-        Workflow_Inputs_ghaEnvironment["ghaEnvironment"]
-        Workflow_Inputs_dataflowsFunctionName["dataflowsFunctionName"]
-=======
-        Workflow_Inputs_environmentHash["environmentHash"]
-        Workflow_Inputs_apiFunctionName["apiFunctionName"]
-        Workflow_Inputs_stackName["stackName"]
-        Workflow_Inputs_e2eCosmosDbExists["e2eCosmosDbExists"]
-        Workflow_Inputs_azResourceGrpAppEncrypted["azResourceGrpAppEncrypted"]
-        Workflow_Inputs_dataflowsFunctionName["dataflowsFunctionName"]
         Workflow_Inputs_slotName["slotName"]
-        Workflow_Inputs_ghaEnvironment["ghaEnvironment"]
+        Workflow_Inputs_environmentHash["environmentHash"]
+        Workflow_Inputs_e2eCosmosDbExists["e2eCosmosDbExists"]
+        Workflow_Inputs_apiFunctionName["apiFunctionName"]
+        Workflow_Inputs_dataflowsFunctionName["dataflowsFunctionName"]
         Workflow_Inputs_webappName["webappName"]
->>>>>>> 8e12fafde (Fix tld)
+        Workflow_Inputs_ghaEnvironment["ghaEnvironment"]
     end
 
     subgraph sub_deploy_code_slot_workflow["Deploy code for slot"]
