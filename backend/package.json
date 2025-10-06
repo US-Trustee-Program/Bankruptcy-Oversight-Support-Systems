@@ -30,7 +30,7 @@
     "@launchdarkly/node-server-sdk": "9.10.2",
     "@okta/jwt-verifier": "4.0.2",
     "@okta/okta-sdk-nodejs": "7.3.0",
-    "applicationinsights": "3.9.0",
+    "applicationinsights": "3.11.0",
     "dotenv": "17.2.2",
     "jsonwebtoken": "9.0.2",
     "mongodb": "6.19.0",
