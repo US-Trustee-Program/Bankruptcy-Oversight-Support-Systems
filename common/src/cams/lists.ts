@@ -2,7 +2,6 @@ export type ListNames = 'banks' | 'bankruptcy-software';
 
 export type ListItem<T = string> = {
   _id: string;
-  _deleted?: true;
   list: ListNames;
   key: string;
   value: T;
