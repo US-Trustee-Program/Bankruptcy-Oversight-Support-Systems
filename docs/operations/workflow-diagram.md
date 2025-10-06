@@ -298,10 +298,10 @@ flowchart LR
         Workflow_Inputs_enableBicepDeployment["enableBicepDeployment"]
         Variables["Variables"]
         Variables_CAMS_SERVER_PROTOCOL["CAMS_SERVER_PROTOCOL"]
-        Variables_CAMS_BASE_PATH["CAMS_BASE_PATH"]
         Variables_CAMS_SERVER_PORT["CAMS_SERVER_PORT"]
         Variables_CAMS_LAUNCH_DARKLY_ENV["CAMS_LAUNCH_DARKLY_ENV"]
         Variables_NODE_VERSION["NODE_VERSION"]
+        Variables_CAMS_BASE_PATH["CAMS_BASE_PATH"]
     end
 
     subgraph continuous_deployment_workflow["Continuous Deployment"]
@@ -385,15 +385,15 @@ This diagram shows the explicit and implicit dependencies between jobs in the de
 flowchart LR
     subgraph "External Inputs"
         Workflow_Inputs["Workflow Inputs"]
-        Workflow_Inputs_ghaEnvironment["ghaEnvironment"]
-        Workflow_Inputs_environmentHash["environmentHash"]
-        Workflow_Inputs_dataflowsFunctionName["dataflowsFunctionName"]
         Workflow_Inputs_azResourceGrpAppEncrypted["azResourceGrpAppEncrypted"]
-        Workflow_Inputs_e2eCosmosDbExists["e2eCosmosDbExists"]
-        Workflow_Inputs_webappName["webappName"]
-        Workflow_Inputs_apiFunctionName["apiFunctionName"]
-        Workflow_Inputs_slotName["slotName"]
         Workflow_Inputs_stackName["stackName"]
+        Workflow_Inputs_slotName["slotName"]
+        Workflow_Inputs_environmentHash["environmentHash"]
+        Workflow_Inputs_e2eCosmosDbExists["e2eCosmosDbExists"]
+        Workflow_Inputs_apiFunctionName["apiFunctionName"]
+        Workflow_Inputs_dataflowsFunctionName["dataflowsFunctionName"]
+        Workflow_Inputs_webappName["webappName"]
+        Workflow_Inputs_ghaEnvironment["ghaEnvironment"]
     end
 
     subgraph sub_deploy_code_slot_workflow["Deploy code for slot"]
@@ -407,7 +407,7 @@ flowchart LR
             endpoint_test_application_slot_vars["apiFunctionName<br/>azResourceGrpAppEncrypted<br/>environmentHash<br/>ghaEnvironment<br/>slotName<br/>stackName<br/>webappName"]
         end
         subgraph execute_e2e_test_subgraph["execute-e2e-test"]
-            execute_e2e_test_vars["apiFunctionName<br/>azResourceGrpAppEncrypted<br/>e2eCosmosDbExists<br/>environmentHash<br/>ghaEnvironment<br/>slotName<br/>stackName<br/>webappName"]
+            execute_e2e_test_vars["apiFunctionName<br/>azResourceGrpAppEncrypted<br/>dataflowsFunctionName<br/>e2eCosmosDbExists<br/>environmentHash<br/>ghaEnvironment<br/>slotName<br/>stackName<br/>webappName"]
         end
         swap_webapp_deployment_slot["swap-webapp-deployment-slot"]
         swap_nodeapi_deployment_slot["swap-nodeapi-deployment-slot"]
@@ -436,6 +436,7 @@ flowchart LR
     Workflow_Inputs_azResourceGrpAppEncrypted -.-> endpoint_test_application_slot_subgraph
     Workflow_Inputs_azResourceGrpAppEncrypted -.-> execute_e2e_test_subgraph
     Workflow_Inputs_dataflowsFunctionName -.-> deploy_code_subgraph
+    Workflow_Inputs_dataflowsFunctionName -.-> execute_e2e_test_subgraph
     Workflow_Inputs_e2eCosmosDbExists -.-> execute_e2e_test_subgraph
     Workflow_Inputs_environmentHash -.-> deploy_code_subgraph
     Workflow_Inputs_environmentHash -.-> endpoint_test_application_post_swap_subgraph
@@ -893,10 +894,10 @@ flowchart LR
         Workflow_Inputs_enableBicepDeployment["enableBicepDeployment"]
         Variables["Variables"]
         Variables_CAMS_SERVER_PROTOCOL["CAMS_SERVER_PROTOCOL"]
-        Variables_CAMS_BASE_PATH["CAMS_BASE_PATH"]
         Variables_CAMS_SERVER_PORT["CAMS_SERVER_PORT"]
         Variables_CAMS_LAUNCH_DARKLY_ENV["CAMS_LAUNCH_DARKLY_ENV"]
         Variables_NODE_VERSION["NODE_VERSION"]
+        Variables_CAMS_BASE_PATH["CAMS_BASE_PATH"]
     end
 
     subgraph continuous_deployment_workflow["Continuous Deployment"]
@@ -980,15 +981,15 @@ This diagram shows the explicit and implicit dependencies between jobs in the de
 flowchart LR
     subgraph "External Inputs"
         Workflow_Inputs["Workflow Inputs"]
-        Workflow_Inputs_ghaEnvironment["ghaEnvironment"]
-        Workflow_Inputs_environmentHash["environmentHash"]
-        Workflow_Inputs_dataflowsFunctionName["dataflowsFunctionName"]
         Workflow_Inputs_azResourceGrpAppEncrypted["azResourceGrpAppEncrypted"]
-        Workflow_Inputs_e2eCosmosDbExists["e2eCosmosDbExists"]
-        Workflow_Inputs_webappName["webappName"]
-        Workflow_Inputs_apiFunctionName["apiFunctionName"]
-        Workflow_Inputs_slotName["slotName"]
         Workflow_Inputs_stackName["stackName"]
+        Workflow_Inputs_slotName["slotName"]
+        Workflow_Inputs_environmentHash["environmentHash"]
+        Workflow_Inputs_e2eCosmosDbExists["e2eCosmosDbExists"]
+        Workflow_Inputs_apiFunctionName["apiFunctionName"]
+        Workflow_Inputs_dataflowsFunctionName["dataflowsFunctionName"]
+        Workflow_Inputs_webappName["webappName"]
+        Workflow_Inputs_ghaEnvironment["ghaEnvironment"]
     end
 
     subgraph sub_deploy_code_slot_workflow["Deploy code for slot"]
@@ -1002,7 +1003,7 @@ flowchart LR
             endpoint_test_application_slot_vars["apiFunctionName<br/>azResourceGrpAppEncrypted<br/>environmentHash<br/>ghaEnvironment<br/>slotName<br/>stackName<br/>webappName"]
         end
         subgraph execute_e2e_test_subgraph["execute-e2e-test"]
-            execute_e2e_test_vars["apiFunctionName<br/>azResourceGrpAppEncrypted<br/>e2eCosmosDbExists<br/>environmentHash<br/>ghaEnvironment<br/>slotName<br/>stackName<br/>webappName"]
+            execute_e2e_test_vars["apiFunctionName<br/>azResourceGrpAppEncrypted<br/>dataflowsFunctionName<br/>e2eCosmosDbExists<br/>environmentHash<br/>ghaEnvironment<br/>slotName<br/>stackName<br/>webappName"]
         end
         swap_webapp_deployment_slot["swap-webapp-deployment-slot"]
         swap_nodeapi_deployment_slot["swap-nodeapi-deployment-slot"]
@@ -1031,6 +1032,7 @@ flowchart LR
     Workflow_Inputs_azResourceGrpAppEncrypted -.-> endpoint_test_application_slot_subgraph
     Workflow_Inputs_azResourceGrpAppEncrypted -.-> execute_e2e_test_subgraph
     Workflow_Inputs_dataflowsFunctionName -.-> deploy_code_subgraph
+    Workflow_Inputs_dataflowsFunctionName -.-> execute_e2e_test_subgraph
     Workflow_Inputs_e2eCosmosDbExists -.-> execute_e2e_test_subgraph
     Workflow_Inputs_environmentHash -.-> deploy_code_subgraph
     Workflow_Inputs_environmentHash -.-> endpoint_test_application_post_swap_subgraph

@@ -66,6 +66,7 @@ echo "Attempting to add Ip allow rule (${rule_name})"
 if [[ -n ${slot_name} && ${slot_name} != "initial" && ${slot_name} != "self" ]]; then
     echo "Adding IP to ${slot_name} deployment slot..."
     az functionapp config access-restriction add -g "${app_rg}" -n "${stack_name}-node-api" --rule-name "${rule_name}" --slot "${slot_name}" --action Allow --ip-address "${agent_ip}" --priority "${priority}1" 1>/dev/null
+    az functionapp config access-restriction add -g "${app_rg}" -n "${stack_name}-dataflows" --rule-name "${rule_name}" --slot "${slot_name}" --action Allow --ip-address "${agent_ip}" --priority "${priority}1" 1>/dev/null
     az webapp config access-restriction add -g "${app_rg}" -n "${stack_name}-webapp" --rule-name "${rule_name}" --slot "${slot_name}" --action Allow --ip-address "$agent_ip" --priority "${priority}2" 1>/dev/null
 else
     echo "Adding IP to main deployment slot..."
