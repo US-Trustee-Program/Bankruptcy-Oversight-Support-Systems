@@ -1,6 +1,4 @@
 import * as dotenv from 'dotenv';
-import ContextCreator from '../../azure/application-context-creator';
-import { createMockAzureFunctionContext } from '../../azure/testing-helpers';
 import { ApplicationContext } from '../../../lib/adapters/types/basic';
 import { CaseBasics, CaseSummary, getCaseIdParts } from '../../../../common/src/cams/cases';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
@@ -22,23 +20,20 @@ export const KNOWN_GOOD_TRANSFER_TO_CASE_ID = '091-69-12345';
 
 dotenv.config();
 
-export async function seedCosmosE2eDatabase() {
-  const env = { ...process.env };
-  const invocationContext = createMockAzureFunctionContext(env);
-  const appContext = await ContextCreator.getApplicationContext({ invocationContext });
+export async function seedCosmosE2eDatabase(context: ApplicationContext) {
   const { dxtrCaseIds, dxtrCases, transferTo, transferFrom } =
-    await extractAndPrepareSqlData(appContext);
+    await extractAndPrepareSqlData(context);
 
-  await syncCases(appContext, dxtrCaseIds);
+  await syncCases(context, dxtrCaseIds);
 
-  const consolidationOrders = await generateConsolidationOrders(appContext, dxtrCases.slice(5, 25));
-  await insertConsolidationOrders(appContext, consolidationOrders);
+  const consolidationOrders = await generateConsolidationOrders(context, dxtrCases.slice(5, 25));
+  await insertConsolidationOrders(context, consolidationOrders);
 
   const transferOrders = generateTransferOrders(dxtrCases.slice(25, 45), transferTo, transferFrom);
-  await insertTransferOrders(appContext, transferOrders);
+  await insertTransferOrders(context, transferOrders);
 
   const trustees = await generateTrustees();
-  await insertTrustees(appContext, trustees);
+  await insertTrustees(context, trustees);
 }
 
 export async function generateTrustees(): Promise<Trustee[]> {
