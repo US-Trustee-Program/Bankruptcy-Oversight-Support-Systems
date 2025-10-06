@@ -29,8 +29,8 @@ export default async function handler(
 }
 
 app.http('lists', {
-  methods: ['GET', 'POST'],
+  methods: ['GET', 'POST', 'DELETE'],
   authLevel: 'anonymous',
   handler,
-  route: 'lists/{listName}',
+  route: 'lists/{listName}/{?id}',
 });
