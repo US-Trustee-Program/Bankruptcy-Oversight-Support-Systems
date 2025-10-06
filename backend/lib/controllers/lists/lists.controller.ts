@@ -38,6 +38,12 @@ export class ListsController implements CamsController {
           context.request.body as Creatable<BankruptcySoftwareListItem>,
         );
         data = { _id };
+      } else if (method === 'DELETE' && listName === 'bankruptcy-software') {
+        const { id } = context.request.params;
+        if (typeof id !== 'string' || id.trim() === '') {
+          throw new Error('ID is required for deletion');
+        }
+        this.useCase.deleteBankruptcySoftware(context, id);
       } else {
         throw new Error('Invalid list name');
       }

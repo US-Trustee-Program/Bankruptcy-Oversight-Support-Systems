@@ -16,6 +16,7 @@ let getBanksList = jest.fn();
 let getBankruptcySoftwareList = jest.fn();
 let createBank = jest.fn();
 let createBankruptcySoftware = jest.fn();
+let deleteBankruptcySoftware = jest.fn();
 
 jest.mock('../../use-cases/lists/lists', () => {
   return {
@@ -25,6 +26,7 @@ jest.mock('../../use-cases/lists/lists', () => {
         getBankruptcySoftwareList,
         createBank,
         createBankruptcySoftware,
+        deleteBankruptcySoftware,
       };
     }),
   };
@@ -193,5 +195,69 @@ describe('lists controller tests', () => {
         },
       }),
     );
+  });
+
+  test('should delete bankruptcy software item successfully on DELETE', async () => {
+    deleteBankruptcySoftware = jest.fn().mockResolvedValue(undefined);
+
+    const controller = new ListsController();
+    applicationContext.request = mockCamsHttpRequest({
+      method: 'DELETE',
+      params: { listName: 'bankruptcy-software', id: 'test-id-123' },
+    });
+
+    const response = await controller.handleRequest(applicationContext);
+
+    expect(deleteBankruptcySoftware).toHaveBeenCalledWith(applicationContext, 'test-id-123');
+    expect(response).toEqual(
+      expect.objectContaining({
+        body: {
+          meta: expect.objectContaining({ self: expect.any(String) }),
+          data: undefined,
+        },
+      }),
+    );
+  });
+
+  test('should throw error when ID is missing for DELETE bankruptcy-software', async () => {
+    const controller = new ListsController();
+    applicationContext.request = mockCamsHttpRequest({
+      method: 'DELETE',
+      params: { listName: 'bankruptcy-software' },
+    });
+
+    await expect(async () => {
+      await controller.handleRequest(applicationContext);
+    }).rejects.toThrow('Unknown Error');
+
+    expect(deleteBankruptcySoftware).not.toHaveBeenCalled();
+  });
+
+  test('should throw error when ID is empty string for DELETE bankruptcy-software', async () => {
+    const controller = new ListsController();
+    applicationContext.request = mockCamsHttpRequest({
+      method: 'DELETE',
+      params: { listName: 'bankruptcy-software', id: '   ' },
+    });
+
+    await expect(async () => {
+      await controller.handleRequest(applicationContext);
+    }).rejects.toThrow('Unknown Error');
+
+    expect(deleteBankruptcySoftware).not.toHaveBeenCalled();
+  });
+
+  test('should throw error when ID is not a string for DELETE bankruptcy-software', async () => {
+    const controller = new ListsController();
+    applicationContext.request = mockCamsHttpRequest({
+      method: 'DELETE',
+      params: { listName: 'bankruptcy-software', id: 123 as unknown as string },
+    });
+
+    await expect(async () => {
+      await controller.handleRequest(applicationContext);
+    }).rejects.toThrow('Unknown Error');
+
+    expect(deleteBankruptcySoftware).not.toHaveBeenCalled();
   });
 });
