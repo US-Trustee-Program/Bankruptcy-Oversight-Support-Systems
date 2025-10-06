@@ -134,7 +134,7 @@ async function post<T = unknown>(
       data: [],
     };
     if (caseNumber === '99-99999') {
-      return Promise.reject(new Error('api error'));
+      throw new Error('api error');
     } else if (caseNumber === '00-00000') {
       response.data = [MockData.getCaseBasics({ override: { caseId: `011-${caseNumber}` } })];
     } else if (caseNumber === '11-00000') {
@@ -184,18 +184,18 @@ async function post<T = unknown>(
       lastUpdatedBy: { id: 'user-1', name: 'Mock User' },
       lastUpdatedOn: new Date().toISOString(),
     } as unknown as Trustee;
-    return Promise.resolve({ data: created } as ResponseBody<T>);
+    return { data: created } as ResponseBody<T>;
   } else {
-    return Promise.reject(new Error());
+    throw new Error();
   }
 }
 
 async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
   let response: ResponseBody<unknown>;
   if (path.match(/\/cases\/123-12-12345\/docket/)) {
-    return Promise.reject(new Error());
+    throw new Error();
   } else if (path.match(/\/cases\/001-77-77777\/summary/)) {
-    return Promise.reject({ message: 'Case summary not found for the case ID.' });
+    throw new Error('Case summary not found for the case ID.');
   } else if (path.match(/\/cases\/999-99-00001\/associated/)) {
     response = {
       data: consolidation,
@@ -288,7 +288,7 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
     };
   }
 
-  return Promise.resolve(response as ResponseBody<T>);
+  return response as ResponseBody<T>;
 }
 
 async function patch<T = unknown>(
@@ -299,7 +299,7 @@ async function patch<T = unknown>(
   const response = {
     data,
   };
-  return Promise.resolve(response as ResponseBody<T>);
+  return response as ResponseBody<T>;
 }
 
 async function put<T = unknown>(
@@ -310,14 +310,14 @@ async function put<T = unknown>(
   const response = {
     data,
   };
-  return Promise.resolve(response as ResponseBody<T>);
+  return response as ResponseBody<T>;
 }
 
 async function _delete<T = unknown>(_path: string): Promise<ResponseBody<T>> {
   const response = {
     data: null,
   };
-  return Promise.resolve(response as ResponseBody<T>);
+  return response as ResponseBody<T>;
 }
 
 async function getAttorneys(): Promise<ResponseBody<AttorneyUser[]>> {
@@ -377,11 +377,11 @@ async function getOrderSuggestions(caseId: string): Promise<ResponseBody<CaseSum
 }
 
 async function patchTransferOrderApproval(_data: FlexibleTransferOrderAction): Promise<void> {
-  return Promise.resolve();
+  return;
 }
 
 async function patchTransferOrderRejection(_data: FlexibleTransferOrderAction): Promise<void> {
-  return Promise.resolve();
+  return;
 }
 
 async function getCaseNotes(caseId: string): Promise<ResponseBody<CaseNote[]>> {
@@ -389,7 +389,7 @@ async function getCaseNotes(caseId: string): Promise<ResponseBody<CaseNote[]>> {
 }
 
 async function deleteCaseNote(_note: Partial<CaseNote>) {
-  return Promise.resolve();
+  return;
 }
 
 async function postCaseNote(note: CaseNoteInput): Promise<void> {
@@ -491,11 +491,11 @@ async function getBankruptcySoftwareList() {
 }
 
 async function postBankruptcySoftware(_ignore: Creatable<BankruptcySoftwareListItem>) {
-  return Promise.resolve();
+  return '--id--';
 }
 
-async function deleteBankruptcySoftware(_gnore: string) {
-  return Promise.resolve();
+async function deleteBankruptcySoftware(_ignore: string) {
+  return;
 }
 
 async function getBanks() {
@@ -524,11 +524,11 @@ async function getBanks() {
 }
 
 async function postBank(_ignore: Creatable<BankListItem>) {
-  return Promise.resolve();
+  return '--id--';
 }
 
 async function deleteBank(_ignore: string) {
-  return Promise.resolve();
+  return;
 }
 
 export const MockApi2 = {

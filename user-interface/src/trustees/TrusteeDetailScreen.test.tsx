@@ -33,7 +33,8 @@ const mockUseApi2 = vi.mocked(useApi2);
 const mockUseGlobalAlert = vi.mocked(useGlobalAlert);
 
 const mockTrustee: Trustee = {
-  id: '123',
+  id: '--id-guid--',
+  trusteeId: '123',
   name: 'John Doe',
   public: {
     address: {
