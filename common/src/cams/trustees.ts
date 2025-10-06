@@ -41,7 +41,10 @@ export type Trustee = Auditable &
     status: TrusteeStatus;
   };
 
-export type TrusteeInput = Omit<Trustee, 'legacy' | keyof Auditable | keyof Identifiable>;
+export type TrusteeInput = Omit<
+  Trustee,
+  'legacy' | 'trusteeId' | keyof Auditable | keyof Identifiable
+>;
 
 type AbstractTrusteeHistory<B, A> = Auditable &
   Identifiable & {

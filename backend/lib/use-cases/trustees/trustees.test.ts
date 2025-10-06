@@ -16,6 +16,8 @@ import * as errorUtilitiesModule from '../../common-errors/error-utilities';
 import * as sessionModule from '../../../../common/src/cams/session';
 import * as objectEqualityModule from '../../../../common/src/object-equality';
 
+const MOCK_ID_GUID = '00000000-0000-0000-0000-000000000000';
+
 // Mock the error-utilities module to ensure correct error handling behavior
 jest.mock('../../common-errors/error-utilities', () => {
   const originalModule = jest.requireActual('../../common-errors/error-utilities');
@@ -155,7 +157,8 @@ const websiteTestCases: WebsiteTestCase[] = [
 
 // Helper function to create expected trustee from test case
 const createExpectedTrusteeFromCase = (testCase: WebsiteTestCase, userRef: CamsUserReference) => ({
-  id: testCase.expectedId,
+  id: MOCK_ID_GUID,
+  trusteeId: testCase.expectedId,
   ...testCase.trusteeInput,
   createdOn: '2025-08-12T10:00:00Z',
   createdBy: userRef,
@@ -171,7 +174,8 @@ const mockUserReference: CamsUserReference = {
 
 // Base trustee factory to reduce duplication
 const makeTrustee = (overrides: Partial<Trustee> = {}): Trustee => ({
-  id: 'trustee-123',
+  id: '00000000-0000-0000-0000-000000000000',
+  trusteeId: 'trustee-123',
   name: 'John Doe',
   public: {
     address: {
@@ -234,7 +238,8 @@ describe('TrusteesUseCase', () => {
 
   const sampleTrustee = {
     ...sampleTrusteeInput,
-    id: 'trustee-123',
+    id: MOCK_ID_GUID,
+    trusteeId: 'trustee-123',
     createdOn: '2025-08-12T10:00:00Z',
     createdBy: mockUserReference,
     updatedOn: '2025-08-12T10:00:00Z',
@@ -278,7 +283,8 @@ describe('TrusteesUseCase', () => {
   describe('createTrustee', () => {
     test('should create trustee successfully with valid input', async () => {
       const expectedTrustee = {
-        id: 'trustee-123',
+        id: MOCK_ID_GUID,
+        trusteeId: 'trustee-123',
         ...sampleTrusteeInput,
         createdOn: '2025-08-12T10:00:00Z',
         createdBy: mockUserReference,
@@ -305,7 +311,7 @@ describe('TrusteesUseCase', () => {
       expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_NAME',
-          id: expectedTrustee.id,
+          trusteeId: expectedTrustee.trusteeId,
           before: undefined,
           after: expectedTrustee.name,
           createdBy: mockUserReference,
@@ -316,7 +322,7 @@ describe('TrusteesUseCase', () => {
       expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_PUBLIC_CONTACT',
-          id: expectedTrustee.id,
+          trusteeId: expectedTrustee.trusteeId,
           before: undefined,
           after: expectedTrustee.public,
           createdBy: mockUserReference,
@@ -389,7 +395,8 @@ describe('TrusteesUseCase', () => {
 
       const expectedTrustee = {
         ...trusteeInputWithoutArrays,
-        id: 'trustee-123',
+        id: MOCK_ID_GUID,
+        trusteeId: 'trustee-123',
         districts: [],
         chapters: [],
         createdOn: '2025-08-12T10:00:00Z',
@@ -511,7 +518,8 @@ describe('TrusteesUseCase', () => {
           'should update Chapter 13 trustee website information and create history record',
         trusteeId: 'trustee-456',
         existingTrustee: {
-          id: 'trustee-456',
+          id: MOCK_ID_GUID,
+          trusteeId: 'trustee-456',
           name: 'Jane Smith',
           public: {
             address: {
@@ -592,7 +600,8 @@ describe('TrusteesUseCase', () => {
         description: 'should add website to trustee that previously had no website',
         trusteeId: 'trustee-789',
         existingTrustee: {
-          id: 'trustee-789',
+          id: MOCK_ID_GUID,
+          trusteeId: 'trustee-789',
           name: 'Bob Johnson',
           public: {
             address: {
@@ -642,7 +651,8 @@ describe('TrusteesUseCase', () => {
         description: 'should remove website from trustee',
         trusteeId: 'trustee-888',
         existingTrustee: {
-          id: 'trustee-888',
+          id: MOCK_ID_GUID,
+          trusteeId: 'trustee-888',
           name: 'Carol Davis',
           public: {
             address: {
@@ -695,7 +705,8 @@ describe('TrusteesUseCase', () => {
 
       // Simplified test setup
       const existingTrustee = {
-        id: trusteeId,
+        id: MOCK_ID_GUID,
+        trusteeId,
         name: 'John Doe',
         public: {
           address: {
@@ -714,7 +725,8 @@ describe('TrusteesUseCase', () => {
       };
 
       const updatedTrustee = {
-        id: trusteeId,
+        id: MOCK_ID_GUID,
+        trusteeId,
         name: 'Jane Doe Updated',
         public: {
           address: {
@@ -761,7 +773,7 @@ describe('TrusteesUseCase', () => {
       expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_NAME',
-          id: trusteeId,
+          trusteeId,
           before: existingTrustee.name,
           after: updatedTrustee.name,
         }),
@@ -771,7 +783,7 @@ describe('TrusteesUseCase', () => {
       expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_PUBLIC_CONTACT',
-          id: trusteeId,
+          trusteeId,
           before: existingTrustee.public,
           after: updatedTrustee.public,
         }),
@@ -783,7 +795,8 @@ describe('TrusteesUseCase', () => {
 
       // Simplified test setup with internal contact
       const existingTrustee = {
-        id: trusteeId,
+        id: MOCK_ID_GUID,
+        trusteeId,
         name: 'John Doe',
         public: {} as ContactInformation,
         internal: undefined, // No internal contact information
@@ -810,7 +823,8 @@ describe('TrusteesUseCase', () => {
       };
 
       const updatedTrustee = {
-        id: trusteeId,
+        id: MOCK_ID_GUID,
+        trusteeId,
         name: 'Jane Doe With Internal',
         public: {} as ContactInformation,
         internal: internalContact,
@@ -842,7 +856,7 @@ describe('TrusteesUseCase', () => {
       expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_NAME',
-          id: trusteeId,
+          trusteeId,
           before: existingTrustee.name,
           after: updatedTrustee.name,
         }),
@@ -852,7 +866,7 @@ describe('TrusteesUseCase', () => {
       expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_INTERNAL_CONTACT',
-          id: trusteeId,
+          trusteeId,
           before: existingTrustee.internal,
           after: updatedTrustee.internal,
         }),
@@ -912,7 +926,8 @@ describe('TrusteesUseCase', () => {
 
       // Trustee with initial software
       const existingTrustee = {
-        id: trusteeId,
+        id: MOCK_ID_GUID,
+        trusteeId,
         name: 'John Doe',
         public: publicContact,
         status: 'active' as const,
@@ -925,7 +940,8 @@ describe('TrusteesUseCase', () => {
 
       // Updated trustee with new software
       const updatedTrustee = {
-        id: trusteeId,
+        id: MOCK_ID_GUID,
+        trusteeId,
         name: 'John Doe',
         public: publicContact, // Use the same reference to ensure deepEqual returns true
         status: 'active' as const,
@@ -959,7 +975,7 @@ describe('TrusteesUseCase', () => {
       expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_SOFTWARE',
-          id: trusteeId,
+          trusteeId,
           before: existingTrustee.software,
           after: updatedTrustee.software,
         }),
@@ -990,7 +1006,8 @@ describe('TrusteesUseCase', () => {
 
       // Existing trustee with no internal contact
       const existingTrustee = {
-        id: trusteeId,
+        id: MOCK_ID_GUID,
+        trusteeId,
         name: 'John Doe',
         public: publicContact,
         internal: undefined, // No internal contact
@@ -1018,7 +1035,8 @@ describe('TrusteesUseCase', () => {
 
       // Updated trustee with new internal contact
       const updatedTrustee = {
-        id: trusteeId,
+        id: MOCK_ID_GUID,
+        trusteeId,
         name: 'John Doe',
         public: publicContact, // Same reference as existingTrustee.public
         internal: newInternalContact,
@@ -1051,7 +1069,7 @@ describe('TrusteesUseCase', () => {
       expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_INTERNAL_CONTACT',
-          id: trusteeId,
+          trusteeId,
           before: undefined, // Before value should be undefined, not empty object
           after: updatedTrustee.internal,
         }),
@@ -1083,7 +1101,8 @@ describe('TrusteesUseCase', () => {
       };
 
       const existingTrustee = {
-        id: trusteeId,
+        id: MOCK_ID_GUID,
+        trusteeId,
         name: 'John Doe',
         public: publicContact,
         internal: existingInternalContact,
@@ -1099,7 +1118,8 @@ describe('TrusteesUseCase', () => {
 
       // Updated trustee with empty internal contact
       const updatedTrustee = {
-        id: trusteeId,
+        id: MOCK_ID_GUID,
+        trusteeId,
         name: 'John Doe',
         public: publicContact, // Same reference as existing
         internal: emptyObject, // Empty object
@@ -1132,7 +1152,7 @@ describe('TrusteesUseCase', () => {
       expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_INTERNAL_CONTACT',
-          id: trusteeId,
+          trusteeId,
           before: existingTrustee.internal,
           after: undefined, // After value should be undefined when set to empty object
         }),
@@ -1153,7 +1173,8 @@ describe('TrusteesUseCase', () => {
 
       // Existing trustee with empty internal contact object
       const existingTrustee = {
-        id: trusteeId,
+        id: MOCK_ID_GUID,
+        trusteeId,
         name: 'John Doe',
         public: publicContact,
         internal: emptyInternalContact, // Empty object (not undefined)
@@ -1178,7 +1199,8 @@ describe('TrusteesUseCase', () => {
 
       // Updated trustee with new internal contact
       const updatedTrustee = {
-        id: trusteeId,
+        id: MOCK_ID_GUID,
+        trusteeId,
         name: 'John Doe',
         public: publicContact, // Same reference as existing
         internal: newInternalContact, // New internal contact
@@ -1211,7 +1233,7 @@ describe('TrusteesUseCase', () => {
       expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_INTERNAL_CONTACT',
-          id: trusteeId,
+          trusteeId,
           before: undefined, // Before value should be undefined because deepEqual(existingTrustee.internal, {}) returns true
           after: updatedTrustee.internal,
         }),
@@ -1243,7 +1265,8 @@ describe('TrusteesUseCase', () => {
 
       // Simplified test setup
       const existingTrustee = {
-        id: trusteeId,
+        id: MOCK_ID_GUID,
+        trusteeId,
         name: 'John Doe Old',
         public: {
           address: {
@@ -1276,7 +1299,8 @@ describe('TrusteesUseCase', () => {
       };
 
       const updatedTrustee = {
-        id: trusteeId,
+        id: MOCK_ID_GUID,
+        trusteeId,
         name: 'John Doe Updated',
         public: updatedPublicInfo,
         status: 'active' as const,
@@ -1307,7 +1331,7 @@ describe('TrusteesUseCase', () => {
       expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_NAME',
-          id: trusteeId,
+          trusteeId,
           before: existingTrustee.name,
           after: updatedTrustee.name,
         }),
@@ -1317,7 +1341,7 @@ describe('TrusteesUseCase', () => {
       expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_PUBLIC_CONTACT',
-          id: trusteeId,
+          trusteeId,
           before: existingTrustee.public,
           after: updatedTrustee.public,
         }),
@@ -1330,7 +1354,8 @@ describe('TrusteesUseCase', () => {
 
       // Setup with name that remains the same between existing and updated trustees
       const existingTrustee = {
-        id: trusteeId,
+        id: MOCK_ID_GUID,
+        trusteeId,
         name: unchangedName,
         public: {
           address: {
@@ -1363,7 +1388,8 @@ describe('TrusteesUseCase', () => {
       };
 
       const updatedTrustee = {
-        id: trusteeId,
+        id: MOCK_ID_GUID,
+        trusteeId,
         name: unchangedName, // Name remains the same
         public: updatedPublicInfo,
         status: 'active' as const,
@@ -1404,7 +1430,7 @@ describe('TrusteesUseCase', () => {
       expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_PUBLIC_CONTACT',
-          id: trusteeId,
+          trusteeId,
           before: existingTrustee.public,
           after: updatedTrustee.public,
         }),
@@ -1474,7 +1500,8 @@ describe('TrusteesUseCase', () => {
 
       // Setup with public contact info that remains the same between existing and updated trustees
       const existingTrustee = {
-        id: trusteeId,
+        id: MOCK_ID_GUID,
+        trusteeId,
         name: unchangedName,
         public: unchangedPublicInfo,
         status: 'active' as const,
@@ -1486,7 +1513,8 @@ describe('TrusteesUseCase', () => {
 
       // Updated trustee has the same public contact info but different name
       const updatedTrustee = {
-        id: trusteeId,
+        id: MOCK_ID_GUID,
+        trusteeId,
         name: 'Jane Doe Updated', // Name changes
         public: unchangedPublicInfo, // Public contact remains the same
         status: 'active' as const,
@@ -1520,7 +1548,7 @@ describe('TrusteesUseCase', () => {
       expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_NAME',
-          id: trusteeId,
+          trusteeId,
           before: existingTrustee.name,
           after: updatedTrustee.name,
         }),
@@ -1540,7 +1568,8 @@ describe('TrusteesUseCase', () => {
     test.each(updateWebsiteTestCases)('$description', async (testCase) => {
       const updatedTrustee = {
         ...testCase.updateInput,
-        id: testCase.trusteeId,
+        id: MOCK_ID_GUID,
+        trusteeId: testCase.trusteeId,
         createdOn: '2025-08-12T10:00:00Z',
         createdBy: mockUserReference,
         updatedOn: '2025-08-12T11:00:00Z',
@@ -1672,8 +1701,9 @@ describe('TrusteesUseCase', () => {
       const trusteeId = 'trustee-123';
       const mockHistory = [
         {
+          id: MOCK_ID_GUID,
           documentType: 'AUDIT_NAME' as const,
-          id: trusteeId,
+          trusteeId,
           before: 'John Doe',
           after: 'John Smith',
           createdOn: '2025-08-12T10:00:00Z',
@@ -1682,8 +1712,9 @@ describe('TrusteesUseCase', () => {
           updatedBy: mockUserReference,
         },
         {
+          id: MOCK_ID_GUID,
           documentType: 'AUDIT_PUBLIC_CONTACT' as const,
-          id: trusteeId,
+          trusteeId,
           before: {
             address: {
               address1: '123 Old St',
@@ -1770,7 +1801,8 @@ describe('trusteeSpec', () => {
   );
 
   const validTrustee: Trustee = {
-    id: 'trusteeId',
+    id: MOCK_ID_GUID,
+    trusteeId: '--trusteeId--',
     updatedBy: {
       id: 'userid',
       name: 'Some User',
