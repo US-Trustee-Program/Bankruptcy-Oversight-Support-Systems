@@ -1,1 +1,1 @@
-export type Creatable<T> = Omit<T, '_id'>;
+export type Creatable<T> = Omit<T, '_id' | 'id'>;

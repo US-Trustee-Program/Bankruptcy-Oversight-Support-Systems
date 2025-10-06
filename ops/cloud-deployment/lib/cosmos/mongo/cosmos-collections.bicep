@@ -279,7 +279,7 @@ resource officeAssigneesCollection 'Microsoft.DocumentDB/databaseAccounts/mongod
   }
 }
 
-resource officeAssigneesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
+resource listsCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
   parent: database
   name: 'lists'
   properties: {
@@ -302,6 +302,44 @@ resource officeAssigneesCollection 'Microsoft.DocumentDB/databaseAccounts/mongod
         {
           key: {
             keys: ['key']
+          }
+        }
+        {
+          key: {
+            keys: [
+              'list'
+              'key'
+            ]
+          }
+          options: {
+            unique: true
+          }
+        }
+      ]
+    }
+  }
+}
+
+resource trusteesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
+  parent: database
+  name: 'trustees'
+  properties: {
+    resource: {
+      id: 'lists'
+      shardKey: {
+        trusteeId: 'Hash'
+      }
+      indexes: [
+        {
+          key: {
+            keys: ['_id']
+          }
+        }
+        {
+          key: {
+            keys: [
+              '$**'
+            ]
           }
         }
       ]

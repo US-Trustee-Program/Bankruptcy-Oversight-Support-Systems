@@ -69,7 +69,7 @@ describe('TrusteeDetailAuditHistory', () => {
   }
 
   const mockNameHistory: TrusteeNameHistory = {
-    id: 'audit-1',
+    trusteeId: 'audit-1',
     documentType: 'AUDIT_NAME',
     before: 'John Smith',
     after: 'John Doe',
@@ -78,7 +78,7 @@ describe('TrusteeDetailAuditHistory', () => {
   };
 
   const mockPublicContactHistory: TrusteePublicContactHistory = {
-    id: 'audit-2',
+    trusteeId: 'audit-2',
     documentType: 'AUDIT_PUBLIC_CONTACT',
     before: {
       email: 'old@example.com',
@@ -111,7 +111,7 @@ describe('TrusteeDetailAuditHistory', () => {
   };
 
   const mockInternalContactHistory: TrusteeInternalContactHistory = {
-    id: 'audit-3',
+    trusteeId: 'audit-3',
     documentType: 'AUDIT_INTERNAL_CONTACT',
     before: undefined,
     after: {
@@ -261,7 +261,7 @@ describe('TrusteeDetailAuditHistory', () => {
 
   test('should handle contact information with missing fields', async () => {
     const contactHistoryWithMissingFields: TrusteePublicContactHistory = {
-      id: 'audit-4',
+      trusteeId: 'audit-4',
       documentType: 'AUDIT_PUBLIC_CONTACT',
       before: createPartialContactInfo({
         email: 'email@example.com',
@@ -300,7 +300,7 @@ describe('TrusteeDetailAuditHistory', () => {
 
   test('should handle completely empty contact information', async () => {
     const contactHistoryEmpty: TrusteePublicContactHistory = {
-      id: 'audit-5',
+      trusteeId: 'audit-5',
       documentType: 'AUDIT_PUBLIC_CONTACT',
       before: undefined,
       after: undefined,
@@ -322,7 +322,7 @@ describe('TrusteeDetailAuditHistory', () => {
 
   test('should handle missing name fields in name history', async () => {
     const nameHistoryWithNulls: TrusteeNameHistory = {
-      id: 'audit-6',
+      trusteeId: 'audit-6',
       documentType: 'AUDIT_NAME',
       before: undefined,
       after: undefined,
@@ -365,7 +365,7 @@ describe('TrusteeDetailAuditHistory', () => {
 
   test('should handle phone number without extension', async () => {
     const contactHistoryNoExtension: TrusteePublicContactHistory = {
-      id: 'audit-7',
+      trusteeId: 'audit-7',
       documentType: 'AUDIT_PUBLIC_CONTACT',
       before: createPartialContactInfo({
         phone: { number: '555-123-4567' },
@@ -395,7 +395,7 @@ describe('TrusteeDetailAuditHistory', () => {
 
   test('should handle missing updatedBy field', async () => {
     const historyWithoutUpdatedBy: TrusteeNameHistory = {
-      id: 'audit-8',
+      trusteeId: 'audit-8',
       documentType: 'AUDIT_NAME',
       before: 'Old Name',
       after: 'New Name',
@@ -416,7 +416,7 @@ describe('TrusteeDetailAuditHistory', () => {
 
   test('should handle contact with only address1 and zipCode', async () => {
     const contactHistoryPartialAddress: TrusteePublicContactHistory = {
-      id: 'audit-9',
+      trusteeId: 'audit-9',
       documentType: 'AUDIT_PUBLIC_CONTACT',
       before: createPartialContactInfo({
         address: {
@@ -456,7 +456,7 @@ describe('TrusteeDetailAuditHistory', () => {
 
   test('should handle contact with address2 and address3', async () => {
     const contactHistoryWithAllAddressFields: TrusteePublicContactHistory = {
-      id: 'audit-10',
+      trusteeId: 'audit-10',
       documentType: 'AUDIT_PUBLIC_CONTACT',
       before: createPartialContactInfo({
         address: {
@@ -495,7 +495,7 @@ describe('TrusteeDetailAuditHistory', () => {
 
   test('should handle contact with only city and state', async () => {
     const contactHistoryCityState: TrusteePublicContactHistory = {
-      id: 'audit-11',
+      trusteeId: 'audit-11',
       documentType: 'AUDIT_PUBLIC_CONTACT',
       before: createPartialContactInfo({
         address: {
@@ -527,7 +527,7 @@ describe('TrusteeDetailAuditHistory', () => {
 
   test('should handle contact with only state', async () => {
     const contactHistoryStateOnly: TrusteePublicContactHistory = {
-      id: 'audit-12',
+      trusteeId: 'audit-12',
       documentType: 'AUDIT_PUBLIC_CONTACT',
       before: createPartialContactInfo({
         address: {
@@ -559,7 +559,7 @@ describe('TrusteeDetailAuditHistory', () => {
 
   test('should handle contact with only city', async () => {
     const contactHistoryCityOnly: TrusteePublicContactHistory = {
-      id: 'audit-13',
+      trusteeId: 'audit-13',
       documentType: 'AUDIT_PUBLIC_CONTACT',
       before: createPartialContactInfo({
         address: {
@@ -591,7 +591,7 @@ describe('TrusteeDetailAuditHistory', () => {
 
   test('should handle contact with undefined address', async () => {
     const contactHistoryUndefinedAddress: TrusteePublicContactHistory = {
-      id: 'audit-14',
+      trusteeId: 'audit-14',
       documentType: 'AUDIT_PUBLIC_CONTACT',
       before: {
         email: 'test@example.com',
@@ -620,7 +620,7 @@ describe('TrusteeDetailAuditHistory', () => {
 
   test('should handle contact with undefined phone', async () => {
     const contactHistoryUndefinedPhone: TrusteePublicContactHistory = {
-      id: 'audit-15',
+      trusteeId: 'audit-15',
       documentType: 'AUDIT_PUBLIC_CONTACT',
       before: {
         email: 'test@example.com',
@@ -659,7 +659,7 @@ describe('TrusteeDetailAuditHistory', () => {
 
   test('should handle contact with phone number but undefined extension', async () => {
     const contactHistoryPhoneNoExtension: TrusteePublicContactHistory = {
-      id: 'audit-16',
+      trusteeId: 'audit-16',
       documentType: 'AUDIT_PUBLIC_CONTACT',
       before: createPartialContactInfo({
         phone: { number: '555-999-8888', extension: undefined },
@@ -686,7 +686,7 @@ describe('TrusteeDetailAuditHistory', () => {
 
   test('should handle completely undefined contact information', async () => {
     const contactHistoryUndefinedContact: TrusteePublicContactHistory = {
-      id: 'audit-17',
+      trusteeId: 'audit-17',
       documentType: 'AUDIT_PUBLIC_CONTACT',
       before: undefined,
       after: undefined,
@@ -708,7 +708,7 @@ describe('TrusteeDetailAuditHistory', () => {
 
   test('should handle empty string in name history', async () => {
     const nameHistoryEmptyStrings: TrusteeNameHistory = {
-      id: 'audit-18',
+      trusteeId: 'audit-18',
       documentType: 'AUDIT_NAME',
       before: '',
       after: '',

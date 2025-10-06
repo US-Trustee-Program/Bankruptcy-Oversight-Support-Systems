@@ -10,6 +10,7 @@ import {
   TrusteePublicContactHistory,
   TrusteeInternalContactHistory,
   TrusteeBankHistory,
+  TrusteeSoftwareHistory,
 } from '@common/cams/trustees';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
 import { Auditable } from '@common/cams/auditable';
@@ -116,6 +117,28 @@ function ShowTrusteeBankHistory(props: ShowTrusteeBankHistoryProps) {
   );
 }
 
+type ShowTrusteeSoftwareHistoryProps = Readonly<{
+  history: TrusteeSoftwareHistory;
+  idx: number;
+}>;
+
+function ShowTrusteeSoftwareHistory(props: ShowTrusteeSoftwareHistoryProps) {
+  const { history, idx } = props;
+  return (
+    <tr>
+      <td>Software</td>
+      <td data-testid={`previous-software-${idx}`}>{history.before || '(none)'}</td>
+      <td data-testid={`new-software-${idx}`}>{history.after || '(none)'}</td>
+      <td data-testid={`changed-by-${idx}`}>
+        {history.updatedBy && <>{history.updatedBy.name}</>}
+      </td>
+      <td data-testid={`change-date-${idx}`}>
+        <span className="text-no-wrap">{formatDate(history.updatedOn)}</span>
+      </td>
+    </tr>
+  );
+}
+
 function RenderTrusteeHistory(props: Readonly<{ trusteeHistory: TrusteeHistory[] }>) {
   const { trusteeHistory } = props;
   return (
@@ -123,22 +146,16 @@ function RenderTrusteeHistory(props: Readonly<{ trusteeHistory: TrusteeHistory[]
       {trusteeHistory.map((history, idx: number) => {
         switch (history.documentType) {
           case 'AUDIT_NAME':
-            return (
-              <ShowTrusteeNameHistory key={`${history.id}-${idx}`} history={history} idx={idx} />
-            );
+            return <ShowTrusteeNameHistory key={history.id} history={history} idx={idx} />;
           case 'AUDIT_PUBLIC_CONTACT':
           case 'AUDIT_INTERNAL_CONTACT':
-            return (
-              <ShowTrusteeContactHistory
-                key={window.crypto.randomUUID()}
-                history={history}
-                idx={idx}
-              />
-            );
+            return <ShowTrusteeContactHistory key={history.id} history={history} idx={idx} />;
           case 'AUDIT_BANKS':
+            return <ShowTrusteeBankHistory key={history.id} history={history} idx={idx} />;
+          case 'AUDIT_SOFTWARE':
             return (
-              <ShowTrusteeBankHistory
-                key={window.crypto.randomUUID()}
+              <ShowTrusteeSoftwareHistory
+                key={`${history.trusteeId}-${idx}`}
                 history={history}
                 idx={idx}
               />
