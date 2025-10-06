@@ -7,10 +7,16 @@ import {
   TrusteeHistory,
   TrusteeNameHistory,
   TrusteePublicContactHistory,
-  TrusteeInternalContactHistory,
+  TrusteeSoftwareHistory,
 } from '@common/cams/trustees';
-import { ContactInformation } from '@common/cams/contact';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+import {
+  createMockNameHistory,
+  createMockPublicContactHistory,
+  createMockInternalContactHistory,
+  TestScenarios,
+  resetMockIdCounter,
+} from './test-helpers/trustee-history-factories';
 
 // Mock useApi2 hook
 const mockGetTrusteeHistory = vi.fn();
@@ -29,34 +35,9 @@ vi.mock('@/lib/utils/datetime', () => ({
 describe('TrusteeDetailAuditHistory', () => {
   const mockTrusteeId = '12345';
 
-  // Test helpers for creating properly typed mock data
-  const createPartialContactInfo = (fields: Partial<ContactInformation>): ContactInformation => {
-    // Create a minimal valid ContactInformation and merge with provided fields
-    const base: ContactInformation = {
-      address: {
-        address1: '',
-        city: '',
-        state: '',
-        zipCode: '',
-        countryCode: 'US',
-      },
-    };
-
-    if (fields.address) {
-      base.address = { ...base.address, ...fields.address };
-    }
-    if (fields.phone) {
-      base.phone = fields.phone;
-    }
-    if (fields.email) {
-      base.email = fields.email;
-    }
-
-    return base;
-  };
-
   beforeEach(() => {
     vi.clearAllMocks();
+    resetMockIdCounter(); // Ensures consistent test IDs
   });
 
   function renderWithProps(props?: Partial<TrusteeDetailAuditHistoryProps>) {
@@ -68,18 +49,9 @@ describe('TrusteeDetailAuditHistory', () => {
     render(<TrusteeDetailAuditHistory {...renderProps} />);
   }
 
-  const mockNameHistory: TrusteeNameHistory = {
-    trusteeId: 'audit-1',
-    documentType: 'AUDIT_NAME',
-    before: 'John Smith',
-    after: 'John Doe',
-    updatedOn: '2024-01-15T10:00:00Z',
-    updatedBy: SYSTEM_USER_REFERENCE,
-  };
-
-  const mockPublicContactHistory: TrusteePublicContactHistory = {
-    trusteeId: 'audit-2',
-    documentType: 'AUDIT_PUBLIC_CONTACT',
+  // Using factory functions for base mock data - much cleaner!
+  const mockNameHistory = createMockNameHistory();
+  const mockPublicContactHistory = createMockPublicContactHistory({
     before: {
       email: 'old@example.com',
       phone: { number: '555-123-4567', extension: '123' },
@@ -106,33 +78,8 @@ describe('TrusteeDetailAuditHistory', () => {
         countryCode: 'US',
       },
     },
-    updatedOn: '2024-01-16T11:00:00Z',
-    updatedBy: SYSTEM_USER_REFERENCE,
-  };
-
-  const mockInternalContactHistory: TrusteeInternalContactHistory = {
-    trusteeId: 'audit-3',
-    documentType: 'AUDIT_INTERNAL_CONTACT',
-    before: undefined,
-    after: {
-      email: 'internal@example.com',
-      phone: { number: '555-111-2222' },
-      address: {
-        address1: '789 Internal St',
-        address2: '',
-        address3: '',
-        city: 'Internal City',
-        state: 'TX',
-        zipCode: '78901',
-        countryCode: 'US',
-      },
-    },
-    updatedOn: '2024-01-17T12:00:00Z',
-    updatedBy: {
-      id: 'user-456',
-      name: 'Jane Admin',
-    },
-  };
+  });
+  const mockInternalContactHistory = createMockInternalContactHistory();
 
   test('should show loading indicator while fetching data', () => {
     mockGetTrusteeHistory.mockReturnValue(new Promise(() => {})); // Never resolves
@@ -260,20 +207,10 @@ describe('TrusteeDetailAuditHistory', () => {
   });
 
   test('should handle contact information with missing fields', async () => {
-    const contactHistoryWithMissingFields: TrusteePublicContactHistory = {
-      trusteeId: 'audit-4',
-      documentType: 'AUDIT_PUBLIC_CONTACT',
-      before: createPartialContactInfo({
-        email: 'email@example.com',
-      }),
-      after: createPartialContactInfo({
-        phone: { number: '555-123-4567' },
-      }),
-      updatedOn: '2024-01-18T13:00:00Z',
-      updatedBy: SYSTEM_USER_REFERENCE,
-    };
+    // Much cleaner using the factory function!
+    const contactHistory = TestScenarios.emailOnly();
 
-    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistoryWithMissingFields] });
+    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistory] });
 
     renderWithProps({});
 
@@ -299,16 +236,10 @@ describe('TrusteeDetailAuditHistory', () => {
   });
 
   test('should handle completely empty contact information', async () => {
-    const contactHistoryEmpty: TrusteePublicContactHistory = {
-      trusteeId: 'audit-5',
-      documentType: 'AUDIT_PUBLIC_CONTACT',
-      before: undefined,
-      after: undefined,
-      updatedOn: '2024-01-18T13:00:00Z',
-      updatedBy: SYSTEM_USER_REFERENCE,
-    };
+    // Using TestScenarios for edge case
+    const contactHistory = TestScenarios.emptyContact();
 
-    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistoryEmpty] });
+    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistory] });
 
     renderWithProps({});
 
@@ -321,16 +252,10 @@ describe('TrusteeDetailAuditHistory', () => {
   });
 
   test('should handle missing name fields in name history', async () => {
-    const nameHistoryWithNulls: TrusteeNameHistory = {
-      trusteeId: 'audit-6',
-      documentType: 'AUDIT_NAME',
-      before: undefined,
-      after: undefined,
-      updatedOn: '2024-01-18T14:00:00Z',
-      updatedBy: SYSTEM_USER_REFERENCE,
-    };
+    // Using TestScenarios for cleaner test data
+    const nameHistory = TestScenarios.emptyName();
 
-    mockGetTrusteeHistory.mockResolvedValue({ data: [nameHistoryWithNulls] });
+    mockGetTrusteeHistory.mockResolvedValue({ data: [nameHistory] });
 
     renderWithProps({});
 
@@ -364,20 +289,10 @@ describe('TrusteeDetailAuditHistory', () => {
   });
 
   test('should handle phone number without extension', async () => {
-    const contactHistoryNoExtension: TrusteePublicContactHistory = {
-      trusteeId: 'audit-7',
-      documentType: 'AUDIT_PUBLIC_CONTACT',
-      before: createPartialContactInfo({
-        phone: { number: '555-123-4567' },
-      }),
-      after: createPartialContactInfo({
-        phone: { number: '555-987-6543' },
-      }),
-      updatedOn: '2024-01-18T15:00:00Z',
-      updatedBy: SYSTEM_USER_REFERENCE,
-    };
+    // Using TestScenarios for common edge cases
+    const contactHistory = TestScenarios.phoneNoExtension();
 
-    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistoryNoExtension] });
+    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistory] });
 
     renderWithProps({});
 
@@ -395,6 +310,7 @@ describe('TrusteeDetailAuditHistory', () => {
 
   test('should handle missing updatedBy field', async () => {
     const historyWithoutUpdatedBy: TrusteeNameHistory = {
+      id: 'audit-8-id',
       trusteeId: 'audit-8',
       documentType: 'AUDIT_NAME',
       before: 'Old Name',
@@ -415,24 +331,10 @@ describe('TrusteeDetailAuditHistory', () => {
   });
 
   test('should handle contact with only address1 and zipCode', async () => {
-    const contactHistoryPartialAddress: TrusteePublicContactHistory = {
-      trusteeId: 'audit-9',
-      documentType: 'AUDIT_PUBLIC_CONTACT',
-      before: createPartialContactInfo({
-        address: {
-          address1: '123 Main St',
-          city: '',
-          state: '',
-          zipCode: '12345',
-          countryCode: 'US',
-        },
-      }),
-      after: createPartialContactInfo({}),
-      updatedOn: '2024-01-19T10:00:00Z',
-      updatedBy: SYSTEM_USER_REFERENCE,
-    };
+    // Using TestScenarios for cleaner test data
+    const contactHistory = TestScenarios.addressPartial();
 
-    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistoryPartialAddress] });
+    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistory] });
 
     renderWithProps({});
 
@@ -455,26 +357,10 @@ describe('TrusteeDetailAuditHistory', () => {
   });
 
   test('should handle contact with address2 and address3', async () => {
-    const contactHistoryWithAllAddressFields: TrusteePublicContactHistory = {
-      trusteeId: 'audit-10',
-      documentType: 'AUDIT_PUBLIC_CONTACT',
-      before: createPartialContactInfo({
-        address: {
-          address1: '123 Main St',
-          address2: 'Suite 200',
-          address3: 'Building A',
-          city: 'Test City',
-          state: 'TX',
-          zipCode: '78901',
-          countryCode: 'US',
-        },
-      }),
-      after: createPartialContactInfo({}),
-      updatedOn: '2024-01-19T11:00:00Z',
-      updatedBy: SYSTEM_USER_REFERENCE,
-    };
+    // Using TestScenarios for cleaner test data
+    const contactHistory = TestScenarios.addressComplete();
 
-    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistoryWithAllAddressFields] });
+    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistory] });
 
     renderWithProps({});
 
@@ -494,24 +380,10 @@ describe('TrusteeDetailAuditHistory', () => {
   });
 
   test('should handle contact with only city and state', async () => {
-    const contactHistoryCityState: TrusteePublicContactHistory = {
-      trusteeId: 'audit-11',
-      documentType: 'AUDIT_PUBLIC_CONTACT',
-      before: createPartialContactInfo({
-        address: {
-          address1: '',
-          city: 'Los Angeles',
-          state: 'CA',
-          zipCode: '',
-          countryCode: 'US',
-        },
-      }),
-      after: createPartialContactInfo({}),
-      updatedOn: '2024-01-19T12:00:00Z',
-      updatedBy: SYSTEM_USER_REFERENCE,
-    };
+    // Using TestScenarios for cleaner test data
+    const contactHistory = TestScenarios.cityAndState();
 
-    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistoryCityState] });
+    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistory] });
 
     renderWithProps({});
 
@@ -526,24 +398,10 @@ describe('TrusteeDetailAuditHistory', () => {
   });
 
   test('should handle contact with only state', async () => {
-    const contactHistoryStateOnly: TrusteePublicContactHistory = {
-      trusteeId: 'audit-12',
-      documentType: 'AUDIT_PUBLIC_CONTACT',
-      before: createPartialContactInfo({
-        address: {
-          address1: '',
-          city: '',
-          state: 'FL',
-          zipCode: '',
-          countryCode: 'US',
-        },
-      }),
-      after: createPartialContactInfo({}),
-      updatedOn: '2024-01-19T13:00:00Z',
-      updatedBy: SYSTEM_USER_REFERENCE,
-    };
+    // Using TestScenarios for cleaner test data
+    const contactHistory = TestScenarios.stateOnly();
 
-    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistoryStateOnly] });
+    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistory] });
 
     renderWithProps({});
 
@@ -558,24 +416,10 @@ describe('TrusteeDetailAuditHistory', () => {
   });
 
   test('should handle contact with only city', async () => {
-    const contactHistoryCityOnly: TrusteePublicContactHistory = {
-      trusteeId: 'audit-13',
-      documentType: 'AUDIT_PUBLIC_CONTACT',
-      before: createPartialContactInfo({
-        address: {
-          address1: '',
-          city: 'Chicago',
-          state: '',
-          zipCode: '',
-          countryCode: 'US',
-        },
-      }),
-      after: createPartialContactInfo({}),
-      updatedOn: '2024-01-19T14:00:00Z',
-      updatedBy: SYSTEM_USER_REFERENCE,
-    };
+    // Using TestScenarios for cleaner test data
+    const contactHistory = TestScenarios.cityOnly();
 
-    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistoryCityOnly] });
+    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistory] });
 
     renderWithProps({});
 
@@ -590,19 +434,10 @@ describe('TrusteeDetailAuditHistory', () => {
   });
 
   test('should handle contact with undefined address', async () => {
-    const contactHistoryUndefinedAddress: TrusteePublicContactHistory = {
-      trusteeId: 'audit-14',
-      documentType: 'AUDIT_PUBLIC_CONTACT',
-      before: {
-        email: 'test@example.com',
-        phone: { number: '555-123-4567' },
-      } as unknown as ContactInformation,
-      after: createPartialContactInfo({}),
-      updatedOn: '2024-01-19T15:00:00Z',
-      updatedBy: SYSTEM_USER_REFERENCE,
-    };
+    // Much cleaner using the test scenario!
+    const contactHistory = TestScenarios.undefinedAddress();
 
-    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistoryUndefinedAddress] });
+    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistory] });
 
     renderWithProps({});
 
@@ -619,26 +454,10 @@ describe('TrusteeDetailAuditHistory', () => {
   });
 
   test('should handle contact with undefined phone', async () => {
-    const contactHistoryUndefinedPhone: TrusteePublicContactHistory = {
-      trusteeId: 'audit-15',
-      documentType: 'AUDIT_PUBLIC_CONTACT',
-      before: {
-        email: 'test@example.com',
-        phone: undefined,
-        address: {
-          address1: '123 Test St',
-          city: 'Test City',
-          state: 'TX',
-          zipCode: '12345',
-          countryCode: 'US',
-        },
-      } as ContactInformation,
-      after: createPartialContactInfo({}),
-      updatedOn: '2024-01-19T16:00:00Z',
-      updatedBy: SYSTEM_USER_REFERENCE,
-    };
+    // Using TestScenarios for cleaner test data
+    const contactHistory = TestScenarios.undefinedPhone();
 
-    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistoryUndefinedPhone] });
+    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistory] });
 
     renderWithProps({});
 
@@ -658,18 +477,10 @@ describe('TrusteeDetailAuditHistory', () => {
   });
 
   test('should handle contact with phone number but undefined extension', async () => {
-    const contactHistoryPhoneNoExtension: TrusteePublicContactHistory = {
-      trusteeId: 'audit-16',
-      documentType: 'AUDIT_PUBLIC_CONTACT',
-      before: createPartialContactInfo({
-        phone: { number: '555-999-8888', extension: undefined },
-      }),
-      after: createPartialContactInfo({}),
-      updatedOn: '2024-01-19T17:00:00Z',
-      updatedBy: SYSTEM_USER_REFERENCE,
-    };
+    // Using TestScenarios for cleaner test data
+    const contactHistory = TestScenarios.phoneNoExtensionUndefined();
 
-    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistoryPhoneNoExtension] });
+    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistory] });
 
     renderWithProps({});
 
@@ -686,6 +497,7 @@ describe('TrusteeDetailAuditHistory', () => {
 
   test('should handle completely undefined contact information', async () => {
     const contactHistoryUndefinedContact: TrusteePublicContactHistory = {
+      id: 'audit-17-id',
       trusteeId: 'audit-17',
       documentType: 'AUDIT_PUBLIC_CONTACT',
       before: undefined,
@@ -707,16 +519,10 @@ describe('TrusteeDetailAuditHistory', () => {
   });
 
   test('should handle empty string in name history', async () => {
-    const nameHistoryEmptyStrings: TrusteeNameHistory = {
-      trusteeId: 'audit-18',
-      documentType: 'AUDIT_NAME',
-      before: '',
-      after: '',
-      updatedOn: '2024-01-19T19:00:00Z',
-      updatedBy: SYSTEM_USER_REFERENCE,
-    };
+    // Using TestScenarios for cleaner test data
+    const nameHistory = TestScenarios.emptyStringName();
 
-    mockGetTrusteeHistory.mockResolvedValue({ data: [nameHistoryEmptyStrings] });
+    mockGetTrusteeHistory.mockResolvedValue({ data: [nameHistory] });
 
     renderWithProps({});
 
@@ -919,6 +725,77 @@ describe('TrusteeDetailAuditHistory', () => {
       expect(previousBanks).toHaveTextContent('Bank C');
       expect(newBanks).toHaveTextContent('Bank X');
       expect(newBanks).toHaveTextContent('Bank Y');
+    });
+  });
+
+  describe('Software History Tests', () => {
+    const mockSoftwareHistory: TrusteeSoftwareHistory = {
+      id: 'audit-software-1',
+      trusteeId: 'audit-software-trustee',
+      documentType: 'AUDIT_SOFTWARE',
+      before: 'Legacy Software v1.0',
+      after: 'Modern Software v2.5',
+      updatedOn: '2024-01-21T15:30:00Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
+    };
+
+    test('should display software change history correctly', async () => {
+      mockGetTrusteeHistory.mockResolvedValue({ data: [mockSoftwareHistory] });
+
+      renderWithProps({});
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
+
+      // Check software change row
+      expect(screen.getByTestId('change-type-software-0')).toHaveTextContent('Software');
+      expect(screen.getByTestId('previous-software-0')).toHaveTextContent('Legacy Software v1.0');
+      expect(screen.getByTestId('new-software-0')).toHaveTextContent('Modern Software v2.5');
+      expect(screen.getByTestId('changed-by-0')).toHaveTextContent('SYSTEM');
+      expect(screen.getByTestId('change-date-0')).toHaveTextContent(
+        'formatted-2024-01-21T15:30:00Z',
+      );
+    });
+
+    test('should display (none) for undefined software values', async () => {
+      const softwareHistoryWithUndefined = {
+        ...mockSoftwareHistory,
+        before: undefined,
+        after: undefined,
+      };
+
+      mockGetTrusteeHistory.mockResolvedValue({ data: [softwareHistoryWithUndefined] });
+
+      renderWithProps({});
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('previous-software-0')).toHaveTextContent('(none)');
+      expect(screen.getByTestId('new-software-0')).toHaveTextContent('(none)');
+    });
+
+    test('should render ShowTrusteeSoftwareHistory component in switch case', async () => {
+      mockGetTrusteeHistory.mockResolvedValue({ data: [mockSoftwareHistory] });
+
+      renderWithProps({});
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
+
+      // Verify the component is rendered correctly - this tests lines 155-162
+      expect(screen.getByTestId('change-type-software-0')).toHaveTextContent('Software');
+      const softwareRow = screen.getByTestId('change-type-software-0').closest('tr');
+      expect(softwareRow).toBeInTheDocument();
+
+      // Verify the specific test IDs that ShowTrusteeSoftwareHistory creates
+      expect(screen.getByTestId('previous-software-0')).toBeInTheDocument();
+      expect(screen.getByTestId('new-software-0')).toBeInTheDocument();
+      expect(screen.getByTestId('changed-by-0')).toBeInTheDocument();
+      expect(screen.getByTestId('change-date-0')).toBeInTheDocument();
     });
   });
 });
