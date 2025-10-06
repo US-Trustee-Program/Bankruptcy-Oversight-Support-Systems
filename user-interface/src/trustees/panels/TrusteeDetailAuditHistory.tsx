@@ -126,7 +126,7 @@ function ShowTrusteeSoftwareHistory(props: ShowTrusteeSoftwareHistoryProps) {
   const { history, idx } = props;
   return (
     <tr>
-      <td>Software</td>
+      <td data-testid={`change-type-software-${idx}`}>Software</td>
       <td data-testid={`previous-software-${idx}`}>{history.before || '(none)'}</td>
       <td data-testid={`new-software-${idx}`}>{history.after || '(none)'}</td>
       <td data-testid={`changed-by-${idx}`}>
