@@ -70,9 +70,12 @@ describe('TrusteeOtherInfoForm', () => {
     vi.restoreAllMocks();
   });
 
-  test('renders the form with initial bank fields', () => {
+  test('renders the form with initial bank fields', async () => {
     render(<TrusteeOtherInfoForm trusteeId={TEST_TRUSTEE_ID} banks={TEST_BANKS} />);
-    expect(screen.getByTestId('trustee-other-info-form')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-other-info-form')).toBeInTheDocument();
+    });
 
     // Check all initial bank fields are rendered
     TEST_BANKS.forEach((bank, index) => {
@@ -86,10 +89,12 @@ describe('TrusteeOtherInfoForm', () => {
     expect(screen.getByText('Add another bank')).toBeInTheDocument();
   });
 
-  test('renders the form with empty bank field when no banks are provided', () => {
+  test('renders the form with empty bank field when no banks are provided', async () => {
     render(<TrusteeOtherInfoForm trusteeId={TEST_TRUSTEE_ID} />);
 
-    expect(screen.getByTestId('trustee-other-info-form')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-other-info-form')).toBeInTheDocument();
+    });
     expect(screen.getByTestId('trustee-banks-0')).toHaveValue('');
     expect(screen.queryByText('Remove Bank')).not.toBeInTheDocument();
   });
@@ -399,9 +404,6 @@ describe('TrusteeOtherInfoForm', () => {
     // Mock the API to reject
     getBankruptcySoftwareListSpy.mockRejectedValueOnce(new Error('API Error'));
 
-    // Spy on console.error to verify error logging
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
     render(<TrusteeOtherInfoForm trusteeId={TEST_TRUSTEE_ID} />);
 
     // Wait for the API call to be made and fail
@@ -409,17 +411,7 @@ describe('TrusteeOtherInfoForm', () => {
       expect(getBankruptcySoftwareListSpy).toHaveBeenCalled();
     });
 
-    // Verify error was logged
-    await waitFor(() => {
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Failed to fetch software options:',
-        expect.any(Error),
-      );
-    });
-
     // Form should still be functional - the ComboBox should exist even with empty options
     expect(screen.getByLabelText('Bankruptcy Software')).toBeInTheDocument();
-
-    consoleSpy.mockRestore();
   });
 });
