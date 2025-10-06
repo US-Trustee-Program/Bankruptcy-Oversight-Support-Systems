@@ -193,6 +193,8 @@ export interface ListsRepository extends Releasable {
   postBankruptcySoftware(item: Creatable<BankruptcySoftwareListItem>): Promise<string>;
   getBankList(): Promise<BankList>;
   postBank(item: Creatable<BankListItem>): Promise<string>;
+  deleteBankruptcySoftware(id: string): Promise<void>;
+  deleteBank(id: string): Promise<void>;
 }
 
 export interface UsersRepository extends Releasable {

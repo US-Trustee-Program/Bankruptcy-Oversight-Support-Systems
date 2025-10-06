@@ -13,6 +13,7 @@ import { Creatable } from '../../../../../common/src/cams/creatable';
 
 const mockAggregate = jest.fn();
 const mockInsertOne = jest.fn();
+const mockDeleteOne = jest.fn();
 
 describe('ListsMongoRepository', () => {
   let context: ApplicationContext;
@@ -21,8 +22,10 @@ describe('ListsMongoRepository', () => {
   beforeEach(async () => {
     mockAggregate.mockReset();
     mockInsertOne.mockReset();
+    mockDeleteOne.mockReset();
     jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockImplementation(mockInsertOne);
     jest.spyOn(MongoCollectionAdapter.prototype, 'aggregate').mockImplementation(mockAggregate);
+    jest.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockImplementation(mockDeleteOne);
     context = await createMockApplicationContext({
       env: {
         MONGO_CONNECTION_STRING: 'mongodb://localhost:27017',
@@ -197,6 +200,42 @@ describe('ListsMongoRepository', () => {
       };
       mockInsertOne.mockRejectedValue(error);
       await expect(repository.postBank(itemToCreate)).rejects.toThrow();
+    });
+  });
+
+  describe('deleteBankruptcySoftware', () => {
+    test('should delete bankruptcy software item from database', async () => {
+      const itemId = '12345';
+      // Mock with the correct result structure expected by deleteOne
+      mockDeleteOne.mockResolvedValue({ deletedCount: 1 });
+      await repository.deleteBankruptcySoftware(itemId);
+      expect(mockDeleteOne).toHaveBeenCalled();
+      expect(mockDeleteOne).toHaveBeenCalledTimes(1);
+    });
+
+    test('should handle database errors when deleting bankruptcy software', async () => {
+      const error = new Error('Failed to delete bankruptcy software');
+      const itemId = '12345';
+      mockDeleteOne.mockRejectedValue(error);
+      await expect(repository.deleteBankruptcySoftware(itemId)).rejects.toThrow();
+    });
+  });
+
+  describe('deleteBank', () => {
+    test('should delete bank item from database', async () => {
+      const itemId = '67890';
+      // Mock with the correct result structure expected by deleteOne
+      mockDeleteOne.mockResolvedValue({ deletedCount: 1 });
+      await repository.deleteBank(itemId);
+      expect(mockDeleteOne).toHaveBeenCalled();
+      expect(mockDeleteOne).toHaveBeenCalledTimes(1);
+    });
+
+    test('should handle database errors when deleting bank', async () => {
+      const error = new Error('Failed to delete bank');
+      const itemId = '67890';
+      mockDeleteOne.mockRejectedValue(error);
+      await expect(repository.deleteBank(itemId)).rejects.toThrow();
     });
   });
 });

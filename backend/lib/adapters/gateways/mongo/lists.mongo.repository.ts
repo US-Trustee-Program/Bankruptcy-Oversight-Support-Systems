@@ -17,7 +17,7 @@ import QueryPipeline from '../../../query/query-pipeline';
 const MODULE_NAME = 'LISTS-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'lists';
 
-const { using } = QueryBuilder;
+const { using, and } = QueryBuilder;
 
 export class ListsMongoRepository extends BaseMongoRepository implements ListsRepository {
   private static referenceCount: number = 0;
@@ -89,5 +89,25 @@ export class ListsMongoRepository extends BaseMongoRepository implements ListsRe
 
   public async postBank(item: Creatable<BankListItem>): Promise<string> {
     return this.postListItem<BankListItem>(item);
+  }
+
+  public async deleteBankruptcySoftware(id: string): Promise<void> {
+    try {
+      await this.getAdapter<BankruptcySoftwareListItem>().deleteOne(
+        and(this.doc('_id').equals(id), this.doc('list').equals('bankruptcy-software')),
+      );
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  public async deleteBank(id: string): Promise<void> {
+    try {
+      await this.getAdapter<BankListItem>().deleteOne(
+        and(this.doc('_id').equals(id), this.doc('list').equals('banks')),
+      );
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
   }
 }
