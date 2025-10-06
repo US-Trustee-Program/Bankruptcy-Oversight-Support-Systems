@@ -247,4 +247,11 @@ export class MockMongoRepository
   postBank(_ignore: Creatable<BankListItem>): Promise<string> {
     throw new Error('Method not implemented.');
   }
+
+  deleteBankruptcySoftware(_ignore: string): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+  deleteBank(_ignore: string): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
 }

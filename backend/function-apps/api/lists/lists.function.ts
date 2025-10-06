@@ -32,5 +32,5 @@ app.http('lists', {
   methods: ['GET', 'POST', 'DELETE'],
   authLevel: 'anonymous',
   handler,
-  route: 'lists/{listName}/{?id}',
+  route: 'lists/{listName}/{id?}',
 });
