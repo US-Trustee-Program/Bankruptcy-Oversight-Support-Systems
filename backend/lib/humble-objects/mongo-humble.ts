@@ -60,6 +60,10 @@ export class DatabaseHumble {
   public collection<T>(collectionName: string): CollectionHumble<T> {
     return new CollectionHumble<T>(this.database, collectionName);
   }
+
+  public async listCollections() {
+    return this.database.listCollections().toArray();
+  }
 }
 
 export class DocumentClient implements Closable {

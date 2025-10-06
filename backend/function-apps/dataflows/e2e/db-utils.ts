@@ -1,14 +1,35 @@
-import { ApplicationContext } from '../../../backend/lib/adapters/types/basic';
+import { ApplicationContext } from '../../../lib/adapters/types/basic';
 import {
   getConsolidationOrdersRepository,
   getOrdersRepository,
   getTrusteesRepository,
-} from '../../../backend/lib/factory';
-import ExportAndLoadCase from '../../../backend/lib/use-cases/dataflows/export-and-load-case';
-import { ConsolidationOrder, TransferOrder } from '../../../common/src/cams/orders';
-import { Trustee } from '../../../common/src/cams/parties';
-import { CamsUserReference } from '../../../common/src/cams/users';
-import { CaseSyncEvent } from '../../../common/src/queue/dataflow-types';
+} from '../../../lib/factory';
+import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
+import { ConsolidationOrder, TransferOrder } from '../../../../common/src/cams/orders';
+import { CamsUserReference } from '../../../../common/src/cams/users';
+import { CaseSyncEvent } from '../../../../common/src/queue/dataflow-types';
+import { Trustee } from '../../../../common/src/cams/trustees';
+
+/**
+ * Deletes all documents from all collections in the MongoDB database for e2e testing.
+ */
+export async function clearAllCollections(context: ApplicationContext) {
+  const dbName = context.config.documentDbConfig?.databaseName;
+  if (!dbName?.toLowerCase().includes('e2e')) {
+    throw new Error(`This dataflow must run against an e2e database. Database name: ${dbName}.`);
+  }
+  const { connectionString } = context.config.documentDbConfig;
+  const { DocumentClient } = await import('../../../lib/humble-objects/mongo-humble');
+  const client = new DocumentClient(connectionString);
+  const db = client.database(dbName);
+  const collections = await db.listCollections();
+  for (const coll of collections) {
+    const collectionName = coll.name;
+    const collection = db.collection(collectionName);
+    await collection.deleteMany({});
+  }
+  await client.close();
+}
 
 export async function insertConsolidationOrders(
   appContext: ApplicationContext,
