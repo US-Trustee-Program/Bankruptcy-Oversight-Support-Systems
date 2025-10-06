@@ -1593,7 +1593,7 @@ describe('TrusteesUseCase', () => {
       expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_PUBLIC_CONTACT',
-          id: testCase.trusteeId,
+          trusteeId: testCase.trusteeId,
           before: existingTrusteeTyped.public,
           after: testCase.updateInput.public,
         }),
@@ -1681,7 +1681,7 @@ describe('TrusteesUseCase', () => {
           expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledWith(
             expect.objectContaining({
               documentType: doc,
-              id: existing.id,
+              trusteeId: existing.id,
               before: existing.banks,
               after: updated.banks,
             }),

@@ -34,7 +34,7 @@ describe('TrusteesMongoRepository', () => {
       email: 'john.doe@example.com',
     },
     districts: ['NY'],
-    chapters: ['7', '11'],
+    chapters: ['7-panel', '11'],
     status: 'active',
   };
 
@@ -447,6 +447,7 @@ describe('TrusteesMongoRepository', () => {
   describe('createHistory', () => {
     test('should create trustee history successfully', async () => {
       const mockHistory: TrusteeNameHistory = {
+        id: 'history-123',
         trusteeId: 'trustee-123',
         documentType: 'AUDIT_NAME',
         before: 'John Doe',
@@ -468,6 +469,7 @@ describe('TrusteesMongoRepository', () => {
 
     test('should handle database errors when creating history', async () => {
       const mockHistory: TrusteeNameHistory = {
+        id: 'history-123',
         trusteeId: 'trustee-123',
         documentType: 'AUDIT_NAME',
         before: 'John Doe',
@@ -531,7 +533,7 @@ describe('TrusteesMongoRepository', () => {
           },
           {
             condition: 'EQUALS',
-            leftOperand: { name: 'id' },
+            leftOperand: { name: 'trusteeId' },
             rightOperand: trusteeId,
           },
         ],
@@ -558,7 +560,7 @@ describe('TrusteesMongoRepository', () => {
           },
           {
             condition: 'EQUALS',
-            leftOperand: { name: 'id' },
+            leftOperand: { name: 'trusteeId' },
             rightOperand: trusteeId,
           },
         ],
@@ -586,7 +588,7 @@ describe('TrusteesMongoRepository', () => {
           },
           {
             condition: 'EQUALS',
-            leftOperand: { name: 'id' },
+            leftOperand: { name: 'trusteeId' },
             rightOperand: trusteeId,
           },
         ],
