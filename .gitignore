@@ -102,6 +102,7 @@ cams1.code-workspace
 .ai
 .ai/*
 .github/copilot-instructions.md
+.github/instructions/*
 
 # Flexion AI
 .gitmodules

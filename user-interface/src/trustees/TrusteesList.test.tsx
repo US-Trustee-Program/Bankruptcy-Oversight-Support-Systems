@@ -6,15 +6,18 @@ import { Trustee, ChapterType } from '@common/cams/trustees';
 import { ResponseBody } from '@common/api/response';
 import { vi } from 'vitest';
 import MockData from '@common/cams/test-utilities/mock-data';
+import React from 'react';
 
 function renderWithRouter(component: React.ReactElement) {
   return render(<BrowserRouter>{component}</BrowserRouter>);
 }
 
 describe('TrusteesList Component', () => {
+  vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: MockData.getCourts().slice(0, 5) });
   const mockTrustees: Trustee[] = [
     {
-      id: 'trustee-1',
+      id: '--id-guid-1--',
+      trusteeId: 'trustee-1',
       name: 'John Doe',
       public: {
         address: MockData.getAddress(),
@@ -28,7 +31,8 @@ describe('TrusteesList Component', () => {
       updatedBy: { id: 'user-1', name: 'Admin User' },
     },
     {
-      id: 'trustee-2',
+      id: '--id-guid-2--',
+      trusteeId: 'trustee-2',
       name: 'Jane Smith',
       public: {
         address: MockData.getAddress(),
@@ -158,7 +162,8 @@ describe('TrusteesList Component', () => {
 
   test('should handle trustees with missing optional fields', async () => {
     const minimalTrustee: Trustee = {
-      id: 'trustee-minimal',
+      id: '--id-guid-min--',
+      trusteeId: 'trustee-minimal',
       name: 'Minimal Trustee',
       public: {
         address: MockData.getAddress(),
@@ -206,7 +211,8 @@ describe('TrusteesList Component', () => {
   test('should handle trustees with unknown chapter types', async () => {
     const trusteesWithUnknownChapters: Trustee[] = [
       {
-        id: 'trustee-unknown',
+        id: '--id-guid-unk--',
+        trusteeId: 'trustee-unknown',
         name: 'Unknown Chapter Trustee',
         public: {
           address: MockData.getAddress(),

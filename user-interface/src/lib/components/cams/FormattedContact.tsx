@@ -4,7 +4,7 @@ import { ContactInformation } from '@common/cams/contact';
 import CommsLink from '@/lib/components/cams/CommsLink/CommsLink';
 
 const formatAddress = (
-  contact: ContactInformation,
+  contact: Partial<ContactInformation>,
   _showLinks: boolean,
   getTestId: (s: string) => string | undefined,
 ): React.ReactNode | undefined => {
@@ -55,7 +55,7 @@ const formatAddress = (
 };
 
 const formatPhone = (
-  contact: ContactInformation,
+  contact: Partial<ContactInformation>,
   showLinks: boolean,
   getTestId: (s: string) => string | undefined,
 ): React.ReactNode | undefined => {
@@ -77,7 +77,7 @@ const formatPhone = (
 };
 
 const formatEmail = (
-  contact: ContactInformation,
+  contact: Partial<ContactInformation>,
   showLinks: boolean,
   getTestId: (s: string) => string | undefined,
 ): React.ReactNode | undefined => {
@@ -91,7 +91,7 @@ const formatEmail = (
 };
 
 const formatWebsite = (
-  contact: ContactInformation,
+  contact: Partial<ContactInformation>,
   showLinks: boolean,
   getTestId: (s: string) => string | undefined,
 ): React.ReactNode | undefined => {
@@ -106,7 +106,7 @@ const formatWebsite = (
 
 export type FormattedContactProps = {
   className?: string;
-  contact?: ContactInformation;
+  contact?: Partial<ContactInformation>;
   showLinks?: boolean;
   testIdPrefix?: string;
 };

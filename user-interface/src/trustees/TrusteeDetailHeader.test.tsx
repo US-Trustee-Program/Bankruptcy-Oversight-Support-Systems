@@ -27,7 +27,8 @@ vi.mock('@common/cams/trustees', () => ({
 }));
 
 const mockTrustee: Trustee = {
-  id: '123',
+  id: '--id-guid--',
+  trusteeId: '123',
   name: 'John Doe',
   public: {
     address: {
