@@ -2,7 +2,6 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { LOGOUT_PATH } from '@/login/login-library';
 import './Header.scss';
 import useFeatureFlags, {
-  PRIVILEGED_IDENTITY_MANAGEMENT,
   TRANSFER_ORDERS_ENABLED,
   SYSTEM_MAINTENANCE_BANNER,
   TRUSTEE_MANAGEMENT,
@@ -15,7 +14,6 @@ import Icon from './uswds/Icon';
 import { DropdownMenu, MenuItem } from './cams/DropdownMenu/DropdownMenu';
 import { ADMIN_PATH } from '@/admin/admin-config';
 import Alert, { UswdsAlertStyle } from './uswds/Alert';
-import { FeatureFlagSet } from '@common/feature-flags';
 import { CamsSession } from '@common/cams/session';
 
 export enum NavState {
@@ -61,9 +59,8 @@ const userMenuItems: MenuItem[] = [
   },
 ];
 
-export function menuNeedsAdmin(session: CamsSession | null, flags: FeatureFlagSet): boolean {
+export function menuNeedsAdmin(session: CamsSession | null): boolean {
   return (
-    !!flags[PRIVILEGED_IDENTITY_MANAGEMENT] &&
     !!session?.user.roles?.includes(CamsRole.SuperUser) &&
     !userMenuItems.find((menuItem) => menuItem.label === 'Admin')
   );
@@ -81,7 +78,7 @@ export const Header = () => {
 
   const [activeNav, setActiveNav] = useState<NavState>(mapNavState(location.pathname));
 
-  if (menuNeedsAdmin(session, flags)) {
+  if (menuNeedsAdmin(session)) {
     userMenuItems.unshift({
       label: 'Admin',
       address: ADMIN_PATH,

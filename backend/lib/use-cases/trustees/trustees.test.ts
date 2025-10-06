@@ -988,12 +988,6 @@ describe('TrusteesUseCase', () => {
         }),
       );
 
-      // Log all calls to createTrusteeHistory to debug the issue
-      console.log(
-        'createTrusteeHistory calls:',
-        mockTrusteesRepository.createTrusteeHistory.mock.calls,
-      );
-
       // Verify only one history record was created
       expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalledTimes(1);
     });

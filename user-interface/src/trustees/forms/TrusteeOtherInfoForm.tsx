@@ -6,7 +6,7 @@ import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import useApi2 from '@/lib/hooks/UseApi2';
 import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BankruptcySoftwareList } from '@common/cams/lists';
 
 // Transform backend software list to ComboOption format
@@ -43,10 +43,8 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
           const transformedOptions = transformSoftwareList(response.data as BankruptcySoftwareList);
           setSoftwareOptions(transformedOptions);
         }
-      } catch (error) {
-        // Fall back to empty array on error - form remains functional
-        console.error('Failed to fetch software options:', error);
-        setSoftwareOptions([]);
+      } catch (e) {
+        console.log('Failed to fetch software options', (e as Error).message);
       }
     };
 
