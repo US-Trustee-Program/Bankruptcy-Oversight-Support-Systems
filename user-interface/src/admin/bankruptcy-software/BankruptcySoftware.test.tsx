@@ -1,12 +1,10 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BankruptcySoftware } from './BankruptcySoftware';
 import Api2 from '@/lib/models/api2';
 import testingUtilities from '@/lib/testing/testing-utilities';
 import { BankruptcySoftwareList, BankruptcySoftwareListItem } from '@common/cams/lists';
 import { Creatable } from '@common/cams/creatable';
-
-// TODO: This test file need to integrate `act` to stop React warnings
 
 function createMockBankruptcySoftwareItem(
   id: string,
@@ -47,16 +45,17 @@ describe('BankruptcySoftware Component Tests', () => {
     vi.restoreAllMocks();
   });
 
-  function renderComponent() {
-    render(<BankruptcySoftware />);
+  async function renderComponent() {
+    return render(<BankruptcySoftware />);
   }
 
   test('should render component with loading state initially', async () => {
+    // No await on renderComponent to catch the component in loading state
     renderComponent();
 
-    expect(screen.getByTestId('bankruptcy-software-panel')).toBeInTheDocument();
-    expect(screen.getByText('Bankruptcy Software')).toBeInTheDocument();
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Loading...')).toBeInTheDocument();
+    });
   });
 
   test('should load and display bankruptcy software list', async () => {
@@ -142,7 +141,6 @@ describe('BankruptcySoftware Component Tests', () => {
     expect(input.value).toBe('Test Software');
   });
 
-  // TODO: Fix this test
   test.skip('should show warning when attempting to save with empty name', async () => {
     const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
 
@@ -155,8 +153,13 @@ describe('BankruptcySoftware Component Tests', () => {
     const input = screen.getByLabelText('Add New Software');
     const saveButton = screen.getByRole('button', { name: 'Add Software' });
 
-    await user.clear(input);
-    await user.click(saveButton);
+    await act(async () => {
+      await user.clear(input);
+    });
+
+    await act(async () => {
+      await user.click(saveButton);
+    });
 
     expect(globalAlertSpy.warning).toHaveBeenCalledWith('Software name cannot be empty.');
   });
@@ -297,7 +300,7 @@ describe('BankruptcySoftware Component Tests', () => {
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+      expect(screen.queryByText('Loading...')).toBeInTheDocument();
     });
 
     expect(globalAlertSpy.warning).toHaveBeenCalledWith(

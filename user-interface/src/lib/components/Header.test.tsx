@@ -223,10 +223,6 @@ describe('Header', () => {
       user: MockData.getCamsUser({ roles: [CamsRole.CaseAssignmentManager] }),
     });
 
-    const defaultFlags: FeatureFlagSet = {
-      [PRIVILEGED_IDENTITY_MANAGEMENT]: true,
-    };
-
     // Clean up any modifications to userMenuItems between tests
     beforeEach(() => {
       // Reset LocalStorage session for each test
@@ -242,23 +238,15 @@ describe('Header', () => {
       vi.restoreAllMocks();
     });
 
-    type Row = [string, CamsSession | null, FeatureFlagSet, boolean];
+    type Row = [string, CamsSession | null, boolean];
     const rows: Row[] = [
-      ['all conditions met', superUser, defaultFlags, true],
-      ['flag = false', superUser, { [PRIVILEGED_IDENTITY_MANAGEMENT]: false }, false],
-      ['flag = undefined', superUser, {}, false],
-      ['session = null', null, defaultFlags, false],
-      ['no superuser role', caseMgr, defaultFlags, false],
-      [
-        'no roles',
-        MockData.getCamsSession({ user: MockData.getCamsUser({ roles: [] }) }),
-        defaultFlags,
-        false,
-      ],
+      ['all conditions met', superUser, true],
+      ['session = null', null, false],
+      ['no superuser role', caseMgr, false],
+      ['no roles', MockData.getCamsSession({ user: MockData.getCamsUser({ roles: [] }) }), false],
       [
         'roles = undefined',
         MockData.getCamsSession({ user: { ...MockData.getCamsUser(), roles: undefined } }),
-        defaultFlags,
         false,
       ],
       [
@@ -268,13 +256,12 @@ describe('Header', () => {
             roles: [CamsRole.CaseAssignmentManager, CamsRole.SuperUser, CamsRole.DataVerifier],
           }),
         }),
-        defaultFlags,
         true,
       ],
     ];
 
-    test.each(rows)('%s', (_name, session, flags, expected) => {
-      expect(menuNeedsAdmin(session, flags)).toBe(expected);
+    test.each(rows)('%s', (_name, session, expected) => {
+      expect(menuNeedsAdmin(session)).toBe(expected);
     });
 
     test('should return false when userMenuItems already contains Admin item', () => {
@@ -289,7 +276,7 @@ describe('Header', () => {
       };
 
       // First, verify that menuNeedsAdmin returns true initially
-      const initialResult = menuNeedsAdmin(session, flags);
+      const initialResult = menuNeedsAdmin(session);
       expect(initialResult).toBe(true);
 
       // Mock LocalStorage to return the session with SuperUser role
@@ -308,7 +295,7 @@ describe('Header', () => {
       );
 
       // Now call menuNeedsAdmin again - it should return false because Admin item is now present
-      const resultAfterRender = menuNeedsAdmin(session, flags);
+      const resultAfterRender = menuNeedsAdmin(session);
       expect(resultAfterRender).toBe(false);
     });
   });
