@@ -129,11 +129,11 @@ export default function TrusteesList() {
         </thead>
         <tbody>
           {trustees.map((trustee) => (
-            <tr key={trustee.id}>
+            <tr key={trustee.trusteeId}>
               <td className="trustee-name">
                 <NavLink
-                  to={`/trustees/${trustee.id}`}
-                  data-testid={`trustee-link-${trustee.id}`}
+                  to={`/trustees/${trustee.trusteeId}`}
+                  data-testid={`trustee-link-${trustee.trusteeId}`}
                   className="usa-link"
                 >
                   {trustee.name}
