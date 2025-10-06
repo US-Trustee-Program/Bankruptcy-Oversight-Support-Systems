@@ -26,6 +26,8 @@ describe('ListsUseCase tests', () => {
       getBankList: jest.fn(),
       postBankruptcySoftware: jest.fn(),
       postBank: jest.fn(),
+      deleteBankruptcySoftware: jest.fn(),
+      deleteBank: jest.fn(),
       release: jest.fn(),
     };
 
@@ -102,6 +104,7 @@ describe('ListsUseCase tests', () => {
       // Arrange
       const mockItemId = '12345';
       const itemToCreate: Creatable<BankruptcySoftwareListItem> = {
+        list: 'bankruptcy-software',
         key: 'new-software',
         value: 'New Software',
       };
@@ -120,6 +123,7 @@ describe('ListsUseCase tests', () => {
       // Arrange
       const errorMessage = 'Failed to create bankruptcy software';
       const itemToCreate: Creatable<BankruptcySoftwareListItem> = {
+        list: 'bankruptcy-software',
         key: 'new-software',
         value: 'New Software',
       };
@@ -139,6 +143,7 @@ describe('ListsUseCase tests', () => {
       // Arrange
       const mockItemId = '67890';
       const itemToCreate: Creatable<BankListItem> = {
+        list: 'banks',
         key: 'new-bank',
         value: 'New Bank',
       };
@@ -157,6 +162,7 @@ describe('ListsUseCase tests', () => {
       // Arrange
       const errorMessage = 'Failed to create bank';
       const itemToCreate: Creatable<BankListItem> = {
+        list: 'banks',
         key: 'new-bank',
         value: 'New Bank',
       };
@@ -166,6 +172,33 @@ describe('ListsUseCase tests', () => {
       await expect(useCase.createBank(context, itemToCreate)).rejects.toThrow(errorMessage);
       expect(Factory.getListsGateway).toHaveBeenCalledWith(context);
       expect(mockListsRepository.postBank).toHaveBeenCalledWith(itemToCreate);
+    });
+  });
+
+  describe('deleteBankruptcySoftware', () => {
+    test('should delete bankruptcy software item through the repository', async () => {
+      // Arrange
+      const itemId = '12345';
+      mockListsRepository.deleteBankruptcySoftware.mockResolvedValue(undefined);
+
+      // Act
+      await useCase.deleteBankruptcySoftware(context, itemId);
+
+      // Assert
+      expect(Factory.getListsGateway).toHaveBeenCalledWith(context);
+      expect(mockListsRepository.deleteBankruptcySoftware).toHaveBeenCalledWith(itemId);
+    });
+
+    test('should propagate errors from the repository', async () => {
+      // Arrange
+      const itemId = '12345';
+      const errorMessage = 'Failed to delete bankruptcy software';
+      mockListsRepository.deleteBankruptcySoftware.mockRejectedValue(new Error(errorMessage));
+
+      // Act & Assert
+      await expect(useCase.deleteBankruptcySoftware(context, itemId)).rejects.toThrow(errorMessage);
+      expect(Factory.getListsGateway).toHaveBeenCalledWith(context);
+      expect(mockListsRepository.deleteBankruptcySoftware).toHaveBeenCalledWith(itemId);
     });
   });
 });
