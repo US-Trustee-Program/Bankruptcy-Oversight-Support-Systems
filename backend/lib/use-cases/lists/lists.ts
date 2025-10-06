@@ -32,6 +32,10 @@ class ListsUseCase {
   ): Promise<string> {
     return await Factory.getListsGateway(context).postBank(item);
   }
+
+  public async deleteBankruptcySoftware(context: ApplicationContext, id: string): Promise<void> {
+    return await Factory.getListsGateway(context).deleteBankruptcySoftware(id);
+  }
 }
 
 export default ListsUseCase;
