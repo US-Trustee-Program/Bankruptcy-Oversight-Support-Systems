@@ -28,7 +28,8 @@ vi.mock('@common/cams/trustees', () => ({
 }));
 
 const mockTrustee: Trustee = {
-  id: '123',
+  id: '--id-guid--',
+  trusteeId: '123',
   name: 'John Doe',
   public: {
     address: {
@@ -394,5 +395,16 @@ describe('TrusteeDetailProfile', () => {
     await user.click(otherInfoEditButton);
 
     expect(mockOnEditOtherInformation).toHaveBeenCalledTimes(1);
+  });
+
+  test('should render software information when software is present', () => {
+    const trusteeWithSoftware = {
+      ...mockTrustee,
+      software: 'BestCase Trustee Software v2.1',
+    };
+
+    renderWithProps({ trustee: trusteeWithSoftware });
+
+    expect(screen.getByText('Software: BestCase Trustee Software v2.1')).toBeInTheDocument();
   });
 });

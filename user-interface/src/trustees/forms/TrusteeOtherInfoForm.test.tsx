@@ -7,6 +7,7 @@ import * as useCamsNavigatorModule from '@/lib/hooks/UseCamsNavigator';
 import { Mock } from 'vitest';
 import { Trustee } from '@common/cams/trustees';
 import { ResponseBody } from '@common/api/response';
+import { BankruptcySoftwareList } from '@common/cams/lists';
 import MockData from '@common/cams/test-utilities/mock-data';
 
 describe('TrusteeOtherInfoForm', () => {
@@ -32,6 +33,8 @@ describe('TrusteeOtherInfoForm', () => {
     (trusteeId: string, trustee: unknown) => Promise<ResponseBody<Trustee>>
   >;
 
+  let getBankruptcySoftwareListSpy: Mock<() => Promise<ResponseBody<BankruptcySoftwareList>>>;
+
   beforeEach(() => {
     vi.clearAllMocks();
 
@@ -43,18 +46,36 @@ describe('TrusteeOtherInfoForm', () => {
       data: TRUSTEE,
     });
 
-    // Get the API instance and spy on its patchTrustee method
+    // Mock the software list API to return the expected hardcoded options
+    getBankruptcySoftwareListSpy = vi.fn().mockResolvedValue({
+      data: [
+        { _id: '1', list: 'bankruptcy-software', key: 'Axos', value: 'Axos' },
+        { _id: '2', list: 'bankruptcy-software', key: 'BlueStylus', value: 'BlueStylus' },
+        { _id: '3', list: 'bankruptcy-software', key: 'BSS 13Software', value: 'BSS 13Software' },
+        { _id: '4', list: 'bankruptcy-software', key: 'Epiq', value: 'Epiq' },
+        { _id: '5', list: 'bankruptcy-software', key: 'Satori', value: 'Satori' },
+        { _id: '6', list: 'bankruptcy-software', key: 'Stretto', value: 'Stretto' },
+        { _id: '7', list: 'bankruptcy-software', key: 'TrusteSolutions', value: 'TrusteSolutions' },
+        { _id: '8', list: 'bankruptcy-software', key: 'Verita Title XI', value: 'Verita Title XI' },
+      ],
+    });
+
+    // Get the API instance and spy on its methods
     const api = UseApi2Module.useApi2();
     vi.spyOn(api, 'patchTrustee').mockImplementation(patchTrusteeSpy);
+    vi.spyOn(api, 'getBankruptcySoftwareList').mockImplementation(getBankruptcySoftwareListSpy);
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  test('renders the form with initial bank fields', () => {
+  test('renders the form with initial bank fields', async () => {
     render(<TrusteeOtherInfoForm trusteeId={TEST_TRUSTEE_ID} banks={TEST_BANKS} />);
-    expect(screen.getByTestId('trustee-other-info-form')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-other-info-form')).toBeInTheDocument();
+    });
 
     // Check all initial bank fields are rendered
     TEST_BANKS.forEach((bank, index) => {
@@ -68,10 +89,12 @@ describe('TrusteeOtherInfoForm', () => {
     expect(screen.getByText('Add another bank')).toBeInTheDocument();
   });
 
-  test('renders the form with empty bank field when no banks are provided', () => {
+  test('renders the form with empty bank field when no banks are provided', async () => {
     render(<TrusteeOtherInfoForm trusteeId={TEST_TRUSTEE_ID} />);
 
-    expect(screen.getByTestId('trustee-other-info-form')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-other-info-form')).toBeInTheDocument();
+    });
     expect(screen.getByTestId('trustee-banks-0')).toHaveValue('');
     expect(screen.queryByText('Remove Bank')).not.toBeInTheDocument();
   });
@@ -177,7 +200,7 @@ describe('TrusteeOtherInfoForm', () => {
     // Wait for the async operation to complete
     await waitFor(() => {
       expect(mockGlobalAlert.error).toHaveBeenCalledWith(
-        `Failed to update trustee banks: ${errorMessage}`,
+        `Failed to update trustee information: ${errorMessage}`,
       );
     });
   });
@@ -257,7 +280,9 @@ describe('TrusteeOtherInfoForm', () => {
     await userEvent.click(screen.getByTestId('button-submit-button'));
 
     // Should show error message and not call API
-    expect(mockGlobalAlert.error).toHaveBeenCalledWith('Cannot save banks: Trustee ID is missing');
+    expect(mockGlobalAlert.error).toHaveBeenCalledWith(
+      'Cannot save trustee information: Trustee ID is missing',
+    );
     expect(patchTrusteeSpy).not.toHaveBeenCalled();
   });
 
@@ -268,7 +293,125 @@ describe('TrusteeOtherInfoForm', () => {
     await userEvent.click(screen.getByTestId('button-submit-button'));
 
     // Should show error message and not call API
-    expect(mockGlobalAlert.error).toHaveBeenCalledWith('Cannot save banks: Trustee ID is missing');
+    expect(mockGlobalAlert.error).toHaveBeenCalledWith(
+      'Cannot save trustee information: Trustee ID is missing',
+    );
     expect(patchTrusteeSpy).not.toHaveBeenCalled();
+  });
+
+  test('updates software value when a software option is selected from ComboBox', async () => {
+    const initialSoftware = 'Axos';
+    const newSoftware = 'Stretto';
+
+    render(<TrusteeOtherInfoForm trusteeId={TEST_TRUSTEE_ID} software={initialSoftware} />);
+
+    // Wait for the software options to load
+    await waitFor(() => {
+      expect(getBankruptcySoftwareListSpy).toHaveBeenCalled();
+    });
+
+    // Verify initial software selection is displayed in the selection label
+    await waitFor(() => {
+      const selectionLabel = document.querySelector('.selection-label');
+      expect(selectionLabel).toHaveTextContent(initialSoftware);
+    });
+
+    // Open the ComboBox dropdown
+    const expandButton = document.querySelector('#trustee-software-expand') as HTMLButtonElement;
+    await userEvent.click(expandButton);
+
+    // Wait for dropdown to open and find the Stretto option
+    await waitFor(() => {
+      expect(screen.getByRole('listbox')).toBeInTheDocument();
+    });
+
+    // Select Stretto option - find it by its data-value attribute
+    const strettoOption = document.querySelector('[data-value="Stretto"]') as HTMLLIElement;
+    expect(strettoOption).toBeInTheDocument();
+    await userEvent.click(strettoOption);
+
+    // Submit the form to verify the software state was updated
+    await userEvent.click(screen.getByTestId('button-submit-button'));
+
+    // Verify API was called with the new software value
+    await waitFor(() => {
+      expect(patchTrusteeSpy).toHaveBeenCalledWith(
+        TEST_TRUSTEE_ID,
+        expect.objectContaining({
+          software: newSoftware,
+        }),
+      );
+    });
+
+    // Check that navigation occurred
+    await waitFor(() => {
+      expect(mockNavigate.navigateTo).toHaveBeenCalledWith(
+        `/trustees/${TEST_TRUSTEE_ID}`,
+        expect.any(Object),
+      );
+    });
+  });
+
+  test('clears software value when ComboBox clear button is clicked', async () => {
+    const initialSoftware = 'Epiq';
+
+    render(<TrusteeOtherInfoForm trusteeId={TEST_TRUSTEE_ID} software={initialSoftware} />);
+
+    // Wait for the software options to load
+    await waitFor(() => {
+      expect(getBankruptcySoftwareListSpy).toHaveBeenCalled();
+    });
+
+    // Verify initial software selection is displayed in the selection label
+    await waitFor(() => {
+      const selectionLabel = document.querySelector('.selection-label');
+      expect(selectionLabel).toHaveTextContent(initialSoftware);
+    });
+
+    const clearButton = document.querySelector('#trustee-software-clear-all') as HTMLButtonElement;
+    expect(clearButton).toBeInTheDocument();
+    await userEvent.click(clearButton);
+
+    await userEvent.click(screen.getByTestId('button-submit-button'));
+
+    await waitFor(() => {
+      expect(patchTrusteeSpy).toHaveBeenCalledWith(
+        TEST_TRUSTEE_ID,
+        expect.objectContaining({
+          software: undefined,
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(mockNavigate.navigateTo).toHaveBeenCalledWith(
+        `/trustees/${TEST_TRUSTEE_ID}`,
+        expect.any(Object),
+      );
+    });
+  });
+
+  test('fetches software options from API on component mount', async () => {
+    render(<TrusteeOtherInfoForm trusteeId={TEST_TRUSTEE_ID} />);
+
+    // Verify the API was called to fetch software options
+    await waitFor(() => {
+      expect(getBankruptcySoftwareListSpy).toHaveBeenCalled();
+    });
+  });
+
+  test('handles API error gracefully when fetching software options', async () => {
+    // Mock the API to reject
+    getBankruptcySoftwareListSpy.mockRejectedValueOnce(new Error('API Error'));
+
+    render(<TrusteeOtherInfoForm trusteeId={TEST_TRUSTEE_ID} />);
+
+    // Wait for the API call to be made and fail
+    await waitFor(() => {
+      expect(getBankruptcySoftwareListSpy).toHaveBeenCalled();
+    });
+
+    // Form should still be functional - the ComboBox should exist even with empty options
+    expect(screen.getByLabelText('Bankruptcy Software')).toBeInTheDocument();
   });
 });

@@ -35,6 +35,13 @@ import { Pipeline } from '../query/query-pipeline';
 import { ResourceActions } from '../../../common/src/cams/actions';
 import { OfficeStaff } from '../adapters/gateways/mongo/offices.mongo.repository';
 import { Trustee, TrusteeHistory, TrusteeInput } from '../../../common/src/cams/trustees';
+import {
+  BankList,
+  BankListItem,
+  BankruptcySoftwareList,
+  BankruptcySoftwareListItem,
+} from '../../../common/src/cams/lists';
+import { Creatable } from '../../../common/src/cams/creatable';
 
 export type ReplaceResult = {
   id: string;
@@ -181,6 +188,15 @@ export interface OfficesRepository
   findAndDeleteStaff(officeCode: string, id: string): Promise<void>;
 }
 
+export interface ListsRepository extends Releasable {
+  getBankruptcySoftwareList(): Promise<BankruptcySoftwareList>;
+  postBankruptcySoftware(item: Creatable<BankruptcySoftwareListItem>): Promise<string>;
+  getBankList(): Promise<BankList>;
+  postBank(item: Creatable<BankListItem>): Promise<string>;
+  deleteBankruptcySoftware(id: string): Promise<void>;
+  deleteBank(id: string): Promise<void>;
+}
+
 export interface UsersRepository extends Releasable {
   getPrivilegedIdentityUser(id: string, includeExpired?: boolean): Promise<PrivilegedIdentityUser>;
   putPrivilegedIdentityUser(
@@ -200,7 +216,7 @@ export interface OfficeAssigneesRepository
 
 export interface TrusteesRepository extends Reads<Trustee>, Releasable {
   createTrustee(input: TrusteeInput, userRef: CamsUserReference): Promise<Trustee>;
-  createTrusteeHistory(history: TrusteeHistory): Promise<void>;
+  createTrusteeHistory(history: Creatable<TrusteeHistory>): Promise<void>;
   listTrusteeHistory(id: string): Promise<TrusteeHistory[]>;
   listTrustees(): Promise<Trustee[]>;
   updateTrustee(

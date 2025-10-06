@@ -53,6 +53,7 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
       {
         ...trustee,
         documentType: 'TRUSTEE',
+        trusteeId: crypto.randomUUID(),
       },
       user,
     );
@@ -67,9 +68,11 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
     }
   }
 
-  async createTrusteeHistory(history: TrusteeHistory) {
+  async createTrusteeHistory(history: Creatable<TrusteeHistory>) {
     try {
-      await this.getAdapter<TrusteeHistory>().insertOne(history, { useProvidedId: true });
+      await this.getAdapter<Creatable<TrusteeHistory>>().insertOne(history, {
+        useProvidedId: true,
+      });
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: {
@@ -96,7 +99,7 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
   async listTrusteeHistory(id: string): Promise<TrusteeHistory[]> {
     const doc = using<TrusteeHistory>();
     try {
-      const query = and(doc('documentType').regex('^AUDIT_'), doc('id').equals(id));
+      const query = and(doc('documentType').regex('^AUDIT_'), doc('trusteeId').equals(id));
       const adapter = this.getAdapter<TrusteeHistory>();
       return await adapter.find(query);
     } catch (originalError) {

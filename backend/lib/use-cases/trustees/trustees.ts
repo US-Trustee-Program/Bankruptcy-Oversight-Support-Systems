@@ -68,7 +68,7 @@ export class TrusteesUseCase {
         createAuditRecord(
           {
             documentType: 'AUDIT_NAME',
-            id: createdTrustee.id,
+            trusteeId: createdTrustee.trusteeId,
             before: undefined,
             after: createdTrustee.name,
           },
@@ -80,7 +80,7 @@ export class TrusteesUseCase {
         createAuditRecord(
           {
             documentType: 'AUDIT_PUBLIC_CONTACT',
-            id: createdTrustee.id,
+            trusteeId: createdTrustee.trusteeId,
             before: undefined,
             after: createdTrustee.public,
           },
@@ -127,15 +127,15 @@ export class TrusteesUseCase {
     }
   }
 
-  async getTrustee(context: ApplicationContext, id: string): Promise<Trustee> {
+  async getTrustee(context: ApplicationContext, trusteeId: string): Promise<Trustee> {
     try {
       // Retrieve individual trustee from repository
-      const trustee = await this.trusteesRepository.read(id);
+      const trustee = await this.trusteesRepository.read(trusteeId);
 
-      context.logger.info(MODULE_NAME, `Retrieved trustee ${id}`);
+      context.logger.info(MODULE_NAME, `Retrieved trustee ${trusteeId}`);
       return trustee;
     } catch (originalError) {
-      const errorMessage = `Failed to retrieve trustee with ID ${id}.`;
+      const errorMessage = `Failed to retrieve trustee with ID ${trusteeId}.`;
       context.logger.error(MODULE_NAME, errorMessage, originalError);
       throw getCamsError(originalError, MODULE_NAME);
     }
@@ -143,22 +143,26 @@ export class TrusteesUseCase {
 
   async updateTrustee(
     context: ApplicationContext,
-    id: string,
+    trusteeId: string,
     trustee: Partial<TrusteeInput>,
   ): Promise<Trustee> {
     try {
-      const existingTrustee = await this.trusteesRepository.read(id);
-      const trusteeToUpdate = { ...existingTrustee, ...trustee };
-      if (trustee.internal) {
-        this.checkValidation(validateObject(trusteeSpec.internal, trusteeToUpdate.internal));
-      } else {
-        this.checkValidation(validateObject(trusteeSpec, trusteeToUpdate));
+      const existingTrustee = await this.trusteesRepository.read(trusteeId);
+
+      const dynamicSpec: ValidationSpec<Partial<TrusteeInput>> = {};
+      const specKeys = Object.keys(trusteeSpec);
+      for (const key of Object.keys(trustee)) {
+        if (specKeys.includes(key)) {
+          dynamicSpec[key] = trusteeSpec[key as keyof typeof trusteeSpec];
+        }
       }
+
+      this.checkValidation(validateObject(dynamicSpec, trustee));
 
       const userReference = getCamsUserReference(context.session.user);
       const updatedTrustee = await this.trusteesRepository.updateTrustee(
-        id,
-        trusteeToUpdate,
+        trusteeId,
+        trustee,
         userReference,
       );
 
@@ -167,7 +171,7 @@ export class TrusteesUseCase {
           createAuditRecord(
             {
               documentType: 'AUDIT_NAME',
-              id,
+              trusteeId,
               before: existingTrustee.name,
               after: updatedTrustee.name,
             },
@@ -181,7 +185,7 @@ export class TrusteesUseCase {
           createAuditRecord(
             {
               documentType: 'AUDIT_PUBLIC_CONTACT',
-              id,
+              trusteeId,
               before: existingTrustee.public,
               after: updatedTrustee.public,
             },
@@ -195,9 +199,11 @@ export class TrusteesUseCase {
           createAuditRecord(
             {
               documentType: 'AUDIT_INTERNAL_CONTACT',
-              id,
-              before: existingTrustee.internal,
-              after: updatedTrustee.internal,
+              trusteeId,
+              before: deepEqual(existingTrustee.internal, {})
+                ? undefined
+                : existingTrustee.internal,
+              after: deepEqual(updatedTrustee.internal, {}) ? undefined : updatedTrustee.internal,
             },
             userReference,
           ),
@@ -209,9 +215,23 @@ export class TrusteesUseCase {
           createAuditRecord(
             {
               documentType: 'AUDIT_BANKS',
-              id,
+              trusteeId,
               before: existingTrustee.banks,
               after: updatedTrustee.banks,
+            },
+            userReference,
+          ),
+        );
+      }
+
+      if (existingTrustee.software !== updatedTrustee.software) {
+        await this.trusteesRepository.createTrusteeHistory(
+          createAuditRecord(
+            {
+              documentType: 'AUDIT_SOFTWARE',
+              trusteeId,
+              before: existingTrustee.software,
+              after: updatedTrustee.software,
             },
             userReference,
           ),
@@ -251,10 +271,20 @@ const contactInformationSpec: ValidationSpec<ContactInformation> = {
   ],
 };
 
-const trusteeSpec: ValidationSpec<TrusteeInput> = {
+export const internalContactInformationSpec: ValidationSpec<ContactInformation> = {
+  address: [V.optional(V.spec(addressSpec))],
+  phone: [V.optional(V.spec(phoneSpec))],
+  email: [V.optional(V.matches(EMAIL_REGEX, 'Provided email does not match regular expression'))],
+  website: [
+    V.optional(V.matches(WEBSITE_REGEX, 'Provided website does not match regular expression')),
+  ],
+};
+
+export const trusteeSpec: ValidationSpec<TrusteeInput> = {
   name: [V.minLength(1)],
   public: [V.optional(V.spec(contactInformationSpec))],
-  internal: [V.optional(V.spec(contactInformationSpec))],
+  internal: [V.optional(V.spec(internalContactInformationSpec))],
   status: [V.isInSet<TrusteeStatus>([...TRUSTEE_STATUS_VALUES])],
-  banks: [V.optional(V.arrayOf(V.minLength(1)))],
+  banks: [V.optional(V.arrayOf(V.length(1, 100)))],
+  software: [V.optional(V.length(1, 100))],
 };

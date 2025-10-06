@@ -2,14 +2,25 @@ import './TrusteeOtherInfoForm.scss';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import Icon from '@/lib/components/uswds/Icon';
 import Input from '@/lib/components/uswds/Input';
+import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import useApi2 from '@/lib/hooks/UseApi2';
 import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { BankruptcySoftwareList } from '@common/cams/lists';
+
+// Transform backend software list to ComboOption format
+const transformSoftwareList = (items: BankruptcySoftwareList): ComboOption[] => {
+  return items.map((item: { key: string; value: string }) => ({
+    value: item.key,
+    label: item.value,
+  }));
+};
 
 type TrusteeOtherInfoFormProps = {
   trusteeId: string;
   banks?: string[];
+  software?: string;
 };
 
 function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
@@ -19,8 +30,26 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
   const initialBanks = props.banks?.filter((b) => b.trim() !== '') ?? [];
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [banks, setBanks] = useState<string[]>(initialBanks.length > 0 ? initialBanks : ['']);
+  const [software, setSoftware] = useState<string>(props.software ?? '');
+  const [softwareOptions, setSoftwareOptions] = useState<ComboOption[]>([]);
 
   const navigate = useCamsNavigator();
+
+  useEffect(() => {
+    const fetchSoftwareOptions = async () => {
+      try {
+        const response = await api.getBankruptcySoftwareList();
+        if (response?.data) {
+          const transformedOptions = transformSoftwareList(response.data as BankruptcySoftwareList);
+          setSoftwareOptions(transformedOptions);
+        }
+      } catch (e) {
+        console.log('Failed to fetch software options', (e as Error).message);
+      }
+    };
+
+    fetchSoftwareOptions();
+  }, [api]);
 
   const handleBankChange = (index: number, value: string) => {
     const newBanks = [...banks];
@@ -46,6 +75,11 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
     });
   };
 
+  const handleSoftwareChange = (selections: ComboOption[]) => {
+    const selectedValue = selections.length > 0 ? selections[0].value : '';
+    setSoftware(selectedValue);
+  };
+
   async function handleSubmit(event?: React.MouseEvent<HTMLButtonElement>): Promise<void> {
     if (event) {
       event.preventDefault();
@@ -53,7 +87,7 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
 
     // Guard clause: prevent submission if trusteeId is missing
     if (!trusteeId || trusteeId.trim() === '') {
-      globalAlert?.error('Cannot save banks: Trustee ID is missing');
+      globalAlert?.error('Cannot save trustee information: Trustee ID is missing');
       return;
     }
 
@@ -61,12 +95,13 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
     try {
       const response = await api.patchTrustee(trusteeId, {
         banks: banks.filter((bank) => bank.trim() !== ''),
+        software: software || undefined,
       });
       if (response?.data) {
         navigate.navigateTo(`/trustees/${trusteeId}`, { trustee: response.data });
       }
     } catch (e) {
-      globalAlert?.error(`Failed to update trustee banks: ${(e as Error).message}`);
+      globalAlert?.error(`Failed to update trustee information: ${(e as Error).message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -114,6 +149,18 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
               <Icon name="add_circle" />
               Add another bank
             </Button>
+          </div>
+          <div className="field-group">
+            <ComboBox
+              id="trustee-software"
+              className="trustee-software-input"
+              name="software"
+              label="Bankruptcy Software"
+              options={softwareOptions}
+              selections={softwareOptions.filter((option) => option.value === software)}
+              onUpdateSelection={handleSoftwareChange}
+              autoComplete="off"
+            />
           </div>
         </div>
         <div className="usa-button-group">

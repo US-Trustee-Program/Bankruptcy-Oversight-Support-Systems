@@ -25,9 +25,10 @@ export type TrusteeStatus = (typeof TRUSTEE_STATUS_VALUES)[number];
 
 export type Trustee = Auditable &
   Identifiable & {
+    trusteeId: string;
     name: string;
     public: ContactInformation;
-    internal?: ContactInformation;
+    internal?: Partial<ContactInformation>;
     legacy?: LegacyAddress & {
       phone?: string;
       email?: string;
@@ -36,16 +37,21 @@ export type Trustee = Auditable &
     districts?: string[];
     chapters?: ChapterType[];
     banks?: string[];
+    software?: string;
     status: TrusteeStatus;
   };
 
-export type TrusteeInput = Omit<Trustee, 'legacy' | keyof Auditable | keyof Identifiable>;
+export type TrusteeInput = Omit<
+  Trustee,
+  'legacy' | 'trusteeId' | keyof Auditable | keyof Identifiable
+>;
 
-type AbstractTrusteeHistory<B, A> = Auditable & {
-  id: string;
-  before: B | undefined;
-  after: A | undefined;
-};
+type AbstractTrusteeHistory<B, A> = Auditable &
+  Identifiable & {
+    trusteeId: string;
+    before: B | undefined;
+    after: A | undefined;
+  };
 
 export type TrusteeNameHistory = AbstractTrusteeHistory<string, string> & {
   documentType: 'AUDIT_NAME';
@@ -59,8 +65,8 @@ export type TrusteePublicContactHistory = AbstractTrusteeHistory<
 };
 
 export type TrusteeInternalContactHistory = AbstractTrusteeHistory<
-  ContactInformation,
-  ContactInformation
+  Partial<ContactInformation>,
+  Partial<ContactInformation>
 > & {
   documentType: 'AUDIT_INTERNAL_CONTACT';
 };
@@ -69,8 +75,13 @@ export type TrusteeBankHistory = AbstractTrusteeHistory<string[], string[]> & {
   documentType: 'AUDIT_BANKS';
 };
 
+export type TrusteeSoftwareHistory = AbstractTrusteeHistory<string, string> & {
+  documentType: 'AUDIT_SOFTWARE';
+};
+
 export type TrusteeHistory =
   | TrusteeNameHistory
   | TrusteePublicContactHistory
   | TrusteeInternalContactHistory
-  | TrusteeBankHistory;
+  | TrusteeBankHistory
+  | TrusteeSoftwareHistory;
