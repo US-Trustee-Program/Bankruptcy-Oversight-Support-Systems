@@ -8,6 +8,10 @@ if (!endpoint) {
   console.error('DATAFLOW_IMPORT_URL environment variable is not set.');
   process.exit(1);
 }
+if (endpoint.includes('https://ustp-***-')) {
+  console.error('DATAFLOW_IMPORT_URL environment variable contains mask instead of actual value.');
+  process.exit(1);
+}
 if (!adminKey) {
   console.error('ADMIN_KEY environment variable is not set.');
   process.exit(1);
