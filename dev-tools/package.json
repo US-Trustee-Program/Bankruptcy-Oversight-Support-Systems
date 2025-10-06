@@ -23,7 +23,7 @@
     "@faker-js/faker": "10.0.0",
     "@types/node": "24.5.2",
     "dotenv": "17.2.2",
-    "tsx": "4.20.5"
+    "tsx": "4.20.6"
   },
   "type": "module",
   "devDependencies": {
