@@ -7,14 +7,13 @@ import { ResponseBody } from '@common/api/response';
 import { vi } from 'vitest';
 import MockData from '@common/cams/test-utilities/mock-data';
 import React from 'react';
-import MockApi2 from '@/lib/testing/mock-api2';
 
 function renderWithRouter(component: React.ReactElement) {
   return render(<BrowserRouter>{component}</BrowserRouter>);
 }
 
 describe('TrusteesList Component', () => {
-  vi.spyOn(Api2, 'getCourts').mockImplementation(MockApi2.getCourts);
+  vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: MockData.getCourts().slice(0, 5) });
   const mockTrustees: Trustee[] = [
     {
       id: '--id-guid-1--',
