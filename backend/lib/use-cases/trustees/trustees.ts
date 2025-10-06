@@ -68,7 +68,7 @@ export class TrusteesUseCase {
         createAuditRecord(
           {
             documentType: 'AUDIT_NAME',
-            id: createdTrustee.id,
+            trusteeId: createdTrustee.trusteeId,
             before: undefined,
             after: createdTrustee.name,
           },
@@ -80,7 +80,7 @@ export class TrusteesUseCase {
         createAuditRecord(
           {
             documentType: 'AUDIT_PUBLIC_CONTACT',
-            id: createdTrustee.id,
+            trusteeId: createdTrustee.trusteeId,
             before: undefined,
             after: createdTrustee.public,
           },
@@ -127,15 +127,15 @@ export class TrusteesUseCase {
     }
   }
 
-  async getTrustee(context: ApplicationContext, id: string): Promise<Trustee> {
+  async getTrustee(context: ApplicationContext, trusteeId: string): Promise<Trustee> {
     try {
       // Retrieve individual trustee from repository
-      const trustee = await this.trusteesRepository.read(id);
+      const trustee = await this.trusteesRepository.read(trusteeId);
 
-      context.logger.info(MODULE_NAME, `Retrieved trustee ${id}`);
+      context.logger.info(MODULE_NAME, `Retrieved trustee ${trusteeId}`);
       return trustee;
     } catch (originalError) {
-      const errorMessage = `Failed to retrieve trustee with ID ${id}.`;
+      const errorMessage = `Failed to retrieve trustee with ID ${trusteeId}.`;
       context.logger.error(MODULE_NAME, errorMessage, originalError);
       throw getCamsError(originalError, MODULE_NAME);
     }
@@ -143,11 +143,11 @@ export class TrusteesUseCase {
 
   async updateTrustee(
     context: ApplicationContext,
-    id: string,
+    trusteeId: string,
     trustee: Partial<TrusteeInput>,
   ): Promise<Trustee> {
     try {
-      const existingTrustee = await this.trusteesRepository.read(id);
+      const existingTrustee = await this.trusteesRepository.read(trusteeId);
 
       const dynamicSpec: ValidationSpec<Partial<TrusteeInput>> = {};
       const specKeys = Object.keys(trusteeSpec);
@@ -161,7 +161,7 @@ export class TrusteesUseCase {
 
       const userReference = getCamsUserReference(context.session.user);
       const updatedTrustee = await this.trusteesRepository.updateTrustee(
-        id,
+        trusteeId,
         trustee,
         userReference,
       );
@@ -171,7 +171,7 @@ export class TrusteesUseCase {
           createAuditRecord(
             {
               documentType: 'AUDIT_NAME',
-              id,
+              trusteeId,
               before: existingTrustee.name,
               after: updatedTrustee.name,
             },
@@ -185,7 +185,7 @@ export class TrusteesUseCase {
           createAuditRecord(
             {
               documentType: 'AUDIT_PUBLIC_CONTACT',
-              id,
+              trusteeId,
               before: existingTrustee.public,
               after: updatedTrustee.public,
             },
@@ -199,7 +199,7 @@ export class TrusteesUseCase {
           createAuditRecord(
             {
               documentType: 'AUDIT_INTERNAL_CONTACT',
-              id,
+              trusteeId,
               before: deepEqual(existingTrustee.internal, {})
                 ? undefined
                 : existingTrustee.internal,
@@ -215,7 +215,7 @@ export class TrusteesUseCase {
           createAuditRecord(
             {
               documentType: 'AUDIT_BANKS',
-              id,
+              trusteeId,
               before: existingTrustee.banks,
               after: updatedTrustee.banks,
             },
@@ -229,7 +229,7 @@ export class TrusteesUseCase {
           createAuditRecord(
             {
               documentType: 'AUDIT_SOFTWARE',
-              id,
+              trusteeId,
               before: existingTrustee.software,
               after: updatedTrustee.software,
             },

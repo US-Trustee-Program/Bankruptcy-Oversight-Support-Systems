@@ -600,7 +600,7 @@ function getChapter13Trustee(override: Partial<Trustee> = {}): Trustee {
 function getTrusteeHistory(): TrusteeHistory[] {
   return [
     {
-      id: '7d4e2a0b-c39a-4f57-b2c6-ea1fc3c61488',
+      trusteeId: '7d4e2a0b-c39a-4f57-b2c6-ea1fc3c61488',
       documentType: 'AUDIT_NAME',
       updatedOn: '2023-12-14T21:39:18.909Z',
       updatedBy: SYSTEM_USER_REFERENCE,
@@ -608,7 +608,7 @@ function getTrusteeHistory(): TrusteeHistory[] {
       after: 'John M. Doe',
     },
     {
-      id: 'a8f72c5d-6e94-4b1a-9d3e-8c7b59a23f01',
+      trusteeId: 'a8f72c5d-6e94-4b1a-9d3e-8c7b59a23f01',
       documentType: 'AUDIT_PUBLIC_CONTACT',
       updatedOn: '2023-12-15T14:22:45.123Z',
       updatedBy: SYSTEM_USER_REFERENCE,
@@ -642,7 +642,7 @@ function getTrusteeHistory(): TrusteeHistory[] {
       },
     },
     {
-      id: 'c6b3e9a2-7d51-48f9-b0e4-3a5c2d1f8e7a',
+      trusteeId: 'c6b3e9a2-7d51-48f9-b0e4-3a5c2d1f8e7a',
       documentType: 'AUDIT_INTERNAL_CONTACT',
       updatedOn: '2023-12-16T09:15:30.456Z',
       updatedBy: MockData.getCamsUserReference(),
