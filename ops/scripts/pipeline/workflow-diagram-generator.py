@@ -724,6 +724,7 @@ def main():
     trigger_diagrams = generate_all_trigger_diagrams(workflows)
     workflow_dispatch_diagrams = generate_workflow_dispatch_diagrams(workflows)
     output_text, triggers = compile_output(summary, workflows, trigger_diagrams, workflow_dispatch_diagrams)
+    output_text = output_text.rstrip('\n') + '\n'
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write(output_text)
     print(f"Workflow diagrams generated: {output_file}")
