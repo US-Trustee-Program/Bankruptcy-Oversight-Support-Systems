@@ -325,7 +325,7 @@ resource trusteesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDataba
   name: 'trustees'
   properties: {
     resource: {
-      id: 'lists'
+      id: 'trustees'
       shardKey: {
         trusteeId: 'Hash'
       }
