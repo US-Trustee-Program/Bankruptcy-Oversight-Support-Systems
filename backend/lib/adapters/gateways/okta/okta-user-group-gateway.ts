@@ -143,17 +143,15 @@ class OktaUserGroupGateway implements UserGroupGateway {
       const user = await this.oktaHumble.getUser({ userId: id });
       const groups = await this.oktaHumble.listUserGroups({ userId: id });
       const groupNames = [];
-      for await (const oktaGroup of groups) {
+      for (const oktaGroup of groups) {
         groupNames.push(oktaGroup.name);
       }
-      const camsUser = {
+      return {
         id: user.id,
         name: user.name,
         offices: await UsersHelpers.getOfficesFromGroupNames(context, groupNames),
         roles: UsersHelpers.getRolesFromGroupNames(groupNames),
       };
-      context.logger.info(MODULE_NAME, `Retrieved ${id}`, camsUser);
-      return camsUser;
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: { module: MODULE_NAME, message: 'Failed while getting user by id.' },
