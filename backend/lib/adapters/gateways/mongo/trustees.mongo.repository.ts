@@ -115,7 +115,7 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
   async read(id: string): Promise<Trustee> {
     try {
       const doc = using<TrusteeDocument>();
-      const query = and(doc('documentType').equals('TRUSTEE'), doc('id').equals(id));
+      const query = and(doc('documentType').equals('TRUSTEE'), doc('trusteeId').equals(id));
       const trustee = await this.getAdapter<TrusteeDocument>().findOne(query);
 
       if (!trustee) {
@@ -137,7 +137,7 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
   ): Promise<Trustee> {
     try {
       const doc = using<TrusteeDocument>();
-      const query = and(doc('documentType').equals('TRUSTEE'), doc('id').equals(id));
+      const query = and(doc('documentType').equals('TRUSTEE'), doc('trusteeId').equals(id));
 
       const updateData = {
         ...input,
