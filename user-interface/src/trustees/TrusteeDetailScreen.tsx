@@ -16,6 +16,7 @@ import { TrusteeFormState } from '@/trustees/forms/UseTrusteeContactForm';
 import TrusteeContactForm from './forms/TrusteeContactForm';
 import TrusteeOtherInfoForm from './forms/TrusteeOtherInfoForm';
 import NotFound from '@/lib/components/NotFound';
+import TrusteeAssignedStaff from './panels/TrusteeAssignedStaff';
 
 type TrusteeHeaderProps = JSX.IntrinsicElements['div'] & {
   trustee: Trustee | null;
@@ -195,6 +196,20 @@ export default function TrusteeDetailScreen() {
           </div>
           <div className="main-content-area">
             <TrusteeDetailAuditHistory trusteeId={trusteeId} />
+          </div>
+        </div>
+      ),
+    },
+    {
+      path: 'assigned-staff',
+      subHeading: 'Trustee',
+      content: (
+        <div className="trustee-detail-screen-info-container">
+          <div className="left-navigation-pane-container">
+            <TrusteeDetailNavigation trusteeId={trusteeId} initiallySelectedNavLink={navState} />
+          </div>
+          <div className="main-content-area">
+            <TrusteeAssignedStaff trusteeId={trusteeId} trustee={trustee} />
           </div>
         </div>
       ),
