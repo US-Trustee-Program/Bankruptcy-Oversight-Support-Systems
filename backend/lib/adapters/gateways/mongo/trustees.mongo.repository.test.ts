@@ -237,7 +237,7 @@ describe('TrusteesMongoRepository', () => {
           },
           {
             condition: 'EQUALS',
-            leftOperand: { name: 'id' },
+            leftOperand: { name: 'trusteeId' },
             rightOperand: id,
           },
         ],
@@ -265,7 +265,7 @@ describe('TrusteesMongoRepository', () => {
           },
           {
             condition: 'EQUALS',
-            leftOperand: { name: 'id' },
+            leftOperand: { name: 'trusteeId' },
             rightOperand: id,
           },
         ],
@@ -291,7 +291,7 @@ describe('TrusteesMongoRepository', () => {
           },
           {
             condition: 'EQUALS',
-            leftOperand: { name: 'id' },
+            leftOperand: { name: 'trusteeId' },
             rightOperand: id,
           },
         ],
@@ -347,7 +347,7 @@ describe('TrusteesMongoRepository', () => {
             },
             {
               condition: 'EQUALS',
-              leftOperand: { name: 'id' },
+              leftOperand: { name: 'trusteeId' },
               rightOperand: trusteeId,
             },
           ],
@@ -391,7 +391,7 @@ describe('TrusteesMongoRepository', () => {
             },
             {
               condition: 'EQUALS',
-              leftOperand: { name: 'id' },
+              leftOperand: { name: 'trusteeId' },
               rightOperand: trusteeId,
             },
           ],
@@ -430,7 +430,7 @@ describe('TrusteesMongoRepository', () => {
             },
             {
               condition: 'EQUALS',
-              leftOperand: { name: 'id' },
+              leftOperand: { name: 'trusteeId' },
               rightOperand: trusteeId,
             },
           ],
