@@ -122,4 +122,72 @@ describe('Okta gateway tests', () => {
     jest.spyOn(global, 'fetch').mockImplementation(mockFetch);
     await expect(gateway.getUser('testAccessToken')).rejects.toThrow(UnauthorizedError);
   });
+
+  test('getUser should retry on first fetch failure and succeed on second attempt', async () => {
+    const token = 'testToken';
+    const jwtClaims = {
+      iss: 'https://fake.okta.com/oauth2/default',
+      sub: 'user@fake.com',
+      aud: 'api://default',
+      iat: 0,
+      exp: nowInSeconds() + 600,
+      groups: ['groupA', 'groupB'],
+    };
+    const jwtHeader = {
+      alg: 'RS256',
+      typ: undefined,
+      kid: '',
+    };
+    const jwt = {
+      claims: jwtClaims,
+      header: jwtHeader as CamsJwtHeader,
+      toString: jest.fn(),
+      isExpired: jest.fn(),
+      isNotBefore: jest.fn(),
+    };
+    jest.spyOn(Verifier, 'verifyAccessToken').mockResolvedValue(jwt);
+
+    const userInfo = {
+      sub: 'user@fake.com',
+      name: 'Test Name',
+      testAttribute: '',
+    };
+
+    // Mock setTimeout to resolve immediately instead of waiting 500ms
+    jest.spyOn(global, 'setTimeout').mockImplementation((callback: () => void) => {
+      callback();
+      return {} as NodeJS.Timeout;
+    });
+
+    const fetchSpy = jest.spyOn(global, 'fetch');
+
+    // First call fails (not ok response)
+    fetchSpy.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+    } as Response);
+
+    // Second call succeeds
+    fetchSpy.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(userInfo),
+    } as Response);
+
+    const actual = await gateway.getUser(token);
+
+    // Verify fetch was called twice
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+
+    // Verify the result is correct
+    expect(actual).toEqual({
+      user: { id: userInfo.sub, name: userInfo.name },
+      jwt: {
+        ...jwt,
+        claims: {
+          ...jwt.claims,
+          groups: ['groupA', 'groupB'],
+        },
+      },
+    });
+  });
 });

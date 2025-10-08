@@ -12,12 +12,11 @@ export class MeController implements CamsController {
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<CamsSession>> {
     try {
-      const response = httpSuccess({
+      return httpSuccess({
         body: {
           data: context.session,
         },
       });
-      return response;
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     } finally {
