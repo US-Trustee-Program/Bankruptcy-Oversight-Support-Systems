@@ -142,7 +142,7 @@ function TrusteeContactForm() {
       try {
         if (doCreate) {
           const response = await api.postTrustee(payload as TrusteeInput);
-          const createdId = (response as { data?: { id?: string } })?.data?.id;
+          const createdId = (response as { data?: { trusteeId?: string } })?.data?.trusteeId;
           navigate.navigateTo(`/trustees/${createdId}`);
         } else {
           const updateTrusteeResponse = await api.patchTrustee(
