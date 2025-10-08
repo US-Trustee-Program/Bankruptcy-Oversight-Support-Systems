@@ -24,9 +24,6 @@ on:
       branchHashId:
         required: true
         type: string
-      e2eCosmosDbExists:
-        required: true
-        type: string
 
 jobs:
   zap-dast-scan:

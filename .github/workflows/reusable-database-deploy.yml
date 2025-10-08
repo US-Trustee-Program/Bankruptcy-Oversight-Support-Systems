@@ -18,17 +18,11 @@ on:
       environmentHash:
         required: true
         type: string
-    outputs:
-      e2eCosmosDbExists:
-        description: 'Does E2E Cosmos DB Already Exists before deployment'
-        value: ${{ jobs.deploy-db.outputs.e2eCosmosDbExists }}
 
 jobs:
   deploy-db:
     runs-on: ubuntu-latest
     environment: ${{ inputs.ghaEnvironment }}
-    outputs:
-      e2eCosmosDbExists: ${{ steps.e2eDbExists.outputs.e2eCosmosDbExists }}
     steps:
       - uses: actions/checkout@main
 
@@ -53,18 +47,6 @@ jobs:
           fi
           echo "e2eDatabaseName=${e2eDatabaseName}" >> $GITHUB_OUTPUT
 
-      - name: Check if E2E CosmosDb exists
-        uses: azure/cli@v2
-        id: e2eDbExists
-        with:
-          azcliversion: 2.62.0
-          inlineScript: |
-            export AZURE_CORE_USE_MSAL_HTTP_CACHE=${{ vars.AZURE_CORE_USE_MSAL_HTTP_CACHE }}
-            cmd="az cosmosdb mongodb database exists --account-name ${{ secrets.AZ_COSMOS_MONGO_ACCOUNT_NAME }} -n ${{ steps.generateE2eName.outputs.e2eDatabaseName }} -g ${{ secrets.AZURE_RG }} -o tsv"
-            echo $cmd
-            e2eCosmosDbExists=$($cmd)
-            echo "e2eCosmosDbExists=${e2eCosmosDbExists}" >> $GITHUB_OUTPUT
-
       - name: Deploy Cosmos MongoDB
         id: azure-mongodb-deploy
         run: |
@@ -81,5 +63,4 @@ jobs:
             --actionGroupName ${{ secrets.AZ_ACTION_GROUP_NAME }} \
             --keyVaultName ${{ secrets.AZ_KV_APP_CONFIG_NAME }} \
             --kvResourceGroup ${{ secrets.AZ_KV_APP_CONFIG_RG_NAME }} \
-            --branchHashId ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }} \
-            --e2eCosmosDbExists ${{ steps.e2eDbExists.outputs.e2eCosmosDbExists }}
+            --branchHashId ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }}
