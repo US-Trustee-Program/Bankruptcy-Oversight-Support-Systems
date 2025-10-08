@@ -1,0 +1,27 @@
+.trustee-attorney-assignment-modal-content {
+  .attorney-selection-section {
+    margin-bottom: 1.5rem;
+
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: bold;
+    }
+  }
+
+  .selected-attorney-info {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background-color: #f0f0f0;
+    border-radius: 4px;
+
+    h4 {
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+    }
+
+    p {
+      margin: 0.25rem 0;
+    }
+  }
+}

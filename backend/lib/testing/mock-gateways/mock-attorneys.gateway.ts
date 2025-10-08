@@ -7,8 +7,7 @@ async function getAttorneysByUstpOffice(
   applicationContext: ApplicationContext,
 ): Promise<Array<AttorneyUser>> {
   const officeCode = applicationContext.request.params['officeCode'];
-  const attorneys = TRIAL_ATTORNEYS.filter((att) => att.offices['officeCode'].includes(officeCode));
-  return attorneys;
+  return TRIAL_ATTORNEYS.filter((att) => att.offices['officeCode'].includes(officeCode));
 }
 
 async function getAttorneys(_applicationContext: ApplicationContext): Promise<Array<AttorneyUser>> {
