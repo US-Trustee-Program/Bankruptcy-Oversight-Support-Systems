@@ -27,9 +27,6 @@ on:
       branchHashId:
         required: true
         type: string
-      e2eCosmosDbExists:
-        required: true
-        type: string
 
 jobs:
   playwright-e2e-test:
