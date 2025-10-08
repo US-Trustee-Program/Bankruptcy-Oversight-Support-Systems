@@ -28,5 +28,4 @@ jobs:
       azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
       ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
       branchHashId: ${{ needs.setup.outputs.environmentHash }}
-      e2eCosmosDbExists: true
     secrets: inherit # pragma: allowlist secret
