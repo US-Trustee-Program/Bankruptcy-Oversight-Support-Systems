@@ -93,10 +93,18 @@ async function getUser(accessToken: string): Promise<{ user: CamsUserReference; 
   try {
     const jwt = await verifyToken(accessToken);
 
-    const response = await fetch(userInfoUri, {
-      method: 'GET',
-      headers: { authorization: 'Bearer ' + accessToken },
-    });
+    const callOkta = async () =>
+      fetch(userInfoUri, {
+        method: 'GET',
+        headers: { authorization: 'Bearer ' + accessToken },
+      });
+
+    let response = await callOkta();
+
+    if (!response.ok) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      response = await callOkta();
+    }
 
     if (response.ok) {
       const oktaUser = (await response.json()) as OktaUserInfo;
