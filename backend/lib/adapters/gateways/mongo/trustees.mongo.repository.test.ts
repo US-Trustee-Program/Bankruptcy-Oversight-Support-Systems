@@ -1,7 +1,12 @@
 import { ApplicationContext } from '../../types/basic';
 import { TrusteesMongoRepository, TrusteeDocument } from './trustees.mongo.repository';
-import { TrusteeInput, TrusteeNameHistory } from '../../../../../common/src/cams/trustees';
+import {
+  TrusteeInput,
+  TrusteeNameHistory,
+  TrusteeOversightAssignment,
+} from '../../../../../common/src/cams/trustees';
 import { CamsUserReference } from '../../../../../common/src/cams/users';
+import { OversightRole } from '../../../../../common/src/cams/roles';
 import {
   createMockApplicationContext,
   getTheThrownError,
@@ -39,12 +44,7 @@ describe('TrusteesMongoRepository', () => {
   };
 
   beforeEach(async () => {
-    context = await createMockApplicationContext({
-      env: {
-        MONGO_CONNECTION_STRING: 'mongodb://localhost:27017',
-        COSMOS_DATABASE_NAME: 'test-database',
-      },
-    });
+    context = await createMockApplicationContext();
     repository = new TrusteesMongoRepository(context);
   });
 
@@ -593,6 +593,162 @@ describe('TrusteesMongoRepository', () => {
           },
         ],
       });
+    });
+  });
+
+  describe('getTrusteeOversightAssignments', () => {
+    test('should retrieve oversight assignments for a trustee successfully', async () => {
+      const trusteeId = 'trustee-123';
+      const mockAssignments: TrusteeOversightAssignment[] = [
+        {
+          id: 'assignment-id-123',
+          trusteeId,
+          user: {
+            id: 'attorney-1',
+            name: 'John Attorney',
+          },
+          role: OversightRole.TrialAttorney,
+          createdOn: '2025-10-07T10:00:00Z',
+          createdBy: mockUser,
+          updatedOn: '2025-10-07T10:00:00Z',
+          updatedBy: mockUser,
+        },
+      ];
+
+      const mockAdapter = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue(mockAssignments);
+
+      const result = await repository.getTrusteeOversightAssignments(trusteeId);
+
+      expect(mockAdapter).toHaveBeenCalledWith({
+        conjunction: 'AND',
+        values: [
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'documentType' },
+            rightOperand: 'TRUSTEE_OVERSIGHT_ASSIGNMENT',
+          },
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'trusteeId' },
+            rightOperand: trusteeId,
+          },
+        ],
+      });
+      expect(result).toEqual(mockAssignments);
+      expect(result).toHaveLength(1);
+    });
+
+    test('should return empty array when no assignments exist', async () => {
+      const trusteeId = 'trustee-no-assignments';
+      const mockAdapter = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue([]);
+
+      const result = await repository.getTrusteeOversightAssignments(trusteeId);
+
+      expect(mockAdapter).toHaveBeenCalledWith({
+        conjunction: 'AND',
+        values: [
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'documentType' },
+            rightOperand: 'TRUSTEE_OVERSIGHT_ASSIGNMENT',
+          },
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'trusteeId' },
+            rightOperand: trusteeId,
+          },
+        ],
+      });
+      expect(result).toEqual([]);
+      expect(result).toHaveLength(0);
+    });
+
+    test('should handle database errors when retrieving assignments', async () => {
+      const trusteeId = 'trustee-123';
+      const error = new Error('Database connection failed');
+      const mockAdapter = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockRejectedValue(error);
+
+      await expect(repository.getTrusteeOversightAssignments(trusteeId)).rejects.toThrow();
+
+      expect(mockAdapter).toHaveBeenCalledWith({
+        conjunction: 'AND',
+        values: [
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'documentType' },
+            rightOperand: 'TRUSTEE_OVERSIGHT_ASSIGNMENT',
+          },
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'trusteeId' },
+            rightOperand: trusteeId,
+          },
+        ],
+      });
+    });
+  });
+
+  describe('createTrusteeOversightAssignment', () => {
+    test('should create oversight assignment with audit fields', async () => {
+      const assignmentInput = {
+        trusteeId: 'trustee-123',
+        user: {
+          id: 'attorney-1',
+          name: 'John Attorney',
+        },
+        role: OversightRole.TrialAttorney,
+      };
+
+      const mockAdapter = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
+        .mockResolvedValue('assignment-id-123');
+
+      const result = await repository.createTrusteeOversightAssignment(assignmentInput);
+
+      expect(mockAdapter).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...assignmentInput,
+          documentType: 'TRUSTEE_OVERSIGHT_ASSIGNMENT',
+          createdOn: expect.any(String),
+          createdBy: expect.any(Object),
+          updatedOn: expect.any(String),
+          updatedBy: expect.any(Object),
+        }),
+      );
+      expect(result.trusteeId).toBe(assignmentInput.trusteeId);
+      expect(result.user).toBe(assignmentInput.user);
+      expect(result.role).toBe(assignmentInput.role);
+    });
+
+    test('should handle creation errors', async () => {
+      const assignmentInput = {
+        trusteeId: 'trustee-123',
+        user: {
+          id: 'attorney-1',
+          name: 'John Attorney',
+        },
+        role: OversightRole.TrialAttorney,
+      };
+
+      const error = new Error('Database connection failed');
+      const mockAdapter = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
+        .mockRejectedValue(error);
+
+      await expect(repository.createTrusteeOversightAssignment(assignmentInput)).rejects.toThrow();
+
+      expect(mockAdapter).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...assignmentInput,
+          documentType: 'TRUSTEE_OVERSIGHT_ASSIGNMENT',
+        }),
+      );
     });
   });
 

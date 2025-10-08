@@ -34,6 +34,7 @@ import {
 import { Trustee, TrusteeInput } from '@common/cams/trustees';
 import { Creatable } from '@common/cams/creatable';
 import { BankListItem, BankruptcySoftwareListItem } from '@common/cams/lists';
+import { OversightRole } from '@common/cams/roles';
 
 const caseDocketEntries = MockData.buildArray(MockData.getDocketEntry, 5);
 const caseNoteGuids = [
@@ -510,14 +511,14 @@ async function getBanks() {
       {
         _id: '2',
         list: 'banks',
-        key: 'JP Morgan Chase',
-        value: 'JP Morgan Chase',
+        key: 'Chase Bank',
+        value: 'Chase Bank',
       },
       {
         _id: '3',
         list: 'banks',
-        key: 'Truist Bank',
-        value: 'Truist Bank',
+        key: 'Wells Fargo',
+        value: 'Wells Fargo',
       },
     ],
   };
@@ -529,6 +530,45 @@ async function postBank(_ignore: Creatable<BankListItem>) {
 
 async function deleteBank(_ignore: string) {
   return;
+}
+
+// Add missing trustee assignment methods
+async function getTrusteeOversightAssignments(trusteeId: string) {
+  return {
+    data: [
+      {
+        id: 'assignment-1',
+        trusteeId,
+        user: {
+          id: 'attorney-1',
+          name: 'John Doe',
+        },
+        role: OversightRole.TrialAttorney,
+        createdBy: { id: 'user-1', name: 'Admin User' },
+        createdOn: '2023-01-01T00:00:00Z',
+        updatedBy: { id: 'user-1', name: 'Admin User' },
+        updatedOn: '2023-01-01T00:00:00Z',
+      },
+    ],
+  };
+}
+
+async function createTrusteeOversightAssignment(trusteeId: string, userId: string) {
+  return {
+    data: {
+      id: MockData.randomId(),
+      trusteeId,
+      user: {
+        id: userId,
+        name: 'John Doe', // Mock name, would be fetched from user service in real implementation
+      },
+      role: OversightRole.TrialAttorney,
+      createdBy: { id: 'user-1', name: 'Admin User' },
+      createdOn: new Date().toISOString(),
+      updatedBy: { id: 'user-1', name: 'Admin User' },
+      updatedOn: new Date().toISOString(),
+    },
+  };
 }
 
 export const MockApi2 = {
@@ -572,6 +612,8 @@ export const MockApi2 = {
   deleteBank,
   postBank,
   getBanks,
+  getTrusteeOversightAssignments,
+  createTrusteeOversightAssignment,
 };
 
 export default MockApi2;

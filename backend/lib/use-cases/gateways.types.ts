@@ -34,7 +34,13 @@ import { AcmsConsolidation, AcmsPredicate } from './dataflows/migrate-consolidat
 import { Pipeline } from '../query/query-pipeline';
 import { ResourceActions } from '../../../common/src/cams/actions';
 import { OfficeStaff } from '../adapters/gateways/mongo/offices.mongo.repository';
-import { Trustee, TrusteeHistory, TrusteeInput } from '../../../common/src/cams/trustees';
+import {
+  Trustee,
+  TrusteeHistory,
+  TrusteeInput,
+  TrusteeOversightAssignment,
+} from '../../../common/src/cams/trustees';
+import { Auditable } from '../../../common/src/cams/auditable';
 import {
   BankList,
   BankListItem,
@@ -224,6 +230,10 @@ export interface TrusteesRepository extends Reads<Trustee>, Releasable {
     input: Partial<TrusteeInput>,
     userRef: CamsUserReference,
   ): Promise<Trustee>;
+  getTrusteeOversightAssignments(trusteeId: string): Promise<TrusteeOversightAssignment[]>;
+  createTrusteeOversightAssignment(
+    assignment: Omit<TrusteeOversightAssignment, keyof Auditable | 'id'>,
+  ): Promise<TrusteeOversightAssignment>;
 }
 
 export type RuntimeStateDocumentType =

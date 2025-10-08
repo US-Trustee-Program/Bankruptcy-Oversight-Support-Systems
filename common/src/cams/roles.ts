@@ -10,3 +10,7 @@ export enum CamsRole {
 export enum AssignableRole {
   TrialAttorney = CamsRole.TrialAttorney,
 }
+
+export enum OversightRole {
+  TrialAttorney = CamsRole.TrialAttorney,
+}
