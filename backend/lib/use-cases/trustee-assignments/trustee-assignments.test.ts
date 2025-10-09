@@ -79,7 +79,7 @@ describe('TrusteeAssignmentsUseCase', () => {
 
     mockFactory.getTrusteesRepository.mockReturnValue(mockTrusteesRepository);
     mockFactory.getUserGroupGateway.mockResolvedValue(mockUserGroupGateway);
-    mockErrorUtilities.getCamsError.mockImplementation((error) => error);
+    mockErrorUtilities.getCamsError.mockImplementation((error) => error as CamsError);
 
     useCase = new TrusteeAssignmentsUseCase(context);
   });
@@ -243,7 +243,7 @@ describe('TrusteeAssignmentsUseCase', () => {
         ]);
 
         // For this test, we want the original BadRequestError to be thrown, not wrapped
-        mockErrorUtilities.getCamsError.mockImplementation((error) => error); // Pass through the original error
+        mockErrorUtilities.getCamsError.mockImplementation((error) => error as BadRequestError); // Pass through the original error
 
         await expect(
           useCase.assignAttorneyToTrustee(context, 'trustee-789', 'attorney-456'),
