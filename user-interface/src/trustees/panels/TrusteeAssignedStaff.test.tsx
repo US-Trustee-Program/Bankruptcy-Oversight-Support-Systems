@@ -1,12 +1,12 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { vi, describe, test, expect, beforeEach } from 'vitest';
+import { vi, describe, test, expect, beforeEach, MockedFunction } from 'vitest';
 import TrusteeAssignedStaff from './TrusteeAssignedStaff';
 import { useTrusteeAssignments } from '@/trustees/modals/UseTrusteeAssignments';
 import { Trustee, TrusteeOversightAssignment } from '@common/cams/trustees';
 import { OversightRole } from '@common/cams/roles';
 
 // Mock the hook
-vi.mock('@/lib/hooks/UseTrusteeAssignments', () => ({
+vi.mock('@/trustees/modals/UseTrusteeAssignments', () => ({
   useTrusteeAssignments: vi.fn(),
 }));
 
@@ -74,12 +74,15 @@ describe('TrusteeAssignedStaff', () => {
     isLoading: false,
     error: null,
     getTrusteeOversightAssignments: vi.fn(),
+    assignAttorneyToTrustee: vi.fn(),
     clearError: vi.fn(),
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (useTrusteeAssignments as jest.Mock).mockReturnValue(mockUseTrusteeAssignments);
+    (useTrusteeAssignments as MockedFunction<typeof useTrusteeAssignments>).mockReturnValue(
+      mockUseTrusteeAssignments,
+    );
   });
 
   test('should render component with correct structure', () => {
@@ -124,7 +127,7 @@ describe('TrusteeAssignedStaff', () => {
   });
 
   test('should display error alert when error exists', () => {
-    (useTrusteeAssignments as jest.Mock).mockReturnValue({
+    (useTrusteeAssignments as MockedFunction<typeof useTrusteeAssignments>).mockReturnValue({
       ...mockUseTrusteeAssignments,
       error: 'Failed to load assignments',
     });
@@ -136,7 +139,7 @@ describe('TrusteeAssignedStaff', () => {
   });
 
   test('should show alert container when error is present', () => {
-    (useTrusteeAssignments as jest.Mock).mockReturnValue({
+    (useTrusteeAssignments as MockedFunction<typeof useTrusteeAssignments>).mockReturnValue({
       ...mockUseTrusteeAssignments,
       error: 'Failed to load assignments',
     });
@@ -147,7 +150,7 @@ describe('TrusteeAssignedStaff', () => {
   });
 
   test('should pass correct props to AttorneyAssignmentSection', () => {
-    (useTrusteeAssignments as jest.Mock).mockReturnValue({
+    (useTrusteeAssignments as MockedFunction<typeof useTrusteeAssignments>).mockReturnValue({
       ...mockUseTrusteeAssignments,
       assignments: mockAssignments,
       isLoading: true,
@@ -190,7 +193,7 @@ describe('TrusteeAssignedStaff', () => {
   });
 
   test('should handle loading state properly', () => {
-    (useTrusteeAssignments as jest.Mock).mockReturnValue({
+    (useTrusteeAssignments as MockedFunction<typeof useTrusteeAssignments>).mockReturnValue({
       ...mockUseTrusteeAssignments,
       isLoading: true,
     });
@@ -202,7 +205,7 @@ describe('TrusteeAssignedStaff', () => {
   });
 
   test('should handle empty assignments array', () => {
-    (useTrusteeAssignments as jest.Mock).mockReturnValue({
+    (useTrusteeAssignments as MockedFunction<typeof useTrusteeAssignments>).mockReturnValue({
       ...mockUseTrusteeAssignments,
       assignments: [],
     });
@@ -223,7 +226,7 @@ describe('TrusteeAssignedStaff', () => {
       },
     ];
 
-    (useTrusteeAssignments as jest.Mock).mockReturnValue({
+    (useTrusteeAssignments as MockedFunction<typeof useTrusteeAssignments>).mockReturnValue({
       ...mockUseTrusteeAssignments,
       assignments: multipleAssignments,
     });
