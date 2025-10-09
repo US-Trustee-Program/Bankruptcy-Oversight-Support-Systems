@@ -25,7 +25,7 @@ export default function AttorneyAssignmentSection({
   isLoading = false,
 }: AttorneyAssignmentSectionProps) {
   const modalRef = useRef<TrusteeAttorneyAssignmentModalRef>(null);
-  const attorneyAssignments = assignments.filter((a) => a.role === OversightRole.TrialAttorney);
+  const attorneyAssignments = assignments.filter((a) => a.role === OversightRole.OversightAttorney);
 
   const handleAssignmentCreated = useCallback(
     (_assignment: TrusteeOversightAssignment) => {
@@ -40,10 +40,7 @@ export default function AttorneyAssignmentSection({
 
   if (isLoading) {
     return (
-      <LoadingSpinner
-        caption="Loading attorney assignments..."
-        data-testid="attorney-assignments-loading"
-      />
+      <LoadingSpinner id="attorney-assignments-loading" caption="Loading attorney assignments..." />
     );
   }
 
@@ -57,9 +54,9 @@ export default function AttorneyAssignmentSection({
         <div className="no-assignment-state" data-testid="no-attorney-assigned">
           <Alert type={UswdsAlertStyle.Info}>No attorney assigned to this trustee.</Alert>
           <Button
+            id="assign-attorney"
             uswdsStyle={UswdsButtonStyle.Default}
             onClick={openAssignmentModal}
-            data-testid="assign-attorney-button"
           >
             Assign Attorney
           </Button>
@@ -85,10 +82,10 @@ export default function AttorneyAssignmentSection({
             </div>
           ))}
           <Button
+            id="change-attorney"
             uswdsStyle={UswdsButtonStyle.Outline}
             onClick={openAssignmentModal}
             disabled={attorneyAssignments.length >= 1} // Business rule: one attorney per trustee
-            data-testid="change-attorney-button"
           >
             Change Attorney
           </Button>

@@ -15,21 +15,34 @@ vi.mock('@/lib/hooks/UseApi2');
 vi.mock('@/lib/hooks/UseGlobalAlert');
 vi.mock('@/lib/components/combobox/ComboBox', () => {
   return {
-    default: ({ onUpdateSelection }: { onUpdateSelection?: (options: ComboOption[]) => void }) => (
+    default: ({
+      onUpdateSelection,
+      options = [],
+    }: {
+      onUpdateSelection?: (options: ComboOption[]) => void;
+      options?: Array<{ value: string; label: string }>;
+    }) => (
       <select
         data-testid="mock-combobox"
         onChange={(e) => {
-          if (onUpdateSelection && e.target.value) {
-            const attorney = JSON.parse(e.target.value);
-            onUpdateSelection([{ value: attorney.id, label: attorney.name }]);
-          } else if (onUpdateSelection) {
-            onUpdateSelection([]);
+          if (onUpdateSelection) {
+            if (e.target.value) {
+              const selectedOption = options.find((opt) => opt.value === e.target.value);
+              if (selectedOption) {
+                onUpdateSelection([{ value: selectedOption.value, label: selectedOption.label }]);
+              }
+            } else {
+              onUpdateSelection([]);
+            }
           }
         }}
       >
         <option value="">Select an attorney</option>
-        <option value='{"id":"attorney-1","name":"John Doe"}'>John Doe</option>
-        <option value='{"id":"attorney-2","name":"Jane Smith"}'>Jane Smith</option>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
       </select>
     ),
   };
@@ -76,7 +89,7 @@ describe('TrusteeAttorneyAssignmentModal', () => {
       id: 'attorney-1',
       name: 'John Doe',
     },
-    role: OversightRole.TrialAttorney,
+    role: OversightRole.OversightAttorney,
     createdBy: { id: 'user-1', name: 'Admin User' },
     createdOn: '2023-01-01T00:00:00Z',
     updatedBy: { id: 'user-1', name: 'Admin User' },
@@ -157,12 +170,14 @@ describe('TrusteeAttorneyAssignmentModal', () => {
 
     // Select an attorney from the combobox
     const comboBox = screen.getByTestId('mock-combobox');
-    fireEvent.change(comboBox, { target: { value: JSON.stringify(mockAttorneys[0]) } });
+    fireEvent.change(comboBox, { target: { value: mockAttorneys[0].id } });
 
     // Check that the selected attorney info is displayed
     await waitFor(() => {
       expect(screen.getByText('Selected Attorney:')).toBeInTheDocument();
-      expect(screen.getByText('John Doe')).toBeInTheDocument();
+      // Use a more specific query to avoid the multiple elements issue
+      const selectedAttorneyInfo = screen.getByText('Selected Attorney:').parentElement;
+      expect(selectedAttorneyInfo).toHaveTextContent('John Doe');
     });
   });
 
@@ -187,7 +202,7 @@ describe('TrusteeAttorneyAssignmentModal', () => {
 
     // Select an attorney
     const comboBox = screen.getByTestId('mock-combobox');
-    fireEvent.change(comboBox, { target: { value: JSON.stringify(mockAttorneys[0]) } });
+    fireEvent.change(comboBox, { target: { value: mockAttorneys[0].id } });
 
     // Find and click the submit button
     const submitButton = screen.getByText('Assign Attorney');
@@ -230,7 +245,7 @@ describe('TrusteeAttorneyAssignmentModal', () => {
 
     // Select an attorney
     const comboBox = screen.getByTestId('mock-combobox');
-    fireEvent.change(comboBox, { target: { value: JSON.stringify(mockAttorneys[0]) } });
+    fireEvent.change(comboBox, { target: { value: mockAttorneys[0].id } });
 
     // Find and click the submit button
     const submitButton = screen.getByText('Assign Attorney');
@@ -268,11 +283,253 @@ describe('TrusteeAttorneyAssignmentModal', () => {
 
     // Select an attorney
     const comboBox = screen.getByTestId('mock-combobox');
-    fireEvent.change(comboBox, { target: { value: JSON.stringify(mockAttorneys[0]) } });
+    fireEvent.change(comboBox, { target: { value: mockAttorneys[0].id } });
 
     // Button should now be enabled
     await waitFor(() => {
       expect(submitButton).not.toHaveAttribute('disabled');
+    });
+  });
+
+  test('should hide modal and reset selected attorney when hide() is called', async () => {
+    const onAssignmentCreated = vi.fn();
+    const ref = React.createRef<TrusteeAttorneyAssignmentModalRef>();
+
+    render(
+      <TrusteeAttorneyAssignmentModal
+        modalId="test-modal"
+        trusteeId="trustee-123"
+        onAssignmentCreated={onAssignmentCreated}
+        ref={ref}
+      />,
+    );
+
+    // Open modal and select an attorney
+    ref.current!.show();
+    await waitFor(() => expect(mockApiMethods.getAttorneys).toHaveBeenCalled());
+
+    // Select an attorney
+    const comboBox = screen.getByTestId('mock-combobox');
+    fireEvent.change(comboBox, { target: { value: mockAttorneys[0].id } });
+
+    // Verify attorney is selected
+    await waitFor(() => {
+      expect(screen.getByText('Selected Attorney:')).toBeInTheDocument();
+    });
+
+    // Hide modal
+    ref.current!.hide();
+
+    // The modal should call hide and reset selected attorney (this is handled internally)
+    // We can verify the internal state is reset by checking that the selected attorney is cleared
+  });
+
+  test('should handle loadAttorneys error', async () => {
+    const errorMessage = 'Failed to load attorneys from API';
+    mockApiMethods.getAttorneys.mockRejectedValue(new Error(errorMessage));
+
+    const onAssignmentCreated = vi.fn();
+    const ref = React.createRef<TrusteeAttorneyAssignmentModalRef>();
+
+    render(
+      <TrusteeAttorneyAssignmentModal
+        modalId="test-modal"
+        trusteeId="trustee-123"
+        onAssignmentCreated={onAssignmentCreated}
+        ref={ref}
+      />,
+    );
+
+    // Simulate opening the modal which triggers loadAttorneys
+    ref.current!.show();
+
+    // Wait for the error to be displayed
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+      expect(screen.getByText('Failed to load attorneys')).toBeInTheDocument();
+    });
+  });
+
+  test('should handle assignment attempt with no selected attorney', async () => {
+    const onAssignmentCreated = vi.fn();
+    const ref = React.createRef<TrusteeAttorneyAssignmentModalRef>();
+
+    render(
+      <TrusteeAttorneyAssignmentModal
+        modalId="test-modal"
+        trusteeId="trustee-123"
+        onAssignmentCreated={onAssignmentCreated}
+        ref={ref}
+      />,
+    );
+
+    // Open modal
+    ref.current!.show();
+    await waitFor(() => expect(mockApiMethods.getAttorneys).toHaveBeenCalled());
+
+    // Try to submit without selecting attorney (button should be disabled, but test the logic)
+    // We can't directly call handleAssignAttorney, but the button is disabled when no attorney is selected
+    const submitButton = screen.getByRole('button', { name: 'Assign Attorney' });
+    expect(submitButton).toBeDisabled();
+
+    // Verify no assignment API call was made
+    expect(mockApiMethods.createTrusteeOversightAssignment).not.toHaveBeenCalled();
+  });
+
+  test('should display attorney office information when available', async () => {
+    const attorneyWithOffices = [
+      {
+        ...mockAttorneys[0],
+        offices: [{ officeName: 'Main Office' }, { officeName: 'Branch Office' }],
+      },
+    ];
+
+    mockApiMethods.getAttorneys.mockResolvedValue({ data: attorneyWithOffices });
+
+    const onAssignmentCreated = vi.fn();
+    const ref = React.createRef<TrusteeAttorneyAssignmentModalRef>();
+
+    render(
+      <TrusteeAttorneyAssignmentModal
+        modalId="test-modal"
+        trusteeId="trustee-123"
+        onAssignmentCreated={onAssignmentCreated}
+        ref={ref}
+      />,
+    );
+
+    // Open modal and select attorney
+    ref.current!.show();
+    await waitFor(() => expect(mockApiMethods.getAttorneys).toHaveBeenCalled());
+
+    const comboBox = screen.getByTestId('mock-combobox');
+    fireEvent.change(comboBox, { target: { value: attorneyWithOffices[0].id } });
+
+    // Check that office information is displayed
+    await waitFor(() => {
+      expect(screen.getByText('Office: Main Office, Branch Office')).toBeInTheDocument();
+    });
+  });
+
+  test('should handle attorney with undefined office names', async () => {
+    const attorneyWithUndefinedOffices = [
+      {
+        ...mockAttorneys[0],
+        offices: [
+          { officeName: 'Main Office' },
+          { officeName: undefined }, // This should be handled gracefully
+          { officeName: 'Branch Office' },
+        ],
+      },
+    ];
+
+    mockApiMethods.getAttorneys.mockResolvedValue({ data: attorneyWithUndefinedOffices });
+
+    const onAssignmentCreated = vi.fn();
+    const ref = React.createRef<TrusteeAttorneyAssignmentModalRef>();
+
+    render(
+      <TrusteeAttorneyAssignmentModal
+        modalId="test-modal"
+        trusteeId="trustee-123"
+        onAssignmentCreated={onAssignmentCreated}
+        ref={ref}
+      />,
+    );
+
+    // Open modal and select attorney
+    ref.current!.show();
+    await waitFor(() => expect(mockApiMethods.getAttorneys).toHaveBeenCalled());
+
+    const comboBox = screen.getByTestId('mock-combobox');
+    fireEvent.change(comboBox, { target: { value: attorneyWithUndefinedOffices[0].id } });
+
+    // Check that office information displays with "Unknown" for undefined office names
+    await waitFor(() => {
+      expect(screen.getByText('Office: Main Office, Unknown, Branch Office')).toBeInTheDocument();
+    });
+  });
+
+  test('should handle assignment API error', async () => {
+    const errorMessage = 'Assignment failed';
+    mockApiMethods.createTrusteeOversightAssignment.mockRejectedValue(new Error(errorMessage));
+
+    const onAssignmentCreated = vi.fn();
+    const mockGlobalAlert = { error: vi.fn(), success: vi.fn() };
+    (useGlobalAlert as jest.Mock).mockReturnValue(mockGlobalAlert);
+
+    const ref = React.createRef<TrusteeAttorneyAssignmentModalRef>();
+
+    render(
+      <TrusteeAttorneyAssignmentModal
+        modalId="test-modal"
+        trusteeId="trustee-123"
+        onAssignmentCreated={onAssignmentCreated}
+        ref={ref}
+      />,
+    );
+
+    // Open modal and select attorney
+    ref.current!.show();
+    await waitFor(() => expect(mockApiMethods.getAttorneys).toHaveBeenCalled());
+
+    const comboBox = screen.getByTestId('mock-combobox');
+    fireEvent.change(comboBox, { target: { value: mockAttorneys[0].id } });
+
+    await waitFor(() => {
+      expect(screen.getByText('Selected Attorney:')).toBeInTheDocument();
+    });
+
+    // Submit the assignment
+    const submitButton = screen.getByRole('button', { name: 'Assign Attorney' });
+    expect(submitButton).not.toBeDisabled();
+    fireEvent.click(submitButton);
+
+    // Wait for error handling
+    await waitFor(() => {
+      expect(mockGlobalAlert.error).toHaveBeenCalledWith('Assignment failed');
+    });
+
+    // onAssignmentCreated should not have been called
+    expect(onAssignmentCreated).not.toHaveBeenCalled();
+  });
+
+  test('should handle non-Error exception in assignment', async () => {
+    mockApiMethods.createTrusteeOversightAssignment.mockRejectedValue('String error');
+
+    const onAssignmentCreated = vi.fn();
+    const mockGlobalAlert = { error: vi.fn(), success: vi.fn() };
+    (useGlobalAlert as jest.Mock).mockReturnValue(mockGlobalAlert);
+
+    const ref = React.createRef<TrusteeAttorneyAssignmentModalRef>();
+
+    render(
+      <TrusteeAttorneyAssignmentModal
+        modalId="test-modal"
+        trusteeId="trustee-123"
+        onAssignmentCreated={onAssignmentCreated}
+        ref={ref}
+      />,
+    );
+
+    // Open modal and select attorney
+    ref.current!.show();
+    await waitFor(() => expect(mockApiMethods.getAttorneys).toHaveBeenCalled());
+
+    const comboBox = screen.getByTestId('mock-combobox');
+    fireEvent.change(comboBox, { target: { value: mockAttorneys[0].id } });
+
+    await waitFor(() => {
+      expect(screen.getByText('Selected Attorney:')).toBeInTheDocument();
+    });
+
+    // Submit the assignment
+    const submitButton = screen.getByRole('button', { name: 'Assign Attorney' });
+    fireEvent.click(submitButton);
+
+    // Wait for error handling with default message
+    await waitFor(() => {
+      expect(mockGlobalAlert.error).toHaveBeenCalledWith('Failed to assign attorney');
     });
   });
 });

@@ -25,6 +25,7 @@ import {
   QueueGateway,
   RuntimeState,
   RuntimeStateRepository,
+  StaffRepository,
   TrusteesRepository,
   UserSessionCacheRepository,
   UsersRepository,
@@ -61,6 +62,7 @@ import { OfficeAssigneeMongoRepository } from './adapters/gateways/mongo/office-
 import StorageQueueGateway from './adapters/gateways/storage-queue/storage-queue-gateway';
 import { TrusteesMongoRepository } from './adapters/gateways/mongo/trustees.mongo.repository';
 import { ListsMongoRepository } from './adapters/gateways/mongo/lists.mongo.repository';
+import { OfficesStaffRepository } from './adapters/gateways/offices-staff.repository';
 
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
@@ -77,6 +79,10 @@ let mockOrdersRepository: MockMongoRepository;
 let mockConsolidationsRepository: MockMongoRepository;
 let mockCasesRepository: MockMongoRepository;
 let mockUserSessionCacheRepository: MockMongoRepository;
+
+export const getStaffRepository = (): StaffRepository => {
+  return new OfficesStaffRepository();
+};
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return MockAttorneysGateway;
@@ -376,6 +382,7 @@ export const Factory = {
   getTrusteesRepository,
   getQueueGateway,
   getListsGateway,
+  getStaffRepository,
 };
 
 export default Factory;

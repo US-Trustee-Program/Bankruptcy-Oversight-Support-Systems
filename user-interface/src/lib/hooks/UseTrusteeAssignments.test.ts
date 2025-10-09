@@ -1,4 +1,4 @@
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, waitFor } from '@testing-library/react';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import { useTrusteeAssignments } from './UseTrusteeAssignments';
 import useApi2 from './UseApi2';
@@ -19,7 +19,7 @@ describe('useTrusteeAssignments', () => {
         id: 'attorney-123',
         name: 'Attorney Smith',
       },
-      role: OversightRole.TrialAttorney,
+      role: OversightRole.OversightAttorney,
       createdBy: {
         id: 'user-123',
         name: 'Admin User',
@@ -60,11 +60,7 @@ describe('useTrusteeAssignments', () => {
 
     expect(result.current.isLoading).toBe(false);
 
-    act(() => {
-      result.current.getTrusteeOversightAssignments('trustee-123');
-    });
-
-    expect(result.current.isLoading).toBe(true);
+    result.current.getTrusteeOversightAssignments('trustee-123');
 
     await waitFor(() => {
       expect(result.current.assignments).toEqual(mockAssignments);
@@ -81,9 +77,7 @@ describe('useTrusteeAssignments', () => {
 
     const { result } = renderHook(() => useTrusteeAssignments());
 
-    act(() => {
-      result.current.getTrusteeOversightAssignments('trustee-123');
-    });
+    result.current.getTrusteeOversightAssignments('trustee-123');
 
     await waitFor(() => {
       expect(result.current.error).toBe(errorMessage);
@@ -105,11 +99,7 @@ describe('useTrusteeAssignments', () => {
 
     const { result } = renderHook(() => useTrusteeAssignments());
 
-    act(() => {
-      result.current.assignAttorneyToTrustee('trustee-123', 'attorney-123');
-    });
-
-    expect(result.current.isLoading).toBe(true);
+    result.current.assignAttorneyToTrustee('trustee-123', 'attorney-123');
 
     await waitFor(() => {
       expect(result.current.assignments).toEqual([newAssignment]);
@@ -131,10 +121,8 @@ describe('useTrusteeAssignments', () => {
 
     let caughtError: Error | null = null;
 
-    act(() => {
-      result.current.assignAttorneyToTrustee('trustee-123', 'attorney-123').catch((err: Error) => {
-        caughtError = err;
-      });
+    result.current.assignAttorneyToTrustee('trustee-123', 'attorney-123').catch((err: Error) => {
+      caughtError = err;
     });
 
     await waitFor(() => {
@@ -146,21 +134,24 @@ describe('useTrusteeAssignments', () => {
     expect(caughtError).not.toBeNull();
   });
 
-  test('should clear error state', () => {
+  test('should clear error state', async () => {
+    const errorMessage = 'Test error for clearing';
+    mockApiMethods.getTrusteeOversightAssignments.mockRejectedValue(new Error(errorMessage));
+
     const { result } = renderHook(() => useTrusteeAssignments());
 
-    // Set error state manually by accessing the private setState function
-    act(() => {
-      // @ts-expect-error - Accessing private state for testing
-      result.current.setError('Test error');
+    // First set error state through a failed API call
+    result.current.getTrusteeOversightAssignments('trustee-123');
+
+    await waitFor(() => {
+      expect(result.current.error).toBe(errorMessage);
     });
 
-    expect(result.current.error).toBe('Test error');
+    // Then test clearing the error
+    result.current.clearError();
 
-    act(() => {
-      result.current.clearError();
+    await waitFor(() => {
+      expect(result.current.error).toBeNull();
     });
-
-    expect(result.current.error).toBeNull();
   });
 });

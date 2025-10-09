@@ -21,8 +21,7 @@ export class AttorneysController implements CamsController {
     context.logger.info(MODULE_NAME, 'Getting Attorneys list.');
     try {
       const data = await this.useCase.getAttorneyList(context);
-      const success = httpSuccess({ body: { data } });
-      return success;
+      return httpSuccess({ body: { data } });
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     } finally {

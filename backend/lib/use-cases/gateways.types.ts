@@ -306,3 +306,7 @@ export interface QueueGateway {
 // TODO: Delete these types once the consolidation order `consolidationId` values have been migrated.
 export type MigrationConsolidationOrder = Pick<ConsolidationOrder, 'id' | 'jobId' | 'status'>;
 export type UpdateConsolidationId = Pick<ConsolidationOrder, 'id' | 'consolidationId'>;
+
+export interface StaffRepository {
+  getAttorneyStaff(applicationContext: ApplicationContext): Promise<Staff[]>;
+}

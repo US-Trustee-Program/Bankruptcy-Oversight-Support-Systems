@@ -71,7 +71,7 @@ describe('TrusteeAssignmentsUseCase', () => {
             id: 'attorney-1',
             name: 'John Attorney',
           },
-          role: OversightRole.TrialAttorney,
+          role: OversightRole.OversightAttorney,
           createdOn: '2025-10-07T10:00:00Z',
           createdBy: mockUser,
           updatedOn: '2025-10-07T10:00:00Z',
@@ -136,6 +136,27 @@ describe('TrusteeAssignmentsUseCase', () => {
         error,
       );
     });
+
+    test('should re-throw BadRequestError from repository without modification', async () => {
+      const trusteeId = 'trustee-123';
+      const badRequestError = new BadRequestError(MODULE_NAME, {
+        message: 'Invalid trustee ID format',
+      });
+
+      mockRepository.getTrusteeOversightAssignments.mockRejectedValue(badRequestError);
+
+      await expect(useCase.getTrusteeOversightAssignments(context, trusteeId)).rejects.toThrow(
+        BadRequestError,
+      );
+      await expect(
+        useCase.getTrusteeOversightAssignments(context, trusteeId),
+      ).rejects.toMatchObject({
+        message: 'Invalid trustee ID format',
+      });
+
+      expect(mockRepository.getTrusteeOversightAssignments).toHaveBeenCalledWith(trusteeId);
+      expect(context.logger.error).not.toHaveBeenCalled(); // Should not log BadRequestError
+    });
   });
 
   describe('assignAttorneyToTrustee', () => {
@@ -185,7 +206,7 @@ describe('TrusteeAssignmentsUseCase', () => {
           id: attorneyUserId,
           name: 'Jane Attorney',
         },
-        role: OversightRole.TrialAttorney,
+        role: OversightRole.OversightAttorney,
       };
 
       jest
@@ -215,10 +236,59 @@ describe('TrusteeAssignmentsUseCase', () => {
             id: assignmentInput.user.id,
             name: assignmentInput.user.name,
           }),
-          role: OversightRole.TrialAttorney,
+          role: OversightRole.OversightAttorney,
         }),
       );
       expect(result).toEqual(expectedAssignment);
+      expect(context.logger.info).toHaveBeenCalledWith(
+        MODULE_NAME,
+        `Created attorney assignment for trustee ${trusteeId} with user ${attorneyUserId}`,
+      );
+    });
+
+    test('should create assignment successfully even when audit trail creation fails', async () => {
+      const trusteeId = 'trustee-123';
+      const attorneyUserId = 'attorney-456';
+
+      const assignmentInput = {
+        trusteeId,
+        user: {
+          id: attorneyUserId,
+          name: 'Jane Attorney',
+        },
+        role: OversightRole.OversightAttorney,
+      };
+
+      jest
+        .spyOn(MockUserGroupGateway.prototype, 'getUserById')
+        .mockResolvedValue(assignmentInput.user);
+
+      const expectedAssignment: TrusteeOversightAssignment = {
+        id: 'assignment-123',
+        ...assignmentInput,
+        createdOn: '2025-10-07T10:00:00Z',
+        createdBy: mockUser,
+        updatedOn: '2025-10-07T10:00:00Z',
+        updatedBy: mockUser,
+      };
+
+      // Mock no existing attorney assignment
+      mockRepository.getTrusteeOversightAssignments.mockResolvedValue([]);
+      mockRepository.createTrusteeOversightAssignment.mockResolvedValue(expectedAssignment);
+
+      // Make audit trail creation fail
+      const auditError = new Error('Audit service unavailable');
+      mockRepository.createTrusteeHistory.mockRejectedValue(auditError);
+
+      const result = await useCase.assignAttorneyToTrustee(context, trusteeId, attorneyUserId);
+
+      expect(result).toEqual(expectedAssignment);
+      expect(mockRepository.createTrusteeHistory).toHaveBeenCalled();
+      expect(context.logger.error).toHaveBeenCalledWith(
+        MODULE_NAME,
+        `Failed to create audit trail for assignment ${expectedAssignment.id}`,
+        auditError,
+      );
       expect(context.logger.info).toHaveBeenCalledWith(
         MODULE_NAME,
         `Created attorney assignment for trustee ${trusteeId} with user ${attorneyUserId}`,
@@ -236,7 +306,7 @@ describe('TrusteeAssignmentsUseCase', () => {
           id: 'other-attorney-789',
           name: 'Other Attorney',
         },
-        role: OversightRole.TrialAttorney,
+        role: OversightRole.OversightAttorney,
         createdOn: '2025-10-07T09:00:00Z',
         createdBy: mockUser,
         updatedOn: '2025-10-07T09:00:00Z',
@@ -264,7 +334,7 @@ describe('TrusteeAssignmentsUseCase', () => {
           id: attorneyUserId, // Same attorney
           name: 'Jane Attorney',
         },
-        role: OversightRole.TrialAttorney,
+        role: OversightRole.OversightAttorney,
         createdOn: '2025-10-07T09:00:00Z',
         createdBy: mockUser,
         updatedOn: '2025-10-07T09:00:00Z',

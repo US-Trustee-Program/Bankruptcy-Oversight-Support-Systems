@@ -29,7 +29,7 @@ describe('TrusteeAssignmentsController', () => {
       id: 'user-789',
       name: 'Attorney Smith',
     },
-    role: OversightRole.TrialAttorney,
+    role: OversightRole.OversightAttorney,
     createdBy: {
       name: 'system',
       id: 'system',
@@ -160,6 +160,18 @@ describe('TrusteeAssignmentsController', () => {
       context.request.url = '/api/v1/trustees/trustee-456/oversight-assignments';
 
       await expect(controller.handleRequest(context)).rejects.toThrow(BadRequestError);
+    });
+
+    test('should throw BadRequestError when trustee ID is missing for POST', async () => {
+      context.request.method = 'POST';
+      context.request.params = {};
+      context.request.body = { userId: 'user-789' };
+      context.request.url = '/api/v1/trustees/oversight-assignments';
+
+      await expect(controller.handleRequest(context)).rejects.toThrow(BadRequestError);
+      await expect(controller.handleRequest(context)).rejects.toMatchObject({
+        message: 'Trustee ID is required',
+      });
     });
   });
 
