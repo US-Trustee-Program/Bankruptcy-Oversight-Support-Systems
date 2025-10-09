@@ -543,7 +543,7 @@ async function getTrusteeOversightAssignments(trusteeId: string) {
           id: 'attorney-1',
           name: 'John Doe',
         },
-        role: OversightRole.TrialAttorney,
+        role: OversightRole.OversightAttorney,
         createdBy: { id: 'user-1', name: 'Admin User' },
         createdOn: '2023-01-01T00:00:00Z',
         updatedBy: { id: 'user-1', name: 'Admin User' },
@@ -562,7 +562,7 @@ async function createTrusteeOversightAssignment(trusteeId: string, userId: strin
         id: userId,
         name: 'John Doe', // Mock name, would be fetched from user service in real implementation
       },
-      role: OversightRole.TrialAttorney,
+      role: OversightRole.OversightAttorney,
       createdBy: { id: 'user-1', name: 'Admin User' },
       createdOn: new Date().toISOString(),
       updatedBy: { id: 'user-1', name: 'Admin User' },

@@ -27,6 +27,7 @@ describe('Factory function-apps', () => {
   let UsersMongoRepository;
   let OktaUserGroupGateway;
   let MockUserGroupGateway;
+  let OfficesStaffRepository;
 
   beforeEach(async () => {
     await jest.isolateModulesAsync(async () => {
@@ -92,6 +93,9 @@ describe('Factory function-apps', () => {
 
       MockUserGroupGateway = (await import('./testing/mock-gateways/mock-user-group-gateway'))
         .MockUserGroupGateway;
+
+      OfficesStaffRepository = (await import('./adapters/gateways/offices-staff.repository'))
+        .OfficesStaffRepository;
     });
   });
 
@@ -251,5 +255,10 @@ describe('Factory function-apps', () => {
 
     const obj = factory.getUserSessionUseCase(context);
     expect(obj).toBeInstanceOf(UserSessionUseCase);
+  });
+
+  test('getStaffRepository', async () => {
+    const obj = factory.getStaffRepository();
+    expect(obj).toBeInstanceOf(OfficesStaffRepository);
   });
 });

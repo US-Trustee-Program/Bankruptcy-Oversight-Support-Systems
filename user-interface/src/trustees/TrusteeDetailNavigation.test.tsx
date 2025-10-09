@@ -9,9 +9,14 @@ import TrusteeDetailNavigation, {
 
 vi.mock('@/lib/utils/navigation', () => ({
   setCurrentNav: vi.fn((activeNav, currentNav) => (activeNav === currentNav ? 'usa-current' : '')),
-  createNavStateMapper: vi.fn(
-    (mapping, defaultState) => (value: string) => mapping[value] || defaultState,
-  ),
+  createNavStateMapper: vi.fn((mapping, defaultState) => (path: string) => {
+    if (!path) {
+      return defaultState;
+    }
+    const cleanPath = path.replace(/\/$/, '').split('/');
+    const lastSegment = cleanPath[cleanPath.length - 1];
+    return mapping[lastSegment] || defaultState;
+  }),
 }));
 
 describe('TrusteeDetailNavigation', () => {
@@ -188,12 +193,13 @@ describe('mapTrusteeDetailNavState', () => {
 });
 
 describe('TrusteeNavState enum', () => {
-  test('should have exactly two enum values for navigation states', () => {
+  test('should have exactly three enum values for navigation states', () => {
     expect(TrusteeNavState.TRUSTEE_PROFILE).toBeDefined();
     expect(TrusteeNavState.AUDIT_HISTORY).toBeDefined();
+    expect(TrusteeNavState.ASSIGNED_STAFF).toBeDefined();
 
     const enumValues = Object.values(TrusteeNavState).filter((value) => typeof value === 'number');
-    expect(enumValues).toHaveLength(2);
+    expect(enumValues).toHaveLength(3);
   });
 });
 

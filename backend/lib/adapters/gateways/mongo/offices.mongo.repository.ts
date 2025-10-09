@@ -28,7 +28,7 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
   private static referenceCount: number = 0;
   private static instance: OfficesMongoRepository;
 
-  private doc = using<OfficeStaff>();
+  private readonly doc = using<OfficeStaff>();
 
   constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);
@@ -105,8 +105,7 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
     try {
       await this.getAdapter<OfficeStaff>().deleteOne(query);
     } catch (originalError) {
-      const error = getCamsError(originalError, MODULE_NAME);
-      throw error;
+      throw getCamsError(originalError, MODULE_NAME);
     }
   }
 
