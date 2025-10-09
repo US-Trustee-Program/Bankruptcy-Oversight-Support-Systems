@@ -11,6 +11,7 @@ import {
   TrusteeInternalContactHistory,
   TrusteeBankHistory,
   TrusteeSoftwareHistory,
+  TrusteeOversightHistory,
 } from '@common/cams/trustees';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
 import { Auditable } from '@common/cams/auditable';
@@ -139,6 +140,47 @@ function ShowTrusteeSoftwareHistory(props: ShowTrusteeSoftwareHistoryProps) {
   );
 }
 
+type ShowTrusteeOversightHistoryProps = Readonly<{
+  history: TrusteeOversightHistory;
+  idx: number;
+}>;
+
+function ShowTrusteeOversightHistory(props: ShowTrusteeOversightHistoryProps) {
+  const { history, idx } = props;
+
+  const before = history.before ? (
+    <>
+      {history.before.role}
+      <br />
+      {history.before.user.name}
+    </>
+  ) : (
+    '(none)'
+  );
+  const after = history.after ? (
+    <>
+      {history.after.role}
+      <br />
+      {history.after.user.name}
+    </>
+  ) : (
+    '(none)'
+  );
+  return (
+    <tr>
+      <td data-testid={`change-type-oversight-${idx}`}>Oversight</td>
+      <td data-testid={`previous-oversight-${idx}`}>{before}</td>
+      <td data-testid={`new-oversight-${idx}`}>{after}</td>
+      <td data-testid={`changed-by-${idx}`}>
+        {history.updatedBy && <>{history.updatedBy.name}</>}
+      </td>
+      <td data-testid={`change-date-${idx}`}>
+        <span className="text-no-wrap">{formatDate(history.updatedOn)}</span>
+      </td>
+    </tr>
+  );
+}
+
 function RenderTrusteeHistory(props: Readonly<{ trusteeHistory: TrusteeHistory[] }>) {
   const { trusteeHistory } = props;
   return (
@@ -159,6 +201,14 @@ function RenderTrusteeHistory(props: Readonly<{ trusteeHistory: TrusteeHistory[]
                 history={history}
                 idx={idx}
               />
+            );
+          case 'AUDIT_OVERSIGHT':
+            return (
+              <ShowTrusteeOversightHistory
+                key={`${history.trusteeId}-${idx}`}
+                history={history}
+                idx={idx}
+              ></ShowTrusteeOversightHistory>
             );
         }
       })}
