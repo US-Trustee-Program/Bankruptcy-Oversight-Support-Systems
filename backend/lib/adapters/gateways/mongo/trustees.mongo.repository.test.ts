@@ -703,6 +703,10 @@ describe('TrusteesMongoRepository', () => {
           name: 'John Attorney',
         },
         role: OversightRole.OversightAttorney,
+        createdOn: '2025-10-07T10:00:00Z',
+        createdBy: mockUser,
+        updatedOn: '2025-10-07T10:00:00Z',
+        updatedBy: mockUser,
       };
 
       const mockAdapter = jest
@@ -734,6 +738,10 @@ describe('TrusteesMongoRepository', () => {
           name: 'John Attorney',
         },
         role: OversightRole.OversightAttorney,
+        createdOn: '2025-10-07T10:00:00Z',
+        createdBy: mockUser,
+        updatedOn: '2025-10-07T10:00:00Z',
+        updatedBy: mockUser,
       };
 
       const error = new Error('Database connection failed');

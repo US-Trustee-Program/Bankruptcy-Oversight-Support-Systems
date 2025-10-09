@@ -259,6 +259,8 @@ describe('TrusteesUseCase', () => {
       updateTrustee: jest.fn(),
       read: jest.fn(),
       release: jest.fn(),
+      createTrusteeOversightAssignment: jest.fn(),
+      getTrusteeOversightAssignments: jest.fn(),
     } as jest.Mocked<TrusteesRepository>;
 
     jest.spyOn(factoryModule, 'getTrusteesRepository').mockReturnValue(mockTrusteesRepository);

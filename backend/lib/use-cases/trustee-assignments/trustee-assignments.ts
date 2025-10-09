@@ -1,10 +1,16 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteesRepository } from '../gateways.types';
-import { TrusteeOversightAssignment } from '../../../../common/src/cams/trustees';
+import {
+  TrusteeOversightAssignment,
+  TrusteeOversightHistory,
+} from '../../../../common/src/cams/trustees';
 import { OversightRole } from '../../../../common/src/cams/roles';
 import { getTrusteesRepository, getUserGroupGateway } from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { BadRequestError } from '../../common-errors/bad-request';
+import { getCamsUserReference } from '../../../../common/src/cams/session';
+import { createAuditRecord } from '../../../../common/src/cams/auditable';
+import Validators from '../../../../common/src/cams/validators';
 
 const MODULE_NAME = 'TRUSTEE-ASSIGNMENTS-USE-CASE';
 
@@ -74,14 +80,13 @@ export class TrusteeAssignmentsUseCase {
     trusteeId: string,
     attorneyUserId: string,
   ): Promise<TrusteeOversightAssignment> {
-    // Input validation
-    if (!trusteeId?.trim()) {
+    if (!Validators.minLength(1)(trusteeId.trim()).valid) {
       throw new BadRequestError(MODULE_NAME, {
         message: 'Trustee ID is required and cannot be empty.',
       });
     }
 
-    if (!attorneyUserId?.trim()) {
+    if (!Validators.minLength(1)(attorneyUserId.trim()).valid) {
       throw new BadRequestError(MODULE_NAME, {
         message: 'Attorney user ID is required and cannot be empty.',
       });
@@ -114,80 +119,39 @@ export class TrusteeAssignmentsUseCase {
       }
 
       const userGroupGateway = await getUserGroupGateway(context);
-      const user = await userGroupGateway.getUserById(context, attorneyUserId);
+      const assigneeUser = await userGroupGateway.getUserById(context, attorneyUserId);
 
-      // Create new assignment
-      const assignmentInput = {
-        trusteeId,
-        user,
+      const trusteeManager = getCamsUserReference(context.session.user);
+      const userAndRole = {
+        user: getCamsUserReference(assigneeUser),
         role: OversightRole.OversightAttorney,
       };
 
-      const newAssignment =
-        await this.trusteesRepository.createTrusteeOversightAssignment(assignmentInput);
-
-      // Create audit trail for the new assignment
-      await this.createAssignmentAuditTrail(context, trusteeId, newAssignment, 'CREATED');
-
-      context.logger.info(
-        MODULE_NAME,
-        `Created attorney assignment for trustee ${trusteeId} with user ${attorneyUserId}`,
+      const createdAssignment = await this.trusteesRepository.createTrusteeOversightAssignment(
+        createAuditRecord<TrusteeOversightAssignment>(
+          {
+            trusteeId,
+            ...userAndRole,
+          },
+          trusteeManager,
+        ),
       );
 
-      return newAssignment;
+      await this.trusteesRepository.createTrusteeHistory(
+        createAuditRecord<TrusteeOversightHistory>(
+          {
+            documentType: 'AUDIT_OVERSIGHT' as const,
+            trusteeId,
+            before: null,
+            after: userAndRole,
+          },
+          trusteeManager,
+        ),
+      );
+
+      return createdAssignment;
     } catch (originalError) {
-      if (originalError instanceof BadRequestError) {
-        throw originalError;
-      }
-
-      const errorMessage = `Failed to assign attorney ${attorneyUserId} to trustee ${trusteeId}.`;
-      context.logger.error(MODULE_NAME, errorMessage, originalError);
       throw getCamsError(originalError, MODULE_NAME);
-    }
-  }
-
-  /**
-   * Creates an audit trail entry for trustee oversight assignment operations
-   * @param context - Application context containing logger and session
-   * @param trusteeId - Unique identifier for the trustee
-   * @param assignment - The assignment that was created, updated, or removed
-   * @param action - The action performed on the assignment (CREATED, UPDATED, REMOVED)
-   * @private
-   */
-  private async createAssignmentAuditTrail(
-    context: ApplicationContext,
-    trusteeId: string,
-    assignment: TrusteeOversightAssignment,
-    action: 'CREATED' | 'UPDATED' | 'REMOVED',
-  ): Promise<void> {
-    try {
-      // Use the assignment role to determine assignmentType, defaulting to ATTORNEY since that's all we support now
-      const assignmentType = 'ATTORNEY';
-
-      const auditRecord = {
-        trusteeId,
-        documentType: 'AUDIT_OVERSIGHT_ASSIGNMENT' as const,
-        assignmentType,
-        before: action === 'CREATED' ? null : assignment,
-        after: action === 'REMOVED' ? null : assignment,
-        // Add required audit properties
-        updatedBy: context.session?.user || { id: 'system', name: 'system' },
-        updatedOn: new Date().toISOString(),
-      };
-
-      await this.trusteesRepository.createTrusteeHistory(auditRecord);
-
-      context.logger.info(
-        MODULE_NAME,
-        `Created audit trail for ${action} assignment ${assignment.id} for trustee ${trusteeId}`,
-      );
-    } catch (error) {
-      context.logger.error(
-        MODULE_NAME,
-        `Failed to create audit trail for assignment ${assignment.id}`,
-        error,
-      );
-      // Don't throw - audit failure shouldn't break assignment operation
     }
   }
 }

@@ -1,7 +1,7 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import { useTrusteeAssignments } from './UseTrusteeAssignments';
-import useApi2 from './UseApi2';
+import useApi2 from '../../lib/hooks/UseApi2';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
 import { OversightRole } from '@common/cams/roles';
 
