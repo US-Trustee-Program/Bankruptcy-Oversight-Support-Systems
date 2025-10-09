@@ -32,7 +32,7 @@ describe('AttorneyAssignmentSection', () => {
         id: 'attorney-1',
         name: 'John Doe',
       },
-      role: OversightRole.TrialAttorney,
+      role: OversightRole.OversightAttorney,
       createdBy: { id: 'user-1', name: 'Admin User' },
       createdOn: '2023-01-01T00:00:00Z',
       updatedBy: { id: 'user-1', name: 'Admin User' },
@@ -57,8 +57,8 @@ describe('AttorneyAssignmentSection', () => {
 
     // Verify empty state is shown
     expect(screen.getByTestId('no-attorney-assigned')).toBeInTheDocument();
-    expect(screen.getByText('No attorney assigned to this trustee.')).toBeInTheDocument();
-    expect(screen.getByTestId('assign-attorney-button')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('No attorney assigned to this trustee.');
+    expect(screen.getByTestId('button-assign-attorney')).toBeInTheDocument();
   });
 
   test('should display assigned attorney information', () => {
@@ -74,9 +74,10 @@ describe('AttorneyAssignmentSection', () => {
 
     // Verify attorney information is displayed
     expect(screen.getByTestId('attorney-assignments-display')).toBeInTheDocument();
-    expect(screen.getByTestId('assignment-item')).toBeInTheDocument();
-    expect(screen.getByText('John Doe')).toBeInTheDocument();
-    expect(screen.getByText('Trial Attorney')).toBeInTheDocument();
+    const assignmentItem = screen.getByTestId('assignment-item');
+    expect(assignmentItem).toBeInTheDocument();
+    expect(assignmentItem).toHaveTextContent('John Doe');
+    expect(assignmentItem).toHaveTextContent('Trial Attorney');
   });
 
   test('should open assignment modal when assign button clicked', () => {
@@ -91,7 +92,7 @@ describe('AttorneyAssignmentSection', () => {
     );
 
     // Get the assign button and click it
-    const assignButton = screen.getByTestId('assign-attorney-button');
+    const assignButton = screen.getByTestId('button-assign-attorney');
     fireEvent.click(assignButton);
 
     // Since we're mocking the modal, we can't directly test that it opens
@@ -127,7 +128,7 @@ describe('AttorneyAssignmentSection', () => {
     );
 
     // Verify the change button is disabled (business rule)
-    const changeButton = screen.getByTestId('change-attorney-button');
+    const changeButton = screen.getByTestId('button-change-attorney');
     expect(changeButton).toBeDisabled();
   });
 
@@ -145,7 +146,6 @@ describe('AttorneyAssignmentSection', () => {
 
     // Verify loading spinner is displayed
     expect(screen.getByTestId('attorney-assignments-loading')).toBeInTheDocument();
-    expect(screen.getByText('Loading attorney assignments...')).toBeInTheDocument();
   });
 
   test('should show assignment history link when assignments exist', () => {

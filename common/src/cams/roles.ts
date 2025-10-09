@@ -5,6 +5,7 @@ export enum CamsRole {
   TrialAttorney = 'TrialAttorney',
   DataVerifier = 'DataVerifier',
   TrusteeAdmin = 'TrusteeAdmin',
+  // OversightAttorney = 'USTP CAMS Trustee Oversight Attorney',
 }
 
 export enum AssignableRole {
@@ -12,5 +13,6 @@ export enum AssignableRole {
 }
 
 export enum OversightRole {
-  TrialAttorney = CamsRole.TrialAttorney,
+  // TODO: Convert to using CamsRole.OversightAttorney
+  OversightAttorney = CamsRole.TrialAttorney,
 }

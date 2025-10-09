@@ -3,6 +3,7 @@ import { Identifiable } from './document';
 import { LegacyAddress } from './parties';
 import { ContactInformation } from './contact';
 import { CamsUserReference } from './users';
+import { OversightRole } from './roles';
 
 // Chapter types supported for trustee assignments
 export type ChapterType = '7-panel' | '7-non-panel' | '11' | '11-subchapter-v' | '12' | '13';

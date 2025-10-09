@@ -94,7 +94,7 @@ export class TrusteeAssignmentsUseCase {
 
       // Check for existing attorney assignment
       const existingAttorneyAssignment = existingAssignments.find(
-        (assignment) => assignment.role === OversightRole.TrialAttorney,
+        (assignment) => assignment.role === OversightRole.OversightAttorney,
       );
 
       if (existingAttorneyAssignment) {
@@ -120,7 +120,7 @@ export class TrusteeAssignmentsUseCase {
       const assignmentInput = {
         trusteeId,
         user,
-        role: OversightRole.TrialAttorney,
+        role: OversightRole.OversightAttorney,
       };
 
       const newAssignment =
