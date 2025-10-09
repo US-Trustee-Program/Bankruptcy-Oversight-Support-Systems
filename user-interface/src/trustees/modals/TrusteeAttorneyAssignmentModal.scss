@@ -1,4 +1,7 @@
 .trustee-attorney-assignment-modal-content {
+  min-width: 380px;
+  min-height: 76px;
+
   .attorney-selection-section {
     margin-bottom: 1.5rem;
 
@@ -8,20 +11,10 @@
       font-weight: bold;
     }
   }
+}
 
-  .selected-attorney-info {
-    margin-top: 1.5rem;
-    padding: 1rem;
-    background-color: #f0f0f0;
-    border-radius: 4px;
-
-    h4 {
-      margin-top: 0;
-      margin-bottom: 0.5rem;
-    }
-
-    p {
-      margin: 0.25rem 0;
-    }
+@media screen and (max-width: 380px) {
+  .trustee-attorney-assignment-modal-content {
+    min-width: 100%;
   }
 }

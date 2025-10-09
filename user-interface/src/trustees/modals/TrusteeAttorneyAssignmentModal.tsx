@@ -85,7 +85,6 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
     }
   }, [selectedAttorney, props.trusteeId, props.onAssignmentCreated, api, globalAlert]);
 
-  // Modal content
   const modalContent = (
     <div
       className="trustee-attorney-assignment-modal-content"
@@ -98,10 +97,10 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
       ) : (
         <>
           <div className="attorney-selection-section">
-            <label htmlFor="attorney-search">Select Attorney:</label>
             <ComboBox
               id="attorney-search"
               name="attorney-search"
+              label="Search for attorney name to assign to this Trustee"
               options={attorneys.map((attorney) => ({
                 value: attorney.id,
                 label: attorney.name,
@@ -119,18 +118,6 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
               required
             />
           </div>
-          {selectedAttorney && (
-            <div className="selected-attorney-info">
-              <h4>Selected Attorney:</h4>
-              <p>{selectedAttorney.name}</p>
-              {selectedAttorney.offices && selectedAttorney.offices.length > 0 && (
-                <p>
-                  Office:{' '}
-                  {selectedAttorney.offices.map((o) => o.officeName || 'Unknown').join(', ')}
-                </p>
-              )}
-            </div>
-          )}
         </>
       )}
     </div>
@@ -141,7 +128,7 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
     modalId: props.modalId,
     modalRef: modalRef,
     submitButton: {
-      label: 'Assign Attorney',
+      label: `Add Attorney`,
       disabled: !selectedAttorney || isAssigning,
       onClick: handleAssignAttorney,
       uswdsStyle: UswdsButtonStyle.Default,
@@ -156,7 +143,7 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
     <Modal
       ref={modalRef}
       modalId={props.modalId}
-      heading="Assign Attorney to Trustee"
+      heading={`Add Attorney`}
       content={modalContent}
       actionButtonGroup={actionButtonGroup}
     />

@@ -1,8 +1,6 @@
 import { useRef, useCallback } from 'react';
 import Button from '@/lib/components/uswds/Button';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import Alert from '@/lib/components/uswds/Alert';
-import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
 import { OversightRole } from '@common/cams/roles';
@@ -10,6 +8,7 @@ import TrusteeAttorneyAssignmentModal, {
   TrusteeAttorneyAssignmentModalRef,
 } from '../modals/TrusteeAttorneyAssignmentModal';
 import './AttorneyAssignmentSection.scss';
+import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 
 interface AttorneyAssignmentSectionProps {
   trusteeId: string;
@@ -25,7 +24,9 @@ export default function AttorneyAssignmentSection({
   isLoading = false,
 }: AttorneyAssignmentSectionProps) {
   const modalRef = useRef<TrusteeAttorneyAssignmentModalRef>(null);
-  const attorneyAssignments = assignments.filter((a) => a.role === OversightRole.OversightAttorney);
+  const attorneyAssignment = assignments.filter(
+    (a) => a.role === OversightRole.OversightAttorney,
+  )[0];
 
   const handleAssignmentCreated = useCallback(
     (_assignment: TrusteeOversightAssignment) => {
@@ -45,61 +46,43 @@ export default function AttorneyAssignmentSection({
   }
 
   return (
-    <div className="attorney-assignment-section" data-testid="attorney-assignment-section">
-      <div className="section-header">
-        <h3>Attorney Assignment</h3>
-      </div>
-
-      {attorneyAssignments.length === 0 ? (
-        <div className="no-assignment-state" data-testid="no-attorney-assigned">
-          <Alert type={UswdsAlertStyle.Info}>No attorney assigned to this trustee.</Alert>
-          <Button
-            id="assign-attorney"
-            uswdsStyle={UswdsButtonStyle.Default}
-            onClick={openAssignmentModal}
-          >
-            Assign Attorney
-          </Button>
+    <div
+      className="attorney-assignment-section record-detail-card-list"
+      data-testid="attorney-assignment-section"
+    >
+      {attorneyAssignment ? (
+        <div className="record-detail-card">
+          <div className="title-bar">
+            <h3>Attorney Assignment</h3>
+            <Button
+              uswdsStyle={UswdsButtonStyle.Unstyled}
+              aria-label="Edit trustee's assigned attorney"
+              title="Edit trustee's assigned attorney"
+              onClick={openAssignmentModal}
+            >
+              <IconLabel icon="edit" label="Edit" />
+            </Button>
+          </div>
+          <div className="assignment-display" data-testid="attorney-assignments-display">
+            <div className="trustee-attorney-name">{attorneyAssignment.user.name}</div>
+          </div>
         </div>
       ) : (
-        <div className="assignment-display" data-testid="attorney-assignments-display">
-          {attorneyAssignments.map((assignment) => (
-            <div key={assignment.id} className="assignment-item" data-testid="assignment-item">
-              <div className="attorney-info">
-                <strong>{assignment.user.name}</strong>
-                <span className="assignment-role">Trial Attorney</span>
-              </div>
-              <div className="assignment-actions">
-                <Button
-                  uswdsStyle={UswdsButtonStyle.Outline}
-                  onClick={() => {
-                    // Future: View attorney details
-                  }}
-                >
-                  View Details
-                </Button>
-              </div>
-            </div>
-          ))}
-          <Button
-            id="change-attorney"
-            uswdsStyle={UswdsButtonStyle.Outline}
-            onClick={openAssignmentModal}
-            disabled={attorneyAssignments.length >= 1} // Business rule: one attorney per trustee
-          >
-            Change Attorney
-          </Button>
-
-          {attorneyAssignments.length > 0 && (
-            <div className="assignment-audit-link">
-              <a
-                href={`/trustees/${trusteeId}/audit-history`}
-                data-testid="view-assignment-history-link"
-              >
-                View Assignment History
-              </a>
-            </div>
-          )}
+        <div className="record-detail-card">
+          <div className="title-bar">
+            <h3>Attorney</h3>
+            <Button
+              uswdsStyle={UswdsButtonStyle.Unstyled}
+              aria-label="Add assigned attorney to trustee"
+              title="Add assigned attorney to trustee"
+              onClick={openAssignmentModal}
+            >
+              <IconLabel icon="add_circle" label="Add" />
+            </Button>
+          </div>
+          <div className="no-assignment-state" data-testid="no-attorney-assigned">
+            No attorney assigned
+          </div>
         </div>
       )}
 
