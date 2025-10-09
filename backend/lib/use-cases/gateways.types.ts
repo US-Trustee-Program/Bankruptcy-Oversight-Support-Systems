@@ -48,6 +48,7 @@ import {
   BankruptcySoftwareListItem,
 } from '../../../common/src/cams/lists';
 import { Creatable } from '../../../common/src/cams/creatable';
+import { Identifiable } from '../../../common/src/cams/document';
 
 export type ReplaceResult = {
   id: string;
@@ -217,13 +218,13 @@ export interface OfficeAssigneesRepository
     DeletesMany<OfficeAssigneePredicate>,
     Searches<OfficeAssigneePredicate, OfficeAssignee>,
     Releasable {
-  getDistinctAssigneesByOffice: (officeCode) => Promise<CamsUserReference[]>;
+  getDistinctAssigneesByOffice: (officeCode: string) => Promise<CamsUserReference[]>;
 }
 
 export interface TrusteesRepository extends Reads<Trustee>, Releasable {
   createTrustee(input: TrusteeInput, userRef: CamsUserReference): Promise<Trustee>;
   createTrusteeHistory(history: Creatable<TrusteeHistory>): Promise<void>;
-  listTrusteeHistory(id: string): Promise<TrusteeHistory[]>;
+  listTrusteeHistory(trusteeId: string): Promise<TrusteeHistory[]>;
   listTrustees(): Promise<Trustee[]>;
   updateTrustee(
     id: string,
@@ -232,7 +233,7 @@ export interface TrusteesRepository extends Reads<Trustee>, Releasable {
   ): Promise<Trustee>;
   getTrusteeOversightAssignments(trusteeId: string): Promise<TrusteeOversightAssignment[]>;
   createTrusteeOversightAssignment(
-    assignment: Omit<TrusteeOversightAssignment, keyof Auditable | 'id'>,
+    assignment: Omit<TrusteeOversightAssignment, keyof Auditable | keyof Identifiable>,
   ): Promise<TrusteeOversightAssignment>;
 }
 

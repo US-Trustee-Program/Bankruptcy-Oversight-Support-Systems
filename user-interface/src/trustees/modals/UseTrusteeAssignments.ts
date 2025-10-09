@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import useApi2 from './UseApi2';
+import useApi2 from '../../lib/hooks/UseApi2';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
 
 interface UseTrusteeAssignmentsReturn {

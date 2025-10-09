@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import TrusteeAssignedStaff from './TrusteeAssignedStaff';
-import { useTrusteeAssignments } from '@/lib/hooks/UseTrusteeAssignments';
+import { useTrusteeAssignments } from '@/trustees/modals/UseTrusteeAssignments';
 import { Trustee, TrusteeOversightAssignment } from '@common/cams/trustees';
 import { OversightRole } from '@common/cams/roles';
 

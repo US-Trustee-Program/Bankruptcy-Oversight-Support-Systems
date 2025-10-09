@@ -1,8 +1,7 @@
 import { useEffect } from 'react';
 import { Trustee } from '@common/cams/trustees';
-import { useTrusteeAssignments } from '@/lib/hooks/UseTrusteeAssignments';
-import Alert from '@/lib/components/uswds/Alert';
-import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { useTrusteeAssignments } from '@/trustees/modals/UseTrusteeAssignments';
+import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import AttorneyAssignmentSection from './AttorneyAssignmentSection';
 import './TrusteeAssignedStaff.scss';
 

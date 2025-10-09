@@ -88,12 +88,12 @@ export type TrusteeSoftwareHistory = AbstractTrusteeHistory<string, string> & {
   documentType: 'AUDIT_SOFTWARE';
 };
 
-export type TrusteeOversightAssignmentHistory = AbstractTrusteeHistory<
-  TrusteeOversightAssignment | null,
-  TrusteeOversightAssignment | null
+type UserAndRole = { user: CamsUserReference; role: OversightRole };
+export type TrusteeOversightHistory = AbstractTrusteeHistory<
+  UserAndRole | null,
+  UserAndRole | null
 > & {
-  documentType: 'AUDIT_OVERSIGHT_ASSIGNMENT';
-  assignmentType: 'ATTORNEY' | 'AUDITOR' | 'PARALEGAL';
+  documentType: 'AUDIT_OVERSIGHT';
 };
 
 export type TrusteeHistory =
@@ -102,4 +102,4 @@ export type TrusteeHistory =
   | TrusteeInternalContactHistory
   | TrusteeBankHistory
   | TrusteeSoftwareHistory
-  | TrusteeOversightAssignmentHistory;
+  | TrusteeOversightHistory;

@@ -1,5 +1,5 @@
 import { ApplicationContext } from '../../types/basic';
-import { createAuditRecord, Auditable } from '../../../../../common/src/cams/auditable';
+import { createAuditRecord } from '../../../../../common/src/cams/auditable';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { TrusteesRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
@@ -188,23 +188,14 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
   }
 
   async createTrusteeOversightAssignment(
-    assignment: Omit<TrusteeOversightAssignment, keyof Auditable | 'id'>,
+    assignment: Creatable<TrusteeOversightAssignment>,
   ): Promise<TrusteeOversightAssignment> {
-    const assignmentDocument = createAuditRecord<Creatable<TrusteeOversightAssignmentDocument>>(
-      {
-        ...assignment,
-        documentType: 'TRUSTEE_OVERSIGHT_ASSIGNMENT',
-      },
-      // Use SYSTEM_USER for now, will be updated in use case layer with actual user
-      { id: 'SYSTEM', name: 'SYSTEM' },
-    );
-
     try {
-      const id =
-        await this.getAdapter<Creatable<TrusteeOversightAssignmentDocument>>().insertOne(
-          assignmentDocument,
-        );
-      return { id, ...assignmentDocument };
+      const id = await this.getAdapter<Creatable<TrusteeOversightAssignmentDocument>>().insertOne({
+        documentType: 'TRUSTEE_OVERSIGHT_ASSIGNMENT',
+        ...assignment,
+      });
+      return { id, ...assignment };
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to create oversight assignment for trustee ${assignment.trusteeId}.`,
