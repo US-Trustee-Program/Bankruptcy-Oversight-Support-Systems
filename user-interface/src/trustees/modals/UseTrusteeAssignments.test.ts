@@ -1,14 +1,20 @@
 import { renderHook, waitFor } from '@testing-library/react';
-import { vi, describe, test, expect, beforeEach } from 'vitest';
+import { vi, describe, test, expect, beforeEach, MockedFunction } from 'vitest';
 import { useTrusteeAssignments } from './UseTrusteeAssignments';
 import useApi2 from '../../lib/hooks/UseApi2';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
 import { OversightRole } from '@common/cams/roles';
+import { _Api2 } from '@/lib/models/api2';
 
 // Mock the useApi2 hook
-vi.mock('./UseApi2', () => ({
+vi.mock('../../lib/hooks/UseApi2', () => ({
   default: vi.fn(),
 }));
+
+// Create a type that includes the methods we need for testing
+type MockedApi2 = {
+  [K in keyof typeof _Api2]: MockedFunction<(typeof _Api2)[K]>;
+};
 
 describe('useTrusteeAssignments', () => {
   const mockAssignments: TrusteeOversightAssignment[] = [
@@ -36,11 +42,11 @@ describe('useTrusteeAssignments', () => {
   const mockApiMethods = {
     getTrusteeOversightAssignments: vi.fn(),
     createTrusteeOversightAssignment: vi.fn(),
-  };
+  } as unknown as MockedApi2;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (useApi2 as jest.Mock).mockReturnValue(mockApiMethods);
+    (useApi2 as MockedFunction<typeof useApi2>).mockReturnValue(mockApiMethods);
   });
 
   test('should initialize with empty state', () => {
