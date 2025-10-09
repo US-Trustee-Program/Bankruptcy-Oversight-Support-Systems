@@ -43,7 +43,7 @@ describe('TrusteeDetailNavigation', () => {
     expect(screen.getByTestId('trustee-audit-history-nav-link')).toBeInTheDocument();
     expect(screen.getByTestId('trustee-assigned-staff-nav-link')).toBeInTheDocument();
 
-    expect(screen.getByTestId('trustee-profile-nav-link')).toHaveTextContent('Trustee Profile');
+    expect(screen.getByTestId('trustee-profile-nav-link')).toHaveTextContent('Profile');
     expect(screen.getByTestId('trustee-audit-history-nav-link')).toHaveTextContent(
       'Change History',
     );

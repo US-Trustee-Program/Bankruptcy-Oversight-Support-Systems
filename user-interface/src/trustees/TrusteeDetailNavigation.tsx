@@ -45,18 +45,7 @@ export default function TrusteeDetailNavigation({
               onClick={() => setActiveNav(TrusteeNavState.TRUSTEE_PROFILE)}
               title="view basic details about the current trustee"
             >
-              Trustee Profile
-            </NavLink>
-          </li>
-          <li className="usa-sidenav__item">
-            <NavLink
-              to={`/trustees/${trusteeId}/audit-history`}
-              data-testid="trustee-audit-history-nav-link"
-              className={`usa-sidenav__link ${setCurrentNav(activeNav, TrusteeNavState.AUDIT_HISTORY)}`}
-              onClick={() => setActiveNav(TrusteeNavState.AUDIT_HISTORY)}
-              title="view audit history for the trustee"
-            >
-              Change History
+              Profile
             </NavLink>
           </li>
           <li className="usa-sidenav__item">
@@ -68,6 +57,17 @@ export default function TrusteeDetailNavigation({
               title="view staff assigned to the current trustee"
             >
               Assigned Staff
+            </NavLink>
+          </li>
+          <li className="usa-sidenav__item">
+            <NavLink
+              to={`/trustees/${trusteeId}/audit-history`}
+              data-testid="trustee-audit-history-nav-link"
+              className={`usa-sidenav__link ${setCurrentNav(activeNav, TrusteeNavState.AUDIT_HISTORY)}`}
+              onClick={() => setActiveNav(TrusteeNavState.AUDIT_HISTORY)}
+              title="view audit history for the trustee"
+            >
+              Change History
             </NavLink>
           </li>
         </ul>
