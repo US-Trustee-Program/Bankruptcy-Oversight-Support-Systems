@@ -327,9 +327,10 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         // Don't prevent default - let Tab move to next element naturally
         break;
       case 'Escape':
+        ev.preventDefault();
+        ev.stopPropagation();
         closeDropdown(true);
         setCurrentListItem(null);
-        ev.preventDefault();
         break;
       case 'ArrowDown': {
         ev.preventDefault();

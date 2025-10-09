@@ -82,14 +82,11 @@ describe('TrusteeAssignedStaff', () => {
     (useTrusteeAssignments as jest.Mock).mockReturnValue(mockUseTrusteeAssignments);
   });
 
-  test('should render component with trustee name in header', () => {
+  test('should render component with correct structure', () => {
     render(<TrusteeAssignedStaff trusteeId="trustee-123" trustee={mockTrustee} />);
 
-    expect(screen.getByText('Staff Assigned to Test Trustee Name')).toBeInTheDocument();
-    expect(
-      screen.getByText('Manage staff members assigned to provide oversight for this trustee'),
-    ).toBeInTheDocument();
-    expect(screen.getByTestId('trustee-assigned-staff')).toBeInTheDocument();
+    // Should have the main containers
+    expect(screen.getByTestId('attorney-assignment-section')).toBeInTheDocument();
   });
 
   test('should call getTrusteeOversightAssignments on mount with correct trusteeId', () => {
@@ -123,7 +120,7 @@ describe('TrusteeAssignedStaff', () => {
     render(<TrusteeAssignedStaff trusteeId="trustee-123" trustee={mockTrustee} />);
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-    expect(screen.queryByText('Dismiss')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('alert-container')).not.toBeInTheDocument();
   });
 
   test('should display error alert when error exists', () => {
@@ -135,11 +132,10 @@ describe('TrusteeAssignedStaff', () => {
     render(<TrusteeAssignedStaff trusteeId="trustee-123" trustee={mockTrustee} />);
 
     expect(screen.getByRole('alert')).toBeInTheDocument();
-    expect(screen.getByText('Failed to load assignments')).toBeInTheDocument();
-    expect(screen.getByText('Dismiss')).toBeInTheDocument();
+    expect(screen.getByTestId('alert')).toHaveTextContent('Failed to load assignments');
   });
 
-  test('should call clearError when dismiss button is clicked', () => {
+  test('should show alert container when error is present', () => {
     (useTrusteeAssignments as jest.Mock).mockReturnValue({
       ...mockUseTrusteeAssignments,
       error: 'Failed to load assignments',
@@ -147,10 +143,7 @@ describe('TrusteeAssignedStaff', () => {
 
     render(<TrusteeAssignedStaff trusteeId="trustee-123" trustee={mockTrustee} />);
 
-    const dismissButton = screen.getByText('Dismiss');
-    fireEvent.click(dismissButton);
-
-    expect(mockUseTrusteeAssignments.clearError).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('alert-container')).toBeInTheDocument();
   });
 
   test('should pass correct props to AttorneyAssignmentSection', () => {
@@ -184,13 +177,16 @@ describe('TrusteeAssignedStaff', () => {
     expect(mockUseTrusteeAssignments.getTrusteeOversightAssignments).toHaveBeenCalledTimes(1);
   });
 
-  test('should have assignments container with correct structure', () => {
+  test('should have correct container structure', () => {
     render(<TrusteeAssignedStaff trusteeId="trustee-123" trustee={mockTrustee} />);
 
-    const container = screen.getByTestId('trustee-assigned-staff');
-    expect(container.querySelector('.page-header')).toBeInTheDocument();
-    expect(container.querySelector('.assignments-container')).toBeInTheDocument();
+    // Should have the attorney assignment section
     expect(screen.getByTestId('attorney-assignment-section')).toBeInTheDocument();
+
+    // Should have the right-side-screen-content class structure (from the component)
+    const container = document.querySelector('.right-side-screen-content');
+    expect(container).toBeInTheDocument();
+    expect(container?.querySelector('.record-detail-container')).toBeInTheDocument();
   });
 
   test('should handle loading state properly', () => {

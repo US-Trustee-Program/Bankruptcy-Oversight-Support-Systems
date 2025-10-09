@@ -11,9 +11,8 @@ interface TrusteeAssignedStaffProps {
   trustee: Trustee;
 }
 
-export default function TrusteeAssignedStaff({ trusteeId, trustee }: TrusteeAssignedStaffProps) {
-  const { assignments, isLoading, error, getTrusteeOversightAssignments, clearError } =
-    useTrusteeAssignments();
+export default function TrusteeAssignedStaff({ trusteeId }: TrusteeAssignedStaffProps) {
+  const { assignments, isLoading, error, getTrusteeOversightAssignments } = useTrusteeAssignments();
 
   useEffect(() => {
     getTrusteeOversightAssignments(trusteeId);
@@ -24,24 +23,10 @@ export default function TrusteeAssignedStaff({ trusteeId, trustee }: TrusteeAssi
   };
 
   return (
-    <div className="trustee-assigned-staff" data-testid="trustee-assigned-staff">
-      <div className="page-header">
-        <h2>Staff Assigned to {trustee.name}</h2>
-        <p className="subheader">
-          Manage staff members assigned to provide oversight for this trustee
-        </p>
-      </div>
+    <div className="right-side-screen-content">
+      <div className="record-detail-container">
+        {error && <Alert type={UswdsAlertStyle.Error}>{error}</Alert>}
 
-      {error && (
-        <Alert type={UswdsAlertStyle.Error}>
-          {error}
-          <button className="usa-button--unstyled" onClick={clearError}>
-            Dismiss
-          </button>
-        </Alert>
-      )}
-
-      <div className="assignments-container">
         <AttorneyAssignmentSection
           trusteeId={trusteeId}
           assignments={assignments}
