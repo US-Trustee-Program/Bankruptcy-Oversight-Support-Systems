@@ -24,25 +24,23 @@ describe('Attorneys Azure Function tests', () => {
     jest.spyOn(AttorneyList.prototype, 'getAttorneyList').mockResolvedValue([]);
   });
 
-  test('Should return an HTTP Error if getAttorneyList() throws an unexpected error', async () => {
-    const error = new Error();
-    const { azureHttpResponse } = buildTestResponseError(error);
-    jest.spyOn(AttorneysController.prototype, 'handleRequest').mockRejectedValue(error);
+  const errorTestCases = [
+    ['unexpected error', () => new Error()],
+    ['CamsError error', () => new CamsError('fake-module')],
+  ] as const;
 
-    const response = await handler(request, context);
+  test.each(errorTestCases)(
+    'Should return an HTTP Error if getAttorneyList() throws %s',
+    async (_errorType, errorFactory) => {
+      const error = errorFactory();
+      const { azureHttpResponse } = buildTestResponseError(error);
+      jest.spyOn(AttorneysController.prototype, 'handleRequest').mockRejectedValue(error);
 
-    expect(response).toEqual(azureHttpResponse);
-  });
+      const response = await handler(request, context);
 
-  test('Should return an HTTP Error if getAttorneyList() throws a CamsError error', async () => {
-    const error = new CamsError('fake-module');
-    const { azureHttpResponse } = buildTestResponseError(error);
-    jest.spyOn(AttorneysController.prototype, 'handleRequest').mockRejectedValue(error);
-
-    const response = await handler(request, context);
-
-    expect(response).toEqual(azureHttpResponse);
-  });
+      expect(response).toEqual(azureHttpResponse);
+    },
+  );
 
   test('should return success with a list of attorneys', async () => {
     const attorneys = MockData.buildArray(MockData.getAttorneyUser, 4);
