@@ -559,7 +559,7 @@ async function createTrusteeOversightAssignment(trusteeId: string, userId: strin
       trusteeId,
       user: {
         id: userId,
-        name: 'John Doe', // Mock name, would be fetched from user service in real implementation
+        name: 'John Doe',
       },
       role: OversightRole.OversightAttorney,
       createdBy: { id: 'user-1', name: 'Admin User' },
