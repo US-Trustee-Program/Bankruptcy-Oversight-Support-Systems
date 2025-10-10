@@ -619,7 +619,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           id={`${comboBoxId}-clear-all`}
           aria-label={`Clear all ${label ?? ''} items selected.`}
         >
-          clear
+          Clear
         </Button>
       )}
       {errorMessage && errorMessage.length > 0 && (
