@@ -57,6 +57,32 @@ describe('ListsUseCase tests', () => {
       expect(result).toEqual(mockSoftwareList);
     });
 
+    test('should return bankruptcy software list sorted by value', async () => {
+      // Arrange - Create unsorted mock data
+      const mockUnsortedSoftwareList: BankruptcySoftwareList = [
+        { _id: '3', list: 'bankruptcy-software', key: 'software3', value: 'Zebra Software' },
+        { _id: '1', list: 'bankruptcy-software', key: 'software1', value: 'Alpha Software' },
+        { _id: '2', list: 'bankruptcy-software', key: 'software2', value: 'Beta Software' },
+      ];
+      mockListsRepository.getBankruptcySoftwareList.mockResolvedValue(mockUnsortedSoftwareList);
+
+      // Act
+      const result = await useCase.getBankruptcySoftwareList(context);
+
+      // Assert - Verify the result is sorted by value
+      expect(Factory.getListsGateway).toHaveBeenCalledWith(context);
+      expect(mockListsRepository.getBankruptcySoftwareList).toHaveBeenCalled();
+      expect(result).toHaveLength(3);
+      expect(result[0].value).toBe('Alpha Software');
+      expect(result[1].value).toBe('Beta Software');
+      expect(result[2].value).toBe('Zebra Software');
+
+      // Additional verification that the sorting is correct
+      const sortedValues = result.map((item) => item.value);
+      const expectedSortedValues = ['Alpha Software', 'Beta Software', 'Zebra Software'];
+      expect(sortedValues).toEqual(expectedSortedValues);
+    });
+
     test('should propagate errors from the repository', async () => {
       // Arrange
       const errorMessage = 'Failed to get bankruptcy software list';
