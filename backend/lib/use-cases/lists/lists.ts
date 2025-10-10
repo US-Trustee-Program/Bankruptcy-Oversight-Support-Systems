@@ -12,7 +12,11 @@ class ListsUseCase {
   public async getBankruptcySoftwareList(
     context: ApplicationContext,
   ): Promise<BankruptcySoftwareList> {
-    return await Factory.getListsGateway(context).getBankruptcySoftwareList();
+    const softwareList = (await Factory.getListsGateway(context).getBankruptcySoftwareList()).sort(
+      (a, b) => a.value.localeCompare(b.value),
+    );
+
+    return softwareList;
   }
 
   public async createBankruptcySoftware(
