@@ -33,23 +33,40 @@ describe('TrusteeDetailNavigation', () => {
     initiallySelectedNavLink: TrusteeNavState.TRUSTEE_PROFILE,
   };
 
+  const navigationLinks = [
+    {
+      testId: 'trustee-profile-nav-link',
+      text: 'Profile',
+      href: '/trustees/12345',
+      title: 'view basic details about the current trustee',
+      state: TrusteeNavState.TRUSTEE_PROFILE,
+    },
+    {
+      testId: 'trustee-audit-history-nav-link',
+      text: 'Change History',
+      href: '/trustees/12345/audit-history',
+      title: 'view audit history for the trustee',
+      state: TrusteeNavState.AUDIT_HISTORY,
+    },
+    {
+      testId: 'trustee-assigned-staff-nav-link',
+      text: 'Assigned Staff',
+      href: '/trustees/12345/assigned-staff',
+      title: 'view staff assigned to the current trustee',
+      state: TrusteeNavState.ASSIGNED_STAFF,
+    },
+  ];
+
   test('should render navigation with default props', () => {
     renderWithRouter(defaultProps);
 
     expect(screen.getByRole('navigation')).toBeInTheDocument();
     expect(screen.getByLabelText('Trustee Detail Side navigation')).toBeInTheDocument();
 
-    expect(screen.getByTestId('trustee-profile-nav-link')).toBeInTheDocument();
-    expect(screen.getByTestId('trustee-audit-history-nav-link')).toBeInTheDocument();
-    expect(screen.getByTestId('trustee-assigned-staff-nav-link')).toBeInTheDocument();
-
-    expect(screen.getByTestId('trustee-profile-nav-link')).toHaveTextContent('Profile');
-    expect(screen.getByTestId('trustee-audit-history-nav-link')).toHaveTextContent(
-      'Change History',
-    );
-    expect(screen.getByTestId('trustee-assigned-staff-nav-link')).toHaveTextContent(
-      'Assigned Staff',
-    );
+    navigationLinks.forEach(({ testId, text }) => {
+      expect(screen.getByTestId(testId)).toBeInTheDocument();
+      expect(screen.getByTestId(testId)).toHaveTextContent(text);
+    });
   });
 
   test('should render with custom className', () => {
@@ -69,29 +86,21 @@ describe('TrusteeDetailNavigation', () => {
     expect(nav.className).not.toContain('undefined');
   });
 
-  test('should generate correct URLs with trusteeId', () => {
+  test.each(navigationLinks)('should generate correct URL for $testId', ({ testId, href }) => {
     renderWithRouter(defaultProps);
-
-    const profileLink = screen.getByTestId('trustee-profile-nav-link');
-    const auditLink = screen.getByTestId('trustee-audit-history-nav-link');
-    const assignedStaffLink = screen.getByTestId('trustee-assigned-staff-nav-link');
-
-    expect(profileLink).toHaveAttribute('href', '/trustees/12345');
-    expect(auditLink).toHaveAttribute('href', '/trustees/12345/audit-history');
-    expect(assignedStaffLink).toHaveAttribute('href', '/trustees/12345/assigned-staff');
+    const link = screen.getByTestId(testId);
+    expect(link).toHaveAttribute('href', href);
   });
 
-  test('should handle undefined trusteeId', () => {
-    renderWithRouter({ ...defaultProps, trusteeId: undefined });
-
-    const profileLink = screen.getByTestId('trustee-profile-nav-link');
-    const auditLink = screen.getByTestId('trustee-audit-history-nav-link');
-    const assignedStaffLink = screen.getByTestId('trustee-assigned-staff-nav-link');
-
-    expect(profileLink).toHaveAttribute('href', '/trustees/undefined');
-    expect(auditLink).toHaveAttribute('href', '/trustees/undefined/audit-history');
-    expect(assignedStaffLink).toHaveAttribute('href', '/trustees/undefined/assigned-staff');
-  });
+  test.each(navigationLinks)(
+    'should handle undefined trusteeId for $testId',
+    ({ testId, href }) => {
+      renderWithRouter({ ...defaultProps, trusteeId: undefined });
+      const link = screen.getByTestId(testId);
+      const expectedHref = href.replace('12345', 'undefined');
+      expect(link).toHaveAttribute('href', expectedHref);
+    },
+  );
 
   test('should render with audit history initially selected', () => {
     renderWithRouter({
@@ -104,52 +113,23 @@ describe('TrusteeDetailNavigation', () => {
     expect(screen.getByTestId('trustee-audit-history-nav-link')).toBeInTheDocument();
   });
 
-  test('should have proper accessibility attributes', () => {
+  test.each(navigationLinks)(
+    'should have proper accessibility attributes for $testId',
+    ({ testId, title }) => {
+      renderWithRouter(defaultProps);
+      const nav = screen.getByRole('navigation');
+      expect(nav).toHaveAttribute('aria-label', 'Trustee Detail Side navigation');
+
+      const link = screen.getByTestId(testId);
+      expect(link).toHaveAttribute('title', title);
+    },
+  );
+
+  test.each(navigationLinks)('should handle click events for $testId', ({ testId }) => {
     renderWithRouter(defaultProps);
-
-    const nav = screen.getByRole('navigation');
-    expect(nav).toHaveAttribute('aria-label', 'Trustee Detail Side navigation');
-
-    const profileLink = screen.getByTestId('trustee-profile-nav-link');
-    const auditLink = screen.getByTestId('trustee-audit-history-nav-link');
-    const assignedStaffLink = screen.getByTestId('trustee-assigned-staff-nav-link');
-
-    expect(profileLink).toHaveAttribute('title', 'view basic details about the current trustee');
-    expect(auditLink).toHaveAttribute('title', 'view audit history for the trustee');
-    expect(assignedStaffLink).toHaveAttribute(
-      'title',
-      'view staff assigned to the current trustee',
-    );
-  });
-
-  test('should call setActiveNav when profile link is clicked', () => {
-    renderWithRouter({
-      ...defaultProps,
-      initiallySelectedNavLink: TrusteeNavState.AUDIT_HISTORY,
-    });
-
-    const profileLink = screen.getByTestId('trustee-profile-nav-link');
-    fireEvent.click(profileLink);
-
-    expect(profileLink).toBeInTheDocument();
-  });
-
-  test('should call setActiveNav when audit history link is clicked', () => {
-    renderWithRouter(defaultProps);
-
-    const auditLink = screen.getByTestId('trustee-audit-history-nav-link');
-    fireEvent.click(auditLink);
-
-    expect(auditLink).toBeInTheDocument();
-  });
-
-  test('should call setActiveNav when assigned staff link is clicked', () => {
-    renderWithRouter(defaultProps);
-
-    const assignedStaffLink = screen.getByTestId('trustee-assigned-staff-nav-link');
-    fireEvent.click(assignedStaffLink);
-
-    expect(assignedStaffLink).toBeInTheDocument();
+    const link = screen.getByTestId(testId);
+    fireEvent.click(link);
+    expect(link).toBeInTheDocument();
   });
 
   test('should have proper CSS classes on navigation elements', () => {
@@ -171,24 +151,15 @@ describe('TrusteeDetailNavigation', () => {
 });
 
 describe('mapTrusteeDetailNavState', () => {
-  test('should map audit-history to AUDIT_HISTORY', () => {
-    const result = mapTrusteeDetailNavState('audit-history');
-    expect(result).toBe(TrusteeNavState.AUDIT_HISTORY);
-  });
-
-  test('should map unknown values to TRUSTEE_PROFILE default', () => {
-    const result = mapTrusteeDetailNavState('unknown-value');
-    expect(result).toBe(TrusteeNavState.TRUSTEE_PROFILE);
-  });
-
-  test('should map empty string to TRUSTEE_PROFILE default', () => {
-    const result = mapTrusteeDetailNavState('');
-    expect(result).toBe(TrusteeNavState.TRUSTEE_PROFILE);
-  });
-
-  test('should map undefined to TRUSTEE_PROFILE default', () => {
-    const result = mapTrusteeDetailNavState(undefined as unknown as string);
-    expect(result).toBe(TrusteeNavState.TRUSTEE_PROFILE);
+  test.each([
+    ['audit-history', TrusteeNavState.AUDIT_HISTORY],
+    ['/trustees/12345/assigned-staff', TrusteeNavState.ASSIGNED_STAFF],
+    ['unknown-value', TrusteeNavState.TRUSTEE_PROFILE],
+    ['', TrusteeNavState.TRUSTEE_PROFILE],
+    [undefined as unknown as string, TrusteeNavState.TRUSTEE_PROFILE],
+  ])('should map "%s" to %s', (input, expected) => {
+    const result = mapTrusteeDetailNavState(input);
+    expect(result).toBe(expected);
   });
 });
 
@@ -200,56 +171,5 @@ describe('TrusteeNavState enum', () => {
 
     const enumValues = Object.values(TrusteeNavState).filter((value) => typeof value === 'number');
     expect(enumValues).toHaveLength(3);
-  });
-});
-
-describe('TrusteeDetailNavigation - Assigned Staff', () => {
-  function renderWithRouter(props: {
-    trusteeId: string;
-    initiallySelectedNavLink: TrusteeNavState;
-  }) {
-    return render(
-      <BrowserRouter>
-        <TrusteeDetailNavigation {...props} />
-      </BrowserRouter>,
-    );
-  }
-
-  const defaultProps = {
-    trusteeId: '12345',
-    initiallySelectedNavLink: TrusteeNavState.TRUSTEE_PROFILE,
-  };
-
-  test('should render assigned staff navigation link', () => {
-    renderWithRouter(defaultProps);
-
-    const assignedStaffLink = screen.getByTestId('trustee-assigned-staff-nav-link');
-    expect(assignedStaffLink).toBeInTheDocument();
-    expect(assignedStaffLink).toHaveTextContent('Assigned Staff');
-    expect(assignedStaffLink).toHaveAttribute('href', '/trustees/12345/assigned-staff');
-  });
-
-  test('should update active state when assigned staff link clicked', () => {
-    renderWithRouter(defaultProps);
-
-    const assignedStaffLink = screen.getByTestId('trustee-assigned-staff-nav-link');
-    fireEvent.click(assignedStaffLink);
-
-    // The setCurrentNav mock is called with the updated state
-    expect(assignedStaffLink.className).toContain('usa-sidenav__link');
-  });
-
-  test('should have correct URL for assigned staff section', () => {
-    renderWithRouter(defaultProps);
-
-    const assignedStaffLink = screen.getByTestId('trustee-assigned-staff-nav-link');
-    expect(assignedStaffLink).toHaveAttribute('href', '/trustees/12345/assigned-staff');
-  });
-});
-
-describe('mapTrusteeDetailNavState - Assigned Staff', () => {
-  test('should map assigned-staff path to ASSIGNED_STAFF state', () => {
-    const result = mapTrusteeDetailNavState('/trustees/12345/assigned-staff');
-    expect(result).toBe(TrusteeNavState.ASSIGNED_STAFF);
   });
 });
