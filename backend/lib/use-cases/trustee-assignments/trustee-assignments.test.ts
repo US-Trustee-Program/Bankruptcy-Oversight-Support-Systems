@@ -5,8 +5,9 @@ import {
   TrusteeOversightAssignment,
   TrusteeOversightHistory,
 } from '../../../../common/src/cams/trustees';
-import { OversightRole } from '../../../../common/src/cams/roles';
+import { CamsRole, OversightRole } from '../../../../common/src/cams/roles';
 import { BadRequestError } from '../../common-errors/bad-request';
+import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { CamsError } from '../../common-errors/cams-error';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { CamsUserReference } from '../../../../common/src/cams/users';
@@ -53,6 +54,8 @@ describe('TrusteeAssignmentsUseCase', () => {
   beforeEach(async () => {
     context = await createMockApplicationContext();
     context.session.user = mockUser;
+    // Set TrusteeAdmin role by default for most tests
+    context.session.user.roles = [CamsRole.TrusteeAdmin];
 
     // Mock logger methods
     context.logger.info = jest.fn();
@@ -180,6 +183,20 @@ describe('TrusteeAssignmentsUseCase', () => {
 
   describe('assignAttorneyToTrustee', () => {
     describe('validation', () => {
+      test('should throw UnauthorizedError when user does not have TrusteeAdmin role', async () => {
+        // Modify context to not include TrusteeAdmin role
+        context.session.user.roles = [CamsRole.TrialAttorney];
+
+        await expect(
+          useCase.assignAttorneyToTrustee(context, 'trustee-789', 'attorney-456'),
+        ).rejects.toThrow(UnauthorizedError);
+
+        // Verify no further processing occurs
+        expect(mockTrusteesRepository.getTrusteeOversightAssignments).not.toHaveBeenCalled();
+        expect(mockUserGroupGateway.getUserById).not.toHaveBeenCalled();
+        expect(mockTrusteesRepository.createTrusteeOversightAssignment).not.toHaveBeenCalled();
+      });
+
       const trusteeIdValidationTestCases = [
         ['trusteeId is empty', '', 'attorney-456'],
         ['trusteeId is whitespace only', '   ', 'attorney-456'],

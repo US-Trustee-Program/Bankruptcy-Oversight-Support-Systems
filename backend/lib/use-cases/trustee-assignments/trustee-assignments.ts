@@ -4,13 +4,14 @@ import {
   TrusteeOversightAssignment,
   TrusteeOversightHistory,
 } from '../../../../common/src/cams/trustees';
-import { OversightRole } from '../../../../common/src/cams/roles';
+import { CamsRole, OversightRole } from '../../../../common/src/cams/roles';
 import { getTrusteesRepository, getUserGroupGateway } from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
 import { createAuditRecord } from '../../../../common/src/cams/auditable';
 import Validators from '../../../../common/src/cams/validators';
+import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 
 const MODULE_NAME = 'TRUSTEE-ASSIGNMENTS-USE-CASE';
 
@@ -77,6 +78,12 @@ export class TrusteeAssignmentsUseCase {
     trusteeId: string,
     attorneyUserId: string,
   ): Promise<TrusteeOversightAssignment> {
+    if (!context.session.user.roles.includes(CamsRole.TrusteeAdmin)) {
+      throw new UnauthorizedError(
+        'You do not have permission to assign an attorney to oversee a trustee.',
+      );
+    }
+
     if (!Validators.minLength(1)(trusteeId.trim()).valid) {
       throw new BadRequestError(MODULE_NAME, {
         message: 'Trustee ID is required and cannot be empty.',
