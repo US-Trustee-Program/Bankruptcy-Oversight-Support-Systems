@@ -11,7 +11,7 @@ import {
   TransferFrom,
   TransferTo,
 } from '../../../common/src/cams/events';
-import { CaseAssignmentHistory, CaseHistory } from '../../../common/src/cams/history';
+import { CaseHistory } from '../../../common/src/cams/history';
 import { CaseDocket, CaseNote, SyncedCase } from '../../../common/src/cams/cases';
 import {
   CasesSearchPredicate,
@@ -60,8 +60,6 @@ export type UpdateResult = {
   modifiedCount: number;
   matchedCount: number;
 };
-
-export type UpsertResult = ReplaceResult;
 
 export interface Releasable {
   release: () => void;
@@ -144,13 +142,6 @@ export interface RuntimeStateRepository<T extends RuntimeState = RuntimeState>
 
 export interface CaseDocketGateway {
   getCaseDocket(context: ApplicationContext, caseId: string): Promise<CaseDocket>;
-}
-
-export interface CaseHistoryGateway {
-  getCaseAssignmentHistory(
-    context: ApplicationContext,
-    caseId: string,
-  ): Promise<CaseAssignmentHistory[]>;
 }
 
 export interface OrdersGateway {
@@ -303,10 +294,6 @@ export interface QueueGateway {
     queueName: LogicalQueueNames,
   ): { enqueue: (...messages: T[]) => void };
 }
-
-// TODO: Delete these types once the consolidation order `consolidationId` values have been migrated.
-export type MigrationConsolidationOrder = Pick<ConsolidationOrder, 'id' | 'jobId' | 'status'>;
-export type UpdateConsolidationId = Pick<ConsolidationOrder, 'id' | 'consolidationId'>;
 
 export interface StaffRepository {
   getAttorneyStaff(applicationContext: ApplicationContext): Promise<Staff[]>;
