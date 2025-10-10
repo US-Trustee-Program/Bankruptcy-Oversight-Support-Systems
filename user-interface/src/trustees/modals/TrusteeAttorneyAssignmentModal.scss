@@ -1,0 +1,20 @@
+.trustee-attorney-assignment-modal-content {
+  min-width: 380px;
+  min-height: 76px;
+
+  .attorney-selection-section {
+    margin-bottom: 1.5rem;
+
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: bold;
+    }
+  }
+}
+
+@media screen and (max-width: 380px) {
+  .trustee-attorney-assignment-modal-content {
+    min-width: 100%;
+  }
+}

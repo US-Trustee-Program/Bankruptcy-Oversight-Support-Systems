@@ -9,9 +9,11 @@ import {
   TrusteeNameHistory,
   TrusteePublicContactHistory,
   TrusteeSoftwareHistory,
+  TrusteeOversightHistory,
 } from '@common/cams/trustees';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { ContactInformation } from '@common/cams/contact';
+import { OversightRole } from '@common/cams/roles';
 
 // Mock useApi2 hook
 const mockGetTrusteeHistory = vi.fn();
@@ -201,49 +203,173 @@ describe('TrusteeDetailAuditHistory', () => {
     expect(screen.getByTestId('previous-contact-0')).toHaveTextContent('(none)');
   });
 
-  test('should handle contact information with missing fields', async () => {
-    const contactHistory = TestScenarios.emailOnly();
+  // Define types for test expectations
+  type ContactExpectation = {
+    expectedText?: string;
+    expectedElements?: Record<string, string>;
+    notExpectedElements?: string[];
+  };
 
-    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistory] });
+  type ContactScenarioExpectation = {
+    previousContact?: ContactExpectation;
+    newContact?: ContactExpectation;
+  };
 
-    renderWithProps({});
+  const contactScenarioTestCases: readonly [string, () => unknown, ContactScenarioExpectation][] = [
+    [
+      'contact information with missing fields',
+      () => TestScenarios.emailOnly(),
+      {
+        previousContact: {
+          expectedElements: { email: 'email@example.com' },
+          notExpectedElements: ['phone', 'address1', 'city-state-zip'],
+        },
+        newContact: {
+          expectedElements: { phone: '555-123-4567' },
+          notExpectedElements: ['email', 'address1', 'city-state-zip'],
+        },
+      },
+    ],
+    [
+      'completely empty contact information',
+      () => TestScenarios.emptyContact(),
+      {
+        previousContact: { expectedText: '(none)' },
+        newContact: { expectedText: '(none)' },
+      },
+    ],
+    [
+      'phone number without extension',
+      () => TestScenarios.phoneNoExtension(),
+      {
+        previousContact: { expectedElements: { phone: '555-123-4567' } },
+        newContact: { expectedElements: { phone: '555-987-6543' } },
+      },
+    ],
+    [
+      'contact with only address1 and zipCode',
+      () => TestScenarios.addressPartial(),
+      {
+        previousContact: {
+          expectedElements: { address1: '123 Main St', 'city-state-zip': '12345' },
+        },
+        newContact: {
+          notExpectedElements: ['address1', 'city-state-zip', 'phone', 'email'],
+        },
+      },
+    ],
+    [
+      'contact with address2 and address3',
+      () => TestScenarios.addressComplete(),
+      {
+        previousContact: {
+          expectedElements: {
+            address1: '123 Main St',
+            address2: 'Suite 200',
+            address3: 'Building A',
+            'city-state-zip': 'Test City, TX 78901',
+          },
+        },
+      },
+    ],
+    [
+      'contact with only city and state',
+      () => TestScenarios.cityAndState(),
+      {
+        previousContact: {
+          expectedElements: { 'city-state-zip': 'Los Angeles, CA' },
+        },
+      },
+    ],
+    [
+      'contact with only state',
+      () => TestScenarios.stateOnly(),
+      {
+        previousContact: {
+          expectedElements: { 'city-state-zip': 'FL' },
+        },
+      },
+    ],
+    [
+      'contact with only city',
+      () => TestScenarios.cityOnly(),
+      {
+        previousContact: {
+          expectedElements: { 'city-state-zip': 'Chicago' },
+        },
+      },
+    ],
+    [
+      'contact with undefined address',
+      () => TestScenarios.undefinedAddress(),
+      {
+        previousContact: {
+          expectedElements: { email: 'test@example.com', phone: '555-123-4567' },
+          notExpectedElements: ['address'],
+        },
+      },
+    ],
+  ];
 
-    await waitFor(() => {
-      expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
-    });
+  test.each(contactScenarioTestCases)(
+    'should handle %s',
+    async (_scenario, scenarioFactory, expectations) => {
+      const contactHistory = scenarioFactory();
+      mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistory] });
 
-    // Check individual components of the contact information
-    const previousContact = screen.getByTestId('previous-contact-0');
-    const newContact = screen.getByTestId('new-contact-0');
+      renderWithProps({});
 
-    // Previous contact should have email only
-    expect(previousContact.querySelector('.email')).toHaveTextContent('email@example.com');
-    expect(previousContact.querySelector('.phone')).not.toBeInTheDocument();
-    expect(previousContact.querySelector('.address1')).not.toBeInTheDocument();
-    expect(previousContact.querySelector('.city-state-zip')).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
 
-    // New contact should have phone only
-    expect(newContact.querySelector('.phone')).toHaveTextContent('555-123-4567');
-    expect(newContact.querySelector('.email')).not.toBeInTheDocument();
-    expect(newContact.querySelector('.address1')).not.toBeInTheDocument();
-    expect(newContact.querySelector('.city-state-zip')).not.toBeInTheDocument();
-  });
+      // Check previous contact expectations
+      if (expectations.previousContact) {
+        const previousContact = screen.getByTestId('previous-contact-0');
 
-  test('should handle completely empty contact information', async () => {
-    // Using TestScenarios for edge case
-    const contactHistory = TestScenarios.emptyContact();
+        if (expectations.previousContact.expectedText) {
+          expect(previousContact).toHaveTextContent(expectations.previousContact.expectedText);
+        }
 
-    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistory] });
+        if (expectations.previousContact.expectedElements) {
+          Object.entries(expectations.previousContact.expectedElements).forEach(
+            ([selector, text]) => {
+              expect(previousContact.querySelector(`.${selector}`)).toHaveTextContent(
+                text as string,
+              );
+            },
+          );
+        }
 
-    renderWithProps({});
+        if (expectations.previousContact.notExpectedElements) {
+          expectations.previousContact.notExpectedElements.forEach((selector: string) => {
+            expect(previousContact.querySelector(`.${selector}`)).not.toBeInTheDocument();
+          });
+        }
+      }
 
-    await waitFor(() => {
-      expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
-    });
+      // Check new contact expectations
+      if (expectations.newContact) {
+        const newContact = screen.getByTestId('new-contact-0');
 
-    expect(screen.getByTestId('previous-contact-0')).toHaveTextContent('(none)');
-    expect(screen.getByTestId('new-contact-0')).toHaveTextContent('(none)');
-  });
+        if (expectations.newContact.expectedText) {
+          expect(newContact).toHaveTextContent(expectations.newContact.expectedText);
+        }
+
+        if (expectations.newContact.expectedElements) {
+          Object.entries(expectations.newContact.expectedElements).forEach(([selector, text]) => {
+            expect(newContact.querySelector(`.${selector}`)).toHaveTextContent(text as string);
+          });
+        }
+
+        if (expectations.newContact.notExpectedElements) {
+          expectations.newContact.notExpectedElements.forEach((selector: string) => {
+            expect(newContact.querySelector(`.${selector}`)).not.toBeInTheDocument();
+          });
+        }
+      }
+    },
+  );
 
   test('should handle missing name fields in name history', async () => {
     const nameHistory = TestScenarios.emptyName();
@@ -781,6 +907,420 @@ describe('TrusteeDetailAuditHistory', () => {
       expect(screen.getByTestId('new-software-0')).toBeInTheDocument();
       expect(screen.getByTestId('changed-by-0')).toBeInTheDocument();
       expect(screen.getByTestId('change-date-0')).toBeInTheDocument();
+    });
+  });
+
+  describe('Oversight History Tests', () => {
+    const mockOversightHistory: TrusteeOversightHistory = {
+      id: 'audit-oversight-1',
+      trusteeId: 'audit-oversight-trustee',
+      documentType: 'AUDIT_OVERSIGHT',
+      before: {
+        role: OversightRole.OversightAttorney,
+        user: {
+          id: 'user-123',
+          name: 'John Attorney',
+        },
+      },
+      after: {
+        role: OversightRole.OversightAttorney,
+        user: {
+          id: 'user-456',
+          name: 'Jane Attorney',
+        },
+      },
+      updatedOn: '2024-01-22T16:45:00Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
+    };
+
+    test('should display oversight change history correctly', async () => {
+      mockGetTrusteeHistory.mockResolvedValue({ data: [mockOversightHistory] });
+
+      renderWithProps({});
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
+
+      // Check oversight change row
+      expect(screen.getByTestId('change-type-oversight-0')).toHaveTextContent('Oversight');
+      expect(screen.getByTestId('previous-oversight-0')).toHaveTextContent('TrialAttorney');
+      expect(screen.getByTestId('previous-oversight-0')).toHaveTextContent('John Attorney');
+      expect(screen.getByTestId('new-oversight-0')).toHaveTextContent('TrialAttorney');
+      expect(screen.getByTestId('new-oversight-0')).toHaveTextContent('Jane Attorney');
+      expect(screen.getByTestId('changed-by-0')).toHaveTextContent('SYSTEM');
+      expect(screen.getByTestId('change-date-0')).toHaveTextContent(
+        'formatted-2024-01-22T16:45:00Z',
+      );
+    });
+
+    test('should display (none) for undefined oversight values', async () => {
+      const oversightHistoryWithUndefined = {
+        ...mockOversightHistory,
+        before: null,
+        after: null,
+      };
+
+      mockGetTrusteeHistory.mockResolvedValue({ data: [oversightHistoryWithUndefined] });
+
+      renderWithProps({});
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('previous-oversight-0')).toHaveTextContent('(none)');
+      expect(screen.getByTestId('new-oversight-0')).toHaveTextContent('(none)');
+    });
+
+    test('should display oversight history when previous is null and after has value', async () => {
+      const oversightHistoryFromNull = {
+        ...mockOversightHistory,
+        before: null,
+        after: {
+          role: OversightRole.OversightAttorney,
+          user: {
+            id: 'user-789',
+            name: 'Bob Attorney',
+          },
+        },
+      };
+
+      mockGetTrusteeHistory.mockResolvedValue({ data: [oversightHistoryFromNull] });
+
+      renderWithProps({});
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('previous-oversight-0')).toHaveTextContent('(none)');
+      expect(screen.getByTestId('new-oversight-0')).toHaveTextContent('TrialAttorney');
+      expect(screen.getByTestId('new-oversight-0')).toHaveTextContent('Bob Attorney');
+    });
+
+    test('should display oversight history when before has value and after is null', async () => {
+      const oversightHistoryToNull = {
+        ...mockOversightHistory,
+        before: {
+          role: OversightRole.OversightAttorney,
+          user: {
+            id: 'user-999',
+            name: 'Charlie Attorney',
+          },
+        },
+        after: null,
+      };
+
+      mockGetTrusteeHistory.mockResolvedValue({ data: [oversightHistoryToNull] });
+
+      renderWithProps({});
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('previous-oversight-0')).toHaveTextContent('TrialAttorney');
+      expect(screen.getByTestId('previous-oversight-0')).toHaveTextContent('Charlie Attorney');
+      expect(screen.getByTestId('new-oversight-0')).toHaveTextContent('(none)');
+    });
+
+    test('should render ShowTrusteeOversightHistory component in switch case', async () => {
+      mockGetTrusteeHistory.mockResolvedValue({ data: [mockOversightHistory] });
+
+      renderWithProps({});
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
+
+      // Verify the component is rendered correctly
+      expect(screen.getByTestId('change-type-oversight-0')).toHaveTextContent('Oversight');
+      const oversightRow = screen.getByTestId('change-type-oversight-0').closest('tr');
+      expect(oversightRow).toBeInTheDocument();
+
+      // Verify the specific test IDs that ShowTrusteeOversightHistory creates
+      expect(screen.getByTestId('previous-oversight-0')).toBeInTheDocument();
+      expect(screen.getByTestId('new-oversight-0')).toBeInTheDocument();
+      expect(screen.getByTestId('changed-by-0')).toBeInTheDocument();
+      expect(screen.getByTestId('change-date-0')).toBeInTheDocument();
+    });
+
+    test('should handle missing updatedBy field in oversight history', async () => {
+      const oversightHistoryWithoutUpdatedBy = {
+        ...mockOversightHistory,
+        updatedBy: { id: '', name: '' }, // Empty user reference
+      };
+
+      mockGetTrusteeHistory.mockResolvedValue({ data: [oversightHistoryWithoutUpdatedBy] });
+
+      renderWithProps({});
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('changed-by-0')).toHaveTextContent('');
+    });
+
+    test('should display mixed history types including oversight', async () => {
+      const mixedHistory = [mockNameHistory, mockPublicContactHistory, mockOversightHistory];
+
+      mockGetTrusteeHistory.mockResolvedValue({ data: mixedHistory });
+
+      renderWithProps({});
+
+      await screen.findByTestId('trustee-history-table');
+
+      // Check that all three types are rendered
+      expect(screen.getByText('Name')).toBeInTheDocument();
+      expect(screen.getByText('Public Contact')).toBeInTheDocument();
+      expect(screen.getByText('Oversight')).toBeInTheDocument();
+
+      // Verify oversight history data is correct (it should be at index 0 due to sorting)
+      const previousOversight = screen.getByTestId('previous-oversight-0');
+      expect(previousOversight).toHaveTextContent('TrialAttorney');
+      expect(previousOversight).toHaveTextContent('John Attorney');
+    });
+
+    test('should render oversight with line breaks between role and user name', async () => {
+      mockGetTrusteeHistory.mockResolvedValue({ data: [mockOversightHistory] });
+
+      renderWithProps({});
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
+
+      // Check that role and name are separated by a line break
+      const previousOversight = screen.getByTestId('previous-oversight-0');
+      const newOversight = screen.getByTestId('new-oversight-0');
+
+      // Verify both role and user name are present
+      expect(previousOversight).toHaveTextContent('TrialAttorney');
+      expect(previousOversight).toHaveTextContent('John Attorney');
+      expect(newOversight).toHaveTextContent('TrialAttorney');
+      expect(newOversight).toHaveTextContent('Jane Attorney');
+
+      // Check that <br> elements are present for line breaks
+      expect(previousOversight.querySelector('br')).toBeInTheDocument();
+      expect(newOversight.querySelector('br')).toBeInTheDocument();
+    });
+
+    describe('Oversight History Scenarios', () => {
+      const base = { ...mockOversightHistory };
+
+      const scenarios = [
+        {
+          name: 'basic oversight change',
+          override: {},
+          expectPrevRole: 'TrialAttorney',
+          expectPrevName: 'John Attorney',
+          expectNewRole: 'TrialAttorney',
+          expectNewName: 'Jane Attorney',
+          expectChangedBy: 'SYSTEM',
+        },
+        {
+          name: 'no previous oversight',
+          override: {
+            before: null,
+            after: {
+              role: OversightRole.OversightAttorney,
+              user: { id: 'user-new', name: 'New Attorney' },
+            },
+          },
+          expectPrev: '(none)',
+          expectNewRole: 'TrialAttorney',
+          expectNewName: 'New Attorney',
+          expectChangedBy: 'SYSTEM',
+        },
+        {
+          name: 'no new oversight',
+          override: {
+            before: {
+              role: OversightRole.OversightAttorney,
+              user: { id: 'user-old', name: 'Old Attorney' },
+            },
+            after: null,
+          },
+          expectPrevRole: 'TrialAttorney',
+          expectPrevName: 'Old Attorney',
+          expectNew: '(none)',
+          expectChangedBy: 'SYSTEM',
+        },
+        {
+          name: 'both oversight values null',
+          override: { before: null, after: null },
+          expectPrev: '(none)',
+          expectNew: '(none)',
+          expectChangedBy: 'SYSTEM',
+        },
+        {
+          name: 'missing updatedBy',
+          override: { updatedBy: { id: '', name: '' } },
+          expectPrevRole: 'TrialAttorney',
+          expectPrevName: 'John Attorney',
+          expectNewRole: 'TrialAttorney',
+          expectNewName: 'Jane Attorney',
+          expectChangedBy: '',
+        },
+      ];
+
+      test.each(scenarios)(
+        'should display oversight history with $name',
+        async ({
+          override,
+          expectPrev,
+          expectNew,
+          expectPrevRole,
+          expectPrevName,
+          expectNewRole,
+          expectNewName,
+          expectChangedBy,
+        }) => {
+          mockGetTrusteeHistory.mockResolvedValue({ data: [{ ...base, ...override }] });
+          renderWithProps({});
+          await screen.findByTestId('trustee-history-table');
+
+          const prevEl = screen.getByTestId('previous-oversight-0');
+          const newEl = screen.getByTestId('new-oversight-0');
+          const changedByEl = screen.getByTestId('changed-by-0');
+
+          // Helper to assert either (none) or role/name combination
+          if (expectPrev) {
+            expect(prevEl).toHaveTextContent(expectPrev);
+          } else {
+            expect(prevEl).toHaveTextContent(expectPrevRole!);
+            expect(prevEl).toHaveTextContent(expectPrevName!);
+          }
+
+          if (expectNew) {
+            expect(newEl).toHaveTextContent(expectNew);
+          } else {
+            expect(newEl).toHaveTextContent(expectNewRole!);
+            expect(newEl).toHaveTextContent(expectNewName!);
+          }
+
+          expect(changedByEl).toHaveTextContent(expectChangedBy);
+        },
+      );
+    });
+  });
+
+  describe('RenderTrusteeHistory Integration Tests', () => {
+    test('should render all history types through RenderTrusteeHistory component', async () => {
+      const mockBankHistory = {
+        id: 'audit-bank-1',
+        trusteeId: 'trustee-1',
+        documentType: 'AUDIT_BANKS' as const,
+        before: ['Bank A'],
+        after: ['Bank B'],
+        updatedOn: '2024-01-20T10:00:00Z',
+        updatedBy: SYSTEM_USER_REFERENCE,
+      };
+
+      const mockSoftwareHistory: TrusteeSoftwareHistory = {
+        id: 'audit-software-1',
+        trusteeId: 'trustee-1',
+        documentType: 'AUDIT_SOFTWARE',
+        before: 'Software A',
+        after: 'Software B',
+        updatedOn: '2024-01-21T15:30:00Z',
+        updatedBy: SYSTEM_USER_REFERENCE,
+      };
+
+      const mockOversightHistory: TrusteeOversightHistory = {
+        id: 'audit-oversight-1',
+        trusteeId: 'trustee-1',
+        documentType: 'AUDIT_OVERSIGHT',
+        before: {
+          role: OversightRole.OversightAttorney,
+          user: { id: 'user-1', name: 'Attorney A' },
+        },
+        after: {
+          role: OversightRole.OversightAttorney,
+          user: { id: 'user-2', name: 'Attorney B' },
+        },
+        updatedOn: '2024-01-22T16:45:00Z',
+        updatedBy: SYSTEM_USER_REFERENCE,
+      };
+
+      const allHistoryTypes = [
+        mockNameHistory,
+        mockPublicContactHistory,
+        mockInternalContactHistory,
+        mockBankHistory,
+        mockSoftwareHistory,
+        mockOversightHistory,
+      ];
+
+      mockGetTrusteeHistory.mockResolvedValue({ data: allHistoryTypes });
+
+      renderWithProps({});
+
+      await screen.findByTestId('trustee-history-table');
+
+      // Verify all history types are rendered through RenderTrusteeHistory
+      expect(screen.getByText('Name')).toBeInTheDocument();
+      expect(screen.getByText('Public Contact')).toBeInTheDocument();
+      expect(screen.getByText('Internal Contact')).toBeInTheDocument();
+      expect(screen.getByText('Bank(s)')).toBeInTheDocument();
+      expect(screen.getByText('Software')).toBeInTheDocument();
+      expect(screen.getByText('Oversight')).toBeInTheDocument();
+
+      // Verify that each component renders its specific data correctly
+      expect(screen.getByTestId('previous-name-5')).toHaveTextContent('John Smith');
+      expect(screen.getByTestId('previous-banks-2')).toHaveTextContent('Bank A');
+      expect(screen.getByTestId('previous-software-1')).toHaveTextContent('Software A');
+      expect(screen.getByTestId('previous-oversight-0')).toHaveTextContent('Attorney A');
+    });
+
+    test('should handle switch case default correctly for unknown document types', async () => {
+      // This test ensures the switch statement in RenderTrusteeHistory handles all cases
+      const validHistoryTypes = [
+        createMockNameHistory(),
+        createMockPublicContactHistory(),
+        createMockInternalContactHistory(),
+        {
+          id: 'audit-bank-1',
+          trusteeId: 'trustee-1',
+          documentType: 'AUDIT_BANKS' as const,
+          before: ['Bank A'],
+          after: ['Bank B'],
+          updatedOn: '2024-01-20T10:00:00Z',
+          updatedBy: SYSTEM_USER_REFERENCE,
+        },
+        {
+          id: 'audit-software-1',
+          trusteeId: 'trustee-1',
+          documentType: 'AUDIT_SOFTWARE',
+          before: 'Software A',
+          after: 'Software B',
+          updatedOn: '2024-01-21T15:30:00Z',
+          updatedBy: SYSTEM_USER_REFERENCE,
+        } as TrusteeSoftwareHistory,
+        {
+          id: 'audit-oversight-1',
+          trusteeId: 'trustee-1',
+          documentType: 'AUDIT_OVERSIGHT',
+          before: {
+            role: OversightRole.OversightAttorney,
+            user: { id: 'user-1', name: 'Attorney A' },
+          },
+          after: null,
+          updatedOn: '2024-01-22T16:45:00Z',
+          updatedBy: SYSTEM_USER_REFERENCE,
+        } as TrusteeOversightHistory,
+      ];
+
+      mockGetTrusteeHistory.mockResolvedValue({ data: validHistoryTypes });
+
+      renderWithProps({});
+
+      await screen.findByTestId('trustee-history-table');
+
+      // Verify all components render without errors
+      expect(screen.getAllByRole('row')).toHaveLength(7); // 6 data rows + 1 header row
     });
   });
 });

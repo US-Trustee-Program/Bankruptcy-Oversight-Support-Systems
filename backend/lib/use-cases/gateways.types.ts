@@ -11,7 +11,7 @@ import {
   TransferFrom,
   TransferTo,
 } from '../../../common/src/cams/events';
-import { CaseAssignmentHistory, CaseHistory } from '../../../common/src/cams/history';
+import { CaseHistory } from '../../../common/src/cams/history';
 import { CaseDocket, CaseNote, SyncedCase } from '../../../common/src/cams/cases';
 import {
   CasesSearchPredicate,
@@ -34,7 +34,13 @@ import { AcmsConsolidation, AcmsPredicate } from './dataflows/migrate-consolidat
 import { Pipeline } from '../query/query-pipeline';
 import { ResourceActions } from '../../../common/src/cams/actions';
 import { OfficeStaff } from '../adapters/gateways/mongo/offices.mongo.repository';
-import { Trustee, TrusteeHistory, TrusteeInput } from '../../../common/src/cams/trustees';
+import {
+  Trustee,
+  TrusteeHistory,
+  TrusteeInput,
+  TrusteeOversightAssignment,
+} from '../../../common/src/cams/trustees';
+import { Auditable } from '../../../common/src/cams/auditable';
 import {
   BankList,
   BankListItem,
@@ -42,6 +48,7 @@ import {
   BankruptcySoftwareListItem,
 } from '../../../common/src/cams/lists';
 import { Creatable } from '../../../common/src/cams/creatable';
+import { Identifiable } from '../../../common/src/cams/document';
 
 export type ReplaceResult = {
   id: string;
@@ -53,8 +60,6 @@ export type UpdateResult = {
   modifiedCount: number;
   matchedCount: number;
 };
-
-export type UpsertResult = ReplaceResult;
 
 export interface Releasable {
   release: () => void;
@@ -139,13 +144,6 @@ export interface CaseDocketGateway {
   getCaseDocket(context: ApplicationContext, caseId: string): Promise<CaseDocket>;
 }
 
-export interface CaseHistoryGateway {
-  getCaseAssignmentHistory(
-    context: ApplicationContext,
-    caseId: string,
-  ): Promise<CaseAssignmentHistory[]>;
-}
-
 export interface OrdersGateway {
   getOrderSync(context: ApplicationContext, txId: string): Promise<RawOrderSync>;
 }
@@ -211,19 +209,23 @@ export interface OfficeAssigneesRepository
     DeletesMany<OfficeAssigneePredicate>,
     Searches<OfficeAssigneePredicate, OfficeAssignee>,
     Releasable {
-  getDistinctAssigneesByOffice: (officeCode) => Promise<CamsUserReference[]>;
+  getDistinctAssigneesByOffice: (officeCode: string) => Promise<CamsUserReference[]>;
 }
 
 export interface TrusteesRepository extends Reads<Trustee>, Releasable {
   createTrustee(input: TrusteeInput, userRef: CamsUserReference): Promise<Trustee>;
   createTrusteeHistory(history: Creatable<TrusteeHistory>): Promise<void>;
-  listTrusteeHistory(id: string): Promise<TrusteeHistory[]>;
+  listTrusteeHistory(trusteeId: string): Promise<TrusteeHistory[]>;
   listTrustees(): Promise<Trustee[]>;
   updateTrustee(
     id: string,
     input: Partial<TrusteeInput>,
     userRef: CamsUserReference,
   ): Promise<Trustee>;
+  getTrusteeOversightAssignments(trusteeId: string): Promise<TrusteeOversightAssignment[]>;
+  createTrusteeOversightAssignment(
+    assignment: Omit<TrusteeOversightAssignment, keyof Auditable | keyof Identifiable>,
+  ): Promise<TrusteeOversightAssignment>;
 }
 
 export type RuntimeStateDocumentType =
@@ -293,6 +295,6 @@ export interface QueueGateway {
   ): { enqueue: (...messages: T[]) => void };
 }
 
-// TODO: Delete these types once the consolidation order `consolidationId` values have been migrated.
-export type MigrationConsolidationOrder = Pick<ConsolidationOrder, 'id' | 'jobId' | 'status'>;
-export type UpdateConsolidationId = Pick<ConsolidationOrder, 'id' | 'consolidationId'>;
+export interface StaffRepository {
+  getAttorneyStaff(applicationContext: ApplicationContext): Promise<Staff[]>;
+}

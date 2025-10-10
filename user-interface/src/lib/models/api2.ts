@@ -37,7 +37,12 @@ import {
   RoleAndOfficeGroupNames,
 } from '@common/cams/privileged-identity';
 import getAppConfiguration from '@/configuration/appConfiguration';
-import { Trustee, TrusteeHistory, TrusteeInput } from '@common/cams/trustees';
+import {
+  Trustee,
+  TrusteeHistory,
+  TrusteeInput,
+  TrusteeOversightAssignment,
+} from '@common/cams/trustees';
 import {
   BankList,
   BankListItem,
@@ -236,7 +241,7 @@ function withCache(cacheOptions: CacheOptions): Pick<GenericApiClient, 'get'> {
 }
 
 async function getAttorneys() {
-  return api().get<AttorneyUser[]>('/attorneys');
+  return api().get<Staff[]>('/staff');
 }
 
 async function postTrustee(trustee: TrusteeInput) {
@@ -435,10 +440,22 @@ async function deleteBank(id: string) {
   return api().delete(`/lists/banks/${id}`);
 }
 
+async function getTrusteeOversightAssignments(trusteeId: string) {
+  return api().get<TrusteeOversightAssignment[]>(`/trustees/${trusteeId}/oversight-assignments`);
+}
+
+async function createTrusteeOversightAssignment(trusteeId: string, userId: string) {
+  return api().post<TrusteeOversightAssignment>(`/trustees/${trusteeId}/oversight-assignments`, {
+    userId,
+  });
+}
+
 export const _Api2 = {
   getTrustees,
   getTrustee,
   getTrusteeHistory,
+  getTrusteeOversightAssignments,
+  createTrusteeOversightAssignment,
   postTrustee,
   patchTrustee,
   deletePrivilegedIdentityUser,

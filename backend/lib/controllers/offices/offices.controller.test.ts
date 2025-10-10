@@ -54,8 +54,7 @@ describe('offices controller tests', () => {
     getOffices = jest.fn().mockResolvedValue(COURT_DIVISIONS);
 
     const controller = new OfficesController();
-    const camsHttpRequest = mockCamsHttpRequest();
-    applicationContext.request = camsHttpRequest;
+    applicationContext.request = mockCamsHttpRequest();
     const offices = await controller.handleRequest(applicationContext);
     expect(offices).toEqual(
       expect.objectContaining({
@@ -76,8 +75,7 @@ describe('offices controller tests', () => {
       );
 
     const controller = new OfficesController();
-    const camsHttpRequest = mockCamsHttpRequest();
-    applicationContext.request = camsHttpRequest;
+    applicationContext.request = mockCamsHttpRequest();
     await expect(async () => {
       await controller.handleRequest(applicationContext);
     }).rejects.toThrow('Some expected CAMS error.');
@@ -89,8 +87,7 @@ describe('offices controller tests', () => {
 
     const controller = new OfficesController();
     await expect(async () => {
-      const camsHttpRequest = mockCamsHttpRequest();
-      applicationContext.request = camsHttpRequest;
+      applicationContext.request = mockCamsHttpRequest();
       await controller.handleRequest(applicationContext);
     }).rejects.toThrow('Unknown Error');
     expect(getOfficeAttorneys).not.toHaveBeenCalled();
@@ -104,8 +101,7 @@ describe('offices controller tests', () => {
 
     const officeCode = 'new-york';
     const subResource = 'attorneys';
-    const camsHttpRequest = mockCamsHttpRequest({ params: { officeCode, subResource } });
-    applicationContext.request = camsHttpRequest;
+    applicationContext.request = mockCamsHttpRequest({ params: { officeCode, subResource } });
 
     const controller = new OfficesController();
     const attorneys = await controller.handleRequest(applicationContext);
@@ -127,8 +123,7 @@ describe('offices controller tests', () => {
 
     const officeCode = 'new-york';
     const subResource = 'assignees';
-    const camsHttpRequest = mockCamsHttpRequest({ params: { officeCode, subResource } });
-    applicationContext.request = camsHttpRequest;
+    applicationContext.request = mockCamsHttpRequest({ params: { officeCode, subResource } });
 
     const controller = new OfficesController();
     const actual = await controller.handleRequest(applicationContext);
@@ -144,8 +139,7 @@ describe('offices controller tests', () => {
   test('should call getOffices', async () => {
     getOffices = jest.fn().mockResolvedValue([]);
 
-    const camsHttpRequest = mockCamsHttpRequest();
-    applicationContext.request = camsHttpRequest;
+    applicationContext.request = mockCamsHttpRequest();
 
     const controller = new OfficesController();
     const attorneys = await controller.handleRequest(applicationContext);
@@ -168,8 +162,7 @@ describe('offices controller tests', () => {
 
     const officeCode = 'new-york';
     const subResource = 'auditors';
-    const camsHttpRequest = mockCamsHttpRequest({ params: { officeCode, subResource } });
-    applicationContext.request = camsHttpRequest;
+    applicationContext.request = mockCamsHttpRequest({ params: { officeCode, subResource } });
 
     const controller = new OfficesController();
     await expect(async () => {

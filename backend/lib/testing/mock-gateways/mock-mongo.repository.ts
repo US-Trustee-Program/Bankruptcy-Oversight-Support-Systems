@@ -20,6 +20,7 @@ import {
   OrdersRepository,
   RuntimeState,
   RuntimeStateRepository,
+  StaffRepository,
   TrusteesRepository,
   UpdateResult,
   UserSessionCacheRepository,
@@ -46,7 +47,8 @@ export class MockMongoRepository
     UserSessionCacheRepository,
     OfficeAssigneesRepository,
     TrusteesRepository,
-    ListsRepository
+    ListsRepository,
+    StaffRepository
 {
   deleteSyncedCases(): Promise<void> {
     throw new Error('Method not implemented.');
@@ -251,7 +253,20 @@ export class MockMongoRepository
   deleteBankruptcySoftware(_ignore: string): Promise<void> {
     throw new Error('Method not implemented.');
   }
+
   deleteBank(_ignore: string): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
+  getTrusteeOversightAssignments(_ignore: any): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
+  createTrusteeOversightAssignment(_ignore: any): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
+  getAttorneyStaff(_ignore: any): Promise<any> {
     throw new Error('Method not implemented.');
   }
 }

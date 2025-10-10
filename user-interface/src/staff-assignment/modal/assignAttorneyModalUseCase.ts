@@ -84,7 +84,6 @@ const assignAttorneyModalUseCase = (
 
       controls.modalRef.current?.buttons?.current?.disableSubmitButton(true);
 
-      // call callback from parent with IDs and names of attorneys, and case id.
       const ids = store.checkListValues.map((item) => item.id);
       finalAttorneyList = store.attorneyList
         .filter((attorney) => ids.includes(attorney.id))
