@@ -37,7 +37,7 @@ describe('consolidationOrderAccordion presenter tests', () => {
     expect(getCaseId(params)).toEqual('');
   });
 
-  test('should return empty array when no staff are found', async () => {
+  test('should return empty array when no attorneys are found', async () => {
     const order: ConsolidationOrder = MockData.getConsolidationOrder();
     vi.spyOn(Api2, 'getCaseAssignments').mockResolvedValue({ data: [] });
 
@@ -45,7 +45,7 @@ describe('consolidationOrderAccordion presenter tests', () => {
     expect(attorneys).toEqual([]);
   });
 
-  test('should return string array of staff when found', async () => {
+  test('should return string array of attorneys when found', async () => {
     const order: ConsolidationOrder = MockData.getConsolidationOrder();
     const mockAttorneys: CaseAssignment[] = MockData.buildArray(
       () => MockData.getAttorneyAssignment(),
