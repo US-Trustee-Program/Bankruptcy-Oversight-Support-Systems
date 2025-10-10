@@ -14,9 +14,6 @@ import Validators from '../../../../common/src/cams/validators';
 
 const MODULE_NAME = 'TRUSTEE-ASSIGNMENTS-USE-CASE';
 
-// Constants
-const ATTORNEY_ASSIGNMENT_LIMIT = 1;
-
 /**
  * Use case for managing trustee oversight assignments.
  * Provides business logic for viewing and creating attorney-to-trustee assignments.
@@ -114,7 +111,7 @@ export class TrusteeAssignmentsUseCase {
 
         // Prevent duplicate attorney assignments (business rule: max ${ATTORNEY_ASSIGNMENT_LIMIT} attorney per trustee)
         throw new BadRequestError(MODULE_NAME, {
-          message: `Trustee ${trusteeId} already has an attorney assigned. Only ${ATTORNEY_ASSIGNMENT_LIMIT} attorney per trustee is allowed.`,
+          message: `Trustee ${trusteeId} already has an attorney assigned.`,
         });
       }
 
