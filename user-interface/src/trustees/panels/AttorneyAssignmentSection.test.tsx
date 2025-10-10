@@ -96,42 +96,6 @@ describe('AttorneyAssignmentSection', () => {
     expect(screen.getByTestId('attorney-assignments-display')).toBeInTheDocument();
   });
 
-  test('should open assignment modal when assign button clicked', () => {
-    const onAssignmentChange = vi.fn();
-
-    renderWithRouter(
-      <AttorneyAssignmentSection
-        trusteeId="trustee-123"
-        assignments={[]}
-        onAssignmentChange={onAssignmentChange}
-      />,
-    );
-
-    // Get the assign button and click it - buttons get random ids so use generic testid
-    const assignButton = screen.getByTestId('button-test');
-    fireEvent.click(assignButton);
-
-    // Since we're mocking the modal, we can't directly test that it opens
-    // but we can verify the click handler was called
-    expect(assignButton).toBeInTheDocument();
-  });
-
-  test('should handle assignment creation callback', () => {
-    const onAssignmentChange = vi.fn();
-
-    const { container } = renderWithRouter(
-      <AttorneyAssignmentSection
-        trusteeId="trustee-123"
-        assignments={[]}
-        onAssignmentChange={onAssignmentChange}
-      />,
-    );
-
-    // We can't directly test the callback without complex test setup,
-    // but we can verify the component renders correctly
-    expect(container).toBeInTheDocument();
-  });
-
   test('should show edit button when attorney is assigned', () => {
     const onAssignmentChange = vi.fn();
 
