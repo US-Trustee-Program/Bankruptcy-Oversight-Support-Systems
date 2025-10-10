@@ -181,7 +181,7 @@ export default function TrusteeDetailScreen() {
         <TrusteeOtherInfoForm
           banks={trustee.banks}
           software={trustee.software}
-          trusteeId={trustee.id}
+          trusteeId={trustee.trusteeId}
         />
       ),
     },

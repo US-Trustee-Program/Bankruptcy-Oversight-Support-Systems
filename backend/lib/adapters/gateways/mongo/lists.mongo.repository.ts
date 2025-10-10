@@ -53,10 +53,7 @@ export class ListsMongoRepository extends BaseMongoRepository implements ListsRe
 
   private async getList<T = ListItem>(listName: ListNames): Promise<T[]> {
     const query = this.doc('list').equals(listName);
-    const pipeline = QueryPipeline.pipeline(
-      QueryPipeline.match(query),
-      QueryPipeline.sort({ field: { name: 'value' }, direction: 'ASCENDING' }),
-    );
+    const pipeline = QueryPipeline.pipeline(QueryPipeline.match(query));
 
     try {
       return await this.getAdapter<T>().aggregate(pipeline);
