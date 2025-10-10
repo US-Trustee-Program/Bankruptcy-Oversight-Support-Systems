@@ -2,11 +2,23 @@
 
 .trustee-other-info-form-screen {
   .form-container {
-    .field-group:last-of-type {
+    .bank-field {
+      position: relative;
+
+      .bank-field-input {
+        .remove-bank-button {
+          position: absolute;
+          top: 0;
+          line-height: 1.3;
+          right: 0;
+        }
+      }
+    }
+    .form-column .field-group.bank-field:not(:has(~ .field-group.bank-field)) {
       margin-bottom: 1rem;
     }
   }
-  .trustee-bank-input {
+  .trustee-bank-input, .trustee-software-input {
     display: inline-block;
     width: 100%;
     max-width: 400px;
@@ -16,7 +28,7 @@
     color: $secondary-dark;
   }
   .add-bank-button {
-    margin: 0 0 2.5rem 0;
+    margin-bottom: 1.5rem;
   }
 }
 
@@ -25,6 +37,29 @@
     .trustee-bank-input {
       width: calc(100% - 200px);
       min-width: 150px;
+    }
+  }
+}
+
+@media screen and (max-width: 500px) {
+  .trustee-other-info-form-screen {
+    .form-container {
+      .bank-field {
+        .bank-field-input {
+          min-width: 100%;
+        }
+      }
+    }
+    .trustee-bank-input, .trustee-software-input {
+      max-width: 100%;
+    }
+  }
+}
+
+@media screen and (max-width: 479px) {
+  .trustee-other-info-form-screen {
+    .cancel-button {
+      margin: 1rem auto;
     }
   }
 }

@@ -118,30 +118,33 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
           <div className="form-column">
             {banks.map((bank, index) => {
               return (
-                <div className="field-group" key={`bank-${index}`}>
-                  <Input
-                    id={`trustee-banks-${index}`}
-                    className="trustee-bank-input"
-                    name={`bank-${index}`}
-                    value={bank}
-                    label="Bank"
-                    onChange={(e) => handleBankChange(index, e.target.value)}
-                    autoComplete="off"
-                  />
-                  {index > 0 && (
-                    <Button
-                      className="remove-bank-button"
-                      uswdsStyle={UswdsButtonStyle.Unstyled}
-                      onClick={handleBankRemove(index)}
-                    >
-                      <Icon name="cancel" />
-                      Remove Bank
-                    </Button>
-                  )}
+                <div className="field-group bank-field" key={`bank-${index}`}>
+                  <div className="bank-field-input">
+                    <Input
+                      id={`trustee-banks-${index}`}
+                      className="trustee-bank-input"
+                      name={`bank-${index}`}
+                      value={bank}
+                      label="Bank"
+                      onChange={(e) => handleBankChange(index, e.target.value)}
+                      autoComplete="off"
+                    />
+                    {index > 0 && (
+                      <Button
+                        id={`remove-bank-${index}-button`}
+                        className="remove-bank-button"
+                        uswdsStyle={UswdsButtonStyle.Unstyled}
+                        onClick={handleBankRemove(index)}
+                      >
+                        Remove bank
+                      </Button>
+                    )}
+                  </div>
                 </div>
               );
             })}
             <Button
+              id="add-bank-button"
               className="add-bank-button"
               onClick={handleBankAdd}
               uswdsStyle={UswdsButtonStyle.Unstyled}
@@ -149,18 +152,18 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
               <Icon name="add_circle" />
               Add another bank
             </Button>
-          </div>
-          <div className="field-group">
-            <ComboBox
-              id="trustee-software"
-              className="trustee-software-input"
-              name="software"
-              label="Bankruptcy Software"
-              options={softwareOptions}
-              selections={softwareOptions.filter((option) => option.value === software)}
-              onUpdateSelection={handleSoftwareChange}
-              autoComplete="off"
-            />
+            <div className="field-group">
+              <ComboBox
+                id="trustee-software"
+                className="trustee-software-input"
+                name="software"
+                label="Bankruptcy Software"
+                options={softwareOptions}
+                selections={softwareOptions.filter((option) => option.value === software)}
+                onUpdateSelection={handleSoftwareChange}
+                autoComplete="off"
+              />
+            </div>
           </div>
         </div>
         <div className="usa-button-group">
@@ -168,7 +171,8 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
             {isSubmitting ? 'Saving…' : 'Save'}
           </Button>
           <Button
-            className="unstyled-button"
+            id="cancel-button"
+            className="unstyled-button cancel-button"
             type="button"
             onClick={handleCancel}
             uswdsStyle={UswdsButtonStyle.Unstyled}

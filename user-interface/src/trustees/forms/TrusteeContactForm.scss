@@ -9,20 +9,8 @@
     min-width: 200px;
 
     .form-container {
-      display: flex;
-      gap: 2rem;
-      margin: 0;
-      width: 100%;
-
       .form-column {
-        flex: 1;
-        min-width: 400px;
-
         .field-group {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 1rem;
-
           .usa-form-group {
             max-width: 385px;
             width: 100%;
