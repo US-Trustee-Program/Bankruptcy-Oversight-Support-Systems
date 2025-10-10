@@ -1,4 +1,3 @@
-import { AttorneyGatewayInterface } from './use-cases/attorneys/attorney.gateway.interface';
 import { CasesInterface } from './use-cases/cases/cases.interface';
 import { ApplicationContext } from './adapters/types/basic';
 import { CasesLocalGateway } from './adapters/gateways/cases.local.gateway';
@@ -39,7 +38,6 @@ import { MockUserSessionUseCase } from './testing/mock-gateways/mock-user-sessio
 import MockOpenIdConnectGateway from './testing/mock-gateways/mock-oauth2-gateway';
 import { StorageGateway } from './adapters/types/storage';
 import LocalStorageGateway from './adapters/gateways/storage/local-storage-gateway';
-import MockAttorneysGateway from './testing/mock-gateways/mock-attorneys.gateway';
 import { MockOrdersGateway } from './testing/mock-gateways/mock.orders.gateway';
 import { MockOfficesGateway } from './testing/mock-gateways/mock.offices.gateway';
 import OktaUserGroupGateway from './adapters/gateways/okta/okta-user-group-gateway';
@@ -62,7 +60,7 @@ import { OfficeAssigneeMongoRepository } from './adapters/gateways/mongo/office-
 import StorageQueueGateway from './adapters/gateways/storage-queue/storage-queue-gateway';
 import { TrusteesMongoRepository } from './adapters/gateways/mongo/trustees.mongo.repository';
 import { ListsMongoRepository } from './adapters/gateways/mongo/lists.mongo.repository';
-import { OfficesStaffRepository } from './adapters/gateways/offices-staff.repository';
+import { StaffMongoRepository } from './adapters/gateways/mongo/staff.mongo.repository';
 
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
@@ -80,12 +78,13 @@ let mockConsolidationsRepository: MockMongoRepository;
 let mockCasesRepository: MockMongoRepository;
 let mockUserSessionCacheRepository: MockMongoRepository;
 
-export const getStaffRepository = (): StaffRepository => {
-  return new OfficesStaffRepository();
-};
-
-export const getAttorneyGateway = (): AttorneyGatewayInterface => {
-  return MockAttorneysGateway;
+export const getStaffRepository = (context: ApplicationContext): StaffRepository => {
+  if (context.config.get('dbMock')) {
+    return new MockMongoRepository();
+  }
+  const repo = StaffMongoRepository.getInstance(context);
+  deferRelease(repo, context);
+  return repo;
 };
 
 export const getCasesGateway = (context: ApplicationContext): CasesInterface => {
@@ -356,7 +355,6 @@ export const getListsGateway = (context: ApplicationContext): ListsRepository =>
 
 export const Factory = {
   getAcmsGateway,
-  getAttorneyGateway,
   getCasesGateway,
   getAssignmentRepository,
   getCaseNotesRepository,

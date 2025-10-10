@@ -441,7 +441,7 @@ describe('offices repo', () => {
       dropSpy.mockRestore();
     });
 
-    test('getOfficeAttorneys returns empty array if no attorneys', async () => {
+    test('getOfficeAttorneys returns empty array if no staff', async () => {
       jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
       const actual = await repo.getOfficeAttorneys('some-office');
       expect(actual).toEqual([]);

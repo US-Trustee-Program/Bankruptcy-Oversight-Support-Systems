@@ -104,7 +104,7 @@ describe('StaffAssignmentRow tests', () => {
     expect(button).toHaveAttribute('data-testid', 'open-modal-button_0');
   });
 
-  test('should show assigned attorney names for assigned attorneys', async () => {
+  test('should show assigned attorney names for assigned staff', async () => {
     const assignments = MockData.buildArray(
       () => MockData.getAttorneyAssignment({ caseId: bCase.caseId }),
       2,
@@ -146,7 +146,7 @@ describe('StaffAssignmentRow tests', () => {
     });
   });
 
-  test('should render a list of assigned attorneys', async () => {
+  test('should render a list of assigned staff', async () => {
     const assignments = [MockData.getAttorneyAssignment()];
 
     renderWithProps({ bCase: { ...bCase, assignments } });

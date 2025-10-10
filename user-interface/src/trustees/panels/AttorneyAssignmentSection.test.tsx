@@ -67,7 +67,7 @@ describe('AttorneyAssignmentSection', () => {
     return render(ui, { wrapper: BrowserRouter });
   };
 
-  test('should show no assignment state when no attorneys assigned', () => {
+  test('should show no assignment state when no staff assigned', () => {
     const onAssignmentChange = vi.fn();
 
     renderWithRouter(

@@ -1,6 +1,6 @@
 import * as dotenv from 'dotenv';
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { AttorneysController } from '../../../lib/controllers/attorneys/attorneys.controller';
+import { StaffController } from '../../../lib/controllers/staff/staff.controller';
 import { initializeApplicationInsights } from '../../azure/app-insights';
 import { toAzureError, toAzureSuccess } from '../../azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
@@ -9,7 +9,7 @@ dotenv.config();
 
 initializeApplicationInsights();
 
-const MODULE_NAME = 'ATTORNEYS-FUNCTION';
+const MODULE_NAME = 'STAFF-FUNCTION';
 
 export default async function handler(
   request: HttpRequest,
@@ -24,17 +24,17 @@ export default async function handler(
       logger,
     });
 
-    const attorneysController = new AttorneysController();
-    const response = await attorneysController.handleRequest(context);
+    const controller = new StaffController(context);
+    const response = await controller.handleRequest(context);
     return toAzureSuccess(response);
   } catch (error) {
     return toAzureError(logger, MODULE_NAME, error);
   }
 }
 
-app.http('attorneys', {
+app.http('staff', {
   methods: ['GET'],
   authLevel: 'anonymous',
   handler,
-  route: 'attorneys/{id:int?}',
+  route: 'staff',
 });

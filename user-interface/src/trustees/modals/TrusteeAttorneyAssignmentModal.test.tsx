@@ -10,11 +10,9 @@ import { CamsRole, OversightRole } from '@common/cams/roles';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { TrusteeAttorneyAssignmentModalRef } from './TrusteeAttorneyAssignmentModal';
 
-// Mock the API and global alert hooks
 vi.mock('@/lib/hooks/UseApi2');
 vi.mock('@/lib/hooks/UseGlobalAlert');
 
-// Mock ComboBox component
 vi.mock('@/lib/components/combobox/ComboBox', () => {
   return {
     default: ({
@@ -111,7 +109,7 @@ describe('TrusteeAttorneyAssignmentModal', () => {
     expect(screen.getByTestId('modal-test-modal')).toBeInTheDocument();
   });
 
-  test('should load attorneys when modal opens', async () => {
+  test('should load staff when modal opens', async () => {
     const onAssignmentCreated = vi.fn();
     const ref = React.createRef<TrusteeAttorneyAssignmentModalRef>();
 
@@ -127,7 +125,7 @@ describe('TrusteeAttorneyAssignmentModal', () => {
     // Simulate opening the modal
     ref.current!.show();
 
-    // Check that the API was called to load attorneys
+    // Check that the API was called to load staff
     await waitFor(() => {
       expect(mockApiMethods.getAttorneys).toHaveBeenCalledTimes(1);
     });
@@ -277,7 +275,7 @@ describe('TrusteeAttorneyAssignmentModal', () => {
     // Should display error message
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeInTheDocument();
-      expect(screen.getByTestId('alert')).toHaveTextContent('Failed to load attorneys');
+      expect(screen.getByTestId('alert')).toHaveTextContent('Failed to load staff');
     });
   });
 
@@ -349,7 +347,7 @@ describe('TrusteeAttorneyAssignmentModal', () => {
     expect(onAssignmentCreated).not.toHaveBeenCalled();
   });
 
-  test('should show loading spinner while fetching attorneys', async () => {
+  test('should show loading spinner while fetching staff', async () => {
     // Make the API call take longer to see loading state
     let resolvePromise!: (value: { data: AttorneyUser[] }) => void;
     const loadingPromise = new Promise<{ data: AttorneyUser[] }>((resolve) => {

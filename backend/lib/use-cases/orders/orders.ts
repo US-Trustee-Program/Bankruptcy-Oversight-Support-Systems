@@ -498,7 +498,7 @@ export class OrdersUseCase {
           };
           await casesRepo.createConsolidationFrom(consolidationFrom);
 
-          // Assign lead case attorneys to the child case.
+          // Assign lead case staff to the child case.
           await assignmentUseCase.createTrialAttorneyAssignments(
             context,
             childCase.caseId,
