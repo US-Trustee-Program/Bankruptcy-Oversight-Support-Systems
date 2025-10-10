@@ -55,7 +55,7 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
       const response = await api.getAttorneys();
       setAttorneys(response.data || []);
     } catch (_err) {
-      setError('Failed to load staff');
+      setError('Failed to load attorneys');
     } finally {
       setIsLoading(false);
     }
