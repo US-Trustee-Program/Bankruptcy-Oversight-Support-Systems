@@ -275,7 +275,7 @@ describe('TrusteeAttorneyAssignmentModal', () => {
     // Should display error message
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeInTheDocument();
-      expect(screen.getByTestId('alert')).toHaveTextContent('Failed to load staff');
+      expect(screen.getByTestId('alert')).toHaveTextContent('Failed to load attorneys');
     });
   });
 
