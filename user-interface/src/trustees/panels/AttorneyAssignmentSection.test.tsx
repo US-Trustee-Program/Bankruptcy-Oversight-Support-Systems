@@ -6,7 +6,6 @@ import AttorneyAssignmentSection from './AttorneyAssignmentSection';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
 import { OversightRole } from '@common/cams/roles';
 
-// Mock the TrusteeAttorneyAssignmentModal component
 vi.mock('../modals/TrusteeAttorneyAssignmentModal', () => {
   return {
     default: (() => {
@@ -79,7 +78,6 @@ describe('AttorneyAssignmentSection', () => {
       />,
     );
 
-    // Verify empty state is shown
     expect(screen.getByTestId('no-attorney-assigned')).toBeInTheDocument();
     expect(screen.getByTestId('no-attorney-assigned')).toHaveTextContent('No attorney assigned');
   });
@@ -95,7 +93,6 @@ describe('AttorneyAssignmentSection', () => {
       />,
     );
 
-    // Verify attorney information is displayed
     expect(screen.getByTestId('attorney-assignments-display')).toBeInTheDocument();
   });
 
@@ -146,7 +143,6 @@ describe('AttorneyAssignmentSection', () => {
       />,
     );
 
-    // Verify the edit button is present
     const editButton = screen.getByTestId('button-test');
     expect(editButton).toBeInTheDocument();
   });
@@ -163,7 +159,6 @@ describe('AttorneyAssignmentSection', () => {
       />,
     );
 
-    // Verify loading spinner is displayed
     expect(screen.getByTestId('attorney-assignments-loading')).toBeInTheDocument();
   });
 
@@ -178,9 +173,7 @@ describe('AttorneyAssignmentSection', () => {
       />,
     );
 
-    // Verify attorney name is displayed
     expect(screen.getByTestId('attorney-assignments-display')).toBeInTheDocument();
-    // The attorney name should be in the display area
     const displayArea = screen.getByTestId('attorney-assignments-display');
     expect(displayArea).toHaveTextContent('John Doe');
   });
@@ -196,11 +189,9 @@ describe('AttorneyAssignmentSection', () => {
       />,
     );
 
-    // Find the mock trigger button and click it to simulate assignment creation
     const triggerButton = screen.getByTestId('mock-assignment-created-trigger');
     fireEvent.click(triggerButton);
 
-    // Verify that onAssignmentChange was called as a result of handleAssignmentCreated
     expect(onAssignmentChange).toHaveBeenCalledTimes(1);
   });
 });

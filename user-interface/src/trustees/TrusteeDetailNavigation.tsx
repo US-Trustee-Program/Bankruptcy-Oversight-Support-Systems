@@ -5,7 +5,7 @@ import { setCurrentNav, createNavStateMapper } from '@/lib/utils/navigation';
 export enum TrusteeNavState {
   TRUSTEE_PROFILE,
   AUDIT_HISTORY,
-  ASSIGNED_STAFF = 2,
+  ASSIGNED_STAFF,
 }
 
 export const mapTrusteeDetailNavState = createNavStateMapper<TrusteeNavState>(

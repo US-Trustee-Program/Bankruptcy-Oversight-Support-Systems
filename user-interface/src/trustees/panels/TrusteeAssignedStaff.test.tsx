@@ -5,12 +5,10 @@ import { useTrusteeAssignments } from '@/trustees/modals/UseTrusteeAssignments';
 import { Trustee, TrusteeOversightAssignment } from '@common/cams/trustees';
 import { OversightRole } from '@common/cams/roles';
 
-// Mock the hook
 vi.mock('@/trustees/modals/UseTrusteeAssignments', () => ({
   useTrusteeAssignments: vi.fn(),
 }));
 
-// Mock the AttorneyAssignmentSection component
 vi.mock('./AttorneyAssignmentSection', () => ({
   default: vi.fn(({ trusteeId, assignments, onAssignmentChange, isLoading }) => (
     <div
@@ -88,7 +86,6 @@ describe('TrusteeAssignedStaff', () => {
   test('should render component with correct structure', () => {
     render(<TrusteeAssignedStaff trusteeId="trustee-123" trustee={mockTrustee} />);
 
-    // Should have the main containers
     expect(screen.getByTestId('attorney-assignment-section')).toBeInTheDocument();
   });
 
@@ -110,7 +107,6 @@ describe('TrusteeAssignedStaff', () => {
       'trustee-123',
     );
 
-    // Change trusteeId
     rerender(<TrusteeAssignedStaff trusteeId="trustee-456" trustee={mockTrustee} />);
 
     expect(mockUseTrusteeAssignments.getTrusteeOversightAssignments).toHaveBeenCalledWith(
@@ -167,10 +163,8 @@ describe('TrusteeAssignedStaff', () => {
   test('should refresh assignments when onAssignmentChange is called', () => {
     render(<TrusteeAssignedStaff trusteeId="trustee-123" trustee={mockTrustee} />);
 
-    // Clear the initial call
     mockUseTrusteeAssignments.getTrusteeOversightAssignments.mockClear();
 
-    // Trigger refresh through the AttorneyAssignmentSection
     const refreshButton = screen.getByTestId('refresh-assignments');
     fireEvent.click(refreshButton);
 
@@ -183,10 +177,8 @@ describe('TrusteeAssignedStaff', () => {
   test('should have correct container structure', () => {
     render(<TrusteeAssignedStaff trusteeId="trustee-123" trustee={mockTrustee} />);
 
-    // Should have the attorney assignment section
     expect(screen.getByTestId('attorney-assignment-section')).toBeInTheDocument();
 
-    // Should have the right-side-screen-content class structure (from the component)
     const container = document.querySelector('.right-side-screen-content');
     expect(container).toBeInTheDocument();
     expect(container?.querySelector('.record-detail-container')).toBeInTheDocument();
