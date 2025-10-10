@@ -32,8 +32,6 @@ export default function TrusteeAssignedStaff({ trusteeId }: TrusteeAssignedStaff
           onAssignmentChange={refreshAssignments}
           isLoading={isLoading}
         />
-
-        {/* Future sections for other staff types would be added here */}
       </div>
     </div>
   );
