@@ -2,6 +2,8 @@ import { Auditable } from './auditable';
 import { Identifiable } from './document';
 import { LegacyAddress } from './parties';
 import { ContactInformation } from './contact';
+import { CamsUserReference } from './users';
+import { OversightRole } from './roles';
 
 // Chapter types supported for trustee assignments
 export type ChapterType = '7-panel' | '7-non-panel' | '11' | '11-subchapter-v' | '12' | '13';
@@ -39,6 +41,13 @@ export type Trustee = Auditable &
     banks?: string[];
     software?: string;
     status: TrusteeStatus;
+  };
+
+export type TrusteeOversightAssignment = Auditable &
+  Identifiable & {
+    trusteeId: string;
+    user: CamsUserReference;
+    role: OversightRole;
   };
 
 export type TrusteeInput = Omit<
@@ -79,9 +88,18 @@ export type TrusteeSoftwareHistory = AbstractTrusteeHistory<string, string> & {
   documentType: 'AUDIT_SOFTWARE';
 };
 
+type UserAndRole = { user: CamsUserReference; role: OversightRole };
+export type TrusteeOversightHistory = AbstractTrusteeHistory<
+  UserAndRole | null,
+  UserAndRole | null
+> & {
+  documentType: 'AUDIT_OVERSIGHT';
+};
+
 export type TrusteeHistory =
   | TrusteeNameHistory
   | TrusteePublicContactHistory
   | TrusteeInternalContactHistory
   | TrusteeBankHistory
-  | TrusteeSoftwareHistory;
+  | TrusteeSoftwareHistory
+  | TrusteeOversightHistory;

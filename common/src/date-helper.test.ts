@@ -32,15 +32,22 @@ describe('date helper tests', () => {
     expect(dates[3]).toEqual(newest);
   });
 
-  test('should filter date strings', () => {
-    expect(isValidDateString(undefined)).toBeFalsy();
-    expect(isValidDateString(null)).toBeFalsy();
-    expect(isValidDateString('')).toBeFalsy();
-    expect(isValidDateString('bogus')).toBeFalsy();
-    expect(isValidDateString('01/01/2024')).toBeFalsy();
+  const invalidDateStrings = [
+    ['undefined', undefined, false],
+    ['null', null, false],
+    ['empty string', '', false],
+    ['bogus string', 'bogus', false],
+    ['US date format', '01/01/2024', false],
+  ] as const;
 
-    expect(isValidDateString('2024-01-01')).toBeTruthy();
-  });
+  const validDateStrings = [['ISO date format', '2024-01-01', true]] as const;
+
+  test.each([...invalidDateStrings, ...validDateStrings])(
+    'should filter date strings - %s should return %s',
+    (_description, input, expected) => {
+      expect(isValidDateString(input)).toBe(expected);
+    },
+  );
 
   test('should succeed for valid date', () => {
     const today = new Date();

@@ -1,5 +1,6 @@
 import { CamsUserReference } from './users';
 import { getCamsUserReference } from './session';
+import { Identifiable } from './document';
 
 export type Auditable = {
   updatedOn: string;
@@ -19,18 +20,20 @@ export const ACMS_SYSTEM_USER_REFERENCE: CamsUserReference = { id: 'ACMS', name:
  * @param {T extends Auditable} record The record to be decorated.
  * @param {CamsUserReference} [camsUser=SYSTEM_USER_REFERENCE] The user to be assigned to `updatedBy`. Defaults to the
  * system user, so this parameter MUST be provided for user-initiated actions.
- * @returns {T}
+ * @returns {T extends Auditable}
  */
 export function createAuditRecord<T extends Auditable>(
-  record: Omit<T, 'updatedOn' | 'updatedBy'>,
+  record: Omit<T, keyof Auditable | keyof Identifiable>,
   camsUser: CamsUserReference = SYSTEM_USER_REFERENCE,
 ): T {
+  const userReference: CamsUserReference = getCamsUserReference(camsUser);
   const timestamp = new Date().toISOString();
+
   return {
     ...record,
-    updatedOn: timestamp,
-    updatedBy: getCamsUserReference(camsUser),
     createdOn: timestamp,
-    createdBy: getCamsUserReference(camsUser),
+    createdBy: userReference,
+    updatedOn: timestamp,
+    updatedBy: userReference,
   } as T;
 }

@@ -6,7 +6,12 @@ import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { CamsUserReference } from '../../../../../common/src/cams/users';
 import QueryBuilder from '../../../query/query-builder';
 import { Creatable } from '../../types/persistence.gateway';
-import { Trustee, TrusteeHistory, TrusteeInput } from '../../../../../common/src/cams/trustees';
+import {
+  Trustee,
+  TrusteeHistory,
+  TrusteeInput,
+  TrusteeOversightAssignment,
+} from '../../../../../common/src/cams/trustees';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 
 const MODULE_NAME = 'TRUSTEES-MONGO-REPOSITORY';
@@ -16,6 +21,10 @@ const { using, and } = QueryBuilder;
 
 export type TrusteeDocument = Trustee & {
   documentType: 'TRUSTEE';
+};
+
+export type TrusteeOversightAssignmentDocument = TrusteeOversightAssignment & {
+  documentType: 'TRUSTEE_OVERSIGHT_ASSIGNMENT';
 };
 
 export class TrusteesMongoRepository extends BaseMongoRepository implements TrusteesRepository {
@@ -159,6 +168,37 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
           module: MODULE_NAME,
           message: `Failed to update trustee with ID ${id}.`,
         },
+      });
+    }
+  }
+
+  async getTrusteeOversightAssignments(trusteeId: string): Promise<TrusteeOversightAssignment[]> {
+    try {
+      const doc = using<TrusteeOversightAssignmentDocument>();
+      const query = and(
+        doc('documentType').equals('TRUSTEE_OVERSIGHT_ASSIGNMENT'),
+        doc('trusteeId').equals(trusteeId),
+      );
+      return await this.getAdapter<TrusteeOversightAssignmentDocument>().find(query);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to retrieve oversight assignments for trustee ${trusteeId}.`,
+      });
+    }
+  }
+
+  async createTrusteeOversightAssignment(
+    assignment: Creatable<TrusteeOversightAssignment>,
+  ): Promise<TrusteeOversightAssignment> {
+    try {
+      const id = await this.getAdapter<Creatable<TrusteeOversightAssignmentDocument>>().insertOne({
+        documentType: 'TRUSTEE_OVERSIGHT_ASSIGNMENT',
+        ...assignment,
+      });
+      return { id, ...assignment };
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to create oversight assignment for trustee ${assignment.trusteeId}.`,
       });
     }
   }

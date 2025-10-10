@@ -5,7 +5,7 @@ import * as factory from '../../factory';
 import { CamsUserGroup, Staff } from '../../../../common/src/cams/users';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
-import AttorneysList from '../attorneys/attorneys';
+import StaffUseCase from '../staff/staff';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { CamsRole } from '../../../../common/src/cams/roles';
 import UsersHelpers from '../users/users.helpers';
@@ -52,7 +52,7 @@ describe('offices use case tests', () => {
     const repoSpy = jest
       .spyOn(MockMongoRepository.prototype, 'getOfficeAttorneys')
       .mockResolvedValue(mockAttorneys);
-    const attorneysSpy = jest.spyOn(AttorneysList.prototype, 'getAttorneyList');
+    const attorneysSpy = jest.spyOn(StaffUseCase.prototype, 'getAttorneyList');
 
     const { officeCode } = MANHATTAN_OFFICE;
     const officeAttorneys = await useCase.getOfficeAttorneys(applicationContext, officeCode);
