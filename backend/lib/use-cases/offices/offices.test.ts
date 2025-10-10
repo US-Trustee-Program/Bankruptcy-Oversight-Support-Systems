@@ -46,7 +46,7 @@ describe('offices use case tests', () => {
     expect(offices).toEqual(MOCKED_USTP_OFFICES_ARRAY);
   });
 
-  test('should return staff for office', async () => {
+  test('should return attorneys for office', async () => {
     const useCase = new OfficesUseCase();
     const mockAttorneys = [];
     const repoSpy = jest
@@ -61,7 +61,7 @@ describe('offices use case tests', () => {
     expect(attorneysSpy).not.toHaveBeenCalled();
   });
 
-  test('should return assigned staff for office', async () => {
+  test('should return assigned attorneys for office', async () => {
     const useCase = new OfficesUseCase();
     const attorneys = MockData.buildArray(MockData.getCamsUserReference, 5);
     const repoSpy = jest

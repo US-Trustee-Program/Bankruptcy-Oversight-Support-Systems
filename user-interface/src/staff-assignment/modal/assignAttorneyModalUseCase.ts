@@ -78,13 +78,12 @@ const assignAttorneyModalUseCase = (
     submitValues: async (assignmentChangeCallback: (val: CamsUserReference[]) => void) => {
       const api = useApi2();
       if (!store.bCase) {
-        throw Error('No bankruptcy case was supplied. Can not set staff without a case.');
+        throw Error('No bankruptcy case was supplied. Can not set attorneys without a case.');
       }
       let finalAttorneyList: CamsUserReference[] = [];
 
       controls.modalRef.current?.buttons?.current?.disableSubmitButton(true);
 
-      // call callback from parent with IDs and names of staff, and case id.
       const ids = store.checkListValues.map((item) => item.id);
       finalAttorneyList = store.attorneyList
         .filter((attorney) => ids.includes(attorney.id))

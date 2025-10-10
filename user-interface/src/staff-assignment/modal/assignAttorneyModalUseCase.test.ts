@@ -166,7 +166,7 @@ describe('assignAttorneyModalUseCase tests', () => {
 
   test('submitValues should throw an error when no case is supplied.', async () => {
     await expect(useCase.submitValues(() => {})).rejects.toThrow(
-      'No bankruptcy case was supplied. Can not set staff without a case.',
+      'No bankruptcy case was supplied. Can not set attorneys without a case.',
     );
   });
 
@@ -229,7 +229,7 @@ describe('assignAttorneyModalUseCase tests', () => {
   ];
 
   test.each(tabTestProps)(
-    'pressing the tab key %s focus on the next element in a list of staff',
+    'pressing the tab key %s focus on the next element in a list of attorneys',
     async ({ _label, shouldHaveFocus, keyName, shiftKey, isVisible, className }) => {
       const modalId = 'test-id';
 
