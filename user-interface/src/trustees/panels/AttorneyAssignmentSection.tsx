@@ -1,6 +1,5 @@
 import { useRef, useCallback } from 'react';
-import Button from '@/lib/components/uswds/Button';
-import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
+import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
 import { OversightRole } from '@common/cams/roles';
@@ -17,12 +16,8 @@ interface AttorneyAssignmentSectionProps {
   isLoading?: boolean;
 }
 
-export default function AttorneyAssignmentSection({
-  trusteeId,
-  assignments,
-  onAssignmentChange,
-  isLoading = false,
-}: AttorneyAssignmentSectionProps) {
+export default function AttorneyAssignmentSection(props: Readonly<AttorneyAssignmentSectionProps>) {
+  const { trusteeId, assignments, onAssignmentChange, isLoading = false } = props;
   const modalRef = useRef<TrusteeAttorneyAssignmentModalRef>(null);
   const attorneyAssignment = assignments.filter(
     (a) => a.role === OversightRole.OversightAttorney,
