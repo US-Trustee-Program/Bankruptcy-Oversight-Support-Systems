@@ -203,49 +203,173 @@ describe('TrusteeDetailAuditHistory', () => {
     expect(screen.getByTestId('previous-contact-0')).toHaveTextContent('(none)');
   });
 
-  test('should handle contact information with missing fields', async () => {
-    const contactHistory = TestScenarios.emailOnly();
+  // Define types for test expectations
+  type ContactExpectation = {
+    expectedText?: string;
+    expectedElements?: Record<string, string>;
+    notExpectedElements?: string[];
+  };
 
-    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistory] });
+  type ContactScenarioExpectation = {
+    previousContact?: ContactExpectation;
+    newContact?: ContactExpectation;
+  };
 
-    renderWithProps({});
+  const contactScenarioTestCases: readonly [string, () => unknown, ContactScenarioExpectation][] = [
+    [
+      'contact information with missing fields',
+      () => TestScenarios.emailOnly(),
+      {
+        previousContact: {
+          expectedElements: { email: 'email@example.com' },
+          notExpectedElements: ['phone', 'address1', 'city-state-zip'],
+        },
+        newContact: {
+          expectedElements: { phone: '555-123-4567' },
+          notExpectedElements: ['email', 'address1', 'city-state-zip'],
+        },
+      },
+    ],
+    [
+      'completely empty contact information',
+      () => TestScenarios.emptyContact(),
+      {
+        previousContact: { expectedText: '(none)' },
+        newContact: { expectedText: '(none)' },
+      },
+    ],
+    [
+      'phone number without extension',
+      () => TestScenarios.phoneNoExtension(),
+      {
+        previousContact: { expectedElements: { phone: '555-123-4567' } },
+        newContact: { expectedElements: { phone: '555-987-6543' } },
+      },
+    ],
+    [
+      'contact with only address1 and zipCode',
+      () => TestScenarios.addressPartial(),
+      {
+        previousContact: {
+          expectedElements: { address1: '123 Main St', 'city-state-zip': '12345' },
+        },
+        newContact: {
+          notExpectedElements: ['address1', 'city-state-zip', 'phone', 'email'],
+        },
+      },
+    ],
+    [
+      'contact with address2 and address3',
+      () => TestScenarios.addressComplete(),
+      {
+        previousContact: {
+          expectedElements: {
+            address1: '123 Main St',
+            address2: 'Suite 200',
+            address3: 'Building A',
+            'city-state-zip': 'Test City, TX 78901',
+          },
+        },
+      },
+    ],
+    [
+      'contact with only city and state',
+      () => TestScenarios.cityAndState(),
+      {
+        previousContact: {
+          expectedElements: { 'city-state-zip': 'Los Angeles, CA' },
+        },
+      },
+    ],
+    [
+      'contact with only state',
+      () => TestScenarios.stateOnly(),
+      {
+        previousContact: {
+          expectedElements: { 'city-state-zip': 'FL' },
+        },
+      },
+    ],
+    [
+      'contact with only city',
+      () => TestScenarios.cityOnly(),
+      {
+        previousContact: {
+          expectedElements: { 'city-state-zip': 'Chicago' },
+        },
+      },
+    ],
+    [
+      'contact with undefined address',
+      () => TestScenarios.undefinedAddress(),
+      {
+        previousContact: {
+          expectedElements: { email: 'test@example.com', phone: '555-123-4567' },
+          notExpectedElements: ['address'],
+        },
+      },
+    ],
+  ];
 
-    await waitFor(() => {
-      expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
-    });
+  test.each(contactScenarioTestCases)(
+    'should handle %s',
+    async (_scenario, scenarioFactory, expectations) => {
+      const contactHistory = scenarioFactory();
+      mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistory] });
 
-    // Check individual components of the contact information
-    const previousContact = screen.getByTestId('previous-contact-0');
-    const newContact = screen.getByTestId('new-contact-0');
+      renderWithProps({});
 
-    // Previous contact should have email only
-    expect(previousContact.querySelector('.email')).toHaveTextContent('email@example.com');
-    expect(previousContact.querySelector('.phone')).not.toBeInTheDocument();
-    expect(previousContact.querySelector('.address1')).not.toBeInTheDocument();
-    expect(previousContact.querySelector('.city-state-zip')).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
 
-    // New contact should have phone only
-    expect(newContact.querySelector('.phone')).toHaveTextContent('555-123-4567');
-    expect(newContact.querySelector('.email')).not.toBeInTheDocument();
-    expect(newContact.querySelector('.address1')).not.toBeInTheDocument();
-    expect(newContact.querySelector('.city-state-zip')).not.toBeInTheDocument();
-  });
+      // Check previous contact expectations
+      if (expectations.previousContact) {
+        const previousContact = screen.getByTestId('previous-contact-0');
 
-  test('should handle completely empty contact information', async () => {
-    // Using TestScenarios for edge case
-    const contactHistory = TestScenarios.emptyContact();
+        if (expectations.previousContact.expectedText) {
+          expect(previousContact).toHaveTextContent(expectations.previousContact.expectedText);
+        }
 
-    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistory] });
+        if (expectations.previousContact.expectedElements) {
+          Object.entries(expectations.previousContact.expectedElements).forEach(
+            ([selector, text]) => {
+              expect(previousContact.querySelector(`.${selector}`)).toHaveTextContent(
+                text as string,
+              );
+            },
+          );
+        }
 
-    renderWithProps({});
+        if (expectations.previousContact.notExpectedElements) {
+          expectations.previousContact.notExpectedElements.forEach((selector: string) => {
+            expect(previousContact.querySelector(`.${selector}`)).not.toBeInTheDocument();
+          });
+        }
+      }
 
-    await waitFor(() => {
-      expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
-    });
+      // Check new contact expectations
+      if (expectations.newContact) {
+        const newContact = screen.getByTestId('new-contact-0');
 
-    expect(screen.getByTestId('previous-contact-0')).toHaveTextContent('(none)');
-    expect(screen.getByTestId('new-contact-0')).toHaveTextContent('(none)');
-  });
+        if (expectations.newContact.expectedText) {
+          expect(newContact).toHaveTextContent(expectations.newContact.expectedText);
+        }
+
+        if (expectations.newContact.expectedElements) {
+          Object.entries(expectations.newContact.expectedElements).forEach(([selector, text]) => {
+            expect(newContact.querySelector(`.${selector}`)).toHaveTextContent(text as string);
+          });
+        }
+
+        if (expectations.newContact.notExpectedElements) {
+          expectations.newContact.notExpectedElements.forEach((selector: string) => {
+            expect(newContact.querySelector(`.${selector}`)).not.toBeInTheDocument();
+          });
+        }
+      }
+    },
+  );
 
   test('should handle missing name fields in name history', async () => {
     const nameHistory = TestScenarios.emptyName();
