@@ -19,9 +19,7 @@ interface AttorneyAssignmentSectionProps {
 export default function AttorneyAssignmentSection(props: Readonly<AttorneyAssignmentSectionProps>) {
   const { trusteeId, assignments, onAssignmentChange, isLoading = false } = props;
   const modalRef = useRef<TrusteeAttorneyAssignmentModalRef>(null);
-  const attorneyAssignment = assignments.find(
-    (a) => a.role === OversightRole.OversightAttorney,
-  );
+  const attorneyAssignment = assignments.find((a) => a.role === OversightRole.OversightAttorney);
 
   const handleAssignmentCreated = useCallback(
     (_assignment: TrusteeOversightAssignment) => {
