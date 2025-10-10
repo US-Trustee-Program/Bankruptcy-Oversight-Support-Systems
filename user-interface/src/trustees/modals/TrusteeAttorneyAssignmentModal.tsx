@@ -6,8 +6,7 @@ import { TrusteeOversightAssignment } from '@common/cams/trustees';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import ComboBox from '@/lib/components/combobox/ComboBox';
-import Alert from '@/lib/components/uswds/Alert';
-import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import './TrusteeAttorneyAssignmentModal.scss';
@@ -56,7 +55,7 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
       const response = await api.getAttorneys();
       setAttorneys(response.data || []);
     } catch (_err) {
-      setError('Failed to load attorneys');
+      setError('Failed to load staff');
     } finally {
       setIsLoading(false);
     }

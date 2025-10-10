@@ -48,7 +48,7 @@ async function testOktaGroupApi() {
       context,
       'USTP_CAMS_Region_2_Office_Manhattan',
     );
-    log('attorneys', attorneys, '\n');
+    log('staff', attorneys, '\n');
     log('syncOfficeStaff', results, '\n');
 
     log('Get user and groups by user id.\n');

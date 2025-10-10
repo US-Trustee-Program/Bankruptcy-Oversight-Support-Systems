@@ -1,24 +1,21 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import AttorneysList from '../../use-cases/attorneys/attorneys';
-import { AttorneyUser } from '../../../../common/src/cams/users';
+import StaffUseCase from '../../use-cases/staff/staff';
+import { Staff } from '../../../../common/src/cams/users';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsController } from '../controller';
 import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
 
-const MODULE_NAME = 'ATTORNEYS-CONTROLLER';
+const MODULE_NAME = 'STAFF-CONTROLLER';
 
-export class AttorneysController implements CamsController {
-  private readonly useCase: AttorneysList;
+export class StaffController implements CamsController {
+  private readonly useCase: StaffUseCase;
 
-  constructor() {
-    this.useCase = new AttorneysList();
+  constructor(context: ApplicationContext) {
+    this.useCase = new StaffUseCase(context);
   }
 
-  public async handleRequest(
-    context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<AttorneyUser[]>> {
-    context.logger.info(MODULE_NAME, 'Getting Attorneys list.');
+  public async handleRequest(context: ApplicationContext): Promise<CamsHttpResponseInit<Staff[]>> {
     try {
       const data = await this.useCase.getAttorneyList(context);
       return httpSuccess({ body: { data } });

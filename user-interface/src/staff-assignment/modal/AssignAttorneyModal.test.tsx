@@ -133,7 +133,7 @@ describe('Test Assign Attorney Modal Component', () => {
     });
   });
 
-  test('Should call POST with list of attorneys when assign button is clicked and call callback with expected data.', async () => {
+  test('Should call POST with list of staff when assign button is clicked and call callback with expected data.', async () => {
     const assignmentChangeCallback = vi.fn();
     const postSpy = vi.spyOn(Api2, 'postStaffAssignments').mockResolvedValue({
       data: undefined,

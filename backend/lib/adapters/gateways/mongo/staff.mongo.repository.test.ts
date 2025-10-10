@@ -1,24 +1,25 @@
-import { OfficesStaffRepository } from './offices-staff.repository';
-import { ApplicationContext } from '../types/basic';
-import { CamsRole } from '../../../../common/src/cams/roles';
-import { getOfficesRepository } from '../../factory';
-import { OfficesRepository } from '../../use-cases/gateways.types';
-import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { OfficeStaff } from './mongo/offices.mongo.repository';
+import { StaffMongoRepository } from './staff.mongo.repository';
+import { ApplicationContext } from '../../types/basic';
+import { CamsRole } from '../../../../../common/src/cams/roles';
+import { getOfficesRepository } from '../../../factory';
+import { OfficesRepository } from '../../../use-cases/gateways.types';
+import { createMockApplicationContext } from '../../../testing/testing-utilities';
+import { OfficeStaff } from './offices.mongo.repository';
 
-jest.mock('../../factory');
+jest.mock('../../../factory');
 
 const mockGetOfficesRepository = getOfficesRepository as jest.MockedFunction<
   typeof getOfficesRepository
 >;
 
-describe('OfficesStaffRepository', () => {
-  let repository: OfficesStaffRepository;
+describe('StaffMongoRepository', () => {
+  let repository: StaffMongoRepository;
   let mockContext: ApplicationContext;
   let mockOfficesRepository: jest.Mocked<OfficesRepository>;
 
   beforeEach(async () => {
-    repository = new OfficesStaffRepository();
+    const context = await createMockApplicationContext();
+    repository = new StaffMongoRepository(context);
     mockContext = await createMockApplicationContext();
 
     mockOfficesRepository = {
@@ -32,8 +33,8 @@ describe('OfficesStaffRepository', () => {
     mockGetOfficesRepository.mockReturnValue(mockOfficesRepository);
   });
 
-  test('should return unique attorneys from repository search', async () => {
-    // Mock repository search returning duplicate attorneys
+  test('should return unique staff from repository search', async () => {
+    // Mock repository search returning duplicate staff
     const mockStaff1: OfficeStaff = {
       id: 'attorney-1',
       name: 'John Attorney',
@@ -82,7 +83,7 @@ describe('OfficesStaffRepository', () => {
     expect(mockOfficesRepository.search).toHaveBeenCalledWith({ role: CamsRole.TrialAttorney });
   });
 
-  test('should return empty array when no attorneys found', async () => {
+  test('should return empty array when no staff found', async () => {
     // Mock repository search returning empty results
     mockOfficesRepository.search.mockResolvedValue([]);
 

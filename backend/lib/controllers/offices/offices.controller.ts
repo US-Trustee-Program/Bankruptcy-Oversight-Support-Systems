@@ -33,7 +33,7 @@ export class OfficesController implements CamsController, CamsTimerController {
     try {
       const { params } = context.request;
       let data;
-      if (params.officeCode && params.subResource === 'attorneys') {
+      if (params.officeCode && params.subResource === 'staff') {
         data = await this.useCase.getOfficeAttorneys(context, params.officeCode);
       } else if (params.officeCode && params.subResource === 'assignees') {
         data = await this.useCase.getOfficeAssignees(context, params.officeCode);

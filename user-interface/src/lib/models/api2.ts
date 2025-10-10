@@ -241,7 +241,7 @@ function withCache(cacheOptions: CacheOptions): Pick<GenericApiClient, 'get'> {
 }
 
 async function getAttorneys() {
-  return api().get<AttorneyUser[]>('/attorneys');
+  return api().get<Staff[]>('/staff');
 }
 
 async function postTrustee(trustee: TrusteeInput) {
