@@ -92,12 +92,15 @@ describe('TrusteeDetailNavigation', () => {
     expect(link).toHaveAttribute('href', href);
   });
 
-  test.each(navigationLinks)(({ testId, href }) => {
-    renderWithRouter({ ...defaultProps, trusteeId: undefined });
-    const link = screen.getByTestId(testId);
-    const expectedHref = href.replace('12345', 'undefined');
-    expect(link).toHaveAttribute('href', expectedHref);
-  });
+  test.each(navigationLinks)(
+    'should handle undefined trusteeId for $testId',
+    ({ testId, href }) => {
+      renderWithRouter({ ...defaultProps, trusteeId: undefined });
+      const link = screen.getByTestId(testId);
+      const expectedHref = href.replace('12345', 'undefined');
+      expect(link).toHaveAttribute('href', expectedHref);
+    },
+  );
 
   test('should render with audit history initially selected', () => {
     renderWithRouter({
