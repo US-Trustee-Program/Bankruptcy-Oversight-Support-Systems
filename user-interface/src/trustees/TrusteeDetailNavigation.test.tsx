@@ -93,7 +93,6 @@ describe('TrusteeDetailNavigation', () => {
   });
 
   test.each(navigationLinks)(
-    'should handle undefined trusteeId for $testId',
     ({ testId, href }) => {
       renderWithRouter({ ...defaultProps, trusteeId: undefined });
       const link = screen.getByTestId(testId);

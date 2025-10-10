@@ -1207,7 +1207,6 @@ describe('TrusteeDetailAuditHistory', () => {
     });
   });
 
-  // Test integration with RenderTrusteeHistory component
   describe('RenderTrusteeHistory Integration Tests', () => {
     test('should render all history types through RenderTrusteeHistory component', async () => {
       const mockBankHistory = {

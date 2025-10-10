@@ -440,8 +440,6 @@ async function deleteBank(id: string) {
   return api().delete(`/lists/banks/${id}`);
 }
 
-// Add these new functions for trustee assignments
-
 async function getTrusteeOversightAssignments(trusteeId: string) {
   return api().get<TrusteeOversightAssignment[]>(`/trustees/${trusteeId}/oversight-assignments`);
 }

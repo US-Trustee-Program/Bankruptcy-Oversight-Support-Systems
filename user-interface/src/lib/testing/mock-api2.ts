@@ -532,7 +532,6 @@ async function deleteBank(_ignore: string) {
   return;
 }
 
-// Add missing trustee assignment methods
 async function getTrusteeOversightAssignments(trusteeId: string) {
   return {
     data: [

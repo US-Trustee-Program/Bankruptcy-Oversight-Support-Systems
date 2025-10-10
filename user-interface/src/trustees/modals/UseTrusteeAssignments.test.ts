@@ -6,12 +6,10 @@ import { TrusteeOversightAssignment } from '@common/cams/trustees';
 import { OversightRole } from '@common/cams/roles';
 import { _Api2 } from '@/lib/models/api2';
 
-// Mock the useApi2 hook
 vi.mock('../../lib/hooks/UseApi2', () => ({
   default: vi.fn(),
 }));
 
-// Create a type that includes the methods we need for testing
 type MockedApi2 = {
   [K in keyof typeof _Api2]: MockedFunction<(typeof _Api2)[K]>;
 };
