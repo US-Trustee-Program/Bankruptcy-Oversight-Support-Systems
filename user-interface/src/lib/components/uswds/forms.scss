@@ -8,6 +8,24 @@ button.unstyled-button {
   border-radius: 0.25rem;
 }
 
+.form-container {
+  display: flex;
+  gap: 2rem;
+  margin: 0;
+  width: 100%;
+
+  .form-column {
+    flex: 1;
+    min-width: 320px;
+  }
+  .field-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+}
+
 .usa-form-group {
   label:has(~ .usa-input-group input[required])::after {
     content: ' *';
@@ -57,6 +75,11 @@ button.unstyled-button {
     padding-right: 2.5rem;
   }
 }
+
+.usa-button-group {
+  padding: 1rem 5px;
+}
+
 .usa-input__error-message {
   padding: 0.25rem 0;
   color: $warning-text;
