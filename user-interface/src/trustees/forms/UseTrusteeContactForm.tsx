@@ -119,8 +119,8 @@ export function useTrusteeContactForm({ initialState }: UseTrusteeFormProps) {
       extension: info?.phone?.extension,
       email: info?.email,
       website: info?.website,
-      districts: initialState.trustee?.districts,
-      chapters: initialState.trustee?.chapters,
+      districts: initialState.trustee?.districts ?? undefined,
+      chapters: initialState.trustee?.chapters ?? undefined,
       status: initialState.trustee?.status ?? 'active',
     };
   };

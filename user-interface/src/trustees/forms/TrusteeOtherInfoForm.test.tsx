@@ -453,7 +453,7 @@ describe('TrusteeOtherInfoForm', () => {
       expect(patchTrusteeSpy).toHaveBeenCalledWith(
         TEST_TRUSTEE_ID,
         expect.objectContaining({
-          software: '',
+          software: null,
         }),
       );
     });
