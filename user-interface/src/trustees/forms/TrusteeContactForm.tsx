@@ -100,9 +100,8 @@ function TrusteeContactForm() {
           email: formData.email,
           ...(normalizedWebsite && normalizedWebsite.length > 0 && { website: normalizedWebsite }),
         },
-        ...(formData.districts &&
-          formData.districts.length > 0 && { districts: formData.districts }),
-        ...(formData.chapters && formData.chapters.length > 0 && { chapters: formData.chapters }),
+        districts: formData.districts && formData.districts.length > 0 ? formData.districts : null,
+        chapters: formData.chapters && formData.chapters.length > 0 ? formData.chapters : null,
         status: formData.status,
       } as TrusteeInput;
     } else {
@@ -118,11 +117,9 @@ function TrusteeContactForm() {
                   zipCode: formData.zipCode,
                   countryCode: 'US',
                 }
-              : undefined,
-          phone: formData.phone
-            ? { number: formData.phone, extension: formData.extension }
-            : undefined,
-          email: formData.email,
+              : null,
+          phone: formData.phone ? { number: formData.phone, extension: formData.extension } : null,
+          email: formData.email ?? null,
         },
       } as Partial<TrusteeInput>;
     }

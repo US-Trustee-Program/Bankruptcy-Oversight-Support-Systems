@@ -6,50 +6,25 @@ import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import useApi2 from '@/lib/hooks/UseApi2';
 import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
-import React, { useState, useEffect } from 'react';
-import { BankruptcySoftwareList } from '@common/cams/lists';
-
-// Transform backend software list to ComboOption format
-const transformSoftwareList = (items: BankruptcySoftwareList): ComboOption[] => {
-  return items.map((item: { key: string; value: string }) => ({
-    value: item.key,
-    label: item.value,
-  }));
-};
+import React, { useState } from 'react';
 
 type TrusteeOtherInfoFormProps = {
   trusteeId: string;
   banks?: string[];
   software?: string;
+  softwareOptions: ComboOption[];
 };
 
 function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
   const api = useApi2();
   const globalAlert = useGlobalAlert();
-  const { trusteeId } = props;
+  const { trusteeId, softwareOptions } = props;
   const initialBanks = props.banks?.filter((b) => b.trim() !== '') ?? [];
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [banks, setBanks] = useState<string[]>(initialBanks.length > 0 ? initialBanks : ['']);
   const [software, setSoftware] = useState<string>(props.software ?? '');
-  const [softwareOptions, setSoftwareOptions] = useState<ComboOption[]>([]);
 
   const navigate = useCamsNavigator();
-
-  useEffect(() => {
-    const fetchSoftwareOptions = async () => {
-      try {
-        const response = await api.getBankruptcySoftwareList();
-        if (response?.data) {
-          const transformedOptions = transformSoftwareList(response.data as BankruptcySoftwareList);
-          setSoftwareOptions(transformedOptions);
-        }
-      } catch (e) {
-        console.log('Failed to fetch software options', (e as Error).message);
-      }
-    };
-
-    fetchSoftwareOptions();
-  }, [api]);
 
   const handleBankChange = (index: number, value: string) => {
     const newBanks = [...banks];
@@ -95,7 +70,7 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
     try {
       const response = await api.patchTrustee(trusteeId, {
         banks: banks.filter((bank) => bank.trim() !== ''),
-        software: software || undefined,
+        software: software,
       });
       if (response?.data) {
         navigate.navigateTo(`/trustees/${trusteeId}`, { trustee: response.data });

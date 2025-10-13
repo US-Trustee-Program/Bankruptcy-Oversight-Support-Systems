@@ -160,10 +160,20 @@ export class TrusteesUseCase {
       this.checkValidation(validateObject(dynamicSpec, trustee));
 
       const userReference = getCamsUserReference(context.session.user);
+
+      const patchedTrustee = patchTrustee(existingTrustee, trustee, [
+        'trusteeId',
+        'id',
+        'createdBy',
+        'createdOn',
+        'updatedBy',
+        'updatedOn',
+      ]);
+
       const updatedTrustee = await this.trusteesRepository.updateTrustee(
         trusteeId,
-        trustee,
-        userReference,
+        patchedTrustee,
+        context.session.user,
       );
 
       if (existingTrustee.name !== updatedTrustee.name) {
@@ -286,5 +296,28 @@ export const trusteeSpec: ValidationSpec<TrusteeInput> = {
   internal: [V.optional(V.spec(internalContactInformationSpec))],
   status: [V.isInSet<TrusteeStatus>([...TRUSTEE_STATUS_VALUES])],
   banks: [V.optional(V.arrayOf(V.length(1, 100)))],
-  software: [V.optional(V.length(1, 100))],
+  software: [V.optional(V.length(0, 100))],
 };
+
+function patchTrustee(
+  current: Readonly<Trustee>,
+  patch: Readonly<Partial<Trustee>>,
+  immutable: (keyof Trustee)[] = [],
+): Trustee {
+  const copy = {
+    ...current,
+  };
+  for (const key of Object.keys(patch)) {
+    if (immutable.includes(key as keyof Trustee)) {
+      // ignore immutable keys from the patch
+      continue;
+    }
+    if (patch[key] === null || undefined) {
+      // remove keys intended to be unset
+      delete copy[key];
+    } else {
+      copy[key] = patch[key as keyof Trustee];
+    }
+  }
+  return copy;
+}
