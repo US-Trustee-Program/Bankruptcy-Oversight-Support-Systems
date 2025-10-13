@@ -1510,8 +1510,6 @@ describe('TrusteeForm', () => {
           },
           email: 'jane.internal@example.gov',
         },
-        districts: null,
-        chapters: null,
         status: 'active' as const,
       };
 
