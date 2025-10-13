@@ -312,7 +312,7 @@ function patchTrustee(
       // ignore immutable keys from the patch
       continue;
     }
-    if (patch[key] === null || undefined) {
+    if (patch[key] === null || patch[key] === undefined) {
       // remove keys intended to be unset
       delete copy[key];
     } else {
