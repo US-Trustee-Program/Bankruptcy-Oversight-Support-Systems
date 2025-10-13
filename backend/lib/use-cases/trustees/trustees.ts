@@ -149,16 +149,6 @@ export class TrusteesUseCase {
     try {
       const existingTrustee = await this.trusteesRepository.read(trusteeId);
 
-      const dynamicSpec: ValidationSpec<Partial<TrusteeInput>> = {};
-      const specKeys = Object.keys(trusteeSpec);
-      for (const key of Object.keys(trustee)) {
-        if (specKeys.includes(key)) {
-          dynamicSpec[key] = trusteeSpec[key as keyof typeof trusteeSpec];
-        }
-      }
-
-      this.checkValidation(validateObject(dynamicSpec, trustee));
-
       const userReference = getCamsUserReference(context.session.user);
 
       const patchedTrustee = patchTrustee(existingTrustee, trustee, [
@@ -169,6 +159,7 @@ export class TrusteesUseCase {
         'updatedBy',
         'updatedOn',
       ]);
+      this.checkValidation(validateObject(trusteeSpec, patchedTrustee));
 
       const updatedTrustee = await this.trusteesRepository.updateTrustee(
         trusteeId,
