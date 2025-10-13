@@ -564,6 +564,8 @@ describe('TrusteeForm', () => {
             email: TEST_TRUSTEE_DATA.public.email,
             // website should NOT be included when the field is left empty
           },
+          districts: null,
+          chapters: null,
           status: 'active' as const,
         });
       });
@@ -956,6 +958,7 @@ describe('TrusteeForm', () => {
             email: TEST_PERSONAS.johnSmith.email,
           },
           chapters: ['7-panel', '7-non-panel', '11-subchapter-v'],
+          districts: null,
           status: 'active' as const,
         });
       });
@@ -1052,6 +1055,7 @@ describe('TrusteeForm', () => {
           },
           // CRITICAL: Must support multiple districts (not just single district)
           districts: ['NY-E', 'CA-N', 'TX-S'],
+          chapters: null,
           status: 'active' as const,
         });
         expect(mockNavigate.navigateTo).toHaveBeenCalledWith('/trustees/trustee-789');
@@ -1348,7 +1352,7 @@ describe('TrusteeForm', () => {
           'trustee-790',
           expect.objectContaining({
             internal: expect.objectContaining({
-              address: undefined,
+              address: null,
               email: 'jane.internal@example.gov',
             }),
           }),
@@ -1506,6 +1510,8 @@ describe('TrusteeForm', () => {
           },
           email: 'jane.internal@example.gov',
         },
+        districts: null,
+        chapters: null,
         status: 'active' as const,
       };
 
@@ -1618,7 +1624,7 @@ describe('TrusteeForm', () => {
           'trustee-790',
           expect.objectContaining({
             internal: expect.objectContaining({
-              phone: undefined,
+              phone: null,
             }),
           }),
         );
@@ -1802,6 +1808,8 @@ describe('TrusteeForm', () => {
             phone: { number: '555-123-4567' },
             email: TEST_TRUSTEE_DATA.public.email,
           },
+          chapters: null,
+          districts: null,
           status: 'active' as const,
         });
       });

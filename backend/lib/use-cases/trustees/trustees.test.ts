@@ -1690,6 +1690,88 @@ describe('TrusteesUseCase', () => {
         );
       },
     );
+
+    test('should handle null values in patch', async () => {
+      const trusteeId = 'trustee-123';
+
+      const existingTrustee = makeTrustee({
+        trusteeId,
+        software: 'Current Software',
+        banks: ['Bank A', 'Bank B'],
+      });
+
+      jest.spyOn(validationModule, 'validateObject').mockReturnValue({ valid: true });
+
+      const updatedTrustee = makeTrustee({
+        trusteeId,
+        software: undefined, // This will be removed due to null handling
+        banks: ['Bank A'], // This will be updated
+        updatedOn: '2025-08-12T11:00:00Z',
+      });
+
+      jest.clearAllMocks();
+
+      mockTrusteesRepository.read.mockResolvedValue(existingTrustee);
+      mockTrusteesRepository.updateTrustee.mockResolvedValue(updatedTrustee);
+      mockTrusteesRepository.createTrusteeHistory.mockResolvedValue(undefined);
+
+      const patchInput: unknown = {
+        software: null,
+        banks: ['Bank A'],
+      };
+
+      const result = await useCase.updateTrustee(context, trusteeId, patchInput);
+
+      expect(result).toEqual(updatedTrustee);
+    });
+
+    test('should handle immutable fields and execute continue statement', async () => {
+      const trusteeId = 'trustee-456';
+
+      // Mock validation to allow any input
+      jest.spyOn(validationModule, 'validateObject').mockReturnValue({ valid: true });
+
+      const existingTrustee = makeTrustee({
+        trusteeId,
+        name: 'Original Name',
+        createdBy: mockUserReference,
+      });
+
+      const updatedTrustee = makeTrustee({
+        trusteeId, // Should remain unchanged due to immutable constraint
+        name: 'Updated Name', // Should be updated
+        createdBy: mockUserReference, // Should remain unchanged due to immutable constraint
+        updatedOn: '2025-08-12T11:00:00Z',
+      });
+
+      jest.clearAllMocks();
+
+      mockTrusteesRepository.read.mockResolvedValue(existingTrustee);
+      mockTrusteesRepository.updateTrustee.mockResolvedValue(updatedTrustee);
+      mockTrusteesRepository.createTrusteeHistory.mockResolvedValue(undefined);
+
+      // Create a patch that includes immutable fields
+      const patchInput: unknown = {
+        trusteeId: 'should-be-ignored',
+        id: 'should-be-ignored',
+        createdBy: { id: 'new-user', name: 'New User' },
+        name: 'Updated Name',
+      };
+
+      const result = await useCase.updateTrustee(context, trusteeId, patchInput);
+
+      expect(result).toEqual(updatedTrustee);
+      expect(mockTrusteesRepository.updateTrustee).toHaveBeenCalledWith(
+        trusteeId,
+        expect.objectContaining({
+          trusteeId: existingTrustee.trusteeId,
+          id: existingTrustee.id,
+          createdBy: existingTrustee.createdBy,
+          name: 'Updated Name',
+        }),
+        context.session.user,
+      );
+    });
   });
 
   describe('listHistory', () => {

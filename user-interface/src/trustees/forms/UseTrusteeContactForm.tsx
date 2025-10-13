@@ -152,9 +152,8 @@ export function useTrusteeContactForm({ initialState }: UseTrusteeFormProps) {
       extension: formData.extension?.trim(),
       email: formData.email?.trim(),
       website: formData.website?.trim(),
-      districts:
-        formData.districts && formData.districts.length > 0 ? formData.districts : undefined,
-      chapters: formData.chapters && formData.chapters.length > 0 ? formData.chapters : undefined,
+      districts: formData.districts,
+      chapters: formData.chapters,
       status: formData.status,
     };
 
