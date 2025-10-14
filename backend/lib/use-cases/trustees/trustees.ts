@@ -1,7 +1,7 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteesRepository } from '../gateways.types';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
-import { getCamsError } from '../../common-errors/error-utilities';
+import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { getTrusteesRepository } from '../../factory';
 import {
   ValidationSpec,
@@ -47,9 +47,8 @@ export class TrusteesUseCase {
   }
 
   async createTrustee(context: ApplicationContext, trustee: TrusteeInput): Promise<Trustee> {
-    this.checkValidation(validateObject(trusteeSpec, trustee));
-
     try {
+      this.checkValidation(validateObject(trusteeSpec, trustee));
       // Prepare trustee for creation with audit fields
       const userReference = getCamsUserReference(context.session.user);
       const trusteeForCreation: TrusteeInput = {
@@ -90,7 +89,9 @@ export class TrusteesUseCase {
 
       return createdTrustee;
     } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME);
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: { module: MODULE_NAME, message: 'Failed to create trustee.' },
+      });
     }
   }
 
@@ -102,9 +103,9 @@ export class TrusteesUseCase {
       context.logger.info(MODULE_NAME, `Retrieved ${trustees.length} trustees`);
       return trustees;
     } catch (originalError) {
-      const errorMessage = `Failed to retrieve trustees list.`;
-      context.logger.error(MODULE_NAME, errorMessage, originalError);
-      throw getCamsError(originalError, MODULE_NAME);
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: { module: MODULE_NAME, message: 'Failed to retrieve trustees list.' },
+      });
     }
   }
 
@@ -121,9 +122,12 @@ export class TrusteesUseCase {
       );
       return history;
     } catch (originalError) {
-      const errorMessage = `Failed to retrieve trustees list.`;
-      context.logger.error(MODULE_NAME, errorMessage, originalError);
-      throw getCamsError(originalError, MODULE_NAME);
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          module: MODULE_NAME,
+          message: `Failed to retrieve history for trustee with ID ${trusteeId}.`,
+        },
+      });
     }
   }
 
@@ -135,9 +139,12 @@ export class TrusteesUseCase {
       context.logger.info(MODULE_NAME, `Retrieved trustee ${trusteeId}`);
       return trustee;
     } catch (originalError) {
-      const errorMessage = `Failed to retrieve trustee with ID ${trusteeId}.`;
-      context.logger.error(MODULE_NAME, errorMessage, originalError);
-      throw getCamsError(originalError, MODULE_NAME);
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          module: MODULE_NAME,
+          message: `Failed to retrieve trustee with ID ${trusteeId}.`,
+        },
+      });
     }
   }
 
@@ -241,7 +248,12 @@ export class TrusteesUseCase {
 
       return updatedTrustee;
     } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME);
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          module: MODULE_NAME,
+          message: `Failed to update trustee with ID ${trusteeId}.`,
+        },
+      });
     }
   }
 }
@@ -293,7 +305,7 @@ export const trusteeSpec: ValidationSpec<TrusteeInput> = {
 function patchTrustee(
   current: Readonly<Trustee>,
   patch: Readonly<Partial<Trustee>>,
-  immutable: (keyof Trustee)[] = [],
+  immutable: (keyof Trustee)[],
 ): Trustee {
   const copy = {
     ...current,

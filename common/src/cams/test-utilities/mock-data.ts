@@ -22,7 +22,7 @@ import {
 } from '../orders';
 import { Debtor, DebtorAttorney, Party, LegacyAddress, LegacyTrustee } from '../parties';
 import { PhoneNumber, Address, ContactInformation } from '../contact';
-import { Trustee, TrusteeHistory } from '../trustees';
+import { Trustee, TrusteeHistory, TrusteeInput } from '../trustees';
 import { COURT_DIVISIONS } from './courts.mock';
 import { TRIAL_ATTORNEYS } from './attorneys.mock';
 import { ConsolidationOrderSummary } from '../history';
@@ -468,7 +468,7 @@ function getConsolidationFrom(
 
 function getPhone(override: Partial<PhoneNumber> = {}): PhoneNumber {
   return {
-    number: faker.phone.number(),
+    number: getPhoneNumber(),
     extension: randomTruth() ? faker.string.numeric(6) : undefined,
     ...override,
   };
@@ -563,13 +563,21 @@ function getDocketEntry(override: Partial<CaseDocketEntry> = {}): CaseDocketEntr
 }
 
 function getTrustee(override: Partial<Trustee> = {}): Trustee {
+  const trusteeInput = getTrusteeInput(override);
   return {
     id: faker.string.uuid(),
     trusteeId: faker.string.uuid(),
-    name: faker.person.fullName(),
-    public: getContactInformation(),
     updatedOn: getDateBeforeToday().toISOString(),
     updatedBy: getCamsUserReference(),
+    ...trusteeInput,
+    ...override,
+  };
+}
+
+function getTrusteeInput(override: Partial<TrusteeInput> = {}): TrusteeInput {
+  return {
+    name: faker.person.fullName(),
+    public: getContactInformation(),
     status: 'active',
     ...override,
   };
@@ -963,6 +971,10 @@ function getCaseSyncEvent(override: Partial<CaseSyncEvent>) {
   };
 }
 
+function getPhoneNumber(): string {
+  return `${faker.string.numeric(3)}-${faker.string.numeric(3)}-${faker.string.numeric(4)}`;
+}
+
 export const MockData = {
   addAction,
   randomId,
@@ -1027,6 +1039,7 @@ export const MockData = {
   someDateBeforeThisDate,
   getCaseSyncEvent,
   getTrustee,
+  getTrusteeInput,
   getChapter13Trustee,
   getTrusteeHistory,
   getLegacyTrustee,
