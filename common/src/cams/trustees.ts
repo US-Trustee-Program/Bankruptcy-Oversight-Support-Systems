@@ -52,8 +52,20 @@ export type TrusteeOversightAssignment = Auditable &
 
 export type TrusteeInput = Omit<
   Trustee,
-  'legacy' | 'trusteeId' | keyof Auditable | keyof Identifiable
->;
+  | 'legacy'
+  | 'trusteeId'
+  | keyof Auditable
+  | keyof Identifiable
+  | 'software'
+  | 'districts'
+  | 'chapters'
+  | 'banks'
+> & {
+  districts?: string[] | null;
+  chapters?: ChapterType[] | null;
+  banks?: string[] | null;
+  software?: string | null;
+};
 
 type AbstractTrusteeHistory<B, A> = Auditable &
   Identifiable & {
