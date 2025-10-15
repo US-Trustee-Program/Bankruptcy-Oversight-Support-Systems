@@ -52,19 +52,19 @@ describe('user-session.gateway test', () => {
     claims,
     header: jwtHeader as CamsJwtHeader,
   };
+  let getUserSpy: jest.SpiedFunction<(typeof MockOpenIdConnectGateway)['getUser']>;
 
   beforeEach(async () => {
     context = await createMockApplicationContext({
-      env: { CAMS_LOGIN_PROVIDER: 'okta', CAMS_LOGIN_PROVIDER_CONFIG: 'something' },
+      env: { CAMS_LOGIN_PROVIDER: provider, CAMS_LOGIN_PROVIDER_CONFIG: 'something' },
     });
     context.featureFlags['privileged-identity-management'] = true;
     gateway = new UserSessionUseCase(context);
 
     jest.spyOn(Verifier, 'verifyAccessToken').mockResolvedValue(camsJwt);
-    jest
-      .spyOn(MockOpenIdConnectGateway, 'getUser')
-      .mockResolvedValue({ user: mockUser, jwt: camsJwt });
+    getUserSpy = jest.spyOn(MockOpenIdConnectGateway, 'getUser');
     jest.spyOn(UsersHelpers, 'getPrivilegedIdentityUser').mockResolvedValue(expectedSession.user);
+    jest.spyOn(delayModule, 'delay').mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -73,8 +73,7 @@ describe('user-session.gateway test', () => {
 
   test('should return valid session and add to cache when cache miss is encountered', async () => {
     jest.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new NotFoundError(''));
-    const getUser = jest.fn().mockResolvedValue({ user: mockUser, jwt: camsJwt });
-    jest.spyOn(factoryModule, 'getAuthorizationGateway').mockReturnValue({ getUser });
+    getUserSpy.mockResolvedValue({ user: mockUser, jwt: camsJwt });
     jest.spyOn(UsersHelpers, 'getPrivilegedIdentityUser').mockResolvedValue(expectedSession.user);
     const createSpy = jest
       .spyOn(MockMongoRepository.prototype, 'upsert')
@@ -86,7 +85,7 @@ describe('user-session.gateway test', () => {
       issuer: expect.stringMatching(urlRegex),
     });
     expect(createSpy).toHaveBeenCalled();
-    expect(getUser).toHaveBeenCalledTimes(1);
+    expect(getUserSpy).toHaveBeenCalledTimes(1);
   });
 
   test('should return valid session on cache hit', async () => {
@@ -106,33 +105,29 @@ describe('user-session.gateway test', () => {
 
   test('should not add anything to cache if token is invalid', async () => {
     jest.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new NotFoundError(''));
-    const getUser = jest.fn().mockRejectedValue(new UnauthorizedError('test-module'));
-    jest.spyOn(factoryModule, 'getAuthorizationGateway').mockReturnValue({ getUser });
-    const delaySpy = jest.spyOn(delayModule, 'delay').mockResolvedValue(undefined);
+    getUserSpy.mockRejectedValue(new UnauthorizedError('test-module'));
     const createSpy = jest.spyOn(MockMongoRepository.prototype, 'create');
     await expect(gateway.lookup(context, jwtString)).rejects.toThrow();
     expect(createSpy).not.toHaveBeenCalled();
-    expect(getUser).toHaveBeenCalledTimes(3);
-    expect(delaySpy).toHaveBeenCalledTimes(2);
+    expect(getUserSpy).toHaveBeenCalledTimes(3);
+    expect(delayModule.delay).toHaveBeenCalledTimes(2);
   });
 
   test('should handle null jwt from authGateway', async () => {
     jest.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new NotFoundError(''));
-    const getUser = jest.fn().mockResolvedValue({ user: mockUser, jwt: null });
-    jest.spyOn(factoryModule, 'getAuthorizationGateway').mockReturnValue({ getUser });
+    getUserSpy.mockResolvedValue({ user: mockUser, jwt: null });
     await expect(gateway.lookup(context, jwtString)).rejects.toThrow(UnauthorizedError);
   });
 
   test('should handle undefined jwt from authGateway', async () => {
     jest.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new NotFoundError(''));
-    const getUser = jest.fn().mockResolvedValue({ user: mockUser, jwt: undefined });
-    jest.spyOn(factoryModule, 'getAuthorizationGateway').mockReturnValue({ getUser });
+    getUserSpy.mockResolvedValue({ user: mockUser, jwt: undefined });
     await expect(gateway.lookup(context, jwtString)).rejects.toThrow(UnauthorizedError);
   });
 
   test('should throw UnauthorizedError if unknown error is encountered', async () => {
     jest.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new UnauthorizedError(''));
-    jest.spyOn(MockOpenIdConnectGateway, 'getUser').mockRejectedValue(new Error('Test error'));
+    getUserSpy.mockRejectedValue(new Error('Test error'));
     const createSpy = jest.spyOn(MockMongoRepository.prototype, 'create');
     await expect(gateway.lookup(context, jwtString)).rejects.toThrow(UnauthorizedError);
     expect(createSpy).not.toHaveBeenCalled();
@@ -146,13 +141,10 @@ describe('user-session.gateway test', () => {
 
   test('should retry identity provider call and succeed after transient failures', async () => {
     jest.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new NotFoundError(''));
-    const delaySpy = jest.spyOn(delayModule, 'delay').mockResolvedValue(undefined);
-    const getUser = jest
-      .fn()
+    getUserSpy
       .mockRejectedValueOnce(new UnauthorizedError('Transient error 1'))
       .mockRejectedValueOnce(new UnauthorizedError('Transient error 2'))
       .mockResolvedValue({ user: mockUser, jwt: camsJwt });
-    jest.spyOn(factoryModule, 'getAuthorizationGateway').mockReturnValue({ getUser });
     jest.spyOn(UsersHelpers, 'getPrivilegedIdentityUser').mockResolvedValue(expectedSession.user);
     const upsertSpy = jest
       .spyOn(MockMongoRepository.prototype, 'upsert')
@@ -164,24 +156,22 @@ describe('user-session.gateway test', () => {
       expires: expect.any(Number),
       issuer: expect.stringMatching(urlRegex),
     });
-    expect(getUser).toHaveBeenCalledTimes(3);
-    expect(delaySpy).toHaveBeenCalledTimes(2);
-    expect(delaySpy).toHaveBeenNthCalledWith(1, 2000);
-    expect(delaySpy).toHaveBeenNthCalledWith(2, 4000);
+    expect(getUserSpy).toHaveBeenCalledTimes(3);
+    expect(delayModule.delay).toHaveBeenCalledTimes(2);
+    expect(delayModule.delay).toHaveBeenNthCalledWith(1, 2000);
+    expect(delayModule.delay).toHaveBeenNthCalledWith(2, 4000);
     expect(upsertSpy).toHaveBeenCalled();
   });
 
   test('should throw after max retries from identity provider', async () => {
     jest.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new NotFoundError(''));
-    const delaySpy = jest.spyOn(delayModule, 'delay').mockResolvedValue(undefined);
-    const getUser = jest.fn().mockImplementation(() => {
+    getUserSpy.mockImplementation(() => {
       throw new UnauthorizedError('Persistent error');
     });
-    jest.spyOn(factoryModule, 'getAuthorizationGateway').mockReturnValue({ getUser });
     await expect(gateway.lookup(context, jwtString)).rejects.toThrow(UnauthorizedError);
-    expect(getUser).toHaveBeenCalledTimes(3); // 1 initial + 2 retries
-    expect(delaySpy).toHaveBeenCalledTimes(2);
-    expect(delaySpy).toHaveBeenNthCalledWith(1, 2000);
-    expect(delaySpy).toHaveBeenNthCalledWith(2, 4000);
+    expect(getUserSpy).toHaveBeenCalledTimes(3); // 1 initial + 2 retries
+    expect(delayModule.delay).toHaveBeenCalledTimes(2);
+    expect(delayModule.delay).toHaveBeenNthCalledWith(1, 2000);
+    expect(delayModule.delay).toHaveBeenNthCalledWith(2, 4000);
   });
 });
