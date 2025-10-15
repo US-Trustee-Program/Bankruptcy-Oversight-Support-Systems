@@ -51,7 +51,7 @@
     "eslint-plugin-react": "7.37.5",
     "eslint-plugin-react-hooks": "6.1.1",
     "eslint-plugin-testing-library": "7.13.0",
-    "jsdom": "26.1.0",
+    "jsdom": "27.0.0",
     "pa11y-ci": "3.1.0",
     "prettier": "3.6.2",
     "sass-embedded": "1.93.2",
