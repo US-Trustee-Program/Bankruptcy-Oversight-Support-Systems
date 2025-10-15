@@ -48,7 +48,6 @@ function TrusteeHeader({
   );
 }
 
-// Transform backend software list to ComboOption format
 const transformSoftwareList = (items: BankruptcySoftwareList): ComboOption[] => {
   return items.map((item: { key: string; value: string }) => ({
     value: item.key,
