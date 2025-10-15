@@ -13,7 +13,7 @@
     "@tiptap/extension-bold": "3.6.5",
     "@tiptap/extension-document": "3.6.5",
     "@tiptap/extension-italic": "3.6.5",
-    "@tiptap/extension-list": "3.6.2",
+    "@tiptap/extension-list": "3.6.5",
     "@tiptap/extension-paragraph": "3.6.2",
     "@tiptap/extension-text": "3.6.2",
     "@tiptap/extension-underline": "3.6.2",
