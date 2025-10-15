@@ -70,7 +70,7 @@ export class UserSessionUseCase {
     await this.sessionCacheRepository.upsert(session);
   }
 
-  async lookup(context: ApplicationContext, token: string, provider: string): Promise<CamsSession> {
+  async lookup(context: ApplicationContext, token: string): Promise<CamsSession> {
     try {
       // Check for a cached session to return.
       const storedSession = await this.lookupSession(context, token);
@@ -96,7 +96,7 @@ export class UserSessionUseCase {
       const newSession = {
         user,
         accessToken: token,
-        provider: provider,
+        provider: context.config.authConfig.provider,
         expires: jwt.claims.exp,
         issuer: jwt.claims.iss,
       };

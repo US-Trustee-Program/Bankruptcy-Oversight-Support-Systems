@@ -59,7 +59,7 @@ async function getApplicationContext<B = unknown>(
     closables: [],
     releasables: [],
     extraOutputs: invocationContext.extraOutputs,
-  } satisfies ApplicationContext<B | unknown>;
+  } satisfies ApplicationContext<B>;
 }
 
 async function getApplicationContextSession(context: ApplicationContext) {
@@ -90,7 +90,7 @@ async function getApplicationContextSession(context: ApplicationContext) {
   }
 
   const sessionUseCase = getUserSessionUseCase(context);
-  return sessionUseCase.lookup(context, accessToken, context.config.authConfig.provider);
+  return sessionUseCase.lookup(context, accessToken);
 }
 
 const ContextCreator = {
