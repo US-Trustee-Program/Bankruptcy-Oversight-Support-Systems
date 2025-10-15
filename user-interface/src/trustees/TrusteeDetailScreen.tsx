@@ -86,7 +86,7 @@ export default function TrusteeDetailScreen() {
   function openEditPublicProfile() {
     const state: TrusteeFormState = {
       trusteeId,
-      trustee: trustee ?? undefined,
+      trustee: trustee!, // Non-null assertion: function only called when trustee exists
       cancelTo: location.pathname,
       action: 'edit',
       contactInformation: 'public',
@@ -97,7 +97,7 @@ export default function TrusteeDetailScreen() {
   function openEditInternalProfile() {
     const state: TrusteeFormState = {
       trusteeId,
-      trustee: trustee ?? undefined,
+      trustee: trustee!, // Non-null assertion: function only called when trustee exists
       cancelTo: location.pathname,
       action: 'edit',
       contactInformation: 'internal',
@@ -108,7 +108,7 @@ export default function TrusteeDetailScreen() {
   function openEditOtherInformation() {
     const state: TrusteeFormState = {
       trusteeId,
-      trustee: trustee ?? undefined,
+      trustee: trustee!, // Non-null assertion: function only called when trustee exists
       cancelTo: location.pathname,
       action: 'edit',
     };

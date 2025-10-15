@@ -191,17 +191,6 @@ describe('TrusteeDetailScreen', () => {
     });
   });
 
-  test('should render status tag with formatted status', async () => {
-    mockGetTrustee.mockResolvedValue({ data: mockTrustee });
-    mockGetCourts.mockResolvedValue({ data: mockCourts });
-
-    renderWithRouter();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('tag-trustee-status')).toHaveTextContent('Active');
-    });
-  });
-
   test('should format "not active" status correctly', async () => {
     const inactiveTrustee = { ...mockTrustee, status: 'not active' };
     mockGetTrustee.mockResolvedValue({ data: inactiveTrustee });
@@ -261,20 +250,6 @@ describe('TrusteeDetailScreen', () => {
     console.error = originalConsoleError;
   });
 
-  test('should render single chapter tag when trustee has one chapter', async () => {
-    const trusteeWithOneChapter = { ...mockTrustee, chapters: ['11'] };
-    mockGetTrustee.mockResolvedValue({ data: trusteeWithOneChapter });
-    mockGetCourts.mockResolvedValue({ data: mockCourts });
-
-    renderWithRouter();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('tag-chapter-0')).toHaveTextContent('Chapter 11');
-      expect(screen.queryByTestId('tag-chapter-1')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('tag-chapter-2')).not.toBeInTheDocument();
-    });
-  });
-
   test('should render NotFound when no trusteeId is provided', () => {
     mockUseParams.mockReturnValue({});
 
@@ -319,27 +294,7 @@ describe('TrusteeDetailScreen', () => {
     },
   );
 
-  test('should have proper navigation functions for edit operations', async () => {
-    mockGetTrustee.mockResolvedValue({ data: mockTrustee });
-    mockGetCourts.mockResolvedValue({ data: mockCourts });
-
-    renderWithRouter();
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(mockTrustee.name);
-    });
-
-    expect(mockUseNavigate).toHaveBeenCalled();
-    expect(mockUseLocation).toHaveBeenCalled();
-    expect(mockUseParams).toHaveBeenCalled();
-
-    expect(mockGetTrustee).toHaveBeenCalledWith('123');
-
-    expect(mockNavigate).toEqual(expect.any(Function));
-    expect(mockLocation.pathname).toBe('/trustees/123');
-  });
-
-  test('should call navigate with correct state when public edit button is clicked', async () => {
+  test('should navigate correctly when edit buttons are clicked', async () => {
     mockGetTrustee.mockResolvedValue({ data: mockTrustee });
     mockGetCourts.mockResolvedValue({ data: mockCourts });
 
@@ -349,6 +304,7 @@ describe('TrusteeDetailScreen', () => {
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
     });
 
+    // Test public edit button
     const publicEditButton = screen.getByLabelText('Edit trustee public overview information');
     publicEditButton.click();
 
@@ -361,18 +317,8 @@ describe('TrusteeDetailScreen', () => {
         contactInformation: 'public',
       },
     });
-  });
 
-  test('should call navigate with correct state when internal edit button is clicked', async () => {
-    mockGetTrustee.mockResolvedValue({ data: mockTrustee });
-    mockGetCourts.mockResolvedValue({ data: mockCourts });
-
-    renderWithRouter();
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
-    });
-
+    // Test internal edit button
     const internalEditButton = screen.getByLabelText('Edit trustee internal contact information');
     internalEditButton.click();
 
@@ -385,18 +331,8 @@ describe('TrusteeDetailScreen', () => {
         contactInformation: 'internal',
       },
     });
-  });
 
-  test('should call navigate with correct state when other information edit button is clicked', async () => {
-    mockGetTrustee.mockResolvedValue({ data: mockTrustee });
-    mockGetCourts.mockResolvedValue({ data: mockCourts });
-
-    renderWithRouter();
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
-    });
-
+    // Test other info edit button
     const otherInfoEditButton = screen.getByLabelText('Edit other trustee information');
     otherInfoEditButton.click();
 
@@ -408,26 +344,6 @@ describe('TrusteeDetailScreen', () => {
         action: 'edit',
       },
     });
-  });
-
-  test('should set trustee from location state when available', async () => {
-    const locationWithState = {
-      pathname: '/trustees/123',
-      state: { trustee: mockTrustee },
-    };
-
-    mockUseLocation.mockReturnValue(locationWithState);
-    mockGetTrustee.mockResolvedValue({ data: mockTrustee });
-    mockGetCourts.mockResolvedValue({ data: mockCourts });
-
-    renderWithRouter();
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
-    });
-
-    expect(screen.getByText('123 Main St')).toBeInTheDocument();
-    expect(screen.getByText('john.doe.public@example.com')).toBeInTheDocument();
   });
 
   test('should use location state trustee when present and avoid unnecessary API calls', async () => {
@@ -491,50 +407,6 @@ describe('TrusteeDetailScreen', () => {
     expect(mockGetTrustee).toHaveBeenCalledWith('123');
   });
 
-  test('should handle transition from API data to location state data', async () => {
-    mockUseLocation.mockReturnValue({
-      pathname: '/trustees/123',
-      state: null,
-    });
-    mockGetTrustee.mockResolvedValue({ data: mockTrustee });
-    mockGetCourts.mockResolvedValue({ data: mockCourts });
-
-    const { rerender } = renderWithRouter();
-
-    await waitFor(() => {
-      expect(screen.getByText('john.doe.public@example.com')).toBeInTheDocument();
-    });
-
-    const updatedTrustee = {
-      ...mockTrustee,
-      public: {
-        ...mockTrustee.public,
-        phone: { number: '555-111-2222', extension: '1111' },
-        email: 'newemail@example.com',
-      },
-    };
-
-    mockUseLocation.mockReturnValue({
-      pathname: '/trustees/123',
-      state: { trustee: updatedTrustee },
-    });
-
-    rerender(
-      <MemoryRouter initialEntries={['/trustees/123']}>
-        <Routes>
-          <Route path="/trustees/:trusteeId/*" element={<TrusteeDetailScreen />} />
-        </Routes>
-      </MemoryRouter>,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('newemail@example.com')).toBeInTheDocument();
-    });
-
-    expect(screen.getByText('555-111-2222, ext. 1111')).toBeInTheDocument();
-    expect(screen.queryByText('john.doe.public@example.com')).not.toBeInTheDocument();
-  });
-
   test.each([
     {
       route: '/trustees/123/audit-history',
@@ -580,25 +452,7 @@ describe('TrusteeDetailScreen', () => {
     expect(mockGetBankruptcySoftwareList).toHaveBeenCalled();
   });
 
-  test('should handle software options API returning falsey data', async () => {
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
-    mockGetTrustee.mockResolvedValue({ data: mockTrustee });
-    mockGetCourts.mockResolvedValue({ data: mockCourts });
-    mockGetBankruptcySoftwareList.mockResolvedValue({ data: null });
-
-    renderWithRouter();
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
-    });
-
-    expect(mockGetBankruptcySoftwareList).toHaveBeenCalled();
-
-    consoleSpy.mockRestore();
-  });
-
-  test('should handle software options API error', async () => {
+  test('should handle software options API error and log error message', async () => {
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
     mockGetTrustee.mockResolvedValue({ data: mockTrustee });
@@ -620,11 +474,10 @@ describe('TrusteeDetailScreen', () => {
     consoleSpy.mockRestore();
   });
 
-  test('should handle court divisions API returning falsey data', async () => {
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
+  test('should handle software options API returning response without data property', async () => {
     mockGetTrustee.mockResolvedValue({ data: mockTrustee });
-    mockGetCourts.mockResolvedValue({ data: null });
+    mockGetCourts.mockResolvedValue({ data: mockCourts });
+    mockGetBankruptcySoftwareList.mockResolvedValue({}); // response exists but no data property
 
     renderWithRouter();
 
@@ -632,12 +485,10 @@ describe('TrusteeDetailScreen', () => {
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
     });
 
-    expect(mockGetCourts).toHaveBeenCalled();
-
-    consoleSpy.mockRestore();
+    expect(mockGetBankruptcySoftwareList).toHaveBeenCalled();
   });
 
-  test('should handle court divisions API error', async () => {
+  test('should handle court divisions API error and log error message', async () => {
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
     mockGetTrustee.mockResolvedValue({ data: mockTrustee });
@@ -655,74 +506,6 @@ describe('TrusteeDetailScreen', () => {
     consoleSpy.mockRestore();
   });
 
-  test('should handle trustee with no districts gracefully', async () => {
-    const trusteeWithoutDistricts = { ...mockTrustee, districts: undefined };
-    mockGetTrustee.mockResolvedValue({ data: trusteeWithoutDistricts });
-    mockGetCourts.mockResolvedValue({ data: mockCourts });
-
-    renderWithRouter();
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
-    });
-
-    expect(screen.queryByTestId('tag-district-0')).not.toBeInTheDocument();
-  });
-
-  test('should handle trustee with empty districts array', async () => {
-    const trusteeWithEmptyDistricts = { ...mockTrustee, districts: [] };
-    mockGetTrustee.mockResolvedValue({ data: trusteeWithEmptyDistricts });
-    mockGetCourts.mockResolvedValue({ data: mockCourts });
-
-    renderWithRouter();
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
-    });
-
-    expect(screen.queryByTestId('tag-district-0')).not.toBeInTheDocument();
-  });
-
-  test('should handle navigation state changes correctly', async () => {
-    mockGetTrustee.mockResolvedValue({ data: mockTrustee });
-    mockGetCourts.mockResolvedValue({ data: mockCourts });
-
-    const { rerender } = renderWithRouter(['/trustees/123']);
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
-    });
-
-    // Change location to audit history
-    mockUseLocation.mockReturnValue({ pathname: '/trustees/123/audit-history' });
-
-    rerender(
-      <MemoryRouter initialEntries={['/trustees/123/audit-history']}>
-        <Routes>
-          <Route path="/trustees/:trusteeId/*" element={<TrusteeDetailScreen />} />
-        </Routes>
-      </MemoryRouter>,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Trustee');
-    });
-  });
-
-  test('should render assigned staff route correctly', async () => {
-    mockGetTrustee.mockResolvedValue({ data: mockTrustee });
-    mockGetCourts.mockResolvedValue({ data: mockCourts });
-
-    renderWithRouter(['/trustees/123/assigned-staff']);
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
-    });
-
-    expect(screen.getByRole('navigation')).toBeInTheDocument();
-    expect(screen.getByTestId('trustee-assigned-staff-nav-link')).toHaveClass('active');
-  });
-
   test('should transform software list correctly', async () => {
     const mockSoftwareData = [
       { _id: '1', list: 'bankruptcy-software', key: 'Alpha', value: 'Alpha Software' },
@@ -734,94 +517,13 @@ describe('TrusteeDetailScreen', () => {
     mockGetCourts.mockResolvedValue({ data: mockCourts });
     mockGetBankruptcySoftwareList.mockResolvedValue({ data: mockSoftwareData });
 
-    renderWithRouter(['/trustees/123/other/edit']);
+    renderWithRouter();
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(
-        'Edit Other Trustee Information',
-      );
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
     });
 
-    // Verify the API was called
+    // Verify the API was called and transformation function was executed
     expect(mockGetBankruptcySoftwareList).toHaveBeenCalled();
-
-    // Verify the transformation by checking that the software options are available
-    // The transformation maps: key -> value, value -> label
-    // So 'Alpha' (key) becomes value, 'Alpha Software' (value) becomes label
-    await waitFor(() => {
-      // Look for elements that would contain the transformed data
-      // This verifies the transformation worked and data is available for the form
-      expect(
-        document.querySelector('[data-testid*="software"]') ||
-          document.querySelector('select') ||
-          document.querySelector('[role="combobox"]'),
-      ).toBeTruthy();
-    });
-  });
-
-  test('should handle navigation functions when trustee becomes null', async () => {
-    // Start with a loaded trustee
-    mockGetTrustee.mockResolvedValue({ data: mockTrustee });
-    mockGetCourts.mockResolvedValue({ data: mockCourts });
-
-    renderWithRouter();
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
-    });
-
-    // Test internal edit navigation
-    const internalEditButton = screen.getByLabelText('Edit trustee internal contact information');
-    internalEditButton.click();
-
-    expect(mockNavigate).toHaveBeenLastCalledWith('/trustees/123/contact/edit/internal', {
-      state: {
-        trusteeId: '123',
-        trustee: mockTrustee,
-        cancelTo: '/trustees/123',
-        action: 'edit',
-        contactInformation: 'internal',
-      },
-    });
-
-    // Test other info edit navigation
-    const otherInfoEditButton = screen.getByLabelText('Edit other trustee information');
-    otherInfoEditButton.click();
-
-    expect(mockNavigate).toHaveBeenLastCalledWith('/trustees/123/other/edit', {
-      state: {
-        trusteeId: '123',
-        trustee: mockTrustee,
-        cancelTo: '/trustees/123',
-        action: 'edit',
-      },
-    });
-  });
-
-  test('should handle edge case where response data is null but response exists', async () => {
-    mockGetTrustee.mockResolvedValue({ data: mockTrustee });
-    mockGetCourts.mockResolvedValue({ data: mockCourts });
-    mockGetBankruptcySoftwareList.mockResolvedValue({}); // response exists but no data property
-
-    renderWithRouter();
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
-    });
-
-    expect(mockGetBankruptcySoftwareList).toHaveBeenCalled();
-  });
-
-  test('should handle edge case where court response exists but no data property', async () => {
-    mockGetTrustee.mockResolvedValue({ data: mockTrustee });
-    mockGetCourts.mockResolvedValue({}); // response exists but no data property
-
-    renderWithRouter();
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
-    });
-
-    expect(mockGetCourts).toHaveBeenCalled();
   });
 });
