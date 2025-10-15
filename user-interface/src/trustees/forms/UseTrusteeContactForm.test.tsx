@@ -447,7 +447,7 @@ describe('useTrusteeForm', () => {
       expect(trimmedData.extension).toBeUndefined();
     });
 
-    test('should convert empty arrays to undefined', () => {
+    test('should keep empty arrays empty', () => {
       const initialState: TrusteeFormState = {
         action: 'create',
         cancelTo: '/trustees',
@@ -465,8 +465,8 @@ describe('useTrusteeForm', () => {
 
       const trimmedData = result.current.getFormData();
 
-      expect(trimmedData.districts).toBeUndefined();
-      expect(trimmedData.chapters).toBeUndefined();
+      expect(trimmedData.districts).toEqual([]);
+      expect(trimmedData.chapters).toEqual([]);
     });
 
     test('should override a field value when provided', () => {

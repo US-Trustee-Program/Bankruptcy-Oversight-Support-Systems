@@ -119,8 +119,8 @@ export function useTrusteeContactForm({ initialState }: UseTrusteeFormProps) {
       extension: info?.phone?.extension,
       email: info?.email,
       website: info?.website,
-      districts: initialState.trustee?.districts,
-      chapters: initialState.trustee?.chapters,
+      districts: initialState.trustee?.districts ?? undefined,
+      chapters: initialState.trustee?.chapters ?? undefined,
       status: initialState.trustee?.status ?? 'active',
     };
   };
@@ -152,9 +152,8 @@ export function useTrusteeContactForm({ initialState }: UseTrusteeFormProps) {
       extension: formData.extension?.trim(),
       email: formData.email?.trim(),
       website: formData.website?.trim(),
-      districts:
-        formData.districts && formData.districts.length > 0 ? formData.districts : undefined,
-      chapters: formData.chapters && formData.chapters.length > 0 ? formData.chapters : undefined,
+      districts: formData.districts,
+      chapters: formData.chapters,
       status: formData.status,
     };
 

@@ -62,25 +62,23 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
   }, [api]);
 
   const handleAssignAttorney = useCallback(async () => {
-    if (!selectedAttorney) {
-      return;
-    }
-
-    setIsAssigning(true);
-    try {
-      const response = await api.createTrusteeOversightAssignment(
-        props.trusteeId,
-        selectedAttorney.id,
-      );
-      if (response && response.data) {
-        props.onAssignmentCreated(response.data);
-        globalAlert?.success('Attorney assigned successfully');
-        modalRef.current?.hide({});
+    if (selectedAttorney) {
+      setIsAssigning(true);
+      try {
+        const response = await api.createTrusteeOversightAssignment(
+          props.trusteeId,
+          selectedAttorney.id,
+        );
+        if (response && response.data) {
+          props.onAssignmentCreated(response.data);
+          globalAlert?.success('Attorney assigned successfully');
+          modalRef.current?.hide({});
+        }
+      } catch (err) {
+        globalAlert?.error(err instanceof Error ? err.message : 'Failed to assign attorney');
+      } finally {
+        setIsAssigning(false);
       }
-    } catch (err) {
-      globalAlert?.error(err instanceof Error ? err.message : 'Failed to assign attorney');
-    } finally {
-      setIsAssigning(false);
     }
   }, [selectedAttorney, props.trusteeId, props.onAssignmentCreated, api, globalAlert]);
 

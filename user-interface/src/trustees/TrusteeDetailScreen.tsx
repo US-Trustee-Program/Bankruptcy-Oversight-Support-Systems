@@ -17,6 +17,9 @@ import TrusteeContactForm from './forms/TrusteeContactForm';
 import TrusteeOtherInfoForm from './forms/TrusteeOtherInfoForm';
 import NotFound from '@/lib/components/NotFound';
 import TrusteeAssignedStaff from './panels/TrusteeAssignedStaff';
+import { ComboOption } from '@/lib/components/combobox/ComboBox';
+import { BankruptcySoftwareList } from '@common/cams/lists';
+import { CourtDivisionDetails } from '@common/cams/courts';
 
 type TrusteeHeaderProps = JSX.IntrinsicElements['div'] & {
   trustee: Trustee | null;
@@ -45,13 +48,34 @@ function TrusteeHeader({
   );
 }
 
+const transformSoftwareList = (items: BankruptcySoftwareList): ComboOption[] => {
+  return items.map((item: { key: string; value: string }) => ({
+    value: item.key,
+    label: item.value,
+  }));
+};
+
+const getDistrictLabels = (trustee: Trustee, courtDivisionDetails: CourtDivisionDetails[]) => {
+  const trusteeDistricts: string[] = [];
+  trustee.districts?.map((district: string) => {
+    const court = courtDivisionDetails.find((court) => court.courtDivisionCode === district);
+    if (court) {
+      trusteeDistricts.push(`${court.courtName} (${court.courtDivisionName})`);
+    }
+  });
+  return trusteeDistricts;
+};
+
 export default function TrusteeDetailScreen() {
   const { trusteeId } = useParams();
   const location = useLocation();
   const [trustee, setTrustee] = useState<Trustee | null>(null);
   const [navState, setNavState] = useState<number>(mapTrusteeDetailNavState(location.pathname));
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [districtLabels, setDistrictLabels] = useState<string[]>([]);
+  const [softwareOptions, setSoftwareOptions] = useState<ComboOption[]>([]);
+  const [courtDivisionDetails, setCourtDivisionDetails] = useState<CourtDivisionDetails[]>([]);
+  const districtLabels =
+    trustee && courtDivisionDetails ? getDistrictLabels(trustee, courtDivisionDetails) : [];
 
   const navigate = useNavigate();
 
@@ -61,7 +85,7 @@ export default function TrusteeDetailScreen() {
   function openEditPublicProfile() {
     const state: TrusteeFormState = {
       trusteeId,
-      trustee: trustee ?? undefined,
+      trustee: trustee!, // Non-null assertion: function only called when trustee exists
       cancelTo: location.pathname,
       action: 'edit',
       contactInformation: 'public',
@@ -72,7 +96,7 @@ export default function TrusteeDetailScreen() {
   function openEditInternalProfile() {
     const state: TrusteeFormState = {
       trusteeId,
-      trustee: trustee ?? undefined,
+      trustee: trustee!, // Non-null assertion: function only called when trustee exists
       cancelTo: location.pathname,
       action: 'edit',
       contactInformation: 'internal',
@@ -83,7 +107,7 @@ export default function TrusteeDetailScreen() {
   function openEditOtherInformation() {
     const state: TrusteeFormState = {
       trusteeId,
-      trustee: trustee ?? undefined,
+      trustee: trustee!, // Non-null assertion: function only called when trustee exists
       cancelTo: location.pathname,
       action: 'edit',
     };
@@ -91,19 +115,40 @@ export default function TrusteeDetailScreen() {
   }
 
   useEffect(() => {
+    const fetchSoftwareOptions = async () => {
+      try {
+        const response = await api.getBankruptcySoftwareList();
+        if (response?.data) {
+          const transformedOptions = transformSoftwareList(response.data as BankruptcySoftwareList);
+          setSoftwareOptions(transformedOptions);
+        }
+      } catch (e) {
+        console.log('Failed to fetch software options', (e as Error).message);
+      }
+    };
+
+    const fetchCourtDivisions = async () => {
+      try {
+        const response = await api.getCourts();
+        if (response?.data) {
+          setCourtDivisionDetails(response.data);
+        }
+      } catch (e) {
+        console.log('Failed to fetch court divisions', (e as Error).message);
+      }
+    };
+
+    fetchSoftwareOptions();
+    fetchCourtDivisions();
+  }, [api]);
+
+  useEffect(() => {
     if (trusteeId && !location.state?.trustee) {
       setIsLoading(true);
-      Promise.all([api.getTrustee(trusteeId), api.getCourts()])
-        .then(([trusteeResponse, courtsResponse]) => {
+      api
+        .getTrustee(trusteeId)
+        .then((trusteeResponse) => {
           setTrustee(trusteeResponse.data);
-          const trusteeDistricts: string[] = [];
-          trusteeResponse.data.districts?.map((district: string) => {
-            const court = courtsResponse.data.find((court) => court.courtDivisionCode === district);
-            if (court) {
-              trusteeDistricts.push(`${court.courtName} (${court.courtDivisionName})`);
-            }
-          });
-          setDistrictLabels(trusteeDistricts);
         })
         .catch(() => {
           globalAlert?.error('Could not get trustee details');
@@ -183,6 +228,7 @@ export default function TrusteeDetailScreen() {
           banks={trustee.banks}
           software={trustee.software}
           trusteeId={trustee.trusteeId}
+          softwareOptions={softwareOptions}
         />
       ),
     },

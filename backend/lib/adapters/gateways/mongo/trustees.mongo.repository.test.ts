@@ -320,11 +320,7 @@ describe('TrusteesMongoRepository', () => {
         status: 'not active',
       };
 
-      const mockAdapter = jest
-        .spyOn(MongoCollectionAdapter.prototype, 'updateOne')
-        .mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
-
-      jest.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue({
+      const updatedTrusteeDocument = {
         id: trusteeId,
         ...updatedTrusteeInput,
         documentType: 'TRUSTEE',
@@ -332,9 +328,17 @@ describe('TrusteesMongoRepository', () => {
         createdBy: mockUser,
         updatedOn: expect.any(String),
         updatedBy: mockUser,
-      } as TrusteeDocument);
+      } as TrusteeDocument;
 
-      const result = await repository.updateTrustee(trusteeId, updatedTrusteeInput, mockUser);
+      const mockAdapter = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+        .mockResolvedValue({ id: trusteeId, modifiedCount: 1, upsertedCount: 0 });
+
+      jest
+        .spyOn(MongoCollectionAdapter.prototype, 'findOne')
+        .mockResolvedValue(updatedTrusteeDocument);
+
+      const result = await repository.updateTrustee(trusteeId, updatedTrusteeDocument, mockUser);
 
       expect(mockAdapter).toHaveBeenCalledWith(
         {
@@ -364,16 +368,26 @@ describe('TrusteesMongoRepository', () => {
 
     test('should throw error when trustee to update is not found', async () => {
       const trusteeId = 'nonexistent-id';
-      const updatedTrusteeInput: Partial<TrusteeInput> = {
+      const updatedTrusteeInput: Partial<TrusteeDocument> = {
         name: 'Updated Name',
       };
 
+      const updatedTrusteeDocument = {
+        id: trusteeId,
+        ...updatedTrusteeInput,
+        documentType: 'TRUSTEE',
+        createdOn: '2025-08-12T10:00:00Z',
+        createdBy: mockUser,
+        updatedOn: expect.any(String),
+        updatedBy: mockUser,
+      } as TrusteeDocument;
+
       const mockAdapter = jest
-        .spyOn(MongoCollectionAdapter.prototype, 'updateOne')
-        .mockResolvedValue({ matchedCount: 0, modifiedCount: 0 });
+        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+        .mockResolvedValue({ id: trusteeId, modifiedCount: 0, upsertedCount: 0 });
 
       const actual = await getTheThrownError(async () => {
-        await repository.updateTrustee(trusteeId, updatedTrusteeInput, mockUser);
+        await repository.updateTrustee(trusteeId, updatedTrusteeDocument, mockUser);
       });
 
       await expect(actual.camsStack[0]).toEqual(
@@ -409,14 +423,24 @@ describe('TrusteesMongoRepository', () => {
       const updatedTrusteeInput: Partial<TrusteeInput> = {
         name: 'Updated Name',
       };
+      const updatedTrusteeDocument = {
+        id: trusteeId,
+        ...updatedTrusteeInput,
+        documentType: 'TRUSTEE',
+        createdOn: '2025-08-12T10:00:00Z',
+        createdBy: mockUser,
+        updatedOn: expect.any(String),
+        updatedBy: mockUser,
+      } as TrusteeDocument;
+
       const error = new Error('Database connection failed');
 
       const mockAdapter = jest
-        .spyOn(MongoCollectionAdapter.prototype, 'updateOne')
+        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
         .mockRejectedValue(error);
 
       await expect(
-        repository.updateTrustee(trusteeId, updatedTrusteeInput, mockUser),
+        repository.updateTrustee(trusteeId, updatedTrusteeDocument, mockUser),
       ).rejects.toThrow();
 
       expect(mockAdapter).toHaveBeenCalledWith(

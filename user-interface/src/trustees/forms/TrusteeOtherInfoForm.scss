@@ -6,6 +6,10 @@
       position: relative;
 
       .bank-field-input {
+        position: relative;
+        width: 100%;
+        max-width: 400px;
+
         .remove-bank-button {
           position: absolute;
           top: 0;
@@ -29,15 +33,6 @@
   }
   .add-bank-button {
     margin-bottom: 1.5rem;
-  }
-}
-
-@media screen and (max-width: 900px) {
-  .trustee-other-info-form-screen {
-    .trustee-bank-input {
-      width: calc(100% - 200px);
-      min-width: 150px;
-    }
   }
 }
 

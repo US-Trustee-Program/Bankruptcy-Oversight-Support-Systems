@@ -27,6 +27,7 @@ export default function TrusteeDetailProfile({
             <div className="title-bar">
               <h3>Trustee Overview (Public)</h3>
               <Button
+                id="edit-public-profile"
                 uswdsStyle={UswdsButtonStyle.Unstyled}
                 aria-label="Edit trustee public overview information"
                 title="Edit trustee contact information"
@@ -44,16 +45,19 @@ export default function TrusteeDetailProfile({
                 ))}
               </ul>
             </div>
-            <div data-testid="trustee-chapters">
-              <span>Chapter{trustee.chapters && trustee.chapters.length > 1 && 's'}: </span>
-              {trustee.chapters?.map(formatChapterType).join(', ')}
-            </div>
+            {trustee.chapters && trustee.chapters.length > 0 && (
+              <div data-testid="trustee-chapters">
+                <span>Chapter{trustee.chapters && trustee.chapters.length > 1 && 's'}: </span>
+                {trustee.chapters?.map(formatChapterType).join(', ')}
+              </div>
+            )}
             <div className="trustee-status">Status: {trustee.status}</div>
           </div>
           <div className="trustee-other-information record-detail-card">
             <div className="title-bar">
               <h3>Other Information</h3>
               <Button
+                id="edit-other-information"
                 uswdsStyle={UswdsButtonStyle.Unstyled}
                 aria-label="Edit other trustee information"
                 title="Edit other trustee information"
@@ -62,9 +66,6 @@ export default function TrusteeDetailProfile({
                 <IconLabel icon="edit" label="Edit" />
               </Button>
             </div>
-            {trustee.software && (
-              <div className="trustee-software">Software: {trustee.software}</div>
-            )}
             {trustee.banks &&
               trustee.banks.length > 0 &&
               trustee.banks.map((bank, index) => (
@@ -72,6 +73,9 @@ export default function TrusteeDetailProfile({
                   Bank: {bank}
                 </div>
               ))}
+            {trustee.software && (
+              <div className="trustee-software">Software: {trustee.software}</div>
+            )}
             {!trustee.software && (!trustee.banks || trustee.banks.length === 0) && (
               <div>No information has been entered.</div>
             )}
@@ -90,6 +94,7 @@ export default function TrusteeDetailProfile({
             <div className="title-bar">
               <h3>Contact Information (USTP Internal)</h3>
               <Button
+                id="edit-internal-profile"
                 uswdsStyle={UswdsButtonStyle.Unstyled}
                 aria-label="Edit trustee internal contact information"
                 title="Edit trustee contact information"

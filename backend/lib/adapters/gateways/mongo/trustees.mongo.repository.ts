@@ -141,7 +141,7 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
 
   async updateTrustee(
     id: string,
-    input: Partial<TrusteeInput>,
+    input: TrusteeDocument,
     userRef: CamsUserReference,
   ): Promise<Trustee> {
     try {
@@ -154,7 +154,7 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
         updatedBy: userRef,
       };
 
-      const result = await this.getAdapter<TrusteeDocument>().updateOne(query, updateData);
+      const result = await this.getAdapter<TrusteeDocument>().replaceOne(query, updateData);
 
       if (result.modifiedCount === 0) {
         throw new NotFoundError(MODULE_NAME);
