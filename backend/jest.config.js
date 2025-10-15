@@ -31,6 +31,7 @@ module.exports = {
     'lib/adapters/gateways/okta/HumbleVerifier.ts',
     'function-apps/dataflows/migration/*',
     'function-apps/dataflows/events/*',
+    'function-apps/dataflows/e2e/*',
     'function-apps/dataflows/import/*',
     'function-apps/dataflows/dataflows-queues.ts',
     'function-apps/dataflows/dataflows.ts',

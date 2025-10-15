@@ -7,7 +7,7 @@ import * as useCamsNavigatorModule from '@/lib/hooks/UseCamsNavigator';
 import { Mock } from 'vitest';
 import { Trustee } from '@common/cams/trustees';
 import { ResponseBody } from '@common/api/response';
-import { BankruptcySoftwareList } from '@common/cams/lists';
+
 import MockData from '@common/cams/test-utilities/mock-data';
 
 describe('TrusteeOtherInfoForm', () => {
@@ -29,11 +29,20 @@ describe('TrusteeOtherInfoForm', () => {
     redirectTo: vi.fn(),
   };
 
+  const mockSoftwareOptions = [
+    { value: 'Axos', label: 'Axos' },
+    { value: 'BlueStylus', label: 'BlueStylus' },
+    { value: 'BSS 13Software', label: 'BSS 13Software' },
+    { value: 'Epiq', label: 'Epiq' },
+    { value: 'Satori', label: 'Satori' },
+    { value: 'Stretto', label: 'Stretto' },
+    { value: 'TrusteSolutions', label: 'TrusteSolutions' },
+    { value: 'Verita Title XI', label: 'Verita Title XI' },
+  ];
+
   let patchTrusteeSpy: Mock<
     (trusteeId: string, trustee: unknown) => Promise<ResponseBody<Trustee>>
   >;
-
-  let getBankruptcySoftwareListSpy: Mock<() => Promise<ResponseBody<BankruptcySoftwareList>>>;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -46,24 +55,9 @@ describe('TrusteeOtherInfoForm', () => {
       data: TRUSTEE,
     });
 
-    // Mock the software list API to return the expected hardcoded options
-    getBankruptcySoftwareListSpy = vi.fn().mockResolvedValue({
-      data: [
-        { _id: '1', list: 'bankruptcy-software', key: 'Axos', value: 'Axos' },
-        { _id: '2', list: 'bankruptcy-software', key: 'BlueStylus', value: 'BlueStylus' },
-        { _id: '3', list: 'bankruptcy-software', key: 'BSS 13Software', value: 'BSS 13Software' },
-        { _id: '4', list: 'bankruptcy-software', key: 'Epiq', value: 'Epiq' },
-        { _id: '5', list: 'bankruptcy-software', key: 'Satori', value: 'Satori' },
-        { _id: '6', list: 'bankruptcy-software', key: 'Stretto', value: 'Stretto' },
-        { _id: '7', list: 'bankruptcy-software', key: 'TrusteSolutions', value: 'TrusteSolutions' },
-        { _id: '8', list: 'bankruptcy-software', key: 'Verita Title XI', value: 'Verita Title XI' },
-      ],
-    });
-
     // Get the API instance and spy on its methods
     const api = UseApi2Module.useApi2();
     vi.spyOn(api, 'patchTrustee').mockImplementation(patchTrusteeSpy);
-    vi.spyOn(api, 'getBankruptcySoftwareList').mockImplementation(getBankruptcySoftwareListSpy);
   });
 
   afterEach(() => {
@@ -71,7 +65,13 @@ describe('TrusteeOtherInfoForm', () => {
   });
 
   test('renders the form with initial bank fields', async () => {
-    render(<TrusteeOtherInfoForm trusteeId={TEST_TRUSTEE_ID} banks={TEST_BANKS} />);
+    render(
+      <TrusteeOtherInfoForm
+        trusteeId={TEST_TRUSTEE_ID}
+        banks={TEST_BANKS}
+        softwareOptions={mockSoftwareOptions}
+      />,
+    );
 
     await waitFor(() => {
       expect(screen.getByTestId('trustee-other-info-form')).toBeInTheDocument();
@@ -92,7 +92,9 @@ describe('TrusteeOtherInfoForm', () => {
   });
 
   test('renders the form with empty bank field when no banks are provided', async () => {
-    render(<TrusteeOtherInfoForm trusteeId={TEST_TRUSTEE_ID} />);
+    render(
+      <TrusteeOtherInfoForm trusteeId={TEST_TRUSTEE_ID} softwareOptions={mockSoftwareOptions} />,
+    );
 
     await waitFor(() => {
       expect(screen.getByTestId('trustee-other-info-form')).toBeInTheDocument();
@@ -102,7 +104,13 @@ describe('TrusteeOtherInfoForm', () => {
   });
 
   test('adds a bank when "Add another bank" is clicked', async () => {
-    render(<TrusteeOtherInfoForm trusteeId={TEST_TRUSTEE_ID} banks={TEST_BANKS} />);
+    render(
+      <TrusteeOtherInfoForm
+        trusteeId={TEST_TRUSTEE_ID}
+        banks={TEST_BANKS}
+        softwareOptions={mockSoftwareOptions}
+      />,
+    );
 
     // Initial number of banks - verify they exist
     TEST_BANKS.forEach((_, index) => {
@@ -117,7 +125,13 @@ describe('TrusteeOtherInfoForm', () => {
   });
 
   test('removes a bank when "Remove Bank" is clicked', async () => {
-    render(<TrusteeOtherInfoForm trusteeId={TEST_TRUSTEE_ID} banks={TEST_BANKS} />);
+    render(
+      <TrusteeOtherInfoForm
+        trusteeId={TEST_TRUSTEE_ID}
+        banks={TEST_BANKS}
+        softwareOptions={mockSoftwareOptions}
+      />,
+    );
 
     // Initial banks should exist
     TEST_BANKS.forEach((_, index) => {
@@ -134,7 +148,13 @@ describe('TrusteeOtherInfoForm', () => {
   });
 
   test('updates bank value when input changes', async () => {
-    render(<TrusteeOtherInfoForm trusteeId={TEST_TRUSTEE_ID} banks={TEST_BANKS} />);
+    render(
+      <TrusteeOtherInfoForm
+        trusteeId={TEST_TRUSTEE_ID}
+        banks={TEST_BANKS}
+        softwareOptions={mockSoftwareOptions}
+      />,
+    );
 
     const updatedBankName = 'Updated Bank Name';
     const bankInput = screen.getByTestId('trustee-banks-0');
@@ -146,7 +166,13 @@ describe('TrusteeOtherInfoForm', () => {
   });
 
   test('submits the form with updated banks', async () => {
-    render(<TrusteeOtherInfoForm trusteeId={TEST_TRUSTEE_ID} banks={TEST_BANKS} />);
+    render(
+      <TrusteeOtherInfoForm
+        trusteeId={TEST_TRUSTEE_ID}
+        banks={TEST_BANKS}
+        softwareOptions={mockSoftwareOptions}
+      />,
+    );
 
     // Update first bank name
     const updatedBankName = 'Updated Bank Name';
@@ -178,7 +204,11 @@ describe('TrusteeOtherInfoForm', () => {
 
   test('filters out empty banks when submitting', async () => {
     render(
-      <TrusteeOtherInfoForm trusteeId={TEST_TRUSTEE_ID} banks={['Bank One', '', 'Bank Three']} />,
+      <TrusteeOtherInfoForm
+        trusteeId={TEST_TRUSTEE_ID}
+        banks={['Bank One', '', 'Bank Three']}
+        softwareOptions={mockSoftwareOptions}
+      />,
     );
 
     // Submit the form
@@ -199,7 +229,13 @@ describe('TrusteeOtherInfoForm', () => {
     const errorMessage = 'API error';
     patchTrusteeSpy.mockRejectedValueOnce(new Error(errorMessage));
 
-    render(<TrusteeOtherInfoForm trusteeId={TEST_TRUSTEE_ID} banks={TEST_BANKS} />);
+    render(
+      <TrusteeOtherInfoForm
+        trusteeId={TEST_TRUSTEE_ID}
+        banks={TEST_BANKS}
+        softwareOptions={mockSoftwareOptions}
+      />,
+    );
 
     // Submit the form
     await userEvent.click(screen.getByTestId('button-submit-button'));
@@ -213,7 +249,13 @@ describe('TrusteeOtherInfoForm', () => {
   });
 
   test('changes the Save button text when submitting', async () => {
-    render(<TrusteeOtherInfoForm trusteeId={TEST_TRUSTEE_ID} banks={TEST_BANKS} />);
+    render(
+      <TrusteeOtherInfoForm
+        trusteeId={TEST_TRUSTEE_ID}
+        banks={TEST_BANKS}
+        softwareOptions={mockSoftwareOptions}
+      />,
+    );
 
     // Submit button should initially show "Save"
     expect(screen.getByTestId('button-submit-button')).toHaveTextContent('Save');
@@ -243,7 +285,13 @@ describe('TrusteeOtherInfoForm', () => {
         }),
     );
 
-    render(<TrusteeOtherInfoForm trusteeId={TEST_TRUSTEE_ID} banks={TEST_BANKS} />);
+    render(
+      <TrusteeOtherInfoForm
+        trusteeId={TEST_TRUSTEE_ID}
+        banks={TEST_BANKS}
+        softwareOptions={mockSoftwareOptions}
+      />,
+    );
 
     const submitButton = screen.getByTestId('button-submit-button');
 
@@ -271,7 +319,13 @@ describe('TrusteeOtherInfoForm', () => {
   });
 
   test('navigates to trustee page when cancel is clicked', async () => {
-    render(<TrusteeOtherInfoForm trusteeId={TEST_TRUSTEE_ID} banks={TEST_BANKS} />);
+    render(
+      <TrusteeOtherInfoForm
+        trusteeId={TEST_TRUSTEE_ID}
+        banks={TEST_BANKS}
+        softwareOptions={mockSoftwareOptions}
+      />,
+    );
 
     // Click the cancel button
     await userEvent.click(screen.getByTestId('button-cancel-button'));
@@ -281,7 +335,13 @@ describe('TrusteeOtherInfoForm', () => {
   });
 
   test('shows error and prevents submission when trusteeId is empty', async () => {
-    render(<TrusteeOtherInfoForm trusteeId="" banks={TEST_BANKS} />);
+    render(
+      <TrusteeOtherInfoForm
+        trusteeId=""
+        banks={TEST_BANKS}
+        softwareOptions={mockSoftwareOptions}
+      />,
+    );
 
     // Submit the form
     await userEvent.click(screen.getByTestId('button-submit-button'));
@@ -294,7 +354,13 @@ describe('TrusteeOtherInfoForm', () => {
   });
 
   test('shows error and prevents submission when trusteeId is whitespace only', async () => {
-    render(<TrusteeOtherInfoForm trusteeId="   " banks={TEST_BANKS} />);
+    render(
+      <TrusteeOtherInfoForm
+        trusteeId="   "
+        banks={TEST_BANKS}
+        softwareOptions={mockSoftwareOptions}
+      />,
+    );
 
     // Submit the form
     await userEvent.click(screen.getByTestId('button-submit-button'));
@@ -310,12 +376,13 @@ describe('TrusteeOtherInfoForm', () => {
     const initialSoftware = 'Axos';
     const newSoftware = 'Stretto';
 
-    render(<TrusteeOtherInfoForm trusteeId={TEST_TRUSTEE_ID} software={initialSoftware} />);
-
-    // Wait for the software options to load
-    await waitFor(() => {
-      expect(getBankruptcySoftwareListSpy).toHaveBeenCalled();
-    });
+    render(
+      <TrusteeOtherInfoForm
+        trusteeId={TEST_TRUSTEE_ID}
+        software={initialSoftware}
+        softwareOptions={mockSoftwareOptions}
+      />,
+    );
 
     // Verify initial software selection is displayed in the selection label
     await waitFor(() => {
@@ -362,12 +429,13 @@ describe('TrusteeOtherInfoForm', () => {
   test('clears software value when ComboBox clear button is clicked', async () => {
     const initialSoftware = 'Epiq';
 
-    render(<TrusteeOtherInfoForm trusteeId={TEST_TRUSTEE_ID} software={initialSoftware} />);
-
-    // Wait for the software options to load
-    await waitFor(() => {
-      expect(getBankruptcySoftwareListSpy).toHaveBeenCalled();
-    });
+    render(
+      <TrusteeOtherInfoForm
+        trusteeId={TEST_TRUSTEE_ID}
+        software={initialSoftware}
+        softwareOptions={mockSoftwareOptions}
+      />,
+    );
 
     // Verify initial software selection is displayed in the selection label
     await waitFor(() => {
@@ -385,7 +453,7 @@ describe('TrusteeOtherInfoForm', () => {
       expect(patchTrusteeSpy).toHaveBeenCalledWith(
         TEST_TRUSTEE_ID,
         expect.objectContaining({
-          software: undefined,
+          software: null,
         }),
       );
     });
@@ -396,30 +464,5 @@ describe('TrusteeOtherInfoForm', () => {
         expect.any(Object),
       );
     });
-  });
-
-  test('fetches software options from API on component mount', async () => {
-    render(<TrusteeOtherInfoForm trusteeId={TEST_TRUSTEE_ID} />);
-
-    // Verify the API was called to fetch software options
-    await waitFor(() => {
-      expect(getBankruptcySoftwareListSpy).toHaveBeenCalled();
-    });
-  });
-
-  test('handles API error gracefully when fetching software options', async () => {
-    // Mock the API to reject
-    getBankruptcySoftwareListSpy.mockRejectedValueOnce(new Error('API Error'));
-
-    render(<TrusteeOtherInfoForm trusteeId={TEST_TRUSTEE_ID} />);
-
-    // Wait for the API call to be made and fail
-    await waitFor(() => {
-      expect(getBankruptcySoftwareListSpy).toHaveBeenCalled();
-    });
-
-    // Form should still be functional - the ComboBox should exist even with empty options
-    // Use DOM selector since ComboBox doesn't expose a direct testId for the container
-    expect(document.querySelector('#trustee-software')).toBeInTheDocument();
   });
 });
