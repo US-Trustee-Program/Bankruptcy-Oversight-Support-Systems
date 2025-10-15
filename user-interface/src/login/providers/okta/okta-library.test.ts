@@ -82,12 +82,39 @@ describe('Okta library', () => {
 
     beforeEach(() => {
       vi.useFakeTimers();
-      window.localStorage.clear();
+
+      // Mock localStorage like we do with Highlight API
+      const localStorageMock = (() => {
+        let store: Record<string, string> = {};
+
+        return {
+          getItem: (key: string) => {
+            return store[key] || null;
+          },
+          setItem: (key: string, value: string) => {
+            store[key] = value.toString();
+          },
+          removeItem: (key: string) => {
+            delete store[key];
+          },
+          clear: () => {
+            store = {};
+          },
+        };
+      })();
+
+      vi.stubGlobal('localStorage', localStorageMock);
+      Object.defineProperty(window, 'localStorage', {
+        value: localStorageMock,
+        configurable: true,
+      });
+
       oktaAuth = new OktaAuth(MOCK_OAUTH_CONFIG);
     });
 
     afterEach(() => {
       vi.restoreAllMocks();
+      vi.unstubAllGlobals();
       vi.runOnlyPendingTimers();
       vi.useRealTimers();
     });
