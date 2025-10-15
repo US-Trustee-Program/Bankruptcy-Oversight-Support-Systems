@@ -54,11 +54,11 @@ describe('user-session.gateway test', () => {
   };
 
   beforeEach(async () => {
-    gateway = new UserSessionUseCase();
     context = await createMockApplicationContext({
       env: { CAMS_LOGIN_PROVIDER: 'okta', CAMS_LOGIN_PROVIDER_CONFIG: 'something' },
     });
     context.featureFlags['privileged-identity-management'] = true;
+    gateway = new UserSessionUseCase(context);
 
     jest.spyOn(Verifier, 'verifyAccessToken').mockResolvedValue(camsJwt);
     jest

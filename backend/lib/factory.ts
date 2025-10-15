@@ -262,7 +262,7 @@ export const getUserSessionUseCase = (context: ApplicationContext) => {
   if (context.config.authConfig.provider === 'mock') {
     return new MockUserSessionUseCase();
   }
-  const repo = new UserSessionUseCase();
+  const repo = new UserSessionUseCase(context);
   deferRelease(repo, context);
   return repo;
 };
