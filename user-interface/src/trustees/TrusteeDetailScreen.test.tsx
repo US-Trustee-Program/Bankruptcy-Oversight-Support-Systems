@@ -173,10 +173,8 @@ describe('TrusteeDetailScreen', () => {
     renderWithRouter();
 
     await waitFor(() => {
-      // Verify status tag
       expect(screen.getByTestId('tag-trustee-status')).toHaveTextContent('Active');
 
-      // Verify district tags with court names
       expect(screen.getByTestId('tag-district-0')).toHaveTextContent(
         'Eastern District of New York (Brooklyn)',
       );
@@ -184,7 +182,6 @@ describe('TrusteeDetailScreen', () => {
         'Western District of New York (Buffalo)',
       );
 
-      // Verify chapter tags with formatted names (multiple chapters)
       expect(screen.getByTestId('tag-chapter-0')).toHaveTextContent('Chapter 7 - Panel');
       expect(screen.getByTestId('tag-chapter-1')).toHaveTextContent('Chapter 11');
       expect(screen.getByTestId('tag-chapter-2')).toHaveTextContent('Chapter 13');
@@ -221,9 +218,8 @@ describe('TrusteeDetailScreen', () => {
       expect(screen.getByRole('heading', { level: 1, name: 'John Doe' })).toBeInTheDocument();
     });
 
-    // Verify that missing email and address are not rendered
     expect(screen.queryByTestId('trustee-email')).not.toBeInTheDocument();
-    expect(screen.queryByText('123 Main St')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('trustee-street-address')).not.toBeInTheDocument();
   });
 
   test('should handle API errors gracefully', async () => {
@@ -245,7 +241,7 @@ describe('TrusteeDetailScreen', () => {
     });
 
     expect(screen.getByTestId('404-NotFound')).toBeInTheDocument();
-    expect(screen.queryByText('John Doe')).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 1, name: 'John Doe' })).not.toBeInTheDocument();
 
     console.error = originalConsoleError;
   });
@@ -255,23 +251,21 @@ describe('TrusteeDetailScreen', () => {
 
     renderWithRouter();
 
-    expect(screen.getByText('404 - Not Found')).toBeInTheDocument();
+    expect(screen.getByTestId('404-NotFound')).toBeInTheDocument();
   });
 
   test('should render NotFound when trustee is not found and not loading', async () => {
     mockUseParams.mockReturnValue({ trusteeId: '123' });
-    // Mock API returning null data to simulate trustee not found
     mockGetTrustee.mockResolvedValue({ data: null });
     mockGetCourts.mockResolvedValue({ data: mockCourts });
 
     renderWithRouter();
 
-    // Wait for loading to finish
     await waitFor(() => {
       expect(mockGetTrustee).toHaveBeenCalledWith('123');
     });
 
-    expect(screen.getByText('404 - Not Found')).toBeInTheDocument();
+    expect(screen.getByTestId('404-NotFound')).toBeInTheDocument();
   });
 
   test.each([
@@ -305,7 +299,7 @@ describe('TrusteeDetailScreen', () => {
     });
 
     // Test public edit button
-    const publicEditButton = screen.getByLabelText('Edit trustee public overview information');
+    const publicEditButton = screen.getByTestId('button-edit-public-profile');
     publicEditButton.click();
 
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/contact/edit/public', {
@@ -319,7 +313,7 @@ describe('TrusteeDetailScreen', () => {
     });
 
     // Test internal edit button
-    const internalEditButton = screen.getByLabelText('Edit trustee internal contact information');
+    const internalEditButton = screen.getByTestId('button-edit-internal-profile');
     internalEditButton.click();
 
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/contact/edit/internal', {
@@ -333,7 +327,7 @@ describe('TrusteeDetailScreen', () => {
     });
 
     // Test other info edit button
-    const otherInfoEditButton = screen.getByLabelText('Edit other trustee information');
+    const otherInfoEditButton = screen.getByTestId('button-edit-other-information');
     otherInfoEditButton.click();
 
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/other/edit', {
@@ -377,13 +371,13 @@ describe('TrusteeDetailScreen', () => {
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe Updated');
     });
 
-    expect(screen.getByText('456 Updated Street')).toBeInTheDocument();
-    expect(screen.getByText('New City')).toBeInTheDocument();
-    expect(screen.getByText('john.updated@example.com')).toBeInTheDocument();
-    expect(screen.getByText('555-999-8888, ext. 9999')).toBeInTheDocument();
+    expect(screen.getByTestId('trustee-street-address')).toHaveTextContent('456 Updated Street');
+    expect(screen.getByTestId('trustee-city')).toHaveTextContent('New City');
+    expect(screen.getByTestId('trustee-email')).toHaveTextContent('john.updated@example.com');
+    expect(screen.getByTestId('trustee-phone-number')).toHaveTextContent('555-999-8888, ext. 9999');
 
-    expect(screen.queryByText('123 Main St')).not.toBeInTheDocument();
-    expect(screen.queryByText('john.doe.public@example.com')).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue('123 Main St')).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue('john.doe.public@example.com')).not.toBeInTheDocument();
   });
 
   test('should load from API when no location state is present', async () => {
@@ -401,8 +395,8 @@ describe('TrusteeDetailScreen', () => {
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
     });
 
-    expect(screen.getByText('123 Main St')).toBeInTheDocument();
-    expect(screen.getByText('john.doe.public@example.com')).toBeInTheDocument();
+    expect(screen.getByTestId('trustee-street-address')).toHaveTextContent('123 Main St');
+    expect(screen.getByTestId('trustee-email')).toHaveTextContent('john.doe.public@example.com');
 
     expect(mockGetTrustee).toHaveBeenCalledWith('123');
   });
@@ -422,7 +416,6 @@ describe('TrusteeDetailScreen', () => {
       needsLocationState: false,
     },
   ])('$description', async ({ route, expectedSubheader, needsHistoryMock }) => {
-    // Set up API mocks
     mockGetTrustee.mockResolvedValue({ data: mockTrustee });
     mockGetCourts.mockResolvedValue({ data: mockCourts });
 
@@ -443,12 +436,10 @@ describe('TrusteeDetailScreen', () => {
 
     renderWithRouter();
 
-    // Wait for the component to render and API calls to be made
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
     });
 
-    // Verify the software options API was called
     expect(mockGetBankruptcySoftwareList).toHaveBeenCalled();
   });
 
@@ -477,7 +468,7 @@ describe('TrusteeDetailScreen', () => {
   test('should handle software options API returning response without data property', async () => {
     mockGetTrustee.mockResolvedValue({ data: mockTrustee });
     mockGetCourts.mockResolvedValue({ data: mockCourts });
-    mockGetBankruptcySoftwareList.mockResolvedValue({}); // response exists but no data property
+    mockGetBankruptcySoftwareList.mockResolvedValue({});
 
     renderWithRouter();
 
@@ -523,7 +514,6 @@ describe('TrusteeDetailScreen', () => {
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
     });
 
-    // Verify the API was called and transformation function was executed
     expect(mockGetBankruptcySoftwareList).toHaveBeenCalled();
   });
 });
