@@ -52,7 +52,7 @@ export class UserSessionUseCase {
       try {
         return await authGateway.getUser(token);
       } catch (error) {
-        if (attempt === MAX_RETRIES) {
+        if (attempt >= MAX_RETRIES) {
           throw error;
         }
         context.logger.error(
