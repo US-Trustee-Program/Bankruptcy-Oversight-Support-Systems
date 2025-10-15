@@ -53,6 +53,13 @@ export type Trustee = TrusteeData &
 
 export type TrusteeInput = TrusteeCore & NullableOptionalFields<TrusteeOptionalFields>;
 
+export type TrusteeOversightAssignment = Auditable &
+  Identifiable & {
+    trusteeId: string;
+    user: CamsUserReference;
+    role: OversightRole;
+  };
+
 type AbstractTrusteeHistory<B, A> = Auditable &
   Identifiable & {
     trusteeId: string;
