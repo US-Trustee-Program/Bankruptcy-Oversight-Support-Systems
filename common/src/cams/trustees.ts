@@ -4,6 +4,7 @@ import { LegacyAddress } from './parties';
 import { ContactInformation } from './contact';
 import { CamsUserReference } from './users';
 import { OversightRole } from './roles';
+import { NullableOptionalFields } from '../api/common';
 
 // Chapter types supported for trustee assignments
 export type ChapterType = '7-panel' | '7-non-panel' | '11' | '11-subchapter-v' | '12' | '13';
@@ -21,51 +22,36 @@ export function formatChapterType(chapter: string): string {
   return chapterLabels[chapter] || chapter;
 }
 
-// Trustee status enumeration
 export const TRUSTEE_STATUS_VALUES = ['active', 'not active', 'suspended'] as const;
 export type TrusteeStatus = (typeof TRUSTEE_STATUS_VALUES)[number];
 
-export type Trustee = Auditable &
+export type TrusteeCore = {
+  name: string;
+  public: ContactInformation;
+  internal?: Partial<ContactInformation>;
+  status: TrusteeStatus;
+};
+
+export type TrusteeOptionalFields = {
+  districts?: string[];
+  chapters?: ChapterType[];
+  banks?: string[];
+  software?: string;
+};
+
+export type TrusteeData = TrusteeCore & TrusteeOptionalFields;
+
+export type Trustee = TrusteeData &
+  Auditable &
   Identifiable & {
     trusteeId: string;
-    name: string;
-    public: ContactInformation;
-    internal?: Partial<ContactInformation>;
     legacy?: LegacyAddress & {
       phone?: string;
       email?: string;
     };
-
-    districts?: string[];
-    chapters?: ChapterType[];
-    banks?: string[];
-    software?: string;
-    status: TrusteeStatus;
   };
 
-export type TrusteeOversightAssignment = Auditable &
-  Identifiable & {
-    trusteeId: string;
-    user: CamsUserReference;
-    role: OversightRole;
-  };
-
-export type TrusteeInput = Omit<
-  Trustee,
-  | 'legacy'
-  | 'trusteeId'
-  | keyof Auditable
-  | keyof Identifiable
-  | 'software'
-  | 'districts'
-  | 'chapters'
-  | 'banks'
-> & {
-  districts?: string[] | null;
-  chapters?: ChapterType[] | null;
-  banks?: string[] | null;
-  software?: string | null;
-};
+export type TrusteeInput = TrusteeCore & NullableOptionalFields<TrusteeOptionalFields>;
 
 type AbstractTrusteeHistory<B, A> = Auditable &
   Identifiable & {
