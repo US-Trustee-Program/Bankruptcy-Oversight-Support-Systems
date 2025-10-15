@@ -27,6 +27,7 @@ export default function TrusteeDetailProfile({
             <div className="title-bar">
               <h3>Trustee Overview (Public)</h3>
               <Button
+                id="edit-public-profile"
                 uswdsStyle={UswdsButtonStyle.Unstyled}
                 aria-label="Edit trustee public overview information"
                 title="Edit trustee contact information"
@@ -56,6 +57,7 @@ export default function TrusteeDetailProfile({
             <div className="title-bar">
               <h3>Other Information</h3>
               <Button
+                id="edit-other-information"
                 uswdsStyle={UswdsButtonStyle.Unstyled}
                 aria-label="Edit other trustee information"
                 title="Edit other trustee information"
@@ -92,6 +94,7 @@ export default function TrusteeDetailProfile({
             <div className="title-bar">
               <h3>Contact Information (USTP Internal)</h3>
               <Button
+                id="edit-internal-profile"
                 uswdsStyle={UswdsButtonStyle.Unstyled}
                 aria-label="Edit trustee internal contact information"
                 title="Edit trustee contact information"
