@@ -18,7 +18,9 @@ export function getCamsUser(oktaUser: UserClaims | null) {
 export async function refreshOktaToken(oktaAuth: OktaAuth) {
   const now = nowInSeconds();
   const session = LocalStorage.getSession();
-  if (!session) return;
+  if (!session) {
+    return;
+  }
 
   const expiration = session.expires;
   // THIS IS SUS....
