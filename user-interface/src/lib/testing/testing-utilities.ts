@@ -8,6 +8,7 @@ import { CamsUser } from '@common/cams/users';
 import * as UseStateModule from '@/lib/hooks/UseState';
 import { fireEvent, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { delay } from '@common/delay';
 
 async function waitFor(condition: () => boolean, timeout = 5000, interval = 50): Promise<void> {
   const startTime = Date.now();
@@ -19,16 +20,12 @@ async function waitFor(condition: () => boolean, timeout = 5000, interval = 50):
       } else if (Date.now() - startTime >= timeout) {
         reject(new Error('waitFor timed out'));
       } else {
-        setTimeout(checkCondition, interval);
+        delay(interval, checkCondition);
       }
     };
 
     checkCondition();
   });
-}
-
-async function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function setUser(override: Partial<CamsUser> = {}) {
@@ -135,7 +132,6 @@ async function toggleComboBoxItemSelection(id: string, itemIndex: number = 0, se
 
 export const TestingUtilities = {
   waitFor,
-  delay,
   setUser,
   setUserWithRoles,
   spyOnGlobalAlert,
