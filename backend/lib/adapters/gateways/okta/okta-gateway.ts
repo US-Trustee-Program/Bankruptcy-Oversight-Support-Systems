@@ -123,7 +123,9 @@ async function getUser(accessToken: string): Promise<{ user: CamsUserReference; 
       return { user, jwt };
     } else {
       const errorResponseBody = response.bodyUsed ? await response.text() : 'No response body';
-      throw new Error(`Failed to retrieve user info from Okta. ${errorResponseBody}`);
+      throw new UnauthorizedError(MODULE_NAME, {
+        message: `Failed to retrieve user info from Okta. ${errorResponseBody}`,
+      });
     }
   } catch (originalError) {
     throw isCamsError(originalError)

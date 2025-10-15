@@ -9,16 +9,22 @@ import UsersHelpers from '../users/users.helpers';
 import { CamsUserReference } from '../../../../common/src/cams/users';
 import { CamsJwt } from '../../../../common/src/cams/jwt';
 import { delay } from '../../../../common/src/delay';
+import { UserSessionCacheRepository } from '../gateways.types';
 
 const MODULE_NAME = 'USER-SESSION-GATEWAY';
 
 type GetUserResponse = { user: CamsUserReference; jwt: CamsJwt };
 
 export class UserSessionUseCase {
+  private readonly sessionCacheRepository: UserSessionCacheRepository;
+
+  constructor(context: ApplicationContext) {
+    this.sessionCacheRepository = getUserSessionCacheRepository(context);
+  }
+
   private async lookupSession(context: ApplicationContext, token: string) {
-    const sessionCacheRepository = getUserSessionCacheRepository(context);
     try {
-      const session = await sessionCacheRepository.read(token);
+      const session = await this.sessionCacheRepository.read(token);
       context.logger.debug(MODULE_NAME, 'Found session in cache.');
       return session;
     } catch (originalError) {
@@ -41,35 +47,27 @@ export class UserSessionUseCase {
         message: 'Unsupported authentication provider.',
       });
     }
-
-    let response: GetUserResponse;
-    let callCount = 0;
-    const MAX_CALL_COUNT = 3;
-
-    context.logger.debug(MODULE_NAME, 'Getting user info from identity provider.');
-    while (!response && callCount <= MAX_CALL_COUNT) {
+    const MAX_RETRIES = 3;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
         return await authGateway.getUser(token);
       } catch (error) {
-        callCount++;
-        context.logger.error(
-          `Call to identity provider to get user failed.`,
-          `Call count=${callCount}.`,
-          error.message,
-        );
-        if (callCount === MAX_CALL_COUNT) {
+        if (attempt === MAX_RETRIES) {
           throw error;
-        } else {
-          await delay(Math.pow(2, callCount) * 1000);
         }
+        context.logger.error(
+          MODULE_NAME,
+          `Identity provider call failed (attempt ${attempt}/${MAX_RETRIES})`,
+          error,
+        );
+        await delay(2 ** attempt * 1000);
       }
     }
   }
 
   private async writeSession(context: ApplicationContext, session: CamsSession) {
-    const sessionCacheRepository = getUserSessionCacheRepository(context);
     context.logger.debug(MODULE_NAME, 'Putting session in cache.');
-    await sessionCacheRepository.upsert(session);
+    await this.sessionCacheRepository.upsert(session);
   }
 
   async lookup(context: ApplicationContext, token: string, provider: string): Promise<CamsSession> {
@@ -85,6 +83,11 @@ export class UserSessionUseCase {
         context,
         token,
       );
+
+      // Check for missing JWT and throw UnauthorizedError if not present.
+      if (!jwt) {
+        throw new UnauthorizedError('Missing JWT from identity provider');
+      }
 
       // Augment the user session with additional roles if applicable.
       const user = await UsersHelpers.getPrivilegedIdentityUser(context, camsUserReference.id);
