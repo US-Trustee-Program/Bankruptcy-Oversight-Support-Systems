@@ -14,7 +14,6 @@ const mockOnEditInternalProfile = vi.fn();
 
 const mockUseParams = vi.hoisted(() => vi.fn());
 const mockUseNavigate = vi.hoisted(() => vi.fn());
-const mockUseLocation = vi.hoisted(() => vi.fn());
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
@@ -22,7 +21,6 @@ vi.mock('react-router-dom', async () => {
     ...actual,
     useParams: mockUseParams,
     useNavigate: mockUseNavigate,
-    useLocation: mockUseLocation,
   };
 });
 
@@ -69,13 +67,15 @@ const mockCourts = MockData.getCourts().filter(
 
 describe('TrusteeDetailScreen', () => {
   const mockNavigate = vi.fn();
-  const mockLocation = { pathname: '/trustees/123' };
 
-  const renderWithRouter = (initialEntries = ['/trustees/123']) => {
+  const renderWithRouter = (initialEntries = ['/trustees/123'], trustee?: Trustee) => {
     return render(
       <MemoryRouter initialEntries={initialEntries}>
         <Routes>
-          <Route path="/trustees/:trusteeId/*" element={<TrusteeDetailScreen />} />
+          <Route
+            path="/trustees/:trusteeId/*"
+            element={<TrusteeDetailScreen trustee={trustee} />}
+          />
         </Routes>
       </MemoryRouter>,
     );
@@ -88,7 +88,6 @@ describe('TrusteeDetailScreen', () => {
     // Set up router mocks
     mockUseParams.mockReturnValue({ trusteeId: '123' });
     mockUseNavigate.mockReturnValue(mockNavigate);
-    mockUseLocation.mockReturnValue(mockLocation);
 
     // Clear function mocks
     mockOnEditPublicProfile.mockClear();
@@ -278,46 +277,20 @@ describe('TrusteeDetailScreen', () => {
     // Test public edit button
     const publicEditButton = screen.getByTestId('button-edit-public-profile');
     publicEditButton.click();
-
-    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/contact/edit/public', {
-      state: {
-        trusteeId: '123',
-        trustee: mockTrustee,
-        cancelTo: '/trustees/123',
-        action: 'edit',
-        contactInformation: 'public',
-      },
-    });
+    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/contact/edit/public');
 
     // Test internal edit button
     const internalEditButton = screen.getByTestId('button-edit-internal-profile');
     internalEditButton.click();
-
-    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/contact/edit/internal', {
-      state: {
-        trusteeId: '123',
-        trustee: mockTrustee,
-        cancelTo: '/trustees/123',
-        action: 'edit',
-        contactInformation: 'internal',
-      },
-    });
+    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/contact/edit/internal');
 
     // Test other info edit button
     const otherInfoEditButton = screen.getByTestId('button-edit-other-information');
     otherInfoEditButton.click();
-
-    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/other/edit', {
-      state: {
-        trusteeId: '123',
-        trustee: mockTrustee,
-        cancelTo: '/trustees/123',
-        action: 'edit',
-      },
-    });
+    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/other/edit');
   });
 
-  test('should use location state trustee when present and avoid unnecessary API calls', async () => {
+  test('should use prop trustee when present and avoid unnecessary API calls', async () => {
     const updatedTrustee: Trustee = {
       ...mockTrustee,
       name: 'John Doe Updated',
@@ -332,22 +305,12 @@ describe('TrusteeDetailScreen', () => {
         email: 'john.updated@example.com',
       },
     };
-
-    const locationWithUpdatedState = {
-      pathname: '/trustees/123',
-      state: { trustee: updatedTrustee },
-    };
-
-    mockUseLocation.mockReturnValue(locationWithUpdatedState);
-    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-
-    renderWithRouter();
-
+    // Do not spy on getTrustee, should not be called
+    renderWithRouter(['/trustees/123'], updatedTrustee);
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe Updated');
     });
-
     expect(screen.getByTestId('trustee-street-address')).toHaveTextContent('456 Updated Street');
     expect(screen.getByTestId('trustee-city')).toHaveTextContent('New City');
     expect(screen.getByTestId('trustee-email')).toHaveTextContent('john.updated@example.com');
@@ -358,7 +321,7 @@ describe('TrusteeDetailScreen', () => {
   });
 
   test('should load from API when no location state is present', async () => {
-    mockUseLocation.mockReturnValue({
+    mockUseNavigate.mockReturnValue({
       pathname: '/trustees/123',
       state: null,
     });

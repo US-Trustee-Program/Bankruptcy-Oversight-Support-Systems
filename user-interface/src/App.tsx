@@ -51,7 +51,16 @@ function App() {
               <Route path="/data-verification" element={<DataVerificationScreen />}></Route>
               <Route path="/admin/*" element={<AdminScreen />}></Route>
               <Route path="/trustees" element={<TrusteesScreen />}>
-                <Route path="create" element={<TrusteeContactForm />} />
+                <Route
+                  path="create"
+                  element={
+                    <TrusteeContactForm
+                      action="create"
+                      contactInformation="public"
+                      cancelTo={location.pathname}
+                    />
+                  }
+                />
               </Route>
               <Route path="/trustees/:trusteeId/*" element={<TrusteeDetailScreen />}></Route>
               <Route index element={<GoHome />}></Route>

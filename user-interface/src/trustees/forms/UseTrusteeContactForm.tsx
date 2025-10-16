@@ -53,18 +53,6 @@ export interface TrusteeFormData {
   status?: TrusteeStatus;
 }
 
-export type TrusteeFormState = {
-  action: 'create' | 'edit';
-  cancelTo: string;
-  trusteeId?: string;
-  trustee?: Partial<TrusteeInput>;
-  contactInformation?: 'internal' | 'public';
-};
-
-type UseTrusteeFormProps = {
-  initialState: TrusteeFormState;
-};
-
 /**
  * Validates individual form fields with specific business rules
  */
@@ -93,23 +81,29 @@ function validateField(
   }
 }
 
-export function useTrusteeContactForm({ initialState }: UseTrusteeFormProps) {
-  const doEditInternalProfile =
-    initialState.action === 'edit' && initialState.contactInformation === 'internal';
-  const doEditPublicProfile =
-    initialState.action === 'edit' && initialState.contactInformation === 'public';
+export type UseTrusteeContactFormProps = {
+  trusteeId?: string;
+  action: 'create' | 'edit';
+  contactInformation: 'internal' | 'public';
+  cancelTo: string;
+  trustee?: Partial<TrusteeInput>;
+};
+
+export function useTrusteeContactForm(props: UseTrusteeContactFormProps) {
+  const doEditInternalProfile = props.action === 'edit' && props.contactInformation === 'internal';
+  const doEditPublicProfile = props.action === 'edit' && props.contactInformation === 'public';
 
   const getInitialFormData = (): TrusteeFormData => {
     let info: Partial<ContactInformation> | undefined;
 
-    if (doEditInternalProfile && initialState.trustee?.internal) {
-      info = initialState.trustee.internal;
-    } else if (doEditPublicProfile && initialState.trustee?.public) {
-      info = initialState.trustee.public;
+    if (doEditInternalProfile && props.trustee?.internal) {
+      info = props.trustee.internal;
+    } else if (doEditPublicProfile && props.trustee?.public) {
+      info = props.trustee.public;
     }
 
     return {
-      name: initialState.trustee?.name,
+      name: props.trustee?.name,
       address1: info?.address?.address1,
       address2: info?.address?.address2,
       city: info?.address?.city,
@@ -119,9 +113,9 @@ export function useTrusteeContactForm({ initialState }: UseTrusteeFormProps) {
       extension: info?.phone?.extension,
       email: info?.email,
       website: info?.website,
-      districts: initialState.trustee?.districts ?? undefined,
-      chapters: initialState.trustee?.chapters ?? undefined,
-      status: initialState.trustee?.status ?? 'active',
+      districts: props.trustee?.districts ?? undefined,
+      chapters: props.trustee?.chapters ?? undefined,
+      status: props.trustee?.status ?? 'active',
     };
   };
 
@@ -157,11 +151,11 @@ export function useTrusteeContactForm({ initialState }: UseTrusteeFormProps) {
       status: formData.status,
     };
 
-    Object.keys(trimmedData).forEach((key) => {
+    for (const key of Object.keys(trimmedData)) {
       if (trimmedData[key as keyof TrusteeFormData] === '') {
         trimmedData[key as keyof TrusteeFormData] = undefined;
       }
-    });
+    }
 
     if (override) {
       return { ...trimmedData, [override.name]: override.value } as TrusteeFormData;
