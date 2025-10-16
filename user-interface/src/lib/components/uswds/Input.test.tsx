@@ -25,12 +25,12 @@ describe('Tests for USWDS Input component.', () => {
     const inputEl = screen.getByTestId('input-1');
     expect(inputEl).toHaveValue('1');
 
-    await act(() => {
+    act(() => {
       ref.current?.setValue('2');
     });
     expect(inputEl).toHaveValue('2');
 
-    await act(() => {
+    act(() => {
       ref.current?.resetValue();
     });
 
@@ -80,12 +80,12 @@ describe('Tests for USWDS Input component when no value is initially set.', () =
     const inputEl = screen.getByTestId('input-1');
     expect(inputEl).toHaveValue('');
 
-    await act(() => {
+    act(() => {
       ref.current?.setValue('12345');
     });
     expect(inputEl).toHaveValue('12345');
 
-    await act(() => {
+    act(() => {
       ref.current?.resetValue();
     });
     expect(inputEl).toHaveValue('');
@@ -182,7 +182,7 @@ describe('Input additional coverage tests', () => {
 
     const inputEl = screen.getByTestId('test-focus');
 
-    await act(() => {
+    act(() => {
       ref.current?.focus();
     });
     expect(inputEl).toHaveFocus();
@@ -197,12 +197,12 @@ describe('Input additional coverage tests', () => {
     const inputEl = screen.getByTestId('test-disable');
     expect(inputEl).not.toBeDisabled();
 
-    await act(() => {
+    act(() => {
       ref.current?.disable(true);
     });
     expect(inputEl).toBeDisabled();
 
-    await act(() => {
+    act(() => {
       ref.current?.disable(false);
     });
     expect(inputEl).not.toBeDisabled();
