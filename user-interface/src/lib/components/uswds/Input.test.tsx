@@ -17,6 +17,10 @@ describe('Tests for USWDS Input component.', () => {
     );
   };
 
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
   test('Should change value when ref.setValue() is called and set value back to original when ref.resetValue() is called.', async () => {
     renderWithoutProps();
     const inputEl = screen.getByTestId('input-1');
@@ -202,7 +206,6 @@ describe('Input additional coverage tests', () => {
     act(() => ref.current?.focus());
     expect(inputEl).toHaveFocus();
 
-    // Test onFocus prop
     fireEvent.focus(inputEl);
     expect(mockOnFocus).toHaveBeenCalled();
   });
