@@ -79,7 +79,7 @@ async function verifyToken(token: string): Promise<CamsJwt> {
         message: 'Access token claims missing groups.',
       });
     }
-    return maybeCamsJwt as CamsJwt;
+    return maybeCamsJwt;
   } catch (originalError) {
     throw isCamsError(originalError)
       ? originalError
@@ -93,18 +93,10 @@ async function getUser(accessToken: string): Promise<{ user: CamsUserReference; 
   try {
     const jwt = await verifyToken(accessToken);
 
-    const callOkta = async () =>
-      fetch(userInfoUri, {
-        method: 'GET',
-        headers: { authorization: 'Bearer ' + accessToken },
-      });
-
-    let response = await callOkta();
-
-    if (!response.ok) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      response = await callOkta();
-    }
+    const response = await fetch(userInfoUri, {
+      method: 'GET',
+      headers: { authorization: 'Bearer ' + accessToken },
+    });
 
     if (response.ok) {
       const oktaUser = (await response.json()) as OktaUserInfo;
@@ -130,12 +122,15 @@ async function getUser(accessToken: string): Promise<{ user: CamsUserReference; 
 
       return { user, jwt };
     } else {
-      throw new Error('Failed to retrieve user info from Okta.');
+      const errorResponseBody = response.bodyUsed ? await response.text() : 'No response body';
+      throw new UnauthorizedError(MODULE_NAME, {
+        message: `Failed to retrieve user info from Okta. ${errorResponseBody}`,
+      });
     }
   } catch (originalError) {
     throw isCamsError(originalError)
       ? originalError
-      : new UnauthorizedError(MODULE_NAME, { originalError });
+      : new UnauthorizedError(MODULE_NAME, { originalError, message: originalError.message });
   }
 }
 

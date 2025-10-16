@@ -6,15 +6,25 @@ import { ServerConfigError } from '../../common-errors/server-config-error';
 import { CamsSession } from '../../../../common/src/cams/session';
 import { isNotFoundError } from '../../common-errors/not-found-error';
 import UsersHelpers from '../users/users.helpers';
+import { CamsUserReference } from '../../../../common/src/cams/users';
+import { CamsJwt } from '../../../../common/src/cams/jwt';
+import { delay } from '../../../../common/src/delay';
+import { UserSessionCacheRepository } from '../gateways.types';
 
 const MODULE_NAME = 'USER-SESSION-GATEWAY';
 
-export class UserSessionUseCase {
-  async lookup(context: ApplicationContext, token: string, provider: string): Promise<CamsSession> {
-    const sessionCacheRepository = getUserSessionCacheRepository(context);
+type GetUserResponse = { user: CamsUserReference; jwt: CamsJwt };
 
+export class UserSessionUseCase {
+  private readonly sessionCacheRepository: UserSessionCacheRepository;
+
+  constructor(context: ApplicationContext) {
+    this.sessionCacheRepository = getUserSessionCacheRepository(context);
+  }
+
+  private async lookupSession(context: ApplicationContext, token: string) {
     try {
-      const session = await sessionCacheRepository.read(token);
+      const session = await this.sessionCacheRepository.read(token);
       context.logger.debug(MODULE_NAME, 'Found session in cache.');
       return session;
     } catch (originalError) {
@@ -25,36 +35,79 @@ export class UserSessionUseCase {
         throw originalError;
       }
     }
+  }
 
+  private async getUserFromIdentityProvider(
+    context: ApplicationContext,
+    token: string,
+  ): Promise<GetUserResponse> {
+    const authGateway = getAuthorizationGateway(context);
+    if (!authGateway) {
+      throw new ServerConfigError(MODULE_NAME, {
+        message: 'Unsupported authentication provider.',
+      });
+    }
+    const MAX_RETRIES = 3;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        return await authGateway.getUser(token);
+      } catch (error) {
+        if (attempt >= MAX_RETRIES) {
+          throw error;
+        }
+        context.logger.error(
+          MODULE_NAME,
+          `Identity provider call failed (attempt ${attempt}/${MAX_RETRIES})`,
+          error,
+        );
+        await delay(2 ** attempt * 1000);
+      }
+    }
+  }
+
+  private async writeSession(context: ApplicationContext, session: CamsSession) {
+    context.logger.debug(MODULE_NAME, 'Putting session in cache.');
+    await this.sessionCacheRepository.upsert(session);
+  }
+
+  async lookup(context: ApplicationContext, token: string): Promise<CamsSession> {
     try {
-      const authGateway = getAuthorizationGateway(context);
-      if (!authGateway) {
-        throw new ServerConfigError(MODULE_NAME, {
-          message: 'Unsupported authentication provider.',
-        });
+      // Check for a cached session to return.
+      const storedSession = await this.lookupSession(context, token);
+      if (storedSession) {
+        return storedSession;
       }
 
-      context.logger.debug(MODULE_NAME, 'Getting user info from Okta.');
-      const { user: camsUserReference, jwt } = await authGateway.getUser(token);
+      // Otherwise get the user information from the identity provider.
+      const { user: camsUserReference, jwt } = await this.getUserFromIdentityProvider(
+        context,
+        token,
+      );
+
+      // Check for missing JWT and throw UnauthorizedError if not present.
+      if (!jwt) {
+        throw new UnauthorizedError('Missing JWT from identity provider');
+      }
+
+      // Augment the user session with additional roles if applicable.
       const user = await UsersHelpers.getPrivilegedIdentityUser(context, camsUserReference.id);
 
-      const session: CamsSession = {
+      // Cache and return a new session.
+      const newSession = {
         user,
         accessToken: token,
-        provider: provider,
+        provider: context.config.authConfig.provider,
         expires: jwt.claims.exp,
         issuer: jwt.claims.iss,
       };
-
-      context.logger.debug(MODULE_NAME, 'Putting session in cache.');
-      await sessionCacheRepository.upsert(session);
-      return session;
-    } catch (error) {
-      throw isCamsError(error)
-        ? error
+      await this.writeSession(context, newSession);
+      return newSession;
+    } catch (originalError) {
+      throw isCamsError(originalError)
+        ? originalError
         : new UnauthorizedError(MODULE_NAME, {
-            message: error.message,
-            originalError: error,
+            message: originalError.message,
+            originalError,
           });
     }
   }

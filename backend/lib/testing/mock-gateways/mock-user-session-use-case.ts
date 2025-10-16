@@ -7,12 +7,9 @@ import { CamsJwtClaims } from '../../../../common/src/cams/jwt';
 const cache = new Map<string, CamsSession>();
 
 export class MockUserSessionUseCase {
-  async lookup(
-    _context: ApplicationContext,
-    accessToken: string,
-    provider: string,
-  ): Promise<CamsSession> {
+  async lookup(context: ApplicationContext, accessToken: string): Promise<CamsSession> {
     // TODO: MAYBE we overlay the PIM record using the user helper function.
+    const { provider } = context.config.authConfig;
     const { user } = await getUser(accessToken);
 
     const parts = accessToken.split('.');

@@ -13,13 +13,12 @@ import { CaseNoteInput } from '@common/cams/cases';
 import { getCamsUserReference } from '@common/cams/session';
 import LocalStorage from '@/lib/utils/local-storage';
 import LocalFormCache from '@/lib/utils/local-form-cache';
-import { sanitizeText } from '@/lib/utils/sanitize-text';
+import { DOMPURIFY_CONFIG, sanitizeText } from '@/lib/utils/sanitize-text';
 import useFeatureFlags, { FORMAT_CASE_NOTES } from '@/lib/hooks/UseFeatureFlags';
 import TextArea from '@/lib/components/uswds/TextArea';
 import RichTextEditor, {
   RichTextEditorRef,
 } from '@/lib/components/cams/RichTextEditor/RichTextEditor';
-import { DOMPURIFY_CONFIG } from '@/lib/utils/sanitize-text';
 import DOMPurify from 'dompurify';
 
 const useThrottleCallback = (callback: () => void, delay: number) => {
