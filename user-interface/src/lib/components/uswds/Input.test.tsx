@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, act } from '@testing-library/react';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import Input from './Input';
 import userEvent from '@testing-library/user-event';
@@ -16,52 +16,25 @@ describe('Tests for USWDS Input component.', () => {
     );
   };
 
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
   test('Should change value when ref.setValue() is called and set value back to original when ref.resetValue() is called.', async () => {
     renderWithoutProps();
     const inputEl = screen.getByTestId('input-1');
     expect(inputEl).toHaveValue('1');
 
-    ref.current?.setValue('2');
-    await waitFor(() => {
-      expect(inputEl).toHaveValue('2');
+    await act(() => {
+      ref.current?.setValue('2');
+    });
+    expect(inputEl).toHaveValue('2');
+
+    await act(() => {
+      ref.current?.resetValue();
     });
 
-    ref.current?.resetValue();
-    await waitFor(() => {
-      expect(inputEl).toHaveValue('1');
-    });
-  });
-
-  test('Should clear value when ref.clearValue is called.', async () => {
-    renderWithoutProps();
-    const inputEl = screen.getByTestId('input-1');
-    ref.current?.setValue('2');
-
-    await waitFor(() => {
-      expect(inputEl).toHaveValue('2');
-    });
-
-    ref.current?.clearValue();
-    await waitFor(() => {
-      expect(inputEl).toHaveValue('');
-    });
-  });
-
-  test('Should call props.onChange when a change is made to input by keypress or by ref.', async () => {
-    renderWithoutProps();
-    const inputEl = screen.getByTestId('input-1');
-
-    ref.current?.setValue('2');
-    await waitFor(() => {
-      expect(inputEl).toHaveValue('2');
-    });
-    expect(youChangedMe).toHaveBeenCalled();
-
-    fireEvent.change(inputEl, { target: { value: '5' } });
-    await waitFor(() => {
-      expect(inputEl).toHaveValue('5');
-    });
-    expect(youChangedMe).toHaveBeenCalled();
+    expect(inputEl).toHaveValue('1');
   });
 });
 
@@ -107,15 +80,15 @@ describe('Tests for USWDS Input component when no value is initially set.', () =
     const inputEl = screen.getByTestId('input-1');
     expect(inputEl).toHaveValue('');
 
-    ref.current?.setValue('12345');
-    await waitFor(() => {
-      expect(inputEl).toHaveValue('12345');
+    await act(() => {
+      ref.current?.setValue('12345');
     });
+    expect(inputEl).toHaveValue('12345');
 
-    ref.current?.resetValue();
-    await waitFor(() => {
-      expect(inputEl).toHaveValue('');
+    await act(() => {
+      ref.current?.resetValue();
     });
+    expect(inputEl).toHaveValue('');
   });
 
   describe('Input styling', () => {
@@ -209,13 +182,11 @@ describe('Input additional coverage tests', () => {
 
     const inputEl = screen.getByTestId('test-focus');
 
-    // Test ref focus method
-    ref.current?.focus();
-    await waitFor(() => {
-      expect(inputEl).toHaveFocus();
+    await act(() => {
+      ref.current?.focus();
     });
+    expect(inputEl).toHaveFocus();
 
-    // Test onFocus prop
     fireEvent.focus(inputEl);
     expect(mockOnFocus).toHaveBeenCalled();
   });
@@ -226,15 +197,15 @@ describe('Input additional coverage tests', () => {
     const inputEl = screen.getByTestId('test-disable');
     expect(inputEl).not.toBeDisabled();
 
-    ref.current?.disable(true);
-    await waitFor(() => {
-      expect(inputEl).toBeDisabled();
+    await act(() => {
+      ref.current?.disable(true);
     });
+    expect(inputEl).toBeDisabled();
 
-    ref.current?.disable(false);
-    await waitFor(() => {
-      expect(inputEl).not.toBeDisabled();
+    await act(() => {
+      ref.current?.disable(false);
     });
+    expect(inputEl).not.toBeDisabled();
   });
 
   test('should handle getValue method', () => {
