@@ -235,9 +235,9 @@ function TrusteeContactForm(props: Readonly<UseTrusteeContactFormProps>) {
     // Check if this is an address-related field
     const isAddressField = requiredAddressFields.includes(fieldName);
 
+    updateField(fieldName, value);
     debounce(() => {
       validateFieldAndUpdate(fieldName, value, spec);
-      updateField(fieldName, value);
 
       // For internal profile editing when a field is cleared, check if we need to clear address validation errors
       if (props.contactInformation === 'internal' && isAddressField && value.trim() === '') {
@@ -268,15 +268,17 @@ function TrusteeContactForm(props: Readonly<UseTrusteeContactFormProps>) {
     isMultiSelect: boolean,
   ): (selectedOptions: ComboOption[]) => void {
     return (selectedOptions: ComboOption[]) => {
-      debounce(() => {
-        const selectedValues = selectedOptions.map((option) => option.value as T);
-        validateFieldAndUpdate(fieldName, selectedValues.join(','), getDynamicSpec());
+      // Update form state immediately so consumers (and submit) see the new value.
+      const selectedValues = selectedOptions.map((option) => option.value as T);
+      if (isMultiSelect) {
+        updateField(fieldName, selectedValues);
+      } else {
+        updateField(fieldName, selectedValues[0]);
+      }
 
-        if (isMultiSelect) {
-          updateField(fieldName, selectedValues);
-        } else {
-          updateField(fieldName, selectedValues[0]);
-        }
+      // Debounce validation only.
+      debounce(() => {
+        validateFieldAndUpdate(fieldName, selectedValues.join(','), getDynamicSpec());
       }, 300);
     };
   }
@@ -388,10 +390,13 @@ function TrusteeContactForm(props: Readonly<UseTrusteeContactFormProps>) {
                 label="State"
                 selections={formData.state ? [formData.state] : []}
                 onUpdateSelection={(selectedOptions) => {
+                  // Apply selection immediately so formData is in sync for submission.
+                  const value = selectedOptions[0]?.value;
+                  updateField('state', value);
+
+                  // Debounce validation only.
                   debounce(() => {
-                    const value = selectedOptions[0]?.value;
                     validateFieldAndUpdate('state', value, getDynamicSpec());
-                    updateField('state', value);
                   }, 300);
                 }}
                 autoComplete="off"
@@ -409,9 +414,12 @@ function TrusteeContactForm(props: Readonly<UseTrusteeContactFormProps>) {
                 value={formData.zipCode}
                 onChange={(e) => {
                   const { value } = e.target;
+                  // Update immediately so the value is present for submission and other logic.
+                  updateField('zipCode', value);
+
+                  // Debounce validation only.
                   debounce(() => {
                     validateFieldAndUpdate('zipCode', value, getDynamicSpec());
-                    updateField('zipCode', value);
                   }, 300);
                 }}
                 errorMessage={fieldErrors['zipCode']}
