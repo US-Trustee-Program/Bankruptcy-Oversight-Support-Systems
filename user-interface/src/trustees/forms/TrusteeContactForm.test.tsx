@@ -151,12 +151,7 @@ describe('TrusteeContactForm Tests', () => {
     expect(nameInput).toBeInTheDocument();
   });
 
-  test.skip('should handle form submission for creating a new trustee', async () => {
-    // TODO: This test is skipped due to form validation issues preventing submission
-    // The form validation logic requires all fields to be properly filled and validated
-    // before the handleSubmit function executes. Need to investigate and fix the
-    // "Value is undefined" validation errors that prevent form submission.
-
+  test('should handle form submission for creating a new trustee', async () => {
     const mockPostTrustee = vi.fn().mockResolvedValue({
       data: { trusteeId: 'new-trustee-123' },
     });
@@ -192,9 +187,7 @@ describe('TrusteeContactForm Tests', () => {
     await user.type(phoneInput, '555-123-4567');
     await user.type(emailInput, 'test@example.com');
 
-    // Find and interact with state combo box
-    const stateComboInput = screen.getByRole('combobox', { name: /state/i });
-    await user.type(stateComboInput, 'CA{enter}');
+    await testingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
 
     // Submit the form
     await user.click(screen.getByRole('button', { name: /save/i }));
@@ -261,11 +254,10 @@ describe('TrusteeContactForm Tests', () => {
       expect(stateCombo).toBeInTheDocument();
     });
 
-    const user = userEvent.setup();
     const stateCombo = screen.getByRole('combobox', { name: /state/i });
 
-    // Test state selection which exercises the onUpdateSelection callback
-    await user.type(stateCombo, 'CA');
+    // Use shared helper to select California (index 5)
+    await testingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
 
     // Verify the field can be interacted with
     expect(stateCombo).toBeInTheDocument();
