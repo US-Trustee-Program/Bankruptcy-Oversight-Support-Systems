@@ -6,7 +6,7 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import * as apiModule from '@/lib/models/api';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import { CamsSession } from '@common/cams/session';
-import { urlRegex } from '../../../../../common/src/cams/test-utilities/regex';
+import * as delayModule from '@common/delay';
 
 const MOCK_OAUTH_CONFIG = { issuer: 'https://mock.okta.com/oauth2/default' };
 
@@ -22,6 +22,8 @@ const NEW_EXPIRATION = EXPIRATION + TEN_SECONDS * 2;
 
 const ACCESS_TOKEN = MockData.getJwt();
 const REFRESHED_ACCESS_TOKEN = MockData.getJwt();
+
+vi.spyOn(delayModule, 'delay').mockImplementation(async (_, cb) => (cb ? cb() : undefined));
 
 describe('Okta library', () => {
   const { waitFor } = TestingUtilities;
@@ -140,13 +142,15 @@ describe('Okta library', () => {
       expect(removeRefreshingTokenSpy).toHaveBeenCalled();
 
       expect(getSession).toHaveBeenCalled();
-      expect(setSession).toHaveBeenCalledWith({
-        provider: 'okta',
-        accessToken: REFRESHED_ACCESS_TOKEN,
-        user: expect.any(Object),
-        expires: expect.any(Number),
-        issuer: expect.stringMatching(urlRegex),
-      });
+      expect(setSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          provider: 'okta',
+          accessToken: REFRESHED_ACCESS_TOKEN,
+          user: { id: userClaims.sub, name: 'mock user' },
+          expires: 7200020000,
+          issuer: '',
+        }),
+      );
     });
 
     test('should refresh the access token after it has expired', async () => {

@@ -15,6 +15,7 @@ import { OfficeStaff } from '../../adapters/gateways/mongo/offices.mongo.reposit
 import { ACMS_SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditable';
 import { MANHATTAN } from '../../../../common/src/cams/test-utilities/courts.mock';
 import { OfficeUserRolesPredicate } from '../../../../common/src/api/search';
+import { delay } from '../../../../common/src/delay';
 
 const randomId = () => {
   return '' + Math.random() * 99999999;
@@ -201,9 +202,10 @@ describe('Case assignment tests', () => {
     test('should log but not reject Promise.all when one of multiple searches fails', async () => {
       jest
         .spyOn(MockMongoRepository.prototype, 'search')
-        .mockImplementation((predicate: OfficeUserRolesPredicate) => {
+        .mockImplementation(async (predicate: OfficeUserRolesPredicate) => {
           if (predicate.userId === attorneyJoeNobel.id) {
-            return new Promise((resolve) => setTimeout(() => resolve([officeStaffJoeNobel]), 200));
+            await delay(200);
+            return Promise.resolve([officeStaffJoeNobel]);
           } else {
             return Promise.reject();
           }

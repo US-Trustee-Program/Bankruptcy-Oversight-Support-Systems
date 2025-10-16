@@ -2,9 +2,7 @@ import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import Alert, { AlertRefType, UswdsAlertStyle } from './Alert';
 import { act, render, screen, waitFor } from '@testing-library/react';
-
-const sleep = (milliseconds: number) =>
-  new Promise((callback) => setTimeout(callback, milliseconds));
+import { delay } from '@common/delay';
 
 describe('Test Alert component', () => {
   test('should be visible for provided timeout', async () => {
@@ -38,7 +36,7 @@ describe('Test Alert component', () => {
     expect(alert).not.toHaveClass('usa-alert__hidden');
     expect(alert).not.toHaveClass('usa-alert__unset');
 
-    await sleep(3000);
+    await delay(3000);
     await waitFor(() => {
       expect(alert).toHaveClass('usa-alert__visible');
     });

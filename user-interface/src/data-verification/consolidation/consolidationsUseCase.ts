@@ -18,6 +18,7 @@ import { Consolidation } from '@common/cams/events';
 import { ResponseBody } from '@common/api/response';
 import { ComboOption, ComboOptionList } from '@/lib/components/combobox/ComboBox';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
+import { delay } from '@common/delay';
 
 type ChildCaseFacts = { isConsolidationChildCase: boolean; leadCase?: CaseSummary };
 
@@ -201,9 +202,9 @@ const consolidationUseCase = (
         .finally(() => {
           controls.additionalCaseDivisionRef.current?.disable(false);
           controls.additionalCaseNumberRef.current?.disable(false);
-          setTimeout(() => {
+          delay(100, () => {
             (currentInput as HTMLElement).focus();
-          }, 100);
+          });
         });
     }
   };

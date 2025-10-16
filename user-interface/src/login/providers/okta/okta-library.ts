@@ -4,6 +4,7 @@ import { addApiBeforeHook } from '@/lib/models/api';
 import { nowInSeconds } from '@common/date-helper';
 import Api2 from '@/lib/models/api2';
 import { initializeSessionEndLogout } from '@/login/session-end-logout';
+import { delay } from '@common/delay';
 
 const SAFE_LIMIT = 300;
 
@@ -33,7 +34,7 @@ export async function refreshOktaToken(oktaAuth: OktaAuth) {
     } else if (!isTokenBeingRefreshed) {
       // THIS IS SUS....
       const theTime = Math.floor(Math.random() * 15);
-      setTimeout(() => refreshTheToken(oktaAuth), theTime);
+      await delay(theTime, () => refreshTheToken(oktaAuth));
     }
   }
 }
