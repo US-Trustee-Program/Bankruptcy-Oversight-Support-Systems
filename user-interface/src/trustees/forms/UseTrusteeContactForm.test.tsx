@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 import { useTrusteeContactForm, TRUSTEE_SPEC } from './UseTrusteeContactForm';
-import { TrusteeFormData, TrusteeFormState } from './UseTrusteeContactForm';
+import { TrusteeFormData } from './UseTrusteeContactForm';
 import { ContactInformation } from '@common/cams/contact';
 import { ChapterType } from '@common/cams/trustees';
 
@@ -99,13 +99,12 @@ describe('useTrusteeForm', () => {
 
   describe('initialization', () => {
     test('should initialize with empty values when no trustee data provided', () => {
-      const initialState: TrusteeFormState = {
-        action: 'create',
+      const props = {
+        action: 'create' as const,
+        contactInformation: 'public' as const,
         cancelTo: '/trustees',
       };
-
-      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
-
+      const { result } = renderHook(() => useTrusteeContactForm(props));
       expect(result.current.formData).toEqual({
         name: undefined,
         address1: undefined,
@@ -119,24 +118,23 @@ describe('useTrusteeForm', () => {
         website: undefined,
         districts: undefined,
         chapters: undefined,
-        status: 'active',
+        status: 'active' as const,
       });
     });
 
     test('should initialize with trustee data for create action', () => {
-      const initialState: TrusteeFormState = {
-        action: 'create',
+      const props = {
+        action: 'create' as const,
+        contactInformation: 'public' as const,
         cancelTo: '/trustees',
         trustee: {
           name: 'Test Trustee',
           districts: mockDistricts,
           chapters: mockChapters,
-          status: 'active',
+          status: 'active' as const,
         },
       };
-
-      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
-
+      const { result } = renderHook(() => useTrusteeContactForm(props));
       expect(result.current.formData).toEqual({
         name: 'Test Trustee',
         address1: undefined,
@@ -150,27 +148,25 @@ describe('useTrusteeForm', () => {
         website: undefined,
         districts: mockDistricts,
         chapters: mockChapters,
-        status: 'active',
+        status: 'active' as const,
       });
     });
 
     test('should initialize with internal contact data for edit action', () => {
-      const initialState: TrusteeFormState = {
-        action: 'edit',
+      const props = {
+        action: 'edit' as const,
         cancelTo: '/trustees/1',
+        contactInformation: 'internal' as const,
         trusteeId: '1',
-        contactInformation: 'internal',
         trustee: {
           name: 'Internal Trustee',
           internal: mockInternalContact,
           districts: mockDistricts,
           chapters: mockChapters,
-          status: 'active',
+          status: 'active' as const,
         },
       };
-
-      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
-
+      const { result } = renderHook(() => useTrusteeContactForm(props));
       expect(result.current.formData).toEqual({
         name: 'Internal Trustee',
         address1: mockInternalContact.address.address1,
@@ -184,27 +180,25 @@ describe('useTrusteeForm', () => {
         website: undefined,
         districts: mockDistricts,
         chapters: mockChapters,
-        status: 'active',
+        status: 'active' as const,
       });
     });
 
     test('should initialize with public contact data for edit action', () => {
-      const initialState: TrusteeFormState = {
-        action: 'edit',
+      const props = {
+        action: 'edit' as const,
         cancelTo: '/trustees/1',
+        contactInformation: 'public' as const,
         trusteeId: '1',
-        contactInformation: 'public',
         trustee: {
           name: 'Public Trustee',
           public: mockPublicContact,
           districts: mockDistricts,
           chapters: mockChapters,
-          status: 'active',
+          status: 'active' as const,
         },
       };
-
-      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
-
+      const { result } = renderHook(() => useTrusteeContactForm(props));
       expect(result.current.formData).toEqual({
         name: 'Public Trustee',
         address1: mockPublicContact.address.address1,
@@ -218,27 +212,24 @@ describe('useTrusteeForm', () => {
         website: undefined,
         districts: mockDistricts,
         chapters: mockChapters,
-        status: 'active',
+        status: 'active' as const,
       });
     });
 
     test('should handle missing contact information in edit mode', () => {
-      const initialState: TrusteeFormState = {
-        action: 'edit',
+      const props = {
+        action: 'edit' as const,
         cancelTo: '/trustees/1',
+        contactInformation: 'internal' as const,
         trusteeId: '1',
-        contactInformation: 'internal',
         trustee: {
           name: 'Missing Contact Trustee',
-          // internal contact is missing
           districts: mockDistricts,
           chapters: mockChapters,
-          status: 'active',
+          status: 'active' as const,
         },
       };
-
-      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
-
+      const { result } = renderHook(() => useTrusteeContactForm(props));
       expect(result.current.formData).toEqual({
         name: 'Missing Contact Trustee',
         address1: undefined,
@@ -252,54 +243,48 @@ describe('useTrusteeForm', () => {
         website: undefined,
         districts: mockDistricts,
         chapters: mockChapters,
-        status: 'active',
+        status: 'active' as const,
       });
     });
   });
 
   describe('updateField', () => {
     test('should update a single field', () => {
-      const initialState: TrusteeFormState = {
-        action: 'create',
+      const props = {
+        action: 'create' as const,
+        contactInformation: 'public' as const,
         cancelTo: '/trustees',
       };
-
-      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
-
+      const { result } = renderHook(() => useTrusteeContactForm(props));
       act(() => {
         result.current.updateField('name', 'Updated Name');
       });
-
       expect(result.current.formData.name).toBe('Updated Name');
     });
 
     test('should update a field with different types of values', () => {
-      const initialState: TrusteeFormState = {
-        action: 'create',
+      const props = {
+        action: 'create' as const,
+        contactInformation: 'public' as const,
         cancelTo: '/trustees',
       };
-
-      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
-
+      const { result } = renderHook(() => useTrusteeContactForm(props));
       // Test with string
       act(() => {
         result.current.updateField('name', 'String Value');
       });
       expect(result.current.formData.name).toBe('String Value');
-
       // Test with array
       const districts = ['District A', 'District B'];
       act(() => {
         result.current.updateField('districts', districts);
       });
       expect(result.current.formData.districts).toEqual(districts);
-
       // Test with empty array
       act(() => {
         result.current.updateField('districts', []);
       });
       expect(result.current.formData.districts).toEqual([]);
-
       // Test with enum value
       act(() => {
         result.current.updateField('status', 'inactive');
@@ -310,24 +295,21 @@ describe('useTrusteeForm', () => {
 
   describe('updateMultipleFields', () => {
     test('should update multiple fields at once', () => {
-      const initialState: TrusteeFormState = {
-        action: 'create',
+      const props = {
+        action: 'create' as const,
+        contactInformation: 'public' as const,
         cancelTo: '/trustees',
       };
-
-      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
-
+      const { result } = renderHook(() => useTrusteeContactForm(props));
       const updates = {
         name: 'Multiple Update',
         address1: '123 Main St',
         city: 'Anytown',
         state: 'CA',
       };
-
       act(() => {
         result.current.updateMultipleFields(updates);
       });
-
       expect(result.current.formData.name).toBe(updates.name);
       expect(result.current.formData.address1).toBe(updates.address1);
       expect(result.current.formData.city).toBe(updates.city);
@@ -335,50 +317,44 @@ describe('useTrusteeForm', () => {
     });
 
     test('should handle empty updates', () => {
-      const initialState: TrusteeFormState = {
-        action: 'create',
+      const props = {
+        action: 'create' as const,
+        contactInformation: 'public' as const,
         cancelTo: '/trustees',
         trustee: {
           name: 'Initial Name',
         },
       };
-
-      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
-
+      const { result } = renderHook(() => useTrusteeContactForm(props));
       act(() => {
         result.current.updateMultipleFields({});
       });
-
       expect(result.current.formData.name).toBe('Initial Name');
     });
   });
 
   describe('resetForm', () => {
     test('should reset form to initial values', () => {
-      const initialState: TrusteeFormState = {
-        action: 'create',
+      const props = {
+        action: 'create' as const,
+        contactInformation: 'public' as const,
         cancelTo: '/trustees',
         trustee: {
           name: 'Initial Name',
         },
       };
-
-      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
-
+      const { result } = renderHook(() => useTrusteeContactForm(props));
       // First update some values
       act(() => {
         result.current.updateField('name', 'Changed Name');
         result.current.updateField('address1', 'Changed Address');
       });
-
       expect(result.current.formData.name).toBe('Changed Name');
       expect(result.current.formData.address1).toBe('Changed Address');
-
       // Then reset
       act(() => {
         result.current.resetForm();
       });
-
       expect(result.current.formData.name).toBe('Initial Name');
       expect(result.current.formData.address1).toBeUndefined();
     });
@@ -386,13 +362,12 @@ describe('useTrusteeForm', () => {
 
   describe('getFormData', () => {
     test('should return trimmed form data', () => {
-      const initialState: TrusteeFormState = {
-        action: 'create',
+      const props = {
+        action: 'create' as const,
+        contactInformation: 'public' as const,
         cancelTo: '/trustees',
       };
-
-      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
-
+      const { result } = renderHook(() => useTrusteeContactForm(props));
       // Update with values with spaces
       act(() => {
         result.current.updateMultipleFields({
@@ -406,9 +381,7 @@ describe('useTrusteeForm', () => {
           email: ' test@example.com ',
         });
       });
-
       const trimmedData = result.current.getFormData();
-
       expect(trimmedData.name).toBe('Test Name');
       expect(trimmedData.address1).toBe('123 Main St');
       expect(trimmedData.address2).toBe('Apt 2');
@@ -420,13 +393,12 @@ describe('useTrusteeForm', () => {
     });
 
     test('should convert empty strings to undefined for optional fields', () => {
-      const initialState: TrusteeFormState = {
-        action: 'create',
+      const props = {
+        action: 'create' as const,
+        contactInformation: 'public' as const,
         cancelTo: '/trustees',
       };
-
-      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
-
+      const { result } = renderHook(() => useTrusteeContactForm(props));
       act(() => {
         result.current.updateMultipleFields({
           name: 'Test Name',
@@ -440,21 +412,18 @@ describe('useTrusteeForm', () => {
           email: 'test@example.com',
         });
       });
-
       const trimmedData = result.current.getFormData();
-
       expect(trimmedData.address2).toBeUndefined();
       expect(trimmedData.extension).toBeUndefined();
     });
 
     test('should keep empty arrays empty', () => {
-      const initialState: TrusteeFormState = {
-        action: 'create',
+      const props = {
+        action: 'create' as const,
+        contactInformation: 'public' as const,
         cancelTo: '/trustees',
       };
-
-      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
-
+      const { result } = renderHook(() => useTrusteeContactForm(props));
       act(() => {
         result.current.updateMultipleFields({
           name: 'Test Name',
@@ -462,49 +431,41 @@ describe('useTrusteeForm', () => {
           chapters: [],
         });
       });
-
       const trimmedData = result.current.getFormData();
-
       expect(trimmedData.districts).toEqual([]);
       expect(trimmedData.chapters).toEqual([]);
     });
 
     test('should override a field value when provided', () => {
-      const initialState: TrusteeFormState = {
-        action: 'create',
+      const props = {
+        action: 'create' as const,
+        contactInformation: 'public' as const,
         cancelTo: '/trustees',
       };
-
-      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
-
+      const { result } = renderHook(() => useTrusteeContactForm(props));
       act(() => {
         result.current.updateField('name', 'Original Name');
       });
-
       const override = {
         name: 'name' as keyof Partial<TrusteeFormData>,
         value: 'Overridden Name',
       };
-
       const dataWithOverride = result.current.getFormData(override);
-
       expect(dataWithOverride.name).toBe('Overridden Name');
     });
 
     test('should maintain non-empty arrays in the form data', () => {
-      const initialState: TrusteeFormState = {
-        action: 'create',
+      const props = {
+        action: 'create' as const,
+        contactInformation: 'public' as const,
         cancelTo: '/trustees',
         trustee: {
           districts: mockDistricts,
           chapters: mockChapters,
         },
       };
-
-      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
-
+      const { result } = renderHook(() => useTrusteeContactForm(props));
       const trimmedData = result.current.getFormData();
-
       expect(trimmedData.districts).toEqual(mockDistricts);
       expect(trimmedData.chapters).toEqual(mockChapters);
     });
@@ -513,19 +474,17 @@ describe('useTrusteeForm', () => {
   describe('getDynamicSpec', () => {
     test('should exclude address validation when all address fields are empty in internal edit mode', () => {
       // Test for lines 222-223 and 225-230
-      const initialState: TrusteeFormState = {
-        action: 'edit',
+      const props = {
+        action: 'edit' as const,
         cancelTo: '/trustees/1',
         trusteeId: '1',
-        contactInformation: 'internal',
+        contactInformation: 'internal' as const,
         trustee: {
           name: 'Test Trustee',
-          status: 'active',
+          status: 'active' as const,
         },
       };
-
-      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
-
+      const { result } = renderHook(() => useTrusteeContactForm(props));
       // Make sure all address fields are empty
       act(() => {
         result.current.updateMultipleFields({
@@ -535,10 +494,8 @@ describe('useTrusteeForm', () => {
           zipCode: '',
         });
       });
-
       // Get the dynamic spec
       const dynamicSpec = result.current.getDynamicSpec();
-
       // Check that address-related validations are excluded
       expect(dynamicSpec.name).toBeUndefined(); // Name is always excluded in internal edit mode
       expect(dynamicSpec.address1).toBeUndefined();
@@ -546,25 +503,22 @@ describe('useTrusteeForm', () => {
       expect(dynamicSpec.city).toBeUndefined();
       expect(dynamicSpec.state).toBeUndefined();
       expect(dynamicSpec.zipCode).toBeUndefined();
-
       // Status should still be included
       expect(dynamicSpec.status).toBeDefined();
     });
 
     test('should include address validation when some address fields are populated in internal edit mode', () => {
-      const initialState: TrusteeFormState = {
-        action: 'edit',
+      const props = {
+        action: 'edit' as const,
         cancelTo: '/trustees/1',
         trusteeId: '1',
-        contactInformation: 'internal',
+        contactInformation: 'internal' as const,
         trustee: {
           name: 'Test Trustee',
-          status: 'active',
+          status: 'active' as const,
         },
       };
-
-      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
-
+      const { result } = renderHook(() => useTrusteeContactForm(props));
       // Set one address field to be non-empty
       act(() => {
         result.current.updateMultipleFields({
@@ -574,10 +528,8 @@ describe('useTrusteeForm', () => {
           zipCode: '',
         });
       });
-
       // Get the dynamic spec
       const dynamicSpec = result.current.getDynamicSpec();
-
       // Check that address-related validations are included
       expect(dynamicSpec.name).toBeUndefined(); // Name is always excluded in internal edit mode
       expect(dynamicSpec.address1).toBeDefined();
@@ -589,126 +541,108 @@ describe('useTrusteeForm', () => {
 
     test('should exclude phone validation when phone is empty in internal edit mode', () => {
       // Test for lines 232-233
-      const initialState: TrusteeFormState = {
-        action: 'edit',
+      const props = {
+        action: 'edit' as const,
         cancelTo: '/trustees/1',
         trusteeId: '1',
-        contactInformation: 'internal',
+        contactInformation: 'internal' as const,
         trustee: {
           name: 'Test Trustee',
-          status: 'active',
+          status: 'active' as const,
         },
       };
-
-      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
-
+      const { result } = renderHook(() => useTrusteeContactForm(props));
       // Make sure phone is empty
       act(() => {
         result.current.updateField('phone', '');
       });
-
       // Get the dynamic spec
       const dynamicSpec = result.current.getDynamicSpec();
-
       // Check that phone validation is excluded
       expect(dynamicSpec.phone).toBeUndefined();
-
       // Extension is not excluded because it's optional anyway
       expect(dynamicSpec.extension).toBeDefined();
     });
 
     test('should include phone validation when phone is populated in internal edit mode', () => {
-      const initialState: TrusteeFormState = {
-        action: 'edit',
+      const props = {
+        action: 'edit' as const,
         cancelTo: '/trustees/1',
         trusteeId: '1',
-        contactInformation: 'internal',
+        contactInformation: 'internal' as const,
         trustee: {
           name: 'Test Trustee',
-          status: 'active',
+          status: 'active' as const,
         },
       };
-
-      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
-
+      const { result } = renderHook(() => useTrusteeContactForm(props));
       // Set phone to be non-empty
       act(() => {
         result.current.updateField('phone', '555-123-4567');
       });
-
       // Get the dynamic spec
       const dynamicSpec = result.current.getDynamicSpec();
-
       // Check that phone validation is included
       expect(dynamicSpec.phone).toBeDefined();
     });
 
     test('should exclude email validation when email is empty in internal edit mode', () => {
       // Test for lines 234-236
-      const initialState: TrusteeFormState = {
-        action: 'edit',
+      const props = {
+        action: 'edit' as const,
         cancelTo: '/trustees/1',
         trusteeId: '1',
-        contactInformation: 'internal',
+        contactInformation: 'internal' as const,
         trustee: {
           name: 'Test Trustee',
-          status: 'active',
+          status: 'active' as const,
         },
       };
-
-      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
-
+      const { result } = renderHook(() => useTrusteeContactForm(props));
       // Make sure email is empty
       act(() => {
         result.current.updateField('email', '');
       });
-
       // Get the dynamic spec
       const dynamicSpec = result.current.getDynamicSpec();
-
       // Check that email validation is excluded
       expect(dynamicSpec.email).toBeUndefined();
     });
 
     test('should include email validation when email is populated in internal edit mode', () => {
-      const initialState: TrusteeFormState = {
-        action: 'edit',
+      const props = {
+        action: 'edit' as const,
         cancelTo: '/trustees/1',
         trusteeId: '1',
-        contactInformation: 'internal',
+        contactInformation: 'internal' as const,
         trustee: {
           name: 'Test Trustee',
-          status: 'active',
+          status: 'active' as const,
         },
       };
-
-      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
-
+      const { result } = renderHook(() => useTrusteeContactForm(props));
       // Set email to be non-empty
       act(() => {
         result.current.updateField('email', 'test@example.com');
       });
-
       // Get the dynamic spec
       const dynamicSpec = result.current.getDynamicSpec();
-
       // Check that email validation is included
       expect(dynamicSpec.email).toBeDefined();
     });
 
     test('should not modify validation spec when not in internal edit mode', () => {
       // Test that the function behaves differently outside internal edit mode
-      const initialState: TrusteeFormState = {
-        action: 'create',
+      const props = {
+        action: 'create' as const,
+        contactInformation: 'public' as const,
         cancelTo: '/trustees',
         trustee: {
           name: 'Test Trustee',
-          status: 'active',
+          status: 'active' as const,
         },
       };
-
-      const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
-
+      const { result } = renderHook(() => useTrusteeContactForm(props));
       // Set empty values
       act(() => {
         result.current.updateMultipleFields({
@@ -720,10 +654,8 @@ describe('useTrusteeForm', () => {
           email: '',
         });
       });
-
       // Get the dynamic spec
       const dynamicSpec = result.current.getDynamicSpec();
-
       // Check that all validations are still included
       expect(dynamicSpec.name).toBeDefined();
       expect(dynamicSpec.address1).toBeDefined();
@@ -737,20 +669,17 @@ describe('useTrusteeForm', () => {
 
   // Test the complete hook implementation including all functions
   test('should work with all functions together', () => {
-    const initialState: TrusteeFormState = {
-      action: 'create',
+    const props = {
+      action: 'create' as const,
+      contactInformation: 'public' as const,
       cancelTo: '/trustees',
     };
-
-    const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
-
+    const { result } = renderHook(() => useTrusteeContactForm(props));
     // Update fields
     act(() => {
       result.current.updateField('name', 'John Doe');
     });
-
     expect(result.current.formData.name).toBe('John Doe');
-
     // Update multiple fields
     act(() => {
       result.current.updateMultipleFields({
@@ -759,76 +688,65 @@ describe('useTrusteeForm', () => {
         state: 'CA',
       });
     });
-
     expect(result.current.formData.address1).toBe('123 Main St');
     expect(result.current.formData.city).toBe('Anytown');
     expect(result.current.formData.state).toBe('CA');
-
     // Get trimmed data
     const trimmedData = result.current.getFormData();
     expect(trimmedData.name).toBe('John Doe');
-
     // Reset form
     act(() => {
       result.current.resetForm();
     });
-
     expect(result.current.formData.name).toBeUndefined();
     expect(result.current.formData.address1).toBeUndefined();
   });
 
   test('validates required fields', () => {
-    const initialState: TrusteeFormState = {
-      action: 'create',
+    const props = {
+      action: 'create' as const,
+      contactInformation: 'public' as const,
       cancelTo: '/trustees',
     };
-
-    const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
-
+    const { result } = renderHook(() => useTrusteeContactForm(props));
     let validationResult;
     act(() => {
       validationResult = result.current.validateFormAndUpdateErrors(EMPTY_FORM_DATA, TRUSTEE_SPEC);
     });
-
     expect(validationResult).toBe(false);
   });
 
   const invalidZipCodes = ['1234', '123456', '123456789', '1234a', 'abcde', '12.34', ''];
   test.each(invalidZipCodes)('validates ZIP code format for %s', (zipCode) => {
-    const initialState: TrusteeFormState = {
-      action: 'create',
+    const props = {
+      action: 'create' as const,
+      contactInformation: 'public' as const,
       cancelTo: '/trustees',
     };
-
-    const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
-
+    const { result } = renderHook(() => useTrusteeContactForm(props));
     const formData = {
       ...VALID_FORM_DATA,
       zipCode,
     };
-
     let validationResult;
     act(() => {
       validationResult = result.current.validateFormAndUpdateErrors(formData, TRUSTEE_SPEC);
     });
-
     expect(validationResult).toBe(false);
   });
 
   const validZipCodes = ['12345', '12345-6789'];
   test.each(validZipCodes)('validates ZIP code format for %s', (zipCode) => {
-    const initialState: TrusteeFormState = {
-      action: 'create',
+    const props = {
+      action: 'create' as const,
+      contactInformation: 'public' as const,
       cancelTo: '/trustees',
     };
-
-    const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
-
+    const { result } = renderHook(() => useTrusteeContactForm(props));
     const formData = {
       ...VALID_FORM_DATA,
       zipCode,
     };
-
     let validationResult;
     act(() => {
       validationResult = result.current.validateFormAndUpdateErrors(formData, TRUSTEE_SPEC);
@@ -888,17 +806,15 @@ describe('useTrusteeForm', () => {
     { field: 'extension', value: '12a', expectedValue: ERROR_MESSAGES.EXTENSION_INVALID },
   ];
   test.each(fieldTests)('validates individual field $field=$value to be $expectedValue', (args) => {
-    const initialState: TrusteeFormState = {
-      action: 'create',
+    const props = {
+      action: 'create' as const,
+      contactInformation: 'public' as const,
       cancelTo: '/trustees',
     };
-
-    const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
-
+    const { result } = renderHook(() => useTrusteeContactForm(props));
     act(() => {
       result.current.validateFieldAndUpdate(args.field, args.value, TRUSTEE_SPEC);
     });
-
     if (args.expectedValue) {
       expect(result.current.fieldErrors[args.field]).toEqual(args.expectedValue);
     } else {
@@ -907,80 +823,69 @@ describe('useTrusteeForm', () => {
   });
 
   test('clears errors', () => {
-    const initialState: TrusteeFormState = {
-      action: 'create',
+    const props = {
+      action: 'create' as const,
+      contactInformation: 'public' as const,
       cancelTo: '/trustees',
     };
-
-    const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
-
+    const { result } = renderHook(() => useTrusteeContactForm(props));
     // First generate some errors
     act(() => {
       result.current.validateFieldAndUpdate('name', '', TRUSTEE_SPEC);
       result.current.validateFieldAndUpdate('zipCode', '1234', TRUSTEE_SPEC);
     });
-
     expect(result.current.fieldErrors.name).toBe(ERROR_MESSAGES.TRUSTEE_NAME_REQUIRED);
     expect(result.current.fieldErrors.zipCode).toBe(ERROR_MESSAGES.ZIP_CODE_INVALID);
-
     // Clear all errors
     act(() => {
       result.current.clearErrors();
     });
-
     expect(result.current.fieldErrors).toEqual({});
   });
 
   test('clears individual field errors', () => {
-    const initialState: TrusteeFormState = {
-      action: 'create',
+    const props = {
+      action: 'create' as const,
+      contactInformation: 'public' as const,
       cancelTo: '/trustees',
     };
-
-    const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
-
+    const { result } = renderHook(() => useTrusteeContactForm(props));
     // Generate errors for multiple fields
     act(() => {
       result.current.validateFieldAndUpdate('name', '', TRUSTEE_SPEC);
       result.current.validateFieldAndUpdate('zipCode', '1234', TRUSTEE_SPEC);
     });
-
     expect(result.current.fieldErrors.name).toBe(ERROR_MESSAGES.TRUSTEE_NAME_REQUIRED);
     expect(result.current.fieldErrors.zipCode).toBe(ERROR_MESSAGES.ZIP_CODE_INVALID);
-
     // Clear only the name field error
     act(() => {
       result.current.clearFieldError('name');
     });
-
     expect(result.current.fieldErrors.name).toBeUndefined();
     expect(result.current.fieldErrors.zipCode).toBe(ERROR_MESSAGES.ZIP_CODE_INVALID);
   });
 
   test('validates complete valid form', () => {
-    const initialState: TrusteeFormState = {
-      action: 'create',
+    const props = {
+      action: 'create' as const,
+      contactInformation: 'public' as const,
       cancelTo: '/trustees',
     };
-
-    const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
-
+    const { result } = renderHook(() => useTrusteeContactForm(props));
     const validationResult = result.current.validateFormAndUpdateErrors(
       COMPLETE_VALID_FORM_DATA,
       TRUSTEE_SPEC,
     );
-
     expect(validationResult).toBeTruthy();
   });
 
   test('validates trimmed values', () => {
-    const initialState: TrusteeFormState = {
-      action: 'create',
+    const props = {
+      action: 'create' as const,
+      contactInformation: 'public' as const,
       cancelTo: '/trustees',
     };
-
-    const { result } = renderHook(() => useTrusteeContactForm({ initialState }));
-
+    const { result } = renderHook(() => useTrusteeContactForm(props));
     let validationResult;
     act(() => {
       validationResult = result.current.validateFormAndUpdateErrors(SPACES_FORM_DATA, TRUSTEE_SPEC);
