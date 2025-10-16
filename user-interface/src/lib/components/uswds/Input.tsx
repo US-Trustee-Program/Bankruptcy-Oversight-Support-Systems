@@ -25,7 +25,7 @@ export type InputProps = Omit<JSX.IntrinsicElements['input'], 'onFocus'> & {
 
 function Input_(props: InputProps, ref: React.Ref<InputRef>) {
   //condition for check for title to style tooltip
-  const [inputValue, setInputValue] = useState<string>(props.value || '');
+  const [inputValue, setInputValue] = useState<string>(props.value ?? '');
   const [inputDisabled, setInputDisabled] = useState<boolean>(props.disabled ?? false);
 
   const { includeClearButton, label, ariaDescription, errorMessage, required, ...otherProps } =
@@ -45,7 +45,7 @@ function Input_(props: InputProps, ref: React.Ref<InputRef>) {
   }
 
   function resetValue() {
-    setInputValue(props.value || '');
+    setInputValue(props.value ?? '');
   }
 
   function clearValue() {
@@ -87,7 +87,7 @@ function Input_(props: InputProps, ref: React.Ref<InputRef>) {
   }
 
   useEffect(() => {
-    setInputValue(props.value || '');
+    setInputValue(props.value ?? '');
   }, [props.value]);
 
   useImperativeHandle(ref, () => ({ clearValue, resetValue, setValue, getValue, disable, focus }));
