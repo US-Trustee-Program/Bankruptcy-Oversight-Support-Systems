@@ -55,24 +55,33 @@ describe('TrusteeContactForm Tests', () => {
     expect(emailInput).toBeInTheDocument();
   });
 
-  test('should show disabled message when feature flag is disabled', () => {
+  test('should show disabled message when feature flag is disabled', async () => {
     vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
       'trustee-management': false,
     } as FeatureFlagSet);
 
     renderWithProps();
 
-    const disabledMessage = screen.getByTestId('trustee-create-disabled');
+    let disabledMessage;
+
+    await waitFor(() => {
+      disabledMessage = screen.getByTestId('trustee-create-disabled');
+    });
+
     expect(disabledMessage).toBeInTheDocument();
     expect(disabledMessage).toHaveTextContent('Trustee management is not enabled.');
   });
 
-  test('should show forbidden message when user lacks TrusteeAdmin role', () => {
+  test('should show forbidden message when user lacks TrusteeAdmin role', async () => {
     testingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
 
     renderWithProps();
 
-    const forbiddenAlert = screen.getByTestId('alert-forbidden-alert');
+    let forbiddenAlert;
+    await waitFor(() => {
+      forbiddenAlert = screen.getByTestId('alert-forbidden-alert');
+    });
+
     expect(forbiddenAlert).toBeInTheDocument();
     expect(forbiddenAlert).toHaveTextContent('Forbidden');
     expect(forbiddenAlert).toHaveTextContent('You do not have permission to manage Trustees');
