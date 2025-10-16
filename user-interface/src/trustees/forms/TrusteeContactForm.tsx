@@ -7,13 +7,12 @@ import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import {
   TrusteeFormData,
-  TrusteeFormState,
   useTrusteeContactForm,
-} from '@/trustees/forms/UseTrusteeContactForm';
+  UseTrusteeContactFormProps,
+} from './UseTrusteeContactForm';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
-import { CourtDivisionDetails } from '@common/cams/courts';
 import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
 import UsStatesComboBox from '@/lib/components/combobox/UsStatesComboBox';
 import useDebounce from '@/lib/hooks/UseDebounce';
@@ -21,7 +20,6 @@ import { Stop } from '@/lib/components/Stop';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import { ChapterType, TrusteeInput, TrusteeStatus } from '@common/cams/trustees';
-import { useLocation } from 'react-router-dom';
 import { normalizeWebsiteUrl } from '@common/cams/regex';
 
 const CHAPTER_OPTIONS: ComboOption<ChapterType>[] = [
@@ -39,7 +37,7 @@ const STATUS_OPTIONS: ComboOption<TrusteeStatus>[] = [
   { value: 'suspended', label: 'Suspended' },
 ];
 
-function TrusteeContactForm() {
+function TrusteeContactForm(props: Readonly<UseTrusteeContactFormProps>) {
   const flags = useFeatureFlags();
   const api = useApi2();
   const globalAlert = useGlobalAlert();
@@ -49,13 +47,9 @@ function TrusteeContactForm() {
   const districtComboRef = React.useRef<ComboBoxRef | null>(null);
   const statusComboRef = React.useRef<ComboBoxRef | null>(null);
 
-  const location = useLocation();
-  const passedState = location.state as TrusteeFormState;
-
-  const doEditPublicProfile =
-    passedState.action === 'edit' && passedState.contactInformation === 'public';
-  const doCreate = passedState.action === 'create';
-  const { cancelTo } = passedState;
+  const doEditPublicProfile = props.action === 'edit' && props.contactInformation === 'public';
+  const doCreate = props.action === 'create';
+  const { cancelTo } = props;
 
   const {
     formData,
@@ -67,7 +61,7 @@ function TrusteeContactForm() {
     clearFieldError,
     validateFormAndUpdateErrors,
     getDynamicSpec,
-  } = useTrusteeContactForm({ initialState: passedState });
+  } = useTrusteeContactForm(props);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -142,11 +136,8 @@ function TrusteeContactForm() {
           const createdId = (response as { data?: { trusteeId?: string } })?.data?.trusteeId;
           navigate.navigateTo(`/trustees/${createdId}`);
         } else {
-          const updateTrusteeResponse = await api.patchTrustee(
-            passedState.trusteeId || '',
-            payload,
-          );
-          navigate.navigateTo(`/trustees/${passedState.trusteeId}`, {
+          const updateTrusteeResponse = await api.patchTrustee(props.trusteeId || '', payload);
+          navigate.navigateTo(`/trustees/${props.trusteeId}`, {
             trustee: updateTrusteeResponse?.data,
           });
         }
@@ -172,13 +163,13 @@ function TrusteeContactForm() {
         const courts = response.data;
 
         const districtMap = new Map<string, ComboOption>();
-        courts.forEach((court: CourtDivisionDetails) => {
+        for (const court of courts) {
           const label = `${court.courtName} (${court.courtDivisionName})`;
           districtMap.set(court.courtDivisionCode, {
             value: court.courtDivisionCode,
             label: label,
           });
-        });
+        }
 
         const options = Array.from(districtMap.values()).sort((a, b) =>
           a.label.localeCompare(b.label),
@@ -249,7 +240,7 @@ function TrusteeContactForm() {
       updateField(fieldName, value);
 
       // For internal profile editing when a field is cleared, check if we need to clear address validation errors
-      if (passedState.contactInformation === 'internal' && isAddressField && value.trim() === '') {
+      if (props.contactInformation === 'internal' && isAddressField && value.trim() === '') {
         // Get current form data with this field's new value
         const currentData = getFormData({ name: fieldName, value });
 
@@ -259,9 +250,9 @@ function TrusteeContactForm() {
 
         // If all address fields are empty, clear any remaining address field errors
         if (allAddressFieldsEmpty) {
-          requiredAddressFields.forEach((field) => {
+          for (const field of requiredAddressFields) {
             clearFieldError(field);
-          });
+          }
         }
       }
     }, 300);
@@ -308,7 +299,7 @@ function TrusteeContactForm() {
   return (
     <div className="trustee-form-screen">
       <div className="form-header">
-        {passedState.action === 'create' && (
+        {props.action === 'create' && (
           <h1 className="text-no-wrap display-inline-block margin-right-1 create-trustee">
             Add Trustee Profile
           </h1>
@@ -319,7 +310,7 @@ function TrusteeContactForm() {
       </div>
 
       <form
-        aria-label={`${passedState.action === 'create' ? 'Create' : 'Edit'} Trustee`}
+        aria-label={`${props.action === 'create' ? 'Create' : 'Edit'} Trustee`}
         data-testid="trustee-form"
         onSubmit={handleSubmit}
       >
@@ -337,7 +328,7 @@ function TrusteeContactForm() {
                 id="trustee-name"
                 className="trustee-name-input"
                 name="name"
-                disabled={passedState.contactInformation === 'internal'}
+                disabled={props.contactInformation === 'internal'}
                 label="Trustee Name"
                 value={formData.name}
                 onChange={handleFieldChange}

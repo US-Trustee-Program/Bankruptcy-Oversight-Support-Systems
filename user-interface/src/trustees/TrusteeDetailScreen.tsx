@@ -5,14 +5,13 @@ import { JSX, useEffect, useState } from 'react';
 import useApi2 from '@/lib/hooks/UseApi2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { Trustee } from '@common/cams/trustees';
-import { useLocation, useNavigate, useParams, Routes, Route } from 'react-router-dom';
+import { useNavigate, useParams, Routes, Route } from 'react-router-dom';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import TrusteeDetailHeader from './TrusteeDetailHeader';
 import TrusteeDetailProfile from './panels/TrusteeDetailProfile';
 import TrusteeDetailAuditHistory from './panels/TrusteeDetailAuditHistory';
 import TrusteeDetailNavigation, { mapTrusteeDetailNavState } from './TrusteeDetailNavigation';
-import { TrusteeFormState } from '@/trustees/forms/UseTrusteeContactForm';
 import TrusteeContactForm from './forms/TrusteeContactForm';
 import TrusteeOtherInfoForm from './forms/TrusteeOtherInfoForm';
 import NotFound from '@/lib/components/NotFound';
@@ -66,11 +65,14 @@ const getDistrictLabels = (trustee: Trustee, courtDivisionDetails: CourtDivision
   return trusteeDistricts;
 };
 
-export default function TrusteeDetailScreen() {
+export default function TrusteeDetailScreen({
+  trustee: propTrustee,
+}: { trustee?: Trustee | null } = {}) {
   const { trusteeId } = useParams();
-  const location = useLocation();
-  const [trustee, setTrustee] = useState<Trustee | null>(null);
-  const [navState, setNavState] = useState<number>(mapTrusteeDetailNavState(location.pathname));
+  const [trustee, setTrustee] = useState<Trustee | null>(propTrustee ?? null);
+  const [navState, setNavState] = useState<number>(
+    mapTrusteeDetailNavState(window.location.pathname),
+  );
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [softwareOptions, setSoftwareOptions] = useState<ComboOption[]>([]);
   const [courtDivisionDetails, setCourtDivisionDetails] = useState<CourtDivisionDetails[]>([]);
@@ -78,40 +80,19 @@ export default function TrusteeDetailScreen() {
     trustee && courtDivisionDetails ? getDistrictLabels(trustee, courtDivisionDetails) : [];
 
   const navigate = useNavigate();
-
   const globalAlert = useGlobalAlert();
   const api = useApi2();
 
   function openEditPublicProfile() {
-    const state: TrusteeFormState = {
-      trusteeId,
-      trustee: trustee!, // Non-null assertion: function only called when trustee exists
-      cancelTo: location.pathname,
-      action: 'edit',
-      contactInformation: 'public',
-    };
-    navigate(`/trustees/${trusteeId}/contact/edit/public`, { state });
+    navigate(`/trustees/${trusteeId}/contact/edit/public`);
   }
 
   function openEditInternalProfile() {
-    const state: TrusteeFormState = {
-      trusteeId,
-      trustee: trustee!, // Non-null assertion: function only called when trustee exists
-      cancelTo: location.pathname,
-      action: 'edit',
-      contactInformation: 'internal',
-    };
-    navigate(`/trustees/${trusteeId}/contact/edit/internal`, { state });
+    navigate(`/trustees/${trusteeId}/contact/edit/internal`);
   }
 
   function openEditOtherInformation() {
-    const state: TrusteeFormState = {
-      trusteeId,
-      trustee: trustee!, // Non-null assertion: function only called when trustee exists
-      cancelTo: location.pathname,
-      action: 'edit',
-    };
-    navigate(`/trustees/${trusteeId}/other/edit`, { state });
+    navigate(`/trustees/${trusteeId}/other/edit`);
   }
 
   useEffect(() => {
@@ -143,7 +124,7 @@ export default function TrusteeDetailScreen() {
   }, [api]);
 
   useEffect(() => {
-    if (trusteeId && !location.state?.trustee) {
+    if (trusteeId && !propTrustee) {
       setIsLoading(true);
       api
         .getTrustee(trusteeId)
@@ -157,17 +138,11 @@ export default function TrusteeDetailScreen() {
           setIsLoading(false);
         });
     }
-  }, [trusteeId, location.state?.trustee]);
+  }, [trusteeId, propTrustee]);
 
   useEffect(() => {
-    setNavState(mapTrusteeDetailNavState(location.pathname));
-  }, [location]);
-
-  useEffect(() => {
-    if (location.state?.trustee) {
-      setTrustee(location.state.trustee as Trustee);
-    }
-  }, [location.state?.trustee]);
+    setNavState(mapTrusteeDetailNavState(window.location.pathname));
+  }, []);
 
   if (!trusteeId || (!isLoading && !trustee)) {
     return (
@@ -213,12 +188,26 @@ export default function TrusteeDetailScreen() {
     {
       path: 'contact/edit/public',
       subHeading: 'Edit Trustee Profile (Public)',
-      content: <TrusteeContactForm />,
+      content: (
+        <TrusteeContactForm
+          trusteeId={trusteeId}
+          contactInformation="public"
+          action="edit"
+          cancelTo={window.location.pathname}
+        />
+      ),
     },
     {
       path: 'contact/edit/internal',
       subHeading: 'Edit Trustee Profile (USTP Internal)',
-      content: <TrusteeContactForm />,
+      content: (
+        <TrusteeContactForm
+          trusteeId={trusteeId}
+          contactInformation="internal"
+          action="edit"
+          cancelTo={window.location.pathname}
+        />
+      ),
     },
     {
       path: 'other/edit',
