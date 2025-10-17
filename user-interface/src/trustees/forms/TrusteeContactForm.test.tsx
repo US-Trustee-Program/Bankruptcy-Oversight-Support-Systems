@@ -647,7 +647,6 @@ describe('TrusteeContactForm Tests', () => {
     await user.clear(addr1);
 
     await waitFor(() => {
-      // Expect clearFieldError called for each of the required address fields
       expect(clearFieldError).toHaveBeenCalled();
       expect(clearFieldError.mock.calls.length).toBeGreaterThanOrEqual(1);
     });
@@ -719,7 +718,6 @@ describe('TrusteeContactForm Tests', () => {
     await user.type(screen.getByTestId('trustee-phone'), '555-999-0000');
     await user.type(screen.getByTestId('trustee-email'), 'nosite@example.com');
 
-    // Do not type into website (leave empty)
     await testingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
 
     await user.click(screen.getByRole('button', { name: /save/i }));
@@ -727,14 +725,12 @@ describe('TrusteeContactForm Tests', () => {
     await waitFor(() => {
       expect(mockPostTrustee).toHaveBeenCalled();
       const payload = mockPostTrustee.mock.calls[0][0];
-      // public should exist but website should not be present
       expect(payload.public).toBeDefined();
       expect(payload.public).not.toHaveProperty('website');
     });
   });
 
   test('create should include address2 in public.address when provided', async () => {
-    // Mock form hook to provide address2 and website
     const mockFormData = {
       name: 'With Addr2',
       address1: '100 A St',
@@ -763,10 +759,7 @@ describe('TrusteeContactForm Tests', () => {
       getDynamicSpec: vi.fn().mockReturnValue({}),
     } as unknown as ReturnType<typeof UseFormHook.useTrusteeContactForm>);
 
-    const mockPost = vi.fn().mockResolvedValue({ data: { trusteeId: 'addr2-id' } });
-    vi.spyOn(Api2, 'postTrustee').mockImplementation(
-      mockPost as unknown as typeof Api2.postTrustee,
-    );
+    const mockPost = vi.spyOn(Api2, 'postTrustee')..mockResolvedValue({ data: { trusteeId: 'addr2-id' } });
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
 
     renderWithProps({
@@ -889,11 +882,8 @@ describe('TrusteeContactForm Tests', () => {
       expect(mockPatch).toHaveBeenCalled();
       const calledPayload = mockPatch.mock.calls[0][1];
       expect(calledPayload).toHaveProperty('internal');
-      // address should be null because address fields empty
       expect(calledPayload.internal.address).toBeNull();
-      // phone should be null because phone empty
       expect(calledPayload.internal.phone).toBeNull();
-      // email property should be null (we set undefined)
       expect(calledPayload.internal.email).toBeNull();
     });
   });
@@ -928,10 +918,8 @@ describe('TrusteeContactForm Tests', () => {
     await user.type(screen.getByTestId('trustee-email'), 'p@example.com');
     await testingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
 
-    // Click save and assert button shows Saving… before promise resolves
     await user.click(screen.getByRole('button', { name: /save/i }));
 
-    // The button text should reflect submitting state
     await screen.findByRole('button', { name: /saving…/i });
 
     // Resolve the pending API call
@@ -1213,7 +1201,6 @@ describe('TrusteeContactForm Tests', () => {
       getDynamicSpec: vi.fn().mockReturnValue({}),
     } as unknown as ReturnType<typeof UseFormHook.useTrusteeContactForm>);
 
-    // getCourts isn't needed for chapters; render create/public so chapters are visible
     renderWithProps({
       action: 'create',
       cancelTo: '/trustees',
@@ -1221,7 +1208,6 @@ describe('TrusteeContactForm Tests', () => {
       contactInformation: 'public',
     });
 
-    // Use shared helper to open chapters ComboBox and choose the first chapter option (index 0)
     await testingUtilities.toggleComboBoxItemSelection('trustee-chapters', 0);
 
     await waitFor(() => {
@@ -1273,7 +1259,6 @@ describe('TrusteeContactForm Tests', () => {
       contactInformation: 'public',
     });
 
-    // Use shared helper to open status ComboBox and choose 'Not Active' (index 1)
     await testingUtilities.toggleComboBoxItemSelection('trustee-status', 1);
 
     await waitFor(() => {
@@ -1315,7 +1300,6 @@ describe('TrusteeContactForm Tests', () => {
 
     renderWithProps();
 
-    // Select a state option (index 5 -> CA)
     await testingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
 
     await waitFor(() => {
@@ -1356,7 +1340,6 @@ describe('TrusteeContactForm Tests', () => {
 
     renderWithProps();
 
-    // Use the project's shared combobox helper to select a state option (index 5 -> CA)
     await testingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
 
     await waitFor(() => {
@@ -1378,7 +1361,6 @@ describe('TrusteeContactForm Tests', () => {
       navigateMock as unknown as ReturnType<typeof NavigatorModule.default>,
     );
 
-    // Mock useTrusteeContactForm to return form data with public fields
     vi.spyOn(UseFormHook, 'useTrusteeContactForm').mockReturnValue({
       formData: {
         name: 'Public Trustee',
@@ -1450,7 +1432,6 @@ describe('TrusteeContactForm Tests', () => {
       contactInformation: 'public',
     });
 
-    // the Stop element renders an alert with data-testid 'alert-<id>'
     const stop = await screen.findByTestId('alert-trustee-stop');
     expect(stop).toBeInTheDocument();
     expect(stop).toHaveTextContent('Failed to load district options');
@@ -1500,20 +1481,17 @@ describe('TrusteeContactForm Tests', () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /save/i }));
 
-    // ensure postTrustee not called due to validation failing
     await new Promise((res) => setTimeout(res, 50));
     expect(mockPost).not.toHaveBeenCalled();
   });
 
   test('should call globalAlert.error when postTrustee rejects during create', async () => {
-    // Arrange: mock postTrustee to reject and ensure globalAlert.error is called
     const error = new Error('create failed');
     vi.spyOn(Api2, 'postTrustee').mockRejectedValue(error);
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
 
     const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
 
-    // Ensure the form hook validates so that submit attempts the API call
     vi.spyOn(UseFormHook, 'useTrusteeContactForm').mockReturnValue({
       formData: {
         name: 'Create Trustee',
@@ -1562,9 +1540,6 @@ describe('TrusteeContactForm Tests', () => {
     const mockUpdateField = vi.fn();
     const mockValidateFieldAndUpdate = vi.fn();
 
-    // Use the project's combobox helper to simulate selecting then deselecting the state option
-    // Select CA (index 5) then toggle it off to produce an empty selection array
-
     vi.spyOn(UseFormHook, 'useTrusteeContactForm').mockReturnValue({
       formData: {
         name: 'Test Trustee',
@@ -1594,9 +1569,7 @@ describe('TrusteeContactForm Tests', () => {
 
     renderWithProps();
 
-    // Select CA (index 5)
     await testingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
-    // Deselect CA (toggle again)
     await testingUtilities.toggleComboBoxItemSelection('trustee-state', 5, false);
 
     await waitFor(() => {
