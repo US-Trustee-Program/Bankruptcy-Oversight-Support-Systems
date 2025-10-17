@@ -271,10 +271,8 @@ describe('TrusteeContactForm Tests', () => {
     const user = userEvent.setup();
     const zipInput = screen.getByTestId('trustee-zip');
 
-    // Test zip code field which has specific validation
     await user.type(zipInput, '12345');
 
-    // Verify the field value was updated
     expect(zipInput).toHaveValue('12345');
   });
 
@@ -289,10 +287,8 @@ describe('TrusteeContactForm Tests', () => {
     const user = userEvent.setup();
     const websiteInput = screen.getByTestId('trustee-website');
 
-    // Test website field which exercises URL normalization logic
     await user.type(websiteInput, 'example.com');
 
-    // Verify the field value was updated
     expect(websiteInput).toHaveValue('example.com');
   });
 
@@ -307,10 +303,8 @@ describe('TrusteeContactForm Tests', () => {
     const user = userEvent.setup();
     const cancelButton = screen.getByRole('button', { name: /cancel/i });
 
-    // Click cancel button to exercise the handleCancel function
     await user.click(cancelButton);
 
-    // The button should still be in the document (navigation is mocked)
     expect(cancelButton).toBeInTheDocument();
   });
 
@@ -325,10 +319,8 @@ describe('TrusteeContactForm Tests', () => {
     const user = userEvent.setup();
     const phoneInput = screen.getByTestId('trustee-phone');
 
-    // Test phone field which has specific formatting
     await user.type(phoneInput, '555-123-4567');
 
-    // Verify the field value was updated
     expect(phoneInput).toHaveValue('555-123-4567');
   });
 
@@ -343,10 +335,8 @@ describe('TrusteeContactForm Tests', () => {
     const user = userEvent.setup();
     const address2Input = screen.getByTestId('trustee-address2');
 
-    // Test optional address2 field
     await user.type(address2Input, 'Apt 123');
 
-    // Verify the field value was updated
     expect(address2Input).toHaveValue('Apt 123');
   });
 
