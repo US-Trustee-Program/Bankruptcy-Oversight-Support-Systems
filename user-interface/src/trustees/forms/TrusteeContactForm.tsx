@@ -254,6 +254,24 @@ function TrusteeContactForm(props: Readonly<UseTrusteeContactFormProps>) {
     }, 300);
   };
 
+  const handleStateSelection = (selectedOptions: ComboOption[]) => {
+    const value = selectedOptions[0]?.value;
+    updateField('state', value);
+
+    debounce(() => {
+      validateFieldAndUpdate('state', value, getDynamicSpec());
+    }, 300);
+  };
+
+  const handleZipCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { value } = e.target;
+    updateField('zipCode', value);
+
+    debounce(() => {
+      validateFieldAndUpdate('zipCode', value, getDynamicSpec());
+    }, 300);
+  };
+
   const handleCancel = useCallback(() => {
     clearErrors();
     navigate.navigateTo(cancelTo);
@@ -384,14 +402,7 @@ function TrusteeContactForm(props: Readonly<UseTrusteeContactFormProps>) {
                 name="state"
                 label="State"
                 selections={formData.state ? [formData.state] : []}
-                onUpdateSelection={(selectedOptions) => {
-                  const value = selectedOptions[0]?.value;
-                  updateField('state', value);
-
-                  debounce(() => {
-                    validateFieldAndUpdate('state', value, getDynamicSpec());
-                  }, 300);
-                }}
+                onUpdateSelection={handleStateSelection}
                 autoComplete="off"
                 errorMessage={fieldErrors['state']}
                 {...isRequired('state')}
@@ -405,14 +416,7 @@ function TrusteeContactForm(props: Readonly<UseTrusteeContactFormProps>) {
                 name="zipCode"
                 label="ZIP Code"
                 value={formData.zipCode}
-                onChange={(e) => {
-                  const { value } = e.target;
-                  updateField('zipCode', value);
-
-                  debounce(() => {
-                    validateFieldAndUpdate('zipCode', value, getDynamicSpec());
-                  }, 300);
-                }}
+                onChange={handleZipCodeChange}
                 errorMessage={fieldErrors['zipCode']}
                 autoComplete="off"
                 ariaDescription="Example: 12345"
