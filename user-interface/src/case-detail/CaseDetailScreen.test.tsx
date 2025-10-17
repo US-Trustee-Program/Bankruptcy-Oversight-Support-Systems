@@ -67,7 +67,6 @@ describe('Case Detail screen tests', () => {
       </BrowserRouter>,
     );
 
-    // wait for any effects to flush
     await waitFor(() => expect(document.body).toBeDefined());
   }
 
@@ -96,7 +95,6 @@ describe('Case Detail screen tests', () => {
       </MemoryRouter>,
     );
 
-    // wait for any effects to flush
     await waitFor(() => expect(document.body).toBeDefined());
   }
 
@@ -113,12 +111,9 @@ describe('Case Detail screen tests', () => {
   test('should getCaseDetails if no prop provided for caseDetail', async () => {
     const basicInfoPath = `/case-detail/${defaultTestCaseDetail.caseId}/`;
 
-    // Render using Routes and omit the caseDetail prop so the component will fetch data via useParams
     await renderWithRoutes(undefined, [], basicInfoPath);
 
-    // Use findBy* to await elements that are rendered after async fetches
     const title = await screen.findByTestId('case-detail-heading-title');
-    // assert the element contains the case title (avoid brittle leading/trailing whitespace/hyphen)
     expect(title).toHaveTextContent('Test Case Title');
 
     const chapter = await screen.findByTestId('case-chapter');
@@ -143,7 +138,6 @@ describe('Case Detail screen tests', () => {
 
     await renderWithRoutes(undefined, [], basicInfoPath);
 
-    // associated cases link should not be rendered when API errors
     await waitFor(() =>
       expect(screen.queryByTestId('associated-cases-link')).not.toBeInTheDocument(),
     );
@@ -162,11 +156,9 @@ describe('Case Detail screen tests', () => {
       reopenedDate: mockReopenedDate,
     });
 
-    // Many elements are rendered synchronously when caseDetail prop is provided.
     await screen.findByTestId('case-detail');
 
     const title = screen.getByTestId('case-detail-heading-title');
-    // ensure the heading contains the case title
     expect(title).toHaveTextContent(defaultTestCaseDetail.caseTitle);
 
     const caseNumber = document.querySelector('.case-number');
@@ -260,7 +252,6 @@ describe('Case Detail screen tests', () => {
 
       await renderWithProps({ ...testCaseDetail });
 
-      // wait for lazy-loaded overview to mount
       await screen.findByTestId('case-detail-heading-title');
       const region = screen.getByTestId('case-detail-region-id');
       expect(region).toHaveTextContent(expectedRegionId);
@@ -341,7 +332,6 @@ describe('Case Detail screen tests', () => {
       };
       await renderWithProps({ ...testCaseDetail });
 
-      // ensure lazy-loaded overview content is mounted
       await screen.findByTestId('case-detail-heading-title');
       const taxIdIsPresent = !!ssn || !!taxId;
       const properties: Array<keyof Debtor> = ['taxId', 'ssn'];
@@ -375,7 +365,6 @@ describe('Case Detail screen tests', () => {
     };
     await renderWithProps({ ...testCaseDetail });
 
-    // Wait for the lazy-loaded overview to render its elements
     const judgeName = await screen.findByTestId('case-detail-no-judge-name');
     expect(judgeName).toHaveTextContent(informationUnavailable);
   });
@@ -423,9 +412,7 @@ describe('Case Detail screen tests', () => {
     };
     await renderWithProps({ ...testCaseDetail });
 
-    // Ensure the overview (lazy) is rendered, then assert presence/absence
     const reopenedDateSection = await screen.findByTestId('case-detail-reopened-date');
-    // closed date should not be present when reopened date is later
     const closedDateSection = screen.queryByTestId('case-detail-closed-date');
 
     expect(closedDateSection).not.toBeInTheDocument();
@@ -448,7 +435,6 @@ describe('Case Detail screen tests', () => {
 
     await renderWithProps({ ...testCaseDetail });
 
-    // Wait for the lazy-loaded closed date element, then assert reopened date is absent
     const closedDateSection = await screen.findByTestId('case-detail-closed-date');
     const reopenedDateSection = screen.queryByTestId('case-detail-reopened-date');
 
@@ -472,7 +458,6 @@ describe('Case Detail screen tests', () => {
     await renderWithProps({ ...testCaseDetail });
 
     const title = screen.getByTestId('case-detail-heading-title');
-    // ensure the heading contains the case title (unassigned case)
     expect(title).toHaveTextContent(testCaseDetail.caseTitle);
 
     const unassignedElement = document.querySelector('.unassigned-placeholder');
@@ -531,9 +516,7 @@ describe('Case Detail screen tests', () => {
 
       await renderWithProps({ ...testCaseDetail });
 
-      // wait for lazy-loaded overview/counsel section to appear
       await screen.findByTestId('case-detail-debtor-counsel-name');
-      // Debtor counsel section renders synchronously when caseDetail provided
       const debtorCounselName = screen.getByTestId('case-detail-debtor-counsel-name');
       expect(debtorCounselName).toBeInTheDocument();
 
@@ -585,12 +568,9 @@ describe('Case Detail screen tests', () => {
         },
       };
 
-      // use <MemoryRouter> when you want to manually control the history
-      // Make sure the initial entry uses the actual caseId instead of the placeholder '1234'
       let finalRoute = routePath.startsWith('/') ? routePath : `/${routePath}`;
       finalRoute = finalRoute.replace('1234', testCaseDetail.caseId);
 
-      // Render using Routes so NavLink route matching/highlighting works.
       await renderWithRoutes(testCaseDetail, [], finalRoute);
 
       const caseDocketLink = screen.getByTestId(expectedLink);
