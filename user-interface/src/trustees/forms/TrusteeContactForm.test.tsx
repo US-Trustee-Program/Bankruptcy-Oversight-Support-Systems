@@ -351,26 +351,21 @@ describe('TrusteeContactForm Tests', () => {
     const user = userEvent.setup();
     const extensionInput = screen.getByTestId('trustee-extension');
 
-    // Test extension field which is optional
     await user.type(extensionInput, '123');
 
-    // Verify the field value was updated
     expect(extensionInput).toHaveValue('123');
   });
 
   test('should handle getCourts API response without data property', async () => {
-    // Mock API response that succeeds but has no data property (lines 169-170)
     const mockGetCourts = vi.fn().mockResolvedValue({ status: 200 }); // No data property
     vi.spyOn(Api2, 'getCourts').mockImplementation(mockGetCourts);
 
     renderWithProps();
 
-    // Wait for API call to be made and error to be handled
     await waitFor(() => {
       expect(mockGetCourts).toHaveBeenCalled();
     });
 
-    // Verify the form still renders even when courts API returns response without data
     const nameInput = screen.getByTestId('trustee-name');
     expect(nameInput).toBeInTheDocument();
   });
@@ -409,12 +404,10 @@ describe('TrusteeContactForm Tests', () => {
 
     renderWithProps(stateWithDistricts);
 
-    // Wait for API call and district mapping to complete
     await waitFor(() => {
       expect(mockGetCourts).toHaveBeenCalled();
     });
 
-    // Verify the form renders with the loaded court data
     const nameInput = screen.getByTestId('trustee-name');
     expect(nameInput).toBeInTheDocument();
   });
@@ -437,8 +430,6 @@ describe('TrusteeContactForm Tests', () => {
       expect(nameInput).toBeInTheDocument();
     });
 
-    // Verify the form renders with the chapter data processed
-    // The useMemo should map the chapter values to CHAPTER_OPTIONS
     expect(screen.getByTestId('trustee-name')).toBeInTheDocument();
   });
 
@@ -460,12 +451,10 @@ describe('TrusteeContactForm Tests', () => {
       expect(nameInput).toBeInTheDocument();
     });
 
-    // Verify the form renders - the statusSelection useMemo should fallback to 'active'
     expect(screen.getByTestId('trustee-name')).toBeInTheDocument();
   });
 
   test('should map internal payload for edit and call patchTrustee then navigate with returned data', async () => {
-    // Arrange: mock the useTrusteeContactForm to return controlled form data and helpers
     const baseFormData = {
       name: 'Internal Trustee',
       address1: '',
@@ -518,12 +507,10 @@ describe('TrusteeContactForm Tests', () => {
       navigateMock as unknown as ReturnType<typeof NavigatorModule.default>,
     );
 
-    // Ensure global alert exists
     vi.spyOn(GlobalAlertModule, 'useGlobalAlert').mockReturnValue({
       error: vi.fn(),
     } as unknown as ReturnType<typeof GlobalAlertModule.useGlobalAlert>);
 
-    // Render component as edit/internal
     renderWithProps({
       action: 'edit',
       cancelTo: '/trustees',
@@ -531,11 +518,9 @@ describe('TrusteeContactForm Tests', () => {
       contactInformation: 'internal',
     });
 
-    // Act: submit the form
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /save/i }));
 
-    // Assert: patchTrustee called with internal payload shape
     await waitFor(() => {
       expect(mockPatch).toHaveBeenCalled();
     });
@@ -546,14 +531,12 @@ describe('TrusteeContactForm Tests', () => {
     expect(calledPayload.internal.phone).toEqual({ number: '555-000-1111', extension: '' });
     expect(calledPayload.internal).toHaveProperty('email', 'internal@example.com');
 
-    // Assert navigation occurred with returned data
     expect(navigateMock.navigateTo).toHaveBeenCalledWith('/trustees/abc', {
       trustee: { id: 'patched', name: 'patched trustee' },
     });
   });
 
   test('should call globalAlert.error when patchTrustee rejects during edit', async () => {
-    // Arrange similar to previous but patchTrustee rejects
     const baseFormData = {
       name: 'Internal Trustee',
       address1: '',
@@ -603,7 +586,6 @@ describe('TrusteeContactForm Tests', () => {
 
     await waitFor(() => {
       expect(globalAlertSpy.error).toHaveBeenCalled();
-      // message should mention 'update' since action === 'edit'
       expect(globalAlertSpy.error).toHaveBeenCalledWith(
         expect.stringMatching(/Failed to update trustee/),
       );
@@ -611,7 +593,6 @@ describe('TrusteeContactForm Tests', () => {
   });
 
   test('should clear address field errors when internal and all address fields become empty', async () => {
-    // Arrange: provide form data where address fields will become empty after change
     const baseFormData = {
       name: 'Internal Trustee',
       address1: '123',
@@ -632,7 +613,6 @@ describe('TrusteeContactForm Tests', () => {
     const validateFieldAndUpdate = vi.fn();
     const clearFieldError = vi.fn();
     const getFormData = vi.fn().mockImplementation((override) => {
-      // Simulate that when address1 is cleared, all address fields are empty
       if (override && override.name === 'address1' && override.value === '') {
         return { ...baseFormData, address1: '', city: '', state: '', zipCode: '' };
       }
@@ -662,7 +642,6 @@ describe('TrusteeContactForm Tests', () => {
       contactInformation: 'internal',
     });
 
-    // Act: clear the address1 input which should trigger clearFieldError for all address fields
     const user = userEvent.setup();
     const addr1 = screen.getByTestId('trustee-address1');
     await user.clear(addr1);
