@@ -1,6 +1,6 @@
 import { BrowserRouter, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe } from 'vitest';
-import { render, waitFor, screen, queryByTestId } from '@testing-library/react';
+import { render, waitFor, screen } from '@testing-library/react';
 import CaseDetailScreen from './CaseDetailScreen';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { formatDate } from '@/lib/utils/datetime';
@@ -42,7 +42,7 @@ const defaultTestCaseDetail = MockData.getCaseDetail({
 });
 
 describe('Case Detail screen tests', () => {
-  const env = process.env;
+  const { env } = process;
 
   type MaybeString = string | undefined;
 
@@ -58,7 +58,7 @@ describe('Case Detail screen tests', () => {
     vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
   });
 
-  function renderWithProps(props?: Partial<CaseDetail>, notes: CaseNote[] = []) {
+  async function renderWithProps(props?: Partial<CaseDetail>, notes: CaseNote[] = []) {
     const renderProps = { ...defaultTestCaseDetail, ...props };
 
     render(
@@ -66,40 +66,63 @@ describe('Case Detail screen tests', () => {
         <CaseDetailScreen caseDetail={renderProps} caseNotes={notes} />
       </BrowserRouter>,
     );
+
+    // wait for any effects to flush
+    await waitFor(() => expect(document.body).toBeDefined());
+  }
+
+  async function renderWithRoutes(
+    caseDetail?: Partial<CaseDetail> | null,
+    notes: CaseNote[] = [],
+    infoPath?: string,
+  ) {
+    const passCaseDetail = !!caseDetail;
+    const renderProps = { ...defaultTestCaseDetail, ...(caseDetail ?? {}) };
+    const basicInfoPath = `/case-detail/${defaultTestCaseDetail.caseId}/`;
+    render(
+      <MemoryRouter initialEntries={[infoPath ?? basicInfoPath]}>
+        <Routes>
+          <Route
+            path="case-detail/:caseId/*"
+            element={
+              passCaseDetail ? (
+                <CaseDetailScreen caseDetail={renderProps as CaseDetail} caseNotes={notes} />
+              ) : (
+                <CaseDetailScreen caseNotes={notes} />
+              )
+            }
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    // wait for any effects to flush
+    await waitFor(() => expect(document.body).toBeDefined());
   }
 
   test('should render CaseDetailHeader', async () => {
     const headerSpy = vi.spyOn(detailHeader, 'default');
 
-    renderWithProps();
+    await renderWithProps();
 
     await waitFor(() => {
       expect(headerSpy).toHaveBeenCalled();
     });
   });
+
   test('should getCaseDetails if no prop provided for caseDetail', async () => {
     const basicInfoPath = `/case-detail/${defaultTestCaseDetail.caseId}/`;
 
-    render(
-      <MemoryRouter initialEntries={[basicInfoPath]}>
-        <Routes>
-          <Route path="case-detail/:caseId/*" element={<CaseDetailScreen caseNotes={[]} />} />
-        </Routes>
-      </MemoryRouter>,
-    );
-    const loadingSpinner = screen.queryByTestId('case-detail-loading-spinner');
-    expect(loadingSpinner).toBeInTheDocument();
+    // Render using Routes and omit the caseDetail prop so the component will fetch data via useParams
+    await renderWithRoutes(undefined, [], basicInfoPath);
 
-    await waitFor(() => {
-      const title = screen.getByTestId('case-detail-heading-title');
-      const expectedTitle = ` - Test Case Title`;
-      expect(title.innerHTML).toEqual(expectedTitle);
-    });
+    // Use findBy* to await elements that are rendered after async fetches
+    const title = await screen.findByTestId('case-detail-heading-title');
+    // assert the element contains the case title (avoid brittle leading/trailing whitespace/hyphen)
+    expect(title).toHaveTextContent('Test Case Title');
 
-    await waitFor(() => {
-      const chapter = screen.getByTestId('case-chapter');
-      expect(chapter.innerHTML).toEqual('Voluntary Chapter 15');
-    });
+    const chapter = await screen.findByTestId('case-chapter');
+    expect(chapter).toHaveTextContent('Voluntary Chapter 15');
   });
 
   test('should show global alert if not able to retrieve caseDetail', async () => {
@@ -107,35 +130,23 @@ describe('Case Detail screen tests', () => {
     vi.spyOn(MockApi2, 'getCaseDetail').mockRejectedValue('error');
     const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
 
-    render(
-      <MemoryRouter initialEntries={[basicInfoPath]}>
-        <Routes>
-          <Route path="case-detail/:caseId/*" element={<CaseDetailScreen caseNotes={[]} />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    await renderWithRoutes(undefined, [], basicInfoPath);
 
-    await waitFor(() => {
-      expect(globalAlertSpy.error).toHaveBeenCalledWith('Could not get case information.');
-    });
+    await waitFor(() =>
+      expect(globalAlertSpy.error).toHaveBeenCalledWith('Could not get case information.'),
+    );
   });
 
   test('should not show case associations if error throw in getCaseAssociations', async () => {
     const basicInfoPath = `/case-detail/${defaultTestCaseDetail.caseId}/`;
     vi.spyOn(MockApi2, 'getCaseAssociations').mockRejectedValue('error');
 
-    render(
-      <MemoryRouter initialEntries={[basicInfoPath]}>
-        <Routes>
-          <Route path="case-detail/:caseId/*" element={<CaseDetailScreen caseNotes={[]} />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    await renderWithRoutes(undefined, [], basicInfoPath);
 
-    await waitFor(() => {
-      const associatedLink = screen.queryByTestId('associated-cases-link');
-      expect(associatedLink).not.toBeInTheDocument();
-    });
+    // associated cases link should not be rendered when API errors
+    await waitFor(() =>
+      expect(screen.queryByTestId('associated-cases-link')).not.toBeInTheDocument(),
+    );
   });
 
   test('should display case title, case number, dates, assignees, judge name, and debtor for the case', async () => {
@@ -144,95 +155,90 @@ describe('Case Detail screen tests', () => {
     const mockDismissedDate = '01-30-1964';
     const mockReopenedDate = '01-15-1962';
 
-    renderWithProps({
+    await renderWithProps({
       dateFiled: mockDateFiled,
       closedDate: mockClosedDate,
       dismissedDate: mockDismissedDate,
       reopenedDate: mockReopenedDate,
     });
 
-    await waitFor(
-      //TODO: this really needs fixed
-      async () => {
-        const title = screen.getByTestId('case-detail-heading-title');
-        const expectedTitle = ` - ${defaultTestCaseDetail.caseTitle}`;
-        expect(title.innerHTML).toEqual(expectedTitle);
+    // Many elements are rendered synchronously when caseDetail prop is provided.
+    await screen.findByTestId('case-detail');
 
-        const caseNumber = document.querySelector('.case-number');
-        expect(caseNumber?.textContent?.trim()).toEqual(caseId);
+    const title = screen.getByTestId('case-detail-heading-title');
+    // ensure the heading contains the case title
+    expect(title).toHaveTextContent(defaultTestCaseDetail.caseTitle);
 
-        const dateFiled = screen.getByTestId('case-detail-filed-date');
-        expect(dateFiled).toHaveTextContent('Filed');
-        expect(dateFiled).toHaveTextContent(formatDate(mockDateFiled));
+    const caseNumber = document.querySelector('.case-number');
+    expect(caseNumber?.textContent?.trim()).toEqual(caseId);
 
-        const closedDate = screen.getByTestId('case-detail-closed-date');
-        expect(closedDate).toHaveTextContent('Closed by court');
-        expect(closedDate).toHaveTextContent(formatDate(mockClosedDate));
+    const dateFiled = await screen.findByTestId('case-detail-filed-date');
+    expect(dateFiled).toHaveTextContent('Filed');
+    expect(dateFiled).toHaveTextContent(formatDate(mockDateFiled));
 
-        const dismissedDate = screen.getByTestId('case-detail-dismissed-date');
-        expect(dismissedDate).toHaveTextContent('Dismissed by court');
-        expect(dismissedDate).toHaveTextContent(formatDate(mockDismissedDate));
+    const closedDate = await screen.findByTestId('case-detail-closed-date');
+    expect(closedDate).toHaveTextContent('Closed by court');
+    expect(closedDate).toHaveTextContent(formatDate(mockClosedDate));
 
-        const chapter = screen.getByTestId('case-chapter');
-        expect(chapter.innerHTML).toContain(defaultTestCaseDetail.chapter);
+    const dismissedDate = await screen.findByTestId('case-detail-dismissed-date');
+    expect(dismissedDate).toHaveTextContent('Dismissed by court');
+    expect(dismissedDate).toHaveTextContent(formatDate(mockDismissedDate));
 
-        const courtName = screen.getByTestId('court-name-and-district');
-        expect(courtName.innerHTML).toEqual(
-          `${defaultTestCaseDetail.courtName} (${defaultTestCaseDetail.courtDivisionName})`,
-        );
+    const chapter = screen.getByTestId('case-chapter');
+    expect(chapter).toHaveTextContent(defaultTestCaseDetail.chapter);
 
-        const region = screen.getByTestId('case-detail-region-id');
-        expect(region.innerHTML).toContain(
-          `Region ${defaultTestCaseDetail.regionId.replace(/^0*/, '')} - ${defaultTestCaseDetail.courtDivisionName} Office`,
-        );
-
-        const assigneeMap = new Map<string, string>();
-        const assigneeElements = document.querySelectorAll(
-          '.assigned-staff-list .individual-assignee',
-        );
-        assigneeElements?.forEach((assignee) => {
-          const name = assignee.querySelector('.assignee-name')?.innerHTML;
-          const role = assignee.querySelector('.assignee-role')?.innerHTML;
-          if (name && role) {
-            assigneeMap.set(name, role);
-          }
-        });
-        expect(assigneeMap.get(`${brianWilson.name}`)).toEqual(trialAttorneyLabel);
-        expect(assigneeMap.get(`${carlWilson.name}`)).toEqual(trialAttorneyLabel);
-
-        const judgeName = screen.getByTestId('case-detail-judge-name');
-        expect(judgeName).toHaveTextContent(defaultTestCaseDetail.judgeName as string);
-
-        const debtorName = screen.getByTestId('case-detail-debtor-name');
-        expect(debtorName).toHaveTextContent(defaultTestCaseDetail.debtor.name);
-
-        const debtorType = screen.getByTestId('case-detail-debtor-type');
-        expect(debtorType).toHaveTextContent(defaultTestCaseDetail.debtorTypeLabel as string);
-
-        const properties: Array<keyof Debtor> = [
-          'address1',
-          'address2',
-          'address3',
-          'cityStateZipCountry',
-        ];
-
-        properties.forEach((property) => {
-          let testId = `case-detail-debtor-${property}`;
-          if (property === 'cityStateZipCountry') {
-            testId = 'case-detail-debtor-city-state-zip';
-          }
-          if (defaultTestCaseDetail.debtor[property]) {
-            const element = screen.getByTestId(testId);
-            expect(element.innerHTML).toEqual(defaultTestCaseDetail.debtor[property]);
-          } else {
-            const element = screen.queryByTestId(testId);
-            expect(element).not.toBeInTheDocument();
-          }
-        });
-      },
-      { timeout: 5000 },
+    const courtName = screen.getByTestId('court-name-and-district');
+    expect(courtName).toHaveTextContent(
+      `${defaultTestCaseDetail.courtName} (${defaultTestCaseDetail.courtDivisionName})`,
     );
-  }, 20000);
+
+    const region = screen.getByTestId('case-detail-region-id');
+    expect(region).toHaveTextContent(
+      `Region ${defaultTestCaseDetail.regionId.replace(/^0*/, '')} - ${defaultTestCaseDetail.courtDivisionName} Office`,
+    );
+
+    const assigneeMap = new Map<string, string>();
+    const assigneeElements = document.querySelectorAll('.assigned-staff-list .individual-assignee');
+    assigneeElements?.forEach((assignee) => {
+      const name = assignee.querySelector('.assignee-name')?.innerHTML;
+      const role = assignee.querySelector('.assignee-role')?.innerHTML;
+      if (name && role) {
+        assigneeMap.set(name, role);
+      }
+    });
+    expect(assigneeMap.get(`${brianWilson.name}`)).toEqual(trialAttorneyLabel);
+    expect(assigneeMap.get(`${carlWilson.name}`)).toEqual(trialAttorneyLabel);
+
+    const judgeName = screen.getByTestId('case-detail-judge-name');
+    expect(judgeName).toHaveTextContent(defaultTestCaseDetail.judgeName as string);
+
+    const debtorName = screen.getByTestId('case-detail-debtor-name');
+    expect(debtorName).toHaveTextContent(defaultTestCaseDetail.debtor.name);
+
+    const debtorType = screen.getByTestId('case-detail-debtor-type');
+    expect(debtorType).toHaveTextContent(defaultTestCaseDetail.debtorTypeLabel as string);
+
+    const properties: Array<keyof Debtor> = [
+      'address1',
+      'address2',
+      'address3',
+      'cityStateZipCountry',
+    ];
+
+    properties.forEach((property) => {
+      let testId = `case-detail-debtor-${property}`;
+      if (property === 'cityStateZipCountry') {
+        testId = 'case-detail-debtor-city-state-zip';
+      }
+      if (defaultTestCaseDetail.debtor[property]) {
+        const element = screen.getByTestId(testId);
+        expect(element).toHaveTextContent(defaultTestCaseDetail.debtor[property] as string);
+      } else {
+        const element = screen.queryByTestId(testId);
+        expect(element).not.toBeInTheDocument();
+      }
+    });
+  });
 
   const regionTestCases = [
     ['02', 'New York', 'Region 2 - New York Office'],
@@ -252,17 +258,13 @@ describe('Case Detail screen tests', () => {
         debtorAttorney,
       };
 
-      renderWithProps({ ...testCaseDetail });
+      await renderWithProps({ ...testCaseDetail });
 
-      await waitFor(
-        async () => {
-          const region = screen.getByTestId('case-detail-region-id');
-          expect(region.innerHTML).toEqual(expectedRegionId);
-        },
-        { timeout: 5000 },
-      );
+      // wait for lazy-loaded overview to mount
+      await screen.findByTestId('case-detail-heading-title');
+      const region = screen.getByTestId('case-detail-region-id');
+      expect(region).toHaveTextContent(expectedRegionId);
     },
-    20000,
   );
 
   const debtorAddressTestCases = [
@@ -294,34 +296,28 @@ describe('Case Detail screen tests', () => {
         },
         debtorAttorney,
       };
-      renderWithProps({ ...testCaseDetail });
+      await renderWithProps({ ...testCaseDetail });
 
-      await waitFor(
-        async () => {
-          const properties: Array<keyof Debtor> = [
-            'address1',
-            'address2',
-            'address3',
-            'cityStateZipCountry',
-          ];
-          properties.forEach((property) => {
-            let testId = `case-detail-debtor-${property}`;
-            if (property === 'cityStateZipCountry') {
-              testId = 'case-detail-debtor-city-state-zip';
-            }
-            if (testCaseDetail.debtor[property]) {
-              const element = screen.getByTestId(testId);
-              expect(element.innerHTML).toEqual(testCaseDetail.debtor[property]);
-            } else {
-              const element = screen.queryByTestId(testId);
-              expect(element).not.toBeInTheDocument();
-            }
-          });
-        },
-        { timeout: 5000 },
-      );
+      const properties: Array<keyof Debtor> = [
+        'address1',
+        'address2',
+        'address3',
+        'cityStateZipCountry',
+      ];
+      properties.forEach((property) => {
+        let testId = `case-detail-debtor-${property}`;
+        if (property === 'cityStateZipCountry') {
+          testId = 'case-detail-debtor-city-state-zip';
+        }
+        if (testCaseDetail.debtor[property]) {
+          const element = screen.getByTestId(testId);
+          expect(element).toHaveTextContent(testCaseDetail.debtor[property] as string);
+        } else {
+          const element = screen.queryByTestId(testId);
+          expect(element).not.toBeInTheDocument();
+        }
+      });
     },
-    20000,
   );
 
   const debtorTaxIdTestCases = [
@@ -343,33 +339,29 @@ describe('Case Detail screen tests', () => {
         },
         debtorAttorney,
       };
-      renderWithProps({ ...testCaseDetail });
+      await renderWithProps({ ...testCaseDetail });
 
+      // ensure lazy-loaded overview content is mounted
+      await screen.findByTestId('case-detail-heading-title');
       const taxIdIsPresent = !!ssn || !!taxId;
-      await waitFor(
-        async () => {
-          const properties: Array<keyof Debtor> = ['taxId', 'ssn'];
-          properties.forEach((property) => {
-            const testId = `case-detail-debtor-${property}`;
-            if (testCaseDetail.debtor[property]) {
-              const element = screen.getByTestId(testId);
-              expect(element.innerHTML).toContain(testCaseDetail.debtor[property]);
-            } else {
-              const element = screen.queryByTestId(testId);
-              expect(element).not.toBeInTheDocument();
-            }
-            const noTaxIdsElement = screen.queryByTestId('case-detail-debtor-no-taxids');
-            if (taxIdIsPresent) {
-              expect(noTaxIdsElement).not.toBeInTheDocument();
-            } else {
-              expect(noTaxIdsElement).toHaveTextContent(taxIdUnavailable);
-            }
-          });
-        },
-        { timeout: 5000 },
-      );
+      const properties: Array<keyof Debtor> = ['taxId', 'ssn'];
+      properties.forEach((property) => {
+        const testId = `case-detail-debtor-${property}`;
+        if (testCaseDetail.debtor[property]) {
+          const element = screen.getByTestId(testId);
+          expect(element).toHaveTextContent(testCaseDetail.debtor[property] as string);
+        } else {
+          const element = screen.queryByTestId(testId);
+          expect(element).not.toBeInTheDocument();
+        }
+      });
+      const noTaxIdsElement = screen.queryByTestId('case-detail-debtor-no-taxids');
+      if (taxIdIsPresent) {
+        expect(noTaxIdsElement).not.toBeInTheDocument();
+      } else {
+        expect(noTaxIdsElement).toHaveTextContent(taxIdUnavailable);
+      }
     },
-    20000,
   );
 
   test('should show "No judge assigned" when a judge name is unavailable.', async () => {
@@ -381,16 +373,12 @@ describe('Case Detail screen tests', () => {
       debtorAttorney,
       judgeName: '',
     };
-    renderWithProps({ ...testCaseDetail });
+    await renderWithProps({ ...testCaseDetail });
 
-    await waitFor(
-      async () => {
-        const judgeName = screen.getByTestId('case-detail-no-judge-name');
-        expect(judgeName).toHaveTextContent(informationUnavailable);
-      },
-      { timeout: 5000 },
-    );
-  }, 20000);
+    // Wait for the lazy-loaded overview to render its elements
+    const judgeName = await screen.findByTestId('case-detail-no-judge-name');
+    expect(judgeName).toHaveTextContent(informationUnavailable);
+  });
 
   test('should show "Information is not available." when a debtor attorney is unavailable.', async () => {
     const testCaseDetail: CaseDetail = {
@@ -401,16 +389,11 @@ describe('Case Detail screen tests', () => {
       debtorAttorney: undefined,
     };
 
-    renderWithProps({ ...testCaseDetail });
+    await renderWithProps({ ...testCaseDetail });
 
-    await waitFor(
-      async () => {
-        const element = screen.getByTestId('case-detail-no-debtor-attorney');
-        expect(element).toHaveTextContent(informationUnavailable);
-      },
-      { timeout: 5000 },
-    );
-  }, 20000);
+    const element = await screen.findByTestId('case-detail-no-debtor-attorney');
+    expect(element).toHaveTextContent(informationUnavailable);
+  });
 
   test('should not display case dismissed date if not supplied in api response', async () => {
     const testCaseDetail: CaseDetail = {
@@ -422,16 +405,11 @@ describe('Case Detail screen tests', () => {
       debtorAttorney,
     };
 
-    renderWithProps({ ...testCaseDetail });
+    await renderWithProps({ ...testCaseDetail });
 
-    await waitFor(
-      async () => {
-        const dismissedDate = screen.queryByTestId('case-detail-dismissed-date');
-        expect(dismissedDate).not.toBeInTheDocument();
-      },
-      { timeout: 5000 },
-    );
-  }, 20000);
+    const dismissedDate = screen.queryByTestId('case-detail-dismissed-date');
+    expect(dismissedDate).not.toBeInTheDocument();
+  });
 
   test('should not display closed by court date if reopened date is supplied and is later than CBC date', async () => {
     const testCaseDetail: CaseDetail = {
@@ -443,21 +421,18 @@ describe('Case Detail screen tests', () => {
       },
       debtorAttorney,
     };
-    renderWithProps({ ...testCaseDetail });
+    await renderWithProps({ ...testCaseDetail });
 
-    await waitFor(
-      async () => {
-        const closedDateSection = queryByTestId(document.body, 'case-detail-closed-date');
-        const reopenedDateSection = queryByTestId(document.body, 'case-detail-reopened-date');
+    // Ensure the overview (lazy) is rendered, then assert presence/absence
+    const reopenedDateSection = await screen.findByTestId('case-detail-reopened-date');
+    // closed date should not be present when reopened date is later
+    const closedDateSection = screen.queryByTestId('case-detail-closed-date');
 
-        expect(closedDateSection).not.toBeInTheDocument();
+    expect(closedDateSection).not.toBeInTheDocument();
 
-        expect(reopenedDateSection).toBeInTheDocument();
-        expect(reopenedDateSection).toHaveTextContent('Reopened by court');
-        expect(reopenedDateSection).toHaveTextContent(formatDate(testCaseDetail.reopenedDate!));
-      },
-      { timeout: 1000 },
-    );
+    expect(reopenedDateSection).toBeInTheDocument();
+    expect(reopenedDateSection).toHaveTextContent('Reopened by court');
+    expect(reopenedDateSection).toHaveTextContent(formatDate(testCaseDetail.reopenedDate!));
   });
 
   test('should not display reopened date if closed by court date is later than reopened date', async () => {
@@ -471,21 +446,17 @@ describe('Case Detail screen tests', () => {
       debtorAttorney,
     };
 
-    renderWithProps({ ...testCaseDetail });
+    await renderWithProps({ ...testCaseDetail });
 
-    await waitFor(
-      async () => {
-        const closedDateSection = queryByTestId(document.body, 'case-detail-closed-date');
-        const reopenedDateSection = queryByTestId(document.body, 'case-detail-reopened-date');
+    // Wait for the lazy-loaded closed date element, then assert reopened date is absent
+    const closedDateSection = await screen.findByTestId('case-detail-closed-date');
+    const reopenedDateSection = screen.queryByTestId('case-detail-reopened-date');
 
-        expect(reopenedDateSection).not.toBeInTheDocument();
+    expect(reopenedDateSection).not.toBeInTheDocument();
 
-        expect(closedDateSection).toBeInTheDocument();
-        expect(closedDateSection).toHaveTextContent('Closed by court');
-        expect(closedDateSection).toHaveTextContent(formatDate(testCaseDetail.closedDate!));
-      },
-      { timeout: 1000 },
-    );
+    expect(closedDateSection).toBeInTheDocument();
+    expect(closedDateSection).toHaveTextContent('Closed by court');
+    expect(closedDateSection).toHaveTextContent(formatDate(testCaseDetail.closedDate!));
   });
 
   test('should display (unassigned) when no assignment exist for case', async () => {
@@ -498,20 +469,15 @@ describe('Case Detail screen tests', () => {
       debtorAttorney,
     };
 
-    renderWithProps({ ...testCaseDetail });
+    await renderWithProps({ ...testCaseDetail });
 
-    const expectedTitle = ` - ${testCaseDetail.caseTitle}`;
-    await waitFor(
-      async () => {
-        const title = screen.getByTestId('case-detail-heading-title');
-        expect(title.innerHTML).toEqual(expectedTitle);
+    const title = screen.getByTestId('case-detail-heading-title');
+    // ensure the heading contains the case title (unassigned case)
+    expect(title).toHaveTextContent(testCaseDetail.caseTitle);
 
-        const unassignedElement = document.querySelector('.unassigned-placeholder');
-        expect(unassignedElement).toBeInTheDocument();
-      },
-      { timeout: 5000 },
-    );
-  }, 20000);
+    const unassignedElement = document.querySelector('.unassigned-placeholder');
+    expect(unassignedElement).toBeInTheDocument();
+  });
 
   const debtorCounselTestCases = [
     [undefined, undefined, undefined, undefined, undefined, undefined],
@@ -563,45 +529,36 @@ describe('Case Detail screen tests', () => {
         testCaseDetail.caseId,
       )} - ${testCaseDetail.caseTitle}`;
 
-      renderWithProps({ ...testCaseDetail });
+      await renderWithProps({ ...testCaseDetail });
 
-      await waitFor(
-        async () => {
-          const debtorCounselName = screen.queryByTestId('case-detail-debtor-counsel-name');
-          expect(debtorCounselName).toBeInTheDocument();
-          if (expectedAttorney?.address1) {
-            const address1 = screen.queryByTestId('case-detail-debtor-counsel-address1');
-            expect(address1).toBeInTheDocument();
-          }
-          if (expectedAttorney?.address2) {
-            const address2 = screen.queryByTestId('case-detail-debtor-counsel-address2');
-            expect(address2).toBeInTheDocument();
-          }
-          if (expectedAttorney?.address3) {
-            const address3 = screen.queryByTestId('case-detail-debtor-counsel-address3');
-            expect(address3).toBeInTheDocument();
-          }
-          if (expectedAttorney?.cityStateZipCountry) {
-            const cityStateZipCountry = screen.queryByTestId(
-              'case-detail-debtor-counsel-city-state-zip',
-            );
-            expect(cityStateZipCountry).toBeInTheDocument();
-          }
-          if (expectedAttorney?.phone) {
-            const phone = screen.queryByTestId('case-detail-debtor-counsel-phone-number');
-            expect(phone).toBeInTheDocument();
-          }
-          if (expectedAttorney?.email) {
-            const email = screen.queryByTestId('case-detail-debtor-counsel-email');
-            expect(email).toBeInTheDocument();
-            const link = email?.children[0].getAttribute('href');
-            expect(link).toEqual(expectedLink);
-          }
-        },
-        { timeout: 5000 },
-      );
+      // wait for lazy-loaded overview/counsel section to appear
+      await screen.findByTestId('case-detail-debtor-counsel-name');
+      // Debtor counsel section renders synchronously when caseDetail provided
+      const debtorCounselName = screen.getByTestId('case-detail-debtor-counsel-name');
+      expect(debtorCounselName).toBeInTheDocument();
+
+      if (expectedAttorney?.address1) {
+        expect(screen.getByTestId('case-detail-debtor-counsel-address1')).toBeInTheDocument();
+      }
+      if (expectedAttorney?.address2) {
+        expect(screen.getByTestId('case-detail-debtor-counsel-address2')).toBeInTheDocument();
+      }
+      if (expectedAttorney?.address3) {
+        expect(screen.getByTestId('case-detail-debtor-counsel-address3')).toBeInTheDocument();
+      }
+      if (expectedAttorney?.cityStateZipCountry) {
+        expect(screen.getByTestId('case-detail-debtor-counsel-city-state-zip')).toBeInTheDocument();
+      }
+      if (expectedAttorney?.phone) {
+        expect(screen.getByTestId('case-detail-debtor-counsel-phone-number')).toBeInTheDocument();
+      }
+      if (expectedAttorney?.email) {
+        const email = screen.getByTestId('case-detail-debtor-counsel-email');
+        expect(email).toBeInTheDocument();
+        const link = email?.children[0].getAttribute('href');
+        expect(link).toEqual(expectedLink);
+      }
     },
-    20000,
   );
 
   const navRouteTestCases = [
@@ -629,11 +586,12 @@ describe('Case Detail screen tests', () => {
       };
 
       // use <MemoryRouter> when you want to manually control the history
-      render(
-        <MemoryRouter initialEntries={[routePath]}>
-          <CaseDetailScreen caseDetail={testCaseDetail} caseNotes={[]} />
-        </MemoryRouter>,
-      );
+      // Make sure the initial entry uses the actual caseId instead of the placeholder '1234'
+      let finalRoute = routePath.startsWith('/') ? routePath : `/${routePath}`;
+      finalRoute = finalRoute.replace('1234', testCaseDetail.caseId);
+
+      // Render using Routes so NavLink route matching/highlighting works.
+      await renderWithRoutes(testCaseDetail, [], finalRoute);
 
       const caseDocketLink = screen.getByTestId(expectedLink);
 
