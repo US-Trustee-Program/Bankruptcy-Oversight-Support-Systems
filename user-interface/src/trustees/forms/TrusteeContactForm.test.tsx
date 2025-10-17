@@ -7,7 +7,7 @@ import { CamsRole } from '@common/cams/roles';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { FeatureFlagSet } from '@common/feature-flags';
 import Api2 from '@/lib/models/api2';
-import { TrusteeStatus } from '@common/cams/trustees';
+import { Trustee, TrusteeStatus } from '@common/cams/trustees';
 import {
   UseTrusteeContactFormProps,
   TrusteeFormData,
@@ -759,7 +759,9 @@ describe('TrusteeContactForm Tests', () => {
       getDynamicSpec: vi.fn().mockReturnValue({}),
     } as unknown as ReturnType<typeof UseFormHook.useTrusteeContactForm>);
 
-    const mockPost = vi.spyOn(Api2, 'postTrustee')..mockResolvedValue({ data: { trusteeId: 'addr2-id' } });
+    const postSpy = vi
+      .spyOn(Api2, 'postTrustee')
+      .mockResolvedValue({ data: { trusteeId: 'addr2-id' } as Trustee });
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
 
     renderWithProps({
@@ -773,8 +775,8 @@ describe('TrusteeContactForm Tests', () => {
     await user.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => {
-      expect(mockPost).toHaveBeenCalled();
-      const payload = mockPost.mock.calls[0][0];
+      expect(postSpy).toHaveBeenCalled();
+      const payload = postSpy.mock.calls[0][0];
       expect(payload.public.address).toHaveProperty('address2', 'Suite 200');
       expect(payload.public.website).toBe('https://example.org');
     });
