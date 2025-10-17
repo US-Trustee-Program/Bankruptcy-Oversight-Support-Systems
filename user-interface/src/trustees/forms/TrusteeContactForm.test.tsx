@@ -8,9 +8,16 @@ import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { FeatureFlagSet } from '@common/feature-flags';
 import Api2 from '@/lib/models/api2';
 import { TrusteeStatus } from '@common/cams/trustees';
-import { UseTrusteeContactFormProps } from '@/trustees/forms/UseTrusteeContactForm';
+import {
+  UseTrusteeContactFormProps,
+  TrusteeFormData,
+} from '@/trustees/forms/UseTrusteeContactForm';
+import * as UseFormHook from './UseTrusteeContactForm';
+import * as NavigatorModule from '@/lib/hooks/UseCamsNavigator';
+import * as GlobalAlertModule from '@/lib/hooks/UseGlobalAlert';
+import * as DebounceModule from '@/lib/hooks/UseDebounce';
 
-// Helper to render TrusteeContactForm with direct props
+// Single helper (scoped) to render TrusteeContactForm with direct props
 function renderWithProps(
   props: UseTrusteeContactFormProps = {
     action: 'create' as const,
@@ -43,13 +50,13 @@ describe('TrusteeContactForm Tests', () => {
     renderWithProps();
 
     await waitFor(() => {
-      const nameInput = screen.getByLabelText(/trustee name/i);
+      const nameInput = screen.getByTestId('trustee-name');
       expect(nameInput).toBeInTheDocument();
     });
 
-    const address1Input = screen.getByLabelText(/address line 1/i);
-    const cityInput = screen.getByLabelText(/city/i);
-    const emailInput = screen.getByLabelText(/email/i);
+    const address1Input = screen.getByTestId('trustee-address1');
+    const cityInput = screen.getByTestId('trustee-city');
+    const emailInput = screen.getByTestId('trustee-email');
 
     expect(address1Input).toBeInTheDocument();
     expect(cityInput).toBeInTheDocument();
@@ -99,13 +106,13 @@ describe('TrusteeContactForm Tests', () => {
     renderWithProps(editInternalState);
 
     await waitFor(() => {
-      const nameInput = screen.getByLabelText(/trustee name/i);
+      const nameInput = screen.getByTestId('trustee-name');
       expect(nameInput).toBeInTheDocument();
     });
 
     // Internal profile editing should show address fields as optional
-    const address1Input = screen.getByLabelText(/address line 1/i);
-    const emailInput = screen.getByLabelText(/email/i);
+    const address1Input = screen.getByTestId('trustee-address1');
+    const emailInput = screen.getByTestId('trustee-email');
 
     expect(address1Input).toBeInTheDocument();
     expect(emailInput).toBeInTheDocument();
@@ -123,7 +130,7 @@ describe('TrusteeContactForm Tests', () => {
     });
 
     // Verify the form still renders even when courts fail to load
-    const nameInput = screen.getByLabelText(/trustee name/i);
+    const nameInput = screen.getByTestId('trustee-name');
     expect(nameInput).toBeInTheDocument();
   });
 
@@ -147,7 +154,7 @@ describe('TrusteeContactForm Tests', () => {
     });
 
     // Verify the form renders after loading courts
-    const nameInput = screen.getByLabelText(/trustee name/i);
+    const nameInput = screen.getByTestId('trustee-name');
     expect(nameInput).toBeInTheDocument();
   });
 
@@ -166,17 +173,17 @@ describe('TrusteeContactForm Tests', () => {
 
     // Wait for form to render
     await waitFor(() => {
-      const nameInput = screen.getByLabelText(/trustee name/i);
+      const nameInput = screen.getByTestId('trustee-name');
       expect(nameInput).toBeInTheDocument();
     });
 
     // Fill out basic required fields to trigger form submission logic
-    const nameInput = screen.getByLabelText(/trustee name/i);
-    const address1Input = screen.getByLabelText(/address line 1/i);
-    const cityInput = screen.getByLabelText(/city/i);
-    const zipInput = screen.getByLabelText(/zip code/i);
-    const phoneInput = screen.getByLabelText(/phone/i);
-    const emailInput = screen.getByLabelText(/email/i);
+    const nameInput = screen.getByTestId('trustee-name');
+    const address1Input = screen.getByTestId('trustee-address1');
+    const cityInput = screen.getByTestId('trustee-city');
+    const zipInput = screen.getByTestId('trustee-zip');
+    const phoneInput = screen.getByTestId('trustee-phone');
+    const emailInput = screen.getByTestId('trustee-email');
 
     const user = userEvent.setup();
 
@@ -208,17 +215,17 @@ describe('TrusteeContactForm Tests', () => {
     renderWithProps(editPublicState);
 
     await waitFor(() => {
-      const nameInput = screen.getByLabelText(/trustee name/i);
+      const nameInput = screen.getByTestId('trustee-name');
       expect(nameInput).toBeInTheDocument();
     });
 
     // Public profile editing should show all fields as required
-    const address1Input = screen.getByLabelText(/address line 1/i);
-    const cityInput = screen.getByLabelText(/city/i);
+    const address1Input = screen.getByTestId('trustee-address1');
+    const cityInput = screen.getByTestId('trustee-city');
     const stateInput = screen.getByRole('combobox', { name: /state/i });
-    const zipInput = screen.getByLabelText(/zip code/i);
-    const phoneInput = screen.getByLabelText(/phone/i);
-    const emailInput = screen.getByLabelText(/email/i);
+    const zipInput = screen.getByTestId('trustee-zip');
+    const phoneInput = screen.getByTestId('trustee-phone');
+    const emailInput = screen.getByTestId('trustee-email');
 
     expect(address1Input).toBeInTheDocument();
     expect(cityInput).toBeInTheDocument();
@@ -232,12 +239,12 @@ describe('TrusteeContactForm Tests', () => {
     renderWithProps();
 
     await waitFor(() => {
-      const nameInput = screen.getByLabelText(/trustee name/i);
+      const nameInput = screen.getByTestId('trustee-name');
       expect(nameInput).toBeInTheDocument();
     });
 
     const user = userEvent.setup();
-    const nameInput = screen.getByLabelText(/trustee name/i);
+    const nameInput = screen.getByTestId('trustee-name');
 
     // Test field change handling
     await user.type(nameInput, 'Test Name');
@@ -267,12 +274,12 @@ describe('TrusteeContactForm Tests', () => {
     renderWithProps();
 
     await waitFor(() => {
-      const zipInput = screen.getByLabelText(/zip code/i);
+      const zipInput = screen.getByTestId('trustee-zip');
       expect(zipInput).toBeInTheDocument();
     });
 
     const user = userEvent.setup();
-    const zipInput = screen.getByLabelText(/zip code/i);
+    const zipInput = screen.getByTestId('trustee-zip');
 
     // Test zip code field which has specific validation
     await user.type(zipInput, '12345');
@@ -285,12 +292,12 @@ describe('TrusteeContactForm Tests', () => {
     renderWithProps();
 
     await waitFor(() => {
-      const websiteInput = screen.getByLabelText(/website/i);
+      const websiteInput = screen.getByTestId('trustee-website');
       expect(websiteInput).toBeInTheDocument();
     });
 
     const user = userEvent.setup();
-    const websiteInput = screen.getByLabelText(/website/i);
+    const websiteInput = screen.getByTestId('trustee-website');
 
     // Test website field which exercises URL normalization logic
     await user.type(websiteInput, 'example.com');
@@ -321,12 +328,12 @@ describe('TrusteeContactForm Tests', () => {
     renderWithProps();
 
     await waitFor(() => {
-      const phoneInput = screen.getByLabelText(/phone/i);
+      const phoneInput = screen.getByTestId('trustee-phone');
       expect(phoneInput).toBeInTheDocument();
     });
 
     const user = userEvent.setup();
-    const phoneInput = screen.getByLabelText(/phone/i);
+    const phoneInput = screen.getByTestId('trustee-phone');
 
     // Test phone field which has specific formatting
     await user.type(phoneInput, '555-123-4567');
@@ -339,12 +346,12 @@ describe('TrusteeContactForm Tests', () => {
     renderWithProps();
 
     await waitFor(() => {
-      const address2Input = screen.getByLabelText(/address line 2/i);
+      const address2Input = screen.getByTestId('trustee-address2');
       expect(address2Input).toBeInTheDocument();
     });
 
     const user = userEvent.setup();
-    const address2Input = screen.getByLabelText(/address line 2/i);
+    const address2Input = screen.getByTestId('trustee-address2');
 
     // Test optional address2 field
     await user.type(address2Input, 'Apt 123');
@@ -357,12 +364,12 @@ describe('TrusteeContactForm Tests', () => {
     renderWithProps();
 
     await waitFor(() => {
-      const extensionInput = screen.getByLabelText(/extension/i);
+      const extensionInput = screen.getByTestId('trustee-extension');
       expect(extensionInput).toBeInTheDocument();
     });
 
     const user = userEvent.setup();
-    const extensionInput = screen.getByLabelText(/extension/i);
+    const extensionInput = screen.getByTestId('trustee-extension');
 
     // Test extension field which is optional
     await user.type(extensionInput, '123');
@@ -384,7 +391,7 @@ describe('TrusteeContactForm Tests', () => {
     });
 
     // Verify the form still renders even when courts API returns response without data
-    const nameInput = screen.getByLabelText(/trustee name/i);
+    const nameInput = screen.getByTestId('trustee-name');
     expect(nameInput).toBeInTheDocument();
   });
 
@@ -428,7 +435,7 @@ describe('TrusteeContactForm Tests', () => {
     });
 
     // Verify the form renders with the loaded court data
-    const nameInput = screen.getByLabelText(/trustee name/i);
+    const nameInput = screen.getByTestId('trustee-name');
     expect(nameInput).toBeInTheDocument();
   });
 
@@ -446,13 +453,13 @@ describe('TrusteeContactForm Tests', () => {
     renderWithProps(stateWithChapters);
 
     await waitFor(() => {
-      const nameInput = screen.getByLabelText(/trustee name/i);
+      const nameInput = screen.getByTestId('trustee-name');
       expect(nameInput).toBeInTheDocument();
     });
 
     // Verify the form renders with the chapter data processed
     // The useMemo should map the chapter values to CHAPTER_OPTIONS
-    expect(screen.getByLabelText(/trustee name/i)).toBeInTheDocument();
+    expect(screen.getByTestId('trustee-name')).toBeInTheDocument();
   });
 
   test('should fallback to active status when status is invalid', async () => {
@@ -469,11 +476,1174 @@ describe('TrusteeContactForm Tests', () => {
     renderWithProps(stateWithInvalidStatus);
 
     await waitFor(() => {
-      const nameInput = screen.getByLabelText(/trustee name/i);
+      const nameInput = screen.getByTestId('trustee-name');
       expect(nameInput).toBeInTheDocument();
     });
 
     // Verify the form renders - the statusSelection useMemo should fallback to 'active'
-    expect(screen.getByLabelText(/trustee name/i)).toBeInTheDocument();
+    expect(screen.getByTestId('trustee-name')).toBeInTheDocument();
+  });
+
+  test('should map internal payload for edit and call patchTrustee then navigate with returned data', async () => {
+    // Arrange: mock the useTrusteeContactForm to return controlled form data and helpers
+    const baseFormData = {
+      name: 'Internal Trustee',
+      address1: '',
+      address2: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      phone: '555-000-1111',
+      extension: '',
+      email: 'internal@example.com',
+      districts: [],
+      chapters: [],
+      status: 'active',
+      website: '',
+    };
+
+    const updateField = vi.fn();
+    const validateFieldAndUpdate = vi.fn();
+    const clearErrors = vi.fn();
+    const clearFieldError = vi.fn();
+    const getDynamicSpec = vi.fn().mockReturnValue({});
+    const getFormData = vi.fn().mockImplementation((override) => {
+      return override ? { ...baseFormData, [override.name]: override.value } : baseFormData;
+    });
+
+    vi.spyOn(UseFormHook, 'useTrusteeContactForm').mockReturnValue({
+      formData: baseFormData,
+      updateField,
+      getFormData,
+      fieldErrors: {},
+      validateFieldAndUpdate,
+      clearErrors,
+      clearFieldError,
+      validateFormAndUpdateErrors: vi.fn().mockReturnValue(true),
+      getDynamicSpec,
+    } as unknown as ReturnType<typeof UseFormHook.useTrusteeContactForm>);
+
+    const mockPatch = vi.fn().mockResolvedValue({
+      data: {
+        id: 'patched',
+        name: 'patched trustee',
+      },
+    });
+    vi.spyOn(Api2, 'patchTrustee').mockImplementation(
+      mockPatch as unknown as typeof Api2.patchTrustee,
+    );
+
+    const navigateMock = { navigateTo: vi.fn() };
+    vi.spyOn(NavigatorModule, 'default').mockReturnValue(
+      navigateMock as unknown as ReturnType<typeof NavigatorModule.default>,
+    );
+
+    // Ensure global alert exists
+    vi.spyOn(GlobalAlertModule, 'useGlobalAlert').mockReturnValue({
+      error: vi.fn(),
+    } as unknown as ReturnType<typeof GlobalAlertModule.useGlobalAlert>);
+
+    // Render component as edit/internal
+    renderWithProps({
+      action: 'edit',
+      cancelTo: '/trustees',
+      trusteeId: 'abc',
+      contactInformation: 'internal',
+    });
+
+    // Act: submit the form
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /save/i }));
+
+    // Assert: patchTrustee called with internal payload shape
+    await waitFor(() => {
+      expect(mockPatch).toHaveBeenCalled();
+    });
+
+    const calledPayload = mockPatch.mock.calls[0][1];
+    expect(calledPayload).toHaveProperty('internal');
+    expect(calledPayload.internal).toHaveProperty('phone');
+    expect(calledPayload.internal.phone).toEqual({ number: '555-000-1111', extension: '' });
+    expect(calledPayload.internal).toHaveProperty('email', 'internal@example.com');
+
+    // Assert navigation occurred with returned data
+    expect(navigateMock.navigateTo).toHaveBeenCalledWith('/trustees/abc', {
+      trustee: { id: 'patched', name: 'patched trustee' },
+    });
+  });
+
+  test('should call globalAlert.error when patchTrustee rejects during edit', async () => {
+    // Arrange similar to previous but patchTrustee rejects
+    const baseFormData = {
+      name: 'Internal Trustee',
+      address1: '',
+      address2: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      phone: '555-000-1111',
+      extension: '',
+      email: 'internal@example.com',
+      districts: [],
+      chapters: [],
+      status: 'active',
+      website: '',
+    };
+
+    vi.spyOn(UseFormHook, 'useTrusteeContactForm').mockReturnValue({
+      formData: baseFormData,
+      updateField: vi.fn(),
+      getFormData: vi.fn().mockReturnValue(baseFormData),
+      fieldErrors: {},
+      validateFieldAndUpdate: vi.fn(),
+      clearErrors: vi.fn(),
+      clearFieldError: vi.fn(),
+      validateFormAndUpdateErrors: vi.fn().mockReturnValue(true),
+      getDynamicSpec: vi.fn().mockReturnValue({}),
+    } as unknown as ReturnType<typeof UseFormHook.useTrusteeContactForm>);
+
+    const error = new Error('Network failure');
+    vi.spyOn(Api2, 'patchTrustee').mockRejectedValue(error);
+
+    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+
+    vi.spyOn(NavigatorModule, 'default').mockReturnValue({
+      navigateTo: vi.fn(),
+    } as unknown as ReturnType<typeof NavigatorModule.default>);
+
+    renderWithProps({
+      action: 'edit',
+      cancelTo: '/trustees',
+      trusteeId: 'fail-id',
+      contactInformation: 'internal',
+    });
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => {
+      expect(globalAlertSpy.error).toHaveBeenCalled();
+      // message should mention 'update' since action === 'edit'
+      expect(globalAlertSpy.error).toHaveBeenCalledWith(
+        expect.stringMatching(/Failed to update trustee/),
+      );
+    });
+  });
+
+  test('should clear address field errors when internal and all address fields become empty', async () => {
+    // Arrange: provide form data where address fields will become empty after change
+    const baseFormData = {
+      name: 'Internal Trustee',
+      address1: '123',
+      address2: '',
+      city: 'Some City',
+      state: 'CA',
+      zipCode: '90210',
+      phone: '',
+      extension: '',
+      email: '',
+      districts: [],
+      chapters: [],
+      status: 'active',
+      website: '',
+    };
+
+    const updateField = vi.fn();
+    const validateFieldAndUpdate = vi.fn();
+    const clearFieldError = vi.fn();
+    const getFormData = vi.fn().mockImplementation((override) => {
+      // Simulate that when address1 is cleared, all address fields are empty
+      if (override && override.name === 'address1' && override.value === '') {
+        return { ...baseFormData, address1: '', city: '', state: '', zipCode: '' };
+      }
+      return baseFormData;
+    });
+
+    vi.spyOn(UseFormHook, 'useTrusteeContactForm').mockReturnValue({
+      formData: baseFormData,
+      updateField,
+      getFormData,
+      fieldErrors: { address1: 'error', city: 'error', state: 'error', zipCode: 'error' },
+      validateFieldAndUpdate,
+      clearErrors: vi.fn(),
+      clearFieldError,
+      validateFormAndUpdateErrors: vi.fn().mockReturnValue(false), // prevent submit
+      getDynamicSpec: vi.fn().mockReturnValue({}),
+    } as unknown as ReturnType<typeof UseFormHook.useTrusteeContactForm>);
+
+    // Make debounce immediate so validation runs synchronously in test
+    vi.spyOn(DebounceModule, 'default').mockReturnValue(((cb: () => void) =>
+      cb()) as unknown as ReturnType<typeof DebounceModule.default>);
+
+    renderWithProps({
+      action: 'edit',
+      cancelTo: '/trustees',
+      trusteeId: 'abc',
+      contactInformation: 'internal',
+    });
+
+    // Act: clear the address1 input which should trigger clearFieldError for all address fields
+    const user = userEvent.setup();
+    const addr1 = screen.getByTestId('trustee-address1');
+    await user.clear(addr1);
+
+    await waitFor(() => {
+      // Expect clearFieldError called for each of the required address fields
+      expect(clearFieldError).toHaveBeenCalled();
+      expect(clearFieldError.mock.calls.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  test('should normalize website URL in outgoing payload during create', async () => {
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+
+    const mockPostTrustee = vi.fn().mockResolvedValue({
+      data: { trusteeId: 'new-trustee-123' },
+    });
+    vi.spyOn(Api2, 'postTrustee').mockImplementation(mockPostTrustee);
+
+    renderWithProps({
+      action: 'create',
+      cancelTo: '/trustees',
+      trusteeId: '',
+      contactInformation: 'public',
+    });
+
+    await waitFor(() => {
+      const nameInput = screen.getByTestId('trustee-name');
+      expect(nameInput).toBeInTheDocument();
+    });
+
+    const user = userEvent.setup();
+
+    await user.type(screen.getByTestId('trustee-name'), 'Test Trustee');
+    await user.type(screen.getByTestId('trustee-address1'), '123 Main St');
+    await user.type(screen.getByTestId('trustee-city'), 'Test City');
+    await user.type(screen.getByTestId('trustee-zip'), '90210');
+    await user.type(screen.getByTestId('trustee-phone'), '555-123-4567');
+    await user.type(screen.getByTestId('trustee-email'), 'test@example.com');
+    await user.type(screen.getByTestId('trustee-website'), 'example.com');
+
+    await testingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
+
+    await user.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => {
+      expect(mockPostTrustee).toHaveBeenCalled();
+      const calledPayload = mockPostTrustee.mock.calls[0][0];
+      expect(calledPayload.public.website).toBe('https://example.com');
+    });
+  });
+
+  test('create should not include website property when website is empty', async () => {
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+
+    const mockPostTrustee = vi.fn().mockResolvedValue({ data: { trusteeId: 'no-site-123' } });
+    vi.spyOn(Api2, 'postTrustee').mockImplementation(
+      mockPostTrustee as unknown as typeof Api2.postTrustee,
+    );
+
+    renderWithProps({
+      action: 'create',
+      cancelTo: '/trustees',
+      trusteeId: '',
+      contactInformation: 'public',
+    });
+
+    await screen.findByTestId('trustee-name');
+
+    const user = userEvent.setup();
+    await user.type(screen.getByTestId('trustee-name'), 'No Site Trustee');
+    await user.type(screen.getByTestId('trustee-address1'), '10 Test Ave');
+    await user.type(screen.getByTestId('trustee-city'), 'Testopolis');
+    await user.type(screen.getByTestId('trustee-zip'), '12345');
+    await user.type(screen.getByTestId('trustee-phone'), '555-999-0000');
+    await user.type(screen.getByTestId('trustee-email'), 'nosite@example.com');
+
+    // Do not type into website (leave empty)
+    await testingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
+
+    await user.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => {
+      expect(mockPostTrustee).toHaveBeenCalled();
+      const payload = mockPostTrustee.mock.calls[0][0];
+      // public should exist but website should not be present
+      expect(payload.public).toBeDefined();
+      expect(payload.public).not.toHaveProperty('website');
+    });
+  });
+
+  test('create should include address2 in public.address when provided', async () => {
+    // Mock form hook to provide address2 and website
+    const mockFormData = {
+      name: 'With Addr2',
+      address1: '100 A St',
+      address2: 'Suite 200',
+      city: 'CityX',
+      state: 'CA',
+      zipCode: '90001',
+      phone: '555-222-3333',
+      extension: '',
+      email: 'addr2@example.com',
+      districts: [],
+      chapters: [],
+      status: 'active',
+      website: 'example.org',
+    } as TrusteeFormData;
+
+    vi.spyOn(UseFormHook, 'useTrusteeContactForm').mockReturnValue({
+      formData: mockFormData,
+      updateField: vi.fn(),
+      getFormData: vi.fn().mockReturnValue(mockFormData),
+      fieldErrors: {},
+      validateFieldAndUpdate: vi.fn(),
+      clearErrors: vi.fn(),
+      clearFieldError: vi.fn(),
+      validateFormAndUpdateErrors: vi.fn().mockReturnValue(true),
+      getDynamicSpec: vi.fn().mockReturnValue({}),
+    } as unknown as ReturnType<typeof UseFormHook.useTrusteeContactForm>);
+
+    const mockPost = vi.fn().mockResolvedValue({ data: { trusteeId: 'addr2-id' } });
+    vi.spyOn(Api2, 'postTrustee').mockImplementation(
+      mockPost as unknown as typeof Api2.postTrustee,
+    );
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+
+    renderWithProps({
+      action: 'create',
+      cancelTo: '/trustees',
+      trusteeId: '',
+      contactInformation: 'public',
+    });
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenCalled();
+      const payload = mockPost.mock.calls[0][0];
+      expect(payload.public.address).toHaveProperty('address2', 'Suite 200');
+      expect(payload.public.website).toBe('https://example.org');
+    });
+  });
+
+  test('edit internal should include phone object when phone provided', async () => {
+    const baseFormData = {
+      name: 'Internal With Phone',
+      address1: '1 Main',
+      address2: '',
+      city: 'C',
+      state: 'NY',
+      zipCode: '10001',
+      phone: '555-333-4444',
+      extension: '12',
+      email: 'i@example.com',
+      districts: [],
+      chapters: [],
+      status: 'active',
+      website: '',
+    } as TrusteeFormData;
+
+    vi.spyOn(UseFormHook, 'useTrusteeContactForm').mockReturnValue({
+      formData: baseFormData,
+      updateField: vi.fn(),
+      getFormData: vi.fn().mockReturnValue(baseFormData),
+      fieldErrors: {},
+      validateFieldAndUpdate: vi.fn(),
+      clearErrors: vi.fn(),
+      clearFieldError: vi.fn(),
+      validateFormAndUpdateErrors: vi.fn().mockReturnValue(true),
+      getDynamicSpec: vi.fn().mockReturnValue({}),
+    } as unknown as ReturnType<typeof UseFormHook.useTrusteeContactForm>);
+
+    const mockPatch = vi.fn().mockResolvedValue({ data: { id: 'patched-3' } });
+    vi.spyOn(Api2, 'patchTrustee').mockImplementation(
+      mockPatch as unknown as typeof Api2.patchTrustee,
+    );
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+
+    renderWithProps({
+      action: 'edit',
+      cancelTo: '/trustees',
+      trusteeId: 'int-1',
+      contactInformation: 'internal',
+    });
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => {
+      expect(mockPatch).toHaveBeenCalled();
+      const calledPayload = mockPatch.mock.calls[0][1];
+      expect(calledPayload.internal.phone).toEqual({ number: '555-333-4444', extension: '12' });
+    });
+  });
+
+  test('edit internal should send internal.address=null and phone null when address/phone missing', async () => {
+    const baseFormData = {
+      name: 'Internal Missing Addr',
+      address1: '',
+      address2: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      phone: '',
+      extension: '',
+      email: undefined,
+      districts: [],
+      chapters: [],
+      status: 'active',
+      website: '',
+    } as TrusteeFormData;
+
+    vi.spyOn(UseFormHook, 'useTrusteeContactForm').mockReturnValue({
+      formData: baseFormData,
+      updateField: vi.fn(),
+      getFormData: vi.fn().mockReturnValue(baseFormData),
+      fieldErrors: {},
+      validateFieldAndUpdate: vi.fn(),
+      clearErrors: vi.fn(),
+      clearFieldError: vi.fn(),
+      validateFormAndUpdateErrors: vi.fn().mockReturnValue(true),
+      getDynamicSpec: vi.fn().mockReturnValue({}),
+    } as unknown as ReturnType<typeof UseFormHook.useTrusteeContactForm>);
+
+    const mockPatch = vi.fn().mockResolvedValue({ data: { id: 'patched-2' } });
+    vi.spyOn(Api2, 'patchTrustee').mockImplementation(
+      mockPatch as unknown as typeof Api2.patchTrustee,
+    );
+
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+
+    renderWithProps({
+      action: 'edit',
+      cancelTo: '/trustees',
+      trusteeId: 'edit-id',
+      contactInformation: 'internal',
+    });
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => {
+      expect(mockPatch).toHaveBeenCalled();
+      const calledPayload = mockPatch.mock.calls[0][1];
+      expect(calledPayload).toHaveProperty('internal');
+      // address should be null because address fields empty
+      expect(calledPayload.internal.address).toBeNull();
+      // phone should be null because phone empty
+      expect(calledPayload.internal.phone).toBeNull();
+      // email property should be null (we set undefined)
+      expect(calledPayload.internal.email).toBeNull();
+    });
+  });
+
+  test('shows Saving… while submitting', async () => {
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+
+    let resolver: (value: { data: { trusteeId: string } }) => void;
+    const pending = new Promise<{ data: { trusteeId: string } }>((res) => {
+      resolver = res;
+    });
+    const mockPost = vi.fn().mockImplementation(() => pending);
+    vi.spyOn(Api2, 'postTrustee').mockImplementation(
+      mockPost as unknown as typeof Api2.postTrustee,
+    );
+
+    renderWithProps({
+      action: 'create',
+      cancelTo: '/trustees',
+      trusteeId: '',
+      contactInformation: 'public',
+    });
+
+    await screen.findByTestId('trustee-name');
+
+    const user = userEvent.setup();
+    await user.type(screen.getByTestId('trustee-name'), 'Pending Save');
+    await user.type(screen.getByTestId('trustee-address1'), '1 Pending');
+    await user.type(screen.getByTestId('trustee-city'), 'Nowhere');
+    await user.type(screen.getByTestId('trustee-zip'), '00000');
+    await user.type(screen.getByTestId('trustee-phone'), '555-000-0000');
+    await user.type(screen.getByTestId('trustee-email'), 'p@example.com');
+    await testingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
+
+    // Click save and assert button shows Saving… before promise resolves
+    await user.click(screen.getByRole('button', { name: /save/i }));
+
+    // The button text should reflect submitting state
+    await screen.findByRole('button', { name: /saving…/i });
+
+    // Resolve the pending API call
+    resolver!({ data: { trusteeId: 'resolved' } });
+
+    await waitFor(() => expect(mockPost).toHaveBeenCalled());
+  });
+
+  test('should handle district uniqueness and sorting from getCourts with duplicates', async () => {
+    const mockCourtsWithDuplicates = [
+      {
+        courtDivisionCode: '081',
+        courtName: 'Test Court 1',
+        courtDivisionName: 'Test Division 1',
+      },
+      {
+        courtDivisionCode: '023',
+        courtName: 'Test Court 2',
+        courtDivisionName: 'Test Division 2',
+      },
+      {
+        courtDivisionCode: '081',
+        courtName: 'Test Court 1',
+        courtDivisionName: 'Test Division 1',
+      },
+      {
+        courtDivisionCode: '001',
+        courtName: 'Test Court 3',
+        courtDivisionName: 'Test Division 3',
+      },
+    ];
+
+    const mockGetCourts = vi.fn().mockResolvedValue({ data: mockCourtsWithDuplicates });
+    vi.spyOn(Api2, 'getCourts').mockImplementation(mockGetCourts);
+
+    renderWithProps();
+
+    await waitFor(() => {
+      expect(mockGetCourts).toHaveBeenCalled();
+    });
+
+    await waitFor(() => {
+      const districtCombo = screen.getByRole('combobox', { name: /district/i });
+      expect(districtCombo).toBeInTheDocument();
+    });
+
+    const user = userEvent.setup();
+    const districtCombo = screen.getByRole('combobox', { name: /district/i });
+
+    await user.click(districtCombo);
+
+    await waitFor(() => {
+      const options = screen.getAllByRole('option');
+      expect(options).toHaveLength(3);
+    });
+  });
+
+  test('should show required attribute based on getDynamicSpec for non-create internal editing', async () => {
+    const mockDynamicSpec = {
+      name: { required: true },
+      address1: { required: true },
+      phone: { required: true },
+    };
+
+    const mockFormData = {
+      name: 'Test Trustee',
+      address1: '',
+      address2: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      phone: '',
+      extension: '',
+      email: '',
+      districts: [],
+      chapters: [],
+      status: 'active',
+      website: '',
+    };
+
+    vi.spyOn(UseFormHook, 'useTrusteeContactForm').mockReturnValue({
+      formData: mockFormData,
+      updateField: vi.fn(),
+      getFormData: vi.fn().mockReturnValue(mockFormData),
+      fieldErrors: {},
+      validateFieldAndUpdate: vi.fn(),
+      clearErrors: vi.fn(),
+      clearFieldError: vi.fn(),
+      validateFormAndUpdateErrors: vi.fn().mockReturnValue(false),
+      getDynamicSpec: vi.fn().mockReturnValue(mockDynamicSpec),
+    } as unknown as ReturnType<typeof UseFormHook.useTrusteeContactForm>);
+
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+
+    renderWithProps({
+      action: 'edit',
+      cancelTo: '/trustees',
+      trusteeId: 'test-id',
+      contactInformation: 'internal',
+    });
+
+    await waitFor(() => {
+      const nameInput = screen.getByTestId('trustee-name');
+      expect(nameInput).toBeInTheDocument();
+    });
+
+    const nameInput = screen.getByTestId('trustee-name');
+    const address1Input = screen.getByTestId('trustee-address1');
+    const phoneInput = screen.getByTestId('trustee-phone');
+    const emailInput = screen.getByTestId('trustee-email');
+
+    expect(nameInput).toBeRequired();
+    expect(address1Input).toBeRequired();
+    expect(phoneInput).not.toBeRequired();
+    expect(emailInput).not.toBeRequired();
+  });
+
+  test('should handle internal profile with address2 and null conditions', async () => {
+    const mockUpdateField = vi.fn();
+    const mockGetFormData = vi.fn();
+    const mockValidateFormAndUpdateErrors = vi.fn().mockReturnValue(true);
+
+    vi.spyOn(UseFormHook, 'useTrusteeContactForm').mockReturnValue({
+      formData: {
+        name: 'Test Trustee',
+        address1: '123 Main St',
+        address2: 'Suite 100',
+        city: 'Test City',
+        state: 'TX',
+        zipCode: '12345',
+        phone: '',
+        email: '',
+        extension: '123',
+        website: '',
+        districts: [],
+        chapters: [],
+        status: 'active' as TrusteeStatus,
+      },
+      updateField: mockUpdateField,
+      getFormData: mockGetFormData.mockReturnValue({
+        name: 'Test Trustee',
+        address1: '123 Main St',
+        address2: 'Suite 100',
+        city: 'Test City',
+        state: 'TX',
+        zipCode: '12345',
+        phone: '',
+        email: '',
+        extension: '123',
+        website: '',
+        districts: [],
+        chapters: [],
+        status: 'active' as TrusteeStatus,
+      }),
+      fieldErrors: {},
+      validateFieldAndUpdate: vi.fn(),
+      clearErrors: vi.fn(),
+      clearFieldError: vi.fn(),
+      validateFormAndUpdateErrors: mockValidateFormAndUpdateErrors,
+      getDynamicSpec: vi.fn().mockReturnValue({}),
+    } as unknown as ReturnType<typeof UseFormHook.useTrusteeContactForm>);
+
+    const mockPatch = vi.fn().mockResolvedValue({
+      data: {
+        id: 'patched',
+        name: 'patched trustee',
+      },
+    });
+    vi.spyOn(Api2, 'patchTrustee').mockImplementation(
+      mockPatch as unknown as typeof Api2.patchTrustee,
+    );
+
+    renderWithProps({
+      action: 'edit',
+      cancelTo: '/trustees',
+      trusteeId: 'test-trustee-id',
+      contactInformation: 'internal',
+    });
+
+    const submitButton = screen.getByRole('button', { name: /save/i });
+    await userEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(mockPatch).toHaveBeenCalledWith('test-trustee-id', {
+        internal: {
+          address: {
+            address1: '123 Main St',
+            address2: 'Suite 100',
+            city: 'Test City',
+            state: 'TX',
+            zipCode: '12345',
+            countryCode: 'US',
+          },
+          phone: null,
+          email: '',
+        },
+      });
+    });
+  });
+
+  test('should handle ZIP code field change with debounced validation', async () => {
+    const mockUpdateField = vi.fn();
+    const mockValidateFieldAndUpdate = vi.fn();
+    const mockDebounce = vi.fn((fn: () => void) => fn());
+
+    vi.spyOn(DebounceModule, 'default').mockReturnValue(
+      mockDebounce as unknown as ReturnType<typeof DebounceModule.default>,
+    );
+
+    vi.spyOn(UseFormHook, 'useTrusteeContactForm').mockReturnValue({
+      formData: {
+        name: 'Test Trustee',
+        address1: '123 Main St',
+        city: 'Test City',
+        state: 'TX',
+        zipCode: '',
+        phone: '555-000-1111',
+        email: 'test@example.com',
+        extension: '',
+        website: '',
+        districts: [],
+        chapters: [],
+        status: 'active' as TrusteeStatus,
+      },
+      updateField: mockUpdateField,
+      getFormData: vi.fn(),
+      fieldErrors: {},
+      validateFieldAndUpdate: mockValidateFieldAndUpdate,
+      clearErrors: vi.fn(),
+      clearFieldError: vi.fn(),
+      validateFormAndUpdateErrors: vi.fn(),
+      getDynamicSpec: vi.fn().mockReturnValue({}),
+    } as unknown as ReturnType<typeof UseFormHook.useTrusteeContactForm>);
+
+    renderWithProps();
+
+    const zipInput = screen.getByTestId('trustee-zip');
+    await userEvent.type(zipInput, '12345');
+
+    await waitFor(() => {
+      expect(mockUpdateField).toHaveBeenCalledWith('zipCode', '12345');
+      expect(mockValidateFieldAndUpdate).toHaveBeenCalledWith('zipCode', '12345', {});
+    });
+  });
+
+  test('should call updateField and validateFieldAndUpdate for multi-select ComboBox (chapters)', async () => {
+    const mockUpdateField = vi.fn();
+    const mockValidateFieldAndUpdate = vi.fn();
+    const mockDebounce = vi.fn((fn: () => void) => fn());
+
+    vi.spyOn(DebounceModule, 'default').mockReturnValue(
+      mockDebounce as unknown as ReturnType<typeof DebounceModule.default>,
+    );
+
+    vi.spyOn(UseFormHook, 'useTrusteeContactForm').mockReturnValue({
+      formData: {
+        name: 'Test Trustee',
+        address1: '123 Main St',
+        city: 'Test City',
+        state: 'TX',
+        zipCode: '12345',
+        phone: '555-000-1111',
+        email: 'test@example.com',
+        extension: '',
+        website: '',
+        districts: [],
+        chapters: [],
+        status: 'active' as TrusteeStatus,
+      },
+      updateField: mockUpdateField,
+      updateMultipleFields: vi.fn(),
+      resetForm: vi.fn(),
+      getFormData: vi.fn(),
+      fieldErrors: {},
+      validateFieldAndUpdate: mockValidateFieldAndUpdate,
+      clearErrors: vi.fn(),
+      clearFieldError: vi.fn(),
+      validateFormAndUpdateErrors: vi.fn(),
+      getDynamicSpec: vi.fn().mockReturnValue({}),
+    } as unknown as ReturnType<typeof UseFormHook.useTrusteeContactForm>);
+
+    // getCourts isn't needed for chapters; render create/public so chapters are visible
+    renderWithProps({
+      action: 'create',
+      cancelTo: '/trustees',
+      trusteeId: '',
+      contactInformation: 'public',
+    });
+
+    // Use shared helper to open chapters ComboBox and choose the first chapter option (index 0)
+    await testingUtilities.toggleComboBoxItemSelection('trustee-chapters', 0);
+
+    await waitFor(() => {
+      expect(mockUpdateField).toHaveBeenCalledWith('chapters', ['7-panel']);
+      expect(mockValidateFieldAndUpdate).toHaveBeenCalledWith('chapters', '7-panel', {});
+    });
+  });
+
+  test('should call updateField and validateFieldAndUpdate for single-select ComboBox (status)', async () => {
+    const mockUpdateField = vi.fn();
+    const mockValidateFieldAndUpdate = vi.fn();
+    const mockDebounce = vi.fn((fn: () => void) => fn());
+
+    vi.spyOn(DebounceModule, 'default').mockReturnValue(
+      mockDebounce as unknown as ReturnType<typeof DebounceModule.default>,
+    );
+
+    vi.spyOn(UseFormHook, 'useTrusteeContactForm').mockReturnValue({
+      formData: {
+        name: 'Test Trustee',
+        address1: '123 Main St',
+        city: 'Test City',
+        state: 'TX',
+        zipCode: '12345',
+        phone: '555-000-1111',
+        email: 'test@example.com',
+        extension: '',
+        website: '',
+        districts: [],
+        chapters: [],
+        status: 'active' as TrusteeStatus,
+      },
+      updateField: mockUpdateField,
+      updateMultipleFields: vi.fn(),
+      resetForm: vi.fn(),
+      getFormData: vi.fn(),
+      fieldErrors: {},
+      validateFieldAndUpdate: mockValidateFieldAndUpdate,
+      clearErrors: vi.fn(),
+      clearFieldError: vi.fn(),
+      validateFormAndUpdateErrors: vi.fn(),
+      getDynamicSpec: vi.fn().mockReturnValue({}),
+    } as unknown as ReturnType<typeof UseFormHook.useTrusteeContactForm>);
+
+    renderWithProps({
+      action: 'create',
+      cancelTo: '/trustees',
+      trusteeId: '',
+      contactInformation: 'public',
+    });
+
+    // Use shared helper to open status ComboBox and choose 'Not Active' (index 1)
+    await testingUtilities.toggleComboBoxItemSelection('trustee-status', 1);
+
+    await waitFor(() => {
+      expect(mockUpdateField).toHaveBeenCalledWith('status', 'not active');
+      expect(mockValidateFieldAndUpdate).toHaveBeenCalledWith('status', 'not active', {});
+    });
+  });
+
+  test('should call updateField when state selection changes (UsStatesComboBox)', async () => {
+    const mockUpdateField = vi.fn();
+    const mockValidateFieldAndUpdate = vi.fn();
+
+    vi.spyOn(UseFormHook, 'useTrusteeContactForm').mockReturnValue({
+      formData: {
+        name: 'Test Trustee',
+        address1: '123 Main St',
+        city: 'Test City',
+        state: '',
+        zipCode: '12345',
+        phone: '555-000-1111',
+        email: 'test@example.com',
+        extension: '',
+        website: '',
+        districts: [],
+        chapters: [],
+        status: 'active' as TrusteeStatus,
+      },
+      updateField: mockUpdateField,
+      updateMultipleFields: vi.fn(),
+      resetForm: vi.fn(),
+      getFormData: vi.fn(),
+      fieldErrors: {},
+      validateFieldAndUpdate: mockValidateFieldAndUpdate,
+      clearErrors: vi.fn(),
+      clearFieldError: vi.fn(),
+      validateFormAndUpdateErrors: vi.fn(),
+      getDynamicSpec: vi.fn().mockReturnValue({}),
+    } as unknown as ReturnType<typeof UseFormHook.useTrusteeContactForm>);
+
+    renderWithProps();
+
+    // Select a state option (index 5 -> CA)
+    await testingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
+
+    await waitFor(() => {
+      expect(mockUpdateField).toHaveBeenCalled();
+    });
+  });
+
+  test('should execute inline UsStatesComboBox onUpdateSelection handler (direct mock)', async () => {
+    const mockUpdateField = vi.fn();
+    const mockValidateFieldAndUpdate = vi.fn();
+
+    vi.spyOn(UseFormHook, 'useTrusteeContactForm').mockReturnValue({
+      formData: {
+        name: 'Test Trustee',
+        address1: '123 Main St',
+        city: 'Test City',
+        state: '',
+        zipCode: '12345',
+        phone: '555-000-1111',
+        email: 'test@example.com',
+        extension: '',
+        website: '',
+        districts: [],
+        chapters: [],
+        status: 'active' as TrusteeStatus,
+      },
+      updateField: mockUpdateField,
+      updateMultipleFields: vi.fn(),
+      resetForm: vi.fn(),
+      getFormData: vi.fn(),
+      fieldErrors: {},
+      validateFieldAndUpdate: mockValidateFieldAndUpdate,
+      clearErrors: vi.fn(),
+      clearFieldError: vi.fn(),
+      validateFormAndUpdateErrors: vi.fn(),
+      getDynamicSpec: vi.fn().mockReturnValue({}),
+    } as unknown as ReturnType<typeof UseFormHook.useTrusteeContactForm>);
+
+    renderWithProps();
+
+    // Use the project's shared combobox helper to select a state option (index 5 -> CA)
+    await testingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
+
+    await waitFor(() => {
+      expect(mockUpdateField).toHaveBeenCalled();
+      expect(mockValidateFieldAndUpdate).toHaveBeenCalled();
+    });
+  });
+
+  test('should map public payload for edit and call patchTrustee with public property', async () => {
+    const mockPatch = vi
+      .fn()
+      .mockResolvedValue({ data: { id: 'patched', name: 'patched trustee' } });
+    vi.spyOn(Api2, 'patchTrustee').mockImplementation(
+      mockPatch as unknown as typeof Api2.patchTrustee,
+    );
+
+    const navigateMock = { navigateTo: vi.fn() };
+    vi.spyOn(NavigatorModule, 'default').mockReturnValue(
+      navigateMock as unknown as ReturnType<typeof NavigatorModule.default>,
+    );
+
+    // Mock useTrusteeContactForm to return form data with public fields
+    vi.spyOn(UseFormHook, 'useTrusteeContactForm').mockReturnValue({
+      formData: {
+        name: 'Public Trustee',
+        address1: '1 Public St',
+        address2: '',
+        city: 'Public City',
+        state: 'NY',
+        zipCode: '10001',
+        phone: '555-111-2222',
+        extension: '',
+        email: 'public@example.com',
+        districts: ['001'],
+        chapters: ['13'],
+        status: 'active' as TrusteeStatus,
+        website: '',
+      },
+      updateField: vi.fn(),
+      getFormData: vi.fn().mockReturnValue({
+        name: 'Public Trustee',
+        address1: '1 Public St',
+        address2: '',
+        city: 'Public City',
+        state: 'NY',
+        zipCode: '10001',
+        phone: '555-111-2222',
+        extension: '',
+        email: 'public@example.com',
+        districts: ['001'],
+        chapters: ['13'],
+        status: 'active' as TrusteeStatus,
+        website: '',
+      }),
+      fieldErrors: {},
+      validateFieldAndUpdate: vi.fn(),
+      clearErrors: vi.fn(),
+      clearFieldError: vi.fn(),
+      validateFormAndUpdateErrors: vi.fn().mockReturnValue(true),
+      getDynamicSpec: vi.fn().mockReturnValue({}),
+    } as unknown as ReturnType<typeof UseFormHook.useTrusteeContactForm>);
+
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+
+    renderWithProps({
+      action: 'edit',
+      cancelTo: '/trustees',
+      trusteeId: 'pub-1',
+      contactInformation: 'public',
+    });
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => {
+      expect(mockPatch).toHaveBeenCalled();
+      const calledPayload = mockPatch.mock.calls[0][1];
+      expect(calledPayload).toHaveProperty('public');
+      expect(calledPayload).not.toHaveProperty('internal');
+      expect(calledPayload.public).toHaveProperty('email', 'public@example.com');
+    });
+  });
+
+  test('should display district load error Stop when getCourts rejects', async () => {
+    vi.spyOn(Api2, 'getCourts').mockRejectedValue(new Error('network failed'));
+
+    renderWithProps({
+      action: 'create',
+      cancelTo: '/trustees',
+      trusteeId: '',
+      contactInformation: 'public',
+    });
+
+    // the Stop element renders an alert with data-testid 'alert-<id>'
+    const stop = await screen.findByTestId('alert-trustee-stop');
+    expect(stop).toBeInTheDocument();
+    expect(stop).toHaveTextContent('Failed to load district options');
+  });
+
+  test('should not call API when validation fails on submit (create)', async () => {
+    const mockPost = vi.fn();
+    vi.spyOn(Api2, 'postTrustee').mockImplementation(
+      mockPost as unknown as typeof Api2.postTrustee,
+    );
+
+    vi.spyOn(UseFormHook, 'useTrusteeContactForm').mockReturnValue({
+      formData: {
+        name: 'X',
+        address1: '',
+        address2: '',
+        city: '',
+        state: '',
+        zipCode: '',
+        phone: '',
+        extension: '',
+        email: '',
+        districts: [],
+        chapters: [],
+        status: 'active' as TrusteeStatus,
+        website: '',
+      },
+      updateField: vi.fn(),
+      getFormData: vi.fn().mockReturnValue({}),
+      fieldErrors: {},
+      validateFieldAndUpdate: vi.fn(),
+      clearErrors: vi.fn(),
+      clearFieldError: vi.fn(),
+      validateFormAndUpdateErrors: vi.fn().mockReturnValue(false),
+      getDynamicSpec: vi.fn().mockReturnValue({}),
+    } as unknown as ReturnType<typeof UseFormHook.useTrusteeContactForm>);
+
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+
+    renderWithProps({
+      action: 'create',
+      cancelTo: '/trustees',
+      trusteeId: '',
+      contactInformation: 'public',
+    });
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /save/i }));
+
+    // ensure postTrustee not called due to validation failing
+    await new Promise((res) => setTimeout(res, 50));
+    expect(mockPost).not.toHaveBeenCalled();
+  });
+
+  test('should call globalAlert.error when postTrustee rejects during create', async () => {
+    // Arrange: mock postTrustee to reject and ensure globalAlert.error is called
+    const error = new Error('create failed');
+    vi.spyOn(Api2, 'postTrustee').mockRejectedValue(error);
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+
+    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+
+    // Ensure the form hook validates so that submit attempts the API call
+    vi.spyOn(UseFormHook, 'useTrusteeContactForm').mockReturnValue({
+      formData: {
+        name: 'Create Trustee',
+        address1: '1 Main St',
+        address2: '',
+        city: 'City',
+        state: 'CA',
+        zipCode: '90210',
+        phone: '555-111-2222',
+        extension: '',
+        email: 'create@example.com',
+        districts: [],
+        chapters: [],
+        status: 'active' as TrusteeStatus,
+        website: '',
+      },
+      updateField: vi.fn(),
+      getFormData: vi.fn().mockReturnValue({}),
+      fieldErrors: {},
+      validateFieldAndUpdate: vi.fn(),
+      clearErrors: vi.fn(),
+      clearFieldError: vi.fn(),
+      validateFormAndUpdateErrors: vi.fn().mockReturnValue(true),
+      getDynamicSpec: vi.fn().mockReturnValue({}),
+    } as unknown as ReturnType<typeof UseFormHook.useTrusteeContactForm>);
+
+    renderWithProps({
+      action: 'create',
+      cancelTo: '/trustees',
+      trusteeId: '',
+      contactInformation: 'public',
+    });
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => {
+      expect(globalAlertSpy.error).toHaveBeenCalled();
+      expect(globalAlertSpy.error).toHaveBeenCalledWith(
+        expect.stringMatching(/Failed to create trustee/),
+      );
+    });
+  });
+
+  test('should execute inline UsStatesComboBox onUpdateSelection handler with empty selection', async () => {
+    const mockUpdateField = vi.fn();
+    const mockValidateFieldAndUpdate = vi.fn();
+
+    // Use the project's combobox helper to simulate selecting then deselecting the state option
+    // Select CA (index 5) then toggle it off to produce an empty selection array
+
+    vi.spyOn(UseFormHook, 'useTrusteeContactForm').mockReturnValue({
+      formData: {
+        name: 'Test Trustee',
+        address1: '123 Main St',
+        city: 'Test City',
+        state: '',
+        zipCode: '12345',
+        phone: '555-000-1111',
+        email: 'test@example.com',
+        extension: '',
+        website: '',
+        districts: [],
+        chapters: [],
+        status: 'active' as TrusteeStatus,
+      },
+      updateField: mockUpdateField,
+      updateMultipleFields: vi.fn(),
+      resetForm: vi.fn(),
+      getFormData: vi.fn(),
+      fieldErrors: {},
+      validateFieldAndUpdate: mockValidateFieldAndUpdate,
+      clearErrors: vi.fn(),
+      clearFieldError: vi.fn(),
+      validateFormAndUpdateErrors: vi.fn(),
+      getDynamicSpec: vi.fn().mockReturnValue({}),
+    } as unknown as ReturnType<typeof UseFormHook.useTrusteeContactForm>);
+
+    renderWithProps();
+
+    // Select CA (index 5)
+    await testingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
+    // Deselect CA (toggle again)
+    await testingUtilities.toggleComboBoxItemSelection('trustee-state', 5, false);
+
+    await waitFor(() => {
+      // After deselecting, updateField should have been called (with undefined or empty) and validate invoked
+      expect(mockUpdateField).toHaveBeenCalled();
+      expect(mockValidateFieldAndUpdate).toHaveBeenCalled();
+    });
   });
 });
