@@ -148,12 +148,10 @@ describe('TrusteeContactForm Tests', () => {
 
     renderWithProps();
 
-    // Wait for component to mount and API call to be made
     await waitFor(() => {
       expect(mockGetCourts).toHaveBeenCalled();
     });
 
-    // Verify the form renders after loading courts
     const nameInput = screen.getByTestId('trustee-name');
     expect(nameInput).toBeInTheDocument();
   });
@@ -165,19 +163,16 @@ describe('TrusteeContactForm Tests', () => {
 
     const mockGetCourts = vi.fn().mockResolvedValue({ data: [] });
 
-    // Mock the API calls using spyOn pattern
     vi.spyOn(Api2, 'postTrustee').mockImplementation(mockPostTrustee);
     vi.spyOn(Api2, 'getCourts').mockImplementation(mockGetCourts);
 
     renderWithProps();
 
-    // Wait for form to render
     await waitFor(() => {
       const nameInput = screen.getByTestId('trustee-name');
       expect(nameInput).toBeInTheDocument();
     });
 
-    // Fill out basic required fields to trigger form submission logic
     const nameInput = screen.getByTestId('trustee-name');
     const address1Input = screen.getByTestId('trustee-address1');
     const cityInput = screen.getByTestId('trustee-city');
@@ -219,7 +214,6 @@ describe('TrusteeContactForm Tests', () => {
       expect(nameInput).toBeInTheDocument();
     });
 
-    // Public profile editing should show all fields as required
     const address1Input = screen.getByTestId('trustee-address1');
     const cityInput = screen.getByTestId('trustee-city');
     const stateInput = screen.getByRole('combobox', { name: /state/i });
@@ -246,10 +240,8 @@ describe('TrusteeContactForm Tests', () => {
     const user = userEvent.setup();
     const nameInput = screen.getByTestId('trustee-name');
 
-    // Test field change handling
     await user.type(nameInput, 'Test Name');
 
-    // Verify the field value was updated
     expect(nameInput).toHaveValue('Test Name');
   });
 
@@ -263,10 +255,8 @@ describe('TrusteeContactForm Tests', () => {
 
     const stateCombo = screen.getByRole('combobox', { name: /state/i });
 
-    // Use shared helper to select California (index 5)
     await testingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
 
-    // Verify the field can be interacted with
     expect(stateCombo).toBeInTheDocument();
   });
 
