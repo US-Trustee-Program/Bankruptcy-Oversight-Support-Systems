@@ -136,7 +136,7 @@ function TrusteeContactForm(props: Readonly<UseTrusteeContactFormProps>) {
           const createdId = (response as { data?: { trusteeId?: string } })?.data?.trusteeId;
           navigate.navigateTo(`/trustees/${createdId}`);
         } else {
-          const updateTrusteeResponse = await api.patchTrustee(props.trusteeId || '', payload);
+          const updateTrusteeResponse = await api.patchTrustee(props.trusteeId!, payload);
           navigate.navigateTo(`/trustees/${props.trusteeId}`, {
             trustee: updateTrusteeResponse?.data,
           });

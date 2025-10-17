@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import TrusteeAttorneyAssignmentModal from './TrusteeAttorneyAssignmentModal';
 import useApi2 from '@/lib/hooks/UseApi2';
@@ -165,17 +166,18 @@ describe('TrusteeAttorneyAssignmentModal', () => {
       />,
     );
 
-    // Open modal and wait for loading
+    // Open modal and wait for loading and the combobox to appear
     ref.current!.show();
     await waitFor(() => expect(mockApiMethods.getAttorneys).toHaveBeenCalled());
+    await screen.findByTestId('mock-combobox');
 
     // Initially, submit button should be disabled
     const submitButton = screen.getByTestId('button-test-modal-submit-button');
     expect(submitButton).toBeDisabled();
 
-    // Select an attorney
-    const comboBox = screen.getByTestId('mock-combobox');
-    fireEvent.change(comboBox, { target: { value: mockAttorneys[0].id } });
+    // Select an attorney (use userEvent.selectOptions to ensure proper event flow)
+    const comboBox = screen.getByTestId('mock-combobox') as HTMLSelectElement;
+    await userEvent.selectOptions(comboBox, mockAttorneys[0].id);
 
     // Submit button should now be enabled
     await waitFor(() => {
