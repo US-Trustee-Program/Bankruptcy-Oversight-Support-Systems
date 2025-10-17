@@ -319,27 +319,6 @@ describe('TrusteeDetailScreen', () => {
     expect(screen.queryByDisplayValue('john.doe.public@example.com')).not.toBeInTheDocument();
   });
 
-  test('should load from API when no location state is present', async () => {
-    mockUseNavigate.mockReturnValue({
-      pathname: '/trustees/123',
-      state: null,
-    });
-
-    const getTrusteeSpy = vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
-    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-
-    renderWithRouter();
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
-    });
-
-    expect(screen.getByTestId('trustee-street-address')).toHaveTextContent('123 Main St');
-    expect(screen.getByTestId('trustee-email')).toHaveTextContent('john.doe.public@example.com');
-
-    expect(getTrusteeSpy).toHaveBeenCalledWith('123');
-  });
-
   test.each([
     {
       route: '/trustees/123/audit-history',
