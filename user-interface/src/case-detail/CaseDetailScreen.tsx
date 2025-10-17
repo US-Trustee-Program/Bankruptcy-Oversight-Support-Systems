@@ -45,7 +45,7 @@ interface DocumentRange {
   last: number;
 }
 
-interface docketSortAndFilterOptions {
+interface DocketSortAndFilterOptions {
   searchInDocketText: string;
   selectedFacets: string[];
   sortDirection: SortDirection;
@@ -53,7 +53,7 @@ interface docketSortAndFilterOptions {
   selectedDateRange: DateRange;
 }
 
-interface caseNoteSortAndFilterOptions {
+interface CaseNoteSortAndFilterOptions {
   caseNoteSearchText: string;
   sortDirection: SortDirection;
 }
@@ -104,10 +104,7 @@ function dateRangeFilter(docketEntry: CaseDocketEntry, dateRange: DateRange) {
   if (dateRange.start && docketEntry.dateFiled < dateRange.start) {
     return false;
   }
-  if (dateRange.end && docketEntry.dateFiled > dateRange.end) {
-    return false;
-  }
-  return true;
+  return !(dateRange.end && docketEntry.dateFiled > dateRange.end);
 }
 
 function docketSearchFilter(docketEntry: CaseDocketEntry, searchString: string) {
@@ -139,7 +136,7 @@ function facetFilter(docketEntry: CaseDocketEntry, selectedFacets: string[]) {
 
 export function applyCaseNoteSortAndFilters(
   caseNotes: CaseNote[],
-  options: caseNoteSortAndFilterOptions,
+  options: CaseNoteSortAndFilterOptions,
 ) {
   if (!caseNotes?.length) {
     return { filteredCaseNotes: caseNotes, notesAlertOptions: undefined };
@@ -164,7 +161,7 @@ export function applyCaseNoteSortAndFilters(
 
 export function applyDocketEntrySortAndFilters(
   docketEntries: CaseDocketEntry[] | undefined,
-  options: docketSortAndFilterOptions,
+  options: DocketSortAndFilterOptions,
 ) {
   if (docketEntries === undefined) {
     return { filteredDocketEntries: docketEntries, alertOptions: undefined };
@@ -221,7 +218,7 @@ function showReopenDate(reOpenDate: string | undefined, closedDate: string | und
   if (reOpenDate && closedDate) {
     const parsedReOpenDate = Date.parse(reOpenDate);
     const parsedClosedDate = Date.parse(closedDate);
-    if (closedDate && parsedReOpenDate > parsedClosedDate) {
+    if (parsedReOpenDate > parsedClosedDate) {
       return true;
     }
   }
@@ -247,7 +244,7 @@ export interface CaseDetailProps {
   caseNotes?: CaseNote[];
 }
 
-export default function CaseDetailScreen(props: CaseDetailProps) {
+export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
   const api = useApi2();
   const { caseId } = useParams();
 
@@ -372,8 +369,8 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   }
 
   function searchDocumentNumber(ev: React.ChangeEvent<HTMLInputElement>) {
-    const newDocumentNumber = parseInt(ev.target.value.trim());
-    if (isNaN(newDocumentNumber)) {
+    const newDocumentNumber = Number.parseInt(ev.target.value.trim());
+    if (Number.isNaN(newDocumentNumber)) {
       setDocumentNumber(null);
       setDocumentNumberError(ev.target.value.trim().length !== 0);
       return;
@@ -391,13 +388,11 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
     dateRangeRef.current?.clearValue();
     setSelectedFacets([]);
     facetPickerRef.current?.clearSelections();
-    return;
   }
 
   function clearNotesFilters() {
     setCaseNoteSearchText('');
     caseNoteTitleSearchRef.current?.clearValue();
-    return;
   }
 
   function handleFacetClear(values: ComboOption[]) {
@@ -407,7 +402,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   }
 
   function handleSelectedFacet(newValue: ComboOption[]) {
-    const selected = (newValue as ComboOption[]).map((value: ComboOption) => {
+    const selected = newValue.map((value: ComboOption) => {
       const { value: selection } = value;
       return selection;
     });
@@ -425,13 +420,13 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   function handleCaseAssignment(assignment: AssignAttorneyModalCallbackProps) {
     const assignments: CaseAssignment[] = [];
 
-    assignment.selectedAttorneyList.forEach((attorney) => {
+    for (const attorney of assignment.selectedAttorneyList) {
       assignments.push({
         userId: attorney.id,
         name: attorney.name,
         role: CamsRole.TrialAttorney,
       } as CaseAssignment);
-    });
+    }
 
     const updatedCaseBasicInfo: CaseDetail = {
       ...caseBasicInfo!,
@@ -632,9 +627,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                           title="Enter numbers only"
                           className="search-icon"
                           type="text"
-                          errorMessage={
-                            documentNumberError === true ? 'Please enter a number.' : undefined
-                          }
+                          errorMessage={documentNumberError ? 'Please enter a number.' : undefined}
                           name="search-by-document-number"
                           label="Go to Document Number"
                           aria-label="Go to specific Document Number.  Results will be updated while you type."
