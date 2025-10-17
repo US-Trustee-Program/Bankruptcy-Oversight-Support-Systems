@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import TrusteeAttorneyAssignmentModal from './TrusteeAttorneyAssignmentModal';
@@ -11,6 +11,7 @@ import { CamsRole, OversightRole } from '@common/cams/roles';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { TrusteeAttorneyAssignmentModalRef } from './TrusteeAttorneyAssignmentModal';
 
+// TODO: Remove the use of vi.mock()
 vi.mock('@/lib/hooks/UseApi2');
 vi.mock('@/lib/hooks/UseGlobalAlert');
 
@@ -106,7 +107,6 @@ describe('TrusteeAttorneyAssignmentModal', () => {
       />,
     );
 
-    // Modal should exist in the DOM (initially hidden)
     expect(screen.getByTestId('modal-test-modal')).toBeInTheDocument();
   });
 
@@ -123,10 +123,8 @@ describe('TrusteeAttorneyAssignmentModal', () => {
       />,
     );
 
-    // Simulate opening the modal
-    ref.current!.show();
+    act(() => ref.current!.show());
 
-    // Check that the API was called to load staff
     await waitFor(() => {
       expect(mockApiMethods.getAttorneys).toHaveBeenCalledTimes(1);
     });
@@ -145,11 +143,9 @@ describe('TrusteeAttorneyAssignmentModal', () => {
       />,
     );
 
-    // Open modal and wait for loading
-    ref.current!.show();
+    act(() => ref.current!.show());
     await waitFor(() => expect(mockApiMethods.getAttorneys).toHaveBeenCalled());
 
-    // Should display the ComboBox
     expect(screen.getByTestId('mock-combobox')).toBeInTheDocument();
   });
 
@@ -166,20 +162,16 @@ describe('TrusteeAttorneyAssignmentModal', () => {
       />,
     );
 
-    // Open modal and wait for loading and the combobox to appear
-    ref.current!.show();
+    act(() => ref.current!.show());
     await waitFor(() => expect(mockApiMethods.getAttorneys).toHaveBeenCalled());
     await screen.findByTestId('mock-combobox');
 
-    // Initially, submit button should be disabled
     const submitButton = screen.getByTestId('button-test-modal-submit-button');
     expect(submitButton).toBeDisabled();
 
-    // Select an attorney (use userEvent.selectOptions to ensure proper event flow)
     const comboBox = screen.getByTestId('mock-combobox') as HTMLSelectElement;
     await userEvent.selectOptions(comboBox, mockAttorneys[0].id);
 
-    // Submit button should now be enabled
     await waitFor(() => {
       expect(submitButton).not.toBeDisabled();
     });
@@ -198,19 +190,15 @@ describe('TrusteeAttorneyAssignmentModal', () => {
       />,
     );
 
-    // Open modal and wait for loading
-    ref.current!.show();
+    act(() => ref.current!.show());
     await waitFor(() => expect(mockApiMethods.getAttorneys).toHaveBeenCalled());
 
-    // Select an attorney
     const comboBox = screen.getByTestId('mock-combobox');
     fireEvent.change(comboBox, { target: { value: mockAttorneys[0].id } });
 
-    // Click submit button
     const submitButton = screen.getByTestId('button-test-modal-submit-button');
     fireEvent.click(submitButton);
 
-    // Verify API call and success handling
     await waitFor(() => {
       expect(mockApiMethods.createTrusteeOversightAssignment).toHaveBeenCalledWith(
         'trustee-123',
@@ -238,18 +226,15 @@ describe('TrusteeAttorneyAssignmentModal', () => {
       />,
     );
 
-    // Open modal and make selection
-    ref.current!.show();
+    act(() => ref.current!.show());
     await waitFor(() => expect(mockApiMethods.getAttorneys).toHaveBeenCalled());
 
     const comboBox = screen.getByTestId('mock-combobox');
     fireEvent.change(comboBox, { target: { value: mockAttorneys[0].id } });
 
-    // Click submit - it should fail
     const submitButton = screen.getByTestId('button-test-modal-submit-button');
     fireEvent.click(submitButton);
 
-    // Verify error handling
     await waitFor(() => {
       expect(mockGlobalAlert.error).toHaveBeenCalledWith(errorMessage);
       expect(onAssignmentCreated).not.toHaveBeenCalled();
@@ -271,10 +256,8 @@ describe('TrusteeAttorneyAssignmentModal', () => {
       />,
     );
 
-    // Open modal - should trigger error
-    ref.current!.show();
+    act(() => ref.current!.show());
 
-    // Should display error message
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeInTheDocument();
       expect(screen.getByTestId('alert')).toHaveTextContent('Failed to load attorneys');
@@ -294,18 +277,14 @@ describe('TrusteeAttorneyAssignmentModal', () => {
       />,
     );
 
-    // Open modal and select an attorney
-    ref.current!.show();
+    act(() => ref.current!.show());
     await waitFor(() => expect(mockApiMethods.getAttorneys).toHaveBeenCalled());
 
     const comboBox = screen.getByTestId('mock-combobox');
     fireEvent.change(comboBox, { target: { value: mockAttorneys[0].id } });
 
-    // Hide the modal
-    ref.current!.hide();
+    act(() => ref.current!.hide());
 
-    // Verify selectedAttorney is reset - we can check this indirectly by
-    // checking that the submit button becomes disabled
     await waitFor(() => {
       const submitButton = screen.getByTestId('button-test-modal-submit-button');
       expect(submitButton).toBeDisabled();
@@ -325,32 +304,25 @@ describe('TrusteeAttorneyAssignmentModal', () => {
       />,
     );
 
-    // Open modal and wait for loading
-    ref.current!.show();
+    act(() => ref.current!.show());
     await waitFor(() => expect(mockApiMethods.getAttorneys).toHaveBeenCalled());
 
-    // Select an attorney first
     const comboBox = screen.getByTestId('mock-combobox');
     fireEvent.change(comboBox, { target: { value: mockAttorneys[0].id } });
 
-    // Now clear the selection to make selectedAttorney null
     fireEvent.change(comboBox, { target: { value: '' } });
 
-    // Reset mock to track only assignment calls
     mockApiMethods.createTrusteeOversightAssignment.mockClear();
 
-    // Force clicking the disabled button to test the early return
     const submitButton = screen.getByTestId('button-test-modal-submit-button');
     submitButton.removeAttribute('disabled');
     fireEvent.click(submitButton);
 
-    // Verify that the API was not called due to early return
     expect(mockApiMethods.createTrusteeOversightAssignment).not.toHaveBeenCalled();
     expect(onAssignmentCreated).not.toHaveBeenCalled();
   });
 
   test('should show loading spinner while fetching staff', async () => {
-    // Make the API call take longer to see loading state
     let resolvePromise!: (value: { data: AttorneyUser[] }) => void;
     const loadingPromise = new Promise<{ data: AttorneyUser[] }>((resolve) => {
       resolvePromise = resolve;
@@ -369,18 +341,14 @@ describe('TrusteeAttorneyAssignmentModal', () => {
       />,
     );
 
-    // Open modal to trigger loading
-    ref.current!.show();
+    act(() => ref.current!.show());
 
-    // Should show loading spinner
     await waitFor(() => {
       expect(screen.getByText('Loading attorneys...')).toBeInTheDocument();
     });
 
-    // Resolve the promise to complete loading
     resolvePromise({ data: mockAttorneys });
 
-    // Wait for loading to complete and ComboBox to appear
     await waitFor(() => {
       expect(screen.getByTestId('mock-combobox')).toBeInTheDocument();
     });
@@ -399,25 +367,20 @@ describe('TrusteeAttorneyAssignmentModal', () => {
       />,
     );
 
-    // Open modal and wait for loading
-    ref.current!.show();
+    act(() => ref.current!.show());
     await waitFor(() => expect(mockApiMethods.getAttorneys).toHaveBeenCalled());
 
     const comboBox = screen.getByTestId('mock-combobox');
 
-    // First, select an attorney
     fireEvent.change(comboBox, { target: { value: mockAttorneys[0].id } });
 
-    // Verify submit button is enabled
     const submitButton = screen.getByTestId('button-test-modal-submit-button');
     await waitFor(() => {
       expect(submitButton).not.toBeDisabled();
     });
 
-    // Now clear the selection (empty value)
     fireEvent.change(comboBox, { target: { value: '' } });
 
-    // Verify submit button is disabled again
     await waitFor(() => {
       expect(submitButton).toBeDisabled();
     });
