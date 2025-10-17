@@ -17,7 +17,7 @@ describe('Tests for USWDS Input component.', () => {
   };
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('Should change value when ref.setValue() is called and set value back to original when ref.resetValue() is called.', async () => {
