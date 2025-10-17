@@ -306,7 +306,6 @@ describe('TrusteeDetailScreen', () => {
       },
     };
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-    // Do not spy on getTrustee, should not be called
     renderWithRouter(['/trustees/123'], updatedTrustee);
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe Updated');
