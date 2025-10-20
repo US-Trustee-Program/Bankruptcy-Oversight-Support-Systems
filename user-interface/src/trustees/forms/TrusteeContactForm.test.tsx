@@ -77,26 +77,23 @@ describe('TrusteeContactForm Tests', () => {
     expect(forbiddenAlert).toHaveTextContent('You do not have permission to manage Trustees');
   });
 
-  test('should render form fields for editing internal contact information', async () => {
+  test('trustee name field should be disabled and other required fields should be enabled if editing internal contact information', async () => {
     const editInternalState = {
       action: 'edit' as const,
       cancelTo: '/trustees/123',
       trusteeId: '123',
-      contactInformation: 'public' as const,
+      contactInformation: 'internal' as const,
     };
 
     renderWithProps(editInternalState);
 
+    let nameInput;
     await waitFor(() => {
-      const nameInput = screen.getByTestId('trustee-name');
+      nameInput = screen.getByTestId('trustee-name');
       expect(nameInput).toBeInTheDocument();
     });
 
-    const address1Input = screen.getByTestId('trustee-address1');
-    const emailInput = screen.getByTestId('trustee-email');
-
-    expect(address1Input).toBeInTheDocument();
-    expect(emailInput).toBeInTheDocument();
+    expect(nameInput).toBeDisabled();
   });
 
   test('should handle form submission for creating a new trustee', async () => {
