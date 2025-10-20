@@ -3,7 +3,7 @@ import { CaseNumber } from '@/lib/components/CaseNumber';
 import Radio from '@/lib/components/uswds/Radio';
 import { formatDate } from '@/lib/utils/datetime';
 import { CaseSummary } from '@common/cams/cases';
-import { forwardRef, useImperativeHandle, useState } from 'react';
+import React, { forwardRef, useImperativeHandle, useState } from 'react';
 
 export type CaseTableImperative = {
   clearAllCheckboxes: () => void;
@@ -13,20 +13,21 @@ type CaseTableProps = {
   id: string;
   cases: Array<CaseSummary | null>;
   onSelect?: (bCase: CaseSummary | null) => void;
-  displayDocket?: boolean;
 };
 
-function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImperative>) {
+function CaseTable_(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImperative>) {
   const { id, cases, onSelect } = props;
 
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
 
   function handleCaseSelection(value: string) {
-    const idx = parseInt(value);
-    if (!isNaN(idx)) {
+    const idx = Number.parseInt(value);
+    if (!Number.isNaN(idx)) {
       setSelectedIdx(idx);
       const bCase = cases[idx];
-      if (onSelect) onSelect(bCase);
+      if (onSelect) {
+        onSelect(bCase);
+      }
     }
   }
 
@@ -54,7 +55,9 @@ function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
       <tbody>
         {cases?.map((bCase, idx) => {
           if (!bCase) {
-            if (!onSelect) return <></>;
+            if (!onSelect) {
+              return null;
+            }
             return (
               <tr key={'empty'} data-testid={'empty-row'}>
                 <td>
@@ -114,4 +117,4 @@ function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
   );
 }
 
-export const CaseTable = forwardRef(_CaseTable);
+export const CaseTable = forwardRef(CaseTable_);
