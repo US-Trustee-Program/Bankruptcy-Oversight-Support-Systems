@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, act } from '@testing-library/react';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import Input from './Input';
 import userEvent from '@testing-library/user-event';
@@ -21,46 +21,35 @@ describe('Tests for USWDS Input component.', () => {
     const inputEl = screen.getByTestId('input-1');
     expect(inputEl).toHaveValue('1');
 
-    ref.current?.setValue('2');
-    await waitFor(() => {
-      expect(inputEl).toHaveValue('2');
-    });
+    await act(() => ref.current?.setValue('2'));
+    expect(inputEl).toHaveValue('2');
 
-    ref.current?.resetValue();
-    await waitFor(() => {
-      expect(inputEl).toHaveValue('1');
-    });
+    await act(() => ref.current?.resetValue());
+    expect(inputEl).toHaveValue('1');
   });
 
   test('Should clear value when ref.clearValue is called.', async () => {
     renderWithoutProps();
     const inputEl = screen.getByTestId('input-1');
-    ref.current?.setValue('2');
 
-    await waitFor(() => {
-      expect(inputEl).toHaveValue('2');
-    });
+    await act(() => ref.current?.setValue('2'));
+    expect(inputEl).toHaveValue('2');
 
-    ref.current?.clearValue();
-    await waitFor(() => {
-      expect(inputEl).toHaveValue('');
-    });
+    await act(() => ref.current?.clearValue());
+    expect(inputEl).toHaveValue('');
   });
 
   test('Should call props.onChange when a change is made to input by keypress or by ref.', async () => {
     renderWithoutProps();
     const inputEl = screen.getByTestId('input-1');
 
-    ref.current?.setValue('2');
-    await waitFor(() => {
-      expect(inputEl).toHaveValue('2');
-    });
+    await act(() => ref.current?.setValue('2'));
+    expect(inputEl).toHaveValue('2');
     expect(youChangedMe).toHaveBeenCalled();
 
     fireEvent.change(inputEl, { target: { value: '5' } });
-    await waitFor(() => {
-      expect(inputEl).toHaveValue('5');
-    });
+
+    expect(inputEl).toHaveValue('5');
     expect(youChangedMe).toHaveBeenCalled();
   });
 });
@@ -84,10 +73,8 @@ describe('Test error handling', () => {
       </div>,
     );
 
-    await waitFor(() => {
-      expect(inputEl).toHaveAttribute('aria-invalid', 'true');
-      expect(inputEl).toHaveAttribute('aria-errorMessage', errorMessageId);
-    });
+    expect(inputEl).toHaveAttribute('aria-invalid', 'true');
+    expect(inputEl).toHaveAttribute('aria-errorMessage', errorMessageId);
 
     const errorMessageDiv = document.getElementById(errorMessageId);
     expect(errorMessageDiv).toHaveTextContent('TEST MESSAGE');
@@ -107,15 +94,11 @@ describe('Tests for USWDS Input component when no value is initially set.', () =
     const inputEl = screen.getByTestId('input-1');
     expect(inputEl).toHaveValue('');
 
-    ref.current?.setValue('12345');
-    await waitFor(() => {
-      expect(inputEl).toHaveValue('12345');
-    });
+    await act(() => ref.current?.setValue('12345'));
+    expect(inputEl).toHaveValue('12345');
 
-    ref.current?.resetValue();
-    await waitFor(() => {
-      expect(inputEl).toHaveValue('');
-    });
+    await act(() => ref.current?.resetValue());
+    expect(inputEl).toHaveValue('');
   });
 
   describe('Input styling', () => {
@@ -167,10 +150,8 @@ describe('Tests for USWDS Input component when no value is initially set.', () =
 
       await userEvent.type(inputEl, 'test input');
 
-      await waitFor(() => {
-        clearButton = screen.queryByTestId('button-clear-input-1');
-        expect(clearButton).toBeInTheDocument();
-      });
+      clearButton = screen.queryByTestId('button-clear-input-1');
+      expect(clearButton).toBeInTheDocument();
     });
   });
 });
@@ -210,10 +191,8 @@ describe('Input additional coverage tests', () => {
     const inputEl = screen.getByTestId('test-focus');
 
     // Test ref focus method
-    ref.current?.focus();
-    await waitFor(() => {
-      expect(inputEl).toHaveFocus();
-    });
+    await act(() => ref.current?.focus());
+    expect(inputEl).toHaveFocus();
 
     // Test onFocus prop
     fireEvent.focus(inputEl);
@@ -226,15 +205,11 @@ describe('Input additional coverage tests', () => {
     const inputEl = screen.getByTestId('test-disable');
     expect(inputEl).not.toBeDisabled();
 
-    ref.current?.disable(true);
-    await waitFor(() => {
-      expect(inputEl).toBeDisabled();
-    });
+    await act(() => ref.current?.disable(true));
+    expect(inputEl).toBeDisabled();
 
-    ref.current?.disable(false);
-    await waitFor(() => {
-      expect(inputEl).not.toBeDisabled();
-    });
+    await act(() => ref.current?.disable(false));
+    expect(inputEl).not.toBeDisabled();
   });
 
   test('should handle getValue method', () => {
@@ -275,10 +250,8 @@ describe('Input additional coverage tests', () => {
 
     await userEvent.click(clearButton);
 
-    await waitFor(() => {
-      expect(inputEl).toHaveValue('');
-      expect(inputEl).toHaveFocus();
-    });
+    expect(inputEl).toHaveValue('');
+    expect(inputEl).toHaveFocus();
   });
 
   test('should not show clear button when disabled', () => {
