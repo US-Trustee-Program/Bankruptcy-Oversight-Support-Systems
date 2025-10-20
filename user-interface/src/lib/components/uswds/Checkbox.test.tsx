@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import Checkbox, { CheckboxProps, CheckboxRef, CheckboxState } from './Checkbox';
@@ -60,14 +60,10 @@ describe('Test Checkbox component', async () => {
     const checkbox = document.querySelector('input[type="checkbox"]');
     expect(checkbox).not.toBeChecked();
 
-    await waitFor(() => {
-      cbRef.current?.setChecked(true);
-    });
+    act(() => cbRef.current?.setChecked(true));
     expect(checkbox).toBeChecked();
 
-    await waitFor(() => {
-      cbRef.current?.setChecked(false);
-    });
+    act(() => cbRef.current?.setChecked(false));
     expect(checkbox).not.toBeChecked();
   });
 
@@ -79,33 +75,27 @@ describe('Test Checkbox component', async () => {
     expect(checkbox).not.toBeChecked();
     expect(checkbox).not.toHaveAttribute('data-indeterminate', 'true');
 
-    await waitFor(() => {
-      cbRef.current?.setChecked(CheckboxState.CHECKED);
-    });
+    act(() => cbRef.current?.setChecked(CheckboxState.CHECKED));
     expect(checkbox).toBeChecked();
     expect(checkbox).not.toHaveAttribute('data-indeterminate', 'true');
 
-    await waitFor(() => {
-      cbRef.current?.setChecked(CheckboxState.UNCHECKED);
-    });
+    act(() => cbRef.current?.setChecked(CheckboxState.UNCHECKED));
     expect(checkbox).not.toBeChecked();
     expect(checkbox).not.toHaveAttribute('data-indeterminate', 'true');
 
-    await waitFor(() => {
-      cbRef.current?.setChecked(CheckboxState.INDETERMINATE);
-    });
+    act(() => cbRef.current?.setChecked(CheckboxState.INDETERMINATE));
     expect(checkbox).not.toBeChecked();
     expect(checkbox).toHaveAttribute('data-indeterminate', 'true');
   });
 
-  test('should add a class if className is provided', () => {
+  test('should add a class if className is provided', async () => {
     const addedClassName = 'test-class';
     renderWithProps({ id: 'test', className: addedClassName });
     const checkbox = screen.getByTestId('checkbox-test');
     expect(checkbox.parentNode).toHaveClass(addedClassName);
   });
 
-  test('should have the default class', () => {
+  test('should have the default class', async () => {
     renderWithProps({ id: 'test' });
     const checkbox = screen.getByTestId('checkbox-test');
     const parent = checkbox.parentNode;

@@ -45,6 +45,7 @@ describe('LoginContinue', () => {
         <LoginContinue></LoginContinue>
       </BrowserRouter>,
     );
+    await waitFor(() => expect(document.body).toBeDefined());
 
     expect(getLoginProviderFromEnv).toHaveBeenCalled();
     expect(oktaProviderComponent).toHaveBeenCalled();
@@ -58,10 +59,9 @@ describe('LoginContinue', () => {
         <LoginContinue></LoginContinue>
       </BrowserRouter>,
     );
-    await waitFor(() => {
-      expect(screen.getByTestId('alert-message')).toBeInTheDocument();
-    });
+    await waitFor(() => expect(document.body).toBeDefined());
 
+    expect(screen.getByTestId('alert-message')).toBeInTheDocument();
     expect(getLoginProviderFromEnv).toHaveBeenCalled();
     expect(badConfigurationComponent).toHaveBeenCalled();
   });
