@@ -56,7 +56,7 @@ function CaseTable_(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
         {cases?.map((bCase, idx) => {
           if (!bCase) {
             if (!onSelect) {
-              return <></>;
+              return null;
             }
             return (
               <tr key={'empty'} data-testid={'empty-row'}>
