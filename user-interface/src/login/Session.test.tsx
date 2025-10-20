@@ -24,7 +24,7 @@ describe('Session', () => {
   };
   const navigate = vi.fn();
 
-  function renderWithProps(props: Partial<SessionProps> = {}) {
+  async function renderWithProps(props: Partial<SessionProps> = {}) {
     const defaultProps: SessionProps = testSession;
 
     render(
@@ -32,6 +32,8 @@ describe('Session', () => {
         <Session {...defaultProps} {...props}></Session>
       </BrowserRouter>,
     );
+
+    await waitFor(() => expect(document.body).toBeDefined());
   }
 
   beforeEach(() => {
@@ -52,15 +54,15 @@ describe('Session', () => {
     const mockSession = MockData.getNonPaginatedResponseBody(MockData.getCamsSession());
     vi.spyOn(Api2, 'getMe').mockResolvedValue(mockSession);
     const getOfficeAttorneys = vi.spyOn(Api2, 'getOfficeAttorneys');
-    renderWithProps();
+    await renderWithProps();
     await waitFor(() => {
       expect(getOfficeAttorneys).toHaveBeenCalledTimes(testSession.user.offices!.length);
     });
   });
 
-  test('should write the session to local storage', () => {
+  test('should write the session to local storage', async () => {
     const setSession = vi.spyOn(LocalStorage, 'setSession');
-    renderWithProps();
+    await renderWithProps();
     expect(setSession).toHaveBeenCalledWith(testSession);
   });
 
@@ -94,7 +96,7 @@ describe('Session', () => {
       rejectPromise = reject;
     });
     vi.spyOn(Api2, 'getMe').mockReturnValue(mockPromise);
-    renderWithProps();
+    await renderWithProps();
     // Now reject the promise to trigger the error state
     rejectPromise!(new Error(errorMessage));
     await waitFor(() => {
