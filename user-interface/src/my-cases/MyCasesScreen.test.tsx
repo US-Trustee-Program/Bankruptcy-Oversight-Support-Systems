@@ -16,6 +16,14 @@ import { CaseNoteInput } from '@common/cams/cases';
 describe('MyCasesScreen', () => {
   const user: CamsUser = MockData.getCamsUser({});
 
+  const renderWithoutProps = () => {
+    render(
+      <BrowserRouter>
+        <MyCasesScreen></MyCasesScreen>
+      </BrowserRouter>,
+    );
+  };
+
   beforeEach(() => {
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
   });
@@ -25,36 +33,27 @@ describe('MyCasesScreen', () => {
   });
 
   test('should render an information modal', async () => {
-    render(
-      <BrowserRouter>
-        <MyCasesScreen></MyCasesScreen>
-      </BrowserRouter>,
-    );
+    renderWithoutProps();
 
     const toggle = screen.getByTestId('open-modal-button');
     expect(toggle).toBeInTheDocument();
     fireEvent.click(toggle!);
 
-    const modal = screen.getByTestId('modal-content-info-modal');
-    expect(modal).toBeInTheDocument();
+    expect(await screen.findByTestId('modal-content-info-modal')).toBeInTheDocument();
   });
 
   test('should toggle closed cases toggle', async () => {
-    render(
-      <BrowserRouter>
-        <MyCasesScreen></MyCasesScreen>
-      </BrowserRouter>,
-    );
+    renderWithoutProps();
 
     const toggle = screen.getByTestId('closed-cases-toggle');
     expect(toggle).toBeInTheDocument();
     expect(toggle).toHaveClass('inactive');
-    fireEvent.click(toggle!);
 
-    expect(toggle).toHaveClass('active');
     fireEvent.click(toggle!);
+    await waitFor(() => expect(toggle).toHaveClass('active'));
 
-    expect(toggle).toHaveClass('inactive');
+    fireEvent.click(toggle!);
+    await waitFor(() => expect(toggle).toHaveClass('inactive'));
   });
 
   test('should render a list of cases assigned to a user', async () => {
@@ -63,11 +62,7 @@ describe('MyCasesScreen', () => {
       data: expectedData,
     });
 
-    render(
-      <BrowserRouter>
-        <MyCasesScreen></MyCasesScreen>
-      </BrowserRouter>,
-    );
+    renderWithoutProps();
 
     await waitFor(() => {
       const loadingIndicator = screen.queryByTestId('loading-indicator');
@@ -87,19 +82,18 @@ describe('MyCasesScreen', () => {
     }
   });
 
-  test('should render "Invalid user expectation" if user has no offices', () => {
+  test('should render "Invalid user expectation" if user has no offices', async () => {
     const user = testingUtilities.setUser({
       offices: undefined,
       roles: [CamsRole.CaseAssignmentManager],
     });
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
 
-    render(
-      <BrowserRouter>
-        <MyCasesScreen></MyCasesScreen>
-      </BrowserRouter>,
-    );
+    renderWithoutProps();
+    await waitFor(() => expect(document.body).toBeDefined());
+
     const body = document.querySelector('body');
+
     const expectedDiv = '<div />';
     expect(body?.childNodes.length).toEqual(1);
     expect(body?.childNodes[0]).toContainHTML(expectedDiv);
@@ -172,7 +166,7 @@ describe('MyCasesScreen', () => {
   ];
   test.each(cachedNotesCases)(
     'should display alert if cache holds $caseName',
-    (args: {
+    async (args: {
       caseName: string;
       expectedAlertText: string;
       cachedValues: Array<{ key: string; item: Cacheable<CaseNoteInput> }>;
@@ -181,18 +175,16 @@ describe('MyCasesScreen', () => {
         return args.cachedValues;
       });
 
-      render(
-        <BrowserRouter>
-          <MyCasesScreen></MyCasesScreen>
-        </BrowserRouter>,
-      );
+      renderWithoutProps();
+      await waitFor(() => expect(document.body).toBeDefined());
+
       const alertMessage = document.querySelector('.draft-notes-alert-message');
       expect(alertMessage).toBeInTheDocument();
       expect(alertMessage).toHaveTextContent(args.expectedAlertText);
     },
   );
 
-  test('should deduplicate case IDs when displaying draft notes alert', () => {
+  test('should deduplicate case IDs when displaying draft notes alert', async () => {
     const duplicatedId = '081-00-12345';
     const uniqueId = '081-00-54321';
     const earlierDate = new Date(MockData.someDateAfterThisDate(now, 10));
@@ -225,11 +217,8 @@ describe('MyCasesScreen', () => {
       return duplicateCaseIdValues;
     });
 
-    render(
-      <BrowserRouter>
-        <MyCasesScreen></MyCasesScreen>
-      </BrowserRouter>,
-    );
+    renderWithoutProps();
+    await waitFor(() => expect(document.body).toBeDefined());
 
     const alertMessage = document.querySelector('.draft-notes-alert-message');
     expect(alertMessage).toBeInTheDocument();
