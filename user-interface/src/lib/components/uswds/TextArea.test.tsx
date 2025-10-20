@@ -58,10 +58,10 @@ describe('Tests for USWDS TextArea component', () => {
     const inputEl = screen.getByTestId(textAreaId);
     expect(inputEl).toHaveValue(value);
 
-    await act(() => ref.current?.setValue(newValue));
+    act(() => ref.current?.setValue(newValue));
     expect(inputEl).toHaveValue(newValue);
 
-    await act(() => ref.current?.resetValue());
+    act(() => ref.current?.resetValue());
     expect(inputEl).toHaveValue(value);
   });
 
@@ -69,10 +69,10 @@ describe('Tests for USWDS TextArea component', () => {
     renderWithoutProps();
     const inputEl = screen.getByTestId(textAreaId);
 
-    await act(() => ref.current?.setValue(newValue));
+    act(() => ref.current?.setValue(newValue));
     expect(inputEl).toHaveValue(newValue);
 
-    await act(() => ref.current?.clearValue());
+    act(() => ref.current?.clearValue());
     expect(inputEl).toHaveValue('');
   });
 
@@ -84,7 +84,7 @@ describe('Tests for USWDS TextArea component', () => {
     expect(ref.current).toBeDefined();
     expect(typeof ref.current!.clearValue).toBe('function');
 
-    await act(() => ref.current?.clearValue());
+    act(() => ref.current?.clearValue());
 
     expect(mockInnerRef.current.focus).not.toHaveBeenCalled();
 
@@ -95,7 +95,7 @@ describe('Tests for USWDS TextArea component', () => {
     renderWithoutProps();
     const inputEl = screen.getByTestId(textAreaId);
 
-    await act(() => ref.current?.setValue(newValue));
+    act(() => ref.current?.setValue(newValue));
     expect(inputEl).toHaveValue(newValue);
 
     expect(ref.current?.getValue()).toEqual(newValue);
@@ -105,7 +105,7 @@ describe('Tests for USWDS TextArea component', () => {
     renderWithoutProps();
     const inputEl = screen.getByTestId(textAreaId);
 
-    await act(() => ref.current?.setValue(newValue));
+    act(() => ref.current?.setValue(newValue));
     expect(inputEl).toHaveValue(newValue);
     expect(youChangedMe).toHaveBeenCalled();
 
@@ -164,14 +164,14 @@ describe('Test in odd cases', () => {
     renderWithoutProp();
     const inputEl = screen.getByTestId(textAreaId);
 
-    await act(() => ref.current?.setValue(newValue));
+    act(() => ref.current?.setValue(newValue));
     expect(inputEl).toHaveValue(newValue);
 
-    await act(() => ref.current?.resetValue());
+    act(() => ref.current?.resetValue());
     expect(inputEl).toHaveValue('');
 
     inputEl.focus();
-    await act(() => ref.current?.clearValue());
+    act(() => ref.current?.clearValue());
     expect(inputEl).toHaveFocus();
   });
 });
@@ -199,10 +199,10 @@ describe('TextArea additional coverage tests', () => {
     expect(textareaEl).toBeDisabled();
 
     // Should be able to enable/disable via ref
-    await act(() => ref.current?.disable(false));
+    act(() => ref.current?.disable(false));
     expect(textareaEl).not.toBeDisabled();
 
-    await act(() => ref.current?.disable(true));
+    act(() => ref.current?.disable(true));
     expect(textareaEl).toBeDisabled();
   });
 
@@ -212,7 +212,7 @@ describe('TextArea additional coverage tests', () => {
     const textareaEl = screen.getByTestId('textarea-test-focus');
     expect(textareaEl).not.toHaveFocus();
 
-    await act(() => ref.current?.focus());
+    act(() => ref.current?.focus());
     expect(textareaEl).toHaveFocus();
   });
 
@@ -304,7 +304,7 @@ describe('TextArea additional coverage tests', () => {
       />,
     );
 
-    await act(() => ref.current?.clearValue());
+    act(() => ref.current?.clearValue());
 
     expect(mockOnChange).toHaveBeenCalledWith(
       expect.objectContaining({
