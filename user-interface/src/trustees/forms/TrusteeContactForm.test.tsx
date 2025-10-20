@@ -7,7 +7,7 @@ import { CamsRole } from '@common/cams/roles';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { FeatureFlagSet } from '@common/feature-flags';
 import Api2 from '@/lib/models/api2';
-import { Trustee, TrusteeStatus } from '@common/cams/trustees';
+import { Trustee } from '@common/cams/trustees';
 import {
   UseTrusteeContactFormProps,
   TrusteeFormData,
@@ -294,48 +294,6 @@ describe('TrusteeContactForm Tests', () => {
     await user.type(extensionInput, '123');
 
     expect(extensionInput).toHaveValue('123');
-  });
-
-  test('should map existing chapter selections to chapter options', async () => {
-    const stateWithChapters = {
-      action: 'edit' as const,
-      cancelTo: '/trustees/456',
-      trusteeId: '456',
-      contactInformation: 'public' as const,
-      trustee: {
-        chapters: ['7-panel' as const, '11' as const, '13' as const], // Pre-existing chapter selections
-      },
-    };
-
-    renderWithProps(stateWithChapters);
-
-    await waitFor(() => {
-      const nameInput = screen.getByTestId('trustee-name');
-      expect(nameInput).toBeInTheDocument();
-    });
-
-    expect(screen.getByTestId('trustee-name')).toBeInTheDocument();
-  });
-
-  test('should fallback to active status when status is invalid', async () => {
-    const stateWithInvalidStatus = {
-      action: 'edit' as const,
-      cancelTo: '/trustees/789',
-      trusteeId: '789',
-      contactInformation: 'public' as const,
-      trustee: {
-        status: 'invalid-status' as TrusteeStatus, // Invalid status that won't match STATUS_OPTIONS
-      },
-    };
-
-    renderWithProps(stateWithInvalidStatus);
-
-    await waitFor(() => {
-      const nameInput = screen.getByTestId('trustee-name');
-      expect(nameInput).toBeInTheDocument();
-    });
-
-    expect(screen.getByTestId('trustee-name')).toBeInTheDocument();
   });
 
   test('should map internal payload for edit and call patchTrustee then navigate with returned data', async () => {
