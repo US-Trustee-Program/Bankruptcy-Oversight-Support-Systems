@@ -104,10 +104,7 @@ describe('TrusteeContactForm Tests', () => {
       data: { trusteeId: 'new-trustee-123' },
     });
 
-    const mockGetCourts = vi.fn().mockResolvedValue({ data: [] });
-
     vi.spyOn(Api2, 'postTrustee').mockImplementation(mockPostTrustee);
-    vi.spyOn(Api2, 'getCourts').mockImplementation(mockGetCourts);
 
     renderWithProps();
 
@@ -531,8 +528,6 @@ describe('TrusteeContactForm Tests', () => {
   });
 
   test('should normalize website URL in outgoing payload during create', async () => {
-    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
-
     const mockPostTrustee = vi.fn().mockResolvedValue({
       data: { trusteeId: 'new-trustee-123' },
     });
@@ -572,8 +567,6 @@ describe('TrusteeContactForm Tests', () => {
   });
 
   test('create should not include website property when website is empty', async () => {
-    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
-
     const mockPostTrustee = vi.fn().mockResolvedValue({ data: { trusteeId: 'no-site-123' } });
     vi.spyOn(Api2, 'postTrustee').mockImplementation(
       mockPostTrustee as unknown as typeof Api2.postTrustee,
@@ -637,7 +630,6 @@ describe('TrusteeContactForm Tests', () => {
     const postSpy = vi
       .spyOn(Api2, 'postTrustee')
       .mockResolvedValue({ data: { trusteeId: 'addr2-id' } as Trustee });
-    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
 
     renderWithProps({
       action: 'create',
@@ -687,7 +679,6 @@ describe('TrusteeContactForm Tests', () => {
     vi.spyOn(Api2, 'patchTrustee').mockImplementation(
       mockPatch as unknown as typeof Api2.patchTrustee,
     );
-    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
 
     renderWithProps({
       action: 'edit',
@@ -737,8 +728,6 @@ describe('TrusteeContactForm Tests', () => {
       mockPatch as unknown as typeof Api2.patchTrustee,
     );
 
-    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
-
     renderWithProps({
       action: 'edit',
       cancelTo: '/trustees',
@@ -760,8 +749,6 @@ describe('TrusteeContactForm Tests', () => {
   });
 
   test('shows Saving… while submitting', async () => {
-    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
-
     let resolver: (value: { data: { trusteeId: string } }) => void;
     const pending = new Promise<{ data: { trusteeId: string } }>((res) => {
       resolver = res;
@@ -830,8 +817,6 @@ describe('TrusteeContactForm Tests', () => {
       validateFormAndUpdateErrors: vi.fn().mockReturnValue(false),
       getDynamicSpec: vi.fn().mockReturnValue(mockDynamicSpec),
     } as unknown as ReturnType<typeof UseFormHook.useTrusteeContactForm>);
-
-    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
 
     renderWithProps({
       action: 'edit',
@@ -1097,8 +1082,6 @@ describe('TrusteeContactForm Tests', () => {
       getDynamicSpec: vi.fn().mockReturnValue({}),
     } as unknown as ReturnType<typeof UseFormHook.useTrusteeContactForm>);
 
-    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
-
     renderWithProps({
       action: 'edit',
       cancelTo: '/trustees',
@@ -1147,8 +1130,6 @@ describe('TrusteeContactForm Tests', () => {
       getDynamicSpec: vi.fn().mockReturnValue({}),
     } as unknown as ReturnType<typeof UseFormHook.useTrusteeContactForm>);
 
-    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
-
     renderWithProps({
       action: 'create',
       cancelTo: '/trustees',
@@ -1166,7 +1147,6 @@ describe('TrusteeContactForm Tests', () => {
   test('should call globalAlert.error when postTrustee rejects during create', async () => {
     const error = new Error('create failed');
     vi.spyOn(Api2, 'postTrustee').mockRejectedValue(error);
-    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
 
     const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
 
