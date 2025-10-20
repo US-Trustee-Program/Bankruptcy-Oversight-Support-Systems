@@ -87,6 +87,7 @@ async function enterCaseNumber(caseIdInput: Element | null | undefined, value: s
   }
 
   // This directive is the only way I've found to suppress the React act warnings in this test suite.
+  // Using userEvent.type works for one test that uses this function, but fails with another test that uses it.
   // eslint-disable-next-line testing-library/no-unnecessary-act
   await act(async () => fireEvent.change(caseIdInput!, { target: { value } }));
 
