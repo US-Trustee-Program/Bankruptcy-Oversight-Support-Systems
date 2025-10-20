@@ -14,29 +14,25 @@ export type FromCaseSummaryProps = {
   onOrderUpdate: (alertDetails: AlertDetails, order?: TransferOrder) => void;
 };
 
-export function FromCaseSummary(props: FromCaseSummaryProps) {
+export function FromCaseSummary(props: Readonly<FromCaseSummaryProps>) {
   const { order } = props;
   const [originalCaseSummary, setOriginalCaseSummary] = useState<CaseSummary | null>(null);
 
   const api = useApi2();
 
-  async function getCaseSummary(caseId: string) {
-    await api
-      .getCaseSummary(caseId)
+  useEffect(() => {
+    api
+      .getCaseSummary(order.caseId)
       .then((response) => {
         setOriginalCaseSummary(response.data);
       })
-      .catch((reason) => {
+      .catch((error) => {
         props.onOrderUpdate({
-          message: reason.message,
+          message: error.message,
           type: UswdsAlertStyle.Error,
           timeOut: 8,
         });
       });
-  }
-
-  useEffect(() => {
-    getCaseSummary(order.caseId);
   }, []);
 
   return (
@@ -45,7 +41,6 @@ export function FromCaseSummary(props: FromCaseSummaryProps) {
         <div className="grid-col-1"></div>
         <div className="grid-col-10">
           {!originalCaseSummary && (
-            // NOTE!: Do not start an id attribute value with a GUID.  Id's can not start with a number.
             <LoadingSpinner
               id={`transfer-from-case-loading-${order.id}`}
               caption="Loading case..."
@@ -70,9 +65,9 @@ export function FromCaseSummary(props: FromCaseSummaryProps) {
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-2"></div>
         <div className="grid-col-9">
-          {order.docketEntries.map((docketEntry, idx) => {
+          {order.docketEntries.map((docketEntry) => {
             return (
-              <div key={idx}>
+              <div key={docketEntry.documentNumber}>
                 <Link
                   to={`/case-detail/${order.caseId}/court-docket?document=${docketEntry.documentNumber}`}
                   target="_blank"
