@@ -795,14 +795,11 @@ describe('test cams combobox', () => {
     const setResult = ref.current?.getSelections();
     expect(setResult).toEqual(expectedValues);
 
-    ref.current?.clearSelections();
-
-    await waitFor(() => {
-      const emptyResult = ref.current?.getSelections();
-      expect(emptyResult).toEqual([]);
-      expect(listButtons![0]).not.toHaveClass('selected');
-      expect(listButtons![2]).not.toHaveClass('selected');
-    });
+    act(() => ref.current?.clearSelections());
+    const emptyResult = ref.current?.getSelections();
+    expect(emptyResult).toEqual([]);
+    expect(listButtons![0]).not.toHaveClass('selected');
+    expect(listButtons![2]).not.toHaveClass('selected');
   });
 
   test('should set values when calling ref.setSelections', async () => {
@@ -823,12 +820,9 @@ describe('test cams combobox', () => {
     let selections = ref.current?.getSelections();
     expect(selections).toEqual([]);
 
-    ref.current?.setSelections(options);
-
-    await waitFor(() => {
-      selections = ref.current?.getSelections();
-      expect(selections).toEqual(options.map((option) => ({ ...option })));
-    });
+    act(() => ref.current?.setSelections(options));
+    selections = ref.current?.getSelections();
+    expect(selections).toEqual(options.map((option) => ({ ...option })));
   });
 
   test('should disable component when ref.disable is called and in single-select mode and should call onDisable if its set in props.', async () => {
@@ -845,21 +839,14 @@ describe('test cams combobox', () => {
     const listButtons = document.querySelectorAll('li');
     await userEvent.click(listButtons![0]);
 
-    ref.current?.disable(true);
-
-    await waitFor(() => {
-      const disabledExpandButton = document.querySelector('.expand-button');
-      expect(disabledExpandButton).not.toBeEnabled();
-    });
+    act(() => ref.current?.disable(true));
+    const disabledExpandButton = document.querySelector('.expand-button');
+    expect(disabledExpandButton).not.toBeEnabled();
 
     // Enable the component again
-    ref.current?.disable(false);
-
-    // Check that the expand button is enabled again
-    await waitFor(() => {
-      const enabledExpandButton = document.querySelector('.expand-button');
-      expect(enabledExpandButton).toBeEnabled();
-    });
+    act(() => ref.current?.disable(false));
+    const enabledExpandButton = document.querySelector('.expand-button');
+    expect(enabledExpandButton).toBeEnabled();
   });
 
   test('should disable component when ref.disable is called and in multi-select mode and should call onDisable if its set in props.', async () => {
@@ -873,22 +860,14 @@ describe('test cams combobox', () => {
     expect(expandButton).toBeEnabled();
 
     // Disable the component
-    ref.current?.disable(true);
-
-    // Check that the expand button is disabled
-    await waitFor(() => {
-      const disabledExpandButton = document.querySelector('.expand-button');
-      expect(disabledExpandButton).not.toBeEnabled();
-    });
+    act(() => ref.current?.disable(true));
+    const disabledExpandButton = document.querySelector('.expand-button');
+    expect(disabledExpandButton).not.toBeEnabled();
 
     // Enable the component again
-    ref.current?.disable(false);
-
-    // Check that the expand button is enabled again
-    await waitFor(() => {
-      const enabledExpandButton = document.querySelector('.expand-button');
-      expect(enabledExpandButton).toBeEnabled();
-    });
+    act(() => ref.current?.disable(false));
+    const enabledExpandButton = document.querySelector('.expand-button');
+    expect(enabledExpandButton).toBeEnabled();
   });
 
   test('onUpdateFilter should be called when input content is changed', async () => {
@@ -1122,7 +1101,7 @@ describe('test cams combobox', () => {
       expect(onFocusMock).toHaveBeenCalled();
     });
 
-    test('should apply ellipsis overflow strategy classes', () => {
+    test('should apply ellipsis overflow strategy classes', async () => {
       const selections: ComboOption[] = [{ label: 'Option 1', value: 'opt1' }];
 
       renderWithProps({
@@ -1208,7 +1187,7 @@ describe('test cams combobox', () => {
       // check path is executed (lines 370-372)
     });
 
-    test('should render error message when errorMessage prop is provided', () => {
+    test('should render error message when errorMessage prop is provided', async () => {
       const errorMessage = 'This field is required';
       renderWithProps({ errorMessage });
 
@@ -1218,7 +1197,7 @@ describe('test cams combobox', () => {
       expect(errorElement).toHaveClass('usa-input__error-message');
     });
 
-    test('should not render error message when errorMessage is empty string', () => {
+    test('should not render error message when errorMessage is empty string', async () => {
       renderWithProps({ errorMessage: '' });
 
       const errorElement = document.querySelector(`#${comboboxId}-input__error-message`);
@@ -1255,7 +1234,7 @@ describe('test cams combobox', () => {
       await toggleDropdown(comboboxId);
     });
 
-    test('should handle edge cases in positioning gracefully', () => {
+    test('should handle edge cases in positioning gracefully', async () => {
       // This test ensures the positioning code doesn't crash when
       // DOM elements might not be available or have missing properties
       renderWithProps({});
@@ -1264,7 +1243,7 @@ describe('test cams combobox', () => {
       expect(screen.getByRole('combobox')).toBeInTheDocument();
     });
 
-    test('should render ariaDescription when provided', () => {
+    test('should render ariaDescription when provided', async () => {
       const ariaDesc = 'Additional description for this combobox';
       renderWithProps({ ariaDescription: ariaDesc });
 
@@ -1273,7 +1252,7 @@ describe('test cams combobox', () => {
       expect(ariaDescElement).toHaveTextContent(ariaDesc);
     });
 
-    test('should render required asterisk when required prop is true', () => {
+    test('should render required asterisk when required prop is true', async () => {
       renderWithProps({ required: true });
 
       const requiredSpan = document.querySelector('.required-form-field');
@@ -1281,7 +1260,7 @@ describe('test cams combobox', () => {
       expect(requiredSpan).toHaveTextContent('*');
     });
 
-    test('should apply custom className prop', () => {
+    test('should apply custom className prop', async () => {
       const customClass = 'custom-combobox-class';
       renderWithProps({ className: customClass });
 
@@ -1289,7 +1268,7 @@ describe('test cams combobox', () => {
       expect(comboboxContainer).toHaveClass(customClass);
     });
 
-    test('should handle wrapPills prop', () => {
+    test('should handle wrapPills prop', async () => {
       renderWithProps({ wrapPills: true });
 
       // Verify component renders without errors when wrapPills is set
@@ -1361,8 +1340,7 @@ describe('test cams combobox', () => {
 
       // Call focusInput - this should open the dropdown and focus the input field
       await toggleDropdown(comboboxId);
-      ref.current?.focusInput();
-
+      act(() => ref.current?.focusInput());
       await waitFor(() => {
         const inputField = document.querySelector(`#${comboboxId}-combo-box-input`);
         expect(inputField).toHaveFocus();
@@ -1374,8 +1352,7 @@ describe('test cams combobox', () => {
       renderWithProps({}, ref);
 
       // Call focus - this should focus the container
-      ref.current?.focus();
-
+      act(() => ref.current?.focus());
       await waitFor(() => {
         const inputContainer = document.querySelector('.input-container');
         expect(inputContainer).toHaveFocus();
@@ -1388,20 +1365,14 @@ describe('test cams combobox', () => {
       renderWithProps({ options }, ref);
 
       // First set some selections
-      ref.current?.setSelections([options[0], options[1]]);
-
-      await waitFor(() => {
-        const selections = ref.current?.getSelections();
-        expect(selections).toHaveLength(2);
-      });
+      act(() => ref.current?.setSelections([options[0], options[1]]));
+      let selections = ref.current?.getSelections();
+      expect(selections).toHaveLength(2);
 
       // Then clear them using setSelections with empty array
-      ref.current?.setSelections([]);
-
-      await waitFor(() => {
-        const selections = ref.current?.getSelections();
-        expect(selections).toHaveLength(0);
-      });
+      act(() => ref.current?.setSelections([]));
+      selections = ref.current?.getSelections();
+      expect(selections).toHaveLength(0);
     });
 
     test('should show generic multi-select label when no singularLabel provided', () => {

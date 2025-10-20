@@ -55,6 +55,7 @@ describe('StaffAssignmentScreen', () => {
       data: [expectedAssignments],
     });
     renderWithoutProps();
+    await waitFor(() => expect(document.body).toBeDefined());
 
     const filter = document.querySelector('.staff-assignment-filter-container');
     expect(filter).toBeInTheDocument();
