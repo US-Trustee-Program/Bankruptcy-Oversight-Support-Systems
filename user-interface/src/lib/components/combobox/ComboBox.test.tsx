@@ -795,7 +795,7 @@ describe('test cams combobox', () => {
     const setResult = ref.current?.getSelections();
     expect(setResult).toEqual(expectedValues);
 
-    await act(() => ref.current?.clearSelections());
+    act(() => ref.current?.clearSelections());
     const emptyResult = ref.current?.getSelections();
     expect(emptyResult).toEqual([]);
     expect(listButtons![0]).not.toHaveClass('selected');
@@ -820,7 +820,7 @@ describe('test cams combobox', () => {
     let selections = ref.current?.getSelections();
     expect(selections).toEqual([]);
 
-    await act(() => ref.current?.setSelections(options));
+    act(() => ref.current?.setSelections(options));
     selections = ref.current?.getSelections();
     expect(selections).toEqual(options.map((option) => ({ ...option })));
   });
@@ -839,12 +839,12 @@ describe('test cams combobox', () => {
     const listButtons = document.querySelectorAll('li');
     await userEvent.click(listButtons![0]);
 
-    await act(() => ref.current?.disable(true));
+    act(() => ref.current?.disable(true));
     const disabledExpandButton = document.querySelector('.expand-button');
     expect(disabledExpandButton).not.toBeEnabled();
 
     // Enable the component again
-    await act(() => ref.current?.disable(false));
+    act(() => ref.current?.disable(false));
     const enabledExpandButton = document.querySelector('.expand-button');
     expect(enabledExpandButton).toBeEnabled();
   });
@@ -860,12 +860,12 @@ describe('test cams combobox', () => {
     expect(expandButton).toBeEnabled();
 
     // Disable the component
-    await act(() => ref.current?.disable(true));
+    act(() => ref.current?.disable(true));
     const disabledExpandButton = document.querySelector('.expand-button');
     expect(disabledExpandButton).not.toBeEnabled();
 
     // Enable the component again
-    await act(() => ref.current?.disable(false));
+    act(() => ref.current?.disable(false));
     const enabledExpandButton = document.querySelector('.expand-button');
     expect(enabledExpandButton).toBeEnabled();
   });
@@ -1340,7 +1340,7 @@ describe('test cams combobox', () => {
 
       // Call focusInput - this should open the dropdown and focus the input field
       await toggleDropdown(comboboxId);
-      await act(() => ref.current?.focusInput());
+      act(() => ref.current?.focusInput());
       await waitFor(() => {
         const inputField = document.querySelector(`#${comboboxId}-combo-box-input`);
         expect(inputField).toHaveFocus();
@@ -1352,7 +1352,7 @@ describe('test cams combobox', () => {
       renderWithProps({}, ref);
 
       // Call focus - this should focus the container
-      await act(() => ref.current?.focus());
+      act(() => ref.current?.focus());
       await waitFor(() => {
         const inputContainer = document.querySelector('.input-container');
         expect(inputContainer).toHaveFocus();
@@ -1365,12 +1365,12 @@ describe('test cams combobox', () => {
       renderWithProps({ options }, ref);
 
       // First set some selections
-      await act(() => ref.current?.setSelections([options[0], options[1]]));
+      act(() => ref.current?.setSelections([options[0], options[1]]));
       let selections = ref.current?.getSelections();
       expect(selections).toHaveLength(2);
 
       // Then clear them using setSelections with empty array
-      await act(() => ref.current?.setSelections([]));
+      act(() => ref.current?.setSelections([]));
       selections = ref.current?.getSelections();
       expect(selections).toHaveLength(0);
     });

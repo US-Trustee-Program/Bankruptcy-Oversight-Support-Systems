@@ -60,10 +60,10 @@ describe('Test Checkbox component', async () => {
     const checkbox = document.querySelector('input[type="checkbox"]');
     expect(checkbox).not.toBeChecked();
 
-    await act(() => cbRef.current?.setChecked(true));
+    act(() => cbRef.current?.setChecked(true));
     expect(checkbox).toBeChecked();
 
-    await act(() => cbRef.current?.setChecked(false));
+    act(() => cbRef.current?.setChecked(false));
     expect(checkbox).not.toBeChecked();
   });
 
@@ -75,15 +75,15 @@ describe('Test Checkbox component', async () => {
     expect(checkbox).not.toBeChecked();
     expect(checkbox).not.toHaveAttribute('data-indeterminate', 'true');
 
-    await act(() => cbRef.current?.setChecked(CheckboxState.CHECKED));
+    act(() => cbRef.current?.setChecked(CheckboxState.CHECKED));
     expect(checkbox).toBeChecked();
     expect(checkbox).not.toHaveAttribute('data-indeterminate', 'true');
 
-    await act(() => cbRef.current?.setChecked(CheckboxState.UNCHECKED));
+    act(() => cbRef.current?.setChecked(CheckboxState.UNCHECKED));
     expect(checkbox).not.toBeChecked();
     expect(checkbox).not.toHaveAttribute('data-indeterminate', 'true');
 
-    await act(() => cbRef.current?.setChecked(CheckboxState.INDETERMINATE));
+    act(() => cbRef.current?.setChecked(CheckboxState.INDETERMINATE));
     expect(checkbox).not.toBeChecked();
     expect(checkbox).toHaveAttribute('data-indeterminate', 'true');
   });

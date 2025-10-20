@@ -21,10 +21,10 @@ describe('Tests for USWDS Input component.', () => {
     const inputEl = screen.getByTestId('input-1');
     expect(inputEl).toHaveValue('1');
 
-    await act(() => ref.current?.setValue('2'));
+    act(() => ref.current?.setValue('2'));
     expect(inputEl).toHaveValue('2');
 
-    await act(() => ref.current?.resetValue());
+    act(() => ref.current?.resetValue());
     expect(inputEl).toHaveValue('1');
   });
 
@@ -32,10 +32,10 @@ describe('Tests for USWDS Input component.', () => {
     renderWithoutProps();
     const inputEl = screen.getByTestId('input-1');
 
-    await act(() => ref.current?.setValue('2'));
+    act(() => ref.current?.setValue('2'));
     expect(inputEl).toHaveValue('2');
 
-    await act(() => ref.current?.clearValue());
+    act(() => ref.current?.clearValue());
     expect(inputEl).toHaveValue('');
   });
 
@@ -43,7 +43,7 @@ describe('Tests for USWDS Input component.', () => {
     renderWithoutProps();
     const inputEl = screen.getByTestId('input-1');
 
-    await act(() => ref.current?.setValue('2'));
+    act(() => ref.current?.setValue('2'));
     expect(inputEl).toHaveValue('2');
     expect(youChangedMe).toHaveBeenCalled();
 
@@ -94,10 +94,10 @@ describe('Tests for USWDS Input component when no value is initially set.', () =
     const inputEl = screen.getByTestId('input-1');
     expect(inputEl).toHaveValue('');
 
-    await act(() => ref.current?.setValue('12345'));
+    act(() => ref.current?.setValue('12345'));
     expect(inputEl).toHaveValue('12345');
 
-    await act(() => ref.current?.resetValue());
+    act(() => ref.current?.resetValue());
     expect(inputEl).toHaveValue('');
   });
 
@@ -191,7 +191,7 @@ describe('Input additional coverage tests', () => {
     const inputEl = screen.getByTestId('test-focus');
 
     // Test ref focus method
-    await act(() => ref.current?.focus());
+    act(() => ref.current?.focus());
     expect(inputEl).toHaveFocus();
 
     // Test onFocus prop
@@ -205,10 +205,10 @@ describe('Input additional coverage tests', () => {
     const inputEl = screen.getByTestId('test-disable');
     expect(inputEl).not.toBeDisabled();
 
-    await act(() => ref.current?.disable(true));
+    act(() => ref.current?.disable(true));
     expect(inputEl).toBeDisabled();
 
-    await act(() => ref.current?.disable(false));
+    act(() => ref.current?.disable(false));
     expect(inputEl).not.toBeDisabled();
   });
 
