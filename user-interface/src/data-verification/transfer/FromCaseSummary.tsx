@@ -33,7 +33,7 @@ export function FromCaseSummary(props: Readonly<FromCaseSummaryProps>) {
           timeOut: 8,
         });
       });
-  }, []);
+  }, [order.caseId, props.onOrderUpdate]);
 
   return (
     <>
