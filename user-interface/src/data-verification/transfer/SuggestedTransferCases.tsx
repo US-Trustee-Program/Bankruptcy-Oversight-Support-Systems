@@ -235,7 +235,7 @@ function _SuggestedTransferCases(
           )}
         </div>
         {(enableCaseEntry || suggestedCases?.length === 0) && (
-          <div className="case-entry-form">
+          <div className="case-entry-form" data-testid="case-entry-form">
             <div className="court-selection grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
               <div className="transfer-from-to__div grid-col-10">
