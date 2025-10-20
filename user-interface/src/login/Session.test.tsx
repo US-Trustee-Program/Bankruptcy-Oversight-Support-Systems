@@ -58,9 +58,10 @@ describe('Session', () => {
     });
   });
 
-  test('should write the session to local storage', () => {
+  test('should write the session to local storage', async () => {
     const setSession = vi.spyOn(LocalStorage, 'setSession');
     renderWithProps();
+    await waitFor(() => expect(document.body).toBeDefined());
     expect(setSession).toHaveBeenCalledWith(testSession);
   });
 

@@ -1,5 +1,5 @@
 import { TextAreaRef } from '@/lib/type-declarations/input-fields';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import React from 'react';
 import TextArea from './TextArea';
 import userEvent from '@testing-library/user-event';
@@ -58,30 +58,22 @@ describe('Tests for USWDS TextArea component', () => {
     const inputEl = screen.getByTestId(textAreaId);
     expect(inputEl).toHaveValue(value);
 
-    ref.current?.setValue(newValue);
-    await waitFor(() => {
-      expect(inputEl).toHaveValue(newValue);
-    });
+    await act(() => ref.current?.setValue(newValue));
+    expect(inputEl).toHaveValue(newValue);
 
-    ref.current?.resetValue();
-    await waitFor(() => {
-      expect(inputEl).toHaveValue(value);
-    });
+    await act(() => ref.current?.resetValue());
+    expect(inputEl).toHaveValue(value);
   });
 
   test('Should clear value when ref.clearValue is called.', async () => {
     renderWithoutProps();
     const inputEl = screen.getByTestId(textAreaId);
-    ref.current?.setValue(newValue);
 
-    await waitFor(() => {
-      expect(inputEl).toHaveValue(newValue);
-    });
+    await act(() => ref.current?.setValue(newValue));
+    expect(inputEl).toHaveValue(newValue);
 
-    ref.current?.clearValue();
-    await waitFor(() => {
-      expect(inputEl).toHaveValue('');
-    });
+    await act(() => ref.current?.clearValue());
+    expect(inputEl).toHaveValue('');
   });
 
   test('clearValue should skip focus if inputRef is null', async () => {
@@ -92,7 +84,7 @@ describe('Tests for USWDS TextArea component', () => {
     expect(ref.current).toBeDefined();
     expect(typeof ref.current!.clearValue).toBe('function');
 
-    ref.current?.clearValue();
+    await act(() => ref.current?.clearValue());
 
     expect(mockInnerRef.current.focus).not.toHaveBeenCalled();
 
@@ -102,11 +94,9 @@ describe('Tests for USWDS TextArea component', () => {
   test('Should return value when ref.getValue is called.', async () => {
     renderWithoutProps();
     const inputEl = screen.getByTestId(textAreaId);
-    ref.current?.setValue(newValue);
 
-    await waitFor(() => {
-      expect(inputEl).toHaveValue(newValue);
-    });
+    await act(() => ref.current?.setValue(newValue));
+    expect(inputEl).toHaveValue(newValue);
 
     expect(ref.current?.getValue()).toEqual(newValue);
   });
@@ -115,17 +105,13 @@ describe('Tests for USWDS TextArea component', () => {
     renderWithoutProps();
     const inputEl = screen.getByTestId(textAreaId);
 
-    ref.current?.setValue(newValue);
-    await waitFor(() => {
-      expect(inputEl).toHaveValue(newValue);
-    });
+    await act(() => ref.current?.setValue(newValue));
+    expect(inputEl).toHaveValue(newValue);
     expect(youChangedMe).toHaveBeenCalled();
 
     const anotherValue = '. Yet another value';
     await userEvent.type(inputEl, anotherValue);
-    await waitFor(() => {
-      expect(inputEl).toHaveValue(newValue + anotherValue);
-    });
+    expect(inputEl).toHaveValue(newValue + anotherValue);
     expect(youChangedMe).toHaveBeenCalled();
   });
 });
@@ -178,18 +164,14 @@ describe('Test in odd cases', () => {
     renderWithoutProp();
     const inputEl = screen.getByTestId(textAreaId);
 
-    ref.current?.setValue(newValue);
-    await waitFor(() => {
-      expect(inputEl).toHaveValue(newValue);
-    });
+    await act(() => ref.current?.setValue(newValue));
+    expect(inputEl).toHaveValue(newValue);
 
-    ref.current?.resetValue();
-    await waitFor(() => {
-      expect(inputEl).toHaveValue('');
-    });
+    await act(() => ref.current?.resetValue());
+    expect(inputEl).toHaveValue('');
 
     inputEl.focus();
-    ref.current?.clearValue();
+    await act(() => ref.current?.clearValue());
     expect(inputEl).toHaveFocus();
   });
 });
@@ -217,15 +199,11 @@ describe('TextArea additional coverage tests', () => {
     expect(textareaEl).toBeDisabled();
 
     // Should be able to enable/disable via ref
-    ref.current?.disable(false);
-    await waitFor(() => {
-      expect(textareaEl).not.toBeDisabled();
-    });
+    await act(() => ref.current?.disable(false));
+    expect(textareaEl).not.toBeDisabled();
 
-    ref.current?.disable(true);
-    await waitFor(() => {
-      expect(textareaEl).toBeDisabled();
-    });
+    await act(() => ref.current?.disable(true));
+    expect(textareaEl).toBeDisabled();
   });
 
   test('should handle focus method', async () => {
@@ -234,10 +212,8 @@ describe('TextArea additional coverage tests', () => {
     const textareaEl = screen.getByTestId('textarea-test-focus');
     expect(textareaEl).not.toHaveFocus();
 
-    ref.current?.focus();
-    await waitFor(() => {
-      expect(textareaEl).toHaveFocus();
-    });
+    await act(() => ref.current?.focus());
+    expect(textareaEl).toHaveFocus();
   });
 
   test('should handle required prop and show required indicator', () => {
@@ -328,14 +304,12 @@ describe('TextArea additional coverage tests', () => {
       />,
     );
 
-    ref.current?.clearValue();
+    await act(() => ref.current?.clearValue());
 
-    await waitFor(() => {
-      expect(mockOnChange).toHaveBeenCalledWith(
-        expect.objectContaining({
-          target: expect.objectContaining({ value: '' }),
-        }),
-      );
-    });
+    expect(mockOnChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        target: expect.objectContaining({ value: '' }),
+      }),
+    );
   });
 });
