@@ -439,6 +439,7 @@ describe('search screen', () => {
     );
 
     renderWithoutProps();
+    await waitFor(() => expect(document.body).toBeDefined());
 
     const searchButton = screen.getByTestId('button-search-submit');
     expect(searchButton).toBeDisabled();
