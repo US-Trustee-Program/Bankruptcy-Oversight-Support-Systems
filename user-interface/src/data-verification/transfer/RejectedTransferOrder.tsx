@@ -9,7 +9,7 @@ type RejectedTransferOrderProps = {
   onOrderUpdate: (alertDetails: AlertDetails, order?: TransferOrder) => void;
 };
 
-export function RejectedTransferOrder(props: RejectedTransferOrderProps) {
+export function RejectedTransferOrder(props: Readonly<RejectedTransferOrderProps>) {
   const { order } = props;
   return (
     <>
@@ -31,7 +31,7 @@ export function RejectedTransferOrder(props: RejectedTransferOrderProps) {
             caseId={order.caseId}
             data-testid={`rejected-transfer-case-link-${order.caseId}`}
           ></CaseNumber>
-          {order.reason && order.reason.length && (
+          {order.reason && order.reason?.length > 0 && (
             <>
               {' '}
               for the following reason:

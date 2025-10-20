@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { CaseSummary } from '@common/cams/cases';
 import {
   FlexibleTransferOrderAction,
@@ -27,7 +27,6 @@ export type PendingTransferOrderImperative = {
 export type PendingTransferOrderProps = {
   order: TransferOrder;
   onOrderUpdate: (alertDetails: AlertDetails, order?: TransferOrder) => void;
-  // TODO: This is a lot of prop drilling. Maybe add a custom hook???
   officesList: Array<CourtDivisionDetails>;
 };
 
@@ -40,7 +39,7 @@ export function getOrderTransferFromOrder(order: TransferOrder): FlexibleTransfe
   };
 }
 
-function _PendingTransferOrder(
+function PendingTransferOrder_(
   props: PendingTransferOrderProps,
   PendingTransferOrderRef: React.Ref<PendingTransferOrderImperative>,
 ) {
@@ -79,9 +78,8 @@ function _PendingTransferOrder(
           updatedOrder,
         );
       })
-      .catch((reason) => {
-        // TODO: make the error message more meaningful
-        props.onOrderUpdate({ message: reason.message, type: UswdsAlertStyle.Error, timeOut: 8 });
+      .catch((error) => {
+        props.onOrderUpdate({ message: error.message, type: UswdsAlertStyle.Error, timeOut: 8 });
       });
   }
 
@@ -109,10 +107,9 @@ function _PendingTransferOrder(
           },
         );
       })
-      .catch((reason) => {
-        // TODO: make the error message more meaningful
+      .catch((error) => {
         props.onOrderUpdate({
-          message: reason.message,
+          message: error.message,
           type: UswdsAlertStyle.Error,
           timeOut: 8,
         });
@@ -212,7 +209,7 @@ function _PendingTransferOrder(
         toCaseId={orderTransfer.newCase?.caseId}
         fromDivisionName={order.courtDivisionName}
         toDivisionName={orderTransfer.newCase?.courtDivisionName}
-        fromCourtName={order.courtName!}
+        fromCourtName={order.courtName}
         toCourtName={orderTransfer.newCase?.courtName}
         onConfirm={confirmAction}
       ></TransferConfirmationModal>
@@ -220,4 +217,4 @@ function _PendingTransferOrder(
   );
 }
 
-export const PendingTransferOrder = forwardRef(_PendingTransferOrder);
+export const PendingTransferOrder = forwardRef(PendingTransferOrder_);

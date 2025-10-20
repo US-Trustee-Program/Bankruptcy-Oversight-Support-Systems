@@ -8,7 +8,7 @@ type ApprovedTransferOrderProps = {
   onOrderUpdate: (alertDetails: AlertDetails, order?: TransferOrder) => void;
 };
 
-export function ApprovedTransferOrder(props: ApprovedTransferOrderProps) {
+export function ApprovedTransferOrder(props: Readonly<ApprovedTransferOrderProps>) {
   const { order } = props;
   return (
     <>
