@@ -68,14 +68,11 @@ const mockCourts = MockData.getCourts().filter(
 describe('TrusteeDetailScreen', () => {
   const mockNavigate = vi.fn();
 
-  const renderWithRouter = (initialEntries = ['/trustees/123'], trustee?: Trustee) => {
+  const renderWithRouter = (initialEntries = ['/trustees/123']) => {
     return render(
       <MemoryRouter initialEntries={initialEntries}>
         <Routes>
-          <Route
-            path="/trustees/:trusteeId/*"
-            element={<TrusteeDetailScreen trustee={trustee} />}
-          />
+          <Route path="/trustees/:trusteeId/*" element={<TrusteeDetailScreen />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -288,35 +285,6 @@ describe('TrusteeDetailScreen', () => {
     const otherInfoEditButton = screen.getByTestId('button-edit-other-information');
     otherInfoEditButton.click();
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/other/edit');
-  });
-
-  test('should use prop trustee when present and avoid unnecessary API calls', async () => {
-    const updatedTrustee: Trustee = {
-      ...mockTrustee,
-      name: 'John Doe Updated',
-      public: {
-        ...mockTrustee.public,
-        address: {
-          ...mockTrustee.public.address,
-          address1: '456 Updated Street',
-          city: 'New City',
-        },
-        phone: { number: '555-999-8888', extension: '9999' },
-        email: 'john.updated@example.com',
-      },
-    };
-    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-    renderWithRouter(['/trustees/123'], updatedTrustee);
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe Updated');
-    });
-    expect(screen.getByTestId('trustee-street-address')).toHaveTextContent('456 Updated Street');
-    expect(screen.getByTestId('trustee-city')).toHaveTextContent('New City');
-    expect(screen.getByTestId('trustee-email')).toHaveTextContent('john.updated@example.com');
-    expect(screen.getByTestId('trustee-phone-number')).toHaveTextContent('555-999-8888, ext. 9999');
-
-    expect(screen.queryByDisplayValue('123 Main St')).not.toBeInTheDocument();
-    expect(screen.queryByDisplayValue('john.doe.public@example.com')).not.toBeInTheDocument();
   });
 
   test.each([
