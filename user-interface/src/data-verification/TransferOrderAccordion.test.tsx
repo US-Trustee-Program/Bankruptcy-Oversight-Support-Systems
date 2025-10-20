@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
@@ -8,6 +8,7 @@ import { orderType, orderStatusType } from '@/lib/utils/labels';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { TransferOrder } from '@common/cams/orders';
+import userEvent from '@testing-library/user-event';
 
 function findAccordionHeading(id: string) {
   const heading = screen.getByTestId(`accordion-heading-${id}`);
@@ -121,8 +122,8 @@ describe('TransferOrderAccordion', () => {
 
     const content = findAccordionContent(order.id, false);
 
-    // eslint-disable-next-line testing-library/no-unnecessary-act
-    await act(async () => fireEvent.click(heading));
+    userEvent.setup();
+    await userEvent.click(heading);
 
     expect(content?.textContent).toContain(order.docketEntries[0]?.summaryText);
     expect(content?.textContent).toContain(order.docketEntries[0]?.fullText);
