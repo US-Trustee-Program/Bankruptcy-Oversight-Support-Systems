@@ -17,7 +17,6 @@ import * as NavigatorModule from '@/lib/hooks/UseCamsNavigator';
 import * as GlobalAlertModule from '@/lib/hooks/UseGlobalAlert';
 import * as DebounceModule from '@/lib/hooks/UseDebounce';
 
-// Single helper (scoped) to render TrusteeContactForm with direct props
 function renderWithProps(
   props: UseTrusteeContactFormProps = {
     action: 'create' as const,
@@ -44,23 +43,6 @@ describe('TrusteeContactForm Tests', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
-  });
-
-  test('should render the form when feature flag is enabled and user has permission', async () => {
-    renderWithProps();
-
-    await waitFor(() => {
-      const nameInput = screen.getByTestId('trustee-name');
-      expect(nameInput).toBeInTheDocument();
-    });
-
-    const address1Input = screen.getByTestId('trustee-address1');
-    const cityInput = screen.getByTestId('trustee-city');
-    const emailInput = screen.getByTestId('trustee-email');
-
-    expect(address1Input).toBeInTheDocument();
-    expect(cityInput).toBeInTheDocument();
-    expect(emailInput).toBeInTheDocument();
   });
 
   test('should show disabled message when feature flag is disabled', async () => {
@@ -110,50 +92,11 @@ describe('TrusteeContactForm Tests', () => {
       expect(nameInput).toBeInTheDocument();
     });
 
-    // Internal profile editing should show address fields as optional
     const address1Input = screen.getByTestId('trustee-address1');
     const emailInput = screen.getByTestId('trustee-email');
 
     expect(address1Input).toBeInTheDocument();
     expect(emailInput).toBeInTheDocument();
-  });
-
-  test('should handle getCourts API error during component mount', async () => {
-    const mockGetCourts = vi.fn().mockRejectedValue(new Error('Failed to load courts'));
-    vi.spyOn(Api2, 'getCourts').mockImplementation(mockGetCourts);
-
-    renderWithProps();
-
-    // Wait for API call to be made and error to be handled
-    await waitFor(() => {
-      expect(mockGetCourts).toHaveBeenCalled();
-    });
-
-    // Verify the form still renders even when courts fail to load
-    const nameInput = screen.getByTestId('trustee-name');
-    expect(nameInput).toBeInTheDocument();
-  });
-
-  test('should load court districts on component mount', async () => {
-    const mockCourts = [
-      {
-        courtDivisionCode: '081',
-        courtName: 'Test Court',
-        courtDivisionName: 'Test Division',
-      },
-    ];
-
-    const mockGetCourts = vi.fn().mockResolvedValue({ data: mockCourts });
-    vi.spyOn(Api2, 'getCourts').mockImplementation(mockGetCourts);
-
-    renderWithProps();
-
-    await waitFor(() => {
-      expect(mockGetCourts).toHaveBeenCalled();
-    });
-
-    const nameInput = screen.getByTestId('trustee-name');
-    expect(nameInput).toBeInTheDocument();
   });
 
   test('should handle form submission for creating a new trustee', async () => {
@@ -356,62 +299,6 @@ describe('TrusteeContactForm Tests', () => {
     expect(extensionInput).toHaveValue('123');
   });
 
-  test('should handle getCourts API response without data property', async () => {
-    const mockGetCourts = vi.fn().mockResolvedValue({ status: 200 }); // No data property
-    vi.spyOn(Api2, 'getCourts').mockImplementation(mockGetCourts);
-
-    renderWithProps();
-
-    await waitFor(() => {
-      expect(mockGetCourts).toHaveBeenCalled();
-    });
-
-    const nameInput = screen.getByTestId('trustee-name');
-    expect(nameInput).toBeInTheDocument();
-  });
-
-  test('should load courts and map existing district selections', async () => {
-    const stateWithDistricts = {
-      action: 'edit' as const,
-      cancelTo: '/trustees/123',
-      trusteeId: '123',
-      contactInformation: 'public' as const,
-      trustee: {
-        districts: ['081', '023'], // Pre-existing district selections
-      },
-    };
-
-    const mockCourts = [
-      {
-        courtDivisionCode: '081',
-        courtName: 'Test Court 1',
-        courtDivisionName: 'Test Division 1',
-      },
-      {
-        courtDivisionCode: '023',
-        courtName: 'Test Court 2',
-        courtDivisionName: 'Test Division 2',
-      },
-      {
-        courtDivisionCode: '099',
-        courtName: 'Test Court 3',
-        courtDivisionName: 'Test Division 3',
-      },
-    ];
-
-    const mockGetCourts = vi.fn().mockResolvedValue({ data: mockCourts });
-    vi.spyOn(Api2, 'getCourts').mockImplementation(mockGetCourts);
-
-    renderWithProps(stateWithDistricts);
-
-    await waitFor(() => {
-      expect(mockGetCourts).toHaveBeenCalled();
-    });
-
-    const nameInput = screen.getByTestId('trustee-name');
-    expect(nameInput).toBeInTheDocument();
-  });
-
   test('should map existing chapter selections to chapter options', async () => {
     const stateWithChapters = {
       action: 'edit' as const,
@@ -465,9 +352,6 @@ describe('TrusteeContactForm Tests', () => {
       phone: '555-000-1111',
       extension: '',
       email: 'internal@example.com',
-      districts: [],
-      chapters: [],
-      status: 'active',
       website: '',
     };
 
@@ -547,9 +431,6 @@ describe('TrusteeContactForm Tests', () => {
       phone: '555-000-1111',
       extension: '',
       email: 'internal@example.com',
-      districts: [],
-      chapters: [],
-      status: 'active',
       website: '',
     };
 
@@ -603,9 +484,6 @@ describe('TrusteeContactForm Tests', () => {
       phone: '',
       extension: '',
       email: '',
-      districts: [],
-      chapters: [],
-      status: 'active',
       website: '',
     };
 
@@ -741,9 +619,6 @@ describe('TrusteeContactForm Tests', () => {
       phone: '555-222-3333',
       extension: '',
       email: 'addr2@example.com',
-      districts: [],
-      chapters: [],
-      status: 'active',
       website: 'example.org',
     } as TrusteeFormData;
 
@@ -793,9 +668,6 @@ describe('TrusteeContactForm Tests', () => {
       phone: '555-333-4444',
       extension: '12',
       email: 'i@example.com',
-      districts: [],
-      chapters: [],
-      status: 'active',
       website: '',
     } as TrusteeFormData;
 
@@ -845,9 +717,6 @@ describe('TrusteeContactForm Tests', () => {
       phone: '',
       extension: '',
       email: undefined,
-      districts: [],
-      chapters: [],
-      status: 'active',
       website: '',
     } as TrusteeFormData;
 
@@ -930,55 +799,6 @@ describe('TrusteeContactForm Tests', () => {
     await waitFor(() => expect(mockPost).toHaveBeenCalled());
   });
 
-  test('should handle district uniqueness and sorting from getCourts with duplicates', async () => {
-    const mockCourtsWithDuplicates = [
-      {
-        courtDivisionCode: '081',
-        courtName: 'Test Court 1',
-        courtDivisionName: 'Test Division 1',
-      },
-      {
-        courtDivisionCode: '023',
-        courtName: 'Test Court 2',
-        courtDivisionName: 'Test Division 2',
-      },
-      {
-        courtDivisionCode: '081',
-        courtName: 'Test Court 1',
-        courtDivisionName: 'Test Division 1',
-      },
-      {
-        courtDivisionCode: '001',
-        courtName: 'Test Court 3',
-        courtDivisionName: 'Test Division 3',
-      },
-    ];
-
-    const mockGetCourts = vi.fn().mockResolvedValue({ data: mockCourtsWithDuplicates });
-    vi.spyOn(Api2, 'getCourts').mockImplementation(mockGetCourts);
-
-    renderWithProps();
-
-    await waitFor(() => {
-      expect(mockGetCourts).toHaveBeenCalled();
-    });
-
-    await waitFor(() => {
-      const districtCombo = screen.getByRole('combobox', { name: /district/i });
-      expect(districtCombo).toBeInTheDocument();
-    });
-
-    const user = userEvent.setup();
-    const districtCombo = screen.getByRole('combobox', { name: /district/i });
-
-    await user.click(districtCombo);
-
-    await waitFor(() => {
-      const options = screen.getAllByRole('option');
-      expect(options).toHaveLength(3);
-    });
-  });
-
   test('should show required attribute based on getDynamicSpec for non-create internal editing', async () => {
     const mockDynamicSpec = {
       name: { required: true },
@@ -996,9 +816,6 @@ describe('TrusteeContactForm Tests', () => {
       phone: '',
       extension: '',
       email: '',
-      districts: [],
-      chapters: [],
-      status: 'active',
       website: '',
     };
 
@@ -1056,9 +873,6 @@ describe('TrusteeContactForm Tests', () => {
         email: '',
         extension: '123',
         website: '',
-        districts: [],
-        chapters: [],
-        status: 'active' as TrusteeStatus,
       },
       updateField: mockUpdateField,
       getFormData: mockGetFormData.mockReturnValue({
@@ -1072,9 +886,6 @@ describe('TrusteeContactForm Tests', () => {
         email: '',
         extension: '123',
         website: '',
-        districts: [],
-        chapters: [],
-        status: 'active' as TrusteeStatus,
       }),
       fieldErrors: {},
       validateFieldAndUpdate: vi.fn(),
@@ -1142,9 +953,6 @@ describe('TrusteeContactForm Tests', () => {
         email: 'test@example.com',
         extension: '',
         website: '',
-        districts: [],
-        chapters: [],
-        status: 'active' as TrusteeStatus,
       },
       updateField: mockUpdateField,
       getFormData: vi.fn(),
@@ -1167,108 +975,6 @@ describe('TrusteeContactForm Tests', () => {
     });
   });
 
-  test('should call updateField and validateFieldAndUpdate for multi-select ComboBox (chapters)', async () => {
-    const mockUpdateField = vi.fn();
-    const mockValidateFieldAndUpdate = vi.fn();
-    const mockDebounce = vi.fn((fn: () => void) => fn());
-
-    vi.spyOn(DebounceModule, 'default').mockReturnValue(
-      mockDebounce as unknown as ReturnType<typeof DebounceModule.default>,
-    );
-
-    vi.spyOn(UseFormHook, 'useTrusteeContactForm').mockReturnValue({
-      formData: {
-        name: 'Test Trustee',
-        address1: '123 Main St',
-        city: 'Test City',
-        state: 'TX',
-        zipCode: '12345',
-        phone: '555-000-1111',
-        email: 'test@example.com',
-        extension: '',
-        website: '',
-        districts: [],
-        chapters: [],
-        status: 'active' as TrusteeStatus,
-      },
-      updateField: mockUpdateField,
-      updateMultipleFields: vi.fn(),
-      resetForm: vi.fn(),
-      getFormData: vi.fn(),
-      fieldErrors: {},
-      validateFieldAndUpdate: mockValidateFieldAndUpdate,
-      clearErrors: vi.fn(),
-      clearFieldError: vi.fn(),
-      validateFormAndUpdateErrors: vi.fn(),
-      getDynamicSpec: vi.fn().mockReturnValue({}),
-    } as unknown as ReturnType<typeof UseFormHook.useTrusteeContactForm>);
-
-    renderWithProps({
-      action: 'create',
-      cancelTo: '/trustees',
-      trusteeId: '',
-      contactInformation: 'public',
-    });
-
-    await testingUtilities.toggleComboBoxItemSelection('trustee-chapters', 0);
-
-    await waitFor(() => {
-      expect(mockUpdateField).toHaveBeenCalledWith('chapters', ['7-panel']);
-      expect(mockValidateFieldAndUpdate).toHaveBeenCalledWith('chapters', '7-panel', {});
-    });
-  });
-
-  test('should call updateField and validateFieldAndUpdate for single-select ComboBox (status)', async () => {
-    const mockUpdateField = vi.fn();
-    const mockValidateFieldAndUpdate = vi.fn();
-    const mockDebounce = vi.fn((fn: () => void) => fn());
-
-    vi.spyOn(DebounceModule, 'default').mockReturnValue(
-      mockDebounce as unknown as ReturnType<typeof DebounceModule.default>,
-    );
-
-    vi.spyOn(UseFormHook, 'useTrusteeContactForm').mockReturnValue({
-      formData: {
-        name: 'Test Trustee',
-        address1: '123 Main St',
-        city: 'Test City',
-        state: 'TX',
-        zipCode: '12345',
-        phone: '555-000-1111',
-        email: 'test@example.com',
-        extension: '',
-        website: '',
-        districts: [],
-        chapters: [],
-        status: 'active' as TrusteeStatus,
-      },
-      updateField: mockUpdateField,
-      updateMultipleFields: vi.fn(),
-      resetForm: vi.fn(),
-      getFormData: vi.fn(),
-      fieldErrors: {},
-      validateFieldAndUpdate: mockValidateFieldAndUpdate,
-      clearErrors: vi.fn(),
-      clearFieldError: vi.fn(),
-      validateFormAndUpdateErrors: vi.fn(),
-      getDynamicSpec: vi.fn().mockReturnValue({}),
-    } as unknown as ReturnType<typeof UseFormHook.useTrusteeContactForm>);
-
-    renderWithProps({
-      action: 'create',
-      cancelTo: '/trustees',
-      trusteeId: '',
-      contactInformation: 'public',
-    });
-
-    await testingUtilities.toggleComboBoxItemSelection('trustee-status', 1);
-
-    await waitFor(() => {
-      expect(mockUpdateField).toHaveBeenCalledWith('status', 'not active');
-      expect(mockValidateFieldAndUpdate).toHaveBeenCalledWith('status', 'not active', {});
-    });
-  });
-
   test('should call updateField when state selection changes (UsStatesComboBox)', async () => {
     const mockUpdateField = vi.fn();
     const mockValidateFieldAndUpdate = vi.fn();
@@ -1284,9 +990,6 @@ describe('TrusteeContactForm Tests', () => {
         email: 'test@example.com',
         extension: '',
         website: '',
-        districts: [],
-        chapters: [],
-        status: 'active' as TrusteeStatus,
       },
       updateField: mockUpdateField,
       updateMultipleFields: vi.fn(),
@@ -1324,9 +1027,6 @@ describe('TrusteeContactForm Tests', () => {
         email: 'test@example.com',
         extension: '',
         website: '',
-        districts: [],
-        chapters: [],
-        status: 'active' as TrusteeStatus,
       },
       updateField: mockUpdateField,
       updateMultipleFields: vi.fn(),
@@ -1374,9 +1074,6 @@ describe('TrusteeContactForm Tests', () => {
         phone: '555-111-2222',
         extension: '',
         email: 'public@example.com',
-        districts: ['001'],
-        chapters: ['13'],
-        status: 'active' as TrusteeStatus,
         website: '',
       },
       updateField: vi.fn(),
@@ -1390,9 +1087,6 @@ describe('TrusteeContactForm Tests', () => {
         phone: '555-111-2222',
         extension: '',
         email: 'public@example.com',
-        districts: ['001'],
-        chapters: ['13'],
-        status: 'active' as TrusteeStatus,
         website: '',
       }),
       fieldErrors: {},
@@ -1424,21 +1118,6 @@ describe('TrusteeContactForm Tests', () => {
     });
   });
 
-  test('should display district load error Stop when getCourts rejects', async () => {
-    vi.spyOn(Api2, 'getCourts').mockRejectedValue(new Error('network failed'));
-
-    renderWithProps({
-      action: 'create',
-      cancelTo: '/trustees',
-      trusteeId: '',
-      contactInformation: 'public',
-    });
-
-    const stop = await screen.findByTestId('alert-trustee-stop');
-    expect(stop).toBeInTheDocument();
-    expect(stop).toHaveTextContent('Failed to load district options');
-  });
-
   test('should not call API when validation fails on submit (create)', async () => {
     const mockPost = vi.fn();
     vi.spyOn(Api2, 'postTrustee').mockImplementation(
@@ -1456,9 +1135,6 @@ describe('TrusteeContactForm Tests', () => {
         phone: '',
         extension: '',
         email: '',
-        districts: [],
-        chapters: [],
-        status: 'active' as TrusteeStatus,
         website: '',
       },
       updateField: vi.fn(),
@@ -1505,9 +1181,6 @@ describe('TrusteeContactForm Tests', () => {
         phone: '555-111-2222',
         extension: '',
         email: 'create@example.com',
-        districts: [],
-        chapters: [],
-        status: 'active' as TrusteeStatus,
         website: '',
       },
       updateField: vi.fn(),
@@ -1553,9 +1226,6 @@ describe('TrusteeContactForm Tests', () => {
         email: 'test@example.com',
         extension: '',
         website: '',
-        districts: [],
-        chapters: [],
-        status: 'active' as TrusteeStatus,
       },
       updateField: mockUpdateField,
       updateMultipleFields: vi.fn(),
