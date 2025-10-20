@@ -65,11 +65,9 @@ const getDistrictLabels = (trustee: Trustee, courtDivisionDetails: CourtDivision
   return trusteeDistricts;
 };
 
-export default function TrusteeDetailScreen({
-  trustee: propTrustee,
-}: { trustee?: Trustee | null } = {}) {
+export default function TrusteeDetailScreen() {
   const { trusteeId } = useParams();
-  const [trustee, setTrustee] = useState<Trustee | null>(propTrustee ?? null);
+  const [trustee, setTrustee] = useState<Trustee | null>(null);
   const [navState, setNavState] = useState<number>(
     mapTrusteeDetailNavState(window.location.pathname),
   );
@@ -124,7 +122,7 @@ export default function TrusteeDetailScreen({
   }, [api]);
 
   useEffect(() => {
-    if (trusteeId && !propTrustee) {
+    if (trusteeId && !location.pathname.match(/\/edit/)) {
       setIsLoading(true);
       api
         .getTrustee(trusteeId)
@@ -137,12 +135,9 @@ export default function TrusteeDetailScreen({
         .finally(() => {
           setIsLoading(false);
         });
+      setNavState(mapTrusteeDetailNavState(window.location.pathname));
     }
-  }, [trusteeId, propTrustee]);
-
-  useEffect(() => {
-    setNavState(mapTrusteeDetailNavState(window.location.pathname));
-  }, []);
+  }, [location.pathname, trusteeId, api, globalAlert]);
 
   if (!trusteeId || (!isLoading && !trustee)) {
     return (
@@ -191,6 +186,7 @@ export default function TrusteeDetailScreen({
       content: (
         <TrusteeContactForm
           trusteeId={trusteeId}
+          trustee={trustee}
           contactInformation="public"
           action="edit"
           cancelTo={window.location.pathname}
@@ -203,6 +199,7 @@ export default function TrusteeDetailScreen({
       content: (
         <TrusteeContactForm
           trusteeId={trusteeId}
+          trustee={trustee}
           contactInformation="internal"
           action="edit"
           cancelTo={window.location.pathname}
