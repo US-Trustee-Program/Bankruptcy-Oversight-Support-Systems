@@ -16,6 +16,7 @@ import * as UseFormHook from './UseTrusteeContactForm';
 import * as NavigatorModule from '@/lib/hooks/UseCamsNavigator';
 import * as GlobalAlertModule from '@/lib/hooks/UseGlobalAlert';
 import * as DebounceModule from '@/lib/hooks/UseDebounce';
+import MockData from '@common/cams/test-utilities/mock-data';
 
 function renderWithProps(
   props: UseTrusteeContactFormProps = {
@@ -23,6 +24,7 @@ function renderWithProps(
     cancelTo: '/trustees',
     trusteeId: '',
     contactInformation: 'public' as const,
+    trustee: undefined,
   },
 ) {
   return render(
@@ -128,7 +130,6 @@ describe('TrusteeContactForm Tests', () => {
 
     await testingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
 
-    // Submit the form
     await user.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => {
@@ -136,13 +137,17 @@ describe('TrusteeContactForm Tests', () => {
     });
   });
 
-  test('should render form for editing public profile information', async () => {
+  test('should handle form submission for editing public profile information', async () => {
+    const existing = MockData.getTrustee();
     const editPublicState = {
       action: 'edit' as const,
-      cancelTo: '/trustees/456',
-      trusteeId: '456',
+      cancelTo: `/trustees/${existing.trusteeId}`,
+      trusteeId: existing.trusteeId,
       contactInformation: 'public' as const,
+      trustee: existing,
     };
+
+    const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue(existing);
 
     renderWithProps(editPublicState);
 
@@ -158,59 +163,54 @@ describe('TrusteeContactForm Tests', () => {
     const phoneInput = screen.getByTestId('trustee-phone');
     const emailInput = screen.getByTestId('trustee-email');
 
-    expect(address1Input).toBeInTheDocument();
-    expect(cityInput).toBeInTheDocument();
-    expect(stateInput).toBeInTheDocument();
-    expect(zipInput).toBeInTheDocument();
-    expect(phoneInput).toBeInTheDocument();
-    expect(emailInput).toBeInTheDocument();
-  });
+    expect(address1Input).toContainHTML(existing.public.address.address1);
+    expect(cityInput).toContainHTML(existing.public.address.city);
+    expect(stateInput).toContainHTML(existing.public.address.state);
+    expect(zipInput).toContainHTML(existing.public.address.zipCode);
+    expect(phoneInput).toContainHTML(existing.public.phone!.number);
+    expect(emailInput).toContainHTML(existing.public.email!);
 
-  test('should handle field changes and validation', async () => {
-    renderWithProps();
-
-    await waitFor(() => {
-      const nameInput = screen.getByTestId('trustee-name');
-      expect(nameInput).toBeInTheDocument();
-    });
-
-    const user = userEvent.setup();
-    const nameInput = screen.getByTestId('trustee-name');
-
-    await user.type(nameInput, 'Test Name');
-
-    expect(nameInput).toHaveValue('Test Name');
-  });
-
-  test('should handle state combo box selection', async () => {
-    renderWithProps();
-
-    await waitFor(() => {
-      const stateCombo = screen.getByRole('combobox', { name: /state/i });
-      expect(stateCombo).toBeInTheDocument();
-    });
-
-    const stateCombo = screen.getByRole('combobox', { name: /state/i });
-
+    const newAddress1 = '123 Main St';
+    await userEvent.clear(address1Input);
+    await userEvent.type(address1Input, newAddress1);
     await testingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
+    const newZip = '90210-1111';
+    await userEvent.clear(zipInput);
+    await userEvent.type(zipInput, newZip);
+    const newPhone = '555-123-4567';
+    await userEvent.clear(phoneInput);
+    await userEvent.type(phoneInput, newPhone);
+    const newEmail = 'test@example.com';
+    await userEvent.clear(emailInput);
+    await userEvent.type(emailInput, newEmail);
 
-    expect(stateCombo).toBeInTheDocument();
-  });
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
-  test('should handle zip code field validation', async () => {
-    renderWithProps();
+    const expectedPayload = {
+      ...existing,
+      public: {
+        ...existing.public,
+        address: {
+          ...existing.public.address,
+          address1: newAddress1,
+          zipCode: newZip,
+          state: 'CA',
+        },
+        phone: {
+          ...existing.public.phone,
+          number: newPhone,
+        },
+        email: newEmail,
+      },
+    } as Partial<Trustee>;
+    delete expectedPayload.id;
+    delete expectedPayload.trusteeId;
+    delete expectedPayload.public?.address.address3;
+    delete expectedPayload.status;
+    delete expectedPayload.updatedBy;
+    delete expectedPayload.updatedOn;
 
-    await waitFor(() => {
-      const zipInput = screen.getByTestId('trustee-zip');
-      expect(zipInput).toBeInTheDocument();
-    });
-
-    const user = userEvent.setup();
-    const zipInput = screen.getByTestId('trustee-zip');
-
-    await user.type(zipInput, '12345');
-
-    expect(zipInput).toHaveValue('12345');
+    expect(patchSpy).toHaveBeenCalledWith(existing.trusteeId, expectedPayload);
   });
 
   test('should handle website field with URL normalization', async () => {
