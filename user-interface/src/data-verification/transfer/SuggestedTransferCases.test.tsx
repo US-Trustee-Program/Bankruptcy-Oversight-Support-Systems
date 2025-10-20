@@ -8,7 +8,7 @@ import {
 } from './SuggestedTransferCases';
 import { OrderStatus, TransferOrder } from '@common/cams/orders';
 import { CourtDivisionDetails } from '@common/cams/courts';
-import { render, waitFor, screen, fireEvent } from '@testing-library/react';
+import { act, render, waitFor, screen, fireEvent } from '@testing-library/react';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { CaseDocketEntry, CaseSummary } from '@common/cams/cases';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
@@ -176,14 +176,13 @@ describe('SuggestedTransferCases component', () => {
     vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({ data: fromCaseSummary });
 
     renderWithProps();
+    await waitFor(() => expect(document.body).toBeDefined());
 
-    await waitFor(() => {
-      const description = screen.getByTestId('suggested-cases-not-found');
-      expect(description).toBeInTheDocument();
-      expect(description).toHaveTextContent(
-        'Choose a new court division and enter a case number, and a case will be selected for this case event automatically.',
-      );
-    });
+    const description = screen.getByTestId('suggested-cases-not-found');
+    expect(description).toBeInTheDocument();
+    expect(description).toHaveTextContent(
+      'Choose a new court division and enter a case number, and a case will be selected for this case event automatically.',
+    );
   });
 
   test('should display case table if we get more than 0 suggested cases', async () => {
@@ -191,17 +190,16 @@ describe('SuggestedTransferCases component', () => {
     vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({ data: fromCaseSummary });
 
     renderWithProps();
+    await waitFor(() => expect(document.body).toBeDefined());
 
-    await waitFor(() => {
-      const caseTable = document.querySelector('#suggested-cases');
-      expect(caseTable).toBeInTheDocument();
+    const caseTable = document.querySelector('#suggested-cases');
+    expect(caseTable).toBeInTheDocument();
 
-      const description = screen.getByTestId('suggested-cases-found');
-      expect(description).toBeInTheDocument();
-      expect(description).toHaveTextContent(
-        'Select the new case from the list below. If the case is not listed, select "case not listed" and enter the new court division and case number.',
-      );
-    });
+    const description = screen.getByTestId('suggested-cases-found');
+    expect(description).toBeInTheDocument();
+    expect(description).toHaveTextContent(
+      'Select the new case from the list below. If the case is not listed, select "case not listed" and enter the new court division and case number.',
+    );
   });
 
   test('should call onAlert if an error results from fetching case suggestions', async () => {
@@ -270,7 +268,7 @@ describe('SuggestedTransferCases component', () => {
 
     await fillCaseNotListedForm(order);
 
-    ref.current?.cancel();
+    act(() => ref.current?.cancel());
 
     suggestedCases.forEach((_, idx) => {
       const radioBtn = screen.getByTestId(`radio-suggested-cases-checkbox-${idx}`);
