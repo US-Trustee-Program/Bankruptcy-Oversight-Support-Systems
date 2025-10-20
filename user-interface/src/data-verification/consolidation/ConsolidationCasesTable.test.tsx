@@ -4,7 +4,7 @@ import {
   ConsolidationCaseTableProps,
   OrderTableImperative,
 } from './ConsolidationCasesTable';
-import { render, waitFor, screen, fireEvent } from '@testing-library/react';
+import { act, render, waitFor, screen, fireEvent } from '@testing-library/react';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import React from 'react';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
@@ -57,7 +57,7 @@ describe('test ConsolidationCasesTable component', () => {
       }
     }
 
-    tableRef.current?.selectAllCheckboxes();
+    act(() => tableRef.current?.selectAllCheckboxes());
 
     expect(props.updateAllSelections).toHaveBeenCalledWith(props.cases);
 
@@ -68,7 +68,7 @@ describe('test ConsolidationCasesTable component', () => {
       }
     });
 
-    tableRef.current?.clearAllCheckboxes();
+    act(() => tableRef.current?.clearAllCheckboxes());
 
     await waitFor(() => {
       checkboxes = document.querySelectorAll(`.consolidation-cases-table input`);
