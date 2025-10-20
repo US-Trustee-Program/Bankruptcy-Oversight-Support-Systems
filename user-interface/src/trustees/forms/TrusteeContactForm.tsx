@@ -1,8 +1,8 @@
 import './TrusteeContactForm.scss';
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useCallback } from 'react';
 import Input from '@/lib/components/uswds/Input';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
+import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import {
@@ -17,25 +17,9 @@ import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
 import UsStatesComboBox from '@/lib/components/combobox/UsStatesComboBox';
 import useDebounce from '@/lib/hooks/UseDebounce';
 import { Stop } from '@/lib/components/Stop';
-import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
-import { ChapterType, TrusteeInput, TrusteeStatus } from '@common/cams/trustees';
+import { TrusteeInput } from '@common/cams/trustees';
 import { normalizeWebsiteUrl } from '@common/cams/regex';
-
-const CHAPTER_OPTIONS: ComboOption<ChapterType>[] = [
-  { value: '7-panel', label: '7 - Panel' },
-  { value: '7-non-panel', label: '7 - Non-Panel' },
-  { value: '11', label: '11' },
-  { value: '11-subchapter-v', label: '11 - Subchapter V' },
-  { value: '12', label: '12' },
-  { value: '13', label: '13' },
-];
-
-const STATUS_OPTIONS: ComboOption<TrusteeStatus>[] = [
-  { value: 'active', label: 'Active' },
-  { value: 'not active', label: 'Not Active' },
-  { value: 'suspended', label: 'Suspended' },
-];
 
 function TrusteeContactForm(props: Readonly<UseTrusteeContactFormProps>) {
   const flags = useFeatureFlags();
@@ -43,9 +27,6 @@ function TrusteeContactForm(props: Readonly<UseTrusteeContactFormProps>) {
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
   const debounce = useDebounce();
-
-  const districtComboRef = React.useRef<ComboBoxRef | null>(null);
-  const statusComboRef = React.useRef<ComboBoxRef | null>(null);
 
   const doEditPublicProfile = props.action === 'edit' && props.contactInformation === 'public';
   const doCreate = props.action === 'create';
@@ -65,10 +46,6 @@ function TrusteeContactForm(props: Readonly<UseTrusteeContactFormProps>) {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const [districtOptions, setDistrictOptions] = useState<ComboOption[]>([]);
-  const [selectedDistrictOptions, setSelectedDistrictOptions] = useState<ComboOption[]>([]);
-  const [districtLoadError, setDistrictLoadError] = useState<string | null>(null);
 
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
   const navigate = useCamsNavigator();
@@ -94,9 +71,6 @@ function TrusteeContactForm(props: Readonly<UseTrusteeContactFormProps>) {
           email: formData.email,
           ...(normalizedWebsite && normalizedWebsite.length > 0 && { website: normalizedWebsite }),
         },
-        districts: formData.districts && formData.districts.length > 0 ? formData.districts : null,
-        chapters: formData.chapters && formData.chapters.length > 0 ? formData.chapters : null,
-        status: formData.status,
       } as TrusteeInput;
     } else {
       payload = {
@@ -150,69 +124,6 @@ function TrusteeContactForm(props: Readonly<UseTrusteeContactFormProps>) {
       }
     }
   };
-
-  useEffect(() => {
-    setDistrictLoadError(null);
-    api
-      .getCourts()
-      .then((response) => {
-        if (!response?.data) {
-          throw new Error('No data received from getCourts API');
-        }
-
-        const courts = response.data;
-
-        const districtMap = new Map<string, ComboOption>();
-        for (const court of courts) {
-          const label = `${court.courtName} (${court.courtDivisionName})`;
-          districtMap.set(court.courtDivisionCode, {
-            value: court.courtDivisionCode,
-            label: label,
-          });
-        }
-
-        const options = Array.from(districtMap.values()).sort((a, b) =>
-          a.label.localeCompare(b.label),
-        );
-
-        const selectedOptions = (formData.districts || []).reduce((acc, selection) => {
-          const option = options.find((option) => option.value === selection);
-          if (option) {
-            acc.push(option);
-          }
-          return acc;
-        }, [] as ComboOption[]);
-
-        setDistrictOptions(options);
-        setSelectedDistrictOptions(selectedOptions);
-      })
-      .catch((error) => {
-        setDistrictLoadError(
-          `Failed to load district options: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        );
-        setDistrictOptions([]);
-      });
-  }, [api, formData.districts]);
-
-  const chapterSelections = useMemo(() => {
-    return (formData.chapters || []).reduce((acc, selection) => {
-      const option = CHAPTER_OPTIONS.find((option) => option.value === selection);
-      if (option) {
-        acc.push(option);
-      }
-      return acc;
-    }, [] as ComboOption[]);
-  }, [formData.chapters]);
-
-  const statusSelection = useMemo(() => {
-    const option = STATUS_OPTIONS.find((option) => option.value === formData.status);
-
-    if (option) {
-      return option;
-    } else {
-      return STATUS_OPTIONS.find((option) => option.value === 'active')!;
-    }
-  }, [formData.status]);
 
   const isRequired = (field: keyof TrusteeFormData): { required?: true } => {
     const commonRequiredFields = ['name', 'address1', 'city', 'state', 'zipCode'];
@@ -277,25 +188,6 @@ function TrusteeContactForm(props: Readonly<UseTrusteeContactFormProps>) {
     navigate.navigateTo(cancelTo);
   }, [clearErrors, navigate, cancelTo]);
 
-  function handleComboBoxUpdate<T>(
-    fieldName: keyof TrusteeFormData,
-    isMultiSelect: boolean,
-  ): (selectedOptions: ComboOption[]) => void {
-    return (selectedOptions: ComboOption[]) => {
-      const selectedValues = selectedOptions.map((option) => option.value as T);
-      if (isMultiSelect) {
-        updateField(fieldName, selectedValues);
-      } else {
-        updateField(fieldName, selectedValues[0]);
-      }
-
-      // Debounce validation only.
-      debounce(() => {
-        validateFieldAndUpdate(fieldName, selectedValues.join(','), getDynamicSpec());
-      }, 300);
-    };
-  }
-
   if (!flags[TRUSTEE_MANAGEMENT]) {
     return <div data-testid="trustee-create-disabled">Trustee management is not enabled.</div>;
   }
@@ -318,9 +210,6 @@ function TrusteeContactForm(props: Readonly<UseTrusteeContactFormProps>) {
           <h1 className="text-no-wrap display-inline-block margin-right-1 create-trustee">
             Add Trustee Profile
           </h1>
-        )}
-        {districtLoadError && (
-          <Stop id="trustee-stop" title="Error" message={districtLoadError} asError />
         )}
       </div>
 
@@ -482,58 +371,6 @@ function TrusteeContactForm(props: Readonly<UseTrusteeContactFormProps>) {
                     type="website"
                     autoComplete="off"
                     {...isRequired('website')}
-                  />
-                </div>
-
-                <div className="field-group">
-                  <ComboBox
-                    id="trustee-districts"
-                    className="trustee-districts-input"
-                    name="districts"
-                    label="District (Division)"
-                    options={districtOptions}
-                    selections={selectedDistrictOptions}
-                    onUpdateSelection={handleComboBoxUpdate<string>('districts', true)}
-                    multiSelect={true}
-                    singularLabel="district"
-                    pluralLabel="districts"
-                    placeholder={districtLoadError ? 'Error loading districts' : 'Select districts'}
-                    autoComplete="off"
-                    ref={districtComboRef}
-                    {...isRequired('districts')}
-                  />
-                </div>
-
-                <div className="field-group">
-                  <ComboBox
-                    id="trustee-chapters"
-                    className="trustee-chapters-input"
-                    name="chapters"
-                    label="Chapter Types"
-                    options={CHAPTER_OPTIONS}
-                    selections={chapterSelections}
-                    onUpdateSelection={handleComboBoxUpdate<ChapterType>('chapters', true)}
-                    multiSelect={true}
-                    singularLabel="chapter"
-                    pluralLabel="chapters"
-                    autoComplete="off"
-                    {...isRequired('chapters')}
-                  />
-                </div>
-
-                <div className="field-group">
-                  <ComboBox
-                    id="trustee-status"
-                    className="trustee-status-input"
-                    name="status"
-                    label="Status"
-                    options={STATUS_OPTIONS}
-                    selections={[statusSelection]}
-                    onUpdateSelection={handleComboBoxUpdate<TrusteeStatus>('status', false)}
-                    multiSelect={false}
-                    autoComplete="off"
-                    ref={statusComboRef}
-                    {...isRequired('status')}
                   />
                 </div>
               </>
