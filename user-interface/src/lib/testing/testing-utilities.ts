@@ -6,7 +6,7 @@ import { GlobalAlertRef } from '../components/cams/GlobalAlert/GlobalAlert';
 import * as globalAlertHook from '@/lib/hooks/UseGlobalAlert';
 import { CamsUser } from '@common/cams/users';
 import * as UseStateModule from '@/lib/hooks/UseState';
-import { fireEvent, screen } from '@testing-library/react';
+import RTL, { fireEvent, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { delay } from '@common/delay';
 
@@ -130,6 +130,10 @@ async function toggleComboBoxItemSelection(id: string, itemIndex: number = 0, se
   });
 }
 
+async function waitForDocumentBody() {
+  await RTL.waitFor(() => expect(document.body).toBeDefined());
+}
+
 export const TestingUtilities = {
   waitFor,
   setUser,
@@ -139,6 +143,7 @@ export const TestingUtilities = {
   selectCheckbox,
   selectRadio,
   toggleComboBoxItemSelection,
+  waitForDocumentBody,
 };
 
 export default TestingUtilities;
