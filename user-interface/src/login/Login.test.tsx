@@ -15,6 +15,7 @@ import { randomUUID } from 'node:crypto';
 import { CamsSession } from '@common/cams/session';
 import { JSX } from 'react/jsx-runtime';
 import { blankConfiguration } from '@/lib/testing/mock-configuration';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 
 describe('Login', () => {
   const testId = 'child-div';
@@ -173,7 +174,7 @@ describe('Login', () => {
         <Login>{children}</Login>
       </BrowserRouter>,
     );
-    await waitFor(() => expect(document.body).toBeDefined());
+    await TestingUtilities.waitForDocumentBody();
 
     expect(getSession).toHaveBeenCalled();
     expect(getAuthIssuerFromEnv).toHaveBeenCalled();
@@ -271,7 +272,7 @@ describe('Login', () => {
         <Login></Login>
       </BrowserRouter>,
     );
-    await waitFor(() => expect(document.body).toBeDefined());
+    await TestingUtilities.waitForDocumentBody();
 
     expect(getLoginProviderFromEnv).toHaveBeenCalled();
     expect(sessionComponent).toHaveBeenCalled();
@@ -284,7 +285,7 @@ describe('Login', () => {
         <Login provider="none"></Login>
       </BrowserRouter>,
     );
-    await waitFor(() => expect(document.body).toBeDefined());
+    await TestingUtilities.waitForDocumentBody();
 
     expect(getLoginProviderFromEnv).not.toHaveBeenCalled();
     expect(sessionComponent).toHaveBeenCalled();

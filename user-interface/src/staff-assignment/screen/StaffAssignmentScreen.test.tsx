@@ -8,7 +8,7 @@ import {
 import MockData from '@common/cams/test-utilities/mock-data';
 import * as searchResultsModule from '@/search-results/SearchResults';
 import Api2 from '@/lib/models/api2';
-import testingUtilities from '@/lib/testing/testing-utilities';
+import testingUtilities, { TestingUtilities } from '@/lib/testing/testing-utilities';
 import { SearchResultsProps } from '@/search-results/SearchResults';
 import { CamsRole } from '@common/cams/roles';
 import { BrowserRouter } from 'react-router-dom';
@@ -55,7 +55,7 @@ describe('StaffAssignmentScreen', () => {
       data: [expectedAssignments],
     });
     renderWithoutProps();
-    await waitFor(() => expect(document.body).toBeDefined());
+    await TestingUtilities.waitForDocumentBody();
 
     const filter = document.querySelector('.staff-assignment-filter-container');
     expect(filter).toBeInTheDocument();
