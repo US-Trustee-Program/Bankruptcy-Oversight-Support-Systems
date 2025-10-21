@@ -1,3 +1,4 @@
+// eslint-disable testing-library/no-debugging-utils
 import { LoggerImpl } from './logger.service';
 import { randomUUID } from 'crypto';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';

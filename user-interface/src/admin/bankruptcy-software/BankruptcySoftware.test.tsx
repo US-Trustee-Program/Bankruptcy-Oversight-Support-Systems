@@ -1,4 +1,4 @@
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BankruptcySoftware } from './BankruptcySoftware';
 import Api2 from '@/lib/models/api2';
@@ -45,7 +45,7 @@ describe('BankruptcySoftware Component Tests', () => {
     vi.restoreAllMocks();
   });
 
-  async function renderComponent() {
+  function renderComponent() {
     return render(<BankruptcySoftware />);
   }
 
@@ -153,13 +153,8 @@ describe('BankruptcySoftware Component Tests', () => {
     const input = screen.getByLabelText('Add New Software');
     const saveButton = screen.getByRole('button', { name: 'Add Software' });
 
-    await act(async () => {
-      await user.clear(input);
-    });
-
-    await act(async () => {
-      await user.click(saveButton);
-    });
+    await user.clear(input);
+    await user.click(saveButton);
 
     expect(globalAlertSpy.warning).toHaveBeenCalledWith('Software name cannot be empty.');
   });
