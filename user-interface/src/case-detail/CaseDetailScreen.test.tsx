@@ -9,7 +9,7 @@ import { Debtor, DebtorAttorney } from '@common/cams/parties';
 import { MockAttorneys } from '@common/cams/test-utilities/attorneys.mock';
 import * as detailHeader from './panels/CaseDetailHeader';
 import MockData from '@common/cams/test-utilities/mock-data';
-import testingUtilities, { TestingUtilities } from '@/lib/testing/testing-utilities';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import MockApi2 from '@/lib/testing/mock-api2';
 
@@ -123,7 +123,7 @@ describe('Case Detail screen tests', () => {
   test('should show global alert if not able to retrieve caseDetail', async () => {
     const basicInfoPath = `/case-detail/${defaultTestCaseDetail.caseId}/`;
     vi.spyOn(MockApi2, 'getCaseDetail').mockRejectedValue('error');
-    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+    const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
 
     await renderWithRoutes(undefined, [], basicInfoPath);
 
