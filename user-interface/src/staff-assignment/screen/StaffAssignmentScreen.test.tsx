@@ -8,7 +8,7 @@ import {
 import MockData from '@common/cams/test-utilities/mock-data';
 import * as searchResultsModule from '@/search-results/SearchResults';
 import Api2 from '@/lib/models/api2';
-import testingUtilities, { TestingUtilities } from '@/lib/testing/testing-utilities';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 import { SearchResultsProps } from '@/search-results/SearchResults';
 import { CamsRole } from '@common/cams/roles';
 import { BrowserRouter } from 'react-router-dom';
@@ -35,7 +35,7 @@ describe('StaffAssignmentScreen', () => {
   }
 
   beforeEach(() => {
-    testingUtilities.setUser(user);
+    TestingUtilities.setUser(user);
 
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
     mockFeatureFlags = {
@@ -231,7 +231,7 @@ describe('StaffAssignmentScreen', () => {
     });
 
     beforeEach(() => {
-      testingUtilities.setUser(user);
+      TestingUtilities.setUser(user);
     });
 
     afterEach(() => {
@@ -239,7 +239,7 @@ describe('StaffAssignmentScreen', () => {
     });
 
     test('should render permission invalid error when CaseAssignmentManager is not found in user roles', async () => {
-      testingUtilities.setUserWithRoles([]);
+      TestingUtilities.setUserWithRoles([]);
 
       renderWithoutProps();
 
@@ -247,7 +247,7 @@ describe('StaffAssignmentScreen', () => {
     });
 
     test('should show an alert if user has no offices', async () => {
-      testingUtilities.setUser({ offices: [], roles: [CamsRole.CaseAssignmentManager] });
+      TestingUtilities.setUser({ offices: [], roles: [CamsRole.CaseAssignmentManager] });
       const SearchResults = vi.spyOn(searchResultsModule, 'default');
 
       renderWithoutProps();
@@ -259,7 +259,7 @@ describe('StaffAssignmentScreen', () => {
 
   describe('StaffAssignmentScreen with global alert', () => {
     test('should properly handle and display global alert error when getOfficeAssignees throws', async () => {
-      const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+      const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
       vi.spyOn(Api2, 'getOfficeAssignees').mockRejectedValueOnce('Error');
       const assigneeError = 'There was a problem getting the list of assignees.';
       renderWithoutProps();
