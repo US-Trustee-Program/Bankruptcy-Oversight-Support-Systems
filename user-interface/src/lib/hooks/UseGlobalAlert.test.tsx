@@ -25,7 +25,6 @@ describe('useGlobalAlert', () => {
   });
 
   test('should return the alert ref when context has value', () => {
-    // Create a mock ref with a non-null value
     const mockRef = createRef<GlobalAlertRef>();
     mockRef.current = {
       show: vi.fn(),
