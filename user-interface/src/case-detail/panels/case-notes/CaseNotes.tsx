@@ -5,6 +5,7 @@ import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { TextAreaRef } from '@/lib/type-declarations/input-fields';
 import { formatDateTime } from '@/lib/utils/datetime';
 import { CaseNote, CaseNoteInput } from '@common/cams/cases';
+import { AlertOptions } from '@/case-detail/panels/CaseDetailCourtDocket';
 import React, {
   forwardRef,
   useEffect,
@@ -41,6 +42,7 @@ export interface CaseNotesProps {
   areCaseNotesLoading?: boolean;
   hasCaseNotes: boolean;
   caseNotes?: CaseNote[];
+  alertOptions?: AlertOptions;
   onUpdateNoteRequest: (noteId?: string) => void;
   searchString: string;
 }
