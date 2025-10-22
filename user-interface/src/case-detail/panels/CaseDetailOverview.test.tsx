@@ -10,7 +10,7 @@ import { CamsRole } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';
 import { ResponseBody } from '@common/api/response';
 import Api2 from '@/lib/models/api2';
-import testingUtilities, { TestingUtilities } from '@/lib/testing/testing-utilities';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 
 const TEST_CASE_ID = '101-23-12345';
@@ -160,7 +160,7 @@ describe('Case detail basic information panel', () => {
         expect(modal).toBeVisible();
       });
 
-      await testingUtilities.selectCheckbox('0-checkbox');
+      await TestingUtilities.selectCheckbox('0-checkbox');
 
       const submitButton = screen.getByTestId(`button-${assignmentModalId}-submit-button`);
       fireEvent.click(submitButton);
