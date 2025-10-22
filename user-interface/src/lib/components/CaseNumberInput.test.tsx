@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
 import CaseNumberInput, { validateCaseNumberInput } from './CaseNumberInput';
-import { render, waitFor } from '@testing-library/react';
+import { act, render, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { InputRef } from '../type-declarations/input-fields';
 import React from 'react';
@@ -14,20 +14,20 @@ describe('Case number input component', () => {
     expect(input).toHaveValue('321cba');
 
     await waitFor(() => {
-      caseNumberRef.current?.setValue('abc123');
+      act(() => caseNumberRef.current?.setValue('abc123'));
       expect(input).toHaveValue('abc123');
     });
 
     const value1 = caseNumberRef.current?.getValue();
     expect(value1).toEqual('abc123');
 
-    caseNumberRef.current?.resetValue();
+    act(() => caseNumberRef.current?.resetValue());
 
     await waitFor(() => {
       expect(input).toHaveValue('321cba');
     });
 
-    caseNumberRef.current?.clearValue();
+    act(() => caseNumberRef.current?.clearValue());
 
     await waitFor(() => {
       expect(input).toHaveValue('');
