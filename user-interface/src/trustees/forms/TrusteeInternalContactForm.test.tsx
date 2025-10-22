@@ -13,13 +13,14 @@ import * as UseApi2Module from '@/lib/hooks/UseApi2';
 import { Trustee } from '@common/cams/trustees';
 
 import * as NavigatorModule from '@/lib/hooks/UseCamsNavigator';
-import * as GlobalAlertModule from '@/lib/hooks/UseGlobalAlert';
 import * as DebounceModule from '@/lib/hooks/UseDebounce';
 import * as Validation from '@common/cams/validation';
+import * as useCamsNavigatorModule from '@/lib/hooks/UseCamsNavigator';
+import MockData from '@common/cams/test-utilities/mock-data';
 
 function renderWithProps(
   props: TrusteeInternalContactFormProps = {
-    cancelTo: '/trustees',
+    cancelTo: '/trustees/123',
     trusteeId: '123',
     trustee: undefined,
   },
@@ -32,12 +33,19 @@ function renderWithProps(
 }
 
 describe('TrusteeInternalContactForm Tests', () => {
+  const navigateTo = vi.fn();
+  const navigatorMock = {
+    navigateTo,
+    redirectTo: vi.fn(),
+  };
+
   beforeEach(() => {
     testingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
 
     vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
       'trustee-management': true,
     } as FeatureFlagSet);
+    vi.spyOn(useCamsNavigatorModule, 'default').mockReturnValue(navigatorMock);
   });
 
   afterEach(() => {
@@ -76,18 +84,6 @@ describe('TrusteeInternalContactForm Tests', () => {
     expect(forbiddenAlert).toHaveTextContent('You do not have permission to manage Trustees');
   });
 
-  test('trustee name field should be disabled and other required fields should be enabled if editing internal contact information', async () => {
-    renderWithProps();
-
-    let nameInput;
-    await waitFor(() => {
-      nameInput = screen.getByTestId('trustee-name');
-      expect(nameInput).toBeInTheDocument();
-    });
-
-    expect(nameInput).toBeDisabled();
-  });
-
   test('should handle cancel button functionality', async () => {
     renderWithProps();
 
@@ -101,108 +97,194 @@ describe('TrusteeInternalContactForm Tests', () => {
 
     await user.click(cancelButton);
 
-    expect(cancelButton).toBeInTheDocument();
+    expect(navigateTo).toHaveBeenCalledWith(`/trustees/123`);
   });
 
-  test('should handle phone number input field', async () => {
-    renderWithProps();
-
-    await waitFor(() => {
-      const phoneInput = screen.getByTestId('trustee-phone');
-      expect(phoneInput).toBeInTheDocument();
-    });
-
-    const user = userEvent.setup();
-    const phoneInput = screen.getByTestId('trustee-phone');
-
-    await user.type(phoneInput, '555-123-4567');
-
-    expect(phoneInput).toHaveValue('555-123-4567');
-  });
-
-  test('should handle address2 optional field', async () => {
-    renderWithProps();
-
-    await waitFor(() => {
-      const address2Input = screen.getByTestId('trustee-address2');
-      expect(address2Input).toBeInTheDocument();
-    });
-
-    const user = userEvent.setup();
-    const address2Input = screen.getByTestId('trustee-address2');
-
-    await user.type(address2Input, 'Apt 123');
-
-    expect(address2Input).toHaveValue('Apt 123');
-  });
-
-  test('should handle extension field input', async () => {
-    renderWithProps();
-
-    await waitFor(() => {
-      const extensionInput = screen.getByTestId('trustee-extension');
-      expect(extensionInput).toBeInTheDocument();
-    });
-
-    const user = userEvent.setup();
-    const extensionInput = screen.getByTestId('trustee-extension');
-
-    await user.type(extensionInput, '123');
-
-    expect(extensionInput).toHaveValue('123');
-  });
-
-  test('should map internal payload for edit and call patchTrustee then navigate with returned data', async () => {
-    const existing = {
-      internal: {
-        address: { address1: '', address2: '', city: '', state: '', zipCode: '' },
-        phone: { number: '555-000-1111', extension: '' },
-        email: 'internal@example.com',
+  test('should map internal payload for edit and call patchTrustee then navigate to trustee profile', async () => {
+    const trustee = MockData.getTrustee();
+    trustee.internal = {
+      address: {
+        address1: '123 Main St',
+        address2: 'Suite 100',
+        city: 'Springfield',
+        state: 'IL',
+        zipCode: '11111',
+        countryCode: 'US',
       },
-    } as Partial<Trustee>;
+      phone: { number: '555-000-1111', extension: '1234' },
+      email: 'internal@example.com',
+    };
 
-    const mockPatch = vi.fn().mockResolvedValue({
+    const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue({
       data: {
-        id: 'patched',
-        name: 'patched trustee',
+        ...trustee,
       },
     });
-    vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
-      patchTrustee: mockPatch,
-    } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
 
-    const navigateMock = { navigateTo: vi.fn() };
-    vi.spyOn(NavigatorModule, 'default').mockReturnValue(
-      navigateMock as unknown as ReturnType<typeof NavigatorModule.default>,
-    );
+    renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
 
-    vi.spyOn(GlobalAlertModule, 'useGlobalAlert').mockReturnValue({
-      error: vi.fn(),
-    } as unknown as ReturnType<typeof GlobalAlertModule.useGlobalAlert>);
-
-    renderWithProps({ cancelTo: '/trustees', trusteeId: 'abc', trustee: existing });
+    const newAddress1 = '1 Main St';
+    const newCity = 'Cityville';
+    const newZip = '12345';
 
     const user = userEvent.setup();
-    await user.type(screen.getByTestId('trustee-address1'), '1 Main St');
-    await user.type(screen.getByTestId('trustee-city'), 'Cityville');
-    await user.type(screen.getByTestId('trustee-zip'), '12345');
-    await testingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
+    await user.clear(screen.getByTestId('trustee-address1'));
+    await user.type(screen.getByTestId('trustee-address1'), newAddress1);
+    await user.clear(screen.getByTestId('trustee-city'));
+    await user.type(screen.getByTestId('trustee-city'), newCity);
+    await user.clear(screen.getByTestId('trustee-zip'));
+    await user.type(screen.getByTestId('trustee-zip'), newZip);
+    const CALIFORNIA = { index: 5, abbreviation: 'CA' };
+    await testingUtilities.toggleComboBoxItemSelection('trustee-state', CALIFORNIA.index);
     await user.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => {
-      expect(mockPatch).toHaveBeenCalled();
+      expect(patchSpy).toHaveBeenCalled();
     });
 
-    const calledPayload = mockPatch.mock.calls[0][1];
-    expect(calledPayload).toHaveProperty('internal');
-    expect(calledPayload.internal).toHaveProperty('phone');
-    expect(calledPayload.internal.phone.number).toEqual('555-000-1111');
-    expect(['', undefined]).toContain(calledPayload.internal.phone.extension);
-    expect(calledPayload.internal).toHaveProperty('email', 'internal@example.com');
+    const expectedPayload = {
+      internal: {
+        address: {
+          address1: newAddress1,
+          address2: trustee.internal?.address?.address2,
+          city: newCity,
+          state: CALIFORNIA.abbreviation,
+          zipCode: newZip,
+          countryCode: 'US',
+        },
+        phone: {
+          number: trustee.internal?.phone?.number,
+          extension: trustee.internal?.phone?.extension,
+        },
+        email: trustee.internal.email,
+      },
+    };
 
-    expect(navigateMock.navigateTo).toHaveBeenCalledWith('/trustees/abc', {
-      trustee: { id: 'patched', name: 'patched trustee' },
+    expect(patchSpy).toHaveBeenCalledWith(trustee.trusteeId, expectedPayload);
+    expect(navigateTo).toHaveBeenCalledWith(`/trustees/${trustee.trusteeId}`);
+  });
+
+  test('should not allow partial address', async () => {
+    const trustee = MockData.getTrustee();
+
+    const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue({
+      data: {
+        ...trustee,
+      },
     });
+
+    renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
+
+    const newAddress1 = '1 Main St';
+    const newCity = 'Cityville';
+
+    const user = userEvent.setup();
+    await user.type(screen.getByTestId('trustee-address1'), newAddress1);
+    await user.type(screen.getByTestId('trustee-city'), newCity);
+    await user.click(screen.getByRole('button', { name: /save/i }));
+
+    expect(patchSpy).not.toHaveBeenCalled();
+    expect(navigateTo).not.toHaveBeenCalled();
+  });
+
+  test('should allow no address with other fields', async () => {
+    const trustee = MockData.getTrustee();
+
+    const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue({
+      data: {
+        ...trustee,
+      },
+    });
+
+    renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
+
+    const phoneNumber = '555-000-1111';
+
+    const user = userEvent.setup();
+    await user.type(screen.getByTestId('trustee-phone'), phoneNumber);
+    await user.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => {
+      expect(patchSpy).toHaveBeenCalled();
+    });
+
+    const expectedPayload = {
+      internal: {
+        address: null,
+        email: null,
+        phone: {
+          number: phoneNumber,
+          extension: undefined,
+        },
+      },
+    };
+
+    expect(patchSpy).toHaveBeenCalledWith(trustee.trusteeId, expectedPayload);
+    expect(navigateTo).toHaveBeenCalledWith(`/trustees/${trustee.trusteeId}`);
+  });
+
+  test('should map internal payload for edit and call patchTrustee with undefined for optional values when not included', async () => {
+    const trustee = MockData.getTrustee();
+    trustee.internal = {
+      address: {
+        address1: '123 Main St',
+        address2: '',
+        city: 'Springfield',
+        state: 'IL',
+        zipCode: '11111',
+        countryCode: 'US',
+      },
+      phone: { number: '555-000-1111', extension: '' },
+      email: 'internal@example.com',
+    };
+
+    const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue({
+      data: {
+        ...trustee,
+      },
+    });
+
+    renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
+
+    const newAddress1 = '1 Main St';
+    const newCity = 'Cityville';
+    const newZip = '12345';
+
+    const user = userEvent.setup();
+    await user.clear(screen.getByTestId('trustee-address1'));
+    await user.type(screen.getByTestId('trustee-address1'), newAddress1);
+    await user.clear(screen.getByTestId('trustee-city'));
+    await user.type(screen.getByTestId('trustee-city'), newCity);
+    await user.clear(screen.getByTestId('trustee-zip'));
+    await user.type(screen.getByTestId('trustee-zip'), newZip);
+    const CALIFORNIA = { index: 5, abbreviation: 'CA' };
+    await testingUtilities.toggleComboBoxItemSelection('trustee-state', CALIFORNIA.index);
+    await user.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => {
+      expect(patchSpy).toHaveBeenCalled();
+    });
+
+    const expectedPayload = {
+      internal: {
+        address: {
+          address1: newAddress1,
+          address2: undefined,
+          city: newCity,
+          state: CALIFORNIA.abbreviation,
+          zipCode: newZip,
+          countryCode: 'US',
+        },
+        phone: {
+          number: trustee.internal?.phone?.number,
+          extension: undefined,
+        },
+        email: trustee.internal.email,
+      },
+    };
+
+    expect(patchSpy).toHaveBeenCalledWith(trustee.trusteeId, expectedPayload);
+    expect(navigateTo).toHaveBeenCalledWith(`/trustees/${trustee.trusteeId}`);
   });
 
   test('should call globalAlert.error when patchTrustee rejects during edit', async () => {
@@ -219,10 +301,7 @@ describe('TrusteeInternalContactForm Tests', () => {
     };
 
     const error = new Error('Network failure');
-    const mockReject = vi.fn().mockRejectedValue(error);
-    vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
-      patchTrustee: mockReject,
-    } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
+    vi.spyOn(Api2, 'patchTrustee').mockRejectedValue(error);
 
     const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
 
@@ -236,7 +315,6 @@ describe('TrusteeInternalContactForm Tests', () => {
     });
 
     const user = userEvent.setup();
-    await user.type(screen.getByTestId('trustee-name'), baseFormData.name);
     await user.type(screen.getByTestId('trustee-address1'), '1 Main St');
     await user.type(screen.getByTestId('trustee-city'), 'City');
     await user.type(screen.getByTestId('trustee-zip'), '90210');
@@ -269,6 +347,11 @@ describe('TrusteeInternalContactForm Tests', () => {
       },
     } as Partial<Trustee>;
 
+    const addressErrorMessage = 'Address is required';
+    const cityErrorMessage = 'City is required';
+    const stateErrorMessage = 'State is required';
+    const zipErrorMessage = 'ZIP code must be 5 digits or 9 digits with a hyphen';
+
     vi.spyOn(DebounceModule, 'default').mockReturnValue(((cb: () => void) =>
       cb()) as unknown as ReturnType<typeof DebounceModule.default>);
 
@@ -276,52 +359,62 @@ describe('TrusteeInternalContactForm Tests', () => {
 
     const user = userEvent.setup();
     const addr1 = screen.getByTestId('trustee-address1');
+    const city = screen.getByTestId('trustee-city');
+    const zip = screen.getByTestId('trustee-zip');
+
+    expect(screen.queryByText(addressErrorMessage)).not.toBeInTheDocument();
+
     await user.clear(addr1);
 
     await waitFor(() => {
       expect(addr1).toHaveValue('');
     });
+    expect(addr1).toBeRequired();
+    expect(city).toBeRequired();
+    expect(zip).toBeRequired();
+    expect(screen.queryByText(addressErrorMessage)).toBeInTheDocument();
+    expect(screen.queryByText(cityErrorMessage)).not.toBeInTheDocument();
+
+    await user.clear(city);
+
+    await waitFor(() => {
+      expect(city).toHaveValue('');
+    });
+    expect(screen.queryByText(cityErrorMessage)).toBeInTheDocument();
+    expect(screen.queryByText(stateErrorMessage)).not.toBeInTheDocument();
+
+    expect(screen.queryByText(zipErrorMessage)).not.toBeInTheDocument();
+    await user.clear(zip);
+
+    await waitFor(() => {
+      expect(zip).toHaveValue('');
+    });
+    expect(screen.queryByText(zipErrorMessage)).toBeInTheDocument();
+    expect(screen.queryByText(stateErrorMessage)).not.toBeInTheDocument();
+
+    await testingUtilities.clearComboBoxSelection('trustee-state');
+
+    expect(screen.queryByText(addressErrorMessage)).not.toBeInTheDocument();
+    expect(screen.queryByText(cityErrorMessage)).not.toBeInTheDocument();
+    expect(screen.queryByText(stateErrorMessage)).not.toBeInTheDocument();
+    expect(screen.queryByText(zipErrorMessage)).not.toBeInTheDocument();
+    expect(addr1).not.toBeRequired();
+    expect(city).not.toBeRequired();
+    expect(zip).not.toBeRequired();
   });
 
-  test('edit internal should include phone object when phone provided', async () => {
+  test('edit internal should send null for optional fields when deleted', async () => {
     const existing = {
       internal: {
         address: {
-          address1: '1 Main',
-          address2: '',
-          city: 'C',
-          state: 'NY',
-          zipCode: '10001',
+          address1: '123',
+          city: 'City',
+          state: 'CA',
+          zipCode: '90210',
+          countryCode: 'US',
         },
-        phone: { number: '555-333-4444', extension: '12' },
-        email: 'i@example.com',
-      },
-    } as Partial<Trustee>;
-
-    const mockPatch = vi.fn().mockResolvedValue({ data: { id: 'patched-3' } });
-    vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
-      patchTrustee: mockPatch,
-    } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
-
-    renderWithProps({ cancelTo: '/trustees', trusteeId: 'int-1', trustee: existing });
-
-    const user = userEvent.setup();
-    await testingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
-    await user.click(screen.getByRole('button', { name: /save/i }));
-
-    await waitFor(() => {
-      expect(mockPatch).toHaveBeenCalled();
-      const calledPayload = mockPatch.mock.calls[0][1];
-      expect(calledPayload.internal.phone).toEqual({ number: '555-333-4444', extension: '12' });
-    });
-  });
-
-  test('edit internal should send internal.address=null and phone null when address/phone missing', async () => {
-    const existing = {
-      internal: {
-        address: undefined,
-        phone: undefined,
-        email: undefined,
+        phone: { number: '555-000-1111', extension: '1234' },
+        email: 'test@example.com',
       },
     } as Partial<Trustee>;
 
@@ -338,6 +431,13 @@ describe('TrusteeInternalContactForm Tests', () => {
     renderWithProps({ cancelTo: '/trustees', trusteeId: 'edit-id', trustee: existing });
 
     const user = userEvent.setup();
+    await user.clear(screen.getByTestId('trustee-address1'));
+    await user.clear(screen.getByTestId('trustee-city'));
+    await testingUtilities.clearComboBoxSelection('trustee-state');
+    await user.clear(screen.getByTestId('trustee-zip'));
+    await user.clear(screen.getByTestId('trustee-phone'));
+    await user.clear(screen.getByTestId('trustee-extension'));
+    await user.clear(screen.getByTestId('trustee-email'));
     await user.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => {
@@ -347,141 +447,6 @@ describe('TrusteeInternalContactForm Tests', () => {
       expect(calledPayload.internal.address).toBeNull();
       expect(calledPayload.internal.phone).toBeNull();
       expect(calledPayload.internal.email).toBeNull();
-    });
-  });
-
-  test('should show required attribute based on getDynamicSpec for non-create internal editing', async () => {
-    renderWithProps({
-      cancelTo: '/trustees',
-      trusteeId: 'test-id',
-    });
-
-    await waitFor(() => {
-      const nameInput = screen.getByTestId('trustee-name');
-      expect(nameInput).toBeInTheDocument();
-    });
-
-    const address1Input = screen.getByTestId('trustee-address1');
-    const phoneInput = screen.getByTestId('trustee-phone');
-    const emailInput = screen.getByTestId('trustee-email');
-
-    expect(address1Input).toBeRequired();
-    expect(phoneInput).not.toBeRequired();
-    expect(emailInput).not.toBeRequired();
-  });
-
-  test('should handle internal profile with address2 and null conditions', async () => {
-    const mockPatch = vi.fn().mockResolvedValue({
-      data: {
-        id: 'patched',
-        name: 'patched trustee',
-      },
-    });
-    vi.spyOn(Api2, 'patchTrustee').mockImplementation(
-      mockPatch as unknown as typeof Api2.patchTrustee,
-    );
-
-    const existing = {
-      name: 'Test Trustee',
-      internal: {
-        address: {
-          address1: '123 Main St',
-          address2: 'Suite 100',
-          city: 'Test City',
-          state: 'TX',
-          zipCode: '12345',
-          countryCode: 'US',
-        },
-        phone: undefined,
-        email: '',
-      },
-    } as Partial<Trustee>;
-
-    renderWithProps({
-      cancelTo: '/trustees',
-      trusteeId: 'test-trustee-id',
-      trustee: existing,
-    });
-
-    vi.spyOn(Validation, 'validateObject').mockReturnValue({
-      valid: true,
-      reasonMap: undefined,
-    } as Validation.ValidatorResult);
-
-    const user = userEvent.setup();
-    const addr1Input = screen.getByTestId('trustee-address1');
-    const cityInput = screen.getByTestId('trustee-city');
-    const zipInput = screen.getByTestId('trustee-zip');
-
-    await user.clear(addr1Input);
-    await user.clear(cityInput);
-    await user.clear(zipInput);
-
-    await user.type(addr1Input, '123 Main St');
-    await user.type(cityInput, 'Test City');
-    await user.type(zipInput, '12345');
-    await testingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
-
-    const submitButton = screen.getByRole('button', { name: /save/i });
-    await user.click(submitButton);
-
-    await waitFor(() => {
-      expect(mockPatch).toHaveBeenCalled();
-      const calledArgs = mockPatch.mock.calls[0];
-      expect(calledArgs[0]).toEqual('test-trustee-id');
-      const calledPayload = calledArgs[1];
-      expect(calledPayload).toHaveProperty('internal');
-      expect(calledPayload.internal.address).toEqual(
-        expect.objectContaining({
-          address1: '123 Main St',
-          address2: 'Suite 100',
-          city: 'Test City',
-          zipCode: '12345',
-          countryCode: 'US',
-        }),
-      );
-      expect(calledPayload.internal.phone).toBeNull();
-      expect(
-        calledPayload.internal.email === '' || calledPayload.internal.email === null,
-      ).toBeTruthy();
-    });
-  });
-
-  test('should handle ZIP code field change with debounced validation', async () => {
-    vi.spyOn(DebounceModule, 'default').mockReturnValue(((fn: () => void) =>
-      fn()) as unknown as ReturnType<typeof DebounceModule.default>);
-
-    renderWithProps();
-
-    const zipInput = screen.getByTestId('trustee-zip');
-    await userEvent.type(zipInput, '12345');
-
-    await waitFor(() => {
-      expect(zipInput).toHaveValue('12345');
-    });
-  });
-
-  test('should call updateField when state selection changes (UsStatesComboBox)', async () => {
-    renderWithProps();
-
-    await testingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
-
-    await waitFor(() => {
-      const stateInput = screen.getByRole('combobox', { name: /state/i });
-      expect(stateInput).toBeInTheDocument();
-      expect(stateInput).not.toHaveTextContent('');
-    });
-  });
-
-  test('should execute inline UsStatesComboBox onUpdateSelection handler (direct mock)', async () => {
-    renderWithProps();
-
-    await testingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
-
-    await waitFor(() => {
-      const stateInput = screen.getByRole('combobox', { name: /state/i });
-      expect(stateInput).toBeInTheDocument();
-      expect(stateInput).not.toHaveTextContent('');
     });
   });
 
@@ -499,19 +464,13 @@ describe('TrusteeInternalContactForm Tests', () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /save/i }));
 
-    await new Promise((res) => setTimeout(res, 50));
+    // TODO: If there is no data to submit then we should not call the handleSubmit callback because the button should be disabled.
+    //       Disabled button must rely on not only that the form is empty, but also that there are no required fields that are empty.
+    // TODO: Check for button is disabled. The rest will follow.
+    // TODO: However there should be a sane guard in handleSubmit to ALSO prevent an API call.
+    // TODO: API should return a 400 bad request if no data is sent in payload.
+
+    expect(screen.getByRole('button', { name: /save/i })).toBeDisabled();
     expect(mockPatch).not.toHaveBeenCalled();
-  });
-
-  test('should execute inline UsStatesComboBox onUpdateSelection handler with empty selection', async () => {
-    renderWithProps();
-
-    await testingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
-    await testingUtilities.toggleComboBoxItemSelection('trustee-state', 5, false);
-
-    await waitFor(() => {
-      const stateInput = screen.getByRole('combobox', { name: /state/i });
-      expect(stateInput).toBeInTheDocument();
-    });
   });
 });

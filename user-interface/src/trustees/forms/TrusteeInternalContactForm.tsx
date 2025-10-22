@@ -15,8 +15,14 @@ import { Stop } from '@/lib/components/Stop';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import { TrusteeInput } from '@common/cams/trustees';
 import { TRUSTEE_INTERNAL_SPEC, TrusteeInternalFormData } from './TrusteeSpecs';
-import { flattenReasonMap, validateEach, validateObject } from '@common/cams/validation';
+import {
+  flattenReasonMap,
+  validateEach,
+  validateObject,
+  ValidationSpec,
+} from '@common/cams/validation';
 import { ContactInformation } from '@common/cams/contact';
+import Validators from '@common/cams/validators';
 
 const getInitialFormData = (
   info: Partial<ContactInformation> | undefined,
@@ -91,10 +97,8 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
 
       const payload = mapPayload(currentFormData);
       try {
-        const updateTrusteeResponse = await api.patchTrustee(props.trusteeId, payload);
-        navigate.navigateTo(`/trustees/${props.trusteeId}`, {
-          trustee: updateTrusteeResponse?.data,
-        });
+        await api.patchTrustee(props.trusteeId, payload);
+        navigate.navigateTo(`/trustees/${props.trusteeId}`);
       } catch (e) {
         globalAlert?.error(`Failed to update trustee: ${(e as Error).message}`);
       } finally {
@@ -103,41 +107,90 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
     }
   };
 
+  /**
+   * Dynamically creates a validation spec based on form state
+   * Particularly useful for internal profile editing where certain fields may not be required
+   */
+  const getDynamicSpec = (currentFormData: TrusteeInternalFormData) => {
+    const spec: Partial<ValidationSpec<TrusteeInternalFormData>> = { ...TRUSTEE_INTERNAL_SPEC };
+
+    // TODO: We need to require address if address line 2 is present
+
+    if (
+      !currentFormData.address1 &&
+      !currentFormData.city &&
+      !currentFormData.state &&
+      !currentFormData.zipCode
+    ) {
+      delete spec.address1;
+      delete spec.address2;
+      delete spec.city;
+      delete spec.state;
+      delete spec.zipCode;
+    }
+    if (!currentFormData.phone) {
+      delete spec.phone;
+    }
+    if (!currentFormData.email) {
+      delete spec.email;
+    }
+
+    return spec;
+  };
+
   const isRequired = (field: keyof TrusteeInternalFormData): { required?: true } => {
-    const commonRequiredFields = ['address1', 'city', 'state', 'zipCode'];
-    const dynamicSpecFields = Object.keys(TRUSTEE_INTERNAL_SPEC);
-    const requiredFields = dynamicSpecFields.filter((f) => commonRequiredFields.includes(f));
-    return requiredFields.includes(field) ? { required: true } : {};
+    const spec = getDynamicSpec(getFormData());
+    // TODO: Phone Extension is optional even if Extension is in the Spec
+    // The optional spec is present and incorrectly returns true in the ternary check below
+    return spec[field] && spec[field][0] !== Validators.optional ? { required: true } : {};
+  };
+
+  const formIsEmpty = (): boolean => {
+    const currentData = getFormData();
+    return (
+      !currentData.address1 &&
+      !currentData.address2 &&
+      !currentData.city &&
+      !currentData.state &&
+      !currentData.zipCode &&
+      !currentData.phone &&
+      !currentData.extension &&
+      !currentData.email
+    );
+  };
+
+  const clearAddressErrorsIfAllEmpty = (
+    fieldName: keyof TrusteeInternalFormData,
+    value: string,
+  ): void => {
+    const requiredAddressFields = ['address1', 'city', 'state', 'zipCode'];
+    const isAddressField = requiredAddressFields.includes(fieldName);
+    if (isAddressField && (value === undefined || value.trim() === '')) {
+      const currentData = getFormData({ name: fieldName, value });
+
+      const allAddressFieldsEmpty =
+        !currentData.address1 && !currentData.city && !currentData.state && !currentData.zipCode;
+
+      if (allAddressFieldsEmpty) {
+        setFieldErrors((prevErrors) => {
+          const { ...copy } = prevErrors;
+          for (const field of requiredAddressFields) {
+            delete copy[field];
+          }
+          return copy;
+        });
+      }
+    }
   };
 
   const handleFieldChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { value, name } = event.target;
     const fieldName = name as keyof TrusteeInternalFormData;
 
-    const requiredAddressFields = ['address1', 'city', 'state', 'zipCode'];
-    const isAddressField = requiredAddressFields.includes(fieldName);
-
     updateField(fieldName, value);
     debounce(() => {
       validateFieldAndUpdate(fieldName, value);
-
-      if (isAddressField && value.trim() === '') {
-        const currentData = getFormData({ name: fieldName, value });
-
-        // Check if all address fields are now empty
-        const allAddressFieldsEmpty =
-          !currentData.address1 && !currentData.city && !currentData.state && !currentData.zipCode;
-
-        if (allAddressFieldsEmpty) {
-          setFieldErrors((prevErrors) => {
-            const { ...copy } = prevErrors;
-            for (const field of requiredAddressFields) {
-              delete copy[field];
-            }
-            return copy;
-          });
-        }
-      }
+      clearAddressErrorsIfAllEmpty(fieldName, value);
     }, 300);
   };
 
@@ -147,6 +200,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
 
     debounce(() => {
       validateFieldAndUpdate('state', value);
+      clearAddressErrorsIfAllEmpty('state', value);
     }, 300);
   };
 
@@ -156,6 +210,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
 
     debounce(() => {
       validateFieldAndUpdate('zipCode', value);
+      clearAddressErrorsIfAllEmpty('zipCode', value);
     }, 300);
   };
 
@@ -165,7 +220,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
   }, [navigate, cancelTo]);
 
   const validateFormAndUpdateErrors = (formData: TrusteeInternalFormData): boolean => {
-    const results = validateObject(TRUSTEE_INTERNAL_SPEC, formData);
+    const results = validateObject(getDynamicSpec(formData), formData);
     if (!results.valid && results.reasonMap) {
       const newFieldErrors = Object.fromEntries(
         Object.entries(flattenReasonMap(results.reasonMap)).map(([jsonPath, reasons]) => {
@@ -272,20 +327,6 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
 
         <div className="form-container">
           <div className="form-column">
-            <div className="field-group">
-              <Input
-                id="trustee-name"
-                className="trustee-name-input"
-                name="name"
-                disabled={true}
-                label="Trustee Name"
-                value={formData.name}
-                onChange={handleFieldChange}
-                errorMessage={fieldErrors['name']}
-                autoComplete="off"
-              />
-            </div>
-
             <div className="field-group">
               <Input
                 id="trustee-address1"
@@ -405,7 +446,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
 
         {errorMessage && <div role="alert">{errorMessage}</div>}
         <div className="usa-button-group">
-          <Button id="submit-button" type="submit" onClick={handleSubmit}>
+          <Button id="submit-button" type="submit" onClick={handleSubmit} disabled={formIsEmpty()}>
             {isSubmitting ? 'Saving…' : 'Save'}
           </Button>
           <Button

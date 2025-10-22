@@ -53,8 +53,8 @@ export const TRUSTEE_INTERNAL_SPEC: Readonly<ValidationSpec<TrusteeInternalFormD
   city,
   state,
   zipCode,
-  email,
-  phone,
+  email: [V.optional(...email)],
+  phone: [V.optional(...phone)],
   extension,
 };
 
