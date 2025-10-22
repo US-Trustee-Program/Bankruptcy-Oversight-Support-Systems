@@ -172,4 +172,5 @@ function Table_(
   );
 }
 
-export const Table = forwardRef(Table_);
+const Table = forwardRef(Table_);
+export default Table;

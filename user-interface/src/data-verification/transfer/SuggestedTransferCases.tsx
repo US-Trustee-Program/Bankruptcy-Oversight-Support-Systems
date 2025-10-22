@@ -30,7 +30,7 @@ export type SuggestedTransferCasesProps = {
   onInvalidCaseNumber: () => void;
 };
 
-function SuggestedTransferCases_(
+function _SuggestedTransferCases(
   props: SuggestedTransferCasesProps,
   SuggestedTransferCasesRef: React.Ref<SuggestedTransferCasesImperative>,
 ) {
@@ -70,7 +70,7 @@ function SuggestedTransferCases_(
         setNewCaseSummary(caseSummary);
         setValidationState(ValidationStates.found);
       })
-      .catch((_error) => {
+      .catch((_reason) => {
         setValidationState(ValidationStates.notFound);
       })
       .finally(() => {
@@ -92,7 +92,9 @@ function SuggestedTransferCases_(
     setValidationState(ValidationStates.notValidated);
     let office = null;
     if (selections.length > 0) {
-      office = officesList.find((o) => o.courtDivisionCode === selections[0]?.value) || null;
+      office =
+        officesList.find((o) => o.courtDivisionCode === (selections[0] as ComboOption)?.value) ||
+        null;
     }
     setNewCaseDivision(office);
     if (!office) {
@@ -132,9 +134,9 @@ function SuggestedTransferCases_(
         setLoadingSuggestions(false);
         setSuggestedCases(newSuggestedCases);
       })
-      .catch((error: Error) => {
+      .catch((reason: Error) => {
         setLoadingSuggestions(false);
-        props.onAlert({ message: error.message, type: UswdsAlertStyle.Error, timeOut: 8 });
+        props.onAlert({ message: reason.message, type: UswdsAlertStyle.Error, timeOut: 8 });
       });
   }
 
@@ -318,5 +320,4 @@ function SuggestedTransferCases_(
   );
 }
 
-const SuggestedTransferCases = forwardRef(SuggestedTransferCases_);
-export default SuggestedTransferCases;
+export const SuggestedTransferCases = forwardRef(_SuggestedTransferCases);

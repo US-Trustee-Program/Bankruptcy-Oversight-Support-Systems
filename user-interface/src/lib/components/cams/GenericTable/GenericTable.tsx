@@ -1,5 +1,4 @@
-import {
-  Table,
+import Table, {
   TableBody,
   TableHeader,
   TableHeaderData,
