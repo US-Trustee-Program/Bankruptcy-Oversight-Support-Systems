@@ -6,7 +6,7 @@ import CaseNoteFormModal, {
   getCaseNotesTitleValue,
   buildCaseNoteFormKey,
 } from './CaseNoteFormModal';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
 import { BrowserRouter } from 'react-router-dom';
 import React from 'react';
@@ -18,7 +18,6 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { getCamsUserReference } from '@common/cams/session';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import LocalFormCache from '@/lib/utils/local-form-cache';
-import { CamsSession } from '@common/cams/session';
 import { randomUUID } from 'crypto';
 
 interface RichTextEditorRef {
@@ -216,11 +215,10 @@ const renderComponent = (
 };
 
 describe('CaseNoteFormModal - Simple Tests', () => {
-  let session: CamsSession;
+  const session = MockData.getCamsSession();
 
   beforeEach(() => {
     vi.resetModules();
-    session = MockData.getCamsSession();
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
     vi.spyOn(LocalFormCache, 'getForm').mockReturnValue({ expiresAfter: 1, value: {} });
     const mockFeatureFlags = {
@@ -263,7 +261,7 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     const expectedContent = '<p>New Note Content</p>';
 
     await userEvent.type(titleInput, newTitle);
-    richTextEditorRef.current?.setValue(newContent);
+    act(() => richTextEditorRef.current?.setValue(newContent));
 
     const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
     await waitFor(() => {
@@ -310,7 +308,7 @@ describe('CaseNoteFormModal - Simple Tests', () => {
 
     await userEvent.clear(titleInput);
     await userEvent.type(titleInput, editedTitle);
-    richTextEditorRef.current?.setValue(editedContent);
+    act(() => richTextEditorRef.current?.setValue(editedContent));
 
     const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
     await waitFor(() => {
@@ -564,7 +562,7 @@ describe('CaseNoteFormModal - Simple Tests', () => {
       expect(submitButton).toBeDisabled();
     });
 
-    richTextEditorRef.current?.setValue('Test Content');
+    act(() => richTextEditorRef.current?.setValue('Test Content'));
     await waitFor(() => {
       expect(richTextEditorRef.current?.getHtml()).toBe('<p>Test Content</p>');
       expect(submitButton).toBeEnabled();

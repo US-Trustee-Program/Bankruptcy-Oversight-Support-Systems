@@ -10,7 +10,7 @@ import { CamsRole } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';
 import { ResponseBody } from '@common/api/response';
 import Api2 from '@/lib/models/api2';
-import testingUtilities from '@/lib/testing/testing-utilities';
+import testingUtilities, { TestingUtilities } from '@/lib/testing/testing-utilities';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 
 const TEST_CASE_ID = '101-23-12345';
@@ -83,20 +83,24 @@ describe('Case detail basic information panel', () => {
       expect(element).not.toBeInTheDocument();
     });
 
-    test('should show edit button and open the staff assignment modal if the user is a case assignment manager', () => {
+    test('should show edit button and open the staff assignment modal if the user is a case assignment manager', async () => {
       const user: CamsUser = MockData.getCamsUser({
         roles: [CamsRole.CaseAssignmentManager],
       });
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
 
       renderWithProps();
+
       const modal = document.querySelector('.usa-modal-wrapper');
       expect(modal).toBeInTheDocument();
       expect(modal).not.toHaveClass('is-visible');
       const element = screen.getByTestId('open-modal-button');
       expect(element).toBeInTheDocument();
       expect(element).toBeVisible();
+
       fireEvent.click(element);
+      await TestingUtilities.waitForDocumentBody();
+
       const attorneyModal = document.querySelector('.assign-attorney-modal');
       expect(attorneyModal).toBeInTheDocument();
       expect(attorneyModal).toBeVisible();

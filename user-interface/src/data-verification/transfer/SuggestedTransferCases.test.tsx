@@ -1,5 +1,5 @@
 import React from 'react';
-import { OrderStatus, TransferOrder } from '@common/cams/orders';
+import { OrderStatus } from '@common/cams/orders';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { act, render, waitFor, screen, fireEvent } from '@testing-library/react';
 import { MockData } from '@common/cams/test-utilities/mock-data';
@@ -133,7 +133,7 @@ async function fillCaseNotListedForm(
 }
 
 describe('SuggestedTransferCases component', () => {
-  let order: TransferOrder;
+  const order = MockData.getTransferOrder();
 
   function renderWithProps(props?: Partial<SuggestedTransferCasesProps>) {
     const onCaseSelection = vitest.fn();
@@ -168,7 +168,6 @@ describe('SuggestedTransferCases component', () => {
       offices: MOCKED_USTP_OFFICES_ARRAY,
     });
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
-    order = MockData.getTransferOrder();
   });
 
   afterEach(() => {
@@ -331,11 +330,13 @@ describe('SuggestedTransferCases component', () => {
   });
 
   test('should handle no suggested case number in docket text', async () => {
-    order = MockData.getTransferOrder({ override: { docketSuggestedCaseNumber: undefined } });
+    const order_ = MockData.getTransferOrder({
+      override: { docketSuggestedCaseNumber: undefined },
+    });
     vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValue({ data: suggestedCases });
     vi.spyOn(Api2, 'getCaseSummary').mockRejectedValue(caseSummaryError);
 
-    renderWithProps({ order });
+    renderWithProps({ order: order_ });
 
     await waitFor(() => {
       const caseTable = document.querySelector('#suggested-cases');
@@ -345,7 +346,7 @@ describe('SuggestedTransferCases component', () => {
     const radio = screen.getByTestId(emptySuggestedCasesId);
     fireEvent.click(radio);
 
-    const input = findCaseNumberInput(order.id);
+    const input = findCaseNumberInput(order_.id);
     expect(input).toHaveValue('');
   });
 });

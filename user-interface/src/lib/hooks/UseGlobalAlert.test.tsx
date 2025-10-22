@@ -4,7 +4,6 @@ import { GlobalAlertContext } from '@/App';
 import { GlobalAlertRef } from '../components/cams/GlobalAlert/GlobalAlert';
 import { createRef } from 'react';
 
-// Test component that uses the hook
 function TestComponent() {
   const alert = useGlobalAlert();
   return (
@@ -16,9 +15,7 @@ function TestComponent() {
 
 describe('useGlobalAlert', () => {
   test('should return null when context is empty', () => {
-    // Create a ref with null value
-    const mockRef = createRef<GlobalAlertRef | null>();
-    mockRef.current = null;
+    const mockRef = createRef<null>();
     render(
       <GlobalAlertContext.Provider value={mockRef}>
         <TestComponent />
@@ -29,14 +26,14 @@ describe('useGlobalAlert', () => {
 
   test('should return the alert ref when context has value', () => {
     // Create a mock ref with a non-null value
-    const mockRef = createRef<GlobalAlertRef | null>();
+    const mockRef = createRef<GlobalAlertRef>();
     mockRef.current = {
       show: vi.fn(),
       error: vi.fn(),
       info: vi.fn(),
       success: vi.fn(),
       warning: vi.fn(),
-    } as unknown as GlobalAlertRef;
+    };
     render(
       <GlobalAlertContext.Provider value={mockRef}>
         <TestComponent />
