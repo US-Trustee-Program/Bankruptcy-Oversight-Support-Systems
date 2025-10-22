@@ -25,7 +25,7 @@ describe('Consolidation UseCase tests', () => {
   const mockAddCase = MockData.getConsolidatedOrderCase();
   const mockOrder = MockData.getConsolidationOrder();
   const onOrderUpdateSpy = vi.fn();
-  const { waitFor } = TestingUtilities;
+  const { nonReactWaitFor } = TestingUtilities;
 
   const setupAddCase = () => {
     store.setCaseToAdd(mockAddCase);
@@ -125,7 +125,7 @@ describe('Consolidation UseCase tests', () => {
 
     useCase.handleConfirmAction(action);
 
-    await TestingUtilities.waitFor(() => {
+    await TestingUtilities.nonReactWaitFor(() => {
       return !store.isProcessing;
     });
 
@@ -463,7 +463,7 @@ describe('Consolidation UseCase tests', () => {
 
       useCase.verifyCaseCanBeAdded();
 
-      await waitFor(() => {
+      await nonReactWaitFor(() => {
         return store.addCaseNumberError?.length != 0 && !store.foundValidCaseNumber;
       });
 
@@ -488,7 +488,7 @@ describe('Consolidation UseCase tests', () => {
 
     useCase.verifyCaseCanBeAdded();
 
-    await waitFor(() => {
+    await nonReactWaitFor(() => {
       return store.addCaseNumberError?.length != 0 && !store.foundValidCaseNumber;
     });
 
@@ -513,7 +513,7 @@ describe('Consolidation UseCase tests', () => {
 
     useCase.verifyCaseCanBeAdded();
 
-    await waitFor(() => {
+    await nonReactWaitFor(() => {
       return store.addCaseNumberError?.length != 0 && !store.foundValidCaseNumber;
     });
 
@@ -601,7 +601,7 @@ describe('Consolidation UseCase tests', () => {
 
     expect(putSpy).toHaveBeenCalled();
 
-    await waitFor(() => {
+    await nonReactWaitFor(() => {
       return onOrderUpdateSpy.mock.calls.length > 0;
     });
     if (success) {
@@ -648,7 +648,7 @@ describe('Consolidation UseCase tests', () => {
 
     expect(putSpy).toHaveBeenCalled();
 
-    await waitFor(() => {
+    await nonReactWaitFor(() => {
       return onOrderUpdateSpy.mock.calls.length > 0;
     });
     if (success) {
