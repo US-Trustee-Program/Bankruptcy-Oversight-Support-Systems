@@ -15,7 +15,7 @@ export const formatDateForVoiceOver = (dateString: string) => {
       day: 'numeric',
     });
   } catch {
-    console.error('Invalid date supplied for formatting:', dateString);
+    console.error('DateRangePicker', 'Invalid date supplied for formatting:');
   }
 };
 
