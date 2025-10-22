@@ -4,7 +4,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import SearchScreen from '@/search/SearchScreen';
 import { CasesSearchPredicate, DEFAULT_SEARCH_LIMIT } from '@common/api/search';
-import testingUtilities from '@/lib/testing/testing-utilities';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 import { MockInstance } from 'vitest';
 import { ResponseBody } from '@common/api/response';
 import Api2 from '@/lib/models/api2';
@@ -76,7 +76,7 @@ describe('search screen', () => {
     const expandButton = screen.getByTestId('button-case-chapter-search-expand');
 
     // Make first search request...
-    await testingUtilities.toggleComboBoxItemSelection('case-chapter-search', 2);
+    await TestingUtilities.toggleComboBoxItemSelection('case-chapter-search', 2);
     await userEvent.click(expandButton!);
     await userEvent.click(searchButton);
 
@@ -97,7 +97,7 @@ describe('search screen', () => {
       includeAssignments,
     );
 
-    await testingUtilities.toggleComboBoxItemSelection('case-chapter-search', 3);
+    await TestingUtilities.toggleComboBoxItemSelection('case-chapter-search', 3);
     await userEvent.click(expandButton!);
 
     expect(document.querySelectorAll('#case-chapter-search-item-list li.selected')).toHaveLength(2);
@@ -178,7 +178,7 @@ describe('search screen', () => {
 
     // Make first search request....
     let itemToSelect = userDivisions.length + 1;
-    await testingUtilities.toggleComboBoxItemSelection('court-selections-search', itemToSelect);
+    await TestingUtilities.toggleComboBoxItemSelection('court-selections-search', itemToSelect);
 
     await userEvent.click(expandButton);
 
@@ -214,7 +214,7 @@ describe('search screen', () => {
 
     // Make second search request...
     await userEvent.click(expandButton);
-    await testingUtilities.toggleComboBoxItemSelection('court-selections-search', ++itemToSelect);
+    await TestingUtilities.toggleComboBoxItemSelection('court-selections-search', ++itemToSelect);
 
     await userEvent.click(expandButton);
 
@@ -424,7 +424,7 @@ describe('search screen', () => {
         message: 'some error',
       })
       .mockResolvedValue(emptySearchResponseBody);
-    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+    const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
 
     renderWithoutProps();
 
@@ -439,7 +439,7 @@ describe('search screen', () => {
     );
 
     renderWithoutProps();
-    await waitFor(() => expect(document.body).toBeDefined());
+    await TestingUtilities.waitForDocumentBody();
 
     const searchButton = screen.getByTestId('button-search-submit');
     expect(searchButton).toBeDisabled();

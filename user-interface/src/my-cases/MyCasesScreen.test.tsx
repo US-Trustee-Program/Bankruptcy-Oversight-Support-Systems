@@ -4,7 +4,7 @@ import LocalStorage from '@/lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsUser } from '@common/cams/users';
 import { BrowserRouter } from 'react-router-dom';
-import testingUtilities from '@/lib/testing/testing-utilities';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
 import Api2 from '@/lib/models/api2';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
@@ -83,14 +83,14 @@ describe('MyCasesScreen', () => {
   });
 
   test('should render "Invalid user expectation" if user has no offices', async () => {
-    const user = testingUtilities.setUser({
+    const user = TestingUtilities.setUser({
       offices: undefined,
       roles: [CamsRole.CaseAssignmentManager],
     });
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
 
     renderWithoutProps();
-    await waitFor(() => expect(document.body).toBeDefined());
+    await TestingUtilities.waitForDocumentBody();
 
     const body = document.querySelector('body');
 
@@ -176,7 +176,7 @@ describe('MyCasesScreen', () => {
       });
 
       renderWithoutProps();
-      await waitFor(() => expect(document.body).toBeDefined());
+      await TestingUtilities.waitForDocumentBody();
 
       const alertMessage = document.querySelector('.draft-notes-alert-message');
       expect(alertMessage).toBeInTheDocument();
@@ -218,7 +218,7 @@ describe('MyCasesScreen', () => {
     });
 
     renderWithoutProps();
-    await waitFor(() => expect(document.body).toBeDefined());
+    await TestingUtilities.waitForDocumentBody();
 
     const alertMessage = document.querySelector('.draft-notes-alert-message');
     expect(alertMessage).toBeInTheDocument();
