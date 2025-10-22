@@ -10,7 +10,7 @@ const usStateOptions: ComboOption[] = usStates.map((state) => {
   };
 });
 
-function _UsStatesComboBox(
+function UsStatesComboBox_(
   props: Omit<ComboBoxProps, 'options' | 'selections'> & { selections: string[] },
   ref?: React.Ref<ComboBoxRef>,
 ) {
@@ -35,5 +35,5 @@ function _UsStatesComboBox(
   );
 }
 
-const UsStatesComboBox = _UsStatesComboBox;
+const UsStatesComboBox = UsStatesComboBox_;
 export default UsStatesComboBox;

@@ -1,6 +1,5 @@
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import Alert, { AlertProps, AlertRefType, UswdsAlertStyle } from '../../uswds/Alert';
-import React from 'react';
 
 export type GlobalAlertRef = {
   show: (props: AlertProps) => void;
@@ -10,7 +9,7 @@ export type GlobalAlertRef = {
   warning: (message: string) => void;
 };
 
-export function _GlobalAlert(props: AlertProps, ref: React.Ref<GlobalAlertRef>) {
+function GlobalAlert_(props: AlertProps, ref: React.Ref<GlobalAlertRef>) {
   const timeout = 8;
 
   const [state, setState] = useState<AlertProps>(props);
@@ -48,6 +47,6 @@ export function _GlobalAlert(props: AlertProps, ref: React.Ref<GlobalAlertRef>) 
   return <Alert {...state} ref={alertRef} />;
 }
 
-const GlobalAlert = forwardRef(_GlobalAlert);
+const GlobalAlert = forwardRef(GlobalAlert_);
 
 export default GlobalAlert;

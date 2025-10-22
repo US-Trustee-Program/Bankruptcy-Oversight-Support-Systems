@@ -1,6 +1,13 @@
 import './CaseNoteFormModal.scss';
-import Alert, { AlertDetails, AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import React, {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from 'react';
 import { ModalRefType, OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import Input from '@/lib/components/uswds/Input';
 import Modal from '@/lib/components/uswds/modal/Modal';
@@ -83,7 +90,6 @@ export interface CaseNoteFormModalRef extends ModalRefType {
 
 export type CaseNoteFormModalProps = {
   modalId: string;
-  alertMessage?: AlertDetails;
   onModalClosed?: (caseId: string, mode: CaseNoteFormMode) => void;
   RichTextEditorRef?: React.RefObject<RichTextEditorRef | null>;
 };
@@ -102,7 +108,7 @@ const defaultModalOpenOptions: CaseNoteFormModalOpenProps = {
   mode: 'create',
 };
 
-function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNoteFormModalRef>) {
+function CaseNoteFormModal_(props: CaseNoteFormModalProps, ref: React.Ref<CaseNoteFormModalRef>) {
   const api = Api2;
   const noteModalId = props.modalId || 'case-note-form-modal';
   const featureFlags = useFeatureFlags();
@@ -418,6 +424,6 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   );
 }
 
-const CaseNoteFormModal = forwardRef(_CaseNoteFormModal);
+const CaseNoteFormModal = forwardRef(CaseNoteFormModal_);
 
 export default CaseNoteFormModal;
