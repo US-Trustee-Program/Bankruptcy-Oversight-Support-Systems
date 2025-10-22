@@ -14,7 +14,7 @@
     "@tiptap/extension-document": "3.7.0",
     "@tiptap/extension-italic": "3.7.0",
     "@tiptap/extension-list": "3.7.0",
-    "@tiptap/extension-paragraph": "3.6.2",
+    "@tiptap/extension-paragraph": "3.7.0",
     "@tiptap/extension-text": "3.6.2",
     "@tiptap/extension-underline": "3.6.2",
     "@tiptap/extensions": "3.6.2",
