@@ -15,7 +15,7 @@ function TestComponent() {
 
 describe('useGlobalAlert', () => {
   test('should return null when context is empty', () => {
-    const mockRef = createRef<null>();
+    const mockRef = createRef<GlobalAlertRef | null>();
     render(
       <GlobalAlertContext.Provider value={mockRef}>
         <TestComponent />
