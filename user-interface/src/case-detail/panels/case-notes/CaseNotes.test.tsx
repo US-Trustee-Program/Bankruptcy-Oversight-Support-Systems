@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import Api2 from '@/lib/models/api2';
 import CaseNotes, { CaseNotesProps, CaseNotesRef, getCaseNotesInputValue } from './CaseNotes';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -85,7 +85,7 @@ describe('case note tests', () => {
     const caseNotesFocusSpy = vi.spyOn(caseNotesRef.current!, 'focusEditButton');
     const testNote = caseNotes[0];
     const testNoteId = testNote.id;
-    caseNotesRef.current!.focusEditButton(testNoteId!);
+    act(() => caseNotesRef.current!.focusEditButton(testNoteId!));
     expect(caseNotesFocusSpy).toHaveBeenCalledWith(testNoteId);
 
     await waitFor(() => {

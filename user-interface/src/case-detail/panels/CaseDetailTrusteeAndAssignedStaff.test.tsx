@@ -13,7 +13,7 @@ import { CamsRole } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';
 import { ResponseBody } from '@common/api/response';
 import Api2 from '@/lib/models/api2';
-import testingUtilities from '@/lib/testing/testing-utilities';
+import testingUtilities, { TestingUtilities } from '@/lib/testing/testing-utilities';
 import { Consolidation } from '@common/cams/events';
 
 const TEST_CASE_ID = '101-23-12345';
@@ -163,7 +163,7 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
       expect(editButton).not.toBeInTheDocument();
     });
 
-    test('should open assignment modal when edit button is clicked', () => {
+    test('should open assignment modal when edit button is clicked', async () => {
       const user: CamsUser = MockData.getCamsUser({
         roles: [CamsRole.CaseAssignmentManager],
       });
@@ -176,6 +176,7 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
 
       const editButton = screen.getByTestId('open-modal-button');
       fireEvent.click(editButton);
+      await TestingUtilities.waitForDocumentBody();
 
       const attorneyModal = document.querySelector('.assign-attorney-modal');
       expect(attorneyModal).toBeInTheDocument();

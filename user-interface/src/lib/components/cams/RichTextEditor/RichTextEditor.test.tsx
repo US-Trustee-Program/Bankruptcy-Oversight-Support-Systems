@@ -1,6 +1,6 @@
 import { describe, expect, beforeEach, vi, test } from 'vitest';
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RichTextEditor, { RichTextEditorRef } from './RichTextEditor';
 import {
@@ -9,7 +9,7 @@ import {
   MockEditor,
   FORMATTING_BUTTONS,
   LIST_BUTTONS,
-} from '../../../testing/mock-editor';
+} from '@/lib/testing/mock-editor';
 
 // Create a mock function outside the factory
 const mockUseEditor = vi.fn();
@@ -112,11 +112,11 @@ describe('RichTextEditor', () => {
     render(<RichTextEditor id="test-editor" ref={ref} />);
 
     // Test setValue
-    ref.current!.setValue('<p>test content</p>');
+    act(() => ref.current!.setValue('<p>test content</p>'));
     expect(mockEditor.commands.setContent).toHaveBeenCalledWith('<p>test content</p>');
 
     // Test setValue with empty content
-    ref.current!.setValue('');
+    act(() => ref.current!.setValue(''));
     expect(mockEditor.commands.clearContent).toHaveBeenCalled();
 
     // Test getValue
@@ -128,21 +128,21 @@ describe('RichTextEditor', () => {
     expect(mockEditor.getHTML).toHaveBeenCalled();
 
     // Test clearValue
-    ref.current!.clearValue();
+    act(() => ref.current!.clearValue());
     expect(mockEditor.commands.clearContent).toHaveBeenCalled();
 
     // Test disable
-    ref.current!.disable(true);
+    act(() => ref.current!.disable(true));
     await waitFor(() => {
       expect(mockEditor.setEditable).toHaveBeenCalledWith(false);
     });
-    ref.current!.disable(false);
+    act(() => ref.current!.disable(false));
     await waitFor(() => {
       expect(mockEditor.setEditable).toHaveBeenCalledWith(true);
     });
 
     // Test focus
-    ref.current!.focus();
+    act(() => ref.current!.focus());
     expect(mockEditor.commands.focus).toHaveBeenCalled();
   });
 
@@ -150,12 +150,12 @@ describe('RichTextEditor', () => {
     const ref = React.createRef<RichTextEditorRef>();
     render(<RichTextEditor id="test-editor" ref={ref} />);
 
-    ref.current!.disable(true);
+    act(() => ref.current!.disable(true));
     await waitFor(() => {
       expect(mockEditor.setEditable).toHaveBeenCalledWith(false);
     });
 
-    ref.current!.disable(false);
+    act(() => ref.current!.disable(false));
     await waitFor(() => {
       expect(mockEditor.setEditable).toHaveBeenCalledWith(true);
     });
@@ -326,7 +326,7 @@ describe('RichTextEditor', () => {
     const ref = React.createRef<RichTextEditorRef>();
     render(<RichTextEditor id="test-editor" ref={ref} />);
 
-    ref.current!.setValue('');
+    act(() => ref.current!.setValue(''));
     expect(mockEditor.commands.clearContent).toHaveBeenCalled();
   });
 
@@ -334,7 +334,7 @@ describe('RichTextEditor', () => {
     const ref = React.createRef<RichTextEditorRef>();
     render(<RichTextEditor id="test-editor" ref={ref} />);
 
-    ref.current!.setValue('   ');
+    act(() => ref.current!.setValue('   '));
     expect(mockEditor.commands.clearContent).toHaveBeenCalled();
   });
 
@@ -342,7 +342,7 @@ describe('RichTextEditor', () => {
     const ref = React.createRef<RichTextEditorRef>();
     render(<RichTextEditor id="test-editor" ref={ref} />);
 
-    ref.current!.setValue('<p>new content</p>');
+    act(() => ref.current!.setValue('<p>new content</p>'));
     expect(mockEditor.commands.setContent).toHaveBeenCalledWith('<p>new content</p>');
   });
 
@@ -351,7 +351,7 @@ describe('RichTextEditor', () => {
     const ref = React.createRef<RichTextEditorRef>();
     render(<RichTextEditor id="test-editor" ref={ref} onChange={onChange} />);
 
-    ref.current!.clearValue();
+    act(() => ref.current!.clearValue());
     expect(mockEditor.commands.clearContent).toHaveBeenCalled();
     expect(onChange).toHaveBeenCalledWith('');
   });
