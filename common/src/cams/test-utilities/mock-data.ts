@@ -578,7 +578,6 @@ function getTrusteeInput(override: Partial<TrusteeInput> = {}): TrusteeInput {
   return {
     name: faker.person.fullName(),
     public: getContactInformation(),
-    status: 'active',
     ...override,
   };
 }
@@ -600,9 +599,6 @@ function getChapter13Trustee(override: Partial<Trustee> = {}): Trustee {
     internal: internalContact,
     updatedOn: getDateBeforeToday().toISOString(),
     updatedBy: getCamsUserReference(),
-    status: 'active',
-    chapters: ['13'],
-    districts: [faker.location.state({ abbreviated: true })],
     ...override,
   };
 }

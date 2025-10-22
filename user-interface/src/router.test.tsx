@@ -64,7 +64,7 @@ describe('App Router Tests', () => {
     });
   });
 
-  test('should route /trustees/create to TrusteeCreateForm when feature flag and role allow', async () => {
+  test('should route /trustees/create to trustee creation form when feature flag and role allow', async () => {
     const user = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
 
@@ -84,7 +84,7 @@ describe('App Router Tests', () => {
     );
 
     await waitFor(() => {
-      expect(document.querySelector('[data-testid="trustee-form"]')).toBeInTheDocument();
+      expect(document.querySelector('[data-testid="trustee-public-form"]')).toBeInTheDocument();
     });
   });
 
