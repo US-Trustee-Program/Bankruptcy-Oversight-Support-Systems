@@ -73,7 +73,7 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
         software: software || null,
       });
       if (response?.data) {
-        navigate.navigateTo(`/trustees/${trusteeId}`, { trustee: response.data });
+        navigate.navigateTo(`/trustees/${trusteeId}`);
       }
     } catch (e) {
       globalAlert?.error(`Failed to update trustee information: ${(e as Error).message}`);
