@@ -19,13 +19,7 @@ import {
 } from '../../../../common/src/cams/regex';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { Address, ContactInformation, PhoneNumber } from '../../../../common/src/cams/contact';
-import {
-  Trustee,
-  TRUSTEE_STATUS_VALUES,
-  TrusteeHistory,
-  TrusteeInput,
-  TrusteeStatus,
-} from '../../../../common/src/cams/trustees';
+import { Trustee, TrusteeHistory, TrusteeInput } from '../../../../common/src/cams/trustees';
 import { createAuditRecord } from '../../../../common/src/cams/auditable';
 import { deepEqual } from '../../../../common/src/object-equality';
 
@@ -53,9 +47,6 @@ export class TrusteesUseCase {
       const userReference = getCamsUserReference(context.session.user);
       const trusteeForCreation: TrusteeInput = {
         ...trustee,
-        status: trustee.status,
-        districts: trustee.districts || [],
-        chapters: trustee.chapters || [],
       };
 
       const createdTrustee = await this.trusteesRepository.createTrustee(
@@ -166,7 +157,20 @@ export class TrusteesUseCase {
         'updatedBy',
         'updatedOn',
       ]);
-      this.checkValidation(validateObject(trusteeSpec, patchedTrustee));
+
+      const dynamicSpec: Record<string, unknown> = {};
+      for (const key of Object.keys(trustee) as Array<keyof TrusteeInput>) {
+        if (trusteeSpec[key]) {
+          dynamicSpec[key as string] = trusteeSpec[key as keyof typeof trusteeSpec];
+        }
+      }
+
+      const specToValidate =
+        Object.keys(dynamicSpec).length > 0
+          ? (dynamicSpec as ValidationSpec<TrusteeInput>)
+          : trusteeSpec;
+
+      this.checkValidation(validateObject(specToValidate, patchedTrustee));
 
       const updatedTrustee = await this.trusteesRepository.updateTrustee(
         trusteeId,
@@ -285,11 +289,17 @@ const contactInformationSpec: ValidationSpec<ContactInformation> = {
 };
 
 export const internalContactInformationSpec: ValidationSpec<ContactInformation> = {
-  address: [V.optional(V.spec(addressSpec))],
-  phone: [V.optional(V.spec(phoneSpec))],
-  email: [V.optional(V.matches(EMAIL_REGEX, 'Provided email does not match regular expression'))],
+  address: [V.optional(V.nullable(V.spec(addressSpec)))],
+  phone: [V.optional(V.nullable(V.spec(phoneSpec)))],
+  email: [
+    V.optional(
+      V.nullable(V.matches(EMAIL_REGEX, 'Provided email does not match regular expression')),
+    ),
+  ],
   website: [
-    V.optional(V.matches(WEBSITE_REGEX, 'Provided website does not match regular expression')),
+    V.optional(
+      V.nullable(V.matches(WEBSITE_REGEX, 'Provided website does not match regular expression')),
+    ),
   ],
 };
 
@@ -297,7 +307,6 @@ export const trusteeSpec: ValidationSpec<TrusteeInput> = {
   name: [V.minLength(1)],
   public: [V.optional(V.spec(contactInformationSpec))],
   internal: [V.optional(V.spec(internalContactInformationSpec))],
-  status: [V.isInSet<TrusteeStatus>([...TRUSTEE_STATUS_VALUES])],
   banks: [V.optional(V.arrayOf(V.length(1, 100)))],
   software: [V.optional(V.length(0, 100))],
 };

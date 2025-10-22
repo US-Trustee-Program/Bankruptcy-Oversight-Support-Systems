@@ -1,9 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { vi, beforeEach } from 'vitest';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import { UswdsTagStyle } from '@/lib/components/uswds/Tag';
 import TrusteeDetailScreen from './TrusteeDetailScreen';
-import { Trustee, TrusteeStatus } from '@common/cams/trustees';
+import { Trustee } from '@common/cams/trustees';
 import { ContactInformation } from '@common/cams/contact';
 import MockData from '@common/cams/test-utilities/mock-data';
 import testingUtilities from '@/lib/testing/testing-utilities';
@@ -40,9 +39,6 @@ const mockTrustee: Trustee = MockData.getTrustee({
     phone: { number: '555-123-4567', extension: '1234' },
     email: 'john.doe.public@example.com',
   },
-  districts: ['071', '091'],
-  chapters: ['7-panel', '11', '13'],
-  status: 'active',
 });
 
 const mockInternal: ContactInformation = {
@@ -117,48 +113,9 @@ describe('TrusteeDetailScreen', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
-      expect(screen.getByTestId('tag-trustee-status')).toHaveTextContent('Active');
-      expect(screen.getByTestId('tag-district-0')).toHaveTextContent(
-        'Eastern District of New York (Brooklyn)',
-      );
-      expect(screen.getByTestId('tag-chapter-0')).toHaveTextContent('Chapter 7 - Panel');
     });
 
     expect(screen.getByRole('navigation')).toBeInTheDocument();
-  });
-
-  test('should render all trustee tags with proper formatting and content', async () => {
-    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
-    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-
-    renderWithRouter();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('tag-trustee-status')).toHaveTextContent('Active');
-
-      expect(screen.getByTestId('tag-district-0')).toHaveTextContent(
-        'Eastern District of New York (Brooklyn)',
-      );
-      expect(screen.getByTestId('tag-district-1')).toHaveTextContent(
-        'Western District of New York (Buffalo)',
-      );
-
-      expect(screen.getByTestId('tag-chapter-0')).toHaveTextContent('Chapter 7 - Panel');
-      expect(screen.getByTestId('tag-chapter-1')).toHaveTextContent('Chapter 11');
-      expect(screen.getByTestId('tag-chapter-2')).toHaveTextContent('Chapter 13');
-    });
-  });
-
-  test('should format "not active" status correctly', async () => {
-    const inactiveTrustee = { ...mockTrustee, status: 'not active' as TrusteeStatus };
-    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: inactiveTrustee });
-    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-
-    renderWithRouter();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('tag-trustee-status')).toHaveTextContent('Not Active');
-    });
   });
 
   test('should handle trustees with missing contact information', async () => {
@@ -240,26 +197,6 @@ describe('TrusteeDetailScreen', () => {
 
     expect(screen.getByTestId('404-NotFound')).toBeInTheDocument();
   });
-
-  test.each([
-    ['active', UswdsTagStyle.Green],
-    ['suspended', UswdsTagStyle.SecondaryDark],
-    ['', UswdsTagStyle.BaseDarkest],
-  ])(
-    'should format trustee status color for status "%s" with style "%s"',
-    async (status, expectedStyle) => {
-      const testTrustee = { ...mockTrustee, status: status as TrusteeStatus };
-      vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: testTrustee });
-      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-
-      renderWithRouter();
-
-      await waitFor(() => {
-        const statusTag = screen.getByTestId('tag-trustee-status');
-        expect(statusTag).toHaveClass(expectedStyle);
-      });
-    },
-  );
 
   test('should navigate correctly when edit buttons are clicked', async () => {
     vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
@@ -368,24 +305,6 @@ describe('TrusteeDetailScreen', () => {
     });
 
     expect(getBankruptcySoftwareListSpy).toHaveBeenCalled();
-  });
-
-  test('should handle court divisions API error and log error message', async () => {
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
-    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
-    const getCourts = vi.spyOn(Api2, 'getCourts').mockRejectedValue(new Error('Courts API error'));
-
-    renderWithRouter();
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
-    });
-
-    expect(getCourts).toHaveBeenCalled();
-    expect(consoleSpy).toHaveBeenCalledWith('Failed to fetch court divisions', 'Courts API error');
-
-    consoleSpy.mockRestore();
   });
 
   test('should transform software list correctly', async () => {
