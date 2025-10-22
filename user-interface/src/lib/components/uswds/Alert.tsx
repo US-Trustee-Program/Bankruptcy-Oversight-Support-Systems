@@ -120,5 +120,4 @@ function Alert_(props: AlertProps, ref: React.Ref<AlertRefType>) {
 }
 
 const Alert = forwardRef(Alert_);
-
 export default Alert;
