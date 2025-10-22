@@ -40,7 +40,6 @@ describe('TrusteeAssignedStaff', () => {
       phone: { number: '555-123-4567' },
       email: 'test@example.com',
     },
-    status: 'active',
     updatedBy: { id: 'user-1', name: 'Test User' },
     updatedOn: '2023-01-01T00:00:00.000Z',
   };

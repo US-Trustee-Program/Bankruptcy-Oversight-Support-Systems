@@ -108,6 +108,15 @@ function selectRadio(id: string) {
   return radio;
 }
 
+async function clearComboBoxSelection(id: string) {
+  const clearButton = document.querySelector(`#${id}-clear-all`);
+  if (clearButton) {
+    await userEvent.click(clearButton);
+  } else {
+    throw new Error(`Clear button not found for ComboBox with id: ${id}`);
+  }
+}
+
 async function toggleComboBoxItemSelection(id: string, itemIndex: number = 0, selected = true) {
   const itemListContainer = document.querySelector(`#${id}-item-list-container`);
   if (!itemListContainer!.classList.contains('expanded')) {
@@ -142,6 +151,7 @@ export const TestingUtilities = {
   selectCheckbox,
   selectRadio,
   toggleComboBoxItemSelection,
+  clearComboBoxSelection,
 };
 
 export default TestingUtilities;
