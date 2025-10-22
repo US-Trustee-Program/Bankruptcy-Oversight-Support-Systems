@@ -425,5 +425,4 @@ function CaseNoteFormModal_(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
 }
 
 const CaseNoteFormModal = forwardRef(CaseNoteFormModal_);
-
 export default CaseNoteFormModal;

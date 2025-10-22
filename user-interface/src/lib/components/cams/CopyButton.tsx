@@ -9,5 +9,4 @@ function CopyButton_(props: CopyButtonProps, ref: React.Ref<ButtonRef>) {
 }
 
 const CopyButton = forwardRef(CopyButton_);
-
 export default CopyButton;

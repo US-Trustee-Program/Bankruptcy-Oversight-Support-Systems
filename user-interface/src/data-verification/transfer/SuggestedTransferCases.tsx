@@ -2,7 +2,7 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { CaseSummary } from '@common/cams/cases';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { CaseTable, CaseTableImperative } from './CaseTable';
+import CaseTable, { CaseTableImperative } from './CaseTable';
 import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
 import { getDivisionComboOptions } from '../dataVerificationHelper';
@@ -318,4 +318,5 @@ function SuggestedTransferCases_(
   );
 }
 
-export const SuggestedTransferCases = forwardRef(SuggestedTransferCases_);
+const SuggestedTransferCases = forwardRef(SuggestedTransferCases_);
+export default SuggestedTransferCases;

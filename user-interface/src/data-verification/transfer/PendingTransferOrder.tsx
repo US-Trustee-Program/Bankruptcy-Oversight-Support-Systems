@@ -14,7 +14,7 @@ import {
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { CourtDivisionDetails } from '@common/cams/courts';
-import { SuggestedTransferCases, SuggestedTransferCasesImperative } from './SuggestedTransferCases';
+import SuggestedTransferCases, { SuggestedTransferCasesImperative } from './SuggestedTransferCases';
 import { FromCaseSummary } from './FromCaseSummary';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import './PendingTransferOrder.scss';
@@ -217,4 +217,5 @@ function PendingTransferOrder_(
   );
 }
 
-export const PendingTransferOrder = forwardRef(PendingTransferOrder_);
+const PendingTransferOrder = forwardRef(PendingTransferOrder_);
+export default PendingTransferOrder;

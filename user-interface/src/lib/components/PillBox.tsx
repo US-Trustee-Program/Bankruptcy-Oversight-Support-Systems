@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ComboOption } from './combobox/ComboBox';
-import { Pill } from './Pill';
+import Pill from './Pill';
 
 type PillBoxProps = {
   id: string;

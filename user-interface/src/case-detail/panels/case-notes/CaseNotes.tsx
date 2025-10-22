@@ -351,5 +351,4 @@ function CaseNotes_(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
 }
 
 const CaseNotes = forwardRef(CaseNotes_);
-
 export default CaseNotes;
