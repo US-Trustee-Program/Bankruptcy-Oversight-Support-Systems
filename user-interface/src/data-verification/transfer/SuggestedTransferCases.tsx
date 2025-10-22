@@ -1,7 +1,7 @@
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { CaseSummary } from '@common/cams/cases';
 import { CourtDivisionDetails } from '@common/cams/courts';
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { CaseTable, CaseTableImperative } from './CaseTable';
 import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
@@ -30,7 +30,7 @@ export type SuggestedTransferCasesProps = {
   onInvalidCaseNumber: () => void;
 };
 
-function _SuggestedTransferCases(
+function SuggestedTransferCases_(
   props: SuggestedTransferCasesProps,
   SuggestedTransferCasesRef: React.Ref<SuggestedTransferCasesImperative>,
 ) {
@@ -70,7 +70,7 @@ function _SuggestedTransferCases(
         setNewCaseSummary(caseSummary);
         setValidationState(ValidationStates.found);
       })
-      .catch((_reason) => {
+      .catch((_error) => {
         setValidationState(ValidationStates.notFound);
       })
       .finally(() => {
@@ -92,9 +92,7 @@ function _SuggestedTransferCases(
     setValidationState(ValidationStates.notValidated);
     let office = null;
     if (selections.length > 0) {
-      office =
-        officesList.find((o) => o.courtDivisionCode === (selections[0] as ComboOption)?.value) ||
-        null;
+      office = officesList.find((o) => o.courtDivisionCode === selections[0]?.value) || null;
     }
     setNewCaseDivision(office);
     if (!office) {
@@ -134,9 +132,9 @@ function _SuggestedTransferCases(
         setLoadingSuggestions(false);
         setSuggestedCases(newSuggestedCases);
       })
-      .catch((reason: Error) => {
+      .catch((error: Error) => {
         setLoadingSuggestions(false);
-        props.onAlert({ message: reason.message, type: UswdsAlertStyle.Error, timeOut: 8 });
+        props.onAlert({ message: error.message, type: UswdsAlertStyle.Error, timeOut: 8 });
       });
   }
 
@@ -320,4 +318,4 @@ function _SuggestedTransferCases(
   );
 }
 
-export const SuggestedTransferCases = forwardRef(_SuggestedTransferCases);
+export const SuggestedTransferCases = forwardRef(SuggestedTransferCases_);

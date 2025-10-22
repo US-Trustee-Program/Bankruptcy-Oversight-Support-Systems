@@ -1,5 +1,5 @@
 import './AssignAttorneyModal.scss';
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { CaseBasics } from '@common/cams/cases';
 import { AttorneyUser, CamsUserReference } from '@common/cams/users';
@@ -15,7 +15,7 @@ import {
   AssignAttorneyModalControls,
 } from './assignAttorneyModal.types';
 
-function _AssignAttorneyModal(
+function AssignAttorneyModal_(
   props: AssignAttorneyModalProps,
   ref: React.Ref<AssignAttorneyModalRef>,
 ) {
@@ -84,7 +84,7 @@ function _AssignAttorneyModal(
   return <AssignAttorneyModalView viewModel={viewModel} />;
 }
 
-const AssignAttorneyModal = forwardRef(_AssignAttorneyModal);
+const AssignAttorneyModal = forwardRef(AssignAttorneyModal_);
 
 export default AssignAttorneyModal;
 
