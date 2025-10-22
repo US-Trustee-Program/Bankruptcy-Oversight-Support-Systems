@@ -5,11 +5,6 @@ import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 import { useApi2 } from '@/lib/hooks/UseApi2';
-import {
-  TrusteeFormData,
-  useTrusteeContactForm,
-  UseTrusteeContactFormProps,
-} from './UseTrusteeContactForm';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
@@ -19,78 +14,69 @@ import useDebounce from '@/lib/hooks/UseDebounce';
 import { Stop } from '@/lib/components/Stop';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import { TrusteeInput } from '@common/cams/trustees';
-import { normalizeWebsiteUrl } from '@common/cams/regex';
+import { TRUSTEE_INTERNAL_SPEC, TrusteeInternalFormData } from './TrusteeSpecs';
+import { flattenReasonMap, validateEach, validateObject } from '@common/cams/validation';
+import { ContactInformation } from '@common/cams/contact';
 
-function TrusteeContactForm(props: Readonly<UseTrusteeContactFormProps>) {
+const getInitialFormData = (
+  info: Partial<ContactInformation> | undefined,
+): TrusteeInternalFormData => {
+  return {
+    address1: info?.address?.address1,
+    address2: info?.address?.address2,
+    city: info?.address?.city,
+    state: info?.address?.state,
+    zipCode: info?.address?.zipCode,
+    phone: info?.phone?.number,
+    extension: info?.phone?.extension,
+    email: info?.email,
+  };
+};
+
+export type TrusteeInternalContactFormProps = {
+  trusteeId: string;
+  cancelTo: string;
+  trustee?: Partial<TrusteeInput>;
+};
+
+function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormProps>) {
   const flags = useFeatureFlags();
   const api = useApi2();
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
   const debounce = useDebounce();
 
-  const doEditPublicProfile = props.action === 'edit' && props.contactInformation === 'public';
-  const doCreate = props.action === 'create';
   const { cancelTo } = props;
-
-  const {
-    formData,
-    updateField,
-    getFormData,
-    fieldErrors,
-    validateFieldAndUpdate,
-    clearErrors,
-    clearFieldError,
-    validateFormAndUpdateErrors,
-    getDynamicSpec,
-  } = useTrusteeContactForm(props);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [formData, setFormData] = useState<TrusteeInternalFormData>(
+    getInitialFormData(props.trustee?.internal),
+  );
 
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
   const navigate = useCamsNavigator();
 
-  const mapPayload = (formData: TrusteeFormData): Partial<TrusteeInput> => {
-    let payload;
-    if (doCreate || doEditPublicProfile) {
-      // Normalize website URL by adding protocol if missing
-      const normalizedWebsite = normalizeWebsiteUrl(formData.website);
+  const mapPayload = (formData: TrusteeInternalFormData): Partial<TrusteeInput> => {
+    const payload = {
+      internal: {
+        address:
+          formData.address1 && formData.city && formData.state && formData.zipCode
+            ? {
+                address1: formData.address1,
+                ...(formData.address2 && { address2: formData.address2 }),
+                city: formData.city,
+                state: formData.state,
+                zipCode: formData.zipCode,
+                countryCode: 'US',
+              }
+            : null,
+        phone: formData.phone ? { number: formData.phone, extension: formData.extension } : null,
+        email: formData.email ?? null,
+      },
+    } as Partial<TrusteeInput>;
 
-      payload = {
-        name: formData.name,
-        public: {
-          address: {
-            address1: formData.address1,
-            ...(formData.address2 && { address2: formData.address2 }),
-            city: formData.city,
-            state: formData.state,
-            zipCode: formData.zipCode,
-            countryCode: 'US',
-          },
-          phone: { number: formData.phone, extension: formData.extension },
-          email: formData.email,
-          ...(normalizedWebsite && normalizedWebsite.length > 0 && { website: normalizedWebsite }),
-        },
-      } as TrusteeInput;
-    } else {
-      payload = {
-        internal: {
-          address:
-            formData.address1 && formData.city && formData.state && formData.zipCode
-              ? {
-                  address1: formData.address1,
-                  ...(formData.address2 && { address2: formData.address2 }),
-                  city: formData.city,
-                  state: formData.state,
-                  zipCode: formData.zipCode,
-                  countryCode: 'US',
-                }
-              : null,
-          phone: formData.phone ? { number: formData.phone, extension: formData.extension } : null,
-          email: formData.email ?? null,
-        },
-      } as Partial<TrusteeInput>;
-    }
     return payload;
   };
 
@@ -98,58 +84,44 @@ function TrusteeContactForm(props: Readonly<UseTrusteeContactFormProps>) {
     ev.preventDefault();
     const currentFormData = getFormData();
 
-    if (validateFormAndUpdateErrors(currentFormData, getDynamicSpec())) {
+    if (validateFormAndUpdateErrors(currentFormData)) {
       setErrorMessage(null);
-      clearErrors();
+      setFieldErrors({});
       setIsSubmitting(true);
 
       const payload = mapPayload(currentFormData);
       try {
-        if (doCreate) {
-          const response = await api.postTrustee(payload as TrusteeInput);
-          const createdId = (response as { data?: { trusteeId?: string } })?.data?.trusteeId;
-          navigate.navigateTo(`/trustees/${createdId}`);
-        } else {
-          const updateTrusteeResponse = await api.patchTrustee(props.trusteeId!, payload);
-          navigate.navigateTo(`/trustees/${props.trusteeId}`, {
-            trustee: updateTrusteeResponse?.data,
-          });
-        }
+        const updateTrusteeResponse = await api.patchTrustee(props.trusteeId, payload);
+        navigate.navigateTo(`/trustees/${props.trusteeId}`, {
+          trustee: updateTrusteeResponse?.data,
+        });
       } catch (e) {
-        globalAlert?.error(
-          `Failed to ${doCreate ? 'create' : 'update'} trustee: ${(e as Error).message}`,
-        );
+        globalAlert?.error(`Failed to update trustee: ${(e as Error).message}`);
       } finally {
         setIsSubmitting(false);
       }
     }
   };
 
-  const isRequired = (field: keyof TrusteeFormData): { required?: true } => {
-    const commonRequiredFields = ['name', 'address1', 'city', 'state', 'zipCode'];
-    const fullActualFields = [...commonRequiredFields, 'phone', 'email'];
-    const dynamicSpecFields = Object.keys(getDynamicSpec());
-    const requiredFields =
-      doCreate || doEditPublicProfile
-        ? fullActualFields
-        : dynamicSpecFields.filter((f) => commonRequiredFields.includes(f));
+  const isRequired = (field: keyof TrusteeInternalFormData): { required?: true } => {
+    const commonRequiredFields = ['address1', 'city', 'state', 'zipCode'];
+    const dynamicSpecFields = Object.keys(TRUSTEE_INTERNAL_SPEC);
+    const requiredFields = dynamicSpecFields.filter((f) => commonRequiredFields.includes(f));
     return requiredFields.includes(field) ? { required: true } : {};
   };
 
   const handleFieldChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { value, name } = event.target;
-    const fieldName = name as keyof TrusteeFormData;
-    const spec = getDynamicSpec({ name: fieldName, value });
+    const fieldName = name as keyof TrusteeInternalFormData;
 
     const requiredAddressFields = ['address1', 'city', 'state', 'zipCode'];
-
     const isAddressField = requiredAddressFields.includes(fieldName);
 
     updateField(fieldName, value);
     debounce(() => {
-      validateFieldAndUpdate(fieldName, value, spec);
+      validateFieldAndUpdate(fieldName, value);
 
-      if (props.contactInformation === 'internal' && isAddressField && value.trim() === '') {
+      if (isAddressField && value.trim() === '') {
         const currentData = getFormData({ name: fieldName, value });
 
         // Check if all address fields are now empty
@@ -157,9 +129,13 @@ function TrusteeContactForm(props: Readonly<UseTrusteeContactFormProps>) {
           !currentData.address1 && !currentData.city && !currentData.state && !currentData.zipCode;
 
         if (allAddressFieldsEmpty) {
-          for (const field of requiredAddressFields) {
-            clearFieldError(field);
-          }
+          setFieldErrors((prevErrors) => {
+            const { ...copy } = prevErrors;
+            for (const field of requiredAddressFields) {
+              delete copy[field];
+            }
+            return copy;
+          });
         }
       }
     }, 300);
@@ -170,7 +146,7 @@ function TrusteeContactForm(props: Readonly<UseTrusteeContactFormProps>) {
     updateField('state', value);
 
     debounce(() => {
-      validateFieldAndUpdate('state', value, getDynamicSpec());
+      validateFieldAndUpdate('state', value);
     }, 300);
   };
 
@@ -179,14 +155,95 @@ function TrusteeContactForm(props: Readonly<UseTrusteeContactFormProps>) {
     updateField('zipCode', value);
 
     debounce(() => {
-      validateFieldAndUpdate('zipCode', value, getDynamicSpec());
+      validateFieldAndUpdate('zipCode', value);
     }, 300);
   };
 
   const handleCancel = useCallback(() => {
-    clearErrors();
+    setFieldErrors({});
     navigate.navigateTo(cancelTo);
-  }, [clearErrors, navigate, cancelTo]);
+  }, [navigate, cancelTo]);
+
+  const validateFormAndUpdateErrors = (formData: TrusteeInternalFormData): boolean => {
+    const results = validateObject(TRUSTEE_INTERNAL_SPEC, formData);
+    if (!results.valid && results.reasonMap) {
+      const newFieldErrors = Object.fromEntries(
+        Object.entries(flattenReasonMap(results.reasonMap)).map(([jsonPath, reasons]) => {
+          const field = jsonPath.split('.')[1];
+          return [field, reasons.join('. ') + '.'];
+        }),
+      );
+      setFieldErrors(newFieldErrors);
+    }
+    return !!results.valid;
+  };
+
+  const validateFieldAndUpdate = (
+    field: keyof TrusteeInternalFormData,
+    value: string,
+  ): string | null => {
+    const error = validateField(field, value, TRUSTEE_INTERNAL_SPEC);
+
+    setFieldErrors((prevErrors) => {
+      if (error) {
+        return { ...prevErrors, [field]: error };
+      } else {
+        const { [field]: _, ...rest } = prevErrors;
+        return rest;
+      }
+    });
+
+    return error;
+  };
+
+  function validateField(
+    field: keyof TrusteeInternalFormData,
+    value: string,
+    spec: Partial<typeof TRUSTEE_INTERNAL_SPEC>,
+  ): string | null {
+    // Convert to string and trim
+    const stringValue = String(value);
+    const trimmedValue = stringValue.trim();
+
+    if (field === 'extension' && !trimmedValue) {
+      return null;
+    }
+
+    if (spec?.[field]) {
+      const result = validateEach(spec[field], trimmedValue);
+      return result.valid ? null : result.reasons!.join(' ');
+    } else {
+      return null;
+    }
+  }
+
+  const getFormData = (override?: { name: keyof TrusteeInternalFormData; value: string }) => {
+    const trimmedData = {
+      ...formData,
+      address1: formData.address1?.trim(),
+      address2: formData.address2?.trim(),
+      city: formData.city?.trim(),
+      zipCode: formData.zipCode?.trim(),
+      phone: formData.phone?.trim(),
+      extension: formData.extension?.trim(),
+      email: formData.email?.trim(),
+    };
+
+    for (const key of Object.keys(trimmedData)) {
+      if (trimmedData[key as keyof TrusteeInternalFormData] === '') {
+        trimmedData[key as keyof TrusteeInternalFormData] = undefined;
+      }
+    }
+
+    if (override) {
+      return { ...trimmedData, [override.name]: override.value } as TrusteeInternalFormData;
+    }
+    return trimmedData;
+  };
+
+  const updateField = (field: keyof TrusteeInternalFormData, value: unknown) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
 
   if (!flags[TRUSTEE_MANAGEMENT]) {
     return <div data-testid="trustee-create-disabled">Trustee management is not enabled.</div>;
@@ -205,19 +262,7 @@ function TrusteeContactForm(props: Readonly<UseTrusteeContactFormProps>) {
 
   return (
     <div className="trustee-form-screen">
-      <div className="form-header">
-        {props.action === 'create' && (
-          <h1 className="text-no-wrap display-inline-block margin-right-1 create-trustee">
-            Add Trustee Profile
-          </h1>
-        )}
-      </div>
-
-      <form
-        aria-label={`${props.action === 'create' ? 'Create' : 'Edit'} Trustee`}
-        data-testid="trustee-form"
-        onSubmit={handleSubmit}
-      >
+      <form aria-label="Edit Trustee" data-testid="trustee-internal-form" onSubmit={handleSubmit}>
         <div className="form-header">
           <span>
             A red asterisk (<span className="text-secondary-dark">*</span>) indicates a required
@@ -232,13 +277,12 @@ function TrusteeContactForm(props: Readonly<UseTrusteeContactFormProps>) {
                 id="trustee-name"
                 className="trustee-name-input"
                 name="name"
-                disabled={props.contactInformation === 'internal'}
+                disabled={true}
                 label="Trustee Name"
                 value={formData.name}
                 onChange={handleFieldChange}
                 errorMessage={fieldErrors['name']}
                 autoComplete="off"
-                {...isRequired('name')}
               />
             </div>
 
@@ -356,25 +400,6 @@ function TrusteeContactForm(props: Readonly<UseTrusteeContactFormProps>) {
                 {...isRequired('email')}
               />
             </div>
-
-            {(doCreate || doEditPublicProfile) && (
-              <>
-                <div className="field-group">
-                  <Input
-                    id="trustee-website"
-                    className="trustee-website-input"
-                    name="website"
-                    label="Website"
-                    value={formData.website || ''}
-                    onChange={handleFieldChange}
-                    errorMessage={fieldErrors['website']}
-                    type="website"
-                    autoComplete="off"
-                    {...isRequired('website')}
-                  />
-                </div>
-              </>
-            )}
           </div>
         </div>
 
@@ -397,4 +422,4 @@ function TrusteeContactForm(props: Readonly<UseTrusteeContactFormProps>) {
   );
 }
 
-export default React.memo(TrusteeContactForm);
+export default React.memo(TrusteeInternalContactForm);
