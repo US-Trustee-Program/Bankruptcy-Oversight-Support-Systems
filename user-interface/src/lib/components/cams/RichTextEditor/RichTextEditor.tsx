@@ -208,5 +208,4 @@ function TiptapEditor_(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
 }
 
 const RichTextEditor = forwardRef(TiptapEditor_);
-
 export default RichTextEditor;

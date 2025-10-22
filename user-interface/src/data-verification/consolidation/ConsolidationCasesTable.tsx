@@ -285,4 +285,5 @@ function ConsolidationCaseTable_(
   );
 }
 
-export const ConsolidationCaseTable = forwardRef(ConsolidationCaseTable_);
+const ConsolidationCaseTable = forwardRef(ConsolidationCaseTable_);
+export default ConsolidationCaseTable;

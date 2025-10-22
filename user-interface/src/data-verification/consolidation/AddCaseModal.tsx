@@ -165,4 +165,5 @@ function AddCaseModal_(
   );
 }
 
-export const AddCaseModal = forwardRef(AddCaseModal_);
+const AddCaseModal = forwardRef(AddCaseModal_);
+export default AddCaseModal;

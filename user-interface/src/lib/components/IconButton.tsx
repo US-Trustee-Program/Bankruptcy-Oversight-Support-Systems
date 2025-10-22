@@ -16,5 +16,4 @@ function IconButton_(props: IconButtonProps, ref: React.Ref<ButtonRef>) {
 }
 
 const IconButton = forwardRef(IconButton_);
-
 export default IconButton;

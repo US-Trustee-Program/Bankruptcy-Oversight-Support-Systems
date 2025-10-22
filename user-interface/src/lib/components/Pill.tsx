@@ -65,4 +65,5 @@ function Pill_(props: PillProps, ref: React.Ref<Partial<HTMLButtonElement>>) {
   );
 }
 
-export const Pill = forwardRef(Pill_);
+const Pill = forwardRef(Pill_);
+export default Pill;

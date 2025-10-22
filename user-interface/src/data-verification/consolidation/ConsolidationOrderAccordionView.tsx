@@ -2,9 +2,9 @@ import { Accordion } from '@/lib/components/uswds/Accordion';
 import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
 import { RadioGroup } from '@/lib/components/uswds/RadioGroup';
 import Radio from '@/lib/components/uswds/Radio';
-import { ConsolidationCaseTable } from '@/data-verification/consolidation/ConsolidationCasesTable';
+import ConsolidationCaseTable from '@/data-verification/consolidation/ConsolidationCasesTable';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import { CaseTable } from '@/data-verification/transfer/CaseTable';
+import CaseTable from '@/data-verification/transfer/CaseTable';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { ConsolidationOrderModal } from '@/data-verification/consolidation/ConsolidationOrderModal';
 import { CaseNumber } from '@/lib/components/CaseNumber';
@@ -13,7 +13,7 @@ import {
   ConsolidationViewModel,
 } from '@/data-verification/consolidation/consolidationViewModel';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
-import { AddCaseModal } from '@/data-verification/consolidation/AddCaseModal';
+import AddCaseModal from '@/data-verification/consolidation/AddCaseModal';
 import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
 
 function toAddCaseModel(viewModel: ConsolidationViewModel): AddCaseModel {

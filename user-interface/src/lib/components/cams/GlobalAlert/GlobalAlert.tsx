@@ -48,5 +48,4 @@ function GlobalAlert_(props: AlertProps, ref: React.Ref<GlobalAlertRef>) {
 }
 
 const GlobalAlert = forwardRef(GlobalAlert_);
-
 export default GlobalAlert;

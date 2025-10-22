@@ -104,5 +104,4 @@ function CaseNoteRemovalModal_(
 }
 
 const CaseNoteRemovalModal = forwardRef(CaseNoteRemovalModal_);
-
 export default CaseNoteRemovalModal;

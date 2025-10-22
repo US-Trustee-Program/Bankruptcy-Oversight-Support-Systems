@@ -85,7 +85,6 @@ function AssignAttorneyModal_(
 }
 
 const AssignAttorneyModal = forwardRef(AssignAttorneyModal_);
-
 export default AssignAttorneyModal;
 
 export function useAssignAttorneyModalStoreReact() {
