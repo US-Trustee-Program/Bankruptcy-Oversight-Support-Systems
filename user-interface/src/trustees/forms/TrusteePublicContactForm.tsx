@@ -16,24 +16,38 @@ import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import { TrusteeInput } from '@common/cams/trustees';
 import { normalizeWebsiteUrl } from '@common/cams/regex';
 import { TRUSTEE_PUBLIC_SPEC, TrusteePublicFormData } from './TrusteeSpecs';
-import { ContactInformation } from '@common/cams/contact';
 import { flattenReasonMap, validateEach, validateObject } from '@common/cams/validation';
 
-const getInitialFormData = (
-  info: Partial<ContactInformation> | undefined,
-): TrusteePublicFormData => {
+const getInitialFormData = (info: Partial<TrusteeInput> | undefined): TrusteePublicFormData => {
   return {
-    address1: info?.address?.address1,
-    address2: info?.address?.address2,
-    city: info?.address?.city,
-    state: info?.address?.state,
-    zipCode: info?.address?.zipCode,
-    phone: info?.phone?.number,
-    extension: info?.phone?.extension,
-    email: info?.email,
-    website: info?.website,
+    name: info?.name,
+    address1: info?.public?.address?.address1,
+    address2: info?.public?.address?.address2,
+    city: info?.public?.address?.city,
+    state: info?.public?.address?.state,
+    zipCode: info?.public?.address?.zipCode,
+    phone: info?.public?.phone?.number,
+    extension: info?.public?.phone?.extension,
+    email: info?.public?.email,
+    website: info?.public?.website,
   };
 };
+
+export function validateField(field: keyof TrusteePublicFormData, value: string): string | null {
+  const stringValue = String(value);
+  const trimmedValue = stringValue.trim();
+
+  if ((field === 'extension' && !trimmedValue) || (field === 'website' && !trimmedValue)) {
+    return null;
+  }
+
+  if (TRUSTEE_PUBLIC_SPEC[field]) {
+    const result = validateEach(TRUSTEE_PUBLIC_SPEC[field], trimmedValue);
+    return result.valid ? null : result.reasons!.join(' ');
+  } else {
+    return null;
+  }
+}
 
 export type TrusteePublicContactFormProps = {
   trusteeId?: string;
@@ -53,10 +67,9 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
   const isCreate = props.action === 'create';
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState<TrusteePublicFormData>(
-    getInitialFormData(props.trustee?.public ?? undefined),
+    getInitialFormData(props.trustee ?? undefined),
   );
 
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
@@ -86,7 +99,7 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
     return payload;
   };
 
-  const getFormData = (override?: { name: keyof TrusteePublicFormData; value: string }) => {
+  const getFormData = () => {
     const trimmedData = {
       ...formData,
       name: formData.name?.trim(),
@@ -106,9 +119,6 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
       }
     }
 
-    if (override) {
-      return { ...trimmedData, [override.name]: override.value } as TrusteePublicFormData;
-    }
     return trimmedData;
   };
 
@@ -117,7 +127,6 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
     const currentFormData = getFormData();
 
     if (validateFormAndUpdateErrors(currentFormData)) {
-      setErrorMessage(null);
       setFieldErrors({});
       setIsSubmitting(true);
 
@@ -128,10 +137,8 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
           const createdId = (response as { data?: { trusteeId?: string } })?.data?.trusteeId;
           navigate.navigateTo(`/trustees/${createdId}`);
         } else {
-          const updateTrusteeResponse = await api.patchTrustee(props.trusteeId!, payload);
-          navigate.navigateTo(`/trustees/${props.trusteeId}`, {
-            trustee: updateTrusteeResponse?.data,
-          });
+          await api.patchTrustee(props.trusteeId!, payload);
+          navigate.navigateTo(`/trustees/${props.trusteeId}`);
         }
       } catch (e) {
         globalAlert?.error(
@@ -221,23 +228,6 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
 
     return error;
   };
-
-  function validateField(field: keyof TrusteePublicFormData, value: string): string | null {
-    // Convert to string and trim
-    const stringValue = String(value);
-    const trimmedValue = stringValue.trim();
-
-    if ((field === 'extension' && !trimmedValue) || (field === 'website' && !trimmedValue)) {
-      return null;
-    }
-
-    if (TRUSTEE_PUBLIC_SPEC[field]) {
-      const result = validateEach(TRUSTEE_PUBLIC_SPEC[field], trimmedValue);
-      return result.valid ? null : result.reasons!.join(' ');
-    } else {
-      return null;
-    }
-  }
 
   const updateField = (field: keyof TrusteePublicFormData, value: unknown) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -428,7 +418,6 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
           </div>
         </div>
 
-        {errorMessage && <div role="alert">{errorMessage}</div>}
         <div className="usa-button-group">
           <Button id="submit-button" type="submit" onClick={handleSubmit}>
             {isSubmitting ? 'Saving…' : 'Save'}

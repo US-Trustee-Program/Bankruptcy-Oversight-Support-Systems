@@ -198,10 +198,7 @@ describe('TrusteeOtherInfoForm', () => {
 
     // Check that navigation occurred
     await waitFor(() => {
-      expect(mockNavigate.navigateTo).toHaveBeenCalledWith(
-        `/trustees/${TEST_TRUSTEE_ID}`,
-        expect.any(Object),
-      );
+      expect(mockNavigate.navigateTo).toHaveBeenCalledWith(`/trustees/${TEST_TRUSTEE_ID}`);
     });
   });
 
@@ -422,10 +419,7 @@ describe('TrusteeOtherInfoForm', () => {
 
     // Check that navigation occurred
     await waitFor(() => {
-      expect(mockNavigate.navigateTo).toHaveBeenCalledWith(
-        `/trustees/${TEST_TRUSTEE_ID}`,
-        expect.any(Object),
-      );
+      expect(mockNavigate.navigateTo).toHaveBeenCalledWith(`/trustees/${TEST_TRUSTEE_ID}`);
     });
   });
 
@@ -462,10 +456,7 @@ describe('TrusteeOtherInfoForm', () => {
     });
 
     await waitFor(() => {
-      expect(mockNavigate.navigateTo).toHaveBeenCalledWith(
-        `/trustees/${TEST_TRUSTEE_ID}`,
-        expect.any(Object),
-      );
+      expect(mockNavigate.navigateTo).toHaveBeenCalledWith(`/trustees/${TEST_TRUSTEE_ID}`);
     });
   });
 });

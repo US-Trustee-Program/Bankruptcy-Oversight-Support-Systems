@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import TrusteesList from './TrusteesList';
 import Api2 from '@/lib/models/api2';
-import { Trustee, ChapterType } from '@common/cams/trustees';
+import { Trustee } from '@common/cams/trustees';
 import { ResponseBody } from '@common/api/response';
 import { vi } from 'vitest';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -13,7 +13,6 @@ function renderWithRouter(component: React.ReactElement) {
 }
 
 describe('TrusteesList Component', () => {
-  vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: MockData.getCourts().slice(0, 5) });
   const mockTrustees: Trustee[] = [
     {
       id: '--id-guid-1--',
@@ -24,9 +23,6 @@ describe('TrusteesList Component', () => {
         phone: { number: '555-123-4567' },
         email: 'john.doe@example.com',
       },
-      districts: ['NY'],
-      chapters: ['7-panel', '11'],
-      status: 'active',
       updatedOn: '2025-08-14T10:00:00Z',
       updatedBy: { id: 'user-1', name: 'Admin User' },
     },
@@ -39,9 +35,6 @@ describe('TrusteesList Component', () => {
         phone: { number: '555-987-6543' },
         email: 'jane.smith@example.com',
       },
-      districts: ['CA'],
-      chapters: ['13'],
-      status: 'not active',
       updatedOn: '2025-08-14T09:00:00Z',
       updatedBy: { id: 'user-2', name: 'Admin User 2' },
     },
@@ -80,15 +73,6 @@ describe('TrusteesList Component', () => {
     expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
     expect(screen.getByText('John Doe')).toBeInTheDocument();
     expect(screen.getByText('Jane Smith')).toBeInTheDocument();
-    expect(screen.getByText('NY')).toBeInTheDocument();
-    expect(screen.getByText('CA')).toBeInTheDocument();
-    expect(
-      screen.getByText((_content, element) => {
-        return element?.textContent === '11, ' || false;
-      }),
-    ).toBeInTheDocument();
-    expect(screen.getByText('7 - Panel')).toBeInTheDocument();
-    expect(screen.getByText('13')).toBeInTheDocument();
   });
 
   test('should display links to individual trustee profiles', async () => {
@@ -109,23 +93,6 @@ describe('TrusteesList Component', () => {
 
     const janeSmithLink = screen.getByTestId('trustee-link-trustee-2');
     expect(janeSmithLink).toHaveAttribute('href', '/trustees/trustee-2');
-  });
-
-  test('should display status text with proper formatting', async () => {
-    const mockResponse: ResponseBody<Trustee[]> = {
-      data: mockTrustees,
-    };
-
-    vi.spyOn(Api2, 'getTrustees').mockResolvedValue(mockResponse);
-
-    renderWithRouter(<TrusteesList />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Active')).toBeInTheDocument();
-    });
-
-    expect(screen.getByText('Active')).toBeInTheDocument();
-    expect(screen.getByText('Not Active')).toBeInTheDocument();
   });
 
   test('should display empty state when no trustees exist', async () => {
@@ -172,7 +139,6 @@ describe('TrusteesList Component', () => {
       },
       updatedOn: '2025-08-14T08:00:00Z',
       updatedBy: { id: 'user-3', name: 'Admin User 3' },
-      status: 'active',
     };
 
     const mockResponse: ResponseBody<Trustee[]> = {
@@ -186,10 +152,6 @@ describe('TrusteesList Component', () => {
     await waitFor(() => {
       expect(screen.getByText('Minimal Trustee')).toBeInTheDocument();
     });
-
-    expect(screen.getByText('No districts assigned')).toBeInTheDocument();
-    expect(screen.getByText('No chapters assigned')).toBeInTheDocument();
-    expect(screen.getByText('Active')).toBeInTheDocument();
   });
 
   test('should handle API response with undefined data field', async () => {
@@ -206,39 +168,5 @@ describe('TrusteesList Component', () => {
     });
 
     expect(screen.getByText(/No trustee profiles have been created yet/)).toBeInTheDocument();
-  });
-
-  test('should handle trustees with unknown chapter types', async () => {
-    const trusteesWithUnknownChapters: Trustee[] = [
-      {
-        id: '--id-guid-unk--',
-        trusteeId: 'trustee-unknown',
-        name: 'Unknown Chapter Trustee',
-        public: {
-          address: MockData.getAddress(),
-          phone: { number: '555-111-2222' },
-          email: 'unknown@example.com',
-        },
-        districts: ['IL'],
-        chapters: ['unknown-chapter-type' as ChapterType],
-        status: 'active',
-        updatedOn: '2025-08-14T11:00:00Z',
-        updatedBy: { id: 'user-3', name: 'Admin User 3' },
-      },
-    ];
-
-    const mockResponse: ResponseBody<Trustee[]> = {
-      data: trusteesWithUnknownChapters,
-    };
-
-    vi.spyOn(Api2, 'getTrustees').mockResolvedValue(mockResponse);
-
-    renderWithRouter(<TrusteesList />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Unknown Chapter Trustee')).toBeInTheDocument();
-    });
-
-    expect(screen.getByText('unknown-chapter-type')).toBeInTheDocument();
   });
 });
