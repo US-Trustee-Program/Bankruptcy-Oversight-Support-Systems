@@ -6,7 +6,7 @@ import {
   AssignAttorneyModalCallbackProps,
   AssignAttorneyModalRef,
 } from '@/staff-assignment/modal/assignAttorneyModal.types';
-import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
+import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
 import { useRef } from 'react';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Actions from '@common/cams/actions';

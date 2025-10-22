@@ -15,7 +15,7 @@ import React, {
   useState,
 } from 'react';
 import { handleHighlight } from '@/lib/utils/highlight-api';
-import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
+import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
 import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import Icon from '@/lib/components/uswds/Icon';
 import CaseNoteFormModal, {

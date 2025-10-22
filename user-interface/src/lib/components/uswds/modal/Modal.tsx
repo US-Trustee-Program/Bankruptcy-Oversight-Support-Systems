@@ -6,7 +6,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { SubmitCancelButtonGroup, SubmitCancelBtnProps } from './SubmitCancelButtonGroup';
+import SubmitCancelButtonGroup, { SubmitCancelBtnProps } from './SubmitCancelButtonGroup';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import useComponent from '@/lib/hooks/UseComponent';
 import { ModalRefType, SubmitCancelButtonGroupRef, OpenModalButtonRef } from './modal-refs';
@@ -28,7 +28,7 @@ export interface ModalProps {
   onTabKey?: (ev: React.KeyboardEvent, isVisible: boolean) => void;
 }
 
-function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
+function Modal_(props: ModalProps, ref: React.Ref<ModalRefType>) {
   const modalClassNames = `usa-modal ${props.className}`;
   const closeIcon = `/assets/styles/img/sprite.svg#close`;
   const data = { 'data-force-action': false };
@@ -151,7 +151,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
         'button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])',
       );
 
-      interactiveElements.forEach((el) => {
+      for (const el of interactiveElements) {
         const element = el as HTMLElement;
         if (!firstEl) {
           firstEl = element;
@@ -176,15 +176,13 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
 
         const existingHandler = element.onkeydown;
 
-        const enhancedHandler = (event: KeyboardEvent) => {
+        element.onkeydown = (event: KeyboardEvent) => {
           if (existingHandler) {
             existingHandler.call(element, event);
           }
           handleTab(event, firstEl);
         };
-
-        element.onkeydown = enhancedHandler;
-      });
+      }
 
       if (firstEl) {
         setFirstElement(firstEl);
@@ -193,7 +191,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
       }
 
       if (firstEl) {
-        (firstEl as HTMLElement).focus();
+        firstEl.focus();
       }
 
       const keyDownEventHandler = (ev: KeyboardEvent) => {
@@ -203,9 +201,9 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
       document.addEventListener('keydown', keyDownEventHandler);
 
       return () => {
-        interactiveElements.forEach((el) => {
+        for (const el of interactiveElements) {
           (el as HTMLElement).onkeydown = null;
-        });
+        }
         document.removeEventListener('keydown', keyDownEventHandler);
       };
     }
@@ -262,7 +260,8 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
                       ? {
                           label: props.actionButtonGroup.submitButton.label,
                           onClick: submitBtnClick,
-                          onKeyDown: (ev) => handleTab(ev, firstElement),
+                          onKeyDown: (ev: React.KeyboardEvent<HTMLElement> | KeyboardEvent) =>
+                            handleTab(ev, firstElement),
                           className: props.actionButtonGroup.submitButton.className ?? '',
                           disabled: props.actionButtonGroup.submitButton.disabled ?? false,
                           uswdsStyle:
@@ -276,7 +275,8 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
                       ? {
                           label: props.actionButtonGroup.cancelButton.label,
                           onClick: cancelBtnClick,
-                          onKeyDown: (ev) => handleTab(ev, firstElement),
+                          onKeyDown: (ev: React.KeyboardEvent<HTMLElement> | KeyboardEvent) =>
+                            handleTab(ev, firstElement),
                           className: props.actionButtonGroup.cancelButton?.className ?? '',
                           uswdsStyle:
                             props.actionButtonGroup.cancelButton?.uswdsStyle ??
@@ -309,6 +309,5 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
   );
 }
 
-const Modal = forwardRef(ModalComponent);
-
+const Modal = forwardRef(Modal_);
 export default Modal;

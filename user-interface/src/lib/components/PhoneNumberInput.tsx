@@ -32,7 +32,7 @@ type PhoneNumberInputProps = Omit<InputProps, 'onFocus'> & {
   onFocus?: (ev: React.FocusEvent<HTMLElement>) => void;
 };
 
-function PhoneNumberInputComponent(props: PhoneNumberInputProps, ref: React.Ref<InputRef>) {
+function PhoneNumberInput_(props: PhoneNumberInputProps, ref: React.Ref<InputRef>) {
   const { onChange, ...otherProps } = props;
 
   const forwardedRef = useRef<InputRef>(null);
@@ -70,5 +70,5 @@ function PhoneNumberInputComponent(props: PhoneNumberInputProps, ref: React.Ref<
   );
 }
 
-const PhoneNumberInput = forwardRef(PhoneNumberInputComponent);
+const PhoneNumberInput = forwardRef(PhoneNumberInput_);
 export default PhoneNumberInput;
