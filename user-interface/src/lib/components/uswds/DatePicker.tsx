@@ -1,7 +1,14 @@
 import './forms.scss';
 import './DatePicker.scss';
 import { InputRef } from '@/lib/type-declarations/input-fields';
-import { forwardRef, useImperativeHandle, useRef, useState, useEffect, type JSX } from 'react';
+import React, {
+  forwardRef,
+  useImperativeHandle,
+  useRef,
+  useState,
+  useEffect,
+  type JSX,
+} from 'react';
 import { getIsoDate, isInvalidDate } from '@common/date-helper';
 
 export type DatePickerProps = JSX.IntrinsicElements['input'] & {
@@ -16,7 +23,7 @@ export type DatePickerProps = JSX.IntrinsicElements['input'] & {
   required?: boolean;
 };
 
-function DatePickerComponent(props: DatePickerProps, ref: React.Ref<InputRef>) {
+function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
   const { id, label, minDate, maxDate } = props;
   const defaultErrorMessage = 'Date is not within allowed range. Enter a valid date.';
 
@@ -175,5 +182,5 @@ function DatePickerComponent(props: DatePickerProps, ref: React.Ref<InputRef>) {
   );
 }
 
-const DatePicker = forwardRef(DatePickerComponent);
+const DatePicker = forwardRef(DatePicker_);
 export default DatePicker;

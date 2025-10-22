@@ -1,5 +1,5 @@
 import { ButtonProps, BUTTON_BASE_CLASS, UswdsButtonStyle } from '../Button';
-import { forwardRef, useImperativeHandle, useRef, useState, type JSX } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef, useState, type JSX } from 'react';
 import { ModalRefType, OpenModalButtonRef } from './modal-refs';
 
 export interface ModalOpenButtonProps {
@@ -15,7 +15,7 @@ export interface ModalOpenButtonProps {
   ariaLabel?: string;
 }
 
-function OpenModalButtonComponent(
+function OpenModalButton_(
   props: ModalOpenButtonProps & ButtonProps & JSX.IntrinsicElements['button'],
   ref: React.Ref<OpenModalButtonRef>,
 ) {
@@ -35,7 +35,7 @@ function OpenModalButtonComponent(
     ...otherProps
   } = props;
   let dataTestidSuffix = id ? `_${id}` : '';
-  if (buttonIndex && buttonIndex.length) {
+  if (buttonIndex?.length) {
     dataTestidSuffix += `_${buttonIndex}`;
   }
 
@@ -90,6 +90,5 @@ function OpenModalButtonComponent(
   );
 }
 
-const OpenModalButton = forwardRef(OpenModalButtonComponent);
-
-export { OpenModalButton };
+const OpenModalButton = forwardRef(OpenModalButton_);
+export default OpenModalButton;

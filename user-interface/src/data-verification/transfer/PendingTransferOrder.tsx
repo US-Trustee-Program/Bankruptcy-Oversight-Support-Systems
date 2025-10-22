@@ -7,8 +7,7 @@ import {
   TransferOrderAction,
 } from '@common/cams/orders';
 import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import {
-  TransferConfirmationModal,
+import TransferConfirmationModal, {
   TransferConfirmationModalImperative,
 } from './TransferConfirmationModal';
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';

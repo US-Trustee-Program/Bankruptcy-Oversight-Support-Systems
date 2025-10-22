@@ -1,5 +1,5 @@
 import './SubmitCancelButtonGroup.scss';
-import { MouseEventHandler, forwardRef, useImperativeHandle, useRef } from 'react';
+import React, { MouseEventHandler, forwardRef, useImperativeHandle, useRef } from 'react';
 import Button, { ButtonRef, UswdsButtonStyle } from '../Button';
 import { ModalRefType, SubmitCancelButtonGroupRef } from './modal-refs';
 
@@ -25,7 +25,7 @@ export type SubmitCancelBtnProps = {
   };
 };
 
-function SubmitCancelButtonGroupComponent(
+function SubmitCancelButtonGroup_(
   props: SubmitCancelBtnProps,
   ref: React.Ref<SubmitCancelButtonGroupRef>,
 ) {
@@ -77,6 +77,5 @@ function SubmitCancelButtonGroupComponent(
   );
 }
 
-const SubmitCancelButtonGroup = forwardRef(SubmitCancelButtonGroupComponent);
-
-export { SubmitCancelButtonGroup };
+const SubmitCancelButtonGroup = forwardRef(SubmitCancelButtonGroup_);
+export default SubmitCancelButtonGroup;

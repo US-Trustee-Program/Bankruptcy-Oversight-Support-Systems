@@ -1,10 +1,8 @@
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { DateRange, DateRangePickerRef, InputRef } from '@/lib/type-declarations/input-fields';
 import DatePicker, { DatePickerProps } from './DatePicker';
 import './DateRangePicker.scss';
-
-// Alias for readability.
-const debounce = setTimeout;
+import useDebounce from '@/lib/hooks/UseDebounce';
 
 export const formatDateForVoiceOver = (dateString: string) => {
   try {
@@ -16,8 +14,8 @@ export const formatDateForVoiceOver = (dateString: string) => {
       month: 'long',
       day: 'numeric',
     });
-  } catch (_e) {
-    // Invalid date supplied for formatting
+  } catch {
+    console.error('Invalid date supplied for formatting:', dateString);
   }
 };
 
@@ -31,7 +29,7 @@ export interface DateRangePickerProps extends Omit<DatePickerProps, 'value'> {
   ariaDescription?: string;
 }
 
-function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<DateRangePickerRef>) {
+function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangePickerRef>) {
   const {
     id,
     startDateLabel,
@@ -52,6 +50,8 @@ function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<Da
   const startDateRef = useRef<InputRef>(null);
   const endDateRef = useRef<InputRef>(null);
 
+  const debounce = useDebounce();
+
   function onStartDateChange(ev: React.ChangeEvent<HTMLInputElement>) {
     setInternalDateRange({ ...internalDateRange, start: ev.target.value || minDate });
     if (props.onStartDateChange) props.onStartDateChange(ev);
@@ -63,6 +63,8 @@ function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<Da
   }
 
   function clearValue() {
+    // TODO: This is sus. Why are we setting the state to it's current state. Will this cause a rerender or be rejected by React?
+    // Is this possibly causing the "weirdness" that requires us to debounce the clearValue again?
     setInternalDateRange(internalDateRange);
     startDateRef.current?.clearValue();
     endDateRef.current?.clearValue();
@@ -179,5 +181,5 @@ function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<Da
     </div>
   );
 }
-const DateRangePicker = forwardRef(DateRangePickerComponent);
+const DateRangePicker = forwardRef(DateRangePicker_);
 export default DateRangePicker;

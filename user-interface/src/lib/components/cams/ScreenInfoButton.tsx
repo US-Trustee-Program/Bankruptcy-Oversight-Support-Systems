@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { UswdsButtonStyle } from '../uswds/Button';
 import { ModalRefType, OpenModalButtonRef } from '../uswds/modal/modal-refs';
 import { IconLabel } from './IconLabel/IconLabel';
-import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
+import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
 
 type ScreenInfoButtonProps = {
   infoModalRef: React.RefObject<ModalRefType | null>;
