@@ -7,7 +7,7 @@ import { CaseDocketEntry, CaseSummary } from '@common/cams/cases';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import Api2 from '@/lib/models/api2';
-import testingUtilities from '@/lib/testing/testing-utilities';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
 import userEvent from '@testing-library/user-event';
@@ -163,7 +163,7 @@ describe('SuggestedTransferCases component', () => {
   }
 
   beforeEach(async () => {
-    testingUtilities.setUser({
+    TestingUtilities.setUser({
       roles: [CamsRole.DataVerifier],
       offices: MOCKED_USTP_OFFICES_ARRAY,
     });
@@ -180,7 +180,7 @@ describe('SuggestedTransferCases component', () => {
     vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({ data: fromCaseSummary });
 
     renderWithProps();
-    await waitFor(() => expect(document.body).toBeDefined());
+    await TestingUtilities.waitForDocumentBody();
 
     const description = screen.getByTestId('suggested-cases-not-found');
     expect(description).toBeInTheDocument();
@@ -194,7 +194,7 @@ describe('SuggestedTransferCases component', () => {
     vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({ data: fromCaseSummary });
 
     renderWithProps();
-    await waitFor(() => expect(document.body).toBeDefined());
+    await TestingUtilities.waitForDocumentBody();
 
     const caseTable = document.querySelector('#suggested-cases');
     expect(caseTable).toBeInTheDocument();
@@ -282,10 +282,6 @@ describe('SuggestedTransferCases component', () => {
       const radioBtn = screen.getByTestId(emptySuggestedCasesId);
       expect(radioBtn).not.toBeChecked();
     });
-
-    // TODO: THIS SELECTOR DOESN'T SELECT ANYTHING!
-    // const caseEntryForm = document.querySelector('case-entry-form');
-    // expect(caseEntryForm).not.toBeInTheDocument();
   });
 
   test('should properly handle deselecting court', async () => {
