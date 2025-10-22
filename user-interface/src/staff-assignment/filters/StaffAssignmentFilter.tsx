@@ -5,15 +5,15 @@ import {
   StaffAssignmentFilterStore,
   StaffAssignmentFilterViewModel,
 } from './staffAssignmentFilter.types';
-import { CamsUserReference } from '../../../../common/dist/cams/users';
+import { CamsUserReference } from '@common/cams/users';
 import StaffAssignmentFilterView from './StaffAssignmentFilterView';
 import staffAssignmentFilterUseCase from './staffAssignmentFilterUseCase';
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 
-const _StaffAssignmentFilter = (
+const StaffAssignmentFilter_ = (
   props: StaffAssignmentFilterProps,
   ref: React.Ref<StaffAssignmentFilterRef>,
 ) => {
@@ -59,7 +59,7 @@ const _StaffAssignmentFilter = (
   return <StaffAssignmentFilterView viewModel={viewModel}></StaffAssignmentFilterView>;
 };
 
-const StaffAssignmentFilter = forwardRef(_StaffAssignmentFilter);
+const StaffAssignmentFilter = forwardRef(StaffAssignmentFilter_);
 export default StaffAssignmentFilter;
 
 export function useStaffAssignmentFilterStoreReact() {
