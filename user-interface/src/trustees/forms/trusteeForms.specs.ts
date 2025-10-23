@@ -8,8 +8,7 @@ import {
 import { ValidationSpec } from '@common/cams/validation';
 import V from '@common/cams/validators';
 
-// TODO do these interfaces belong here?
-export interface TrusteeInternalFormData {
+export type TrusteeInternalFormData = {
   name?: string;
   address1?: string;
   address2?: string;
@@ -19,9 +18,9 @@ export interface TrusteeInternalFormData {
   phone?: string;
   extension?: string;
   email?: string;
-}
+};
 
-export interface TrusteePublicFormData {
+export type TrusteePublicFormData = {
   name?: string;
   address1?: string;
   address2?: string;
@@ -32,7 +31,7 @@ export interface TrusteePublicFormData {
   extension?: string;
   email?: string;
   website?: string;
-}
+};
 
 const name = [V.minLength(1, 'Trustee name is required'), V.maxLength(50)];
 const address1 = [V.minLength(1, 'Address is required'), V.maxLength(40)];
