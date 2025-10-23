@@ -10,6 +10,7 @@ import {
   ValidatorFunction,
   ValidatorResult,
 } from './validation';
+import Validators from './validators';
 
 // Single test validator function that only accepts "OK"
 const validator: ValidatorFunction = (value: unknown): ValidatorResult => {
@@ -31,6 +32,73 @@ type TestPerson = {
 };
 
 describe('validation', () => {
+  describe('$ validation', () => {
+    test('should validate using $ key in ValidationSpec', () => {
+      const compoundFunction: ValidatorFunction = (value: TestPerson): ValidatorResult => {
+        if (!value.email && !value.phone) {
+          return { reasons: ['At least a phone or email address is required'] };
+        } else {
+          return VALID;
+        }
+      };
+
+      const testSpec: ValidationSpec<TestPerson> = {
+        $: [compoundFunction],
+        firstName: [Validators.minLength(10)],
+      };
+
+      const testObj: TestPerson = {
+        firstName: 'Bob',
+      } as unknown as TestPerson;
+
+      expect(validateObject(testSpec, testObj)).toEqual({
+        reasonMap: {
+          $: { reasons: ['At least a phone or email address is required'] },
+          firstName: { reasons: ['Must contain at least 10 characters'] },
+        },
+      });
+    });
+
+    test('should put reasons on specific field', () => {
+      const compoundFunction: ValidatorFunction = (value: TestPerson): ValidatorResult => {
+        if (!value.email && !value.phone) {
+          return {
+            reasonMap: {
+              email: {
+                reasons: ['At least a phone or email address is required'],
+              },
+            },
+          };
+        } else {
+          return VALID;
+        }
+      };
+
+      const testSpec: ValidationSpec<TestPerson> = {
+        $: [compoundFunction],
+        firstName: [Validators.minLength(10)],
+      };
+
+      const testObj: TestPerson = {
+        firstName: 'Bob',
+      } as unknown as TestPerson;
+
+      expect(validateObject(testSpec, testObj)).toEqual({
+        reasonMap: {
+          $: {
+            reasonMap: {
+              email: {
+                reasons: ['At least a phone or email address is required'],
+              },
+            },
+          },
+          email: { reasons: ['At least a phone or email address is required'] },
+          firstName: { reasons: ['Must contain at least 10 characters'] },
+        },
+      });
+    });
+  });
+
   describe('validate', () => {
     const testCases = [
       {

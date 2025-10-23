@@ -255,14 +255,6 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
 
   const validateFormAndUpdateErrors = (formData: TrusteeInternalFormData): boolean => {
     const results = validateObject(getDynamicSpec(formData), formData);
-    if (!results.reasonMap?.phone && hasPartialPhone) {
-      delete results.valid;
-      results.reasonMap = {
-        ...results.reasonMap,
-        phone: { reasons: ['Phone required'] },
-      };
-    }
-
     if (!results.valid && results.reasonMap) {
       const newFieldErrors = Object.fromEntries(
         Object.entries(flattenReasonMap(results.reasonMap)).map(([jsonPath, reasons]) => {

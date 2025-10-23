@@ -5,7 +5,7 @@ import {
   WEBSITE_RELAXED_REGEX,
   ZIP_REGEX,
 } from '@common/cams/regex';
-import { ValidationSpec } from '@common/cams/validation';
+import { VALID, ValidationSpec, ValidatorFunction, ValidatorResult } from '@common/cams/validation';
 import V from '@common/cams/validators';
 
 export type TrusteeInternalFormData = {
@@ -46,7 +46,18 @@ const website = [
   V.optional(V.matches(WEBSITE_RELAXED_REGEX, 'Website must be a valid URL'), V.maxLength(255)),
 ];
 
+const phoneRequiredWithExtension: ValidatorFunction = (obj) => {
+  const form = obj as TrusteeInternalFormData;
+  if (form.extension && !form.phone) {
+    return {
+      reasonMap: { phone: { reasons: ['Phone number is required when extension is provided'] } },
+    };
+  }
+  return VALID;
+};
+
 export const TRUSTEE_INTERNAL_SPEC: Readonly<ValidationSpec<TrusteeInternalFormData>> = {
+  $: [phoneRequiredWithExtension],
   address1,
   address2,
   city,
