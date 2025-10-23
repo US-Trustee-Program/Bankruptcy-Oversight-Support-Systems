@@ -26,7 +26,7 @@ const REFRESHED_ACCESS_TOKEN = MockData.getJwt();
 vi.spyOn(delayModule, 'delay').mockImplementation(async (_, cb) => (cb ? cb() : undefined));
 
 describe('Okta library', () => {
-  const { waitFor } = TestingUtilities;
+  const { nonReactWaitFor } = TestingUtilities;
   describe('registerRefreshOktaToken', () => {
     test('should register refreshOktaToken with the api', () => {
       const addApiBeforeHook = vi.spyOn(apiModule, 'addApiBeforeHook');
@@ -131,7 +131,7 @@ describe('Okta library', () => {
 
       await refreshOktaToken(oktaAuth);
 
-      await waitFor(() => {
+      await nonReactWaitFor(() => {
         return removeRefreshingTokenSpy.mock.calls.length > 0;
       });
       expect(getOrRenewAccessToken).toHaveBeenCalled();
@@ -170,7 +170,7 @@ describe('Okta library', () => {
       });
       await refreshOktaToken(oktaAuth);
 
-      await waitFor(() => {
+      await nonReactWaitFor(() => {
         return removeRefreshingTokenSpy.mock.calls.length > 0;
       });
       expect(setSession).toHaveBeenCalled();
@@ -185,7 +185,7 @@ describe('Okta library', () => {
       const oktaAuth = new OktaAuth(MOCK_OAUTH_CONFIG);
       await refreshOktaToken(oktaAuth);
 
-      await waitFor(() => {
+      await nonReactWaitFor(() => {
         return removeRefreshingTokenSpy.mock.calls.length > 0;
       });
       expect(setSession).not.toHaveBeenCalled();

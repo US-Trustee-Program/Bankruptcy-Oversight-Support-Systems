@@ -9,6 +9,7 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import Api2 from '@/lib/models/api2';
 import { MOCKED_USTP_OFFICE_DATA_MAP } from '@common/cams/offices';
 import * as sessionEndLogout from './session-end-logout';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 
 describe('Session', () => {
   const testSession: CamsSession = {
@@ -58,9 +59,10 @@ describe('Session', () => {
     });
   });
 
-  test('should write the session to local storage', () => {
+  test('should write the session to local storage', async () => {
     const setSession = vi.spyOn(LocalStorage, 'setSession');
     renderWithProps();
+    await TestingUtilities.waitForDocumentBody();
     expect(setSession).toHaveBeenCalledWith(testSession);
   });
 

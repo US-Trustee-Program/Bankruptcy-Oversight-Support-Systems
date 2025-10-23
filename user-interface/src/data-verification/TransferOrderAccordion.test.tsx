@@ -8,6 +8,7 @@ import { orderType, orderStatusType } from '@/lib/utils/labels';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { TransferOrder } from '@common/cams/orders';
+import userEvent from '@testing-library/user-event';
 
 function findAccordionHeading(id: string) {
   const heading = screen.getByTestId(`accordion-heading-${id}`);
@@ -116,12 +117,13 @@ describe('TransferOrderAccordion', () => {
     renderWithProps();
 
     const heading = findAccordionHeading(order.id);
-
-    expect(heading?.textContent).toContain(order.courtName);
-    expect(heading?.textContent).toContain(formatDate(order.orderDate));
+    expect(heading.textContent).toContain(order.courtName);
+    expect(heading.textContent).toContain(formatDate(order.orderDate));
 
     const content = findAccordionContent(order.id, false);
-    if (heading) fireEvent.click(heading);
+
+    userEvent.setup();
+    await userEvent.click(heading);
 
     expect(content?.textContent).toContain(order.docketEntries[0]?.summaryText);
     expect(content?.textContent).toContain(order.docketEntries[0]?.fullText);
@@ -139,7 +141,9 @@ describe('TransferOrderAccordion', () => {
       findAccordionContent(order.id, false);
     });
 
-    if (heading) fireEvent.click(heading);
+    if (heading) {
+      fireEvent.click(heading);
+    }
 
     await waitFor(async () => {
       findAccordionContent(order.id, true);
@@ -158,7 +162,9 @@ describe('TransferOrderAccordion', () => {
       heading = findAccordionHeading(order.id);
     });
 
-    if (heading) fireEvent.click(heading);
+    if (heading) {
+      fireEvent.click(heading);
+    }
 
     await waitFor(async () => {
       const content = findAccordionContent(order.id, true);
@@ -178,7 +184,9 @@ describe('TransferOrderAccordion', () => {
       heading = findAccordionHeading(order.id);
     });
 
-    if (heading) fireEvent.click(heading);
+    if (heading) {
+      fireEvent.click(heading);
+    }
 
     await waitFor(async () => {
       const content = findAccordionContent(order.id, true);
@@ -205,7 +213,9 @@ describe('TransferOrderAccordion', () => {
       heading = findAccordionHeading(mockedApprovedOrder.id);
     });
 
-    if (heading) fireEvent.click(heading);
+    if (heading) {
+      fireEvent.click(heading);
+    }
 
     await waitFor(async () => {
       const actionText = findActionText(mockedApprovedOrder.id, true);

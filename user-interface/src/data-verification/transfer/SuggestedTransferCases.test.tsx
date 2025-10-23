@@ -1,4 +1,16 @@
 import React from 'react';
+import { OrderStatus, TransferOrder } from '@common/cams/orders';
+import { CourtDivisionDetails } from '@common/cams/courts';
+import { act, render, waitFor, screen, fireEvent } from '@testing-library/react';
+import { MockData } from '@common/cams/test-utilities/mock-data';
+import { CaseDocketEntry, CaseSummary } from '@common/cams/cases';
+import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { getCaseNumber } from '@/lib/utils/caseNumber';
+import Api2 from '@/lib/models/api2';
+import TestingUtilities from '@/lib/testing/testing-utilities';
+import { CamsRole } from '@common/cams/roles';
+import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
+import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { describe } from 'vitest';
 import {
@@ -6,18 +18,6 @@ import {
   SuggestedTransferCasesImperative,
   SuggestedTransferCasesProps,
 } from './SuggestedTransferCases';
-import { OrderStatus, TransferOrder } from '@common/cams/orders';
-import { CourtDivisionDetails } from '@common/cams/courts';
-import { render, waitFor, screen, fireEvent } from '@testing-library/react';
-import { MockData } from '@common/cams/test-utilities/mock-data';
-import { CaseDocketEntry, CaseSummary } from '@common/cams/cases';
-import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
-import Api2 from '@/lib/models/api2';
-import testingUtilities from '@/lib/testing/testing-utilities';
-import { CamsRole } from '@common/cams/roles';
-import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
-import userEvent from '@testing-library/user-event';
 
 const testOffices: CourtDivisionDetails[] = [
   {
@@ -81,12 +81,16 @@ function findCaseNumberInput(id: string) {
   return caseIdInput;
 }
 
-function enterCaseNumber(caseIdInput: Element | null | undefined, value: string) {
+async function enterCaseNumber(caseIdInput: Element | null | undefined, value: string) {
   if (!caseIdInput) {
     throw Error();
   }
 
-  fireEvent.change(caseIdInput!, { target: { value } });
+  // This directive is the only way I've found to suppress the React act warnings in this test suite.
+  // Using userEvent.type works for one test that uses this function, but fails with another test that uses it.
+  // eslint-disable-next-line testing-library/no-unnecessary-act
+  await act(async () => fireEvent.change(caseIdInput!, { target: { value } }));
+
   expect(caseIdInput).toHaveValue(value);
 
   return caseIdInput;
@@ -117,14 +121,14 @@ async function fillCaseNotListedForm(
   const radio = screen.getByTestId(emptySuggestedCasesId);
   fireEvent.click(radio);
 
-  const newCaseCourtSelect = screen.getByTestId(`court-selection-usa-combo-box-${order.id}`);
-  expect(newCaseCourtSelect).toBeVisible();
+  expect(await screen.findByTestId(`court-selection-usa-combo-box-${order.id}`)).toBeVisible();
 
   await selectItemInCombobox(order.id, 0);
 
   const caseNumber = getCaseNumber(suggestedCases[0].caseId);
   const input = findCaseNumberInput(order.id);
-  const updated = enterCaseNumber(input, caseNumber);
+
+  const updated = await enterCaseNumber(input, caseNumber);
   expect(updated).toHaveValue(caseNumber);
 }
 
@@ -159,7 +163,7 @@ describe('SuggestedTransferCases component', () => {
   }
 
   beforeEach(async () => {
-    testingUtilities.setUser({
+    TestingUtilities.setUser({
       roles: [CamsRole.DataVerifier],
       offices: MOCKED_USTP_OFFICES_ARRAY,
     });
@@ -176,14 +180,13 @@ describe('SuggestedTransferCases component', () => {
     vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({ data: fromCaseSummary });
 
     renderWithProps();
+    await TestingUtilities.waitForDocumentBody();
 
-    await waitFor(() => {
-      const description = screen.getByTestId('suggested-cases-not-found');
-      expect(description).toBeInTheDocument();
-      expect(description).toHaveTextContent(
-        'Choose a new court division and enter a case number, and a case will be selected for this case event automatically.',
-      );
-    });
+    const description = screen.getByTestId('suggested-cases-not-found');
+    expect(description).toBeInTheDocument();
+    expect(description).toHaveTextContent(
+      'Choose a new court division and enter a case number, and a case will be selected for this case event automatically.',
+    );
   });
 
   test('should display case table if we get more than 0 suggested cases', async () => {
@@ -191,17 +194,16 @@ describe('SuggestedTransferCases component', () => {
     vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({ data: fromCaseSummary });
 
     renderWithProps();
+    await TestingUtilities.waitForDocumentBody();
 
-    await waitFor(() => {
-      const caseTable = document.querySelector('#suggested-cases');
-      expect(caseTable).toBeInTheDocument();
+    const caseTable = document.querySelector('#suggested-cases');
+    expect(caseTable).toBeInTheDocument();
 
-      const description = screen.getByTestId('suggested-cases-found');
-      expect(description).toBeInTheDocument();
-      expect(description).toHaveTextContent(
-        'Select the new case from the list below. If the case is not listed, select "case not listed" and enter the new court division and case number.',
-      );
-    });
+    const description = screen.getByTestId('suggested-cases-found');
+    expect(description).toBeInTheDocument();
+    expect(description).toHaveTextContent(
+      'Select the new case from the list below. If the case is not listed, select "case not listed" and enter the new court division and case number.',
+    );
   });
 
   test('should call onAlert if an error results from fetching case suggestions', async () => {
@@ -258,8 +260,7 @@ describe('SuggestedTransferCases component', () => {
 
     await fillCaseNotListedForm(order);
 
-    const validCasesTable = await screen.findByTestId('validated-cases');
-    expect(validCasesTable).toBeVisible();
+    expect(await screen.findByTestId('validated-cases')).toBeVisible();
   });
 
   test('ref.cancel should reset all form fields, validation states, case summary and order transfer details', async () => {
@@ -270,7 +271,7 @@ describe('SuggestedTransferCases component', () => {
 
     await fillCaseNotListedForm(order);
 
-    ref.current?.cancel();
+    act(() => ref.current?.cancel());
 
     suggestedCases.forEach((_, idx) => {
       const radioBtn = screen.getByTestId(`radio-suggested-cases-checkbox-${idx}`);
@@ -281,9 +282,6 @@ describe('SuggestedTransferCases component', () => {
       const radioBtn = screen.getByTestId(emptySuggestedCasesId);
       expect(radioBtn).not.toBeChecked();
     });
-
-    const caseEntryForm = document.querySelector('case-entry-form');
-    expect(caseEntryForm).not.toBeInTheDocument();
   });
 
   test('should properly handle deselecting court', async () => {
@@ -324,7 +322,7 @@ describe('SuggestedTransferCases component', () => {
 
     const caseNumberWithTooFewCharacters = '24-2314';
     const input = findCaseNumberInput(order.id);
-    enterCaseNumber(input, caseNumberWithTooFewCharacters);
+    await enterCaseNumber(input, caseNumberWithTooFewCharacters);
 
     await waitFor(() => {
       const alert = screen.queryByTestId('alert-container-validation-not-found');

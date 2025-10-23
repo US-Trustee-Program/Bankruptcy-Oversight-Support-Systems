@@ -1,7 +1,7 @@
 import { PropsWithChildren } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { describe } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import * as oktaProviderModule from './providers/okta/OktaProvider';
 import * as oktaSessionModule from './providers/okta/OktaSession';
 import * as badConfigurationModule from './BadConfiguration';
@@ -9,6 +9,7 @@ import * as libraryModule from '@/login/login-library';
 import { LoginContinue } from './LoginContinue';
 import { Session } from './Session';
 import { MockData } from '@common/cams/test-utilities/mock-data';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 
 describe('LoginContinue', () => {
   const getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProvider');
@@ -45,6 +46,7 @@ describe('LoginContinue', () => {
         <LoginContinue></LoginContinue>
       </BrowserRouter>,
     );
+    await TestingUtilities.waitForDocumentBody();
 
     expect(getLoginProviderFromEnv).toHaveBeenCalled();
     expect(oktaProviderComponent).toHaveBeenCalled();
@@ -58,10 +60,9 @@ describe('LoginContinue', () => {
         <LoginContinue></LoginContinue>
       </BrowserRouter>,
     );
-    await waitFor(() => {
-      expect(screen.getByTestId('alert-message')).toBeInTheDocument();
-    });
+    await TestingUtilities.waitForDocumentBody();
 
+    expect(screen.getByTestId('alert-message')).toBeInTheDocument();
     expect(getLoginProviderFromEnv).toHaveBeenCalled();
     expect(badConfigurationComponent).toHaveBeenCalled();
   });

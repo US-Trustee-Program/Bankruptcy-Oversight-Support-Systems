@@ -9,12 +9,13 @@ import * as libraryModule from '@/login/login-library';
 import * as mockLoginModule from './providers/mock/MockLogin';
 import * as sessionModule from './Session';
 import { Login } from './Login';
-import localStorage, { LocalStorage } from '@/lib/utils/local-storage';
+import LocalStorage from '@/lib/utils/local-storage';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { randomUUID } from 'node:crypto';
 import { CamsSession } from '@common/cams/session';
 import { JSX } from 'react/jsx-runtime';
 import { blankConfiguration } from '@/lib/testing/mock-configuration';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 
 describe('Login', () => {
   const testId = 'child-div';
@@ -64,7 +65,7 @@ describe('Login', () => {
     });
     getSession.mockReturnValue(null);
     removeSession.mockImplementation(vi.fn());
-    vi.spyOn(localStorage, 'getAck').mockReturnValueOnce(true);
+    vi.spyOn(LocalStorage, 'getAck').mockReturnValueOnce(true);
     vi.spyOn(libraryModule, 'getLoginConfiguration').mockReturnValue({
       issuer,
       clientId: randomUUID(),
@@ -155,7 +156,7 @@ describe('Login', () => {
     expect(sessionComponent).toHaveBeenCalled();
   });
 
-  test('should check for an existing okta login and skip if a session exists', () => {
+  test('should check for an existing okta login and skip if a session exists', async () => {
     getAuthIssuerFromEnv.mockReturnValue(issuer);
     getLoginProviderFromEnv.mockReturnValue('okta');
     getSession.mockReturnValue({
@@ -173,6 +174,8 @@ describe('Login', () => {
         <Login>{children}</Login>
       </BrowserRouter>,
     );
+    await TestingUtilities.waitForDocumentBody();
+
     expect(getSession).toHaveBeenCalled();
     expect(getAuthIssuerFromEnv).toHaveBeenCalled();
     expect(removeSession).not.toHaveBeenCalled();
@@ -240,7 +243,7 @@ describe('Login', () => {
 
   test('should render OktaProvider for okta provider type', async () => {
     getLoginProviderFromEnv.mockReturnValue('okta');
-    vi.spyOn(localStorage, 'getAck').mockReturnValueOnce(true);
+    vi.spyOn(LocalStorage, 'getAck').mockReturnValueOnce(true);
     render(
       <BrowserRouter>
         <Login>{children}</Login>
@@ -269,6 +272,8 @@ describe('Login', () => {
         <Login></Login>
       </BrowserRouter>,
     );
+    await TestingUtilities.waitForDocumentBody();
+
     expect(getLoginProviderFromEnv).toHaveBeenCalled();
     expect(sessionComponent).toHaveBeenCalled();
   });
@@ -280,6 +285,8 @@ describe('Login', () => {
         <Login provider="none"></Login>
       </BrowserRouter>,
     );
+    await TestingUtilities.waitForDocumentBody();
+
     expect(getLoginProviderFromEnv).not.toHaveBeenCalled();
     expect(sessionComponent).toHaveBeenCalled();
   });

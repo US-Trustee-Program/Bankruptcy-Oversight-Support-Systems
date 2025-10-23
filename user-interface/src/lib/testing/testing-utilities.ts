@@ -6,11 +6,15 @@ import { GlobalAlertRef } from '../components/cams/GlobalAlert/GlobalAlert';
 import * as globalAlertHook from '@/lib/hooks/UseGlobalAlert';
 import { CamsUser } from '@common/cams/users';
 import * as UseStateModule from '@/lib/hooks/UseState';
-import { fireEvent, screen } from '@testing-library/react';
+import { waitFor, fireEvent, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { delay } from '@common/delay';
 
-async function waitFor(condition: () => boolean, timeout = 5000, interval = 50): Promise<void> {
+async function nonReactWaitFor(
+  condition: () => boolean,
+  timeout = 5000,
+  interval = 50,
+): Promise<void> {
   const startTime = Date.now();
 
   return new Promise((resolve, reject) => {
@@ -142,8 +146,12 @@ async function toggleComboBoxItemSelection(id: string, itemIndex: number = 0, se
   });
 }
 
+async function waitForDocumentBody() {
+  await waitFor(() => expect(document.body).toBeDefined());
+}
+
 export const TestingUtilities = {
-  waitFor,
+  nonReactWaitFor,
   setUser,
   setUserWithRoles,
   spyOnGlobalAlert,
@@ -151,7 +159,7 @@ export const TestingUtilities = {
   selectCheckbox,
   selectRadio,
   toggleComboBoxItemSelection,
-  clearComboBoxSelection,
+  waitForDocumentBody,
 };
 
 export default TestingUtilities;
