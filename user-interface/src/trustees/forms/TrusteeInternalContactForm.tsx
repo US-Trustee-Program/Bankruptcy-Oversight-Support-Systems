@@ -1,5 +1,5 @@
 import './TrusteeContactForm.scss';
-import React, { useState, useCallback } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import Input from '@/lib/components/uswds/Input';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
@@ -22,6 +22,7 @@ import {
   ValidationSpec,
 } from '@common/cams/validation';
 import { ContactInformation } from '@common/cams/contact';
+import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 const getInitialFormData = (
   info: Partial<ContactInformation> | undefined,
@@ -44,6 +45,18 @@ export type TrusteeInternalContactFormProps = {
   trustee?: Partial<TrusteeInput>;
 };
 
+/*
+No Fieldsets ✅
+No * indicators ✅
+No (optional) indicators ✅
+Alert but only on save click. ✅
+Phone number needs validation if extension is filled out but number is not
+Hyphen when typing more than 5 digits in zip code
+Validation message for zip code "must be 5 or 9 digits"
+Validation for the max length should just say "max length X characters"
+(if possible let's fix the alert message on the zip code validation so it doesn't wrap)
+When we send null to the API, we are getting null back but we agreed that null should only be sent in the PATCH payload.
+*/
 function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormProps>) {
   const flags = useFeatureFlags();
   const api = useApi2();
@@ -59,6 +72,9 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
   const [formData, setFormData] = useState<TrusteeInternalFormData>(
     getInitialFormData(props.trustee?.internal),
   );
+  const [hasPartialAddress, setHasPartialAddress] = useState<boolean>(false);
+  const [hasPartialPhone, setHasPartialPhone] = useState<boolean>(false);
+  const partialAddressAlertRef = useRef<AlertRefType>(null);
 
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
   const navigate = useCamsNavigator();
@@ -81,27 +97,6 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
         email: formData.email ?? null,
       },
     } as Partial<TrusteeInput>;
-  };
-
-  const handleSubmit = async (ev: React.FormEvent): Promise<void> => {
-    ev.preventDefault();
-    const currentFormData = getFormData();
-
-    if (validateFormAndUpdateErrors(currentFormData)) {
-      setErrorMessage(null);
-      setFieldErrors({});
-      setIsSubmitting(true);
-
-      const payload = mapPayload(currentFormData);
-      try {
-        await api.patchTrustee(props.trusteeId, payload);
-        navigate.navigateTo(`/trustees/${props.trusteeId}`);
-      } catch (e) {
-        globalAlert?.error(`Failed to update trustee: ${(e as Error).message}`);
-      } finally {
-        setIsSubmitting(false);
-      }
-    }
   };
 
   const getDynamicSpec = (currentFormData: TrusteeInternalFormData) => {
@@ -138,11 +133,6 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
     return spec;
   };
 
-  const isRequired = (field: keyof TrusteeInternalFormData): { required?: true } => {
-    const spec = getDynamicSpec(getFormData());
-    return spec[field] ? { required: true } : {};
-  };
-
   const clearAddressErrorsIfAllEmpty = (
     fieldName: keyof TrusteeInternalFormData,
     value: string,
@@ -167,6 +157,38 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
     }
   };
 
+  const checkPartialAddress = (fieldName: keyof TrusteeInternalFormData): void => {
+    const addressFields = ['address1', 'address2', 'city', 'state', 'zipCode'];
+    const isAddressField = addressFields.includes(fieldName);
+    if (isAddressField) {
+      const currentData = getFormData();
+      const allRequiredAddressFieldsHaveValues =
+        !!currentData.address1 &&
+        !!currentData.city &&
+        !!currentData.state &&
+        !!currentData.zipCode;
+      const atLeastOneAddressFieldHasAValue =
+        !!currentData.address1 ||
+        !!currentData.address2 ||
+        !!currentData.city ||
+        !!currentData.state ||
+        !!currentData.zipCode;
+      const partialAddress = atLeastOneAddressFieldHasAValue && !allRequiredAddressFieldsHaveValues;
+      setHasPartialAddress(partialAddress);
+    }
+  };
+
+  const checkExtensionWithoutPhone = (fieldName: keyof TrusteeInternalFormData) => {
+    if (fieldName === 'extension' || fieldName === 'phone') {
+      const currentData = getFormData();
+      if (currentData.extension && !currentData.phone) {
+        setHasPartialPhone(true);
+      } else {
+        setHasPartialPhone(false);
+      }
+    }
+  };
+
   const handleFieldChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { value, name } = event.target;
     const fieldName = name as keyof TrusteeInternalFormData;
@@ -175,6 +197,8 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
     debounce(() => {
       validateFieldAndUpdate(fieldName, value);
       clearAddressErrorsIfAllEmpty(fieldName, value);
+      checkPartialAddress(fieldName);
+      checkExtensionWithoutPhone(fieldName);
     }, 300);
   };
 
@@ -185,6 +209,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
     debounce(() => {
       validateFieldAndUpdate('state', value);
       clearAddressErrorsIfAllEmpty('state', value);
+      checkPartialAddress('state');
     }, 300);
   };
 
@@ -195,6 +220,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
     debounce(() => {
       validateFieldAndUpdate('zipCode', value);
       clearAddressErrorsIfAllEmpty('zipCode', value);
+      checkPartialAddress('zipCode');
     }, 300);
   };
 
@@ -203,8 +229,40 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
     navigate.navigateTo(cancelTo);
   }, [navigate, cancelTo]);
 
+  const handleSubmit = async (ev: React.FormEvent): Promise<void> => {
+    ev.preventDefault();
+    const currentFormData = getFormData();
+
+    if (validateFormAndUpdateErrors(currentFormData)) {
+      setErrorMessage(null);
+      setFieldErrors({});
+      setIsSubmitting(true);
+
+      const payload = mapPayload(currentFormData);
+      try {
+        await api.patchTrustee(props.trusteeId, payload);
+        navigate.navigateTo(`/trustees/${props.trusteeId}`);
+      } catch (e) {
+        globalAlert?.error(`Failed to update trustee: ${(e as Error).message}`);
+      } finally {
+        setIsSubmitting(false);
+      }
+    } else if (hasPartialAddress) {
+      partialAddressAlertRef.current?.show();
+      return;
+    }
+  };
+
   const validateFormAndUpdateErrors = (formData: TrusteeInternalFormData): boolean => {
     const results = validateObject(getDynamicSpec(formData), formData);
+    if (!results.reasonMap?.phone && hasPartialPhone) {
+      delete results.valid;
+      results.reasonMap = {
+        ...results.reasonMap,
+        phone: { reasons: ['Phone required'] },
+      };
+    }
+
     if (!results.valid && results.reasonMap) {
       const newFieldErrors = Object.fromEntries(
         Object.entries(flattenReasonMap(results.reasonMap)).map(([jsonPath, reasons]) => {
@@ -301,13 +359,6 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
   return (
     <div className="trustee-form-screen">
       <form aria-label="Edit Trustee" data-testid="trustee-internal-form" onSubmit={handleSubmit}>
-        <div className="form-header">
-          <span>
-            A red asterisk (<span className="text-secondary-dark">*</span>) indicates a required
-            field.
-          </span>
-        </div>
-
         <div className="form-container">
           <div className="form-column">
             <div className="field-group">
@@ -320,7 +371,6 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 onChange={handleFieldChange}
                 errorMessage={fieldErrors['address1']}
                 autoComplete="off"
-                {...isRequired('address1')}
               />
             </div>
 
@@ -334,7 +384,6 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 onChange={handleFieldChange}
                 errorMessage={fieldErrors['address2']}
                 autoComplete="off"
-                {...isRequired('address2')}
               />
             </div>
 
@@ -348,7 +397,6 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 onChange={handleFieldChange}
                 errorMessage={fieldErrors['city']}
                 autoComplete="off"
-                {...isRequired('city')}
               />
             </div>
 
@@ -362,7 +410,6 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 onUpdateSelection={handleStateSelection}
                 autoComplete="off"
                 errorMessage={fieldErrors['state']}
-                {...isRequired('state')}
               ></UsStatesComboBox>
             </div>
 
@@ -377,13 +424,12 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 errorMessage={fieldErrors['zipCode']}
                 autoComplete="off"
                 ariaDescription="Example: 12345"
-                {...isRequired('zipCode')}
               />
             </div>
           </div>
 
           <div className="form-column">
-            <div className="field-group">
+            <div id="phone-group" className="field-group">
               <PhoneNumberInput
                 id="trustee-phone"
                 value={formData.phone}
@@ -394,7 +440,6 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 errorMessage={fieldErrors['phone']}
                 autoComplete="off"
                 ariaDescription="Example: 123-456-7890"
-                {...isRequired('phone')}
               />
               <Input
                 id="trustee-extension"
@@ -406,7 +451,6 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 errorMessage={fieldErrors['extension']}
                 autoComplete="off"
                 ariaDescription="Up to 6 digits"
-                {...isRequired('extension')}
               />
             </div>
 
@@ -421,13 +465,21 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 errorMessage={fieldErrors['email']}
                 type="email"
                 autoComplete="off"
-                {...isRequired('email')}
               />
             </div>
           </div>
         </div>
 
         {errorMessage && <div role="alert">{errorMessage}</div>}
+        <Alert
+          role="alert"
+          className="form-field-warning"
+          type={UswdsAlertStyle.Error}
+          inline={true}
+          slim={false}
+          ref={partialAddressAlertRef}
+          message="You have entered a partial address. Please complete or clear the address fields."
+        />
         <div className="usa-button-group">
           <Button id="submit-button" type="submit" onClick={handleSubmit}>
             {isSubmitting ? 'Saving…' : 'Save'}
