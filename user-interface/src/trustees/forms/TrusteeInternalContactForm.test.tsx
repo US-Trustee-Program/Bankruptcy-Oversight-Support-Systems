@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import userEvent, { UserEvent } from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import TrusteeInternalContactForm, {
   TrusteeInternalContactFormProps,
@@ -38,8 +38,10 @@ describe('TrusteeInternalContactForm Tests', () => {
     navigateTo,
     redirectTo: vi.fn(),
   };
+  let user: UserEvent;
 
   beforeEach(() => {
+    user = userEvent.setup();
     testingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
 
     vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
@@ -92,7 +94,6 @@ describe('TrusteeInternalContactForm Tests', () => {
       expect(cancelButton).toBeInTheDocument();
     });
 
-    const user = userEvent.setup();
     const cancelButton = screen.getByRole('button', { name: /cancel/i });
 
     await user.click(cancelButton);
@@ -127,7 +128,6 @@ describe('TrusteeInternalContactForm Tests', () => {
     const newCity = 'Cityville';
     const newZip = '12345';
 
-    const user = userEvent.setup();
     await user.clear(screen.getByTestId('trustee-address1'));
     await user.type(screen.getByTestId('trustee-address1'), newAddress1);
     await user.clear(screen.getByTestId('trustee-city'));
@@ -178,7 +178,6 @@ describe('TrusteeInternalContactForm Tests', () => {
     const newAddress1 = '1 Main St';
     const newCity = 'Cityville';
 
-    const user = userEvent.setup();
     await user.type(screen.getByTestId('trustee-address1'), newAddress1);
     await user.type(screen.getByTestId('trustee-city'), newCity);
     await user.click(screen.getByRole('button', { name: /save/i }));
@@ -200,7 +199,6 @@ describe('TrusteeInternalContactForm Tests', () => {
 
     const phoneNumber = '555-000-1111';
 
-    const user = userEvent.setup();
     await user.type(screen.getByTestId('trustee-phone'), phoneNumber);
     await user.click(screen.getByRole('button', { name: /save/i }));
 
@@ -250,7 +248,6 @@ describe('TrusteeInternalContactForm Tests', () => {
     const newCity = 'Cityville';
     const newZip = '12345';
 
-    const user = userEvent.setup();
     await user.clear(screen.getByTestId('trustee-address1'));
     await user.type(screen.getByTestId('trustee-address1'), newAddress1);
     await user.clear(screen.getByTestId('trustee-city'));
@@ -314,7 +311,6 @@ describe('TrusteeInternalContactForm Tests', () => {
       trusteeId: 'fail-id',
     });
 
-    const user = userEvent.setup();
     await user.type(screen.getByTestId('trustee-address1'), '1 Main St');
     await user.type(screen.getByTestId('trustee-city'), 'City');
     await user.type(screen.getByTestId('trustee-zip'), '90210');
@@ -357,7 +353,6 @@ describe('TrusteeInternalContactForm Tests', () => {
 
     renderWithProps({ cancelTo: '/trustees', trusteeId: 'abc', trustee: existing });
 
-    const user = userEvent.setup();
     const addr1 = screen.getByTestId('trustee-address1');
     const city = screen.getByTestId('trustee-city');
     const zip = screen.getByTestId('trustee-zip');
@@ -430,7 +425,6 @@ describe('TrusteeInternalContactForm Tests', () => {
 
     renderWithProps({ cancelTo: '/trustees', trusteeId: 'edit-id', trustee: existing });
 
-    const user = userEvent.setup();
     await user.clear(screen.getByTestId('trustee-address1'));
     await user.clear(screen.getByTestId('trustee-address2'));
     await user.clear(screen.getByTestId('trustee-city'));
@@ -463,7 +457,6 @@ describe('TrusteeInternalContactForm Tests', () => {
     });
 
     const address2Field = screen.getByTestId('trustee-address2');
-    const user = userEvent.setup();
     await user.clear(address2Field);
     await user.type(address2Field, 'Suite 100');
     await user.click(screen.getByRole('button', { name: /save/i }));
