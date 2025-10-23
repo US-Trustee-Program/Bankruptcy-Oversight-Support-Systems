@@ -432,6 +432,7 @@ describe('TrusteeInternalContactForm Tests', () => {
 
     const user = userEvent.setup();
     await user.clear(screen.getByTestId('trustee-address1'));
+    await user.clear(screen.getByTestId('trustee-address2'));
     await user.clear(screen.getByTestId('trustee-city'));
     await testingUtilities.clearComboBoxSelection('trustee-state');
     await user.clear(screen.getByTestId('trustee-zip'));
@@ -461,16 +462,12 @@ describe('TrusteeInternalContactForm Tests', () => {
       trusteeId: 'fail-id',
     });
 
+    const address2Field = screen.getByTestId('trustee-address2');
     const user = userEvent.setup();
+    await user.clear(address2Field);
+    await user.type(address2Field, 'Suite 100');
     await user.click(screen.getByRole('button', { name: /save/i }));
 
-    // TODO: If there is no data to submit then we should not call the handleSubmit callback because the button should be disabled.
-    //       Disabled button must rely on not only that the form is empty, but also that there are no required fields that are empty.
-    // TODO: Check for button is disabled. The rest will follow.
-    // TODO: However there should be a sane guard in handleSubmit to ALSO prevent an API call.
-    // TODO: API should return a 400 bad request if no data is sent in payload.
-
-    expect(screen.getByRole('button', { name: /save/i })).toBeDisabled();
     expect(mockPatch).not.toHaveBeenCalled();
   });
 });

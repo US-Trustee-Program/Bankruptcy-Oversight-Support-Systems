@@ -22,7 +22,6 @@ import {
   ValidationSpec,
 } from '@common/cams/validation';
 import { ContactInformation } from '@common/cams/contact';
-import Validators from '@common/cams/validators';
 
 const getInitialFormData = (
   info: Partial<ContactInformation> | undefined,
@@ -65,7 +64,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
   const navigate = useCamsNavigator();
 
   const mapPayload = (formData: TrusteeInternalFormData): Partial<TrusteeInput> => {
-    const payload = {
+    return {
       internal: {
         address:
           formData.address1 && formData.city && formData.state && formData.zipCode
@@ -82,8 +81,6 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
         email: formData.email ?? null,
       },
     } as Partial<TrusteeInput>;
-
-    return payload;
   };
 
   const handleSubmit = async (ev: React.FormEvent): Promise<void> => {
@@ -114,10 +111,9 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
   const getDynamicSpec = (currentFormData: TrusteeInternalFormData) => {
     const spec: Partial<ValidationSpec<TrusteeInternalFormData>> = { ...TRUSTEE_INTERNAL_SPEC };
 
-    // TODO: We need to require address if address line 2 is present
-
     if (
       !currentFormData.address1 &&
+      !currentFormData.address2 &&
       !currentFormData.city &&
       !currentFormData.state &&
       !currentFormData.zipCode
@@ -128,11 +124,20 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
       delete spec.state;
       delete spec.zipCode;
     }
-    if (!currentFormData.phone) {
+    if (!currentFormData.phone && !currentFormData.extension) {
       delete spec.phone;
+      delete spec.extension;
     }
     if (!currentFormData.email) {
       delete spec.email;
+    }
+
+    // Optional fields
+    if (!currentFormData.address2) {
+      delete spec.address2;
+    }
+    if (!currentFormData.extension) {
+      delete spec.extension;
     }
 
     return spec;
@@ -140,23 +145,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
 
   const isRequired = (field: keyof TrusteeInternalFormData): { required?: true } => {
     const spec = getDynamicSpec(getFormData());
-    // TODO: Phone Extension is optional even if Extension is in the Spec
-    // The optional spec is present and incorrectly returns true in the ternary check below
-    return spec[field] && spec[field][0] !== Validators.optional ? { required: true } : {};
-  };
-
-  const formIsEmpty = (): boolean => {
-    const currentData = getFormData();
-    return (
-      !currentData.address1 &&
-      !currentData.address2 &&
-      !currentData.city &&
-      !currentData.state &&
-      !currentData.zipCode &&
-      !currentData.phone &&
-      !currentData.extension &&
-      !currentData.email
-    );
+    return spec[field] ? { required: true } : {};
   };
 
   const clearAddressErrorsIfAllEmpty = (
@@ -446,7 +435,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
 
         {errorMessage && <div role="alert">{errorMessage}</div>}
         <div className="usa-button-group">
-          <Button id="submit-button" type="submit" onClick={handleSubmit} disabled={formIsEmpty()}>
+          <Button id="submit-button" type="submit" onClick={handleSubmit}>
             {isSubmitting ? 'Saving…' : 'Save'}
           </Button>
           <Button
