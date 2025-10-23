@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import userEvent, { UserEvent } from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import TrusteePublicContactForm, {
   TrusteePublicContactFormProps,
@@ -40,8 +40,10 @@ describe('TrusteePublicContactForm Tests', () => {
     navigateTo,
     redirectTo: vi.fn(),
   };
+  let user: UserEvent;
 
   beforeEach(() => {
+    user = userEvent.setup();
     testingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
 
     vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
@@ -111,8 +113,6 @@ describe('TrusteePublicContactForm Tests', () => {
     const emailInput = screen.getByTestId('trustee-email');
     const websiteInput = screen.getByTestId('trustee-website');
 
-    const user = userEvent.setup();
-
     const trusteeName = 'Test Trustee';
     await user.type(nameInput, trusteeName);
     const address1 = '123 Main St';
@@ -177,8 +177,6 @@ describe('TrusteePublicContactForm Tests', () => {
     const zipInput = screen.getByTestId('trustee-zip');
     const phoneInput = screen.getByTestId('trustee-phone');
     const emailInput = screen.getByTestId('trustee-email');
-
-    const user = userEvent.setup();
 
     const trusteeName = 'Test Trustee';
     await user.type(nameInput, trusteeName);
@@ -314,7 +312,6 @@ describe('TrusteePublicContactForm Tests', () => {
       expect(cancelButton).toBeInTheDocument();
     });
 
-    const user = userEvent.setup();
     const cancelButton = screen.getByRole('button', { name: /cancel/i });
 
     await user.click(cancelButton);
@@ -336,7 +333,6 @@ describe('TrusteePublicContactForm Tests', () => {
       expect(cancelButton).toBeInTheDocument();
     });
 
-    const user = userEvent.setup();
     const cancelButton = screen.getByRole('button', { name: /cancel/i });
 
     await user.click(cancelButton);
@@ -355,7 +351,6 @@ describe('TrusteePublicContactForm Tests', () => {
       trusteeId: '',
     });
 
-    const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /save/i }));
 
     await new Promise((res) => setTimeout(res, 50));
@@ -371,7 +366,6 @@ describe('TrusteePublicContactForm Tests', () => {
 
     renderWithProps({ action: 'create', cancelTo: '/trustees', trusteeId: '' });
 
-    const user = userEvent.setup();
     await user.type(screen.getByTestId('trustee-name'), 'Create Trustee');
     await user.type(screen.getByTestId('trustee-address1'), '1 Main St');
     await user.type(screen.getByTestId('trustee-city'), 'City');
@@ -416,15 +410,14 @@ describe('TrusteePublicContactForm Tests', () => {
       reasonMap: undefined,
     } as Validation.ValidatorResult);
 
-    const user2 = userEvent.setup();
-    await user2.type(screen.getByTestId('trustee-name'), 'Edited Name');
-    await user2.type(screen.getByTestId('trustee-address1'), '1 Main St');
+    await user.type(screen.getByTestId('trustee-name'), 'Edited Name');
+    await user.type(screen.getByTestId('trustee-address1'), '1 Main St');
     await testingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
-    await user2.type(screen.getByTestId('trustee-zip'), '90210');
-    await user2.type(screen.getByTestId('trustee-phone'), '555-111-2222');
-    await user2.type(screen.getByTestId('trustee-email'), 'p@example.com');
+    await user.type(screen.getByTestId('trustee-zip'), '90210');
+    await user.type(screen.getByTestId('trustee-phone'), '555-111-2222');
+    await user.type(screen.getByTestId('trustee-email'), 'p@example.com');
 
-    await user2.click(screen.getByRole('button', { name: /save/i }));
+    await user.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => {
       expect(globalAlertSpy.error).toHaveBeenCalled();
