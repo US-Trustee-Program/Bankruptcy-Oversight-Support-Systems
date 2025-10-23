@@ -1,7 +1,7 @@
 import { render } from '@testing-library/react';
 import { DropdownMenu, MenuItem } from './DropdownMenu';
 import { BrowserRouter } from 'react-router-dom';
-import userEvent from '@testing-library/user-event';
+import userEvent, { UserEvent } from '@testing-library/user-event';
 import LinkUtils from '../linkUtils';
 
 describe('DropdownMenu component tests', () => {
@@ -13,6 +13,8 @@ describe('DropdownMenu component tests', () => {
   let item4: HTMLElement;
   let button0: HTMLElement;
   let button1: HTMLElement;
+  let browser: UserEvent;
+
   const clickFn = vi.fn();
   const menuItems: MenuItem[] = [
     {
@@ -57,6 +59,10 @@ describe('DropdownMenu component tests', () => {
     button1 = document.querySelector(`#test-button-1`) as HTMLElement;
   }
 
+  beforeEach(() => {
+    browser = userEvent.setup();
+  });
+
   afterEach(() => {
     vi.clearAllMocks();
   });
@@ -66,7 +72,7 @@ describe('DropdownMenu component tests', () => {
     menu.focus();
     expect(menu.getAttribute('aria-expanded')).toBe('false');
 
-    await userEvent.click(menu);
+    await browser.click(menu);
     expect(menu.getAttribute('aria-expanded')).toBe('true');
     const firstItem: HTMLLinkElement | null = document.querySelector('ul li a');
     expect(firstItem).toHaveFocus();
@@ -77,7 +83,7 @@ describe('DropdownMenu component tests', () => {
     menu.focus();
     expect(menu.getAttribute('aria-expanded')).toBe('false');
 
-    await userEvent.keyboard('{Enter}');
+    await browser.keyboard('{Enter}');
     expect(menu.getAttribute('aria-expanded')).toBe('true');
     const firstItem: HTMLLinkElement | null = document.querySelector('ul li a');
     expect(firstItem).toHaveFocus();
@@ -88,7 +94,7 @@ describe('DropdownMenu component tests', () => {
     menu.focus();
     expect(menu.getAttribute('aria-expanded')).toBe('false');
 
-    await userEvent.keyboard(' ');
+    await browser.keyboard(' ');
     expect(menu.getAttribute('aria-expanded')).toBe('true');
     const firstItem: HTMLLinkElement | null = document.querySelector('ul li a');
     expect(firstItem).toHaveFocus();
@@ -112,23 +118,22 @@ describe('DropdownMenu component tests', () => {
 
   test('Menu should close when clicking outside of menu', async () => {
     renderMenu();
-    await userEvent.click(menu);
+    await browser.click(menu);
     expect(menu.getAttribute('aria-expanded')).toBe('true');
 
-    await userEvent.click(button0);
+    await browser.click(button0);
     expect(menu.getAttribute('aria-expanded')).toBe('false');
   });
 
   test('If expanded, then pressing Tab should focus on next item outside of menu and close menu.', async () => {
     renderMenu();
-    const user = userEvent.setup();
     expect(menu.getAttribute('aria-expanded')).toBe('false');
 
     menu.focus();
-    await user.keyboard('{Enter}');
+    await browser.keyboard('{Enter}');
     expect(menu.getAttribute('aria-expanded')).toBe('true');
 
-    await user.tab();
+    await browser.tab();
     expect(document.activeElement).toBe(button1);
     expect(menu.getAttribute('aria-expanded')).toBe('false');
   });
@@ -137,92 +142,88 @@ describe('DropdownMenu component tests', () => {
     renderMenu();
     expect(menu.getAttribute('aria-expanded')).toBe('false');
 
-    await userEvent.click(menu);
+    await browser.click(menu);
     expect(menu.getAttribute('aria-expanded')).toBe('true');
 
-    await userEvent.tab({ shift: true });
+    await browser.tab({ shift: true });
     expect(menu.getAttribute('aria-expanded')).toBe('false');
     expect(document.activeElement).toBe(menu);
   });
 
   test('If expanded, then pressing Down Arrow should focus on each menu item in turn. If the last item was already focused, then the first menu item should receive focus.', async () => {
     renderMenu();
-    const user = userEvent.setup();
 
     expect(menu.getAttribute('aria-expanded')).toBe('false');
     menu.focus();
 
-    await user.keyboard('{Enter}');
+    await browser.keyboard('{Enter}');
     expect(menu!.getAttribute('aria-expanded')).toBe('true');
     expect(document.activeElement).toBe(item1);
 
-    await user.keyboard('{ArrowDown}');
+    await browser.keyboard('{ArrowDown}');
     expect(document.activeElement).toBe(item2);
 
-    await user.keyboard('{ArrowDown}');
+    await browser.keyboard('{ArrowDown}');
     expect(document.activeElement).toBe(item3);
 
-    await user.keyboard('{ArrowDown}');
+    await browser.keyboard('{ArrowDown}');
     expect(document.activeElement).toBe(item4);
 
-    await user.keyboard('{ArrowDown}');
+    await browser.keyboard('{ArrowDown}');
     expect(document.activeElement).toBe(item1);
   });
 
   test('If expanded, and last item is focused, then pressing Up Arrow should focus on each item above in sequence until reaching the top.  Pressing up arrow again should focus on the last menu item in the list.', async () => {
     renderMenu();
-    const user = userEvent.setup();
 
-    await user.click(menu);
+    await browser.click(menu);
     item4.focus();
     expect(document.activeElement).toBe(item4);
 
-    await user.keyboard('{ArrowUp}');
+    await browser.keyboard('{ArrowUp}');
     expect(document.activeElement).toBe(item3);
 
-    await user.keyboard('{ArrowUp}');
+    await browser.keyboard('{ArrowUp}');
     expect(document.activeElement).toBe(item2);
 
-    await user.keyboard('{ArrowUp}');
+    await browser.keyboard('{ArrowUp}');
     expect(document.activeElement).toBe(item1);
 
-    await user.keyboard('{ArrowUp}');
+    await browser.keyboard('{ArrowUp}');
     expect(document.activeElement).toBe(item4);
   });
 
   test('If expanded, End key should jump to last item in list and Home key should jump to first item in list.', async () => {
     renderMenu();
-    const user = userEvent.setup();
 
     menu.focus();
-    await user.keyboard('{Enter}');
+    await browser.keyboard('{Enter}');
     expect(document.activeElement).toBe(item1);
 
-    await user.keyboard('{End}');
+    await browser.keyboard('{End}');
     expect(document.activeElement).toBe(item4);
 
-    await user.keyboard('{Home}');
+    await browser.keyboard('{Home}');
     expect(document.activeElement).toBe(item1);
   });
 
   test('If expanded, pressing a letter or number should jump to the first menu item that starts with that letter', async () => {
     renderMenu();
-    const user = userEvent.setup();
 
     menu.focus();
-    await user.keyboard('{Enter}');
+    await browser.keyboard('{Enter}');
     expect(document.activeElement).toBe(item1);
 
-    await user.keyboard('3');
+    await browser.keyboard('3');
     expect(document.activeElement).toBe(item4);
 
-    await user.keyboard('b');
+    await browser.keyboard('b');
     expect(document.activeElement).toBe(item2);
 
-    await user.keyboard('a');
+    await browser.keyboard('a');
     expect(document.activeElement).toBe(item1);
 
-    await user.keyboard('c');
+    await browser.keyboard('c');
     expect(document.activeElement).toBe(item3);
   });
 
@@ -231,18 +232,18 @@ describe('DropdownMenu component tests', () => {
     expect(menu!.getAttribute('aria-expanded')).toBe('false');
 
     menu.focus();
-    await userEvent.keyboard('{Enter}');
+    await browser.keyboard('{Enter}');
     expect(menu!.getAttribute('aria-expanded')).toBe('true');
     expect(document.activeElement).toBe(item1);
 
-    await userEvent.keyboard('{Escape}');
+    await browser.keyboard('{Escape}');
     expect(menu!.getAttribute('aria-expanded')).toBe('false');
     expect(document.activeElement).toBe(menu);
   });
 
   test('Should call click function onClick', async () => {
     renderMenu();
-    await userEvent.click(menu);
+    await browser.click(menu);
     expect(clickFn).toHaveBeenCalled();
   });
 
@@ -260,18 +261,18 @@ describe('DropdownMenu component tests', () => {
 
     test('Should follow link when Enter key is pressed', async () => {
       renderMenu();
-      await userEvent.click(menu);
+      await browser.click(menu);
       expect(item1).toHaveFocus();
-      await userEvent.keyboard('{Enter}');
+      await browser.keyboard('{Enter}');
 
       expect(LinkUtils.executeLinkClick).toHaveReturnedWith(menuItems[0].address);
     });
 
     test('Should follow link when Space key is pressed', async () => {
       renderMenu();
-      await userEvent.click(menu);
+      await browser.click(menu);
       expect(item1).toHaveFocus();
-      await userEvent.keyboard(' ');
+      await browser.keyboard(' ');
 
       expect(LinkUtils.executeLinkClick).toHaveReturnedWith(menuItems[0].address);
     });

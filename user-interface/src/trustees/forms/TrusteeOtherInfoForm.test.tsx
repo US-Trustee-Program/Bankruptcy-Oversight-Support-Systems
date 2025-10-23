@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import userEvent, { UserEvent } from '@testing-library/user-event';
 import TrusteeOtherInfoForm from './TrusteeOtherInfoForm';
 import * as UseApi2Module from '@/lib/hooks/UseApi2';
 import * as UseGlobalAlertModule from '@/lib/hooks/UseGlobalAlert';
@@ -43,8 +43,10 @@ describe('TrusteeOtherInfoForm', () => {
   let patchTrusteeSpy: Mock<
     (trusteeId: string, trustee: unknown) => Promise<ResponseBody<Trustee>>
   >;
+  let browser: UserEvent;
 
   beforeEach(() => {
+    browser = userEvent.setup();
     vi.clearAllMocks();
 
     vi.spyOn(UseGlobalAlertModule, 'useGlobalAlert').mockReturnValue(mockGlobalAlert);
@@ -118,7 +120,7 @@ describe('TrusteeOtherInfoForm', () => {
     });
 
     // Click the "Add another bank" button
-    await userEvent.click(screen.getByTestId('button-add-bank-button'));
+    await browser.click(screen.getByTestId('button-add-bank-button'));
 
     // Check a new bank field was added
     expect(screen.getByTestId(`trustee-banks-${TEST_BANKS.length}`)).toHaveValue('');
@@ -139,7 +141,7 @@ describe('TrusteeOtherInfoForm', () => {
     });
 
     // Click the first "Remove Bank" button (which removes the second bank)
-    await userEvent.click(screen.getByTestId('button-remove-bank-1-button'));
+    await browser.click(screen.getByTestId('button-remove-bank-1-button'));
 
     // Check that a bank was removed - the last bank should no longer exist
     expect(screen.queryByTestId(`trustee-banks-${TEST_BANKS.length - 1}`)).not.toBeInTheDocument();
@@ -159,8 +161,8 @@ describe('TrusteeOtherInfoForm', () => {
     const updatedBankName = 'Updated Bank Name';
     const bankInput = screen.getByTestId('trustee-banks-0');
 
-    await userEvent.clear(bankInput);
-    await userEvent.type(bankInput, updatedBankName);
+    await browser.clear(bankInput);
+    await browser.type(bankInput, updatedBankName);
 
     expect(bankInput).toHaveValue(updatedBankName);
   });
@@ -177,11 +179,11 @@ describe('TrusteeOtherInfoForm', () => {
     // Update first bank name
     const updatedBankName = 'Updated Bank Name';
     const bankInput = screen.getByTestId('trustee-banks-0');
-    await userEvent.clear(bankInput);
-    await userEvent.type(bankInput, updatedBankName);
+    await browser.clear(bankInput);
+    await browser.type(bankInput, updatedBankName);
 
     // Submit the form
-    await userEvent.click(screen.getByTestId('button-submit-button'));
+    await browser.click(screen.getByTestId('button-submit-button'));
 
     // Wait for the async operation to complete
     await waitFor(() => {
@@ -212,7 +214,7 @@ describe('TrusteeOtherInfoForm', () => {
     );
 
     // Submit the form
-    await userEvent.click(screen.getByTestId('button-submit-button'));
+    await browser.click(screen.getByTestId('button-submit-button'));
 
     // Wait for the async operation to complete
     await waitFor(() => {
@@ -238,7 +240,7 @@ describe('TrusteeOtherInfoForm', () => {
     );
 
     // Submit the form
-    await userEvent.click(screen.getByTestId('button-submit-button'));
+    await browser.click(screen.getByTestId('button-submit-button'));
 
     // Wait for the async operation to complete
     await waitFor(() => {
@@ -261,7 +263,7 @@ describe('TrusteeOtherInfoForm', () => {
     expect(screen.getByTestId('button-submit-button')).toHaveTextContent('Save');
 
     // Click the submit button
-    await userEvent.click(screen.getByTestId('button-submit-button'));
+    await browser.click(screen.getByTestId('button-submit-button'));
 
     // Wait for the async operation to complete and verify the API was called
     await waitFor(() => {
@@ -300,7 +302,7 @@ describe('TrusteeOtherInfoForm', () => {
     expect(submitButton).toHaveTextContent('Save');
 
     // Click the submit button
-    await userEvent.click(submitButton);
+    await browser.click(submitButton);
 
     // Button should be disabled and show "Saving..." during submission
     expect(submitButton).toBeDisabled();
@@ -328,7 +330,7 @@ describe('TrusteeOtherInfoForm', () => {
     );
 
     // Click the cancel button
-    await userEvent.click(screen.getByTestId('button-cancel-button'));
+    await browser.click(screen.getByTestId('button-cancel-button'));
 
     // Check that navigation occurred to the correct page
     expect(mockNavigate.navigateTo).toHaveBeenCalledWith(`/trustees/${TEST_TRUSTEE_ID}`);
@@ -344,7 +346,7 @@ describe('TrusteeOtherInfoForm', () => {
     );
 
     // Submit the form
-    await userEvent.click(screen.getByTestId('button-submit-button'));
+    await browser.click(screen.getByTestId('button-submit-button'));
 
     // Should show error message and not call API
     expect(mockGlobalAlert.error).toHaveBeenCalledWith(
@@ -363,7 +365,7 @@ describe('TrusteeOtherInfoForm', () => {
     );
 
     // Submit the form
-    await userEvent.click(screen.getByTestId('button-submit-button'));
+    await browser.click(screen.getByTestId('button-submit-button'));
 
     // Should show error message and not call API
     expect(mockGlobalAlert.error).toHaveBeenCalledWith(
@@ -392,7 +394,7 @@ describe('TrusteeOtherInfoForm', () => {
 
     // Open the ComboBox dropdown
     const expandButton = document.querySelector('#trustee-software-expand') as HTMLButtonElement;
-    await userEvent.click(expandButton);
+    await browser.click(expandButton);
 
     // Wait for dropdown to open and find the Stretto option
     await waitFor(() => {
@@ -402,10 +404,10 @@ describe('TrusteeOtherInfoForm', () => {
     // Select Stretto option - find it by its data-value attribute
     const strettoOption = document.querySelector('[data-value="Stretto"]') as HTMLLIElement;
     expect(strettoOption).toBeInTheDocument();
-    await userEvent.click(strettoOption);
+    await browser.click(strettoOption);
 
     // Submit the form to verify the software state was updated
-    await userEvent.click(screen.getByTestId('button-submit-button'));
+    await browser.click(screen.getByTestId('button-submit-button'));
 
     // Verify API was called with the new software value
     await waitFor(() => {
@@ -445,9 +447,9 @@ describe('TrusteeOtherInfoForm', () => {
 
     const clearButton = document.querySelector('#trustee-software-clear-all') as HTMLButtonElement;
     expect(clearButton).toBeInTheDocument();
-    await userEvent.click(clearButton);
+    await browser.click(clearButton);
 
-    await userEvent.click(screen.getByTestId('button-submit-button'));
+    await browser.click(screen.getByTestId('button-submit-button'));
 
     await waitFor(() => {
       expect(patchTrusteeSpy).toHaveBeenCalledWith(

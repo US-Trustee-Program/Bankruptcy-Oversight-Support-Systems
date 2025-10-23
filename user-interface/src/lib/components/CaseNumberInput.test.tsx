@@ -1,11 +1,17 @@
 import { describe } from 'vitest';
 import CaseNumberInput, { validateCaseNumberInput } from './CaseNumberInput';
 import { act, render, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import userEvent, { UserEvent } from '@testing-library/user-event';
 import { InputRef } from '../type-declarations/input-fields';
 import React from 'react';
 
 describe('Case number input component', () => {
+  let browser: UserEvent;
+
+  beforeEach(() => {
+    browser = userEvent.setup();
+  });
+
   test('using ref, we should be able to set, get, reset, and clear value', async () => {
     const caseNumberRef = React.createRef<InputRef>();
     render(<CaseNumberInput ref={caseNumberRef} onChange={() => null} value="321cba" />);
@@ -38,90 +44,82 @@ describe('Case number input component', () => {
   });
 
   test('if allowEnterKey is true and value is a non-zero-length string and key entered is Enter key, then onChange should be called', async () => {
-    const user = userEvent.setup();
     const changeFunction = vi.fn();
     render(<CaseNumberInput onChange={changeFunction} value="321cba" allowEnterKey={true} />);
 
     const input = document.querySelector('.usa-input');
     expect(input).toHaveValue('321cba');
 
-    await user.type(input!, '{Enter}');
+    await browser.type(input!, '{Enter}');
     expect(changeFunction).toHaveBeenCalled();
   });
 
   test('if allowEnterKey is false and key entered is Enter key, then onChange should NOT be called', async () => {
-    const user = userEvent.setup();
     const changeFunction = vi.fn();
     render(<CaseNumberInput onChange={changeFunction} value="321cba" allowEnterKey={false} />);
 
     const input = document.querySelector('.usa-input');
     expect(input).toHaveValue('321cba');
 
-    await user.type(input!, '{Enter}');
+    await browser.type(input!, '{Enter}');
     expect(changeFunction).not.toHaveBeenCalled();
   });
 
   test('if allowEnterKey is true and key entered is Enter key but value of input is empty string, then onChange should NOT be called', async () => {
-    const user = userEvent.setup();
     const changeFunction = vi.fn();
     render(<CaseNumberInput onChange={changeFunction} value="" allowEnterKey={true} />);
 
     const input = document.querySelector('.usa-input');
     expect(input).toHaveValue('');
 
-    await user.type(input!, '{Enter}');
+    await browser.type(input!, '{Enter}');
     expect(changeFunction).not.toHaveBeenCalled();
   });
 
   test('if allowEnterKey is true and value is non-zero-length string, but key entered is NOT Enter key, then onChange should NOT be called with Enter key', async () => {
-    const user = userEvent.setup();
     const changeFunction = vi.fn();
     render(<CaseNumberInput onChange={changeFunction} value="321cba" allowEnterKey={true} />);
 
     const input = document.querySelector('.usa-input');
     expect(input).toHaveValue('321cba');
 
-    await user.type(input!, 'a');
+    await browser.type(input!, 'a');
     expect(changeFunction).not.toHaveBeenCalledWith('321cba');
   });
 
   test('if allowPartialCaseNumber is true, onChange should be called with partial case number', async () => {
-    const user = userEvent.setup();
     const changeFunction = vi.fn();
     render(<CaseNumberInput onChange={changeFunction} value="" allowPartialCaseNumber={true} />);
 
     const input = document.querySelector('.usa-input');
-    await user.type(input!, '12');
+    await browser.type(input!, '12');
     expect(changeFunction).toHaveBeenCalledWith('12');
   });
 
   test('if allowEnterKey is true and input value is empty, handleEnter should not call onChange', async () => {
-    const user = userEvent.setup();
     const changeFunction = vi.fn();
     const ref = React.createRef<InputRef>();
     render(<CaseNumberInput ref={ref} onChange={changeFunction} value="" allowEnterKey={true} />);
 
     const input = document.querySelector('.usa-input');
-    await user.type(input!, '{Enter}');
+    await browser.type(input!, '{Enter}');
     expect(changeFunction).not.toHaveBeenCalled();
   });
 
   test('if onFocus is provided, it should be called when input is focused', async () => {
-    const user = userEvent.setup();
     const focusFunction = vi.fn();
     render(<CaseNumberInput onChange={() => null} value="" onFocus={focusFunction} />);
 
     const input = document.querySelector('.usa-input');
-    await user.click(input!);
+    await browser.click(input!);
     expect(focusFunction).toHaveBeenCalled();
   });
 
   test('if onFocus is not provided, focusing the input should not cause an error', async () => {
-    const user = userEvent.setup();
     render(<CaseNumberInput onChange={() => null} value="" />);
 
     const input = document.querySelector('.usa-input');
-    await expect(user.click(input!)).resolves.not.toThrow();
+    await expect(browser.click(input!)).resolves.not.toThrow();
   });
 });
 

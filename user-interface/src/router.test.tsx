@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import userEvent, { UserEvent } from '@testing-library/user-event';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import * as ReactRouterDOM from 'react-router-dom';
 import App from './App';
@@ -10,6 +10,8 @@ import { CamsRole } from '@common/cams/roles';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
 
 describe('App Router Tests', () => {
+  let browser: UserEvent;
+
   vi.mock('react-router-dom', async () => {
     const actual = await vi.importActual('react-router-dom');
     return {
@@ -39,6 +41,7 @@ describe('App Router Tests', () => {
   });
 
   beforeEach(() => {
+    browser = userEvent.setup();
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
       MockData.getCamsSession({
         user: MockData.getCamsUser({
@@ -53,7 +56,7 @@ describe('App Router Tests', () => {
 
     expect(screen.getByTestId('header-search-link')).toBeVisible();
 
-    await userEvent.click(screen.getByTestId('header-search-link'));
+    await browser.click(screen.getByTestId('header-search-link'));
 
     await waitFor(() => {
       expect(document.querySelector('main.search-screen')).toBeInTheDocument();

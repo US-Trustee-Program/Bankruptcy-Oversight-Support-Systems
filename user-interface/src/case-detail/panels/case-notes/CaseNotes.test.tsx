@@ -3,7 +3,7 @@ import Api2 from '@/lib/models/api2';
 import CaseNotes, { CaseNotesProps, CaseNotesRef, getCaseNotesInputValue } from './CaseNotes';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { formatDateTime } from '@/lib/utils/datetime';
-import userEvent from '@testing-library/user-event';
+import userEvent, { UserEvent } from '@testing-library/user-event';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import React from 'react';
 import Input from '@/lib/components/uswds/Input';
@@ -46,8 +46,11 @@ function renderWithProps(props?: Partial<CaseNotesProps>) {
 }
 
 describe('case note tests', () => {
+  let browser: UserEvent;
+
   beforeEach(() => {
     vi.resetModules();
+    browser = userEvent.setup();
   });
 
   afterEach(() => {
@@ -193,21 +196,21 @@ describe('case note tests', () => {
     expect(button1).not.toBeInTheDocument();
     expect(button2).toBeInTheDocument();
 
-    await userEvent.click(button0!);
+    await browser.click(button0!);
     const modalSubmitButton0 = screen.queryByTestId('button-remove-note-modal-submit-button');
     await waitFor(() => {
       expect(modalSubmitButton0).toBeVisible();
     });
-    await userEvent.click(modalSubmitButton0!);
+    await browser.click(modalSubmitButton0!);
     expect(deleteSpy).toHaveBeenCalledWith(expectedFirstRemoveArgument);
     expect(onNoteRemoveSpy).toHaveBeenCalled();
 
-    await userEvent.click(button2!);
+    await browser.click(button2!);
     const modalSubmitButton2 = screen.queryByTestId('button-remove-note-modal-submit-button');
     await waitFor(() => {
       expect(modalSubmitButton2).toBeVisible();
     });
-    await userEvent.click(modalSubmitButton2!);
+    await browser.click(modalSubmitButton2!);
     expect(deleteSpy).toHaveBeenCalledWith(expectedSecondRemoveArgument);
     expect(onNoteRemoveSpy).toHaveBeenCalledTimes(1);
   });
@@ -310,7 +313,7 @@ describe('case note tests', () => {
     shouldReturnCachedNote = false;
 
     const addButton = screen.getByTestId('open-modal-button_case-note-add-button');
-    await userEvent.click(addButton);
+    await browser.click(addButton);
 
     await waitFor(() => {
       const modal = screen.getByTestId('modal-content-case-note-modal');
@@ -318,7 +321,7 @@ describe('case note tests', () => {
     });
 
     const cancelButton = screen.getByText(/discard/i);
-    await userEvent.click(cancelButton);
+    await browser.click(cancelButton);
 
     await waitFor(() => {
       const draftNoteAlert = screen.queryByTestId('draft-note-alert-test-id');
@@ -367,7 +370,7 @@ describe('case note tests', () => {
     shouldReturnCachedEditNote = false;
 
     const editButton = screen.getByTestId('open-modal-button_case-note-edit-button_0');
-    await userEvent.click(editButton);
+    await browser.click(editButton);
     const modal = screen.getByTestId('modal-case-note-modal');
 
     await waitFor(() => {
@@ -375,7 +378,7 @@ describe('case note tests', () => {
     });
 
     const cancelButton = screen.getByTestId('button-case-note-modal-cancel-button');
-    await userEvent.click(cancelButton);
+    await browser.click(cancelButton);
     await waitFor(() => {
       expect(modal).toHaveClass('is-hidden');
     });

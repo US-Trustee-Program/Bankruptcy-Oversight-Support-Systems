@@ -51,14 +51,16 @@ describe('ConsolidationOrderAccordion tests', () => {
   const onOrderUpdateMockFunc = vi.fn();
   const onExpandMockFunc = vi.fn();
   let mockFeatureFlags: FeatureFlagSet;
-
-  const user = userEvent.setup();
+  let browser: UserEvent;
 
   beforeEach(async () => {
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
+
     mockFeatureFlags = {
       'consolidations-enabled': true,
     };
+    browser = userEvent.setup();
+
     vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
     vi.spyOn(Api2, 'getCaseAssignments').mockResolvedValue({
       data: MockData.buildArray(MockData.getAttorneyAssignment, 2),
@@ -102,7 +104,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     );
     expect(markAsLeadButton).not.toBeNull();
     expect(markAsLeadButton.getAttribute('aria-checked')).not.toEqual('true');
-    await user.click(markAsLeadButton);
+    await browser.click(markAsLeadButton);
     expect(markAsLeadButton.getAttribute('aria-checked')).toEqual('true');
     return markAsLeadButton;
   }
@@ -113,7 +115,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     );
     expect(markAsLeadButton).not.toBeNull();
     expect(markAsLeadButton.getAttribute('aria-checked')).toEqual('true');
-    await user.click(markAsLeadButton);
+    await browser.click(markAsLeadButton);
     expect(markAsLeadButton.getAttribute('aria-checked')).not.toEqual('true');
   }
 
@@ -122,7 +124,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     const consolidationTypeRadioLabel = document.querySelector('.usa-radio__label');
     expect(consolidationTypeRadioLabel).not.toBeNull();
     if (consolidationTypeRadioLabel) {
-      await user.click(consolidationTypeRadioLabel);
+      await browser.click(consolidationTypeRadioLabel);
     }
     expect(consolidationTypeRadio).toBeChecked();
     return consolidationTypeRadio;
@@ -135,7 +137,7 @@ describe('ConsolidationOrderAccordion tests', () => {
   }
 
   async function fillInFormToEnableVerifyButton() {
-    await openAccordion(user, order.id!);
+    await openAccordion(browser, order.id!);
 
     const approveButton = findApproveButton(order.id!);
     const rejectButton = findRejectButton(order.id!);
@@ -256,7 +258,7 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(rejectButton).toBeEnabled();
     });
 
-    await user.click(rejectButton);
+    await browser.click(rejectButton);
 
     const modal = screen.getByTestId(`modal-confirmation-modal-${order.id}`);
     await waitFor(() => {
@@ -292,7 +294,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     await waitFor(() => {
       expect(rejectButton).toBeEnabled();
     });
-    await user.click(rejectButton);
+    await browser.click(rejectButton);
 
     const modal = screen.getByTestId(`modal-confirmation-modal-${order.id}`);
 
@@ -311,7 +313,7 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(modalRejectButton).toBeEnabled();
     });
 
-    await user.click(modalRejectButton);
+    await browser.click(modalRejectButton);
 
     await waitFor(() => {
       expect(onOrderUpdateMockFunc).toHaveBeenCalled();
@@ -347,7 +349,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     await waitFor(() => {
       expect(rejectButton).toBeEnabled();
     });
-    await user.click(rejectButton);
+    await browser.click(rejectButton);
 
     const modal = screen.getByTestId(`modal-confirmation-modal-${order.id}`);
 
@@ -366,7 +368,7 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(modalRejectButton).toBeEnabled();
     });
 
-    await user.click(modalRejectButton);
+    await browser.click(modalRejectButton);
 
     await waitFor(() => {
       expect(onOrderUpdateMockFunc).toHaveBeenCalled();
@@ -420,13 +422,13 @@ describe('ConsolidationOrderAccordion tests', () => {
     });
     expect(approveButton).not.toBeEnabled();
 
-    await user.click(includeAllCheckbox!);
+    await browser.click(includeAllCheckbox!);
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
     });
     expect(rejectButton).toBeEnabled();
 
-    await user.click(includeAllCheckbox!);
+    await browser.click(includeAllCheckbox!);
     await waitFor(() => {
       expect(approveButton).not.toBeEnabled();
     });
@@ -447,7 +449,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     renderWithProps();
     const { approveButton } = await fillInFormToEnableVerifyButton();
 
-    await user.click(approveButton!);
+    await browser.click(approveButton!);
 
     const modal = screen.getByTestId(`modal-confirmation-modal-${order.id}`);
     await waitFor(() => {
@@ -477,7 +479,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     renderWithProps();
     const { approveButton } = await fillInFormToEnableVerifyButton();
-    await user.click(approveButton as HTMLButtonElement);
+    await browser.click(approveButton as HTMLButtonElement);
 
     const modal = screen.getByTestId(`modal-confirmation-modal-${order.id}`);
 
@@ -496,7 +498,7 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(modalApproveButton).toBeEnabled();
     });
 
-    await user.click(modalApproveButton);
+    await browser.click(modalApproveButton);
 
     await waitFor(() => {
       expect(onOrderUpdateMockFunc).toHaveBeenCalled();
@@ -525,12 +527,12 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     const { approveButton } = await fillInFormToEnableVerifyButton();
 
-    await user.click(approveButton as HTMLButtonElement);
+    await browser.click(approveButton as HTMLButtonElement);
 
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
     });
-    await user.click(approveButton as HTMLButtonElement);
+    await browser.click(approveButton as HTMLButtonElement);
 
     const modal = screen.getByTestId(`modal-confirmation-modal-${order.id}`);
 
@@ -549,7 +551,7 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(modalApproveButton).toBeEnabled();
     });
 
-    await user.click(modalApproveButton);
+    await browser.click(modalApproveButton);
 
     await waitFor(() => {
       expect(onOrderUpdateMockFunc).toHaveBeenCalled();
@@ -569,7 +571,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     const { approveButton, rejectButton, clearButton, checkbox1, checkbox2 } =
       await fillInFormToEnableVerifyButton();
 
-    await user.click(approveButton as HTMLButtonElement);
+    await browser.click(approveButton as HTMLButtonElement);
 
     await waitFor(() => {
       expect(checkbox1!.checked).toBeTruthy();
@@ -578,7 +580,7 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(approveButton).toBeEnabled();
     });
 
-    await user.click(clearButton as HTMLButtonElement);
+    await browser.click(clearButton as HTMLButtonElement);
 
     await waitFor(() => {
       expect(checkbox1!.checked).toBeFalsy();
@@ -597,7 +599,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     const collapseButton = screen.getByTestId(`accordion-button-order-list-${order.id}`);
 
-    await user.click(approveButton as HTMLButtonElement);
+    await browser.click(approveButton as HTMLButtonElement);
 
     await waitFor(() => {
       expect(checkbox1!.checked).toBeTruthy();
@@ -605,9 +607,9 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(approveButton).toBeEnabled();
     });
 
-    await user.click(collapseButton as HTMLButtonElement); // collapse accordion
+    await browser.click(collapseButton as HTMLButtonElement); // collapse accordion
 
-    await user.click(collapseButton as HTMLButtonElement);
+    await browser.click(collapseButton as HTMLButtonElement);
     checkbox1 = screen.getByTestId(
       `checkbox-case-selection-case-list-${order.id}-0`,
     ) as HTMLInputElement | null;
@@ -644,7 +646,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     const includeAllCheckbox = document.querySelector(
       `#checkbox-case-list-${order.id}-checkbox-toggle-click-target`,
     );
-    await user.click(includeAllCheckbox!);
+    await browser.click(includeAllCheckbox!);
 
     await waitFor(() => {
       for (const checkbox of checkboxList) {
@@ -653,7 +655,7 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(approveButton).toBeDisabled();
     });
 
-    await user.click(includeAllCheckbox!);
+    await browser.click(includeAllCheckbox!);
     await waitFor(() => {
       for (const checkbox of checkboxList) {
         expect(checkbox.checked).toBeTruthy();

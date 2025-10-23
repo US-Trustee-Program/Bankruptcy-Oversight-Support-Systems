@@ -16,11 +16,13 @@ import { getCourtDivisionCodes } from '@common/cams/users';
 import { FeatureFlagSet } from '@common/feature-flags';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
-import userEvent from '@testing-library/user-event';
+import userEvent, { UserEvent } from '@testing-library/user-event';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 describe('StaffAssignmentScreen', () => {
   let mockFeatureFlags: FeatureFlagSet;
+  let browser: UserEvent;
+
   const user = MockData.getCamsUser({
     roles: [CamsRole.CaseAssignmentManager],
     offices: MOCKED_USTP_OFFICES_ARRAY,
@@ -35,6 +37,7 @@ describe('StaffAssignmentScreen', () => {
   }
 
   beforeEach(() => {
+    browser = userEvent.setup();
     TestingUtilities.setUser(user);
 
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
@@ -96,7 +99,7 @@ describe('StaffAssignmentScreen', () => {
       expect(comboBoxExpandButton).toBeInTheDocument();
     });
 
-    await userEvent.click(comboBoxExpandButton!);
+    await browser.click(comboBoxExpandButton!);
 
     let assigneeItem;
     await waitFor(() => {
@@ -104,8 +107,8 @@ describe('StaffAssignmentScreen', () => {
       expect(assigneeItem).toBeInTheDocument();
     });
 
-    await userEvent.click(assigneeItem!);
-    await userEvent.click(document.body);
+    await browser.click(assigneeItem!);
+    await browser.click(document.body);
 
     expect(SearchResults).toHaveBeenCalledWith(
       {
@@ -195,7 +198,7 @@ describe('StaffAssignmentScreen', () => {
 
     const unassignedFilter = document.querySelector('#option-UNASSIGNED');
     expect(unassignedFilter).toBeInTheDocument();
-    await userEvent.click(unassignedFilter!);
+    await browser.click(unassignedFilter!);
 
     const expectedPredicate: CasesSearchPredicate = {
       limit: DEFAULT_SEARCH_LIMIT,
