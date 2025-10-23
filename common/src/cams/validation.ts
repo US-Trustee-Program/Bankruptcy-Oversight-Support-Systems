@@ -1,7 +1,6 @@
 /********************************************************************************
  * Core Validation Library Types and Functions
  ********************************************************************************/
-import {deepMerge} from "@typescript-eslint/eslint-plugin/dist/util";
 
 export type ValidatorResult = {
   valid?: true;
@@ -103,29 +102,26 @@ export function validateObject(spec: ValidationSpec<unknown>, obj: unknown): Val
   }
 
   const reasonMap: ValidatorResult = Object.keys(spec).reduce((acc, key) => {
-    const result =
-      key === '$'
-        ? validateEach(spec['$'], obj)
-        : validateKey(spec, key, obj);
+    const result = key === '$' ? validateEach(spec['$'], obj) : validateKey(spec, key, obj);
     if (!result.valid) {
       acc[key] = result;
     }
     return acc;
   }, {});
 
-  const $reasonMap = reasonMap['$']['reasonMap'];
+  const $reasonMap = reasonMap['$']?.['reasonMap'];
 
   if ($reasonMap) {
     for (const key of Object.keys($reasonMap)) {
       if (key in reasonMap) {
-        // TODO: How to merge $ reason map with the reasonmap from above?
+        reasonMap[key] = mergeValidatorResults(reasonMap[key], $reasonMap[key]);
       } else {
         reasonMap[key] = $reasonMap[key];
       }
     }
   }
 
-  return Object.keys(reasonMap).length > 0 ? { reasonMap } as ValidatorResult : VALID;
+  return Object.keys(reasonMap).length > 0 ? ({ reasonMap } as ValidatorResult) : VALID;
 }
 
 export function flattenReasonMap(
