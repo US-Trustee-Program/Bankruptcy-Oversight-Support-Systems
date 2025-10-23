@@ -28,7 +28,7 @@ describe('Tests for USWDS Input component.', () => {
     expect(inputEl).toHaveValue('1');
   });
 
-  test('Should change value when ref.setValue() is called and set value back to original when ref.resetValue() is called.', async () => {
+  test('Should change value when ref.setValue() is called and cleared when ref.clearValue() is called.', async () => {
     renderWithoutProps();
     const inputEl = screen.getByTestId('input-1');
 
