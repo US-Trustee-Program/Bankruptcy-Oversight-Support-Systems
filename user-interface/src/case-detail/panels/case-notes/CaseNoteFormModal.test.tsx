@@ -10,7 +10,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
 import { BrowserRouter } from 'react-router-dom';
 import React from 'react';
-import userEvent from '@testing-library/user-event';
+import userEvent, { UserEvent } from '@testing-library/user-event';
 import Api2 from '@/lib/models/api2';
 import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -216,8 +216,10 @@ const renderComponent = (
 
 describe('CaseNoteFormModal - Simple Tests', () => {
   const session = MockData.getCamsSession();
+  let browser: UserEvent;
 
   beforeEach(() => {
+    browser = userEvent.setup();
     vi.resetModules();
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
     vi.spyOn(LocalFormCache, 'getForm').mockReturnValue({ expiresAfter: 1, value: {} });
@@ -239,7 +241,7 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     expect(modal).not.toHaveClass('is-visible');
 
     const openButton = screen.getByTestId(OPEN_BUTTON_ID);
-    await userEvent.click(openButton);
+    await browser.click(openButton);
 
     expect(modal).toHaveClass('is-visible');
   });
@@ -253,14 +255,14 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     renderComponent(modalRef, {}, undefined, richTextEditorRef);
 
     const openButton = screen.getByTestId(OPEN_BUTTON_ID);
-    await userEvent.click(openButton);
+    await browser.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
     const newTitle = 'New Note Title';
     const newContent = 'New Note Content';
     const expectedContent = '<p>New Note Content</p>';
 
-    await userEvent.type(titleInput, newTitle);
+    await browser.type(titleInput, newTitle);
     act(() => richTextEditorRef.current?.setValue(newContent));
 
     const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
@@ -268,7 +270,7 @@ describe('CaseNoteFormModal - Simple Tests', () => {
       expect(richTextEditorRef.current?.getHtml()).toBe('<p>New Note Content</p>');
       expect(submitButton).toBeEnabled();
     });
-    await userEvent.click(submitButton);
+    await browser.click(submitButton);
 
     expect(postNoteSpy).toHaveBeenCalledWith({
       title: newTitle,
@@ -299,15 +301,15 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     );
 
     const openButton = screen.getByTestId(OPEN_BUTTON_ID);
-    await userEvent.click(openButton);
+    await browser.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
     const editedTitle = 'Edited Note Title';
     const editedContent = 'Edited Note Content';
     const expectedContent = '<p>Edited Note Content</p>';
 
-    await userEvent.clear(titleInput);
-    await userEvent.type(titleInput, editedTitle);
+    await browser.clear(titleInput);
+    await browser.type(titleInput, editedTitle);
     act(() => richTextEditorRef.current?.setValue(editedContent));
 
     const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
@@ -315,7 +317,7 @@ describe('CaseNoteFormModal - Simple Tests', () => {
       expect(richTextEditorRef.current?.getHtml()).toBe('<p>Edited Note Content</p>');
       expect(submitButton).toBeEnabled();
     });
-    await userEvent.click(submitButton);
+    await browser.click(submitButton);
 
     expect(putNoteSpy).toHaveBeenCalledWith({
       id: note.id,
@@ -331,18 +333,18 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     renderComponent(modalRef);
 
     const openButton = screen.getByTestId(OPEN_BUTTON_ID);
-    await userEvent.click(openButton);
+    await browser.click(openButton);
 
     const modal = screen.getByTestId(MODAL_WRAPPER_ID);
     expect(modal).toHaveClass('is-visible');
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
     const contentInput = getContentInput();
-    await userEvent.type(titleInput, 'Test Title');
-    await userEvent.type(contentInput!, 'Test Content');
+    await browser.type(titleInput, 'Test Title');
+    await browser.type(contentInput!, 'Test Content');
 
     const cancelButton = screen.getByTestId(CANCEL_BUTTON_ID);
-    await userEvent.click(cancelButton);
+    await browser.click(cancelButton);
 
     expect(modal).not.toHaveClass('is-visible');
   });
@@ -354,15 +356,15 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     renderComponent(modalRef);
 
     const openButton = screen.getByTestId(OPEN_BUTTON_ID);
-    await userEvent.click(openButton);
+    await browser.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
     const contentInput = getContentInput();
-    await userEvent.type(titleInput, 'Test Title');
-    await userEvent.type(contentInput!, 'Test Content');
+    await browser.type(titleInput, 'Test Title');
+    await browser.type(contentInput!, 'Test Content');
 
     const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
-    await userEvent.click(submitButton);
+    await browser.click(submitButton);
 
     expect(postSpy).toHaveBeenCalled();
 
@@ -394,24 +396,24 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     );
 
     const openButton = screen.getByTestId(OPEN_BUTTON_ID);
-    await userEvent.click(openButton);
+    await browser.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
     const contentInput = getContentInput();
-    await userEvent.clear(titleInput);
+    await browser.clear(titleInput);
     // For RichTextEditor, we need to clear content differently
     if (contentInput?.querySelector('.ProseMirror')) {
-      await userEvent.click(contentInput);
-      await userEvent.keyboard('{Control}a');
-      await userEvent.keyboard('{Delete}');
+      await browser.click(contentInput);
+      await browser.keyboard('{Control}a');
+      await browser.keyboard('{Delete}');
     } else {
-      await userEvent.clear(contentInput!);
+      await browser.clear(contentInput!);
     }
-    await userEvent.type(titleInput, 'Edited Title');
-    await userEvent.type(contentInput!, 'Edited Content');
+    await browser.type(titleInput, 'Edited Title');
+    await browser.type(contentInput!, 'Edited Content');
 
     const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
-    await userEvent.click(submitButton);
+    await browser.click(submitButton);
 
     expect(putSpy).toHaveBeenCalled();
 
@@ -432,15 +434,15 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     renderComponent(modalRef, { onModalClosed: onModalClosedSpy });
 
     const openButton = screen.getByTestId(OPEN_BUTTON_ID);
-    await userEvent.click(openButton);
+    await browser.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
     const contentInput = getContentInput();
-    await userEvent.type(titleInput, 'Test Title');
-    await userEvent.type(contentInput!, 'Test Content');
+    await browser.type(titleInput, 'Test Title');
+    await browser.type(contentInput!, 'Test Content');
 
     const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
-    await userEvent.click(submitButton);
+    await browser.click(submitButton);
 
     await waitFor(() => {
       expect(onModalClosedSpy).toHaveBeenCalledWith(TEST_CASE_ID, 'create');
@@ -454,15 +456,15 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     renderComponent(modalRef, { onModalClosed: onModalClosedSpy });
 
     const openButton = screen.getByTestId(OPEN_BUTTON_ID);
-    await userEvent.click(openButton);
+    await browser.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
     const contentInput = getContentInput();
-    await userEvent.type(titleInput, 'Draft Title');
-    await userEvent.type(contentInput!, 'Draft Content');
+    await browser.type(titleInput, 'Draft Title');
+    await browser.type(contentInput!, 'Draft Content');
 
     const cancelButton = screen.getByTestId(CANCEL_BUTTON_ID);
-    await userEvent.click(cancelButton);
+    await browser.click(cancelButton);
 
     expect(onModalClosedSpy).toHaveBeenCalledWith(TEST_CASE_ID, 'create');
   });
@@ -474,15 +476,15 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     renderComponent(modalRef);
 
     const openButton = screen.getByTestId(OPEN_BUTTON_ID);
-    await userEvent.click(openButton);
+    await browser.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
     const contentInput = getContentInput();
-    await userEvent.type(titleInput, 'Test Title');
-    await userEvent.type(contentInput!, 'Test Content');
+    await browser.type(titleInput, 'Test Title');
+    await browser.type(contentInput!, 'Test Content');
 
     const cancelButton = screen.getByTestId(CANCEL_BUTTON_ID);
-    await userEvent.click(cancelButton);
+    await browser.click(cancelButton);
 
     expect(clearFormSpy).toHaveBeenCalled();
   });
@@ -519,7 +521,7 @@ describe('CaseNoteFormModal - Simple Tests', () => {
       expect(screen.getByTestId(SUBMIT_BUTTON_ID)).toBeDisabled();
 
       const openButton = screen.getByTestId(OPEN_BUTTON_ID);
-      await userEvent.click(openButton);
+      await browser.click(openButton);
 
       const titleInput = screen.getByTestId(TITLE_INPUT_ID);
       const contentInput = getContentInput(enabled);
@@ -542,7 +544,7 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     renderComponent(modalRef, {}, undefined, richTextEditorRef);
 
     const openButton = screen.getByTestId(OPEN_BUTTON_ID);
-    await userEvent.click(openButton);
+    await browser.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
     const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
@@ -555,7 +557,7 @@ describe('CaseNoteFormModal - Simple Tests', () => {
       expect(submitButton).toBeDisabled();
     });
 
-    await userEvent.type(titleInput, 'Test Title');
+    await browser.type(titleInput, 'Test Title');
     expect(titleInput).toHaveValue('Test Title');
     expect(richTextEditorRef.current?.getHtml()).toBe('');
     await waitFor(() => {
@@ -570,7 +572,7 @@ describe('CaseNoteFormModal - Simple Tests', () => {
 
     expect(titleInput).toHaveValue('Test Title');
 
-    await userEvent.clear(titleInput);
+    await browser.clear(titleInput);
     expect(titleInput).toHaveValue('');
     expect(richTextEditorRef.current?.getHtml()).toBe('<p>Test Content</p>');
     await waitFor(() => {
@@ -594,7 +596,7 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     renderComponent(modalRef, {}, openModalProps, richTextEditorRef);
 
     const openButton = screen.getByTestId(OPEN_BUTTON_ID);
-    await userEvent.click(openButton);
+    await browser.click(openButton);
 
     // Wait for form to rehydrate from cache
     await waitFor(() => {
@@ -621,13 +623,13 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     );
 
     const openButton = screen.getByTestId(OPEN_BUTTON_ID);
-    await userEvent.click(openButton);
+    await browser.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
     const contentInput = getContentInput();
-    await userEvent.clear(titleInput);
-    await userEvent.type(titleInput, 'Edited Title');
-    await userEvent.type(contentInput!, 'Edited Content');
+    await browser.clear(titleInput);
+    await browser.type(titleInput, 'Edited Title');
+    await browser.type(contentInput!, 'Edited Content');
 
     expect(saveFormSpy).toHaveBeenCalled();
 
@@ -643,21 +645,21 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     renderComponent(modalRef);
 
     const openButton = screen.getByTestId(OPEN_BUTTON_ID);
-    await userEvent.click(openButton);
+    await browser.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
     const contentInput = getContentInput();
     const newTitle = 'New Note Title';
     const newContent = 'New Note Content';
 
-    await userEvent.type(titleInput, newTitle);
-    await userEvent.type(contentInput!, newContent);
+    await browser.type(titleInput, newTitle);
+    await browser.type(contentInput!, newContent);
 
     const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
-    await userEvent.click(submitButton);
+    await browser.click(submitButton);
 
     // Reopen modal
-    await userEvent.click(openButton);
+    await browser.click(openButton);
 
     // Check that form data is cleared
     expect(screen.getByTestId(TITLE_INPUT_ID)).toHaveValue('');
@@ -684,10 +686,10 @@ describe('CaseNoteFormModal - Simple Tests', () => {
       );
 
       const openButton = screen.getByTestId(OPEN_BUTTON_ID);
-      await userEvent.click(openButton);
+      await browser.click(openButton);
       const cancelButton = screen.getByTestId(CANCEL_BUTTON_ID);
       expect(cancelButton).toBeVisible();
-      await userEvent.click(cancelButton);
+      await browser.click(cancelButton);
       expect(onModalClosedSpy).toHaveBeenCalledWith(TEST_CASE_ID, mode);
     },
   );

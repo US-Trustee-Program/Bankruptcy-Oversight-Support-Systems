@@ -11,7 +11,7 @@ import testingUtilities from '@/lib/testing/testing-utilities';
 import Api2 from '@/lib/models/api2';
 import { REGION_02_GROUP_NY } from '@common/cams/test-utilities/mock-user';
 import AssignAttorneyModal from './AssignAttorneyModal';
-import userEvent from '@testing-library/user-event';
+import userEvent, { UserEvent } from '@testing-library/user-event';
 
 const offices = [REGION_02_GROUP_NY!];
 const susan = MockData.getAttorneyUser({ name: 'Susan Arbeit', offices });
@@ -30,6 +30,7 @@ const modalId = 'some-modal-id';
 
 describe('Test Assign Attorney Modal Component', () => {
   let callback = vi.fn();
+  let browser: UserEvent;
 
   const attorneyListResponse: ResponseBody<AttorneyUser[]> = {
     meta: { self: 'self-url' },
@@ -67,6 +68,7 @@ describe('Test Assign Attorney Modal Component', () => {
   beforeEach(() => {
     vi.spyOn(Api2, 'getOfficeAttorneys').mockResolvedValue(attorneyListResponse);
     callback = vi.fn();
+    browser = userEvent.setup();
   });
 
   afterEach(() => {
@@ -97,7 +99,7 @@ describe('Test Assign Attorney Modal Component', () => {
     const modal = screen.getByTestId(`modal-${modalId}`);
     const submitButton = screen.getByTestId(`button-${modalId}-submit-button`);
 
-    await userEvent.click(button);
+    await browser.click(button);
 
     await waitFor(() => {
       expect(modal).toHaveClass('is-visible');
@@ -159,7 +161,7 @@ describe('Test Assign Attorney Modal Component', () => {
     const modal = screen.getByTestId(`modal-${modalId}`);
 
     const submitButton = screen.getByTestId(`button-${modalId}-submit-button`);
-    await userEvent.click(button);
+    await browser.click(button);
 
     await waitFor(() => {
       expect(modal).toHaveClass('is-visible');
@@ -168,7 +170,7 @@ describe('Test Assign Attorney Modal Component', () => {
     await testingUtilities.selectCheckbox('1-checkbox');
     await testingUtilities.selectCheckbox('2-checkbox');
     await testingUtilities.selectCheckbox('3-checkbox');
-    await userEvent.click(submitButton);
+    await browser.click(submitButton);
 
     const expectedAttorneys = attorneyList
       .sort((a, b) => {
@@ -272,7 +274,7 @@ describe('Test Assign Attorney Modal Component', () => {
     await testingUtilities.selectCheckbox('1-checkbox');
     await testingUtilities.selectCheckbox('2-checkbox');
     await testingUtilities.selectCheckbox('3-checkbox');
-    await userEvent.click(submitButton);
+    await browser.click(submitButton);
 
     await waitFor(() => {
       expect(callback).toHaveBeenCalledWith(

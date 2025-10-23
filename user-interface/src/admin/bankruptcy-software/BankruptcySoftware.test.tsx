@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import userEvent, { UserEvent } from '@testing-library/user-event';
 import { BankruptcySoftware } from './BankruptcySoftware';
 import Api2 from '@/lib/models/api2';
 import testingUtilities from '@/lib/testing/testing-utilities';
@@ -27,13 +27,14 @@ function createMockBankruptcySoftwareList(): BankruptcySoftwareList {
 }
 
 describe('BankruptcySoftware Component Tests', () => {
-  const user = userEvent.setup();
   let mockSoftwareList: BankruptcySoftwareList;
+  let browser: UserEvent;
 
   beforeEach(() => {
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
 
     mockSoftwareList = createMockBankruptcySoftwareList();
+    browser = userEvent.setup();
 
     vi.spyOn(Api2, 'getBankruptcySoftwareList').mockResolvedValue({
       data: mockSoftwareList,
@@ -122,7 +123,7 @@ describe('BankruptcySoftware Component Tests', () => {
 
     expect(saveButton).toBeDisabled();
 
-    await user.type(input, 'New Software');
+    await browser.type(input, 'New Software');
 
     expect(saveButton).not.toBeDisabled();
   });
@@ -136,7 +137,7 @@ describe('BankruptcySoftware Component Tests', () => {
 
     const input = screen.getByLabelText('Add New Software') as HTMLInputElement;
 
-    await user.type(input, 'Test Software');
+    await browser.type(input, 'Test Software');
 
     expect(input.value).toBe('Test Software');
   });
@@ -153,8 +154,8 @@ describe('BankruptcySoftware Component Tests', () => {
     const input = screen.getByLabelText('Add New Software');
     const saveButton = screen.getByRole('button', { name: 'Add Software' });
 
-    await user.clear(input);
-    await user.click(saveButton);
+    await browser.clear(input);
+    await browser.click(saveButton);
 
     expect(globalAlertSpy.warning).toHaveBeenCalledWith('Software name cannot be empty.');
   });
@@ -173,8 +174,8 @@ describe('BankruptcySoftware Component Tests', () => {
     const input = screen.getByLabelText('Add New Software');
     const saveButton = screen.getByRole('button', { name: 'Add Software' });
 
-    await user.type(input, 'New Bankruptcy Software');
-    await user.click(saveButton);
+    await browser.type(input, 'New Bankruptcy Software');
+    await browser.click(saveButton);
 
     const payload: Creatable<BankruptcySoftwareListItem> = {
       list: 'bankruptcy-software' as const,
@@ -200,10 +201,10 @@ describe('BankruptcySoftware Component Tests', () => {
     const input = screen.getByLabelText('Add New Software') as HTMLInputElement;
     const saveButton = screen.getByRole('button', { name: 'Add Software' });
 
-    await user.type(input, 'Test Software');
+    await browser.type(input, 'Test Software');
     expect(input.value).toBe('Test Software');
 
-    await user.click(saveButton);
+    await browser.click(saveButton);
 
     await waitFor(() => {
       expect(input.value).toBe('');
@@ -223,8 +224,8 @@ describe('BankruptcySoftware Component Tests', () => {
     const input = screen.getByLabelText('Add New Software');
     const saveButton = screen.getByRole('button', { name: 'Add Software' });
 
-    await user.type(input, '   Trimmed Software   ');
-    await user.click(saveButton);
+    await browser.type(input, '   Trimmed Software   ');
+    await browser.click(saveButton);
 
     const payload: Creatable<BankruptcySoftwareListItem> = {
       list: 'bankruptcy-software' as const,
@@ -251,7 +252,7 @@ describe('BankruptcySoftware Component Tests', () => {
     expect(saveButton).toBeDisabled();
 
     // Type spaces only
-    await user.type(input, '   ');
+    await browser.type(input, '   ');
 
     // Should still be disabled with only whitespace
     expect(saveButton).toBeDisabled();
@@ -273,8 +274,8 @@ describe('BankruptcySoftware Component Tests', () => {
     const input = screen.getByLabelText('Add New Software');
     const saveButton = screen.getByRole('button', { name: 'Add Software' });
 
-    await user.type(input, 'Test Software');
-    await user.click(saveButton);
+    await browser.type(input, 'Test Software');
+    await browser.click(saveButton);
 
     const payload: Creatable<BankruptcySoftwareListItem> = {
       list: 'bankruptcy-software' as const,
@@ -329,8 +330,8 @@ describe('BankruptcySoftware Component Tests', () => {
     const input = screen.getByLabelText('Add New Software');
     const saveButton = screen.getByRole('button', { name: 'Add Software' });
 
-    await user.type(input, 'Newly Added Software');
-    await user.click(saveButton);
+    await browser.type(input, 'Newly Added Software');
+    await browser.click(saveButton);
 
     // Verify data was reloaded
     expect(getBankruptcySoftwareListSpy).toHaveBeenCalledTimes(2);
@@ -360,7 +361,7 @@ describe('BankruptcySoftware Component Tests', () => {
     });
 
     const deleteButton = screen.getByTestId('button-delete-button-1');
-    await user.click(deleteButton);
+    await browser.click(deleteButton);
 
     expect(confirmSpy).toHaveBeenCalledWith('Are you sure you want to delete NextChapter?');
 
@@ -380,7 +381,7 @@ describe('BankruptcySoftware Component Tests', () => {
     });
 
     const deleteButton = screen.getByTestId('button-delete-button-1');
-    await user.click(deleteButton);
+    await browser.click(deleteButton);
 
     expect(confirmSpy).toHaveBeenCalledWith('Are you sure you want to delete NextChapter?');
     expect(deleteSpy).toHaveBeenCalledWith('1');
@@ -406,7 +407,7 @@ describe('BankruptcySoftware Component Tests', () => {
     });
 
     const deleteButton = screen.getByTestId('button-delete-button-1');
-    await user.click(deleteButton);
+    await browser.click(deleteButton);
 
     expect(confirmSpy).toHaveBeenCalledWith('Are you sure you want to delete NextChapter?');
     expect(deleteSpy).toHaveBeenCalledWith('1');

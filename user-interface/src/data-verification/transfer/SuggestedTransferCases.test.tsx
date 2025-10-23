@@ -98,7 +98,8 @@ async function enterCaseNumber(caseIdInput: Element | null | undefined, value: s
 
 async function selectItemInCombobox(orderId: string, index: number) {
   const courtComboboxItems = document.querySelectorAll(`#court-selection-${orderId} li`);
-  await userEvent.click(courtComboboxItems[index]!);
+  const browser = userEvent.setup();
+  await browser.click(courtComboboxItems[index]!);
 }
 
 async function fillCaseNotListedForm(

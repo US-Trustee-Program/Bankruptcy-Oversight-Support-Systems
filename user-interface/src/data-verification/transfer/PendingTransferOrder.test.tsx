@@ -11,7 +11,7 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import Api2 from '@/lib/models/api2';
-import userEvent from '@testing-library/user-event';
+import userEvent, { UserEvent } from '@testing-library/user-event';
 
 const fromCaseSummary = MockData.getCaseSummary();
 const toCaseSummary = MockData.getCaseSummary();
@@ -85,6 +85,7 @@ const mockTransferOrder = {
 describe('PendingTransferOrder component', () => {
   describe('for suggested cases', () => {
     let order: TransferOrder;
+    let browser: UserEvent;
 
     function renderWithProps(props?: Partial<PendingTransferOrderProps>) {
       const onOrderUpdate = vitest.fn();
@@ -107,6 +108,7 @@ describe('PendingTransferOrder component', () => {
     }
 
     beforeEach(async () => {
+      browser = userEvent.setup();
       vi.stubEnv('CAMS_USE_FAKE_API', 'true');
       order = { ...mockTransferOrder };
       vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue(mockGetCaseSummary);
@@ -142,7 +144,7 @@ describe('PendingTransferOrder component', () => {
         throw Error();
       }
 
-      await userEvent.click(case0);
+      await browser.click(case0);
 
       await waitFor(() => {
         expect(approveButton).toBeEnabled();
@@ -165,7 +167,7 @@ describe('PendingTransferOrder component', () => {
         throw Error();
       }
 
-      await userEvent.click(case0);
+      await browser.click(case0);
       const case0RadioBtn = screen.getByTestId('radio-suggested-cases-checkbox-0');
       expect(case0RadioBtn).toBeChecked();
 
@@ -185,6 +187,11 @@ describe('PendingTransferOrder component', () => {
 
   describe('for manually entered court and case number', () => {
     let order: TransferOrder;
+    let browser: UserEvent;
+
+    beforeEach(async () => {
+      browser = userEvent.setup();
+    });
 
     function renderWithProps(props?: Partial<PendingTransferOrderProps>) {
       const onOrderUpdate = vitest.fn();
@@ -208,7 +215,7 @@ describe('PendingTransferOrder component', () => {
 
     async function selectItemInCombobox(orderId: string, index: number) {
       const courtComboboxItems = document.querySelectorAll(`#court-selection-${orderId} li`);
-      await userEvent.click(courtComboboxItems[index]!);
+      await browser.click(courtComboboxItems[index]!);
     }
 
     function findCaseNumberInput(id: string) {
@@ -276,7 +283,7 @@ describe('PendingTransferOrder component', () => {
         approveButton = screen.getByTestId(`button-accordion-approve-button-${order.id}`);
         expect(approveButton).toBeEnabled();
       });
-      await userEvent.click(approveButton!);
+      await browser.click(approveButton!);
 
       let confirmModal: HTMLElement;
       await waitFor(async () => {
@@ -286,7 +293,7 @@ describe('PendingTransferOrder component', () => {
         expect(confirmModal).toBeInTheDocument();
         expect(confirmModal).toBeVisible();
       });
-      await userEvent.click(confirmModal!);
+      await browser.click(confirmModal!);
 
       await waitFor(async () => {
         expect(onOrderUpdate).toHaveBeenCalled();

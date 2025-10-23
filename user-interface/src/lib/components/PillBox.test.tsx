@@ -1,10 +1,12 @@
 import { fireEvent, render } from '@testing-library/react';
 import PillBox from './PillBox';
 import { ComboOption } from './combobox/ComboBox';
-import userEvent from '@testing-library/user-event';
+import userEvent, { UserEvent } from '@testing-library/user-event';
 
 describe('Tests for Pill Box', () => {
   let testSelections: ComboOption[] = [];
+  let browser: UserEvent;
+
   beforeEach(() => {
     testSelections = [
       {
@@ -20,6 +22,7 @@ describe('Tests for Pill Box', () => {
         value: 'p2',
       },
     ];
+    browser = userEvent.setup();
   });
 
   test('Should disable pills when disabled property is set', async () => {
@@ -84,7 +87,7 @@ describe('Tests for Pill Box', () => {
     expect(pill1).toBeInTheDocument();
     expect(pill2).toBeInTheDocument();
 
-    await userEvent.click(pill2 as HTMLElement);
+    await browser.click(pill2 as HTMLElement);
     expect(pill1).toHaveFocus();
     expect(selectionChange).toHaveBeenCalledWith(resultSelections);
   });
@@ -165,7 +168,7 @@ describe('Tests for Pill Box', () => {
     );
 
     const pill0 = document.querySelector('#pill-test-pillbox-0');
-    await userEvent.click(pill0!);
+    await browser.click(pill0!);
 
     await vi.waitFor(() => {
       expect(selectionChange).toHaveBeenCalledWith([

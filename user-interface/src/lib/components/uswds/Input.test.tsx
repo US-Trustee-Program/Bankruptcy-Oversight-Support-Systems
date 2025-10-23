@@ -2,7 +2,7 @@ import React from 'react';
 import { fireEvent, render, screen, act } from '@testing-library/react';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import Input from './Input';
-import userEvent from '@testing-library/user-event';
+import userEvent, { UserEvent } from '@testing-library/user-event';
 
 describe('Tests for USWDS Input component.', () => {
   const ref = React.createRef<InputRef>();
@@ -83,6 +83,11 @@ describe('Test error handling', () => {
 
 describe('Tests for USWDS Input component when no value is initially set.', () => {
   const ref = React.createRef<InputRef>();
+  let browser: UserEvent;
+
+  beforeEach(() => {
+    browser = userEvent.setup();
+  });
 
   test('Should change value to empty string when props.input is not set and ref.setValue() is called.', async () => {
     render(
@@ -148,7 +153,7 @@ describe('Tests for USWDS Input component when no value is initially set.', () =
       clearButton = screen.queryByTestId('button-clear-input-1');
       expect(clearButton).not.toBeInTheDocument();
 
-      await userEvent.type(inputEl, 'test input');
+      await browser.type(inputEl, 'test input');
 
       clearButton = screen.queryByTestId('button-clear-input-1');
       expect(clearButton).toBeInTheDocument();
@@ -160,8 +165,10 @@ describe('Input additional coverage tests', () => {
   const ref = React.createRef<InputRef>();
   const mockOnChange = vi.fn();
   const mockOnFocus = vi.fn();
+  let browser: UserEvent;
 
   beforeEach(() => {
+    browser = userEvent.setup();
     vi.clearAllMocks();
   });
 
@@ -248,7 +255,7 @@ describe('Input additional coverage tests', () => {
     expect(clearButton).toBeInTheDocument();
     expect(inputEl).toHaveValue('some text');
 
-    await userEvent.click(clearButton);
+    await browser.click(clearButton);
 
     expect(inputEl).toHaveValue('');
     expect(inputEl).toHaveFocus();

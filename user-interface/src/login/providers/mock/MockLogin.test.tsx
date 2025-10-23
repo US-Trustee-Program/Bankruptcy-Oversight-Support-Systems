@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import testingUtilities from '@/lib/testing/testing-utilities';
-import userEvent from '@testing-library/user-event';
+import userEvent, { UserEvent } from '@testing-library/user-event';
 import { MockLogin } from './MockLogin';
 import * as SessionModule from '@/login/Session';
 import { SessionProps } from '@/login/Session';
@@ -25,8 +25,11 @@ describe('MockLogin', () => {
     return <>{props.children}</>;
   });
 
+  let browser: UserEvent;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    browser = userEvent.setup();
   });
 
   test('should show modal when no session exists', async () => {
@@ -79,7 +82,7 @@ describe('MockLogin', () => {
 
     const loginButton = screen.queryByTestId('button-login-modal-submit-button');
     expect(loginButton).toBeInTheDocument();
-    await userEvent.click(loginButton!);
+    await browser.click(loginButton!);
 
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(errorSpy).toHaveBeenCalled();
@@ -100,7 +103,7 @@ describe('MockLogin', () => {
 
     const loginButton = screen.queryByTestId('button-login-modal-submit-button');
     expect(loginButton).toBeInTheDocument();
-    await userEvent.click(loginButton!);
+    await browser.click(loginButton!);
 
     expect(fetchSpy).toHaveBeenCalled();
 
@@ -135,7 +138,7 @@ describe('MockLogin', () => {
 
     const loginButton = screen.queryByTestId('button-login-modal-submit-button');
     expect(loginButton).toBeInTheDocument();
-    await userEvent.click(loginButton!);
+    await browser.click(loginButton!);
 
     expect(fetchSpy).toHaveBeenCalled();
     await waitFor(() => {
@@ -156,7 +159,7 @@ describe('MockLogin', () => {
     expect(loginButton).toBeInTheDocument();
     expect(loginButton).toBeDisabled();
 
-    await userEvent.click(loginButton!);
+    await browser.click(loginButton!);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 });
