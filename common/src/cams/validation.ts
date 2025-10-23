@@ -78,9 +78,20 @@ export function validateKey<T = unknown>(
   }
 }
 
-export function mergeValidatorResults(left: ValidatorResult, _right: ValidatorResult) {
-  // TODO: merge these puppies
-  return left;
+export function mergeValidatorResults(
+  left: ValidatorResult,
+  right: ValidatorResult,
+): ValidatorResult {
+  if (left.valid && right.valid) {
+    return VALID;
+  }
+  if (!right.valid && left.valid) {
+    return right;
+  }
+  if (!left.valid && right.valid) {
+    return left;
+  }
+  return { reasons: ['TDB - Merge not implemented'] };
 }
 
 /**
