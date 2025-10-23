@@ -62,7 +62,6 @@ function PhoneNumberInput_(props: PhoneNumberInputProps, ref: React.Ref<InputRef
         ev.target.value = formattedPhoneNumber;
         props.onChange?.(ev);
       }}
-      includeClearButton={true}
       ariaDescription="Example: 123-456-7890"
       type="tel"
       inputMode="numeric"
