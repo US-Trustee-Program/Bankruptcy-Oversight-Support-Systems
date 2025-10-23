@@ -15,7 +15,7 @@ import * as UseApi2Module from '@/lib/hooks/UseApi2';
 import { Trustee, TrusteeInput } from '@common/cams/trustees';
 import * as NavigatorModule from '@/lib/hooks/UseCamsNavigator';
 import MockData from '@common/cams/test-utilities/mock-data';
-import { TrusteePublicFormData } from './TrusteeSpecs';
+import { TrusteePublicFormData } from './trusteeForms.specs';
 import * as Validation from '@common/cams/validation';
 import * as useCamsNavigatorModule from '@/lib/hooks/UseCamsNavigator';
 
@@ -436,7 +436,6 @@ describe('TrusteePublicContactForm Tests', () => {
 
   test('validateField returns null for a field not in spec (covers else branch)', () => {
     const unknownField = 'notASpecField' as unknown as keyof TrusteePublicFormData;
-    const res = validateField(unknownField, 'some value');
-    expect(res).toBeNull();
+    expect(validateField(unknownField, 'some value')).toBeNull();
   });
 });
