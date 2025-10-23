@@ -9,6 +9,7 @@ import {
   ValidationSpec,
   ValidatorFunction,
   ValidatorResult,
+  mergeValidatorResults,
 } from './validation';
 import Validators from './validators';
 
@@ -32,6 +33,18 @@ type TestPerson = {
 };
 
 describe('validation', () => {
+  describe('mergeValidatorResults', () => {
+    test('should merge two valid results', () => {
+      expect(mergeValidatorResults(VALID, VALID)).toEqual(VALID);
+    });
+
+    test('should return the invalid result if either side is valid', () => {
+      const bad = { reasons: ['Bad'] };
+      expect(mergeValidatorResults(bad, VALID)).toEqual(bad);
+      expect(mergeValidatorResults(VALID, bad)).toEqual(bad);
+    });
+  });
+
   describe('$ validation', () => {
     test('should validate using $ key in ValidationSpec', () => {
       const compoundFunction: ValidatorFunction = (value: TestPerson): ValidatorResult => {
