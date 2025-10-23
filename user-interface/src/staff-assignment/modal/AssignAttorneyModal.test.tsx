@@ -88,12 +88,12 @@ describe('Test Assign Attorney Modal Component', () => {
     });
     bCase.assignments = [];
 
-    act(() => {
+    act(() =>
       modalRef.current?.show({
         bCase,
         callback,
-      });
-    });
+      }),
+    );
 
     const button = screen.getByTestId('open-modal-button');
     const modal = screen.getByTestId(`modal-${modalId}`);
@@ -151,12 +151,12 @@ describe('Test Assign Attorney Modal Component', () => {
     const modalRef = React.createRef<AssignAttorneyModalRef>();
     renderWithProps(modalRef, { assignmentChangeCallback });
 
-    act(() => {
+    act(() =>
       modalRef.current?.show({
         callback,
         bCase: mockCase,
-      });
-    });
+      }),
+    );
     const button = screen.getByTestId('open-modal-button');
     const modal = screen.getByTestId(`modal-${modalId}`);
 
@@ -218,7 +218,7 @@ describe('Test Assign Attorney Modal Component', () => {
     const modalRef = React.createRef<AssignAttorneyModalRef>();
     renderWithProps(modalRef);
 
-    act(() => {
+    act(() =>
       modalRef.current?.show({
         callback,
         bCase: MockData.getCaseBasics({
@@ -228,17 +228,15 @@ describe('Test Assign Attorney Modal Component', () => {
             dateFiled: '2024-01-01',
           },
         }),
-      });
-    });
+      }),
+    );
 
     const modal = screen.getByTestId(`modal-${modalId}`);
     await waitFor(() => {
       expect(modal).toHaveClass('is-visible');
     });
 
-    act(() => {
-      modalRef.current?.hide();
-    });
+    act(() => modalRef.current?.hide());
     await waitFor(() => {
       expect(modal).not.toHaveClass('is-visible');
     });
@@ -251,7 +249,7 @@ describe('Test Assign Attorney Modal Component', () => {
     const modalRef = React.createRef<AssignAttorneyModalRef>();
     renderWithProps(modalRef, {});
 
-    act(() => {
+    act(() =>
       modalRef.current?.show({
         callback,
         bCase: MockData.getCaseBasics({
@@ -261,8 +259,8 @@ describe('Test Assign Attorney Modal Component', () => {
             dateFiled: '2024-01-01',
           },
         }),
-      });
-    });
+      }),
+    );
     const modal = screen.getByTestId(`modal-${modalId}`);
 
     const submitButton = screen.getByTestId(`button-${modalId}-submit-button`);
@@ -294,7 +292,7 @@ describe('Test Assign Attorney Modal Component', () => {
     const modalRef = React.createRef<AssignAttorneyModalRef>();
     renderWithProps(modalRef, {});
 
-    act(() => {
+    act(() =>
       modalRef.current?.show({
         callback,
         bCase: MockData.getCaseBasics({
@@ -304,8 +302,8 @@ describe('Test Assign Attorney Modal Component', () => {
             dateFiled: '2024-01-01',
           },
         }),
-      });
-    });
+      }),
+    );
 
     await waitFor(() => {
       expect(alertSpy.error).toHaveBeenCalled();

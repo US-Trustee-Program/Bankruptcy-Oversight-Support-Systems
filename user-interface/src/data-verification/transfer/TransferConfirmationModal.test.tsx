@@ -42,11 +42,11 @@ describe('TransferConfirmationModal component', () => {
   test('should call onCancel callback when cancelled', async () => {
     const { onCancel, modalRef } = renderWithProps();
 
-    act(() => {
+    act(() =>
       modalRef.current?.show({
         status: 'approved',
-      });
-    });
+      }),
+    );
 
     const cancelButton = screen.getByTestId(`button-confirm-modal-${modalId}-cancel-button`);
 
@@ -64,11 +64,11 @@ describe('TransferConfirmationModal component', () => {
   test('should call onConfirm callback when approved', async () => {
     const { onConfirm, modalRef } = renderWithProps();
 
-    act(() => {
+    act(() =>
       modalRef.current?.show({
         status: 'approved',
-      });
-    });
+      }),
+    );
 
     const confirmButton = screen.getByTestId(`button-confirm-modal-${modalId}-submit-button`);
 
@@ -87,11 +87,11 @@ describe('TransferConfirmationModal component', () => {
     const expectedText = `This will verify the transfer of case ${getCaseNumber(fromCase.caseId)} in ${fromCase.courtName} (${fromCase.courtDivisionName}) to case ${getCaseNumber(toCase.caseId)} in ${toCase.courtName} (${toCase.courtDivisionName}).`;
     const { modalRef } = renderWithProps();
 
-    act(() => {
+    act(() =>
       modalRef.current?.show({
         status: 'approved',
-      });
-    });
+      }),
+    );
 
     await waitFor(() => {
       const titleBlock = document.querySelector('.usa-modal__heading');
@@ -110,11 +110,11 @@ describe('TransferConfirmationModal component', () => {
       toDivisionName: undefined,
     });
 
-    act(() => {
+    act(() =>
       modalRef.current?.show({
         status: 'rejected',
-      });
-    });
+      }),
+    );
 
     const textBlock = document.querySelector('.usa-modal__main section');
     await waitFor(() => {
@@ -126,11 +126,11 @@ describe('TransferConfirmationModal component', () => {
     const expectedText = `This will stop the transfer of case ${getCaseNumber(fromCase.caseId)} in ${fromCase.courtName} (${fromCase.courtDivisionName}) to case ${getCaseNumber(toCase.caseId)} in ${toCase.courtName} (${toCase.courtDivisionName}).`;
     const { modalRef, onConfirm } = renderWithProps();
 
-    act(() => {
+    act(() =>
       modalRef.current?.show({
         status: 'rejected',
-      });
-    });
+      }),
+    );
 
     await waitFor(() => {
       const titleBlock = document.querySelector('.usa-modal__heading');

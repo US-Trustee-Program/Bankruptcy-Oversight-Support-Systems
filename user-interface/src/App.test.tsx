@@ -7,9 +7,7 @@ import * as HeaderModule from './lib/components/Header';
 describe('App', () => {
   function scrollTo(position: number) {
     Object.defineProperty(window, 'scrollY', { value: position, writable: true });
-    act(() => {
-      window.dispatchEvent(new Event('scroll'));
-    });
+    act(() => window.dispatchEvent(new Event('scroll')));
   }
 
   function renderWithoutProps() {
