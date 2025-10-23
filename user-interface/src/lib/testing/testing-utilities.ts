@@ -160,6 +160,7 @@ export const TestingUtilities = {
   selectRadio,
   toggleComboBoxItemSelection,
   waitForDocumentBody,
+  clearComboBoxSelection,
 };
 
 export default TestingUtilities;
