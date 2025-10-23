@@ -1,6 +1,7 @@
 /********************************************************************************
  * Core Validation Library Types and Functions
  ********************************************************************************/
+import {deepMerge} from "@typescript-eslint/eslint-plugin/dist/util";
 
 export type ValidatorResult = {
   valid?: true;
@@ -10,9 +11,11 @@ export type ValidatorResult = {
 
 export type ValidatorFunction = (value: unknown) => ValidatorResult;
 
+type UnionRoot<T> = T & { $: unknown };
+
 export type ValidationSpec<T> = {
-  [K in keyof T]?: T[K] extends object
-    ? ValidatorFunction[] | ValidationSpec<T[K]>
+  [K in keyof UnionRoot<T>]?: UnionRoot<T>[K] extends object
+    ? ValidatorFunction[] | ValidationSpec<UnionRoot<T>[K]>
     : ValidatorFunction[];
 };
 
@@ -48,7 +51,7 @@ export function validateEach(functions: ValidatorFunction[], value: unknown): Va
   if (reasons[0].reasonMap) {
     return reasons[0];
   } else {
-    return { reasons: reasons.map((r) => r.reasons).flat() };
+    return { reasons: reasons.flatMap((r) => r.reasons) };
   }
 }
 
@@ -62,8 +65,8 @@ export function validateEach(functions: ValidatorFunction[], value: unknown): Va
  * @param obj - The object containing the property to be validated
  * @returns {ValidatorResult} An object containing validation status and reasons for failure
  */
-export function validateKey(
-  spec: ValidationSpec<unknown>,
+export function validateKey<T = unknown>(
+  spec: ValidationSpec<T>,
   key: string,
   obj: unknown,
 ): ValidatorResult {
@@ -74,6 +77,11 @@ export function validateKey(
   } else {
     return VALID;
   }
+}
+
+export function mergeValidatorResults(left: ValidatorResult, _right: ValidatorResult) {
+  // TODO: merge these puppies
+  return left;
 }
 
 /**
@@ -94,15 +102,30 @@ export function validateObject(spec: ValidationSpec<unknown>, obj: unknown): Val
     return { reasons: ['No validation specification provided'] };
   }
 
-  const reasonMap = Object.keys(spec).reduce((acc, key) => {
-    const result = validateKey(spec, key, obj);
+  const reasonMap: ValidatorResult = Object.keys(spec).reduce((acc, key) => {
+    const result =
+      key === '$'
+        ? validateEach(spec['$'], obj)
+        : validateKey(spec, key, obj);
     if (!result.valid) {
       acc[key] = result;
     }
     return acc;
   }, {});
 
-  return Object.keys(reasonMap).length > 0 ? { reasonMap } : VALID;
+  const $reasonMap = reasonMap['$']['reasonMap'];
+
+  if ($reasonMap) {
+    for (const key of Object.keys($reasonMap)) {
+      if (key in reasonMap) {
+        // TODO: How to merge $ reason map with the reasonmap from above?
+      } else {
+        reasonMap[key] = $reasonMap[key];
+      }
+    }
+  }
+
+  return Object.keys(reasonMap).length > 0 ? { reasonMap } as ValidatorResult : VALID;
 }
 
 export function flattenReasonMap(
