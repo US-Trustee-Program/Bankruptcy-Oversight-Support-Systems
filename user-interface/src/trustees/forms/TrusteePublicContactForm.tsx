@@ -15,7 +15,7 @@ import { Stop } from '@/lib/components/Stop';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import { TrusteeInput } from '@common/cams/trustees';
 import { normalizeWebsiteUrl } from '@common/cams/regex';
-import { TRUSTEE_PUBLIC_SPEC, TrusteePublicFormData } from './TrusteeSpecs';
+import { TRUSTEE_PUBLIC_SPEC, TrusteePublicFormData } from './trusteeForms.specs';
 import { flattenReasonMap, validateEach, validateObject } from '@common/cams/validation';
 
 const getInitialFormData = (info: Partial<TrusteeInput> | undefined): TrusteePublicFormData => {
@@ -76,10 +76,9 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
   const navigate = useCamsNavigator();
 
   const mapPayload = (formData: TrusteePublicFormData): Partial<TrusteeInput> => {
-    // Normalize website URL by adding protocol if missing
     const normalizedWebsite = normalizeWebsiteUrl(formData.website);
 
-    const payload = {
+    return {
       name: formData.name,
       public: {
         address: {
@@ -95,8 +94,6 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
         ...(normalizedWebsite && normalizedWebsite.length > 0 && { website: normalizedWebsite }),
       },
     } as TrusteeInput;
-
-    return payload;
   };
 
   const getFormData = () => {
@@ -150,7 +147,7 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
     }
   };
 
-  const requiredFields: Array<keyof TrusteePublicFormData> = [
+  const requiredFields: Set<keyof TrusteePublicFormData> = new Set([
     'name',
     'address1',
     'city',
@@ -158,10 +155,10 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
     'zipCode',
     'phone',
     'email',
-  ];
+  ]);
 
   const isRequired = (field: keyof TrusteePublicFormData): { required?: true } => {
-    return requiredFields.includes(field) ? { required: true } : {};
+    return requiredFields.has(field) ? { required: true } : {};
   };
 
   const handleFieldChange = (event: React.ChangeEvent<HTMLInputElement>) => {

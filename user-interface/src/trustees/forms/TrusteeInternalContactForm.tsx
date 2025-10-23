@@ -14,7 +14,7 @@ import useDebounce from '@/lib/hooks/UseDebounce';
 import { Stop } from '@/lib/components/Stop';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import { TrusteeInput } from '@common/cams/trustees';
-import { TRUSTEE_INTERNAL_SPEC, TrusteeInternalFormData } from './TrusteeSpecs';
+import { TRUSTEE_INTERNAL_SPEC, TrusteeInternalFormData } from './trusteeForms.specs';
 import {
   flattenReasonMap,
   validateEach,
@@ -104,10 +104,6 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
     }
   };
 
-  /**
-   * Dynamically creates a validation spec based on form state
-   * Particularly useful for internal profile editing where certain fields may not be required
-   */
   const getDynamicSpec = (currentFormData: TrusteeInternalFormData) => {
     const spec: Partial<ValidationSpec<TrusteeInternalFormData>> = { ...TRUSTEE_INTERNAL_SPEC };
 
@@ -132,7 +128,6 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
       delete spec.email;
     }
 
-    // Optional fields
     if (!currentFormData.address2) {
       delete spec.address2;
     }
@@ -245,7 +240,6 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
     value: string,
     spec: Partial<typeof TRUSTEE_INTERNAL_SPEC>,
   ): string | null {
-    // Convert to string and trim
     const stringValue = String(value);
     const trimmedValue = stringValue.trim();
 
