@@ -70,9 +70,7 @@ describe('AddCaseModal', () => {
 
   test('should set the selected court division equal to the default division code', async () => {
     const { ref, viewModel } = renderWithProps({ defaultDivisionCode: '081' });
-    act(() => {
-      ref.current!.show({});
-    });
+    act(() => ref.current!.show({}));
     await waitFor(() => {
       expect(viewModel.additionalCaseDivisionRef.current!.getSelections()).toEqual([
         { value: '081', label: 'label' },
@@ -82,9 +80,7 @@ describe('AddCaseModal', () => {
 
   test('should not set a court division if the default division code is bad', async () => {
     const { ref, viewModel } = renderWithProps({ defaultDivisionCode: 'bad' });
-    act(() => {
-      ref.current!.show({});
-    });
+    act(() => ref.current!.show({}));
     await waitFor(() => {
       expect(viewModel.additionalCaseDivisionRef.current!.getSelections()).toEqual([]);
     });
@@ -92,9 +88,7 @@ describe('AddCaseModal', () => {
 
   test('should delegate reset to the view model', async () => {
     const { ref } = renderWithProps();
-    act(() => {
-      ref.current!.hide(true);
-    });
+    act(() => ref.current!.hide(true));
     expect(handleAddCaseReset).toHaveBeenCalled();
   });
 

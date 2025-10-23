@@ -25,9 +25,7 @@ describe('GlobalAlert', () => {
       </BrowserRouter>,
     );
     const errorButton = screen.getByText('Show Error');
-    act(() => {
-      errorButton.click();
-    });
+    act(() => errorButton.click());
 
     const alert = await screen.findByTestId('alert');
     expect(alert).toHaveTextContent('Test error');
@@ -41,9 +39,7 @@ describe('GlobalAlert', () => {
       </BrowserRouter>,
     );
     const infoButton = screen.getByText('Show Info');
-    act(() => {
-      infoButton.click();
-    });
+    act(() => infoButton.click());
 
     const alert = await screen.findByTestId('alert');
     expect(alert).toHaveTextContent('Test info');
@@ -57,9 +53,7 @@ describe('GlobalAlert', () => {
       </BrowserRouter>,
     );
     const successButton = screen.getByText('Show Success');
-    act(() => {
-      successButton.click();
-    });
+    act(() => successButton.click());
 
     const alert = await screen.findByTestId('alert');
     expect(alert).toHaveTextContent('Test success');
@@ -73,9 +67,7 @@ describe('GlobalAlert', () => {
       </BrowserRouter>,
     );
     const warningButton = screen.getByText('Show Warning');
-    act(() => {
-      warningButton.click();
-    });
+    act(() => warningButton.click());
 
     const alert = await screen.findByTestId('alert');
     expect(alert).toHaveTextContent('Test warning');
@@ -109,9 +101,7 @@ describe('GlobalAlert', () => {
       </BrowserRouter>,
     );
     const customButton = screen.getByText('Show Custom');
-    act(() => {
-      customButton.click();
-    });
+    act(() => customButton.click());
 
     const alert = await screen.findByTestId('alert');
     expect(alert).toHaveTextContent('Custom alert');
@@ -126,9 +116,7 @@ describe('GlobalAlert', () => {
       </BrowserRouter>,
     );
     const errorButton = screen.getByText('Show Error');
-    act(() => {
-      errorButton.click();
-    });
+    act(() => errorButton.click());
 
     const alertContainer = screen.getByTestId('alert-container');
     expect(alertContainer).toHaveClass('visible');

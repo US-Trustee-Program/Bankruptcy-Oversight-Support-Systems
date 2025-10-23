@@ -66,16 +66,10 @@ describe('Test button component', () => {
 
     expect(button).not.toHaveAttribute('disabled');
 
-    act(() => {
-      buttonRef.current?.disableButton(true);
-    });
-
+    act(() => buttonRef.current?.disableButton(true));
     expect(button).toHaveAttribute('disabled');
 
-    act(() => {
-      buttonRef.current?.disableButton(false);
-    });
-
+    act(() => buttonRef.current?.disableButton(false));
     expect(button).not.toHaveAttribute('disabled');
   });
 });

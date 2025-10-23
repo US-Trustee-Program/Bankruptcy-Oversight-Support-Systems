@@ -323,9 +323,7 @@ describe('DatePicker additional coverage tests', () => {
     render(<DatePicker id="test-timeout-callback" ref={ref} value="2024-01-01" />);
 
     // Call clearValue which will trigger clearDateValue and its setTimeout
-    act(() => {
-      ref.current?.clearValue();
-    });
+    act(() => ref.current?.clearValue());
 
     // Verify setTimeout was called
     expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 100);
@@ -341,18 +339,14 @@ describe('DatePicker additional coverage tests', () => {
     const ref = React.createRef<InputRef>();
     render(<DatePicker id="test-date-picker" ref={ref} value="2024-01-15" />);
 
-    act(() => {
-      expect(ref.current?.getValue()).toBe('2024-01-15');
-    });
+    act(() => expect(ref.current?.getValue()).toBe('2024-01-15'));
   });
 
   test('should return empty string from getValue when no value', () => {
     const ref = React.createRef<InputRef>();
     render(<DatePicker id="test-date-picker-empty" ref={ref} />);
 
-    act(() => {
-      expect(ref.current?.getValue()).toBe('');
-    });
+    act(() => expect(ref.current?.getValue()).toBe(''));
   });
 
   test('should set error message when date is below maxDate threshold', async () => {
