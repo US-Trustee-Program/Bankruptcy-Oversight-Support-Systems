@@ -46,7 +46,7 @@ export type AlertRefType = {
   hide: () => void;
 };
 
-function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
+function Alert_(props: AlertProps, ref: React.Ref<AlertRefType>) {
   const [isVisible, setIsVisible] = useState<IsVisible>(
     props.show ? IsVisible.True : IsVisible.Unset,
   );
@@ -119,6 +119,5 @@ function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
   );
 }
 
-const Alert = forwardRef(AlertComponent);
-
+const Alert = forwardRef(Alert_);
 export default Alert;

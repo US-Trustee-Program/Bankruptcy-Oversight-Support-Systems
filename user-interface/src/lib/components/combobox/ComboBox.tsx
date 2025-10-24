@@ -49,7 +49,7 @@ export interface ComboBoxProps extends Omit<InputProps, 'onChange' | 'onFocus' |
   errorMessage?: string;
 }
 
-function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
+function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   const {
     id: comboBoxId,
     label,
@@ -154,9 +154,8 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     const items = Array.from(selectedMap.values());
     let message = '';
     if (items.length > 0) {
-      const itemLabels: string[] = [];
+      const itemLabels = items.map((item) => item.label);
       message = `${items.length} items currently selected. `;
-      items.forEach((item) => itemLabels.push(item.label));
       message += itemLabels.join(', ') + '.';
     }
     return message;
@@ -632,5 +631,5 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   );
 }
 
-const ComboBox = forwardRef(ComboBoxComponent);
+const ComboBox = forwardRef(ComboBox_);
 export default ComboBox;

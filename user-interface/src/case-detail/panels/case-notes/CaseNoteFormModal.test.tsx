@@ -7,7 +7,7 @@ import CaseNoteFormModal, {
   buildCaseNoteFormKey,
 } from './CaseNoteFormModal';
 import { act, render, screen, waitFor } from '@testing-library/react';
-import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
+import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
 import { BrowserRouter } from 'react-router-dom';
 import React from 'react';
 import { UserEvent } from '@testing-library/user-event';

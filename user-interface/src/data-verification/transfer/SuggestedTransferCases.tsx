@@ -70,7 +70,7 @@ function SuggestedTransferCases_(
         setNewCaseSummary(caseSummary);
         setValidationState(ValidationStates.found);
       })
-      .catch((_error) => {
+      .catch(() => {
         setValidationState(ValidationStates.notFound);
       })
       .finally(() => {

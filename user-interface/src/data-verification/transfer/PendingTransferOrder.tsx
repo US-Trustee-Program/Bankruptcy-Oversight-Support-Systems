@@ -7,18 +7,19 @@ import {
   TransferOrderAction,
 } from '@common/cams/orders';
 import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import {
-  TransferConfirmationModal,
+import TransferConfirmationModal, {
   TransferConfirmationModalImperative,
 } from './TransferConfirmationModal';
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { CourtDivisionDetails } from '@common/cams/courts';
-import SuggestedTransferCases, { SuggestedTransferCasesImperative } from './SuggestedTransferCases';
 import { FromCaseSummary } from './FromCaseSummary';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import './PendingTransferOrder.scss';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
+import SuggestedTransferCases, {
+  SuggestedTransferCasesImperative,
+} from '@/data-verification/transfer/SuggestedTransferCases';
 
 export type PendingTransferOrderImperative = {
   cancel: () => void;

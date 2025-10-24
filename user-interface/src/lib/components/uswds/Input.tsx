@@ -1,5 +1,12 @@
 import './forms.scss';
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type JSX } from 'react';
+import React, {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type JSX,
+} from 'react';
 import { InputRef } from '../../type-declarations/input-fields';
 import Icon from './Icon';
 import Button, { UswdsButtonStyle } from './Button';
@@ -16,7 +23,7 @@ export type InputProps = Omit<JSX.IntrinsicElements['input'], 'onFocus'> & {
   errorMessage?: string;
 };
 
-function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
+function Input_(props: InputProps, ref: React.Ref<InputRef>) {
   //condition for check for title to style tooltip
   const [inputValue, setInputValue] = useState<string>(props.value || '');
   const [inputDisabled, setInputDisabled] = useState<boolean>(props.disabled ?? false);
@@ -45,7 +52,7 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
     setInputValue('');
     emitChange('');
     if (inputRef.current) {
-      (inputRef.current as HTMLInputElement).focus();
+      inputRef.current.focus();
     }
   }
 
@@ -140,5 +147,5 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
   );
 }
 
-const Input = forwardRef(InputComponent);
+const Input = forwardRef(Input_);
 export default Input;

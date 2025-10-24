@@ -27,7 +27,7 @@ export interface CheckboxRef {
   getLabel: () => string;
 }
 
-const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) => {
+function Checkbox_(props: CheckboxProps, ref: React.Ref<CheckboxRef>) {
   const [isChecked, setIsChecked] = useState<boolean>(props.checked ?? false);
   const [indeterminateState, setIndeterminateState] = useState<boolean>(false);
   const realCheckboxRef = useRef<HTMLInputElement>(null);
@@ -61,15 +61,13 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
     let indeterminate = false;
     if (value === true || value === false) {
       setIsChecked(value);
-    } else {
-      if (value === CheckboxState.CHECKED) {
-        setIsChecked(true);
-      } else if (value === CheckboxState.UNCHECKED) {
-        setIsChecked(false);
-      } else if (value === CheckboxState.INDETERMINATE) {
-        setIsChecked(false);
-        indeterminate = true;
-      }
+    } else if (value === CheckboxState.CHECKED) {
+      setIsChecked(true);
+    } else if (value === CheckboxState.UNCHECKED) {
+      setIsChecked(false);
+    } else if (value === CheckboxState.INDETERMINATE) {
+      setIsChecked(false);
+      indeterminate = true;
     }
     setIndeterminateState(indeterminate);
   }
@@ -121,8 +119,7 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
       </label>
     </div>
   );
-};
+}
 
-const Checkbox = forwardRef(CheckboxComponent);
-
+const Checkbox = forwardRef(Checkbox_);
 export default Checkbox;

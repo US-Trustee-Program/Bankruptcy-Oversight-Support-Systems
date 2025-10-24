@@ -9,7 +9,7 @@ import {
   CaseNoteRemovalProps,
 } from './CaseNoteRemovalModal';
 import { randomUUID } from 'crypto';
-import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
+import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
 import { BrowserRouter } from 'react-router-dom';
 import React from 'react';
 import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
