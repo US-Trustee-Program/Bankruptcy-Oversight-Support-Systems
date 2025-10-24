@@ -14,7 +14,7 @@ import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Actions from '@common/cams/actions';
 import { AttorneyUser } from '@common/cams/users';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
-import { OpenModalButtonRef } from '../../lib/components/uswds/modal/modal-refs';
+import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import useFeatureFlags, { VIEW_TRUSTEE_ON_CASE } from '@/lib/hooks/UseFeatureFlags';
 import LegacyFormattedContact from '@/lib/components/cams/LegacyFormattedContact';
 
@@ -27,7 +27,7 @@ export interface CaseDetailOverviewProps {
   onCaseAssignment: (props: AssignAttorneyModalCallbackProps) => void;
 }
 
-export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
+function CaseDetailOverview(props: Readonly<CaseDetailOverviewProps>) {
   const { caseDetail, showReopenDate, onCaseAssignment } = props;
   const featureFlags = useFeatureFlags();
 
@@ -232,3 +232,5 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
     </>
   );
 }
+
+export default CaseDetailOverview;

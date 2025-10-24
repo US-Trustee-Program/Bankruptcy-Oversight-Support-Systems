@@ -1,6 +1,5 @@
 import { describe } from 'vitest';
-import {
-  AddCaseModal,
+import AddCaseModal, {
   AddCaseModalImperative,
 } from '@/data-verification/consolidation/AddCaseModal';
 import { render, waitFor } from '@testing-library/react';

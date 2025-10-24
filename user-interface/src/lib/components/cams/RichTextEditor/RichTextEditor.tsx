@@ -1,5 +1,5 @@
 import './RichTextEditor.scss';
-import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import Bold from '@tiptap/extension-bold';
 import Italic from '@tiptap/extension-italic';
@@ -30,7 +30,7 @@ export interface RichTextEditorProps {
   className?: string;
 }
 
-function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditorRef>) {
+function TiptapEditor_(props: RichTextEditorProps, ref: React.Ref<RichTextEditorRef>) {
   const { id, ariaDescription, onChange, required, className, disabled } = props;
   const label = props.label || 'Text';
 
@@ -207,6 +207,5 @@ function _TiptapEditor(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
   );
 }
 
-const RichTextEditor = forwardRef(_TiptapEditor);
-
+const RichTextEditor = forwardRef(TiptapEditor_);
 export default RichTextEditor;
