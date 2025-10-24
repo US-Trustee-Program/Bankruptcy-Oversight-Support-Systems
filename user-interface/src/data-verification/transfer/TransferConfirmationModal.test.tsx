@@ -1,6 +1,5 @@
 import { describe } from 'vitest';
-import {
-  TransferConfirmationModal,
+import TransferConfirmationModal, {
   TransferConfirmationModalProps,
 } from './TransferConfirmationModal';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';

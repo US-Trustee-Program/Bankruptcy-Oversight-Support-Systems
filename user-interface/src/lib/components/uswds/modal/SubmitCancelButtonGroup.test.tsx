@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import { SubmitCancelButtonGroup } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
+import SubmitCancelButtonGroup from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
 import React from 'react';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { BUTTON_BASE_CLASS, UswdsButtonStyle } from '@/lib/components/uswds/Button';

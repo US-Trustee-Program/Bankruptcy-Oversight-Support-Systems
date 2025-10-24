@@ -4,7 +4,7 @@ import { AssignAttorneyModalProps, AssignAttorneyModalRef } from './assignAttorn
 import React, { act } from 'react';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { CaseBasics } from '@common/cams/cases';
-import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
+import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
 import { AttorneyUser } from '@common/cams/users';
 import { ResponseBody } from '@common/api/response';
 import testingUtilities, { TestingUtilities } from '@/lib/testing/testing-utilities';

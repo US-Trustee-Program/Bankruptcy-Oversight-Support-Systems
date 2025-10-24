@@ -147,10 +147,10 @@ export type TableProps = PropsWithChildren &
 
 /* eslint-disable-next-line @typescript-eslint/no-empty-object-type */
 export interface TableRef extends HTMLTableElement {}
-export const TableComponent = (
+function Table_(
   { id, uswdsStyle, className, caption, children, ...otherProperties }: TableProps,
   ref?: React.Ref<TableRef>,
-) => {
+) {
   const containerClass =
     'usa-table-container' +
     (className ? ' ' + className + ' ' : '') +
@@ -158,8 +158,7 @@ export const TableComponent = (
 
   let tableClass = `usa-table` + (className ? ' ' + className + ' ' : '');
   if (uswdsStyle) {
-    const styleArray: string[] = [];
-    uswdsStyle.forEach((style) => styleArray.push(`usa-table--${style}`));
+    const styleArray = uswdsStyle.map((style) => `usa-table--${style}`);
     tableClass += [tableClass, ...styleArray].join(' ');
   }
 
@@ -171,6 +170,7 @@ export const TableComponent = (
       </table>
     </div>
   );
-};
+}
 
-export const Table = forwardRef(TableComponent);
+const Table = forwardRef(Table_);
+export default Table;

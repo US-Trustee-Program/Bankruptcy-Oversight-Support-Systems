@@ -1,7 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
-import {
-  ConsolidationOrderModal,
+import ConsolidationOrderModal, {
   ConfirmationModalImperative,
   ConsolidationOrderModalProps,
   formatListForDisplay,
