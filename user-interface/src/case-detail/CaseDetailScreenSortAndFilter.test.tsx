@@ -9,7 +9,8 @@ import * as ReactRouter from 'react-router';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { CaseDocket, CaseNote } from '@common/cams/cases';
-import userEvent from '@testing-library/user-event';
+import { UserEvent } from '@testing-library/user-event';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 
 const testCaseDocketEntries: CaseDocket = [
   {
@@ -51,10 +52,15 @@ const testCaseNotes: CaseNote[] = [];
 
 describe('Case Detail sort, search, and filter tests', () => {
   const testCaseId = '111-11-12345';
-
   const testCaseDetail = MockData.getCaseDetail({ override: { caseId: testCaseId } });
 
   describe('display tests', () => {
+    let userEvent: UserEvent;
+
+    beforeEach(() => {
+      userEvent = TestingUtilities.setupUserEvent();
+    });
+
     test('should display sort and filter panel when navigated to docket entries', async () => {
       const basicInfoPath = `/case-detail/${testCaseId}/`;
 
@@ -100,7 +106,7 @@ describe('Case Detail sort, search, and filter tests', () => {
       });
 
       const basicInfoLink = screen.getByTestId('case-overview-link');
-      await userEvent.click(basicInfoLink as Element);
+      await userEvent.click(basicInfoLink);
       await waitFor(() => {
         sortButton = screen.queryByTestId(sortButtonId);
         expect(sortButton).not.toBeInTheDocument();
@@ -629,6 +635,12 @@ describe('Case Detail sort, search, and filter tests', () => {
   });
 
   describe('Clear Filters', () => {
+    let userEvent: UserEvent;
+
+    beforeEach(() => {
+      userEvent = TestingUtilities.setupUserEvent();
+    });
+
     test('clear filter fields when clear filters button is clicked', async () => {
       const basicInfoPath = `/case-detail/${testCaseId}/`;
 

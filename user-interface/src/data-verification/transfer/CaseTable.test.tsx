@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import { CaseTable } from './CaseTable';
+import CaseTable from './CaseTable';
 import { CaseSummary } from '@common/cams/cases';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 

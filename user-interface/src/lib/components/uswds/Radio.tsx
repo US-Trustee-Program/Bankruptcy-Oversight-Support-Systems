@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { RadioRef } from '../../type-declarations/input-fields';
 import Button, { UswdsButtonStyle } from './Button';
 
@@ -15,7 +15,7 @@ export interface RadioProps {
   title?: string;
 }
 
-function RadioComponent(props: RadioProps, ref: React.Ref<RadioRef>) {
+function Radio_(props: RadioProps, ref: React.Ref<RadioRef>) {
   const [isDisabled, setIsDisabled] = useState<boolean>(props.disabled ?? false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -78,5 +78,5 @@ function RadioComponent(props: RadioProps, ref: React.Ref<RadioRef>) {
   );
 }
 
-const Radio = forwardRef(RadioComponent);
+const Radio = forwardRef(Radio_);
 export default Radio;

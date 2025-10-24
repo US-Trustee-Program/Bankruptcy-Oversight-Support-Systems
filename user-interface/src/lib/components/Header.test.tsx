@@ -6,13 +6,14 @@ import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import LocalStorage from '../utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole } from '@common/cams/roles';
-import userEvent from '@testing-library/user-event';
+import { UserEvent } from '@testing-library/user-event';
 import { PRIVILEGED_IDENTITY_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 import { FeatureFlagSet } from '@common/feature-flags';
 import { CamsSession } from '@common/cams/session';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 
 describe('Header', () => {
-  const uiUser = userEvent.setup();
+  let userEvent: UserEvent;
   const user = MockData.getCamsUser({
     roles: [CamsRole.CaseAssignmentManager, CamsRole.DataVerifier],
   });
@@ -22,6 +23,7 @@ describe('Header', () => {
 
   beforeEach(() => {
     LocalStorage.setSession(MockData.getCamsSession({ user }));
+    userEvent = TestingUtilities.setupUserEvent();
   });
 
   function renderWithoutProps() {
@@ -92,7 +94,7 @@ describe('Header', () => {
     renderWithoutProps();
 
     let linkToClick = await screen.findByTestId(linkTestId);
-    await uiUser.click(linkToClick);
+    await userEvent.click(linkToClick);
 
     linkToClick = await screen.findByTestId(linkTestId);
     expect(linkToClick).toHaveClass('usa-current current');
@@ -107,7 +109,7 @@ describe('Header', () => {
       renderWithoutProps();
 
       let link = await screen.findByTestId(linkTestId);
-      await uiUser.type(link, ' ');
+      await userEvent.type(link, ' ');
 
       await waitFor(async () => {
         link = await screen.findByTestId(linkTestId);

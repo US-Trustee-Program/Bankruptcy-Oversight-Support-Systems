@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { Pill } from './Pill';
+import Pill from './Pill';
 
 describe('Test pill', () => {
   test('should call onclick event when pill is clicked', async () => {

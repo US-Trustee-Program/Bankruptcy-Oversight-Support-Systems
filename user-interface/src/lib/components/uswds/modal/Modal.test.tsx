@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import React, { useRef, useEffect } from 'react';
 import { BrowserRouter } from 'react-router-dom';
-import { OpenModalButton } from './OpenModalButton';
+import OpenModalButton from './OpenModalButton';
 import Modal from './Modal';
 import { ModalRefType } from './modal-refs';
 import Checkbox from '../Checkbox';

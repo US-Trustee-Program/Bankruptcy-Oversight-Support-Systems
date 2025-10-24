@@ -6,7 +6,7 @@ import {
   AssignAttorneyModalCallbackProps,
   AssignAttorneyModalRef,
 } from '@/staff-assignment/modal/assignAttorneyModal.types';
-import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
+import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
 import { useRef } from 'react';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Actions from '@common/cams/actions';
@@ -21,8 +21,8 @@ export interface CaseDetailTrusteeAndAssignedStaffProps {
   onCaseAssignment: (props: AssignAttorneyModalCallbackProps) => void;
 }
 
-export default function CaseDetailTrusteeAndAssignedStaff(
-  props: CaseDetailTrusteeAndAssignedStaffProps,
+function CaseDetailTrusteeAndAssignedStaff(
+  props: Readonly<CaseDetailTrusteeAndAssignedStaffProps>,
 ) {
   const { caseDetail, onCaseAssignment } = props;
 
@@ -122,3 +122,5 @@ export default function CaseDetailTrusteeAndAssignedStaff(
     </>
   );
 }
+
+export default CaseDetailTrusteeAndAssignedStaff;

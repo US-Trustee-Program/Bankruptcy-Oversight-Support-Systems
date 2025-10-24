@@ -10,7 +10,7 @@ import Api2 from '@/lib/models/api2';
 import LocalStorage from '@/lib/utils/local-storage';
 import { getCamsUserReference } from '@common/cams/session';
 import { CamsUser } from '@common/cams/users';
-import { forwardRef, RefObject, useImperativeHandle, useRef, useState } from 'react';
+import React, { forwardRef, RefObject, useImperativeHandle, useRef, useState } from 'react';
 
 type CallbackFunction = (noteId?: string) => void;
 
@@ -31,7 +31,7 @@ export interface CaseNoteRemovalProps {
   modalId: string;
 }
 
-function _CaseNoteRemovalModal(
+function CaseNoteRemovalModal_(
   props: CaseNoteRemovalProps,
   ref: React.Ref<CaseNoteRemovalModalRef>,
 ) {
@@ -44,7 +44,7 @@ function _CaseNoteRemovalModal(
   const globalAlert = useGlobalAlert();
   const removeConfirmationButtonGroup: SubmitCancelBtnProps = {
     modalId,
-    modalRef: modalRef as React.RefObject<ModalRefType | null>,
+    modalRef,
     submitButton: {
       label: 'Delete',
       onClick: handleRemoveSubmitButtonClick,
@@ -103,6 +103,5 @@ function _CaseNoteRemovalModal(
   );
 }
 
-const CaseNoteRemovalModal = forwardRef(_CaseNoteRemovalModal);
-
+const CaseNoteRemovalModal = forwardRef(CaseNoteRemovalModal_);
 export default CaseNoteRemovalModal;

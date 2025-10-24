@@ -1,7 +1,14 @@
 import './TextArea.scss';
 import './forms.scss';
 import { TextAreaRef } from '@/lib/type-declarations/input-fields';
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type JSX } from 'react';
+import React, {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type JSX,
+} from 'react';
 
 export type TextAreaProps = JSX.IntrinsicElements['textarea'] & {
   id: string;
@@ -10,7 +17,7 @@ export type TextAreaProps = JSX.IntrinsicElements['textarea'] & {
   value?: string;
 };
 
-function TextAreaComponent(props: TextAreaProps, ref: React.Ref<TextAreaRef>) {
+function TextArea_(props: TextAreaProps, ref: React.Ref<TextAreaRef>) {
   const { id, label, ariaDescription, ...otherProps } = props;
   const labelId = `textarea-label-${id}`;
   const textAreaId = `textarea-${id}`;
@@ -75,7 +82,7 @@ function TextAreaComponent(props: TextAreaProps, ref: React.Ref<TextAreaRef>) {
         htmlFor={textAreaId}
         id={labelId}
         data-testid={labelId}
-        className={`usa-label ${props.className ? `${props.className}-label` : ''}`}
+        className={'usa-label' + (props.className && ` ${props.className}-label`)}
       >
         {label}
         {props.required && <span className="required-form-field" />}
@@ -102,5 +109,5 @@ function TextAreaComponent(props: TextAreaProps, ref: React.Ref<TextAreaRef>) {
   );
 }
 
-const TextArea = forwardRef(TextAreaComponent);
+const TextArea = forwardRef(TextArea_);
 export default TextArea;

@@ -8,7 +8,7 @@ import TestingUtilities from '@/lib/testing/testing-utilities';
 import { MockInstance } from 'vitest';
 import { ResponseBody } from '@common/api/response';
 import Api2 from '@/lib/models/api2';
-import userEvent from '@testing-library/user-event';
+import { UserEvent } from '@testing-library/user-event';
 import LocalStorage from '@/lib/utils/local-storage';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { REGION_02_GROUP_NY } from '@common/cams/test-utilities/mock-user';
@@ -40,11 +40,13 @@ describe('search screen', () => {
   };
   const includeAssignments = { includeAssignments: true };
   let searchCasesSpy: MockInstance;
+  let userEvent: UserEvent;
 
   beforeEach(async () => {
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
     searchCasesSpy = vi.spyOn(Api2, 'searchCases').mockResolvedValue(searchResponseBody);
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+    userEvent = TestingUtilities.setupUserEvent();
   });
 
   afterEach(() => {

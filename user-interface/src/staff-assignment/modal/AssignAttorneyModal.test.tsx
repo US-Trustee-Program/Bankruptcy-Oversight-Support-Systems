@@ -4,14 +4,14 @@ import { AssignAttorneyModalProps, AssignAttorneyModalRef } from './assignAttorn
 import React, { act } from 'react';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { CaseBasics } from '@common/cams/cases';
-import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
+import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
 import { AttorneyUser } from '@common/cams/users';
 import { ResponseBody } from '@common/api/response';
-import testingUtilities from '@/lib/testing/testing-utilities';
+import testingUtilities, { TestingUtilities } from '@/lib/testing/testing-utilities';
 import Api2 from '@/lib/models/api2';
 import { REGION_02_GROUP_NY } from '@common/cams/test-utilities/mock-user';
 import AssignAttorneyModal from './AssignAttorneyModal';
-import userEvent from '@testing-library/user-event';
+import { UserEvent } from '@testing-library/user-event';
 
 const offices = [REGION_02_GROUP_NY!];
 const susan = MockData.getAttorneyUser({ name: 'Susan Arbeit', offices });
@@ -30,6 +30,7 @@ const modalId = 'some-modal-id';
 
 describe('Test Assign Attorney Modal Component', () => {
   let callback = vi.fn();
+  let userEvent: UserEvent;
 
   const attorneyListResponse: ResponseBody<AttorneyUser[]> = {
     meta: { self: 'self-url' },
@@ -67,6 +68,7 @@ describe('Test Assign Attorney Modal Component', () => {
   beforeEach(() => {
     vi.spyOn(Api2, 'getOfficeAttorneys').mockResolvedValue(attorneyListResponse);
     callback = vi.fn();
+    userEvent = TestingUtilities.setupUserEvent();
   });
 
   afterEach(() => {
@@ -86,12 +88,12 @@ describe('Test Assign Attorney Modal Component', () => {
     });
     bCase.assignments = [];
 
-    act(() => {
+    act(() =>
       modalRef.current?.show({
         bCase,
         callback,
-      });
-    });
+      }),
+    );
 
     const button = screen.getByTestId('open-modal-button');
     const modal = screen.getByTestId(`modal-${modalId}`);
@@ -149,12 +151,12 @@ describe('Test Assign Attorney Modal Component', () => {
     const modalRef = React.createRef<AssignAttorneyModalRef>();
     renderWithProps(modalRef, { assignmentChangeCallback });
 
-    act(() => {
+    act(() =>
       modalRef.current?.show({
         callback,
         bCase: mockCase,
-      });
-    });
+      }),
+    );
     const button = screen.getByTestId('open-modal-button');
     const modal = screen.getByTestId(`modal-${modalId}`);
 
@@ -216,7 +218,7 @@ describe('Test Assign Attorney Modal Component', () => {
     const modalRef = React.createRef<AssignAttorneyModalRef>();
     renderWithProps(modalRef);
 
-    act(() => {
+    act(() =>
       modalRef.current?.show({
         callback,
         bCase: MockData.getCaseBasics({
@@ -226,17 +228,15 @@ describe('Test Assign Attorney Modal Component', () => {
             dateFiled: '2024-01-01',
           },
         }),
-      });
-    });
+      }),
+    );
 
     const modal = screen.getByTestId(`modal-${modalId}`);
     await waitFor(() => {
       expect(modal).toHaveClass('is-visible');
     });
 
-    act(() => {
-      modalRef.current?.hide();
-    });
+    act(() => modalRef.current?.hide());
     await waitFor(() => {
       expect(modal).not.toHaveClass('is-visible');
     });
@@ -249,7 +249,7 @@ describe('Test Assign Attorney Modal Component', () => {
     const modalRef = React.createRef<AssignAttorneyModalRef>();
     renderWithProps(modalRef, {});
 
-    act(() => {
+    act(() =>
       modalRef.current?.show({
         callback,
         bCase: MockData.getCaseBasics({
@@ -259,8 +259,8 @@ describe('Test Assign Attorney Modal Component', () => {
             dateFiled: '2024-01-01',
           },
         }),
-      });
-    });
+      }),
+    );
     const modal = screen.getByTestId(`modal-${modalId}`);
 
     const submitButton = screen.getByTestId(`button-${modalId}-submit-button`);
@@ -292,7 +292,7 @@ describe('Test Assign Attorney Modal Component', () => {
     const modalRef = React.createRef<AssignAttorneyModalRef>();
     renderWithProps(modalRef, {});
 
-    act(() => {
+    act(() =>
       modalRef.current?.show({
         callback,
         bCase: MockData.getCaseBasics({
@@ -302,8 +302,8 @@ describe('Test Assign Attorney Modal Component', () => {
             dateFiled: '2024-01-01',
           },
         }),
-      });
-    });
+      }),
+    );
 
     await waitFor(() => {
       expect(alertSpy.error).toHaveBeenCalled();

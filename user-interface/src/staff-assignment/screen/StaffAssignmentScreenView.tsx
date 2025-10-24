@@ -10,7 +10,7 @@ import StaffAssignmentFilter from '../filters/StaffAssignmentFilter';
 import { StaffAssignmentScreenViewProps } from './StaffAssignment.types';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
-export function StaffAssignmentScreenView(props: StaffAssignmentScreenViewProps) {
+export function StaffAssignmentScreenView(props: Readonly<StaffAssignmentScreenViewProps>) {
   const { viewModel } = props;
   const showAssignments = viewModel.hasValidPermission && viewModel.hasAssignedOffices;
 

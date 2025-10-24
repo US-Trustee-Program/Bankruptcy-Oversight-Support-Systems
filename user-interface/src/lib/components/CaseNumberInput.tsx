@@ -3,7 +3,7 @@ import Input, { InputProps } from './uswds/Input';
 import { InputRef } from '../type-declarations/input-fields';
 
 export function validateCaseNumberInput(ev: React.ChangeEvent<HTMLInputElement>) {
-  const allowedCharsPattern = /[0-9]/g;
+  const allowedCharsPattern = /\d/g;
   const filteredInput = ev.target.value.match(allowedCharsPattern) ?? [];
   if (filteredInput.length > 7) {
     filteredInput.splice(7);
@@ -26,7 +26,7 @@ type CaseNumberInputProps = Omit<InputProps, 'onChange' | 'onFocus'> & {
   allowPartialCaseNumber?: boolean;
 };
 
-function CaseNumberInputComponent(props: CaseNumberInputProps, ref: React.Ref<InputRef>) {
+function CaseNumberInput_(props: CaseNumberInputProps, ref: React.Ref<InputRef>) {
   const {
     onChange,
     onEnable,
@@ -135,5 +135,5 @@ function CaseNumberInputComponent(props: CaseNumberInputProps, ref: React.Ref<In
   );
 }
 
-const CaseNumberInput = forwardRef(CaseNumberInputComponent);
+const CaseNumberInput = forwardRef(CaseNumberInput_);
 export default CaseNumberInput;

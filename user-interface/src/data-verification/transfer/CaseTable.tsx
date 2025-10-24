@@ -117,4 +117,5 @@ function CaseTable_(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
   );
 }
 
-export const CaseTable = forwardRef(CaseTable_);
+const CaseTable = forwardRef(CaseTable_);
+export default CaseTable;

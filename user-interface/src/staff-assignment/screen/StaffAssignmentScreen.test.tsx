@@ -16,11 +16,13 @@ import { getCourtDivisionCodes } from '@common/cams/users';
 import { FeatureFlagSet } from '@common/feature-flags';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
-import userEvent from '@testing-library/user-event';
+import { UserEvent } from '@testing-library/user-event';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 describe('StaffAssignmentScreen', () => {
   let mockFeatureFlags: FeatureFlagSet;
+  let userEvent: UserEvent;
+
   const user = MockData.getCamsUser({
     roles: [CamsRole.CaseAssignmentManager],
     offices: MOCKED_USTP_OFFICES_ARRAY,
@@ -35,6 +37,7 @@ describe('StaffAssignmentScreen', () => {
   }
 
   beforeEach(() => {
+    userEvent = TestingUtilities.setupUserEvent();
     TestingUtilities.setUser(user);
 
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');

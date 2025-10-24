@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { OrderStatus } from '@common/cams/orders';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
@@ -29,7 +29,7 @@ export type TransferConfirmationModalImperative = ModalRefType & {
   show: (options: ShowOptionParams) => void;
 };
 
-function TransferConfirmationModalComponent(
+function TransferConfirmationModal_(
   props: TransferConfirmationModalProps,
   ConfirmationModalRef: React.Ref<TransferConfirmationModalImperative>,
 ) {
@@ -155,4 +155,5 @@ function TransferConfirmationModalComponent(
   );
 }
 
-export const TransferConfirmationModal = forwardRef(TransferConfirmationModalComponent);
+const TransferConfirmationModal = forwardRef(TransferConfirmationModal_);
+export default TransferConfirmationModal;

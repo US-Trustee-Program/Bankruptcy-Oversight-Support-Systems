@@ -5,10 +5,17 @@ import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { TextAreaRef } from '@/lib/type-declarations/input-fields';
 import { formatDateTime } from '@/lib/utils/datetime';
 import { CaseNote, CaseNoteInput } from '@common/cams/cases';
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import { AlertOptions } from '../CaseDetailCourtDocket';
+import { AlertOptions } from '@/case-detail/panels/CaseDetailCourtDocket';
+import React, {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { handleHighlight } from '@/lib/utils/highlight-api';
-import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
+import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
 import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import Icon from '@/lib/components/uswds/Icon';
 import CaseNoteFormModal, {
@@ -40,7 +47,7 @@ export interface CaseNotesProps {
   searchString: string;
 }
 
-function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
+function CaseNotes_(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
   const { caseId, caseNotes, areCaseNotesLoading, searchString, onUpdateNoteRequest } = props;
   const removeConfirmationModalRef = useRef<CaseNoteRemovalModalRef>(null);
   const caseNoteModalRef = useRef<CaseNoteFormModalRef>(null);
@@ -201,7 +208,7 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
   }
 
   function focus() {
-    if (caseNotes && caseNotes[0].id) {
+    if (caseNotes?.[0].id) {
       setFocusId(caseNotes[0].id);
     }
   }
@@ -343,6 +350,5 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
   );
 }
 
-const CaseNotes = forwardRef(_CaseNotes);
-
+const CaseNotes = forwardRef(CaseNotes_);
 export default CaseNotes;

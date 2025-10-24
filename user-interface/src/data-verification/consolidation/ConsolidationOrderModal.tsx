@@ -6,7 +6,7 @@ import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { consolidationTypeMap } from '@/lib/utils/labels';
 import { CaseAssignment } from '@common/cams/assignments';
 import { ConsolidationOrderCase, ConsolidationType, OrderStatus } from '@common/cams/orders';
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import './ConsolidationOrderModal.scss';
 import { CourtDivisionDetails } from '@common/cams/courts';
 
@@ -60,7 +60,7 @@ export function formatListForDisplay(attorneys: string[]) {
   return attorneys.slice(0, -1).join(', ') + ', and ' + attorneys[attorneys.length - 1];
 }
 
-function ConsolidationOrderModalComponent(
+function ConsolidationOrderModal_(
   props: ConsolidationOrderModalProps,
   ConfirmationModalRef: React.Ref<ConfirmationModalImperative>,
 ) {
@@ -281,7 +281,6 @@ function ConsolidationOrderModalComponent(
       heading={`${options.heading}`}
       data-testid={`confirm-modal-${id}`}
       onClose={() => {
-        // reset();
         onCancel();
       }}
       content={
@@ -297,4 +296,5 @@ function ConsolidationOrderModalComponent(
   );
 }
 
-export const ConsolidationOrderModal = forwardRef(ConsolidationOrderModalComponent);
+const ConsolidationOrderModal = forwardRef(ConsolidationOrderModal_);
+export default ConsolidationOrderModal;

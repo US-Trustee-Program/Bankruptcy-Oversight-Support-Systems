@@ -2,19 +2,19 @@ import { Accordion } from '@/lib/components/uswds/Accordion';
 import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
 import { RadioGroup } from '@/lib/components/uswds/RadioGroup';
 import Radio from '@/lib/components/uswds/Radio';
-import { ConsolidationCaseTable } from '@/data-verification/consolidation/ConsolidationCasesTable';
+import ConsolidationCaseTable from '@/data-verification/consolidation/ConsolidationCasesTable';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import { CaseTable } from '@/data-verification/transfer/CaseTable';
+import CaseTable from '@/data-verification/transfer/CaseTable';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import { ConsolidationOrderModal } from '@/data-verification/consolidation/ConsolidationOrderModal';
+import ConsolidationOrderModal from '@/data-verification/consolidation/ConsolidationOrderModal';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import {
   AddCaseModel,
   ConsolidationViewModel,
 } from '@/data-verification/consolidation/consolidationViewModel';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
-import { AddCaseModal } from '@/data-verification/consolidation/AddCaseModal';
-import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
+import AddCaseModal from '@/data-verification/consolidation/AddCaseModal';
+import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
 
 function toAddCaseModel(viewModel: ConsolidationViewModel): AddCaseModel {
   const {
@@ -57,7 +57,9 @@ export type ConsolidationOrderAccordionViewProps = {
   viewModel: ConsolidationViewModel;
 };
 
-export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordionViewProps) {
+export function ConsolidationOrderAccordionView(
+  props: Readonly<ConsolidationOrderAccordionViewProps>,
+) {
   const { viewModel } = props;
 
   function printAriaLabel() {
@@ -275,7 +277,7 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
               <div className="grid-col-1"></div>
               <div className="grid-col-10">
                 Rejected the consolidation of the cases below
-                {viewModel.order.reason && viewModel.order.reason.length && (
+                {viewModel.order.reason?.length && (
                   <>
                     {' '}
                     for the following reason:

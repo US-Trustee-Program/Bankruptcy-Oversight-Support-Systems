@@ -30,7 +30,7 @@ export type ButtonProps = JSX.IntrinsicElements['button'] & {
   disabled?: boolean;
 };
 
-const ButtonComponent = (props: ButtonProps, ref: React.Ref<ButtonRef>) => {
+const Button_ = (props: ButtonProps, ref: React.Ref<ButtonRef>) => {
   const { id, uswdsStyle, buttonState, className, title, children, ...otherProps } = props;
 
   const [isDisabled, setIsDisabled] = useState<boolean>(!!otherProps.disabled);
@@ -79,6 +79,5 @@ const ButtonComponent = (props: ButtonProps, ref: React.Ref<ButtonRef>) => {
   );
 };
 
-const Button = forwardRef(ButtonComponent);
-
+const Button = forwardRef(Button_);
 export default Button;

@@ -2,7 +2,7 @@ import './ConsolidationCasesTable.scss';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import DocketEntryDocumentList from '@/lib/components/DocketEntryDocumentList';
 import { ConsolidationOrderCase } from '@common/cams/orders';
-import {
+import React, {
   forwardRef,
   ReactNode,
   SyntheticEvent,
@@ -33,7 +33,7 @@ export interface ConsolidationCaseTableProps {
   onMarkLead?: (bCase: ConsolidationOrderCase) => void;
 }
 
-function _ConsolidationCaseTable(
+function ConsolidationCaseTable_(
   props: ConsolidationCaseTableProps,
   OrderTableRef: React.Ref<OrderTableImperative>,
 ) {
@@ -52,7 +52,7 @@ function _ConsolidationCaseTable(
 
   function handleCaseSelection(e: SyntheticEvent<HTMLInputElement>) {
     let tempSelectedCases: number[];
-    const idx = parseInt(e.currentTarget.value);
+    const idx = Number.parseInt(e.currentTarget.value);
     const newValue = [...included];
     if (newValue.includes(idx)) {
       tempSelectedCases = newValue.filter((index) => index !== idx);
@@ -88,7 +88,7 @@ function _ConsolidationCaseTable(
     );
     if (checkboxes) {
       for (const checkBox of checkboxes) {
-        bCase = parseInt((checkBox as HTMLInputElement).value);
+        bCase = Number.parseInt((checkBox as HTMLInputElement).value);
         newIdList.push(bCase);
         newCaseList.push(cases[bCase]);
       }
@@ -285,4 +285,5 @@ function _ConsolidationCaseTable(
   );
 }
 
-export const ConsolidationCaseTable = forwardRef(_ConsolidationCaseTable);
+const ConsolidationCaseTable = forwardRef(ConsolidationCaseTable_);
+export default ConsolidationCaseTable;

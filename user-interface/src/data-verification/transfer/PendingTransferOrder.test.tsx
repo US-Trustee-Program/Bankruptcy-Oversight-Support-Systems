@@ -2,8 +2,7 @@ import { CourtDivisionDetails } from '@common/cams/courts';
 import { TransferOrder } from '@common/cams/orders';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe } from 'vitest';
-import {
-  PendingTransferOrder,
+import PendingTransferOrder, {
   PendingTransferOrderProps,
 } from '@/data-verification/transfer/PendingTransferOrder';
 import { BrowserRouter } from 'react-router-dom';
@@ -11,7 +10,8 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import Api2 from '@/lib/models/api2';
-import userEvent from '@testing-library/user-event';
+import { UserEvent } from '@testing-library/user-event';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 
 const fromCaseSummary = MockData.getCaseSummary();
 const toCaseSummary = MockData.getCaseSummary();
@@ -85,6 +85,7 @@ const mockTransferOrder = {
 describe('PendingTransferOrder component', () => {
   describe('for suggested cases', () => {
     let order: TransferOrder;
+    let userEvent: UserEvent;
 
     function renderWithProps(props?: Partial<PendingTransferOrderProps>) {
       const onOrderUpdate = vitest.fn();
@@ -107,6 +108,7 @@ describe('PendingTransferOrder component', () => {
     }
 
     beforeEach(async () => {
+      userEvent = TestingUtilities.setupUserEvent();
       vi.stubEnv('CAMS_USE_FAKE_API', 'true');
       order = { ...mockTransferOrder };
       vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue(mockGetCaseSummary);
@@ -185,6 +187,11 @@ describe('PendingTransferOrder component', () => {
 
   describe('for manually entered court and case number', () => {
     let order: TransferOrder;
+    let userEvent: UserEvent;
+
+    beforeEach(async () => {
+      userEvent = TestingUtilities.setupUserEvent();
+    });
 
     function renderWithProps(props?: Partial<PendingTransferOrderProps>) {
       const onOrderUpdate = vitest.fn();
