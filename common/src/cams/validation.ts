@@ -1,11 +1,12 @@
 /********************************************************************************
  * Core Validation Library Types and Functions
  ********************************************************************************/
+export type ValidatorReasonMap = Record<string, ValidatorResult>;
 
 export type ValidatorResult = {
   valid?: true;
   reasons?: string[];
-  reasonMap?: Record<string, ValidatorResult>;
+  reasonMap?: ValidatorReasonMap;
 };
 
 export type ValidatorFunction = (value: unknown) => ValidatorResult;
@@ -42,16 +43,14 @@ export function validateEach(functions: ValidatorFunction[], value: unknown): Va
   if (!functions) {
     return VALID;
   }
-  const reasons = functions.map((f) => f(value)).filter((r) => !r.valid);
+  const validatorResult = functions.map((f) => f(value)).filter((r) => !r.valid);
 
-  if (!reasons.length) {
+  if (!validatorResult.length) {
     return VALID;
   }
-  if (reasons[0].reasonMap) {
-    return reasons[0];
-  } else {
-    return { reasons: reasons.flatMap((r) => r.reasons) };
-  }
+  return validatorResult.reduce((acc, result) => {
+    return mergeValidatorResults(acc, result);
+  }, {});
 }
 
 /**
@@ -91,7 +90,49 @@ export function mergeValidatorResults(
   if (!left.valid && right.valid) {
     return left;
   }
-  return { reasons: ['TDB - Merge not implemented'] };
+
+  // Both sides are invalid: merge reasons and reasonMap recursively
+  const mergedReasons: string[] = [...(left.reasons || []), ...(right.reasons || [])];
+
+  // Start from explicit reasonMap entries
+  const leftMap: ValidatorReasonMap = { ...(left.reasonMap || {}) };
+  const rightMap: ValidatorReasonMap = { ...(right.reasonMap || {}) };
+
+  // Also include any "extra" top-level keys on the left/right that are ValidatorResult-like
+  for (const [k, v] of Object.entries(left)) {
+    if (k !== 'reasons' && k !== 'reasonMap' && v && typeof v === 'object' && !(k in leftMap)) {
+      leftMap[k] = v as ValidatorResult;
+    }
+  }
+  for (const [k, v] of Object.entries(right)) {
+    if (k !== 'reasons' && k !== 'reasonMap' && v && typeof v === 'object' && !(k in rightMap)) {
+      rightMap[k] = v as ValidatorResult;
+    }
+  }
+
+  const allKeys = Array.from(new Set([...Object.keys(leftMap), ...Object.keys(rightMap)]));
+
+  const mergedReasonMap: ValidatorReasonMap = {};
+  for (const key of allKeys) {
+    const l = leftMap[key];
+    const r = rightMap[key];
+    if (l && r) {
+      mergedReasonMap[key] = mergeValidatorResults(l, r);
+    } else if (l) {
+      mergedReasonMap[key] = l;
+    } else if (r) {
+      mergedReasonMap[key] = r;
+    }
+  }
+
+  const result: ValidatorResult = {};
+  if (mergedReasons.length) {
+    result.reasons = mergedReasons;
+  }
+  if (Object.keys(mergedReasonMap).length) {
+    result.reasonMap = mergedReasonMap;
+  }
+  return result;
 }
 
 /**

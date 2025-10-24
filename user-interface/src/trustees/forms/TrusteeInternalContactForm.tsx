@@ -14,12 +14,12 @@ import useDebounce from '@/lib/hooks/UseDebounce';
 import { Stop } from '@/lib/components/Stop';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import { TrusteeInput } from '@common/cams/trustees';
-import { TRUSTEE_INTERNAL_SPEC, TrusteeInternalFormData } from './trusteeForms.specs';
+import { TRUSTEE_INTERNAL_SPEC, TrusteeInternalFormData } from './trusteeForms.types';
 import {
-  flattenReasonMap,
   validateEach,
   validateObject,
   ValidationSpec,
+  ValidatorReasonMap,
 } from '@common/cams/validation';
 import { ContactInformation } from '@common/cams/contact';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
@@ -52,7 +52,7 @@ No (optional) indicators ✅
 Alert but only on save click. ✅
 Phone number needs validation if extension is filled out but number is not
 Hyphen when typing more than 5 digits in zip code
-Validation message for zip code "must be 5 or 9 digits"
+Validation message for zip code "must be 5 or 9 digits" ✅
 Validation for the max length should just say "max length X characters"
 (if possible let's fix the alert message on the zip code validation so it doesn't wrap)
 When we send null to the API, we are getting null back but we agreed that null should only be sent in the PATCH payload.
@@ -68,12 +68,11 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  // const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [fieldErrors2, setFieldErrors2] = useState<ValidatorReasonMap>({});
   const [formData, setFormData] = useState<TrusteeInternalFormData>(
     getInitialFormData(props.trustee?.internal),
   );
-  const [hasPartialAddress, setHasPartialAddress] = useState<boolean>(false);
-  const [hasPartialPhone, setHasPartialPhone] = useState<boolean>(false);
   const partialAddressAlertRef = useRef<AlertRefType>(null);
 
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
@@ -102,32 +101,14 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
   const getDynamicSpec = (currentFormData: TrusteeInternalFormData) => {
     const spec: Partial<ValidationSpec<TrusteeInternalFormData>> = { ...TRUSTEE_INTERNAL_SPEC };
 
-    if (
-      !currentFormData.address1 &&
-      !currentFormData.address2 &&
-      !currentFormData.city &&
-      !currentFormData.state &&
-      !currentFormData.zipCode
-    ) {
-      delete spec.address1;
-      delete spec.address2;
-      delete spec.city;
-      delete spec.state;
-      delete spec.zipCode;
-    }
-    if (!currentFormData.phone && !currentFormData.extension) {
-      delete spec.phone;
-      delete spec.extension;
-    }
-    if (!currentFormData.email) {
-      delete spec.email;
-    }
-
-    if (!currentFormData.address2) {
-      delete spec.address2;
-    }
-    if (!currentFormData.extension) {
-      delete spec.extension;
+    const keys = Object.keys(spec) as Array<keyof TrusteeInternalFormData>;
+    for (const key of keys) {
+      if ((key as unknown as string) === '$') {
+        continue;
+      }
+      if (!(key in currentFormData)) {
+        delete spec[key];
+      }
     }
 
     return spec;
@@ -135,7 +116,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
 
   const clearAddressErrorsIfAllEmpty = (
     fieldName: keyof TrusteeInternalFormData,
-    value: string,
+    value: string | undefined,
   ): void => {
     const requiredAddressFields = ['address1', 'city', 'state', 'zipCode'];
     const isAddressField = requiredAddressFields.includes(fieldName);
@@ -146,7 +127,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
         !currentData.address1 && !currentData.city && !currentData.state && !currentData.zipCode;
 
       if (allAddressFieldsEmpty) {
-        setFieldErrors((prevErrors) => {
+        setFieldErrors2((prevErrors) => {
           const { ...copy } = prevErrors;
           for (const field of requiredAddressFields) {
             delete copy[field];
@@ -157,48 +138,15 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
     }
   };
 
-  const checkPartialAddress = (fieldName: keyof TrusteeInternalFormData): void => {
-    const addressFields = ['address1', 'address2', 'city', 'state', 'zipCode'];
-    const isAddressField = addressFields.includes(fieldName);
-    if (isAddressField) {
-      const currentData = getFormData();
-      const allRequiredAddressFieldsHaveValues =
-        !!currentData.address1 &&
-        !!currentData.city &&
-        !!currentData.state &&
-        !!currentData.zipCode;
-      const atLeastOneAddressFieldHasAValue =
-        !!currentData.address1 ||
-        !!currentData.address2 ||
-        !!currentData.city ||
-        !!currentData.state ||
-        !!currentData.zipCode;
-      const partialAddress = atLeastOneAddressFieldHasAValue && !allRequiredAddressFieldsHaveValues;
-      setHasPartialAddress(partialAddress);
-    }
-  };
-
-  const checkExtensionWithoutPhone = (fieldName: keyof TrusteeInternalFormData) => {
-    if (fieldName === 'extension' || fieldName === 'phone') {
-      const currentData = getFormData();
-      if (currentData.extension && !currentData.phone) {
-        setHasPartialPhone(true);
-      } else {
-        setHasPartialPhone(false);
-      }
-    }
-  };
-
   const handleFieldChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const { value, name } = event.target;
+    const { name } = event.target;
+    const value = event.target.value === '' ? undefined : event.target.value;
     const fieldName = name as keyof TrusteeInternalFormData;
 
     updateField(fieldName, value);
     debounce(() => {
       validateFieldAndUpdate(fieldName, value);
       clearAddressErrorsIfAllEmpty(fieldName, value);
-      checkPartialAddress(fieldName);
-      checkExtensionWithoutPhone(fieldName);
     }, 300);
   };
 
@@ -209,7 +157,6 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
     debounce(() => {
       validateFieldAndUpdate('state', value);
       clearAddressErrorsIfAllEmpty('state', value);
-      checkPartialAddress('state');
     }, 300);
   };
 
@@ -220,12 +167,10 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
     debounce(() => {
       validateFieldAndUpdate('zipCode', value);
       clearAddressErrorsIfAllEmpty('zipCode', value);
-      checkPartialAddress('zipCode');
     }, 300);
   };
 
   const handleCancel = useCallback(() => {
-    setFieldErrors({});
     navigate.navigateTo(cancelTo);
   }, [navigate, cancelTo]);
 
@@ -235,7 +180,6 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
 
     if (validateFormAndUpdateErrors(currentFormData)) {
       setErrorMessage(null);
-      setFieldErrors({});
       setIsSubmitting(true);
 
       const payload = mapPayload(currentFormData);
@@ -247,35 +191,27 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
       } finally {
         setIsSubmitting(false);
       }
-    } else if (hasPartialAddress) {
-      partialAddressAlertRef.current?.show();
-      return;
     }
   };
 
   const validateFormAndUpdateErrors = (formData: TrusteeInternalFormData): boolean => {
-    const results = validateObject(getDynamicSpec(formData), formData);
+    const spec = getDynamicSpec(formData);
+    const results = validateObject(spec, formData);
     if (!results.valid && results.reasonMap) {
-      const newFieldErrors = Object.fromEntries(
-        Object.entries(flattenReasonMap(results.reasonMap)).map(([jsonPath, reasons]) => {
-          const field = jsonPath.split('.')[1];
-          return [field, reasons.join('. ') + '.'];
-        }),
-      );
-      setFieldErrors(newFieldErrors);
+      setFieldErrors2(results.reasonMap);
     }
     return !!results.valid;
   };
 
   const validateFieldAndUpdate = (
     field: keyof TrusteeInternalFormData,
-    value: string,
-  ): string | null => {
+    value: string | undefined,
+  ): ValidatorReasonMap | null => {
     const error = validateField(field, value, TRUSTEE_INTERNAL_SPEC);
 
-    setFieldErrors((prevErrors) => {
+    setFieldErrors2((prevErrors) => {
       if (error) {
-        return { ...prevErrors, [field]: error };
+        return { ...prevErrors, ...error };
       } else {
         const { [field]: _, ...rest } = prevErrors;
         return rest;
@@ -287,25 +223,29 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
 
   function validateField(
     field: keyof TrusteeInternalFormData,
-    value: string,
+    value: string | undefined,
     spec: Partial<typeof TRUSTEE_INTERNAL_SPEC>,
-  ): string | null {
-    const stringValue = String(value);
-    const trimmedValue = stringValue.trim();
-
-    if (field === 'extension' && !trimmedValue) {
-      return null;
-    }
+  ): ValidatorReasonMap | null {
+    const valueToEval = value?.trim() || undefined;
 
     if (spec?.[field]) {
-      const result = validateEach(spec[field], trimmedValue);
-      return result.valid ? null : result.reasons!.join(' ');
+      const result = validateEach(spec[field], valueToEval);
+      const validatorReasonMap: ValidatorReasonMap = {};
+      if (result.valid) {
+        return null;
+      } else {
+        validatorReasonMap[field] = { reasons: result.reasons };
+        return validatorReasonMap;
+      }
     } else {
       return null;
     }
   }
 
-  const getFormData = (override?: { name: keyof TrusteeInternalFormData; value: string }) => {
+  const getFormData = (override?: {
+    name: keyof TrusteeInternalFormData;
+    value: string | undefined;
+  }) => {
     const trimmedData = {
       ...formData,
       address1: formData.address1?.trim(),
@@ -361,7 +301,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 label="Address Line 1"
                 value={formData.address1}
                 onChange={handleFieldChange}
-                errorMessage={fieldErrors['address1']}
+                errorMessage={fieldErrors2['address1']?.reasons?.join(' ')}
                 autoComplete="off"
               />
             </div>
@@ -374,7 +314,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 label="Address Line 2"
                 value={formData.address2 || ''}
                 onChange={handleFieldChange}
-                errorMessage={fieldErrors['address2']}
+                errorMessage={fieldErrors2['address2']?.reasons?.join(' ')}
                 autoComplete="off"
               />
             </div>
@@ -387,7 +327,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 label="City"
                 value={formData.city}
                 onChange={handleFieldChange}
-                errorMessage={fieldErrors['city']}
+                errorMessage={fieldErrors2['city']?.reasons?.join(' ')}
                 autoComplete="off"
               />
             </div>
@@ -401,7 +341,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 selections={formData.state ? [formData.state] : []}
                 onUpdateSelection={handleStateSelection}
                 autoComplete="off"
-                errorMessage={fieldErrors['state']}
+                errorMessage={fieldErrors2['state']?.reasons?.join(' ')}
               ></UsStatesComboBox>
             </div>
 
@@ -413,7 +353,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 label="ZIP Code"
                 value={formData.zipCode}
                 onChange={handleZipCodeChange}
-                errorMessage={fieldErrors['zipCode']}
+                errorMessage={fieldErrors2['zipCode']?.reasons?.join(' ')}
                 autoComplete="off"
                 ariaDescription="Example: 12345"
               />
@@ -429,7 +369,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 name="phone"
                 label="Phone"
                 onChange={handleFieldChange}
-                errorMessage={fieldErrors['phone']}
+                errorMessage={fieldErrors2['phone']?.reasons?.join(' ')}
                 autoComplete="off"
                 ariaDescription="Example: 123-456-7890"
               />
@@ -440,7 +380,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 label="Extension"
                 value={formData.extension || ''}
                 onChange={handleFieldChange}
-                errorMessage={fieldErrors['extension']}
+                errorMessage={fieldErrors2['extension']?.reasons?.join(' ')}
                 autoComplete="off"
                 ariaDescription="Up to 6 digits"
               />
@@ -454,7 +394,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 label="Email"
                 value={formData.email}
                 onChange={handleFieldChange}
-                errorMessage={fieldErrors['email']}
+                errorMessage={fieldErrors2['email']?.reasons?.join(' ')}
                 type="email"
                 autoComplete="off"
               />
