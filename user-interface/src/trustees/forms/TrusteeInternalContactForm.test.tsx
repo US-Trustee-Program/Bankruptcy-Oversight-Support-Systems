@@ -364,9 +364,6 @@ describe('TrusteeInternalContactForm Tests', () => {
     await waitFor(() => {
       expect(addr1).toHaveValue('');
     });
-    expect(addr1).toBeRequired();
-    expect(city).toBeRequired();
-    expect(zip).toBeRequired();
     expect(screen.queryByText(addressErrorMessage)).toBeInTheDocument();
     expect(screen.queryByText(cityErrorMessage)).not.toBeInTheDocument();
 

@@ -15,7 +15,7 @@ import * as UseApi2Module from '@/lib/hooks/UseApi2';
 import { Trustee, TrusteeInput } from '@common/cams/trustees';
 import * as NavigatorModule from '@/lib/hooks/UseCamsNavigator';
 import MockData from '@common/cams/test-utilities/mock-data';
-import { TrusteePublicFormData } from './trusteeForms.specs';
+import { TrusteePublicFormData } from './trusteeForms.types';
 import * as Validation from '@common/cams/validation';
 import * as useCamsNavigatorModule from '@/lib/hooks/UseCamsNavigator';
 

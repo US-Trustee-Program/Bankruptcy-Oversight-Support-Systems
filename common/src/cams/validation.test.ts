@@ -43,6 +43,37 @@ describe('validation', () => {
       expect(mergeValidatorResults(bad, VALID)).toEqual(bad);
       expect(mergeValidatorResults(VALID, bad)).toEqual(bad);
     });
+
+    test('should merge two invalid results', () => {
+      const bad1 = {
+        reasons: ['Bad 1'],
+        reasonMap: {
+          foo: { reasons: ['Max length exceeded'] },
+          bar: { reasons: ['Max length exceeded'] },
+          baz: { reasonMap: { one: { reasons: ['Max length exceeded'] } } },
+        },
+      };
+      const bad2 = {
+        reasons: ['Bad 2'],
+        reasonMap: { bar: { reasons: ['Invalid format'] } },
+        baz: {
+          reasonMap: { one: { reasons: ['Invalid format'] }, two: { reasons: ['Invalid format'] } },
+        },
+      };
+      expect(mergeValidatorResults(bad1, bad2)).toEqual({
+        reasons: expect.arrayContaining(['Bad 1', 'Bad 2']),
+        reasonMap: {
+          foo: { reasons: ['Max length exceeded'] },
+          bar: { reasons: expect.arrayContaining(['Max length exceeded', 'Invalid format']) },
+          baz: {
+            reasonMap: {
+              one: { reasons: expect.arrayContaining(['Max length exceeded', 'Invalid format']) },
+              two: { reasons: ['Invalid format'] },
+            },
+          },
+        },
+      });
+    });
   });
 
   describe('$ validation', () => {
