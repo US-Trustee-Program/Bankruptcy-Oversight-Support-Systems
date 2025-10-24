@@ -2,7 +2,8 @@ import { TextAreaRef } from '@/lib/type-declarations/input-fields';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import React from 'react';
 import TextArea from './TextArea';
-import userEvent, { UserEvent } from '@testing-library/user-event';
+import { UserEvent } from '@testing-library/user-event';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 
 describe('Tests for USWDS TextArea component', () => {
   const ref = React.createRef<TextAreaRef>();
@@ -14,10 +15,10 @@ describe('Tests for USWDS TextArea component', () => {
   const value = 'original text';
   const newValue = 'new value';
   const testClassName = 'test-class-name';
-  let browser: UserEvent;
+  let userEvent: UserEvent;
 
   beforeEach(() => {
-    browser = userEvent.setup();
+    userEvent = TestingUtilities.setupUserEvent();
   });
 
   const renderWithoutProps = () => {
@@ -115,7 +116,7 @@ describe('Tests for USWDS TextArea component', () => {
     expect(youChangedMe).toHaveBeenCalled();
 
     const anotherValue = '. Yet another value';
-    await browser.type(inputEl, anotherValue);
+    await userEvent.type(inputEl, anotherValue);
     expect(inputEl).toHaveValue(newValue + anotherValue);
     expect(youChangedMe).toHaveBeenCalled();
   });

@@ -8,7 +8,8 @@ import { orderType, orderStatusType } from '@/lib/utils/labels';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { TransferOrder } from '@common/cams/orders';
-import userEvent, { UserEvent } from '@testing-library/user-event';
+import { UserEvent } from '@testing-library/user-event';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 
 function findAccordionHeading(id: string) {
   const heading = screen.getByTestId(`accordion-heading-${id}`);
@@ -41,7 +42,7 @@ function findActionText(id: string, visible: boolean) {
 
 describe('TransferOrderAccordion', () => {
   let order: TransferOrder;
-  let browser: UserEvent;
+  let userEvent: UserEvent;
 
   const regionMap = new Map<string, string>([['02', 'NEW YORK']]);
 
@@ -109,7 +110,7 @@ describe('TransferOrderAccordion', () => {
   beforeEach(async () => {
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
     order = MockData.getTransferOrder();
-    browser = userEvent.setup();
+    userEvent = TestingUtilities.setupUserEvent();
   });
 
   afterEach(() => {
@@ -125,7 +126,7 @@ describe('TransferOrderAccordion', () => {
 
     const content = findAccordionContent(order.id, false);
 
-    await browser.click(heading);
+    await userEvent.click(heading);
 
     expect(content?.textContent).toContain(order.docketEntries[0]?.summaryText);
     expect(content?.textContent).toContain(order.docketEntries[0]?.fullText);
@@ -144,7 +145,7 @@ describe('TransferOrderAccordion', () => {
     });
 
     if (heading) {
-      await browser.click(heading);
+      await userEvent.click(heading);
     }
 
     await waitFor(async () => {
@@ -165,7 +166,7 @@ describe('TransferOrderAccordion', () => {
     });
 
     if (heading) {
-      await browser.click(heading);
+      await userEvent.click(heading);
     }
 
     await waitFor(async () => {
@@ -187,7 +188,7 @@ describe('TransferOrderAccordion', () => {
     });
 
     if (heading) {
-      await browser.click(heading);
+      await userEvent.click(heading);
     }
 
     await waitFor(async () => {
@@ -216,7 +217,7 @@ describe('TransferOrderAccordion', () => {
     });
 
     if (heading) {
-      await browser.click(heading);
+      await userEvent.click(heading);
     }
 
     await waitFor(async () => {

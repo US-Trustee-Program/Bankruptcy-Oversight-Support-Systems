@@ -10,7 +10,6 @@ import Api2 from '@/lib/models/api2';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
-import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { describe } from 'vitest';
 import {
@@ -98,8 +97,8 @@ async function enterCaseNumber(caseIdInput: Element | null | undefined, value: s
 
 async function selectItemInCombobox(orderId: string, index: number) {
   const courtComboboxItems = document.querySelectorAll(`#court-selection-${orderId} li`);
-  const browser = userEvent.setup();
-  await browser.click(courtComboboxItems[index]!);
+  const userEvent = TestingUtilities.setupUserEvent();
+  await userEvent.click(courtComboboxItems[index]!);
 }
 
 async function fillCaseNotListedForm(

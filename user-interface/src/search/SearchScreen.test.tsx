@@ -8,7 +8,7 @@ import TestingUtilities from '@/lib/testing/testing-utilities';
 import { MockInstance } from 'vitest';
 import { ResponseBody } from '@common/api/response';
 import Api2 from '@/lib/models/api2';
-import userEvent, { UserEvent } from '@testing-library/user-event';
+import { UserEvent } from '@testing-library/user-event';
 import LocalStorage from '@/lib/utils/local-storage';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { REGION_02_GROUP_NY } from '@common/cams/test-utilities/mock-user';
@@ -40,13 +40,13 @@ describe('search screen', () => {
   };
   const includeAssignments = { includeAssignments: true };
   let searchCasesSpy: MockInstance;
-  let browser: UserEvent;
+  let userEvent: UserEvent;
 
   beforeEach(async () => {
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
     searchCasesSpy = vi.spyOn(Api2, 'searchCases').mockResolvedValue(searchResponseBody);
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
-    browser = userEvent.setup();
+    userEvent = TestingUtilities.setupUserEvent();
   });
 
   afterEach(() => {
@@ -79,8 +79,8 @@ describe('search screen', () => {
 
     // Make first search request...
     await TestingUtilities.toggleComboBoxItemSelection('case-chapter-search', 2);
-    await browser.click(expandButton!);
-    await browser.click(searchButton);
+    await userEvent.click(expandButton!);
+    await userEvent.click(searchButton);
 
     await waitFor(() => {
       // wait for the default state alert to be removed
@@ -100,10 +100,10 @@ describe('search screen', () => {
     );
 
     await TestingUtilities.toggleComboBoxItemSelection('case-chapter-search', 3);
-    await browser.click(expandButton!);
+    await userEvent.click(expandButton!);
 
     expect(document.querySelectorAll('#case-chapter-search-item-list li.selected')).toHaveLength(2);
-    await browser.click(searchButton);
+    await userEvent.click(searchButton);
 
     await waitFor(() => {
       expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
@@ -119,7 +119,7 @@ describe('search screen', () => {
     const clearButton = document.querySelector('#case-chapter-search .clear-all-button');
     expect(clearButton).toBeInTheDocument();
 
-    await browser.click(clearButton!);
+    await userEvent.click(clearButton!);
 
     await waitFor(() => {
       expect(
@@ -165,7 +165,7 @@ describe('search screen', () => {
     renderWithoutProps();
 
     const searchButton = screen.getByTestId('button-search-submit');
-    await browser.click(searchButton);
+    await userEvent.click(searchButton);
 
     await waitFor(() => {
       expect(document.querySelector('.search-results table')).toBeInTheDocument();
@@ -176,20 +176,20 @@ describe('search screen', () => {
       expect(expandButton).toBeInTheDocument();
     });
 
-    await browser.click(expandButton);
+    await userEvent.click(expandButton);
 
     // Make first search request....
     let itemToSelect = userDivisions.length + 1;
     await TestingUtilities.toggleComboBoxItemSelection('court-selections-search', itemToSelect);
 
-    await browser.click(expandButton);
+    await userEvent.click(expandButton);
 
     await waitFor(() => {
       const expandedList = document.querySelector('.item-list-container .expanded');
       expect(expandedList).not.toBeInTheDocument();
     });
 
-    await browser.click(searchButton);
+    await userEvent.click(searchButton);
 
     await waitFor(() => {
       // wait for loading to disappear
@@ -215,12 +215,12 @@ describe('search screen', () => {
     );
 
     // Make second search request...
-    await browser.click(expandButton);
+    await userEvent.click(expandButton);
     await TestingUtilities.toggleComboBoxItemSelection('court-selections-search', ++itemToSelect);
 
-    await browser.click(expandButton);
+    await userEvent.click(expandButton);
 
-    await browser.click(searchButton);
+    await userEvent.click(searchButton);
 
     await waitFor(() => {
       const expandedList = document.querySelector('.item-list-container .expanded');
@@ -246,7 +246,7 @@ describe('search screen', () => {
     const clearButton = document.querySelector('#court-selections-search .clear-all-button');
     expect(clearButton).toBeInTheDocument();
 
-    await browser.click(clearButton!);
+    await userEvent.click(clearButton!);
 
     await waitFor(() => {
       expect(
@@ -278,9 +278,9 @@ describe('search screen', () => {
       expect(caseNumberInput).toBeEnabled();
     });
 
-    await browser.type(caseNumberInput, caseNumber);
+    await userEvent.type(caseNumberInput, caseNumber);
     const searchButton = screen.getByTestId('button-search-submit');
-    await browser.click(searchButton);
+    await userEvent.click(searchButton);
 
     await waitFor(() => {
       // wait for loading to disappear
@@ -290,8 +290,8 @@ describe('search screen', () => {
     const rows = document.querySelectorAll('#search-results-table-body > tr');
     expect(rows).toHaveLength(caseList.length);
 
-    await browser.type(caseNumberInput, caseNumber);
-    await browser.click(searchButton);
+    await userEvent.type(caseNumberInput, caseNumber);
+    await userEvent.click(searchButton);
 
     await waitFor(() => {
       expect(document.querySelector('.search-results table')).toBeInTheDocument();
@@ -314,9 +314,9 @@ describe('search screen', () => {
       expect(caseNumberInput).toBeEnabled();
     });
 
-    await browser.type(caseNumberInput, '00-00000');
+    await userEvent.type(caseNumberInput, '00-00000');
     const searchButton = screen.getByTestId('button-search-submit');
-    await browser.click(searchButton);
+    await userEvent.click(searchButton);
 
     await waitFor(() => {
       expect(document.querySelector('.search-results table')).toBeVisible();
@@ -325,9 +325,9 @@ describe('search screen', () => {
     const rows = document.querySelectorAll('#search-results-table-body > tr');
     expect(rows).toHaveLength(caseList.length);
 
-    await browser.type(caseNumberInput, incompleteCaseNumber);
+    await userEvent.type(caseNumberInput, incompleteCaseNumber);
     const numberOfCallsBefore = searchCasesSpy.mock.calls.length;
-    await browser.click(searchButton);
+    await userEvent.click(searchButton);
 
     expect(searchCasesSpy.mock.calls).toHaveLength(numberOfCallsBefore);
   });
@@ -340,7 +340,7 @@ describe('search screen', () => {
     expect(table).not.toBeInTheDocument();
 
     let searchButton = screen.getByTestId('button-search-submit');
-    await browser.click(searchButton);
+    await userEvent.click(searchButton);
 
     let noResultsAlert = document.querySelector('#no-results-alert');
 
@@ -354,12 +354,12 @@ describe('search screen', () => {
     });
 
     const caseNumberInput: HTMLInputElement = screen.getByTestId('basic-search-field');
-    await browser.type(caseNumberInput, '00-11111');
+    await userEvent.type(caseNumberInput, '00-11111');
     await waitFor(() => {
       expect(caseNumberInput['value']).toEqual('00-11111');
     });
     searchButton = screen.getByTestId('button-search-submit');
-    await browser.click(searchButton);
+    await userEvent.click(searchButton);
 
     await waitFor(() => {
       noResultsAlert = document.querySelector('#no-results-alert');
@@ -390,12 +390,12 @@ describe('search screen', () => {
       expect(caseNumberInput).toBeEnabled();
     });
 
-    await browser.type(caseNumberInput, caseNumber);
+    await userEvent.type(caseNumberInput, caseNumber);
     await waitFor(() => {
       expect(caseNumberInput['value']).toEqual(caseNumber);
     });
 
-    await browser.click(searchButton);
+    await userEvent.click(searchButton);
 
     await waitFor(() => {
       expect(document.querySelector('.search-results table')).not.toBeInTheDocument();
@@ -410,9 +410,9 @@ describe('search screen', () => {
       expect(caseNumberInput).toBeEnabled();
     });
 
-    await browser.clear(caseNumberInput);
-    await browser.type(caseNumberInput, '00-11111');
-    await browser.click(searchButton);
+    await userEvent.clear(caseNumberInput);
+    await userEvent.type(caseNumberInput, '00-11111');
+    await userEvent.click(searchButton);
     await waitFor(() => {
       const searchErrorAlert = document.querySelector('#search-error-alert');
       expect(searchErrorAlert).not.toBeInTheDocument();
@@ -462,17 +462,17 @@ describe('search screen', () => {
   test('should update search predicate when Include Closed Cases checkbox is toggled', async () => {
     renderWithoutProps();
     const caseNumberInput = screen.getByTestId('basic-search-field');
-    await browser.type(caseNumberInput, '1100000');
+    await userEvent.type(caseNumberInput, '1100000');
 
     const initialCheckbox = screen.getByTestId('checkbox-include-closed');
     expect(initialCheckbox).not.toBeChecked();
 
     // Click the checkbox label to include closed cases
-    await browser.click(document.querySelector('#checkbox-include-closed-click-target')!);
+    await userEvent.click(document.querySelector('#checkbox-include-closed-click-target')!);
 
     // Click search button to perform search
     const searchButton = screen.getByTestId('button-search-submit');
-    await browser.click(searchButton);
+    await userEvent.click(searchButton);
 
     // Wait for search to complete
     await waitFor(() => {
@@ -492,10 +492,10 @@ describe('search screen', () => {
     );
 
     // Click the checkbox label again to exclude closed cases
-    await browser.click(document.querySelector('#checkbox-include-closed-click-target')!);
+    await userEvent.click(document.querySelector('#checkbox-include-closed-click-target')!);
 
     // Click search button to perform search
-    await browser.click(searchButton);
+    await userEvent.click(searchButton);
 
     // Wait for search to complete
     await waitFor(() => {

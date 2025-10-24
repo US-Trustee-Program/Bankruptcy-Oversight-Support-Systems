@@ -1,12 +1,13 @@
 import { render, screen } from '@testing-library/react';
-import userEvent, { UserEvent } from '@testing-library/user-event';
+import { UserEvent } from '@testing-library/user-event';
 import ToggleButton from './ToggleButton';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 
 describe('ToggleButton', () => {
-  let browser: UserEvent;
+  let userEvent: UserEvent;
 
   beforeEach(() => {
-    browser = userEvent.setup();
+    userEvent = TestingUtilities.setupUserEvent();
   });
 
   test('should render with inactive state', () => {
@@ -60,13 +61,13 @@ describe('ToggleButton', () => {
     );
 
     const button = screen.getByRole('switch');
-    await browser.click(button);
+    await userEvent.click(button);
 
     expect(button).toHaveClass('active');
     expect(button).toHaveAttribute('aria-checked', 'true');
     expect(onToggle).toHaveBeenCalledWith(true);
 
-    await browser.click(button);
+    await userEvent.click(button);
     expect(button).toHaveClass('inactive');
     expect(button).toHaveAttribute('aria-checked', 'false');
     expect(onToggle).toHaveBeenCalledWith(false);
@@ -90,7 +91,7 @@ describe('ToggleButton', () => {
     expect(button).toHaveAttribute('title', 'Inactive Tooltip');
     expect(button).toHaveTextContent('Inactive Label');
 
-    await browser.click(button);
+    await userEvent.click(button);
     expect(button).toHaveClass('active');
     expect(button).toHaveAttribute('aria-label', 'Active Aria Label');
     expect(button).toHaveAttribute('title', 'Active Tooltip');
@@ -116,7 +117,7 @@ describe('ToggleButton', () => {
     expect(button).toHaveAttribute('title', staticLabel);
     expect(button).toHaveTextContent(staticLabel);
 
-    await browser.click(button);
+    await userEvent.click(button);
     expect(button).toHaveClass('active');
     expect(button).toHaveAttribute('aria-label', staticLabel);
     expect(button).toHaveAttribute('title', staticLabel);

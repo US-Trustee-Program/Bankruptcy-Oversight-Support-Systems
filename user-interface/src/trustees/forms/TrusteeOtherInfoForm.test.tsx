@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent, { UserEvent } from '@testing-library/user-event';
+import { UserEvent } from '@testing-library/user-event';
 import TrusteeOtherInfoForm from './TrusteeOtherInfoForm';
 import * as UseApi2Module from '@/lib/hooks/UseApi2';
 import * as UseGlobalAlertModule from '@/lib/hooks/UseGlobalAlert';
@@ -9,6 +9,7 @@ import { Trustee } from '@common/cams/trustees';
 import { ResponseBody } from '@common/api/response';
 
 import MockData from '@common/cams/test-utilities/mock-data';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 
 describe('TrusteeOtherInfoForm', () => {
   const TEST_TRUSTEE_ID = 'trustee-123';
@@ -43,10 +44,10 @@ describe('TrusteeOtherInfoForm', () => {
   let patchTrusteeSpy: Mock<
     (trusteeId: string, trustee: unknown) => Promise<ResponseBody<Trustee>>
   >;
-  let browser: UserEvent;
+  let userEvent: UserEvent;
 
   beforeEach(() => {
-    browser = userEvent.setup();
+    userEvent = TestingUtilities.setupUserEvent();
     vi.clearAllMocks();
 
     vi.spyOn(UseGlobalAlertModule, 'useGlobalAlert').mockReturnValue(mockGlobalAlert);
@@ -120,7 +121,7 @@ describe('TrusteeOtherInfoForm', () => {
     });
 
     // Click the "Add another bank" button
-    await browser.click(screen.getByTestId('button-add-bank-button'));
+    await userEvent.click(screen.getByTestId('button-add-bank-button'));
 
     // Check a new bank field was added
     expect(screen.getByTestId(`trustee-banks-${TEST_BANKS.length}`)).toHaveValue('');
@@ -141,7 +142,7 @@ describe('TrusteeOtherInfoForm', () => {
     });
 
     // Click the first "Remove Bank" button (which removes the second bank)
-    await browser.click(screen.getByTestId('button-remove-bank-1-button'));
+    await userEvent.click(screen.getByTestId('button-remove-bank-1-button'));
 
     // Check that a bank was removed - the last bank should no longer exist
     expect(screen.queryByTestId(`trustee-banks-${TEST_BANKS.length - 1}`)).not.toBeInTheDocument();
@@ -161,8 +162,8 @@ describe('TrusteeOtherInfoForm', () => {
     const updatedBankName = 'Updated Bank Name';
     const bankInput = screen.getByTestId('trustee-banks-0');
 
-    await browser.clear(bankInput);
-    await browser.type(bankInput, updatedBankName);
+    await userEvent.clear(bankInput);
+    await userEvent.type(bankInput, updatedBankName);
 
     expect(bankInput).toHaveValue(updatedBankName);
   });
@@ -179,11 +180,11 @@ describe('TrusteeOtherInfoForm', () => {
     // Update first bank name
     const updatedBankName = 'Updated Bank Name';
     const bankInput = screen.getByTestId('trustee-banks-0');
-    await browser.clear(bankInput);
-    await browser.type(bankInput, updatedBankName);
+    await userEvent.clear(bankInput);
+    await userEvent.type(bankInput, updatedBankName);
 
     // Submit the form
-    await browser.click(screen.getByTestId('button-submit-button'));
+    await userEvent.click(screen.getByTestId('button-submit-button'));
 
     // Wait for the async operation to complete
     await waitFor(() => {
@@ -214,7 +215,7 @@ describe('TrusteeOtherInfoForm', () => {
     );
 
     // Submit the form
-    await browser.click(screen.getByTestId('button-submit-button'));
+    await userEvent.click(screen.getByTestId('button-submit-button'));
 
     // Wait for the async operation to complete
     await waitFor(() => {
@@ -240,7 +241,7 @@ describe('TrusteeOtherInfoForm', () => {
     );
 
     // Submit the form
-    await browser.click(screen.getByTestId('button-submit-button'));
+    await userEvent.click(screen.getByTestId('button-submit-button'));
 
     // Wait for the async operation to complete
     await waitFor(() => {
@@ -263,7 +264,7 @@ describe('TrusteeOtherInfoForm', () => {
     expect(screen.getByTestId('button-submit-button')).toHaveTextContent('Save');
 
     // Click the submit button
-    await browser.click(screen.getByTestId('button-submit-button'));
+    await userEvent.click(screen.getByTestId('button-submit-button'));
 
     // Wait for the async operation to complete and verify the API was called
     await waitFor(() => {
@@ -302,7 +303,7 @@ describe('TrusteeOtherInfoForm', () => {
     expect(submitButton).toHaveTextContent('Save');
 
     // Click the submit button
-    await browser.click(submitButton);
+    await userEvent.click(submitButton);
 
     // Button should be disabled and show "Saving..." during submission
     expect(submitButton).toBeDisabled();
@@ -330,7 +331,7 @@ describe('TrusteeOtherInfoForm', () => {
     );
 
     // Click the cancel button
-    await browser.click(screen.getByTestId('button-cancel-button'));
+    await userEvent.click(screen.getByTestId('button-cancel-button'));
 
     // Check that navigation occurred to the correct page
     expect(mockNavigate.navigateTo).toHaveBeenCalledWith(`/trustees/${TEST_TRUSTEE_ID}`);
@@ -346,7 +347,7 @@ describe('TrusteeOtherInfoForm', () => {
     );
 
     // Submit the form
-    await browser.click(screen.getByTestId('button-submit-button'));
+    await userEvent.click(screen.getByTestId('button-submit-button'));
 
     // Should show error message and not call API
     expect(mockGlobalAlert.error).toHaveBeenCalledWith(
@@ -365,7 +366,7 @@ describe('TrusteeOtherInfoForm', () => {
     );
 
     // Submit the form
-    await browser.click(screen.getByTestId('button-submit-button'));
+    await userEvent.click(screen.getByTestId('button-submit-button'));
 
     // Should show error message and not call API
     expect(mockGlobalAlert.error).toHaveBeenCalledWith(
@@ -394,7 +395,7 @@ describe('TrusteeOtherInfoForm', () => {
 
     // Open the ComboBox dropdown
     const expandButton = document.querySelector('#trustee-software-expand') as HTMLButtonElement;
-    await browser.click(expandButton);
+    await userEvent.click(expandButton);
 
     // Wait for dropdown to open and find the Stretto option
     await waitFor(() => {
@@ -404,10 +405,10 @@ describe('TrusteeOtherInfoForm', () => {
     // Select Stretto option - find it by its data-value attribute
     const strettoOption = document.querySelector('[data-value="Stretto"]') as HTMLLIElement;
     expect(strettoOption).toBeInTheDocument();
-    await browser.click(strettoOption);
+    await userEvent.click(strettoOption);
 
     // Submit the form to verify the software state was updated
-    await browser.click(screen.getByTestId('button-submit-button'));
+    await userEvent.click(screen.getByTestId('button-submit-button'));
 
     // Verify API was called with the new software value
     await waitFor(() => {
@@ -447,9 +448,9 @@ describe('TrusteeOtherInfoForm', () => {
 
     const clearButton = document.querySelector('#trustee-software-clear-all') as HTMLButtonElement;
     expect(clearButton).toBeInTheDocument();
-    await browser.click(clearButton);
+    await userEvent.click(clearButton);
 
-    await browser.click(screen.getByTestId('button-submit-button'));
+    await userEvent.click(screen.getByTestId('button-submit-button'));
 
     await waitFor(() => {
       expect(patchTrusteeSpy).toHaveBeenCalledWith(

@@ -9,7 +9,8 @@ import * as ReactRouter from 'react-router';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { CaseDocket, CaseNote } from '@common/cams/cases';
-import userEvent, { UserEvent } from '@testing-library/user-event';
+import { UserEvent } from '@testing-library/user-event';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 
 const testCaseDocketEntries: CaseDocket = [
   {
@@ -54,10 +55,10 @@ describe('Case Detail sort, search, and filter tests', () => {
   const testCaseDetail = MockData.getCaseDetail({ override: { caseId: testCaseId } });
 
   describe('display tests', () => {
-    let browser: UserEvent;
+    let userEvent: UserEvent;
 
     beforeEach(() => {
-      browser = userEvent.setup();
+      userEvent = TestingUtilities.setupUserEvent();
     });
 
     test('should display sort and filter panel when navigated to docket entries', async () => {
@@ -96,7 +97,7 @@ describe('Case Detail sort, search, and filter tests', () => {
 
       const docketEntryLink = screen.getByTestId('court-docket-link');
       expect(docketEntryLink).toBeInTheDocument();
-      await browser.click(docketEntryLink);
+      await userEvent.click(docketEntryLink);
       await waitFor(() => {
         sortButton = screen.queryByTestId(sortButtonId);
         expect(sortButton).toBeInTheDocument();
@@ -105,7 +106,7 @@ describe('Case Detail sort, search, and filter tests', () => {
       });
 
       const basicInfoLink = screen.getByTestId('case-overview-link');
-      await browser.click(basicInfoLink);
+      await userEvent.click(basicInfoLink);
       await waitFor(() => {
         sortButton = screen.queryByTestId(sortButtonId);
         expect(sortButton).not.toBeInTheDocument();
@@ -634,10 +635,10 @@ describe('Case Detail sort, search, and filter tests', () => {
   });
 
   describe('Clear Filters', () => {
-    let browser: UserEvent;
+    let userEvent: UserEvent;
 
     beforeEach(() => {
-      browser = userEvent.setup();
+      userEvent = TestingUtilities.setupUserEvent();
     });
 
     test('clear filter fields when clear filters button is clicked', async () => {
@@ -705,9 +706,9 @@ describe('Case Detail sort, search, and filter tests', () => {
       fireEvent.change(startDateText, { target: { value: '2023-07-01' } });
       fireEvent.change(endDateText, { target: { value: '2023-011-01' } });
       fireEvent.change(docNumberSearchInput, { target: { value: '1' } });
-      await browser.click(docketFacetContainer);
+      await userEvent.click(docketFacetContainer);
       const item0 = docketFacetContainer.querySelector('li');
-      await browser.click(item0!);
+      await userEvent.click(item0!);
 
       const docketListAfterInput = screen.getByTestId('searchable-docket');
       expect(docketListAfterInput.children.length).toEqual(1);
