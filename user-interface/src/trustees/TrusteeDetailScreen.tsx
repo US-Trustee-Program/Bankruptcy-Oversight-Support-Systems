@@ -85,7 +85,7 @@ export default function TrusteeDetailScreen() {
   }, [api]);
 
   useEffect(() => {
-    if (trusteeId && !location.pathname.match(/\/edit/)) {
+    if (trusteeId) {
       setIsLoading(true);
       api
         .getTrustee(trusteeId)
@@ -98,8 +98,8 @@ export default function TrusteeDetailScreen() {
         .finally(() => {
           setIsLoading(false);
         });
-      setNavState(mapTrusteeDetailNavState(window.location.pathname));
     }
+    setNavState(mapTrusteeDetailNavState(window.location.pathname));
   }, [location.pathname, trusteeId, api, globalAlert]);
 
   if (!trusteeId || (!isLoading && !trustee)) {
