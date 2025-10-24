@@ -1,14 +1,15 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
-import userEvent, { UserEvent } from '@testing-library/user-event';
+import { UserEvent } from '@testing-library/user-event';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import React from 'react';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 
 describe('PhoneNumberInput', () => {
-  let browser: UserEvent;
+  let userEvent: UserEvent;
 
   beforeEach(() => {
-    browser = userEvent.setup();
+    userEvent = TestingUtilities.setupUserEvent();
   });
 
   test('should only accept numbers', async () => {
@@ -16,18 +17,18 @@ describe('PhoneNumberInput', () => {
 
     const input = screen.getByTestId('phone-number-input');
 
-    await browser.type(input, 'abc');
+    await userEvent.type(input, 'abc');
     expect(input).toHaveValue('');
 
-    await browser.type(input, '123abc');
+    await userEvent.type(input, '123abc');
     expect(input).toHaveValue('123');
 
-    await browser.clear(input);
-    await browser.type(input, '1234567890');
+    await userEvent.clear(input);
+    await userEvent.type(input, '1234567890');
     expect(input).toHaveValue('123-456-7890');
 
-    await browser.clear(input);
-    await browser.type(input, '123456sdgg7890123456789012345()678---901234567890');
+    await userEvent.clear(input);
+    await userEvent.type(input, '123456sdgg7890123456789012345()678---901234567890');
     expect(input).toHaveValue('123-456-7890');
   });
 
@@ -67,32 +68,32 @@ describe('PhoneNumberInput', () => {
 
     render(<Wrapper />);
 
-    await browser.click(screen.getByText('Set Value'));
+    await userEvent.click(screen.getByText('Set Value'));
     await waitFor(() => {
       expect(screen.getByTestId(id)).toHaveValue(phoneNumber);
     });
 
-    await browser.click(screen.getByText('Clear Value'));
+    await userEvent.click(screen.getByText('Clear Value'));
     await waitFor(() => {
       expect(screen.getByTestId(id)).toHaveValue(blank);
     });
 
-    await browser.click(screen.getByText('Set Value'));
+    await userEvent.click(screen.getByText('Set Value'));
     await waitFor(() => {
       expect(screen.getByTestId(id)).toHaveValue(phoneNumber);
     });
 
-    await browser.click(screen.getByText('Clear Value'));
+    await userEvent.click(screen.getByText('Clear Value'));
     await waitFor(() => {
       expect(screen.getByTestId(id)).toHaveValue(blank);
     });
 
-    await browser.click(screen.getByText('Set Value'));
+    await userEvent.click(screen.getByText('Set Value'));
     await waitFor(() => {
       expect(screen.getByTestId(id)).toHaveValue(phoneNumber);
     });
 
-    await browser.click(screen.getByText('Get Value'));
+    await userEvent.click(screen.getByText('Get Value'));
     await waitFor(() => {
       expect(alertSpy).toHaveBeenCalledWith(phoneNumber);
     });

@@ -2,7 +2,7 @@ import Api2 from '@/lib/models/api2';
 import LocalStorage from '@/lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent, { UserEvent } from '@testing-library/user-event';
+import { UserEvent } from '@testing-library/user-event';
 import {
   CaseNoteRemovalModalOpenProps,
   CaseNoteRemovalModalRef,
@@ -14,7 +14,7 @@ import { BrowserRouter } from 'react-router-dom';
 import React from 'react';
 import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import CaseNoteRemovalModal from './CaseNoteRemovalModal';
-import testingUtilities from '@/lib/testing/testing-utilities';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 
 const caseId = '000-11-22222';
 const userId = '001';
@@ -68,10 +68,10 @@ function renderWithProps(
 }
 
 describe('Case Note Removal Modal Tests', async () => {
-  let browser: UserEvent;
+  let userEvent: UserEvent;
 
   beforeEach(() => {
-    browser = userEvent.setup();
+    userEvent = TestingUtilities.setupUserEvent();
   });
 
   test('should remove case note when remove button is clicked and modal approval is met.', async () => {
@@ -109,12 +109,12 @@ describe('Case Note Removal Modal Tests', async () => {
       expect(openModalButton).toBeInTheDocument();
     });
 
-    await browser.click(openModalButton!);
+    await userEvent.click(openModalButton!);
     const modalSubmitButton = screen.queryByTestId('button-remove-note-modal-submit-button');
     await waitFor(() => {
       expect(modalSubmitButton).toBeVisible();
     });
-    await browser.click(modalSubmitButton!);
+    await userEvent.click(modalSubmitButton!);
     await waitFor(() => {
       expect(deleteSpy).toHaveBeenCalledWith(expectedRemovalArgument);
     });
@@ -149,12 +149,12 @@ describe('Case Note Removal Modal Tests', async () => {
       expect(openModalButton).toBeInTheDocument();
     });
 
-    await browser.click(openModalButton!);
+    await userEvent.click(openModalButton!);
     let modalCancelButton = screen.queryByTestId('button-remove-note-modal-cancel-button');
     await waitFor(() => {
       expect(modalCancelButton).toBeVisible();
     });
-    await browser.click(modalCancelButton!);
+    await userEvent.click(modalCancelButton!);
     expect(deleteSpy).not.toHaveBeenCalled();
     expect(callbackSpy).not.toHaveBeenCalled();
     modalCancelButton = screen.queryByTestId('button-remove-note-modal-cancel-button');
@@ -171,7 +171,7 @@ describe('Case Note Removal Modal Tests', async () => {
     const deleteSpy = vi
       .spyOn(Api2, 'deleteCaseNote')
       .mockRejectedValue(new Error('some unknown error'));
-    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+    const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
 
     const modalRef = React.createRef<CaseNoteRemovalModalRef>();
     const expectedUser = {
@@ -197,7 +197,7 @@ describe('Case Note Removal Modal Tests', async () => {
       expect(openModalButton).toBeInTheDocument();
     });
 
-    await browser.click(openModalButton!);
+    await userEvent.click(openModalButton!);
     const modal = screen.queryByTestId('modal-remove-note-modal');
     await waitFor(() => {
       expect(modal).toHaveClass('is-visible');
@@ -206,7 +206,7 @@ describe('Case Note Removal Modal Tests', async () => {
     await waitFor(() => {
       expect(modalSubmitButton).toBeVisible();
     });
-    await browser.click(modalSubmitButton!);
+    await userEvent.click(modalSubmitButton!);
     await waitFor(() => {
       expect(deleteSpy).toHaveBeenCalledWith(expectedRemovalArgument);
     });

@@ -2,7 +2,8 @@ import { act, render, waitFor } from '@testing-library/react';
 import { OpenModalButton } from './OpenModalButton';
 import React from 'react';
 import { OpenModalButtonRef } from './modal-refs';
-import userEvent, { UserEvent } from '@testing-library/user-event';
+import { UserEvent } from '@testing-library/user-event';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 
 describe('Toggle Modal Button tests', () => {
   const modalId = 'test-modal';
@@ -20,10 +21,10 @@ describe('Toggle Modal Button tests', () => {
     },
   };
   let openButtonRef: React.RefObject<OpenModalButtonRef | null>;
-  let browser: UserEvent;
+  let userEvent: UserEvent;
 
   beforeEach(() => {
-    browser = userEvent.setup();
+    userEvent = TestingUtilities.setupUserEvent();
   });
 
   const renderWithoutProps = () => {
@@ -70,7 +71,7 @@ describe('Toggle Modal Button tests', () => {
 
   test('should call onClick callback when button is clicked', async () => {
     renderWithoutProps();
-    await browser.click(button!);
+    await userEvent.click(button!);
 
     await waitFor(() => expect(buttonClick).toHaveBeenCalled());
   });

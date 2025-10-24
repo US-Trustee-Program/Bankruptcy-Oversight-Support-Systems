@@ -1,7 +1,7 @@
 import { describe, expect, beforeEach, vi, test } from 'vitest';
 import React from 'react';
 import { act, render, screen, waitFor } from '@testing-library/react';
-import userEvent, { UserEvent } from '@testing-library/user-event';
+import { UserEvent } from '@testing-library/user-event';
 import RichTextEditor, { RichTextEditorRef } from './RichTextEditor';
 import {
   createMockEditor,
@@ -10,6 +10,7 @@ import {
   FORMATTING_BUTTONS,
   LIST_BUTTONS,
 } from '@/lib/testing/mock-editor';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 
 // Create a mock function outside the factory
 const mockUseEditor = vi.fn();
@@ -49,7 +50,7 @@ vi.mock('@/lib/hooks/UseOutsideClick', () => ({
 }));
 
 describe('RichTextEditor', () => {
-  let browser: UserEvent;
+  let userEvent: UserEvent;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -57,7 +58,7 @@ describe('RichTextEditor', () => {
     resetMockEditor(mockEditor);
     mockUseOutsideClick.mockReset();
     mockUseEditor.mockReturnValue(mockEditor);
-    browser = userEvent.setup();
+    userEvent = TestingUtilities.setupUserEvent();
   });
 
   test('renders with label, aria description, and className', () => {
@@ -104,7 +105,7 @@ describe('RichTextEditor', () => {
     const onChange = vi.fn();
     render(<RichTextEditor id="test-editor" onChange={onChange} />);
     const editorContent = screen.getByTestId('editor-content');
-    await browser.type(editorContent, 'hello');
+    await userEvent.type(editorContent, 'hello');
     // Simulate rich text editor's update event
     onChange('<p>test content</p>');
     expect(onChange).toHaveBeenCalled();
@@ -203,7 +204,7 @@ describe('RichTextEditor', () => {
           render(<RichTextEditor id="test-editor" />);
 
           const button = screen.getByTestId(testId);
-          await browser.click(button);
+          await userEvent.click(button);
 
           expect(mockEditor.chain).toHaveBeenCalled();
         },
@@ -281,7 +282,7 @@ describe('RichTextEditor', () => {
           const button = screen.getByTestId(testId);
           expect(button).toBeInTheDocument();
 
-          await browser.click(button);
+          await userEvent.click(button);
           expect(mockEditor.chain).toHaveBeenCalled();
         },
       );

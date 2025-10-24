@@ -2,27 +2,27 @@ import React, { Ref } from 'react';
 import ComboBox, { ComboBoxProps, ComboOption } from './ComboBox';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import { act, render, screen, waitFor } from '@testing-library/react';
-import userEvent, { UserEvent } from '@testing-library/user-event';
-import testingUtilities from '@/lib/testing/testing-utilities';
+import { UserEvent } from '@testing-library/user-event';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 import { vi } from 'vitest';
 
 const comboboxId = 'test-combobox';
-const browserUser = userEvent.setup();
+const userEvent = TestingUtilities.setupUserEvent();
 
 async function toggleDropdown(id: string = comboboxId) {
   const toggleButton = document.querySelector(`#${id}-expand`);
 
   expect(toggleButton).toBeInTheDocument();
 
-  await browserUser.click(toggleButton!);
+  await userEvent.click(toggleButton!);
 }
 
 async function toggleDropdownByKeystroke() {
   const button1 = document.querySelector(`.button1`) as HTMLButtonElement;
   expect(button1).toBeInTheDocument();
   button1!.focus();
-  await browserUser.keyboard('{Tab}');
-  await browserUser.keyboard('{ArrowDown}');
+  await userEvent.keyboard('{Tab}');
+  await userEvent.keyboard('{ArrowDown}');
 }
 
 async function getComboInputContainer(): Promise<Element | null> {
@@ -40,7 +40,7 @@ async function getFocusedComboInputField(id: string): Promise<HTMLInputElement> 
     expect(inputField).toBeInTheDocument();
   });
 
-  await browserUser.click(inputField!);
+  await userEvent.click(inputField!);
   return inputField as HTMLInputElement;
 }
 
@@ -83,7 +83,7 @@ const expectInputContainerToHaveFocus = async (): Promise<Element | null> => {
 describe('test cams combobox', () => {
   const updateFilterMock = vi.fn();
   let defaultOptions: ComboOption[] = [];
-  let browser: UserEvent;
+  let userEvent: UserEvent;
 
   const renderWithProps = (props?: Partial<ComboBoxProps>, ref?: Ref<ComboBoxRef>) => {
     defaultOptions = getDefaultOptions();
@@ -121,7 +121,7 @@ describe('test cams combobox', () => {
   };
 
   beforeEach(() => {
-    browser = userEvent.setup();
+    userEvent = TestingUtilities.setupUserEvent();
   });
 
   afterEach(() => {
@@ -231,7 +231,7 @@ describe('test cams combobox', () => {
       const firstItem = document.querySelector('li');
       expect(firstItem).toHaveAttribute('aria-label', expected + ' unselected');
 
-      await testingUtilities.toggleComboBoxItemSelection(comboboxId, 0);
+      await TestingUtilities.toggleComboBoxItemSelection(comboboxId, 0);
 
       expect(firstItem).toHaveAttribute('aria-label', expected + ' selected');
     },
@@ -243,7 +243,7 @@ describe('test cams combobox', () => {
     await toggleDropdown();
 
     const firstListItemButton = document.querySelector('li');
-    await browser.click(firstListItemButton!);
+    await userEvent.click(firstListItemButton!);
 
     let selectedListItem;
     await waitFor(() => {
@@ -251,7 +251,7 @@ describe('test cams combobox', () => {
       expect(selectedListItem!.length).toEqual(1);
     });
 
-    await browser.click(firstListItemButton!);
+    await userEvent.click(firstListItemButton!);
 
     await waitFor(() => {
       selectedListItem = document.querySelectorAll('li.selected');
@@ -281,7 +281,7 @@ describe('test cams combobox', () => {
     await toggleDropdown();
 
     const firstListItemButton = document.querySelector('li');
-    await browser.click(firstListItemButton!);
+    await userEvent.click(firstListItemButton!);
 
     await toggleDropdown();
 
@@ -299,7 +299,7 @@ describe('test cams combobox', () => {
     await toggleDropdown();
 
     const secondListItemButton = document.querySelectorAll('li')[1];
-    await browser.click(secondListItemButton!);
+    await userEvent.click(secondListItemButton!);
 
     await toggleDropdown();
 
@@ -313,7 +313,7 @@ describe('test cams combobox', () => {
     expect(selectedListItem!.length).toEqual(2);
 
     const clearAllButton = getClearAllButton();
-    await browser.click(clearAllButton!);
+    await userEvent.click(clearAllButton!);
 
     await waitFor(() => {
       expect(getClearAllButton()).not.toBeInTheDocument();
@@ -333,11 +333,11 @@ describe('test cams combobox', () => {
 
     const inputField = await getFocusedComboInputField(comboboxId);
 
-    await browser.type(inputField, 'test input');
+    await userEvent.type(inputField, 'test input');
     expect(inputField.value).toEqual('test input');
     expect(isDropdownClosed()).toBeFalsy();
 
-    await browser.keyboard('{Escape}');
+    await userEvent.keyboard('{Escape}');
     expect(inputField.value).toEqual('');
     expect(isDropdownClosed()).toBeTruthy();
     await expectInputContainerToHaveFocus();
@@ -352,9 +352,9 @@ describe('test cams combobox', () => {
     const comboboxInputField = await getFocusedComboInputField(comboboxId);
     const otherInput = document.querySelector('.input1');
 
-    await browser.type(comboboxInputField, 'test input');
+    await userEvent.type(comboboxInputField, 'test input');
 
-    await browser.click(otherInput!);
+    await userEvent.click(otherInput!);
 
     expect(comboboxInputField.value).toEqual('');
     expect(isDropdownClosed()).toBeTruthy();
@@ -393,7 +393,7 @@ describe('test cams combobox', () => {
     expect(isDropdownClosed()).toBeFalsy();
 
     await expectInputToHaveFocus();
-    await browser.keyboard('{ArrowDown}');
+    await userEvent.keyboard('{ArrowDown}');
 
     const listItem = document.querySelector('li');
     await waitFor(() => {
@@ -401,7 +401,7 @@ describe('test cams combobox', () => {
     });
     expect(isDropdownClosed()).toBeFalsy();
 
-    await browser.tab();
+    await userEvent.tab();
 
     await waitFor(() => {
       expect(isDropdownClosed()).toBeTruthy();
@@ -419,13 +419,13 @@ describe('test cams combobox', () => {
     const comboboxContainer = document.querySelector(`.input-container`);
     (otherButton as HTMLButtonElement)!.focus();
     expect(otherButton!).toHaveFocus();
-    await browser.tab();
+    await userEvent.tab();
     await waitFor(() => {
       expect(comboboxContainer!).toHaveFocus();
     });
     expect(isDropdownClosed()).toBeTruthy();
 
-    await browser.tab();
+    await userEvent.tab();
     expect(otherInput!).toHaveFocus();
   });
 
@@ -438,9 +438,9 @@ describe('test cams combobox', () => {
 
     const comboboxInputField = await getFocusedComboInputField(comboboxId);
 
-    await browser.type(comboboxInputField, 'this is gibberish');
+    await userEvent.type(comboboxInputField, 'this is gibberish');
     comboboxInputField.focus();
-    await browser.keyboard('{Tab}');
+    await userEvent.keyboard('{Tab}');
     await waitFor(() => {
       expect(isDropdownClosed()).toBeTruthy();
     });
@@ -459,11 +459,11 @@ describe('test cams combobox', () => {
     const comboboxInputField = await getFocusedComboInputField(comboboxId);
 
     // Type filter text that will match some options (e.g., "option" will match all options)
-    await browser.type(comboboxInputField, 'option');
+    await userEvent.type(comboboxInputField, 'option');
     expect(comboboxInputField.value).toBe('option');
 
     // Press Tab - should move focus to first filtered item
-    await browser.keyboard('{Tab}');
+    await userEvent.keyboard('{Tab}');
 
     // Check that focus moved to the first list item
     const firstListItem = document.querySelector('li[role="option"]');
@@ -479,7 +479,7 @@ describe('test cams combobox', () => {
     renderWithProps({ disabled: true });
 
     const inputContainer = document.querySelector('.input-container');
-    await browser.click(inputContainer!);
+    await userEvent.click(inputContainer!);
     const itemListContainer = document.querySelector('.item-list-container');
     expect(inputContainer).toHaveClass('disabled');
     expect(itemListContainer).not.toBeInTheDocument();
@@ -498,33 +498,33 @@ describe('test cams combobox', () => {
     expect(isDropdownClosed()).toBeFalsy();
 
     await expectInputToHaveFocus();
-    await browser.keyboard('{ArrowDown}');
+    await userEvent.keyboard('{ArrowDown}');
 
     const listItems = document.querySelectorAll('li');
     expect(listItems[0]).toHaveFocus();
     expect(listItems[0]).toHaveAttribute('data-value', 'option1');
 
-    await browser.keyboard('{ArrowDown}');
+    await userEvent.keyboard('{ArrowDown}');
     expect(listItems[1]).toHaveFocus();
     expect(listItems[1]).toHaveAttribute('data-value', 'option4');
 
-    await browser.keyboard('{ArrowDown}');
+    await userEvent.keyboard('{ArrowDown}');
     expect(listItems[2]).toHaveFocus();
     expect(listItems[2]).toHaveAttribute('data-value', 'option5');
 
-    await browser.keyboard('{ArrowDown}');
+    await userEvent.keyboard('{ArrowDown}');
     expect(listItems[2]).toHaveAttribute('data-value', 'option5');
 
-    await browser.keyboard('{ArrowUp}');
+    await userEvent.keyboard('{ArrowUp}');
     expect(listItems[1]).toHaveFocus();
 
-    await browser.keyboard('{ArrowUp}');
+    await userEvent.keyboard('{ArrowUp}');
     expect(listItems[0]).toHaveFocus();
 
-    await browser.keyboard('{ArrowUp}');
+    await userEvent.keyboard('{ArrowUp}');
     await expectInputToHaveFocus();
 
-    await browser.keyboard('{ArrowUp}');
+    await userEvent.keyboard('{ArrowUp}');
     expect(isDropdownClosed()).toBeTruthy();
   });
 
@@ -539,7 +539,7 @@ describe('test cams combobox', () => {
     const inputField = await getFocusedComboInputField(comboboxId);
     inputField!.focus();
     await expectInputToHaveFocus();
-    await browser.keyboard('{ArrowDown}');
+    await userEvent.keyboard('{ArrowDown}');
 
     let listItems;
     await waitFor(() => {
@@ -547,20 +547,20 @@ describe('test cams combobox', () => {
       expect(listItems[0]).toHaveFocus();
     });
 
-    await browser.keyboard('{ArrowDown}');
+    await userEvent.keyboard('{ArrowDown}');
     await waitFor(() => {
       expect(listItems![1]).toHaveFocus();
     });
 
-    await browser.keyboard('{ArrowUp}');
-    await browser.keyboard('{ArrowUp}');
+    await userEvent.keyboard('{ArrowUp}');
+    await userEvent.keyboard('{ArrowUp}');
     await expectInputToHaveFocus();
 
-    await browser.keyboard('{ArrowDown}');
-    await browser.keyboard('{ArrowDown}');
+    await userEvent.keyboard('{ArrowDown}');
+    await userEvent.keyboard('{ArrowDown}');
     expect(listItems![1]).toHaveFocus();
 
-    await browser.keyboard('{Enter}');
+    await userEvent.keyboard('{Enter}');
     expect(listItems![1]).toHaveClass('selected');
 
     await expectInputContainerToHaveFocus();
@@ -576,7 +576,7 @@ describe('test cams combobox', () => {
       renderWithProps({ options });
       await toggleDropdown();
       await expectInputToHaveFocus();
-      await browser.keyboard('{ArrowDown}');
+      await userEvent.keyboard('{ArrowDown}');
 
       await waitFor(() => {
         const listItems = document.querySelectorAll('li');
@@ -584,7 +584,7 @@ describe('test cams combobox', () => {
         expect(listItem0Button).toHaveFocus();
       });
 
-      await browser.keyboard(keypress);
+      await userEvent.keyboard(keypress);
 
       await waitFor(() => {
         const listItems = document.querySelectorAll('li');
@@ -604,13 +604,13 @@ describe('test cams combobox', () => {
     expect(isDropdownClosed()).toBeFalsy();
 
     await expectInputToHaveFocus();
-    await browser.keyboard('{ArrowDown}');
+    await userEvent.keyboard('{ArrowDown}');
 
     const listItem = document.querySelectorAll('li')[0];
     expect(listItem).toHaveFocus();
-    await browser.click(listItem);
+    await userEvent.click(listItem);
 
-    await browser.keyboard('{Escape}');
+    await userEvent.keyboard('{Escape}');
     expect(isDropdownClosed()).toBeTruthy();
     await expectInputContainerToHaveFocus();
   });
@@ -627,7 +627,7 @@ describe('test cams combobox', () => {
     await toggleDropdown();
 
     const inputField = await getFocusedComboInputField(comboboxId);
-    await browser.type(inputField, 'blue');
+    await userEvent.type(inputField, 'blue');
 
     const blueItems = document.querySelectorAll('li');
     expect(blueItems.length).toEqual(3);
@@ -636,8 +636,8 @@ describe('test cams combobox', () => {
       expect(listItem).not.toHaveTextContent(/red/g);
     });
 
-    await browser.clear(inputField);
-    await browser.type(inputField, 'everything');
+    await userEvent.clear(inputField);
+    await userEvent.type(inputField, 'everything');
     const everythingItems = document.querySelectorAll('li');
 
     expect(everythingItems.length).toEqual(1);
@@ -657,10 +657,10 @@ describe('test cams combobox', () => {
 
     const inputField = await getFocusedComboInputField(comboboxId);
 
-    await browser.type(inputField, 'test test');
+    await userEvent.type(inputField, 'test test');
 
     inputField.focus();
-    await browser.tab();
+    await userEvent.tab();
 
     await waitFor(() => {
       expect(inputField.value).toEqual('');
@@ -674,9 +674,9 @@ describe('test cams combobox', () => {
 
     const button1 = document.querySelector('.button1');
 
-    await testingUtilities.toggleComboBoxItemSelection(comboboxId, 0);
-    await testingUtilities.toggleComboBoxItemSelection(comboboxId, 1);
-    await testingUtilities.toggleComboBoxItemSelection(comboboxId, 2);
+    await TestingUtilities.toggleComboBoxItemSelection(comboboxId, 0);
+    await TestingUtilities.toggleComboBoxItemSelection(comboboxId, 1);
+    await TestingUtilities.toggleComboBoxItemSelection(comboboxId, 2);
 
     const selectedList = ref.current!.getSelections();
     expect(selectedList.length).toEqual(3);
@@ -690,26 +690,26 @@ describe('test cams combobox', () => {
       expect(isDropdownClosed()).toBeTruthy();
     });
 
-    await browser.click(button1!);
+    await userEvent.click(button1!);
     (button1 as HTMLButtonElement).focus();
     await waitFor(() => {
       expect(button1!).toHaveFocus();
     });
 
     await waitFor(async () => {
-      await browser.tab();
+      await userEvent.tab();
       expect(clearAllBtn).toHaveFocus();
     });
 
     await waitFor(async () => {
-      await browser.type(clearAllBtn!, '{Tab}');
+      await userEvent.type(clearAllBtn!, '{Tab}');
       await expectInputContainerToHaveFocus();
     });
 
     expect(isDropdownClosed()).toBeTruthy();
     const container = await getComboInputContainer();
 
-    await browser.tab();
+    await userEvent.tab();
 
     await waitFor(() => {
       expect(container).not.toHaveFocus();
@@ -725,7 +725,7 @@ describe('test cams combobox', () => {
 
     await toggleDropdown(comboboxId);
     const listButtons = document.querySelectorAll('li');
-    await browser.click(listButtons![0]);
+    await userEvent.click(listButtons![0]);
 
     expect(updateSelection).toHaveBeenCalledWith(results);
   });
@@ -737,15 +737,15 @@ describe('test cams combobox', () => {
 
     await toggleDropdown(comboboxId);
     const listButtons = document.querySelectorAll('li');
-    await browser.click(listButtons![0]);
-    await browser.click(listButtons![1]);
-    await browser.click(listButtons![2]);
+    await userEvent.click(listButtons![0]);
+    await userEvent.click(listButtons![1]);
+    await userEvent.click(listButtons![2]);
 
     const clearButton = getClearAllButton();
     expect(clearButton).toBeInTheDocument();
     (clearButton as HTMLButtonElement).focus();
 
-    await browser.keyboard('{Enter}');
+    await userEvent.keyboard('{Enter}');
     expect(updateSelection).toHaveBeenCalledWith([]);
 
     await waitFor(() => {
@@ -788,12 +788,12 @@ describe('test cams combobox', () => {
 
     const listButtons = document.querySelectorAll('li');
 
-    await browser.click(listButtons![0]);
+    await userEvent.click(listButtons![0]);
     await waitFor(() => {
       expect(listButtons![0]).toHaveClass('selected');
     });
 
-    await browser.click(listButtons![2]);
+    await userEvent.click(listButtons![2]);
     await waitFor(() => {
       expect(listButtons![2]).toHaveClass('selected');
     });
@@ -843,7 +843,7 @@ describe('test cams combobox', () => {
     expect(isDropdownClosed()).toBeFalsy();
 
     const listButtons = document.querySelectorAll('li');
-    await browser.click(listButtons![0]);
+    await userEvent.click(listButtons![0]);
 
     act(() => ref.current?.disable(true));
     const disabledExpandButton = document.querySelector('.expand-button');
@@ -880,7 +880,7 @@ describe('test cams combobox', () => {
     renderWithProps();
     await toggleDropdown(comboboxId);
     const inputField = await getFocusedComboInputField(comboboxId);
-    await browser.type(inputField, 'test');
+    await userEvent.type(inputField, 'test');
     expect(updateFilterMock).toHaveBeenCalledWith('test');
   });
 
@@ -913,7 +913,7 @@ describe('test cams combobox', () => {
       toggleButton.focus();
 
       // Press letter 'a'
-      await browser.keyboard('a');
+      await userEvent.keyboard('a');
 
       // Dropdown should be open
       await waitFor(() => {
@@ -943,7 +943,7 @@ describe('test cams combobox', () => {
       toggleButton.focus();
 
       // Press number '5'
-      await browser.keyboard('5');
+      await userEvent.keyboard('5');
 
       // Dropdown should be open
       await waitFor(() => {
@@ -972,7 +972,7 @@ describe('test cams combobox', () => {
       toggleButton.focus();
 
       // Press uppercase 'A'
-      await browser.keyboard('A');
+      await userEvent.keyboard('A');
 
       await waitFor(() => {
         expect(screen.getByRole('listbox')).toBeInTheDocument();
@@ -1006,7 +1006,7 @@ describe('test cams combobox', () => {
       toggleButton.focus();
 
       // Press letter 'a' - should not trigger the special behavior since dropdown is open
-      await browser.keyboard('a');
+      await userEvent.keyboard('a');
 
       // The filter callback should not have been called with 'a'
       expect(updateFilterMock).not.toHaveBeenCalledWith('a');
@@ -1021,9 +1021,9 @@ describe('test cams combobox', () => {
       toggleButton.focus();
 
       // Test various non-alphanumeric keys
-      await browser.keyboard(' '); // space
-      await browser.keyboard('!'); // special character
-      await browser.keyboard('{Tab}'); // tab key
+      await userEvent.keyboard(' '); // space
+      await userEvent.keyboard('!'); // special character
+      await userEvent.keyboard('{Tab}'); // tab key
 
       // Dropdown should remain closed
       await waitFor(() => {
@@ -1043,7 +1043,7 @@ describe('test cams combobox', () => {
       toggleButton.focus();
 
       // Press letter 'a'
-      await browser.keyboard('a');
+      await userEvent.keyboard('a');
 
       // Dropdown should remain closed
       await waitFor(() => {
@@ -1062,7 +1062,7 @@ describe('test cams combobox', () => {
       toggleButton.focus();
 
       // Press letter 'x'
-      await browser.keyboard('x');
+      await userEvent.keyboard('x');
 
       await waitFor(() => {
         expect(screen.getByRole('listbox')).toBeInTheDocument();
@@ -1081,10 +1081,10 @@ describe('test cams combobox', () => {
   });
 
   describe('additional coverage tests', () => {
-    let browser: UserEvent;
+    let userEvent: UserEvent;
 
     beforeEach(() => {
-      browser = userEvent.setup();
+      userEvent = TestingUtilities.setupUserEvent();
     });
 
     test('should initialize with selections prop and map them correctly', async () => {
@@ -1227,7 +1227,7 @@ describe('test cams combobox', () => {
       expect(inputField).toBeInTheDocument();
 
       // Click on the input field
-      await browser.click(inputField);
+      await userEvent.click(inputField);
 
       // Input should be focused
       expect(inputField).toHaveFocus();
@@ -1340,7 +1340,7 @@ describe('test cams combobox', () => {
       await toggleDropdown(comboboxId);
 
       const inputField = await getFocusedComboInputField(comboboxId);
-      await browser.type(inputField, 'xyz');
+      await userEvent.type(inputField, 'xyz');
 
       const listItems = document.querySelectorAll('li');
       expect(listItems).toHaveLength(0);
@@ -1415,7 +1415,7 @@ describe('test cams combobox', () => {
       await toggleDropdown(comboboxId);
 
       const inputField = await getFocusedComboInputField(comboboxId);
-      await browser.type(inputField, 'APPLE');
+      await userEvent.type(inputField, 'APPLE');
 
       const visibleItems = document.querySelectorAll('li');
       expect(visibleItems).toHaveLength(1);
@@ -1427,7 +1427,7 @@ describe('test cams combobox', () => {
       await toggleDropdown(comboboxId);
 
       const inputField = await getFocusedComboInputField(comboboxId);
-      await browser.type(inputField, 'some filter text');
+      await userEvent.type(inputField, 'some filter text');
 
       expect(inputField.value).toBe('some filter text');
 
@@ -1445,10 +1445,10 @@ describe('test cams combobox', () => {
       await toggleDropdown(comboboxId);
 
       const inputField = await getFocusedComboInputField(comboboxId);
-      await browser.type(inputField, 'xyz'); // Filter out all items
+      await userEvent.type(inputField, 'xyz'); // Filter out all items
 
       // Try to navigate down - should handle gracefully
-      await browser.keyboard('{ArrowDown}');
+      await userEvent.keyboard('{ArrowDown}');
 
       // Should still be focused on input
       expect(inputField).toHaveFocus();
@@ -1475,9 +1475,9 @@ describe('test cams combobox', () => {
       const toggleButton = document.querySelector(`#${comboboxId}-expand`) as HTMLButtonElement;
 
       // Rapidly toggle the dropdown multiple times
-      await browser.click(toggleButton);
-      await browser.click(toggleButton);
-      await browser.click(toggleButton);
+      await userEvent.click(toggleButton);
+      await userEvent.click(toggleButton);
+      await userEvent.click(toggleButton);
 
       // Should end up in a consistent state
       expect(document.querySelector('.item-list-container')).toBeInTheDocument();
@@ -1492,7 +1492,7 @@ describe('test cams combobox', () => {
       const inputField = await getFocusedComboInputField(comboboxId);
 
       // Type rapidly
-      await browser.type(inputField, 'abc');
+      await userEvent.type(inputField, 'abc');
 
       // Should have called onUpdateFilter for each character
       expect(onUpdateFilterMock).toHaveBeenCalledWith('a');
@@ -1573,21 +1573,21 @@ describe('test cams combobox', () => {
       await expectInputToHaveFocus();
 
       // Navigate down to first item
-      await browser.keyboard('{ArrowDown}');
+      await userEvent.keyboard('{ArrowDown}');
       const listItems = document.querySelectorAll('li');
       expect(listItems[0]).toHaveFocus();
 
       // Try to navigate up from first item - should go back to input
-      await browser.keyboard('{ArrowUp}');
+      await userEvent.keyboard('{ArrowUp}');
       await expectInputToHaveFocus();
 
       // Navigate to last item
-      await browser.keyboard('{ArrowDown}');
-      await browser.keyboard('{ArrowDown}');
+      await userEvent.keyboard('{ArrowDown}');
+      await userEvent.keyboard('{ArrowDown}');
       expect(listItems[1]).toHaveFocus();
 
       // Try to navigate down from last item - should stay on last item
-      await browser.keyboard('{ArrowDown}');
+      await userEvent.keyboard('{ArrowDown}');
       expect(listItems[1]).toHaveFocus();
     });
 
@@ -1599,13 +1599,13 @@ describe('test cams combobox', () => {
       await getFocusedComboInputField(comboboxId);
 
       // Press Enter on input field - should not select anything
-      await browser.keyboard('{Enter}');
+      await userEvent.keyboard('{Enter}');
       let listItems = document.querySelectorAll('li.selected');
       expect(listItems).toHaveLength(0);
 
       // Click on list item to select it
       const listItem = document.querySelector('li');
-      await browser.click(listItem!);
+      await userEvent.click(listItem!);
 
       await waitFor(() => {
         listItems = document.querySelectorAll('li.selected');
@@ -1637,8 +1637,8 @@ describe('test cams combobox', () => {
 
       // Select some items
       const listItems = document.querySelectorAll('li');
-      await browser.click(listItems[0]);
-      await browser.click(listItems[1]);
+      await userEvent.click(listItems[0]);
+      await userEvent.click(listItems[1]);
 
       // Close dropdown
       await toggleDropdown(comboboxId);
@@ -1658,7 +1658,7 @@ describe('test cams combobox', () => {
 
       // Type multiple characters rapidly
       // @ts-expect-error - Intentional use of the delay attribute for user.type function options
-      await browser.type(inputField, 'test', { delay: 1 });
+      await userEvent.type(inputField, 'test', { delay: 1 });
 
       // Should have been called for each character
       expect(onUpdateFilter).toHaveBeenCalledWith('t');

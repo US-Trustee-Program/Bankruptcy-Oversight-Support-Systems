@@ -1,15 +1,16 @@
 import { describe } from 'vitest';
 import CaseNumberInput, { validateCaseNumberInput } from './CaseNumberInput';
 import { act, render, waitFor } from '@testing-library/react';
-import userEvent, { UserEvent } from '@testing-library/user-event';
+import { UserEvent } from '@testing-library/user-event';
 import { InputRef } from '../type-declarations/input-fields';
 import React from 'react';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 
 describe('Case number input component', () => {
-  let browser: UserEvent;
+  let userEvent: UserEvent;
 
   beforeEach(() => {
-    browser = userEvent.setup();
+    userEvent = TestingUtilities.setupUserEvent();
   });
 
   test('using ref, we should be able to set, get, reset, and clear value', async () => {
@@ -50,7 +51,7 @@ describe('Case number input component', () => {
     const input = document.querySelector('.usa-input');
     expect(input).toHaveValue('321cba');
 
-    await browser.type(input!, '{Enter}');
+    await userEvent.type(input!, '{Enter}');
     expect(changeFunction).toHaveBeenCalled();
   });
 
@@ -61,7 +62,7 @@ describe('Case number input component', () => {
     const input = document.querySelector('.usa-input');
     expect(input).toHaveValue('321cba');
 
-    await browser.type(input!, '{Enter}');
+    await userEvent.type(input!, '{Enter}');
     expect(changeFunction).not.toHaveBeenCalled();
   });
 
@@ -72,7 +73,7 @@ describe('Case number input component', () => {
     const input = document.querySelector('.usa-input');
     expect(input).toHaveValue('');
 
-    await browser.type(input!, '{Enter}');
+    await userEvent.type(input!, '{Enter}');
     expect(changeFunction).not.toHaveBeenCalled();
   });
 
@@ -83,7 +84,7 @@ describe('Case number input component', () => {
     const input = document.querySelector('.usa-input');
     expect(input).toHaveValue('321cba');
 
-    await browser.type(input!, 'a');
+    await userEvent.type(input!, 'a');
     expect(changeFunction).not.toHaveBeenCalledWith('321cba');
   });
 
@@ -92,7 +93,7 @@ describe('Case number input component', () => {
     render(<CaseNumberInput onChange={changeFunction} value="" allowPartialCaseNumber={true} />);
 
     const input = document.querySelector('.usa-input');
-    await browser.type(input!, '12');
+    await userEvent.type(input!, '12');
     expect(changeFunction).toHaveBeenCalledWith('12');
   });
 
@@ -102,7 +103,7 @@ describe('Case number input component', () => {
     render(<CaseNumberInput ref={ref} onChange={changeFunction} value="" allowEnterKey={true} />);
 
     const input = document.querySelector('.usa-input');
-    await browser.type(input!, '{Enter}');
+    await userEvent.type(input!, '{Enter}');
     expect(changeFunction).not.toHaveBeenCalled();
   });
 
@@ -111,7 +112,7 @@ describe('Case number input component', () => {
     render(<CaseNumberInput onChange={() => null} value="" onFocus={focusFunction} />);
 
     const input = document.querySelector('.usa-input');
-    await browser.click(input!);
+    await userEvent.click(input!);
     expect(focusFunction).toHaveBeenCalled();
   });
 
@@ -119,7 +120,7 @@ describe('Case number input component', () => {
     render(<CaseNumberInput onChange={() => null} value="" />);
 
     const input = document.querySelector('.usa-input');
-    await expect(browser.click(input!)).resolves.not.toThrow();
+    await expect(userEvent.click(input!)).resolves.not.toThrow();
   });
 });
 
