@@ -1,8 +1,15 @@
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { UserEvent } from '@testing-library/user-event';
 import ToggleButton from './ToggleButton';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 
 describe('ToggleButton', () => {
+  let userEvent: UserEvent;
+
+  beforeEach(() => {
+    userEvent = TestingUtilities.setupUserEvent();
+  });
+
   test('should render with inactive state', () => {
     render(
       <ToggleButton

@@ -3,9 +3,9 @@ import { PrivilegedIdentity, sortUserList, toComboOption } from './PrivilegedIde
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import Api2 from '@/lib/models/api2';
 import MockData from '@common/cams/test-utilities/mock-data';
-import userEvent from '@testing-library/user-event';
+import { UserEvent } from '@testing-library/user-event';
 import { CamsUserReference, PrivilegedIdentityUser } from '@common/cams/users';
-import testingUtilities from '@/lib/testing/testing-utilities';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 import { RoleAndOfficeGroupNames } from '@common/cams/privileged-identity';
 
 async function expectItemToBeDisabled(selector: string) {
@@ -33,6 +33,7 @@ describe('Privileged Identity screen tests', () => {
   let officeListItemId: string;
   let roleListItemId: string;
   let mockUserRecord: PrivilegedIdentityUser;
+  let userEvent: UserEvent;
 
   const officeListComboBoxContainer = `#office-list .input-container`;
   const roleListComboBoxContainer = `#role-list .input-container`;
@@ -48,8 +49,8 @@ describe('Privileged Identity screen tests', () => {
   }
 
   async function expectFormToBeDisabled() {
-    expectComboBoxToBeDisabled(`${officeListComboBoxContainer}`);
-    expectComboBoxToBeDisabled(`${roleListComboBoxContainer}`);
+    await expectComboBoxToBeDisabled(`${officeListComboBoxContainer}`);
+    await expectComboBoxToBeDisabled(`${roleListComboBoxContainer}`);
     await expectItemToBeDisabled(`#${dateInputId}`);
     await expectItemToBeDisabled(`#delete-button`);
     await expectItemToBeDisabled(`#save-button`);
@@ -57,13 +58,11 @@ describe('Privileged Identity screen tests', () => {
   }
 
   async function expectFormToBeEnabled() {
-    expectComboBoxToBeEnabled(`${officeListComboBoxContainer}`);
-    expectComboBoxToBeEnabled(`${roleListComboBoxContainer}`);
+    await expectComboBoxToBeEnabled(`${officeListComboBoxContainer}`);
+    await expectComboBoxToBeEnabled(`${roleListComboBoxContainer}`);
     await expectItemToBeEnabled(`#${dateInputId}`);
     await expectItemToBeEnabled(`#cancel-button`);
   }
-
-  const user = userEvent.setup();
 
   beforeEach(async () => {
     process.env = {
@@ -71,6 +70,7 @@ describe('Privileged Identity screen tests', () => {
       CAMS_USE_FAKE_API: 'true',
     };
 
+    userEvent = TestingUtilities.setupUserEvent();
     mockUserList = MockData.buildArray(MockData.getCamsUserReference, 5);
     mockGroups = {
       offices: ['USTP CAMS Office A', 'USTP CAMS Office B', 'USTP CAMS Office C'],
@@ -161,7 +161,7 @@ describe('Privileged Identity screen tests', () => {
     const userItem = screen.getByTestId('user-list-option-item-4');
     expect(userItem).toBeInTheDocument();
 
-    await user.click(userItem);
+    await userEvent.click(userItem);
 
     await expectFormToBeEnabled();
 
@@ -176,12 +176,12 @@ describe('Privileged Identity screen tests', () => {
       expect(document.querySelector('.loading-spinner-caption')).not.toBeInTheDocument();
     });
 
-    expectComboBoxToBeDisabled(`${officeListComboBoxContainer}`);
+    await expectComboBoxToBeDisabled(`${officeListComboBoxContainer}`);
 
     const userItem = screen.getByTestId('user-list-option-item-4');
     expect(userItem).toBeInTheDocument();
 
-    await user.click(userItem);
+    await userEvent.click(userItem);
 
     await waitFor(() => {
       expectComboBoxToBeEnabled(`${officeListComboBoxContainer}`);
@@ -208,21 +208,21 @@ describe('Privileged Identity screen tests', () => {
     await expectItemToBeDisabled(`#save-button`);
     await expectItemToBeDisabled(`#cancel-button`);
 
-    await user.click(userItem);
+    await userEvent.click(userItem);
 
     await expectItemToBeEnabled(`#cancel-button`);
     await expectItemToBeDisabled(`#delete-button`);
     await expectItemToBeDisabled(`#save-button`);
 
     const officeListItem = screen.getByTestId(officeListItemId);
-    await user.click(officeListItem);
+    await userEvent.click(officeListItem);
 
     await expectItemToBeEnabled(`#cancel-button`);
     await expectItemToBeDisabled(`#delete-button`);
     await expectItemToBeDisabled(`#save-button`);
 
     const roleListItem = screen.getByTestId(roleListItemId);
-    await user.click(roleListItem);
+    await userEvent.click(roleListItem);
 
     await expectItemToBeEnabled(`#cancel-button`);
     await expectItemToBeDisabled(`#delete-button`);
@@ -232,7 +232,7 @@ describe('Privileged Identity screen tests', () => {
     // NOTE For some reason (known issue) a date input element cannot be changed by typing a date
     // in the format that the UI expects. The date may only be changed using a change event, and
     // the format must be in YYYY-DD-MM format.
-    await user.type(dateInput!, mockDate1);
+    await userEvent.type(dateInput!, mockDate1);
 
     await expectItemToBeEnabled(`#cancel-button`);
     await expectItemToBeEnabled(`#save-button`);
@@ -254,20 +254,20 @@ describe('Privileged Identity screen tests', () => {
 
     const userItem = screen.getByTestId('user-list-option-item-0');
     expect(userItem).toBeInTheDocument();
-    await user.click(userItem);
+    await userEvent.click(userItem);
 
     await expectItemToBeEnabled(`#cancel-button`);
     await expectItemToBeDisabled(`#save-button`);
     await expectItemToBeEnabled(`#delete-button`);
 
     const roleListItem = screen.getByTestId(roleListItemId);
-    await user.click(roleListItem);
+    await userEvent.click(roleListItem);
 
     await expectItemToBeEnabled(`#save-button`);
     await expectItemToBeEnabled(`#cancel-button`);
     await expectItemToBeEnabled(`#delete-button`);
 
-    await user.click(roleListItem);
+    await userEvent.click(roleListItem);
 
     await expectItemToBeDisabled(`#save-button`);
 
@@ -288,13 +288,13 @@ describe('Privileged Identity screen tests', () => {
 
     const userItem = screen.getByTestId('user-list-option-item-0');
     expect(userItem).not.toHaveClass('selected');
-    await user.click(userItem);
+    await userEvent.click(userItem);
     expect(userItem).toHaveClass('selected');
 
     await expectFormToBeEnabled();
 
     const cancelButton = document.querySelector('#cancel-button');
-    await user.click(cancelButton!);
+    await userEvent.click(cancelButton!);
 
     await expectFormToBeDisabled();
     expect(userItem).not.toHaveClass('selected');
@@ -303,7 +303,7 @@ describe('Privileged Identity screen tests', () => {
   test('should save record when clicking save.', async () => {
     vi.spyOn(Api2, 'getPrivilegedIdentityUser').mockResolvedValue({ data: mockUserRecord });
     const putSpy = vi.spyOn(Api2, 'putPrivilegedIdentityUser').mockResolvedValue();
-    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+    const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
 
     renderWithoutProps();
 
@@ -312,17 +312,17 @@ describe('Privileged Identity screen tests', () => {
     });
 
     const userItem = screen.getByTestId('user-list-option-item-0');
-    await user.click(userItem);
+    await userEvent.click(userItem);
 
     expectComboBoxToBeEnabled(`${roleListComboBoxContainer}`);
 
     const roleListItem = screen.getByTestId(roleListItemId);
-    await user.click(roleListItem);
+    await userEvent.click(roleListItem);
 
     await expectItemToBeEnabled(`#save-button`);
 
     const saveButton = document.querySelector('#save-button');
-    await user.click(saveButton!);
+    await userEvent.click(saveButton!);
 
     expect(putSpy).toHaveBeenCalled();
     expect(globalAlertSpy.success).toHaveBeenCalled();
@@ -331,7 +331,7 @@ describe('Privileged Identity screen tests', () => {
   test('should display warning alert if save fails.', async () => {
     vi.spyOn(Api2, 'getPrivilegedIdentityUser').mockResolvedValue({ data: mockUserRecord });
     const putSpy = vi.spyOn(Api2, 'putPrivilegedIdentityUser').mockRejectedValue(new Error());
-    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+    const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
 
     renderWithoutProps();
 
@@ -340,17 +340,17 @@ describe('Privileged Identity screen tests', () => {
     });
 
     const userItem = screen.getByTestId('user-list-option-item-0');
-    await user.click(userItem);
+    await userEvent.click(userItem);
 
-    expectComboBoxToBeEnabled(`${roleListComboBoxContainer}`);
+    await expectComboBoxToBeEnabled(`${roleListComboBoxContainer}`);
 
     const roleListItem = screen.getByTestId(roleListItemId);
-    await user.click(roleListItem);
+    await userEvent.click(roleListItem);
 
     await expectItemToBeEnabled(`#save-button`);
 
     const saveButton = document.querySelector('#save-button');
-    await user.click(saveButton!);
+    await userEvent.click(saveButton!);
 
     expect(putSpy).toHaveBeenCalled();
     expect(globalAlertSpy.warning).toHaveBeenCalled();
@@ -359,7 +359,7 @@ describe('Privileged Identity screen tests', () => {
   test('should delete record when clicking delete.', async () => {
     vi.spyOn(Api2, 'getPrivilegedIdentityUser').mockResolvedValue({ data: mockUserRecord });
     const deleteSpy = vi.spyOn(Api2, 'deletePrivilegedIdentityUser').mockResolvedValue();
-    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+    const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
 
     renderWithoutProps();
 
@@ -368,11 +368,11 @@ describe('Privileged Identity screen tests', () => {
     });
 
     const userItem = screen.getByTestId('user-list-option-item-0');
-    await user.click(userItem);
+    await userEvent.click(userItem);
 
     const deleteButton = document.querySelector('#delete-button');
     expect(deleteButton!).toBeEnabled();
-    await user.click(deleteButton!);
+    await userEvent.click(deleteButton!);
 
     expect(deleteSpy).toHaveBeenCalled();
     expect(globalAlertSpy.success).toHaveBeenCalled();
@@ -381,7 +381,7 @@ describe('Privileged Identity screen tests', () => {
   test('should display warning alert if delete fails.', async () => {
     vi.spyOn(Api2, 'getPrivilegedIdentityUser').mockResolvedValue({ data: mockUserRecord });
     const deleteSpy = vi.spyOn(Api2, 'deletePrivilegedIdentityUser').mockRejectedValue(new Error());
-    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+    const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
 
     renderWithoutProps();
 
@@ -390,11 +390,11 @@ describe('Privileged Identity screen tests', () => {
     });
 
     const userItem = screen.getByTestId('user-list-option-item-0');
-    await user.click(userItem);
+    await userEvent.click(userItem);
 
     const deleteButton = document.querySelector('#delete-button');
     expect(deleteButton!).toBeEnabled();
-    await user.click(deleteButton!);
+    await userEvent.click(deleteButton!);
 
     expect(deleteSpy).toHaveBeenCalled();
     expect(globalAlertSpy.warning).toHaveBeenCalled();

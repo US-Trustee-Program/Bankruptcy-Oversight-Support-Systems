@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { UserEvent } from '@testing-library/user-event';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import * as ReactRouterDOM from 'react-router-dom';
 import App from './App';
@@ -8,8 +8,11 @@ import LocalStorage from './lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole } from '@common/cams/roles';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 
 describe('App Router Tests', () => {
+  let userEvent: UserEvent;
+
   vi.mock('react-router-dom', async () => {
     const actual = await vi.importActual('react-router-dom');
     return {
@@ -39,6 +42,7 @@ describe('App Router Tests', () => {
   });
 
   beforeEach(() => {
+    userEvent = TestingUtilities.setupUserEvent();
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
       MockData.getCamsSession({
         user: MockData.getCamsUser({

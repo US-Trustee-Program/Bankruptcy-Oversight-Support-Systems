@@ -2,8 +2,8 @@ import { describe, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { MockData } from '@common/cams/test-utilities/mock-data';
-import testingUtilities from '@/lib/testing/testing-utilities';
-import userEvent from '@testing-library/user-event';
+import TestingUtilities from '@/lib/testing/testing-utilities';
+import { UserEvent } from '@testing-library/user-event';
 import { MockLogin } from './MockLogin';
 import * as SessionModule from '@/login/Session';
 import { SessionProps } from '@/login/Session';
@@ -25,8 +25,11 @@ describe('MockLogin', () => {
     return <>{props.children}</>;
   });
 
+  let userEvent: UserEvent;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    userEvent = TestingUtilities.setupUserEvent();
   });
 
   test('should show modal when no session exists', async () => {
@@ -73,7 +76,7 @@ describe('MockLogin', () => {
     );
 
     await waitFor(() => {
-      const radio = testingUtilities.selectRadio('role-0');
+      const radio = TestingUtilities.selectRadio('role-0');
       expect(radio).toBeInTheDocument();
     });
 
@@ -96,7 +99,7 @@ describe('MockLogin', () => {
       </BrowserRouter>,
     );
 
-    testingUtilities.selectRadio('role-0');
+    TestingUtilities.selectRadio('role-0');
 
     const loginButton = screen.queryByTestId('button-login-modal-submit-button');
     expect(loginButton).toBeInTheDocument();
@@ -131,7 +134,7 @@ describe('MockLogin', () => {
       </BrowserRouter>,
     );
 
-    testingUtilities.selectRadio('role-0');
+    TestingUtilities.selectRadio('role-0');
 
     const loginButton = screen.queryByTestId('button-login-modal-submit-button');
     expect(loginButton).toBeInTheDocument();

@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { UserEvent } from '@testing-library/user-event';
 import TrusteeOtherInfoForm from './TrusteeOtherInfoForm';
 import * as UseApi2Module from '@/lib/hooks/UseApi2';
 import * as UseGlobalAlertModule from '@/lib/hooks/UseGlobalAlert';
@@ -9,6 +9,7 @@ import { Trustee } from '@common/cams/trustees';
 import { ResponseBody } from '@common/api/response';
 
 import MockData from '@common/cams/test-utilities/mock-data';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 
 describe('TrusteeOtherInfoForm', () => {
   const TEST_TRUSTEE_ID = 'trustee-123';
@@ -43,8 +44,10 @@ describe('TrusteeOtherInfoForm', () => {
   let patchTrusteeSpy: Mock<
     (trusteeId: string, trustee: unknown) => Promise<ResponseBody<Trustee>>
   >;
+  let userEvent: UserEvent;
 
   beforeEach(() => {
+    userEvent = TestingUtilities.setupUserEvent();
     vi.clearAllMocks();
 
     vi.spyOn(UseGlobalAlertModule, 'useGlobalAlert').mockReturnValue(mockGlobalAlert);

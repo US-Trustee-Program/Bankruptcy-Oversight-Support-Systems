@@ -2,11 +2,12 @@ import React, { Ref } from 'react';
 import ComboBox, { ComboBoxProps, ComboOption } from './ComboBox';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import { act, render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import testingUtilities from '@/lib/testing/testing-utilities';
+import { UserEvent } from '@testing-library/user-event';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 import { vi } from 'vitest';
 
 const comboboxId = 'test-combobox';
+const userEvent = TestingUtilities.setupUserEvent();
 
 async function toggleDropdown(id: string = comboboxId) {
   const toggleButton = document.querySelector(`#${id}-expand`);
@@ -80,8 +81,9 @@ const expectInputContainerToHaveFocus = async (): Promise<Element | null> => {
 };
 
 describe('test cams combobox', () => {
-  let defaultOptions: ComboOption[] = [];
   const updateFilterMock = vi.fn();
+  let defaultOptions: ComboOption[] = [];
+  let userEvent: UserEvent;
 
   const renderWithProps = (props?: Partial<ComboBoxProps>, ref?: Ref<ComboBoxRef>) => {
     defaultOptions = getDefaultOptions();
@@ -117,6 +119,10 @@ describe('test cams combobox', () => {
       </div>,
     );
   };
+
+  beforeEach(() => {
+    userEvent = TestingUtilities.setupUserEvent();
+  });
 
   afterEach(() => {
     vi.restoreAllMocks();
@@ -225,7 +231,7 @@ describe('test cams combobox', () => {
       const firstItem = document.querySelector('li');
       expect(firstItem).toHaveAttribute('aria-label', expected + ' unselected');
 
-      await testingUtilities.toggleComboBoxItemSelection(comboboxId, 0);
+      await TestingUtilities.toggleComboBoxItemSelection(comboboxId, 0);
 
       expect(firstItem).toHaveAttribute('aria-label', expected + ' selected');
     },
@@ -668,9 +674,9 @@ describe('test cams combobox', () => {
 
     const button1 = document.querySelector('.button1');
 
-    await testingUtilities.toggleComboBoxItemSelection(comboboxId, 0);
-    await testingUtilities.toggleComboBoxItemSelection(comboboxId, 1);
-    await testingUtilities.toggleComboBoxItemSelection(comboboxId, 2);
+    await TestingUtilities.toggleComboBoxItemSelection(comboboxId, 0);
+    await TestingUtilities.toggleComboBoxItemSelection(comboboxId, 1);
+    await TestingUtilities.toggleComboBoxItemSelection(comboboxId, 2);
 
     const selectedList = ref.current!.getSelections();
     expect(selectedList.length).toEqual(3);
@@ -1075,6 +1081,12 @@ describe('test cams combobox', () => {
   });
 
   describe('additional coverage tests', () => {
+    let userEvent: UserEvent;
+
+    beforeEach(() => {
+      userEvent = TestingUtilities.setupUserEvent();
+    });
+
     test('should initialize with selections prop and map them correctly', async () => {
       const initialSelections: ComboOption[] = [
         { label: 'Option 1', value: 'opt1' },
@@ -1645,6 +1657,7 @@ describe('test cams combobox', () => {
       const inputField = await getFocusedComboInputField(comboboxId);
 
       // Type multiple characters rapidly
+      // @ts-expect-error - Intentional use of the delay attribute for user.type function options
       await userEvent.type(inputField, 'test', { delay: 1 });
 
       // Should have been called for each character

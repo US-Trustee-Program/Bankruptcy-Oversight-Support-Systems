@@ -138,6 +138,10 @@ async function waitForDocumentBody() {
   await waitFor(() => expect(document.body).toBeDefined());
 }
 
+function setupUserEvent() {
+  return userEvent.setup();
+}
+
 export const TestingUtilities = {
   nonReactWaitFor,
   setUser,
@@ -148,6 +152,7 @@ export const TestingUtilities = {
   selectRadio,
   toggleComboBoxItemSelection,
   waitForDocumentBody,
+  setupUserEvent,
 };
 
 export default TestingUtilities;
