@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef } from 'react';
 import './Pill.scss';
 import Icon from './uswds/Icon';
 
@@ -7,7 +7,6 @@ const defaultBackgroundColor = '#d0d0d0';
 
 type PillProps = {
   id: string;
-  className?: string;
   color?: string;
   backgroundColor?: string;
   label: string;
@@ -19,7 +18,7 @@ type PillProps = {
   disabled?: boolean;
 };
 
-function _Pill(props: PillProps, ref: React.Ref<Partial<HTMLButtonElement>>) {
+function Pill_(props: PillProps, ref: React.Ref<Partial<HTMLButtonElement>>) {
   const color = props.color ?? defaultColor;
   const backgroundColor = props.backgroundColor ?? defaultBackgroundColor;
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -66,4 +65,5 @@ function _Pill(props: PillProps, ref: React.Ref<Partial<HTMLButtonElement>>) {
   );
 }
 
-export const Pill = forwardRef(_Pill);
+const Pill = forwardRef(Pill_);
+export default Pill;

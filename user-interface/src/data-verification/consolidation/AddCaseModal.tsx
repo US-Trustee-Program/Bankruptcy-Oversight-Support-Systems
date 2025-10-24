@@ -19,7 +19,7 @@ export type AddCaseModalImperative = ModalRefType & {
   show: () => void;
 };
 
-function AddCaseForm(viewModel: AddCaseModel) {
+function AddCaseForm(viewModel: Readonly<AddCaseModel>) {
   useEffect(() => {
     const { caseToAddCaseNumber, caseToAddCourt } = viewModel;
     if (caseToAddCourt && caseToAddCaseNumber) {
@@ -81,38 +81,36 @@ function AddCaseForm(viewModel: AddCaseModel) {
           />
         )}
         {viewModel.caseToAdd && (
-          <>
-            <div className="search-results grid-container">
-              <div className="grid-row">
-                <h4 className="grid-col-4">Case Title</h4>
-                <div className="grid-col-8">
-                  <Link
-                    className="usa-link"
-                    to={`/case-detail/${viewModel.caseToAdd.caseId}/`}
-                    title={`View case number ${viewModel.caseToAdd.caseId} details`}
-                    target="_blank"
-                  >
-                    {viewModel.caseToAdd.caseTitle}
-                  </Link>
-                </div>
-              </div>
-              <div className="grid-row">
-                <h4 className="grid-col-4">Chapter</h4>
-                <span className="grid-col-8">{viewModel.caseToAdd.chapter}</span>
-              </div>
-              <div className="grid-row">
-                <h4 className="grid-col-4">Filed Date</h4>
-                <span className="grid-col-8">{viewModel.caseToAdd.dateFiled}</span>
+          <div className="search-results grid-container">
+            <div className="grid-row">
+              <h4 className="grid-col-4">Case Title</h4>
+              <div className="grid-col-8">
+                <Link
+                  className="usa-link"
+                  to={`/case-detail/${viewModel.caseToAdd.caseId}/`}
+                  title={`View case number ${viewModel.caseToAdd.caseId} details`}
+                  target="_blank"
+                >
+                  {viewModel.caseToAdd.caseTitle}
+                </Link>
               </div>
             </div>
-          </>
+            <div className="grid-row">
+              <h4 className="grid-col-4">Chapter</h4>
+              <span className="grid-col-8">{viewModel.caseToAdd.chapter}</span>
+            </div>
+            <div className="grid-row">
+              <h4 className="grid-col-4">Filed Date</h4>
+              <span className="grid-col-8">{viewModel.caseToAdd.dateFiled}</span>
+            </div>
+          </div>
         )}
       </div>
     </section>
   );
 }
 
-function _AddCaseModal(
+function AddCaseModal_(
   props: AddCaseModalProps,
   AddCaseModalRef: React.Ref<AddCaseModalImperative>,
 ) {
@@ -167,4 +165,5 @@ function _AddCaseModal(
   );
 }
 
-export const AddCaseModal = forwardRef(_AddCaseModal);
+const AddCaseModal = forwardRef(AddCaseModal_);
+export default AddCaseModal;

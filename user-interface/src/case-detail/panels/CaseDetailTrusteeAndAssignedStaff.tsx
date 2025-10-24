@@ -21,8 +21,8 @@ export interface CaseDetailTrusteeAndAssignedStaffProps {
   onCaseAssignment: (props: AssignAttorneyModalCallbackProps) => void;
 }
 
-export default function CaseDetailTrusteeAndAssignedStaff(
-  props: CaseDetailTrusteeAndAssignedStaffProps,
+function CaseDetailTrusteeAndAssignedStaff(
+  props: Readonly<CaseDetailTrusteeAndAssignedStaffProps>,
 ) {
   const { caseDetail, onCaseAssignment } = props;
 
@@ -122,3 +122,5 @@ export default function CaseDetailTrusteeAndAssignedStaff(
     </>
   );
 }
+
+export default CaseDetailTrusteeAndAssignedStaff;

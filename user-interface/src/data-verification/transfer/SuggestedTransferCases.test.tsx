@@ -12,8 +12,7 @@ import { CamsRole } from '@common/cams/roles';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
 import { BrowserRouter } from 'react-router-dom';
 import { describe } from 'vitest';
-import {
-  SuggestedTransferCases,
+import SuggestedTransferCases, {
   SuggestedTransferCasesImperative,
   SuggestedTransferCasesProps,
 } from './SuggestedTransferCases';

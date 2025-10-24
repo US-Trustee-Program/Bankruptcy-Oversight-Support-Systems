@@ -2,8 +2,7 @@ import { CourtDivisionDetails } from '@common/cams/courts';
 import { TransferOrder } from '@common/cams/orders';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe } from 'vitest';
-import {
-  PendingTransferOrder,
+import PendingTransferOrder, {
   PendingTransferOrderProps,
 } from '@/data-verification/transfer/PendingTransferOrder';
 import { BrowserRouter } from 'react-router-dom';

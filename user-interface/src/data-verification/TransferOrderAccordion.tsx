@@ -5,8 +5,7 @@ import { CourtDivisionDetails } from '@common/cams/courts';
 import { TransferOrder } from '@common/cams/orders';
 import { formatDate } from '@/lib/utils/datetime';
 import { AlertDetails } from '@/lib/components/uswds/Alert';
-import {
-  PendingTransferOrder,
+import PendingTransferOrder, {
   PendingTransferOrderImperative,
 } from './transfer/PendingTransferOrder';
 import { ApprovedTransferOrder } from './transfer/ApprovedTransferOrder';

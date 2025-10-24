@@ -1,6 +1,5 @@
 import { BrowserRouter } from 'react-router-dom';
-import {
-  ConsolidationCaseTable,
+import ConsolidationCaseTable, {
   ConsolidationCaseTableProps,
   OrderTableImperative,
 } from './ConsolidationCasesTable';
