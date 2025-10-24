@@ -1,5 +1,13 @@
-import { ValidationSpec, validateObject, VALID } from './validation';
+import { ValidationSpec, validateObject, VALID, ValidatorResult } from './validation';
 import Validators from './validators';
+
+type TestPerson = {
+  name?: string;
+  email?: string;
+  phone?: string;
+  code?: string;
+  profile?: { age: number; city: string };
+};
 
 describe('validators', () => {
   describe('minLength', () => {
@@ -522,7 +530,12 @@ describe('validators', () => {
   });
 
   describe('spec', () => {
-    const testCases = [
+    const testCases: Array<{
+      description: string;
+      spec: ValidationSpec<TestPerson>;
+      value: TestPerson;
+      expected: ValidatorResult;
+    }> = [
       {
         description: 'should return valid for object that passes all validations',
         spec: {
@@ -642,7 +655,7 @@ describe('validators', () => {
       {
         description: 'should work with empty spec',
         spec: {},
-        value: { anyField: 'anyValue' },
+        value: { name: 'anyValue' },
         expected: VALID,
       },
     ];
@@ -654,7 +667,7 @@ describe('validators', () => {
     });
 
     test('should return a function that can be called multiple times', () => {
-      const spec = { name: [Validators.minLength(1)] };
+      const spec: ValidationSpec<TestPerson> = { name: [Validators.minLength(1)] };
       const validator = Validators.spec(spec);
 
       expect(typeof validator).toBe('function');
@@ -672,7 +685,7 @@ describe('validators', () => {
         city: [Validators.minLength(1)],
       };
 
-      const userSpec = {
+      const userSpec: ValidationSpec<TestPerson> = {
         name: [Validators.minLength(1)],
         profile: profileSpec,
       };
