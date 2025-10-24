@@ -1,9 +1,9 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import Api2 from '@/lib/models/api2';
 import CaseNotes, { CaseNotesProps, CaseNotesRef, getCaseNotesInputValue } from './CaseNotes';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { formatDateTime } from '@/lib/utils/datetime';
-import userEvent from '@testing-library/user-event';
+import { UserEvent } from '@testing-library/user-event';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import React from 'react';
 import Input from '@/lib/components/uswds/Input';
@@ -11,6 +11,7 @@ import LocalStorage from '@/lib/utils/local-storage';
 import LocalFormCache from '@/lib/utils/local-form-cache';
 import Actions from '@common/cams/actions';
 import { randomUUID } from 'crypto';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 
 const caseId = '000-11-22222';
 const userId = '001';
@@ -46,8 +47,11 @@ function renderWithProps(props?: Partial<CaseNotesProps>) {
 }
 
 describe('case note tests', () => {
+  let userEvent: UserEvent;
+
   beforeEach(() => {
     vi.resetModules();
+    userEvent = TestingUtilities.setupUserEvent();
   });
 
   afterEach(() => {
@@ -85,7 +89,7 @@ describe('case note tests', () => {
     const caseNotesFocusSpy = vi.spyOn(caseNotesRef.current!, 'focusEditButton');
     const testNote = caseNotes[0];
     const testNoteId = testNote.id;
-    caseNotesRef.current!.focusEditButton(testNoteId!);
+    act(() => caseNotesRef.current!.focusEditButton(testNoteId!));
     expect(caseNotesFocusSpy).toHaveBeenCalledWith(testNoteId);
 
     await waitFor(() => {

@@ -2,7 +2,7 @@ import Api2 from '@/lib/models/api2';
 import LocalStorage from '@/lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { UserEvent } from '@testing-library/user-event';
 import {
   CaseNoteRemovalModalOpenProps,
   CaseNoteRemovalModalRef,
@@ -14,7 +14,7 @@ import { BrowserRouter } from 'react-router-dom';
 import React from 'react';
 import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import CaseNoteRemovalModal from './CaseNoteRemovalModal';
-import testingUtilities from '@/lib/testing/testing-utilities';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 
 const caseId = '000-11-22222';
 const userId = '001';
@@ -68,6 +68,12 @@ function renderWithProps(
 }
 
 describe('Case Note Removal Modal Tests', async () => {
+  let userEvent: UserEvent;
+
+  beforeEach(() => {
+    userEvent = TestingUtilities.setupUserEvent();
+  });
+
   test('should remove case note when remove button is clicked and modal approval is met.', async () => {
     const session = MockData.getCamsSession();
     session.user.id = userId;
@@ -165,7 +171,7 @@ describe('Case Note Removal Modal Tests', async () => {
     const deleteSpy = vi
       .spyOn(Api2, 'deleteCaseNote')
       .mockRejectedValue(new Error('some unknown error'));
-    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+    const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
 
     const modalRef = React.createRef<CaseNoteRemovalModalRef>();
     const expectedUser = {

@@ -21,23 +21,17 @@ describe('useDebounce', () => {
     const callback = vi.fn();
     const debounce = result.current;
 
-    act(() => {
-      debounce(callback, 300);
-    });
+    act(() => debounce(callback, 300));
 
     // Callback should not be called immediately
     expect(callback).not.toHaveBeenCalled();
 
     // Advance time by 299ms - callback should still not be called
-    act(() => {
-      vi.advanceTimersByTime(299);
-    });
+    act(() => vi.advanceTimersByTime(299));
     expect(callback).not.toHaveBeenCalled();
 
     // Advance time by 1ms more (total 300ms) - callback should be called
-    act(() => {
-      vi.advanceTimersByTime(1);
-    });
+    act(() => vi.advanceTimersByTime(1));
     expect(callback).toHaveBeenCalledTimes(1);
   });
 
@@ -48,30 +42,14 @@ describe('useDebounce', () => {
     const callback3 = vi.fn();
     const debounce = result.current;
 
-    act(() => {
-      debounce(callback1, 300);
-    });
-
-    act(() => {
-      vi.advanceTimersByTime(100);
-    });
-
-    act(() => {
-      debounce(callback2, 300);
-    });
-
-    act(() => {
-      vi.advanceTimersByTime(100);
-    });
-
-    act(() => {
-      debounce(callback3, 300);
-    });
+    act(() => debounce(callback1, 300));
+    act(() => vi.advanceTimersByTime(100));
+    act(() => debounce(callback2, 300));
+    act(() => vi.advanceTimersByTime(100));
+    act(() => debounce(callback3, 300));
 
     // Advance full delay - only the last callback should be called
-    act(() => {
-      vi.advanceTimersByTime(300);
-    });
+    act(() => vi.advanceTimersByTime(300));
 
     expect(callback1).not.toHaveBeenCalled();
     expect(callback2).not.toHaveBeenCalled();
@@ -84,25 +62,16 @@ describe('useDebounce', () => {
     const callback2 = vi.fn();
     const debounce = result.current;
 
-    act(() => {
-      debounce(callback1, 100);
-    });
-
-    act(() => {
-      debounce(callback2, 500);
-    });
+    act(() => debounce(callback1, 100));
+    act(() => debounce(callback2, 500));
 
     // Advance by 100ms - callback1 should not be called (it was cancelled)
-    act(() => {
-      vi.advanceTimersByTime(100);
-    });
+    act(() => vi.advanceTimersByTime(100));
     expect(callback1).not.toHaveBeenCalled();
     expect(callback2).not.toHaveBeenCalled();
 
     // Advance by 400ms more (total 500ms) - callback2 should be called
-    act(() => {
-      vi.advanceTimersByTime(400);
-    });
+    act(() => vi.advanceTimersByTime(400));
     expect(callback1).not.toHaveBeenCalled();
     expect(callback2).toHaveBeenCalledTimes(1);
   });
@@ -122,17 +91,13 @@ describe('useDebounce', () => {
     const callback = vi.fn();
     const debounce = result.current;
 
-    act(() => {
-      debounce(callback, 300);
-    });
+    act(() => debounce(callback, 300));
 
     // Unmount the component before timeout completes
     unmount();
 
     // Advance time past the delay
-    act(() => {
-      vi.advanceTimersByTime(300);
-    });
+    act(() => vi.advanceTimersByTime(300));
 
     // Callback should not be called because component was unmounted
     expect(callback).not.toHaveBeenCalled();
@@ -145,30 +110,14 @@ describe('useDebounce', () => {
     const callback3 = vi.fn();
     const debounce = result.current;
 
-    act(() => {
-      debounce(callback1, 200);
-    });
-
-    act(() => {
-      vi.advanceTimersByTime(50);
-    });
-
-    act(() => {
-      debounce(callback2, 200);
-    });
-
-    act(() => {
-      vi.advanceTimersByTime(50);
-    });
-
-    act(() => {
-      debounce(callback3, 200);
-    });
+    act(() => debounce(callback1, 200));
+    act(() => vi.advanceTimersByTime(50));
+    act(() => debounce(callback2, 200));
+    act(() => vi.advanceTimersByTime(50));
+    act(() => debounce(callback3, 200));
 
     // Advance full delay - only the last callback should execute
-    act(() => {
-      vi.advanceTimersByTime(200);
-    });
+    act(() => vi.advanceTimersByTime(200));
 
     expect(callback1).not.toHaveBeenCalled();
     expect(callback2).not.toHaveBeenCalled();
@@ -180,14 +129,10 @@ describe('useDebounce', () => {
     const callback = vi.fn();
     const debounce = result.current;
 
-    act(() => {
-      debounce(callback, 0);
-    });
+    act(() => debounce(callback, 0));
 
     // With zero delay, callback should be called on next tick
-    act(() => {
-      vi.advanceTimersByTime(0);
-    });
+    act(() => vi.advanceTimersByTime(0));
 
     expect(callback).toHaveBeenCalledTimes(1);
   });
@@ -199,24 +144,16 @@ describe('useDebounce', () => {
     const debounce = result.current;
 
     // First debounced call
-    act(() => {
-      debounce(callback1, 300);
-    });
+    act(() => debounce(callback1, 300));
 
-    act(() => {
-      vi.advanceTimersByTime(300);
-    });
+    act(() => vi.advanceTimersByTime(300));
 
     expect(callback1).toHaveBeenCalledTimes(1);
 
     // Second debounced call after first completed
-    act(() => {
-      debounce(callback2, 300);
-    });
+    act(() => debounce(callback2, 300));
 
-    act(() => {
-      vi.advanceTimersByTime(300);
-    });
+    act(() => vi.advanceTimersByTime(300));
 
     expect(callback1).toHaveBeenCalledTimes(1);
     expect(callback2).toHaveBeenCalledTimes(1);

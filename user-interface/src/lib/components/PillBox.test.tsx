@@ -1,10 +1,13 @@
 import { fireEvent, render } from '@testing-library/react';
 import PillBox from './PillBox';
 import { ComboOption } from './combobox/ComboBox';
-import userEvent from '@testing-library/user-event';
+import { UserEvent } from '@testing-library/user-event';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 
 describe('Tests for Pill Box', () => {
   let testSelections: ComboOption[] = [];
+  let userEvent: UserEvent;
+
   beforeEach(() => {
     testSelections = [
       {
@@ -20,6 +23,7 @@ describe('Tests for Pill Box', () => {
         value: 'p2',
       },
     ];
+    userEvent = TestingUtilities.setupUserEvent();
   });
 
   test('Should disable pills when disabled property is set', async () => {
