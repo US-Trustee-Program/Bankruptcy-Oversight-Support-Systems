@@ -15,7 +15,7 @@ import { Stop } from '@/lib/components/Stop';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import { TrusteeInput } from '@common/cams/trustees';
 import { normalizeWebsiteUrl } from '@common/cams/regex';
-import { TRUSTEE_PUBLIC_SPEC, TrusteePublicFormData } from './trusteeForms.specs';
+import { TRUSTEE_PUBLIC_SPEC, TrusteePublicFormData } from './trusteeForms.types';
 import { flattenReasonMap, validateEach, validateObject } from '@common/cams/validation';
 
 const getInitialFormData = (info: Partial<TrusteeInput> | undefined): TrusteePublicFormData => {
