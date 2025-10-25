@@ -1,11 +1,11 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent, { UserEvent } from '@testing-library/user-event';
+import { UserEvent } from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import TrusteeInternalContactForm, {
   TrusteeInternalContactFormProps,
   validateField,
 } from './TrusteeInternalContactForm';
-import testingUtilities from '@/lib/testing/testing-utilities';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { FeatureFlagSet } from '@common/feature-flags';
@@ -46,17 +46,17 @@ describe('TrusteeInternalContactForm Tests', () => {
     navigateTo,
     redirectTo: vi.fn(),
   };
-  let user: UserEvent;
   const immediateDebounce: ReturnType<typeof DebounceModule.default> = (
     cb: () => void,
     _delay?: number,
   ) => {
     cb();
   };
+  let userEvent: UserEvent;
 
   beforeEach(() => {
-    user = userEvent.setup();
-    testingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
+    userEvent = TestingUtilities.setupUserEvent();
+    TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
 
     vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
       'trustee-management': true,
@@ -86,7 +86,7 @@ describe('TrusteeInternalContactForm Tests', () => {
   });
 
   test('should show forbidden message when user lacks TrusteeAdmin role', async () => {
-    testingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
+    TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
 
     renderWithProps();
 
@@ -110,7 +110,7 @@ describe('TrusteeInternalContactForm Tests', () => {
 
     const cancelButton = screen.getByRole('button', { name: /cancel/i });
 
-    await user.click(cancelButton);
+    await userEvent.click(cancelButton);
 
     expect(navigateTo).toHaveBeenCalledWith(`/trustees/123`);
   });
@@ -142,15 +142,15 @@ describe('TrusteeInternalContactForm Tests', () => {
     const newCity = 'Cityville';
     const newZip = '12345';
 
-    await user.clear(screen.getByTestId('trustee-address1'));
-    await user.type(screen.getByTestId('trustee-address1'), newAddress1);
-    await user.clear(screen.getByTestId('trustee-city'));
-    await user.type(screen.getByTestId('trustee-city'), newCity);
-    await user.clear(screen.getByTestId('trustee-zip'));
-    await user.type(screen.getByTestId('trustee-zip'), newZip);
+    await userEvent.clear(screen.getByTestId('trustee-address1'));
+    await userEvent.type(screen.getByTestId('trustee-address1'), newAddress1);
+    await userEvent.clear(screen.getByTestId('trustee-city'));
+    await userEvent.type(screen.getByTestId('trustee-city'), newCity);
+    await userEvent.clear(screen.getByTestId('trustee-zip'));
+    await userEvent.type(screen.getByTestId('trustee-zip'), newZip);
     const CALIFORNIA = { index: 5, abbreviation: 'CA' };
-    await testingUtilities.toggleComboBoxItemSelection('trustee-state', CALIFORNIA.index);
-    await user.click(screen.getByRole('button', { name: /save/i }));
+    await TestingUtilities.toggleComboBoxItemSelection('trustee-state', CALIFORNIA.index);
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => {
       expect(patchSpy).toHaveBeenCalled();
@@ -192,9 +192,9 @@ describe('TrusteeInternalContactForm Tests', () => {
     const newAddress1 = '1 Main St';
     const newCity = 'Cityville';
 
-    await user.type(screen.getByTestId('trustee-address1'), newAddress1);
-    await user.type(screen.getByTestId('trustee-city'), newCity);
-    await user.click(screen.getByRole('button', { name: /save/i }));
+    await userEvent.type(screen.getByTestId('trustee-address1'), newAddress1);
+    await userEvent.type(screen.getByTestId('trustee-city'), newCity);
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     expect(patchSpy).not.toHaveBeenCalled();
     expect(navigateTo).not.toHaveBeenCalled();
@@ -213,8 +213,8 @@ describe('TrusteeInternalContactForm Tests', () => {
 
     const phoneNumber = '555-000-1111';
 
-    await user.type(screen.getByTestId('trustee-phone'), phoneNumber);
-    await user.click(screen.getByRole('button', { name: /save/i }));
+    await userEvent.type(screen.getByTestId('trustee-phone'), phoneNumber);
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => {
       expect(patchSpy).toHaveBeenCalled();
@@ -262,15 +262,15 @@ describe('TrusteeInternalContactForm Tests', () => {
     const newCity = 'Cityville';
     const newZip = '12345';
 
-    await user.clear(screen.getByTestId('trustee-address1'));
-    await user.type(screen.getByTestId('trustee-address1'), newAddress1);
-    await user.clear(screen.getByTestId('trustee-city'));
-    await user.type(screen.getByTestId('trustee-city'), newCity);
-    await user.clear(screen.getByTestId('trustee-zip'));
-    await user.type(screen.getByTestId('trustee-zip'), newZip);
+    await userEvent.clear(screen.getByTestId('trustee-address1'));
+    await userEvent.type(screen.getByTestId('trustee-address1'), newAddress1);
+    await userEvent.clear(screen.getByTestId('trustee-city'));
+    await userEvent.type(screen.getByTestId('trustee-city'), newCity);
+    await userEvent.clear(screen.getByTestId('trustee-zip'));
+    await userEvent.type(screen.getByTestId('trustee-zip'), newZip);
     const CALIFORNIA = { index: 5, abbreviation: 'CA' };
-    await testingUtilities.toggleComboBoxItemSelection('trustee-state', CALIFORNIA.index);
-    await user.click(screen.getByRole('button', { name: /save/i }));
+    await TestingUtilities.toggleComboBoxItemSelection('trustee-state', CALIFORNIA.index);
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => {
       expect(patchSpy).toHaveBeenCalled();
@@ -314,7 +314,7 @@ describe('TrusteeInternalContactForm Tests', () => {
     const error = new Error('Network failure');
     vi.spyOn(Api2, 'patchTrustee').mockRejectedValue(error);
 
-    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+    const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
 
     const navStub: ReturnType<typeof NavigatorModule.default> = {
       navigateTo: vi.fn(),
@@ -327,14 +327,14 @@ describe('TrusteeInternalContactForm Tests', () => {
       trusteeId: 'fail-id',
     });
 
-    await user.type(screen.getByTestId('trustee-address1'), '1 Main St');
-    await user.type(screen.getByTestId('trustee-city'), 'City');
-    await user.type(screen.getByTestId('trustee-zip'), '90210');
-    await testingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
-    await user.type(screen.getByTestId('trustee-phone'), baseFormData.phone);
-    await user.type(screen.getByTestId('trustee-email'), baseFormData.email);
+    await userEvent.type(screen.getByTestId('trustee-address1'), '1 Main St');
+    await userEvent.type(screen.getByTestId('trustee-city'), 'City');
+    await userEvent.type(screen.getByTestId('trustee-zip'), '90210');
+    await TestingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
+    await userEvent.type(screen.getByTestId('trustee-phone'), baseFormData.phone);
+    await userEvent.type(screen.getByTestId('trustee-email'), baseFormData.email);
 
-    await user.click(screen.getByRole('button', { name: /save/i }));
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => {
       expect(globalAlertSpy.error).toHaveBeenCalled();
@@ -365,17 +365,17 @@ describe('TrusteeInternalContactForm Tests', () => {
 
     const addr2 = screen.getByTestId('trustee-address2');
     const extension = screen.getByTestId('trustee-extension');
-    await user.type(addr2, 'suite 101');
-    await user.type(extension, '1234');
-    await user.click(screen.getByRole('button', { name: /save/i }));
+    await userEvent.type(addr2, 'suite 101');
+    await userEvent.type(extension, '1234');
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     expect(screen.queryByText(addressErrorMessage)).toBeInTheDocument();
     expect(screen.queryByText(cityErrorMessage)).toBeInTheDocument();
     expect(screen.queryByText(stateErrorMessage)).toBeInTheDocument();
     expect(screen.queryByText(zipErrorMessage)).toBeInTheDocument();
 
-    await user.clear(addr2);
-    await user.click(screen.getByRole('button', { name: /save/i }));
+    await userEvent.clear(addr2);
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => {
       expect(screen.queryByText(addressErrorMessage)).not.toBeInTheDocument();
@@ -408,37 +408,37 @@ describe('TrusteeInternalContactForm Tests', () => {
     const city = screen.getByTestId('trustee-city');
     const zip = screen.getByTestId('trustee-zip');
 
-    await user.clear(addr1);
+    await userEvent.clear(addr1);
 
     expect(screen.queryByText(ADDRESS_REQUIRED_ERROR_REASON)).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /save/i }));
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     expect(screen.queryByText(PARTIAL_ADDRESS_ERROR_REASON)).toBeInTheDocument();
 
-    await user.clear(city);
+    await userEvent.clear(city);
 
     expect(screen.queryByText(CITY_REQUIRED_ERROR_REASON)).not.toBeInTheDocument();
 
     await waitFor(() => {
       expect(city).toHaveValue('');
     });
-    await user.click(screen.getByRole('button', { name: /save/i }));
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     expect(screen.queryByText(CITY_REQUIRED_ERROR_REASON)).toBeInTheDocument();
     expect(screen.queryByText(ZIP_CODE_REQUIRED_ERROR_REASON)).not.toBeInTheDocument();
 
-    await user.clear(zip);
+    await userEvent.clear(zip);
 
     await waitFor(() => {
       expect(zip).toHaveValue('');
     });
-    await user.click(screen.getByRole('button', { name: /save/i }));
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     expect(screen.queryByText(ZIP_CODE_REQUIRED_ERROR_REASON)).toBeInTheDocument();
     expect(screen.queryByText(STATE_REQUIRED_ERROR_REASON)).not.toBeInTheDocument();
 
-    await testingUtilities.clearComboBoxSelection('trustee-state');
+    await TestingUtilities.clearComboBoxSelection('trustee-state');
 
     expect(screen.queryByText(ADDRESS_REQUIRED_ERROR_REASON)).not.toBeInTheDocument();
     expect(screen.queryByText(CITY_REQUIRED_ERROR_REASON)).not.toBeInTheDocument();
@@ -467,15 +467,15 @@ describe('TrusteeInternalContactForm Tests', () => {
 
     renderWithProps({ cancelTo: '/trustees', trusteeId: 'edit-id', trustee: existing });
 
-    await user.clear(screen.getByTestId('trustee-address1'));
-    await user.clear(screen.getByTestId('trustee-address2'));
-    await user.clear(screen.getByTestId('trustee-city'));
-    await testingUtilities.clearComboBoxSelection('trustee-state');
-    await user.clear(screen.getByTestId('trustee-zip'));
-    await user.clear(screen.getByTestId('trustee-phone'));
-    await user.clear(screen.getByTestId('trustee-extension'));
-    await user.clear(screen.getByTestId('trustee-email'));
-    await user.click(screen.getByRole('button', { name: /save/i }));
+    await userEvent.clear(screen.getByTestId('trustee-address1'));
+    await userEvent.clear(screen.getByTestId('trustee-address2'));
+    await userEvent.clear(screen.getByTestId('trustee-city'));
+    await TestingUtilities.clearComboBoxSelection('trustee-state');
+    await userEvent.clear(screen.getByTestId('trustee-zip'));
+    await userEvent.clear(screen.getByTestId('trustee-phone'));
+    await userEvent.clear(screen.getByTestId('trustee-extension'));
+    await userEvent.clear(screen.getByTestId('trustee-email'));
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => {
       expect(patchSpy).toHaveBeenCalled();
@@ -497,9 +497,9 @@ describe('TrusteeInternalContactForm Tests', () => {
     });
 
     const address2Field = screen.getByTestId('trustee-address2');
-    await user.clear(address2Field);
-    await user.type(address2Field, 'Suite 100');
-    await user.click(screen.getByRole('button', { name: /save/i }));
+    await userEvent.clear(address2Field);
+    await userEvent.type(address2Field, 'Suite 100');
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     expect(patchSpy).not.toHaveBeenCalled();
   });
@@ -517,15 +517,15 @@ describe('TrusteeInternalContactForm Tests', () => {
 
     const addr1 = screen.getByTestId('trustee-address1');
 
-    await user.clear(addr1);
-    await user.type(addr1, 'x');
+    await userEvent.clear(addr1);
+    await userEvent.type(addr1, 'x');
 
     await waitFor(() => {
       expect(screen.queryByText('bad')).toBeInTheDocument();
     });
 
-    await user.clear(addr1);
-    await user.type(addr1, 'ok');
+    await userEvent.clear(addr1);
+    await userEvent.type(addr1, 'ok');
 
     await waitFor(() => {
       expect(screen.queryByText('bad')).not.toBeInTheDocument();
@@ -575,7 +575,7 @@ describe('TrusteeInternalContactForm Tests', () => {
 
     renderWithProps({ cancelTo: '/trustees', trusteeId: 'spec-rem-1' });
 
-    await user.click(screen.getByRole('button', { name: /save/i }));
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     delete (TRUSTEE_INTERNAL_SPEC as unknown as Record<string, unknown[]>).__extra_temp_key;
   });
@@ -594,7 +594,7 @@ describe('TrusteeInternalContactForm Tests', () => {
 
     renderWithProps({ cancelTo: '/trustees', trusteeId: 'save-wait' });
 
-    await user.click(screen.getByRole('button', { name: /save/i }));
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() =>
       expect(screen.getByTestId('button-submit-button')).toHaveTextContent('Saving…'),
@@ -619,7 +619,7 @@ describe('TrusteeInternalContactForm Tests', () => {
 
     renderWithProps({ cancelTo: '/trustees', trusteeId: 'err-1' });
 
-    await user.click(screen.getByRole('button', { name: /save/i }));
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     expect(screen.queryByText('addr2 error')).toBeInTheDocument();
     expect(screen.queryByText('phone error')).toBeInTheDocument();

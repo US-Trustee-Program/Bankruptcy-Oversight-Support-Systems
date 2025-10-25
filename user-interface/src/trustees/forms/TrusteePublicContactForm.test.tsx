@@ -1,11 +1,11 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent, { UserEvent } from '@testing-library/user-event';
+import { UserEvent } from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import TrusteePublicContactForm, {
   TrusteePublicContactFormProps,
   validateField,
 } from './TrusteePublicContactForm';
-import testingUtilities from '@/lib/testing/testing-utilities';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import * as DebounceModule from '@/lib/hooks/UseDebounce';
@@ -40,11 +40,11 @@ describe('TrusteePublicContactForm Tests', () => {
     navigateTo,
     redirectTo: vi.fn(),
   };
-  let user: UserEvent;
+  let userEvent: UserEvent;
 
   beforeEach(() => {
-    user = userEvent.setup();
-    testingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
+    userEvent = TestingUtilities.setupUserEvent();
+    TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
 
     vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
       'trustee-management': true,
@@ -77,7 +77,7 @@ describe('TrusteePublicContactForm Tests', () => {
   });
 
   test('should show forbidden message when user lacks TrusteeAdmin role', async () => {
-    testingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
+    TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
 
     renderWithProps();
 
@@ -114,27 +114,27 @@ describe('TrusteePublicContactForm Tests', () => {
     const websiteInput = screen.getByTestId('trustee-website');
 
     const trusteeName = 'Test Trustee';
-    await user.type(nameInput, trusteeName);
+    await userEvent.type(nameInput, trusteeName);
     const address1 = '123 Main St';
-    await user.type(address1Input, address1);
+    await userEvent.type(address1Input, address1);
     const address2 = 'Apt 123';
-    await user.type(address2Input, address2);
+    await userEvent.type(address2Input, address2);
     const city = 'Test City';
-    await user.type(cityInput, city);
+    await userEvent.type(cityInput, city);
     const zip = '90210';
-    await user.type(zipInput, zip);
+    await userEvent.type(zipInput, zip);
     const phoneNumer = '555-123-4567';
-    await user.type(phoneInput, phoneNumer);
+    await userEvent.type(phoneInput, phoneNumer);
     const extension = '123';
-    await user.type(extensionInput, extension);
+    await userEvent.type(extensionInput, extension);
     const email = 'test@example.com';
-    await user.type(emailInput, email);
+    await userEvent.type(emailInput, email);
     const website = 'example.com';
-    await user.type(websiteInput, website);
+    await userEvent.type(websiteInput, website);
 
-    await testingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
+    await TestingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
 
-    await user.click(screen.getByRole('button', { name: /save/i }));
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     const normalizedWebsite = 'https://example.com';
     const expectedPayload = {
@@ -179,21 +179,21 @@ describe('TrusteePublicContactForm Tests', () => {
     const emailInput = screen.getByTestId('trustee-email');
 
     const trusteeName = 'Test Trustee';
-    await user.type(nameInput, trusteeName);
+    await userEvent.type(nameInput, trusteeName);
     const address1 = '123 Main St';
-    await user.type(address1Input, address1);
+    await userEvent.type(address1Input, address1);
     const city = 'Test City';
-    await user.type(cityInput, city);
+    await userEvent.type(cityInput, city);
     const zip = '90210';
-    await user.type(zipInput, zip);
+    await userEvent.type(zipInput, zip);
     const phoneNumer = '555-123-4567';
-    await user.type(phoneInput, phoneNumer);
+    await userEvent.type(phoneInput, phoneNumer);
     const email = 'test@example.com';
-    await user.type(emailInput, email);
+    await userEvent.type(emailInput, email);
 
-    await testingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
+    await TestingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
 
-    await user.click(screen.getByRole('button', { name: /save/i }));
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     const expectedPayload = {
       name: trusteeName,
@@ -259,8 +259,8 @@ describe('TrusteePublicContactForm Tests', () => {
     const newAddress1 = '123 Main St';
     await userEvent.clear(address1Input);
     await userEvent.type(address1Input, newAddress1);
-    await testingUtilities.clearComboBoxSelection('trustee-state');
-    await testingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
+    await TestingUtilities.clearComboBoxSelection('trustee-state');
+    await TestingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
     const newZip = '90210-1111';
     await userEvent.clear(zipInput);
     await userEvent.type(zipInput, newZip);
@@ -314,7 +314,7 @@ describe('TrusteePublicContactForm Tests', () => {
 
     const cancelButton = screen.getByRole('button', { name: /cancel/i });
 
-    await user.click(cancelButton);
+    await userEvent.click(cancelButton);
 
     expect(navigateTo).toHaveBeenCalledWith('/trustees');
   });
@@ -335,7 +335,7 @@ describe('TrusteePublicContactForm Tests', () => {
 
     const cancelButton = screen.getByRole('button', { name: /cancel/i });
 
-    await user.click(cancelButton);
+    await userEvent.click(cancelButton);
 
     expect(navigateTo).toHaveBeenCalledWith(`/trustees/${existing.trusteeId}`);
   });
@@ -351,7 +351,7 @@ describe('TrusteePublicContactForm Tests', () => {
       trusteeId: '',
     });
 
-    await user.click(screen.getByRole('button', { name: /save/i }));
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     await new Promise((res) => setTimeout(res, 50));
     expect(mockPost).not.toHaveBeenCalled();
@@ -362,19 +362,19 @@ describe('TrusteePublicContactForm Tests', () => {
     const error = new Error('create failed');
     vi.spyOn(api, 'postTrustee').mockRejectedValue(error);
 
-    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+    const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
 
     renderWithProps({ action: 'create', cancelTo: '/trustees', trusteeId: '' });
 
-    await user.type(screen.getByTestId('trustee-name'), 'Create Trustee');
-    await user.type(screen.getByTestId('trustee-address1'), '1 Main St');
-    await user.type(screen.getByTestId('trustee-city'), 'City');
-    await user.type(screen.getByTestId('trustee-zip'), '90210');
-    await user.type(screen.getByTestId('trustee-phone'), '555-111-2222');
-    await user.type(screen.getByTestId('trustee-email'), 'create@example.com');
-    await testingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
+    await userEvent.type(screen.getByTestId('trustee-name'), 'Create Trustee');
+    await userEvent.type(screen.getByTestId('trustee-address1'), '1 Main St');
+    await userEvent.type(screen.getByTestId('trustee-city'), 'City');
+    await userEvent.type(screen.getByTestId('trustee-zip'), '90210');
+    await userEvent.type(screen.getByTestId('trustee-phone'), '555-111-2222');
+    await userEvent.type(screen.getByTestId('trustee-email'), 'create@example.com');
+    await TestingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
 
-    await user.click(screen.getByRole('button', { name: /save/i }));
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => {
       expect(globalAlertSpy.error).toHaveBeenCalled();
@@ -391,7 +391,7 @@ describe('TrusteePublicContactForm Tests', () => {
       patchTrustee: mockReject,
     } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
 
-    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+    const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
 
     vi.spyOn(NavigatorModule, 'default').mockReturnValue({
       navigateTo: vi.fn(),
@@ -410,14 +410,14 @@ describe('TrusteePublicContactForm Tests', () => {
       reasonMap: undefined,
     } as Validation.ValidatorResult);
 
-    await user.type(screen.getByTestId('trustee-name'), 'Edited Name');
-    await user.type(screen.getByTestId('trustee-address1'), '1 Main St');
-    await testingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
-    await user.type(screen.getByTestId('trustee-zip'), '90210');
-    await user.type(screen.getByTestId('trustee-phone'), '555-111-2222');
-    await user.type(screen.getByTestId('trustee-email'), 'p@example.com');
+    await userEvent.type(screen.getByTestId('trustee-name'), 'Edited Name');
+    await userEvent.type(screen.getByTestId('trustee-address1'), '1 Main St');
+    await TestingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
+    await userEvent.type(screen.getByTestId('trustee-zip'), '90210');
+    await userEvent.type(screen.getByTestId('trustee-phone'), '555-111-2222');
+    await userEvent.type(screen.getByTestId('trustee-email'), 'p@example.com');
 
-    await user.click(screen.getByRole('button', { name: /save/i }));
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => {
       expect(globalAlertSpy.error).toHaveBeenCalled();

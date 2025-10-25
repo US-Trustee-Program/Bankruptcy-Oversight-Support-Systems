@@ -3,12 +3,12 @@ import ZipCodeInput, {
   formatZipCodeInput,
   validateZipCodeInputEvent,
 } from '@/lib/components/ZipCodeInput';
-import userEvent from '@testing-library/user-event';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import React from 'react';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 
 describe('ZipCodeInput', () => {
-  const user = userEvent.setup();
+  const userEvent = TestingUtilities.setupUserEvent();
 
   test('formatZipCodeInput formats zip codes correctly', () => {
     expect(formatZipCodeInput('')).toEqual({ formattedZipCode: '' });
@@ -47,13 +47,13 @@ describe('ZipCodeInput', () => {
 
     const input = screen.getByTestId(id) as HTMLInputElement;
 
-    await user.type(input, '123456789');
+    await userEvent.type(input, '123456789');
     await waitFor(() => expect(input).toHaveValue(zipFull));
 
-    await user.click(screen.getByText('Clear Value'));
+    await userEvent.click(screen.getByText('Clear Value'));
     await waitFor(() => expect(input).toHaveValue(''));
 
-    await user.click(screen.getByText('Set Value'));
+    await userEvent.click(screen.getByText('Set Value'));
     await waitFor(() => expect(input).toHaveValue(zipFull));
   });
 });
