@@ -70,10 +70,10 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
     try {
       const response = await api.patchTrustee(trusteeId, {
         banks: banks.filter((bank) => bank.trim() !== ''),
-        software: software ? software : null,
+        software: software || null,
       });
       if (response?.data) {
-        navigate.navigateTo(`/trustees/${trusteeId}`, { trustee: response.data });
+        navigate.navigateTo(`/trustees/${trusteeId}`);
       }
     } catch (e) {
       globalAlert?.error(`Failed to update trustee information: ${(e as Error).message}`);

@@ -47,8 +47,6 @@ describe('tests for UseCamsNavigator module', () => {
       </BrowserRouter>,
     );
 
-    expect(navigateMock).toHaveBeenCalledWith('/small/mouse?x-ms-routing-name=true', {
-      state: undefined,
-    });
+    expect(navigateMock).toHaveBeenCalledWith('/small/mouse?x-ms-routing-name=true');
   });
 });

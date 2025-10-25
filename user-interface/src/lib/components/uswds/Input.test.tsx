@@ -17,6 +17,10 @@ describe('Tests for USWDS Input component.', () => {
     );
   };
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   test('Should change value when ref.setValue() is called and set value back to original when ref.resetValue() is called.', async () => {
     renderWithoutProps();
     const inputEl = screen.getByTestId('input-1');
@@ -185,6 +189,18 @@ describe('Input additional coverage tests', () => {
     expect(inputEl).toHaveAttribute('aria-describedby', expect.stringContaining('input-hint-'));
   });
 
+  test('calls onChange when user types and updates value', async () => {
+    const user = userEvent.setup();
+    const handleChange = vi.fn();
+    render(<Input id="change-id" label="Change" onChange={handleChange} />);
+
+    const input = screen.getByLabelText('Change') as HTMLInputElement;
+    await user.type(input, 'abc');
+
+    expect(handleChange).toHaveBeenCalled();
+    expect(input.value).toBe('abc');
+  });
+
   test('should handle focus method and onFocus prop', async () => {
     render(
       <Input
@@ -202,7 +218,6 @@ describe('Input additional coverage tests', () => {
     act(() => ref.current?.focus());
     expect(inputEl).toHaveFocus();
 
-    // Test onFocus prop
     fireEvent.focus(inputEl);
     expect(mockOnFocus).toHaveBeenCalled();
   });
@@ -291,7 +306,6 @@ describe('Input additional coverage tests', () => {
   });
 
   test('should generate aria-describedby when no id provided', () => {
-    // Test the fallback for ariaDescribedBy when no id is provided
     render(<Input ariaDescription="Test description" onChange={mockOnChange} />);
 
     const hintElement = document.querySelector('.usa-hint');
