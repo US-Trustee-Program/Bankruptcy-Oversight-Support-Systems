@@ -4,6 +4,7 @@ import { vi } from 'vitest';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import TrusteeDetailProfile, { TrusteeDetailProfileProps } from './TrusteeDetailProfile';
 import { Trustee } from '@common/cams/trustees';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 
 const mockTrustee: Trustee = {
   id: '--id-guid--',
@@ -141,14 +142,13 @@ describe('TrusteeDetailProfile', () => {
   });
 
   test('should call onEditPublicProfile when public edit button is clicked', async () => {
-    const user = userEvent.setup();
-
+    const userEvent = TestingUtilities.setupUserEvent();
     renderWithProps({});
 
     const publicEditButton = screen.getByRole('button', {
       name: 'Edit trustee public overview information',
     });
-    await user.click(publicEditButton);
+    await userEvent.click(publicEditButton);
 
     expect(mockOnEditPublicProfile).toHaveBeenCalledTimes(1);
   });
