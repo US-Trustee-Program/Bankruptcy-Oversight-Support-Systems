@@ -13,6 +13,7 @@ import UsStatesComboBox from '@/lib/components/combobox/UsStatesComboBox';
 import useDebounce from '@/lib/hooks/UseDebounce';
 import { Stop } from '@/lib/components/Stop';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
+import ZipCodeInput from '@/lib/components/ZipCodeInput';
 import { TrusteeInput } from '@common/cams/trustees';
 import { TRUSTEE_INTERNAL_SPEC, TrusteeInternalFormData } from './trusteeForms.types';
 import {
@@ -39,24 +40,34 @@ const getInitialFormData = (
   };
 };
 
+export function validateField(
+  field: keyof TrusteeInternalFormData,
+  value: string | undefined,
+  spec: Partial<typeof TRUSTEE_INTERNAL_SPEC>,
+): ValidatorReasonMap | null {
+  const valueToEval = value?.trim() || undefined;
+
+  if (spec?.[field]) {
+    const result = validateEach(spec[field], valueToEval);
+    const validatorReasonMap: ValidatorReasonMap = {};
+    if (result.valid) {
+      return null;
+    } else {
+      validatorReasonMap[field] = { reasons: result.reasons };
+      return validatorReasonMap;
+    }
+  } else {
+    return null;
+  }
+}
+
 export type TrusteeInternalContactFormProps = {
   trusteeId: string;
   cancelTo: string;
   trustee?: Partial<TrusteeInput>;
 };
 
-/*
-No Fieldsets ✅
-No * indicators ✅
-No (optional) indicators ✅
-Alert but only on save click. ✅
-Phone number needs validation if extension is filled out but number is not
-Hyphen when typing more than 5 digits in zip code
-Validation message for zip code "must be 5 or 9 digits" ✅
-Validation for the max length should just say "max length X characters"
-(if possible let's fix the alert message on the zip code validation so it doesn't wrap)
-When we send null to the API, we are getting null back but we agreed that null should only be sent in the PATCH payload.
-*/
+// TODO: When we send null to the API, we are getting null back but we agreed that null should only be sent in the PATCH payload.
 function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormProps>) {
   const flags = useFeatureFlags();
   const api = useApi2();
@@ -67,12 +78,11 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
   const { cancelTo } = props;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  // const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [fieldErrors2, setFieldErrors2] = useState<ValidatorReasonMap>({});
+  const [fieldErrors, setFieldErrors] = useState<ValidatorReasonMap>({});
   const [formData, setFormData] = useState<TrusteeInternalFormData>(
     getInitialFormData(props.trustee?.internal),
   );
+  const [saveAlert, setSaveAlert] = useState<string | null>(null);
   const partialAddressAlertRef = useRef<AlertRefType>(null);
 
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
@@ -127,7 +137,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
         !currentData.address1 && !currentData.city && !currentData.state && !currentData.zipCode;
 
       if (allAddressFieldsEmpty) {
-        setFieldErrors2((prevErrors) => {
+        setFieldErrors((prevErrors) => {
           const { ...copy } = prevErrors;
           for (const field of requiredAddressFields) {
             delete copy[field];
@@ -179,7 +189,6 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
     const currentFormData = getFormData();
 
     if (validateFormAndUpdateErrors(currentFormData)) {
-      setErrorMessage(null);
       setIsSubmitting(true);
 
       const payload = mapPayload(currentFormData);
@@ -198,7 +207,11 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
     const spec = getDynamicSpec(formData);
     const results = validateObject(spec, formData);
     if (!results.valid && results.reasonMap) {
-      setFieldErrors2(results.reasonMap);
+      setFieldErrors(results.reasonMap);
+    }
+    if (!results.valid && results.reasonMap?.$?.reasons) {
+      setSaveAlert(results.reasonMap.$.reasons.join(' '));
+      partialAddressAlertRef.current?.show();
     }
     return !!results.valid;
   };
@@ -209,7 +222,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
   ): ValidatorReasonMap | null => {
     const error = validateField(field, value, TRUSTEE_INTERNAL_SPEC);
 
-    setFieldErrors2((prevErrors) => {
+    setFieldErrors((prevErrors) => {
       if (error) {
         return { ...prevErrors, ...error };
       } else {
@@ -220,27 +233,6 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
 
     return error;
   };
-
-  function validateField(
-    field: keyof TrusteeInternalFormData,
-    value: string | undefined,
-    spec: Partial<typeof TRUSTEE_INTERNAL_SPEC>,
-  ): ValidatorReasonMap | null {
-    const valueToEval = value?.trim() || undefined;
-
-    if (spec?.[field]) {
-      const result = validateEach(spec[field], valueToEval);
-      const validatorReasonMap: ValidatorReasonMap = {};
-      if (result.valid) {
-        return null;
-      } else {
-        validatorReasonMap[field] = { reasons: result.reasons };
-        return validatorReasonMap;
-      }
-    } else {
-      return null;
-    }
-  }
 
   const getFormData = (override?: {
     name: keyof TrusteeInternalFormData;
@@ -301,7 +293,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 label="Address Line 1"
                 value={formData.address1}
                 onChange={handleFieldChange}
-                errorMessage={fieldErrors2['address1']?.reasons?.join(' ')}
+                errorMessage={fieldErrors['address1']?.reasons?.join(' ')}
                 autoComplete="off"
               />
             </div>
@@ -314,7 +306,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 label="Address Line 2"
                 value={formData.address2 || ''}
                 onChange={handleFieldChange}
-                errorMessage={fieldErrors2['address2']?.reasons?.join(' ')}
+                errorMessage={fieldErrors['address2']?.reasons?.join(' ')}
                 autoComplete="off"
               />
             </div>
@@ -327,7 +319,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 label="City"
                 value={formData.city}
                 onChange={handleFieldChange}
-                errorMessage={fieldErrors2['city']?.reasons?.join(' ')}
+                errorMessage={fieldErrors['city']?.reasons?.join(' ')}
                 autoComplete="off"
               />
             </div>
@@ -341,19 +333,19 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 selections={formData.state ? [formData.state] : []}
                 onUpdateSelection={handleStateSelection}
                 autoComplete="off"
-                errorMessage={fieldErrors2['state']?.reasons?.join(' ')}
+                errorMessage={fieldErrors['state']?.reasons?.join(' ')}
               ></UsStatesComboBox>
             </div>
 
             <div className="field-group">
-              <Input
+              <ZipCodeInput
                 id="trustee-zip"
                 className="trustee-zip-input"
                 name="zipCode"
                 label="ZIP Code"
                 value={formData.zipCode}
                 onChange={handleZipCodeChange}
-                errorMessage={fieldErrors2['zipCode']?.reasons?.join(' ')}
+                errorMessage={fieldErrors['zipCode']?.reasons?.join(' ')}
                 autoComplete="off"
                 ariaDescription="Example: 12345"
               />
@@ -369,7 +361,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 name="phone"
                 label="Phone"
                 onChange={handleFieldChange}
-                errorMessage={fieldErrors2['phone']?.reasons?.join(' ')}
+                errorMessage={fieldErrors['phone']?.reasons?.join(' ')}
                 autoComplete="off"
                 ariaDescription="Example: 123-456-7890"
               />
@@ -380,7 +372,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 label="Extension"
                 value={formData.extension || ''}
                 onChange={handleFieldChange}
-                errorMessage={fieldErrors2['extension']?.reasons?.join(' ')}
+                errorMessage={fieldErrors['extension']?.reasons?.join(' ')}
                 autoComplete="off"
                 ariaDescription="Up to 6 digits"
               />
@@ -394,7 +386,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 label="Email"
                 value={formData.email}
                 onChange={handleFieldChange}
-                errorMessage={fieldErrors2['email']?.reasons?.join(' ')}
+                errorMessage={fieldErrors['email']?.reasons?.join(' ')}
                 type="email"
                 autoComplete="off"
               />
@@ -402,7 +394,6 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
           </div>
         </div>
 
-        {errorMessage && <div role="alert">{errorMessage}</div>}
         <Alert
           role="alert"
           className="form-field-warning"
@@ -410,7 +401,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
           inline={true}
           slim={false}
           ref={partialAddressAlertRef}
-          message="You have entered a partial address. Please complete or clear the address fields."
+          message={saveAlert ?? ''}
         />
         <div className="usa-button-group">
           <Button id="submit-button" type="submit" onClick={handleSubmit}>
