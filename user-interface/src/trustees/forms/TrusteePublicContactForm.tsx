@@ -13,6 +13,7 @@ import UsStatesComboBox from '@/lib/components/combobox/UsStatesComboBox';
 import useDebounce from '@/lib/hooks/UseDebounce';
 import { Stop } from '@/lib/components/Stop';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
+import ZipCodeInput from '@/lib/components/ZipCodeInput';
 import { TrusteeInput } from '@common/cams/trustees';
 import { normalizeWebsiteUrl } from '@common/cams/regex';
 import { TRUSTEE_PUBLIC_SPEC, TrusteePublicFormData } from './trusteeForms.types';
@@ -340,7 +341,7 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
             </div>
 
             <div className="field-group">
-              <Input
+              <ZipCodeInput
                 id="trustee-zip"
                 className="trustee-zip-input"
                 name="zipCode"
