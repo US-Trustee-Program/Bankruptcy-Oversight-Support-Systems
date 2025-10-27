@@ -1,6 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, beforeEach, vi, MockedFunction } from 'vitest';
-import { UserEvent } from '@testing-library/user-event';
 import { AuthorizedUseOnly } from './AuthorizedUseOnly';
 
 // Mock the LocalStorage module
@@ -10,15 +9,14 @@ vi.mock('@/lib/utils/local-storage', () => ({
     setAck: vi.fn(),
   },
 }));
-
 import { LocalStorage } from '@/lib/utils/local-storage';
-import TestingUtilities from '@/lib/testing/testing-utilities';
+import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
 const mockGetAck = LocalStorage.getAck as MockedFunction<typeof LocalStorage.getAck>;
 const mockSetAck = LocalStorage.setAck as MockedFunction<typeof LocalStorage.setAck>;
 
 describe('AuthorizedUseOnly', () => {
-  let userEvent: UserEvent;
+  let userEvent: CamsUserEvent;
 
   beforeEach(() => {
     mockGetAck.mockReturnValue(false);

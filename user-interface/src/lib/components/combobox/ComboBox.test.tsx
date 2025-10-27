@@ -2,8 +2,7 @@ import React, { Ref } from 'react';
 import ComboBox, { ComboBoxProps, ComboOption } from './ComboBox';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import { act, render, screen, waitFor } from '@testing-library/react';
-import { UserEvent } from '@testing-library/user-event';
-import TestingUtilities from '@/lib/testing/testing-utilities';
+import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 import { vi } from 'vitest';
 
 const comboboxId = 'test-combobox';
@@ -83,7 +82,7 @@ const expectInputContainerToHaveFocus = async (): Promise<Element | null> => {
 describe('test cams combobox', () => {
   const updateFilterMock = vi.fn();
   let defaultOptions: ComboOption[] = [];
-  let userEvent: UserEvent;
+  let userEvent: CamsUserEvent;
 
   const renderWithProps = (props?: Partial<ComboBoxProps>, ref?: Ref<ComboBoxRef>) => {
     defaultOptions = getDefaultOptions();
@@ -1081,7 +1080,7 @@ describe('test cams combobox', () => {
   });
 
   describe('additional coverage tests', () => {
-    let userEvent: UserEvent;
+    let userEvent: CamsUserEvent;
 
     beforeEach(() => {
       userEvent = TestingUtilities.setupUserEvent();

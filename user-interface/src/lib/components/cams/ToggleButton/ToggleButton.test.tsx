@@ -1,10 +1,9 @@
 import { render, screen } from '@testing-library/react';
-import { UserEvent } from '@testing-library/user-event';
 import ToggleButton from './ToggleButton';
-import TestingUtilities from '@/lib/testing/testing-utilities';
+import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
 describe('ToggleButton', () => {
-  let userEvent: UserEvent;
+  let userEvent: CamsUserEvent;
 
   beforeEach(() => {
     userEvent = TestingUtilities.setupUserEvent();

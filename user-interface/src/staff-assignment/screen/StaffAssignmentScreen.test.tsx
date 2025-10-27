@@ -8,7 +8,7 @@ import {
 import MockData from '@common/cams/test-utilities/mock-data';
 import * as searchResultsModule from '@/search-results/SearchResults';
 import Api2 from '@/lib/models/api2';
-import TestingUtilities from '@/lib/testing/testing-utilities';
+import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 import { SearchResultsProps } from '@/search-results/SearchResults';
 import { CamsRole } from '@common/cams/roles';
 import { BrowserRouter } from 'react-router-dom';
@@ -16,12 +16,11 @@ import { getCourtDivisionCodes } from '@common/cams/users';
 import { FeatureFlagSet } from '@common/feature-flags';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
-import { UserEvent } from '@testing-library/user-event';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 describe('StaffAssignmentScreen', () => {
   let mockFeatureFlags: FeatureFlagSet;
-  let userEvent: UserEvent;
+  let userEvent: CamsUserEvent;
 
   const user = MockData.getCamsUser({
     roles: [CamsRole.CaseAssignmentManager],

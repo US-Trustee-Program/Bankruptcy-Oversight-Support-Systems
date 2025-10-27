@@ -7,11 +7,10 @@ import { CaseBasics } from '@common/cams/cases';
 import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
 import { AttorneyUser } from '@common/cams/users';
 import { ResponseBody } from '@common/api/response';
-import testingUtilities, { TestingUtilities } from '@/lib/testing/testing-utilities';
+import testingUtilities, { CamsUserEvent, TestingUtilities } from '@/lib/testing/testing-utilities';
 import Api2 from '@/lib/models/api2';
 import { REGION_02_GROUP_NY } from '@common/cams/test-utilities/mock-user';
 import AssignAttorneyModal from './AssignAttorneyModal';
-import { UserEvent } from '@testing-library/user-event';
 
 const offices = [REGION_02_GROUP_NY!];
 const susan = MockData.getAttorneyUser({ name: 'Susan Arbeit', offices });
@@ -30,7 +29,7 @@ const modalId = 'some-modal-id';
 
 describe('Test Assign Attorney Modal Component', () => {
   let callback = vi.fn();
-  let userEvent: UserEvent;
+  let userEvent: CamsUserEvent;
 
   const attorneyListResponse: ResponseBody<AttorneyUser[]> = {
     meta: { self: 'self-url' },
