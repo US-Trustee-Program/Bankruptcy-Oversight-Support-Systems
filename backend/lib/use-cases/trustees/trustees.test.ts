@@ -463,22 +463,92 @@ describe('TrusteesUseCase tests', () => {
       expect(actualError.isCamsError).toBe(true);
     });
 
-    test('should remove fields when patch values are null or undefined', async () => {
+    test('should remove fields when patch values are null, undefined, or an object with all null/undefined properties', async () => {
       const updateData = {
         name: 'Updated Name',
+        internal: {
+          address: null,
+          email: null,
+          phone: null,
+        },
         software: null, // Should be removed
         banks: undefined, // Should be removed
       };
       const updatedTrustee = { ...existingTrustee, name: 'Updated Name' };
-      // Remove software and banks from the expected result
+      delete updatedTrustee.internal;
       delete updatedTrustee.software;
       delete updatedTrustee.banks;
 
-      jest.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+      const mongoMock = jest
+        .spyOn(MockMongoRepository.prototype, 'updateTrustee')
+        .mockResolvedValue(updatedTrustee);
       jest.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
 
       const result = await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
 
+      expect(mongoMock).toHaveBeenCalledWith(
+        trusteeId,
+        expect.objectContaining({
+          name: 'Updated Name',
+          internal: undefined,
+          software: undefined,
+          banks: undefined,
+        }),
+        expect.any(Object),
+      );
+      expect(result).toEqual(updatedTrustee);
+      expect(result.software).toBeUndefined();
+      expect(result.banks).toBeUndefined();
+    });
+
+    test('should remove fields in nested objects when patch values are null, undefined, or an object with all null/undefined properties', async () => {
+      const updateData = {
+        name: 'Updated Name',
+        internal: {
+          address: {
+            address1: '1234 Test Ln',
+            address2: null,
+            address3: null,
+            city: 'Washington',
+            state: 'DC',
+            zipCode: '11111',
+            countryCode: 'US' as const,
+          },
+          email: null,
+          phone: {
+            number: null,
+            extension: null,
+          },
+        },
+      };
+      const updatedTrustee = {
+        ...existingTrustee,
+        name: 'Updated Name',
+        internal: {
+          address: {
+            address1: '1234 Test Ln',
+            city: 'Washington',
+            state: 'DC',
+            zipCode: '11111',
+            countryCode: 'US',
+          },
+          email: undefined,
+          phone: undefined,
+        },
+      };
+
+      const mongoMock = jest
+        .spyOn(MockMongoRepository.prototype, 'updateTrustee')
+        .mockResolvedValue(updatedTrustee);
+      jest.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
+
+      const result = await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
+
+      expect(mongoMock).toHaveBeenCalledWith(
+        trusteeId,
+        expect.objectContaining(updatedTrustee),
+        expect.any(Object),
+      );
       expect(result).toEqual(updatedTrustee);
       expect(result.software).toBeUndefined();
       expect(result.banks).toBeUndefined();

@@ -324,11 +324,51 @@ function patchTrustee(
       continue;
     }
     if (patch[key] === null || patch[key] === undefined) {
-      // remove keys intended to be unset
-      delete copy[key];
+      // set keys to undefined when intended to be unset
+      copy[key] = undefined;
+    } else if (
+      typeof patch[key] === 'object' &&
+      patch[key] !== null &&
+      !Array.isArray(patch[key])
+    ) {
+      // handle nested objects recursively
+      const patchedNestedObj = patchNestedObject(patch[key] as Record<string, unknown>);
+
+      if (patchedNestedObj === undefined || Object.keys(patchedNestedObj).length === 0) {
+        // if the nested object is empty after patching, set parent to undefined
+        copy[key] = undefined;
+      } else {
+        copy[key] = patchedNestedObj as Trustee[keyof Trustee];
+      }
     } else {
       copy[key] = patch[key as keyof Trustee];
     }
   }
   return copy;
+}
+
+function patchNestedObject(obj: Record<string, unknown>): Record<string, unknown> | undefined {
+  const result: Record<string, unknown> = {};
+  let hasValidProperties = false;
+
+  for (const [key, value] of Object.entries(obj)) {
+    if (value === null || value === undefined) {
+      // skip null/undefined properties - they should be removed
+      continue;
+    } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      // recursively handle nested objects
+      const patchedNested = patchNestedObject(value as Record<string, unknown>);
+      if (patchedNested !== undefined && Object.keys(patchedNested).length > 0) {
+        result[key] = patchedNested;
+        hasValidProperties = true;
+      }
+      // if patchedNested is undefined or empty, the property is omitted
+    } else {
+      // keep non-null, non-object values
+      result[key] = value;
+      hasValidProperties = true;
+    }
+  }
+
+  return hasValidProperties ? result : undefined;
 }

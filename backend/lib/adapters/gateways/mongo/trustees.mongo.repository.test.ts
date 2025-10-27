@@ -38,9 +38,6 @@ describe('TrusteesMongoRepository', () => {
       },
       email: 'john.doe@example.com',
     },
-    districts: ['NY'],
-    chapters: ['7-panel', '11'],
-    status: 'active',
   };
 
   beforeEach(async () => {
@@ -115,7 +112,6 @@ describe('TrusteesMongoRepository', () => {
               number: '555-0123',
             },
           },
-          status: 'active',
           documentType: 'TRUSTEE',
           createdOn: '2025-08-12T10:00:00Z',
           createdBy: mockUser,
@@ -138,7 +134,6 @@ describe('TrusteesMongoRepository', () => {
               number: '555-0456',
             },
           },
-          status: 'active',
           documentType: 'TRUSTEE',
           createdOn: '2025-08-12T11:00:00Z',
           createdBy: mockUser,
@@ -213,7 +208,6 @@ describe('TrusteesMongoRepository', () => {
             number: '555-0123',
           },
         },
-        status: 'active',
         documentType: 'TRUSTEE',
         createdOn: '2025-08-12T10:00:00Z',
         createdBy: mockUser,
@@ -317,7 +311,21 @@ describe('TrusteesMongoRepository', () => {
           },
           email: 'jane.updated@example.com',
         },
-        status: 'not active',
+        internal: {
+          address: {
+            address1: '789 Updated St',
+            city: 'Oldtown',
+            state: 'TX',
+            zipCode: '12345',
+            countryCode: 'US',
+          },
+          phone: {
+            number: '123-456-7890',
+          },
+          email: 'test@example.com',
+        },
+        banks: ['Bank 1', 'Bank 2'],
+        software: 'Software 1',
       };
 
       const updatedTrusteeDocument = {
