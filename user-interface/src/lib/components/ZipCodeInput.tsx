@@ -47,16 +47,18 @@ function ZipCodeInput_(props: ZipCodeInputProps, ref: React.Ref<InputRef>) {
     [],
   );
 
+  const handleChange = (ev: React.ChangeEvent<HTMLInputElement>) => {
+    const { formattedZipCode } = validateZipCodeInputEvent(ev);
+    forwardedRef?.current?.setValue(formattedZipCode);
+    ev.target.value = formattedZipCode;
+    props.onChange?.(ev);
+  };
+
   return (
     <Input
       {...otherProps}
       ref={forwardedRef}
-      onChange={(ev) => {
-        const { formattedZipCode } = validateZipCodeInputEvent(ev);
-        forwardedRef?.current?.setValue(formattedZipCode);
-        ev.target.value = formattedZipCode;
-        props.onChange?.(ev);
-      }}
+      onChange={handleChange}
       ariaDescription="Example: 12345 or 12345-6789"
       type="text"
       inputMode="numeric"

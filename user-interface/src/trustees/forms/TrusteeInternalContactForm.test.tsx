@@ -1,11 +1,10 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { UserEvent } from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import TrusteeInternalContactForm, {
   TrusteeInternalContactFormProps,
   validateField,
 } from './TrusteeInternalContactForm';
-import TestingUtilities from '@/lib/testing/testing-utilities';
+import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { FeatureFlagSet } from '@common/feature-flags';
@@ -52,7 +51,7 @@ describe('TrusteeInternalContactForm Tests', () => {
   ) => {
     cb();
   };
-  let userEvent: UserEvent;
+  let userEvent: CamsUserEvent;
 
   beforeEach(() => {
     userEvent = TestingUtilities.setupUserEvent();

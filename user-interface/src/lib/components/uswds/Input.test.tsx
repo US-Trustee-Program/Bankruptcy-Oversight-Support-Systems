@@ -43,15 +43,14 @@ describe('Tests for USWDS Input component.', () => {
     expect(inputEl).toHaveValue('');
   });
 
-  // TODO: I don't think this test makes sense because WE DO NOT call the onChange callback when setValue is called.
-  // REASON: We cause infinite loops in dependent components when we call setValue and the onChange callback is invoked.
-  test.skip('Should call props.onChange when a change is made to input by keypress or by ref.', async () => {
+  // NOTE: This may be a code smell with the implicit API. We do NOT call the callback when setValue is called.
+  test('Should not call props.onChange when setValue is called on the implicit API.', async () => {
     renderWithoutProps();
     const inputEl = screen.getByTestId('input-1');
 
     act(() => ref.current?.setValue('2'));
     expect(inputEl).toHaveValue('2');
-    expect(youChangedMe).toHaveBeenCalled();
+    expect(youChangedMe).not.toHaveBeenCalled();
 
     fireEvent.change(inputEl, { target: { value: '5' } });
 
