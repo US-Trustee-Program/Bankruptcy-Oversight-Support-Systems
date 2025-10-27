@@ -11,7 +11,7 @@
     "@okta/okta-auth-js": "7.14.0",
     "@okta/okta-react": "6.10.0",
     "@tiptap/extension-bold": "3.7.2",
-    "@tiptap/extension-document": "3.6.2",
+    "@tiptap/extension-document": "3.7.2",
     "@tiptap/extension-italic": "3.6.2",
     "@tiptap/extension-list": "3.6.2",
     "@tiptap/extension-paragraph": "3.6.2",
