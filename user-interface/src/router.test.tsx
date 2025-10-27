@@ -1,5 +1,4 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { UserEvent } from '@testing-library/user-event';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import * as ReactRouterDOM from 'react-router-dom';
 import App from './App';
@@ -8,10 +7,10 @@ import LocalStorage from './lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole } from '@common/cams/roles';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
-import TestingUtilities from '@/lib/testing/testing-utilities';
+import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
 describe('App Router Tests', () => {
-  let userEvent: UserEvent;
+  let userEvent: CamsUserEvent;
 
   vi.mock('react-router-dom', async () => {
     const actual = await vi.importActual('react-router-dom');
@@ -64,7 +63,7 @@ describe('App Router Tests', () => {
     });
   });
 
-  test('should route /trustees/create to TrusteeCreateForm when feature flag and role allow', async () => {
+  test('should route /trustees/create to trustee creation form when feature flag and role allow', async () => {
     const user = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
 
@@ -84,7 +83,7 @@ describe('App Router Tests', () => {
     );
 
     await waitFor(() => {
-      expect(document.querySelector('[data-testid="trustee-form"]')).toBeInTheDocument();
+      expect(document.querySelector('[data-testid="trustee-public-form"]')).toBeInTheDocument();
     });
   });
 

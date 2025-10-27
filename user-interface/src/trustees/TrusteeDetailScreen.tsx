@@ -5,44 +5,31 @@ import { JSX, useEffect, useState } from 'react';
 import useApi2 from '@/lib/hooks/UseApi2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { Trustee } from '@common/cams/trustees';
-import { useLocation, useNavigate, useParams, Routes, Route } from 'react-router-dom';
+import { useNavigate, useParams, Routes, Route, useLocation } from 'react-router-dom';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import TrusteeDetailHeader from './TrusteeDetailHeader';
 import TrusteeDetailProfile from './panels/TrusteeDetailProfile';
 import TrusteeDetailAuditHistory from './panels/TrusteeDetailAuditHistory';
 import TrusteeDetailNavigation, { mapTrusteeDetailNavState } from './TrusteeDetailNavigation';
-import { TrusteeFormState } from '@/trustees/forms/UseTrusteeContactForm';
-import TrusteeContactForm from './forms/TrusteeContactForm';
 import TrusteeOtherInfoForm from './forms/TrusteeOtherInfoForm';
 import NotFound from '@/lib/components/NotFound';
 import TrusteeAssignedStaff from './panels/TrusteeAssignedStaff';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { BankruptcySoftwareList } from '@common/cams/lists';
-import { CourtDivisionDetails } from '@common/cams/courts';
+import TrusteePublicContactForm from './forms/TrusteePublicContactForm';
+import TrusteeInternalContactForm from './forms/TrusteeInternalContactForm';
 
 type TrusteeHeaderProps = JSX.IntrinsicElements['div'] & {
   trustee: Trustee | null;
   isLoading: boolean;
-  districtLabels: string[];
   subHeading: string;
 };
 
-function TrusteeHeader({
-  trustee,
-  isLoading,
-  districtLabels,
-  subHeading,
-  children,
-}: TrusteeHeaderProps) {
+function TrusteeHeader({ trustee, isLoading, subHeading, children }: TrusteeHeaderProps) {
   return (
     <div className="trustee-detail-screen" data-testid="trustee-detail-screen">
-      <TrusteeDetailHeader
-        trustee={trustee}
-        isLoading={isLoading}
-        districtLabels={districtLabels}
-        subHeading={subHeading}
-      />
+      <TrusteeDetailHeader trustee={trustee} isLoading={isLoading} subHeading={subHeading} />
       <div className="trustee-detail-screen-content-container">{children}</div>
     </div>
   );
@@ -55,63 +42,30 @@ const transformSoftwareList = (items: BankruptcySoftwareList): ComboOption[] => 
   }));
 };
 
-const getDistrictLabels = (trustee: Trustee, courtDivisionDetails: CourtDivisionDetails[]) => {
-  const trusteeDistricts: string[] = [];
-  trustee.districts?.map((district: string) => {
-    const court = courtDivisionDetails.find((court) => court.courtDivisionCode === district);
-    if (court) {
-      trusteeDistricts.push(`${court.courtName} (${court.courtDivisionName})`);
-    }
-  });
-  return trusteeDistricts;
-};
-
 export default function TrusteeDetailScreen() {
   const { trusteeId } = useParams();
-  const location = useLocation();
   const [trustee, setTrustee] = useState<Trustee | null>(null);
-  const [navState, setNavState] = useState<number>(mapTrusteeDetailNavState(location.pathname));
+  const [navState, setNavState] = useState<number>(
+    mapTrusteeDetailNavState(window.location.pathname),
+  );
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [softwareOptions, setSoftwareOptions] = useState<ComboOption[]>([]);
-  const [courtDivisionDetails, setCourtDivisionDetails] = useState<CourtDivisionDetails[]>([]);
-  const districtLabels =
-    trustee && courtDivisionDetails ? getDistrictLabels(trustee, courtDivisionDetails) : [];
 
   const navigate = useNavigate();
-
   const globalAlert = useGlobalAlert();
   const api = useApi2();
+  const location = useLocation();
 
   function openEditPublicProfile() {
-    const state: TrusteeFormState = {
-      trusteeId,
-      trustee: trustee!, // Non-null assertion: function only called when trustee exists
-      cancelTo: location.pathname,
-      action: 'edit',
-      contactInformation: 'public',
-    };
-    navigate(`/trustees/${trusteeId}/contact/edit/public`, { state });
+    navigate(`/trustees/${trusteeId}/contact/edit/public`);
   }
 
   function openEditInternalProfile() {
-    const state: TrusteeFormState = {
-      trusteeId,
-      trustee: trustee!, // Non-null assertion: function only called when trustee exists
-      cancelTo: location.pathname,
-      action: 'edit',
-      contactInformation: 'internal',
-    };
-    navigate(`/trustees/${trusteeId}/contact/edit/internal`, { state });
+    navigate(`/trustees/${trusteeId}/contact/edit/internal`);
   }
 
   function openEditOtherInformation() {
-    const state: TrusteeFormState = {
-      trusteeId,
-      trustee: trustee!, // Non-null assertion: function only called when trustee exists
-      cancelTo: location.pathname,
-      action: 'edit',
-    };
-    navigate(`/trustees/${trusteeId}/other/edit`, { state });
+    navigate(`/trustees/${trusteeId}/other/edit`);
   }
 
   useEffect(() => {
@@ -127,23 +81,11 @@ export default function TrusteeDetailScreen() {
       }
     };
 
-    const fetchCourtDivisions = async () => {
-      try {
-        const response = await api.getCourts();
-        if (response?.data) {
-          setCourtDivisionDetails(response.data);
-        }
-      } catch (e) {
-        console.log('Failed to fetch court divisions', (e as Error).message);
-      }
-    };
-
     fetchSoftwareOptions();
-    fetchCourtDivisions();
   }, [api]);
 
   useEffect(() => {
-    if (trusteeId && !location.state?.trustee) {
+    if (trusteeId) {
       setIsLoading(true);
       api
         .getTrustee(trusteeId)
@@ -157,17 +99,8 @@ export default function TrusteeDetailScreen() {
           setIsLoading(false);
         });
     }
-  }, [trusteeId, location.state?.trustee]);
-
-  useEffect(() => {
-    setNavState(mapTrusteeDetailNavState(location.pathname));
-  }, [location]);
-
-  useEffect(() => {
-    if (location.state?.trustee) {
-      setTrustee(location.state.trustee as Trustee);
-    }
-  }, [location.state?.trustee]);
+    setNavState(mapTrusteeDetailNavState(window.location.pathname));
+  }, [location.pathname, trusteeId, api, globalAlert]);
 
   if (!trusteeId || (!isLoading && !trustee)) {
     return (
@@ -183,7 +116,7 @@ export default function TrusteeDetailScreen() {
       <MainContent className="record-detail" data-testid="record-detail">
         <DocumentTitle name="Trustee Detail" />
         <div className="trustee-detail-screen" data-testid="trustee-detail-screen">
-          <TrusteeDetailHeader trustee={null} isLoading={isLoading} districtLabels={[]} />
+          <TrusteeDetailHeader trustee={null} isLoading={isLoading} />
         </div>
       </MainContent>
     );
@@ -201,7 +134,6 @@ export default function TrusteeDetailScreen() {
           <div className="main-content-area">
             <TrusteeDetailProfile
               trustee={trustee}
-              districtLabels={districtLabels}
               onEditPublicProfile={openEditPublicProfile}
               onEditInternalProfile={openEditInternalProfile}
               onEditOtherInformation={openEditOtherInformation}
@@ -213,12 +145,25 @@ export default function TrusteeDetailScreen() {
     {
       path: 'contact/edit/public',
       subHeading: 'Edit Trustee Profile (Public)',
-      content: <TrusteeContactForm />,
+      content: (
+        <TrusteePublicContactForm
+          trusteeId={trusteeId}
+          trustee={trustee}
+          action="edit"
+          cancelTo={`/trustees/${trusteeId}`}
+        />
+      ),
     },
     {
       path: 'contact/edit/internal',
       subHeading: 'Edit Trustee Profile (USTP Internal)',
-      content: <TrusteeContactForm />,
+      content: (
+        <TrusteeInternalContactForm
+          trusteeId={trusteeId}
+          trustee={trustee}
+          cancelTo={`/trustees/${trusteeId}`}
+        />
+      ),
     },
     {
       path: 'other/edit',
@@ -272,12 +217,7 @@ export default function TrusteeDetailScreen() {
             key={path}
             path={path}
             element={
-              <TrusteeHeader
-                trustee={trustee}
-                isLoading={isLoading}
-                districtLabels={districtLabels}
-                subHeading={subHeading}
-              >
+              <TrusteeHeader trustee={trustee} isLoading={isLoading} subHeading={subHeading}>
                 {content}
               </TrusteeHeader>
             }

@@ -1,11 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { vi, beforeEach } from 'vitest';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import { UswdsTagStyle } from '@/lib/components/uswds/Tag';
 import TrusteeDetailScreen from './TrusteeDetailScreen';
-import { Trustee, TrusteeStatus } from '@common/cams/trustees';
+import { Trustee } from '@common/cams/trustees';
 import { ContactInformation } from '@common/cams/contact';
-
 import MockData from '@common/cams/test-utilities/mock-data';
 import testingUtilities from '@/lib/testing/testing-utilities';
 import Api2 from '@/lib/models/api2';
@@ -15,7 +13,6 @@ const mockOnEditInternalProfile = vi.fn();
 
 const mockUseParams = vi.hoisted(() => vi.fn());
 const mockUseNavigate = vi.hoisted(() => vi.fn());
-const mockUseLocation = vi.hoisted(() => vi.fn());
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
@@ -23,7 +20,6 @@ vi.mock('react-router-dom', async () => {
     ...actual,
     useParams: mockUseParams,
     useNavigate: mockUseNavigate,
-    useLocation: mockUseLocation,
   };
 });
 
@@ -43,9 +39,6 @@ const mockTrustee: Trustee = MockData.getTrustee({
     phone: { number: '555-123-4567', extension: '1234' },
     email: 'john.doe.public@example.com',
   },
-  districts: ['071', '091'],
-  chapters: ['7-panel', '11', '13'],
-  status: 'active',
 });
 
 const mockInternal: ContactInformation = {
@@ -70,7 +63,6 @@ const mockCourts = MockData.getCourts().filter(
 
 describe('TrusteeDetailScreen', () => {
   const mockNavigate = vi.fn();
-  const mockLocation = { pathname: '/trustees/123' };
 
   const renderWithRouter = (initialEntries = ['/trustees/123']) => {
     return render(
@@ -89,7 +81,6 @@ describe('TrusteeDetailScreen', () => {
     // Set up router mocks
     mockUseParams.mockReturnValue({ trusteeId: '123' });
     mockUseNavigate.mockReturnValue(mockNavigate);
-    mockUseLocation.mockReturnValue(mockLocation);
 
     // Clear function mocks
     mockOnEditPublicProfile.mockClear();
@@ -122,48 +113,9 @@ describe('TrusteeDetailScreen', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
-      expect(screen.getByTestId('tag-trustee-status')).toHaveTextContent('Active');
-      expect(screen.getByTestId('tag-district-0')).toHaveTextContent(
-        'Eastern District of New York (Brooklyn)',
-      );
-      expect(screen.getByTestId('tag-chapter-0')).toHaveTextContent('Chapter 7 - Panel');
     });
 
     expect(screen.getByRole('navigation')).toBeInTheDocument();
-  });
-
-  test('should render all trustee tags with proper formatting and content', async () => {
-    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
-    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-
-    renderWithRouter();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('tag-trustee-status')).toHaveTextContent('Active');
-
-      expect(screen.getByTestId('tag-district-0')).toHaveTextContent(
-        'Eastern District of New York (Brooklyn)',
-      );
-      expect(screen.getByTestId('tag-district-1')).toHaveTextContent(
-        'Western District of New York (Buffalo)',
-      );
-
-      expect(screen.getByTestId('tag-chapter-0')).toHaveTextContent('Chapter 7 - Panel');
-      expect(screen.getByTestId('tag-chapter-1')).toHaveTextContent('Chapter 11');
-      expect(screen.getByTestId('tag-chapter-2')).toHaveTextContent('Chapter 13');
-    });
-  });
-
-  test('should format "not active" status correctly', async () => {
-    const inactiveTrustee = { ...mockTrustee, status: 'not active' as TrusteeStatus };
-    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: inactiveTrustee });
-    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-
-    renderWithRouter();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('tag-trustee-status')).toHaveTextContent('Not Active');
-    });
   });
 
   test('should handle trustees with missing contact information', async () => {
@@ -246,26 +198,6 @@ describe('TrusteeDetailScreen', () => {
     expect(screen.getByTestId('404-NotFound')).toBeInTheDocument();
   });
 
-  test.each([
-    ['active', UswdsTagStyle.Green],
-    ['suspended', UswdsTagStyle.SecondaryDark],
-    ['', UswdsTagStyle.BaseDarkest],
-  ])(
-    'should format trustee status color for status "%s" with style "%s"',
-    async (status, expectedStyle) => {
-      const testTrustee = { ...mockTrustee, status: status as TrusteeStatus };
-      vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: testTrustee });
-      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-
-      renderWithRouter();
-
-      await waitFor(() => {
-        const statusTag = screen.getByTestId('tag-trustee-status');
-        expect(statusTag).toHaveClass(expectedStyle);
-      });
-    },
-  );
-
   test('should navigate correctly when edit buttons are clicked', async () => {
     vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
@@ -279,104 +211,17 @@ describe('TrusteeDetailScreen', () => {
     // Test public edit button
     const publicEditButton = screen.getByTestId('button-edit-public-profile');
     publicEditButton.click();
-
-    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/contact/edit/public', {
-      state: {
-        trusteeId: '123',
-        trustee: mockTrustee,
-        cancelTo: '/trustees/123',
-        action: 'edit',
-        contactInformation: 'public',
-      },
-    });
+    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/contact/edit/public');
 
     // Test internal edit button
     const internalEditButton = screen.getByTestId('button-edit-internal-profile');
     internalEditButton.click();
-
-    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/contact/edit/internal', {
-      state: {
-        trusteeId: '123',
-        trustee: mockTrustee,
-        cancelTo: '/trustees/123',
-        action: 'edit',
-        contactInformation: 'internal',
-      },
-    });
+    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/contact/edit/internal');
 
     // Test other info edit button
     const otherInfoEditButton = screen.getByTestId('button-edit-other-information');
     otherInfoEditButton.click();
-
-    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/other/edit', {
-      state: {
-        trusteeId: '123',
-        trustee: mockTrustee,
-        cancelTo: '/trustees/123',
-        action: 'edit',
-      },
-    });
-  });
-
-  test('should use location state trustee when present and avoid unnecessary API calls', async () => {
-    const updatedTrustee: Trustee = {
-      ...mockTrustee,
-      name: 'John Doe Updated',
-      public: {
-        ...mockTrustee.public,
-        address: {
-          ...mockTrustee.public.address,
-          address1: '456 Updated Street',
-          city: 'New City',
-        },
-        phone: { number: '555-999-8888', extension: '9999' },
-        email: 'john.updated@example.com',
-      },
-    };
-
-    const locationWithUpdatedState = {
-      pathname: '/trustees/123',
-      state: { trustee: updatedTrustee },
-    };
-
-    mockUseLocation.mockReturnValue(locationWithUpdatedState);
-    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
-    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-
-    renderWithRouter();
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe Updated');
-    });
-
-    expect(screen.getByTestId('trustee-street-address')).toHaveTextContent('456 Updated Street');
-    expect(screen.getByTestId('trustee-city')).toHaveTextContent('New City');
-    expect(screen.getByTestId('trustee-email')).toHaveTextContent('john.updated@example.com');
-    expect(screen.getByTestId('trustee-phone-number')).toHaveTextContent('555-999-8888, ext. 9999');
-
-    expect(screen.queryByDisplayValue('123 Main St')).not.toBeInTheDocument();
-    expect(screen.queryByDisplayValue('john.doe.public@example.com')).not.toBeInTheDocument();
-  });
-
-  test('should load from API when no location state is present', async () => {
-    mockUseLocation.mockReturnValue({
-      pathname: '/trustees/123',
-      state: null,
-    });
-
-    const getTrusteeSpy = vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
-    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-
-    renderWithRouter();
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
-    });
-
-    expect(screen.getByTestId('trustee-street-address')).toHaveTextContent('123 Main St');
-    expect(screen.getByTestId('trustee-email')).toHaveTextContent('john.doe.public@example.com');
-
-    expect(getTrusteeSpy).toHaveBeenCalledWith('123');
+    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/other/edit');
   });
 
   test.each([
@@ -460,24 +305,6 @@ describe('TrusteeDetailScreen', () => {
     });
 
     expect(getBankruptcySoftwareListSpy).toHaveBeenCalled();
-  });
-
-  test('should handle court divisions API error and log error message', async () => {
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
-    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
-    const getCourts = vi.spyOn(Api2, 'getCourts').mockRejectedValue(new Error('Courts API error'));
-
-    renderWithRouter();
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
-    });
-
-    expect(getCourts).toHaveBeenCalled();
-    expect(consoleSpy).toHaveBeenCalledWith('Failed to fetch court divisions', 'Courts API error');
-
-    consoleSpy.mockRestore();
   });
 
   test('should transform software list correctly', async () => {

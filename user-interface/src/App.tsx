@@ -19,7 +19,7 @@ import { AdminScreen } from './admin/AdminScreen';
 import { GoHome } from './lib/components/GoHome';
 import TrusteesScreen from './trustees/TrusteesScreen';
 import TrusteeDetailScreen from './trustees/TrusteeDetailScreen';
-import TrusteeContactForm from './trustees/forms/TrusteeContactForm';
+import TrusteePublicContactForm from './trustees/forms/TrusteePublicContactForm';
 
 const featureFlagConfig = getFeatureFlagConfiguration();
 export const GlobalAlertContext = createContext<React.RefObject<GlobalAlertRef | null> | null>(
@@ -51,7 +51,10 @@ function App() {
               <Route path="/data-verification" element={<DataVerificationScreen />}></Route>
               <Route path="/admin/*" element={<AdminScreen />}></Route>
               <Route path="/trustees" element={<TrusteesScreen />}>
-                <Route path="create" element={<TrusteeContactForm />} />
+                <Route
+                  path="create"
+                  element={<TrusteePublicContactForm action="create" cancelTo="/trustees" />}
+                />
               </Route>
               <Route path="/trustees/:trusteeId/*" element={<TrusteeDetailScreen />}></Route>
               <Route index element={<GoHome />}></Route>

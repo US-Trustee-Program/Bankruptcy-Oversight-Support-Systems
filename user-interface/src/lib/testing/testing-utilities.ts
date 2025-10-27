@@ -7,8 +7,10 @@ import * as globalAlertHook from '@/lib/hooks/UseGlobalAlert';
 import { CamsUser } from '@common/cams/users';
 import * as UseStateModule from '@/lib/hooks/UseState';
 import { waitFor, fireEvent, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import userEvent, { UserEvent } from '@testing-library/user-event';
 import { delay } from '@common/delay';
+
+export type CamsUserEvent = Omit<UserEvent, 'setup'>;
 
 async function nonReactWaitFor(
   condition: () => boolean,
@@ -112,8 +114,16 @@ function selectRadio(id: string) {
   return radio;
 }
 
+async function clearComboBoxSelection(id: string) {
+  const clearButton = document.querySelector(`#${id}-clear-all`);
+  if (clearButton) {
+    await userEvent.click(clearButton);
+  } else {
+    throw new Error(`Clear button not found for ComboBox with id: ${id}`);
+  }
+}
+
 async function toggleComboBoxItemSelection(id: string, itemIndex: number = 0, selected = true) {
-  const selectedClass = selected ? 'selected' : 'unselected';
   const itemListContainer = document.querySelector(`#${id}-item-list-container`);
   if (!itemListContainer!.classList.contains('expanded')) {
     const expandButton = document.querySelector(`#${id}-expand`);
@@ -130,7 +140,11 @@ async function toggleComboBoxItemSelection(id: string, itemIndex: number = 0, se
 
   await userEvent.click(listItem);
   await vi.waitFor(() => {
-    expect(listItem).toHaveClass(selectedClass);
+    if (selected) {
+      expect(listItem).toHaveClass('selected');
+    } else {
+      expect(listItem).not.toHaveClass('selected');
+    }
   });
 }
 
@@ -138,8 +152,9 @@ async function waitForDocumentBody() {
   await waitFor(() => expect(document.body).toBeDefined());
 }
 
-function setupUserEvent() {
-  return userEvent.setup();
+function setupUserEvent(): CamsUserEvent {
+  const { setup: _, ...camsUserEvent } = userEvent.setup();
+  return camsUserEvent;
 }
 
 export const TestingUtilities = {
@@ -151,6 +166,7 @@ export const TestingUtilities = {
   selectCheckbox,
   selectRadio,
   toggleComboBoxItemSelection,
+  clearComboBoxSelection,
   waitForDocumentBody,
   setupUserEvent,
 };

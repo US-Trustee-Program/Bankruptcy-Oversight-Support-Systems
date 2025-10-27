@@ -8,8 +8,7 @@ import { orderType, orderStatusType } from '@/lib/utils/labels';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { TransferOrder } from '@common/cams/orders';
-import { UserEvent } from '@testing-library/user-event';
-import TestingUtilities from '@/lib/testing/testing-utilities';
+import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
 function findAccordionHeading(id: string) {
   const heading = screen.getByTestId(`accordion-heading-${id}`);
@@ -42,7 +41,7 @@ function findActionText(id: string, visible: boolean) {
 
 describe('TransferOrderAccordion', () => {
   let order: TransferOrder;
-  let userEvent: UserEvent;
+  let userEvent: CamsUserEvent;
 
   const regionMap = new Map<string, string>([['02', 'NEW YORK']]);
 

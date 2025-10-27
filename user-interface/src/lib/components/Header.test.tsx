@@ -6,14 +6,13 @@ import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import LocalStorage from '../utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole } from '@common/cams/roles';
-import { UserEvent } from '@testing-library/user-event';
 import { PRIVILEGED_IDENTITY_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 import { FeatureFlagSet } from '@common/feature-flags';
 import { CamsSession } from '@common/cams/session';
-import TestingUtilities from '@/lib/testing/testing-utilities';
+import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
 describe('Header', () => {
-  let userEvent: UserEvent;
+  let userEvent: CamsUserEvent;
   const user = MockData.getCamsUser({
     roles: [CamsRole.CaseAssignmentManager, CamsRole.DataVerifier],
   });
