@@ -482,7 +482,7 @@ function getAddress(override: Partial<Address> = {}): Address {
     city: faker.location.city(),
     state: faker.location.state({ abbreviated: true }),
     zipCode: faker.location.zipCode(),
-    countryCode: 'US',
+    countryCode: 'US' as const,
     ...override,
   };
 }
