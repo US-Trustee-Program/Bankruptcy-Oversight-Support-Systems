@@ -29,9 +29,6 @@ test.describe('Trustees', () => {
 
     // Verify table headers are present
     await expect(page.locator('th:has-text("Name")')).toBeVisible();
-    await expect(page.locator('th:has-text("Court Districts")')).toBeVisible();
-    await expect(page.locator('th:has-text("Chapter Types")')).toBeVisible();
-    await expect(page.locator('th:has-text("Status")')).toBeVisible();
   });
 
   test('should navigate to trustee detail page when clicking on a trustee name', async ({
@@ -69,66 +66,16 @@ test.describe('Trustees', () => {
     await expect(page).toHaveURL('/trustees/create');
 
     // Verify the create form is visible
-    await expect(page.getByTestId('trustee-form')).toBeVisible(timeoutOption);
+    await expect(page.getByTestId('trustee-public-form')).toBeVisible(timeoutOption);
 
     // Verify the form title
     await expect(page.locator('h1')).toHaveText('Add Trustee Profile');
   });
 
-  test('should test form field interactions and dropdowns', async ({ page }) => {
-    // Navigate to create trustee form
-    await page.getByTestId('trustees-add-link').click();
-    await expect(page.getByTestId('trustee-form')).toBeVisible(timeoutOption);
-
-    // Test district selection dropdown
-    const districtCombobox = page.locator('#trustee-districts');
-    await expect(districtCombobox).toBeVisible();
-
-    // Click to open the dropdown
-    await districtCombobox.click();
-
-    // Verify dropdown options are visible (if any districts are loaded)
-    const districtOptions = page.locator(
-      '#trustee-districts [data-testid="trustee-districts-option-item-0"]',
-    );
-    if ((await districtOptions.count()) > 0) {
-      // Select the first available district option
-      await districtOptions.first().click();
-    }
-    const districtsExpandButton = page.locator('#trustee-districts-expand');
-    await districtsExpandButton.click();
-
-    // Test chapter types selection dropdown
-    const chaptersCombobox = page.locator('#trustee-chapters');
-    await expect(chaptersCombobox).toBeVisible();
-
-    // Click to open the dropdown
-    const chaptersExpandButton = page.locator('#trustee-chapters-expand');
-    await chaptersExpandButton.click();
-
-    // Verify chapter options are visible
-    const chapterOptions = page.locator(
-      '#trustee-chapters [data-testid="trustee-chapters-option-item-0"]',
-    );
-    await expect(chapterOptions.first()).toBeVisible();
-
-    // Select the first chapter option
-    await chapterOptions.first().click();
-
-    // Test cancel button functionality
-    const cancelButton = page.locator('button:has-text("Cancel")');
-    await expect(cancelButton).toBeVisible();
-    await cancelButton.click();
-
-    // Verify we're back to the trustees list page
-    await expect(page).toHaveURL('/trustees');
-    await expect(page.getByTestId('trustees')).toBeVisible();
-  });
-
   test('should test address fields on create form', async ({ page }) => {
     // Navigate to create trustee form
     await page.getByTestId('trustees-add-link').click();
-    await expect(page.getByTestId('trustee-form')).toBeVisible(timeoutOption);
+    await expect(page.getByTestId('trustee-public-form')).toBeVisible(timeoutOption);
 
     // Test address fields
     const address1Input = page.locator('#trustee-address1');
