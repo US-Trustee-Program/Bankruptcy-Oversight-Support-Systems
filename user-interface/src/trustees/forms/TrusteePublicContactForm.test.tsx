@@ -1,11 +1,10 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { UserEvent } from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import TrusteePublicContactForm, {
   TrusteePublicContactFormProps,
   validateField,
 } from './TrusteePublicContactForm';
-import TestingUtilities from '@/lib/testing/testing-utilities';
+import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import * as DebounceModule from '@/lib/hooks/UseDebounce';
@@ -40,7 +39,7 @@ describe('TrusteePublicContactForm Tests', () => {
     navigateTo,
     redirectTo: vi.fn(),
   };
-  let userEvent: UserEvent;
+  let userEvent: CamsUserEvent;
 
   beforeEach(() => {
     userEvent = TestingUtilities.setupUserEvent();
@@ -186,8 +185,8 @@ describe('TrusteePublicContactForm Tests', () => {
     await userEvent.type(cityInput, city);
     const zip = '90210';
     await userEvent.type(zipInput, zip);
-    const phoneNumer = '555-123-4567';
-    await userEvent.type(phoneInput, phoneNumer);
+    const phoneNumber = '555-123-4567';
+    await userEvent.type(phoneInput, phoneNumber);
     const email = 'test@example.com';
     await userEvent.type(emailInput, email);
 
@@ -207,7 +206,7 @@ describe('TrusteePublicContactForm Tests', () => {
           countryCode: 'US',
         },
         phone: {
-          number: phoneNumer,
+          number: phoneNumber,
           extension: undefined,
         },
         email,
@@ -221,7 +220,7 @@ describe('TrusteePublicContactForm Tests', () => {
 
   test('should handle form submission for editing public profile information', async () => {
     const existing = MockData.getTrustee();
-    existing.public.website = 'http://existing.com';
+    existing.public.website = 'https://existing.com';
     existing.public.address.address2 = '';
     const editPublicState = {
       action: 'edit' as const,
@@ -263,7 +262,11 @@ describe('TrusteePublicContactForm Tests', () => {
     await TestingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
     const newZip = '90210-1111';
     await userEvent.clear(zipInput);
+    await new Promise((resolve) => setTimeout(resolve, 10));
     await userEvent.type(zipInput, newZip);
+    await waitFor(() => {
+      expect(zipInput).toHaveValue(newZip);
+    });
     const newPhone = '555-123-4567';
     await userEvent.clear(phoneInput);
     await userEvent.type(phoneInput, newPhone);
@@ -274,6 +277,7 @@ describe('TrusteePublicContactForm Tests', () => {
     await userEvent.type(websiteInput, 'example.com');
 
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
+    screen.debug(document.querySelector('.usa-input__error-message')!);
 
     const expectedPayload = {
       ...existing,
@@ -397,6 +401,11 @@ describe('TrusteePublicContactForm Tests', () => {
       navigateTo: vi.fn(),
     } as unknown as ReturnType<typeof NavigatorModule.default>);
 
+    vi.spyOn(Validation, 'validateObject').mockReturnValue({
+      valid: true,
+      reasonMap: undefined,
+    } as Validation.ValidatorResult);
+
     const existing = MockData.getTrustee();
     renderWithProps({
       action: 'edit',
@@ -405,10 +414,9 @@ describe('TrusteePublicContactForm Tests', () => {
       trustee: existing,
     });
 
-    vi.spyOn(Validation, 'validateObject').mockReturnValue({
-      valid: true,
-      reasonMap: undefined,
-    } as Validation.ValidatorResult);
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-name')).toHaveValue(existing.name);
+    });
 
     await userEvent.type(screen.getByTestId('trustee-name'), 'Edited Name');
     await userEvent.type(screen.getByTestId('trustee-address1'), '1 Main St');
