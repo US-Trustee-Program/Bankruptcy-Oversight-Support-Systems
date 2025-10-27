@@ -2,7 +2,6 @@ import { TextAreaRef } from '@/lib/type-declarations/input-fields';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import React from 'react';
 import TextArea from './TextArea';
-
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
 describe('Tests for USWDS TextArea component', () => {

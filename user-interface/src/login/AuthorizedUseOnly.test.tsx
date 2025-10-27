@@ -1,6 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, beforeEach, vi, MockedFunction } from 'vitest';
-
 import { AuthorizedUseOnly } from './AuthorizedUseOnly';
 
 // Mock the LocalStorage module
@@ -10,7 +9,6 @@ vi.mock('@/lib/utils/local-storage', () => ({
     setAck: vi.fn(),
   },
 }));
-
 import { LocalStorage } from '@/lib/utils/local-storage';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 

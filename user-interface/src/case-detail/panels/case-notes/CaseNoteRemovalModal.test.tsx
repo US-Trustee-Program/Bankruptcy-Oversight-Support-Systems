@@ -2,7 +2,6 @@ import Api2 from '@/lib/models/api2';
 import LocalStorage from '@/lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { render, screen, waitFor } from '@testing-library/react';
-
 import {
   CaseNoteRemovalModalOpenProps,
   CaseNoteRemovalModalRef,

@@ -10,7 +10,6 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import Api2 from '@/lib/models/api2';
-
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
 const fromCaseSummary = MockData.getCaseSummary();

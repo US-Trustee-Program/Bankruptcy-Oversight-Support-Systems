@@ -9,7 +9,6 @@ import * as ReactRouter from 'react-router';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { CaseDocket, CaseNote } from '@common/cams/cases';
-
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
 const testCaseDocketEntries: CaseDocket = [

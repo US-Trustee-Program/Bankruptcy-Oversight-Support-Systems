@@ -2,7 +2,6 @@ import { act, render, waitFor } from '@testing-library/react';
 import OpenModalButton from './OpenModalButton';
 import React from 'react';
 import { OpenModalButtonRef } from './modal-refs';
-
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
 describe('Toggle Modal Button tests', () => {

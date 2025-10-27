@@ -6,7 +6,6 @@ import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import LocalStorage from '../utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole } from '@common/cams/roles';
-
 import { PRIVILEGED_IDENTITY_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 import { FeatureFlagSet } from '@common/feature-flags';
 import { CamsSession } from '@common/cams/session';

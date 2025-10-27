@@ -3,7 +3,6 @@ import { PrivilegedIdentity, sortUserList, toComboOption } from './PrivilegedIde
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import Api2 from '@/lib/models/api2';
 import MockData from '@common/cams/test-utilities/mock-data';
-
 import { CamsUserReference, PrivilegedIdentityUser } from '@common/cams/users';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 import { RoleAndOfficeGroupNames } from '@common/cams/privileged-identity';
