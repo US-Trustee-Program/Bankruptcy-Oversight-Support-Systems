@@ -16,7 +16,7 @@
     "@tiptap/extension-list": "3.7.2",
     "@tiptap/extension-paragraph": "3.7.2",
     "@tiptap/extension-text": "3.7.2",
-    "@tiptap/extension-underline": "3.6.2",
+    "@tiptap/extension-underline": "3.7.2",
     "@tiptap/extensions": "3.6.2",
     "@tiptap/react": "3.6.2",
     "@types/jsdom": "21.1.7",
