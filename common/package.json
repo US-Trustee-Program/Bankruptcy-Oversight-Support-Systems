@@ -23,7 +23,7 @@
     "@faker-js/faker": "9.9.0",
     "@types/jest": "30.0.0",
     "@types/node": "24.9.0",
-    "@typescript-eslint/parser": "8.45.0",
+    "@typescript-eslint/parser": "8.46.2",
     "dependency-cruiser": "17.0.1",
     "eslint": "9.36.0",
     "eslint-config-prettier": "10.1.8",
