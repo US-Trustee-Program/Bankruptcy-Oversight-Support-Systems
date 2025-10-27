@@ -146,7 +146,6 @@ export class TrusteesUseCase {
   ): Promise<Trustee> {
     try {
       const existingTrustee = await this.trusteesRepository.read(trusteeId);
-
       const userReference = getCamsUserReference(context.session.user);
 
       const patchedTrustee = patchTrustee(existingTrustee, trustee, [
@@ -161,7 +160,7 @@ export class TrusteesUseCase {
       const dynamicSpec: Record<string, unknown> = {};
       for (const key of Object.keys(trustee) as Array<keyof TrusteeInput>) {
         if (trusteeSpec[key]) {
-          dynamicSpec[key as string] = trusteeSpec[key as keyof typeof trusteeSpec];
+          dynamicSpec[key as string] = trusteeSpec[key];
         }
       }
 
@@ -175,7 +174,7 @@ export class TrusteesUseCase {
       const updatedTrustee = await this.trusteesRepository.updateTrustee(
         trusteeId,
         patchedTrustee,
-        context.session.user,
+        userReference,
       );
 
       if (existingTrustee.name !== updatedTrustee.name) {

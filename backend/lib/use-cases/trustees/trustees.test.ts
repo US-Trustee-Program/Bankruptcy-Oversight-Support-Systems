@@ -25,7 +25,7 @@ describe('TrusteesUseCase tests', () => {
       const trustee = MockData.getTrusteeInput();
       const userRef = getCamsUserReference(context.session.user);
 
-      jest
+      const createTrusteeSpy = jest
         .spyOn(MockMongoRepository.prototype, 'createTrustee')
         .mockResolvedValue(
           MockData.getTrustee({ ...trustee, createdBy: userRef, updatedBy: userRef }),
@@ -35,18 +35,14 @@ describe('TrusteesUseCase tests', () => {
         .mockResolvedValue();
 
       const actual = await trusteesUseCase.createTrustee(context, trustee);
-      expect(actual).toEqual(
-        expect.objectContaining({
-          id: expect.any(String),
-          trusteeId: expect.any(String),
-          ...trustee,
-        }),
-      );
+      expect(createTrusteeSpy).toHaveBeenCalledWith(trustee, userRef);
+
       expect(trusteeHistorySpy).toHaveBeenCalledWith(
         expect.objectContaining({
           trusteeId: actual.trusteeId,
           documentType: 'AUDIT_NAME',
           after: actual.name,
+          createdBy: userRef,
         }),
       );
       expect(trusteeHistorySpy).toHaveBeenCalledWith(
@@ -54,6 +50,12 @@ describe('TrusteesUseCase tests', () => {
           trusteeId: actual.trusteeId,
           documentType: 'AUDIT_PUBLIC_CONTACT',
           after: actual.public,
+          createdBy: userRef,
+        }),
+      );
+      expect(trusteeHistorySpy).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          createdBy: context.session.user,
         }),
       );
     });
@@ -245,41 +247,57 @@ describe('TrusteesUseCase tests', () => {
     });
 
     test('should update trustee and create name history when name changes', async () => {
+      const updatedBy = getCamsUserReference(context.session.user);
       const updatedName = 'Updated Trustee Name';
       const updateData = { name: updatedName };
       const updatedTrustee = { ...existingTrustee, name: updatedName };
 
-      jest.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+      const updateTrusteeSpy = jest
+        .spyOn(MockMongoRepository.prototype, 'updateTrustee')
+        .mockResolvedValue(updatedTrustee);
       const historyCreateSpy = jest
         .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
         .mockResolvedValue();
 
-      const result = await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
+      await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
+      expect(updateTrusteeSpy).toHaveBeenCalledWith(trusteeId, updatedTrustee, updatedBy);
+      expect(updateTrusteeSpy).not.toHaveBeenCalledWith(
+        expect.objectContaining({ updatedBy: context.session.user }),
+      );
 
-      expect(result).toEqual(updatedTrustee);
       expect(historyCreateSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_NAME',
           trusteeId,
           before: existingTrustee.name,
           after: updatedName,
+          updatedBy,
+          updatedOn: expect.any(String),
         }),
+      );
+      expect(historyCreateSpy).not.toHaveBeenCalledWith(
+        expect.objectContaining({ updatedBy: context.session.user }),
       );
     });
 
     test('should update trustee and create public contact history when public contact changes', async () => {
+      const updatedBy = getCamsUserReference(context.session.user);
       const newPublicContact = MockData.getContactInformation();
       const updateData = { public: newPublicContact };
       const updatedTrustee = { ...existingTrustee, public: newPublicContact };
 
-      jest.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+      const updateTrusteeSpy = jest
+        .spyOn(MockMongoRepository.prototype, 'updateTrustee')
+        .mockResolvedValue(updatedTrustee);
       const historyCreateSpy = jest
         .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
         .mockResolvedValue();
 
-      const result = await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
-
-      expect(result).toEqual(updatedTrustee);
+      await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
+      expect(updateTrusteeSpy).toHaveBeenCalledWith(trusteeId, updatedTrustee, updatedBy);
+      expect(updateTrusteeSpy).not.toHaveBeenCalledWith(
+        expect.objectContaining({ updatedBy: context.session.user }),
+      );
       expect(historyCreateSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_PUBLIC_CONTACT',
@@ -291,18 +309,23 @@ describe('TrusteesUseCase tests', () => {
     });
 
     test('should update trustee and create internal contact history when internal contact changes', async () => {
+      const updatedBy = getCamsUserReference(context.session.user);
       const newInternalContact = MockData.getContactInformation();
       const updateData = { internal: newInternalContact };
       const updatedTrustee = { ...existingTrustee, internal: newInternalContact };
 
-      jest.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+      const updateTrusteeSpy = jest
+        .spyOn(MockMongoRepository.prototype, 'updateTrustee')
+        .mockResolvedValue(updatedTrustee);
       const historyCreateSpy = jest
         .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
         .mockResolvedValue();
 
-      const result = await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
-
-      expect(result).toEqual(updatedTrustee);
+      await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
+      expect(updateTrusteeSpy).toHaveBeenCalledWith(trusteeId, updatedTrustee, updatedBy);
+      expect(updateTrusteeSpy).not.toHaveBeenCalledWith(
+        expect.objectContaining({ updatedBy: context.session.user }),
+      );
       expect(historyCreateSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_INTERNAL_CONTACT',
@@ -314,18 +337,23 @@ describe('TrusteesUseCase tests', () => {
     });
 
     test('should update trustee and create banks history when banks change', async () => {
+      const updatedBy = getCamsUserReference(context.session.user);
       const newBanks = ['Bank A', 'Bank B'];
       const updateData = { banks: newBanks };
       const updatedTrustee = { ...existingTrustee, banks: newBanks };
 
-      jest.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+      const updateTrusteeSpy = jest
+        .spyOn(MockMongoRepository.prototype, 'updateTrustee')
+        .mockResolvedValue(updatedTrustee);
       const historyCreateSpy = jest
         .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
         .mockResolvedValue();
 
-      const result = await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
-
-      expect(result).toEqual(updatedTrustee);
+      await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
+      expect(updateTrusteeSpy).toHaveBeenCalledWith(trusteeId, updatedTrustee, updatedBy);
+      expect(updateTrusteeSpy).not.toHaveBeenCalledWith(
+        expect.objectContaining({ updatedBy: context.session.user }),
+      );
       expect(historyCreateSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_BANKS',
@@ -337,18 +365,23 @@ describe('TrusteesUseCase tests', () => {
     });
 
     test('should update trustee and create software history when software changes', async () => {
+      const updatedBy = getCamsUserReference(context.session.user);
       const newSoftware = 'New Software System';
       const updateData = { software: newSoftware };
       const updatedTrustee = { ...existingTrustee, software: newSoftware };
 
-      jest.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+      const updateTrusteeSpy = jest
+        .spyOn(MockMongoRepository.prototype, 'updateTrustee')
+        .mockResolvedValue(updatedTrustee);
       const historyCreateSpy = jest
         .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
         .mockResolvedValue();
 
-      const result = await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
-
-      expect(result).toEqual(updatedTrustee);
+      await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
+      expect(updateTrusteeSpy).toHaveBeenCalledWith(trusteeId, updatedTrustee, updatedBy);
+      expect(updateTrusteeSpy).not.toHaveBeenCalledWith(
+        expect.objectContaining({ updatedBy: context.session.user }),
+      );
       expect(historyCreateSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_SOFTWARE',
@@ -404,7 +437,7 @@ describe('TrusteesUseCase tests', () => {
       expect(MockMongoRepository.prototype.updateTrustee).toHaveBeenCalledWith(
         trusteeId,
         expect.any(Object),
-        context.session.user,
+        userRef,
       );
     });
 
