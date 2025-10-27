@@ -1,4 +1,4 @@
-import { Trustee, formatChapterType } from '@common/cams/trustees';
+import { Trustee } from '@common/cams/trustees';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
@@ -6,7 +6,6 @@ import FormattedContact from '@/lib/components/cams/FormattedContact';
 
 export interface TrusteeDetailProfileProps {
   trustee: Trustee;
-  districtLabels: string[];
   onEditPublicProfile: () => void;
   onEditInternalProfile: () => void;
   onEditOtherInformation: () => void;
@@ -14,7 +13,6 @@ export interface TrusteeDetailProfileProps {
 
 export default function TrusteeDetailProfile({
   trustee,
-  districtLabels,
   onEditPublicProfile,
   onEditInternalProfile,
   onEditOtherInformation,
@@ -38,20 +36,6 @@ export default function TrusteeDetailProfile({
             </div>
             <div className="trustee-name">{trustee.name}</div>
             <FormattedContact contact={trustee.public} testIdPrefix="trustee" />
-            <div data-testid="trustee-districts" aria-label="districts">
-              <ul>
-                {districtLabels.map((label, index) => (
-                  <li key={index}>{label}</li>
-                ))}
-              </ul>
-            </div>
-            {trustee.chapters && trustee.chapters.length > 0 && (
-              <div data-testid="trustee-chapters">
-                <span>Chapter{trustee.chapters && trustee.chapters.length > 1 && 's'}: </span>
-                {trustee.chapters?.map(formatChapterType).join(', ')}
-              </div>
-            )}
-            <div className="trustee-status">Status: {trustee.status}</div>
           </div>
           <div className="trustee-other-information record-detail-card">
             <div className="title-bar">

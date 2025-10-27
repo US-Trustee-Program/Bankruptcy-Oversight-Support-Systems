@@ -3,29 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import TrusteeDetailProfile, { TrusteeDetailProfileProps } from './TrusteeDetailProfile';
-import { Trustee, ChapterType } from '@common/cams/trustees';
-
-// Mock the chapters utility
-vi.mock('@common/cams/trustees', () => ({
-  formatChapterType: vi.fn((chapter: string) => {
-    switch (chapter) {
-      case '7-panel':
-        return '7 - Panel';
-      case '7-non-panel':
-        return '7 - Non-Panel';
-      case '11':
-        return '11';
-      case '11-subchapter-v':
-        return '11 - Subchapter V';
-      case '12':
-        return '12';
-      case '13':
-        return '13';
-      default:
-        return chapter; // Return original value for unknown chapters
-    }
-  }),
-}));
+import { Trustee } from '@common/cams/trustees';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 
 const mockTrustee: Trustee = {
   id: '--id-guid--',
@@ -57,14 +36,9 @@ const mockTrustee: Trustee = {
     email: 'john.doe.internal@example.com',
     website: 'https://internal.johndoe-trustee.com',
   },
-  districts: ['NYEB', 'NYWB'],
-  chapters: ['7-panel', '11', '13'],
-  status: 'active',
   updatedBy: SYSTEM_USER_REFERENCE,
   updatedOn: '2024-01-01T00:00:00Z',
 };
-
-const mockDistrictLabels = ['Eastern District of New York', 'Central District of California'];
 
 const mockOnEditPublicProfile = vi.fn();
 const mockOnEditInternalProfile = vi.fn();
@@ -73,7 +47,6 @@ const mockOnEditOtherInformation = vi.fn();
 function renderWithProps(props?: Partial<TrusteeDetailProfileProps>) {
   const defaultProps: TrusteeDetailProfileProps = {
     trustee: mockTrustee,
-    districtLabels: mockDistrictLabels,
     onEditPublicProfile: mockOnEditPublicProfile,
     onEditInternalProfile: mockOnEditInternalProfile,
     onEditOtherInformation: mockOnEditOtherInformation,
@@ -123,36 +96,6 @@ describe('TrusteeDetailProfile', () => {
     expect(websiteLink).toHaveAttribute('href', 'https://www.johndoe-trustee.com');
   });
 
-  test('should render district information', () => {
-    renderWithProps({});
-
-    expect(screen.getByTestId('trustee-districts')).toBeInTheDocument();
-    expect(screen.getByText('Eastern District of New York')).toBeInTheDocument();
-    expect(screen.getByText('Central District of California')).toBeInTheDocument();
-  });
-
-  test('should render chapter information with plural form', () => {
-    renderWithProps({});
-
-    const chaptersElement = screen.getByTestId('trustee-chapters');
-    expect(chaptersElement).toHaveTextContent('Chapters: 7 - Panel, 11, 13');
-  });
-
-  test('should render chapter information with singular form for single chapter', () => {
-    const trusteeWithOneChapter = { ...mockTrustee, chapters: ['11' as ChapterType] };
-
-    renderWithProps({ trustee: trusteeWithOneChapter });
-
-    const chaptersElement = screen.getByTestId('trustee-chapters');
-    expect(chaptersElement).toHaveTextContent('Chapter: 11');
-  });
-
-  test('should render status information', () => {
-    renderWithProps({});
-
-    expect(screen.getByText('Status: active')).toBeInTheDocument();
-  });
-
   test('should render internal contact information section', () => {
     renderWithProps({});
 
@@ -199,14 +142,13 @@ describe('TrusteeDetailProfile', () => {
   });
 
   test('should call onEditPublicProfile when public edit button is clicked', async () => {
-    const user = userEvent.setup();
-
+    const userEvent = TestingUtilities.setupUserEvent();
     renderWithProps({});
 
     const publicEditButton = screen.getByRole('button', {
       name: 'Edit trustee public overview information',
     });
-    await user.click(publicEditButton);
+    await userEvent.click(publicEditButton);
 
     expect(mockOnEditPublicProfile).toHaveBeenCalledTimes(1);
   });

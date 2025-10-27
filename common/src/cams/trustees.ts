@@ -29,12 +29,9 @@ export type TrusteeCore = {
   name: string;
   public: ContactInformation;
   internal?: Partial<ContactInformation>;
-  status: TrusteeStatus;
 };
 
 export type TrusteeOptionalFields = {
-  districts?: string[];
-  chapters?: ChapterType[];
   banks?: string[];
   software?: string;
 };
