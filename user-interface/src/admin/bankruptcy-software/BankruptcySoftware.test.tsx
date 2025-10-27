@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { BankruptcySoftware } from './BankruptcySoftware';
 import Api2 from '@/lib/models/api2';
-import testingUtilities, { CamsUserEvent, TestingUtilities } from '@/lib/testing/testing-utilities';
+import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 import { BankruptcySoftwareList, BankruptcySoftwareListItem } from '@common/cams/lists';
 import { Creatable } from '@common/cams/creatable';
 
@@ -142,7 +142,7 @@ describe('BankruptcySoftware Component Tests', () => {
   });
 
   test.skip('should show warning when attempting to save with empty name', async () => {
-    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+    const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
 
     renderComponent();
 
@@ -160,7 +160,7 @@ describe('BankruptcySoftware Component Tests', () => {
   });
 
   test('should save new software successfully', async () => {
-    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+    const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
     const postSpy = vi.spyOn(Api2, 'postBankruptcySoftware').mockResolvedValue();
     const getBankruptcySoftwareListSpy = vi.spyOn(Api2, 'getBankruptcySoftwareList');
 
@@ -188,7 +188,7 @@ describe('BankruptcySoftware Component Tests', () => {
   });
 
   test('should clear input field after successful save', async () => {
-    testingUtilities.spyOnGlobalAlert();
+    TestingUtilities.spyOnGlobalAlert();
     vi.spyOn(Api2, 'postBankruptcySoftware').mockResolvedValue();
 
     renderComponent();
@@ -211,7 +211,7 @@ describe('BankruptcySoftware Component Tests', () => {
   });
 
   test('should trim whitespace from input before saving', async () => {
-    testingUtilities.spyOnGlobalAlert();
+    TestingUtilities.spyOnGlobalAlert();
     const postSpy = vi.spyOn(Api2, 'postBankruptcySoftware').mockResolvedValue();
 
     renderComponent();
@@ -259,7 +259,7 @@ describe('BankruptcySoftware Component Tests', () => {
   });
 
   test('should handle save API error gracefully', async () => {
-    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+    const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
     const postSpy = vi
       .spyOn(Api2, 'postBankruptcySoftware')
       .mockRejectedValue(new Error('Network error'));
@@ -289,7 +289,7 @@ describe('BankruptcySoftware Component Tests', () => {
   });
 
   test('should handle load API error gracefully', async () => {
-    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+    const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
     vi.spyOn(Api2, 'getBankruptcySoftwareList').mockRejectedValue(new Error('Load error'));
 
     renderComponent();
@@ -304,7 +304,7 @@ describe('BankruptcySoftware Component Tests', () => {
   });
 
   test('should reload data after successful save', async () => {
-    testingUtilities.spyOnGlobalAlert();
+    TestingUtilities.spyOnGlobalAlert();
     vi.spyOn(Api2, 'postBankruptcySoftware').mockResolvedValue();
 
     const updatedList = [
@@ -368,7 +368,7 @@ describe('BankruptcySoftware Component Tests', () => {
   });
 
   test('should delete software successfully when confirmed', async () => {
-    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+    const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
     const deleteSpy = vi.spyOn(Api2, 'deleteBankruptcySoftware').mockResolvedValue();
     const getBankruptcySoftwareListSpy = vi.spyOn(Api2, 'getBankruptcySoftwareList');
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
@@ -393,7 +393,7 @@ describe('BankruptcySoftware Component Tests', () => {
   });
 
   test('should handle delete API error gracefully', async () => {
-    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+    const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
     const deleteSpy = vi
       .spyOn(Api2, 'deleteBankruptcySoftware')
       .mockRejectedValue(new Error('Network error'));
