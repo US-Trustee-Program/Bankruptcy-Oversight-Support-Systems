@@ -1,9 +1,9 @@
 import { render } from '@testing-library/react';
 import { DropdownMenu, MenuItem } from './DropdownMenu';
 import { BrowserRouter } from 'react-router-dom';
-import { UserEvent } from '@testing-library/user-event';
+
 import LinkUtils from '../linkUtils';
-import TestingUtilities from '@/lib/testing/testing-utilities';
+import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
 describe('DropdownMenu component tests', () => {
   const menuId = 'test-menu';
@@ -14,7 +14,7 @@ describe('DropdownMenu component tests', () => {
   let item4: HTMLElement;
   let button0: HTMLElement;
   let button1: HTMLElement;
-  let userEvent: UserEvent;
+  let userEvent: CamsUserEvent;
 
   const clickFn = vi.fn();
   const menuItems: MenuItem[] = [

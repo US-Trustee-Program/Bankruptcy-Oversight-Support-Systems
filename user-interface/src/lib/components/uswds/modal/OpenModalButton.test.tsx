@@ -2,8 +2,8 @@ import { act, render, waitFor } from '@testing-library/react';
 import OpenModalButton from './OpenModalButton';
 import React from 'react';
 import { OpenModalButtonRef } from './modal-refs';
-import { UserEvent } from '@testing-library/user-event';
-import TestingUtilities from '@/lib/testing/testing-utilities';
+
+import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
 describe('Toggle Modal Button tests', () => {
   const modalId = 'test-modal';
@@ -21,7 +21,7 @@ describe('Toggle Modal Button tests', () => {
     },
   };
   let openButtonRef: React.RefObject<OpenModalButtonRef | null>;
-  let userEvent: UserEvent;
+  let userEvent: CamsUserEvent;
 
   beforeEach(() => {
     userEvent = TestingUtilities.setupUserEvent();

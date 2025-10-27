@@ -1,12 +1,12 @@
 import { fireEvent, render } from '@testing-library/react';
 import PillBox from './PillBox';
 import { ComboOption } from './combobox/ComboBox';
-import { UserEvent } from '@testing-library/user-event';
-import TestingUtilities from '@/lib/testing/testing-utilities';
+
+import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
 describe('Tests for Pill Box', () => {
   let testSelections: ComboOption[] = [];
-  let userEvent: UserEvent;
+  let userEvent: CamsUserEvent;
 
   beforeEach(() => {
     testSelections = [

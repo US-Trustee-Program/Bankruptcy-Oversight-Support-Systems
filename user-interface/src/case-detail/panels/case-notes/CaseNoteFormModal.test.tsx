@@ -10,7 +10,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
 import { BrowserRouter } from 'react-router-dom';
 import React from 'react';
-import { UserEvent } from '@testing-library/user-event';
+
 import Api2 from '@/lib/models/api2';
 import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -19,7 +19,7 @@ import { getCamsUserReference } from '@common/cams/session';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import LocalFormCache from '@/lib/utils/local-form-cache';
 import { randomUUID } from 'crypto';
-import TestingUtilities from '@/lib/testing/testing-utilities';
+import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
 interface RichTextEditorRef {
   clearValue: () => void;
@@ -217,7 +217,7 @@ const renderComponent = (
 
 describe('CaseNoteFormModal - Simple Tests', () => {
   const session = MockData.getCamsSession();
-  let userEvent: UserEvent;
+  let userEvent: CamsUserEvent;
 
   beforeEach(() => {
     userEvent = TestingUtilities.setupUserEvent();

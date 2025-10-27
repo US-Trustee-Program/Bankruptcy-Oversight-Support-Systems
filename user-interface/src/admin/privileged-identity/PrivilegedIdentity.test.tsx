@@ -3,9 +3,9 @@ import { PrivilegedIdentity, sortUserList, toComboOption } from './PrivilegedIde
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import Api2 from '@/lib/models/api2';
 import MockData from '@common/cams/test-utilities/mock-data';
-import { UserEvent } from '@testing-library/user-event';
+
 import { CamsUserReference, PrivilegedIdentityUser } from '@common/cams/users';
-import TestingUtilities from '@/lib/testing/testing-utilities';
+import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 import { RoleAndOfficeGroupNames } from '@common/cams/privileged-identity';
 
 async function expectItemToBeDisabled(selector: string) {
@@ -33,7 +33,7 @@ describe('Privileged Identity screen tests', () => {
   let officeListItemId: string;
   let roleListItemId: string;
   let mockUserRecord: PrivilegedIdentityUser;
-  let userEvent: UserEvent;
+  let userEvent: CamsUserEvent;
 
   const officeListComboBoxContainer = `#office-list .input-container`;
   const roleListComboBoxContainer = `#role-list .input-container`;

@@ -1,7 +1,7 @@
 import { describe, expect, beforeEach, vi, test } from 'vitest';
 import React from 'react';
 import { act, render, screen, waitFor } from '@testing-library/react';
-import { UserEvent } from '@testing-library/user-event';
+
 import RichTextEditor, { RichTextEditorRef } from './RichTextEditor';
 import {
   createMockEditor,
@@ -10,7 +10,7 @@ import {
   FORMATTING_BUTTONS,
   LIST_BUTTONS,
 } from '@/lib/testing/mock-editor';
-import TestingUtilities from '@/lib/testing/testing-utilities';
+import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
 // Create a mock function outside the factory
 const mockUseEditor = vi.fn();
@@ -50,7 +50,7 @@ vi.mock('@/lib/hooks/UseOutsideClick', () => ({
 }));
 
 describe('RichTextEditor', () => {
-  let userEvent: UserEvent;
+  let userEvent: CamsUserEvent;
 
   beforeEach(() => {
     vi.clearAllMocks();

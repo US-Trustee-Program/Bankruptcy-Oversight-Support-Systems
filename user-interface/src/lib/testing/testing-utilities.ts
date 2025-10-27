@@ -7,8 +7,10 @@ import * as globalAlertHook from '@/lib/hooks/UseGlobalAlert';
 import { CamsUser } from '@common/cams/users';
 import * as UseStateModule from '@/lib/hooks/UseState';
 import { waitFor, fireEvent, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import userEvent, { UserEvent } from '@testing-library/user-event';
 import { delay } from '@common/delay';
+
+export type CamsUserEvent = Omit<UserEvent, 'setup'>;
 
 async function nonReactWaitFor(
   condition: () => boolean,
@@ -138,8 +140,9 @@ async function waitForDocumentBody() {
   await waitFor(() => expect(document.body).toBeDefined());
 }
 
-function setupUserEvent() {
-  return userEvent.setup();
+function setupUserEvent(): CamsUserEvent {
+  const { setup: _, ...camsUserEvent } = userEvent.setup();
+  return camsUserEvent;
 }
 
 export const TestingUtilities = {
