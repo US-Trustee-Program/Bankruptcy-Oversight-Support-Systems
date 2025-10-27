@@ -8,7 +8,6 @@ import { orderType, orderStatusType } from '@/lib/utils/labels';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { TransferOrder } from '@common/cams/orders';
-
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
 function findAccordionHeading(id: string) {

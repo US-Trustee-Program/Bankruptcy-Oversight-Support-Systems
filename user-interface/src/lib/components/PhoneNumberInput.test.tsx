@@ -1,6 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
-
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import React from 'react';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';

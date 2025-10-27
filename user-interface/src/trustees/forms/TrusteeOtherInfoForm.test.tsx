@@ -1,5 +1,4 @@
 import { render, screen, waitFor } from '@testing-library/react';
-
 import TrusteeOtherInfoForm from './TrusteeOtherInfoForm';
 import * as UseApi2Module from '@/lib/hooks/UseApi2';
 import * as UseGlobalAlertModule from '@/lib/hooks/UseGlobalAlert';
@@ -7,7 +6,6 @@ import * as useCamsNavigatorModule from '@/lib/hooks/UseCamsNavigator';
 import { Mock } from 'vitest';
 import { Trustee } from '@common/cams/trustees';
 import { ResponseBody } from '@common/api/response';
-
 import MockData from '@common/cams/test-utilities/mock-data';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 

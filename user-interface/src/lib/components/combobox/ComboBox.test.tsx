@@ -2,7 +2,6 @@ import React, { Ref } from 'react';
 import ComboBox, { ComboBoxProps, ComboOption } from './ComboBox';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import { act, render, screen, waitFor } from '@testing-library/react';
-
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 import { vi } from 'vitest';
 

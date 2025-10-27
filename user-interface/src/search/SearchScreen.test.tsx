@@ -8,7 +8,6 @@ import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities
 import { MockInstance } from 'vitest';
 import { ResponseBody } from '@common/api/response';
 import Api2 from '@/lib/models/api2';
-
 import LocalStorage from '@/lib/utils/local-storage';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { REGION_02_GROUP_NY } from '@common/cams/test-utilities/mock-user';

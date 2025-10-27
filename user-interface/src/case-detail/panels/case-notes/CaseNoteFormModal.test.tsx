@@ -10,7 +10,6 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
 import { BrowserRouter } from 'react-router-dom';
 import React from 'react';
-
 import Api2 from '@/lib/models/api2';
 import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import MockData from '@common/cams/test-utilities/mock-data';

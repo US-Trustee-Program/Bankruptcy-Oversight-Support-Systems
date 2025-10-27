@@ -1,7 +1,6 @@
 import { render } from '@testing-library/react';
 import { DropdownMenu, MenuItem } from './DropdownMenu';
 import { BrowserRouter } from 'react-router-dom';
-
 import LinkUtils from '../linkUtils';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 

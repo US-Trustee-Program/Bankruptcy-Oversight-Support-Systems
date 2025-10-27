@@ -1,7 +1,6 @@
 import { fireEvent, render } from '@testing-library/react';
 import PillBox from './PillBox';
 import { ComboOption } from './combobox/ComboBox';
-
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
 describe('Tests for Pill Box', () => {

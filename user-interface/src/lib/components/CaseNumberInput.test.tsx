@@ -1,7 +1,6 @@
 import { describe } from 'vitest';
 import CaseNumberInput, { validateCaseNumberInput } from './CaseNumberInput';
 import { act, render, waitFor } from '@testing-library/react';
-
 import { InputRef } from '../type-declarations/input-fields';
 import React from 'react';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';

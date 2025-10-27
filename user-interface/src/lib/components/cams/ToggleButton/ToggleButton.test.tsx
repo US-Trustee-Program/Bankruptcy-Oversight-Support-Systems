@@ -1,5 +1,4 @@
 import { render, screen } from '@testing-library/react';
-
 import ToggleButton from './ToggleButton';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 

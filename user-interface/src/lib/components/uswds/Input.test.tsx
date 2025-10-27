@@ -2,7 +2,6 @@ import React from 'react';
 import { fireEvent, render, screen, act } from '@testing-library/react';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import Input from './Input';
-
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
 describe('Tests for USWDS Input component.', () => {

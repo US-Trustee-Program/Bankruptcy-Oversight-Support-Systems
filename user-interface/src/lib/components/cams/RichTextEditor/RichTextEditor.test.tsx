@@ -1,7 +1,6 @@
 import { describe, expect, beforeEach, vi, test } from 'vitest';
 import React from 'react';
 import { act, render, screen, waitFor } from '@testing-library/react';
-
 import RichTextEditor, { RichTextEditorRef } from './RichTextEditor';
 import {
   createMockEditor,
