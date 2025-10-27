@@ -1,12 +1,11 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
-import { UserEvent } from '@testing-library/user-event';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import React from 'react';
-import TestingUtilities from '@/lib/testing/testing-utilities';
+import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
 describe('PhoneNumberInput', () => {
-  let userEvent: UserEvent;
+  let userEvent: CamsUserEvent;
 
   beforeEach(() => {
     userEvent = TestingUtilities.setupUserEvent();

@@ -2,8 +2,7 @@ import React from 'react';
 import { fireEvent, render, screen, act } from '@testing-library/react';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import Input from './Input';
-import { UserEvent } from '@testing-library/user-event';
-import TestingUtilities from '@/lib/testing/testing-utilities';
+import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
 describe('Tests for USWDS Input component.', () => {
   const ref = React.createRef<InputRef>();
@@ -84,7 +83,7 @@ describe('Test error handling', () => {
 
 describe('Tests for USWDS Input component when no value is initially set.', () => {
   const ref = React.createRef<InputRef>();
-  let userEvent: UserEvent;
+  let userEvent: CamsUserEvent;
 
   beforeEach(() => {
     userEvent = TestingUtilities.setupUserEvent();
@@ -166,7 +165,7 @@ describe('Input additional coverage tests', () => {
   const ref = React.createRef<InputRef>();
   const mockOnChange = vi.fn();
   const mockOnFocus = vi.fn();
-  let userEvent: UserEvent;
+  let userEvent: CamsUserEvent;
 
   beforeEach(() => {
     userEvent = TestingUtilities.setupUserEvent();

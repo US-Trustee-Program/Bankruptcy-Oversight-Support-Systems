@@ -14,8 +14,7 @@ import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { FeatureFlagSet } from '@common/feature-flags';
 import Api2 from '@/lib/models/api2';
-import TestingUtilities from '@/lib/testing/testing-utilities';
-import { UserEvent } from '@testing-library/user-event';
+import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
 const userEvent = TestingUtilities.setupUserEvent();
 
@@ -53,7 +52,7 @@ describe('ConsolidationOrderAccordion tests', () => {
   const onOrderUpdateMockFunc = vi.fn();
   const onExpandMockFunc = vi.fn();
   let mockFeatureFlags: FeatureFlagSet;
-  let userEvent: UserEvent;
+  let userEvent: CamsUserEvent;
 
   beforeEach(async () => {
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');

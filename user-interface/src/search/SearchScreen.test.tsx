@@ -4,11 +4,10 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import SearchScreen from '@/search/SearchScreen';
 import { CasesSearchPredicate, DEFAULT_SEARCH_LIMIT } from '@common/api/search';
-import TestingUtilities from '@/lib/testing/testing-utilities';
+import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 import { MockInstance } from 'vitest';
 import { ResponseBody } from '@common/api/response';
 import Api2 from '@/lib/models/api2';
-import { UserEvent } from '@testing-library/user-event';
 import LocalStorage from '@/lib/utils/local-storage';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { REGION_02_GROUP_NY } from '@common/cams/test-utilities/mock-user';
@@ -40,7 +39,7 @@ describe('search screen', () => {
   };
   const includeAssignments = { includeAssignments: true };
   let searchCasesSpy: MockInstance;
-  let userEvent: UserEvent;
+  let userEvent: CamsUserEvent;
 
   beforeEach(async () => {
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
