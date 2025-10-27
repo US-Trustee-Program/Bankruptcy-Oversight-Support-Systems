@@ -10,8 +10,8 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import Api2 from '@/lib/models/api2';
-import { UserEvent } from '@testing-library/user-event';
-import TestingUtilities from '@/lib/testing/testing-utilities';
+
+import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
 const fromCaseSummary = MockData.getCaseSummary();
 const toCaseSummary = MockData.getCaseSummary();
@@ -85,7 +85,7 @@ const mockTransferOrder = {
 describe('PendingTransferOrder component', () => {
   describe('for suggested cases', () => {
     let order: TransferOrder;
-    let userEvent: UserEvent;
+    let userEvent: CamsUserEvent;
 
     function renderWithProps(props?: Partial<PendingTransferOrderProps>) {
       const onOrderUpdate = vitest.fn();
@@ -187,7 +187,7 @@ describe('PendingTransferOrder component', () => {
 
   describe('for manually entered court and case number', () => {
     let order: TransferOrder;
-    let userEvent: UserEvent;
+    let userEvent: CamsUserEvent;
 
     beforeEach(async () => {
       userEvent = TestingUtilities.setupUserEvent();

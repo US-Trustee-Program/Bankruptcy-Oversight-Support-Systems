@@ -9,8 +9,8 @@ import * as ReactRouter from 'react-router';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { CaseDocket, CaseNote } from '@common/cams/cases';
-import { UserEvent } from '@testing-library/user-event';
-import TestingUtilities from '@/lib/testing/testing-utilities';
+
+import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
 const testCaseDocketEntries: CaseDocket = [
   {
@@ -55,7 +55,7 @@ describe('Case Detail sort, search, and filter tests', () => {
   const testCaseDetail = MockData.getCaseDetail({ override: { caseId: testCaseId } });
 
   describe('display tests', () => {
-    let userEvent: UserEvent;
+    let userEvent: CamsUserEvent;
 
     beforeEach(() => {
       userEvent = TestingUtilities.setupUserEvent();
@@ -635,7 +635,7 @@ describe('Case Detail sort, search, and filter tests', () => {
   });
 
   describe('Clear Filters', () => {
-    let userEvent: UserEvent;
+    let userEvent: CamsUserEvent;
 
     beforeEach(() => {
       userEvent = TestingUtilities.setupUserEvent();

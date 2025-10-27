@@ -2,8 +2,8 @@ import { describe, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { MockData } from '@common/cams/test-utilities/mock-data';
-import TestingUtilities from '@/lib/testing/testing-utilities';
-import { UserEvent } from '@testing-library/user-event';
+import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
+
 import { MockLogin } from './MockLogin';
 import * as SessionModule from '@/login/Session';
 import { SessionProps } from '@/login/Session';
@@ -25,7 +25,7 @@ describe('MockLogin', () => {
     return <>{props.children}</>;
   });
 
-  let userEvent: UserEvent;
+  let userEvent: CamsUserEvent;
 
   beforeEach(() => {
     vi.clearAllMocks();

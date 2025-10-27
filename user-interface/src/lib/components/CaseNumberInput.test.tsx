@@ -1,13 +1,13 @@
 import { describe } from 'vitest';
 import CaseNumberInput, { validateCaseNumberInput } from './CaseNumberInput';
 import { act, render, waitFor } from '@testing-library/react';
-import { UserEvent } from '@testing-library/user-event';
+
 import { InputRef } from '../type-declarations/input-fields';
 import React from 'react';
-import TestingUtilities from '@/lib/testing/testing-utilities';
+import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
 describe('Case number input component', () => {
-  let userEvent: UserEvent;
+  let userEvent: CamsUserEvent;
 
   beforeEach(() => {
     userEvent = TestingUtilities.setupUserEvent();

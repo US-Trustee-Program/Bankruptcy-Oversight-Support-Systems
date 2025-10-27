@@ -1,8 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { UserEvent } from '@testing-library/user-event';
+
 import { BankruptcySoftware } from './BankruptcySoftware';
 import Api2 from '@/lib/models/api2';
-import testingUtilities, { TestingUtilities } from '@/lib/testing/testing-utilities';
+import testingUtilities, { CamsUserEvent, TestingUtilities } from '@/lib/testing/testing-utilities';
 import { BankruptcySoftwareList, BankruptcySoftwareListItem } from '@common/cams/lists';
 import { Creatable } from '@common/cams/creatable';
 
@@ -28,7 +28,7 @@ function createMockBankruptcySoftwareList(): BankruptcySoftwareList {
 
 describe('BankruptcySoftware Component Tests', () => {
   let mockSoftwareList: BankruptcySoftwareList;
-  let userEvent: UserEvent;
+  let userEvent: CamsUserEvent;
 
   beforeEach(() => {
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
