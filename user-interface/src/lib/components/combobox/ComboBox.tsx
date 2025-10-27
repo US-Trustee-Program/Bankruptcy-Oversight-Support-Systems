@@ -553,6 +553,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           </span>
           <Button
             id={`${comboBoxId}-expand`}
+            data-testid={`${comboBoxId}-expand`}
             className="expand-button"
             uswdsStyle={UswdsButtonStyle.Unstyled}
             onClick={() => handleToggleDropdown()}

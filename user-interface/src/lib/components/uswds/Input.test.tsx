@@ -16,6 +16,10 @@ describe('Tests for USWDS Input component.', () => {
     );
   };
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   test('Should change value when ref.setValue() is called and set value back to original when ref.resetValue() is called.', async () => {
     renderWithoutProps();
     const inputEl = screen.getByTestId('input-1');
@@ -39,13 +43,14 @@ describe('Tests for USWDS Input component.', () => {
     expect(inputEl).toHaveValue('');
   });
 
-  test('Should call props.onChange when a change is made to input by keypress or by ref.', async () => {
+  // NOTE: This may be a code smell with the implicit API. We do NOT call the callback when setValue is called.
+  test('Should not call props.onChange when setValue is called on the implicit API.', async () => {
     renderWithoutProps();
     const inputEl = screen.getByTestId('input-1');
 
     act(() => ref.current?.setValue('2'));
     expect(inputEl).toHaveValue('2');
-    expect(youChangedMe).toHaveBeenCalled();
+    expect(youChangedMe).not.toHaveBeenCalled();
 
     fireEvent.change(inputEl, { target: { value: '5' } });
 
@@ -184,6 +189,17 @@ describe('Input additional coverage tests', () => {
     expect(inputEl).toHaveAttribute('aria-describedby', expect.stringContaining('input-hint-'));
   });
 
+  test('calls onChange when user types and updates value', async () => {
+    const handleChange = vi.fn();
+    render(<Input id="change-id" label="Change" onChange={handleChange} />);
+
+    const input = screen.getByLabelText('Change') as HTMLInputElement;
+    await userEvent.type(input, 'abc');
+
+    expect(handleChange).toHaveBeenCalled();
+    expect(input.value).toBe('abc');
+  });
+
   test('should handle focus method and onFocus prop', async () => {
     render(
       <Input
@@ -201,7 +217,6 @@ describe('Input additional coverage tests', () => {
     act(() => ref.current?.focus());
     expect(inputEl).toHaveFocus();
 
-    // Test onFocus prop
     fireEvent.focus(inputEl);
     expect(mockOnFocus).toHaveBeenCalled();
   });
@@ -290,7 +305,6 @@ describe('Input additional coverage tests', () => {
   });
 
   test('should generate aria-describedby when no id provided', () => {
-    // Test the fallback for ariaDescribedBy when no id is provided
     render(<Input ariaDescription="Test description" onChange={mockOnChange} />);
 
     const hintElement = document.querySelector('.usa-hint');

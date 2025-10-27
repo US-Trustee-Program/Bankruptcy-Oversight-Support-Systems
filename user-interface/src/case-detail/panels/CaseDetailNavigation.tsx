@@ -15,6 +15,7 @@ export enum CaseNavState {
 export const mapNavState = createNavStateMapper<CaseNavState>(
   {
     'court-docket': CaseNavState.COURT_DOCKET,
+    'trustee-and-assigned-staff': CaseNavState.TRUSTEE_AND_ASSIGNED_STAFF,
     'audit-history': CaseNavState.AUDIT_HISTORY,
     'associated-cases': CaseNavState.ASSOCIATED_CASES,
     notes: CaseNavState.CASE_NOTES,

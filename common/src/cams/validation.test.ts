@@ -9,7 +9,9 @@ import {
   ValidationSpec,
   ValidatorFunction,
   ValidatorResult,
+  mergeValidatorResults,
 } from './validation';
+import Validators from './validators';
 
 // Single test validator function that only accepts "OK"
 const validator: ValidatorFunction = (value: unknown): ValidatorResult => {
@@ -31,6 +33,116 @@ type TestPerson = {
 };
 
 describe('validation', () => {
+  describe('mergeValidatorResults', () => {
+    test('should merge two valid results', () => {
+      expect(mergeValidatorResults(VALID, VALID)).toEqual(VALID);
+    });
+
+    test('should return the invalid result if either side is valid', () => {
+      const bad = { reasons: ['Bad'] };
+      expect(mergeValidatorResults(bad, VALID)).toEqual(bad);
+      expect(mergeValidatorResults(VALID, bad)).toEqual(bad);
+    });
+
+    test('should merge two invalid results', () => {
+      const bad1 = {
+        reasons: ['Bad 1'],
+        reasonMap: {
+          foo: { reasons: ['Max length exceeded'] },
+          bar: { reasons: ['Max length exceeded'] },
+          baz: { reasonMap: { one: { reasons: ['Max length exceeded'] } } },
+        },
+      };
+      const bad2 = {
+        reasons: ['Bad 2'],
+        reasonMap: { bar: { reasons: ['Invalid format'] } },
+        baz: {
+          reasonMap: { one: { reasons: ['Invalid format'] }, two: { reasons: ['Invalid format'] } },
+        },
+      };
+      expect(mergeValidatorResults(bad1, bad2)).toEqual({
+        reasons: expect.arrayContaining(['Bad 1', 'Bad 2']),
+        reasonMap: {
+          foo: { reasons: ['Max length exceeded'] },
+          bar: { reasons: expect.arrayContaining(['Max length exceeded', 'Invalid format']) },
+          baz: {
+            reasonMap: {
+              one: { reasons: expect.arrayContaining(['Max length exceeded', 'Invalid format']) },
+              two: { reasons: ['Invalid format'] },
+            },
+          },
+        },
+      });
+    });
+  });
+
+  describe('$ validation', () => {
+    test('should validate using $ key in ValidationSpec', () => {
+      const compoundFunction: ValidatorFunction = (value: TestPerson): ValidatorResult => {
+        if (!value.email && !value.phone) {
+          return { reasons: ['At least a phone or email address is required'] };
+        } else {
+          return VALID;
+        }
+      };
+
+      const testSpec: ValidationSpec<TestPerson> = {
+        $: [compoundFunction],
+        firstName: [Validators.minLength(10)],
+      };
+
+      const testObj: TestPerson = {
+        firstName: 'Bob',
+      } as unknown as TestPerson;
+
+      expect(validateObject(testSpec, testObj)).toEqual({
+        reasonMap: {
+          $: { reasons: ['At least a phone or email address is required'] },
+          firstName: { reasons: ['Must contain at least 10 characters'] },
+        },
+      });
+    });
+
+    test('should put reasons on specific field', () => {
+      const compoundFunction: ValidatorFunction = (value: TestPerson): ValidatorResult => {
+        if (!value.email && !value.phone) {
+          return {
+            reasonMap: {
+              email: {
+                reasons: ['At least a phone or email address is required'],
+              },
+            },
+          };
+        } else {
+          return VALID;
+        }
+      };
+
+      const testSpec: ValidationSpec<TestPerson> = {
+        $: [compoundFunction],
+        firstName: [Validators.minLength(10)],
+      };
+
+      const testObj: TestPerson = {
+        firstName: 'Bob',
+      } as unknown as TestPerson;
+
+      expect(validateObject(testSpec, testObj)).toEqual({
+        reasonMap: {
+          $: {
+            reasonMap: {
+              email: {
+                reasons: ['At least a phone or email address is required'],
+              },
+            },
+          },
+          email: { reasons: ['At least a phone or email address is required'] },
+          firstName: { reasons: ['Must contain at least 10 characters'] },
+        },
+      });
+    });
+  });
+
   describe('validate', () => {
     const testCases = [
       {

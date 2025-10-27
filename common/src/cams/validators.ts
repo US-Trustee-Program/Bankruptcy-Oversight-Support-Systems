@@ -173,11 +173,11 @@ function length(min: number, max: number, reason?: string): ValidatorFunction {
     }
 
     if (value === null) {
-      return { reasons: [`Value is null`] };
+      return { reasons: [reason ?? `Value is null`] };
     } else if (value === undefined) {
-      return { reasons: [`Value is undefined`] };
+      return { reasons: [reason ?? `Value is undefined`] };
     } else {
-      return { reasons: ['Value does not have a length'] };
+      return { reasons: [reason ?? 'Value does not have a length'] };
     }
   };
 }
