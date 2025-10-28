@@ -195,7 +195,7 @@ const assignAttorneyModalUseCase = (
         store.setPreviouslySelectedList(attorneys);
       }
       if (showProps.callback) {
-        store.setSubmissionCallback(() => showProps.callback);
+        store.setSubmissionCallback(showProps.callback);
       }
     }
     if (controls.modalRef.current?.show) {

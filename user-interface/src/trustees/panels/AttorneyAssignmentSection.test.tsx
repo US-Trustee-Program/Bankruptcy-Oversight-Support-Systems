@@ -11,6 +11,7 @@ vi.mock('../modals/TrusteeAttorneyAssignmentModal', () => {
     default: (() => {
       interface MockModalProps {
         onAssignmentCreated?: (assignment: TrusteeOversightAssignment) => void;
+        onAssignment?: (assignment: TrusteeOversightAssignment) => void;
       }
 
       const MockModal = React.forwardRef((props: MockModalProps, ref) => {
@@ -19,12 +20,12 @@ vi.mock('../modals/TrusteeAttorneyAssignmentModal', () => {
           hide: vi.fn(),
         }));
 
-        // Add a test button to trigger the onAssignmentCreated callback for testing
-        return props.onAssignmentCreated ? (
+        // Add a test button to trigger the onAssignment callback for testing
+        return props.onAssignment ? (
           <button
             data-testid="mock-assignment-created-trigger"
             onClick={() =>
-              props.onAssignmentCreated!({
+              props.onAssignment!({
                 id: 'new-assignment-1',
                 trusteeId: 'trustee-123',
                 user: { id: 'user-1', name: 'New Attorney' },
@@ -63,20 +64,49 @@ describe('AttorneyAssignmentSection', () => {
     },
   ];
 
-  const renderWithRouter = (ui: React.ReactElement) => {
-    return render(ui, { wrapper: BrowserRouter });
+  const renderWithRouter = (
+    props?: Partial<{
+      trusteeId: string;
+      assignments: TrusteeOversightAssignment[];
+      onAssignmentChange: () => void;
+      isLoading?: boolean;
+    }>,
+  ) => {
+    const defaults = {
+      trusteeId: 'trustee-123',
+      assignments: [] as TrusteeOversightAssignment[],
+      // ensure the mock has the correct signature for TypeScript
+      // component expects a no-arg callback when assignment changes
+      onAssignmentChange: vi.fn() as unknown as () => void,
+      isLoading: false,
+    } as const;
+
+    const merged = { ...defaults, ...(props || {}) } as unknown as {
+      trusteeId: string;
+      assignments: TrusteeOversightAssignment[];
+      onAssignmentChange: () => void;
+      isLoading?: boolean;
+    };
+
+    return render(
+      <AttorneyAssignmentSection
+        trusteeId={merged.trusteeId}
+        assignments={merged.assignments}
+        onAssignmentChange={merged.onAssignmentChange}
+        isLoading={merged.isLoading}
+      />,
+      { wrapper: BrowserRouter },
+    );
   };
 
   test('should show no assignment state when no staff assigned', () => {
     const onAssignmentChange = vi.fn();
 
-    renderWithRouter(
-      <AttorneyAssignmentSection
-        trusteeId="trustee-123"
-        assignments={[]}
-        onAssignmentChange={onAssignmentChange}
-      />,
-    );
+    renderWithRouter({
+      trusteeId: 'trustee-123',
+      assignments: [],
+      onAssignmentChange,
+    });
 
     expect(screen.getByTestId('no-attorney-assigned')).toBeInTheDocument();
     expect(screen.getByTestId('no-attorney-assigned')).toHaveTextContent('No attorney assigned');
@@ -85,13 +115,11 @@ describe('AttorneyAssignmentSection', () => {
   test('should display assigned attorney information', () => {
     const onAssignmentChange = vi.fn();
 
-    renderWithRouter(
-      <AttorneyAssignmentSection
-        trusteeId="trustee-123"
-        assignments={mockAssignments}
-        onAssignmentChange={onAssignmentChange}
-      />,
-    );
+    renderWithRouter({
+      trusteeId: 'trustee-123',
+      assignments: mockAssignments,
+      onAssignmentChange,
+    });
 
     expect(screen.getByTestId('attorney-assignments-display')).toBeInTheDocument();
   });
@@ -99,13 +127,11 @@ describe('AttorneyAssignmentSection', () => {
   test('should show edit button when attorney is assigned', () => {
     const onAssignmentChange = vi.fn();
 
-    renderWithRouter(
-      <AttorneyAssignmentSection
-        trusteeId="trustee-123"
-        assignments={mockAssignments}
-        onAssignmentChange={onAssignmentChange}
-      />,
-    );
+    renderWithRouter({
+      trusteeId: 'trustee-123',
+      assignments: mockAssignments,
+      onAssignmentChange,
+    });
 
     const editButton = screen.getByTestId('button-test');
     expect(editButton).toBeInTheDocument();
@@ -114,14 +140,12 @@ describe('AttorneyAssignmentSection', () => {
   test('should show loading state when isLoading is true', () => {
     const onAssignmentChange = vi.fn();
 
-    renderWithRouter(
-      <AttorneyAssignmentSection
-        trusteeId="trustee-123"
-        assignments={[]}
-        onAssignmentChange={onAssignmentChange}
-        isLoading={true}
-      />,
-    );
+    renderWithRouter({
+      trusteeId: 'trustee-123',
+      assignments: [],
+      onAssignmentChange,
+      isLoading: true,
+    });
 
     expect(screen.getByTestId('attorney-assignments-loading')).toBeInTheDocument();
   });
@@ -129,13 +153,11 @@ describe('AttorneyAssignmentSection', () => {
   test('should show attorney name when assignment exists', () => {
     const onAssignmentChange = vi.fn();
 
-    renderWithRouter(
-      <AttorneyAssignmentSection
-        trusteeId="trustee-123"
-        assignments={mockAssignments}
-        onAssignmentChange={onAssignmentChange}
-      />,
-    );
+    renderWithRouter({
+      trusteeId: 'trustee-123',
+      assignments: mockAssignments,
+      onAssignmentChange,
+    });
 
     expect(screen.getByTestId('attorney-assignments-display')).toBeInTheDocument();
     const displayArea = screen.getByTestId('attorney-assignments-display');
@@ -145,13 +167,11 @@ describe('AttorneyAssignmentSection', () => {
   test('should call onAssignmentChange when handleAssignmentCreated is triggered', () => {
     const onAssignmentChange = vi.fn();
 
-    renderWithRouter(
-      <AttorneyAssignmentSection
-        trusteeId="trustee-123"
-        assignments={[]}
-        onAssignmentChange={onAssignmentChange}
-      />,
-    );
+    renderWithRouter({
+      trusteeId: 'trustee-123',
+      assignments: [],
+      onAssignmentChange,
+    });
 
     const triggerButton = screen.getByTestId('mock-assignment-created-trigger');
     fireEvent.click(triggerButton);

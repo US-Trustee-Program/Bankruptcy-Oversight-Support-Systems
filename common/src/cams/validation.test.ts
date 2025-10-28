@@ -577,3 +577,71 @@ describe('validation', () => {
     });
   });
 });
+
+/* additional focused tests for mergeValidatorResults and validateObject $-merging */
+
+describe('validation.mergeValidatorResults', () => {
+  test('merges top-level extra keys into reasonMap and combines reasons', () => {
+    const left: Record<string, unknown> = {
+      // reasons indicate failure (ValidatorResult.valid is only present for true)
+      reasons: ['left-fail'],
+      // extra top-level key that should become part of reasonMap
+      extra: { reasons: ['left-extra'] },
+    };
+
+    const right: Record<string, unknown> = {
+      reasons: ['right-fail'],
+      extra: { reasons: ['right-extra'] },
+    };
+
+    const merged = mergeValidatorResults(left, right);
+
+    // top-level combined reasons
+    expect(merged.reasons).toEqual(expect.arrayContaining(['left-fail', 'right-fail']));
+
+    // extra key should be promoted into reasonMap and merged
+    expect(merged.reasonMap).toBeDefined();
+    expect(merged.reasonMap['extra']).toBeDefined();
+    expect(merged.reasonMap['extra'].reasons).toEqual(
+      expect.arrayContaining(['left-extra', 'right-extra']),
+    );
+  });
+});
+
+describe('validation.validateObject $-spec merging', () => {
+  test('merges $ reasonMap entries into per-key reasonMap when key exists', () => {
+    const spec: ValidationSpec<Record<string, unknown>> = {
+      // key-level validator that fails
+      a: [(_v: unknown) => ({ reasons: ['a-level'] })],
+      // $ validator returns a result that supplies a reasonMap for key 'a'
+      $: [(_obj: unknown) => ({ reasonMap: { a: { reasons: ['dollar-level'] } } })],
+    };
+
+    const obj = { a: 'value' };
+
+    const res = validateObject(spec, obj);
+
+    // should produce a reasonMap with key 'a' combining both reasons
+    expect(res.reasonMap).toBeDefined();
+    const aRes = res.reasonMap['a'];
+    expect(aRes).toBeDefined();
+    // merged reasons should include both a-level and dollar-level
+    expect(aRes.reasons).toEqual(expect.arrayContaining(['a-level', 'dollar-level']));
+  });
+
+  test("includes $ reasonMap entries for keys that don't have their own failures", () => {
+    const spec: ValidationSpec<Record<string, unknown>> = {
+      // no per-key validator for 'b', but $ provides a reasonMap entry for 'b'
+      $: [(_obj: unknown) => ({ reasonMap: { b: { reasons: ['dollar-b'] } } })],
+    };
+
+    const obj = { b: 'value' };
+
+    const res = validateObject(spec, obj);
+
+    expect(res.reasonMap).toBeDefined();
+    const bRes = res.reasonMap['b'];
+    expect(bRes).toBeDefined();
+    expect(bRes.reasons).toEqual(expect.arrayContaining(['dollar-b']));
+  });
+});
