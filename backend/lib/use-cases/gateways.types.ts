@@ -226,6 +226,10 @@ export interface TrusteesRepository extends Reads<Trustee>, Releasable {
   createTrusteeOversightAssignment(
     assignment: Omit<TrusteeOversightAssignment, keyof Auditable | keyof Identifiable>,
   ): Promise<TrusteeOversightAssignment>;
+  updateTrusteeOversightAssignment(
+    id: string,
+    updates: Partial<TrusteeOversightAssignment>,
+  ): Promise<TrusteeOversightAssignment>;
 }
 
 export type RuntimeStateDocumentType =

@@ -71,6 +71,7 @@ describe('TrusteeAssignmentsUseCase', () => {
       listTrusteeHistory: jest.fn(),
       listTrustees: jest.fn(),
       updateTrustee: jest.fn(),
+      updateTrusteeOversightAssignment: jest.fn(),
     };
 
     mockUserGroupGateway = {
@@ -244,7 +245,7 @@ describe('TrusteeAssignmentsUseCase', () => {
           'attorney-456',
         );
 
-        expect(result).toEqual(existingAssignment);
+        expect(result).toBe(false); // Should return false for idempotent case
         expect(context.logger.info).toHaveBeenCalledWith(
           'TRUSTEE-ASSIGNMENTS-USE-CASE',
           'Attorney attorney-456 already assigned to trustee trustee-789',
@@ -253,24 +254,48 @@ describe('TrusteeAssignmentsUseCase', () => {
         expect(mockTrusteesRepository.createTrusteeOversightAssignment).not.toHaveBeenCalled();
       });
 
-      test('should throw BadRequestError when different attorney is already assigned', async () => {
+      test('should replace existing assignment when different attorney is already assigned', async () => {
         const existingAssignment = {
           ...mockAssignment,
+          id: 'existing-assignment-id',
           user: { id: 'different-attorney', name: 'Different Attorney' },
+        } as TrusteeOversightAssignment;
+
+        const newAssignee = MockData.getCamsUser();
+        const newCreatedAssignment = {
+          ...mockAssignment,
+          id: 'new-assignment-id',
+          user: mockAttorney,
         };
+
         mockTrusteesRepository.getTrusteeOversightAssignments.mockResolvedValue([
           existingAssignment,
         ]);
 
-        // For this test, we want the original BadRequestError to be thrown, not wrapped
-        mockErrorUtilities.getCamsError.mockImplementation((error) => error as BadRequestError); // Pass through the original error
+        mockTrusteesRepository.updateTrusteeOversightAssignment = jest.fn().mockResolvedValue({
+          ...existingAssignment,
+          unassignedOn: '2025-10-28T00:00:00.000Z',
+        } as TrusteeOversightAssignment);
 
-        await expect(
-          useCase.assignAttorneyToTrustee(context, 'trustee-789', 'attorney-456'),
-        ).rejects.toThrow(BadRequestError);
+        mockUserGroupGateway.getUserById.mockResolvedValue(newAssignee);
+        mockTrusteesRepository.createTrusteeOversightAssignment.mockResolvedValue(
+          newCreatedAssignment as TrusteeOversightAssignment,
+        );
+        mockTrusteesRepository.createTrusteeHistory.mockResolvedValue();
 
-        expect(mockUserGroupGateway.getUserById).not.toHaveBeenCalled();
-        expect(mockTrusteesRepository.createTrusteeOversightAssignment).not.toHaveBeenCalled();
+        const result = await useCase.assignAttorneyToTrustee(
+          context,
+          'trustee-789',
+          'attorney-456',
+        );
+
+        expect(mockTrusteesRepository.updateTrusteeOversightAssignment).toHaveBeenCalledWith(
+          'existing-assignment-id',
+          expect.objectContaining({ unassignedOn: expect.any(String) }),
+        );
+        expect(mockTrusteesRepository.createTrusteeOversightAssignment).toHaveBeenCalled();
+        expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalled();
+        expect(result).toBe(true); // Should return true for replacement
       });
 
       test('should proceed with assignment when no existing attorney assignment exists', async () => {
@@ -291,7 +316,7 @@ describe('TrusteeAssignmentsUseCase', () => {
           'attorney-456',
         );
 
-        expect(result).toEqual(mockAssignment);
+        expect(result).toBe(true); // Should return true for new assignment
         expect(mockTrusteesRepository.createTrusteeOversightAssignment).toHaveBeenCalled();
       });
     });
@@ -317,7 +342,7 @@ describe('TrusteeAssignmentsUseCase', () => {
         expect(mockUserGroupGateway.getUserById).toHaveBeenCalledWith(context, 'attorney-456');
         expect(mockTrusteesRepository.createTrusteeOversightAssignment).toHaveBeenCalled();
         expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalled();
-        expect(result).toEqual(mockAssignment);
+        expect(result).toBe(true); // Should return true for new assignment
       });
 
       test('should create audit record with correct structure', async () => {
