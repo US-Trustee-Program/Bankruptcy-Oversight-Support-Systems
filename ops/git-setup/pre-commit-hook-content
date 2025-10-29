@@ -80,4 +80,163 @@ if [[ $source_files_changed == true && $test_files_changed == false ]]; then
     fi
 fi
 
+# Check for packages that are too new (< 7 days old)
+MIN_PACKAGE_AGE_DAYS=7
+
+# Function to check package age
+check_package_age() {
+    local package_name="$1"
+    local package_version="$2"
+
+    # Query npm registry for package info
+    local registry_url="https://registry.npmjs.org/${package_name}"
+    local package_info
+
+    if ! package_info=$(curl -s "$registry_url" 2>/dev/null); then
+        # If we can't fetch package info, allow the commit (network issues shouldn't block work)
+        return 0
+    fi
+
+    # Extract publish date for the specific version
+    local publish_date
+    publish_date=$(echo "$package_info" | jq -r --arg v "$package_version" '.time[$v] // empty' 2>/dev/null)
+
+    if [[ -z "$publish_date" ]]; then
+        # If we can't determine the date, allow the commit
+        return 0
+    fi
+
+    # Calculate age in days
+    local publish_timestamp
+    local current_timestamp
+    local age_in_seconds
+    local age_in_days
+
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS
+        publish_timestamp=$(date -j -f "%Y-%m-%dT%H:%M:%S" "${publish_date:0:19}" "+%s" 2>/dev/null)
+        current_timestamp=$(date "+%s")
+    else
+        # Linux
+        publish_timestamp=$(date -d "$publish_date" "+%s" 2>/dev/null)
+        current_timestamp=$(date "+%s")
+    fi
+
+    if [[ -z "$publish_timestamp" ]]; then
+        # If date parsing fails, allow the commit
+        return 0
+    fi
+
+    age_in_seconds=$((current_timestamp - publish_timestamp))
+    age_in_days=$((age_in_seconds / 86400))
+
+    if [[ $age_in_days -lt $MIN_PACKAGE_AGE_DAYS ]]; then
+        echo "$package_name@$package_version|$age_in_days|$publish_date"
+        return 1
+    fi
+
+    return 0
+}
+
+# Check if package.json files were modified
+package_json_files=$(git diff --cached --name-only | grep 'package\.json$')
+
+if [[ -n "$package_json_files" ]]; then
+    # Check if jq is available
+    if ! command -v jq &> /dev/null; then
+        echo "⚠️  Warning: jq is not installed. Skipping package age check."
+        echo "To enable this check, install jq: brew install jq (macOS) or apt-get install jq (Linux)"
+    else
+        declare -a new_packages=()
+
+        for file in $package_json_files; do
+            # Get the diff for this file
+            diff_output=$(git diff --cached "$file")
+
+            # Extract added package lines (lines starting with +)
+            added_lines=$(echo "$diff_output" | grep '^+' | grep -v '^+++' | grep '".*":')
+
+            # Parse package names and versions from added lines
+            while IFS= read -r line; do
+                # Extract package name and version
+                if [[ $line =~ \"([^\"]+)\":[[:space:]]*\"([^\"]+)\" ]]; then
+                    package_name="${BASH_REMATCH[1]}"
+                    package_version="${BASH_REMATCH[2]}"
+
+                    # Skip if it's not in dependencies, devDependencies, or peerDependencies sections
+                    # (This is a simple heuristic; we're checking packages that look like dependencies)
+                    if [[ ! $package_name =~ ^(name|version|description|main|scripts|author|license|repository|keywords|bugs|homepage)$ ]]; then
+                        # Remove semver range characters to get actual version
+                        clean_version="${package_version#^}"
+                        clean_version="${clean_version#~}"
+                        clean_version="${clean_version#>=}"
+                        clean_version="${clean_version#>}"
+                        clean_version="${clean_version#<=}"
+                        clean_version="${clean_version#<}"
+
+                        # Check if this is a valid semver version
+                        if [[ $clean_version =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+                            new_packages+=("$package_name|$clean_version|$file")
+                        fi
+                    fi
+                fi
+            done <<< "$added_lines"
+        done
+
+        # Check ages of new packages
+        declare -a packages_too_new=()
+
+        for package_info in "${new_packages[@]}"; do
+            IFS='|' read -r package_name package_version file <<< "$package_info"
+
+            if ! age_info=$(check_package_age "$package_name" "$package_version"); then
+                packages_too_new+=("$age_info|$file")
+            fi
+        done
+
+        # If any packages are too new, warn and prompt
+        if [[ ${#packages_too_new[@]} -gt 0 ]]; then
+            echo ""
+            echo "⚠️  Warning: The following packages were published less than $MIN_PACKAGE_AGE_DAYS days ago:"
+            echo ""
+
+            for package_info in "${packages_too_new[@]}"; do
+                IFS='|' read -r package_name package_version age_days publish_date file <<< "$package_info"
+                echo "  📦 $package_name@$package_version in $file"
+                echo "     Published: ${publish_date:0:10} ($age_days days ago)"
+            done
+
+            echo ""
+            echo "Our policy recommends waiting $MIN_PACKAGE_AGE_DAYS days before using new package versions"
+            echo "to allow time for community vetting and bug fixes."
+            echo ""
+
+            # Use </dev/tty to ensure read gets input from the terminal even in non-interactive environments
+            if [ -t 0 ]; then
+                # Terminal is interactive
+                read -p "Do you still want to proceed with this commit? (Y/n) " -n 1 -r
+                echo
+                if [[ $REPLY =~ ^[Nn]$ ]]; then
+                    echo "Commit aborted. Consider using older package versions or waiting a few days."
+                    exit 1
+                fi
+            else
+                # Terminal is non-interactive, try to read from /dev/tty
+                if [ -t 1 ]; then
+                    # Output is going to a terminal, so we can prompt
+                    read -p "Do you still want to proceed with this commit? (Y/n) " -n 1 -r </dev/tty
+                    echo
+                    if [[ $REPLY =~ ^[Nn]$ ]]; then
+                        echo "Commit aborted. Consider using older package versions or waiting a few days."
+                        exit 1
+                    fi
+                else
+                    # Completely non-interactive, default to allowing the commit
+                    echo "Non-interactive environment detected. Allowing commit to proceed."
+                fi
+            fi
+        fi
+    fi
+fi
+
 # Below content generated by pre-commit: https://pre-commit.com
