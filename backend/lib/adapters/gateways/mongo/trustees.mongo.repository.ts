@@ -178,6 +178,7 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
       const query = and(
         doc('documentType').equals('TRUSTEE_OVERSIGHT_ASSIGNMENT'),
         doc('trusteeId').equals(trusteeId),
+        doc('unassignedOn').notExists(),
       );
       return await this.getAdapter<TrusteeOversightAssignmentDocument>().find(query);
     } catch (originalError) {
@@ -199,6 +200,43 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to create oversight assignment for trustee ${assignment.trusteeId}.`,
+      });
+    }
+  }
+
+  async updateTrusteeOversightAssignment(
+    id: string,
+    updates: Partial<TrusteeOversightAssignment>,
+  ): Promise<TrusteeOversightAssignment> {
+    try {
+      const doc = using<TrusteeOversightAssignmentDocument>();
+      const query = and(
+        doc('documentType').equals('TRUSTEE_OVERSIGHT_ASSIGNMENT'),
+        doc('id').equals(id),
+      );
+
+      const updateData = {
+        ...updates,
+      } as Partial<TrusteeOversightAssignmentDocument>;
+
+      const result = await this.getAdapter<TrusteeOversightAssignmentDocument>().updateOne(
+        query,
+        updateData,
+      );
+
+      if (result.matchedCount === 0) {
+        throw new NotFoundError(MODULE_NAME, { message: `Oversight assignment ${id} not found.` });
+      }
+
+      const updated = await this.getAdapter<TrusteeOversightAssignmentDocument>().findOne(query);
+
+      return updated;
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          module: MODULE_NAME,
+          message: `Failed to update oversight assignment ${id}.`,
+        },
       });
     }
   }

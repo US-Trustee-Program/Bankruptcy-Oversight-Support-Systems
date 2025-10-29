@@ -1,10 +1,9 @@
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { vi } from 'vitest';
+import { beforeEach, vi } from 'vitest';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import TrusteeDetailProfile, { TrusteeDetailProfileProps } from './TrusteeDetailProfile';
 import { Trustee } from '@common/cams/trustees';
-import TestingUtilities from '@/lib/testing/testing-utilities';
+import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
 const mockTrustee: Trustee = {
   id: '--id-guid--',
@@ -57,8 +56,11 @@ function renderWithProps(props?: Partial<TrusteeDetailProfileProps>) {
 }
 
 describe('TrusteeDetailProfile', () => {
+  let userEvent: CamsUserEvent;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    userEvent = TestingUtilities.setupUserEvent();
   });
 
   test('should render public trustee overview section', () => {
@@ -154,14 +156,12 @@ describe('TrusteeDetailProfile', () => {
   });
 
   test('should call onEditInternalProfile when internal edit button is clicked', async () => {
-    const user = userEvent.setup();
-
     renderWithProps({});
 
     const internalEditButton = screen.getByRole('button', {
       name: 'Edit trustee internal contact information',
     });
-    await user.click(internalEditButton);
+    await userEvent.click(internalEditButton);
 
     expect(mockOnEditInternalProfile).toHaveBeenCalledTimes(1);
   });
@@ -327,14 +327,12 @@ describe('TrusteeDetailProfile', () => {
   });
 
   test('should call onEditOtherInformation when other information edit button is clicked', async () => {
-    const user = userEvent.setup();
-
     renderWithProps({});
 
     const otherInfoEditButton = screen.getByRole('button', {
       name: 'Edit other trustee information',
     });
-    await user.click(otherInfoEditButton);
+    await userEvent.click(otherInfoEditButton);
 
     expect(mockOnEditOtherInformation).toHaveBeenCalledTimes(1);
   });

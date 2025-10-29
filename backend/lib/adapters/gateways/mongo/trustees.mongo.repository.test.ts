@@ -666,6 +666,11 @@ describe('TrusteesMongoRepository', () => {
             leftOperand: { name: 'trusteeId' },
             rightOperand: trusteeId,
           },
+          {
+            condition: 'EXISTS',
+            leftOperand: { name: 'unassignedOn' },
+            rightOperand: false,
+          },
         ],
       });
       expect(result).toEqual(mockAssignments);
@@ -692,6 +697,11 @@ describe('TrusteesMongoRepository', () => {
             condition: 'EQUALS',
             leftOperand: { name: 'trusteeId' },
             rightOperand: trusteeId,
+          },
+          {
+            condition: 'EXISTS',
+            leftOperand: { name: 'unassignedOn' },
+            rightOperand: false,
           },
         ],
       });
@@ -720,6 +730,11 @@ describe('TrusteesMongoRepository', () => {
             condition: 'EQUALS',
             leftOperand: { name: 'trusteeId' },
             rightOperand: trusteeId,
+          },
+          {
+            condition: 'EXISTS',
+            leftOperand: { name: 'unassignedOn' },
+            rightOperand: false,
           },
         ],
       });
@@ -789,6 +804,49 @@ describe('TrusteesMongoRepository', () => {
           documentType: 'TRUSTEE_OVERSIGHT_ASSIGNMENT',
         }),
       );
+    });
+
+    test('should update oversight assignment successfully', async () => {
+      const assignmentId = 'assignment-123';
+      const updates: Partial<TrusteeOversightAssignment> = { unassignedOn: '2025-10-28T00:00:00Z' };
+
+      const mockUpdateAdapter = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'updateOne')
+        .mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
+
+      const mockFindOne = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'findOne')
+        .mockResolvedValue({
+          id: assignmentId,
+          ...updates,
+          documentType: 'TRUSTEE_OVERSIGHT_ASSIGNMENT',
+        } as Partial<TrusteeOversightAssignment>);
+
+      const result = await repository.updateTrusteeOversightAssignment(assignmentId, updates);
+
+      expect(mockUpdateAdapter).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.objectContaining(updates),
+      );
+      expect(mockFindOne).toHaveBeenCalledWith(expect.any(Object));
+      expect(result).toHaveProperty('id', assignmentId);
+      expect(result).toHaveProperty('unassignedOn', updates.unassignedOn);
+    });
+
+    test('should throw when updating non-existent assignment', async () => {
+      const assignmentId = 'nonexistent-id';
+      const updates: Partial<TrusteeOversightAssignment> = { unassignedOn: '2025-10-28T00:00:00Z' };
+
+      const mockUpdateAdapter = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'updateOne')
+        .mockResolvedValue({ matchedCount: 0, modifiedCount: 0 });
+
+      const actual = await getTheThrownError(async () => {
+        await repository.updateTrusteeOversightAssignment(assignmentId, updates);
+      });
+
+      expect(actual.message).toMatch(/Oversight assignment/);
+      expect(mockUpdateAdapter).toHaveBeenCalledWith(expect.any(Object), expect.any(Object));
     });
   });
 

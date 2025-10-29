@@ -14,11 +14,11 @@ import './TrusteeAttorneyAssignmentModal.scss';
 interface TrusteeAttorneyAssignmentModalProps {
   modalId: string;
   trusteeId: string;
-  onAssignmentCreated: (assignment: TrusteeOversightAssignment) => void;
+  onAssignment: (isAssigned: boolean) => void;
 }
 
 export interface TrusteeAttorneyAssignmentModalRef extends ModalRefType {
-  show: () => void;
+  show: (currentAssignment?: TrusteeOversightAssignment) => void;
   hide: () => void;
 }
 
@@ -28,6 +28,9 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
 >((props, ref) => {
   const [attorneys, setAttorneys] = useState<AttorneyUser[]>([]);
   const [selectedAttorney, setSelectedAttorney] = useState<AttorneyUser | null>(null);
+  const [currentAssignment, setCurrentAssignment] = useState<TrusteeOversightAssignment | null>(
+    null,
+  );
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isAssigning, setIsAssigning] = useState<boolean>(false);
@@ -38,13 +41,16 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
 
   // Handle external ref
   React.useImperativeHandle(ref, () => ({
-    show: () => {
+    show: (assignment?: TrusteeOversightAssignment) => {
+      setCurrentAssignment(assignment ?? null);
+      setSelectedAttorney(null); // Reset selection
       modalRef.current?.show({});
       loadAttorneys();
     },
     hide: () => {
       modalRef.current?.hide({});
       setSelectedAttorney(null);
+      setCurrentAssignment(null);
     },
   }));
 
@@ -53,81 +59,91 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
     setError(null);
     try {
       const response = await api.getAttorneys();
-      setAttorneys(response.data || []);
-    } catch (_err) {
+      const attorneyList = response.data ?? [];
+      setAttorneys(attorneyList);
+
+      if (currentAssignment) {
+        const currentAttorney = attorneyList.find(
+          (attorney) => attorney.id === currentAssignment.user.id,
+        );
+        if (currentAttorney) {
+          setSelectedAttorney(currentAttorney);
+        }
+      }
+    } catch {
       setError('Failed to load attorneys');
     } finally {
       setIsLoading(false);
     }
-  }, [api]);
+  }, [api, currentAssignment]);
 
   const handleAssignAttorney = useCallback(async () => {
     if (selectedAttorney) {
+      if (currentAssignment && currentAssignment.user.id === selectedAttorney.id) {
+        modalRef.current?.hide({});
+        return;
+      }
+
       setIsAssigning(true);
       try {
-        const response = await api.createTrusteeOversightAssignment(
-          props.trusteeId,
-          selectedAttorney.id,
-        );
-        if (response && response.data) {
-          props.onAssignmentCreated(response.data);
-          globalAlert?.success('Attorney assigned successfully');
-          modalRef.current?.hide({});
-        }
+        await api.createTrusteeOversightAssignment(props.trusteeId, selectedAttorney.id);
+        props.onAssignment(true);
+        globalAlert?.success('Attorney assigned successfully');
+        modalRef.current?.hide({});
       } catch (err) {
         globalAlert?.error(err instanceof Error ? err.message : 'Failed to assign attorney');
       } finally {
         setIsAssigning(false);
       }
     }
-  }, [selectedAttorney, props.trusteeId, props.onAssignmentCreated, api, globalAlert]);
+  }, [selectedAttorney, currentAssignment, props.trusteeId, props.onAssignment, api, globalAlert]);
 
   const modalContent = (
     <div
       className="trustee-attorney-assignment-modal-content"
       data-testid="attorney-assignment-modal-content"
     >
-      {isLoading ? (
-        <LoadingSpinner caption="Loading attorneys..." />
-      ) : error ? (
-        <Alert type={UswdsAlertStyle.Error}>{error}</Alert>
-      ) : (
-        <>
-          <div className="attorney-selection-section">
-            <ComboBox
-              id="attorney-search"
-              name="attorney-search"
-              label="Search for attorney name to assign to this Trustee"
-              options={attorneys.map((attorney) => ({
-                value: attorney.id,
-                label: attorney.name,
-              }))}
-              onUpdateSelection={(selectedOptions) => {
-                const selectedOption = selectedOptions[0];
-                if (selectedOption) {
-                  const attorney = attorneys.find((a) => a.id === selectedOption.value);
-                  setSelectedAttorney(attorney || null);
-                } else {
-                  setSelectedAttorney(null);
-                }
-              }}
-              placeholder="Search for an attorney..."
-              required
-            />
-          </div>
-        </>
+      {isLoading && <LoadingSpinner caption="Loading attorneys..." />}
+      {error && <Alert type={UswdsAlertStyle.Error}>{error}</Alert>}
+      {!isLoading && !error && (
+        <div className="attorney-selection-section">
+          <ComboBox
+            id="attorney-search"
+            name="attorney-search"
+            label="Search for attorney name to assign to this Trustee"
+            options={attorneys.map((attorney) => ({
+              value: attorney.id,
+              label: attorney.name,
+            }))}
+            selections={
+              selectedAttorney ? [{ value: selectedAttorney.id, label: selectedAttorney.name }] : []
+            }
+            onUpdateSelection={(selectedOptions) => {
+              const selectedOption = selectedOptions[0];
+              if (selectedOption) {
+                const attorney = attorneys.find((a) => a.id === selectedOption.value);
+                setSelectedAttorney(attorney ?? null);
+              } else {
+                setSelectedAttorney(null);
+              }
+            }}
+            placeholder="Search for an attorney..."
+            required
+          />
+        </div>
       )}
     </div>
   );
 
-  // Modal configuration
+  const isEditMode = !!currentAssignment;
   const actionButtonGroup = {
     modalId: props.modalId,
     modalRef: modalRef,
     submitButton: {
-      label: `Add Attorney`,
+      label: isEditMode ? 'Edit Attorney' : 'Add Attorney',
       disabled: !selectedAttorney || isAssigning,
       onClick: handleAssignAttorney,
+      closeOnClick: false,
       uswdsStyle: UswdsButtonStyle.Default,
     },
     cancelButton: {
@@ -140,7 +156,7 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
     <Modal
       ref={modalRef}
       modalId={props.modalId}
-      heading={`Add Attorney`}
+      heading={isEditMode ? 'Edit Attorney' : 'Add Attorney'}
       content={modalContent}
       actionButtonGroup={actionButtonGroup}
     />

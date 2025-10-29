@@ -104,6 +104,7 @@ cams1.code-workspace
 .github/copilot-instructions.md
 .github/instructions/*
 **/CLAUDE.md
+.claude/*
 
 # Flexion AI
 .gitmodules

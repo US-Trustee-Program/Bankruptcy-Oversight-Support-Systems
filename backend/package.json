@@ -5,6 +5,7 @@
   "devDependencies": {
     "@eslint/js": "10.0.0",
     "@faker-js/faker": "9.9.0",
+    "@types/express": "4.17.23",
     "@types/jest": "30.0.0",
     "@types/mssql": "9.1.5",
     "@types/node": "24.9.0",
@@ -19,6 +20,7 @@
     "jest": "30.2.0",
     "prettier": "3.6.2",
     "ts-jest": "29.4.5",
+    "tsx": "4.20.6",
     "typescript": "5.9.3",
     "typescript-eslint": "8.46.2"
   },
@@ -32,6 +34,7 @@
     "@okta/okta-sdk-nodejs": "7.3.0",
     "applicationinsights": "3.12.0",
     "dotenv": "17.2.3",
+    "express": "4.21.2",
     "jsonwebtoken": "9.0.2",
     "mongodb": "6.20.0",
     "mssql": "10.0.4"
@@ -58,6 +61,7 @@
     "start": "npm run start:api",
     "start:api": "cd function-apps/api && npm run start && cd ../..",
     "start:dataflows": "cd function-apps/dataflows && npm run start && cd ../..",
+    "start:express": "tsx --watch express/server.ts",
     "test": "CAMS_LOGIN_PROVIDER='mock' DATABASE_MOCK='true' MONGO_CONNECTION_STRING='mongodb://test-string' FEATURE_FLAG_SDK_KEY='' jest -c jest.config.js",
     "test:open-handles": "CAMS_LOGIN_PROVIDER='mock' DATABASE_MOCK='true' MONGO_CONNECTION_STRING='mongodb://test-string' FEATURE_FLAG_SDK_KEY='' jest -c jest.config.js --detectOpenHandles",
     "lint": "eslint .",
