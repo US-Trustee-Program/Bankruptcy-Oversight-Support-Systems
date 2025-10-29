@@ -1,9 +1,10 @@
 name: NPM Package Updates
 
 on:
-  schedule:
-    - cron: '0 10 * * 3'
-      # Every Wednesday morning at 5 ET
+  # Disabled in favor of Renovate Bot - keeping for manual fallback
+  # schedule:
+  #   - cron: '0 10 * * 3'
+  #     # Every Wednesday morning at 5 ET
   workflow_dispatch:
 
 jobs:
