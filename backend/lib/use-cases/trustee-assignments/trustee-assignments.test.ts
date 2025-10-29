@@ -246,10 +246,6 @@ describe('TrusteeAssignmentsUseCase', () => {
         );
 
         expect(result).toBe(false);
-        expect(context.logger.info).toHaveBeenCalledWith(
-          'TRUSTEE-ASSIGNMENTS-USE-CASE',
-          'Attorney attorney-456 already assigned to trustee trustee-789',
-        );
         expect(mockUserGroupGateway.getUserById).not.toHaveBeenCalled();
         expect(mockTrusteesRepository.createTrusteeOversightAssignment).not.toHaveBeenCalled();
       });

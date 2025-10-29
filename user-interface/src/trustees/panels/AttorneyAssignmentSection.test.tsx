@@ -64,7 +64,7 @@ describe('AttorneyAssignmentSection', () => {
   ];
 
   const renderWithRouter = (
-    props?: Partial<{
+    override?: Partial<{
       trusteeId: string;
       assignments: TrusteeOversightAssignment[];
       onAssignmentChange: () => void;
@@ -78,21 +78,10 @@ describe('AttorneyAssignmentSection', () => {
       isLoading: false,
     } as const;
 
-    const merged = { ...defaults, ...(props || {}) } as unknown as {
-      trusteeId: string;
-      assignments: TrusteeOversightAssignment[];
-      onAssignmentChange: () => void;
-      isLoading?: boolean;
-    };
-
     return render(
-      <AttorneyAssignmentSection
-        trusteeId={merged.trusteeId}
-        assignments={merged.assignments}
-        onAssignmentChange={merged.onAssignmentChange}
-        isLoading={merged.isLoading}
-      />,
-      { wrapper: BrowserRouter },
+      <BrowserRouter>
+        <AttorneyAssignmentSection {...defaults} {...override} />
+      </BrowserRouter>,
     );
   };
 

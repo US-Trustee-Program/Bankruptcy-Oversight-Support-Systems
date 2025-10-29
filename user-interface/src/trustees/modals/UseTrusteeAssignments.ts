@@ -66,5 +66,3 @@ export function useTrusteeAssignments(): UseTrusteeAssignmentsReturn {
     clearError,
   };
 }
-
-export default useTrusteeAssignments;
