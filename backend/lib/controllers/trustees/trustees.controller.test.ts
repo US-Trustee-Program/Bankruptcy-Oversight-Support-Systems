@@ -37,14 +37,12 @@ describe('TrusteesController', () => {
       },
       email: 'john.doe@example.com',
     },
-    districts: ['NY'],
-    chapters: ['7', '11'],
-    status: 'active',
   };
 
   const sampleTrusteeDocument: TrusteeDocument = {
     ...sampleTrustee,
     id: 'trustee-123',
+    trusteeId: 'trustee-123',
     documentType: 'TRUSTEE',
     createdOn: '2025-08-12T10:00:00Z',
     createdBy: mockUser,

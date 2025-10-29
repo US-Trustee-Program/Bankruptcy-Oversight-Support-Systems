@@ -97,23 +97,15 @@ export class TrusteeAssignmentsUseCase {
     }
 
     try {
-      // Check for existing attorney assignments
       const existingAssignments =
         await this.trusteesRepository.getTrusteeOversightAssignments(trusteeId);
 
-      // Check for existing attorney assignment
-      // TODO: look for only the active assignment (unassignedOn does not exist)
-      //   ** Note: we can currently create multiple assignments for the same attorney and SHOULD NEVER do this **
       const existingAttorneyAssignment = existingAssignments.find(
         (assignment) => assignment.role === OversightRole.OversightAttorney,
       );
 
       if (existingAttorneyAssignment) {
         if (existingAttorneyAssignment.user.id === attorneyUserId) {
-          context.logger.info(
-            MODULE_NAME,
-            `Attorney ${attorneyUserId} already assigned to trustee ${trusteeId}`,
-          );
           return false;
         }
         const trusteeManager = getCamsUserReference(context.session.user);

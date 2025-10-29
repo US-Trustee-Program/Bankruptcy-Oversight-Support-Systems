@@ -1,6 +1,5 @@
 import React from 'react';
 import { render, screen, waitFor, act } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import TrusteeAttorneyAssignmentModal from './TrusteeAttorneyAssignmentModal';
 import useApi2 from '@/lib/hooks/UseApi2';
@@ -10,6 +9,7 @@ import { TrusteeOversightAssignment } from '@common/cams/trustees';
 import { CamsRole, OversightRole } from '@common/cams/roles';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { TrusteeAttorneyAssignmentModalRef } from './TrusteeAttorneyAssignmentModal';
+import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
 // TODO: Remove the use of vi.mock()
 vi.mock('@/lib/hooks/UseApi2');
@@ -51,6 +51,8 @@ vi.mock('@/lib/components/combobox/ComboBox', () => {
 });
 
 describe('TrusteeAttorneyAssignmentModal', () => {
+  let userEvent: CamsUserEvent;
+
   const defaultProps = {
     modalId: 'test-modal',
     trusteeId: 'trustee-123',
@@ -120,6 +122,7 @@ describe('TrusteeAttorneyAssignmentModal', () => {
   };
 
   beforeEach(() => {
+    userEvent = TestingUtilities.setupUserEvent();
     vi.clearAllMocks();
     (useApi2 as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockApiMethods);
     (useGlobalAlert as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockGlobalAlert);

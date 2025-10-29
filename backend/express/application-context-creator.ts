@@ -34,12 +34,10 @@ export function expressToCamsHttpRequest<B = unknown>(request: Request): CamsHtt
       if (typeof value === 'string') {
         headers[key] = value;
       } else if (Array.isArray(value)) {
-        headers[key] = value[0] || '';
+        headers[key] = value.join(', ');
       }
     });
 
-    // Build full URL from Express request
-    // Azure Functions provide full URLs, but Express only provides the path
     const protocol = request.secure ? 'https' : 'http';
     const host = request.get('host') || 'localhost:7071';
     const fullUrl = `${protocol}://${host}${request.url}`;

@@ -79,7 +79,7 @@ function ShowTrusteeContactHistory(props: ShowTrusteeContactHistoryProps) {
   );
 }
 
-function BankList({ banks }: { banks?: string[] }) {
+function BankList({ banks }: Readonly<{ banks?: string[] }>) {
   if (!banks || banks.length === 0) {
     return <>(none)</>;
   }
