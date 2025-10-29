@@ -1,6 +1,5 @@
 import * as dotenv from 'dotenv';
-import * as express from 'express';
-import { Application, Request, Response, NextFunction } from 'express';
+import express, { Application, Request, Response, NextFunction } from 'express';
 import { applicationContextCreator } from './application-context-creator';
 import { sendCamsResponse, errorHandler } from './adapters';
 import { ApplicationContext } from '../lib/adapters/types/basic';
