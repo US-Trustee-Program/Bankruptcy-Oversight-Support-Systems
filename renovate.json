@@ -14,6 +14,13 @@
   "semanticCommits": "disabled",
   "packageRules": [
     {
+      "description": "Automatically pin dependency ranges to exact versions",
+      "matchUpdateTypes": ["pin"],
+      "enabled": true,
+      "groupName": "Pin dependencies to exact versions",
+      "groupSlug": "pin-dependencies"
+    },
+    {
       "description": "Block updates for pinned packages",
       "matchPackageNames": ["@types/mssql"],
       "enabled": false
