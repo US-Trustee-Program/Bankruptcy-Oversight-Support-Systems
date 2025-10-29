@@ -110,7 +110,7 @@ export class TrusteeAssignmentsController implements CamsController {
 
     return httpSuccess({
       statusCode: wasCreated ? 201 : 204,
-      body: undefined, // No response body for either case
+      body: undefined,
     });
   }
 }

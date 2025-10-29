@@ -20,7 +20,6 @@ vi.mock('../modals/TrusteeAttorneyAssignmentModal', () => {
           hide: vi.fn(),
         }));
 
-        // Add a test button to trigger the onAssignment callback for testing
         return props.onAssignment ? (
           <button
             data-testid="mock-assignment-created-trigger"
@@ -75,8 +74,6 @@ describe('AttorneyAssignmentSection', () => {
     const defaults = {
       trusteeId: 'trustee-123',
       assignments: [] as TrusteeOversightAssignment[],
-      // ensure the mock has the correct signature for TypeScript
-      // component expects a no-arg callback when assignment changes
       onAssignmentChange: vi.fn() as unknown as () => void,
       isLoading: false,
     } as const;

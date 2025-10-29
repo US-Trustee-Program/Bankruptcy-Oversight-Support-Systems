@@ -109,19 +109,15 @@ export class TrusteeAssignmentsUseCase {
       );
 
       if (existingAttorneyAssignment) {
-        // Handle idempotent request - return false if same attorney
         if (existingAttorneyAssignment.user.id === attorneyUserId) {
           context.logger.info(
             MODULE_NAME,
             `Attorney ${attorneyUserId} already assigned to trustee ${trusteeId}`,
           );
-          return false; // No change needed - idempotent
+          return false;
         }
-        // Different attorney already assigned - perform replacement
-        // Soft-delete existing by setting unassignedOn and audit fields, then create new assignment and history
         const trusteeManager = getCamsUserReference(context.session.user);
 
-        // Update existing assignment to mark unassigned
         const before = {
           user: existingAttorneyAssignment.user,
           role: existingAttorneyAssignment.role,
@@ -134,13 +130,11 @@ export class TrusteeAssignmentsUseCase {
           updatedBy: trusteeManager,
         };
 
-        // perform the update
         await this.trusteesRepository.updateTrusteeOversightAssignment(
           existingAttorneyAssignment.id,
           unassignedUpdate,
         );
 
-        // Now get assignee user data for new assignment
         const userGroupGateway = await getUserGroupGateway(context);
         const assigneeUser = await userGroupGateway.getUserById(context, attorneyUserId);
 
@@ -149,7 +143,6 @@ export class TrusteeAssignmentsUseCase {
           role: OversightRole.OversightAttorney,
         };
 
-        // Create new assignment
         await this.trusteesRepository.createTrusteeOversightAssignment(
           createAuditRecord<TrusteeOversightAssignment>(
             {
@@ -160,7 +153,6 @@ export class TrusteeAssignmentsUseCase {
           ),
         );
 
-        // Create history with before and after
         await this.trusteesRepository.createTrusteeHistory(
           createAuditRecord<TrusteeOversightHistory>(
             {
@@ -173,7 +165,7 @@ export class TrusteeAssignmentsUseCase {
           ),
         );
 
-        return true; // Assignment was replaced
+        return true;
       }
 
       const userGroupGateway = await getUserGroupGateway(context);
@@ -207,7 +199,7 @@ export class TrusteeAssignmentsUseCase {
         ),
       );
 
-      return true; // New assignment was created
+      return true;
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }

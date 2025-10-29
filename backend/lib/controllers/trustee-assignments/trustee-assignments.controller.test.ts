@@ -139,12 +139,12 @@ describe('TrusteeAssignmentsController', () => {
         'user-789',
       );
       expect(response.statusCode).toBe(201);
-      expect(response.body).toBeUndefined(); // No body for 201 response
+      expect(response.body).toBeUndefined();
     });
 
     test('should return 204 for idempotent attorney assignment request', async () => {
       const requestBody = { userId: 'user-789' };
-      mockUseCase.assignAttorneyToTrustee.mockResolvedValue(false); // Returns false for idempotent
+      mockUseCase.assignAttorneyToTrustee.mockResolvedValue(false);
 
       context.request.method = 'POST';
       context.request.params = { trusteeId: 'trustee-456' };
@@ -159,7 +159,7 @@ describe('TrusteeAssignmentsController', () => {
         'user-789',
       );
       expect(response.statusCode).toBe(204);
-      expect(response.body).toBeUndefined(); // No body for 204 response
+      expect(response.body).toBeUndefined();
     });
 
     test('should throw BadRequestError when request body is missing', async () => {
@@ -230,7 +230,7 @@ describe('TrusteeAssignmentsController', () => {
 
     test('POST should successfully process assignment creation', async () => {
       const requestBody = { userId: 'user-789' };
-      mockUseCase.assignAttorneyToTrustee.mockResolvedValue(true); // Returns true for creation
+      mockUseCase.assignAttorneyToTrustee.mockResolvedValue(true);
 
       context.request.method = 'POST';
       context.request.params = { trusteeId: 'trustee-456' };
@@ -240,7 +240,7 @@ describe('TrusteeAssignmentsController', () => {
       const response = await controller.handleRequest(context);
 
       expect(response.statusCode).toBe(201);
-      expect(response.body).toBeUndefined(); // No body for POST responses
+      expect(response.body).toBeUndefined();
     });
 
     test('should handle missing trusteeId parameter', async () => {

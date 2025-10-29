@@ -245,7 +245,7 @@ describe('TrusteeAssignmentsUseCase', () => {
           'attorney-456',
         );
 
-        expect(result).toBe(false); // Should return false for idempotent case
+        expect(result).toBe(false);
         expect(context.logger.info).toHaveBeenCalledWith(
           'TRUSTEE-ASSIGNMENTS-USE-CASE',
           'Attorney attorney-456 already assigned to trustee trustee-789',
@@ -295,7 +295,7 @@ describe('TrusteeAssignmentsUseCase', () => {
         );
         expect(mockTrusteesRepository.createTrusteeOversightAssignment).toHaveBeenCalled();
         expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalled();
-        expect(result).toBe(true); // Should return true for replacement
+        expect(result).toBe(true);
       });
 
       test('should proceed with assignment when no existing attorney assignment exists', async () => {
@@ -316,7 +316,7 @@ describe('TrusteeAssignmentsUseCase', () => {
           'attorney-456',
         );
 
-        expect(result).toBe(true); // Should return true for new assignment
+        expect(result).toBe(true);
         expect(mockTrusteesRepository.createTrusteeOversightAssignment).toHaveBeenCalled();
       });
     });
@@ -342,7 +342,7 @@ describe('TrusteeAssignmentsUseCase', () => {
         expect(mockUserGroupGateway.getUserById).toHaveBeenCalledWith(context, 'attorney-456');
         expect(mockTrusteesRepository.createTrusteeOversightAssignment).toHaveBeenCalled();
         expect(mockTrusteesRepository.createTrusteeHistory).toHaveBeenCalled();
-        expect(result).toBe(true); // Should return true for new assignment
+        expect(result).toBe(true);
       });
 
       test('should create audit record with correct structure', async () => {

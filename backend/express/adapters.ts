@@ -3,9 +3,6 @@ import { CamsHttpResponseInit } from '../lib/adapters/utils/http-response';
 import { getCamsError } from '../lib/common-errors/error-utilities';
 import { LoggerImpl } from '../lib/adapters/services/logger.service';
 
-/**
- * Convert CAMS HTTP response to Express response
- */
 export function sendCamsResponse<T extends object = undefined>(
   res: Response,
   camsResponse: CamsHttpResponseInit<T>,
@@ -26,21 +23,15 @@ export function sendCamsResponse<T extends object = undefined>(
   }
 }
 
-/**
- * Express error handling middleware
- * Must be registered last in middleware chain
- */
 export function errorHandler(
   error: Error,
   _req: Request,
   res: Response,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  next: NextFunction,
+  _next: NextFunction,
 ): void {
   const MODULE_NAME = 'EXPRESS-ERROR-HANDLER';
   const camsError = getCamsError(error, MODULE_NAME);
 
-  // Create a simple logger for error handling
   const logger = new LoggerImpl(`error-${Date.now()}`, console.log);
   logger.camsError(camsError);
 

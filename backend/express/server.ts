@@ -34,7 +34,6 @@ dotenv.config();
 
 const PORT = process.env.PORT || 7071;
 
-// Helper function for healthcheck
 export function checkResults(...results: boolean[]) {
   for (const i in results) {
     if (!results[i]) {
@@ -47,14 +46,12 @@ export function checkResults(...results: boolean[]) {
 export function createApp(): Application {
   const app = express();
 
-  // CORS middleware
   app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
 
-    // Handle preflight OPTIONS requests
     if (req.method === 'OPTIONS') {
       return res.status(204).end();
     }
@@ -62,10 +59,8 @@ export function createApp(): Application {
     next();
   });
 
-  // Parse JSON bodies
   app.use(express.json());
 
-  // Register routes
   app.get('/api/me', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const context = await applicationContextCreator(req);
@@ -78,7 +73,6 @@ export function createApp(): Application {
     }
   });
 
-  // Cases endpoint - handles both GET and POST with optional caseId
   const handleCases = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const context = await applicationContextCreator(req);
@@ -96,7 +90,6 @@ export function createApp(): Application {
   app.post('/api/cases', handleCases);
   app.post('/api/cases/:caseId', handleCases);
 
-  // Case assignments endpoint - handles GET, POST, PUT, DELETE with optional id
   const handleCaseAssignments = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const context = await applicationContextCreator(req);
@@ -118,7 +111,6 @@ export function createApp(): Application {
   app.delete('/api/case-assignments', handleCaseAssignments);
   app.delete('/api/case-assignments/:id', handleCaseAssignments);
 
-  // Case docket endpoint - GET only with caseId required
   const handleCaseDocket = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const context = await applicationContextCreator(req);
@@ -133,7 +125,6 @@ export function createApp(): Application {
 
   app.get('/api/cases/:caseId/docket', handleCaseDocket);
 
-  // Case history endpoint - GET only with id (caseId)
   const handleCaseHistory = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const context = await applicationContextCreator(req);
@@ -148,7 +139,6 @@ export function createApp(): Application {
 
   app.get('/api/cases/:id/history', handleCaseHistory);
 
-  // Case notes endpoint - GET, POST, PUT, DELETE with caseId required and optional noteId/userId
   const handleCaseNotes = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const context = await applicationContextCreator(req);
@@ -176,7 +166,6 @@ export function createApp(): Application {
   app.delete('/api/cases/:caseId/notes/:noteId', handleCaseNotes);
   app.delete('/api/cases/:caseId/notes/:noteId/:userId', handleCaseNotes);
 
-  // Case summary endpoint - GET only with optional caseId
   const handleCaseSummary = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const context = await applicationContextCreator(req);
@@ -192,7 +181,6 @@ export function createApp(): Application {
   app.get('/api/cases/summary', handleCaseSummary);
   app.get('/api/cases/:caseId/summary', handleCaseSummary);
 
-  // Case associated endpoint - GET only with optional caseId
   const handleCaseAssociated = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const context = await applicationContextCreator(req);
@@ -208,7 +196,6 @@ export function createApp(): Application {
   app.get('/api/cases/associated', handleCaseAssociated);
   app.get('/api/cases/:caseId/associated', handleCaseAssociated);
 
-  // Orders endpoint - GET and PATCH with optional id
   const handleOrders = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const context = await applicationContextCreator(req);
@@ -226,7 +213,6 @@ export function createApp(): Application {
   app.patch('/api/orders', handleOrders);
   app.patch('/api/orders/:id', handleOrders);
 
-  // Orders suggestions endpoint - GET only with optional caseId
   const handleOrdersSuggestions = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const context = await applicationContextCreator(req);
@@ -242,7 +228,6 @@ export function createApp(): Application {
   app.get('/api/orders-suggestions', handleOrdersSuggestions);
   app.get('/api/orders-suggestions/:caseId', handleOrdersSuggestions);
 
-  // Consolidations endpoint - PUT only with procedure parameter
   const handleConsolidations = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const context = await applicationContextCreator(req);
@@ -257,7 +242,6 @@ export function createApp(): Application {
 
   app.put('/api/consolidations/:procedure', handleConsolidations);
 
-  // Trustees endpoint - GET, POST, PATCH with optional id
   const handleTrustees = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const context = await applicationContextCreator(req);
@@ -277,7 +261,6 @@ export function createApp(): Application {
   app.patch('/api/trustees', handleTrustees);
   app.patch('/api/trustees/:id', handleTrustees);
 
-  // Trustee assignments endpoint - GET, POST with trusteeId required
   const handleTrusteeAssignments = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const context = await applicationContextCreator(req);
@@ -293,7 +276,6 @@ export function createApp(): Application {
   app.get('/api/trustees/:trusteeId/oversight-assignments', handleTrusteeAssignments);
   app.post('/api/trustees/:trusteeId/oversight-assignments', handleTrusteeAssignments);
 
-  // Trustee history endpoint - GET only with optional trusteeId
   const handleTrusteeHistory = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const context = await applicationContextCreator(req);
@@ -309,7 +291,6 @@ export function createApp(): Application {
   app.get('/api/trustees/history', handleTrusteeHistory);
   app.get('/api/trustees/:trusteeId/history', handleTrusteeHistory);
 
-  // Offices endpoint - GET only with optional officeCode and subResource
   const handleOffices = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const context = await applicationContextCreator(req);
@@ -326,7 +307,6 @@ export function createApp(): Application {
   app.get('/api/offices/:officeCode', handleOffices);
   app.get('/api/offices/:officeCode/:subResource', handleOffices);
 
-  // Courts endpoint - GET only
   const handleCourts = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const context = await applicationContextCreator(req);
@@ -341,7 +321,6 @@ export function createApp(): Application {
 
   app.get('/api/courts', handleCourts);
 
-  // Staff endpoint - GET only
   const handleStaff = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const context = await applicationContextCreator(req);
@@ -356,7 +335,6 @@ export function createApp(): Application {
 
   app.get('/api/staff', handleStaff);
 
-  // Lists endpoint - GET, POST, DELETE with listName required and optional id
   const handleLists = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const context = await applicationContextCreator(req);
@@ -376,7 +354,6 @@ export function createApp(): Application {
   app.delete('/api/lists/:listName', handleLists);
   app.delete('/api/lists/:listName/:id', handleLists);
 
-  // Privileged identity admin endpoint - GET, PUT, DELETE with optional resourceId
   const handlePrivilegedIdentityAdmin = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const context = await applicationContextCreator(req);
@@ -396,7 +373,6 @@ export function createApp(): Application {
   app.delete('/api/dev-tools/privileged-identity', handlePrivilegedIdentityAdmin);
   app.delete('/api/dev-tools/privileged-identity/:resourceId', handlePrivilegedIdentityAdmin);
 
-  // OAuth2 mock endpoint - POST only
   app.post('/api/oauth2/default', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const context = await applicationContextCreator(req);
@@ -411,7 +387,6 @@ export function createApp(): Application {
     }
   });
 
-  // Healthcheck endpoint - GET only
   app.get('/api/healthcheck', async (req: Request, res: Response, next: NextFunction) => {
     try {
       const context = await applicationContextCreator(req);
@@ -467,7 +442,6 @@ export function createApp(): Application {
     }
   });
 
-  // Error handler must be registered last
   app.use(errorHandler);
 
   return app;
@@ -478,7 +452,6 @@ export function startServer(app: Application, port: number = Number(PORT)): void
     console.log(`Express server listening on port ${port}`);
   });
 
-  // Handle graceful shutdown
   const shutdown = (signal: string) => {
     console.log(`\nReceived ${signal}, shutting down gracefully...`);
     server.close(() => {
@@ -486,7 +459,6 @@ export function startServer(app: Application, port: number = Number(PORT)): void
       process.exit(0);
     });
 
-    // Force shutdown after 10 seconds
     setTimeout(() => {
       console.error('Forcing shutdown after timeout');
       process.exit(1);
@@ -497,7 +469,6 @@ export function startServer(app: Application, port: number = Number(PORT)): void
   process.on('SIGTERM', () => shutdown('SIGTERM'));
 }
 
-// Start server if this file is run directly
 if (require.main === module) {
   const app = createApp();
   startServer(app);
