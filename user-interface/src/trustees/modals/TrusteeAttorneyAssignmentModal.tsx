@@ -116,7 +116,7 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
             <ComboBox
               id="attorney-search"
               name="attorney-search"
-              label="Search for attorney name to assign to this Trustee"
+              label="Search for attorney to assign to this Trustee"
               options={attorneys.map((attorney) => ({
                 value: attorney.id,
                 label: attorney.name,
@@ -136,7 +136,6 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
                 }
               }}
               placeholder="Search for an attorney..."
-              required
             />
           </div>
         </>
@@ -152,7 +151,7 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
     modalId: props.modalId,
     modalRef: modalRef,
     submitButton: {
-      label: isEditMode ? 'Update Attorney' : 'Add Attorney',
+      label: isEditMode ? 'Edit Attorney' : 'Add Attorney',
       disabled: !selectedAttorney || isAssigning,
       onClick: handleAssignAttorney,
       closeOnClick: false,
@@ -168,7 +167,7 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
     <Modal
       ref={modalRef}
       modalId={props.modalId}
-      heading={isEditMode ? 'Edit Attorney Assignment' : 'Add Attorney'}
+      heading={isEditMode ? 'Edit Attorney' : 'Add Attorney'}
       content={modalContent}
       actionButtonGroup={actionButtonGroup}
     />
