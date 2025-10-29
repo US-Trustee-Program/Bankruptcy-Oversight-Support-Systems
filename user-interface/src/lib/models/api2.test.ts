@@ -465,18 +465,15 @@ function sum(...values: number[]) {
   }, 0);
 }
 
-async function callApiFunction<F extends (...args: unknown[]) => unknown>(
-  fn: F,
-  args: Parameters<F>[0] | undefined,
-  api: ApiType,
-) {
+/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+async function callApiFunction(fn: (args: any) => unknown, args: unknown, api: ApiType) {
   const stuff = ['some stuff'];
   const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: stuff });
   const patchSpy = vi.spyOn(api.default, 'patch').mockResolvedValue({ data: stuff });
   const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: stuff });
   const putSpy = vi.spyOn(api.default, 'put').mockResolvedValue({ data: stuff });
   const deleteSpy = vi.spyOn(api.default, 'delete').mockResolvedValue({ data: stuff });
-  await (fn as unknown as (...a: unknown[]) => unknown)(args as unknown);
+  await fn(args);
   const spyCalls = sum(
     getSpy.mock.calls.length,
     patchSpy.mock.calls.length,
