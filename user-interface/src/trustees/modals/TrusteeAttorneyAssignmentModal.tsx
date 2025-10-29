@@ -155,6 +155,7 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
       label: isEditMode ? 'Update Attorney' : 'Add Attorney',
       disabled: !selectedAttorney || isAssigning,
       onClick: handleAssignAttorney,
+      closeOnClick: false,
       uswdsStyle: UswdsButtonStyle.Default,
     },
     cancelButton: {
