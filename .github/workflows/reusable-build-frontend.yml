@@ -59,7 +59,7 @@ jobs:
           in: ${{ inputs.azResourceGrpAppEncrypted }}
 
       - name: Use Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ inputs.nodeVersion }}
           cache: 'npm'
