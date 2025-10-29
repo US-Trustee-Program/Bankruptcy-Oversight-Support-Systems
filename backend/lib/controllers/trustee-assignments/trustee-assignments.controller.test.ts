@@ -124,7 +124,7 @@ describe('TrusteeAssignmentsController', () => {
   describe('POST /api/v1/trustees/{trusteeId}/oversight-assignments', () => {
     test('should create attorney assignment with valid request', async () => {
       const requestBody = { userId: 'user-789' };
-      mockUseCase.assignAttorneyToTrustee.mockResolvedValue(true); // Returns true for creation
+      mockUseCase.assignAttorneyToTrustee.mockResolvedValue(true);
 
       context.request.method = 'POST';
       context.request.params = { trusteeId: 'trustee-456' };
