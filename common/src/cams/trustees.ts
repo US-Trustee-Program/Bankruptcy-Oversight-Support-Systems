@@ -55,7 +55,7 @@ export type TrusteeOversightAssignment = Auditable &
     trusteeId: string;
     user: CamsUserReference;
     role: OversightRole;
-    unassignedOn?: string; // ISO date string for soft delete
+    unassignedOn?: string;
   };
 
 type AbstractTrusteeHistory<B, A> = Auditable &

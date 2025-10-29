@@ -62,7 +62,6 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
       const attorneyList = response.data || [];
       setAttorneys(attorneyList);
 
-      // If editing, pre-select the current attorney
       if (currentAssignment) {
         const currentAttorney = attorneyList.find(
           (attorney) => attorney.id === currentAssignment.user.id,
@@ -80,9 +79,7 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
 
   const handleAssignAttorney = useCallback(async () => {
     if (selectedAttorney) {
-      // Check if no change was made (same attorney selected)
       if (currentAssignment && currentAssignment.user.id === selectedAttorney.id) {
-        // No change made - close modal without API call
         modalRef.current?.hide({});
         return;
       }
@@ -143,7 +140,6 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
     </div>
   );
 
-  // Determine if we're in edit mode
   const isEditMode = !!currentAssignment;
 
   // Modal configuration

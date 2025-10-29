@@ -476,8 +476,6 @@ async function callApiFunction<F extends (...args: unknown[]) => unknown>(
   const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: stuff });
   const putSpy = vi.spyOn(api.default, 'put').mockResolvedValue({ data: stuff });
   const deleteSpy = vi.spyOn(api.default, 'delete').mockResolvedValue({ data: stuff });
-  // invoke the provided api function with the single argument if present
-  // Use a safe unknown-typed cast to avoid widening to `any` in tests
   await (fn as unknown as (...a: unknown[]) => unknown)(args as unknown);
   const spyCalls = sum(
     getSpy.mock.calls.length,

@@ -178,7 +178,7 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
       const query = and(
         doc('documentType').equals('TRUSTEE_OVERSIGHT_ASSIGNMENT'),
         doc('trusteeId').equals(trusteeId),
-        doc('unassignedOn').notExists(), // Only active assignments (no unassignedOn field)
+        doc('unassignedOn').notExists(),
       );
       return await this.getAdapter<TrusteeOversightAssignmentDocument>().find(query);
     } catch (originalError) {
@@ -228,7 +228,6 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
         throw new NotFoundError(MODULE_NAME, { message: `Oversight assignment ${id} not found.` });
       }
 
-      // Return the updated assignment by reading it back
       const updated = await this.getAdapter<TrusteeOversightAssignmentDocument>().findOne(query);
 
       return updated;
