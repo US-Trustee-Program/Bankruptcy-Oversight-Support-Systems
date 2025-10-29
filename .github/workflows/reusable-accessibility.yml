@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Install chrome
-        uses: browser-actions/setup-chrome@v1
+        uses: browser-actions/setup-chrome@v2
 
       - name: Get source code
         uses: actions/checkout@v3
@@ -51,7 +51,7 @@ jobs:
       CI: true
     steps:
       - name: Install chrome
-        uses: browser-actions/setup-chrome@v1
+        uses: browser-actions/setup-chrome@v2
       - name: Get source code
         uses: actions/checkout@v3
       - uses: actions/setup-node@v3
