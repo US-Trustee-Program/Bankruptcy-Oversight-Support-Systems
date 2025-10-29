@@ -23,7 +23,7 @@ jobs:
         uses: browser-actions/setup-chrome@v1
 
       - name: Get source code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
 
       - name: Use Node.js
         uses: actions/setup-node@v3
@@ -53,7 +53,7 @@ jobs:
       - name: Install chrome
         uses: browser-actions/setup-chrome@v1
       - name: Get source code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
       - uses: actions/setup-node@v3
         with:
           node-version: ${{ inputs.node-version }}

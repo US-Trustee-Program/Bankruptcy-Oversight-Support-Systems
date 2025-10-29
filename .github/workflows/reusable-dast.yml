@@ -33,7 +33,7 @@ jobs:
       priority: 201
     steps:
       - name: Get source code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
 
       - uses: azure/login@v2
         with:

@@ -73,7 +73,7 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
       - name: Delete Branch Resources
         uses: azure/cli@v2
         id: deleteBranchResourcues

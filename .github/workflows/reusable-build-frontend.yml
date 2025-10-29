@@ -44,7 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
 
       - uses: azure/login@v2
         with:
