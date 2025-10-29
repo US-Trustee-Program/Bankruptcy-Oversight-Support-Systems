@@ -32,15 +32,10 @@ import { closeDeferred } from '../lib/deferrable/defer-close';
 
 dotenv.config();
 
-const PORT = process.env.PORT || 7071;
+const PORT = Number.parseInt(process.env.PORT) || 7071;
 
 export function checkResults(...results: boolean[]) {
-  for (const i in results) {
-    if (!results[i]) {
-      return false;
-    }
-  }
-  return true;
+  return results.every((result) => result);
 }
 
 export function createApp(): Application {
