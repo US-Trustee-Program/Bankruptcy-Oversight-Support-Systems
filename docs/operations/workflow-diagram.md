@@ -297,9 +297,9 @@ flowchart LR
         Workflow_Inputs["Workflow Inputs"]
         Workflow_Inputs_enableBicepDeployment["enableBicepDeployment"]
         Variables["Variables"]
-        Variables_CAMS_LAUNCH_DARKLY_ENV["CAMS_LAUNCH_DARKLY_ENV"]
-        Variables_NODE_VERSION["NODE_VERSION"]
         Variables_CAMS_BASE_PATH["CAMS_BASE_PATH"]
+        Variables_NODE_VERSION["NODE_VERSION"]
+        Variables_CAMS_LAUNCH_DARKLY_ENV["CAMS_LAUNCH_DARKLY_ENV"]
         Variables_CAMS_SERVER_PORT["CAMS_SERVER_PORT"]
         Variables_CAMS_SERVER_PROTOCOL["CAMS_SERVER_PROTOCOL"]
     end
@@ -385,14 +385,14 @@ This diagram shows the explicit and implicit dependencies between jobs in the de
 flowchart LR
     subgraph "External Inputs"
         Workflow_Inputs["Workflow Inputs"]
-        Workflow_Inputs_environmentHash["environmentHash"]
-        Workflow_Inputs_stackName["stackName"]
-        Workflow_Inputs_apiFunctionName["apiFunctionName"]
-        Workflow_Inputs_webappName["webappName"]
-        Workflow_Inputs_ghaEnvironment["ghaEnvironment"]
-        Workflow_Inputs_dataflowsFunctionName["dataflowsFunctionName"]
-        Workflow_Inputs_azResourceGrpAppEncrypted["azResourceGrpAppEncrypted"]
         Workflow_Inputs_slotName["slotName"]
+        Workflow_Inputs_azResourceGrpAppEncrypted["azResourceGrpAppEncrypted"]
+        Workflow_Inputs_ghaEnvironment["ghaEnvironment"]
+        Workflow_Inputs_webappName["webappName"]
+        Workflow_Inputs_stackName["stackName"]
+        Workflow_Inputs_environmentHash["environmentHash"]
+        Workflow_Inputs_dataflowsFunctionName["dataflowsFunctionName"]
+        Workflow_Inputs_apiFunctionName["apiFunctionName"]
     end
 
     subgraph sub_deploy_code_slot_workflow["Deploy code for slot"]
@@ -503,7 +503,6 @@ Workflows triggered by `schedule`:
 - **Veracode Static Analysis Scan** (`veracode-sast-upload.yml`)
 - **Build Custom Azure CLI Runner Image** (`build-azure-cli-image.yml`)
 - **Stand Alone DAST Scan** (`dast-scan.yml`)
-- **NPM Package Updates** (`update-dependencies.yml`)
 
 ```mermaid
 flowchart LR
@@ -521,8 +520,6 @@ flowchart LR
     dast_scan_yml_execute_dast_scan["execute-dast-scan"]
     reusable_dast_yml["reusable-dast.yml"]
     reusable_dast_yml_zap_dast_scan["zap-dast-scan"]
-    update_dependencies_yml["NPM Package Updates"]
-    update_dependencies_yml_update_all["Update all NPM projects"]
 
     trigger_schedule --> veracode_dast_scan_yml
     veracode_dast_scan_yml --> veracode_dast_scan_yml_dast_scan
@@ -537,8 +534,6 @@ flowchart LR
     dast_scan_yml --> dast_scan_yml_execute_dast_scan
     reusable_dast_yml --> reusable_dast_yml_zap_dast_scan
     dast_scan_yml_execute_dast_scan --> reusable_dast_yml
-    trigger_schedule --> update_dependencies_yml
-    update_dependencies_yml --> update_dependencies_yml_update_all
 
     classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
     classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
@@ -559,8 +554,6 @@ flowchart LR
     class dast_scan_yml_execute_dast_scan job
     class reusable_dast_yml reusable
     class reusable_dast_yml_zap_dast_scan job
-    class update_dependencies_yml mainWorkflow
-    class update_dependencies_yml_update_all job
 ```
 
 ### Workflow_call Triggered Workflows
@@ -890,9 +883,9 @@ flowchart LR
         Workflow_Inputs["Workflow Inputs"]
         Workflow_Inputs_enableBicepDeployment["enableBicepDeployment"]
         Variables["Variables"]
-        Variables_CAMS_LAUNCH_DARKLY_ENV["CAMS_LAUNCH_DARKLY_ENV"]
-        Variables_NODE_VERSION["NODE_VERSION"]
         Variables_CAMS_BASE_PATH["CAMS_BASE_PATH"]
+        Variables_NODE_VERSION["NODE_VERSION"]
+        Variables_CAMS_LAUNCH_DARKLY_ENV["CAMS_LAUNCH_DARKLY_ENV"]
         Variables_CAMS_SERVER_PORT["CAMS_SERVER_PORT"]
         Variables_CAMS_SERVER_PROTOCOL["CAMS_SERVER_PROTOCOL"]
     end
@@ -978,14 +971,14 @@ This diagram shows the explicit and implicit dependencies between jobs in the de
 flowchart LR
     subgraph "External Inputs"
         Workflow_Inputs["Workflow Inputs"]
-        Workflow_Inputs_environmentHash["environmentHash"]
-        Workflow_Inputs_stackName["stackName"]
-        Workflow_Inputs_apiFunctionName["apiFunctionName"]
-        Workflow_Inputs_webappName["webappName"]
-        Workflow_Inputs_ghaEnvironment["ghaEnvironment"]
-        Workflow_Inputs_dataflowsFunctionName["dataflowsFunctionName"]
-        Workflow_Inputs_azResourceGrpAppEncrypted["azResourceGrpAppEncrypted"]
         Workflow_Inputs_slotName["slotName"]
+        Workflow_Inputs_azResourceGrpAppEncrypted["azResourceGrpAppEncrypted"]
+        Workflow_Inputs_ghaEnvironment["ghaEnvironment"]
+        Workflow_Inputs_webappName["webappName"]
+        Workflow_Inputs_stackName["stackName"]
+        Workflow_Inputs_environmentHash["environmentHash"]
+        Workflow_Inputs_dataflowsFunctionName["dataflowsFunctionName"]
+        Workflow_Inputs_apiFunctionName["apiFunctionName"]
     end
 
     subgraph sub_deploy_code_slot_workflow["Deploy code for slot"]
@@ -1280,7 +1273,6 @@ flowchart LR
     veracode_sast_upload_yml["Veracode Static Analysis Scan"]
     build_azure_cli_image_yml["Build Custom Azure CLI Runner Image"]
     dast_scan_yml["Stand Alone DAST Scan"]
-    update_dependencies_yml["NPM Package Updates"]
     trigger_push(["push"])
     continuous_deployment_yml["Continuous Deployment"]
     trigger_workflow_run(["workflow_run"])
@@ -1300,7 +1292,6 @@ flowchart LR
     trigger_schedule --> veracode_sast_upload_yml
     trigger_schedule --> build_azure_cli_image_yml
     trigger_schedule --> dast_scan_yml
-    trigger_schedule --> update_dependencies_yml
     trigger_push --> continuous_deployment_yml
     trigger_workflow_run --> slack_notification_yml
 
@@ -1353,7 +1344,7 @@ flowchart LR
   - Triggers: schedule, workflow_dispatch
   - Jobs: 2
 - **NPM Package Updates** (`update-dependencies.yml`)
-  - Triggers: schedule, workflow_dispatch
+  - Triggers: workflow_dispatch
   - Jobs: 1
 - **slack-notification** (`slack-notification.yml`)
   - Triggers: workflow_run
