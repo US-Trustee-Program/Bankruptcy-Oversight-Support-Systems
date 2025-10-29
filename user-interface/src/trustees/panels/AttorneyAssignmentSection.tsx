@@ -48,7 +48,7 @@ export default function AttorneyAssignmentSection(props: Readonly<AttorneyAssign
       {attorneyAssignment ? (
         <div className="record-detail-card">
           <div className="title-bar">
-            <h3>Attorney Assignment</h3>
+            <h3>Attorney</h3>
             <Button
               uswdsStyle={UswdsButtonStyle.Unstyled}
               aria-label="Edit trustee's assigned attorney"
