@@ -55,6 +55,7 @@ export type TrusteeOversightAssignment = Auditable &
     trusteeId: string;
     user: CamsUserReference;
     role: OversightRole;
+    unassignedOn?: string;
   };
 
 type AbstractTrusteeHistory<B, A> = Auditable &

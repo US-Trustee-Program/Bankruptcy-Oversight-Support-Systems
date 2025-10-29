@@ -15,6 +15,7 @@ import {
 } from '@common/cams/trustees';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
 import { Auditable } from '@common/cams/auditable';
+import { CamsRole } from '@common/cams/roles';
 
 export interface TrusteeDetailAuditHistoryProps {
   trusteeId: string;
@@ -78,7 +79,7 @@ function ShowTrusteeContactHistory(props: ShowTrusteeContactHistoryProps) {
   );
 }
 
-function BankList({ banks }: { banks?: string[] }) {
+function BankList({ banks }: Readonly<{ banks?: string[] }>) {
   if (!banks || banks.length === 0) {
     return <>(none)</>;
   }
@@ -148,9 +149,13 @@ type ShowTrusteeOversightHistoryProps = Readonly<{
 function ShowTrusteeOversightHistory(props: ShowTrusteeOversightHistoryProps) {
   const { history, idx } = props;
 
+  const roleDisplayMap = {
+    [CamsRole.TrialAttorney]: 'Trial Attorney',
+  };
+
   const before = history.before ? (
     <>
-      {history.before.role}
+      {roleDisplayMap[history.before.role] || history.before.role}
       <br />
       {history.before.user.name}
     </>
@@ -159,7 +164,7 @@ function ShowTrusteeOversightHistory(props: ShowTrusteeOversightHistoryProps) {
   );
   const after = history.after ? (
     <>
-      {history.after.role}
+      {roleDisplayMap[history.after.role] || history.after.role}
       <br />
       {history.after.user.name}
     </>

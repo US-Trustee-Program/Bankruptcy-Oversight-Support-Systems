@@ -23,7 +23,7 @@ export class TrusteeAssignmentsController implements CamsController {
 
   public async handleRequest(
     context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<TrusteeOversightAssignment | TrusteeOversightAssignment[]>> {
+  ): Promise<CamsHttpResponseInit<TrusteeOversightAssignment[] | undefined>> {
     if (!context.featureFlags['trustee-management']) {
       throw new NotFoundError(MODULE_NAME);
     }
@@ -78,7 +78,7 @@ export class TrusteeAssignmentsController implements CamsController {
 
   private async createOversightAssignment(
     context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<TrusteeOversightAssignment>> {
+  ): Promise<CamsHttpResponseInit<undefined>> {
     const trusteeId = context.request.params['trusteeId'];
     const { body } = context.request;
 
@@ -102,20 +102,15 @@ export class TrusteeAssignmentsController implements CamsController {
       });
     }
 
-    const assignment = await this.useCase.assignAttorneyToTrustee(
+    const wasCreated = await this.useCase.assignAttorneyToTrustee(
       context,
       trusteeId,
       requestData.userId,
     );
 
     return httpSuccess({
-      statusCode: 201,
-      body: {
-        meta: {
-          self: `${context.request.url}/${assignment.id}`,
-        },
-        data: assignment,
-      },
+      statusCode: wasCreated ? 201 : 204,
+      body: undefined,
     });
   }
 }

@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import { Trustee } from '@common/cams/trustees';
 import { useTrusteeAssignments } from '@/trustees/modals/UseTrusteeAssignments';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import AttorneyAssignmentSection from './AttorneyAssignmentSection';
@@ -7,10 +6,10 @@ import './TrusteeAssignedStaff.scss';
 
 interface TrusteeAssignedStaffProps {
   trusteeId: string;
-  trustee: Trustee;
 }
 
-export default function TrusteeAssignedStaff({ trusteeId }: TrusteeAssignedStaffProps) {
+export default function TrusteeAssignedStaff(props: Readonly<TrusteeAssignedStaffProps>) {
+  const { trusteeId } = props;
   const { assignments, isLoading, error, getTrusteeOversightAssignments } = useTrusteeAssignments();
 
   useEffect(() => {

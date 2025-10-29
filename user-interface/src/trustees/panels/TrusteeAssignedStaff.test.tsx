@@ -2,7 +2,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { vi, describe, test, expect, beforeEach, MockedFunction } from 'vitest';
 import TrusteeAssignedStaff from './TrusteeAssignedStaff';
 import { useTrusteeAssignments } from '@/trustees/modals/UseTrusteeAssignments';
-import { Trustee, TrusteeOversightAssignment } from '@common/cams/trustees';
+import { TrusteeOversightAssignment } from '@common/cams/trustees';
 import { OversightRole } from '@common/cams/roles';
 
 vi.mock('@/trustees/modals/UseTrusteeAssignments', () => ({
@@ -25,25 +25,6 @@ vi.mock('./AttorneyAssignmentSection', () => ({
 }));
 
 describe('TrusteeAssignedStaff', () => {
-  const mockTrustee: Trustee = {
-    id: 'trustee-123',
-    trusteeId: '123',
-    name: 'Test Trustee Name',
-    public: {
-      address: {
-        address1: '123 Main St',
-        city: 'Test City',
-        state: 'TS',
-        zipCode: '12345',
-        countryCode: 'US',
-      },
-      phone: { number: '555-123-4567' },
-      email: 'test@example.com',
-    },
-    updatedBy: { id: 'user-1', name: 'Test User' },
-    updatedOn: '2023-01-01T00:00:00.000Z',
-  };
-
   const mockAssignments: TrusteeOversightAssignment[] = [
     {
       id: 'assignment-1',
@@ -83,13 +64,13 @@ describe('TrusteeAssignedStaff', () => {
   });
 
   test('should render component with correct structure', () => {
-    render(<TrusteeAssignedStaff trusteeId="trustee-123" trustee={mockTrustee} />);
+    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
 
     expect(screen.getByTestId('attorney-assignment-section')).toBeInTheDocument();
   });
 
   test('should call getTrusteeOversightAssignments on mount with correct trusteeId', () => {
-    render(<TrusteeAssignedStaff trusteeId="trustee-123" trustee={mockTrustee} />);
+    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
 
     expect(mockUseTrusteeAssignments.getTrusteeOversightAssignments).toHaveBeenCalledWith(
       'trustee-123',
@@ -98,15 +79,13 @@ describe('TrusteeAssignedStaff', () => {
   });
 
   test('should call getTrusteeOversightAssignments again when trusteeId changes', () => {
-    const { rerender } = render(
-      <TrusteeAssignedStaff trusteeId="trustee-123" trustee={mockTrustee} />,
-    );
+    const { rerender } = render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
 
     expect(mockUseTrusteeAssignments.getTrusteeOversightAssignments).toHaveBeenCalledWith(
       'trustee-123',
     );
 
-    rerender(<TrusteeAssignedStaff trusteeId="trustee-456" trustee={mockTrustee} />);
+    rerender(<TrusteeAssignedStaff trusteeId="trustee-456" />);
 
     expect(mockUseTrusteeAssignments.getTrusteeOversightAssignments).toHaveBeenCalledWith(
       'trustee-456',
@@ -115,7 +94,7 @@ describe('TrusteeAssignedStaff', () => {
   });
 
   test('should not display error alert when there is no error', () => {
-    render(<TrusteeAssignedStaff trusteeId="trustee-123" trustee={mockTrustee} />);
+    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.queryByTestId('alert-container')).not.toBeInTheDocument();
@@ -127,7 +106,7 @@ describe('TrusteeAssignedStaff', () => {
       error: 'Failed to load assignments',
     });
 
-    render(<TrusteeAssignedStaff trusteeId="trustee-123" trustee={mockTrustee} />);
+    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
 
     expect(screen.getByRole('alert')).toBeInTheDocument();
     expect(screen.getByTestId('alert')).toHaveTextContent('Failed to load assignments');
@@ -139,7 +118,7 @@ describe('TrusteeAssignedStaff', () => {
       error: 'Failed to load assignments',
     });
 
-    render(<TrusteeAssignedStaff trusteeId="trustee-123" trustee={mockTrustee} />);
+    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
 
     expect(screen.getByTestId('alert-container')).toBeInTheDocument();
   });
@@ -151,7 +130,7 @@ describe('TrusteeAssignedStaff', () => {
       isLoading: true,
     });
 
-    render(<TrusteeAssignedStaff trusteeId="trustee-123" trustee={mockTrustee} />);
+    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
 
     const section = screen.getByTestId('attorney-assignment-section');
     expect(section).toHaveAttribute('data-trustee-id', 'trustee-123');
@@ -160,7 +139,7 @@ describe('TrusteeAssignedStaff', () => {
   });
 
   test('should refresh assignments when onAssignmentChange is called', () => {
-    render(<TrusteeAssignedStaff trusteeId="trustee-123" trustee={mockTrustee} />);
+    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
 
     mockUseTrusteeAssignments.getTrusteeOversightAssignments.mockClear();
 
@@ -174,7 +153,7 @@ describe('TrusteeAssignedStaff', () => {
   });
 
   test('should have correct container structure', () => {
-    render(<TrusteeAssignedStaff trusteeId="trustee-123" trustee={mockTrustee} />);
+    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
 
     expect(screen.getByTestId('attorney-assignment-section')).toBeInTheDocument();
 
@@ -189,7 +168,7 @@ describe('TrusteeAssignedStaff', () => {
       isLoading: true,
     });
 
-    render(<TrusteeAssignedStaff trusteeId="trustee-123" trustee={mockTrustee} />);
+    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
 
     const section = screen.getByTestId('attorney-assignment-section');
     expect(section).toHaveAttribute('data-loading', 'true');
@@ -201,7 +180,7 @@ describe('TrusteeAssignedStaff', () => {
       assignments: [],
     });
 
-    render(<TrusteeAssignedStaff trusteeId="trustee-123" trustee={mockTrustee} />);
+    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
 
     const section = screen.getByTestId('attorney-assignment-section');
     expect(section).toHaveAttribute('data-assignments-count', '0');
@@ -222,7 +201,7 @@ describe('TrusteeAssignedStaff', () => {
       assignments: multipleAssignments,
     });
 
-    render(<TrusteeAssignedStaff trusteeId="trustee-123" trustee={mockTrustee} />);
+    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
 
     const section = screen.getByTestId('attorney-assignment-section');
     expect(section).toHaveAttribute('data-assignments-count', '2');

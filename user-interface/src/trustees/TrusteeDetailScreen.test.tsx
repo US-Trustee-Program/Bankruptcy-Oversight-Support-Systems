@@ -5,7 +5,7 @@ import TrusteeDetailScreen from './TrusteeDetailScreen';
 import { Trustee } from '@common/cams/trustees';
 import { ContactInformation } from '@common/cams/contact';
 import MockData from '@common/cams/test-utilities/mock-data';
-import testingUtilities from '@/lib/testing/testing-utilities';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 import Api2 from '@/lib/models/api2';
 
 const mockOnEditPublicProfile = vi.fn();
@@ -76,7 +76,7 @@ describe('TrusteeDetailScreen', () => {
 
   beforeEach(() => {
     // Set up global alert spy
-    testingUtilities.spyOnGlobalAlert();
+    TestingUtilities.spyOnGlobalAlert();
 
     // Set up router mocks
     mockUseParams.mockReturnValue({ trusteeId: '123' });
@@ -153,7 +153,7 @@ describe('TrusteeDetailScreen', () => {
     const originalConsoleError = console.error;
     console.error = vi.fn();
 
-    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+    const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
     vi.spyOn(Api2, 'getTrustee').mockRejectedValue(new Error('API Error'));
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
 
@@ -178,6 +178,7 @@ describe('TrusteeDetailScreen', () => {
     mockUseParams.mockReturnValue({});
 
     renderWithRouter();
+    TestingUtilities.waitForDocumentBody();
 
     expect(screen.getByTestId('404-NotFound')).toBeInTheDocument();
   });

@@ -21,16 +21,18 @@ export default function AttorneyAssignmentSection(props: Readonly<AttorneyAssign
   const modalRef = useRef<TrusteeAttorneyAssignmentModalRef>(null);
   const attorneyAssignment = assignments.find((a) => a.role === OversightRole.OversightAttorney);
 
-  const handleAssignmentCreated = useCallback(
-    (_assignment: TrusteeOversightAssignment) => {
-      onAssignmentChange();
+  const handleAssignment = useCallback(
+    (isAssigned: boolean) => {
+      if (isAssigned) {
+        onAssignmentChange();
+      }
     },
     [onAssignmentChange],
   );
 
   const openAssignmentModal = useCallback(() => {
-    modalRef.current?.show();
-  }, []);
+    modalRef.current?.show(attorneyAssignment);
+  }, [attorneyAssignment]);
 
   if (isLoading) {
     return (
@@ -46,7 +48,7 @@ export default function AttorneyAssignmentSection(props: Readonly<AttorneyAssign
       {attorneyAssignment ? (
         <div className="record-detail-card">
           <div className="title-bar">
-            <h3>Attorney Assignment</h3>
+            <h3>Attorney</h3>
             <Button
               uswdsStyle={UswdsButtonStyle.Unstyled}
               aria-label="Edit trustee's assigned attorney"
@@ -83,7 +85,7 @@ export default function AttorneyAssignmentSection(props: Readonly<AttorneyAssign
         ref={modalRef}
         modalId={`assign-attorney-modal-${trusteeId}`}
         trusteeId={trusteeId}
-        onAssignmentCreated={handleAssignmentCreated}
+        onAssignment={handleAssignment}
       />
     </div>
   );

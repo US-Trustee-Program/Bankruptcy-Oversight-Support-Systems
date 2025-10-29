@@ -124,7 +124,7 @@ describe('TrusteeAssignmentsController', () => {
   describe('POST /api/v1/trustees/{trusteeId}/oversight-assignments', () => {
     test('should create attorney assignment with valid request', async () => {
       const requestBody = { userId: 'user-789' };
-      mockUseCase.assignAttorneyToTrustee.mockResolvedValue(mockAssignment);
+      mockUseCase.assignAttorneyToTrustee.mockResolvedValue(true);
 
       context.request.method = 'POST';
       context.request.params = { trusteeId: 'trustee-456' };
@@ -139,10 +139,27 @@ describe('TrusteeAssignmentsController', () => {
         'user-789',
       );
       expect(response.statusCode).toBe(201);
-      expect(response.body.data).toEqual(mockAssignment);
-      expect(response.body.meta.self).toBe(
-        '/api/v1/trustees/trustee-456/oversight-assignments/assignment-123',
+      expect(response.body).toBeUndefined();
+    });
+
+    test('should return 204 for idempotent attorney assignment request', async () => {
+      const requestBody = { userId: 'user-789' };
+      mockUseCase.assignAttorneyToTrustee.mockResolvedValue(false);
+
+      context.request.method = 'POST';
+      context.request.params = { trusteeId: 'trustee-456' };
+      context.request.body = requestBody;
+      context.request.url = '/api/v1/trustees/trustee-456/oversight-assignments';
+
+      const response = await controller.handleRequest(context);
+
+      expect(mockUseCase.assignAttorneyToTrustee).toHaveBeenCalledWith(
+        context,
+        'trustee-456',
+        'user-789',
       );
+      expect(response.statusCode).toBe(204);
+      expect(response.body).toBeUndefined();
     });
 
     test('should throw BadRequestError when request body is missing', async () => {
@@ -211,9 +228,9 @@ describe('TrusteeAssignmentsController', () => {
       expect(response.body.data[0].user.name).toBe('Attorney Smith');
     });
 
-    test('POST should return created assignment with user display name', async () => {
+    test('POST should successfully process assignment creation', async () => {
       const requestBody = { userId: 'user-789' };
-      mockUseCase.assignAttorneyToTrustee.mockResolvedValue(mockAssignment);
+      mockUseCase.assignAttorneyToTrustee.mockResolvedValue(true);
 
       context.request.method = 'POST';
       context.request.params = { trusteeId: 'trustee-456' };
@@ -221,11 +238,9 @@ describe('TrusteeAssignmentsController', () => {
       context.request.url = '/api/v1/trustees/trustee-456/oversight-assignments';
 
       const response = await controller.handleRequest(context);
-      const assignment = response.body.data as TrusteeOversightAssignment;
 
-      expect(assignment.user).toBeDefined();
-      expect(assignment.user.id).toBe('user-789');
-      expect(assignment.user.name).toBe('Attorney Smith');
+      expect(response.statusCode).toBe(201);
+      expect(response.body).toBeUndefined();
     });
 
     test('should handle missing trusteeId parameter', async () => {

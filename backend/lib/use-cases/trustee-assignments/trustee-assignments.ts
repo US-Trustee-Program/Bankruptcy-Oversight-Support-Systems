@@ -65,11 +65,11 @@ export class TrusteeAssignmentsUseCase {
 
   /**
    * Assigns an attorney to oversee a trustee. Enforces business rule of one attorney per trustee.
-   * Handles idempotent requests by returning existing assignment if same attorney is already assigned.
+   * Handles idempotent requests by returning false if same attorney is already assigned.
    * @param context - Application context containing logger and session
    * @param trusteeId - Unique identifier for the trustee
    * @param attorneyUserId - Unique identifier for the attorney to assign
-   * @returns Promise resolving to the trustee oversight assignment
+   * @returns Promise resolving to boolean - true if created/replaced, false if idempotent
    * @throws BadRequestError if validation fails or business rules are violated
    * @throws CamsError if assignment creation fails
    */
@@ -77,7 +77,7 @@ export class TrusteeAssignmentsUseCase {
     context: ApplicationContext,
     trusteeId: string,
     attorneyUserId: string,
-  ): Promise<TrusteeOversightAssignment> {
+  ): Promise<boolean> {
     if (!context.session.user.roles.includes(CamsRole.TrusteeAdmin)) {
       throw new UnauthorizedError(
         'You do not have permission to assign an attorney to oversee a trustee.',
@@ -97,29 +97,67 @@ export class TrusteeAssignmentsUseCase {
     }
 
     try {
-      // Check for existing attorney assignments
       const existingAssignments =
         await this.trusteesRepository.getTrusteeOversightAssignments(trusteeId);
 
-      // Check for existing attorney assignment
       const existingAttorneyAssignment = existingAssignments.find(
         (assignment) => assignment.role === OversightRole.OversightAttorney,
       );
 
       if (existingAttorneyAssignment) {
-        // Handle idempotent request - return existing assignment if same attorney
         if (existingAttorneyAssignment.user.id === attorneyUserId) {
-          context.logger.info(
-            MODULE_NAME,
-            `Attorney ${attorneyUserId} already assigned to trustee ${trusteeId}`,
-          );
-          return existingAttorneyAssignment;
+          return false;
         }
+        const trusteeManager = getCamsUserReference(context.session.user);
 
-        // Prevent duplicate attorney assignments (business rule: max ${ATTORNEY_ASSIGNMENT_LIMIT} attorney per trustee)
-        throw new BadRequestError(MODULE_NAME, {
-          message: `Trustee ${trusteeId} already has an attorney assigned.`,
-        });
+        const before = {
+          user: existingAttorneyAssignment.user,
+          role: existingAttorneyAssignment.role,
+        };
+
+        const timestamp = new Date().toISOString();
+        const unassignedUpdate: Partial<TrusteeOversightAssignment> = {
+          unassignedOn: timestamp,
+          updatedOn: timestamp,
+          updatedBy: trusteeManager,
+        };
+
+        await this.trusteesRepository.updateTrusteeOversightAssignment(
+          existingAttorneyAssignment.id,
+          unassignedUpdate,
+        );
+
+        const userGroupGateway = await getUserGroupGateway(context);
+        const assigneeUser = await userGroupGateway.getUserById(context, attorneyUserId);
+
+        const userAndRole = {
+          user: getCamsUserReference(assigneeUser),
+          role: OversightRole.OversightAttorney,
+        };
+
+        await this.trusteesRepository.createTrusteeOversightAssignment(
+          createAuditRecord<TrusteeOversightAssignment>(
+            {
+              trusteeId,
+              ...userAndRole,
+            },
+            trusteeManager,
+          ),
+        );
+
+        await this.trusteesRepository.createTrusteeHistory(
+          createAuditRecord<TrusteeOversightHistory>(
+            {
+              documentType: 'AUDIT_OVERSIGHT' as const,
+              trusteeId,
+              before,
+              after: userAndRole,
+            },
+            trusteeManager,
+          ),
+        );
+
+        return true;
       }
 
       const userGroupGateway = await getUserGroupGateway(context);
@@ -131,7 +169,7 @@ export class TrusteeAssignmentsUseCase {
         role: OversightRole.OversightAttorney,
       };
 
-      const createdAssignment = await this.trusteesRepository.createTrusteeOversightAssignment(
+      await this.trusteesRepository.createTrusteeOversightAssignment(
         createAuditRecord<TrusteeOversightAssignment>(
           {
             trusteeId,
@@ -153,7 +191,7 @@ export class TrusteeAssignmentsUseCase {
         ),
       );
 
-      return createdAssignment;
+      return true;
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }

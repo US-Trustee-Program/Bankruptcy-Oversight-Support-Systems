@@ -277,7 +277,6 @@ describe('TrusteePublicContactForm Tests', () => {
     await userEvent.type(websiteInput, 'example.com');
 
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
-    screen.debug(document.querySelector('.usa-input__error-message')!);
 
     const expectedPayload = {
       ...existing,
