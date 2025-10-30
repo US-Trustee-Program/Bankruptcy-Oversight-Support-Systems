@@ -19,7 +19,7 @@
     "@tiptap/extension-underline": "3.7.2",
     "@tiptap/extensions": "3.7.2",
     "@tiptap/react": "3.7.2",
-    "@types/jsdom": "21.1.7",
+    "@types/jsdom": "27.0.0",
     "@types/node": "24.9.0",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
