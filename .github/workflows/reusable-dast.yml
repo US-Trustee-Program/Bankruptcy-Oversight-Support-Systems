@@ -105,7 +105,7 @@ jobs:
           python3 test/dast/zap_json_to_sarif.py ./report_json.json ./report.sarif
 
       - name: Upload SARIF file
-        uses: github/codeql-action/upload-sarif@96f518a34f7a870018057716cc4d7a5c014bd61c # v3
+        uses: github/codeql-action/upload-sarif@5d5cd550d3e189c569da8f16ea8de2d821c9bf7a # v3
         with:
           sarif_file: ./report.sarif
 

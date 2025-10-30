@@ -8,7 +8,7 @@
     "@types/express": "4.17.23",
     "@types/jest": "30.0.0",
     "@types/mssql": "9.1.5",
-    "@types/node": "24.9.0",
+    "@types/node": "24.9.1",
     "azure-function-context-mock": "0.0.7",
     "dependency-cruiser": "17.1.0",
     "eslint": "9.38.0",
@@ -25,7 +25,7 @@
     "typescript-eslint": "8.46.2"
   },
   "dependencies": {
-    "@azure/cosmos": "4.6.0",
+    "@azure/cosmos": "4.7.0",
     "@azure/functions": "4.8.0",
     "@azure/identity": "4.13.0",
     "@azure/keyvault-secrets": "4.10.0",
