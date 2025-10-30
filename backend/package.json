@@ -41,7 +41,7 @@
   },
   "overrides": {
     "@azure/identity": "$@azure/identity",
-    "@types/tedious": "4.0.14"
+    "@types/tedious": "18.0.0"
   },
   "scripts": {
     "all": "npm run clean:all && npm ci && npm run build:all && npm run pack:all",
