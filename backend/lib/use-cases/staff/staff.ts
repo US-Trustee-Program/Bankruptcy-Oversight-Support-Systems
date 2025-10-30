@@ -13,4 +13,8 @@ export default class StaffUseCase {
   async getAttorneyList(applicationContext: ApplicationContext): Promise<Array<Staff>> {
     return this.staffRepository.getAttorneyStaff(applicationContext);
   }
+
+  async getAuditorList(applicationContext: ApplicationContext): Promise<Array<Staff>> {
+    return this.staffRepository.getAuditorStaff(applicationContext);
+  }
 }

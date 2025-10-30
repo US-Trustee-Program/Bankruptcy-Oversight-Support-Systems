@@ -196,4 +196,133 @@ export class TrusteeAssignmentsUseCase {
       throw getCamsError(originalError, MODULE_NAME);
     }
   }
+
+  /**
+   * Assigns an auditor to a trustee. Note: Auditors are staff assignments, not oversight in the traditional sense.
+   * @param context - Application context containing session and other request metadata
+   * @param trusteeId - Unique identifier for the trustee
+   * @param auditorUserId - Unique identifier for the auditor to assign
+   * @returns Promise resolving to boolean - true if created/replaced, false if idempotent
+   */
+  async assignAuditorToTrustee(
+    context: ApplicationContext,
+    trusteeId: string,
+    auditorUserId: string,
+  ): Promise<boolean> {
+    if (!context.session.user.roles.includes(CamsRole.TrusteeAdmin)) {
+      throw new UnauthorizedError('You do not have permission to assign an auditor to a trustee.');
+    }
+
+    if (!Validators.minLength(1)(trusteeId.trim()).valid) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: 'Trustee ID is required and cannot be empty.',
+      });
+    }
+
+    if (!Validators.minLength(1)(auditorUserId.trim()).valid) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: 'Auditor user ID is required and cannot be empty.',
+      });
+    }
+
+    try {
+      const existingAssignments =
+        await this.trusteesRepository.getTrusteeOversightAssignments(trusteeId);
+
+      const existingAuditorAssignment = existingAssignments.find(
+        (assignment) => assignment.role === OversightRole.OversightAuditor,
+      );
+
+      if (existingAuditorAssignment) {
+        if (existingAuditorAssignment.user.id === auditorUserId) {
+          return false;
+        }
+        const trusteeManager = getCamsUserReference(context.session.user);
+
+        const before = {
+          user: existingAuditorAssignment.user,
+          role: existingAuditorAssignment.role,
+        };
+
+        const timestamp = new Date().toISOString();
+        const unassignedUpdate: Partial<TrusteeOversightAssignment> = {
+          unassignedOn: timestamp,
+          updatedOn: timestamp,
+          updatedBy: trusteeManager,
+        };
+
+        await this.trusteesRepository.updateTrusteeOversightAssignment(
+          existingAuditorAssignment.id,
+          unassignedUpdate,
+        );
+
+        const userGroupGateway = await getUserGroupGateway(context);
+        const assigneeUser = await userGroupGateway.getUserById(context, auditorUserId);
+
+        const userAndRole = {
+          user: getCamsUserReference(assigneeUser),
+          role: OversightRole.OversightAuditor,
+        };
+
+        await this.trusteesRepository.createTrusteeOversightAssignment(
+          createAuditRecord<TrusteeOversightAssignment>(
+            {
+              trusteeId,
+              ...userAndRole,
+            },
+            trusteeManager,
+          ),
+        );
+
+        await this.trusteesRepository.createTrusteeHistory(
+          createAuditRecord<TrusteeOversightHistory>(
+            {
+              documentType: 'AUDIT_OVERSIGHT' as const,
+              trusteeId,
+              before,
+              after: userAndRole,
+            },
+            trusteeManager,
+          ),
+        );
+
+        return true;
+      }
+
+      const userGroupGateway = await getUserGroupGateway(context);
+      const assigneeUser = await userGroupGateway.getUserById(context, auditorUserId);
+
+      const trusteeManager = getCamsUserReference(context.session.user);
+      const userAndRole = {
+        user: getCamsUserReference(assigneeUser),
+        role: OversightRole.OversightAuditor,
+      };
+
+      await this.trusteesRepository.createTrusteeOversightAssignment(
+        createAuditRecord<TrusteeOversightAssignment>(
+          {
+            trusteeId,
+            ...userAndRole,
+          },
+          trusteeManager,
+        ),
+      );
+
+      await this.trusteesRepository.createTrusteeHistory(
+        createAuditRecord<TrusteeOversightHistory>(
+          {
+            documentType: 'AUDIT_OVERSIGHT' as const,
+            trusteeId,
+            before: null,
+            after: userAndRole,
+          },
+          trusteeManager,
+        ),
+      );
+
+      return true;
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
 }

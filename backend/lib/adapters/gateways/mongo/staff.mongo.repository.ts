@@ -58,4 +58,8 @@ export class StaffMongoRepository extends BaseMongoRepository implements StaffRe
   async getAttorneyStaff(applicationContext: ApplicationContext): Promise<Staff[]> {
     return this.getStaffByRole(applicationContext, CamsRole.TrialAttorney);
   }
+
+  async getAuditorStaff(applicationContext: ApplicationContext): Promise<Staff[]> {
+    return this.getStaffByRole(applicationContext, CamsRole.Auditor);
+  }
 }

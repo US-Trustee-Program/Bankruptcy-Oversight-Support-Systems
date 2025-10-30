@@ -2,21 +2,21 @@ import { useRef, useCallback } from 'react';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
 import { OversightRole } from '@common/cams/roles';
-import TrusteeAttorneyAssignmentModal, {
-  TrusteeAttorneyAssignmentModalRef,
-} from '../modals/TrusteeAttorneyAssignmentModal';
+import TrusteeAuditorAssignmentModal, {
+  TrusteeAuditorAssignmentModalRef,
+} from '../modals/TrusteeAuditorAssignmentModal';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 
-interface AttorneyAssignmentSectionProps {
+interface AuditorAssignmentSectionProps {
   trusteeId: string;
   assignments: TrusteeOversightAssignment[];
   onAssignmentChange: () => void;
 }
 
-export default function AttorneyAssignmentSection(props: Readonly<AttorneyAssignmentSectionProps>) {
+export default function AuditorAssignmentSection(props: Readonly<AuditorAssignmentSectionProps>) {
   const { trusteeId, assignments, onAssignmentChange } = props;
-  const modalRef = useRef<TrusteeAttorneyAssignmentModalRef>(null);
-  const attorneyAssignment = assignments.find((a) => a.role === OversightRole.OversightAttorney);
+  const modalRef = useRef<TrusteeAuditorAssignmentModalRef>(null);
+  const auditorAssignment = assignments.find((a) => a.role === OversightRole.OversightAuditor);
 
   const handleAssignment = useCallback(
     (isAssigned: boolean) => {
@@ -28,53 +28,53 @@ export default function AttorneyAssignmentSection(props: Readonly<AttorneyAssign
   );
 
   const openAssignmentModal = useCallback(() => {
-    modalRef.current?.show(attorneyAssignment);
-  }, [attorneyAssignment]);
+    modalRef.current?.show(auditorAssignment);
+  }, [auditorAssignment]);
 
   return (
     <div
       className="staff-assignment-section record-detail-card-list"
-      data-testid="attorney-assignment-section"
+      data-testid="auditor-assignment-section"
     >
-      {attorneyAssignment ? (
+      {auditorAssignment ? (
         <div className="record-detail-card">
           <div className="title-bar">
-            <h3>Attorney</h3>
+            <h3>Auditor</h3>
             <Button
               uswdsStyle={UswdsButtonStyle.Unstyled}
-              aria-label="Edit trustee's assigned attorney"
-              title="Edit trustee's assigned attorney"
+              aria-label="Edit trustee's assigned auditor"
+              title="Edit trustee's assigned auditor"
               onClick={openAssignmentModal}
             >
               <IconLabel icon="edit" label="Edit" />
             </Button>
           </div>
-          <div className="assignment-display" data-testid="attorney-assignments-display">
-            <div className="trustee-staff-name">{attorneyAssignment.user.name}</div>
+          <div className="assignment-display" data-testid="auditor-assignments-display">
+            <div className="trustee-staff-name">{auditorAssignment.user.name}</div>
           </div>
         </div>
       ) : (
         <div className="record-detail-card">
           <div className="title-bar">
-            <h3>Attorney</h3>
+            <h3>Auditor</h3>
             <Button
               uswdsStyle={UswdsButtonStyle.Unstyled}
-              aria-label="Add assigned attorney to trustee"
-              title="Add assigned attorney to trustee"
+              aria-label="Add assigned auditor to trustee"
+              title="Add assigned auditor to trustee"
               onClick={openAssignmentModal}
             >
               <IconLabel icon="add_circle" label="Add" />
             </Button>
           </div>
-          <div className="no-assignment-state" data-testid="no-attorney-assigned">
-            No attorney assigned
+          <div className="no-assignment-state" data-testid="no-auditor-assigned">
+            No auditor assigned
           </div>
         </div>
       )}
 
-      <TrusteeAttorneyAssignmentModal
+      <TrusteeAuditorAssignmentModal
         ref={modalRef}
-        modalId={`assign-attorney-modal-${trusteeId}`}
+        modalId={`assign-auditor-modal-${trusteeId}`}
         trusteeId={trusteeId}
         onAssignment={handleAssignment}
       />

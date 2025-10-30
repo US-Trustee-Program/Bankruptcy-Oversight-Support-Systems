@@ -7,6 +7,7 @@ import { CamsController } from '../controller';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { NotFoundError } from '../../common-errors/not-found-error';
+import { CamsRole } from '../../../../common/src/cams/roles';
 
 const MODULE_NAME = 'TRUSTEE-ASSIGNMENTS-CONTROLLER';
 
@@ -102,11 +103,15 @@ export class TrusteeAssignmentsController implements CamsController {
       });
     }
 
-    const wasCreated = await this.useCase.assignAttorneyToTrustee(
-      context,
-      trusteeId,
-      requestData.userId,
-    );
+    // Determine if the user is an attorney or auditor by checking their roles
+    const { getUserGroupGateway } = await import('../../factory');
+    const userGroupGateway = await getUserGroupGateway(context);
+    const assigneeUser = await userGroupGateway.getUserById(context, requestData.userId);
+
+    const isAuditor = assigneeUser.roles?.includes(CamsRole.Auditor);
+    const wasCreated = isAuditor
+      ? await this.useCase.assignAuditorToTrustee(context, trusteeId, requestData.userId)
+      : await this.useCase.assignAttorneyToTrustee(context, trusteeId, requestData.userId);
 
     return httpSuccess({
       statusCode: wasCreated ? 201 : 204,

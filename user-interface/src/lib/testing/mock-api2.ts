@@ -14,6 +14,7 @@ import {
 } from '@common/cams/cases';
 import { SUPERUSER } from '@common/cams/test-utilities/mock-user';
 import { AttorneyUser, CamsUserReference, PrivilegedIdentityUser, Staff } from '@common/cams/users';
+import { CamsRole } from '@common/cams/roles';
 import { CaseAssignment, StaffAssignmentAction } from '@common/cams/assignments';
 import { CaseHistory } from '@common/cams/history';
 import { CamsSession } from '@common/cams/session';
@@ -270,6 +271,14 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
         MockData.getLegacyTrustee({ name: 'Bob Johnson' }),
       ],
     };
+  } else if (path.match(/\/auditors/)) {
+    response = {
+      data: MockData.buildArray(MockData.getStaffAssignee, 2).map((staff, index) => ({
+        ...staff,
+        roles: [CamsRole.Auditor],
+        name: `Auditor ${index + 1}`,
+      })),
+    };
   } else if (path.match(/\/me/)) {
     response = {
       data: MockData.getCamsSession({ user: SUPERUSER.user }),
@@ -321,6 +330,10 @@ async function _delete<T = unknown>(_path: string): Promise<ResponseBody<T>> {
 
 async function getAttorneys(): Promise<ResponseBody<AttorneyUser[]>> {
   return get<AttorneyUser[]>('/attorneys');
+}
+
+async function getAuditors(): Promise<ResponseBody<Staff[]>> {
+  return get<Staff[]>('/auditors');
 }
 
 async function getCaseDetail(caseId: string): Promise<ResponseBody<CaseDetail>> {
@@ -576,6 +589,7 @@ export const MockApi2 = {
   patchTrustee,
   deletePrivilegedIdentityUser,
   getAttorneys,
+  getAuditors,
   getCaseDetail,
   getCaseDocket,
   getCaseSummary,

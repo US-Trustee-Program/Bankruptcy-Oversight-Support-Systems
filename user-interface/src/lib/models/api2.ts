@@ -241,7 +241,11 @@ function withCache(cacheOptions: CacheOptions): Pick<GenericApiClient, 'get'> {
 }
 
 async function getAttorneys() {
-  return api().get<Staff[]>('/staff');
+  return api().get<Staff[]>('/staff/attorneys');
+}
+
+async function getAuditors() {
+  return api().get<Staff[]>('/staff/auditors');
 }
 
 async function postTrustee(trustee: TrusteeInput) {
@@ -460,6 +464,7 @@ export const _Api2 = {
   patchTrustee,
   deletePrivilegedIdentityUser,
   getAttorneys,
+  getAuditors,
   getCaseDetail,
   getCaseDocket,
   getCaseSummary,

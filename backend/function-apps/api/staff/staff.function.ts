@@ -36,5 +36,5 @@ app.http('staff', {
   methods: ['GET'],
   authLevel: 'anonymous',
   handler,
-  route: 'staff',
+  route: 'staff/{staffType}',
 });

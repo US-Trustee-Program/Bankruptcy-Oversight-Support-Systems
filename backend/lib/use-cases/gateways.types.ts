@@ -301,4 +301,5 @@ export interface QueueGateway {
 
 export interface StaffRepository {
   getAttorneyStaff(applicationContext: ApplicationContext): Promise<Staff[]>;
+  getAuditorStaff(applicationContext: ApplicationContext): Promise<Staff[]>;
 }

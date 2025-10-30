@@ -10,11 +10,10 @@ vi.mock('@/trustees/modals/UseTrusteeAssignments', () => ({
 }));
 
 vi.mock('./AttorneyAssignmentSection', () => ({
-  default: vi.fn(({ trusteeId, assignments, onAssignmentChange, isLoading }) => (
+  default: vi.fn(({ trusteeId, assignments, onAssignmentChange }) => (
     <div
       data-testid="attorney-assignment-section"
       data-trustee-id={trusteeId}
-      data-loading={isLoading}
       data-assignments-count={assignments?.length || 0}
     >
       <button onClick={onAssignmentChange} data-testid="refresh-assignments">
@@ -127,14 +126,13 @@ describe('TrusteeAssignedStaff', () => {
     (useTrusteeAssignments as MockedFunction<typeof useTrusteeAssignments>).mockReturnValue({
       ...mockUseTrusteeAssignments,
       assignments: mockAssignments,
-      isLoading: true,
+      isLoading: false,
     });
 
     render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
 
     const section = screen.getByTestId('attorney-assignment-section');
     expect(section).toHaveAttribute('data-trustee-id', 'trustee-123');
-    expect(section).toHaveAttribute('data-loading', 'true');
     expect(section).toHaveAttribute('data-assignments-count', '1');
   });
 
@@ -170,8 +168,8 @@ describe('TrusteeAssignedStaff', () => {
 
     render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
 
-    const section = screen.getByTestId('attorney-assignment-section');
-    expect(section).toHaveAttribute('data-loading', 'true');
+    expect(screen.getByTestId('staff-assignments-loading')).toBeInTheDocument();
+    expect(screen.queryByTestId('attorney-assignment-section')).not.toBeInTheDocument();
   });
 
   test('should handle empty assignments array', () => {

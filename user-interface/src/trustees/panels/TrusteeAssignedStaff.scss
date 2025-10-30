@@ -17,4 +17,56 @@
   .assignments-container {
     margin-top: 1.5rem;
   }
+
+  // Shared styles for both attorney and auditor assignment sections
+  .staff-assignment-section {
+    .section-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+
+      h3 {
+        margin: 0;
+        margin-right: 0.75rem;
+      }
+    }
+
+    .no-assignment-state {
+      .usa-alert {
+        margin-bottom: 1rem;
+      }
+    }
+
+    .assignment-display {
+      .assignment-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+
+        .staff-info {
+          display: flex;
+          flex-direction: column;
+
+          .assignment-role {
+            color: #666;
+          }
+        }
+      }
+
+      .assignment-audit-link {
+        margin-top: 1rem;
+        display: flex;
+        justify-content: flex-end;
+      }
+    }
+
+    .trustee-staff-name {
+      font-weight: 600;
+      font-size: 1.1rem;
+    }
+  }
 }

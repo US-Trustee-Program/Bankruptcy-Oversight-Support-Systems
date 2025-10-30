@@ -328,7 +328,7 @@ export function createApp(): Application {
     }
   };
 
-  app.get('/api/staff', handleStaff);
+  app.get('/api/staff/:staffType', handleStaff);
 
   const handleLists = async (req: Request, res: Response, next: NextFunction) => {
     try {

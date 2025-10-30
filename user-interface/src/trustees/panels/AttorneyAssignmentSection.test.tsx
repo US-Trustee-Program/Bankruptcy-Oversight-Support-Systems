@@ -68,14 +68,12 @@ describe('AttorneyAssignmentSection', () => {
       trusteeId: string;
       assignments: TrusteeOversightAssignment[];
       onAssignmentChange: () => void;
-      isLoading?: boolean;
     }>,
   ) => {
     const defaults = {
       trusteeId: 'trustee-123',
       assignments: [] as TrusteeOversightAssignment[],
       onAssignmentChange: vi.fn() as unknown as () => void,
-      isLoading: false,
     } as const;
 
     return render(
@@ -121,19 +119,6 @@ describe('AttorneyAssignmentSection', () => {
 
     const editButton = screen.getByTestId('button-test');
     expect(editButton).toBeInTheDocument();
-  });
-
-  test('should show loading state when isLoading is true', () => {
-    const onAssignmentChange = vi.fn();
-
-    renderWithRouter({
-      trusteeId: 'trustee-123',
-      assignments: [],
-      onAssignmentChange,
-      isLoading: true,
-    });
-
-    expect(screen.getByTestId('attorney-assignments-loading')).toBeInTheDocument();
   });
 
   test('should show attorney name when assignment exists', () => {
