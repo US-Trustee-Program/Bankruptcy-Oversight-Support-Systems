@@ -88,7 +88,7 @@ jobs:
           npm run test:a11y
 
       - name: Upload report
-        uses: actions/upload-artifact@v4.4.0
+        uses: actions/upload-artifact@v4.6.2
         if: always()
         with:
           name: playwright-a11y-report

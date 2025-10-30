@@ -85,14 +85,14 @@ jobs:
         run: OUT=${{ inputs.dataflowsFunctionName }} npm run pack:dataflows
 
       - name: Upload API Azure Functions Artifact
-        uses: actions/upload-artifact@v4.4.0
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: ${{ inputs.apiFunctionName }}-build
           path: backend/function-apps/api/${{ inputs.apiFunctionName }}.zip
           if-no-files-found: error
 
       - name: Upload Data Flows Azure Functions Artifact
-        uses: actions/upload-artifact@v4.4.0
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: ${{ inputs.dataflowsFunctionName }}-build
           path: backend/function-apps/dataflows/${{ inputs.dataflowsFunctionName }}.zip

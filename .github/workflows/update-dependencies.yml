@@ -26,7 +26,7 @@ jobs:
 
       - name: Import GPG
         id: import-gpg
-        uses: crazy-max/ghaction-import-gpg@v6.1.0
+        uses: crazy-max/ghaction-import-gpg@v6.3.0
         with:
           gpg_private_key: ${{ secrets.BOT_PRIVATE_KEY }}
           passphrase: ${{ secrets.BOT_PASSPHRASE }}
