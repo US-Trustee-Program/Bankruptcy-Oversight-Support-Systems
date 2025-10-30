@@ -41,6 +41,28 @@
       "allowedVersions": "9.x"
     },
     {
+      "description": "Disable Node.js version updates - must match Azure DevOps runners",
+      "matchManagers": ["nvm"],
+      "enabled": false
+    },
+    {
+      "description": "First-party GitHub Actions with digest pinning and 14-day wait",
+      "matchManagers": ["github-actions"],
+      "matchPackagePatterns": ["^actions/", "^github/"],
+      "pinDigests": true,
+      "minimumReleaseAge": "14 days",
+      "groupName": "GitHub first-party actions"
+    },
+    {
+      "description": "Third-party GitHub Actions with digest pinning, 30-day wait, and separate PRs",
+      "matchManagers": ["github-actions"],
+      "excludePackagePatterns": ["^actions/", "^github/"],
+      "pinDigests": true,
+      "minimumReleaseAge": "30 days",
+      "groupName": null,
+      "automerge": false
+    },
+    {
       "description": "Require 30-day wait for x.0.0 major versions",
       "matchUpdateTypes": ["major"],
       "matchNewValue": "/\\.0\\.0$/",
