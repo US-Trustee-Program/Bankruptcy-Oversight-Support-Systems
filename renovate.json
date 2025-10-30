@@ -12,6 +12,9 @@
   "separateMinorPatch": false,
   "rangeStrategy": "pin",
   "semanticCommits": "disabled",
+  "constraints": {
+    "node": "22.17.1"
+  },
   "packageRules": [
     {
       "description": "Automatically pin dependency ranges to exact versions",
