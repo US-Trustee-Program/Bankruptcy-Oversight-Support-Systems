@@ -17,10 +17,6 @@ function formatWebsiteUrl(website: string) {
   return website.replace(/^(?:http:\/\/|(?!https?:\/\/))/i, 'https://');
 }
 
-function formatWebsiteLabel(website: string) {
-  return website.replace(/^https?:\/\//, '');
-}
-
 function toTelephoneUri(number: string, extension?: string) {
   const strippedNumber = number.replaceAll(NON_DIGITS, '');
   const strippedExtension = extension?.replaceAll(NON_DIGITS, '');
@@ -62,7 +58,7 @@ function CommsLink(props: Readonly<CommsLinkProps>) {
   } else if (mode === 'website' && website) {
     target = '_blank';
     href = formatWebsiteUrl(website);
-    labelToUse = label ?? formatWebsiteLabel(website);
+    labelToUse = label ?? website;
     iconToUse = icon ?? 'launch';
   } else if (isValidPhoneNumber && mode === 'phone-dialer') {
     href = toTelephoneUri(number!, extension);

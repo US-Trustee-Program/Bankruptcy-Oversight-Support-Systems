@@ -364,9 +364,9 @@ describe('validators', () => {
         expected: VALID,
       },
       {
-        description: 'should return invalid for website with port (not supported by current regex)',
+        description: 'should return valid for website with port number',
         value: 'https://www.example.com:8080',
-        expected: { reasons: ['Must be a valid website address'] },
+        expected: VALID,
       },
       {
         description: 'should return valid for Chapter 13 trustee website example',

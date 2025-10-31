@@ -11,11 +11,11 @@ export const EXTENSION_REGEX = /^\d{1,6}$/;
 export const ZIP_REGEX = /^(\d{5}|\d{5}-\d{4})$/;
 
 export const WEBSITE_REGEX =
-  /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}(?:\/[-a-zA-Z0-9()@:%_+.~#?&=/]*)?$/;
+  /^https?:\/\/(?:(?!-)[-a-zA-Z0-9]{1,63}(?<!-)\.)+[a-zA-Z]{2,63}(?::\d+)?(?:\/[-a-zA-Z0-9()@:%_+.~#?&=/]*)?$/;
 
 // Relaxed website regex that allows URLs without protocols for client-side validation
 export const WEBSITE_RELAXED_REGEX =
-  /^(?:https?:\/\/)?(?:www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}(?:\/[-a-zA-Z0-9()@:%_+.~#?&=/]*)?$/;
+  /^(?:https?:\/\/)?(?:(?!-)[-a-zA-Z0-9]{1,63}(?<!-)\.)+[a-zA-Z]{2,63}(?::\d+)?(?:\/[-a-zA-Z0-9()@:%_+.~#?&=/]*)?$/;
 
 /**
  * Checks if a string contains any protocol pattern (e.g., ftp:, mailto:, etc.)
