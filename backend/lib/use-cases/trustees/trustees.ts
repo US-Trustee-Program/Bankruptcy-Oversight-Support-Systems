@@ -14,7 +14,7 @@ import {
   EMAIL_REGEX,
   EXTENSION_REGEX,
   PHONE_REGEX,
-  WEBSITE_REGEX,
+  WEBSITE_RELAXED_REGEX,
   ZIP_REGEX,
 } from '../../../../common/src/cams/regex';
 import { BadRequestError } from '../../common-errors/bad-request';
@@ -283,7 +283,10 @@ const contactInformationSpec: ValidationSpec<ContactInformation> = {
   phone: [V.optional(V.spec(phoneSpec))],
   email: [V.optional(V.matches(EMAIL_REGEX, 'Provided email does not match regular expression'))],
   website: [
-    V.optional(V.matches(WEBSITE_REGEX, 'Provided website does not match regular expression')),
+    V.optional(
+      V.matches(WEBSITE_RELAXED_REGEX, 'Provided website does not match regular expression'),
+      V.maxLength(255, 'Website URL must be less than or equal to 255 characters'),
+    ),
   ],
 };
 
@@ -293,11 +296,6 @@ export const internalContactInformationSpec: ValidationSpec<ContactInformation> 
   email: [
     V.optional(
       V.nullable(V.matches(EMAIL_REGEX, 'Provided email does not match regular expression')),
-    ),
-  ],
-  website: [
-    V.optional(
-      V.nullable(V.matches(WEBSITE_REGEX, 'Provided website does not match regular expression')),
     ),
   ],
 };
@@ -355,7 +353,7 @@ function patchNestedObject(obj: Record<string, unknown>): Record<string, unknown
     if (value === null || value === undefined) {
       // skip null/undefined properties - they should be removed
       continue;
-    } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+    } else if (typeof value === 'object' && !Array.isArray(value)) {
       // recursively handle nested objects
       const patchedNested = patchNestedObject(value as Record<string, unknown>);
       if (patchedNested !== undefined && Object.keys(patchedNested).length > 0) {

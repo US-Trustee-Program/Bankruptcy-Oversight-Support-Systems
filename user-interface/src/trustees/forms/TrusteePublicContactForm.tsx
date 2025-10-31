@@ -15,7 +15,6 @@ import { Stop } from '@/lib/components/Stop';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import ZipCodeInput from '@/lib/components/ZipCodeInput';
 import { TrusteeInput } from '@common/cams/trustees';
-import { normalizeWebsiteUrl } from '@common/cams/regex';
 import { TRUSTEE_PUBLIC_SPEC, TrusteePublicFormData } from './trusteeForms.types';
 import { flattenReasonMap, validateEach, validateObject } from '@common/cams/validation';
 
@@ -77,8 +76,6 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
   const navigate = useCamsNavigator();
 
   const mapPayload = (formData: TrusteePublicFormData): Partial<TrusteeInput> => {
-    const normalizedWebsite = normalizeWebsiteUrl(formData.website);
-
     return {
       name: formData.name,
       public: {
@@ -92,7 +89,7 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
         },
         phone: { number: formData.phone, extension: formData.extension },
         email: formData.email,
-        ...(normalizedWebsite && normalizedWebsite.length > 0 && { website: normalizedWebsite }),
+        ...(formData.website && formData.website.length > 0 && { website: formData.website }),
       },
     } as TrusteeInput;
   };
