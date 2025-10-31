@@ -159,4 +159,58 @@ describe('useTrusteeAssignments', () => {
       expect(result.current.error).toBeNull();
     });
   });
+
+  test('should handle null/undefined data in fetch assignments response', async () => {
+    mockApiMethods.getTrusteeOversightAssignments.mockResolvedValue({
+      data: null,
+    });
+
+    const { result } = renderHook(() => useTrusteeAssignments());
+
+    result.current.getTrusteeOversightAssignments('trustee-123');
+
+    await waitFor(() => {
+      expect(result.current.assignments).toEqual([]);
+    });
+
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.error).toBeNull();
+  });
+
+  test('should handle non-Error throw in fetch assignments', async () => {
+    const errorString = 'Non-error failure';
+    mockApiMethods.getTrusteeOversightAssignments.mockRejectedValue(errorString);
+
+    const { result } = renderHook(() => useTrusteeAssignments());
+
+    result.current.getTrusteeOversightAssignments('trustee-123');
+
+    await waitFor(() => {
+      expect(result.current.error).toBe('Failed to fetch assignments');
+    });
+
+    expect(result.current.assignments).toEqual([]);
+    expect(result.current.isLoading).toBe(false);
+  });
+
+  test('should handle non-Error throw in assign attorney', async () => {
+    const errorString = 'Non-error failure';
+    mockApiMethods.createTrusteeOversightAssignment.mockRejectedValue(errorString);
+
+    const { result } = renderHook(() => useTrusteeAssignments());
+
+    let caughtError: unknown = null;
+
+    result.current.assignAttorneyToTrustee('trustee-123', 'attorney-123').catch((err: unknown) => {
+      caughtError = err;
+    });
+
+    await waitFor(() => {
+      expect(result.current.error).toBe('Failed to assign attorney');
+    });
+
+    expect(result.current.assignments).toEqual([]);
+    expect(result.current.isLoading).toBe(false);
+    expect(caughtError).toBe(errorString);
+  });
 });

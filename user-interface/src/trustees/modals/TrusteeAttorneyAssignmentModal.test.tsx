@@ -341,4 +341,24 @@ describe('TrusteeAttorneyAssignmentModal', () => {
       expect(submitButton).toBeDisabled();
     });
   });
+
+  test('should close modal without API call when same attorney is selected as current assignment', async () => {
+    const onAssignment = vi.fn();
+    const ref = React.createRef<TrusteeAttorneyAssignmentModalRef>();
+
+    renderWithProps({ onAssignment, ref });
+
+    act(() => ref.current!.show(mockAssignment));
+    await waitFor(() => expect(mockApiMethods.getAttorneys).toHaveBeenCalled());
+
+    mockApiMethods.createTrusteeOversightAssignment.mockClear();
+
+    const submitButton = screen.getByTestId('button-test-modal-submit-button');
+    await userEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(mockApiMethods.createTrusteeOversightAssignment).not.toHaveBeenCalled();
+      expect(onAssignment).not.toHaveBeenCalled();
+    });
+  });
 });
