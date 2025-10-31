@@ -7,6 +7,7 @@ import { CamsController } from '../controller';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { NotFoundError } from '../../common-errors/not-found-error';
+import { OversightRole } from '../../../../common/src/cams/roles';
 
 const MODULE_NAME = 'TRUSTEE-ASSIGNMENTS-CONTROLLER';
 
@@ -102,10 +103,11 @@ export class TrusteeAssignmentsController implements CamsController {
       });
     }
 
-    const wasCreated = await this.useCase.assignAttorneyToTrustee(
+    const wasCreated = await this.useCase.assignOversightStaffToTrustee(
       context,
       trusteeId,
       requestData.userId,
+      OversightRole.OversightAttorney, // TODO: Task 6 will make role dynamic from request body
     );
 
     return httpSuccess({

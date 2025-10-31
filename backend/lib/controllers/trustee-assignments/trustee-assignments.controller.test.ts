@@ -53,7 +53,8 @@ describe('TrusteeAssignmentsController', () => {
 
     mockUseCase = {
       getTrusteeOversightAssignments: jest.fn(),
-      assignAttorneyToTrustee: jest.fn(),
+      assignOversightStaffToTrustee: jest.fn(),
+      getOversightStaff: jest.fn(),
     } as unknown as jest.Mocked<TrusteeAssignmentsUseCase>;
 
     (
@@ -124,7 +125,7 @@ describe('TrusteeAssignmentsController', () => {
   describe('POST /api/v1/trustees/{trusteeId}/oversight-assignments', () => {
     test('should create attorney assignment with valid request', async () => {
       const requestBody = { userId: 'user-789' };
-      mockUseCase.assignAttorneyToTrustee.mockResolvedValue(true);
+      mockUseCase.assignOversightStaffToTrustee.mockResolvedValue(true);
 
       context.request.method = 'POST';
       context.request.params = { trusteeId: 'trustee-456' };
@@ -133,10 +134,11 @@ describe('TrusteeAssignmentsController', () => {
 
       const response = await controller.handleRequest(context);
 
-      expect(mockUseCase.assignAttorneyToTrustee).toHaveBeenCalledWith(
+      expect(mockUseCase.assignOversightStaffToTrustee).toHaveBeenCalledWith(
         context,
         'trustee-456',
         'user-789',
+        OversightRole.OversightAttorney,
       );
       expect(response.statusCode).toBe(201);
       expect(response.body).toBeUndefined();
@@ -144,7 +146,7 @@ describe('TrusteeAssignmentsController', () => {
 
     test('should return 204 for idempotent attorney assignment request', async () => {
       const requestBody = { userId: 'user-789' };
-      mockUseCase.assignAttorneyToTrustee.mockResolvedValue(false);
+      mockUseCase.assignOversightStaffToTrustee.mockResolvedValue(false);
 
       context.request.method = 'POST';
       context.request.params = { trusteeId: 'trustee-456' };
@@ -153,10 +155,11 @@ describe('TrusteeAssignmentsController', () => {
 
       const response = await controller.handleRequest(context);
 
-      expect(mockUseCase.assignAttorneyToTrustee).toHaveBeenCalledWith(
+      expect(mockUseCase.assignOversightStaffToTrustee).toHaveBeenCalledWith(
         context,
         'trustee-456',
         'user-789',
+        OversightRole.OversightAttorney,
       );
       expect(response.statusCode).toBe(204);
       expect(response.body).toBeUndefined();
@@ -230,7 +233,7 @@ describe('TrusteeAssignmentsController', () => {
 
     test('POST should successfully process assignment creation', async () => {
       const requestBody = { userId: 'user-789' };
-      mockUseCase.assignAttorneyToTrustee.mockResolvedValue(true);
+      mockUseCase.assignOversightStaffToTrustee.mockResolvedValue(true);
 
       context.request.method = 'POST';
       context.request.params = { trusteeId: 'trustee-456' };
