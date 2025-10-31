@@ -1,21 +1,26 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, test, expect, beforeEach, MockedFunction } from 'vitest';
 import TrusteeAssignedStaff from './TrusteeAssignedStaff';
 import { useTrusteeAssignments } from '@/trustees/modals/UseTrusteeAssignments';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
-import { OversightRole } from '@common/cams/roles';
+import { AttorneyUser } from '@common/cams/users';
+import { CamsRole, OversightRole } from '@common/cams/roles';
+import useApi2 from '@/lib/hooks/UseApi2';
 
 vi.mock('@/trustees/modals/UseTrusteeAssignments', () => ({
   useTrusteeAssignments: vi.fn(),
 }));
 
+vi.mock('@/lib/hooks/UseApi2');
+
 vi.mock('./AttorneyAssignmentSection', () => ({
-  default: vi.fn(({ trusteeId, assignments, onAssignmentChange, isLoading }) => (
+  default: vi.fn(({ trusteeId, assignments, attorneys, onAssignmentChange, isLoading }) => (
     <div
       data-testid="attorney-assignment-section"
       data-trustee-id={trusteeId}
       data-loading={isLoading}
       data-assignments-count={assignments?.length || 0}
+      data-attorneys-count={attorneys?.length || 0}
     >
       <button onClick={onAssignmentChange} data-testid="refresh-assignments">
         Refresh Assignments
@@ -40,6 +45,21 @@ vi.mock('./AuditorAssignmentSection', () => ({
 }));
 
 describe('TrusteeAssignedStaff', () => {
+  const mockAttorneys: AttorneyUser[] = [
+    {
+      id: 'attorney-1',
+      name: 'Attorney Smith',
+      offices: [],
+      roles: [CamsRole.TrialAttorney],
+    },
+    {
+      id: 'attorney-2',
+      name: 'Attorney Jones',
+      offices: [],
+      roles: [CamsRole.TrialAttorney],
+    },
+  ];
+
   const mockAssignments: TrusteeOversightAssignment[] = [
     {
       id: 'assignment-1',
@@ -71,17 +91,41 @@ describe('TrusteeAssignedStaff', () => {
     clearError: vi.fn(),
   };
 
+  const mockApi = {
+    getAttorneys: vi.fn().mockResolvedValue({ data: mockAttorneys }),
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
     (useTrusteeAssignments as MockedFunction<typeof useTrusteeAssignments>).mockReturnValue(
       mockUseTrusteeAssignments,
     );
+    (useApi2 as MockedFunction<typeof useApi2>).mockReturnValue(mockApi as never);
   });
 
-  test('should render component with correct structure', () => {
+  test('should render component with correct structure', async () => {
     render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
 
-    expect(screen.getByTestId('attorney-assignment-section')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('attorney-assignment-section')).toBeInTheDocument();
+    });
+  });
+
+  test('should load attorneys on mount', async () => {
+    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
+
+    await waitFor(() => {
+      expect(mockApi.getAttorneys).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  test('should pass attorneys to AttorneyAssignmentSection after loading', async () => {
+    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
+
+    await waitFor(() => {
+      const section = screen.getByTestId('attorney-assignment-section');
+      expect(section).toHaveAttribute('data-attorneys-count', '2');
+    });
     expect(screen.getByTestId('auditor-assignment-section')).toBeInTheDocument();
   });
 
@@ -128,6 +172,20 @@ describe('TrusteeAssignedStaff', () => {
     expect(screen.getByTestId('alert')).toHaveTextContent('Failed to load assignments');
   });
 
+  test('should display error alert when attorneys fail to load', async () => {
+    (useApi2 as MockedFunction<typeof useApi2>).mockReturnValue({
+      getAttorneys: vi.fn().mockRejectedValue(new Error('Failed to load attorneys')),
+    } as never);
+
+    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
+
+    await waitFor(() => {
+      const alerts = screen.getAllByRole('alert');
+      const alertTexts = alerts.map((alert) => alert.textContent);
+      expect(alertTexts).toContain('Failed to load attorneys');
+    });
+  });
+
   test('should show alert container when error is present', () => {
     (useTrusteeAssignments as MockedFunction<typeof useTrusteeAssignments>).mockReturnValue({
       ...mockUseTrusteeAssignments,
@@ -139,7 +197,7 @@ describe('TrusteeAssignedStaff', () => {
     expect(screen.getByTestId('alert-container')).toBeInTheDocument();
   });
 
-  test('should pass correct props to AttorneyAssignmentSection', () => {
+  test('should pass correct props to AttorneyAssignmentSection', async () => {
     (useTrusteeAssignments as MockedFunction<typeof useTrusteeAssignments>).mockReturnValue({
       ...mockUseTrusteeAssignments,
       assignments: mockAssignments,
@@ -152,6 +210,10 @@ describe('TrusteeAssignedStaff', () => {
     expect(section).toHaveAttribute('data-trustee-id', 'trustee-123');
     expect(section).toHaveAttribute('data-loading', 'true');
     expect(section).toHaveAttribute('data-assignments-count', '1');
+
+    await waitFor(() => {
+      expect(section).toHaveAttribute('data-attorneys-count', '2');
+    });
   });
 
   test('should refresh assignments when onAssignmentChange is called', () => {

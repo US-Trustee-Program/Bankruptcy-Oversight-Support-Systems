@@ -2,6 +2,7 @@ import { useRef, useCallback } from 'react';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
+import { AttorneyUser } from '@common/cams/users';
 import { OversightRole } from '@common/cams/roles';
 import TrusteeAttorneyAssignmentModal, {
   TrusteeAttorneyAssignmentModalRef,
@@ -12,12 +13,13 @@ import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 interface AttorneyAssignmentSectionProps {
   trusteeId: string;
   assignments: TrusteeOversightAssignment[];
+  attorneys: AttorneyUser[];
   onAssignmentChange: () => void;
   isLoading?: boolean;
 }
 
 export default function AttorneyAssignmentSection(props: Readonly<AttorneyAssignmentSectionProps>) {
-  const { trusteeId, assignments, onAssignmentChange, isLoading = false } = props;
+  const { trusteeId, assignments, attorneys, onAssignmentChange, isLoading = false } = props;
   const modalRef = useRef<TrusteeAttorneyAssignmentModalRef>(null);
   const attorneyAssignment = assignments.find((a) => a.role === OversightRole.OversightAttorney);
 
@@ -31,8 +33,8 @@ export default function AttorneyAssignmentSection(props: Readonly<AttorneyAssign
   );
 
   const openAssignmentModal = useCallback(() => {
-    modalRef.current?.show(attorneyAssignment);
-  }, [attorneyAssignment]);
+    modalRef.current?.show();
+  }, []);
 
   if (isLoading) {
     return (
@@ -85,6 +87,8 @@ export default function AttorneyAssignmentSection(props: Readonly<AttorneyAssign
         ref={modalRef}
         modalId={`assign-attorney-modal-${trusteeId}`}
         trusteeId={trusteeId}
+        attorneys={attorneys}
+        currentAssignment={attorneyAssignment}
         onAssignment={handleAssignment}
       />
     </div>
