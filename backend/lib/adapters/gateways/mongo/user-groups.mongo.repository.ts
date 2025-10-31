@@ -86,15 +86,13 @@ export class UserGroupsMongoRepository extends BaseMongoRepository implements Us
     }
 
     try {
-      const operations = userGroups.map((group) => ({
-        replaceOne: {
-          filter: { groupName: group.groupName },
-          replacement: group,
-          upsert: true,
-        },
+      const doc = using<UserGroupGatewayDocument>();
+      const replacements = userGroups.map((group) => ({
+        filter: doc('groupName').equals(group.groupName),
+        replacement: group,
       }));
 
-      const result = await this.getAdapter<UserGroupGatewayDocument>().bulkWrite(operations);
+      const result = await this.getAdapter<UserGroupGatewayDocument>().bulkReplace(replacements);
 
       context.logger.info(
         MODULE_NAME,
