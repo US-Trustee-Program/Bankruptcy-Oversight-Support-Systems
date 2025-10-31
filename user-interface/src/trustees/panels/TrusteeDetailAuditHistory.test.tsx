@@ -1205,6 +1205,44 @@ describe('TrusteeDetailAuditHistory', () => {
         },
       );
     });
+
+    test('should display role as-is when role is not in roleDisplayMap', async () => {
+      const mockOversightHistoryUnknownRole: TrusteeOversightHistory = {
+        id: 'audit-oversight-unknown',
+        trusteeId: 'audit-oversight-trustee',
+        documentType: 'AUDIT_OVERSIGHT',
+        before: {
+          role: 'unknown-role' as OversightRole,
+          user: {
+            id: 'user-before',
+            name: 'John Unknown',
+          },
+        },
+        after: {
+          role: 'another-unknown-role' as OversightRole,
+          user: {
+            id: 'user-after',
+            name: 'Jane Unknown',
+          },
+        },
+        updatedOn: '2024-01-15T12:00:00Z',
+        updatedBy: SYSTEM_USER_REFERENCE,
+      };
+
+      mockGetTrusteeHistory.mockResolvedValue({ data: [mockOversightHistoryUnknownRole] });
+
+      renderWithProps({});
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
+
+      // Check that unknown roles are displayed as-is (fallback behavior)
+      expect(screen.getByTestId('previous-oversight-0')).toHaveTextContent('unknown-role');
+      expect(screen.getByTestId('previous-oversight-0')).toHaveTextContent('John Unknown');
+      expect(screen.getByTestId('new-oversight-0')).toHaveTextContent('another-unknown-role');
+      expect(screen.getByTestId('new-oversight-0')).toHaveTextContent('Jane Unknown');
+    });
   });
 
   describe('RenderTrusteeHistory Integration Tests', () => {

@@ -452,5 +452,54 @@ describe('TrusteeOversightAssignmentModal', () => {
         expect(submitButton).toBeDisabled();
       });
     });
+
+    test('should close modal without API call when same staff is selected as current assignment', async () => {
+      const onAssignment = vi.fn();
+      const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
+      renderWithProps(OversightRole.OversightAttorney, { onAssignment, ref });
+
+      act(() => ref.current!.show(mockAttorneyAssignment));
+      await waitFor(() => expect(mockApiMethods.getOversightStaff).toHaveBeenCalled());
+
+      mockApiMethods.createTrusteeOversightAssignment.mockClear();
+
+      const submitButton = screen.getByTestId('button-test-modal-submit-button');
+      await userEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(mockApiMethods.createTrusteeOversightAssignment).not.toHaveBeenCalled();
+        expect(onAssignment).not.toHaveBeenCalled();
+      });
+    });
+
+    test('should display Edit Attorney button and heading when editing existing assignment', async () => {
+      const onAssignment = vi.fn();
+      const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
+      renderWithProps(OversightRole.OversightAttorney, { onAssignment, ref });
+
+      act(() => ref.current!.show(mockAttorneyAssignment));
+      await waitFor(() => expect(mockApiMethods.getOversightStaff).toHaveBeenCalled());
+
+      const submitButton = screen.getByTestId('button-test-modal-submit-button');
+      expect(submitButton).toHaveTextContent('Edit Attorney');
+
+      const modal = screen.getByTestId('modal-test-modal');
+      expect(modal).toHaveTextContent('Edit Attorney');
+    });
+
+    test('should display Add Auditor button and heading when creating new auditor assignment', async () => {
+      const onAssignment = vi.fn();
+      const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
+      renderWithProps(OversightRole.OversightAuditor, { onAssignment, ref });
+
+      act(() => ref.current!.show());
+      await waitFor(() => expect(mockApiMethods.getOversightStaff).toHaveBeenCalled());
+
+      const submitButton = screen.getByTestId('button-test-modal-submit-button');
+      expect(submitButton).toHaveTextContent('Add Auditor');
+
+      const modal = screen.getByTestId('modal-test-modal');
+      expect(modal).toHaveTextContent('Add Auditor');
+    });
   });
 });
