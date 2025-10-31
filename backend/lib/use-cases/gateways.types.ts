@@ -25,6 +25,7 @@ import {
   CamsUserGroup,
   CamsUserReference,
   Staff,
+  UserGroup,
 } from '../../../common/src/cams/users';
 import { UstpOfficeDetails } from '../../../common/src/cams/offices';
 import { CaseAssignment } from '../../../common/src/cams/assignments';
@@ -319,16 +320,7 @@ export interface StaffRepository {
   getAttorneyStaff(applicationContext: ApplicationContext): Promise<Staff[]>;
 }
 
-export type UserGroupGatewayDocument = {
-  id: string;
-  groupName: string;
-  users: CamsUserReference[];
-};
-
 export interface UserGroupsRepository extends Releasable {
   getOversightStaff(context: ApplicationContext): Promise<AvailableTrusteeOversightStaff>;
-  upsertUserGroupsBatch(
-    context: ApplicationContext,
-    userGroups: UserGroupGatewayDocument[],
-  ): Promise<void>;
+  upsertUserGroupsBatch(context: ApplicationContext, userGroups: UserGroup[]): Promise<void>;
 }
