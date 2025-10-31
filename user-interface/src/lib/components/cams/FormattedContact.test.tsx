@@ -407,7 +407,7 @@ describe('FormattedAddress component', () => {
 
       renderComponent({ contact: contactWithWebsite });
 
-      const websiteElement = screen.getByText('https://www.no-testid.com').closest('.website');
+      const websiteElement = screen.getByText('www.no-testid.com').closest('.website');
       expect(websiteElement).not.toHaveAttribute('data-testid');
     });
 
@@ -425,7 +425,7 @@ describe('FormattedAddress component', () => {
 
       renderComponent({ contact: contactWithWebsite });
 
-      const websiteElement = screen.getByText('https://www.css-class-test.com').closest('.website');
+      const websiteElement = screen.getByText('www.css-class-test.com').closest('.website');
       expect(websiteElement).toHaveClass('website');
     });
   });

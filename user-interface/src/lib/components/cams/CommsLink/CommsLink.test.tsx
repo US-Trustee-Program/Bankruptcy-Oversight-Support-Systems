@@ -316,4 +316,98 @@ describe('CommsLink Component', () => {
     const link = screen.getByRole('link');
     expect(link).toHaveTextContent('Email Me');
   });
+
+  describe('Website URL formatting functions', () => {
+    describe('formatWebsiteUrl', () => {
+      const cases = [
+        ['https://example.com', 'https://example.com'],
+        ['http://example.com', 'https://example.com'],
+        ['example.com', 'https://example.com'],
+        ['https://sub.example.com/path', 'https://sub.example.com/path'],
+      ];
+
+      test.each(cases)('formatWebsiteUrl(%s) -> %s', (input, expected) => {
+        render(
+          <CommsLink
+            contact={{ website: input } as Omit<ContactInformation, 'address'>}
+            mode="website"
+          />,
+        );
+        const link = screen.getByRole('link');
+        expect(link.getAttribute('href')).toBe(expected);
+      });
+    });
+
+    describe('formatWebsiteLabel', () => {
+      const cases = [
+        ['https://example.com', 'example.com'],
+        ['http://example.com', 'example.com'],
+        ['example.com', 'example.com'],
+        ['https://sub.example.com/path', 'sub.example.com/path'],
+      ];
+
+      test.each(cases)('formatWebsiteLabel(%s) -> %s', (input, expected) => {
+        render(
+          <CommsLink
+            contact={{ website: input } as Omit<ContactInformation, 'address'>}
+            mode="website"
+          />,
+        );
+        const label = screen.getByTestId('icon-label');
+        expect(label).toHaveTextContent(expected);
+      });
+    });
+  });
+
+  describe('Mode: website', () => {
+    const cases = [
+      ['https://example.com', 'https://example.com', 'example.com'],
+      ['http://example.com', 'https://example.com', 'example.com'],
+      ['example.com', 'https://example.com', 'example.com'],
+      ['https://sub.example.com/path', 'https://sub.example.com/path', 'sub.example.com/path'],
+      ['http://sub.example.com/path', 'https://sub.example.com/path', 'sub.example.com/path'],
+      ['sub.example.com/path', 'https://sub.example.com/path', 'sub.example.com/path'],
+    ];
+
+    test.each(cases)(
+      'renders website link correctly for %s',
+      (input, expectedHref, expectedLabel) => {
+        render(
+          <CommsLink
+            contact={{ website: input } as Omit<ContactInformation, 'address'>}
+            mode="website"
+          />,
+        );
+
+        const link = screen.getByRole('link');
+        expect(link.getAttribute('href')).toBe(expectedHref);
+        expect(link.getAttribute('target')).toBe('_blank');
+        expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+
+        const iconLabel = screen.getByTestId('icon-label');
+        expect(iconLabel).toHaveTextContent(expectedLabel);
+        expect(iconLabel.getAttribute('data-icon')).toBe('launch');
+      },
+    );
+
+    test('renders website link with custom label and icon', () => {
+      render(
+        <CommsLink
+          contact={{ website: 'https://example.com' } as Omit<ContactInformation, 'address'>}
+          mode="website"
+          label="Custom Website"
+          icon="custom-icon"
+        />,
+      );
+
+      const link = screen.getByRole('link');
+      expect(link.getAttribute('href')).toBe('https://example.com');
+      expect(link.getAttribute('target')).toBe('_blank');
+      expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+
+      const iconLabel = screen.getByTestId('icon-label');
+      expect(iconLabel).toHaveTextContent('Custom Website');
+      expect(iconLabel.getAttribute('data-icon')).toBe('custom-icon');
+    });
+  });
 });
