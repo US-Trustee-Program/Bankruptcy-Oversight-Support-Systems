@@ -163,7 +163,7 @@ describe('useTrusteeAssignments', () => {
   test('should handle null/undefined data in fetch assignments response', async () => {
     mockApiMethods.getTrusteeOversightAssignments.mockResolvedValue({
       data: null,
-    });
+    } as unknown as { data: TrusteeOversightAssignment[] });
 
     const { result } = renderHook(() => useTrusteeAssignments());
 
