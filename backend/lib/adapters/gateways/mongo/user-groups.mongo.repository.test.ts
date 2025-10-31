@@ -1,4 +1,4 @@
-import { UserGroupsMongoRepository } from './user-groups.mongo.repository';
+import { UserGroupDocument, UserGroupsMongoRepository } from './user-groups.mongo.repository';
 import {
   createMockApplicationContext,
   createMockApplicationContextSession,
@@ -7,8 +7,9 @@ import { ApplicationContext } from '../../types/basic';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { closeDeferred } from '../../../deferrable/defer-close';
-import { UserGroupGatewayDocument } from '../../../use-cases/gateways.types';
 import { CamsError } from '../../../common-errors/cams-error';
+import { randomUUID } from 'node:crypto';
+import { UserGroup } from '../../../../../common/src/cams/users';
 
 describe('UserGroupsMongoRepository', () => {
   let context: ApplicationContext;
@@ -95,14 +96,18 @@ describe('UserGroupsMongoRepository', () => {
       const attorneys = MockData.buildArray(MockData.getCamsUserReference, 3);
       const auditors = MockData.buildArray(MockData.getCamsUserReference, 2);
 
-      const mockGroups: UserGroupGatewayDocument[] = [
+      const mockGroups: UserGroupDocument[] = [
         {
+          id: randomUUID(),
           groupName: 'USTP CAMS Trial Attorney',
           users: attorneys,
+          documentType: 'USER_GROUP',
         },
         {
+          id: randomUUID(),
           groupName: 'USTP CAMS Auditor',
           users: auditors,
+          documentType: 'USER_GROUP',
         },
       ];
 
@@ -133,14 +138,18 @@ describe('UserGroupsMongoRepository', () => {
     test('should handle attorneys group without users array', async () => {
       const auditors = MockData.buildArray(MockData.getCamsUserReference, 2);
 
-      const mockGroups: UserGroupGatewayDocument[] = [
+      const mockGroups: UserGroupDocument[] = [
         {
+          id: randomUUID(),
           groupName: 'USTP CAMS Trial Attorney',
           users: undefined,
+          documentType: 'USER_GROUP',
         },
         {
+          id: randomUUID(),
           groupName: 'USTP CAMS Auditor',
           users: auditors,
+          documentType: 'USER_GROUP',
         },
       ];
 
@@ -157,14 +166,18 @@ describe('UserGroupsMongoRepository', () => {
     test('should handle auditors group without users array', async () => {
       const attorneys = MockData.buildArray(MockData.getCamsUserReference, 3);
 
-      const mockGroups: UserGroupGatewayDocument[] = [
+      const mockGroups: UserGroupDocument[] = [
         {
+          id: randomUUID(),
           groupName: 'USTP CAMS Trial Attorney',
           users: attorneys,
+          documentType: 'USER_GROUP',
         },
         {
+          id: randomUUID(),
           groupName: 'USTP CAMS Auditor',
           users: undefined,
+          documentType: 'USER_GROUP',
         },
       ];
 
@@ -181,10 +194,12 @@ describe('UserGroupsMongoRepository', () => {
     test('should only return attorneys when only attorney group exists', async () => {
       const attorneys = MockData.buildArray(MockData.getCamsUserReference, 3);
 
-      const mockGroups: UserGroupGatewayDocument[] = [
+      const mockGroups: UserGroupDocument[] = [
         {
+          id: randomUUID(),
           groupName: 'USTP CAMS Trial Attorney',
           users: attorneys,
+          documentType: 'USER_GROUP',
         },
       ];
 
@@ -201,10 +216,12 @@ describe('UserGroupsMongoRepository', () => {
     test('should only return auditors when only auditor group exists', async () => {
       const auditors = MockData.buildArray(MockData.getCamsUserReference, 2);
 
-      const mockGroups: UserGroupGatewayDocument[] = [
+      const mockGroups: UserGroupDocument[] = [
         {
+          id: randomUUID(),
           groupName: 'USTP CAMS Auditor',
           users: auditors,
+          documentType: 'USER_GROUP',
         },
       ];
 
@@ -221,14 +238,18 @@ describe('UserGroupsMongoRepository', () => {
     test('should ignore unrecognized group names', async () => {
       const attorneys = MockData.buildArray(MockData.getCamsUserReference, 3);
 
-      const mockGroups: UserGroupGatewayDocument[] = [
+      const mockGroups: UserGroupDocument[] = [
         {
+          id: randomUUID(),
           groupName: 'USTP CAMS Trial Attorney',
           users: attorneys,
+          documentType: 'USER_GROUP',
         },
         {
+          id: randomUUID(),
           groupName: 'Some Other Group',
           users: MockData.buildArray(MockData.getCamsUserReference, 5),
+          documentType: 'USER_GROUP',
         },
       ];
 
@@ -246,14 +267,18 @@ describe('UserGroupsMongoRepository', () => {
       const attorneys = MockData.buildArray(MockData.getCamsUserReference, 3);
       const auditors = MockData.buildArray(MockData.getCamsUserReference, 2);
 
-      const mockGroups: UserGroupGatewayDocument[] = [
+      const mockGroups: UserGroupDocument[] = [
         {
+          id: randomUUID(),
           groupName: 'USTP CAMS Trial Attorney',
           users: attorneys,
+          documentType: 'USER_GROUP',
         },
         {
+          id: randomUUID(),
           groupName: 'USTP CAMS Auditor',
           users: auditors,
+          documentType: 'USER_GROUP',
         },
       ];
 
@@ -282,14 +307,18 @@ describe('UserGroupsMongoRepository', () => {
 
   describe('upsertUserGroupsBatch', () => {
     test('should upsert user groups successfully', async () => {
-      const userGroups: UserGroupGatewayDocument[] = [
+      const userGroups: UserGroupDocument[] = [
         {
+          id: randomUUID(),
           groupName: 'USTP CAMS Trial Attorney',
           users: MockData.buildArray(MockData.getCamsUserReference, 3),
+          documentType: 'USER_GROUP',
         },
         {
+          id: randomUUID(),
           groupName: 'USTP CAMS Auditor',
           users: MockData.buildArray(MockData.getCamsUserReference, 2),
+          documentType: 'USER_GROUP',
         },
       ];
 
@@ -315,22 +344,29 @@ describe('UserGroupsMongoRepository', () => {
               condition: 'EQUALS',
               rightOperand: 'USTP CAMS Trial Attorney',
             }),
-            replacement: userGroups[0],
+            replacement: expect.objectContaining({
+              groupName: 'USTP CAMS Trial Attorney',
+              documentType: 'USER_GROUP',
+            }),
           },
           {
             filter: expect.objectContaining({
               condition: 'EQUALS',
               rightOperand: 'USTP CAMS Auditor',
             }),
-            replacement: userGroups[1],
+            replacement: expect.objectContaining({
+              groupName: 'USTP CAMS Auditor',
+              documentType: 'USER_GROUP',
+            }),
           },
         ]),
       );
     });
 
     test('should log info message with upsert counts', async () => {
-      const userGroups: UserGroupGatewayDocument[] = [
+      const userGroups: UserGroup[] = [
         {
+          id: randomUUID(),
           groupName: 'USTP CAMS Trial Attorney',
           users: MockData.buildArray(MockData.getCamsUserReference, 3),
         },
@@ -371,8 +407,9 @@ describe('UserGroupsMongoRepository', () => {
     });
 
     test('should throw CamsError when bulkReplace operation fails', async () => {
-      const userGroups: UserGroupGatewayDocument[] = [
+      const userGroups: UserGroup[] = [
         {
+          id: randomUUID(),
           groupName: 'USTP CAMS Trial Attorney',
           users: MockData.buildArray(MockData.getCamsUserReference, 3),
         },
@@ -389,16 +426,19 @@ describe('UserGroupsMongoRepository', () => {
     });
 
     test('should handle multiple groups with correct filter and replacement', async () => {
-      const userGroups: UserGroupGatewayDocument[] = [
+      const userGroups: UserGroup[] = [
         {
+          id: randomUUID(),
           groupName: 'Group A',
           users: [MockData.getCamsUserReference()],
         },
         {
+          id: randomUUID(),
           groupName: 'Group B',
           users: [MockData.getCamsUserReference()],
         },
         {
+          id: randomUUID(),
           groupName: 'Group C',
           users: [MockData.getCamsUserReference()],
         },
@@ -426,21 +466,30 @@ describe('UserGroupsMongoRepository', () => {
               condition: 'EQUALS',
               rightOperand: 'Group A',
             }),
-            replacement: userGroups[0],
+            replacement: expect.objectContaining({
+              groupName: 'Group A',
+              documentType: 'USER_GROUP',
+            }),
           },
           {
             filter: expect.objectContaining({
               condition: 'EQUALS',
               rightOperand: 'Group B',
             }),
-            replacement: userGroups[1],
+            replacement: expect.objectContaining({
+              groupName: 'Group B',
+              documentType: 'USER_GROUP',
+            }),
           },
           {
             filter: expect.objectContaining({
               condition: 'EQUALS',
               rightOperand: 'Group C',
             }),
-            replacement: userGroups[2],
+            replacement: expect.objectContaining({
+              groupName: 'Group C',
+              documentType: 'USER_GROUP',
+            }),
           },
         ]),
       );

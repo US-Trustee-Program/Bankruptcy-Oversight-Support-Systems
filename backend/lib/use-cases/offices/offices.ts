@@ -1,5 +1,5 @@
 import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
-import { AttorneyUser, Staff } from '../../../../common/src/cams/users';
+import { AttorneyUser, Staff, UserGroup } from '../../../../common/src/cams/users';
 import { ApplicationContext } from '../../adapters/types/basic';
 import {
   getOfficeAssigneesRepository,
@@ -64,8 +64,7 @@ export class OfficesUseCase {
       false,
     );
 
-    // Sync all user groups to user-groups collection
-    const userGroupDocuments = [];
+    const userGroupDocuments: UserGroup[] = [];
     for (const group of userGroups) {
       const users = await userGroupSource.getUserGroupUsers(context, group);
       userGroupDocuments.push({

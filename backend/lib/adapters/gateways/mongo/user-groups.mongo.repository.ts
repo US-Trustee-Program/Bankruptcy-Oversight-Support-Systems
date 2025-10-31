@@ -1,14 +1,18 @@
 import { ApplicationContext } from '../../types/basic';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
-import { UserGroupGatewayDocument, UserGroupsRepository } from '../../../use-cases/gateways.types';
+import { UserGroupsRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
-import { CamsUserReference } from '../../../../../common/src/cams/users';
+import { CamsUserReference, UserGroup } from '../../../../../common/src/cams/users';
 import QueryBuilder from '../../../query/query-builder';
 
 const MODULE_NAME = 'USER-GROUPS-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'user-groups';
 
 const { using } = QueryBuilder;
+
+export type UserGroupDocument = UserGroup & {
+  documentType: 'USER_GROUP';
+};
 
 export class UserGroupsMongoRepository extends BaseMongoRepository implements UserGroupsRepository {
   private static referenceCount: number = 0;
@@ -46,9 +50,9 @@ export class UserGroupsMongoRepository extends BaseMongoRepository implements Us
   }> {
     try {
       const groupNames = ['USTP CAMS Trial Attorney', 'USTP CAMS Auditor'];
-      const doc = using<UserGroupGatewayDocument>();
+      const doc = using<UserGroup>();
       const query = doc('groupName').contains(groupNames);
-      const groups = await this.getAdapter<UserGroupGatewayDocument>().find(query);
+      const groups = await this.getAdapter<UserGroup>().find(query);
 
       const result = {
         attorneys: [] as CamsUserReference[],
@@ -76,23 +80,20 @@ export class UserGroupsMongoRepository extends BaseMongoRepository implements Us
     }
   }
 
-  async upsertUserGroupsBatch(
-    context: ApplicationContext,
-    userGroups: UserGroupGatewayDocument[],
-  ): Promise<void> {
+  async upsertUserGroupsBatch(context: ApplicationContext, userGroups: UserGroup[]): Promise<void> {
     if (userGroups.length === 0) {
       context.logger.info(MODULE_NAME, 'No user groups to upsert');
       return;
     }
 
     try {
-      const doc = using<UserGroupGatewayDocument>();
+      const doc = using<UserGroup>();
       const replacements = userGroups.map((group) => ({
         filter: doc('groupName').equals(group.groupName),
-        replacement: group,
+        replacement: { ...group, documentType: 'USER_GROUP' as const },
       }));
 
-      const result = await this.getAdapter<UserGroupGatewayDocument>().bulkReplace(replacements);
+      const result = await this.getAdapter<UserGroup>().bulkReplace(replacements);
 
       context.logger.info(
         MODULE_NAME,
