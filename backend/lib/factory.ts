@@ -26,6 +26,7 @@ import {
   RuntimeStateRepository,
   StaffRepository,
   TrusteesRepository,
+  UserGroupsRepository,
   UserSessionCacheRepository,
   UsersRepository,
 } from './use-cases/gateways.types';
@@ -61,6 +62,7 @@ import StorageQueueGateway from './adapters/gateways/storage-queue/storage-queue
 import { TrusteesMongoRepository } from './adapters/gateways/mongo/trustees.mongo.repository';
 import { ListsMongoRepository } from './adapters/gateways/mongo/lists.mongo.repository';
 import { StaffMongoRepository } from './adapters/gateways/mongo/staff.mongo.repository';
+import { UserGroupsMongoRepository } from './adapters/gateways/mongo/user-groups.mongo.repository';
 
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
@@ -83,6 +85,15 @@ export const getStaffRepository = (context: ApplicationContext): StaffRepository
     return new MockMongoRepository();
   }
   const repo = StaffMongoRepository.getInstance(context);
+  deferRelease(repo, context);
+  return repo;
+};
+
+export const getUserGroupsRepository = (context: ApplicationContext): UserGroupsRepository => {
+  if (context.config.get('dbMock')) {
+    return new MockMongoRepository();
+  }
+  const repo = UserGroupsMongoRepository.getInstance(context);
   deferRelease(repo, context);
   return repo;
 };
@@ -381,6 +392,7 @@ export const Factory = {
   getQueueGateway,
   getListsGateway,
   getStaffRepository,
+  getUserGroupsRepository,
 };
 
 export default Factory;

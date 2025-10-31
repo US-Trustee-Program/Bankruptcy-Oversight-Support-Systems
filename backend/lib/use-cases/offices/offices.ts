@@ -8,6 +8,7 @@ import {
   getOfficeStaffSyncStateRepo,
   getStorageGateway,
   getUserGroupGateway,
+  getUserGroupsRepository,
 } from '../../factory';
 import { OfficeStaffSyncState } from '../gateways.types';
 import { USTP_OFFICE_NAME_MAP } from '../../adapters/gateways/dxtr/dxtr.constants';
@@ -45,6 +46,7 @@ export class OfficesUseCase {
     const repository = getOfficesRepository(context);
     const userGroupSource = await getUserGroupGateway(context);
     const storage = getStorageGateway(context);
+    const userGroupsRepository = getUserGroupsRepository(context);
 
     // Get IdP to CAMS mappings.
     const offices = await officesGateway.getOffices(context);
@@ -61,6 +63,23 @@ export class OfficesUseCase {
       context.logger,
       false,
     );
+
+    // Sync all user groups to user-groups collection
+    const userGroupDocuments = [];
+    for (const group of userGroups) {
+      const users = await userGroupSource.getUserGroupUsers(context, group);
+      userGroupDocuments.push({
+        id: group.id,
+        groupName: group.name,
+        users,
+      });
+    }
+    await userGroupsRepository.upsertUserGroupsBatch(context, userGroupDocuments);
+    context.logger.info(
+      MODULE_NAME,
+      `Synced ${userGroupDocuments.length} groups to user-groups collection`,
+    );
+
     const officeGroups = userGroups.filter((group) => groupToOfficeMap.has(group.name));
     const roleGroups = userGroups.filter((group) => groupToRoleMap.has(group.name));
 

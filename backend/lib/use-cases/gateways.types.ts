@@ -302,3 +302,20 @@ export interface QueueGateway {
 export interface StaffRepository {
   getAttorneyStaff(applicationContext: ApplicationContext): Promise<Staff[]>;
 }
+
+export type UserGroupGatewayDocument = {
+  id: string;
+  groupName: string;
+  users: CamsUserReference[];
+};
+
+export interface UserGroupsRepository extends Releasable {
+  getOversightStaff(context: ApplicationContext): Promise<{
+    attorneys: CamsUserReference[];
+    auditors: CamsUserReference[];
+  }>;
+  upsertUserGroupsBatch(
+    context: ApplicationContext,
+    userGroups: UserGroupGatewayDocument[],
+  ): Promise<void>;
+}
