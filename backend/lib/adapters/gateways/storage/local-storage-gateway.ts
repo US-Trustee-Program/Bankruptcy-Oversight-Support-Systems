@@ -15,25 +15,8 @@ const ROLE_MAPPING =
   'USTP_CAMS_Data_Verifier,USTP CAMS Data Verifier,DataVerifier\n' +
   'USTP_CAMS_Trustee_Admin,USTP CAMS Trustee Admin,TrusteeAdmin\n';
 
-// TODO: We should delete this. How are we handling AD group from Seattle mapped to SE and AK groups??
-// This mapping doesn't include Wilmington, DE which is not soft live. However, we see the office assigned in STG and PRD.
-// Did we break the SE+AK mapping to Seattle? We no longer use this mapping table??
-export const OFFICE_MAPPING_PATH = '/officemapping.csv';
-const OFFICE_MAPPING =
-  'ad_group_name,idp_group_name,group_designator\n' +
-  'USTP_CAMS_Region_2_Office_Manhattan,USTP CAMS Region 2 Office Manhattan,NY\n' +
-  'USTP_CAMS_Region_2_Office_Brooklyn,USTP CAMS Region 2 Office Brooklyn,BR\n' +
-  'USTP_CAMS_Region_2_Office_Central_Islip,USTP CAMS Region 2 Office Central Islip,LI\n' +
-  'USTP_CAMS_Region_2_Office_Albany,USTP CAMS Region 2 Office Albany,AL\n' +
-  'USTP_CAMS_Region_2_Office_Utica,USTP CAMS Region 2 Office Utica,UT\n' +
-  'USTP_CAMS_Region_2_Office_Buffalo,USTP CAMS Region 2 Office Buffalo,BU\n' +
-  'USTP_CAMS_Region_2_Office_Rochester,USTP CAMS Region 2 Office Rochester,RO\n' +
-  'USTP_CAMS_Region_2_Office_New_Haven,USTP CAMS Region 2 Office New Haven,NH\n' +
-  'USTP_CAMS_Region_18_Office_Seattle,USTP CAMS Region 18 Office Seattle,SE|AK\n';
-
 const storage = new Map<string, string>();
 storage.set(ROLE_MAPPING_PATH, ROLE_MAPPING);
-storage.set(OFFICE_MAPPING_PATH, OFFICE_MAPPING);
 
 function get(path: string): string | null {
   if (!storage.has(path)) {
@@ -60,12 +43,14 @@ function getRoleMapping(): Map<string, CamsRole> {
 
 function getPrivilegedIdentityUserRoleGroupName(): string {
   const mapping = getRoleMapping();
-  let groupNameToReturn;
-  mapping.forEach((camsRole, groupName) => {
+  let groupNameToReturn: string | undefined = undefined;
+
+  for (const [groupName, camsRole] of mapping) {
     if (camsRole === CamsRole.PrivilegedIdentityUser.toString()) {
       groupNameToReturn = groupName;
     }
-  });
+  }
+
   if (!groupNameToReturn) {
     throw new NotFoundError(MODULE_NAME, {
       message: 'Cannot find privileged identity user role group name.',
