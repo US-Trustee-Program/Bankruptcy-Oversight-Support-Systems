@@ -13,6 +13,7 @@ const MODULE_NAME = 'TRUSTEE-ASSIGNMENTS-CONTROLLER';
 
 interface CreateAssignmentRequest {
   userId: string;
+  role: OversightRole;
 }
 
 export class TrusteeAssignmentsController implements CamsController {
@@ -33,7 +34,7 @@ export class TrusteeAssignmentsController implements CamsController {
       throw new UnauthorizedError(MODULE_NAME);
     }
 
-    const { method } = context.request;
+    const { method, url } = context.request;
 
     if (!['POST', 'GET'].includes(method)) {
       throw new BadRequestError(MODULE_NAME, {
@@ -42,6 +43,11 @@ export class TrusteeAssignmentsController implements CamsController {
     }
 
     try {
+      // Handle GET /api/v1/trustee-assignments/oversight-staff endpoint
+      if (method === 'GET' && url.includes('/trustee-assignments/oversight-staff')) {
+        return await this.getOversightStaff(context);
+      }
+
       switch (method) {
         case 'GET':
           return await this.getTrusteeOversightAssignments(context);
@@ -51,6 +57,20 @@ export class TrusteeAssignmentsController implements CamsController {
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
+  }
+
+  private async getOversightStaff(context: ApplicationContext): Promise<CamsHttpResponseInit> {
+    const staff = await this.useCase.getOversightStaff(context);
+
+    return httpSuccess({
+      statusCode: 200,
+      body: {
+        meta: {
+          self: context.request.url,
+        },
+        data: staff,
+      },
+    });
   }
 
   private async getTrusteeOversightAssignments(
@@ -103,11 +123,24 @@ export class TrusteeAssignmentsController implements CamsController {
       });
     }
 
+    if (!requestData.role) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: 'Role is required in request body',
+      });
+    }
+
+    const validOversightRoles = Object.values(OversightRole);
+    if (!validOversightRoles.includes(requestData.role)) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: `Role must be a valid OversightRole. Received: ${requestData.role}`,
+      });
+    }
+
     const wasCreated = await this.useCase.assignOversightStaffToTrustee(
       context,
       trusteeId,
       requestData.userId,
-      OversightRole.OversightAttorney, // TODO: Task 6 will make role dynamic from request body
+      requestData.role,
     );
 
     return httpSuccess({

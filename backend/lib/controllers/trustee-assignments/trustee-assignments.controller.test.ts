@@ -122,9 +122,33 @@ describe('TrusteeAssignmentsController', () => {
     });
   });
 
+  describe('GET /api/v1/trustee-assignments/oversight-staff', () => {
+    test('should return attorneys and auditors', async () => {
+      const mockStaff = {
+        attorneys: [
+          { id: 'attorney-1', name: 'Attorney One' },
+          { id: 'attorney-2', name: 'Attorney Two' },
+        ],
+        auditors: [{ id: 'auditor-1', name: 'Auditor One' }],
+      };
+      mockUseCase.getOversightStaff.mockResolvedValue(mockStaff);
+
+      context.request.method = 'GET';
+      context.request.params = {};
+      context.request.url = '/api/v1/trustee-assignments/oversight-staff';
+
+      const response = await controller.handleRequest(context);
+
+      expect(mockUseCase.getOversightStaff).toHaveBeenCalledWith(context);
+      expect(response.statusCode).toBe(200);
+      expect(response.body.data).toEqual(mockStaff);
+      expect(response.body.meta.self).toBe('/api/v1/trustee-assignments/oversight-staff');
+    });
+  });
+
   describe('POST /api/v1/trustees/{trusteeId}/oversight-assignments', () => {
-    test('should create attorney assignment with valid request', async () => {
-      const requestBody = { userId: 'user-789' };
+    test('should create attorney assignment with valid request including role', async () => {
+      const requestBody = { userId: 'user-789', role: OversightRole.OversightAttorney };
       mockUseCase.assignOversightStaffToTrustee.mockResolvedValue(true);
 
       context.request.method = 'POST';
@@ -144,8 +168,29 @@ describe('TrusteeAssignmentsController', () => {
       expect(response.body).toBeUndefined();
     });
 
+    test('should create auditor assignment with valid request', async () => {
+      const requestBody = { userId: 'user-789', role: OversightRole.OversightAuditor };
+      mockUseCase.assignOversightStaffToTrustee.mockResolvedValue(true);
+
+      context.request.method = 'POST';
+      context.request.params = { trusteeId: 'trustee-456' };
+      context.request.body = requestBody;
+      context.request.url = '/api/v1/trustees/trustee-456/oversight-assignments';
+
+      const response = await controller.handleRequest(context);
+
+      expect(mockUseCase.assignOversightStaffToTrustee).toHaveBeenCalledWith(
+        context,
+        'trustee-456',
+        'user-789',
+        OversightRole.OversightAuditor,
+      );
+      expect(response.statusCode).toBe(201);
+      expect(response.body).toBeUndefined();
+    });
+
     test('should return 204 for idempotent attorney assignment request', async () => {
-      const requestBody = { userId: 'user-789' };
+      const requestBody = { userId: 'user-789', role: OversightRole.OversightAttorney };
       mockUseCase.assignOversightStaffToTrustee.mockResolvedValue(false);
 
       context.request.method = 'POST';
@@ -176,7 +221,25 @@ describe('TrusteeAssignmentsController', () => {
     test('should throw BadRequestError when userId is missing from body', async () => {
       context.request.method = 'POST';
       context.request.params = { trusteeId: 'trustee-456' };
-      context.request.body = {};
+      context.request.body = { role: OversightRole.OversightAttorney };
+      context.request.url = '/api/v1/trustees/trustee-456/oversight-assignments';
+
+      await expect(controller.handleRequest(context)).rejects.toThrow(BadRequestError);
+    });
+
+    test('should throw BadRequestError when role is missing from body', async () => {
+      context.request.method = 'POST';
+      context.request.params = { trusteeId: 'trustee-456' };
+      context.request.body = { userId: 'user-789' };
+      context.request.url = '/api/v1/trustees/trustee-456/oversight-assignments';
+
+      await expect(controller.handleRequest(context)).rejects.toThrow(BadRequestError);
+    });
+
+    test('should throw BadRequestError when role is not a valid OversightRole', async () => {
+      context.request.method = 'POST';
+      context.request.params = { trusteeId: 'trustee-456' };
+      context.request.body = { userId: 'user-789', role: 'InvalidRole' };
       context.request.url = '/api/v1/trustees/trustee-456/oversight-assignments';
 
       await expect(controller.handleRequest(context)).rejects.toThrow(BadRequestError);
@@ -185,7 +248,7 @@ describe('TrusteeAssignmentsController', () => {
     test('should throw BadRequestError when trustee ID is missing for POST', async () => {
       context.request.method = 'POST';
       context.request.params = {};
-      context.request.body = { userId: 'user-789' };
+      context.request.body = { userId: 'user-789', role: OversightRole.OversightAttorney };
       context.request.url = '/api/v1/trustees/oversight-assignments';
 
       await expect(controller.handleRequest(context)).rejects.toThrow(BadRequestError);
@@ -232,7 +295,7 @@ describe('TrusteeAssignmentsController', () => {
     });
 
     test('POST should successfully process assignment creation', async () => {
-      const requestBody = { userId: 'user-789' };
+      const requestBody = { userId: 'user-789', role: OversightRole.OversightAttorney };
       mockUseCase.assignOversightStaffToTrustee.mockResolvedValue(true);
 
       context.request.method = 'POST';
