@@ -130,7 +130,7 @@ test.describe('Trustees', () => {
       await expect(page.getByTestId('trustee-detail-screen')).toBeVisible(timeoutOption);
 
       // Navigate to the Assigned Staff tab
-      const assignedStaffTab = page.locator('button:has-text("Assigned Staff")');
+      const assignedStaffTab = page.getByTestId('trustee-assigned-staff-nav-link');
       await expect(assignedStaffTab).toBeVisible(timeoutOption);
       await assignedStaffTab.click();
 
@@ -149,11 +149,14 @@ test.describe('Trustees', () => {
         await addButton.click();
 
         // Wait for the modal to appear
-        const modal = page.locator('[id^="assign-auditor-modal-"]');
+        const modal = page.getByRole('dialog', { name: 'Add Auditor' });
         await expect(modal).toBeVisible(timeoutOption);
 
-        // Wait for the staff dropdown to be populated
-        await page.waitForTimeout(1000);
+        // Wait for the loading spinner to disappear and staff dropdown to be available
+        await page.waitForSelector('[id^="assign-auditor-modal-"] .loading-spinner', {
+          state: 'hidden',
+          timeout: 10000,
+        });
 
         // Find and select an auditor from the dropdown
         const staffSearchInput = page.locator('#staff-search-input');
