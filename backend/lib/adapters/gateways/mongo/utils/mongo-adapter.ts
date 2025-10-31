@@ -320,14 +320,6 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     }
   }
 
-  public async bulkWrite(operations) {
-    try {
-      return await this.collectionHumble.bulkWrite(operations);
-    } catch (originalError) {
-      throw this.handleError(originalError, 'Failed to execute bulk write operation.');
-    }
-  }
-
   public async bulkReplace(
     replacements: Array<{ filter: Query<T>; replacement: T }>,
     upsert: boolean = true,
