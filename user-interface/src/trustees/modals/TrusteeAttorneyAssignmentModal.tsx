@@ -76,7 +76,7 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
         setIsAssigning(false);
       }
     }
-  }, [selectedAttorney, currentAssignment, props, api, globalAlert]);
+  }, [selectedAttorney, currentAssignment, props.onAssignment, props.trusteeId, api, globalAlert]);
 
   const modalContent = (
     <div
