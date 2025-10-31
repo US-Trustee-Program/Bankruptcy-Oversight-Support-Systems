@@ -201,6 +201,7 @@ describe('TrusteeAttorneyAssignmentModal', () => {
       expect(mockApiMethods.createTrusteeOversightAssignment).toHaveBeenCalledWith(
         'trustee-123',
         'attorney-1',
+        OversightRole.OversightAttorney,
       );
     });
 

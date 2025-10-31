@@ -8,12 +8,18 @@ import { BadRequestError } from '../../common-errors/bad-request';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { OversightRole } from '../../../../common/src/cams/roles';
+import { CamsUserReference } from '../../../../common/src/cams/users';
 
 const MODULE_NAME = 'TRUSTEE-ASSIGNMENTS-CONTROLLER';
 
 interface CreateAssignmentRequest {
   userId: string;
   role: OversightRole;
+}
+
+interface OversightStaffResponse {
+  attorneys: CamsUserReference[];
+  auditors: CamsUserReference[];
 }
 
 export class TrusteeAssignmentsController implements CamsController {
@@ -25,7 +31,9 @@ export class TrusteeAssignmentsController implements CamsController {
 
   public async handleRequest(
     context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<TrusteeOversightAssignment[] | undefined>> {
+  ): Promise<
+    CamsHttpResponseInit<TrusteeOversightAssignment[] | OversightStaffResponse | undefined>
+  > {
     if (!context.featureFlags['trustee-management']) {
       throw new NotFoundError(MODULE_NAME);
     }
@@ -59,7 +67,9 @@ export class TrusteeAssignmentsController implements CamsController {
     }
   }
 
-  private async getOversightStaff(context: ApplicationContext): Promise<CamsHttpResponseInit> {
+  private async getOversightStaff(
+    context: ApplicationContext,
+  ): Promise<CamsHttpResponseInit<OversightStaffResponse>> {
     const staff = await this.useCase.getOversightStaff(context);
 
     return httpSuccess({

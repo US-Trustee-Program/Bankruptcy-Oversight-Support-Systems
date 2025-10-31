@@ -944,9 +944,9 @@ describe('TrusteeDetailAuditHistory', () => {
 
       // Check oversight change row
       expect(screen.getByTestId('change-type-oversight-0')).toHaveTextContent('Oversight');
-      expect(screen.getByTestId('previous-oversight-0')).toHaveTextContent('Trial Attorney');
+      expect(screen.getByTestId('previous-oversight-0')).toHaveTextContent('Attorney');
       expect(screen.getByTestId('previous-oversight-0')).toHaveTextContent('John Attorney');
-      expect(screen.getByTestId('new-oversight-0')).toHaveTextContent('Trial Attorney');
+      expect(screen.getByTestId('new-oversight-0')).toHaveTextContent('Attorney');
       expect(screen.getByTestId('new-oversight-0')).toHaveTextContent('Jane Attorney');
       expect(screen.getByTestId('changed-by-0')).toHaveTextContent('SYSTEM');
       expect(screen.getByTestId('change-date-0')).toHaveTextContent(
@@ -995,7 +995,7 @@ describe('TrusteeDetailAuditHistory', () => {
       });
 
       expect(screen.getByTestId('previous-oversight-0')).toHaveTextContent('(none)');
-      expect(screen.getByTestId('new-oversight-0')).toHaveTextContent('Trial Attorney');
+      expect(screen.getByTestId('new-oversight-0')).toHaveTextContent('Attorney');
       expect(screen.getByTestId('new-oversight-0')).toHaveTextContent('Bob Attorney');
     });
 
@@ -1020,7 +1020,7 @@ describe('TrusteeDetailAuditHistory', () => {
         expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
       });
 
-      expect(screen.getByTestId('previous-oversight-0')).toHaveTextContent('Trial Attorney');
+      expect(screen.getByTestId('previous-oversight-0')).toHaveTextContent('Attorney');
       expect(screen.getByTestId('previous-oversight-0')).toHaveTextContent('Charlie Attorney');
       expect(screen.getByTestId('new-oversight-0')).toHaveTextContent('(none)');
     });
@@ -1079,7 +1079,7 @@ describe('TrusteeDetailAuditHistory', () => {
 
       // Verify oversight history data is correct (it should be at index 0 due to sorting)
       const previousOversight = screen.getByTestId('previous-oversight-0');
-      expect(previousOversight).toHaveTextContent('Trial Attorney');
+      expect(previousOversight).toHaveTextContent('Attorney');
       expect(previousOversight).toHaveTextContent('John Attorney');
     });
 
@@ -1097,9 +1097,9 @@ describe('TrusteeDetailAuditHistory', () => {
       const newOversight = screen.getByTestId('new-oversight-0');
 
       // Verify both role and user name are present
-      expect(previousOversight).toHaveTextContent('Trial Attorney');
+      expect(previousOversight).toHaveTextContent('Attorney');
       expect(previousOversight).toHaveTextContent('John Attorney');
-      expect(newOversight).toHaveTextContent('Trial Attorney');
+      expect(newOversight).toHaveTextContent('Attorney');
       expect(newOversight).toHaveTextContent('Jane Attorney');
 
       // Check that <br> elements are present for line breaks
@@ -1114,9 +1114,9 @@ describe('TrusteeDetailAuditHistory', () => {
         {
           name: 'basic oversight change',
           override: {},
-          expectPrevRole: 'Trial Attorney',
+          expectPrevRole: 'Attorney',
           expectPrevName: 'John Attorney',
-          expectNewRole: 'Trial Attorney',
+          expectNewRole: 'Attorney',
           expectNewName: 'Jane Attorney',
           expectChangedBy: 'SYSTEM',
         },
@@ -1130,7 +1130,7 @@ describe('TrusteeDetailAuditHistory', () => {
             },
           },
           expectPrev: '(none)',
-          expectNewRole: 'Trial Attorney',
+          expectNewRole: 'Attorney',
           expectNewName: 'New Attorney',
           expectChangedBy: 'SYSTEM',
         },
@@ -1143,7 +1143,7 @@ describe('TrusteeDetailAuditHistory', () => {
             },
             after: null,
           },
-          expectPrevRole: 'Trial Attorney',
+          expectPrevRole: 'Attorney',
           expectPrevName: 'Old Attorney',
           expectNew: '(none)',
           expectChangedBy: 'SYSTEM',
@@ -1158,9 +1158,9 @@ describe('TrusteeDetailAuditHistory', () => {
         {
           name: 'missing updatedBy',
           override: { updatedBy: { id: '', name: '' } },
-          expectPrevRole: 'Trial Attorney',
+          expectPrevRole: 'Attorney',
           expectPrevName: 'John Attorney',
-          expectNewRole: 'Trial Attorney',
+          expectNewRole: 'Attorney',
           expectNewName: 'Jane Attorney',
           expectChangedBy: '',
         },

@@ -15,7 +15,7 @@ import {
 } from '@common/cams/trustees';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
 import { Auditable } from '@common/cams/auditable';
-import { CamsRole } from '@common/cams/roles';
+import { OversightRole } from '@common/cams/roles';
 
 export interface TrusteeDetailAuditHistoryProps {
   trusteeId: string;
@@ -150,7 +150,8 @@ function ShowTrusteeOversightHistory(props: ShowTrusteeOversightHistoryProps) {
   const { history, idx } = props;
 
   const roleDisplayMap = {
-    [CamsRole.TrialAttorney]: 'Trial Attorney',
+    [OversightRole.OversightAttorney]: 'Attorney',
+    [OversightRole.OversightAuditor]: 'Auditor',
   };
 
   const before = history.before ? (
