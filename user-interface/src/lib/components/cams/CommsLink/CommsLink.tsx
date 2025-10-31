@@ -13,9 +13,17 @@ type CommsLinkProps = {
 
 const NON_DIGITS = /\D/g;
 
+function formatWebsiteUrl(website: string) {
+  return website.replace(/^(?:http:\/\/|(?!https?:\/\/))/i, 'https://');
+}
+
+function formatWebsiteLabel(website: string) {
+  return website.replace(/^https?:\/\//, '');
+}
+
 function toTelephoneUri(number: string, extension?: string) {
-  const strippedNumber = number.replace(NON_DIGITS, '');
-  const strippedExtension = extension?.replace(NON_DIGITS, '');
+  const strippedNumber = number.replaceAll(NON_DIGITS, '');
+  const strippedExtension = extension?.replaceAll(NON_DIGITS, '');
   if (strippedExtension) {
     return `tel:+1${strippedNumber};ext=${strippedExtension}`;
   } else {
@@ -29,7 +37,6 @@ function CommsLink(props: Readonly<CommsLinkProps>) {
   const { number, extension } = phone ?? {};
 
   const isValidEmail = Validators.isEmailAddress(email).valid;
-  const isValidWebsite = Validators.isWebsiteAddress(website).valid;
   const isValidPhoneNumber = Validators.isPhoneNumber(number).valid;
 
   let href = '';
@@ -52,10 +59,10 @@ function CommsLink(props: Readonly<CommsLinkProps>) {
     }
     labelToUse = label ?? email!;
     iconToUse = icon ?? 'mail';
-  } else if (isValidWebsite && mode === 'website' && website) {
-    href = website;
+  } else if (mode === 'website' && website) {
     target = '_blank';
-    labelToUse = label ?? website!;
+    href = formatWebsiteUrl(website);
+    labelToUse = label ?? formatWebsiteLabel(website);
     iconToUse = icon ?? 'launch';
   } else if (isValidPhoneNumber && mode === 'phone-dialer') {
     href = toTelephoneUri(number!, extension);
