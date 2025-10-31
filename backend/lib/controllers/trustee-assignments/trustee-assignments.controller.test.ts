@@ -242,6 +242,12 @@ describe('TrusteeAssignmentsController', () => {
       context.request.body = { userId: 'user-789', role: 'InvalidRole' };
       context.request.url = '/api/v1/trustees/trustee-456/oversight-assignments';
 
+      mockUseCase.assignOversightStaffToTrustee.mockRejectedValue(
+        new BadRequestError('TRUSTEE-ASSIGNMENTS-USE-CASE', {
+          message: 'Role must be a valid OversightRole. Received: InvalidRole',
+        }),
+      );
+
       await expect(controller.handleRequest(context)).rejects.toThrow(BadRequestError);
     });
 

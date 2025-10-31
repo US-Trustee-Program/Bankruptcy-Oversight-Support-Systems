@@ -136,13 +136,6 @@ export class TrusteeAssignmentsController implements CamsController {
       });
     }
 
-    const validOversightRoles = Object.values(OversightRole);
-    if (!validOversightRoles.includes(requestData.role)) {
-      throw new BadRequestError(MODULE_NAME, {
-        message: `Role must be a valid OversightRole. Received: ${requestData.role}`,
-      });
-    }
-
     const wasCreated = await this.useCase.assignOversightStaffToTrustee(
       context,
       trusteeId,
