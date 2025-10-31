@@ -24,6 +24,21 @@ vi.mock('./AttorneyAssignmentSection', () => ({
   )),
 }));
 
+vi.mock('./AuditorAssignmentSection', () => ({
+  default: vi.fn(({ trusteeId, assignments, onAssignmentChange, isLoading }) => (
+    <div
+      data-testid="auditor-assignment-section"
+      data-trustee-id={trusteeId}
+      data-loading={isLoading}
+      data-assignments-count={assignments?.length || 0}
+    >
+      <button onClick={onAssignmentChange} data-testid="refresh-auditor-assignments">
+        Refresh Auditor Assignments
+      </button>
+    </div>
+  )),
+}));
+
 describe('TrusteeAssignedStaff', () => {
   const mockAssignments: TrusteeOversightAssignment[] = [
     {
@@ -67,6 +82,7 @@ describe('TrusteeAssignedStaff', () => {
     render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
 
     expect(screen.getByTestId('attorney-assignment-section')).toBeInTheDocument();
+    expect(screen.getByTestId('auditor-assignment-section')).toBeInTheDocument();
   });
 
   test('should call getTrusteeOversightAssignments on mount with correct trusteeId', () => {
@@ -205,5 +221,34 @@ describe('TrusteeAssignedStaff', () => {
 
     const section = screen.getByTestId('attorney-assignment-section');
     expect(section).toHaveAttribute('data-assignments-count', '2');
+  });
+
+  test('should pass correct props to AuditorAssignmentSection', () => {
+    (useTrusteeAssignments as MockedFunction<typeof useTrusteeAssignments>).mockReturnValue({
+      ...mockUseTrusteeAssignments,
+      assignments: mockAssignments,
+      isLoading: true,
+    });
+
+    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
+
+    const section = screen.getByTestId('auditor-assignment-section');
+    expect(section).toHaveAttribute('data-trustee-id', 'trustee-123');
+    expect(section).toHaveAttribute('data-loading', 'true');
+    expect(section).toHaveAttribute('data-assignments-count', '1');
+  });
+
+  test('should refresh assignments when auditor section onAssignmentChange is called', () => {
+    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
+
+    mockUseTrusteeAssignments.getTrusteeOversightAssignments.mockClear();
+
+    const refreshButton = screen.getByTestId('refresh-auditor-assignments');
+    fireEvent.click(refreshButton);
+
+    expect(mockUseTrusteeAssignments.getTrusteeOversightAssignments).toHaveBeenCalledWith(
+      'trustee-123',
+    );
+    expect(mockUseTrusteeAssignments.getTrusteeOversightAssignments).toHaveBeenCalledTimes(1);
   });
 });
