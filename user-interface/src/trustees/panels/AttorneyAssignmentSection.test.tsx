@@ -4,7 +4,8 @@ import { vi, describe, test, expect } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import AttorneyAssignmentSection from './AttorneyAssignmentSection';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
-import { OversightRole } from '@common/cams/roles';
+import { AttorneyUser } from '@common/cams/users';
+import { CamsRole, OversightRole } from '@common/cams/roles';
 
 vi.mock('../modals/TrusteeAttorneyAssignmentModal', () => {
   return {
@@ -47,6 +48,21 @@ vi.mock('../modals/TrusteeAttorneyAssignmentModal', () => {
 });
 
 describe('AttorneyAssignmentSection', () => {
+  const mockAttorneys: AttorneyUser[] = [
+    {
+      id: 'attorney-1',
+      name: 'John Doe',
+      offices: [],
+      roles: [CamsRole.TrialAttorney],
+    },
+    {
+      id: 'attorney-2',
+      name: 'Jane Smith',
+      offices: [],
+      roles: [CamsRole.TrialAttorney],
+    },
+  ];
+
   const mockAssignments: TrusteeOversightAssignment[] = [
     {
       id: 'assignment-1',
@@ -67,6 +83,7 @@ describe('AttorneyAssignmentSection', () => {
     override?: Partial<{
       trusteeId: string;
       assignments: TrusteeOversightAssignment[];
+      attorneys: AttorneyUser[];
       onAssignmentChange: () => void;
       isLoading?: boolean;
     }>,
@@ -74,6 +91,7 @@ describe('AttorneyAssignmentSection', () => {
     const defaults = {
       trusteeId: 'trustee-123',
       assignments: [] as TrusteeOversightAssignment[],
+      attorneys: mockAttorneys,
       onAssignmentChange: vi.fn() as unknown as () => void,
       isLoading: false,
     } as const;
