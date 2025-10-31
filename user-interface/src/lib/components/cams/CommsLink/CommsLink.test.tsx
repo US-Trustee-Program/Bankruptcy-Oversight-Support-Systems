@@ -361,11 +361,19 @@ describe('CommsLink Component', () => {
 
   describe('Mode: website', () => {
     const cases = [
-      ['https://example.com', 'https://example.com', 'example.com'],
-      ['http://example.com', 'https://example.com', 'example.com'],
+      ['https://example.com', 'https://example.com', 'https://example.com'],
+      ['http://example.com', 'https://example.com', 'http://example.com'],
       ['example.com', 'https://example.com', 'example.com'],
-      ['https://sub.example.com/path', 'https://sub.example.com/path', 'sub.example.com/path'],
-      ['http://sub.example.com/path', 'https://sub.example.com/path', 'sub.example.com/path'],
+      [
+        'https://sub.example.com/path',
+        'https://sub.example.com/path',
+        'https://sub.example.com/path',
+      ],
+      [
+        'http://sub.example.com/path',
+        'https://sub.example.com/path',
+        'http://sub.example.com/path',
+      ],
       ['sub.example.com/path', 'https://sub.example.com/path', 'sub.example.com/path'],
     ];
 
