@@ -1,14 +1,7 @@
-import LocalStorageGateway, {
-  OFFICE_MAPPING_PATH,
-  ROLE_MAPPING_PATH,
-} from './local-storage-gateway';
+import LocalStorageGateway, { ROLE_MAPPING_PATH } from './local-storage-gateway';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 
 describe('map get', () => {
-  test('should return appropriate string for valid path', () => {
-    expect(LocalStorageGateway.get(OFFICE_MAPPING_PATH)).toEqual(expect.any(String));
-  });
-
   test('should return null for invalid path', () => {
     expect(LocalStorageGateway.get('INVALID_PATH')).toBeNull();
   });
