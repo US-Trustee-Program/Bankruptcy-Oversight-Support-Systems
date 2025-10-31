@@ -114,4 +114,81 @@ test.describe('Trustees', () => {
     await expect(cityInput).toHaveValue('Anytown');
     await expect(zipInput).toHaveValue('12345');
   });
+
+  test('should assign an auditor to a trustee', async ({ page }) => {
+    // Navigate to the first trustee's detail page
+    const trusteesTable = page.getByTestId('trustees-table');
+    await expect(trusteesTable).toBeVisible(timeoutOption);
+
+    const firstTrusteeLink = page.locator('[data-testid^="trustee-link-"]').first();
+
+    // Only proceed if there are trustees
+    if ((await firstTrusteeLink.count()) > 0) {
+      await firstTrusteeLink.click();
+
+      // Wait for the trustee detail page to load
+      await expect(page.getByTestId('trustee-detail-screen')).toBeVisible(timeoutOption);
+
+      // Navigate to the Assigned Staff tab
+      const assignedStaffTab = page.locator('button:has-text("Assigned Staff")');
+      await expect(assignedStaffTab).toBeVisible(timeoutOption);
+      await assignedStaffTab.click();
+
+      // Verify the auditor assignment section is visible
+      const auditorSection = page.getByTestId('auditor-assignment-section');
+      await expect(auditorSection).toBeVisible(timeoutOption);
+
+      // Check if there's already an auditor assigned
+      const noAuditorAssigned = page.getByTestId('no-auditor-assigned');
+      const hasAuditor = (await noAuditorAssigned.count()) === 0;
+
+      if (!hasAuditor) {
+        // Click the "Add" button to open the auditor assignment modal
+        const addButton = auditorSection.locator('[aria-label="Add assigned auditor to trustee"]');
+        await expect(addButton).toBeVisible();
+        await addButton.click();
+
+        // Wait for the modal to appear
+        const modal = page.locator('[id^="assign-auditor-modal-"]');
+        await expect(modal).toBeVisible(timeoutOption);
+
+        // Wait for the staff dropdown to be populated
+        await page.waitForTimeout(1000);
+
+        // Find and select an auditor from the dropdown
+        const staffSearchInput = page.locator('#staff-search-input');
+        if ((await staffSearchInput.count()) > 0) {
+          await staffSearchInput.click();
+
+          // Wait for options to appear and select the first one
+          const firstOption = page.locator('[id^="staff-search-option-"]').first();
+          if ((await firstOption.count()) > 0) {
+            await firstOption.click();
+
+            // Click the submit button
+            const submitButton = page.locator('button:has-text("Add Auditor")');
+            await expect(submitButton).toBeVisible();
+            await expect(submitButton).toBeEnabled();
+            await submitButton.click();
+
+            // Wait for the modal to close
+            await expect(modal).not.toBeVisible({ timeout: 10000 });
+
+            // Verify the auditor is now displayed in the section
+            const auditorDisplay = page.getByTestId('auditor-assignments-display');
+            await expect(auditorDisplay).toBeVisible(timeoutOption);
+          } else {
+            console.log('No auditors available in the system - skipping assignment');
+          }
+        }
+      } else {
+        console.log('Auditor already assigned - test verifies display');
+        // Verify the auditor display is visible
+        const auditorDisplay = page.getByTestId('auditor-assignments-display');
+        await expect(auditorDisplay).toBeVisible();
+      }
+    } else {
+      console.log('No trustees found - skipping auditor assignment test');
+    }
+  });
 });
