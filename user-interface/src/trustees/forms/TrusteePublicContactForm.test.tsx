@@ -135,7 +135,6 @@ describe('TrusteePublicContactForm Tests', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
-    const normalizedWebsite = 'https://example.com';
     const expectedPayload = {
       name: trusteeName,
       public: {
@@ -152,7 +151,7 @@ describe('TrusteePublicContactForm Tests', () => {
           extension,
         },
         email,
-        website: normalizedWebsite,
+        website,
       },
     } as Partial<TrusteeInput>;
 
@@ -293,7 +292,7 @@ describe('TrusteePublicContactForm Tests', () => {
           number: newPhone,
         },
         email: newEmail,
-        website: 'https://example.com',
+        website: 'example.com',
       },
     } as Partial<Trustee>;
     delete expectedPayload.id;
