@@ -105,7 +105,6 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
             }
           }}
           placeholder="Search for an attorney..."
-          required
         />
       </div>
     </div>
