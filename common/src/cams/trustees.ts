@@ -58,6 +58,11 @@ export type TrusteeOversightAssignment = Auditable &
     unassignedOn?: string;
   };
 
+export type AvailableTrusteeOversightStaff = {
+  attorneys: CamsUserReference[];
+  auditors: CamsUserReference[];
+};
+
 type AbstractTrusteeHistory<B, A> = Auditable &
   Identifiable & {
     trusteeId: string;
