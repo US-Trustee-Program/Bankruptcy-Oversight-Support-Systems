@@ -104,7 +104,8 @@ describe('offices use case tests', () => {
         } else if (group.name === 'USTP CAMS Data Verifier') {
           return Promise.resolve(dataVerifierUsers);
         } else if (group.name === 'group-a' || group.name === 'group-b') {
-          throw new Error('Tried to retrieve users for invalid group.');
+          // Return empty array for non-CAMS groups (for user-groups collection sync)
+          return Promise.resolve([]);
         }
       });
 
@@ -125,6 +126,7 @@ describe('offices use case tests', () => {
       .mockResolvedValueOnce({ id: users[1].id, modifiedCount: 1, upsertedCount: 0 })
       .mockRejectedValueOnce(new Error('some unknown error'))
       .mockResolvedValue({ id: users[3].id, modifiedCount: 0, upsertedCount: 1 });
+    jest.spyOn(MockMongoRepository.prototype, 'upsertUserGroupsBatch').mockResolvedValue();
     const stateRepoSpy = jest.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue('');
     const logSpy = jest.spyOn(applicationContext.logger, 'info').mockImplementation(() => {});
 
@@ -156,6 +158,7 @@ describe('offices use case tests', () => {
     const putSpy = jest
       .spyOn(MockMongoRepository.prototype, 'putOfficeStaff')
       .mockResolvedValue({});
+    jest.spyOn(MockMongoRepository.prototype, 'upsertUserGroupsBatch').mockResolvedValue();
     const logSpy = jest.spyOn(applicationContext.logger, 'info').mockImplementation(() => {});
     jest.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue('');
     const useCase = new OfficesUseCase();
@@ -185,6 +188,7 @@ describe('offices use case tests', () => {
     const putSpy = jest
       .spyOn(MockMongoRepository.prototype, 'putOfficeStaff')
       .mockRejectedValue(new Error('fail'));
+    jest.spyOn(MockMongoRepository.prototype, 'upsertUserGroupsBatch').mockResolvedValue();
     const logSpy = jest.spyOn(applicationContext.logger, 'info').mockImplementation(() => {});
     jest.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue('');
     const useCase = new OfficesUseCase();
@@ -194,7 +198,10 @@ describe('offices use case tests', () => {
       expect.anything(),
       expect.stringContaining('Failed to sync 2 users'),
     );
-    expect(logSpy).not.toHaveBeenCalledWith(expect.anything(), expect.stringContaining('Synced'));
+    expect(logSpy).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringMatching(/Synced \d+ users/),
+    );
   });
 });
 

@@ -48,6 +48,10 @@ export class CollectionHumble<T> {
     const queryArray = Array.isArray(query) ? query : [query];
     return this.collection.aggregate(queryArray);
   }
+
+  public async bulkWrite(operations) {
+    return this.collection.bulkWrite(operations);
+  }
 }
 
 export class DatabaseHumble {
