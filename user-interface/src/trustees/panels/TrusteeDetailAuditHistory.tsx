@@ -17,6 +17,11 @@ import FormattedContact from '@/lib/components/cams/FormattedContact';
 import { Auditable } from '@common/cams/auditable';
 import { OversightRole } from '@common/cams/roles';
 
+const ROLE_DISPLAY_MAP = {
+  [OversightRole.OversightAttorney]: 'Attorney',
+  [OversightRole.OversightAuditor]: 'Auditor',
+} as const;
+
 export interface TrusteeDetailAuditHistoryProps {
   trusteeId: string;
 }
@@ -149,14 +154,9 @@ type ShowTrusteeOversightHistoryProps = Readonly<{
 function ShowTrusteeOversightHistory(props: ShowTrusteeOversightHistoryProps) {
   const { history, idx } = props;
 
-  const roleDisplayMap = {
-    [OversightRole.OversightAttorney]: 'Attorney',
-    [OversightRole.OversightAuditor]: 'Auditor',
-  };
-
   const before = history.before ? (
     <>
-      {roleDisplayMap[history.before.role] || history.before.role}
+      {ROLE_DISPLAY_MAP[history.before.role] || history.before.role}
       <br />
       {history.before.user.name}
     </>
@@ -165,7 +165,7 @@ function ShowTrusteeOversightHistory(props: ShowTrusteeOversightHistoryProps) {
   );
   const after = history.after ? (
     <>
-      {roleDisplayMap[history.after.role] || history.after.role}
+      {ROLE_DISPLAY_MAP[history.after.role] || history.after.role}
       <br />
       {history.after.user.name}
     </>
