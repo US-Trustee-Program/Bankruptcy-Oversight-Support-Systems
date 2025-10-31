@@ -18,7 +18,7 @@ const MODULE_NAME = 'TRUSTEE-ASSIGNMENTS-USE-CASE';
 
 /**
  * Use case for managing trustee oversight assignments.
- * Provides business logic for viewing and creating oversight staff (attorneys and auditors) assignments to trustees.
+ * Provides business logic for viewing and creating oversight staff assignments to trustees.
  */
 export class TrusteeAssignmentsUseCase {
   private readonly trusteesRepository: TrusteesRepository;
@@ -30,7 +30,7 @@ export class TrusteeAssignmentsUseCase {
   }
 
   /**
-   * Retrieves available oversight staff (attorneys and auditors) from user groups.
+   * Retrieves available oversight staff from user groups.
    * @param context - Application context containing logger and session
    * @returns Promise resolving to object with attorneys and auditors arrays
    * @throws CamsError if retrieval fails
@@ -84,7 +84,7 @@ export class TrusteeAssignmentsUseCase {
   }
 
   /**
-   * Assigns oversight staff (attorney or auditor) to oversee a trustee. Enforces business rule of one staff member per role per trustee.
+   * Assigns oversight staff to oversee a trustee. Enforces business rule of one staff member per role per trustee.
    * Handles idempotent requests by returning false if same staff member with same role is already assigned.
    * @param context - Application context containing logger and session
    * @param trusteeId - Unique identifier for the trustee

@@ -48,7 +48,6 @@ export class TrusteeAssignmentsController implements CamsController {
     }
 
     try {
-      // Handle GET /api/v1/trustee-assignments/oversight-staff endpoint
       if (method === 'GET' && url.includes('/trustee-assignments/oversight-staff')) {
         return await this.getOversightStaff(context);
       }
