@@ -87,7 +87,7 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
         <ComboBox
           id="attorney-search"
           name="attorney-search"
-          label="Search for attorney name to assign to this Trustee"
+          label="Search for attorney to assign to this Trustee"
           options={attorneys.map((attorney) => ({
             value: attorney.id,
             label: attorney.name,
