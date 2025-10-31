@@ -75,7 +75,7 @@ jobs:
           environment: ${{ vars.AZURE_ENVIRONMENT }}
       - uses: actions/checkout@v3
       - name: Delete Branch Resources
-        uses: azure/cli@v2
+        uses: azure/cli@9f7ce6f37c31b777ec6c6b6d1dfe7db79f497956 # v2
         id: deleteBranchResourcues
         with:
           azcliversion: 2.62.0
