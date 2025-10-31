@@ -112,6 +112,7 @@ describe('useTrusteeAssignments', () => {
     expect(mockApiMethods.createTrusteeOversightAssignment).toHaveBeenCalledWith(
       'trustee-123',
       'attorney-123',
+      OversightRole.OversightAttorney,
     );
     expect(result.current.isLoading).toBe(false);
     expect(result.current.error).toBeNull();
