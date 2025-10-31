@@ -1,6 +1,6 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteeAssignmentsUseCase } from './trustee-assignments';
-import { TrusteesRepository } from '../gateways.types';
+import { TrusteesRepository, UserGroupsRepository } from '../gateways.types';
 import {
   TrusteeOversightAssignment,
   TrusteeOversightHistory,
@@ -29,6 +29,7 @@ describe('TrusteeAssignmentsUseCase', () => {
   let context: ApplicationContext;
   let mockTrusteesRepository: jest.Mocked<TrusteesRepository>;
   let mockUserGroupGateway: jest.Mocked<UserGroupGateway>;
+  let mockUserGroupsRepository: jest.Mocked<UserGroupsRepository>;
 
   const mockUser: CamsUserReference = {
     id: 'user-123',
@@ -84,8 +85,16 @@ describe('TrusteeAssignmentsUseCase', () => {
       release: jest.fn(),
     } as jest.Mocked<UserGroupGateway>;
 
+    mockUserGroupsRepository = {
+      getOversightStaff: jest.fn(),
+      upsertUserGroupsBatch: jest.fn(),
+      read: jest.fn(),
+      release: jest.fn(),
+    } as jest.Mocked<UserGroupsRepository>;
+
     mockFactory.getTrusteesRepository.mockReturnValue(mockTrusteesRepository);
     mockFactory.getUserGroupGateway.mockResolvedValue(mockUserGroupGateway);
+    mockFactory.getUserGroupsRepository.mockReturnValue(mockUserGroupsRepository);
     mockErrorUtilities.getCamsError.mockImplementation((error) => error as CamsError);
 
     useCase = new TrusteeAssignmentsUseCase(context);
@@ -182,14 +191,75 @@ describe('TrusteeAssignmentsUseCase', () => {
     });
   });
 
-  describe('assignAttorneyToTrustee', () => {
+  describe('getOversightStaff', () => {
+    test('should return attorneys and auditors from repository', async () => {
+      const mockAttorneys: CamsUserReference[] = [
+        { id: 'attorney-1', name: 'Attorney One' },
+        { id: 'attorney-2', name: 'Attorney Two' },
+      ];
+      const mockAuditors: CamsUserReference[] = [
+        { id: 'auditor-1', name: 'Auditor One' },
+        { id: 'auditor-2', name: 'Auditor Two' },
+      ];
+
+      mockUserGroupsRepository.getOversightStaff.mockResolvedValue({
+        attorneys: mockAttorneys,
+        auditors: mockAuditors,
+      });
+
+      const result = await useCase.getOversightStaff(context);
+
+      expect(mockUserGroupsRepository.getOversightStaff).toHaveBeenCalledWith(context);
+      expect(result).toEqual({
+        attorneys: mockAttorneys,
+        auditors: mockAuditors,
+      });
+    });
+
+    test('should return empty arrays when no oversight staff found', async () => {
+      mockUserGroupsRepository.getOversightStaff.mockResolvedValue({
+        attorneys: [],
+        auditors: [],
+      });
+
+      const result = await useCase.getOversightStaff(context);
+
+      expect(result).toEqual({
+        attorneys: [],
+        auditors: [],
+      });
+    });
+
+    test('should propagate errors from repository', async () => {
+      const error = new Error('Database error');
+      mockUserGroupsRepository.getOversightStaff.mockRejectedValue(error);
+
+      mockErrorUtilities.getCamsError.mockReturnValue(
+        new CamsError('TRUSTEE-ASSIGNMENTS-USE-CASE', { message: 'Wrapped error' }),
+      );
+
+      await expect(useCase.getOversightStaff(context)).rejects.toThrow(CamsError);
+
+      expect(mockErrorUtilities.getCamsError).toHaveBeenCalledWith(
+        error,
+        'TRUSTEE-ASSIGNMENTS-USE-CASE',
+      );
+    });
+  });
+
+  describe('assignOversightStaffToTrustee', () => {
     describe('validation', () => {
       test('should throw UnauthorizedError when user does not have TrusteeAdmin role', async () => {
         // Modify context to not include TrusteeAdmin role
         context.session.user.roles = [CamsRole.TrialAttorney];
 
         await expect(
-          useCase.assignAttorneyToTrustee(context, 'trustee-789', 'attorney-456'),
+          useCase.assignOversightStaffToTrustee(
+            context,
+            'trustee-789',
+            'attorney-456',
+            OversightRole.OversightAttorney,
+          ),
         ).rejects.toThrow(UnauthorizedError);
 
         // Verify no further processing occurs
@@ -203,46 +273,71 @@ describe('TrusteeAssignmentsUseCase', () => {
         ['trusteeId is whitespace only', '   ', 'attorney-456'],
       ] as const;
 
-      const attorneyUserIdValidationTestCases = [
-        ['attorneyUserId is empty', 'trustee-789', ''],
-        ['attorneyUserId is whitespace only', 'trustee-789', '   '],
+      const staffUserIdValidationTestCases = [
+        ['staffUserId is empty', 'trustee-789', ''],
+        ['staffUserId is whitespace only', 'trustee-789', '   '],
       ] as const;
 
       test.each(trusteeIdValidationTestCases)(
         'should throw BadRequestError when %s',
-        async (_description, trusteeId, attorneyUserId) => {
+        async (_description, trusteeId, staffUserId) => {
           await expect(
-            useCase.assignAttorneyToTrustee(context, trusteeId, attorneyUserId),
+            useCase.assignOversightStaffToTrustee(
+              context,
+              trusteeId,
+              staffUserId,
+              OversightRole.OversightAttorney,
+            ),
           ).rejects.toThrow(BadRequestError);
 
           expect(mockTrusteesRepository.getTrusteeOversightAssignments).not.toHaveBeenCalled();
         },
       );
 
-      test.each(attorneyUserIdValidationTestCases)(
+      test.each(staffUserIdValidationTestCases)(
         'should throw BadRequestError when %s',
-        async (_description, trusteeId, attorneyUserId) => {
+        async (_description, trusteeId, staffUserId) => {
           await expect(
-            useCase.assignAttorneyToTrustee(context, trusteeId, attorneyUserId),
+            useCase.assignOversightStaffToTrustee(
+              context,
+              trusteeId,
+              staffUserId,
+              OversightRole.OversightAttorney,
+            ),
           ).rejects.toThrow(BadRequestError);
         },
       );
+
+      test('should throw BadRequestError when role is not a valid OversightRole', async () => {
+        await expect(
+          useCase.assignOversightStaffToTrustee(
+            context,
+            'trustee-789',
+            'staff-456',
+            'InvalidRole' as never,
+          ),
+        ).rejects.toThrow(BadRequestError);
+
+        expect(mockTrusteesRepository.getTrusteeOversightAssignments).not.toHaveBeenCalled();
+      });
     });
 
     describe('existing assignment handling', () => {
-      test('should return existing assignment when same attorney is already assigned (idempotent)', async () => {
+      test('should return false when same staff with same role is already assigned (idempotent)', async () => {
         const existingAssignment = {
           ...mockAssignment,
           user: { id: 'attorney-456', name: 'Attorney Smith' },
+          role: OversightRole.OversightAttorney,
         };
         mockTrusteesRepository.getTrusteeOversightAssignments.mockResolvedValue([
           existingAssignment,
         ]);
 
-        const result = await useCase.assignAttorneyToTrustee(
+        const result = await useCase.assignOversightStaffToTrustee(
           context,
           'trustee-789',
           'attorney-456',
+          OversightRole.OversightAttorney,
         );
 
         expect(result).toBe(false);
@@ -250,11 +345,12 @@ describe('TrusteeAssignmentsUseCase', () => {
         expect(mockTrusteesRepository.createTrusteeOversightAssignment).not.toHaveBeenCalled();
       });
 
-      test('should replace existing assignment when different attorney is already assigned', async () => {
+      test('should replace existing assignment when different staff member is assigned for the same role', async () => {
         const existingAssignment = {
           ...mockAssignment,
           id: 'existing-assignment-id',
           user: { id: 'different-attorney', name: 'Different Attorney' },
+          role: OversightRole.OversightAttorney,
         } as TrusteeOversightAssignment;
 
         const newAssignee = MockData.getCamsUser();
@@ -262,6 +358,7 @@ describe('TrusteeAssignmentsUseCase', () => {
           ...mockAssignment,
           id: 'new-assignment-id',
           user: mockAttorney,
+          role: OversightRole.OversightAttorney,
         };
 
         mockTrusteesRepository.getTrusteeOversightAssignments.mockResolvedValue([
@@ -279,10 +376,11 @@ describe('TrusteeAssignmentsUseCase', () => {
         );
         mockTrusteesRepository.createTrusteeHistory.mockResolvedValue();
 
-        const result = await useCase.assignAttorneyToTrustee(
+        const result = await useCase.assignOversightStaffToTrustee(
           context,
           'trustee-789',
           'attorney-456',
+          OversightRole.OversightAttorney,
         );
 
         expect(mockTrusteesRepository.updateTrusteeOversightAssignment).toHaveBeenCalledWith(
@@ -294,22 +392,23 @@ describe('TrusteeAssignmentsUseCase', () => {
         expect(result).toBe(true);
       });
 
-      test('should proceed with assignment when no existing attorney assignment exists', async () => {
-        const nonAttorneyAssignment = {
+      test('should proceed with assignment when no existing assignment for that role exists', async () => {
+        const auditorAssignment = {
           ...mockAssignment,
-          role: 'SomeOtherRole' as never, // Not OversightAttorney
+          role: OversightRole.OversightAuditor,
         };
         mockTrusteesRepository.getTrusteeOversightAssignments.mockResolvedValue([
-          nonAttorneyAssignment,
+          auditorAssignment,
         ]);
         mockUserGroupGateway.getUserById.mockResolvedValue(MockData.getCamsUser());
         mockTrusteesRepository.createTrusteeOversightAssignment.mockResolvedValue(mockAssignment);
         mockTrusteesRepository.createTrusteeHistory.mockResolvedValue();
 
-        const result = await useCase.assignAttorneyToTrustee(
+        const result = await useCase.assignOversightStaffToTrustee(
           context,
           'trustee-789',
           'attorney-456',
+          OversightRole.OversightAttorney,
         );
 
         expect(result).toBe(true);
@@ -325,11 +424,12 @@ describe('TrusteeAssignmentsUseCase', () => {
         mockTrusteesRepository.createTrusteeHistory.mockResolvedValue();
       });
 
-      test('should create new assignment when no existing attorney assignment', async () => {
-        const result = await useCase.assignAttorneyToTrustee(
+      test('should create new assignment when no existing assignment for that role', async () => {
+        const result = await useCase.assignOversightStaffToTrustee(
           context,
           'trustee-789',
           'attorney-456',
+          OversightRole.OversightAttorney,
         );
 
         expect(mockTrusteesRepository.getTrusteeOversightAssignments).toHaveBeenCalledWith(
@@ -341,19 +441,29 @@ describe('TrusteeAssignmentsUseCase', () => {
         expect(result).toBe(true);
       });
 
-      test('should create audit record with correct structure', async () => {
-        await useCase.assignAttorneyToTrustee(context, 'trustee-789', 'attorney-456');
+      test('should create audit record with correct structure and provided role', async () => {
+        await useCase.assignOversightStaffToTrustee(
+          context,
+          'trustee-789',
+          'auditor-456',
+          OversightRole.OversightAuditor,
+        );
 
         const createAssignmentCall =
           mockTrusteesRepository.createTrusteeOversightAssignment.mock.calls[0][0];
         expect(createAssignmentCall).toHaveProperty('trusteeId', 'trustee-789');
-        expect(createAssignmentCall).toHaveProperty('role', OversightRole.OversightAttorney);
+        expect(createAssignmentCall).toHaveProperty('role', OversightRole.OversightAuditor);
         expect(createAssignmentCall).toHaveProperty('createdBy', expect.anything());
         expect(createAssignmentCall).toHaveProperty('createdOn', expect.anything());
       });
 
-      test('should create history record with correct structure', async () => {
-        await useCase.assignAttorneyToTrustee(context, 'trustee-789', 'attorney-456');
+      test('should create history record with correct structure and provided role', async () => {
+        await useCase.assignOversightStaffToTrustee(
+          context,
+          'trustee-789',
+          'auditor-456',
+          OversightRole.OversightAuditor,
+        );
 
         const createHistoryCall = mockTrusteesRepository.createTrusteeHistory.mock.calls[0][0];
         expect(createHistoryCall).toHaveProperty('documentType', 'AUDIT_OVERSIGHT');
@@ -361,7 +471,7 @@ describe('TrusteeAssignmentsUseCase', () => {
         expect(createHistoryCall).toHaveProperty('before', null);
         expect((createHistoryCall as TrusteeOversightHistory).after).toHaveProperty(
           'role',
-          OversightRole.OversightAttorney,
+          OversightRole.OversightAuditor,
         );
       });
     });
@@ -422,7 +532,12 @@ describe('TrusteeAssignmentsUseCase', () => {
           );
 
           await expect(
-            useCase.assignAttorneyToTrustee(context, 'trustee-789', 'attorney-456'),
+            useCase.assignOversightStaffToTrustee(
+              context,
+              'trustee-789',
+              'attorney-456',
+              OversightRole.OversightAttorney,
+            ),
           ).rejects.toThrow(CamsError);
 
           expect(mockErrorUtilities.getCamsError).toHaveBeenCalledWith(
