@@ -293,8 +293,8 @@ describe('UserGroupsMongoRepository', () => {
         },
       ];
 
-      const bulkWriteSpy = jest
-        .spyOn(MongoCollectionAdapter.prototype, 'bulkWrite')
+      const bulkReplaceSpy = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'bulkReplace')
         .mockResolvedValue({
           id: 'bulk-result-id',
           insertedCount: 0,
@@ -308,21 +308,21 @@ describe('UserGroupsMongoRepository', () => {
 
       await repo.upsertUserGroupsBatch(context, userGroups);
 
-      expect(bulkWriteSpy).toHaveBeenCalledWith(
+      expect(bulkReplaceSpy).toHaveBeenCalledWith(
         expect.arrayContaining([
           {
-            replaceOne: {
-              filter: { groupName: 'USTP CAMS Trial Attorney' },
-              replacement: userGroups[0],
-              upsert: true,
-            },
+            filter: expect.objectContaining({
+              condition: 'EQUALS',
+              rightOperand: 'USTP CAMS Trial Attorney',
+            }),
+            replacement: userGroups[0],
           },
           {
-            replaceOne: {
-              filter: { groupName: 'USTP CAMS Auditor' },
-              replacement: userGroups[1],
-              upsert: true,
-            },
+            filter: expect.objectContaining({
+              condition: 'EQUALS',
+              rightOperand: 'USTP CAMS Auditor',
+            }),
+            replacement: userGroups[1],
           },
         ]),
       );
@@ -336,7 +336,7 @@ describe('UserGroupsMongoRepository', () => {
         },
       ];
 
-      jest.spyOn(MongoCollectionAdapter.prototype, 'bulkWrite').mockResolvedValue({
+      jest.spyOn(MongoCollectionAdapter.prototype, 'bulkReplace').mockResolvedValue({
         id: 'bulk-result-id',
         insertedCount: 0,
         matchedCount: 0,
@@ -358,19 +358,19 @@ describe('UserGroupsMongoRepository', () => {
     });
 
     test('should return early when user groups array is empty', async () => {
-      const bulkWriteSpy = jest.spyOn(MongoCollectionAdapter.prototype, 'bulkWrite');
+      const bulkReplaceSpy = jest.spyOn(MongoCollectionAdapter.prototype, 'bulkReplace');
       const loggerSpy = jest.spyOn(context.logger, 'info');
 
       await repo.upsertUserGroupsBatch(context, []);
 
-      expect(bulkWriteSpy).not.toHaveBeenCalled();
+      expect(bulkReplaceSpy).not.toHaveBeenCalled();
       expect(loggerSpy).toHaveBeenCalledWith(
         'USER-GROUPS-MONGO-REPOSITORY',
         'No user groups to upsert',
       );
     });
 
-    test('should throw CamsError when bulkWrite operation fails', async () => {
+    test('should throw CamsError when bulkReplace operation fails', async () => {
       const userGroups: UserGroupGatewayDocument[] = [
         {
           groupName: 'USTP CAMS Trial Attorney',
@@ -378,8 +378,8 @@ describe('UserGroupsMongoRepository', () => {
         },
       ];
 
-      const dbError = new Error('Bulk write operation failed');
-      jest.spyOn(MongoCollectionAdapter.prototype, 'bulkWrite').mockRejectedValue(dbError);
+      const dbError = new Error('Bulk replace operation failed');
+      jest.spyOn(MongoCollectionAdapter.prototype, 'bulkReplace').mockRejectedValue(dbError);
 
       await expect(repo.upsertUserGroupsBatch(context, userGroups)).rejects.toThrow(CamsError);
       await expect(repo.upsertUserGroupsBatch(context, userGroups)).rejects.toMatchObject({
@@ -404,8 +404,8 @@ describe('UserGroupsMongoRepository', () => {
         },
       ];
 
-      const bulkWriteSpy = jest
-        .spyOn(MongoCollectionAdapter.prototype, 'bulkWrite')
+      const bulkReplaceSpy = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'bulkReplace')
         .mockResolvedValue({
           id: 'bulk-result-id',
           insertedCount: 0,
@@ -419,28 +419,28 @@ describe('UserGroupsMongoRepository', () => {
 
       await repo.upsertUserGroupsBatch(context, userGroups);
 
-      expect(bulkWriteSpy).toHaveBeenCalledWith(
+      expect(bulkReplaceSpy).toHaveBeenCalledWith(
         expect.arrayContaining([
           {
-            replaceOne: {
-              filter: { groupName: 'Group A' },
-              replacement: userGroups[0],
-              upsert: true,
-            },
+            filter: expect.objectContaining({
+              condition: 'EQUALS',
+              rightOperand: 'Group A',
+            }),
+            replacement: userGroups[0],
           },
           {
-            replaceOne: {
-              filter: { groupName: 'Group B' },
-              replacement: userGroups[1],
-              upsert: true,
-            },
+            filter: expect.objectContaining({
+              condition: 'EQUALS',
+              rightOperand: 'Group B',
+            }),
+            replacement: userGroups[1],
           },
           {
-            replaceOne: {
-              filter: { groupName: 'Group C' },
-              replacement: userGroups[2],
-              upsert: true,
-            },
+            filter: expect.objectContaining({
+              condition: 'EQUALS',
+              rightOperand: 'Group C',
+            }),
+            replacement: userGroups[2],
           },
         ]),
       );

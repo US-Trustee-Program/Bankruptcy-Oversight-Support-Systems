@@ -61,6 +61,17 @@ export type UpdateResult = {
   matchedCount: number;
 };
 
+export type BulkReplaceResult = {
+  id?: string;
+  insertedCount: number;
+  matchedCount: number;
+  modifiedCount: number;
+  deletedCount: number;
+  upsertedCount: number;
+  upsertedIds: Record<string, unknown>;
+  insertedIds: Record<string, unknown>;
+};
+
 export interface Releasable {
   release: () => void;
 }
@@ -276,6 +287,10 @@ export interface DocumentCollectionAdapter<T> {
   countDocuments: (query: ConditionOrConjunction<T>) => Promise<number>;
   updateOne: (query: ConditionOrConjunction<T>, item: unknown) => Promise<UpdateResult>;
   countAllDocuments: () => Promise<number>;
+  bulkReplace: (
+    replacements: Array<{ filter: ConditionOrConjunction<T>; replacement: T }>,
+    upsert?: boolean,
+  ) => Promise<BulkReplaceResult>;
 }
 
 export type CamsPaginationResponse<T> = {
