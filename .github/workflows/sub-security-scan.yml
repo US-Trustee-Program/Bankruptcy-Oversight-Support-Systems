@@ -47,7 +47,7 @@ jobs:
       - name: Package source code for scan
         run: zip -r cams.zip . -i "./backend/*" -i "./user-interface/*" -i "./common/*"
 
-      - uses: azure/login@v2
+      - uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
