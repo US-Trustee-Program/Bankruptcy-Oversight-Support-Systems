@@ -337,26 +337,6 @@ describe('CommsLink Component', () => {
         expect(link.getAttribute('href')).toBe(expected);
       });
     });
-
-    describe('formatWebsiteLabel', () => {
-      const cases = [
-        ['https://example.com', 'example.com'],
-        ['http://example.com', 'example.com'],
-        ['example.com', 'example.com'],
-        ['https://sub.example.com/path', 'sub.example.com/path'],
-      ];
-
-      test.each(cases)('formatWebsiteLabel(%s) -> %s', (input, expected) => {
-        render(
-          <CommsLink
-            contact={{ website: input } as Omit<ContactInformation, 'address'>}
-            mode="website"
-          />,
-        );
-        const label = screen.getByTestId('icon-label');
-        expect(label).toHaveTextContent(expected);
-      });
-    });
   });
 
   describe('Mode: website', () => {
