@@ -1,29 +1,49 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import { TrusteesRepository } from '../gateways.types';
+import { TrusteesRepository, UserGroupsRepository } from '../gateways.types';
 import {
   TrusteeOversightAssignment,
   TrusteeOversightHistory,
 } from '../../../../common/src/cams/trustees';
 import { CamsRole, OversightRole } from '../../../../common/src/cams/roles';
-import { getTrusteesRepository, getUserGroupGateway } from '../../factory';
+import { getTrusteesRepository, getUserGroupGateway, getUserGroupsRepository } from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
 import { createAuditRecord } from '../../../../common/src/cams/auditable';
 import Validators from '../../../../common/src/cams/validators';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
+import { CamsUserReference } from '../../../../common/src/cams/users';
 
 const MODULE_NAME = 'TRUSTEE-ASSIGNMENTS-USE-CASE';
 
 /**
  * Use case for managing trustee oversight assignments.
- * Provides business logic for viewing and creating attorney-to-trustee assignments.
+ * Provides business logic for viewing and creating oversight staff assignments to trustees.
  */
 export class TrusteeAssignmentsUseCase {
   private readonly trusteesRepository: TrusteesRepository;
+  private readonly userGroupsRepository: UserGroupsRepository;
 
   constructor(context: ApplicationContext) {
     this.trusteesRepository = getTrusteesRepository(context);
+    this.userGroupsRepository = getUserGroupsRepository(context);
+  }
+
+  /**
+   * Retrieves available oversight staff from user groups.
+   * @param context - Application context containing logger and session
+   * @returns Promise resolving to object with attorneys and auditors arrays
+   * @throws CamsError if retrieval fails
+   */
+  async getOversightStaff(context: ApplicationContext): Promise<{
+    attorneys: CamsUserReference[];
+    auditors: CamsUserReference[];
+  }> {
+    try {
+      return await this.userGroupsRepository.getOversightStaff(context);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
   }
 
   /**
@@ -64,23 +84,26 @@ export class TrusteeAssignmentsUseCase {
   }
 
   /**
-   * Assigns an attorney to oversee a trustee. Enforces business rule of one attorney per trustee.
-   * Handles idempotent requests by returning false if same attorney is already assigned.
+   * Assigns oversight staff to oversee a trustee. Enforces business rule of one staff member per role per trustee.
+   * Handles idempotent requests by returning false if same staff member with same role is already assigned.
    * @param context - Application context containing logger and session
    * @param trusteeId - Unique identifier for the trustee
-   * @param attorneyUserId - Unique identifier for the attorney to assign
+   * @param staffUserId - Unique identifier for the oversight staff member to assign
+   * @param role - The oversight role (attorney or auditor) for the assignment
    * @returns Promise resolving to boolean - true if created/replaced, false if idempotent
    * @throws BadRequestError if validation fails or business rules are violated
+   * @throws UnauthorizedError if user lacks TrusteeAdmin role
    * @throws CamsError if assignment creation fails
    */
-  async assignAttorneyToTrustee(
+  async assignOversightStaffToTrustee(
     context: ApplicationContext,
     trusteeId: string,
-    attorneyUserId: string,
+    staffUserId: string,
+    role: OversightRole,
   ): Promise<boolean> {
     if (!context.session.user.roles.includes(CamsRole.TrusteeAdmin)) {
       throw new UnauthorizedError(
-        'You do not have permission to assign an attorney to oversee a trustee.',
+        'You do not have permission to assign oversight staff to oversee a trustee.',
       );
     }
 
@@ -90,9 +113,16 @@ export class TrusteeAssignmentsUseCase {
       });
     }
 
-    if (!Validators.minLength(1)(attorneyUserId.trim()).valid) {
+    if (!Validators.minLength(1)(staffUserId.trim()).valid) {
       throw new BadRequestError(MODULE_NAME, {
-        message: 'Attorney user ID is required and cannot be empty.',
+        message: 'Staff user ID is required and cannot be empty.',
+      });
+    }
+
+    const validOversightRoles = Object.values(OversightRole);
+    if (!validOversightRoles.includes(role)) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: `Role must be a valid OversightRole. Received: ${role}`,
       });
     }
 
@@ -100,19 +130,19 @@ export class TrusteeAssignmentsUseCase {
       const existingAssignments =
         await this.trusteesRepository.getTrusteeOversightAssignments(trusteeId);
 
-      const existingAttorneyAssignment = existingAssignments.find(
-        (assignment) => assignment.role === OversightRole.OversightAttorney,
+      const existingRoleAssignment = existingAssignments.find(
+        (assignment) => assignment.role === role,
       );
 
-      if (existingAttorneyAssignment) {
-        if (existingAttorneyAssignment.user.id === attorneyUserId) {
+      if (existingRoleAssignment) {
+        if (existingRoleAssignment.user.id === staffUserId) {
           return false;
         }
         const trusteeManager = getCamsUserReference(context.session.user);
 
         const before = {
-          user: existingAttorneyAssignment.user,
-          role: existingAttorneyAssignment.role,
+          user: existingRoleAssignment.user,
+          role: existingRoleAssignment.role,
         };
 
         const timestamp = new Date().toISOString();
@@ -123,16 +153,16 @@ export class TrusteeAssignmentsUseCase {
         };
 
         await this.trusteesRepository.updateTrusteeOversightAssignment(
-          existingAttorneyAssignment.id,
+          existingRoleAssignment.id,
           unassignedUpdate,
         );
 
         const userGroupGateway = await getUserGroupGateway(context);
-        const assigneeUser = await userGroupGateway.getUserById(context, attorneyUserId);
+        const assigneeUser = await userGroupGateway.getUserById(context, staffUserId);
 
         const userAndRole = {
           user: getCamsUserReference(assigneeUser),
-          role: OversightRole.OversightAttorney,
+          role,
         };
 
         await this.trusteesRepository.createTrusteeOversightAssignment(
@@ -161,12 +191,12 @@ export class TrusteeAssignmentsUseCase {
       }
 
       const userGroupGateway = await getUserGroupGateway(context);
-      const assigneeUser = await userGroupGateway.getUserById(context, attorneyUserId);
+      const assigneeUser = await userGroupGateway.getUserById(context, staffUserId);
 
       const trusteeManager = getCamsUserReference(context.session.user);
       const userAndRole = {
         user: getCamsUserReference(assigneeUser),
-        role: OversightRole.OversightAttorney,
+        role,
       };
 
       await this.trusteesRepository.createTrusteeOversightAssignment(

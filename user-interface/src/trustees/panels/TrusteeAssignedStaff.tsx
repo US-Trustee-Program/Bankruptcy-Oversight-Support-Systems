@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useTrusteeAssignments } from '@/trustees/modals/UseTrusteeAssignments';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import AttorneyAssignmentSection from './AttorneyAssignmentSection';
+import AuditorAssignmentSection from './AuditorAssignmentSection';
 import './TrusteeAssignedStaff.scss';
 
 interface TrusteeAssignedStaffProps {
@@ -26,6 +27,13 @@ export default function TrusteeAssignedStaff(props: Readonly<TrusteeAssignedStaf
         {error && <Alert type={UswdsAlertStyle.Error}>{error}</Alert>}
 
         <AttorneyAssignmentSection
+          trusteeId={trusteeId}
+          assignments={assignments}
+          onAssignmentChange={refreshAssignments}
+          isLoading={isLoading}
+        />
+
+        <AuditorAssignmentSection
           trusteeId={trusteeId}
           assignments={assignments}
           onAssignmentChange={refreshAssignments}

@@ -34,3 +34,10 @@ app.http('trusteeAssignments', {
   handler,
   route: 'trustees/{trusteeId}/oversight-assignments',
 });
+
+app.http('oversightStaff', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  handler,
+  route: 'trustee-assignments/oversight-staff',
+});

@@ -3,10 +3,11 @@ import {
   getConsolidationOrdersRepository,
   getOrdersRepository,
   getTrusteesRepository,
+  getUserGroupsRepository,
 } from '../../../lib/factory';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
 import { ConsolidationOrder, TransferOrder } from '../../../../common/src/cams/orders';
-import { CamsUserReference } from '../../../../common/src/cams/users';
+import { CamsUserReference, UserGroup } from '../../../../common/src/cams/users';
 import { CaseSyncEvent } from '../../../../common/src/queue/dataflow-types';
 import { Trustee } from '../../../../common/src/cams/trustees';
 
@@ -69,4 +70,11 @@ export async function insertTrustees(appContext: ApplicationContext, trustees: T
     await trusteeRepo.createTrustee(trustee, testUser);
   }
   trusteeRepo.release();
+}
+
+export async function insertUserGroups(appContext: ApplicationContext, userGroups: UserGroup[]) {
+  const userGroupsRepo = getUserGroupsRepository(appContext);
+  await userGroupsRepo.upsertUserGroupsBatch(appContext, userGroups);
+  console.log('Created User Groups....   ', userGroups);
+  userGroupsRepo.release();
 }

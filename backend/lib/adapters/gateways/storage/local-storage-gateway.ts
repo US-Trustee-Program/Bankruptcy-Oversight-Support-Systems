@@ -13,7 +13,8 @@ const ROLE_MAPPING =
   'USTP_CAMS_Case_Assignment_Manager,USTP CAMS Case Assignment Manager,CaseAssignmentManager\n' +
   'USTP_CAMS_Trial_Attorney,USTP CAMS Trial Attorney,TrialAttorney\n' +
   'USTP_CAMS_Data_Verifier,USTP CAMS Data Verifier,DataVerifier\n' +
-  'USTP_CAMS_Trustee_Admin,USTP CAMS Trustee Admin,TrusteeAdmin\n';
+  'USTP_CAMS_Trustee_Admin,USTP CAMS Trustee Admin,TrusteeAdmin\n' +
+  'USTP_CAMS_Auditor,USTP CAMS Auditor,Auditor\n';
 
 const storage = new Map<string, string>();
 storage.set(ROLE_MAPPING_PATH, ROLE_MAPPING);

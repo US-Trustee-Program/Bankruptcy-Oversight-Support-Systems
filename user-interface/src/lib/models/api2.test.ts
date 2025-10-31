@@ -3,7 +3,7 @@ import Api2, { _Api2, addAuthHeaderToApi, extractPathFromUri, useGenericApi } fr
 import Api, { addApiAfterHook, addApiBeforeHook } from '@/lib/models/api';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { StaffAssignmentAction } from '@common/cams/assignments';
-import { CamsRole } from '@common/cams/roles';
+import { CamsRole, OversightRole } from '@common/cams/roles';
 import { randomUUID } from 'crypto';
 import {
   ConsolidationOrderActionRejection,
@@ -12,7 +12,7 @@ import {
 } from '@common/cams/orders';
 import LocalStorage from '@/lib/utils/local-storage';
 import { blankConfiguration } from '../testing/mock-configuration';
-import { BankruptcySoftwareListItem, BankListItem } from '@common/cams/lists';
+import { BankListItem, BankruptcySoftwareListItem } from '@common/cams/lists';
 import { Creatable } from '@common/cams/creatable';
 
 type ApiType = {
@@ -100,6 +100,8 @@ describe('_Api2 functions', async () => {
     await callApiFunction(api2.Api2.getTrustees, null, api);
     await callApiFunction(api2.Api2.getTrustee, 'some-id', api);
     await callApiFunction(api2.Api2.getTrusteeHistory, 'some-id', api);
+    await callApiFunction(api2.Api2.getTrusteeOversightAssignments, 'some-id', api);
+    await callApiFunction(api2.Api2.getOversightStaff, null, api);
     await callApiFunction(api2.Api2.getBanks, null, api);
     await callApiFunction(api2.Api2.getBankruptcySoftwareList, null, api);
   });
@@ -326,6 +328,15 @@ describe('_Api2 functions', async () => {
     await expect(api2.Api2.getTrustees()).rejects.toThrow(error);
     await expect(api2.Api2.getTrustee('trustee-id')).rejects.toThrow(error);
     await expect(api2.Api2.getTrusteeHistory('trustee-id')).rejects.toThrow(error);
+    await expect(api2.Api2.getTrusteeOversightAssignments('trustee-id')).rejects.toThrow(error);
+    await expect(api2.Api2.getOversightStaff()).rejects.toThrow(error);
+    await expect(
+      api2.Api2.createTrusteeOversightAssignment(
+        'trustee-id',
+        'user-id',
+        OversightRole.OversightAttorney,
+      ),
+    ).rejects.toThrow(error);
     await expect(api2.Api2.getBanks()).rejects.toThrow(error);
     await expect(api2.Api2.getBankruptcySoftwareList()).rejects.toThrow(error);
     const mockOrder = MockData.getConsolidationOrder();
@@ -374,6 +385,38 @@ describe('_Api2 functions', async () => {
     const trusteeId = 'trustee-id';
     api2.Api2.getTrusteeHistory(trusteeId);
     expect(getSpy).toHaveBeenCalledWith(`/trustees/${trusteeId}/history`, {});
+  });
+
+  test('should call api.get function when calling getTrusteeOversightAssignments', () => {
+    const getSpy = vi
+      .spyOn(api.default, 'get')
+      .mockResolvedValue({ data: [{ id: 'assignment-id' }] });
+    const trusteeId = 'trustee-id';
+    api2.Api2.getTrusteeOversightAssignments(trusteeId);
+    expect(getSpy).toHaveBeenCalledWith(`/trustees/${trusteeId}/oversight-assignments`, {});
+  });
+
+  test('should call api.get function when calling getOversightStaff', () => {
+    const getSpy = vi
+      .spyOn(api.default, 'get')
+      .mockResolvedValue({ data: { attorneys: [], auditors: [] } });
+    api2.Api2.getOversightStaff();
+    expect(getSpy).toHaveBeenCalledWith('/trustee-assignments/oversight-staff', {});
+  });
+
+  test('should call api.post function when calling createTrusteeOversightAssignment', () => {
+    const postSpy = vi
+      .spyOn(api.default, 'post')
+      .mockResolvedValue({ data: { id: 'assignment-id' } });
+    const trusteeId = 'trustee-id';
+    const userId = 'user-id';
+    const role = OversightRole.OversightAttorney;
+    api2.Api2.createTrusteeOversightAssignment(trusteeId, userId, role);
+    expect(postSpy).toHaveBeenCalledWith(
+      `/trustees/${trusteeId}/oversight-assignments`,
+      { userId, role },
+      {},
+    );
   });
 
   test('should call api.get function when calling getBankruptcySoftwareList', () => {

@@ -8,6 +8,7 @@ import { CollectionHumble, DocumentClient } from '../../../../humble-objects/mon
 import { ConditionOrConjunction, Query, SortSpec } from '../../../../query/query-builder';
 import QueryPipeline, { isPaginate, isPipeline, Pipeline } from '../../../../query/query-pipeline';
 import {
+  BulkReplaceResult,
   CamsPaginationResponse,
   DocumentCollectionAdapter,
   ReplaceResult,
@@ -316,6 +317,25 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       return await this.collectionHumble.countDocuments(mongoQuery);
     } catch (originalError) {
       throw this.handleError(originalError, 'Failed while counting all documents.');
+    }
+  }
+
+  public async bulkReplace(
+    replacements: Array<{ filter: Query<T>; replacement: T }>,
+    upsert: boolean = true,
+  ): Promise<BulkReplaceResult> {
+    try {
+      const operations = replacements.map((item) => ({
+        replaceOne: {
+          filter: toMongoQuery(item.filter),
+          replacement: item.replacement,
+          upsert,
+        },
+      }));
+
+      return await this.collectionHumble.bulkWrite(operations);
+    } catch (originalError) {
+      throw this.handleError(originalError, 'Failed to execute bulk replace operation.');
     }
   }
 

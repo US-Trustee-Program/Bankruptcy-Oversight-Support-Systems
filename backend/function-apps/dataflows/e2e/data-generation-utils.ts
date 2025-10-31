@@ -9,9 +9,11 @@ import {
   insertConsolidationOrders,
   insertTransferOrders,
   insertTrustees,
+  insertUserGroups,
   syncCases,
 } from './db-utils';
 import { Trustee } from '../../../../common/src/cams/trustees';
+import { UserGroup } from '../../../../common/src/cams/users';
 
 export const KNOWN_GOOD_TRANSFER_FROM_CASE_NUMBER = '65-67641';
 export const KNOWN_GOOD_TRANSFER_FROM_CASE_ID = '081-' + KNOWN_GOOD_TRANSFER_FROM_CASE_NUMBER;
@@ -34,6 +36,9 @@ export async function seedCosmosE2eDatabase(context: ApplicationContext) {
 
   const trustees = await generateTrustees();
   await insertTrustees(context, trustees);
+
+  const userGroups = await generateUserGroups();
+  await insertUserGroups(context, userGroups);
 }
 
 export async function generateTrustees(): Promise<Trustee[]> {
@@ -44,6 +49,33 @@ export async function generateTrustees(): Promise<Trustee[]> {
   }
 
   return trusteeProfiles;
+}
+
+export async function generateUserGroups(): Promise<UserGroup[]> {
+  const attorneys = [
+    { id: 'attorney-1', name: 'Weis, Brandon' },
+    { id: 'attorney-2', name: 'Smith, Jane' },
+    { id: 'attorney-3', name: 'Johnson, Bob' },
+  ];
+
+  const auditors = [
+    { id: 'auditor-1', name: 'Williams, Sarah' },
+    { id: 'auditor-2', name: 'Brown, Michael' },
+    { id: 'auditor-3', name: 'Davis, Emily' },
+  ];
+
+  return [
+    {
+      id: 'group-attorneys',
+      groupName: 'USTP CAMS Trial Attorney',
+      users: attorneys,
+    },
+    {
+      id: 'group-auditors',
+      groupName: 'USTP CAMS Auditor',
+      users: auditors,
+    },
+  ];
 }
 
 async function generateConsolidationOrders(

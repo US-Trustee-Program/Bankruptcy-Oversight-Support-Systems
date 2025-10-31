@@ -43,6 +43,7 @@ import {
   TrusteeInput,
   TrusteeOversightAssignment,
 } from '@common/cams/trustees';
+import { OversightRole } from '@common/cams/roles';
 import {
   BankList,
   BankListItem,
@@ -444,9 +445,20 @@ async function getTrusteeOversightAssignments(trusteeId: string) {
   return api().get<TrusteeOversightAssignment[]>(`/trustees/${trusteeId}/oversight-assignments`);
 }
 
-async function createTrusteeOversightAssignment(trusteeId: string, userId: string) {
+async function getOversightStaff() {
+  return api().get<{ attorneys: CamsUserReference[]; auditors: CamsUserReference[] }>(
+    '/trustee-assignments/oversight-staff',
+  );
+}
+
+async function createTrusteeOversightAssignment(
+  trusteeId: string,
+  userId: string,
+  role: OversightRole,
+) {
   return api().post<TrusteeOversightAssignment>(`/trustees/${trusteeId}/oversight-assignments`, {
     userId,
+    role,
   });
 }
 
@@ -455,6 +467,7 @@ export const _Api2 = {
   getTrustee,
   getTrusteeHistory,
   getTrusteeOversightAssignments,
+  getOversightStaff,
   createTrusteeOversightAssignment,
   postTrustee,
   patchTrustee,
