@@ -35,7 +35,6 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
   const api = useApi2();
   const globalAlert = useGlobalAlert();
 
-  // Set selected attorney when currentAssignment changes
   useEffect(() => {
     if (currentAssignment) {
       const attorney = attorneys.find((a) => a.id === currentAssignment.user.id);
@@ -45,7 +44,6 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
     }
   }, [currentAssignment, attorneys]);
 
-  // Handle external ref
   React.useImperativeHandle(ref, () => ({
     show: () => {
       modalRef.current?.show({});
