@@ -33,6 +33,12 @@ export type PrivilegedIdentityUser = CamsUserReference & {
   expires: string;
 };
 
+export type UserGroup = {
+  id: string;
+  groupName: string;
+  users: CamsUserReference[];
+};
+
 export function getCourtDivisionCodes(user: CamsUser): string[] {
   if (!user.offices) return [];
   const reducer = (divisionCodes: string[], office: UstpOfficeDetails) => {

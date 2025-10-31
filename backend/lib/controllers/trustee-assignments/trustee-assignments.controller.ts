@@ -1,17 +1,22 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteeAssignmentsUseCase } from '../../use-cases/trustee-assignments/trustee-assignments';
-import { TrusteeOversightAssignment } from '../../../../common/src/cams/trustees';
+import {
+  AvailableTrusteeOversightStaff,
+  TrusteeOversightAssignment,
+} from '../../../../common/src/cams/trustees';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsController } from '../controller';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { NotFoundError } from '../../common-errors/not-found-error';
+import { OversightRole } from '../../../../common/src/cams/roles';
 
 const MODULE_NAME = 'TRUSTEE-ASSIGNMENTS-CONTROLLER';
 
 interface CreateAssignmentRequest {
   userId: string;
+  role: OversightRole;
 }
 
 export class TrusteeAssignmentsController implements CamsController {
@@ -23,7 +28,9 @@ export class TrusteeAssignmentsController implements CamsController {
 
   public async handleRequest(
     context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<TrusteeOversightAssignment[] | undefined>> {
+  ): Promise<
+    CamsHttpResponseInit<TrusteeOversightAssignment[] | AvailableTrusteeOversightStaff | undefined>
+  > {
     if (!context.featureFlags['trustee-management']) {
       throw new NotFoundError(MODULE_NAME);
     }
@@ -32,7 +39,7 @@ export class TrusteeAssignmentsController implements CamsController {
       throw new UnauthorizedError(MODULE_NAME);
     }
 
-    const { method } = context.request;
+    const { method, url } = context.request;
 
     if (!['POST', 'GET'].includes(method)) {
       throw new BadRequestError(MODULE_NAME, {
@@ -41,6 +48,10 @@ export class TrusteeAssignmentsController implements CamsController {
     }
 
     try {
+      if (method === 'GET' && url.includes('/trustee-assignments/oversight-staff')) {
+        return await this.getOversightStaff(context);
+      }
+
       switch (method) {
         case 'GET':
           return await this.getTrusteeOversightAssignments(context);
@@ -50,6 +61,22 @@ export class TrusteeAssignmentsController implements CamsController {
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
+  }
+
+  private async getOversightStaff(
+    context: ApplicationContext,
+  ): Promise<CamsHttpResponseInit<AvailableTrusteeOversightStaff>> {
+    const staff = await this.useCase.getOversightStaff(context);
+
+    return httpSuccess({
+      statusCode: 200,
+      body: {
+        meta: {
+          self: context.request.url,
+        },
+        data: staff,
+      },
+    });
   }
 
   private async getTrusteeOversightAssignments(
@@ -102,10 +129,17 @@ export class TrusteeAssignmentsController implements CamsController {
       });
     }
 
-    const wasCreated = await this.useCase.assignAttorneyToTrustee(
+    if (!requestData.role) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: 'Role is required in request body',
+      });
+    }
+
+    const wasCreated = await this.useCase.assignOversightStaffToTrustee(
       context,
       trusteeId,
       requestData.userId,
+      requestData.role,
     );
 
     return httpSuccess({

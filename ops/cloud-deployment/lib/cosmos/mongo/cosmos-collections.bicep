@@ -346,3 +346,33 @@ resource trusteesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDataba
     }
   }
 }
+
+resource userGroupsCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
+  parent: database
+  name: 'user-groups'
+  properties: {
+    resource: {
+      id: 'user-groups'
+      shardKey: {
+        groupName: 'Hash'
+      }
+      indexes: [
+        {
+          key: {
+            keys: ['_id']
+          }
+        }
+        {
+          key: {
+            keys: ['id']
+          }
+        }
+        {
+          key: {
+            keys: ['groupName']
+          }
+        }
+      ]
+    }
+  }
+}

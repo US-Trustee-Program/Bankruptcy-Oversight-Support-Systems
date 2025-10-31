@@ -550,7 +550,26 @@ async function getTrusteeOversightAssignments(trusteeId: string) {
   };
 }
 
-async function createTrusteeOversightAssignment(trusteeId: string, userId: string) {
+async function getOversightStaff() {
+  return {
+    data: {
+      attorneys: [
+        { id: 'attorney-1', name: 'Attorney One' },
+        { id: 'attorney-2', name: 'Attorney Two' },
+      ],
+      auditors: [
+        { id: 'auditor-1', name: 'Auditor One' },
+        { id: 'auditor-2', name: 'Auditor Two' },
+      ],
+    },
+  };
+}
+
+async function createTrusteeOversightAssignment(
+  trusteeId: string,
+  userId: string,
+  role: OversightRole,
+) {
   return {
     data: {
       id: MockData.randomId(),
@@ -559,7 +578,7 @@ async function createTrusteeOversightAssignment(trusteeId: string, userId: strin
         id: userId,
         name: 'John Doe',
       },
-      role: OversightRole.OversightAttorney,
+      role,
       createdBy: { id: 'user-1', name: 'Admin User' },
       createdOn: new Date().toISOString(),
       updatedBy: { id: 'user-1', name: 'Admin User' },
@@ -610,6 +629,7 @@ export const MockApi2 = {
   postBank,
   getBanks,
   getTrusteeOversightAssignments,
+  getOversightStaff,
   createTrusteeOversightAssignment,
 };
 

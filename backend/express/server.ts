@@ -270,6 +270,7 @@ export function createApp(): Application {
 
   app.get('/api/trustees/:trusteeId/oversight-assignments', handleTrusteeAssignments);
   app.post('/api/trustees/:trusteeId/oversight-assignments', handleTrusteeAssignments);
+  app.get('/api/trustee-assignments/oversight-staff', handleTrusteeAssignments);
 
   const handleTrusteeHistory = async (req: Request, res: Response, next: NextFunction) => {
     try {

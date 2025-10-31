@@ -1,0 +1,19 @@
+.trustee-oversight-assignment-modal-content {
+  min-width: 380px;
+  min-height: 76px;
+
+  .staff-selection-section {
+    margin-bottom: 1.5rem;
+
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+  }
+}
+
+@media screen and (max-width: 380px) {
+  .trustee-oversight-assignment-modal-content {
+    min-width: 100%;
+  }
+}

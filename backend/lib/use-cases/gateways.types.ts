@@ -25,6 +25,7 @@ import {
   CamsUserGroup,
   CamsUserReference,
   Staff,
+  UserGroup,
 } from '../../../common/src/cams/users';
 import { UstpOfficeDetails } from '../../../common/src/cams/offices';
 import { CaseAssignment } from '../../../common/src/cams/assignments';
@@ -35,6 +36,7 @@ import { Pipeline } from '../query/query-pipeline';
 import { ResourceActions } from '../../../common/src/cams/actions';
 import { OfficeStaff } from '../adapters/gateways/mongo/offices.mongo.repository';
 import {
+  AvailableTrusteeOversightStaff,
   Trustee,
   TrusteeHistory,
   TrusteeInput,
@@ -59,6 +61,17 @@ export type ReplaceResult = {
 export type UpdateResult = {
   modifiedCount: number;
   matchedCount: number;
+};
+
+export type BulkReplaceResult = {
+  id?: string;
+  insertedCount: number;
+  matchedCount: number;
+  modifiedCount: number;
+  deletedCount: number;
+  upsertedCount: number;
+  upsertedIds: Record<string, unknown>;
+  insertedIds: Record<string, unknown>;
 };
 
 export interface Releasable {
@@ -276,6 +289,10 @@ export interface DocumentCollectionAdapter<T> {
   countDocuments: (query: ConditionOrConjunction<T>) => Promise<number>;
   updateOne: (query: ConditionOrConjunction<T>, item: unknown) => Promise<UpdateResult>;
   countAllDocuments: () => Promise<number>;
+  bulkReplace: (
+    replacements: Array<{ filter: ConditionOrConjunction<T>; replacement: T }>,
+    upsert?: boolean,
+  ) => Promise<BulkReplaceResult>;
 }
 
 export type CamsPaginationResponse<T> = {
@@ -301,4 +318,9 @@ export interface QueueGateway {
 
 export interface StaffRepository {
   getAttorneyStaff(applicationContext: ApplicationContext): Promise<Staff[]>;
+}
+
+export interface UserGroupsRepository extends Releasable {
+  getOversightStaff(context: ApplicationContext): Promise<AvailableTrusteeOversightStaff>;
+  upsertUserGroupsBatch(context: ApplicationContext, userGroups: UserGroup[]): Promise<void>;
 }

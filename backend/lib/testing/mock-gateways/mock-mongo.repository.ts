@@ -23,6 +23,7 @@ import {
   StaffRepository,
   TrusteesRepository,
   UpdateResult,
+  UserGroupsRepository,
   UserSessionCacheRepository,
   UsersRepository,
 } from '../../use-cases/gateways.types';
@@ -48,7 +49,8 @@ export class MockMongoRepository
     OfficeAssigneesRepository,
     TrusteesRepository,
     ListsRepository,
-    StaffRepository
+    StaffRepository,
+    UserGroupsRepository
 {
   deleteSyncedCases(): Promise<void> {
     throw new Error('Method not implemented.');
@@ -271,6 +273,14 @@ export class MockMongoRepository
   }
 
   updateTrusteeOversightAssignment(_ignore: any): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
+  getOversightStaff(_ignore: any): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
+  upsertUserGroupsBatch(_ignore: any): Promise<void> {
     throw new Error('Method not implemented.');
   }
 }
