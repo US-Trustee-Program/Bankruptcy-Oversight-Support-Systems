@@ -1,4 +1,4 @@
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../../use-cases/application.types';
 import { TrusteesUseCase } from '../../use-cases/trustees/trustees';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';

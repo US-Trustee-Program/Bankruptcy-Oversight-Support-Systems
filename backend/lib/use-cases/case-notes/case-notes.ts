@@ -1,4 +1,4 @@
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../application.types';
 import { getCaseNotesRepository } from '../../factory';
 import { CaseNotesRepository, UpdateResult } from '../gateways.types';
 import {

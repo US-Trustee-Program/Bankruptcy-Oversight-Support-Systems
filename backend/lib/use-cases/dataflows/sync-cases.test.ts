@@ -4,7 +4,7 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { CasesSyncState } from '../gateways.types';
 import { CasesLocalGateway } from '../../adapters/gateways/cases.local.gateway';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../application.types';
 
 describe('getCaseIds tests', () => {
   let context: ApplicationContext;

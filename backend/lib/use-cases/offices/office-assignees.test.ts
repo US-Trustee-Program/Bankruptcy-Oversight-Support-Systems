@@ -1,4 +1,4 @@
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../application.types';
 import * as factory from '../../factory';
 import OfficeAssigneesUseCase from './office-assignees';
 import { createMockApplicationContext } from '../../testing/testing-utilities';

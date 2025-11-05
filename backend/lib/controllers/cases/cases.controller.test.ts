@@ -1,5 +1,5 @@
 import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../../use-cases/application.types';
 import { CamsHttpResponseInit } from '../../adapters/utils/http-response';
 import CaseManagement from '../../use-cases/cases/case-management';
 import { CasesController } from './cases.controller';

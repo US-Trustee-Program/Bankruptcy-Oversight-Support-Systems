@@ -1,5 +1,5 @@
 import { NotFoundError } from '../../../common-errors/not-found-error';
-import { ApplicationContext } from '../../types/basic';
+import { ApplicationContext } from '../../../use-cases/application.types';
 import { CaseDocketGateway } from '../../../use-cases/gateways.types';
 import { GatewayHelper } from '../gateway-helper';
 import { NORMAL_CASE_ID } from '../../../testing/testing-constants';

@@ -1,5 +1,5 @@
 import { DocumentClient } from '../../../../humble-objects/mongo-humble';
-import { ApplicationContext } from '../../../types/basic';
+import { ApplicationContext } from '../../../../use-cases/application.types';
 import { MongoCollectionAdapter } from './mongo-adapter';
 
 export abstract class BaseMongoRepository {

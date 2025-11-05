@@ -1,7 +1,7 @@
 import MigrateOfficeAssigneesUseCase from './migrate-office-assignees';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../application.types';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { MockOfficesGateway } from '../../testing/mock-gateways/mock.offices.gateway';
 import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';

@@ -1,5 +1,5 @@
 import { OrderSyncState } from '../gateways.types';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../application.types';
 import {
   ConsolidationOrder,
   ConsolidationOrderActionApproval,

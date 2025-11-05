@@ -1,4 +1,4 @@
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../../use-cases/application.types';
 import { CaseSummary } from '../../../../common/src/cams/cases';
 import CaseManagement from '../../use-cases/cases/case-management';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';

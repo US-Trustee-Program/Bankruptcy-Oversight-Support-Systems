@@ -2,7 +2,7 @@ import { OrdersSearchPredicate } from '../../../../../common/src/api/search';
 import { ConsolidationOrder } from '../../../../../common/src/cams/orders';
 import QueryBuilder, { ConditionOrConjunction, using } from '../../../query/query-builder';
 import { ConsolidationOrdersRepository } from '../../../use-cases/gateways.types';
-import { ApplicationContext } from '../../types/basic';
+import { ApplicationContext } from '../../../use-cases/application.types';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { escapeRegExCharacters } from '../../../../../common/src/cams/regex';

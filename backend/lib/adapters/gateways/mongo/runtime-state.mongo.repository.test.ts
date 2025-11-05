@@ -1,6 +1,6 @@
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { OrderSyncState } from '../../../use-cases/gateways.types';
-import { ApplicationContext } from '../../types/basic';
+import { ApplicationContext } from '../../../use-cases/application.types';
 import { RuntimeStateMongoRepository } from './runtime-state.mongo.repository';
 import * as crypto from 'crypto';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';

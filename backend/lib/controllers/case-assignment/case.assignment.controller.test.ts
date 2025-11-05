@@ -18,7 +18,7 @@ import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
 import { httpSuccess } from '../../adapters/utils/http-response';
 import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
 import { REGION_02_GROUP_NY } from '../../../../common/src/cams/test-utilities/mock-user';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../../use-cases/application.types';
 
 const Jane = MockData.getCamsUserReference({ name: 'Jane' });
 const Adrian = MockData.getCamsUserReference({ name: 'Adrian' });

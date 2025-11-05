@@ -1,4 +1,4 @@
-import { ApplicationContext } from '../../types/basic';
+import { ApplicationContext } from '../../../use-cases/application.types';
 import QueryBuilder from '../../../query/query-builder';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';

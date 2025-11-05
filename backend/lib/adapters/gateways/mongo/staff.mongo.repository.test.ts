@@ -1,5 +1,5 @@
 import { StaffMongoRepository } from './staff.mongo.repository';
-import { ApplicationContext } from '../../types/basic';
+import { ApplicationContext } from '../../../use-cases/application.types';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { getOfficesRepository } from '../../../factory';
 import { OfficesRepository } from '../../../use-cases/gateways.types';

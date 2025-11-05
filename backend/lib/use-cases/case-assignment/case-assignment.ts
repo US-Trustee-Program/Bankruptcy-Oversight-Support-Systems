@@ -4,7 +4,7 @@ import Factory, {
   getOfficesRepository,
   getQueueGateway,
 } from '../../factory';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../application.types';
 import { CaseAssignmentRepository, QueueGateway } from '../gateways.types';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { CaseAssignmentHistory } from '../../../../common/src/cams/history';

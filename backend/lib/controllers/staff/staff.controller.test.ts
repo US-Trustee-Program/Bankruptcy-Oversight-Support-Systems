@@ -3,7 +3,7 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import StaffUseCase from '../../use-cases/staff/staff';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { StaffController } from './staff.controller';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../../use-cases/application.types';
 
 describe('Attorneys Controller Tests', () => {
   let context: ApplicationContext;

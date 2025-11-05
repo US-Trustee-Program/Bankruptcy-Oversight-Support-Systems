@@ -1,4 +1,4 @@
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../../use-cases/application.types';
 import CaseManagement from '../../use-cases/cases/case-management';
 import { ResponseBody } from '../../../../common/src/api/response';
 import { CaseDetail, SyncedCase } from '../../../../common/src/cams/cases';

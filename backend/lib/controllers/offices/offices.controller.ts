@@ -1,5 +1,5 @@
 import { OfficesUseCase } from '../../use-cases/offices/offices';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../../use-cases/application.types';
 import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';

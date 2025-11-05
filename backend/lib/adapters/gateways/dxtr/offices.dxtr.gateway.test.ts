@@ -1,5 +1,5 @@
 import OfficesDxtrGateway from './offices.dxtr.gateway';
-import { ApplicationContext } from '../../types/basic';
+import { ApplicationContext } from '../../../use-cases/application.types';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import * as database from '../../utils/database';
 import { DbTableFieldSpec, IDbConfig, QueryResults } from '../../types/database';

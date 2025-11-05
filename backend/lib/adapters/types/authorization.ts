@@ -1,6 +1,6 @@
 import { CamsUser, CamsUserGroup, CamsUserReference } from '../../../../common/src/cams/users';
 import { CamsJwt } from '../../../../common/src/cams/jwt';
-import { ApplicationContext } from './basic';
+import { ApplicationContext } from '../../use-cases/application.types';
 
 export type AuthorizationConfig = {
   provider: string | null;

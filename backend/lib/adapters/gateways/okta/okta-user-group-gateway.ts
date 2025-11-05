@@ -1,7 +1,7 @@
 import { CamsUser, CamsUserGroup, CamsUserReference } from '../../../../../common/src/cams/users';
 import { UserGroupGateway, UserGroupGatewayConfig } from '../../types/authorization';
 import { UnknownError } from '../../../common-errors/unknown-error';
-import { ApplicationContext } from '../../types/basic';
+import { ApplicationContext } from '../../../use-cases/application.types';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import OktaHumble, {
   ListGroupsRequest,

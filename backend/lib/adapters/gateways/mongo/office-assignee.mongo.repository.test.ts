@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
-import { ApplicationContext } from '../../types/basic';
+import { ApplicationContext } from '../../../use-cases/application.types';
 import { OfficeAssigneeMongoRepository } from './office-assignee.mongo.repository';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';

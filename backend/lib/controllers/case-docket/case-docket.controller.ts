@@ -1,4 +1,4 @@
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../../use-cases/application.types';
 import { CaseDocketUseCase } from '../../use-cases/case-docket/case-docket';
 import { getCaseDocketUseCase } from '../../factory';
 import { isCamsError } from '../../common-errors/cams-error';

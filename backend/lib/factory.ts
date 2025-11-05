@@ -1,5 +1,5 @@
 import { CasesInterface } from './use-cases/cases/cases.interface';
-import { ApplicationContext } from './adapters/types/basic';
+import { ApplicationContext } from './use-cases/application.types';
 import { CasesLocalGateway } from './adapters/gateways/cases.local.gateway';
 import CasesDxtrGateway from './adapters/gateways/dxtr/cases.dxtr.gateway';
 import { IDbConfig } from './adapters/types/database';

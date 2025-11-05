@@ -1,6 +1,6 @@
 import { OfficeAssignee, OfficeAssigneesRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
-import { ApplicationContext } from '../../types/basic';
+import { ApplicationContext } from '../../../use-cases/application.types';
 import { OfficeAssigneePredicate } from '../../../../../common/src/api/search';
 import QueryBuilder, { using } from '../../../query/query-builder';
 import { CamsError } from '../../../common-errors/cams-error';

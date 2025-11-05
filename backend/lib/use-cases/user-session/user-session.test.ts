@@ -1,5 +1,5 @@
 import { UserSessionUseCase } from './user-session';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../application.types';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';

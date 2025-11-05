@@ -1,5 +1,5 @@
 import * as jwt from 'jsonwebtoken';
-import { ApplicationContext } from '../../types/basic';
+import { ApplicationContext } from '../../../use-cases/application.types';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import {
   CachedCamsSession,

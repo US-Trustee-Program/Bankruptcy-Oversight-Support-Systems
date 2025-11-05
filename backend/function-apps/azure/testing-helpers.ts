@@ -4,7 +4,7 @@ import { CamsHttpRequest } from '../../lib/adapters/types/http';
 import MockData from '../../../common/src/cams/test-utilities/mock-data';
 import { httpSuccess } from '../../lib/adapters/utils/http-response';
 import { toAzureError, toAzureSuccess } from './functions';
-import { ApplicationContext } from '../../lib/adapters/types/basic';
+import { ApplicationContext } from '../../lib/use-cases/application.types';
 import { ResponseBody } from '../../../common/src/api/response';
 
 export function createMockAzureFunctionContext(

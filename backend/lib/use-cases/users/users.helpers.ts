@@ -1,6 +1,6 @@
 import { CamsUser, PrivilegedIdentityUser } from '../../../../common/src/cams/users';
 import { getOfficesGateway, getUserGroupGateway, getUsersRepository } from '../../factory';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../application.types';
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
 import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';

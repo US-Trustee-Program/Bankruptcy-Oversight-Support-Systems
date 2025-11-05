@@ -1,4 +1,4 @@
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../application.types';
 import { getCamsError } from '../../common-errors/error-utilities';
 import Factory from '../../factory';
 import { MaybeCaseSyncEvents, MaybeData, MaybeVoid } from './queue-types';

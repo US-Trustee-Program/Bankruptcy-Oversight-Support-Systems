@@ -1,6 +1,6 @@
 import { RecordObj, ObjectKeyVal } from './basic';
 import { DbResult } from './database';
-import { ApplicationContext } from './basic';
+import { ApplicationContext } from '../../use-cases/application.types';
 import { AttorneyUser } from '../../../../common/src/cams/users';
 import { Identifiable } from '../../../../common/src/cams/document';
 

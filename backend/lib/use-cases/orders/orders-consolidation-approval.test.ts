@@ -9,7 +9,7 @@ import {
   getCaseSummaryFromConsolidationOrderCase,
 } from '../../../../common/src/cams/orders';
 import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../application.types';
 import * as crypto from 'crypto';
 import { CaseHistory, ConsolidationOrderSummary } from '../../../../common/src/cams/history';
 import { CaseAssignmentUseCase } from '../case-assignment/case-assignment';

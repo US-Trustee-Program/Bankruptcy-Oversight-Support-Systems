@@ -8,7 +8,7 @@ import {
   DxtrOrdersGateway,
   dxtrOrdersSorter,
 } from './orders.dxtr.gateway';
-import { ApplicationContext } from '../../types/basic';
+import { ApplicationContext } from '../../../use-cases/application.types';
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 
 function getEarliestDate(docket: DxtrOrderDocketEntry[]) {

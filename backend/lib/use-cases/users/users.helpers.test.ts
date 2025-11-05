@@ -2,7 +2,7 @@ import UsersHelpers from './users.helpers';
 import { CamsUser, PrivilegedIdentityUser } from '../../../../common/src/cams/users';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { CamsRole } from '../../../../common/src/cams/roles';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../application.types';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';

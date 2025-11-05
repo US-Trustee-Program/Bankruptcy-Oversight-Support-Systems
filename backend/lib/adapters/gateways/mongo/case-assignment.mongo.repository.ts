@@ -1,4 +1,4 @@
-import { ApplicationContext } from '../../types/basic';
+import { ApplicationContext } from '../../../use-cases/application.types';
 import { CaseAssignment } from '../../../../../common/src/cams/assignments';
 import QueryBuilder from '../../../query/query-builder';
 import { CaseAssignmentRepository } from '../../../use-cases/gateways.types';

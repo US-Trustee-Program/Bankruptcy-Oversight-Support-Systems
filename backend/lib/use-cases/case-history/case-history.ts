@@ -1,5 +1,5 @@
 import Factory from '../../factory';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../application.types';
 import { CaseHistory } from '../../../../common/src/cams/history';
 
 export class CaseHistoryUseCase {

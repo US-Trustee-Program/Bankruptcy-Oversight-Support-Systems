@@ -1,4 +1,4 @@
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../application.types';
 import { CaseSyncEvent } from '../../../../common/src/queue/dataflow-types';
 import Factory, { getCasesGateway } from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';

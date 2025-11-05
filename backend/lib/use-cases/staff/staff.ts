@@ -1,5 +1,5 @@
 import { StaffRepository } from '../gateways.types';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../application.types';
 import { getStaffRepository } from '../../factory';
 import { Staff } from '../../../../common/src/cams/users';
 

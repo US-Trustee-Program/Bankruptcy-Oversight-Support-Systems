@@ -1,5 +1,5 @@
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../../use-cases/application.types';
 import { OrdersUseCase, SyncOrdersStatus } from '../../use-cases/orders/orders';
 import { CamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';

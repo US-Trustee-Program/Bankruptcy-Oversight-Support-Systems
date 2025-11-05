@@ -1,4 +1,4 @@
-import { ApplicationContext } from '../../types/basic';
+import { ApplicationContext } from '../../../use-cases/application.types';
 import { createAuditRecord } from '../../../../../common/src/cams/auditable';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { TrusteesRepository } from '../../../use-cases/gateways.types';

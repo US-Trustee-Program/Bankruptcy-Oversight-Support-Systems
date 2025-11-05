@@ -28,7 +28,7 @@ import { CASE_SUMMARIES } from '../../testing/mock-data/case-summaries.mock';
 import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
 import { CasesLocalGateway } from '../../adapters/gateways/cases.local.gateway';
 import { CaseSummary } from '../../../../common/src/cams/cases';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../application.types';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import * as crypto from 'crypto';
 import { CaseHistory, ConsolidationOrderSummary } from '../../../../common/src/cams/history';

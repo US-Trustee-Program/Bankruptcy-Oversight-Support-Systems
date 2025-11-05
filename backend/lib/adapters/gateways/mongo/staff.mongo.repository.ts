@@ -1,5 +1,5 @@
 import { StaffRepository } from '../../../use-cases/gateways.types';
-import { ApplicationContext } from '../../types/basic';
+import { ApplicationContext } from '../../../use-cases/application.types';
 import { CamsUserReference, Staff } from '../../../../../common/src/cams/users';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { getOfficesRepository } from '../../../factory';

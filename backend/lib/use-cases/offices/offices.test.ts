@@ -1,5 +1,5 @@
 import { OfficesUseCase } from './offices';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../application.types';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import * as factory from '../../factory';
 import { CamsUserGroup, Staff } from '../../../../common/src/cams/users';

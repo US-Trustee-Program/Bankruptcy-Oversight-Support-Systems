@@ -5,7 +5,7 @@ import {
   AcmsPredicate,
 } from '../../../use-cases/dataflows/migrate-consolidations';
 import { AcmsGateway } from '../../../use-cases/gateways.types';
-import { ApplicationContext } from '../../types/basic';
+import { ApplicationContext } from '../../../use-cases/application.types';
 import { AbstractMssqlClient } from '../abstract-mssql-client';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import { DbTableFieldSpec } from '../../types/database';

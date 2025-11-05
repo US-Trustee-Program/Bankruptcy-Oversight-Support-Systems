@@ -5,7 +5,7 @@ import {
 } from '../../testing/testing-utilities';
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { REGION_02_GROUP_NY } from '../../../../common/src/cams/test-utilities/mock-user';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../../use-cases/application.types';
 import { CaseNotesUseCase } from '../../use-cases/case-notes/case-notes';
 import { CaseNotesController } from './case.notes.controller';
 import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';

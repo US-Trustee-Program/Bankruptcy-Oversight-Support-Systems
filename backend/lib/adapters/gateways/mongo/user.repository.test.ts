@@ -1,6 +1,6 @@
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import { UsersMongoRepository } from './user.repository';
-import { ApplicationContext } from '../../types/basic';
+import { ApplicationContext } from '../../../use-cases/application.types';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { NotFoundError } from '../../../common-errors/not-found-error';

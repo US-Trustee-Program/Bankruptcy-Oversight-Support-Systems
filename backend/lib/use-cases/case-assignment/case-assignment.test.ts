@@ -1,4 +1,4 @@
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../application.types';
 import { CaseAssignmentUseCase } from './case-assignment';
 import {
   createMockApplicationContext,

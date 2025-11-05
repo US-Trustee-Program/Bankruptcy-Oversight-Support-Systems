@@ -1,4 +1,4 @@
-import { ApplicationContext } from '../../../lib/adapters/types/basic';
+import { ApplicationContext } from '../../../lib/use-cases/application.types';
 import { getCasesGateway } from '../../../lib/factory';
 import { CasesSearchPredicate } from '../../../../common/src/api/search';
 import { CaseBasics } from '../../../../common/src/cams/cases';

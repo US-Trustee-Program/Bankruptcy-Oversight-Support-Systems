@@ -1,7 +1,7 @@
 import { HttpRequest, HttpResponseInit } from '@azure/functions';
 import { CamsDict, CamsHttpMethod, CamsHttpRequest } from '../../lib/adapters/types/http';
 import { CamsHttpResponseInit, commonHeaders } from '../../lib/adapters/utils/http-response';
-import { ApplicationContext } from '../../lib/adapters/types/basic';
+import { ApplicationContext } from '../../lib/use-cases/application.types';
 import { getCamsError } from '../../lib/common-errors/error-utilities';
 import { LoggerImpl } from '../../lib/adapters/services/logger.service';
 

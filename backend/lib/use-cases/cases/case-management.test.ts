@@ -9,7 +9,7 @@ import {
 } from '../../testing/testing-utilities';
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { getCasesGateway } from '../../factory';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../application.types';
 import { CamsUser } from '../../../../common/src/cams/users';
 import {
   REGION_02_GROUP_BU,

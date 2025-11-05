@@ -2,7 +2,7 @@ import * as dotenv from 'dotenv';
 import express, { Application, Request, Response, NextFunction } from 'express';
 import { applicationContextCreator } from './application-context-creator';
 import { sendCamsResponse, errorHandler } from './adapters';
-import { ApplicationContext } from '../lib/adapters/types/basic';
+import { ApplicationContext } from '../lib/use-cases/application.types';
 import { MeController } from '../lib/controllers/me/me.controller';
 import { CasesController } from '../lib/controllers/cases/cases.controller';
 import { CaseAssignmentController } from '../lib/controllers/case-assignment/case.assignment.controller';

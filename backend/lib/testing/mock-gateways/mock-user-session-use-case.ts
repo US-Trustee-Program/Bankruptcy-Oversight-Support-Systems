@@ -1,5 +1,5 @@
 import * as jwt from 'jsonwebtoken';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../../use-cases/application.types';
 import { getUser } from './mock-oauth2-gateway';
 import { CamsSession } from '../../../../common/src/cams/session';
 import { CamsJwtClaims } from '../../../../common/src/cams/jwt';

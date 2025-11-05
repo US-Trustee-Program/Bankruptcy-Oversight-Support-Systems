@@ -1,5 +1,5 @@
 import { ConnectionError, ConnectionPool, MSSQLError } from 'mssql';
-import { ApplicationContext } from '../types/basic';
+import { ApplicationContext } from '../../use-cases/application.types';
 import { DbTableFieldSpec, IDbConfig, QueryResults } from '../types/database';
 import { getSqlConnection } from '../../factory';
 import { deferClose } from '../../deferrable/defer-close';

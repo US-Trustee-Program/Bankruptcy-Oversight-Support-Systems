@@ -1,4 +1,4 @@
-import { ApplicationContext } from './adapters/types/basic';
+import { ApplicationContext } from './use-cases/application.types';
 import OktaHumble from './humble-objects/okta-humble';
 import { createMockApplicationContext } from './testing/testing-utilities';
 

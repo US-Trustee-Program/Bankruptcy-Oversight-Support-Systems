@@ -1,6 +1,6 @@
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { OrdersMongoRepository } from './orders.mongo.repository';
-import { ApplicationContext } from '../../types/basic';
+import { ApplicationContext } from '../../../use-cases/application.types';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { TransferOrder, TransferOrderAction } from '../../../../../common/src/cams/orders';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';

@@ -1,6 +1,6 @@
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { AcmsGatewayImpl } from '../../adapters/gateways/acms/acms.gateway';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../application.types';
 import { UnknownError } from '../../common-errors/unknown-error';
 import Factory from '../../factory';
 import { createMockApplicationContext } from '../../testing/testing-utilities';

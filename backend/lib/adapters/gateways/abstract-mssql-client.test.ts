@@ -1,7 +1,7 @@
 import { QueryResults, IDbConfig } from '../types/database';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { AbstractMssqlClient } from './abstract-mssql-client';
-import { ApplicationContext } from '../types/basic';
+import { ApplicationContext } from '../../use-cases/application.types';
 import { IResult } from 'mssql';
 
 type sqlConnect = {

@@ -1,6 +1,6 @@
 import { InvocationContextExtraOutputs, StorageQueueOutput } from '@azure/functions';
 import { LogicalQueueNames, QueueGateway } from '../../../use-cases/gateways.types';
-import { ApplicationContext } from '../../types/basic';
+import { ApplicationContext } from '../../../use-cases/application.types';
 
 import {
   CASE_ASSIGNMENT_EVENT_QUEUE,

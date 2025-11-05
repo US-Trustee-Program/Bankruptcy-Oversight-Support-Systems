@@ -1,4 +1,4 @@
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../../use-cases/application.types';
 import { CaseAssignmentUseCase } from '../../use-cases/case-assignment/case-assignment';
 import { AssignmentError } from '../../use-cases/case-assignment/assignment.exception';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';

@@ -1,6 +1,6 @@
 import * as jwt from 'jsonwebtoken';
 import { Request } from 'express';
-import { ApplicationContext } from '../lib/adapters/types/basic';
+import { ApplicationContext } from '../lib/use-cases/application.types';
 import { ApplicationConfiguration } from '../lib/configs/application-configuration';
 import { getFeatureFlags } from '../lib/adapters/utils/feature-flag';
 import { LoggerImpl } from '../lib/adapters/services/logger.service';

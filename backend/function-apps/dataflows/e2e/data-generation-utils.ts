@@ -1,5 +1,5 @@
 import * as dotenv from 'dotenv';
-import { ApplicationContext } from '../../../lib/adapters/types/basic';
+import { ApplicationContext } from '../../../lib/use-cases/application.types';
 import { CaseBasics, CaseSummary, getCaseIdParts } from '../../../../common/src/cams/cases';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { OrdersUseCase } from '../../../lib/use-cases/orders/orders';

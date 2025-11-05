@@ -3,7 +3,7 @@ import {
   createMockApplicationContext,
   createMockApplicationContextSession,
 } from '../../../testing/testing-utilities';
-import { ApplicationContext } from '../../types/basic';
+import { ApplicationContext } from '../../../use-cases/application.types';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { closeDeferred } from '../../../deferrable/defer-close';

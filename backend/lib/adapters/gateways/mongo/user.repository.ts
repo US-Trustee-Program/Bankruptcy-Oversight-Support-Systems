@@ -1,4 +1,4 @@
-import { ApplicationContext } from '../../types/basic';
+import { ApplicationContext } from '../../../use-cases/application.types';
 import { Auditable, createAuditRecord } from '../../../../../common/src/cams/auditable';
 import QueryBuilder from '../../../query/query-builder';
 import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';

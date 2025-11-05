@@ -1,5 +1,5 @@
 import { CasesInterface, TransactionIdRangeForDate } from '../../use-cases/cases/cases.interface';
-import { ApplicationContext } from '../types/basic';
+import { ApplicationContext } from '../../use-cases/application.types';
 import { GatewayHelper } from './gateway-helper';
 import { getMonthDayYearStringFromDate } from '../utils/date-helper';
 import { CaseBasics, CaseDetail } from '../../../../common/src/cams/cases';

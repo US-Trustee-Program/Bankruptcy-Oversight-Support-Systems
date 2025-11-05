@@ -1,5 +1,5 @@
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../../use-cases/application.types';
 import { COURT_DIVISIONS } from '../../../../common/src/cams/test-utilities/courts.mock';
 import { CamsError } from '../../common-errors/cams-error';
 import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';

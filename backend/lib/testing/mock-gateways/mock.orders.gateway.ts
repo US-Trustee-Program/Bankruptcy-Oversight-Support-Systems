@@ -1,6 +1,6 @@
 import { RawOrderSync } from '../../../../common/src/cams/orders';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../../use-cases/application.types';
 import { OrdersGateway } from '../../use-cases/gateways.types';
 
 export class MockOrdersGateway implements OrdersGateway {

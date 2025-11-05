@@ -1,5 +1,5 @@
 import { getAuthorizationGateway, getUserSessionCacheRepository } from '../../factory';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../application.types';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { isCamsError } from '../../common-errors/cams-error';
 import { ServerConfigError } from '../../common-errors/server-config-error';

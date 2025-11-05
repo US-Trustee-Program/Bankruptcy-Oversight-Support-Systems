@@ -1,7 +1,7 @@
 import * as mssql from 'mssql';
 import { executeQuery } from '../../utils/database';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
-import { ApplicationContext } from '../../types/basic';
+import { ApplicationContext } from '../../../use-cases/application.types';
 import { OrdersGateway } from '../../../use-cases/gateways.types';
 import { CamsError } from '../../../common-errors/cams-error';
 import {

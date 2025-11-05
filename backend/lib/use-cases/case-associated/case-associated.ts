@@ -1,5 +1,5 @@
 import Factory from '../../factory';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../application.types';
 import { EventCaseReference } from '../../../../common/src/cams/events';
 
 function getEarliestDate(orders: Array<EventCaseReference>) {

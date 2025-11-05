@@ -2,7 +2,7 @@ import { TrusteeHistoryController } from './trustee-history.controller';
 import { TrusteesUseCase } from '../../use-cases/trustees/trustees';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { NotFoundError } from '../../common-errors/not-found-error';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../../use-cases/application.types';
 import { NORMAL_TRUSTEE_ID } from '../../testing/testing-constants';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 

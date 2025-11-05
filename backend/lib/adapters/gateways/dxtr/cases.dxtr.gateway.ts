@@ -3,7 +3,7 @@ import {
   CasesInterface,
   TransactionIdRangeForDate,
 } from '../../../use-cases/cases/cases.interface';
-import { ApplicationContext } from '../../types/basic';
+import { ApplicationContext } from '../../../use-cases/application.types';
 import { DxtrTransactionRecord, TransactionDates } from '../../types/cases';
 import { getMonthDayYearStringFromDate, sortListOfDates } from '../../utils/date-helper';
 import { executeQuery } from '../../utils/database';

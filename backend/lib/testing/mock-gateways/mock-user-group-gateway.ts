@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import { CamsUser, CamsUserGroup, CamsUserReference } from '../../../../common/src/cams/users';
 import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
 import { UserGroupGateway, UserGroupGatewayConfig } from '../../adapters/types/authorization';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../../use-cases/application.types';
 import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import MockUsers from '../../../../common/src/cams/test-utilities/mock-user';

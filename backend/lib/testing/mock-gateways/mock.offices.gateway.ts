@@ -1,6 +1,6 @@
 import { MOCKED_USTP_OFFICES_ARRAY, UstpOfficeDetails } from '../../../../common/src/cams/offices';
 import { USTP_OFFICE_NAME_MAP } from '../../adapters/gateways/dxtr/dxtr.constants';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../../use-cases/application.types';
 import { CamsError } from '../../common-errors/cams-error';
 import { OfficesGateway } from '../../use-cases/offices/offices.types';
 

@@ -1,4 +1,4 @@
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../../use-cases/application.types';
 import { TrusteesController } from './trustees.controller';
 import { TrusteesUseCase } from '../../use-cases/trustees/trustees';
 import { TrusteeInput } from '../../../../common/src/cams/trustees';

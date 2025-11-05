@@ -1,5 +1,5 @@
 import * as jwt from 'jsonwebtoken';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../../use-cases/application.types';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
 import { MockUser, MockUsers } from '../../../../common/src/cams/test-utilities/mock-user';
 import { CamsUser } from '../../../../common/src/cams/users';

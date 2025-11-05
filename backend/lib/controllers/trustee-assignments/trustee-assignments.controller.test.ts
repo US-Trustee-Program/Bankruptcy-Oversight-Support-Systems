@@ -1,4 +1,4 @@
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../../use-cases/application.types';
 import { TrusteeAssignmentsController } from './trustee-assignments.controller';
 import { TrusteeAssignmentsUseCase } from '../../use-cases/trustee-assignments/trustee-assignments';
 import { BadRequestError } from '../../common-errors/bad-request';

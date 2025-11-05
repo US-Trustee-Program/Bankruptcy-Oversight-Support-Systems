@@ -1,4 +1,4 @@
-import { ApplicationContext } from '../../../lib/adapters/types/basic';
+import { ApplicationContext } from '../../../lib/use-cases/application.types';
 import { getSqlConnection } from '../../../lib/factory';
 
 const MODULE_NAME = 'HEALTHCHECK-SQL-DB';

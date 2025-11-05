@@ -1,4 +1,4 @@
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../application.types';
 import Factory from '../../factory';
 import { CasesSyncState } from '../gateways.types';
 import { getCamsError } from '../../common-errors/error-utilities';

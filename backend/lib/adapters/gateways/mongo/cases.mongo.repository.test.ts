@@ -17,7 +17,7 @@ import {
   createMockApplicationContext,
   getTheThrownError,
 } from '../../../testing/testing-utilities';
-import { ApplicationContext } from '../../types/basic';
+import { ApplicationContext } from '../../../use-cases/application.types';
 import { CasesMongoRepository } from './cases.mongo.repository';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import * as crypto from 'crypto';

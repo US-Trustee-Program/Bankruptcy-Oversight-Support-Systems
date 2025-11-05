@@ -2,7 +2,7 @@ import { IDbConfig } from '../types/database';
 import { ConnectionError, MSSQLError, RequestError } from 'mssql';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { AbstractMssqlClient } from './abstract-mssql-client';
-import { ApplicationContext } from '../types/basic';
+import { ApplicationContext } from '../../use-cases/application.types';
 
 // Setting default Jest mocks for mssql
 //NOTE: using const here causes these tests to error out with 'Cannot access {var} before initialization

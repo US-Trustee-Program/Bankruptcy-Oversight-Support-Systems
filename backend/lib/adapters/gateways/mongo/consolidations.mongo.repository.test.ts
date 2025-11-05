@@ -1,4 +1,4 @@
-import { ApplicationContext } from '../../types/basic';
+import { ApplicationContext } from '../../../use-cases/application.types';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import ConsolidationOrdersMongoRepository from './consolidations.mongo.repository';

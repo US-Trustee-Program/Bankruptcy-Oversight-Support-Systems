@@ -1,7 +1,7 @@
 import { CamsUser, CamsUserGroup, CamsUserReference } from '../../../../../common/src/cams/users';
 import { UnknownError } from '../../../common-errors/unknown-error';
 import { UserGroupGateway, UserGroupGatewayConfig } from '../../types/authorization';
-import { ApplicationContext } from '../../types/basic';
+import { ApplicationContext } from '../../../use-cases/application.types';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { randomUUID } from 'node:crypto';
 import { MockOfficesGateway } from '../../../testing/mock-gateways/mock.offices.gateway';

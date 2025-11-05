@@ -3,7 +3,7 @@ import AcmsOrders, {
   AcmsPredicate,
 } from '../../use-cases/dataflows/migrate-consolidations';
 import AcmsOrdersController from './acms-orders.controller';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../../use-cases/application.types';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { NotFoundError } from '../../common-errors/not-found-error';
 

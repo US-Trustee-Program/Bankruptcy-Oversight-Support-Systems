@@ -2,7 +2,7 @@ import { CaseNote } from '../../../../../common/src/cams/cases';
 import { getCamsErrorWithStack, getCamsError } from '../../../common-errors/error-utilities';
 import QueryBuilder from '../../../query/query-builder';
 import { CaseNotesRepository, UpdateResult } from '../../../use-cases/gateways.types';
-import { ApplicationContext } from '../../types/basic';
+import { ApplicationContext } from '../../../use-cases/application.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 
 const MODULE_NAME = 'CASE-NOTES-MONGO-REPOSITORY';

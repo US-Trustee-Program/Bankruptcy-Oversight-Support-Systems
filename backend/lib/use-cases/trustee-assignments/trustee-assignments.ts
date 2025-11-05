@@ -1,4 +1,4 @@
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../application.types';
 import { TrusteesRepository, UserGroupsRepository } from '../gateways.types';
 import {
   TrusteeOversightAssignment,

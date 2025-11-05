@@ -1,6 +1,6 @@
 import * as mssql from 'mssql';
 import { CamsError } from '../../../common-errors/cams-error';
-import { ApplicationContext } from '../../types/basic';
+import { ApplicationContext } from '../../../use-cases/application.types';
 import { QueryResults } from '../../types/database';
 import { executeQuery } from '../../utils/database';
 import { OfficesGateway } from '../../../use-cases/offices/offices.types';

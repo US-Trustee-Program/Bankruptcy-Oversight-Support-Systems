@@ -1,6 +1,6 @@
 import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
 import { AttorneyUser, Staff, UserGroup } from '../../../../common/src/cams/users';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../application.types';
 import {
   getOfficeAssigneesRepository,
   getOfficesGateway,

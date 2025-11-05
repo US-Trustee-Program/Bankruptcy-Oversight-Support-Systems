@@ -1,7 +1,7 @@
 import { config, ConnectionError, ConnectionPool, MSSQLError, IResult } from 'mssql';
 import { DbTableFieldSpec, IDbConfig, QueryResults } from '../types/database';
 import { deferClose } from '../../deferrable/defer-close';
-import { ApplicationContext } from '../types/basic';
+import { ApplicationContext } from '../../use-cases/application.types';
 import { getCamsError } from '../../common-errors/error-utilities';
 
 export abstract class AbstractMssqlClient {

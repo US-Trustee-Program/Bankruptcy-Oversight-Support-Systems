@@ -1,4 +1,4 @@
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../application.types';
 import { getOfficeAssigneesRepository, getOfficesGateway } from '../../factory';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';

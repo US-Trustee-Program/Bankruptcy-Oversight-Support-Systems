@@ -1,7 +1,7 @@
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { AdminUseCase } from './admin';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../application.types';
 import { PrivilegedIdentityUser } from '../../../../common/src/cams/users';
 import { randomUUID } from 'node:crypto';
 import { getCamsUserReference } from '../../../../common/src/cams/session';

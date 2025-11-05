@@ -5,7 +5,7 @@ import {
   TransferFrom,
   TransferTo,
 } from '../../../../../common/src/cams/events';
-import { ApplicationContext } from '../../types/basic';
+import { ApplicationContext } from '../../../use-cases/application.types';
 import { CaseHistory } from '../../../../../common/src/cams/history';
 import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
 import { CamsPaginationResponse, CasesRepository } from '../../../use-cases/gateways.types';

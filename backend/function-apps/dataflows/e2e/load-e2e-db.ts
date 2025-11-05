@@ -1,7 +1,7 @@
 import { app, InvocationContext, HttpRequest } from '@azure/functions';
 import { buildFunctionName, buildHttpTrigger } from '../dataflows-common';
 import ContextCreator from '../../azure/application-context-creator';
-import { ApplicationContext } from '../../../lib/adapters/types/basic';
+import { ApplicationContext } from '../../../lib/use-cases/application.types';
 
 const MODULE_NAME = 'LOAD-E2E-DB';
 const HTTP_TRIGGER = buildFunctionName(MODULE_NAME, 'httpTrigger');

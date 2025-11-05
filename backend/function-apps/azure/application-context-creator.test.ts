@@ -1,5 +1,5 @@
 import MockData from '../../../common/src/cams/test-utilities/mock-data';
-import { ApplicationContext } from '../../lib/adapters/types/basic';
+import { ApplicationContext } from '../../lib/use-cases/application.types';
 import * as FeatureFlags from '../../lib/adapters/utils/feature-flag';
 import { ApplicationConfiguration } from '../../lib/configs/application-configuration';
 import { MockUserSessionUseCase } from '../../lib/testing/mock-gateways/mock-user-session-use-case';

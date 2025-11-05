@@ -1,4 +1,4 @@
-import { ApplicationContext } from '../adapters/types/basic';
+import { ApplicationContext } from '../use-cases/application.types';
 import { CamsHttpResponseInit } from '../adapters/utils/http-response';
 
 export interface CamsController {

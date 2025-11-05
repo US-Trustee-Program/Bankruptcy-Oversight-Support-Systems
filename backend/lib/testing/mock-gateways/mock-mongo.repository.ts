@@ -8,7 +8,7 @@ import {
 } from '../../../../common/src/cams/events';
 import { CaseHistory } from '../../../../common/src/cams/history';
 import { CamsUserReference } from '../../../../common/src/cams/users';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../../use-cases/application.types';
 import {
   CamsPaginationResponse,
   CaseAssignmentRepository,

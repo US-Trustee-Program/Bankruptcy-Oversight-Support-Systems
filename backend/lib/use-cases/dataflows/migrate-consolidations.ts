@@ -1,4 +1,4 @@
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../application.types';
 import Factory from '../../factory';
 import { ConsolidationFrom, ConsolidationTo } from '../../../../common/src/cams/events';
 import { ConsolidationType } from '../../../../common/src/cams/orders';

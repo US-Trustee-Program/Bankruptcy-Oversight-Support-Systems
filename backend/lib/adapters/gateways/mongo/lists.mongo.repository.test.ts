@@ -1,4 +1,4 @@
-import { ApplicationContext } from '../../types/basic';
+import { ApplicationContext } from '../../../use-cases/application.types';
 import { ListsMongoRepository } from './lists.mongo.repository';
 import {
   BankList,

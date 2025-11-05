@@ -1,5 +1,5 @@
 import * as dotenv from 'dotenv';
-import { ApplicationContext } from '../../../lib/adapters/types/basic';
+import { ApplicationContext } from '../../../lib/use-cases/application.types';
 import { DocumentClient } from '../../../lib/humble-objects/mongo-humble';
 import QueryBuilder from '../../../lib/query/query-builder';
 import { deferClose } from '../../../lib/deferrable/defer-close';

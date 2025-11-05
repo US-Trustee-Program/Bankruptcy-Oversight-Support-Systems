@@ -1,4 +1,4 @@
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../application.types';
 import { TrusteesRepository } from '../gateways.types';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';

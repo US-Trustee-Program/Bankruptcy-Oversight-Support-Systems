@@ -1,4 +1,4 @@
-import { ApplicationContext } from '../../adapters/types/basic';
+import { ApplicationContext } from '../application.types';
 import { CaseBasics, CaseDetail, CaseSummary } from '../../../../common/src/cams/cases';
 import { CasesSearchPredicate } from '../../../../common/src/api/search';
 

@@ -1,5 +1,5 @@
 import * as jwt from 'jsonwebtoken';
-import { ApplicationContext } from '../../types/basic';
+import { ApplicationContext } from '../../../use-cases/application.types';
 import { CamsSession } from '../../../../../common/src/cams/session';
 import { UnauthorizedError } from '../../../common-errors/unauthorized-error';
 import { CamsJwtClaims } from '../../../../../common/src/cams/jwt';
