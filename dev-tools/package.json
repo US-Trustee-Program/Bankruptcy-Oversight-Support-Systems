@@ -18,7 +18,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@azure/cosmos": "4.6.0",
+    "@azure/cosmos": "4.7.0",
     "@azure/identity": "4.13.0",
     "@faker-js/faker": "9.9.0",
     "@types/node": "24.9.1",
