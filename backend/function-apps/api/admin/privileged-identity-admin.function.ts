@@ -30,5 +30,5 @@ app.http('privileged-identity-admin', {
   methods: ['DELETE', 'GET', 'PUT'],
   authLevel: 'anonymous',
   handler,
-  route: 'dev-tools/privileged-identity/{resourceId?}',
+  route: 'dev-oauth2-tools/privileged-identity/{resourceId?}',
 });

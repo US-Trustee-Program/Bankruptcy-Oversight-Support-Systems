@@ -133,20 +133,20 @@ module.exports = {
       },
     },
     {
-      name: 'not-to-dev-dep',
+      name: 'not-to-dev-oauth2-dep',
       severity: 'error',
       comment:
         "This module depends on an npm package from the 'devDependencies' section of your " +
         'package.json. It looks like something that ships to production, though. To prevent problems ' +
         "with npm packages that aren't there on production declare it (only!) in the 'dependencies'" +
         'section of your package.json. If this module is development only - add it to the ' +
-        'from.pathNot re of the not-to-dev-dep rule in the dependency-cruiser configuration',
+        'from.pathNot re of the not-to-dev-oauth2-dep rule in the dependency-cruiser configuration',
       from: {
         path: '^(src)',
         pathNot: '\\.(spec|test)\\.(js|mjs|cjs|ts|ls|coffee|litcoffee|coffee\\.md)$',
       },
       to: {
-        dependencyTypes: ['npm-dev'],
+        dependencyTypes: ['npm-dev-oauth2'],
       },
     },
     {

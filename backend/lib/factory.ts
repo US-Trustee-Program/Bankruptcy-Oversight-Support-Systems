@@ -36,7 +36,9 @@ import OfficesDxtrGateway from './adapters/gateways/dxtr/offices.dxtr.gateway';
 import { OpenIdConnectGateway, UserGroupGateway } from './adapters/types/authorization';
 import OktaGateway from './adapters/gateways/okta/okta-gateway';
 import { MockUserSessionUseCase } from './testing/mock-gateways/mock-user-session-use-case';
+import { DevUserSessionUseCase } from './adapters/gateways/dev-oauth2/dev-user-session-use-case';
 import MockOpenIdConnectGateway from './testing/mock-gateways/mock-oauth2-gateway';
+import DevOpenIdConnectGateway from './adapters/gateways/dev-oauth2/dev-oauth2-gateway';
 import { StorageGateway } from './adapters/types/storage';
 import LocalStorageGateway from './adapters/gateways/storage/local-storage-gateway';
 import { MockOrdersGateway } from './testing/mock-gateways/mock.orders.gateway';
@@ -56,6 +58,7 @@ import { deferRelease } from './deferrable/defer-release';
 import { CaseNotesMongoRepository } from './adapters/gateways/mongo/case-notes.mongo.repository';
 import { UsersMongoRepository } from './adapters/gateways/mongo/user.repository';
 import MockUserGroupGateway from './testing/mock-gateways/mock-user-group-gateway';
+import DevUserGroupGateway from './adapters/gateways/dev-oauth2/dev-user-group-gateway';
 import { getCamsErrorWithStack } from './common-errors/error-utilities';
 import { OfficeAssigneeMongoRepository } from './adapters/gateways/mongo/office-assignee.mongo.repository';
 import StorageQueueGateway from './adapters/gateways/storage-queue/storage-queue-gateway';
@@ -163,6 +166,9 @@ export const getOfficesRepository = (context: ApplicationContext): OfficesReposi
   if (context.config.authConfig.provider === 'mock') {
     return MockMongoRepository.getInstance(context);
   }
+  if (context.config.authConfig.provider === 'dev') {
+    return MockMongoRepository.getInstance(context);
+  }
   const repo = OfficesMongoRepository.getInstance(context);
   deferRelease(repo, context);
   return repo;
@@ -266,12 +272,18 @@ export const getAuthorizationGateway = (context: ApplicationContext): OpenIdConn
   if (context.config.authConfig.provider === 'mock') {
     return MockOpenIdConnectGateway;
   }
+  if (context.config.authConfig.provider === 'dev') {
+    return DevOpenIdConnectGateway;
+  }
   return null;
 };
 
 export const getUserSessionUseCase = (context: ApplicationContext) => {
   if (context.config.authConfig.provider === 'mock') {
     return new MockUserSessionUseCase();
+  }
+  if (context.config.authConfig.provider === 'dev') {
+    return new DevUserSessionUseCase();
   }
   const repo = new UserSessionUseCase(context);
   deferRelease(repo, context);
@@ -304,6 +316,8 @@ export const getUserGroupGateway = async (
 ): Promise<UserGroupGateway> => {
   if (context.config.authConfig.provider === 'mock') {
     return new MockUserGroupGateway();
+  } else if (context.config.authConfig.provider === 'dev') {
+    return new DevUserGroupGateway();
   } else if (context.config.authConfig.provider === 'okta') {
     if (!idpApiGateway) {
       try {

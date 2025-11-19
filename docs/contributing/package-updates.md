@@ -63,7 +63,7 @@ The dependency update script uses `.dependency-update-config.json` in the reposi
     "@typescript-eslint/eslint-plugin",
     "@typescript-eslint/parser"
   ],
-  "projects": ["backend", "common", "dev-tools", "test/e2e", "user-interface"]
+  "projects": ["backend", "common", "dev-oauth2-tools", "test/e2e", "user-interface"]
 }
 ```
 
@@ -89,7 +89,7 @@ The dependency update script uses `.dependency-update-config.json` in the reposi
     "root",
     "backend",
     "common",
-    "dev-tools",
+    "dev-oauth2-tools",
     "test/e2e",
     "user-interface"
   ],

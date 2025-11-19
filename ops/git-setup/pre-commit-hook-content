@@ -57,7 +57,7 @@ if [[ $source_files_changed == true && $test_files_changed == false ]]; then
         fi
     done
 
-    # Use </dev/tty to ensure read gets input from the terminal even in non-interactive environments
+    # Use </dev-oauth2/tty to ensure read gets input from the terminal even in non-interactive environments
     if [ -t 0 ]; then
         # Terminal is interactive
         read -p "Are you sure you want to commit without updating tests? (y/N) " -n 1 -r
@@ -67,7 +67,7 @@ if [[ $source_files_changed == true && $test_files_changed == false ]]; then
             exit 1
         fi
     else
-        # Terminal is non-interactive, try to read from /dev/tty
+        # Terminal is non-interactive, try to read from /dev-oauth2/tty
         if [ -t 1 ]; then
             # Output is going to a terminal, so we can prompt
             read -p "Are you sure you want to commit without updating tests? (y/N) " -n 1 -r </dev/tty

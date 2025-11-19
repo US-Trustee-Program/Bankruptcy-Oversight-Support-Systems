@@ -42,7 +42,7 @@ Help()
 function error() {
     local msg=$1
     local code=$2
-    echo "ERROR: ${msg}" >>/dev/stderr
+    echo "ERROR: ${msg}" >>/dev-oauth2/stderr
     exit "${code}"
 }
 
@@ -143,7 +143,7 @@ fi
 
 if [[ "${dbExists}" == "true" ]]; then
   echo "Start deleting e2e test database ${e2e_db}"
-  az cosmosdb mongodb database delete -g bankruptcy-oversight-support-systems -a cosmos-mongo-ustp-cams-dev -n "${e2e_db}" --yes
+  az cosmosdb mongodb database delete -g bankruptcy-oversight-support-systems -a cosmos-mongo-ustp-cams-dev-oauth2 -n "${e2e_db}" --yes
 elif [[ "${dbExists}" != "true" ]]; then
   echo "E2E database does not exist for branch has ${hash_id}"
 fi

@@ -14,14 +14,14 @@ const frontendTestConfig = eslintUiTestConfig.map((configObject) => ({
   ...configObject,
 }));
 const sourceConfig = eslintTsConfig.map((configObject) => ({
-  files: ['backend/**/*.ts', 'common/**/*.ts', 'dev-tools/**/*.ts', 'test/e2e/**/*.ts'],
+  files: ['backend/**/*.ts', 'common/**/*.ts', 'dev-oauth2-tools/**/*.ts', 'test/e2e/**/*.ts'],
   ...configObject,
 }));
 const testConfig = eslintTestConfig.map((configObject) => ({
   files: [
     'backend/**/*.test.ts',
     'common/**/*.test.ts',
-    'dev-tools/**/*.test.ts',
+    'dev-oauth2-tools/**/*.test.ts',
     'test/e2e/**/*.test.ts',
   ],
   ...configObject,
