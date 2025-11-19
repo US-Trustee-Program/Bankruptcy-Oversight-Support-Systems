@@ -162,6 +162,8 @@ jobs:
       - name: Check Bicep Deployment
         id: check-bicep
         run: |
-          deployBicep=$(./ops/scripts/pipeline/check-deploy-bicep.sh ${{ steps.rgAppDecode.outputs.out }} ${{ inputs.enableBicepDeployment == 'true' }})
+          # Always deploy bicep to avoid deployment issues
+          # The conditional logic and script are kept for potential future use
+          deployBicep=true
           echo "Deploy Bicep: $deployBicep"
           echo "deployBicep=${deployBicep}" >> $GITHUB_OUTPUT

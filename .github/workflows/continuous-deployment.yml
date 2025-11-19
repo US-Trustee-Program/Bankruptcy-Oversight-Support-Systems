@@ -23,7 +23,7 @@ on:
           - 'true'
       enableBicepDeployment:
         description:
-          'enableBicepDeployment: Execute main.bicep deployment for application component Azure
+          'enableBicepDeployment: (Currently ignored - bicep always deploys) Execute main.bicep deployment for application component Azure
           resources'
         required: true
         default: 'false'
