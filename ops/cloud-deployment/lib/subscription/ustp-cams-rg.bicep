@@ -3,9 +3,11 @@ targetScope = 'subscription'
 param databaseResourceGroupName string
 param networkResourceGroupName string
 param webappResourceGroupName string
+param analyticsResourceGroupName string
 param createAppRG bool = false
 param createNetworkRG bool = false
 param createDatabaseRG bool = false
+param createAnalyticsRG bool = false
 param location string = 'eastus'
 @secure()
 param azSubscription string
@@ -28,6 +30,10 @@ var resourceGroupNames = [ {
   {
     name: webappResourceGroupName
     create: createAppRG
+  }
+  {
+    name: analyticsResourceGroupName
+    create: createAnalyticsRG
   }
 ]
 module resourceGroup './resource-group-deploy.bicep' = [for item in resourceGroupNames: if (item.create) {
