@@ -101,7 +101,6 @@ jobs:
         unit-test-common,
         security-scan,
       ]
-    if: false
     with:
       ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
