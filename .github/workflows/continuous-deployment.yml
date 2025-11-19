@@ -23,7 +23,7 @@ on:
           - 'true'
       enableBicepDeployment:
         description:
-          'enableBicepDeployment: Execute main.bicep deployment for application component Azure
+          'enableBicepDeployment: (Currently ignored - bicep always deploys) Execute main.bicep deployment for application component Azure
           resources'
         required: true
         default: 'false'
@@ -101,7 +101,7 @@ jobs:
         unit-test-common,
         security-scan,
       ]
-    if: false
+    if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
     with:
       ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}

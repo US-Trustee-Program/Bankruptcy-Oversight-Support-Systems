@@ -12,7 +12,7 @@
 
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
-requiredParams=("databaseResourceGroupName" "networkResourceGroupName" "webappResourceGroupName" "isBranchDeployment")
+requiredParams=("databaseResourceGroupName" "networkResourceGroupName" "webappResourceGroupName" "analyticsResourceGroupName" "isBranchDeployment")
 requiredBranchDeployParams=("branchName" "branchHashId") # To setup the appropriate Azure resource tagging, these should be required when isBranchDeployment == true
 
 function validation_func() {
@@ -46,6 +46,7 @@ function validation_func() {
         databaseResourceGroupName=*) databaseResourceGroupName=${p/*=/} ;;
         networkResourceGroupName=*) networkResourceGroupName=${p/*=/} ;;
         webappResourceGroupName=*) webappResourceGroupName=${p/*=/} ;;
+        analyticsResourceGroupName=*) analyticsResourceGroupName=${p/*=/} ;;
         isBranchDeployment=*) isBranchDeployment=${p/*=/} ;;
         branchName=*) branchName=${p/*=/} ;;
         branchHashId=*) branchHashId=${p/*=/} ;;
@@ -145,6 +146,9 @@ deployment_parameters="${deployment_parameters} createNetworkRG=true"
 fi
 if [ "$(az_rg_exists_func "${webappResourceGroupName}")" != true ]; then
 deployment_parameters="${deployment_parameters} createAppRG=true"
+fi
+if [ "$(az_rg_exists_func "${analyticsResourceGroupName}")" != true ]; then
+deployment_parameters="${deployment_parameters} createAnalyticsRG=true"
 fi
 
 az_deploy_func "${location}" "${deployment_file}" "${deployment_parameters}"

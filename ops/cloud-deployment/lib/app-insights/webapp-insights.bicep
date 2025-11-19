@@ -69,4 +69,4 @@ module httpAlertRule '../monitoring-alerts/metrics-alert-rule.bicep' = if (creat
   }
 }
 
-output connectionString string = appInsights.outputs.connectionString
+output connectionString string = createApplicationInsights ? appInsights.outputs.connectionString : ''
