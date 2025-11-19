@@ -24,6 +24,7 @@ const mockApiConfig = {
   server: 'localhost',
   port: '3000',
   basePath: '/api',
+  baseUrl: 'http://localhost:3000/api',
 };
 
 describe('DevLogin component', () => {
