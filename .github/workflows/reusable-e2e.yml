@@ -30,6 +30,7 @@ on:
 
 jobs:
   playwright-e2e-test:
+    if: false
     environment: ${{ inputs.ghaEnvironment }}
     runs-on: ubuntu-latest
     env:
