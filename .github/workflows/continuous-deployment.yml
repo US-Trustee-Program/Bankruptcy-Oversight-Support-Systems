@@ -101,6 +101,7 @@ jobs:
         unit-test-common,
         security-scan,
       ]
+    if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
     with:
       ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
