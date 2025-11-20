@@ -166,9 +166,6 @@ export const getOfficesRepository = (context: ApplicationContext): OfficesReposi
   if (context.config.authConfig.provider === 'mock') {
     return MockMongoRepository.getInstance(context);
   }
-  if (context.config.authConfig.provider === 'dev') {
-    return MockMongoRepository.getInstance(context);
-  }
   const repo = OfficesMongoRepository.getInstance(context);
   deferRelease(repo, context);
   return repo;

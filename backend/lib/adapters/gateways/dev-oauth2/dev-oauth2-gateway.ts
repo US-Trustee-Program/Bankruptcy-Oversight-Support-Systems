@@ -47,6 +47,14 @@ function loadDevUsers(): DevUser[] {
 }
 
 /**
+ * Hashes a username to create a user ID for database persistence.
+ * Uses SHA-256 to create a consistent, non-reversible identifier.
+ */
+function hashUsername(username: string): string {
+  return crypto.createHash('sha256').update(username).digest('hex');
+}
+
+/**
  * Verifies a password against a stored hash.
  * Hash format: "scrypt$salt$hash" where salt and hash are base64 encoded
  */
@@ -167,7 +175,7 @@ export async function getUser(accessToken: string) {
     .filter((office): office is UstpOfficeDetails => office !== undefined);
 
   const user: CamsUser = {
-    id: decodedToken.sub,
+    id: hashUsername(decodedToken.sub).toString().slice(0, 10),
     name: devUser.name || devUser.username,
     roles,
     offices,

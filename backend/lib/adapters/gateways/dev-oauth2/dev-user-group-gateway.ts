@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import * as crypto from 'crypto';
 import { CamsUser, CamsUserGroup, CamsUserReference } from '../../../../../common/src/cams/users';
 import LocalStorageGateway from '../storage/local-storage-gateway';
 import { UserGroupGateway, UserGroupGatewayConfig } from '../../types/authorization';
@@ -31,6 +32,14 @@ function loadDevUsers(): DevUser[] {
   }
 }
 
+/**
+ * Hashes a username to create a user ID for database persistence.
+ * Uses SHA-256 to create a consistent, non-reversible identifier.
+ */
+function hashUsername(username: string): string {
+  return crypto.createHash('sha256').update(username).digest('hex');
+}
+
 function devUserToCamsUser(devUser: DevUser): CamsUser {
   const roles: CamsRole[] = devUser.roles
     .map((roleName) => {
@@ -46,7 +55,7 @@ function devUserToCamsUser(devUser: DevUser): CamsUser {
     .filter((office) => office !== undefined);
 
   return {
-    id: devUser.username,
+    id: hashUsername(devUser.username),
     name: devUser.name || devUser.username,
     roles,
     offices,
@@ -128,7 +137,7 @@ export class DevUserGroupGateway implements UserGroupGateway {
   async getUserById(_context: ApplicationContext, userId: string): Promise<CamsUser> {
     initializeGroups();
     const devUsers = loadDevUsers();
-    const devUser = devUsers.find((u) => u.username === userId);
+    const devUser = devUsers.find((u) => hashUsername(u.username) === userId);
     if (!devUser) {
       throw new NotFoundError(MODULE_NAME);
     }

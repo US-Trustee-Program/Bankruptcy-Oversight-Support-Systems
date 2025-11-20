@@ -1,4 +1,5 @@
 import * as jwt from 'jsonwebtoken';
+import * as crypto from 'crypto';
 import { DevUserSessionUseCase } from './dev-user-session-use-case';
 import { ApplicationContext } from '../../types/basic';
 import { CamsRole } from '../../../../../common/src/cams/roles';
@@ -63,7 +64,7 @@ describe('DevUserSessionUseCase tests', () => {
       expect(session).toBeDefined();
       expect(session.user).toBeDefined();
       expect(session.user.name).toBe('Test User');
-      expect(session.user.id).toBe(testUsername);
+      expect(session.user.id).toBe(crypto.createHash('sha256').update(testUsername).digest('hex'));
       expect(session.accessToken).toBe(token);
       expect(session.provider).toBe('dev');
     });

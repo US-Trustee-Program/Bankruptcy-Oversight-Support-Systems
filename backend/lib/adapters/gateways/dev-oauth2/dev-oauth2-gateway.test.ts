@@ -1,4 +1,5 @@
 import * as jwt from 'jsonwebtoken';
+import * as crypto from 'crypto';
 import { ForbiddenError } from '../../../common-errors/forbidden-error';
 import { UnauthorizedError } from '../../../common-errors/unauthorized-error';
 import { ApplicationContext } from '../../types/basic';
@@ -234,7 +235,7 @@ describe('dev-oauth2-gateway tests', () => {
 
       expect(result.user).toBeDefined();
       expect(result.user.name).toBe('Test User');
-      expect(result.user.id).toBe(testUsername);
+      expect(result.user.id).toBe(crypto.createHash('sha256').update(testUsername).digest('hex'));
       expect(result.user.roles).toContain(CamsRole.TrialAttorney);
       expect(result.user.roles).toContain(CamsRole.PrivilegedIdentityUser);
       expect(result.user.offices).toHaveLength(1);
