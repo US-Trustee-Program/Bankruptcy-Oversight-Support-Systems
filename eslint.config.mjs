@@ -43,6 +43,7 @@ const eslintConfig = [
       '**/node_modules/**/*',
       '**/coverage/**/*',
       '**/.*/**',
+      '**/eslint*.config.mjs',
     ],
   },
   ...frontendSourceConfig,
