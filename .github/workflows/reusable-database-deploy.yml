@@ -58,7 +58,7 @@ jobs:
             --databaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
             --environmentName ${{ inputs.ghaEnvironment }} \
             --allowedNetworks "${allowedNetworks}" \
-            --analyticsWorkspaceId ${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} \
+            --analyticsWorkspaceId ${{ inputs.ghaEnvironment == 'Main-Gov' && secrets.AZ_ANALYTICS_WORKSPACE_ID || '' }} \
             --actionGroupResourceGroup ${{ secrets.AZ_ANALYTICS_RG }} \
             --actionGroupName ${{ secrets.AZ_ACTION_GROUP_NAME }} \
             --keyVaultName ${{ secrets.AZ_KV_APP_CONFIG_NAME }} \
