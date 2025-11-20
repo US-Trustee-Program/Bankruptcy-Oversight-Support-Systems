@@ -46,10 +46,6 @@ function loadDevUsers(): DevUser[] {
   }
 }
 
-function hashUsername(username: string): string {
-  return crypto.createHash('sha256').update(username).digest('hex');
-}
-
 /**
  * Verifies a password against a stored hash.
  * Hash format: "scrypt$salt$hash" where salt and hash are base64 encoded
@@ -106,7 +102,7 @@ export async function devAuthentication(context: ApplicationContext): Promise<st
   const NOW = nowInSeconds();
   const expiration = isNaN(EXPIRE_OVERRIDE) ? NOW + ONE_DAY : NOW + EXPIRE_OVERRIDE;
 
-  const sub = hashUsername(devUser.username);
+  const sub = devUser.username;
 
   // Map role names to groups for JWT
   const groups = devUser.roles || [];
@@ -146,8 +142,8 @@ export async function getUser(accessToken: string) {
   const decodedToken = jwt.decode(accessToken) as jwt.JwtPayload;
   const devUsers = loadDevUsers();
 
-  // Find user by comparing hashed username
-  const devUser = devUsers.find((u) => hashUsername(u.username) === decodedToken.sub);
+  // Find user by username in sub claim
+  const devUser = devUsers.find((u) => u.username === decodedToken.sub);
 
   if (!devUser) {
     throw new UnauthorizedError(MODULE_NAME, { message: 'User not found' });

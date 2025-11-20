@@ -1,5 +1,4 @@
 import * as jwt from 'jsonwebtoken';
-import * as crypto from 'crypto';
 import { DevUserSessionUseCase } from './dev-user-session-use-case';
 import { ApplicationContext } from '../../types/basic';
 import { CamsRole } from '../../../../../common/src/cams/roles';
@@ -27,11 +26,10 @@ describe('DevUserSessionUseCase tests', () => {
   };
 
   const createTestToken = (username: string, expiresIn: number = 3600, iat?: number): string => {
-    const sub = crypto.createHash('sha256').update(username).digest('hex');
     const now = Math.floor(Date.now() / 1000);
     const claims = {
       aud: 'api://default',
-      sub,
+      sub: username,
       iss: 'http://localhost:3000/api/oauth2/default',
       exp: now + expiresIn,
       iat: iat !== undefined ? iat : now,
@@ -65,7 +63,7 @@ describe('DevUserSessionUseCase tests', () => {
       expect(session).toBeDefined();
       expect(session.user).toBeDefined();
       expect(session.user.name).toBe('Test User');
-      expect(session.user.id).toBe(crypto.createHash('sha256').update(testUsername).digest('hex'));
+      expect(session.user.id).toBe(testUsername);
       expect(session.accessToken).toBe(token);
       expect(session.provider).toBe('dev');
     });
@@ -209,10 +207,9 @@ describe('DevUserSessionUseCase tests', () => {
       setupDevUser();
       const context = createMockContext();
 
-      const sub = crypto.createHash('sha256').update(testUsername).digest('hex');
       const claims = {
         aud: 'api://default',
-        sub,
+        sub: testUsername,
         iss: 'http://localhost:3000/api/oauth2/default',
         groups: ['TrialAttorney'],
       };

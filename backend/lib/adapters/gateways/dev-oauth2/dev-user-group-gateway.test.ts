@@ -1,4 +1,3 @@
-import * as crypto from 'crypto';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import { ApplicationContext } from '../../types/basic';
@@ -35,10 +34,6 @@ describe('DevUserGroupGateway tests', () => {
       offices: ['USTP_CAMS_Region_2_Office_Manhattan', 'USTP_CAMS_Region_2_Office_Buffalo'],
     },
   ];
-
-  function hashUsername(username: string): string {
-    return crypto.createHash('sha256').update(username).digest('hex');
-  }
 
   beforeEach(async () => {
     gateway = new DevUserGroupGateway();
@@ -140,7 +135,7 @@ describe('DevUserGroupGateway tests', () => {
       expect(Array.isArray(group.users)).toBe(true);
 
       // Alice has TrialAttorney role
-      const aliceId = hashUsername('alice');
+      const aliceId = 'alice';
       expect(group.users?.some((u) => u.id === aliceId)).toBe(true);
     });
 
@@ -155,8 +150,8 @@ describe('DevUserGroupGateway tests', () => {
       expect(Array.isArray(group.users)).toBe(true);
 
       // Alice and Charlie are in Manhattan office
-      const aliceId = hashUsername('alice');
-      const charlieId = hashUsername('charlie');
+      const aliceId = 'alice';
+      const charlieId = 'charlie';
       expect(group.users?.some((u) => u.id === aliceId)).toBe(true);
       expect(group.users?.some((u) => u.id === charlieId)).toBe(true);
     });
@@ -190,7 +185,7 @@ describe('DevUserGroupGateway tests', () => {
       expect(users.length).toBeGreaterThan(0);
 
       // Alice has TrialAttorney role
-      const aliceId = hashUsername('alice');
+      const aliceId = 'alice';
       expect(users.some((u) => u.id === aliceId && u.name === 'Alice Attorney')).toBe(true);
     });
 
@@ -203,7 +198,7 @@ describe('DevUserGroupGateway tests', () => {
       expect(Array.isArray(users)).toBe(true);
 
       // Bob is in Wilmington office
-      const bobId = hashUsername('bob');
+      const bobId = 'bob';
       expect(users.some((u) => u.id === bobId)).toBe(true);
     });
   });
@@ -214,7 +209,7 @@ describe('DevUserGroupGateway tests', () => {
     });
 
     test('should return user by valid ID', async () => {
-      const aliceId = hashUsername('alice');
+      const aliceId = 'alice';
       const user = await gateway.getUserById(context, aliceId);
 
       expect(user.id).toBe(aliceId);
@@ -226,7 +221,7 @@ describe('DevUserGroupGateway tests', () => {
     });
 
     test('should use username as name when name is not provided', async () => {
-      const charlieId = hashUsername('charlie');
+      const charlieId = 'charlie';
       const user = await gateway.getUserById(context, charlieId);
 
       expect(user.id).toBe(charlieId);
@@ -249,7 +244,7 @@ describe('DevUserGroupGateway tests', () => {
       ];
       process.env.DEV_USERS = JSON.stringify(usersWithInvalidRoles);
 
-      const userId = hashUsername('testuser');
+      const userId = 'testuser';
       const user = await gateway.getUserById(context, userId);
 
       expect(user.roles).toHaveLength(2);
@@ -269,7 +264,7 @@ describe('DevUserGroupGateway tests', () => {
       ];
       process.env.DEV_USERS = JSON.stringify(usersWithInvalidOffices);
 
-      const userId = hashUsername('testuser');
+      const userId = 'testuser';
       const user = await gateway.getUserById(context, userId);
 
       expect(user.offices).toHaveLength(1);
@@ -277,7 +272,7 @@ describe('DevUserGroupGateway tests', () => {
     });
 
     test('should handle user with multiple offices', async () => {
-      const charlieId = hashUsername('charlie');
+      const charlieId = 'charlie';
       const user = await gateway.getUserById(context, charlieId);
 
       expect(user.offices).toHaveLength(2);

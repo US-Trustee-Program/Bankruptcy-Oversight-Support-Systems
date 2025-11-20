@@ -1,5 +1,4 @@
 import * as jwt from 'jsonwebtoken';
-import * as crypto from 'crypto';
 import { ForbiddenError } from '../../../common-errors/forbidden-error';
 import { UnauthorizedError } from '../../../common-errors/unauthorized-error';
 import { ApplicationContext } from '../../types/basic';
@@ -137,7 +136,7 @@ describe('dev-oauth2-gateway tests', () => {
       const decoded = jwt.decode(token) as jwt.JwtPayload;
       expect(decoded.aud).toBe('api://default');
       expect(decoded.iss).toBe('http://localhost:3000/api/oauth2/default');
-      expect(decoded.sub).toBe(crypto.createHash('sha256').update(testUsername).digest('hex'));
+      expect(decoded.sub).toBe(testUsername);
       expect(decoded.groups).toEqual(['TrialAttorney', 'PrivilegedIdentityUser']);
       expect(decoded.exp).toBeGreaterThan(Date.now() / 1000);
     });
@@ -208,10 +207,9 @@ describe('dev-oauth2-gateway tests', () => {
 
   describe('getUser', () => {
     const createToken = (username: string) => {
-      const sub = crypto.createHash('sha256').update(username).digest('hex');
       const claims = {
         aud: 'api://default',
-        sub,
+        sub: username,
         iss: 'test-issuer',
         exp: Math.floor(Date.now() / 1000) + 3600,
         groups: ['TrialAttorney', 'PrivilegedIdentityUser'],
@@ -236,7 +234,7 @@ describe('dev-oauth2-gateway tests', () => {
 
       expect(result.user).toBeDefined();
       expect(result.user.name).toBe('Test User');
-      expect(result.user.id).toBe(crypto.createHash('sha256').update(testUsername).digest('hex'));
+      expect(result.user.id).toBe(testUsername);
       expect(result.user.roles).toContain(CamsRole.TrialAttorney);
       expect(result.user.roles).toContain(CamsRole.PrivilegedIdentityUser);
       expect(result.user.offices).toHaveLength(1);
@@ -326,10 +324,9 @@ describe('dev-oauth2-gateway tests', () => {
       ];
       process.env.DEV_USERS = JSON.stringify(devUsers);
 
-      const sub = crypto.createHash('sha256').update(testUsername).digest('hex');
       const claims = {
         aud: 'api://default',
-        sub,
+        sub: testUsername,
         iss: 'test-issuer',
         exp: Math.floor(Date.now() / 1000) + 3600,
         // groups is omitted
