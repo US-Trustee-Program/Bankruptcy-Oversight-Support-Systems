@@ -36,7 +36,7 @@
     "dotenv": "17.2.3",
     "express": "4.21.2",
     "jsonwebtoken": "9.0.2",
-    "mongodb": "6.21.0",
+    "mongodb": "7.0.0",
     "mssql": "10.0.4"
   },
   "overrides": {
