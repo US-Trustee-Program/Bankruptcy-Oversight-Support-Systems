@@ -84,7 +84,7 @@ check_packages_in_project() {
     fi
 
     # Run npm list for the package and capture output
-    if npm_output=$(cd "$project_dir" && npm list "$package" 2>/dev-oauth2/null); then
+    if npm_output=$(cd "$project_dir" && npm list "$package" 2>/dev/null); then
       # Check if the output contains "(empty)" which means package not found
       if echo "$npm_output" | grep -q "(empty)"; then
         if $VERBOSE; then

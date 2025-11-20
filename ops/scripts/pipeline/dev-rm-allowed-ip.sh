@@ -4,7 +4,7 @@
 # Prerequisite:
 #   - curl
 #   - Azure CLI
-# Usage: dev-oauth2-rm-allowed-ip.sh -g <resource_group_name:str> -s <stack_name:str> -r <rule_name:str> --slot-name <slot_name:str>
+# Usage: dev-rm-allowed-ip.sh -g <resource_group_name:str> -s <stack_name:str> -r <rule_name:str> --slot-name <slot_name:str>
 
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
@@ -50,13 +50,13 @@ fi
 echo "Removing Ip allow rule by name (${rule_name})"
 if [[ -n ${slot_name} && ${slot_name} != "initial" && ${slot_name} != "self" ]]; then
     echo "Removing GHA IP from ${slot_name} deployment slot..."
-    az functionapp config access-restriction remove -g "${app_rg}" -n "${stack_name}"-node-api --slot "${slot_name}" --rule-name "${rule_name}" 1>/dev-oauth2/null
-    az functionapp config access-restriction remove -g "${app_rg}" -n "${stack_name}"-dataflows --slot "${slot_name}" --rule-name "${rule_name}" 1>/dev-oauth2/null
-    az webapp config access-restriction remove -g "${app_rg}" -n "${stack_name}"-webapp --slot "${slot_name}" --rule-name "${rule_name}" 1>/dev-oauth2/null
+    az functionapp config access-restriction remove -g "${app_rg}" -n "${stack_name}"-node-api --slot "${slot_name}" --rule-name "${rule_name}" 1>/dev/null
+    az functionapp config access-restriction remove -g "${app_rg}" -n "${stack_name}"-dataflows --slot "${slot_name}" --rule-name "${rule_name}" 1>/dev/null
+    az webapp config access-restriction remove -g "${app_rg}" -n "${stack_name}"-webapp --slot "${slot_name}" --rule-name "${rule_name}" 1>/dev/null
 else
     echo "Removing GHA IP from production deployment slot..."
-    az functionapp config access-restriction remove -g "${app_rg}" -n "${stack_name}-node-api" --rule-name "${rule_name}" 1>/dev-oauth2/null
-    az webapp config access-restriction remove -g "${app_rg}" -n "${stack_name}-webapp" --rule-name "${rule_name}" 1>/dev-oauth2/null
+    az functionapp config access-restriction remove -g "${app_rg}" -n "${stack_name}-node-api" --rule-name "${rule_name}" 1>/dev/null
+    az webapp config access-restriction remove -g "${app_rg}" -n "${stack_name}-webapp" --rule-name "${rule_name}" 1>/dev/null
 fi
 
 echo "Done"

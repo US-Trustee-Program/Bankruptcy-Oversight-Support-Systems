@@ -138,7 +138,7 @@ load_config() {
     fi
 
     # Use jq to parse configuration
-    if ! command -v jq &> /dev-oauth2/null; then
+    if ! command -v jq &> /dev/null; then
         echo "Error: jq is required but not installed. Please install jq."
         exit 1
     fi
@@ -172,7 +172,7 @@ load_config() {
         if [[ -n "$key" && -n "$value" ]]; then
             MAJOR_VERSION_LOCKS["$key"]="$value"
         fi
-    done < <(jq -r '.constraints.majorVersionLock | to_entries[] | "\(.key)=\(.value)"' "$config_file" 2>/dev-oauth2/null || true)
+    done < <(jq -r '.constraints.majorVersionLock | to_entries[] | "\(.key)=\(.value)"' "$config_file" 2>/dev/null || true)
 
     # Load major version delay constraints
     declare -gA MAJOR_VERSION_DELAY_DAYS
@@ -180,7 +180,7 @@ load_config() {
         if [[ -n "$key" && -n "$value" ]]; then
             MAJOR_VERSION_DELAY_DAYS["$key"]="$value"
         fi
-    done < <(jq -r '.constraints.majorVersionDelay | to_entries[] | "\(.key)=\(.value)"' "$config_file" 2>/dev-oauth2/null || true)
+    done < <(jq -r '.constraints.majorVersionDelay | to_entries[] | "\(.key)=\(.value)"' "$config_file" 2>/dev/null || true)
 
     # Display configuration summary
     echo "Loaded configuration: ${MIN_PACKAGE_AGE_DAYS}-day minimum age"
@@ -470,7 +470,7 @@ update_package_individually() {
 
     echo "Updating $package_name to $target_version in $project_dir"
 
-    pushd "$project_dir" >/dev-oauth2/null || {
+    pushd "$project_dir" >/dev/null || {
         local error_msg="Failed to change directory to $project_dir"
         echo "$error_msg" >&2
         add_failed_package "$package_name" "$current_version" "$target_version" "$error_msg" "$project_dir"
@@ -482,7 +482,7 @@ update_package_individually() {
     local npm_exit_code
 
     if npm_output=$(safe_npm_command "install $package_name@$target_version" install --save-exact "$package_name@$target_version" 2>&1); then
-        popd >/dev-oauth2/null || return 1
+        popd >/dev/null || return 1
 
         # Create individual commit only if not in test mode
         if [[ -z "${TEST}" ]]; then
@@ -504,7 +504,7 @@ update_package_individually() {
         fi
     else
         npm_exit_code=$?
-        popd >/dev-oauth2/null || return 1
+        popd >/dev/null || return 1
 
         # Extract meaningful error from npm output
         local error_summary="NPM install failed (exit code: $npm_exit_code)"
@@ -533,7 +533,7 @@ process_project_packages() {
 
     echo "Processing packages in $project_dir"
 
-    pushd "$project_dir" >/dev-oauth2/null || {
+    pushd "$project_dir" >/dev/null || {
         echo "ERROR: Failed to change directory to $project_dir" >&2
         return 1
     }
@@ -543,17 +543,17 @@ process_project_packages() {
     local npm_exit_code
 
     # Run npm outdated directly without the safe_npm_command wrapper
-    if outdated_json=$(npm outdated --json 2>/dev-oauth2/null); then
+    if outdated_json=$(npm outdated --json 2>/dev/null); then
         # npm outdated succeeded (no outdated packages)
         npm_exit_code=0
     else
         npm_exit_code=$?
         # npm outdated returns 1 when there are outdated packages, which is expected
         # Capture the output even with exit code 1
-        outdated_json=$(npm outdated --json 2>/dev-oauth2/null || echo "{}")
+        outdated_json=$(npm outdated --json 2>/dev/null || echo "{}")
     fi
 
-    popd >/dev-oauth2/null || return 1
+    popd >/dev/null || return 1
 
     # Handle different exit codes appropriately
     if [[ $npm_exit_code -eq 0 ]]; then
@@ -576,7 +576,7 @@ process_project_packages() {
 
     # Declare and assign separately to avoid masking return values
     local packages
-    if ! packages=$(echo "$outdated_json" | jq -r 'keys[]?' 2>/dev-oauth2/null); then
+    if ! packages=$(echo "$outdated_json" | jq -r 'keys[]?' 2>/dev/null); then
         echo "ERROR: Failed to parse outdated packages JSON for $project_dir" >&2
         return $updated_count
     fi
@@ -610,7 +610,7 @@ process_project_packages() {
 
         # Find safe version to update to
         local safe_version
-        if safe_version=$(filter_safe_versions "$package_name" "$current_version" 2>/dev-oauth2/null); then
+        if safe_version=$(filter_safe_versions "$package_name" "$current_version" 2>/dev/null); then
             echo "Found safe version for $package_name: $safe_version"
 
             # Check constraints before updating
@@ -741,15 +741,15 @@ for project in "${PROJECTS[@]}"; do
         for expanded_path in $project; do
             if [[ -d "$expanded_path" && -f "$expanded_path/package.json" ]]; then
                 echo "Processing project: $expanded_path (from glob: $project)"
-                pushd "$expanded_path" >/dev-oauth2/null || continue
+                pushd "$expanded_path" >/dev/null || continue
 
                 # Clean and install dependencies first
                 if npm run | grep -q '^  clean '; then
-                    npm run clean 2>/dev-oauth2/null || true
+                    npm run clean 2>/dev/null || true
                 fi
                 npm ci
 
-                popd >/dev-oauth2/null || return 1
+                popd >/dev/null || return 1
 
                 process_project_packages "$expanded_path"
                 project_updates=$?
@@ -762,15 +762,15 @@ for project in "${PROJECTS[@]}"; do
     # Handle regular directory paths
     if [[ -d "$project" && -f "$project/package.json" ]]; then
         echo "Processing project: $project"
-        pushd "$project" >/dev-oauth2/null || continue
+        pushd "$project" >/dev/null || continue
 
         # Clean and install dependencies first
         if npm run | grep -q '^  clean '; then
-            npm run clean 2>/dev-oauth2/null || true
+            npm run clean 2>/dev/null || true
         fi
         npm ci
 
-        popd >/dev-oauth2/null || return 1
+        popd >/dev/null || return 1
 
         process_project_packages "$project"
         project_updates=$?

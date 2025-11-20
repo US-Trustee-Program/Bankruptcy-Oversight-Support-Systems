@@ -395,12 +395,12 @@ async function postStaffAssignments(action: StaffAssignmentAction) {
 }
 
 async function getRoleAndOfficeGroupNames() {
-  const path = '/dev-oauth2-tools/privileged-identity/groups';
+  const path = '/dev-tools/privileged-identity/groups';
   return withCache({ key: path, ttl: MINUTE * 15 }).get<RoleAndOfficeGroupNames>(path);
 }
 
 async function getPrivilegedIdentityUsers() {
-  const path = '/dev-oauth2-tools/privileged-identity';
+  const path = '/dev-tools/privileged-identity';
   return withCache({ key: path, ttl: MINUTE * 15 }).get<CamsUserReference[]>(path);
 }
 

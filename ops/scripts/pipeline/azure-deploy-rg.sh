@@ -121,7 +121,7 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
 
-    # collection of key=value delimited by space e.g. 'appName=ustp-dev-oauth2-01 deployVnet=false deployNetwork=true linkVnetIds=[]'
+    # collection of key=value delimited by space e.g. 'appName=ustp-dev-01 deployVnet=false deployNetwork=true linkVnetIds=[]'
     -p | --parameters)
         deployment_parameters="${2}"
         shift 2

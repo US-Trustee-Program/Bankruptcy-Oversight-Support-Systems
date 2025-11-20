@@ -13,7 +13,7 @@ import {
 } from './dev-oauth2-gateway';
 import * as dateHelper from '../../../../../common/src/date-helper';
 
-describe('dev-oauth2-oauth2-gateway tests', () => {
+describe('dev-oauth2-gateway tests', () => {
   const testPassword = 'testPassword123'; // pragma: allowlist secret
   let testPasswordHash: string;
   const testUsername = 'testuser';

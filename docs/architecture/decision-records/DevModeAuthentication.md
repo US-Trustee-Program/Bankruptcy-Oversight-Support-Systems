@@ -39,7 +39,7 @@ We implemented a new "dev" authentication mode with the following characteristic
 ### Configuration Example
 ```bash
 # Backend .env
-CAMS_LOGIN_PROVIDER=dev-oauth2
+CAMS_LOGIN_PROVIDER=dev
 DEV_USERS='[{
   "username":"alice",
   "passwordHash":"scrypt$aGVsbG93b3JsZA==$ZGF0YWhlcmU...",  # pragma: allowlist secret
@@ -49,10 +49,10 @@ DEV_USERS='[{
 }]'
 
 # Frontend .env
-CAMS_LOGIN_PROVIDER=dev-oauth2
+CAMS_LOGIN_PROVIDER=dev
 
 # E2E Test .env
-CAMS_LOGIN_PROVIDER=dev-oauth2
+CAMS_LOGIN_PROVIDER=dev
 DEV_TEST_USERNAME=alice
 DEV_TEST_PASSWORD=plaintext_password
 ```

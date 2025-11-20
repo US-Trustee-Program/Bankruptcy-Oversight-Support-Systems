@@ -3,10 +3,10 @@
  * Utility script to generate password hashes for DEV_USERS environment variable.
  *
  * Usage:
- *   tsx ops/scripts/generate-dev-oauth2-password-hash.ts <password>
+ *   tsx ops/scripts/generate-dev-password-hash.ts <password>
  *
  * Example:
- *   tsx ops/scripts/generate-dev-oauth2-password-hash.ts mypassword123
+ *   tsx ops/scripts/generate-dev-password-hash.ts mypassword123
  *
  * Output format: scrypt$<salt>$<hash>
  * This output can be used in the DEV_USERS environment variable as the passwordHash field.
@@ -30,10 +30,10 @@ async function main() {
     console.error('Error: Password argument is required');
     console.error('');
     console.error('Usage:');
-    console.error('  tsx ops/scripts/generate-dev-oauth2-password-hash.ts <password>');
+    console.error('  tsx ops/scripts/generate-dev-password-hash.ts <password>');
     console.error('');
     console.error('Example:');
-    console.error('  tsx ops/scripts/generate-dev-oauth2-password-hash.ts mypassword123');
+    console.error('  tsx ops/scripts/generate-dev-password-hash.ts mypassword123');
     process.exit(1);
   }
 
