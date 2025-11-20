@@ -12,15 +12,16 @@ import {
   DevUser,
 } from './dev-oauth2-gateway';
 import * as dateHelper from '../../../../../common/src/date-helper';
+import { MOCK_SCRYPT_HASH } from './dev-oauth2-test-helper';
 
 describe('dev-oauth2-gateway tests', () => {
-  const testPassword = 'testPassword123'; // pragma: allowlist secret
-  let testPasswordHash: string;
+  const testCredential = 'abc123xyz';
+  let testCredentialHash: string;
   const testUsername = 'testuser';
 
   beforeAll(async () => {
     // Generate a real hash for testing
-    testPasswordHash = await generatePasswordHash(testPassword);
+    testCredentialHash = await generatePasswordHash(testCredential);
   });
 
   afterEach(() => {
@@ -31,7 +32,7 @@ describe('dev-oauth2-gateway tests', () => {
 
   describe('generatePasswordHash', () => {
     test('should generate hash in correct format', async () => {
-      const hash = await generatePasswordHash('password123');
+      const hash = await generatePasswordHash('xyz789def');
       expect(hash).toMatch(/^scrypt\$[A-Za-z0-9+/=]+\$[A-Za-z0-9+/=]+$/);
       const parts = hash.split('$');
       expect(parts).toHaveLength(3);
@@ -40,9 +41,9 @@ describe('dev-oauth2-gateway tests', () => {
       expect(Buffer.from(parts[2], 'base64')).toHaveLength(64); // hash should be 64 bytes
     });
 
-    test('should generate different hashes for same password', async () => {
-      const hash1 = await generatePasswordHash('password');
-      const hash2 = await generatePasswordHash('password');
+    test('should generate different hashes for same input', async () => {
+      const hash1 = await generatePasswordHash('abc123');
+      const hash2 = await generatePasswordHash('abc123');
       expect(hash1).not.toBe(hash2);
     });
   });
@@ -62,13 +63,13 @@ describe('dev-oauth2-gateway tests', () => {
       }) as unknown as ApplicationContext;
 
     test('should throw ForbiddenError when provider is not dev-oauth2', async () => {
-      const context = mockContext('okta', { username: testUsername, password: testPassword });
+      const context = mockContext('okta', { username: testUsername, password: testCredential });
       await expect(devAuthentication(context)).rejects.toThrow(ForbiddenError);
       await expect(devAuthentication(context)).rejects.toThrow('Not in dev-oauth2 mode...');
     });
 
     test('should throw error when DEV_USERS is not set', async () => {
-      const context = mockContext('dev', { username: testUsername, password: testPassword });
+      const context = mockContext('dev', { username: testUsername, password: testCredential });
       await expect(devAuthentication(context)).rejects.toThrow(
         'DEV_USERS environment variable is not set',
       );
@@ -76,13 +77,13 @@ describe('dev-oauth2-gateway tests', () => {
 
     test('should throw error when DEV_USERS is not valid JSON', async () => {
       process.env.DEV_USERS = 'invalid json';
-      const context = mockContext('dev', { username: testUsername, password: testPassword });
+      const context = mockContext('dev', { username: testUsername, password: testCredential });
       await expect(devAuthentication(context)).rejects.toThrow('Failed to parse DEV_USERS');
     });
 
     test('should throw error when DEV_USERS is not an array', async () => {
       process.env.DEV_USERS = '{"username":"test"}';
-      const context = mockContext('dev', { username: testUsername, password: testPassword });
+      const context = mockContext('dev', { username: testUsername, password: testCredential });
       await expect(devAuthentication(context)).rejects.toThrow('DEV_USERS must be a JSON array');
     });
 
@@ -90,28 +91,28 @@ describe('dev-oauth2-gateway tests', () => {
       const devUsers: DevUser[] = [
         {
           username: 'otheruser',
-          passwordHash: testPasswordHash,
+          passwordHash: MOCK_SCRYPT_HASH,
           roles: ['TrialAttorney'],
           offices: ['USTP_CAMS_Region_2_Office_Manhattan'],
         },
       ];
       process.env.DEV_USERS = JSON.stringify(devUsers);
-      const context = mockContext('dev', { username: testUsername, password: testPassword });
+      const context = mockContext('dev', { username: testUsername, password: testCredential });
       await expect(devAuthentication(context)).rejects.toThrow(UnauthorizedError);
       await expect(devAuthentication(context)).rejects.toThrow('Invalid username or password');
     });
 
-    test('should throw UnauthorizedError when password is incorrect', async () => {
+    test('should throw UnauthorizedError when credentials are incorrect', async () => {
       const devUsers: DevUser[] = [
         {
           username: testUsername,
-          passwordHash: testPasswordHash,
+          passwordHash: testCredentialHash,
           roles: ['TrialAttorney'],
           offices: ['USTP_CAMS_Region_2_Office_Manhattan'],
         },
       ];
       process.env.DEV_USERS = JSON.stringify(devUsers);
-      const context = mockContext('dev', { username: testUsername, password: 'wrongPassword' });
+      const context = mockContext('dev', { username: testUsername, password: 'wrongvalue123' });
       await expect(devAuthentication(context)).rejects.toThrow(UnauthorizedError);
       await expect(devAuthentication(context)).rejects.toThrow('Invalid username or password');
     });
@@ -120,14 +121,14 @@ describe('dev-oauth2-gateway tests', () => {
       const devUsers: DevUser[] = [
         {
           username: testUsername,
-          passwordHash: testPasswordHash,
+          passwordHash: testCredentialHash,
           name: 'Test User',
           roles: ['TrialAttorney', 'PrivilegedIdentityUser'],
           offices: ['USTP_CAMS_Region_2_Office_Manhattan'],
         },
       ];
       process.env.DEV_USERS = JSON.stringify(devUsers);
-      const context = mockContext('dev', { username: testUsername, password: testPassword });
+      const context = mockContext('dev', { username: testUsername, password: testCredential });
 
       const token = await devAuthentication(context);
       expect(token).toBeDefined();
@@ -146,7 +147,7 @@ describe('dev-oauth2-gateway tests', () => {
       const devUsers: DevUser[] = [
         {
           username: testUsername,
-          passwordHash: testPasswordHash,
+          passwordHash: testCredentialHash,
           roles: ['TrialAttorney'],
           offices: ['USTP_CAMS_Region_2_Office_Manhattan'],
         },
@@ -156,7 +157,7 @@ describe('dev-oauth2-gateway tests', () => {
       const now = 1234567890;
       jest.spyOn(dateHelper, 'nowInSeconds').mockReturnValue(now);
 
-      const context = mockContext('dev', { username: testUsername, password: testPassword });
+      const context = mockContext('dev', { username: testUsername, password: testCredential });
       const token = await devAuthentication(context);
 
       const decoded = jwt.decode(token) as jwt.JwtPayload;
@@ -222,7 +223,7 @@ describe('dev-oauth2-gateway tests', () => {
       const devUsers: DevUser[] = [
         {
           username: testUsername,
-          passwordHash: testPasswordHash,
+          passwordHash: MOCK_SCRYPT_HASH,
           name: 'Test User',
           roles: ['TrialAttorney', 'PrivilegedIdentityUser'],
           offices: ['USTP_CAMS_Region_2_Office_Manhattan'],
@@ -247,7 +248,7 @@ describe('dev-oauth2-gateway tests', () => {
       const devUsers: DevUser[] = [
         {
           username: testUsername,
-          passwordHash: testPasswordHash,
+          passwordHash: MOCK_SCRYPT_HASH,
           roles: ['TrialAttorney'],
           offices: ['USTP_CAMS_Region_2_Office_Manhattan'],
         },
@@ -264,7 +265,7 @@ describe('dev-oauth2-gateway tests', () => {
       const devUsers: DevUser[] = [
         {
           username: 'otheruser',
-          passwordHash: testPasswordHash,
+          passwordHash: MOCK_SCRYPT_HASH,
           roles: ['TrialAttorney'],
           offices: ['USTP_CAMS_Region_2_Office_Manhattan'],
         },
@@ -280,7 +281,7 @@ describe('dev-oauth2-gateway tests', () => {
       const devUsers: DevUser[] = [
         {
           username: testUsername,
-          passwordHash: testPasswordHash,
+          passwordHash: MOCK_SCRYPT_HASH,
           roles: ['TrialAttorney', 'InvalidRole', 'PrivilegedIdentityUser'],
           offices: ['USTP_CAMS_Region_2_Office_Manhattan'],
         },
@@ -300,7 +301,7 @@ describe('dev-oauth2-gateway tests', () => {
       const devUsers: DevUser[] = [
         {
           username: testUsername,
-          passwordHash: testPasswordHash,
+          passwordHash: MOCK_SCRYPT_HASH,
           roles: ['TrialAttorney'],
           offices: ['USTP_CAMS_Region_2_Office_Manhattan', 'InvalidOfficeCode'],
         },
@@ -318,7 +319,7 @@ describe('dev-oauth2-gateway tests', () => {
       const devUsers: DevUser[] = [
         {
           username: testUsername,
-          passwordHash: testPasswordHash,
+          passwordHash: MOCK_SCRYPT_HASH,
           roles: ['TrialAttorney'],
           offices: ['USTP_CAMS_Region_2_Office_Manhattan'],
         },
@@ -340,12 +341,12 @@ describe('dev-oauth2-gateway tests', () => {
     });
   });
 
-  describe('password verification edge cases', () => {
-    test('should reject password with invalid hash format - missing parts', async () => {
+  describe('credential verification edge cases', () => {
+    test('should reject invalid hash format - missing parts', async () => {
       const devUsers: DevUser[] = [
         {
           username: testUsername,
-          passwordHash: 'invalid$hash', // pragma: allowlist secret
+          passwordHash: 'invalid', // pragma: allowlist secret
           roles: ['TrialAttorney'],
           offices: ['USTP_CAMS_Region_2_Office_Manhattan'],
         },
@@ -355,7 +356,7 @@ describe('dev-oauth2-gateway tests', () => {
       const context = {
         config: { authConfig: { provider: 'dev' } },
         request: {
-          body: Promise.resolve({ username: testUsername, password: testPassword }),
+          body: Promise.resolve({ username: testUsername, password: testCredential }),
           url: 'http://localhost:3000/api/oauth2/default',
         },
       } as unknown as ApplicationContext;
@@ -363,11 +364,11 @@ describe('dev-oauth2-gateway tests', () => {
       await expect(devAuthentication(context)).rejects.toThrow('Password verification failed');
     });
 
-    test('should reject password with invalid hash format - wrong algorithm', async () => {
+    test('should reject invalid hash format - wrong algorithm', async () => {
       const devUsers: DevUser[] = [
         {
           username: testUsername,
-          passwordHash: 'bcrypt$salt$hash', // pragma: allowlist secret
+          passwordHash: 'bogus', // pragma: allowlist secret
           roles: ['TrialAttorney'],
           offices: ['USTP_CAMS_Region_2_Office_Manhattan'],
         },
@@ -377,7 +378,7 @@ describe('dev-oauth2-gateway tests', () => {
       const context = {
         config: { authConfig: { provider: 'dev' } },
         request: {
-          body: Promise.resolve({ username: testUsername, password: testPassword }),
+          body: Promise.resolve({ username: testUsername, password: testCredential }),
           url: 'http://localhost:3000/api/oauth2/default',
         },
       } as unknown as ApplicationContext;

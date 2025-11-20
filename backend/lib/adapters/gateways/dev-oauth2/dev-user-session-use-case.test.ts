@@ -1,18 +1,12 @@
 import * as jwt from 'jsonwebtoken';
 import * as crypto from 'crypto';
 import { DevUserSessionUseCase } from './dev-user-session-use-case';
-import * as devOauth2Gateway from './dev-oauth2-gateway';
 import { ApplicationContext } from '../../types/basic';
 import { CamsRole } from '../../../../../common/src/cams/roles';
+import { MOCK_SCRYPT_HASH } from './dev-oauth2-test-helper';
 
 describe('DevUserSessionUseCase tests', () => {
   const testUsername = 'testuser';
-  const testPassword = 'testPassword123'; // pragma: allowlist secret
-  let testPasswordHash: string;
-
-  beforeAll(async () => {
-    testPasswordHash = await devOauth2Gateway.generatePasswordHash(testPassword);
-  });
 
   afterEach(() => {
     jest.restoreAllMocks();
@@ -50,7 +44,7 @@ describe('DevUserSessionUseCase tests', () => {
     const devUsers = [
       {
         username: testUsername,
-        passwordHash: testPasswordHash,
+        passwordHash: MOCK_SCRYPT_HASH,
         name: 'Test User',
         roles: ['TrialAttorney'],
         offices: ['USTP_CAMS_Region_2_Office_Manhattan'],
@@ -162,14 +156,14 @@ describe('DevUserSessionUseCase tests', () => {
       const devUsers = [
         {
           username: user1,
-          passwordHash: testPasswordHash,
+          passwordHash: MOCK_SCRYPT_HASH,
           name: 'User One',
           roles: ['TrialAttorney'],
           offices: ['USTP_CAMS_Region_2_Office_Manhattan'],
         },
         {
           username: user2,
-          passwordHash: testPasswordHash,
+          passwordHash: MOCK_SCRYPT_HASH,
           name: 'User Two',
           roles: ['CaseAssignmentManager'],
           offices: ['USTP_CAMS_Region_3_Office_Philadelphia'],

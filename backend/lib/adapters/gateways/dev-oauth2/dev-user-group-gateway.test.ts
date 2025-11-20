@@ -6,6 +6,8 @@ import { createMockApplicationContext } from '../../../testing/testing-utilities
 import { DevUser } from './dev-oauth2-gateway';
 import DevUserGroupGateway from './dev-user-group-gateway';
 import LocalStorageGateway from '../storage/local-storage-gateway';
+import { MOCK_SCRYPT_HASH } from './dev-oauth2-test-helper';
+import { UserGroupGatewayConfig } from '../../types/authorization';
 
 describe('DevUserGroupGateway tests', () => {
   let gateway: DevUserGroupGateway;
@@ -14,21 +16,21 @@ describe('DevUserGroupGateway tests', () => {
   const testUsers: DevUser[] = [
     {
       username: 'alice',
-      passwordHash: 'scrypt$aGVsbG93b3JsZA==$ZGF0YWhlcmU=', // pragma: allowlist secret
+      passwordHash: MOCK_SCRYPT_HASH,
       name: 'Alice Attorney',
       roles: ['TrialAttorney', 'PrivilegedIdentityUser'],
       offices: ['USTP_CAMS_Region_2_Office_Manhattan'],
     },
     {
       username: 'bob',
-      passwordHash: 'scrypt$aGVsbG93b3JsZA==$ZGF0YWhlcmU=', // pragma: allowlist secret
+      passwordHash: MOCK_SCRYPT_HASH,
       name: 'Bob Admin',
       roles: ['CaseAssignmentManager'],
       offices: ['USTP_CAMS_Region_3_Office_Wilmington'],
     },
     {
       username: 'charlie',
-      passwordHash: 'scrypt$aGVsbG93b3JsZA==$ZGF0YWhlcmU=', // pragma: allowlist secret
+      passwordHash: MOCK_SCRYPT_HASH,
       roles: ['DataVerifier'],
       offices: ['USTP_CAMS_Region_2_Office_Manhattan', 'USTP_CAMS_Region_2_Office_Buffalo'],
     },
@@ -55,7 +57,7 @@ describe('DevUserGroupGateway tests', () => {
       'constructor' in anyGateway &&
       anyGateway.constructor &&
       typeof anyGateway.constructor === 'object' &&
-      'camsUserGroups' in anyGateway.constructor
+      'camsUserGroups' in anyGateway.constructor!
     ) {
       const camsUserGroups = (anyGateway.constructor as { camsUserGroups: Map<string, unknown> })
         .camsUserGroups;
@@ -66,13 +68,13 @@ describe('DevUserGroupGateway tests', () => {
   describe('init', () => {
     test('should initialize without error', async () => {
       process.env.DEV_USERS = JSON.stringify(testUsers);
-      const result = await gateway.init({ provider: 'dev' });
+      const result = await gateway.init({ provider: 'dev' } as UserGroupGatewayConfig);
       expect(result).toBeUndefined();
     });
 
     test('should handle empty DEV_USERS', async () => {
       delete process.env.DEV_USERS;
-      const result = await gateway.init({ provider: 'dev' });
+      const result = await gateway.init({ provider: 'dev' } as UserGroupGatewayConfig);
       expect(result).toBeUndefined();
     });
   });
@@ -240,7 +242,7 @@ describe('DevUserGroupGateway tests', () => {
       const usersWithInvalidRoles: DevUser[] = [
         {
           username: 'testuser',
-          passwordHash: 'scrypt$aGVsbG93b3JsZA==$ZGF0YWhlcmU=', // pragma: allowlist secret
+          passwordHash: MOCK_SCRYPT_HASH,
           roles: ['TrialAttorney', 'InvalidRole', 'DataVerifier'],
           offices: ['USTP_CAMS_Region_2_Office_Manhattan'],
         },
@@ -260,7 +262,7 @@ describe('DevUserGroupGateway tests', () => {
       const usersWithInvalidOffices: DevUser[] = [
         {
           username: 'testuser',
-          passwordHash: 'scrypt$aGVsbG93b3JsZA==$ZGF0YWhlcmU=', // pragma: allowlist secret
+          passwordHash: MOCK_SCRYPT_HASH,
           roles: ['TrialAttorney'],
           offices: ['USTP_CAMS_Region_2_Office_Manhattan', 'InvalidOfficeCode'],
         },
