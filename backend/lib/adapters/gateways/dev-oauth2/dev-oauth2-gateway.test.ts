@@ -310,6 +310,16 @@ describe('dev-oauth2-gateway tests', () => {
       expect(result.user.offices).toHaveLength(1);
       expect(result.user.offices[0].officeCode).toBe('USTP_CAMS_Region_2_Office_Manhattan');
       expect(result.groups).toEqual(['TrialAttorney', 'PrivilegedIdentityUser']);
+
+      // Verify JWT object is properly formed with claims
+      expect(result.jwt).toBeDefined();
+      expect(result.jwt.claims).toBeDefined();
+      expect(result.jwt.claims.sub).toBe(testUsername);
+      expect(result.jwt.claims.iss).toBe('test-issuer');
+      expect(result.jwt.claims.exp).toBeGreaterThan(Date.now() / 1000);
+      expect(result.jwt.claims.aud).toBe('api://default');
+      expect(result.jwt.claims.groups).toEqual(['TrialAttorney', 'PrivilegedIdentityUser']);
+      expect(result.jwt.header).toBeDefined();
     });
 
     test('should use username as name when name is not provided', async () => {
@@ -327,6 +337,12 @@ describe('dev-oauth2-gateway tests', () => {
       const result = await getUser(context, token);
 
       expect(result.user.name).toBe(testUsername);
+
+      // Verify JWT is still properly formed even when name is not provided
+      expect(result.jwt).toBeDefined();
+      expect(result.jwt.claims).toBeDefined();
+      expect(result.jwt.claims.exp).toBeDefined();
+      expect(result.jwt.claims.iss).toBeDefined();
     });
 
     test('should throw UnauthorizedError when user not found in dev-users.json', async () => {
@@ -405,6 +421,14 @@ describe('dev-oauth2-gateway tests', () => {
 
       const result = await getUser(context, token);
       expect(result.groups).toEqual([]);
+
+      // Verify JWT claims are properly formed
+      expect(result.jwt).toBeDefined();
+      expect(result.jwt.claims).toBeDefined();
+      expect(result.jwt.claims.sub).toBe(testUsername);
+      expect(result.jwt.claims.exp).toBe(claims.exp);
+      expect(result.jwt.claims.iss).toBe(claims.iss);
+      expect(result.jwt.claims.aud).toBe(claims.aud);
     });
   });
 

@@ -238,7 +238,9 @@ export async function getUser(context: ApplicationContext, accessToken: string) 
     offices,
   };
 
-  return { user, groups: decodedToken.groups || [], jwt: {} as CamsJwt };
+  const verifiedJwt = await verifyToken(accessToken);
+
+  return { user, groups: decodedToken.groups || [], jwt: verifiedJwt };
 }
 
 const DevOpenIdConnectGateway: OpenIdConnectGateway = {
