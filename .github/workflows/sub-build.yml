@@ -78,30 +78,6 @@ jobs:
           npm run build:api
           npm run build:dataflows
 
-      - uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2
-        if: vars.CAMS_LOGIN_PROVIDER == 'dev'
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-          environment: ${{ vars.AZURE_ENVIRONMENT }}
-
-      - uses: cloudposse/github-action-secret-outputs@main
-        if: vars.CAMS_LOGIN_PROVIDER == 'dev'
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ inputs.azResourceGrpAppEncrypted }}
-
-      - name: Retrieve dev-users.json from Key Vault
-        if: vars.CAMS_LOGIN_PROVIDER == 'dev'
-        run: |
-          # Retrieve the DEV_USERS secret from Key Vault
-          DEV_USERS_JSON=$(az keyvault secret show --vault-name ${{ secrets.AZ_KV_APP_CONFIG_NAME }} --name DEV-USERS --query value -o tsv)
-
-          # Write the JSON to dev-users.json file
-          echo "$DEV_USERS_JSON" > dev-users.json
-          echo "dev-users.json created successfully for deployment"
-
       - name: Package API
         run: OUT=${{ inputs.apiFunctionName }} npm run pack
 
