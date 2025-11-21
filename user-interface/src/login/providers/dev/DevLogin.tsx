@@ -8,6 +8,7 @@ import { CamsUser } from '@common/cams/users';
 import { CamsSession } from '@common/cams/session';
 import Input from '@/lib/components/uswds/Input';
 import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { AccessDenied } from '@/login/AccessDenied';
 
 type DevLoginState = {
   session: CamsSession | null;
@@ -17,6 +18,7 @@ type DevLoginState = {
     submitDisabled: boolean;
   };
   alert: AlertDetails | null;
+  accessDenied: string | null;
 };
 
 const config = getApiConfiguration();
@@ -30,6 +32,7 @@ export function useStateAndActions() {
       submitDisabled: true,
     },
     alert: null,
+    accessDenied: null,
   });
 
   const handleUsernameChange = (value: string) => {
@@ -76,22 +79,14 @@ export function useStateAndActions() {
       });
 
       if (!response.ok) {
-        newState.alert = {
-          message: 'Invalid username or password.',
-          type: UswdsAlertStyle.Error,
-          timeOut: 8,
-        };
+        newState.accessDenied = 'Invalid username or password.';
         setState(newState);
         return;
       }
 
       const payload = await response.json();
       if (!payload.data.value) {
-        newState.alert = {
-          message: 'Authentication failed. No token received.',
-          type: UswdsAlertStyle.Error,
-          timeOut: 8,
-        };
+        newState.accessDenied = 'Authentication failed. No token received.';
         setState(newState);
         return;
       }
@@ -100,11 +95,7 @@ export function useStateAndActions() {
       const token = payload.data.value;
       const parts = token.split('.');
       if (parts.length !== 3) {
-        newState.alert = {
-          message: 'Invalid token format.',
-          type: UswdsAlertStyle.Error,
-          timeOut: 8,
-        };
+        newState.accessDenied = 'Invalid token format.';
         setState(newState);
         return;
       }
@@ -122,11 +113,7 @@ export function useStateAndActions() {
       setState(newState);
     } catch (error) {
       console.error('Login error:', error);
-      newState.alert = {
-        message: 'Login failed. Please try again.',
-        type: UswdsAlertStyle.Error,
-        timeOut: 8,
-      };
+      newState.accessDenied = 'Login failed. Please try again.';
       setState(newState);
     }
   };
@@ -154,6 +141,10 @@ export function DevLogin(props: DevLoginProps) {
   useEffect(() => {
     modalRef.current?.show({});
   }, []);
+
+  if (state.accessDenied) {
+    return <AccessDenied message={state.accessDenied} />;
+  }
 
   if (state.session)
     return (

@@ -19,6 +19,14 @@ vi.mock('@/login/BlankPage', () => ({
   ),
 }));
 
+vi.mock('@/login/AccessDenied', () => ({
+  AccessDenied: ({ message }: { message?: string }) => (
+    <div data-testid="access-denied">
+      <div data-testid="access-denied-message">{message}</div>
+    </div>
+  ),
+}));
+
 const mockApiConfig = {
   protocol: 'http',
   server: 'localhost',
@@ -160,7 +168,7 @@ describe('DevLogin component', () => {
   });
 
   describe('authentication flow', () => {
-    test('should display error alert on invalid credentials', async () => {
+    test('should display AccessDenied component on invalid credentials', async () => {
       const user = userEvent.setup();
       global.fetch = vi.fn().mockResolvedValue({
         ok: false,
@@ -183,11 +191,14 @@ describe('DevLogin component', () => {
       fireEvent.click(loginButton);
 
       await waitFor(() => {
-        expect(screen.getByText('Invalid username or password.')).toBeInTheDocument();
+        expect(screen.getByTestId('access-denied')).toBeInTheDocument();
+        expect(screen.getByTestId('access-denied-message')).toHaveTextContent(
+          'Invalid username or password.',
+        );
       });
     });
 
-    test('should display error alert when no token is received', async () => {
+    test('should display AccessDenied component when no token is received', async () => {
       const user = userEvent.setup();
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
@@ -210,11 +221,14 @@ describe('DevLogin component', () => {
       fireEvent.click(loginButton);
 
       await waitFor(() => {
-        expect(screen.getByText('Authentication failed. No token received.')).toBeInTheDocument();
+        expect(screen.getByTestId('access-denied')).toBeInTheDocument();
+        expect(screen.getByTestId('access-denied-message')).toHaveTextContent(
+          'Authentication failed. No token received.',
+        );
       });
     });
 
-    test('should display error alert on invalid token format', async () => {
+    test('should display AccessDenied component on invalid token format', async () => {
       const user = userEvent.setup();
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
@@ -237,11 +251,14 @@ describe('DevLogin component', () => {
       fireEvent.click(loginButton);
 
       await waitFor(() => {
-        expect(screen.getByText('Invalid token format.')).toBeInTheDocument();
+        expect(screen.getByTestId('access-denied')).toBeInTheDocument();
+        expect(screen.getByTestId('access-denied-message')).toHaveTextContent(
+          'Invalid token format.',
+        );
       });
     });
 
-    test('should display error alert on fetch exception', async () => {
+    test('should display AccessDenied component on fetch exception', async () => {
       const user = userEvent.setup();
       global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
 
@@ -261,7 +278,10 @@ describe('DevLogin component', () => {
       fireEvent.click(loginButton);
 
       await waitFor(() => {
-        expect(screen.getByText('Login failed. Please try again.')).toBeInTheDocument();
+        expect(screen.getByTestId('access-denied')).toBeInTheDocument();
+        expect(screen.getByTestId('access-denied-message')).toHaveTextContent(
+          'Login failed. Please try again.',
+        );
       });
     });
 
@@ -369,76 +389,6 @@ describe('DevLogin component', () => {
 
       // Restore
       URL.canParse = originalCanParse;
-    });
-  });
-
-  describe('alert clearing', () => {
-    test('should clear alert when typing in username field', async () => {
-      const user = userEvent.setup();
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: false,
-        status: 401,
-      });
-
-      renderWithRouter();
-
-      await waitFor(() => {
-        expect(screen.getByLabelText(/username/i)).toBeInTheDocument();
-      });
-
-      const usernameInput = screen.getByLabelText(/username/i);
-      const passwordInput = screen.getByLabelText(/password/i);
-
-      await user.type(usernameInput, 'wronguser');
-      await user.type(passwordInput, 'wrongpassword');
-
-      const loginButton = screen.getByTestId('button-login-modal-submit-button');
-      fireEvent.click(loginButton);
-
-      await waitFor(() => {
-        expect(screen.getByText('Invalid username or password.')).toBeInTheDocument();
-      });
-
-      // Type in username field - should clear alert
-      await user.type(usernameInput, 'a');
-
-      await waitFor(() => {
-        expect(screen.queryByText('Invalid username or password.')).not.toBeInTheDocument();
-      });
-    });
-
-    test('should clear alert when typing in password field', async () => {
-      const user = userEvent.setup();
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: false,
-        status: 401,
-      });
-
-      renderWithRouter();
-
-      await waitFor(() => {
-        expect(screen.getByLabelText(/username/i)).toBeInTheDocument();
-      });
-
-      const usernameInput = screen.getByLabelText(/username/i);
-      const passwordInput = screen.getByLabelText(/password/i);
-
-      await user.type(usernameInput, 'wronguser');
-      await user.type(passwordInput, 'wrongpassword');
-
-      const loginButton = screen.getByTestId('button-login-modal-submit-button');
-      fireEvent.click(loginButton);
-
-      await waitFor(() => {
-        expect(screen.getByText('Invalid username or password.')).toBeInTheDocument();
-      });
-
-      // Type in password field - should clear alert
-      await user.type(passwordInput, 'b');
-
-      await waitFor(() => {
-        expect(screen.queryByText('Invalid username or password.')).not.toBeInTheDocument();
-      });
     });
   });
 });
