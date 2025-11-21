@@ -96,8 +96,7 @@ jobs:
         if: vars.CAMS_LOGIN_PROVIDER == 'dev'
         run: |
           # Retrieve the DEV_USERS secret from Key Vault
-          KV_NAME=$(az keyvault list --resource-group ${{ steps.rgApp.outputs.out }} --query "[?contains(name, 'ustp-cams')].name" -o tsv)
-          DEV_USERS_JSON=$(az keyvault secret show --vault-name $KV_NAME --name DEV-USERS --query value -o tsv)
+          DEV_USERS_JSON=$(az keyvault secret show --vault-name ${{ secrets.AZ_KV_APP_CONFIG_NAME }} --name DEV-USERS --query value -o tsv)
 
           # Write the JSON to dev-users.json file
           echo "$DEV_USERS_JSON" > dev-users.json
