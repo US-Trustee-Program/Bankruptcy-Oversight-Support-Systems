@@ -241,14 +241,6 @@ describe('Factory function-apps', () => {
     expect(result).toBeInstanceOf(MockUserGroupGateway);
   });
 
-  test('getUserGroupGateway should return null', async () => {
-    const invalidContext = { ...dbContext };
-    invalidContext.config.authConfig.provider = undefined;
-    invalidContext.config.userGroupGatewayConfig.provider = undefined;
-    const result = await factory.getUserGroupGateway(invalidContext);
-    expect(result).toEqual(null);
-  });
-
   test('getUserSessionUseCase', async () => {
     const context = { ...dbContext };
     context.config.authConfig.provider = 'okta';

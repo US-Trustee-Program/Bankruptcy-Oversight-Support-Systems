@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { CamsUser, CamsUserGroup, CamsUserReference } from '../../../../../common/src/cams/users';
 import LocalStorageGateway from '../storage/local-storage-gateway';
-import { UserGroupGateway, UserGroupGatewayConfig } from '../../types/authorization';
+import { Initializer, UserGroupGateway } from '../../types/authorization';
 import { ApplicationContext } from '../../types/basic';
 import {
   MOCKED_USTP_OFFICES_ARRAY,
@@ -158,9 +158,9 @@ async function initializeGroups(context: ApplicationContext) {
   });
 }
 
-export class DevUserGroupGateway implements UserGroupGateway {
-  async init(_config: UserGroupGatewayConfig, context: ApplicationContext): Promise<void> {
-    await initializeGroups(context);
+export class DevUserGroupGateway implements UserGroupGateway, Initializer<ApplicationContext> {
+  async init(context: ApplicationContext): Promise<void> {
+    return await initializeGroups(context);
   }
 
   async getUserGroupWithUsers(
