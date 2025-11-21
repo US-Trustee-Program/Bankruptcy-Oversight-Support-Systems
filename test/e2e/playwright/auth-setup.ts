@@ -22,6 +22,11 @@ async function mockLogin(page: Page) {
     timeoutOption,
   );
 
+  const meResponsePromise = page.waitForResponse(
+    async (response) => response.url().includes('api/me') && response.ok(),
+    timeoutOption,
+  );
+
   await page.goto(TARGET_HOST + LOGIN_PATH);
   await page.getByTestId('button-auo-confirm').click();
   await expect(page.getByTestId('modal-content-login-modal')).toBeVisible();
@@ -29,6 +34,7 @@ async function mockLogin(page: Page) {
   await page.getByTestId('button-login-modal-submit-button').click();
   await expect(page.getByTestId('modal-content-login-modal')).not.toBeVisible();
   await mockAuthResponsePromise;
+  await meResponsePromise;
 
   await page.context().storageState({ path: authFile });
   expect(page.context().storageState({ path: authFile })).toBeDefined();
@@ -37,6 +43,11 @@ async function mockLogin(page: Page) {
 async function devLogin(page: Page) {
   const devAuthResponsePromise = page.waitForResponse(
     async (response) => response.url().includes('api/oauth2/default') && response.ok(),
+    timeoutOption,
+  );
+
+  const meResponsePromise = page.waitForResponse(
+    async (response) => response.url().includes('api/me') && response.ok(),
     timeoutOption,
   );
 
@@ -53,6 +64,7 @@ async function devLogin(page: Page) {
   await page.getByTestId('button-login-modal-submit-button').click();
   await expect(page.getByTestId('modal-content-login-modal')).not.toBeVisible();
   await devAuthResponsePromise;
+  await meResponsePromise;
 
   await page.context().storageState({ path: authFile });
   expect(page.context().storageState({ path: authFile })).toBeDefined();
