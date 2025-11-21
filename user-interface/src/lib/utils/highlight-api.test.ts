@@ -4,7 +4,7 @@ import { handleHighlight } from './highlight-api';
 
 describe('CSS Highlight API integration', () => {
   const defaultTestDom = new JSDOM(`
-    <html>
+    <html lang="en-us">
     <head></head>
     <body>
       <div id='searchable-docket'>
@@ -53,7 +53,7 @@ describe('CSS Highlight API integration', () => {
 
   test('should not add highlights if the specified element is not available', () => {
     const dom = new JSDOM(`
-      <html>
+      <html lang="en-us">
       <head></head>
       <body></body>
       </html>
@@ -76,6 +76,7 @@ describe('CSS Highlight API integration', () => {
     expect(setMock).not.toHaveBeenCalled();
   });
 
+  // eslint-disable-next-line vitest/expect-expect -- smoke test to verify function doesn't throw when CSS.highlights is undefined
   test('should not add highlights if browser does not support CSS.highlights', () => {
     const { window } = defaultTestDom;
     window.CSS = {

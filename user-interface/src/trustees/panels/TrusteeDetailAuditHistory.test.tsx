@@ -659,6 +659,7 @@ describe('TrusteeDetailAuditHistory', () => {
     expect(screen.getByTestId('loading-indicator')).toBeInTheDocument();
   });
 
+  // eslint-disable-next-line vitest/expect-expect -- smoke test to verify no memory leaks or errors when unmounting during API call
   test('should handle component unmounting during API call', async () => {
     let resolvePromise: ((value: { data: TrusteeHistory[] }) => void) | undefined;
     const promise = new Promise<{ data: TrusteeHistory[] }>((resolve) => {

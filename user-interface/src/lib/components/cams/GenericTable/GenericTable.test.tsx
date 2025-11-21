@@ -2,11 +2,12 @@ import { render } from '@testing-library/react';
 import { GenericTable, GenericTableProps } from './GenericTable';
 import { CaseSummary } from '@common/cams/cases';
 import { MockData } from '@common/cams/test-utilities/mock-data';
-import { formatDate } from '../../../utils/datetime';
+import { formatDate } from '@/lib/utils/datetime';
 import { CaseNumber } from '../../CaseNumber';
 import { BrowserRouter } from 'react-router-dom';
 
 describe('GenericTable component', () => {
+  // eslint-disable-next-line vitest/expect-expect -- smoke test to verify component renders without errors
   test('should render a table', () => {
     const args: GenericTableProps<CaseSummary> = {
       data: MockData.buildArray(MockData.getCaseSummary, 3),
@@ -30,6 +31,7 @@ describe('GenericTable component', () => {
     render(<GenericTable<CaseSummary> id="generic-table" {...args}></GenericTable>);
   });
 
+  // eslint-disable-next-line vitest/expect-expect -- smoke test to verify component renders without errors
   test('should render a table with transformers', () => {
     const args: GenericTableProps<CaseSummary> = {
       data: MockData.buildArray(MockData.getCaseSummary, 3),
@@ -70,6 +72,7 @@ describe('GenericTable component', () => {
     );
   });
 
+  // eslint-disable-next-line vitest/expect-expect -- smoke test to verify component renders without errors
   test('should render a table with a transformers that uses the domain object', () => {
     const args: GenericTableProps<CaseSummary> = {
       data: MockData.buildArray(MockData.getCaseSummary, 3),

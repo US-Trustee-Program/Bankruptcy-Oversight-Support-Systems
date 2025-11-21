@@ -134,6 +134,7 @@ describe('TransferOrderAccordion', () => {
     expect(form).toBeInTheDocument();
   });
 
+  // eslint-disable-next-line vitest/expect-expect -- assertions are in findAccordionHeading and findAccordionContent helper functions
   test('should expand and show detail when a header is clicked', async () => {
     let heading;
     renderWithProps();
