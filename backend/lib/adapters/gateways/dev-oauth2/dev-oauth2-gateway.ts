@@ -175,7 +175,7 @@ export async function getUser(accessToken: string) {
     .filter((office): office is UstpOfficeDetails => office !== undefined);
 
   const user: CamsUser = {
-    id: hashUsername(decodedToken.sub).toString().slice(0, 10),
+    id: hashUsername(decodedToken.sub),
     name: devUser.name || devUser.username,
     roles,
     offices,
