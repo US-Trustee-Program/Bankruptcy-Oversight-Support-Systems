@@ -379,7 +379,7 @@ describe('Pagination tests', () => {
     expect(nextPageButton).toBeInTheDocument();
   });
 
-  test('should render nextlink withdefault offset and limit', async () => {
+  test('should render next link with default offset and limit', async () => {
     const props = {
       paginationValues: {
         ...defaultPagination,
@@ -409,7 +409,7 @@ describe('Pagination tests', () => {
     expect(retrievePageSpy).toHaveBeenCalledWith({ offset: 25 });
   });
 
-  test('should render nextlink withdefault offset and limit', async () => {
+  test('should render previous link with default offset and limit', async () => {
     const props = {
       paginationValues: {
         ...defaultPagination,
