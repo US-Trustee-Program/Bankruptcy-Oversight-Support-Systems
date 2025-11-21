@@ -1,4 +1,5 @@
 import * as crypto from 'crypto';
+import * as fs from 'fs';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import { ApplicationContext } from '../../types/basic';
@@ -8,6 +9,17 @@ import DevUserGroupGateway from './dev-user-group-gateway';
 import LocalStorageGateway from '../storage/local-storage-gateway';
 import { MOCK_SCRYPT_HASH } from './dev-oauth2-test-helper';
 import { UserGroupGatewayConfig } from '../../types/authorization';
+
+// Helper function to mock the dev-users.json file
+function mockDevUsersFile(devUsers: DevUser[] | null) {
+  if (devUsers === null) {
+    // File doesn't exist
+    jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+  } else {
+    jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+    jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(devUsers));
+  }
+}
 
 describe('DevUserGroupGateway tests', () => {
   let gateway: DevUserGroupGateway;
@@ -47,7 +59,6 @@ describe('DevUserGroupGateway tests', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
-    delete process.env.DEV_USERS;
     // Clear the internal cache between tests
     // This is a workaround since the module maintains state
     const anyGateway = gateway as unknown;
@@ -67,13 +78,12 @@ describe('DevUserGroupGateway tests', () => {
 
   describe('init', () => {
     test('should initialize without error', async () => {
-      process.env.DEV_USERS = JSON.stringify(testUsers);
+      mockDevUsersFile(testUsers);
       const result = await gateway.init({ provider: 'dev' } as UserGroupGatewayConfig);
       expect(result).toBeUndefined();
     });
 
-    test('should handle empty DEV_USERS', async () => {
-      delete process.env.DEV_USERS;
+    test('should handle missing dev-users.json file', async () => {
       const result = await gateway.init({ provider: 'dev' } as UserGroupGatewayConfig);
       expect(result).toBeUndefined();
     });
@@ -81,7 +91,7 @@ describe('DevUserGroupGateway tests', () => {
 
   describe('getUserGroups', () => {
     beforeEach(() => {
-      process.env.DEV_USERS = JSON.stringify(testUsers);
+      mockDevUsersFile(testUsers);
     });
 
     test('should return list of all groups', async () => {
@@ -107,8 +117,7 @@ describe('DevUserGroupGateway tests', () => {
       });
     });
 
-    test('should handle empty DEV_USERS', async () => {
-      delete process.env.DEV_USERS;
+    test('should handle missing dev-users.json file', async () => {
       const groups = await gateway.getUserGroups(context);
 
       // Should still return groups, just with no users
@@ -119,7 +128,7 @@ describe('DevUserGroupGateway tests', () => {
 
   describe('getUserGroupWithUsers', () => {
     beforeEach(() => {
-      process.env.DEV_USERS = JSON.stringify(testUsers);
+      mockDevUsersFile(testUsers);
     });
 
     test('should return group with users for valid role group', async () => {
@@ -170,7 +179,7 @@ describe('DevUserGroupGateway tests', () => {
 
   describe('getUserGroupUsers', () => {
     beforeEach(() => {
-      process.env.DEV_USERS = JSON.stringify(testUsers);
+      mockDevUsersFile(testUsers);
     });
 
     test('should return users for a role group', async () => {
@@ -210,7 +219,7 @@ describe('DevUserGroupGateway tests', () => {
 
   describe('getUserById', () => {
     beforeEach(() => {
-      process.env.DEV_USERS = JSON.stringify(testUsers);
+      mockDevUsersFile(testUsers);
     });
 
     test('should return user by valid ID', async () => {
@@ -247,7 +256,7 @@ describe('DevUserGroupGateway tests', () => {
           offices: ['USTP_CAMS_Region_2_Office_Manhattan'],
         },
       ];
-      process.env.DEV_USERS = JSON.stringify(usersWithInvalidRoles);
+      mockDevUsersFile(usersWithInvalidRoles);
 
       const userId = hashUsername('testuser');
       const user = await gateway.getUserById(context, userId);
@@ -267,7 +276,7 @@ describe('DevUserGroupGateway tests', () => {
           offices: ['USTP_CAMS_Region_2_Office_Manhattan', 'InvalidOfficeCode'],
         },
       ];
-      process.env.DEV_USERS = JSON.stringify(usersWithInvalidOffices);
+      mockDevUsersFile(usersWithInvalidOffices);
 
       const userId = hashUsername('testuser');
       const user = await gateway.getUserById(context, userId);
@@ -292,7 +301,7 @@ describe('DevUserGroupGateway tests', () => {
 
   describe('group initialization', () => {
     test('should initialize groups only once', async () => {
-      process.env.DEV_USERS = JSON.stringify(testUsers);
+      mockDevUsersFile(testUsers);
 
       // Call getUserGroups multiple times
       const groups1 = await gateway.getUserGroups(context);
@@ -302,16 +311,18 @@ describe('DevUserGroupGateway tests', () => {
       expect(groups1.length).toBe(groups2.length);
     });
 
-    test('should handle malformed DEV_USERS gracefully', async () => {
-      process.env.DEV_USERS = 'not valid json';
+    test('should handle malformed dev-users.json gracefully', async () => {
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue('not valid json');
 
       // Should not throw, just return groups with no users
       const groups = await gateway.getUserGroups(context);
       expect(Array.isArray(groups)).toBe(true);
     });
 
-    test('should handle DEV_USERS that is not an array', async () => {
-      process.env.DEV_USERS = '{"username":"test"}';
+    test('should handle dev-users.json that is not an array', async () => {
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue('{"username":"test"}');
 
       // Should not throw, just return groups with no users
       const groups = await gateway.getUserGroups(context);

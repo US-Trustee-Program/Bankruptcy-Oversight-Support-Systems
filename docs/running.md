@@ -44,7 +44,7 @@ CAMS_USE_FAKE_API={a string: true | false}
 CAMS_FEATURE_FLAG_CLIENT_ID={Client-side ID obtained from Launch Darkly}
 CAMS_INFO_SHA={expect commit sha used to build current version}
 CAMS_LAUNCH_DARKLY_ENV="development"
-CAMS_LOGIN_PROVIDER={"okta" || "mock" || "none"}
+CAMS_LOGIN_PROVIDER={"okta" || "mock" || "dev" || "none"}
 CAMS_LOGIN_PROVIDER_CONFIG=issuer={http://localhost:7071/api/oauth2/default}|clientId={IDP client id if needed} (Replace issuer and clientid with proper okta config for okta)
 CAMS_DISABLE_LOCAL_CACHE={true || false}
 OKTA_URL={base URL of Okta instance}
@@ -110,7 +110,7 @@ SERVER_PORT=7071
 
 ## LOGIN_PROVIDER and CONFIG must match the frontend to function locally
 CAMS_LOGIN_PROVIDER_CONFIG=issuer={http://localhost:7071/api/oauth2/default}|clientId={IDP client id if needed} (Replace issuer and clientid with proper okta config for okta)
-CAMS_LOGIN_PROVIDER={"okta" || "mock" || "none"}
+CAMS_LOGIN_PROVIDER={"okta" || "mock" || "dev" || "none"}
 
 ## OKTA SDK API CONFIGURATION
 ## Two options. Use one option not both.
@@ -157,6 +157,36 @@ ACMS_MSSQL_CLIENT_ID={OPTIONAL client id of Managed Identity with access to the 
 Azure for the value
 
 ?> Note that when you run `npm run start:api` or `npm run start:dataflows`, the script will copy `backend/.env` into the appropriate directory, quietly overwriting any changes made to previous copies. All changes should be handled in `backend/.env` to avoid frustration and misconfiguration.
+
+##### Dev Mode Authentication (Optional)
+
+If you are using `CAMS_LOGIN_PROVIDER=dev` for local development, you will need to create a `dev-users.json` file in the `backend` directory. This file contains user account configurations for authentication.
+
+Example `backend/dev-users.json`:
+
+```json
+[
+  {
+    "username": "alice",
+    "passwordHash": "scrypt$aGVsbG93b3JsZA==$ZGF0YWhlcmU...",
+    "name": "Alice Attorney",
+    "roles": ["TrialAttorney", "PrivilegedIdentityUser"],
+    "offices": ["USTP_CAMS_Region_2_Office_Manhattan"]
+  }
+]
+```
+
+!> The `dev-users.json` file is gitignored and should never be committed to the repository.
+
+To generate password hashes for the `passwordHash` field, use the provided utility script:
+
+```shell
+tsx scripts/generate-dev-password-hash.ts <your-password>
+```
+
+This will output a properly formatted hash that you can copy into your `dev-users.json` file.
+
+?> For more information about dev mode authentication, see the [DevModeAuthentication ADR](architecture/decision-records/DevModeAuthentication.md).
 
 ##### Cosmos Database
 

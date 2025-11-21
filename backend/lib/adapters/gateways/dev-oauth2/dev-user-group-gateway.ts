@@ -1,5 +1,7 @@
 import { randomUUID } from 'crypto';
 import * as crypto from 'crypto';
+import * as fs from 'fs';
+import * as path from 'path';
 import { CamsUser, CamsUserGroup, CamsUserReference } from '../../../../../common/src/cams/users';
 import LocalStorageGateway from '../storage/local-storage-gateway';
 import { UserGroupGateway, UserGroupGatewayConfig } from '../../types/authorization';
@@ -16,18 +18,45 @@ import { DevUser } from './dev-oauth2-gateway';
 const MODULE_NAME = 'DEV-USER-GROUP-GATEWAY';
 
 function loadDevUsers(): DevUser[] {
-  const devUsersEnv = process.env.DEV_USERS;
-  if (!devUsersEnv) {
+  // Try multiple possible paths to find dev-users.json
+  // Different paths are needed for:
+  // 1. tsx execution (local express): backend/lib/adapters/gateways/dev-oauth2/ -> 4 levels up
+  // 2. Compiled function app (local): backend/function-apps/api/dist/backend/lib/adapters/gateways/dev-oauth2/ -> 6 levels up
+  // 3. Deployed: /home/site/wwwroot/dist/backend/lib/adapters/gateways/dev-oauth2/ -> 6 levels up
+  const possiblePaths = [
+    path.resolve(__dirname, '../../../../dev-users.json'), // For tsx execution
+    path.resolve(__dirname, '../../../../../dev-users.json'), // For compiled code
+  ];
+
+  let devUsersPath: string | null = null;
+  for (const testPath of possiblePaths) {
+    if (fs.existsSync(testPath)) {
+      devUsersPath = testPath;
+      break;
+    }
+  }
+
+  if (!devUsersPath) {
+    console.error(
+      `${MODULE_NAME}: dev-users.json file not found. Tried: ${possiblePaths.join(', ')}. Using empty user database.`,
+    );
     return [];
   }
 
   try {
-    const users = JSON.parse(devUsersEnv);
+    const fileContent = fs.readFileSync(devUsersPath, 'utf-8');
+    const users = JSON.parse(fileContent);
     if (!Array.isArray(users)) {
+      console.error(
+        `${MODULE_NAME}: dev-users.json must contain a JSON array. Using empty user database.`,
+      );
       return [];
     }
     return users as DevUser[];
-  } catch (_error) {
+  } catch (error) {
+    console.error(
+      `${MODULE_NAME}: Failed to parse dev-users.json: ${error.message}. Using empty user database.`,
+    );
     return [];
   }
 }

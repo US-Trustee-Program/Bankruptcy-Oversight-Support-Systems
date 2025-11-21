@@ -7,21 +7,20 @@ dotenv.config();
 const provider = ['okta', 'mock', 'dev', 'none'].includes(process.env.CAMS_LOGIN_PROVIDER)
   ? process.env.CAMS_LOGIN_PROVIDER
   : null;
-const doMockAuth = provider === 'mock' || provider === 'dev';
 
-let userGroupGatewayConfig: UserGroupGatewayConfig
+let userGroupGatewayConfig: UserGroupGatewayConfig;
 
 if (provider === 'okta') {
   userGroupGatewayConfig = {
     token: process.env.OKTA_API_KEY,
     ...keyValuesToRecord(process.env.CAMS_USER_GROUP_GATEWAY_CONFIG),
     provider,
-  } as const as UserGroupGatewayConfig
+  } as const as UserGroupGatewayConfig;
 } else if (provider === 'dev') {
   userGroupGatewayConfig = {
     provider,
-  } as const as UserGroupGatewayConfig
-} else  {
+  } as const as UserGroupGatewayConfig;
+} else {
   userGroupGatewayConfig = {} as const as UserGroupGatewayConfig;
 }
 

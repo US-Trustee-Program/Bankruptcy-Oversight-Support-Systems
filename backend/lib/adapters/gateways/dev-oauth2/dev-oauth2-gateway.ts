@@ -1,6 +1,8 @@
 import * as jwt from 'jsonwebtoken';
 import * as crypto from 'crypto';
 import { promisify } from 'util';
+import * as fs from 'fs';
+import * as path from 'path';
 import { ApplicationContext } from '../../types/basic';
 import { ForbiddenError } from '../../../common-errors/forbidden-error';
 import { UnauthorizedError } from '../../../common-errors/unauthorized-error';
@@ -30,19 +32,46 @@ export type DevUser = {
 };
 
 function loadDevUsers(): DevUser[] {
-  const devUsersEnv = process.env.DEV_USERS;
-  if (!devUsersEnv) {
-    throw new Error('DEV_USERS environment variable is not set');
+  // Try multiple possible paths to find dev-users.json
+  // Different paths are needed for:
+  // 1. tsx execution (local express): backend/lib/adapters/gateways/dev-oauth2/ -> 4 levels up
+  // 2. Compiled function app (local): backend/function-apps/api/dist/backend/lib/adapters/gateways/dev-oauth2/ -> 6 levels up
+  // 3. Deployed: /home/site/wwwroot/dist/backend/lib/adapters/gateways/dev-oauth2/ -> 6 levels up
+  const possiblePaths = [
+    path.resolve(__dirname, '../../../../dev-users.json'), // For tsx execution
+    path.resolve(__dirname, '../../../../../dev-users.json'), // For compiled code
+  ];
+
+  let devUsersPath: string | null = null;
+  for (const testPath of possiblePaths) {
+    if (fs.existsSync(testPath)) {
+      devUsersPath = testPath;
+      break;
+    }
+  }
+
+  if (!devUsersPath) {
+    console.error(
+      `${MODULE_NAME}: dev-users.json file not found. Tried: ${possiblePaths.join(', ')}. Using empty user database.`,
+    );
+    return [];
   }
 
   try {
-    const users = JSON.parse(devUsersEnv);
+    const fileContent = fs.readFileSync(devUsersPath, 'utf-8');
+    const users = JSON.parse(fileContent);
     if (!Array.isArray(users)) {
-      throw new Error('DEV_USERS must be a JSON array');
+      console.error(
+        `${MODULE_NAME}: dev-users.json must contain a JSON array. Using empty user database.`,
+      );
+      return [];
     }
     return users as DevUser[];
   } catch (error) {
-    throw new Error(`Failed to parse DEV_USERS: ${error.message}`);
+    console.error(
+      `${MODULE_NAME}: Failed to parse dev-users.json: ${error.message}. Using empty user database.`,
+    );
+    return [];
   }
 }
 
@@ -77,7 +106,7 @@ async function verifyPassword(password: string, storedHash: string): Promise<boo
 }
 
 /**
- * Generates a password hash for storing in DEV_USERS environment variable.
+ * Generates a password hash for storing in dev-users.json file.
  * This is a utility function - the actual hash should be generated offline.
  */
 export async function generatePasswordHash(password: string): Promise<string> {

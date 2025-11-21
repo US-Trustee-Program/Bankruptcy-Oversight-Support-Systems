@@ -23,7 +23,7 @@ We implemented a new "dev" authentication mode with the following characteristic
 ### Architecture
 1. **Separate implementation**: Dev mode has completely independent gateway, session, and user group implementations (not coupled to mock mode)
 1. **Username/password authentication**: Users authenticate with a standard username and password form
-1. **Environment-based configuration**: User accounts are configured via the `DEV_USERS` environment variable in JSON format
+1. **File-based configuration**: User accounts are configured via a `backend/dev-users.json` file (gitignored for local development, deployed from Key Vault for cloud environments)
 1. **Secure password storage**: Passwords are hashed using scrypt (memory-hard key derivation function) with unique salts per user
 1. **Flexible role assignment**: Users can be assigned any combination of CamsRole values and office locations
 1. **PrivilegedIdentity mapping**: All users are automatically granted PrivilegedIdentityUser role in JWT groups for testing flexibility
@@ -34,19 +34,12 @@ We implemented a new "dev" authentication mode with the following characteristic
 - **Salt generation**: 16-byte random salt per password
 - **Key derivation**: 64-byte scrypt-derived key
 - **Timing-safe comparison**: Uses `crypto.timingSafeEqual` to prevent timing attacks
-- **Password utility**: `tsx ops/scripts/generate-dev-password-hash.ts` script for offline hash generation
+- **Password utility**: `tsx scripts/generate-dev-password-hash.ts` script for offline hash generation
 
 ### Configuration Example
 ```bash
 # Backend .env
 CAMS_LOGIN_PROVIDER=dev
-DEV_USERS='[{
-  "username":"alice",
-  "passwordHash":"scrypt$aGVsbG93b3JsZA==$ZGF0YWhlcmU...",  # pragma: allowlist secret
-  "name":"Alice Attorney",
-  "roles":["TrialAttorney","PrivilegedIdentityUser"],
-  "offices":["USTP_CAMS_Region_2_Office_Manhattan"]
-}]'
 
 # Frontend .env
 CAMS_LOGIN_PROVIDER=dev
@@ -56,6 +49,21 @@ CAMS_LOGIN_PROVIDER=dev
 DEV_TEST_USERNAME=alice
 DEV_TEST_PASSWORD=plaintext_password
 ```
+
+```json
+// backend/dev-users.json (local development - gitignored)
+[
+  {
+    "username": "alice",
+    "passwordHash": "scrypt$aGVsbG93b3JsZA==$ZGF0YWhlcmU...",
+    "name": "Alice Attorney",
+    "roles": ["TrialAttorney", "PrivilegedIdentityUser"],
+    "offices": ["USTP_CAMS_Region_2_Office_Manhattan"]
+  }
+]
+```
+
+**Note**: For cloud deployments, the `dev-users.json` content is stored in Azure Key Vault as the `DEV-USERS` secret and automatically deployed to the function app during the build process.
 
 ### Implementation Components
 - **Backend**: `dev-oauth2-gateway.ts`, `dev-user-session-use-case.ts`, `dev-user-group-gateway.ts`
@@ -71,24 +79,25 @@ Accepted
 
 ### Positive
 1. **Flexible development**: Developers can configure custom users with specific roles and offices without code changes
-1. **Azure-compatible**: Can be used in Azure-hosted development environments with credentials stored in Application Settings
+1. **Azure-compatible**: Can be used in Azure-hosted development environments with credentials stored in Key Vault
 1. **No external dependencies**: Does not require Keycloak, additional Okta instances, or other third-party services
 1. **Secure**: Passwords are hashed and salted, never stored in plain text
 1. **E2E testable**: Full support for automated testing with configurable test credentials
 1. **Production-like flows**: Tests actual authentication flow with username/password instead of mock selection
 1. **Independent implementation**: Clean separation from mock mode allows both to coexist and be maintained separately
+1. **Better DX**: JSON file configuration is more readable and maintainable than environment variable JSON strings
 
 ### Negative
 1. **Not for production**: Dev mode is explicitly for development and test environments only
 1. **Manual hash generation**: Developers must use the utility script to generate password hashes (intentional security trade-off)
-1. **Environment variable size**: JSON configuration in environment variables can become large with many users
+1. **File management**: Developers must ensure `dev-users.json` is properly configured and not committed to git
 1. **Additional maintenance**: Three authentication modes (okta, mock, dev) require more maintenance than two
 
 ### Security Considerations
-- **Never commit DEV_USERS to git**: Should be stored in Azure Application Settings or local .env (gitignored)
+- **Never commit dev-users.json to git**: File is gitignored and should remain local or deployed from Key Vault
 - **Use strong passwords**: Even for development environments, use passwords with sufficient entropy
 - **Rotate credentials**: Development environment credentials should be rotated periodically
-- **Limit access**: Restrict access to .env files and Azure Application Settings containing DEV_USERS
+- **Limit access**: Restrict access to `dev-users.json` files and Azure Key Vault secrets containing user data
 
 ### Migration Path
 - Mock mode remains available for quick local testing

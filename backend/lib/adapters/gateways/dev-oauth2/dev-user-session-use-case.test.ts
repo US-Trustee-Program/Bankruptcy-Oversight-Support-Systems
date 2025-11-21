@@ -1,16 +1,28 @@
 import * as jwt from 'jsonwebtoken';
 import * as crypto from 'crypto';
+import * as fs from 'fs';
 import { DevUserSessionUseCase } from './dev-user-session-use-case';
 import { ApplicationContext } from '../../types/basic';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { MOCK_SCRYPT_HASH } from './dev-oauth2-test-helper';
+import { DevUser } from './dev-oauth2-gateway';
+
+// Helper function to mock the dev-users.json file
+function mockDevUsersFile(devUsers: DevUser[] | null) {
+  if (devUsers === null) {
+    // File doesn't exist
+    jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+  } else {
+    jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+    jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(devUsers));
+  }
+}
 
 describe('DevUserSessionUseCase tests', () => {
   const testUsername = 'testuser';
 
   afterEach(() => {
     jest.restoreAllMocks();
-    delete process.env.DEV_USERS;
   });
 
   const createMockContext = (provider: string = 'dev'): ApplicationContext => {
@@ -40,7 +52,7 @@ describe('DevUserSessionUseCase tests', () => {
   };
 
   const setupDevUser = () => {
-    const devUsers = [
+    const devUsers: DevUser[] = [
       {
         username: testUsername,
         passwordHash: MOCK_SCRYPT_HASH,
@@ -49,7 +61,7 @@ describe('DevUserSessionUseCase tests', () => {
         offices: ['USTP_CAMS_Region_2_Office_Manhattan'],
       },
     ];
-    process.env.DEV_USERS = JSON.stringify(devUsers);
+    mockDevUsersFile(devUsers);
   };
 
   describe('lookup', () => {
@@ -152,7 +164,7 @@ describe('DevUserSessionUseCase tests', () => {
       const user1 = 'user1';
       const user2 = 'user2';
 
-      const devUsers = [
+      const devUsers: DevUser[] = [
         {
           username: user1,
           passwordHash: MOCK_SCRYPT_HASH,
@@ -168,7 +180,7 @@ describe('DevUserSessionUseCase tests', () => {
           offices: ['USTP_CAMS_Region_3_Office_Philadelphia'],
         },
       ];
-      process.env.DEV_USERS = JSON.stringify(devUsers);
+      mockDevUsersFile(devUsers);
 
       const context = createMockContext();
       const token1 = createTestToken(user1);
@@ -195,13 +207,12 @@ describe('DevUserSessionUseCase tests', () => {
     });
 
     test('should propagate errors from getUser', async () => {
+      mockDevUsersFile(null); // No file exists
       const context = createMockContext();
       const token = createTestToken('nonexistent-user');
       const useCase = new DevUserSessionUseCase();
 
-      await expect(useCase.lookup(context, token)).rejects.toThrow(
-        'DEV_USERS environment variable is not set',
-      );
+      await expect(useCase.lookup(context, token)).rejects.toThrow('User not found');
     });
 
     test('should handle token with no expiration gracefully', async () => {

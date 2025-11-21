@@ -1,5 +1,6 @@
 import * as jwt from 'jsonwebtoken';
 import * as crypto from 'crypto';
+import * as fs from 'fs';
 import { ForbiddenError } from '../../../common-errors/forbidden-error';
 import { UnauthorizedError } from '../../../common-errors/unauthorized-error';
 import { ApplicationContext } from '../../types/basic';
@@ -14,6 +15,17 @@ import {
 import * as dateHelper from '../../../../../common/src/date-helper';
 import { MOCK_SCRYPT_HASH } from './dev-oauth2-test-helper';
 
+// Helper function to mock the dev-users.json file
+function mockDevUsersFile(devUsers: DevUser[] | null) {
+  if (devUsers === null) {
+    // File doesn't exist
+    jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+  } else {
+    jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+    jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(devUsers));
+  }
+}
+
 describe('dev-oauth2-gateway tests', () => {
   const testCredential = 'abc123xyz';
   let testCredentialHash: string;
@@ -26,7 +38,6 @@ describe('dev-oauth2-gateway tests', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
-    delete process.env.DEV_USERS;
     delete process.env.DEV_SESSION_EXPIRE_LENGTH;
   });
 
@@ -68,23 +79,30 @@ describe('dev-oauth2-gateway tests', () => {
       await expect(devAuthentication(context)).rejects.toThrow('Not in dev-oauth2 mode...');
     });
 
-    test('should throw error when DEV_USERS is not set', async () => {
+    test('should handle missing dev-users.json file gracefully', async () => {
+      mockDevUsersFile(null); // File doesn't exist
       const context = mockContext('dev', { username: testUsername, password: testCredential });
-      await expect(devAuthentication(context)).rejects.toThrow(
-        'DEV_USERS environment variable is not set',
-      );
+      // Should get UnauthorizedError because user not found (empty database)
+      await expect(devAuthentication(context)).rejects.toThrow(UnauthorizedError);
+      await expect(devAuthentication(context)).rejects.toThrow('Invalid username or password');
     });
 
-    test('should throw error when DEV_USERS is not valid JSON', async () => {
-      process.env.DEV_USERS = 'invalid json';
+    test('should handle invalid JSON in dev-users.json gracefully', async () => {
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue('invalid json');
       const context = mockContext('dev', { username: testUsername, password: testCredential });
-      await expect(devAuthentication(context)).rejects.toThrow('Failed to parse DEV_USERS');
+      // Should get UnauthorizedError because user not found (empty database due to parse error)
+      await expect(devAuthentication(context)).rejects.toThrow(UnauthorizedError);
+      await expect(devAuthentication(context)).rejects.toThrow('Invalid username or password');
     });
 
-    test('should throw error when DEV_USERS is not an array', async () => {
-      process.env.DEV_USERS = '{"username":"test"}';
+    test('should handle non-array content in dev-users.json gracefully', async () => {
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue('{"username":"test"}');
       const context = mockContext('dev', { username: testUsername, password: testCredential });
-      await expect(devAuthentication(context)).rejects.toThrow('DEV_USERS must be a JSON array');
+      // Should get UnauthorizedError because user not found (empty database due to invalid format)
+      await expect(devAuthentication(context)).rejects.toThrow(UnauthorizedError);
+      await expect(devAuthentication(context)).rejects.toThrow('Invalid username or password');
     });
 
     test('should throw UnauthorizedError when username not found', async () => {
@@ -96,7 +114,7 @@ describe('dev-oauth2-gateway tests', () => {
           offices: ['USTP_CAMS_Region_2_Office_Manhattan'],
         },
       ];
-      process.env.DEV_USERS = JSON.stringify(devUsers);
+      mockDevUsersFile(devUsers);
       const context = mockContext('dev', { username: testUsername, password: testCredential });
       await expect(devAuthentication(context)).rejects.toThrow(UnauthorizedError);
       await expect(devAuthentication(context)).rejects.toThrow('Invalid username or password');
@@ -111,7 +129,7 @@ describe('dev-oauth2-gateway tests', () => {
           offices: ['USTP_CAMS_Region_2_Office_Manhattan'],
         },
       ];
-      process.env.DEV_USERS = JSON.stringify(devUsers);
+      mockDevUsersFile(devUsers);
       const context = mockContext('dev', { username: testUsername, password: 'wrongvalue123' });
       await expect(devAuthentication(context)).rejects.toThrow(UnauthorizedError);
       await expect(devAuthentication(context)).rejects.toThrow('Invalid username or password');
@@ -127,7 +145,7 @@ describe('dev-oauth2-gateway tests', () => {
           offices: ['USTP_CAMS_Region_2_Office_Manhattan'],
         },
       ];
-      process.env.DEV_USERS = JSON.stringify(devUsers);
+      mockDevUsersFile(devUsers);
       const context = mockContext('dev', { username: testUsername, password: testCredential });
 
       const token = await devAuthentication(context);
@@ -152,7 +170,7 @@ describe('dev-oauth2-gateway tests', () => {
           offices: ['USTP_CAMS_Region_2_Office_Manhattan'],
         },
       ];
-      process.env.DEV_USERS = JSON.stringify(devUsers);
+      mockDevUsersFile(devUsers);
 
       const now = 1234567890;
       jest.spyOn(dateHelper, 'nowInSeconds').mockReturnValue(now);
@@ -228,7 +246,7 @@ describe('dev-oauth2-gateway tests', () => {
           offices: ['USTP_CAMS_Region_2_Office_Manhattan'],
         },
       ];
-      process.env.DEV_USERS = JSON.stringify(devUsers);
+      mockDevUsersFile(devUsers);
 
       const token = createToken(testUsername);
       const result = await getUser(token);
@@ -252,7 +270,7 @@ describe('dev-oauth2-gateway tests', () => {
           offices: ['USTP_CAMS_Region_2_Office_Manhattan'],
         },
       ];
-      process.env.DEV_USERS = JSON.stringify(devUsers);
+      mockDevUsersFile(devUsers);
 
       const token = createToken(testUsername);
       const result = await getUser(token);
@@ -260,7 +278,7 @@ describe('dev-oauth2-gateway tests', () => {
       expect(result.user.name).toBe(testUsername);
     });
 
-    test('should throw UnauthorizedError when user not found in DEV_USERS', async () => {
+    test('should throw UnauthorizedError when user not found in dev-users.json', async () => {
       const devUsers: DevUser[] = [
         {
           username: 'otheruser',
@@ -269,7 +287,7 @@ describe('dev-oauth2-gateway tests', () => {
           offices: ['USTP_CAMS_Region_2_Office_Manhattan'],
         },
       ];
-      process.env.DEV_USERS = JSON.stringify(devUsers);
+      mockDevUsersFile(devUsers);
 
       const token = createToken(testUsername);
       await expect(getUser(token)).rejects.toThrow(UnauthorizedError);
@@ -285,7 +303,7 @@ describe('dev-oauth2-gateway tests', () => {
           offices: ['USTP_CAMS_Region_2_Office_Manhattan'],
         },
       ];
-      process.env.DEV_USERS = JSON.stringify(devUsers);
+      mockDevUsersFile(devUsers);
 
       const token = createToken(testUsername);
       const result = await getUser(token);
@@ -305,7 +323,7 @@ describe('dev-oauth2-gateway tests', () => {
           offices: ['USTP_CAMS_Region_2_Office_Manhattan', 'InvalidOfficeCode'],
         },
       ];
-      process.env.DEV_USERS = JSON.stringify(devUsers);
+      mockDevUsersFile(devUsers);
 
       const token = createToken(testUsername);
       const result = await getUser(token);
@@ -323,7 +341,7 @@ describe('dev-oauth2-gateway tests', () => {
           offices: ['USTP_CAMS_Region_2_Office_Manhattan'],
         },
       ];
-      process.env.DEV_USERS = JSON.stringify(devUsers);
+      mockDevUsersFile(devUsers);
 
       const claims = {
         aud: 'api://default',
@@ -349,7 +367,7 @@ describe('dev-oauth2-gateway tests', () => {
           offices: ['USTP_CAMS_Region_2_Office_Manhattan'],
         },
       ];
-      process.env.DEV_USERS = JSON.stringify(devUsers);
+      mockDevUsersFile(devUsers);
 
       const context = {
         config: { authConfig: { provider: 'dev' } },
@@ -371,7 +389,7 @@ describe('dev-oauth2-gateway tests', () => {
           offices: ['USTP_CAMS_Region_2_Office_Manhattan'],
         },
       ];
-      process.env.DEV_USERS = JSON.stringify(devUsers);
+      mockDevUsersFile(devUsers);
 
       const context = {
         config: { authConfig: { provider: 'dev' } },

@@ -1,15 +1,15 @@
 #!/usr/bin/env ts-node
 /**
- * Utility script to generate password hashes for DEV_USERS environment variable.
+ * Utility script to generate password hashes for dev-users.json file.
  *
  * Usage:
- *   tsx ops/scripts/generate-dev-password-hash.ts <password>
+ *   tsx scripts/generate-dev-password-hash.ts <password>
  *
  * Example:
- *   tsx ops/scripts/generate-dev-password-hash.ts mypassword123
+ *   tsx scripts/generate-dev-password-hash.ts mypassword123
  *
  * Output format: scrypt$<salt>$<hash>
- * This output can be used in the DEV_USERS environment variable as the passwordHash field.
+ * This output can be used in the dev-users.json file as the passwordHash field.
  */
 
 import * as crypto from 'crypto';
@@ -30,10 +30,10 @@ async function main() {
     console.error('Error: Password argument is required');
     console.error('');
     console.error('Usage:');
-    console.error('  tsx ops/scripts/generate-dev-password-hash.ts <password>');
+    console.error('  tsx scripts/generate-dev-password-hash.ts <password>');
     console.error('');
     console.error('Example:');
-    console.error('  tsx ops/scripts/generate-dev-password-hash.ts mypassword123');
+    console.error('  tsx scripts/generate-dev-password-hash.ts mypassword123');
     process.exit(1);
   }
 
@@ -49,10 +49,16 @@ async function main() {
   console.log('Generated password hash:');
   console.log(hash);
   console.log('');
-  console.log('Use this hash in your DEV_USERS environment variable:');
-  console.log(
-    `DEV_USERS='[{"username":"yourusername","passwordHash":"${hash}","name":"Your Name","roles":["TrialAttorney","PrivilegedIdentityUser"],"offices":["USTP_CAMS_Region_2_Office_Manhattan"]}]'`,
-  );
+  console.log('Use this hash in your backend/dev-users.json file:');
+  console.log('[');
+  console.log('  {');
+  console.log('    "username": "yourusername",');
+  console.log(`    "passwordHash": "${hash}",`);
+  console.log('    "name": "Your Name",');
+  console.log('    "roles": ["TrialAttorney", "PrivilegedIdentityUser"],');
+  console.log('    "offices": ["USTP_CAMS_Region_2_Office_Manhattan"]');
+  console.log('  }');
+  console.log(']');
 }
 
 main().catch((error) => {
