@@ -26,17 +26,6 @@ const eslintUiTestConfig = tsEslint.config(
     },
   },
   {
-    rules: {
-      // Convert all Vitest rules from error to warn for gradual adoption
-      ...Object.fromEntries(
-        Object.entries(vitest.configs.recommended.rules).map(([key, value]) => [
-          key,
-          Array.isArray(value) ? ['warn', ...value.slice(1)] : 'warn',
-        ]),
-      ),
-    },
-  },
-  {
     plugins: testingLibrary.configs['flat/react']['plugins'],
     files: ['**/*.test.ts', '**/*.test.tsx'],
     rules: {

@@ -75,7 +75,6 @@ describe('_Api2 functions', async () => {
     api2 = await import('./api2');
   });
 
-  // eslint-disable-next-line vitest/expect-expect -- assertions are in callApiFunction helper function
   test('should call real api functions', async () => {
     await callApiFunction(api2.Api2.getAttorneys, null, api);
     await callApiFunction(api2.Api2.getCaseAssignments, 'some-id', api);

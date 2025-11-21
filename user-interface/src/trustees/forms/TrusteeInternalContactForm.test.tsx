@@ -569,7 +569,6 @@ describe('TrusteeInternalContactForm Tests', () => {
     expect(spy2).toHaveBeenCalledWith(spec.city, undefined);
   });
 
-  // eslint-disable-next-line vitest/expect-expect -- smoke test to verify getDynamicSpec removes extra keys without errors
   test('getDynamicSpec removes spec keys that are not present in form data (covers delete path)', async () => {
     (TRUSTEE_INTERNAL_SPEC as unknown as Record<string, unknown[]>).__extra_temp_key = [];
 
