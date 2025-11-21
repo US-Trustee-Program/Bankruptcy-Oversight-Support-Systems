@@ -52,12 +52,7 @@ jobs:
         run: |
           allowedNetworks=$(az network vnet subnet list -g ${{ steps.rgNetwork.outputs.out }} --vnet-name ${{ vars.AZ_NETWORK_VNET_NAME }} --query "[?name=='snet-${{ inputs.apiFunctionName }}' || name=='snet-${{inputs.dataflowsFunctionName}}'].id" -o json)
 
-          # Conditionally set analytics workspace parameter only for Main-Gov
-          if [[ "${{ inputs.ghaEnvironment }}" == "Main-Gov" ]]; then
-            analyticsParam="--analyticsWorkspaceId ${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }}"
-          else
-            analyticsParam=""
-          fi
+          analyticsParam="--analyticsWorkspaceId ${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }}"
 
           ./ops/scripts/pipeline/az-cosmos-deploy.sh \
             -g ${{ secrets.AZURE_RG }} \
