@@ -66,3 +66,10 @@ jobs:
             --keyVaultName ${{ secrets.AZ_KV_APP_CONFIG_NAME }} \
             --kvResourceGroup ${{ secrets.AZ_KV_APP_CONFIG_RG_NAME }} \
             --branchHashId ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }}
+
+      - name: Deploy Dev Users Database
+        id: azure-dev-users-deploy
+        run: |
+          az deployment group create -g ${{ secrets.AZURE_RG }} \
+            -f ./ops/cloud-deployment/lib/cosmos/mongo/cosmos-dev-users-database.bicep \
+            -p accountName=${{ secrets.AZ_COSMOS_MONGO_ACCOUNT_NAME }}

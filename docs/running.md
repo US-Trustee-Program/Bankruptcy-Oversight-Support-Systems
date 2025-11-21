@@ -160,7 +160,11 @@ Azure for the value
 
 ##### Dev Mode Authentication (Optional)
 
-If you are using `CAMS_LOGIN_PROVIDER=dev` for local development, you will need to create a `dev-users.json` file in the `backend` directory. This file contains user account configurations for authentication.
+If you are using `CAMS_LOGIN_PROVIDER=dev` for local development, you have two options for configuring user accounts for authentication:
+
+**Option 1: JSON File (Local Development)**
+
+Create a `dev-users.json` file in the `backend` directory. This file contains user account configurations for authentication.
 
 Example `backend/dev-users.json`:
 
@@ -168,7 +172,7 @@ Example `backend/dev-users.json`:
 [
   {
     "username": "alice",
-    "passwordHash": "scrypt$aGVsbG93b3JsZA==$ZGF0YWhlcmU...",
+    "passwordHash": "--redacted--",
     "name": "Alice Attorney",
     "roles": ["TrialAttorney", "PrivilegedIdentityUser"],
     "offices": ["USTP_CAMS_Region_2_Office_Manhattan"]
@@ -178,13 +182,27 @@ Example `backend/dev-users.json`:
 
 !> The `dev-users.json` file is gitignored and should never be committed to the repository.
 
+**Option 2: MongoDB Database (Deployed Environments)**
+
+If the `dev-users.json` file is not available, the application will automatically fall back to loading users from a MongoDB database named `dev-users` with a `users` collection. This database:
+- Uses the same `MONGO_CONNECTION_STRING` as the main CAMS application
+- Stores user documents with the same schema as the JSON file
+- Is provisioned automatically in deployed environments via the database deployment workflow
+
+The fallback behavior:
+1. First attempts to load from `dev-users.json` file
+2. If file not found or invalid, attempts to load from MongoDB `dev-users` database
+3. If MongoDB is unavailable, uses an empty user database (authentication will fail gracefully)
+
+**Generating Password Hashes**
+
 To generate password hashes for the `passwordHash` field, use the provided utility script:
 
 ```shell
 tsx scripts/generate-dev-password-hash.ts <your-password>
 ```
 
-This will output a properly formatted hash that you can copy into your `dev-users.json` file.
+This will output a properly formatted hash that you can copy into your `dev-users.json` file or MongoDB collection.
 
 ?> For more information about dev mode authentication, see the [DevModeAuthentication ADR](architecture/decision-records/DevModeAuthentication.md).
 

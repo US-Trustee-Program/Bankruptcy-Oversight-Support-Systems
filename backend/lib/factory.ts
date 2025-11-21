@@ -36,7 +36,6 @@ import OfficesDxtrGateway from './adapters/gateways/dxtr/offices.dxtr.gateway';
 import { OpenIdConnectGateway, UserGroupGateway } from './adapters/types/authorization';
 import OktaGateway from './adapters/gateways/okta/okta-gateway';
 import { MockUserSessionUseCase } from './testing/mock-gateways/mock-user-session-use-case';
-import { DevUserSessionUseCase } from './adapters/gateways/dev-oauth2/dev-user-session-use-case';
 import MockOpenIdConnectGateway from './testing/mock-gateways/mock-oauth2-gateway';
 import DevOpenIdConnectGateway from './adapters/gateways/dev-oauth2/dev-oauth2-gateway';
 import { StorageGateway } from './adapters/types/storage';
@@ -278,9 +277,6 @@ export const getAuthorizationGateway = (context: ApplicationContext): OpenIdConn
 export const getUserSessionUseCase = (context: ApplicationContext) => {
   if (context.config.authConfig.provider === 'mock') {
     return new MockUserSessionUseCase();
-  }
-  if (context.config.authConfig.provider === 'dev') {
-    return new DevUserSessionUseCase();
   }
   const repo = new UserSessionUseCase(context);
   deferRelease(repo, context);

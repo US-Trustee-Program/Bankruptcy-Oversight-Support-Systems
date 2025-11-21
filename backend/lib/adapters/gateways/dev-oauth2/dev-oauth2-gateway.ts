@@ -15,6 +15,7 @@ import {
   MOCKED_USTP_OFFICE_DATA_MAP,
 } from '../../../../../common/src/cams/offices';
 import { nowInSeconds } from '../../../../../common/src/date-helper';
+import { DevUsersMongoRepository } from '../mongo/dev-users.mongo.repository';
 
 const MODULE_NAME = 'DEV-OAUTH2-GATEWAY';
 const key = 'dev-oauth2-secret'; //pragma: allowlist secret
@@ -31,7 +32,33 @@ export type DevUser = {
   offices: string[];
 };
 
-function loadDevUsers(): DevUser[] {
+async function loadDevUsersFromMongo(context: ApplicationContext): Promise<DevUser[]> {
+  const connectionString = context.config.documentDbConfig.connectionString;
+  if (!connectionString) {
+    console.error(
+      `${MODULE_NAME}: MONGO_CONNECTION_STRING not configured. Cannot load users from MongoDB.`,
+    );
+    return [];
+  }
+
+  let repo: DevUsersMongoRepository | null = null;
+  try {
+    repo = DevUsersMongoRepository.getInstance(context);
+    const users = await repo.getAllUsers();
+    return users;
+  } catch (error) {
+    console.error(
+      `${MODULE_NAME}: Failed to load users from MongoDB: ${error.message}. Using empty user database.`,
+    );
+    return [];
+  } finally {
+    if (repo) {
+      repo.release();
+    }
+  }
+}
+
+async function loadDevUsers(context: ApplicationContext): Promise<DevUser[]> {
   // Try multiple possible paths to find dev-users.json
   // Different paths are needed for:
   // 1. tsx execution (local express): backend/lib/adapters/gateways/dev-oauth2/ -> 4 levels up
@@ -51,10 +78,10 @@ function loadDevUsers(): DevUser[] {
   }
 
   if (!devUsersPath) {
-    console.error(
-      `${MODULE_NAME}: dev-users.json file not found. Tried: ${possiblePaths.join(', ')}. Using empty user database.`,
+    console.warn(
+      `${MODULE_NAME}: dev-users.json file not found. Tried: ${possiblePaths.join(', ')}. Attempting to load from MongoDB.`,
     );
-    return [];
+    return await loadDevUsersFromMongo(context);
   }
 
   try {
@@ -62,16 +89,17 @@ function loadDevUsers(): DevUser[] {
     const users = JSON.parse(fileContent);
     if (!Array.isArray(users)) {
       console.error(
-        `${MODULE_NAME}: dev-users.json must contain a JSON array. Using empty user database.`,
+        `${MODULE_NAME}: dev-users.json must contain a JSON array. Attempting to load from MongoDB.`,
       );
-      return [];
+      return await loadDevUsersFromMongo(context);
     }
+    console.log(`${MODULE_NAME}: Loaded ${users.length} users from dev-users.json file.`);
     return users as DevUser[];
   } catch (error) {
     console.error(
-      `${MODULE_NAME}: Failed to parse dev-users.json: ${error.message}. Using empty user database.`,
+      `${MODULE_NAME}: Failed to parse dev-users.json: ${error.message}. Attempting to load from MongoDB.`,
     );
-    return [];
+    return await loadDevUsersFromMongo(context);
   }
 }
 
@@ -121,7 +149,7 @@ export async function devAuthentication(context: ApplicationContext): Promise<st
   }
 
   const credentials = (await context.request.body) as { username: string; password: string };
-  const devUsers = loadDevUsers();
+  const devUsers = await loadDevUsers(context);
 
   const devUser = devUsers.find((u) => u.username === credentials.username);
 
@@ -175,9 +203,9 @@ export async function verifyToken(accessToken: string): Promise<CamsJwt> {
   return camsJwt;
 }
 
-export async function getUser(accessToken: string) {
+export async function getUser(context: ApplicationContext, accessToken: string) {
   const decodedToken = jwt.decode(accessToken) as jwt.JwtPayload;
-  const devUsers = loadDevUsers();
+  const devUsers = await loadDevUsers(context);
 
   // Find user by username in sub claim
   const devUser = devUsers.find((u) => u.username === decodedToken.sub);

@@ -10,7 +10,7 @@ export class MockUserSessionUseCase {
   async lookup(context: ApplicationContext, accessToken: string): Promise<CamsSession> {
     // TODO: MAYBE we overlay the PIM record using the user helper function.
     const { provider } = context.config.authConfig;
-    const { user } = await getUser(accessToken);
+    const { user } = await getUser(context, accessToken);
 
     const parts = accessToken.split('.');
     const key = parts[2];

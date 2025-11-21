@@ -9,6 +9,7 @@ import DevUserGroupGateway from './dev-user-group-gateway';
 import LocalStorageGateway from '../storage/local-storage-gateway';
 import { MOCK_SCRYPT_HASH } from './dev-oauth2-test-helper';
 import { UserGroupGatewayConfig } from '../../types/authorization';
+import { MongoCollectionAdapter } from '../mongo/utils/mongo-adapter';
 
 // Helper function to mock the dev-users.json file
 function mockDevUsersFile(devUsers: DevUser[] | null) {
@@ -19,6 +20,16 @@ function mockDevUsersFile(devUsers: DevUser[] | null) {
     jest.spyOn(fs, 'existsSync').mockReturnValue(true);
     jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(devUsers));
   }
+}
+
+// Helper function to mock MongoDB MongoCollectionAdapter
+function mockMongoUsers(users: DevUser[], shouldThrow = false) {
+  if (shouldThrow) {
+    return jest
+      .spyOn(MongoCollectionAdapter.prototype, 'getAll')
+      .mockRejectedValue(new Error('Connection failed'));
+  }
+  return jest.spyOn(MongoCollectionAdapter.prototype, 'getAll').mockResolvedValue(users);
 }
 
 describe('DevUserGroupGateway tests', () => {
@@ -59,6 +70,7 @@ describe('DevUserGroupGateway tests', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+    jest.clearAllMocks();
     // Clear the internal cache between tests
     // This is a workaround since the module maintains state
     const anyGateway = gateway as unknown;
@@ -79,12 +91,14 @@ describe('DevUserGroupGateway tests', () => {
   describe('init', () => {
     test('should initialize without error', async () => {
       mockDevUsersFile(testUsers);
-      const result = await gateway.init({ provider: 'dev' } as UserGroupGatewayConfig);
+      const result = await gateway.init({ provider: 'dev' } as UserGroupGatewayConfig, context);
       expect(result).toBeUndefined();
     });
 
     test('should handle missing dev-users.json file', async () => {
-      const result = await gateway.init({ provider: 'dev' } as UserGroupGatewayConfig);
+      mockDevUsersFile(null);
+      mockMongoUsers([]); // Mock empty MongoDB
+      const result = await gateway.init({ provider: 'dev' } as UserGroupGatewayConfig, context);
       expect(result).toBeUndefined();
     });
   });
@@ -327,6 +341,90 @@ describe('DevUserGroupGateway tests', () => {
       // Should not throw, just return groups with no users
       const groups = await gateway.getUserGroups(context);
       expect(Array.isArray(groups)).toBe(true);
+    });
+  });
+
+  describe('MongoDB fallback', () => {
+    test('should fall back to MongoDB when file does not exist and MONGO_CONNECTION_STRING is not set', async () => {
+      mockDevUsersFile(null); // File doesn't exist
+      mockMongoUsers([]); // Mock empty MongoDB
+
+      // Create context without MONGO_CONNECTION_STRING
+      const testContext = await createMockApplicationContext({
+        env: { MONGO_CONNECTION_STRING: '' },
+      });
+
+      // Should not throw, just return groups with no users
+      const groups = await gateway.getUserGroups(testContext);
+      expect(Array.isArray(groups)).toBe(true);
+    });
+
+    test('should successfully load users from MongoDB when file does not exist', async () => {
+      mockMongoUsers(testUsers); // All test users
+      mockDevUsersFile(null); // File doesn't exist
+
+      // Create context with MONGO_CONNECTION_STRING
+      const testContext = await createMockApplicationContext({
+        env: { MONGO_CONNECTION_STRING: 'mongodb://test-connection' },
+      });
+
+      const aliceId = hashUsername('alice');
+      const user = await gateway.getUserById(testContext, aliceId);
+
+      expect(user.id).toBe(aliceId);
+      expect(user.name).toBe('Alice Attorney');
+    });
+
+    test('should handle MongoDB connection error gracefully', async () => {
+      mockMongoUsers([], true); // shouldThrow = true
+      mockDevUsersFile(null); // File doesn't exist
+
+      // Create context with MONGO_CONNECTION_STRING
+      const testContext = await createMockApplicationContext({
+        env: { MONGO_CONNECTION_STRING: 'mongodb://test-connection' },
+      });
+
+      // Should not throw, just return groups with no users
+      const groups = await gateway.getUserGroups(testContext);
+      expect(Array.isArray(groups)).toBe(true);
+    });
+
+    test('should fall back to MongoDB when JSON parsing fails', async () => {
+      mockMongoUsers([testUsers[0]]); // Alice
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue('invalid json');
+
+      // Create context with MONGO_CONNECTION_STRING
+      const testContext = await createMockApplicationContext({
+        env: { MONGO_CONNECTION_STRING: 'mongodb://test-connection' },
+      });
+
+      // Create a fresh gateway instance after setting up all mocks
+      const freshGateway = new DevUserGroupGateway();
+
+      // Just test that initialization succeeds and MongoDB was called
+      const groups = await freshGateway.getUserGroups(testContext);
+      expect(Array.isArray(groups)).toBe(true);
+      expect(groups.length).toBeGreaterThan(0);
+    });
+
+    test('should fall back to MongoDB when JSON is not an array', async () => {
+      mockMongoUsers([testUsers[1]]); // Bob
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue('{"username":"test"}');
+
+      // Create context with MONGO_CONNECTION_STRING
+      const testContext = await createMockApplicationContext({
+        env: { MONGO_CONNECTION_STRING: 'mongodb://test-connection' },
+      });
+
+      // Create a fresh gateway instance after setting up all mocks
+      const freshGateway = new DevUserGroupGateway();
+
+      // Just test that initialization succeeds and MongoDB was called
+      const groups = await freshGateway.getUserGroups(testContext);
+      expect(Array.isArray(groups)).toBe(true);
+      expect(groups.length).toBeGreaterThan(0);
     });
   });
 });

@@ -50,7 +50,7 @@ export class UserSessionUseCase {
     const MAX_RETRIES = 3;
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
-        return await authGateway.getUser(token);
+        return await authGateway.getUser(context, token);
       } catch (error) {
         if (attempt >= MAX_RETRIES) {
           throw error;

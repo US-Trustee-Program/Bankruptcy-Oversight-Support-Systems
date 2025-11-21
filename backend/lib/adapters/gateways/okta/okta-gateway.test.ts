@@ -8,11 +8,14 @@ import { AuthorizationConfig } from '../../types/authorization';
 import { nowInSeconds } from '../../../../../common/src/date-helper';
 import * as camsJwtModule from '../../../../../common/src/cams/jwt';
 import { isCamsError } from '../../../common-errors/cams-error';
+import { createMockApplicationContext } from '../../../testing/testing-utilities';
+import { ApplicationContext } from '../../types/basic';
 
 describe('Okta gateway tests', () => {
   const gateway = OktaGateway;
+  let context: ApplicationContext;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     const authConfig: AuthorizationConfig = {
       issuer: 'something',
       provider: 'okta',
@@ -20,6 +23,7 @@ describe('Okta gateway tests', () => {
       userInfoUri: 'something',
     };
     jest.spyOn(AuthorizationConfiguration, 'getAuthorizationConfig').mockReturnValue(authConfig);
+    context = await createMockApplicationContext();
   });
 
   afterEach(() => {
@@ -44,7 +48,7 @@ describe('Okta gateway tests', () => {
     ],
   ])('Should receive %s error', async (_desc, authConfig, expectedError) => {
     jest.spyOn(AuthorizationConfiguration, 'getAuthorizationConfig').mockReturnValue(authConfig);
-    await expect(gateway.getUser('test')).rejects.toThrow(expectedError);
+    await expect(gateway.getUser(context, 'test')).rejects.toThrow(expectedError);
   });
 
   test('Should return valid user with Jwt when given valid token and audience', async () => {
@@ -78,7 +82,7 @@ describe('Okta gateway tests', () => {
     };
     const mockFetchResponse = MockFetch.ok(userInfo);
     jest.spyOn(global, 'fetch').mockImplementation(mockFetchResponse);
-    const actual = await gateway.getUser(token);
+    const actual = await gateway.getUser(context, token);
     expect(actual).toEqual({
       user: { id: undefined, name: userInfo.name },
       jwt: {
@@ -94,7 +98,7 @@ describe('Okta gateway tests', () => {
   test('should throw UnauthorizedError if not given valid input', async () => {
     const token = 'testToken';
     jest.spyOn(Verifier, 'verifyAccessToken').mockRejectedValue(new Error('Test error'));
-    await expect(gateway.getUser(token)).rejects.toThrow('Unauthorized');
+    await expect(gateway.getUser(context, token)).rejects.toThrow('Unauthorized');
   });
 
   test('getUser should throw Error if call failed', async () => {
@@ -104,13 +108,13 @@ describe('Okta gateway tests', () => {
     };
     const mockFetch = MockFetch.notOk(userInfo);
     jest.spyOn(global, 'fetch').mockImplementation(mockFetch);
-    await expect(gateway.getUser('testAccessToken')).rejects.toThrow(UnauthorizedError);
+    await expect(gateway.getUser(context, 'testAccessToken')).rejects.toThrow(UnauthorizedError);
   });
 
   test('getUser should throw UnauthorizedError if fetch errors', async () => {
     const mockFetch = MockFetch.throws(new Error('Some unknown error'));
     jest.spyOn(global, 'fetch').mockImplementation(mockFetch);
-    await expect(gateway.getUser('testAccessToken')).rejects.toThrow(UnauthorizedError);
+    await expect(gateway.getUser(context, 'testAccessToken')).rejects.toThrow(UnauthorizedError);
   });
 
   test('should retry verifyAccessTokenWithRetry on ECONNRESET', async () => {
@@ -161,7 +165,7 @@ describe('Okta gateway tests', () => {
       email_verified: true,
     };
     jest.spyOn(global, 'fetch').mockImplementation(MockFetch.ok(userInfo));
-    const actual = await OktaGateway.getUser(token);
+    const actual = await OktaGateway.getUser(context, token);
     expect(actual.user.name).toBe(userInfo.name);
     expect(verifySpy).toHaveBeenCalledTimes(2);
   });
@@ -202,7 +206,7 @@ describe('Okta gateway tests', () => {
     });
     const userInfo = { name: 'Retry User' };
     jest.spyOn(global, 'fetch').mockImplementation(MockFetch.ok(userInfo));
-    const actual = await gateway.getUser(token);
+    const actual = await gateway.getUser(context, token);
     expect(actual.user.name).toBe('Retry User');
     expect(callCount).toBe(2);
   });
@@ -232,7 +236,7 @@ describe('Okta gateway tests', () => {
     jest.spyOn(Verifier, 'verifyAccessToken').mockResolvedValue(jwt);
     // Patch isCamsJwt to return false
     jest.spyOn(camsJwtModule, 'isCamsJwt').mockReturnValue(false);
-    await expect(OktaGateway.getUser(token)).rejects.toThrow('Unable to verify token.');
+    await expect(OktaGateway.getUser(context, token)).rejects.toThrow('Unable to verify token.');
   });
 
   test('should throw UnauthorizedError if claims.groups is missing', async () => {
@@ -260,7 +264,9 @@ describe('Okta gateway tests', () => {
     jest.spyOn(Verifier, 'verifyAccessToken').mockResolvedValue(jwt);
     // Patch isCamsJwt to return true
     jest.spyOn(camsJwtModule, 'isCamsJwt').mockReturnValue(true);
-    await expect(OktaGateway.getUser(token)).rejects.toThrow('Access token claims missing groups.');
+    await expect(OktaGateway.getUser(context, token)).rejects.toThrow(
+      'Access token claims missing groups.',
+    );
   });
 
   test.each([
@@ -345,7 +351,7 @@ describe('Okta gateway tests', () => {
         email_verified: true,
       };
       jest.spyOn(global, 'fetch').mockImplementation(MockFetch.ok(userInfo));
-      const actual = await OktaGateway.getUser(token);
+      const actual = await OktaGateway.getUser(context, token);
       expect(actual.jwt.claims.groups).toEqual(expect.arrayContaining(expectedGroups));
       expect(new Set(actual.jwt.claims.groups).size).toBe(actual.jwt.claims.groups.length);
     },
@@ -395,7 +401,7 @@ describe('Okta gateway tests', () => {
     jest.spyOn(Verifier, 'verifyAccessToken').mockResolvedValue(jwt);
     jest.spyOn(camsJwtModule, 'isCamsJwt').mockReturnValue(true);
     await setupFetch();
-    const call = OktaGateway.getUser(token);
+    const call = OktaGateway.getUser(context, token);
     await expect(call).rejects.toThrow(expectedError);
     await expect(call).rejects.toThrow(expectedMsg);
   });
@@ -404,7 +410,7 @@ describe('Okta gateway tests', () => {
     jest.spyOn(Verifier, 'verifyAccessToken').mockImplementation(async () => {
       throw new Error('Some random error');
     });
-    await expect(gateway.getUser('token')).rejects.toThrow(UnauthorizedError);
+    await expect(gateway.getUser(context, 'token')).rejects.toThrow(UnauthorizedError);
   });
 
   test('should rethrow original error if isCamsError returns true in getUser catch', async () => {
@@ -415,6 +421,6 @@ describe('Okta gateway tests', () => {
     });
     // Patch isCamsError to return true
     jest.spyOn({ isCamsError }, 'isCamsError').mockReturnValue(true);
-    await expect(OktaGateway.getUser(token)).rejects.toBe(camsError);
+    await expect(OktaGateway.getUser(context, token)).rejects.toBe(camsError);
   });
 });
