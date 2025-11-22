@@ -1,5 +1,6 @@
 import { getAuthorizationConfig } from '../../../configs/authorization-configuration';
 import { OpenIdConnectGateway } from '../../types/authorization';
+import { ApplicationContext } from '../../types/basic';
 import { ServerConfigError } from '../../../common-errors/server-config-error';
 import { UnauthorizedError } from '../../../common-errors/unauthorized-error';
 import { verifyAccessToken } from './HumbleVerifier';
@@ -87,7 +88,10 @@ async function verifyToken(token: string): Promise<CamsJwt> {
   }
 }
 
-async function getUser(accessToken: string): Promise<{ user: CamsUserReference; jwt: CamsJwt }> {
+async function getUser(
+  _context: ApplicationContext,
+  accessToken: string,
+): Promise<{ user: CamsUserReference; jwt: CamsJwt }> {
   const { userInfoUri } = getAuthorizationConfig();
 
   try {

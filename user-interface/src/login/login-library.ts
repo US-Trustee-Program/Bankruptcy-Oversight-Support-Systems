@@ -34,8 +34,8 @@ export function getLoginConfiguration<T = unknown>(): T {
   }
 }
 
-export type LoginProvider = 'okta' | 'mock' | 'none';
+export type LoginProvider = 'okta' | 'mock' | 'dev' | 'none';
 
 export function isLoginProviderType(provider: string): provider is LoginProvider {
-  return ['okta', 'mock', 'none'].includes(provider);
+  return ['okta', 'mock', 'dev', 'none'].includes(provider);
 }

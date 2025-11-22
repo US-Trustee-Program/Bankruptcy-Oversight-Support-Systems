@@ -591,7 +591,7 @@ describe('Case Detail sort, search, and filter tests', () => {
       expect(docketListAfter.children.length).toEqual(2);
     });
 
-    test('should list proper dockets when start date changes', async () => {
+    test('should list proper dockets when end date changes', async () => {
       const basicInfoPath = `/case-detail/${testCaseId}/`;
 
       render(

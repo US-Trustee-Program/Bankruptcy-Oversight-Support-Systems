@@ -165,7 +165,7 @@ describe('Test in odd cases', () => {
     );
   };
 
-  test('test null on reset if no value provided to props', async () => {
+  test('null on reset if no value provided to props', async () => {
     renderWithoutProp();
     const inputEl = screen.getByTestId(textAreaId);
 
