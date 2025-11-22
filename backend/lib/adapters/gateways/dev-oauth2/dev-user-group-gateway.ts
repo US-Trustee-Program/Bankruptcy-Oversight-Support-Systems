@@ -19,10 +19,12 @@ import { DevUsersMongoRepository } from '../mongo/dev-users.mongo.repository';
 const MODULE_NAME = 'DEV-USER-GROUP-GATEWAY';
 
 async function loadDevUsersFromMongo(context: ApplicationContext): Promise<DevUser[]> {
+  const { logger } = context;
   const connectionString = context.config.documentDbConfig.connectionString;
   if (!connectionString) {
-    console.error(
-      `${MODULE_NAME}: MONGO_CONNECTION_STRING not configured. Cannot load users from MongoDB.`,
+    logger.error(
+      MODULE_NAME,
+      'MONGO_CONNECTION_STRING not configured. Cannot load users from MongoDB.',
     );
     return [];
   }
@@ -30,11 +32,12 @@ async function loadDevUsersFromMongo(context: ApplicationContext): Promise<DevUs
   let repo: DevUsersMongoRepository | null = null;
   try {
     repo = DevUsersMongoRepository.getInstance(context);
-    const users = await repo.getAllUsers();
+    const users = await repo.getAllUsers(context);
     return users;
   } catch (error) {
-    console.error(
-      `${MODULE_NAME}: Failed to load users from MongoDB: ${error.message}. Using empty user database.`,
+    logger.error(
+      MODULE_NAME,
+      `Failed to load users from MongoDB: ${error.message}. Using empty user database.`,
     );
     return [];
   } finally {
@@ -45,6 +48,7 @@ async function loadDevUsersFromMongo(context: ApplicationContext): Promise<DevUs
 }
 
 async function loadDevUsers(context: ApplicationContext): Promise<DevUser[]> {
+  const { logger } = context;
   // Try multiple possible paths to find dev-users.json
   // Different paths are needed for:
   // 1. tsx execution (local express): backend/lib/adapters/gateways/dev-oauth2/ -> 4 levels up
@@ -64,8 +68,9 @@ async function loadDevUsers(context: ApplicationContext): Promise<DevUser[]> {
   }
 
   if (!devUsersPath) {
-    console.warn(
-      `${MODULE_NAME}: dev-users.json file not found. Tried: ${possiblePaths.join(', ')}. Attempting to load from MongoDB.`,
+    logger.warn(
+      MODULE_NAME,
+      `dev-users.json file not found. Tried: ${possiblePaths.join(', ')}. Attempting to load from MongoDB.`,
     );
     return await loadDevUsersFromMongo(context);
   }
@@ -74,16 +79,18 @@ async function loadDevUsers(context: ApplicationContext): Promise<DevUser[]> {
     const fileContent = fs.readFileSync(devUsersPath, 'utf-8');
     const users = JSON.parse(fileContent);
     if (!Array.isArray(users)) {
-      console.error(
-        `${MODULE_NAME}: dev-users.json must contain a JSON array. Attempting to load from MongoDB.`,
+      logger.error(
+        MODULE_NAME,
+        'dev-users.json must contain a JSON array. Attempting to load from MongoDB.',
       );
       return await loadDevUsersFromMongo(context);
     }
-    console.log(`${MODULE_NAME}: Loaded ${users.length} users from dev-users.json file.`);
+    logger.info(MODULE_NAME, `Loaded ${users.length} users from dev-users.json file.`);
     return users as DevUser[];
   } catch (error) {
-    console.error(
-      `${MODULE_NAME}: Failed to parse dev-users.json: ${error.message}. Attempting to load from MongoDB.`,
+    logger.error(
+      MODULE_NAME,
+      `Failed to parse dev-users.json: ${error.message}. Attempting to load from MongoDB.`,
     );
     return await loadDevUsersFromMongo(context);
   }

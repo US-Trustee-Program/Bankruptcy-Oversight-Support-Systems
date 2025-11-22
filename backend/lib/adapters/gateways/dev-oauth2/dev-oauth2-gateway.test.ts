@@ -15,6 +15,7 @@ import {
 import * as dateHelper from '../../../../../common/src/date-helper';
 import { MOCK_SCRYPT_HASH } from './dev-oauth2-test-helper';
 import { MongoCollectionAdapter } from '../mongo/utils/mongo-adapter';
+import { createMockApplicationContext } from '../../../testing/testing-utilities';
 
 // Helper function to mock the dev-users.json file
 function mockDevUsersFile(devUsers: DevUser[] | null) {
@@ -47,11 +48,6 @@ describe('dev-oauth2-gateway tests', () => {
     testCredentialHash = await generatePasswordHash(testCredential);
   });
 
-  afterEach(() => {
-    jest.restoreAllMocks();
-    delete process.env.DEV_SESSION_EXPIRE_LENGTH;
-  });
-
   describe('generatePasswordHash', () => {
     test('should generate hash in correct format', async () => {
       const hash = await generatePasswordHash('xyz789def');
@@ -71,25 +67,35 @@ describe('dev-oauth2-gateway tests', () => {
   });
 
   describe('devAuthentication', () => {
-    const mockContext = (provider: string, body: unknown, connectionString?: string) =>
-      ({
-        config: {
-          authConfig: {
-            provider,
-          },
-          documentDbConfig: {
-            connectionString: connectionString || process.env.MONGO_CONNECTION_STRING,
-            databaseName: 'test',
-          },
+    async function mockContext(
+      provider: string,
+      body: unknown,
+      connectionString?: string,
+    ): Promise<ApplicationContext> {
+      const context = await createMockApplicationContext({
+        env: {
+          MONGO_CONNECTION_STRING: connectionString || process.env.MONGO_CONNECTION_STRING || '',
         },
         request: {
-          body: Promise.resolve(body),
+          method: 'POST',
+          body,
           url: 'http://localhost:3000/api/oauth2/default',
         },
-      }) as unknown as ApplicationContext;
+      });
+      context.config.authConfig.provider = provider;
+      return context;
+    }
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+      delete process.env.DEV_SESSION_EXPIRE_LENGTH;
+    });
 
     test('should throw ForbiddenError when provider is not dev-oauth2', async () => {
-      const context = mockContext('okta', { username: testUsername, password: testCredential });
+      const context = await mockContext('okta', {
+        username: testUsername,
+        password: testCredential,
+      });
       await expect(devAuthentication(context)).rejects.toThrow(ForbiddenError);
       await expect(devAuthentication(context)).rejects.toThrow('Not in dev-oauth2 mode...');
     });
@@ -97,7 +103,10 @@ describe('dev-oauth2-gateway tests', () => {
     test('should handle missing dev-users.json file gracefully', async () => {
       mockMongoUsers([]); // Return no users from MongoDB
       mockDevUsersFile(null); // File doesn't exist
-      const context = mockContext('dev', { username: testUsername, password: testCredential });
+      const context = await mockContext('dev', {
+        username: testUsername,
+        password: testCredential,
+      });
       // Should get UnauthorizedError because user not found (empty database)
       await expect(devAuthentication(context)).rejects.toThrow(UnauthorizedError);
       await expect(devAuthentication(context)).rejects.toThrow('Invalid username or password');
@@ -107,7 +116,10 @@ describe('dev-oauth2-gateway tests', () => {
       mockMongoUsers([]); // Return no users from MongoDB
       jest.spyOn(fs, 'existsSync').mockReturnValue(true);
       jest.spyOn(fs, 'readFileSync').mockReturnValue('invalid json');
-      const context = mockContext('dev', { username: testUsername, password: testCredential });
+      const context = await mockContext('dev', {
+        username: testUsername,
+        password: testCredential,
+      });
       // Should get UnauthorizedError because user not found (empty database due to parse error)
       await expect(devAuthentication(context)).rejects.toThrow(UnauthorizedError);
       await expect(devAuthentication(context)).rejects.toThrow('Invalid username or password');
@@ -117,7 +129,10 @@ describe('dev-oauth2-gateway tests', () => {
       mockMongoUsers([]); // Return no users from MongoDB
       jest.spyOn(fs, 'existsSync').mockReturnValue(true);
       jest.spyOn(fs, 'readFileSync').mockReturnValue('{"username":"test"}');
-      const context = mockContext('dev', { username: testUsername, password: testCredential });
+      const context = await mockContext('dev', {
+        username: testUsername,
+        password: testCredential,
+      });
       // Should get UnauthorizedError because user not found (empty database due to invalid format)
       await expect(devAuthentication(context)).rejects.toThrow(UnauthorizedError);
       await expect(devAuthentication(context)).rejects.toThrow('Invalid username or password');
@@ -133,7 +148,10 @@ describe('dev-oauth2-gateway tests', () => {
         },
       ];
       mockDevUsersFile(devUsers);
-      const context = mockContext('dev', { username: testUsername, password: testCredential });
+      const context = await mockContext('dev', {
+        username: testUsername,
+        password: testCredential,
+      });
       await expect(devAuthentication(context)).rejects.toThrow(UnauthorizedError);
       await expect(devAuthentication(context)).rejects.toThrow('Invalid username or password');
     });
@@ -148,7 +166,10 @@ describe('dev-oauth2-gateway tests', () => {
         },
       ];
       mockDevUsersFile(devUsers);
-      const context = mockContext('dev', { username: testUsername, password: 'wrongvalue123' });
+      const context = await mockContext('dev', {
+        username: testUsername,
+        password: 'wrongvalue123', // pragma: allowlist secret
+      });
       await expect(devAuthentication(context)).rejects.toThrow(UnauthorizedError);
       await expect(devAuthentication(context)).rejects.toThrow('Invalid username or password');
     });
@@ -164,7 +185,10 @@ describe('dev-oauth2-gateway tests', () => {
         },
       ];
       mockDevUsersFile(devUsers);
-      const context = mockContext('dev', { username: testUsername, password: testCredential });
+      const context = await mockContext('dev', {
+        username: testUsername,
+        password: testCredential,
+      });
 
       const token = await devAuthentication(context);
       expect(token).toBeDefined();
@@ -194,7 +218,10 @@ describe('dev-oauth2-gateway tests', () => {
       const now = 1234567890;
       jest.spyOn(dateHelper, 'nowInSeconds').mockReturnValue(now);
 
-      const context = mockContext('dev', { username: testUsername, password: testCredential });
+      const context = await mockContext('dev', {
+        username: testUsername,
+        password: testCredential,
+      });
       const token = await devAuthentication(context);
 
       const decoded = jwt.decode(token) as jwt.JwtPayload;
@@ -213,7 +240,10 @@ describe('dev-oauth2-gateway tests', () => {
       ];
       mockDevUsersFile(devUsers);
 
-      const context = mockContext('dev', { username: testUsername, password: testCredential });
+      const context = await mockContext('dev', {
+        username: testUsername,
+        password: testCredential,
+      });
       const token = await devAuthentication(context);
 
       expect(token).toBeDefined();
@@ -223,6 +253,10 @@ describe('dev-oauth2-gateway tests', () => {
   });
 
   describe('verifyToken', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
     test('should verify and decode a valid token', async () => {
       const claims = {
         aud: 'api://default',
@@ -266,14 +300,11 @@ describe('dev-oauth2-gateway tests', () => {
     let context: ApplicationContext;
 
     beforeEach(async () => {
-      context = {
-        config: {
-          documentDbConfig: {
-            connectionString: process.env.MONGO_CONNECTION_STRING,
-            databaseName: 'test',
-          },
-        },
-      } as ApplicationContext;
+      context = await createMockApplicationContext();
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
     });
 
     const createToken = (username: string) => {
@@ -433,26 +464,40 @@ describe('dev-oauth2-gateway tests', () => {
   });
 
   describe('MongoDB fallback', () => {
-    const mockContext = (provider: string, body: unknown, connectionString?: string) =>
-      ({
-        config: {
-          authConfig: {
-            provider,
-          },
-          documentDbConfig: {
-            connectionString: connectionString,
-            databaseName: 'test',
-          },
+    async function mockContext(
+      provider: string,
+      body: unknown,
+      connectionString?: string,
+    ): Promise<ApplicationContext> {
+      const context = await createMockApplicationContext({
+        env: {
+          MONGO_CONNECTION_STRING: connectionString || '',
         },
         request: {
-          body: Promise.resolve(body),
+          method: 'POST',
+          body,
           url: 'http://localhost:3000/api/oauth2/default',
         },
-      }) as unknown as ApplicationContext;
+      });
+      context.config.authConfig.provider = provider;
+      return context;
+    }
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+      delete process.env.MONGO_CONNECTION_STRING;
+    });
 
     test('should fall back to MongoDB when file does not exist and MONGO_CONNECTION_STRING is not set', async () => {
       mockDevUsersFile(null); // File doesn't exist
-      const context = mockContext('dev', { username: testUsername, password: testCredential }, '');
+      const context = await mockContext(
+        'dev',
+        {
+          username: testUsername,
+          password: testCredential,
+        },
+        '',
+      );
 
       // Should get UnauthorizedError because MongoDB can't load users (no connection string)
       await expect(devAuthentication(context)).rejects.toThrow(UnauthorizedError);
@@ -470,7 +515,7 @@ describe('dev-oauth2-gateway tests', () => {
 
       mockMongoUsers([testUser]);
       mockDevUsersFile(null); // File doesn't exist
-      const context = mockContext(
+      const context = await mockContext(
         'dev',
         { username: testUsername, password: testCredential },
         'mongodb://test-connection',
@@ -484,7 +529,7 @@ describe('dev-oauth2-gateway tests', () => {
     test('should handle MongoDB connection error gracefully', async () => {
       mockMongoUsers([], true); // shouldThrow = true
       mockDevUsersFile(null); // File doesn't exist
-      const context = mockContext(
+      const context = await mockContext(
         'dev',
         { username: testUsername, password: testCredential },
         'mongodb://test-connection',
@@ -510,7 +555,7 @@ describe('dev-oauth2-gateway tests', () => {
       jest.spyOn(fs, 'existsSync').mockReturnValue(true);
       jest.spyOn(fs, 'readFileSync').mockReturnValue('invalid json');
 
-      const context = mockContext(
+      const context = await mockContext(
         'dev',
         { username: testUsername, password: testCredential },
         'mongodb://test-connection',
@@ -534,7 +579,7 @@ describe('dev-oauth2-gateway tests', () => {
       jest.spyOn(fs, 'existsSync').mockReturnValue(true);
       jest.spyOn(fs, 'readFileSync').mockReturnValue('{"username":"test"}');
 
-      const context = mockContext(
+      const context = await mockContext(
         'dev',
         { username: testUsername, password: testCredential },
         'mongodb://test-connection',
@@ -547,6 +592,10 @@ describe('dev-oauth2-gateway tests', () => {
   });
 
   describe('credential verification edge cases', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
     test('should reject invalid hash format - missing parts', async () => {
       const devUsers: DevUser[] = [
         {
@@ -558,13 +607,14 @@ describe('dev-oauth2-gateway tests', () => {
       ];
       mockDevUsersFile(devUsers);
 
-      const context = {
-        config: { authConfig: { provider: 'dev' } },
+      const context = await createMockApplicationContext({
         request: {
-          body: Promise.resolve({ username: testUsername, password: testCredential }),
+          method: 'POST',
+          body: { username: testUsername, password: testCredential },
           url: 'http://localhost:3000/api/oauth2/default',
         },
-      } as unknown as ApplicationContext;
+      });
+      context.config.authConfig.provider = 'dev';
 
       await expect(devAuthentication(context)).rejects.toThrow('Password verification failed');
     });
@@ -580,13 +630,14 @@ describe('dev-oauth2-gateway tests', () => {
       ];
       mockDevUsersFile(devUsers);
 
-      const context = {
-        config: { authConfig: { provider: 'dev' } },
+      const context = await createMockApplicationContext({
         request: {
-          body: Promise.resolve({ username: testUsername, password: testCredential }),
+          method: 'POST',
+          body: { username: testUsername, password: testCredential },
           url: 'http://localhost:3000/api/oauth2/default',
         },
-      } as unknown as ApplicationContext;
+      });
+      context.config.authConfig.provider = 'dev';
 
       await expect(devAuthentication(context)).rejects.toThrow('Password verification failed');
     });

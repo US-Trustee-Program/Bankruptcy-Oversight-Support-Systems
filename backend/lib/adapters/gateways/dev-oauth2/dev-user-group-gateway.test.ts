@@ -8,7 +8,6 @@ import { DevUser } from './dev-oauth2-gateway';
 import DevUserGroupGateway from './dev-user-group-gateway';
 import LocalStorageGateway from '../storage/local-storage-gateway';
 import { MOCK_SCRYPT_HASH } from './dev-oauth2-test-helper';
-import { UserGroupGatewayConfig } from '../../types/authorization';
 import { MongoCollectionAdapter } from '../mongo/utils/mongo-adapter';
 
 // Helper function to mock the dev-users.json file
@@ -89,16 +88,20 @@ describe('DevUserGroupGateway tests', () => {
   });
 
   describe('init', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
     test('should initialize without error', async () => {
       mockDevUsersFile(testUsers);
-      const result = await gateway.init({ provider: 'dev' } as UserGroupGatewayConfig, context);
+      const result = await gateway.init(context);
       expect(result).toBeUndefined();
     });
 
     test('should handle missing dev-users.json file', async () => {
       mockDevUsersFile(null);
       mockMongoUsers([]); // Mock empty MongoDB
-      const result = await gateway.init({ provider: 'dev' } as UserGroupGatewayConfig, context);
+      const result = await gateway.init(context);
       expect(result).toBeUndefined();
     });
   });
@@ -106,6 +109,10 @@ describe('DevUserGroupGateway tests', () => {
   describe('getUserGroups', () => {
     beforeEach(() => {
       mockDevUsersFile(testUsers);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
     });
 
     test('should return list of all groups', async () => {
@@ -143,6 +150,10 @@ describe('DevUserGroupGateway tests', () => {
   describe('getUserGroupWithUsers', () => {
     beforeEach(() => {
       mockDevUsersFile(testUsers);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
     });
 
     test('should return group with users for valid role group', async () => {
@@ -196,6 +207,10 @@ describe('DevUserGroupGateway tests', () => {
       mockDevUsersFile(testUsers);
     });
 
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
     test('should return users for a role group', async () => {
       const roleMapping = LocalStorageGateway.getRoleMapping();
       const trialAttorneyGroupName = Array.from(roleMapping.entries()).find(
@@ -234,6 +249,10 @@ describe('DevUserGroupGateway tests', () => {
   describe('getUserById', () => {
     beforeEach(() => {
       mockDevUsersFile(testUsers);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
     });
 
     test('should return user by valid ID', async () => {
@@ -314,6 +333,10 @@ describe('DevUserGroupGateway tests', () => {
   });
 
   describe('group initialization', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
     test('should initialize groups only once', async () => {
       mockDevUsersFile(testUsers);
 
@@ -345,6 +368,10 @@ describe('DevUserGroupGateway tests', () => {
   });
 
   describe('MongoDB fallback', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
     test('should fall back to MongoDB when file does not exist and MONGO_CONNECTION_STRING is not set', async () => {
       mockDevUsersFile(null); // File doesn't exist
       mockMongoUsers([]); // Mock empty MongoDB

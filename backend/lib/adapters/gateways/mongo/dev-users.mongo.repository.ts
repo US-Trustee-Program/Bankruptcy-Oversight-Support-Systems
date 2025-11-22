@@ -55,18 +55,24 @@ export class DevUsersMongoRepository {
     DevUsersMongoRepository.dropInstance();
   }
 
-  async getAllUsers(_context?: ApplicationContext): Promise<DevUser[]> {
+  async getAllUsers(context?: ApplicationContext): Promise<DevUser[]> {
+    const { logger } = context || {};
     try {
       // Get all users from the collection (no filter)
       const users = await this.getAdapter<DevUser>().getAll();
 
-      console.log(`${MODULE_NAME}: Loaded ${users.length} users from MongoDB dev-users database.`);
+      if (logger) {
+        logger.info(MODULE_NAME, `Loaded ${users.length} users from MongoDB dev-users database.`);
+      }
 
       return users;
     } catch (originalError) {
-      console.error(
-        `${MODULE_NAME}: Failed to load users from MongoDB: ${originalError.message}. Using empty user database.`,
-      );
+      if (logger) {
+        logger.error(
+          MODULE_NAME,
+          `Failed to load users from MongoDB: ${originalError.message}. Using empty user database.`,
+        );
+      }
       return [];
     }
   }
