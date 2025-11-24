@@ -146,6 +146,7 @@ async function main() {
 
   // Create user groups for each role
   for (const [role, users] of roleUsersMap.entries()) {
+    // TODO: I think the group name needs to the expected AD group name, not the role name.
     const groupName = role;
     const userGroup: UserGroup = {
       id: hashGroupName(groupName),
@@ -158,7 +159,7 @@ async function main() {
 
   // Create user groups for each location
   for (const [_, locationData] of locationUsersMap.entries()) {
-    const groupName = locationData.officeName;
+    const groupName = locationData.officeCode;
     const users: CamsUserReference[] = Array.from(locationData.users.values());
     const userGroup: UserGroup = {
       id: hashGroupName(groupName),
