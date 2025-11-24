@@ -9,6 +9,7 @@
 - [Backend Logging](/architecture/decision-records/BackendLogging.md)
 - [Dataflows](/architecture/decision-records/Dataflows.md)
 - [Deployment](/architecture/decision-records/Deployment.md)
+- [Dev Mode Authentication](/architecture/decision-records/DevModeAuthentication.md)
 - [Frontend Build Tooling](/architecture/decision-records/FrontendBuildTooling.md)
 - [Frontend Configuration](/architecture/decision-records/FrontendConfiguration.md)
 - [Frontend Design System](/architecture/decision-records/FrontendDesignSystem.md)

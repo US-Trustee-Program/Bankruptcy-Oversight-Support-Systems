@@ -147,7 +147,8 @@ fi
 if [ "$(az_rg_exists_func "${webappResourceGroupName}")" != true ]; then
 deployment_parameters="${deployment_parameters} createAppRG=true"
 fi
-if [ "$(az_rg_exists_func "${analyticsResourceGroupName}")" != true ]; then
+# Only create analytics resource group for non-branch deployments (main branch)
+if [ "${isBranchDeployment}" != "true" ] && [ "$(az_rg_exists_func "${analyticsResourceGroupName}")" != true ]; then
 deployment_parameters="${deployment_parameters} createAnalyticsRG=true"
 fi
 

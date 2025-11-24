@@ -6,6 +6,9 @@
 .env
 .env.*
 
+## Keep dev user database out of the repo
+backend/dev-users.json
+
 ## JetBrains
 *.iml
 *.iws

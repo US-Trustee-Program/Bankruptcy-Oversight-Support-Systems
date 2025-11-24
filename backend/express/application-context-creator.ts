@@ -123,6 +123,7 @@ export async function applicationContextCreator<B = unknown>(
 
 const ContextCreator = {
   applicationContextCreator,
+  getApplicationContext,
   getLogger,
 };
 

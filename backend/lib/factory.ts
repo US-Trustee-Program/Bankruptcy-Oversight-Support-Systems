@@ -33,10 +33,16 @@ import {
 import { DxtrOrdersGateway } from './adapters/gateways/dxtr/orders.dxtr.gateway';
 import { OfficesGateway } from './use-cases/offices/offices.types';
 import OfficesDxtrGateway from './adapters/gateways/dxtr/offices.dxtr.gateway';
-import { OpenIdConnectGateway, UserGroupGateway } from './adapters/types/authorization';
+import {
+  Initializer,
+  OpenIdConnectGateway,
+  UserGroupGateway,
+  UserGroupGatewayConfig,
+} from './adapters/types/authorization';
 import OktaGateway from './adapters/gateways/okta/okta-gateway';
 import { MockUserSessionUseCase } from './testing/mock-gateways/mock-user-session-use-case';
 import MockOpenIdConnectGateway from './testing/mock-gateways/mock-oauth2-gateway';
+import DevOpenIdConnectGateway from './adapters/gateways/dev-oauth2/dev-oauth2-gateway';
 import { StorageGateway } from './adapters/types/storage';
 import LocalStorageGateway from './adapters/gateways/storage/local-storage-gateway';
 import { MockOrdersGateway } from './testing/mock-gateways/mock.orders.gateway';
@@ -56,6 +62,7 @@ import { deferRelease } from './deferrable/defer-release';
 import { CaseNotesMongoRepository } from './adapters/gateways/mongo/case-notes.mongo.repository';
 import { UsersMongoRepository } from './adapters/gateways/mongo/user.repository';
 import MockUserGroupGateway from './testing/mock-gateways/mock-user-group-gateway';
+import DevUserGroupGateway from './adapters/gateways/dev-oauth2/dev-user-group-gateway';
 import { getCamsErrorWithStack } from './common-errors/error-utilities';
 import { OfficeAssigneeMongoRepository } from './adapters/gateways/mongo/office-assignee.mongo.repository';
 import StorageQueueGateway from './adapters/gateways/storage-queue/storage-queue-gateway';
@@ -63,12 +70,13 @@ import { TrusteesMongoRepository } from './adapters/gateways/mongo/trustees.mong
 import { ListsMongoRepository } from './adapters/gateways/mongo/lists.mongo.repository';
 import { StaffMongoRepository } from './adapters/gateways/mongo/staff.mongo.repository';
 import { UserGroupsMongoRepository } from './adapters/gateways/mongo/user-groups.mongo.repository';
+import { CamsError } from './common-errors/cams-error';
 
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
 let storageGateway: StorageGateway;
 let acmsGateway: AcmsGateway;
-let idpApiGateway: UserGroupGateway;
+let idpApiGateway: UserGroupGateway & Initializer<UserGroupGatewayConfig | ApplicationContext>;
 
 let orderSyncStateRepo: RuntimeStateRepository<OrderSyncState>;
 let casesSyncStateRepo: RuntimeStateRepository<CasesSyncState>;
@@ -266,6 +274,9 @@ export const getAuthorizationGateway = (context: ApplicationContext): OpenIdConn
   if (context.config.authConfig.provider === 'mock') {
     return MockOpenIdConnectGateway;
   }
+  if (context.config.authConfig.provider === 'dev') {
+    return DevOpenIdConnectGateway;
+  }
   return null;
 };
 
@@ -304,11 +315,18 @@ export const getUserGroupGateway = async (
 ): Promise<UserGroupGateway> => {
   if (context.config.authConfig.provider === 'mock') {
     return new MockUserGroupGateway();
-  } else if (context.config.authConfig.provider === 'okta') {
+  } else {
     if (!idpApiGateway) {
       try {
-        idpApiGateway = new OktaUserGroupGateway();
-        await idpApiGateway.init(context.config.userGroupGatewayConfig);
+        if (context.config.authConfig.provider === 'dev') {
+          idpApiGateway = new DevUserGroupGateway();
+          await idpApiGateway.init(context);
+        } else if (context.config.authConfig.provider === 'okta') {
+          idpApiGateway = new OktaUserGroupGateway();
+          await idpApiGateway.init(context.config.userGroupGatewayConfig);
+        } else {
+          throw new CamsError('Invalid identity provider configuration');
+        }
       } catch (originalError) {
         idpApiGateway = null;
         throw getCamsErrorWithStack(originalError, 'FACTORY', {
@@ -321,7 +339,6 @@ export const getUserGroupGateway = async (
     }
     return idpApiGateway;
   }
-  return null;
 };
 
 const getAcmsGateway = (context: ApplicationContext): AcmsGateway => {

@@ -37,6 +37,7 @@ module.exports = {
     'function-apps/dataflows/dataflows.ts',
     'function-apps/dataflows/storage-queues.ts',
     'express/',
+    'scripts/',
   ],
   testMatch: ['**/?(*.)+(spec|test).[jt]s?(x)', '!**/?(*.)+(integration).(spec|test).[jt]s?(x)'],
 };

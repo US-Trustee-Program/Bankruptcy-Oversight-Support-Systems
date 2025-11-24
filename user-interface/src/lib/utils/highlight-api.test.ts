@@ -4,7 +4,7 @@ import { handleHighlight } from './highlight-api';
 
 describe('CSS Highlight API integration', () => {
   const defaultTestDom = new JSDOM(`
-    <html>
+    <html lang="en-us">
     <head></head>
     <body>
       <div id='searchable-docket'>
@@ -53,7 +53,7 @@ describe('CSS Highlight API integration', () => {
 
   test('should not add highlights if the specified element is not available', () => {
     const dom = new JSDOM(`
-      <html>
+      <html lang="en-us">
       <head></head>
       <body></body>
       </html>

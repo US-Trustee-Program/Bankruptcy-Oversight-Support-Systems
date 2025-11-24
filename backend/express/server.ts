@@ -1,6 +1,7 @@
 import * as dotenv from 'dotenv';
 import express, { Application, Request, Response, NextFunction } from 'express';
 import { applicationContextCreator } from './application-context-creator';
+import ContextCreator from './application-context-creator';
 import { sendCamsResponse, errorHandler } from './adapters';
 import { ApplicationContext } from '../lib/adapters/types/basic';
 import { MeController } from '../lib/controllers/me/me.controller';
@@ -23,6 +24,7 @@ import { ListsController } from '../lib/controllers/lists/lists.controller';
 import { PrivilegedIdentityAdminController } from '../lib/controllers/admin/privileged-identity-admin.controller';
 import { finalizeDeferrable } from '../lib/deferrable/finalize-deferrable';
 import { mockAuthentication } from '../lib/testing/mock-gateways/mock-oauth2-gateway';
+import { devAuthentication } from '../lib/adapters/gateways/dev-oauth2/dev-oauth2-gateway';
 import { httpSuccess } from '../lib/adapters/utils/http-response';
 import HttpStatusCodes from '../../common/src/api/http-status-codes';
 import HealthcheckCosmosDb from '../function-apps/api/healthcheck/healthcheck.db.cosmos';
@@ -371,8 +373,21 @@ export function createApp(): Application {
 
   app.post('/api/oauth2/default', async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const context = await applicationContextCreator(req);
-      const token = await mockAuthentication(context);
+      const requestId = `express-${Date.now()}-${Math.random()}`;
+      const logger = ContextCreator.getLogger(requestId);
+      const context = await ContextCreator.getApplicationContext<{
+        username?: string;
+        password?: string;
+        sub?: string;
+      }>(req, logger, requestId);
+
+      let token: string;
+      if (context.config.authConfig.provider === 'dev') {
+        token = await devAuthentication(context);
+      } else {
+        token = await mockAuthentication(context);
+      }
+
       const camsResponse = httpSuccess({
         body: { data: { value: token } },
       });

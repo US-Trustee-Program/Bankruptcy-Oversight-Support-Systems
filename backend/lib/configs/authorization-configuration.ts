@@ -5,10 +5,10 @@ import { keyValuesToRecord } from '../../../common/src/cams/utilities';
 
 dotenv.config();
 
-const provider = ['okta', 'mock', 'none'].includes(process.env.CAMS_LOGIN_PROVIDER)
+const provider = ['okta', 'mock', 'dev', 'none'].includes(process.env.CAMS_LOGIN_PROVIDER)
   ? process.env.CAMS_LOGIN_PROVIDER
   : null;
-const doMockAuth = provider === 'mock';
+const doMockAuth = provider === 'mock' || provider === 'dev';
 const config = doMockAuth
   ? ({} as EnvLoginConfig)
   : keyValuesToRecord(process.env.CAMS_LOGIN_PROVIDER_CONFIG);
@@ -16,7 +16,7 @@ const config = doMockAuth
 const issuer = URL.canParse(config.issuer) ? config.issuer : null;
 
 const authorizationConfig = doMockAuth
-  ? ({ issuer, audience: null, provider: 'mock', userInfoUri: null } as const)
+  ? ({ issuer, audience: null, provider, userInfoUri: null } as const)
   : ({
       issuer,
       provider,

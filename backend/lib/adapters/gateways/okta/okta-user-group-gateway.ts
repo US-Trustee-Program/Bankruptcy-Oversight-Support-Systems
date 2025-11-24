@@ -1,5 +1,5 @@
 import { CamsUser, CamsUserGroup, CamsUserReference } from '../../../../../common/src/cams/users';
-import { UserGroupGateway, UserGroupGatewayConfig } from '../../types/authorization';
+import { Initializer, UserGroupGateway, UserGroupGatewayConfig } from '../../types/authorization';
 import { UnknownError } from '../../../common-errors/unknown-error';
 import { ApplicationContext } from '../../types/basic';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
@@ -12,7 +12,7 @@ import UsersHelpers from '../../../use-cases/users/users.helpers';
 const MODULE_NAME = 'OKTA-USER-GROUP-GATEWAY';
 const MAX_PAGE_SIZE = 200;
 
-class OktaUserGroupGateway implements UserGroupGateway {
+class OktaUserGroupGateway implements UserGroupGateway, Initializer<UserGroupGatewayConfig> {
   private oktaHumble: OktaHumble;
 
   constructor() {

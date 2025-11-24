@@ -6,38 +6,45 @@ import eslintUiConfig from './user-interface/eslint-ui.config.mjs';
 import eslintNodeConfig from './user-interface/eslint-node.config.mjs';
 
 const frontendSourceConfig = eslintUiConfig.map((configObject) => ({
-  files: ['user-interface/**/*.ts', 'user-interface/**/*.tsx'],
   ...configObject,
+  files: ['user-interface/**/*.ts', 'user-interface/**/*.tsx'],
 }));
 const frontendTestConfig = eslintUiTestConfig.map((configObject) => ({
-  files: ['user-interface/**/*.test.ts', 'user-interface/**/*.test.tsx'],
   ...configObject,
+  files: ['user-interface/**/*.test.ts', 'user-interface/**/*.test.tsx'],
 }));
 const sourceConfig = eslintTsConfig.map((configObject) => ({
-  files: ['backend/**/*.ts', 'common/**/*.ts', 'dev-tools/**/*.ts', 'test/e2e/**/*.ts'],
   ...configObject,
+  files: ['backend/**/*.ts', 'common/**/*.ts', 'dev-tools/**/*.ts', 'test/e2e/**/*.ts'],
 }));
 const testConfig = eslintTestConfig.map((configObject) => ({
+  ...configObject,
   files: [
     'backend/**/*.test.ts',
     'common/**/*.test.ts',
     'dev-tools/**/*.test.ts',
     'test/e2e/**/*.test.ts',
   ],
-  ...configObject,
 }));
 const jsConfig = eslintJsConfig.map((configObject) => ({
-  files: ['**/*.[mc]js', '**/*.js'],
   ...configObject,
+  files: ['**/*.[mc]js', '**/*.js'],
 }));
 const nodeConfig = eslintNodeConfig.map((configObject) => ({
-  files: ['**/envToConfig.js'],
   ...configObject,
+  files: ['user-interface/**/envToConfig.js'],
 }));
 
 const eslintConfig = [
   {
-    ignores: ['**/build/**/*', '**/dist/**/*', '**/node_modules/**/*', '**/coverage/**/*'],
+    ignores: [
+      '**/build/**/*',
+      '**/dist/**/*',
+      '**/node_modules/**/*',
+      '**/coverage/**/*',
+      '**/.*/**',
+      '**/eslint*.config.mjs',
+    ],
   },
   ...frontendSourceConfig,
   ...frontendTestConfig,

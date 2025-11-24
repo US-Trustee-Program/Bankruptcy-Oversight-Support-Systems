@@ -4,18 +4,31 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 
 const tsEslint = require('typescript-eslint');
+const vitest = require('@vitest/eslint-plugin');
 const testingLibrary = require('eslint-plugin-testing-library');
 
 /**
  * eslintUiTestConfig
  *
  * This ConfigArray is intended to be the eslint configuration for TypeScript
- * family test files (e.g. `.test.ts`, `.test.tsx`).
+ * family test files (e.g. `.test.ts`, `.test.tsx`) using Vitest.
  */
-const eslintUiTestConfig = tsEslint.config(eslintUiConfig, {
-  plugins: testingLibrary.configs['flat/react']['plugins'],
-  files: ['**/*.test.ts', '**/*.test.tsx'],
-  rules: {
+const eslintUiTestConfig = tsEslint.config(
+  eslintUiConfig,
+  {
+    plugins: {
+      vitest,
+    },
+    languageOptions: {
+      globals: {
+        ...vitest.environments.env.globals,
+      },
+    },
+  },
+  {
+    plugins: testingLibrary.configs['flat/react']['plugins'],
+    files: ['**/*.test.ts', '**/*.test.tsx'],
+    rules: {
     'testing-library/await-async-events': 'error',
     'testing-library/await-async-queries': 'error',
     'testing-library/await-async-utils': 'error',

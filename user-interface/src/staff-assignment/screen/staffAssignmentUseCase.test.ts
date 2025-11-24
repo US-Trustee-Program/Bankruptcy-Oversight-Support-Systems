@@ -104,7 +104,7 @@ describe('staff assignment use case tests', () => {
     expect(setStaffAssignmentFilterSpy).toHaveBeenCalledWith(expectedFilter);
   });
 
-  test('handleFilterAssignee should set valid staffAssignmentFilter when array of assignees supplied', async () => {
+  test('handleFilterAssignee should set valid staffAssignmentFilter when UNASSIGNED is supplied', async () => {
     const comboOptions = [
       {
         label: '(unassigned)',
