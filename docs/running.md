@@ -204,6 +204,27 @@ tsx scripts/generate-dev-password-hash.ts <your-password>
 
 This will output a properly formatted hash that you can copy into your `dev-users.json` file or MongoDB collection.
 
+**Seeding User Groups and Office Staff**
+
+After configuring dev users, you'll need to populate the MongoDB database with user groups and office staff records. This is required for proper authorization and office assignment functionality.
+
+The seed script performs the following operations:
+1. Queries all users from the dev-users database
+2. Creates user groups for each unique role (e.g., "TrialAttorney", "CaseAssignmentManager")
+3. Creates user groups for each unique office location (e.g., "Manhattan Office")
+4. Persists all user groups to the `user-groups` collection in MongoDB
+5. Creates `OFFICE_STAFF` records in the `offices` collection for each user-office combination
+
+To run the seeding script:
+
+```shell
+tsx scripts/seed-user-groups-and-staff.ts
+```
+
+?> This script should be run whenever you add new dev users or modify existing user roles/offices. It uses upsert operations, so it's safe to run multiple times.
+
+!> Ensure your `MONGO_CONNECTION_STRING` environment variable is properly configured before running this script.
+
 ?> For more information about dev mode authentication, see the [DevModeAuthentication ADR](architecture/decision-records/DevModeAuthentication.md).
 
 ##### Cosmos Database
