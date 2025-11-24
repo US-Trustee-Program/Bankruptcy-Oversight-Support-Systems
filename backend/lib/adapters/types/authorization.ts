@@ -10,11 +10,17 @@ export type AuthorizationConfig = {
 };
 
 export interface OpenIdConnectGateway {
-  getUser: (accessToken: string) => Promise<{ user: CamsUserReference; jwt: CamsJwt }>;
+  getUser: (
+    context: ApplicationContext,
+    accessToken: string,
+  ) => Promise<{ user: CamsUserReference; jwt: CamsJwt }>;
+}
+
+export interface Initializer<T> {
+  init(options: T): Promise<void>;
 }
 
 export interface UserGroupGateway {
-  init(config: UserGroupGatewayConfig): Promise<void>;
   getUserGroupWithUsers: (context: ApplicationContext, groupName: string) => Promise<CamsUserGroup>;
   getUserGroups: (context: ApplicationContext) => Promise<CamsUserGroup[]>;
   getUserGroupUsers(

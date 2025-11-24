@@ -4,13 +4,10 @@ const require = createRequire(import.meta.url);
 
 const tsEslint = require('typescript-eslint');
 
-const eslintNodeConfig = tsEslint.config(
-  eslintJsConfig,
-  {
-    rules: {
-      'no-undef': 'off',
-    }
-  }
-);
+const eslintNodeConfig = tsEslint.config(eslintJsConfig, {
+  rules: {
+    'no-undef': 'off',
+  },
+});
 
 export default eslintNodeConfig;

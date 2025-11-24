@@ -65,7 +65,7 @@ function addSuperUserOffices(user: CamsUser) {
   }
 }
 
-export async function getUser(accessToken: string) {
+export async function getUser(_context: ApplicationContext, accessToken: string) {
   const decodedToken = jwt.decode(accessToken);
   const mockUser = mockUsers.find((role) => role.sub === decodedToken.sub);
   addSuperUserOffices(mockUser.user);

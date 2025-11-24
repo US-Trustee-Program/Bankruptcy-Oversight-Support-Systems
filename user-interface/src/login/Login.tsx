@@ -1,5 +1,6 @@
 import React, { PropsWithChildren } from 'react';
 import { MockLogin } from './providers/mock/MockLogin';
+import { DevLogin } from './providers/dev/DevLogin';
 import { AuthorizedUseOnly } from './AuthorizedUseOnly';
 import { Session } from './Session';
 import {
@@ -39,7 +40,7 @@ export function Login(props: LoginProps): React.ReactNode {
   if (!isLoginProviderType(provider)) {
     const errorMessage =
       'Login provider not specified or not a valid option.\n' +
-      `Valid options are 'okta' | 'mock' | 'none'.\n` +
+      `Valid options are 'okta' | 'mock' | 'dev' | 'none'.\n` +
       `Configuration variable name: 'CAMS_LOGIN_PROVIDER'.\n` +
       `Configuration variable value: '${provider}'.`;
     return <BadConfiguration message={errorMessage} />;
@@ -59,7 +60,7 @@ export function Login(props: LoginProps): React.ReactNode {
   if (session) {
     if (provider == 'okta') {
       issuer = getAuthIssuer();
-    } else if (provider === 'mock') {
+    } else if (provider === 'mock' || provider === 'dev') {
       const { protocol, server, port, basePath } = config;
       const portString = port ? ':' + port : '';
       issuer = protocol + '://' + server + portString + basePath + '/oauth2/default';
@@ -87,6 +88,9 @@ export function Login(props: LoginProps): React.ReactNode {
       break;
     case 'mock':
       providerComponent = <MockLogin user={props.user ?? null}>{props.children}</MockLogin>;
+      break;
+    case 'dev':
+      providerComponent = <DevLogin user={props.user ?? null}>{props.children}</DevLogin>;
       break;
     case 'none':
       providerComponent = (
