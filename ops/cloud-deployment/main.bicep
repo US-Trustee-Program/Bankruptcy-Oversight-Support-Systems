@@ -117,10 +117,6 @@ param maxObjectKeyCount string
 @secure()
 param ustpIssueCollectorHash string = ''
 
-@description('Used to set Content-Security-Policy.')
-@secure()
-param camsReactSelectHash string
-
 param cosmosDatabaseName string
 param e2eDatabaseName string = cosmosDatabaseName
 
@@ -196,7 +192,6 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = {
       actionGroupResourceGroupName: analyticsResourceGroupName
       targetApiServerHost: '${apiFunctionName}.azurewebsites.us ${apiFunctionName}-${slotName}.azurewebsites.us' //adding both production and slot hostname to CSP
       ustpIssueCollectorHash: ustpIssueCollectorHash
-      camsReactSelectHash: camsReactSelectHash
       webappSubnetId: network.outputs.webappSubnetId
       privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
       appServiceRuntime: 'php'
