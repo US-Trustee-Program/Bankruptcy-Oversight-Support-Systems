@@ -61,7 +61,7 @@ async function loadDevUsersFromMongo(context: ApplicationContext): Promise<DevUs
   }
 }
 
-async function loadDevUsers(context: ApplicationContext): Promise<DevUser[]> {
+export async function loadDevUsers(context: ApplicationContext): Promise<DevUser[]> {
   const { logger } = context;
   // Try multiple possible paths to find dev-users.json
   // Different paths are needed for:
