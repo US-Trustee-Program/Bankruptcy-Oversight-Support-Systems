@@ -76,14 +76,13 @@ jobs:
             --networkResourceGroupName ${{ steps.rgNetwork.outputs.out }} \
             --virtualNetworkName ${{ vars.AZ_NETWORK_VNET_NAME }} \
             --analyticsResourceGroupName ${{ secrets.AZ_ANALYTICS_RG }}  \
-            --analyticsWorkspaceName ${{ inputs.deployBranch == 'true' && 'law-cams-branches' || '' }}  \
+            --analyticsWorkspaceName ${{ secrets.AZ_ANALYTICS_WORKSPACE_NAME }}  \
             --idKeyvaultAppConfiguration ${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }}  \
             --kvAppConfigResourceGroupName ${{secrets.AZURE_RG }} \
             --kvAppConfigName ${{ secrets.AZ_KV_APP_CONFIG_NAME }} \
             --cosmosDatabaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
             --e2eDatabaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }}-e2e${{ inputs.environmentHash && format('-{0}', inputs.environmentHash) || '' }} \
             --deployVnet ${{ inputs.deployVnet }} \
-            --camsReactSelectHash ${{ secrets.CAMS_REACT_SELECT_HASH }} \
             --ustpIssueCollectorHash ${{ secrets.USTP_ISSUE_COLLECTOR_HASH }} \
             --createAlerts ${{ inputs.ghaEnvironment == 'Main-Gov' }} \
             --deployAppInsights true \

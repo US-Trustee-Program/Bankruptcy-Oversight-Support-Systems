@@ -99,10 +99,6 @@ param targetApiServerHost string
 @secure()
 param ustpIssueCollectorHash string = ''
 
-@description('React-Select hash. Used to set Content-Security-Policy')
-@secure()
-param camsReactSelectHash string
-
 param privateDnsZoneName string = 'privatelink.azurewebsites.us'
 
 param privateDnsZoneResourceGroup string = virtualNetworkResourceGroupName
@@ -190,10 +186,6 @@ var applicationSettings = concat(
     {
       name: 'CSP_USTP_ISSUE_COLLECTOR_HASH'
       value: ustpIssueCollectorHash
-    }
-    {
-      name: 'CSP_CAMS_REACT_SELECT_HASH'
-      value: camsReactSelectHash
     }
     {
       name: 'OKTA_URL'
