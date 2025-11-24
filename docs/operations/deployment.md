@@ -86,7 +86,6 @@ Note the following assumptions:
 | -------------------------- | ---------------------- | ---------------- | ------------------------------------------------------ |
 | STARTING_MONTH             | Variable               | ---              | Used by application for filtering cases by date range. |
 | USTP_ISSUE_COLLECTOR_HASH  | Secrets                | ---              | USTP Only parameter used for CSP policy.               |
-| CSP_CAMS_REACT_SELECT_HASH | Secrets                | ---              | Allow react-select to pass CSP policy.                 |
 | SLOT_NAME                  | Variable               | ---              | Deployment slot name for slot deployments              |
 
 ### Dataflows Function App
