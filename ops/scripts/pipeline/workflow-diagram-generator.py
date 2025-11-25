@@ -422,16 +422,17 @@ def analyze_dependencies(workflow: Dict) -> Dict:
 def _render_external_inputs_block(external_inputs: Dict[str, Set[str]]) -> Tuple[str, List[str]]:
     """Render the External Inputs subgraph and return its text plus the edges created.
 
-    Preserves existing ordering (iteration order of dict & sets as previously used).
+    Categories and variables are sorted alphabetically for consistent output.
     """
     if not external_inputs:
         return '', []
     block = f'{MERMAID_INDENT}subgraph "External Inputs"\n'
     edges: List[str] = []
-    for category, variables in external_inputs.items():
+    for category in sorted(external_inputs.keys()):
+        variables = external_inputs[category]
         category_id = sanitize_id(category)
         block += f'{MERMAID_DOUBLE_INDENT}{category_id}["{category}"]\n'
-        for var_name in variables:
+        for var_name in sorted(variables):
             var_id = sanitize_id(f"{category_id}_{var_name}")
             block += f'{MERMAID_DOUBLE_INDENT}{var_id}["{var_name}"]\n'
             edges.append(f'{MERMAID_DOUBLE_INDENT}{category_id} --> {var_id}')
@@ -511,9 +512,9 @@ def _build_external_edges(external_deps: Dict[str, List[Dict]], job_variables: D
 def _build_css_classes(workflow_id: str, workflow: Dict, job_variables: Dict[str, Set[str]], external_inputs: Dict[str, Set[str]]) -> str:
     css = get_dependency_css_definitions()
     css += f"{MERMAID_INDENT}class {workflow_id} mainWorkflow\n"
-    for category in external_inputs:
+    for category in sorted(external_inputs):
         css += f"{MERMAID_INDENT}class {sanitize_id(category)} external\n"
-    for job_id in workflow['jobs'].keys():
+    for job_id in sorted(workflow['jobs'].keys()):
         job_node_id = sanitize_id(job_id)
         if job_variables.get(job_id):
             css += f"{MERMAID_INDENT}class {job_node_id}_subgraph jobSubgraph\n"
