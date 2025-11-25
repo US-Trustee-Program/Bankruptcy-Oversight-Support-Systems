@@ -268,7 +268,7 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  getStaff(_ignore: any): Promise<any> {
+  getOversightStaff(_ignore: any): Promise<any> {
     throw new Error('Method not implemented.');
   }
 

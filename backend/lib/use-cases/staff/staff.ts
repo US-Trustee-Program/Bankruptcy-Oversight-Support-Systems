@@ -10,7 +10,7 @@ export default class StaffUseCase {
     this.staffRepository = getStaffRepository(context);
   }
 
-  async getStaff(applicationContext: ApplicationContext): Promise<Array<Staff>> {
-    return this.staffRepository.getStaff(applicationContext);
+  async getOversightStaff(applicationContext: ApplicationContext): Promise<Array<Staff>> {
+    return this.staffRepository.getOversightStaff(applicationContext);
   }
 }

@@ -76,7 +76,7 @@ describe('_Api2 functions', async () => {
   });
 
   test('should call real api functions', async () => {
-    await callApiFunction(api2.Api2.getStaff, null, api);
+    await callApiFunction(api2.Api2.getOversightStaff, null, api);
     await callApiFunction(api2.Api2.getCaseAssignments, 'some-id', api);
     await callApiFunction(api2.Api2.getCaseAssociations, 'some-id', api);
     await callApiFunction(api2.Api2.getCaseDetail, 'some-id', api);
@@ -317,7 +317,7 @@ describe('_Api2 functions', async () => {
     vi.spyOn(api.default, 'post').mockRejectedValue(error);
     vi.spyOn(api.default, 'put').mockRejectedValue(error);
     vi.spyOn(api.default, 'delete').mockRejectedValue(error);
-    await expect(api2.Api2.getStaff()).rejects.toThrow(error);
+    await expect(api2.Api2.getOversightStaff()).rejects.toThrow(error);
     await expect(api2.Api2.patchTransferOrderApproval({})).rejects.toThrow(error);
     await expect(api2.Api2.patchTransferOrderRejection({ reason: 'some-string' })).rejects.toThrow(
       error,
