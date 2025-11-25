@@ -1,18 +1,17 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import { TrusteesRepository, UserGroupsRepository } from '../gateways.types';
+import { TrusteesRepository } from '../gateways.types';
 import {
   TrusteeOversightAssignment,
   TrusteeOversightHistory,
 } from '../../../../common/src/cams/trustees';
 import { CamsRole, OversightRole } from '../../../../common/src/cams/roles';
-import { getTrusteesRepository, getUserGroupGateway, getUserGroupsRepository } from '../../factory';
+import { getTrusteesRepository, getUserGroupGateway } from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
 import { createAuditRecord } from '../../../../common/src/cams/auditable';
 import Validators from '../../../../common/src/cams/validators';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
-import { CamsUserReference } from '../../../../common/src/cams/users';
 
 const MODULE_NAME = 'TRUSTEE-ASSIGNMENTS-USE-CASE';
 
@@ -22,28 +21,9 @@ const MODULE_NAME = 'TRUSTEE-ASSIGNMENTS-USE-CASE';
  */
 export class TrusteeAssignmentsUseCase {
   private readonly trusteesRepository: TrusteesRepository;
-  private readonly userGroupsRepository: UserGroupsRepository;
 
   constructor(context: ApplicationContext) {
     this.trusteesRepository = getTrusteesRepository(context);
-    this.userGroupsRepository = getUserGroupsRepository(context);
-  }
-
-  /**
-   * Retrieves available oversight staff from user groups.
-   * @param context - Application context containing logger and session
-   * @returns Promise resolving to object with attorneys and auditors arrays
-   * @throws CamsError if retrieval fails
-   */
-  async getOversightStaff(context: ApplicationContext): Promise<{
-    attorneys: CamsUserReference[];
-    auditors: CamsUserReference[];
-  }> {
-    try {
-      return await this.userGroupsRepository.getOversightStaff(context);
-    } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME);
-    }
   }
 
   /**

@@ -1,9 +1,9 @@
 import React, { forwardRef, useRef, useState, useCallback } from 'react';
 import useApi2 from '@/lib/hooks/UseApi2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
-import { CamsUserReference } from '@common/cams/users';
+import { Staff } from '@common/cams/users';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
-import { OversightRole } from '@common/cams/roles';
+import { CamsRole, OversightRole } from '@common/cams/roles';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import ComboBox from '@/lib/components/combobox/ComboBox';
@@ -28,8 +28,8 @@ const TrusteeOversightAssignmentModal = forwardRef<
   TrusteeOversightAssignmentModalRef,
   TrusteeOversightAssignmentModalProps
 >((props, ref) => {
-  const [staff, setStaff] = useState<CamsUserReference[]>([]);
-  const [selectedStaff, setSelectedStaff] = useState<CamsUserReference | null>(null);
+  const [staff, setStaff] = useState<Staff[]>([]);
+  const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
   const [currentAssignment, setCurrentAssignment] = useState<TrusteeOversightAssignment | null>(
     null,
   );
@@ -48,51 +48,56 @@ const TrusteeOversightAssignmentModal = forwardRef<
         ? 'auditor'
         : 'staff member';
 
-  // Handle external ref
-  React.useImperativeHandle(ref, () => ({
-    show: (assignment?: TrusteeOversightAssignment) => {
-      setCurrentAssignment(assignment ?? null);
-      setSelectedStaff(null); // Reset selection
-      modalRef.current?.show({});
-      loadStaff();
-    },
-    hide: () => {
-      modalRef.current?.hide({});
-      setSelectedStaff(null);
-      setCurrentAssignment(null);
-    },
-  }));
+  const loadStaff = useCallback(
+    async (assignment?: TrusteeOversightAssignment | null) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await api.getOversightStaff();
+        const allStaff = response.data ?? [];
 
-  const loadStaff = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await api.getOversightStaff();
-      const { attorneys = [], auditors = [] } = response.data ?? {};
+        const targetRole =
+          props.role === OversightRole.OversightAttorney
+            ? CamsRole.TrialAttorney
+            : CamsRole.Auditor;
 
-      const staffList =
-        props.role === OversightRole.OversightAttorney
-          ? attorneys
-          : props.role === OversightRole.OversightAuditor
-            ? auditors
-            : [];
+        const staffList = allStaff.filter((member) => member.roles?.includes(targetRole));
 
-      setStaff(staffList);
+        setStaff(staffList);
 
-      if (currentAssignment) {
-        const currentStaffMember = staffList.find(
-          (member) => member.id === currentAssignment.user.id,
-        );
-        if (currentStaffMember) {
-          setSelectedStaff(currentStaffMember);
+        if (assignment) {
+          const currentStaffMember = staffList.find((member) => member.id === assignment.user.id);
+          if (currentStaffMember) {
+            setSelectedStaff(currentStaffMember);
+          }
         }
+      } catch {
+        setError(`Failed to load ${roleLabel}s`);
+      } finally {
+        setIsLoading(false);
       }
-    } catch {
-      setError(`Failed to load ${roleLabel}s`);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [api, currentAssignment, props.role, roleLabel]);
+    },
+    [api, props.role, roleLabel],
+  );
+
+  // Handle external ref
+  React.useImperativeHandle(
+    ref,
+    () => ({
+      show: (assignment?: TrusteeOversightAssignment) => {
+        setCurrentAssignment(assignment ?? null);
+        setSelectedStaff(null); // Reset selection
+        modalRef.current?.show({});
+        loadStaff(assignment);
+      },
+      hide: () => {
+        modalRef.current?.hide({});
+        setSelectedStaff(null);
+        setCurrentAssignment(null);
+      },
+    }),
+    [loadStaff],
+  );
 
   const handleAssignStaff = useCallback(async () => {
     if (selectedStaff) {
@@ -186,6 +191,7 @@ const TrusteeOversightAssignmentModal = forwardRef<
     <Modal
       ref={modalRef}
       modalId={props.modalId}
+      className="trustee-oversight-assignment-modal"
       heading={
         isEditMode
           ? `Edit ${roleLabel.charAt(0).toUpperCase() + roleLabel.slice(1)}`

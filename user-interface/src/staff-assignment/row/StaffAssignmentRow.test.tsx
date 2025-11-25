@@ -66,7 +66,7 @@ describe('StaffAssignmentRow tests', () => {
     );
   }
 
-  vi.spyOn(Api2, 'getAttorneys').mockResolvedValue({ data: TRIAL_ATTORNEYS });
+  vi.spyOn(Api2, 'getOversightStaff').mockResolvedValue({ data: TRIAL_ATTORNEYS });
 
   test('should render a row', async () => {
     const assignedAttorney = MockData.getAttorneyAssignment();

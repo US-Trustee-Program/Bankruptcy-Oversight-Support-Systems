@@ -86,7 +86,6 @@ describe('TrusteeAssignmentsUseCase', () => {
     } as jest.Mocked<UserGroupGateway>;
 
     mockUserGroupsRepository = {
-      getOversightStaff: jest.fn(),
       upsertUserGroupsBatch: jest.fn(),
       read: jest.fn(),
       release: jest.fn(),
@@ -188,62 +187,6 @@ describe('TrusteeAssignmentsUseCase', () => {
           genericError,
         );
       });
-    });
-  });
-
-  describe('getOversightStaff', () => {
-    test('should return attorneys and auditors from repository', async () => {
-      const mockAttorneys: CamsUserReference[] = [
-        { id: 'attorney-1', name: 'Attorney One' },
-        { id: 'attorney-2', name: 'Attorney Two' },
-      ];
-      const mockAuditors: CamsUserReference[] = [
-        { id: 'auditor-1', name: 'Auditor One' },
-        { id: 'auditor-2', name: 'Auditor Two' },
-      ];
-
-      mockUserGroupsRepository.getOversightStaff.mockResolvedValue({
-        attorneys: mockAttorneys,
-        auditors: mockAuditors,
-      });
-
-      const result = await useCase.getOversightStaff(context);
-
-      expect(mockUserGroupsRepository.getOversightStaff).toHaveBeenCalledWith(context);
-      expect(result).toEqual({
-        attorneys: mockAttorneys,
-        auditors: mockAuditors,
-      });
-    });
-
-    test('should return empty arrays when no oversight staff found', async () => {
-      mockUserGroupsRepository.getOversightStaff.mockResolvedValue({
-        attorneys: [],
-        auditors: [],
-      });
-
-      const result = await useCase.getOversightStaff(context);
-
-      expect(result).toEqual({
-        attorneys: [],
-        auditors: [],
-      });
-    });
-
-    test('should propagate errors from repository', async () => {
-      const error = new Error('Database error');
-      mockUserGroupsRepository.getOversightStaff.mockRejectedValue(error);
-
-      mockErrorUtilities.getCamsError.mockReturnValue(
-        new CamsError('TRUSTEE-ASSIGNMENTS-USE-CASE', { message: 'Wrapped error' }),
-      );
-
-      await expect(useCase.getOversightStaff(context)).rejects.toThrow(CamsError);
-
-      expect(mockErrorUtilities.getCamsError).toHaveBeenCalledWith(
-        error,
-        'TRUSTEE-ASSIGNMENTS-USE-CASE',
-      );
     });
   });
 

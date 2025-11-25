@@ -76,7 +76,7 @@ describe('_Api2 functions', async () => {
   });
 
   test('should call real api functions', async () => {
-    await callApiFunction(api2.Api2.getAttorneys, null, api);
+    await callApiFunction(api2.Api2.getOversightStaff, null, api);
     await callApiFunction(api2.Api2.getCaseAssignments, 'some-id', api);
     await callApiFunction(api2.Api2.getCaseAssociations, 'some-id', api);
     await callApiFunction(api2.Api2.getCaseDetail, 'some-id', api);
@@ -101,7 +101,6 @@ describe('_Api2 functions', async () => {
     await callApiFunction(api2.Api2.getTrustee, 'some-id', api);
     await callApiFunction(api2.Api2.getTrusteeHistory, 'some-id', api);
     await callApiFunction(api2.Api2.getTrusteeOversightAssignments, 'some-id', api);
-    await callApiFunction(api2.Api2.getOversightStaff, null, api);
     await callApiFunction(api2.Api2.getBanks, null, api);
     await callApiFunction(api2.Api2.getBankruptcySoftwareList, null, api);
   });
@@ -318,7 +317,7 @@ describe('_Api2 functions', async () => {
     vi.spyOn(api.default, 'post').mockRejectedValue(error);
     vi.spyOn(api.default, 'put').mockRejectedValue(error);
     vi.spyOn(api.default, 'delete').mockRejectedValue(error);
-    await expect(api2.Api2.getAttorneys()).rejects.toThrow(error);
+    await expect(api2.Api2.getOversightStaff()).rejects.toThrow(error);
     await expect(api2.Api2.patchTransferOrderApproval({})).rejects.toThrow(error);
     await expect(api2.Api2.patchTransferOrderRejection({ reason: 'some-string' })).rejects.toThrow(
       error,
@@ -329,7 +328,6 @@ describe('_Api2 functions', async () => {
     await expect(api2.Api2.getTrustee('trustee-id')).rejects.toThrow(error);
     await expect(api2.Api2.getTrusteeHistory('trustee-id')).rejects.toThrow(error);
     await expect(api2.Api2.getTrusteeOversightAssignments('trustee-id')).rejects.toThrow(error);
-    await expect(api2.Api2.getOversightStaff()).rejects.toThrow(error);
     await expect(
       api2.Api2.createTrusteeOversightAssignment(
         'trustee-id',
@@ -394,14 +392,6 @@ describe('_Api2 functions', async () => {
     const trusteeId = 'trustee-id';
     api2.Api2.getTrusteeOversightAssignments(trusteeId);
     expect(getSpy).toHaveBeenCalledWith(`/trustees/${trusteeId}/oversight-assignments`, {});
-  });
-
-  test('should call api.get function when calling getOversightStaff', () => {
-    const getSpy = vi
-      .spyOn(api.default, 'get')
-      .mockResolvedValue({ data: { attorneys: [], auditors: [] } });
-    api2.Api2.getOversightStaff();
-    expect(getSpy).toHaveBeenCalledWith('/trustee-assignments/oversight-staff', {});
   });
 
   test('should call api.post function when calling createTrusteeOversightAssignment', () => {

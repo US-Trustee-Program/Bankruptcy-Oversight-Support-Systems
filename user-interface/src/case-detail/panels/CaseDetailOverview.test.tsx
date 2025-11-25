@@ -38,7 +38,7 @@ describe('Case detail basic information panel', () => {
     meta: { self: 'self-url' },
     data: attorneyList,
   };
-  vi.spyOn(Api2, 'getAttorneys').mockResolvedValue(attorneyListResponse);
+  vi.spyOn(Api2, 'getOversightStaff').mockResolvedValue(attorneyListResponse);
 
   function renderWithProps(props?: Partial<CaseDetailOverviewProps>) {
     const defaultProps: CaseDetailOverviewProps = {

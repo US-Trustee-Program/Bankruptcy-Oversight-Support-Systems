@@ -241,7 +241,7 @@ function withCache(cacheOptions: CacheOptions): Pick<GenericApiClient, 'get'> {
   };
 }
 
-async function getAttorneys() {
+async function getOversightStaff() {
   return api().get<Staff[]>('/staff');
 }
 
@@ -445,12 +445,6 @@ async function getTrusteeOversightAssignments(trusteeId: string) {
   return api().get<TrusteeOversightAssignment[]>(`/trustees/${trusteeId}/oversight-assignments`);
 }
 
-async function getOversightStaff() {
-  return api().get<{ attorneys: CamsUserReference[]; auditors: CamsUserReference[] }>(
-    '/trustee-assignments/oversight-staff',
-  );
-}
-
 async function createTrusteeOversightAssignment(
   trusteeId: string,
   userId: string,
@@ -467,12 +461,10 @@ export const _Api2 = {
   getTrustee,
   getTrusteeHistory,
   getTrusteeOversightAssignments,
-  getOversightStaff,
   createTrusteeOversightAssignment,
   postTrustee,
   patchTrustee,
   deletePrivilegedIdentityUser,
-  getAttorneys,
   getCaseDetail,
   getCaseDocket,
   getCaseSummary,
@@ -506,6 +498,7 @@ export const _Api2 = {
   getBankruptcySoftwareList,
   postBankruptcySoftware,
   deleteBankruptcySoftware,
+  getOversightStaff,
 };
 
 export const Api2 = getAppConfiguration().useFakeApi ? MockApi2 : _Api2;

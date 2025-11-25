@@ -17,7 +17,7 @@ describe('StaffUseCase', () => {
     mockApplicationContext = await createMockApplicationContext();
 
     mockStaffRepository = {
-      getAttorneyStaff: jest.fn(),
+      getOversightStaff: jest.fn(),
     };
 
     (getStaffRepository as jest.Mock).mockReturnValue(mockStaffRepository);
@@ -44,8 +44,8 @@ describe('StaffUseCase', () => {
     });
   });
 
-  describe('getAttorneyList', () => {
-    test('should return attorney staff list successfully', async () => {
+  describe('getOversightStaff', () => {
+    test('should return oversight staff list with multiple roles successfully', async () => {
       const expectedStaff: Staff[] = [
         {
           id: '1',
@@ -55,36 +55,40 @@ describe('StaffUseCase', () => {
         {
           id: '2',
           name: 'Jane Smith',
-          roles: [CamsRole.TrialAttorney],
+          roles: [CamsRole.Auditor],
+        },
+        {
+          id: '3',
+          name: 'Bob Johnson',
+          roles: [CamsRole.TrialAttorney, CamsRole.Auditor],
         },
       ];
 
-      mockStaffRepository.getAttorneyStaff.mockResolvedValue(expectedStaff);
+      mockStaffRepository.getOversightStaff.mockResolvedValue(expectedStaff);
 
-      const result = await staffUseCase.getAttorneyList(mockApplicationContext);
+      const result = await staffUseCase.getOversightStaff(mockApplicationContext);
 
-      expect(mockStaffRepository.getAttorneyStaff).toHaveBeenCalledWith(mockApplicationContext);
+      expect(mockStaffRepository.getOversightStaff).toHaveBeenCalledWith(mockApplicationContext);
       expect(result).toEqual(expectedStaff);
     });
 
-    test('should return empty array when no attorney staff found', async () => {
-      mockStaffRepository.getAttorneyStaff.mockResolvedValue([]);
+    test('should return empty array when no staff found', async () => {
+      mockStaffRepository.getOversightStaff.mockResolvedValue([]);
 
-      const result = await staffUseCase.getAttorneyList(mockApplicationContext);
+      const result = await staffUseCase.getOversightStaff(mockApplicationContext);
 
-      expect(mockStaffRepository.getAttorneyStaff).toHaveBeenCalledWith(mockApplicationContext);
+      expect(mockStaffRepository.getOversightStaff).toHaveBeenCalledWith(mockApplicationContext);
       expect(result).toEqual([]);
     });
 
     test('should handle repository errors gracefully', async () => {
       const expectedError = new Error('Database connection failed');
-      mockStaffRepository.getAttorneyStaff.mockRejectedValue(expectedError);
+      mockStaffRepository.getOversightStaff.mockRejectedValue(expectedError);
 
-      // Act & Assert
-      await expect(staffUseCase.getAttorneyList(mockApplicationContext)).rejects.toThrow(
+      await expect(staffUseCase.getOversightStaff(mockApplicationContext)).rejects.toThrow(
         'Database connection failed',
       );
-      expect(mockStaffRepository.getAttorneyStaff).toHaveBeenCalledWith(mockApplicationContext);
+      expect(mockStaffRepository.getOversightStaff).toHaveBeenCalledWith(mockApplicationContext);
     });
   });
 });
