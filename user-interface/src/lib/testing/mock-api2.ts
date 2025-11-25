@@ -240,10 +240,10 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
     response = {
       data: orders,
     };
-  } else if (path.match(/\/offices\/.*\/attorneys/)) {
-    response = {
-      data: MockData.buildArray(MockData.getAttorneyUser, 5),
-    };
+    // } else if (path.match(/\/offices\/.*\/attorneys/)) {
+    //   response = {
+    //     data: MockData.buildArray(MockData.getAttorneyUser, 5),
+    //   };
   } else if (path.match(/\/offices\/.*\/assignees/)) {
     response = {
       data: MockData.buildArray(MockData.getStaffAssignee, 5),
@@ -326,7 +326,7 @@ async function _delete<T = unknown>(_path: string): Promise<ResponseBody<T>> {
   return response as ResponseBody<T>;
 }
 
-async function getAttorneys(): Promise<ResponseBody<Staff[]>> {
+async function getStaff(): Promise<ResponseBody<Staff[]>> {
   return get<Staff[]>('/staff');
 }
 
@@ -586,7 +586,6 @@ export const MockApi2 = {
   postTrustee,
   patchTrustee,
   deletePrivilegedIdentityUser,
-  getAttorneys,
   getCaseDetail,
   getCaseDocket,
   getCaseSummary,
@@ -622,6 +621,7 @@ export const MockApi2 = {
   getBanks,
   getTrusteeOversightAssignments,
   createTrusteeOversightAssignment,
+  getStaff,
 };
 
 export default MockApi2;

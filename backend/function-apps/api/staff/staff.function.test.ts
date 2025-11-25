@@ -6,7 +6,7 @@ import {
   buildTestResponseSuccess,
   createMockAzureFunctionRequest,
 } from '../../azure/testing-helpers';
-import AttorneyList from '../../../lib/use-cases/staff/staff';
+import StaffUseCase from '../../../lib/use-cases/staff/staff';
 import handler from './staff.function';
 import { InvocationContext } from '@azure/functions';
 import { ResponseBody } from '../../../../common/src/api/response';
@@ -21,7 +21,7 @@ describe('Staff Azure Function tests', () => {
     jest
       .spyOn(ContextCreator, 'getApplicationContextSession')
       .mockResolvedValue(MockData.getCamsSession());
-    jest.spyOn(AttorneyList.prototype, 'getStaff').mockResolvedValue([]);
+    jest.spyOn(StaffUseCase.prototype, 'getStaff').mockResolvedValue([]);
   });
 
   const errorTestCases = [

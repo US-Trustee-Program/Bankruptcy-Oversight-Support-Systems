@@ -241,7 +241,7 @@ function withCache(cacheOptions: CacheOptions): Pick<GenericApiClient, 'get'> {
   };
 }
 
-async function getAttorneys() {
+async function getStaff() {
   return api().get<Staff[]>('/staff');
 }
 
@@ -465,7 +465,6 @@ export const _Api2 = {
   postTrustee,
   patchTrustee,
   deletePrivilegedIdentityUser,
-  getAttorneys,
   getCaseDetail,
   getCaseDocket,
   getCaseSummary,
@@ -499,6 +498,7 @@ export const _Api2 = {
   getBankruptcySoftwareList,
   postBankruptcySoftware,
   deleteBankruptcySoftware,
+  getStaff,
 };
 
 export const Api2 = getAppConfiguration().useFakeApi ? MockApi2 : _Api2;
