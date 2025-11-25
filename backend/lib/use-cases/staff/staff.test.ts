@@ -85,7 +85,6 @@ describe('StaffUseCase', () => {
       const expectedError = new Error('Database connection failed');
       mockStaffRepository.getStaff.mockRejectedValue(expectedError);
 
-      // Act & Assert
       await expect(staffUseCase.getStaff(mockApplicationContext)).rejects.toThrow(
         'Database connection failed',
       );
