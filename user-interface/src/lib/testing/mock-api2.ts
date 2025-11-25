@@ -274,7 +274,7 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
     response = {
       data: MockData.getCamsSession({ user: SUPERUSER.user }),
     };
-  } else if (path.match(/\/staff/)) {
+  } else if (path === '/staff') {
     response = {
       data: [
         ...MockData.buildArray(MockData.getAttorneyUser, 3),
