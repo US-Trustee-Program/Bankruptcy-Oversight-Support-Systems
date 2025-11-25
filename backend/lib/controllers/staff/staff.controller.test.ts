@@ -5,7 +5,7 @@ import { NotFoundError } from '../../common-errors/not-found-error';
 import { StaffController } from './staff.controller';
 import { ApplicationContext } from '../../adapters/types/basic';
 
-describe('Attorneys Controller Tests', () => {
+describe('Staff Controller Tests', () => {
   let context: ApplicationContext;
   let controller: StaffController;
 
@@ -14,31 +14,34 @@ describe('Attorneys Controller Tests', () => {
     controller = new StaffController(context);
   });
 
-  test('should return success if staff are found', async () => {
-    const attorneyList = MockData.buildArray(MockData.getAttorneyUser, 5);
+  test('should return success if oversight staff are found', async () => {
+    const staffList = [
+      ...MockData.buildArray(MockData.getAttorneyUser, 3),
+      ...MockData.buildArray(MockData.getAuditorUser, 2),
+    ];
 
-    jest.spyOn(StaffUseCase.prototype, 'getAttorneyList').mockResolvedValue(attorneyList);
+    jest.spyOn(StaffUseCase.prototype, 'getStaff').mockResolvedValue(staffList);
     const response = await controller.handleRequest(context);
     expect(response).toEqual(
       expect.objectContaining({
-        body: { data: attorneyList },
+        body: { data: staffList },
         headers: expect.anything(),
         statusCode: 200,
       }),
     );
   });
 
-  test('should throw NotFound error if case summary is not found', async () => {
-    const error = new NotFoundError('ATTORNEYS-USE-CASE', {
-      message: 'Case summary not found for case ID.',
+  test('should throw NotFound error if staff are not found', async () => {
+    const error = new NotFoundError('STAFF-USE-CASE', {
+      message: 'Staff not found.',
     });
-    jest.spyOn(StaffUseCase.prototype, 'getAttorneyList').mockRejectedValue(error);
+    jest.spyOn(StaffUseCase.prototype, 'getStaff').mockRejectedValue(error);
     await expect(controller.handleRequest(context)).rejects.toThrow(error);
   });
 
   test('should throw any other error', async () => {
     const error = new Error('TestError');
-    jest.spyOn(StaffUseCase.prototype, 'getAttorneyList').mockRejectedValue(error);
+    jest.spyOn(StaffUseCase.prototype, 'getStaff').mockRejectedValue(error);
     await expect(controller.handleRequest(context)).rejects.toThrow('Unknown Error');
   });
 });

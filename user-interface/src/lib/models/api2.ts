@@ -445,12 +445,6 @@ async function getTrusteeOversightAssignments(trusteeId: string) {
   return api().get<TrusteeOversightAssignment[]>(`/trustees/${trusteeId}/oversight-assignments`);
 }
 
-async function getOversightStaff() {
-  return api().get<{ attorneys: CamsUserReference[]; auditors: CamsUserReference[] }>(
-    '/trustee-assignments/oversight-staff',
-  );
-}
-
 async function createTrusteeOversightAssignment(
   trusteeId: string,
   userId: string,
@@ -467,7 +461,6 @@ export const _Api2 = {
   getTrustee,
   getTrusteeHistory,
   getTrusteeOversightAssignments,
-  getOversightStaff,
   createTrusteeOversightAssignment,
   postTrustee,
   patchTrustee,

@@ -268,15 +268,11 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  getAttorneyStaff(_ignore: any): Promise<any> {
+  getStaff(_ignore: any): Promise<any> {
     throw new Error('Method not implemented.');
   }
 
   updateTrusteeOversightAssignment(_ignore: any): Promise<any> {
-    throw new Error('Method not implemented.');
-  }
-
-  getOversightStaff(_ignore: any): Promise<any> {
     throw new Error('Method not implemented.');
   }
 

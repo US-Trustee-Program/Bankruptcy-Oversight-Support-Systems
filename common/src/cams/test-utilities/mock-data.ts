@@ -847,6 +847,13 @@ function getAttorneyUser(override: Partial<AttorneyUser> = {}): AttorneyUser {
   };
 }
 
+function getAuditorUser(override: Partial<AttorneyUser> = {}): AttorneyUser {
+  return {
+    ...getCamsUser({ roles: [CamsRole.Auditor] }),
+    ...override,
+  };
+}
+
 function getPrivilegedIdentityUser(
   override: Partial<PrivilegedIdentityUser> = {},
 ): PrivilegedIdentityUser {
@@ -1023,6 +1030,7 @@ export const MockData = {
   getCamsUser,
   getCamsUserGroup,
   getAttorneyUser,
+  getAuditorUser,
   getPrivilegedIdentityUser,
   getRole,
   getRoleAndOfficeGroupNames,
