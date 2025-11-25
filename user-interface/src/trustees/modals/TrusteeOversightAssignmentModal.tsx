@@ -53,7 +53,7 @@ const TrusteeOversightAssignmentModal = forwardRef<
       setIsLoading(true);
       setError(null);
       try {
-        const response = await api.getStaff();
+        const response = await api.getOversightStaff();
         const allStaff = response.data ?? [];
 
         const targetRole =

@@ -17,7 +17,7 @@ describe('StaffUseCase', () => {
     mockApplicationContext = await createMockApplicationContext();
 
     mockStaffRepository = {
-      getStaff: jest.fn(),
+      getOversightStaff: jest.fn(),
     };
 
     (getStaffRepository as jest.Mock).mockReturnValue(mockStaffRepository);
@@ -44,7 +44,7 @@ describe('StaffUseCase', () => {
     });
   });
 
-  describe('getStaff', () => {
+  describe('getOversightStaff', () => {
     test('should return oversight staff list with multiple roles successfully', async () => {
       const expectedStaff: Staff[] = [
         {
@@ -64,31 +64,31 @@ describe('StaffUseCase', () => {
         },
       ];
 
-      mockStaffRepository.getStaff.mockResolvedValue(expectedStaff);
+      mockStaffRepository.getOversightStaff.mockResolvedValue(expectedStaff);
 
-      const result = await staffUseCase.getStaff(mockApplicationContext);
+      const result = await staffUseCase.getOversightStaff(mockApplicationContext);
 
-      expect(mockStaffRepository.getStaff).toHaveBeenCalledWith(mockApplicationContext);
+      expect(mockStaffRepository.getOversightStaff).toHaveBeenCalledWith(mockApplicationContext);
       expect(result).toEqual(expectedStaff);
     });
 
     test('should return empty array when no staff found', async () => {
-      mockStaffRepository.getStaff.mockResolvedValue([]);
+      mockStaffRepository.getOversightStaff.mockResolvedValue([]);
 
-      const result = await staffUseCase.getStaff(mockApplicationContext);
+      const result = await staffUseCase.getOversightStaff(mockApplicationContext);
 
-      expect(mockStaffRepository.getStaff).toHaveBeenCalledWith(mockApplicationContext);
+      expect(mockStaffRepository.getOversightStaff).toHaveBeenCalledWith(mockApplicationContext);
       expect(result).toEqual([]);
     });
 
     test('should handle repository errors gracefully', async () => {
       const expectedError = new Error('Database connection failed');
-      mockStaffRepository.getStaff.mockRejectedValue(expectedError);
+      mockStaffRepository.getOversightStaff.mockRejectedValue(expectedError);
 
-      await expect(staffUseCase.getStaff(mockApplicationContext)).rejects.toThrow(
+      await expect(staffUseCase.getOversightStaff(mockApplicationContext)).rejects.toThrow(
         'Database connection failed',
       );
-      expect(mockStaffRepository.getStaff).toHaveBeenCalledWith(mockApplicationContext);
+      expect(mockStaffRepository.getOversightStaff).toHaveBeenCalledWith(mockApplicationContext);
     });
   });
 });

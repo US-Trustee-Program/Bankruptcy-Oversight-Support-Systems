@@ -326,7 +326,7 @@ async function _delete<T = unknown>(_path: string): Promise<ResponseBody<T>> {
   return response as ResponseBody<T>;
 }
 
-async function getStaff(): Promise<ResponseBody<Staff[]>> {
+async function getOversightStaff(): Promise<ResponseBody<Staff[]>> {
   return get<Staff[]>('/staff');
 }
 
@@ -621,7 +621,7 @@ export const MockApi2 = {
   getBanks,
   getTrusteeOversightAssignments,
   createTrusteeOversightAssignment,
-  getStaff,
+  getOversightStaff,
 };
 
 export default MockApi2;

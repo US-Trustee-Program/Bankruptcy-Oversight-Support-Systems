@@ -21,7 +21,7 @@ describe('Staff Azure Function tests', () => {
     jest
       .spyOn(ContextCreator, 'getApplicationContextSession')
       .mockResolvedValue(MockData.getCamsSession());
-    jest.spyOn(StaffUseCase.prototype, 'getStaff').mockResolvedValue([]);
+    jest.spyOn(StaffUseCase.prototype, 'getOversightStaff').mockResolvedValue([]);
   });
 
   const errorTestCases = [
@@ -30,7 +30,7 @@ describe('Staff Azure Function tests', () => {
   ] as const;
 
   test.each(errorTestCases)(
-    'Should return an HTTP Error if getStaff() throws %s',
+    'Should return an HTTP Error if getOversightStaff() throws %s',
     async (_errorType, errorFactory) => {
       const error = errorFactory();
       const { azureHttpResponse } = buildTestResponseError(error);

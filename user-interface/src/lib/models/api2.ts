@@ -241,7 +241,7 @@ function withCache(cacheOptions: CacheOptions): Pick<GenericApiClient, 'get'> {
   };
 }
 
-async function getStaff() {
+async function getOversightStaff() {
   return api().get<Staff[]>('/staff');
 }
 
@@ -498,7 +498,7 @@ export const _Api2 = {
   getBankruptcySoftwareList,
   postBankruptcySoftware,
   deleteBankruptcySoftware,
-  getStaff,
+  getOversightStaff,
 };
 
 export const Api2 = getAppConfiguration().useFakeApi ? MockApi2 : _Api2;

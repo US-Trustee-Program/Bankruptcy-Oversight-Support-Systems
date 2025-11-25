@@ -92,7 +92,7 @@ describe('TrusteeAssignedStaff', () => {
   };
 
   const mockApi = {
-    getStaff: vi.fn().mockResolvedValue({ data: mockAttorneys }),
+    getOversightStaff: vi.fn().mockResolvedValue({ data: mockAttorneys }),
   };
 
   beforeEach(() => {
@@ -115,7 +115,7 @@ describe('TrusteeAssignedStaff', () => {
     render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
 
     await waitFor(() => {
-      expect(mockApi.getStaff).toHaveBeenCalledTimes(1);
+      expect(mockApi.getOversightStaff).toHaveBeenCalledTimes(1);
     });
   });
 

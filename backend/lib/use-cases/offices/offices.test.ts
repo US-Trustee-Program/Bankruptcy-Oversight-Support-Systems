@@ -52,7 +52,7 @@ describe('offices use case tests', () => {
     const repoSpy = jest
       .spyOn(MockMongoRepository.prototype, 'getOfficeAttorneys')
       .mockResolvedValue(mockAttorneys);
-    const attorneysSpy = jest.spyOn(StaffUseCase.prototype, 'getStaff');
+    const attorneysSpy = jest.spyOn(StaffUseCase.prototype, 'getOversightStaff');
 
     const { officeCode } = MANHATTAN_OFFICE;
     const officeAttorneys = await useCase.getOfficeAttorneys(applicationContext, officeCode);

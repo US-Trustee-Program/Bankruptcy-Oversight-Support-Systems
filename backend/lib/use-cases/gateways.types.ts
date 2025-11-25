@@ -316,7 +316,7 @@ export interface QueueGateway {
 }
 
 export interface StaffRepository {
-  getStaff(applicationContext: ApplicationContext): Promise<Staff[]>;
+  getOversightStaff(applicationContext: ApplicationContext): Promise<Staff[]>;
 }
 
 export interface UserGroupsRepository extends Releasable {

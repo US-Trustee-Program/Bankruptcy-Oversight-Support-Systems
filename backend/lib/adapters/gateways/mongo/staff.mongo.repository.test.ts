@@ -82,7 +82,7 @@ describe('StaffMongoRepository', () => {
       .mockResolvedValueOnce([mockAttorney1, mockAttorney2]) // TrialAttorney
       .mockResolvedValueOnce([mockAuditor1, duplicateStaff]); // Auditor
 
-    const result = await repository.getStaff(mockContext);
+    const result = await repository.getOversightStaff(mockContext);
 
     // Verify deduplication works across roles
     expect(result).toHaveLength(3);
@@ -107,7 +107,7 @@ describe('StaffMongoRepository', () => {
     // Mock repository search returning empty results for all roles
     mockOfficesRepository.search.mockResolvedValue([]);
 
-    const result = await repository.getStaff(mockContext);
+    const result = await repository.getOversightStaff(mockContext);
 
     // Verify empty array returned
     expect(result).toHaveLength(0);
@@ -120,6 +120,6 @@ describe('StaffMongoRepository', () => {
     const mockError = new Error('Repository error');
     mockOfficesRepository.search.mockRejectedValue(mockError);
 
-    await expect(repository.getStaff(mockContext)).rejects.toThrow('Repository error');
+    await expect(repository.getOversightStaff(mockContext)).rejects.toThrow('Repository error');
   });
 });

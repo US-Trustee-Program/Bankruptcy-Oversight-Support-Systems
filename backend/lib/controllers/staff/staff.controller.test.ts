@@ -20,7 +20,7 @@ describe('Staff Controller Tests', () => {
       ...MockData.buildArray(MockData.getAuditorUser, 2),
     ];
 
-    jest.spyOn(StaffUseCase.prototype, 'getStaff').mockResolvedValue(staffList);
+    jest.spyOn(StaffUseCase.prototype, 'getOversightStaff').mockResolvedValue(staffList);
     const response = await controller.handleRequest(context);
     expect(response).toEqual(
       expect.objectContaining({
@@ -35,13 +35,13 @@ describe('Staff Controller Tests', () => {
     const error = new NotFoundError('STAFF-USE-CASE', {
       message: 'Staff not found.',
     });
-    jest.spyOn(StaffUseCase.prototype, 'getStaff').mockRejectedValue(error);
+    jest.spyOn(StaffUseCase.prototype, 'getOversightStaff').mockRejectedValue(error);
     await expect(controller.handleRequest(context)).rejects.toThrow(error);
   });
 
   test('should throw any other error', async () => {
     const error = new Error('TestError');
-    jest.spyOn(StaffUseCase.prototype, 'getStaff').mockRejectedValue(error);
+    jest.spyOn(StaffUseCase.prototype, 'getOversightStaff').mockRejectedValue(error);
     await expect(controller.handleRequest(context)).rejects.toThrow('Unknown Error');
   });
 });

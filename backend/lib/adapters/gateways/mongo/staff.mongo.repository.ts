@@ -1,7 +1,7 @@
 import { StaffRepository } from '../../../use-cases/gateways.types';
 import { ApplicationContext } from '../../types/basic';
 import { Staff } from '../../../../../common/src/cams/users';
-import { CamsRole } from '../../../../../common/src/cams/roles';
+import { CamsRole, OversightRole } from '../../../../../common/src/cams/roles';
 import { getOfficesRepository } from '../../../factory';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 
@@ -40,7 +40,7 @@ export class StaffMongoRepository extends BaseMongoRepository implements StaffRe
 
   private async getStaffByRole(
     applicationContext: ApplicationContext,
-    role: CamsRole,
+    role: CamsRole | OversightRole,
   ): Promise<Staff[]> {
     const repo = getOfficesRepository(applicationContext);
     const results = await repo.search({ role });
@@ -58,9 +58,9 @@ export class StaffMongoRepository extends BaseMongoRepository implements StaffRe
     return Array.from(uniqueResults.values());
   }
 
-  async getStaff(applicationContext: ApplicationContext): Promise<Staff[]> {
+  async getOversightStaff(applicationContext: ApplicationContext): Promise<Staff[]> {
     const allStaff = new Map<string, Staff>();
-    const oversightRoles: CamsRole[] = [CamsRole.TrialAttorney, CamsRole.Auditor];
+    const oversightRoles = Object.values(OversightRole);
 
     for (const role of oversightRoles) {
       const staffForRole = await this.getStaffByRole(applicationContext, role);
