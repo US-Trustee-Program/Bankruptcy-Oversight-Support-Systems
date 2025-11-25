@@ -84,7 +84,8 @@
     }
   ],
   "lockFileMaintenance": {
-    "enabled": false
+    "enabled": true,
+    "schedule": ["before 5am on wednesday"]
   },
   "vulnerabilityAlerts": {
     "enabled": true,
