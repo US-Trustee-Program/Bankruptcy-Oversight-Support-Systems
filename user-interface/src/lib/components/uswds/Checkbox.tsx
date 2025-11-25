@@ -113,6 +113,7 @@ function Checkbox_(props: CheckboxProps, ref: React.Ref<CheckboxRef>) {
           className={`usa-checkbox__label ${UswdsButtonStyle.Unstyled}`}
           onClick={checkHandler}
           title={props.title}
+          aria-label={props.label || `check ${props.value}`}
         >
           {props.label ?? <>&nbsp;</>}
         </Button>
