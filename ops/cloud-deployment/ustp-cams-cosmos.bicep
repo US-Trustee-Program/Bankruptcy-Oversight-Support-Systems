@@ -31,7 +31,7 @@ param kvResourceGroup string
 param actionGroupName string = 'EmailDevelopmentTeam'
 
 @description('Action Group Resource Group Name for alerts')
-param actionGroupResourceGroupName string = 'rg-analytics'
+param actionGroupResourceGroupName string
 
 @description('boolean to determine creation and configuration of Alerts')
 param createAlerts bool = true

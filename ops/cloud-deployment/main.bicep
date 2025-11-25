@@ -96,7 +96,7 @@ param deployAppInsights bool = false
 @description('Name of the Log Analytics workspace.')
 param analyticsWorkspaceName string = 'law-${stackName}'
 
-param analyticsResourceGroupName string = 'rg-analytics'
+param analyticsResourceGroupName string
 
 @description('Url for our Okta Provider')
 param oktaUrl string = ''
