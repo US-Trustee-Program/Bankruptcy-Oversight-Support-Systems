@@ -294,14 +294,14 @@ This diagram shows the explicit and implicit dependencies between jobs in the co
 ```mermaid
 flowchart LR
     subgraph "External Inputs"
-        Workflow_Inputs["Workflow Inputs"]
-        Workflow_Inputs_enableBicepDeployment["enableBicepDeployment"]
         Variables["Variables"]
-        Variables_CAMS_SERVER_PROTOCOL["CAMS_SERVER_PROTOCOL"]
         Variables_CAMS_BASE_PATH["CAMS_BASE_PATH"]
         Variables_CAMS_LAUNCH_DARKLY_ENV["CAMS_LAUNCH_DARKLY_ENV"]
-        Variables_NODE_VERSION["NODE_VERSION"]
         Variables_CAMS_SERVER_PORT["CAMS_SERVER_PORT"]
+        Variables_CAMS_SERVER_PROTOCOL["CAMS_SERVER_PROTOCOL"]
+        Variables_NODE_VERSION["NODE_VERSION"]
+        Workflow_Inputs["Workflow Inputs"]
+        Workflow_Inputs_enableBicepDeployment["enableBicepDeployment"]
     end
 
     subgraph continuous_deployment_workflow["Continuous Deployment"]
@@ -364,17 +364,17 @@ flowchart LR
     classDef mainWorkflow fill:#f3e5f5,fill-opacity:0.15,stroke:#f3e5f5,stroke-width:1px,color:#ffffff
     classDef jobSubgraph fill:#f1f8e9,stroke:#33691e,stroke-width:2px,color:#000000
     class continuous_deployment_workflow mainWorkflow
-    class Workflow_Inputs external
     class Variables external
-    class setup_subgraph jobSubgraph
+    class Workflow_Inputs external
     class accessibility_test_subgraph jobSubgraph
-    class unit_test_frontend_subgraph jobSubgraph
-    class unit_test_backend_subgraph jobSubgraph
-    class unit_test_common_subgraph jobSubgraph
-    class security_scan job
     class build_subgraph jobSubgraph
     class deploy_subgraph jobSubgraph
     class deploy_code_slot_subgraph jobSubgraph
+    class security_scan job
+    class setup_subgraph jobSubgraph
+    class unit_test_backend_subgraph jobSubgraph
+    class unit_test_common_subgraph jobSubgraph
+    class unit_test_frontend_subgraph jobSubgraph
 ```
 
 ##### Deploy code for slot - Job Dependencies
@@ -385,14 +385,14 @@ This diagram shows the explicit and implicit dependencies between jobs in the de
 flowchart LR
     subgraph "External Inputs"
         Workflow_Inputs["Workflow Inputs"]
-        Workflow_Inputs_environmentHash["environmentHash"]
+        Workflow_Inputs_apiFunctionName["apiFunctionName"]
+        Workflow_Inputs_azResourceGrpAppEncrypted["azResourceGrpAppEncrypted"]
         Workflow_Inputs_dataflowsFunctionName["dataflowsFunctionName"]
-        Workflow_Inputs_webappName["webappName"]
+        Workflow_Inputs_environmentHash["environmentHash"]
+        Workflow_Inputs_ghaEnvironment["ghaEnvironment"]
         Workflow_Inputs_slotName["slotName"]
         Workflow_Inputs_stackName["stackName"]
-        Workflow_Inputs_ghaEnvironment["ghaEnvironment"]
-        Workflow_Inputs_azResourceGrpAppEncrypted["azResourceGrpAppEncrypted"]
-        Workflow_Inputs_apiFunctionName["apiFunctionName"]
+        Workflow_Inputs_webappName["webappName"]
     end
 
     subgraph sub_deploy_code_slot_workflow["Deploy code for slot"]
@@ -483,17 +483,17 @@ flowchart LR
     classDef jobSubgraph fill:#f1f8e9,stroke:#33691e,stroke-width:2px,color:#000000
     class sub_deploy_code_slot_workflow mainWorkflow
     class Workflow_Inputs external
-    class deploy_code_subgraph jobSubgraph
-    class deploy_webapp_slot job
     class deploy_api_slot job
+    class deploy_code_subgraph jobSubgraph
     class deploy_dataflows_slot job
+    class deploy_webapp_slot job
+    class enable_access job
+    class endpoint_test_application_post_swap_subgraph jobSubgraph
     class endpoint_test_application_slot_subgraph jobSubgraph
     class execute_e2e_test_subgraph jobSubgraph
-    class swap_webapp_deployment_slot job
-    class swap_nodeapi_deployment_slot job
     class swap_dataflows_app_deployment_slot job
-    class endpoint_test_application_post_swap_subgraph jobSubgraph
-    class enable_access job
+    class swap_nodeapi_deployment_slot job
+    class swap_webapp_deployment_slot job
 ```
 
 ### Schedule Triggered Workflows
@@ -880,14 +880,14 @@ This diagram shows the explicit and implicit dependencies between jobs in the co
 ```mermaid
 flowchart LR
     subgraph "External Inputs"
-        Workflow_Inputs["Workflow Inputs"]
-        Workflow_Inputs_enableBicepDeployment["enableBicepDeployment"]
         Variables["Variables"]
-        Variables_CAMS_SERVER_PROTOCOL["CAMS_SERVER_PROTOCOL"]
         Variables_CAMS_BASE_PATH["CAMS_BASE_PATH"]
         Variables_CAMS_LAUNCH_DARKLY_ENV["CAMS_LAUNCH_DARKLY_ENV"]
-        Variables_NODE_VERSION["NODE_VERSION"]
         Variables_CAMS_SERVER_PORT["CAMS_SERVER_PORT"]
+        Variables_CAMS_SERVER_PROTOCOL["CAMS_SERVER_PROTOCOL"]
+        Variables_NODE_VERSION["NODE_VERSION"]
+        Workflow_Inputs["Workflow Inputs"]
+        Workflow_Inputs_enableBicepDeployment["enableBicepDeployment"]
     end
 
     subgraph continuous_deployment_workflow["Continuous Deployment"]
@@ -950,17 +950,17 @@ flowchart LR
     classDef mainWorkflow fill:#f3e5f5,fill-opacity:0.15,stroke:#f3e5f5,stroke-width:1px,color:#ffffff
     classDef jobSubgraph fill:#f1f8e9,stroke:#33691e,stroke-width:2px,color:#000000
     class continuous_deployment_workflow mainWorkflow
-    class Workflow_Inputs external
     class Variables external
-    class setup_subgraph jobSubgraph
+    class Workflow_Inputs external
     class accessibility_test_subgraph jobSubgraph
-    class unit_test_frontend_subgraph jobSubgraph
-    class unit_test_backend_subgraph jobSubgraph
-    class unit_test_common_subgraph jobSubgraph
-    class security_scan job
     class build_subgraph jobSubgraph
     class deploy_subgraph jobSubgraph
     class deploy_code_slot_subgraph jobSubgraph
+    class security_scan job
+    class setup_subgraph jobSubgraph
+    class unit_test_backend_subgraph jobSubgraph
+    class unit_test_common_subgraph jobSubgraph
+    class unit_test_frontend_subgraph jobSubgraph
 ```
 
 ##### Deploy code for slot - Job Dependencies
@@ -971,14 +971,14 @@ This diagram shows the explicit and implicit dependencies between jobs in the de
 flowchart LR
     subgraph "External Inputs"
         Workflow_Inputs["Workflow Inputs"]
-        Workflow_Inputs_environmentHash["environmentHash"]
+        Workflow_Inputs_apiFunctionName["apiFunctionName"]
+        Workflow_Inputs_azResourceGrpAppEncrypted["azResourceGrpAppEncrypted"]
         Workflow_Inputs_dataflowsFunctionName["dataflowsFunctionName"]
-        Workflow_Inputs_webappName["webappName"]
+        Workflow_Inputs_environmentHash["environmentHash"]
+        Workflow_Inputs_ghaEnvironment["ghaEnvironment"]
         Workflow_Inputs_slotName["slotName"]
         Workflow_Inputs_stackName["stackName"]
-        Workflow_Inputs_ghaEnvironment["ghaEnvironment"]
-        Workflow_Inputs_azResourceGrpAppEncrypted["azResourceGrpAppEncrypted"]
-        Workflow_Inputs_apiFunctionName["apiFunctionName"]
+        Workflow_Inputs_webappName["webappName"]
     end
 
     subgraph sub_deploy_code_slot_workflow["Deploy code for slot"]
@@ -1069,17 +1069,17 @@ flowchart LR
     classDef jobSubgraph fill:#f1f8e9,stroke:#33691e,stroke-width:2px,color:#000000
     class sub_deploy_code_slot_workflow mainWorkflow
     class Workflow_Inputs external
-    class deploy_code_subgraph jobSubgraph
-    class deploy_webapp_slot job
     class deploy_api_slot job
+    class deploy_code_subgraph jobSubgraph
     class deploy_dataflows_slot job
+    class deploy_webapp_slot job
+    class enable_access job
+    class endpoint_test_application_post_swap_subgraph jobSubgraph
     class endpoint_test_application_slot_subgraph jobSubgraph
     class execute_e2e_test_subgraph jobSubgraph
-    class swap_webapp_deployment_slot job
-    class swap_nodeapi_deployment_slot job
     class swap_dataflows_app_deployment_slot job
-    class endpoint_test_application_post_swap_subgraph jobSubgraph
-    class enable_access job
+    class swap_nodeapi_deployment_slot job
+    class swap_webapp_deployment_slot job
 ```
 
 #### Stand Alone DAST Scan
