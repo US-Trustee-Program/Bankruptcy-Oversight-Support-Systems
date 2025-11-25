@@ -33,9 +33,8 @@ Help()
   echo "  --analytics-resource-group=<rg> Analytics resource group name."
   echo "                                Can be set via ANALYTICS_RESOURCE_GROUP environment variable."
   echo "                                Optional - skips analytics workspace deletion if not provided."
-  echo "  --stack-name=<name>           Stack name for resource naming."
+  echo "  --stack-name=<name>           Stack name for resource naming. **REQUIRED**"
   echo "                                Can be set via STACK_NAME environment variable."
-  echo "                                If not provided, attempts to derive from app resource group."
   echo "  --short-hash=<hash>           Branch hash ID. **REQUIRED**"
   echo "  --ignore-validation           Ignore validation checks."
   echo ""
@@ -114,7 +113,7 @@ done
   analytics_rg=${analytics_rg:-${ANALYTICS_RESOURCE_GROUP:-}}
   stack_name=${stack_name:-${STACK_NAME:-}}
 
-  if [[ -z "${app_rg:-}" || -z "${db_account:-}" || -z "${db_rg:-}" || -z "${net_rg:-}" || -z "${hash_id:-}" ]]; then
+  if [[ -z "${app_rg:-}" || -z "${db_account:-}" || -z "${db_rg:-}" || -z "${net_rg:-}" || -z "${stack_name:-}" || -z "${hash_id:-}" ]]; then
   error "Not all required parameters provided. Run this script with the --help flag for details, or set the appropriate environment variables." 2
 fi
 
@@ -122,19 +121,7 @@ fi
 app_rg="${app_rg}-${hash_id}"
 network_rg="${net_rg}-${hash_id}"
 e2e_db="cams-e2e-${hash_id}"
-
-# Derive stack name if not provided
-# Stack name is used for resource naming (e.g., webapp, function apps, log analytics workspace)
-if [[ -z "${stack_name}" ]]; then
-  # Try to derive from app resource group name pattern
-  # Expected pattern: "something-${hash_id}", we want to extract base and construct stack name
-  # This is a fallback for backward compatibility
-  echo "Warning: --stack-name not provided. Resource names that depend on stack name may not be found."
-  echo "         Consider providing --stack-name parameter for full cleanup."
-  stack_name=""
-else
-  stack_name="${stack_name}-${hash_id}"
-fi
+stack_name="${stack_name}-${hash_id}"
 rgAppExists=$(az group exists -n "${app_rg}")
 rgNetExists=$(az group exists -n "${network_rg}")
 dbExists=$(az cosmosdb mongodb database exists -g "${db_rg}" -a "${db_account}" -n "${e2e_db}")
@@ -147,7 +134,7 @@ fi
 echo "Begin clean up of Azure resources for ${hash_id}."
 
 # Disconnect VNET integration from App Service components prior to deleting resources
-if [[ "${rgAppExists}" == "true" && -n "${stack_name}" ]]; then
+if [[ "${rgAppExists}" == "true" ]]; then
     echo "Start disconnecting VNET integration"
     webapp="${stack_name}-webapp"
     az webapp vnet-integration remove -g "${app_rg}" -n "${webapp}"
@@ -157,8 +144,6 @@ if [[ "${rgAppExists}" == "true" && -n "${stack_name}" ]]; then
     dataflowsFunctionApp="${stack_name}-dataflows"
     az functionapp vnet-integration remove -g "${app_rg}" -n "${dataflowsFunctionApp}"
     echo "Completed disconnecting VNET integration"
-elif [[ "${rgAppExists}" == "true" && -z "${stack_name}" ]]; then
-    echo "Skipping VNET integration disconnect (stack name not provided)"
 fi
 
 # Delete by resource group
@@ -180,7 +165,7 @@ elif [[ "${dbExists}" != "true" ]]; then
 fi
 
 # Delete Log Analytics Workspace and associated storage account if they exist
-if [[ -n "${stack_name}" && -n "${analytics_rg}" ]]; then
+if [[ -n "${analytics_rg}" ]]; then
   analytics_workspace="law-${stack_name}"
   echo "Checking for Log Analytics Workspace ${analytics_workspace} in resource group ${analytics_rg}"
   analyticsWorkspaceExists=$(az monitor log-analytics workspace show -g "${analytics_rg}" -n "${analytics_workspace}" --query "id" -o tsv 2>/dev/null || echo "")
@@ -232,9 +217,7 @@ if [[ -n "${stack_name}" && -n "${analytics_rg}" ]]; then
   else
     echo "Log Analytics Workspace does not exist for branch hash ${hash_id}"
   fi
-elif [[ -z "${stack_name}" ]]; then
-  echo "Skipping Log Analytics Workspace deletion (stack name not provided)"
-elif [[ -z "${analytics_rg}" ]]; then
+else
   echo "Skipping Log Analytics Workspace deletion (analytics resource group not provided)"
 fi
 
