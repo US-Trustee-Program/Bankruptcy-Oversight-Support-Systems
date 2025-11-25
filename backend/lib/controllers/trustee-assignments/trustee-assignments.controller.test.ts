@@ -54,7 +54,6 @@ describe('TrusteeAssignmentsController', () => {
     mockUseCase = {
       getTrusteeOversightAssignments: jest.fn(),
       assignOversightStaffToTrustee: jest.fn(),
-      getOversightStaff: jest.fn(),
     } as unknown as jest.Mocked<TrusteeAssignmentsUseCase>;
 
     (
@@ -119,30 +118,6 @@ describe('TrusteeAssignmentsController', () => {
       context.request.url = '/api/v1/trustees/oversight-assignments';
 
       await expect(controller.handleRequest(context)).rejects.toThrow(BadRequestError);
-    });
-  });
-
-  describe('GET /api/v1/trustee-assignments/oversight-staff', () => {
-    test('should return attorneys and auditors', async () => {
-      const mockStaff = {
-        attorneys: [
-          { id: 'attorney-1', name: 'Attorney One' },
-          { id: 'attorney-2', name: 'Attorney Two' },
-        ],
-        auditors: [{ id: 'auditor-1', name: 'Auditor One' }],
-      };
-      mockUseCase.getOversightStaff.mockResolvedValue(mockStaff);
-
-      context.request.method = 'GET';
-      context.request.params = {};
-      context.request.url = '/api/v1/trustee-assignments/oversight-staff';
-
-      const response = await controller.handleRequest(context);
-
-      expect(mockUseCase.getOversightStaff).toHaveBeenCalledWith(context);
-      expect(response.statusCode).toBe(200);
-      expect(response.body.data).toEqual(mockStaff);
-      expect(response.body.meta.self).toBe('/api/v1/trustee-assignments/oversight-staff');
     });
   });
 

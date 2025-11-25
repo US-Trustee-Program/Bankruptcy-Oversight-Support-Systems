@@ -274,6 +274,13 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
     response = {
       data: MockData.getCamsSession({ user: SUPERUSER.user }),
     };
+  } else if (path.match(/\/staff/)) {
+    response = {
+      data: [
+        ...MockData.buildArray(MockData.getAttorneyUser, 3),
+        ...MockData.buildArray(MockData.getAuditorUser, 2),
+      ],
+    };
   } else if (path.match(/\/cases\/999-99-00001/)) {
     response = {
       data: {
@@ -319,8 +326,8 @@ async function _delete<T = unknown>(_path: string): Promise<ResponseBody<T>> {
   return response as ResponseBody<T>;
 }
 
-async function getAttorneys(): Promise<ResponseBody<AttorneyUser[]>> {
-  return get<AttorneyUser[]>('/attorneys');
+async function getAttorneys(): Promise<ResponseBody<Staff[]>> {
+  return get<Staff[]>('/staff');
 }
 
 async function getCaseDetail(caseId: string): Promise<ResponseBody<CaseDetail>> {
@@ -550,21 +557,6 @@ async function getTrusteeOversightAssignments(trusteeId: string) {
   };
 }
 
-async function getOversightStaff() {
-  return {
-    data: {
-      attorneys: [
-        { id: 'attorney-1', name: 'Attorney One' },
-        { id: 'attorney-2', name: 'Attorney Two' },
-      ],
-      auditors: [
-        { id: 'auditor-1', name: 'Auditor One' },
-        { id: 'auditor-2', name: 'Auditor Two' },
-      ],
-    },
-  };
-}
-
 async function createTrusteeOversightAssignment(
   trusteeId: string,
   userId: string,
@@ -629,7 +621,6 @@ export const MockApi2 = {
   postBank,
   getBanks,
   getTrusteeOversightAssignments,
-  getOversightStaff,
   createTrusteeOversightAssignment,
 };
 

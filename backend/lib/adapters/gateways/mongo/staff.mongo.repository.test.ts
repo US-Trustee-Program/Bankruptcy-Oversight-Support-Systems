@@ -33,9 +33,9 @@ describe('StaffMongoRepository', () => {
     mockGetOfficesRepository.mockReturnValue(mockOfficesRepository);
   });
 
-  test('should return unique staff from repository search', async () => {
-    // Mock repository search returning duplicate staff
-    const mockStaff1: OfficeStaff = {
+  test('should return unique staff from all oversight roles', async () => {
+    // Mock staff data for different oversight roles
+    const mockAttorney1: OfficeStaff = {
       id: 'attorney-1',
       name: 'John Attorney',
       roles: [CamsRole.TrialAttorney],
@@ -45,7 +45,7 @@ describe('StaffMongoRepository', () => {
       updatedOn: new Date().toISOString(),
       updatedBy: { id: 'test-user', name: 'Test User' },
     };
-    const mockStaff2: OfficeStaff = {
+    const mockAttorney2: OfficeStaff = {
       id: 'attorney-2',
       name: 'Jane Attorney',
       roles: [CamsRole.TrialAttorney],
@@ -55,10 +55,21 @@ describe('StaffMongoRepository', () => {
       updatedOn: new Date().toISOString(),
       updatedBy: { id: 'test-user', name: 'Test User' },
     };
-    const duplicateStaff1: OfficeStaff = {
+    const mockAuditor1: OfficeStaff = {
+      id: 'auditor-1',
+      name: 'Bob Auditor',
+      roles: [CamsRole.Auditor],
+      documentType: 'OFFICE_STAFF',
+      officeCode: 'OFFICE1',
+      ttl: 3600,
+      updatedOn: new Date().toISOString(),
+      updatedBy: { id: 'test-user', name: 'Test User' },
+    };
+    // Duplicate staff member with attorney ID appearing in auditor results
+    const duplicateStaff: OfficeStaff = {
       id: 'attorney-1',
       name: 'John Attorney',
-      roles: [CamsRole.TrialAttorney],
+      roles: [CamsRole.Auditor],
       documentType: 'OFFICE_STAFF',
       officeCode: 'OFFICE3',
       ttl: 3600,
@@ -66,38 +77,49 @@ describe('StaffMongoRepository', () => {
       updatedBy: { id: 'test-user', name: 'Test User' },
     };
 
-    mockOfficesRepository.search.mockResolvedValue([
-      mockStaff1,
-      mockStaff2,
-      duplicateStaff1, // Duplicate with same id
-    ]);
+    // Mock search to return different results for each role
+    mockOfficesRepository.search
+      .mockResolvedValueOnce([mockAttorney1, mockAttorney2]) // TrialAttorney
+      .mockResolvedValueOnce([mockAuditor1, duplicateStaff]); // Auditor
 
-    const result = await repository.getAttorneyStaff(mockContext);
+    const result = await repository.getStaff(mockContext);
 
-    // Verify deduplication works correctly
-    expect(result).toHaveLength(2);
+    // Verify deduplication works across roles
+    expect(result).toHaveLength(3);
     expect(result).toEqual([
-      { id: 'attorney-1', name: 'John Attorney' },
-      { id: 'attorney-2', name: 'Jane Attorney' },
+      { id: 'attorney-1', name: 'John Attorney', roles: [CamsRole.TrialAttorney] },
+      { id: 'attorney-2', name: 'Jane Attorney', roles: [CamsRole.TrialAttorney] },
+      { id: 'auditor-1', name: 'Bob Auditor', roles: [CamsRole.Auditor] },
     ]);
+
+    // Verify roles field is included in the response
+    expect(result[0].roles).toBeDefined();
+    expect(result[0].roles).toContain(CamsRole.TrialAttorney);
+    expect(result[2].roles).toContain(CamsRole.Auditor);
+
+    // Verify repository was called for each oversight role
+    expect(mockOfficesRepository.search).toHaveBeenCalledTimes(2);
     expect(mockOfficesRepository.search).toHaveBeenCalledWith({ role: CamsRole.TrialAttorney });
+    expect(mockOfficesRepository.search).toHaveBeenCalledWith({ role: CamsRole.Auditor });
   });
 
   test('should return empty array when no staff found', async () => {
-    // Mock repository search returning empty results
+    // Mock repository search returning empty results for all roles
     mockOfficesRepository.search.mockResolvedValue([]);
 
-    const result = await repository.getAttorneyStaff(mockContext);
+    const result = await repository.getStaff(mockContext);
 
     // Verify empty array returned
     expect(result).toHaveLength(0);
+    // Verify repository was called for each oversight role
     expect(mockOfficesRepository.search).toHaveBeenCalledWith({ role: CamsRole.TrialAttorney });
+    expect(mockOfficesRepository.search).toHaveBeenCalledWith({ role: CamsRole.Auditor });
   });
 
   test('should handle repository errors', async () => {
     const mockError = new Error('Repository error');
     mockOfficesRepository.search.mockRejectedValue(mockError);
 
-    await expect(repository.getAttorneyStaff(mockContext)).rejects.toThrow('Repository error');
+    await expect(repository.getStaff(mockContext)).rejects.toThrow('Repository error');
   });
 });
