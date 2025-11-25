@@ -1,19 +1,30 @@
-.trustee-oversight-assignment-modal-content {
-  min-width: 380px;
-  min-height: 76px;
+.trustee-oversight-assignment-modal {
+  &.usa-modal {
+    max-width: 31rem;
+  }
+  .trustee-oversight-assignment-modal-content {
+    min-width: 380px;
+    min-height: 76px;
 
-  .staff-selection-section {
-    margin-bottom: 1.5rem;
+    .staff-selection-section {
+      margin-bottom: 1.5rem;
 
-    label {
-      display: block;
-      margin-bottom: 0.5rem;
+      .usa-form-group.combo-box-form-group {
+        width: 27rem;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 0.5rem;
+      }
     }
   }
 }
 
 @media screen and (max-width: 380px) {
-  .trustee-oversight-assignment-modal-content {
-    min-width: 100%;
+  .trustee-oversight-assignment-modal {
+    .trustee-oversight-assignment-modal-content {
+      min-width: 100%;
+    }
   }
 }

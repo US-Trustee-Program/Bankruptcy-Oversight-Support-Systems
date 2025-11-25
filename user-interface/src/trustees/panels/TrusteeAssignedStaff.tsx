@@ -28,7 +28,7 @@ export default function TrusteeAssignedStaff(props: Readonly<TrusteeAssignedStaf
       setAttorneysLoading(true);
       setAttorneysError(null);
       try {
-        const response = await api.getAttorneys();
+        const response = await api.getOversightStaff();
         setAttorneys(response.data ?? []);
       } catch {
         setAttorneysError('Failed to load attorneys');

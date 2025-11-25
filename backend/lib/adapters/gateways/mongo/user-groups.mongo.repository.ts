@@ -2,7 +2,7 @@ import { ApplicationContext } from '../../types/basic';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { UserGroupsRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
-import { CamsUserReference, UserGroup } from '../../../../../common/src/cams/users';
+import { UserGroup } from '../../../../../common/src/cams/users';
 import QueryBuilder from '../../../query/query-builder';
 
 const MODULE_NAME = 'USER-GROUPS-MONGO-REPOSITORY';
@@ -42,42 +42,6 @@ export class UserGroupsMongoRepository extends BaseMongoRepository implements Us
 
   public release() {
     UserGroupsMongoRepository.dropInstance();
-  }
-
-  async getOversightStaff(context: ApplicationContext): Promise<{
-    attorneys: CamsUserReference[];
-    auditors: CamsUserReference[];
-  }> {
-    try {
-      const groupNames = ['USTP CAMS Trial Attorney', 'USTP CAMS Auditor'];
-      const doc = using<UserGroup>();
-      const query = doc('groupName').contains(groupNames);
-      const groups = await this.getAdapter<UserGroup>().find(query);
-
-      const result = {
-        attorneys: [] as CamsUserReference[],
-        auditors: [] as CamsUserReference[],
-      };
-
-      for (const group of groups) {
-        if (group.groupName === 'USTP CAMS Trial Attorney') {
-          result.attorneys = group.users || [];
-        } else if (group.groupName === 'USTP CAMS Auditor') {
-          result.auditors = group.users || [];
-        }
-      }
-
-      context.logger.info(
-        MODULE_NAME,
-        `Retrieved ${result.attorneys.length} attorneys and ${result.auditors.length} auditors`,
-      );
-
-      return result;
-    } catch (originalError) {
-      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: 'Failed to retrieve oversight staff from user-groups collection.',
-      });
-    }
   }
 
   async upsertUserGroupsBatch(context: ApplicationContext, userGroups: UserGroup[]): Promise<void> {

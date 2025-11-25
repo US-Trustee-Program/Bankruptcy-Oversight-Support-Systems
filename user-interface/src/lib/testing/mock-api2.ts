@@ -240,10 +240,10 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
     response = {
       data: orders,
     };
-  } else if (path.match(/\/offices\/.*\/attorneys/)) {
-    response = {
-      data: MockData.buildArray(MockData.getAttorneyUser, 5),
-    };
+    // } else if (path.match(/\/offices\/.*\/attorneys/)) {
+    //   response = {
+    //     data: MockData.buildArray(MockData.getAttorneyUser, 5),
+    //   };
   } else if (path.match(/\/offices\/.*\/assignees/)) {
     response = {
       data: MockData.buildArray(MockData.getStaffAssignee, 5),
@@ -273,6 +273,13 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
   } else if (path.match(/\/me/)) {
     response = {
       data: MockData.getCamsSession({ user: SUPERUSER.user }),
+    };
+  } else if (path === '/staff') {
+    response = {
+      data: [
+        ...MockData.buildArray(MockData.getAttorneyUser, 3),
+        ...MockData.buildArray(MockData.getAuditorUser, 2),
+      ],
     };
   } else if (path.match(/\/cases\/999-99-00001/)) {
     response = {
@@ -319,8 +326,8 @@ async function _delete<T = unknown>(_path: string): Promise<ResponseBody<T>> {
   return response as ResponseBody<T>;
 }
 
-async function getAttorneys(): Promise<ResponseBody<AttorneyUser[]>> {
-  return get<AttorneyUser[]>('/attorneys');
+async function getOversightStaff(): Promise<ResponseBody<Staff[]>> {
+  return get<Staff[]>('/staff');
 }
 
 async function getCaseDetail(caseId: string): Promise<ResponseBody<CaseDetail>> {
@@ -550,21 +557,6 @@ async function getTrusteeOversightAssignments(trusteeId: string) {
   };
 }
 
-async function getOversightStaff() {
-  return {
-    data: {
-      attorneys: [
-        { id: 'attorney-1', name: 'Attorney One' },
-        { id: 'attorney-2', name: 'Attorney Two' },
-      ],
-      auditors: [
-        { id: 'auditor-1', name: 'Auditor One' },
-        { id: 'auditor-2', name: 'Auditor Two' },
-      ],
-    },
-  };
-}
-
 async function createTrusteeOversightAssignment(
   trusteeId: string,
   userId: string,
@@ -594,7 +586,6 @@ export const MockApi2 = {
   postTrustee,
   patchTrustee,
   deletePrivilegedIdentityUser,
-  getAttorneys,
   getCaseDetail,
   getCaseDocket,
   getCaseSummary,
@@ -629,8 +620,8 @@ export const MockApi2 = {
   postBank,
   getBanks,
   getTrusteeOversightAssignments,
-  getOversightStaff,
   createTrusteeOversightAssignment,
+  getOversightStaff,
 };
 
 export default MockApi2;

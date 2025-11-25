@@ -6,9 +6,6 @@
 .env
 .env.*
 
-## Keep dev user database out of the repo
-backend/dev-users.json
-
 ## JetBrains
 *.iml
 *.iws
@@ -95,6 +92,9 @@ cams1.code-workspace
 
 # Environment Variable RC File
 **/.envrc
+
+# Keep dev user database out of the repo
+backend/dev-users.json
 
 # AI
 .voidrules

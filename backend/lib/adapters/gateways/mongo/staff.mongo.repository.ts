@@ -1,9 +1,8 @@
 import { StaffRepository } from '../../../use-cases/gateways.types';
 import { ApplicationContext } from '../../types/basic';
-import { CamsUserReference, Staff } from '../../../../../common/src/cams/users';
-import { CamsRole } from '../../../../../common/src/cams/roles';
+import { Staff } from '../../../../../common/src/cams/users';
+import { CamsRole, OversightRole } from '../../../../../common/src/cams/roles';
 import { getOfficesRepository } from '../../../factory';
-import { getCamsUserReference } from '../../../../../common/src/cams/session';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 
 const MODULE_NAME = 'STAFF-MONGO-REPOSITORY';
@@ -41,21 +40,37 @@ export class StaffMongoRepository extends BaseMongoRepository implements StaffRe
 
   private async getStaffByRole(
     applicationContext: ApplicationContext,
-    role: CamsRole,
+    role: CamsRole | OversightRole,
   ): Promise<Staff[]> {
     const repo = getOfficesRepository(applicationContext);
     const results = await repo.search({ role });
-    const uniqueResults = new Map<string, CamsUserReference>();
+    const uniqueResults = new Map<string, Staff>();
     for (const staff of results) {
-      const camsUser = getCamsUserReference(staff);
-      if (!uniqueResults.has(camsUser.id)) {
-        uniqueResults.set(camsUser.id, camsUser);
+      if (!uniqueResults.has(staff.id)) {
+        const staffMember: Staff = {
+          id: staff.id,
+          name: staff.name,
+          roles: staff.roles,
+        };
+        uniqueResults.set(staff.id, staffMember);
       }
     }
     return Array.from(uniqueResults.values());
   }
 
-  async getAttorneyStaff(applicationContext: ApplicationContext): Promise<Staff[]> {
-    return this.getStaffByRole(applicationContext, CamsRole.TrialAttorney);
+  async getOversightStaff(applicationContext: ApplicationContext): Promise<Staff[]> {
+    const allStaff = new Map<string, Staff>();
+    const oversightRoles = Object.values(OversightRole);
+
+    for (const role of oversightRoles) {
+      const staffForRole = await this.getStaffByRole(applicationContext, role);
+      for (const staff of staffForRole) {
+        if (!allStaff.has(staff.id)) {
+          allStaff.set(staff.id, staff);
+        }
+      }
+    }
+
+    return Array.from(allStaff.values());
   }
 }

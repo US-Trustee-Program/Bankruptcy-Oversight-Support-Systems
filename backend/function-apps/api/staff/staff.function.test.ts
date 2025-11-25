@@ -6,14 +6,14 @@ import {
   buildTestResponseSuccess,
   createMockAzureFunctionRequest,
 } from '../../azure/testing-helpers';
-import AttorneyList from '../../../lib/use-cases/staff/staff';
+import StaffUseCase from '../../../lib/use-cases/staff/staff';
 import handler from './staff.function';
 import { InvocationContext } from '@azure/functions';
 import { ResponseBody } from '../../../../common/src/api/response';
 import { AttorneyUser } from '../../../../common/src/cams/users';
 import ContextCreator from '../../azure/application-context-creator';
 
-describe('Attorneys Azure Function tests', () => {
+describe('Staff Azure Function tests', () => {
   const request = createMockAzureFunctionRequest();
   const context = new InvocationContext();
 
@@ -21,7 +21,7 @@ describe('Attorneys Azure Function tests', () => {
     jest
       .spyOn(ContextCreator, 'getApplicationContextSession')
       .mockResolvedValue(MockData.getCamsSession());
-    jest.spyOn(AttorneyList.prototype, 'getAttorneyList').mockResolvedValue([]);
+    jest.spyOn(StaffUseCase.prototype, 'getOversightStaff').mockResolvedValue([]);
   });
 
   const errorTestCases = [
@@ -30,7 +30,7 @@ describe('Attorneys Azure Function tests', () => {
   ] as const;
 
   test.each(errorTestCases)(
-    'Should return an HTTP Error if getAttorneyList() throws %s',
+    'Should return an HTTP Error if getOversightStaff() throws %s',
     async (_errorType, errorFactory) => {
       const error = errorFactory();
       const { azureHttpResponse } = buildTestResponseError(error);
@@ -42,13 +42,16 @@ describe('Attorneys Azure Function tests', () => {
     },
   );
 
-  test('should return success with a list of staff', async () => {
-    const attorneys = MockData.buildArray(MockData.getAttorneyUser, 4);
+  test('should return success with a list of oversight staff', async () => {
+    const oversightStaff = [
+      ...MockData.buildArray(MockData.getAttorneyUser, 3),
+      ...MockData.buildArray(MockData.getAuditorUser, 2),
+    ];
     const body: ResponseBody<AttorneyUser[]> = {
       meta: {
         self: 'self-url',
       },
-      data: attorneys,
+      data: oversightStaff,
     };
     const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<AttorneyUser[]>(body);
     jest.spyOn(StaffController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);

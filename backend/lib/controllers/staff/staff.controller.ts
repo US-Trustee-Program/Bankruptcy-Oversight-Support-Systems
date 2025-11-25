@@ -17,7 +17,7 @@ export class StaffController implements CamsController {
 
   public async handleRequest(context: ApplicationContext): Promise<CamsHttpResponseInit<Staff[]>> {
     try {
-      const data = await this.useCase.getAttorneyList(context);
+      const data = await this.useCase.getOversightStaff(context);
       return httpSuccess({ body: { data } });
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);

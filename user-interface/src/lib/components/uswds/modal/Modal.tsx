@@ -297,7 +297,7 @@ function Modal_(props: ModalProps, ref: React.Ref<ModalRefType>) {
                 data-testid={`modal-x-button-${props.modalId}`}
                 onKeyDown={(ev) => handleTab(ev, firstElement)}
               >
-                <svg className="usa-icon" aria-hidden="true" focusable="false" role="img">
+                <svg className="usa-icon" aria-hidden="true" focusable="false">
                   <use xlinkHref={closeIcon}></use>
                 </svg>
               </button>
