@@ -561,6 +561,10 @@ async function getOversightStaff() {
         { id: 'auditor-1', name: 'Auditor One' },
         { id: 'auditor-2', name: 'Auditor Two' },
       ],
+      paralegals: [
+        { id: 'paralegal-1', name: 'Paralegal One' },
+        { id: 'paralegal-2', name: 'Paralegal Two' },
+      ],
     },
   };
 }

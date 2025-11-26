@@ -61,6 +61,7 @@ export type TrusteeOversightAssignment = Auditable &
 export type AvailableTrusteeOversightStaff = {
   attorneys: CamsUserReference[];
   auditors: CamsUserReference[];
+  paralegals: CamsUserReference[];
 };
 
 type AbstractTrusteeHistory<B, A> = Auditable &

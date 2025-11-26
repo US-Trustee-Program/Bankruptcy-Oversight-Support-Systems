@@ -192,7 +192,7 @@ describe('TrusteeAssignmentsUseCase', () => {
   });
 
   describe('getOversightStaff', () => {
-    test('should return attorneys and auditors from repository', async () => {
+    test('should return attorneys, auditors, and paralegals from repository', async () => {
       const mockAttorneys: CamsUserReference[] = [
         { id: 'attorney-1', name: 'Attorney One' },
         { id: 'attorney-2', name: 'Attorney Two' },
@@ -201,10 +201,15 @@ describe('TrusteeAssignmentsUseCase', () => {
         { id: 'auditor-1', name: 'Auditor One' },
         { id: 'auditor-2', name: 'Auditor Two' },
       ];
+      const mockParalegals: CamsUserReference[] = [
+        { id: 'paralegal-1', name: 'Paralegal One' },
+        { id: 'paralegal-2', name: 'Paralegal Two' },
+      ];
 
       mockUserGroupsRepository.getOversightStaff.mockResolvedValue({
         attorneys: mockAttorneys,
         auditors: mockAuditors,
+        paralegals: mockParalegals,
       });
 
       const result = await useCase.getOversightStaff(context);
@@ -213,6 +218,7 @@ describe('TrusteeAssignmentsUseCase', () => {
       expect(result).toEqual({
         attorneys: mockAttorneys,
         auditors: mockAuditors,
+        paralegals: mockParalegals,
       });
     });
 
@@ -220,6 +226,7 @@ describe('TrusteeAssignmentsUseCase', () => {
       mockUserGroupsRepository.getOversightStaff.mockResolvedValue({
         attorneys: [],
         auditors: [],
+        paralegals: [],
       });
 
       const result = await useCase.getOversightStaff(context);
@@ -227,6 +234,7 @@ describe('TrusteeAssignmentsUseCase', () => {
       expect(result).toEqual({
         attorneys: [],
         auditors: [],
+        paralegals: [],
       });
     });
 
@@ -473,6 +481,22 @@ describe('TrusteeAssignmentsUseCase', () => {
           'role',
           OversightRole.OversightAuditor,
         );
+      });
+
+      test('should create paralegal assignment with correct role', async () => {
+        await useCase.assignOversightStaffToTrustee(
+          context,
+          'trustee-789',
+          'paralegal-456',
+          OversightRole.OversightParalegal,
+        );
+
+        const createAssignmentCall =
+          mockTrusteesRepository.createTrusteeOversightAssignment.mock.calls[0][0];
+        expect(createAssignmentCall).toHaveProperty('trusteeId', 'trustee-789');
+        expect(createAssignmentCall).toHaveProperty('role', OversightRole.OversightParalegal);
+        expect(createAssignmentCall).toHaveProperty('createdBy', expect.anything());
+        expect(createAssignmentCall).toHaveProperty('createdOn', expect.anything());
       });
     });
 

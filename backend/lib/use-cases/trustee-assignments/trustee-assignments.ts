@@ -32,12 +32,13 @@ export class TrusteeAssignmentsUseCase {
   /**
    * Retrieves available oversight staff from user groups.
    * @param context - Application context containing logger and session
-   * @returns Promise resolving to object with attorneys and auditors arrays
+   * @returns Promise resolving to object with attorneys, auditors, and paralegals arrays
    * @throws CamsError if retrieval fails
    */
   async getOversightStaff(context: ApplicationContext): Promise<{
     attorneys: CamsUserReference[];
     auditors: CamsUserReference[];
+    paralegals: CamsUserReference[];
   }> {
     try {
       return await this.userGroupsRepository.getOversightStaff(context);

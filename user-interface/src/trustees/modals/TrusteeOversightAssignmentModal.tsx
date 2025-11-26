@@ -41,12 +41,20 @@ const TrusteeOversightAssignmentModal = forwardRef<
   const api = useApi2();
   const globalAlert = useGlobalAlert();
 
-  const roleLabel =
-    props.role === OversightRole.OversightAttorney
-      ? 'attorney'
-      : props.role === OversightRole.OversightAuditor
-        ? 'auditor'
-        : 'staff member';
+  let roleLabel: string;
+  switch (props.role) {
+    case OversightRole.OversightAttorney:
+      roleLabel = 'attorney';
+      break;
+    case OversightRole.OversightAuditor:
+      roleLabel = 'auditor';
+      break;
+    case OversightRole.OversightParalegal:
+      roleLabel = 'paralegal';
+      break;
+    default:
+      roleLabel = 'staff member';
+  }
 
   // Handle external ref
   React.useImperativeHandle(ref, () => ({
@@ -68,14 +76,22 @@ const TrusteeOversightAssignmentModal = forwardRef<
     setError(null);
     try {
       const response = await api.getOversightStaff();
-      const { attorneys = [], auditors = [] } = response.data ?? {};
+      const { attorneys = [], auditors = [], paralegals = [] } = response.data ?? {};
 
-      const staffList =
-        props.role === OversightRole.OversightAttorney
-          ? attorneys
-          : props.role === OversightRole.OversightAuditor
-            ? auditors
-            : [];
+      let staffList: CamsUserReference[];
+      switch (props.role) {
+        case OversightRole.OversightAttorney:
+          staffList = attorneys;
+          break;
+        case OversightRole.OversightAuditor:
+          staffList = auditors;
+          break;
+        case OversightRole.OversightParalegal:
+          staffList = paralegals;
+          break;
+        default:
+          staffList = [];
+      }
 
       setStaff(staffList);
 

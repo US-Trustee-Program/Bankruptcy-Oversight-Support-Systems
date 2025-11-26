@@ -123,13 +123,14 @@ describe('TrusteeAssignmentsController', () => {
   });
 
   describe('GET /api/v1/trustee-assignments/oversight-staff', () => {
-    test('should return attorneys and auditors', async () => {
+    test('should return attorneys, auditors, and paralegals', async () => {
       const mockStaff = {
         attorneys: [
           { id: 'attorney-1', name: 'Attorney One' },
           { id: 'attorney-2', name: 'Attorney Two' },
         ],
         auditors: [{ id: 'auditor-1', name: 'Auditor One' }],
+        paralegals: [{ id: 'paralegal-1', name: 'Paralegal One' }],
       };
       mockUseCase.getOversightStaff.mockResolvedValue(mockStaff);
 

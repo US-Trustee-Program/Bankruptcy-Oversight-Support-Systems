@@ -47,9 +47,10 @@ export class UserGroupsMongoRepository extends BaseMongoRepository implements Us
   async getOversightStaff(context: ApplicationContext): Promise<{
     attorneys: CamsUserReference[];
     auditors: CamsUserReference[];
+    paralegals: CamsUserReference[];
   }> {
     try {
-      const groupNames = ['USTP CAMS Trial Attorney', 'USTP CAMS Auditor'];
+      const groupNames = ['USTP CAMS Trial Attorney', 'USTP CAMS Auditor', 'USTP CAMS Paralegal'];
       const doc = using<UserGroup>();
       const query = doc('groupName').contains(groupNames);
       const groups = await this.getAdapter<UserGroup>().find(query);
@@ -57,6 +58,7 @@ export class UserGroupsMongoRepository extends BaseMongoRepository implements Us
       const result = {
         attorneys: [] as CamsUserReference[],
         auditors: [] as CamsUserReference[],
+        paralegals: [] as CamsUserReference[],
       };
 
       for (const group of groups) {
@@ -64,12 +66,14 @@ export class UserGroupsMongoRepository extends BaseMongoRepository implements Us
           result.attorneys = group.users || [];
         } else if (group.groupName === 'USTP CAMS Auditor') {
           result.auditors = group.users || [];
+        } else if (group.groupName === 'USTP CAMS Paralegal') {
+          result.paralegals = group.users || [];
         }
       }
 
       context.logger.info(
         MODULE_NAME,
-        `Retrieved ${result.attorneys.length} attorneys and ${result.auditors.length} auditors`,
+        `Retrieved ${result.attorneys.length} attorneys, ${result.auditors.length} auditors, and ${result.paralegals.length} paralegals`,
       );
 
       return result;

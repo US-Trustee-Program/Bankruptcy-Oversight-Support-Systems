@@ -446,9 +446,11 @@ async function getTrusteeOversightAssignments(trusteeId: string) {
 }
 
 async function getOversightStaff() {
-  return api().get<{ attorneys: CamsUserReference[]; auditors: CamsUserReference[] }>(
-    '/trustee-assignments/oversight-staff',
-  );
+  return api().get<{
+    attorneys: CamsUserReference[];
+    auditors: CamsUserReference[];
+    paralegals: CamsUserReference[];
+  }>('/trustee-assignments/oversight-staff');
 }
 
 async function createTrusteeOversightAssignment(
