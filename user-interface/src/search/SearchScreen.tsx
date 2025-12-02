@@ -170,6 +170,13 @@ export default function SearchScreen() {
     setSearchPredicate(temporarySearchPredicate);
   }
 
+  function handleKeyDown(ev: React.KeyboardEvent<HTMLDivElement>) {
+    if (ev.key === 'Enter' && isValidFilteredSearch(temporarySearchPredicate)) {
+      ev.preventDefault();
+      performSearch();
+    }
+  }
+
   const infoModalActionButtonGroup = {
     modalId: infoModalId,
     modalRef: infoModalRef as React.RefObject<ModalRefType | null>,
@@ -196,7 +203,7 @@ export default function SearchScreen() {
       <div className="grid-row grid-gap-lg search-pane">
         <div className="grid-col-3">
           <h2>Search By</h2>
-          <div className="filter-and-search" data-testid="filter-and-search-panel">
+          <div className="filter-and-search" data-testid="filter-and-search-panel" onKeyDown={handleKeyDown}>
             <div className="case-number-search form-field" data-testid="case-number-search">
               <div className="usa-search usa-search--small">
                 <CaseNumberInput
