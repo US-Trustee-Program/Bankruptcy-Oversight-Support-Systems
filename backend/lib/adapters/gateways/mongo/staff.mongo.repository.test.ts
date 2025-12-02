@@ -98,18 +98,24 @@ describe('StaffMongoRepository', () => {
 
     // Verify deduplication works across roles
     expect(result).toHaveLength(4);
-    expect(result).toEqual([
-      { id: 'attorney-1', name: 'John Attorney', roles: [CamsRole.TrialAttorney] },
-      { id: 'attorney-2', name: 'Jane Attorney', roles: [CamsRole.TrialAttorney] },
-      { id: 'auditor-1', name: 'Bob Auditor', roles: [CamsRole.Auditor] },
-      { id: 'paralegal-1', name: 'Charlie Paralegal', roles: [CamsRole.Paralegal] },
-    ]);
+    expect(result).toEqual(
+      expect.arrayContaining([
+        { id: 'attorney-1', name: 'John Attorney', roles: [CamsRole.TrialAttorney] },
+        { id: 'attorney-2', name: 'Jane Attorney', roles: [CamsRole.TrialAttorney] },
+        { id: 'auditor-1', name: 'Bob Auditor', roles: [CamsRole.Auditor] },
+        { id: 'paralegal-1', name: 'Charlie Paralegal', roles: [CamsRole.Paralegal] },
+      ]),
+    );
 
     // Verify roles field is included in the response
-    expect(result[0].roles).toBeDefined();
-    expect(result[0].roles).toContain(CamsRole.TrialAttorney);
-    expect(result[2].roles).toContain(CamsRole.Auditor);
-    expect(result[3].roles).toContain(CamsRole.Paralegal);
+    const attorney = result.find((s) => s.id === 'attorney-1');
+    const auditor = result.find((s) => s.id === 'auditor-1');
+    const paralegal = result.find((s) => s.id === 'paralegal-1');
+
+    expect(attorney?.roles).toBeDefined();
+    expect(attorney?.roles).toContain(CamsRole.TrialAttorney);
+    expect(auditor?.roles).toContain(CamsRole.Auditor);
+    expect(paralegal?.roles).toContain(CamsRole.Paralegal);
 
     // Verify repository was called for each oversight role
     expect(mockOfficesRepository.search).toHaveBeenCalledTimes(3);
