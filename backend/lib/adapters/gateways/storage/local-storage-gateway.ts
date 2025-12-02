@@ -14,6 +14,7 @@ const ROLE_MAPPING =
   'USTP_CAMS_Trial_Attorney,USTP CAMS Trial Attorney,TrialAttorney\n' +
   'USTP_CAMS_Data_Verifier,USTP CAMS Data Verifier,DataVerifier\n' +
   'USTP_CAMS_Trustee_Admin,USTP CAMS Trustee Admin,TrusteeAdmin\n' +
+  'USTP_CAMS_Paralegal,USTP CAMS Paralegal,Paralegal\n' +
   'USTP_CAMS_Auditor,USTP CAMS Auditor,Auditor\n';
 
 const storage = new Map<string, string>();

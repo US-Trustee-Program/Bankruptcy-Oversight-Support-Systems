@@ -62,7 +62,12 @@ describe('TrusteeOversightAssignmentModal', () => {
     { id: 'auditor-2', name: 'Bob Auditor', roles: [CamsRole.Auditor] },
   ];
 
-  const mockAllStaff: Staff[] = [...mockAttorneys, ...mockAuditors];
+  const mockParalegals: Staff[] = [
+    { id: 'paralegal-1', name: 'Charlie Paralegal', roles: [CamsRole.Paralegal] },
+    { id: 'paralegal-2', name: 'Dana Paralegal', roles: [CamsRole.Paralegal] },
+  ];
+
+  const mockAllStaff: Staff[] = [...mockAttorneys, ...mockAuditors, ...mockParalegals];
 
   const mockAttorneyAssignment: TrusteeOversightAssignment = {
     id: 'assignment-1',
@@ -494,6 +499,70 @@ describe('TrusteeOversightAssignmentModal', () => {
 
       const modal = screen.getByTestId('modal-test-modal');
       expect(modal).toHaveTextContent('Add Auditor');
+    });
+  });
+
+  describe('Paralegal Role', () => {
+    test('should render modal with correct structure for paralegal', () => {
+      const onAssignment = vi.fn();
+      renderWithProps(OversightRole.OversightParalegal, { onAssignment });
+      expect(screen.getByTestId('modal-test-modal')).toBeInTheDocument();
+    });
+
+    test('should successfully assign paralegal with role parameter', async () => {
+      const mockParalegalAssignment: TrusteeOversightAssignment = {
+        id: 'assignment-3',
+        trusteeId: 'trustee-123',
+        user: { id: 'paralegal-1', name: 'Bob Paralegal' },
+        role: OversightRole.OversightParalegal,
+        createdBy: { id: 'user-1', name: 'Admin User' },
+        createdOn: '2023-01-01T00:00:00Z',
+        updatedBy: { id: 'user-1', name: 'Admin User' },
+        updatedOn: '2023-01-01T00:00:00Z',
+      };
+
+      mockApiMethods.createTrusteeOversightAssignment.mockResolvedValueOnce({
+        data: mockParalegalAssignment,
+      });
+
+      const onAssignment = vi.fn();
+      const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
+      renderWithProps(OversightRole.OversightParalegal, { onAssignment, ref });
+
+      act(() => ref.current!.show());
+      await waitFor(() => expect(mockApiMethods.getOversightStaff).toHaveBeenCalled());
+
+      const comboBox = screen.getByTestId('mock-combobox') as HTMLSelectElement;
+      await userEvent.selectOptions(comboBox, 'paralegal-1');
+
+      const submitButton = screen.getByTestId('button-test-modal-submit-button');
+      await userEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(mockApiMethods.createTrusteeOversightAssignment).toHaveBeenCalledWith(
+          'trustee-123',
+          'paralegal-1',
+          OversightRole.OversightParalegal,
+        );
+      });
+
+      expect(mockGlobalAlert.success).toHaveBeenCalledWith('Paralegal assigned successfully');
+      expect(onAssignment).toHaveBeenCalledWith(true);
+    });
+
+    test('should display Add Paralegal button and heading when creating new paralegal assignment', async () => {
+      const onAssignment = vi.fn();
+      const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
+      renderWithProps(OversightRole.OversightParalegal, { onAssignment, ref });
+
+      act(() => ref.current!.show());
+      await waitFor(() => expect(mockApiMethods.getOversightStaff).toHaveBeenCalled());
+
+      const submitButton = screen.getByTestId('button-test-modal-submit-button');
+      expect(submitButton).toHaveTextContent('Add Paralegal');
+
+      const modal = screen.getByTestId('modal-test-modal');
+      expect(modal).toHaveTextContent('Add Paralegal');
     });
   });
 });
