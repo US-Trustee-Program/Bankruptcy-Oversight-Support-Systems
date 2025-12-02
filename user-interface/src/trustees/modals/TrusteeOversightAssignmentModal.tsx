@@ -12,6 +12,18 @@ import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import './TrusteeOversightAssignmentModal.scss';
 
+const ROLE_LABELS: Record<OversightRole, string> = {
+  [OversightRole.OversightAttorney]: 'attorney',
+  [OversightRole.OversightAuditor]: 'auditor',
+  [OversightRole.OversightParalegal]: 'paralegal',
+};
+
+const OVERSIGHT_TO_CAMS_ROLE: Record<OversightRole, CamsRole> = {
+  [OversightRole.OversightAttorney]: CamsRole.TrialAttorney,
+  [OversightRole.OversightAuditor]: CamsRole.Auditor,
+  [OversightRole.OversightParalegal]: CamsRole.Paralegal,
+};
+
 interface TrusteeOversightAssignmentModalProps {
   modalId: string;
   trusteeId: string;
@@ -41,14 +53,7 @@ const TrusteeOversightAssignmentModal = forwardRef<
   const api = useApi2();
   const globalAlert = useGlobalAlert();
 
-  const roleLabel =
-    props.role === OversightRole.OversightAttorney
-      ? 'attorney'
-      : props.role === OversightRole.OversightAuditor
-        ? 'auditor'
-        : props.role === OversightRole.OversightParalegal
-          ? 'paralegal'
-          : 'staff member';
+  const roleLabel = ROLE_LABELS[props.role] ?? 'staff member';
 
   const loadStaff = useCallback(
     async (assignment?: TrusteeOversightAssignment | null) => {
@@ -58,12 +63,7 @@ const TrusteeOversightAssignmentModal = forwardRef<
         const response = await api.getOversightStaff();
         const allStaff = response.data ?? [];
 
-        const targetRole =
-          props.role === OversightRole.OversightAttorney
-            ? CamsRole.TrialAttorney
-            : props.role === OversightRole.OversightAuditor
-              ? CamsRole.Auditor
-              : CamsRole.Paralegal;
+        const targetRole = OVERSIGHT_TO_CAMS_ROLE[props.role];
 
         const staffList = allStaff.filter((member) => member.roles?.includes(targetRole));
 

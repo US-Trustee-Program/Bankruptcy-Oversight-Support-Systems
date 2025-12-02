@@ -1,21 +1,4 @@
 .paralegal-assignment-section {
-  .section-header {
-    display: flex;
-    align-items: center;
-    margin-bottom: 1rem;
-
-    h3 {
-      margin: 0;
-      margin-right: 0.75rem;
-    }
-  }
-
-  .no-assignment-state {
-    .usa-alert {
-      margin-bottom: 1rem;
-    }
-  }
-
   .assignment-display {
     .assignment-item {
       display: flex;
@@ -29,17 +12,7 @@
       .paralegal-info {
         display: flex;
         flex-direction: column;
-
-        .assignment-role {
-          color: #666;
-        }
       }
-    }
-
-    .assignment-audit-link {
-      margin-top: 1rem;
-      display: flex;
-      justify-content: flex-end;
     }
   }
 }
