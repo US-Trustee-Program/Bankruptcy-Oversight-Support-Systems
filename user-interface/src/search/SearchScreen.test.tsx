@@ -513,4 +513,167 @@ describe('search screen', () => {
       includeAssignments,
     );
   });
+
+  test('should trigger search when Enter key is pressed in case number field', async () => {
+    const caseNumber = '00-11111';
+
+    renderWithoutProps();
+
+    // Clear the default search on initial render.
+    searchCasesSpy.mockClear();
+
+    const caseNumberInput = screen.getByTestId('basic-search-field');
+    expect(caseNumberInput).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(caseNumberInput).toBeEnabled();
+    });
+
+    // Type case number and press Enter
+    await userEvent.type(caseNumberInput, caseNumber);
+    await userEvent.keyboard('{Enter}');
+
+    await waitFor(() => {
+      // wait for loading to disappear
+      expect(document.querySelector('.search-results table')).toBeVisible();
+    });
+
+    const rows = document.querySelectorAll('#search-results-table-body > tr');
+    expect(rows).toHaveLength(caseList.length);
+
+    // Verify that search was called with correct predicate including case number
+    expect(searchCasesSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        caseNumber,
+        excludeChildConsolidations: false,
+        excludeClosedCases: true,
+      }),
+      includeAssignments,
+    );
+  });
+
+  test('should trigger search when Enter key is pressed after selecting chapter', async () => {
+    renderWithoutProps();
+
+    await waitFor(() => {
+      expect(document.querySelector('.search-results table')).not.toBeInTheDocument();
+    });
+
+    // Select a chapter
+    await TestingUtilities.toggleComboBoxItemSelection('case-chapter-search', 2);
+
+    const expandButton = screen.getByTestId('button-case-chapter-search-expand');
+    await userEvent.click(expandButton!);
+
+    // Get the filter-and-search container that has the onKeyDown handler
+    const filterAndSearchPanel = screen.getByTestId('filter-and-search-panel');
+    expect(filterAndSearchPanel).toBeInTheDocument();
+
+    // Focus on the filter panel and press Enter
+    filterAndSearchPanel.focus();
+    await userEvent.keyboard('{Enter}');
+
+    await waitFor(() => {
+      // wait for the default state alert to be removed
+      expect(document.querySelector('#default-state-alert')).not.toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(document.querySelector('.search-results table')).toBeInTheDocument();
+    });
+
+    const rows = document.querySelectorAll('#search-results-table-body > tr');
+
+    expect(rows).toHaveLength(caseList.length);
+    expect(searchCasesSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        chapters: expect.any(Array<string>),
+      }),
+      includeAssignments,
+    );
+  });
+
+  test('should not trigger search when Enter key is pressed with invalid search criteria', async () => {
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
+      MockData.getCamsSession({ user: MockData.getCamsUser({ offices: [] }) }),
+    );
+
+    renderWithoutProps();
+    await TestingUtilities.waitForDocumentBody();
+
+    // Clear the default search on initial render.
+    searchCasesSpy.mockClear();
+
+    const caseNumberInput = screen.getByTestId('basic-search-field');
+
+    await waitFor(() => {
+      expect(caseNumberInput).toBeEnabled();
+    });
+
+    // Type incomplete case number and press Enter
+    await userEvent.type(caseNumberInput, '12345');
+    await userEvent.keyboard('{Enter}');
+
+    // Wait a bit to ensure setTimeout has executed
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Verify that search was not called
+    expect(searchCasesSpy).not.toHaveBeenCalled();
+  });
+
+  test('should trigger search multiple times when Enter key is pressed with different case numbers', async () => {
+    const firstCaseNumber = '00-11111';
+    const secondCaseNumber = '00-22222';
+
+    renderWithoutProps();
+
+    // Clear the default search on initial render.
+    searchCasesSpy.mockClear();
+
+    const caseNumberInput = screen.getByTestId('basic-search-field');
+
+    await waitFor(() => {
+      expect(caseNumberInput).toBeEnabled();
+    });
+
+    // First search - type case number and press Enter
+    await userEvent.type(caseNumberInput, firstCaseNumber);
+    await userEvent.keyboard('{Enter}');
+
+    await waitFor(() => {
+      expect(document.querySelector('.search-results table')).toBeVisible();
+    });
+
+    // Verify first search was called
+    expect(searchCasesSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        caseNumber: firstCaseNumber,
+      }),
+      includeAssignments,
+    );
+
+    const firstCallCount = searchCasesSpy.mock.calls.length;
+
+    // Clear the input and type a new case number
+    await userEvent.clear(caseNumberInput);
+    await userEvent.type(caseNumberInput, secondCaseNumber);
+    await userEvent.keyboard('{Enter}');
+
+    // Wait for the search to be triggered and complete
+    await waitFor(() => {
+      expect(searchCasesSpy.mock.calls.length).toBeGreaterThan(firstCallCount);
+    });
+
+    await waitFor(() => {
+      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
+    });
+
+    // Verify second search was called with correct parameters
+    expect(searchCasesSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        caseNumber: secondCaseNumber,
+      }),
+      includeAssignments,
+    );
+  });
 });
