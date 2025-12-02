@@ -46,7 +46,9 @@ const TrusteeOversightAssignmentModal = forwardRef<
       ? 'attorney'
       : props.role === OversightRole.OversightAuditor
         ? 'auditor'
-        : 'staff member';
+        : props.role === OversightRole.OversightParalegal
+          ? 'paralegal'
+          : 'staff member';
 
   const loadStaff = useCallback(
     async (assignment?: TrusteeOversightAssignment | null) => {
@@ -59,7 +61,9 @@ const TrusteeOversightAssignmentModal = forwardRef<
         const targetRole =
           props.role === OversightRole.OversightAttorney
             ? CamsRole.TrialAttorney
-            : CamsRole.Auditor;
+            : props.role === OversightRole.OversightAuditor
+              ? CamsRole.Auditor
+              : CamsRole.Paralegal;
 
         const staffList = allStaff.filter((member) => member.roles?.includes(targetRole));
 

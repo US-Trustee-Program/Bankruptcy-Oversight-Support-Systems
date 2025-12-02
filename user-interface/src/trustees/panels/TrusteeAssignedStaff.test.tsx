@@ -44,6 +44,21 @@ vi.mock('./AuditorAssignmentSection', () => ({
   )),
 }));
 
+vi.mock('./ParalegalAssignmentSection', () => ({
+  default: vi.fn(({ trusteeId, assignments, onAssignmentChange, isLoading }) => (
+    <div
+      data-testid="paralegal-assignment-section"
+      data-trustee-id={trusteeId}
+      data-loading={isLoading}
+      data-assignments-count={assignments?.length || 0}
+    >
+      <button onClick={onAssignmentChange} data-testid="refresh-paralegal-assignments">
+        Refresh Paralegal Assignments
+      </button>
+    </div>
+  )),
+}));
+
 describe('TrusteeAssignedStaff', () => {
   const mockAttorneys: AttorneyUser[] = [
     {
@@ -306,6 +321,54 @@ describe('TrusteeAssignedStaff', () => {
     mockUseTrusteeAssignments.getTrusteeOversightAssignments.mockClear();
 
     const refreshButton = screen.getByTestId('refresh-auditor-assignments');
+    fireEvent.click(refreshButton);
+
+    expect(mockUseTrusteeAssignments.getTrusteeOversightAssignments).toHaveBeenCalledWith(
+      'trustee-123',
+    );
+    expect(mockUseTrusteeAssignments.getTrusteeOversightAssignments).toHaveBeenCalledTimes(1);
+  });
+
+  test('should render ParalegalAssignmentSection', () => {
+    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
+
+    expect(screen.getByTestId('paralegal-assignment-section')).toBeInTheDocument();
+  });
+
+  test('should pass correct props to ParalegalAssignmentSection', () => {
+    const mockAssignments: TrusteeOversightAssignment[] = [
+      {
+        id: 'assignment-3',
+        trusteeId: 'trustee-123',
+        user: { id: 'paralegal-1', name: 'Bob Paralegal' },
+        role: OversightRole.OversightParalegal,
+        createdBy: { id: 'user-1', name: 'Admin User' },
+        createdOn: '2023-01-01T00:00:00Z',
+        updatedBy: { id: 'user-1', name: 'Admin User' },
+        updatedOn: '2023-01-01T00:00:00Z',
+      },
+    ];
+
+    (useTrusteeAssignments as MockedFunction<typeof useTrusteeAssignments>).mockReturnValue({
+      ...mockUseTrusteeAssignments,
+      assignments: mockAssignments,
+      isLoading: true,
+    });
+
+    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
+
+    const section = screen.getByTestId('paralegal-assignment-section');
+    expect(section).toHaveAttribute('data-trustee-id', 'trustee-123');
+    expect(section).toHaveAttribute('data-loading', 'true');
+    expect(section).toHaveAttribute('data-assignments-count', '1');
+  });
+
+  test('should refresh assignments when paralegal section onAssignmentChange is called', () => {
+    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
+
+    mockUseTrusteeAssignments.getTrusteeOversightAssignments.mockClear();
+
+    const refreshButton = screen.getByTestId('refresh-paralegal-assignments');
     fireEvent.click(refreshButton);
 
     expect(mockUseTrusteeAssignments.getTrusteeOversightAssignments).toHaveBeenCalledWith(

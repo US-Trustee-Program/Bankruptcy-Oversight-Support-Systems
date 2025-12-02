@@ -417,6 +417,40 @@ describe('TrusteeAssignmentsUseCase', () => {
           OversightRole.OversightAuditor,
         );
       });
+
+      test('should create paralegal assignment with correct structure', async () => {
+        await useCase.assignOversightStaffToTrustee(
+          context,
+          'trustee-789',
+          'paralegal-456',
+          OversightRole.OversightParalegal,
+        );
+
+        const createAssignmentCall =
+          mockTrusteesRepository.createTrusteeOversightAssignment.mock.calls[0][0];
+        expect(createAssignmentCall).toHaveProperty('trusteeId', 'trustee-789');
+        expect(createAssignmentCall).toHaveProperty('role', OversightRole.OversightParalegal);
+        expect(createAssignmentCall).toHaveProperty('createdBy', expect.anything());
+        expect(createAssignmentCall).toHaveProperty('createdOn', expect.anything());
+      });
+
+      test('should create paralegal history record with correct structure', async () => {
+        await useCase.assignOversightStaffToTrustee(
+          context,
+          'trustee-789',
+          'paralegal-456',
+          OversightRole.OversightParalegal,
+        );
+
+        const createHistoryCall = mockTrusteesRepository.createTrusteeHistory.mock.calls[0][0];
+        expect(createHistoryCall).toHaveProperty('documentType', 'AUDIT_OVERSIGHT');
+        expect(createHistoryCall).toHaveProperty('trusteeId', 'trustee-789');
+        expect(createHistoryCall).toHaveProperty('before', null);
+        expect((createHistoryCall as TrusteeOversightHistory).after).toHaveProperty(
+          'role',
+          OversightRole.OversightParalegal,
+        );
+      });
     });
 
     describe('error handling', () => {
