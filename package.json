@@ -14,7 +14,9 @@
     "build:frontend": "pushd user-interface && npm run build && popd",
     "build:common": "pushd common && npm run build && popd",
     "clean-and-build": "npm run clean:all && npm run ci:all && npm run build",
-    "lint": "eslint . -c eslint.config.mjs"
+    "lint": "eslint . -c eslint.config.mjs",
+    "knip": "knip",
+    "knip:fix": "knip --fix"
   },
   "devDependencies": {
     "@eslint/js": "10.0.0",
