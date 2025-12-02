@@ -68,7 +68,10 @@ import { TrusteesMongoRepository } from './adapters/gateways/mongo/trustees.mong
 import { ListsMongoRepository } from './adapters/gateways/mongo/lists.mongo.repository';
 import { StaffMongoRepository } from './adapters/gateways/mongo/staff.mongo.repository';
 import { UserGroupsMongoRepository } from './adapters/gateways/mongo/user-groups.mongo.repository';
-import { CamsError } from './common-errors/cams-error';
+import {
+  ServerConfigError,
+  UNSUPPORTED_AUTHENTICATION_PROVIDER,
+} from './common-errors/server-config-error';
 
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
@@ -317,7 +320,9 @@ export const getUserGroupGateway = async (
           idpApiGateway = new OktaUserGroupGateway();
           await idpApiGateway.init(context.config.userGroupGatewayConfig);
         } else {
-          throw new CamsError('Invalid identity provider configuration');
+          throw new ServerConfigError('FACTORY', {
+            message: UNSUPPORTED_AUTHENTICATION_PROVIDER,
+          });
         }
       } catch (originalError) {
         idpApiGateway = null;
