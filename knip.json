@@ -17,9 +17,7 @@
       "entry": [
         "function-apps/**/*.function.ts",
         "function-apps/dataflows/dataflows.ts",
-        "express/server.ts",
-        "lib/testing/**/*.ts",
-        "scripts/**/*.ts"
+        "express/server.ts"
       ],
       "project": ["**/*.ts"],
       "ignore": [
@@ -32,6 +30,7 @@
     "user-interface": {
       "entry": [
         "src/index.tsx",
+        "src/initialize.ts",
         "vite.config.mts",
         "vitest.config.mts",
         "test/**/*.ts"
@@ -75,7 +74,6 @@
     "@azure/identity",
     "@azure/keyvault-secrets",
     "@uswds/uswds",
-    "@cams/common",
     "buffer",
     "ts-node",
     "@eslint/js",
