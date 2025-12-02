@@ -20,6 +20,7 @@ import { OversightRole } from '@common/cams/roles';
 const ROLE_DISPLAY_MAP = {
   [OversightRole.OversightAttorney]: 'Attorney',
   [OversightRole.OversightAuditor]: 'Auditor',
+  [OversightRole.OversightParalegal]: 'Paralegal',
 } as const;
 
 export interface TrusteeDetailAuditHistoryProps {
