@@ -42,7 +42,6 @@ import {
 import OktaGateway from './adapters/gateways/okta/okta-gateway';
 import { MockUserSessionUseCase } from './testing/mock-gateways/mock-user-session-use-case';
 import MockOpenIdConnectGateway from './testing/mock-gateways/mock-oauth2-gateway';
-import DevOpenIdConnectGateway from './adapters/gateways/dev-oauth2/dev-oauth2-gateway';
 import { StorageGateway } from './adapters/types/storage';
 import LocalStorageGateway from './adapters/gateways/storage/local-storage-gateway';
 import { MockOrdersGateway } from './testing/mock-gateways/mock.orders.gateway';
@@ -62,7 +61,6 @@ import { deferRelease } from './deferrable/defer-release';
 import { CaseNotesMongoRepository } from './adapters/gateways/mongo/case-notes.mongo.repository';
 import { UsersMongoRepository } from './adapters/gateways/mongo/user.repository';
 import MockUserGroupGateway from './testing/mock-gateways/mock-user-group-gateway';
-import DevUserGroupGateway from './adapters/gateways/dev-oauth2/dev-user-group-gateway';
 import { getCamsErrorWithStack } from './common-errors/error-utilities';
 import { OfficeAssigneeMongoRepository } from './adapters/gateways/mongo/office-assignee.mongo.repository';
 import StorageQueueGateway from './adapters/gateways/storage-queue/storage-queue-gateway';
@@ -274,9 +272,6 @@ export const getAuthorizationGateway = (context: ApplicationContext): OpenIdConn
   if (context.config.authConfig.provider === 'mock') {
     return MockOpenIdConnectGateway;
   }
-  if (context.config.authConfig.provider === 'dev') {
-    return DevOpenIdConnectGateway;
-  }
   return null;
 };
 
@@ -318,10 +313,7 @@ export const getUserGroupGateway = async (
   } else {
     if (!idpApiGateway) {
       try {
-        if (context.config.authConfig.provider === 'dev') {
-          idpApiGateway = new DevUserGroupGateway();
-          await idpApiGateway.init(context);
-        } else if (context.config.authConfig.provider === 'okta') {
+        if (context.config.authConfig.provider === 'okta') {
           idpApiGateway = new OktaUserGroupGateway();
           await idpApiGateway.init(context.config.userGroupGatewayConfig);
         } else {

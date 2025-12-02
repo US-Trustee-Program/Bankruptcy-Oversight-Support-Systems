@@ -110,7 +110,22 @@ The MongoDB `dev-users` database and `users` collection are provisioned automati
 
 ## Status
 
-Accepted
+Superseded
+
+This ADR is superseded as of December 2025. The dev mode authentication implementation has been removed from the codebase.
+
+## Rationale for Superseding
+
+Dev mode authentication was intended as a temporary solution to provide a more realistic authentication flow for development environments without requiring external dependencies. However, it introduced its own set of problems:
+
+1. **Additional Complexity**: Maintaining three authentication modes (okta, mock, dev) increased code complexity and testing surface area
+1. **Limited Value**: Mock mode proved sufficient for local development needs
+1. **Confusion**: Having multiple authentication modes for non-production use created confusion about when to use each
+1. **Maintenance Burden**: The dev mode implementation required ongoing maintenance with minimal benefit
+
+The project now uses only two authentication modes:
+- **mock**: For local development and testing
+- **okta**: For all deployed environments (staging, production)
 
 ## Consequences
 
