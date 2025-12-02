@@ -171,9 +171,16 @@ export default function SearchScreen() {
   }
 
   function handleKeyDown(ev: React.KeyboardEvent<HTMLDivElement>) {
-    if (ev.key === 'Enter' && isValidFilteredSearch(temporarySearchPredicate)) {
+    if (ev.key === 'Enter') {
       ev.preventDefault();
-      performSearch();
+      // Use setTimeout to ensure state updates from child components have completed
+      // This handles the case where CaseNumberInput's handleEnter calls onChange,
+      // which updates temporarySearchPredicate asynchronously
+      setTimeout(() => {
+        if (isValidFilteredSearch(temporarySearchPredicate)) {
+          performSearch();
+        }
+      }, 0);
     }
   }
 
