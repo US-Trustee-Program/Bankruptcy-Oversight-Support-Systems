@@ -164,6 +164,27 @@ describe('TrusteeAssignmentsController', () => {
       expect(response.body).toBeUndefined();
     });
 
+    test('should create paralegal assignment with valid request', async () => {
+      const requestBody = { userId: 'user-789', role: OversightRole.OversightParalegal };
+      mockUseCase.assignOversightStaffToTrustee.mockResolvedValue(true);
+
+      context.request.method = 'POST';
+      context.request.params = { trusteeId: 'trustee-456' };
+      context.request.body = requestBody;
+      context.request.url = '/api/v1/trustees/trustee-456/oversight-assignments';
+
+      const response = await controller.handleRequest(context);
+
+      expect(mockUseCase.assignOversightStaffToTrustee).toHaveBeenCalledWith(
+        context,
+        'trustee-456',
+        'user-789',
+        OversightRole.OversightParalegal,
+      );
+      expect(response.statusCode).toBe(201);
+      expect(response.body).toBeUndefined();
+    });
+
     test('should return 204 for idempotent attorney assignment request', async () => {
       const requestBody = { userId: 'user-789', role: OversightRole.OversightAttorney };
       mockUseCase.assignOversightStaffToTrustee.mockResolvedValue(false);

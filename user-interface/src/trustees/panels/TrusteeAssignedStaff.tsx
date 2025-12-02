@@ -5,6 +5,7 @@ import { AttorneyUser } from '@common/cams/users';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import AttorneyAssignmentSection from './AttorneyAssignmentSection';
 import AuditorAssignmentSection from './AuditorAssignmentSection';
+import ParalegalAssignmentSection from './ParalegalAssignmentSection';
 import './TrusteeAssignedStaff.scss';
 
 interface TrusteeAssignedStaffProps {
@@ -59,6 +60,13 @@ export default function TrusteeAssignedStaff(props: Readonly<TrusteeAssignedStaf
         />
 
         <AuditorAssignmentSection
+          trusteeId={trusteeId}
+          assignments={assignments}
+          onAssignmentChange={refreshAssignments}
+          isLoading={isLoading}
+        />
+
+        <ParalegalAssignmentSection
           trusteeId={trusteeId}
           assignments={assignments}
           onAssignmentChange={refreshAssignments}
