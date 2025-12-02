@@ -1,6 +1,5 @@
 import React, { PropsWithChildren } from 'react';
 import { MockLogin } from './providers/mock/MockLogin';
-import { DevLogin } from './providers/dev/DevLogin';
 import { AuthorizedUseOnly } from './AuthorizedUseOnly';
 import { Session } from './Session';
 import {
@@ -60,7 +59,7 @@ export function Login(props: LoginProps): React.ReactNode {
   if (session) {
     if (provider == 'okta') {
       issuer = getAuthIssuer();
-    } else if (provider === 'mock' || provider === 'dev') {
+    } else if (provider === 'mock') {
       const { protocol, server, port, basePath } = config;
       const portString = port ? ':' + port : '';
       issuer = protocol + '://' + server + portString + basePath + '/oauth2/default';
@@ -88,9 +87,6 @@ export function Login(props: LoginProps): React.ReactNode {
       break;
     case 'mock':
       providerComponent = <MockLogin user={props.user ?? null}>{props.children}</MockLogin>;
-      break;
-    case 'dev':
-      providerComponent = <DevLogin user={props.user ?? null}>{props.children}</DevLogin>;
       break;
     case 'none':
       providerComponent = (

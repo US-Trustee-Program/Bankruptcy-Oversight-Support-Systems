@@ -4,8 +4,7 @@ import { test } from './fixture/urlQueryString';
 require('dotenv').config();
 
 const authFile = 'playwright/.auth/user.json';
-const { OKTA_USER_NAME, OKTA_PASSWORD, DEV_TEST_USERNAME, DEV_TEST_PASSWORD, TARGET_HOST } =
-  process.env;
+const { OKTA_USER_NAME, OKTA_PASSWORD, TARGET_HOST } = process.env;
 const LOGIN_PATH = '/login';
 const timeoutOption = { timeout: 30000 };
 
@@ -34,36 +33,6 @@ async function mockLogin(page: Page) {
   await page.getByTestId('button-login-modal-submit-button').click();
   await expect(page.getByTestId('modal-content-login-modal')).not.toBeVisible();
   await mockAuthResponsePromise;
-  await meResponsePromise;
-
-  await page.context().storageState({ path: authFile });
-  expect(page.context().storageState({ path: authFile })).toBeDefined();
-}
-
-async function devLogin(page: Page) {
-  const devAuthResponsePromise = page.waitForResponse(
-    async (response) => response.url().includes('api/oauth2/default') && response.ok(),
-    timeoutOption,
-  );
-
-  const meResponsePromise = page.waitForResponse(
-    async (response) => response.url().includes('api/me') && response.ok(),
-    timeoutOption,
-  );
-
-  await page.goto(TARGET_HOST + LOGIN_PATH);
-  await page.getByTestId('button-auo-confirm').click();
-  await expect(page.getByTestId('modal-content-login-modal')).toBeVisible();
-
-  const username = page.locator('input[name=username]').first();
-  await username.fill(DEV_TEST_USERNAME);
-
-  const password = page.locator('input[name=password]').first();
-  await password.fill(DEV_TEST_PASSWORD);
-
-  await page.getByTestId('button-login-modal-submit-button').click();
-  await expect(page.getByTestId('modal-content-login-modal')).not.toBeVisible();
-  await devAuthResponsePromise;
   await meResponsePromise;
 
   await page.context().storageState({ path: authFile });
@@ -117,9 +86,6 @@ function usingAuthenticationProvider() {
       break;
     case 'mock':
       loginFunction = mockLogin;
-      break;
-    case 'dev':
-      loginFunction = devLogin;
       break;
   }
   return {
