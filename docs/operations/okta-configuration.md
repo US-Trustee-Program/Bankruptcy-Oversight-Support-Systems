@@ -41,7 +41,7 @@ Okta supports time-based one-time password (TOTP) authentication using standard 
 
 - Autofill both password and TOTP code
 - Cross-platform synchronization
-- Backup in vault
+- Backup in Key Vault
 - Team sharing capabilities
 
 ## Okta Applications
