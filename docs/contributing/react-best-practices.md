@@ -3516,70 +3516,44 @@ function UserList({ users }: { users: User[] }) {
 }
 ```
 
-**Generic Custom Hooks**
+**Generic Custom Hooks with React 19 Patterns**
 
 ```tsx
-// ✅ GOOD: Generic async data hook
-interface UseAsyncState<T> {
-  data: T | null;
-  loading: boolean;
-  error: Error | null;
-}
-
-function useAsync<T>(
-  asyncFn: () => Promise<T>,
-  dependencies: React.DependencyList
-): UseAsyncState<T> {
-  const [state, setState] = useState<UseAsyncState<T>>({
-    data: null,
-    loading: true,
-    error: null,
-  });
-
-  useEffect(() => {
-    let cancelled = false;
-
-    setState({ data: null, loading: true, error: null });
-
-    asyncFn()
-      .then(data => {
-        if (!cancelled) {
-          setState({ data, loading: false, error: null });
-        }
-      })
-      .catch(error => {
-        if (!cancelled) {
-          setState({ data: null, loading: false, error });
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, dependencies);
-
-  return state;
-}
-
-// Usage with Api2
+// ✅ GOOD: Generic data fetching with use() hook (React 19)
+import { use, Suspense } from 'react';
 import { useApi2 } from '@/lib/hooks/UseApi2';
+import { ResponseBody } from '@common/api/response';
+
+// Generic hook that leverages use() for data fetching
+function useApiData<T>(fetchFn: () => Promise<ResponseBody<T>>): T {
+  const data = use(fetchFn());
+  // use() suspends during loading and throws errors to Error Boundary
+  // Return type is T (not T | null) because use() guarantees data on success
+  return data.data[0];
+}
+
+// Usage with Api2 and proper TypeScript inference
+import { CaseDetail } from '@common/cams/cases';
 
 function CaseProfile({ caseId }: { caseId: string }) {
   const api = useApi2();
-  const { data: caseData, loading, error } = useAsync(
-    () => api.getCaseDetail(caseId).then(response => response.data[0]),
-    [caseId]
-  );
 
-  // TypeScript knows caseData is CaseDetail | null
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error.message}</div>;
-  if (!caseData) return <div>No case found</div>;
+  // TypeScript infers caseData as CaseDetail (not null!)
+  const caseData = useApiData<CaseDetail>(() => api.getCaseDetail(caseId));
 
   return <div>Case: {caseData.caseId}</div>;
 }
 
-// Note: In React 19 SPAs, prefer use() hook with Suspense - see Section 11.3
+// Wrap with Suspense + Error Boundary in parent:
+function App() {
+  return (
+    <ErrorBoundary fallback={<div>Failed to load case</div>}>
+      <Suspense fallback={<div>Loading case...</div>}>
+        <CaseProfile caseId="081-23-12345" />
+      </Suspense>
+    </ErrorBoundary>
+  );
+}
 ```
 
 **Type Narrowing Patterns**
@@ -4797,7 +4771,7 @@ function UserComment({ comment }) {
 
 ```tsx
 // ❌ BAD: localStorage is vulnerable to XSS
-function login(credentials) {
+async function login(credentials) {
   const response = await fetch('/api/login', {
     method: 'POST',
     body: JSON.stringify(credentials),
@@ -4822,26 +4796,39 @@ function UserProfile() {
   return <div>Welcome, {session.user.name}</div>;
 }
 
-// ✅ GOOD: If you must use localStorage, add protections
+// ✅ GOOD: If you must use localStorage, use useSyncExternalStore (React 19)
+import { useSyncExternalStore } from 'react';
+
 function useAuthToken() {
-  const [token, setToken] = useState(() => {
-    // Only in secure contexts
-    if (window.isSecureContext) {
-      return localStorage.getItem('authToken');
+  // Use useSyncExternalStore for reading localStorage (React 19 best practice)
+  const token = useSyncExternalStore(
+    (callback) => {
+      // Listen for storage events from other tabs/windows
+      window.addEventListener('storage', callback);
+      return () => window.removeEventListener('storage', callback);
+    },
+    () => {
+      // Only in secure contexts
+      if (window.isSecureContext) {
+        return localStorage.getItem('authToken');
+      }
+      return null;
     }
-    return null;
-  });
+  );
 
   const saveToken = (newToken: string) => {
     if (window.isSecureContext) {
       localStorage.setItem('authToken', newToken);
-      setToken(newToken);
+      // Trigger update in current window
+      window.dispatchEvent(new Event('storage'));
     }
   };
 
   const clearToken = () => {
-    localStorage.removeItem('authToken');
-    setToken(null);
+    if (window.isSecureContext) {
+      localStorage.removeItem('authToken');
+      window.dispatchEvent(new Event('storage'));
+    }
   };
 
   return { token, saveToken, clearToken };
