@@ -6,7 +6,6 @@ import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import AttorneyAssignmentSection from './AttorneyAssignmentSection';
 import AuditorAssignmentSection from './AuditorAssignmentSection';
 import ParalegalAssignmentSection from './ParalegalAssignmentSection';
-import './TrusteeAssignedStaff.scss';
 
 interface TrusteeAssignedStaffProps {
   trusteeId: string;
