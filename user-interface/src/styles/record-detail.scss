@@ -1,56 +1,56 @@
-  .record-detail {
-    h1 {
-      margin: 1rem 0;
-    }
+.record-detail {
+  h1 {
+    margin: 1rem 0;
+  }
 
-    h2 {
-      margin-top: 0;
-      margin-bottom: 1rem;
-    }
+  h2 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+  }
 
-    h3 {
-      margin: 0;
-      line-height: 1.5;
-    }
+  h3 {
+    margin: 0;
+    line-height: 1.5;
+  }
 
-    h4 {
-      margin-block-start: 0;
-      margin-block-end: 0;
-    }
+  h4 {
+    margin-block-start: 0;
+    margin-block-end: 0;
+  }
 
-    .record-detail-content {
-      .grid-gap-lg {
-        .record-card-list:first-child {
-          padding-left: 0;
-        }
-      }
-    }
-
-    .record-detail-header {
-      padding-top: 8px;
-    }
-
-    .link-icon {
-      margin-left: 0.25rem;
-      vertical-align: middle;
-    }
-    .record-detail-container {
-      display: flex;
-      column-gap: 5rem;
-      flex-wrap: wrap;
-    }
-    .record-detail-card-list {
-      .record-detail-card {
-        line-height: 1.5;
-        padding-bottom: 1.5rem;
-        display: flex;
-        flex-direction: column;
-        row-gap: 0.5rem;
-        min-width: 18rem;
-
-        ul {
-          margin: 0;
-        }
+  .record-detail-content {
+    .grid-gap-lg {
+      .record-card-list:first-child {
+        padding-left: 0;
       }
     }
   }
+
+  .record-detail-header {
+    padding-top: 8px;
+  }
+
+  .link-icon {
+    margin-left: 0.25rem;
+    vertical-align: middle;
+  }
+  .record-detail-container {
+    display: flex;
+    column-gap: 5rem;
+    flex-wrap: wrap;
+  }
+  .record-detail-card-list {
+    .record-detail-card {
+      line-height: 1.5;
+      margin-bottom: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      row-gap: 0.5rem;
+      min-width: 18rem;
+
+      ul {
+        margin: 0;
+      }
+    }
+  }
+}

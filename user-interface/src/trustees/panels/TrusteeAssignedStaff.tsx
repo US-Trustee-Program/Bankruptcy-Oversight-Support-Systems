@@ -65,7 +65,8 @@ export default function TrusteeAssignedStaff(props: Readonly<TrusteeAssignedStaf
           onAssignmentChange={refreshAssignments}
           isLoading={isLoading}
         />
-
+      </div>
+      <div className="record-detail-container">
         <ParalegalAssignmentSection
           trusteeId={trusteeId}
           assignments={assignments}
