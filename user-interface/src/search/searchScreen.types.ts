@@ -9,7 +9,7 @@ export type SearchScreenFormData = {
   excludeClosedCases?: boolean;
 };
 
-export const CASE_NUMBER_INVALID_ERROR_REASON = 'Case number must be in the format XX-XXXXX';
+export const CASE_NUMBER_INVALID_ERROR_REASON = 'Must be 7 digits';
 export const AT_LEAST_ONE_SEARCH_CRITERION_ERROR_REASON =
   'Please enter at least one search criterion';
 
