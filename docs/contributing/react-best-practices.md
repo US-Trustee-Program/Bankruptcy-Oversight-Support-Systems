@@ -17,6 +17,8 @@ A comprehensive guide for building React single-page applications following mode
 - **"Good Fences" principle**: When we do use third-party libraries, we isolate them behind abstraction layers to prevent tight coupling throughout the codebase
 - **Examples in this project**: Our `Api2` fluent API wraps `fetch`, and our lightweight validation library replaces heavier alternatives like zod
 
+**React Compiler Status**: ⚠️ **This project does NOT yet use React Compiler**, even though React 19 supports it. While this guide documents React Compiler patterns for future reference, **current development should use manual memoization techniques** (`useMemo`, `useCallback`, `React.memo`) when performance profiling indicates they are needed. We plan to integrate React Compiler in a future iteration, at which point much of the manual memoization code can be removed.
+
 ---
 
 ## React 19 for Single-Page Applications (SPAs)
@@ -35,7 +37,7 @@ All patterns, examples, and best practices in this guide are for **client-side R
 
 React 19 brings significant improvements to client-side applications:
 
-1. **React Compiler** - Automatically optimizes re-renders without manual memoization
+1. **React Compiler** - Automatically optimizes re-renders without manual memoization (⚠️ not yet enabled in this project)
 2. **`use()` hook** - First-class support for promises and async data fetching in components
 3. **Actions** - Simplified form handling with `useActionState` and `useFormStatus` (client-side)
 4. **`useOptimistic`** - Built-in optimistic UI updates for better perceived performance
@@ -44,7 +46,7 @@ React 19 brings significant improvements to client-side applications:
 
 ### Key Mindset Shifts for React 19 SPAs
 
-- **Compiler over manual memoization**: Let React Compiler handle optimization automatically
+- **Strategic memoization**: Use `useMemo`, `useCallback`, and `React.memo` when profiling shows performance issues (until React Compiler is integrated)
 - **`use()` over `useEffect` for data**: Fetch data with `use()` and Suspense, not effects
 - **Actions for forms**: Use `useActionState` for form submissions instead of manual state management
 - **Suspense-first**: Embrace Suspense boundaries for async operations
@@ -1145,8 +1147,8 @@ If you can compute a value from props or other state during render, don't store 
 
 **Practice**
 - **Don't store derived state** if you can compute it from existing state/props
-- Compute inline during render - React Compiler handles optimization automatically (see Section 9 for details)
-- Only add `useMemo` after profiling shows a specific performance issue (rare with compiler - see Section 10)
+- Compute inline during render for simple derivations
+- Use `useMemo` for expensive computations when profiling shows they cause performance issues (see Section 10)
 - Never maintain two sources of truth for the same information
 
 **Why / Problems it solves**
@@ -1184,9 +1186,9 @@ function UserList({ users, searchTerm }) {
 // Problem: filteredUsers lags one render behind when props change
 // If you forget dependencies, it gets even worse
 
-// ✅ GOOD: Compute derived state during render (React Compiler optimizes)
+// ✅ GOOD: Compute derived state during render
 function UserList({ users, searchTerm }) {
-  // Compute on every render - React Compiler handles optimization automatically
+  // Compute on every render - use useMemo only if profiling shows performance issues
   const filteredUsers = users.filter(user =>
     user.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -1198,8 +1200,23 @@ function UserList({ users, searchTerm }) {
   );
 }
 
-// Note: With React Compiler, manual useMemo is rarely needed.
-// Only add after profiling shows a specific bottleneck (see Section 10).
+// ✅ ALSO GOOD: Use useMemo for expensive computations
+function UserList({ users, searchTerm }) {
+  const filteredUsers = useMemo(() => {
+    // Only recompute when users or searchTerm changes
+    return users.filter(user =>
+      user.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [users, searchTerm]);
+
+  return (
+    <ul>
+      {filteredUsers.map(user => <li key={user.id}>{user.name}</li>)}
+    </ul>
+  );
+}
+
+// Note: Use profiling to determine if memoization is needed (see Section 10).
 ```
 
 **Sources**
@@ -1212,8 +1229,8 @@ Never use `useEffect` to compute values from other state or props. Effects run a
 
 **Practice**
 - **Do not** write: `useEffect(() => setX(deriveY(y)), [y])` for pure derivation
-- Instead: `const x = deriveY(y)` - React Compiler handles optimization (see Section 9)
-- Only add `useMemo` after profiling shows a specific bottleneck (rare - see Section 10)
+- Instead: `const x = deriveY(y)` for simple computations
+- Use `useMemo` for expensive computations: `const x = useMemo(() => deriveY(y), [y])`
 - Effects are for side effects (network, subscriptions), not computation
 
 **Why / Problems it solves**
@@ -1384,28 +1401,34 @@ When derived state logic is complex, extract it into a custom hook.
 **Practice**
 - Put **authoritative state** in the hook
 - Return **derived values computed on demand** (no redundant storage)
-- Let React Compiler optimize - only add `useMemo` after profiling shows need (see Sections 9-10 for optimization guidance)
+- Use `useMemo` for expensive derived computations to avoid recalculating on every render
 
 ```tsx
-// ✅ GOOD: Custom hook with authoritative + derived state (compiler optimizes)
+// ✅ GOOD: Custom hook with authoritative + derived state
 function useProductFiltering(products, filters) {
   // Authoritative state
   const [sortOrder, setSortOrder] = useState('asc');
 
-  // Derived values - React Compiler handles optimization automatically
-  let filteredProducts = products;
+  // Derived values - use useMemo for expensive operations
+  const filteredProducts = useMemo(() => {
+    let result = products;
 
-  if (filters.category) {
-    filteredProducts = filteredProducts.filter(p => p.category === filters.category);
-  }
+    if (filters.category) {
+      result = result.filter(p => p.category === filters.category);
+    }
 
-  if (filters.minPrice) {
-    filteredProducts = filteredProducts.filter(p => p.price >= filters.minPrice);
-  }
+    if (filters.minPrice) {
+      result = result.filter(p => p.price >= filters.minPrice);
+    }
 
-  const sortedProducts = [...filteredProducts].sort((a, b) =>
-    sortOrder === 'asc' ? a.price - b.price : b.price - a.price
-  );
+    return result;
+  }, [products, filters]);
+
+  const sortedProducts = useMemo(() => {
+    return [...filteredProducts].sort((a, b) =>
+      sortOrder === 'asc' ? a.price - b.price : b.price - a.price
+    );
+  }, [filteredProducts, sortOrder]);
 
   return {
     products: sortedProducts,
@@ -1849,11 +1872,13 @@ function Form() {
 **Sources**
 - https://react.dev/reference/react/forwardRef
 
-### 9. React Compiler: Automatic Optimization
+### 9. React Compiler (Future Integration)
+
+⚠️ **This project does NOT yet have React Compiler enabled.** This section documents React Compiler for future reference when we integrate it.
 
 React 19's compiler automatically optimizes your components by memoizing them at build time, eliminating most manual performance optimization.
 
-> **Note**: This section provides comprehensive React Compiler documentation. The compiler is referenced throughout this guide (Sections 6, 10, and antipatterns) because it fundamentally changes how you approach optimization - you can write simple, clean code and trust the compiler to optimize it. This is why you'll see repeated mentions of "let the compiler handle it" - it's the modern React 19 mindset.
+> **Note**: Once React Compiler is integrated, much of the manual memoization code using `React.memo`, `useMemo`, and `useCallback` can be removed. The compiler fundamentally changes how you approach optimization - you can write simple, clean code and trust the compiler to optimize it. Until then, use manual memoization techniques as described in Section 10.
 
 **Practice**
 - Enable React Compiler in your build configuration (Babel/SWC plugin)
@@ -1993,35 +2018,37 @@ function MapComponent({ markers }) {
 - https://react.dev/learn/react-compiler
 - https://react.dev/reference/react-compiler/directives/use-memo
 
-### 10. Performance Optimization: When Compiler Isn't Enough
+### 10. Performance Optimization: Strategic Memoization
 
-With React Compiler handling automatic optimization, manual performance tuning is rarely needed. Only optimize when profiling shows a real problem that the compiler can't solve.
+⚠️ **Without React Compiler**, manual performance optimization is necessary when profiling shows performance issues. Use memoization strategically to prevent unnecessary re-renders and expensive recalculations.
 
 **Practice**
-- **Trust the React Compiler first** - it handles re-render optimization automatically
 - **Profile before optimizing** - use React DevTools Profiler to identify real bottlenecks
-- Only add manual optimization when:
-  - Profiler shows specific performance issues the compiler didn't solve
-  - Working with third-party libraries that need reference stability
-  - Dealing with truly expensive computations (heavy math, large dataset transformations)
-- Avoid manual `React.memo`, `useMemo`, `useCallback` unless you have profiling data showing they help
+- Use `React.memo` to prevent component re-renders when props haven't changed
+- Use `useMemo` for expensive computations that depend on specific values
+- Use `useCallback` to maintain stable function references, especially for:
+  - Props passed to memoized child components
+  - Dependencies in other hooks
+  - Third-party libraries that rely on reference equality
+- Don't over-optimize - simple computations don't need memoization
 
 **Why / Problems it solves**
-- React Compiler eliminates 90%+ of manual optimization needs
-- Manual optimization in React 19+ often adds unnecessary complexity
+- Prevents unnecessary component re-renders that degrade performance
+- Reduces expensive recalculations on every render
+- Maintains stable references for child components and third-party libraries
 - Profiling reveals actual bottlenecks rather than assumed ones
-- Compiler-first approach keeps code simple and maintainable
 
 **Signals you might need manual optimization**
-- React Profiler shows component taking >16ms to render even with compiler enabled
+- React Profiler shows component taking >16ms to render
 - Large data transformations (10k+ items) happening on every keystroke
+- Child components re-rendering when their props haven't actually changed
 - Third-party library integration requires stable references
 - Known expensive operations (complex calculations, heavy algorithms)
 
 ```tsx
-// ❌ BAD: Adding manual memoization when compiler handles it
+// ❌ BAD: Over-optimizing simple operations
 function UserProfile({ user }) {
-  // Compiler already optimizes these - manual memoization is redundant
+  // Don't memoize simple string concatenation
   const fullName = useMemo(() => `${user.firstName} ${user.lastName}`, [user]);
   const age = useMemo(() => user.age, [user.age]);
   const handleClick = useCallback(() => console.log('clicked'), []);
@@ -2034,9 +2061,8 @@ function UserProfile({ user }) {
   );
 }
 
-// ✅ GOOD: Let compiler handle normal cases
+// ✅ GOOD: Simple operations don't need memoization
 function UserProfile({ user }) {
-  // Clean code - compiler optimizes automatically
   const fullName = `${user.firstName} ${user.lastName}`;
   const handleClick = () => console.log('clicked');
 
@@ -2048,14 +2074,44 @@ function UserProfile({ user }) {
   );
 }
 
-// ✅ ALSO GOOD: Manual optimization for proven expensive operations
+// ✅ GOOD: Use React.memo for components that re-render frequently
+const ExpensiveChildComponent = React.memo(({ data, onAction }) => {
+  // Component only re-renders when data or onAction reference changes
+  return (
+    <div>
+      {data.items.map(item => (
+        <ComplexItem key={item.id} item={item} />
+      ))}
+      <button onClick={() => onAction(data.id)}>Action</button>
+    </div>
+  );
+});
+
+function ParentComponent({ items }) {
+  // useCallback ensures stable reference for memoized child
+  const handleAction = useCallback((id) => {
+    console.log('Action on:', id);
+  }, []);
+
+  return (
+    <div>
+      {items.map(item => (
+        <ExpensiveChildComponent
+          key={item.id}
+          data={item}
+          onAction={handleAction}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ✅ GOOD: useMemo for expensive computations
 function DataGrid({ rows }) {
-  // Profile showed this specific computation is expensive
-  // Manual memoization is justified here
+  // Profile showed this computation is expensive
   const aggregatedData = useMemo(() => {
     // Complex aggregation over 50k+ rows
     return rows.reduce((acc, row) => {
-      // Heavy computation with nested loops
       const metrics = calculateComplexMetrics(row, acc);
       return mergeWithWeightedAverages(acc, metrics);
     }, {});
@@ -2064,7 +2120,7 @@ function DataGrid({ rows }) {
   return <Table data={aggregatedData} />;
 }
 
-// ✅ ALSO GOOD: Third-party library needs stable references
+// ✅ GOOD: useCallback for third-party library requirements
 function MapView({ markers }) {
   // Mapping library checks reference equality
   const onMarkerClick = useCallback((id) => {
@@ -5445,20 +5501,38 @@ function CaseProfile({ caseId }) {
 </Suspense>
 ```
 
-#### Antipattern 7: Manual Memoization with React Compiler Enabled
+#### Antipattern 7: Over-Memoizing Simple Operations
 
-When React Compiler is enabled, manual memoization is usually redundant and adds unnecessary complexity.
+Without React Compiler, memoization is necessary for performance, but over-memoizing simple operations adds complexity without benefit.
 
 ```tsx
-// ❌ BAD: Manual memoization when compiler handles it
-import { memo, useMemo, useCallback } from 'react';
+// ❌ BAD: Memoizing simple, cheap operations
+function UserList({ users, onSelect }) {
+  // Don't memoize simple array access or string operations
+  const firstUser = useMemo(() => users[0], [users]);
+  const userCount = useMemo(() => users.length, [users]);
+  const greeting = useMemo(() => `Hello ${users[0]?.name}`, [users]);
 
-const UserList = memo(({ users, onSelect }) => {
-  // Compiler already optimizes these
+  const handleSelect = useCallback((id) => {
+    onSelect(id);
+  }, [onSelect]);
+
+  return (
+    <div>
+      <p>{greeting}</p>
+      <p>Total users: {userCount}</p>
+    </div>
+  );
+}
+
+// ✅ GOOD: Only memoize when necessary
+const UserList = React.memo(({ users, onSelect }) => {
+  // Memoize expensive sorting operation
   const sortedUsers = useMemo(() => {
-    return users.sort((a, b) => a.name.localeCompare(b.name));
+    return [...users].sort((a, b) => a.name.localeCompare(b.name));
   }, [users]);
 
+  // Stable callback reference for child components
   const handleSelect = useCallback((id) => {
     onSelect(id);
   }, [onSelect]);
@@ -5466,33 +5540,22 @@ const UserList = memo(({ users, onSelect }) => {
   return (
     <ul>
       {sortedUsers.map(user => (
-        <li key={user.id} onClick={() => handleSelect(user.id)}>
-          {user.name}
-        </li>
+        <UserItem
+          key={user.id}
+          user={user}
+          onSelect={handleSelect}
+        />
       ))}
     </ul>
   );
 });
 
-// ✅ GOOD: Let compiler optimize automatically
-function UserList({ users, onSelect }) {
-  // Compiler handles optimization
-  const sortedUsers = users.sort((a, b) => a.name.localeCompare(b.name));
-
-  const handleSelect = (id) => {
-    onSelect(id);
-  };
-
-  return (
-    <ul>
-      {sortedUsers.map(user => (
-        <li key={user.id} onClick={() => handleSelect(user.id)}>
-          {user.name}
-        </li>
-      ))}
-    </ul>
-  );
-}
+// Child component also memoized to prevent re-renders
+const UserItem = React.memo(({ user, onSelect }) => (
+  <li onClick={() => onSelect(user.id)}>
+    {user.name}
+  </li>
+));
 ```
 
 #### Antipattern 8: Not Using Actions for Form Mutations
@@ -5641,8 +5704,9 @@ function UserProfile({ userId }) {
 ## Quick Reference Checklists
 
 ### Derived State Checklist
-- ✅ Can I compute it from props/state now? → Compute inline - React Compiler optimizes
-- ❌ Am I about to write an effect to sync it? → Stop; derive in render instead
+- ✅ Can I compute it from props/state now? → Compute inline for simple operations
+- ✅ Is the computation expensive? → Use `useMemo` with dependencies
+- ❌ Am I about to write an effect to sync it? → Stop; derive in render instead with or without `useMemo`
 - ✅ Is it one-time init or reset-on-identity-change? → Use lazy initializer or keyed remount
 - ❌ Do I have two sources of truth? → Remove the derived state, compute on demand
 
@@ -5672,13 +5736,14 @@ function UserProfile({ userId }) {
 - https://react.dev/learn/thinking-in-react
 - https://www.geeksforgeeks.org/reactjs/react-architecture-pattern-and-best-practices/
 
-### Performance Optimization Checklist (React 19 with Compiler)
-- ✅ Trust React Compiler first → It handles optimization automatically
-- ✅ Measured performance issue with React Profiler? → Investigate with profiling
-- ❌ Pre-optimizing without measurement? → Don't - compiler already optimizes
-- ✅ Profiler shows specific bottleneck after compiler optimization? → Consider manual `useMemo` (rare)
-- ✅ Third-party library needs reference stability? → Consider `useCallback` for that specific case
-- ✅ Need to opt-out of compiler? → Use `'use no memo'` directive (very rare)
+### Performance Optimization Checklist (React 19 without Compiler)
+- ✅ Profile before optimizing → Use React DevTools Profiler to identify bottlenecks
+- ✅ Component re-renders unnecessarily? → Wrap with `React.memo`
+- ✅ Expensive computation recalculating unnecessarily? → Use `useMemo` with dependencies
+- ✅ Passing callbacks to memoized children? → Use `useCallback` for stable references
+- ✅ Third-party library needs reference stability? → Use `useCallback` or `useMemo`
+- ❌ Memoizing simple operations? → Don't - adds complexity without benefit
+- ✅ React Compiler integration planned? → Document memoization decisions for future cleanup
 
 **Sources**
 - https://react.dev/reference/react/memo
@@ -5702,10 +5767,11 @@ Modern React development (React 19+) emphasizes **declarative patterns, intentio
 
 **Key principles:**
 - Prefer simplicity over premature optimization
-- Compute derived values during render, not in effects
+- Compute derived values during render, not in effects (use `useMemo` for expensive operations)
 - Keep state local by default
 - Use refs for imperative concerns only
+- Use strategic memoization (`React.memo`, `useMemo`, `useCallback`) based on profiling
 - Add tools only when you have concrete signals they solve real problems
-- Avoid common antipatterns: state mutation, index keys, missing dependencies, nested components, excessive prop drilling
+- Avoid common antipatterns: state mutation, index keys, missing dependencies, nested components, excessive prop drilling, over-memoization
 
 Following these practices creates maintainable, performant React applications that scale well with team growth and feature complexity.
