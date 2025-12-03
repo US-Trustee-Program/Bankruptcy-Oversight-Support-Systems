@@ -87,7 +87,15 @@ function CaseNumberInput_(props: CaseNumberInputProps, ref: React.Ref<InputRef>)
       forwardedRef.current &&
       forwardedRef.current?.getValue().length > 0
     ) {
-      onChange(forwardedRef.current?.getValue());
+      const currentValue = forwardedRef.current?.getValue();
+      const caseNumberPattern = /^\d{2}-\d{5}$/;
+      const isValidCaseNumber = caseNumberPattern.test(currentValue);
+
+      if (allowPartialCaseNumber) {
+        onChange(currentValue);
+      } else {
+        onChange(isValidCaseNumber ? currentValue : undefined);
+      }
     }
   }
 

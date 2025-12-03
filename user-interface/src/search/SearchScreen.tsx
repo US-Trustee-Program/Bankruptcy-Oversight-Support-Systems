@@ -126,6 +126,8 @@ export default function SearchScreen() {
   }
 
   function handleCaseNumberChange(caseNumber?: string): void {
+    console.log('Case number changed to:', caseNumber);
+    console.log('Current temporarySearchPredicate:', temporarySearchPredicate);
     if (temporarySearchPredicate.caseNumber != caseNumber) {
       const newPredicate = { ...temporarySearchPredicate, caseNumber };
       if (!caseNumber) {
@@ -171,6 +173,7 @@ export default function SearchScreen() {
   }
 
   function handleKeyDown(ev: React.KeyboardEvent<HTMLDivElement>) {
+    console.log('Key down event:', ev.key);
     if (ev.key === 'Enter') {
       ev.preventDefault();
       // Use setTimeout to ensure state updates from child components have completed
@@ -178,6 +181,7 @@ export default function SearchScreen() {
       // which updates temporarySearchPredicate asynchronously
       setTimeout(() => {
         if (isValidFilteredSearch(temporarySearchPredicate)) {
+          console.log('Performing search with predicate:', temporarySearchPredicate);
           performSearch();
         }
       }, 0);
