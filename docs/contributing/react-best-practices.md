@@ -1141,7 +1141,8 @@ If you can compute a value from props or other state during render, don't store 
 
 **Practice**
 - **Don't store derived state** if you can compute it from existing state/props
-- Compute inline, or use `useMemo` if the computation is expensive
+- Compute inline during render - React Compiler handles optimization automatically
+- Only add `useMemo` after profiling shows a specific performance issue (rare with compiler)
 - Never maintain two sources of truth for the same information
 
 **Why / Problems it solves**
@@ -1179,9 +1180,9 @@ function UserList({ users, searchTerm }) {
 // Problem: filteredUsers lags one render behind when props change
 // If you forget dependencies, it gets even worse
 
-// ✅ GOOD: Compute derived state during render
+// ✅ GOOD: Compute derived state during render (React Compiler optimizes)
 function UserList({ users, searchTerm }) {
-  // Compute on every render - React is fast enough
+  // Compute on every render - React Compiler handles optimization automatically
   const filteredUsers = users.filter(user =>
     user.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -1193,20 +1194,8 @@ function UserList({ users, searchTerm }) {
   );
 }
 
-// ✅ ALSO GOOD: Memoize if computation is expensive
-function UserList({ users, searchTerm }) {
-  const filteredUsers = useMemo(() => {
-    return users.filter(user =>
-      user.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [users, searchTerm]);
-
-  return (
-    <ul>
-      {filteredUsers.map(user => <li key={user.id}>{user.name}</li>)}
-    </ul>
-  );
-}
+// Note: With React Compiler, manual useMemo is rarely needed.
+// Only add after profiling shows a specific bottleneck (see Section 10).
 ```
 
 **Sources**
@@ -1219,7 +1208,8 @@ Never use `useEffect` to compute values from other state or props. Effects run a
 
 **Practice**
 - **Do not** write: `useEffect(() => setX(deriveY(y)), [y])` for pure derivation
-- Instead: `const x = deriveY(y)` or `const x = useMemo(() => deriveY(y), [y])`
+- Instead: `const x = deriveY(y)` - React Compiler handles optimization
+- Only add `useMemo` after profiling shows a specific bottleneck (rare)
 - Effects are for side effects (network, subscriptions), not computation
 
 **Why / Problems it solves**
@@ -1390,34 +1380,28 @@ When derived state logic is complex, extract it into a custom hook.
 **Practice**
 - Put **authoritative state** in the hook
 - Return **derived values computed on demand** (no redundant storage)
-- Memoize inside the hook only if performance demands it
+- Let React Compiler optimize - only add `useMemo` after profiling shows need
 
 ```tsx
-// ✅ GOOD: Custom hook with authoritative + derived state
+// ✅ GOOD: Custom hook with authoritative + derived state (compiler optimizes)
 function useProductFiltering(products, filters) {
   // Authoritative state
   const [sortOrder, setSortOrder] = useState('asc');
 
-  // Derived values computed on demand
-  const filteredProducts = useMemo(() => {
-    let result = products;
+  // Derived values - React Compiler handles optimization automatically
+  let filteredProducts = products;
 
-    if (filters.category) {
-      result = result.filter(p => p.category === filters.category);
-    }
+  if (filters.category) {
+    filteredProducts = filteredProducts.filter(p => p.category === filters.category);
+  }
 
-    if (filters.minPrice) {
-      result = result.filter(p => p.price >= filters.minPrice);
-    }
+  if (filters.minPrice) {
+    filteredProducts = filteredProducts.filter(p => p.price >= filters.minPrice);
+  }
 
-    return result;
-  }, [products, filters]);
-
-  const sortedProducts = useMemo(() => {
-    return [...filteredProducts].sort((a, b) =>
-      sortOrder === 'asc' ? a.price - b.price : b.price - a.price
-    );
-  }, [filteredProducts, sortOrder]);
+  const sortedProducts = [...filteredProducts].sort((a, b) =>
+    sortOrder === 'asc' ? a.price - b.price : b.price - a.price
+  );
 
   return {
     products: sortedProducts,
@@ -5654,7 +5638,7 @@ function UserProfile({ userId }) {
 ## Quick Reference Checklists
 
 ### Derived State Checklist
-- ✅ Can I compute it from props/state now? → Compute inline or use `useMemo`
+- ✅ Can I compute it from props/state now? → Compute inline - React Compiler optimizes
 - ❌ Am I about to write an effect to sync it? → Stop; derive in render instead
 - ✅ Is it one-time init or reset-on-identity-change? → Use lazy initializer or keyed remount
 - ❌ Do I have two sources of truth? → Remove the derived state, compute on demand
@@ -5685,12 +5669,13 @@ function UserProfile({ userId }) {
 - https://react.dev/learn/thinking-in-react
 - https://www.geeksforgeeks.org/reactjs/react-architecture-pattern-and-best-practices/
 
-### Performance Optimization Checklist
-- ✅ Measured performance issue with React Profiler? → Optimize
-- ❌ Pre-optimizing without measurement? → Don't
-- ✅ Expensive computation running every render? → `useMemo`
-- ✅ Callback passed to memoized child? → `useCallback`
-- ✅ Expensive pure component re-rendering frequently? → `React.memo`
+### Performance Optimization Checklist (React 19 with Compiler)
+- ✅ Trust React Compiler first → It handles optimization automatically
+- ✅ Measured performance issue with React Profiler? → Investigate with profiling
+- ❌ Pre-optimizing without measurement? → Don't - compiler already optimizes
+- ✅ Profiler shows specific bottleneck after compiler optimization? → Consider manual `useMemo` (rare)
+- ✅ Third-party library needs reference stability? → Consider `useCallback` for that specific case
+- ✅ Need to opt-out of compiler? → Use `'use no memo'` directive (very rare)
 
 **Sources**
 - https://react.dev/reference/react/memo
