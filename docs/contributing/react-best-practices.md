@@ -2870,14 +2870,27 @@ function AsyncDataComponent() {
 // ✅ GOOD: Strategic error and suspense boundaries
 import { Suspense } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
+import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 
 function App() {
+  const { appInsights } = getAppInsights();
+
+  const logError = (error: Error, errorInfo: { componentStack: string }) => {
+    // Log to Application Insights
+    appInsights.trackException({
+      exception: error,
+      properties: {
+        componentStack: errorInfo.componentStack,
+      },
+    });
+  };
+
   return (
     <div>
       <Header />
       <ErrorBoundary
         fallback={<ErrorFallback />}
-        onError={(error) => logErrorToService(error)}
+        onError={logError}
       >
         <Suspense fallback={<UserProfileSkeleton />}>
           <UserProfile />
@@ -2940,8 +2953,11 @@ function ProblematicComponent() {
 }
 
 // ✅ GOOD: Handle these cases explicitly
+import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
+
 function SafeComponent() {
   const [error, setError] = useState(null);
+  const { appInsights } = getAppInsights();
 
   // Handle event handler errors with try-catch
   const handleClick = () => {
@@ -2949,7 +2965,8 @@ function SafeComponent() {
       riskyOperation();
     } catch (err) {
       setError(err);
-      logErrorToService(err);
+      // Log to Application Insights
+      appInsights.trackException({ exception: err });
     }
   };
 
@@ -3039,34 +3056,31 @@ function ErrorFallbackWithRetry({ error, resetErrorBoundary }) {
 
 ```tsx
 import { ErrorBoundary } from 'react-error-boundary';
-
-import { useGenericApi } from '@/lib/models/api2';
-
-function logErrorToService(error, errorInfo) {
-  // Send to error tracking service (Sentry, Datadog, etc.)
-  console.error('Error caught:', error);
-  console.error('Component stack:', errorInfo.componentStack);
-
-  // Example: Send to your monitoring service using Api2
-  try {
-    const api = useGenericApi();
-    api.post('/log-error', {
-      message: error.message,
-      stack: error.stack,
-      componentStack: errorInfo.componentStack,
-      timestamp: new Date().toISOString(),
-      userAgent: navigator.userAgent,
-    }).catch(console.error); // Don't throw if logging fails
-  } catch (err) {
-    console.error('Failed to log error:', err);
-  }
-}
+import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 
 function App() {
+  const { appInsights } = getAppInsights();
+
+  const logErrorToApplicationInsights = (error: Error, errorInfo: { componentStack: string }) => {
+    // Log error details to console for debugging
+    console.error('Error caught:', error);
+    console.error('Component stack:', errorInfo.componentStack);
+
+    // Send to Application Insights
+    appInsights.trackException({
+      exception: error,
+      properties: {
+        componentStack: errorInfo.componentStack,
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+      },
+    });
+  };
+
   return (
     <ErrorBoundary
       FallbackComponent={ErrorFallback}
-      onError={logErrorToService}
+      onError={logErrorToApplicationInsights}
       onReset={() => {
         // Reset app state if needed
         window.location.href = '/';
