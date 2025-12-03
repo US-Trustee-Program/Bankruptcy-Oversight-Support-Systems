@@ -3928,37 +3928,129 @@ test('user can search and view results', async () => {
 
 #### 15.7 End-to-End Testing
 
-Mention E2E testing for critical user journeys.
+Test critical user journeys with Playwright to ensure the full application works correctly in a real browser environment.
 
 **Practice**
-- Use Playwright or Cypress for E2E tests
-- Test critical user journeys (authentication, checkout, etc.)
+- **This project uses Playwright** for E2E tests (located in `test/e2e/`)
+- Test critical user journeys (authentication, case management workflows, etc.)
 - Run E2E tests in CI for production confidence
 - Keep E2E test count small - they're slow and expensive
+- Focus on happy paths and critical error scenarios
+- Use Playwright's built-in features: auto-waiting, retry-ability, parallel execution
+
+**Project-Specific: E2E Test Location**
+- All E2E tests are located in: `test/e2e/`
+- Configuration: `test/e2e/playwright.config.ts`
+- Scripts directory: `test/e2e/scripts/`
+- Reports: `test/e2e/playwright-report/`
 
 ```typescript
-// playwright.test.ts
+// test/e2e/playwright/example.test.ts
 import { test, expect } from '@playwright/test';
 
-test('user can complete checkout flow', async ({ page }) => {
-  await page.goto('/products');
+test('user can view case details', async ({ page }) => {
+  // Navigate to the application
+  await page.goto('/');
 
-  await page.click('text=Add to Cart');
-  await page.click('text=Checkout');
+  // Authenticate (example)
+  await page.fill('[name="username"]', 'testuser');
+  await page.fill('[name="password"]', 'testpass');
+  await page.click('button[type="submit"]');
 
-  await page.fill('[name="email"]', 'test@example.com');
-  await page.fill('[name="card"]', '4242 4242 4242 4242');
+  // Navigate to cases
+  await page.click('text=Cases');
 
-  await page.click('text=Complete Purchase');
+  // Wait for case list to load
+  await expect(page.locator('[data-testid="case-list"]')).toBeVisible();
 
-  await expect(page.locator('text=Order Confirmed')).toBeVisible();
+  // Click first case
+  await page.click('[data-testid="case-item"]:first-child');
+
+  // Verify case details page loaded
+  await expect(page.locator('h1')).toContainText('Case Details');
+  await expect(page.locator('[data-testid="case-number"]')).toBeVisible();
 });
+
+test('user can assign staff to a case', async ({ page }) => {
+  await page.goto('/cases/123');
+
+  // Open assignment modal
+  await page.click('button:has-text("Assign Staff")');
+
+  // Select staff member
+  await page.selectOption('select[name="staffId"]', { label: 'John Doe' });
+
+  // Submit assignment
+  await page.click('button:has-text("Confirm")');
+
+  // Verify success message
+  await expect(page.locator('[role="alert"]')).toContainText('Staff assigned successfully');
+});
+```
+
+**Playwright Best Practices for This Project**:
+
+```typescript
+// Use data-testid attributes for stable selectors
+<button data-testid="submit-case-note">Submit</button>
+
+// In test:
+await page.click('[data-testid="submit-case-note"]');
+
+// Use page object pattern for reusable test logic
+class CasePage {
+  constructor(private page: Page) {}
+
+  async goto(caseId: string) {
+    await this.page.goto(`/cases/${caseId}`);
+  }
+
+  async addNote(title: string, content: string) {
+    await this.page.click('[data-testid="add-note-button"]');
+    await this.page.fill('[name="title"]', title);
+    await this.page.fill('[name="content"]', content);
+    await this.page.click('[data-testid="submit-note"]');
+  }
+
+  async expectNoteVisible(title: string) {
+    await expect(
+      this.page.locator(`[data-testid="note-title"]:has-text("${title}")`)
+    ).toBeVisible();
+  }
+}
+
+// Use in tests:
+test('user can add case note', async ({ page }) => {
+  const casePage = new CasePage(page);
+  await casePage.goto('123');
+  await casePage.addNote('Review Completed', 'All documents verified');
+  await casePage.expectNoteVisible('Review Completed');
+});
+```
+
+**Running E2E Tests**:
+```bash
+# Run all E2E tests
+cd test/e2e
+npm test
+
+# Run specific test file
+npx playwright test playwright/cases.test.ts
+
+# Run in headed mode (see browser)
+npx playwright test --headed
+
+# Run in debug mode
+npx playwright test --debug
+
+# Generate report
+npx playwright show-report
 ```
 
 **Testing Strategy Summary**
 - **Unit tests**: Individual components, hooks, utilities (fast, many tests)
 - **Integration tests**: Component interactions, user flows (moderate, focused tests)
-- **E2E tests**: Critical user journeys (slow, few tests)
+- **E2E tests**: Critical user journeys with Playwright in `test/e2e/` (slow, few tests)
 
 **Sources**
 - https://testing-library.com/docs/react-testing-library/intro
