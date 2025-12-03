@@ -43,15 +43,26 @@ describe('Case number input component', () => {
     expect(finalValue).toEqual('');
   });
 
-  test('if allowEnterKey is true and value is a non-zero-length string and key entered is Enter key, then onChange should be called', async () => {
+  test('if allowEnterKey is true and value is a valid case number and key entered is Enter key, then onChange should be called with the case number', async () => {
     const changeFunction = vi.fn();
-    render(<CaseNumberInput onChange={changeFunction} value="321cba" allowEnterKey={true} />);
+    render(<CaseNumberInput onChange={changeFunction} value="12-34567" allowEnterKey={true} />);
 
     const input = document.querySelector('.usa-input');
-    expect(input).toHaveValue('321cba');
+    expect(input).toHaveValue('12-34567');
 
     await userEvent.type(input!, '{Enter}');
-    expect(changeFunction).toHaveBeenCalled();
+    expect(changeFunction).toHaveBeenCalledWith('12-34567');
+  });
+
+  test('if allowEnterKey is true and value is an invalid case number and key entered is Enter key, then onChange should be called with undefined', async () => {
+    const changeFunction = vi.fn();
+    render(<CaseNumberInput onChange={changeFunction} value="12-345" allowEnterKey={true} />);
+
+    const input = document.querySelector('.usa-input');
+    expect(input).toHaveValue('12-345');
+
+    await userEvent.type(input!, '{Enter}');
+    expect(changeFunction).toHaveBeenCalledWith(undefined);
   });
 
   test('if allowEnterKey is false and key entered is Enter key, then onChange should NOT be called', async () => {
@@ -94,6 +105,17 @@ describe('Case number input component', () => {
     const input = document.querySelector('.usa-input');
     await userEvent.type(input!, '12');
     expect(changeFunction).toHaveBeenCalledWith('12');
+  });
+
+  test('if allowPartialCaseNumber is true and allowEnterKey is true, onChange should be called with partial case number when Enter is pressed', async () => {
+    const changeFunction = vi.fn();
+    render(<CaseNumberInput onChange={changeFunction} value="12-345" allowPartialCaseNumber={true} allowEnterKey={true} />);
+
+    const input = document.querySelector('.usa-input');
+    expect(input).toHaveValue('12-345');
+
+    await userEvent.type(input!, '{Enter}');
+    expect(changeFunction).toHaveBeenCalledWith('12-345');
   });
 
   test('if allowEnterKey is true and input value is empty, handleEnter should not call onChange', async () => {
