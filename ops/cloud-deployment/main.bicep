@@ -93,6 +93,8 @@ param actionGroupName string =''
 @description('Flag: determines creation and configuration of Application Insights for the Azure Function.')
 param deployAppInsights bool = false
 
+param analyticsWorkspaceId string = ''
+
 @description('Name of the Log Analytics workspace.')
 param analyticsWorkspaceName string = 'law-${stackName}'
 
@@ -180,7 +182,7 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = {
     scope: resourceGroup(appResourceGroup)
     params: {
       deployAppInsights: deployAppInsights
-      analyticsWorkspaceId: deployAppInsights ? logAnalyticsWorkspace.outputs.id : ''
+      analyticsWorkspaceId: deployAppInsights ? analyticsWorkspaceId ?? logAnalyticsWorkspace.outputs.id : ''
       planName: 'plan-${webappName}'
       planType: webappPlanType
       webappName: webappName
@@ -208,7 +210,7 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
     scope: resourceGroup(appResourceGroup)
     params: {
       deployAppInsights: deployAppInsights
-      analyticsWorkspaceId: deployAppInsights ? logAnalyticsWorkspace.outputs.id : ''
+      analyticsWorkspaceId: deployAppInsights ? analyticsWorkspaceId ?? logAnalyticsWorkspace.outputs.id : ''
       location: location
       apiPlanName: apiFunctionPlanName
       apiFunctionName: apiFunctionName
@@ -250,7 +252,7 @@ module ustpDataflowsFunction 'dataflows-resource-deploy.bicep' = {
   scope: resourceGroup(appResourceGroup)
   params: {
     deployAppInsights: deployAppInsights
-    analyticsWorkspaceId: deployAppInsights ? logAnalyticsWorkspace.outputs.id : ''
+    analyticsWorkspaceId: deployAppInsights ? analyticsWorkspaceId ?? logAnalyticsWorkspace.outputs.id : ''
     location: location
     dataflowsPlanName: dataflowsFunctionPlanName
     apiFunctionName: apiFunctionName
