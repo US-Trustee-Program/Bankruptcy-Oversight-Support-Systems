@@ -12,7 +12,9 @@ Okta removes some of the complexity of ADFS, including network integration and m
 
 ## Status
 
-Accepted
+Superseded by [AuthenticationModes ADR](AuthenticationModes.md)
+
+This ADR documented the original decision to use Okta over ADFS. The decision to use Okta remains valid, but the [AuthenticationModes ADR](AuthenticationModes.md) provides current guidance on authentication implementation.
 
 ## Consequences
 

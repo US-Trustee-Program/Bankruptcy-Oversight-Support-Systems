@@ -24,7 +24,6 @@ import { ListsController } from '../lib/controllers/lists/lists.controller';
 import { PrivilegedIdentityAdminController } from '../lib/controllers/admin/privileged-identity-admin.controller';
 import { finalizeDeferrable } from '../lib/deferrable/finalize-deferrable';
 import { mockAuthentication } from '../lib/testing/mock-gateways/mock-oauth2-gateway';
-import { devAuthentication } from '../lib/adapters/gateways/dev-oauth2/dev-oauth2-gateway';
 import { httpSuccess } from '../lib/adapters/utils/http-response';
 import HttpStatusCodes from '../../common/src/api/http-status-codes';
 import HealthcheckCosmosDb from '../function-apps/api/healthcheck/healthcheck.db.cosmos';
@@ -380,12 +379,7 @@ export function createApp(): Application {
         sub?: string;
       }>(req, logger, requestId);
 
-      let token: string;
-      if (context.config.authConfig.provider === 'dev') {
-        token = await devAuthentication(context);
-      } else {
-        token = await mockAuthentication(context);
-      }
+      const token: string = await mockAuthentication(context);
 
       const camsResponse = httpSuccess({
         body: { data: { value: token } },

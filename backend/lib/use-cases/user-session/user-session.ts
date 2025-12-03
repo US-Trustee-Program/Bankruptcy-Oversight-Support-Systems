@@ -2,7 +2,10 @@ import { getAuthorizationGateway, getUserSessionCacheRepository } from '../../fa
 import { ApplicationContext } from '../../adapters/types/basic';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { isCamsError } from '../../common-errors/cams-error';
-import { ServerConfigError } from '../../common-errors/server-config-error';
+import {
+  ServerConfigError,
+  UNSUPPORTED_AUTHENTICATION_PROVIDER,
+} from '../../common-errors/server-config-error';
 import { CamsSession } from '../../../../common/src/cams/session';
 import { isNotFoundError } from '../../common-errors/not-found-error';
 import UsersHelpers from '../users/users.helpers';
@@ -44,7 +47,7 @@ export class UserSessionUseCase {
     const authGateway = getAuthorizationGateway(context);
     if (!authGateway) {
       throw new ServerConfigError(MODULE_NAME, {
-        message: 'Unsupported authentication provider.',
+        message: UNSUPPORTED_AUTHENTICATION_PROVIDER,
       });
     }
     const MAX_RETRIES = 3;
