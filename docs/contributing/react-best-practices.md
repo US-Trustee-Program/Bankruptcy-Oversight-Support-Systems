@@ -650,19 +650,23 @@ function useDebounce(value, delay) {
   return debouncedValue;
 }
 
-function useOnlineStatus() {
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
+// Use useSyncExternalStore for external state (prevents tearing in React 19)
+import { useSyncExternalStore } from 'react';
 
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
+function useOnlineStatus() {
+  const isOnline = useSyncExternalStore(
+    // subscribe: Register listener
+    (callback) => {
+      window.addEventListener('online', callback);
+      window.addEventListener('offline', callback);
+      return () => {
+        window.removeEventListener('online', callback);
+        window.removeEventListener('offline', callback);
+      };
+    },
+    // getSnapshot: Return current value
+    () => navigator.onLine
+  );
 
   return isOnline;
 }
@@ -1141,8 +1145,8 @@ If you can compute a value from props or other state during render, don't store 
 
 **Practice**
 - **Don't store derived state** if you can compute it from existing state/props
-- Compute inline during render - React Compiler handles optimization automatically
-- Only add `useMemo` after profiling shows a specific performance issue (rare with compiler)
+- Compute inline during render - React Compiler handles optimization automatically (see Section 9 for details)
+- Only add `useMemo` after profiling shows a specific performance issue (rare with compiler - see Section 10)
 - Never maintain two sources of truth for the same information
 
 **Why / Problems it solves**
@@ -1208,8 +1212,8 @@ Never use `useEffect` to compute values from other state or props. Effects run a
 
 **Practice**
 - **Do not** write: `useEffect(() => setX(deriveY(y)), [y])` for pure derivation
-- Instead: `const x = deriveY(y)` - React Compiler handles optimization
-- Only add `useMemo` after profiling shows a specific bottleneck (rare)
+- Instead: `const x = deriveY(y)` - React Compiler handles optimization (see Section 9)
+- Only add `useMemo` after profiling shows a specific bottleneck (rare - see Section 10)
 - Effects are for side effects (network, subscriptions), not computation
 
 **Why / Problems it solves**
@@ -1380,7 +1384,7 @@ When derived state logic is complex, extract it into a custom hook.
 **Practice**
 - Put **authoritative state** in the hook
 - Return **derived values computed on demand** (no redundant storage)
-- Let React Compiler optimize - only add `useMemo` after profiling shows need
+- Let React Compiler optimize - only add `useMemo` after profiling shows need (see Sections 9-10 for optimization guidance)
 
 ```tsx
 // ✅ GOOD: Custom hook with authoritative + derived state (compiler optimizes)
@@ -1437,16 +1441,22 @@ function ProductList({ products, filters }) {
 Use `useEffect` only to synchronize with external systems. In React 19, **do not use effects for data fetching** - use the `use()` hook instead.
 
 **Practice**
-- Use `useEffect` exclusively for **synchronizing with external systems**:
+- Use `useEffect` exclusively for **synchronizing with external systems** (side effects):
   - Subscriptions (WebSocket, EventSource)
   - Timers (setTimeout, setInterval)
-  - Browser APIs (localStorage, document manipulation)
+  - Browser APIs (document manipulation, imperative APIs)
   - Imperative third-party libraries
   - Manual DOM manipulation (when unavoidable)
+- Use `useSyncExternalStore` instead of `useEffect` when **reading external state values**:
+  - Browser APIs that provide state (navigator.onLine, matchMedia, localStorage)
+  - Third-party state management stores
+  - Any external state that could change during rendering
+  - See Section 4.1 for full `useSyncExternalStore` documentation
 - **DO NOT use useEffect for**:
   - Data fetching (use `use()` hook + Suspense instead - see Section 11.3)
   - Computing derived values (compute during render - see Section 6)
   - Responding to prop changes (handle in render or event handlers)
+  - Reading external state values (use `useSyncExternalStore` instead)
 - Always clean up effects that create subscriptions or register listeners
 - Keep effects minimal with explicit dependencies
 
@@ -1597,13 +1607,17 @@ function App() {
 // See Section 11.3 for full use() hook documentation
 ```
 
-**When useEffect is still appropriate:**
-- WebSocket connections
-- Browser event listeners
-- Third-party widget initialization
-- Timers and intervals
-- Manual DOM measurements
-- localStorage sync
+**When useEffect vs useSyncExternalStore:**
+- **useEffect** for side effects (connections, listeners, timers, DOM manipulation):
+  - WebSocket connections
+  - Third-party widget initialization
+  - Timers and intervals
+  - Manual DOM measurements
+- **useSyncExternalStore** for reading external state:
+  - navigator.onLine status
+  - matchMedia queries
+  - localStorage sync
+  - Third-party store subscriptions
 
 **Sources**
 - https://react.dev/learn/you-might-not-need-an-effect
@@ -1838,6 +1852,8 @@ function Form() {
 ### 9. React Compiler: Automatic Optimization
 
 React 19's compiler automatically optimizes your components by memoizing them at build time, eliminating most manual performance optimization.
+
+> **Note**: This section provides comprehensive React Compiler documentation. The compiler is referenced throughout this guide (Sections 6, 10, and antipatterns) because it fundamentally changes how you approach optimization - you can write simple, clean code and trust the compiler to optimize it. This is why you'll see repeated mentions of "let the compiler handle it" - it's the modern React 19 mindset.
 
 **Practice**
 - Enable React Compiler in your build configuration (Babel/SWC plugin)
