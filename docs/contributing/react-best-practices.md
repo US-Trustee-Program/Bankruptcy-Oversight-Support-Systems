@@ -3161,7 +3161,7 @@ function UserCard({ user }) {
     <div>
       <h2>{user.name}</h2>
       <p>{user.email}</p>
-      <p>Joined: {user.createdAt.toLocaleDateString()}</p>
+      <p>Joined: {user.createdAt}</p>
     </div>
   );
 }
@@ -3171,7 +3171,7 @@ interface User {
   id: string;
   name: string;
   email: string;
-  createdAt: Date;
+  createdAt: string; // ISO date string from API
 }
 
 interface UserCardProps {
@@ -3184,7 +3184,7 @@ function UserCard({ user, onEdit }: UserCardProps) {
     <div>
       <h2>{user.name}</h2>
       <p>{user.email}</p>
-      <p>Joined: {user.createdAt.toLocaleDateString()}</p>
+      <p>Joined: {user.createdAt}</p>
       {onEdit && <button onClick={() => onEdit(user.id)}>Edit</button>}
     </div>
   );
@@ -3235,26 +3235,49 @@ type ActionState = {
   data?: CaseNote;
 };
 
+// Define validation specification with project's validation library
+import Validators from '@common/cams/validators';
+import { validateObject, ValidationSpec } from '@common/cams/validation';
+
+interface CaseNoteFormData {
+  caseId: string;
+  title: string;
+  content: string;
+}
+
+const caseNoteSpec: ValidationSpec<CaseNoteFormData> = {
+  caseId: [Validators.minLength(1, 'Case ID is required')],
+  title: [Validators.minLength(1, 'Title is required')],
+  content: [Validators.minLength(1, 'Content is required')],
+};
+
 async function submitCaseNoteAction(
   api: ReturnType<typeof useApi2>,
   prevState: ActionState | null,
   formData: FormData
 ): Promise<ActionState> {
-  const caseId = formData.get('caseId') as string;
-  const title = formData.get('title') as string;
-  const content = formData.get('content') as string;
+  const data: CaseNoteFormData = {
+    caseId: formData.get('caseId') as string,
+    title: formData.get('title') as string,
+    content: formData.get('content') as string,
+  };
 
-  // Validate
-  if (!caseId || !title || !content) {
-    return { success: false, error: 'All fields required' };
+  // Validate with project's validation library
+  const validationResult = validateObject(caseNoteSpec, data);
+
+  if (!validationResult.valid) {
+    return {
+      success: false,
+      error: validationResult.reasons.join(', '),
+    };
   }
 
   try {
     // Api2 methods are fully typed
     const response: ResponseBody<CaseNote> | void = await api.postCaseNote({
-      caseId,
-      title,
-      content,
+      caseId: data.caseId,
+      title: data.title,
+      content: data.content,
     });
 
     return { success: true, error: null, data: response?.data[0] };
@@ -4435,27 +4458,60 @@ function ContactForm() {
   );
 }
 
-// ✅ GOOD: Proper labels and error association
+// ✅ GOOD: Proper labels, error association, and validation
+import { useActionState, useId } from 'react';
+import { useApi2 } from '@/lib/hooks/UseApi2';
+import Validators from '@common/cams/validators';
+import { validateObject, ValidationSpec } from '@common/cams/validation';
+
+const contactSpec: ValidationSpec<{ email: string }> = {
+  email: [Validators.isEmailAddress],
+};
+
+async function submitContact(api, prevState, formData) {
+  const email = formData.get('email') as string;
+
+  // Validate with project's validation library
+  const validationResult = validateObject(contactSpec, { email });
+
+  if (!validationResult.valid) {
+    return {
+      success: false,
+      error: validationResult.reasons.join(', '),
+    };
+  }
+
+  try {
+    await api.post('/contact', { email });
+    return { success: true, error: null };
+  } catch (error) {
+    return { success: false, error: 'Submission failed' };
+  }
+}
+
 function ContactForm() {
-  const [error, setError] = useState('');
+  const api = useApi2();
+  const submitWithApi = submitContact.bind(null, api);
+  const [state, formAction] = useActionState(submitWithApi, null);
   const emailId = useId();
   const errorId = useId();
 
   return (
-    <form>
+    <form action={formAction}>
       <label htmlFor={emailId}>
         Email address
         <input
           id={emailId}
+          name="email"
           type="email"
-          aria-invalid={!!error}
-          aria-describedby={error ? errorId : undefined}
+          aria-invalid={!!state?.error}
+          aria-describedby={state?.error ? errorId : undefined}
           required
         />
       </label>
-      {error && (
+      {state?.error && (
         <p id={errorId} role="alert" aria-live="polite">
-          {error}
+          {state.error}
         </p>
       )}
       <button type="submit">Submit</button>
@@ -4923,7 +4979,37 @@ Content-Security-Policy:
 #### 18.6 Secure File Uploads
 
 ```tsx
-// ✅ GOOD: Validate file types and sizes client-side
+// ✅ GOOD: Validate file types and sizes with validation library
+import Validators from '@common/cams/validators';
+import { validateObject, ValidationSpec } from '@common/cams/validation';
+import { useGenericApi } from '@/lib/models/api2';
+
+// Custom validator for file type
+const isAllowedFileType = (value: unknown) => {
+  if (!(value instanceof File)) {
+    return { reasons: ['Value must be a file'] };
+  }
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+  return allowedTypes.includes(value.type)
+    ? { valid: true }
+    : { reasons: ['Only JPEG, PNG, and GIF files allowed'] };
+};
+
+// Custom validator for file size
+const isWithinSizeLimit = (value: unknown) => {
+  if (!(value instanceof File)) {
+    return { reasons: ['Value must be a file'] };
+  }
+  const maxSize = 5 * 1024 * 1024; // 5MB
+  return value.size <= maxSize
+    ? { valid: true }
+    : { reasons: ['File must be smaller than 5MB'] };
+};
+
+const fileSpec: ValidationSpec<{ file: File }> = {
+  file: [isAllowedFileType, isWithinSizeLimit],
+};
+
 function FileUpload() {
   const [error, setError] = useState('');
 
@@ -4931,19 +5017,12 @@ function FileUpload() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type (client-side - UX only!)
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
-    if (!allowedTypes.includes(file.type)) {
-      setError('Only JPEG, PNG, and GIF files allowed');
-      e.target.value = ''; // Clear input
-      return;
-    }
+    // Validate with project's validation library (client-side UX only!)
+    const validationResult = validateObject(fileSpec, { file });
 
-    // Validate file size (5MB max)
-    const maxSize = 5 * 1024 * 1024;
-    if (file.size > maxSize) {
-      setError('File must be smaller than 5MB');
-      e.target.value = '';
+    if (!validationResult.valid) {
+      setError(validationResult.reasons.join(', '));
+      e.target.value = ''; // Clear input
       return;
     }
 
@@ -4956,8 +5035,6 @@ function FileUpload() {
     formData.append('file', file);
 
     try {
-      // For file uploads, use Api2's generic post if needed
-      // or add a specific method to Api2 for uploads
       const api = useGenericApi();
       await api.post('/upload', formData);
       // Server should validate file type, size, and scan for malware
