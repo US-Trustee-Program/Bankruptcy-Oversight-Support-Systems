@@ -5,6 +5,7 @@
 - [API Technology](/architecture/decision-records/ApiTechnology.md)
 - [Application Context](/architecture/decision-records/ApplicationContext.md)
 - [Authentication](/architecture/decision-records/Authentication.md)
+- [Authentication Modes](/architecture/decision-records/AuthenticationModes.md)
 - [Azure Resource Manager](/architecture/decision-records/AzureResourceManager.md)
 - [Backend Logging](/architecture/decision-records/BackendLogging.md)
 - [Dataflows](/architecture/decision-records/Dataflows.md)

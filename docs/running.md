@@ -99,33 +99,42 @@ npm run start:dataflows
 
 ##### .env File
 
-You will need to have a file named `.env` placed in the `backend` directory. The contents of that
-file must be:
+You will need to have a file named `.env` placed in the `backend` directory.
+
+###### Basic Configuration
 
 ```
 APPLICATIONINSIGHTS_CONNECTION_STRING={optional instrumentation key for extended logging features}
 COSMOS_DATABASE_NAME={the name of the CosmosDb database}
 MONGO_CONNECTION_STRING={MongoDb connection string}
 SERVER_PORT=7071
-
-## LOGIN_PROVIDER and CONFIG must match the frontend to function locally
-CAMS_LOGIN_PROVIDER_CONFIG=issuer={http://localhost:7071/api/oauth2/default}|clientId={IDP client id if needed} (Replace issuer and clientid with proper okta config for okta)
-CAMS_LOGIN_PROVIDER={"okta" || "mock" || "dev" || "none"}
-
-## OKTA SDK API CONFIGURATION
-## Two options. Use one option not both.
-## CAMS_USER_GROUP_GATEWAY_CONFIG is a pipe delimited list. Replace curly braces and content with your values.
-## Option 1: Private Key Authentication
-## {privateKeyJSON} must be stripped of all whitespace
-CAMS_USER_GROUP_GATEWAY_CONFIG='url={oktaApiUrl}|clientId={oktaClientId}|keyId={publicKeyId}|privateKey={privateKeyJSON}'
-## End Option 1
-## Option 2: API Key Authentication
-CAMS_USER_GROUP_GATEWAY_CONFIG=url={oktaApiUrl}
-OKTA_API_KEY={oktaApiKey}
-## End Option 2
-
 DATABASE_MOCK={a string: true | false}
 CAMS_INFO_SHA=''
+```
+
+###### Authentication Configuration
+
+The login provider and configuration must match the frontend to function locally.
+
+```
+CAMS_LOGIN_PROVIDER={"okta" || "mock" || "none"}
+CAMS_LOGIN_PROVIDER_CONFIG=issuer={http://localhost:7071/api/oauth2/default}|clientId={IDP client id if needed}
+```
+
+For Okta, replace the issuer and clientId with proper Okta configuration values.
+
+###### Okta SDK API Configuration
+
+This configuration connects to the Okta Integrator organization. See [Okta Configuration Operations Guide](operations/okta-configuration.md) for details on Okta organization setup.
+
+```
+CAMS_USER_GROUP_GATEWAY_CONFIG=url={oktaApiUrl}
+OKTA_API_KEY={oktaApiKey}
+```
+
+###### SQL Server Configuration
+
+```
 MSSQL_HOST={the FQDN of the database}
 MSSQL_DATABASE_DXTR={the name of the DXTR database}
 MSSQL_ENCRYPT={a string: true | false}
@@ -135,76 +144,39 @@ ACMS_MSSQL_HOST={the FQDN of the ACMS SQL database}
 ACMS_MSSQL_DATABASE_DXTR={the name of the ACMS database}
 ACMS_MSSQL_ENCRYPT={a string: true | false}
 ACMS_MSSQL_TRUST_UNSIGNED_CERT={a string: true | false}
+```
 
-# Required for SQL Auth. Required for connecting to SQL with SQL Identity.
+**SQL Authentication (Required for SQL Identity):**
+
+```
 MSSQL_USER={the SQL Server Admin username}
 MSSQL_PASS={the SQL Server Admin user password}
 ACMS_MSSQL_USER={the ACMS SQL Server Admin username}
 ACMS_MSSQL_PASS={the ACMS SQL Server Admin user password}
-# Required for connecting to CAMS SQL server database with managed identity
+```
+
+**Managed Identity Authentication (Optional):**
+
+```
 MSSQL_CLIENT_ID={OPTIONAL client id of Managed Identity with access}
 ACMS_MSSQL_CLIENT_ID={OPTIONAL client id of Managed Identity with access to the ACMS DB}
-
-## Required to enable data flows. Add/Remove the MODULE_NAME of specific data flow modules
-## to the comma-delimited list in the CAMS_ENABLED_DATAFLOWS variable. Replace hyphens with
-## underscores in the MODULE_NAMES added to the CAMS_ENABLED_DATAFLOWS list.
-# CAMS_ENABLED_DATAFLOWS=SYNC_CASES,SYNC_OFFICE_STAFF,SYNC_ORDERS
 ```
+
+###### Data Flows Configuration
+
+To enable data flows, add/remove the MODULE_NAME of specific data flow modules to the comma-delimited list. Replace hyphens with underscores in module names.
+
+```
+CAMS_ENABLED_DATAFLOWS=SYNC_CASES,SYNC_OFFICE_STAFF,SYNC_ORDERS
+```
+
+---
 
 !> Replace the curly braces and their contents with the appropriate string.
 
-!> If you do not have access to the admin password, ask an `owner` of the SQL Server resource in
-Azure for the value
+!> If you do not have access to the admin password, ask an `owner` of the SQL Server resource in Azure for the value.
 
 ?> Note that when you run `npm run start:api` or `npm run start:dataflows`, the script will copy `backend/.env` into the appropriate directory, quietly overwriting any changes made to previous copies. All changes should be handled in `backend/.env` to avoid frustration and misconfiguration.
-
-##### Dev Mode Authentication (Optional)
-
-If you are using `CAMS_LOGIN_PROVIDER=dev` for local development, you have two options for configuring user accounts for authentication:
-
-**Option 1: JSON File (Local Development)**
-
-Create a `dev-users.json` file in the `backend` directory. This file contains user account configurations for authentication.
-
-Example `backend/dev-users.json`:
-
-```json
-[
-  {
-    "username": "alice",
-    "passwordHash": "--redacted--",
-    "name": "Alice Attorney",
-    "roles": ["TrialAttorney", "PrivilegedIdentityUser"],
-    "offices": ["USTP_CAMS_Region_2_Office_Manhattan"]
-  }
-]
-```
-
-!> The `dev-users.json` file is gitignored and should never be committed to the repository.
-
-**Option 2: MongoDB Database (Deployed Environments)**
-
-If the `dev-users.json` file is not available, the application will automatically fall back to loading users from a MongoDB database named `dev-users` with a `users` collection. This database:
-- Uses the same `MONGO_CONNECTION_STRING` as the main CAMS application
-- Stores user documents with the same schema as the JSON file
-- Is provisioned automatically in deployed environments via the database deployment workflow
-
-The fallback behavior:
-1. First attempts to load from `dev-users.json` file
-2. If file not found or invalid, attempts to load from MongoDB `dev-users` database
-3. If MongoDB is unavailable, uses an empty user database (authentication will fail gracefully)
-
-**Generating Password Hashes**
-
-To generate password hashes for the `passwordHash` field, use the provided utility script:
-
-```shell
-tsx scripts/generate-dev-password-hash.ts <your-password>
-```
-
-This will output a properly formatted hash that you can copy into your `dev-users.json` file or MongoDB collection.
-
-?> For more information about dev mode authentication, see the [DevModeAuthentication ADR](architecture/decision-records/DevModeAuthentication.md).
 
 ##### Cosmos Database
 

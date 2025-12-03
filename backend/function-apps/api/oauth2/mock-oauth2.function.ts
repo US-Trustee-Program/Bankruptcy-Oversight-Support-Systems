@@ -1,7 +1,6 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
 import { mockAuthentication } from '../../../lib/testing/mock-gateways/mock-oauth2-gateway';
-import { devAuthentication } from '../../../lib/adapters/gateways/dev-oauth2/dev-oauth2-gateway';
 import { toAzureError, toAzureSuccess } from '../../azure/functions';
 import { httpSuccess } from '../../../lib/adapters/utils/http-response';
 
@@ -16,12 +15,7 @@ export default async function handler(
     request,
   });
   try {
-    let token: string;
-    if (context.config.authConfig.provider === 'dev') {
-      token = await devAuthentication(context);
-    } else {
-      token = await mockAuthentication(context);
-    }
+    const token: string = await mockAuthentication(context);
     return toAzureSuccess(
       httpSuccess({
         body: { data: { value: token } },
