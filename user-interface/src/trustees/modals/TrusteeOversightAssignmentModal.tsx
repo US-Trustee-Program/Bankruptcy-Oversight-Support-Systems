@@ -147,7 +147,7 @@ const TrusteeOversightAssignmentModal = forwardRef<
           <ComboBox
             id="staff-search"
             name="staff-search"
-            label={`Search for ${roleLabel} name to assign to this Trustee`}
+            label={`Search for ${roleLabel} to assign to this Trustee`}
             options={staff.map((member) => ({
               value: member.id,
               label: member.name,
