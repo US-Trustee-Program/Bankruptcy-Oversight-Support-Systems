@@ -6,7 +6,6 @@ import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import AttorneyAssignmentSection from './AttorneyAssignmentSection';
 import AuditorAssignmentSection from './AuditorAssignmentSection';
 import ParalegalAssignmentSection from './ParalegalAssignmentSection';
-import './TrusteeAssignedStaff.scss';
 
 interface TrusteeAssignedStaffProps {
   trusteeId: string;
@@ -65,7 +64,8 @@ export default function TrusteeAssignedStaff(props: Readonly<TrusteeAssignedStaf
           onAssignmentChange={refreshAssignments}
           isLoading={isLoading}
         />
-
+      </div>
+      <div className="record-detail-container">
         <ParalegalAssignmentSection
           trusteeId={trusteeId}
           assignments={assignments}
