@@ -9,6 +9,7 @@
 - [Azure Resource Manager](/architecture/decision-records/AzureResourceManager.md)
 - [Backend Logging](/architecture/decision-records/BackendLogging.md)
 - [Dataflows](/architecture/decision-records/Dataflows.md)
+- [Dead Code Detection](/architecture/decision-records/DeadCodeDetection.md)
 - [Deployment](/architecture/decision-records/Deployment.md)
 - [Dev Mode Authentication](/architecture/decision-records/DevModeAuthentication.md)
 - [Frontend Build Tooling](/architecture/decision-records/FrontendBuildTooling.md)

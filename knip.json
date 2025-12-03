@@ -1,0 +1,99 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "playwright": false,
+  "workspaces": {
+    ".": {
+      "entry": ["eslint.config.mjs"],
+      "ignore": [
+        "**/node_modules/**",
+        "**/dist/**",
+        "**/build/**",
+        "**/coverage/**",
+        "**/.cache/**",
+        "dev-tools/**"
+      ]
+    },
+    "backend": {
+      "entry": [
+        "function-apps/**/*.function.ts",
+        "function-apps/dataflows/dataflows.ts",
+        "express/server.ts"
+      ],
+      "project": ["**/*.ts"],
+      "ignore": [
+        "**/node_modules/**",
+        "**/dist/**",
+        "**/coverage/**",
+        "**/*.test.ts"
+      ]
+    },
+    "user-interface": {
+      "entry": [
+        "src/index.tsx",
+        "src/initialize.ts",
+        "vite.config.mts",
+        "vitest.config.mts",
+        "test/**/*.ts"
+      ],
+      "project": ["src/**/*.{ts,tsx}", "test/**/*.ts", "!playwright.config.ts"],
+      "ignore": [
+        "**/node_modules/**",
+        "**/build/**",
+        "**/coverage/**",
+        "**/*.test.tsx",
+        "**/*.test.ts"
+      ],
+      "ignoreFiles": ["playwright.config.ts"]
+    },
+    "common": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.ts"],
+      "ignore": [
+        "**/node_modules/**",
+        "**/dist/**",
+        "**/coverage/**",
+        "**/*.test.ts"
+      ]
+    },
+    "test/e2e": {
+      "entry": ["**/*.ts"],
+      "project": ["**/*.ts"],
+      "ignore": ["**/node_modules/**"]
+    }
+  },
+  "ignoreBinaries": [
+    "pushd",
+    "popd",
+    "playwright",
+    "date",
+    "dot",
+    "ts-node"
+  ],
+  "ignoreDependencies": [
+    "@azure/cosmos",
+    "@azure/identity",
+    "@azure/keyvault-secrets",
+    "@uswds/uswds",
+    "buffer",
+    "ts-node",
+    "@eslint/js",
+    "@typescript-eslint/eslint-plugin",
+    "@typescript-eslint/parser",
+    "eslint-config-prettier",
+    "eslint-plugin-import",
+    "eslint-plugin-jest",
+    "eslint-plugin-jsx-a11y",
+    "eslint-plugin-n",
+    "eslint-plugin-prettier",
+    "eslint-plugin-promise",
+    "eslint-plugin-react",
+    "eslint-plugin-react-hooks",
+    "eslint-plugin-testing-library",
+    "@vitest/eslint-plugin",
+    "prettier",
+    "typescript-eslint",
+    "react",
+    "c8",
+    "@faker-js/faker"
+  ]
+}
