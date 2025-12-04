@@ -27,7 +27,6 @@ import Checkbox from '@/lib/components/uswds/Checkbox';
 import {
   SEARCH_SCREEN_SPEC,
   SearchScreenFormData,
-  AT_LEAST_ONE_SEARCH_CRITERION_ERROR_REASON,
   CASE_NUMBER_INVALID_ERROR_REASON,
 } from './searchScreen.types';
 import { validateEach, validateObject, ValidatorReasonMap } from '@common/cams/validation';
@@ -303,7 +302,11 @@ export default function SearchScreen() {
       <div className="grid-row grid-gap-lg search-pane">
         <div className="grid-col-3">
           <h2>Search By</h2>
-          <div className="filter-and-search" data-testid="filter-and-search-panel" onKeyDown={handleKeyDown}>
+          <div
+            className="filter-and-search"
+            data-testid="filter-and-search-panel"
+            onKeyDown={handleKeyDown}
+          >
             <div className="case-number-search form-field" data-testid="case-number-search">
               <div className="usa-search usa-search--small">
                 <CaseNumberInput

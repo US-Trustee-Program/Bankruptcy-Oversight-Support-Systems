@@ -807,7 +807,7 @@ describe('validateField function', () => {
   });
 
   test('should return null when spec does not have validators for field', () => {
-    const result = validateField('divisionCodes' as any, 'test', {});
+    const result = validateField('divisionCodes', 'test', {});
     expect(result).toBeNull();
   });
 });
