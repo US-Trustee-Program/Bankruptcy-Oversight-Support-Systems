@@ -23,7 +23,11 @@ export default defineConfig({
   },
   assetsInclude: ['node_modules/@uswds/uswds/dist/img'],
   plugins: [
-    react(),
+    react({
+      babel: {
+        plugins: ['babel-plugin-react-compiler'],
+      },
+    }),
     viteStaticCopy({
       targets: [
         {
