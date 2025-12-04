@@ -1,0 +1,82 @@
+# CAMS Build and Test Container
+# This Dockerfile creates a container for running tests, builds, and producing deployment artifacts
+# for the CAMS (Case Management System) monorepo.
+
+# Use Node.js 22.17.1 LTS on Debian Bookworm Slim (matches .nvmrc)
+# bookworm-slim chosen for glibc compatibility with Azure Functions runtime
+# and native module support (mssql, mongodb drivers)
+FROM node:22.17.1-bookworm-slim
+
+# Install system dependencies required for builds and artifact packaging
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    zip \
+    unzip \
+    git \
+    ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /workspace
+
+# Create non-root user for security (optional, can run as root in CI)
+# Commented out by default - uncomment if running interactively
+# RUN groupadd -r cams && useradd -r -g cams -m -s /bin/bash cams
+# USER cams
+
+# Set environment variables for CI
+# Note: NODE_ENV is NOT set to production because we need devDependencies
+# for building and testing (TypeScript, Jest, etc.)
+ENV CI=true \
+    NPM_CONFIG_LOGLEVEL=warn
+
+# Default test environment variables (can be overridden)
+ENV CAMS_LOGIN_PROVIDER=mock \
+    DATABASE_MOCK=true \
+    MONGO_CONNECTION_STRING=mongodb://test-string \
+    FEATURE_FLAG_SDK_KEY= \
+    CAMS_LOGIN_PROVIDER_CONFIG='{"issuer": "http://localhost:7071/api/oauth2/default", "clientId": ""}' \
+    CAMS_USE_FAKE_API=true
+
+# Copy package files for dependency installation
+# This is done in layers to optimize Docker caching
+COPY package.json package-lock.json* ./
+COPY common/package.json common/package-lock.json* ./common/
+COPY backend/package.json backend/package-lock.json* ./backend/
+COPY user-interface/package.json user-interface/package-lock.json* ./user-interface/
+
+# Install root dependencies (linting, etc.)
+RUN npm ci --prefer-offline --no-audit
+
+# Copy remaining source code
+COPY . .
+
+# Default command shows available npm scripts
+# Override this in CI/CD pipeline with specific commands
+CMD ["npm", "run"]
+
+# Build artifacts will be created at:
+# - Backend API: /workspace/backend/function-apps/api/<name>.zip
+# - Backend Dataflows: /workspace/backend/function-apps/dataflows/<name>.zip
+# - Frontend: /workspace/user-interface/artifacts/<name>.zip
+
+# Example usage for tests:
+#   docker run --rm cams-build npm test                           # Run all tests
+#   docker run --rm cams-build bash -c "cd backend && npm test"   # Backend tests only
+#   docker run --rm cams-build bash -c "cd user-interface && npm test" # Frontend tests only
+#   docker run --rm cams-build bash -c "cd common && npm test"    # Common tests only
+
+# Example usage for builds:
+#   docker run --rm \
+#     -e API_FUNCTION_NAME=cams-api \
+#     -e DATAFLOWS_FUNCTION_NAME=cams-dataflows \
+#     -e WEBAPP_NAME=cams-webapp \
+#     -e CAMS_SERVER_HOSTNAME=example.azurewebsites.us \
+#     -v $(pwd)/artifacts:/workspace/artifacts \
+#     cams-build bash -c "npm run build && ./scripts/package-all.sh"
+
+# Example usage for coverage:
+#   docker run --rm -v $(pwd)/coverage:/workspace/coverage cams-build bash -c "\
+#     cd common && npm ci && npm run coverage:ci && \
+#     cd ../backend && npm run build-common && npm ci && npm run coverage:ci && \
+#     cd ../user-interface && npm run build-common && npm ci && npm run coverage:ci"

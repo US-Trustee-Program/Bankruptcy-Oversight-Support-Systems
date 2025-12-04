@@ -49,6 +49,12 @@
       "enabled": false
     },
     {
+      "description": "Pin Dockerfile Node.js version to match .nvmrc exactly (22.17.1)",
+      "matchManagers": ["dockerfile"],
+      "matchPackageNames": ["node"],
+      "enabled": false
+    },
+    {
       "description": "First-party GitHub Actions with digest pinning and 14-day wait",
       "matchManagers": ["github-actions"],
       "matchPackagePatterns": ["^actions/", "^github/"],
