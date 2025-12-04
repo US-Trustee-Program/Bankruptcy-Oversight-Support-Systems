@@ -69,23 +69,22 @@ interface ConsolidationViewModel {
   verifyCaseCanBeAdded: () => void;
 }
 
-interface AddCaseModel
-  extends Pick<
-    ConsolidationViewModel,
-    | 'caseToAddCaseNumber'
-    | 'caseToAddCourt'
-    | 'handleAddCaseCourtSelectChange'
-    | 'handleAddCaseNumberInputChange'
-    | 'handleAddCaseReset'
-    | 'filteredOfficeRecords'
-    | 'additionalCaseDivisionRef'
-    | 'additionalCaseNumberRef'
-    | 'addCaseNumberError'
-    | 'isLookingForCase'
-    | 'caseToAdd'
-    | 'handleAddCaseAction'
-    | 'verifyCaseCanBeAdded'
-  > {
+interface AddCaseModel extends Pick<
+  ConsolidationViewModel,
+  | 'caseToAddCaseNumber'
+  | 'caseToAddCourt'
+  | 'handleAddCaseCourtSelectChange'
+  | 'handleAddCaseNumberInputChange'
+  | 'handleAddCaseReset'
+  | 'filteredOfficeRecords'
+  | 'additionalCaseDivisionRef'
+  | 'additionalCaseNumberRef'
+  | 'addCaseNumberError'
+  | 'isLookingForCase'
+  | 'caseToAdd'
+  | 'handleAddCaseAction'
+  | 'verifyCaseCanBeAdded'
+> {
   orderId: string;
   defaultDivisionCode: string;
 }
