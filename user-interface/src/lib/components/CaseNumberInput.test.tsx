@@ -109,7 +109,14 @@ describe('Case number input component', () => {
 
   test('if allowPartialCaseNumber is true and allowEnterKey is true, onChange should be called with partial case number when Enter is pressed', async () => {
     const changeFunction = vi.fn();
-    render(<CaseNumberInput onChange={changeFunction} value="12-345" allowPartialCaseNumber={true} allowEnterKey={true} />);
+    render(
+      <CaseNumberInput
+        onChange={changeFunction}
+        value="12-345"
+        allowPartialCaseNumber={true}
+        allowEnterKey={true}
+      />,
+    );
 
     const input = document.querySelector('.usa-input');
     expect(input).toHaveValue('12-345');
