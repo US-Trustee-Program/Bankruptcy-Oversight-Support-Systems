@@ -10,7 +10,8 @@ We will create a Docker container specifically for running tests and producing d
 
 - Uses `node:22.17.1-bookworm-slim` as the base image (matching `.nvmrc` version)
 - Includes necessary system dependencies: `zip`, `git`, `ca-certificates`
-- Pre-configures test environment variables (mock authentication, test database settings)
+- Sets minimal CI environment variables (`CI=true`, `NPM_CONFIG_LOGLEVEL=warn`)
+- Does NOT pre-configure test-specific environment variables (these are set by npm test scripts to avoid accidental use in builds)
 - Optimizes build caching by copying package files before source code
 - Supports both test execution and artifact production workflows
 
@@ -49,14 +50,10 @@ Accepted
 - **Image storage**: Requires container registry for sharing images across pipeline runs
 - **Learning curve**: Team must understand Docker basics for local debugging
 
-### Neutral
-
-- **Size**: ~220MB container is reasonable for CI/CD but not suitable for production deployment (which uses Azure Functions runtime, not containers)
-- **Renovate**: Node.js updates remain disabled for now, maintaining current constraint behavior
-
 ## Related Files
 
 - `.github/docker/Dockerfile.build-and-test` - Container definition
+- `.github/docker/test-dockerfile.sh` - Comprehensive test suite for verifying container functionality
 - `.dockerignore` - Optimizes build context
 - `renovate.json` - Disables Docker Node.js version updates (line 51-56)
 - `.nvmrc` - Source of truth for Node.js version

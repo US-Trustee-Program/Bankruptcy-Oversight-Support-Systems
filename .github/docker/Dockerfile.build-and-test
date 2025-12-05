@@ -27,16 +27,10 @@ WORKDIR /workspace
 # Set environment variables for CI
 # Note: NODE_ENV is NOT set to production because we need devDependencies
 # for building and testing (TypeScript, Jest, etc.)
+# Test-specific environment variables are NOT set here - they are set by
+# the test scripts in package.json to avoid accidental use in builds
 ENV CI=true \
     NPM_CONFIG_LOGLEVEL=warn
-
-# Default test environment variables (can be overridden)
-ENV CAMS_LOGIN_PROVIDER=mock \
-    DATABASE_MOCK=true \
-    MONGO_CONNECTION_STRING=mongodb://test-string \
-    FEATURE_FLAG_SDK_KEY= \
-    CAMS_LOGIN_PROVIDER_CONFIG='{"issuer": "http://localhost:7071/api/oauth2/default", "clientId": ""}' \
-    CAMS_USE_FAKE_API=true
 
 # Copy package files for dependency installation
 # This is done in layers to optimize Docker caching
