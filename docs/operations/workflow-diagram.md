@@ -118,9 +118,10 @@ flowchart LR
     reusable_deploy_yml["reusable-deploy.yml"]
     reusable_deploy_yml_deploy_azure_infrastructure["deploy-azure-infrastructure"]
     sub_deploy_yml_build_frontend_deployment_artifact["Build Frontend for deployment"]
-    sub_deploy_yml_deploy_db["CosmosDb"]
-    reusable_database_deploy_yml["reusable-database-deploy.yml"]
-    reusable_database_deploy_yml_deploy_db["deploy-db"]
+    sub_deploy_yml_deploy_supporting_infrastructure["Supporting Infrastructure"]
+    reusable_infrastructure_deploy_yml["reusable-infrastructure-deploy.yml"]
+    reusable_infrastructure_deploy_yml_deploy_log_analytics_workspace["deploy-log-analytics-workspace"]
+    reusable_infrastructure_deploy_yml_deploy_db["deploy-db"]
     continuous_deployment_yml_deploy_code_slot["Slot Code Deployment"]
     sub_deploy_code_slot_yml["sub-deploy-code-slot.yml"]
     sub_deploy_code_slot_yml_deploy_code["Slot Code Deployment"]
@@ -187,9 +188,10 @@ flowchart LR
     sub_deploy_yml_deploy_infra --> reusable_deploy_yml
     sub_deploy_yml --> sub_deploy_yml_build_frontend_deployment_artifact
     sub_deploy_yml_build_frontend_deployment_artifact --> reusable_build_frontend_yml
-    sub_deploy_yml --> sub_deploy_yml_deploy_db
-    reusable_database_deploy_yml --> reusable_database_deploy_yml_deploy_db
-    sub_deploy_yml_deploy_db --> reusable_database_deploy_yml
+    sub_deploy_yml --> sub_deploy_yml_deploy_supporting_infrastructure
+    reusable_infrastructure_deploy_yml --> reusable_infrastructure_deploy_yml_deploy_log_analytics_workspace
+    reusable_infrastructure_deploy_yml --> reusable_infrastructure_deploy_yml_deploy_db
+    sub_deploy_yml_deploy_supporting_infrastructure --> reusable_infrastructure_deploy_yml
     continuous_deployment_yml_deploy --> sub_deploy_yml
     continuous_deployment_yml --> continuous_deployment_yml_deploy_code_slot
     sub_deploy_code_slot_yml --> sub_deploy_code_slot_yml_deploy_code
@@ -259,9 +261,10 @@ flowchart LR
     class reusable_deploy_yml reusable
     class reusable_deploy_yml_deploy_azure_infrastructure job
     class sub_deploy_yml_build_frontend_deployment_artifact job
-    class sub_deploy_yml_deploy_db job
-    class reusable_database_deploy_yml reusable
-    class reusable_database_deploy_yml_deploy_db job
+    class sub_deploy_yml_deploy_supporting_infrastructure job
+    class reusable_infrastructure_deploy_yml reusable
+    class reusable_infrastructure_deploy_yml_deploy_log_analytics_workspace job
+    class reusable_infrastructure_deploy_yml_deploy_db job
     class continuous_deployment_yml_deploy_code_slot job
     class sub_deploy_code_slot_yml reusable
     class sub_deploy_code_slot_yml_deploy_code job
@@ -704,9 +707,10 @@ flowchart LR
     reusable_deploy_yml["reusable-deploy.yml"]
     reusable_deploy_yml_deploy_azure_infrastructure["deploy-azure-infrastructure"]
     sub_deploy_yml_build_frontend_deployment_artifact["Build Frontend for deployment"]
-    sub_deploy_yml_deploy_db["CosmosDb"]
-    reusable_database_deploy_yml["reusable-database-deploy.yml"]
-    reusable_database_deploy_yml_deploy_db["deploy-db"]
+    sub_deploy_yml_deploy_supporting_infrastructure["Supporting Infrastructure"]
+    reusable_infrastructure_deploy_yml["reusable-infrastructure-deploy.yml"]
+    reusable_infrastructure_deploy_yml_deploy_log_analytics_workspace["deploy-log-analytics-workspace"]
+    reusable_infrastructure_deploy_yml_deploy_db["deploy-db"]
     continuous_deployment_yml_deploy_code_slot["Slot Code Deployment"]
     sub_deploy_code_slot_yml["sub-deploy-code-slot.yml"]
     sub_deploy_code_slot_yml_deploy_code["Slot Code Deployment"]
@@ -773,9 +777,10 @@ flowchart LR
     sub_deploy_yml_deploy_infra --> reusable_deploy_yml
     sub_deploy_yml --> sub_deploy_yml_build_frontend_deployment_artifact
     sub_deploy_yml_build_frontend_deployment_artifact --> reusable_build_frontend_yml
-    sub_deploy_yml --> sub_deploy_yml_deploy_db
-    reusable_database_deploy_yml --> reusable_database_deploy_yml_deploy_db
-    sub_deploy_yml_deploy_db --> reusable_database_deploy_yml
+    sub_deploy_yml --> sub_deploy_yml_deploy_supporting_infrastructure
+    reusable_infrastructure_deploy_yml --> reusable_infrastructure_deploy_yml_deploy_log_analytics_workspace
+    reusable_infrastructure_deploy_yml --> reusable_infrastructure_deploy_yml_deploy_db
+    sub_deploy_yml_deploy_supporting_infrastructure --> reusable_infrastructure_deploy_yml
     continuous_deployment_yml_deploy --> sub_deploy_yml
     continuous_deployment_yml --> continuous_deployment_yml_deploy_code_slot
     sub_deploy_code_slot_yml --> sub_deploy_code_slot_yml_deploy_code
@@ -845,9 +850,10 @@ flowchart LR
     class reusable_deploy_yml reusable
     class reusable_deploy_yml_deploy_azure_infrastructure job
     class sub_deploy_yml_build_frontend_deployment_artifact job
-    class sub_deploy_yml_deploy_db job
-    class reusable_database_deploy_yml reusable
-    class reusable_database_deploy_yml_deploy_db job
+    class sub_deploy_yml_deploy_supporting_infrastructure job
+    class reusable_infrastructure_deploy_yml reusable
+    class reusable_infrastructure_deploy_yml_deploy_log_analytics_workspace job
+    class reusable_infrastructure_deploy_yml_deploy_db job
     class continuous_deployment_yml_deploy_code_slot job
     class sub_deploy_code_slot_yml reusable
     class sub_deploy_code_slot_yml_deploy_code job
@@ -1355,13 +1361,13 @@ flowchart LR
   - Jobs: 3
 - **Veracode Static Code Analysis Scan** (`reusable-sca-scan.yml`)
   - Jobs: 1
+- **Azure Deployment - Supporting Infrastructure** (`reusable-infrastructure-deploy.yml`)
+  - Jobs: 2
 - **End-to-end Tests** (`reusable-e2e.yml`)
   - Jobs: 1
 - **Deploy code for slot** (`sub-deploy-code-slot.yml`)
   - Jobs: 11
 - **Endpoint Tests** (`reusable-endpoint-test.yml`)
-  - Jobs: 1
-- **Azure Deployment - CosmosDB** (`reusable-database-deploy.yml`)
   - Jobs: 1
 - **Azure Deployment - Infrastructure** (`reusable-deploy.yml`)
   - Jobs: 1
