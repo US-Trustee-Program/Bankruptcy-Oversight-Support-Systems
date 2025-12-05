@@ -137,7 +137,7 @@ module actionGroup './lib/monitoring-alerts/alert-action-group.bicep' =
   }
 
 module logAnalyticsWorkspace './lib/analytics/log-analytics-workspace.bicep' =
-  if (deployAppInsights) {
+  if (deployAppInsights && empty(analyticsWorkspaceId)) {
     name: '${analyticsWorkspaceName}-module'
     scope: resourceGroup(analyticsResourceGroupName)
     params: {
@@ -182,7 +182,7 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = {
     scope: resourceGroup(appResourceGroup)
     params: {
       deployAppInsights: deployAppInsights
-      analyticsWorkspaceId: deployAppInsights ? analyticsWorkspaceId ?? logAnalyticsWorkspace.outputs.id : ''
+      analyticsWorkspaceId: deployAppInsights ? (empty(analyticsWorkspaceId) ? logAnalyticsWorkspace.outputs.id : analyticsWorkspaceId) : ''
       planName: 'plan-${webappName}'
       planType: webappPlanType
       webappName: webappName
@@ -210,7 +210,7 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
     scope: resourceGroup(appResourceGroup)
     params: {
       deployAppInsights: deployAppInsights
-      analyticsWorkspaceId: deployAppInsights ? analyticsWorkspaceId ?? logAnalyticsWorkspace.outputs.id : ''
+      analyticsWorkspaceId: deployAppInsights ? (empty(analyticsWorkspaceId) ? logAnalyticsWorkspace.outputs.id : analyticsWorkspaceId) : ''
       location: location
       apiPlanName: apiFunctionPlanName
       apiFunctionName: apiFunctionName
