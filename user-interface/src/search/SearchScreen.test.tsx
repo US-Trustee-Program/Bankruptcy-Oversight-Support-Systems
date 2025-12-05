@@ -737,18 +737,18 @@ describe('search screen', () => {
     await userEvent.clear(caseNumberInput);
     await userEvent.type(caseNumberInput, '12-34567');
 
-    // Wait for error to clear
+    // Wait for error to clear and button to be enabled
+    // (checks both conditions since they depend on async state updates)
     await waitFor(
       () => {
         const errorMessage = screen.queryByText(/Must be 7 digits/i);
         expect(errorMessage).not.toBeInTheDocument();
+
+        const searchButton = screen.getByTestId('button-search-submit');
+        expect(searchButton).not.toBeDisabled();
       },
       { timeout: 1000 },
     );
-
-    // Search button should be enabled (because we have a valid case number AND default division codes)
-    const searchButton = screen.getByTestId('button-search-submit');
-    expect(searchButton).not.toBeDisabled();
   });
 
   test('should show form validation error when trying to search with no criteria', async () => {
