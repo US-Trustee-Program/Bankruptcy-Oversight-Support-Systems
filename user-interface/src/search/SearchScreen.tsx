@@ -1,5 +1,5 @@
 import './SearchScreen.scss';
-import React, { ChangeEvent, useEffect, useRef, useState } from 'react';
+import React, { ChangeEvent, useCallback, useEffect, useRef, useState } from 'react';
 import {
   CasesSearchPredicate,
   DEFAULT_SEARCH_LIMIT,
@@ -24,15 +24,29 @@ import { getCourtDivisionCodes } from '@common/cams/users';
 import LocalStorage from '@/lib/utils/local-storage';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Checkbox from '@/lib/components/uswds/Checkbox';
+import { SEARCH_SCREEN_SPEC, SearchScreenFormData } from './searchScreen.types';
+import { validateEach, validateObject, ValidatorReasonMap } from '@common/cams/validation';
+import useDebounce from '@/lib/hooks/UseDebounce';
 
-function isValidFilteredSearch(predicate: CasesSearchPredicate): boolean {
-  const { divisionCodes, caseNumber, chapters } = predicate;
-  const isValid =
-    (!!divisionCodes && divisionCodes.length > 0) ||
-    !!caseNumber ||
-    (!!chapters && chapters.length > 0);
+export function validateField(
+  field: keyof SearchScreenFormData,
+  value: string | undefined,
+  spec: Partial<typeof SEARCH_SCREEN_SPEC>,
+): ValidatorReasonMap | null {
+  const valueToEval = value?.trim() || undefined;
 
-  return isValid && isValidSearchPredicate(predicate);
+  if (spec?.[field]) {
+    const result = validateEach(spec[field], valueToEval);
+    const validatorReasonMap: ValidatorReasonMap = {};
+    if (result.valid) {
+      return null;
+    } else {
+      validatorReasonMap[field] = { reasons: result.reasons };
+      return validatorReasonMap;
+    }
+  } else {
+    return null;
+  }
 }
 
 export default function SearchScreen() {
@@ -50,6 +64,8 @@ export default function SearchScreen() {
   const [temporarySearchPredicate, setTemporarySearchPredicate] =
     useState<CasesSearchPredicate>(defaultSearchPredicate);
   const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({});
+  const [fieldErrors, setFieldErrors] = useState<ValidatorReasonMap>({});
+  const [formValidationError, setFormValidationError] = useState<string | null>(null);
 
   const infoModalRef = useRef(null);
   const infoModalId = 'info-modal';
@@ -65,8 +81,9 @@ export default function SearchScreen() {
 
   const api = useApi2();
   const globalAlert = useGlobalAlert();
+  const debounce = useDebounce();
 
-  function getChapters() {
+  const getChapters = useCallback(() => {
     const chapterArray: ComboOption[] = [];
 
     for (const item of ['7', '9', '11', '12', '13', '15']) {
@@ -74,9 +91,9 @@ export default function SearchScreen() {
     }
 
     setChapterList(chapterArray);
-  }
+  }, []);
 
-  function getCourts() {
+  const getCourts = useCallback(() => {
     api
       .getCourts()
       .then((response) => {
@@ -103,7 +120,9 @@ export default function SearchScreen() {
       .catch(() => {
         globalAlert?.error('Cannot load office list');
       });
-  }
+    // TODO resolving this warning introduces an infinite loop. This may be a smell.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [api, globalAlert]);
 
   function disableSearchForm(value: boolean) {
     caseNumberInputRef.current?.disable(value);
@@ -125,14 +144,77 @@ export default function SearchScreen() {
     }
   }
 
-  function handleCaseNumberChange(caseNumber?: string): void {
-    if (temporarySearchPredicate.caseNumber != caseNumber) {
-      const newPredicate = { ...temporarySearchPredicate, caseNumber };
-      if (!caseNumber) {
-        delete newPredicate.caseNumber;
-      }
-      setTemporarySearchPredicate(newPredicate);
+  const mapToFormData = (predicate: CasesSearchPredicate): SearchScreenFormData => {
+    return {
+      caseNumber: predicate.caseNumber,
+      divisionCodes: predicate.divisionCodes,
+      chapters: predicate.chapters,
+      excludeClosedCases: predicate.excludeClosedCases,
+    };
+  };
+
+  const isFormValid = (formData: SearchScreenFormData): boolean => {
+    const results = validateObject(SEARCH_SCREEN_SPEC, formData);
+    return !!results.valid;
+  };
+
+  const validateFormAndUpdateErrors = (formData: SearchScreenFormData): boolean => {
+    const results = validateObject(SEARCH_SCREEN_SPEC, formData);
+    if (!results.valid && results.reasonMap) {
+      setFieldErrors(results.reasonMap);
+    } else {
+      setFieldErrors({});
     }
+    if (!results.valid && results.reasonMap?.$?.reasons) {
+      setFormValidationError(results.reasonMap.$.reasons.join(' '));
+    } else {
+      setFormValidationError(null);
+    }
+    return !!results.valid;
+  };
+
+  const validateFieldAndUpdate = (
+    field: keyof SearchScreenFormData,
+    value: string | undefined,
+  ): ValidatorReasonMap | null => {
+    const error = validateField(field, value, SEARCH_SCREEN_SPEC);
+
+    setFieldErrors((prevErrors) => {
+      if (error) {
+        return { ...prevErrors, ...error };
+      } else {
+        const { [field]: _, ...rest } = prevErrors;
+        return rest;
+      }
+    });
+
+    // Clear form-level validation error when user starts fixing things
+    if (formValidationError) {
+      const currentFormData = mapToFormData(temporarySearchPredicate);
+      const results = validateObject(SEARCH_SCREEN_SPEC, currentFormData);
+      if (results.valid || !results.reasonMap?.$?.reasons) {
+        setFormValidationError(null);
+      }
+    }
+
+    return error;
+  };
+
+  function handleCaseNumberChange(caseNumber?: string): void {
+    const newPredicate = { ...temporarySearchPredicate };
+
+    if (caseNumber) {
+      newPredicate.caseNumber = caseNumber;
+    } else {
+      delete newPredicate.caseNumber;
+    }
+
+    setTemporarySearchPredicate(newPredicate);
+
+    // Validate using spec only - debounced
+    debounce(() => {
+      validateFieldAndUpdate('caseNumber', caseNumber);
+    }, 300);
   }
 
   function handleCourtSelection(selection: ComboOption[]) {
@@ -167,7 +249,20 @@ export default function SearchScreen() {
   }
 
   function performSearch() {
-    setSearchPredicate(temporarySearchPredicate);
+    const formData = mapToFormData(temporarySearchPredicate);
+    if (validateFormAndUpdateErrors(formData)) {
+      setSearchPredicate(temporarySearchPredicate);
+    }
+  }
+
+  function handleSubmit(ev: React.FormEvent<HTMLFormElement>) {
+    ev.preventDefault();
+    // Use setTimeout to ensure state updates from child components have completed
+    // This handles the case where CaseNumberInput's handleEnter calls onChange,
+    // which updates temporarySearchPredicate asynchronously
+    setTimeout(() => {
+      performSearch();
+    }, 0);
   }
 
   const infoModalActionButtonGroup = {
@@ -182,7 +277,7 @@ export default function SearchScreen() {
   useEffect(() => {
     getCourts();
     getChapters();
-  }, []);
+  }, [getCourts, getChapters]);
 
   return (
     <MainContent className="search-screen" data-testid="search">
@@ -196,7 +291,12 @@ export default function SearchScreen() {
       <div className="grid-row grid-gap-lg search-pane">
         <div className="grid-col-3">
           <h2>Search By</h2>
-          <div className="filter-and-search" data-testid="filter-and-search-panel">
+          <form
+            className="filter-and-search"
+            data-testid="filter-and-search-panel"
+            onSubmit={handleSubmit}
+            role="search"
+          >
             <div className="case-number-search form-field" data-testid="case-number-search">
               <div className="usa-search usa-search--small">
                 <CaseNumberInput
@@ -208,9 +308,10 @@ export default function SearchScreen() {
                   onChange={handleCaseNumberChange}
                   onFocus={handleFilterFormElementFocus}
                   allowEnterKey={true}
-                  allowPartialCaseNumber={false}
+                  allowPartialCaseNumber={true}
                   aria-label="Find case by Case Number."
                   ref={caseNumberInputRef}
+                  errorMessage={fieldErrors.caseNumber?.reasons?.[0]}
                 />
               </div>
             </div>
@@ -264,6 +365,18 @@ export default function SearchScreen() {
                 />
               </div>
             </div>
+            {formValidationError && (
+              <div className="search-validation-alert" data-testid="search-validation-alert">
+                <Alert
+                  message={formValidationError}
+                  type={UswdsAlertStyle.Error}
+                  show={true}
+                  slim={true}
+                  inline={true}
+                  role="alert"
+                ></Alert>
+              </div>
+            )}
             <div className="search-form-submit form-field">
               <Button
                 id="search-submit"
@@ -271,16 +384,18 @@ export default function SearchScreen() {
                 uswdsStyle={UswdsButtonStyle.Default}
                 ref={submitButtonRef}
                 onClick={performSearch}
-                disabled={!isValidFilteredSearch(temporarySearchPredicate)}
+                disabled={
+                  !!fieldErrors.caseNumber || !isFormValid(mapToFormData(temporarySearchPredicate))
+                }
               >
                 Search
               </Button>
             </div>
-          </div>
+          </form>
         </div>
         <div className="grid-col-8" role="status" aria-live="polite">
           <h2>Results</h2>
-          {!isValidFilteredSearch(searchPredicate) && (
+          {!isValidSearchPredicate(searchPredicate) && (
             <div className="search-alert">
               <Alert
                 id="default-state-alert"
@@ -294,7 +409,7 @@ export default function SearchScreen() {
               ></Alert>
             </div>
           )}
-          {isValidFilteredSearch(searchPredicate) && (
+          {isValidSearchPredicate(searchPredicate) && (
             <SearchResults
               id="search-results"
               searchPredicate={searchPredicate}

@@ -2,7 +2,10 @@ import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } f
 import Input, { InputProps } from './uswds/Input';
 import { InputRef } from '../type-declarations/input-fields';
 
-export function validateCaseNumberInput(ev: React.ChangeEvent<HTMLInputElement>) {
+export function formatCaseNumberInput(
+  ev: React.ChangeEvent<HTMLInputElement>,
+  allowPartial: boolean = false,
+) {
   const allowedCharsPattern = /\d/g;
   const filteredInput = ev.target.value.match(allowedCharsPattern) ?? [];
   if (filteredInput.length > 7) {
@@ -13,7 +16,13 @@ export function validateCaseNumberInput(ev: React.ChangeEvent<HTMLInputElement>)
   }
   const joinedInput = filteredInput?.join('') || '';
   const caseNumberPattern = /^\d{2}-\d{5}$/;
-  const caseNumber = caseNumberPattern.test(joinedInput) ? joinedInput : undefined;
+
+  const caseNumber = allowPartial
+    ? joinedInput || undefined
+    : caseNumberPattern.test(joinedInput)
+      ? joinedInput
+      : undefined;
+
   return { caseNumber, joinedInput };
 }
 
@@ -70,14 +79,10 @@ function CaseNumberInput_(props: CaseNumberInputProps, ref: React.Ref<InputRef>)
   }
 
   function handleOnChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    const { caseNumber, joinedInput } = validateCaseNumberInput(ev);
+    const { caseNumber, joinedInput } = formatCaseNumberInput(ev, allowPartialCaseNumber);
     forwardedRef?.current?.setValue(joinedInput);
 
-    if (allowPartialCaseNumber) {
-      onChange(joinedInput);
-    } else {
-      onChange(caseNumber);
-    }
+    onChange(caseNumber);
   }
 
   function handleEnter(ev: React.KeyboardEvent) {
@@ -87,7 +92,13 @@ function CaseNumberInput_(props: CaseNumberInputProps, ref: React.Ref<InputRef>)
       forwardedRef.current &&
       forwardedRef.current?.getValue().length > 0
     ) {
-      onChange(forwardedRef.current?.getValue());
+      const currentValue = forwardedRef.current?.getValue();
+      const mockEvent = {
+        target: { value: currentValue },
+      } as React.ChangeEvent<HTMLInputElement>;
+      const { caseNumber } = formatCaseNumberInput(mockEvent, allowPartialCaseNumber);
+
+      onChange(caseNumber);
     }
   }
 
@@ -109,7 +120,7 @@ function CaseNumberInput_(props: CaseNumberInputProps, ref: React.Ref<InputRef>)
     } else if (!isDisabled && onEnable) {
       onEnable();
     }
-  }, [isDisabled]);
+  }, [isDisabled, onDisable, onEnable]);
 
   useEffect(() => {
     return () => {

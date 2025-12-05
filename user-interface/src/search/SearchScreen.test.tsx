@@ -2,7 +2,7 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import { SyncedCase } from '@common/cams/cases';
 import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import SearchScreen from '@/search/SearchScreen';
+import SearchScreen, { validateField } from '@/search/SearchScreen';
 import { CasesSearchPredicate, DEFAULT_SEARCH_LIMIT } from '@common/api/search';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 import { MockInstance } from 'vitest';
@@ -12,6 +12,7 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { REGION_02_GROUP_NY } from '@common/cams/test-utilities/mock-user';
 import { getCourtDivisionCodes } from '@common/cams/users';
+import { SEARCH_SCREEN_SPEC } from '@/search/searchScreen.types';
 
 describe('search screen', () => {
   const userOffices = [REGION_02_GROUP_NY];
@@ -512,5 +513,301 @@ describe('search screen', () => {
       }),
       includeAssignments,
     );
+  });
+
+  test('should trigger search when Enter key is pressed in case number field', async () => {
+    const caseNumber = '00-11111';
+
+    renderWithoutProps();
+
+    // Clear the default search on initial render.
+    searchCasesSpy.mockClear();
+
+    const caseNumberInput = screen.getByTestId('basic-search-field');
+    expect(caseNumberInput).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(caseNumberInput).toBeEnabled();
+    });
+
+    // Type case number and press Enter
+    await userEvent.type(caseNumberInput, caseNumber);
+    await userEvent.keyboard('{Enter}');
+
+    await waitFor(() => {
+      // wait for loading to disappear
+      expect(document.querySelector('.search-results table')).toBeVisible();
+    });
+
+    const rows = document.querySelectorAll('#search-results-table-body > tr');
+    expect(rows).toHaveLength(caseList.length);
+
+    // Verify that search was called with correct predicate including case number
+    expect(searchCasesSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        caseNumber,
+        excludeChildConsolidations: false,
+        excludeClosedCases: true,
+      }),
+      includeAssignments,
+    );
+  });
+
+  test('should trigger search when Enter key is pressed after selecting chapter', async () => {
+    renderWithoutProps();
+
+    await waitFor(() => {
+      expect(document.querySelector('.search-results table')).not.toBeInTheDocument();
+    });
+
+    // Select a chapter
+    await TestingUtilities.toggleComboBoxItemSelection('case-chapter-search', 2);
+
+    const expandButton = screen.getByTestId('button-case-chapter-search-expand');
+    await userEvent.click(expandButton!);
+
+    // Get the filter-and-search container that has the onKeyDown handler
+    const filterAndSearchPanel = screen.getByTestId('filter-and-search-panel');
+    expect(filterAndSearchPanel).toBeInTheDocument();
+
+    // Focus on the filter panel and press Enter
+    filterAndSearchPanel.focus();
+    await userEvent.keyboard('{Enter}');
+
+    await waitFor(() => {
+      // wait for the default state alert to be removed
+      expect(document.querySelector('#default-state-alert')).not.toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(document.querySelector('.search-results table')).toBeInTheDocument();
+    });
+
+    const rows = document.querySelectorAll('#search-results-table-body > tr');
+
+    expect(rows).toHaveLength(caseList.length);
+    expect(searchCasesSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        chapters: expect.any(Array<string>),
+      }),
+      includeAssignments,
+    );
+  });
+
+  test('should not trigger search when Enter key is pressed with invalid search criteria', async () => {
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
+      MockData.getCamsSession({ user: MockData.getCamsUser({ offices: [] }) }),
+    );
+
+    renderWithoutProps();
+    await TestingUtilities.waitForDocumentBody();
+
+    // Clear the default search on initial render.
+    searchCasesSpy.mockClear();
+
+    const caseNumberInput = screen.getByTestId('basic-search-field');
+
+    await waitFor(() => {
+      expect(caseNumberInput).toBeEnabled();
+    });
+
+    // Type incomplete case number and press Enter
+    await userEvent.type(caseNumberInput, '12345');
+    await userEvent.keyboard('{Enter}');
+
+    // Wait a bit to ensure setTimeout has executed
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Verify that search was not called
+    expect(searchCasesSpy).not.toHaveBeenCalled();
+  });
+
+  test('should trigger search multiple times when Enter key is pressed with different case numbers', async () => {
+    const firstCaseNumber = '00-11111';
+    const secondCaseNumber = '00-22222';
+
+    renderWithoutProps();
+
+    // Clear the default search on initial render.
+    searchCasesSpy.mockClear();
+
+    const caseNumberInput = screen.getByTestId('basic-search-field');
+
+    await waitFor(() => {
+      expect(caseNumberInput).toBeEnabled();
+    });
+
+    // First search - type case number and press Enter
+    await userEvent.type(caseNumberInput, firstCaseNumber);
+    await userEvent.keyboard('{Enter}');
+
+    await waitFor(() => {
+      expect(document.querySelector('.search-results table')).toBeVisible();
+    });
+
+    // Verify first search was called
+    expect(searchCasesSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        caseNumber: firstCaseNumber,
+      }),
+      includeAssignments,
+    );
+
+    const firstCallCount = searchCasesSpy.mock.calls.length;
+
+    // Clear the input and type a new case number
+    await userEvent.clear(caseNumberInput);
+    await userEvent.type(caseNumberInput, secondCaseNumber);
+    await userEvent.keyboard('{Enter}');
+
+    // Wait for the search to be triggered and complete
+    await waitFor(() => {
+      expect(searchCasesSpy.mock.calls.length).toBeGreaterThan(firstCallCount);
+    });
+
+    await waitFor(() => {
+      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
+    });
+
+    // Verify second search was called with correct parameters
+    expect(searchCasesSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        caseNumber: secondCaseNumber,
+      }),
+      includeAssignments,
+    );
+  });
+
+  test('should show error when invalid case number is entered', async () => {
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
+      MockData.getCamsSession({ user: MockData.getCamsUser({ offices: [] }) }),
+    );
+
+    renderWithoutProps();
+    await TestingUtilities.waitForDocumentBody();
+
+    const caseNumberInput = screen.getByTestId('basic-search-field');
+
+    await waitFor(() => {
+      expect(caseNumberInput).toBeEnabled();
+    });
+
+    // Type invalid case number
+    await userEvent.type(caseNumberInput, '55');
+
+    // Wait for debounced validation to run
+    await waitFor(
+      () => {
+        const errorMessage = screen.queryByText(/Must be 7 digits/i);
+        expect(errorMessage).toBeInTheDocument();
+      },
+      { timeout: 1000 },
+    );
+
+    // Search button should be disabled
+    const searchButton = screen.getByTestId('button-search-submit');
+    expect(searchButton).toBeDisabled();
+  });
+
+  test('should clear error when valid case number is entered after invalid one', async () => {
+    renderWithoutProps();
+
+    // Clear the default search on initial render
+    searchCasesSpy.mockClear();
+
+    const caseNumberInput = screen.getByTestId('basic-search-field');
+
+    await waitFor(() => {
+      expect(caseNumberInput).toBeEnabled();
+    });
+
+    // Type invalid case number
+    await userEvent.type(caseNumberInput, '55');
+
+    // Wait for error to appear
+    await waitFor(
+      () => {
+        const errorMessage = screen.queryByText(/Must be 7 digits/i);
+        expect(errorMessage).toBeInTheDocument();
+      },
+      { timeout: 1000 },
+    );
+
+    // Clear and type valid case number
+    await userEvent.clear(caseNumberInput);
+    await userEvent.type(caseNumberInput, '12-34567');
+
+    // Wait for error to clear and button to be enabled
+    // (checks both conditions since they depend on async state updates)
+    await waitFor(
+      () => {
+        const errorMessage = screen.queryByText(/Must be 7 digits/i);
+        expect(errorMessage).not.toBeInTheDocument();
+
+        const searchButton = screen.getByTestId('button-search-submit');
+        expect(searchButton).not.toBeDisabled();
+      },
+      { timeout: 1000 },
+    );
+  });
+
+  test('should show form validation error when trying to search with no criteria', async () => {
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
+      MockData.getCamsSession({ user: MockData.getCamsUser({ offices: [] }) }),
+    );
+
+    renderWithoutProps();
+    await TestingUtilities.waitForDocumentBody();
+
+    const searchButton = screen.getByTestId('button-search-submit');
+
+    // Try to click search button (it should be disabled)
+    expect(searchButton).toBeDisabled();
+
+    // The button being disabled prevents the click, but let's verify the state
+    // by checking that no search was triggered
+    expect(searchCasesSpy).not.toHaveBeenCalled();
+  });
+
+  test('should not show form validation error when at least one criterion is selected', async () => {
+    renderWithoutProps();
+
+    const searchButton = screen.getByTestId('button-search-submit');
+
+    await waitFor(() => {
+      expect(searchButton).not.toBeDisabled();
+    });
+
+    // No validation error alert should be visible
+    const validationAlert = screen.queryByTestId('search-validation-alert');
+    expect(validationAlert).not.toBeInTheDocument();
+  });
+});
+
+describe('validateField function', () => {
+  test('should return null for valid case number', () => {
+    const result = validateField('caseNumber', '12-34567', SEARCH_SCREEN_SPEC);
+    expect(result).toBeNull();
+  });
+
+  test('should return error for invalid case number format', () => {
+    const result = validateField('caseNumber', '12345', SEARCH_SCREEN_SPEC);
+    expect(result).not.toBeNull();
+    expect(result?.caseNumber?.reasons).toContain('Must be 7 digits');
+  });
+
+  test('should return null for undefined case number (optional field)', () => {
+    const result = validateField('caseNumber', undefined, SEARCH_SCREEN_SPEC);
+    expect(result).toBeNull();
+  });
+
+  test('should return null for empty string case number', () => {
+    const result = validateField('caseNumber', '', SEARCH_SCREEN_SPEC);
+    expect(result).toBeNull();
+  });
+
+  test('should return null when spec does not have validators for field', () => {
+    const result = validateField('divisionCodes', 'test', {});
+    expect(result).toBeNull();
   });
 });
