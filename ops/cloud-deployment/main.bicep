@@ -95,9 +95,6 @@ param deployAppInsights bool = false
 
 param analyticsWorkspaceId string = ''
 
-@description('Name of the Log Analytics workspace.')
-param analyticsWorkspaceName string = 'law-${stackName}'
-
 param analyticsResourceGroupName string
 
 @description('Url for our Okta Provider')
@@ -136,18 +133,6 @@ module actionGroup './lib/monitoring-alerts/alert-action-group.bicep' =
     }
   }
 
-module logAnalyticsWorkspace './lib/analytics/log-analytics-workspace.bicep' =
-  if (deployAppInsights && empty(analyticsWorkspaceId)) {
-    name: '${analyticsWorkspaceName}-module'
-    scope: resourceGroup(analyticsResourceGroupName)
-    params: {
-      workspaceName: analyticsWorkspaceName
-      location: location
-      retentionInDays: 30 // Minimum for cost savings
-      sku: 'PerGB2018' // Pay-as-you-go for dev environments
-    }
-  }
-
 module network './lib//network/ustp-cams-network.bicep' = {
   name: '${stackName}-network-module'
   scope: resourceGroup(networkResourceGroupName)
@@ -182,7 +167,7 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = {
     scope: resourceGroup(appResourceGroup)
     params: {
       deployAppInsights: deployAppInsights
-      analyticsWorkspaceId: deployAppInsights ? (empty(analyticsWorkspaceId) ? logAnalyticsWorkspace.outputs.id : analyticsWorkspaceId) : ''
+      analyticsWorkspaceId: deployAppInsights ? analyticsWorkspaceId : ''
       planName: 'plan-${webappName}'
       planType: webappPlanType
       webappName: webappName
@@ -210,7 +195,7 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
     scope: resourceGroup(appResourceGroup)
     params: {
       deployAppInsights: deployAppInsights
-      analyticsWorkspaceId: deployAppInsights ? (empty(analyticsWorkspaceId) ? logAnalyticsWorkspace.outputs.id : analyticsWorkspaceId) : ''
+      analyticsWorkspaceId: deployAppInsights ? analyticsWorkspaceId : ''
       location: location
       apiPlanName: apiFunctionPlanName
       apiFunctionName: apiFunctionName
@@ -252,7 +237,7 @@ module ustpDataflowsFunction 'dataflows-resource-deploy.bicep' = {
   scope: resourceGroup(appResourceGroup)
   params: {
     deployAppInsights: deployAppInsights
-    analyticsWorkspaceId: deployAppInsights ? analyticsWorkspaceId ?? logAnalyticsWorkspace.outputs.id : ''
+    analyticsWorkspaceId: deployAppInsights ? analyticsWorkspaceId : ''
     location: location
     dataflowsPlanName: dataflowsFunctionPlanName
     apiFunctionName: apiFunctionName
