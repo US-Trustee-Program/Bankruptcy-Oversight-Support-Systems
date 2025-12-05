@@ -76,9 +76,9 @@ jobs:
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
       isDeployment: true
 
-  deploy-db:
-    name: CosmosDb
-    uses: ./.github/workflows/reusable-database-deploy.yml
+  deploy-supporting-infrastructure:
+    name: Supporting Infrastructure
+    uses: ./.github/workflows/reusable-infrastructure-deploy.yml
     needs: [deploy-infra]
     if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
     with:

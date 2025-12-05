@@ -1,0 +1,2 @@
+# Bicep build artifacts (compiled JSON files)
+cloud-deployment/**/*.json
