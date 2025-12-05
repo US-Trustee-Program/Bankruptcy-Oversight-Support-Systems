@@ -1,5 +1,5 @@
 import './SearchScreen.scss';
-import React, { ChangeEvent, useEffect, useRef, useState } from 'react';
+import React, { ChangeEvent, useCallback, useEffect, useRef, useState } from 'react';
 import {
   CasesSearchPredicate,
   DEFAULT_SEARCH_LIMIT,
@@ -24,11 +24,7 @@ import { getCourtDivisionCodes } from '@common/cams/users';
 import LocalStorage from '@/lib/utils/local-storage';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Checkbox from '@/lib/components/uswds/Checkbox';
-import {
-  SEARCH_SCREEN_SPEC,
-  SearchScreenFormData,
-  CASE_NUMBER_INVALID_ERROR_REASON,
-} from './searchScreen.types';
+import { SEARCH_SCREEN_SPEC, SearchScreenFormData } from './searchScreen.types';
 import { validateEach, validateObject, ValidatorReasonMap } from '@common/cams/validation';
 import useDebounce from '@/lib/hooks/UseDebounce';
 
@@ -87,7 +83,7 @@ export default function SearchScreen() {
   const globalAlert = useGlobalAlert();
   const debounce = useDebounce();
 
-  function getChapters() {
+  const getChapters = useCallback(() => {
     const chapterArray: ComboOption[] = [];
 
     for (const item of ['7', '9', '11', '12', '13', '15']) {
@@ -95,9 +91,9 @@ export default function SearchScreen() {
     }
 
     setChapterList(chapterArray);
-  }
+  }, []);
 
-  function getCourts() {
+  const getCourts = useCallback(() => {
     api
       .getCourts()
       .then((response) => {
@@ -124,7 +120,9 @@ export default function SearchScreen() {
       .catch(() => {
         globalAlert?.error('Cannot load office list');
       });
-  }
+    // TODO resolving this warning introduces an infinite loop. This may be a smell.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [api, globalAlert]);
 
   function disableSearchForm(value: boolean) {
     caseNumberInputRef.current?.disable(value);
@@ -203,26 +201,19 @@ export default function SearchScreen() {
   };
 
   function handleCaseNumberChange(caseNumber?: string): void {
-    if (temporarySearchPredicate.caseNumber != caseNumber) {
-      const newPredicate = { ...temporarySearchPredicate, caseNumber };
-      if (!caseNumber) {
-        delete newPredicate.caseNumber;
-      }
-      setTemporarySearchPredicate(newPredicate);
+    const newPredicate = { ...temporarySearchPredicate };
+
+    if (caseNumber) {
+      newPredicate.caseNumber = caseNumber;
+    } else {
+      delete newPredicate.caseNumber;
     }
 
-    // Validate the case number field with debounce
-    // If there's input but no valid case number, show error
+    setTemporarySearchPredicate(newPredicate);
+
+    // Validate using spec only - debounced
     debounce(() => {
-      const rawInputValue = caseNumberInputRef.current?.getValue() || '';
-      if (rawInputValue && !caseNumber) {
-        setFieldErrors((prevErrors) => ({
-          ...prevErrors,
-          caseNumber: { reasons: [CASE_NUMBER_INVALID_ERROR_REASON] },
-        }));
-      } else {
-        validateFieldAndUpdate('caseNumber', caseNumber);
-      }
+      validateFieldAndUpdate('caseNumber', caseNumber);
     }, 300);
   }
 
@@ -264,16 +255,14 @@ export default function SearchScreen() {
     }
   }
 
-  function handleKeyDown(ev: React.KeyboardEvent<HTMLDivElement>) {
-    if (ev.key === 'Enter') {
-      ev.preventDefault();
-      // Use setTimeout to ensure state updates from child components have completed
-      // This handles the case where CaseNumberInput's handleEnter calls onChange,
-      // which updates temporarySearchPredicate asynchronously
-      setTimeout(() => {
-        performSearch();
-      }, 0);
-    }
+  function handleSubmit(ev: React.FormEvent<HTMLFormElement>) {
+    ev.preventDefault();
+    // Use setTimeout to ensure state updates from child components have completed
+    // This handles the case where CaseNumberInput's handleEnter calls onChange,
+    // which updates temporarySearchPredicate asynchronously
+    setTimeout(() => {
+      performSearch();
+    }, 0);
   }
 
   const infoModalActionButtonGroup = {
@@ -288,7 +277,7 @@ export default function SearchScreen() {
   useEffect(() => {
     getCourts();
     getChapters();
-  }, []);
+  }, [getCourts, getChapters]);
 
   return (
     <MainContent className="search-screen" data-testid="search">
@@ -302,10 +291,11 @@ export default function SearchScreen() {
       <div className="grid-row grid-gap-lg search-pane">
         <div className="grid-col-3">
           <h2>Search By</h2>
-          <div
+          <form
             className="filter-and-search"
             data-testid="filter-and-search-panel"
-            onKeyDown={handleKeyDown}
+            onSubmit={handleSubmit}
+            role="search"
           >
             <div className="case-number-search form-field" data-testid="case-number-search">
               <div className="usa-search usa-search--small">
@@ -318,7 +308,7 @@ export default function SearchScreen() {
                   onChange={handleCaseNumberChange}
                   onFocus={handleFilterFormElementFocus}
                   allowEnterKey={true}
-                  allowPartialCaseNumber={false}
+                  allowPartialCaseNumber={true}
                   aria-label="Find case by Case Number."
                   ref={caseNumberInputRef}
                   errorMessage={fieldErrors.caseNumber?.reasons?.[0]}
@@ -401,7 +391,7 @@ export default function SearchScreen() {
                 Search
               </Button>
             </div>
-          </div>
+          </form>
         </div>
         <div className="grid-col-8" role="status" aria-live="polite">
           <h2>Results</h2>
