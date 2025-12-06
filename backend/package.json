@@ -37,7 +37,7 @@
     "express": "5.1.0",
     "jsonwebtoken": "9.0.2",
     "mongodb": "7.0.0",
-    "mssql": "10.0.4"
+    "mssql": "11.0.0"
   },
   "overrides": {
     "@azure/identity": "$@azure/identity",
