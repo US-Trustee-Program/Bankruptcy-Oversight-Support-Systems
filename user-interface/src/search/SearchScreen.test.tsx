@@ -616,11 +616,13 @@ describe('search screen', () => {
     await userEvent.type(caseNumberInput, '12345');
     await userEvent.keyboard('{Enter}');
 
-    // Wait a bit to ensure setTimeout has executed
-    await new Promise((resolve) => setTimeout(resolve, 50));
-
-    // Verify that search was not called
-    expect(searchCasesSpy).not.toHaveBeenCalled();
+    // Wait for any potential async updates to settle
+    await waitFor(
+      () => {
+        expect(searchCasesSpy).not.toHaveBeenCalled();
+      },
+      { timeout: 100 },
+    );
   });
 
   test('should trigger search multiple times when Enter key is pressed with different case numbers', async () => {
@@ -806,7 +808,7 @@ describe('validateFormData function', () => {
     expect(result.fieldErrors.caseNumber).toBeUndefined();
   });
 
-  test('should return valid for undefined case number when other criteria provided', () => {
+  test('should return valid for undefined case number when chapter criteria provided', () => {
     const result = validateFormData({ caseNumber: undefined, chapters: ['11'] });
     expect(result.isValid).toBe(true);
     expect(result.fieldErrors.caseNumber).toBeUndefined();

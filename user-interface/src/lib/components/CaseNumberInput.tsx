@@ -2,28 +2,22 @@ import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } f
 import Input, { InputProps } from './uswds/Input';
 import { InputRef } from '../type-declarations/input-fields';
 
-export function formatCaseNumberInput(
-  ev: React.ChangeEvent<HTMLInputElement>,
-  allowPartial: boolean = false,
-) {
+export function formatCaseNumberValue(value: string) {
   const allowedCharsPattern = /\d/g;
-  const filteredInput = ev.target.value.match(allowedCharsPattern) ?? [];
+  const filteredInput = value.match(allowedCharsPattern) ?? [];
+
   if (filteredInput.length > 7) {
     filteredInput.splice(7);
   }
   if (filteredInput.length > 2) {
     filteredInput.splice(2, 0, '-');
   }
-  const joinedInput = filteredInput?.join('') || '';
+
+  const joinedInput = filteredInput.join('');
   const caseNumberPattern = /^\d{2}-\d{5}$/;
+  const isValidFullCaseNumber = caseNumberPattern.test(joinedInput);
 
-  const caseNumber = allowPartial
-    ? joinedInput || undefined
-    : caseNumberPattern.test(joinedInput)
-      ? joinedInput
-      : undefined;
-
-  return { caseNumber, joinedInput };
+  return { joinedInput, isValidFullCaseNumber };
 }
 
 type CaseNumberInputProps = Omit<InputProps, 'onChange' | 'onFocus'> & {
@@ -79,8 +73,15 @@ function CaseNumberInput_(props: CaseNumberInputProps, ref: React.Ref<InputRef>)
   }
 
   function handleOnChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    const { caseNumber, joinedInput } = formatCaseNumberInput(ev, allowPartialCaseNumber);
+    const { joinedInput, isValidFullCaseNumber } = formatCaseNumberValue(ev.target.value);
+
     forwardedRef?.current?.setValue(joinedInput);
+
+    const caseNumber = allowPartialCaseNumber
+      ? joinedInput || undefined
+      : isValidFullCaseNumber
+        ? joinedInput
+        : undefined;
 
     onChange(caseNumber);
   }
@@ -90,13 +91,16 @@ function CaseNumberInput_(props: CaseNumberInputProps, ref: React.Ref<InputRef>)
       allowEnterKey &&
       ev.key === 'Enter' &&
       forwardedRef.current &&
-      forwardedRef.current?.getValue().length > 0
+      forwardedRef.current.getValue().length > 0
     ) {
-      const currentValue = forwardedRef.current?.getValue();
-      const mockEvent = {
-        target: { value: currentValue },
-      } as React.ChangeEvent<HTMLInputElement>;
-      const { caseNumber } = formatCaseNumberInput(mockEvent, allowPartialCaseNumber);
+      const currentValue = forwardedRef.current.getValue();
+      const { joinedInput, isValidFullCaseNumber } = formatCaseNumberValue(currentValue);
+
+      const caseNumber = allowPartialCaseNumber
+        ? joinedInput || undefined
+        : isValidFullCaseNumber
+          ? joinedInput
+          : undefined;
 
       onChange(caseNumber);
     }
