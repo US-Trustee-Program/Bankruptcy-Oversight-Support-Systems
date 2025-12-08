@@ -6,12 +6,13 @@ This guide provides detailed instructions for AI assistants to write effective B
 
 1. [Testing Philosophy](#testing-philosophy)
 2. [Test Structure](#test-structure)
-3. [Essential Setup](#essential-setup)
-4. [Mocking and Spying Patterns](#mocking-and-spying-patterns)
-5. [Common Pitfalls and Solutions](#common-pitfalls-and-solutions)
-6. [Best Practices](#best-practices)
-7. [Test Fixtures and Data](#test-fixtures-and-data)
-8. [Known Issues](#known-issues)
+3. [Stateful vs Read-Only Testing](#stateful-vs-read-only-testing)
+4. [Essential Setup](#essential-setup)
+5. [Mocking and Spying Patterns](#mocking-and-spying-patterns)
+6. [Common Pitfalls and Solutions](#common-pitfalls-and-solutions)
+7. [Best Practices](#best-practices)
+8. [Test Fixtures and Data](#test-fixtures-and-data)
+9. [Known Issues](#known-issues)
 
 ---
 
@@ -121,6 +122,148 @@ describe('Feature: <Feature Name> (Full Stack)', () => {
   }, 20000);
 });
 ```
+
+---
+
+## Stateful vs Read-Only Testing
+
+### Understanding Test Types
+
+The Fluent API supports two types of tests:
+
+**Read-Only Tests** - Display and navigation scenarios:
+- ✅ Viewing case details
+- ✅ Search and filter operations
+- ✅ List views (my cases, search results)
+- ✅ Static page rendering
+- ❌ Cannot test write operations
+
+**Stateful Tests** - Interactive workflows with writes:
+- ✅ Creating case notes
+- ✅ Assigning attorneys
+- ✅ Editing data
+- ✅ Multi-step user journeys
+- ✅ Verifying persistence across navigation
+
+### When to Capture TestState
+
+```typescript
+// Read-only test - ignore returned state
+await TestSetup
+  .forUser(TestSessions.caseAssignmentManager())
+  .withCase(testCase)
+  .renderAt(`/case-detail/${testCase.caseId}`);
+
+await waitForAppLoad();
+await expectPageToContain(testCase.caseTitle);
+
+// Stateful test - capture state for assertions
+const state = await TestSetup
+  .forUser(TestSessions.trialAttorney())
+  .withCase(testCase)
+  .withCaseNotes(testCase.caseId, [])  // Explicitly provide caseId
+  .renderAt(`/case-detail/${testCase.caseId}`);
+
+// Use state for assertions
+state.expectNoteCount(testCase.caseId, 0);
+```
+
+### Stateful Test Template
+
+```typescript
+import { screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+
+it('should add a case note and display it', async () => {
+  const user = userEvent.setup();
+
+  // GIVEN: A case with no notes
+  const testCase = MockData.getCaseDetail({
+    override: {
+      caseId: '081-23-12345',
+      caseTitle: 'Test Case'
+    }
+  });
+
+  // Capture state from renderAt()
+  const state = await TestSetup
+    .forUser(TestSessions.trialAttorney())
+    .withCase(testCase)
+    .withCaseNotes(testCase.caseId, [])  // Empty initially
+    .renderAt(`/case-detail/${testCase.caseId}`);
+
+  await waitForAppLoad();
+
+  // Verify initial state
+  state.expectNoteCount(testCase.caseId, 0);
+
+  // WHEN: User adds a note via UI
+  await user.click(screen.getByRole('button', { name: /add note/i }));
+
+  const noteContent = 'Important case note';
+  await user.type(screen.getByLabelText(/note/i), noteContent);
+  await user.click(screen.getByRole('button', { name: /save/i }));
+
+  await waitFor(() => {
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  // THEN: State should reflect the new note
+  state.expectNoteCount(testCase.caseId, 1);
+  state.expectNoteExists(testCase.caseId, noteContent);
+
+  // Verify note details
+  const notes = state.getNotes(testCase.caseId);
+  expect(notes[0].content).toContain(noteContent);
+
+  // AND: Note should appear in UI
+  await waitFor(() => {
+    expect(screen.getByText(noteContent)).toBeInTheDocument();
+  });
+}, 30000);
+```
+
+### TestState API Reference
+
+**Data Access Methods:**
+- `getCase(caseId)` - Get case detail
+- `getNotes(caseId)` - Get case notes
+- `getTransfers(caseId)` - Get transfers
+- `getConsolidations(caseId)` - Get consolidations
+- `getAssignments(caseId)` - Get assignments
+- `getDocketEntries(caseId)` - Get docket entries
+
+**Assertion Helpers:**
+- `expectCaseExists(caseId)` - Assert case exists
+- `expectNoteCount(caseId, count)` - Assert note count
+- `expectNoteExists(caseId, content)` - Assert note with content exists
+- `expectTransferCount(caseId, count)` - Assert transfer count
+- `expectAssignmentExists(caseId, attorneyId)` - Assert assignment exists
+
+**Debugging:**
+- `state.dump()` - Print all state to console
+- `state.dumpCaseDetail(caseId)` - Print detailed state for a case
+
+### Updated Method Signatures
+
+**IMPORTANT**: Methods that manage case-specific data now require explicit `caseId` parameter:
+
+```typescript
+TestSetup
+  .forUser(session)
+  .withCase(caseDetail)
+  .withTransfers(caseId, [transfers])         // ← caseId required
+  .withConsolidations(caseId, [consolidations]) // ← caseId required
+  .withDocketEntries(caseId, [entries])       // ← caseId required
+  .withCaseNotes(caseId, [notes])             // ← caseId required
+  .renderAt(route);                           // Returns TestState
+```
+
+This ensures proper state tracking even with empty arrays.
+
+### Example: case-notes.spec.tsx
+
+See `test/bdd/features/case-management/case-notes.spec.tsx` for complete examples of stateful testing patterns.
 
 ---
 
@@ -726,6 +869,7 @@ npm run test:bdd:coverage -- case-detail.spec.tsx
 
 Before creating a new BDD full-stack test, verify:
 
+**Basic Setup:**
 - [ ] Test file named with short, descriptive feature name (e.g., `case-detail.spec.tsx`)
 - [ ] Imports `../../helpers/driver-mocks`
 - [ ] Uses `initializeTestServer()` / `cleanupTestServer()`
@@ -734,16 +878,25 @@ Before creating a new BDD full-stack test, verify:
 - [ ] Waits for "Loading session" to complete (`waitForAppLoad()`)
 - [ ] Uses `document.body.textContent` for text assertions
 - [ ] Cleans up spies in `afterEach()` using `clearAllRepositorySpies()`
-- [ ] Has generous timeouts (10s waitFor, 20s test)
+- [ ] Has generous timeouts (10s waitFor, 20-30s test)
 - [ ] Documents scenario with Given/When/Then
 - [ ] Includes console.log breadcrumbs
 - [ ] Test passes when run individually
+
+**Stateful Testing (if testing write operations):**
+- [ ] Captures `TestState` from `renderAt()`: `const state = await TestSetup...renderAt(...)`
+- [ ] Uses explicit `caseId` parameter in `.withCaseNotes(caseId, [])` (and similar methods)
+- [ ] Uses `state.expectNoteCount()` / `state.expectNoteExists()` for state assertions
+- [ ] Verifies UI reflects state changes with `waitFor()` assertions
+- [ ] Example reference: `test/bdd/features/case-management/case-notes.spec.tsx`
 
 ---
 
 ## Additional Resources
 
 - **Test Helpers**: `test/bdd/helpers/`
+  - `fluent-test-setup.ts` - Fluent API for declarative test setup
+  - `test-state.ts` - TestState class for stateful testing
   - `render-with-context.ts` - App rendering utilities
   - `api-server.ts` - Test server setup
   - `repository-spies.ts` - Gateway/repository spy utilities
@@ -757,12 +910,17 @@ Before creating a new BDD full-stack test, verify:
   - `MockData.getCaseSummary()` - Create case summary test data
   - `MockData.getCaseAssignment()` - Create assignment test data
 
+- **Test Examples**:
+  - `test/bdd/features/case-management/case-detail.spec.tsx` - Read-only tests
+  - `test/bdd/features/case-management/case-notes.spec.tsx` - Stateful tests with write operations
+  - `test/bdd/features/case-management/search-cases.spec.tsx` - Search and filter tests
+  - `test/bdd/features/case-management/my-cases.spec.tsx` - List view tests
+
 - **Documentation**:
-  - `docs/architecture/decision-records/BddFullStackTesting.md` - ADR explaining the approach
-  - `test/bdd/README.md` - Overview and getting started guide
-  - `test/bdd/FLUENT_API.md` - Complete Fluent API reference
+  - `docs/architecture/decision-records/BddFullStackTesting.md` - ADR explaining the approach, including stateful testing
+  - `test/bdd/README.md` - Overview, stateful testing guide, and getting started
+  - `test/bdd/FLUENT_API.md` - Complete Fluent API and TestState reference
   - `test/bdd/AI_TESTING_GUIDELINES.md` - Detailed guidelines for writing tests
-  - `test/bdd/REFACTORING_STATUS.md` - Refactoring history and status
 
 ---
 
@@ -771,11 +929,18 @@ Before creating a new BDD full-stack test, verify:
 The key to successful BDD full-stack tests:
 
 1. **Spy on production code**, don't create fakes
-2. **Use comprehensive gateway spies** in beforeEach
-3. **Match mock types** to method signatures (async vs sync)
-4. **Wait for loading states** to complete
-5. **Use flexible text assertions** (`textContent`, not `getByText`)
-6. **Test in isolation** with proper cleanup
-7. **Follow the breadcrumbs** from unmocked method errors
+2. **Use Fluent API (`TestSetup`)** for declarative test setup
+3. **Choose the right test type**:
+   - Read-only tests for display/navigation scenarios
+   - Stateful tests for write operations and interactive workflows
+4. **Capture TestState** when testing writes: `const state = await TestSetup...renderAt(...)`
+5. **Provide explicit caseId** for case-specific methods (`.withCaseNotes(caseId, [])`)
+6. **Match mock types** to method signatures (async vs sync)
+7. **Wait for loading states** to complete
+8. **Use flexible text assertions** (`textContent`, not `getByText`)
+9. **Test in isolation** with proper cleanup
+10. **Follow the breadcrumbs** from unmocked method errors
 
-When in doubt, refer to passing tests like `case-detail.spec.tsx`, `search-cases.spec.tsx`, and `my-cases.spec.tsx` as examples.
+**Test Examples:**
+- **Read-only**: `case-detail.spec.tsx`, `search-cases.spec.tsx`, `my-cases.spec.tsx`
+- **Stateful**: `case-notes.spec.tsx` (write operations, state persistence)
