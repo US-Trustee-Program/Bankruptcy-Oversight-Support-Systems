@@ -585,4 +585,4 @@ This properly tests the "no results" state without causing API errors.
 
 - **README.md** - Overview of BDD testing
 - **AI_TESTING_GUIDELINES.md** - Comprehensive testing guide
-- **Test Examples** - `features/case-management/*-fullstack.spec.tsx`
+- **Test Examples** - `features/case-management/*.spec.tsx` (case-detail, search-cases, my-cases)
