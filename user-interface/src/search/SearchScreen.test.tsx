@@ -791,9 +791,10 @@ describe('validateFormData function', () => {
   });
 
   test('should return error for invalid case number format via raw input', () => {
-    const result = validateFormData({ caseNumber: undefined }, '12345');
+    const result = validateFormData({ caseNumber: '12345' });
     expect(result.isValid).toBe(false);
-    expect(result.fieldErrors.caseNumber?.reasons).toContain('Must be 7 digits');
+    expect(result.fieldErrors.caseNumber?.reasons).toBeDefined();
+    expect(result.fieldErrors.caseNumber?.reasons).toEqual(['Must be 7 digits']);
   });
 
   test('should return valid for undefined case number when other criteria provided', () => {
@@ -815,7 +816,7 @@ describe('validateFormData function', () => {
   });
 
   test('should handle raw input with valid case number', () => {
-    const result = validateFormData({ caseNumber: '12-34567' }, '12-34567');
+    const result = validateFormData({ caseNumber: '12-34567' });
     expect(result.isValid).toBe(true);
     expect(result.fieldErrors.caseNumber).toBeUndefined();
   });
