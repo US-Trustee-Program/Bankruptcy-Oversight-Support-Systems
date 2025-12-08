@@ -55,11 +55,11 @@ These tests verify that the entire CAMS application works correctly end-to-end b
 test/bdd/
 ├── features/                  # BDD test files organized by feature
 │   ├── case-management/
-│   │   ├── view-case-detail-fullstack.spec.tsx  (4 tests)
-│   │   ├── search-cases-fullstack.spec.tsx      (3 tests)
-│   │   └── my-cases-fullstack.spec.tsx          (3 tests)
+│   │   ├── case-detail.spec.tsx   (4 tests)
+│   │   ├── search-cases.spec.tsx  (3 tests)
+│   │   └── my-cases.spec.tsx      (3 tests)
 │   └── diagnostics/
-│       └── bdd-environment.spec.tsx             (diagnostic tool)
+│       └── bdd-environment.spec.tsx  (diagnostic tool)
 │
 ├── helpers/                   # Test infrastructure
 │   ├── fluent-test-setup.ts  # Fluent API for test setup
@@ -78,6 +78,22 @@ test/bdd/
 └── README.md                 # This file
 ```
 
+### Test File Nomenclature
+
+BDD test files use **short, descriptive names** that align with **feature verticals** in the application:
+
+- **Naming Pattern**: `{feature-name}.spec.tsx`
+- **Align with Features**: File names should match the user-facing feature or application vertical
+- **Keep it Short**: Avoid redundant suffixes like "-fullstack" or "-test" (the `.spec.tsx` extension already indicates it's a test)
+- **Use Kebab Case**: Multi-word names use hyphens (e.g., `case-detail.spec.tsx`, not `caseDetail.spec.tsx`)
+
+**Examples:**
+- ✅ `case-detail.spec.tsx` - Tests the case detail view feature
+- ✅ `search-cases.spec.tsx` - Tests the case search feature
+- ✅ `my-cases.spec.tsx` - Tests the my cases dashboard feature
+- ❌ `view-case-detail-fullstack.spec.tsx` - Too verbose, redundant suffixes
+- ❌ `caseDetailTest.spec.tsx` - Wrong case, redundant "Test" suffix
+
 ## Running Tests
 
 From the project root:
@@ -87,7 +103,7 @@ From the project root:
 npm run test:bdd
 
 # Run specific test file
-npm run test:bdd -- view-case-detail-fullstack.spec.tsx
+npm run test:bdd -- case-detail.spec.tsx
 
 # Run specific test by name
 npm run test:bdd -- -t "should display case details"
@@ -96,7 +112,7 @@ npm run test:bdd -- -t "should display case details"
 npm run test:bdd:coverage
 
 # Run with coverage for specific file
-npm run test:bdd:coverage -- view-case-detail-fullstack.spec.tsx
+npm run test:bdd:coverage -- case-detail.spec.tsx
 
 # Run diagnostic tests (troubleshooting only)
 npm run test:bdd -- bdd-environment.spec.tsx
@@ -108,7 +124,7 @@ npm run test:bdd -- bdd-environment.spec.tsx
 
 The primary test suite consists of feature tests that verify user-facing behavior:
 
-- `features/case-management/*-fullstack.spec.tsx` - User behavior tests
+- `features/case-management/*.spec.tsx` - User behavior tests
 - **Approach**: Use the **Fluent API** for declarative, high-level test setup
 - **Focus**: What the user sees and does
 - **Abstraction**: Infrastructure details hidden behind clean API
@@ -379,6 +395,6 @@ Ensure all spy methods return the correct type:
 
 For more details or examples:
 1. **FLUENT_API.md** - Complete reference for all fluent API methods
-2. Check existing tests in `features/case-management/`
+2. Check existing tests in `features/case-management/` (case-detail.spec.tsx, search-cases.spec.tsx, my-cases.spec.tsx)
 3. Review `AI_TESTING_GUIDELINES.md` for detailed patterns
 4. Examine the fluent API implementation in `helpers/fluent-test-setup.ts`

@@ -49,13 +49,15 @@ class FakeCasesDxtrGateway { ... }
 ### File Naming Convention
 
 ```
-test/bdd/features/<feature-area>/<feature-name>-fullstack.spec.tsx
+test/bdd/features/<feature-area>/<feature-name>.spec.tsx
 ```
 
+**File Naming**: Use short, descriptive names aligned with feature verticals. Avoid redundant suffixes like "-fullstack" or "-test".
+
 Examples:
-- `test/bdd/features/case-management/view-case-detail-fullstack.spec.tsx`
-- `test/bdd/features/case-management/search-cases-fullstack.spec.tsx`
-- `test/bdd/features/case-management/my-cases-fullstack.spec.tsx`
+- `test/bdd/features/case-management/case-detail.spec.tsx`
+- `test/bdd/features/case-management/search-cases.spec.tsx`
+- `test/bdd/features/case-management/my-cases.spec.tsx`
 
 ### Fluent API Test Template
 
@@ -592,10 +594,10 @@ const testCase = MockData.getCaseDetail({
 **Symptoms**:
 ```bash
 # Passes
-npm run test:bdd -- view-case-detail-fullstack.spec.tsx
+npm run test:bdd -- case-detail.spec.tsx
 
 # Fails when run with others
-npm run test:bdd -- view-case-detail-fullstack.spec.tsx search-cases-fullstack.spec.tsx
+npm run test:bdd -- case-detail.spec.tsx search-cases.spec.tsx
 ```
 
 **Likely Causes**:
@@ -706,16 +708,16 @@ await spyOnAllGateways({
 npm run test:bdd
 
 # Run specific test file
-npm run test:bdd -- view-case-detail-fullstack.spec.tsx
+npm run test:bdd -- case-detail.spec.tsx
 
 # Run specific test
-npm run test:bdd -- view-case-detail-fullstack.spec.tsx -t "should display case details"
+npm run test:bdd -- case-detail.spec.tsx -t "should display case details"
 
 # Run with coverage
 npm run test:bdd:coverage
 
 # Run specific file with coverage
-npm run test:bdd:coverage -- view-case-detail-fullstack.spec.tsx
+npm run test:bdd:coverage -- case-detail.spec.tsx
 ```
 
 ---
@@ -724,7 +726,7 @@ npm run test:bdd:coverage -- view-case-detail-fullstack.spec.tsx
 
 Before creating a new BDD full-stack test, verify:
 
-- [ ] Test file named `*-fullstack.spec.tsx`
+- [ ] Test file named with short, descriptive feature name (e.g., `case-detail.spec.tsx`)
 - [ ] Imports `../../helpers/driver-mocks`
 - [ ] Uses `initializeTestServer()` / `cleanupTestServer()`
 - [ ] Uses Fluent API (`TestSetup`) for test setup
@@ -776,4 +778,4 @@ The key to successful BDD full-stack tests:
 6. **Test in isolation** with proper cleanup
 7. **Follow the breadcrumbs** from unmocked method errors
 
-When in doubt, refer to passing tests like `view-case-detail-fullstack.spec.tsx`, `search-cases-fullstack.spec.tsx`, and `my-cases-fullstack.spec.tsx` as examples.
+When in doubt, refer to passing tests like `case-detail.spec.tsx`, `search-cases.spec.tsx`, and `my-cases.spec.tsx` as examples.
