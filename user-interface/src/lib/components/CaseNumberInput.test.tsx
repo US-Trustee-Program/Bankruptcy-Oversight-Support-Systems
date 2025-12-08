@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import CaseNumberInput, { formatCaseNumberInput } from './CaseNumberInput';
+import CaseNumberInput, { formatCaseNumberValue } from './CaseNumberInput';
 import { act, render, waitFor } from '@testing-library/react';
 import { InputRef } from '../type-declarations/input-fields';
 import React from 'react';
@@ -162,123 +162,75 @@ describe('Test formatCaseNumberInput function', () => {
     const resultValue = '12-34567';
 
     const expectedResult = {
-      caseNumber: resultValue,
       joinedInput: resultValue,
+      isValidFullCaseNumber: true,
     };
 
-    const testEvent = {
-      target: {
-        value: testValue,
-      },
-    };
-
-    const returnedValue = formatCaseNumberInput(testEvent as React.ChangeEvent<HTMLInputElement>);
+    const returnedValue = formatCaseNumberValue(testValue);
     expect(returnedValue).toEqual(expectedResult);
   });
 
-  test('When supplied a value with alphabetic characters only, it should return an object with undefined caseNumber and empty string for joinedInput', async () => {
+  test('When supplied a value with alphabetic characters only, it should return an object with isValidFullCaseNumber false and empty string for joinedInput', async () => {
     const testValue = 'abcdefg';
     const resultValue = '';
 
     const expectedResult = {
-      caseNumber: undefined,
       joinedInput: resultValue,
+      isValidFullCaseNumber: false,
     };
 
-    const testEvent = {
-      target: {
-        value: testValue,
-      },
-    };
-
-    const returnedValue = formatCaseNumberInput(testEvent as React.ChangeEvent<HTMLInputElement>);
+    const returnedValue = formatCaseNumberValue(testValue);
     expect(returnedValue).toEqual(expectedResult);
   });
 
-  test('with allowPartial=true, should return partial formatted input for caseNumber', async () => {
+  test('should return partial formatted input with isValidFullCaseNumber false', async () => {
     const testValue = '12345';
     const resultValue = '12-345';
 
     const expectedResult = {
-      caseNumber: resultValue,
       joinedInput: resultValue,
+      isValidFullCaseNumber: false,
     };
 
-    const testEvent = {
-      target: {
-        value: testValue,
-      },
-    };
-
-    const returnedValue = formatCaseNumberInput(
-      testEvent as React.ChangeEvent<HTMLInputElement>,
-      true,
-    );
+    const returnedValue = formatCaseNumberValue(testValue);
     expect(returnedValue).toEqual(expectedResult);
   });
 
-  test('with allowPartial=false, should return undefined for partial input caseNumber', async () => {
+  test('should return isValidFullCaseNumber false for partial input', async () => {
     const testValue = '12345';
     const resultValue = '12-345';
 
     const expectedResult = {
-      caseNumber: undefined,
       joinedInput: resultValue,
+      isValidFullCaseNumber: false,
     };
 
-    const testEvent = {
-      target: {
-        value: testValue,
-      },
-    };
-
-    const returnedValue = formatCaseNumberInput(
-      testEvent as React.ChangeEvent<HTMLInputElement>,
-      false,
-    );
+    const returnedValue = formatCaseNumberValue(testValue);
     expect(returnedValue).toEqual(expectedResult);
   });
 
-  test('with allowPartial=false, should return value for valid full case number', async () => {
+  test('should return isValidFullCaseNumber true for valid full case number', async () => {
     const testValue = '1234567';
     const resultValue = '12-34567';
 
     const expectedResult = {
-      caseNumber: resultValue,
       joinedInput: resultValue,
+      isValidFullCaseNumber: true,
     };
 
-    const testEvent = {
-      target: {
-        value: testValue,
-      },
-    };
-
-    const returnedValue = formatCaseNumberInput(
-      testEvent as React.ChangeEvent<HTMLInputElement>,
-      false,
-    );
+    const returnedValue = formatCaseNumberValue(testValue);
     expect(returnedValue).toEqual(expectedResult);
   });
 
-  test('with allowPartial=true and empty input, should return undefined', async () => {
+  test('should return empty string and isValidFullCaseNumber false for empty input', async () => {
     const testValue = '';
 
     const expectedResult = {
-      caseNumber: undefined,
       joinedInput: '',
+      isValidFullCaseNumber: false,
     };
 
-    const testEvent = {
-      target: {
-        value: testValue,
-      },
-    };
-
-    const returnedValue = formatCaseNumberInput(
-      testEvent as React.ChangeEvent<HTMLInputElement>,
-      true,
-    );
+    const returnedValue = formatCaseNumberValue(testValue);
     expect(returnedValue).toEqual(expectedResult);
   });
 });
