@@ -86,26 +86,13 @@ We implemented a **full-stack BDD testing architecture** that runs the complete 
 - Allows server initialization to succeed without DATABASE_MOCK flag
 - Tests the actual gateway implementations, not Mock* classes
 
-**Implementation**:
-```typescript
-vi.mock('mongodb', () => {
-  class MockCursor {
-    async toArray() { return []; }
-    async *[Symbol.asyncIterator]() { /* async iteration support */ }
-  }
-  class MockMongoClient {
-    async connect() { return this; }
-    db() { return { collection() { return { find() { return new MockCursor(); } }; } }; }
-  }
-  return { MongoClient: MockMongoClient, Db: MockDb };
-});
-```
-
-**Critical Details**:
+**Key Implementation Points**:
 - MongoDB cursors must implement `Symbol.asyncIterator` for compatibility
 - MSSQL mocks must include type functions (VarChar, Int, Bit, etc.)
 - Mocks return valid structures but no data (data comes from spies)
-- **IMPORTANT**: Use plain async functions, not `vi.fn().mockResolvedValue()` for collection methods. Using `vi.fn()` creates new instances each time, making methods non-callable. All MongoDB collection methods (`find`, `findOne`, `insertOne`, `updateOne`, `replaceOne`, `deleteOne`, etc.) must be implemented as plain async functions that return proper MongoDB response objects (e.g., `{ modifiedCount: 1, acknowledged: true }`)
+- Use plain async functions for collection methods, not `vi.fn().mockResolvedValue()`
+
+See `test/bdd/helpers/driver-mocks.ts` for the complete driver mock implementations.
 
 #### 2. Spy on Gateway Methods to Inject Test Data
 
@@ -116,52 +103,20 @@ vi.mock('mongodb', () => {
 - Injects controlled test data at the system boundary
 - Allows verification that gateways are called with correct parameters
 - Maintains separation between test setup and production code
+- Prototype spying required due to factory pattern creating instances dynamically
 
-**Implementation**:
-```typescript
-// Set up after server starts
-const { CasesDxtrGateway } = await import('.../cases.dxtr.gateway');
-vi.spyOn(CasesDxtrGateway.prototype, 'getCaseDetail')
-  .mockResolvedValue(testCaseData);
-
-const { CasesMongoRepository } = await import('.../cases.mongo.repository');
-vi.spyOn(CasesMongoRepository.prototype, 'getTransfers')
-  .mockResolvedValue(testTransfers);
-```
-
-**Why Prototype Spying**:
-- Factory pattern creates instances dynamically
-- Spying on Factory.getCasesRepository() doesn't work due to module-level caching
-- Prototype spying intercepts all instances of the class
+See `test/bdd/helpers/repository-spies.ts` for spy implementation patterns.
 
 #### 2.5. Okta Configuration Format
 
 **Decision**: Use pipe-delimited `key=value` pairs for `CAMS_LOGIN_PROVIDER_CONFIG` and `CAMS_USER_GROUP_GATEWAY_CONFIG`.
 
 **Rationale**:
-- The `keyValuesToRecord()` utility function expects pipe-delimited format: `key1=value1|key2=value2`
-- Using JSON.stringify() results in empty configuration objects
+- The `keyValuesToRecord()` utility function expects pipe-delimited format, not JSON
 - Issuer must include a path component (e.g., `/oauth2/default`) for audience derivation
-- Backend derives audience from issuer path: `http://test/oauth2/default` → `api://default`
+- Both frontend and backend must use `CAMS_LOGIN_PROVIDER='okta'` to test production code paths
 
-**Implementation**:
-```typescript
-// Frontend configuration (window.CAMS_CONFIGURATION)
-CAMS_LOGIN_PROVIDER: 'okta',
-CAMS_LOGIN_PROVIDER_CONFIG: 'issuer=http://test/oauth2/default|clientId=test-client-id|redirectUri=http://localhost:4000/login-callback'
-
-// Backend configuration (process.env)
-CAMS_LOGIN_PROVIDER: 'okta',
-CAMS_LOGIN_PROVIDER_CONFIG: 'issuer=http://test/oauth2/default',
-CAMS_USER_GROUP_GATEWAY_CONFIG: 'clientId=test-client-id|keyId=test-key-id|url=http://test|privateKey={"kty":"RSA","n":"test","e":"AQAB"}'
-```
-
-**Critical Details**:
-- **Format**: Pipe-delimited `key=value` pairs (NOT JSON)
-- **Issuer Path**: Must include path component (e.g., `/oauth2/default`) for audience derivation
-- **Audience Derivation**: Backend extracts path from issuer to create audience (e.g., `api://default`)
-- **Alignment**: Frontend and backend must use the same issuer value
-- **Provider**: Both frontend and backend must use `CAMS_LOGIN_PROVIDER='okta'` (not 'mock')
+See `test/bdd/helpers/setup-tests.ts` for the complete configuration implementation.
 
 #### 2.75. Fluent Test Setup API
 
@@ -174,59 +129,13 @@ CAMS_USER_GROUP_GATEWAY_CONFIG: 'clientId=test-client-id|keyId=test-key-id|url=h
 - Easier for new contributors to write tests without understanding spy internals
 - Enforces consistent patterns across all BDD tests
 
-**Implementation**:
-```typescript
-it('should display case details', async () => {
-  const testCase = MockData.getCaseDetail({
-    override: { caseId: '081-23-12345', caseTitle: 'Test Case' }
-  });
-
-  await TestSetup
-    .forUser(TestSessions.caseAssignmentManager())
-    .withCase(testCase)
-    .withTransfers([])
-    .withConsolidations([])
-    .renderAt(`/case-detail/${testCase.caseId}`);
-
-  await waitForAppLoad();
-  await expectPageToContain(testCase.caseTitle);
-});
-```
-
-**API Design**:
-- **Fluent/Chainable**: Methods return `this` for method chaining
-- **Declarative**: Read like english sentences describing test setup
-- **Type-Safe**: TypeScript ensures correct data types
-- **Terminal Operation**: `.renderAt(route)` completes setup and renders app
-
-**Available Methods**:
-- `.forUser(session)` - Set user session (required, always first)
-- `.withCase(case)` / `.withCases([cases])` - Provide case detail(s)
-- `.withSearchResults([cases])` - Mock search results
-- `.withMyAssignments([cases])` - Mock user's assigned cases
-- `.withTransfers([transfers])` - Provide transfer data
-- `.withConsolidations([consolidations])` - Provide consolidation data
-- `.withCaseAssignments(caseId, [assignments])` - Provide assignments map
-- `.withDocketEntries([entries])` - Provide docket entries
-- `.withCaseNotes([notes])` - Provide case notes
-- `.withOffices([offices])` - Provide office data
-- `.renderAt(route)` - Render app at route (terminal operation)
-
-**Helper Functions**:
-- `await waitForAppLoad()` - Wait for "Loading session" to complete
-- `await expectPageToContain(text)` - Assert text appears on page
-- `await expectPageToMatch(pattern)` - Assert regex matches page content
-
 **Benefits**:
-1. **Readability**: Test intent is immediately clear
-2. **Maintainability**: Changes to spy setup happen in one place
-3. **Discoverability**: IDE autocomplete shows available data methods
-4. **Consistency**: All tests follow the same pattern
-5. **Reduced Boilerplate**: ~30 lines of setup becomes ~5 lines
+- Reduces boilerplate code significantly
+- Improves test readability through declarative API
+- Centralizes spy management for easier maintenance
+- Provides IDE autocomplete for test data methods
 
-**Location**: `test/bdd/helpers/fluent-test-setup.ts`
-
-**Documentation**: See `test/bdd/FLUENT_API.md` for complete API reference
+See `test/bdd/FLUENT_API.md` for complete API reference and usage examples.
 
 #### 3. Run Real HTTP Server (Not SuperTest)
 
@@ -238,16 +147,7 @@ it('should display case details', async () => {
 - Tests the complete HTTP stack including middleware, routing, error handling
 - Matches production behavior more closely
 
-**Implementation**:
-```typescript
-beforeAll(async () => {
-  await initializeTestServer(); // Starts HTTP server on port 4000
-});
-
-afterAll(async () => {
-  await cleanupTestServer(); // Closes server
-});
-```
+See `test/bdd/helpers/api-server.ts` for server lifecycle management (`initializeTestServer()`, `cleanupTestServer()`).
 
 #### 4. Render Complete React Application
 
@@ -258,22 +158,9 @@ afterAll(async () => {
 - Exercises authentication flow and session management
 - Tests routing and navigation
 - Catches issues that only appear in the full application context
+- Requires careful configuration timing (window.CAMS_CONFIGURATION at module load, LocalStorage before render)
 
-**Implementation**:
-```typescript
-render(
-  <MemoryRouter initialEntries={['/case-detail/123']}>
-    <AuthenticationRoutes>
-      <App />
-    </AuthenticationRoutes>
-  </MemoryRouter>
-);
-```
-
-**Critical Configuration**:
-- `window.CAMS_CONFIGURATION` must be set at module load time (not in beforeAll)
-- API client captures baseUrl when imported, so config must exist first
-- LocalStorage session must be set before rendering
+See `test/bdd/helpers/render-with-context.tsx` and `test/bdd/helpers/setup-tests.ts` for rendering and configuration implementation.
 
 #### 5. Mock Authentication SDKs and Bypass JWT Verification
 
@@ -286,84 +173,19 @@ render(
 - **CRITICAL**: Okta's JWT verifier (`@okta/jwt-verifier`) requires HTTPS URLs, but tests run with HTTP
 - Both frontend and backend must use `CAMS_LOGIN_PROVIDER='okta'` to maintain production code paths
 
-**Implementation**:
-```typescript
-vi.mock('@okta/okta-auth-js', () => ({
-  default: vi.fn().mockImplementation(() => ({
-    signInWithRedirect: vi.fn().mockResolvedValue(undefined),
-    handleLoginRedirect: vi.fn().mockResolvedValue(undefined),
-    getAccessToken: vi.fn().mockReturnValue(testToken),
-    token: { decode: vi.fn().mockReturnValue(decodedToken) },
-  })),
-}));
-```
+**Key Points**:
+- Spy on `OktaGateway.getUser()` to bypass JWT verification while keeping 'okta' provider
+- The `/me` endpoint uses different gateways depending on `CAMS_LOGIN_PROVIDER`:
+  - `'okta'` → `OktaGateway.getUser()` (must be spied for tests)
+  - `'mock'` → `UserSessionCacheMongoRepository.read()`
 
-**Bypassing JWT Verification**:
-To avoid the HTTPS requirement while keeping the 'okta' provider, spy on `OktaGateway.getUser()`:
-```typescript
-vi.spyOn(OktaGatewayModule.default, 'getUser').mockResolvedValue({
-  user: session.user,
-  groups: [],
-  jwt: {
-    claims: {
-      sub: session.user.id,
-      iss: session.issuer,
-      aud: 'api://default',
-      exp: session.expires,
-      groups: session.user.roles,
-    },
-  },
-});
-```
+See `test/bdd/helpers/repository-spies.ts` (`spyOnMeEndpoint()`) for the complete authentication mock implementation.
 
-**Gateway Selection Based on Provider**:
-The `/me` endpoint uses different gateways depending on `CAMS_LOGIN_PROVIDER`:
-- `'okta'` → Spy on `OktaGateway.getUser()` (bypasses JWT verification)
-- `'mock'` → Spy on `UserSessionCacheMongoRepository.read()`
+### Implementation Details
 
-This is critical for session validation to work correctly.
-
-### Test File Organization
-
-```
-test/bdd/
-├── helpers/
-│   ├── api-server.ts           # HTTP server lifecycle
-│   ├── render-with-context.tsx # React rendering helper (renderApp)
-│   ├── repository-spies.ts     # Gateway spy helpers
-│   ├── fluent-test-setup.ts    # Fluent API for declarative test setup
-│   ├── driver-mocks.ts         # Centralized database driver mocks
-│   └── setup-tests.ts          # Global configuration
-├── fixtures/
-│   └── auth.fixtures.ts        # User sessions (TestSessions)
-└── features/
-    ├── diagnostics/
-    │   └── bdd-environment.spec.tsx            # Environment diagnostic tool
-    └── case-management/
-        ├── case-detail.spec.tsx  # Case detail (4 tests)
-        ├── search-cases.spec.tsx # Search (3 tests)
-        └── my-cases.spec.tsx     # My Cases (3 tests)
-```
-
-**Test Data**: Use `MockData` from `@common/cams/test-utilities/mock-data` for test data creation
-
-## Status
-
-**Active** - BDD full-stack testing environment fully functional with **10/10 production tests passing**:
-- View Case Detail: 4 tests ✅
-- Search Cases: 3 tests ✅
-- My Cases: 3 tests ✅
-- All tests use Fluent API for declarative, readable test setup
-- Full-stack coverage from React UI through backend use cases
-- Tests execute in ~8-10 seconds
-
-**Fluent API Benefits Realized**:
-- Reduced test code by 40-50% compared to manual spy setup
-- Improved readability through declarative method chaining
-- Consistent patterns across all tests
-- Easier onboarding for new contributors
-
-A diagnostic test suite is available at `test/bdd/features/diagnostics/bdd-environment.spec.tsx` to verify the BDD environment setup: `npm run test:bdd -- bdd-environment.spec.tsx`
+For details on test file organization, writing tests, and using the Fluent API, see:
+- **`test/bdd/README.md`** - Complete guide to BDD testing setup and usage
+- **`test/bdd/FLUENT_API.md`** - Fluent API reference with all available methods and examples
 
 ## Consequences
 
@@ -371,7 +193,7 @@ A diagnostic test suite is available at `test/bdd/features/diagnostics/bdd-envir
 
 1. **Comprehensive Coverage**: Tests the complete stack in a single test execution, catching integration issues that unit tests miss.
 
-2. **Fast Execution**: Runs in-memory without external services. Backend tests complete in ~3 seconds.
+2. **Fast Execution**: Runs in-memory without external services, providing quick feedback for CI/CD pipelines.
 
 3. **Production Code Paths**: Tests actual gateway implementations, not Mock* classes, increasing confidence in production behavior.
 
@@ -411,72 +233,20 @@ A diagnostic test suite is available at `test/bdd/features/diagnostics/bdd-envir
 - **E2E Tests**: Complement with full E2E tests in staging environment for critical paths
 - **Schema Validation**: Use production TypeScript types to catch data structure mismatches
 - **Regular Updates**: Review mocks when upgrading driver libraries
-- **Documentation**: Maintain detailed ADR (this document) for future developers
-
-## Implementation Notes
-
-### Setting Up a New BDD Test
-
-1. **Create test file** in `test/bdd/features/[feature-name]/`
-2. **Mock drivers** at top of file (hoisted before imports)
-3. **Start server** in `beforeAll()` hook
-4. **Set up spies** in `beforeEach()` or individual tests
-5. **Render React app** or make HTTP requests
-6. **Assert on behavior** using screen queries or response data
-
-### Common Patterns
-
-**Full-Stack Test Using Fluent API**:
-```typescript
-it('should display case details through full stack', async () => {
-  // GIVEN: A case exists in the system
-  const testCase = MockData.getCaseDetail({
-    override: {
-      caseId: '081-23-12345',
-      caseTitle: 'Test Corporation',
-      chapter: '11'
-    }
-  });
-
-  // WHEN: User navigates to case detail page
-  await TestSetup
-    .forUser(TestSessions.caseAssignmentManager())
-    .withCase(testCase)
-    .withTransfers([])
-    .withConsolidations([])
-    .renderAt(`/case-detail/${testCase.caseId}`);
-
-  await waitForAppLoad();
-
-  // THEN: Case details should be displayed
-  await expectPageToContain(testCase.caseTitle);
-  await expectPageToContain(testCase.caseId);
-});
-```
-
-**Key Benefits**:
-- Declarative test setup through method chaining
-- Clear Given/When/Then structure
-- Abstraction hides spy complexity
-- Tests read like specifications
-
-### Debugging Tips
-
-1. **Server not starting**: Check that driver mocks are defined before any imports
-2. **Spies not working**: Ensure spying happens after server initialization
-3. **React not rendering**: Verify `window.CAMS_CONFIGURATION` is set at module level
-4. **Authentication failing**: Check provider matches between config and session
-5. **API calls failing**: Use browser DevTools Network tab (jsdom supports it)
+- **Documentation**: Maintain this ADR and `test/bdd/README.md` for implementation guidance
 
 ## Related Documentation
 
+**Implementation Guides** (test/bdd directory):
+- **`test/bdd/README.md`** - Getting started guide, test organization, troubleshooting, and FAQ
+- **`test/bdd/FLUENT_API.md`** - Complete Fluent API reference with examples
+- `test/bdd/AI_TESTING_GUIDELINES.md` - Detailed guidelines for writing tests
+- `test/bdd/REFACTORING_STATUS.md` - Refactoring history and current status
+
+**Related ADRs**:
 - [Authentication Modes ADR](AuthenticationModes.md) - Authentication provider selection
 - [API Technology ADR](ApiTechnology.md) - Express server architecture
 - [Frontend Build Tooling ADR](FrontendBuildTooling.md) - React testing configuration
-- `test/bdd/README.md` - Getting started guide and overview
-- `test/bdd/FLUENT_API.md` - Complete Fluent API reference
-- `test/bdd/AI_TESTING_GUIDELINES.md` - Detailed guidelines for writing tests
-- `test/bdd/REFACTORING_STATUS.md` - Refactoring history and current status
 
 ## References
 
