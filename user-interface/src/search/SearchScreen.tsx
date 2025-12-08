@@ -1,11 +1,11 @@
 import './SearchScreen.scss';
-import React, { ChangeEvent, useCallback, useEffect, useRef, useState } from 'react';
+import React, { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   CasesSearchPredicate,
   DEFAULT_SEARCH_LIMIT,
   DEFAULT_SEARCH_OFFSET,
 } from '@common/api/search';
-import CaseNumberInput from '@/lib/components/CaseNumberInput';
+import CaseNumberInput, { formatCaseNumberInput } from '@/lib/components/CaseNumberInput';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import { ComboBoxRef, InputRef } from '@/lib/type-declarations/input-fields';
 import { courtSorter, getDivisionComboOptions } from '@/data-verification/dataVerificationHelper';
@@ -24,29 +24,56 @@ import { getCourtDivisionCodes } from '@common/cams/users';
 import LocalStorage from '@/lib/utils/local-storage';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Checkbox from '@/lib/components/uswds/Checkbox';
-import { SEARCH_SCREEN_SPEC, SearchScreenFormData } from './searchScreen.types';
-import { validateEach, validateObject, ValidatorReasonMap } from '@common/cams/validation';
+import {
+  SEARCH_SCREEN_SPEC,
+  SearchScreenFormData,
+  CASE_NUMBER_INVALID_ERROR_REASON,
+} from './searchScreen.types';
+import { validateObject, ValidatorReasonMap } from '@common/cams/validation';
 import useDebounce from '@/lib/hooks/UseDebounce';
 
-export function validateField(
-  field: keyof SearchScreenFormData,
-  value: string | undefined,
-  spec: Partial<typeof SEARCH_SCREEN_SPEC>,
-): ValidatorReasonMap | null {
-  const valueToEval = value?.trim() || undefined;
+/**
+ * Centralized validation function that validates form data and returns both field-level
+ * and form-level errors in a consistent way.
+ *
+ * This function handles both spec-based validation and special cases like raw input validation
+ * for case numbers (where user has typed but no valid case number was parsed).
+ */
+export function validateFormData(
+  formData: SearchScreenFormData,
+  rawCaseNumberInput?: string,
+): {
+  isValid: boolean;
+  fieldErrors: ValidatorReasonMap;
+  formValidationError: string | null;
+} {
+  const results = validateObject(SEARCH_SCREEN_SPEC, formData);
+  const fieldErrors: ValidatorReasonMap = { ...results.reasonMap };
 
-  if (spec?.[field]) {
-    const result = validateEach(spec[field], valueToEval);
-    const validatorReasonMap: ValidatorReasonMap = {};
-    if (result.valid) {
-      return null;
-    } else {
-      validatorReasonMap[field] = { reasons: result.reasons };
-      return validatorReasonMap;
+  // Special handling for case number: if there's raw input but no valid case number,
+  // this means the user typed something invalid that couldn't be parsed
+  if (rawCaseNumberInput && !formData.caseNumber) {
+    if (!fieldErrors.caseNumber) {
+      fieldErrors.caseNumber = { reasons: [CASE_NUMBER_INVALID_ERROR_REASON] };
     }
-  } else {
-    return null;
   }
+
+  // Remove the caseNumber error from fieldErrors if it exists there due to validation
+  // but formData.caseNumber is actually valid (to avoid showing stale errors)
+  if (fieldErrors.caseNumber && formData.caseNumber) {
+    delete fieldErrors.caseNumber;
+  }
+
+  const formValidationError = results.reasonMap?.$?.reasons?.[0] || null;
+
+  // Form is valid only if spec validation passes AND there are no field errors
+  const isValid = !!results.valid && Object.keys(fieldErrors).length === 0;
+
+  return {
+    isValid,
+    fieldErrors,
+    formValidationError,
+  };
 }
 
 export default function SearchScreen() {
@@ -64,8 +91,9 @@ export default function SearchScreen() {
   const [temporarySearchPredicate, setTemporarySearchPredicate] =
     useState<CasesSearchPredicate>(defaultSearchPredicate);
   const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({});
-  const [fieldErrors, setFieldErrors] = useState<ValidatorReasonMap>({});
-  const [formValidationError, setFormValidationError] = useState<string | null>(null);
+  const [showCaseNumberError, setShowCaseNumberError] = useState<boolean>(false);
+  const [rawCaseNumberInput, setRawCaseNumberInput] = useState<string>('');
+  const [hasAttemptedSearch, setHasAttemptedSearch] = useState<boolean>(false);
 
   const infoModalRef = useRef(null);
   const infoModalId = 'info-modal';
@@ -82,6 +110,31 @@ export default function SearchScreen() {
   const api = useApi2();
   const globalAlert = useGlobalAlert();
   const debounce = useDebounce();
+
+  const mapToFormData = (predicate: CasesSearchPredicate): SearchScreenFormData => {
+    return {
+      caseNumber: predicate.caseNumber,
+      divisionCodes: predicate.divisionCodes,
+      chapters: predicate.chapters,
+      excludeClosedCases: predicate.excludeClosedCases,
+    };
+  };
+
+  // Derive validation state from temporarySearchPredicate
+  // This ensures button disabled state and validation are always in sync
+  const currentValidation = useMemo(() => {
+    const formData = mapToFormData(temporarySearchPredicate);
+    return validateFormData(formData, rawCaseNumberInput);
+  }, [temporarySearchPredicate, rawCaseNumberInput]);
+
+  // Only show case number error after user has finished typing (controlled by debounce)
+  const fieldErrors: ValidatorReasonMap = useMemo(() => {
+    const errors: ValidatorReasonMap = {};
+    if (showCaseNumberError && currentValidation.fieldErrors.caseNumber) {
+      errors.caseNumber = currentValidation.fieldErrors.caseNumber;
+    }
+    return errors;
+  }, [showCaseNumberError, currentValidation.fieldErrors.caseNumber]);
 
   const getChapters = useCallback(() => {
     const chapterArray: ComboOption[] = [];
@@ -144,76 +197,22 @@ export default function SearchScreen() {
     }
   }
 
-  const mapToFormData = (predicate: CasesSearchPredicate): SearchScreenFormData => {
-    return {
-      caseNumber: predicate.caseNumber,
-      divisionCodes: predicate.divisionCodes,
-      chapters: predicate.chapters,
-      excludeClosedCases: predicate.excludeClosedCases,
-    };
-  };
-
-  const isFormValid = (formData: SearchScreenFormData): boolean => {
-    const results = validateObject(SEARCH_SCREEN_SPEC, formData);
-    return !!results.valid;
-  };
-
-  const validateFormAndUpdateErrors = (formData: SearchScreenFormData): boolean => {
-    const results = validateObject(SEARCH_SCREEN_SPEC, formData);
-    if (!results.valid && results.reasonMap) {
-      setFieldErrors(results.reasonMap);
-    } else {
-      setFieldErrors({});
-    }
-    if (!results.valid && results.reasonMap?.$?.reasons) {
-      setFormValidationError(results.reasonMap.$.reasons.join(' '));
-    } else {
-      setFormValidationError(null);
-    }
-    return !!results.valid;
-  };
-
-  const validateFieldAndUpdate = (
-    field: keyof SearchScreenFormData,
-    value: string | undefined,
-  ): ValidatorReasonMap | null => {
-    const error = validateField(field, value, SEARCH_SCREEN_SPEC);
-
-    setFieldErrors((prevErrors) => {
-      if (error) {
-        return { ...prevErrors, ...error };
-      } else {
-        const { [field]: _, ...rest } = prevErrors;
-        return rest;
-      }
-    });
-
-    // Clear form-level validation error when user starts fixing things
-    if (formValidationError) {
-      const currentFormData = mapToFormData(temporarySearchPredicate);
-      const results = validateObject(SEARCH_SCREEN_SPEC, currentFormData);
-      if (results.valid || !results.reasonMap?.$?.reasons) {
-        setFormValidationError(null);
-      }
-    }
-
-    return error;
-  };
-
   function handleCaseNumberChange(caseNumber?: string): void {
-    const newPredicate = { ...temporarySearchPredicate };
+    // Update raw input value for validation
+    const rawInputValue = caseNumberInputRef.current?.getValue() || '';
+    setRawCaseNumberInput(rawInputValue);
 
-    if (caseNumber) {
-      newPredicate.caseNumber = caseNumber;
-    } else {
-      delete newPredicate.caseNumber;
+    if (temporarySearchPredicate.caseNumber != caseNumber) {
+      const newPredicate = { ...temporarySearchPredicate, caseNumber };
+      if (!caseNumber) {
+        delete newPredicate.caseNumber;
+      }
+      setTemporarySearchPredicate(newPredicate);
     }
 
-    setTemporarySearchPredicate(newPredicate);
-
-    // Validate using spec only - debounced
+    // Show validation errors after user has finished typing (debounced)
     debounce(() => {
-      validateFieldAndUpdate('caseNumber', caseNumber);
+      setShowCaseNumberError(true);
     }, 300);
   }
 
@@ -249,20 +248,41 @@ export default function SearchScreen() {
   }
 
   function performSearch() {
-    const formData = mapToFormData(temporarySearchPredicate);
-    if (validateFormAndUpdateErrors(formData)) {
-      setSearchPredicate(temporarySearchPredicate);
+    // Enable showing validation errors
+    setShowCaseNumberError(true);
+    setHasAttemptedSearch(true);
+
+    // Get the current values directly from refs to avoid state timing issues
+    // This ensures we have the most up-to-date values even if state updates haven't propagated
+    const currentRawInput = caseNumberInputRef.current?.getValue() || '';
+
+    // Parse case number from raw input
+    const mockEvent = {
+      target: { value: currentRawInput },
+    } as React.ChangeEvent<HTMLInputElement>;
+    const { caseNumber } = formatCaseNumberInput(mockEvent, true);
+
+    // Build the predicate with current case number
+    const currentPredicate = { ...temporarySearchPredicate };
+    if (caseNumber) {
+      currentPredicate.caseNumber = caseNumber;
+    } else {
+      delete currentPredicate.caseNumber;
+    }
+
+    // Validate using current values
+    const currentFormData = mapToFormData(currentPredicate);
+    const validation = validateFormData(currentFormData, currentRawInput);
+
+    // Only perform search if validation passes
+    if (validation.isValid) {
+      setSearchPredicate(currentPredicate);
     }
   }
 
   function handleSubmit(ev: React.FormEvent<HTMLFormElement>) {
     ev.preventDefault();
-    // Use setTimeout to ensure state updates from child components have completed
-    // This handles the case where CaseNumberInput's handleEnter calls onChange,
-    // which updates temporarySearchPredicate asynchronously
-    setTimeout(() => {
-      performSearch();
-    }, 0);
+    performSearch();
   }
 
   const infoModalActionButtonGroup = {
@@ -365,10 +385,10 @@ export default function SearchScreen() {
                 />
               </div>
             </div>
-            {formValidationError && (
+            {hasAttemptedSearch && currentValidation.formValidationError && (
               <div className="search-validation-alert" data-testid="search-validation-alert">
                 <Alert
-                  message={formValidationError}
+                  message={currentValidation.formValidationError}
                   type={UswdsAlertStyle.Error}
                   show={true}
                   slim={true}
@@ -384,9 +404,7 @@ export default function SearchScreen() {
                 uswdsStyle={UswdsButtonStyle.Default}
                 ref={submitButtonRef}
                 onClick={performSearch}
-                disabled={
-                  !!fieldErrors.caseNumber || !isFormValid(mapToFormData(temporarySearchPredicate))
-                }
+                disabled={!currentValidation.isValid}
               >
                 Search
               </Button>

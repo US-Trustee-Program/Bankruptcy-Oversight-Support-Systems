@@ -2,7 +2,7 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import { SyncedCase } from '@common/cams/cases';
 import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import SearchScreen, { validateField } from '@/search/SearchScreen';
+import SearchScreen, { validateFormData } from '@/search/SearchScreen';
 import { CasesSearchPredicate, DEFAULT_SEARCH_LIMIT } from '@common/api/search';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 import { MockInstance } from 'vitest';
@@ -12,7 +12,6 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { REGION_02_GROUP_NY } from '@common/cams/test-utilities/mock-user';
 import { getCourtDivisionCodes } from '@common/cams/users';
-import { SEARCH_SCREEN_SPEC } from '@/search/searchScreen.types';
 
 describe('search screen', () => {
   const userOffices = [REGION_02_GROUP_NY];
@@ -737,18 +736,18 @@ describe('search screen', () => {
     await userEvent.clear(caseNumberInput);
     await userEvent.type(caseNumberInput, '12-34567');
 
-    // Wait for error to clear and button to be enabled
-    // (checks both conditions since they depend on async state updates)
+    // Wait for error to clear
     await waitFor(
       () => {
         const errorMessage = screen.queryByText(/Must be 7 digits/i);
         expect(errorMessage).not.toBeInTheDocument();
-
-        const searchButton = screen.getByTestId('button-search-submit');
-        expect(searchButton).not.toBeDisabled();
       },
       { timeout: 1000 },
     );
+
+    // Search button should be enabled (because we have a valid case number AND default division codes)
+    const searchButton = screen.getByTestId('button-search-submit');
+    expect(searchButton).not.toBeDisabled();
   });
 
   test('should show form validation error when trying to search with no criteria', async () => {
@@ -784,30 +783,40 @@ describe('search screen', () => {
   });
 });
 
-describe('validateField function', () => {
-  test('should return null for valid case number', () => {
-    const result = validateField('caseNumber', '12-34567', SEARCH_SCREEN_SPEC);
-    expect(result).toBeNull();
+describe('validateFormData function', () => {
+  test('should return valid for valid case number', () => {
+    const result = validateFormData({ caseNumber: '12-34567' });
+    expect(result.isValid).toBe(true);
+    expect(result.fieldErrors.caseNumber).toBeUndefined();
   });
 
-  test('should return error for invalid case number format', () => {
-    const result = validateField('caseNumber', '12345', SEARCH_SCREEN_SPEC);
-    expect(result).not.toBeNull();
-    expect(result?.caseNumber?.reasons).toContain('Must be 7 digits');
+  test('should return error for invalid case number format via raw input', () => {
+    const result = validateFormData({ caseNumber: undefined }, '12345');
+    expect(result.isValid).toBe(false);
+    expect(result.fieldErrors.caseNumber?.reasons).toContain('Must be 7 digits');
   });
 
-  test('should return null for undefined case number (optional field)', () => {
-    const result = validateField('caseNumber', undefined, SEARCH_SCREEN_SPEC);
-    expect(result).toBeNull();
+  test('should return valid for undefined case number when other criteria provided', () => {
+    const result = validateFormData({ divisionCodes: ['081'] });
+    expect(result.isValid).toBe(true);
+    expect(result.fieldErrors.caseNumber).toBeUndefined();
   });
 
-  test('should return null for empty string case number', () => {
-    const result = validateField('caseNumber', '', SEARCH_SCREEN_SPEC);
-    expect(result).toBeNull();
+  test('should return valid for undefined case number when other criteria provided', () => {
+    const result = validateFormData({ caseNumber: undefined, chapters: ['11'] });
+    expect(result.isValid).toBe(true);
+    expect(result.fieldErrors.caseNumber).toBeUndefined();
   });
 
-  test('should return null when spec does not have validators for field', () => {
-    const result = validateField('divisionCodes', 'test', {});
-    expect(result).toBeNull();
+  test('should return form validation error when no search criteria provided', () => {
+    const result = validateFormData({});
+    expect(result.isValid).toBe(false);
+    expect(result.formValidationError).toBe('Please enter at least one search criterion');
+  });
+
+  test('should handle raw input with valid case number', () => {
+    const result = validateFormData({ caseNumber: '12-34567' }, '12-34567');
+    expect(result.isValid).toBe(true);
+    expect(result.fieldErrors.caseNumber).toBeUndefined();
   });
 });
