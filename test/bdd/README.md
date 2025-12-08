@@ -55,14 +55,16 @@ These tests verify that the entire CAMS application works correctly end-to-end b
 test/bdd/
 ├── features/                  # BDD test files organized by feature
 │   ├── case-management/
-│   │   ├── case-detail.spec.tsx   (4 tests)
-│   │   ├── search-cases.spec.tsx  (3 tests)
-│   │   └── my-cases.spec.tsx      (3 tests)
+│   │   ├── case-detail.spec.tsx   (4 tests - read-only)
+│   │   ├── case-notes.spec.tsx    (3 tests - stateful)
+│   │   ├── search-cases.spec.tsx  (3 tests - read-only)
+│   │   └── my-cases.spec.tsx      (3 tests - read-only)
 │   └── diagnostics/
 │       └── bdd-environment.spec.tsx  (diagnostic tool)
 │
 ├── helpers/                   # Test infrastructure
 │   ├── fluent-test-setup.ts  # Fluent API for test setup
+│   ├── test-state.ts         # TestState class for stateful testing
 │   ├── api-server.ts         # Express server initialization
 │   ├── repository-spies.ts   # Spy management utilities (spyOnMeEndpoint, spyOnAllGateways)
 │   ├── driver-mocks.ts       # MongoDB/MSSQL driver mocks
@@ -74,7 +76,6 @@ test/bdd/
 │
 ├── AI_TESTING_GUIDELINES.md  # Detailed guide for AI assistants
 ├── FLUENT_API.md             # Complete Fluent API reference
-├── REFACTORING_STATUS.md     # Refactoring history and status
 └── README.md                 # This file
 ```
 
@@ -231,27 +232,145 @@ describe('Feature: Your Feature Name (Full Stack)', () => {
 });
 ```
 
+#### Stateful Test Template
+
+For tests that involve write operations and state changes:
+
+```typescript
+import { screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+// ... other imports same as above
+
+it('should add a note and display it', async () => {
+  const user = userEvent.setup();
+
+  // GIVEN: A case with no notes
+  const testCase = MockData.getCaseDetail({
+    override: {
+      caseId: '081-23-12345',
+      caseTitle: 'Test Case'
+    }
+  });
+
+  const state = await TestSetup
+    .forUser(TestSessions.trialAttorney())
+    .withCase(testCase)
+    .withCaseNotes(testCase.caseId, [])  // Start with empty notes
+    .renderAt(`/case-detail/${testCase.caseId}`);
+
+  await waitForAppLoad();
+
+  // Verify initial state
+  state.expectNoteCount(testCase.caseId, 0);
+
+  // WHEN: User adds a note
+  await user.click(screen.getByRole('button', { name: /add note/i }));
+  await user.type(screen.getByLabelText(/note/i), 'Important note');
+  await user.click(screen.getByRole('button', { name: /save/i }));
+
+  // THEN: Note should be in state
+  state.expectNoteCount(testCase.caseId, 1);
+  state.expectNoteExists(testCase.caseId, 'Important note');
+
+  // AND: Note should appear in UI
+  await waitFor(() => {
+    expect(screen.getByText('Important note')).toBeInTheDocument();
+  });
+}, 30000);
+```
+
 ### 2. Available Fluent API Methods
 
 The `TestSetup` class provides these chainable methods:
 
 ```typescript
 TestSetup
-  .forUser(session)                       // Set user session (required, always first)
-  .withCase(caseDetail)                  // Provide a single case
-  .withCases([case1, case2])             // Provide multiple cases
-  .withSearchResults([cases])            // Mock search results
-  .withMyAssignments([cases])            // Mock user's assigned cases
-  .withTransfers([transfers])            // Provide transfer data
-  .withConsolidations([consolidations])  // Provide consolidation data
-  .withCaseAssignments(caseId, [assignments])  // Provide assignments
-  .withDocketEntries([entries])          // Provide docket entries
-  .withCaseNotes([notes])                // Provide case notes
-  .withOffices([offices])                // Provide office data
-  .renderAt(route);                      // Render app (terminal operation)
+  .forUser(session)                           // Set user session (required, always first)
+  .withCase(caseDetail)                       // Provide a single case
+  .withCases([case1, case2])                  // Provide multiple cases
+  .withSearchResults([cases])                 // Mock search results
+  .withMyAssignments([cases])                 // Mock user's assigned cases
+  .withTransfers(caseId, [transfers])         // Provide transfer data
+  .withConsolidations(caseId, [consolidations])  // Provide consolidation data
+  .withCaseAssignments(caseId, [assignments]) // Provide assignments
+  .withDocketEntries(caseId, [entries])       // Provide docket entries
+  .withCaseNotes(caseId, [notes])             // Provide case notes
+  .withOffices([offices])                     // Provide office data
+  .renderAt(route);                           // Render app and return TestState
 ```
 
-### 3. Helper Functions
+**Note:** Methods that manage case-specific data (transfers, consolidations, docket entries, notes) require an explicit `caseId` parameter to ensure proper state tracking.
+
+### 3. Stateful Testing
+
+The Fluent API now supports **stateful testing**, enabling you to test interactive workflows where user actions modify state and subsequent reads reflect those changes.
+
+#### When to Use Stateful Testing
+
+**Use stateful tests for:**
+- ✅ Interactive workflows (create → view → edit)
+- ✅ Testing write operations (POST/PUT/DELETE)
+- ✅ Verifying state persistence across navigation
+- ✅ Multi-step user journeys
+
+**Use read-only tests for:**
+- ✅ Simple display scenarios
+- ✅ Search and filter operations
+- ✅ Static page rendering
+
+#### Basic Usage
+
+The `renderAt()` method returns a `TestState` object that tracks all test data:
+
+```typescript
+// Capture state for stateful testing
+const state = await TestSetup
+  .forUser(TestSessions.trialAttorney())
+  .withCase(testCase)
+  .withCaseNotes(testCase.caseId, [])
+  .renderAt(`/case-detail/${testCase.caseId}`);
+
+// Verify initial state
+state.expectNoteCount(testCase.caseId, 0);
+
+// User adds a note via UI
+await userEvent.click(screen.getByRole('button', { name: /add note/i }));
+await userEvent.type(screen.getByLabelText(/note/i), 'My note content');
+await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+// State automatically reflects the write
+state.expectNoteCount(testCase.caseId, 1);
+state.expectNoteExists(testCase.caseId, 'My note content');
+
+// Subsequent reads return updated data
+const notes = state.getNotes(testCase.caseId);
+expect(notes[0].content).toContain('My note content');
+```
+
+#### TestState API
+
+**Data Access:**
+- `getCase(caseId)` - Get case detail
+- `getNotes(caseId)` - Get case notes
+- `getTransfers(caseId)` - Get transfers
+- `getConsolidations(caseId)` - Get consolidations
+- `getAssignments(caseId)` - Get assignments
+- `getDocketEntries(caseId)` - Get docket entries
+
+**Assertion Helpers:**
+- `expectCaseExists(caseId)` - Assert case exists
+- `expectNoteCount(caseId, count)` - Assert note count
+- `expectNoteExists(caseId, content)` - Assert note with content exists
+- `expectTransferCount(caseId, count)` - Assert transfer count
+- `expectAssignmentExists(caseId, attorneyId)` - Assert assignment exists
+
+**Debugging:**
+- `state.dump()` - Print all state to console
+- `state.dumpCaseDetail(caseId)` - Print detailed state for a case
+
+See **FLUENT_API.md** for complete TestState API reference and examples.
+
+### 4. Helper Functions
 
 ```typescript
 // Wait for app to finish loading
@@ -264,7 +383,7 @@ await expectPageToContain('Expected Text');
 await expectPageToMatch(/pattern/i);
 ```
 
-### 4. Test Sessions
+### 5. Test Sessions
 
 Available user sessions from `TestSessions`:
 
@@ -510,15 +629,18 @@ Ensure all spy methods return the correct type:
 
 ## Additional Resources
 
-- **FLUENT_API.md** - Complete API reference for the fluent test setup interface
+- **FLUENT_API.md** - Complete API reference for the fluent test setup interface and TestState
 - **AI_TESTING_GUIDELINES.md** - Comprehensive guide for AI assistants (also useful for humans!)
-- **REFACTORING_STATUS.md** - History of the fluent API refactoring
-- **Architecture ADR** - `docs/architecture/decision-records/BddFullStackTesting.md`
+- **Architecture ADR** - `docs/architecture/decision-records/BddFullStackTesting.md` - Includes stateful testing architecture
 
 ## Questions?
 
 For more details or examples:
-1. **FLUENT_API.md** - Complete reference for all fluent API methods
-2. Check existing tests in `features/case-management/` (case-detail.spec.tsx, search-cases.spec.tsx, my-cases.spec.tsx)
+1. **FLUENT_API.md** - Complete reference for all fluent API methods and TestState API
+2. Check existing tests in `features/case-management/`:
+   - **case-detail.spec.tsx** - Read-only tests (display scenarios)
+   - **case-notes.spec.tsx** - Stateful tests (interactive workflows with writes)
+   - **search-cases.spec.tsx** - Read-only tests (search and filter)
+   - **my-cases.spec.tsx** - Read-only tests (list views)
 3. Review `AI_TESTING_GUIDELINES.md` for detailed patterns
-4. Examine the fluent API implementation in `helpers/fluent-test-setup.ts`
+4. Examine the fluent API implementation in `helpers/fluent-test-setup.ts` and `helpers/test-state.ts`

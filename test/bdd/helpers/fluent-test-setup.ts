@@ -35,6 +35,7 @@ import type { CaseAssignment } from '@common/cams/assignments';
 import type { TransferFrom, TransferTo, ConsolidationFrom, ConsolidationTo } from '@common/cams/events';
 import { renderApp } from './render-with-context';
 import { clearAllRepositorySpies, spyOnMeEndpoint, spyOnAllGateways } from './repository-spies';
+import { TestState } from './test-state';
 
 type Transfer = TransferFrom | TransferTo;
 type Consolidation = ConsolidationFrom | ConsolidationTo;
@@ -55,6 +56,7 @@ type Consolidation = ConsolidationFrom | ConsolidationTo;
  */
 export class TestSetup {
   private session: CamsSession;
+  private state: TestState = new TestState();
   private cases: CaseDetail[] = [];
   private searchResults: CaseSummary[] = [];
   private myAssignments: CaseSummary[] = [];
@@ -99,6 +101,7 @@ export class TestSetup {
    */
   withCase(caseDetail: CaseDetail): TestSetup {
     this.cases = [caseDetail];
+    this.state.setCase(caseDetail);
     return this;
   }
 
@@ -117,6 +120,7 @@ export class TestSetup {
    */
   withCases(cases: CaseDetail[]): TestSetup {
     this.cases = cases;
+    cases.forEach(c => this.state.setCase(c));
     return this;
   }
 
@@ -166,36 +170,40 @@ export class TestSetup {
   /**
    * Provide transfer data for case enrichment.
    *
+   * @param caseId The case ID
    * @param transfers Array of transfers to return
    * @example
    * ```typescript
    * await TestSetup
    *   .forUser(session)
    *   .withCase(testCase)
-   *   .withTransfers([{ orderType: 'transfer', status: 'approved' }])
+   *   .withTransfers(testCase.caseId, [{ orderType: 'transfer', status: 'approved' }])
    *   .renderAt(`/case-detail/${testCase.caseId}`);
    * ```
    */
-  withTransfers(transfers: Transfer[]): TestSetup {
+  withTransfers(caseId: string, transfers: Transfer[]): TestSetup {
     this.transfers = transfers;
+    this.state.setTransfers(caseId, transfers);
     return this;
   }
 
   /**
    * Provide consolidation data for case enrichment.
    *
+   * @param caseId The case ID
    * @param consolidations Array of consolidations to return
    * @example
    * ```typescript
    * await TestSetup
    *   .forUser(session)
    *   .withCase(testCase)
-   *   .withConsolidations([{ consolidationType: 'administrative' }])
+   *   .withConsolidations(testCase.caseId, [{ consolidationType: 'administrative' }])
    *   .renderAt(`/case-detail/${testCase.caseId}`);
    * ```
    */
-  withConsolidations(consolidations: Consolidation[]): TestSetup {
+  withConsolidations(caseId: string, consolidations: Consolidation[]): TestSetup {
     this.consolidations = consolidations;
+    this.state.setConsolidations(caseId, consolidations);
     return this;
   }
 
@@ -215,42 +223,47 @@ export class TestSetup {
    */
   withCaseAssignments(caseId: string, assignments: CaseAssignment[]): TestSetup {
     this.assignmentMap.set(caseId, assignments);
+    this.state.setAssignments(caseId, assignments);
     return this;
   }
 
   /**
    * Provide docket entries for case detail.
    *
+   * @param caseId The case ID
    * @param entries Array of docket entries
    * @example
    * ```typescript
    * await TestSetup
    *   .forUser(session)
    *   .withCase(testCase)
-   *   .withDocketEntries([entry1, entry2])
+   *   .withDocketEntries(testCase.caseId, [entry1, entry2])
    *   .renderAt(`/case-detail/${testCase.caseId}`);
    * ```
    */
-  withDocketEntries(entries: any[]): TestSetup {
+  withDocketEntries(caseId: string, entries: any[]): TestSetup {
     this.docketEntries = entries;
+    this.state.setDocketEntries(caseId, entries);
     return this;
   }
 
   /**
    * Provide case notes.
    *
+   * @param caseId The case ID
    * @param notes Array of case notes
    * @example
    * ```typescript
    * await TestSetup
    *   .forUser(session)
    *   .withCase(testCase)
-   *   .withCaseNotes([note1, note2])
+   *   .withCaseNotes(testCase.caseId, [note1, note2])
    *   .renderAt(`/case-detail/${testCase.caseId}`);
    * ```
    */
-  withCaseNotes(notes: any[]): TestSetup {
+  withCaseNotes(caseId: string, notes: any[]): TestSetup {
     this.caseNotes = notes;
+    this.state.setNotes(caseId, notes);
     return this;
   }
 
@@ -296,29 +309,38 @@ export class TestSetup {
    * This is the terminal operation that:
    * 1. Clears previous spies
    * 2. Sets up authentication
-   * 3. Configures all gateway/repository spies
+   * 3. Configures all gateway/repository spies (including stateful spies)
    * 4. Renders the app at the specified route
+   * 5. Returns TestState for assertions
    *
    * @param route The initial route to render (e.g., '/', '/case-detail/081-23-12345')
+   * @returns TestState instance for stateful test assertions
    * @example
    * ```typescript
-   * await TestSetup
+   * const state = await TestSetup
    *   .forUser(session)
    *   .withCase(testCase)
    *   .renderAt(`/case-detail/${testCase.caseId}`);
+   *
+   * // Use state for assertions
+   * state.expectCaseExists(testCase.caseId);
    * ```
    */
-  async renderAt(route: string): Promise<void> {
+  async renderAt(route: string): Promise<TestState> {
     // Setup authentication
     await spyOnMeEndpoint(this.session);
 
     // Build spy configuration
+    // Note: State-aware spies are set up using TestState for reads/writes
+    const state = this.state;
+
     const spyConfig: Record<string, any> = {
-      // Cases gateway
+      // Cases gateway - STATE AWARE
       CasesDxtrGateway: {
         getCaseDetail: this.cases.length > 0
           ? vi.fn().mockImplementation(async (_context: any, caseId: string) => {
-              const found = this.cases.find(c => c.caseId === caseId);
+              // Read from state to get most current version
+              const found = state.getCase(caseId);
               if (!found) {
                 throw new Error(`Case ${caseId} not found in test data`);
               }
@@ -327,24 +349,37 @@ export class TestSetup {
           : undefined,
       },
 
-      // Cases repository
+      // Cases repository - STATE AWARE for transfers/consolidations
       CasesMongoRepository: {
         searchCases: vi.fn().mockResolvedValue({
           metadata: { total: this.searchResults.length },
           data: this.searchResults,
         }),
-        getTransfers: vi.fn().mockResolvedValue(this.transfers),
-        getConsolidation: vi.fn().mockResolvedValue(this.consolidations),
+        // STATE AWARE: Read transfers from state
+        getTransfers: vi.fn().mockImplementation(async (caseId: string) => {
+          return state.getTransfers(caseId);
+        }),
+        // STATE AWARE: Read consolidations from state
+        getConsolidation: vi.fn().mockImplementation(async (caseId: string) => {
+          return state.getConsolidations(caseId);
+        }),
         getCaseHistory: vi.fn().mockResolvedValue([]),
         getConsolidationChildCaseIds: vi.fn().mockResolvedValue([]),
       },
 
-      // Case assignments
+      // Case assignments - STATE AWARE
       CaseAssignmentMongoRepository: {
         findAssignmentsByAssignee: this.myAssignments.length > 0
           ? vi.fn().mockResolvedValue(this.myAssignments)
           : vi.fn().mockResolvedValue([]),
-        getAssignmentsForCases: vi.fn().mockResolvedValue(this.assignmentMap),
+        // STATE AWARE: Read assignments from state
+        getAssignmentsForCases: vi.fn().mockImplementation(async (caseIds: string[]) => {
+          const assignmentMap = new Map<string, any[]>();
+          caseIds.forEach(caseId => {
+            assignmentMap.set(caseId, state.getAssignments(caseId));
+          });
+          return assignmentMap;
+        }),
       },
 
       // Offices
@@ -356,16 +391,15 @@ export class TestSetup {
         getOfficeAttorneys: vi.fn().mockResolvedValue([]),
       },
 
-      // Docket
+      // Docket - STATE AWARE
       DxtrCaseDocketGateway: {
-        getCaseDocket: vi.fn().mockResolvedValue(this.docketEntries),
+        getCaseDocket: vi.fn().mockImplementation(async (caseId: string) => {
+          return state.getDocketEntries(caseId);
+        }),
       },
 
-      // Case notes
-      CaseNotesMongoRepository: {
-        read: vi.fn().mockResolvedValue(this.caseNotes),
-        getNotesByCaseId: vi.fn().mockResolvedValue(this.caseNotes),
-      },
+      // Case notes - handled by setupStatefulSpies()
+      // CaseNotesMongoRepository spies are set up in setupStatefulSpies() for state awareness
 
       // Session cache
       UserSessionCacheMongoRepository: {
@@ -388,11 +422,171 @@ export class TestSetup {
     // Setup comprehensive spies
     await spyOnAllGateways(spyConfig);
 
+    // Setup stateful spies for write operations
+    await this.setupStatefulSpies();
+
     // Render the app
     renderApp({
       initialRoute: route,
       session: this.session,
     });
+
+    return this.state;
+  }
+
+  /**
+   * Set up stateful spies that read from and write to the TestState.
+   * This enables testing of interactive workflows with writes and reads.
+   *
+   * READ operations return data from state.
+   * WRITE operations update state and return success.
+   */
+  private async setupStatefulSpies(): Promise<void> {
+    // Capture state in closure for use in spy implementations
+    const state = this.state;
+
+    // ============ CASE NOTES OPERATIONS ============
+
+    const { CaseNotesMongoRepository } = await import(
+      '../../../backend/lib/adapters/gateways/mongo/case-notes.mongo.repository'
+    );
+
+    // Spy on getNotesByCaseId() to return from state
+    // Note: Repository returns ResourceActions<CaseNote>[] (notes with _actions property)
+    vi.spyOn(CaseNotesMongoRepository.prototype, 'getNotesByCaseId').mockImplementation(
+      async (caseId: string) => {
+        const notes = state.getNotes(caseId);
+        // Return notes as ResourceActions (they may have _actions added by use case)
+        return notes as any[];
+      },
+    );
+
+    // Spy on read() to return note by ID from state
+    vi.spyOn(CaseNotesMongoRepository.prototype, 'read').mockImplementation(
+      async (noteId: string) => {
+        // Search all cases for the note with this ID
+        const allCases = state.getAllCases();
+        for (const caseDetail of allCases) {
+          const notes = state.getNotes(caseDetail.caseId);
+          const found = notes.find(n => n.id === noteId);
+          if (found) return found;
+        }
+        throw new Error(`Note ${noteId} not found in test state`);
+      },
+    );
+
+    // Spy on create() to add to state
+    vi.spyOn(CaseNotesMongoRepository.prototype, 'create').mockImplementation(
+      async (note: any) => {
+        const noteWithId = {
+          ...note,
+          id: note.id || `note-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          createdOn: note.createdOn || new Date().toISOString(),
+          updatedOn: note.updatedOn || new Date().toISOString(),
+          documentType: 'NOTE' as const,
+        };
+        state.addNote(noteWithId);
+        return noteWithId;
+      },
+    );
+
+    // Spy on update() to update state
+    vi.spyOn(CaseNotesMongoRepository.prototype, 'update').mockImplementation(
+      async (note: any) => {
+        state.updateNote(note.id, note);
+        return;
+      },
+    );
+
+    // Spy on archiveCaseNote() to mark note as archived in state
+    vi.spyOn(CaseNotesMongoRepository.prototype, 'archiveCaseNote').mockImplementation(
+      async (archiveNote: any) => {
+        state.updateNote(archiveNote.id, {
+          archivedOn: archiveNote.archivedOn,
+          archivedBy: archiveNote.archivedBy,
+        });
+        return { acknowledged: true, modifiedCount: 1 };
+      },
+    );
+
+    // ============ ORDERS - TRANSFERS & CONSOLIDATIONS ============
+    // Note: Only spy on methods if they exist in the repository
+
+    const { OrdersMongoRepository } = await import(
+      '../../../backend/lib/adapters/gateways/mongo/orders.mongo.repository'
+    );
+
+    // Spy on createTransferOrder() if it exists
+    if (typeof OrdersMongoRepository.prototype['createTransferOrder'] === 'function') {
+      vi.spyOn(OrdersMongoRepository.prototype, 'createTransferOrder' as any).mockImplementation(
+        async (transfer: any) => {
+          const transferWithId = {
+            ...transfer,
+            id: transfer.id || `transfer-${Date.now()}`,
+            orderDate: transfer.orderDate || new Date().toISOString(),
+          };
+          state.addTransfer(transferWithId);
+          return transferWithId;
+        },
+      );
+    }
+
+    // Spy on updateTransferOrder() if it exists
+    if (typeof OrdersMongoRepository.prototype['updateTransferOrder'] === 'function') {
+      vi.spyOn(OrdersMongoRepository.prototype, 'updateTransferOrder' as any).mockImplementation(
+        async (transferId: string, updates: any) => {
+          state.updateTransfer(transferId, updates);
+          return { acknowledged: true, modifiedCount: 1 };
+        },
+      );
+    }
+
+    // Spy on createConsolidationOrder() if it exists
+    if (typeof OrdersMongoRepository.prototype['createConsolidationOrder'] === 'function') {
+      vi.spyOn(OrdersMongoRepository.prototype, 'createConsolidationOrder' as any).mockImplementation(
+        async (consolidation: any) => {
+          const consolidationWithId = {
+            ...consolidation,
+            id: consolidation.id || `consolidation-${Date.now()}`,
+            orderDate: consolidation.orderDate || new Date().toISOString(),
+          };
+          state.addConsolidation(consolidationWithId);
+          return consolidationWithId;
+        },
+      );
+    }
+
+    // ============ CASE ASSIGNMENTS ============
+    // Note: Only spy on methods if they exist in the repository
+
+    const { CaseAssignmentMongoRepository } = await import(
+      '../../../backend/lib/adapters/gateways/mongo/case-assignment.mongo.repository'
+    );
+
+    // Spy on createCaseAssignment() if it exists
+    if (typeof CaseAssignmentMongoRepository.prototype['createCaseAssignment'] === 'function') {
+      vi.spyOn(CaseAssignmentMongoRepository.prototype, 'createCaseAssignment' as any).mockImplementation(
+        async (assignment: any) => {
+          const assignmentWithId = {
+            ...assignment,
+            id: assignment.id || `assignment-${Date.now()}`,
+            createdAt: assignment.createdAt || new Date().toISOString(),
+          };
+          state.assignAttorney(assignment.caseId, assignmentWithId);
+          return assignmentWithId;
+        },
+      );
+    }
+
+    // Spy on deleteCaseAssignment() if it exists
+    if (typeof CaseAssignmentMongoRepository.prototype['deleteCaseAssignment'] === 'function') {
+      vi.spyOn(CaseAssignmentMongoRepository.prototype, 'deleteCaseAssignment' as any).mockImplementation(
+        async (caseId: string, attorneyId: string) => {
+          state.unassignAttorney(caseId, attorneyId);
+          return { acknowledged: true, deletedCount: 1 };
+        },
+      );
+    }
   }
 }
 
