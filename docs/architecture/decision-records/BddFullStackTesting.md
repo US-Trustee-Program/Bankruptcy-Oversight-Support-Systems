@@ -13,7 +13,7 @@ As the CAMS application grew in complexity, we needed a testing strategy that co
 Traditional testing approaches had limitations:
 - **Unit tests**: Too granular, miss integration issues
 - **E2E tests**: Too slow, require full infrastructure, brittle
-- **Integration tests with SuperTest**: Don't test the React layer
+- **API-only integration tests**: Don't test the React layer
 - **Component tests with mock providers**: Don't test real HTTP or backend logic
 
 We needed a middle ground that exercises the full stack while remaining fast and reliable.
@@ -137,14 +137,38 @@ See `test/bdd/helpers/setup-tests.ts` for the complete configuration implementat
 
 See `test/bdd/FLUENT_API.md` for complete API reference and usage examples.
 
-#### 3. Run Real HTTP Server (Not SuperTest)
+#### 2.8. Stateful Testing with TestState
 
-**Decision**: Start an actual Express HTTP server on port 4000, not using SuperTest's request agent.
+**Decision**: Extend the Fluent API to support stateful testing, enabling tests to verify interactive workflows that involve write operations and state changes.
+
+**Rationale**:
+- Initial Fluent API only supported read-only tests (displaying pre-configured data)
+- Real user workflows involve creating, editing, and deleting data
+- Tests need to verify that writes persist and subsequent reads reflect changes
+- Traditional approach would require complex spy coordination to track state mutations
+- Stateful testing enables complete workflow testing (create → view → edit → delete)
+
+**Key Benefits**:
+- Tests real user workflows including write operations
+- Verifies state persistence across navigation and component re-renders
+- Enables multi-step user journey testing
+- Simplifies spy management for interactive scenarios
+- Backward compatible - existing read-only tests work unchanged
+
+**Guidance**:
+- Use stateful tests for: interactive workflows, write operations, multi-step journeys
+- Use read-only tests for: simple display scenarios, search/filter operations, static rendering
+
+See `test/bdd/FLUENT_API.md` for API details and examples.
+
+#### 3. Run Real HTTP Server
+
+**Decision**: Start an actual Express HTTP server on port 4000 in the test process.
 
 **Rationale**:
 - React components make real `fetch()` calls that require a listening server
-- SuperTest's virtual requests don't work with browser-based fetch
 - Tests the complete HTTP stack including middleware, routing, error handling
+- Allows testing of real HTTP request/response cycles
 - Matches production behavior more closely
 
 See `test/bdd/helpers/api-server.ts` for server lifecycle management (`initializeTestServer()`, `cleanupTestServer()`).
@@ -184,8 +208,8 @@ See `test/bdd/helpers/repository-spies.ts` (`spyOnMeEndpoint()`) for the complet
 ### Implementation Details
 
 For details on test file organization, writing tests, and using the Fluent API, see:
-- **`test/bdd/README.md`** - Complete guide to BDD testing setup and usage
-- **`test/bdd/FLUENT_API.md`** - Fluent API reference with all available methods and examples
+- **`test/bdd/README.md`** - Complete guide to BDD testing setup, stateful testing overview, and usage patterns
+- **`test/bdd/FLUENT_API.md`** - Fluent API reference with all available methods, TestState API, and examples
 
 ## Consequences
 
@@ -238,10 +262,9 @@ For details on test file organization, writing tests, and using the Fluent API, 
 ## Related Documentation
 
 **Implementation Guides** (test/bdd directory):
-- **`test/bdd/README.md`** - Getting started guide, test organization, troubleshooting, and FAQ
-- **`test/bdd/FLUENT_API.md`** - Complete Fluent API reference with examples
-- `test/bdd/AI_TESTING_GUIDELINES.md` - Detailed guidelines for writing tests
-- `test/bdd/REFACTORING_STATUS.md` - Refactoring history and current status
+- **`test/bdd/README.md`** - Getting started guide, stateful testing overview, test organization, troubleshooting, and FAQ
+- **`test/bdd/FLUENT_API.md`** - Complete Fluent API reference, TestState API, and examples
+- `test/bdd/AI_TESTING_GUIDELINES.md` - Detailed guidelines for writing tests, including stateful patterns
 
 **Related ADRs**:
 - [Authentication Modes ADR](AuthenticationModes.md) - Authentication provider selection

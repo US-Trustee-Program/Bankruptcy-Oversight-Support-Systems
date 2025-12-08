@@ -68,8 +68,8 @@ describe('Feature: View Case Details (Full Stack)', () => {
       await TestSetup
         .forUser(TestSessions.caseAssignmentManager())
         .withCase(testCase)
-        .withTransfers([])
-        .withConsolidations([])
+        .withTransfers(testCase.caseId, [])
+        .withConsolidations(testCase.caseId, [])
         .renderAt(`/case-detail/${testCase.caseId}`);
 
       await waitForAppLoad();
@@ -195,8 +195,8 @@ describe('Feature: View Case Details (Full Stack)', () => {
       await TestSetup
         .forUser(TestSessions.caseAssignmentManager())
         .withCase(testCase)
-        .withTransfers(transfers)
-        .withConsolidations(consolidations)
+        .withTransfers(testCase.caseId, transfers)
+        .withConsolidations(testCase.caseId, consolidations)
         .renderAt(`/case-detail/${testCase.caseId}`);
 
       await waitForAppLoad();

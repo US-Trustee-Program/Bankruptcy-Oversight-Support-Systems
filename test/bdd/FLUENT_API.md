@@ -508,6 +508,178 @@ The fluent API follows these principles:
 
 ---
 
+## Stateful Testing (NEW)
+
+The Fluent API now returns a `TestState` object that enables testing interactive workflows with writes and reads.
+
+### When to Use Stateful Testing
+
+**Use stateful tests for:**
+- ✅ Interactive workflows (create → view → edit)
+- ✅ Testing write operations (POST/PUT/DELETE)
+- ✅ Verifying state persistence across navigation
+- ✅ Multi-step user journeys
+
+**Use read-only tests for:**
+- ✅ Simple display scenarios
+- ✅ Search and filter operations
+- ✅ Static page rendering
+
+### Basic Usage
+
+```typescript
+// renderAt() now returns TestState
+const state = await TestSetup
+  .forUser(session)
+  .withCase(testCase)
+  .withCaseNotes(testCase.caseId, [])
+  .renderAt('/case-detail/123');
+
+// State tracks all data
+expect(state.getCase('123')).toBeDefined();
+state.expectNoteCount('123', 0);
+
+// Write operations update state
+await userEvent.click(screen.getByRole('button', { name: /add note/i }));
+await userEvent.type(screen.getByLabelText(/note/i), 'My note content');
+await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+// State reflects writes
+state.expectNoteCount('123', 1);
+state.expectNoteExists('123', 'My note content');
+
+// Reads reflect writes
+const notes = state.getNotes('123');
+expect(notes[0].content).toContain('My note content');
+```
+
+### TestState API Reference
+
+#### Data Access Methods
+
+**Cases:**
+- `getCase(caseId: string): CaseDetail | undefined`
+- `getAllCases(): CaseDetail[]`
+
+**Notes:**
+- `getNotes(caseId: string): CaseNote[]`
+
+**Transfers:**
+- `getTransfers(caseId: string): Transfer[]`
+
+**Consolidations:**
+- `getConsolidations(caseId: string): Consolidation[]`
+
+**Assignments:**
+- `getAssignments(caseId: string): CaseAssignment[]`
+
+**Docket Entries:**
+- `getDocketEntries(caseId: string): DocketEntry[]`
+
+#### Assertion Helpers
+
+- `expectCaseExists(caseId: string): void`
+- `expectCaseNotExists(caseId: string): void`
+- `expectNoteCount(caseId: string, count: number): void`
+- `expectNoteExists(caseId: string, content: string): void`
+- `expectTransferCount(caseId: string, count: number): void`
+- `expectAssignmentExists(caseId: string, attorneyId: string): void`
+
+#### Debugging
+
+- `state.dump(): void` - Print current state to console
+- `state.dumpCaseDetail(caseId): void` - Print detailed state for a case
+
+### Backward Compatibility
+
+**Existing tests continue to work unchanged:**
+
+```typescript
+// Old style - still works, just ignore the returned state
+await TestSetup
+  .forUser(session)
+  .withCase(testCase)
+  .renderAt('/case-detail/123');
+
+await waitForAppLoad();
+await expectPageToContain('Test Case');
+```
+
+**New style - capture state for assertions:**
+
+```typescript
+// New style - capture state
+const state = await TestSetup
+  .forUser(session)
+  .withCase(testCase)
+  .renderAt('/case-detail/123');
+
+// Can assert on state
+state.expectCaseExists('123');
+expect(state.getCase('123')).toBeDefined();
+```
+
+### Complete Stateful Testing Example
+
+```typescript
+it('should add a case note and verify it appears', async () => {
+  const user = userEvent.setup();
+
+  // GIVEN: A case with no notes
+  const testCase = MockData.getCaseDetail({
+    override: { caseId: '081-23-12345' }
+  });
+
+  const state = await TestSetup
+    .forUser(TestSessions.caseAssignmentManager())
+    .withCase(testCase)
+    .withCaseNotes(testCase.caseId, [])
+    .renderAt(`/case-detail/${testCase.caseId}`);
+
+  await waitForAppLoad();
+
+  // Verify initial state
+  state.expectNoteCount(testCase.caseId, 0);
+
+  // WHEN: User adds a note
+  await user.click(screen.getByRole('button', { name: /add note/i }));
+
+  const noteContent = 'Case review completed';
+  await user.type(screen.getByLabelText(/note/i), noteContent);
+  await user.click(screen.getByRole('button', { name: /save/i }));
+
+  await waitFor(() => {
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  // THEN: State should reflect the new note
+  state.expectNoteCount(testCase.caseId, 1);
+  state.expectNoteExists(testCase.caseId, noteContent);
+
+  const notes = state.getNotes(testCase.caseId);
+  expect(notes[0].content).toContain(noteContent);
+
+  // AND: Note appears in UI
+  await waitFor(() => {
+    expect(screen.getByText(noteContent)).toBeInTheDocument();
+  });
+}, 30000);
+```
+
+### How It Works
+
+The stateful testing system works by:
+
+1. **TestState** - A mutable state container that holds test data (cases, notes, transfers, etc.)
+2. **State Population** - When you call `.withCase()`, `.withCaseNotes()`, etc., data is stored in TestState
+3. **Read Spies** - Repository read operations (e.g., `getNotesByCaseId()`) return data from TestState
+4. **Write Spies** - Repository write operations (e.g., `create()`) update TestState
+5. **State Persistence** - State persists across component re-renders and navigation
+
+This allows you to test complete workflows where user actions modify state and subsequent reads reflect those changes.
+
+---
+
 ## Implementation Details
 
 **Location:** `test/bdd/helpers/fluent-test-setup.ts`
