@@ -340,9 +340,9 @@ test/bdd/
     ├── diagnostics/
     │   └── bdd-environment.spec.tsx            # Environment diagnostic tool
     └── case-management/
-        ├── view-case-detail-fullstack.spec.tsx # Case detail (4 tests)
-        ├── search-cases-fullstack.spec.tsx     # Search (3 tests)
-        └── my-cases-fullstack.spec.tsx         # My Cases (3 tests)
+        ├── case-detail.spec.tsx  # Case detail (4 tests)
+        ├── search-cases.spec.tsx # Search (3 tests)
+        └── my-cases.spec.tsx     # My Cases (3 tests)
 ```
 
 **Test Data**: Use `MockData` from `@common/cams/test-utilities/mock-data` for test data creation

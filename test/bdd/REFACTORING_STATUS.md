@@ -11,23 +11,26 @@ Refactor all BDD full-stack tests to use the Fluent API and remove "legacy" manu
    - Changed spy cleanup from `beforeEach` to `afterEach` to prevent cross-test pollution
    - Added `fileParallelism: false` to run test files sequentially (safe for shared HTTP server)
 
-2. **View Case Detail** - `view-case-detail-fullstack.spec.tsx`
+2. **View Case Detail** - `case-detail.spec.tsx`
    - Status: ✅ Refactored & passing (4/4 tests)
    - Converted from manual spy setup to fluent API
    - Reduced from ~355 lines to ~210 lines (~40% reduction)
    - All scenarios use TestSetup pattern
+   - Renamed from `view-case-detail-fullstack.spec.tsx` for clarity
 
-3. **Search Cases** - `search-cases-fullstack.spec.tsx`
+3. **Search Cases** - `search-cases.spec.tsx`
    - Status: ✅ Refactored & passing (3/3 tests)
    - Reduced from 424 lines to 203 lines (~52% reduction)
    - Uses fluent API for data setup
    - Simplified UI interactions (case number input instead of combobox)
    - Fixed empty results test by ensuring valid search predicate
+   - Renamed from `search-cases-fullstack.spec.tsx` for clarity
 
-4. **My Cases** - `my-cases-fullstack.spec.tsx`
+4. **My Cases** - `my-cases.spec.tsx`
    - Status: ✅ Refactored & passing (3/3 tests)
    - Simplified using fluent API
    - Reduced from ~210 lines to ~156 lines (~26% reduction)
+   - Renamed from `my-cases-fullstack.spec.tsx` for clarity
 
 ## Test Results Summary
 
