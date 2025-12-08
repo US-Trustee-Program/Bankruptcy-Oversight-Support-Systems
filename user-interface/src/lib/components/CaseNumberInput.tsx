@@ -2,7 +2,7 @@ import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } f
 import Input, { InputProps } from './uswds/Input';
 import { InputRef } from '../type-declarations/input-fields';
 
-export function formatCaseNumberInput(
+function formatCaseNumberInput(
   ev: React.ChangeEvent<HTMLInputElement>,
   allowPartial: boolean = false,
 ) {
