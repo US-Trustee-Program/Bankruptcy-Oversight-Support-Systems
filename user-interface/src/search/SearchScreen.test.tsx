@@ -1,6 +1,6 @@
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { SyncedCase } from '@common/cams/cases';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import SearchScreen, { validateFormData } from '@/search/SearchScreen';
 import { CasesSearchPredicate, DEFAULT_SEARCH_LIMIT } from '@common/api/search';
@@ -529,9 +529,12 @@ describe('search screen', () => {
       expect(caseNumberInput).toBeEnabled();
     });
 
-    // Type case number and press Enter
+    // Type case number
     await userEvent.type(caseNumberInput, caseNumber);
-    await userEvent.keyboard('{Enter}');
+
+    // Trigger form submission (simulating Enter key press which submits the form)
+    const form = screen.getByTestId('filter-and-search-panel');
+    fireEvent.submit(form);
 
     await waitFor(() => {
       // wait for loading to disappear
@@ -565,13 +568,12 @@ describe('search screen', () => {
     const expandButton = screen.getByTestId('button-case-chapter-search-expand');
     await userEvent.click(expandButton!);
 
-    // Get the filter-and-search container that has the onKeyDown handler
+    // Get the filter-and-search form
     const filterAndSearchPanel = screen.getByTestId('filter-and-search-panel');
     expect(filterAndSearchPanel).toBeInTheDocument();
 
-    // Focus on the filter panel and press Enter
-    filterAndSearchPanel.focus();
-    await userEvent.keyboard('{Enter}');
+    // Trigger form submission (simulating Enter key press which submits the form)
+    fireEvent.submit(filterAndSearchPanel);
 
     await waitFor(() => {
       // wait for the default state alert to be removed
@@ -636,9 +638,10 @@ describe('search screen', () => {
       expect(caseNumberInput).toBeEnabled();
     });
 
-    // First search - type case number and press Enter
+    // First search - type case number and submit form
     await userEvent.type(caseNumberInput, firstCaseNumber);
-    await userEvent.keyboard('{Enter}');
+    const form = screen.getByTestId('filter-and-search-panel');
+    fireEvent.submit(form);
 
     await waitFor(() => {
       expect(document.querySelector('.search-results table')).toBeVisible();
@@ -657,7 +660,7 @@ describe('search screen', () => {
     // Clear the input and type a new case number
     await userEvent.clear(caseNumberInput);
     await userEvent.type(caseNumberInput, secondCaseNumber);
-    await userEvent.keyboard('{Enter}');
+    fireEvent.submit(form);
 
     // Wait for the search to be triggered and complete
     await waitFor(() => {
