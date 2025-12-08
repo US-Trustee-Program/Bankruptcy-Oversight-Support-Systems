@@ -364,6 +364,130 @@ npm run test:bdd:coverage
 open test/bdd/coverage/index.html
 ```
 
+## FAQ
+
+### Why does the coverage report show 100% branch coverage for files I know we haven't tested?
+
+Great question! This is a common source of confusion with code coverage. Let me explain what's happening:
+
+**Branch coverage** measures whether all possible branches (if/else, ternary operators, logical operators) have been **executed**, not whether they've been **meaningfully tested** with assertions.
+
+#### What Causes High Coverage Without Explicit Testing:
+
+1. **Module Import Execution**
+   - When your BDD tests render the App, React imports hundreds of files
+   - **All top-level code executes immediately at import time**
+   - Constants, function declarations, class definitions all run during import
+
+2. **Files With No Branches**
+   - If a file has no conditional logic (no if/else, no ternary, no &&/||), it has **zero branches**
+   - Zero branches = 100% branch coverage by definition
+
+   Example:
+   ```typescript
+   // This file has NO branches
+   export const API_URL = 'https://api.example.com';
+   export const TIMEOUT = 5000;
+
+   export function formatDate(date: Date) {
+     return date.toISOString(); // No if/else = no branches
+   }
+   ```
+
+   When imported: **100% branch coverage** (vacuously true - all 0 branches covered)
+
+3. **Transitive Imports**
+   - Your BDD tests import `App.tsx`
+   - App imports components
+   - Components import utilities
+   - Utilities import constants
+   - All of these show as "covered" even without assertions
+
+#### Example Scenario:
+
+```typescript
+// constants.ts
+export const MAX_RETRIES = 3;              // Executes at import
+export const DEFAULT_TIMEOUT = 5000;       // Executes at import
+
+// utils.ts
+import { MAX_RETRIES } from './constants';
+
+export function getRetryCount() {          // Defined at import
+  return MAX_RETRIES;                      // Only executes if called
+}
+
+// component.tsx
+import { getRetryCount } from './utils';   // constants.ts and utils.ts execute
+
+export function MyComponent() {
+  // getRetryCount() never called in BDD test
+  return <div>Hello</div>;
+}
+```
+
+**Coverage results:**
+- `constants.ts`: 100% line, 100% branch (no branches, all imports executed)
+- `utils.ts`:
+  - Lines: 100% (import executed, function defined)
+  - Branches: 100% (no branches in this file)
+  - Function coverage: 0% (getRetryCount never called!)
+
+#### What to Look For Instead
+
+Better Coverage Metrics to Focus On:
+
+1. **Look at files with LOW coverage** - those need attention
+2. **Check "Uncovered Lines"** column - more meaningful than percentages
+3. **Open the HTML report** to see which specific lines weren't executed
+4. **Compare Function Coverage vs Branch Coverage**:
+   - High branch coverage + low function coverage = imported but not called
+   - This is what you're probably seeing
+
+#### How to Identify Actually Untested Code:
+
+```bash
+# Open the HTML coverage report
+open test/bdd/coverage/index.html
+
+# Look for files with:
+# - Red/yellow highlighting (uncovered lines)
+# - Low function coverage % (functions not called)
+# - Many "Uncovered Lines" in the detailed view
+```
+
+In the HTML report, click on any file to see:
+- **Green lines**: Executed
+- **Red lines**: Not executed
+- **Yellow lines**: Partially executed (branch not taken)
+
+#### Example of What You're Likely Seeing:
+
+```
+File                  | % Stmts | % Branch | % Funcs | % Lines | Uncovered Lines
+----------------------|---------|----------|---------|---------|----------------
+constants.ts          |   100   |   100    |   N/A   |   100   |
+api-client.ts         |   100   |   100    |   20    |   100   |
+complex-util.ts       |   75    |   50     |   60    |   75    | 45-52, 78-82
+```
+
+- `constants.ts`: 100% everywhere - just imports, no logic
+- `api-client.ts`: 100% branch but 20% function - **imported but most functions not called**
+- `complex-util.ts`: 50% branch - **this needs testing!**
+
+#### The Key Insight:
+
+**Branch coverage = "Were all code paths executed?"**
+**NOT "Were all scenarios tested with assertions?"**
+
+Your BDD tests provide **execution coverage** (code ran) but may not provide **behavioral coverage** (code tested with assertions). This is actually fine for integration tests - they focus on user workflows, not exhaustive unit testing.
+
+Focus on:
+1. Files with **uncovered lines** (red in HTML report)
+2. Low **function coverage** (functions never called)
+3. Complex business logic that needs dedicated tests
+4. Error handling paths (catch blocks, error callbacks)
+
 ## Troubleshooting
 
 ### Tests Timeout
