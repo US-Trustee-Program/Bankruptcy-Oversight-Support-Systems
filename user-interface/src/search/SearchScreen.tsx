@@ -184,6 +184,9 @@ export default function SearchScreen() {
       setTemporarySearchPredicate(newPredicate);
     }
 
+    // Hide validation errors while user is typing
+    setShowCaseNumberError(false);
+
     // Show validation errors after user has finished typing (debounced)
     debounce(() => {
       setShowCaseNumberError(true);
