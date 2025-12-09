@@ -1,6 +1,6 @@
 import { CamsError } from '../../common-errors/cams-error';
 
-export interface LoggerHelper {
+interface LoggerHelper {
   debug: (moduleName: string, message: string, data?: unknown) => void;
   info: (moduleName: string, message: string, data?: unknown) => void;
   warn: (moduleName: string, message: string, data?: unknown) => void;
