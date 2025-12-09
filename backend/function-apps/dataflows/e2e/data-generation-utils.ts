@@ -4,7 +4,7 @@ import { CaseBasics, CaseSummary, getCaseIdParts } from '../../../../common/src/
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { OrdersUseCase } from '../../../lib/use-cases/orders/orders';
 import { ConsolidationOrder, TransferOrder } from '../../../../common/src/cams/orders';
-import { extractAndPrepareSqlData } from './dxtr-utils';
+import DxtrUtils from './dxtr-utils';
 import {
   insertConsolidationOrders,
   insertTransferOrders,
@@ -15,16 +15,16 @@ import {
 import { Trustee } from '../../../../common/src/cams/trustees';
 import { UserGroup } from '../../../../common/src/cams/users';
 
-export const KNOWN_GOOD_TRANSFER_FROM_CASE_NUMBER = '65-67641';
-export const KNOWN_GOOD_TRANSFER_FROM_CASE_ID = '081-' + KNOWN_GOOD_TRANSFER_FROM_CASE_NUMBER;
+const KNOWN_GOOD_TRANSFER_FROM_CASE_NUMBER = '65-67641';
+const KNOWN_GOOD_TRANSFER_FROM_CASE_ID = '081-' + KNOWN_GOOD_TRANSFER_FROM_CASE_NUMBER;
 
-export const KNOWN_GOOD_TRANSFER_TO_CASE_ID = '091-69-12345';
+const KNOWN_GOOD_TRANSFER_TO_CASE_ID = '091-69-12345';
 
 dotenv.config();
 
-export async function seedCosmosE2eDatabase(context: ApplicationContext) {
+async function seedCosmosE2eDatabase(context: ApplicationContext) {
   const { dxtrCaseIds, dxtrCases, transferTo, transferFrom } =
-    await extractAndPrepareSqlData(context);
+    await DxtrUtils.extractAndPrepareSqlData(context);
 
   await syncCases(context, dxtrCaseIds);
 
@@ -41,7 +41,7 @@ export async function seedCosmosE2eDatabase(context: ApplicationContext) {
   await insertUserGroups(context, userGroups);
 }
 
-export async function generateTrustees(): Promise<Trustee[]> {
+async function generateTrustees(): Promise<Trustee[]> {
   const trusteeProfiles: Trustee[] = [];
 
   for (let i = 0; i < 5; i++) {
@@ -51,7 +51,7 @@ export async function generateTrustees(): Promise<Trustee[]> {
   return trusteeProfiles;
 }
 
-export async function generateUserGroups(): Promise<UserGroup[]> {
+async function generateUserGroups(): Promise<UserGroup[]> {
   const attorneys = [
     { id: 'attorney-1', name: 'Weis, Brandon' },
     { id: 'attorney-2', name: 'Smith, Jane' },
@@ -135,3 +135,14 @@ function createKnownGoodTransferOrder(transferTo: CaseSummary, transferFrom: Cas
   };
   return knownGoodTransferOrder;
 }
+
+const DataGenerationUtils = {
+  KNOWN_GOOD_TRANSFER_FROM_CASE_NUMBER,
+  KNOWN_GOOD_TRANSFER_FROM_CASE_ID,
+  KNOWN_GOOD_TRANSFER_TO_CASE_ID,
+  seedCosmosE2eDatabase,
+  generateTrustees,
+  generateUserGroups,
+};
+
+export default DataGenerationUtils;
