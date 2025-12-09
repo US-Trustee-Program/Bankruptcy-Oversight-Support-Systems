@@ -21,7 +21,7 @@ import { CamsError } from '../../../../common-errors/cams-error';
 
 const MODULE_NAME = 'MONGO-AGGREGATE-RENDERER';
 
-export function toMongoAggregateSort(sort: Sort) {
+function toMongoAggregateSort(sort: Sort) {
   return {
     $sort: sort.fields.reduce(
       (acc, sortSpec) => {
@@ -47,7 +47,7 @@ function toMongoPaginatedFacet(paginate: Paginate) {
   };
 }
 
-export function toMongoLookup(join: Join) {
+function toMongoLookup(join: Join) {
   return {
     $lookup: {
       from: join.foreign.source,
@@ -58,7 +58,7 @@ export function toMongoLookup(join: Join) {
   };
 }
 
-export function toMongoAddFields(stage: AddFields) {
+function toMongoAddFields(stage: AddFields) {
   const fields = stage.fields.reduce((acc, additional) => {
     acc[additional.fieldToAdd.name] = {
       $filter: {
@@ -73,7 +73,7 @@ export function toMongoAddFields(stage: AddFields) {
   };
 }
 
-export function toMongoAccumulatorOperator(spec: Accumulator) {
+function toMongoAccumulatorOperator(spec: Accumulator) {
   if (spec.accumulator === 'FIRST') {
     return {
       $first: `$${spec.field.name.toString()}`,
@@ -85,7 +85,7 @@ export function toMongoAccumulatorOperator(spec: Accumulator) {
   }
 }
 
-export function toMongoGroup(stage: Group) {
+function toMongoGroup(stage: Group) {
   const group = {
     $group: {
       _id: stage.groupBy.map((field) => `$${field.name.toString()}`).join(''),
@@ -101,7 +101,7 @@ export function toMongoGroup(stage: Group) {
 // TODO: Future contraction. We can provide a unified projection `toMongoProject` if we produce another stage that includes inclusive and exclusive field specifications.
 // See: https://www.mongodb.com/docs/manual/reference/operator/aggregation/project/#syntax
 
-export function toMongoProjectExclude(stage: ExcludeFields) {
+function toMongoProjectExclude(stage: ExcludeFields) {
   const fields = stage.fields.reduce((acc, field) => {
     acc[field.name] = 0;
     return acc;
@@ -109,7 +109,7 @@ export function toMongoProjectExclude(stage: ExcludeFields) {
   return { $project: fields };
 }
 
-export function toMongoProjectInclude(stage: IncludeFields) {
+function toMongoProjectInclude(stage: IncludeFields) {
   const fields = stage.fields.reduce((acc, field) => {
     acc[field.name] = 1;
     return acc;
@@ -117,13 +117,13 @@ export function toMongoProjectInclude(stage: IncludeFields) {
   return { $project: fields };
 }
 
-export function toMongoFilterCondition<T = unknown>(query: ConditionOrConjunction<T>) {
+function toMongoFilterCondition<T = unknown>(query: ConditionOrConjunction<T>) {
   if (isCondition(query)) {
     return translateCondition(query);
   }
 }
 
-export function translateCondition<T = unknown>(query: Condition<T>) {
+function translateCondition<T = unknown>(query: Condition<T>) {
   if (!isField(query.leftOperand)) {
     throw new CamsError(MODULE_NAME, { message: 'leftOperand must be a field' });
   }
@@ -154,7 +154,7 @@ const mapCondition: { [key: string]: string } = {
   IF_NULL: '$ifNull',
 };
 
-export function toMongoAggregate(pipeline: Pipeline): AggregateQuery {
+function toMongoAggregate(pipeline: Pipeline): AggregateQuery {
   return pipeline.stages.map((stage) => {
     if (stage.stage === 'SORT') {
       return toMongoAggregateSort(stage);
@@ -182,3 +182,18 @@ export function toMongoAggregate(pipeline: Pipeline): AggregateQuery {
     }
   });
 }
+
+const MongoAggregateRenderer = {
+  toMongoAggregateSort,
+  toMongoLookup,
+  toMongoAddFields,
+  toMongoAccumulatorOperator,
+  toMongoGroup,
+  toMongoProjectExclude,
+  toMongoProjectInclude,
+  toMongoFilterCondition,
+  translateCondition,
+  toMongoAggregate,
+};
+
+export default MongoAggregateRenderer;
