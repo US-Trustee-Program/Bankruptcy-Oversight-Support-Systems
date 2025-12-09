@@ -22,8 +22,8 @@ async function clearDatabase(context: ApplicationContext) {
 }
 
 async function loadData(context: ApplicationContext) {
-  const { seedCosmosE2eDatabase } = await import('./data-generation-utils');
-  await seedCosmosE2eDatabase(context);
+  const DataGenerationUtils = (await import('./data-generation-utils')).default;
+  await DataGenerationUtils.seedCosmosE2eDatabase(context);
 }
 
 function setup() {
