@@ -371,7 +371,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   }
 }
 
-export function createOrGetId<T>(item: CamsItem<T>): CamsItem<T> {
+function createOrGetId<T>(item: CamsItem<T>): CamsItem<T> {
   return {
     id: randomUUID(),
     ...item,
