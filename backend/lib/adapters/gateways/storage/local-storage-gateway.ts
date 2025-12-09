@@ -61,7 +61,7 @@ function getPrivilegedIdentityUserRoleGroupName(): string {
   return groupNameToReturn;
 }
 
-export const LocalStorageGateway: StorageGateway = {
+const LocalStorageGateway: StorageGateway = {
   get,
   getRoleMapping,
   getPrivilegedIdentityUserRoleGroupName,

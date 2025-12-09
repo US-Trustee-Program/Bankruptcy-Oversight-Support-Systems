@@ -2,7 +2,7 @@ import OktaAuth, { UserClaims } from '@okta/okta-auth-js';
 import { describe, test } from 'vitest';
 import { getCamsUser, refreshOktaToken, registerRefreshOktaToken } from './okta-library';
 import LocalStorage from '@/lib/utils/local-storage';
-import { MockData } from '@common/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import * as apiModule from '@/lib/models/api';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import { CamsSession } from '@common/cams/session';

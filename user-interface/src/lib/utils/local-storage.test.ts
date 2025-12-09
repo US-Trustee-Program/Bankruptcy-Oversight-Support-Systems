@@ -1,4 +1,4 @@
-import { MockData } from '@common/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import {
   LAST_INTERACTION_KEY,
   LocalStorage,

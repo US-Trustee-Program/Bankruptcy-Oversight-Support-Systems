@@ -6,7 +6,7 @@ import PendingTransferOrder, {
   PendingTransferOrderProps,
 } from '@/data-verification/transfer/PendingTransferOrder';
 import { BrowserRouter } from 'react-router-dom';
-import { MockData } from '@common/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import Api2 from '@/lib/models/api2';

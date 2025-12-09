@@ -1,4 +1,4 @@
-import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import {
   createMockApplicationContext,
   createMockApplicationContextSession,

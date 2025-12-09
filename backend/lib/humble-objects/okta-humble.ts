@@ -76,7 +76,7 @@ export type IdpGroup = {
   name: string;
 };
 
-export class OktaHumble {
+class OktaHumble {
   private client: Client;
 
   public async init(config: UserGroupGatewayConfig): Promise<void> {

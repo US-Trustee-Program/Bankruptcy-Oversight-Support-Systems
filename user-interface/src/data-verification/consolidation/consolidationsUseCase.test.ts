@@ -1,4 +1,4 @@
-import { MockData } from '@common/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { ConsolidationStoreMock } from './consolidationStoreMock';
 import { ConsolidationsUseCase, consolidationUseCase } from './consolidationsUseCase';
 import { orderStatusType, orderType } from '@/lib/utils/labels';

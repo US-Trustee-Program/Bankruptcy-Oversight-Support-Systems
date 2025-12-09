@@ -501,6 +501,6 @@ export const _Api2 = {
   getOversightStaff,
 };
 
-export const Api2 = getAppConfiguration().useFakeApi ? MockApi2 : _Api2;
+const Api2 = getAppConfiguration().useFakeApi ? MockApi2 : _Api2;
 
 export default Api2;

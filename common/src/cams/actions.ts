@@ -44,7 +44,7 @@ const RemoveNote: Action = {
   path: '/cases/${caseId}/notes/${id}',
 };
 
-export const Actions = {
+const Actions = {
   ManageAssignments,
   EditNote,
   RemoveNote,

@@ -49,7 +49,7 @@ export type SearchResultsProps = JSX.IntrinsicElements['table'] & {
   row: (props: SearchResultsRowProps) => JSX.Element;
 };
 
-export function SearchResults(props: SearchResultsProps) {
+function SearchResults(props: SearchResultsProps) {
   const {
     id,
     searchPredicate: searchPredicateProp,

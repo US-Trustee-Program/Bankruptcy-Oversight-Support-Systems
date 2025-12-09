@@ -105,7 +105,7 @@ function setNumber(key: string, value: number) {
   localStorage.setItem(key, value.toString());
 }
 
-export const LocalStorage = {
+const LocalStorage = {
   getSession,
   setSession,
   removeSession,

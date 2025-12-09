@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { MockData } from '@common/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import CaseDetailAssociatedCases from './CaseDetailAssociatedCases';
 import {
   ConsolidationFrom,

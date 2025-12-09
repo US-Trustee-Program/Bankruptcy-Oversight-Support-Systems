@@ -1,7 +1,7 @@
 import { render } from '@testing-library/react';
 import { GenericTable, GenericTableProps } from './GenericTable';
 import { CaseSummary } from '@common/cams/cases';
-import { MockData } from '@common/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { formatDate } from '@/lib/utils/datetime';
 import { CaseNumber } from '../../CaseNumber';
 import { BrowserRouter } from 'react-router-dom';

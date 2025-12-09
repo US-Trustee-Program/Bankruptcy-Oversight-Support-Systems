@@ -579,7 +579,7 @@ async function createTrusteeOversightAssignment(
   };
 }
 
-export const MockApi2 = {
+const MockApi2 = {
   getTrustees,
   getTrustee,
   getTrusteeHistory,
