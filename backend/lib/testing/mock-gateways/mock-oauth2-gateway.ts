@@ -4,7 +4,7 @@ import { ForbiddenError } from '../../common-errors/forbidden-error';
 import MockUsers, { MockUser } from '../../../../common/src/cams/test-utilities/mock-user';
 import { CamsUser } from '../../../../common/src/cams/users';
 import { CamsRole } from '../../../../common/src/cams/roles';
-import { CamsJwt, CamsJwtClaims, CamsJwtHeader } from '../../../../common/src/cams/jwt';
+import { CamsJwt, CamsJwtClaims } from '../../../../common/src/cams/jwt';
 import { OpenIdConnectGateway } from '../../adapters/types/authorization';
 import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
 import { nowInSeconds } from '../../../../common/src/date-helper';
@@ -37,25 +37,6 @@ export async function mockAuthentication(context: ApplicationContext): Promise<s
 
   const token = jwt.sign(claims, key);
   return token;
-}
-
-export async function verifyToken(accessToken: string): Promise<CamsJwt> {
-  const payload = jwt.verify(accessToken, key) as jwt.JwtPayload;
-  const claims: CamsJwtClaims = {
-    iss: payload.iss!,
-    sub: payload.sub!,
-    aud: payload.aud!,
-    exp: payload.exp!,
-    groups: payload.groups!,
-    ...payload,
-  };
-
-  const header: CamsJwtHeader = { typ: '' };
-  const camsJwt: CamsJwt = {
-    claims,
-    header,
-  };
-  return camsJwt;
 }
 
 function addSuperUserOffices(user: CamsUser) {
