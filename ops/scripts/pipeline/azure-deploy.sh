@@ -88,10 +88,18 @@ function az_deploy_func() {
 
     echo "=== Running what-if analysis ==="
     # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --parameter
-    if az deployment group create -w -g ${rg} --template-file ${templateFile} --parameter ${deploymentParameter}; then
+    # Capture what-if output to both display and file for analysis
+    if az deployment group create -w -g ${rg} --template-file ${templateFile} --parameter ${deploymentParameter} 2>&1 | tee what-if-output.txt; then
         echo "=== What-if analysis complete ==="
+        echo "What-if output length: $(wc -l < what-if-output.txt) lines"
+        if [[ $(wc -l < what-if-output.txt) -lt 5 ]]; then
+            echo "WARNING: What-if output is unexpectedly short. This may indicate no changes detected."
+        fi
     else
-        echo "WARNING: What-if analysis failed with exit code $?, continuing with deployment..."
+        whatif_exit_code=$?
+        echo "WARNING: What-if analysis failed with exit code ${whatif_exit_code}, continuing with deployment..."
+        echo "What-if output was:"
+        cat what-if-output.txt || echo "No what-if output file created"
     fi
 
     echo "=== Starting actual deployment ==="
