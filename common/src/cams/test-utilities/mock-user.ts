@@ -11,9 +11,7 @@ export const REGION_02_GROUP_BU = MOCKED_USTP_OFFICE_DATA_MAP.get(
 export const REGION_02_GROUP_SE = MOCKED_USTP_OFFICE_DATA_MAP.get(
   'USTP_CAMS_Region_18_Office_Seattle',
 )!;
-export const REGION_03_GROUP_WL = MOCKED_USTP_OFFICE_DATA_MAP.get(
-  'USTP_CAMS_Region_3_Office_Wilmington',
-)!;
+const REGION_03_GROUP_WL = MOCKED_USTP_OFFICE_DATA_MAP.get('USTP_CAMS_Region_3_Office_Wilmington')!;
 
 export type MockUser = {
   sub: string;

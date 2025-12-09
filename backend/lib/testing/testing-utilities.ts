@@ -38,7 +38,7 @@ export async function createMockApplicationContextSession(
   return MockData.getCamsSession(override);
 }
 
-export function createMockRequest(request: Partial<CamsHttpRequest> = {}): HttpRequest {
+function createMockRequest(request: Partial<CamsHttpRequest> = {}): HttpRequest {
   const { headers, method, body, ...other } = request;
   const requestInit = {
     method: (method as CamsHttpMethod) ?? 'GET',
