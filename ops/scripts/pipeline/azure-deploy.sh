@@ -63,11 +63,46 @@ function az_deploy_func() {
     local rg=$1
     local templateFile=$2
     local deploymentParameter=$3
-    echo "Deploying Azure resources via bicep template ${templateFile}"
+    echo "=== Starting Azure deployment ==="
+    echo "Resource Group: ${rg}"
+    echo "Template File: ${templateFile}"
+    echo "Parameters: ${deploymentParameter}"
+    echo "Is USTP Deployment: ${is_ustp_deployment}"
+
+    echo "=== Building Bicep template ==="
+    if az bicep build --file "${templateFile}"; then
+        echo "=== Bicep build successful ==="
+    else
+        echo "ERROR: Bicep build failed"
+        exit 1
+    fi
+
+    echo "=== Validating deployment template ==="
     # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --parameter
-    az deployment group create -w -g ${rg} --template-file ${templateFile} --parameter ${deploymentParameter}
+    if az deployment group validate -g ${rg} --template-file ${templateFile} --parameter ${deploymentParameter} --no-prompt --query "properties.provisioningState" -o tsv; then
+        echo "=== Template validation successful ==="
+    else
+        echo "ERROR: Template validation failed"
+        exit 1
+    fi
+
+    echo "=== Running what-if analysis ==="
     # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --parameter
-    az deployment group create -g ${rg} --template-file ${templateFile} --parameter $deploymentParameter -o json --query properties.outputs | tee outputs.json
+    if az deployment group create -w -g ${rg} --template-file ${templateFile} --parameter ${deploymentParameter}; then
+        echo "=== What-if analysis complete ==="
+    else
+        echo "WARNING: What-if analysis failed with exit code $?, continuing with deployment..."
+    fi
+
+    echo "=== Starting actual deployment ==="
+    # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --parameter
+    if az deployment group create -g ${rg} --template-file ${templateFile} --parameter $deploymentParameter -o json --query properties.outputs | tee outputs.json; then
+        echo "=== Deployment completed successfully ==="
+    else
+        local exit_code=$?
+        echo "ERROR: Deployment failed with exit code ${exit_code}"
+        exit ${exit_code}
+    fi
 }
 
 
