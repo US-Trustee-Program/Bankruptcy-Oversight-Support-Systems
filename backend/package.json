@@ -40,8 +40,7 @@
     "mssql": "12.1.1"
   },
   "overrides": {
-    "@azure/identity": "$@azure/identity",
-    "@types/tedious": "18.0.0"
+    "@azure/identity": "$@azure/identity"
   },
   "scripts": {
     "all": "npm run clean:all && npm ci && npm run build:all && npm run pack:all",
