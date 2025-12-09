@@ -2,19 +2,22 @@ import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } f
 import Input, { InputProps } from './uswds/Input';
 import { InputRef } from '../type-declarations/input-fields';
 
-export function validateCaseNumberInput(ev: React.ChangeEvent<HTMLInputElement>) {
+export function formatCaseNumberValue(value: string) {
   const allowedCharsPattern = /\d/g;
-  const filteredInput = ev.target.value.match(allowedCharsPattern) ?? [];
+  const filteredInput = value.match(allowedCharsPattern) ?? [];
+
   if (filteredInput.length > 7) {
     filteredInput.splice(7);
   }
   if (filteredInput.length > 2) {
     filteredInput.splice(2, 0, '-');
   }
-  const joinedInput = filteredInput?.join('') || '';
+
+  const joinedInput = filteredInput.join('');
   const caseNumberPattern = /^\d{2}-\d{5}$/;
-  const caseNumber = caseNumberPattern.test(joinedInput) ? joinedInput : undefined;
-  return { caseNumber, joinedInput };
+  const isValidFullCaseNumber = caseNumberPattern.test(joinedInput);
+
+  return { joinedInput, isValidFullCaseNumber };
 }
 
 type CaseNumberInputProps = Omit<InputProps, 'onChange' | 'onFocus'> & {
@@ -70,14 +73,17 @@ function CaseNumberInput_(props: CaseNumberInputProps, ref: React.Ref<InputRef>)
   }
 
   function handleOnChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    const { caseNumber, joinedInput } = validateCaseNumberInput(ev);
+    const { joinedInput, isValidFullCaseNumber } = formatCaseNumberValue(ev.target.value);
+
     forwardedRef?.current?.setValue(joinedInput);
 
-    if (allowPartialCaseNumber) {
-      onChange(joinedInput);
-    } else {
-      onChange(caseNumber);
-    }
+    const caseNumber = allowPartialCaseNumber
+      ? joinedInput || undefined
+      : isValidFullCaseNumber
+        ? joinedInput
+        : undefined;
+
+    onChange(caseNumber);
   }
 
   function handleEnter(ev: React.KeyboardEvent) {
@@ -85,9 +91,18 @@ function CaseNumberInput_(props: CaseNumberInputProps, ref: React.Ref<InputRef>)
       allowEnterKey &&
       ev.key === 'Enter' &&
       forwardedRef.current &&
-      forwardedRef.current?.getValue().length > 0
+      forwardedRef.current.getValue().length > 0
     ) {
-      onChange(forwardedRef.current?.getValue());
+      const currentValue = forwardedRef.current.getValue();
+      const { joinedInput, isValidFullCaseNumber } = formatCaseNumberValue(currentValue);
+
+      const caseNumber = allowPartialCaseNumber
+        ? joinedInput || undefined
+        : isValidFullCaseNumber
+          ? joinedInput
+          : undefined;
+
+      onChange(caseNumber);
     }
   }
 
@@ -109,7 +124,7 @@ function CaseNumberInput_(props: CaseNumberInputProps, ref: React.Ref<InputRef>)
     } else if (!isDisabled && onEnable) {
       onEnable();
     }
-  }, [isDisabled]);
+  }, [isDisabled, onDisable, onEnable]);
 
   useEffect(() => {
     return () => {
