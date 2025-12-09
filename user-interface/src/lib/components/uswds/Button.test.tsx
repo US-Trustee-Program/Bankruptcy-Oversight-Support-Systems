@@ -72,4 +72,32 @@ describe('Test button component', () => {
     act(() => buttonRef.current?.disableButton(false));
     expect(button).not.toHaveAttribute('disabled');
   });
+
+  test('Should default to type="button" when no type prop is provided', () => {
+    render(
+      <React.StrictMode>
+        <BrowserRouter>
+          <Button id="test">Button text</Button>
+        </BrowserRouter>
+      </React.StrictMode>,
+    );
+
+    const button = screen.getByTestId('button-test');
+    expect(button).toHaveAttribute('type', 'button');
+  });
+
+  test('Should respect type="submit" when explicitly provided', () => {
+    render(
+      <React.StrictMode>
+        <BrowserRouter>
+          <Button id="test" type="submit">
+            Submit text
+          </Button>
+        </BrowserRouter>
+      </React.StrictMode>,
+    );
+
+    const button = screen.getByTestId('button-test');
+    expect(button).toHaveAttribute('type', 'submit');
+  });
 });

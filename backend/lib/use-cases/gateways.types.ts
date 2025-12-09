@@ -110,7 +110,8 @@ interface Searches<P, R> {
 }
 
 export interface ConsolidationOrdersRepository<T = ConsolidationOrder>
-  extends Searches<OrdersSearchPredicate, T>,
+  extends
+    Searches<OrdersSearchPredicate, T>,
     Creates<T, T>,
     CreatesMany<T>,
     Reads<T>,
@@ -121,36 +122,31 @@ export interface ConsolidationOrdersRepository<T = ConsolidationOrder>
 }
 
 export interface UserSessionCacheRepository<T = CamsSession>
-  extends Reads<T>,
-    Upserts<T, T>,
-    Releasable {}
+  extends Reads<T>, Upserts<T, T>, Releasable {}
 
 export interface CaseAssignmentRepository<T = CaseAssignment>
-  extends Creates<T, string>,
-    Updates<CaseAssignment, string> {
+  extends Creates<T, string>, Updates<CaseAssignment, string> {
   getAssignmentsForCases(caseIds: string[]): Promise<Map<string, CaseAssignment[]>>;
   findAssignmentsByAssignee(userId: string): Promise<CaseAssignment[]>;
   getAllActiveAssignments(): Promise<CaseAssignment[]>;
 }
 
 export interface CaseNotesRepository<T = CaseNote>
-  extends Creates<T, T>,
-    Updates<Partial<T>>,
-    Reads<T> {
+  extends Creates<T, T>, Updates<Partial<T>>, Reads<T> {
   getNotesByCaseId(caseId: string): Promise<CaseNote[]>;
   archiveCaseNote(archiveNote: Partial<CaseNote>): Promise<UpdateResult>;
 }
 
 export interface OrdersRepository<T = Order>
-  extends Searches<OrdersSearchPredicate, T>,
+  extends
+    Searches<OrdersSearchPredicate, T>,
     CreatesMany<T, T[]>,
     Reads<T>,
     Updates<TransferOrderAction>,
     Releasable {}
 
 export interface RuntimeStateRepository<T extends RuntimeState = RuntimeState>
-  extends Reads<T>,
-    Upserts<T, T> {}
+  extends Reads<T>, Upserts<T, T> {}
 
 export interface CaseDocketGateway {
   getCaseDocket(context: ApplicationContext, caseId: string): Promise<CaseDocket>;
@@ -190,8 +186,7 @@ export interface CasesRepository extends Releasable {
 }
 
 export interface OfficesRepository
-  extends Searches<OfficeUserRolesPredicate, OfficeStaff>,
-    Releasable {
+  extends Searches<OfficeUserRolesPredicate, OfficeStaff>, Releasable {
   putOrExtendOfficeStaff(officeCode: string, staff: Staff, expires: string): Promise<void>;
   getOfficeAttorneys(officeCode: string): Promise<AttorneyUser[]>;
   putOfficeStaff(officeCode: string, user: CamsUserReference, ttl?: number): Promise<ReplaceResult>;
@@ -217,7 +212,8 @@ export interface UsersRepository extends Releasable {
 }
 
 export interface OfficeAssigneesRepository
-  extends Creates<OfficeAssignee>,
+  extends
+    Creates<OfficeAssignee>,
     DeletesMany<OfficeAssigneePredicate>,
     Searches<OfficeAssigneePredicate, OfficeAssignee>,
     Releasable {
