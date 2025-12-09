@@ -21,8 +21,8 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './test/bdd/helpers/setup-tests.ts',
-    // ONLY run BDD tests in features directory
-    include: ['test/bdd/features/**/*.spec.{ts,tsx}'],
+    // Run BDD full-stack tests + common unit tests
+    include: ['test/bdd/features/**/*.spec.{ts,tsx}', 'common/**/*.test.{ts,tsx}'],
     exclude: ['**/node_modules/**', '**/dist/**'],
     // Run test files sequentially since they share a single HTTP server
     fileParallelism: false,
