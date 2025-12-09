@@ -1,4 +1,4 @@
-import { THREE_DAYS } from './datetime';
+import DateTimeUtils from './datetime';
 import LocalCache, { Cacheable } from './local-cache';
 
 const FORM_NAMESPACE = 'form:';
@@ -12,7 +12,7 @@ function getForm<T>(key: string): Cacheable<T> | null {
 
 function saveForm(key: string, data: object) {
   const formKey = FORM_NAMESPACE + key;
-  set<object>(formKey, data, THREE_DAYS);
+  set<object>(formKey, data, DateTimeUtils.THREE_DAYS);
 }
 
 function clearForm(key: string) {

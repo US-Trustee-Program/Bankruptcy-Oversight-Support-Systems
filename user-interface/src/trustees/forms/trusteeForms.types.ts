@@ -9,23 +9,23 @@ import { VALID, validateObject, ValidationSpec, ValidatorFunction } from '@commo
 import V from '@common/cams/validators';
 
 export const ADDRESS_REQUIRED_ERROR_REASON = 'Address is required';
-export const ADDRESS_MAX_LENGTH_ERROR_REASON = 'Max length 40 characters';
-export const ZIP_CODE_ERROR_REASON = 'Must be 5 or 9 digits';
+const ADDRESS_MAX_LENGTH_ERROR_REASON = 'Max length 40 characters';
+const ZIP_CODE_ERROR_REASON = 'Must be 5 or 9 digits';
 export const PARTIAL_ADDRESS_ERROR_REASON =
   'You have entered a partial address. Please complete or clear the address fields.';
-export const TRUSTEE_NAME_REQUIRED_ERROR_REASON = 'Trustee name is required';
-export const TRUSTEE_NAME_MAX_LENGTH_ERROR_REASON = 'Max length 50 characters';
+const TRUSTEE_NAME_REQUIRED_ERROR_REASON = 'Trustee name is required';
+const TRUSTEE_NAME_MAX_LENGTH_ERROR_REASON = 'Max length 50 characters';
 export const CITY_REQUIRED_ERROR_REASON = 'City is required';
-export const CITY_MAX_LENGTH_ERROR_REASON = 'Max length 50 characters';
+const CITY_MAX_LENGTH_ERROR_REASON = 'Max length 50 characters';
 export const STATE_REQUIRED_ERROR_REASON = 'State is required';
 export const ZIP_CODE_REQUIRED_ERROR_REASON = 'ZIP Code is required';
-export const EMAIL_INVALID_ERROR_REASON = 'Must be a valid email address';
-export const EMAIL_MAX_LENGTH_ERROR_REASON = 'Max length 50 characters';
-export const PHONE_INVALID_ERROR_REASON = 'Must be a valid phone number';
-export const EXTENSION_INVALID_ERROR_REASON = 'Must be 1 to 6 digits';
-export const WEBSITE_INVALID_URL_ERROR_REASON = 'Website must be a valid URL';
-export const WEBSITE_MAX_LENGTH_ERROR_REASON = 'Max length 255 characters';
-export const PHONE_REQUIRED_WITH_EXTENSION_ERROR_REASON =
+const EMAIL_INVALID_ERROR_REASON = 'Must be a valid email address';
+const EMAIL_MAX_LENGTH_ERROR_REASON = 'Max length 50 characters';
+const PHONE_INVALID_ERROR_REASON = 'Must be a valid phone number';
+const EXTENSION_INVALID_ERROR_REASON = 'Must be 1 to 6 digits';
+const WEBSITE_INVALID_URL_ERROR_REASON = 'Website must be a valid URL';
+const WEBSITE_MAX_LENGTH_ERROR_REASON = 'Max length 255 characters';
+const PHONE_REQUIRED_WITH_EXTENSION_ERROR_REASON =
   'Phone number is required when extension is provided';
 
 export type TrusteeInternalFormData = {
