@@ -39,20 +39,20 @@ function source<T = unknown>(source?: string) {
   };
 }
 
-export type First = {
+type First = {
   accumulator: 'FIRST';
   as: Field;
   field: Field;
 };
 
-export type Count = {
+type Count = {
   accumulator: 'COUNT';
   as: Field;
 };
 
 export type Accumulator = Count | First;
 
-export type Match = ConditionOrConjunction<never> & {
+type Match = ConditionOrConjunction<never> & {
   stage: 'MATCH';
 };
 
@@ -95,7 +95,7 @@ export type FieldReference<T> = Field<T> & {
   source?: string;
 };
 
-export type QueryFieldReference<T> = FieldReference<T> & ConditionFunctions<T>;
+type QueryFieldReference<T> = FieldReference<T> & ConditionFunctions<T>;
 
 export type Join = {
   stage: 'JOIN';
@@ -104,7 +104,7 @@ export type Join = {
   alias: FieldReference<never>;
 };
 
-export type AdditionalField<T = never> = {
+type AdditionalField<T = never> = {
   fieldToAdd: FieldReference<never>;
   querySource: FieldReference<never>;
   query: ConditionOrConjunction<T>;
