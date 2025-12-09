@@ -1,6 +1,6 @@
 import { render, waitFor } from '@testing-library/react';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
-import * as reactRouter from 'react-router';
+import * as reactRouter from 'react-router-dom';
 import { CamsSession } from '@common/cams/session';
 import LocalStorage from '@/lib/utils/local-storage';
 import { LOGIN_BASE_PATH, LOGIN_PATHS } from './login-library';
