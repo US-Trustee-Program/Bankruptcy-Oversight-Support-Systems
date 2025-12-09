@@ -378,7 +378,7 @@ export const getListsGateway = (context: ApplicationContext): ListsRepository =>
   return repo;
 };
 
-export const Factory = {
+const Factory = {
   getAcmsGateway,
   getCasesGateway,
   getAssignmentRepository,

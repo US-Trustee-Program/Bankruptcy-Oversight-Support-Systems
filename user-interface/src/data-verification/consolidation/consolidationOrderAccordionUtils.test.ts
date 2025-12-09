@@ -3,7 +3,7 @@ import {
   getCaseId,
 } from '@/data-verification/consolidation/consolidationOrderAccordionUtils';
 import { CaseAssignment } from '@common/cams/assignments';
-import { MockData } from '@common/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { ConsolidationOrder } from '@common/cams/orders';
 import { FeatureFlagSet } from '@common/feature-flags';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';

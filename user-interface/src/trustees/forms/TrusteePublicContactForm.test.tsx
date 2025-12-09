@@ -343,7 +343,7 @@ describe('TrusteePublicContactForm Tests', () => {
   });
 
   test('should not call API when validation fails on submit (create)', async () => {
-    const api = UseApi2Module.useApi2();
+    const api = UseApi2Module.default();
     const mockPost = vi.fn();
     vi.spyOn(api, 'postTrustee').mockImplementation(mockPost as unknown as typeof api.postTrustee);
 
@@ -360,7 +360,7 @@ describe('TrusteePublicContactForm Tests', () => {
   });
 
   test('should call globalAlert.error when postTrustee rejects during create', async () => {
-    const api = UseApi2Module.useApi2();
+    const api = UseApi2Module.default();
     const error = new Error('create failed');
     vi.spyOn(api, 'postTrustee').mockRejectedValue(error);
 
@@ -389,9 +389,9 @@ describe('TrusteePublicContactForm Tests', () => {
   test('should call globalAlert.error when patchTrustee rejects during edit', async () => {
     const error = new Error('Network failure');
     const mockReject = vi.fn().mockRejectedValue(error);
-    vi.spyOn(UseApi2Module, 'useApi2').mockReturnValue({
+    vi.spyOn(UseApi2Module, 'default').mockReturnValue({
       patchTrustee: mockReject,
-    } as unknown as ReturnType<typeof UseApi2Module.useApi2>);
+    } as unknown as ReturnType<typeof UseApi2Module.default>);
 
     const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
 

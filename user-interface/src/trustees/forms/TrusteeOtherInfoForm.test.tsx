@@ -57,7 +57,7 @@ describe('TrusteeOtherInfoForm', () => {
     });
 
     // Get the API instance and spy on its methods
-    const api = UseApi2Module.useApi2();
+    const api = UseApi2Module.default();
     vi.spyOn(api, 'patchTrustee').mockImplementation(patchTrusteeSpy);
   });
 

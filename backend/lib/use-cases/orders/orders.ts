@@ -39,7 +39,7 @@ import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { createAuditRecord } from '../../../../common/src/cams/auditable';
 import { OrdersSearchPredicate } from '../../../../common/src/api/search';
 import { isNotFoundError } from '../../common-errors/not-found-error';
-import { Factory, getCasesGateway } from '../../factory';
+import Factory, { getCasesGateway } from '../../factory';
 
 const MODULE_NAME = 'ORDERS-USE-CASE';
 

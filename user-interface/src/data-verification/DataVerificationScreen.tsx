@@ -22,7 +22,7 @@ import useFeatureFlags, {
   TRANSFER_ORDERS_ENABLED,
 } from '../lib/hooks/UseFeatureFlags';
 import { sortByDate } from '@/lib/utils/datetime';
-import { useApi2 } from '@/lib/hooks/UseApi2';
+import useApi2 from '@/lib/hooks/UseApi2';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import { ResponseBody } from '@common/api/response';

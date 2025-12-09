@@ -1,5 +1,5 @@
 import { CaseAssignment } from '@common/cams/assignments';
-import { useApi2 } from '@/lib/hooks/UseApi2';
+import useApi2 from '@/lib/hooks/UseApi2';
 import { CaseSummary } from '@common/cams/cases';
 
 export function getCaseId(params: { court?: string; caseNumber?: string }) {

@@ -14,7 +14,7 @@ import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Butt
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { FromCaseSummary } from './FromCaseSummary';
-import { useApi2 } from '@/lib/hooks/UseApi2';
+import useApi2 from '@/lib/hooks/UseApi2';
 import './PendingTransferOrder.scss';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
 import SuggestedTransferCases, {

@@ -42,7 +42,7 @@ const NOT_FOUND = -1;
 type RawCaseIdAndMaxId = { caseId: string; maxTxId: number };
 type CaseIdRecord = { caseId: string };
 
-export class CasesDxtrGateway implements CasesInterface {
+class CasesDxtrGateway implements CasesInterface {
   async getCaseDetail(applicationContext: ApplicationContext, caseId: string): Promise<CaseDetail> {
     const caseSummary = await this.getCaseSummary(applicationContext, caseId);
     const bCase: CaseDetail = {

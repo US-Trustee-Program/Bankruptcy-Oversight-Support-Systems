@@ -1,7 +1,6 @@
-import { MockData } from '@common/cams/test-utilities/mock-data';
-import {
+import MockData from '@common/cams/test-utilities/mock-data';
+import LocalStorage, {
   LAST_INTERACTION_KEY,
-  LocalStorage,
   LOGIN_LOCAL_STORAGE_ACK_KEY,
   LOGIN_LOCAL_STORAGE_SESSION_KEY,
 } from './local-storage';
