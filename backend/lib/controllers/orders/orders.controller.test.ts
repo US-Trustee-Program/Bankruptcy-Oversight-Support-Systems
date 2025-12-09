@@ -12,7 +12,7 @@ import {
   TransferOrder,
   TransferOrderAction,
 } from '../../../../common/src/cams/orders';
-import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { sortDates } from '../../../../common/src/date-helper';
 import { OrdersController } from './orders.controller';
 import { CamsHttpResponseInit, commonHeaders } from '../../adapters/utils/http-response';

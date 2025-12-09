@@ -13,15 +13,15 @@ describe('Api2 cache enabled', () => {
     const apiModule = await import('./api');
     const api2Module = await import('./api2');
 
-    const isEnabledSpy = vi.spyOn(cacheModule.LocalCache, 'isCacheEnabled').mockReturnValue(true);
+    const isEnabledSpy = vi.spyOn(cacheModule.default, 'isCacheEnabled').mockReturnValue(true);
     const cacheGetSpy = vi
-      .spyOn(cacheModule.LocalCache, 'get')
+      .spyOn(cacheModule.default, 'get')
       .mockReturnValueOnce(null)
       .mockReturnValue({ expiresAfter: 1, value: { data: [] } });
-    const cacheSetSpy = vi.spyOn(cacheModule.LocalCache, 'set').mockResolvedValue(true);
+    const cacheSetSpy = vi.spyOn(cacheModule.default, 'set').mockResolvedValue(true);
     const fetchSpy = vi.spyOn(apiModule.default, 'get').mockResolvedValue({ data: [] });
 
-    await api2Module.Api2.getOffices();
+    await api2Module.default.getOffices();
 
     expect(isEnabledSpy).toHaveBeenCalledTimes(1);
     expect(cacheGetSpy).toHaveBeenCalledTimes(1);
@@ -31,7 +31,7 @@ describe('Api2 cache enabled', () => {
     fetchSpy.mockReset();
     cacheSetSpy.mockReset();
 
-    await api2Module.Api2.getOffices();
+    await api2Module.default.getOffices();
 
     expect(isEnabledSpy).toHaveBeenCalledTimes(2);
     expect(cacheGetSpy).toHaveBeenCalledTimes(2);
@@ -51,12 +51,12 @@ describe('Api2 cache disabled', () => {
     const apiModule = await import('./api');
     const api2Module = await import('./api2');
 
-    const isEnabledSpy = vi.spyOn(cacheModule.LocalCache, 'isCacheEnabled').mockReturnValue(false);
-    const cacheGetSpy = vi.spyOn(cacheModule.LocalCache, 'get').mockReturnValue(null);
-    const cacheSetSpy = vi.spyOn(cacheModule.LocalCache, 'set').mockResolvedValue(true);
+    const isEnabledSpy = vi.spyOn(cacheModule.default, 'isCacheEnabled').mockReturnValue(false);
+    const cacheGetSpy = vi.spyOn(cacheModule.default, 'get').mockReturnValue(null);
+    const cacheSetSpy = vi.spyOn(cacheModule.default, 'set').mockResolvedValue(true);
     const fetchSpy = vi.spyOn(apiModule.default, 'get').mockResolvedValue({ data: [] });
 
-    await api2Module.Api2.getOffices();
+    await api2Module.default.getOffices();
 
     expect(isEnabledSpy).toHaveBeenCalled();
     expect(cacheGetSpy).not.toHaveBeenCalled();

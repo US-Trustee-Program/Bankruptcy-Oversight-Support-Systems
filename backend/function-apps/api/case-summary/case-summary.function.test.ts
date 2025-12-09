@@ -1,6 +1,6 @@
 import { InvocationContext } from '@azure/functions';
 import { CaseDetail } from '../../../../common/src/cams/cases';
-import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { NotFoundError } from '../../../lib/common-errors/not-found-error';
 import handler from './case-summary.function';
 import ContextCreator from '../../azure/application-context-creator';

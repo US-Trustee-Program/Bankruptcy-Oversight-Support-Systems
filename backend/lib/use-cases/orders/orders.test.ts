@@ -25,7 +25,7 @@ import {
   TransferTo,
 } from '../../../../common/src/cams/events';
 import { CASE_SUMMARIES } from '../../testing/mock-data/case-summaries.mock';
-import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { CasesLocalGateway } from '../../adapters/gateways/cases.local.gateway';
 import { CaseSummary } from '../../../../common/src/cams/cases';
 import { ApplicationContext } from '../../adapters/types/basic';

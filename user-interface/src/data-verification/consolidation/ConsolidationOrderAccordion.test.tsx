@@ -6,7 +6,7 @@ import {
   ConsolidationOrderAccordion,
   ConsolidationOrderAccordionProps,
 } from '@/data-verification/consolidation/ConsolidationOrderAccordion';
-import { MockData } from '@common/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { formatDate } from '@/lib/utils/datetime';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';

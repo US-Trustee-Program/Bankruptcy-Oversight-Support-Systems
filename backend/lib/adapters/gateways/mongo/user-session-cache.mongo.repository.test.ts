@@ -5,7 +5,7 @@ import {
   CachedCamsSession,
   UserSessionCacheMongoRepository,
 } from './user-session-cache.mongo.repository';
-import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { CamsJwtClaims } from '../../../../../common/src/cams/jwt';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import { closeDeferred } from '../../../deferrable/defer-close';

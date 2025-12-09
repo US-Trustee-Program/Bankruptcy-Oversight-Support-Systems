@@ -7,7 +7,7 @@ import { CamsError } from '../../../common-errors/cams-error';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import { CASE_SUMMARIES } from '../../../testing/mock-data/case-summaries.mock';
 import { DEBTORS } from '../../../testing/mock-data/debtors.mock';
-import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { LegacyTrustee } from '../../../../../common/src/cams/parties';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { TransactionIdRangeForDate } from '../../../use-cases/cases/cases.interface';

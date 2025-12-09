@@ -43,7 +43,7 @@ export const SUPERUSER = {
 
 addSuperUserOffices(SUPERUSER.user);
 
-export const MockUsers: MockUser[] = [
+const MockUsers: MockUser[] = [
   {
     sub: 'jpearson@fake.com',
     label: 'Jessica Pearson - Trial Attorney (Manhattan)',

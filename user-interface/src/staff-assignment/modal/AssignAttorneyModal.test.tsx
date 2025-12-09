@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { AssignAttorneyModalProps, AssignAttorneyModalRef } from './assignAttorneyModal.types';
 import React, { act } from 'react';
-import { MockData } from '@common/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { CaseBasics } from '@common/cams/cases';
 import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
 import { AttorneyUser } from '@common/cams/users';

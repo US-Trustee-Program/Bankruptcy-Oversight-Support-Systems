@@ -978,7 +978,7 @@ function getPhoneNumber(): string {
   return `${faker.string.numeric(3)}-${faker.string.numeric(3)}-${faker.string.numeric(4)}`;
 }
 
-export const MockData = {
+const MockData = {
   addAction,
   randomId,
   randomCaseId,

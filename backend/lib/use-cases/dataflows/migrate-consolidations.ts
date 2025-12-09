@@ -48,7 +48,7 @@ export type AcmsTransformationResult = {
   error?: CamsError;
 };
 
-export class AcmsOrders {
+class AcmsOrders {
   public async getLeadCaseIds(
     context: ApplicationContext,
     predicate: AcmsPredicate,

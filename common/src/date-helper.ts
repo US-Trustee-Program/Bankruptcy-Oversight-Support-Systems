@@ -36,7 +36,7 @@ export function nowInSeconds() {
   return Math.floor(Date.now() / 1000);
 }
 
-export const DateHelper = {
+const DateHelper = {
   getIsoDate,
   getTodaysIsoDate,
   isValidDateString,

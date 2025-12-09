@@ -72,7 +72,7 @@ function useStateActions(initialState: State): {
   return { state, actions };
 }
 
-export const StaffAssignmentRowInternal = {
+const StaffAssignmentRowInternal = {
   useStateActions,
 };
 

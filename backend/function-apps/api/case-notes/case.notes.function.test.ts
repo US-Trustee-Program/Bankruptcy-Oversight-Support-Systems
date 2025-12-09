@@ -1,7 +1,7 @@
 import handler from './case.notes.function';
 import { CaseNotesController } from '../../../lib/controllers/case-notes/case.notes.controller';
 import ContextCreator from '../../azure/application-context-creator';
-import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { CamsHttpRequest } from '../../../lib/adapters/types/http';
 import { InvocationContext } from '@azure/functions';
 import {

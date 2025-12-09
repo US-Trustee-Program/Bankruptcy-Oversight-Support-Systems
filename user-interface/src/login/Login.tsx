@@ -11,8 +11,8 @@ import {
 import { BadConfiguration } from './BadConfiguration';
 import { OktaLogin } from './providers/okta/OktaLogin';
 import { OktaProvider } from './providers/okta/OktaProvider';
-import { LocalStorage } from '@/lib/utils/local-storage';
-import { MockData } from '@common/cams/test-utilities/mock-data';
+import LocalStorage from '@/lib/utils/local-storage';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { addApiAfterHook } from '@/lib/models/api';
 import { http401Hook } from './http401-logout';
 import { initializeInactiveLogout } from './inactive-logout';

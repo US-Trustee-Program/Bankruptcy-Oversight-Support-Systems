@@ -15,7 +15,7 @@ describe('LocalCache', () => {
       CAMS_DISABLE_LOCAL_CACHE: 'false',
     };
     const reloaded = await import('./local-cache');
-    expect(reloaded.LocalCache.isCacheEnabled()).toBeTruthy();
+    expect(reloaded.default.isCacheEnabled()).toBeTruthy();
   });
 
   afterEach(() => {
@@ -175,7 +175,7 @@ describe('LocalCache', () => {
     vi.stubGlobal('localStorage', null);
     vi.resetModules();
     const reloaded = await import('./local-cache');
-    expect(reloaded.LocalCache.isCacheEnabled()).toBeFalsy();
+    expect(reloaded.default.isCacheEnabled()).toBeFalsy();
   });
 
   test('should check if cache is disabled if the CAMS_DISABLE_LOCAL_CACHE config is true', async () => {
@@ -186,14 +186,14 @@ describe('LocalCache', () => {
       CAMS_DISABLE_LOCAL_CACHE: 'true',
     };
     const reloaded = await import('./local-cache');
-    expect(reloaded.LocalCache.isCacheEnabled()).toBeFalsy();
+    expect(reloaded.default.isCacheEnabled()).toBeFalsy();
   });
 
   test('should check if cache is enabled', async () => {
     vi.resetModules();
     vi.stubGlobal('localStorage', mockLocalStorage);
     const reloaded = await import('./local-cache');
-    expect(reloaded.LocalCache.isCacheEnabled()).toBeTruthy();
+    expect(reloaded.default.isCacheEnabled()).toBeTruthy();
   });
 
   test('should return false if localStorage is disabled', () => {

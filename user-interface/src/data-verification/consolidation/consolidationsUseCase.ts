@@ -8,7 +8,7 @@ import {
 import { ConsolidationStore } from '@/data-verification/consolidation/consolidationStore';
 import { ConsolidationControls } from '@/data-verification/consolidation/consolidationControls';
 import { getCaseId } from './consolidationOrderAccordionUtils';
-import { useApi2 } from '@/lib/hooks/UseApi2';
+import useApi2 from '@/lib/hooks/UseApi2';
 import { CaseSummary } from '@common/cams/cases';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { ConfirmActionResults } from './ConsolidationOrderModal';
