@@ -1,4 +1,4 @@
-import { KNOWN_GOOD_TRANSFER_TO_CASE_ID } from '../../../backend/function-apps/dataflows/e2e/data-generation-utils';
+import DataGenerationUtils from '../../../backend/function-apps/dataflows/e2e/data-generation-utils';
 import { expect } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
 import { logout } from './login/login-helpers';
@@ -10,7 +10,7 @@ test.describe('Case Notes', () => {
   let noteNotesAlert;
 
   test.beforeEach(async ({ page }) => {
-    await page.goto(`/case-detail/${KNOWN_GOOD_TRANSFER_TO_CASE_ID}/notes`);
+    await page.goto(`/case-detail/${DataGenerationUtils.KNOWN_GOOD_TRANSFER_TO_CASE_ID}/notes`);
 
     addCaseNoteButton = page.getByTestId('open-modal-button_case-note-add-button');
     await expect(addCaseNoteButton).toBeVisible();
