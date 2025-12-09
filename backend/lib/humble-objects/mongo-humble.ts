@@ -86,7 +86,7 @@ export class DocumentClient implements Closable {
   }
 }
 
-export type Filter = {
+type Filter = {
   [key: string]: unknown;
 };
 

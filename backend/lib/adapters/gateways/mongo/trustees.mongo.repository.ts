@@ -23,7 +23,7 @@ export type TrusteeDocument = Trustee & {
   documentType: 'TRUSTEE';
 };
 
-export type TrusteeOversightAssignmentDocument = TrusteeOversightAssignment & {
+type TrusteeOversightAssignmentDocument = TrusteeOversightAssignment & {
   documentType: 'TRUSTEE_OVERSIGHT_ASSIGNMENT';
 };
 
