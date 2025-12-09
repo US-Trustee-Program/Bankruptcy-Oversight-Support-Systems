@@ -24,16 +24,6 @@
       "groupSlug": "pin-dependencies"
     },
     {
-      "description": "Block updates for pinned packages",
-      "matchPackageNames": ["@types/mssql"],
-      "enabled": false
-    },
-    {
-      "description": "Lock mssql to major version 10",
-      "matchPackageNames": ["mssql"],
-      "allowedVersions": "10.x"
-    },
-    {
       "description": "Lock pa11y-ci to major version 3",
       "matchPackageNames": ["pa11y-ci"],
       "allowedVersions": "3.x"
