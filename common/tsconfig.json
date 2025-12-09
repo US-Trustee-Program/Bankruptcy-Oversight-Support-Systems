@@ -9,10 +9,12 @@
     "resolveJsonModule": true,
     "declaration": true,
     "composite": true,
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true
   },
   "exclude": [
     "node_modules",
+    "../node_modules",
     "dist"
   ]
 }
