@@ -9,7 +9,7 @@ vi.mock('@/lib/utils/local-storage', () => ({
     setAck: vi.fn(),
   },
 }));
-import { LocalStorage } from '@/lib/utils/local-storage';
+import LocalStorage from '@/lib/utils/local-storage';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
 const mockGetAck = LocalStorage.getAck as MockedFunction<typeof LocalStorage.getAck>;

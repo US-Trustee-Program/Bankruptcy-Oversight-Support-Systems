@@ -130,7 +130,8 @@ describe('Login', () => {
 
     vi.resetModules();
     await import('@/login/login-library');
-    const { LocalStorage } = await import('@/lib/utils/local-storage');
+    const localStorageModule = await import('@/lib/utils/local-storage');
+    const LocalStorage = localStorageModule.default;
     const { Login } = await import('./Login');
     const sessionModule = await import('./Session');
 

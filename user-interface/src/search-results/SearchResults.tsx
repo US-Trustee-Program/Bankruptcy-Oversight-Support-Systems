@@ -7,7 +7,7 @@ import Alert, { AlertDetails, AlertProps, UswdsAlertStyle } from '@/lib/componen
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { Pagination } from '@/lib/components/uswds/Pagination';
-import { useApi2 } from '@/lib/hooks/UseApi2';
+import useApi2 from '@/lib/hooks/UseApi2';
 import { ResponseBody } from '@common/api/response';
 import './SearchResults.scss';
 import { Pagination as PaginationModel } from '@common/api/pagination';
