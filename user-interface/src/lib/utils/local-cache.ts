@@ -131,7 +131,7 @@ function removeNamespace(suffix: string = '') {
   }
 }
 
-export const LocalCache = {
+const LocalCache = {
   get,
   getByKeyPattern,
   set,

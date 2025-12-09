@@ -8,7 +8,7 @@ import * as badConfigurationModule from './BadConfiguration';
 import * as libraryModule from '@/login/login-library';
 import { LoginContinue } from './LoginContinue';
 import { Session } from './Session';
-import { MockData } from '@common/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 
 describe('LoginContinue', () => {

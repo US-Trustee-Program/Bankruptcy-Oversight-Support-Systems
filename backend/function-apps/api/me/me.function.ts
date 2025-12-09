@@ -5,7 +5,7 @@ import { MeController } from '../../../lib/controllers/me/me.controller';
 
 const MODULE_NAME = 'ME-FUNCTION';
 
-export async function handler(
+async function handler(
   request: HttpRequest,
   invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {

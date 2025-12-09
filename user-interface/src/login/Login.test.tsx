@@ -10,7 +10,7 @@ import * as mockLoginModule from './providers/mock/MockLogin';
 import * as sessionModule from './Session';
 import { Login } from './Login';
 import LocalStorage from '@/lib/utils/local-storage';
-import { MockData } from '@common/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { randomUUID } from 'node:crypto';
 import { CamsSession } from '@common/cams/session';
 import { JSX } from 'react/jsx-runtime';

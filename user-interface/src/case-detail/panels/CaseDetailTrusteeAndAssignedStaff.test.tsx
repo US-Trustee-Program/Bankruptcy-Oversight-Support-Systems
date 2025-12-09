@@ -5,7 +5,7 @@ import CaseDetailTrusteeAndAssignedStaff, {
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { CaseDetail } from '@common/cams/cases';
-import { MockData } from '@common/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import Actions from '@common/cams/actions';
 import { AttorneyUser, CamsUser } from '@common/cams/users';
 import { MockAttorneys } from '@common/cams/test-utilities/attorneys.mock';

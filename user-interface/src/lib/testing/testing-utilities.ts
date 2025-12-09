@@ -157,7 +157,7 @@ function setupUserEvent(): CamsUserEvent {
   return camsUserEvent;
 }
 
-export const TestingUtilities = {
+const TestingUtilities = {
   nonReactWaitFor,
   setUser,
   setUserWithRoles,
