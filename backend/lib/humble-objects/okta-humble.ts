@@ -63,11 +63,11 @@ export type ListGroupUsersRequest = {
   limit?: number;
 };
 
-export type UserRequest = {
+type UserRequest = {
   userId: string;
 };
 
-export type UserGroupsRequest = {
+type UserGroupsRequest = {
   userId: string;
 };
 

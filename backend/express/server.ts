@@ -1,6 +1,5 @@
 import * as dotenv from 'dotenv';
 import express, { Application, Request, Response, NextFunction } from 'express';
-import { applicationContextCreator } from './application-context-creator';
 import ContextCreator from './application-context-creator';
 import { sendCamsResponse, errorHandler } from './adapters';
 import { ApplicationContext } from '../lib/adapters/types/basic';
@@ -59,7 +58,7 @@ export function createApp(): Application {
 
   app.get('/api/me', async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const context = await applicationContextCreator(req);
+      const context = await ContextCreator.applicationContextCreator(req);
       const controller = new MeController();
       const camsResponse = await controller.handleRequest(context);
       sendCamsResponse(res, camsResponse);
@@ -71,7 +70,7 @@ export function createApp(): Application {
 
   const handleCases = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const context = await applicationContextCreator(req);
+      const context = await ContextCreator.applicationContextCreator(req);
       const controller = new CasesController(context);
       const camsResponse = await controller.handleRequest(context);
       sendCamsResponse(res, camsResponse);
@@ -88,7 +87,7 @@ export function createApp(): Application {
 
   const handleCaseAssignments = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const context = await applicationContextCreator(req);
+      const context = await ContextCreator.applicationContextCreator(req);
       const controller = new CaseAssignmentController(context);
       const camsResponse = await controller.handleRequest(context);
       sendCamsResponse(res, camsResponse);
@@ -109,7 +108,7 @@ export function createApp(): Application {
 
   const handleCaseDocket = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const context = await applicationContextCreator(req);
+      const context = await ContextCreator.applicationContextCreator(req);
       const controller = new CaseDocketController(context);
       const camsResponse = await controller.handleRequest(context);
       sendCamsResponse(res, camsResponse);
@@ -123,7 +122,7 @@ export function createApp(): Application {
 
   const handleCaseHistory = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const context = await applicationContextCreator(req);
+      const context = await ContextCreator.applicationContextCreator(req);
       const controller = new CaseHistoryController();
       const camsResponse = await controller.handleRequest(context);
       sendCamsResponse(res, camsResponse);
@@ -137,7 +136,7 @@ export function createApp(): Application {
 
   const handleCaseNotes = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const context = await applicationContextCreator(req);
+      const context = await ContextCreator.applicationContextCreator(req);
       const controller = new CaseNotesController(context);
       const camsResponse = await controller.handleRequest(
         context as ApplicationContext<CaseNoteInput>,
@@ -164,7 +163,7 @@ export function createApp(): Application {
 
   const handleCaseSummary = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const context = await applicationContextCreator(req);
+      const context = await ContextCreator.applicationContextCreator(req);
       const controller = new CaseSummaryController(context);
       const camsResponse = await controller.handleRequest(context);
       sendCamsResponse(res, camsResponse);
@@ -179,7 +178,7 @@ export function createApp(): Application {
 
   const handleCaseAssociated = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const context = await applicationContextCreator(req);
+      const context = await ContextCreator.applicationContextCreator(req);
       const controller = new CaseAssociatedController();
       const camsResponse = await controller.handleRequest(context);
       sendCamsResponse(res, camsResponse);
@@ -194,7 +193,7 @@ export function createApp(): Application {
 
   const handleOrders = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const context = await applicationContextCreator(req);
+      const context = await ContextCreator.applicationContextCreator(req);
       const controller = new OrdersController(context);
       const camsResponse = await controller.handleRequest(context);
       sendCamsResponse(res, camsResponse);
@@ -211,7 +210,7 @@ export function createApp(): Application {
 
   const handleOrdersSuggestions = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const context = await applicationContextCreator(req);
+      const context = await ContextCreator.applicationContextCreator(req);
       const controller = new OrdersController(context);
       const camsResponse = await controller.handleRequest(context);
       sendCamsResponse(res, camsResponse);
@@ -226,7 +225,7 @@ export function createApp(): Application {
 
   const handleConsolidations = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const context = await applicationContextCreator(req);
+      const context = await ContextCreator.applicationContextCreator(req);
       const controller = new OrdersController(context);
       const camsResponse = await controller.handleRequest(context);
       sendCamsResponse(res, camsResponse);
@@ -240,7 +239,7 @@ export function createApp(): Application {
 
   const handleTrustees = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const context = await applicationContextCreator(req);
+      const context = await ContextCreator.applicationContextCreator(req);
       const controller = new TrusteesController(context);
       const camsResponse = await controller.handleRequest(context);
       sendCamsResponse(res, camsResponse);
@@ -259,7 +258,7 @@ export function createApp(): Application {
 
   const handleTrusteeAssignments = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const context = await applicationContextCreator(req);
+      const context = await ContextCreator.applicationContextCreator(req);
       const controller = new TrusteeAssignmentsController(context);
       const camsResponse = await controller.handleRequest(context);
       sendCamsResponse(res, camsResponse);
@@ -274,7 +273,7 @@ export function createApp(): Application {
 
   const handleTrusteeHistory = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const context = await applicationContextCreator(req);
+      const context = await ContextCreator.applicationContextCreator(req);
       const controller = new TrusteeHistoryController(context);
       const camsResponse = await controller.handleRequest(context);
       sendCamsResponse(res, camsResponse);
@@ -289,7 +288,7 @@ export function createApp(): Application {
 
   const handleOffices = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const context = await applicationContextCreator(req);
+      const context = await ContextCreator.applicationContextCreator(req);
       const controller = new OfficesController();
       const camsResponse = await controller.handleRequest(context);
       sendCamsResponse(res, camsResponse);
@@ -305,7 +304,7 @@ export function createApp(): Application {
 
   const handleCourts = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const context = await applicationContextCreator(req);
+      const context = await ContextCreator.applicationContextCreator(req);
       const controller = new CourtsController();
       const camsResponse = await controller.handleRequest(context);
       sendCamsResponse(res, camsResponse);
@@ -319,7 +318,7 @@ export function createApp(): Application {
 
   const handleStaff = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const context = await applicationContextCreator(req);
+      const context = await ContextCreator.applicationContextCreator(req);
       const controller = new StaffController(context);
       const camsResponse = await controller.handleRequest(context);
       sendCamsResponse(res, camsResponse);
@@ -333,7 +332,7 @@ export function createApp(): Application {
 
   const handleLists = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const context = await applicationContextCreator(req);
+      const context = await ContextCreator.applicationContextCreator(req);
       const controller = new ListsController();
       const camsResponse = await controller.handleRequest(context);
       sendCamsResponse(res, camsResponse);
@@ -352,7 +351,7 @@ export function createApp(): Application {
 
   const handlePrivilegedIdentityAdmin = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const context = await applicationContextCreator(req);
+      const context = await ContextCreator.applicationContextCreator(req);
       const controller = new PrivilegedIdentityAdminController();
       const camsResponse = await controller.handleRequest(context);
       sendCamsResponse(res, camsResponse);
@@ -393,7 +392,7 @@ export function createApp(): Application {
 
   app.get('/api/healthcheck', async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const context = await applicationContextCreator(req);
+      const context = await ContextCreator.applicationContextCreator(req);
 
       const healthcheckCosmosDbClient = new HealthcheckCosmosDb(context);
       const healthCheckSqlDbClient = new HealthcheckSqlDb(context);
