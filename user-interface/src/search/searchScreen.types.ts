@@ -9,9 +9,8 @@ export type SearchScreenFormData = {
   excludeClosedCases?: boolean;
 };
 
-export const CASE_NUMBER_INVALID_ERROR_REASON = 'Must be 7 digits';
-export const AT_LEAST_ONE_SEARCH_CRITERION_ERROR_REASON =
-  'Please enter at least one search criterion';
+const CASE_NUMBER_INVALID_ERROR_REASON = 'Must be 7 digits';
+const AT_LEAST_ONE_SEARCH_CRITERION_ERROR_REASON = 'Please enter at least one search criterion';
 
 const caseNumber = [V.matches(CASE_NUMBER_REGEX, CASE_NUMBER_INVALID_ERROR_REASON)];
 
