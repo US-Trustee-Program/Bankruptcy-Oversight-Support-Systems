@@ -15,13 +15,14 @@ export default defineConfig({
       scss: {
         loadPaths: [
           fileURLToPath(new URL('./node_modules/', import.meta.url)),
-          fileURLToPath(new URL('./node_modules/@uswds/uswds/packages/', import.meta.url)),
+          fileURLToPath(new URL('../node_modules/', import.meta.url)),
+          fileURLToPath(new URL('../node_modules/@uswds/uswds/packages/', import.meta.url)),
           fileURLToPath(new URL('./src/', import.meta.url)),
         ],
       },
     },
   },
-  assetsInclude: ['node_modules/@uswds/uswds/dist/img'],
+  assetsInclude: ['../node_modules/@uswds/uswds/dist/img'],
   plugins: [
     react({
       babel: {
@@ -31,11 +32,11 @@ export default defineConfig({
     viteStaticCopy({
       targets: [
         {
-          src: './node_modules/@uswds/uswds/dist/fonts/*',
+          src: '../node_modules/@uswds/uswds/dist/fonts/*',
           dest: 'assets/fonts',
         },
         {
-          src: './node_modules/@uswds/uswds/dist/img/*',
+          src: '../node_modules/@uswds/uswds/dist/img/*',
           dest: 'assets/styles/img',
         },
       ],
