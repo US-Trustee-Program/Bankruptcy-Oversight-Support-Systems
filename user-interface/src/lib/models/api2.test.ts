@@ -319,9 +319,9 @@ describe('_Api2 functions', async () => {
     vi.spyOn(api.default, 'delete').mockRejectedValue(error);
     await expect(api2.default.getOversightStaff()).rejects.toThrow(error);
     await expect(api2.default.patchTransferOrderApproval({})).rejects.toThrow(error);
-    await expect(api2.default.patchTransferOrderRejection({ reason: 'some-string' })).rejects.toThrow(
-      error,
-    );
+    await expect(
+      api2.default.patchTransferOrderRejection({ reason: 'some-string' }),
+    ).rejects.toThrow(error);
     await expect(api2.default.searchCases({})).rejects.toThrow(error);
     await expect(api2.default.deletePrivilegedIdentityUser('userId')).rejects.toThrow(error);
     await expect(api2.default.getTrustees()).rejects.toThrow(error);
