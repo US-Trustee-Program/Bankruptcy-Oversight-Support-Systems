@@ -364,9 +364,8 @@ export default function SearchScreen() {
                 id="search-submit"
                 className="search-submit-button"
                 uswdsStyle={UswdsButtonStyle.Default}
-                type="button"
+                type="submit"
                 ref={submitButtonRef}
-                onClick={performSearch}
                 disabled={!currentValidation.isValid}
               >
                 Search
