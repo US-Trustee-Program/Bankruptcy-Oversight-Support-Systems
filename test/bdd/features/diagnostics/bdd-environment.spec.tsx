@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { waitFor } from '@testing-library/react';
 import { renderApp } from '../../helpers/render-with-context';
 import { initializeTestServer, cleanupTestServer } from '../../helpers/api-server';
 import { TestSessions } from '../../fixtures/auth.fixtures';
 import { clearAllRepositorySpies, spyOnMeEndpoint } from '../../helpers/repository-spies';
+import LocalStorage from "@/lib/utils/local-storage.ts";
 
 // Mock database drivers (same as functional tests)
 import '../../helpers/driver-mocks';
@@ -96,9 +97,6 @@ describe('BDD Environment Diagnostics', () => {
     console.log('  - issuer:', session.issuer);
     console.log('  - expires:', session.expires);
     console.log('  - user.id:', session.user.id);
-
-    // Import LocalStorage to check what's stored
-    const { LocalStorage } = await import('@/lib/utils/local-storage');
 
     renderApp({
       initialRoute: '/',
@@ -198,7 +196,6 @@ describe('BDD Environment Diagnostics', () => {
 
     // Import login-library functions
     const { getAuthIssuer } = await import('@/login/login-library');
-    const { LocalStorage } = await import('@/lib/utils/local-storage');
 
     // Step 1: Verify configuration
     const issuer = getAuthIssuer();
