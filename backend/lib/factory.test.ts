@@ -92,7 +92,7 @@ describe('Factory function-apps', () => {
         .default;
 
       MockUserGroupGateway = (await import('./testing/mock-gateways/mock-user-group-gateway'))
-        .MockUserGroupGateway;
+        .default;
 
       StaffMongoRepository = (await import('./adapters/gateways/mongo/staff.mongo.repository'))
         .StaffMongoRepository;
