@@ -13,8 +13,8 @@ const COLLECTION_NAME = 'consolidations';
 const { and, orderBy } = QueryBuilder;
 
 export default class ConsolidationOrdersMongoRepository<
-    T extends ConsolidationOrder = ConsolidationOrder,
-  >
+  T extends ConsolidationOrder = ConsolidationOrder,
+>
   extends BaseMongoRepository
   implements ConsolidationOrdersRepository<T>
 {

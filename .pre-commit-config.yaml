@@ -13,6 +13,7 @@ repos:
       - id: eslint
         files: \.[jt]sx?$ # *.js, *.jsx, *.ts and *.tsx
         types: [file]
+        args: ['--quiet']
         additional_dependencies:
           - eslint@9.39.1
           - eslint-config-prettier@10.1.8
@@ -28,7 +29,7 @@ repos:
           - '@typescript-eslint/eslint-plugin@8.48.0'
           - '@typescript-eslint/parser@8.48.0'
           - '@vitest/eslint-plugin@1.4.2'
-          - prettier@3.6.2
+          - prettier@3.7.1
           - react@19.2.0
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.5.0
