@@ -9,7 +9,7 @@
 echo "Clean installing root."
 npm ci
 
-PROJECTS=("backend" "common" "dev-tools" "test/e2e" "user-interface")
+PROJECTS=("backend" "common" "dev-tools" "test/e2e" "test/bdd" "user-interface")
 
 for str in "${PROJECTS[@]}"; do
   pushd "${str}" || exit
