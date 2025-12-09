@@ -26,7 +26,7 @@ function getLogger(requestId: string): LoggerImpl {
   return new LoggerImpl(requestId, logWrapper);
 }
 
-export function expressToCamsHttpRequest<B = unknown>(request: Request): CamsHttpRequest<B> {
+function expressToCamsHttpRequest<B = unknown>(request: Request): CamsHttpRequest<B> {
   try {
     const headers: CamsDict = {};
     Object.keys(request.headers).forEach((key) => {
@@ -107,7 +107,7 @@ async function getApplicationContextSession(context: ApplicationContext) {
   return sessionUseCase.lookup(context, accessToken);
 }
 
-export async function applicationContextCreator<B = unknown>(
+async function applicationContextCreator<B = unknown>(
   request: Request,
 ): Promise<ApplicationContext<B>> {
   const requestId = getRequestId();
@@ -123,6 +123,7 @@ export async function applicationContextCreator<B = unknown>(
 
 const ContextCreator = {
   applicationContextCreator,
+  expressToCamsHttpRequest,
   getApplicationContext,
   getLogger,
 };
