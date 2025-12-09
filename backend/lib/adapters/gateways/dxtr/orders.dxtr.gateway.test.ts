@@ -1,11 +1,10 @@
 import * as database from '../../utils/database';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { QueryResults } from '../../types/database';
-import {
+import DxtrOrdersGateway, {
   DxtrOrder,
   DxtrOrderDocketEntry,
   DxtrOrderDocument,
-  DxtrOrdersGateway,
   dxtrOrdersSorter,
 } from './orders.dxtr.gateway';
 import { ApplicationContext } from '../../types/basic';

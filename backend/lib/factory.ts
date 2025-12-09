@@ -30,7 +30,7 @@ import {
   UserSessionCacheRepository,
   UsersRepository,
 } from './use-cases/gateways.types';
-import { DxtrOrdersGateway } from './adapters/gateways/dxtr/orders.dxtr.gateway';
+import DxtrOrdersGateway from './adapters/gateways/dxtr/orders.dxtr.gateway';
 import { OfficesGateway } from './use-cases/offices/offices.types';
 import OfficesDxtrGateway from './adapters/gateways/dxtr/offices.dxtr.gateway';
 import {

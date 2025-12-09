@@ -57,8 +57,7 @@ describe('Factory function-apps', () => {
       MockOrdersGateway = (await import('./testing/mock-gateways/mock.orders.gateway'))
         .MockOrdersGateway;
 
-      DxtrOrdersGateway = (await import('./adapters/gateways/dxtr/orders.dxtr.gateway'))
-        .DxtrOrdersGateway;
+      DxtrOrdersGateway = (await import('./adapters/gateways/dxtr/orders.dxtr.gateway')).default;
 
       CaseDocketUseCase = (await import('./use-cases/case-docket/case-docket')).CaseDocketUseCase;
 
