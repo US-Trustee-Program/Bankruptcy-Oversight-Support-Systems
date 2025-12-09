@@ -4,7 +4,7 @@ import { AuthorizedUseOnly } from './AuthorizedUseOnly';
 
 // Mock the LocalStorage module
 vi.mock('@/lib/utils/local-storage', () => ({
-  LocalStorage: {
+  default: {
     getAck: vi.fn(),
     setAck: vi.fn(),
   },
