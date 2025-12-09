@@ -71,10 +71,6 @@
     "use-bash": "npm config set script-shell=/bin/bash",
     "coverage:ci": "npm run use-bash && npm run build-common && npm test -- --coverage",
     "dependency-cruiser-graphical": "current_time=$(date +'%Y-%m-%d_%H%M') && npx depcruise --output-type dot --do-not-follow '^node_modules($|/)' function-apps/api/staff case-assignments case-docket case-history case-summary cases consolidations healthcheck offices orders orders-manual-sync orders-sync ../lib | dot -T svg > ../../docs/architecture/dependency-cruiser/functions/dependency-graph_api_${current_time}.svg",
-    "dependency-cruiser:ci": "npx depcruise --output-type err-long function-apps/api/staff case-assignments case-docket case-history case-summary cases consolidations healthcheck offices orders orders-manual-sync orders-sync ../lib ",
-    "itest:okta-group-api": "CAMS_LOGIN_PROVIDER=okta npx ts-node lib/testing/isolated-integration/test-okta-group-api.ts",
-    "itest:acms-migration": "CAMS_LOGIN_PROVIDER=mock npx ts-node lib/testing/isolated-integration/test-acms-migration.ts",
-    "itest:export-office-csv": "CAMS_LOGIN_PROVIDER=okta npx ts-node lib/testing/isolated-integration/export-office-csv.ts",
-    "itest:dxtr-tx-bisect": "npx ts-node lib/testing/isolated-integration/test-dxtr-tx-bisect.ts"
+    "dependency-cruiser:ci": "npx depcruise --output-type err-long function-apps/api/staff case-assignments case-docket case-history case-summary cases consolidations healthcheck offices orders orders-manual-sync orders-sync ../lib "
   }
 }
