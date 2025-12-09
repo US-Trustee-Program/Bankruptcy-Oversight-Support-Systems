@@ -23,5 +23,6 @@
     }
   },
   "references": [{ "path": "../common" }],
-  "include": ["src", "vite.config.mts"]
+  "include": ["src", "vite.config.mts"],
+  "exclude": ["node_modules", "../node_modules"]
 }

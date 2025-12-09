@@ -4,6 +4,13 @@
   "private": true,
   "license": "CC0 v1.0",
   "description": "Bankruptcy Oversight Support System - Parent Project",
+  "workspaces": [
+    "common",
+    "backend",
+    "user-interface",
+    "test/bdd",
+    "test/e2e"
+  ],
   "scripts": {
     "clean:all": "./ops/scripts/utility/clean-all-projects.sh",
     "ci:all": "./ops/scripts/utility/clean-install-all-projects.sh",
@@ -14,6 +21,9 @@
     "build:frontend": "pushd user-interface && npm run build && popd",
     "build:common": "pushd common && npm run build && popd",
     "clean-and-build": "npm run clean:all && npm run ci:all && npm run build",
+    "test:bdd": "npm run test --workspace=test/bdd",
+    "test:bdd:watch": "npm run test:watch --workspace=test/bdd",
+    "test:bdd:coverage": "npm run coverage --workspace=test/bdd",
     "lint": "eslint . -c eslint.config.mjs",
     "knip": "knip",
     "knip:fix": "knip --fix"

@@ -6,7 +6,7 @@
 #   From the root directory, run the following command:
 #     ./ops/scripts/utility/clean-all-projects.sh
 
-PROJECTS=("backend" "backend/function-apps/api" "backend/function-apps/dataflows" "common" "dev-tools" "test/e2e" "user-interface")
+PROJECTS=("backend" "backend/function-apps/api" "backend/function-apps/dataflows" "common" "dev-tools" "test/e2e" "test/bdd" "user-interface")
 
 for str in "${PROJECTS[@]}"; do
   pushd "${str}" || exit
