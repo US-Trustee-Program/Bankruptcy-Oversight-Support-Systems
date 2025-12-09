@@ -7,7 +7,7 @@
     "@faker-js/faker": "9.9.0",
     "@types/express": "5.0.6",
     "@types/jest": "30.0.0",
-    "@types/mssql": "9.1.5",
+    "@types/mssql": "9.1.8",
     "@types/node": "24.10.1",
     "azure-function-context-mock": "0.0.7",
     "dependency-cruiser": "17.3.2",
@@ -37,11 +37,10 @@
     "express": "5.2.1",
     "jsonwebtoken": "9.0.2",
     "mongodb": "7.0.0",
-    "mssql": "10.0.4"
+    "mssql": "12.1.1"
   },
   "overrides": {
-    "@azure/identity": "$@azure/identity",
-    "@types/tedious": "4.0.14"
+    "@azure/identity": "$@azure/identity"
   },
   "scripts": {
     "all": "npm run clean:all && npm ci && npm run build:all && npm run pack:all",
