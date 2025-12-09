@@ -3380,6 +3380,3 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
 ];
 
 export const MANHATTAN = COURT_DIVISIONS.find((office) => office.courtDivisionCode === '081');
-export const WHITE_PLAINS = COURT_DIVISIONS.find((office) => office.courtDivisionCode === '087');
-export const BUFFALO = COURT_DIVISIONS.find((office) => office.courtDivisionCode === '091');
-export const DELAWARE = COURT_DIVISIONS.find((office) => office.courtDivisionCode === '111');
