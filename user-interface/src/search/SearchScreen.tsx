@@ -6,7 +6,7 @@ import {
   DEFAULT_SEARCH_OFFSET,
 } from '@common/api/search';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
-import { useApi2 } from '@/lib/hooks/UseApi2';
+import useApi2 from '@/lib/hooks/UseApi2';
 import { ComboBoxRef, InputRef } from '@/lib/type-declarations/input-fields';
 import { courtSorter, getDivisionComboOptions } from '@/data-verification/dataVerificationHelper';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';

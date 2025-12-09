@@ -10,7 +10,7 @@ import CaseNumberInput from '@/lib/components/CaseNumberInput';
 import { TransferOrder } from '@common/cams/orders';
 import { ComboBoxRef, InputRef } from '@/lib/type-declarations/input-fields';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
-import { useApi2 } from '@/lib/hooks/UseApi2';
+import useApi2 from '@/lib/hooks/UseApi2';
 
 export type SuggestedTransferCasesImperative = {
   cancel: () => void;

@@ -23,7 +23,7 @@ import { AssignAttorneyModalCallbackProps } from '@/staff-assignment/modal/assig
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
-import { useApi2 } from '@/lib/hooks/UseApi2';
+import useApi2 from '@/lib/hooks/UseApi2';
 import { CaseAssignment } from '@common/cams/assignments';
 import { CamsRole } from '@common/cams/roles';
 import CaseNotes, { CaseNotesRef } from './panels/case-notes/CaseNotes';

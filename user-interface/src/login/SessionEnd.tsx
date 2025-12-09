@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Button from '@/lib/components/uswds/Button';
-import { LocalStorage } from '@/lib/utils/local-storage';
+import LocalStorage from '@/lib/utils/local-storage';
 import { LOGIN_PATH, LOGOUT_SESSION_END_PATH } from './login-library';
 import { BlankPage } from './BlankPage';
 import { broadcastLogout } from '@/login/broadcast-logout';

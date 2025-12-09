@@ -7,7 +7,7 @@ import { CaseSummary } from '@common/cams/cases';
 import CaseTable from './CaseTable';
 import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { TransferOrder } from '@common/cams/orders';
-import { useApi2 } from '@/lib/hooks/UseApi2';
+import useApi2 from '@/lib/hooks/UseApi2';
 
 export type FromCaseSummaryProps = {
   order: TransferOrder;
