@@ -17,7 +17,7 @@ type SessionState = {
   errorMessage: string | null;
 };
 
-export function useStateAndActions() {
+function useStateAndActions() {
   const { appInsights } = getAppInsights();
   const [state, setState] = useState<SessionState>({
     isLoaded: false,

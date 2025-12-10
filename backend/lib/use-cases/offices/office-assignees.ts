@@ -8,7 +8,7 @@ import { getCaseIdParts } from '../../../../common/src/cams/cases';
 
 const MODULE_NAME = 'OFFICE-ASSIGNEES-USE-CASE';
 
-export type CaseClosedEvent = {
+type CaseClosedEvent = {
   caseId: string;
 };
 
