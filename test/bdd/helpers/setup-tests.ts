@@ -1,6 +1,7 @@
 import { beforeAll, afterEach, afterAll } from 'vitest';
 import '@testing-library/jest-dom';
 import { cleanup } from '@testing-library/react';
+import { MOCK_ISSUER } from '../../../backend/lib/testing/mock-gateways/mock-oauth2-constants';
 
 // Setup window configuration for React app AT MODULE LOAD TIME
 // This must happen BEFORE any UI modules are imported
@@ -12,7 +13,7 @@ window.CAMS_CONFIGURATION = {
   // Format: key1=value1|key2=value2|key3=value3
   // Issuer must match the test JWT issuer and have a path for audience derivation
   CAMS_LOGIN_PROVIDER_CONFIG:
-    'issuer=http://test/oauth2/default|clientId=test-client-id|redirectUri=http://localhost:4000/login-callback',
+    `issuer=${MOCK_ISSUER}|clientId=test-client-id|redirectUri=http://localhost:4000/login-callback`,
   CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING: '',
   CAMS_DISABLE_LOCAL_CACHE: 'true', // Disable caching in tests
   // Point API client to test server on port 4000
@@ -29,7 +30,7 @@ beforeAll(() => {
   process.env.CAMS_LOGIN_PROVIDER = 'okta'; // Use okta authentication to match frontend
   // Okta configuration for backend authentication (issuer for JWT validation)
   // Must match frontend issuer and include path for audience derivation
-  process.env.CAMS_LOGIN_PROVIDER_CONFIG = 'issuer=http://test/oauth2/default';
+  process.env.CAMS_LOGIN_PROVIDER_CONFIG = `issuer=${MOCK_ISSUER}`;
   // Okta configuration for user group gateway (clientId, privateKey, etc.)
   // Using minimal test values - these will be mocked at the gateway layer
   process.env.CAMS_USER_GROUP_GATEWAY_CONFIG =
