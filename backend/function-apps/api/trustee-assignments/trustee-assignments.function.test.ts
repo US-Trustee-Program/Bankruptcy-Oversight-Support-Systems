@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { InvocationContext } from '@azure/functions';
 import handler from './trustee-assignments.function';
 import ContextCreator from '../../azure/application-context-creator';
@@ -13,9 +14,9 @@ describe('TrusteeAssignments Function', () => {
   let context: InvocationContext;
 
   beforeEach(() => {
-    jest
-      .spyOn(ContextCreator, 'getApplicationContextSession')
-      .mockResolvedValue(MockData.getTrusteeAdminSession());
+    vi.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
+      MockData.getTrusteeAdminSession(),
+    );
     context = new InvocationContext({
       logHandler: () => {},
       invocationId: 'id',
@@ -23,7 +24,7 @@ describe('TrusteeAssignments Function', () => {
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should handle successful GET request for trustee assignments', async () => {
@@ -42,12 +43,12 @@ describe('TrusteeAssignments Function', () => {
     });
 
     const mockController = {
-      handleRequest: jest.fn().mockResolvedValue(camsHttpResponse),
+      handleRequest: vi.fn().mockResolvedValue(camsHttpResponse),
     };
 
-    jest
-      .spyOn(TrusteeAssignmentsController.prototype, 'handleRequest')
-      .mockImplementation(mockController.handleRequest);
+    vi.spyOn(TrusteeAssignmentsController.prototype, 'handleRequest').mockImplementation(
+      mockController.handleRequest,
+    );
 
     const result = await handler(req, context);
 
@@ -64,7 +65,7 @@ describe('TrusteeAssignments Function', () => {
     const error = new Error('Test error');
     const { azureHttpResponse } = buildTestResponseError(error);
 
-    jest.spyOn(TrusteeAssignmentsController.prototype, 'handleRequest').mockRejectedValue(error);
+    vi.spyOn(TrusteeAssignmentsController.prototype, 'handleRequest').mockRejectedValue(error);
 
     const result = await handler(req, context);
 

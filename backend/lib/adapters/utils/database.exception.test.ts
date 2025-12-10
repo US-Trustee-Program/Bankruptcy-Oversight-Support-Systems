@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { executeQuery } from './database';
 import { QueryResults, IDbConfig } from '../types/database';
 import { ConnectionError, MSSQLError, RequestError } from 'mssql';
@@ -12,25 +13,25 @@ var requestError = new RequestError('');
 // eslint-disable-next-line no-var
 var mssqlError = new MSSQLError('');
 
-const mockClose = jest.fn();
-const mockQuery = jest.fn();
-const mockRequest = jest.fn().mockImplementation(() => ({
-  input: jest.fn(),
+const mockClose = vi.fn();
+const mockQuery = vi.fn();
+const mockRequest = vi.fn().mockImplementation(() => ({
+  input: vi.fn(),
   query: mockQuery,
 }));
-const mockConnect = jest.fn().mockImplementation(
+const mockConnect = vi.fn().mockImplementation(
   (): Promise<unknown> =>
     Promise.resolve({
       request: mockRequest,
       close: mockClose,
     }),
 );
-jest.mock('mssql', () => {
+vi.mock('mssql', () => {
   return {
-    ConnectionError: jest.fn().mockReturnValue(connectionError),
-    RequestError: jest.fn().mockReturnValue(requestError),
-    MSSQLError: jest.fn().mockReturnValue(mssqlError),
-    ConnectionPool: jest.fn().mockImplementation(() => {
+    ConnectionError: vi.fn().mockReturnValue(connectionError),
+    RequestError: vi.fn().mockReturnValue(requestError),
+    MSSQLError: vi.fn().mockReturnValue(mssqlError),
+    ConnectionPool: vi.fn().mockImplementation(() => {
       return {
         connect: mockConnect,
       };
@@ -40,7 +41,7 @@ jest.mock('mssql', () => {
 
 describe('Tests database client exceptions', () => {
   beforeEach(() => {
-    jest.resetModules();
+    vi.resetModules();
   });
 
   test('should handle known mssql MSSQLError exceptions', async () => {

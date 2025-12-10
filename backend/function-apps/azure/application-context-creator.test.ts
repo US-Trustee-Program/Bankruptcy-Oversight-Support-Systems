@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import MockData from '../../../common/src/cams/test-utilities/mock-data';
 import { ApplicationContext } from '../../lib/adapters/types/basic';
 import * as FeatureFlags from '../../lib/adapters/utils/feature-flag';
@@ -13,7 +14,7 @@ describe('Application Context Creator', () => {
   describe('applicationContextCreator', () => {
     test('should create an application context', async () => {
       const invocationContext = createMockAzureFunctionContext();
-      const featureFlagsSpy = jest.spyOn(FeatureFlags, 'getFeatureFlags');
+      const featureFlagsSpy = vi.spyOn(FeatureFlags, 'getFeatureFlags');
       const request = createMockAzureFunctionRequest();
       const context = await ContextCreator.applicationContextCreator({
         invocationContext,
@@ -125,7 +126,7 @@ describe('Application Context Creator', () => {
       const request = await azureToCamsHttpRequest(createMockAzureFunctionRequest());
       const mockContext = await createMockApplicationContext();
       mockContext.request = request;
-      const lookupSpy = jest
+      const lookupSpy = vi
         .spyOn(MockUserSessionUseCase.prototype, 'lookup')
         .mockResolvedValue(MockData.getCamsSession());
       await ContextCreator.getApplicationContextSession(mockContext);

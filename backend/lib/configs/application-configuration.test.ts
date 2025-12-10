@@ -1,10 +1,11 @@
+import { vi } from 'vitest';
 import { ApplicationConfiguration } from './application-configuration';
 
 describe('Testing that database configuration is loaded correctly based on environment variables', () => {
   const originalEnv = { ...process.env };
 
   beforeEach(() => {
-    jest.resetModules();
+    vi.resetModules();
     process.env = {};
   });
 

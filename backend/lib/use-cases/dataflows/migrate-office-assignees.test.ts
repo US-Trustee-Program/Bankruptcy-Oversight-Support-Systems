@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import MigrateOfficeAssigneesUseCase from './migrate-office-assignees';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
@@ -21,21 +22,21 @@ describe('office-assignees use case tests', () => {
     const assignments = cases.map((bCase) => {
       return MockData.getAttorneyAssignment({ caseId: bCase.caseId });
     });
-    const assignmentsSpy = jest
+    const assignmentsSpy = vi
       .spyOn(MockMongoRepository.prototype, 'getAllActiveAssignments')
       .mockResolvedValue(assignments);
 
-    jest
-      .spyOn(MockOfficesGateway.prototype, 'getOffices')
-      .mockResolvedValue(MOCKED_USTP_OFFICES_ARRAY);
+    vi.spyOn(MockOfficesGateway.prototype, 'getOffices').mockResolvedValue(
+      MOCKED_USTP_OFFICES_ARRAY,
+    );
 
-    const caseSpy = jest
+    const caseSpy = vi
       .spyOn(MockMongoRepository.prototype, 'getSyncedCase')
       .mockImplementation((caseId: string) =>
         Promise.resolve(cases.find((bCase) => bCase.caseId === caseId)),
       );
 
-    const createSpy = jest.spyOn(MockMongoRepository.prototype, 'create').mockResolvedValue({});
+    const createSpy = vi.spyOn(MockMongoRepository.prototype, 'create').mockResolvedValue({});
 
     const context: ApplicationContext = await createMockApplicationContext();
     await MigrateOfficeAssigneesUseCase.migrateAssignments(context);
@@ -61,15 +62,15 @@ describe('office-assignees use case tests', () => {
     // Add an assignment for a non-existent case
     assignments.push(MockData.getAttorneyAssignment({ caseId: 'non-existent-case' }));
 
-    jest
-      .spyOn(MockMongoRepository.prototype, 'getAllActiveAssignments')
-      .mockResolvedValue(assignments);
+    vi.spyOn(MockMongoRepository.prototype, 'getAllActiveAssignments').mockResolvedValue(
+      assignments,
+    );
 
-    jest
-      .spyOn(MockOfficesGateway.prototype, 'getOffices')
-      .mockResolvedValue(MOCKED_USTP_OFFICES_ARRAY);
+    vi.spyOn(MockOfficesGateway.prototype, 'getOffices').mockResolvedValue(
+      MOCKED_USTP_OFFICES_ARRAY,
+    );
 
-    const caseSpy = jest
+    const caseSpy = vi
       .spyOn(MockMongoRepository.prototype, 'getSyncedCase')
       .mockImplementation((caseId: string) => {
         const foundCase = cases.find((bCase) => bCase.caseId === caseId);
@@ -79,7 +80,7 @@ describe('office-assignees use case tests', () => {
         return Promise.resolve(foundCase);
       });
 
-    const createSpy = jest.spyOn(MockMongoRepository.prototype, 'create').mockResolvedValue({});
+    const createSpy = vi.spyOn(MockMongoRepository.prototype, 'create').mockResolvedValue({});
 
     const context: ApplicationContext = await createMockApplicationContext();
     await MigrateOfficeAssigneesUseCase.migrateAssignments(context);
@@ -102,21 +103,19 @@ describe('office-assignees use case tests', () => {
       return MockData.getAttorneyAssignment({ caseId: bCase.caseId });
     });
 
-    jest
-      .spyOn(MockMongoRepository.prototype, 'getAllActiveAssignments')
-      .mockResolvedValue(assignments);
+    vi.spyOn(MockMongoRepository.prototype, 'getAllActiveAssignments').mockResolvedValue(
+      assignments,
+    );
 
-    jest
-      .spyOn(MockOfficesGateway.prototype, 'getOffices')
-      .mockResolvedValue(MOCKED_USTP_OFFICES_ARRAY);
+    vi.spyOn(MockOfficesGateway.prototype, 'getOffices').mockResolvedValue(
+      MOCKED_USTP_OFFICES_ARRAY,
+    );
 
-    jest
-      .spyOn(MockMongoRepository.prototype, 'getSyncedCase')
-      .mockImplementation((caseId: string) =>
-        Promise.resolve(cases.find((bCase) => bCase.caseId === caseId)),
-      );
+    vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockImplementation((caseId: string) =>
+      Promise.resolve(cases.find((bCase) => bCase.caseId === caseId)),
+    );
 
-    const createSpy = jest.spyOn(MockMongoRepository.prototype, 'create').mockImplementation(() => {
+    const createSpy = vi.spyOn(MockMongoRepository.prototype, 'create').mockImplementation(() => {
       throw new Error('Failed to create office assignee');
     });
 

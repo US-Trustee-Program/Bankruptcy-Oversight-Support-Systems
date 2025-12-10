@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { CamsError } from '../../../lib/common-errors/cams-error';
 import handler from './courts.function';
 import {
@@ -20,7 +21,7 @@ describe('Courts Function tests', () => {
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should set successful response', async () => {
@@ -32,7 +33,7 @@ describe('Courts Function tests', () => {
       data: bodySuccess,
     });
 
-    jest.spyOn(CourtsController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
+    vi.spyOn(CourtsController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
 
     const response = await handler(request, context);
 
@@ -45,7 +46,7 @@ describe('Courts Function tests', () => {
     });
 
     const { azureHttpResponse, loggerCamsErrorSpy } = buildTestResponseError(error);
-    jest.spyOn(CourtsController.prototype, 'handleRequest').mockRejectedValue(error);
+    vi.spyOn(CourtsController.prototype, 'handleRequest').mockRejectedValue(error);
 
     const response = await handler(request, context);
 

@@ -15,9 +15,9 @@ describe('Privileged identity admin Function tests', () => {
       method: 'GET',
     });
     const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess({ data: {} });
-    jest
-      .spyOn(PrivilegedIdentityAdminController.prototype, 'handleRequest')
-      .mockResolvedValue(camsHttpResponse);
+    vi.spyOn(PrivilegedIdentityAdminController.prototype, 'handleRequest').mockResolvedValue(
+      camsHttpResponse,
+    );
     const response = await handler(request, context);
     expect(response).toEqual(azureHttpResponse);
   });
@@ -28,9 +28,7 @@ describe('Privileged identity admin Function tests', () => {
     });
     const error = new Error('some error');
     const { azureHttpResponse } = buildTestResponseError(error);
-    jest
-      .spyOn(PrivilegedIdentityAdminController.prototype, 'handleRequest')
-      .mockRejectedValue(error);
+    vi.spyOn(PrivilegedIdentityAdminController.prototype, 'handleRequest').mockRejectedValue(error);
     const response = await handler(request, context);
     expect(response).toEqual(azureHttpResponse);
   });

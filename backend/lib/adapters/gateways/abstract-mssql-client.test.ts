@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { QueryResults, IDbConfig } from '../types/database';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { AbstractMssqlClient } from './abstract-mssql-client';
@@ -10,24 +11,26 @@ type sqlConnect = {
   query: () => void;
 };
 
-jest.mock('mssql', () => {
+vi.mock('mssql', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('mssql')>();
   return {
-    ConnectionPool: jest.fn().mockImplementation(() => {
+    ...actual,
+    ConnectionPool: vi.fn().mockImplementation(() => {
       return {
-        connect: jest.fn().mockImplementation(
+        connect: vi.fn().mockImplementation(
           (): Promise<sqlConnect> =>
             Promise.resolve({
-              request: jest.fn().mockImplementation(() => ({
-                input: jest.fn(),
-                query: jest
+              request: vi.fn().mockImplementation(() => ({
+                input: vi.fn(),
+                query: vi
                   .fn()
                   .mockImplementation(
                     (): Promise<IResult<string>> =>
                       Promise.resolve({ recordset: 'test string' } as unknown as IResult<string>),
                   ),
               })),
-              close: jest.fn(),
-              query: jest
+              close: vi.fn(),
+              query: vi
                 .fn()
                 .mockImplementation(
                   (): Promise<string> =>
@@ -35,9 +38,9 @@ jest.mock('mssql', () => {
                 ),
             }),
         ),
-        request: jest.fn().mockImplementation(() => ({
-          input: jest.fn(),
-          query: jest
+        request: vi.fn().mockImplementation(() => ({
+          input: vi.fn(),
+          query: vi
             .fn()
             .mockImplementation(
               (): Promise<IResult<string>> =>

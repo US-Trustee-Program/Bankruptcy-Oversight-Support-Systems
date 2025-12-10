@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { UserGroupDocument, UserGroupsMongoRepository } from './user-groups.mongo.repository';
 import {
   createMockApplicationContext,
@@ -26,7 +27,7 @@ describe('UserGroupsMongoRepository', () => {
 
   afterEach(async () => {
     await closeDeferred(context);
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
     repo.release();
   });
 
@@ -72,7 +73,7 @@ describe('UserGroupsMongoRepository', () => {
     test('should not close client when reference count is still positive', () => {
       const instance1 = UserGroupsMongoRepository.getInstance(context);
       const _instance2 = UserGroupsMongoRepository.getInstance(context);
-      const closeSpy = jest.spyOn(instance1['client'], 'close').mockResolvedValue();
+      const closeSpy = vi.spyOn(instance1['client'], 'close').mockResolvedValue();
 
       UserGroupsMongoRepository.dropInstance();
 
@@ -85,7 +86,7 @@ describe('UserGroupsMongoRepository', () => {
 
   describe('release', () => {
     test('should call dropInstance', () => {
-      const dropInstanceSpy = jest.spyOn(UserGroupsMongoRepository, 'dropInstance');
+      const dropInstanceSpy = vi.spyOn(UserGroupsMongoRepository, 'dropInstance');
       repo.release();
       expect(dropInstanceSpy).toHaveBeenCalled();
     });
@@ -108,7 +109,7 @@ describe('UserGroupsMongoRepository', () => {
         },
       ];
 
-      const bulkReplaceSpy = jest
+      const bulkReplaceSpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'bulkReplace')
         .mockResolvedValue({
           id: 'bulk-result-id',
@@ -158,7 +159,7 @@ describe('UserGroupsMongoRepository', () => {
         },
       ];
 
-      jest.spyOn(MongoCollectionAdapter.prototype, 'bulkReplace').mockResolvedValue({
+      vi.spyOn(MongoCollectionAdapter.prototype, 'bulkReplace').mockResolvedValue({
         id: 'bulk-result-id',
         insertedCount: 0,
         matchedCount: 0,
@@ -169,7 +170,7 @@ describe('UserGroupsMongoRepository', () => {
         insertedIds: {},
       });
 
-      const loggerSpy = jest.spyOn(context.logger, 'info');
+      const loggerSpy = vi.spyOn(context.logger, 'info');
 
       await repo.upsertUserGroupsBatch(context, userGroups);
 
@@ -180,8 +181,8 @@ describe('UserGroupsMongoRepository', () => {
     });
 
     test('should return early when user groups array is empty', async () => {
-      const bulkReplaceSpy = jest.spyOn(MongoCollectionAdapter.prototype, 'bulkReplace');
-      const loggerSpy = jest.spyOn(context.logger, 'info');
+      const bulkReplaceSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'bulkReplace');
+      const loggerSpy = vi.spyOn(context.logger, 'info');
 
       await repo.upsertUserGroupsBatch(context, []);
 
@@ -202,7 +203,7 @@ describe('UserGroupsMongoRepository', () => {
       ];
 
       const dbError = new Error('Bulk replace operation failed');
-      jest.spyOn(MongoCollectionAdapter.prototype, 'bulkReplace').mockRejectedValue(dbError);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'bulkReplace').mockRejectedValue(dbError);
 
       await expect(repo.upsertUserGroupsBatch(context, userGroups)).rejects.toThrow(CamsError);
       await expect(repo.upsertUserGroupsBatch(context, userGroups)).rejects.toMatchObject({
@@ -230,7 +231,7 @@ describe('UserGroupsMongoRepository', () => {
         },
       ];
 
-      const bulkReplaceSpy = jest
+      const bulkReplaceSpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'bulkReplace')
         .mockResolvedValue({
           id: 'bulk-result-id',

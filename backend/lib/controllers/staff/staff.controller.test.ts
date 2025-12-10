@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import StaffUseCase from '../../use-cases/staff/staff';
@@ -20,7 +21,7 @@ describe('Staff Controller Tests', () => {
       ...MockData.buildArray(MockData.getAuditorUser, 2),
     ];
 
-    jest.spyOn(StaffUseCase.prototype, 'getOversightStaff').mockResolvedValue(staffList);
+    vi.spyOn(StaffUseCase.prototype, 'getOversightStaff').mockResolvedValue(staffList);
     const response = await controller.handleRequest(context);
     expect(response).toEqual(
       expect.objectContaining({
@@ -35,13 +36,13 @@ describe('Staff Controller Tests', () => {
     const error = new NotFoundError('STAFF-USE-CASE', {
       message: 'Staff not found.',
     });
-    jest.spyOn(StaffUseCase.prototype, 'getOversightStaff').mockRejectedValue(error);
+    vi.spyOn(StaffUseCase.prototype, 'getOversightStaff').mockRejectedValue(error);
     await expect(controller.handleRequest(context)).rejects.toThrow(error);
   });
 
   test('should throw any other error', async () => {
     const error = new Error('TestError');
-    jest.spyOn(StaffUseCase.prototype, 'getOversightStaff').mockRejectedValue(error);
+    vi.spyOn(StaffUseCase.prototype, 'getOversightStaff').mockRejectedValue(error);
     await expect(controller.handleRequest(context)).rejects.toThrow('Unknown Error');
   });
 });

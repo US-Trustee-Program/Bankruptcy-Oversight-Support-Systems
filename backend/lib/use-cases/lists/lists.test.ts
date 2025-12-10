@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import ListsUseCase from './lists';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
@@ -14,7 +15,7 @@ import { Creatable } from '../../../../common/src/cams/creatable';
 describe('ListsUseCase tests', () => {
   let useCase: ListsUseCase;
   let context: ApplicationContext;
-  let mockListsRepository: jest.Mocked<ListsRepository>;
+  let mockListsRepository: vi.Mocked<ListsRepository>;
 
   beforeEach(async () => {
     useCase = new ListsUseCase();
@@ -22,21 +23,21 @@ describe('ListsUseCase tests', () => {
 
     // Create mock repository
     mockListsRepository = {
-      getBankruptcySoftwareList: jest.fn(),
-      getBankList: jest.fn(),
-      postBankruptcySoftware: jest.fn(),
-      postBank: jest.fn(),
-      deleteBankruptcySoftware: jest.fn(),
-      deleteBank: jest.fn(),
-      release: jest.fn(),
+      getBankruptcySoftwareList: vi.fn(),
+      getBankList: vi.fn(),
+      postBankruptcySoftware: vi.fn(),
+      postBank: vi.fn(),
+      deleteBankruptcySoftware: vi.fn(),
+      deleteBank: vi.fn(),
+      release: vi.fn(),
     };
 
     // Mock the factory to return our mock repository
-    jest.spyOn(Factory, 'getListsGateway').mockReturnValue(mockListsRepository);
+    vi.spyOn(Factory, 'getListsGateway').mockReturnValue(mockListsRepository);
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('getBankruptcySoftwareList', () => {

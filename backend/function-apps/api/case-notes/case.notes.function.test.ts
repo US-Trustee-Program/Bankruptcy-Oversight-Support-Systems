@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import handler from './case.notes.function';
 import { CaseNotesController } from '../../../lib/controllers/case-notes/case.notes.controller';
 import ContextCreator from '../../azure/application-context-creator';
@@ -24,9 +25,9 @@ describe('Case Notes Function Tests', () => {
   let context;
 
   beforeEach(() => {
-    jest
-      .spyOn(ContextCreator, 'getApplicationContextSession')
-      .mockResolvedValue(MockData.getManhattanAssignmentManagerSession());
+    vi.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
+      MockData.getManhattanAssignmentManagerSession(),
+    );
     context = new InvocationContext({
       logHandler: () => {},
       invocationId: 'id',
@@ -34,7 +35,7 @@ describe('Case Notes Function Tests', () => {
   });
 
   afterEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
   });
 
   test('should handle successful response', async () => {
@@ -45,7 +46,7 @@ describe('Case Notes Function Tests', () => {
       },
       data: undefined,
     });
-    jest.spyOn(CaseNotesController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
+    vi.spyOn(CaseNotesController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
 
     const response = await handler(req, context);
     expect(response).toEqual(azureHttpResponse);
@@ -55,7 +56,7 @@ describe('Case Notes Function Tests', () => {
     const req = createMockAzureFunctionRequest();
     const error = new Error('Some unknown error');
     const { azureHttpResponse } = buildTestResponseError(error);
-    jest.spyOn(CaseNotesController.prototype, 'handleRequest').mockRejectedValue(error);
+    vi.spyOn(CaseNotesController.prototype, 'handleRequest').mockRejectedValue(error);
     const response = await handler(req, context);
     expect(response).toEqual(azureHttpResponse);
   });
@@ -63,7 +64,7 @@ describe('Case Notes Function Tests', () => {
   test('Should return an HTTP Error if the controller throws an error during note creation', async () => {
     const error = new UnknownError('MOCK_CASE_NOTE_MODULE');
     const { azureHttpResponse } = buildTestResponseError(error);
-    jest.spyOn(CaseNotesController.prototype, 'handleRequest').mockRejectedValue(error);
+    vi.spyOn(CaseNotesController.prototype, 'handleRequest').mockRejectedValue(error);
 
     const requestOverride = {
       body: {
@@ -102,7 +103,7 @@ describe('Case Notes Function Tests', () => {
       },
       data: expectedNoteList,
     });
-    jest.spyOn(CaseNotesController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
+    vi.spyOn(CaseNotesController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
 
     const response = await handler(request, context);
     expect(response).toEqual(azureHttpResponse);

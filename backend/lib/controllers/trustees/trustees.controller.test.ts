@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteesController } from './trustees.controller';
 import { TrusteesUseCase } from '../../use-cases/trustees/trustees';
@@ -10,12 +11,12 @@ import { NotFoundError } from '../../common-errors/not-found-error';
 import { BadRequestError } from '../../common-errors/bad-request';
 
 // Mock the use case
-jest.mock('../../use-cases/trustees/trustees');
+vi.mock('../../use-cases/trustees/trustees');
 
 describe('TrusteesController', () => {
   let context: ApplicationContext;
   let controller: TrusteesController;
-  let mockUseCase: jest.Mocked<TrusteesUseCase>;
+  let mockUseCase: vi.Mocked<TrusteesUseCase>;
 
   const mockUser: CamsUserReference = {
     id: 'user123',
@@ -60,13 +61,13 @@ describe('TrusteesController', () => {
     }
 
     mockUseCase = {
-      createTrustee: jest.fn(),
-      listTrustees: jest.fn(),
-      getTrustee: jest.fn(),
-      updateTrustee: jest.fn(),
-    } as unknown as jest.Mocked<TrusteesUseCase>;
+      createTrustee: vi.fn(),
+      listTrustees: vi.fn(),
+      getTrustee: vi.fn(),
+      updateTrustee: vi.fn(),
+    } as unknown as vi.Mocked<TrusteesUseCase>;
 
-    (TrusteesUseCase as jest.MockedClass<typeof TrusteesUseCase>).mockImplementation(
+    (TrusteesUseCase as vi.MockedClass<typeof TrusteesUseCase>).mockImplementation(
       () => mockUseCase,
     );
 
@@ -77,7 +78,7 @@ describe('TrusteesController', () => {
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('Feature flag protection', () => {

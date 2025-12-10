@@ -1,17 +1,18 @@
+import { vi } from 'vitest';
 import { getFeatureFlags } from './feature-flag';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 
-jest.mock('@launchdarkly/node-server-sdk', () => {
+vi.mock('@launchdarkly/node-server-sdk', () => {
   return {
-    init: jest.fn().mockReturnValue({
-      allFlagsState: jest.fn().mockReturnValue({
-        allValues: jest.fn().mockReturnValue({
+    init: vi.fn().mockReturnValue({
+      allFlagsState: vi.fn().mockReturnValue({
+        allValues: vi.fn().mockReturnValue({
           'chapter-twelve-enabled': true,
         }),
       }),
-      flush: jest.fn(),
-      close: jest.fn(),
-      waitForInitialization: jest.fn(),
+      flush: vi.fn(),
+      close: vi.fn(),
+      waitForInitialization: vi.fn(),
     }),
   };
 });

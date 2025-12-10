@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { AdminUseCase } from '../../use-cases/admin/admin';
 import { PrivilegedIdentityAdminController } from './privileged-identity-admin.controller';
@@ -15,7 +16,7 @@ describe('Privileged identity admin controller tests', () => {
   });
 
   afterEach(async () => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should not perform operations when the feature flag is disabled', async () => {
@@ -55,9 +56,9 @@ describe('Privileged identity admin controller tests', () => {
     context.request.params.resourceId = 'groups';
     context.featureFlags['privileged-identity-management'] = true;
 
-    jest
-      .spyOn(AdminUseCase.prototype, 'getRoleAndOfficeGroupNames')
-      .mockResolvedValue(rolesAndOffices);
+    vi.spyOn(AdminUseCase.prototype, 'getRoleAndOfficeGroupNames').mockResolvedValue(
+      rolesAndOffices,
+    );
     const response = await controller.handleRequest(context);
     expect(response).toEqual({
       headers: expect.anything(),
@@ -74,7 +75,7 @@ describe('Privileged identity admin controller tests', () => {
     context.request.method = 'GET';
     context.featureFlags['privileged-identity-management'] = true;
 
-    jest.spyOn(AdminUseCase.prototype, 'getPrivilegedIdentityUsers').mockResolvedValue(users);
+    vi.spyOn(AdminUseCase.prototype, 'getPrivilegedIdentityUsers').mockResolvedValue(users);
     const response = await controller.handleRequest(context);
     expect(response).toEqual({
       headers: expect.anything(),
@@ -92,7 +93,7 @@ describe('Privileged identity admin controller tests', () => {
     context.request.params.resourceId = 'userId';
     context.featureFlags['privileged-identity-management'] = true;
 
-    jest.spyOn(AdminUseCase.prototype, 'getPrivilegedIdentityUser').mockResolvedValue(user);
+    vi.spyOn(AdminUseCase.prototype, 'getPrivilegedIdentityUser').mockResolvedValue(user);
     const response = await controller.handleRequest(context);
     expect(response).toEqual({ headers: expect.anything(), body: { data: user }, statusCode: 200 });
   });
@@ -108,7 +109,7 @@ describe('Privileged identity admin controller tests', () => {
     };
     context.featureFlags['privileged-identity-management'] = true;
 
-    jest.spyOn(AdminUseCase.prototype, 'elevatePrivilegedUser').mockResolvedValue();
+    vi.spyOn(AdminUseCase.prototype, 'elevatePrivilegedUser').mockResolvedValue();
     const response = await controller.handleRequest(context);
     expect(response).toEqual({ headers: expect.anything(), statusCode: 201 });
   });
@@ -124,7 +125,7 @@ describe('Privileged identity admin controller tests', () => {
     };
     context.featureFlags['privileged-identity-management'] = true;
 
-    jest.spyOn(AdminUseCase.prototype, 'deletePrivilegedIdentityUser').mockResolvedValue();
+    vi.spyOn(AdminUseCase.prototype, 'deletePrivilegedIdentityUser').mockResolvedValue();
     const response = await controller.handleRequest(context);
     expect(response).toEqual({ headers: expect.anything(), statusCode: 204 });
   });

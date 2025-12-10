@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { OfficesUseCase } from './offices';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
@@ -24,20 +25,20 @@ describe('offices use case tests', () => {
 
   beforeEach(async () => {
     applicationContext = await createMockApplicationContext();
-    jest.spyOn(MockUserGroupGateway.prototype, 'init').mockResolvedValue();
+    vi.spyOn(MockUserGroupGateway.prototype, 'init').mockResolvedValue();
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should return offices', async () => {
     const useCase = new OfficesUseCase();
 
-    jest.spyOn(factory, 'getOfficesGateway').mockImplementation(() => {
+    vi.spyOn(factory, 'getOfficesGateway').mockImplementation(() => {
       return {
-        getOfficeName: jest.fn(),
-        getOffices: jest.fn().mockResolvedValue(MOCKED_USTP_OFFICES_ARRAY),
+        getOfficeName: vi.fn(),
+        getOffices: vi.fn().mockResolvedValue(MOCKED_USTP_OFFICES_ARRAY),
       };
     });
 
@@ -49,10 +50,10 @@ describe('offices use case tests', () => {
   test('should return attorneys for office', async () => {
     const useCase = new OfficesUseCase();
     const mockAttorneys = [];
-    const repoSpy = jest
+    const repoSpy = vi
       .spyOn(MockMongoRepository.prototype, 'getOfficeAttorneys')
       .mockResolvedValue(mockAttorneys);
-    const attorneysSpy = jest.spyOn(StaffUseCase.prototype, 'getOversightStaff');
+    const attorneysSpy = vi.spyOn(StaffUseCase.prototype, 'getOversightStaff');
 
     const { officeCode } = MANHATTAN_OFFICE;
     const officeAttorneys = await useCase.getOfficeAttorneys(applicationContext, officeCode);
@@ -64,7 +65,7 @@ describe('offices use case tests', () => {
   test('should return assigned attorneys for office', async () => {
     const useCase = new OfficesUseCase();
     const attorneys = MockData.buildArray(MockData.getCamsUserReference, 5);
-    const repoSpy = jest
+    const repoSpy = vi
       .spyOn(MockMongoRepository.prototype, 'getDistinctAssigneesByOffice')
       .mockResolvedValue(attorneys);
 
@@ -85,18 +86,15 @@ describe('offices use case tests', () => {
     const attorneyUsers = [users[1], users[2], users[3]];
     const dataVerifierUsers = [users[3]];
     users[3].roles.push(CamsRole.DataVerifier);
-    jest
-      .spyOn(MockUserGroupGateway.prototype, 'getUserGroups')
-      .mockResolvedValue([
-        { id: 'one', name: 'group-a' },
-        { id: 'two', name: 'group-b' },
-        seattleGroup,
-        trialAttorneyGroup,
-        dataVerifierGroup,
-      ]);
-    jest
-      .spyOn(MockUserGroupGateway.prototype, 'getUserGroupUsers')
-      .mockImplementation(async (_context: ApplicationContext, group: CamsUserGroup) => {
+    vi.spyOn(MockUserGroupGateway.prototype, 'getUserGroups').mockResolvedValue([
+      { id: 'one', name: 'group-a' },
+      { id: 'two', name: 'group-b' },
+      seattleGroup,
+      trialAttorneyGroup,
+      dataVerifierGroup,
+    ]);
+    vi.spyOn(MockUserGroupGateway.prototype, 'getUserGroupUsers').mockImplementation(
+      async (_context: ApplicationContext, group: CamsUserGroup) => {
         if (group.name === 'USTP CAMS Region 18 Office Seattle') {
           return Promise.resolve(seattleUsers);
         } else if (group.name === 'USTP CAMS Trial Attorney') {
@@ -107,11 +105,11 @@ describe('offices use case tests', () => {
           // Return empty array for non-CAMS groups (for user-groups collection sync)
           return Promise.resolve([]);
         }
-      });
+      },
+    );
 
-    jest
-      .spyOn(UsersHelpers, 'getPrivilegedIdentityUser')
-      .mockImplementation(async (_context: ApplicationContext, userId: string) => {
+    vi.spyOn(UsersHelpers, 'getPrivilegedIdentityUser').mockImplementation(
+      async (_context: ApplicationContext, userId: string) => {
         const user = { id: userId, name: '', roles: [], offices: [] };
         users.forEach((staff) => {
           if (staff.id === userId) {
@@ -120,15 +118,16 @@ describe('offices use case tests', () => {
           }
         });
         return user;
-      });
-    const putSpy = jest
+      },
+    );
+    const putSpy = vi
       .spyOn(MockMongoRepository.prototype, 'putOfficeStaff')
       .mockResolvedValueOnce({ id: users[1].id, modifiedCount: 1, upsertedCount: 0 })
       .mockRejectedValueOnce(new Error('some unknown error'))
       .mockResolvedValue({ id: users[3].id, modifiedCount: 0, upsertedCount: 1 });
-    jest.spyOn(MockMongoRepository.prototype, 'upsertUserGroupsBatch').mockResolvedValue();
-    const stateRepoSpy = jest.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue('');
-    const logSpy = jest.spyOn(applicationContext.logger, 'info').mockImplementation(() => {});
+    vi.spyOn(MockMongoRepository.prototype, 'upsertUserGroupsBatch').mockResolvedValue();
+    const stateRepoSpy = vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue('');
+    const logSpy = vi.spyOn(applicationContext.logger, 'info').mockImplementation(() => {});
 
     const useCase = new OfficesUseCase();
     await useCase.syncOfficeStaff(applicationContext);
@@ -147,20 +146,18 @@ describe('offices use case tests', () => {
   test('should log only success when all users are synced successfully', async () => {
     const officeGroup: CamsUserGroup = { id: 'three', name: 'USTP CAMS Region 18 Office Seattle' };
     const users: Staff[] = MockData.buildArray(MockData.getAttorneyUser, 3);
-    jest.spyOn(MockUserGroupGateway.prototype, 'getUserGroups').mockResolvedValue([officeGroup]);
-    jest.spyOn(MockUserGroupGateway.prototype, 'getUserGroupUsers').mockResolvedValue(users);
-    jest
-      .spyOn(UsersHelpers, 'getPrivilegedIdentityUser')
-      .mockImplementation(async (_context, userId) => {
+    vi.spyOn(MockUserGroupGateway.prototype, 'getUserGroups').mockResolvedValue([officeGroup]);
+    vi.spyOn(MockUserGroupGateway.prototype, 'getUserGroupUsers').mockResolvedValue(users);
+    vi.spyOn(UsersHelpers, 'getPrivilegedIdentityUser').mockImplementation(
+      async (_context, userId) => {
         const user = users.find((u) => u.id === userId);
         return { ...user };
-      });
-    const putSpy = jest
-      .spyOn(MockMongoRepository.prototype, 'putOfficeStaff')
-      .mockResolvedValue({});
-    jest.spyOn(MockMongoRepository.prototype, 'upsertUserGroupsBatch').mockResolvedValue();
-    const logSpy = jest.spyOn(applicationContext.logger, 'info').mockImplementation(() => {});
-    jest.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue('');
+      },
+    );
+    const putSpy = vi.spyOn(MockMongoRepository.prototype, 'putOfficeStaff').mockResolvedValue({});
+    vi.spyOn(MockMongoRepository.prototype, 'upsertUserGroupsBatch').mockResolvedValue();
+    const logSpy = vi.spyOn(applicationContext.logger, 'info').mockImplementation(() => {});
+    vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue('');
     const useCase = new OfficesUseCase();
     await useCase.syncOfficeStaff(applicationContext);
     expect(putSpy).toHaveBeenCalledTimes(users.length);
@@ -177,20 +174,20 @@ describe('offices use case tests', () => {
   test('should log only failure when all users fail to sync', async () => {
     const officeGroup: CamsUserGroup = { id: 'three', name: 'USTP CAMS Region 18 Office Seattle' };
     const users: Staff[] = MockData.buildArray(MockData.getAttorneyUser, 2);
-    jest.spyOn(MockUserGroupGateway.prototype, 'getUserGroups').mockResolvedValue([officeGroup]);
-    jest.spyOn(MockUserGroupGateway.prototype, 'getUserGroupUsers').mockResolvedValue(users);
-    jest
-      .spyOn(UsersHelpers, 'getPrivilegedIdentityUser')
-      .mockImplementation(async (_context, userId) => {
+    vi.spyOn(MockUserGroupGateway.prototype, 'getUserGroups').mockResolvedValue([officeGroup]);
+    vi.spyOn(MockUserGroupGateway.prototype, 'getUserGroupUsers').mockResolvedValue(users);
+    vi.spyOn(UsersHelpers, 'getPrivilegedIdentityUser').mockImplementation(
+      async (_context, userId) => {
         const user = users.find((u) => u.id === userId);
         return { ...user };
-      });
-    const putSpy = jest
+      },
+    );
+    const putSpy = vi
       .spyOn(MockMongoRepository.prototype, 'putOfficeStaff')
       .mockRejectedValue(new Error('fail'));
-    jest.spyOn(MockMongoRepository.prototype, 'upsertUserGroupsBatch').mockResolvedValue();
-    const logSpy = jest.spyOn(applicationContext.logger, 'info').mockImplementation(() => {});
-    jest.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue('');
+    vi.spyOn(MockMongoRepository.prototype, 'upsertUserGroupsBatch').mockResolvedValue();
+    const logSpy = vi.spyOn(applicationContext.logger, 'info').mockImplementation(() => {});
+    vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue('');
     const useCase = new OfficesUseCase();
     await useCase.syncOfficeStaff(applicationContext);
     expect(putSpy).toHaveBeenCalledTimes(users.length);

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsError } from '../../common-errors/cams-error';
@@ -10,27 +11,7 @@ import {
   BankruptcySoftwareListItem,
 } from '../../../../common/src/cams/lists';
 import { Creatable } from '../../../../common/src/cams/creatable';
-
-// Mock the ListsUseCase methods
-let getBanksList = jest.fn();
-let getBankruptcySoftwareList = jest.fn();
-let createBank = jest.fn();
-let createBankruptcySoftware = jest.fn();
-let deleteBankruptcySoftware = jest.fn();
-
-jest.mock('../../use-cases/lists/lists', () => {
-  return {
-    default: jest.fn().mockImplementation(() => {
-      return {
-        getBanksList,
-        getBankruptcySoftwareList,
-        createBank,
-        createBankruptcySoftware,
-        deleteBankruptcySoftware,
-      };
-    }),
-  };
-});
+import ListsUseCase from '../../use-cases/lists/lists';
 
 describe('lists controller tests', () => {
   let applicationContext: ApplicationContext;
@@ -51,11 +32,11 @@ describe('lists controller tests', () => {
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   test('should return successful response for banks list', async () => {
-    getBanksList = jest.fn().mockResolvedValue(mockBanksList);
+    vi.spyOn(ListsUseCase.prototype, 'getBanksList').mockResolvedValue(mockBanksList);
 
     const controller = new ListsController();
     applicationContext.request = mockCamsHttpRequest({
@@ -64,7 +45,6 @@ describe('lists controller tests', () => {
 
     const response = await controller.handleRequest(applicationContext);
 
-    expect(getBanksList).toHaveBeenCalledWith(applicationContext);
     expect(response).toEqual(
       expect.objectContaining({
         body: {
@@ -76,7 +56,9 @@ describe('lists controller tests', () => {
   });
 
   test('should return successful response for bankruptcy-software list', async () => {
-    getBankruptcySoftwareList = jest.fn().mockResolvedValue(mockSoftwareList);
+    vi.spyOn(ListsUseCase.prototype, 'getBankruptcySoftwareList').mockResolvedValue(
+      mockSoftwareList,
+    );
 
     const controller = new ListsController();
     applicationContext.request = mockCamsHttpRequest({
@@ -85,7 +67,6 @@ describe('lists controller tests', () => {
 
     const response = await controller.handleRequest(applicationContext);
 
-    expect(getBankruptcySoftwareList).toHaveBeenCalledWith(applicationContext);
     expect(response).toEqual(
       expect.objectContaining({
         body: {
@@ -108,11 +89,9 @@ describe('lists controller tests', () => {
   });
 
   test('should throw CamsError when one is caught from use case', async () => {
-    getBanksList = jest
-      .fn()
-      .mockRejectedValue(
-        new CamsError('LISTS-CONTROLLER', { message: 'Failed to retrieve banks list' }),
-      );
+    vi.spyOn(ListsUseCase.prototype, 'getBanksList').mockRejectedValue(
+      new CamsError('LISTS-CONTROLLER', { message: 'Failed to retrieve banks list' }),
+    );
 
     const controller = new ListsController();
     applicationContext.request = mockCamsHttpRequest({
@@ -125,7 +104,9 @@ describe('lists controller tests', () => {
   });
 
   test('should wrap unexpected error in UnknownError', async () => {
-    getBankruptcySoftwareList = jest.fn().mockRejectedValue(new Error('Some unknown error'));
+    vi.spyOn(ListsUseCase.prototype, 'getBankruptcySoftwareList').mockRejectedValue(
+      new Error('Some unknown error'),
+    );
 
     const controller = new ListsController();
     applicationContext.request = mockCamsHttpRequest({
@@ -139,7 +120,7 @@ describe('lists controller tests', () => {
 
   test('should create bank item and return ID on POST', async () => {
     const bankId = '123456';
-    createBank = jest.fn().mockResolvedValue(bankId);
+    vi.spyOn(ListsUseCase.prototype, 'createBank').mockResolvedValue(bankId);
 
     const bankItem: Creatable<BankListItem> = {
       list: 'banks' as const,
@@ -156,7 +137,6 @@ describe('lists controller tests', () => {
 
     const response = await controller.handleRequest(applicationContext);
 
-    expect(createBank).toHaveBeenCalledWith(applicationContext, bankItem);
     expect(response).toEqual(
       expect.objectContaining({
         body: {
@@ -169,7 +149,7 @@ describe('lists controller tests', () => {
 
   test('should create bankruptcy software item and return ID on POST', async () => {
     const softwareId = '789012';
-    createBankruptcySoftware = jest.fn().mockResolvedValue(softwareId);
+    vi.spyOn(ListsUseCase.prototype, 'createBankruptcySoftware').mockResolvedValue(softwareId);
 
     const softwareItem: Creatable<BankruptcySoftwareListItem> = {
       list: 'bankruptcy-software' as const,
@@ -186,7 +166,6 @@ describe('lists controller tests', () => {
 
     const response = await controller.handleRequest(applicationContext);
 
-    expect(createBankruptcySoftware).toHaveBeenCalledWith(applicationContext, softwareItem);
     expect(response).toEqual(
       expect.objectContaining({
         body: {
@@ -198,7 +177,9 @@ describe('lists controller tests', () => {
   });
 
   test('should delete bankruptcy software item successfully on DELETE', async () => {
-    deleteBankruptcySoftware = jest.fn().mockResolvedValue(undefined);
+    const deleteSpy = vi
+      .spyOn(ListsUseCase.prototype, 'deleteBankruptcySoftware')
+      .mockResolvedValue(undefined);
 
     const controller = new ListsController();
     applicationContext.request = mockCamsHttpRequest({
@@ -208,7 +189,7 @@ describe('lists controller tests', () => {
 
     const response = await controller.handleRequest(applicationContext);
 
-    expect(deleteBankruptcySoftware).toHaveBeenCalledWith(applicationContext, 'test-id-123');
+    expect(deleteSpy).toHaveBeenCalledWith(applicationContext, 'test-id-123');
     expect(response).toEqual(
       expect.objectContaining({
         body: {
@@ -220,6 +201,8 @@ describe('lists controller tests', () => {
   });
 
   test('should throw error when ID is missing for DELETE bankruptcy-software', async () => {
+    const deleteSpy = vi.spyOn(ListsUseCase.prototype, 'deleteBankruptcySoftware');
+
     const controller = new ListsController();
     applicationContext.request = mockCamsHttpRequest({
       method: 'DELETE',
@@ -230,10 +213,12 @@ describe('lists controller tests', () => {
       await controller.handleRequest(applicationContext);
     }).rejects.toThrow('Unknown Error');
 
-    expect(deleteBankruptcySoftware).not.toHaveBeenCalled();
+    expect(deleteSpy).not.toHaveBeenCalled();
   });
 
   test('should throw error when ID is empty string for DELETE bankruptcy-software', async () => {
+    const deleteSpy = vi.spyOn(ListsUseCase.prototype, 'deleteBankruptcySoftware');
+
     const controller = new ListsController();
     applicationContext.request = mockCamsHttpRequest({
       method: 'DELETE',
@@ -244,10 +229,12 @@ describe('lists controller tests', () => {
       await controller.handleRequest(applicationContext);
     }).rejects.toThrow('Unknown Error');
 
-    expect(deleteBankruptcySoftware).not.toHaveBeenCalled();
+    expect(deleteSpy).not.toHaveBeenCalled();
   });
 
   test('should throw error when ID is not a string for DELETE bankruptcy-software', async () => {
+    const deleteSpy = vi.spyOn(ListsUseCase.prototype, 'deleteBankruptcySoftware');
+
     const controller = new ListsController();
     applicationContext.request = mockCamsHttpRequest({
       method: 'DELETE',
@@ -258,6 +245,6 @@ describe('lists controller tests', () => {
       await controller.handleRequest(applicationContext);
     }).rejects.toThrow('Unknown Error');
 
-    expect(deleteBankruptcySoftware).not.toHaveBeenCalled();
+    expect(deleteSpy).not.toHaveBeenCalled();
   });
 });

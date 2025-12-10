@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { OrdersMongoRepository } from './orders.mongo.repository';
 import { ApplicationContext } from '../../types/basic';
@@ -16,7 +17,7 @@ describe('orders repo', () => {
   beforeEach(async () => {
     context = await createMockApplicationContext();
     repo = OrdersMongoRepository.getInstance(context);
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   afterEach(async () => {
@@ -30,7 +31,7 @@ describe('orders repo', () => {
       MockData.getTransferOrder({ override: { courtDivisionCode: '081' } }),
       MockData.getTransferOrder({ override: { courtDivisionCode: '081' } }),
     ];
-    jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(expectedOrders);
+    vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(expectedOrders);
 
     const predicate = {
       divisionCodes: ['081'],
@@ -46,7 +47,7 @@ describe('orders repo', () => {
       MockData.getTransferOrder({ override: { courtDivisionCode: '081' } }),
       MockData.getTransferOrder({ override: { courtDivisionCode: '081' } }),
     ];
-    jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(expectedOrders);
+    vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(expectedOrders);
     const predicate = undefined;
     const actualOrders = await repo.search(predicate);
 
@@ -55,7 +56,7 @@ describe('orders repo', () => {
   });
 
   test('search function should throw error when dbAdapter throws an error', async () => {
-    jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('some error'));
+    vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('some error'));
     const predicate = {
       divisionCodes: ['081'],
     };
@@ -68,24 +69,24 @@ describe('orders repo', () => {
     const expectedOrders = [...transfers].map((order) => {
       return { ...order, id: commonTestId };
     });
-    jest
-      .spyOn(MongoCollectionAdapter.prototype, 'insertMany')
-      .mockResolvedValue(expectedOrders.map((order) => order.id));
+    vi.spyOn(MongoCollectionAdapter.prototype, 'insertMany').mockResolvedValue(
+      expectedOrders.map((order) => order.id),
+    );
     const actualOrders = await repo.createMany(expectedOrders);
     expect(actualOrders).toEqual(expectedOrders);
   });
 
   test('should get one order', async () => {
     const expected = MockData.getTransferOrder();
-    jest.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(expected);
+    vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(expected);
     const actual = await repo.read(expected.id);
     expect(actual).toEqual(expected);
   });
 
   test('should throw error on read when dbAdapter throws error on findOne', async () => {
-    jest
-      .spyOn(MongoCollectionAdapter.prototype, 'findOne')
-      .mockRejectedValue(new Error('some error'));
+    vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(
+      new Error('some error'),
+    );
     await expect(async () => await repo.read('123')).rejects.toThrow(UnknownError);
   });
 
@@ -99,9 +100,9 @@ describe('orders repo', () => {
       orderType: 'transfer',
       status: 'rejected', // not approved, and valid
     };
-    jest
-      .spyOn(MongoCollectionAdapter.prototype, 'findOne')
-      .mockRejectedValue(new NotFoundError('test-module'));
+    vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(
+      new NotFoundError('test-module'),
+    );
     await expect(async () => await repo.update(transferOrder)).rejects.toThrow(NotFoundError);
   });
 
@@ -115,10 +116,10 @@ describe('orders repo', () => {
       orderType: 'transfer',
       status: 'approved',
     };
-    jest.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(existing);
-    jest
-      .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
-      .mockRejectedValue(new Error('some error'));
+    vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(existing);
+    vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue(
+      new Error('some error'),
+    );
     await expect(async () => await repo.update(transferOrder)).rejects.toThrow(UnknownError);
   });
 
@@ -132,8 +133,8 @@ describe('orders repo', () => {
       orderType: 'transfer',
       status: 'approved',
     };
-    jest.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(existing);
-    const replaceOne = jest
+    vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(existing);
+    const replaceOne = vi
       .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
       .mockResolvedValue(undefined);
     await repo.update(expected);
@@ -146,9 +147,9 @@ describe('orders repo', () => {
 
   test('should throw CamsError error during createMany when dbAdapter throws error on insertMany', async () => {
     const newOrders = MockData.buildArray(MockData.getTransferOrder, 3);
-    jest
-      .spyOn(MongoCollectionAdapter.prototype, 'insertMany')
-      .mockRejectedValue(new Error('some value'));
+    vi.spyOn(MongoCollectionAdapter.prototype, 'insertMany').mockRejectedValue(
+      new Error('some value'),
+    );
     await expect(async () => await repo.createMany(newOrders)).rejects.toThrow(UnknownError);
   });
 
@@ -180,7 +181,7 @@ describe('orders repo', () => {
     });
 
     test('dropInstance closes client and sets instance to null when referenceCount drops below 1', async () => {
-      const mockClose = jest.fn().mockResolvedValue(undefined);
+      const mockClose = vi.fn().mockResolvedValue(undefined);
       OrdersMongoRepository['instance'] = {
         client: { close: mockClose },
       } as unknown as OrdersMongoRepository;
@@ -204,8 +205,8 @@ describe('orders repo', () => {
       status: 'rejected', // not approved, and valid
       caseId: existing.caseId,
     };
-    jest.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(existing);
-    const replaceOne = jest.spyOn(MongoCollectionAdapter.prototype, 'replaceOne');
+    vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(existing);
+    const replaceOne = vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne');
     await repo.update(transferOrder);
     expect(replaceOne).not.toHaveBeenCalled();
   });

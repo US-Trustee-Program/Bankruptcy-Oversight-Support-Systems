@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { ApplicationContext } from '../../types/basic';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
@@ -5,7 +6,6 @@ import ConsolidationOrdersMongoRepository from './consolidations.mongo.repositor
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import QueryBuilder from '../../../query/query-builder';
 import { closeDeferred } from '../../../deferrable/defer-close';
-import { getCamsError } from '../../../common-errors/error-utilities';
 import { ConsolidationOrder } from '../../../../../common/src/cams/orders';
 
 describe('Consolidations Repository tests', () => {
@@ -24,14 +24,14 @@ describe('Consolidations Repository tests', () => {
   afterEach(async () => {
     await closeDeferred(context);
     repo.release();
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should search on consolidations by court division code or consolidationId', async () => {
     const consolidationOrder = MockData.getConsolidationOrder({
       override: { consolidationId, courtDivisionCode: '081' },
     });
-    const findSpy = jest
+    const findSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'find')
       .mockResolvedValue([consolidationOrder]);
     const query = and(
@@ -50,7 +50,7 @@ describe('Consolidations Repository tests', () => {
 
   test('should search on consolidations with an empty query', async () => {
     const consolidationOrders = MockData.buildArray(MockData.getConsolidationOrder, 5);
-    const findSpy = jest
+    const findSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'find')
       .mockResolvedValue(consolidationOrders);
     const results = await repo.search();
@@ -60,9 +60,7 @@ describe('Consolidations Repository tests', () => {
   });
 
   test('should call delete on a consolidation order', async () => {
-    const deleteSpy = jest
-      .spyOn(MongoCollectionAdapter.prototype, 'deleteOne')
-      .mockResolvedValue(1);
+    const deleteSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockResolvedValue(1);
 
     await repo.delete(consolidationId);
     expect(deleteSpy).toHaveBeenCalled();
@@ -70,7 +68,7 @@ describe('Consolidations Repository tests', () => {
 
   test('should call read and get consolidation by consolidationId', async () => {
     const consolidationOrder = MockData.getConsolidationOrder({ override: { consolidationId } });
-    const findOneSpy = jest
+    const findOneSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'findOne')
       .mockResolvedValue(consolidationOrder);
     const results = await repo.read(consolidationId);
@@ -81,7 +79,7 @@ describe('Consolidations Repository tests', () => {
 
   test('should call insertOne when calling create on the repo', async () => {
     const consolidationOrder = MockData.getConsolidationOrder({ override: { consolidationId } });
-    const insertOneSpy = jest
+    const insertOneSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
       .mockResolvedValue(consolidationOrder.id);
     const results = await repo.create(consolidationOrder);
@@ -97,7 +95,7 @@ describe('Consolidations Repository tests', () => {
       consolidationOrders[1].id,
       consolidationOrders[2].id,
     ];
-    const createManySpy = jest
+    const createManySpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'insertMany')
       .mockResolvedValue(consolidationIds);
     await repo.createMany(consolidationOrders);
@@ -113,7 +111,7 @@ describe('Consolidations Repository tests', () => {
   test.each(createManyEmptyCases)(
     'should not call insertMany with %s list',
     async (_caseName: string, list: []) => {
-      const createManySpy = jest
+      const createManySpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'insertMany')
         .mockRejectedValue('This should not throw.');
       await repo.createMany(list);
@@ -130,11 +128,11 @@ describe('Consolidations Repository tests', () => {
       orderText: 'Updated order text',
     };
 
-    const findOneSpy = jest
+    const findOneSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'findOne')
       .mockResolvedValue(consolidationOrder);
 
-    const replaceOneSpy = jest
+    const replaceOneSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
       .mockResolvedValue({ modifiedCount: 1, id: consolidationOrder.id, upsertedCount: 0 });
 
@@ -160,7 +158,7 @@ describe('Consolidations Repository tests', () => {
 
   test('should count consolidation orders with a specific key root', async () => {
     const keyRoot = 'test-key';
-    const countSpy = jest
+    const countSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'countDocuments')
       .mockResolvedValue(5);
 
@@ -177,54 +175,102 @@ describe('Consolidations Repository tests', () => {
 
   describe('error handling', () => {
     const error = new Error('some error');
-    const camsError = getCamsError(error, 'COSMOS_DB_REPOSITORY_CONSOLIDATION_ORDERS');
 
     test('should properly handle error when calling search', async () => {
       const consolidationOrder = MockData.getConsolidationOrder({
         override: { consolidationId, courtDivisionCode: '081' },
       });
-      jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
       await expect(() =>
         repo.search({
           divisionCodes: ['081'],
           consolidationId: consolidationOrder.consolidationId,
         }),
-      ).rejects.toThrow(camsError);
+      ).rejects.toThrow(
+        expect.objectContaining({
+          message: 'Unknown Error',
+          status: 500,
+          module: 'CONSOLIDATIONS-MONGO-REPOSITORY',
+          originalError: expect.stringContaining('Error: some error'),
+        }),
+      );
     });
 
     test('should properly handle error when calling delete', async () => {
-      jest.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockRejectedValue(error);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockRejectedValue(error);
 
-      await expect(() => repo.delete(consolidationId)).rejects.toThrow(camsError);
+      await expect(() => repo.delete(consolidationId)).rejects.toThrow(
+        expect.objectContaining({
+          message: 'Unknown Error',
+          status: 500,
+          module: 'CONSOLIDATIONS-MONGO-REPOSITORY',
+          originalError: expect.stringContaining('Error: some error'),
+        }),
+      );
     });
 
     test('should properly handle error when calling read', async () => {
-      jest.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(error);
-      await expect(() => repo.read(consolidationId)).rejects.toThrow(camsError);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(error);
+      await expect(() => repo.read(consolidationId)).rejects.toThrow(
+        expect.objectContaining({
+          message: 'Unknown Error',
+          status: 500,
+          module: 'CONSOLIDATIONS-MONGO-REPOSITORY',
+          originalError: expect.stringContaining('Error: some error'),
+        }),
+      );
     });
 
     test('should properly handle error when calling create', async () => {
       const consolidationOrder = MockData.getConsolidationOrder({ override: { consolidationId } });
-      jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(camsError);
-      await expect(() => repo.create(consolidationOrder)).rejects.toThrow(camsError);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(error);
+      await expect(() => repo.create(consolidationOrder)).rejects.toThrow(
+        expect.objectContaining({
+          message: 'Unknown Error',
+          status: 500,
+          module: 'CONSOLIDATIONS-MONGO-REPOSITORY',
+          originalError: expect.stringContaining('Error: some error'),
+        }),
+      );
     });
 
     test('should properly handle Error when calling createMany', async () => {
       const consolidationOrders = MockData.buildArray(MockData.getConsolidationOrder, 3);
-      jest.spyOn(MongoCollectionAdapter.prototype, 'insertMany').mockRejectedValue(error);
-      await expect(() => repo.createMany(consolidationOrders)).rejects.toThrow(camsError);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'insertMany').mockRejectedValue(error);
+      await expect(() => repo.createMany(consolidationOrders)).rejects.toThrow(
+        expect.objectContaining({
+          message: 'Unknown Error',
+          status: 500,
+          module: 'CONSOLIDATIONS-MONGO-REPOSITORY',
+          originalError: expect.stringContaining('Error: some error'),
+        }),
+      );
     });
 
     test('should properly handle error when calling update', async () => {
       const consolidationOrder = MockData.getConsolidationOrder({ override: { consolidationId } });
-      jest.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(error);
-      await expect(() => repo.update(consolidationOrder)).rejects.toThrow(camsError);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(error);
+      await expect(() => repo.update(consolidationOrder)).rejects.toThrow(
+        expect.objectContaining({
+          message: 'Unknown Error',
+          status: 500,
+          module: 'CONSOLIDATIONS-MONGO-REPOSITORY',
+          originalError: expect.stringContaining('Error: some error'),
+        }),
+      );
     });
 
     test('should properly handle error when calling count', async () => {
       const keyRoot = 'test-key';
-      jest.spyOn(MongoCollectionAdapter.prototype, 'countDocuments').mockRejectedValue(error);
-      await expect(() => repo.count(keyRoot)).rejects.toThrow(camsError);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'countDocuments').mockRejectedValue(error);
+      await expect(() => repo.count(keyRoot)).rejects.toThrow(
+        expect.objectContaining({
+          message: 'Unknown Error',
+          status: 500,
+          module: 'CONSOLIDATIONS-MONGO-REPOSITORY',
+          originalError: expect.stringContaining('Error: some error'),
+        }),
+      );
     });
   });
 });

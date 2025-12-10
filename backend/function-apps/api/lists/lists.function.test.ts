@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { CamsError } from '../../../lib/common-errors/cams-error';
 import handler from './lists.function';
 import {
@@ -19,7 +20,7 @@ describe('Lists Function tests', () => {
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should set successful response for bank list', async () => {
@@ -32,7 +33,7 @@ describe('Lists Function tests', () => {
       data: mockBanksList,
     });
 
-    jest.spyOn(ListsController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
+    vi.spyOn(ListsController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
 
     // Set up the request with listName parameter
     request.params = { listName: 'banks' };
@@ -53,7 +54,7 @@ describe('Lists Function tests', () => {
         data: mockSoftwareList,
       });
 
-    jest.spyOn(ListsController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
+    vi.spyOn(ListsController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
 
     // Set up the request with listName parameter
     request.params = { listName: 'bankruptcy-software' };
@@ -69,7 +70,7 @@ describe('Lists Function tests', () => {
     });
 
     const { azureHttpResponse, loggerCamsErrorSpy } = buildTestResponseError(error);
-    jest.spyOn(ListsController.prototype, 'handleRequest').mockRejectedValue(error);
+    vi.spyOn(ListsController.prototype, 'handleRequest').mockRejectedValue(error);
 
     const response = await handler(request, context);
 

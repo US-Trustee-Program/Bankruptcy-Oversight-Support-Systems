@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { CaseAssignmentController } from './case.assignment.controller';
 import {
   THROW_PERMISSIONS_ERROR_CASE_ID,
@@ -41,7 +42,7 @@ describe('Case Assignment Creation Tests', () => {
   });
 
   afterEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
   });
 
   test('A case is assigned to an attorney when requested', async () => {
@@ -56,9 +57,7 @@ describe('Case Assignment Creation Tests', () => {
       params: { id: '081-18-12345' },
       body: testCaseAssignment,
     });
-    jest
-      .spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments')
-      .mockResolvedValue();
+    vi.spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments').mockResolvedValue();
 
     const assignmentController = new CaseAssignmentController(applicationContext);
     const assignmentResponse = await assignmentController.handleRequest(applicationContext);
@@ -159,9 +158,9 @@ describe('Case Assignment Creation Tests', () => {
       params: { id: caseId },
     });
 
-    jest
-      .spyOn(CaseAssignmentUseCase.prototype, 'findAssignmentsByCaseId')
-      .mockResolvedValue(expectedMap);
+    vi.spyOn(CaseAssignmentUseCase.prototype, 'findAssignmentsByCaseId').mockResolvedValue(
+      expectedMap,
+    );
 
     const assignmentController = new CaseAssignmentController(applicationContext);
     const result = await assignmentController.handleRequest(applicationContext);
@@ -170,9 +169,9 @@ describe('Case Assignment Creation Tests', () => {
 
   test('should rethrow CAMS errors on findAssignmentsByCaseId', async () => {
     const errorMessage = 'A CAMS error';
-    jest
-      .spyOn(CaseAssignmentUseCase.prototype, 'findAssignmentsByCaseId')
-      .mockRejectedValue(new CamsError('TEST', { message: errorMessage }));
+    vi.spyOn(CaseAssignmentUseCase.prototype, 'findAssignmentsByCaseId').mockRejectedValue(
+      new CamsError('TEST', { message: errorMessage }),
+    );
     const assignmentController = new CaseAssignmentController(applicationContext);
 
     await expect(assignmentController.handleRequest(applicationContext)).rejects.toThrow(
@@ -193,9 +192,9 @@ describe('Case Assignment Creation Tests', () => {
       params: { id: THROW_UNKNOWN_ERROR_CASE_ID },
       body: testCaseAssignment,
     });
-    jest
-      .spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments')
-      .mockRejectedValue(new ForbiddenError('TEST_MODULE', { message: 'forbidden' }));
+    vi.spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments').mockRejectedValue(
+      new ForbiddenError('TEST_MODULE', { message: 'forbidden' }),
+    );
 
     const assignmentController = new CaseAssignmentController(mockContext);
     await expect(assignmentController.handleRequest(applicationContext)).rejects.toThrow(
@@ -204,9 +203,9 @@ describe('Case Assignment Creation Tests', () => {
   });
 
   test('should throw any other errors on findAssignmentsByCaseId', async () => {
-    jest
-      .spyOn(CaseAssignmentUseCase.prototype, 'findAssignmentsByCaseId')
-      .mockRejectedValue(new Error());
+    vi.spyOn(CaseAssignmentUseCase.prototype, 'findAssignmentsByCaseId').mockRejectedValue(
+      new Error(),
+    );
     const assignmentController = new CaseAssignmentController(applicationContext);
 
     await expect(assignmentController.handleRequest(applicationContext)).rejects.toThrow(
@@ -216,9 +215,9 @@ describe('Case Assignment Creation Tests', () => {
 
   test('should throw an UnknownError when an error that is not a CamsError is caught', async () => {
     const error = new UnknownError('TEST-MODULE');
-    jest
-      .spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments')
-      .mockRejectedValue(error);
+    vi.spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments').mockRejectedValue(
+      error,
+    );
     const testCaseAssignment = {
       caseId: THROW_UNKNOWN_ERROR_CASE_ID,
       listOfAttorneyNames: [],

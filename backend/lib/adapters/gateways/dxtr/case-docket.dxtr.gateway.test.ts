@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { QueryResults } from '../../types/database';
 import * as database from '../../utils/database';
 import { documentSorter, DxtrCaseDocketGateway, translateModel } from './case-docket.dxtr.gateway';
@@ -10,7 +11,7 @@ import {
 import { NORMAL_CASE_ID, NOT_FOUND_ERROR_CASE_ID } from '../../../testing/testing-constants';
 
 describe('Test case docket DXTR Gateway', () => {
-  const querySpy = jest.spyOn(database, 'executeQuery');
+  const querySpy = vi.spyOn(database, 'executeQuery');
 
   describe('getCaseDocket', () => {
     test('should query the database with the correct predicate values for case id', async () => {

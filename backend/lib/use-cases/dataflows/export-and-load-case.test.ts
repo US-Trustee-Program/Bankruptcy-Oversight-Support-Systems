@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditable';
 import { SyncedCase } from '../../../../common/src/cams/cases';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
@@ -29,10 +30,10 @@ describe('Export and Load Case Tests', () => {
       const mockCaseDetails = MockData.getCaseDetail();
       const events = MockData.buildArray(mockCaseSyncEvent, 3);
 
-      const exportSpy = jest
+      const exportSpy = vi
         .spyOn(CasesLocalGateway.prototype, 'getCaseDetail')
         .mockResolvedValue(mockCaseDetails);
-      const loadSpy = jest.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+      const loadSpy = vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
 
       const actual = await ExportAndLoadCase.exportAndLoad(context, events);
       const expected: CaseSyncEvent[] = events.map((event) => {
@@ -53,7 +54,7 @@ describe('Export and Load Case Tests', () => {
       const error = new Error('some error');
       const expectedError = getCamsError(error, expect.anything(), expect.any(String));
 
-      jest.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockRejectedValue(error);
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockRejectedValue(error);
       const actual = await ExportAndLoadCase.exportAndLoad(context, events);
 
       actual.forEach((event) => {
@@ -66,7 +67,7 @@ describe('Export and Load Case Tests', () => {
     test('should return CaseDetail on event', async () => {
       const mockCaseDetails = MockData.getCaseDetail();
       const event = mockCaseSyncEvent();
-      jest.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(mockCaseDetails);
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(mockCaseDetails);
       const actual = await ExportAndLoadCase.exportCase(context, event);
       const expected: CaseSyncEvent = {
         ...event,
@@ -81,7 +82,7 @@ describe('Export and Load Case Tests', () => {
       const error = new Error('some error');
       const expected = getCamsError(error, expect.anything(), expect.any(String));
 
-      jest.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockRejectedValue(error);
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockRejectedValue(error);
       const actual = await ExportAndLoadCase.exportCase(context, event);
 
       expect(actual.error).toEqual(expect.objectContaining(expected));
@@ -101,7 +102,7 @@ describe('Export and Load Case Tests', () => {
         createdOn: expect.any(String),
       };
 
-      const syncSpy = jest.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+      const syncSpy = vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
 
       await ExportAndLoadCase.loadCase(context, event);
       expect(syncSpy).toHaveBeenCalledWith(expected);
@@ -111,7 +112,7 @@ describe('Export and Load Case Tests', () => {
       const bCase = MockData.getDxtrCase();
       const event = mockCaseSyncEvent({ bCase });
       const error = new UnknownError('test-module');
-      jest.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockRejectedValue(error);
+      vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockRejectedValue(error);
 
       const expected = new UnknownError(expect.anything(), {
         camsStackInfo: {
