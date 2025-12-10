@@ -23,13 +23,13 @@ export type UstpDivision = {
   courtOffice: CourtOffice;
 };
 
-export type Court = {
+type Court = {
   courtId: string; // DXTR AO_CS_DIV.COURT_ID
   courtName?: string; // DXTR AO_COURT.COURT_NAME
   state?: string;
 };
 
-export type CourtOffice = {
+type CourtOffice = {
   courtOfficeCode: string; // DXTR AO_OFFICE.OFFICE_CODE
   courtOfficeName: string; // DXTR AO_OFFICE.OFFICE_DISPLAY_NAME
 };

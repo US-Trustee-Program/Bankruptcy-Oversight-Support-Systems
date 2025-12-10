@@ -10,7 +10,7 @@ export type LegacyAddress = {
   cityStateZipCountry?: string;
 };
 
-export type TaxIds = {
+type TaxIds = {
   taxId?: string;
   ssn?: string;
 };

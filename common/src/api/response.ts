@@ -1,7 +1,7 @@
 import { UriString } from './common';
 import { Pagination } from './pagination';
 
-export type ResponseMetaData = {
+type ResponseMetaData = {
   self: UriString;
 };
 

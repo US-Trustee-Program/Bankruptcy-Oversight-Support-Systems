@@ -150,7 +150,7 @@ export type TransferOrderActionRejection = {
   reason?: string;
 };
 
-export type TransferOrderActionApproval = {
+type TransferOrderActionApproval = {
   id: string;
   caseId: string;
   orderType: 'transfer';
@@ -159,21 +159,6 @@ export type TransferOrderActionApproval = {
 };
 
 export type TransferOrderAction = TransferOrderActionRejection | TransferOrderActionApproval;
-
-export type OrderActionRejection<T = TransferOrder> = {
-  id: string;
-  status: 'rejected';
-  reason?: string;
-  order: T;
-};
-
-export type OrderActionApproval<T = TransferOrder> = {
-  id: string;
-  status: 'approved';
-  order: T;
-};
-
-export type OrderAction<T> = OrderActionRejection<T> | OrderActionApproval<T>;
 
 export type OrderSync = {
   consolidations: ConsolidationOrder[];
