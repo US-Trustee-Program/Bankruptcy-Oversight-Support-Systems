@@ -70,17 +70,11 @@ jobs:
           --stack-name ${{ inputs.stackName }} \
           --server-name ${{ secrets.AZ_SQL_SERVER_NAME }}
 
-      - name: CI Backend
-        working-directory: backend
+      - name: Install Application Node Dependencies
         run: |
-          npm ci
+          npm run ci:all
 
-      - name: CI Common
-        working-directory: common
-        run: |
-          npm ci
-
-      - name: Install Node dependencies
+      - name: Install E2E Node dependencies
         working-directory: test/e2e
         run: |
           npm ci

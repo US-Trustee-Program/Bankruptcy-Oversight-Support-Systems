@@ -30,7 +30,7 @@ jobs:
         with:
           node-version: ${{ vars.NODE_VERSION }}
           cache: 'npm'
-          cache-dependency-path: user-interface/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install Node dependencies
         run: |
@@ -38,7 +38,7 @@ jobs:
           npm ci
           popd
 
-          npm ci && npm install -g pa11y-ci
+          npm ci:all && npm install -g pa11y-ci
 
       - name: Run pa11y Test
         run: ../ops/scripts/pipeline/accessibility-test.sh
@@ -58,7 +58,7 @@ jobs:
         with:
           node-version: ${{ inputs.node-version }}
           cache: 'npm'
-          cache-dependency-path: ${{ inputs.path }}/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: CI Common
         working-directory: common
