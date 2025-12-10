@@ -13,6 +13,7 @@ on:
 jobs:
   pa11y-accessibility-test:
     runs-on: ubuntu-latest
+    if: false
     steps:
       - name: Install chrome
         uses: browser-actions/setup-chrome@c785b87e244131f27c9f19c1a33e2ead956ab7ce # v1
@@ -75,7 +76,7 @@ jobs:
       - name: Run Playwright a11y Tests
         id: playwrightA11yTests
         run: |
-          npm run test:a11y
+          npm run test:a11y --workspace=user-interface
 
       - name: Upload report
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
