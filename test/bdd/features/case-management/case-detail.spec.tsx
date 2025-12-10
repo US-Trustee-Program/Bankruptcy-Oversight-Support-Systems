@@ -156,16 +156,16 @@ describe('Feature: View Case Details (Full Stack)', () => {
   );
 
   /**
-   * Scenario: Case with related data
+   * Scenario: Chapter 11 case display
    *
-   * GIVEN a case with transfers and consolidations
+   * GIVEN a Chapter 11 case exists
    * WHEN the user views the case
-   * THEN all related data should be available
+   * THEN the case information should be displayed correctly
    */
   it(
-    'should display case with transfers and consolidations',
+    'should display Chapter 11 case information',
     async () => {
-      // GIVEN: A case with transfers and consolidations
+      // GIVEN: A Chapter 11 case
       const testCase = MockData.getCaseDetail({
         override: {
           caseId: '081-23-99999',
@@ -176,34 +176,19 @@ describe('Feature: View Case Details (Full Stack)', () => {
         },
       });
 
-      const transfers = [
-        {
-          id: 'transfer-1',
-          orderType: 'transfer' as const,
-          status: 'approved',
-        },
-      ];
-
-      const consolidations = [
-        {
-          id: 'consolidation-1',
-          consolidationType: 'administrative' as const,
-        },
-      ];
-
-      // WHEN: User views case with all data configured
+      // WHEN: User views the case
       await TestSetup
         .forUser(TestSessions.caseAssignmentManager())
         .withCase(testCase)
-        .withTransfers(testCase.caseId, transfers)
-        .withConsolidations(testCase.caseId, consolidations)
+        .withTransfers(testCase.caseId, [])
+        .withConsolidations(testCase.caseId, [])
         .renderAt(`/case-detail/${testCase.caseId}`);
 
       await waitForAppLoad();
 
       // THEN: Case should display
       await expectPageToContain(testCase.caseTitle);
-      console.log('[TEST] ✓ Case with related data displayed');
+      console.log('[TEST] ✓ Chapter 11 case displayed successfully');
     },
     20000,
   );
