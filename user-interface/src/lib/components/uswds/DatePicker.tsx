@@ -9,7 +9,9 @@ import React, {
   useEffect,
   type JSX,
 } from 'react';
-import { getIsoDate, isInvalidDate } from '@common/date-helper';
+import DateHelper from '@common/date-helper';
+
+const { isInvalidDate, getIsoDate } = DateHelper;
 
 export type DatePickerProps = JSX.IntrinsicElements['input'] & {
   id: string;
