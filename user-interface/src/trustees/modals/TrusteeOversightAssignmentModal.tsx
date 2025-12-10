@@ -49,11 +49,13 @@ const TrusteeOversightAssignmentModal = forwardRef<
   const [error, setError] = useState<string | null>(null);
   const [isAssigning, setIsAssigning] = useState<boolean>(false);
 
+  const { modalId, trusteeId, role, onAssignment } = props;
+
   const modalRef = useRef<ModalRefType>(null);
   const api = useApi2();
   const globalAlert = useGlobalAlert();
 
-  const roleLabel = ROLE_LABELS[props.role] ?? 'staff member';
+  const roleLabel = ROLE_LABELS[role] ?? 'staff member';
 
   const loadStaff = useCallback(
     async (assignment?: TrusteeOversightAssignment | null) => {
@@ -63,7 +65,7 @@ const TrusteeOversightAssignmentModal = forwardRef<
         const response = await api.getOversightStaff();
         const allStaff = response.data ?? [];
 
-        const targetRole = OVERSIGHT_TO_CAMS_ROLE[props.role];
+        const targetRole = OVERSIGHT_TO_CAMS_ROLE[role];
 
         const staffList = allStaff.filter((member) => member.roles?.includes(targetRole));
 
@@ -81,7 +83,7 @@ const TrusteeOversightAssignmentModal = forwardRef<
         setIsLoading(false);
       }
     },
-    [api, props.role, roleLabel],
+    [api, role, roleLabel],
   );
 
   // Handle external ref
@@ -112,8 +114,8 @@ const TrusteeOversightAssignmentModal = forwardRef<
 
       setIsAssigning(true);
       try {
-        await api.createTrusteeOversightAssignment(props.trusteeId, selectedStaff.id, props.role);
-        props.onAssignment(true);
+        await api.createTrusteeOversightAssignment(trusteeId, selectedStaff.id, role);
+        onAssignment(true);
         globalAlert?.success(
           `${roleLabel.charAt(0).toUpperCase() + roleLabel.slice(1)} assigned successfully`,
         );
@@ -127,10 +129,10 @@ const TrusteeOversightAssignmentModal = forwardRef<
   }, [
     selectedStaff,
     currentAssignment,
-    props.trusteeId,
-    props.role,
-    props.onAssignment,
     api,
+    trusteeId,
+    role,
+    onAssignment,
     globalAlert,
     roleLabel,
   ]);
@@ -174,7 +176,7 @@ const TrusteeOversightAssignmentModal = forwardRef<
 
   const isEditMode = !!currentAssignment;
   const actionButtonGroup = {
-    modalId: props.modalId,
+    modalId: modalId,
     modalRef: modalRef,
     submitButton: {
       label: isEditMode
@@ -194,7 +196,7 @@ const TrusteeOversightAssignmentModal = forwardRef<
   return (
     <Modal
       ref={modalRef}
-      modalId={props.modalId}
+      modalId={modalId}
       className="trustee-oversight-assignment-modal"
       heading={
         isEditMode

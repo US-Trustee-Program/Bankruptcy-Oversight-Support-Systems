@@ -85,21 +85,25 @@ export default function TrusteeDetailScreen() {
   }, [api]);
 
   useEffect(() => {
-    if (trusteeId) {
-      setIsLoading(true);
-      api
-        .getTrustee(trusteeId)
-        .then((trusteeResponse) => {
-          setTrustee(trusteeResponse.data);
-        })
-        .catch(() => {
-          globalAlert?.error('Could not get trustee details');
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
-    }
-    setNavState(mapTrusteeDetailNavState(window.location.pathname));
+    const fetchTrusteeDetails = () => {
+      if (trusteeId) {
+        setIsLoading(true);
+        api
+          .getTrustee(trusteeId)
+          .then((trusteeResponse) => {
+            setTrustee(trusteeResponse.data);
+          })
+          .catch(() => {
+            globalAlert?.error('Could not get trustee details');
+          })
+          .finally(() => {
+            setIsLoading(false);
+          });
+      }
+      setNavState(mapTrusteeDetailNavState(window.location.pathname));
+    };
+
+    fetchTrusteeDetails();
   }, [location.pathname, trusteeId, api, globalAlert]);
 
   if (!trusteeId || (!isLoading && !trustee)) {

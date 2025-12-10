@@ -12,18 +12,22 @@ export default function TrusteesList() {
   const api = useApi2();
 
   useEffect(() => {
-    setLoading(true);
-    api
-      .getTrustees()
-      .then((trusteesResponse) => {
-        setTrustees(trusteesResponse.data || []);
-        setError(null);
-      })
-      .catch(() => {
-        setError('Failed to load trustees. Please try again later.');
-        setTrustees([]);
-      })
-      .finally(() => setLoading(false));
+    const fetchTrustees = () => {
+      setLoading(true);
+      api
+        .getTrustees()
+        .then((trusteesResponse) => {
+          setTrustees(trusteesResponse.data || []);
+          setError(null);
+        })
+        .catch(() => {
+          setError('Failed to load trustees. Please try again later.');
+          setTrustees([]);
+        })
+        .finally(() => setLoading(false));
+    };
+
+    fetchTrustees();
   }, [api]);
 
   if (loading) {
