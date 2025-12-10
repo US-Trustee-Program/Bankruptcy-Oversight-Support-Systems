@@ -3,7 +3,7 @@ import { LOGOUT_PATH } from '@/login/login-library';
 import { checkForSessionEnd, initializeSessionEndLogout } from '@/login/session-end-logout';
 import { CamsSession } from '@common/cams/session';
 import MockData from '@common/cams/test-utilities/mock-data';
-import { nowInSeconds } from '@common/date-helper';
+import DateHelper from '@common/date-helper';
 
 describe('Session End Logout tests', () => {
   const host = 'camshost';
@@ -49,7 +49,7 @@ describe('Session End Logout tests', () => {
   });
 
   test('should redirect if session is expired', () => {
-    const oneSecondAgo = nowInSeconds() - 1000;
+    const oneSecondAgo = DateHelper.nowInSeconds() - 1000;
     const session: CamsSession = {
       user: MockData.getCamsUser(),
       accessToken: MockData.getJwt(),
@@ -63,7 +63,7 @@ describe('Session End Logout tests', () => {
   });
 
   test('should not redirect if session is not expired', () => {
-    const tenSecondsFromNow = nowInSeconds() + 10000;
+    const tenSecondsFromNow = DateHelper.nowInSeconds() + 10000;
     const session: CamsSession = {
       user: MockData.getCamsUser(),
       accessToken: MockData.getJwt(),
@@ -77,7 +77,7 @@ describe('Session End Logout tests', () => {
   });
 
   test('should call setInterval correctly', () => {
-    const tenSecondsFromNow = nowInSeconds() + 10000;
+    const tenSecondsFromNow = DateHelper.nowInSeconds() + 10000;
     const session: CamsSession = {
       user: MockData.getCamsUser(),
       accessToken: MockData.getJwt(),

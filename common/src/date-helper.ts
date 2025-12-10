@@ -1,4 +1,4 @@
-export function sortDates(dateA: Date | string, dateB: Date | string): number {
+function sortDates(dateA: Date | string, dateB: Date | string): number {
   //Sort DESC
   if (dateA > dateB) {
     return 1;
@@ -9,36 +9,37 @@ export function sortDates(dateA: Date | string, dateB: Date | string): number {
   }
 }
 
-export function sortDatesReverse(dateA: Date | string, dateB: Date | string): number {
+function sortDatesReverse(dateA: Date | string, dateB: Date | string): number {
   //Sort ASC
   return sortDates(dateA, dateB) * -1;
 }
 
-export function isValidDateString(dateString: string | null | undefined) {
+function isValidDateString(dateString: string | null | undefined) {
   if (!dateString) return false;
   const evaluation = dateString.match(/[\d]{4}-[\d]{2}-[\d]{2}/);
   return !!evaluation && evaluation.length === 1;
 }
 
-export function isInvalidDate(dateValue: Date) {
+function isInvalidDate(dateValue: Date) {
   return dateValue instanceof Date && isNaN(dateValue.getTime());
 }
 
-export function getIsoDate(date: Date) {
+function getIsoDate(date: Date) {
   return date.toISOString().split('T')[0];
 }
 
-export function getTodaysIsoDate() {
+function getTodaysIsoDate() {
   return getIsoDate(new Date());
 }
 
-export function nowInSeconds() {
+function nowInSeconds() {
   return Math.floor(Date.now() / 1000);
 }
 
 const DateHelper = {
   getIsoDate,
   getTodaysIsoDate,
+  isInvalidDate,
   isValidDateString,
   nowInSeconds,
   sortDates,

@@ -46,7 +46,7 @@ import {
 import { CamsSession } from '../session';
 import { CamsJwtClaims } from '../jwt';
 import { Pagination } from '../../api/pagination';
-import { getIsoDate, getTodaysIsoDate, nowInSeconds, sortDates } from '../../date-helper';
+import DateHelper from '../../date-helper';
 import { CamsRole } from '../roles';
 import { MOCKED_USTP_OFFICES_ARRAY } from '../offices';
 import { REGION_02_GROUP_NY, SUPERUSER } from './mock-user';
@@ -150,14 +150,14 @@ function someDateAfterThisDate(thisDateString: string, days?: number): string {
   const thisDate = new Date(Date.parse(thisDateString));
   const daysToAdd = days || randomInt(1000);
   const someDate = new Date(thisDate.setDate(thisDate.getDate() + daysToAdd));
-  return getIsoDate(someDate);
+  return DateHelper.getIsoDate(someDate);
 }
 
 function someDateBeforeThisDate(thisDateString: string, days?: number): string {
   const thisDate = new Date(Date.parse(thisDateString));
   const daysToSubtract = days || randomInt(1000);
   const someDate = new Date(thisDate.setDate(thisDate.getDate() - daysToSubtract));
-  return getIsoDate(someDate);
+  return DateHelper.getIsoDate(someDate);
 }
 
 function randomChapter(chapters: BankruptcyChapters[] = ['9', '11', '12', '15']) {
@@ -281,7 +281,7 @@ function getSyncedCaseNotMatchingCaseIds(exclude: string[]) {
     ...getDxtrCase(),
     documentType: 'SYNCED_CASE',
     updatedBy: SYSTEM_USER_REFERENCE,
-    updatedOn: someDateBeforeThisDate(getTodaysIsoDate()),
+    updatedOn: someDateBeforeThisDate(DateHelper.getTodaysIsoDate()),
   };
   let caseId = randomCaseId();
   while (exclude.includes(caseId)) {
@@ -411,7 +411,7 @@ function getSortedOrders(count: number = 10): Order[] {
   return [
     ...buildArray(MockData.getTransferOrder, transferCount),
     ...buildArray(MockData.getConsolidationOrder, consolidationCount),
-  ].sort((a, b) => sortDates(a.orderDate, b.orderDate));
+  ].sort((a, b) => DateHelper.sortDates(a.orderDate, b.orderDate));
 }
 
 function getRawConsolidationOrder(
@@ -936,7 +936,7 @@ function getTrusteeAdminSession(): CamsSession {
 }
 
 function getExpiration(): number {
-  const NOW = nowInSeconds();
+  const NOW = DateHelper.nowInSeconds();
   const ONE_HOUR = 3600;
   const salt = Math.floor(Math.random() * 10);
 
