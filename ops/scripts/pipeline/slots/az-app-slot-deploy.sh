@@ -75,7 +75,7 @@ az webapp config access-restriction add -g "${app_rg}" -n "${app_name}" --slot "
 
 # Gives some extra time for prior management operation to complete before starting deployment
 sleep 10
-az webapp deploy --resource-group "${app_rg}" --src-path "${artifact_path}" --name "${app_name}" --slot "${slot_name}" --type zip --async true --track-status false --clean true
+az webapp deploy --resource-group "${app_rg}" --src-path "${artifact_path}" --name "${app_name}" --slot "${slot_name}" --type zip --async true --track-status false --clean true --debug
 
 # shellcheck disable=SC2086
 az webapp traffic-routing set --distribution ${slot_name}=0 --name "${app_name}" --resource-group "${app_rg}"
