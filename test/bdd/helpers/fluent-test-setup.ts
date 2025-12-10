@@ -71,6 +71,7 @@ export class TestSetup {
   private state: TestState = new TestState();
   private cases: CaseDetail[] = [];
   private searchResults: CaseSummary[] = [];
+  private searchResultsExplicitlySet: boolean = false;
   private myAssignments: CaseSummary[] = [];
   private transfers: Transfer[] = [];
   private consolidations: Consolidation[] = [];
@@ -155,6 +156,7 @@ export class TestSetup {
    */
   withSearchResults(results: CaseSummary[]): TestSetup {
     this.searchResults = results;
+    this.searchResultsExplicitlySet = true;
     return this;
   }
 
@@ -365,7 +367,7 @@ export class TestSetup {
       CasesMongoRepository: {
         // Only mock searchCases if withSearchResults() was explicitly called
         // This prevents accidental usage and makes tests explicit about their search data needs
-        searchCases: this.searchResults.length > 0
+        searchCases: this.searchResultsExplicitlySet
           ? vi.fn().mockResolvedValue({
               metadata: { total: this.searchResults.length },
               data: this.searchResults,
