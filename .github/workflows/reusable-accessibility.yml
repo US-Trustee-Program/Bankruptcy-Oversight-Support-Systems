@@ -36,7 +36,7 @@ jobs:
           npm run build:common
 
       - name: Run pa11y Test
-        run: ../ops/scripts/pipeline/accessibility-test.sh
+        run: ops/scripts/pipeline/accessibility-test.sh
 
   playwright-accessibility-test:
     runs-on: ubuntu-latest
