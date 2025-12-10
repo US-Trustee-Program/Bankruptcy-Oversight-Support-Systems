@@ -52,11 +52,11 @@ export function getCaseNotesTitleValue(ref: InputRef | null) {
   return sanitizeText(ref?.getValue() ?? '');
 }
 
-export function getCaseNotesContentValue(ref: InputRef | null) {
+function getCaseNotesContentValue(ref: InputRef | null) {
   return sanitizeText(ref?.getValue() ?? '');
 }
 
-export function getCaseNotesRichTextContentValue(ref: RichTextEditorRef | null) {
+function getCaseNotesRichTextContentValue(ref: RichTextEditorRef | null) {
   const unsafeHtml = ref?.getHtml() ?? '';
   return DOMPurify.sanitize(unsafeHtml, DOMPURIFY_CONFIG);
 }

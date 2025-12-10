@@ -2,7 +2,7 @@ import React, { forwardRef, useImperativeHandle, useRef } from 'react';
 import Input, { InputProps } from './uswds/Input';
 import { InputRef } from '../type-declarations/input-fields';
 
-export function validatePhoneNumberInputEvent(ev: React.ChangeEvent<HTMLInputElement>) {
+function validatePhoneNumberInputEvent(ev: React.ChangeEvent<HTMLInputElement>) {
   return formatPhoneNumberInput(ev.target.value);
 }
 

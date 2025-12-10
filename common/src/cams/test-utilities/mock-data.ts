@@ -46,13 +46,15 @@ import {
 import { CamsSession } from '../session';
 import { CamsJwtClaims } from '../jwt';
 import { Pagination } from '../../api/pagination';
-import { getIsoDate, getTodaysIsoDate, nowInSeconds, sortDates } from '../../date-helper';
+import DateHelper from '../../date-helper';
 import { CamsRole } from '../roles';
 import { MOCKED_USTP_OFFICES_ARRAY } from '../offices';
 import { REGION_02_GROUP_NY, SUPERUSER } from './mock-user';
 import { RoleAndOfficeGroupNames } from '../privileged-identity';
 import { SYSTEM_USER_REFERENCE } from '../auditable';
 import { CaseSyncEvent } from '../../queue/dataflow-types';
+
+const { getIsoDate, getTodaysIsoDate, sortDates, nowInSeconds } = DateHelper;
 
 type EntityType = 'company' | 'person';
 type BankruptcyChapters = '9' | '11' | '12' | '15';
