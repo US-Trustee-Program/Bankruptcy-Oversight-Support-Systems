@@ -4,7 +4,11 @@ import { CamsRole } from '@common/cams/roles';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { nowInSeconds } from '@common/date-helper';
 import { CamsJwtClaims } from '@common/cams/jwt';
-import { MOCK_JWT_SECRET } from '../../../backend/lib/testing/mock-gateways/mock-oauth2-constants';
+import {
+  MOCK_JWT_JOHN_HANCOCK,
+  MOCK_ISSUER,
+  MOCK_AUDIENCE,
+} from '../../../backend/lib/testing/mock-gateways/mock-oauth2-constants';
 
 /**
  * Authentication fixtures for BDD tests
@@ -13,7 +17,7 @@ import { MOCK_JWT_SECRET } from '../../../backend/lib/testing/mock-gateways/mock
 
 /**
  * Create a test session with specific roles and permissions
- * IMPORTANT: Uses 'okta' provider and 'http://test/oauth2/default' issuer to match setup-tests.ts configuration
+ * IMPORTANT: Uses 'okta' provider and MOCK_ISSUER to match setup-tests.ts configuration
  */
 export function createTestSession(roles: CamsRole[] = []): CamsSession {
   const session = MockData.getCamsSession({
@@ -24,7 +28,7 @@ export function createTestSession(roles: CamsRole[] = []): CamsSession {
     }),
     // Override provider and issuer to match test configuration
     provider: 'okta',
-    issuer: 'http://test/oauth2/default',
+    issuer: MOCK_ISSUER,
   });
 
   // Add JWT access token for API authentication
@@ -36,22 +40,22 @@ export function createTestSession(roles: CamsRole[] = []): CamsSession {
 /**
  * Create a mock JWT token for API requests
  * This creates a properly formatted JWT that matches what the backend's OAuth gateway expects
- * The audience is derived from the issuer path (e.g., 'http://test/oauth2/default' → 'api://default')
+ * The audience is derived from the issuer path (e.g., MOCK_ISSUER → MOCK_AUDIENCE)
  */
 export function createTestAuthToken(roles: CamsRole[] = []): string {
   const NOW = nowInSeconds();
   const ONE_DAY = 60 * 60 * 24;
 
   const claims: CamsJwtClaims = {
-    aud: 'api://default', // Matches the audience derived from issuer path '/oauth2/default'
+    aud: MOCK_AUDIENCE, // Matches the audience derived from issuer path '/oauth2/default'
     sub: 'test-user-id', // Matches the user ID in createTestSession
-    iss: 'http://test/oauth2/default', // Must match backend CAMS_LOGIN_PROVIDER_CONFIG issuer
+    iss: MOCK_ISSUER, // Must match backend CAMS_LOGIN_PROVIDER_CONFIG issuer
     exp: NOW + ONE_DAY,
     groups: roles,
   };
 
   // Use the shared mock JWT secret (defined in mock-oauth2-constants.ts)
-  return jwt.sign(claims, MOCK_JWT_SECRET);
+  return jwt.sign(claims, MOCK_JWT_JOHN_HANCOCK);
 }
 
 /**
