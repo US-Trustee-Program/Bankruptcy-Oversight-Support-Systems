@@ -30,7 +30,6 @@ jobs:
         run: |
           npm run ci:all
           npm install serve -g
-          npx playwright install chromium msedge
 
       - name: Run UI in mock mode
         run: |
@@ -48,6 +47,7 @@ jobs:
       - name: Run Playwright a11y Tests
         id: playwrightA11yTests
         run: |
+          npx playwright install chromium msedge
           npm run test:a11y --workspace=user-interface
 
       - name: Upload report
