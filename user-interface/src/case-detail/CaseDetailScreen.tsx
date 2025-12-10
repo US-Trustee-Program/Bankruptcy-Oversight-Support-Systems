@@ -86,14 +86,14 @@ export function findDocketLimits(docket: CaseDocket): DocketLimits {
   return { dateRange, documentRange };
 }
 
-export function docketSorterClosure(sortDirection: SortDirection) {
+function docketSorterClosure(sortDirection: SortDirection) {
   return (left: CaseDocketEntry, right: CaseDocketEntry) => {
     const direction = sortDirection === 'Newest' ? 1 : -1;
     return left.sequenceNumber < right.sequenceNumber ? direction : direction * -1;
   };
 }
 
-export function notesSorterClosure(sortDirection: SortDirection) {
+function notesSorterClosure(sortDirection: SortDirection) {
   return (left: CaseNote, right: CaseNote) => {
     const direction = sortDirection === 'Newest' ? 1 : -1;
     return left.updatedOn < right.updatedOn ? direction : direction * -1;

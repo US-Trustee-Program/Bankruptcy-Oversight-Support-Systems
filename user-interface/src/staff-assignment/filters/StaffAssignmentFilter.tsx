@@ -62,7 +62,7 @@ const StaffAssignmentFilter_ = (
 const StaffAssignmentFilter = forwardRef(StaffAssignmentFilter_);
 export default StaffAssignmentFilter;
 
-export function useStaffAssignmentFilterStoreReact() {
+function useStaffAssignmentFilterStoreReact() {
   const [officeAssignees, setOfficeAssignees] = useState<CamsUserReference[]>([]);
   const [officeAssigneesError, setOfficeAssigneesError] = useState<boolean>(false);
   const [filterAssigneeCallback, setFilterAssigneeCallback] = useState<
@@ -82,7 +82,7 @@ export function useStaffAssignmentFilterStoreReact() {
   };
 }
 
-export function useStaffAssignmentFilterControlsReact() {
+function useStaffAssignmentFilterControlsReact() {
   const assigneesFilterRef = useRef<ComboBoxRef>(null);
 
   return {

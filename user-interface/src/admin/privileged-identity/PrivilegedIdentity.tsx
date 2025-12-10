@@ -14,8 +14,10 @@ import {
 } from '@common/cams/privileged-identity';
 import { CamsUserReference } from '@common/cams/users';
 import { symmetricDifference } from '@common/cams/utilities';
-import { getIsoDate, getTodaysIsoDate } from '@common/date-helper';
+import DateHelper from '@common/date-helper';
 import React, { useEffect, useRef, useState } from 'react';
+
+const { getTodaysIsoDate, getIsoDate } = DateHelper;
 
 export function toComboOption(groupName: string) {
   return {

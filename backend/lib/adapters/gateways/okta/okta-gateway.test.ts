@@ -5,11 +5,13 @@ import OktaGateway from './okta-gateway';
 import { CamsJwtHeader } from '../../../../../common/src/cams/jwt';
 import * as AuthorizationConfiguration from '../../../configs/authorization-configuration';
 import { AuthorizationConfig } from '../../types/authorization';
-import { nowInSeconds } from '../../../../../common/src/date-helper';
+import DateHelper from '../../../../../common/src/date-helper';
 import * as camsJwtModule from '../../../../../common/src/cams/jwt';
 import { isCamsError } from '../../../common-errors/cams-error';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { ApplicationContext } from '../../types/basic';
+
+const { nowInSeconds } = DateHelper;
 
 describe('Okta gateway tests', () => {
   const gateway = OktaGateway;

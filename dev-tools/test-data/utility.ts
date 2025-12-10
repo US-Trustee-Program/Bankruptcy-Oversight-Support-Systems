@@ -1,4 +1,4 @@
-import { getIsoDate } from '../../common/src/date-helper';
+import DateHelper from '../../common/src/date-helper';
 import { ColumnNames, TableRecordHelper } from './types';
 
 /**
@@ -138,5 +138,5 @@ export function someDateAfterThisDate(thisDateString: string, days?: number): st
   const thisDate = new Date(Date.parse(thisDateString));
   const daysToAdd = days || randomInt(1000);
   const someDate = new Date(thisDate.setDate(thisDate.getDate() + daysToAdd));
-  return getIsoDate(someDate);
+  return DateHelper.getIsoDate(someDate);
 }

@@ -78,6 +78,4 @@ const staffAssignmentFilterUseCase = (
   };
 };
 
-export { staffAssignmentFilterUseCase };
-
 export default staffAssignmentFilterUseCase;
