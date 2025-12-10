@@ -20,7 +20,7 @@ type MockLoginState = {
 
 const config = getApiConfiguration();
 
-export function useStateAndActions() {
+function useStateAndActions() {
   const [state, setState] = useState<MockLoginState>({
     session: null,
     selectedRole: null,
