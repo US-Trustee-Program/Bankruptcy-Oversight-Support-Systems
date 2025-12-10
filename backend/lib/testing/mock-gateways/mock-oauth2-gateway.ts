@@ -4,11 +4,11 @@ import { ForbiddenError } from '../../common-errors/forbidden-error';
 import MockUsers, { MockUser } from '../../../../common/src/cams/test-utilities/mock-user';
 import { CamsUser } from '../../../../common/src/cams/users';
 import { CamsRole } from '../../../../common/src/cams/roles';
-import { CamsJwt, CamsJwtClaims, CamsJwtHeader } from '../../../../common/src/cams/jwt';
+import { CamsJwt, CamsJwtClaims } from '../../../../common/src/cams/jwt';
 import { OpenIdConnectGateway } from '../../adapters/types/authorization';
 import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
 import { nowInSeconds } from '../../../../common/src/date-helper';
-import { MOCK_JWT_SECRET } from './mock-oauth2-constants';
+import { MOCK_JWT_JOHN_HANCOCK } from './mock-oauth2-constants';
 
 const MODULE_NAME = 'MOCK-OAUTH2-GATEWAY';
 const mockUsers: MockUser[] = MockUsers;
@@ -35,27 +35,7 @@ export async function mockAuthentication(context: ApplicationContext): Promise<s
     groups: [],
   };
 
-  const token = jwt.sign(claims, MOCK_JWT_SECRET);
-  return token;
-}
-
-export async function verifyToken(accessToken: string): Promise<CamsJwt> {
-  const payload = jwt.verify(accessToken, MOCK_JWT_SECRET) as jwt.JwtPayload;
-  const claims: CamsJwtClaims = {
-    iss: payload.iss!,
-    sub: payload.sub!,
-    aud: payload.aud!,
-    exp: payload.exp!,
-    groups: payload.groups!,
-    ...payload,
-  };
-
-  const header: CamsJwtHeader = { typ: '' };
-  const camsJwt: CamsJwt = {
-    claims,
-    header,
-  };
-  return camsJwt;
+  return jwt.sign(claims, MOCK_JWT_JOHN_HANCOCK);
 }
 
 function addSuperUserOffices(user: CamsUser) {
