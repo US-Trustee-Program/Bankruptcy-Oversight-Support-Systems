@@ -5,6 +5,8 @@ import { CamsSession } from '@common/cams/session';
 import MockData from '@common/cams/test-utilities/mock-data';
 import DateHelper from '@common/date-helper';
 
+const { nowInSeconds } = DateHelper;
+
 describe('Session End Logout tests', () => {
   const host = 'camshost';
   const protocol = 'http:';
@@ -49,7 +51,7 @@ describe('Session End Logout tests', () => {
   });
 
   test('should redirect if session is expired', () => {
-    const oneSecondAgo = DateHelper.nowInSeconds() - 1000;
+    const oneSecondAgo = nowInSeconds() - 1000;
     const session: CamsSession = {
       user: MockData.getCamsUser(),
       accessToken: MockData.getJwt(),
@@ -63,7 +65,7 @@ describe('Session End Logout tests', () => {
   });
 
   test('should not redirect if session is not expired', () => {
-    const tenSecondsFromNow = DateHelper.nowInSeconds() + 10000;
+    const tenSecondsFromNow = nowInSeconds() + 10000;
     const session: CamsSession = {
       user: MockData.getCamsUser(),
       accessToken: MockData.getJwt(),
@@ -77,7 +79,7 @@ describe('Session End Logout tests', () => {
   });
 
   test('should call setInterval correctly', () => {
-    const tenSecondsFromNow = DateHelper.nowInSeconds() + 10000;
+    const tenSecondsFromNow = nowInSeconds() + 10000;
     const session: CamsSession = {
       user: MockData.getCamsUser(),
       accessToken: MockData.getJwt(),
