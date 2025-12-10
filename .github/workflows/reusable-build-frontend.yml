@@ -38,9 +38,6 @@ on:
         type: string
 jobs:
   build-frontend:
-    defaults:
-      run:
-        working-directory: user-interface
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     steps:
