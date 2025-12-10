@@ -1,15 +1,16 @@
+import { vi } from 'vitest';
 import { ApplicationContext } from '../../../lib/adapters/types/basic';
 import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
 import { closeDeferred } from '../../../lib/deferrable/defer-close';
 
 import HealthcheckSqlDb from './healthcheck.db.sql';
 
-const mockRequestFunc = jest.fn().mockImplementation(() => ({
-  input: jest.fn(),
-  query: jest.fn().mockResolvedValue({ recordset: [{ id: 1 }] }),
+const mockRequestFunc = vi.fn().mockImplementation(() => ({
+  input: vi.fn(),
+  query: vi.fn().mockResolvedValue({ recordset: [{ id: 1 }] }),
 }));
-const mockCloseFunc = jest.fn();
-const mockConnect = jest.fn().mockImplementation(
+const mockCloseFunc = vi.fn();
+const mockConnect = vi.fn().mockImplementation(
   (): Promise<unknown> =>
     Promise.resolve({
       request: mockRequestFunc,
@@ -17,9 +18,9 @@ const mockConnect = jest.fn().mockImplementation(
     }),
 );
 
-jest.mock('mssql', () => {
+vi.mock('mssql', () => {
   return {
-    ConnectionPool: jest.fn().mockImplementation(() => {
+    ConnectionPool: vi.fn().mockImplementation(() => {
       return {
         connect: mockConnect,
       };
@@ -38,13 +39,13 @@ describe('healthcheck.db.sql', () => {
 
   afterEach(async () => {
     await closeDeferred(context);
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test('should return true when database query returns records', async () => {
     mockRequestFunc.mockImplementation(() => ({
-      input: jest.fn(),
-      query: jest.fn().mockResolvedValue({ recordset: [{ id: 1 }] }),
+      input: vi.fn(),
+      query: vi.fn().mockResolvedValue({ recordset: [{ id: 1 }] }),
     }));
 
     const result = await healthcheckSqlDb.checkDxtrDbRead();
@@ -56,8 +57,8 @@ describe('healthcheck.db.sql', () => {
 
   test('should return false when database query returns no records', async () => {
     mockRequestFunc.mockImplementation(() => ({
-      input: jest.fn(),
-      query: jest.fn().mockResolvedValue({ recordset: [] }),
+      input: vi.fn(),
+      query: vi.fn().mockResolvedValue({ recordset: [] }),
     }));
 
     const result = await healthcheckSqlDb.checkDxtrDbRead();
@@ -72,7 +73,7 @@ describe('healthcheck.db.sql', () => {
     mockConnect.mockRejectedValueOnce(error);
 
     // Mock the logger.error method
-    const loggerErrorSpy = jest.spyOn(context.logger, 'error');
+    const loggerErrorSpy = vi.spyOn(context.logger, 'error');
 
     const result = await healthcheckSqlDb.checkDxtrDbRead();
 

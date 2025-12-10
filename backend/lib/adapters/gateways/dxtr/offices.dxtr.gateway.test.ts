@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import OfficesDxtrGateway from './offices.dxtr.gateway';
 import { ApplicationContext } from '../../types/basic';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
@@ -25,7 +26,7 @@ describe('offices gateway tests', () => {
 
   describe('getOffices test', () => {
     let applicationContext: ApplicationContext;
-    let querySpy: jest.SpyInstance<
+    let querySpy: vi.SpyInstance<
       Promise<QueryResults>,
       [
         applicationContext: ApplicationContext<unknown>,
@@ -37,13 +38,13 @@ describe('offices gateway tests', () => {
     >;
 
     beforeEach(async () => {
-      querySpy = jest.spyOn(database, 'executeQuery');
+      querySpy = vi.spyOn(database, 'executeQuery');
       applicationContext = await createMockApplicationContext();
     });
 
     afterEach(() => {
-      jest.restoreAllMocks();
-      jest.resetModules();
+      vi.restoreAllMocks();
+      vi.resetModules();
     });
 
     test('Should get Offices', async () => {

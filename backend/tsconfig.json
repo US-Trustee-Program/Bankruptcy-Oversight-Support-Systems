@@ -9,7 +9,8 @@
     "strict": false,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true
   },
   "references": [{ "path": "../common" }],
   "exclude": ["node_modules"]

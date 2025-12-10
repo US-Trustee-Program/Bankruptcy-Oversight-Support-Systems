@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { OfficesController } from './offices.controller';
@@ -6,24 +7,7 @@ import { CamsError } from '../../common-errors/cams-error';
 import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
 import { UnknownError } from '../../common-errors/unknown-error';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
-
-let getOffices = jest.fn();
-let getOfficeAttorneys = jest.fn();
-let getOfficeAssignees = jest.fn();
-const syncOfficeStaff = jest.fn();
-
-jest.mock('../../use-cases/offices/offices', () => {
-  return {
-    OfficesUseCase: jest.fn().mockImplementation(() => {
-      return {
-        getOffices,
-        getOfficeAttorneys,
-        getOfficeAssignees,
-        syncOfficeStaff,
-      };
-    }),
-  };
-});
+import { OfficesUseCase } from '../../use-cases/offices/offices';
 
 describe('offices controller tests', () => {
   let applicationContext: ApplicationContext;
@@ -33,10 +17,13 @@ describe('offices controller tests', () => {
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should return successful when handleTimer is called', async () => {
+    const syncOfficeStaff = vi
+      .spyOn(OfficesUseCase.prototype, 'syncOfficeStaff')
+      .mockResolvedValue(undefined);
     const controller = new OfficesController();
     await expect(controller.handleTimer(applicationContext)).resolves.toBeFalsy();
     expect(syncOfficeStaff).toHaveBeenCalled();
@@ -44,14 +31,16 @@ describe('offices controller tests', () => {
 
   test('should throw error when handleTimer throws', async () => {
     const error = new UnknownError('TEST_MODULE');
-    syncOfficeStaff.mockRejectedValue(error);
+    const syncOfficeStaff = vi
+      .spyOn(OfficesUseCase.prototype, 'syncOfficeStaff')
+      .mockRejectedValue(error);
     const controller = new OfficesController();
     await expect(controller.handleTimer(applicationContext)).rejects.toThrow(error);
     expect(syncOfficeStaff).toHaveBeenCalled();
   });
 
   test('should return successful response', async () => {
-    getOffices = jest.fn().mockResolvedValue(COURT_DIVISIONS);
+    const getOfficeAttorneys = vi.spyOn(OfficesUseCase.prototype, 'getOfficeAttorneys');
 
     const controller = new OfficesController();
     applicationContext.request = mockCamsHttpRequest();
@@ -68,11 +57,7 @@ describe('offices controller tests', () => {
   });
 
   test('should throw CamsError when one is caught', async () => {
-    getOffices = jest
-      .fn()
-      .mockRejectedValue(
-        new CamsError('MOCK_OFFICES_CONTROLLER', { message: 'Some expected CAMS error.' }),
-      );
+    const getOfficeAttorneys = vi.spyOn(OfficesUseCase.prototype, 'getOfficeAttorneys');
 
     const controller = new OfficesController();
     applicationContext.request = mockCamsHttpRequest();
@@ -83,7 +68,7 @@ describe('offices controller tests', () => {
   });
 
   test('should wrap unexpected error in UnknownError', async () => {
-    getOffices = jest.fn().mockRejectedValue(new Error('Some unknown error.'));
+    const getOfficeAttorneys = vi.spyOn(OfficesUseCase.prototype, 'getOfficeAttorneys');
 
     const controller = new OfficesController();
     await expect(async () => {
@@ -94,10 +79,12 @@ describe('offices controller tests', () => {
   });
 
   test('should call getOfficeAttorneys', async () => {
-    getOffices = jest
-      .fn()
+    const getOffices = vi
+      .spyOn(OfficesUseCase.prototype, 'getOffices')
       .mockRejectedValue(new CamsError('TEST', { message: 'some known error' }));
-    getOfficeAttorneys = jest.fn().mockResolvedValue([]);
+    const getOfficeAttorneys = vi
+      .spyOn(OfficesUseCase.prototype, 'getOfficeAttorneys')
+      .mockResolvedValue([]);
 
     const officeCode = 'new-york';
     const subResource = 'attorneys';
@@ -116,10 +103,12 @@ describe('offices controller tests', () => {
 
   test('should call getOfficeAssignees', async () => {
     const assignments = [MockData.getCamsUser()];
-    getOffices = jest
-      .fn()
+    const getOffices = vi
+      .spyOn(OfficesUseCase.prototype, 'getOffices')
       .mockRejectedValue(new CamsError('TEST', { message: 'some known error' }));
-    getOfficeAssignees = jest.fn().mockResolvedValue(assignments);
+    const getOfficeAssignees = vi
+      .spyOn(OfficesUseCase.prototype, 'getOfficeAssignees')
+      .mockResolvedValue(assignments);
 
     const officeCode = 'new-york';
     const subResource = 'assignees';
@@ -137,7 +126,8 @@ describe('offices controller tests', () => {
   });
 
   test('should call getOffices', async () => {
-    getOffices = jest.fn().mockResolvedValue([]);
+    const getOffices = vi.spyOn(OfficesUseCase.prototype, 'getOffices').mockResolvedValue([]);
+    const getOfficeAttorneys = vi.spyOn(OfficesUseCase.prototype, 'getOfficeAttorneys');
 
     applicationContext.request = mockCamsHttpRequest();
 
@@ -153,11 +143,11 @@ describe('offices controller tests', () => {
   });
 
   test('should throw error for unsupported subResource', async () => {
-    getOffices = jest
-      .fn()
+    const getOffices = vi
+      .spyOn(OfficesUseCase.prototype, 'getOffices')
       .mockRejectedValue(new CamsError('TEST', { message: 'some known error' }));
-    getOfficeAttorneys = jest
-      .fn()
+    const getOfficeAttorneys = vi
+      .spyOn(OfficesUseCase.prototype, 'getOfficeAttorneys')
       .mockRejectedValue(new CamsError('TEST', { message: 'some known error' }));
 
     const officeCode = 'new-york';

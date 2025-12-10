@@ -1,4 +1,5 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
+import { vi } from 'vitest';
+
 describe('Authorization config tests', () => {
   const originalEnv = process.env;
 
@@ -14,82 +15,71 @@ describe('Authorization config tests', () => {
     process.env = originalEnv;
   });
 
-  test.each(['mock', 'okta', 'none'])('should get %s provider from environment', (expected) => {
-    process.env.CAMS_LOGIN_PROVIDER = expected;
+  test.each(['mock', 'okta', 'none'])(
+    'should get %s provider from environment',
+    async (expected) => {
+      process.env.CAMS_LOGIN_PROVIDER = expected;
 
-    let configModule;
-    jest.isolateModules(() => {
-      configModule = require('./authorization-configuration');
-    });
-    const config = configModule.getAuthorizationConfig();
-    expect(config.provider).toEqual(expected);
-  });
+      vi.resetModules();
+      const configModule = await import('./authorization-configuration');
+      const config = configModule.getAuthorizationConfig();
+      expect(config.provider).toEqual(expected);
+    },
+  );
 
-  test('should return null for an invalid provider read from the environment', () => {
+  test('should return null for an invalid provider read from the environment', async () => {
     process.env.CAMS_LOGIN_PROVIDER = 'bogus';
 
-    let configModule;
-    jest.isolateModules(() => {
-      configModule = require('./authorization-configuration');
-    });
+    vi.resetModules();
+    const configModule = await import('./authorization-configuration');
     const config = configModule.getAuthorizationConfig();
     expect(config.provider).toBeNull();
   });
 
-  test('should return audience from issuer', () => {
+  test('should return audience from issuer', async () => {
     process.env.CAMS_LOGIN_PROVIDER_CONFIG = 'issuer=https://valid.okta.com/oauth2/default';
 
-    let configModule;
-    jest.isolateModules(() => {
-      configModule = require('./authorization-configuration');
-    });
+    vi.resetModules();
+    const configModule = await import('./authorization-configuration');
     const config = configModule.getAuthorizationConfig();
     expect(config.audience).toEqual('api://default');
   });
 
-  test('should return null audience from issuer if not path is provided', () => {
+  test('should return null audience from issuer if not path is provided', async () => {
     process.env.CAMS_LOGIN_PROVIDER_CONFIG = 'issuer=https://valid.okta.com/';
 
-    let configModule;
-    jest.isolateModules(() => {
-      configModule = require('./authorization-configuration');
-    });
+    vi.resetModules();
+    const configModule = await import('./authorization-configuration');
     const config = configModule.getAuthorizationConfig();
     expect(config.audience).toBeNull();
   });
 
-  test('module should not fail to parse and initialize config', () => {
-    let configModule;
-    jest.isolateModules(() => {
-      configModule = require('./authorization-configuration');
-    });
+  test('module should not fail to parse and initialize config', async () => {
+    vi.resetModules();
+    const configModule = await import('./authorization-configuration');
     const config = configModule.getAuthorizationConfig();
     expect(config.audience).toBeNull();
     expect(config.issuer).toBeNull();
     expect(config.provider).toBeNull();
   });
 
-  test('module should not fail to parse and initialize config with nonsense env var', () => {
+  test('module should not fail to parse and initialize config with nonsense env var', async () => {
     process.env.CAMS_LOGIN_PROVIDER = 'bogus';
     process.env.CAMS_LOGIN_PROVIDER_CONFIG = 'nonsense';
 
-    let configModule;
-    jest.isolateModules(() => {
-      configModule = require('./authorization-configuration');
-    });
+    vi.resetModules();
+    const configModule = await import('./authorization-configuration');
     const config = configModule.getAuthorizationConfig();
     expect(config.audience).toBeNull();
     expect(config.issuer).toBeNull();
     expect(config.provider).toBeNull();
   });
 
-  test('should get mock config if provider is "mock"', () => {
+  test('should get mock config if provider is "mock"', async () => {
     process.env.CAMS_LOGIN_PROVIDER = 'mock';
 
-    let configModule;
-    jest.isolateModules(() => {
-      configModule = require('./authorization-configuration');
-    });
+    vi.resetModules();
+    const configModule = await import('./authorization-configuration');
     const config = configModule.getAuthorizationConfig();
     expect(config.audience).toBeNull();
     expect(config.issuer).toBeNull();

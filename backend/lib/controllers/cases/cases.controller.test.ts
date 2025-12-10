@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsHttpResponseInit } from '../../adapters/utils/http-response';
@@ -21,14 +22,14 @@ describe('cases controller test', () => {
   let controller: CasesController;
 
   beforeEach(async () => {
-    jest.spyOn(CaseManagement.prototype, 'getCaseDetail').mockResolvedValue(caseDetail);
+    vi.spyOn(CaseManagement.prototype, 'getCaseDetail').mockResolvedValue(caseDetail);
 
     context = await createMockApplicationContext();
     controller = new CasesController(context);
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('getCaseDetails', () => {
@@ -47,9 +48,9 @@ describe('cases controller test', () => {
     });
 
     test('should throw CamsError when use case errors on getCaseDetail', async () => {
-      jest
-        .spyOn(CaseManagement.prototype, 'getCaseDetail')
-        .mockRejectedValue(new Error('some error'));
+      vi.spyOn(CaseManagement.prototype, 'getCaseDetail').mockRejectedValue(
+        new Error('some error'),
+      );
       await expect(controller.handleRequest(context)).rejects.toThrow(UnknownError);
     });
   });
@@ -77,9 +78,10 @@ describe('cases controller test', () => {
         },
       );
 
-      jest
-        .spyOn(CaseManagement.prototype, 'searchCases')
-        .mockResolvedValue({ metadata: { total: 0 }, data: [] });
+      vi.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue({
+        metadata: { total: 0 },
+        data: [],
+      });
 
       context.request = mockCamsHttpRequest({
         method: 'POST',
@@ -110,9 +112,10 @@ describe('cases controller test', () => {
         },
       );
 
-      jest
-        .spyOn(CaseManagement.prototype, 'searchCases')
-        .mockResolvedValue({ metadata: { total: data.length + 1 }, data });
+      vi.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue({
+        metadata: { total: data.length + 1 },
+        data,
+      });
 
       context.request = mockCamsHttpRequest({
         method: 'POST',
@@ -145,9 +148,10 @@ describe('cases controller test', () => {
         },
       );
 
-      jest
-        .spyOn(CaseManagement.prototype, 'searchCases')
-        .mockResolvedValue({ metadata: { total: data.length }, data });
+      vi.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue({
+        metadata: { total: data.length },
+        data,
+      });
 
       context.request = mockCamsHttpRequest({
         method: 'POST',
@@ -185,9 +189,10 @@ describe('cases controller test', () => {
         },
       );
 
-      jest
-        .spyOn(CaseManagement.prototype, 'searchCases')
-        .mockResolvedValue({ metadata: { total: totalCount }, data });
+      vi.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue({
+        metadata: { total: totalCount },
+        data,
+      });
 
       context.request = mockCamsHttpRequest({
         method: 'POST',
@@ -228,9 +233,10 @@ describe('cases controller test', () => {
         },
       );
 
-      jest
-        .spyOn(CaseManagement.prototype, 'searchCases')
-        .mockResolvedValue({ metadata: { total: totalCount }, data });
+      vi.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue({
+        metadata: { total: totalCount },
+        data,
+      });
 
       context.request = mockCamsHttpRequest({
         method: 'POST',
@@ -270,9 +276,10 @@ describe('cases controller test', () => {
         },
       );
 
-      jest
-        .spyOn(CaseManagement.prototype, 'searchCases')
-        .mockResolvedValue({ metadata: { total: totalCount }, data });
+      vi.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue({
+        metadata: { total: totalCount },
+        data,
+      });
 
       context.request = mockCamsHttpRequest({
         method: 'POST',
@@ -307,9 +314,10 @@ describe('cases controller test', () => {
         },
       );
 
-      jest
-        .spyOn(CaseManagement.prototype, 'searchCases')
-        .mockResolvedValue({ metadata: { total: totalCount }, data });
+      vi.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue({
+        metadata: { total: totalCount },
+        data,
+      });
 
       context.request = mockCamsHttpRequest({
         method: 'POST',
@@ -345,9 +353,10 @@ describe('cases controller test', () => {
         },
       );
 
-      jest
-        .spyOn(CaseManagement.prototype, 'searchCases')
-        .mockResolvedValue({ metadata: { total: totalCount }, data });
+      vi.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue({
+        metadata: { total: totalCount },
+        data,
+      });
 
       context.request = mockCamsHttpRequest({
         method: 'POST',
@@ -389,7 +398,7 @@ describe('cases controller test', () => {
           offset: 0,
         };
 
-        const useCaseSpy = jest
+        const useCaseSpy = vi
           .spyOn(CaseManagement.prototype, 'searchCases')
           .mockResolvedValue({ metadata: { total: 0 }, data });
 
@@ -407,7 +416,7 @@ describe('cases controller test', () => {
       const caseNumber = '00-00000';
       const error = new Error('some error');
 
-      jest.spyOn(CaseManagement.prototype, 'searchCases').mockRejectedValue(error);
+      vi.spyOn(CaseManagement.prototype, 'searchCases').mockRejectedValue(error);
 
       context.request = mockCamsHttpRequest({ query: { caseNumber } });
       await expect(controller.handleRequest(context)).rejects.toThrow(UnknownError);

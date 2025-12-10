@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteeAssignmentsController } from './trustee-assignments.controller';
 import { TrusteeAssignmentsUseCase } from '../../use-cases/trustee-assignments/trustee-assignments';
@@ -10,12 +11,12 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { CamsUserReference } from '../../../../common/src/cams/users';
 import { NotFoundError } from '../../common-errors/not-found-error';
 
-jest.mock('../../use-cases/trustee-assignments/trustee-assignments');
+vi.mock('../../use-cases/trustee-assignments/trustee-assignments');
 
 describe('TrusteeAssignmentsController', () => {
   let context: ApplicationContext;
   let controller: TrusteeAssignmentsController;
-  let mockUseCase: jest.Mocked<TrusteeAssignmentsUseCase>;
+  let mockUseCase: vi.Mocked<TrusteeAssignmentsUseCase>;
 
   const mockUser: CamsUserReference = {
     id: 'user-123',
@@ -52,12 +53,12 @@ describe('TrusteeAssignmentsController', () => {
     }
 
     mockUseCase = {
-      getTrusteeOversightAssignments: jest.fn(),
-      assignOversightStaffToTrustee: jest.fn(),
-    } as unknown as jest.Mocked<TrusteeAssignmentsUseCase>;
+      getTrusteeOversightAssignments: vi.fn(),
+      assignOversightStaffToTrustee: vi.fn(),
+    } as unknown as vi.Mocked<TrusteeAssignmentsUseCase>;
 
     (
-      TrusteeAssignmentsUseCase as jest.MockedClass<typeof TrusteeAssignmentsUseCase>
+      TrusteeAssignmentsUseCase as vi.MockedClass<typeof TrusteeAssignmentsUseCase>
     ).mockImplementation(() => mockUseCase);
 
     controller = new TrusteeAssignmentsController(context);
@@ -67,7 +68,7 @@ describe('TrusteeAssignmentsController', () => {
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('Feature flag protection', () => {

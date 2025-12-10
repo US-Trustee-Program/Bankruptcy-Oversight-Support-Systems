@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { CourtsUseCase } from './courts';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
@@ -15,7 +16,7 @@ describe('Courts use case tests', () => {
   });
 
   test('should get courts', async () => {
-    jest.spyOn(OfficesUseCase.prototype, 'getOffices').mockResolvedValue(MOCKED_USTP_OFFICES_ARRAY);
+    vi.spyOn(OfficesUseCase.prototype, 'getOffices').mockResolvedValue(MOCKED_USTP_OFFICES_ARRAY);
     const expected = MOCKED_USTP_OFFICES_ARRAY.reduce((acc, office) => {
       acc.push(...ustpOfficeToCourtDivision(office));
       return acc;
@@ -27,7 +28,7 @@ describe('Courts use case tests', () => {
 
   test('should throw errors when errors are encountered', async () => {
     const errorMessage = 'TestError';
-    jest.spyOn(OfficesUseCase.prototype, 'getOffices').mockRejectedValue(new Error(errorMessage));
+    vi.spyOn(OfficesUseCase.prototype, 'getOffices').mockRejectedValue(new Error(errorMessage));
 
     await expect(useCase.getCourts(context)).rejects.toThrow(errorMessage);
   });

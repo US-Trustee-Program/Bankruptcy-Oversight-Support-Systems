@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import handler from './consolidations.function';
 import { CamsHttpRequest } from '../../../lib/adapters/types/http';
@@ -24,12 +25,12 @@ describe('Consolidations Function tests', () => {
 
   const context = createMockAzureFunctionContext();
 
-  jest
-    .spyOn(ContextCreator, 'getApplicationContextSession')
-    .mockResolvedValue(MockData.getManhattanAssignmentManagerSession());
+  vi.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
+    MockData.getManhattanAssignmentManagerSession(),
+  );
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test('should reject consolidation when procedure == "reject"', async () => {
@@ -49,9 +50,7 @@ describe('Consolidations Function tests', () => {
     const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<ConsolidationOrder[]>({
       data: [mockConsolidationOrder],
     });
-    jest
-      .spyOn(OrdersController.prototype, 'rejectConsolidation')
-      .mockResolvedValue(camsHttpResponse);
+    vi.spyOn(OrdersController.prototype, 'rejectConsolidation').mockResolvedValue(camsHttpResponse);
 
     const response = await handler(request, context);
 
@@ -73,9 +72,9 @@ describe('Consolidations Function tests', () => {
       data: [mockConsolidationOrder],
     });
 
-    jest
-      .spyOn(OrdersController.prototype, 'approveConsolidation')
-      .mockResolvedValue(camsHttpResponse);
+    vi.spyOn(OrdersController.prototype, 'approveConsolidation').mockResolvedValue(
+      camsHttpResponse,
+    );
 
     const response = await handler(request, context);
 
@@ -112,7 +111,7 @@ describe('Consolidations Function tests', () => {
 
     const error = new Error('consolidation-test');
     const { azureHttpResponse } = buildTestResponseError(error);
-    jest.spyOn(OrdersController.prototype, 'approveConsolidation').mockRejectedValue(error);
+    vi.spyOn(OrdersController.prototype, 'approveConsolidation').mockRejectedValue(error);
 
     const response = await handler(request, context);
     expect(response).toEqual(azureHttpResponse);

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { Releasable } from '../use-cases/gateways.types';
 import { deferRelease, DeferReleaseAccumulator, releaseDeferred } from './defer-release';
 
@@ -16,7 +17,7 @@ describe('Defer Release', () => {
   });
 
   test('should call release on deferred releasables', async () => {
-    const release = jest.fn();
+    const release = vi.fn();
     const releasable: Releasable = {
       release,
     };
@@ -36,7 +37,7 @@ describe('Defer Release', () => {
   });
 
   test('should silently handle release errors', async () => {
-    const release = jest.fn().mockRejectedValue(new Error('some error'));
+    const release = vi.fn().mockRejectedValue(new Error('some error'));
     const releasable: Releasable = {
       release,
     };

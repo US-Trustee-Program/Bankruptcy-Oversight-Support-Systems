@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { randomUUID } from 'crypto';
 import { CaseNote, CaseNoteEditRequest, CaseNoteInput } from '../../../../common/src/cams/cases';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
@@ -15,7 +16,7 @@ import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 
 describe('Test case-notes use case', () => {
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should return a list of case notes when getCaseNotes is called', async () => {
@@ -26,9 +27,9 @@ describe('Test case-notes use case', () => {
     ];
     const otherNotes = MockData.buildArray(MockData.getCaseNote, 3);
     const existingCaseNotesArray = [...userNotes, ...otherNotes];
-    jest
-      .spyOn(MockMongoRepository.prototype, 'getNotesByCaseId')
-      .mockResolvedValue(existingCaseNotesArray);
+    vi.spyOn(MockMongoRepository.prototype, 'getNotesByCaseId').mockResolvedValue(
+      existingCaseNotesArray,
+    );
     const expected: ResourceActions<CaseNote>[] = [...otherNotes];
     for (const userNote of userNotes) {
       expected.push({
@@ -59,7 +60,7 @@ describe('Test case-notes use case', () => {
   test('should handle error when getCaseNotesByCaseId throws an error', async () => {
     const userRef = MockData.getCamsUserReference();
     const error = new Error('Test Error');
-    jest.spyOn(MockMongoRepository.prototype, 'getNotesByCaseId').mockRejectedValue(error);
+    vi.spyOn(MockMongoRepository.prototype, 'getNotesByCaseId').mockRejectedValue(error);
     const MODULE_NAME = 'CASE-NOTES-USE-CASE';
     const context = await createMockApplicationContext();
     context.session = await createMockApplicationContextSession({ user: userRef });
@@ -81,7 +82,7 @@ describe('Test case-notes use case', () => {
 
     const context = await createMockApplicationContext();
     const useCase = new CaseNotesUseCase(context);
-    const createSpy = jest
+    const createSpy = vi
       .spyOn(MockMongoRepository.prototype, 'create')
       .mockImplementation(async () => {});
 
@@ -116,9 +117,9 @@ describe('Test case-notes use case', () => {
     const context = await createMockApplicationContext();
     context.session = await createMockApplicationContextSession({ user });
     const existingNote = MockData.getCaseNote({ updatedBy: user, createdBy: user });
-    jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(existingNote);
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(existingNote);
     const useCase = new CaseNotesUseCase(context);
-    const archiveSpy = jest
+    const archiveSpy = vi
       .spyOn(MockMongoRepository.prototype, 'archiveCaseNote')
       .mockImplementation(async () => {});
 
@@ -151,16 +152,16 @@ describe('Test case-notes use case', () => {
 
     const useCase = new CaseNotesUseCase(context);
 
-    const createSpy = jest
+    const createSpy = vi
       .spyOn(MockMongoRepository.prototype, 'create')
       .mockImplementation(async () => {});
 
-    const archiveSpy = jest
+    const archiveSpy = vi
       .spyOn(MockMongoRepository.prototype, 'archiveCaseNote')
       .mockImplementation(async () => {});
 
     const existingNote: CaseNote = MockData.getCaseNote({ updatedBy: user, createdBy: user });
-    jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(existingNote);
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(existingNote);
     const newNote: CaseNote = MockData.getCaseNote({
       ...existingNote,
       content: 'Edited Note Content',
@@ -208,7 +209,7 @@ describe('Test case-notes use case', () => {
     const context = await createMockApplicationContext();
     context.session = await createMockApplicationContextSession({ user: user });
     const existingNote = MockData.getCaseNote({ updatedBy: wrongUserRef });
-    jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(existingNote);
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(existingNote);
 
     const useCase = new CaseNotesUseCase(context);
 
@@ -235,9 +236,7 @@ describe('Test case-notes use case', () => {
 
     const useCase = new CaseNotesUseCase(context);
     const existingNote = MockData.getCaseNote({ updatedBy: wrongUserRef });
-    const readSpy = jest
-      .spyOn(MockMongoRepository.prototype, 'read')
-      .mockResolvedValue(existingNote);
+    const readSpy = vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(existingNote);
 
     const editNoteRequest = MockData.getCaseNoteEditRequest({
       note: existingNote,

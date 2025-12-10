@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import CaseClosedEventUseCase from './case-closed-event';
@@ -5,7 +6,7 @@ import CaseClosedEventUseCase from './case-closed-event';
 describe('case closed event use case', () => {
   describe('handleCaseClosedEvent', () => {
     const event = { caseId: '000-11-22222' };
-    const deleteMany = jest.spyOn(MockMongoRepository.prototype, 'deleteMany');
+    const deleteMany = vi.spyOn(MockMongoRepository.prototype, 'deleteMany');
     const { handleCaseClosedEvent } = CaseClosedEventUseCase;
 
     test('should proxy a message to pass caseId to deleteCaseAssignment', async () => {

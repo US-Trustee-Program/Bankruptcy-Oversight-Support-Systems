@@ -24,7 +24,8 @@
     "test:bdd": "npm run test --workspace=test/bdd",
     "test:bdd:watch": "npm run test:watch --workspace=test/bdd",
     "test:bdd:coverage": "npm run coverage --workspace=test/bdd",
-    "lint": "eslint . -c eslint.config.mjs",
+    "lint": "eslint . -c eslint.config.mjs --quiet",
+    "lint:fix": "eslint . -c eslint.config.mjs --fix --quiet",
     "knip": "knip",
     "knip:fix": "knip --fix"
   },

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { HttpRequest, InvocationContext, StorageQueueOutput, Timer } from '@azure/functions';
 import {
   buildFunctionName,
@@ -79,10 +80,10 @@ describe('Dataflows Common', () => {
   describe('buildHttpTrigger', () => {
     test('should return a http trigger that executes the function passed to the build function', async () => {
       const invocationContext = {
-        log: jest.fn(),
+        log: vi.fn(),
       } as unknown as InvocationContext;
 
-      const fnArgumentSpy = jest.fn();
+      const fnArgumentSpy = vi.fn();
       const trigger = buildHttpTrigger('TEST', fnArgumentSpy);
 
       const goodRequest = {
@@ -102,7 +103,7 @@ describe('Dataflows Common', () => {
 
   describe('buildStartQueueTimerTrigger', () => {
     test('should return a timer trigger that puts a message on a given start queue', async () => {
-      const setSpy = jest.fn();
+      const setSpy = vi.fn();
       const invocationContext = {
         extraOutputs: {
           set: setSpy,
@@ -121,9 +122,9 @@ describe('Dataflows Common', () => {
 
   describe('buildStartQueueHttpTrigger', () => {
     test('should return a http trigger that puts a message on a given start queue', async () => {
-      const setSpy = jest.fn();
+      const setSpy = vi.fn();
       const invocationContext = {
-        log: jest.fn(),
+        log: vi.fn(),
         extraOutputs: {
           set: setSpy,
         },

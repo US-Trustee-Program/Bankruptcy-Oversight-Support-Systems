@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { CasesSearchPredicate } from '../../../../../common/src/api/search';
 import { ResourceActions } from '../../../../../common/src/cams/actions';
 import { SyncedCase } from '../../../../../common/src/cams/cases';
@@ -55,7 +56,7 @@ describe('Cases repository', () => {
 
   afterEach(async () => {
     await closeDeferred(context);
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
     repo.release();
   });
 
@@ -80,16 +81,14 @@ describe('Cases repository', () => {
       ],
     };
     const transfers = MockData.buildArray(MockData.getTransferOrder, 5);
-    const findSpy = jest
-      .spyOn(MongoCollectionAdapter.prototype, 'find')
-      .mockResolvedValue(transfers);
+    const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(transfers);
     const result = await repo.getTransfers('111-82-80331');
     expect(findSpy).toHaveBeenCalledWith(query);
     expect(result).toEqual(transfers);
   });
 
   test('getTransfers should catch errors thrown by adapter.find', async () => {
-    jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('some error'));
+    vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('some error'));
     const caseId = '123-12-12345';
     await expect(async () => await repo.getTransfers(caseId)).rejects.toThrow(
       expect.objectContaining({
@@ -121,7 +120,7 @@ describe('Cases repository', () => {
       ],
     };
     const consolidations = MockData.buildArray(MockData.getConsolidationOrder, 5);
-    const findSpy = jest
+    const findSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'find')
       .mockResolvedValue(consolidations);
     const result = await repo.getConsolidation('111-82-80331');
@@ -130,7 +129,7 @@ describe('Cases repository', () => {
   });
 
   test('should throw error in getConsolidation when find throws', async () => {
-    jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('some error'));
+    vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('some error'));
     const caseId = '111-82-80331';
     await expect(async () => await repo.getConsolidation(caseId)).rejects.toThrow(
       expect.objectContaining({
@@ -161,7 +160,7 @@ describe('Cases repository', () => {
         },
       ],
     };
-    const findSpy = jest
+    const findSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'find')
       .mockResolvedValue(CASE_HISTORY);
     const result = await repo.getCaseHistory('111-82-80331');
@@ -170,7 +169,7 @@ describe('Cases repository', () => {
   });
 
   test('should throw error in getCaseHistory when find throws', async () => {
-    jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('some error'));
+    vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('some error'));
     const caseId = '111-82-80331';
     await expect(async () => await repo.getCaseHistory(caseId)).rejects.toThrow(
       expect.objectContaining({
@@ -186,9 +185,9 @@ describe('Cases repository', () => {
   });
 
   test('createTransferTo should catch errors thrown by adapter.insertOne', async () => {
-    jest
-      .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
-      .mockRejectedValue(new Error('test error'));
+    vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(
+      new Error('test error'),
+    );
     await expect(async () => await repo.createTransferTo(transferOut)).rejects.toThrow(
       expect.objectContaining({
         message: 'Unknown Error',
@@ -207,7 +206,7 @@ describe('Cases repository', () => {
   });
 
   test('should createTransferTo', async () => {
-    const insertOneSpy = jest
+    const insertOneSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
       .mockResolvedValue(crypto.randomUUID().toString());
     const result = await repo.createTransferTo(transferOut);
@@ -216,9 +215,9 @@ describe('Cases repository', () => {
   });
 
   test('createTransferFrom should catch errors thrown by adapter.insertOne', async () => {
-    jest
-      .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
-      .mockRejectedValue(new Error('test error'));
+    vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(
+      new Error('test error'),
+    );
     await expect(async () => await repo.createTransferFrom(transferIn)).rejects.toThrow(
       expect.objectContaining({
         message: 'Unknown Error',
@@ -237,7 +236,7 @@ describe('Cases repository', () => {
   });
 
   test('should createTransferFrom', async () => {
-    const insertOneSpy = jest
+    const insertOneSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
       .mockResolvedValue(crypto.randomUUID().toString());
     const result = await repo.createTransferFrom(transferIn);
@@ -247,7 +246,7 @@ describe('Cases repository', () => {
 
   test('should createConsolidationTo', async () => {
     const consolidationTo = MockData.getConsolidationTo();
-    const insertOneSpy = jest
+    const insertOneSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
       .mockResolvedValue(crypto.randomUUID().toString());
     const result = await repo.createConsolidationTo(consolidationTo);
@@ -258,9 +257,9 @@ describe('Cases repository', () => {
 
   test('createConsolidationTo should catch errors thrown by adapter.insertOne', async () => {
     const consolidaitonTo = MockData.getConsolidationTo();
-    jest
-      .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
-      .mockRejectedValue(new Error('test error'));
+    vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(
+      new Error('test error'),
+    );
     await expect(async () => await repo.createConsolidationTo(consolidaitonTo)).rejects.toThrow(
       expect.objectContaining({
         message: 'Unknown Error',
@@ -280,7 +279,7 @@ describe('Cases repository', () => {
 
   test('should createConsolidationFrom', async () => {
     const consolidationFrom = MockData.getConsolidationFrom();
-    const insertOneSpy = jest
+    const insertOneSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
       .mockResolvedValue(crypto.randomUUID().toString());
     const result = await repo.createConsolidationFrom(consolidationFrom);
@@ -291,9 +290,9 @@ describe('Cases repository', () => {
   test('createConsolidationFrom should catch errors thrown by adapter.insertOne', async () => {
     const consolidationFrom = MockData.getConsolidationFrom();
 
-    jest
-      .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
-      .mockRejectedValue(new Error('test error'));
+    vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(
+      new Error('test error'),
+    );
     await expect(async () => await repo.createConsolidationFrom(consolidationFrom)).rejects.toThrow(
       expect.objectContaining({
         message: 'Unknown Error',
@@ -322,7 +321,7 @@ describe('Cases repository', () => {
     const expectedSyncedCaseArray: CamsPaginationResponse<SyncedCase> = {
       data: [MockData.getSyncedCase({ override: { caseId: caseId1 } })],
     };
-    const findSpy = jest
+    const findSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'paginate')
       .mockResolvedValueOnce(expectedSyncedCaseArray);
     const result = await repo.searchCases(predicate);
@@ -370,7 +369,7 @@ describe('Cases repository', () => {
       MockData.getSyncedCase({ override: { caseId: caseId1 } }),
       MockData.getSyncedCase({ override: { caseId: caseId2 } }),
     ];
-    const findSpy = jest
+    const findSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'paginate')
       .mockResolvedValue({ data: expectedSyncedCaseArray });
     const result = await repo.searchCases(predicate);
@@ -419,7 +418,7 @@ describe('Cases repository', () => {
       MockData.getSyncedCase({ override: { caseId: caseId1 } }),
       MockData.getSyncedCase({ override: { caseId: caseId2 } }),
     ];
-    const findSpy = jest
+    const findSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'paginate')
       .mockResolvedValue({ data: expectedSyncedCaseArray });
     const result = await repo.searchCases(predicate);
@@ -474,7 +473,7 @@ describe('Cases repository', () => {
       data: expectedSyncedCaseArray,
     };
 
-    const aggregateSpy = jest
+    const aggregateSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'paginate')
       .mockResolvedValue(expectedPaginationResponse);
 
@@ -532,7 +531,7 @@ describe('Cases repository', () => {
       data: expectedSyncedCaseArray,
     };
 
-    const aggregateSpy = jest
+    const aggregateSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'paginate')
       .mockResolvedValue(expectedPaginationResponse);
 
@@ -626,9 +625,9 @@ describe('Cases repository', () => {
       offset: 0,
     };
 
-    jest
-      .spyOn(MongoCollectionAdapter.prototype, 'paginate')
-      .mockRejectedValue(new CamsError('CASES_MONGO_REPOSITORY'));
+    vi.spyOn(MongoCollectionAdapter.prototype, 'paginate').mockRejectedValue(
+      new CamsError('CASES_MONGO_REPOSITORY'),
+    );
     await expect(async () => await repo.searchCases(predicate)).rejects.toThrow(
       'Unknown CAMS Error',
     );
@@ -642,9 +641,9 @@ describe('Cases repository', () => {
       offset: 0,
     };
 
-    jest
-      .spyOn(MongoCollectionAdapter.prototype, 'paginate')
-      .mockRejectedValue(new CamsError('CASES_MONGO_REPOSITORY'));
+    vi.spyOn(MongoCollectionAdapter.prototype, 'paginate').mockRejectedValue(
+      new CamsError('CASES_MONGO_REPOSITORY'),
+    );
     await expect(async () => await repo.searchCases(predicate)).rejects.toThrow(
       'Unknown CAMS Error',
     );
@@ -668,7 +667,7 @@ describe('Cases repository', () => {
       data: expectedSyncedCaseArray,
     };
 
-    const aggregateSpy = jest
+    const aggregateSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'paginate')
       .mockResolvedValue(expectedPaginationResponse);
 
@@ -712,9 +711,9 @@ describe('Cases repository', () => {
       MockData.getSyncedCase({ override: { caseId: caseId1 } }),
       MockData.getSyncedCase({ override: { caseId: caseId2 } }),
     ];
-    jest
-      .spyOn(MongoCollectionAdapter.prototype, 'paginate')
-      .mockResolvedValue({ data: expectedSyncedCaseArray });
+    vi.spyOn(MongoCollectionAdapter.prototype, 'paginate').mockResolvedValue({
+      data: expectedSyncedCaseArray,
+    });
     await expect(async () => await repo.searchCases(predicate)).rejects.toThrow(
       'Case Search requires a pagination predicate with a valid limit and offset',
     );
@@ -726,9 +725,9 @@ describe('Cases repository', () => {
       excludeChildConsolidations: true,
     };
 
-    jest
-      .spyOn(MongoCollectionAdapter.prototype, 'find')
-      .mockRejectedValue(new CamsError('CASES_MONGO_REPOSITORY'));
+    vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
+      new CamsError('CASES_MONGO_REPOSITORY'),
+    );
     await expect(async () => await repo.getConsolidationChildCaseIds(predicate)).rejects.toThrow(
       'Unknown CAMS Error',
     );
@@ -743,12 +742,10 @@ describe('Cases repository', () => {
       excludeChildConsolidations: true,
     };
 
-    jest
-      .spyOn(MongoCollectionAdapter.prototype, 'find')
-      .mockResolvedValue([
-        MockData.getSyncedCase({ override: { caseId: caseIds[0] } }),
-        MockData.getSyncedCase({ override: { caseId: caseIds[1] } }),
-      ]);
+    vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
+      MockData.getSyncedCase({ override: { caseId: caseIds[0] } }),
+      MockData.getSyncedCase({ override: { caseId: caseIds[1] } }),
+    ]);
     const result = await repo.getConsolidationChildCaseIds(predicate);
     expect(result).toEqual(caseIds);
   });
@@ -761,12 +758,10 @@ describe('Cases repository', () => {
       excludeChildConsolidations: true,
     };
 
-    jest
-      .spyOn(MongoCollectionAdapter.prototype, 'find')
-      .mockResolvedValue([
-        MockData.getSyncedCase({ override: { caseId: caseIds[0] } }),
-        MockData.getSyncedCase({ override: { caseId: caseIds[1] } }),
-      ]);
+    vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
+      MockData.getSyncedCase({ override: { caseId: caseIds[0] } }),
+      MockData.getSyncedCase({ override: { caseId: caseIds[1] } }),
+    ]);
     const result = await repo.getConsolidationChildCaseIds(predicate);
     expect(result).toEqual(caseIds);
   });
@@ -779,12 +774,10 @@ describe('Cases repository', () => {
       excludeChildConsolidations: true,
     };
 
-    jest
-      .spyOn(MongoCollectionAdapter.prototype, 'find')
-      .mockResolvedValue([
-        MockData.getSyncedCase({ override: { caseId: caseIds[0] } }),
-        MockData.getSyncedCase({ override: { caseId: caseIds[1] } }),
-      ]);
+    vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
+      MockData.getSyncedCase({ override: { caseId: caseIds[0] } }),
+      MockData.getSyncedCase({ override: { caseId: caseIds[1] } }),
+    ]);
     const result = await repo.getConsolidationChildCaseIds(predicate);
     expect(result).toEqual(caseIds);
   });
@@ -797,19 +790,17 @@ describe('Cases repository', () => {
       excludeChildConsolidations: true,
     };
 
-    jest
-      .spyOn(MongoCollectionAdapter.prototype, 'find')
-      .mockResolvedValue([
-        MockData.getSyncedCase({ override: { caseId: caseIds[0] } }),
-        MockData.getSyncedCase({ override: { caseId: caseIds[1] } }),
-      ]);
+    vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
+      MockData.getSyncedCase({ override: { caseId: caseIds[0] } }),
+      MockData.getSyncedCase({ override: { caseId: caseIds[1] } }),
+    ]);
     const result = await repo.getConsolidationChildCaseIds(predicate);
     expect(result).toEqual(caseIds);
   });
 
   test('should persist the case to sync', async () => {
     const bCase = MockData.getSyncedCase();
-    const replaceSpy = jest
+    const replaceSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
       .mockResolvedValue(null);
 
@@ -835,18 +826,16 @@ describe('Cases repository', () => {
 
   test('should throw when replaceOne throws error', async () => {
     const bCase = MockData.getSyncedCase();
-    jest
-      .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
-      .mockRejectedValue(new Error('some error'));
+    vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue(
+      new Error('some error'),
+    );
 
     await expect(repo.syncDxtrCase(bCase)).rejects.toThrow(UnknownError);
   });
 
   test('should get synced case by caseId', async () => {
     const bCase = MockData.getSyncedCase();
-    const findSpy = jest
-      .spyOn(MongoCollectionAdapter.prototype, 'findOne')
-      .mockResolvedValue(bCase);
+    const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(bCase);
 
     const actual = await repo.getSyncedCase(bCase.caseId);
 
@@ -862,9 +851,9 @@ describe('Cases repository', () => {
 
   test('should handle error getting synced case', async () => {
     const bCase = MockData.getSyncedCase();
-    jest
-      .spyOn(MongoCollectionAdapter.prototype, 'findOne')
-      .mockRejectedValue(new Error('some error'));
+    vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(
+      new Error('some error'),
+    );
 
     await expect(repo.getSyncedCase(bCase.caseId)).rejects.toThrow(UnknownError);
   });
@@ -882,7 +871,7 @@ describe('Cases repository', () => {
       updatedOn: new Date().toISOString(),
       updatedBy: SYSTEM_USER_REFERENCE,
     };
-    const createSpy = jest
+    const createSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
       .mockResolvedValue(history.id);
     await repo.createCaseHistory(history);
@@ -903,7 +892,7 @@ describe('Cases repository', () => {
       updatedBy: SYSTEM_USER_REFERENCE,
     };
     const error = new Error('some error');
-    jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(error);
+    vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(error);
     const actualError = await getTheThrownError(() => repo.createCaseHistory(history));
     expect(actualError.isCamsError).toBeTruthy();
     expect(actualError.camsStack).toEqual([
