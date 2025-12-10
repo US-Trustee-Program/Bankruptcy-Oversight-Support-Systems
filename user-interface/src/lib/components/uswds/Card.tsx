@@ -2,7 +2,7 @@ import { HtmlHeading } from '@/lib/utils/html-semantics';
 import React from 'react';
 import { JSX, ReactNode } from 'react';
 
-export type CardProps = JSX.IntrinsicElements['div'] & {
+type CardProps = JSX.IntrinsicElements['div'] & {
   children: ReactNode;
   headingLevel?: HtmlHeading;
 };

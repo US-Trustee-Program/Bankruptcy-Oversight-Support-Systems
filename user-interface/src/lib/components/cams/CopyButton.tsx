@@ -2,7 +2,7 @@ import React, { forwardRef, type JSX } from 'react';
 import IconButton from '../IconButton';
 import { ButtonRef } from '../uswds/Button';
 
-export type CopyButtonProps = JSX.IntrinsicElements['button'];
+type CopyButtonProps = JSX.IntrinsicElements['button'];
 
 function CopyButton_(props: CopyButtonProps, ref: React.Ref<ButtonRef>) {
   return <IconButton icon="content_copy" {...props} ref={ref} />;

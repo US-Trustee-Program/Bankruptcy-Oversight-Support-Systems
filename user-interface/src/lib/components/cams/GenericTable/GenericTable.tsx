@@ -22,9 +22,9 @@ type ColumnInfo<T> = {
 type GenericTableColumns<T> = ColumnInfo<T>[];
 
 // TODO: Figure out how to get the correct type for the value parameter.
-// export type GenericTableTransformer<T> = (arg: T[keyof T] | T, idx?: number) => React.ReactNode;
+// type GenericTableTransformer<T> = (arg: T[keyof T] | T, idx?: number) => React.ReactNode;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type GenericTableTransformer = (arg: any, idx?: number) => React.ReactNode;
+type GenericTableTransformer = (arg: any, idx?: number) => React.ReactNode;
 
 export type GenericTableProps<T> = {
   columns: GenericTableColumns<T>;

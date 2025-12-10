@@ -1,5 +1,5 @@
 import type { JSX } from 'react';
-export type MainContentProps = JSX.IntrinsicElements['div'];
+type MainContentProps = JSX.IntrinsicElements['div'];
 
 export function MainContent(props: MainContentProps) {
   const { children, ...otherProps } = props;

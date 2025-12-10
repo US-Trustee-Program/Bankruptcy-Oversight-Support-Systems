@@ -13,7 +13,7 @@ export function createNavStateMapper<T>(
   };
 }
 
-export interface NavigationItem<T> {
+interface NavigationItem<T> {
   state: T;
   path: string;
   label: string;
@@ -24,7 +24,7 @@ export interface NavigationItem<T> {
   conditionalCheck?: () => boolean;
 }
 
-export interface DetailNavigationProps<T> {
+interface DetailNavigationProps<T> {
   entityId: string | undefined;
   initiallySelectedNavLink: T;
   className?: string;

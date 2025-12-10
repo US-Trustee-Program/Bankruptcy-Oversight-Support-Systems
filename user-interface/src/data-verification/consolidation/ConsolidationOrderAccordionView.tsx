@@ -53,7 +53,7 @@ function toAddCaseModel(viewModel: ConsolidationViewModel): AddCaseModel {
   };
 }
 
-export type ConsolidationOrderAccordionViewProps = {
+type ConsolidationOrderAccordionViewProps = {
   viewModel: ConsolidationViewModel;
 };
 

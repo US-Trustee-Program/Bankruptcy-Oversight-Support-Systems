@@ -2,7 +2,7 @@ import Icon from '@/lib/components/uswds/Icon';
 import Button, { ButtonRef, UswdsButtonStyle } from './uswds/Button';
 import React, { forwardRef, type JSX } from 'react';
 
-export type IconButtonProps = JSX.IntrinsicElements['button'] & {
+type IconButtonProps = JSX.IntrinsicElements['button'] & {
   disabled?: boolean;
   icon: string;
 };

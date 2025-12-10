@@ -11,11 +11,11 @@ import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import useComponent from '@/lib/hooks/UseComponent';
 import { ModalRefType, SubmitCancelButtonGroupRef, OpenModalButtonRef } from './modal-refs';
 
-export type ModalShowOptions = {
+type ModalShowOptions = {
   openModalButtonRef?: RefObject<OpenModalButtonRef | null>;
 };
 
-export interface ModalProps {
+interface ModalProps {
   modalId: string;
   className?: string;
   heading: React.ReactNode;

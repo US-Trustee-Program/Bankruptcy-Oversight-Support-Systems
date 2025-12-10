@@ -2,7 +2,7 @@ import { LOGIN_SUCCESS_PATH } from '@/login/login-library';
 import { useEffect } from 'react';
 import useCamsNavigator from '../hooks/UseCamsNavigator';
 
-export type GoHomeProps = {
+type GoHomeProps = {
   path?: string;
 };
 
