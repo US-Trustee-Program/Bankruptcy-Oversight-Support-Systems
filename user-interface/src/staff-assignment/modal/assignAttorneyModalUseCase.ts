@@ -217,6 +217,4 @@ const assignAttorneyModalUseCase = (
   };
 };
 
-export { assignAttorneyModalUseCase };
-
 export default assignAttorneyModalUseCase;

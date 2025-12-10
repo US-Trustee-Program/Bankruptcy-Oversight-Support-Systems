@@ -87,7 +87,7 @@ function AssignAttorneyModal_(
 const AssignAttorneyModal = forwardRef(AssignAttorneyModal_);
 export default AssignAttorneyModal;
 
-export function useAssignAttorneyModalStoreReact() {
+function useAssignAttorneyModalStoreReact() {
   const [bCase, setBCase] = useState<CaseBasics | null>(null);
   const [initialDocumentBodyStyle, setInitialDocumentBodyStyle] = useState<string>('');
   const [checkListValues, setCheckListValues] = useState<CamsUserReference[]>([]);
@@ -118,7 +118,7 @@ export function useAssignAttorneyModalStoreReact() {
   };
 }
 
-export function useAssignAttorneyModalControlsReact(): AssignAttorneyModalControls {
+function useAssignAttorneyModalControlsReact(): AssignAttorneyModalControls {
   const modalRef = useRef<ModalRefType>(null);
   const tableContainerRef = useRef<HTMLTableSectionElement | null>(null);
 
