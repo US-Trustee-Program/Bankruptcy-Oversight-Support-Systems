@@ -40,6 +40,9 @@ describe('offices controller tests', () => {
   });
 
   test('should return successful response', async () => {
+    const getOffices = vi
+      .spyOn(OfficesUseCase.prototype, 'getOffices')
+      .mockResolvedValue(COURT_DIVISIONS);
     const getOfficeAttorneys = vi.spyOn(OfficesUseCase.prototype, 'getOfficeAttorneys');
 
     const controller = new OfficesController();
@@ -53,10 +56,14 @@ describe('offices controller tests', () => {
         },
       }),
     );
+    expect(getOffices).toHaveBeenCalled();
     expect(getOfficeAttorneys).not.toHaveBeenCalled();
   });
 
   test('should throw CamsError when one is caught', async () => {
+    const getOffices = vi
+      .spyOn(OfficesUseCase.prototype, 'getOffices')
+      .mockRejectedValue(new CamsError('TEST', { message: 'Some expected CAMS error.' }));
     const getOfficeAttorneys = vi.spyOn(OfficesUseCase.prototype, 'getOfficeAttorneys');
 
     const controller = new OfficesController();
@@ -64,10 +71,14 @@ describe('offices controller tests', () => {
     await expect(async () => {
       await controller.handleRequest(applicationContext);
     }).rejects.toThrow('Some expected CAMS error.');
+    expect(getOffices).toHaveBeenCalled();
     expect(getOfficeAttorneys).not.toHaveBeenCalled();
   });
 
   test('should wrap unexpected error in UnknownError', async () => {
+    const getOffices = vi
+      .spyOn(OfficesUseCase.prototype, 'getOffices')
+      .mockRejectedValue(new Error('Unexpected error'));
     const getOfficeAttorneys = vi.spyOn(OfficesUseCase.prototype, 'getOfficeAttorneys');
 
     const controller = new OfficesController();
@@ -75,6 +86,7 @@ describe('offices controller tests', () => {
       applicationContext.request = mockCamsHttpRequest();
       await controller.handleRequest(applicationContext);
     }).rejects.toThrow('Unknown Error');
+    expect(getOffices).toHaveBeenCalled();
     expect(getOfficeAttorneys).not.toHaveBeenCalled();
   });
 
