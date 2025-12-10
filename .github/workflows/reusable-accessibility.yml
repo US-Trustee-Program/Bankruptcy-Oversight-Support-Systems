@@ -29,14 +29,9 @@ jobs:
           cache: 'npm'
           cache-dependency-path: package-lock.json
 
-      - name: CI Common
-        working-directory: common
-        run: |
-          npm ci
-
       - name: Install Node dependencies
         run: |
-          npm ci
+          npm run ci:all
           npx playwright install chromium msedge
 
       - name: Run UI in mock mode
