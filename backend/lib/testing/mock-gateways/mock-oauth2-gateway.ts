@@ -7,7 +7,7 @@ import { CamsRole } from '../../../../common/src/cams/roles';
 import { CamsJwt, CamsJwtClaims } from '../../../../common/src/cams/jwt';
 import { OpenIdConnectGateway } from '../../adapters/types/authorization';
 import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
-import { nowInSeconds } from '../../../../common/src/date-helper';
+import DateHelper from '../../../../common/src/date-helper';
 
 const MODULE_NAME = 'MOCK-OAUTH2-GATEWAY';
 const mockUsers: MockUser[] = MockUsers;
@@ -23,7 +23,7 @@ export async function mockAuthentication(context: ApplicationContext): Promise<s
   const validMockRole = mockUsers.find((role) => role.sub === requestedSubject.sub);
 
   const ONE_DAY = 60 * 60 * 24;
-  const NOW = nowInSeconds();
+  const NOW = DateHelper.nowInSeconds();
 
   const expiration = isNaN(EXPIRE_OVERRIDE) ? NOW + ONE_DAY : NOW + EXPIRE_OVERRIDE;
 

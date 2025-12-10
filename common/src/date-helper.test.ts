@@ -1,11 +1,13 @@
-import {
+import DateHelper from './date-helper';
+
+const {
   getTodaysIsoDate,
   isInvalidDate,
   isValidDateString,
   nowInSeconds,
   sortDates,
   sortDatesReverse,
-} from './date-helper';
+} = DateHelper;
 
 describe('date helper tests', () => {
   test('should sort dates newest first', () => {

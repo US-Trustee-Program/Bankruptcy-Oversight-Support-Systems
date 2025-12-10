@@ -3,7 +3,9 @@ import { LOGOUT_PATH } from '@/login/login-library';
 import { checkForSessionEnd, initializeSessionEndLogout } from '@/login/session-end-logout';
 import { CamsSession } from '@common/cams/session';
 import MockData from '@common/cams/test-utilities/mock-data';
-import { nowInSeconds } from '@common/date-helper';
+import DateHelper from '@common/date-helper';
+
+const { nowInSeconds } = DateHelper;
 
 describe('Session End Logout tests', () => {
   const host = 'camshost';

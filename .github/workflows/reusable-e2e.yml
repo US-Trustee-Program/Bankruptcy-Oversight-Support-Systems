@@ -121,7 +121,6 @@ jobs:
 
       - name: Run E2E Tests
         id: e2eTests
-        if: false
         working-directory: test/e2e
         run: |
           echo "Running Playwright Tests..."

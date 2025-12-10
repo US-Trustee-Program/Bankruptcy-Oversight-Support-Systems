@@ -31,7 +31,7 @@ export type PendingTransferOrderProps = {
   officesList: Array<CourtDivisionDetails>;
 };
 
-export function getOrderTransferFromOrder(order: TransferOrder): FlexibleTransferOrderAction {
+function getOrderTransferFromOrder(order: TransferOrder): FlexibleTransferOrderAction {
   const { id, caseId, orderType } = order;
   return {
     id,
