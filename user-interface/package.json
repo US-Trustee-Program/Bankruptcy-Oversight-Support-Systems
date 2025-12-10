@@ -89,7 +89,7 @@
     "build-common": "pushd ../common && npm ci && npm run build && popd",
     "clean": "rm -rf build && rm -rf node_modules && rm -rf ./coverage",
     "coverage": "export CAMS_USE_FAKE_API=true && vitest run --coverage",
-    "coverage:ci": "npm config set script-shell=/bin/bash && npm run build-common && npm config set script-shell= && export CAMS_USE_FAKE_API=true && vitest run --coverage",
+    "coverage:ci": "export CAMS_USE_FAKE_API=true && vitest run --coverage",
     "dependency-cruiser-graphical": "current_time=$(date +'%Y-%m-%d_%H%M') && npx depcruise --output-type dot --do-not-follow '^node_modules($|/)' public src | dot -T svg > ../docs/architecture/dependency-cruiser/user-interface/dependency-graph_${current_time}.svg",
     "dependency-cruiser:ci": "npx depcruise --output-type err-long public src",
     "envToConfig": "node ./envToConfig.js",
