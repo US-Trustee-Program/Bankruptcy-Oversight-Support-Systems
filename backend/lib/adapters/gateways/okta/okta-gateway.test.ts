@@ -11,6 +11,8 @@ import { isCamsError } from '../../../common-errors/cams-error';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { ApplicationContext } from '../../types/basic';
 
+const { nowInSeconds } = DateHelper;
+
 describe('Okta gateway tests', () => {
   const gateway = OktaGateway;
   let context: ApplicationContext;
@@ -58,7 +60,7 @@ describe('Okta gateway tests', () => {
       sub: 'user@fake.com',
       aud: 'api://default',
       iat: 0,
-      exp: DateHelper.nowInSeconds() + 600,
+      exp: nowInSeconds() + 600,
       AD_Groups: ['groupD'],
       ad_groups: ['groupA', 'groupB'],
       groups: ['groupB', 'groupC'],
@@ -140,7 +142,7 @@ describe('Okta gateway tests', () => {
         iss: 'issuer',
         sub: 'sub',
         aud: 'aud',
-        exp: DateHelper.nowInSeconds() + 600,
+        exp: nowInSeconds() + 600,
         groups: ['groupA'],
       },
       header: { typ: 'JWT' },
@@ -177,7 +179,7 @@ describe('Okta gateway tests', () => {
       sub: 'user@fake.com',
       aud: 'api://default',
       iat: 0,
-      exp: DateHelper.nowInSeconds() + 600,
+      exp: nowInSeconds() + 600,
       groups: ['groupB'],
     };
     const jwtHeader = { alg: 'RS256', typ: undefined, kid: '' };
@@ -225,7 +227,7 @@ describe('Okta gateway tests', () => {
         iss: 'issuer',
         sub: 'sub',
         aud: 'aud',
-        exp: DateHelper.nowInSeconds() + 600,
+        exp: nowInSeconds() + 600,
         groups: ['groupA'],
       },
       header: { typ: 'JWT' },
@@ -253,7 +255,7 @@ describe('Okta gateway tests', () => {
         iss: 'issuer',
         sub: 'sub',
         aud: 'aud',
-        exp: DateHelper.nowInSeconds() + 600,
+        exp: nowInSeconds() + 600,
         // groups missing
       },
       header: { typ: 'JWT' },
@@ -325,7 +327,7 @@ describe('Okta gateway tests', () => {
         sub: 'user@fake.com',
         aud: 'api://default',
         iat: 0,
-        exp: DateHelper.nowInSeconds() + 600,
+        exp: nowInSeconds() + 600,
         ...groupClaims,
       };
       const jwtHeader = { alg: 'RS256', typ: undefined, kid: '' };
@@ -387,7 +389,7 @@ describe('Okta gateway tests', () => {
       sub: 'user@fake.com',
       aud: 'api://default',
       iat: 0,
-      exp: DateHelper.nowInSeconds() + 600,
+      exp: nowInSeconds() + 600,
       groups: ['groupB', 'groupC'],
     };
     const jwtHeader = { alg: 'RS256', typ: undefined, kid: '' };

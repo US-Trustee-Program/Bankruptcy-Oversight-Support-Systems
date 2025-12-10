@@ -54,6 +54,8 @@ import { RoleAndOfficeGroupNames } from '../privileged-identity';
 import { SYSTEM_USER_REFERENCE } from '../auditable';
 import { CaseSyncEvent } from '../../queue/dataflow-types';
 
+const { getIsoDate, getTodaysIsoDate, sortDates, nowInSeconds } = DateHelper;
+
 type EntityType = 'company' | 'person';
 type BankruptcyChapters = '9' | '11' | '12' | '15';
 
@@ -150,14 +152,14 @@ function someDateAfterThisDate(thisDateString: string, days?: number): string {
   const thisDate = new Date(Date.parse(thisDateString));
   const daysToAdd = days || randomInt(1000);
   const someDate = new Date(thisDate.setDate(thisDate.getDate() + daysToAdd));
-  return DateHelper.getIsoDate(someDate);
+  return getIsoDate(someDate);
 }
 
 function someDateBeforeThisDate(thisDateString: string, days?: number): string {
   const thisDate = new Date(Date.parse(thisDateString));
   const daysToSubtract = days || randomInt(1000);
   const someDate = new Date(thisDate.setDate(thisDate.getDate() - daysToSubtract));
-  return DateHelper.getIsoDate(someDate);
+  return getIsoDate(someDate);
 }
 
 function randomChapter(chapters: BankruptcyChapters[] = ['9', '11', '12', '15']) {
@@ -281,7 +283,7 @@ function getSyncedCaseNotMatchingCaseIds(exclude: string[]) {
     ...getDxtrCase(),
     documentType: 'SYNCED_CASE',
     updatedBy: SYSTEM_USER_REFERENCE,
-    updatedOn: someDateBeforeThisDate(DateHelper.getTodaysIsoDate()),
+    updatedOn: someDateBeforeThisDate(getTodaysIsoDate()),
   };
   let caseId = randomCaseId();
   while (exclude.includes(caseId)) {
@@ -411,7 +413,7 @@ function getSortedOrders(count: number = 10): Order[] {
   return [
     ...buildArray(MockData.getTransferOrder, transferCount),
     ...buildArray(MockData.getConsolidationOrder, consolidationCount),
-  ].sort((a, b) => DateHelper.sortDates(a.orderDate, b.orderDate));
+  ].sort((a, b) => sortDates(a.orderDate, b.orderDate));
 }
 
 function getRawConsolidationOrder(
@@ -936,7 +938,7 @@ function getTrusteeAdminSession(): CamsSession {
 }
 
 function getExpiration(): number {
-  const NOW = DateHelper.nowInSeconds();
+  const NOW = nowInSeconds();
   const ONE_HOUR = 3600;
   const salt = Math.floor(Math.random() * 10);
 
