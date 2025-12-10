@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
@@ -12,18 +13,18 @@ describe('storeRuntimeState tests', () => {
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should persist a new sync state and log', async () => {
-    jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(undefined);
-    const upsertSpy = jest
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(undefined);
+    const upsertSpy = vi
       .spyOn(MockMongoRepository.prototype, 'upsert')
       .mockResolvedValue(undefined);
 
     const lastSyncDate = new Date().toISOString();
-    const errorLogSpy = jest.spyOn(context.logger, 'camsError');
-    const infoLogSpy = jest.spyOn(context.logger, 'info');
+    const errorLogSpy = vi.spyOn(context.logger, 'camsError');
+    const infoLogSpy = vi.spyOn(context.logger, 'info');
     await CasesRuntimeState.storeRuntimeState(context, lastSyncDate);
     expect(upsertSpy).toHaveBeenCalledWith({
       documentType: 'CASES_SYNC_STATE',
@@ -42,10 +43,10 @@ describe('storeRuntimeState tests', () => {
       documentType: 'CASES_SYNC_STATE',
       lastSyncDate: '1000',
     };
-    jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(original);
-    jest.spyOn(MockMongoRepository.prototype, 'upsert').mockRejectedValue(new Error('some error'));
-    const errorLogSpy = jest.spyOn(context.logger, 'camsError');
-    const infoLogSpy = jest.spyOn(context.logger, 'info');
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(original);
+    vi.spyOn(MockMongoRepository.prototype, 'upsert').mockRejectedValue(new Error('some error'));
+    const errorLogSpy = vi.spyOn(context.logger, 'camsError');
+    const infoLogSpy = vi.spyOn(context.logger, 'info');
     await expect(CasesRuntimeState.storeRuntimeState(context, '1001')).resolves.toBeUndefined();
     expect(errorLogSpy).toHaveBeenCalled();
     expect(infoLogSpy).not.toHaveBeenCalledWith(

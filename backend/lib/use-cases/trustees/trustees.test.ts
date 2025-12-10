@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext, getTheThrownError } from '../../testing/testing-utilities';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
@@ -18,19 +19,19 @@ describe('TrusteesUseCase tests', () => {
     });
 
     afterEach(() => {
-      jest.restoreAllMocks();
+      vi.restoreAllMocks();
     });
 
     test('should create a trustee', async () => {
       const trustee = MockData.getTrusteeInput();
       const userRef = getCamsUserReference(context.session.user);
 
-      const createTrusteeSpy = jest
+      const createTrusteeSpy = vi
         .spyOn(MockMongoRepository.prototype, 'createTrustee')
         .mockResolvedValue(
           MockData.getTrustee({ ...trustee, createdBy: userRef, updatedBy: userRef }),
         );
-      const trusteeHistorySpy = jest
+      const trusteeHistorySpy = vi
         .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
         .mockResolvedValue();
 
@@ -65,17 +66,15 @@ describe('TrusteesUseCase tests', () => {
       const userRef = getCamsUserReference(context.session.user);
 
       // Create a spy on the checkValidation method to ensure it's called and passes
-      const checkValidationSpy = jest.spyOn(
-        trusteesUseCase as unknown as { checkValidation: jest.Mock },
+      const checkValidationSpy = vi.spyOn(
+        trusteesUseCase as unknown as { checkValidation: vi.Mock },
         'checkValidation',
       );
 
-      jest
-        .spyOn(MockMongoRepository.prototype, 'createTrustee')
-        .mockResolvedValue(
-          MockData.getTrustee({ ...trustee, createdBy: userRef, updatedBy: userRef }),
-        );
-      jest.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(
+        MockData.getTrustee({ ...trustee, createdBy: userRef, updatedBy: userRef }),
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
 
       await trusteesUseCase.createTrustee(context, trustee);
 
@@ -97,7 +96,7 @@ describe('TrusteesUseCase tests', () => {
         message: 'Database connection failed',
       });
 
-      jest.spyOn(MockMongoRepository.prototype, 'createTrustee').mockRejectedValue(repositoryError);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockRejectedValue(repositoryError);
 
       const actualError = await getTheThrownError(() =>
         trusteesUseCase.createTrustee(context, trustee),
@@ -111,14 +110,12 @@ describe('TrusteesUseCase tests', () => {
       const userRef = getCamsUserReference(context.session.user);
       const historyError = new Error('History creation failed');
 
-      jest
-        .spyOn(MockMongoRepository.prototype, 'createTrustee')
-        .mockResolvedValue(
-          MockData.getTrustee({ ...trustee, createdBy: userRef, updatedBy: userRef }),
-        );
-      jest
-        .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
-        .mockRejectedValue(historyError);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(
+        MockData.getTrustee({ ...trustee, createdBy: userRef, updatedBy: userRef }),
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockRejectedValue(
+        historyError,
+      );
 
       const actualError = await getTheThrownError(() =>
         trusteesUseCase.createTrustee(context, trustee),
@@ -134,12 +131,12 @@ describe('TrusteesUseCase tests', () => {
     });
 
     afterEach(() => {
-      jest.restoreAllMocks();
+      vi.restoreAllMocks();
     });
 
     test('should return list of trustees', async () => {
       const mockTrustees = [MockData.getTrustee(), MockData.getTrustee()];
-      jest.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue(mockTrustees);
+      vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue(mockTrustees);
 
       const result = await trusteesUseCase.listTrustees(context);
 
@@ -149,7 +146,7 @@ describe('TrusteesUseCase tests', () => {
     test('should handle repository error during list operation', async () => {
       const repositoryError = new Error('Database error');
 
-      jest.spyOn(MockMongoRepository.prototype, 'listTrustees').mockRejectedValue(repositoryError);
+      vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockRejectedValue(repositoryError);
 
       const actualError = await getTheThrownError(() => trusteesUseCase.listTrustees(context));
       expect(actualError.isCamsError).toBe(true);
@@ -163,15 +160,13 @@ describe('TrusteesUseCase tests', () => {
     });
 
     afterEach(() => {
-      jest.restoreAllMocks();
+      vi.restoreAllMocks();
     });
 
     test('should return trustee history', async () => {
       const trusteeId = 'trustee-123';
       const mockHistory = [...MockData.getTrusteeHistory(), ...MockData.getTrusteeHistory()];
-      jest
-        .spyOn(MockMongoRepository.prototype, 'listTrusteeHistory')
-        .mockResolvedValue(mockHistory);
+      vi.spyOn(MockMongoRepository.prototype, 'listTrusteeHistory').mockResolvedValue(mockHistory);
 
       const result = await trusteesUseCase.listTrusteeHistory(context, trusteeId);
 
@@ -182,9 +177,9 @@ describe('TrusteesUseCase tests', () => {
       const trusteeId = 'trustee-123';
       const repositoryError = new Error('History fetch failed');
 
-      jest
-        .spyOn(MockMongoRepository.prototype, 'listTrusteeHistory')
-        .mockRejectedValue(repositoryError);
+      vi.spyOn(MockMongoRepository.prototype, 'listTrusteeHistory').mockRejectedValue(
+        repositoryError,
+      );
 
       const actualError = await getTheThrownError(() =>
         trusteesUseCase.listTrusteeHistory(context, trusteeId),
@@ -200,13 +195,13 @@ describe('TrusteesUseCase tests', () => {
     });
 
     afterEach(() => {
-      jest.restoreAllMocks();
+      vi.restoreAllMocks();
     });
 
     test('should return a single trustee', async () => {
       const trusteeId = 'trustee-123';
       const mockTrustee = MockData.getTrustee();
-      jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
 
       const result = await trusteesUseCase.getTrustee(context, trusteeId);
 
@@ -217,7 +212,7 @@ describe('TrusteesUseCase tests', () => {
       const trusteeId = 'non-existent-trustee';
       const repositoryError = new Error('Trustee not found');
 
-      jest.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(repositoryError);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(repositoryError);
 
       const actualError = await getTheThrownError(() =>
         trusteesUseCase.getTrustee(context, trusteeId),
@@ -233,7 +228,7 @@ describe('TrusteesUseCase tests', () => {
     });
 
     afterEach(() => {
-      jest.restoreAllMocks();
+      vi.restoreAllMocks();
     });
 
     const trusteeId = 'trustee-123';
@@ -243,7 +238,7 @@ describe('TrusteesUseCase tests', () => {
     beforeEach(() => {
       existingTrustee = MockData.getTrustee();
       userRef = getCamsUserReference(context.session.user);
-      jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(existingTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(existingTrustee);
     });
 
     test('should update trustee and create name history when name changes', async () => {
@@ -252,10 +247,10 @@ describe('TrusteesUseCase tests', () => {
       const updateData = { name: updatedName };
       const updatedTrustee = { ...existingTrustee, name: updatedName };
 
-      const updateTrusteeSpy = jest
+      const updateTrusteeSpy = vi
         .spyOn(MockMongoRepository.prototype, 'updateTrustee')
         .mockResolvedValue(updatedTrustee);
-      const historyCreateSpy = jest
+      const historyCreateSpy = vi
         .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
         .mockResolvedValue();
 
@@ -286,10 +281,10 @@ describe('TrusteesUseCase tests', () => {
       const updateData = { public: newPublicContact };
       const updatedTrustee = { ...existingTrustee, public: newPublicContact };
 
-      const updateTrusteeSpy = jest
+      const updateTrusteeSpy = vi
         .spyOn(MockMongoRepository.prototype, 'updateTrustee')
         .mockResolvedValue(updatedTrustee);
-      const historyCreateSpy = jest
+      const historyCreateSpy = vi
         .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
         .mockResolvedValue();
 
@@ -314,10 +309,10 @@ describe('TrusteesUseCase tests', () => {
       const updateData = { internal: newInternalContact };
       const updatedTrustee = { ...existingTrustee, internal: newInternalContact };
 
-      const updateTrusteeSpy = jest
+      const updateTrusteeSpy = vi
         .spyOn(MockMongoRepository.prototype, 'updateTrustee')
         .mockResolvedValue(updatedTrustee);
-      const historyCreateSpy = jest
+      const historyCreateSpy = vi
         .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
         .mockResolvedValue();
 
@@ -342,10 +337,10 @@ describe('TrusteesUseCase tests', () => {
       const updateData = { banks: newBanks };
       const updatedTrustee = { ...existingTrustee, banks: newBanks };
 
-      const updateTrusteeSpy = jest
+      const updateTrusteeSpy = vi
         .spyOn(MockMongoRepository.prototype, 'updateTrustee')
         .mockResolvedValue(updatedTrustee);
-      const historyCreateSpy = jest
+      const historyCreateSpy = vi
         .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
         .mockResolvedValue();
 
@@ -370,10 +365,10 @@ describe('TrusteesUseCase tests', () => {
       const updateData = { software: newSoftware };
       const updatedTrustee = { ...existingTrustee, software: newSoftware };
 
-      const updateTrusteeSpy = jest
+      const updateTrusteeSpy = vi
         .spyOn(MockMongoRepository.prototype, 'updateTrustee')
         .mockResolvedValue(updatedTrustee);
-      const historyCreateSpy = jest
+      const historyCreateSpy = vi
         .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
         .mockResolvedValue();
 
@@ -396,8 +391,8 @@ describe('TrusteesUseCase tests', () => {
       const updateData = { name: existingTrustee.name }; // Same name
       const updatedTrustee = { ...existingTrustee };
 
-      jest.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
-      const historyCreateSpy = jest
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+      const historyCreateSpy = vi
         .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
         .mockResolvedValue();
 
@@ -427,8 +422,8 @@ describe('TrusteesUseCase tests', () => {
       };
       const updatedTrustee = { ...existingTrustee, name: 'Updated Name' };
 
-      jest.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
-      jest.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
 
       const result = await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
 
@@ -444,7 +439,7 @@ describe('TrusteesUseCase tests', () => {
     test('should handle repository read error during update', async () => {
       const repositoryError = new Error('Trustee read failed');
 
-      jest.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(repositoryError);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(repositoryError);
 
       const actualError = await getTheThrownError(() =>
         trusteesUseCase.updateTrustee(context, trusteeId, {}),
@@ -455,7 +450,7 @@ describe('TrusteesUseCase tests', () => {
     test('should handle repository update error', async () => {
       const repositoryError = new Error('Update failed');
 
-      jest.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockRejectedValue(repositoryError);
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockRejectedValue(repositoryError);
 
       const actualError = await getTheThrownError(() =>
         trusteesUseCase.updateTrustee(context, trusteeId, {}),
@@ -479,10 +474,10 @@ describe('TrusteesUseCase tests', () => {
       delete updatedTrustee.software;
       delete updatedTrustee.banks;
 
-      const mongoMock = jest
+      const mongoMock = vi
         .spyOn(MockMongoRepository.prototype, 'updateTrustee')
         .mockResolvedValue(updatedTrustee);
-      jest.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
 
       const result = await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
 
@@ -537,10 +532,10 @@ describe('TrusteesUseCase tests', () => {
         },
       };
 
-      const mongoMock = jest
+      const mongoMock = vi
         .spyOn(MockMongoRepository.prototype, 'updateTrustee')
         .mockResolvedValue(updatedTrustee);
-      jest.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
 
       const result = await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
 
@@ -560,16 +555,16 @@ describe('TrusteesUseCase tests', () => {
         ...existingTrustee,
         internal: {},
       };
-      jest
-        .spyOn(MockMongoRepository.prototype, 'read')
-        .mockResolvedValue(existingTrusteeWithEmptyInternal);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(
+        existingTrusteeWithEmptyInternal,
+      );
 
       const newInternalContact = MockData.getContactInformation();
       const updateData = { internal: newInternalContact };
       const updatedTrustee = { ...existingTrusteeWithEmptyInternal, internal: newInternalContact };
 
-      jest.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
-      const historyCreateSpy = jest
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+      const historyCreateSpy = vi
         .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
         .mockResolvedValue();
 
@@ -593,15 +588,15 @@ describe('TrusteesUseCase tests', () => {
         ...existingTrustee,
         internal: existingInternalContact,
       };
-      jest
-        .spyOn(MockMongoRepository.prototype, 'read')
-        .mockResolvedValue(existingTrusteeWithInternal);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(
+        existingTrusteeWithInternal,
+      );
 
       const updateData = { internal: {} };
       const updatedTrustee = { ...existingTrusteeWithInternal, internal: {} };
 
-      jest.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
-      const historyCreateSpy = jest
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+      const historyCreateSpy = vi
         .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
         .mockResolvedValue();
 

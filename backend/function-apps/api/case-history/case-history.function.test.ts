@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { CASE_HISTORY } from '../../../lib/testing/mock-data/case-history.mock';
 import { NORMAL_CASE_ID, NOT_FOUND_ERROR_CASE_ID } from '../../../lib/testing/testing-constants';
 import { NotFoundError } from '../../../lib/common-errors/not-found-error';
@@ -25,9 +26,9 @@ describe('Case History Function Tests', () => {
 
   beforeEach(() => {
     context = new InvocationContext();
-    jest
-      .spyOn(ContextCreator, 'getApplicationContextSession')
-      .mockResolvedValue(MockData.getManhattanAssignmentManagerSession());
+    vi.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
+      MockData.getManhattanAssignmentManagerSession(),
+    );
   });
 
   test('Should return case history for an existing case ID', async () => {
@@ -48,9 +49,7 @@ describe('Case History Function Tests', () => {
       },
       data: CASE_HISTORY,
     });
-    jest
-      .spyOn(CaseHistoryController.prototype, 'handleRequest')
-      .mockResolvedValue(camsHttpResponse);
+    vi.spyOn(CaseHistoryController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
 
     const response = await handler(request, context);
     expect(response).toEqual(azureHttpResponse);
@@ -58,7 +57,7 @@ describe('Case History Function Tests', () => {
 
   test('Should return an error response for a non-existent case ID', async () => {
     const error = new NotFoundError('test-module');
-    jest.spyOn(CaseHistoryController.prototype, 'handleRequest').mockRejectedValue(error);
+    vi.spyOn(CaseHistoryController.prototype, 'handleRequest').mockRejectedValue(error);
 
     const requestOverride = {
       params: {

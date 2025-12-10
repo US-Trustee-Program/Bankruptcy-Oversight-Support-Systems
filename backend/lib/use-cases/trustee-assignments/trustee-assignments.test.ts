@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteeAssignmentsUseCase } from './trustee-assignments';
 import { TrusteesRepository, UserGroupsRepository } from '../gateways.types';
@@ -17,19 +18,19 @@ import * as factory from '../../factory';
 import * as errorUtilities from '../../common-errors/error-utilities';
 
 // Mock the factory functions
-jest.mock('../../factory');
-const mockFactory = factory as jest.Mocked<typeof factory>;
+vi.mock('../../factory');
+const mockFactory = factory as vi.Mocked<typeof factory>;
 
 // Mock the error utilities
-jest.mock('../../common-errors/error-utilities');
-const mockErrorUtilities = errorUtilities as jest.Mocked<typeof errorUtilities>;
+vi.mock('../../common-errors/error-utilities');
+const mockErrorUtilities = errorUtilities as vi.Mocked<typeof errorUtilities>;
 
 describe('TrusteeAssignmentsUseCase', () => {
   let useCase: TrusteeAssignmentsUseCase;
   let context: ApplicationContext;
-  let mockTrusteesRepository: jest.Mocked<TrusteesRepository>;
-  let mockUserGroupGateway: jest.Mocked<UserGroupGateway>;
-  let mockUserGroupsRepository: jest.Mocked<UserGroupsRepository>;
+  let mockTrusteesRepository: vi.Mocked<TrusteesRepository>;
+  let mockUserGroupGateway: vi.Mocked<UserGroupGateway>;
+  let mockUserGroupsRepository: vi.Mocked<UserGroupsRepository>;
 
   const mockUser: CamsUserReference = {
     id: 'user-123',
@@ -59,37 +60,37 @@ describe('TrusteeAssignmentsUseCase', () => {
     context.session.user.roles = [CamsRole.TrusteeAdmin];
 
     // Mock logger methods
-    context.logger.info = jest.fn();
-    context.logger.error = jest.fn();
+    context.logger.info = vi.fn();
+    context.logger.error = vi.fn();
 
     mockTrusteesRepository = {
-      getTrusteeOversightAssignments: jest.fn(),
-      createTrusteeOversightAssignment: jest.fn(),
-      createTrusteeHistory: jest.fn(),
-      read: jest.fn(),
-      release: jest.fn(),
-      createTrustee: jest.fn(),
-      listTrusteeHistory: jest.fn(),
-      listTrustees: jest.fn(),
-      updateTrustee: jest.fn(),
-      updateTrusteeOversightAssignment: jest.fn(),
+      getTrusteeOversightAssignments: vi.fn(),
+      createTrusteeOversightAssignment: vi.fn(),
+      createTrusteeHistory: vi.fn(),
+      read: vi.fn(),
+      release: vi.fn(),
+      createTrustee: vi.fn(),
+      listTrusteeHistory: vi.fn(),
+      listTrustees: vi.fn(),
+      updateTrustee: vi.fn(),
+      updateTrusteeOversightAssignment: vi.fn(),
     };
 
     mockUserGroupGateway = {
-      init: jest.fn(),
-      getUserGroupWithUsers: jest.fn(),
-      getUserById: jest.fn(),
-      getUsers: jest.fn(),
-      getUserGroups: jest.fn(),
-      getUserGroupUsers: jest.fn(),
-      release: jest.fn(),
-    } as jest.Mocked<UserGroupGateway>;
+      init: vi.fn(),
+      getUserGroupWithUsers: vi.fn(),
+      getUserById: vi.fn(),
+      getUsers: vi.fn(),
+      getUserGroups: vi.fn(),
+      getUserGroupUsers: vi.fn(),
+      release: vi.fn(),
+    } as vi.Mocked<UserGroupGateway>;
 
     mockUserGroupsRepository = {
-      upsertUserGroupsBatch: jest.fn(),
-      read: jest.fn(),
-      release: jest.fn(),
-    } as jest.Mocked<UserGroupsRepository>;
+      upsertUserGroupsBatch: vi.fn(),
+      read: vi.fn(),
+      release: vi.fn(),
+    } as vi.Mocked<UserGroupsRepository>;
 
     mockFactory.getTrusteesRepository.mockReturnValue(mockTrusteesRepository);
     mockFactory.getUserGroupGateway.mockResolvedValue(mockUserGroupGateway);
@@ -100,7 +101,7 @@ describe('TrusteeAssignmentsUseCase', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('getTrusteeOversightAssignments', () => {
@@ -308,7 +309,7 @@ describe('TrusteeAssignmentsUseCase', () => {
           existingAssignment,
         ]);
 
-        mockTrusteesRepository.updateTrusteeOversightAssignment = jest.fn().mockResolvedValue({
+        mockTrusteesRepository.updateTrusteeOversightAssignment = vi.fn().mockResolvedValue({
           ...existingAssignment,
           unassignedOn: '2025-10-28T00:00:00.000Z',
         } as TrusteeOversightAssignment);

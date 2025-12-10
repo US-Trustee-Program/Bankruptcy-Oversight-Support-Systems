@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { ApplicationContext } from '../../types/basic';
 import { TrusteesMongoRepository, TrusteeDocument } from './trustees.mongo.repository';
 import {
@@ -47,7 +48,7 @@ describe('TrusteesMongoRepository', () => {
 
   afterEach(async () => {
     await closeDeferred(context);
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
     repository.release();
   });
 
@@ -57,7 +58,7 @@ describe('TrusteesMongoRepository', () => {
 
   describe('createTrustee', () => {
     test('should create trustee document with audit fields', async () => {
-      const mockAdapter = jest
+      const mockAdapter = vi
         .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
         .mockResolvedValue(undefined);
 
@@ -78,7 +79,7 @@ describe('TrusteesMongoRepository', () => {
 
     test('should handle creation errors', async () => {
       const error = new Error('Database connection failed');
-      const mockAdapter = jest
+      const mockAdapter = vi
         .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
         .mockRejectedValue(error);
 
@@ -142,7 +143,7 @@ describe('TrusteesMongoRepository', () => {
         },
       ];
 
-      const mockAdapter = jest
+      const mockAdapter = vi
         .spyOn(MongoCollectionAdapter.prototype, 'find')
         .mockResolvedValue(mockTrustees as TrusteeDocument[]);
 
@@ -158,9 +159,7 @@ describe('TrusteesMongoRepository', () => {
     });
 
     test('should return empty array when no trustees exist', async () => {
-      const mockAdapter = jest
-        .spyOn(MongoCollectionAdapter.prototype, 'find')
-        .mockResolvedValue([]);
+      const mockAdapter = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
 
       const result = await repository.listTrustees();
 
@@ -175,7 +174,7 @@ describe('TrusteesMongoRepository', () => {
 
     test('should handle database errors when listing trustees', async () => {
       const error = new Error('Database connection failed');
-      const mockAdapter = jest
+      const mockAdapter = vi
         .spyOn(MongoCollectionAdapter.prototype, 'find')
         .mockRejectedValue(error);
 
@@ -215,7 +214,7 @@ describe('TrusteesMongoRepository', () => {
         updatedBy: mockUser,
       };
 
-      const mockAdapter = jest
+      const mockAdapter = vi
         .spyOn(MongoCollectionAdapter.prototype, 'findOne')
         .mockResolvedValue(mockTrustee as TrusteeDocument);
 
@@ -241,7 +240,7 @@ describe('TrusteesMongoRepository', () => {
 
     test('should throw error when trustee is not found', async () => {
       const id = 'nonexistent-id';
-      const mockAdapter = jest
+      const mockAdapter = vi
         .spyOn(MongoCollectionAdapter.prototype, 'findOne')
         .mockResolvedValue(null);
 
@@ -269,7 +268,7 @@ describe('TrusteesMongoRepository', () => {
     test('should handle database errors when getting a trustee', async () => {
       const id = 'trustee-123';
       const error = new Error('Database connection failed');
-      const mockAdapter = jest
+      const mockAdapter = vi
         .spyOn(MongoCollectionAdapter.prototype, 'findOne')
         .mockRejectedValue(error);
 
@@ -338,13 +337,13 @@ describe('TrusteesMongoRepository', () => {
         updatedBy: mockUser,
       } as TrusteeDocument;
 
-      const mockAdapter = jest
+      const mockAdapter = vi
         .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
         .mockResolvedValue({ id: trusteeId, modifiedCount: 1, upsertedCount: 0 });
 
-      jest
-        .spyOn(MongoCollectionAdapter.prototype, 'findOne')
-        .mockResolvedValue(updatedTrusteeDocument);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(
+        updatedTrusteeDocument,
+      );
 
       const result = await repository.updateTrustee(trusteeId, updatedTrusteeDocument, mockUser);
 
@@ -390,7 +389,7 @@ describe('TrusteesMongoRepository', () => {
         updatedBy: mockUser,
       } as TrusteeDocument;
 
-      const mockAdapter = jest
+      const mockAdapter = vi
         .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
         .mockResolvedValue({ id: trusteeId, modifiedCount: 0, upsertedCount: 0 });
 
@@ -443,7 +442,7 @@ describe('TrusteesMongoRepository', () => {
 
       const error = new Error('Database connection failed');
 
-      const mockAdapter = jest
+      const mockAdapter = vi
         .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
         .mockRejectedValue(error);
 
@@ -490,7 +489,7 @@ describe('TrusteesMongoRepository', () => {
         updatedBy: mockUser,
       };
 
-      const mockAdapter = jest
+      const mockAdapter = vi
         .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
         .mockResolvedValue(undefined);
 
@@ -513,7 +512,7 @@ describe('TrusteesMongoRepository', () => {
       };
 
       const error = new Error('Database connection failed');
-      const mockAdapter = jest
+      const mockAdapter = vi
         .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
         .mockRejectedValue(error);
 
@@ -549,7 +548,7 @@ describe('TrusteesMongoRepository', () => {
         },
       ];
 
-      const mockAdapter = jest
+      const mockAdapter = vi
         .spyOn(MongoCollectionAdapter.prototype, 'find')
         .mockResolvedValue(mockHistoryRecords);
 
@@ -576,9 +575,7 @@ describe('TrusteesMongoRepository', () => {
 
     test('should return empty array when no history exists for the trustee', async () => {
       const trusteeId = 'trustee-no-history';
-      const mockAdapter = jest
-        .spyOn(MongoCollectionAdapter.prototype, 'find')
-        .mockResolvedValue([]);
+      const mockAdapter = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
 
       const result = await repository.listTrusteeHistory(trusteeId);
 
@@ -604,7 +601,7 @@ describe('TrusteesMongoRepository', () => {
     test('should handle database errors when retrieving history', async () => {
       const trusteeId = 'trustee-123';
       const error = new Error('Database connection failed');
-      const mockAdapter = jest
+      const mockAdapter = vi
         .spyOn(MongoCollectionAdapter.prototype, 'find')
         .mockRejectedValue(error);
 
@@ -647,7 +644,7 @@ describe('TrusteesMongoRepository', () => {
         },
       ];
 
-      const mockAdapter = jest
+      const mockAdapter = vi
         .spyOn(MongoCollectionAdapter.prototype, 'find')
         .mockResolvedValue(mockAssignments);
 
@@ -679,9 +676,7 @@ describe('TrusteesMongoRepository', () => {
 
     test('should return empty array when no assignments exist', async () => {
       const trusteeId = 'trustee-no-assignments';
-      const mockAdapter = jest
-        .spyOn(MongoCollectionAdapter.prototype, 'find')
-        .mockResolvedValue([]);
+      const mockAdapter = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
 
       const result = await repository.getTrusteeOversightAssignments(trusteeId);
 
@@ -712,7 +707,7 @@ describe('TrusteesMongoRepository', () => {
     test('should handle database errors when retrieving assignments', async () => {
       const trusteeId = 'trustee-123';
       const error = new Error('Database connection failed');
-      const mockAdapter = jest
+      const mockAdapter = vi
         .spyOn(MongoCollectionAdapter.prototype, 'find')
         .mockRejectedValue(error);
 
@@ -756,7 +751,7 @@ describe('TrusteesMongoRepository', () => {
         updatedBy: mockUser,
       };
 
-      const mockAdapter = jest
+      const mockAdapter = vi
         .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
         .mockResolvedValue('assignment-id-123');
 
@@ -792,7 +787,7 @@ describe('TrusteesMongoRepository', () => {
       };
 
       const error = new Error('Database connection failed');
-      const mockAdapter = jest
+      const mockAdapter = vi
         .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
         .mockRejectedValue(error);
 
@@ -810,17 +805,15 @@ describe('TrusteesMongoRepository', () => {
       const assignmentId = 'assignment-123';
       const updates: Partial<TrusteeOversightAssignment> = { unassignedOn: '2025-10-28T00:00:00Z' };
 
-      const mockUpdateAdapter = jest
+      const mockUpdateAdapter = vi
         .spyOn(MongoCollectionAdapter.prototype, 'updateOne')
         .mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
 
-      const mockFindOne = jest
-        .spyOn(MongoCollectionAdapter.prototype, 'findOne')
-        .mockResolvedValue({
-          id: assignmentId,
-          ...updates,
-          documentType: 'TRUSTEE_OVERSIGHT_ASSIGNMENT',
-        } as Partial<TrusteeOversightAssignment>);
+      const mockFindOne = vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue({
+        id: assignmentId,
+        ...updates,
+        documentType: 'TRUSTEE_OVERSIGHT_ASSIGNMENT',
+      } as Partial<TrusteeOversightAssignment>);
 
       const result = await repository.updateTrusteeOversightAssignment(assignmentId, updates);
 
@@ -837,7 +830,7 @@ describe('TrusteesMongoRepository', () => {
       const assignmentId = 'nonexistent-id';
       const updates: Partial<TrusteeOversightAssignment> = { unassignedOn: '2025-10-28T00:00:00Z' };
 
-      const mockUpdateAdapter = jest
+      const mockUpdateAdapter = vi
         .spyOn(MongoCollectionAdapter.prototype, 'updateOne')
         .mockResolvedValue({ matchedCount: 0, modifiedCount: 0 });
 

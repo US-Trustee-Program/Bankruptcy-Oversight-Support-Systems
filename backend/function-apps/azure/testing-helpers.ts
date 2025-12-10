@@ -1,5 +1,6 @@
 import { HttpRequest, InvocationContext } from '@azure/functions';
 import { randomUUID } from 'node:crypto';
+import { vi } from 'vitest';
 import { CamsHttpRequest } from '../../lib/adapters/types/http';
 import MockData from '../../../common/src/cams/test-utilities/mock-data';
 import { httpSuccess } from '../../lib/adapters/utils/http-response';
@@ -45,7 +46,7 @@ export function buildTestResponseSuccess<T extends object = undefined>(
 }
 
 export function buildTestResponseError(error: Error) {
-  const loggerCamsErrorSpy = jest.fn();
+  const loggerCamsErrorSpy = vi.fn();
   const context = {
     logger: {
       camsError: loggerCamsErrorSpy,

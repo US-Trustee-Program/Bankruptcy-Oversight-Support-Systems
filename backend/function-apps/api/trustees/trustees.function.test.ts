@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { InvocationContext } from '@azure/functions';
 import handler from './trustees.function';
 import ContextCreator from '../../azure/application-context-creator';
@@ -13,9 +14,9 @@ describe('Trustees Function', () => {
   let context: InvocationContext;
 
   beforeEach(() => {
-    jest
-      .spyOn(ContextCreator, 'getApplicationContextSession')
-      .mockResolvedValue(MockData.getTrusteeAdminSession());
+    vi.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
+      MockData.getTrusteeAdminSession(),
+    );
     context = new InvocationContext({
       logHandler: () => {},
       invocationId: 'id',
@@ -23,7 +24,7 @@ describe('Trustees Function', () => {
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should handle successful trustee request', async () => {
@@ -35,7 +36,7 @@ describe('Trustees Function', () => {
       data: [],
     });
 
-    jest.spyOn(TrusteesController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
+    vi.spyOn(TrusteesController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
 
     const result = await handler(req, context);
     expect(result).toEqual(azureHttpResponse);
@@ -46,7 +47,7 @@ describe('Trustees Function', () => {
     const error = new Error('Test error');
     const { azureHttpResponse } = buildTestResponseError(error);
 
-    jest.spyOn(TrusteesController.prototype, 'handleRequest').mockRejectedValue(error);
+    vi.spyOn(TrusteesController.prototype, 'handleRequest').mockRejectedValue(error);
 
     const result = await handler(req, context);
 

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import handler from './cases.function';
 import {
   buildTestResponseSuccess,
@@ -13,9 +14,9 @@ import { commonHeaders } from '../../../lib/adapters/utils/http-response';
 import { CamsError } from '../../../lib/common-errors/cams-error';
 
 describe('Cases function', () => {
-  jest
-    .spyOn(ContextCreator, 'getApplicationContextSession')
-    .mockResolvedValue(MockData.getManhattanTrialAttorneySession());
+  vi.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
+    MockData.getManhattanTrialAttorneySession(),
+  );
   const caseDetails = MockData.getCaseDetail();
   const request = createMockAzureFunctionRequest({
     method: 'GET',
@@ -40,7 +41,7 @@ describe('Cases function', () => {
 
   afterAll(() => {
     process.env = originalEnv;
-    jest.resetAllMocks();
+    vi.resetAllMocks();
   });
 
   test('should return success response', async () => {
@@ -48,14 +49,14 @@ describe('Cases function', () => {
       data: caseDetails,
     });
     const { camsHttpResponse, azureHttpResponse } = expects;
-    jest.spyOn(CasesController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
+    vi.spyOn(CasesController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
     const response = await handler(request, context);
     expect(response).toEqual(azureHttpResponse);
   });
 
   test('should return error response', async () => {
     const error = new CamsError('test-module', { message: 'Some CAMS error.' });
-    jest.spyOn(CasesController.prototype, 'handleRequest').mockRejectedValue(error);
+    vi.spyOn(CasesController.prototype, 'handleRequest').mockRejectedValue(error);
     const response = await handler(request, context);
     expect(response).toEqual({ headers: commonHeaders, status: 500, jsonBody: error.message });
   });

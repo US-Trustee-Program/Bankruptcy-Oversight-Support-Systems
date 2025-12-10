@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import * as factory from '../../factory';
 import OfficeAssigneesUseCase from './office-assignees';
@@ -14,19 +15,19 @@ describe('OfficeAssigneesUseCase', () => {
 
   beforeEach(async () => {
     // Reset all mocks before each test
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
 
     // Setup mock context
     mockContext = await createMockApplicationContext();
 
-    createSpy = jest.spyOn(MockMongoRepository.prototype, 'create').mockResolvedValue(undefined);
-    deleteManySpy = jest
+    createSpy = vi.spyOn(MockMongoRepository.prototype, 'create').mockResolvedValue(undefined);
+    deleteManySpy = vi
       .spyOn(MockMongoRepository.prototype, 'deleteMany')
       .mockResolvedValue(undefined);
 
-    jest.spyOn(factory, 'getOfficesGateway').mockReturnValue({
-      getOffices: jest.fn().mockReturnValue(MOCKED_USTP_OFFICES_ARRAY),
-      getOfficeName: jest.fn(),
+    vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
+      getOffices: vi.fn().mockReturnValue(MOCKED_USTP_OFFICES_ARRAY),
+      getOfficeName: vi.fn(),
     });
   });
 

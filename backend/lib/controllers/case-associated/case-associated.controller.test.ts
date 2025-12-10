@@ -21,9 +21,9 @@ describe('Test case-history controller', () => {
       MockData.getConsolidationReference({ override: { documentType: 'CONSOLIDATION_FROM' } }),
       MockData.getConsolidationReference(),
     ];
-    jest
-      .spyOn(CaseAssociatedUseCase.prototype, 'getAssociatedCases')
-      .mockResolvedValue(associatedCases);
+    vi.spyOn(CaseAssociatedUseCase.prototype, 'getAssociatedCases').mockResolvedValue(
+      associatedCases,
+    );
     const caseId = NORMAL_CASE_ID;
     applicationContext.request.params.caseId = caseId;
     const controller = new CaseAssociatedController();
@@ -32,9 +32,9 @@ describe('Test case-history controller', () => {
   });
 
   test('should throw a NotFoundError when a history is not found', async () => {
-    jest
-      .spyOn(CaseAssociatedUseCase.prototype, 'getAssociatedCases')
-      .mockRejectedValue(new NotFoundError('TEST'));
+    vi.spyOn(CaseAssociatedUseCase.prototype, 'getAssociatedCases').mockRejectedValue(
+      new NotFoundError('TEST'),
+    );
     const caseId = NOT_FOUND_ERROR_CASE_ID;
     applicationContext.request.params.caseId = caseId;
     const controller = new CaseAssociatedController();
@@ -46,11 +46,9 @@ describe('Test case-history controller', () => {
     const caseId = THROW_UNKNOWN_ERROR_CASE_ID;
     applicationContext.request.params.caseId = caseId;
     const controller = new CaseAssociatedController();
-    jest
-      .spyOn(CaseAssociatedUseCase.prototype, 'getAssociatedCases')
-      .mockImplementation(async () => {
-        throw Error(expectedMessage);
-      });
+    vi.spyOn(CaseAssociatedUseCase.prototype, 'getAssociatedCases').mockImplementation(async () => {
+      throw Error(expectedMessage);
+    });
     await expect(controller.handleRequest(applicationContext)).rejects.toThrow(expectedMessage);
   });
 });

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import {
   NORMAL_TRUSTEE_ID,
   NOT_FOUND_ERROR_TRUSTEE_ID,
@@ -29,9 +30,9 @@ describe('Trustee History Function Tests', () => {
 
   beforeEach(() => {
     context = new InvocationContext();
-    jest
-      .spyOn(ContextCreator, 'getApplicationContextSession')
-      .mockResolvedValue(MockData.getManhattanAssignmentManagerSession());
+    vi.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
+      MockData.getManhattanAssignmentManagerSession(),
+    );
   });
 
   test('Should return trustee history for an existing trustee ID', async () => {
@@ -51,9 +52,9 @@ describe('Trustee History Function Tests', () => {
       },
       data: TRUSTEE_HISTORY,
     });
-    jest
-      .spyOn(TrusteeHistoryController.prototype, 'handleRequest')
-      .mockResolvedValue(camsHttpResponse);
+    vi.spyOn(TrusteeHistoryController.prototype, 'handleRequest').mockResolvedValue(
+      camsHttpResponse,
+    );
 
     const response = await handler(request, context);
     expect(response).toEqual(azureHttpResponse);
@@ -61,7 +62,7 @@ describe('Trustee History Function Tests', () => {
 
   test('Should return an error response for a non-existent trustee ID', async () => {
     const error = new NotFoundError('test-module');
-    jest.spyOn(TrusteeHistoryController.prototype, 'handleRequest').mockRejectedValue(error);
+    vi.spyOn(TrusteeHistoryController.prototype, 'handleRequest').mockRejectedValue(error);
 
     const requestOverride = {
       params: {

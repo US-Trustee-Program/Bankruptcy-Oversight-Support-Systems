@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { CamsUser, CamsUserGroup, CamsUserReference } from '../../../../../common/src/cams/users';
 import { UnknownError } from '../../../common-errors/unknown-error';
 import { UserGroupGateway, UserGroupGatewayConfig } from '../../types/authorization';
@@ -24,17 +25,17 @@ describe('OktaGroupGateway', () => {
 
   beforeEach(async () => {
     gateway = new OktaUserGroupGateway();
-    jest.spyOn(OktaHumble.prototype, 'init').mockResolvedValue();
+    vi.spyOn(OktaHumble.prototype, 'init').mockResolvedValue();
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   // TODO: should we remove these?
   describe('bad configurations', () => {
     beforeEach(() => {
-      jest.restoreAllMocks();
+      vi.restoreAllMocks();
     });
 
     test('wrong provider', async () => {
@@ -81,7 +82,7 @@ describe('OktaGroupGateway', () => {
     });
 
     test('should return a list of CamsUserGroups', async () => {
-      jest.spyOn(OktaHumble.prototype, 'listGroups').mockResolvedValue([group1, group2, group3]);
+      vi.spyOn(OktaHumble.prototype, 'listGroups').mockResolvedValue([group1, group2, group3]);
 
       const actual = await gateway.getUserGroups(context);
 
@@ -103,9 +104,9 @@ describe('OktaGroupGateway', () => {
     });
 
     test('should throw an error if an error is returned by the api', async () => {
-      jest
-        .spyOn(OktaHumble.prototype, 'listGroups')
-        .mockRejectedValue(new UnknownError('TEST-MODULE'));
+      vi.spyOn(OktaHumble.prototype, 'listGroups').mockRejectedValue(
+        new UnknownError('TEST-MODULE'),
+      );
 
       await expect(gateway.getUserGroups(context)).rejects.toThrow();
     });
@@ -135,7 +136,7 @@ describe('OktaGroupGateway', () => {
         name: 'Lincoln, Mary',
       };
 
-      jest.spyOn(OktaHumble.prototype, 'listGroupUsers').mockResolvedValue([user1, user2]);
+      vi.spyOn(OktaHumble.prototype, 'listGroupUsers').mockResolvedValue([user1, user2]);
 
       const actual = await gateway.getUserGroupUsers(context, camsUserGroup);
 
@@ -153,9 +154,9 @@ describe('OktaGroupGateway', () => {
     });
 
     test('should throw an error if an error is returned by the api', async () => {
-      jest
-        .spyOn(OktaHumble.prototype, 'listGroupUsers')
-        .mockRejectedValue(new UnknownError('TEST-MODULE'));
+      vi.spyOn(OktaHumble.prototype, 'listGroupUsers').mockRejectedValue(
+        new UnknownError('TEST-MODULE'),
+      );
 
       await expect(gateway.getUserGroupUsers(context, camsUserGroup)).rejects.toThrow();
     });
@@ -176,8 +177,8 @@ describe('OktaGroupGateway', () => {
       };
       const users = MockData.buildArray(MockData.getCamsUserReference, 4);
 
-      jest.spyOn(OktaHumble.prototype, 'listGroups').mockResolvedValue([group]);
-      jest.spyOn(OktaHumble.prototype, 'listGroupUsers').mockResolvedValue(users);
+      vi.spyOn(OktaHumble.prototype, 'listGroups').mockResolvedValue([group]);
+      vi.spyOn(OktaHumble.prototype, 'listGroupUsers').mockResolvedValue(users);
 
       const result = await gateway.getUserGroupWithUsers(context, group.id);
       expect(result).toEqual({
@@ -194,30 +195,29 @@ describe('OktaGroupGateway', () => {
     test.each(errorCases)(
       'should throw error when %s',
       async (_caseName: string, groups: CamsUserGroup[], count: number) => {
-        jest.spyOn(OktaHumble.prototype, 'listGroups').mockResolvedValue(groups);
+        vi.spyOn(OktaHumble.prototype, 'listGroups').mockResolvedValue(groups);
         const groupName = 'test-group';
-        const expected = new UnknownError(expect.anything(), {
-          message: `Found ${count} groups matching ${groupName}, expected 1.`,
-          camsStackInfo: {
-            message: `Failed to retrieve ${groupName} group.`,
-            module: expect.anything(),
-          },
-        });
-        await expect(gateway.getUserGroupWithUsers(context, groupName)).rejects.toThrow(expected);
+        await expect(gateway.getUserGroupWithUsers(context, groupName)).rejects.toThrow(
+          expect.objectContaining({
+            message: `Found ${count} groups matching ${groupName}, expected 1.`,
+            status: 500,
+            module: 'OKTA-USER-GROUP-GATEWAY',
+          }),
+        );
       },
     );
 
     test('should throw UnknownError', async () => {
-      jest.spyOn(OktaHumble.prototype, 'listGroups').mockRejectedValue('some unknown error');
+      vi.spyOn(OktaHumble.prototype, 'listGroups').mockRejectedValue('some unknown error');
       const groupName = 'test-group';
-      const expected = new UnknownError(expect.anything(), {
-        message: 'Unknown Error',
-        camsStackInfo: {
-          message: `Failed to retrieve ${groupName} group.`,
-          module: expect.anything(),
-        },
-      });
-      await expect(gateway.getUserGroupWithUsers(context, groupName)).rejects.toThrow(expected);
+      await expect(gateway.getUserGroupWithUsers(context, groupName)).rejects.toThrow(
+        expect.objectContaining({
+          message: 'Unknown Error',
+          status: 500,
+          module: 'OKTA-USER-GROUP-GATEWAY',
+          originalError: expect.stringContaining('some unknown error'),
+        }),
+      );
     });
   });
 
@@ -250,10 +250,10 @@ describe('OktaGroupGateway', () => {
         id: manhattanOffice.idpGroupName,
         name: 'USTP CAMS Trial Attorney',
       };
-      jest.spyOn(MockOfficesGateway.prototype, 'getOffices').mockResolvedValue([manhattanOffice]);
+      vi.spyOn(MockOfficesGateway.prototype, 'getOffices').mockResolvedValue([manhattanOffice]);
 
-      jest.spyOn(OktaHumble.prototype, 'getUser').mockResolvedValue(user);
-      jest.spyOn(OktaHumble.prototype, 'listUserGroups').mockResolvedValue([groupOne, groupTwo]);
+      vi.spyOn(OktaHumble.prototype, 'getUser').mockResolvedValue(user);
+      vi.spyOn(OktaHumble.prototype, 'listUserGroups').mockResolvedValue([groupOne, groupTwo]);
 
       const expected: CamsUser = {
         id: user.id,
@@ -266,12 +266,15 @@ describe('OktaGroupGateway', () => {
     });
 
     test('should throw error with CamsStack', async () => {
-      jest.spyOn(OktaHumble.prototype, 'getUser').mockRejectedValue('some unknown error');
-      const expected = new UnknownError(expect.anything(), {
-        message: 'Unknown Error',
-        camsStackInfo: { message: 'Failed while getting user by id.', module: expect.anything() },
-      });
-      await expect(gateway.getUserById(context, 'test-user')).rejects.toThrow(expected);
+      vi.spyOn(OktaHumble.prototype, 'getUser').mockRejectedValue('some unknown error');
+      await expect(gateway.getUserById(context, 'test-user')).rejects.toThrow(
+        expect.objectContaining({
+          message: 'Unknown Error',
+          status: 500,
+          module: 'OKTA-USER-GROUP-GATEWAY',
+          originalError: expect.stringContaining('some unknown error'),
+        }),
+      );
     });
   });
 });

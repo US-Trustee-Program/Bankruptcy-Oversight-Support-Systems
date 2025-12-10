@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 // eslint-disable testing-library/no-debugging-utils
 
 import { LoggerImpl } from './logger.service';
@@ -10,12 +11,12 @@ describe('Basic logger service tests', () => {
   const invocationId = randomUUID();
 
   beforeEach(async () => {
-    mockLog = jest.fn();
+    mockLog = vi.fn();
     logger = new LoggerImpl(invocationId, mockLog);
   });
 
   test('should default to using console.log if a logger provider is not provided.', async () => {
-    const consoleSpy = jest.spyOn(console, 'log');
+    const consoleSpy = vi.spyOn(console, 'log');
     logger = new LoggerImpl(invocationId);
 
     logger.info('FOO-MODULE_NAME', 'test message');

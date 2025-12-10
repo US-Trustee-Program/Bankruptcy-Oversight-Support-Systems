@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { randomUUID } from 'crypto';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
@@ -18,7 +19,7 @@ describe('case assignment repo tests', () => {
 
   afterEach(async () => {
     await closeDeferred(context);
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
     repo.release();
   });
 
@@ -32,7 +33,7 @@ describe('case assignment repo tests', () => {
       },
     ];
     const predicate = { caseId: '000-11-22222' };
-    const find = jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(assignees);
+    const find = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(assignees);
 
     const actual = await repo.search(predicate);
 
@@ -48,7 +49,7 @@ describe('case assignment repo tests', () => {
 
   test('should return a unique list of CamsUserReference by officeCode', async () => {
     const assignees = MockData.buildArray(MockData.getCamsUserReference, 3);
-    const aggregate = jest.spyOn(MongoCollectionAdapter.prototype, 'aggregate').mockResolvedValue(
+    const aggregate = vi.spyOn(MongoCollectionAdapter.prototype, 'aggregate').mockResolvedValue(
       assignees.map((u) => {
         return { ...u, _id: u.id };
       }),
@@ -96,7 +97,7 @@ describe('case assignment repo tests', () => {
   });
 
   test('should delete OfficeAssignee records', async () => {
-    const deleteMany = jest
+    const deleteMany = vi
       .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
       .mockResolvedValue(3);
     const predicate = { caseId: '000-11-22222' };
@@ -114,7 +115,7 @@ describe('case assignment repo tests', () => {
 
   test('should insert an OfficeAssignee record', async () => {
     const mockId = randomUUID();
-    const insertOne = jest
+    const insertOne = vi
       .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
       .mockResolvedValue(mockId);
 

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import AcmsOrders, {
   AcmsTransformationResult,
   AcmsPredicate,
@@ -15,7 +16,7 @@ describe('AcmsOrdersController', () => {
   });
 
   afterEach(async () => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
   });
 
   test('should return array of lead case ids when calling getLeadCaseIds', async () => {
@@ -25,7 +26,7 @@ describe('AcmsOrdersController', () => {
       chapter: '00',
     };
 
-    jest.spyOn(AcmsOrders.prototype, 'getLeadCaseIds').mockResolvedValue(leadCaseIds);
+    vi.spyOn(AcmsOrders.prototype, 'getLeadCaseIds').mockResolvedValue(leadCaseIds);
 
     const controller = new AcmsOrdersController();
     const actual = await controller.getLeadCaseIds(context, predicate);
@@ -40,7 +41,7 @@ describe('AcmsOrdersController', () => {
       childCaseCount: 1,
       success: true,
     };
-    const spy = jest.spyOn(AcmsOrders.prototype, 'migrateConsolidation').mockResolvedValue(report);
+    const spy = vi.spyOn(AcmsOrders.prototype, 'migrateConsolidation').mockResolvedValue(report);
 
     const controller = new AcmsOrdersController();
     await controller.migrateConsolidation(context, leadCaseId);
@@ -52,7 +53,7 @@ describe('AcmsOrdersController', () => {
     const leadCaseId = '811100000';
     const error = new NotFoundError('TEST_MODULE');
 
-    const spy = jest.spyOn(AcmsOrders.prototype, 'migrateConsolidation').mockRejectedValue(error);
+    const spy = vi.spyOn(AcmsOrders.prototype, 'migrateConsolidation').mockRejectedValue(error);
 
     const controller = new AcmsOrdersController();
 
@@ -67,7 +68,7 @@ describe('AcmsOrdersController', () => {
     };
 
     const error = new Error('some error');
-    const spy = jest.spyOn(AcmsOrders.prototype, 'getLeadCaseIds').mockRejectedValue(error);
+    const spy = vi.spyOn(AcmsOrders.prototype, 'getLeadCaseIds').mockRejectedValue(error);
 
     const controller = new AcmsOrdersController();
 

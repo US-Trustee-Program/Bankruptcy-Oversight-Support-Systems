@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import {
   buildTestResponseError,
   buildTestResponseSuccess,
@@ -23,7 +24,7 @@ describe('me Function test', () => {
   test('should set successful response', async () => {
     const camsContext = await createMockApplicationContext();
     camsContext.session = MockData.getCamsSession();
-    jest.spyOn(ContextCreator, 'applicationContextCreator').mockResolvedValue(camsContext);
+    vi.spyOn(ContextCreator, 'applicationContextCreator').mockResolvedValue(camsContext);
     const { azureHttpResponse } = buildTestResponseSuccess<CamsSession>({
       data: camsContext.session,
     });
@@ -34,7 +35,7 @@ describe('me Function test', () => {
 
   test('should handle an error response', async () => {
     const error = new ForbiddenError('FUNCTION_TEST');
-    jest.spyOn(MeController.prototype, 'handleRequest').mockRejectedValue(error);
+    vi.spyOn(MeController.prototype, 'handleRequest').mockRejectedValue(error);
     const { azureHttpResponse } = buildTestResponseError(error);
     const response = await handler(request, context);
 

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { StaffController } from '../../../lib/controllers/staff/staff.controller';
 import { CamsError } from '../../../lib/common-errors/cams-error';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
@@ -18,10 +19,10 @@ describe('Staff Azure Function tests', () => {
   const context = new InvocationContext();
 
   beforeEach(async () => {
-    jest
-      .spyOn(ContextCreator, 'getApplicationContextSession')
-      .mockResolvedValue(MockData.getCamsSession());
-    jest.spyOn(StaffUseCase.prototype, 'getOversightStaff').mockResolvedValue([]);
+    vi.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
+      MockData.getCamsSession(),
+    );
+    vi.spyOn(StaffUseCase.prototype, 'getOversightStaff').mockResolvedValue([]);
   });
 
   const errorTestCases = [
@@ -34,7 +35,7 @@ describe('Staff Azure Function tests', () => {
     async (_errorType, errorFactory) => {
       const error = errorFactory();
       const { azureHttpResponse } = buildTestResponseError(error);
-      jest.spyOn(StaffController.prototype, 'handleRequest').mockRejectedValue(error);
+      vi.spyOn(StaffController.prototype, 'handleRequest').mockRejectedValue(error);
 
       const response = await handler(request, context);
 
@@ -54,7 +55,7 @@ describe('Staff Azure Function tests', () => {
       data: oversightStaff,
     };
     const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<AttorneyUser[]>(body);
-    jest.spyOn(StaffController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
+    vi.spyOn(StaffController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
 
     const response = await handler(request, context);
     expect(response).toEqual(azureHttpResponse);

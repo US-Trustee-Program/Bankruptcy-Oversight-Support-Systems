@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { describe } from 'node:test';
 
 import { ApplicationContext } from '../../../lib/adapters/types/basic';
@@ -27,9 +28,9 @@ describe('healthcheck db tests', () => {
   });
 
   test('should handle read, write, and delete check correctly', async () => {
-    jest.spyOn(MongoCollectionAdapter.prototype, 'getAll').mockResolvedValue([healthCheckDocument]);
-    jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue('id');
-    jest.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockResolvedValue(1);
+    vi.spyOn(MongoCollectionAdapter.prototype, 'getAll').mockResolvedValue([healthCheckDocument]);
+    vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue('id');
+    vi.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockResolvedValue(1);
     const result = await healthcheckRepository.checkDocumentDb();
 
     expect(result.cosmosDbDeleteStatus).toEqual(true);
@@ -38,9 +39,9 @@ describe('healthcheck db tests', () => {
   });
 
   test('should handle no documents', async () => {
-    jest.spyOn(MongoCollectionAdapter.prototype, 'getAll').mockResolvedValue([]);
-    jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue('id');
-    jest.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockResolvedValue(1);
+    vi.spyOn(MongoCollectionAdapter.prototype, 'getAll').mockResolvedValue([]);
+    vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue('id');
+    vi.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockResolvedValue(1);
     const result = await healthcheckRepository.checkDocumentDb();
 
     expect(result.cosmosDbDeleteStatus).toEqual(false);
@@ -52,9 +53,9 @@ describe('healthcheck db tests', () => {
     const error = new Error('some error');
 
     test('should handle error properly on read, write, and delete check', async () => {
-      jest.spyOn(MongoCollectionAdapter.prototype, 'getAll').mockRejectedValue(error);
-      jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(error);
-      jest.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockRejectedValue(error);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'getAll').mockRejectedValue(error);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(error);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockRejectedValue(error);
       const result = await healthcheckRepository.checkDocumentDb();
       expect(result.cosmosDbDeleteStatus).toEqual(false);
       expect(result.cosmosDbReadStatus).toEqual(false);

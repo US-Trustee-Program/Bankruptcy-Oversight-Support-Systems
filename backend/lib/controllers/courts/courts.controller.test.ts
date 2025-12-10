@@ -1,21 +1,11 @@
+import { vi } from 'vitest';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { COURT_DIVISIONS } from '../../../../common/src/cams/test-utilities/courts.mock';
 import { CamsError } from '../../common-errors/cams-error';
 import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
 import { CourtsController } from './courts.controller';
-
-let getCourts = jest.fn();
-
-jest.mock('../../use-cases/courts/courts', () => {
-  return {
-    CourtsUseCase: jest.fn().mockImplementation(() => {
-      return {
-        getCourts,
-      };
-    }),
-  };
-});
+import { CourtsUseCase } from '../../use-cases/courts/courts';
 
 describe('courts controller tests', () => {
   let applicationContext: ApplicationContext;
@@ -25,11 +15,11 @@ describe('courts controller tests', () => {
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   test('should return successful response', async () => {
-    getCourts = jest.fn().mockResolvedValue(COURT_DIVISIONS);
+    vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue(COURT_DIVISIONS);
 
     const controller = new CourtsController();
     const camsHttpRequest = mockCamsHttpRequest();
@@ -46,11 +36,10 @@ describe('courts controller tests', () => {
   });
 
   test('should throw CamsError when one is caught', async () => {
-    getCourts = jest
-      .fn()
-      .mockRejectedValue(
-        new CamsError('MOCK_OFFICES_CONTROLLER', { message: 'Some expected CAMS error.' }),
-      );
+    const camsError = new CamsError('MOCK_OFFICES_CONTROLLER', {
+      message: 'Some expected CAMS error.',
+    });
+    vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockRejectedValue(camsError);
 
     const controller = new CourtsController();
     const camsHttpRequest = mockCamsHttpRequest();
@@ -61,7 +50,9 @@ describe('courts controller tests', () => {
   });
 
   test('should wrap unexpected error in UnknownError', async () => {
-    getCourts = jest.fn().mockRejectedValue(new Error('Some unknown error.'));
+    vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockRejectedValue(
+      new Error('Some unknown error.'),
+    );
 
     const controller = new CourtsController();
     await expect(async () => {
