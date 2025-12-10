@@ -134,9 +134,10 @@ export function spyOnAllGatewayMethods(
  */
 export async function spyOnAllGateways(explicitMocks: Record<string, Record<string, any>> = {}) {
   // DXTR Gateways
-  const { CasesDxtrGateway } = await import(
+  const CasesDxtrGatewayModule = await import(
     '../../../backend/lib/adapters/gateways/dxtr/cases.dxtr.gateway'
   );
+  const CasesDxtrGateway = CasesDxtrGatewayModule.default;
   spyOnAllGatewayMethods(CasesDxtrGateway, 'CasesDxtrGateway', explicitMocks.CasesDxtrGateway);
 
   const { DxtrCaseDocketGateway } = await import(
