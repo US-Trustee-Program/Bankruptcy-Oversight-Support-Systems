@@ -2,3 +2,8 @@ node_modules/
 dist/
 coverage/
 .env
+
+# Compiled config files (TypeScript configs are source of truth)
+*.config.js
+*.config.js.map
+*.config.d.ts
