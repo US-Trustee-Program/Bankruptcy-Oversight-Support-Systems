@@ -34,7 +34,7 @@ import type { CaseDetail, CaseSummary } from '@common/cams/cases';
 import type { CaseAssignment } from '@common/cams/assignments';
 import type { TransferFrom, TransferTo, ConsolidationFrom, ConsolidationTo } from '@common/cams/events';
 import { renderApp } from './render-with-context';
-import { clearAllRepositorySpies, spyOnMeEndpoint, spyOnAllGateways } from './repository-spies';
+import { spyOnMeEndpoint, spyOnAllGateways } from './repository-spies';
 import { TestState } from './test-state';
 
 type Transfer = TransferFrom | TransferTo;
@@ -44,7 +44,6 @@ type Consolidation = ConsolidationFrom | ConsolidationTo;
  * Fluent test setup builder for BDD full-stack tests.
  *
  * Handles all the complexity of:
- * - Clearing previous spies
  * - Setting up authentication (/me endpoint)
  * - Configuring gateway/repository spies
  * - Rendering the application
@@ -53,6 +52,19 @@ type Consolidation = ConsolidationFrom | ConsolidationTo;
  * 1. Start with `TestSetup.forUser(session)`
  * 2. Chain data methods (`.withCase()`, `.withSearchResults()`, etc.)
  * 3. End with `.renderAt(route)` to render the app
+ *
+ * IMPORTANT: Spy Cleanup
+ * This helper does NOT clear spies between tests. Callers are responsible for spy cleanup
+ * to avoid cross-test leakage. Typically done by calling `clearAllRepositorySpies()` in
+ * an `afterEach` hook within each test file.
+ *
+ * @example
+ * ```typescript
+ * // In your test file:
+ * afterEach(() => {
+ *   clearAllRepositorySpies();
+ * });
+ * ```
  */
 export class TestSetup {
   private session: CamsSession;
@@ -351,10 +363,14 @@ export class TestSetup {
 
       // Cases repository - STATE AWARE for transfers/consolidations
       CasesMongoRepository: {
-        searchCases: vi.fn().mockResolvedValue({
-          metadata: { total: this.searchResults.length },
-          data: this.searchResults,
-        }),
+        // Only mock searchCases if withSearchResults() was explicitly called
+        // This prevents accidental usage and makes tests explicit about their search data needs
+        searchCases: this.searchResults.length > 0
+          ? vi.fn().mockResolvedValue({
+              metadata: { total: this.searchResults.length },
+              data: this.searchResults,
+            })
+          : undefined,
         // STATE AWARE: Read transfers from state
         getTransfers: vi.fn().mockImplementation(async (caseId: string) => {
           return state.getTransfers(caseId);
