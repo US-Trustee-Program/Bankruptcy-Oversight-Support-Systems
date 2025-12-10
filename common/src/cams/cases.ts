@@ -6,7 +6,7 @@ import { CamsUserReference } from './users';
 
 export const VALID_CASEID_PATTERN = RegExp(/^[\dA-Z]{3}-\d{2}-\d{5}$/);
 
-export type FlatOfficeDetail = {
+type FlatOfficeDetail = {
   officeName: string;
   officeCode: string;
   courtId: string;
