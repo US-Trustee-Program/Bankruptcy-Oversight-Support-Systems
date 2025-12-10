@@ -4,7 +4,7 @@ import '@/lib/components/Header.scss';
 import './BlankPage.scss';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 
-export type BlankPageProps = PropsWithChildren;
+type BlankPageProps = PropsWithChildren;
 
 export function BlankPage(props: BlankPageProps) {
   return (

@@ -2,7 +2,7 @@ import { ButtonProps, BUTTON_BASE_CLASS, UswdsButtonStyle } from '../Button';
 import React, { forwardRef, useImperativeHandle, useRef, useState, type JSX } from 'react';
 import { ModalRefType, OpenModalButtonRef } from './modal-refs';
 
-export interface ModalOpenButtonProps {
+interface ModalOpenButtonProps {
   id?: string;
   children: React.ReactNode;
   buttonIndex?: string;

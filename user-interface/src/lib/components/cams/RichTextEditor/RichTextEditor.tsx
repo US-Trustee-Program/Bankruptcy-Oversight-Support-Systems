@@ -20,7 +20,7 @@ export interface RichTextEditorRef {
   focus: () => void;
 }
 
-export interface RichTextEditorProps {
+interface RichTextEditorProps {
   id: string;
   label?: string;
   ariaDescription?: string;
