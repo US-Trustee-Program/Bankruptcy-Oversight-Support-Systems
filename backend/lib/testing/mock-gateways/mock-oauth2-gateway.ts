@@ -8,10 +8,10 @@ import { CamsJwt, CamsJwtClaims, CamsJwtHeader } from '../../../../common/src/ca
 import { OpenIdConnectGateway } from '../../adapters/types/authorization';
 import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
 import { nowInSeconds } from '../../../../common/src/date-helper';
+import { MOCK_JWT_SECRET } from './mock-oauth2-constants';
 
 const MODULE_NAME = 'MOCK-OAUTH2-GATEWAY';
 const mockUsers: MockUser[] = MockUsers;
-const key = 'mock-secret'; //pragma: allowlist secret
 
 const EXPIRE_OVERRIDE = parseInt(process.env.MOCK_SESSION_EXPIRE_LENGTH);
 
@@ -35,12 +35,12 @@ export async function mockAuthentication(context: ApplicationContext): Promise<s
     groups: [],
   };
 
-  const token = jwt.sign(claims, key);
+  const token = jwt.sign(claims, MOCK_JWT_SECRET);
   return token;
 }
 
 export async function verifyToken(accessToken: string): Promise<CamsJwt> {
-  const payload = jwt.verify(accessToken, key) as jwt.JwtPayload;
+  const payload = jwt.verify(accessToken, MOCK_JWT_SECRET) as jwt.JwtPayload;
   const claims: CamsJwtClaims = {
     iss: payload.iss!,
     sub: payload.sub!,

@@ -4,6 +4,7 @@ import { CamsRole } from '@common/cams/roles';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { nowInSeconds } from '@common/date-helper';
 import { CamsJwtClaims } from '@common/cams/jwt';
+import { MOCK_JWT_SECRET } from '../../../backend/lib/testing/mock-gateways/mock-oauth2-constants';
 
 /**
  * Authentication fixtures for BDD tests
@@ -49,10 +50,8 @@ export function createTestAuthToken(roles: CamsRole[] = []): string {
     groups: roles,
   };
 
-  // Use the same secret as the mock OAuth2 gateway
-  const mockSecret = 'mock-secret'; // pragma: allowlist secret
-
-  return jwt.sign(claims, mockSecret);
+  // Use the shared mock JWT secret (defined in mock-oauth2-constants.ts)
+  return jwt.sign(claims, MOCK_JWT_SECRET);
 }
 
 /**
