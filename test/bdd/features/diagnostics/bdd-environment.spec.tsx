@@ -5,6 +5,7 @@ import { initializeTestServer, cleanupTestServer } from '../../helpers/api-serve
 import { TestSessions } from '../../fixtures/auth.fixtures';
 import { clearAllRepositorySpies, spyOnMeEndpoint } from '../../helpers/repository-spies';
 import LocalStorage from "@/lib/utils/local-storage.ts";
+import { MOCK_ISSUER } from '../../../../backend/lib/testing/mock-gateways/mock-oauth2-constants';
 
 // Mock database drivers (same as functional tests)
 import '../../helpers/driver-mocks';
@@ -76,8 +77,8 @@ describe('BDD Environment Diagnostics', () => {
     console.log('  - Match:', issuer === session.issuer);
 
     // Assert that configuration is parsed correctly
-    expect(loginConfig).toHaveProperty('issuer', 'http://test/oauth2/default');
-    expect(issuer).toBe('http://test/oauth2/default');
+    expect(loginConfig).toHaveProperty('issuer', MOCK_ISSUER);
+    expect(issuer).toBe(MOCK_ISSUER);
     expect(issuer).toBe(session.issuer);
   });
 
@@ -114,7 +115,7 @@ describe('BDD Environment Diagnostics', () => {
     // Assert session is preserved
     expect(storedSession).not.toBeNull();
     expect(storedSession?.provider).toBe('okta');
-    expect(storedSession?.issuer).toBe('http://test/oauth2/default');
+    expect(storedSession?.issuer).toBe(MOCK_ISSUER);
   });
 
   /**
@@ -174,7 +175,7 @@ describe('BDD Environment Diagnostics', () => {
     // Assert backend config
     expect(process.env.CAMS_LOGIN_PROVIDER).toBe('okta');
     expect(process.env.CAMS_LOGIN_PROVIDER_CONFIG).toBeDefined();
-    expect(process.env.CAMS_LOGIN_PROVIDER_CONFIG).toContain('issuer=http://test/oauth2/default');
+    expect(process.env.CAMS_LOGIN_PROVIDER_CONFIG).toContain(`issuer=${MOCK_ISSUER}`);
     expect(process.env.CAMS_USER_GROUP_GATEWAY_CONFIG).toBeDefined();
     expect(process.env.CAMS_USER_GROUP_GATEWAY_CONFIG).toContain('clientId=test-client-id');
   });
@@ -200,7 +201,7 @@ describe('BDD Environment Diagnostics', () => {
     // Step 1: Verify configuration
     const issuer = getAuthIssuer();
     console.log('  [1] Configuration issuer:', issuer);
-    expect(issuer).toBe('http://test/oauth2/default');
+    expect(issuer).toBe(MOCK_ISSUER);
 
     // Step 2: Render app with session
     renderApp({

@@ -6,12 +6,12 @@
  */
 
 /**
- * Secret used for signing/verifying JWT tokens in mock authentication
+ * Used for signing/verifying JWT tokens in mock authentication
  * Used by:
  * - backend/lib/testing/mock-gateways/mock-oauth2-gateway.ts (JWT signing/verification)
  * - test/bdd/fixtures/auth.fixtures.ts (JWT token creation for tests)
  */
-export const MOCK_JWT_SECRET = 'mock-secret'; // pragma: allowlist secret
+export const MOCK_JWT_JOHN_HANCOCK = '==redacted=='; // pragma: allowlist secret
 
 /**
  * Default issuer for mock OAuth2 tokens
