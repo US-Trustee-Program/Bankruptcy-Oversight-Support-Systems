@@ -11,6 +11,8 @@ import React, {
 } from 'react';
 import DateHelper from '@common/date-helper';
 
+const { isInvalidDate, getIsoDate } = DateHelper;
+
 export type DatePickerProps = JSX.IntrinsicElements['input'] & {
   id: string;
   minDate?: string;
@@ -93,7 +95,7 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
 
   function handleChange(ev: React.ChangeEvent<HTMLInputElement>) {
     const value = new Date(ev.target.value);
-    if (DateHelper.isInvalidDate(value) && props.onChange) {
+    if (isInvalidDate(value) && props.onChange) {
       ev.persist();
       let newValue: string = '';
       if (props.value) {
@@ -117,7 +119,7 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
       if (value >= minDate) {
         setErrorMessage('');
         if (props.onChange) props.onChange(ev);
-        setDateValue(DateHelper.getIsoDate(value));
+        setDateValue(getIsoDate(value));
       } else {
         setErrorMessage(defaultErrorMessage);
         return;
@@ -128,7 +130,7 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
       if (value <= maxDate) {
         setErrorMessage('');
         if (props.onChange) props.onChange(ev);
-        setDateValue(DateHelper.getIsoDate(value));
+        setDateValue(getIsoDate(value));
       } else {
         setErrorMessage(defaultErrorMessage);
       }

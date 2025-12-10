@@ -17,6 +17,8 @@ import { symmetricDifference } from '@common/cams/utilities';
 import DateHelper from '@common/date-helper';
 import React, { useEffect, useRef, useState } from 'react';
 
+const { getTodaysIsoDate, getIsoDate } = DateHelper;
+
 export function toComboOption(groupName: string) {
   return {
     value: groupName,
@@ -159,7 +161,7 @@ export function PrivilegedIdentity() {
         ...(roleListRef.current?.getSelections().map((option) => option.value) || []),
         ...(officeListRef.current?.getSelections().map((option) => option.value) || []),
       ],
-      expires: datePickerRef.current?.getValue() ?? DateHelper.getTodaysIsoDate(),
+      expires: datePickerRef.current?.getValue() ?? getTodaysIsoDate(),
     };
     try {
       await api.putPrivilegedIdentityUser(userId, permissions).then(() => {
@@ -206,7 +208,7 @@ export function PrivilegedIdentity() {
   function getMaxDate() {
     const oneYearFromNow = new Date();
     oneYearFromNow.setUTCFullYear(oneYearFromNow.getUTCFullYear() + 1);
-    return DateHelper.getIsoDate(oneYearFromNow);
+    return getIsoDate(oneYearFromNow);
   }
 
   useEffect(() => {
@@ -307,7 +309,7 @@ export function PrivilegedIdentity() {
                 id="privileged-expiration-date"
                 label="Expires on"
                 disabled={true}
-                minDate={DateHelper.getTodaysIsoDate()}
+                minDate={getTodaysIsoDate()}
                 maxDate={getMaxDate()}
                 onChange={handleExpirationUpdate}
                 ref={datePickerRef}
