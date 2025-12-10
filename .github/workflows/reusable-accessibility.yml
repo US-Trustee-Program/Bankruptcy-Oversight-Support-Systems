@@ -12,12 +12,7 @@ on:
 
 jobs:
   pa11y-accessibility-test:
-    defaults:
-      run:
-        working-directory: user-interface
-
     runs-on: ubuntu-latest
-
     steps:
       - name: Install chrome
         uses: browser-actions/setup-chrome@c785b87e244131f27c9f19c1a33e2ead956ab7ce # v1
@@ -34,14 +29,15 @@ jobs:
 
       - name: Install Node dependencies
         run: |
-          pushd ../common
-          npm ci
-          popd
-
           npm ci:all && npm install -g pa11y-ci
+
+      - name: Build Common
+        run: |
+          npm run build:common
 
       - name: Run pa11y Test
         run: ../ops/scripts/pipeline/accessibility-test.sh
+
   playwright-accessibility-test:
     defaults:
       run:
@@ -60,14 +56,9 @@ jobs:
           cache: 'npm'
           cache-dependency-path: package-lock.json
 
-      - name: CI Common
-        working-directory: common
-        run: |
-          npm ci
-
       - name: Install Node dependencies
         run: |
-          npm ci
+          npm run ci:all
           npx playwright install chromium msedge
 
       - name: Run UI in mock mode
