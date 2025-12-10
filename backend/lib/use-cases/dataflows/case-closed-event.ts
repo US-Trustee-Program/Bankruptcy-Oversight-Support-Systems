@@ -4,7 +4,7 @@ import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 
 const MODULE_NAME = 'CASE-CLOSED-EVENT-USE-CASE';
 
-export type CaseClosedEvent = {
+type CaseClosedEvent = {
   caseId: string;
 };
 

@@ -10,7 +10,6 @@ import {
   PrivilegedIdentityUser,
   CamsUserGroup,
   CamsUserReference,
-  Staff,
 } from '../../../../common/src/cams/users';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
 import { BadRequestError } from '../../common-errors/bad-request';
@@ -19,11 +18,6 @@ import { UnknownError } from '../../common-errors/unknown-error';
 import UsersHelpers from '../users/users.helpers';
 
 const MODULE_NAME = 'ADMIN-USE-CASE';
-
-export type CreateStaffRequestBody = Staff & {
-  officeCode: string;
-  ttl?: number;
-};
 
 type RoleAndOfficeGroupNames = {
   roles: string[];

@@ -15,8 +15,6 @@ export type AcmsBounds = {
   chapters: string[];
 };
 
-export type TriggerRequest = AcmsBounds;
-
 export type AcmsPredicate = {
   divisionCode: string;
   chapter: string;
