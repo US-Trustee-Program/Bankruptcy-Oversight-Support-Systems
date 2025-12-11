@@ -18,7 +18,6 @@ export const ANALYZE_DELAY = 1000;
 
 /**
  * Test timeout in milliseconds for complex tests with multiple interactions
- * (matches pa11y's 20000ms timeout for consistency)
  */
 export const COMPLEX_TEST_TIMEOUT = 60000;
 
