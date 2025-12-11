@@ -76,7 +76,7 @@ echo "Adding rule: ${rule_name} to webapp"
 az webapp config access-restriction add -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "${rule_name}" --action Allow --ip-address "${agent_ip}" --priority 232 --scm-site true 1>/dev/null
 
 # Gives some extra time for prior management operation to complete before starting deployment
-sleep 10
+sleep 20
 az webapp deploy --resource-group "${app_rg}" --src-path "${artifact_path}" --name "${app_name}" --slot "${slot_name}" --type zip --async true --track-status false --clean true
 
 # shellcheck disable=SC2086
