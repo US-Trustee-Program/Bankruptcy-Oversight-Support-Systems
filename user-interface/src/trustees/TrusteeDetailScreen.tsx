@@ -44,17 +44,15 @@ const transformSoftwareList = (items: BankruptcySoftwareList): ComboOption[] => 
 
 export default function TrusteeDetailScreen() {
   const { trusteeId } = useParams();
+  const location = useLocation();
   const [trustee, setTrustee] = useState<Trustee | null>(null);
-  const [navState, setNavState] = useState<number>(
-    mapTrusteeDetailNavState(window.location.pathname),
-  );
+  const [navState, setNavState] = useState<number>(mapTrusteeDetailNavState(location.pathname));
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [softwareOptions, setSoftwareOptions] = useState<ComboOption[]>([]);
 
   const navigate = useNavigate();
   const globalAlert = useGlobalAlert();
   const api = useApi2();
-  const location = useLocation();
 
   function openEditPublicProfile() {
     navigate(`/trustees/${trusteeId}/contact/edit/public`);
@@ -100,7 +98,7 @@ export default function TrusteeDetailScreen() {
             setIsLoading(false);
           });
       }
-      setNavState(mapTrusteeDetailNavState(window.location.pathname));
+      setNavState(mapTrusteeDetailNavState(location.pathname));
     };
 
     fetchTrusteeDetails();
