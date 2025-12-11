@@ -7,8 +7,3 @@ export type CaseSyncEvent = {
   error?: unknown;
   retryCount?: number;
 };
-
-export type CaseSyncResults = {
-  events: CaseSyncEvent[];
-  lastTxId?: string;
-};
