@@ -7,7 +7,7 @@ import { OversightRole } from './roles';
 import { NullableOptionalFields } from '../api/common';
 
 // Chapter types supported for trustee assignments
-export type ChapterType = '7-panel' | '7-non-panel' | '11' | '11-subchapter-v' | '12' | '13';
+type ChapterType = '7-panel' | '7-non-panel' | '11' | '11-subchapter-v' | '12' | '13';
 
 export function formatChapterType(chapter: string): string {
   const chapterLabels: Record<ChapterType, string> = {
@@ -23,20 +23,19 @@ export function formatChapterType(chapter: string): string {
 }
 
 export const TRUSTEE_STATUS_VALUES = ['active', 'not active', 'suspended'] as const;
-export type TrusteeStatus = (typeof TRUSTEE_STATUS_VALUES)[number];
 
-export type TrusteeCore = {
+type TrusteeCore = {
   name: string;
   public: ContactInformation;
   internal?: Partial<ContactInformation>;
 };
 
-export type TrusteeOptionalFields = {
+type TrusteeOptionalFields = {
   banks?: string[];
   software?: string;
 };
 
-export type TrusteeData = TrusteeCore & TrusteeOptionalFields;
+type TrusteeData = TrusteeCore & TrusteeOptionalFields;
 
 export type Trustee = TrusteeData &
   Auditable &
