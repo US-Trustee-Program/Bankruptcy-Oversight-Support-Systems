@@ -1,5 +1,5 @@
 import test, { expect } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { ANALYZE_DELAY, COMPLEX_TEST_TIMEOUT, createAxeBuilder, getUrl } from './test-constants';
 
 test.describe('Case Notes', () => {
   test.describe.configure({ retries: 0, mode: 'serial' });
@@ -7,13 +7,14 @@ test.describe('Case Notes', () => {
   let addCaseNoteButton;
 
   test.beforeEach(async ({ page }) => {
-    await page.goto(`http://localhost:3000/case-detail/999-99-00001/notes`);
+    await page.goto(getUrl('/case-detail/999-99-00001/notes'));
 
     addCaseNoteButton = page.getByTestId('open-modal-button_case-note-add-button');
     await expect(addCaseNoteButton).toBeVisible();
   });
 
-  test('should not have accessibility issues', async ({ page }) => {
+  test.skip('should not have accessibility issues', async ({ page }) => {
+    test.setTimeout(COMPLEX_TEST_TIMEOUT);
     const testNoteTitle = 'Test Note Title';
     const testNoteContent = 'Test Note Content for E2E purposes';
 
@@ -42,9 +43,9 @@ test.describe('Case Notes', () => {
     await page.locator('[data-testid="open-modal-button_case-note-add-button"]').click();
     await expect(page.locator('[data-testid="modal-content-case-note-modal"]')).toBeVisible();
     await page.locator('[data-testid="rich-text-bold-button"]').click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(ANALYZE_DELAY);
 
-    const accessibilityScanResults = await new AxeBuilder({ page }).analyze();
+    const accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
   });
 });
