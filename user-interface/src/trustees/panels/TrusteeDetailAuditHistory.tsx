@@ -231,22 +231,20 @@ export default function TrusteeDetailAuditHistory(props: Readonly<TrusteeDetailA
   useEffect(() => {
     async function fetchTrusteeHistory() {
       setIsAuditHistoryLoading(true);
-      api
-        .getTrusteeHistory(props.trusteeId)
-        .then((response) => {
-          if (response) {
-            setTrusteeHistory(
-              response.data.sort((a: Auditable, b: Auditable) =>
-                sortByDateReverse(a.updatedOn, b.updatedOn),
-              ),
-            );
-            setIsAuditHistoryLoading(false);
-          }
-        })
-        .catch(() => {
-          setTrusteeHistory([]);
-          setIsAuditHistoryLoading(false);
-        });
+      try {
+        const response = await api.getTrusteeHistory(props.trusteeId);
+        if (response) {
+          setTrusteeHistory(
+            response.data.sort((a: Auditable, b: Auditable) =>
+              sortByDateReverse(a.updatedOn, b.updatedOn),
+            ),
+          );
+        }
+      } catch {
+        setTrusteeHistory([]);
+      } finally {
+        setIsAuditHistoryLoading(false);
+      }
     }
     fetchTrusteeHistory();
   }, [api, props.trusteeId]);
