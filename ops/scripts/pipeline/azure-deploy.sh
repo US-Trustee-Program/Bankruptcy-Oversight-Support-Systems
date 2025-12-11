@@ -21,7 +21,7 @@ requiredUSTPParams=("--enabledDataflows" "--mssqlRequestTimeout" "--isUstpDeploy
 requiredFlexionParams=("--enabledDataflows" "--mssqlRequestTimeout" "--resource-group" "--file" "--stackName" "--slotName" "--gitSha" "--networkResourceGroupName" "--kvAppConfigName" "--kvAppConfigResourceGroupName" "--virtualNetworkName" "--analyticsResourceGroupName" "--idKeyvaultAppConfiguration" "--cosmosDatabaseName" "--deployVnet" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityName" "--actionGroupName" "--oktaUrl" "--e2eDatabaseName")
 
 # shellcheck disable=SC2034 # REASON: to have a reference for all possible parameters
-allParams=("--enabledDataflows" "--mssqlRequestTimeout" "--isUstpDeployment" "--resource-group" "--file" "--stackName" "--slotName" "--gitSha" "--networkResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--analyticsWorkspaceName" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosDatabaseName" "--deployVnet" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--apiFunctionPlanName" "--dataflowsFunctionPlanName" "--webappPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityResourceGroupName" "--sqlServerIdentityName"  "--actionGroupName" "--oktaUrl" "--location" "--webappSubnetName" "--apiFunctionSubnetName" "--privateEndpointSubnetName" "--webappSubnetAddressPrefix" "--apiFunctionSubnetAddressPrefix" "--dataflowsSubnetName" "--dataflowsSubnetAddressPrefix" "--vnetAddressPrefix" "--linkVnetIds" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--kvAppConfigResourceGroupName" "--deployDns" "--allowVeracodeScan" "--e2eDatabaseName")
+allParams=("--enabledDataflows" "--mssqlRequestTimeout" "--isUstpDeployment" "--resource-group" "--file" "--stackName" "--slotName" "--gitSha" "--networkResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosDatabaseName" "--deployVnet" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--apiFunctionPlanName" "--dataflowsFunctionPlanName" "--webappPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityResourceGroupName" "--sqlServerIdentityName"  "--actionGroupName" "--oktaUrl" "--location" "--webappSubnetName" "--apiFunctionSubnetName" "--privateEndpointSubnetName" "--webappSubnetAddressPrefix" "--apiFunctionSubnetAddressPrefix" "--dataflowsSubnetName" "--dataflowsSubnetAddressPrefix" "--vnetAddressPrefix" "--linkVnetIds" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--kvAppConfigResourceGroupName" "--deployDns" "--allowVeracodeScan" "--e2eDatabaseName")
 
 
 function az_vnet_exists_func() {
@@ -63,11 +63,54 @@ function az_deploy_func() {
     local rg=$1
     local templateFile=$2
     local deploymentParameter=$3
-    echo "Deploying Azure resources via bicep template ${templateFile}"
+    echo "=== Starting Azure deployment ==="
+    echo "Resource Group: ${rg}"
+    echo "Template File: ${templateFile}"
+    echo "Parameters: ${deploymentParameter}"
+    echo "Is USTP Deployment: ${is_ustp_deployment}"
+
+    echo "=== Building Bicep template ==="
+    if az bicep build --file "${templateFile}"; then
+        echo "=== Bicep build successful ==="
+    else
+        echo "ERROR: Bicep build failed"
+        exit 1
+    fi
+
+    echo "=== Validating deployment template ==="
     # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --parameter
-    az deployment group create -w -g ${rg} --template-file ${templateFile} --parameter ${deploymentParameter}
+    if az deployment group validate -g ${rg} --template-file ${templateFile} --parameter ${deploymentParameter} --no-prompt --query "properties.provisioningState" -o tsv; then
+        echo "=== Template validation successful ==="
+    else
+        echo "ERROR: Template validation failed"
+        exit 1
+    fi
+
+    echo "=== Running what-if analysis ==="
     # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --parameter
-    az deployment group create -g ${rg} --template-file ${templateFile} --parameter $deploymentParameter -o json --query properties.outputs | tee outputs.json
+    # Capture what-if output to both display and file for analysis
+    if az deployment group create -w -g ${rg} --template-file ${templateFile} --parameter ${deploymentParameter} --debug 2>&1 | tee what-if-output.txt; then
+        echo "=== What-if analysis complete ==="
+        echo "What-if output length: $(wc -l < what-if-output.txt) lines"
+        if [[ $(wc -l < what-if-output.txt) -lt 5 ]]; then
+            echo "WARNING: What-if output is unexpectedly short. This may indicate no changes detected."
+        fi
+    else
+        whatif_exit_code=$?
+        echo "WARNING: What-if analysis failed with exit code ${whatif_exit_code}, continuing with deployment..."
+        echo "What-if output was:"
+        cat what-if-output.txt || echo "No what-if output file created"
+    fi
+
+    echo "=== Starting actual deployment ==="
+    # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --parameter
+    if az deployment group create -g ${rg} --template-file ${templateFile} --parameter $deploymentParameter -o json --query properties.outputs --debug | tee outputs.json; then
+        echo "=== Deployment completed successfully ==="
+    else
+        local exit_code=$?
+        echo "ERROR: Deployment failed with exit code ${exit_code}"
+        exit ${exit_code}
+    fi
 }
 
 
@@ -216,12 +259,6 @@ while [[ $# -gt 0 ]]; do
         inputParams+=("${1}")
         analytics_rg_param="analyticsResourceGroupName=${2}"
         deployment_parameters="${deployment_parameters} ${analytics_rg_param}"
-        shift 2
-        ;;
-    --analyticsWorkspaceName)
-        inputParams+=("${1}")
-        analytics_workspace_name_param="analyticsWorkspaceName=${2}"
-        deployment_parameters="${deployment_parameters} ${analytics_workspace_name_param}"
         shift 2
         ;;
     --idKeyvaultAppConfiguration)

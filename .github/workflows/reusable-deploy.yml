@@ -76,7 +76,6 @@ jobs:
             --networkResourceGroupName ${{ steps.rgNetwork.outputs.out }} \
             --virtualNetworkName ${{ vars.AZ_NETWORK_VNET_NAME }} \
             --analyticsResourceGroupName ${{ secrets.AZ_ANALYTICS_RG }}  \
-            --analyticsWorkspaceName ${{ secrets.AZ_ANALYTICS_WORKSPACE_NAME }}  \
             --idKeyvaultAppConfiguration ${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }}  \
             --kvAppConfigResourceGroupName ${{secrets.AZURE_RG }} \
             --kvAppConfigName ${{ secrets.AZ_KV_APP_CONFIG_NAME }} \
