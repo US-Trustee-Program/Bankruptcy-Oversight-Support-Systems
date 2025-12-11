@@ -12,15 +12,20 @@ test.describe('My Cases', () => {
     await expect(page.locator('[data-testid="open-modal-button"]')).toBeVisible();
     await expect(page.locator('#search-results-table-body')).toBeVisible();
 
+    // Open modal and check accessibility with modal open
     await page.locator('[data-testid="open-modal-button"]').click();
-
     await expect(page.locator('#info-modal-heading')).toBeVisible();
     await expect(page.locator('#info-modal-cancel-button')).toBeVisible();
 
+    await page.waitForTimeout(ANALYZE_DELAY);
+    let accessibilityScanResults = await createAxeBuilder(page).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
+
+    // Close modal and check accessibility with modal closed
     await page.locator('#info-modal-cancel-button').click();
 
     await page.waitForTimeout(ANALYZE_DELAY);
-    const accessibilityScanResults = await createAxeBuilder(page).analyze();
+    accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
   });
 });
