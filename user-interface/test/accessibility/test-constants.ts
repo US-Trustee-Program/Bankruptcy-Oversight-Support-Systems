@@ -22,11 +22,6 @@ export const ANALYZE_DELAY = 1000;
 export const COMPLEX_TEST_TIMEOUT = 60000;
 
 /**
- * Test timeout in milliseconds for standard tests
- */
-export const STANDARD_TEST_TIMEOUT = 30000;
-
-/**
  * Custom viewport size for tests requiring larger screen dimensions
  * (e.g., complex layouts, data tables, etc.)
  */
