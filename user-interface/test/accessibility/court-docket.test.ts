@@ -30,15 +30,21 @@ test.describe('Court Docket - Complex Interactions', () => {
     await page.locator('#document-number-search-field').fill('10000');
     await page.locator('#document-number-search-field').clear();
 
-    // Test facet multi-select interactions
+    // Test facet multi-select interactions - opens dropdown with new HTML
     await page.locator('#facet-multi-select-expand').click();
     await page.locator('#facet-multi-select-combo-box-input').click();
 
-    // Test date range picker
+    // Check accessibility with facet dropdown open
+    await page.waitForTimeout(ANALYZE_DELAY);
+    let accessibilityScanResults = await createAxeBuilder(page).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
+
+    // Test date range picker - opens calendar with new HTML
     await page.locator('#docket-date-range-date-start').click();
 
+    // Check accessibility with date picker open
     await page.waitForTimeout(ANALYZE_DELAY);
-    const accessibilityScanResults = await createAxeBuilder(page).analyze();
+    accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
   });
 });
