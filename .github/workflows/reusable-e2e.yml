@@ -126,7 +126,7 @@ jobs:
         run: |
           echo "Running Playwright Tests..."
           mkdir -p playwright/.auth
-          SLOT_NAME=${{ inputs.slotName }} DEV_TEST_USERNAME=${{secrets.OKTA_USER_NAME_USTP}} DEV_TEST_PASSWORD=${{secrets.OKTA_PASSWORD_USTP}} TARGET_HOST=https://${{ inputs.webappName }}-${{ inputs.slotName }}.azurewebsites.us CAMS_LOGIN_PROVIDER=${{ vars.CAMS_LOGIN_PROVIDER }} npx playwright test --reporter=list,html
+          SLOT_NAME=${{ inputs.slotName }} OKTA_USER_NAME=${{ secrets.OKTA_USER_NAME }} OKTA_PASSWORD=${{ secrets.OKTA_PASSWORD }} TARGET_HOST=https://${{ inputs.webappName }}-${{ inputs.slotName }}.azurewebsites.us CAMS_LOGIN_PROVIDER=${{ vars.CAMS_LOGIN_PROVIDER }} npx playwright test --reporter=list,html
 
       - name: Upload report
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
