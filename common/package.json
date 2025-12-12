@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "clean": "rm -rf ./dist && rm -rf ./node_modules && rm -rf ./coverage & rm tsconfig.tsbuildinfo",
+    "clean": "rm -rf ./dist && rm -rf ./node_modules && rm -rf ./coverage && rm -f tsconfig.tsbuildinfo",
     "build": "npx tsc",
     "test": "vitest run",
     "test:watch": "vitest watch",
