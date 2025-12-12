@@ -84,9 +84,13 @@ az functionapp config appsettings set -g "${app_rg}" -n "${app_name}" --slot "${
 az functionapp config access-restriction show -g "${app_rg}" -n "${app_name}" --slot "${slot_name}"
 
 # Deploy with retry logic and exponential backoff
-max_attempts=4
+max_attempts=6
 attempt=1
 backoff=2
+
+# Wait for access restrictions to propagate before first attempt
+echo "Waiting ${backoff} seconds for access restrictions to propagate..."
+sleep $backoff
 
 while [ $attempt -le $max_attempts ]; do
     echo "Deployment attempt ${attempt}/${max_attempts}..."
