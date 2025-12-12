@@ -1,6 +1,6 @@
 import { AttorneyUser, CamsUserReference } from '@common/cams/users';
 import { deepEqual } from '@common/object-equality';
-import useApi2 from '@/lib/hooks/UseApi2';
+import createApi2 from '@/lib/Api2Factory';
 import { ResponseBody } from '@common/api/response';
 import { CamsRole } from '@common/cams/roles';
 import { getCamsUserReference } from '@common/cams/session';
@@ -62,7 +62,7 @@ const assignAttorneyModalUseCase = (
 
   const apiActions = {
     fetchAttorneys: async () => {
-      const api = useApi2();
+      const api = createApi2();
       let attorneys;
       if (!store.bCase) {
         return;
@@ -76,7 +76,7 @@ const assignAttorneyModalUseCase = (
     },
 
     submitValues: async (assignmentChangeCallback: (val: CamsUserReference[]) => void) => {
-      const api = useApi2();
+      const api = createApi2();
       if (!store.bCase) {
         throw Error('No bankruptcy case was supplied. Can not set attorneys without a case.');
       }

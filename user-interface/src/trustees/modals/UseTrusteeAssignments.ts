@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import useApi2 from '../../lib/hooks/UseApi2';
+import createApi2 from '../../lib/Api2Factory';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
 import { OversightRole } from '@common/cams/roles';
 
@@ -17,7 +17,7 @@ export function useTrusteeAssignments(): UseTrusteeAssignmentsReturn {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const api = useApi2();
+  const api = createApi2();
 
   const getTrusteeOversightAssignments = useCallback(
     async (trusteeId: string) => {

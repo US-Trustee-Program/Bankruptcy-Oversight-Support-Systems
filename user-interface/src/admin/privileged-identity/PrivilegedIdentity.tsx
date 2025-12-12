@@ -4,7 +4,7 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import DatePicker from '@/lib/components/uswds/DatePicker';
-import useApi2 from '@/lib/hooks/UseApi2';
+import createApi2 from '@/lib/Api2Factory';
 import useFeatureFlags, { PRIVILEGED_IDENTITY_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { ComboBoxRef, InputRef } from '@/lib/type-declarations/input-fields';
@@ -34,7 +34,7 @@ export function sortUserList(a: CamsUserReference, b: CamsUserReference) {
 
 export function PrivilegedIdentity() {
   const flags = useFeatureFlags();
-  const api = useApi2();
+  const api = createApi2();
 
   const [isLoaded, setIsLoaded] = useState(false);
   const [groupNames, setGroupNames] = useState<RoleAndOfficeGroupNames>({

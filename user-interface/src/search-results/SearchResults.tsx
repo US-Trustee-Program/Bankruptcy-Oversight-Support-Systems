@@ -7,7 +7,7 @@ import Alert, { AlertDetails, AlertProps, UswdsAlertStyle } from '@/lib/componen
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { Pagination } from '@/lib/components/uswds/Pagination';
-import useApi2 from '@/lib/hooks/UseApi2';
+import createApi2 from '@/lib/Api2Factory';
 import { ResponseBody } from '@common/api/response';
 import './SearchResults.scss';
 import { Pagination as PaginationModel } from '@common/api/pagination';
@@ -74,7 +74,7 @@ function SearchResults(props: SearchResultsProps) {
   const noResultsMessage =
     noResultsMessageProp ?? 'Modify your search criteria to include more cases.';
 
-  const api = useApi2();
+  const api = createApi2();
 
   function handleSearchResults(response: ResponseBody<SyncedCase[]> | void) {
     if (response) {

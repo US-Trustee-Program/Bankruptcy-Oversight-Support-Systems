@@ -8,7 +8,7 @@ import {
 import { ConsolidationStore } from '@/data-verification/consolidation/consolidationStore';
 import { ConsolidationControls } from '@/data-verification/consolidation/consolidationControls';
 import { getCaseId } from './consolidationOrderAccordionUtils';
-import useApi2 from '@/lib/hooks/UseApi2';
+import createApi2 from '@/lib/Api2Factory';
 import { CaseSummary } from '@common/cams/cases';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { ConfirmActionResults } from './ConsolidationOrderModal';
@@ -121,7 +121,7 @@ const consolidationUseCase = (
   };
 
   const verifyCaseCanBeAdded = () => {
-    const api2 = useApi2();
+    const api2 = createApi2();
     const caseIdToVerify = getCaseId({
       court: store.caseToAddCourt,
       caseNumber: store.caseToAddCaseNumber,
@@ -210,7 +210,7 @@ const consolidationUseCase = (
   };
 
   const approveConsolidation = (action: ConfirmActionResults) => {
-    const api = useApi2();
+    const api = createApi2();
     const genericErrorMessage =
       'An unknown error has occurred and has been logged.  Please try again later.';
 
@@ -256,7 +256,7 @@ const consolidationUseCase = (
   };
 
   const rejectConsolidation = (action: ConfirmActionResults) => {
-    const api = useApi2();
+    const api = createApi2();
     const genericErrorMessage =
       'An unknown error has occurred and has been logged.  Please try again later.';
     if (action.status === 'rejected') {
@@ -418,7 +418,7 @@ const consolidationUseCase = (
   };
 
   const handleOnExpand = async () => {
-    const api2 = useApi2();
+    const api2 = createApi2();
     if (onExpand) {
       onExpand(`order-list-${store.order.id}`);
     }

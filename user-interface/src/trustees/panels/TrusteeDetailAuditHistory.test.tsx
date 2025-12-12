@@ -15,18 +15,25 @@ import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { ContactInformation } from '@common/cams/contact';
 import { OversightRole } from '@common/cams/roles';
 
-// Mock useApi2 hook
+// Mock createApi2 hook
 const mockGetTrusteeHistory = vi.fn();
-vi.mock('@/lib/hooks/UseApi2', () => ({
-  default: () => ({
+vi.mock('@/lib/Api2Factory', () => ({
+  default: vi.fn(() => ({
     getTrusteeHistory: mockGetTrusteeHistory,
-  }),
+  })),
 }));
 
 // Mock datetime utility
 vi.mock('@/lib/utils/datetime', () => ({
   formatDate: vi.fn((date: string) => `formatted-${date}`),
   sortByDateReverse: vi.fn((a: string, b: string) => b.localeCompare(a)),
+  default: {
+    SECOND: 1,
+    MINUTE: 60,
+    HOUR: 3600,
+    DAY: 86400,
+    THREE_DAYS: 259200,
+  },
 }));
 
 describe('TrusteeDetailAuditHistory', () => {

@@ -2,7 +2,7 @@ import './TrusteeDetailScreen.scss';
 import '@/styles/record-detail.scss';
 import '@/styles/left-navigation-pane.scss';
 import { JSX, useEffect, useState } from 'react';
-import useApi2 from '@/lib/hooks/UseApi2';
+import createApi2 from '@/lib/Api2Factory';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { Trustee } from '@common/cams/trustees';
 import { useNavigate, useParams, Routes, Route, useLocation } from 'react-router-dom';
@@ -52,7 +52,7 @@ export default function TrusteeDetailScreen() {
 
   const navigate = useNavigate();
   const globalAlert = useGlobalAlert();
-  const api = useApi2();
+  const api = createApi2();
 
   function openEditPublicProfile() {
     navigate(`/trustees/${trusteeId}/contact/edit/public`);

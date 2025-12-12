@@ -1,12 +1,12 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { vi, describe, test, expect, beforeEach, MockedFunction } from 'vitest';
 import { useTrusteeAssignments } from './UseTrusteeAssignments';
-import useApi2 from '../../lib/hooks/UseApi2';
+import createApi2 from '../../lib/Api2Factory';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
 import { OversightRole } from '@common/cams/roles';
 import { _Api2 } from '@/lib/models/api2';
 
-vi.mock('../../lib/hooks/UseApi2', () => ({
+vi.mock('../../lib/Api2Factory', () => ({
   default: vi.fn(),
 }));
 
@@ -44,7 +44,7 @@ describe('useTrusteeAssignments', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (useApi2 as MockedFunction<typeof useApi2>).mockReturnValue(mockApiMethods);
+    (createApi2 as MockedFunction<typeof createApi2>).mockReturnValue(mockApiMethods);
   });
 
   test('should initialize with empty state', () => {

@@ -14,7 +14,7 @@ import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Butt
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { FromCaseSummary } from './FromCaseSummary';
-import useApi2 from '@/lib/hooks/UseApi2';
+import createApi2 from '@/lib/Api2Factory';
 import './PendingTransferOrder.scss';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
 import SuggestedTransferCases, {
@@ -53,7 +53,7 @@ function PendingTransferOrder_(
   const approveButtonRef = useRef<ButtonRef>(null);
   const suggestedCasesRef = useRef<SuggestedTransferCasesImperative>(null);
 
-  const api = useApi2();
+  const api = createApi2();
 
   function confirmOrderApproval(): void {
     const approvedTransferOrder: FlexibleTransferOrderAction = {

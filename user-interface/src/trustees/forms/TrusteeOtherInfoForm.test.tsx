@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import TrusteeOtherInfoForm from './TrusteeOtherInfoForm';
-import * as UseApi2Module from '@/lib/hooks/UseApi2';
+import * as UseApi2Module from '@/lib/Api2Factory';
 import * as UseGlobalAlertModule from '@/lib/hooks/UseGlobalAlert';
 import * as useCamsNavigatorModule from '@/lib/hooks/UseCamsNavigator';
 import { Mock } from 'vitest';

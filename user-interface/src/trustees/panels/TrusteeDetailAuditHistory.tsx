@@ -3,7 +3,7 @@ import { formatDate, sortByDateReverse } from '@/lib/utils/datetime';
 import LoadingIndicator from '@/lib/components/LoadingIndicator';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { useEffect, useState } from 'react';
-import useApi2 from '@/lib/hooks/UseApi2';
+import createApi2 from '@/lib/Api2Factory';
 import {
   TrusteeHistory,
   TrusteeNameHistory,
@@ -226,7 +226,7 @@ function RenderTrusteeHistory(props: Readonly<{ trusteeHistory: TrusteeHistory[]
 export default function TrusteeDetailAuditHistory(props: Readonly<TrusteeDetailAuditHistoryProps>) {
   const [trusteeHistory, setTrusteeHistory] = useState<TrusteeHistory[]>([]);
   const [isAuditHistoryLoading, setIsAuditHistoryLoading] = useState<boolean>(false);
-  const api = useApi2();
+  const api = createApi2();
 
   useEffect(() => {
     const fetchTrusteeHistory = async () => {

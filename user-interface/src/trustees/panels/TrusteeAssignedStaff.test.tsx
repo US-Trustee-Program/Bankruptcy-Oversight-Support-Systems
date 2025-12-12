@@ -5,13 +5,15 @@ import { useTrusteeAssignments } from '@/trustees/modals/UseTrusteeAssignments';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
 import { AttorneyUser } from '@common/cams/users';
 import { CamsRole, OversightRole } from '@common/cams/roles';
-import useApi2 from '@/lib/hooks/UseApi2';
+import createApi2 from '@/lib/Api2Factory';
 
 vi.mock('@/trustees/modals/UseTrusteeAssignments', () => ({
   useTrusteeAssignments: vi.fn(),
 }));
 
-vi.mock('@/lib/hooks/UseApi2');
+vi.mock('@/lib/Api2Factory', () => ({
+  default: vi.fn(),
+}));
 
 vi.mock('./AttorneyAssignmentSection', () => ({
   default: vi.fn(({ trusteeId, assignments, attorneys, onAssignmentChange, isLoading }) => (
@@ -115,7 +117,7 @@ describe('TrusteeAssignedStaff', () => {
     (useTrusteeAssignments as MockedFunction<typeof useTrusteeAssignments>).mockReturnValue(
       mockUseTrusteeAssignments,
     );
-    (useApi2 as MockedFunction<typeof useApi2>).mockReturnValue(mockApi as never);
+    (createApi2 as MockedFunction<typeof createApi2>).mockReturnValue(mockApi as never);
   });
 
   test('should render component with correct structure', async () => {
@@ -188,7 +190,7 @@ describe('TrusteeAssignedStaff', () => {
   });
 
   test('should display error alert when attorneys fail to load', async () => {
-    (useApi2 as MockedFunction<typeof useApi2>).mockReturnValue({
+    (createApi2 as MockedFunction<typeof createApi2>).mockReturnValue({
       getAttorneys: vi.fn().mockRejectedValue(new Error('Failed to load attorneys')),
     } as never);
 
