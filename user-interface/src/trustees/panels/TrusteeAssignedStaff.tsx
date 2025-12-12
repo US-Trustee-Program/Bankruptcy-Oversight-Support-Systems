@@ -38,7 +38,7 @@ export default function TrusteeAssignedStaff(props: Readonly<TrusteeAssignedStaf
     };
 
     loadAttorneys();
-  }, []);
+  }, [api]);
 
   const refreshAssignments = () => {
     getTrusteeOversightAssignments(trusteeId);

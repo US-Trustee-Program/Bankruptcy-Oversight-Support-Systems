@@ -228,29 +228,26 @@ export default function TrusteeDetailAuditHistory(props: Readonly<TrusteeDetailA
   const [isAuditHistoryLoading, setIsAuditHistoryLoading] = useState<boolean>(false);
   const api = useApi2();
 
-  async function fetchTrusteeHistory() {
-    setIsAuditHistoryLoading(true);
-    api
-      .getTrusteeHistory(props.trusteeId)
-      .then((response) => {
+  useEffect(() => {
+    const fetchTrusteeHistory = async () => {
+      setIsAuditHistoryLoading(true);
+      try {
+        const response = await api.getTrusteeHistory(props.trusteeId);
         if (response) {
           setTrusteeHistory(
             response.data.sort((a: Auditable, b: Auditable) =>
               sortByDateReverse(a.updatedOn, b.updatedOn),
             ),
           );
-          setIsAuditHistoryLoading(false);
         }
-      })
-      .catch(() => {
+      } catch {
         setTrusteeHistory([]);
+      } finally {
         setIsAuditHistoryLoading(false);
-      });
-  }
-
-  useEffect(() => {
+      }
+    };
     fetchTrusteeHistory();
-  }, []);
+  }, [api, props.trusteeId]);
 
   return (
     <div className="trustee-audit-history">

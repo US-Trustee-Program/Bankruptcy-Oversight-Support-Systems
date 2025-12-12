@@ -650,13 +650,15 @@ describe('TrusteeDetailAuditHistory', () => {
 
     renderWithProps({});
 
-    // The component should stay in loading state when response is null
-    // because it doesn't set loading to false in that case
+    // Initially should show loading indicator
     expect(screen.getByTestId('loading-indicator')).toBeInTheDocument();
 
-    // Wait a bit to ensure the promise resolves and still shows loading
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    expect(screen.getByTestId('loading-indicator')).toBeInTheDocument();
+    // After API call completes, loading should be false and empty state should show
+    await waitFor(() => {
+      expect(screen.queryByTestId('loading-indicator')).not.toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('empty-trustee-history-test-id')).toBeInTheDocument();
   });
 
   test('should handle component unmounting during API call', async () => {
