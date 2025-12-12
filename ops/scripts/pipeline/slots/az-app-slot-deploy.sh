@@ -72,7 +72,7 @@ agent_ip=$(curl -s --retry 3 --retry-delay 30 --retry-all-errors https://api.ipi
 echo "App name: ${app_name}."
 echo "Slot name: ${slot_name}."
 rule_name="agent-${app_name:0:26}"
-echo "Adding rule: ${rule_name} to webapp"
+echo "Adding rule: ${rule_name} to webapp. IP: ${agent_ip}."
 az webapp config access-restriction add -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "${rule_name}" --action Allow --ip-address "${agent_ip}" --priority 232 --scm-site true 1>/dev/null
 
 # Gives some extra time for prior management operation to complete before starting deployment
