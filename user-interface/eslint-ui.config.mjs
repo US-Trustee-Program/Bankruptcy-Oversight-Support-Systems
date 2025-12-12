@@ -29,7 +29,8 @@ const eslintUiConfig = tsEslint.config(
       'react-hooks/rules-of-hooks': 'warn',
       'react-hooks/set-state-in-effect': 'warn',
       'react-hooks/purity': 'warn',
-      'react-hooks/refs': 'warn',
+      // Disabled due to known bug causing false positives: https://github.com/facebook/react/issues/34775
+      'react-hooks/refs': 'off',
       'react-hooks/error-boundaries': 'warn',
       'react-hooks/immutability': 'warn',
       'react-hooks/use-memo': 'warn',
