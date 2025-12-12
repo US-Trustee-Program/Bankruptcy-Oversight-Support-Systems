@@ -10,7 +10,7 @@ import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import * as DebounceModule from '@/lib/hooks/UseDebounce';
 import { FeatureFlagSet } from '@common/feature-flags';
 import Api2 from '@/lib/models/api2';
-import * as UseApi2Module from '@/lib/Api2Factory';
+
 import { Trustee, TrusteeInput } from '@common/cams/trustees';
 import * as NavigatorModule from '@/lib/hooks/UseCamsNavigator';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -343,9 +343,9 @@ describe('TrusteePublicContactForm Tests', () => {
   });
 
   test('should not call API when validation fails on submit (create)', async () => {
-    const api = UseApi2Module.default();
+    const api = Api2;
     const mockPost = vi.fn();
-    vi.spyOn(api, 'postTrustee').mockImplementation(mockPost as unknown as typeof api.postTrustee);
+    vi.spyOn(api, 'postTrustee').mockImplementation(mockPost as unknown as typeof Api2.postTrustee);
 
     renderWithProps({
       action: 'create',
@@ -360,7 +360,7 @@ describe('TrusteePublicContactForm Tests', () => {
   });
 
   test('should call globalAlert.error when postTrustee rejects during create', async () => {
-    const api = UseApi2Module.default();
+    const api = Api2;
     const error = new Error('create failed');
     vi.spyOn(api, 'postTrustee').mockRejectedValue(error);
 
@@ -388,10 +388,7 @@ describe('TrusteePublicContactForm Tests', () => {
 
   test('should call globalAlert.error when patchTrustee rejects during edit', async () => {
     const error = new Error('Network failure');
-    const mockReject = vi.fn().mockRejectedValue(error);
-    vi.spyOn(UseApi2Module, 'default').mockReturnValue({
-      patchTrustee: mockReject,
-    } as unknown as ReturnType<typeof UseApi2Module.default>);
+    vi.spyOn(Api2, 'patchTrustee').mockRejectedValue(error);
 
     const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
 

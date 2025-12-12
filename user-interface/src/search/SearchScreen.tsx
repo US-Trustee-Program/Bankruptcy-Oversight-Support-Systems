@@ -6,7 +6,7 @@ import {
   DEFAULT_SEARCH_OFFSET,
 } from '@common/api/search';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
-import createApi2 from '@/lib/Api2Factory';
+import Api2 from '@/lib/models/api2';
 import { ComboBoxRef, InputRef } from '@/lib/type-declarations/input-fields';
 import { courtSorter, getDivisionComboOptions } from '@/data-verification/dataVerificationHelper';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
@@ -85,7 +85,6 @@ export default function SearchScreen() {
   const chapterSelectionRef = useRef<ComboBoxRef>(null);
   const submitButtonRef = useRef<ButtonRef>(null);
 
-  const api = createApi2();
   const globalAlert = useGlobalAlert();
   const debounce = useDebounce();
 
@@ -125,8 +124,7 @@ export default function SearchScreen() {
   }, []);
 
   const getCourts = useCallback(() => {
-    api
-      .getCourts()
+    Api2.getCourts()
       .then((response) => {
         const newOfficesList = response.data.sort(courtSorter);
         const officeComboOptions = getDivisionComboOptions(newOfficesList);
@@ -153,7 +151,7 @@ export default function SearchScreen() {
       });
     // TODO resolving this warning introduces an infinite loop. This may be a smell.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [api, globalAlert]);
+  }, [globalAlert]);
 
   function disableSearchForm(value: boolean) {
     caseNumberInputRef.current?.disable(value);

@@ -1,6 +1,6 @@
 import { AttorneyUser, CamsUserReference } from '@common/cams/users';
 import { deepEqual } from '@common/object-equality';
-import createApi2 from '@/lib/Api2Factory';
+import Api2 from '@/lib/models/api2';
 import { ResponseBody } from '@common/api/response';
 import { CamsRole } from '@common/cams/roles';
 import { getCamsUserReference } from '@common/cams/session';
@@ -62,13 +62,12 @@ const assignAttorneyModalUseCase = (
 
   const apiActions = {
     fetchAttorneys: async () => {
-      const api = createApi2();
       let attorneys;
       if (!store.bCase) {
         return;
       }
       try {
-        attorneys = await api.getOfficeAttorneys(store.bCase.officeCode ?? '');
+        attorneys = await Api2.getOfficeAttorneys(store.bCase.officeCode ?? '');
         store.setAttorneyList((attorneys as ResponseBody<AttorneyUser[]>).data);
       } catch (e) {
         store.setGlobalAlertError((e as Error).message);
@@ -76,7 +75,6 @@ const assignAttorneyModalUseCase = (
     },
 
     submitValues: async (assignmentChangeCallback: (val: CamsUserReference[]) => void) => {
-      const api = createApi2();
       if (!store.bCase) {
         throw Error('No bankruptcy case was supplied. Can not set attorneys without a case.');
       }
@@ -95,7 +93,7 @@ const assignAttorneyModalUseCase = (
       store.setIsUpdatingAssignment(true);
 
       try {
-        await api.postStaffAssignments({
+        await Api2.postStaffAssignments({
           caseId: store.bCase?.caseId,
           attorneyList: finalAttorneyList,
           role: CamsRole.TrialAttorney,

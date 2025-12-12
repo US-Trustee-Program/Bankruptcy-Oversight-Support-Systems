@@ -3,7 +3,7 @@ import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import Icon from '@/lib/components/uswds/Icon';
 import Input from '@/lib/components/uswds/Input';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
-import createApi2 from '@/lib/Api2Factory';
+import Api2 from '@/lib/models/api2';
 import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import React, { useState } from 'react';
@@ -16,7 +16,6 @@ type TrusteeOtherInfoFormProps = {
 };
 
 function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
-  const api = createApi2();
   const globalAlert = useGlobalAlert();
   const { trusteeId, softwareOptions } = props;
   const initialBanks = props.banks?.filter((b) => b.trim() !== '') ?? [];
@@ -68,7 +67,7 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
 
     setIsSubmitting(true);
     try {
-      const response = await api.patchTrustee(trusteeId, {
+      const response = await Api2.patchTrustee(trusteeId, {
         banks: banks.filter((bank) => bank.trim() !== ''),
         software: software || null,
       });

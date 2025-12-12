@@ -1,5 +1,5 @@
 import React, { forwardRef, useRef, useState, useCallback } from 'react';
-import createApi2 from '@/lib/Api2Factory';
+import Api2 from '@/lib/models/api2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { Staff } from '@common/cams/users';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
@@ -52,7 +52,7 @@ const TrusteeOversightAssignmentModal = forwardRef<
   const { modalId, trusteeId, role, onAssignment } = props;
 
   const modalRef = useRef<ModalRefType>(null);
-  const api = createApi2();
+
   const globalAlert = useGlobalAlert();
 
   const roleLabel = ROLE_LABELS[role] ?? 'staff member';
@@ -62,7 +62,7 @@ const TrusteeOversightAssignmentModal = forwardRef<
       setIsLoading(true);
       setError(null);
       try {
-        const response = await api.getOversightStaff();
+        const response = await Api2.getOversightStaff();
         const allStaff = response.data ?? [];
 
         const targetRole = OVERSIGHT_TO_CAMS_ROLE[role];
@@ -83,7 +83,7 @@ const TrusteeOversightAssignmentModal = forwardRef<
         setIsLoading(false);
       }
     },
-    [api, role, roleLabel],
+    [role, roleLabel],
   );
 
   // Handle external ref
@@ -114,7 +114,7 @@ const TrusteeOversightAssignmentModal = forwardRef<
 
       setIsAssigning(true);
       try {
-        await api.createTrusteeOversightAssignment(trusteeId, selectedStaff.id, role);
+        await Api2.createTrusteeOversightAssignment(trusteeId, selectedStaff.id, role);
         onAssignment(true);
         globalAlert?.success(
           `${roleLabel.charAt(0).toUpperCase() + roleLabel.slice(1)} assigned successfully`,
@@ -126,16 +126,7 @@ const TrusteeOversightAssignmentModal = forwardRef<
         setIsAssigning(false);
       }
     }
-  }, [
-    selectedStaff,
-    currentAssignment,
-    api,
-    trusteeId,
-    role,
-    onAssignment,
-    globalAlert,
-    roleLabel,
-  ]);
+  }, [selectedStaff, currentAssignment, trusteeId, role, onAssignment, globalAlert, roleLabel]);
 
   const modalContent = (
     <div

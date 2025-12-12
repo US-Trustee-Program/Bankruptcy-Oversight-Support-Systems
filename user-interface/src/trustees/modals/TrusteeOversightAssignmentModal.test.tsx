@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import TrusteeOversightAssignmentModal from './TrusteeOversightAssignmentModal';
-import createApi2 from '@/lib/Api2Factory';
+import Api2 from '@/lib/models/api2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { Staff } from '@common/cams/users';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
@@ -11,8 +11,11 @@ import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { TrusteeOversightAssignmentModalRef } from './TrusteeOversightAssignmentModal';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
-vi.mock('@/lib/Api2Factory', () => ({
-  default: vi.fn(),
+vi.mock('@/lib/models/api2', () => ({
+  default: {
+    getOversightStaff: vi.fn(),
+    createTrusteeOversightAssignment: vi.fn(),
+  },
 }));
 vi.mock('@/lib/hooks/UseGlobalAlert');
 
@@ -93,13 +96,6 @@ describe('TrusteeOversightAssignmentModal', () => {
     updatedOn: '2023-01-01T00:00:00Z',
   };
 
-  const mockApiMethods = {
-    getOversightStaff: vi.fn().mockResolvedValue({
-      data: mockAllStaff,
-    }),
-    createTrusteeOversightAssignment: vi.fn().mockResolvedValue({ data: mockAttorneyAssignment }),
-  };
-
   const mockGlobalAlert = {
     success: vi.fn(),
     error: vi.fn(),
@@ -108,7 +104,12 @@ describe('TrusteeOversightAssignmentModal', () => {
   beforeEach(() => {
     userEvent = TestingUtilities.setupUserEvent();
     vi.clearAllMocks();
-    (createApi2 as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockApiMethods);
+    vi.mocked(Api2.getOversightStaff).mockResolvedValue({
+      data: mockAllStaff,
+    });
+    vi.mocked(Api2.createTrusteeOversightAssignment).mockResolvedValue({
+      data: mockAttorneyAssignment,
+    });
     (useGlobalAlert as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockGlobalAlert);
   });
 
@@ -153,7 +154,7 @@ describe('TrusteeOversightAssignmentModal', () => {
       act(() => ref.current!.show());
 
       await waitFor(() => {
-        expect(mockApiMethods.getOversightStaff).toHaveBeenCalledTimes(1);
+        expect(Api2.getOversightStaff).toHaveBeenCalledTimes(1);
       });
     });
 
@@ -163,7 +164,7 @@ describe('TrusteeOversightAssignmentModal', () => {
       renderWithProps(OversightRole.OversightAttorney, { onAssignment, ref });
 
       act(() => ref.current!.show());
-      await waitFor(() => expect(mockApiMethods.getOversightStaff).toHaveBeenCalled());
+      await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
 
       expect(screen.getByTestId('mock-combobox')).toBeInTheDocument();
     });
@@ -174,7 +175,7 @@ describe('TrusteeOversightAssignmentModal', () => {
       renderWithProps(OversightRole.OversightAttorney, { onAssignment, ref });
 
       act(() => ref.current!.show());
-      await waitFor(() => expect(mockApiMethods.getOversightStaff).toHaveBeenCalled());
+      await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
       await screen.findByTestId('mock-combobox');
 
       const submitButton = screen.getByTestId('button-test-modal-submit-button');
@@ -194,7 +195,7 @@ describe('TrusteeOversightAssignmentModal', () => {
       renderWithProps(OversightRole.OversightAttorney, { onAssignment, ref });
 
       act(() => ref.current!.show());
-      await waitFor(() => expect(mockApiMethods.getOversightStaff).toHaveBeenCalled());
+      await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
 
       const comboBox = screen.getByTestId('mock-combobox') as HTMLSelectElement;
       await userEvent.selectOptions(comboBox, mockAttorneys[0].id);
@@ -203,7 +204,7 @@ describe('TrusteeOversightAssignmentModal', () => {
       await userEvent.click(submitButton);
 
       await waitFor(() => {
-        expect(mockApiMethods.createTrusteeOversightAssignment).toHaveBeenCalledWith(
+        expect(Api2.createTrusteeOversightAssignment).toHaveBeenCalledWith(
           'trustee-123',
           'attorney-1',
           OversightRole.OversightAttorney,
@@ -216,7 +217,7 @@ describe('TrusteeOversightAssignmentModal', () => {
 
     test('should handle assignment error', async () => {
       const errorMessage = 'Failed to assign attorney';
-      mockApiMethods.createTrusteeOversightAssignment.mockRejectedValueOnce(
+      vi.mocked(Api2.createTrusteeOversightAssignment).mockRejectedValueOnce(
         new Error(errorMessage),
       );
 
@@ -225,7 +226,7 @@ describe('TrusteeOversightAssignmentModal', () => {
       renderWithProps(OversightRole.OversightAttorney, { onAssignment, ref });
 
       act(() => ref.current!.show());
-      await waitFor(() => expect(mockApiMethods.getOversightStaff).toHaveBeenCalled());
+      await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
 
       const comboBox = screen.getByTestId('mock-combobox') as HTMLSelectElement;
       await userEvent.selectOptions(comboBox, mockAttorneys[0].id);
@@ -240,7 +241,7 @@ describe('TrusteeOversightAssignmentModal', () => {
     });
 
     test('should handle loading error', async () => {
-      mockApiMethods.getOversightStaff.mockRejectedValueOnce(new Error('API Error'));
+      vi.mocked(Api2.getOversightStaff).mockRejectedValueOnce(new Error('API Error'));
 
       const onAssignment = vi.fn();
       const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
@@ -259,7 +260,7 @@ describe('TrusteeOversightAssignmentModal', () => {
       const loadingPromise = new Promise<{ data: Staff[] }>((resolve) => {
         resolvePromise = resolve;
       });
-      mockApiMethods.getOversightStaff.mockReturnValueOnce(loadingPromise);
+      vi.mocked(Api2.getOversightStaff).mockReturnValueOnce(loadingPromise);
 
       const onAssignment = vi.fn();
       const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
@@ -294,7 +295,7 @@ describe('TrusteeOversightAssignmentModal', () => {
       act(() => ref.current!.show());
 
       await waitFor(() => {
-        expect(mockApiMethods.getOversightStaff).toHaveBeenCalledTimes(1);
+        expect(Api2.getOversightStaff).toHaveBeenCalledTimes(1);
       });
     });
 
@@ -304,13 +305,13 @@ describe('TrusteeOversightAssignmentModal', () => {
       renderWithProps(OversightRole.OversightAuditor, { onAssignment, ref });
 
       act(() => ref.current!.show());
-      await waitFor(() => expect(mockApiMethods.getOversightStaff).toHaveBeenCalled());
+      await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
 
       expect(screen.getByTestId('mock-combobox')).toBeInTheDocument();
     });
 
     test('should successfully assign auditor with role parameter', async () => {
-      mockApiMethods.createTrusteeOversightAssignment.mockResolvedValueOnce({
+      vi.mocked(Api2.createTrusteeOversightAssignment).mockResolvedValueOnce({
         data: mockAuditorAssignment,
       });
 
@@ -319,7 +320,7 @@ describe('TrusteeOversightAssignmentModal', () => {
       renderWithProps(OversightRole.OversightAuditor, { onAssignment, ref });
 
       act(() => ref.current!.show());
-      await waitFor(() => expect(mockApiMethods.getOversightStaff).toHaveBeenCalled());
+      await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
 
       const comboBox = screen.getByTestId('mock-combobox') as HTMLSelectElement;
       await userEvent.selectOptions(comboBox, mockAuditors[0].id);
@@ -328,7 +329,7 @@ describe('TrusteeOversightAssignmentModal', () => {
       await userEvent.click(submitButton);
 
       await waitFor(() => {
-        expect(mockApiMethods.createTrusteeOversightAssignment).toHaveBeenCalledWith(
+        expect(Api2.createTrusteeOversightAssignment).toHaveBeenCalledWith(
           'trustee-123',
           'auditor-1',
           OversightRole.OversightAuditor,
@@ -344,7 +345,7 @@ describe('TrusteeOversightAssignmentModal', () => {
       const loadingPromise = new Promise<{ data: Staff[] }>((resolve) => {
         resolvePromise = resolve;
       });
-      mockApiMethods.getOversightStaff.mockReturnValueOnce(loadingPromise);
+      vi.mocked(Api2.getOversightStaff).mockReturnValueOnce(loadingPromise);
 
       const onAssignment = vi.fn();
       const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
@@ -365,7 +366,7 @@ describe('TrusteeOversightAssignmentModal', () => {
 
     test('should handle auditor assignment error', async () => {
       const errorMessage = 'Failed to assign auditor';
-      mockApiMethods.createTrusteeOversightAssignment.mockRejectedValueOnce(
+      vi.mocked(Api2.createTrusteeOversightAssignment).mockRejectedValueOnce(
         new Error(errorMessage),
       );
 
@@ -374,7 +375,7 @@ describe('TrusteeOversightAssignmentModal', () => {
       renderWithProps(OversightRole.OversightAuditor, { onAssignment, ref });
 
       act(() => ref.current!.show());
-      await waitFor(() => expect(mockApiMethods.getOversightStaff).toHaveBeenCalled());
+      await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
 
       const comboBox = screen.getByTestId('mock-combobox') as HTMLSelectElement;
       await userEvent.selectOptions(comboBox, mockAuditors[0].id);
@@ -396,7 +397,7 @@ describe('TrusteeOversightAssignmentModal', () => {
       renderWithProps(OversightRole.OversightAttorney, { onAssignment, ref });
 
       act(() => ref.current!.show());
-      await waitFor(() => expect(mockApiMethods.getOversightStaff).toHaveBeenCalled());
+      await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
 
       const comboBox = screen.getByTestId('mock-combobox') as HTMLSelectElement;
       await userEvent.selectOptions(comboBox, mockAttorneys[0].id);
@@ -415,19 +416,19 @@ describe('TrusteeOversightAssignmentModal', () => {
       renderWithProps(OversightRole.OversightAttorney, { onAssignment, ref });
 
       act(() => ref.current!.show());
-      await waitFor(() => expect(mockApiMethods.getOversightStaff).toHaveBeenCalled());
+      await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
 
       const comboBox = screen.getByTestId('mock-combobox') as HTMLSelectElement;
       await userEvent.selectOptions(comboBox, mockAttorneys[0].id);
       await userEvent.selectOptions(comboBox, '');
 
-      mockApiMethods.createTrusteeOversightAssignment.mockClear();
+      vi.clearAllMocks();
 
       const submitButton = screen.getByTestId('button-test-modal-submit-button');
       submitButton.removeAttribute('disabled');
       await userEvent.click(submitButton);
 
-      expect(mockApiMethods.createTrusteeOversightAssignment).not.toHaveBeenCalled();
+      expect(Api2.createTrusteeOversightAssignment).not.toHaveBeenCalled();
       expect(onAssignment).not.toHaveBeenCalled();
     });
 
@@ -437,7 +438,7 @@ describe('TrusteeOversightAssignmentModal', () => {
       renderWithProps(OversightRole.OversightAttorney, { onAssignment, ref });
 
       act(() => ref.current!.show());
-      await waitFor(() => expect(mockApiMethods.getOversightStaff).toHaveBeenCalled());
+      await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
 
       const comboBox = screen.getByTestId('mock-combobox') as HTMLSelectElement;
       await userEvent.selectOptions(comboBox, mockAttorneys[0].id);
@@ -460,15 +461,15 @@ describe('TrusteeOversightAssignmentModal', () => {
       renderWithProps(OversightRole.OversightAttorney, { onAssignment, ref });
 
       act(() => ref.current!.show(mockAttorneyAssignment));
-      await waitFor(() => expect(mockApiMethods.getOversightStaff).toHaveBeenCalled());
+      await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
 
-      mockApiMethods.createTrusteeOversightAssignment.mockClear();
+      vi.clearAllMocks();
 
       const submitButton = screen.getByTestId('button-test-modal-submit-button');
       await userEvent.click(submitButton);
 
       await waitFor(() => {
-        expect(mockApiMethods.createTrusteeOversightAssignment).not.toHaveBeenCalled();
+        expect(Api2.createTrusteeOversightAssignment).not.toHaveBeenCalled();
         expect(onAssignment).not.toHaveBeenCalled();
       });
     });
@@ -479,7 +480,7 @@ describe('TrusteeOversightAssignmentModal', () => {
       renderWithProps(OversightRole.OversightAttorney, { onAssignment, ref });
 
       act(() => ref.current!.show(mockAttorneyAssignment));
-      await waitFor(() => expect(mockApiMethods.getOversightStaff).toHaveBeenCalled());
+      await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
 
       const submitButton = screen.getByTestId('button-test-modal-submit-button');
       expect(submitButton).toHaveTextContent('Edit Attorney');
@@ -494,7 +495,7 @@ describe('TrusteeOversightAssignmentModal', () => {
       renderWithProps(OversightRole.OversightAuditor, { onAssignment, ref });
 
       act(() => ref.current!.show());
-      await waitFor(() => expect(mockApiMethods.getOversightStaff).toHaveBeenCalled());
+      await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
 
       const submitButton = screen.getByTestId('button-test-modal-submit-button');
       expect(submitButton).toHaveTextContent('Add Auditor');
@@ -523,7 +524,7 @@ describe('TrusteeOversightAssignmentModal', () => {
         updatedOn: '2023-01-01T00:00:00Z',
       };
 
-      mockApiMethods.createTrusteeOversightAssignment.mockResolvedValueOnce({
+      vi.mocked(Api2.createTrusteeOversightAssignment).mockResolvedValueOnce({
         data: mockParalegalAssignment,
       });
 
@@ -532,7 +533,7 @@ describe('TrusteeOversightAssignmentModal', () => {
       renderWithProps(OversightRole.OversightParalegal, { onAssignment, ref });
 
       act(() => ref.current!.show());
-      await waitFor(() => expect(mockApiMethods.getOversightStaff).toHaveBeenCalled());
+      await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
 
       const comboBox = screen.getByTestId('mock-combobox') as HTMLSelectElement;
       await userEvent.selectOptions(comboBox, 'paralegal-1');
@@ -541,7 +542,7 @@ describe('TrusteeOversightAssignmentModal', () => {
       await userEvent.click(submitButton);
 
       await waitFor(() => {
-        expect(mockApiMethods.createTrusteeOversightAssignment).toHaveBeenCalledWith(
+        expect(Api2.createTrusteeOversightAssignment).toHaveBeenCalledWith(
           'trustee-123',
           'paralegal-1',
           OversightRole.OversightParalegal,
@@ -558,7 +559,7 @@ describe('TrusteeOversightAssignmentModal', () => {
       renderWithProps(OversightRole.OversightParalegal, { onAssignment, ref });
 
       act(() => ref.current!.show());
-      await waitFor(() => expect(mockApiMethods.getOversightStaff).toHaveBeenCalled());
+      await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
 
       const submitButton = screen.getByTestId('button-test-modal-submit-button');
       expect(submitButton).toHaveTextContent('Add Paralegal');
