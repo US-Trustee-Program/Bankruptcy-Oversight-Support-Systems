@@ -2,7 +2,7 @@ import './TrusteeDetailScreen.scss';
 import '@/styles/record-detail.scss';
 import '@/styles/left-navigation-pane.scss';
 import { JSX, useEffect, useState } from 'react';
-import useApi2 from '@/lib/hooks/UseApi2';
+import Api2 from '@/lib/models/api2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { Trustee } from '@common/cams/trustees';
 import { useNavigate, useParams, Routes, Route, useLocation } from 'react-router-dom';
@@ -52,7 +52,6 @@ export default function TrusteeDetailScreen() {
 
   const navigate = useNavigate();
   const globalAlert = useGlobalAlert();
-  const api = useApi2();
 
   function openEditPublicProfile() {
     navigate(`/trustees/${trusteeId}/contact/edit/public`);
@@ -69,7 +68,7 @@ export default function TrusteeDetailScreen() {
   useEffect(() => {
     const fetchSoftwareOptions = async () => {
       try {
-        const response = await api.getBankruptcySoftwareList();
+        const response = await Api2.getBankruptcySoftwareList();
         if (response?.data) {
           const transformedOptions = transformSoftwareList(response.data as BankruptcySoftwareList);
           setSoftwareOptions(transformedOptions);
@@ -80,14 +79,13 @@ export default function TrusteeDetailScreen() {
     };
 
     fetchSoftwareOptions();
-  }, [api]);
+  }, []);
 
   useEffect(() => {
     const fetchTrusteeDetails = () => {
       if (trusteeId) {
         setIsLoading(true);
-        api
-          .getTrustee(trusteeId)
+        Api2.getTrustee(trusteeId)
           .then((trusteeResponse) => {
             setTrustee(trusteeResponse.data);
           })
@@ -102,7 +100,7 @@ export default function TrusteeDetailScreen() {
     };
 
     fetchTrusteeDetails();
-  }, [location.pathname, trusteeId, api, globalAlert]);
+  }, [location.pathname, trusteeId, globalAlert]);
 
   if (!trusteeId || (!isLoading && !trustee)) {
     return (

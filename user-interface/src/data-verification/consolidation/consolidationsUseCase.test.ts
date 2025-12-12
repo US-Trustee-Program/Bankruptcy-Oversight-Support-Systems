@@ -71,7 +71,7 @@ describe('Consolidation UseCase tests', () => {
   beforeEach(async () => {
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
     vi.resetModules();
-    await import('@/lib/hooks/UseApi2');
+    await import('@/lib/models/api2');
     initUseCase();
   });
 

@@ -3,6 +3,7 @@ import { vi } from 'vitest';
 import TrusteeDetailAuditHistory, {
   TrusteeDetailAuditHistoryProps,
 } from './TrusteeDetailAuditHistory';
+import Api2 from '@/lib/models/api2';
 import {
   TrusteeHistory,
   TrusteeInternalContactHistory,
@@ -15,18 +16,24 @@ import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { ContactInformation } from '@common/cams/contact';
 import { OversightRole } from '@common/cams/roles';
 
-// Mock useApi2 hook
-const mockGetTrusteeHistory = vi.fn();
-vi.mock('@/lib/hooks/UseApi2', () => ({
-  default: () => ({
-    getTrusteeHistory: mockGetTrusteeHistory,
-  }),
+// Mock Api2
+vi.mock('@/lib/models/api2', () => ({
+  default: {
+    getTrusteeHistory: vi.fn(),
+  },
 }));
 
 // Mock datetime utility
 vi.mock('@/lib/utils/datetime', () => ({
   formatDate: vi.fn((date: string) => `formatted-${date}`),
   sortByDateReverse: vi.fn((a: string, b: string) => b.localeCompare(a)),
+  default: {
+    SECOND: 1,
+    MINUTE: 60,
+    HOUR: 3600,
+    DAY: 86400,
+    THREE_DAYS: 259200,
+  },
 }));
 
 describe('TrusteeDetailAuditHistory', () => {
@@ -79,7 +86,7 @@ describe('TrusteeDetailAuditHistory', () => {
   const mockInternalContactHistory = createMockInternalContactHistory();
 
   test('should show loading indicator while fetching data', () => {
-    mockGetTrusteeHistory.mockReturnValue(new Promise(() => {})); // Never resolves
+    vi.mocked(Api2.getTrusteeHistory).mockReturnValue(new Promise(() => {})); // Never resolves
 
     renderWithProps({});
 
@@ -87,7 +94,7 @@ describe('TrusteeDetailAuditHistory', () => {
   });
 
   test('should show empty message when no history is available', async () => {
-    mockGetTrusteeHistory.mockResolvedValue({ data: [] });
+    vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({ data: [] });
 
     renderWithProps({});
 
@@ -100,7 +107,7 @@ describe('TrusteeDetailAuditHistory', () => {
   });
 
   test('should display name change history correctly', async () => {
-    mockGetTrusteeHistory.mockResolvedValue({ data: [mockNameHistory] });
+    vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({ data: [mockNameHistory] });
 
     renderWithProps({});
 
@@ -124,7 +131,7 @@ describe('TrusteeDetailAuditHistory', () => {
   });
 
   test('should display public contact change history correctly', async () => {
-    mockGetTrusteeHistory.mockResolvedValue({ data: [mockPublicContactHistory] });
+    vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({ data: [mockPublicContactHistory] });
 
     renderWithProps({});
 
@@ -156,7 +163,7 @@ describe('TrusteeDetailAuditHistory', () => {
   });
 
   test('should display internal contact change history correctly', async () => {
-    mockGetTrusteeHistory.mockResolvedValue({ data: [mockInternalContactHistory] });
+    vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({ data: [mockInternalContactHistory] });
 
     renderWithProps({});
 
@@ -176,7 +183,7 @@ describe('TrusteeDetailAuditHistory', () => {
 
   test('should display multiple history entries sorted by date', async () => {
     const historyData = [mockNameHistory, mockPublicContactHistory, mockInternalContactHistory];
-    mockGetTrusteeHistory.mockResolvedValue({ data: historyData });
+    vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({ data: historyData });
 
     renderWithProps({});
 
@@ -315,7 +322,9 @@ describe('TrusteeDetailAuditHistory', () => {
     'should handle %s',
     async (_scenario, scenarioFactory, expectations) => {
       const contactHistory = scenarioFactory();
-      mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistory] });
+      vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({
+        data: [contactHistory as TrusteeHistory],
+      });
 
       renderWithProps({});
 
@@ -374,7 +383,7 @@ describe('TrusteeDetailAuditHistory', () => {
   test('should handle missing name fields in name history', async () => {
     const nameHistory = TestScenarios.emptyName();
 
-    mockGetTrusteeHistory.mockResolvedValue({ data: [nameHistory] });
+    vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({ data: [nameHistory] });
 
     renderWithProps({});
 
@@ -387,7 +396,7 @@ describe('TrusteeDetailAuditHistory', () => {
   });
 
   test('should handle API error gracefully', async () => {
-    mockGetTrusteeHistory.mockRejectedValue(new Error('API Error'));
+    vi.mocked(Api2.getTrusteeHistory).mockRejectedValue(new Error('API Error'));
 
     renderWithProps({});
 
@@ -400,11 +409,11 @@ describe('TrusteeDetailAuditHistory', () => {
   });
 
   test('should call API with correct trustee ID', async () => {
-    mockGetTrusteeHistory.mockResolvedValue({ data: [] });
+    vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({ data: [] });
 
     renderWithProps({});
     await waitFor(() => {
-      expect(mockGetTrusteeHistory).toHaveBeenCalledWith(mockTrusteeId);
+      expect(Api2.getTrusteeHistory).toHaveBeenCalledWith(mockTrusteeId);
     });
   });
 
@@ -412,7 +421,7 @@ describe('TrusteeDetailAuditHistory', () => {
     // Using TestScenarios for common edge cases
     const contactHistory = TestScenarios.phoneNoExtension();
 
-    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistory] });
+    vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({ data: [contactHistory] });
 
     renderWithProps({});
 
@@ -439,7 +448,7 @@ describe('TrusteeDetailAuditHistory', () => {
       updatedBy: { id: '', name: '' }, // Empty user reference instead of undefined
     };
 
-    mockGetTrusteeHistory.mockResolvedValue({ data: [historyWithoutUpdatedBy] });
+    vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({ data: [historyWithoutUpdatedBy] });
 
     renderWithProps({});
 
@@ -453,7 +462,7 @@ describe('TrusteeDetailAuditHistory', () => {
   test('should handle contact with only address1 and zipCode', async () => {
     const contactHistory = TestScenarios.addressPartial();
 
-    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistory] });
+    vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({ data: [contactHistory] });
 
     renderWithProps({});
 
@@ -478,7 +487,7 @@ describe('TrusteeDetailAuditHistory', () => {
   test('should handle contact with address2 and address3', async () => {
     const contactHistory = TestScenarios.addressComplete();
 
-    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistory] });
+    vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({ data: [contactHistory] });
 
     renderWithProps({});
 
@@ -500,7 +509,7 @@ describe('TrusteeDetailAuditHistory', () => {
   test('should handle contact with only city and state', async () => {
     const contactHistory = TestScenarios.cityAndState();
 
-    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistory] });
+    vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({ data: [contactHistory] });
 
     renderWithProps({});
 
@@ -517,7 +526,7 @@ describe('TrusteeDetailAuditHistory', () => {
   test('should handle contact with only state', async () => {
     const contactHistory = TestScenarios.stateOnly();
 
-    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistory] });
+    vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({ data: [contactHistory] });
 
     renderWithProps({});
 
@@ -534,7 +543,7 @@ describe('TrusteeDetailAuditHistory', () => {
   test('should handle contact with only city', async () => {
     const contactHistory = TestScenarios.cityOnly();
 
-    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistory] });
+    vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({ data: [contactHistory] });
 
     renderWithProps({});
 
@@ -551,7 +560,7 @@ describe('TrusteeDetailAuditHistory', () => {
   test('should handle contact with undefined address', async () => {
     const contactHistory = TestScenarios.undefinedAddress();
 
-    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistory] });
+    vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({ data: [contactHistory] });
 
     renderWithProps({});
 
@@ -570,7 +579,7 @@ describe('TrusteeDetailAuditHistory', () => {
   test('should handle contact with undefined phone', async () => {
     const contactHistory = TestScenarios.undefinedPhone();
 
-    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistory] });
+    vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({ data: [contactHistory] });
 
     renderWithProps({});
 
@@ -592,7 +601,7 @@ describe('TrusteeDetailAuditHistory', () => {
   test('should handle contact with phone number but undefined extension', async () => {
     const contactHistory = TestScenarios.phoneNoExtensionUndefined();
 
-    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistory] });
+    vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({ data: [contactHistory] });
 
     renderWithProps({});
 
@@ -618,7 +627,7 @@ describe('TrusteeDetailAuditHistory', () => {
       updatedBy: SYSTEM_USER_REFERENCE,
     };
 
-    mockGetTrusteeHistory.mockResolvedValue({ data: [contactHistoryUndefinedContact] });
+    vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({ data: [contactHistoryUndefinedContact] });
 
     renderWithProps({});
 
@@ -633,7 +642,7 @@ describe('TrusteeDetailAuditHistory', () => {
   test('should handle empty string in name history', async () => {
     const nameHistory = TestScenarios.emptyStringName();
 
-    mockGetTrusteeHistory.mockResolvedValue({ data: [nameHistory] });
+    vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({ data: [nameHistory] });
 
     renderWithProps({});
 
@@ -646,7 +655,9 @@ describe('TrusteeDetailAuditHistory', () => {
   });
 
   test('should handle API response with null data', async () => {
-    mockGetTrusteeHistory.mockResolvedValue(null);
+    vi.mocked(Api2.getTrusteeHistory).mockResolvedValue(
+      null as unknown as { data: TrusteeHistory[] },
+    );
 
     renderWithProps({});
 
@@ -667,7 +678,7 @@ describe('TrusteeDetailAuditHistory', () => {
       resolvePromise = resolve;
     });
 
-    mockGetTrusteeHistory.mockReturnValue(promise);
+    vi.mocked(Api2.getTrusteeHistory).mockReturnValue(promise);
 
     const { unmount } = render(<TrusteeDetailAuditHistory trusteeId={mockTrusteeId} />);
 
@@ -681,7 +692,7 @@ describe('TrusteeDetailAuditHistory', () => {
   });
 
   test('should render correct component structure with all elements', async () => {
-    mockGetTrusteeHistory.mockResolvedValue({ data: [mockNameHistory] });
+    vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({ data: [mockNameHistory] });
 
     renderWithProps({});
 
@@ -763,7 +774,9 @@ describe('TrusteeDetailAuditHistory', () => {
       test.each(scenarios)(
         'should display bank history with $name',
         async ({ override, expectPrev, expectNew, expectChangedBy = 'SYSTEM' }) => {
-          mockGetTrusteeHistory.mockResolvedValue({ data: [{ ...base, ...override }] });
+          vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({
+            data: [{ ...base, ...override } as TrusteeHistory],
+          });
           renderWithProps({});
           await screen.findByTestId('trustee-history-table');
 
@@ -790,7 +803,9 @@ describe('TrusteeDetailAuditHistory', () => {
     test('should display mixed history types including banks', async () => {
       const mixedHistory = [mockNameHistory, mockPublicContactHistory, mockBankHistory];
 
-      mockGetTrusteeHistory.mockResolvedValue({ data: mixedHistory });
+      vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({
+        data: mixedHistory as TrusteeHistory[],
+      });
 
       renderWithProps({});
 
@@ -814,7 +829,9 @@ describe('TrusteeDetailAuditHistory', () => {
         after: ['Bank X', 'Bank Y'],
       };
 
-      mockGetTrusteeHistory.mockResolvedValue({ data: [bankHistoryMultiple] });
+      vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({
+        data: [bankHistoryMultiple as TrusteeHistory],
+      });
 
       renderWithProps({});
 
@@ -853,7 +870,7 @@ describe('TrusteeDetailAuditHistory', () => {
     };
 
     test('should display software change history correctly', async () => {
-      mockGetTrusteeHistory.mockResolvedValue({ data: [mockSoftwareHistory] });
+      vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({ data: [mockSoftwareHistory] });
 
       renderWithProps({});
 
@@ -878,7 +895,7 @@ describe('TrusteeDetailAuditHistory', () => {
         after: undefined,
       };
 
-      mockGetTrusteeHistory.mockResolvedValue({ data: [softwareHistoryWithUndefined] });
+      vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({ data: [softwareHistoryWithUndefined] });
 
       renderWithProps({});
 
@@ -891,7 +908,7 @@ describe('TrusteeDetailAuditHistory', () => {
     });
 
     test('should render ShowTrusteeSoftwareHistory component in switch case', async () => {
-      mockGetTrusteeHistory.mockResolvedValue({ data: [mockSoftwareHistory] });
+      vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({ data: [mockSoftwareHistory] });
 
       renderWithProps({});
 
@@ -936,7 +953,7 @@ describe('TrusteeDetailAuditHistory', () => {
     };
 
     test('should display oversight change history correctly', async () => {
-      mockGetTrusteeHistory.mockResolvedValue({ data: [mockOversightHistory] });
+      vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({ data: [mockOversightHistory] });
 
       renderWithProps({});
 
@@ -963,7 +980,9 @@ describe('TrusteeDetailAuditHistory', () => {
         after: null,
       };
 
-      mockGetTrusteeHistory.mockResolvedValue({ data: [oversightHistoryWithUndefined] });
+      vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({
+        data: [oversightHistoryWithUndefined],
+      });
 
       renderWithProps({});
 
@@ -988,7 +1007,7 @@ describe('TrusteeDetailAuditHistory', () => {
         },
       };
 
-      mockGetTrusteeHistory.mockResolvedValue({ data: [oversightHistoryFromNull] });
+      vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({ data: [oversightHistoryFromNull] });
 
       renderWithProps({});
 
@@ -1014,7 +1033,7 @@ describe('TrusteeDetailAuditHistory', () => {
         after: null,
       };
 
-      mockGetTrusteeHistory.mockResolvedValue({ data: [oversightHistoryToNull] });
+      vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({ data: [oversightHistoryToNull] });
 
       renderWithProps({});
 
@@ -1028,7 +1047,7 @@ describe('TrusteeDetailAuditHistory', () => {
     });
 
     test('should render ShowTrusteeOversightHistory component in switch case', async () => {
-      mockGetTrusteeHistory.mockResolvedValue({ data: [mockOversightHistory] });
+      vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({ data: [mockOversightHistory] });
 
       renderWithProps({});
 
@@ -1054,7 +1073,9 @@ describe('TrusteeDetailAuditHistory', () => {
         updatedBy: { id: '', name: '' }, // Empty user reference
       };
 
-      mockGetTrusteeHistory.mockResolvedValue({ data: [oversightHistoryWithoutUpdatedBy] });
+      vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({
+        data: [oversightHistoryWithoutUpdatedBy],
+      });
 
       renderWithProps({});
 
@@ -1068,7 +1089,7 @@ describe('TrusteeDetailAuditHistory', () => {
     test('should display mixed history types including oversight', async () => {
       const mixedHistory = [mockNameHistory, mockPublicContactHistory, mockOversightHistory];
 
-      mockGetTrusteeHistory.mockResolvedValue({ data: mixedHistory });
+      vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({ data: mixedHistory });
 
       renderWithProps({});
 
@@ -1086,7 +1107,7 @@ describe('TrusteeDetailAuditHistory', () => {
     });
 
     test('should render oversight with line breaks between role and user name', async () => {
-      mockGetTrusteeHistory.mockResolvedValue({ data: [mockOversightHistory] });
+      vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({ data: [mockOversightHistory] });
 
       renderWithProps({});
 
@@ -1180,7 +1201,7 @@ describe('TrusteeDetailAuditHistory', () => {
           expectNewName,
           expectChangedBy,
         }) => {
-          mockGetTrusteeHistory.mockResolvedValue({ data: [{ ...base, ...override }] });
+          vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({ data: [{ ...base, ...override }] });
           renderWithProps({});
           await screen.findByTestId('trustee-history-table');
 
@@ -1231,7 +1252,9 @@ describe('TrusteeDetailAuditHistory', () => {
         updatedBy: SYSTEM_USER_REFERENCE,
       };
 
-      mockGetTrusteeHistory.mockResolvedValue({ data: [mockOversightHistoryUnknownRole] });
+      vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({
+        data: [mockOversightHistoryUnknownRole],
+      });
 
       renderWithProps({});
 
@@ -1294,7 +1317,7 @@ describe('TrusteeDetailAuditHistory', () => {
         mockOversightHistory,
       ];
 
-      mockGetTrusteeHistory.mockResolvedValue({ data: allHistoryTypes });
+      vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({ data: allHistoryTypes });
 
       renderWithProps({});
 
@@ -1353,7 +1376,7 @@ describe('TrusteeDetailAuditHistory', () => {
         } as TrusteeOversightHistory,
       ];
 
-      mockGetTrusteeHistory.mockResolvedValue({ data: validHistoryTypes });
+      vi.mocked(Api2.getTrusteeHistory).mockResolvedValue({ data: validHistoryTypes });
 
       renderWithProps({});
 

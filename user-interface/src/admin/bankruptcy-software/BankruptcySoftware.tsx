@@ -2,7 +2,7 @@ import './BankruptcySoftware.scss';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import Input from '@/lib/components/uswds/Input';
-import useApi2 from '@/lib/hooks/UseApi2';
+import Api2 from '@/lib/models/api2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import { BankruptcySoftwareList, BankruptcySoftwareListItem } from '@common/cams/lists';
@@ -10,7 +10,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Creatable } from '@common/cams/creatable';
 
 export function BankruptcySoftware() {
-  const api = useApi2();
   const alert = useGlobalAlert();
 
   const [isLoaded, setIsLoaded] = useState(false);
@@ -39,7 +38,7 @@ export function BankruptcySoftware() {
     };
 
     try {
-      await api.postBankruptcySoftware(payload);
+      await Api2.postBankruptcySoftware(payload);
       alert?.success('Bankruptcy software added successfully.');
       setNewSoftwareName('');
       loadSoftwareList();
@@ -59,7 +58,7 @@ export function BankruptcySoftware() {
     }
 
     try {
-      await api.deleteBankruptcySoftware(software._id);
+      await Api2.deleteBankruptcySoftware(software._id);
       alert?.success('Bankruptcy software deleted successfully.');
       loadSoftwareList();
     } catch (error) {
@@ -69,7 +68,7 @@ export function BankruptcySoftware() {
 
   async function loadSoftwareList() {
     try {
-      const response = await api.getBankruptcySoftwareList();
+      const response = await Api2.getBankruptcySoftwareList();
       setSoftwareList(response.data as BankruptcySoftwareList);
     } catch (error) {
       alert?.warning(`Failed to load bankruptcy software list. ${(error as Error).message}`);

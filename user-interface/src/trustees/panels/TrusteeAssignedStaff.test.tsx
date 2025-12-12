@@ -5,13 +5,17 @@ import { useTrusteeAssignments } from '@/trustees/modals/UseTrusteeAssignments';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
 import { AttorneyUser } from '@common/cams/users';
 import { CamsRole, OversightRole } from '@common/cams/roles';
-import useApi2 from '@/lib/hooks/UseApi2';
+import Api2 from '@/lib/models/api2';
 
 vi.mock('@/trustees/modals/UseTrusteeAssignments', () => ({
   useTrusteeAssignments: vi.fn(),
 }));
 
-vi.mock('@/lib/hooks/UseApi2');
+vi.mock('@/lib/models/api2', () => ({
+  default: {
+    getOversightStaff: vi.fn(),
+  },
+}));
 
 vi.mock('./AttorneyAssignmentSection', () => ({
   default: vi.fn(({ trusteeId, assignments, attorneys, onAssignmentChange, isLoading }) => (
@@ -106,16 +110,12 @@ describe('TrusteeAssignedStaff', () => {
     clearError: vi.fn(),
   };
 
-  const mockApi = {
-    getOversightStaff: vi.fn().mockResolvedValue({ data: mockAttorneys }),
-  };
-
   beforeEach(() => {
     vi.clearAllMocks();
     (useTrusteeAssignments as MockedFunction<typeof useTrusteeAssignments>).mockReturnValue(
       mockUseTrusteeAssignments,
     );
-    (useApi2 as MockedFunction<typeof useApi2>).mockReturnValue(mockApi as never);
+    vi.mocked(Api2.getOversightStaff).mockResolvedValue({ data: mockAttorneys });
   });
 
   test('should render component with correct structure', async () => {
@@ -130,7 +130,7 @@ describe('TrusteeAssignedStaff', () => {
     render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
 
     await waitFor(() => {
-      expect(mockApi.getOversightStaff).toHaveBeenCalledTimes(1);
+      expect(Api2.getOversightStaff).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -188,9 +188,7 @@ describe('TrusteeAssignedStaff', () => {
   });
 
   test('should display error alert when attorneys fail to load', async () => {
-    (useApi2 as MockedFunction<typeof useApi2>).mockReturnValue({
-      getAttorneys: vi.fn().mockRejectedValue(new Error('Failed to load attorneys')),
-    } as never);
+    vi.mocked(Api2.getOversightStaff).mockRejectedValue(new Error('Failed to load attorneys'));
 
     render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
 

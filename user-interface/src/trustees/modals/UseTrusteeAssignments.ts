@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import useApi2 from '../../lib/hooks/UseApi2';
+import Api2 from '@/lib/models/api2';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
 import { OversightRole } from '@common/cams/roles';
 
@@ -17,46 +17,38 @@ export function useTrusteeAssignments(): UseTrusteeAssignmentsReturn {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const api = useApi2();
+  const getTrusteeOversightAssignments = useCallback(async (trusteeId: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await Api2.getTrusteeOversightAssignments(trusteeId);
+      setAssignments(response.data || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch assignments');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
-  const getTrusteeOversightAssignments = useCallback(
-    async (trusteeId: string) => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const response = await api.getTrusteeOversightAssignments(trusteeId);
-        setAssignments(response.data || []);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch assignments');
-      } finally {
-        setIsLoading(false);
+  const assignAttorneyToTrustee = useCallback(async (trusteeId: string, attorneyUserId: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await Api2.createTrusteeOversightAssignment(
+        trusteeId,
+        attorneyUserId,
+        OversightRole.OversightAttorney,
+      );
+      if (response && response.data) {
+        setAssignments((prev) => [...prev, response.data]);
       }
-    },
-    [api],
-  );
-
-  const assignAttorneyToTrustee = useCallback(
-    async (trusteeId: string, attorneyUserId: string) => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const response = await api.createTrusteeOversightAssignment(
-          trusteeId,
-          attorneyUserId,
-          OversightRole.OversightAttorney,
-        );
-        if (response && response.data) {
-          setAssignments((prev) => [...prev, response.data]);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to assign attorney');
-        throw err; // Re-throw for component handling
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [api],
-  );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to assign attorney');
+      throw err; // Re-throw for component handling
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   const clearError = useCallback(() => {
     setError(null);
