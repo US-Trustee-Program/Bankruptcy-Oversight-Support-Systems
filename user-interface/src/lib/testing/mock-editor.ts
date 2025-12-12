@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 
 // Type definitions for the mock editor
-export interface MockEditorCommands {
+interface MockEditorCommands {
   focus: ReturnType<typeof vi.fn>;
   clearContent: ReturnType<typeof vi.fn>;
   setContent: ReturnType<typeof vi.fn>;

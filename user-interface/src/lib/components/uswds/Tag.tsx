@@ -13,7 +13,7 @@ export enum UswdsTagStyle {
   SecondaryDark = 'bg-secondary-dark',
 }
 
-export type TagProps = JSX.IntrinsicElements['span'] & {
+type TagProps = JSX.IntrinsicElements['span'] & {
   uswdsStyle?: UswdsTagStyle;
 };
 

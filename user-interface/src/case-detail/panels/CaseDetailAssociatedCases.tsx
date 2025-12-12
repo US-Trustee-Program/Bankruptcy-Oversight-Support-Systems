@@ -8,7 +8,7 @@ import { getCaseNumber } from '@/lib/utils/caseNumber';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { CaseDetail } from '@common/cams/cases';
 
-export interface CaseDetailAssociatedCasesProps {
+interface CaseDetailAssociatedCasesProps {
   caseDetail: CaseDetail;
   associatedCases: EventCaseReference[];
   isAssociatedCasesLoading: boolean;

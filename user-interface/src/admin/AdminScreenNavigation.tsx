@@ -12,7 +12,7 @@ export function setCurrentAdminNav(activeNav: AdminNavState, stateToCheck: Admin
   return activeNav === stateToCheck ? 'usa-current current' : '';
 }
 
-export interface AdminScreenNavigationProps {
+interface AdminScreenNavigationProps {
   initiallySelectedNavLink: AdminNavState;
 }
 

@@ -27,7 +27,7 @@ export type OnOrderUpdate = (
   orders?: ConsolidationOrder[],
   deletedOrder?: ConsolidationOrder,
 ) => void;
-export type OnExpand = (id: string) => void;
+type OnExpand = (id: string) => void;
 
 export interface ConsolidationsUseCase {
   updateSubmitButtonsState(): void;

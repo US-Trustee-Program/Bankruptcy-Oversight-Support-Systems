@@ -10,7 +10,7 @@ import React, {
   type JSX,
 } from 'react';
 
-export type TextAreaProps = JSX.IntrinsicElements['textarea'] & {
+type TextAreaProps = JSX.IntrinsicElements['textarea'] & {
   id: string;
   label?: string;
   ariaDescription?: string;

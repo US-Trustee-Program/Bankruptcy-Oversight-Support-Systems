@@ -1,6 +1,9 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "playwright": false,
+  "rules": {
+    "enumMembers": "off"
+  },
   "workspaces": {
     ".": {
       "entry": ["eslint.config.mjs"],

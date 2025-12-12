@@ -9,7 +9,7 @@ import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { TransferOrder } from '@common/cams/orders';
 import useApi2 from '@/lib/hooks/UseApi2';
 
-export type FromCaseSummaryProps = {
+type FromCaseSummaryProps = {
   order: TransferOrder;
   onOrderUpdate: (alertDetails: AlertDetails, order?: TransferOrder) => void;
 };

@@ -10,7 +10,7 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { AddCaseModel } from '@/data-verification/consolidation/consolidationViewModel';
 import { Link } from 'react-router-dom';
 
-export interface AddCaseModalProps {
+interface AddCaseModalProps {
   addCaseModel: AddCaseModel;
   id: string;
 }

@@ -13,7 +13,7 @@ import { useEffect, useState } from 'react';
 import Api2 from '@/lib/models/api2';
 import { CaseAssignment } from '@common/cams/assignments';
 
-export interface CaseDetailAuditHistoryProps {
+interface CaseDetailAuditHistoryProps {
   caseId: string;
 }
 

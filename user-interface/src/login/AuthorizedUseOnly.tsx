@@ -5,7 +5,7 @@ import { BlankPage } from './BlankPage';
 import './AuthorizedUseOnly.scss';
 import { Card, CardBody, CardFooter, CardHeading } from '@/lib/components/uswds/Card';
 
-export type AuthorizedUseOnlyProps = PropsWithChildren & {
+type AuthorizedUseOnlyProps = PropsWithChildren & {
   skip?: boolean;
 };
 

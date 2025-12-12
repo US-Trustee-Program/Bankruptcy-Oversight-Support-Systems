@@ -29,7 +29,7 @@ export function generateDocketFilenameDisplay(linkInfo: CaseDocketEntryDocument)
   return `View ${fileLabel} [${extension}${fileSizeDescription(fileSize)}]`;
 }
 
-export interface DocketEntryDocumentListProps {
+interface DocketEntryDocumentListProps {
   docketEntry?: CaseDocketEntry;
 }
 
