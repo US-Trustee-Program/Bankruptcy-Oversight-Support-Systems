@@ -245,7 +245,7 @@ export default function TrusteeDetailAuditHistory(props: Readonly<TrusteeDetailA
       } finally {
         setIsAuditHistoryLoading(false);
       }
-    }
+    };
     fetchTrusteeHistory();
   }, [api, props.trusteeId]);
 
