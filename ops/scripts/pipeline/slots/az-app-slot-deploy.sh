@@ -51,9 +51,9 @@ if [ ! -f "${artifact_path}" ]; then
 fi
 
 function on_exit() {
+    az webapp config access-restriction show -g "${app_rg}" -n "${app_name}" -s "${slot_name}"
     # always try to remove temporary access
     az webapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "${rule_name}" --scm-site true 1>/dev/null
-
 }
 trap on_exit EXIT
 
