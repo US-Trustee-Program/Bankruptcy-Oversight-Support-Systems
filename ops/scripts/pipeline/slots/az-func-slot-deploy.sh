@@ -79,17 +79,40 @@ az functionapp config access-restriction add -g "${app_rg}" -n "${app_name}" --s
 az functionapp config access-restriction add -g "${app_rg}" -n "${app_name}" --rule-name "${rule_name}" --action Allow --ip-address "${agent_ip}" --priority 232 --scm-site true 1>/dev/null
 # Configure info sha
 az functionapp config appsettings set -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --settings "INFO_SHA=${commitSha}"
-# Gives some extra time for prior management operation to complete before starting deployment
-sleep 10
+
+# Verify access restrictions were added
 az functionapp config access-restriction show -g "${app_rg}" -n "${app_name}" --slot "${slot_name}"
-# Construct and execute deployment command
-cmd="az functionapp deployment source config-zip -g ${app_rg} -n ${app_name} --slot ${slot_name} --src ${artifact_path}"
-if [[ ${enable_debug} == 'true' ]]; then
-    cmd="${cmd} --debug"
-fi
-echo "Deployment started"
-eval "${cmd}"
-echo "Deployment completed"
+
+# Deploy with retry logic and exponential backoff
+max_attempts=4
+attempt=1
+backoff=2
+
+while [ $attempt -le $max_attempts ]; do
+    echo "Deployment attempt ${attempt}/${max_attempts}..."
+
+    # Construct deployment command
+    cmd="az functionapp deployment source config-zip -g ${app_rg} -n ${app_name} --slot ${slot_name} --src ${artifact_path}"
+    if [[ ${enable_debug} == 'true' ]]; then
+        cmd="${cmd} --debug"
+    fi
+
+    if eval "${cmd}"; then
+        echo "Deployment succeeded on attempt ${attempt}"
+        break
+    else
+        exit_code=$?
+        if [ $attempt -lt $max_attempts ]; then
+            echo "Deployment failed with exit code ${exit_code}. Waiting ${backoff} seconds before retry..."
+            sleep $backoff
+            backoff=$((backoff * 2))
+            attempt=$((attempt + 1))
+        else
+            echo "Deployment failed after ${max_attempts} attempts"
+            exit $exit_code
+        fi
+    fi
+done
 
 # shellcheck disable=SC2086
 az webapp traffic-routing set --distribution ${slot_name}=0 --name "${app_name}" --resource-group "${app_rg}"
