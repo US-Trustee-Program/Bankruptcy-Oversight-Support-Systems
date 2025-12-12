@@ -43,8 +43,8 @@
   },
   "scripts": {
     "all": "npm run clean:all && npm ci && npm run build:all && npm run pack:all",
-    "clean:all": "npm run clean && npm run clean:api && npm run clean:dataflows",
-    "clean": "rm -rf ./dist && rm -rf ./node_modules && rm -rf ./coverage",
+    "clean": "npm run clean:top && npm run clean:api && npm run clean:dataflows",
+    "clean:top": "rm -rf ./dist && rm -rf ./coverage",
     "clean:api": "cd function-apps/api && npm run clean && cd ../..",
     "clean:dataflows": "cd function-apps/dataflows && npm run clean && cd ../..",
     "build:all": "npm run build && npm run build:api && npm run build:dataflows",
