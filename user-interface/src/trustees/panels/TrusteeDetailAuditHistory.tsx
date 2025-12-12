@@ -229,7 +229,7 @@ export default function TrusteeDetailAuditHistory(props: Readonly<TrusteeDetailA
   const api = useApi2();
 
   useEffect(() => {
-    async function fetchTrusteeHistory() {
+    const fetchTrusteeHistory = async () => {
       setIsAuditHistoryLoading(true);
       try {
         const response = await api.getTrusteeHistory(props.trusteeId);
