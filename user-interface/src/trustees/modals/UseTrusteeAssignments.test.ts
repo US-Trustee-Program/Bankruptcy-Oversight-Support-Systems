@@ -1,18 +1,17 @@
 import { renderHook, waitFor } from '@testing-library/react';
-import { vi, describe, test, expect, beforeEach, MockedFunction } from 'vitest';
+import { vi, describe, test, expect, beforeEach } from 'vitest';
 import { useTrusteeAssignments } from './UseTrusteeAssignments';
-import createApi2 from '../../lib/Api2Factory';
+import Api2 from '@/lib/models/api2';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
 import { OversightRole } from '@common/cams/roles';
-import { _Api2 } from '@/lib/models/api2';
+import { ResponseBody } from '@common/api/response';
 
-vi.mock('../../lib/Api2Factory', () => ({
-  default: vi.fn(),
+vi.mock('@/lib/models/api2', () => ({
+  default: {
+    getTrusteeOversightAssignments: vi.fn(),
+    createTrusteeOversightAssignment: vi.fn(),
+  },
 }));
-
-type MockedApi2 = {
-  [K in keyof typeof _Api2]: MockedFunction<(typeof _Api2)[K]>;
-};
 
 describe('useTrusteeAssignments', () => {
   const mockAssignments: TrusteeOversightAssignment[] = [
@@ -37,14 +36,8 @@ describe('useTrusteeAssignments', () => {
     },
   ];
 
-  const mockApiMethods = {
-    getTrusteeOversightAssignments: vi.fn(),
-    createTrusteeOversightAssignment: vi.fn(),
-  } as unknown as MockedApi2;
-
   beforeEach(() => {
-    vi.clearAllMocks();
-    (createApi2 as MockedFunction<typeof createApi2>).mockReturnValue(mockApiMethods);
+    vi.restoreAllMocks();
   });
 
   test('should initialize with empty state', () => {
@@ -56,9 +49,10 @@ describe('useTrusteeAssignments', () => {
   });
 
   test('should fetch assignments successfully', async () => {
-    mockApiMethods.getTrusteeOversightAssignments.mockResolvedValue({
+    const response: ResponseBody<TrusteeOversightAssignment[]> = {
       data: mockAssignments,
-    });
+    };
+    vi.mocked(Api2.getTrusteeOversightAssignments).mockResolvedValueOnce(response);
 
     const { result } = renderHook(() => useTrusteeAssignments());
 
@@ -70,14 +64,14 @@ describe('useTrusteeAssignments', () => {
       expect(result.current.assignments).toEqual(mockAssignments);
     });
 
-    expect(mockApiMethods.getTrusteeOversightAssignments).toHaveBeenCalledWith('trustee-123');
+    expect(vi.mocked(Api2.getTrusteeOversightAssignments)).toHaveBeenCalledWith('trustee-123');
     expect(result.current.isLoading).toBe(false);
     expect(result.current.error).toBeNull();
   });
 
   test('should handle fetch assignments error', async () => {
     const errorMessage = 'Failed to fetch data';
-    mockApiMethods.getTrusteeOversightAssignments.mockRejectedValue(new Error(errorMessage));
+    vi.mocked(Api2.getTrusteeOversightAssignments).mockRejectedValue(new Error(errorMessage));
 
     const { result } = renderHook(() => useTrusteeAssignments());
 
@@ -97,9 +91,10 @@ describe('useTrusteeAssignments', () => {
       id: 'new-assignment-1',
     };
 
-    mockApiMethods.createTrusteeOversightAssignment.mockResolvedValue({
+    const response: ResponseBody<TrusteeOversightAssignment> = {
       data: newAssignment,
-    });
+    };
+    vi.mocked(Api2.createTrusteeOversightAssignment).mockResolvedValueOnce(response);
 
     const { result } = renderHook(() => useTrusteeAssignments());
 
@@ -109,7 +104,7 @@ describe('useTrusteeAssignments', () => {
       expect(result.current.assignments).toEqual([newAssignment]);
     });
 
-    expect(mockApiMethods.createTrusteeOversightAssignment).toHaveBeenCalledWith(
+    expect(vi.mocked(Api2.createTrusteeOversightAssignment)).toHaveBeenCalledWith(
       'trustee-123',
       'attorney-123',
       OversightRole.OversightAttorney,
@@ -120,7 +115,7 @@ describe('useTrusteeAssignments', () => {
 
   test('should handle assign attorney error', async () => {
     const errorMessage = 'Failed to assign attorney';
-    mockApiMethods.createTrusteeOversightAssignment.mockRejectedValue(new Error(errorMessage));
+    vi.mocked(Api2.createTrusteeOversightAssignment).mockRejectedValue(new Error(errorMessage));
 
     const { result } = renderHook(() => useTrusteeAssignments());
 
@@ -141,7 +136,7 @@ describe('useTrusteeAssignments', () => {
 
   test('should clear error state', async () => {
     const errorMessage = 'Test error for clearing';
-    mockApiMethods.getTrusteeOversightAssignments.mockRejectedValue(new Error(errorMessage));
+    vi.mocked(Api2.getTrusteeOversightAssignments).mockRejectedValue(new Error(errorMessage));
 
     const { result } = renderHook(() => useTrusteeAssignments());
 
@@ -161,9 +156,10 @@ describe('useTrusteeAssignments', () => {
   });
 
   test('should handle null/undefined data in fetch assignments response', async () => {
-    mockApiMethods.getTrusteeOversightAssignments.mockResolvedValue({
+    const response = {
       data: null,
-    } as unknown as { data: TrusteeOversightAssignment[] });
+    } as unknown as ResponseBody<TrusteeOversightAssignment[]>;
+    vi.mocked(Api2.getTrusteeOversightAssignments).mockResolvedValueOnce(response);
 
     const { result } = renderHook(() => useTrusteeAssignments());
 
@@ -179,7 +175,7 @@ describe('useTrusteeAssignments', () => {
 
   test('should handle non-Error throw in fetch assignments', async () => {
     const errorString = 'Non-error failure';
-    mockApiMethods.getTrusteeOversightAssignments.mockRejectedValue(errorString);
+    vi.mocked(Api2.getTrusteeOversightAssignments).mockRejectedValue(errorString);
 
     const { result } = renderHook(() => useTrusteeAssignments());
 
@@ -195,7 +191,7 @@ describe('useTrusteeAssignments', () => {
 
   test('should handle non-Error throw in assign attorney', async () => {
     const errorString = 'Non-error failure';
-    mockApiMethods.createTrusteeOversightAssignment.mockRejectedValue(errorString);
+    vi.mocked(Api2.createTrusteeOversightAssignment).mockRejectedValue(errorString);
 
     const { result } = renderHook(() => useTrusteeAssignments());
 

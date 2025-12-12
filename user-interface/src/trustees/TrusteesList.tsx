@@ -2,20 +2,18 @@ import './TrusteesList.scss';
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { Trustee } from '@common/cams/trustees';
-import createApi2 from '@/lib/Api2Factory';
+import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 
 export default function TrusteesList() {
   const [trustees, setTrustees] = useState<Trustee[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const api = createApi2();
 
   useEffect(() => {
     const fetchTrustees = () => {
       setLoading(true);
-      api
-        .getTrustees()
+      Api2.getTrustees()
         .then((trusteesResponse) => {
           setTrustees(trusteesResponse.data || []);
           setError(null);
@@ -28,7 +26,7 @@ export default function TrusteesList() {
     };
 
     fetchTrustees();
-  }, [api]);
+  }, []);
 
   if (loading) {
     return <LoadingSpinner caption="Loading trustees..." />;

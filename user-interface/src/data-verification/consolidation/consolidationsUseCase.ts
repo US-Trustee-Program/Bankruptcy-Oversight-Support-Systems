@@ -8,7 +8,7 @@ import {
 import { ConsolidationStore } from '@/data-verification/consolidation/consolidationStore';
 import { ConsolidationControls } from '@/data-verification/consolidation/consolidationControls';
 import { getCaseId } from './consolidationOrderAccordionUtils';
-import createApi2 from '@/lib/Api2Factory';
+import Api2 from '@/lib/models/api2';
 import { CaseSummary } from '@common/cams/cases';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { ConfirmActionResults } from './ConsolidationOrderModal';
@@ -121,7 +121,6 @@ const consolidationUseCase = (
   };
 
   const verifyCaseCanBeAdded = () => {
-    const api2 = createApi2();
     const caseIdToVerify = getCaseId({
       court: store.caseToAddCourt,
       caseNumber: store.caseToAddCaseNumber,
@@ -144,8 +143,7 @@ const consolidationUseCase = (
 
       const calls = [];
       calls.push(
-        api2
-          .getCaseSummary(caseIdToVerify)
+        Api2.getCaseSummary(caseIdToVerify)
           .then((response) => {
             return response.data as CaseSummary;
           })
@@ -158,16 +156,14 @@ const consolidationUseCase = (
           }),
       );
       calls.push(
-        api2
-          .getCaseAssociations(caseIdToVerify)
+        Api2.getCaseAssociations(caseIdToVerify)
           .then((response) => handleCaseAssociationResponse(response, caseIdToVerify))
           .catch((error) => {
             throw new Error(error.message);
           }),
       );
       calls.push(
-        api2
-          .getCaseAssignments(caseIdToVerify)
+        Api2.getCaseAssignments(caseIdToVerify)
           .then((response) => {
             return response.data as CaseAssignment[];
           })
@@ -210,7 +206,6 @@ const consolidationUseCase = (
   };
 
   const approveConsolidation = (action: ConfirmActionResults) => {
-    const api = createApi2();
     const genericErrorMessage =
       'An unknown error has occurred and has been logged.  Please try again later.';
 
@@ -226,8 +221,7 @@ const consolidationUseCase = (
       };
 
       store.setIsProcessing(true);
-      api
-        .putConsolidationOrderApproval(data)
+      Api2.putConsolidationOrderApproval(data)
         .then((response) => {
           const newOrders = response.data;
           const approvedOrder = newOrders.find((o) => o.status === 'approved')!;
@@ -256,7 +250,6 @@ const consolidationUseCase = (
   };
 
   const rejectConsolidation = (action: ConfirmActionResults) => {
-    const api = createApi2();
     const genericErrorMessage =
       'An unknown error has occurred and has been logged.  Please try again later.';
     if (action.status === 'rejected') {
@@ -267,8 +260,7 @@ const consolidationUseCase = (
       };
 
       store.setIsProcessing(true);
-      api
-        .putConsolidationOrderRejection(data)
+      Api2.putConsolidationOrderRejection(data)
         .then((response) => {
           if (response?.data) {
             const newOrders = response.data;
@@ -418,7 +410,6 @@ const consolidationUseCase = (
   };
 
   const handleOnExpand = async () => {
-    const api2 = createApi2();
     if (onExpand) {
       onExpand(`order-list-${store.order.id}`);
     }
@@ -428,8 +419,7 @@ const consolidationUseCase = (
       const associationCalls = [];
       for (const bCase of store.order.childCases) {
         assignmentCalls.push(
-          api2
-            .getCaseAssignments(bCase.caseId)
+          Api2.getCaseAssignments(bCase.caseId)
             .then((response) => {
               bCase.attorneyAssignments = response.data;
             })
@@ -439,8 +429,7 @@ const consolidationUseCase = (
             }),
         );
         associationCalls.push(
-          api2
-            .getCaseAssociations(bCase.caseId)
+          Api2.getCaseAssociations(bCase.caseId)
             .then((response) => {
               bCase.associations = response.data;
               bCase.isLeadCase = isLeadCase(bCase.caseId, bCase.associations);

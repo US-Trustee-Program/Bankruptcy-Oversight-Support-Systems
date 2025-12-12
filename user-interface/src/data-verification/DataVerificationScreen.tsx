@@ -22,7 +22,7 @@ import useFeatureFlags, {
   TRANSFER_ORDERS_ENABLED,
 } from '../lib/hooks/UseFeatureFlags';
 import { sortByDate } from '@/lib/utils/datetime';
-import createApi2 from '@/lib/Api2Factory';
+import Api2 from '@/lib/models/api2';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import { ResponseBody } from '@common/api/response';
@@ -54,14 +54,11 @@ export default function DataVerificationScreen() {
   // TODO: This needs to be dynamic!
   const regionHeader = 'Region 02';
 
-  const api = createApi2();
-
   const accordionFieldHeaders = ['Court District', 'Order Filed', 'Event Type', 'Event Status'];
 
   async function getOrders() {
     setIsOrderListLoading(true);
-    api
-      .getOrders()
+    Api2.getOrders()
       .then((response) => {
         setOrderList((response as ResponseBody<Order[]>).data);
         setIsOrderListLoading(false);
@@ -73,8 +70,7 @@ export default function DataVerificationScreen() {
   }
 
   async function getCourts() {
-    api
-      .getCourts()
+    Api2.getCourts()
       .then((response) => {
         const courts = (response as ResponseBody<CourtDivisionDetails[]>).data;
         setCourts(courts.sort(courtSorter));

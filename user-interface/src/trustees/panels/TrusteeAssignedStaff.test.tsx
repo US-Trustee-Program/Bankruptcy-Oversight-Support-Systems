@@ -5,14 +5,16 @@ import { useTrusteeAssignments } from '@/trustees/modals/UseTrusteeAssignments';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
 import { AttorneyUser } from '@common/cams/users';
 import { CamsRole, OversightRole } from '@common/cams/roles';
-import createApi2 from '@/lib/Api2Factory';
+import Api2 from '@/lib/models/api2';
 
 vi.mock('@/trustees/modals/UseTrusteeAssignments', () => ({
   useTrusteeAssignments: vi.fn(),
 }));
 
-vi.mock('@/lib/Api2Factory', () => ({
-  default: vi.fn(),
+vi.mock('@/lib/models/api2', () => ({
+  default: {
+    getOversightStaff: vi.fn(),
+  },
 }));
 
 vi.mock('./AttorneyAssignmentSection', () => ({
@@ -108,16 +110,12 @@ describe('TrusteeAssignedStaff', () => {
     clearError: vi.fn(),
   };
 
-  const mockApi = {
-    getOversightStaff: vi.fn().mockResolvedValue({ data: mockAttorneys }),
-  };
-
   beforeEach(() => {
     vi.clearAllMocks();
     (useTrusteeAssignments as MockedFunction<typeof useTrusteeAssignments>).mockReturnValue(
       mockUseTrusteeAssignments,
     );
-    (createApi2 as MockedFunction<typeof createApi2>).mockReturnValue(mockApi as never);
+    vi.mocked(Api2.getOversightStaff).mockResolvedValue({ data: mockAttorneys });
   });
 
   test('should render component with correct structure', async () => {
@@ -132,7 +130,7 @@ describe('TrusteeAssignedStaff', () => {
     render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
 
     await waitFor(() => {
-      expect(mockApi.getOversightStaff).toHaveBeenCalledTimes(1);
+      expect(Api2.getOversightStaff).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -190,9 +188,7 @@ describe('TrusteeAssignedStaff', () => {
   });
 
   test('should display error alert when attorneys fail to load', async () => {
-    (createApi2 as MockedFunction<typeof createApi2>).mockReturnValue({
-      getAttorneys: vi.fn().mockRejectedValue(new Error('Failed to load attorneys')),
-    } as never);
+    vi.mocked(Api2.getOversightStaff).mockRejectedValue(new Error('Failed to load attorneys'));
 
     render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
 

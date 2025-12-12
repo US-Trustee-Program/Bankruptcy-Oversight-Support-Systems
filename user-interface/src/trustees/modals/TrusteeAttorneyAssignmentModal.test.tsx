@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import TrusteeAttorneyAssignmentModal from './TrusteeAttorneyAssignmentModal';
-import createApi2 from '@/lib/Api2Factory';
+import Api2 from '@/lib/models/api2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { AttorneyUser } from '@common/cams/users';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
@@ -12,8 +12,10 @@ import { TrusteeAttorneyAssignmentModalRef } from './TrusteeAttorneyAssignmentMo
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
 // TODO: Remove the use of vi.mock()
-vi.mock('@/lib/Api2Factory', () => ({
-  default: vi.fn(),
+vi.mock('@/lib/models/api2', () => ({
+  default: {
+    createTrusteeOversightAssignment: vi.fn(),
+  },
 }));
 vi.mock('@/lib/hooks/UseGlobalAlert');
 
@@ -119,11 +121,6 @@ describe('TrusteeAttorneyAssignmentModal', () => {
     updatedOn: '2023-01-01T00:00:00Z',
   };
 
-  const mockApiMethods = {
-    getAttorneys: vi.fn().mockResolvedValue({ data: mockAttorneys }),
-    createTrusteeOversightAssignment: vi.fn().mockResolvedValue({ data: mockAssignment }),
-  };
-
   const mockGlobalAlert = {
     success: vi.fn(),
     error: vi.fn(),
@@ -132,7 +129,9 @@ describe('TrusteeAttorneyAssignmentModal', () => {
   beforeEach(() => {
     userEvent = TestingUtilities.setupUserEvent();
     vi.clearAllMocks();
-    (createApi2 as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockApiMethods);
+    vi.mocked(Api2.createTrusteeOversightAssignment).mockResolvedValue({
+      data: mockAssignment,
+    });
     (useGlobalAlert as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockGlobalAlert);
   });
 
@@ -189,7 +188,7 @@ describe('TrusteeAttorneyAssignmentModal', () => {
     await userEvent.click(submitButton);
 
     await waitFor(() => {
-      expect(mockApiMethods.createTrusteeOversightAssignment).toHaveBeenCalledWith(
+      expect(Api2.createTrusteeOversightAssignment).toHaveBeenCalledWith(
         'trustee-123',
         'attorney-1',
         OversightRole.OversightAttorney,
@@ -202,7 +201,7 @@ describe('TrusteeAttorneyAssignmentModal', () => {
 
   test('should handle assignment error', async () => {
     const errorMessage = 'Failed to assign attorney';
-    mockApiMethods.createTrusteeOversightAssignment.mockRejectedValueOnce(new Error(errorMessage));
+    vi.mocked(Api2.createTrusteeOversightAssignment).mockRejectedValueOnce(new Error(errorMessage));
 
     const onAssignment = vi.fn();
     const ref = React.createRef<TrusteeAttorneyAssignmentModalRef>();
@@ -236,13 +235,13 @@ describe('TrusteeAttorneyAssignmentModal', () => {
 
     await userEvent.selectOptions(comboBox, '');
 
-    mockApiMethods.createTrusteeOversightAssignment.mockClear();
+    vi.clearAllMocks();
 
     const submitButton = screen.getByTestId('button-test-modal-submit-button');
     submitButton.removeAttribute('disabled');
     await userEvent.click(submitButton);
 
-    expect(mockApiMethods.createTrusteeOversightAssignment).not.toHaveBeenCalled();
+    expect(Api2.createTrusteeOversightAssignment).not.toHaveBeenCalled();
     expect(onAssignment).not.toHaveBeenCalled();
   });
 
@@ -283,13 +282,13 @@ describe('TrusteeAttorneyAssignmentModal', () => {
       expect(submitButton).not.toBeDisabled();
     });
 
-    mockApiMethods.createTrusteeOversightAssignment.mockClear();
+    vi.clearAllMocks();
 
     const submitButton = screen.getByTestId('button-test-modal-submit-button');
     await userEvent.click(submitButton);
 
     await waitFor(() => {
-      expect(mockApiMethods.createTrusteeOversightAssignment).not.toHaveBeenCalled();
+      expect(Api2.createTrusteeOversightAssignment).not.toHaveBeenCalled();
       expect(onAssignment).not.toHaveBeenCalled();
     });
   });

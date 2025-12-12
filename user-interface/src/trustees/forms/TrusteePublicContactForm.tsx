@@ -4,7 +4,7 @@ import Input from '@/lib/components/uswds/Input';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
-import createApi2 from '@/lib/Api2Factory';
+import Api2 from '@/lib/models/api2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
@@ -58,7 +58,7 @@ export type TrusteePublicContactFormProps = {
 
 function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>) {
   const flags = useFeatureFlags();
-  const api = createApi2();
+
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
   const debounce = useDebounce();
@@ -128,11 +128,11 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
       const payload = mapPayload(currentFormData);
       try {
         if (isCreate) {
-          const response = await api.postTrustee(payload as TrusteeInput);
+          const response = await Api2.postTrustee(payload as TrusteeInput);
           const createdId = (response as { data?: { trusteeId?: string } })?.data?.trusteeId;
           navigate.navigateTo(`/trustees/${createdId}`);
         } else {
-          await api.patchTrustee(props.trusteeId!, payload);
+          await Api2.patchTrustee(props.trusteeId!, payload);
           navigate.navigateTo(`/trustees/${props.trusteeId}`);
         }
       } catch (e) {
