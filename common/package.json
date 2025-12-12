@@ -5,17 +5,17 @@
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
-    "clean": "rm -rf ./dist && rm -rf ./node_modules && rm -rf ./coverage & rm tsconfig.tsbuildinfo",
     "build": "npx tsc -p tsconfig.build.json",
-    "test": "vitest run",
-    "test:watch": "vitest watch",
+    "clean": "rm -rf ./dist && rm -rf ./node_modules && rm -rf ./coverage && rm -f tsconfig.tsbuildinfo",
     "coverage": "vitest run --coverage",
     "coverage:ci": "vitest run --coverage",
+    "dependency-cruiser-graphical": "current_time=$(date +'%Y-%m-%d_%H%M') && npx depcruise --output-type dot --do-not-follow '^node_modules($|/)' src | dot -T svg > ../docs/architecture/dependency-cruiser/common/dependency-graph_common_${current_time}.svg",
+    "dependency-cruiser-ci": "npx depcruise --output-type err-long src",
+    "format": "prettier --write './**/*.{js,ts,css,md,json}' --config ./.prettierrc",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "format": "prettier --write './**/*.{js,ts,css,md,json}' --config ./.prettierrc",
-    "dependency-cruiser-graphical": "current_time=$(date +'%Y-%m-%d_%H%M') && npx depcruise --output-type dot --do-not-follow '^node_modules($|/)' src | dot -T svg > ../docs/architecture/dependency-cruiser/common/dependency-graph_common_${current_time}.svg",
-    "dependency-cruiser-ci": "npx depcruise --output-type err-long src"
+    "test": "vitest run",
+    "test:watch": "vitest watch"
   },
   "author": "",
   "license": "ISC",
