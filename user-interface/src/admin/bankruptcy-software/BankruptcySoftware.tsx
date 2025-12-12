@@ -2,7 +2,7 @@ import './BankruptcySoftware.scss';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import Input from '@/lib/components/uswds/Input';
-import useApi2 from '@/lib/hooks/UseApi2';
+import createApi2 from '@/lib/Api2Factory';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import { BankruptcySoftwareList, BankruptcySoftwareListItem } from '@common/cams/lists';
@@ -10,7 +10,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Creatable } from '@common/cams/creatable';
 
 export function BankruptcySoftware() {
-  const api = useApi2();
+  const api = createApi2();
   const alert = useGlobalAlert();
 
   const [isLoaded, setIsLoaded] = useState(false);

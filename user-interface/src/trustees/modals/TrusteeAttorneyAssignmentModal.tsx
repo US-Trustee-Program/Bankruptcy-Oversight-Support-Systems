@@ -1,5 +1,5 @@
 import React, { forwardRef, useRef, useState, useCallback, useEffect } from 'react';
-import useApi2 from '@/lib/hooks/UseApi2';
+import createApi2 from '@/lib/Api2Factory';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { AttorneyUser } from '@common/cams/users';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
@@ -32,7 +32,7 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
   const [isAssigning, setIsAssigning] = useState<boolean>(false);
 
   const modalRef = useRef<ModalRefType>(null);
-  const api = useApi2();
+  const api = createApi2();
   const globalAlert = useGlobalAlert();
 
   useEffect(() => {

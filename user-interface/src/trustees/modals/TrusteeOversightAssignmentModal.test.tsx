@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import TrusteeOversightAssignmentModal from './TrusteeOversightAssignmentModal';
-import useApi2 from '@/lib/hooks/UseApi2';
+import createApi2 from '@/lib/Api2Factory';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { Staff } from '@common/cams/users';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
@@ -11,7 +11,9 @@ import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { TrusteeOversightAssignmentModalRef } from './TrusteeOversightAssignmentModal';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
-vi.mock('@/lib/hooks/UseApi2');
+vi.mock('@/lib/Api2Factory', () => ({
+  default: vi.fn(),
+}));
 vi.mock('@/lib/hooks/UseGlobalAlert');
 
 vi.mock('@/lib/components/combobox/ComboBox', () => {
@@ -106,7 +108,7 @@ describe('TrusteeOversightAssignmentModal', () => {
   beforeEach(() => {
     userEvent = TestingUtilities.setupUserEvent();
     vi.clearAllMocks();
-    (useApi2 as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockApiMethods);
+    (createApi2 as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockApiMethods);
     (useGlobalAlert as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockGlobalAlert);
   });
 

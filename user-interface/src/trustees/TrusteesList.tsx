@@ -2,14 +2,14 @@ import './TrusteesList.scss';
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { Trustee } from '@common/cams/trustees';
-import useApi2 from '@/lib/hooks/UseApi2';
+import createApi2 from '@/lib/Api2Factory';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 
 export default function TrusteesList() {
   const [trustees, setTrustees] = useState<Trustee[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const api = useApi2();
+  const api = createApi2();
 
   useEffect(() => {
     const fetchTrustees = () => {

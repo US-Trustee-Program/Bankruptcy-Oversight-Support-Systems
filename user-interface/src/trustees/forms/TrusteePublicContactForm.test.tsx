@@ -10,7 +10,7 @@ import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import * as DebounceModule from '@/lib/hooks/UseDebounce';
 import { FeatureFlagSet } from '@common/feature-flags';
 import Api2 from '@/lib/models/api2';
-import * as UseApi2Module from '@/lib/hooks/UseApi2';
+import * as UseApi2Module from '@/lib/Api2Factory';
 import { Trustee, TrusteeInput } from '@common/cams/trustees';
 import * as NavigatorModule from '@/lib/hooks/UseCamsNavigator';
 import MockData from '@common/cams/test-utilities/mock-data';
