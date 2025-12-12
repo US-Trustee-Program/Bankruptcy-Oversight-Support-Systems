@@ -10,16 +10,16 @@ import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } f
 import './ConsolidationOrderModal.scss';
 import { CourtDivisionDetails } from '@common/cams/courts';
 
-export type ConfirmActionPendingResults = {
+type ConfirmActionPendingResults = {
   status: 'pending';
 };
 
-export type ConfirmActionRejectionResults = {
+type ConfirmActionRejectionResults = {
   status: 'rejected';
   rejectionReason?: string;
 };
 
-export type ConfirmActionApprovalResults = {
+type ConfirmActionApprovalResults = {
   status: 'approved';
 };
 

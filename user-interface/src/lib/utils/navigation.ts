@@ -12,20 +12,3 @@ export function createNavStateMapper<T>(
     return pathToStateMap[lastSegment] || defaultState;
   };
 }
-
-export interface NavigationItem<T> {
-  state: T;
-  path: string;
-  label: string;
-  testId: string;
-  title: string;
-  end?: boolean;
-  isConditional?: boolean;
-  conditionalCheck?: () => boolean;
-}
-
-export interface DetailNavigationProps<T> {
-  entityId: string | undefined;
-  initiallySelectedNavLink: T;
-  className?: string;
-}
