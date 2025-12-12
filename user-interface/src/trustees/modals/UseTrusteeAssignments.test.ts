@@ -37,7 +37,7 @@ describe('useTrusteeAssignments', () => {
   ];
 
   beforeEach(() => {
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   test('should initialize with empty state', () => {
