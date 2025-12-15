@@ -18,7 +18,7 @@ export function ustpOfficeToCourtDivision(ustp: UstpOfficeDetails): CourtDivisio
         officeName: division.courtOffice.courtOfficeName,
         officeCode: division.courtOffice.courtOfficeCode,
         courtId: division.court.courtId,
-        courtName: division.court.courtName,
+        courtName: division.court.courtName || ('' as string),
         courtDivisionCode: division.divisionCode,
         courtDivisionName: division.courtOffice.courtOfficeName,
         groupDesignator: group.groupDesignator,

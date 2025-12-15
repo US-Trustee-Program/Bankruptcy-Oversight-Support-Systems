@@ -87,8 +87,9 @@
   "scripts": {
     "clean": "rm -rf build && rm -rf node_modules && rm -rf ./coverage",
     "start": "npm run envToConfig && vite",
-    "start:a11y": "export CAMS_USE_FAKE_API=true && export CAMS_LOGIN_PROVIDER=none && npm run envToConfig && vite build --emptyOutDir && vite preview --port 3000",
-    "build": "npm run envToConfig && vite build",
+    "start:a11y": "export CAMS_USE_FAKE_API=true && export CAMS_LOGIN_PROVIDER=none && npm run envToConfig && tsc -b && vite build && vite preview --port 3000",
+    "typecheck": "tsc -b --noEmit",
+    "build": "npm run envToConfig && tsc -b && vite build",
     "build-common": "pushd ../common && npm ci && npm run build && popd",
     "serve": "npm run envToConfig && npm run build && vite preview --port 3000",
     "test": "export CAMS_USE_FAKE_API=true && vitest run",
@@ -103,6 +104,7 @@
     "format": "prettier --write './**/*.{js,jsx,ts,tsx,css,md,json}' --config ./.prettierrc",
     "dependency-cruiser-graphical": "current_time=$(date +'%Y-%m-%d_%H%M') && npx depcruise --output-type dot --do-not-follow '^node_modules($|/)' public src | dot -T svg > ../docs/architecture/dependency-cruiser/user-interface/dependency-graph_${current_time}.svg",
     "dependency-cruiser:ci": "npx depcruise --output-type err-long public src",
+    "typecheck:ci": "npm run typecheck",
     "envToConfig": "node ./envToConfig.js",
     "slotConfig": "node ./envToConfig.js -f configuration-${SLOT_NAME:-staging}.json"
   }
