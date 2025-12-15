@@ -4,7 +4,7 @@ import { LegacyAddress } from './parties';
 import { ContactInformation } from './contact';
 import { CamsUserReference } from './users';
 import { OversightRole } from './roles';
-import { NullableOptionalFields } from '../api/common';
+// Removed unused import
 
 // Chapter types supported for trustee assignments
 type ChapterType = '7-panel' | '7-non-panel' | '11' | '11-subchapter-v' | '12' | '13';
@@ -19,7 +19,7 @@ export function formatChapterType(chapter: string): string {
     '13': '13',
   };
 
-  return chapterLabels[chapter] || chapter;
+  return (chapterLabels as Record<string, string>)[chapter] || chapter;
 }
 
 export const TRUSTEE_STATUS_VALUES = ['active', 'not active', 'suspended'] as const;
@@ -47,7 +47,10 @@ export type Trustee = TrusteeData &
     };
   };
 
-export type TrusteeInput = TrusteeCore & NullableOptionalFields<TrusteeOptionalFields>;
+export type TrusteeInput = TrusteeCore & {
+  banks?: string[] | null;
+  software?: string | null;
+};
 
 export type TrusteeOversightAssignment = Auditable &
   Identifiable & {

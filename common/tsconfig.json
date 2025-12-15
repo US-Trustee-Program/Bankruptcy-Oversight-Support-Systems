@@ -6,6 +6,7 @@
     "rootDir": "src",
     "sourceMap": true,
     "strict": false,
+    "skipLibCheck": true,
     "resolveJsonModule": true,
     "declaration": true,
     "declarationMap": true,

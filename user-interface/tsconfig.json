@@ -22,7 +22,6 @@
       "@common/*": ["./../common/src/*"]
     }
   },
-  // Temporarily comment out references to fix build
   // "references": [{ "path": "../common" }],
   "include": ["src", "vite.config.mts"]
 }

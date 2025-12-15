@@ -24,7 +24,7 @@ export function ustpOfficeToCourtDivision(ustp: UstpOfficeDetails): CourtDivisio
         groupDesignator: group.groupDesignator,
         regionId: ustp.regionId,
         regionName: ustp.regionName,
-        state: division.court.state,
+        state: division.court.state || ('' as string),
       });
     });
     return acc;
@@ -42,6 +42,6 @@ export type CourtDivisionDetails = {
   groupDesignator: string;
   regionId: string;
   regionName: string;
-  state?: string;
+  state: string;
   staff?: CamsUserReference[];
 };
