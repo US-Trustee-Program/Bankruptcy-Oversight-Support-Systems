@@ -35,11 +35,7 @@ export default defineConfig({
       reporter: ['text', 'html', 'json', 'json-summary'],
       reportsDirectory: './test/bdd/coverage',
       all: true, // Track all files matching include patterns, even if not imported
-      include: [
-        'user-interface/src/**/*.{ts,tsx}',
-        'backend/lib/**/*.ts',
-        'common/src/**/*.ts',
-      ],
+      include: ['user-interface/src/**/*.{ts,tsx}', 'backend/lib/**/*.ts', 'common/src/**/*.ts'],
       exclude: [
         '**/*.test.{ts,tsx}',
         '**/*.spec.{ts,tsx}',

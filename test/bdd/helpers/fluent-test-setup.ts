@@ -30,9 +30,15 @@
 
 import { vi } from 'vitest';
 import type { CamsSession } from '@common/cams/session';
-import type { CaseDetail, CaseSummary } from '@common/cams/cases';
+import type { CaseDetail, CaseSummary, CaseNote } from '@common/cams/cases';
 import type { CaseAssignment } from '@common/cams/assignments';
-import type { TransferFrom, TransferTo, ConsolidationFrom, ConsolidationTo } from '@common/cams/events';
+import type {
+  TransferFrom,
+  TransferTo,
+  ConsolidationFrom,
+  ConsolidationTo,
+} from '@common/cams/events';
+import type { UpdateResult } from '../../../backend/lib/use-cases/gateways.types';
 import { renderApp } from './render-with-context';
 import { spyOnMeEndpoint, spyOnAllGateways } from './repository-spies';
 import { TestState } from './test-state';
@@ -76,10 +82,10 @@ export class TestSetup {
   private transfers: Transfer[] = [];
   private consolidations: Consolidation[] = [];
   private assignmentMap: Map<string, CaseAssignment[]> = new Map();
-  private docketEntries: any[] = [];
-  private caseNotes: any[] = [];
-  private offices: any[] = [];
-  private customSpies: Record<string, any> = {};
+  private docketEntries: unknown[] = [];
+  private caseNotes: unknown[] = [];
+  private offices: unknown[] = [];
+  private customSpies: Record<string, Record<string, unknown>> = {};
 
   private constructor(session: CamsSession) {
     this.session = session;
@@ -133,7 +139,7 @@ export class TestSetup {
    */
   withCases(cases: CaseDetail[]): TestSetup {
     this.cases = cases;
-    cases.forEach(c => this.state.setCase(c));
+    cases.forEach((c) => this.state.setCase(c));
     return this;
   }
 
@@ -255,7 +261,7 @@ export class TestSetup {
    *   .renderAt(`/case-detail/${testCase.caseId}`);
    * ```
    */
-  withDocketEntries(caseId: string, entries: any[]): TestSetup {
+  withDocketEntries(caseId: string, entries: unknown[]): TestSetup {
     this.docketEntries = entries;
     this.state.setDocketEntries(caseId, entries);
     return this;
@@ -275,7 +281,7 @@ export class TestSetup {
    *   .renderAt(`/case-detail/${testCase.caseId}`);
    * ```
    */
-  withCaseNotes(caseId: string, notes: any[]): TestSetup {
+  withCaseNotes(caseId: string, notes: unknown[]): TestSetup {
     this.caseNotes = notes;
     this.state.setNotes(caseId, notes);
     return this;
@@ -293,7 +299,7 @@ export class TestSetup {
    *   .renderAt('/');
    * ```
    */
-  withOffices(offices: any[]): TestSetup {
+  withOffices(offices: unknown[]): TestSetup {
     this.offices = offices;
     return this;
   }
@@ -313,7 +319,7 @@ export class TestSetup {
    *   .renderAt('/');
    * ```
    */
-  withCustomSpy(gatewayName: string, methods: Record<string, any>): TestSetup {
+  withCustomSpy(gatewayName: string, methods: Record<string, unknown>): TestSetup {
     this.customSpies[gatewayName] = methods;
     return this;
   }
@@ -348,19 +354,20 @@ export class TestSetup {
     // Note: State-aware spies are set up using TestState for reads/writes
     const state = this.state;
 
-    const spyConfig: Record<string, any> = {
+    const spyConfig: Record<string, Record<string, unknown>> = {
       // Cases gateway - STATE AWARE
       CasesDxtrGateway: {
-        getCaseDetail: this.cases.length > 0
-          ? vi.fn().mockImplementation(async (_context: any, caseId: string) => {
-              // Read from state to get most current version
-              const found = state.getCase(caseId);
-              if (!found) {
-                throw new Error(`Case ${caseId} not found in test data`);
-              }
-              return found;
-            })
-          : undefined,
+        getCaseDetail:
+          this.cases.length > 0
+            ? vi.fn().mockImplementation(async (_context: unknown, caseId: string) => {
+                // Read from state to get most current version
+                const found = state.getCase(caseId);
+                if (!found) {
+                  throw new Error(`Case ${caseId} not found in test data`);
+                }
+                return found;
+              })
+            : undefined,
       },
 
       // Cases repository - STATE AWARE for transfers/consolidations
@@ -387,13 +394,14 @@ export class TestSetup {
 
       // Case assignments - STATE AWARE
       CaseAssignmentMongoRepository: {
-        findAssignmentsByAssignee: this.myAssignments.length > 0
-          ? vi.fn().mockResolvedValue(this.myAssignments)
-          : vi.fn().mockResolvedValue([]),
+        findAssignmentsByAssignee:
+          this.myAssignments.length > 0
+            ? vi.fn().mockResolvedValue(this.myAssignments)
+            : vi.fn().mockResolvedValue([]),
         // STATE AWARE: Read assignments from state
         getAssignmentsForCases: vi.fn().mockImplementation(async (caseIds: string[]) => {
-          const assignmentMap = new Map<string, any[]>();
-          caseIds.forEach(caseId => {
+          const assignmentMap = new Map<string, CaseAssignment[]>();
+          caseIds.forEach((caseId) => {
             assignmentMap.set(caseId, state.getAssignments(caseId));
           });
           return assignmentMap;
@@ -429,8 +437,8 @@ export class TestSetup {
     };
 
     // Remove undefined methods from config
-    Object.keys(spyConfig).forEach(gateway => {
-      Object.keys(spyConfig[gateway]).forEach(method => {
+    Object.keys(spyConfig).forEach((gateway) => {
+      Object.keys(spyConfig[gateway]).forEach((method) => {
         if (spyConfig[gateway][method] === undefined) {
           delete spyConfig[gateway][method];
         }
@@ -465,28 +473,25 @@ export class TestSetup {
 
     // ============ CASE NOTES OPERATIONS ============
 
-    const { CaseNotesMongoRepository } = await import(
-      '../../../backend/lib/adapters/gateways/mongo/case-notes.mongo.repository'
-    );
+    const { CaseNotesMongoRepository } =
+      await import('../../../backend/lib/adapters/gateways/mongo/case-notes.mongo.repository');
 
     // Spy on getNotesByCaseId() to return from state
-    // Note: Repository returns ResourceActions<CaseNote>[] (notes with _actions property)
+    // Note: Repository returns CaseNote[] which may have _actions property added by use case layer
     vi.spyOn(CaseNotesMongoRepository.prototype, 'getNotesByCaseId').mockImplementation(
-      async (caseId: string) => {
-        const notes = state.getNotes(caseId);
-        // Return notes as ResourceActions (they may have _actions added by use case)
-        return notes as any[];
+      async (caseId: string): Promise<CaseNote[]> => {
+        return state.getNotes(caseId);
       },
     );
 
     // Spy on read() to return note by ID from state
     vi.spyOn(CaseNotesMongoRepository.prototype, 'read').mockImplementation(
-      async (noteId: string) => {
+      async (noteId: string): Promise<CaseNote> => {
         // Search all cases for the note with this ID
         const allCases = state.getAllCases();
         for (const caseDetail of allCases) {
           const notes = state.getNotes(caseDetail.caseId);
-          const found = notes.find(n => n.id === noteId);
+          const found = notes.find((n) => n.id === noteId);
           if (found) return found;
         }
         throw new Error(`Note ${noteId} not found in test state`);
@@ -495,7 +500,7 @@ export class TestSetup {
 
     // Spy on create() to add to state
     vi.spyOn(CaseNotesMongoRepository.prototype, 'create').mockImplementation(
-      async (note: any) => {
+      async (note: CaseNote): Promise<CaseNote> => {
         const noteWithId = {
           ...note,
           id: note.id || `note-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -510,100 +515,103 @@ export class TestSetup {
 
     // Spy on update() to update state
     vi.spyOn(CaseNotesMongoRepository.prototype, 'update').mockImplementation(
-      async (note: any) => {
-        state.updateNote(note.id, note);
+      async (note: Partial<CaseNote>): Promise<void> => {
+        state.updateNote(note.id!, note);
         return;
       },
     );
 
     // Spy on archiveCaseNote() to mark note as archived in state
     vi.spyOn(CaseNotesMongoRepository.prototype, 'archiveCaseNote').mockImplementation(
-      async (archiveNote: any) => {
-        state.updateNote(archiveNote.id, {
+      async (archiveNote: Partial<CaseNote>): Promise<UpdateResult> => {
+        state.updateNote(archiveNote.id!, {
           archivedOn: archiveNote.archivedOn,
           archivedBy: archiveNote.archivedBy,
         });
-        return { acknowledged: true, modifiedCount: 1 };
+        return { modifiedCount: 1, matchedCount: 1 };
       },
     );
 
     // ============ ORDERS - TRANSFERS & CONSOLIDATIONS ============
     // Note: Only spy on methods if they exist in the repository
 
-    const { OrdersMongoRepository } = await import(
-      '../../../backend/lib/adapters/gateways/mongo/orders.mongo.repository'
-    );
+    const { OrdersMongoRepository } =
+      await import('../../../backend/lib/adapters/gateways/mongo/orders.mongo.repository');
 
     // Spy on createTransferOrder() if it exists
     if (typeof OrdersMongoRepository.prototype['createTransferOrder'] === 'function') {
-      vi.spyOn(OrdersMongoRepository.prototype, 'createTransferOrder' as any).mockImplementation(
-        async (transfer: any) => {
-          const transferWithId = {
-            ...transfer,
-            id: transfer.id || `transfer-${Date.now()}`,
-            orderDate: transfer.orderDate || new Date().toISOString(),
-          };
-          state.addTransfer(transferWithId);
-          return transferWithId;
-        },
-      );
+      vi.spyOn(
+        OrdersMongoRepository.prototype,
+        'createTransferOrder' as keyof typeof OrdersMongoRepository.prototype,
+      ).mockImplementation(async (transfer: Transfer): Promise<Transfer> => {
+        const transferWithId = {
+          ...transfer,
+          id: transfer.id || `transfer-${Date.now()}`,
+          orderDate: transfer.orderDate || new Date().toISOString(),
+        };
+        state.addTransfer(transferWithId);
+        return transferWithId;
+      });
     }
 
     // Spy on updateTransferOrder() if it exists
     if (typeof OrdersMongoRepository.prototype['updateTransferOrder'] === 'function') {
-      vi.spyOn(OrdersMongoRepository.prototype, 'updateTransferOrder' as any).mockImplementation(
-        async (transferId: string, updates: any) => {
-          state.updateTransfer(transferId, updates);
-          return { acknowledged: true, modifiedCount: 1 };
-        },
-      );
+      vi.spyOn(
+        OrdersMongoRepository.prototype,
+        'updateTransferOrder' as keyof typeof OrdersMongoRepository.prototype,
+      ).mockImplementation(async (transferId: string, updates: Partial<Transfer>) => {
+        state.updateTransfer(transferId, updates);
+        return { modifiedCount: 1, matchedCount: 1 };
+      });
     }
 
     // Spy on createConsolidationOrder() if it exists
     if (typeof OrdersMongoRepository.prototype['createConsolidationOrder'] === 'function') {
-      vi.spyOn(OrdersMongoRepository.prototype, 'createConsolidationOrder' as any).mockImplementation(
-        async (consolidation: any) => {
-          const consolidationWithId = {
-            ...consolidation,
-            id: consolidation.id || `consolidation-${Date.now()}`,
-            orderDate: consolidation.orderDate || new Date().toISOString(),
-          };
-          state.addConsolidation(consolidationWithId);
-          return consolidationWithId;
-        },
-      );
+      vi.spyOn(
+        OrdersMongoRepository.prototype,
+        'createConsolidationOrder' as keyof typeof OrdersMongoRepository.prototype,
+      ).mockImplementation(async (consolidation: Consolidation): Promise<Consolidation> => {
+        const consolidationWithId = {
+          ...consolidation,
+          id: consolidation.id || `consolidation-${Date.now()}`,
+          orderDate: consolidation.orderDate || new Date().toISOString(),
+        };
+        state.addConsolidation(consolidationWithId);
+        return consolidationWithId;
+      });
     }
 
     // ============ CASE ASSIGNMENTS ============
     // Note: Only spy on methods if they exist in the repository
 
-    const { CaseAssignmentMongoRepository } = await import(
-      '../../../backend/lib/adapters/gateways/mongo/case-assignment.mongo.repository'
-    );
+    const { CaseAssignmentMongoRepository } =
+      await import('../../../backend/lib/adapters/gateways/mongo/case-assignment.mongo.repository');
 
     // Spy on createCaseAssignment() if it exists
     if (typeof CaseAssignmentMongoRepository.prototype['createCaseAssignment'] === 'function') {
-      vi.spyOn(CaseAssignmentMongoRepository.prototype, 'createCaseAssignment' as any).mockImplementation(
-        async (assignment: any) => {
-          const assignmentWithId = {
-            ...assignment,
-            id: assignment.id || `assignment-${Date.now()}`,
-            createdAt: assignment.createdAt || new Date().toISOString(),
-          };
-          state.assignAttorney(assignment.caseId, assignmentWithId);
-          return assignmentWithId;
-        },
-      );
+      vi.spyOn(
+        CaseAssignmentMongoRepository.prototype,
+        'createCaseAssignment' as keyof typeof CaseAssignmentMongoRepository.prototype,
+      ).mockImplementation(async (assignment: CaseAssignment): Promise<CaseAssignment> => {
+        const assignmentWithId = {
+          ...assignment,
+          id: assignment.id || `assignment-${Date.now()}`,
+          assignedOn: assignment.assignedOn || new Date().toISOString(),
+        };
+        state.assignAttorney(assignment.caseId, assignmentWithId);
+        return assignmentWithId;
+      });
     }
 
     // Spy on deleteCaseAssignment() if it exists
     if (typeof CaseAssignmentMongoRepository.prototype['deleteCaseAssignment'] === 'function') {
-      vi.spyOn(CaseAssignmentMongoRepository.prototype, 'deleteCaseAssignment' as any).mockImplementation(
-        async (caseId: string, attorneyId: string) => {
-          state.unassignAttorney(caseId, attorneyId);
-          return { acknowledged: true, deletedCount: 1 };
-        },
-      );
+      vi.spyOn(
+        CaseAssignmentMongoRepository.prototype,
+        'deleteCaseAssignment' as keyof typeof CaseAssignmentMongoRepository.prototype,
+      ).mockImplementation(async (caseId: string, attorneyId: string) => {
+        state.unassignAttorney(caseId, attorneyId);
+        return { deletedCount: 1 };
+      });
     }
   }
 }
@@ -657,7 +665,10 @@ export async function waitForAppLoad(timeout: number = 10000): Promise<void> {
  * await expectPageToContain(testCase.caseId);
  * ```
  */
-export async function expectPageToContain(expectedText: string, timeout: number = 10000): Promise<void> {
+export async function expectPageToContain(
+  expectedText: string,
+  timeout: number = 10000,
+): Promise<void> {
   const { waitFor } = await import('@testing-library/react');
   const { expect } = await import('vitest');
 

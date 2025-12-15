@@ -17,7 +17,7 @@ vi.mock('mongodb', () => {
     private index = 0;
 
     constructor(
-      private data: any[] = [],
+      private data: unknown[] = [],
       private isAggregation = false,
     ) {}
 
@@ -65,7 +65,12 @@ vi.mock('mongodb', () => {
           insertOne: async () => ({ insertedId: 'mock-id', acknowledged: true }),
           insertMany: async () => ({ insertedIds: [], acknowledged: true }),
           updateOne: async () => ({ modifiedCount: 1, acknowledged: true }),
-          replaceOne: async () => ({ modifiedCount: 1, upsertedCount: 0, upsertedId: null, acknowledged: true }),
+          replaceOne: async () => ({
+            modifiedCount: 1,
+            upsertedCount: 0,
+            upsertedId: null,
+            acknowledged: true,
+          }),
           deleteOne: async () => ({ deletedCount: 1, acknowledged: true }),
           deleteMany: async () => ({ deletedCount: 0, acknowledged: true }),
           countDocuments: async () => 0,
@@ -78,15 +83,20 @@ vi.mock('mongodb', () => {
 
   // Also need to mock Db class for the humble object
   class MockDb {
-    constructor(_client: any, _name: string) {}
-    collection(name: string) {
+    constructor(_client: unknown, _name: string) {}
+    collection(_name: string) {
       return {
         find: () => new MockCursor([]),
         findOne: async () => null,
         insertOne: async () => ({ insertedId: 'mock-id', acknowledged: true }),
         insertMany: async () => ({ insertedIds: [], acknowledged: true }),
         updateOne: async () => ({ modifiedCount: 1, acknowledged: true }),
-        replaceOne: async () => ({ modifiedCount: 1, upsertedCount: 0, upsertedId: null, acknowledged: true }),
+        replaceOne: async () => ({
+          modifiedCount: 1,
+          upsertedCount: 0,
+          upsertedId: null,
+          acknowledged: true,
+        }),
         deleteOne: async () => ({ deletedCount: 1, acknowledged: true }),
         deleteMany: async () => ({ deletedCount: 0, acknowledged: true }),
         countDocuments: async () => 0,
@@ -106,7 +116,7 @@ vi.mock('mongodb', () => {
 vi.mock('mssql', () => {
   class MockConnectionPool {
     connected = false;
-    constructor(_config: any) {}
+    constructor(_config: unknown) {}
     async connect() {
       this.connected = true;
       return this;

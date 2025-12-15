@@ -55,13 +55,13 @@ describe('Feature: My Cases (Full Stack)', () => {
     const session = TestSessions.dataVerifier();
 
     console.log('[TEST] User roles:', session.user.roles);
-    console.log('[TEST] Has TrialAttorney role:', session.user.roles?.includes(CamsRole.TrialAttorney));
+    console.log(
+      '[TEST] Has TrialAttorney role:',
+      session.user.roles?.includes(CamsRole.TrialAttorney),
+    );
 
     // WHEN: Load the app with no assignments
-    await TestSetup
-      .forUser(session)
-      .withMyAssignments([])
-      .renderAt('/');
+    await TestSetup.forUser(session).withMyAssignments([]).renderAt('/');
 
     await waitForAppLoad();
 
@@ -104,10 +104,7 @@ describe('Feature: My Cases (Full Stack)', () => {
     console.log('[TEST] User roles:', session.user.roles);
 
     // WHEN: Load app with no assignments
-    await TestSetup
-      .forUser(session)
-      .withMyAssignments([])
-      .renderAt('/');
+    await TestSetup.forUser(session).withMyAssignments([]).renderAt('/');
 
     await waitForAppLoad();
 
@@ -116,9 +113,7 @@ describe('Feature: My Cases (Full Stack)', () => {
       () => {
         const body = document.body.textContent || '';
         const hasEmptyMessage =
-          body.includes('No cases') ||
-          body.includes('no cases') ||
-          body.includes('No assignments');
+          body.includes('No cases') || body.includes('no cases') || body.includes('No assignments');
 
         console.log('[TEST] Has empty message:', hasEmptyMessage);
         expect(hasEmptyMessage).toBe(true);
@@ -138,9 +133,7 @@ describe('Feature: My Cases (Full Stack)', () => {
    */
   it('should render home page and complete all post-login tasks', async () => {
     // GIVEN/WHEN: User loads the app
-    await TestSetup
-      .forUser(TestSessions.dataVerifier())
-      .renderAt('/');
+    await TestSetup.forUser(TestSessions.dataVerifier()).renderAt('/');
 
     await waitForAppLoad();
 

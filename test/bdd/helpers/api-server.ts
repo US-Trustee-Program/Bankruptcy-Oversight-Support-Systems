@@ -51,7 +51,7 @@ export async function cleanupTestServer(): Promise<void> {
         else resolve();
       });
     });
-    httpServer = null as any;
+    httpServer = undefined!;
   }
 }
 
