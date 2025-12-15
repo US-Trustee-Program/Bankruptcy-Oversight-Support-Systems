@@ -74,6 +74,7 @@ fi
 
 # allow build agent access to execute deployment
 agent_ip=$(curl -s --retry 3 --retry-delay 30 --retry-all-errors https://api.ipify.org)
+agent_ip=$(agent_ip | $(sed -E 's/\.[0-9]+(\/[0-9]+)?$/.0\/24/')))
 echo "Adding rule: ${rule_name} to webapp"
 az functionapp config access-restriction add -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "${rule_name}" --action Allow --ip-address "${agent_ip}" --priority 232 --scm-site true 1>/dev/null
 az functionapp config access-restriction add -g "${app_rg}" -n "${app_name}" --rule-name "${rule_name}" --action Allow --ip-address "${agent_ip}" --priority 232 --scm-site true 1>/dev/null
