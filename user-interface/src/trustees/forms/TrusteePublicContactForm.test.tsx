@@ -343,9 +343,7 @@ describe('TrusteePublicContactForm Tests', () => {
   });
 
   test('should not call API when validation fails on submit (create)', async () => {
-    const api = Api2;
-    const mockPost = vi.fn();
-    vi.spyOn(api, 'postTrustee').mockImplementation(mockPost as unknown as typeof Api2.postTrustee);
+    const mockPost = vi.spyOn(Api2, 'postTrustee').mockImplementation(vi.mocked(Api2.postTrustee));
 
     renderWithProps({
       action: 'create',
@@ -360,9 +358,8 @@ describe('TrusteePublicContactForm Tests', () => {
   });
 
   test('should call globalAlert.error when postTrustee rejects during create', async () => {
-    const api = Api2;
     const error = new Error('create failed');
-    vi.spyOn(api, 'postTrustee').mockRejectedValue(error);
+    vi.spyOn(Api2, 'postTrustee').mockRejectedValue(error);
 
     const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
 
