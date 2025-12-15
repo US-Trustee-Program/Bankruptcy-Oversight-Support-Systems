@@ -89,9 +89,9 @@ describe('staff assignment filter use case tests', () => {
   });
 
   test('getOfficeAssignees should return a unique and sorted array of assignees', async () => {
-    const user1 = MockData.getCamsUserReference({ name: 'alfred' });
-    const user2 = MockData.getCamsUserReference({ name: 'boe' });
-    const user3 = MockData.getCamsUserReference({ name: 'frankie' });
+    const user1 = MockData.getCamsUserReference({ id: 'user-1', name: 'alfred' });
+    const user2 = MockData.getCamsUserReference({ id: 'user-2', name: 'boe' });
+    const user3 = MockData.getCamsUserReference({ id: 'user-3', name: 'frankie' });
     const mockStaff = [user3, user1, user2, user2, user1];
     const expectedAssignees = [user1, user2, user3];
 
