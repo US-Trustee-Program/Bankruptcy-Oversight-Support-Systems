@@ -15,7 +15,7 @@ function contains(resource: ResourceActions<object>, action: Action) {
   });
 }
 
-function merge<T extends object>(action: Action, values: T) {
+function merge<T extends Record<string, unknown>>(action: Action, values: T) {
   // Extract only the string properties needed for path templating
   const mergeAction = { ...action };
   let template = mergeAction.path;
