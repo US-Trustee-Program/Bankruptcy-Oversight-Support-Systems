@@ -68,8 +68,7 @@
     "popd",
     "playwright",
     "date",
-    "dot",
-    "ts-node"
+    "dot"
   ],
   "ignoreDependencies": [
     "@azure/cosmos",

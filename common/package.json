@@ -2,7 +2,7 @@
   "name": "common",
   "version": "1.0.0",
   "description": "CAMS common package",
-  "main": "index.js",
+  "main": "src/index.ts",
   "type": "module",
   "scripts": {
     "clean": "rm -rf ./dist && rm -rf ./node_modules && rm -rf ./coverage & rm tsconfig.tsbuildinfo",
@@ -29,9 +29,7 @@
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-jest": "29.2.1",
     "eslint-plugin-prettier": "5.5.4",
-    "jest": "30.2.0",
     "prettier": "3.7.4",
-    "ts-jest": "29.4.6",
     "ts-node": "10.9.2",
     "typescript": "5.9.3",
     "typescript-eslint": "8.48.1"
