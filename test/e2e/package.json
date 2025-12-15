@@ -30,6 +30,7 @@
     "typescript-eslint": "8.46.2"
   },
   "dependencies": {
-    "ts-node": "10.9.2"
+    "ts-node": "10.9.2",
+    "tsx": "4.20.6"
   }
 }
