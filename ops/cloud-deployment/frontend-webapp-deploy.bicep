@@ -246,10 +246,10 @@ var webappConfigProperties = union(
       scmIpSecurityRestrictions: [
         {
           ipAddress: 'Any'
-          action: 'Deny'
+          action: 'Allow'
           priority: 2147483647
-          name: 'Deny all'
-          description: 'Deny all access'
+          name: 'Allow all'
+          description: 'Allow all access'
         }
       ]
       scmIpSecurityRestrictionsDefaultAction: 'Deny'
