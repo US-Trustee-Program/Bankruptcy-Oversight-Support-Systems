@@ -68,7 +68,10 @@
     "popd",
     "playwright",
     "date",
-    "dot"
+    "dot",
+    "tsx",
+    "jest",
+    "depcruise"
   ],
   "ignoreDependencies": [
     "@azure/cosmos",
