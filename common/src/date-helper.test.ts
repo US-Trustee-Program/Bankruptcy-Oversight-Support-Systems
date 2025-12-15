@@ -1,4 +1,4 @@
-const { vi } from 'vitest';
+import { vi } from 'vitest';
 import DateHelper from './date-helper';
 
 const {
