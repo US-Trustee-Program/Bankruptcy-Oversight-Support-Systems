@@ -12,8 +12,7 @@
         "**/dist/**",
         "**/build/**",
         "**/coverage/**",
-        "**/.cache/**",
-        "dev-tools/**"
+        "**/.cache/**"
       ]
     },
     "backend": {
@@ -61,6 +60,11 @@
       "entry": ["**/*.ts"],
       "project": ["**/*.ts"],
       "ignore": ["**/node_modules/**"]
+    },
+    "dev-tools": {
+      "entry": ["**/*.ts"],
+      "project": ["**/*.ts"],
+      "ignore": ["**/node_modules/**", "**/data/**"]
     }
   },
   "ignoreBinaries": [
