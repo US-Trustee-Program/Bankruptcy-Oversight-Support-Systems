@@ -1,10 +1,6 @@
-import { Application } from 'express';
-import request, { SuperTest, Test } from 'supertest';
 import { Server } from 'http';
 
 // Import the Express app creator from backend
-let app: Application;
-let testServer: SuperTest<Test>;
 let httpServer: Server;
 
 // Use a specific test port to avoid conflicts
@@ -15,16 +11,16 @@ const TEST_PORT = 4000;
  * This starts a real HTTP server on port 4000 for testing
  * React components can make real HTTP requests to http://localhost:4000
  */
-export async function initializeTestServer(): Promise<SuperTest<Test>> {
-  if (testServer && httpServer) {
-    return testServer;
+export async function initializeTestServer(): Promise<void> {
+  if (httpServer) {
+    return;
   }
 
   // Dynamically import the backend server
   const { createApp } = await import('../../../backend/express/server.ts');
 
   // Create the Express app
-  app = createApp();
+  const app = createApp();
 
   // Start listening on test port
   await new Promise<void>((resolve) => {
@@ -33,22 +29,6 @@ export async function initializeTestServer(): Promise<SuperTest<Test>> {
       resolve();
     });
   });
-
-  // Also wrap with supertest for convenience
-  testServer = request(app);
-
-  return testServer;
-}
-
-/**
- * Get the test server instance
- * Throws an error if not initialized
- */
-export function getTestServer(): SuperTest<Test> {
-  if (!testServer) {
-    throw new Error('Test server not initialized. Call initializeTestServer() first.');
-  }
-  return testServer;
 }
 
 /**
@@ -73,8 +53,6 @@ export async function cleanupTestServer(): Promise<void> {
     });
     httpServer = null as any;
   }
-  testServer = null as any;
-  app = null as any;
 }
 
 /**
