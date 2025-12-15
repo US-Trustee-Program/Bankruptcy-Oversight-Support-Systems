@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { ApplicationContext } from '../../types/basic';
 import {
   TrusteeAppointmentsMongoRepository,
@@ -45,7 +46,7 @@ describe('TrusteeAppointmentsMongoRepository', () => {
 
   afterEach(async () => {
     await closeDeferred(context);
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
     repository.release();
   });
 
@@ -106,7 +107,7 @@ describe('TrusteeAppointmentsMongoRepository', () => {
     };
 
     test('should retrieve a trustee appointment by id successfully', async () => {
-      const mockAdapter = jest
+      const mockAdapter = vi
         .spyOn(MongoCollectionAdapter.prototype, 'findOne')
         .mockResolvedValue(sampleAppointmentDocument);
 
@@ -120,7 +121,7 @@ describe('TrusteeAppointmentsMongoRepository', () => {
     });
 
     test('should throw error when appointment not found', async () => {
-      const mockAdapter = jest
+      const mockAdapter = vi
         .spyOn(MongoCollectionAdapter.prototype, 'findOne')
         .mockResolvedValue(null);
 
@@ -133,7 +134,7 @@ describe('TrusteeAppointmentsMongoRepository', () => {
 
     test('should handle database errors', async () => {
       const error = new Error('Database connection failed');
-      const mockAdapter = jest
+      const mockAdapter = vi
         .spyOn(MongoCollectionAdapter.prototype, 'findOne')
         .mockRejectedValue(error);
 
@@ -177,7 +178,7 @@ describe('TrusteeAppointmentsMongoRepository', () => {
         },
       ];
 
-      const mockAdapter = jest
+      const mockAdapter = vi
         .spyOn(MongoCollectionAdapter.prototype, 'find')
         .mockResolvedValue(mockAppointments);
 
@@ -192,9 +193,7 @@ describe('TrusteeAppointmentsMongoRepository', () => {
     });
 
     test('should return empty array when trustee has no appointments', async () => {
-      const mockAdapter = jest
-        .spyOn(MongoCollectionAdapter.prototype, 'find')
-        .mockResolvedValue([]);
+      const mockAdapter = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
 
       const result = await repository.getTrusteeAppointments('trustee-1');
 
@@ -204,7 +203,7 @@ describe('TrusteeAppointmentsMongoRepository', () => {
 
     test('should handle database errors', async () => {
       const error = new Error('Database connection failed');
-      const mockAdapter = jest
+      const mockAdapter = vi
         .spyOn(MongoCollectionAdapter.prototype, 'find')
         .mockRejectedValue(error);
 

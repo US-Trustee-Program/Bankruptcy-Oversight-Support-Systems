@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext, getTheThrownError } from '../../testing/testing-utilities';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
@@ -15,7 +16,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     });
 
     afterEach(() => {
-      jest.restoreAllMocks();
+      vi.restoreAllMocks();
     });
 
     test('should return list of appointments for a trustee', async () => {
@@ -26,10 +27,10 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         MockData.getTrusteeAppointment({ trusteeId }),
       ];
 
-      jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
-      jest
-        .spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments')
-        .mockResolvedValue(mockAppointments);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue(
+        mockAppointments,
+      );
 
       const result = await trusteeAppointmentsUseCase.getTrusteeAppointments(context, trusteeId);
 
@@ -42,8 +43,8 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       const trusteeId = 'trustee-456';
       const mockTrustee = MockData.getTrustee({ trusteeId });
 
-      jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
-      jest.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
 
       const result = await trusteeAppointmentsUseCase.getTrusteeAppointments(context, trusteeId);
 
@@ -55,7 +56,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       const trusteeId = 'non-existent-trustee';
       const repositoryError = new Error('Trustee not found');
 
-      jest.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(repositoryError);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(repositoryError);
 
       const actualError = await getTheThrownError(() =>
         trusteeAppointmentsUseCase.getTrusteeAppointments(context, trusteeId),
@@ -70,10 +71,10 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       const mockTrustee = MockData.getTrustee({ trusteeId });
       const repositoryError = new Error('Database error');
 
-      jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
-      jest
-        .spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments')
-        .mockRejectedValue(repositoryError);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockRejectedValue(
+        repositoryError,
+      );
 
       const actualError = await getTheThrownError(() =>
         trusteeAppointmentsUseCase.getTrusteeAppointments(context, trusteeId),
@@ -88,12 +89,12 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         MockData.getTrusteeAppointment({ trusteeId }),
         MockData.getTrusteeAppointment({ trusteeId }),
       ];
-      const logSpy = jest.spyOn(context.logger, 'info');
+      const logSpy = vi.spyOn(context.logger, 'info');
 
-      jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
-      jest
-        .spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments')
-        .mockResolvedValue(mockAppointments);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue(
+        mockAppointments,
+      );
 
       await trusteeAppointmentsUseCase.getTrusteeAppointments(context, trusteeId);
 
