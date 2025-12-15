@@ -88,7 +88,6 @@ flowchart LR
     reusable_build_info_yml_build_info["Run Info"]
     continuous_deployment_yml_accessibility_test["accessibility-test"]
     reusable_accessibility_yml["reusable-accessibility.yml"]
-    reusable_accessibility_yml_pa11y_accessibility_test["pa11y-accessibility-test"]
     reusable_accessibility_yml_playwright_accessibility_test["playwright-accessibility-test"]
     continuous_deployment_yml_unit_test_frontend["unit-test-frontend"]
     reusable_unit_test_yml["reusable-unit-test.yml"]
@@ -151,7 +150,6 @@ flowchart LR
     reusable_build_info_yml --> reusable_build_info_yml_build_info
     continuous_deployment_yml_setup --> reusable_build_info_yml
     continuous_deployment_yml --> continuous_deployment_yml_accessibility_test
-    reusable_accessibility_yml --> reusable_accessibility_yml_pa11y_accessibility_test
     reusable_accessibility_yml --> reusable_accessibility_yml_playwright_accessibility_test
     continuous_deployment_yml_accessibility_test --> reusable_accessibility_yml
     continuous_deployment_yml --> continuous_deployment_yml_unit_test_frontend
@@ -231,7 +229,6 @@ flowchart LR
     class reusable_build_info_yml_build_info job
     class continuous_deployment_yml_accessibility_test job
     class reusable_accessibility_yml reusable
-    class reusable_accessibility_yml_pa11y_accessibility_test job
     class reusable_accessibility_yml_playwright_accessibility_test job
     class continuous_deployment_yml_unit_test_frontend job
     class reusable_unit_test_yml reusable
@@ -677,7 +674,6 @@ flowchart LR
     reusable_build_info_yml_build_info["Run Info"]
     continuous_deployment_yml_accessibility_test["accessibility-test"]
     reusable_accessibility_yml["reusable-accessibility.yml"]
-    reusable_accessibility_yml_pa11y_accessibility_test["pa11y-accessibility-test"]
     reusable_accessibility_yml_playwright_accessibility_test["playwright-accessibility-test"]
     continuous_deployment_yml_unit_test_frontend["unit-test-frontend"]
     reusable_unit_test_yml["reusable-unit-test.yml"]
@@ -740,7 +736,6 @@ flowchart LR
     reusable_build_info_yml --> reusable_build_info_yml_build_info
     continuous_deployment_yml_setup --> reusable_build_info_yml
     continuous_deployment_yml --> continuous_deployment_yml_accessibility_test
-    reusable_accessibility_yml --> reusable_accessibility_yml_pa11y_accessibility_test
     reusable_accessibility_yml --> reusable_accessibility_yml_playwright_accessibility_test
     continuous_deployment_yml_accessibility_test --> reusable_accessibility_yml
     continuous_deployment_yml --> continuous_deployment_yml_unit_test_frontend
@@ -820,7 +815,6 @@ flowchart LR
     class reusable_build_info_yml_build_info job
     class continuous_deployment_yml_accessibility_test job
     class reusable_accessibility_yml reusable
-    class reusable_accessibility_yml_pa11y_accessibility_test job
     class reusable_accessibility_yml_playwright_accessibility_test job
     class continuous_deployment_yml_unit_test_frontend job
     class reusable_unit_test_yml reusable
@@ -1372,7 +1366,7 @@ flowchart LR
 - **Azure Deployment - Infrastructure** (`reusable-deploy.yml`)
   - Jobs: 1
 - **End-to-end Tests** (`reusable-accessibility.yml`)
-  - Jobs: 2
+  - Jobs: 1
 - **Deploy code** (`sub-deploy-code.yml`)
   - Jobs: 5
 - **Execute Node Project Unit Tests** (`reusable-unit-test.yml`)
