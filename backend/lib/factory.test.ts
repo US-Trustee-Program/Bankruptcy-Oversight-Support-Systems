@@ -28,6 +28,7 @@ describe('Factory function-apps', () => {
   let OktaUserGroupGateway;
   let MockUserGroupGateway;
   let StaffMongoRepository;
+  let TrusteeAppointmentsMongoRepository;
 
   beforeEach(async () => {
     await jest.isolateModulesAsync(async () => {
@@ -95,6 +96,10 @@ describe('Factory function-apps', () => {
 
       StaffMongoRepository = (await import('./adapters/gateways/mongo/staff.mongo.repository'))
         .StaffMongoRepository;
+
+      TrusteeAppointmentsMongoRepository = (
+        await import('./adapters/gateways/mongo/trustee-appointments.mongo.repository')
+      ).TrusteeAppointmentsMongoRepository;
     });
   });
 
@@ -251,5 +256,15 @@ describe('Factory function-apps', () => {
   test('getStaffRepository', async () => {
     const obj = factory.getStaffRepository(dbContext);
     expect(obj).toBeInstanceOf(StaffMongoRepository);
+  });
+
+  test('getTrusteeAppointmentsRepository', async () => {
+    const obj = factory.getTrusteeAppointmentsRepository(dbContext);
+    expect(obj).toBeInstanceOf(TrusteeAppointmentsMongoRepository);
+  });
+
+  test('getTrusteeAppointmentsRepository mock', async () => {
+    const mockObj = factory.getTrusteeAppointmentsRepository(mockDbContext);
+    expect(mockObj).toBeInstanceOf(MockMongoRepository);
   });
 });
