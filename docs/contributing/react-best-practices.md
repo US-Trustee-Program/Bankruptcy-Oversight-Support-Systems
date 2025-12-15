@@ -36,18 +36,17 @@ All patterns, examples, and best practices in this guide are for **client-side R
 React 19 brings significant improvements to client-side applications:
 
 1. **React Compiler** - Automatically optimizes re-renders without manual memoization
-2. **`use()` hook** - First-class support for promises and async data fetching in components
-3. **Actions** - Simplified form handling with `useActionState` and `useFormStatus` (client-side)
-4. **`useOptimistic`** - Built-in optimistic UI updates for better perceived performance
-5. **Concurrent Features** - `useTransition` and `useDeferredValue` for responsive UIs
-6. **Suspense** - Production-ready for client-side data fetching
+2. **Actions** - Simplified form handling with `useActionState` and `useFormStatus` (client-side)
+3. **`useOptimistic`** - Built-in optimistic UI updates for better perceived performance
+4. **Concurrent Features** - `useTransition` and `useDeferredValue` for responsive UIs
+5. **Suspense** - Production-ready for code splitting and lazy loading
 
 ### Key Mindset Shifts for React 19 SPAs
 
 - **Compiler over manual memoization**: Let React Compiler handle optimization automatically
-- **`use()` over `useEffect` for data**: Fetch data with `use()` and Suspense, not effects
+- **Custom hooks for data fetching**: Encapsulate `useEffect` data fetching patterns in custom hooks
 - **Actions for forms**: Use `useActionState` for form submissions instead of manual state management
-- **Suspense-first**: Embrace Suspense boundaries for async operations
+- **Suspense for code splitting**: Use Suspense with lazy loading for better performance
 
 ---
 
@@ -238,18 +237,14 @@ function UserDashboard({ userId }) {
 }
 
 // ✅ GOOD: Focused components with single responsibility
-import { use, Suspense } from 'react';
-import { useApi2 } from '@/lib/hooks/UseApi2';
+import { useState, useEffect } from 'react';
+import { Api2 } from '@/lib/models/api2';
 
 function UserDashboard({ userId }) {
   return (
     <div>
-      <Suspense fallback={<ProfileSkeleton />}>
-        <UserProfile userId={userId} />
-      </Suspense>
-      <Suspense fallback={<div>Loading posts...</div>}>
-        <UserPosts userId={userId} />
-      </Suspense>
+      <UserProfile userId={userId} />
+      <UserPosts userId={userId} />
       <FriendsList userId={userId} />
       <NotificationCenter />
       <UserSettings />
@@ -258,9 +253,29 @@ function UserDashboard({ userId }) {
 }
 
 function UserProfile({ userId }) {
-  const api = useApi2();
-  // use() hook suspends while loading
-  const user = use(api.getUserProfile(userId));
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchUser = async () => {
+      try {
+        const response = await Api2.getUserProfile(userId);
+        if (!cancelled) {
+          setUser(response.data[0]);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error('Failed to fetch user:', err);
+        if (!cancelled) setLoading(false);
+      }
+    };
+    fetchUser();
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  if (loading) return <div>Loading profile...</div>;
+  if (!user) return null;
 
   return (
     <div className="profile">
@@ -272,12 +287,27 @@ function UserProfile({ userId }) {
 }
 
 function UserPosts({ userId }) {
-  const api = useApi2();
-  const posts = use(api.getUserPosts(userId));
+  const [posts, setPosts] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchPosts = async () => {
+      try {
+        const response = await Api2.getUserPosts(userId);
+        if (!cancelled) setPosts(response.data);
+      } catch (err) {
+        console.error('Failed to fetch posts:', err);
+      }
+    };
+    fetchPosts();
+    return () => { cancelled = true; };
+  }, [userId]);
 
   const handlePostCreate = async (post) => {
-    const response = await api.post(`/posts`, post);
-    // Invalidate cache or refetch
+    const response = await Api2.post(`/posts`, post);
+    // Refresh posts after creation
+    const updatedPosts = await Api2.getUserPosts(userId);
+    setPosts(updatedPosts.data);
   };
 
   return (
@@ -341,28 +371,54 @@ function App() {
 **Children as Function (Render Props via Children)**
 
 ```tsx
-// ✅ GOOD: Children as function with use() hook
-import { use, Suspense } from 'react';
-import { useApi2 } from '@/lib/hooks/UseApi2';
+// ✅ GOOD: Children as function with useEffect
+import { useState, useEffect } from 'react';
+import { Api2 } from '@/lib/models/api2';
 
 function DataFetcher({ fetchFn, children }) {
-  // Suspends while loading, throws on error (caught by Error Boundary)
-  const data = use(fetchFn());
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const response = await fetchFn();
+        if (!cancelled) {
+          setData(response.data[0]);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchFn]);
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error loading data</div>;
   return children({ data });
 }
 
 // Usage with Api2
 function UserProfile() {
-  const api = useApi2();
-
   return (
-    <ErrorBoundary fallback={<div>Error loading user</div>}>
-      <Suspense fallback={<div>Loading...</div>}>
-        <DataFetcher fetchFn={() => api.getMe()}>
-          {({ data }) => <div>Hello, {data.name}</div>}
-        </DataFetcher>
-      </Suspense>
-    </ErrorBoundary>
+    <DataFetcher fetchFn={() => Api2.getMe()}>
+      {({ data }) => <div>Hello, {data?.name}</div>}
+    </DataFetcher>
   );
 }
 ```
@@ -671,44 +727,68 @@ function useOnlineStatus() {
   return isOnline;
 }
 
-// ✅ GOOD: Custom hook with Api2 and use() hook
-import { use } from 'react';
-import { useApi2 } from '@/lib/hooks/UseApi2';
+// ✅ GOOD: Custom hook with Api2 and useEffect (when pattern repeats)
+import { useState, useEffect } from 'react';
+import { Api2 } from '@/lib/models/api2';
 
 function useSearch(query) {
-  const api = useApi2();
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  if (!query) {
-    return [];
-  }
+  useEffect(() => {
+    if (!query) {
+      setResults([]);
+      return;
+    }
 
-  // Suspends while searching
-  return use(api.searchCases({ query }));
+    let cancelled = false;
+
+    const search = async () => {
+      try {
+        setLoading(true);
+        const response = await Api2.searchCases({ query });
+        if (!cancelled) {
+          setResults(response.data);
+        }
+      } catch (err) {
+        console.error('Search failed:', err);
+        if (!cancelled) {
+          setResults([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    search();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [query]);
+
+  return { results, loading };
 }
 
 function SearchInput() {
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounce(query, 500);
   const isOnline = useOnlineStatus();
+  const { results, loading } = useSearch(debouncedQuery);
 
   return (
     <div>
       {!isOnline && <div>Offline</div>}
       <input value={query} onChange={e => setQuery(e.target.value)} />
-      <Suspense fallback={<div>Searching...</div>}>
-        {debouncedQuery && <SearchResults query={debouncedQuery} />}
-      </Suspense>
+      {loading && <div>Searching...</div>}
+      {!loading && results.length > 0 && (
+        <ul>
+          {results.map(r => <li key={r.id}>{r.name}</li>)}
+        </ul>
+      )}
     </div>
-  );
-}
-
-function SearchResults({ query }) {
-  const results = useSearch(query);
-
-  return (
-    <ul>
-      {results.map(r => <li key={r.id}>{r.name}</li>)}
-    </ul>
   );
 }
 ```
@@ -1436,12 +1516,13 @@ function ProductList({ products, filters }) {
 - https://react.dev/learn/reusing-logic-with-custom-hooks
 - https://react.dev/learn/you-might-not-need-an-effect
 
-### 7. Effects: For Synchronization Only, Not Computation or Data Fetching
+### 7. Effects: For Side Effects and Data Fetching
 
-Use `useEffect` only to synchronize with external systems. In React 19, **do not use effects for data fetching** - use the `use()` hook instead.
+Use `useEffect` to synchronize with external systems and fetch data in your SPA.
 
 **Practice**
-- Use `useEffect` exclusively for **synchronizing with external systems** (side effects):
+- Use `useEffect` for **side effects and external system interactions**:
+  - Data fetching from APIs
   - Subscriptions (WebSocket, EventSource)
   - Timers (setTimeout, setInterval)
   - Browser APIs (document manipulation, imperative APIs)
@@ -1453,24 +1534,23 @@ Use `useEffect` only to synchronize with external systems. In React 19, **do not
   - Any external state that could change during rendering
   - See Section 4.1 for full `useSyncExternalStore` documentation
 - **DO NOT use useEffect for**:
-  - Data fetching (use `use()` hook + Suspense instead - see Section 11.3)
   - Computing derived values (compute during render - see Section 6)
   - Responding to prop changes (handle in render or event handlers)
   - Reading external state values (use `useSyncExternalStore` instead)
 - Always clean up effects that create subscriptions or register listeners
 - Keep effects minimal with explicit dependencies
+- Encapsulate data fetching logic in custom hooks when reused across components
 
 **Why / Problems it solves**
-- React 19's `use()` hook provides better data fetching patterns than effects
-- Effects run after paint, causing unnecessary extra renders for data fetching
+- Effects provide a clean way to handle async operations like data fetching
+- Custom hooks with effects keep components focused on rendering
 - Proper cleanup prevents memory leaks and stale subscriptions
-- Separating synchronization from data fetching makes code clearer
+- Separating sync logic from rendering logic makes code clearer
 
 **Signals you misused an effect**
-- Effect fetches data and sets state (use `use()` hook instead)
-- Effect sets state from other state/props with no external side effect
+- Effect sets state from other state/props with no external side effect (compute during render instead)
 - Effect exists with no cleanup and no real external interaction
-- You're computing values instead of synchronizing systems
+- You're computing values instead of performing side effects
 
 ```tsx
 // ❌ BAD: No cleanup causes memory leaks
@@ -1544,71 +1624,121 @@ function ChatRoom({ roomId }) {
 }
 ```
 
-**React 19: Don't Fetch Data in Effects**
+**Data Fetching with useEffect and Api2**
 
 ```tsx
-// ❌ BAD: Data fetching in useEffect (React 18 pattern, outdated in React 19)
-function UserProfile({ userId }) {
-  const [user, setUser] = useState(null);
+// ❌ BAD: No cancellation or proper error handling
+function CaseDetail({ caseId }) {
+  const [caseData, setCaseData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`/api/cases/${caseId}`)
+      .then(res => res.json())
+      .then(setCaseData)
+      .finally(() => setLoading(false));
+  }, [caseId]);
+
+  if (loading) return <div>Loading...</div>;
+  return <div>{caseData?.debtor?.name}</div>;
+}
+
+// ✅ GOOD: Proper data fetching with Api2 and cleanup
+import { useState, useEffect } from 'react';
+import { Api2 } from '@/lib/models/api2';
+
+function CaseDetail({ caseId }) {
+  const [caseData, setCaseData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
 
-    setLoading(true);
-    fetch(`/api/users/${userId}`)
-      .then(res => res.json())
-      .then(data => {
+    const fetchCase = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await Api2.getCaseDetail(caseId);
         if (!cancelled) {
-          setUser(data);
-          setLoading(false);
+          setCaseData(response.data[0]);
         }
-      })
-      .catch(err => {
+      } catch (err) {
         if (!cancelled) {
           setError(err);
+        }
+      } finally {
+        if (!cancelled) {
           setLoading(false);
         }
-      });
+      }
+    };
+
+    fetchCase();
 
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [caseId]);
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error!</div>;
-  return <div>{user.name}</div>;
+  if (loading) return <div>Loading case...</div>;
+  if (error) return <div>Error loading case: {error.message}</div>;
+  if (!caseData) return <div>No case found</div>;
+  return <div>Case: {caseData.caseId} - {caseData.debtor.name}</div>;
 }
 
-// ✅ GOOD: Use the use() hook with Api2 (React 19)
-import { use } from 'react';
-import { useApi2 } from '@/lib/hooks/UseApi2';
+// ✅ ALSO GOOD (when pattern repeats): Extract into custom hook
+function useCaseDetail(caseId) {
+  const [caseData, setCaseData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-function UserProfile({ userId }) {
-  const api = useApi2();
-  // Suspends while loading, throws on error (caught by Error Boundary)
-  const user = use(api.getCaseDetail(userId));
-  return <div>{user.debtor.name}</div>;
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchCase = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await Api2.getCaseDetail(caseId);
+        if (!cancelled) {
+          setCaseData(response.data[0]);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchCase();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [caseId]);
+
+  return { caseData, loading, error };
 }
 
-// Parent wraps with Suspense + Error Boundary:
-function App() {
-  return (
-    <ErrorBoundary fallback={<div>Failed to load case</div>}>
-      <Suspense fallback={<div>Loading case...</div>}>
-        <UserProfile userId="081-23-12345" />
-      </Suspense>
-    </ErrorBoundary>
-  );
-}
+// Usage: Clean component focused on rendering
+function CaseDetail({ caseId }) {
+  const { caseData, loading, error } = useCaseDetail(caseId);
 
-// See Section 11.3 for full use() hook documentation
+  if (loading) return <div>Loading case...</div>;
+  if (error) return <div>Error loading case: {error.message}</div>;
+  if (!caseData) return <div>No case found</div>;
+  return <div>Case: {caseData.caseId} - {caseData.debtor.name}</div>;
+}
 ```
 
 **When useEffect vs useSyncExternalStore:**
-- **useEffect** for side effects (connections, listeners, timers, DOM manipulation):
+- **useEffect** for side effects (data fetching, connections, listeners, timers, DOM manipulation):
+  - Data fetching from APIs
   - WebSocket connections
   - Third-party widget initialization
   - Timers and intervals
@@ -1621,8 +1751,7 @@ function App() {
 
 **Sources**
 - https://react.dev/learn/you-might-not-need-an-effect
-- https://react.dev/reference/react/use
-- https://react.dev/reference/react/useMemo
+- https://react.dev/learn/synchronizing-with-effects
 
 ---
 
@@ -2354,58 +2483,88 @@ function App() {
 **Sources**
 - https://react.dev/reference/react/useDeferredValue
 
-#### 11.3 use() Hook: Await Promises in Components
+#### 11.3 Data Fetching with useEffect
 
-The `use()` hook allows components to read promises and context, enabling cleaner async code.
+Fetch data directly in components using `useEffect`. Only extract into custom hooks when you have a clear need for reuse.
 
 **Practice**
-- Use `use()` to read promises directly in render (replaces `useEffect` + `useState` for data fetching)
-- Combine with Suspense boundaries for loading states
-- Combine with Error Boundaries for error handling
-- Only works with promises that are created outside render or cached
+- Fetch data in components using `useEffect` with proper cleanup
+- Handle loading, error, and data states with `useState`
+- Use cancellation flags to prevent state updates after unmount
+- Import and use `Api2` directly for all API calls
+- **Only create custom hooks when**:
+  - The same data fetching pattern is repeated across 3+ components
+  - Complex fetching logic is obscuring component rendering
+  - You need to share and maintain data fetching logic centrally
 
 **Why / Problems it solves**
-- Eliminates `useEffect` + `useState` boilerplate for data fetching in SPAs
-- Automatic loading states via Suspense
-- Automatic error handling via Error Boundaries
-- Cleaner, more declarative data fetching
-- Enables fetching data in components instead of effects
+- Direct `useEffect` keeps code simple and colocated
+- No premature abstraction - you can refactor to a hook later if needed
+- Easier to understand data flow when it's in the component
+- Custom hooks add value only when there's genuine reuse
 
-**Signals to use use() hook**
-- Fetching data in components (API calls in SPAs)
-- Want to eliminate `useEffect` + `useState` patterns
-- Need Suspense-based loading states
-- Building data-driven UIs
+**When to extract into a custom hook**
+- Same fetching pattern repeated in multiple places
+- Complex data fetching logic that obscures component purpose
+- Need centralized control over data fetching behavior
 
 ```tsx
-// ❌ BAD: useEffect + useState for data fetching
+// ❌ BAD: No cancellation or error handling
+function CaseDetail({ caseId }) {
+  const [caseData, setCaseData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Api2.getCaseDetail(caseId)
+      .then(response => setCaseData(response.data[0]))
+      .finally(() => setLoading(false));
+  }, [caseId]);
+
+  if (loading) return <div>Loading...</div>;
+  return <div>Case: {caseData?.caseId}</div>;
+}
+
+// ✅ GOOD: Proper data fetching with cleanup
+import { useState, useEffect } from 'react';
+import { Api2 } from '@/lib/models/api2';
+
 function CaseDetail({ caseId }) {
   const [caseData, setCaseData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    setLoading(true);
-    fetch(`/api/cases/${caseId}`)
-      .then(res => res.json())
-      .then(setCaseData)
-      .catch(setError)
-      .finally(() => setLoading(false));
+    let cancelled = false;
+
+    const fetchCase = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await Api2.getCaseDetail(caseId);
+        if (!cancelled) {
+          setCaseData(response.data[0]);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchCase();
+
+    return () => {
+      cancelled = true;
+    };
   }, [caseId]);
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error.message}</div>;
-  return <div>{caseData.debtor.name}</div>;
-}
-
-// ✅ GOOD: use() hook with Api2 + Suspense + Error Boundary
-import { use, Suspense } from 'react';
-import { useApi2 } from '@/lib/hooks/UseApi2';
-
-function CaseDetail({ caseId }) {
-  const api = useApi2();
-  // use() suspends while promise is pending
-  const caseData = use(api.getCaseDetail(caseId));
+  if (loading) return <div>Loading case...</div>;
+  if (error) return <div>Error loading case: {error.message}</div>;
+  if (!caseData) return <div>No case found</div>;
 
   return (
     <div>
@@ -2415,105 +2574,179 @@ function CaseDetail({ caseId }) {
   );
 }
 
-// In parent component: wrap with Suspense + Error Boundary
-function App() {
-  return (
-    <ErrorBoundary fallback={<div>Failed to load case</div>}>
-      <Suspense fallback={<div>Loading case...</div>}>
-        <CaseDetail caseId="081-23-12345" />
-      </Suspense>
-    </ErrorBoundary>
-  );
+// ✅ ALSO GOOD (when needed): Extract into custom hook for reuse
+function useCaseDetail(caseId) {
+  const [caseData, setCaseData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchCase = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await Api2.getCaseDetail(caseId);
+        if (!cancelled) {
+          setCaseData(response.data[0]);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchCase();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [caseId]);
+
+  return { caseData, loading, error };
 }
-```
 
-**Important: Promise Caching for use()**
-
-The promise passed to `use()` must be stable across renders. **Api2 already handles caching** for many endpoints (see `withCache` function in `api2.ts`):
-
-```tsx
-// ✅ GOOD: Api2 provides built-in caching
-import { use } from 'react';
-import { useApi2 } from '@/lib/hooks/UseApi2';
-
+// Usage: Extract hook only when pattern is reused across multiple components
 function CaseDetail({ caseId }) {
-  const api = useApi2();
+  const { caseData, loading, error } = useCaseDetail(caseId);
 
-  // Api2 methods that use caching:
-  // - getCourts() - cached for 1 day
-  // - getOffices() - cached for 1 day
-  // - getOfficeAttorneys(officeCode) - cached
-  // - getRoleAndOfficeGroupNames() - cached for 15 minutes
-
-  const caseData = use(api.getCaseDetail(caseId));
-  const courts = use(api.getCourts()); // Cached for 1 day
+  if (loading) return <div>Loading case...</div>;
+  if (error) return <div>Error loading case: {error.message}</div>;
+  if (!caseData) return <div>No case found</div>;
 
   return (
     <div>
-      <h1>{caseData.caseId}</h1>
-      <p>Court: {courts.find(c => c.id === caseData.courtId)?.name}</p>
+      <h1>Case: {caseData.caseId}</h1>
+      <p>Debtor: {caseData.debtor.name}</p>
     </div>
   );
 }
+```
 
-// For endpoints without built-in caching, implement promise caching:
-const caseCache = new Map();
+**Advanced Pattern: Reusable Generic Data Fetching Hook (When Needed)**
 
-function getCachedCase(api, caseId) {
-  if (!caseCache.has(caseId)) {
-    caseCache.set(caseId, api.getCaseDetail(caseId));
-  }
-  return caseCache.get(caseId);
+Only create this abstraction when the pattern repeats across multiple components.
+
+```tsx
+// ✅ GOOD: Generic data fetching hook with TypeScript (when pattern repeats 3+ times)
+import { useState, useEffect } from 'react';
+
+interface FetchState<T> {
+  data: T | null;
+  loading: boolean;
+  error: Error | null;
 }
 
-function CaseDetailWithCache({ caseId }) {
-  const api = useApi2();
-  const caseData = use(getCachedCase(api, caseId)); // Safe: cached promise
-  return <div>{caseData.debtor.name}</div>;
+function useApiData<T>(
+  fetchFn: () => Promise<{ data: T[] }>,
+  deps: React.DependencyList = []
+): FetchState<T> {
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await fetchFn();
+        if (!cancelled) {
+          setData(response.data[0]);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err : new Error('Unknown error'));
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, deps);
+
+  return { data, loading, error };
+}
+
+// Usage with Api2
+function CaseDetail({ caseId }) {
+  const { data: caseData, loading, error } = useApiData(
+    () => Api2.getCaseDetail(caseId),
+    [caseId]
+  );
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
+  if (!caseData) return <div>No case found</div>;
+
+  return <div>Case: {caseData.caseId}</div>;
 }
 ```
 
-**Project-Specific: Api2 Caching Layer**
+**Project-Specific: Api2 Integration**
 
-This project provides a fluent API wrapper (`Api2`) around `fetch` with built-in caching support. The `Api2` module is located at `user-interface/src/lib/models/api2.ts` and accessed via `user-interface/src/lib/hooks/UseApi2.ts`.
+This project provides a fluent API wrapper (`Api2`) around `fetch` with built-in caching support. The `Api2` module is located at `user-interface/src/lib/models/api2.ts`.
 
 ```tsx
-// ✅ GOOD: Using Api2 with built-in caching
-import { useApi2 } from '@/lib/hooks/UseApi2';
+// ✅ GOOD: Using Api2 directly with built-in caching
+import { useState, useEffect } from 'react';
+import { Api2 } from '@/lib/models/api2';
 
-function useUserData(userId: string) {
-  const api = useApi2();
+function CourtsSelector() {
+  const [courts, setCourts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Api2 methods with caching support:
-  // - getCourts() - cached for 1 day
-  // - getOffices() - cached for 1 day
-  // - getOfficeAttorneys() - cached (default TTL)
-  // - getRoleAndOfficeGroupNames() - cached for 15 minutes
-  // - getPrivilegedIdentityUsers() - cached for 15 minutes
+  useEffect(() => {
+    let cancelled = false;
 
-  return use(api.getCaseDetail(userId)); // Fetches via Api2's fluent interface
-}
-
-// Example of Api2's caching implementation
-// From api2.ts lines 220-242:
-function withCache(cacheOptions: { key: string; ttl?: number }) {
-  return {
-    get: async function <T>(path: string, options?: ObjectKeyVal): Promise<ResponseBody<T>> {
-      if (LocalCache.isCacheEnabled()) {
-        const cached = LocalCache.get<ResponseBody<T>>(key);
-        if (cached) {
-          return cached.value;
-        } else {
-          const response = await api().get<T>(path, options);
-          LocalCache.set<ResponseBody<T>>(key, response, cacheOptions.ttl);
-          return response;
+    const fetchCourts = async () => {
+      try {
+        setLoading(true);
+        // Api2.getCourts() is cached for 1 day
+        const response = await Api2.getCourts();
+        if (!cancelled) {
+          setCourts(response.data);
         }
-      } else {
-        return api().get<T>(path, options);
+      } catch (err) {
+        console.error('Failed to fetch courts:', err);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
-    },
-  };
+    };
+
+    fetchCourts();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return { courts, loading };
 }
+
+// Api2 methods with built-in caching:
+// - getCourts() - cached for 1 day
+// - getOffices() - cached for 1 day
+// - getOfficeAttorneys() - cached (default TTL)
+// - getRoleAndOfficeGroupNames() - cached for 15 minutes
+// - getPrivilegedIdentityUsers() - cached for 15 minutes
 ```
 
 **Why Api2 Instead of Third-Party Libraries**:
@@ -2529,7 +2762,8 @@ function withCache(cacheOptions: { key: string; ttl?: number }) {
 - In these cases, consider TanStack Query, but wrap it in a similar abstraction layer
 
 **Sources**
-- https://react.dev/reference/react/use
+- https://react.dev/learn/reusing-logic-with-custom-hooks
+- https://react.dev/learn/synchronizing-with-effects
 
 ### 12. Optimistic Updates for Better UX
 
@@ -2671,16 +2905,16 @@ function ContactForm() {
 
 // ✅ GOOD: Declarative form handling with useActionState and Api2
 import { useActionState } from 'react';
-import { useApi2 } from '@/lib/hooks/UseApi2';
+import { Api2 } from '@/lib/models/api2';
 
 // Action function uses Api2
-async function submitCaseNote(api, prevState, formData) {
+async function submitCaseNote(prevState, formData) {
   try {
     const caseId = formData.get('caseId') as string;
     const title = formData.get('title') as string;
     const content = formData.get('content') as string;
 
-    await api.postCaseNote({ caseId, title, content });
+    await Api2.postCaseNote({ caseId, title, content });
     return { success: true, error: null };
   } catch (error) {
     return { success: false, error: error.message };
@@ -2688,10 +2922,7 @@ async function submitCaseNote(api, prevState, formData) {
 }
 
 function CaseNoteForm({ caseId }) {
-  const api = useApi2();
-  // Bind api to the action function
-  const submitWithApi = submitCaseNote.bind(null, api);
-  const [state, formAction, isPending] = useActionState(submitWithApi, null);
+  const [state, formAction, isPending] = useActionState(submitCaseNote, null);
 
   return (
     <form action={formAction}>
@@ -2716,7 +2947,7 @@ The `useFormStatus` hook allows child components to access the parent form's pen
 // ✅ GOOD: useFormStatus for reusable submit buttons with Api2
 import { useFormStatus } from 'react-dom';
 import { useActionState } from 'react';
-import { useApi2 } from '@/lib/hooks/UseApi2';
+import { Api2 } from '@/lib/models/api2';
 
 function SubmitButton({ children }) {
   const { pending } = useFormStatus();
@@ -2728,13 +2959,13 @@ function SubmitButton({ children }) {
   );
 }
 
-async function submitTrustee(api, prevState, formData) {
+async function submitTrustee(prevState, formData) {
   const firstName = formData.get('firstName') as string;
   const lastName = formData.get('lastName') as string;
   const email = formData.get('email') as string;
 
   try {
-    await api.postTrustee({ firstName, lastName, email });
+    await Api2.postTrustee({ firstName, lastName, email });
     return { success: true, error: null };
   } catch (error) {
     return { success: false, error: error.message };
@@ -2742,9 +2973,7 @@ async function submitTrustee(api, prevState, formData) {
 }
 
 function TrusteeForm() {
-  const api = useApi2();
-  const submitWithApi = submitTrustee.bind(null, api);
-  const [state, formAction] = useActionState(submitWithApi, null);
+  const [state, formAction] = useActionState(submitTrustee, null);
 
   return (
     <form action={formAction}>
@@ -2762,7 +2991,8 @@ function TrusteeForm() {
 **Client-Side Validation with Actions and Api2**
 
 ```tsx
-import { useApi2 } from '@/lib/hooks/UseApi2';
+import { useActionState } from 'react';
+import { Api2 } from '@/lib/models/api2';
 import Validators from '@common/cams/validators';
 import { validateObject, ValidationSpec } from '@common/cams/validation';
 
@@ -2770,7 +3000,7 @@ const subscriptionSpec: ValidationSpec<{ email: string }> = {
   email: [Validators.isEmailAddress],
 };
 
-async function submitWithValidation(api, prevState, formData) {
+async function submitWithValidation(prevState, formData) {
   const email = formData.get('email') as string;
 
   // Client-side validation using our validation library
@@ -2786,7 +3016,7 @@ async function submitWithValidation(api, prevState, formData) {
 
   // API call with Api2
   try {
-    await api.post('/subscribe', { email });
+    await Api2.post('/subscribe', { email });
     return { success: true, error: null };
   } catch (error) {
     return { success: false, error: error.message };
@@ -2794,9 +3024,7 @@ async function submitWithValidation(api, prevState, formData) {
 }
 
 function SubscriptionForm() {
-  const api = useApi2();
-  const submitWithApi = submitWithValidation.bind(null, api);
-  const [state, formAction, isPending] = useActionState(submitWithApi, null);
+  const [state, formAction, isPending] = useActionState(submitWithValidation, null);
 
   return (
     <form action={formAction}>
@@ -2983,15 +3211,16 @@ function SafeComponent() {
 Actions in forms automatically catch errors - handle them in the action return value:
 
 ```tsx
-import { useApi2 } from '@/lib/hooks/UseApi2';
+import { useActionState } from 'react';
+import { Api2 } from '@/lib/models/api2';
 
-async function submitAction(api, prevState, formData) {
+async function submitAction(prevState, formData) {
   try {
     const caseId = formData.get('caseId') as string;
     const note = formData.get('note') as string;
 
     // Api2 automatically handles authentication and throws on error
-    await api.postCaseNote({ caseId, title: 'Note', content: note });
+    await Api2.postCaseNote({ caseId, title: 'Note', content: note });
 
     return { success: true, error: null };
   } catch (error) {
@@ -3004,9 +3233,7 @@ async function submitAction(api, prevState, formData) {
 }
 
 function Form({ caseId }) {
-  const api = useApi2();
-  const submitWithApi = submitAction.bind(null, api);
-  const [state, formAction] = useActionState(submitWithApi, null);
+  const [state, formAction] = useActionState(submitAction, null);
 
   return (
     <form action={formAction}>
@@ -3133,7 +3360,6 @@ function ErrorFallback({ error, resetErrorBoundary }) {
 ```
 
 **Sources**
-- https://react.dev/reference/react/use
 - https://react.dev/reference/react/Component#catching-rendering-errors-with-an-error-boundary
 - https://github.com/bvaughn/react-error-boundary
 
@@ -3150,7 +3376,7 @@ Make invisible contracts explicit with TypeScript. Use types to catch bugs at co
 - Use discriminated unions for complex UI states (loading | error | success)
 - Keep types colocated with the code that uses them (feature-based)
 - Use `unknown` instead of `any` when type is truly unknown
-- Type React 19 features: Actions, FormData, `use()` hook
+- Type React 19 features: Actions, FormData, custom hooks
 - Use generics for reusable components and hooks
 - Leverage type narrowing for safer code
 - Avoid `React.FC` - explicit return types are clearer
@@ -3204,14 +3430,47 @@ function UserCard({ user, onEdit }: UserCardProps) {
   );
 }
 
-// ✅ ALSO GOOD: React 19 with Api2 and use() hook
-import { use, Suspense } from 'react';
-import { useApi2 } from '@/lib/hooks/UseApi2';
+// ✅ ALSO GOOD: React 19 with Api2 and useEffect
+import { useState, useEffect } from 'react';
+import { Api2 } from '@/lib/models/api2';
+import { CaseSearchResponse } from '@common/cams/cases';
 
 function CasesList() {
-  const api = useApi2();
-  // use() hook suspends while loading, throws on error
-  const cases = use(api.searchCases({ query: '', filters: {} }));
+  const [cases, setCases] = useState<CaseSearchResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchCases = async () => {
+      try {
+        setLoading(true);
+        const response = await Api2.searchCases({ query: '', filters: {} });
+        if (!cancelled) {
+          setCases(response);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err : new Error('Unknown error'));
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchCases();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (loading) return <div>Loading cases...</div>;
+  if (error) return <div>Error loading cases: {error.message}</div>;
+  if (!cases) return null;
 
   return (
     <ul>
@@ -3221,17 +3480,6 @@ function CasesList() {
     </ul>
   );
 }
-
-// Wrap with Suspense + Error Boundary in parent:
-function App() {
-  return (
-    <ErrorBoundary fallback={<div>Error loading cases</div>}>
-      <Suspense fallback={<div>Loading cases...</div>}>
-        <CasesList />
-      </Suspense>
-    </ErrorBoundary>
-  );
-}
 ```
 
 **React 19: Typing Actions and Forms with Api2**
@@ -3239,7 +3487,7 @@ function App() {
 ```tsx
 // ✅ GOOD: Type Actions with FormData and Api2
 import { useActionState } from 'react';
-import { useApi2 } from '@/lib/hooks/UseApi2';
+import { Api2 } from '@/lib/models/api2';
 import { CaseNote } from '@common/cams/cases';
 import { ResponseBody } from '@common/api/response';
 
@@ -3266,7 +3514,6 @@ const caseNoteSpec: ValidationSpec<CaseNoteFormData> = {
 };
 
 async function submitCaseNoteAction(
-  api: ReturnType<typeof useApi2>,
   prevState: ActionState | null,
   formData: FormData
 ): Promise<ActionState> {
@@ -3288,7 +3535,7 @@ async function submitCaseNoteAction(
 
   try {
     // Api2 methods are fully typed
-    const response: ResponseBody<CaseNote> | void = await api.postCaseNote({
+    const response: ResponseBody<CaseNote> | void = await Api2.postCaseNote({
       caseId: data.caseId,
       title: data.title,
       content: data.content,
@@ -3304,10 +3551,8 @@ async function submitCaseNoteAction(
 }
 
 function CaseNoteForm({ caseId }: { caseId: string }) {
-  const api = useApi2();
-  const submitWithApi = submitCaseNoteAction.bind(null, api);
   const [state, formAction, isPending] = useActionState<ActionState | null>(
-    submitWithApi,
+    submitCaseNoteAction,
     null
   );
 
@@ -3375,7 +3620,7 @@ async function submitTrustee(
 
   // Proceed with validated data using Api2
   try {
-    await api.postTrustee(data);
+    await Api2.postTrustee(data);
     return { success: true, error: null };
   } catch (error) {
     return { success: false, error: 'Failed to submit' };
@@ -3383,9 +3628,7 @@ async function submitTrustee(
 }
 
 function TrusteeForm() {
-  const api = useApi2();
-  const submitWithApi = submitTrustee.bind(null, api);
-  const [state, formAction, isPending] = useActionState(submitWithApi, null);
+  const [state, formAction, isPending] = useActionState(submitTrustee, null);
 
   return (
     <form action={formAction}>
@@ -3519,40 +3762,73 @@ function UserList({ users }: { users: User[] }) {
 **Generic Custom Hooks with React 19 Patterns**
 
 ```tsx
-// ✅ GOOD: Generic data fetching with use() hook (React 19)
-import { use, Suspense } from 'react';
-import { useApi2 } from '@/lib/hooks/UseApi2';
+// ✅ GOOD: Generic data fetching with useEffect (React 19 SPA, when pattern repeats)
+import { useState, useEffect } from 'react';
+import { Api2 } from '@/lib/models/api2';
 import { ResponseBody } from '@common/api/response';
 
-// Generic hook that leverages use() for data fetching
-function useApiData<T>(fetchFn: () => Promise<ResponseBody<T>>): T {
-  const data = use(fetchFn());
-  // use() suspends during loading and throws errors to Error Boundary
-  // Return type is T (not T | null) because use() guarantees data on success
-  return data.data[0];
+interface FetchState<T> {
+  data: T | null;
+  loading: boolean;
+  error: Error | null;
+}
+
+// Generic hook that uses useEffect for data fetching
+function useApiData<T>(
+  fetchFn: () => Promise<ResponseBody<T>>,
+  deps: React.DependencyList = []
+): FetchState<T> {
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await fetchFn();
+        if (!cancelled) {
+          setData(response.data[0]);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err : new Error('Unknown error'));
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, deps);
+
+  return { data, loading, error };
 }
 
 // Usage with Api2 and proper TypeScript inference
 import { CaseDetail } from '@common/cams/cases';
 
 function CaseProfile({ caseId }: { caseId: string }) {
-  const api = useApi2();
+  // TypeScript infers data as CaseDetail | null
+  const { data: caseData, loading, error } = useApiData<CaseDetail>(
+    () => Api2.getCaseDetail(caseId),
+    [caseId]
+  );
 
-  // TypeScript infers caseData as CaseDetail (not null!)
-  const caseData = useApiData<CaseDetail>(() => api.getCaseDetail(caseId));
+  if (loading) return <div>Loading case...</div>;
+  if (error) return <div>Failed to load case: {error.message}</div>;
+  if (!caseData) return null;
 
   return <div>Case: {caseData.caseId}</div>;
-}
-
-// Wrap with Suspense + Error Boundary in parent:
-function App() {
-  return (
-    <ErrorBoundary fallback={<div>Failed to load case</div>}>
-      <Suspense fallback={<div>Loading case...</div>}>
-        <CaseProfile caseId="081-23-12345" />
-      </Suspense>
-    </ErrorBoundary>
-  );
 }
 ```
 
@@ -4271,27 +4547,33 @@ When you do add third-party libraries, **isolate them behind abstraction layers*
 // user-interface/src/lib/models/api2.ts
 
 // Only Api2 imports fetch directly
-export function useGenericApi(): GenericApiClient {
-  const api = addAuthHeaderToApi();
-
-  return {
-    async get<T = object>(path: string, options?: ObjectKeyVal): Promise<ResponseBody<T>> {
-      const { uriOrPathSubstring, queryParams } = justThePath(path);
-      options = { ...options, ...queryParams };
-      const body = await api.get(uriOrPathSubstring, options);
-      return body as ResponseBody<T>;
-    },
-    // ... other methods
-  };
-}
+export const Api2 = {
+  async get<T = object>(path: string, options?: ObjectKeyVal): Promise<ResponseBody<T>> {
+    const { uriOrPathSubstring, queryParams } = justThePath(path);
+    options = { ...options, ...queryParams };
+    const body = await api.get(uriOrPathSubstring, options);
+    return body as ResponseBody<T>;
+  },
+  // ... other methods
+};
 
 // Components use Api2, not fetch directly
-import { useApi2 } from '@/lib/hooks/UseApi2';
+import { useState, useEffect } from 'react';
+import { Api2 } from '@/lib/models/api2';
 
-function MyComponent() {
-  const api = useApi2();
-  const user = use(api.getCaseDetail(caseId));
+function MyComponent({ caseId }) {
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    Api2.getCaseDetail(caseId).then(response => {
+      if (!cancelled) setUser(response.data[0]);
+    });
+    return () => { cancelled = true; };
+  }, [caseId]);
+
   // ✅ No fetch imported, no knowledge of HTTP internals
+  return user ? <div>{user.debtor.name}</div> : null;
 }
 ```
 
@@ -4448,7 +4730,7 @@ function ContactForm() {
 
 // ✅ GOOD: Proper labels, error association, and validation
 import { useActionState, useId } from 'react';
-import { useApi2 } from '@/lib/hooks/UseApi2';
+import { Api2 } from '@/lib/models/api2';
 import Validators from '@common/cams/validators';
 import { validateObject, ValidationSpec } from '@common/cams/validation';
 
@@ -4456,7 +4738,7 @@ const contactSpec: ValidationSpec<{ email: string }> = {
   email: [Validators.isEmailAddress],
 };
 
-async function submitContact(api, prevState, formData) {
+async function submitContact(prevState, formData) {
   const email = formData.get('email') as string;
 
   // Validate with project's validation library
@@ -4470,7 +4752,7 @@ async function submitContact(api, prevState, formData) {
   }
 
   try {
-    await api.post('/contact', { email });
+    await Api2.post('/contact', { email });
     return { success: true, error: null };
   } catch (error) {
     return { success: false, error: 'Submission failed' };
@@ -4478,9 +4760,7 @@ async function submitContact(api, prevState, formData) {
 }
 
 function ContactForm() {
-  const api = useApi2();
-  const submitWithApi = submitContact.bind(null, api);
-  const [state, formAction] = useActionState(submitWithApi, null);
+  const [state, formAction] = useActionState(submitContact, null);
   const emailId = useId();
   const errorId = useId();
 
@@ -4786,14 +5066,22 @@ async function login(credentials) {
 // Set-Cookie: authToken=xyz; HttpOnly; Secure; SameSite=Strict
 
 // Client-side: Api2 automatically includes credentials
-import { use } from 'react';
-import { useApi2 } from '@/lib/hooks/UseApi2';
+import { useState, useEffect } from 'react';
+import { Api2 } from '@/lib/models/api2';
 
 function UserProfile() {
-  const api = useApi2();
-  // Api2 handles authentication headers and credentials automatically
-  const session = use(api.getMe());
-  return <div>Welcome, {session.user.name}</div>;
+  const [session, setSession] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    // Api2 handles authentication headers and credentials automatically
+    Api2.getMe().then(response => {
+      if (!cancelled) setSession(response.data[0]);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  return session ? <div>Welcome, {session.user.name}</div> : null;
 }
 
 // ✅ GOOD: If you must use localStorage, use useSyncExternalStore (React 19)
@@ -4842,17 +5130,18 @@ function useAuthToken() {
 // Note: Api2 in this project handles authentication via Bearer tokens in headers
 // If your project requires CSRF tokens, Api2 can be extended to include them
 
-import { useApi2 } from '@/lib/hooks/UseApi2';
+import { useActionState } from 'react';
+import { Api2 } from '@/lib/models/api2';
 
 // Example: Custom Api2 extension for CSRF
-async function submitActionWithCSRF(api, prevState, formData) {
+async function submitActionWithCSRF(prevState, formData) {
   const caseId = formData.get('caseId') as string;
   const note = formData.get('note') as string;
 
   try {
     // Api2 methods handle authentication automatically
     // For additional CSRF protection, extend Api2's headers
-    await api.postCaseNote({ caseId, title: 'Note', content: note });
+    await Api2.postCaseNote({ caseId, title: 'Note', content: note });
     return { success: true, error: null };
   } catch (error) {
     return { success: false, error: error.message };
@@ -4860,9 +5149,7 @@ async function submitActionWithCSRF(api, prevState, formData) {
 }
 
 function NoteForm({ caseId }) {
-  const api = useApi2();
-  const submitWithApi = submitActionWithCSRF.bind(null, api);
-  const [state, formAction] = useActionState(submitWithApi, null);
+  const [state, formAction] = useActionState(submitActionWithCSRF, null);
 
   return (
     <form action={formAction}>
@@ -4893,7 +5180,8 @@ function SearchBar() {
 }
 
 // ✅ GOOD: Client-side validation + server validation with Api2
-import { useApi2 } from '@/lib/hooks/UseApi2';
+import { useState } from 'react';
+import { Api2 } from '@/lib/models/api2';
 import Validators from '@common/cams/validators';
 import { validateObject, ValidationSpec } from '@common/cams/validation';
 
@@ -4905,7 +5193,6 @@ const searchSpec: ValidationSpec<{ query: string }> = {
 };
 
 function CaseSearchBar() {
-  const api = useApi2();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [error, setError] = useState('');
@@ -4921,7 +5208,7 @@ function CaseSearchBar() {
 
     try {
       // Api2 handles proper encoding and authentication
-      const response = await api.searchCases({ query, filters: {} });
+      const response = await Api2.searchCases({ query, filters: {} });
       setResults(response.data);
       setError('');
     } catch (err) {
@@ -5405,47 +5692,7 @@ function ThemeToggle() {
 
 ### React 19 Specific Antipatterns
 
-#### Antipattern 6: Using useEffect for Data Fetching (React 19)
-
-In React 19, data fetching should use the `use()` hook with Suspense, not effects.
-
-```tsx
-// ❌ BAD: useEffect for data fetching (outdated in React 19)
-function UserProfile({ userId }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    setLoading(true);
-    fetch(`/api/users/${userId}`)
-      .then(r => r.json())
-      .then(data => {
-        setUser(data);
-        setLoading(false);
-      });
-  }, [userId]);
-
-  if (loading) return <div>Loading...</div>;
-  return <div>{user?.name}</div>;
-}
-
-// ✅ GOOD: use() hook with Api2 and Suspense (React 19)
-import { use } from 'react';
-import { useApi2 } from '@/lib/hooks/UseApi2';
-
-function CaseProfile({ caseId }) {
-  const api = useApi2();
-  const caseData = use(api.getCaseDetail(caseId));
-  return <div>Case: {caseData.caseId}</div>;
-}
-
-// Wrap with Suspense in parent:
-<Suspense fallback={<div>Loading...</div>}>
-  <CaseProfile caseId="081-23-12345" />
-</Suspense>
-```
-
-#### Antipattern 7: Manual Memoization with React Compiler Enabled
+#### Antipattern 6: Manual Memoization with React Compiler Enabled
 
 When React Compiler is enabled, manual memoization is usually redundant and adds unnecessary complexity.
 
@@ -5495,7 +5742,7 @@ function UserList({ users, onSelect }) {
 }
 ```
 
-#### Antipattern 8: Not Using Actions for Form Mutations
+#### Antipattern 7: Not Using Actions for Form Mutations
 
 React 19's Actions provide better form handling than manual state management.
 
@@ -5534,15 +5781,15 @@ function ContactForm() {
 
 // ✅ GOOD: Use Actions with Api2 (React 19)
 import { useActionState } from 'react';
-import { useApi2 } from '@/lib/hooks/UseApi2';
+import { Api2 } from '@/lib/models/api2';
 
-async function submitCaseNote(api, prevState, formData) {
+async function submitCaseNote(prevState, formData) {
   try {
     const caseId = formData.get('caseId') as string;
     const title = formData.get('title') as string;
     const content = formData.get('content') as string;
 
-    await api.postCaseNote({ caseId, title, content });
+    await Api2.postCaseNote({ caseId, title, content });
     return { success: true, error: null };
   } catch (error) {
     return { success: false, error: error.message };
@@ -5550,9 +5797,7 @@ async function submitCaseNote(api, prevState, formData) {
 }
 
 function CaseNoteForm({ caseId }) {
-  const api = useApi2();
-  const submitWithApi = submitCaseNote.bind(null, api);
-  const [state, formAction, isPending] = useActionState(submitWithApi, null);
+  const [state, formAction, isPending] = useActionState(submitCaseNote, null);
 
   return (
     <form action={formAction}>
@@ -5564,76 +5809,6 @@ function CaseNoteForm({ caseId }) {
     </form>
   );
 }
-```
-
-#### Antipattern 9: Storing Derived State with use() Hook
-
-Don't store the result of `use()` in state - React manages it automatically.
-
-```tsx
-// ❌ BAD: Storing use() result in state
-import { use, useState, useEffect } from 'react';
-
-function UserProfile({ userId }) {
-  const [user, setUser] = useState(null);
-  const userData = use(fetchUser(userId));
-
-  useEffect(() => {
-    setUser(userData); // Redundant!
-  }, [userData]);
-
-  return <div>{user?.name}</div>;
-}
-
-// ✅ GOOD: Use use() result directly with Api2
-import { use } from 'react';
-import { useApi2 } from '@/lib/hooks/UseApi2';
-
-function CaseProfile({ caseId }) {
-  const api = useApi2();
-  const caseData = use(api.getCaseDetail(caseId));
-  return <div>Case: {caseData.caseId}</div>;
-}
-```
-
-#### Antipattern 10: Missing Promise Caching for use() Hook
-
-The `use()` hook requires cached promises to avoid infinite loops.
-
-```tsx
-// ❌ BAD: Creating new promise on every render
-import { use } from 'react';
-
-function UserProfile({ userId }) {
-  // New promise every render → infinite loop!
-  const user = use(
-    fetch(`/api/users/${userId}`).then(r => r.json())
-  );
-
-  return <div>{user.name}</div>;
-}
-
-// ✅ GOOD: Cache promises
-const userCache = new Map();
-
-function fetchUser(userId) {
-  if (!userCache.has(userId)) {
-    userCache.set(
-      userId,
-      fetch(`/api/users/${userId}`).then(r => r.json())
-    );
-  }
-  return userCache.get(userId);
-}
-
-function UserProfile({ userId }) {
-  const user = use(fetchUser(userId)); // Cached promise
-  return <div>{user.name}</div>;
-}
-
-// Or use a data fetching library that handles caching:
-// - TanStack Query
-// - SWR
 ```
 
 ---

@@ -21,6 +21,7 @@ import {
   RuntimeState,
   RuntimeStateRepository,
   StaffRepository,
+  TrusteeAppointmentsRepository,
   TrusteesRepository,
   UpdateResult,
   UserGroupsRepository,
@@ -48,6 +49,7 @@ export class MockMongoRepository
     UserSessionCacheRepository,
     OfficeAssigneesRepository,
     TrusteesRepository,
+    TrusteeAppointmentsRepository,
     ListsRepository,
     StaffRepository,
     UserGroupsRepository
@@ -277,6 +279,10 @@ export class MockMongoRepository
   }
 
   upsertUserGroupsBatch(_ignore: any): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
+  getTrusteeAppointments(_ignore: any): Promise<any[]> {
     throw new Error('Method not implemented.');
   }
 }

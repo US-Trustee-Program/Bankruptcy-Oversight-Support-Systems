@@ -4,7 +4,7 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import DatePicker from '@/lib/components/uswds/DatePicker';
-import useApi2 from '@/lib/hooks/UseApi2';
+import Api2 from '@/lib/models/api2';
 import useFeatureFlags, { PRIVILEGED_IDENTITY_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { ComboBoxRef, InputRef } from '@/lib/type-declarations/input-fields';
@@ -34,7 +34,6 @@ export function sortUserList(a: CamsUserReference, b: CamsUserReference) {
 
 export function PrivilegedIdentity() {
   const flags = useFeatureFlags();
-  const api = useApi2();
 
   const [isLoaded, setIsLoaded] = useState(false);
   const [groupNames, setGroupNames] = useState<RoleAndOfficeGroupNames>({
@@ -116,8 +115,7 @@ export function PrivilegedIdentity() {
   function handleSelectUser(options: ComboOption[]) {
     if (options.length === 1) {
       const userId = options[0].value;
-      api
-        .getPrivilegedIdentityUser(userId)
+      Api2.getPrivilegedIdentityUser(userId)
         .then((response) => {
           const groups = response.data.claims.groups;
           const expires = response.data.expires;
@@ -164,7 +162,7 @@ export function PrivilegedIdentity() {
       expires: datePickerRef.current?.getValue() ?? getTodaysIsoDate(),
     };
     try {
-      await api.putPrivilegedIdentityUser(userId, permissions).then(() => {
+      await Api2.putPrivilegedIdentityUser(userId, permissions).then(() => {
         setExistingExpiration(newExpiration);
         setExistingGroupNameSet(updatedGroupNameSet);
         alert?.success(
@@ -179,8 +177,7 @@ export function PrivilegedIdentity() {
 
   async function handleDelete() {
     const userId = userListRef.current?.getSelections()[0].value;
-    api
-      .deletePrivilegedIdentityUser(userId)
+    Api2.deletePrivilegedIdentityUser(userId)
       .then(() => {
         alert?.success(
           'Privileged Identity deleted successfully. User must log out and log back in to see the proper permissions ' +
@@ -213,7 +210,7 @@ export function PrivilegedIdentity() {
 
   useEffect(() => {
     setIsLoaded(false);
-    api.getRoleAndOfficeGroupNames().then((groups) => {
+    Api2.getRoleAndOfficeGroupNames().then((groups) => {
       // Sort the office names.
       const officeMap = new Map<string, string>();
       groups.data.offices.forEach((officeName) => {
@@ -239,7 +236,7 @@ export function PrivilegedIdentity() {
       });
 
       // Get the eligible users.
-      api.getPrivilegedIdentityUsers().then((res) => {
+      Api2.getPrivilegedIdentityUsers().then((res) => {
         setUserList(res.data.sort(sortUserList));
         setIsLoaded(true);
       });

@@ -14,6 +14,7 @@ import { CaseSummaryController } from '../lib/controllers/case-summary/case-summ
 import { CaseAssociatedController } from '../lib/controllers/case-associated/case-associated.controller';
 import { OrdersController } from '../lib/controllers/orders/orders.controller';
 import { TrusteesController } from '../lib/controllers/trustees/trustees.controller';
+import { TrusteeAppointmentsController } from '../lib/controllers/trustee-appointments/trustee-appointments.controller';
 import { TrusteeAssignmentsController } from '../lib/controllers/trustee-assignments/trustee-assignments.controller';
 import { TrusteeHistoryController } from '../lib/controllers/trustee-history/trustee-history.controller';
 import { OfficesController } from '../lib/controllers/offices/offices.controller';
@@ -255,6 +256,20 @@ export function createApp(): Application {
   app.post('/api/trustees/:id', handleTrustees);
   app.patch('/api/trustees', handleTrustees);
   app.patch('/api/trustees/:id', handleTrustees);
+
+  const handleTrusteeAppointments = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const context = await ContextCreator.applicationContextCreator(req);
+      const controller = new TrusteeAppointmentsController(context);
+      const camsResponse = await controller.handleRequest(context);
+      sendCamsResponse(res, camsResponse);
+      await finalizeDeferrable(context);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  app.get('/api/trustees/:trusteeId/appointments', handleTrusteeAppointments);
 
   const handleTrusteeAssignments = async (req: Request, res: Response, next: NextFunction) => {
     try {

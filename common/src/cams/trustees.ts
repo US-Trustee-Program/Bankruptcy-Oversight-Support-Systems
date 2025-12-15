@@ -7,7 +7,7 @@ import { OversightRole } from './roles';
 // Removed unused import
 
 // Chapter types supported for trustee assignments
-type ChapterType = '7-panel' | '7-non-panel' | '11' | '11-subchapter-v' | '12' | '13';
+export type ChapterType = '7-panel' | '7-non-panel' | '11' | '11-subchapter-v' | '12' | '13';
 
 export function formatChapterType(chapter: string): string {
   const chapterLabels: Record<ChapterType, string> = {
