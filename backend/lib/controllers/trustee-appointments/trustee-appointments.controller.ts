@@ -19,7 +19,7 @@ export class TrusteeAppointmentsController implements CamsController {
 
   public async handleRequest(
     context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<TrusteeAppointment | TrusteeAppointment[]>> {
+  ): Promise<CamsHttpResponseInit<TrusteeAppointment[]>> {
     // Check feature flag
     if (!context.featureFlags['trustee-management']) {
       return {
@@ -57,42 +57,15 @@ export class TrusteeAppointmentsController implements CamsController {
 
   private async handleGetRequest(
     context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<TrusteeAppointment | TrusteeAppointment[]>> {
-    const appointmentId = context.request.params['id'];
-    const trusteeId = context.request.query?.trusteeId;
+  ): Promise<CamsHttpResponseInit<TrusteeAppointment[]>> {
+    const trusteeId = context.request.params['trusteeId'];
 
-    if (appointmentId) {
-      return await this.getTrusteeAppointment(context, appointmentId);
-    } else if (trusteeId) {
-      return await this.getTrusteeAppointments(context, trusteeId);
-    } else {
+    if (!trusteeId) {
       throw new BadRequestError(MODULE_NAME, {
-        message: 'Either appointment ID or trusteeId query parameter is required',
+        message: 'Trustee ID is required',
       });
     }
-  }
 
-  private async getTrusteeAppointment(
-    context: ApplicationContext,
-    id: string,
-  ): Promise<CamsHttpResponseInit<TrusteeAppointment>> {
-    const appointment = await this.useCase.getTrusteeAppointment(context, id);
-
-    return httpSuccess({
-      statusCode: 200,
-      body: {
-        meta: {
-          self: context.request.url,
-        },
-        data: appointment,
-      },
-    });
-  }
-
-  private async getTrusteeAppointments(
-    context: ApplicationContext,
-    trusteeId: string,
-  ): Promise<CamsHttpResponseInit<TrusteeAppointment[]>> {
     const appointments = await this.useCase.getTrusteeAppointments(context, trusteeId);
 
     return httpSuccess({

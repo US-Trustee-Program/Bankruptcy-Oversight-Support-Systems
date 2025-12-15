@@ -269,8 +269,7 @@ export function createApp(): Application {
     }
   };
 
-  app.get('/api/trustee-appointments', handleTrusteeAppointments);
-  app.get('/api/trustee-appointments/:id', handleTrusteeAppointments);
+  app.get('/api/trustees/:trusteeId/appointments', handleTrusteeAppointments);
 
   const handleTrusteeAssignments = async (req: Request, res: Response, next: NextFunction) => {
     try {

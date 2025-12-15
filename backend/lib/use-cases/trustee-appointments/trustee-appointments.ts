@@ -1,35 +1,19 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import { TrusteeAppointmentsRepository } from '../gateways.types';
+import { TrusteeAppointmentsRepository, TrusteesRepository } from '../gateways.types';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
-import { getTrusteeAppointmentsRepository } from '../../factory';
+import { getTrusteeAppointmentsRepository, getTrusteesRepository } from '../../factory';
 import { TrusteeAppointment } from '../../../../common/src/cams/trustee-appointments';
+import { NotFoundError } from '../../common-errors/not-found-error';
 
 const MODULE_NAME = 'TRUSTEE-APPOINTMENTS-USE-CASE';
 
 export class TrusteeAppointmentsUseCase {
   private readonly trusteeAppointmentsRepository: TrusteeAppointmentsRepository;
+  private readonly trusteesRepository: TrusteesRepository;
 
   constructor(context: ApplicationContext) {
     this.trusteeAppointmentsRepository = getTrusteeAppointmentsRepository(context);
-  }
-
-  async getTrusteeAppointment(
-    context: ApplicationContext,
-    id: string,
-  ): Promise<TrusteeAppointment> {
-    try {
-      const appointment = await this.trusteeAppointmentsRepository.read(id);
-
-      context.logger.info(MODULE_NAME, `Retrieved trustee appointment ${id}`);
-      return appointment;
-    } catch (originalError) {
-      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        camsStackInfo: {
-          module: MODULE_NAME,
-          message: `Failed to retrieve trustee appointment with ID ${id}.`,
-        },
-      });
-    }
+    this.trusteesRepository = getTrusteesRepository(context);
   }
 
   async getTrusteeAppointments(
@@ -37,6 +21,15 @@ export class TrusteeAppointmentsUseCase {
     trusteeId: string,
   ): Promise<TrusteeAppointment[]> {
     try {
+      // Verify trustee exists
+      try {
+        await this.trusteesRepository.read(trusteeId);
+      } catch (_e) {
+        throw new NotFoundError(MODULE_NAME, {
+          message: `Trustee with ID ${trusteeId} not found.`,
+        });
+      }
+
       const appointments =
         await this.trusteeAppointmentsRepository.getTrusteeAppointments(trusteeId);
 

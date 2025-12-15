@@ -32,5 +32,5 @@ app.http('trustee-appointments', {
   methods: ['GET'],
   authLevel: 'anonymous',
   handler,
-  route: 'trustee-appointments/{id?}',
+  route: 'trustees/{trusteeId}/appointments',
 });
