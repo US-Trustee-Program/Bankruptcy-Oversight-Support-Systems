@@ -69,7 +69,7 @@ fi
 
 # allow build agent access to execute deployment
 agent_ip=$(curl -s --retry 3 --retry-delay 30 --retry-all-errors https://api.ipify.org)
-agent_ip=$(agent_ip | $(sed -E 's/\.[0-9]+(\/[0-9]+)?$/.0\/24/')))
+agent_ip=$(${agent_ip} | sed -E 's/\.[0-9]+(\/[0-9]+)?$/.0\/24/')
 echo "App name: ${app_name}."
 echo "Slot name: ${slot_name}."
 rule_name="agent-slot-${app_name:0:21}"
