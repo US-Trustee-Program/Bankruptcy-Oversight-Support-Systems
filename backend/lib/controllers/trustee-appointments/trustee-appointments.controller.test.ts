@@ -5,6 +5,7 @@ import { CamsUserReference } from '../../../../common/src/cams/users';
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import { NotFoundError } from '../../common-errors/not-found-error';
 
 // Mock the use case
 jest.mock('../../use-cases/trustee-appointments/trustee-appointments');
@@ -30,7 +31,6 @@ describe('TrusteeAppointmentsController', () => {
     }
 
     mockUseCase = {
-      getTrusteeAppointment: jest.fn(),
       getTrusteeAppointments: jest.fn(),
     } as unknown as jest.Mocked<TrusteeAppointmentsUseCase>;
 
@@ -60,8 +60,8 @@ describe('TrusteeAppointmentsController', () => {
   describe('Role-based authorization', () => {
     test('should allow access for users with TrusteeAdmin role', async () => {
       context.request.method = 'GET';
-      context.request.params['id'] = 'appointment-123';
-      mockUseCase.getTrusteeAppointment.mockResolvedValue(sampleAppointment);
+      context.request.params['trusteeId'] = 'trustee-123';
+      mockUseCase.getTrusteeAppointments.mockResolvedValue([sampleAppointment]);
 
       const result = await controller.handleRequest(context);
 
@@ -87,38 +87,7 @@ describe('TrusteeAppointmentsController', () => {
     });
   });
 
-  describe('GET /api/trustee-appointments/:id', () => {
-    beforeEach(() => {
-      context.request.method = 'GET';
-    });
-
-    test('should return individual appointment for GET requests with ID', async () => {
-      const id = 'appointment-123';
-      mockUseCase.getTrusteeAppointment.mockResolvedValue(sampleAppointment);
-
-      context.request.params['id'] = id;
-      context.request.url = `/api/trustee-appointments/${id}`;
-
-      const result = await controller.handleRequest(context);
-
-      expect(result.statusCode).toBe(200);
-      expect(result.body?.data).toEqual(sampleAppointment);
-      expect(mockUseCase.getTrusteeAppointment).toHaveBeenCalledWith(context, id);
-    });
-
-    test('should handle appointment not found errors', async () => {
-      const id = 'nonexistent-id';
-      mockUseCase.getTrusteeAppointment.mockRejectedValue(
-        new Error('Trustee appointment with ID nonexistent-id not found.'),
-      );
-      context.request.params['id'] = id;
-      context.request.url = `/api/trustee-appointments/${id}`;
-
-      await expect(controller.handleRequest(context)).rejects.toThrow();
-    });
-  });
-
-  describe('GET /api/trustee-appointments?trusteeId=xxx', () => {
+  describe('GET /api/trustees/:trusteeId/appointments', () => {
     beforeEach(() => {
       context.request.method = 'GET';
     });
@@ -128,8 +97,8 @@ describe('TrusteeAppointmentsController', () => {
       const mockAppointments = [sampleAppointment, MockData.getTrusteeAppointment()];
       mockUseCase.getTrusteeAppointments.mockResolvedValue(mockAppointments);
 
-      context.request.query = { trusteeId };
-      context.request.url = `/api/trustee-appointments?trusteeId=${trusteeId}`;
+      context.request.params['trusteeId'] = trusteeId;
+      context.request.url = `/api/trustees/${trusteeId}/appointments`;
 
       const result = await controller.handleRequest(context);
 
@@ -138,11 +107,37 @@ describe('TrusteeAppointmentsController', () => {
       expect(mockUseCase.getTrusteeAppointments).toHaveBeenCalledWith(context, trusteeId);
     });
 
-    test('should throw error when neither ID nor trusteeId is provided', async () => {
-      context.request.url = '/api/trustee-appointments';
+    test('should return empty array when trustee has no appointments', async () => {
+      const trusteeId = 'trustee-456';
+      mockUseCase.getTrusteeAppointments.mockResolvedValue([]);
+
+      context.request.params['trusteeId'] = trusteeId;
+      context.request.url = `/api/trustees/${trusteeId}/appointments`;
+
+      const result = await controller.handleRequest(context);
+
+      expect(result.statusCode).toBe(200);
+      expect(result.body?.data).toEqual([]);
+    });
+
+    test('should throw error when trusteeId is not provided', async () => {
+      context.request.url = '/api/trustees/appointments';
+
+      await expect(controller.handleRequest(context)).rejects.toThrow('Trustee ID is required');
+    });
+
+    test('should handle trustee not found errors', async () => {
+      const trusteeId = 'nonexistent-trustee';
+      mockUseCase.getTrusteeAppointments.mockRejectedValue(
+        new NotFoundError('TRUSTEE-APPOINTMENTS-USE-CASE', {
+          message: `Trustee with ID ${trusteeId} not found.`,
+        }),
+      );
+      context.request.params['trusteeId'] = trusteeId;
+      context.request.url = `/api/trustees/${trusteeId}/appointments`;
 
       await expect(controller.handleRequest(context)).rejects.toThrow(
-        'Either appointment ID or trusteeId query parameter is required',
+        `Trustee with ID ${trusteeId} not found.`,
       );
     });
   });
