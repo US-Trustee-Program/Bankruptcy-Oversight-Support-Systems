@@ -68,10 +68,13 @@ export function validateKey<T = unknown>(
   key: string,
   obj: unknown,
 ): ValidatorResult {
-  if (Array.isArray(spec[key])) {
-    return validateEach(spec[key], obj[key]);
-  } else if (typeof spec[key] === 'object') {
-    return validateObject(spec[key], obj[key]);
+  const specValue = spec[key as keyof typeof spec];
+  const objValue = typeof obj === 'object' && obj !== null ? (obj as Record<string, unknown>)[key] : undefined;
+
+  if (Array.isArray(specValue)) {
+    return validateEach(specValue as ValidatorFunction[], objValue);
+  } else if (typeof specValue === 'object' && specValue !== null) {
+    return validateObject(specValue as ValidationSpec<unknown>, objValue);
   } else {
     return VALID;
   }
@@ -153,8 +156,9 @@ export function validateObject(spec: ValidationSpec<unknown>, obj: unknown): Val
     return { reasons: ['No validation specification provided'] };
   }
 
-  const reasonMap: ValidatorResult = Object.keys(spec).reduce((acc, key) => {
-    const result = key === '$' ? validateEach(spec['$'], obj) : validateKey(spec, key, obj);
+  const reasonMap: Record<string, ValidatorResult> = Object.keys(spec).reduce((acc: Record<string, ValidatorResult>, key) => {
+    const specValue = spec['$' as keyof typeof spec];
+    const result = key === '$' && Array.isArray(specValue) ? validateEach(specValue as ValidatorFunction[], obj) : validateKey(spec, key, obj);
     if (!result.valid) {
       acc[key] = result;
     }
@@ -180,7 +184,7 @@ export function flattenReasonMap(
   reasonMap: Record<string, ValidatorResult>,
   prefix = '',
 ): Record<string, string[]> {
-  const errors = [];
+  const errors: [string, string[]][] = [];
 
   Object.entries(reasonMap).forEach(([field, result]) => {
     if (result && !result.valid) {
@@ -204,7 +208,7 @@ export function flattenReasonMap(
 
 export function flatten(reasonMap: Record<string, ValidatorResult>): string[] {
   const flatMap = flattenReasonMap(reasonMap);
-  const pathsAndReasons = [];
+  const pathsAndReasons: string[] = [];
   for (const [jsonPath, reasons] of Object.entries(flatMap)) {
     reasons.forEach((reason) => {
       pathsAndReasons.push(`${jsonPath}: ${reason}`);

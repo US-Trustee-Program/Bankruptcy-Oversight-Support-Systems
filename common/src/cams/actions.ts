@@ -15,7 +15,7 @@ function contains(resource: ResourceActions<object>, action: Action) {
   });
 }
 
-function merge(action: Action, values: object) {
+function merge(action: Action, values: Record<string, string>) {
   const mergeAction = { ...action };
   let template = mergeAction.path;
   Object.keys(values).forEach((key) => {

@@ -173,14 +173,14 @@ interface Options<T> {
 
 function getConsolidation(options: Options<Consolidation> = { override: {} }): Consolidation {
   const { override } = options;
-  const documentType: ConsolidationDocumentTypes = override.documentType ?? 'CONSOLIDATION_TO';
-  const consolidationType: ConsolidationType = override.consolidationType ?? 'administrative';
+  const documentType: ConsolidationDocumentTypes = override?.documentType ?? 'CONSOLIDATION_TO';
+  const consolidationType: ConsolidationType = override?.consolidationType ?? 'administrative';
   return {
     documentType,
     consolidationType,
-    caseId: override.caseId ?? randomCaseId(),
-    orderDate: override.orderDate ?? randomDate(),
-    otherCase: override.otherCase ?? getCaseSummary(),
+    caseId: override?.caseId ?? randomCaseId(),
+    orderDate: override?.orderDate ?? randomDate(),
+    otherCase: override?.otherCase ?? getCaseSummary(),
   } as Consolidation;
 }
 
@@ -193,8 +193,8 @@ function getConsolidatedOrderCase(
     ...getCaseSummary({ entityType, override }),
     orderDate: docketEntries[0].dateFiled,
     docketEntries,
-    attorneyAssignments: override.attorneyAssignments ?? [getAttorneyAssignment()],
-    associations: override.associations ?? [],
+    attorneyAssignments: override?.attorneyAssignments ?? [getAttorneyAssignment()],
+    associations: override?.associations ?? [],
   };
 
   return { ...consolidatedCaseSummary, ...override };
@@ -339,11 +339,11 @@ function getPaginatedResponseBody<T>(
       self,
     },
     pagination: {
-      count: override.count ?? 5,
-      previous: override.previous ?? undefined,
-      next: override.next ?? undefined,
-      limit: override.limit ?? 25,
-      currentPage: override.currentPage ?? 1,
+      count: override?.count ?? 5,
+      previous: override?.previous ?? undefined,
+      next: override?.next ?? undefined,
+      limit: override?.limit ?? 25,
+      currentPage: override?.currentPage ?? 1,
     },
     data,
   };
@@ -365,15 +365,15 @@ function getTransferOrder(options: Options<TransferOrder> = { override: {} }): T
     ...summary,
     id: faker.string.uuid(),
     orderType: 'transfer',
-    orderDate: override.orderDate ?? someDateAfterThisDate(summary.dateFiled),
+    orderDate: override?.orderDate ?? someDateAfterThisDate(summary.dateFiled),
     dateFiled:
-      override.dateFiled ??
-      (override.orderDate ? someDateBeforeThisDate(override.orderDate) : summary.dateFiled),
-    status: override.status || 'pending',
+      override?.dateFiled ??
+      (override?.orderDate ? someDateBeforeThisDate(override.orderDate) : summary.dateFiled),
+    status: override?.status || 'pending',
     docketEntries: [getDocketEntry()],
-    docketSuggestedCaseNumber: override.status === 'approved' ? undefined : randomCaseNumber(),
-    newCase: override.status === 'approved' ? newCase : undefined,
-    reason: override.status === 'rejected' ? faker.lorem.sentences(2) : undefined,
+    docketSuggestedCaseNumber: override?.status === 'approved' ? undefined : randomCaseNumber(),
+    newCase: override?.status === 'approved' ? newCase : undefined,
+    reason: override?.status === 'rejected' ? faker.lorem.sentences(2) : undefined,
   };
 
   return { ...transferOrder, ...override };
@@ -391,8 +391,8 @@ function getConsolidationOrder(
     courtName: summary.courtName,
     id: faker.string.uuid(),
     orderType: 'consolidation',
-    orderDate: override.orderDate ?? someDateAfterThisDate(summary.dateFiled),
-    status: override.status || 'pending',
+    orderDate: override?.orderDate ?? someDateAfterThisDate(summary.dateFiled),
+    status: override?.status || 'pending',
     courtDivisionCode: summary.courtDivisionCode,
     jobId: faker.number.int(),
     childCases: [getConsolidatedOrderCase({ override }), getConsolidatedOrderCase({ override })],
@@ -427,7 +427,7 @@ function getRawConsolidationOrder(
     orderDate: someDateAfterThisDate(summary.dateFiled),
     docketEntries: [getDocketEntry()],
     jobId: faker.number.int(),
-    leadCaseIdHint: randomTruth() ? randomCaseId() : null,
+    leadCaseIdHint: randomTruth() ? randomCaseId() : undefined,
   };
 
   return { ...consolidationOrder, ...override };
@@ -442,11 +442,11 @@ function getConsolidationReference(
     documentType: 'CONSOLIDATION_FROM',
     orderDate: randomDate(),
     otherCase: getCaseSummary(),
-    updatedBy: options.override?.updatedBy ?? {
+    updatedBy: options?.override?.updatedBy ?? {
       id: '123',
       name: faker.person.fullName(),
     },
-    updatedOn: options.override?.updatedOn ?? someDateAfterThisDate('2024-12-01'),
+    updatedOn: options?.override?.updatedOn ?? someDateAfterThisDate('2024-12-01'),
   };
   return {
     ...reference,
@@ -556,6 +556,9 @@ function getDocketEntry(override: Partial<CaseDocketEntry> = {}): CaseDocketEntr
       fileSize: randomInt(1000000),
       fileLabel: docIndex.toString(),
     };
+    if (!docketEntry.documents) {
+      docketEntry.documents = [];
+    }
     docketEntry.documents.push(documentEntry);
   }
   return {
@@ -566,14 +569,31 @@ function getDocketEntry(override: Partial<CaseDocketEntry> = {}): CaseDocketEntr
 
 function getTrustee(override: Partial<Trustee> = {}): Trustee {
   const trusteeInput = getTrusteeInput(override);
-  return {
+  // Convert any null banks value to undefined
+  const sanitizedOverride = { ...override } as Partial<Trustee>;
+  if (sanitizedOverride.banks === null) {
+    sanitizedOverride.banks = undefined;
+  }
+  if (sanitizedOverride.software === null) {
+    sanitizedOverride.software = undefined;
+  }
+
+  // Create a properly typed result
+  const result: Trustee = {
     id: faker.string.uuid(),
     trusteeId: faker.string.uuid(),
     updatedOn: getDateBeforeToday().toISOString(),
     updatedBy: getCamsUserReference(),
-    ...trusteeInput,
-    ...override,
+    name: trusteeInput.name,
+    public: trusteeInput.public,
+    // Optional fields with proper types
+    internal: sanitizedOverride.internal || trusteeInput.internal,
+    banks: sanitizedOverride.banks,
+    software: sanitizedOverride.software,
+    legacy: sanitizedOverride.legacy,
   };
+
+  return result;
 }
 
 function getTrusteeInput(override: Partial<TrusteeInput> = {}): TrusteeInput {
@@ -884,7 +904,7 @@ function getRoleAndOfficeGroupNames(): RoleAndOfficeGroupNames {
 
 function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
   let offices = [REGION_02_GROUP_NY];
-  let roles = [];
+  let roles: CamsRole[] = [];
   if (override?.user?.roles?.includes(CamsRole.SuperUser)) {
     offices = MOCKED_USTP_OFFICES_ARRAY;
     roles = Object.values(CamsRole);

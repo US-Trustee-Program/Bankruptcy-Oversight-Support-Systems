@@ -2,6 +2,7 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import { SyncedCase } from '@common/cams/cases';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
+import { CourtDivisionDetails } from '@common/cams/courts';
 import SearchScreen, { validateFormData } from '@/search/SearchScreen';
 import { CasesSearchPredicate, DEFAULT_SEARCH_LIMIT } from '@common/api/search';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
@@ -424,7 +425,15 @@ describe('search screen', () => {
       .mockRejectedValueOnce({
         message: 'some error',
       })
-      .mockResolvedValue(emptySearchResponseBody);
+      .mockResolvedValue({
+        meta: { self: 'self-url' },
+        pagination: {
+          count: 0,
+          currentPage: 0,
+          limit: DEFAULT_SEARCH_LIMIT,
+        },
+        data: [],
+      } as unknown as ResponseBody<CourtDivisionDetails[]>);
     const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
 
     renderWithoutProps();
