@@ -254,7 +254,7 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
     };
   } else if (path.match(/\/courts/)) {
     response = {
-      data: courts.map(c => {
+      data: courts.map((c) => {
         if (c.state === undefined) {
           return { ...c, state: '' };
         }

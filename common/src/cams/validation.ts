@@ -69,7 +69,8 @@ export function validateKey<T = unknown>(
   obj: unknown,
 ): ValidatorResult {
   const specValue = spec[key as keyof typeof spec];
-  const objValue = typeof obj === 'object' && obj !== null ? (obj as Record<string, unknown>)[key] : undefined;
+  const objValue =
+    typeof obj === 'object' && obj !== null ? (obj as Record<string, unknown>)[key] : undefined;
 
   if (Array.isArray(specValue)) {
     return validateEach(specValue as ValidatorFunction[], objValue);
@@ -156,14 +157,20 @@ export function validateObject(spec: ValidationSpec<unknown>, obj: unknown): Val
     return { reasons: ['No validation specification provided'] };
   }
 
-  const reasonMap: Record<string, ValidatorResult> = Object.keys(spec).reduce((acc: Record<string, ValidatorResult>, key) => {
-    const specValue = spec['$' as keyof typeof spec];
-    const result = key === '$' && Array.isArray(specValue) ? validateEach(specValue as ValidatorFunction[], obj) : validateKey(spec, key, obj);
-    if (!result.valid) {
-      acc[key] = result;
-    }
-    return acc;
-  }, {});
+  const reasonMap: Record<string, ValidatorResult> = Object.keys(spec).reduce(
+    (acc: Record<string, ValidatorResult>, key) => {
+      const specValue = spec['$' as keyof typeof spec];
+      const result =
+        key === '$' && Array.isArray(specValue)
+          ? validateEach(specValue as ValidatorFunction[], obj)
+          : validateKey(spec, key, obj);
+      if (!result.valid) {
+        acc[key] = result;
+      }
+      return acc;
+    },
+    {},
+  );
 
   const $reasonMap = reasonMap['$']?.['reasonMap'];
 
