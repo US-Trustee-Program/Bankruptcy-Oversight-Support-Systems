@@ -26,7 +26,7 @@ jobs:
 
       - name: Install Node dependencies
         run: |
-          npm run ci:all
+          npm run ci
           npm install serve -g
 
       - name: Run UI in mock mode
