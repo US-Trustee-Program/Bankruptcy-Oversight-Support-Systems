@@ -2,11 +2,11 @@
   "name": "common",
   "version": "1.0.0",
   "description": "CAMS common package",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
   "type": "module",
   "scripts": {
     "clean": "rm -rf ./dist && rm -rf ./node_modules && rm -rf ./coverage & rm tsconfig.tsbuildinfo",
-    "build": "npx tsc",
+    "build": "npx tsc -p tsconfig.build.json",
     "test": "jest",
     "coverage": "jest --coverage",
     "coverage:ci": "jest --coverage",
@@ -29,7 +29,9 @@
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-jest": "29.2.1",
     "eslint-plugin-prettier": "5.5.4",
+    "jest": "30.2.0",
     "prettier": "3.7.4",
+    "ts-jest": "29.4.6",
     "ts-node": "10.9.2",
     "typescript": "5.9.3",
     "typescript-eslint": "8.48.1"

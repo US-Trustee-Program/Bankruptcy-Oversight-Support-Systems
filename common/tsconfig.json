@@ -8,11 +8,14 @@
     "strict": false,
     "resolveJsonModule": true,
     "declaration": true,
+    "declarationMap": true,
     "composite": true,
+    "incremental": true,
     "allowSyntheticDefaultImports": true
   },
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "**/*.test.ts"
   ]
 }
