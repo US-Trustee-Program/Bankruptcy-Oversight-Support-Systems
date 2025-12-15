@@ -7,7 +7,7 @@ import { CaseSummary } from '@common/cams/cases';
 import CaseTable from './CaseTable';
 import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { TransferOrder } from '@common/cams/orders';
-import useApi2 from '@/lib/hooks/UseApi2';
+import Api2 from '@/lib/models/api2';
 
 type FromCaseSummaryProps = {
   order: TransferOrder;
@@ -18,11 +18,8 @@ export function FromCaseSummary(props: Readonly<FromCaseSummaryProps>) {
   const { order } = props;
   const [originalCaseSummary, setOriginalCaseSummary] = useState<CaseSummary | null>(null);
 
-  const api = useApi2();
-
   useEffect(() => {
-    api
-      .getCaseSummary(order.caseId)
+    Api2.getCaseSummary(order.caseId)
       .then((response) => {
         setOriginalCaseSummary(response.data);
       })

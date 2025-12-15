@@ -7,7 +7,7 @@ import {
 import { ResponseBody } from '@common/api/response';
 import { CamsUserReference } from '@common/cams/users';
 import { UstpOfficeDetails } from '@common/cams/offices';
-import useApi2 from '@/lib/hooks/UseApi2';
+import Api2 from '@/lib/models/api2';
 import LocalStorage from '@/lib/utils/local-storage';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 
@@ -28,12 +28,11 @@ const staffAssignmentFilterUseCase = (
   };
 
   const fetchAssignees = async () => {
-    const api = useApi2();
     const session = LocalStorage.getSession();
     if (session?.user.offices) {
       const { offices } = session.user;
       try {
-        const assignees = await getOfficeAssignees(api.getOfficeAssignees, offices);
+        const assignees = await getOfficeAssignees(Api2.getOfficeAssignees, offices);
         store.setOfficeAssignees(assignees);
         store.setOfficeAssigneesError(false);
       } catch (_e) {
