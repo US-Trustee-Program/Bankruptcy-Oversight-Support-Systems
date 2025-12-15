@@ -73,8 +73,8 @@ echo "App name: ${app_name}."
 echo "Slot name: ${slot_name}."
 rule_name="agent-slot-${app_name:0:21}"
 echo "Adding rule: ${rule_name} to webapp. IP: ${agent_ip}."
-az webapp config access-restriction add -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "${rule_name}" --action Allow --ip-address "${agent_ip}" --priority 232 --scm-site true 1>/dev/null
-az webapp config access-restriction add -g "${app_rg}" -n "${app_name}" --rule-name "${rule_name}" --action Allow --ip-address "${agent_ip}" --priority 232 --scm-site true 1>/dev/null
+az webapp config access-restriction add -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "${rule_name}" --action Allow --priority 232 --scm-site true 1>/dev/null
+az webapp config access-restriction add -g "${app_rg}" -n "${app_name}" --rule-name "${rule_name}" --action Allow --priority 232 --scm-site true 1>/dev/null
 
 # Verify access restrictions were added
 az webapp config access-restriction show -g "${app_rg}" -n "${app_name}" --slot "${slot_name}"
