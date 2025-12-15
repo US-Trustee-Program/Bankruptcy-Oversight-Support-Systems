@@ -51,12 +51,11 @@ if [ ! -f "${artifact_path}" ]; then
 fi
 
 function on_exit() {
-    # Remove temporary allow all rules
-    echo "Removing temporary allow all rules..."
-    az webapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" \
-        --rule-name "${temp_rule_name}" --scm-site true 2>/dev/null || true
-    az webapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" \
-        --rule-name "${temp_rule_name}" 2>/dev/null || true
+    # Restore original default action if it was changed
+    if [ -n "${current_scm_default}" ] && [ "${current_scm_default}" != "Allow" ]; then
+        echo "Restoring SCM default action to ${current_scm_default}..."
+        az webapp config set -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --scm-ip-security-restrictions-default-action "${current_scm_default}" 2>/dev/null || true
+    fi
 }
 trap on_exit EXIT
 
@@ -70,16 +69,16 @@ else
   echo "Found ${gitSha} in index.html."
 fi
 
-# Add high-priority "Allow all" rules to override any deny rules
-temp_rule_name="temp-deploy-allow-all"
-echo "Adding temporary 'Allow all' rule with high priority to override restrictions..."
-az webapp config access-restriction add -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" \
-    --rule-name "${temp_rule_name}" --action Allow --ip-address "0.0.0.0/0" --priority 100 --scm-site true || echo "Failed to add SCM allow rule"
+# Save the current default action for SCM site
+echo "Checking current SCM site default action..."
+current_scm_default=$(az webapp config access-restriction show -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --query "scmIpSecurityRestrictionsDefaultAction" -o tsv)
+echo "Current SCM default action: ${current_scm_default}"
 
-az webapp config access-restriction add -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" \
-    --rule-name "${temp_rule_name}" --action Allow --ip-address "0.0.0.0/0" --priority 100 || echo "Failed to add main site allow rule"
+# Change default action to Allow temporarily
+echo "Temporarily changing SCM site default action to Allow..."
+az webapp config set -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --scm-ip-security-restrictions-default-action Allow
 
-echo "Temporary allow rules added. Deployment should now proceed."
+echo "SCM default action changed. Deployment should now proceed."
 
 # Deploy with retry logic and exponential backoff
 max_attempts=4
