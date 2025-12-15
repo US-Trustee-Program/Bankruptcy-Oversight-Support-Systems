@@ -1,0 +1,55 @@
+.trustee-appointments-list {
+  .appointments-list {
+    display: flex;
+    flex-direction: column;
+    max-width: 60rem;
+  }
+
+  .appointment-card-container {
+    max-width: 21.5rem;
+
+    .appointment-card-heading {
+      margin: 0 0 1.25rem 0; // 20px bottom margin
+      font-size: 1.25rem;
+      font-weight: bold;
+      line-height: 1.2;
+    }
+
+    .appointment-card {
+      border: 1px solid #dfe1e2;
+      border-radius: 0.25rem;
+      margin-bottom: 1.5625rem; // 25px
+
+      .usa-card__body {
+        padding: 1.5rem;
+
+        h4 {
+          margin-top: 0;
+          margin-bottom: 1rem;
+          font-size: 1.125rem;
+          font-weight: 600;
+        }
+
+        .appointment-details-list {
+          list-style: none;
+          padding: 0;
+          margin: 0;
+
+          li {
+            margin-bottom: 0.75rem;
+            line-height: 1.5;
+
+            &:last-child {
+              margin-bottom: 0;
+            }
+
+            .appointment-label {
+              font-weight: 600;
+              margin-right: 0.25rem;
+            }
+          }
+        }
+      }
+    }
+  }
+}
