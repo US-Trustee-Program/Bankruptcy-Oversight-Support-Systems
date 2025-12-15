@@ -56,6 +56,20 @@
         "**/coverage/**"
       ]
     },
+    "test/bdd": {
+      "entry": [
+        "vitest.config.ts",
+        "features/**/*.spec.tsx",
+        "helpers/**/*.ts",
+        "helpers/**/*.tsx",
+        "fixtures/**/*.ts"
+      ],
+      "project": ["**/*.{ts,tsx}"],
+      "ignore": [
+        "**/node_modules/**",
+        "**/coverage/**"
+      ]
+    },
     "test/e2e": {
       "entry": ["**/*.ts"],
       "project": ["**/*.ts"],
@@ -100,7 +114,6 @@
     "typescript-eslint",
     "react",
     "c8",
-    "@faker-js/faker",
-    "tsx"
+    "@faker-js/faker"
   ]
 }
