@@ -114,18 +114,19 @@ echo "Removing all SCM access restrictions temporarily..."
 restriction_names=$(echo "$saved_restrictions" | jq -r '.[].name // empty')
 if [ -n "$restriction_names" ]; then
     while IFS= read -r rule_name; do
-        echo "Removing rule: ${rule_name}"
-        az functionapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "${rule_name}" --scm-site true 2>/dev/null || true
+        echo "Removing SCM rule: ${rule_name}"
+        az functionapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "${rule_name}" --scm-site true || echo "Failed to remove SCM rule: ${rule_name}"
     done <<< "$restriction_names"
 fi
 
 # Also remove main site restrictions
-saved_main_restrictions=$(az functionapp config access-restriction show -g "${app_rg}" -n "${app_name}" --query "ipSecurityRestrictions" -o json)
+echo "Saving current main site access restrictions..."
+saved_main_restrictions=$(az functionapp config access-restriction show -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --query "ipSecurityRestrictions" -o json)
 main_restriction_names=$(echo "$saved_main_restrictions" | jq -r '.[].name // empty')
 if [ -n "$main_restriction_names" ]; then
     while IFS= read -r rule_name; do
         echo "Removing main site rule: ${rule_name}"
-        az functionapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --rule-name "${rule_name}" --scm-site false 2>/dev/null || true
+        az functionapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "${rule_name}" || echo "Failed to remove main site rule: ${rule_name}"
     done <<< "$main_restriction_names"
 fi
 
