@@ -83,9 +83,7 @@ describe('TestSetup fluent API', () => {
 
     it('withSearchResults returns same instance for chaining', () => {
       const session = TestSessions.trialAttorney();
-      const searchResults = [
-        MockData.getCaseSummary({ override: { caseId: 'SEARCH-001' } }),
-      ];
+      const searchResults = [MockData.getCaseSummary({ override: { caseId: 'SEARCH-001' } })];
 
       const setup1 = TestSetup.forUser(session);
       const setup2 = setup1.withSearchResults(searchResults);
@@ -95,9 +93,7 @@ describe('TestSetup fluent API', () => {
 
     it('withMyAssignments returns same instance for chaining', () => {
       const session = TestSessions.caseAssignmentManager();
-      const assignments = [
-        MockData.getCaseSummary({ override: { caseId: 'ASSIGN-001' } }),
-      ];
+      const assignments = [MockData.getCaseSummary({ override: { caseId: 'ASSIGN-001' } })];
 
       const setup1 = TestSetup.forUser(session);
       const setup2 = setup1.withMyAssignments(assignments);

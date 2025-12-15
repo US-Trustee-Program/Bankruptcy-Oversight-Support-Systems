@@ -4,7 +4,7 @@ import { renderApp } from '../../helpers/render-with-context';
 import { initializeTestServer, cleanupTestServer } from '../../helpers/api-server';
 import { TestSessions } from '../../fixtures/auth.fixtures';
 import { clearAllRepositorySpies, spyOnMeEndpoint } from '../../helpers/repository-spies';
-import LocalStorage from "@/lib/utils/local-storage.ts";
+import LocalStorage from '@/lib/utils/local-storage.ts';
 import { MOCK_ISSUER } from '../../../../backend/lib/testing/mock-gateways/mock-oauth2-constants';
 
 // Mock database drivers (same as functional tests)
@@ -154,8 +154,9 @@ describe('BDD Environment Diagnostics', () => {
         console.log('  - Error response:', JSON.stringify(error, null, 2));
         throw new Error(`/me endpoint failed with status ${response.status}`);
       }
-    } catch (err: any) {
-      console.log('  - Exception:', err.message);
+    } catch (err: unknown) {
+      const error = err as Error;
+      console.log('  - Exception:', error.message);
       throw err;
     }
   });

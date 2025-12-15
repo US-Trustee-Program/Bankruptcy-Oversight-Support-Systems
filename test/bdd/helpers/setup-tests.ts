@@ -1,6 +1,5 @@
-import { beforeAll, afterEach, afterAll } from 'vitest';
+import { beforeAll } from 'vitest';
 import '@testing-library/jest-dom';
-import { cleanup } from '@testing-library/react';
 import { MOCK_ISSUER } from '../../../backend/lib/testing/mock-gateways/mock-oauth2-constants';
 
 // Setup window configuration for React app AT MODULE LOAD TIME
@@ -12,8 +11,7 @@ window.CAMS_CONFIGURATION = {
   // IMPORTANT: Config format is pipe-separated key=value pairs (NOT JSON!)
   // Format: key1=value1|key2=value2|key3=value3
   // Issuer must match the test JWT issuer and have a path for audience derivation
-  CAMS_LOGIN_PROVIDER_CONFIG:
-    `issuer=${MOCK_ISSUER}|clientId=test-client-id|redirectUri=http://localhost:4000/login-callback`,
+  CAMS_LOGIN_PROVIDER_CONFIG: `issuer=${MOCK_ISSUER}|clientId=test-client-id|redirectUri=http://localhost:4000/login-callback`,
   CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING: '',
   CAMS_DISABLE_LOCAL_CACHE: 'true', // Disable caching in tests
   // Point API client to test server on port 4000
@@ -42,10 +40,7 @@ beforeAll(() => {
   process.env.NODE_ENV = 'test';
 });
 
-// Cleanup after each test
-afterEach(() => {
-  cleanup();
-});
+// Cleanup is automatically handled by vitest
 
 // Global test utilities
 global.console = {

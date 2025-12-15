@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import type { CamsSession } from '@common/cams/session';
 
 /**
  * Repository Spy Helpers for BDD Tests
@@ -37,11 +38,10 @@ import { vi } from 'vitest';
  * For okta provider, we spy on OktaGateway.getUser() to bypass JWT verification
  * (which requires HTTPS URLs that we can't use in tests)
  */
-export async function spyOnMeEndpoint(session: any) {
+export async function spyOnMeEndpoint(session: CamsSession) {
   // For okta provider, spy on OktaGateway.getUser() to bypass JWT verification
-  const OktaGatewayModule = await import(
-    '../../../backend/lib/adapters/gateways/okta/okta-gateway'
-  );
+  const OktaGatewayModule =
+    await import('../../../backend/lib/adapters/gateways/okta/okta-gateway');
 
   // Mock getUser to return user with JWT that matches our test session
   // This bypasses the JWT verification that requires HTTPS
@@ -60,9 +60,8 @@ export async function spyOnMeEndpoint(session: any) {
   });
 
   // Also spy on OktaUserGroupGateway.getUserById for user info retrieval
-  const OktaUserGroupGatewayModule = await import(
-    '../../../backend/lib/adapters/gateways/okta/okta-user-group-gateway'
-  );
+  const OktaUserGroupGatewayModule =
+    await import('../../../backend/lib/adapters/gateways/okta/okta-user-group-gateway');
   const OktaUserGroupGateway = OktaUserGroupGatewayModule.default;
 
   vi.spyOn(OktaUserGroupGateway.prototype, 'getUserById').mockResolvedValue({
@@ -71,15 +70,13 @@ export async function spyOnMeEndpoint(session: any) {
   });
 
   // Spy on office attorneys endpoint (called by postLoginTasks in Session.tsx)
-  const { OfficesMongoRepository } = await import(
-    '../../../backend/lib/adapters/gateways/mongo/offices.mongo.repository'
-  );
+  const { OfficesMongoRepository } =
+    await import('../../../backend/lib/adapters/gateways/mongo/offices.mongo.repository');
   vi.spyOn(OfficesMongoRepository.prototype, 'getOfficeAttorneys').mockResolvedValue([]);
 
   // Spy on user session cache to prevent MongoDB queries during search/consolidation
-  const { UserSessionCacheMongoRepository } = await import(
-    '../../../backend/lib/adapters/gateways/mongo/user-session-cache.mongo.repository'
-  );
+  const { UserSessionCacheMongoRepository } =
+    await import('../../../backend/lib/adapters/gateways/mongo/user-session-cache.mongo.repository');
   vi.spyOn(UserSessionCacheMongoRepository.prototype, 'read').mockResolvedValue({
     user: session.user,
     issuer: session.issuer,
@@ -94,9 +91,10 @@ export async function spyOnMeEndpoint(session: any) {
  * This helps identify which methods need to be mocked for a test
  */
 export function spyOnAllGatewayMethods(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ClassName: any,
   gatewayName: string,
-  explicitMocks: Record<string, any> = {},
+  explicitMocks: Record<string, unknown> = {},
 ) {
   if (!ClassName) {
     console.error(`[BDD TEST] Class ${gatewayName} is undefined - skipping spy setup`);
@@ -119,7 +117,7 @@ export function spyOnAllGatewayMethods(
       vi.spyOn(prototype, methodName).mockImplementation(explicitMocks[methodName]);
     } else {
       // Throw exception for unmocked methods to identify missing spies
-      vi.spyOn(prototype, methodName).mockImplementation((...args: any[]) => {
+      vi.spyOn(prototype, methodName).mockImplementation((...args: unknown[]) => {
         const errorMsg = `[BDD TEST] Unmocked ${gatewayName}.${methodName}() called with args: ${JSON.stringify(args)}`;
         console.error(errorMsg);
         throw new Error(errorMsg);
@@ -132,26 +130,25 @@ export function spyOnAllGatewayMethods(
  * Spy on all gateways/repositories that might be called during tests
  * This provides comprehensive coverage and clear error messages for missing mocks
  */
-export async function spyOnAllGateways(explicitMocks: Record<string, Record<string, any>> = {}) {
+export async function spyOnAllGateways(
+  explicitMocks: Record<string, Record<string, unknown>> = {},
+) {
   // DXTR Gateways
-  const CasesDxtrGatewayModule = await import(
-    '../../../backend/lib/adapters/gateways/dxtr/cases.dxtr.gateway'
-  );
+  const CasesDxtrGatewayModule =
+    await import('../../../backend/lib/adapters/gateways/dxtr/cases.dxtr.gateway');
   const CasesDxtrGateway = CasesDxtrGatewayModule.default;
   spyOnAllGatewayMethods(CasesDxtrGateway, 'CasesDxtrGateway', explicitMocks.CasesDxtrGateway);
 
-  const { DxtrCaseDocketGateway } = await import(
-    '../../../backend/lib/adapters/gateways/dxtr/case-docket.dxtr.gateway'
-  );
+  const { DxtrCaseDocketGateway } =
+    await import('../../../backend/lib/adapters/gateways/dxtr/case-docket.dxtr.gateway');
   spyOnAllGatewayMethods(
     DxtrCaseDocketGateway,
     'DxtrCaseDocketGateway',
     explicitMocks.DxtrCaseDocketGateway,
   );
 
-  const OfficesDxtrGatewayModule = await import(
-    '../../../backend/lib/adapters/gateways/dxtr/offices.dxtr.gateway'
-  );
+  const OfficesDxtrGatewayModule =
+    await import('../../../backend/lib/adapters/gateways/dxtr/offices.dxtr.gateway');
   const OfficesDxtrGateway = OfficesDxtrGatewayModule.default;
   spyOnAllGatewayMethods(
     OfficesDxtrGateway,
@@ -159,48 +156,42 @@ export async function spyOnAllGateways(explicitMocks: Record<string, Record<stri
     explicitMocks.OfficesDxtrGateway,
   );
 
-  const { DxtrOrdersGateway } = await import(
-    '../../../backend/lib/adapters/gateways/dxtr/orders.dxtr.gateway'
-  );
+  const { DxtrOrdersGateway } =
+    await import('../../../backend/lib/adapters/gateways/dxtr/orders.dxtr.gateway');
   spyOnAllGatewayMethods(DxtrOrdersGateway, 'DxtrOrdersGateway', explicitMocks.DxtrOrdersGateway);
 
   // ACMS Gateway
-  const { AcmsGatewayImpl } = await import(
-    '../../../backend/lib/adapters/gateways/acms/acms.gateway'
-  );
+  const { AcmsGatewayImpl } =
+    await import('../../../backend/lib/adapters/gateways/acms/acms.gateway');
   spyOnAllGatewayMethods(AcmsGatewayImpl, 'AcmsGatewayImpl', explicitMocks.AcmsGatewayImpl);
 
   // MongoDB Repositories
-  const { CasesMongoRepository } = await import(
-    '../../../backend/lib/adapters/gateways/mongo/cases.mongo.repository'
-  );
+  const { CasesMongoRepository } =
+    await import('../../../backend/lib/adapters/gateways/mongo/cases.mongo.repository');
   spyOnAllGatewayMethods(
     CasesMongoRepository,
     'CasesMongoRepository',
     explicitMocks.CasesMongoRepository,
   );
 
-  const { CaseNotesMongoRepository } = await import(
-    '../../../backend/lib/adapters/gateways/mongo/case-notes.mongo.repository'
-  );
+  const { CaseNotesMongoRepository } =
+    await import('../../../backend/lib/adapters/gateways/mongo/case-notes.mongo.repository');
   spyOnAllGatewayMethods(
     CaseNotesMongoRepository,
     'CaseNotesMongoRepository',
     explicitMocks.CaseNotesMongoRepository,
   );
 
-  const { CaseAssignmentMongoRepository } = await import(
-    '../../../backend/lib/adapters/gateways/mongo/case-assignment.mongo.repository'
-  );
+  const { CaseAssignmentMongoRepository } =
+    await import('../../../backend/lib/adapters/gateways/mongo/case-assignment.mongo.repository');
   spyOnAllGatewayMethods(
     CaseAssignmentMongoRepository,
     'CaseAssignmentMongoRepository',
     explicitMocks.CaseAssignmentMongoRepository,
   );
 
-  const ConsolidationOrdersMongoRepositoryModule = await import(
-    '../../../backend/lib/adapters/gateways/mongo/consolidations.mongo.repository'
-  );
+  const ConsolidationOrdersMongoRepositoryModule =
+    await import('../../../backend/lib/adapters/gateways/mongo/consolidations.mongo.repository');
   const ConsolidationOrdersMongoRepository = ConsolidationOrdersMongoRepositoryModule.default;
   spyOnAllGatewayMethods(
     ConsolidationOrdersMongoRepository,
@@ -208,90 +199,80 @@ export async function spyOnAllGateways(explicitMocks: Record<string, Record<stri
     explicitMocks.ConsolidationOrdersMongoRepository,
   );
 
-  const { OfficesMongoRepository } = await import(
-    '../../../backend/lib/adapters/gateways/mongo/offices.mongo.repository'
-  );
+  const { OfficesMongoRepository } =
+    await import('../../../backend/lib/adapters/gateways/mongo/offices.mongo.repository');
   spyOnAllGatewayMethods(
     OfficesMongoRepository,
     'OfficesMongoRepository',
     explicitMocks.OfficesMongoRepository,
   );
 
-  const { OfficeAssigneeMongoRepository } = await import(
-    '../../../backend/lib/adapters/gateways/mongo/office-assignee.mongo.repository'
-  );
+  const { OfficeAssigneeMongoRepository } =
+    await import('../../../backend/lib/adapters/gateways/mongo/office-assignee.mongo.repository');
   spyOnAllGatewayMethods(
     OfficeAssigneeMongoRepository,
     'OfficeAssigneeMongoRepository',
     explicitMocks.OfficeAssigneeMongoRepository,
   );
 
-  const { OrdersMongoRepository } = await import(
-    '../../../backend/lib/adapters/gateways/mongo/orders.mongo.repository'
-  );
+  const { OrdersMongoRepository } =
+    await import('../../../backend/lib/adapters/gateways/mongo/orders.mongo.repository');
   spyOnAllGatewayMethods(
     OrdersMongoRepository,
     'OrdersMongoRepository',
     explicitMocks.OrdersMongoRepository,
   );
 
-  const { RuntimeStateMongoRepository } = await import(
-    '../../../backend/lib/adapters/gateways/mongo/runtime-state.mongo.repository'
-  );
+  const { RuntimeStateMongoRepository } =
+    await import('../../../backend/lib/adapters/gateways/mongo/runtime-state.mongo.repository');
   spyOnAllGatewayMethods(
     RuntimeStateMongoRepository,
     'RuntimeStateMongoRepository',
     explicitMocks.RuntimeStateMongoRepository,
   );
 
-  const { StaffMongoRepository } = await import(
-    '../../../backend/lib/adapters/gateways/mongo/staff.mongo.repository'
-  );
+  const { StaffMongoRepository } =
+    await import('../../../backend/lib/adapters/gateways/mongo/staff.mongo.repository');
   spyOnAllGatewayMethods(
     StaffMongoRepository,
     'StaffMongoRepository',
     explicitMocks.StaffMongoRepository,
   );
 
-  const { TrusteesMongoRepository } = await import(
-    '../../../backend/lib/adapters/gateways/mongo/trustees.mongo.repository'
-  );
+  const { TrusteesMongoRepository } =
+    await import('../../../backend/lib/adapters/gateways/mongo/trustees.mongo.repository');
   spyOnAllGatewayMethods(
     TrusteesMongoRepository,
     'TrusteesMongoRepository',
     explicitMocks.TrusteesMongoRepository,
   );
 
-  const { UserGroupsMongoRepository } = await import(
-    '../../../backend/lib/adapters/gateways/mongo/user-groups.mongo.repository'
-  );
+  const { UserGroupsMongoRepository } =
+    await import('../../../backend/lib/adapters/gateways/mongo/user-groups.mongo.repository');
   spyOnAllGatewayMethods(
     UserGroupsMongoRepository,
     'UserGroupsMongoRepository',
     explicitMocks.UserGroupsMongoRepository,
   );
 
-  const { UsersMongoRepository } = await import(
-    '../../../backend/lib/adapters/gateways/mongo/user.repository'
-  );
+  const { UsersMongoRepository } =
+    await import('../../../backend/lib/adapters/gateways/mongo/user.repository');
   spyOnAllGatewayMethods(
     UsersMongoRepository,
     'UsersMongoRepository',
     explicitMocks.UsersMongoRepository,
   );
 
-  const { UserSessionCacheMongoRepository } = await import(
-    '../../../backend/lib/adapters/gateways/mongo/user-session-cache.mongo.repository'
-  );
+  const { UserSessionCacheMongoRepository } =
+    await import('../../../backend/lib/adapters/gateways/mongo/user-session-cache.mongo.repository');
   spyOnAllGatewayMethods(
     UserSessionCacheMongoRepository,
     'UserSessionCacheMongoRepository',
     explicitMocks.UserSessionCacheMongoRepository,
   );
 
-  const { ListsMongoRepository } = await import(
-    '../../../backend/lib/adapters/gateways/mongo/lists.mongo.repository'
-  );
+  const { ListsMongoRepository } =
+    await import('../../../backend/lib/adapters/gateways/mongo/lists.mongo.repository');
   spyOnAllGatewayMethods(
     ListsMongoRepository,
     'ListsMongoRepository',

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { spyOnAllGatewayMethods, clearAllRepositorySpies } from './repository-spies';
 
 /**
@@ -155,10 +155,12 @@ describe('repository-spies helpers', () => {
     it('handles undefined/null class gracefully', () => {
       // Should log error and not throw
       expect(() => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         spyOnAllGatewayMethods(undefined as any, 'UndefinedClass');
       }).not.toThrow();
 
       expect(() => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         spyOnAllGatewayMethods(null as any, 'NullClass');
       }).not.toThrow();
     });

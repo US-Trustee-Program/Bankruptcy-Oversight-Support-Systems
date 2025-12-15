@@ -30,9 +30,14 @@
  * ```
  */
 
-import type { CaseDetail, CaseSummary, CaseNote } from '@common/cams/cases';
+import type { CaseDetail, CaseNote } from '@common/cams/cases';
 import type { CaseAssignment } from '@common/cams/assignments';
-import type { TransferFrom, TransferTo, ConsolidationFrom, ConsolidationTo } from '@common/cams/events';
+import type {
+  TransferFrom,
+  TransferTo,
+  ConsolidationFrom,
+  ConsolidationTo,
+} from '@common/cams/events';
 
 type Transfer = TransferFrom | TransferTo;
 type Consolidation = ConsolidationFrom | ConsolidationTo;
@@ -42,7 +47,7 @@ interface DocketEntry {
   caseId: string;
   sequenceNumber?: number;
   dateFiled?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // Search predicate interface
@@ -50,7 +55,7 @@ interface CasePredicate {
   caseNumber?: string;
   chapter?: string;
   divisionCode?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export class TestState {
@@ -112,7 +117,7 @@ export class TestState {
   updateTransfer(transferId: string, updates: Partial<Transfer>): void {
     // Find and update transfer across all cases
     for (const [caseId, transfers] of this.transfers.entries()) {
-      const index = transfers.findIndex((t: any) => t.id === transferId);
+      const index = transfers.findIndex((t) => t.id === transferId);
       if (index !== -1) {
         transfers[index] = { ...transfers[index], ...updates };
         this.transfers.set(caseId, transfers);
@@ -162,7 +167,7 @@ export class TestState {
   updateNote(noteId: string, updates: Partial<CaseNote>): void {
     // Find and update note across all cases
     for (const [caseId, notes] of this.notes.entries()) {
-      const index = notes.findIndex(n => n.id === noteId);
+      const index = notes.findIndex((n) => n.id === noteId);
       if (index !== -1) {
         notes[index] = { ...notes[index], ...updates };
         this.notes.set(caseId, notes);
@@ -175,7 +180,7 @@ export class TestState {
   deleteNote(noteId: string): void {
     // Find and delete note across all cases
     for (const [caseId, notes] of this.notes.entries()) {
-      const filtered = notes.filter(n => n.id !== noteId);
+      const filtered = notes.filter((n) => n.id !== noteId);
       if (filtered.length < notes.length) {
         this.notes.set(caseId, filtered);
         return;
@@ -218,7 +223,7 @@ export class TestState {
     const existing = this.assignments.get(caseId) || [];
     this.assignments.set(
       caseId,
-      existing.filter(a => a.userId !== attorneyId),
+      existing.filter((a) => a.userId !== attorneyId),
     );
   }
 
@@ -228,15 +233,15 @@ export class TestState {
     let results = this.getAllCases();
 
     if (predicate.caseNumber) {
-      results = results.filter(c => c.caseId.includes(predicate.caseNumber!));
+      results = results.filter((c) => c.caseId.includes(predicate.caseNumber!));
     }
 
     if (predicate.chapter) {
-      results = results.filter(c => c.chapter === predicate.chapter);
+      results = results.filter((c) => c.chapter === predicate.chapter);
     }
 
     if (predicate.divisionCode) {
-      results = results.filter(c => c.courtDivisionCode === predicate.divisionCode);
+      results = results.filter((c) => c.courtDivisionCode === predicate.divisionCode);
     }
 
     return results;
@@ -259,15 +264,13 @@ export class TestState {
   expectTransferCount(caseId: string, count: number): void {
     const actual = this.getTransfers(caseId).length;
     if (actual !== count) {
-      throw new Error(
-        `Expected ${count} transfers for case ${caseId}, but found ${actual}`,
-      );
+      throw new Error(`Expected ${count} transfers for case ${caseId}, but found ${actual}`);
     }
   }
 
   expectNoteExists(caseId: string, noteContent: string): void {
     const notes = this.getNotes(caseId);
-    const found = notes.some(n => n.content.includes(noteContent));
+    const found = notes.some((n) => n.content.includes(noteContent));
     if (!found) {
       throw new Error(
         `Expected note containing "${noteContent}" for case ${caseId}, but not found`,
@@ -278,15 +281,13 @@ export class TestState {
   expectNoteCount(caseId: string, count: number): void {
     const actual = this.getNotes(caseId).length;
     if (actual !== count) {
-      throw new Error(
-        `Expected ${count} notes for case ${caseId}, but found ${actual}`,
-      );
+      throw new Error(`Expected ${count} notes for case ${caseId}, but found ${actual}`);
     }
   }
 
   expectAssignmentExists(caseId: string, attorneyId: string): void {
     const assignments = this.getAssignments(caseId);
-    const found = assignments.some(a => a.userId === attorneyId);
+    const found = assignments.some((a) => a.userId === attorneyId);
     if (!found) {
       throw new Error(
         `Expected assignment for attorney ${attorneyId} on case ${caseId}, but not found`,

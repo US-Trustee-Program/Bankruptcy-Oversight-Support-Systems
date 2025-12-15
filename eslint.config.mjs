@@ -11,7 +11,7 @@ const frontendSourceConfig = eslintUiConfig.map((configObject) => ({
 }));
 const frontendTestConfig = eslintUiTestConfig.map((configObject) => ({
   ...configObject,
-  files: ['user-interface/**/*.test.ts', 'user-interface/**/*.test.tsx'],
+  files: ['user-interface/**/*.test.ts', 'user-interface/**/*.test.tsx', 'test/bdd/**/*.ts', 'test/bdd/**/*.tsx'],
 }));
 const sourceConfig = eslintTsConfig.map((configObject) => ({
   ...configObject,

@@ -1,7 +1,12 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest';
+import { describe, it, beforeAll, afterAll, afterEach } from 'vitest';
 import { initializeTestServer, cleanupTestServer } from '../../helpers/api-server';
 import { TestSessions } from '../../fixtures/auth.fixtures';
-import { TestSetup, waitForAppLoad, expectPageToContain, expectPageToMatch } from '../../helpers/fluent-test-setup';
+import {
+  TestSetup,
+  waitForAppLoad,
+  expectPageToContain,
+  expectPageToMatch,
+} from '../../helpers/fluent-test-setup';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { clearAllRepositorySpies } from '../../helpers/repository-spies';
 
@@ -49,40 +54,35 @@ describe('Feature: View Case Details (Full Stack)', () => {
    * WHEN the user navigates to the case detail page
    * THEN the case information should be displayed
    */
-  it(
-    'should display Chapter 11 case details',
-    async () => {
-      // GIVEN: A Chapter 11 case
-      const testCase = MockData.getCaseDetail({
-        override: {
-          caseId: '081-23-12345',
-          caseTitle: 'Test Corporation',
-          chapter: '11',
-          officeName: 'Manhattan',
-          officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
-          courtDivisionName: 'Manhattan',
-        },
-      });
+  it('should display Chapter 11 case details', async () => {
+    // GIVEN: A Chapter 11 case
+    const testCase = MockData.getCaseDetail({
+      override: {
+        caseId: '081-23-12345',
+        caseTitle: 'Test Corporation',
+        chapter: '11',
+        officeName: 'Manhattan',
+        officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
+        courtDivisionName: 'Manhattan',
+      },
+    });
 
-      // WHEN: User navigates to case detail page
-      await TestSetup
-        .forUser(TestSessions.caseAssignmentManager())
-        .withCase(testCase)
-        .withTransfers(testCase.caseId, [])
-        .withConsolidations(testCase.caseId, [])
-        .renderAt(`/case-detail/${testCase.caseId}`);
+    // WHEN: User navigates to case detail page
+    await TestSetup.forUser(TestSessions.caseAssignmentManager())
+      .withCase(testCase)
+      .withTransfers(testCase.caseId, [])
+      .withConsolidations(testCase.caseId, [])
+      .renderAt(`/case-detail/${testCase.caseId}`);
 
-      await waitForAppLoad();
+    await waitForAppLoad();
 
-      // THEN: Case details should display
-      await expectPageToContain(testCase.caseTitle);
-      await expectPageToContain(testCase.caseId);
-      await expectPageToMatch(/Chapter 11/i);
+    // THEN: Case details should display
+    await expectPageToContain(testCase.caseTitle);
+    await expectPageToContain(testCase.caseId);
+    await expectPageToMatch(/Chapter 11/i);
 
-      console.log('[TEST] ✓ Case details displayed successfully');
-    },
-    20000,
-  );
+    console.log('[TEST] ✓ Case details displayed successfully');
+  }, 20000);
 
   /**
    * Scenario: User views a Chapter 7 case
@@ -91,34 +91,29 @@ describe('Feature: View Case Details (Full Stack)', () => {
    * WHEN the user views the case
    * THEN Chapter 7 information should be displayed
    */
-  it(
-    'should display Chapter 7 case correctly',
-    async () => {
-      // GIVEN: A Chapter 7 case
-      const testCase = MockData.getCaseDetail({
-        override: {
-          caseId: '081-23-77777',
-          caseTitle: 'Chapter 7 Test',
-          chapter: '7',
-          officeName: 'Manhattan',
-          officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
-        },
-      });
+  it('should display Chapter 7 case correctly', async () => {
+    // GIVEN: A Chapter 7 case
+    const testCase = MockData.getCaseDetail({
+      override: {
+        caseId: '081-23-77777',
+        caseTitle: 'Chapter 7 Test',
+        chapter: '7',
+        officeName: 'Manhattan',
+        officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
+      },
+    });
 
-      // WHEN: User views the case
-      await TestSetup
-        .forUser(TestSessions.caseAssignmentManager())
-        .withCase(testCase)
-        .renderAt(`/case-detail/${testCase.caseId}`);
+    // WHEN: User views the case
+    await TestSetup.forUser(TestSessions.caseAssignmentManager())
+      .withCase(testCase)
+      .renderAt(`/case-detail/${testCase.caseId}`);
 
-      await waitForAppLoad();
+    await waitForAppLoad();
 
-      // THEN: Chapter 7 info should display
-      await expectPageToMatch(/Chapter 7/i);
-      console.log('[TEST] ✓ Chapter 7 case displayed correctly');
-    },
-    20000,
-  );
+    // THEN: Chapter 7 info should display
+    await expectPageToMatch(/Chapter 7/i);
+    console.log('[TEST] ✓ Chapter 7 case displayed correctly');
+  }, 20000);
 
   /**
    * Scenario: Different user roles can access cases
@@ -127,33 +122,28 @@ describe('Feature: View Case Details (Full Stack)', () => {
    * WHEN a trial attorney views the case
    * THEN they should see the details
    */
-  it(
-    'should allow trial attorney to view case',
-    async () => {
-      // GIVEN: A case
-      const testCase = MockData.getCaseDetail({
-        override: {
-          caseId: '081-23-55555',
-          caseTitle: 'Multi-Role Case',
-          officeName: 'Manhattan',
-          officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
-        },
-      });
+  it('should allow trial attorney to view case', async () => {
+    // GIVEN: A case
+    const testCase = MockData.getCaseDetail({
+      override: {
+        caseId: '081-23-55555',
+        caseTitle: 'Multi-Role Case',
+        officeName: 'Manhattan',
+        officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
+      },
+    });
 
-      // WHEN: Trial attorney views case
-      await TestSetup
-        .forUser(TestSessions.trialAttorney())
-        .withCase(testCase)
-        .renderAt(`/case-detail/${testCase.caseId}`);
+    // WHEN: Trial attorney views case
+    await TestSetup.forUser(TestSessions.trialAttorney())
+      .withCase(testCase)
+      .renderAt(`/case-detail/${testCase.caseId}`);
 
-      await waitForAppLoad();
+    await waitForAppLoad();
 
-      // THEN: Details should display
-      await expectPageToContain(testCase.caseTitle);
-      console.log('[TEST] ✓ Trial attorney can view case details');
-    },
-    20000,
-  );
+    // THEN: Details should display
+    await expectPageToContain(testCase.caseTitle);
+    console.log('[TEST] ✓ Trial attorney can view case details');
+  }, 20000);
 
   /**
    * Scenario: Chapter 11 case display
@@ -162,34 +152,29 @@ describe('Feature: View Case Details (Full Stack)', () => {
    * WHEN the user views the case
    * THEN the case information should be displayed correctly
    */
-  it(
-    'should display Chapter 11 case information',
-    async () => {
-      // GIVEN: A Chapter 11 case
-      const testCase = MockData.getCaseDetail({
-        override: {
-          caseId: '081-23-99999',
-          caseTitle: 'Complex Case',
-          chapter: '11',
-          officeName: 'Manhattan',
-          officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
-        },
-      });
+  it('should display Chapter 11 case information', async () => {
+    // GIVEN: A Chapter 11 case
+    const testCase = MockData.getCaseDetail({
+      override: {
+        caseId: '081-23-99999',
+        caseTitle: 'Complex Case',
+        chapter: '11',
+        officeName: 'Manhattan',
+        officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
+      },
+    });
 
-      // WHEN: User views the case
-      await TestSetup
-        .forUser(TestSessions.caseAssignmentManager())
-        .withCase(testCase)
-        .withTransfers(testCase.caseId, [])
-        .withConsolidations(testCase.caseId, [])
-        .renderAt(`/case-detail/${testCase.caseId}`);
+    // WHEN: User views the case
+    await TestSetup.forUser(TestSessions.caseAssignmentManager())
+      .withCase(testCase)
+      .withTransfers(testCase.caseId, [])
+      .withConsolidations(testCase.caseId, [])
+      .renderAt(`/case-detail/${testCase.caseId}`);
 
-      await waitForAppLoad();
+    await waitForAppLoad();
 
-      // THEN: Case should display
-      await expectPageToContain(testCase.caseTitle);
-      console.log('[TEST] ✓ Chapter 11 case displayed successfully');
-    },
-    20000,
-  );
+    // THEN: Case should display
+    await expectPageToContain(testCase.caseTitle);
+    console.log('[TEST] ✓ Chapter 11 case displayed successfully');
+  }, 20000);
 });

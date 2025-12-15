@@ -40,8 +40,11 @@ interface BddRenderOptions extends Omit<RenderOptions, 'wrapper'> {
  * ```
  */
 export function renderApp(options: BddRenderOptions) {
-  const { initialRoute, session = TestSessions.caseAssignmentManager(), ...renderOptions } =
-    options;
+  const {
+    initialRoute,
+    session = TestSessions.caseAssignmentManager(),
+    ...renderOptions
+  } = options;
 
   // Setup LocalStorage session before rendering
   // Login component will check this and render Session wrapper

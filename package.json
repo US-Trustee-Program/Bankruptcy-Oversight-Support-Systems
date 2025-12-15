@@ -37,8 +37,8 @@
     "coverage:backend": "npm run coverage --workspace=backend",
     "coverage:user-interface": "npm run coverage --workspace=user-interface",
     "coverage:bdd": "npm run coverage --workspace=test/bdd",
-    "lint": "eslint . -c eslint.config.mjs --quiet",
-    "lint:fix": "eslint . -c eslint.config.mjs --fix --quiet",
+    "lint": "npm run lint --workspaces --if-present -- --quiet",
+    "lint:fix": "npm run lint:fix --workspaces --if-present -- --quiet",
     "knip": "knip",
     "knip:fix": "knip --fix"
   },

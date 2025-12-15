@@ -2,13 +2,15 @@ import jwt from 'jsonwebtoken';
 import { CamsSession } from '@common/cams/session';
 import { CamsRole } from '@common/cams/roles';
 import MockData from '@common/cams/test-utilities/mock-data';
-import { nowInSeconds } from '@common/date-helper';
+import DateHelper from '@common/date-helper';
 import { CamsJwtClaims } from '@common/cams/jwt';
 import {
   MOCK_JWT_JOHN_HANCOCK,
   MOCK_ISSUER,
   MOCK_AUDIENCE,
-} from '../../../backend/lib/testing/mock-gateways/mock-oauth2-constants';
+} from '@backend/lib/testing/mock-gateways/mock-oauth2-constants.ts';
+
+const { nowInSeconds } = DateHelper;
 
 /**
  * Authentication fixtures for BDD tests
@@ -65,8 +67,7 @@ export const TestSessions = {
   /**
    * Case Assignment Manager - can manage case assignments
    */
-  caseAssignmentManager: (): CamsSession =>
-    createTestSession([CamsRole.CaseAssignmentManager]),
+  caseAssignmentManager: (): CamsSession => createTestSession([CamsRole.CaseAssignmentManager]),
 
   /**
    * Trial Attorney - can view cases and manage within their office
