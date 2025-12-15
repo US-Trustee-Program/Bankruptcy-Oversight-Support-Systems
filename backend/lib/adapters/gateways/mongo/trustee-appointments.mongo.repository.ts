@@ -19,7 +19,7 @@ export class TrusteeAppointmentsMongoRepository
   implements TrusteeAppointmentsRepository
 {
   private static referenceCount: number = 0;
-  private static instance: TrusteeAppointmentsMongoRepository;
+  private static instance: TrusteeAppointmentsMongoRepository | null = null;
 
   constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);
