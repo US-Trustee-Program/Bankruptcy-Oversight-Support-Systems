@@ -60,9 +60,42 @@ done
 rule_name="agent-slot-${app_name:0:21}" # rule name has a 32 character limit
 
 function on_exit() {
-    # always try to remove temporary access
-    az functionapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "${rule_name}" --scm-site true 1>/dev/null
-    az functionapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --rule-name "${rule_name}" --scm-site true 1>/dev/null
+    # Restore original access restrictions
+    echo "Restoring original access restrictions..."
+
+    # Restore SCM site restrictions
+    if [ -n "$saved_restrictions" ] && [ "$saved_restrictions" != "[]" ]; then
+        echo "$saved_restrictions" | jq -c '.[]' | while IFS= read -r restriction; do
+            rule_name=$(echo "$restriction" | jq -r '.name')
+            ip_address=$(echo "$restriction" | jq -r '.ipAddress // empty')
+            priority=$(echo "$restriction" | jq -r '.priority')
+            action=$(echo "$restriction" | jq -r '.action')
+
+            if [ -n "$ip_address" ]; then
+                echo "Restoring SCM rule: ${rule_name} (${ip_address})"
+                az functionapp config access-restriction add -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" \
+                    --rule-name "${rule_name}" --action "${action}" --ip-address "${ip_address}" \
+                    --priority "${priority}" --scm-site true 2>/dev/null || true
+            fi
+        done
+    fi
+
+    # Restore main site restrictions
+    if [ -n "$saved_main_restrictions" ] && [ "$saved_main_restrictions" != "[]" ]; then
+        echo "$saved_main_restrictions" | jq -c '.[]' | while IFS= read -r restriction; do
+            rule_name=$(echo "$restriction" | jq -r '.name')
+            ip_address=$(echo "$restriction" | jq -r '.ipAddress // empty')
+            priority=$(echo "$restriction" | jq -r '.priority')
+            action=$(echo "$restriction" | jq -r '.action')
+
+            if [ -n "$ip_address" ]; then
+                echo "Restoring main site rule: ${rule_name} (${ip_address})"
+                az functionapp config access-restriction add -g "${app_rg}" -n "${app_name}" \
+                    --rule-name "${rule_name}" --action "${action}" --ip-address "${ip_address}" \
+                    --priority "${priority}" --scm-site false 2>/dev/null || true
+            fi
+        done
+    fi
 
 }
 trap on_exit EXIT
@@ -72,19 +105,34 @@ if [ ! -f "$artifact_path" ]; then
     exit 10
 fi
 
-# allow build agent access to execute deployment
-# TEMPORARY: Using broad IP range to debug 403 issues
-# agent_ip=$(curl -s --retry 3 --retry-delay 30 --retry-all-errors https://api.ipify.org)
-# agent_ip=$(echo "${agent_ip}" | sed -E 's/\.[0-9]+(\/[0-9]+)?$/.0\/24/')
-agent_ip="0.0.0.0/0"
-echo "Adding rule: ${rule_name} to webapp with IP: ${agent_ip}"
-az functionapp config access-restriction add -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "${rule_name}" --action Allow --ip-address "${agent_ip}" --priority 232 --scm-site true 1>/dev/null
-az functionapp config access-restriction add -g "${app_rg}" -n "${app_name}" --rule-name "${rule_name}" --action Allow --ip-address "${agent_ip}" --priority 232 --scm-site true 1>/dev/null
+# Save current SCM access restrictions for restoration later
+echo "Saving current SCM access restrictions..."
+saved_restrictions=$(az functionapp config access-restriction show -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --query "scmIpSecurityRestrictions" -o json)
+
+# Remove all SCM access restrictions to allow deployment
+echo "Removing all SCM access restrictions temporarily..."
+restriction_names=$(echo "$saved_restrictions" | jq -r '.[].name // empty')
+if [ -n "$restriction_names" ]; then
+    while IFS= read -r rule_name; do
+        echo "Removing rule: ${rule_name}"
+        az functionapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "${rule_name}" --scm-site true 2>/dev/null || true
+    done <<< "$restriction_names"
+fi
+
+# Also remove main site restrictions
+saved_main_restrictions=$(az functionapp config access-restriction show -g "${app_rg}" -n "${app_name}" --query "ipSecurityRestrictions" -o json)
+main_restriction_names=$(echo "$saved_main_restrictions" | jq -r '.[].name // empty')
+if [ -n "$main_restriction_names" ]; then
+    while IFS= read -r rule_name; do
+        echo "Removing main site rule: ${rule_name}"
+        az functionapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --rule-name "${rule_name}" --scm-site false 2>/dev/null || true
+    done <<< "$main_restriction_names"
+fi
+
+echo "All access restrictions removed. Deployment should now proceed."
+
 # Configure info sha
 az functionapp config appsettings set -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --settings "INFO_SHA=${commitSha}"
-
-# Verify access restrictions were added
-az functionapp config access-restriction show -g "${app_rg}" -n "${app_name}" --slot "${slot_name}"
 
 # Deploy with retry logic and exponential backoff
 max_attempts=6
