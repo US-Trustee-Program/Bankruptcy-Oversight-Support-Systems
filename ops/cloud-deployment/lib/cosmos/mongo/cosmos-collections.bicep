@@ -364,9 +364,7 @@ resource trusteeAppointmentsCollection 'Microsoft.DocumentDB/databaseAccounts/mo
         }
         {
           key: {
-            keys: [
-              '$**'
-            ]
+            keys: ['trusteeId']
           }
         }
       ]
