@@ -31,7 +31,7 @@ import {
   ElevatePrivilegedUserAction,
   RoleAndOfficeGroupNames,
 } from '@common/cams/privileged-identity';
-import { Trustee, TrusteeInput } from '@common/cams/trustees';
+import { Trustee, TrusteeInput, TrusteeOversightAssignment } from '@common/cams/trustees';
 import { Creatable } from '@common/cams/creatable';
 import { BankListItem, BankruptcySoftwareListItem } from '@common/cams/lists';
 import { OversightRole } from '@common/cams/roles';
@@ -537,7 +537,9 @@ async function deleteBank(_ignore: string) {
   return;
 }
 
-async function getTrusteeOversightAssignments(trusteeId: string) {
+async function getTrusteeOversightAssignments(
+  trusteeId: string,
+): Promise<ResponseBody<TrusteeOversightAssignment[]>> {
   return {
     data: [
       {
@@ -561,7 +563,7 @@ async function createTrusteeOversightAssignment(
   trusteeId: string,
   userId: string,
   role: OversightRole,
-) {
+): Promise<ResponseBody<TrusteeOversightAssignment>> {
   return {
     data: {
       id: MockData.randomId(),

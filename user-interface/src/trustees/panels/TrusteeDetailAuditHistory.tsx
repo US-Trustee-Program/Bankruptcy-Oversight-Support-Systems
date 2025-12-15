@@ -3,7 +3,7 @@ import { formatDate, sortByDateReverse } from '@/lib/utils/datetime';
 import LoadingIndicator from '@/lib/components/LoadingIndicator';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { useEffect, useState } from 'react';
-import useApi2 from '@/lib/hooks/UseApi2';
+import Api2 from '@/lib/models/api2';
 import {
   TrusteeHistory,
   TrusteeNameHistory,
@@ -226,13 +226,12 @@ function RenderTrusteeHistory(props: Readonly<{ trusteeHistory: TrusteeHistory[]
 export default function TrusteeDetailAuditHistory(props: Readonly<TrusteeDetailAuditHistoryProps>) {
   const [trusteeHistory, setTrusteeHistory] = useState<TrusteeHistory[]>([]);
   const [isAuditHistoryLoading, setIsAuditHistoryLoading] = useState<boolean>(false);
-  const api = useApi2();
 
   useEffect(() => {
     const fetchTrusteeHistory = async () => {
       setIsAuditHistoryLoading(true);
       try {
-        const response = await api.getTrusteeHistory(props.trusteeId);
+        const response = await Api2.getTrusteeHistory(props.trusteeId);
         if (response) {
           setTrusteeHistory(
             response.data.sort((a: Auditable, b: Auditable) =>
@@ -247,7 +246,7 @@ export default function TrusteeDetailAuditHistory(props: Readonly<TrusteeDetailA
       }
     };
     fetchTrusteeHistory();
-  }, [api, props.trusteeId]);
+  }, [props.trusteeId]);
 
   return (
     <div className="trustee-audit-history">

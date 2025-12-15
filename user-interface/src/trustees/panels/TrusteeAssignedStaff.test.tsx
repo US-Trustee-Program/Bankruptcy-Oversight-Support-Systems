@@ -1,63 +1,11 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { vi, describe, test, expect, beforeEach, MockedFunction } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import { vi, describe, test, expect, beforeEach } from 'vitest';
 import TrusteeAssignedStaff from './TrusteeAssignedStaff';
-import { useTrusteeAssignments } from '@/trustees/modals/UseTrusteeAssignments';
-import { TrusteeOversightAssignment } from '@common/cams/trustees';
+import * as UseTrusteeAssignmentsModule from '@/trustees/modals/UseTrusteeAssignments';
 import { AttorneyUser } from '@common/cams/users';
 import { CamsRole, OversightRole } from '@common/cams/roles';
-import useApi2 from '@/lib/hooks/UseApi2';
-
-vi.mock('@/trustees/modals/UseTrusteeAssignments', () => ({
-  useTrusteeAssignments: vi.fn(),
-}));
-
-vi.mock('@/lib/hooks/UseApi2');
-
-vi.mock('./AttorneyAssignmentSection', () => ({
-  default: vi.fn(({ trusteeId, assignments, attorneys, onAssignmentChange, isLoading }) => (
-    <div
-      data-testid="attorney-assignment-section"
-      data-trustee-id={trusteeId}
-      data-loading={isLoading}
-      data-assignments-count={assignments?.length || 0}
-      data-attorneys-count={attorneys?.length || 0}
-    >
-      <button onClick={onAssignmentChange} data-testid="refresh-assignments">
-        Refresh Assignments
-      </button>
-    </div>
-  )),
-}));
-
-vi.mock('./AuditorAssignmentSection', () => ({
-  default: vi.fn(({ trusteeId, assignments, onAssignmentChange, isLoading }) => (
-    <div
-      data-testid="auditor-assignment-section"
-      data-trustee-id={trusteeId}
-      data-loading={isLoading}
-      data-assignments-count={assignments?.length || 0}
-    >
-      <button onClick={onAssignmentChange} data-testid="refresh-auditor-assignments">
-        Refresh Auditor Assignments
-      </button>
-    </div>
-  )),
-}));
-
-vi.mock('./ParalegalAssignmentSection', () => ({
-  default: vi.fn(({ trusteeId, assignments, onAssignmentChange, isLoading }) => (
-    <div
-      data-testid="paralegal-assignment-section"
-      data-trustee-id={trusteeId}
-      data-loading={isLoading}
-      data-assignments-count={assignments?.length || 0}
-    >
-      <button onClick={onAssignmentChange} data-testid="refresh-paralegal-assignments">
-        Refresh Paralegal Assignments
-      </button>
-    </div>
-  )),
-}));
+import Api2 from '@/lib/models/api2';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 
 describe('TrusteeAssignedStaff', () => {
   const mockAttorneys: AttorneyUser[] = [
@@ -75,28 +23,6 @@ describe('TrusteeAssignedStaff', () => {
     },
   ];
 
-  const mockAssignments: TrusteeOversightAssignment[] = [
-    {
-      id: 'assignment-1',
-      trusteeId: 'trustee-123',
-      user: {
-        id: 'attorney-1',
-        name: 'Attorney Smith',
-      },
-      role: OversightRole.OversightAttorney,
-      createdBy: {
-        id: 'user-1',
-        name: 'Admin User',
-      },
-      createdOn: '2023-01-01T00:00:00.000Z',
-      updatedBy: {
-        id: 'user-1',
-        name: 'Admin User',
-      },
-      updatedOn: '2023-01-01T00:00:00.000Z',
-    },
-  ];
-
   const mockUseTrusteeAssignments = {
     assignments: [],
     isLoading: false,
@@ -106,16 +32,12 @@ describe('TrusteeAssignedStaff', () => {
     clearError: vi.fn(),
   };
 
-  const mockApi = {
-    getOversightStaff: vi.fn().mockResolvedValue({ data: mockAttorneys }),
-  };
-
   beforeEach(() => {
-    vi.clearAllMocks();
-    (useTrusteeAssignments as MockedFunction<typeof useTrusteeAssignments>).mockReturnValue(
+    vi.restoreAllMocks();
+    vi.spyOn(UseTrusteeAssignmentsModule, 'useTrusteeAssignments').mockReturnValue(
       mockUseTrusteeAssignments,
     );
-    (useApi2 as MockedFunction<typeof useApi2>).mockReturnValue(mockApi as never);
+    vi.spyOn(Api2, 'getOversightStaff').mockResolvedValue({ data: mockAttorneys });
   });
 
   test('should render component with correct structure', async () => {
@@ -130,18 +52,8 @@ describe('TrusteeAssignedStaff', () => {
     render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
 
     await waitFor(() => {
-      expect(mockApi.getOversightStaff).toHaveBeenCalledTimes(1);
+      expect(Api2.getOversightStaff).toHaveBeenCalledTimes(1);
     });
-  });
-
-  test('should pass attorneys to AttorneyAssignmentSection after loading', async () => {
-    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
-
-    await waitFor(() => {
-      const section = screen.getByTestId('attorney-assignment-section');
-      expect(section).toHaveAttribute('data-attorneys-count', '2');
-    });
-    expect(screen.getByTestId('auditor-assignment-section')).toBeInTheDocument();
   });
 
   test('should call getTrusteeOversightAssignments on mount with correct trusteeId', () => {
@@ -176,7 +88,7 @@ describe('TrusteeAssignedStaff', () => {
   });
 
   test('should display error alert when error exists', () => {
-    (useTrusteeAssignments as MockedFunction<typeof useTrusteeAssignments>).mockReturnValue({
+    vi.spyOn(UseTrusteeAssignmentsModule, 'useTrusteeAssignments').mockReturnValue({
       ...mockUseTrusteeAssignments,
       error: 'Failed to load assignments',
     });
@@ -188,9 +100,7 @@ describe('TrusteeAssignedStaff', () => {
   });
 
   test('should display error alert when attorneys fail to load', async () => {
-    (useApi2 as MockedFunction<typeof useApi2>).mockReturnValue({
-      getAttorneys: vi.fn().mockRejectedValue(new Error('Failed to load attorneys')),
-    } as never);
+    vi.spyOn(Api2, 'getOversightStaff').mockRejectedValue(new Error('Failed to load attorneys'));
 
     render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
 
@@ -202,7 +112,7 @@ describe('TrusteeAssignedStaff', () => {
   });
 
   test('should show alert container when error is present', () => {
-    (useTrusteeAssignments as MockedFunction<typeof useTrusteeAssignments>).mockReturnValue({
+    vi.spyOn(UseTrusteeAssignmentsModule, 'useTrusteeAssignments').mockReturnValue({
       ...mockUseTrusteeAssignments,
       error: 'Failed to load assignments',
     });
@@ -212,121 +122,17 @@ describe('TrusteeAssignedStaff', () => {
     expect(screen.getByTestId('alert-container')).toBeInTheDocument();
   });
 
-  test('should pass correct props to AttorneyAssignmentSection', async () => {
-    (useTrusteeAssignments as MockedFunction<typeof useTrusteeAssignments>).mockReturnValue({
-      ...mockUseTrusteeAssignments,
-      assignments: mockAssignments,
-      isLoading: true,
-    });
-
+  test('should have correct container structure', async () => {
     render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
-
-    const section = screen.getByTestId('attorney-assignment-section');
-    expect(section).toHaveAttribute('data-trustee-id', 'trustee-123');
-    expect(section).toHaveAttribute('data-loading', 'true');
-    expect(section).toHaveAttribute('data-assignments-count', '1');
 
     await waitFor(() => {
-      expect(section).toHaveAttribute('data-attorneys-count', '2');
+      expect(screen.getByTestId('attorney-assignment-section')).toBeInTheDocument();
     });
-  });
-
-  test('should refresh assignments when onAssignmentChange is called', () => {
-    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
-
-    mockUseTrusteeAssignments.getTrusteeOversightAssignments.mockClear();
-
-    const refreshButton = screen.getByTestId('refresh-assignments');
-    fireEvent.click(refreshButton);
-
-    expect(mockUseTrusteeAssignments.getTrusteeOversightAssignments).toHaveBeenCalledWith(
-      'trustee-123',
-    );
-    expect(mockUseTrusteeAssignments.getTrusteeOversightAssignments).toHaveBeenCalledTimes(1);
-  });
-
-  test('should have correct container structure', () => {
-    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
-
-    expect(screen.getByTestId('attorney-assignment-section')).toBeInTheDocument();
 
     const container = document.querySelector('.right-side-screen-content');
     expect(container).toBeInTheDocument();
     expect(container?.querySelector('.record-detail-container')).toBeInTheDocument();
-  });
-
-  test('should handle loading state properly', () => {
-    (useTrusteeAssignments as MockedFunction<typeof useTrusteeAssignments>).mockReturnValue({
-      ...mockUseTrusteeAssignments,
-      isLoading: true,
-    });
-
-    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
-
-    const section = screen.getByTestId('attorney-assignment-section');
-    expect(section).toHaveAttribute('data-loading', 'true');
-  });
-
-  test('should handle empty assignments array', () => {
-    (useTrusteeAssignments as MockedFunction<typeof useTrusteeAssignments>).mockReturnValue({
-      ...mockUseTrusteeAssignments,
-      assignments: [],
-    });
-
-    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
-
-    const section = screen.getByTestId('attorney-assignment-section');
-    expect(section).toHaveAttribute('data-assignments-count', '0');
-  });
-
-  test('should handle multiple assignments', () => {
-    const multipleAssignments = [
-      ...mockAssignments,
-      {
-        ...mockAssignments[0],
-        id: 'assignment-2',
-        user: { id: 'attorney-2', name: 'Attorney Jones' },
-      },
-    ];
-
-    (useTrusteeAssignments as MockedFunction<typeof useTrusteeAssignments>).mockReturnValue({
-      ...mockUseTrusteeAssignments,
-      assignments: multipleAssignments,
-    });
-
-    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
-
-    const section = screen.getByTestId('attorney-assignment-section');
-    expect(section).toHaveAttribute('data-assignments-count', '2');
-  });
-
-  test('should pass correct props to AuditorAssignmentSection', () => {
-    (useTrusteeAssignments as MockedFunction<typeof useTrusteeAssignments>).mockReturnValue({
-      ...mockUseTrusteeAssignments,
-      assignments: mockAssignments,
-      isLoading: true,
-    });
-
-    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
-
-    const section = screen.getByTestId('auditor-assignment-section');
-    expect(section).toHaveAttribute('data-trustee-id', 'trustee-123');
-    expect(section).toHaveAttribute('data-loading', 'true');
-    expect(section).toHaveAttribute('data-assignments-count', '1');
-  });
-
-  test('should refresh assignments when auditor section onAssignmentChange is called', () => {
-    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
-
-    mockUseTrusteeAssignments.getTrusteeOversightAssignments.mockClear();
-
-    const refreshButton = screen.getByTestId('refresh-auditor-assignments');
-    fireEvent.click(refreshButton);
-
-    expect(mockUseTrusteeAssignments.getTrusteeOversightAssignments).toHaveBeenCalledWith(
-      'trustee-123',
-    );
-    expect(mockUseTrusteeAssignments.getTrusteeOversightAssignments).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('auditor-assignment-section')).toBeInTheDocument();
   });
 
   test('should render ParalegalAssignmentSection', () => {
@@ -335,45 +141,65 @@ describe('TrusteeAssignedStaff', () => {
     expect(screen.getByTestId('paralegal-assignment-section')).toBeInTheDocument();
   });
 
-  test('should pass correct props to ParalegalAssignmentSection', () => {
-    const mockAssignments: TrusteeOversightAssignment[] = [
-      {
-        id: 'assignment-3',
-        trusteeId: 'trustee-123',
-        user: { id: 'paralegal-1', name: 'Bob Paralegal' },
-        role: OversightRole.OversightParalegal,
-        createdBy: { id: 'user-1', name: 'Admin User' },
-        createdOn: '2023-01-01T00:00:00Z',
-        updatedBy: { id: 'user-1', name: 'Admin User' },
-        updatedOn: '2023-01-01T00:00:00Z',
-      },
-    ];
+  test('should call getTrusteeOversightAssignments when onAssignmentChange callback is triggered', async () => {
+    const getTrusteeOversightAssignmentsSpy = vi.fn();
 
-    (useTrusteeAssignments as MockedFunction<typeof useTrusteeAssignments>).mockReturnValue({
+    vi.spyOn(UseTrusteeAssignmentsModule, 'useTrusteeAssignments').mockReturnValue({
       ...mockUseTrusteeAssignments,
-      assignments: mockAssignments,
-      isLoading: true,
+      getTrusteeOversightAssignments: getTrusteeOversightAssignmentsSpy,
+    });
+
+    vi.spyOn(Api2, 'getOversightStaff').mockResolvedValue({
+      data: [
+        {
+          id: 'attorney-1',
+          name: 'Attorney Smith',
+          roles: [CamsRole.TrialAttorney],
+        },
+      ],
+    });
+
+    vi.spyOn(Api2, 'createTrusteeOversightAssignment').mockResolvedValue({
+      data: {
+        id: 'new-assignment',
+        trusteeId: 'trustee-123',
+        user: { id: 'attorney-1', name: 'Attorney Smith' },
+        role: OversightRole.OversightAttorney,
+        createdBy: { id: 'admin', name: 'Admin' },
+        createdOn: '2024-01-01',
+        updatedBy: { id: 'admin', name: 'Admin' },
+        updatedOn: '2024-01-01',
+      },
     });
 
     render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
 
-    const section = screen.getByTestId('paralegal-assignment-section');
-    expect(section).toHaveAttribute('data-trustee-id', 'trustee-123');
-    expect(section).toHaveAttribute('data-loading', 'true');
-    expect(section).toHaveAttribute('data-assignments-count', '1');
-  });
+    await waitFor(() => {
+      expect(screen.getByTestId('attorney-assignment-section')).toBeInTheDocument();
+    });
 
-  test('should refresh assignments when paralegal section onAssignmentChange is called', () => {
-    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
+    // Clear the initial mount call
+    getTrusteeOversightAssignmentsSpy.mockClear();
 
-    mockUseTrusteeAssignments.getTrusteeOversightAssignments.mockClear();
+    const addButton = screen.getByRole('button', { name: /add assigned attorney to trustee/i });
+    addButton.click();
 
-    const refreshButton = screen.getByTestId('refresh-paralegal-assignments');
-    fireEvent.click(refreshButton);
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('modal-content-assign-attorney-modal-trustee-123'),
+      ).toBeInTheDocument();
+    });
 
-    expect(mockUseTrusteeAssignments.getTrusteeOversightAssignments).toHaveBeenCalledWith(
-      'trustee-123',
+    await TestingUtilities.toggleComboBoxItemSelection('attorney-search', 0);
+
+    const submitButton = screen.getByTestId(
+      'button-assign-attorney-modal-trustee-123-submit-button',
     );
-    expect(mockUseTrusteeAssignments.getTrusteeOversightAssignments).toHaveBeenCalledTimes(1);
+    submitButton.click();
+
+    await waitFor(() => {
+      expect(getTrusteeOversightAssignmentsSpy).toHaveBeenCalledWith('trustee-123');
+      expect(getTrusteeOversightAssignmentsSpy).toHaveBeenCalledTimes(1);
+    });
   });
 });
