@@ -23,6 +23,7 @@ import {
 import { Debtor, DebtorAttorney, Party, LegacyAddress, LegacyTrustee } from '../parties';
 import { PhoneNumber, Address, ContactInformation } from '../contact';
 import { Trustee, TrusteeHistory, TrusteeInput } from '../trustees';
+import { TrusteeAppointment } from '../trustee-appointments';
 import { COURT_DIVISIONS } from './courts.mock';
 import { TRIAL_ATTORNEYS } from './attorneys.mock';
 import { ConsolidationOrderSummary } from '../history';
@@ -605,6 +606,22 @@ function getChapter13Trustee(override: Partial<Trustee> = {}): Trustee {
   };
 }
 
+function getTrusteeAppointment(override: Partial<TrusteeAppointment> = {}): TrusteeAppointment {
+  return {
+    id: faker.string.uuid(),
+    trusteeId: faker.string.uuid(),
+    chapter: '7-panel',
+    courtId: '0208',
+    divisionCode: '081',
+    appointedDate: getDateBeforeToday().toISOString(),
+    status: 'active',
+    effectiveDate: getDateBeforeToday().toISOString(),
+    updatedOn: getDateBeforeToday().toISOString(),
+    updatedBy: getCamsUserReference(),
+    ...override,
+  };
+}
+
 function getTrusteeHistory(): TrusteeHistory[] {
   return [
     {
@@ -1047,6 +1064,7 @@ const MockData = {
   getTrustee,
   getTrusteeInput,
   getChapter13Trustee,
+  getTrusteeAppointment,
   getTrusteeHistory,
   getLegacyTrustee,
 };

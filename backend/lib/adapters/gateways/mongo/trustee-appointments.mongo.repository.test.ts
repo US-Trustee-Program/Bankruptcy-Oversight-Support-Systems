@@ -53,6 +53,41 @@ describe('TrusteeAppointmentsMongoRepository', () => {
     TrusteeAppointmentsMongoRepository.dropInstance();
   });
 
+  describe('getInstance and dropInstance', () => {
+    test('should return the same instance on multiple calls', async () => {
+      const instance1 = TrusteeAppointmentsMongoRepository.getInstance(context);
+      const instance2 = TrusteeAppointmentsMongoRepository.getInstance(context);
+
+      expect(instance1).toBe(instance2);
+
+      // Clean up
+      instance1.release();
+      instance2.release();
+    });
+
+    test('should manage reference count correctly', async () => {
+      // Get multiple instances to increase reference count
+      const instance1 = TrusteeAppointmentsMongoRepository.getInstance(context);
+      const instance2 = TrusteeAppointmentsMongoRepository.getInstance(context);
+      const instance3 = TrusteeAppointmentsMongoRepository.getInstance(context);
+
+      expect(instance1).toBe(instance2);
+      expect(instance2).toBe(instance3);
+
+      // First two releases should decrement count but keep instance
+      instance1.release();
+      instance2.release();
+
+      // Instance should still exist
+      const instance4 = TrusteeAppointmentsMongoRepository.getInstance(context);
+      expect(instance4).toBe(instance1);
+
+      // Clean up remaining references
+      instance3.release();
+      instance4.release();
+    });
+  });
+
   describe('read', () => {
     const expectedReadQuery = {
       conjunction: 'AND',
