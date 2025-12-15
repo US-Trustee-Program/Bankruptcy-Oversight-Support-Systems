@@ -60,7 +60,7 @@ describe('Factory function-apps', () => {
     MockOrdersGateway = (await import('./testing/mock-gateways/mock.orders.gateway'))
       .MockOrdersGateway;
 
-      DxtrOrdersGateway = (await import('./adapters/gateways/dxtr/orders.dxtr.gateway')).default;
+    DxtrOrdersGateway = (await import('./adapters/gateways/dxtr/orders.dxtr.gateway')).default;
 
     CaseDocketUseCase = (await import('./use-cases/case-docket/case-docket')).CaseDocketUseCase;
 
@@ -94,13 +94,12 @@ describe('Factory function-apps', () => {
     MockUserGroupGateway = (await import('./testing/mock-gateways/mock-user-group-gateway'))
       .default;
 
-      StaffMongoRepository = (await import('./adapters/gateways/mongo/staff.mongo.repository'))
-        .StaffMongoRepository;
+    StaffMongoRepository = (await import('./adapters/gateways/mongo/staff.mongo.repository'))
+      .StaffMongoRepository;
 
-      TrusteeAppointmentsMongoRepository = (
-        await import('./adapters/gateways/mongo/trustee-appointments.mongo.repository')
-      ).TrusteeAppointmentsMongoRepository;
-    });
+    TrusteeAppointmentsMongoRepository = (
+      await import('./adapters/gateways/mongo/trustee-appointments.mongo.repository')
+    ).TrusteeAppointmentsMongoRepository;
   });
 
   beforeAll(async () => {
