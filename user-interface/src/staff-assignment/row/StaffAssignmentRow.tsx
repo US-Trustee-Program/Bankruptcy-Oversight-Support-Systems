@@ -19,7 +19,7 @@ export type StaffAssignmentRowOptions = {
   modalRef: React.RefObject<AssignAttorneyModalRef | null>;
 };
 
-export type StaffAssignmentRowProps = SearchResultsRowProps & {
+type StaffAssignmentRowProps = SearchResultsRowProps & {
   options: StaffAssignmentRowOptions;
 };
 
