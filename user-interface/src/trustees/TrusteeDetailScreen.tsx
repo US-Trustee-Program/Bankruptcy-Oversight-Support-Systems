@@ -15,6 +15,7 @@ import TrusteeDetailNavigation, { mapTrusteeDetailNavState } from './TrusteeDeta
 import TrusteeOtherInfoForm from './forms/TrusteeOtherInfoForm';
 import NotFound from '@/lib/components/NotFound';
 import TrusteeAssignedStaff from './panels/TrusteeAssignedStaff';
+import TrusteeAppointments from './panels/TrusteeAppointments';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { BankruptcySoftwareList } from '@common/cams/lists';
 import TrusteePublicContactForm from './forms/TrusteePublicContactForm';
@@ -178,7 +179,7 @@ export default function TrusteeDetailScreen() {
       ),
     },
     {
-      path: 'audit-history',
+      path: 'appointments',
       subHeading: 'Trustee',
       content: (
         <div className="trustee-detail-screen-info-container">
@@ -186,7 +187,7 @@ export default function TrusteeDetailScreen() {
             <TrusteeDetailNavigation trusteeId={trusteeId} initiallySelectedNavLink={navState} />
           </div>
           <div className="main-content-area">
-            <TrusteeDetailAuditHistory trusteeId={trusteeId} />
+            <TrusteeAppointments trusteeId={trusteeId} />
           </div>
         </div>
       ),
@@ -201,6 +202,20 @@ export default function TrusteeDetailScreen() {
           </div>
           <div className="main-content-area">
             <TrusteeAssignedStaff trusteeId={trusteeId} />
+          </div>
+        </div>
+      ),
+    },
+    {
+      path: 'audit-history',
+      subHeading: 'Trustee',
+      content: (
+        <div className="trustee-detail-screen-info-container">
+          <div className="left-navigation-pane-container">
+            <TrusteeDetailNavigation trusteeId={trusteeId} initiallySelectedNavLink={navState} />
+          </div>
+          <div className="main-content-area">
+            <TrusteeDetailAuditHistory trusteeId={trusteeId} />
           </div>
         </div>
       ),
