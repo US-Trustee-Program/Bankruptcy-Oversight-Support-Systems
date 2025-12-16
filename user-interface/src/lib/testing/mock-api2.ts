@@ -52,6 +52,24 @@ function randomCaseNumber() {
   return (Math.floor(Math.random() * 90000) + 10000).toString();
 }
 
+// Helper to generate mock JWT token
+function generateMockJWT(): string {
+  const header = { typ: 'JWT', alg: 'HS256' };
+  const payload = {
+    iss: 'http://fake.issuer.com/oauth2/default',
+    sub: 'user@fake.com',
+    aud: 'fakeApi',
+    exp: 1765908518,
+    groups: [],
+  };
+  const signature = '==REDACTED==';
+
+  const encodedHeader = btoa(JSON.stringify(header));
+  const encodedPayload = btoa(JSON.stringify(payload));
+
+  return `${encodedHeader}.${encodedPayload}.${signature}`;
+}
+
 const caseDocketEntries = [
   {
     sequenceNumber: 1,
@@ -1996,8 +2014,7 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
             },
           ],
         },
-        accessToken:
-          'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwOi8vZmFrZS5pc3N1ZXIuY29tL29hdXRoMi9kZWZhdWx0Iiwic3ViIjoidXNlckBmYWtlLmNvbSIsImF1ZCI6ImZha2VBcGkiLCJleHAiOjE3NjU5MDg1MTgsImdyb3VwcyI6W119.uo8vHLYnkLiN4xHccj8buiaFugq1y4qPRbdJN_dyv_E',
+        accessToken: generateMockJWT(),
         provider: 'mock',
         issuer: 'http://issuer/',
         expires: 1765908518,

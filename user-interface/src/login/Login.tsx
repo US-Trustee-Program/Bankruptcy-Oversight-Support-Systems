@@ -31,9 +31,25 @@ export type LoginProps = PropsWithChildren & {
   skipAuthorizedUseOnly?: boolean;
 };
 
-// Inline mock JWT token for 'none' login provider
-const MOCK_JWT =
-  'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwOi8vZmFrZS5pc3N1ZXIuY29tL29hdXRoMi9kZWZhdWx0Iiwic3ViIjoidXNlckBmYWtlLmNvbSIsImF1ZCI6ImZha2VBcGkiLCJleHAiOjE3NjU5MDg1MTgsImdyb3VwcyI6W119.uo8vHLYnkLiN4xHccj8buiaFugq1y4qPRbdJN_dyv_E';
+// Generate mock JWT token for 'none' login provider at runtime
+function generateMockJWT(): string {
+  const header = { typ: 'JWT', alg: 'HS256' };
+  const payload = {
+    iss: 'http://fake.issuer.com/oauth2/default',
+    sub: 'user@fake.com',
+    aud: 'fakeApi',
+    exp: 1765908518,
+    groups: [],
+  };
+  const signature = '==REDACTED==';
+
+  const encodedHeader = btoa(JSON.stringify(header));
+  const encodedPayload = btoa(JSON.stringify(payload));
+
+  return `${encodedHeader}.${encodedPayload}.${signature}`;
+}
+
+const MOCK_JWT = generateMockJWT();
 
 // Inline mock superuser for 'none' login provider
 const MOCK_SUPERUSER: CamsUser = {
