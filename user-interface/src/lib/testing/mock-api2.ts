@@ -471,6 +471,12 @@ async function getTrusteeHistory(_ignore: string) {
   };
 }
 
+async function getTrusteeAppointments(trusteeId: string) {
+  return {
+    data: [MockData.getTrusteeAppointment({ trusteeId })],
+  };
+}
+
 async function getBankruptcySoftwareList() {
   return {
     data: [
@@ -585,6 +591,7 @@ const MockApi2 = {
   getTrustees,
   getTrustee,
   getTrusteeHistory,
+  getTrusteeAppointments,
   postTrustee,
   patchTrustee,
   deletePrivilegedIdentityUser,

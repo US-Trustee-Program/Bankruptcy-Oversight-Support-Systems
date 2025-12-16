@@ -4,14 +4,16 @@ import { setCurrentNav, createNavStateMapper } from '@/lib/utils/navigation';
 
 export enum TrusteeNavState {
   TRUSTEE_PROFILE,
-  AUDIT_HISTORY,
+  APPOINTMENTS,
   ASSIGNED_STAFF,
+  AUDIT_HISTORY,
 }
 
 export const mapTrusteeDetailNavState = createNavStateMapper<TrusteeNavState>(
   {
-    'audit-history': TrusteeNavState.AUDIT_HISTORY,
+    appointments: TrusteeNavState.APPOINTMENTS,
     'assigned-staff': TrusteeNavState.ASSIGNED_STAFF,
+    'audit-history': TrusteeNavState.AUDIT_HISTORY,
   },
   TrusteeNavState.TRUSTEE_PROFILE,
 );
@@ -46,6 +48,17 @@ export default function TrusteeDetailNavigation({
               title="view basic details about the current trustee"
             >
               Profile
+            </NavLink>
+          </li>
+          <li className="usa-sidenav__item">
+            <NavLink
+              to={`/trustees/${trusteeId}/appointments`}
+              data-testid="trustee-appointments-nav-link"
+              className={`usa-sidenav__link ${setCurrentNav(activeNav, TrusteeNavState.APPOINTMENTS)}`}
+              onClick={() => setActiveNav(TrusteeNavState.APPOINTMENTS)}
+              title="view appointments for the current trustee"
+            >
+              Appointments
             </NavLink>
           </li>
           <li className="usa-sidenav__item">
