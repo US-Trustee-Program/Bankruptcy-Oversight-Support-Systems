@@ -16,7 +16,7 @@ export function isConsolidationHistory(history: unknown): history is Consolidati
   // details through the API.
   // The probability that a non-consolidation history object will satisfy this expression
   // ISVERY HIGH!
-  return typeof history === 'object' && 'status' in history;
+  return typeof history === 'object' && history !== null && 'status' in history;
 }
 
 type AbstractCaseHistory<B, A> = Auditable & {

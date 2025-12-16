@@ -2,7 +2,7 @@
   "name": "e2e",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "playwright.config.ts",
   "scripts": {
     "clean": "rm -rf node_modules & rm -rf test-results & rm -rf playwright-report",
     "ui": "playwright test --ui",

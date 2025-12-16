@@ -69,7 +69,7 @@
     "playwright",
     "date",
     "dot",
-    "ts-node"
+    "tsx"
   ],
   "ignoreDependencies": [
     "@azure/cosmos",
@@ -96,6 +96,7 @@
     "typescript-eslint",
     "react",
     "c8",
-    "@faker-js/faker"
+    "@faker-js/faker",
+    "tsx"
   ]
 }
