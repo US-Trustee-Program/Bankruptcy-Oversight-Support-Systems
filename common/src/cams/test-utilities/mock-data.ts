@@ -609,6 +609,7 @@ function getChapter13Trustee(override: Partial<Trustee> = {}): Trustee {
 function getTrusteeAppointment(override: Partial<TrusteeAppointment> = {}): TrusteeAppointment {
   return {
     id: faker.string.uuid(),
+    documentType: 'TRUSTEE_APPOINTMENT',
     trusteeId: faker.string.uuid(),
     chapter: '7-panel',
     courtId: '0208',
