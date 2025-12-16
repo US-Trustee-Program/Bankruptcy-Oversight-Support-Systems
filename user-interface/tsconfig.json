@@ -22,6 +22,5 @@
       "@common/*": ["./../common/src/*"]
     }
   },
-  // "references": [{ "path": "../common" }],
   "include": ["src", "vite.config.mts"]
 }
