@@ -100,6 +100,7 @@ describe('_Api2 functions', async () => {
     await callApiFunction(api2.default.getTrustees, null, api);
     await callApiFunction(api2.default.getTrustee, 'some-id', api);
     await callApiFunction(api2.default.getTrusteeHistory, 'some-id', api);
+    await callApiFunction(api2.default.getTrusteeAppointments, 'some-id', api);
     await callApiFunction(api2.default.getTrusteeOversightAssignments, 'some-id', api);
     await callApiFunction(api2.default.getBanks, null, api);
     await callApiFunction(api2.default.getBankruptcySoftwareList, null, api);
@@ -383,6 +384,15 @@ describe('_Api2 functions', async () => {
     const trusteeId = 'trustee-id';
     api2.default.getTrusteeHistory(trusteeId);
     expect(getSpy).toHaveBeenCalledWith(`/trustees/${trusteeId}/history`, {});
+  });
+
+  test('should call api.get function when calling getTrusteeAppointments', () => {
+    const getSpy = vi
+      .spyOn(api.default, 'get')
+      .mockResolvedValue({ data: [{ id: 'appointment-id' }] });
+    const trusteeId = 'trustee-id';
+    api2.default.getTrusteeAppointments(trusteeId);
+    expect(getSpy).toHaveBeenCalledWith(`/trustees/${trusteeId}/appointments`, {});
   });
 
   test('should call api.get function when calling getTrusteeOversightAssignments', () => {
