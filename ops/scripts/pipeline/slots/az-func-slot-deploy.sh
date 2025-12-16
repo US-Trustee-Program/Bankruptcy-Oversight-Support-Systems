@@ -57,10 +57,10 @@ while [[ $# -gt 0 ]]; do
 done
 
 function on_exit() {
-    # Restore original default action if it was changed
-    if [ -n "${current_scm_default}" ] && [ "${current_scm_default}" != "Allow" ]; then
-        echo "Restoring SCM default action to ${current_scm_default}..."
-        az functionapp config set -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --scm-ip-security-restrictions-default-action "${current_scm_default}" 2>/dev/null || true
+    # Remove temporary IP access rule if it was added
+    if [ -n "${runner_ip}" ]; then
+        echo "Removing temporary IP access rule for ${runner_ip}..."
+        az functionapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "deploy-runner-temp" --scm-site true 2>/dev/null || true
     fi
 
 }
@@ -71,16 +71,25 @@ if [ ! -f "$artifact_path" ]; then
     exit 10
 fi
 
-# Save the current default action for SCM site
-echo "Checking current SCM site default action..."
-current_scm_default=$(az functionapp config access-restriction show -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --query "scmIpSecurityRestrictionsDefaultAction" -o tsv)
-echo "Current SCM default action: ${current_scm_default}"
+# Get runner's public IP with cache-busting to avoid stale responses
+echo "Getting runner's public IP address..."
+runner_ip=$(curl -s --retry 3 --retry-delay 30 --retry-connrefused "https://api.ipify.org?t=$(date +%s)")
+echo "Runner IP: ${runner_ip}"
 
-# Change default action to Allow temporarily
-echo "Temporarily changing SCM site default action to Allow..."
-az functionapp config set -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --scm-ip-security-restrictions-default-action Allow
+# Add temporary IP access rule for SCM site
+echo "Adding temporary IP access rule for runner..."
+az functionapp config access-restriction add \
+    -g "${app_rg}" \
+    -n "${app_name}" \
+    --slot "${slot_name}" \
+    --rule-name "deploy-runner-temp" \
+    --action Allow \
+    --ip-address "${runner_ip}/32" \
+    --priority 100 \
+    --scm-site true
 
-echo "SCM default action changed. Deployment should now proceed."
+echo "IP access rule added. Waiting for propagation..."
+sleep 5
 
 # Configure info sha
 az functionapp config appsettings set -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --settings "INFO_SHA=${commitSha}"
