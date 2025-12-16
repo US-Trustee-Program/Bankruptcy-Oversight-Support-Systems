@@ -12,14 +12,14 @@ import { BadConfiguration } from './BadConfiguration';
 import { OktaLogin } from './providers/okta/OktaLogin';
 import { OktaProvider } from './providers/okta/OktaProvider';
 import LocalStorage from '@/lib/utils/local-storage';
-import MockData from '@common/cams/test-utilities/mock-data';
 import { addApiAfterHook } from '@/lib/models/api';
 import { http401Hook } from './http401-logout';
 import { initializeInactiveLogout } from './inactive-logout';
 import getApiConfiguration from '@/configuration/apiConfiguration';
 import { CamsUser } from '@common/cams/users';
 import { CamsSession } from '@common/cams/session';
-import { SUPERUSER } from '@common/cams/test-utilities/mock-user';
+import { CamsRole } from '@common/cams/roles';
+import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
 import { initializeBroadcastLogout } from '@/login/broadcast-logout';
 import LocalCache from '@/lib/utils/local-cache';
 import DateHelper from '@common/date-helper';
@@ -29,6 +29,18 @@ export type LoginProps = PropsWithChildren & {
   provider?: LoginProvider;
   user?: CamsUser;
   skipAuthorizedUseOnly?: boolean;
+};
+
+// Inline mock JWT token for 'none' login provider
+const MOCK_JWT =
+  'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwOi8vZmFrZS5pc3N1ZXIuY29tL29hdXRoMi9kZWZhdWx0Iiwic3ViIjoidXNlckBmYWtlLmNvbSIsImF1ZCI6ImZha2VBcGkiLCJleHAiOjE3NjU5MDg1MTgsImdyb3VwcyI6W119.uo8vHLYnkLiN4xHccj8buiaFugq1y4qPRbdJN_dyv_E';
+
+// Inline mock superuser for 'none' login provider
+const MOCK_SUPERUSER: CamsUser = {
+  id: '==MOCKUSER=user@fake.com==',
+  name: "Martha's Son",
+  roles: Object.values(CamsRole),
+  offices: MOCKED_USTP_OFFICES_ARRAY,
 };
 
 const config = getApiConfiguration();
@@ -92,8 +104,8 @@ export function Login(props: LoginProps): React.ReactNode {
       providerComponent = (
         <Session
           provider="none"
-          accessToken={MockData.getJwt()}
-          user={props.user ?? SUPERUSER.user}
+          accessToken={MOCK_JWT}
+          user={props.user ?? MOCK_SUPERUSER}
           expires={Number.MAX_SAFE_INTEGER}
           issuer={issuer ?? ''}
         >
