@@ -2504,7 +2504,20 @@ async function getTrusteeHistory(_ignore: string): Promise<ResponseBody<TrusteeH
 
 async function getTrusteeAppointments(trusteeId: string) {
   return {
-    data: [MockData.getTrusteeAppointment({ trusteeId })],
+    data: [
+      {
+        id: 'appointment-1',
+        trusteeId,
+        chapter: '7-panel' as const,
+        courtId: '0208',
+        divisionCode: '081',
+        appointedDate: '2023-01-01T00:00:00Z',
+        status: 'active' as const,
+        effectiveDate: '2023-01-01T00:00:00Z',
+        updatedOn: '2023-01-01T00:00:00Z',
+        updatedBy: { id: 'user-1', name: 'Mock User' },
+      },
+    ],
   };
 }
 
