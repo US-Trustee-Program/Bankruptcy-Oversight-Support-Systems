@@ -4,21 +4,22 @@ import { LegacyAddress } from './parties';
 import { ContactInformation } from './contact';
 import { CamsUserReference } from './users';
 import { OversightRole } from './roles';
+import { NullableOptionalFields } from '../api/common';
 
 // Chapter types supported for trustee assignments
 export type ChapterType = '7-panel' | '7-non-panel' | '11' | '11-subchapter-v' | '12' | '13';
 
 export function formatChapterType(chapter: string): string {
-  const chapterLabels: Record<ChapterType, string> = {
+  const chapterLabels = {
     '7-panel': '7 - Panel',
     '7-non-panel': '7 - Non-Panel',
     '11': '11',
     '11-subchapter-v': '11 - Subchapter V',
     '12': '12',
     '13': '13',
-  };
+  } as Record<string, string>;
 
-  return (chapterLabels as Record<string, string>)[chapter] || chapter;
+  return chapterLabels[chapter] || chapter;
 }
 
 export const TRUSTEE_STATUS_VALUES = ['active', 'not active', 'suspended'] as const;
@@ -46,10 +47,7 @@ export type Trustee = TrusteeData &
     };
   };
 
-export type TrusteeInput = TrusteeCore & {
-  banks?: string[] | null;
-  software?: string | null;
-};
+export type TrusteeInput = TrusteeCore & NullableOptionalFields<TrusteeOptionalFields>;
 
 export type TrusteeOversightAssignment = Auditable &
   Identifiable & {

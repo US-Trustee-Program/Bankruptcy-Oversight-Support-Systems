@@ -25,7 +25,7 @@ export type UstpDivision = {
 
 type Court = {
   courtId: string; // DXTR AO_CS_DIV.COURT_ID
-  courtName?: string; // DXTR AO_COURT.COURT_NAME
+  courtName: string; // DXTR AO_COURT.COURT_NAME
   state?: string;
 };
 

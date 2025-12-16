@@ -25,7 +25,7 @@ describe('offices tests', () => {
               divisions: [
                 {
                   divisionCode: 'TEST1',
-                  court: { courtId: '1234' },
+                  court: { courtId: '1234', courtName: 'Test District Court' },
                   courtOffice: {
                     courtOfficeCode: '1',
                     courtOfficeName: 'Test Court Office',
@@ -33,7 +33,7 @@ describe('offices tests', () => {
                 },
                 {
                   divisionCode: 'TEST2',
-                  court: { courtId: '5678' },
+                  court: { courtId: '5678', courtName: 'Another Test District Court' },
                   courtOffice: {
                     courtOfficeCode: '2',
                     courtOfficeName: 'Another Test Court Office',
