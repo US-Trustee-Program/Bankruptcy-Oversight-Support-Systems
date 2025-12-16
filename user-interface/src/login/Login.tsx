@@ -12,14 +12,14 @@ import { BadConfiguration } from './BadConfiguration';
 import { OktaLogin } from './providers/okta/OktaLogin';
 import { OktaProvider } from './providers/okta/OktaProvider';
 import LocalStorage from '@/lib/utils/local-storage';
-import MockData from '@common/cams/test-utilities/mock-data';
 import { addApiAfterHook } from '@/lib/models/api';
 import { http401Hook } from './http401-logout';
 import { initializeInactiveLogout } from './inactive-logout';
 import getApiConfiguration from '@/configuration/apiConfiguration';
 import { CamsUser } from '@common/cams/users';
 import { CamsSession } from '@common/cams/session';
-import { SUPERUSER } from '@common/cams/test-utilities/mock-user';
+import { CamsRole } from '@common/cams/roles';
+import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
 import { initializeBroadcastLogout } from '@/login/broadcast-logout';
 import LocalCache from '@/lib/utils/local-cache';
 import DateHelper from '@common/date-helper';
@@ -29,6 +29,37 @@ export type LoginProps = PropsWithChildren & {
   provider?: LoginProvider;
   user?: CamsUser;
   skipAuthorizedUseOnly?: boolean;
+};
+
+// Generate mock JWT token for 'none' login provider at runtime
+function generateMockJWT(): string {
+  const header = { typ: 'JWT', alg: 'HS256' };
+  // Set expiration far in the future to avoid session timeout issues
+  const futureExpiration = Math.floor(Date.now() / 1000) + 365 * 24 * 60 * 60; // 1 year from now
+  const payload = {
+    iss: 'http://fake.issuer.com/oauth2/default',
+    sub: 'user@fake.com',
+    aud: 'fakeApi',
+    exp: futureExpiration,
+    groups: [],
+  };
+  // Generate signature at runtime to avoid base64 literals in source
+  const signature = btoa('MOCK_SIGNATURE_FOR_TESTING_ONLY_NOT_REAL');
+
+  const encodedHeader = btoa(JSON.stringify(header));
+  const encodedPayload = btoa(JSON.stringify(payload));
+
+  return `${encodedHeader}.${encodedPayload}.${signature}`;
+}
+
+const MOCK_JWT = generateMockJWT();
+
+// Inline mock superuser for 'none' login provider
+const MOCK_SUPERUSER: CamsUser = {
+  id: '==MOCKUSER=user@fake.com==',
+  name: "Martha's Son",
+  roles: Object.values(CamsRole),
+  offices: MOCKED_USTP_OFFICES_ARRAY,
 };
 
 const config = getApiConfiguration();
@@ -92,8 +123,8 @@ export function Login(props: LoginProps): React.ReactNode {
       providerComponent = (
         <Session
           provider="none"
-          accessToken={MockData.getJwt()}
-          user={props.user ?? SUPERUSER.user}
+          accessToken={MOCK_JWT}
+          user={props.user ?? MOCK_SUPERUSER}
           expires={Number.MAX_SAFE_INTEGER}
           issuer={issuer ?? ''}
         >

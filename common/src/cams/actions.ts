@@ -15,12 +15,16 @@ function contains(resource: ResourceActions<object>, action: Action) {
   });
 }
 
-function merge(action: Action, values: object) {
+function merge<T extends Record<string, unknown>>(action: Action, values: T) {
+  // Extract only the string properties needed for path templating
   const mergeAction = { ...action };
   let template = mergeAction.path;
   Object.keys(values).forEach((key) => {
-    const token = '${' + key + '}';
-    template = template.replace(token, values[key]);
+    const value = values[key];
+    if (typeof value === 'string') {
+      const token = '${' + key + '}';
+      template = template.replace(token, value);
+    }
   });
   mergeAction.path = template;
   return mergeAction;

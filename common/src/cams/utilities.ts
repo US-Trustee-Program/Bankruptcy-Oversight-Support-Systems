@@ -1,5 +1,5 @@
 function keyValuesToArray(kvString: string): string[][] {
-  const array = [];
+  const array: string[][] = [];
   if (!kvString) return array;
   const pairs = kvString.split('|');
   pairs.forEach((pair) => {

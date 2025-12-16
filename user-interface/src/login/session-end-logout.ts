@@ -5,6 +5,11 @@ import { CamsSession } from '@common/cams/session';
 import DateHelper from '@common/date-helper';
 
 export function checkForSessionEnd() {
+  // Guard against window being undefined (e.g., during test teardown)
+  if (typeof window === 'undefined') {
+    return;
+  }
+
   const session = LocalStorage.getSession();
   if (!session || session.expires <= DateHelper.nowInSeconds()) {
     const { host, protocol } = window.location;

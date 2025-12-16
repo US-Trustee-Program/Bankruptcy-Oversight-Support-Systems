@@ -1,9 +1,11 @@
 {
   "compilerOptions": {
-    "outDir": "dist"
+    "outDir": "dist",
+    "skipLibCheck": true
   },
   "extends": "./tsconfig.json",
   "exclude": ["**/*.test.ts", "**/testing*", "**/fake*", "**/testing/*",
-    "function-apps"
+    "function-apps",
+    "../common/src/cams/test-utilities/**"
   ]
 }

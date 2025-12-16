@@ -10,14 +10,14 @@ import { NullableOptionalFields } from '../api/common';
 export type ChapterType = '7-panel' | '7-non-panel' | '11' | '11-subchapter-v' | '12' | '13';
 
 export function formatChapterType(chapter: string): string {
-  const chapterLabels: Record<ChapterType, string> = {
+  const chapterLabels = {
     '7-panel': '7 - Panel',
     '7-non-panel': '7 - Non-Panel',
     '11': '11',
     '11-subchapter-v': '11 - Subchapter V',
     '12': '12',
     '13': '13',
-  };
+  } as Record<string, string>;
 
   return chapterLabels[chapter] || chapter;
 }

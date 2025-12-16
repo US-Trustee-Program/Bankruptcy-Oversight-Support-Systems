@@ -120,7 +120,11 @@ export function getCaseSummaryFromConsolidationOrderCase(
   const excludedKeys = [...consolidationOrderCaseKeys, ...rawConsolidationOrderKeys];
 
   const temp: RawConsolidationOrder = { ...(order as RawConsolidationOrder) };
-  excludedKeys.forEach((key) => delete temp[key]);
+  excludedKeys.forEach((key) => {
+    if (key in temp) {
+      delete temp[key as keyof RawConsolidationOrder];
+    }
+  });
 
   return temp;
 }
