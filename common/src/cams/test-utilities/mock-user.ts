@@ -21,7 +21,7 @@ export type MockUser = {
 };
 
 function addSuperUserOffices(user: CamsUser) {
-  if (user.roles && user.roles.includes(CamsRole.SuperUser)) {
+  if (user.roles?.includes(CamsRole.SuperUser)) {
     user.offices = MOCKED_USTP_OFFICES_ARRAY;
     user.roles = Object.values(CamsRole);
   }

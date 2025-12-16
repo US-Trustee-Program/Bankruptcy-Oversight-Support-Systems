@@ -18,13 +18,13 @@ export function ustpOfficeToCourtDivision(ustp: UstpOfficeDetails): CourtDivisio
         officeName: division.courtOffice.courtOfficeName,
         officeCode: division.courtOffice.courtOfficeCode,
         courtId: division.court.courtId,
-        courtName: division.court.courtName || ('' as string),
+        courtName: division.court.courtName ?? '',
         courtDivisionCode: division.divisionCode,
         courtDivisionName: division.courtOffice.courtOfficeName,
         groupDesignator: group.groupDesignator,
         regionId: ustp.regionId,
         regionName: ustp.regionName,
-        state: division.court.state || ('' as string),
+        state: division.court.state ?? '',
       });
     });
     return acc;
