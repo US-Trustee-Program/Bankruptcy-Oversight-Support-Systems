@@ -7,7 +7,6 @@ import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 describe('AppointmentCard', () => {
   const mockAppointment: TrusteeAppointment = {
     id: 'appointment-001',
-    documentType: 'TRUSTEE_APPOINTMENT',
     trusteeId: 'trustee-123',
     chapter: '7-panel',
     courtId: '081',

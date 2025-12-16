@@ -6,7 +6,6 @@ export type AppointmentStatus = 'active' | 'inactive';
 
 export type TrusteeAppointment = Auditable &
   Identifiable & {
-    documentType: 'TRUSTEE_APPOINTMENT';
     trusteeId: string;
     chapter: ChapterType;
     courtId: string; // District court ID (e.g., '0208' for S.D.N.Y.)
