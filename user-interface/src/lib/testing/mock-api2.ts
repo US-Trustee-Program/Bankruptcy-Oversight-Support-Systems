@@ -471,9 +471,9 @@ async function getTrusteeHistory(_ignore: string) {
   };
 }
 
-async function getTrusteeAppointments(_trusteeId: string) {
+async function getTrusteeAppointments(trusteeId: string) {
   return {
-    data: [MockData.getTrusteeAppointment()],
+    data: [MockData.getTrusteeAppointment({ trusteeId })],
   };
 }
 
