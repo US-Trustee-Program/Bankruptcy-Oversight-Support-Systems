@@ -9,7 +9,6 @@ describe('TrusteeAppointments', () => {
   const mockAppointments: TrusteeAppointment[] = [
     {
       id: 'appointment-001',
-      documentType: 'TRUSTEE_APPOINTMENT',
       trusteeId: 'trustee-123',
       chapter: '7-panel',
       courtId: '081',
@@ -24,7 +23,6 @@ describe('TrusteeAppointments', () => {
     },
     {
       id: 'appointment-002',
-      documentType: 'TRUSTEE_APPOINTMENT',
       trusteeId: 'trustee-123',
       chapter: '11',
       courtId: '081',
