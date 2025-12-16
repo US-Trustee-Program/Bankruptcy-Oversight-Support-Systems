@@ -34,14 +34,17 @@ export type LoginProps = PropsWithChildren & {
 // Generate mock JWT token for 'none' login provider at runtime
 function generateMockJWT(): string {
   const header = { typ: 'JWT', alg: 'HS256' };
+  // Set expiration far in the future to avoid session timeout issues
+  const futureExpiration = Math.floor(Date.now() / 1000) + 365 * 24 * 60 * 60; // 1 year from now
   const payload = {
     iss: 'http://fake.issuer.com/oauth2/default',
     sub: 'user@fake.com',
     aud: 'fakeApi',
-    exp: 1765908518,
+    exp: futureExpiration,
     groups: [],
   };
-  const signature = '==REDACTED==';
+  // Generate signature at runtime to avoid base64 literals in source
+  const signature = btoa('MOCK_SIGNATURE_FOR_TESTING_ONLY_NOT_REAL');
 
   const encodedHeader = btoa(JSON.stringify(header));
   const encodedPayload = btoa(JSON.stringify(payload));
