@@ -55,11 +55,7 @@ export default defineConfig({
   build: {
     outDir: 'build',
     rollupOptions: {
-      external: [
-        '@faker-js/faker',
-        '@common/cams/test-utilities/mock-data',
-        '../common/src/cams/test-utilities/mock-data.ts'
-      ]
+      external: []
     }
   },
   server: {
