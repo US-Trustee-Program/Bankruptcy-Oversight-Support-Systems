@@ -44,16 +44,38 @@ if [ ! -f "${artifact_path}" ]; then
 fi
 
 function on_exit() {
-    # always try to remove temporary access
-    az webapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --rule-name "${ruleName}" --scm-site true 1>/dev/null
+    # Remove temporary IP access rules
+    echo "Removing temporary IP access rules..."
+    az webapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --rule-name "deploy-runner-temp-1" --scm-site true 2>/dev/null || true
+    az webapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --rule-name "deploy-runner-temp-2" --scm-site true 2>/dev/null || true
 }
 trap on_exit EXIT
 
-# allow build agent access to execute deployment
-agentIp=$(curl -s --retry 3 --retry-delay 30 --retry-all-errors https://api.ipify.org)
-ruleName="agent-${app_name:0:26}"
-az webapp config access-restriction add -g "${app_rg}" -n "${app_name}" --rule-name "${ruleName}" --action Allow --ip-address "${agentIp}" --priority 232 --scm-site true 1>/dev/null
+# Add temporary IP access rules for SCM site (allow all IPs using two CIDR ranges)
+echo "=========================================="
+echo "Adding IP access rules to allow all addresses"
+echo "Rule names: deploy-runner-temp-1, deploy-runner-temp-2"
+echo "=========================================="
 
-# Gives some extra time for prior management operation to complete before starting deployment
-sleep 10s
+# Azure requires two CIDR ranges to cover all IPs: 0.0.0.0/1 and 128.0.0.0/1
+az webapp config access-restriction add \
+    -g "${app_rg}" \
+    -n "${app_name}" \
+    --rule-name "deploy-runner-temp-1" \
+    --action Allow \
+    --ip-address "0.0.0.0/1" \
+    --priority 100 \
+    --scm-site true
+
+az webapp config access-restriction add \
+    -g "${app_rg}" \
+    -n "${app_name}" \
+    --rule-name "deploy-runner-temp-2" \
+    --action Allow \
+    --ip-address "128.0.0.0/1" \
+    --priority 101 \
+    --scm-site true
+
+echo "Waiting for access restriction propagation..."
+sleep 10
 az webapp deploy --resource-group "${app_rg}" --src-path "${artifact_path}" --name "${app_name}" --type zip --async true --track-status false
