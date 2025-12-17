@@ -4,10 +4,10 @@
   "description": "",
   "main": "dist/backend/function-apps/api/*/*.function.js",
   "scripts": {
-    "clean": "rm -rf ./dist *.zip",
-    "prestart": "npm run build && cp ../../.env . && (cp ../../dev-users.json . 2>/dev/null || true)",
-    "start": "func start --javascript",
     "build": "tsc --build tsconfig.build.json",
-    "pack": "../../pack.sh api"
+    "clean": "rm -rf ./dist *.zip",
+    "pack": "../../pack.sh api",
+    "prestart": "npm run build && cp ../../.env . && (cp ../../dev-users.json . 2>/dev/null || true)",
+    "start": "func start --javascript"
   }
 }
