@@ -6,6 +6,8 @@ import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 
 describe('TrusteeAppointments', () => {
+  const EMPTY_APPOINTMENTS_MESSAGE = /There are no appointments for this Trustee./i;
+
   const mockAppointments: TrusteeAppointment[] = [
     {
       id: 'appointment-001',
@@ -69,13 +71,19 @@ describe('TrusteeAppointments', () => {
     });
   });
 
-  test('should display info alert when no appointments are found', async () => {
+  test('should display add button and message when no appointments are found', async () => {
     vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [] });
 
     render(<TrusteeAppointments trusteeId="trustee-123" />);
 
     await waitFor(() => {
+<<<<<<< HEAD
       expect(screen.getByText(/There are no appointments for this Trustee./i)).toBeInTheDocument();
+=======
+      expect(screen.getByText(/Add New Appointment/i)).toBeInTheDocument();
+      expect(screen.getByText(EMPTY_APPOINTMENTS_MESSAGE)).toBeInTheDocument();
+      expect(screen.getByTestId('button-add-appointment-button')).toBeInTheDocument();
+>>>>>>> 1763c5424 (Added 'Add' button to empty appointments screen)
     });
   });
 
@@ -133,7 +141,11 @@ describe('TrusteeAppointments', () => {
     render(<TrusteeAppointments trusteeId="trustee-123" />);
 
     await waitFor(() => {
+<<<<<<< HEAD
       expect(screen.getByText(/There are no appointments for this Trustee./i)).toBeInTheDocument();
+=======
+      expect(screen.getByText(EMPTY_APPOINTMENTS_MESSAGE)).toBeInTheDocument();
+>>>>>>> 1763c5424 (Added 'Add' button to empty appointments screen)
     });
   });
 
@@ -144,7 +156,11 @@ describe('TrusteeAppointments', () => {
     render(<TrusteeAppointments trusteeId="trustee-123" />);
 
     await waitFor(() => {
+<<<<<<< HEAD
       expect(screen.getByText(/There are no appointments for this Trustee./i)).toBeInTheDocument();
+=======
+      expect(screen.getByText(EMPTY_APPOINTMENTS_MESSAGE)).toBeInTheDocument();
+>>>>>>> 1763c5424 (Added 'Add' button to empty appointments screen)
     });
   });
 });
