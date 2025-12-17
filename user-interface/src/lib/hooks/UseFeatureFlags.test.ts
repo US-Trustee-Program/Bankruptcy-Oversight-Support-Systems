@@ -21,6 +21,7 @@ describe('useFeatureFlag hook', () => {
   });
 
   test('should use defaults when an api key is not available', () => {
+    vi.spyOn(sdk, 'useFlags').mockReturnValue(remoteFeatureFlags);
     vi.spyOn(config, 'getFeatureFlagConfiguration').mockReturnValue({
       clientId: '',
       useExternalProvider: false,

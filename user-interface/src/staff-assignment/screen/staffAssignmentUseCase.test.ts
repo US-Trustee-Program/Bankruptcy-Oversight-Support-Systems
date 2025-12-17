@@ -1,5 +1,9 @@
 import MockData from '@common/cams/test-utilities/mock-data';
-import { StaffAssignmentControls, StaffAssignmentStore } from './StaffAssignment.types';
+import {
+  StaffAssignmentControls,
+  StaffAssignmentStore,
+  StaffAssignmentUseCase,
+} from './StaffAssignment.types';
 import useStaffAssignmentUseCase from './staffAssignmentUseCase';
 import LocalStorage from '@/lib/utils/local-storage';
 import * as commonUsers from '@common/cams/users';
@@ -70,7 +74,7 @@ describe('staff assignment use case tests', () => {
 
   const mockControls = useStaffAssignmentControlsMock();
 
-  const useCase = useStaffAssignmentUseCase(mockStore, mockControls);
+  let useCase: StaffAssignmentUseCase;
 
   beforeEach(() => {
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
@@ -79,6 +83,7 @@ describe('staff assignment use case tests', () => {
       'chapter-eleven-enabled': true,
       'chapter-twelve-enabled': true,
     };
+    useCase = useStaffAssignmentUseCase(mockStore, mockControls, mockFeatureFlags);
     vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
   });
 

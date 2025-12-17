@@ -15,6 +15,7 @@ export const TRUSTEE_MANAGEMENT = 'trustee-management';
 
 export default function useFeatureFlags(): FeatureFlagSet {
   const config = getFeatureFlagConfiguration();
+  const featureFlags = useFlags();
   if (getAppConfiguration().useFakeApi) {
     return testFeatureFlags;
   }
@@ -22,6 +23,5 @@ export default function useFeatureFlags(): FeatureFlagSet {
     return {};
   }
 
-  const featureFlags = useFlags();
   return !featureFlags || Object.keys(featureFlags).length === 0 ? {} : featureFlags;
 }
