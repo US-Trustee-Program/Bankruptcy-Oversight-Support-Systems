@@ -243,6 +243,11 @@ export interface TrusteesRepository extends Reads<Trustee>, Releasable {
 
 export interface TrusteeAppointmentsRepository extends Reads<TrusteeAppointment>, Releasable {
   getTrusteeAppointments(trusteeId: string): Promise<TrusteeAppointment[]>;
+  createAppointment(
+    trusteeId: string,
+    appointmentInput: import('../../../common/src/cams/trustee-appointments').TrusteeAppointmentInput,
+    userRef: CamsUserReference,
+  ): Promise<TrusteeAppointment>;
 }
 
 export type RuntimeStateDocumentType =

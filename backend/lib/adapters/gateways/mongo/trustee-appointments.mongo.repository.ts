@@ -3,7 +3,13 @@ import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { TrusteeAppointmentsRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import QueryBuilder from '../../../query/query-builder';
-import { TrusteeAppointment } from '../../../../../common/src/cams/trustee-appointments';
+import {
+  TrusteeAppointment,
+  TrusteeAppointmentInput,
+} from '../../../../../common/src/cams/trustee-appointments';
+import { createAuditRecord } from '../../../../../common/src/cams/auditable';
+import { CamsUserReference } from '../../../../../common/src/cams/users';
+import { Creatable } from '../../types/persistence.gateway';
 
 const MODULE_NAME = 'TRUSTEE-APPOINTMENTS-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustee-appointments';
@@ -76,6 +82,33 @@ export class TrusteeAppointmentsMongoRepository
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to retrieve appointments for trustee ${trusteeId}.`,
+      });
+    }
+  }
+
+  async createAppointment(
+    trusteeId: string,
+    appointmentInput: TrusteeAppointmentInput,
+    user: CamsUserReference,
+  ): Promise<TrusteeAppointment> {
+    const appointmentDocument = createAuditRecord<Creatable<TrusteeAppointmentDocument>>(
+      {
+        ...appointmentInput,
+        trusteeId,
+        documentType: 'TRUSTEE_APPOINTMENT',
+      },
+      user,
+    );
+
+    try {
+      const id =
+        await this.getAdapter<Creatable<TrusteeAppointmentDocument>>().insertOne(
+          appointmentDocument,
+        );
+      return { id, ...appointmentDocument };
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to create trustee appointment for trustee ${trusteeId}.`,
       });
     }
   }

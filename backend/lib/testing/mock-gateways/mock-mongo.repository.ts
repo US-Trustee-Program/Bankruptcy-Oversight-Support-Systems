@@ -285,4 +285,8 @@ export class MockMongoRepository
   getTrusteeAppointments(_ignore: any): Promise<any[]> {
     throw new Error('Method not implemented.');
   }
+
+  createAppointment(..._ignore: any[]): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
 }
