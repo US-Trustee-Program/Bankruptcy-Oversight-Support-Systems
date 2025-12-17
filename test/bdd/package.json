@@ -6,12 +6,12 @@
   "type": "module",
   "scripts": {
     "clean": "rm -rf node_modules && rm -rf coverage",
-    "test": "vitest run",
-    "test:watch": "vitest watch",
-    "test:ui": "vitest --ui",
     "coverage": "vitest run --coverage",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run",
+    "test:ui": "vitest --ui",
+    "test:watch": "vitest watch"
   },
   "author": "",
   "license": "CC0 v1.0",

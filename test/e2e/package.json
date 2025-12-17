@@ -5,12 +5,12 @@
   "main": "playwright.config.ts",
   "scripts": {
     "clean": "rm -rf node_modules & rm -rf test-results & rm -rf playwright-report",
-    "ui": "playwright test --ui",
     "headless": "playwright test",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "load-data": "tsx --env-file=.env ./scripts/load-cosmos-data.ts",
-    "load-data:ci": "tsx ./scripts/load-cosmos-data.ts"
+    "load-data:ci": "tsx ./scripts/load-cosmos-data.ts",
+    "ui": "playwright test --ui"
   },
   "author": "",
   "license": "ISC",
