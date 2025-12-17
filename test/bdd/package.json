@@ -1,6 +1,7 @@
 {
   "name": "bdd",
   "version": "1.0.0",
+  "license": "CC0 v1.0",
   "description": "Full-stack BDD tests for CAMS",
   "main": "index.js",
   "type": "module",
@@ -14,7 +15,6 @@
     "test:watch": "vitest watch"
   },
   "author": "",
-  "license": "CC0 v1.0",
   "devDependencies": {
     "@eslint/js": "10.0.0",
     "@testing-library/jest-dom": "6.9.1",

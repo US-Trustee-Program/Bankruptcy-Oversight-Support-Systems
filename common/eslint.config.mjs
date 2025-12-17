@@ -1,5 +1,4 @@
-import eslintTsConfig from './eslint-ts.config.mjs';
-import eslintTestConfig from './eslint-test.config.mjs';
+import { eslintTsConfig, eslintTestConfig } from '../eslint-shared.config.mjs';
 
 const codeConfig = eslintTsConfig.map((configObject) => ({
   files: ['**/*.ts'],
