@@ -50,12 +50,17 @@ if [ ! -f "${artifact_path}" ]; then
     exit 10
 fi
 
+scm_default_action_changed=false
+
 function on_exit() {
-    # Remove temporary IP access rules if they were added
-    if [ -n "${runner_ip}" ]; then
-        echo "Removing temporary IP access rules..."
-        az webapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "deploy-runner-temp-1" --scm-site true 2>/dev/null || true
-        az webapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "deploy-runner-temp-2" --scm-site true 2>/dev/null || true
+    # Restore SCM default action to Deny if it was changed
+    if [ "${scm_default_action_changed}" = true ]; then
+        echo "Restoring SCM default action to Deny..."
+        az webapp config access-restriction set \
+            -g "${app_rg}" \
+            -n "${app_name}" \
+            --slot "${slot_name}" \
+            --scm-default-action Deny 2>/dev/null || echo "Warning: Failed to restore SCM default action"
     fi
 }
 trap on_exit EXIT
@@ -70,51 +75,25 @@ else
   echo "Found ${gitSha} in index.html."
 fi
 
-# Add temporary IP access rules for SCM site (allow all IPs using two CIDR ranges)
+# Temporarily set SCM default action to Allow for deployment
 echo "=========================================="
-echo "Adding IP access rules to allow all addresses"
-echo "Rule names: deploy-runner-temp-1, deploy-runner-temp-2"
+echo "Setting SCM default action to Allow for deployment"
 echo "=========================================="
-
-# Azure requires two CIDR ranges to cover all IPs: 0.0.0.0/1 and 128.0.0.0/1
-az webapp config access-restriction add \
+az webapp config access-restriction set \
     -g "${app_rg}" \
     -n "${app_name}" \
     --slot "${slot_name}" \
-    --rule-name "deploy-runner-temp-1" \
-    --action Allow \
-    --ip-address "0.0.0.0/1" \
-    --priority 100 \
-    --scm-site true
+    --scm-default-action Allow
 
-az webapp config access-restriction add \
-    -g "${app_rg}" \
-    -n "${app_name}" \
-    --slot "${slot_name}" \
-    --rule-name "deploy-runner-temp-2" \
-    --action Allow \
-    --ip-address "128.0.0.0/1" \
-    --priority 101 \
-    --scm-site true
-
-runner_ip="all"
+scm_default_action_changed=true
 
 echo ""
-echo "Verifying IP rules were added..."
+echo "Verifying SCM default action was changed..."
 az webapp config access-restriction show \
     -g "${app_rg}" \
     -n "${app_name}" \
     --slot "${slot_name}" \
-    --query "scmIpSecurityRestrictions[?name=='deploy-runner-temp-1' || name=='deploy-runner-temp-2']" \
-    -o table
-
-echo ""
-echo "All current SCM access rules:"
-az webapp config access-restriction show \
-    -g "${app_rg}" \
-    -n "${app_name}" \
-    --slot "${slot_name}" \
-    --query "scmIpSecurityRestrictions[].{Name:name, IP:ipAddress, Action:action, Priority:priority}" \
+    --query "{ScmDefaultAction: scmIpSecurityRestrictionsDefaultAction}" \
     -o table
 
 echo ""
