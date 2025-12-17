@@ -45,11 +45,17 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+scm_default_action_changed=false
+
 function on_exit() {
-    # Remove temporary IP access rules
-    echo "Removing temporary IP access rules..."
-    az functionapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --rule-name "deploy-runner-temp-1" --scm-site true 2>/dev/null || true
-    az functionapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --rule-name "deploy-runner-temp-2" --scm-site true 2>/dev/null || true
+    # Restore SCM default action to Deny if it was changed
+    if [ "${scm_default_action_changed}" = true ]; then
+        echo "Restoring SCM default action to Deny..."
+        az functionapp config access-restriction set \
+            -g "${app_rg}" \
+            -n "${app_name}" \
+            --scm-default-action Deny 2>/dev/null || echo "Warning: Failed to restore SCM default action"
+    fi
 }
 trap on_exit EXIT
 
@@ -58,31 +64,26 @@ if [ ! -f "$artifact_path" ]; then
     exit 10
 fi
 
-# Add temporary IP access rules for SCM site (allow all IPs using two CIDR ranges)
+# Temporarily set SCM default action to Allow for deployment
 echo "=========================================="
-echo "Adding IP access rules to allow all addresses"
-echo "Rule names: deploy-runner-temp-1, deploy-runner-temp-2"
+echo "Setting SCM default action to Allow for deployment"
 echo "=========================================="
-
-# Azure requires two CIDR ranges to cover all IPs: 0.0.0.0/1 and 128.0.0.0/1
-az functionapp config access-restriction add \
+az functionapp config access-restriction set \
     -g "${app_rg}" \
     -n "${app_name}" \
-    --rule-name "deploy-runner-temp-1" \
-    --action Allow \
-    --ip-address "0.0.0.0/1" \
-    --priority 100 \
-    --scm-site true
+    --scm-default-action Allow
 
-az functionapp config access-restriction add \
+scm_default_action_changed=true
+
+echo ""
+echo "Verifying SCM default action was changed..."
+az functionapp config access-restriction show \
     -g "${app_rg}" \
     -n "${app_name}" \
-    --rule-name "deploy-runner-temp-2" \
-    --action Allow \
-    --ip-address "128.0.0.0/1" \
-    --priority 101 \
-    --scm-site true
+    --query "{ScmDefaultAction: scmIpSecurityRestrictionsDefaultAction}" \
+    -o table
 
+echo ""
 echo "Waiting for access restriction propagation..."
 sleep 10
 
