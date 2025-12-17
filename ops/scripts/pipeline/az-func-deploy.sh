@@ -13,6 +13,7 @@
 
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 enable_debug=false
+
 while [[ $# -gt 0 ]]; do
     case $1 in
     -h | --help)
@@ -39,22 +40,24 @@ while [[ $# -gt 0 ]]; do
         artifact_path="${2}"
         shift 2
         ;;
+
     *)
         exit 2 # error on unknown flag/switch
         ;;
     esac
 done
 
-scm_default_action_changed=false
+default_action_changed=false
 
 function on_exit() {
-    # Restore SCM default action to Deny if it was changed
-    if [ "${scm_default_action_changed}" = true ]; then
-        echo "Restoring SCM default action to Deny..."
+    # Restore default actions to Deny if they were changed
+    if [ "${default_action_changed}" = true ]; then
+        echo "Restoring default actions to Deny..."
         az functionapp config access-restriction set \
             -g "${app_rg}" \
             -n "${app_name}" \
-            --scm-default-action Deny 2>/dev/null || echo "Warning: Failed to restore SCM default action"
+            --scm-default-action Deny \
+            --default-action Deny 2>/dev/null || echo "Warning: Failed to restore default actions"
     fi
 }
 trap on_exit EXIT
@@ -64,23 +67,24 @@ if [ ! -f "$artifact_path" ]; then
     exit 10
 fi
 
-# Temporarily set SCM default action to Allow for deployment
+# Temporarily set default actions to Allow for deployment
 echo "=========================================="
-echo "Setting SCM default action to Allow for deployment"
+echo "Setting default actions to Allow for deployment"
 echo "=========================================="
 az functionapp config access-restriction set \
     -g "${app_rg}" \
     -n "${app_name}" \
-    --scm-default-action Allow
+    --scm-default-action Allow \
+    --default-action Allow
 
-scm_default_action_changed=true
+default_action_changed=true
 
 echo ""
-echo "Verifying SCM default action was changed..."
+echo "Verifying access restrictions..."
 az functionapp config access-restriction show \
     -g "${app_rg}" \
     -n "${app_name}" \
-    --query "{ScmDefaultAction: scmIpSecurityRestrictionsDefaultAction}" \
+    --query "{MainDefaultAction: ipSecurityRestrictionsDefaultAction, ScmDefaultAction: scmIpSecurityRestrictionsDefaultAction}" \
     -o table
 
 echo ""
