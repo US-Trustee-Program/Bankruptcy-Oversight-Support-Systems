@@ -8,25 +8,29 @@ repos:
       - id: check-yaml
       - id: check-added-large-files
   - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: 'v9.38.0' # Use the sha / tag you want to point at
+    rev: 'v9.39.1' # Use the sha / tag you want to point at
     hooks:
       - id: eslint
         files: \.[jt]sx?$ # *.js, *.jsx, *.ts and *.tsx
         types: [file]
+        args: ['--quiet']
         additional_dependencies:
-          - eslint
-          - eslint-config-prettier
-          - eslint-plugin-jest
-          - eslint-plugin-jsx-a11y
-          - eslint-plugin-prettier
-          - eslint-plugin-react
-          - eslint-plugin-testing-library
-          - '@eslint/js'
-          - typescript
-          - typescript-eslint
-          - '@typescript-eslint/eslint-plugin'
-          - '@typescript-eslint/parser'
+          - eslint@9.39.1
+          - eslint-config-prettier@10.1.8
+          - eslint-plugin-jest@29.2.1
+          - eslint-plugin-jsx-a11y@6.10.2
+          - eslint-plugin-prettier@5.5.4
+          - eslint-plugin-react@7.37.5
+          - eslint-plugin-react-hooks@7.0.1
+          - eslint-plugin-testing-library@7.13.5
+          - '@eslint/js@10.0.0'
+          - typescript@5.9.3
+          - typescript-eslint@8.48.0
+          - '@typescript-eslint/eslint-plugin@8.48.0'
+          - '@typescript-eslint/parser@8.48.0'
           - '@vitest/eslint-plugin@1.4.2'
+          - prettier@3.7.4
+          - react@19.2.0
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.5.0
     hooks:
@@ -34,7 +38,7 @@ repos:
         args: ['--baseline', '.secrets.baseline']
         exclude: package.lock.json
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.34.1
+    rev: 0.35.0
     hooks:
       - id: check-github-workflows
         args: ['--verbose']

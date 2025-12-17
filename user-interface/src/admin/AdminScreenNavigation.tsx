@@ -12,11 +12,11 @@ export function setCurrentAdminNav(activeNav: AdminNavState, stateToCheck: Admin
   return activeNav === stateToCheck ? 'usa-current current' : '';
 }
 
-export interface AdminScreenNavigationProps {
+interface AdminScreenNavigationProps {
   initiallySelectedNavLink: AdminNavState;
 }
 
-export function AdminScreenNavigation(props: Readonly<AdminScreenNavigationProps>) {
+function AdminScreenNavigation(props: Readonly<AdminScreenNavigationProps>) {
   const { initiallySelectedNavLink } = props;
   const [activeNav, setActiveNav] = useState<AdminNavState>(initiallySelectedNavLink);
   const flags = useFeatureFlags();

@@ -1,7 +1,7 @@
 import { JSX } from 'react';
 import { IconLabel } from './IconLabel/IconLabel';
 
-export type EmailLinkProps = {
+type EmailLinkProps = {
   email: string;
   subject?: string;
   className?: string;

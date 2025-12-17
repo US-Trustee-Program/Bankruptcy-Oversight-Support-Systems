@@ -26,7 +26,7 @@ function throws(error: Error) {
   };
 }
 
-export const MockFetch = {
+const MockFetch = {
   ok,
   notOk,
   throws,

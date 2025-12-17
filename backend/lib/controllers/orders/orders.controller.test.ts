@@ -12,8 +12,8 @@ import {
   TransferOrder,
   TransferOrderAction,
 } from '../../../../common/src/cams/orders';
-import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
-import { sortDates } from '../../../../common/src/date-helper';
+import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import DateHelper from '../../../../common/src/date-helper';
 import { OrdersController } from './orders.controller';
 import { CamsHttpResponseInit, commonHeaders } from '../../adapters/utils/http-response';
 import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
@@ -47,7 +47,7 @@ describe('orders controller tests', () => {
   const mockConsolidationOrder = new Array<Order>(MockData.getConsolidationOrder());
   const mockOrders = mockTransferOrder
     .concat(mockConsolidationOrder)
-    .sort((a, b) => sortDates(a.orderDate, b.orderDate));
+    .sort((a, b) => DateHelper.sortDates(a.orderDate, b.orderDate));
   const id = '12345';
   const orderTransfer: TransferOrderAction = {
     id,

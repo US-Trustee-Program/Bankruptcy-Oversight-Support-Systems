@@ -14,7 +14,7 @@ import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Butt
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { FromCaseSummary } from './FromCaseSummary';
-import { useApi2 } from '@/lib/hooks/UseApi2';
+import Api2 from '@/lib/models/api2';
 import './PendingTransferOrder.scss';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
 import SuggestedTransferCases, {
@@ -31,7 +31,7 @@ export type PendingTransferOrderProps = {
   officesList: Array<CourtDivisionDetails>;
 };
 
-export function getOrderTransferFromOrder(order: TransferOrder): FlexibleTransferOrderAction {
+function getOrderTransferFromOrder(order: TransferOrder): FlexibleTransferOrderAction {
   const { id, caseId, orderType } = order;
   return {
     id,
@@ -53,8 +53,6 @@ function PendingTransferOrder_(
   const approveButtonRef = useRef<ButtonRef>(null);
   const suggestedCasesRef = useRef<SuggestedTransferCasesImperative>(null);
 
-  const api = useApi2();
-
   function confirmOrderApproval(): void {
     const approvedTransferOrder: FlexibleTransferOrderAction = {
       ...orderTransfer,
@@ -65,8 +63,7 @@ function PendingTransferOrder_(
       ...approvedTransferOrder,
     } as TransferOrder;
 
-    api
-      .patchTransferOrderApproval(approvedTransferOrder)
+    Api2.patchTransferOrderApproval(approvedTransferOrder)
       .then(() => {
         props.onOrderUpdate(
           {
@@ -93,8 +90,7 @@ function PendingTransferOrder_(
       status: 'rejected',
     };
 
-    api
-      .patchTransferOrderRejection(rejection)
+    Api2.patchTransferOrderRejection(rejection)
       .then((_foo) => {
         props.onOrderUpdate(
           {

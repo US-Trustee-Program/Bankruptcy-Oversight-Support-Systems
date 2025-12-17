@@ -2,7 +2,7 @@ import { CamsError, CamsErrorOptions } from './cams-error';
 import HttpStatusCodes from '../../../common/src/api/http-status-codes';
 
 /* eslint-disable-next-line @typescript-eslint/no-empty-object-type */
-export interface ServerConfigErrorOptions extends CamsErrorOptions {}
+interface ServerConfigErrorOptions extends CamsErrorOptions {}
 
 export const UNSUPPORTED_AUTHENTICATION_PROVIDER = 'Unsupported authentication provider.';
 

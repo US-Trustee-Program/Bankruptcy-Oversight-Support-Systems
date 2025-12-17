@@ -1,12 +1,9 @@
-import { MockData } from '@common/cams/test-utilities/mock-data';
-import {
-  LAST_INTERACTION_KEY,
-  LocalStorage,
-  LOGIN_LOCAL_STORAGE_ACK_KEY,
-  LOGIN_LOCAL_STORAGE_SESSION_KEY,
-} from './local-storage';
+import MockData from '@common/cams/test-utilities/mock-data';
+import LocalStorage from './local-storage';
 
 const testSession = MockData.getCamsSession();
+const { LAST_INTERACTION_KEY, LOGIN_LOCAL_STORAGE_ACK_KEY, LOGIN_LOCAL_STORAGE_SESSION_KEY } =
+  LocalStorage;
 
 describe('Local storage', () => {
   describe('getAck', () => {

@@ -82,9 +82,9 @@ export function TableBody(props: TableBodyProps) {
   );
 }
 
-export type TableSortDirection = 'ascending' | 'descending' | 'unsorted';
+type TableSortDirection = 'ascending' | 'descending' | 'unsorted';
 
-export type TableRowSortButtonProps = JSX.IntrinsicElements['button'] & {
+type TableRowSortButtonProps = JSX.IntrinsicElements['button'] & {
   direction?: TableSortDirection;
   title?: string;
 };
@@ -146,7 +146,7 @@ export type TableProps = PropsWithChildren &
   };
 
 /* eslint-disable-next-line @typescript-eslint/no-empty-object-type */
-export interface TableRef extends HTMLTableElement {}
+interface TableRef extends HTMLTableElement {}
 function Table_(
   { id, uswdsStyle, className, caption, children, ...otherProperties }: TableProps,
   ref?: React.Ref<TableRef>,

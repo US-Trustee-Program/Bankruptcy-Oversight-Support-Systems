@@ -6,12 +6,12 @@ import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import { UnknownError } from '../../../common-errors/unknown-error';
 import { closeDeferred } from '../../../deferrable/defer-close';
-import { getTodaysIsoDate } from '../../../../../common/src/date-helper';
+import DateHelper from '../../../../../common/src/date-helper';
 
 describe('User repository tests', () => {
   let context: ApplicationContext;
   let repo: UsersMongoRepository;
-  const todayDate = getTodaysIsoDate();
+  const todayDate = DateHelper.getTodaysIsoDate();
   const adminUser = MockData.getCamsUserReference();
 
   beforeEach(async () => {

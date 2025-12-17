@@ -3,7 +3,7 @@ import {
   isJointAdministrationChildCase,
   isJointAdministrationLeadCase,
 } from './events';
-import { MockData } from './test-utilities/mock-data';
+import MockData from './test-utilities/mock-data';
 
 const jointAdministrationLeadCase: Consolidation[] = [
   MockData.getConsolidationReference({

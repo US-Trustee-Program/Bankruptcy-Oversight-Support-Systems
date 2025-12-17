@@ -20,11 +20,11 @@ import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
 
 const MODULE_NAME = 'ORDERS-CONTROLLER';
 
-export type GetOrdersResponse = CamsHttpResponseInit<Order[]>;
-export type GetSuggestedCasesResponse = CamsHttpResponseInit<CaseSummary[]>;
-export type UpdateOrderResponse = CamsHttpResponseInit;
-export type SyncOrdersResponse = CamsHttpResponseInit<SyncOrdersStatus>;
-export type ManageConsolidationResponse = CamsHttpResponseInit<ConsolidationOrder[]>;
+type GetOrdersResponse = CamsHttpResponseInit<Order[]>;
+type GetSuggestedCasesResponse = CamsHttpResponseInit<CaseSummary[]>;
+type UpdateOrderResponse = CamsHttpResponseInit;
+type SyncOrdersResponse = CamsHttpResponseInit<SyncOrdersStatus>;
+type ManageConsolidationResponse = CamsHttpResponseInit<ConsolidationOrder[]>;
 
 export class OrdersController implements CamsController, CamsTimerController {
   private readonly useCase: OrdersUseCase;

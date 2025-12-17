@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-export type DocumentTitleProps = {
+type DocumentTitleProps = {
   name: string;
 };
 

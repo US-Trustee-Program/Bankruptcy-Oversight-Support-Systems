@@ -1,6 +1,6 @@
 import { StaffController } from '../../../lib/controllers/staff/staff.controller';
 import { CamsError } from '../../../lib/common-errors/cams-error';
-import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import {
   buildTestResponseError,
   buildTestResponseSuccess,

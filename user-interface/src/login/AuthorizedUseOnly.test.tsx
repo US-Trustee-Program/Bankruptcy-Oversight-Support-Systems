@@ -4,12 +4,12 @@ import { AuthorizedUseOnly } from './AuthorizedUseOnly';
 
 // Mock the LocalStorage module
 vi.mock('@/lib/utils/local-storage', () => ({
-  LocalStorage: {
+  default: {
     getAck: vi.fn(),
     setAck: vi.fn(),
   },
 }));
-import { LocalStorage } from '@/lib/utils/local-storage';
+import LocalStorage from '@/lib/utils/local-storage';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
 const mockGetAck = LocalStorage.getAck as MockedFunction<typeof LocalStorage.getAck>;

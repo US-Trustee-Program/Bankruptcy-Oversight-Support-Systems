@@ -15,10 +15,10 @@ export const MockAttorneys: Record<string, AttorneyUser> = {
 
 const manhattanAttorneys = MockUsers.filter(
   (user) =>
-    user.user.offices[0] === REGION_02_GROUP_NY && user.user.roles[0] === CamsRole.TrialAttorney,
+    user.user.offices?.[0] === REGION_02_GROUP_NY &&
+    user.user.roles?.[0] === CamsRole.TrialAttorney,
 ).map((user) => user.user);
 
-export const USTP_OFFICE_TRIAL_ATTORNEYS: AttorneyUser[] = [];
 export const TRIAL_ATTORNEYS: AttorneyUser[] = [
   ...manhattanAttorneys,
   {

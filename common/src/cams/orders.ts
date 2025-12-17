@@ -120,7 +120,11 @@ export function getCaseSummaryFromConsolidationOrderCase(
   const excludedKeys = [...consolidationOrderCaseKeys, ...rawConsolidationOrderKeys];
 
   const temp: RawConsolidationOrder = { ...(order as RawConsolidationOrder) };
-  excludedKeys.forEach((key) => delete temp[key]);
+  excludedKeys.forEach((key) => {
+    if (key in temp) {
+      delete temp[key as keyof RawConsolidationOrder];
+    }
+  });
 
   return temp;
 }
@@ -150,7 +154,7 @@ export type TransferOrderActionRejection = {
   reason?: string;
 };
 
-export type TransferOrderActionApproval = {
+type TransferOrderActionApproval = {
   id: string;
   caseId: string;
   orderType: 'transfer';
@@ -159,21 +163,6 @@ export type TransferOrderActionApproval = {
 };
 
 export type TransferOrderAction = TransferOrderActionRejection | TransferOrderActionApproval;
-
-export type OrderActionRejection<T = TransferOrder> = {
-  id: string;
-  status: 'rejected';
-  reason?: string;
-  order: T;
-};
-
-export type OrderActionApproval<T = TransferOrder> = {
-  id: string;
-  status: 'approved';
-  order: T;
-};
-
-export type OrderAction<T> = OrderActionRejection<T> | OrderActionApproval<T>;
 
 export type OrderSync = {
   consolidations: ConsolidationOrder[];

@@ -2,7 +2,7 @@ import './SkipToMainContentLink.scss';
 
 import type { JSX } from 'react';
 
-export type SkipToMainContentLinkProps = JSX.IntrinsicElements['a'];
+type SkipToMainContentLinkProps = JSX.IntrinsicElements['a'];
 
 export function SkipToMainContentLink(props: SkipToMainContentLinkProps) {
   return (

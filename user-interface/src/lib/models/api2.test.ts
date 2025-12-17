@@ -26,7 +26,7 @@ type Api2Type = {
   addAuthHeaderToApi: typeof addAuthHeaderToApi;
   useGenericApi: typeof useGenericApi;
   _Api2: typeof _Api2;
-  Api2: typeof Api2;
+  default: typeof Api2;
 };
 
 describe('extractPathFromUri', () => {
@@ -76,51 +76,52 @@ describe('_Api2 functions', async () => {
   });
 
   test('should call real api functions', async () => {
-    await callApiFunction(api2.Api2.getOversightStaff, null, api);
-    await callApiFunction(api2.Api2.getCaseAssignments, 'some-id', api);
-    await callApiFunction(api2.Api2.getCaseAssociations, 'some-id', api);
-    await callApiFunction(api2.Api2.getCaseDetail, 'some-id', api);
-    await callApiFunction(api2.Api2.getCaseDocket, 'some-id', api);
-    await callApiFunction(api2.Api2.getCaseHistory, 'some-id', api);
-    await callApiFunction(api2.Api2.getCaseSummary, 'some-id', api);
-    await callApiFunction(api2.Api2.getCourts, null, api);
-    await callApiFunction(api2.Api2.getMe, null, api);
-    await callApiFunction(api2.Api2.getOffices, null, api);
-    await callApiFunction(api2.Api2.getOfficeAttorneys, null, api);
-    await callApiFunction(api2.Api2.getOfficeAssignees, null, api);
-    await callApiFunction(api2.Api2.getOrders, null, api);
-    await callApiFunction(api2.Api2.getOrderSuggestions, 'some-id', api);
-    await callApiFunction(api2.Api2.putConsolidationOrderApproval, 'some-id', api);
-    await callApiFunction(api2.Api2.searchCases, 'some-id', api);
-    await callApiFunction(api2.Api2.getCaseNotes, 'some-id', api);
-    await callApiFunction(api2.Api2.getPrivilegedIdentityUsers, null, api);
-    await callApiFunction(api2.Api2.getPrivilegedIdentityUser, 'some-id', api);
-    await callApiFunction(api2.Api2.deletePrivilegedIdentityUser, 'some-id', api);
-    await callApiFunction(api2.Api2.getRoleAndOfficeGroupNames, 'some-id', api);
-    await callApiFunction(api2.Api2.getTrustees, null, api);
-    await callApiFunction(api2.Api2.getTrustee, 'some-id', api);
-    await callApiFunction(api2.Api2.getTrusteeHistory, 'some-id', api);
-    await callApiFunction(api2.Api2.getTrusteeOversightAssignments, 'some-id', api);
-    await callApiFunction(api2.Api2.getBanks, null, api);
-    await callApiFunction(api2.Api2.getBankruptcySoftwareList, null, api);
+    await callApiFunction(api2.default.getOversightStaff, null, api);
+    await callApiFunction(api2.default.getCaseAssignments, 'some-id', api);
+    await callApiFunction(api2.default.getCaseAssociations, 'some-id', api);
+    await callApiFunction(api2.default.getCaseDetail, 'some-id', api);
+    await callApiFunction(api2.default.getCaseDocket, 'some-id', api);
+    await callApiFunction(api2.default.getCaseHistory, 'some-id', api);
+    await callApiFunction(api2.default.getCaseSummary, 'some-id', api);
+    await callApiFunction(api2.default.getCourts, null, api);
+    await callApiFunction(api2.default.getMe, null, api);
+    await callApiFunction(api2.default.getOffices, null, api);
+    await callApiFunction(api2.default.getOfficeAttorneys, null, api);
+    await callApiFunction(api2.default.getOfficeAssignees, null, api);
+    await callApiFunction(api2.default.getOrders, null, api);
+    await callApiFunction(api2.default.getOrderSuggestions, 'some-id', api);
+    await callApiFunction(api2.default.putConsolidationOrderApproval, 'some-id', api);
+    await callApiFunction(api2.default.searchCases, 'some-id', api);
+    await callApiFunction(api2.default.getCaseNotes, 'some-id', api);
+    await callApiFunction(api2.default.getPrivilegedIdentityUsers, null, api);
+    await callApiFunction(api2.default.getPrivilegedIdentityUser, 'some-id', api);
+    await callApiFunction(api2.default.deletePrivilegedIdentityUser, 'some-id', api);
+    await callApiFunction(api2.default.getRoleAndOfficeGroupNames, 'some-id', api);
+    await callApiFunction(api2.default.getTrustees, null, api);
+    await callApiFunction(api2.default.getTrustee, 'some-id', api);
+    await callApiFunction(api2.default.getTrusteeHistory, 'some-id', api);
+    await callApiFunction(api2.default.getTrusteeAppointments, 'some-id', api);
+    await callApiFunction(api2.default.getTrusteeOversightAssignments, 'some-id', api);
+    await callApiFunction(api2.default.getBanks, null, api);
+    await callApiFunction(api2.default.getBankruptcySoftwareList, null, api);
   });
 
   test('should call api.put function when calling putPrivilegedIdentityUser', () => {
     const putSpy = vi.spyOn(api.default, 'put').mockResolvedValue({ data: '' });
     const action = { groups: ['some-group'], expires: '00-00-0000' };
-    api2.Api2.putPrivilegedIdentityUser('some-id', action);
+    api2.default.putPrivilegedIdentityUser('some-id', action);
     expect(putSpy).toHaveBeenCalledWith(`/dev-tools/privileged-identity/some-id`, action, {});
   });
 
   test('should call postCaseNote api function', async () => {
     const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: ['some-note'] });
-    api2.Api2.postCaseNote({ caseId: 'some-id', title: 'some title', content: 'some note' });
+    api2.default.postCaseNote({ caseId: 'some-id', title: 'some title', content: 'some note' });
     expect(postSpy).toHaveBeenCalled();
   });
 
   test('should call putCaseNote api function', async () => {
     const putSpy = vi.spyOn(api.default, 'put').mockResolvedValue({ data: ['some-note'] });
-    api2.Api2.putCaseNote(
+    api2.default.putCaseNote(
       MockData.getCaseNote({
         id: 'some-id',
         caseId: 'some-id',
@@ -134,7 +135,7 @@ describe('_Api2 functions', async () => {
   test('should not call putCaseNote api function and handle error', async () => {
     const putSpy = vi.spyOn(api.default, 'put');
     await expect(
-      api2.Api2.putCaseNote(
+      api2.default.putCaseNote(
         MockData.getCaseNote({
           id: undefined as unknown as string,
           caseId: 'some-id',
@@ -148,7 +149,7 @@ describe('_Api2 functions', async () => {
 
   test('should call http delete when deleteCaseNote api function is called', async () => {
     const deleteSpy = vi.spyOn(api.default, 'delete').mockResolvedValue();
-    api2.Api2.deleteCaseNote({
+    api2.default.deleteCaseNote({
       id: 'note-id',
       caseId: 'case-id',
       updatedBy: MockData.getCamsUserReference(),
@@ -161,7 +162,7 @@ describe('_Api2 functions', async () => {
     const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: '' });
     const title = 'some title';
     const path = '/cases/some-id/notes';
-    api2.Api2.postCaseNote({
+    api2.default.postCaseNote({
       caseId: 'some-id',
       title,
       content: inputPassedThroughApi,
@@ -173,7 +174,7 @@ describe('_Api2 functions', async () => {
     const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: '' });
     const content = 'come content';
     const path = '/cases/some-id/notes';
-    api2.Api2.postCaseNote({
+    api2.default.postCaseNote({
       caseId: 'some-id',
       title: inputPassedThroughApi,
       content,
@@ -183,7 +184,7 @@ describe('_Api2 functions', async () => {
 
   test('should be rejected by input validation and not call postCaseNote', () => {
     const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: '' });
-    api2.Api2.postCaseNote({
+    api2.default.postCaseNote({
       caseId: 'some-id',
       title: inputBlockedFromApi,
       content: inputBlockedFromApi,
@@ -193,7 +194,7 @@ describe('_Api2 functions', async () => {
 
   test('should not call post if sanitized values are empty', () => {
     const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: '' });
-    api2.Api2.postCaseNote({
+    api2.default.postCaseNote({
       caseId: 'some-id',
       title: '<script>foo</script>',
       content: '<script>foo</script>',
@@ -210,7 +211,7 @@ describe('_Api2 functions', async () => {
       reason: inputBlockedFromApi,
     };
 
-    api2.Api2.putConsolidationOrderRejection(dirtyConsolidationOrder);
+    api2.default.putConsolidationOrderRejection(dirtyConsolidationOrder);
     expect(postSpy).not.toHaveBeenCalledWith();
   });
 
@@ -230,7 +231,7 @@ describe('_Api2 functions', async () => {
       reason: inputPassedThroughApi,
     };
 
-    api2.Api2.putConsolidationOrderRejection(dirtyConsolidationOrder);
+    api2.default.putConsolidationOrderRejection(dirtyConsolidationOrder);
     expect(postSpy).toHaveBeenCalledWith(path, cleanConsolidationOrder, {});
   });
 
@@ -250,7 +251,7 @@ describe('_Api2 functions', async () => {
       reason: '',
     };
 
-    api2.Api2.putConsolidationOrderRejection(consolidationOrderWithUndefinedReason);
+    api2.default.putConsolidationOrderRejection(consolidationOrderWithUndefinedReason);
     expect(putSpy).toHaveBeenCalledWith(path, expectedOrderWithEmptyReason, {});
   });
 
@@ -262,7 +263,7 @@ describe('_Api2 functions', async () => {
       reason: inputBlockedFromApi,
     };
     const purifiedTransferOrder = { ...dirtyTransferOrder, reason: '' };
-    api2.Api2.patchTransferOrderRejection(dirtyTransferOrder);
+    api2.default.patchTransferOrderRejection(dirtyTransferOrder);
     expect(postSpy).toHaveBeenCalledWith(
       `/orders/${dirtyTransferOrder.id}`,
       purifiedTransferOrder,
@@ -280,7 +281,7 @@ describe('_Api2 functions', async () => {
 
     const path = `/orders/${transferOrder.id}`;
 
-    api2.Api2.patchTransferOrderRejection(transferOrder);
+    api2.default.patchTransferOrderRejection(transferOrder);
     expect(postSpy).toHaveBeenCalledWith(path, transferOrder, {});
   });
 
@@ -293,7 +294,7 @@ describe('_Api2 functions', async () => {
       attorneyList: MockData.buildArray(MockData.getAttorneyUser, 2),
       role: CamsRole.TrialAttorney,
     };
-    await api2.Api2.postStaffAssignments(assignmentAction);
+    await api2.default.postStaffAssignments(assignmentAction);
     expect(postSpy).toHaveBeenCalled();
 
     const patchSpy = vi.spyOn(api.default, 'patch').mockImplementation(() => {
@@ -306,7 +307,7 @@ describe('_Api2 functions', async () => {
       newCase: MockData.getCaseSummary(),
       status: 'approved',
     };
-    await api2.Api2.patchTransferOrderApproval(approval);
+    await api2.default.patchTransferOrderApproval(approval);
     expect(patchSpy).toHaveBeenCalled();
   });
 
@@ -317,29 +318,29 @@ describe('_Api2 functions', async () => {
     vi.spyOn(api.default, 'post').mockRejectedValue(error);
     vi.spyOn(api.default, 'put').mockRejectedValue(error);
     vi.spyOn(api.default, 'delete').mockRejectedValue(error);
-    await expect(api2.Api2.getOversightStaff()).rejects.toThrow(error);
-    await expect(api2.Api2.patchTransferOrderApproval({})).rejects.toThrow(error);
-    await expect(api2.Api2.patchTransferOrderRejection({ reason: 'some-string' })).rejects.toThrow(
-      error,
-    );
-    await expect(api2.Api2.searchCases({})).rejects.toThrow(error);
-    await expect(api2.Api2.deletePrivilegedIdentityUser('userId')).rejects.toThrow(error);
-    await expect(api2.Api2.getTrustees()).rejects.toThrow(error);
-    await expect(api2.Api2.getTrustee('trustee-id')).rejects.toThrow(error);
-    await expect(api2.Api2.getTrusteeHistory('trustee-id')).rejects.toThrow(error);
-    await expect(api2.Api2.getTrusteeOversightAssignments('trustee-id')).rejects.toThrow(error);
+    await expect(api2.default.getOversightStaff()).rejects.toThrow(error);
+    await expect(api2.default.patchTransferOrderApproval({})).rejects.toThrow(error);
     await expect(
-      api2.Api2.createTrusteeOversightAssignment(
+      api2.default.patchTransferOrderRejection({ reason: 'some-string' }),
+    ).rejects.toThrow(error);
+    await expect(api2.default.searchCases({})).rejects.toThrow(error);
+    await expect(api2.default.deletePrivilegedIdentityUser('userId')).rejects.toThrow(error);
+    await expect(api2.default.getTrustees()).rejects.toThrow(error);
+    await expect(api2.default.getTrustee('trustee-id')).rejects.toThrow(error);
+    await expect(api2.default.getTrusteeHistory('trustee-id')).rejects.toThrow(error);
+    await expect(api2.default.getTrusteeOversightAssignments('trustee-id')).rejects.toThrow(error);
+    await expect(
+      api2.default.createTrusteeOversightAssignment(
         'trustee-id',
         'user-id',
         OversightRole.OversightAttorney,
       ),
     ).rejects.toThrow(error);
-    await expect(api2.Api2.getBanks()).rejects.toThrow(error);
-    await expect(api2.Api2.getBankruptcySoftwareList()).rejects.toThrow(error);
+    await expect(api2.default.getBanks()).rejects.toThrow(error);
+    await expect(api2.default.getBankruptcySoftwareList()).rejects.toThrow(error);
     const mockOrder = MockData.getConsolidationOrder();
     await expect(
-      api2.Api2.putConsolidationOrderApproval({
+      api2.default.putConsolidationOrderApproval({
         consolidationId: mockOrder.consolidationId,
         consolidationType: 'administrative',
         approvedCases: [],
@@ -351,7 +352,7 @@ describe('_Api2 functions', async () => {
   test('should call api.post function when calling postTrustee', () => {
     const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: { id: 'trustee-id' } });
     const trusteeInput = MockData.getTrustee();
-    api2.Api2.postTrustee(trusteeInput);
+    api2.default.postTrustee(trusteeInput);
     expect(postSpy).toHaveBeenCalledWith('/trustees', trusteeInput, {});
   });
 
@@ -361,28 +362,37 @@ describe('_Api2 functions', async () => {
       .mockResolvedValue({ data: { id: 'trustee-id' } });
     const trusteeId = 'trustee-id';
     const trusteeInput = { name: 'Updated Trustee' };
-    api2.Api2.patchTrustee(trusteeId, trusteeInput);
+    api2.default.patchTrustee(trusteeId, trusteeInput);
     expect(patchSpy).toHaveBeenCalledWith(`/trustees/${trusteeId}`, trusteeInput, {});
   });
 
   test('should call api.get function when calling getTrustees', () => {
     const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [{ id: 'trustee-id' }] });
-    api2.Api2.getTrustees();
+    api2.default.getTrustees();
     expect(getSpy).toHaveBeenCalledWith('/trustees', {});
   });
 
   test('should call api.get function when calling getTrustee', () => {
     const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: { id: 'trustee-id' } });
     const trusteeId = 'trustee-id';
-    api2.Api2.getTrustee(trusteeId);
+    api2.default.getTrustee(trusteeId);
     expect(getSpy).toHaveBeenCalledWith(`/trustees/${trusteeId}`, {});
   });
 
   test('should call api.get function when calling getTrusteeHistory', () => {
     const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [{ id: 'history-id' }] });
     const trusteeId = 'trustee-id';
-    api2.Api2.getTrusteeHistory(trusteeId);
+    api2.default.getTrusteeHistory(trusteeId);
     expect(getSpy).toHaveBeenCalledWith(`/trustees/${trusteeId}/history`, {});
+  });
+
+  test('should call api.get function when calling getTrusteeAppointments', () => {
+    const getSpy = vi
+      .spyOn(api.default, 'get')
+      .mockResolvedValue({ data: [{ id: 'appointment-id' }] });
+    const trusteeId = 'trustee-id';
+    api2.default.getTrusteeAppointments(trusteeId);
+    expect(getSpy).toHaveBeenCalledWith(`/trustees/${trusteeId}/appointments`, {});
   });
 
   test('should call api.get function when calling getTrusteeOversightAssignments', () => {
@@ -390,7 +400,7 @@ describe('_Api2 functions', async () => {
       .spyOn(api.default, 'get')
       .mockResolvedValue({ data: [{ id: 'assignment-id' }] });
     const trusteeId = 'trustee-id';
-    api2.Api2.getTrusteeOversightAssignments(trusteeId);
+    api2.default.getTrusteeOversightAssignments(trusteeId);
     expect(getSpy).toHaveBeenCalledWith(`/trustees/${trusteeId}/oversight-assignments`, {});
   });
 
@@ -401,7 +411,7 @@ describe('_Api2 functions', async () => {
     const trusteeId = 'trustee-id';
     const userId = 'user-id';
     const role = OversightRole.OversightAttorney;
-    api2.Api2.createTrusteeOversightAssignment(trusteeId, userId, role);
+    api2.default.createTrusteeOversightAssignment(trusteeId, userId, role);
     expect(postSpy).toHaveBeenCalledWith(
       `/trustees/${trusteeId}/oversight-assignments`,
       { userId, role },
@@ -411,13 +421,13 @@ describe('_Api2 functions', async () => {
 
   test('should call api.get function when calling getBankruptcySoftwareList', () => {
     const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: { items: [] } });
-    api2.Api2.getBankruptcySoftwareList();
+    api2.default.getBankruptcySoftwareList();
     expect(getSpy).toHaveBeenCalledWith('/lists/bankruptcy-software', {});
   });
 
   test('should call api.get function when calling getBanks', () => {
     const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: { items: [] } });
-    api2.Api2.getBanks();
+    api2.default.getBanks();
     expect(getSpy).toHaveBeenCalledWith('/lists/banks', {});
   });
 
@@ -430,14 +440,14 @@ describe('_Api2 functions', async () => {
       key: 'Test Software',
       value: 'Test Software',
     };
-    api2.Api2.postBankruptcySoftware(softwareItem);
+    api2.default.postBankruptcySoftware(softwareItem);
     expect(postSpy).toHaveBeenCalledWith('/lists/bankruptcy-software', softwareItem, {});
   });
 
   test('should call api.delete function when calling deleteBankruptcySoftware', () => {
     const deleteSpy = vi.spyOn(api.default, 'delete').mockResolvedValue({ data: null });
     const softwareId = 'software-id';
-    api2.Api2.deleteBankruptcySoftware(softwareId);
+    api2.default.deleteBankruptcySoftware(softwareId);
     expect(deleteSpy).toHaveBeenCalledWith(`/lists/bankruptcy-software/${softwareId}`, {});
   });
 
@@ -448,14 +458,14 @@ describe('_Api2 functions', async () => {
       key: 'Test Bank',
       value: 'Test Bank',
     };
-    api2.Api2.postBank(bankItem);
+    api2.default.postBank(bankItem);
     expect(postSpy).toHaveBeenCalledWith('/lists/banks', bankItem, {});
   });
 
   test('should call api.delete function when calling deleteBank', () => {
     const deleteSpy = vi.spyOn(api.default, 'delete').mockResolvedValue({ data: null });
     const bankId = 'bank-id';
-    api2.Api2.deleteBank(bankId);
+    api2.default.deleteBank(bankId);
     expect(deleteSpy).toHaveBeenCalledWith(`/lists/banks/${bankId}`, {});
   });
 });

@@ -4,7 +4,7 @@ import ConsolidationCaseTable, {
   OrderTableImperative,
 } from './ConsolidationCasesTable';
 import { act, render, waitFor, screen, fireEvent } from '@testing-library/react';
-import { MockData } from '@common/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import React from 'react';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { ConsolidationOrderCase } from '@common/cams/orders';

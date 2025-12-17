@@ -290,7 +290,7 @@ const contactInformationSpec: ValidationSpec<ContactInformation> = {
   ],
 };
 
-export const internalContactInformationSpec: ValidationSpec<ContactInformation> = {
+const internalContactInformationSpec: ValidationSpec<ContactInformation> = {
   address: [V.optional(V.nullable(V.spec(addressSpec)))],
   phone: [V.optional(V.nullable(V.spec(phoneSpec)))],
   email: [
@@ -300,7 +300,7 @@ export const internalContactInformationSpec: ValidationSpec<ContactInformation> 
   ],
 };
 
-export const trusteeSpec: ValidationSpec<TrusteeInput> = {
+const trusteeSpec: ValidationSpec<TrusteeInput> = {
   name: [V.minLength(1)],
   public: [V.optional(V.spec(contactInformationSpec))],
   internal: [V.optional(V.spec(internalContactInformationSpec))],

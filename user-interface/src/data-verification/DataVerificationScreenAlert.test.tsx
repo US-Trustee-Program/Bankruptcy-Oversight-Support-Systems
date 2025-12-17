@@ -3,7 +3,7 @@ import * as transferOrderAccordionModule from './TransferOrderAccordion';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { BrowserRouter } from 'react-router-dom';
 import DataVerificationScreen from './DataVerificationScreen';
-import { MockData } from '@common/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import testingUtilities from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';

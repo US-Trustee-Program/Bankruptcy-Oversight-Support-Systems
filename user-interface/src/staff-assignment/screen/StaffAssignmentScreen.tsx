@@ -75,7 +75,7 @@ const StaffAssignmentScreen = () => {
 
 export default StaffAssignmentScreen;
 
-export function useStaffAssignmentStoreReact() {
+function useStaffAssignmentStoreReact() {
   const [staffAssignmentFilter, setStaffAssignmentFilter] = useState<
     StaffAssignmentScreenFilter | undefined
   >();
@@ -86,7 +86,7 @@ export function useStaffAssignmentStoreReact() {
   };
 }
 
-export function useStaffAssignmentControlsReact(): StaffAssignmentControls {
+function useStaffAssignmentControlsReact(): StaffAssignmentControls {
   const infoModalRef = useRef<ModalRefType>(null);
   const assignmentModalRef = useRef<AssignAttorneyModalRef>(null);
   const filterRef = useRef<StaffAssignmentFilterRef>(null);

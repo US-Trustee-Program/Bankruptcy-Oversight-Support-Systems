@@ -16,7 +16,7 @@ import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-
 import { isNotFoundError } from '../../../lib/common-errors/not-found-error';
 import ApplicationContextCreator from '../../azure/application-context-creator';
 import { UnknownError } from '../../../lib/common-errors/unknown-error';
-import { getTodaysIsoDate } from '../../../../common/src/date-helper';
+import DateHelper from '../../../../common/src/date-helper';
 import { STORAGE_QUEUE_CONNECTION } from '../storage-queues';
 import { filterToExtendedAscii } from '../../../../common/src/cams/sanitization';
 
@@ -240,7 +240,7 @@ async function getCaseIdsToMigrate(
  */
 async function storeRuntimeState(invocationContext: InvocationContext) {
   const appContext = await ContextCreator.getApplicationContext({ invocationContext });
-  return CasesRuntimeState.storeRuntimeState(appContext, getTodaysIsoDate());
+  return CasesRuntimeState.storeRuntimeState(appContext, DateHelper.getTodaysIsoDate());
 }
 
 function setup() {

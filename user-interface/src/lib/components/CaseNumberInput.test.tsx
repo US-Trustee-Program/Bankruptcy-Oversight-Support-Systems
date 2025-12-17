@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import CaseNumberInput, { validateCaseNumberInput } from './CaseNumberInput';
+import CaseNumberInput, { formatCaseNumberValue } from './CaseNumberInput';
 import { act, render, waitFor } from '@testing-library/react';
 import { InputRef } from '../type-declarations/input-fields';
 import React from 'react';
@@ -43,15 +43,26 @@ describe('Case number input component', () => {
     expect(finalValue).toEqual('');
   });
 
-  test('if allowEnterKey is true and value is a non-zero-length string and key entered is Enter key, then onChange should be called', async () => {
+  test('if allowEnterKey is true and value is a valid case number and key entered is Enter key, then onChange should be called with the case number', async () => {
     const changeFunction = vi.fn();
-    render(<CaseNumberInput onChange={changeFunction} value="321cba" allowEnterKey={true} />);
+    render(<CaseNumberInput onChange={changeFunction} value="12-34567" allowEnterKey={true} />);
 
     const input = document.querySelector('.usa-input');
-    expect(input).toHaveValue('321cba');
+    expect(input).toHaveValue('12-34567');
 
     await userEvent.type(input!, '{Enter}');
-    expect(changeFunction).toHaveBeenCalled();
+    expect(changeFunction).toHaveBeenCalledWith('12-34567');
+  });
+
+  test('if allowEnterKey is true and value is an invalid case number and key entered is Enter key, then onChange should be called with undefined', async () => {
+    const changeFunction = vi.fn();
+    render(<CaseNumberInput onChange={changeFunction} value="12-345" allowEnterKey={true} />);
+
+    const input = document.querySelector('.usa-input');
+    expect(input).toHaveValue('12-345');
+
+    await userEvent.type(input!, '{Enter}');
+    expect(changeFunction).toHaveBeenCalledWith(undefined);
   });
 
   test('if allowEnterKey is false and key entered is Enter key, then onChange should NOT be called', async () => {
@@ -96,6 +107,24 @@ describe('Case number input component', () => {
     expect(changeFunction).toHaveBeenCalledWith('12');
   });
 
+  test('if allowPartialCaseNumber is true and allowEnterKey is true, onChange should be called with partial case number when Enter is pressed', async () => {
+    const changeFunction = vi.fn();
+    render(
+      <CaseNumberInput
+        onChange={changeFunction}
+        value="12-345"
+        allowPartialCaseNumber={true}
+        allowEnterKey={true}
+      />,
+    );
+
+    const input = document.querySelector('.usa-input');
+    expect(input).toHaveValue('12-345');
+
+    await userEvent.type(input!, '{Enter}');
+    expect(changeFunction).toHaveBeenCalledWith('12-345');
+  });
+
   test('if allowEnterKey is true and input value is empty, handleEnter should not call onChange', async () => {
     const changeFunction = vi.fn();
     const ref = React.createRef<InputRef>();
@@ -123,7 +152,7 @@ describe('Case number input component', () => {
   });
 });
 
-describe('Test validateCaseNumberInput function', () => {
+describe('Test formatCaseNumberInput function', () => {
   beforeEach(async () => {
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
   });
@@ -133,36 +162,75 @@ describe('Test validateCaseNumberInput function', () => {
     const resultValue = '12-34567';
 
     const expectedResult = {
-      caseNumber: resultValue,
       joinedInput: resultValue,
+      isValidFullCaseNumber: true,
     };
 
-    const testEvent = {
-      target: {
-        value: testValue,
-      },
-    };
-
-    const returnedValue = validateCaseNumberInput(testEvent as React.ChangeEvent<HTMLInputElement>);
+    const returnedValue = formatCaseNumberValue(testValue);
     expect(returnedValue).toEqual(expectedResult);
   });
 
-  test('When supplied a value with alphabetic characters only, it should return an object with undefined caseNumber and empty string for joinedInput', async () => {
+  test('When supplied a value with alphabetic characters only, it should return an object with isValidFullCaseNumber false and empty string for joinedInput', async () => {
     const testValue = 'abcdefg';
     const resultValue = '';
 
     const expectedResult = {
-      caseNumber: undefined,
       joinedInput: resultValue,
+      isValidFullCaseNumber: false,
     };
 
-    const testEvent = {
-      target: {
-        value: testValue,
-      },
+    const returnedValue = formatCaseNumberValue(testValue);
+    expect(returnedValue).toEqual(expectedResult);
+  });
+
+  test('should return partial formatted input with isValidFullCaseNumber false', async () => {
+    const testValue = '12345';
+    const resultValue = '12-345';
+
+    const expectedResult = {
+      joinedInput: resultValue,
+      isValidFullCaseNumber: false,
     };
 
-    const returnedValue = validateCaseNumberInput(testEvent as React.ChangeEvent<HTMLInputElement>);
+    const returnedValue = formatCaseNumberValue(testValue);
+    expect(returnedValue).toEqual(expectedResult);
+  });
+
+  test('should return isValidFullCaseNumber false for partial input', async () => {
+    const testValue = '12345';
+    const resultValue = '12-345';
+
+    const expectedResult = {
+      joinedInput: resultValue,
+      isValidFullCaseNumber: false,
+    };
+
+    const returnedValue = formatCaseNumberValue(testValue);
+    expect(returnedValue).toEqual(expectedResult);
+  });
+
+  test('should return isValidFullCaseNumber true for valid full case number', async () => {
+    const testValue = '1234567';
+    const resultValue = '12-34567';
+
+    const expectedResult = {
+      joinedInput: resultValue,
+      isValidFullCaseNumber: true,
+    };
+
+    const returnedValue = formatCaseNumberValue(testValue);
+    expect(returnedValue).toEqual(expectedResult);
+  });
+
+  test('should return empty string and isValidFullCaseNumber false for empty input', async () => {
+    const testValue = '';
+
+    const expectedResult = {
+      joinedInput: '',
+      isValidFullCaseNumber: false,
+    };
+
+    const returnedValue = formatCaseNumberValue(testValue);
     expect(returnedValue).toEqual(expectedResult);
   });
 });

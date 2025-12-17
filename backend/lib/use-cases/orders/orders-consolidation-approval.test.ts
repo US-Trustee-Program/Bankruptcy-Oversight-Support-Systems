@@ -8,7 +8,7 @@ import {
   ConsolidationOrderActionApproval,
   getCaseSummaryFromConsolidationOrderCase,
 } from '../../../../common/src/cams/orders';
-import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { ApplicationContext } from '../../adapters/types/basic';
 import * as crypto from 'crypto';
 import { CaseHistory, ConsolidationOrderSummary } from '../../../../common/src/cams/history';

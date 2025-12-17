@@ -1,7 +1,7 @@
 import { PropsWithChildren, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { LOGIN_PATHS, LOGIN_BASE_PATH } from './login-library';
-import { LocalStorage } from '@/lib/utils/local-storage';
+import LocalStorage from '@/lib/utils/local-storage';
 import Api2 from '@/lib/models/api2';
 import { AccessDenied } from './AccessDenied';
 import { Interstitial } from './Interstitial';
@@ -17,7 +17,7 @@ type SessionState = {
   errorMessage: string | null;
 };
 
-export function useStateAndActions() {
+function useStateAndActions() {
   const { appInsights } = getAppInsights();
   const [state, setState] = useState<SessionState>({
     isLoaded: false,

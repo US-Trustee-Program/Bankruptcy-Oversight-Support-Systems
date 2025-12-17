@@ -10,7 +10,7 @@ import {
   isTransferOrder,
   OrderStatus,
 } from './orders';
-import { MockData } from './test-utilities/mock-data';
+import MockData from './test-utilities/mock-data';
 import { isConsolidationHistory } from './history';
 
 describe('orders model tests', () => {

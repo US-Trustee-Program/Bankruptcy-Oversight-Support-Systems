@@ -1,5 +1,5 @@
 import React, { forwardRef, useRef, useState, useCallback } from 'react';
-import useApi2 from '@/lib/hooks/UseApi2';
+import Api2 from '@/lib/models/api2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { Staff } from '@common/cams/users';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
@@ -49,21 +49,23 @@ const TrusteeOversightAssignmentModal = forwardRef<
   const [error, setError] = useState<string | null>(null);
   const [isAssigning, setIsAssigning] = useState<boolean>(false);
 
+  const { modalId, trusteeId, role, onAssignment } = props;
+
   const modalRef = useRef<ModalRefType>(null);
-  const api = useApi2();
+
   const globalAlert = useGlobalAlert();
 
-  const roleLabel = ROLE_LABELS[props.role] ?? 'staff member';
+  const roleLabel = ROLE_LABELS[role] ?? 'staff member';
 
   const loadStaff = useCallback(
     async (assignment?: TrusteeOversightAssignment | null) => {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await api.getOversightStaff();
+        const response = await Api2.getOversightStaff();
         const allStaff = response.data ?? [];
 
-        const targetRole = OVERSIGHT_TO_CAMS_ROLE[props.role];
+        const targetRole = OVERSIGHT_TO_CAMS_ROLE[role];
 
         const staffList = allStaff.filter((member) => member.roles?.includes(targetRole));
 
@@ -81,7 +83,7 @@ const TrusteeOversightAssignmentModal = forwardRef<
         setIsLoading(false);
       }
     },
-    [api, props.role, roleLabel],
+    [role, roleLabel],
   );
 
   // Handle external ref
@@ -112,8 +114,8 @@ const TrusteeOversightAssignmentModal = forwardRef<
 
       setIsAssigning(true);
       try {
-        await api.createTrusteeOversightAssignment(props.trusteeId, selectedStaff.id, props.role);
-        props.onAssignment(true);
+        await Api2.createTrusteeOversightAssignment(trusteeId, selectedStaff.id, role);
+        onAssignment(true);
         globalAlert?.success(
           `${roleLabel.charAt(0).toUpperCase() + roleLabel.slice(1)} assigned successfully`,
         );
@@ -124,16 +126,7 @@ const TrusteeOversightAssignmentModal = forwardRef<
         setIsAssigning(false);
       }
     }
-  }, [
-    selectedStaff,
-    currentAssignment,
-    props.trusteeId,
-    props.role,
-    props.onAssignment,
-    api,
-    globalAlert,
-    roleLabel,
-  ]);
+  }, [selectedStaff, currentAssignment, trusteeId, role, onAssignment, globalAlert, roleLabel]);
 
   const modalContent = (
     <div
@@ -174,7 +167,7 @@ const TrusteeOversightAssignmentModal = forwardRef<
 
   const isEditMode = !!currentAssignment;
   const actionButtonGroup = {
-    modalId: props.modalId,
+    modalId: modalId,
     modalRef: modalRef,
     submitButton: {
       label: isEditMode
@@ -194,7 +187,7 @@ const TrusteeOversightAssignmentModal = forwardRef<
   return (
     <Modal
       ref={modalRef}
-      modalId={props.modalId}
+      modalId={modalId}
       className="trustee-oversight-assignment-modal"
       heading={
         isEditMode

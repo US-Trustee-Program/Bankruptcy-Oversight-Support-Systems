@@ -23,7 +23,7 @@ export const mapNavState = createNavStateMapper<CaseNavState>(
   CaseNavState.CASE_OVERVIEW,
 );
 
-export interface CaseDetailNavigationProps {
+interface CaseDetailNavigationProps {
   caseId: string | undefined;
   showAssociatedCasesList: boolean;
   initiallySelectedNavLink: CaseNavState;

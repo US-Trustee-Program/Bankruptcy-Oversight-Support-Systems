@@ -1,6 +1,9 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "playwright": false,
+  "rules": {
+    "enumMembers": "off"
+  },
   "workspaces": {
     ".": {
       "entry": ["eslint.config.mjs"],
@@ -17,14 +20,14 @@
       "entry": [
         "function-apps/**/*.function.ts",
         "function-apps/dataflows/dataflows.ts",
-        "express/server.ts"
+        "express/server.ts",
+        "**/*.test.ts"
       ],
       "project": ["**/*.ts"],
       "ignore": [
         "**/node_modules/**",
         "**/dist/**",
-        "**/coverage/**",
-        "**/*.test.ts"
+        "**/coverage/**"
       ]
     },
     "user-interface": {
@@ -33,26 +36,25 @@
         "src/initialize.ts",
         "vite.config.mts",
         "vitest.config.mts",
-        "test/**/*.ts"
+        "test/**/*.ts",
+        "src/**/*.test.ts",
+        "src/**/*.test.tsx"
       ],
       "project": ["src/**/*.{ts,tsx}", "test/**/*.ts", "!playwright.config.ts"],
       "ignore": [
         "**/node_modules/**",
         "**/build/**",
-        "**/coverage/**",
-        "**/*.test.tsx",
-        "**/*.test.ts"
+        "**/coverage/**"
       ],
       "ignoreFiles": ["playwright.config.ts"]
     },
     "common": {
-      "entry": ["src/index.ts"],
+      "entry": ["src/index.ts", "src/**/*.test.ts"],
       "project": ["src/**/*.ts"],
       "ignore": [
         "**/node_modules/**",
         "**/dist/**",
-        "**/coverage/**",
-        "**/*.test.ts"
+        "**/coverage/**"
       ]
     },
     "test/e2e": {
@@ -67,7 +69,7 @@
     "playwright",
     "date",
     "dot",
-    "ts-node"
+    "tsx"
   ],
   "ignoreDependencies": [
     "@azure/cosmos",
@@ -94,6 +96,7 @@
     "typescript-eslint",
     "react",
     "c8",
-    "@faker-js/faker"
+    "@faker-js/faker",
+    "tsx"
   ]
 }

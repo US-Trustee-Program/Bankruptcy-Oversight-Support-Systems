@@ -2,29 +2,31 @@ import './TrusteesList.scss';
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { Trustee } from '@common/cams/trustees';
-import useApi2 from '@/lib/hooks/UseApi2';
+import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 
 export default function TrusteesList() {
   const [trustees, setTrustees] = useState<Trustee[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const api = useApi2();
 
   useEffect(() => {
-    setLoading(true);
-    api
-      .getTrustees()
-      .then((trusteesResponse) => {
-        setTrustees(trusteesResponse.data || []);
-        setError(null);
-      })
-      .catch(() => {
-        setError('Failed to load trustees. Please try again later.');
-        setTrustees([]);
-      })
-      .finally(() => setLoading(false));
-  }, [api]);
+    const fetchTrustees = () => {
+      setLoading(true);
+      Api2.getTrustees()
+        .then((trusteesResponse) => {
+          setTrustees(trusteesResponse.data || []);
+          setError(null);
+        })
+        .catch(() => {
+          setError('Failed to load trustees. Please try again later.');
+          setTrustees([]);
+        })
+        .finally(() => setLoading(false));
+    };
+
+    fetchTrustees();
+  }, []);
 
   if (loading) {
     return <LoadingSpinner caption="Loading trustees..." />;

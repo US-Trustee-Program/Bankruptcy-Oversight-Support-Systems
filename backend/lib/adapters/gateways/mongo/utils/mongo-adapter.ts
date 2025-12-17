@@ -14,7 +14,7 @@ import {
   ReplaceResult,
   UpdateResult,
 } from '../../../../use-cases/gateways.types';
-import { toMongoAggregate } from './mongo-aggregate-renderer';
+import MongoAggregateRenderer from './mongo-aggregate-renderer';
 import { toMongoQuery, toMongoSort } from './mongo-query-renderer';
 import { randomUUID } from 'crypto';
 import { Document as MongoDocument, MongoServerError } from 'mongodb';
@@ -29,7 +29,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   }
 
   async aggregate<U = T>(pipeline: Pipeline): Promise<U[]> {
-    const mongoQuery = toMongoAggregate(pipeline);
+    const mongoQuery = MongoAggregateRenderer.toMongoAggregate(pipeline);
     try {
       const aggregationResult = await this.collectionHumble.aggregate(mongoQuery);
 
@@ -62,7 +62,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       if (!includesPagination) {
         pipeline.stages.push(QueryPipeline.paginate(page.offset, page.limit));
       }
-      const mongoAggregate = toMongoAggregate(pipeline);
+      const mongoAggregate = MongoAggregateRenderer.toMongoAggregate(pipeline);
 
       const cursor = await this.collectionHumble.aggregate(mongoAggregate);
       const result = await cursor.next();
@@ -371,7 +371,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   }
 }
 
-export function createOrGetId<T>(item: CamsItem<T>): CamsItem<T> {
+function createOrGetId<T>(item: CamsItem<T>): CamsItem<T> {
   return {
     id: randomUUID(),
     ...item,

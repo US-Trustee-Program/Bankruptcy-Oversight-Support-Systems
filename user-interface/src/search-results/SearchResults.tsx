@@ -7,7 +7,7 @@ import Alert, { AlertDetails, AlertProps, UswdsAlertStyle } from '@/lib/componen
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { Pagination } from '@/lib/components/uswds/Pagination';
-import { useApi2 } from '@/lib/hooks/UseApi2';
+import Api2 from '@/lib/models/api2';
 import { ResponseBody } from '@common/api/response';
 import './SearchResults.scss';
 import { Pagination as PaginationModel } from '@common/api/pagination';
@@ -49,7 +49,7 @@ export type SearchResultsProps = JSX.IntrinsicElements['table'] & {
   row: (props: SearchResultsRowProps) => JSX.Element;
 };
 
-export function SearchResults(props: SearchResultsProps) {
+function SearchResults(props: SearchResultsProps) {
   const {
     id,
     searchPredicate: searchPredicateProp,
@@ -73,8 +73,6 @@ export function SearchResults(props: SearchResultsProps) {
 
   const noResultsMessage =
     noResultsMessageProp ?? 'Modify your search criteria to include more cases.';
-
-  const api = useApi2();
 
   function handleSearchResults(response: ResponseBody<SyncedCase[]> | void) {
     if (response) {
@@ -113,8 +111,7 @@ export function SearchResults(props: SearchResultsProps) {
     if (onStartSearching) {
       onStartSearching();
     }
-    api
-      .searchCases(searchPredicate, { includeAssignments: true })
+    Api2.searchCases(searchPredicate, { includeAssignments: true })
       .then(handleSearchResults)
       .catch(handleSearchError)
       .finally(() => {

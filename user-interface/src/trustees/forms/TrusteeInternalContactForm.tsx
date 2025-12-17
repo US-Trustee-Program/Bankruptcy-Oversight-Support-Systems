@@ -4,7 +4,7 @@ import Input from '@/lib/components/uswds/Input';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
-import { useApi2 } from '@/lib/hooks/UseApi2';
+import Api2 from '@/lib/models/api2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
@@ -70,7 +70,7 @@ export type TrusteeInternalContactFormProps = {
 // TODO: When we send null to the API, we are getting null back but we agreed that null should only be sent in the PATCH payload.
 function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormProps>) {
   const flags = useFeatureFlags();
-  const api = useApi2();
+
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
   const debounce = useDebounce();
@@ -193,7 +193,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
 
       const payload = mapPayload(currentFormData);
       try {
-        await api.patchTrustee(props.trusteeId, payload);
+        await Api2.patchTrustee(props.trusteeId, payload);
         navigate.navigateTo(`/trustees/${props.trusteeId}`);
       } catch (e) {
         globalAlert?.error(`Failed to update trustee: ${(e as Error).message}`);

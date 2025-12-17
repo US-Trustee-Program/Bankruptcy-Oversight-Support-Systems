@@ -1,7 +1,7 @@
 import CaseManagement, { getAction } from './case-management';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { CamsError } from '../../common-errors/cams-error';
-import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import {
   createMockApplicationContext,

@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import TrusteeOtherInfoForm from './TrusteeOtherInfoForm';
-import * as UseApi2Module from '@/lib/hooks/UseApi2';
+import Api2 from '@/lib/models/api2';
 import * as UseGlobalAlertModule from '@/lib/hooks/UseGlobalAlert';
 import * as useCamsNavigatorModule from '@/lib/hooks/UseCamsNavigator';
 import { Mock } from 'vitest';
@@ -57,8 +57,7 @@ describe('TrusteeOtherInfoForm', () => {
     });
 
     // Get the API instance and spy on its methods
-    const api = UseApi2Module.useApi2();
-    vi.spyOn(api, 'patchTrustee').mockImplementation(patchTrusteeSpy);
+    vi.spyOn(Api2, 'patchTrustee').mockImplementation(patchTrusteeSpy);
   });
 
   afterEach(() => {

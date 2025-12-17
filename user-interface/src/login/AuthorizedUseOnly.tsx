@@ -1,11 +1,11 @@
 import { PropsWithChildren, useEffect, useState } from 'react';
 import Button from '@/lib/components/uswds/Button';
-import { LocalStorage } from '@/lib/utils/local-storage';
+import LocalStorage from '@/lib/utils/local-storage';
 import { BlankPage } from './BlankPage';
 import './AuthorizedUseOnly.scss';
 import { Card, CardBody, CardFooter, CardHeading } from '@/lib/components/uswds/Card';
 
-export type AuthorizedUseOnlyProps = PropsWithChildren & {
+type AuthorizedUseOnlyProps = PropsWithChildren & {
   skip?: boolean;
 };
 

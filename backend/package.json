@@ -5,12 +5,12 @@
   "devDependencies": {
     "@eslint/js": "10.0.0",
     "@faker-js/faker": "9.9.0",
-    "@types/express": "5.0.5",
+    "@types/express": "5.0.6",
     "@types/jest": "30.0.0",
-    "@types/mssql": "9.1.5",
+    "@types/mssql": "9.1.8",
     "@types/node": "24.10.1",
     "azure-function-context-mock": "0.0.7",
-    "dependency-cruiser": "17.3.1",
+    "dependency-cruiser": "17.3.2",
     "eslint": "9.39.1",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-import": "2.32.0",
@@ -18,15 +18,15 @@
     "eslint-plugin-prettier": "5.5.4",
     "eslint-plugin-promise": "7.2.1",
     "jest": "30.2.0",
-    "prettier": "3.7.1",
-    "ts-jest": "29.4.5",
-    "tsx": "4.20.6",
+    "prettier": "3.7.4",
+    "ts-jest": "29.4.6",
+    "tsx": "4.21.0",
     "typescript": "5.9.3",
-    "typescript-eslint": "8.48.0"
+    "typescript-eslint": "8.48.1"
   },
   "dependencies": {
     "@azure/cosmos": "4.9.0",
-    "@azure/functions": "4.9.0",
+    "@azure/functions": "4.10.0",
     "@azure/identity": "4.13.0",
     "@azure/keyvault-secrets": "4.10.0",
     "@launchdarkly/node-server-sdk": "9.10.3",
@@ -34,14 +34,13 @@
     "@okta/okta-sdk-nodejs": "7.3.0",
     "applicationinsights": "3.12.1",
     "dotenv": "17.2.3",
-    "express": "5.1.0",
+    "express": "5.2.1",
     "jsonwebtoken": "9.0.2",
     "mongodb": "7.0.0",
-    "mssql": "10.0.4"
+    "mssql": "12.2.0"
   },
   "overrides": {
-    "@azure/identity": "$@azure/identity",
-    "@types/tedious": "4.0.14"
+    "@azure/identity": "$@azure/identity"
   },
   "scripts": {
     "all": "npm run clean:all && npm ci && npm run build:all && npm run pack:all",
@@ -71,10 +70,6 @@
     "use-bash": "npm config set script-shell=/bin/bash",
     "coverage:ci": "npm run use-bash && npm run build-common && npm test -- --coverage",
     "dependency-cruiser-graphical": "current_time=$(date +'%Y-%m-%d_%H%M') && npx depcruise --output-type dot --do-not-follow '^node_modules($|/)' function-apps/api/staff case-assignments case-docket case-history case-summary cases consolidations healthcheck offices orders orders-manual-sync orders-sync ../lib | dot -T svg > ../../docs/architecture/dependency-cruiser/functions/dependency-graph_api_${current_time}.svg",
-    "dependency-cruiser:ci": "npx depcruise --output-type err-long function-apps/api/staff case-assignments case-docket case-history case-summary cases consolidations healthcheck offices orders orders-manual-sync orders-sync ../lib ",
-    "itest:okta-group-api": "CAMS_LOGIN_PROVIDER=okta npx ts-node lib/testing/isolated-integration/test-okta-group-api.ts",
-    "itest:acms-migration": "CAMS_LOGIN_PROVIDER=mock npx ts-node lib/testing/isolated-integration/test-acms-migration.ts",
-    "itest:export-office-csv": "CAMS_LOGIN_PROVIDER=okta npx ts-node lib/testing/isolated-integration/export-office-csv.ts",
-    "itest:dxtr-tx-bisect": "npx ts-node lib/testing/isolated-integration/test-dxtr-tx-bisect.ts"
+    "dependency-cruiser:ci": "npx depcruise --output-type err-long function-apps/api/staff case-assignments case-docket case-history case-summary cases consolidations healthcheck offices orders orders-manual-sync orders-sync ../lib "
   }
 }

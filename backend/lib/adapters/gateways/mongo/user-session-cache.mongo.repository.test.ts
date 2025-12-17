@@ -5,13 +5,13 @@ import {
   CachedCamsSession,
   UserSessionCacheMongoRepository,
 } from './user-session-cache.mongo.repository';
-import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { CamsJwtClaims } from '../../../../../common/src/cams/jwt';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import QueryBuilder from '../../../query/query-builder';
 import { NotFoundError } from '../../../common-errors/not-found-error';
-import { nowInSeconds } from '../../../../../common/src/date-helper';
+import DateHelper from '../../../../../common/src/date-helper';
 
 describe('User session cache Cosmos repository tests', () => {
   let context: ApplicationContext;
@@ -72,7 +72,7 @@ describe('User session cache Cosmos repository tests', () => {
     const tokenParts = newSession.accessToken.split('.');
     const signature = tokenParts[2];
 
-    const expectedTtl = Math.floor(camsJwtClaims.exp - nowInSeconds());
+    const expectedTtl = Math.floor(camsJwtClaims.exp - DateHelper.nowInSeconds());
 
     const doc = QueryBuilder.using<CachedCamsSession>();
     const expectedQuery = doc('signature').equals(signature);

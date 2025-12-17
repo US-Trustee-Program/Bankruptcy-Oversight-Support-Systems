@@ -12,7 +12,7 @@ import { CamsError } from '../../common-errors/cams-error';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { CamsUserReference } from '../../../../common/src/cams/users';
 import { UserGroupGateway } from '../../adapters/types/authorization';
-import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import * as factory from '../../factory';
 import * as errorUtilities from '../../common-errors/error-utilities';
 

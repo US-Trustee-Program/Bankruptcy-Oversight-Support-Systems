@@ -6,7 +6,7 @@ import ConsolidationOrderModal, {
   formatListForDisplay,
 } from '@/data-verification/consolidation/ConsolidationOrderModal';
 import { BrowserRouter } from 'react-router-dom';
-import { MockData } from '@common/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { CaseAssignment } from '@common/cams/assignments';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { CaseSummary } from '@common/cams/cases';

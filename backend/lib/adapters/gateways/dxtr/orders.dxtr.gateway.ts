@@ -38,9 +38,9 @@ const REGIONS_TO_SYNC = [
   '21',
 ];
 
-export interface DxtrTransfer extends TransferOrder, DxtrOrder {}
+interface DxtrTransfer extends TransferOrder, DxtrOrder {}
 
-export interface DxtrConsolidation extends RawConsolidationOrder, DxtrOrder {}
+interface DxtrConsolidation extends RawConsolidationOrder, DxtrOrder {}
 
 export interface DxtrOrder {
   dxtrCaseId: string;
@@ -66,7 +66,7 @@ export function dxtrOrdersSorter(a: { orderDate: string }, b: { orderDate: strin
   return a.orderDate < b.orderDate ? -1 : 1;
 }
 
-export class DxtrOrdersGateway implements OrdersGateway {
+class DxtrOrdersGateway implements OrdersGateway {
   async getOrderSync(context: ApplicationContext, txId: string): Promise<RawOrderSync> {
     const transfers = await this.getTransferOrderSync(context, txId);
     const consolidations = await this.getConsolidationOrderSync(context, txId);
@@ -644,3 +644,5 @@ export class DxtrOrdersGateway implements OrdersGateway {
     return { maxTxId, mappedDocketEntries };
   }
 }
+
+export default DxtrOrdersGateway;

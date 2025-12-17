@@ -1,11 +1,11 @@
 import { CamsSession } from '@common/cams/session';
 
-export const LOGIN_LOCAL_STORAGE_SESSION_KEY = 'cams:session';
-export const LOGIN_LOCAL_STORAGE_FORM_CACHE_KEY = 'cams:cache:form:';
-export const LOGIN_LOCAL_STORAGE_CACHE_KEY = 'cams:cache:';
-export const LOGIN_LOCAL_STORAGE_ACK_KEY = 'cams:ack';
-export const REFRESHING_TOKEN = 'cams:refreshing-token';
-export const LAST_INTERACTION_KEY = 'cams:last-interaction';
+const LOGIN_LOCAL_STORAGE_SESSION_KEY = 'cams:session';
+const LOGIN_LOCAL_STORAGE_FORM_CACHE_KEY = 'cams:cache:form:';
+const LOGIN_LOCAL_STORAGE_CACHE_KEY = 'cams:cache:';
+const LOGIN_LOCAL_STORAGE_ACK_KEY = 'cams:ack';
+const REFRESHING_TOKEN = 'cams:refreshing-token';
+const LAST_INTERACTION_KEY = 'cams:last-interaction';
 
 function getSession(): CamsSession | null {
   let session: CamsSession | null = null;
@@ -105,7 +105,7 @@ function setNumber(key: string, value: number) {
   localStorage.setItem(key, value.toString());
 }
 
-export const LocalStorage = {
+const LocalStorage = {
   getSession,
   setSession,
   removeSession,
@@ -117,6 +117,12 @@ export const LocalStorage = {
   removeRefreshingToken,
   getLastInteraction,
   setLastInteraction,
+  LOGIN_LOCAL_STORAGE_SESSION_KEY,
+  LOGIN_LOCAL_STORAGE_FORM_CACHE_KEY,
+  LOGIN_LOCAL_STORAGE_CACHE_KEY,
+  LOGIN_LOCAL_STORAGE_ACK_KEY,
+  REFRESHING_TOKEN,
+  LAST_INTERACTION_KEY,
 };
 
 export default LocalStorage;

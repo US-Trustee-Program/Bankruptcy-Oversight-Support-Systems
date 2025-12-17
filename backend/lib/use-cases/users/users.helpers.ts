@@ -5,7 +5,7 @@ import { CamsRole } from '../../../../common/src/cams/roles';
 import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
 import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
 
-export type PrivilegedIdentityHelperOptions = {
+type PrivilegedIdentityHelperOptions = {
   idpUser?: CamsUser;
   pimUser?: PrivilegedIdentityUser;
 };

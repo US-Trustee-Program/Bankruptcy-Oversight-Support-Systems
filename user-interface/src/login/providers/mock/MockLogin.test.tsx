@@ -1,7 +1,7 @@
 import { describe, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import { MockData } from '@common/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 import { MockLogin } from './MockLogin';
 import * as SessionModule from '@/login/Session';

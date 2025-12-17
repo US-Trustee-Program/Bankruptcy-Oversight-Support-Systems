@@ -91,7 +91,7 @@ const arrayOf = (...validators: ValidatorFunction[]): ValidatorFunction => {
 
     value.forEach((element, index) => {
       const result = validateEach(validators, element);
-      if (!result.valid) {
+      if (!result.valid && result.reasons) {
         const reasons = result.reasons.map((r) => `Element at index ${index}: ${r}`);
         allErrors.push(...reasons);
       }

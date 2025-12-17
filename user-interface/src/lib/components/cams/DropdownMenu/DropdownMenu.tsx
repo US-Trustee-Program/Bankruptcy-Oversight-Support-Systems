@@ -11,7 +11,7 @@ export type MenuItem = {
   target?: string;
 };
 
-export type DropdownMenuProps = {
+type DropdownMenuProps = {
   id: string;
   children: React.ReactNode;
   menuItems: MenuItem[];

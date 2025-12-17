@@ -11,9 +11,7 @@ export const REGION_02_GROUP_BU = MOCKED_USTP_OFFICE_DATA_MAP.get(
 export const REGION_02_GROUP_SE = MOCKED_USTP_OFFICE_DATA_MAP.get(
   'USTP_CAMS_Region_18_Office_Seattle',
 )!;
-export const REGION_03_GROUP_WL = MOCKED_USTP_OFFICE_DATA_MAP.get(
-  'USTP_CAMS_Region_3_Office_Wilmington',
-)!;
+const REGION_03_GROUP_WL = MOCKED_USTP_OFFICE_DATA_MAP.get('USTP_CAMS_Region_3_Office_Wilmington')!;
 
 export type MockUser = {
   sub: string;
@@ -23,7 +21,7 @@ export type MockUser = {
 };
 
 function addSuperUserOffices(user: CamsUser) {
-  if (user.roles.includes(CamsRole.SuperUser)) {
+  if (user.roles?.includes(CamsRole.SuperUser)) {
     user.offices = MOCKED_USTP_OFFICES_ARRAY;
     user.roles = Object.values(CamsRole);
   }
@@ -43,7 +41,7 @@ export const SUPERUSER = {
 
 addSuperUserOffices(SUPERUSER.user);
 
-export const MockUsers: MockUser[] = [
+const MockUsers: MockUser[] = [
   {
     sub: 'jpearson@fake.com',
     label: 'Jessica Pearson - Trial Attorney (Manhattan)',

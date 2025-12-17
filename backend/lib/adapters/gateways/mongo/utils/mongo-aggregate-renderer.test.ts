@@ -1,5 +1,5 @@
 import QueryPipeline, { Stage } from '../../../../query/query-pipeline';
-import { toMongoAggregate, toMongoFilterCondition } from './mongo-aggregate-renderer';
+import MongoAggregateRenderer from './mongo-aggregate-renderer';
 import { Condition, Field } from '../../../../query/query-builder';
 import { CaseAssignment } from '../../../../../../common/src/cams/assignments';
 
@@ -76,7 +76,7 @@ describe('aggregation query renderer tests', () => {
       queryPaginate,
     );
 
-    const actual = toMongoAggregate(query);
+    const actual = MongoAggregateRenderer.toMongoAggregate(query);
     expect(actual).toEqual(expected);
   });
 
@@ -92,7 +92,7 @@ describe('aggregation query renderer tests', () => {
       leftOperand,
       rightOperand: 'Bob Newhart',
     };
-    const actual = toMongoFilterCondition<CaseAssignment>(query);
+    const actual = MongoAggregateRenderer.toMongoFilterCondition<CaseAssignment>(query);
     expect(actual).toEqual(expected);
   });
 
@@ -117,7 +117,7 @@ describe('aggregation query renderer tests', () => {
         rightOperand: right,
       };
 
-      const actual = toMongoFilterCondition<CaseAssignment>(query);
+      const actual = MongoAggregateRenderer.toMongoFilterCondition<CaseAssignment>(query);
       expect(actual).toEqual(expected);
     },
   );
@@ -152,7 +152,7 @@ describe('aggregation query renderer tests', () => {
 
     const query = pipeline(simpleMatch, group);
 
-    const actual = toMongoAggregate(query);
+    const actual = MongoAggregateRenderer.toMongoAggregate(query);
 
     expect(actual).toEqual(expected);
   });
