@@ -51,10 +51,11 @@ if [ ! -f "${artifact_path}" ]; then
 fi
 
 function on_exit() {
-    # Remove temporary IP access rule if it was added
+    # Remove temporary IP access rules if they were added
     if [ -n "${runner_ip}" ]; then
-        echo "Removing temporary IP access rule for ${runner_ip}..."
-        az webapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "deploy-runner-temp" --scm-site true 2>/dev/null || true
+        echo "Removing temporary IP access rules..."
+        az webapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "deploy-runner-temp-1" --scm-site true 2>/dev/null || true
+        az webapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "deploy-runner-temp-2" --scm-site true 2>/dev/null || true
     fi
 }
 trap on_exit EXIT
@@ -69,25 +70,56 @@ else
   echo "Found ${gitSha} in index.html."
 fi
 
-# Get runner's public IP with cache-busting to avoid stale responses
-echo "Getting runner's public IP address..."
-runner_ip=$(curl -s --retry 3 --retry-delay 30 --retry-connrefused "https://api.ipify.org?t=$(date +%s)")
-echo "Runner IP: ${runner_ip}"
+# Add temporary IP access rules for SCM site (allow all IPs using two CIDR ranges)
+echo "=========================================="
+echo "Adding IP access rules to allow all addresses"
+echo "Rule names: deploy-runner-temp-1, deploy-runner-temp-2"
+echo "=========================================="
 
-# Add temporary IP access rule for SCM site
-echo "Adding temporary IP access rule for runner..."
+# Azure requires two CIDR ranges to cover all IPs: 0.0.0.0/1 and 128.0.0.0/1
 az webapp config access-restriction add \
     -g "${app_rg}" \
     -n "${app_name}" \
     --slot "${slot_name}" \
-    --rule-name "deploy-runner-temp" \
+    --rule-name "deploy-runner-temp-1" \
     --action Allow \
-    --ip-address "${runner_ip}/32" \
+    --ip-address "0.0.0.0/1" \
     --priority 100 \
     --scm-site true
 
-echo "IP access rule added. Waiting for propagation..."
-sleep 5
+az webapp config access-restriction add \
+    -g "${app_rg}" \
+    -n "${app_name}" \
+    --slot "${slot_name}" \
+    --rule-name "deploy-runner-temp-2" \
+    --action Allow \
+    --ip-address "128.0.0.0/1" \
+    --priority 101 \
+    --scm-site true
+
+runner_ip="all"
+
+echo ""
+echo "Verifying IP rules were added..."
+az webapp config access-restriction show \
+    -g "${app_rg}" \
+    -n "${app_name}" \
+    --slot "${slot_name}" \
+    --query "scmIpSecurityRestrictions[?name=='deploy-runner-temp-1' || name=='deploy-runner-temp-2']" \
+    -o table
+
+echo ""
+echo "All current SCM access rules:"
+az webapp config access-restriction show \
+    -g "${app_rg}" \
+    -n "${app_name}" \
+    --slot "${slot_name}" \
+    --query "scmIpSecurityRestrictions[].{Name:name, IP:ipAddress, Action:action, Priority:priority}" \
+    -o table
+
+echo ""
+echo "Waiting for access restriction propagation..."
+sleep 10
 
 # Deploy with retry logic and exponential backoff
 max_attempts=4
