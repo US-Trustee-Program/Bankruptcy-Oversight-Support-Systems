@@ -61,13 +61,14 @@ const assignAttorneyModalUseCase = (
   };
 
   const apiActions = {
-    fetchAttorneys: async () => {
+    fetchAttorneys: async (officeCode?: string) => {
       let attorneys;
-      if (!store.bCase) {
+      const caseOfficeCode = officeCode ?? store.bCase?.officeCode;
+      if (!caseOfficeCode) {
         return;
       }
       try {
-        attorneys = await Api2.getOfficeAttorneys(store.bCase.officeCode ?? '');
+        attorneys = await Api2.getOfficeAttorneys(caseOfficeCode);
         store.setAttorneyList((attorneys as ResponseBody<AttorneyUser[]>).data);
       } catch (e) {
         store.setGlobalAlertError((e as Error).message);
@@ -195,6 +196,9 @@ const assignAttorneyModalUseCase = (
       if (showProps.callback) {
         store.setSubmissionCallback(() => showProps.callback);
       }
+      // Fetch attorneys for the case when modal is opened
+      // Pass officeCode directly since store.bCase won't be updated yet
+      apiActions.fetchAttorneys(showProps.bCase.officeCode);
     }
     if (controls.modalRef.current?.show) {
       const showOptions = {

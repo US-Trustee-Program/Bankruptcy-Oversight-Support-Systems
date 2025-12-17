@@ -1,7 +1,5 @@
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
-import { ResponseBody } from '@common/api/response';
-import { UstpOfficeDetails } from '@common/cams/offices';
 import { CamsUserReference } from '@common/cams/users';
 
 export const UNASSIGNED_OPTION = {
@@ -9,17 +7,6 @@ export const UNASSIGNED_OPTION = {
   label: '(unassigned)',
   divider: true,
 };
-
-interface StaffAssignmentFilterStore {
-  filterAssigneeCallback: ((assignees: ComboOption[]) => void) | null;
-  setFilterAssigneeCallback(val: ((assignees: ComboOption[]) => void) | null): void;
-  focusOnRender: boolean;
-  setFocusOnRender(val: boolean): void;
-  officeAssignees: CamsUserReference[];
-  setOfficeAssignees(val: CamsUserReference[]): void;
-  officeAssigneesError: boolean;
-  setOfficeAssigneesError(val: boolean): void;
-}
 
 interface StaffAssignmentFilterControls {
   assigneesFilterRef: React.RefObject<ComboBoxRef | null>;
@@ -52,15 +39,20 @@ type StaffAssignmentFilterProps = {
   handleFilterAssignee(assignees: ComboOption[]): void;
 };
 
-interface StaffAssignmentFilterUseCase {
-  assigneesToComboOptions(officeAssignees: CamsUserReference[]): ComboOption[];
-  fetchAssignees(): void;
-  focusOnAssigneesFilter(): void;
-  getOfficeAssignees(
-    apiFunction: (office: string) => Promise<ResponseBody<CamsUserReference[]>>,
-    offices: UstpOfficeDetails[],
-  ): Promise<CamsUserReference[]>;
-  handleFilterAssignee(val: ComboOption[]): void;
+interface StaffAssignmentFilterStore {
+  officeAssignees: CamsUserReference[];
+  officeAssigneesError: boolean;
+  focusOnRender: boolean;
+  filterAssigneeCallback: ((assignees: ComboOption[]) => void) | null;
+  setFilterAssigneeCallback: (val: ((assignees: ComboOption[]) => void) | null) => void;
+}
+
+interface StaffAssignmentFilterHook {
+  store: StaffAssignmentFilterStore;
+  fetchAssignees: () => Promise<void>;
+  focusOnAssigneesFilter: () => void;
+  handleFilterAssignee: (assignees: ComboOption[]) => Promise<void>;
+  assigneesToComboOptions: (officeAssignees: CamsUserReference[]) => ComboOption[];
 }
 
 export type {
@@ -71,5 +63,5 @@ export type {
   StaffAssignmentFilterRef,
   StaffAssignmentScreenFilter,
   StaffAssignmentFilterProps,
-  StaffAssignmentFilterUseCase,
+  StaffAssignmentFilterHook,
 };
