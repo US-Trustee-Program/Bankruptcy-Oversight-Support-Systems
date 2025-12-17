@@ -33,13 +33,27 @@ The script is located at `ops/git-setup/set-up-git-hooks.sh`.
 
 ## Accessibility
 
-We run `pa11y` to validate accessibility compliance with Web Content Accessibility Guidelines 2.1 AA standards. This is automated as part of our CI/CD pipeline, but running locally when UI changes are being made is advisable. To do this you can follow these steps:
+We use Playwright with @axe-core/playwright to validate accessibility compliance with Web Content Accessibility Guidelines 2.1 AA standards. This is automated as part of our CI/CD pipeline, but running locally when UI changes are being made is advisable. To do this you can follow these steps:
 
-1. Ensure the url for the pages you are working on are listed in `/user-interface/.pa11yci`
-1. Ensure any mock data necessary for the pages you are working on are handled in the mock API
-1. Execute `npm run start:pa11y`
-1. In a separate shell, execute `npm run pa11y-ci`
-    1. Ensure that the output does not reflect any errors
+1. Build the user interface with the fake API and login provider disabled:
+   ```sh
+   cd user-interface
+   CAMS_USE_FAKE_API=true CAMS_LOGIN_PROVIDER=none npm run build
+   ```
+1. Start the preview server:
+   ```sh
+   npm run serve
+   ```
+1. In a separate shell, run the accessibility tests:
+   ```sh
+   npm run test:a11y
+   ```
+1. Ensure that the output does not reflect any errors
+
+Alternatively, you can run the tests in interactive UI mode:
+```sh
+npm run test:a11y:ui
+```
 
 ## Node Version
 
