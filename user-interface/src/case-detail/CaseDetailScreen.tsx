@@ -23,7 +23,7 @@ import { AssignAttorneyModalCallbackProps } from '@/staff-assignment/modal/assig
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
-import { useApi2 } from '@/lib/hooks/UseApi2';
+import Api2 from '@/lib/models/api2';
 import { CaseAssignment } from '@common/cams/assignments';
 import { CamsRole } from '@common/cams/roles';
 import CaseNotes, { CaseNotesRef } from './panels/case-notes/CaseNotes';
@@ -86,14 +86,14 @@ export function findDocketLimits(docket: CaseDocket): DocketLimits {
   return { dateRange, documentRange };
 }
 
-export function docketSorterClosure(sortDirection: SortDirection) {
+function docketSorterClosure(sortDirection: SortDirection) {
   return (left: CaseDocketEntry, right: CaseDocketEntry) => {
     const direction = sortDirection === 'Newest' ? 1 : -1;
     return left.sequenceNumber < right.sequenceNumber ? direction : direction * -1;
   };
 }
 
-export function notesSorterClosure(sortDirection: SortDirection) {
+function notesSorterClosure(sortDirection: SortDirection) {
   return (left: CaseNote, right: CaseNote) => {
     const direction = sortDirection === 'Newest' ? 1 : -1;
     return left.updatedOn < right.updatedOn ? direction : direction * -1;
@@ -245,7 +245,6 @@ export interface CaseDetailProps {
 }
 
 export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
-  const api = useApi2();
   const { caseId } = useParams();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -285,8 +284,7 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
 
   async function fetchCaseBasicInfo() {
     setIsLoading(true);
-    api
-      .getCaseDetail(caseId!)
+    Api2.getCaseDetail(caseId!)
       .then((response) => {
         setCaseBasicInfo(response.data);
       })
@@ -300,8 +298,7 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
 
   async function fetchCaseDocketEntries() {
     setIsDocketLoading(true);
-    api
-      .getCaseDocket(caseId!)
+    Api2.getCaseDocket(caseId!)
       .then((response) => {
         setCaseDocketEntries(response.data);
         const facets = response.data.reduce<CaseDocketSummaryFacets>(
@@ -320,8 +317,7 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
 
   async function fetchCaseNotes(noteId?: string) {
     setAreCaseNotesLoading(true);
-    api
-      .getCaseNotes(caseId!)
+    Api2.getCaseNotes(caseId!)
       .then((response) => {
         setCaseNotes(response.data);
         if (noteId) {
@@ -337,8 +333,7 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
 
   async function fetchAssociatedCases() {
     setIsAssociatedCasesLoading(true);
-    api
-      .getCaseAssociations(caseId!)
+    Api2.getCaseAssociations(caseId!)
       .then((response) => {
         if (response) {
           setAssociatedCases(response.data);

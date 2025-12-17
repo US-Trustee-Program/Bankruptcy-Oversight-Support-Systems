@@ -1,4 +1,4 @@
-import { MockData } from '@common/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { ConsolidationStoreMock } from './consolidationStoreMock';
 import { ConsolidationsUseCase, consolidationUseCase } from './consolidationsUseCase';
 import { orderStatusType, orderType } from '@/lib/utils/labels';
@@ -71,7 +71,7 @@ describe('Consolidation UseCase tests', () => {
   beforeEach(async () => {
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
     vi.resetModules();
-    await import('@/lib/hooks/UseApi2');
+    await import('@/lib/models/api2');
     initUseCase();
   });
 

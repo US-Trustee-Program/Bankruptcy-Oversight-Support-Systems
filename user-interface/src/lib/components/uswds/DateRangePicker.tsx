@@ -19,7 +19,7 @@ export const formatDateForVoiceOver = (dateString: string) => {
   }
 };
 
-export interface DateRangePickerProps extends Omit<DatePickerProps, 'value'> {
+interface DateRangePickerProps extends Omit<DatePickerProps, 'value'> {
   onStartDateChange?: (ev: React.ChangeEvent<HTMLInputElement>) => void;
   onEndDateChange?: (ev: React.ChangeEvent<HTMLInputElement>) => void;
   startDateLabel?: string;

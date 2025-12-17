@@ -25,12 +25,13 @@ import {
   RuntimeState,
   RuntimeStateRepository,
   StaffRepository,
+  TrusteeAppointmentsRepository,
   TrusteesRepository,
   UserGroupsRepository,
   UserSessionCacheRepository,
   UsersRepository,
 } from './use-cases/gateways.types';
-import { DxtrOrdersGateway } from './adapters/gateways/dxtr/orders.dxtr.gateway';
+import DxtrOrdersGateway from './adapters/gateways/dxtr/orders.dxtr.gateway';
 import { OfficesGateway } from './use-cases/offices/offices.types';
 import OfficesDxtrGateway from './adapters/gateways/dxtr/offices.dxtr.gateway';
 import {
@@ -65,6 +66,7 @@ import { getCamsErrorWithStack } from './common-errors/error-utilities';
 import { OfficeAssigneeMongoRepository } from './adapters/gateways/mongo/office-assignee.mongo.repository';
 import StorageQueueGateway from './adapters/gateways/storage-queue/storage-queue-gateway';
 import { TrusteesMongoRepository } from './adapters/gateways/mongo/trustees.mongo.repository';
+import { TrusteeAppointmentsMongoRepository } from './adapters/gateways/mongo/trustee-appointments.mongo.repository';
 import { ListsMongoRepository } from './adapters/gateways/mongo/lists.mongo.repository';
 import { StaffMongoRepository } from './adapters/gateways/mongo/staff.mongo.repository';
 import { UserGroupsMongoRepository } from './adapters/gateways/mongo/user-groups.mongo.repository';
@@ -365,6 +367,17 @@ export const getTrusteesRepository = (context: ApplicationContext): TrusteesRepo
   return repo;
 };
 
+export const getTrusteeAppointmentsRepository = (
+  context: ApplicationContext,
+): TrusteeAppointmentsRepository => {
+  if (context.config.get('dbMock')) {
+    return new MockMongoRepository();
+  }
+  const repo = TrusteeAppointmentsMongoRepository.getInstance(context);
+  deferRelease(repo, context);
+  return repo;
+};
+
 export const getQueueGateway = (_ignore: ApplicationContext): QueueGateway => {
   return StorageQueueGateway;
 };
@@ -378,7 +391,7 @@ export const getListsGateway = (context: ApplicationContext): ListsRepository =>
   return repo;
 };
 
-export const Factory = {
+const Factory = {
   getAcmsGateway,
   getCasesGateway,
   getAssignmentRepository,
@@ -403,6 +416,7 @@ export const Factory = {
   getUserGroupGateway,
   getUsersRepository,
   getTrusteesRepository,
+  getTrusteeAppointmentsRepository,
   getQueueGateway,
   getListsGateway,
   getStaffRepository,

@@ -1,13 +1,13 @@
 import * as jwt from 'jsonwebtoken';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
-import { MockUser, MockUsers } from '../../../../common/src/cams/test-utilities/mock-user';
+import MockUsers, { MockUser } from '../../../../common/src/cams/test-utilities/mock-user';
 import { CamsUser } from '../../../../common/src/cams/users';
 import { CamsRole } from '../../../../common/src/cams/roles';
-import { CamsJwt, CamsJwtClaims, CamsJwtHeader } from '../../../../common/src/cams/jwt';
+import { CamsJwt, CamsJwtClaims } from '../../../../common/src/cams/jwt';
 import { OpenIdConnectGateway } from '../../adapters/types/authorization';
 import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
-import { nowInSeconds } from '../../../../common/src/date-helper';
+import DateHelper from '../../../../common/src/date-helper';
 
 const MODULE_NAME = 'MOCK-OAUTH2-GATEWAY';
 const mockUsers: MockUser[] = MockUsers;
@@ -23,7 +23,7 @@ export async function mockAuthentication(context: ApplicationContext): Promise<s
   const validMockRole = mockUsers.find((role) => role.sub === requestedSubject.sub);
 
   const ONE_DAY = 60 * 60 * 24;
-  const NOW = nowInSeconds();
+  const NOW = DateHelper.nowInSeconds();
 
   const expiration = isNaN(EXPIRE_OVERRIDE) ? NOW + ONE_DAY : NOW + EXPIRE_OVERRIDE;
 
@@ -37,25 +37,6 @@ export async function mockAuthentication(context: ApplicationContext): Promise<s
 
   const token = jwt.sign(claims, key);
   return token;
-}
-
-export async function verifyToken(accessToken: string): Promise<CamsJwt> {
-  const payload = jwt.verify(accessToken, key) as jwt.JwtPayload;
-  const claims: CamsJwtClaims = {
-    iss: payload.iss!,
-    sub: payload.sub!,
-    aud: payload.aud!,
-    exp: payload.exp!,
-    groups: payload.groups!,
-    ...payload,
-  };
-
-  const header: CamsJwtHeader = { typ: '' };
-  const camsJwt: CamsJwt = {
-    claims,
-    header,
-  };
-  return camsJwt;
 }
 
 function addSuperUserOffices(user: CamsUser) {

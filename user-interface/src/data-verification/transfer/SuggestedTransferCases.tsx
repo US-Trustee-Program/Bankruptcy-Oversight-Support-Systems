@@ -10,7 +10,7 @@ import CaseNumberInput from '@/lib/components/CaseNumberInput';
 import { TransferOrder } from '@common/cams/orders';
 import { ComboBoxRef, InputRef } from '@/lib/type-declarations/input-fields';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
-import { useApi2 } from '@/lib/hooks/UseApi2';
+import Api2 from '@/lib/models/api2';
 
 export type SuggestedTransferCasesImperative = {
   cancel: () => void;
@@ -53,8 +53,6 @@ function SuggestedTransferCases_(
   const caseNumberRef = useRef<InputRef>(null);
   const courtSelectionRef = useRef<ComboBoxRef>(null);
 
-  const api = useApi2();
-
   async function validateCaseNumber(caseId: string) {
     const currentElement = document.activeElement;
     if (loadingCaseSummary) {
@@ -62,8 +60,7 @@ function SuggestedTransferCases_(
     }
     setLoadingCaseSummary(true);
     disableEntryForm(true);
-    await api
-      .getCaseSummary(caseId)
+    await Api2.getCaseSummary(caseId)
       .then((response) => {
         const caseSummary = response.data;
         props.onCaseSelection(caseSummary);
@@ -125,8 +122,7 @@ function SuggestedTransferCases_(
 
   function getTransferredCaseSuggestions(caseId: string) {
     setLoadingSuggestions(true);
-    api
-      .getOrderSuggestions(caseId)
+    Api2.getOrderSuggestions(caseId)
       .then((response) => {
         const newSuggestedCases = response.data;
         setLoadingSuggestions(false);

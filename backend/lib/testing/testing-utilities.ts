@@ -1,6 +1,6 @@
 import { ApplicationContext } from '../adapters/types/basic';
 import { HttpRequest, InvocationContext } from '@azure/functions';
-import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
+import MockData from '../../../common/src/cams/test-utilities/mock-data';
 import { CamsSession } from '../../../common/src/cams/session';
 import { CamsHttpMethod, CamsHttpRequest } from '../adapters/types/http';
 import ContextCreator from '../../function-apps/azure/application-context-creator';
@@ -38,7 +38,7 @@ export async function createMockApplicationContextSession(
   return MockData.getCamsSession(override);
 }
 
-export function createMockRequest(request: Partial<CamsHttpRequest> = {}): HttpRequest {
+function createMockRequest(request: Partial<CamsHttpRequest> = {}): HttpRequest {
   const { headers, method, body, ...other } = request;
   const requestInit = {
     method: (method as CamsHttpMethod) ?? 'GET',

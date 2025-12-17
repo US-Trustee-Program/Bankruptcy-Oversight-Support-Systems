@@ -2,11 +2,16 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { LOGOUT_PATH } from './login-library';
 import { redirectTo } from '@/lib/hooks/UseCamsNavigator';
 import { CamsSession } from '@common/cams/session';
-import { nowInSeconds } from '@common/date-helper';
+import DateHelper from '@common/date-helper';
 
 export function checkForSessionEnd() {
+  // Guard against window being undefined (e.g., during test teardown)
+  if (typeof window === 'undefined') {
+    return;
+  }
+
   const session = LocalStorage.getSession();
-  if (!session || session.expires <= nowInSeconds()) {
+  if (!session || session.expires <= DateHelper.nowInSeconds()) {
     const { host, protocol } = window.location;
     const logoutUri = protocol + '//' + host + LOGOUT_PATH;
     redirectTo(logoutUri);
@@ -14,5 +19,5 @@ export function checkForSessionEnd() {
 }
 
 export function initializeSessionEndLogout(session: CamsSession) {
-  setInterval(checkForSessionEnd, Math.floor(session.expires - nowInSeconds()) * 1000);
+  setInterval(checkForSessionEnd, Math.floor(session.expires - DateHelper.nowInSeconds()) * 1000);
 }

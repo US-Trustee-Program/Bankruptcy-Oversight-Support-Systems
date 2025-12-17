@@ -2,53 +2,13 @@ import React from 'react';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import TrusteeAttorneyAssignmentModal from './TrusteeAttorneyAssignmentModal';
-import useApi2 from '@/lib/hooks/UseApi2';
-import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
+import Api2 from '@/lib/models/api2';
+import * as UseGlobalAlertModule from '@/lib/hooks/UseGlobalAlert';
 import { AttorneyUser } from '@common/cams/users';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
 import { CamsRole, OversightRole } from '@common/cams/roles';
-import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { TrusteeAttorneyAssignmentModalRef } from './TrusteeAttorneyAssignmentModal';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
-
-// TODO: Remove the use of vi.mock()
-vi.mock('@/lib/hooks/UseApi2');
-vi.mock('@/lib/hooks/UseGlobalAlert');
-
-vi.mock('@/lib/components/combobox/ComboBox', () => {
-  return {
-    default: ({
-      onUpdateSelection,
-      options = [],
-    }: {
-      onUpdateSelection?: (options: ComboOption[]) => void;
-      options?: Array<{ value: string; label: string }>;
-    }) => (
-      <select
-        data-testid="mock-combobox"
-        onChange={(e) => {
-          if (onUpdateSelection) {
-            if (e.target.value) {
-              const selectedOption = options.find((opt) => opt.value === e.target.value);
-              if (selectedOption) {
-                onUpdateSelection([{ value: selectedOption.value, label: selectedOption.label }]);
-              }
-            } else {
-              onUpdateSelection([]);
-            }
-          }
-        }}
-      >
-        <option value="">Select an attorney</option>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    ),
-  };
-});
 
 describe('TrusteeAttorneyAssignmentModal', () => {
   let userEvent: CamsUserEvent;
@@ -117,21 +77,21 @@ describe('TrusteeAttorneyAssignmentModal', () => {
     updatedOn: '2023-01-01T00:00:00Z',
   };
 
-  const mockApiMethods = {
-    getAttorneys: vi.fn().mockResolvedValue({ data: mockAttorneys }),
-    createTrusteeOversightAssignment: vi.fn().mockResolvedValue({ data: mockAssignment }),
-  };
-
   const mockGlobalAlert = {
-    success: vi.fn(),
+    show: vi.fn(),
+    info: vi.fn(),
     error: vi.fn(),
+    warning: vi.fn(),
+    success: vi.fn(),
   };
 
   beforeEach(() => {
     userEvent = TestingUtilities.setupUserEvent();
-    vi.clearAllMocks();
-    (useApi2 as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockApiMethods);
-    (useGlobalAlert as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockGlobalAlert);
+    vi.restoreAllMocks();
+    vi.spyOn(Api2, 'createTrusteeOversightAssignment').mockResolvedValue({
+      data: mockAssignment,
+    });
+    vi.spyOn(UseGlobalAlertModule, 'useGlobalAlert').mockReturnValue(mockGlobalAlert);
   });
 
   test('should render modal with correct structure', () => {
@@ -150,7 +110,9 @@ describe('TrusteeAttorneyAssignmentModal', () => {
 
     act(() => ref.current!.show());
 
-    expect(screen.getByTestId('mock-combobox')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(document.querySelector('#attorney-search')).toBeInTheDocument();
+    });
   });
 
   test('should enable submit button when attorney is selected', async () => {
@@ -164,8 +126,7 @@ describe('TrusteeAttorneyAssignmentModal', () => {
     const submitButton = screen.getByTestId('button-test-modal-submit-button');
     expect(submitButton).toBeDisabled();
 
-    const comboBox = screen.getByTestId('mock-combobox') as HTMLSelectElement;
-    await userEvent.selectOptions(comboBox, mockAttorneys[0].id);
+    await TestingUtilities.toggleComboBoxItemSelection('attorney-search', 0);
 
     await waitFor(() => {
       expect(submitButton).not.toBeDisabled();
@@ -180,14 +141,13 @@ describe('TrusteeAttorneyAssignmentModal', () => {
 
     act(() => ref.current!.show());
 
-    const comboBox = screen.getByTestId('mock-combobox') as HTMLSelectElement;
-    await userEvent.selectOptions(comboBox, mockAttorneys[0].id);
+    await TestingUtilities.toggleComboBoxItemSelection('attorney-search', 0);
 
     const submitButton = screen.getByTestId('button-test-modal-submit-button');
     await userEvent.click(submitButton);
 
     await waitFor(() => {
-      expect(mockApiMethods.createTrusteeOversightAssignment).toHaveBeenCalledWith(
+      expect(Api2.createTrusteeOversightAssignment).toHaveBeenCalledWith(
         'trustee-123',
         'attorney-1',
         OversightRole.OversightAttorney,
@@ -200,7 +160,9 @@ describe('TrusteeAttorneyAssignmentModal', () => {
 
   test('should handle assignment error', async () => {
     const errorMessage = 'Failed to assign attorney';
-    mockApiMethods.createTrusteeOversightAssignment.mockRejectedValueOnce(new Error(errorMessage));
+    vi.spyOn(Api2, 'createTrusteeOversightAssignment').mockRejectedValueOnce(
+      new Error(errorMessage),
+    );
 
     const onAssignment = vi.fn();
     const ref = React.createRef<TrusteeAttorneyAssignmentModalRef>();
@@ -209,8 +171,7 @@ describe('TrusteeAttorneyAssignmentModal', () => {
 
     act(() => ref.current!.show());
 
-    const comboBox = screen.getByTestId('mock-combobox') as HTMLSelectElement;
-    await userEvent.selectOptions(comboBox, mockAttorneys[0].id);
+    await TestingUtilities.toggleComboBoxItemSelection('attorney-search', 0);
 
     const submitButton = screen.getByTestId('button-test-modal-submit-button');
     await userEvent.click(submitButton);
@@ -229,18 +190,15 @@ describe('TrusteeAttorneyAssignmentModal', () => {
 
     act(() => ref.current!.show());
 
-    const comboBox = screen.getByTestId('mock-combobox') as HTMLSelectElement;
-    await userEvent.selectOptions(comboBox, mockAttorneys[0].id);
+    await TestingUtilities.toggleComboBoxItemSelection('attorney-search', 0);
 
-    await userEvent.selectOptions(comboBox, '');
-
-    mockApiMethods.createTrusteeOversightAssignment.mockClear();
+    await TestingUtilities.clearComboBoxSelection('attorney-search');
 
     const submitButton = screen.getByTestId('button-test-modal-submit-button');
     submitButton.removeAttribute('disabled');
     await userEvent.click(submitButton);
 
-    expect(mockApiMethods.createTrusteeOversightAssignment).not.toHaveBeenCalled();
+    expect(Api2.createTrusteeOversightAssignment).not.toHaveBeenCalled();
     expect(onAssignment).not.toHaveBeenCalled();
   });
 
@@ -252,15 +210,14 @@ describe('TrusteeAttorneyAssignmentModal', () => {
 
     act(() => ref.current!.show());
 
-    const comboBox = screen.getByTestId('mock-combobox') as HTMLSelectElement;
-    await userEvent.selectOptions(comboBox, mockAttorneys[0].id);
+    await TestingUtilities.toggleComboBoxItemSelection('attorney-search', 0);
 
     const submitButton = screen.getByTestId('button-test-modal-submit-button');
     await waitFor(() => {
       expect(submitButton).not.toBeDisabled();
     });
 
-    await userEvent.selectOptions(comboBox, '');
+    await TestingUtilities.clearComboBoxSelection('attorney-search');
 
     await waitFor(() => {
       expect(submitButton).toBeDisabled();
@@ -281,13 +238,13 @@ describe('TrusteeAttorneyAssignmentModal', () => {
       expect(submitButton).not.toBeDisabled();
     });
 
-    mockApiMethods.createTrusteeOversightAssignment.mockClear();
+    vi.clearAllMocks();
 
     const submitButton = screen.getByTestId('button-test-modal-submit-button');
     await userEvent.click(submitButton);
 
     await waitFor(() => {
-      expect(mockApiMethods.createTrusteeOversightAssignment).not.toHaveBeenCalled();
+      expect(Api2.createTrusteeOversightAssignment).not.toHaveBeenCalled();
       expect(onAssignment).not.toHaveBeenCalled();
     });
   });

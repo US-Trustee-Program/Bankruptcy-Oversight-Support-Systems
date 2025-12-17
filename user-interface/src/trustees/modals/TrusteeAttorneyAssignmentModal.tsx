@@ -1,5 +1,5 @@
 import React, { forwardRef, useRef, useState, useCallback, useEffect } from 'react';
-import useApi2 from '@/lib/hooks/UseApi2';
+import Api2 from '@/lib/models/api2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { AttorneyUser } from '@common/cams/users';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
@@ -27,12 +27,12 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
   TrusteeAttorneyAssignmentModalRef,
   TrusteeAttorneyAssignmentModalProps
 >((props, ref) => {
-  const { attorneys, currentAssignment } = props;
+  const { attorneys, currentAssignment, modalId, trusteeId, onAssignment } = props;
   const [selectedAttorney, setSelectedAttorney] = useState<AttorneyUser | null>(null);
   const [isAssigning, setIsAssigning] = useState<boolean>(false);
 
   const modalRef = useRef<ModalRefType>(null);
-  const api = useApi2();
+
   const globalAlert = useGlobalAlert();
 
   useEffect(() => {
@@ -62,12 +62,12 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
 
       setIsAssigning(true);
       try {
-        await api.createTrusteeOversightAssignment(
-          props.trusteeId,
+        await Api2.createTrusteeOversightAssignment(
+          trusteeId,
           selectedAttorney.id,
           OversightRole.OversightAttorney,
         );
-        props.onAssignment(true);
+        onAssignment(true);
         globalAlert?.success('Attorney assigned successfully');
         modalRef.current?.hide({});
       } catch (err) {
@@ -76,7 +76,7 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
         setIsAssigning(false);
       }
     }
-  }, [selectedAttorney, currentAssignment, props.onAssignment, props.trusteeId, api, globalAlert]);
+  }, [selectedAttorney, currentAssignment, onAssignment, trusteeId, globalAlert]);
 
   const modalContent = (
     <div
@@ -112,7 +112,7 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
 
   const isEditMode = !!currentAssignment;
   const actionButtonGroup = {
-    modalId: props.modalId,
+    modalId: modalId,
     modalRef: modalRef,
     submitButton: {
       label: isEditMode ? 'Edit Attorney' : 'Add Attorney',
@@ -130,7 +130,7 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
   return (
     <Modal
       ref={modalRef}
-      modalId={props.modalId}
+      modalId={modalId}
       heading={isEditMode ? 'Edit Attorney' : 'Add Attorney'}
       content={modalContent}
       actionButtonGroup={actionButtonGroup}

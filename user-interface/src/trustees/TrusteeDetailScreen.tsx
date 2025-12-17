@@ -2,7 +2,7 @@ import './TrusteeDetailScreen.scss';
 import '@/styles/record-detail.scss';
 import '@/styles/left-navigation-pane.scss';
 import { JSX, useEffect, useState } from 'react';
-import useApi2 from '@/lib/hooks/UseApi2';
+import Api2 from '@/lib/models/api2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { Trustee } from '@common/cams/trustees';
 import { useNavigate, useParams, Routes, Route, useLocation } from 'react-router-dom';
@@ -15,6 +15,7 @@ import TrusteeDetailNavigation, { mapTrusteeDetailNavState } from './TrusteeDeta
 import TrusteeOtherInfoForm from './forms/TrusteeOtherInfoForm';
 import NotFound from '@/lib/components/NotFound';
 import TrusteeAssignedStaff from './panels/TrusteeAssignedStaff';
+import TrusteeAppointments from './panels/TrusteeAppointments';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { BankruptcySoftwareList } from '@common/cams/lists';
 import TrusteePublicContactForm from './forms/TrusteePublicContactForm';
@@ -44,17 +45,14 @@ const transformSoftwareList = (items: BankruptcySoftwareList): ComboOption[] => 
 
 export default function TrusteeDetailScreen() {
   const { trusteeId } = useParams();
+  const location = useLocation();
   const [trustee, setTrustee] = useState<Trustee | null>(null);
-  const [navState, setNavState] = useState<number>(
-    mapTrusteeDetailNavState(window.location.pathname),
-  );
+  const [navState, setNavState] = useState<number>(mapTrusteeDetailNavState(location.pathname));
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [softwareOptions, setSoftwareOptions] = useState<ComboOption[]>([]);
 
   const navigate = useNavigate();
   const globalAlert = useGlobalAlert();
-  const api = useApi2();
-  const location = useLocation();
 
   function openEditPublicProfile() {
     navigate(`/trustees/${trusteeId}/contact/edit/public`);
@@ -71,7 +69,7 @@ export default function TrusteeDetailScreen() {
   useEffect(() => {
     const fetchSoftwareOptions = async () => {
       try {
-        const response = await api.getBankruptcySoftwareList();
+        const response = await Api2.getBankruptcySoftwareList();
         if (response?.data) {
           const transformedOptions = transformSoftwareList(response.data as BankruptcySoftwareList);
           setSoftwareOptions(transformedOptions);
@@ -82,25 +80,28 @@ export default function TrusteeDetailScreen() {
     };
 
     fetchSoftwareOptions();
-  }, [api]);
+  }, []);
 
   useEffect(() => {
-    if (trusteeId) {
-      setIsLoading(true);
-      api
-        .getTrustee(trusteeId)
-        .then((trusteeResponse) => {
-          setTrustee(trusteeResponse.data);
-        })
-        .catch(() => {
-          globalAlert?.error('Could not get trustee details');
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
-    }
-    setNavState(mapTrusteeDetailNavState(window.location.pathname));
-  }, [location.pathname, trusteeId, api, globalAlert]);
+    const fetchTrusteeDetails = () => {
+      if (trusteeId) {
+        setIsLoading(true);
+        Api2.getTrustee(trusteeId)
+          .then((trusteeResponse) => {
+            setTrustee(trusteeResponse.data);
+          })
+          .catch(() => {
+            globalAlert?.error('Could not get trustee details');
+          })
+          .finally(() => {
+            setIsLoading(false);
+          });
+      }
+      setNavState(mapTrusteeDetailNavState(location.pathname));
+    };
+
+    fetchTrusteeDetails();
+  }, [location.pathname, trusteeId, globalAlert]);
 
   if (!trusteeId || (!isLoading && !trustee)) {
     return (
@@ -178,7 +179,7 @@ export default function TrusteeDetailScreen() {
       ),
     },
     {
-      path: 'audit-history',
+      path: 'appointments',
       subHeading: 'Trustee',
       content: (
         <div className="trustee-detail-screen-info-container">
@@ -186,7 +187,7 @@ export default function TrusteeDetailScreen() {
             <TrusteeDetailNavigation trusteeId={trusteeId} initiallySelectedNavLink={navState} />
           </div>
           <div className="main-content-area">
-            <TrusteeDetailAuditHistory trusteeId={trusteeId} />
+            <TrusteeAppointments trusteeId={trusteeId} />
           </div>
         </div>
       ),
@@ -201,6 +202,20 @@ export default function TrusteeDetailScreen() {
           </div>
           <div className="main-content-area">
             <TrusteeAssignedStaff trusteeId={trusteeId} />
+          </div>
+        </div>
+      ),
+    },
+    {
+      path: 'audit-history',
+      subHeading: 'Trustee',
+      content: (
+        <div className="trustee-detail-screen-info-container">
+          <div className="left-navigation-pane-container">
+            <TrusteeDetailNavigation trusteeId={trusteeId} initiallySelectedNavLink={navState} />
+          </div>
+          <div className="main-content-area">
+            <TrusteeDetailAuditHistory trusteeId={trusteeId} />
           </div>
         </div>
       ),

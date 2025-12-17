@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTrusteeAssignments } from '@/trustees/modals/UseTrusteeAssignments';
-import useApi2 from '@/lib/hooks/UseApi2';
+import Api2 from '@/lib/models/api2';
 import { AttorneyUser } from '@common/cams/users';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import AttorneyAssignmentSection from './AttorneyAssignmentSection';
@@ -17,7 +17,6 @@ export default function TrusteeAssignedStaff(props: Readonly<TrusteeAssignedStaf
   const [attorneys, setAttorneys] = useState<AttorneyUser[]>([]);
   const [attorneysLoading, setAttorneysLoading] = useState<boolean>(true);
   const [attorneysError, setAttorneysError] = useState<string | null>(null);
-  const api = useApi2();
 
   useEffect(() => {
     getTrusteeOversightAssignments(trusteeId);
@@ -28,7 +27,7 @@ export default function TrusteeAssignedStaff(props: Readonly<TrusteeAssignedStaf
       setAttorneysLoading(true);
       setAttorneysError(null);
       try {
-        const response = await api.getOversightStaff();
+        const response = await Api2.getOversightStaff();
         setAttorneys(response.data ?? []);
       } catch {
         setAttorneysError('Failed to load attorneys');

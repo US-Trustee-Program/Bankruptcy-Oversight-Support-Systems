@@ -2,9 +2,8 @@
   "minPackageAgeDays": 7,
   "projects": ["root", "backend", "common", "dev-tools", "test/e2e", "user-interface"],
   "constraints": {
-    "pinned": ["@types/mssql"],
+    "pinned": [],
     "majorVersionLock": {
-      "mssql": "10",
       "pa11y-ci": "3",
       "@faker-js/faker": "9"
     },

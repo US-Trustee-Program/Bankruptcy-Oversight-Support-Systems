@@ -2,6 +2,7 @@
 
 - [Home](/)
 - [< Back](/architecture/)
+- [Accessibility Testing](/architecture/decision-records/AccessibilityTesting.md)
 - [API Technology](/architecture/decision-records/ApiTechnology.md)
 - [Application Context](/architecture/decision-records/ApplicationContext.md)
 - [Authentication](/architecture/decision-records/Authentication.md)

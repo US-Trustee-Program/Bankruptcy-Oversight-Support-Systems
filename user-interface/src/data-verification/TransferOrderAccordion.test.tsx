@@ -5,7 +5,7 @@ import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { TransferOrderAccordion, TransferOrderAccordionProps } from './TransferOrderAccordion';
 import { describe } from 'vitest';
 import { orderType, orderStatusType } from '@/lib/utils/labels';
-import { MockData } from '@common/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { TransferOrder } from '@common/cams/orders';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';

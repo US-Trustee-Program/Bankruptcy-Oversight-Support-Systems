@@ -63,11 +63,11 @@ export type ListGroupUsersRequest = {
   limit?: number;
 };
 
-export type UserRequest = {
+type UserRequest = {
   userId: string;
 };
 
-export type UserGroupsRequest = {
+type UserGroupsRequest = {
   userId: string;
 };
 
@@ -76,7 +76,7 @@ export type IdpGroup = {
   name: string;
 };
 
-export class OktaHumble {
+class OktaHumble {
   private client: Client;
 
   public async init(config: UserGroupGatewayConfig): Promise<void> {

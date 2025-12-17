@@ -42,11 +42,11 @@ describe('TrusteeDetailNavigation', () => {
       state: TrusteeNavState.TRUSTEE_PROFILE,
     },
     {
-      testId: 'trustee-audit-history-nav-link',
-      text: 'Change History',
-      href: '/trustees/12345/audit-history',
-      title: 'view audit history for the trustee',
-      state: TrusteeNavState.AUDIT_HISTORY,
+      testId: 'trustee-appointments-nav-link',
+      text: 'Appointments',
+      href: '/trustees/12345/appointments',
+      title: 'view appointments for the current trustee',
+      state: TrusteeNavState.APPOINTMENTS,
     },
     {
       testId: 'trustee-assigned-staff-nav-link',
@@ -54,6 +54,13 @@ describe('TrusteeDetailNavigation', () => {
       href: '/trustees/12345/assigned-staff',
       title: 'view staff assigned to the current trustee',
       state: TrusteeNavState.ASSIGNED_STAFF,
+    },
+    {
+      testId: 'trustee-audit-history-nav-link',
+      text: 'Change History',
+      href: '/trustees/12345/audit-history',
+      title: 'view audit history for the trustee',
+      state: TrusteeNavState.AUDIT_HISTORY,
     },
   ];
 
@@ -138,7 +145,7 @@ describe('TrusteeDetailNavigation', () => {
     expect(screen.getByRole('list')).toHaveClass('usa-sidenav');
 
     const listItems = screen.getAllByRole('listitem');
-    expect(listItems).toHaveLength(3);
+    expect(listItems).toHaveLength(4);
     listItems.forEach((item) => {
       expect(item).toHaveClass('usa-sidenav__item');
     });
@@ -152,6 +159,7 @@ describe('TrusteeDetailNavigation', () => {
 
 describe('mapTrusteeDetailNavState', () => {
   test.each([
+    ['appointments', TrusteeNavState.APPOINTMENTS],
     ['audit-history', TrusteeNavState.AUDIT_HISTORY],
     ['/trustees/12345/assigned-staff', TrusteeNavState.ASSIGNED_STAFF],
     ['unknown-value', TrusteeNavState.TRUSTEE_PROFILE],
@@ -164,12 +172,13 @@ describe('mapTrusteeDetailNavState', () => {
 });
 
 describe('TrusteeNavState enum', () => {
-  test('should have exactly three enum values for navigation states', () => {
+  test('should have exactly four enum values for navigation states', () => {
     expect(TrusteeNavState.TRUSTEE_PROFILE).toBeDefined();
-    expect(TrusteeNavState.AUDIT_HISTORY).toBeDefined();
+    expect(TrusteeNavState.APPOINTMENTS).toBeDefined();
     expect(TrusteeNavState.ASSIGNED_STAFF).toBeDefined();
+    expect(TrusteeNavState.AUDIT_HISTORY).toBeDefined();
 
     const enumValues = Object.values(TrusteeNavState).filter((value) => typeof value === 'number');
-    expect(enumValues).toHaveLength(3);
+    expect(enumValues).toHaveLength(4);
   });
 });

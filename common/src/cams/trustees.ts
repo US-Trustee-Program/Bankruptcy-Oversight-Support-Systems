@@ -10,33 +10,32 @@ import { NullableOptionalFields } from '../api/common';
 export type ChapterType = '7-panel' | '7-non-panel' | '11' | '11-subchapter-v' | '12' | '13';
 
 export function formatChapterType(chapter: string): string {
-  const chapterLabels: Record<ChapterType, string> = {
+  const chapterLabels = {
     '7-panel': '7 - Panel',
     '7-non-panel': '7 - Non-Panel',
     '11': '11',
     '11-subchapter-v': '11 - Subchapter V',
     '12': '12',
     '13': '13',
-  };
+  } as Record<string, string>;
 
   return chapterLabels[chapter] || chapter;
 }
 
 export const TRUSTEE_STATUS_VALUES = ['active', 'not active', 'suspended'] as const;
-export type TrusteeStatus = (typeof TRUSTEE_STATUS_VALUES)[number];
 
-export type TrusteeCore = {
+type TrusteeCore = {
   name: string;
   public: ContactInformation;
   internal?: Partial<ContactInformation>;
 };
 
-export type TrusteeOptionalFields = {
+type TrusteeOptionalFields = {
   banks?: string[];
   software?: string;
 };
 
-export type TrusteeData = TrusteeCore & TrusteeOptionalFields;
+type TrusteeData = TrusteeCore & TrusteeOptionalFields;
 
 export type Trustee = TrusteeData &
   Auditable &

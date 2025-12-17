@@ -1,5 +1,5 @@
 import { CaseAssignment } from '@common/cams/assignments';
-import { useApi2 } from '@/lib/hooks/UseApi2';
+import Api2 from '@/lib/models/api2';
 import { CaseSummary } from '@common/cams/cases';
 
 export function getCaseId(params: { court?: string; caseNumber?: string }) {
@@ -15,7 +15,7 @@ export function getCaseId(params: { court?: string; caseNumber?: string }) {
 }
 
 export async function fetchLeadCaseAttorneys(leadCaseId: string) {
-  const caseAssignments: CaseAssignment[] = (await useApi2().getCaseAssignments(leadCaseId)).data;
+  const caseAssignments: CaseAssignment[] = (await Api2.getCaseAssignments(leadCaseId)).data;
   if (caseAssignments.length && caseAssignments[0].name) {
     return caseAssignments.map((assignment) => assignment.name);
   } else {

@@ -29,7 +29,7 @@ import LocalStorage from '../utils/local-storage';
 import Api from './api';
 import MockApi2 from '../testing/mock-api2';
 import LocalCache from '../utils/local-cache';
-import { DAY, MINUTE } from '../utils/datetime';
+import DateTimeUtils from '../utils/datetime';
 import { sanitizeText } from '../utils/sanitize-text';
 import { isValidUserInput } from '@common/cams/sanitization';
 import {
@@ -43,6 +43,7 @@ import {
   TrusteeInput,
   TrusteeOversightAssignment,
 } from '@common/cams/trustees';
+import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { OversightRole } from '@common/cams/roles';
 import {
   BankList,
@@ -265,6 +266,10 @@ async function getTrusteeHistory(id: string) {
   return api().get<TrusteeHistory[]>(`/trustees/${id}/history`);
 }
 
+async function getTrusteeAppointments(trusteeId: string) {
+  return api().get<TrusteeAppointment[]>(`/trustees/${trusteeId}/appointments`);
+}
+
 async function getCaseDetail(caseId: string) {
   return api().get<CaseDetail>(`/cases/${caseId}`);
 }
@@ -323,7 +328,7 @@ async function deleteCaseNote(note: Partial<CaseNote>) {
 
 async function getCourts() {
   const path = `/courts`;
-  return withCache({ key: path, ttl: DAY }).get<CourtDivisionDetails[]>(path);
+  return withCache({ key: path, ttl: DateTimeUtils.DAY }).get<CourtDivisionDetails[]>(path);
 }
 
 async function getMe() {
@@ -342,7 +347,7 @@ async function getOfficeAssignees(officeCode: string) {
 
 async function getOffices() {
   const path = `/offices`;
-  return withCache({ key: path, ttl: DAY }).get<UstpOfficeDetails[]>(path);
+  return withCache({ key: path, ttl: DateTimeUtils.DAY }).get<UstpOfficeDetails[]>(path);
 }
 
 async function getOrders() {
@@ -396,17 +401,19 @@ async function postStaffAssignments(action: StaffAssignmentAction) {
 
 async function getRoleAndOfficeGroupNames() {
   const path = '/dev-tools/privileged-identity/groups';
-  return withCache({ key: path, ttl: MINUTE * 15 }).get<RoleAndOfficeGroupNames>(path);
+  return withCache({ key: path, ttl: DateTimeUtils.MINUTE * 15 }).get<RoleAndOfficeGroupNames>(
+    path,
+  );
 }
 
 async function getPrivilegedIdentityUsers() {
   const path = '/dev-tools/privileged-identity';
-  return withCache({ key: path, ttl: MINUTE * 15 }).get<CamsUserReference[]>(path);
+  return withCache({ key: path, ttl: DateTimeUtils.MINUTE * 15 }).get<CamsUserReference[]>(path);
 }
 
 async function getPrivilegedIdentityUser(userId: string) {
   const path = `/dev-tools/privileged-identity/${userId}`;
-  return withCache({ key: path, ttl: MINUTE * 15 }).get<PrivilegedIdentityUser>(path);
+  return withCache({ key: path, ttl: DateTimeUtils.MINUTE * 15 }).get<PrivilegedIdentityUser>(path);
 }
 
 async function putPrivilegedIdentityUser(userId: string, action: ElevatePrivilegedUserAction) {
@@ -460,6 +467,7 @@ export const _Api2 = {
   getTrustees,
   getTrustee,
   getTrusteeHistory,
+  getTrusteeAppointments,
   getTrusteeOversightAssignments,
   createTrusteeOversightAssignment,
   postTrustee,
@@ -501,6 +509,6 @@ export const _Api2 = {
   getOversightStaff,
 };
 
-export const Api2 = getAppConfiguration().useFakeApi ? MockApi2 : _Api2;
+const Api2 = getAppConfiguration().useFakeApi ? MockApi2 : _Api2;
 
 export default Api2;

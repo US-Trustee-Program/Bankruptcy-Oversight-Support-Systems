@@ -40,7 +40,7 @@ MOCKED_USTP_OFFICES_ARRAY.forEach((office) => {
   camsUserGroups.set(office.idpGroupName, group);
 });
 
-export class MockUserGroupGateway implements UserGroupGateway {
+class MockUserGroupGateway implements UserGroupGateway {
   init(_config: UserGroupGatewayConfig): Promise<void> {
     return;
   }

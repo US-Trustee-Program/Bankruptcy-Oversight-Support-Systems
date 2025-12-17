@@ -1,8 +1,8 @@
-import { MockData } from '@common/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { SyncedCase } from '@common/cams/cases';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { CasesSearchPredicate, DEFAULT_SEARCH_LIMIT } from '@common/api/search';
-import { SearchResults, SearchResultsProps } from './SearchResults';
+import SearchResults, { SearchResultsProps } from './SearchResults';
 import { BrowserRouter } from 'react-router-dom';
 import { SearchResultsHeader } from '@/search/SearchResultsHeader';
 import { SearchResultsRow } from '@/search/SearchResultsRow';

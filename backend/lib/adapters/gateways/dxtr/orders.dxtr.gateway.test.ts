@@ -1,15 +1,14 @@
 import * as database from '../../utils/database';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { QueryResults } from '../../types/database';
-import {
+import DxtrOrdersGateway, {
   DxtrOrder,
   DxtrOrderDocketEntry,
   DxtrOrderDocument,
-  DxtrOrdersGateway,
   dxtrOrdersSorter,
 } from './orders.dxtr.gateway';
 import { ApplicationContext } from '../../types/basic';
-import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 
 function getEarliestDate(docket: DxtrOrderDocketEntry[]) {
   return docket.reduce<string>((earliestDate, de) => {

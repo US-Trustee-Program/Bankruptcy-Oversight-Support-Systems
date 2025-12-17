@@ -28,6 +28,7 @@ describe('Factory function-apps', () => {
   let OktaUserGroupGateway;
   let MockUserGroupGateway;
   let StaffMongoRepository;
+  let TrusteeAppointmentsMongoRepository;
 
   beforeEach(async () => {
     await jest.isolateModulesAsync(async () => {
@@ -57,8 +58,7 @@ describe('Factory function-apps', () => {
       MockOrdersGateway = (await import('./testing/mock-gateways/mock.orders.gateway'))
         .MockOrdersGateway;
 
-      DxtrOrdersGateway = (await import('./adapters/gateways/dxtr/orders.dxtr.gateway'))
-        .DxtrOrdersGateway;
+      DxtrOrdersGateway = (await import('./adapters/gateways/dxtr/orders.dxtr.gateway')).default;
 
       CaseDocketUseCase = (await import('./use-cases/case-docket/case-docket')).CaseDocketUseCase;
 
@@ -92,10 +92,14 @@ describe('Factory function-apps', () => {
         .default;
 
       MockUserGroupGateway = (await import('./testing/mock-gateways/mock-user-group-gateway'))
-        .MockUserGroupGateway;
+        .default;
 
       StaffMongoRepository = (await import('./adapters/gateways/mongo/staff.mongo.repository'))
         .StaffMongoRepository;
+
+      TrusteeAppointmentsMongoRepository = (
+        await import('./adapters/gateways/mongo/trustee-appointments.mongo.repository')
+      ).TrusteeAppointmentsMongoRepository;
     });
   });
 
@@ -252,5 +256,15 @@ describe('Factory function-apps', () => {
   test('getStaffRepository', async () => {
     const obj = factory.getStaffRepository(dbContext);
     expect(obj).toBeInstanceOf(StaffMongoRepository);
+  });
+
+  test('getTrusteeAppointmentsRepository', async () => {
+    const obj = factory.getTrusteeAppointmentsRepository(dbContext);
+    expect(obj).toBeInstanceOf(TrusteeAppointmentsMongoRepository);
+  });
+
+  test('getTrusteeAppointmentsRepository mock', async () => {
+    const mockObj = factory.getTrusteeAppointmentsRepository(mockDbContext);
+    expect(mockObj).toBeInstanceOf(MockMongoRepository);
   });
 });

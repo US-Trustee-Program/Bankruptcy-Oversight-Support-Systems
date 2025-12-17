@@ -2,7 +2,7 @@ import handler from './case.assignment.function';
 import { CaseAssignmentController } from '../../../lib/controllers/case-assignment/case.assignment.controller';
 import ContextCreator from '../../azure/application-context-creator';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
-import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { CamsHttpRequest } from '../../../lib/adapters/types/http';
 import { InvocationContext } from '@azure/functions';
 import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';

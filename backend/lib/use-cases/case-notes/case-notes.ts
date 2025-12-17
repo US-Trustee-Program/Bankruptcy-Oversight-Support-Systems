@@ -12,7 +12,7 @@ import { ForbiddenError } from '../../common-errors/forbidden-error';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
 import { randomUUID } from 'node:crypto';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
-import { Action, Actions, ResourceActions } from '../../../../common/src/cams/actions';
+import Actions, { Action, ResourceActions } from '../../../../common/src/cams/actions';
 
 const MODULE_NAME = 'CASE-NOTES-USE-CASE';
 

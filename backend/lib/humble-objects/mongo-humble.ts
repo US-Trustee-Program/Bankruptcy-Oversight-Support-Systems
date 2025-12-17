@@ -86,7 +86,7 @@ export class DocumentClient implements Closable {
   }
 }
 
-export type Filter = {
+type Filter = {
   [key: string]: unknown;
 };
 
@@ -99,9 +99,3 @@ export type DocumentQuery = {
 };
 
 export type AggregateQuery = MongoDocument;
-
-export function isMongoDocumentArray(arr: unknown): arr is MongoDocument[] {
-  return (
-    Array.isArray(arr) && arr.every((item) => item && typeof item === 'object' && '_id' in item)
-  );
-}

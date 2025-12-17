@@ -24,7 +24,7 @@ import {
 } from '../../../../common/src/cams/events';
 import { CaseSummary } from '../../../../common/src/cams/cases';
 import { CamsError } from '../../common-errors/cams-error';
-import { sortDates, sortDatesReverse } from '../../../../common/src/date-helper';
+import DateHelper from '../../../../common/src/date-helper';
 import {
   CaseConsolidationHistory,
   CaseHistory,
@@ -39,7 +39,7 @@ import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { createAuditRecord } from '../../../../common/src/cams/auditable';
 import { OrdersSearchPredicate } from '../../../../common/src/api/search';
 import { isNotFoundError } from '../../common-errors/not-found-error';
-import { Factory, getCasesGateway } from '../../factory';
+import Factory, { getCasesGateway } from '../../factory';
 
 const MODULE_NAME = 'ORDERS-USE-CASE';
 
@@ -87,7 +87,7 @@ export class OrdersUseCase {
 
     return transferOrders
       .concat(consolidationOrders)
-      .sort((a, b) => sortDates(a.orderDate, b.orderDate));
+      .sort((a, b) => DateHelper.sortDates(a.orderDate, b.orderDate));
   }
 
   public async getSuggestedCases(context: ApplicationContext): Promise<Array<CaseSummary>> {
@@ -308,7 +308,7 @@ export class OrdersUseCase {
       const fullHistory = await casesRepo.getCaseHistory(bCase.caseId);
       before = fullHistory
         .filter((h) => h.documentType === 'AUDIT_CONSOLIDATION')
-        .sort((a, b) => sortDatesReverse(a.updatedOn, b.updatedOn))
+        .sort((a, b) => DateHelper.sortDatesReverse(a.updatedOn, b.updatedOn))
         .shift()?.after;
     } catch {
       before = undefined;
@@ -565,7 +565,7 @@ export class OrdersUseCase {
         if (!prior) {
           return next;
         }
-        return sortDatesReverse(prior.orderDate, next.orderDate) <= 0 ? prior : next;
+        return DateHelper.sortDatesReverse(prior.orderDate, next.orderDate) <= 0 ? prior : next;
       }, null);
       const consolidationOrder: ConsolidationOrder = {
         consolidationId,

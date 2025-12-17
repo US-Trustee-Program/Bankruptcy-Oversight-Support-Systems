@@ -227,6 +227,13 @@ describe('TrusteeDetailScreen', () => {
 
   test.each([
     {
+      route: '/trustees/123/appointments',
+      expectedSubheader: 'Trustee',
+      description: 'should render subheader "Trustee" for /appointments route',
+      needsLocationState: false,
+      needsAppointmentsMock: true,
+    },
+    {
       route: '/trustees/123/audit-history',
       expectedSubheader: 'Trustee',
       description: 'should render subheader "Trustee" for /audit-history route',
@@ -239,20 +246,27 @@ describe('TrusteeDetailScreen', () => {
       description: 'should render subheader "Trustee" for default route',
       needsLocationState: false,
     },
-  ])('$description', async ({ route, expectedSubheader, needsHistoryMock }) => {
-    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
-    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
+  ])(
+    '$description',
+    async ({ route, expectedSubheader, needsHistoryMock, needsAppointmentsMock }) => {
+      vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
 
-    if (needsHistoryMock) {
-      vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: [] });
-    }
+      if (needsHistoryMock) {
+        vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: [] });
+      }
 
-    renderWithRouter([route]);
+      if (needsAppointmentsMock) {
+        vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [] });
+      }
 
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(expectedSubheader);
-    });
-  });
+      renderWithRouter([route]);
+
+      await waitFor(() => {
+        expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(expectedSubheader);
+      });
+    },
+  );
 
   test('should fetch software options from API on component mount', async () => {
     vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });

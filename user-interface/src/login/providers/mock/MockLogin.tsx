@@ -6,7 +6,7 @@ import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { BlankPage } from '@/login/BlankPage';
 import getApiConfiguration from '@/configuration/apiConfiguration';
-import { MockUser, MockUsers } from '@common/cams/test-utilities/mock-user';
+import MockUsers, { MockUser } from '@common/cams/test-utilities/mock-user';
 import { CamsUser } from '@common/cams/users';
 import { CamsSession } from '@common/cams/session';
 
@@ -20,7 +20,7 @@ type MockLoginState = {
 
 const config = getApiConfiguration();
 
-export function useStateAndActions() {
+function useStateAndActions() {
   const [state, setState] = useState<MockLoginState>({
     session: null,
     selectedRole: null,

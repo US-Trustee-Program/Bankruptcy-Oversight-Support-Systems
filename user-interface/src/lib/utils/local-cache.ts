@@ -1,4 +1,4 @@
-import { HOUR } from './datetime';
+import DateTimeUtils from './datetime';
 import getAppConfiguration from '@/configuration/appConfiguration';
 
 export type Cacheable<T = unknown> = {
@@ -7,7 +7,7 @@ export type Cacheable<T = unknown> = {
 };
 
 const NAMESPACE = 'cams:cache:';
-const DEFAULT_TTL = HOUR;
+const DEFAULT_TTL = DateTimeUtils.HOUR;
 const canCache = !!window.localStorage && !getAppConfiguration().disableLocalCache;
 
 function isCacheEnabled() {
@@ -131,7 +131,7 @@ function removeNamespace(suffix: string = '') {
   }
 }
 
-export const LocalCache = {
+const LocalCache = {
   get,
   getByKeyPattern,
   set,

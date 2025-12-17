@@ -51,8 +51,18 @@ export function sortByDateReverse(dateA: Date | string, dateB: Date | string): n
 }
 
 // Time units expressed in seconds:
-export const SECOND = 1;
-export const MINUTE = 60;
-export const HOUR = 3600;
-export const DAY = 86400;
-export const THREE_DAYS = DAY * 3;
+const SECOND = 1;
+const MINUTE = 60;
+const HOUR = 3600;
+const DAY = 86400;
+const THREE_DAYS = DAY * 3;
+
+const DateTimeUtils = {
+  SECOND,
+  MINUTE,
+  HOUR,
+  DAY,
+  THREE_DAYS,
+};
+
+export default DateTimeUtils;
