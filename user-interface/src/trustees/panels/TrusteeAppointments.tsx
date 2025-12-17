@@ -4,6 +4,8 @@ import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import AppointmentCard from './AppointmentCard';
+import Button from '@/lib/components/uswds/Button';
+import Icon from '@/lib/components/uswds/Icon';
 
 interface TrusteeAppointmentsProps {
   trusteeId: string;
@@ -56,7 +58,24 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
   if (appointments.length === 0) {
     return (
       <div className="trustee-appointments-list">
+<<<<<<< HEAD
         <div className="record-detail-container">There are no appointments for this Trustee.</div>
+=======
+        <div className="record-detail-container">
+          <div className="empty-appointments-state">
+            <Button
+              id="add-appointment-button"
+              onClick={() => {
+                // TODO: Implement add appointment functionality
+              }}
+            >
+              <Icon name="add_circle" />
+              Add New Appointment
+            </Button>
+            <p className="margin-top-2">There are no appointments for this Trustee.</p>
+          </div>
+        </div>
+>>>>>>> 1763c5424 (Added 'Add' button to empty appointments screen)
       </div>
     );
   }
