@@ -74,6 +74,8 @@ export class TrusteesController implements CamsController {
     const trusteeData = body as TrusteeInput;
     const createdTrustee = await this.useCase.createTrustee(context, trusteeData);
 
+    // TODO: 12/17/25 We are only using the trusteeId on the front end after creation,
+    // so we only need to return the meta portion of this body, not the full trustee record.
     return httpSuccess({
       statusCode: 201,
       body: {

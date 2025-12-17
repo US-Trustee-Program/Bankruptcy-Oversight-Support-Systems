@@ -58,9 +58,6 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
   if (appointments.length === 0) {
     return (
       <div className="trustee-appointments-list">
-<<<<<<< HEAD
-        <div className="record-detail-container">There are no appointments for this Trustee.</div>
-=======
         <div className="record-detail-container">
           <div className="empty-appointments-state">
             <Button
@@ -75,7 +72,6 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
             <p className="margin-top-2">There are no appointments for this Trustee.</p>
           </div>
         </div>
->>>>>>> 1763c5424 (Added 'Add' button to empty appointments screen)
       </div>
     );
   }

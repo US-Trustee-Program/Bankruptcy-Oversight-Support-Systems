@@ -78,6 +78,7 @@ export class TrusteesUseCase {
         ),
       );
 
+      // TODO: 12/17/25 We are only using the trusteeId on the front end after creation, so we only need to return the trusteeId, not the full trustee record.
       return createdTrustee;
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {

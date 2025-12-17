@@ -7,6 +7,7 @@ import { CamsRole } from '../../../../common/src/cams/roles';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { NotFoundError } from '../../common-errors/not-found-error';
+import { TrusteeAppointmentInput } from '../../../../common/src/cams/trustee-appointments';
 
 // Mock the use case
 vi.mock('../../use-cases/trustee-appointments/trustee-appointments');
@@ -32,8 +33,9 @@ describe('TrusteeAppointmentsController', () => {
     }
 
     mockUseCase = {
-      getTrusteeAppointments: vi.fn(),
-    } as unknown as Mocked<TrusteeAppointmentsUseCase>;
+      getTrusteeAppointments: jest.fn(),
+      createAppointment: jest.fn(),
+    } as unknown as jest.Mocked<TrusteeAppointmentsUseCase>;
 
     (
       TrusteeAppointmentsUseCase as MockedClass<typeof TrusteeAppointmentsUseCase>
@@ -74,7 +76,7 @@ describe('TrusteeAppointmentsController', () => {
       context.request.method = 'GET';
 
       await expect(controller.handleRequest(context)).rejects.toThrow(
-        'User does not have permission to view trustee appointments',
+        'User does not have permission to access trustee appointments',
       );
     });
 
@@ -83,7 +85,7 @@ describe('TrusteeAppointmentsController', () => {
       context.request.method = 'GET';
 
       await expect(controller.handleRequest(context)).rejects.toThrow(
-        'User does not have permission to view trustee appointments',
+        'User does not have permission to access trustee appointments',
       );
     });
   });
@@ -143,12 +145,79 @@ describe('TrusteeAppointmentsController', () => {
     });
   });
 
-  describe('Error handling', () => {
-    test('should reject unsupported HTTP methods', async () => {
+  describe('POST /api/trustees/:trusteeId/appointments', () => {
+    beforeEach(() => {
       context.request.method = 'POST';
+    });
+
+    test('should create a new appointment for a trustee', async () => {
+      const trusteeId = 'trustee-123';
+      const appointmentInput: TrusteeAppointmentInput = {
+        chapter: '7-panel',
+        courtId: '081',
+        divisionCode: '1',
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15T00:00:00.000Z',
+      };
+      const createdAppointment = MockData.getTrusteeAppointment({
+        id: 'appointment-456',
+        trusteeId,
+        chapter: '7-panel',
+        courtId: '081',
+        divisionCode: '1',
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15T00:00:00.000Z',
+      });
+
+      context.request.params = { trusteeId };
+      context.request.body = appointmentInput;
+      mockUseCase.createAppointment.mockResolvedValue(createdAppointment);
+
+      const result = await controller.handleRequest(context);
+
+      expect(result.statusCode).toBe(201);
+      expect(result.body?.meta?.self).toBe(`${context.request.url}/${createdAppointment.id}`);
+      expect(result.body?.data).toBeUndefined();
+      expect(mockUseCase.createAppointment).toHaveBeenCalledWith(
+        context,
+        trusteeId,
+        appointmentInput,
+      );
+    });
+
+    test('should require trustee ID', async () => {
+      context.request.params = {};
+      context.request.body = {
+        chapter: '7-panel',
+        courtId: '081',
+        divisionCode: '1',
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15T00:00:00.000Z',
+      };
+
+      await expect(controller.handleRequest(context)).rejects.toThrow('Trustee ID is required');
+    });
+
+    test('should require request body', async () => {
+      const trusteeId = 'trustee-123';
+      context.request.params = { trusteeId };
+      context.request.body = undefined;
 
       await expect(controller.handleRequest(context)).rejects.toThrow(
-        'HTTP method POST is not supported',
+        'Request body is required for appointment creation',
+      );
+    });
+  });
+
+  describe('Error handling', () => {
+    test('should reject unsupported HTTP methods', async () => {
+      context.request.method = 'PUT';
+
+      await expect(controller.handleRequest(context)).rejects.toThrow(
+        'HTTP method PUT is not supported',
       );
     });
   });

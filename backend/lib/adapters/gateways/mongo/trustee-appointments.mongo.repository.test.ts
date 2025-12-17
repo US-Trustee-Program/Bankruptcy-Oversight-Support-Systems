@@ -4,7 +4,10 @@ import {
   TrusteeAppointmentsMongoRepository,
   TrusteeAppointmentDocument,
 } from './trustee-appointments.mongo.repository';
-import { TrusteeAppointment } from '../../../../../common/src/cams/trustee-appointments';
+import {
+  TrusteeAppointment,
+  TrusteeAppointmentInput,
+} from '../../../../../common/src/cams/trustee-appointments';
 import { CamsUserReference } from '../../../../../common/src/cams/users';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
@@ -209,6 +212,58 @@ describe('TrusteeAppointmentsMongoRepository', () => {
 
       await expect(repository.getTrusteeAppointments('trustee-1')).rejects.toThrow();
       expect(mockAdapter).toHaveBeenCalledWith(expectedGetTrusteeAppointmentsQuery);
+    });
+  });
+
+  describe('createAppointment', () => {
+    const trusteeId = 'trustee-123';
+    const appointmentInput: TrusteeAppointmentInput = {
+      chapter: '7-panel',
+      courtId: '081',
+      divisionCode: '1',
+      appointedDate: '2024-01-15',
+      status: 'active',
+      effectiveDate: '2024-01-15T00:00:00.000Z',
+    };
+
+    test('should create a new appointment successfully', async () => {
+      const mockId = 'new-appointment-id';
+      const mockAdapter = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
+        .mockResolvedValue(mockId);
+
+      const result = await repository.createAppointment(trusteeId, appointmentInput, mockUser);
+
+      expect(mockAdapter).toHaveBeenCalledWith(
+        expect.objectContaining({
+          trusteeId,
+          chapter: appointmentInput.chapter,
+          courtId: appointmentInput.courtId,
+          divisionCode: appointmentInput.divisionCode,
+          appointedDate: appointmentInput.appointedDate,
+          status: appointmentInput.status,
+          effectiveDate: appointmentInput.effectiveDate,
+          documentType: 'TRUSTEE_APPOINTMENT',
+          createdBy: mockUser,
+          updatedBy: mockUser,
+        }),
+      );
+      expect(result.id).toBe(mockId);
+      expect(result.trusteeId).toBe(trusteeId);
+      expect(result.chapter).toBe(appointmentInput.chapter);
+    });
+
+    test('should handle database errors during creation', async () => {
+      const error = new Error('Database connection failed');
+      const mockAdapter = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
+        .mockRejectedValue(error);
+
+      await expect(
+        repository.createAppointment(trusteeId, appointmentInput, mockUser),
+      ).rejects.toThrow(`Failed to create trustee appointment for trustee ${trusteeId}.`);
+
+      expect(mockAdapter).toHaveBeenCalled();
     });
   });
 });
