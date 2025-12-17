@@ -2,7 +2,7 @@
 
 # Title:        endpoint-test.sh
 # Description:  Verify 200 response from frontend and backend
-# Usage:        ./endpoint-test.sh --webappName webappName --apiFunctionName apiFunctionName --slot slotName
+# Usage:        ./endpoint-test.sh --webappName webappName --apiFunctionName apiFunctionName --slot slotName --resourceGroup rgName
 #
 # Exitcodes
 # ==========
@@ -15,10 +15,36 @@ set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 slot_name=''
 expected_git_sha=''
 isLocalRun=''
+resource_group=''
+main_default_action_changed=false
+
+# shellcheck disable=SC2329  # Function is invoked via trap
+function on_exit() {
+    # Restore main site default actions to Deny if they were changed
+    if [ "${main_default_action_changed}" = true ] && [ -n "${resource_group}" ]; then
+        echo "Restoring main site default actions to Deny..."
+        if [ -n "${webapp_name}" ]; then
+            if [ -n "${slot_name}" ] && [ "${slot_name}" != "initial" ] && [ "${slot_name}" != "self" ]; then
+                az webapp config access-restriction set -g "${resource_group}" -n "${webapp_name}" --slot "${slot_name}" --default-action Deny 2>/dev/null || echo "Warning: Failed to restore webapp default action"
+            else
+                az webapp config access-restriction set -g "${resource_group}" -n "${webapp_name}" --default-action Deny 2>/dev/null || echo "Warning: Failed to restore webapp default action"
+            fi
+        fi
+        if [ -n "${api_name}" ]; then
+            if [ -n "${slot_name}" ] && [ "${slot_name}" != "initial" ] && [ "${slot_name}" != "self" ]; then
+                az functionapp config access-restriction set -g "${resource_group}" -n "${api_name}" --slot "${slot_name}" --default-action Deny 2>/dev/null || echo "Warning: Failed to restore API default action"
+            else
+                az functionapp config access-restriction set -g "${resource_group}" -n "${api_name}" --default-action Deny 2>/dev/null || echo "Warning: Failed to restore API default action"
+            fi
+        fi
+    fi
+}
+trap on_exit EXIT
+
 while [[ $# -gt 0 ]]; do
   case $1 in
   -h | --help)
-    echo "./endpoint-test.sh --webappName webappName --apiFunctionName apiFunctionName --slot slotName"
+    echo "./endpoint-test.sh --webappName webappName --apiFunctionName apiFunctionName --slot slotName --resourceGroup rgName"
     exit 0
     ;;
 
@@ -34,6 +60,11 @@ while [[ $# -gt 0 ]]; do
 
   --slotName)
     slot_name="${2}"
+    shift 2
+    ;;
+
+  --resourceGroup)
+    resource_group="${2}"
     shift 2
     ;;
 
@@ -77,6 +108,34 @@ if [[ ${isLocalRun} == "true" ]]; then
   echo "Running against local"
   targetApiURL="http://localhost:7071/api/healthcheck"
   targetWebAppURL="http://localhost:3000"
+fi
+
+# Temporarily set main site default actions to Allow for healthcheck access
+if [ "${isLocalRun}" != "true" ] && [ -n "${resource_group}" ]; then
+  echo "=========================================="
+  echo "Setting main site default actions to Allow for healthcheck"
+  echo "=========================================="
+
+  if [ -n "${webapp_name}" ]; then
+    if [ -n "${slot_name}" ] && [ "${slot_name}" != "initial" ] && [ "${slot_name}" != "self" ]; then
+      az webapp config access-restriction set -g "${resource_group}" -n "${webapp_name}" --slot "${slot_name}" --default-action Allow
+    else
+      az webapp config access-restriction set -g "${resource_group}" -n "${webapp_name}" --default-action Allow
+    fi
+  fi
+
+  if [ -n "${api_name}" ]; then
+    if [ -n "${slot_name}" ] && [ "${slot_name}" != "initial" ] && [ "${slot_name}" != "self" ]; then
+      az functionapp config access-restriction set -g "${resource_group}" -n "${api_name}" --slot "${slot_name}" --default-action Allow
+    else
+      az functionapp config access-restriction set -g "${resource_group}" -n "${api_name}" --default-action Allow
+    fi
+  fi
+
+  main_default_action_changed=true
+
+  echo "Waiting for access restriction propagation..."
+  sleep 10
 fi
 
 webCmd=(curl -q -o /dev/null -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f "${targetWebAppURL}")

@@ -44,39 +44,37 @@ if [ ! -f "${artifact_path}" ]; then
     exit 10
 fi
 
-default_action_changed=false
+scm_default_action_changed=false
 
 function on_exit() {
-    # Restore default actions to Deny if they were changed
-    if [ "${default_action_changed}" = true ]; then
-        echo "Restoring default actions to Deny..."
+    # Restore SCM default action to Deny if it was changed
+    if [ "${scm_default_action_changed}" = true ]; then
+        echo "Restoring SCM default action to Deny..."
         az webapp config access-restriction set \
             -g "${app_rg}" \
             -n "${app_name}" \
-            --scm-default-action Deny \
-            --default-action Deny 2>/dev/null || echo "Warning: Failed to restore default actions"
+            --scm-default-action Deny 2>/dev/null || echo "Warning: Failed to restore SCM default action"
     fi
 }
 trap on_exit EXIT
 
-# Temporarily set default actions to Allow for deployment
+# Temporarily set SCM default action to Allow for deployment
 echo "=========================================="
-echo "Setting default actions to Allow for deployment"
+echo "Setting SCM default action to Allow for deployment"
 echo "=========================================="
 az webapp config access-restriction set \
     -g "${app_rg}" \
     -n "${app_name}" \
-    --scm-default-action Allow \
-    --default-action Allow
+    --scm-default-action Allow
 
-default_action_changed=true
+scm_default_action_changed=true
 
 echo ""
-echo "Verifying access restrictions..."
+echo "Verifying SCM access restriction..."
 az webapp config access-restriction show \
     -g "${app_rg}" \
     -n "${app_name}" \
-    --query "{MainDefaultAction: ipSecurityRestrictionsDefaultAction, ScmDefaultAction: scmIpSecurityRestrictionsDefaultAction}" \
+    --query "{ScmDefaultAction: scmIpSecurityRestrictionsDefaultAction}" \
     -o table
 
 echo ""
