@@ -112,3 +112,10 @@ backend/dev-users.json
 # Flexion AI
 .gitmodules
 .ustp-cams-fdp
+
+# Python (docs tooling and caches)
+dev-tools/.venv-docs/
+dev-tools/.venv/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/

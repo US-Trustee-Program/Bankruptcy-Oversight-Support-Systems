@@ -78,10 +78,9 @@ The dependency update script uses `.dependency-update-config.json` in the reposi
     "@typescript-eslint/eslint-plugin",
     "@typescript-eslint/parser",
     "@types/node",
-    "@types/jest",
     "typescript",
-    "jest",
     "vite",
+    "vitest",
     "react",
     "react-dom"
   ],
@@ -271,7 +270,7 @@ npm install --save-exact <package-name>@<previous-version>
 ```json
 {
   "minPackageAgeDays": 3,
-  "allowedPackages": ["eslint", "@types/node", "jest"],
+  "allowedPackages": ["eslint", "@types/node", "vitest"],
   "constraints": { "majorVersionDelay": { "*": 14 } }
 }
 ```
