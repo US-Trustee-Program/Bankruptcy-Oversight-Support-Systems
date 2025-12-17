@@ -1,6 +1,4 @@
-import eslintJsConfig from './common/eslint-js.config.mjs';
-import eslintTsConfig from './common/eslint-ts.config.mjs';
-import eslintTestConfig from './common/eslint-test.config.mjs';
+import { eslintJsConfig, eslintTsConfig, eslintTestConfig, eslintJsonConfig } from './eslint-shared.config.mjs';
 import eslintUiTestConfig from './user-interface/eslint-ui-test.config.mjs';
 import eslintUiConfig from './user-interface/eslint-ui.config.mjs';
 import eslintNodeConfig from './user-interface/eslint-node.config.mjs';
@@ -35,6 +33,11 @@ const nodeConfig = eslintNodeConfig.map((configObject) => ({
   files: ['user-interface/**/envToConfig.js'],
 }));
 
+const jsonConfig = eslintJsonConfig.map((configObject) => ({
+  ...configObject,
+  files: ['**/package.json'],
+}));
+
 const eslintConfig = [
   {
     ignores: [
@@ -52,6 +55,7 @@ const eslintConfig = [
   ...testConfig,
   ...jsConfig,
   ...nodeConfig,
+  ...jsonConfig,
 ];
 
 export default eslintConfig;
