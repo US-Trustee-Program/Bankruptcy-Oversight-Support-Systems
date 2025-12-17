@@ -25,11 +25,6 @@
       "groupSlug": "pin-dependencies"
     },
     {
-      "description": "Lock pa11y-ci to major version 3",
-      "matchPackageNames": ["pa11y-ci"],
-      "allowedVersions": "3.x"
-    },
-    {
       "description": "Lock @faker-js/faker to major version 9",
       "matchPackageNames": ["@faker-js/faker"],
       "allowedVersions": "9.x"
