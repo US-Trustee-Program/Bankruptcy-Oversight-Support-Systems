@@ -1,4 +1,4 @@
-import { describe, expect, vi, beforeEach } from 'vitest';
+import { describe, expect, vi, beforeEach, type Mock } from 'vitest';
 import { sanitizeText } from './sanitize-text';
 import DOMPurify from 'dompurify';
 import type { RemovedElement } from 'dompurify';
@@ -76,7 +76,7 @@ describe('sanitizeText', () => {
   test('should return sanitized text when no malicious content is present', () => {
     const input = 'Safe text content';
     const sanitized = 'Safe text content';
-    (DOMPurify.sanitize as jest.Mock).mockReturnValue(sanitized);
+    (DOMPurify.sanitize as Mock).mockReturnValue(sanitized);
 
     const result = sanitizeText(input);
 
@@ -87,7 +87,7 @@ describe('sanitizeText', () => {
   test('should track event when malicious content is removed', () => {
     const input = '<script>alert("malicious")</script>';
     const sanitized = '';
-    (DOMPurify.sanitize as jest.Mock).mockReturnValue(sanitized);
+    (DOMPurify.sanitize as Mock).mockReturnValue(sanitized);
     DOMPurify.removed = [{ element: mockElement } as RemovedElement];
 
     sanitizeText(input);
@@ -103,7 +103,7 @@ describe('sanitizeText', () => {
   test('should not track event when no malicious content is removed', () => {
     const input = 'Safe text content';
     const sanitized = 'Safe text content';
-    (DOMPurify.sanitize as jest.Mock).mockReturnValue(sanitized);
+    (DOMPurify.sanitize as Mock).mockReturnValue(sanitized);
     DOMPurify.removed = [];
 
     sanitizeText(input);
@@ -114,7 +114,7 @@ describe('sanitizeText', () => {
   test('should handle empty string input', () => {
     const input = '';
     const sanitized = '';
-    (DOMPurify.sanitize as jest.Mock).mockReturnValue(sanitized);
+    (DOMPurify.sanitize as Mock).mockReturnValue(sanitized);
 
     const result = sanitizeText(input);
 

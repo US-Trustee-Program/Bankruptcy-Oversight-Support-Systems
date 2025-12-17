@@ -1,5 +1,4 @@
-import { vi } from 'vitest';
-import { describe } from 'node:test';
+import { vi, describe } from 'vitest';
 
 import { ApplicationContext } from '../../../lib/adapters/types/basic';
 import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
