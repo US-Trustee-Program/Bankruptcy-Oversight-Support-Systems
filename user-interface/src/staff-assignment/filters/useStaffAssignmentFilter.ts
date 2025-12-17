@@ -117,9 +117,11 @@ export function useStaffAssignmentFilter(
       filterAssigneeCallback,
       setFilterAssigneeCallback,
     },
-    fetchAssignees,
-    focusOnAssigneesFilter,
-    handleFilterAssignee,
-    assigneesToComboOptions,
+    useCase: {
+      fetchAssignees,
+      focusOnAssigneesFilter,
+      handleFilterAssignee,
+      assigneesToComboOptions,
+    },
   };
 }

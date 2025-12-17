@@ -49,10 +49,12 @@ interface StaffAssignmentFilterStore {
 
 interface StaffAssignmentFilterHook {
   store: StaffAssignmentFilterStore;
-  fetchAssignees: () => Promise<void>;
-  focusOnAssigneesFilter: () => void;
-  handleFilterAssignee: (assignees: ComboOption[]) => Promise<void>;
-  assigneesToComboOptions: (officeAssignees: CamsUserReference[]) => ComboOption[];
+  useCase: {
+    fetchAssignees: () => Promise<void>;
+    focusOnAssigneesFilter: () => void;
+    handleFilterAssignee: (assignees: ComboOption[]) => Promise<void>;
+    assigneesToComboOptions: (officeAssignees: CamsUserReference[]) => ComboOption[];
+  };
 }
 
 export type {

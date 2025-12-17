@@ -15,13 +15,13 @@ const StaffAssignmentFilter_ = (
   ref: React.Ref<StaffAssignmentFilterRef>,
 ) => {
   const controls: StaffAssignmentFilterControls = useStaffAssignmentFilterControlsReact();
-  const { store, ...methods } = useStaffAssignmentFilter(controls);
+  const { store, useCase } = useStaffAssignmentFilter(controls);
   const globalAlert = useGlobalAlert();
 
   useImperativeHandle(ref, () => {
     return {
-      refresh: methods.fetchAssignees,
-      focus: methods.focusOnAssigneesFilter,
+      refresh: useCase.fetchAssignees,
+      focus: useCase.focusOnAssigneesFilter,
     };
   });
 
@@ -35,8 +35,8 @@ const StaffAssignmentFilter_ = (
   const viewModel: StaffAssignmentFilterViewModel = {
     officeAssignees: store.officeAssignees,
     officeAssigneesError: store.officeAssigneesError,
-    handleFilterAssignee: props.handleFilterAssignee ?? methods.handleFilterAssignee,
-    assigneesToComboOptions: methods.assigneesToComboOptions,
+    handleFilterAssignee: props.handleFilterAssignee ?? useCase.handleFilterAssignee,
+    assigneesToComboOptions: useCase.assigneesToComboOptions,
     assigneesFilterRef: controls.assigneesFilterRef,
   };
 
