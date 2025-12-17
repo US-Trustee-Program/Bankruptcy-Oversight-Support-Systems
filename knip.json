@@ -101,7 +101,6 @@
     "@typescript-eslint/parser",
     "eslint-config-prettier",
     "eslint-plugin-import",
-    "eslint-plugin-jest",
     "eslint-plugin-jsx-a11y",
     "eslint-plugin-n",
     "eslint-plugin-prettier",

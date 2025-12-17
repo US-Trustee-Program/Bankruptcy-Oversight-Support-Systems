@@ -4,7 +4,7 @@ const require = createRequire(import.meta.url);
 const tsEslint = require('typescript-eslint');
 const eslint = require('@eslint/js');
 const eslintPluginPrettierRecommended = require('eslint-plugin-prettier/recommended');
-const jest = require('eslint-plugin-jest');
+const vitest = require('@vitest/eslint-plugin');
 const jsonc = require('eslint-plugin-jsonc');
 
 /**
@@ -60,27 +60,32 @@ export const eslintTsConfig = tsEslint.config(
  * eslintTestConfig
  *
  * This ConfigArray is intended to be the base eslint configuration for all JavaScript
- * family test files (e.g. `.test.[j|t]s`, `.test.[j|t]sx`) that are tested with Jest.
+ * family test files (e.g. `.test.[j|t]s`, `.test.[j|t]sx`) that are tested with Vitest.
  */
 export const eslintTestConfig = tsEslint.config(
   eslintTsConfig,
   {
-    plugins: jest.configs['flat/recommended']['plugins'],
-  },
-  {
-    languageOptions: {
-      globals: jest.configs['flat/recommended']['languageOptions']['globals'],
+    plugins: {
+      vitest,
     },
   },
   {
     rules: {
-      ...jest.configs['flat/recommended']['rules'],
+      ...vitest.configs.recommended.rules,
+      'vitest/valid-title': 'off', // Disabled to avoid type-checking requirement
     },
   },
   {
     settings: {
-      jest: {
-        version: '29.7.0',
+      vitest: {
+        typecheck: true,
+      },
+    },
+  },
+  {
+    languageOptions: {
+      globals: {
+        ...vitest.environments.env.globals,
       },
     },
   },
