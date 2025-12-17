@@ -45,7 +45,9 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
     return (
       <div className="trustee-appointments-list">
         <div className="record-detail-container">
-          <Alert type={UswdsAlertStyle.Error}>{error}</Alert>
+          <Alert type={UswdsAlertStyle.Error} inline={true} show={true}>
+            {error}
+          </Alert>
         </div>
       </div>
     );
@@ -54,9 +56,7 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
   if (appointments.length === 0) {
     return (
       <div className="trustee-appointments-list">
-        <div className="record-detail-container">
-          <Alert type={UswdsAlertStyle.Info}>No appointments found for this trustee.</Alert>
-        </div>
+        <div className="record-detail-container">There are no appointments for this Trustee.</div>
       </div>
     );
   }
