@@ -71,7 +71,7 @@ describe('TrusteeAppointments', () => {
     render(<TrusteeAppointments trusteeId="trustee-123" />);
 
     await waitFor(() => {
-      expect(screen.getByText(/No appointments found for this trustee./i)).toBeInTheDocument();
+      expect(screen.getByText(/There are no appointments for this Trustee./i)).toBeInTheDocument();
     });
   });
 
@@ -125,7 +125,7 @@ describe('TrusteeAppointments', () => {
     render(<TrusteeAppointments trusteeId="trustee-123" />);
 
     await waitFor(() => {
-      expect(screen.getByText(/No appointments found for this trustee./i)).toBeInTheDocument();
+      expect(screen.getByText(/There are no appointments for this Trustee./i)).toBeInTheDocument();
     });
   });
 
@@ -136,7 +136,7 @@ describe('TrusteeAppointments', () => {
     render(<TrusteeAppointments trusteeId="trustee-123" />);
 
     await waitFor(() => {
-      expect(screen.getByText(/No appointments found for this trustee./i)).toBeInTheDocument();
+      expect(screen.getByText(/There are no appointments for this Trustee./i)).toBeInTheDocument();
     });
   });
 });
