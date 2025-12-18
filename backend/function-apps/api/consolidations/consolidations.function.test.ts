@@ -30,7 +30,7 @@ describe('Consolidations Function tests', () => {
   );
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should reject consolidation when procedure == "reject"', async () => {

@@ -22,7 +22,7 @@ describe('offices Function tests', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   vi.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(

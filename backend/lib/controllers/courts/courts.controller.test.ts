@@ -15,7 +15,7 @@ describe('courts controller tests', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should return successful response', async () => {

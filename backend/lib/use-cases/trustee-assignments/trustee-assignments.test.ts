@@ -101,7 +101,7 @@ describe('TrusteeAssignmentsUseCase', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('getTrusteeOversightAssignments', () => {

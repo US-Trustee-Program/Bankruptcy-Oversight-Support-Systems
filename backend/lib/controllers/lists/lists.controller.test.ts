@@ -32,7 +32,7 @@ describe('lists controller tests', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should return successful response for banks list', async () => {

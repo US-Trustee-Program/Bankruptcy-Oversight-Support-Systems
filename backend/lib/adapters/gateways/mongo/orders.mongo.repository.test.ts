@@ -17,7 +17,7 @@ describe('orders repo', () => {
   beforeEach(async () => {
     context = await createMockApplicationContext();
     repo = OrdersMongoRepository.getInstance(context);
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   afterEach(async () => {

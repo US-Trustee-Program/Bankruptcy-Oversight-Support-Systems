@@ -63,7 +63,7 @@ describe('orders controller tests', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should return successful when handleTimer is called', async () => {
