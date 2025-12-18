@@ -1,20 +1,23 @@
 .staff-assignment {
   .screen-heading {
-    display: block;
-    position: relative;
+    display: flex;
+    align-items: center;
 
     h1 {
       display: inline-block;
       margin-right: 1rem;
-    }
-    .usa-button {
-      position: absolute;
-      margin-top: 1.5rem;
+      line-height: 1rem;
     }
   }
+
   .staff-assignment-filter-container {
     #staff-assignees {
       width: 20rem;
+    }
+
+    .usa-form-group {
+      margin-top: 0;
+      margin-bottom: 0.5rem;
     }
   }
 }
