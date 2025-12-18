@@ -72,8 +72,7 @@ jobs:
 
       - name: Build Common, Backend, API, and Dataflows
         run: |
-          npm run build:common
-          npm run build --workspace=backend
+          npm run build:backend
           npm run build:api
           npm run build:dataflows
 
