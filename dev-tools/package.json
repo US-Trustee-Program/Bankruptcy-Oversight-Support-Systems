@@ -3,17 +3,9 @@
   "version": "1.0.0",
   "description": "Custom tools used to aid development.",
   "scripts": {
-    "clean": "rm -rf ./node_modules",
-    "delete-all": "tsx --env-file=.env cosmos-records/index.ts",
-    "delete-assignments": "tsx --env-file=.env cosmos-records/delete-assignments.ts",
-    "delete-orders": "tsx --env-file=.env cosmos-records/delete-orders.ts",
     "generate-api-key": "tsx --env-file=.env api-keys/generate-key.ts",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "reload-orders": "npm run delete-orders; npm run sync-orders",
-    "sync-orders": "tsx --env-file=.env cosmos-records/sync-orders.ts",
-    "test-data:json": "mkdir -p data; tsx --env-file=.env test-data/index.ts json > data/test-data.json",
-    "test-data:sql": "mkdir -p data; tsx --env-file=.env test-data/index.ts sql > data/test-data.sql"
+    "lint:fix": "eslint . --fix"
   },
   "author": "",
   "license": "ISC",
