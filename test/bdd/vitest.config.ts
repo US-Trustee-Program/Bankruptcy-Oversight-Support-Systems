@@ -27,7 +27,7 @@ export default defineConfig({
       'test/bdd/helpers/**/*.test.{ts,tsx}',
       'common/**/*.test.{ts,tsx}',
     ],
-    exclude: ['**/node_modules/**', '**/dist/**'],
+    exclude: [],
     // Run test files sequentially since they share a single HTTP server
     fileParallelism: false,
     coverage: {
