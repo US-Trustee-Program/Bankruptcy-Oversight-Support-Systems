@@ -6,6 +6,7 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import AppointmentCard from './AppointmentCard';
 import Button from '@/lib/components/uswds/Button';
 import Icon from '@/lib/components/uswds/Icon';
+import { useNavigate } from 'react-router-dom';
 
 interface TrusteeAppointmentsProps {
   trusteeId: string;
@@ -16,6 +17,7 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
   const [appointments, setAppointments] = useState<TrusteeAppointment[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const loadAppointments = async () => {
@@ -63,7 +65,7 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
             <Button
               id="add-appointment-button"
               onClick={() => {
-                // TODO: Implement add appointment functionality
+                navigate(`/trustees/${trusteeId}/appointments/create`);
               }}
             >
               <Icon name="add_circle" />

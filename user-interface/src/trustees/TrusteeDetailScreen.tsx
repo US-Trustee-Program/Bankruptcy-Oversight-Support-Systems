@@ -20,6 +20,7 @@ import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { BankruptcySoftwareList } from '@common/cams/lists';
 import TrusteePublicContactForm from './forms/TrusteePublicContactForm';
 import TrusteeInternalContactForm from './forms/TrusteeInternalContactForm';
+import TrusteeAppointmentForm from './forms/TrusteeAppointmentForm';
 
 type TrusteeHeaderProps = JSX.IntrinsicElements['div'] & {
   trustee: Trustee | null;
@@ -191,6 +192,11 @@ export default function TrusteeDetailScreen() {
           </div>
         </div>
       ),
+    },
+    {
+      path: 'appointments/create',
+      subHeading: 'Add Trustee Appointments',
+      content: <TrusteeAppointmentForm trusteeId={trusteeId} trusteeName={trustee.name} />,
     },
     {
       path: 'assigned-staff',
