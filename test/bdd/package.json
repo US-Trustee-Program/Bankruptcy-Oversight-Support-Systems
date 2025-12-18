@@ -11,6 +11,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "vitest run",
+    "test:show-logs": "ENABLE_CONSOLE_LOGGING=true npm run test",
     "test:ui": "vitest --ui",
     "test:watch": "vitest watch"
   },
