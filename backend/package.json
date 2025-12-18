@@ -1,6 +1,7 @@
 {
   "name": "node",
   "version": "1.0.0",
+  "license": "CC0 v1.0",
   "description": "",
   "scripts": {
     "all": "npm run clean:all && npm ci && npm run build:all && npm run pack:all",

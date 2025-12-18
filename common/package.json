@@ -1,7 +1,7 @@
 {
   "name": "common",
   "version": "1.0.0",
-  "license": "ISC",
+  "license": "CC0 v1.0",
   "description": "CAMS common package",
   "main": "dist/index.js",
   "type": "module",
