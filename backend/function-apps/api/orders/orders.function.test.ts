@@ -21,7 +21,7 @@ describe('Orders Function tests', () => {
   const context = createMockAzureFunctionContext();
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should return a list of orders', async () => {

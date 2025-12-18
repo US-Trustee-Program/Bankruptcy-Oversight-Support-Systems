@@ -19,7 +19,7 @@ describe('Runtime State Repo', () => {
   beforeEach(async () => {
     context = await createMockApplicationContext();
     repo = new RuntimeStateMongoRepository(context);
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   afterEach(async () => {

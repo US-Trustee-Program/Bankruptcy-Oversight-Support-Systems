@@ -39,7 +39,7 @@ describe('Case Assignment Function Tests', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('Return the function response with the assignment Id created for the new case assignment', async () => {

@@ -19,7 +19,7 @@ describe('Orders suggestions function tests', () => {
   });
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should return a list of suggested cases', async () => {
