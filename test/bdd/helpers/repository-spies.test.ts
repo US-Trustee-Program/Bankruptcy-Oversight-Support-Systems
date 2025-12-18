@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, expect, vi, afterEach } from 'vitest';
 import { spyOnAllGatewayMethods, clearAllRepositorySpies } from './repository-spies';
 
 /**
@@ -38,7 +38,7 @@ describe('repository-spies helpers', () => {
   });
 
   describe('spyOnAllGatewayMethods', () => {
-    it('uses explicit mock implementations when provided', () => {
+    test('uses explicit mock implementations when provided', () => {
       const fooMock = vi.fn().mockReturnValue('mocked-foo');
 
       spyOnAllGatewayMethods(TestGateway, 'TestGateway', {
@@ -53,7 +53,7 @@ describe('repository-spies helpers', () => {
       expect(fooMock).toHaveBeenCalledWith('test-arg');
     });
 
-    it('throws diagnostic error for unmocked methods', () => {
+    test('throws diagnostic error for unmocked methods', () => {
       spyOnAllGatewayMethods(TestGateway, 'TestGateway', {
         foo: vi.fn().mockReturnValue('mocked'),
       });
@@ -66,7 +66,7 @@ describe('repository-spies helpers', () => {
       expect(() => gateway.bar()).toThrowError(/Unmocked/i);
     });
 
-    it('includes method arguments in error message for debugging', () => {
+    test('includes method arguments in error message for debugging', () => {
       spyOnAllGatewayMethods(TestGateway, 'TestGateway');
 
       const gateway = new TestGateway();
@@ -76,7 +76,7 @@ describe('repository-spies helpers', () => {
       expect(() => gateway.baz(10, 20)).toThrowError(/\[10,20\]/); // Args in JSON format
     });
 
-    it('handles multiple mocked methods on same gateway', () => {
+    test('handles multiple mocked methods on same gateway', () => {
       const fooMock = vi.fn().mockReturnValue('mocked-foo');
       const bazMock = vi.fn().mockReturnValue(42);
 
@@ -99,7 +99,7 @@ describe('repository-spies helpers', () => {
   });
 
   describe('clearAllRepositorySpies', () => {
-    it('restores original implementations after spy cleanup', () => {
+    test('restores original implementations after spy cleanup', () => {
       const fooMock = vi.fn().mockReturnValue('mocked-foo');
 
       // Install spy
@@ -122,7 +122,7 @@ describe('repository-spies helpers', () => {
       expect(gatewayAfterClear.callCount).toBe(1);
     });
 
-    it('allows re-spying after cleanup', () => {
+    test('allows re-spying after cleanup', () => {
       // First spy
       spyOnAllGatewayMethods(TestGateway, 'TestGateway', {
         foo: vi.fn().mockReturnValue('first-mock'),
@@ -143,7 +143,7 @@ describe('repository-spies helpers', () => {
   });
 
   describe('spy behavior edge cases', () => {
-    it('handles gateways with no methods to spy', () => {
+    test('handles gateways with no methods to spy', () => {
       class EmptyGateway {}
 
       // Should not throw
@@ -152,7 +152,7 @@ describe('repository-spies helpers', () => {
       }).not.toThrow();
     });
 
-    it('handles undefined/null class gracefully', () => {
+    test('handles undefined/null class gracefully', () => {
       // Should log error and not throw
       expect(() => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -165,7 +165,7 @@ describe('repository-spies helpers', () => {
       }).not.toThrow();
     });
 
-    it('does not spy on constructor', () => {
+    test('does not spy on constructor', () => {
       spyOnAllGatewayMethods(TestGateway, 'TestGateway');
 
       // Constructor should still work normally

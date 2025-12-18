@@ -209,7 +209,7 @@ describe('Feature: Your Feature Name (Full Stack)', () => {
    * WHEN [action]
    * THEN [expected outcome]
    */
-  it('should [behavior description]', async () => {
+  test('should [behavior description]', async () => {
     // GIVEN: Test data
     const testCase = MockData.getCaseDetail({
       override: {
@@ -241,7 +241,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 // ... other imports same as above
 
-it('should add a note and display it', async () => {
+test('should add a note and display it', async () => {
   const user = userEvent.setup();
 
   // GIVEN: A case with no notes
@@ -400,7 +400,7 @@ TestSessions.dataVerifier()          // Data verifier role
 Always use BDD-style comments to make tests readable:
 
 ```typescript
-it('should display case details when user navigates to case', async () => {
+test('should display case details when user navigates to case', async () => {
   // GIVEN: A case exists in the system
   const testCase = MockData.getCaseDetail({ ... });
 
@@ -613,7 +613,7 @@ Focus on:
 
 - Ensure `await waitForAppLoad()` is called before assertions
 - Check that all required mocks are set up
-- Increase test timeout: `it('test', async () => { ... }, 30000)`
+- Increase test timeout: `test('test', async () => { ... }, 30000)`
 
 ### "Unmocked method called" Errors
 

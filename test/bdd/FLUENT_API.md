@@ -430,7 +430,7 @@ describe('Feature: View Case with Full Details (Full Stack)', () => {
     clearAllRepositorySpies();
   });
 
-  it('should display complete case details with all related data', async () => {
+  test('should display complete case details with all related data', async () => {
     // GIVEN: A case with transfers, consolidations, and assignments
     const testCase = MockData.getCaseDetail({
       override: {
@@ -622,7 +622,7 @@ expect(state.getCase('123')).toBeDefined();
 ### Complete Stateful Testing Example
 
 ```typescript
-it('should add a case note and verify it appears', async () => {
+test('should add a case note and verify it appears', async () => {
   const user = userEvent.setup();
 
   // GIVEN: A case with no notes

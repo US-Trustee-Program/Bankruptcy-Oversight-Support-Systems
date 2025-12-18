@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
+import { describe, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { initializeTestServer, cleanupTestServer } from '../../helpers/api-server';
@@ -51,7 +51,7 @@ describe('Feature: Search Cases (Full Stack)', () => {
    * WHEN the app loads
    * THEN I should see the home page
    */
-  it('should render the app successfully', async () => {
+  test('should render the app successfully', async () => {
     // GIVEN/WHEN: User loads the app
     await TestSetup.forUser(TestSessions.caseAssignmentManager()).renderAt('/');
 
@@ -73,7 +73,7 @@ describe('Feature: Search Cases (Full Stack)', () => {
    * AND I click the search button
    * THEN I should see matching case summaries in the results table
    */
-  it('should search for cases and display results', async () => {
+  test('should search for cases and display results', async () => {
     // GIVEN: Mock search results
     const mockCases = Array.from({ length: 5 }, (_, index) =>
       MockData.getCaseSummary({
@@ -148,7 +148,7 @@ describe('Feature: Search Cases (Full Stack)', () => {
    * WHEN I search with criteria that yield no results
    * THEN I should see a no results message
    */
-  it('should display no results message when search returns empty', async () => {
+  test('should display no results message when search returns empty', async () => {
     // GIVEN: Empty search results
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
       .withSearchResults([])

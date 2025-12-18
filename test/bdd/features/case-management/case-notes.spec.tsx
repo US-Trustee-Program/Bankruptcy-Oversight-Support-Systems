@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
+import { describe, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { initializeTestServer, cleanupTestServer } from '../../helpers/api-server';
@@ -52,7 +52,7 @@ describe.skip('Feature: Case Notes Management', () => {
    * AND appear in the notes list
    * AND state should reflect the new note count
    */
-  it('should add a new case note and display it in the notes list', async () => {
+  test('should add a new case note and display it in the notes list', async () => {
     const user = userEvent.setup();
 
     // GIVEN: A case with no notes initially
@@ -147,7 +147,7 @@ describe.skip('Feature: Case Notes Management', () => {
    * WHEN user navigates to case notes tab
    * THEN all notes should be displayed
    */
-  it('should display existing case notes', async () => {
+  test('should display existing case notes', async () => {
     const user = userEvent.setup();
 
     // GIVEN: A case with existing notes
@@ -220,7 +220,7 @@ describe.skip('Feature: Case Notes Management', () => {
    * THEN all three notes should be visible
    * AND state should track all notes correctly
    */
-  it('should handle adding multiple notes in sequence', async () => {
+  test('should handle adding multiple notes in sequence', async () => {
     const user = userEvent.setup();
 
     // GIVEN: A case with one existing note
