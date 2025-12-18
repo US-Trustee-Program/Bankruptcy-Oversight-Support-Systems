@@ -25,7 +25,6 @@ const StaffAssignmentFilter_ = (
     };
   });
 
-  // Only component-level effect: global alert on error
   useEffect(() => {
     if (store.officeAssigneesError) {
       globalAlert?.error('There was a problem getting the list of assignees.');
@@ -35,7 +34,7 @@ const StaffAssignmentFilter_ = (
   const viewModel: StaffAssignmentFilterViewModel = {
     officeAssignees: store.officeAssignees,
     officeAssigneesError: store.officeAssigneesError,
-    handleFilterAssignee: props.handleFilterAssignee ?? useCase.handleFilterAssignee,
+    handleFilterAssignee: props.handleFilterAssignee,
     assigneesToComboOptions: useCase.assigneesToComboOptions,
     assigneesFilterRef: controls.assigneesFilterRef,
   };

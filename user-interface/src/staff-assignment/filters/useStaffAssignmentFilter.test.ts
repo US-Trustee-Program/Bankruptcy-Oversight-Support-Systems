@@ -64,7 +64,7 @@ describe('staff assignment filter hook tests', () => {
       });
     });
 
-    const comboOptions = result.current.assigneesToComboOptions(assignees);
+    const comboOptions = result.current.useCase.assigneesToComboOptions(assignees);
     expect(comboOptions).toEqual(expectedComboOptions);
   });
 

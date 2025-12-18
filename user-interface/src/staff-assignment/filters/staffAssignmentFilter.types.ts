@@ -42,9 +42,6 @@ type StaffAssignmentFilterProps = {
 interface StaffAssignmentFilterStore {
   officeAssignees: CamsUserReference[];
   officeAssigneesError: boolean;
-  focusOnRender: boolean;
-  filterAssigneeCallback: ((assignees: ComboOption[]) => void) | null;
-  setFilterAssigneeCallback: (val: ((assignees: ComboOption[]) => void) | null) => void;
 }
 
 interface StaffAssignmentFilterHook {
@@ -52,7 +49,6 @@ interface StaffAssignmentFilterHook {
   useCase: {
     fetchAssignees: () => Promise<void>;
     focusOnAssigneesFilter: () => void;
-    handleFilterAssignee: (assignees: ComboOption[]) => Promise<void>;
     assigneesToComboOptions: (officeAssignees: CamsUserReference[]) => ComboOption[];
   };
 }
