@@ -11,7 +11,7 @@ const testConfig = eslintTestConfig.map((configObject) => ({
 
 const e2eEslintConfig = [
   {
-    ignores: ['**/node_modules/**/*', '**/playwright-report/**/*', '**/test-results/**/*'],
+    ignores: ['**/node_modules/**/*', '**/playwright-report/**/*', '**/test-results/**/*', '**/eslint*.config.mjs'],
   },
   ...codeConfig,
   ...testConfig,

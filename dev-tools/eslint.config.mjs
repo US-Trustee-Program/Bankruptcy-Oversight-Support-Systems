@@ -11,7 +11,7 @@ const testConfig = eslintTestConfig.map((configObject) => ({
 
 const devToolsEslintConfig = [
   {
-    ignores: ['**/build/**/*', '**/dist/**/*', '**/node_modules/**/*'],
+    ignores: ['**/build/**/*', '**/dist/**/*', '**/node_modules/**/*', '**/eslint*.config.mjs'],
   },
   ...codeConfig,
   ...testConfig,
