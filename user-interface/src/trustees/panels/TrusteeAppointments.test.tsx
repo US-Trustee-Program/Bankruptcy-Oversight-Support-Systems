@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import TrusteeAppointments from './TrusteeAppointments';
 import Api2 from '@/lib/models/api2';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
@@ -43,6 +44,14 @@ describe('TrusteeAppointments', () => {
     },
   ];
 
+  function renderComponent(trusteeId: string) {
+    return render(
+      <MemoryRouter>
+        <TrusteeAppointments trusteeId={trusteeId} />
+      </MemoryRouter>,
+    );
+  }
+
   beforeEach(() => {
     vi.restoreAllMocks();
   });
@@ -55,7 +64,7 @@ describe('TrusteeAppointments', () => {
         }),
     );
 
-    render(<TrusteeAppointments trusteeId="trustee-123" />);
+    renderComponent('trustee-123');
 
     expect(screen.getByText(/Loading appointments.../i)).toBeInTheDocument();
   });
@@ -64,7 +73,7 @@ describe('TrusteeAppointments', () => {
     vi.spyOn(Api2, 'getTrusteeAppointments').mockRejectedValue(new Error('API Error'));
     vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    render(<TrusteeAppointments trusteeId="trustee-123" />);
+    renderComponent('trustee-123');
 
     await waitFor(() => {
       expect(screen.getByText(/Failed to load trustee appointments/i)).toBeInTheDocument();
@@ -74,7 +83,7 @@ describe('TrusteeAppointments', () => {
   test('should display add button and message when no appointments are found', async () => {
     vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [] });
 
-    render(<TrusteeAppointments trusteeId="trustee-123" />);
+    renderComponent('trustee-123');
 
     await waitFor(() => {
 <<<<<<< HEAD
@@ -90,7 +99,7 @@ describe('TrusteeAppointments', () => {
   test('should display appointments when API call succeeds', async () => {
     vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: mockAppointments });
 
-    render(<TrusteeAppointments trusteeId="trustee-123" />);
+    renderComponent('trustee-123');
 
     await waitFor(() => {
       expect(
@@ -102,12 +111,25 @@ describe('TrusteeAppointments', () => {
     });
   });
 
+  test('should display add button when appointments exist', async () => {
+    vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: mockAppointments });
+
+    renderComponent('trustee-123');
+
+    await waitFor(() => {
+      expect(screen.getByText(/Add New Appointment/i)).toBeInTheDocument();
+      expect(screen.getByTestId('button-add-appointment-button')).toBeInTheDocument();
+      // Should not show the empty message
+      expect(screen.queryByText(EMPTY_APPOINTMENTS_MESSAGE)).not.toBeInTheDocument();
+    });
+  });
+
   test('should call getTrusteeAppointments with correct trusteeId', async () => {
     const getTrusteeAppointmentsSpy = vi
       .spyOn(Api2, 'getTrusteeAppointments')
       .mockResolvedValue({ data: mockAppointments });
 
-    render(<TrusteeAppointments trusteeId="trustee-123" />);
+    renderComponent('trustee-123');
 
     await waitFor(() => {
       expect(getTrusteeAppointmentsSpy).toHaveBeenCalledWith('trustee-123');
@@ -120,13 +142,21 @@ describe('TrusteeAppointments', () => {
       .spyOn(Api2, 'getTrusteeAppointments')
       .mockResolvedValue({ data: mockAppointments });
 
-    const { rerender } = render(<TrusteeAppointments trusteeId="trustee-123" />);
+    const { rerender } = render(
+      <MemoryRouter>
+        <TrusteeAppointments trusteeId="trustee-123" />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
       expect(getTrusteeAppointmentsSpy).toHaveBeenCalledWith('trustee-123');
     });
 
-    rerender(<TrusteeAppointments trusteeId="trustee-456" />);
+    rerender(
+      <MemoryRouter>
+        <TrusteeAppointments trusteeId="trustee-456" />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
       expect(getTrusteeAppointmentsSpy).toHaveBeenCalledWith('trustee-456');
@@ -138,7 +168,7 @@ describe('TrusteeAppointments', () => {
     // @ts-expect-error - Testing edge case where API returns null despite type contract
     vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: null });
 
-    render(<TrusteeAppointments trusteeId="trustee-123" />);
+    renderComponent('trustee-123');
 
     await waitFor(() => {
 <<<<<<< HEAD
@@ -153,7 +183,7 @@ describe('TrusteeAppointments', () => {
     // @ts-expect-error - Testing edge case where API returns undefined despite type contract
     vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: undefined });
 
-    render(<TrusteeAppointments trusteeId="trustee-123" />);
+    renderComponent('trustee-123');
 
     await waitFor(() => {
 <<<<<<< HEAD

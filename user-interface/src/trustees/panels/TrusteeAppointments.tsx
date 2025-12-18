@@ -80,6 +80,17 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
 
   return (
     <div className="trustee-appointments-list">
+      <div className="record-detail-container">
+        <Button
+          id="add-appointment-button"
+          onClick={() => {
+            navigate(`/trustees/${trusteeId}/appointments/create`);
+          }}
+        >
+          <Icon name="add_circle" />
+          Add New Appointment
+        </Button>
+      </div>
       <div className="appointments-list">
         {appointments.map((appointment) => (
           <AppointmentCard key={appointment.id} appointment={appointment} />
