@@ -1,6 +1,7 @@
 {
   "name": "cams-api",
   "version": "1.0.0",
+  "license": "CC0 v1.0",
   "description": "",
   "main": "dist/backend/function-apps/api/*/*.function.js",
   "scripts": {

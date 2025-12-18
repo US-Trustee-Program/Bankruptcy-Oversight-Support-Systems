@@ -13,7 +13,7 @@
     "ui": "playwright test --ui"
   },
   "author": "",
-  "license": "ISC",
+  "license": "CC0 v1.0",
   "devDependencies": {
     "@eslint/js": "10.0.0",
     "@playwright/test": "1.56.1",
