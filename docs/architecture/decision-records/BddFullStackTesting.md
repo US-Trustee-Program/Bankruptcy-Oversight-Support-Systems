@@ -4,11 +4,11 @@
 
 As the CAMS application grew in complexity, we needed a testing strategy that could:
 
-1. **Test the complete request-response cycle** from React UI through the API layer to the backend use cases and gateways
-2. **Verify behavior rather than implementation** using Behavior-Driven Development (BDD) scenarios
-3. **Test production code paths** without relying on Mock* implementations
-4. **Run in-memory** without requiring external services (databases, OAuth providers)
-5. **Execute quickly** enough for CI/CD pipelines
+1. Test the complete request-response cycle from React UI through the API layer to the backend use cases and gateways
+1. Verify behavior rather than implementation using Behavior-Driven Development (BDD) scenarios
+1. Test production code paths without relying on Mock* implementations
+1. Run in-memory without requiring external services (databases, OAuth providers)
+1. Execute quickly enough for CI/CD pipelines
 
 Traditional testing approaches had limitations:
 - **Unit tests**: Too granular, miss integration issues
@@ -76,7 +76,7 @@ We implemented a **full-stack BDD testing architecture** that runs the complete 
 
 ### Key Architectural Decisions
 
-#### 1. Mock Database Drivers at Connection Level
+#### Mock Database Drivers at Connection Level
 
 **Decision**: Use `vi.mock('mongodb')` and `vi.mock('mssql')` to mock the driver modules before server initialization.
 
@@ -94,7 +94,7 @@ We implemented a **full-stack BDD testing architecture** that runs the complete 
 
 See `test/bdd/helpers/driver-mocks.ts` for the complete driver mock implementations.
 
-#### 2. Spy on Gateway Methods to Inject Test Data
+#### Spy on Gateway Methods to Inject Test Data
 
 **Decision**: Use `vi.spyOn()` on production gateway prototype methods after server initialization.
 
@@ -107,7 +107,7 @@ See `test/bdd/helpers/driver-mocks.ts` for the complete driver mock implementati
 
 See `test/bdd/helpers/repository-spies.ts` for spy implementation patterns.
 
-#### 2.5. Okta Configuration Format
+#### Okta Configuration Format
 
 **Decision**: Use pipe-delimited `key=value` pairs for `CAMS_LOGIN_PROVIDER_CONFIG` and `CAMS_USER_GROUP_GATEWAY_CONFIG`.
 
@@ -118,7 +118,7 @@ See `test/bdd/helpers/repository-spies.ts` for spy implementation patterns.
 
 See `test/bdd/helpers/setup-tests.ts` for the complete configuration implementation.
 
-#### 2.75. Fluent Test Setup API
+#### Fluent Test Setup API
 
 **Decision**: Provide a fluent API (`TestSetup`) to hide boilerplate spy configuration and make tests more declarative and readable.
 
@@ -137,7 +137,7 @@ See `test/bdd/helpers/setup-tests.ts` for the complete configuration implementat
 
 See `test/bdd/FLUENT_API.md` for complete API reference and usage examples.
 
-#### 2.8. Stateful Testing with TestState
+#### Stateful Testing with TestState
 
 **Decision**: Extend the Fluent API to support stateful testing, enabling tests to verify interactive workflows that involve write operations and state changes.
 
@@ -161,7 +161,7 @@ See `test/bdd/FLUENT_API.md` for complete API reference and usage examples.
 
 See `test/bdd/FLUENT_API.md` for API details and examples.
 
-#### 3. Run Real HTTP Server
+#### Run Real HTTP Server
 
 **Decision**: Start an actual Express HTTP server on port 4000 in the test process.
 
@@ -173,7 +173,7 @@ See `test/bdd/FLUENT_API.md` for API details and examples.
 
 See `test/bdd/helpers/api-server.ts` for server lifecycle management (`initializeTestServer()`, `cleanupTestServer()`).
 
-#### 4. Render Complete React Application
+#### Render Complete React Application
 
 **Decision**: Render the full `App.tsx` wrapped in `AuthenticationRoutes`, not individual components.
 
@@ -186,7 +186,7 @@ See `test/bdd/helpers/api-server.ts` for server lifecycle management (`initializ
 
 See `test/bdd/helpers/render-with-context.tsx` and `test/bdd/helpers/setup-tests.ts` for rendering and configuration implementation.
 
-#### 5. Mock Authentication SDKs and Bypass JWT Verification
+#### Mock Authentication SDKs and Bypass JWT Verification
 
 **Decision**: Mock `@okta/okta-auth-js` and `@okta/okta-react` to prevent browser redirects, and spy on `OktaGateway.getUser()` to bypass HTTPS requirement.
 
@@ -217,39 +217,39 @@ For details on test file organization, writing tests, and using the Fluent API, 
 
 1. **Comprehensive Coverage**: Tests the complete stack in a single test execution, catching integration issues that unit tests miss.
 
-2. **Fast Execution**: Runs in-memory without external services, providing quick feedback for CI/CD pipelines.
+1. **Fast Execution**: Runs in-memory without external services, providing quick feedback for CI/CD pipelines.
 
-3. **Production Code Paths**: Tests actual gateway implementations, not Mock* classes, increasing confidence in production behavior.
+1. **Production Code Paths**: Tests actual gateway implementations, not Mock* classes, increasing confidence in production behavior.
 
-4. **BDD Scenarios**: Natural language test descriptions make requirements traceable and tests readable by non-technical stakeholders.
+1. **BDD Scenarios**: Natural language test descriptions make requirements traceable and tests readable by non-technical stakeholders.
 
-5. **Debuggable**: Single process execution allows standard debugging tools (breakpoints, console logs).
+1. **Debuggable**: Single process execution allows standard debugging tools (breakpoints, console logs).
 
-6. **CI/CD Friendly**: No infrastructure dependencies, deterministic results, fast feedback.
+1. **CI/CD Friendly**: No infrastructure dependencies, deterministic results, fast feedback.
 
 ### Trade-offs
 
 1. **Mock Maintenance**: Database driver mocks must stay compatible with driver interfaces. Breaking changes in MongoDB or MSSQL client libraries require mock updates.
 
-2. **Test Data Management**: Spies must return properly structured data matching production schemas. Incomplete test data causes runtime errors.
+1. **Test Data Management**: Spies must return properly structured data matching production schemas. Incomplete test data causes runtime errors.
 
-3. **Authentication Complexity**: Mocking Okta SDKs requires understanding internal behavior. SDK updates may break mocks.
+1. **Authentication Complexity**: Mocking Okta SDKs requires understanding internal behavior. SDK updates may break mocks.
 
-4. **Module Hoisting**: Vitest hoists `vi.mock()` calls, preventing use of top-level imports in mocks. Requires async imports or inline values.
+1. **Module Hoisting**: Vitest hoists `vi.mock()` calls, preventing use of top-level imports in mocks. Requires async imports or inline values.
 
-5. **Boundary Definition**: Choosing where to mock (driver level vs gateway level) affects what gets tested. Too high = less coverage, too low = slower tests.
+1. **Boundary Definition**: Choosing where to mock (driver level vs gateway level) affects what gets tested. Too high = less coverage, too low = slower tests.
 
 ### Limitations
 
 1. **Database Query Validation**: Mocked drivers don't validate query syntax or structure. Typos in MongoDB aggregations or SQL queries aren't caught.
 
-2. **Network Behavior**: Doesn't test actual HTTP/TLS behavior, connection pooling, timeouts, or retry logic.
+1. **Network Behavior**: Doesn't test actual HTTP/TLS behavior, connection pooling, timeouts, or retry logic.
 
-3. **Authentication Edge Cases**: Simplified OAuth flow doesn't test token expiration, refresh flows, or multi-factor authentication.
+1. **Authentication Edge Cases**: Simplified OAuth flow doesn't test token expiration, refresh flows, or multi-factor authentication.
 
-4. **Performance**: Can't measure real database query performance or identify N+1 query problems.
+1. **Performance**: Can't measure real database query performance or identify N+1 query problems.
 
-5. **External Service Contracts**: Mocked external services (DXTR, Okta) may drift from actual API contracts.
+1. **External Service Contracts**: Mocked external services (DXTR, Okta) may drift from actual API contracts.
 
 ### Mitigations
 

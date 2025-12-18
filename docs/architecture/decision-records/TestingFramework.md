@@ -9,8 +9,8 @@ The CAMS project previously used Jest as the testing framework for both the `com
 The `common` package had duplicate test infrastructure:
 
 1. **Duplicate test execution** - Tests were run by both Jest (via `npm test` in common) and Vitest (via the BDD suite)
-2. **Jest-specific workspace issues** - Jest has strict preset resolution requirements that don't work well with npm workspaces' dependency hoisting
-3. **Inconsistent developer experience** - Tests might pass with one framework but fail with the other
+1. **Jest-specific workspace issues** - Jest has strict preset resolution requirements that don't work well with npm workspaces' dependency hoisting
+1. **Inconsistent developer experience** - Tests might pass with one framework but fail with the other
 
 The BDD test suite's `vitest.config.ts` explicitly includes `common/**/*.test.{ts,tsx}`, making Jest redundant.
 
@@ -19,8 +19,7 @@ The BDD test suite's `vitest.config.ts` explicitly includes `common/**/*.test.{t
 The `backend` package had 120 test files using Jest, which created:
 
 1. **Framework inconsistency** - Backend used Jest while frontend, BDD, and common used Vitest
-2. **Maintenance complexity** - Different testing patterns, matchers, and configurations
-3. **Integration challenges** - Difficult to share test utilities and patterns across packages
+1. **Integration challenges** - Difficult to share test utilities and patterns across packages
 
 ## Decision
 
@@ -48,10 +47,6 @@ Accepted
 - **Reduced maintenance** - One testing framework means one set of patterns, matchers, and configurations
 - **Faster tests** - Vitest's transform layer is more performant than ts-jest
 - **Consistent test utilities** - Test helpers and mocks can now be shared across all packages
-
-### Neutral
-
-- **API compatibility** - Most Jest patterns have equivalent Vitest patterns, though some require minor adjustments
 
 ## Related Decisions
 
