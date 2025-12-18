@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
+import { describe, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { waitFor } from '@testing-library/react';
 import { initializeTestServer, cleanupTestServer } from '../../helpers/api-server';
 import { TestSessions } from '../../fixtures/auth.fixtures';
@@ -50,7 +50,7 @@ describe('Feature: My Cases (Full Stack)', () => {
    * WHEN I navigate to the home page (my cases tab)
    * THEN I should see a message indicating there are no cases
    */
-  it('should display no cases message for non-attorney user', async () => {
+  test('should display no cases message for non-attorney user', async () => {
     // GIVEN: A user without attorney role (DataVerifier)
     const session = TestSessions.dataVerifier();
 
@@ -97,7 +97,7 @@ describe('Feature: My Cases (Full Stack)', () => {
    * WHEN I view the my cases page
    * THEN I should see an empty state message
    */
-  it('should display empty state for attorney with no assignments', async () => {
+  test('should display empty state for attorney with no assignments', async () => {
     // GIVEN: A trial attorney with no cases
     const session = TestSessions.trialAttorney();
 
@@ -131,7 +131,7 @@ describe('Feature: My Cases (Full Stack)', () => {
    * WHEN the home page loads
    * THEN the app should render successfully
    */
-  it('should render home page and complete all post-login tasks', async () => {
+  test('should render home page and complete all post-login tasks', async () => {
     // GIVEN/WHEN: User loads the app
     await TestSetup.forUser(TestSessions.dataVerifier()).renderAt('/');
 

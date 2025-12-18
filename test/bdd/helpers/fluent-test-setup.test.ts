@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, expect, afterEach } from 'vitest';
 import { TestSetup } from './fluent-test-setup';
 import { TestSessions } from '../fixtures/auth.fixtures';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -27,7 +27,7 @@ describe('TestSetup fluent API', () => {
   });
 
   describe('API structure validation', () => {
-    it('forUser returns TestSetup instance with expected methods', () => {
+    test('forUser returns TestSetup instance with expected methods', () => {
       const session = TestSessions.caseAssignmentManager();
       const setup = TestSetup.forUser(session);
 
@@ -46,7 +46,7 @@ describe('TestSetup fluent API', () => {
       expect(typeof setup.renderAt).toBe('function');
     });
 
-    it('validates forUser accepts different user session types', () => {
+    test('validates forUser accepts different user session types', () => {
       expect(() => TestSetup.forUser(TestSessions.caseAssignmentManager())).not.toThrow();
       expect(() => TestSetup.forUser(TestSessions.trialAttorney())).not.toThrow();
       expect(() => TestSetup.forUser(TestSessions.dataVerifier())).not.toThrow();
@@ -56,7 +56,7 @@ describe('TestSetup fluent API', () => {
   });
 
   describe('fluent API chaining', () => {
-    it('withCase returns same instance for chaining', () => {
+    test('withCase returns same instance for chaining', () => {
       const session = TestSessions.caseAssignmentManager();
       const testCase = MockData.getCaseDetail({
         override: { caseId: 'TEST-001' },
@@ -68,7 +68,7 @@ describe('TestSetup fluent API', () => {
       expect(setup2).toBe(setup1);
     });
 
-    it('withCases returns same instance for chaining', () => {
+    test('withCases returns same instance for chaining', () => {
       const session = TestSessions.caseAssignmentManager();
       const cases = [
         MockData.getCaseDetail({ override: { caseId: 'CASE-001' } }),
@@ -81,7 +81,7 @@ describe('TestSetup fluent API', () => {
       expect(setup2).toBe(setup1);
     });
 
-    it('withSearchResults returns same instance for chaining', () => {
+    test('withSearchResults returns same instance for chaining', () => {
       const session = TestSessions.trialAttorney();
       const searchResults = [MockData.getCaseSummary({ override: { caseId: 'SEARCH-001' } })];
 
@@ -91,7 +91,7 @@ describe('TestSetup fluent API', () => {
       expect(setup2).toBe(setup1);
     });
 
-    it('withMyAssignments returns same instance for chaining', () => {
+    test('withMyAssignments returns same instance for chaining', () => {
       const session = TestSessions.caseAssignmentManager();
       const assignments = [MockData.getCaseSummary({ override: { caseId: 'ASSIGN-001' } })];
 
@@ -101,7 +101,7 @@ describe('TestSetup fluent API', () => {
       expect(setup2).toBe(setup1);
     });
 
-    it('withTransfers returns same instance for chaining', () => {
+    test('withTransfers returns same instance for chaining', () => {
       const session = TestSessions.caseAssignmentManager();
       const setup1 = TestSetup.forUser(session);
       const setup2 = setup1.withTransfers('CASE-001', []);
@@ -109,7 +109,7 @@ describe('TestSetup fluent API', () => {
       expect(setup2).toBe(setup1);
     });
 
-    it('withConsolidations returns same instance for chaining', () => {
+    test('withConsolidations returns same instance for chaining', () => {
       const session = TestSessions.caseAssignmentManager();
       const setup1 = TestSetup.forUser(session);
       const setup2 = setup1.withConsolidations('CASE-001', []);
@@ -117,7 +117,7 @@ describe('TestSetup fluent API', () => {
       expect(setup2).toBe(setup1);
     });
 
-    it('withCaseAssignments returns same instance for chaining', () => {
+    test('withCaseAssignments returns same instance for chaining', () => {
       const session = TestSessions.caseAssignmentManager();
       const setup1 = TestSetup.forUser(session);
       const setup2 = setup1.withCaseAssignments('CASE-001', []);
@@ -125,7 +125,7 @@ describe('TestSetup fluent API', () => {
       expect(setup2).toBe(setup1);
     });
 
-    it('withDocketEntries returns same instance for chaining', () => {
+    test('withDocketEntries returns same instance for chaining', () => {
       const session = TestSessions.caseAssignmentManager();
       const setup1 = TestSetup.forUser(session);
       const setup2 = setup1.withDocketEntries('CASE-001', []);
@@ -133,7 +133,7 @@ describe('TestSetup fluent API', () => {
       expect(setup2).toBe(setup1);
     });
 
-    it('withCaseNotes returns same instance for chaining', () => {
+    test('withCaseNotes returns same instance for chaining', () => {
       const session = TestSessions.caseAssignmentManager();
       const setup1 = TestSetup.forUser(session);
       const setup2 = setup1.withCaseNotes('CASE-001', []);
@@ -141,7 +141,7 @@ describe('TestSetup fluent API', () => {
       expect(setup2).toBe(setup1);
     });
 
-    it('withOffices returns same instance for chaining', () => {
+    test('withOffices returns same instance for chaining', () => {
       const session = TestSessions.caseAssignmentManager();
       const setup1 = TestSetup.forUser(session);
       const setup2 = setup1.withOffices([]);
@@ -149,7 +149,7 @@ describe('TestSetup fluent API', () => {
       expect(setup2).toBe(setup1);
     });
 
-    it('withCustomSpy returns same instance for chaining', () => {
+    test('withCustomSpy returns same instance for chaining', () => {
       const session = TestSessions.caseAssignmentManager();
       const setup1 = TestSetup.forUser(session);
       const setup2 = setup1.withCustomSpy('TestGateway', {});
@@ -157,7 +157,7 @@ describe('TestSetup fluent API', () => {
       expect(setup2).toBe(setup1);
     });
 
-    it('allows complex chaining of multiple methods', () => {
+    test('allows complex chaining of multiple methods', () => {
       const session = TestSessions.superUser();
       const testCase = MockData.getCaseDetail({ override: { caseId: 'COMPLEX-001' } });
       const searchResults = [MockData.getCaseSummary({ override: { caseId: 'SEARCH-001' } })];
@@ -177,7 +177,7 @@ describe('TestSetup fluent API', () => {
   });
 
   describe('data configuration', () => {
-    it('accepts single case configuration', () => {
+    test('accepts single case configuration', () => {
       const session = TestSessions.caseAssignmentManager();
       const testCase = MockData.getCaseDetail({
         override: {
@@ -192,7 +192,7 @@ describe('TestSetup fluent API', () => {
       }).not.toThrow();
     });
 
-    it('accepts multiple cases configuration', () => {
+    test('accepts multiple cases configuration', () => {
       const session = TestSessions.caseAssignmentManager();
       const cases = [
         MockData.getCaseDetail({ override: { caseId: 'MULTI-001' } }),
@@ -205,7 +205,7 @@ describe('TestSetup fluent API', () => {
       }).not.toThrow();
     });
 
-    it('accepts search results configuration', () => {
+    test('accepts search results configuration', () => {
       const session = TestSessions.trialAttorney();
       const searchResults = [
         MockData.getCaseSummary({ override: { caseId: 'SEARCH-001' } }),
@@ -217,7 +217,7 @@ describe('TestSetup fluent API', () => {
       }).not.toThrow();
     });
 
-    it('accepts empty arrays for optional data', () => {
+    test('accepts empty arrays for optional data', () => {
       const session = TestSessions.caseAssignmentManager();
 
       expect(() => {

@@ -1,11 +1,11 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { waitFor } from '@testing-library/react';
 import { renderApp } from '../../helpers/render-with-context';
 import { initializeTestServer, cleanupTestServer } from '../../helpers/api-server';
 import { TestSessions } from '../../fixtures/auth.fixtures';
 import { clearAllRepositorySpies, spyOnMeEndpoint } from '../../helpers/repository-spies';
 import LocalStorage from '@/lib/utils/local-storage.ts';
-import { MOCK_ISSUER } from '../../../../backend/lib/testing/mock-gateways/mock-oauth2-constants';
+import { MOCK_ISSUER } from '@backend/lib/testing/mock-gateways/mock-oauth2-constants.ts';
 
 // Mock database drivers (same as functional tests)
 import '../../helpers/driver-mocks';
@@ -45,7 +45,7 @@ describe('BDD Environment Diagnostics', () => {
    * - getAuthIssuer() returns the expected issuer
    * - Session issuer matches configuration issuer
    */
-  it('should correctly parse frontend configuration', async () => {
+  test('should correctly parse frontend configuration', async () => {
     const session = TestSessions.caseAssignmentManager();
 
     console.log('[DIAGNOSTIC] Session issuer:', session.issuer);
@@ -90,7 +90,7 @@ describe('BDD Environment Diagnostics', () => {
    * - Session persists after render (not cleared by validation)
    * - Session provider and issuer match configuration
    */
-  it('should preserve session through render', async () => {
+  test('should preserve session through render', async () => {
     const session = TestSessions.caseAssignmentManager();
 
     console.log('[DIAGNOSTIC] Session before render:');
@@ -127,7 +127,7 @@ describe('BDD Environment Diagnostics', () => {
    * - Gateway spy is working correctly
    * - Returns valid user data
    */
-  it('should successfully call /me endpoint', async () => {
+  test('should successfully call /me endpoint', async () => {
     const session = TestSessions.caseAssignmentManager();
 
     console.log('[DIAGNOSTIC] Testing /me endpoint:');
@@ -166,7 +166,7 @@ describe('BDD Environment Diagnostics', () => {
    *
    * Verifies that backend environment variables are set correctly
    */
-  it('should have correct backend environment variables', () => {
+  test('should have correct backend environment variables', () => {
     console.log('[DIAGNOSTIC] Backend environment variables:');
     console.log('  - CAMS_LOGIN_PROVIDER:', process.env.CAMS_LOGIN_PROVIDER);
     console.log('  - CAMS_LOGIN_PROVIDER_CONFIG:', process.env.CAMS_LOGIN_PROVIDER_CONFIG);
@@ -191,7 +191,7 @@ describe('BDD Environment Diagnostics', () => {
    * - /me endpoint call
    * - App shows authenticated content
    */
-  it('should complete full authentication flow', async () => {
+  test('should complete full authentication flow', async () => {
     const session = TestSessions.caseAssignmentManager();
 
     console.log('[DIAGNOSTIC] Starting full authentication flow');

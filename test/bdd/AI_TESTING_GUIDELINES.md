@@ -103,7 +103,7 @@ describe('Feature: <Feature Name> (Full Stack)', () => {
    * WHEN <action>
    * THEN <expected outcome>
    */
-  it('should <test scenario>', async () => {
+  test('should <test scenario>', async () => {
     // GIVEN: Test data
     const testData = MockData.getCaseDetail({
       override: { caseId: '081-23-12345', caseTitle: 'Test Case' }
@@ -174,7 +174,7 @@ state.expectNoteCount(testCase.caseId, 0);
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-it('should add a case note and display it', async () => {
+test('should add a case note and display it', async () => {
   const user = userEvent.setup();
 
   // GIVEN: A case with no notes
@@ -356,7 +356,7 @@ beforeEach(async () => {
 ### Override Spies for Specific Tests
 
 ```typescript
-it('should display specific case details', async () => {
+test('should display specific case details', async () => {
   const testCase = MockData.getCaseDetail({
     override: {
       caseId: '081-23-12345',
@@ -565,7 +565,7 @@ console.log('[TEST] ✓ App finished loading');
 ### 3. Use Generous Timeouts for Full-Stack Tests
 
 ```typescript
-it('should render case details', async () => {
+test('should render case details', async () => {
   // Test implementation
 }, 20000); // 20 second timeout for full-stack tests
 
@@ -585,7 +585,7 @@ Each test should:
 - Not depend on other tests' state
 
 ```typescript
-it('should display Chapter 7 case', async () => {
+test('should display Chapter 7 case', async () => {
   // GIVEN: Create test data for this specific test
   const testCase = MockData.getCaseDetail({
     override: {
@@ -622,7 +622,7 @@ Use Given/When/Then comments:
  * THEN the basic case information should be displayed
  * AND the case title, debtor name, and filing information should be visible
  */
-it('should display case details', async () => {
+test('should display case details', async () => {
   // GIVEN: A case exists
   const testCase = MockData.getCaseDetail({ override: { ... } });
 

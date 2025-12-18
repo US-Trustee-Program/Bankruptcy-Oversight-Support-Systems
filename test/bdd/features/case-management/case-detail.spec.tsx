@@ -1,4 +1,4 @@
-import { describe, it, beforeAll, afterAll, afterEach } from 'vitest';
+import { describe, beforeAll, afterAll, afterEach } from 'vitest';
 import { initializeTestServer, cleanupTestServer } from '../../helpers/api-server';
 import { TestSessions } from '../../fixtures/auth.fixtures';
 import {
@@ -54,7 +54,7 @@ describe('Feature: View Case Details (Full Stack)', () => {
    * WHEN the user navigates to the case detail page
    * THEN the case information should be displayed
    */
-  it('should display Chapter 11 case details', async () => {
+  test('should display Chapter 11 case details', async () => {
     // GIVEN: A Chapter 11 case
     const testCase = MockData.getCaseDetail({
       override: {
@@ -91,7 +91,7 @@ describe('Feature: View Case Details (Full Stack)', () => {
    * WHEN the user views the case
    * THEN Chapter 7 information should be displayed
    */
-  it('should display Chapter 7 case correctly', async () => {
+  test('should display Chapter 7 case correctly', async () => {
     // GIVEN: A Chapter 7 case
     const testCase = MockData.getCaseDetail({
       override: {
@@ -122,7 +122,7 @@ describe('Feature: View Case Details (Full Stack)', () => {
    * WHEN a trial attorney views the case
    * THEN they should see the details
    */
-  it('should allow trial attorney to view case', async () => {
+  test('should allow trial attorney to view case', async () => {
     // GIVEN: A case
     const testCase = MockData.getCaseDetail({
       override: {
@@ -152,7 +152,7 @@ describe('Feature: View Case Details (Full Stack)', () => {
    * WHEN the user views the case
    * THEN the case information should be displayed correctly
    */
-  it('should display Chapter 11 case information', async () => {
+  test('should display Chapter 11 case information', async () => {
     // GIVEN: A Chapter 11 case
     const testCase = MockData.getCaseDetail({
       override: {
