@@ -97,8 +97,7 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
         <div className="table-flex-container">
           <div className="attorney-list-container">{buildAssignmentList(state.assignments)}</div>
           <div className="table-column-toolbar">
-            {Actions.contains(bCase, Actions.ManageAssignments) &&
-              buildActionButton(state.assignments)}
+            {Actions.contains(bCase, Actions.ManageAssignments) && buildActionButton()}
           </div>
         </div>
       </TableRowData>
