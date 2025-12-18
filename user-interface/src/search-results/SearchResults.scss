@@ -6,6 +6,9 @@
       align-content: center;
 
       .attorney-list-container {
+        .unassigned {
+          font-weight: bold;
+        }
         flex: 1;
         padding-right: 20px;
       }
