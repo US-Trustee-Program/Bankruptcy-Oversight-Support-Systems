@@ -20,4 +20,18 @@
       margin-bottom: 0.5rem;
     }
   }
+
+  .case-assignment-modal-toggle {
+    .cams-icon-label {
+      display: flex;
+      align-items: center;
+      flex-wrap: nowrap;
+      span {
+        font-size: 1.06rem;
+      }
+      svg {
+        top: 0;
+      }
+    }
+  }
 }

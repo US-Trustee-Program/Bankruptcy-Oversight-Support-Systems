@@ -4,6 +4,7 @@ import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { formatDate } from '@/lib/utils/datetime';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
+import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import Actions from '@common/cams/actions';
 import { SearchResultsRowProps } from '@/search-results/SearchResults';
 import {
@@ -56,23 +57,16 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
       ref: openAssignmentsModalButtonRef,
     };
 
-    if (assignments && assignments.length > 0) {
-      return (
+    return (
         <OpenModalButton
-          {...commonModalButtonProps}
-          uswdsStyle={UswdsButtonStyle.Outline}
+          uswdsStyle={UswdsButtonStyle.Unstyled}
+          aria-label="Edit Staff Assignments"
           title="Edit Staff Assignments"
+          {...commonModalButtonProps}
         >
-          Edit
+          <IconLabel icon="edit" label="Edit" />
         </OpenModalButton>
       );
-    } else {
-      return (
-        <OpenModalButton {...commonModalButtonProps} title="Add Staff Assignments">
-          Assign
-        </OpenModalButton>
-      );
-    }
   }
 
   function buildAssignmentList(assignments: Partial<CaseAssignment>[] | undefined) {
