@@ -44,7 +44,7 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
     });
   }
 
-  function buildActionButton(assignments: CaseAssignment[] | undefined) {
+  function buildActionButton() {
     const commonModalButtonProps = {
       className: 'case-assignment-modal-toggle',
       buttonIndex: `${idx}`,
@@ -58,15 +58,15 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
     };
 
     return (
-        <OpenModalButton
-          uswdsStyle={UswdsButtonStyle.Unstyled}
-          aria-label="Edit Staff Assignments"
-          title="Edit Staff Assignments"
-          {...commonModalButtonProps}
-        >
-          <IconLabel icon="edit" label="Edit" />
-        </OpenModalButton>
-      );
+      <OpenModalButton
+        uswdsStyle={UswdsButtonStyle.Unstyled}
+        aria-label="Edit Staff Assignments"
+        title="Edit Staff Assignments"
+        {...commonModalButtonProps}
+      >
+        <IconLabel icon="edit" label="Edit" />
+      </OpenModalButton>
+    );
   }
 
   function buildAssignmentList(assignments: Partial<CaseAssignment>[] | undefined) {
@@ -91,9 +91,7 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
       </TableRowData>
       <TableRowData>{bCase.caseTitle}</TableRowData>
       <TableRowData>{bCase.chapter}</TableRowData>
-      <TableRowData>
-        {formatDate(bCase.dateFiled)}
-      </TableRowData>
+      <TableRowData>{formatDate(bCase.dateFiled)}</TableRowData>
       <TableRowData data-testid={`attorney-list-${idx}`} className="attorney-list">
         <span className="mobile-title">Assigned Attorney:</span>
         <div className="table-flex-container">
