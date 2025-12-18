@@ -75,6 +75,8 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
   const navigate = useCamsNavigator();
 
+  // TODO: 12/17/25 This method returns partial but the return value is 'as TrusteeInput' in the submit handler. Let's fix that.
+  // maybe use 'satisfies' operator, but we'll need to adjust the mapPayload return type accordingly.
   const mapPayload = (formData: TrusteePublicFormData): Partial<TrusteeInput> => {
     return {
       name: formData.name,
@@ -128,6 +130,7 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
       const payload = mapPayload(currentFormData);
       try {
         if (isCreate) {
+          // TODO: 12/17/25 Let's get rid of the need to use 'as' here.
           const response = await Api2.postTrustee(payload as TrusteeInput);
           const createdId = (response as { data?: { trusteeId?: string } })?.data?.trusteeId;
           navigate.navigateTo(`/trustees/${createdId}`);

@@ -33,6 +33,7 @@ import {
   TrusteeInput,
   TrusteeOversightAssignment,
 } from '@common/cams/trustees';
+import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { Creatable } from '@common/cams/creatable';
 import { BankListItem, BankruptcySoftwareListItem } from '@common/cams/lists';
 import { OversightRole } from '@common/cams/roles';
@@ -2521,6 +2522,10 @@ async function getTrusteeAppointments(trusteeId: string) {
   };
 }
 
+async function postTrusteeAppointment(trusteeId: string, appointment: TrusteeAppointmentInput) {
+  return post(`/trustees/${trusteeId}/appointments`, appointment, {});
+}
+
 async function getBankruptcySoftwareList() {
   return {
     data: [
@@ -2636,6 +2641,7 @@ const MockApi2 = {
   getTrustee,
   getTrusteeHistory,
   getTrusteeAppointments,
+  postTrusteeAppointment,
   postTrustee,
   patchTrustee,
   deletePrivilegedIdentityUser,
