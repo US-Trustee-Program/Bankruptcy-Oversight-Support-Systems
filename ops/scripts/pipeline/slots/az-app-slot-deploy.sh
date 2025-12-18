@@ -50,10 +50,18 @@ if [ ! -f "${artifact_path}" ]; then
     exit 10
 fi
 
-function on_exit() {
-    # always try to remove temporary access
-    az webapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "${rule_name}" --scm-site true 1>/dev/null
+scm_default_action_changed=false
 
+function on_exit() {
+    # Restore SCM default action to Deny if it was changed
+    if [ "${scm_default_action_changed}" = true ]; then
+        echo "Restoring SCM default action to Deny..."
+        az webapp config access-restriction set \
+            -g "${app_rg}" \
+            -n "${app_name}" \
+            --slot "${slot_name}" \
+            --scm-default-action Deny 2>/dev/null || echo "Warning: Failed to restore SCM default action"
+    fi
 }
 trap on_exit EXIT
 
@@ -67,15 +75,44 @@ else
   echo "Found ${gitSha} in index.html."
 fi
 
-# allow build agent access to execute deployment
-agent_ip=$(curl -s --retry 3 --retry-delay 30 --retry-all-errors https://api.ipify.org)
-rule_name="agent-${app_name:0:26}"
-echo "Adding rule: ${rule_name} to webapp"
-az webapp config access-restriction add -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "${rule_name}" --action Allow --ip-address "${agent_ip}" --priority 232 --scm-site true 1>/dev/null
+# Temporary workaround: Set SCM default action to Allow for deployment
+# TODO: Replace with more granular access control mechanism
+echo "Setting SCM default action to Allow for deployment"
+az webapp config access-restriction set \
+    -g "${app_rg}" \
+    -n "${app_name}" \
+    --slot "${slot_name}" \
+    --scm-default-action Allow
 
-# Gives some extra time for prior management operation to complete before starting deployment
+scm_default_action_changed=true
+
+echo "Waiting for access restriction propagation..."
 sleep 10
-az webapp deploy --resource-group "${app_rg}" --src-path "${artifact_path}" --name "${app_name}" --slot "${slot_name}" --type zip --async true --track-status false --clean true --debug
+
+# Deploy with retry logic and exponential backoff
+max_attempts=4
+attempt=1
+backoff=2
+
+while [ $attempt -le $max_attempts ]; do
+    echo "Deployment attempt ${attempt}/${max_attempts}..."
+
+    if az webapp deploy --resource-group "${app_rg}" --src-path "${artifact_path}" --name "${app_name}" --slot "${slot_name}" --type zip --async true --track-status false --clean true; then
+        echo "Deployment succeeded on attempt ${attempt}"
+        break
+    else
+        exit_code=$?
+        if [ $attempt -lt $max_attempts ]; then
+            echo "Deployment failed with exit code ${exit_code}. Waiting ${backoff} seconds before retry..."
+            sleep $backoff
+            backoff=$((backoff * 2))
+            attempt=$((attempt + 1))
+        else
+            echo "Deployment failed after ${max_attempts} attempts"
+            exit $exit_code
+        fi
+    fi
+done
 
 # shellcheck disable=SC2086
 az webapp traffic-routing set --distribution ${slot_name}=0 --name "${app_name}" --resource-group "${app_rg}"

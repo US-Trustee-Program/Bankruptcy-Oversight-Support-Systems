@@ -13,6 +13,7 @@
 
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 enable_debug=false
+
 while [[ $# -gt 0 ]]; do
     case $1 in
     -h | --help)
@@ -39,18 +40,24 @@ while [[ $# -gt 0 ]]; do
         artifact_path="${2}"
         shift 2
         ;;
+
     *)
         exit 2 # error on unknown flag/switch
         ;;
     esac
 done
 
-# set ruleName in case of exit or other scenarios
-ruleName="agent-${app_name:0:26}" # rule name has a 32 character limit
+scm_default_action_changed=false
 
 function on_exit() {
-    # always try to remove temporary access
-    az functionapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --rule-name "${ruleName}" --scm-site true 1>/dev/null
+    # Restore SCM default action to Deny if it was changed
+    if [ "${scm_default_action_changed}" = true ]; then
+        echo "Restoring SCM default action to Deny..."
+        az functionapp config access-restriction set \
+            -g "${app_rg}" \
+            -n "${app_name}" \
+            --scm-default-action Deny 2>/dev/null || echo "Warning: Failed to restore SCM default action"
+    fi
 }
 trap on_exit EXIT
 
@@ -59,9 +66,18 @@ if [ ! -f "$artifact_path" ]; then
     exit 10
 fi
 
-# allow build agent access to execute deployment
-agentIp=$(curl -s --retry 3 --retry-delay 30 --retry-all-errors https://api.ipify.org)
-az functionapp config access-restriction add -g "${app_rg}" -n "${app_name}" --rule-name "${ruleName}" --action Allow --ip-address "${agentIp}" --priority 232 --scm-site true 1>/dev/null
+# Temporary workaround: Set SCM default action to Allow for deployment
+# TODO: Replace with more granular access control mechanism
+echo "Setting SCM default action to Allow for deployment"
+az functionapp config access-restriction set \
+    -g "${app_rg}" \
+    -n "${app_name}" \
+    --scm-default-action Allow
+
+scm_default_action_changed=true
+
+echo "Waiting for access restriction propagation..."
+sleep 10
 
 # Construct and execute deployment command
 cmd="az functionapp deployment source config-zip -g ${app_rg} -n ${app_name} --src ${artifact_path}"
