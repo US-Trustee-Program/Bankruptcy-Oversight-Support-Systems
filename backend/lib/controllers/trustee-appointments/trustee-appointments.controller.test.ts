@@ -36,7 +36,7 @@ describe('TrusteeAppointmentsController', () => {
     } as unknown as Mocked<TrusteeAppointmentsUseCase>;
 
     (
-      TrusteeAppointmentsUseCase as unknown as MockedClass<typeof TrusteeAppointmentsUseCase>
+      TrusteeAppointmentsUseCase as MockedClass<typeof TrusteeAppointmentsUseCase>
     ).mockImplementation(() => mockUseCase);
 
     controller = new TrusteeAppointmentsController(context);
