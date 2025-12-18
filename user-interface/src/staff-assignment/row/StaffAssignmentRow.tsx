@@ -84,7 +84,7 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
         </span>
       ));
     } else {
-      return <>(unassigned)</>;
+      return <span className="unassigned">(unassigned)</span>;
     }
   }
 
