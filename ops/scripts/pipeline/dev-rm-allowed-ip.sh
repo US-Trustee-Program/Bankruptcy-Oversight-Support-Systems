@@ -54,9 +54,7 @@ fi
 
 if [ "${is_ustp_deployment}" = true ]; then
     # USTP environment: Restore main site default actions to Deny
-    echo "=========================================="
     echo "USTP Deployment: Restoring main site default actions to Deny"
-    echo "=========================================="
 
     if [[ -n ${slot_name} && ${slot_name} != "initial" && ${slot_name} != "self" ]]; then
         echo "Restoring main site default actions for ${slot_name} deployment slot..."

@@ -75,10 +75,9 @@ else
   echo "Found ${gitSha} in index.html."
 fi
 
-# Temporarily set SCM default action to Allow for deployment
-echo "=========================================="
+# Temporary workaround: Set SCM default action to Allow for deployment
+# TODO: Replace with more granular access control mechanism
 echo "Setting SCM default action to Allow for deployment"
-echo "=========================================="
 az webapp config access-restriction set \
     -g "${app_rg}" \
     -n "${app_name}" \
@@ -87,16 +86,6 @@ az webapp config access-restriction set \
 
 scm_default_action_changed=true
 
-echo ""
-echo "Verifying SCM access restriction..."
-az webapp config access-restriction show \
-    -g "${app_rg}" \
-    -n "${app_name}" \
-    --slot "${slot_name}" \
-    --query "{ScmDefaultAction: scmIpSecurityRestrictionsDefaultAction}" \
-    -o table
-
-echo ""
 echo "Waiting for access restriction propagation..."
 sleep 10
 

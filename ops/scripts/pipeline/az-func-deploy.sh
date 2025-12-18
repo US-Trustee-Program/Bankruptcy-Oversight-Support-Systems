@@ -66,10 +66,9 @@ if [ ! -f "$artifact_path" ]; then
     exit 10
 fi
 
-# Temporarily set SCM default action to Allow for deployment
-echo "=========================================="
+# Temporary workaround: Set SCM default action to Allow for deployment
+# TODO: Replace with more granular access control mechanism
 echo "Setting SCM default action to Allow for deployment"
-echo "=========================================="
 az functionapp config access-restriction set \
     -g "${app_rg}" \
     -n "${app_name}" \
@@ -77,15 +76,6 @@ az functionapp config access-restriction set \
 
 scm_default_action_changed=true
 
-echo ""
-echo "Verifying SCM access restriction..."
-az functionapp config access-restriction show \
-    -g "${app_rg}" \
-    -n "${app_name}" \
-    --query "{ScmDefaultAction: scmIpSecurityRestrictionsDefaultAction}" \
-    -o table
-
-echo ""
 echo "Waiting for access restriction propagation..."
 sleep 10
 

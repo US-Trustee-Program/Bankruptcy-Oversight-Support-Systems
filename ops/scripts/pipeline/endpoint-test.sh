@@ -110,11 +110,10 @@ if [[ ${isLocalRun} == "true" ]]; then
   targetWebAppURL="http://localhost:3000"
 fi
 
-# Temporarily set main site default actions to Allow for healthcheck access
+# Temporary workaround: Set main site default actions to Allow for healthcheck access
+# TODO: Replace with more granular access control mechanism
 if [ "${isLocalRun}" != "true" ] && [ -n "${resource_group}" ]; then
-  echo "=========================================="
   echo "Setting main site default actions to Allow for healthcheck"
-  echo "=========================================="
 
   if [ -n "${webapp_name}" ]; then
     if [ -n "${slot_name}" ] && [ "${slot_name}" != "initial" ] && [ "${slot_name}" != "self" ]; then

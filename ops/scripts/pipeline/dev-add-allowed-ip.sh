@@ -57,10 +57,9 @@ if [[ -z "${app_rg}" || -z "${stack_name}" ]]; then
 fi
 
 if [ "${is_ustp_deployment}" = true ]; then
-    # USTP environment: Set main site default actions to Allow instead of adding IP rules
-    echo "=========================================="
+    # Temporary workaround: Set main site default actions to Allow instead of adding IP rules
+    # TODO: Replace with more granular access control mechanism
     echo "USTP Deployment: Setting main site default actions to Allow"
-    echo "=========================================="
 
     if [[ -n ${slot_name} && ${slot_name} != "initial" && ${slot_name} != "self" ]]; then
         echo "Setting main site default actions for ${slot_name} deployment slot..."
