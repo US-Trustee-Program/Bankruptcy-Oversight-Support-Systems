@@ -281,4 +281,109 @@ describe('UserGroupsMongoRepository', () => {
       );
     });
   });
+
+  describe('getUserGroupsByNames', () => {
+    test('should query user-groups collection with CONTAINS operator', async () => {
+      const groupNames = ['USTP CAMS Trial Attorney', 'USTP CAMS Auditor'];
+      const mockGroups: UserGroupDocument[] = [
+        {
+          id: randomUUID(),
+          groupName: 'USTP CAMS Trial Attorney',
+          users: [MockData.getCamsUserReference()],
+          documentType: 'USER_GROUP',
+        },
+        {
+          id: randomUUID(),
+          groupName: 'USTP CAMS Auditor',
+          users: [MockData.getCamsUserReference()],
+          documentType: 'USER_GROUP',
+        },
+      ];
+
+      const findSpy = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue(mockGroups);
+
+      const result = await repo.getUserGroupsByNames(context, groupNames);
+
+      expect(findSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          condition: 'CONTAINS',
+          leftOperand: { name: 'groupName' },
+          rightOperand: groupNames,
+        }),
+      );
+      expect(result).toHaveLength(2);
+      expect(result[0]).not.toHaveProperty('documentType');
+      expect(result[0]).toEqual({
+        id: expect.any(String),
+        groupName: 'USTP CAMS Trial Attorney',
+        users: expect.any(Array),
+      });
+    });
+
+    test('should return empty array when no groups match', async () => {
+      jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      const result = await repo.getUserGroupsByNames(context, ['NonExistent']);
+
+      expect(result).toEqual([]);
+    });
+
+    test('should log retrieved group count', async () => {
+      const mockGroups: UserGroupDocument[] = [
+        {
+          id: randomUUID(),
+          groupName: 'Test Group',
+          users: [],
+          documentType: 'USER_GROUP',
+        },
+      ];
+      jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(mockGroups);
+      const loggerSpy = jest.spyOn(context.logger, 'info');
+
+      await repo.getUserGroupsByNames(context, ['Test Group']);
+
+      expect(loggerSpy).toHaveBeenCalledWith(
+        'USER-GROUPS-MONGO-REPOSITORY',
+        'Retrieved 1 user groups for 1 group names',
+      );
+    });
+
+    test('should throw CamsError with context on failure', async () => {
+      const mockError = new Error('Database error');
+      jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(mockError);
+
+      await expect(repo.getUserGroupsByNames(context, ['Test'])).rejects.toThrow(CamsError);
+      await expect(repo.getUserGroupsByNames(context, ['Test'])).rejects.toMatchObject({
+        message: 'Failed to retrieve user groups by names.',
+        module: 'USER-GROUPS-MONGO-REPOSITORY',
+      });
+    });
+
+    test('should strip documentType from all returned groups', async () => {
+      const mockGroups: UserGroupDocument[] = [
+        {
+          id: randomUUID(),
+          groupName: 'Group 1',
+          users: [],
+          documentType: 'USER_GROUP',
+        },
+        {
+          id: randomUUID(),
+          groupName: 'Group 2',
+          users: [],
+          documentType: 'USER_GROUP',
+        },
+      ];
+      jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(mockGroups);
+
+      const result = await repo.getUserGroupsByNames(context, ['Group 1', 'Group 2']);
+
+      expect(result).toHaveLength(2);
+      result.forEach((group) => {
+        expect(group).not.toHaveProperty('documentType');
+      });
+    });
+  });
 });

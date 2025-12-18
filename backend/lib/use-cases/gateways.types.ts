@@ -317,4 +317,5 @@ export interface StaffRepository {
 
 export interface UserGroupsRepository extends Releasable {
   upsertUserGroupsBatch(context: ApplicationContext, userGroups: UserGroup[]): Promise<void>;
+  getUserGroupsByNames(context: ApplicationContext, groupNames: string[]): Promise<UserGroup[]>;
 }

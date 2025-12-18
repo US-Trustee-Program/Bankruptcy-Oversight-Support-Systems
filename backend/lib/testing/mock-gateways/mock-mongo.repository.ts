@@ -279,4 +279,8 @@ export class MockMongoRepository
   upsertUserGroupsBatch(_ignore: any): Promise<void> {
     throw new Error('Method not implemented.');
   }
+
+  getUserGroupsByNames(_context: ApplicationContext, _groupNames: string[]): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
 }
