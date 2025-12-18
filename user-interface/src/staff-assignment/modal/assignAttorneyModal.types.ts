@@ -54,7 +54,7 @@ export interface AssignAttorneyModalViewModel {
 export interface AssignAttorneyModalUseCase {
   attorneyIsInCheckList(val: AttorneyUser): boolean;
   cancelModal(): void;
-  fetchAttorneys(officeCode?: string): void;
+  fetchAttorneys(officeCode: string): void;
   handleFocus(event: React.FocusEvent<HTMLElement>): void;
   handleTab(ev: React.KeyboardEvent, isVisible: boolean, modalId: string): void;
   hide(): void;
