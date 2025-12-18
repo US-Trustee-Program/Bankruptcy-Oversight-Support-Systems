@@ -1,4 +1,4 @@
-name: Azure Deployment - CosmosDB
+name: Azure Deployment - Supporting Infrastructure
 
 on:
   workflow_call:
@@ -20,6 +20,26 @@ on:
         type: string
 
 jobs:
+  deploy-log-analytics-workspace:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.ghaEnvironment }}
+    steps:
+      - uses: actions/checkout@main
+
+      - uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+
+      - name: Deploy Log Analytics Workspace
+        id: azure-analytics-deploy
+        run: |
+          az deployment group create \
+            -g ${{ secrets.AZ_ANALYTICS_RG }} \
+            -f ./ops/cloud-deployment/lib/analytics/log-analytics-workspace.bicep \
+            -p workspaceName=${{ secrets.AZ_ANALYTICS_WORKSPACE_NAME }} \
+               location=${{ secrets.AZ_LOCATION }}
+
   deploy-db:
     runs-on: ubuntu-latest
     environment: ${{ inputs.ghaEnvironment }}
@@ -68,6 +88,7 @@ jobs:
       - name: Deploy Dev Users Database
         id: azure-dev-users-deploy
         run: |
-          az deployment group create -g ${{ secrets.AZURE_RG }} \
+          az deployment group create \
+            -g ${{ secrets.AZURE_RG }} \
             -f ./ops/cloud-deployment/lib/cosmos/mongo/cosmos-dev-users-database.bicep \
             -p accountName=${{ secrets.AZ_COSMOS_MONGO_ACCOUNT_NAME }}
