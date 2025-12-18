@@ -2,80 +2,46 @@
 
 ## Context
 
-As the CAMS application grew in complexity, we needed a testing strategy that could:
-
-1. Test the complete request-response cycle from React UI through the API layer to the backend use cases and gateways
-1. Verify behavior rather than implementation using Behavior-Driven Development (BDD) scenarios
-1. Test production code paths without relying on Mock* implementations
-1. Run in-memory without requiring external services (databases, OAuth providers)
-1. Execute quickly enough for CI/CD pipelines
-1. **Provide comprehensive coverage across the monorepo's workspaces** (common, backend, user-interface) **in a single process**
-
-Traditional testing approaches had limitations:
-- **Unit tests**: Too granular, miss integration issues, don't test cross-module interactions
-- **E2E tests**: Too slow, require full infrastructure (Azure Functions runtime, databases, OAuth), brittle
-- **API-only integration tests**: Don't test the React layer
-- **Component tests with mock providers**: Don't test real HTTP or backend logic
-
-### Monorepo Testing Challenge
-
-CAMS is structured as an npm workspace monorepo with multiple interdependent packages:
+CAMS is an npm workspace monorepo where code flows across multiple interdependent packages during every request:
 - **common**: Shared types, business logic, and utilities
 - **backend**: Use cases, gateways, repositories, and controllers
 - **user-interface**: React application
-- **test/bdd**: Full-stack behavior tests
-- **test/e2e**: End-to-end tests against deployed environments
 
-Code flows across these workspace boundaries during every request. Traditional unit tests can't verify these cross-module interactions without mocking, and running multiple processes (e.g., Azure Functions runtime + separate UI server) adds complexity and slows feedback loops.
+Traditional testing approaches had critical gaps:
+- **Unit tests**: Too granular, miss cross-module integration issues
+- **E2E tests**: Too slow (require Azure Functions runtime, databases, OAuth), brittle, expensive feedback loop
+- **API-only integration tests**: Don't test the React layer
+- **Component tests with mock providers**: Don't test real HTTP or backend logic
 
 We needed a middle ground that exercises the full stack while remaining fast and reliable, with the explicit goal of **achieving maximum test coverage of the most important source code with as few tests as possible**.
+
+### Testing Strategy
+
+CAMS uses a layered testing approach where each layer has a distinct purpose:
+
+| Test Layer | Purpose | What It Tests | Speed | Infrastructure |
+|------------|---------|---------------|-------|----------------|
+| **BDD Tests** (this ADR) | Primary feature validation | Full-stack integration across workspaces, production code paths, business logic | Fast (10-30s) | None (in-memory) |
+| **Unit Tests** | Edge case coverage | Specific functions, complex algorithms, boundary conditions difficult to trigger via UI | Very fast (<1s) | None |
+| **E2E Tests** | Production architecture validation | Azure Functions runtime, real databases, external services, deployed infrastructure | Slow (minutes) | Full Azure environment |
+
+**Best Practice**: Start with BDD tests for new features. Add unit tests only for edge cases that can't be efficiently covered through behavior testing. Defer infrastructure and runtime concerns to E2E tests.
 
 ## Decision
 
 We implemented a **full-stack BDD testing architecture** that runs the complete application (React UI + Express API + Backend logic) in a single Node.js process with strategic mocking at the system boundaries.
 
-### Testing Strategy Philosophy
+### Approach
 
-**Goal**: Achieve maximum test coverage of critical business logic and integration points with minimal test count.
+**Single-Process Monorepo Testing**: Each BDD test exercises multiple layers simultaneously (UI → API → use cases → gateways) across all workspace modules (common, backend, user-interface), catching cross-module integration bugs that unit tests would miss.
 
-**Scope**:
-- BDD tests cover the "happy path" and common error scenarios for key user workflows
-- Tests exercise real production code paths across all workspace modules (common → backend → user-interface)
-- Each test covers multiple layers simultaneously (UI, API, use cases, gateways)
-- Strategic mocking only at system boundaries (database drivers, external services)
+**Express Instead of Azure Functions**: While production uses Azure Functions, BDD tests use Express (`backend/express/server.ts`) because:
+- Azure Functions runtime runs in a separate process, breaking single-process architecture
+- Both Express and Azure Functions delegate to identical controllers, use cases, and gateways
+- Express starts instantly in-process and enables standard debugging tools
+- This tests all shared business logic while deferring runtime-specific concerns to E2E tests
 
-**Relationship to Other Test Types**:
-- **BDD tests (this architecture)**: Comprehensive behavior-driven tests covering full-stack integration. Primary test suite for feature validation.
-- **Conventional unit tests**: Complement BDD tests for obscure edge cases, complex algorithms, or boundary conditions that are difficult to trigger through the UI. Unit tests remain valuable for testing specific functions in isolation when behavior testing alone would be impractical.
-- **E2E tests**: Validate the complete production architecture including Azure Functions runtime, deployed infrastructure, and external service integrations. E2E tests are slower and run against deployed environments, while BDD tests provide faster feedback during development.
-
-**Key Principle**: Prioritize BDD tests that exercise real code across module boundaries. Add targeted unit tests only when edge cases can't be efficiently covered through behavior tests.
-
-### Express vs Azure Functions in Tests
-
-**Production Architecture**: CAMS runs on Azure Functions in deployed environments (development, staging, production).
-
-**Test Architecture**: BDD tests use the Express server (`backend/express/server.ts`) instead of running Azure Functions locally.
-
-**Rationale**:
-- **Single-process requirement**: Azure Functions runtime runs in a separate process, breaking the single-process architecture needed for comprehensive monorepo testing
-- **Shared business logic**: Both Express and Azure Functions delegate to the same controllers, use cases, and gateways in the backend workspace
-- **Identical behavior**: Express routes mirror Azure Function endpoints exactly, testing the same production code paths
-- **Faster execution**: Express starts instantly in-process; Azure Functions runtime has longer startup time
-- **Simpler debugging**: Single-process execution enables standard debugging tools (breakpoints, stack traces)
-
-**What Gets Tested**: BDD tests verify:
-- ✅ Controllers, use cases, gateways, repositories (shared with Azure Functions)
-- ✅ Request/response serialization and HTTP status codes
-- ✅ Authentication and authorization logic
-- ✅ Cross-module data flow (common ↔ backend ↔ user-interface)
-
-**What Gets Deferred to E2E Tests**:
-- ❌ Azure Functions runtime-specific behavior (cold starts, function bindings)
-- ❌ Azure infrastructure (App Service, Key Vault, Application Insights)
-- ❌ Real database connections and query execution
-- ❌ External service integrations (Okta OAuth, DXTR system)
-- ❌ Production networking, TLS, and connection pooling
+**Strategic Mocking**: Mock only at system boundaries (database drivers, external services) to test production code paths through all layers.
 
 ### Architecture Overview
 
@@ -283,68 +249,33 @@ For details on test file organization, writing tests, and using the Fluent API, 
 
 ### Benefits
 
-1. **Single-Process Monorepo Testing**: Tests code across all workspace packages (common, backend, user-interface) in a single execution, catching cross-module integration issues that unit tests miss.
+1. **Maximum Coverage, Minimum Tests**: Each test exercises multiple layers simultaneously across all workspaces, achieving comprehensive coverage with fewer tests than traditional approaches.
 
-1. **Maximum Coverage, Minimum Tests**: Each BDD test exercises multiple layers simultaneously (UI → API → use cases → gateways), achieving comprehensive coverage with fewer tests than traditional approaches.
+1. **Fast Feedback**: Runs in-memory in 10-30 seconds without infrastructure dependencies, enabling rapid CI/CD pipelines.
 
-1. **Fast Execution**: Runs in-memory without external services or Azure Functions runtime, providing quick feedback for CI/CD pipelines (typically 10-30 seconds for full suite).
+1. **Production Code Paths**: Tests actual gateway implementations, not Mock* classes, increasing confidence in production behavior.
 
-1. **Production Code Paths**: Tests actual gateway implementations, not Mock* classes, increasing confidence in production behavior while avoiding Azure Functions runtime overhead.
+1. **Debuggable**: Single-process execution enables standard debugging tools (breakpoints, console logs, stack traces).
 
 1. **BDD Scenarios**: Natural language test descriptions make requirements traceable and tests readable by non-technical stakeholders.
 
-1. **Debuggable**: Single-process execution allows standard debugging tools (breakpoints, console logs, stack traces).
+### Trade-offs and Limitations
 
-1. **CI/CD Friendly**: No infrastructure dependencies, deterministic results, fast feedback.
+**Intentional Scope Limitations** (deferred to E2E tests):
+- Azure Functions runtime behavior (cold starts, bindings, triggers)
+- Real database connections and query syntax validation
+- Production networking (HTTP/TLS, connection pooling, timeouts)
+- Complete OAuth flows (token expiration, refresh, MFA)
+- External service contracts (DXTR, Okta API drift)
+- Performance characteristics (query performance, N+1 problems)
+- Complex edge cases difficult to trigger via UI (complement with unit tests)
 
-1. **Complements Other Test Types**:
-   - Conventional unit tests cover edge cases difficult to trigger via UI
-   - E2E tests validate Azure Functions runtime and deployed infrastructure
-   - BDD tests provide the primary feature validation layer
-
-### Trade-offs
-
-1. **Express vs Azure Functions**: Tests use Express server, not Azure Functions runtime. Azure Functions-specific behavior (cold starts, function bindings, triggers) is not tested. This is **intentional** - E2E tests validate the Azure Functions runtime in deployed environments.
-
-1. **Mock Maintenance**: Database driver mocks must stay compatible with driver interfaces. Breaking changes in MongoDB or MSSQL client libraries require mock updates.
-
-1. **Test Data Management**: Spies must return properly structured data matching production schemas. Incomplete test data causes runtime errors.
-
-1. **Authentication Complexity**: Mocking Okta SDKs requires understanding internal behavior. SDK updates may break mocks.
-
-1. **Module Hoisting**: Vitest hoists `vi.mock()` calls, preventing use of top-level imports in mocks. Requires async imports or inline values.
-
-1. **Boundary Definition**: Choosing where to mock (driver level vs gateway level) affects what gets tested. Too high = less coverage, too low = slower tests.
-
-### Limitations
-
-These limitations are **by design** - they represent concerns that are better tested through other means:
-
-1. **Azure Functions Runtime**: Doesn't test Azure Functions-specific behavior (cold starts, bindings, triggers). **Mitigation**: E2E tests validate Azure Functions in deployed environments.
-
-1. **Database Query Validation**: Mocked drivers don't validate query syntax or structure. Typos in MongoDB aggregations or SQL queries aren't caught. **Mitigation**: Schema validation through TypeScript types, supplemented by E2E tests with real databases.
-
-1. **Network Behavior**: Doesn't test actual HTTP/TLS behavior, connection pooling, timeouts, or retry logic. **Mitigation**: E2E tests exercise production networking.
-
-1. **Authentication Edge Cases**: Simplified OAuth flow doesn't test token expiration, refresh flows, or multi-factor authentication. **Mitigation**: E2E tests validate complete OAuth flow with real Okta.
-
-1. **Performance**: Can't measure real database query performance or identify N+1 query problems. **Mitigation**: Performance testing in staging environments, database query logging.
-
-1. **External Service Contracts**: Mocked external services (DXTR, Okta) may drift from actual API contracts. **Mitigation**: Contract tests and E2E tests validate external integrations.
-
-1. **Edge Case Coverage**: Some obscure edge cases or complex algorithms are difficult to trigger through UI-based behavior tests. **Mitigation**: Complement with conventional unit tests for specific functions when needed.
-
-### Testing Strategy Summary
-
-CAMS uses a layered testing approach where each layer complements the others:
-
-| Test Layer | Purpose | What It Tests | Speed | Infrastructure |
-|------------|---------|---------------|-------|----------------|
-| **BDD Tests** (this ADR) | Primary feature validation | Full-stack integration across workspaces, production code paths, business logic | Fast (10-30s) | None (in-memory) |
-| **Unit Tests** | Edge case coverage | Specific functions, complex algorithms, boundary conditions | Very fast (<1s) | None |
-| **E2E Tests** | Production architecture validation | Azure Functions runtime, real databases, external services, deployed infrastructure | Slow (minutes) | Full Azure environment |
-
-**Best Practice**: Start with BDD tests for new features. Add unit tests only for edge cases that can't be efficiently covered through behavior testing. Defer infrastructure and runtime concerns to E2E tests.
+**Maintenance Costs**:
+- Database driver mocks must stay compatible with MongoDB/MSSQL client library updates
+- Test data must match production schemas (incomplete data causes runtime errors)
+- Okta SDK mocks require understanding of internal behavior
+- Vitest hoisting requires careful mock organization (no top-level imports in mocks)
+- Mock boundary decisions affect coverage vs speed tradeoffs
 
 ## Related Documentation
 
