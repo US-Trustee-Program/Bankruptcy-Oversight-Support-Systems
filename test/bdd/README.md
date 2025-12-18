@@ -7,9 +7,9 @@ This directory contains Behavior-Driven Development (BDD) style tests that provi
 These tests verify that the entire CAMS application works correctly end-to-end by:
 
 1. **Testing User Behavior** - Tests are written from the user's perspective, focusing on what they see and do
-2. **Full-Stack Coverage** - Each test exercises the complete stack: React → API → Controllers → Use Cases
-3. **Catching Integration Issues** - Validates that all layers work together correctly
-4. **Living Documentation** - Tests serve as executable specifications of features
+1. **Full-Stack Coverage** - Each test exercises the complete stack: React → API → Controllers → Use Cases
+1. **Catching Integration Issues** - Validates that all layers work together correctly
+1. **Living Documentation** - Tests serve as executable specifications of features
 
 ## How It Works
 
@@ -150,13 +150,13 @@ The diagnostic test suite validates the test infrastructure itself:
 **Why diagnostic tests don't use the Fluent API:**
 
 1. **Independence** - If the Fluent API is broken, diagnostics should still work to help troubleshoot
-2. **Low-level inspection** - Need direct access to:
+1. **Low-level inspection** - Need direct access to:
    - `getAuthIssuer()` and `getLoginConfiguration()` functions
    - `LocalStorage.getSession()` to verify session persistence
    - Direct `fetch()` calls to test `/me` endpoint
    - Environment variables (`process.env.*`)
-3. **Diagnostic purpose** - Extensive logging and detailed output for troubleshooting
-4. **Appropriate abstraction level** - Using the Fluent API would hide the details needed for diagnosis
+1. **Diagnostic purpose** - Extensive logging and detailed output for troubleshooting
+1. **Appropriate abstraction level** - Using the Fluent API would hide the details needed for diagnosis
 
 **When to run diagnostic tests:**
 - Troubleshooting test environment setup issues
@@ -498,7 +498,7 @@ Great question! This is a common source of confusion with code coverage. Let me 
    - **All top-level code executes immediately at import time**
    - Constants, function declarations, class definitions all run during import
 
-2. **Files With No Branches**
+1. **Files With No Branches**
    - If a file has no conditional logic (no if/else, no ternary, no &&/||), it has **zero branches**
    - Zero branches = 100% branch coverage by definition
 
@@ -515,7 +515,7 @@ Great question! This is a common source of confusion with code coverage. Let me 
 
    When imported: **100% branch coverage** (vacuously true - all 0 branches covered)
 
-3. **Transitive Imports**
+1. **Transitive Imports**
    - Your BDD tests import `App.tsx`
    - App imports components
    - Components import utilities
@@ -557,9 +557,9 @@ export function MyComponent() {
 Better Coverage Metrics to Focus On:
 
 1. **Look at files with LOW coverage** - those need attention
-2. **Check "Uncovered Lines"** column - more meaningful than percentages
-3. **Open the HTML report** to see which specific lines weren't executed
-4. **Compare Function Coverage vs Branch Coverage**:
+1. **Check "Uncovered Lines"** column - more meaningful than percentages
+1. **Open the HTML report** to see which specific lines weren't executed
+1. **Compare Function Coverage vs Branch Coverage**:
    - High branch coverage + low function coverage = imported but not called
    - This is what you're probably seeing
 
@@ -603,9 +603,9 @@ Your BDD tests provide **execution coverage** (code ran) but may not provide **b
 
 Focus on:
 1. Files with **uncovered lines** (red in HTML report)
-2. Low **function coverage** (functions never called)
-3. Complex business logic that needs dedicated tests
-4. Error handling paths (catch blocks, error callbacks)
+1. Low **function coverage** (functions never called)
+1. Complex business logic that needs dedicated tests
+1. Error handling paths (catch blocks, error callbacks)
 
 ## Troubleshooting
 
@@ -637,10 +637,10 @@ Ensure all spy methods return the correct type:
 
 For more details or examples:
 1. **FLUENT_API.md** - Complete reference for all fluent API methods and TestState API
-2. Check existing tests in `features/case-management/`:
+1. Check existing tests in `features/case-management/`:
    - **case-detail.spec.tsx** - Read-only tests (display scenarios)
    - **case-notes.spec.tsx** - Stateful tests (interactive workflows with writes)
    - **search-cases.spec.tsx** - Read-only tests (search and filter)
    - **my-cases.spec.tsx** - Read-only tests (list views)
-3. Review `AI_TESTING_GUIDELINES.md` for detailed patterns
-4. Examine the fluent API implementation in `helpers/fluent-test-setup.ts` and `helpers/test-state.ts`
+1. Review `AI_TESTING_GUIDELINES.md` for detailed patterns
+1. Examine the fluent API implementation in `helpers/fluent-test-setup.ts` and `helpers/test-state.ts`
