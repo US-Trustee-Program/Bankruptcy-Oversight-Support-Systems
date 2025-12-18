@@ -1,6 +1,6 @@
 import { beforeAll } from 'vitest';
 import '@testing-library/jest-dom';
-import { MOCK_ISSUER } from '../../../backend/lib/testing/mock-gateways/mock-oauth2-constants';
+import { MOCK_ISSUER } from '@backend/lib/testing/mock-gateways/mock-oauth2-constants.ts';
 
 // Setup window configuration for React app AT MODULE LOAD TIME
 // This must happen BEFORE any UI modules are imported
@@ -43,12 +43,17 @@ beforeAll(() => {
 // Cleanup is automatically handled by vitest
 
 // Global test utilities
-global.console = {
-  ...console,
-  // Suppress console output during tests (optional)
-  // log: vi.fn(),
-  // debug: vi.fn(),
-  // info: vi.fn(),
-  // warn: vi.fn(),
-  // error: vi.fn(),
-};
+// Conditionally suppress console output during tests based on environment variable
+const shouldEnableConsoleLogging = process.env.ENABLE_CONSOLE_LOGGING === 'true';
+
+if (!shouldEnableConsoleLogging) {
+  global.console = {
+    ...console,
+    // Suppress console output during tests (default behavior)
+    log: vi.fn(),
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  };
+}

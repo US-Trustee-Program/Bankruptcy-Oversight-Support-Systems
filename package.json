@@ -36,6 +36,7 @@
     "test": "npm run test --workspaces --if-present",
     "test:backend": "npm run test --workspace=backend",
     "test:bdd": "npm run test --workspace=test/bdd",
+    "test:bdd:show-logs": "npm run test:show-logs --workspace=test/bdd",
     "test:bdd:watch": "npm run test:watch --workspace=test/bdd",
     "test:common": "npm run test --workspace=common",
     "test:user-interface": "npm run test --workspace=user-interface",
