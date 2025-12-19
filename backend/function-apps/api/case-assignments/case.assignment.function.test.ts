@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import handler from './case.assignment.function';
 import { CaseAssignmentController } from '../../../lib/controllers/case-assignment/case.assignment.controller';
 import ContextCreator from '../../azure/application-context-creator';
@@ -28,9 +29,9 @@ describe('Case Assignment Function Tests', () => {
   let context;
 
   beforeEach(() => {
-    jest
-      .spyOn(ContextCreator, 'getApplicationContextSession')
-      .mockResolvedValue(MockData.getManhattanAssignmentManagerSession());
+    vi.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
+      MockData.getManhattanAssignmentManagerSession(),
+    );
     context = new InvocationContext({
       logHandler: () => {},
       invocationId: 'id',
@@ -38,16 +39,16 @@ describe('Case Assignment Function Tests', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('Return the function response with the assignment Id created for the new case assignment', async () => {
     const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess(undefined, {
       statusCode: HttpStatusCodes.CREATED,
     });
-    jest
-      .spyOn(CaseAssignmentController.prototype, 'handleRequest')
-      .mockResolvedValue(camsHttpResponse);
+    vi.spyOn(CaseAssignmentController.prototype, 'handleRequest').mockResolvedValue(
+      camsHttpResponse,
+    );
 
     const request = createMockAzureFunctionRequest(defaultRequestProps);
     const response = await handler(request, context);
@@ -86,7 +87,7 @@ describe('Case Assignment Function Tests', () => {
         ...requestOverride,
       });
       const { azureHttpResponse } = buildTestResponseError(error);
-      jest.spyOn(CaseAssignmentController.prototype, 'handleRequest').mockRejectedValue(error);
+      vi.spyOn(CaseAssignmentController.prototype, 'handleRequest').mockRejectedValue(error);
 
       const response = await handler(request, context);
       expect(response).toEqual(azureHttpResponse);
@@ -96,7 +97,7 @@ describe('Case Assignment Function Tests', () => {
   test('Should return an HTTP Error if the controller throws an error during assignment creation', async () => {
     const error = new UnknownError('MOCK_CASE_ASSIGNMENT_MODULE');
     const { azureHttpResponse } = buildTestResponseError(error);
-    jest.spyOn(CaseAssignmentController.prototype, 'handleRequest').mockRejectedValue(error);
+    vi.spyOn(CaseAssignmentController.prototype, 'handleRequest').mockRejectedValue(error);
 
     const requestOverride = {
       body: {
@@ -135,7 +136,7 @@ describe('Case Assignment Function Tests', () => {
     const appContext = await createMockApplicationContext();
     const assignmentController: CaseAssignmentController = new CaseAssignmentController(appContext);
 
-    const getAssignmentRequestSpy = jest
+    const getAssignmentRequestSpy = vi
       .spyOn(Object.getPrototypeOf(assignmentController), 'handleRequest')
       .mockReturnValue(assignments);
     await handler(request, context);

@@ -1,4 +1,4 @@
-import eslintJsConfig from '../common/eslint-js.config.mjs';
+import { eslintJsConfig } from '../eslint-shared.config.mjs';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 

@@ -1,10 +1,9 @@
 {
   "minPackageAgeDays": 7,
-  "projects": ["root", "backend", "common", "dev-tools", "test/e2e", "user-interface"],
+  "projects": ["root", "backend", "common", "dev-tools", "test/bdd", "test/e2e", "user-interface"],
   "constraints": {
     "pinned": [],
     "majorVersionLock": {
-      "pa11y-ci": "3",
       "@faker-js/faker": "9"
     },
     "majorVersionDelay": {

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import DateHelper from './date-helper';
 
 const {
@@ -72,7 +73,7 @@ describe('date helper tests', () => {
     // Mock Date.now() to return a fixed timestamp
     const mockTimestamp = 1609459200000; // 2021-01-01T00:00:00.000Z in milliseconds
     const originalDateNow = Date.now;
-    Date.now = jest.fn(() => mockTimestamp);
+    Date.now = vi.fn(() => mockTimestamp);
 
     try {
       // Expected result is the timestamp in seconds (milliseconds / 1000, floored)

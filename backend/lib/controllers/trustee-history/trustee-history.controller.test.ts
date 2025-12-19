@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { TrusteeHistoryController } from './trustee-history.controller';
 import { TrusteesUseCase } from '../../use-cases/trustees/trustees';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
@@ -17,16 +18,16 @@ describe('Test trustee-history controller', () => {
   });
 
   test('should return trustee history when handleRequest is called', async () => {
-    jest.spyOn(TrusteesUseCase.prototype, 'listTrusteeHistory').mockResolvedValue(TRUSTEE_HISTORY);
+    vi.spyOn(TrusteesUseCase.prototype, 'listTrusteeHistory').mockResolvedValue(TRUSTEE_HISTORY);
     const controller = new TrusteeHistoryController(applicationContext);
     const result = await controller.handleRequest(applicationContext);
     expect(result.body['data']).toEqual(TRUSTEE_HISTORY);
   });
 
   test('should throw a NotFoundError when history is not found', async () => {
-    jest
-      .spyOn(TrusteesUseCase.prototype, 'listTrusteeHistory')
-      .mockRejectedValue(new NotFoundError('TEST'));
+    vi.spyOn(TrusteesUseCase.prototype, 'listTrusteeHistory').mockRejectedValue(
+      new NotFoundError('TEST'),
+    );
     const controller = new TrusteeHistoryController(applicationContext);
     await expect(controller.handleRequest(applicationContext)).rejects.toThrow('Not found');
   });
@@ -34,7 +35,7 @@ describe('Test trustee-history controller', () => {
   test('should wrap unexpected errors with CamsError', async () => {
     const expectedMessage = 'Unknown Error';
     const controller = new TrusteeHistoryController(applicationContext);
-    jest.spyOn(TrusteesUseCase.prototype, 'listTrusteeHistory').mockImplementation(async () => {
+    vi.spyOn(TrusteesUseCase.prototype, 'listTrusteeHistory').mockImplementation(async () => {
       throw Error(expectedMessage);
     });
     await expect(controller.handleRequest(applicationContext)).rejects.toThrow(expectedMessage);

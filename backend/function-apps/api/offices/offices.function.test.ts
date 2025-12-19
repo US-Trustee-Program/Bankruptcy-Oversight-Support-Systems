@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { CamsError } from '../../../lib/common-errors/cams-error';
 import ContextCreator from '../../azure/application-context-creator';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
@@ -21,12 +22,12 @@ describe('offices Function tests', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
-  jest
-    .spyOn(ContextCreator, 'getApplicationContextSession')
-    .mockResolvedValue(MockData.getManhattanAssignmentManagerSession());
+  vi.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
+    MockData.getManhattanAssignmentManagerSession(),
+  );
 
   test('should set successful response', async () => {
     const bodySuccess: UstpOfficeDetails[] = MOCKED_USTP_OFFICES_ARRAY;
@@ -35,7 +36,7 @@ describe('offices Function tests', () => {
       data: bodySuccess,
     });
 
-    jest.spyOn(OfficesController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
+    vi.spyOn(OfficesController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
 
     const response = await handler(request, context);
 
@@ -48,7 +49,7 @@ describe('offices Function tests', () => {
     });
 
     const { azureHttpResponse, loggerCamsErrorSpy } = buildTestResponseError(error);
-    jest.spyOn(OfficesController.prototype, 'handleRequest').mockRejectedValue(error);
+    vi.spyOn(OfficesController.prototype, 'handleRequest').mockRejectedValue(error);
 
     const response = await handler(request, context);
 

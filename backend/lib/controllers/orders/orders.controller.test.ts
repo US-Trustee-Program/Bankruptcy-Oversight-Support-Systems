@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { OrdersUseCase, SyncOrdersStatus } from '../../use-cases/orders/orders';
@@ -62,11 +63,11 @@ describe('orders controller tests', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should return successful when handleTimer is called', async () => {
-    const syncOrdersSpy = jest
+    const syncOrdersSpy = vi
       .spyOn(OrdersUseCase.prototype, 'syncOrders')
       .mockResolvedValue(syncResponse);
 
@@ -77,9 +78,7 @@ describe('orders controller tests', () => {
 
   test('should throw error when handleTimer throws', async () => {
     const error = new UnknownError('TEST_MODULE');
-    const syncOrdersSpy = jest
-      .spyOn(OrdersUseCase.prototype, 'syncOrders')
-      .mockRejectedValue(error);
+    const syncOrdersSpy = vi.spyOn(OrdersUseCase.prototype, 'syncOrders').mockRejectedValue(error);
 
     const controller = new OrdersController(applicationContext);
     await expect(controller.handleTimer(applicationContext)).rejects.toThrow(error);
@@ -87,7 +86,7 @@ describe('orders controller tests', () => {
   });
 
   test('should get orders', async () => {
-    const mockRead = jest.spyOn(OrdersUseCase.prototype, 'getOrders').mockResolvedValue(mockOrders);
+    const mockRead = vi.spyOn(OrdersUseCase.prototype, 'getOrders').mockResolvedValue(mockOrders);
 
     applicationContext.request = mockCamsHttpRequest();
     const controller = new OrdersController(applicationContext);
@@ -97,7 +96,7 @@ describe('orders controller tests', () => {
   });
 
   test('should update an order', async () => {
-    const updateOrderSpy = jest
+    const updateOrderSpy = vi
       .spyOn(OrdersUseCase.prototype, 'updateTransferOrder')
       .mockImplementation((_context, _id, _data) => {
         return Promise.resolve();
@@ -129,7 +128,7 @@ describe('orders controller tests', () => {
   test('should get suggested cases', async () => {
     const suggestedCases = [CASE_SUMMARIES[0]];
 
-    const getSuggestedCasesSpy = jest
+    const getSuggestedCasesSpy = vi
       .spyOn(OrdersUseCase.prototype, 'getSuggestedCases')
       .mockResolvedValue(suggestedCases);
 
@@ -146,10 +145,10 @@ describe('orders controller tests', () => {
 
   test('should rethrow CamsError if CamsError is encountered', async () => {
     const camsError = new CamsError('TEST');
-    jest.spyOn(OrdersUseCase.prototype, 'getOrders').mockRejectedValue(camsError);
-    jest.spyOn(OrdersUseCase.prototype, 'updateTransferOrder').mockRejectedValue(camsError);
-    jest.spyOn(OrdersUseCase.prototype, 'syncOrders').mockRejectedValue(camsError);
-    jest.spyOn(OrdersUseCase.prototype, 'getSuggestedCases').mockRejectedValue(camsError);
+    vi.spyOn(OrdersUseCase.prototype, 'getOrders').mockRejectedValue(camsError);
+    vi.spyOn(OrdersUseCase.prototype, 'updateTransferOrder').mockRejectedValue(camsError);
+    vi.spyOn(OrdersUseCase.prototype, 'syncOrders').mockRejectedValue(camsError);
+    vi.spyOn(OrdersUseCase.prototype, 'getSuggestedCases').mockRejectedValue(camsError);
 
     const controller = new OrdersController(applicationContext);
     await expect(controller.getOrders(applicationContext)).rejects.toThrow(camsError);
@@ -163,20 +162,45 @@ describe('orders controller tests', () => {
 
   test('should throw UnknownError if any other error is encountered', async () => {
     const originalError = new Error('Test');
-    const unknownError = new UnknownError('TEST', { originalError });
-    jest.spyOn(OrdersUseCase.prototype, 'getOrders').mockRejectedValue(originalError);
-    jest.spyOn(OrdersUseCase.prototype, 'updateTransferOrder').mockRejectedValue(originalError);
-    jest.spyOn(OrdersUseCase.prototype, 'syncOrders').mockRejectedValue(originalError);
-    jest.spyOn(OrdersUseCase.prototype, 'getSuggestedCases').mockRejectedValue(originalError);
+    vi.spyOn(OrdersUseCase.prototype, 'getOrders').mockRejectedValue(originalError);
+    vi.spyOn(OrdersUseCase.prototype, 'updateTransferOrder').mockRejectedValue(originalError);
+    vi.spyOn(OrdersUseCase.prototype, 'syncOrders').mockRejectedValue(originalError);
+    vi.spyOn(OrdersUseCase.prototype, 'getSuggestedCases').mockRejectedValue(originalError);
 
     const controller = new OrdersController(applicationContext);
-    await expect(controller.getOrders(applicationContext)).rejects.toThrow(unknownError);
-    await expect(controller.updateOrder(applicationContext, id, orderTransfer)).rejects.toThrow(
-      unknownError,
+    await expect(controller.getOrders(applicationContext)).rejects.toThrow(
+      expect.objectContaining({
+        message: 'Unknown Error',
+        status: 500,
+        module: 'ORDERS-CONTROLLER',
+        originalError: expect.stringContaining('Error: Test'),
+      }),
     );
-    await expect(controller.syncOrders(applicationContext)).rejects.toThrow(unknownError);
+    await expect(controller.updateOrder(applicationContext, id, orderTransfer)).rejects.toThrow(
+      expect.objectContaining({
+        message: 'Unknown Error',
+        status: 500,
+        module: 'ORDERS-CONTROLLER',
+        originalError: expect.stringContaining('Error: Test'),
+      }),
+    );
+    await expect(controller.syncOrders(applicationContext)).rejects.toThrow(
+      expect.objectContaining({
+        message: 'Unknown Error',
+        status: 500,
+        module: 'ORDERS-CONTROLLER',
+        originalError: expect.stringContaining('Error: Test'),
+      }),
+    );
     applicationContext.request = mockCamsHttpRequest({ params: { caseId: 'mockId' } });
-    await expect(controller.getSuggestedCases(applicationContext)).rejects.toThrow(unknownError);
+    await expect(controller.getSuggestedCases(applicationContext)).rejects.toThrow(
+      expect.objectContaining({
+        message: 'Unknown Error',
+        status: 500,
+        module: 'ORDERS-CONTROLLER',
+        originalError: expect.stringContaining('Error: Test'),
+      }),
+    );
   });
 
   test('should call reject consolidation and handle error', async () => {
@@ -199,9 +223,9 @@ describe('orders controller tests', () => {
       approvedCases: [mockConsolidationOrder.childCases[0].caseId],
       leadCase: mockConsolidationOrder.childCases[0],
     };
-    jest
-      .spyOn(OrdersUseCase.prototype, 'approveConsolidation')
-      .mockResolvedValue([mockConsolidationOrder]);
+    vi.spyOn(OrdersUseCase.prototype, 'approveConsolidation').mockResolvedValue([
+      mockConsolidationOrder,
+    ]);
     const request = mockCamsHttpRequest({ body: mockConsolidationOrderActionApproval });
     applicationContext.request = request;
     const controller = new OrdersController(applicationContext);
@@ -280,15 +304,21 @@ describe('orders controller exception tests', () => {
 
   test('should wrap unexpected errors with CamsError', async () => {
     const error = new Error('GenericError');
-    const camsError = new UnknownError('TEST-MODULE', { originalError: error });
-    jest.spyOn(OrdersUseCase.prototype, 'getOrders').mockRejectedValue(error);
+    vi.spyOn(OrdersUseCase.prototype, 'getOrders').mockRejectedValue(error);
     const controller = new OrdersController(applicationContext);
-    await expect(controller.getOrders(applicationContext)).rejects.toThrow(camsError);
+    await expect(controller.getOrders(applicationContext)).rejects.toThrow(
+      expect.objectContaining({
+        message: 'Unknown Error',
+        status: 500,
+        module: 'ORDERS-CONTROLLER',
+        originalError: expect.stringContaining('Error: GenericError'),
+      }),
+    );
   });
 
   test('should throw CamsError when caught', async () => {
     const error = new CamsError('TEST-MODULE');
-    jest.spyOn(OrdersController.prototype, 'getOrders').mockRejectedValue(error);
+    vi.spyOn(OrdersController.prototype, 'getOrders').mockRejectedValue(error);
     const controller = new OrdersController(applicationContext);
     await expect(controller.getOrders(applicationContext)).rejects.toThrow(error);
   });

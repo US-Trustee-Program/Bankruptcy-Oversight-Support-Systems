@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { InvocationContext } from '@azure/functions';
 import { CaseDetail } from '../../../../common/src/cams/cases';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
@@ -13,9 +14,9 @@ import { CamsHttpRequest } from '../../../lib/adapters/types/http';
 import { CaseSummaryController } from '../../../lib/controllers/case-summary/case-summary.controller';
 
 describe('Case summary function', () => {
-  jest
-    .spyOn(ContextCreator, 'getApplicationContextSession')
-    .mockResolvedValue(MockData.getManhattanTrialAttorneySession());
+  vi.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
+    MockData.getManhattanTrialAttorneySession(),
+  );
 
   const baseRequest: Partial<CamsHttpRequest> = {
     method: 'GET',
@@ -40,9 +41,7 @@ describe('Case summary function', () => {
       },
     };
     const request = createMockAzureFunctionRequest(requestObject);
-    jest
-      .spyOn(CaseSummaryController.prototype, 'handleRequest')
-      .mockResolvedValue(camsHttpResponse);
+    vi.spyOn(CaseSummaryController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
 
     const response = await handler(request, context);
     expect(response).toEqual(azureHttpResponse);
@@ -52,7 +51,7 @@ describe('Case summary function', () => {
     const error = new NotFoundError('CASE-MANAGEMENT-USE-CASE', {
       message: 'Case summary not found for case ID.',
     });
-    jest.spyOn(CaseSummaryController.prototype, 'handleRequest').mockRejectedValue(error);
+    vi.spyOn(CaseSummaryController.prototype, 'handleRequest').mockRejectedValue(error);
     const { azureHttpResponse } = buildTestResponseError(error);
 
     const requestObject: Partial<CamsHttpRequest> = {

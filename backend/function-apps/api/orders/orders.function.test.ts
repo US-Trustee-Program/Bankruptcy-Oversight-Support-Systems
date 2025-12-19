@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import handler from './orders.function';
 import { CamsError } from '../../../lib/common-errors/cams-error';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
@@ -20,7 +21,7 @@ describe('Orders Function tests', () => {
   const context = createMockAzureFunctionContext();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should return a list of orders', async () => {
@@ -29,7 +30,7 @@ describe('Orders Function tests', () => {
       data: mockOrders,
     });
 
-    jest.spyOn(OrdersController.prototype, 'getOrders').mockResolvedValue(camsHttpResponse);
+    vi.spyOn(OrdersController.prototype, 'getOrders').mockResolvedValue(camsHttpResponse);
 
     const response = await handler(request, context);
 
@@ -44,7 +45,7 @@ describe('Orders Function tests', () => {
       statusCode: HttpStatusCodes.NO_CONTENT,
     });
 
-    const updateOrder = jest
+    const updateOrder = vi
       .spyOn(OrdersController.prototype, 'updateOrder')
       .mockResolvedValue(camsHttpResponse);
 
@@ -68,7 +69,7 @@ describe('Orders Function tests', () => {
     const error = new CamsError('MOCK_ORDERS_CONTROLLER', { message: 'Mocked error' });
     const { azureHttpResponse, loggerCamsErrorSpy } = buildTestResponseError(error);
 
-    jest.spyOn(OrdersController.prototype, 'getOrders').mockRejectedValue(error);
+    vi.spyOn(OrdersController.prototype, 'getOrders').mockRejectedValue(error);
 
     const response = await handler(request, context);
     expect(response).toMatchObject(azureHttpResponse);
@@ -79,7 +80,7 @@ describe('Orders Function tests', () => {
     const error = new CamsError('MOCK_ORDERS_CONTROLLER', { message: 'Mocked error' });
     const { azureHttpResponse, loggerCamsErrorSpy } = buildTestResponseError(error);
 
-    jest.spyOn(OrdersController.prototype, 'updateOrder').mockRejectedValue(error);
+    vi.spyOn(OrdersController.prototype, 'updateOrder').mockRejectedValue(error);
 
     const id = '1234567890';
     const requestOverride: Partial<CamsHttpRequest> = {

@@ -12,8 +12,7 @@
         "**/dist/**",
         "**/build/**",
         "**/coverage/**",
-        "**/.cache/**",
-        "dev-tools/**"
+        "**/.cache/**"
       ]
     },
     "backend": {
@@ -57,10 +56,29 @@
         "**/coverage/**"
       ]
     },
+    "test/bdd": {
+      "entry": [
+        "vitest.config.ts",
+        "features/**/*.spec.tsx",
+        "helpers/**/*.ts",
+        "helpers/**/*.tsx",
+        "fixtures/**/*.ts"
+      ],
+      "project": ["**/*.{ts,tsx}"],
+      "ignore": [
+        "**/node_modules/**",
+        "**/coverage/**"
+      ]
+    },
     "test/e2e": {
       "entry": ["**/*.ts"],
       "project": ["**/*.ts"],
       "ignore": ["**/node_modules/**"]
+    },
+    "dev-tools": {
+      "entry": ["**/*.ts"],
+      "project": ["**/*.ts"],
+      "ignore": ["**/node_modules/**", "**/data/**"]
     }
   },
   "ignoreBinaries": [
@@ -83,7 +101,6 @@
     "@typescript-eslint/parser",
     "eslint-config-prettier",
     "eslint-plugin-import",
-    "eslint-plugin-jest",
     "eslint-plugin-jsx-a11y",
     "eslint-plugin-n",
     "eslint-plugin-prettier",
@@ -96,7 +113,6 @@
     "typescript-eslint",
     "react",
     "c8",
-    "@faker-js/faker",
-    "tsx"
+    "@faker-js/faker"
   ]
 }

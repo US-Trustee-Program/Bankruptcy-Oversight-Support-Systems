@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { Closable, closeDeferred, deferClose, DeferCloseAccumulator } from './defer-close';
 
 describe('Defer Close', () => {
@@ -15,7 +16,7 @@ describe('Defer Close', () => {
   });
 
   test('should call close on deferred closables', async () => {
-    const close = jest.fn();
+    const close = vi.fn();
     const closable: Closable = {
       close,
     };
@@ -35,7 +36,7 @@ describe('Defer Close', () => {
   });
 
   test('should silently handle close errors', async () => {
-    const close = jest.fn().mockRejectedValue(new Error('some error'));
+    const close = vi.fn().mockRejectedValue(new Error('some error'));
     const closable: Closable = {
       close,
     };
@@ -51,7 +52,7 @@ describe('Defer Close', () => {
   });
 
   test('should close deferred on SIGINT with the module scoped accumulator', async () => {
-    const close = jest.fn();
+    const close = vi.fn();
     const closable: Closable = {
       close,
     };

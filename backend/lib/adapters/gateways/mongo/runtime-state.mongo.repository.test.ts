@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { OrderSyncState } from '../../../use-cases/gateways.types';
 import { ApplicationContext } from '../../types/basic';
@@ -18,16 +19,16 @@ describe('Runtime State Repo', () => {
   beforeEach(async () => {
     context = await createMockApplicationContext();
     repo = new RuntimeStateMongoRepository(context);
-    jest.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   afterEach(async () => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
     await closeDeferred(context);
   });
 
   test('should get a runtime state document', async () => {
-    const findOneSpy = jest
+    const findOneSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'findOne')
       .mockResolvedValue(expected);
     const actual = await repo.read('ORDERS_SYNC_STATE');
@@ -42,7 +43,7 @@ describe('Runtime State Repo', () => {
   test.each(successCases)(
     'should %s a runtime state document',
     async (_caseName: string, modifiedCount: number, upsertedCount: number) => {
-      const replaceOne = jest
+      const replaceOne = vi
         .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
         .mockResolvedValue({ id: expected.id, modifiedCount, upsertedCount });
       const toCreate = { ...expected };
@@ -53,7 +54,7 @@ describe('Runtime State Repo', () => {
   );
 
   test('should return undefined if upsert does not modify or upsert any document', async () => {
-    const replaceOne = jest
+    const replaceOne = vi
       .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
       .mockResolvedValue({ id: expected.id, modifiedCount: 0, upsertedCount: 0 });
     const toCreate = { ...expected };
@@ -65,10 +66,10 @@ describe('Runtime State Repo', () => {
 
   test('should throw any other error encountered', async () => {
     const someError = new Error('Some other unknown error');
-    const findOneSpy = jest
+    const findOneSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'findOne')
       .mockRejectedValue(someError);
-    const replaceSpy = jest
+    const replaceSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
       .mockRejectedValue(someError);
 

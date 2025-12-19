@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { AbstractMssqlClient } from '../abstract-mssql-client';
 import { AcmsGatewayImpl } from './acms.gateway';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
@@ -6,7 +7,6 @@ import {
   AcmsConsolidationChildCase,
   AcmsPredicate,
 } from '../../../use-cases/dataflows/migrate-consolidations';
-import { UnknownError } from '../../../common-errors/unknown-error';
 
 describe('ACMS gateway tests', () => {
   const chapters = [
@@ -17,7 +17,7 @@ describe('ACMS gateway tests', () => {
     { chapter: '15', inputVariable: '15' },
   ];
   test.each(chapters)('should translate chapter $chapter into query', async (params) => {
-    const spy = jest
+    const spy = vi
       .spyOn(AbstractMssqlClient.prototype, 'executeQuery')
       .mockResolvedValueOnce({
         success: true,
@@ -49,7 +49,7 @@ describe('ACMS gateway tests', () => {
   });
 
   test('should handle chapter 7 query', async () => {
-    const spy = jest
+    const spy = vi
       .spyOn(AbstractMssqlClient.prototype, 'executeQuery')
       .mockResolvedValueOnce({
         success: true,
@@ -108,7 +108,7 @@ describe('ACMS gateway tests', () => {
       ],
     };
 
-    const spy = jest.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+    const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
       success: true,
       results: databaseResult,
       message: '',
@@ -156,7 +156,7 @@ describe('ACMS gateway tests', () => {
       ],
     };
 
-    const spy = jest.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+    const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
       success: true,
       results: databaseResult,
       message: '',
@@ -176,7 +176,7 @@ describe('ACMS gateway tests', () => {
 
   test('should handle exceptions from executeQuery when calling getLeadCaseIds', async () => {
     const mockError = new Error('test error');
-    jest.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockRejectedValue(mockError);
+    vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockRejectedValue(mockError);
 
     const context = await createMockApplicationContext();
     const gateway = new AcmsGatewayImpl(context);
@@ -186,27 +186,27 @@ describe('ACMS gateway tests', () => {
         divisionCode: '010',
       } as AcmsPredicate);
     }).rejects.toThrow(
-      new UnknownError('ACMS_GATEWAY', {
+      expect.objectContaining({
         status: 500,
         message: mockError.message,
-        originalError: mockError,
+        module: 'ACMS-GATEWAY',
       }),
     );
   });
 
   test('should handle exceptions from executeQuery when calling getConsolidationDetails', async () => {
     const mockError = new Error('test error');
-    jest.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockRejectedValue(mockError);
+    vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockRejectedValue(mockError);
 
     const context = await createMockApplicationContext();
     const gateway = new AcmsGatewayImpl(context);
     await expect(async () => {
       return await gateway.getConsolidationDetails(context, '000-00-1234');
     }).rejects.toThrow(
-      new UnknownError('ACMS_GATEWAY', {
+      expect.objectContaining({
         status: 500,
         message: mockError.message,
-        originalError: mockError,
+        module: 'ACMS-GATEWAY',
       }),
     );
   });

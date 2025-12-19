@@ -50,7 +50,7 @@ export function verifyJWTPayload(token: string, expectedPayload: Partial<JWTPayl
 }
 
 /**
- * Create a matcher function for vitest/jest to verify JWT payloads
+ * Create a matcher function for Vitest to verify JWT payloads
  * Usage: expect(token).toEqual(expect.objectContaining(matchJWTPayload({ sub: 'user@fake.com' })))
  */
 export function matchJWTPayload(expectedPayload: Partial<JWTPayload>) {

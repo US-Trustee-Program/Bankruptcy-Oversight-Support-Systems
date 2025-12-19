@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { createMockAzureFunctionRequest } from '../../azure/testing-helpers';
 import { MongoCollectionAdapter } from '../../../lib/adapters/gateways/mongo/utils/mongo-adapter';
 
@@ -5,13 +6,13 @@ import { HealthCheckDocument } from './healthcheck.db.cosmos';
 import handler, { checkResults } from './healthcheck.function';
 import HealthcheckSqlDb from './healthcheck.db.sql';
 
-const mockRequestFunc = jest.fn().mockImplementation(() => ({
-  input: jest.fn(),
+const mockRequestFunc = vi.fn().mockImplementation(() => ({
+  input: vi.fn(),
   query: mockQueryFunc,
 }));
-const mockCloseFunc = jest.fn();
-const mockQueryFunc = jest.fn();
-const mockConnect = jest.fn().mockImplementation(
+const mockCloseFunc = vi.fn();
+const mockQueryFunc = vi.fn();
+const mockConnect = vi.fn().mockImplementation(
   (): Promise<unknown> =>
     Promise.resolve({
       request: mockRequestFunc,
@@ -25,9 +26,9 @@ const healthCheckDocument: HealthCheckDocument = {
   documentType: 'HEALTH_CHECK',
 };
 
-jest.mock('mssql', () => {
+vi.mock('mssql', () => {
   return {
-    ConnectionPool: jest.fn().mockImplementation(() => {
+    ConnectionPool: vi.fn().mockImplementation(() => {
       return {
         connect: mockConnect,
       };
@@ -52,17 +53,17 @@ describe('healthcheck tests', () => {
   });
 
   afterAll(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
   });
 
   test('Healthcheck endpoint should return an ALIVE status', async () => {
     /* eslint-disable-next-line @typescript-eslint/no-require-imports */
     const context = require('azure-function-context-mock');
     const request = createMockAzureFunctionRequest({ query: {} });
-    jest.spyOn(MongoCollectionAdapter.prototype, 'getAll').mockResolvedValue([healthCheckDocument]);
-    jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue('id');
-    jest.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockResolvedValue(1);
-    jest.spyOn(HealthcheckSqlDb.prototype, 'checkDxtrDbRead').mockResolvedValue(true);
+    vi.spyOn(MongoCollectionAdapter.prototype, 'getAll').mockResolvedValue([healthCheckDocument]);
+    vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue('id');
+    vi.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockResolvedValue(1);
+    vi.spyOn(HealthcheckSqlDb.prototype, 'checkDxtrDbRead').mockResolvedValue(true);
     const response = await handler(request, context);
 
     expect(response.status).toEqual(200);
@@ -78,10 +79,10 @@ describe('healthcheck tests', () => {
     /* eslint-disable-next-line @typescript-eslint/no-require-imports */
     const context = require('azure-function-context-mock');
     const request = createMockAzureFunctionRequest({ query: {} });
-    jest.spyOn(MongoCollectionAdapter.prototype, 'getAll').mockResolvedValue([healthCheckDocument]);
-    jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue('id');
-    jest.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockResolvedValue(1);
-    jest.spyOn(HealthcheckSqlDb.prototype, 'checkDxtrDbRead').mockResolvedValue(true);
+    vi.spyOn(MongoCollectionAdapter.prototype, 'getAll').mockResolvedValue([healthCheckDocument]);
+    vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue('id');
+    vi.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockResolvedValue(1);
+    vi.spyOn(HealthcheckSqlDb.prototype, 'checkDxtrDbRead').mockResolvedValue(true);
     const response = await handler(request, context);
 
     expect(response.status).toEqual(200);
@@ -91,9 +92,9 @@ describe('healthcheck tests', () => {
     /* eslint-disable-next-line @typescript-eslint/no-require-imports */
     const context = require('azure-function-context-mock');
     const request = createMockAzureFunctionRequest();
-    jest.spyOn(MongoCollectionAdapter.prototype, 'getAll').mockResolvedValue([]);
-    jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue('id');
-    jest.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockResolvedValue(1);
+    vi.spyOn(MongoCollectionAdapter.prototype, 'getAll').mockResolvedValue([]);
+    vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue('id');
+    vi.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockResolvedValue(1);
     const response = await handler(request, context);
 
     expect(response.status).toEqual(500);

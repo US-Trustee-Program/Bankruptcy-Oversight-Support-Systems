@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import { closeDeferred } from '../../../deferrable/defer-close';
@@ -25,7 +26,7 @@ describe('case notes repo tests', () => {
 
   afterEach(async () => {
     await closeDeferred(context);
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
     repo.release();
   });
 
@@ -33,8 +34,8 @@ describe('case notes repo tests', () => {
     test('should create note', async () => {
       const noteId = 'note123';
       const expectedNote = MockData.getCaseNote();
-      jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue(noteId);
-      jest.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(expectedNote);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue(noteId);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(expectedNote);
       const actual = await repo.create(expectedNote);
       expect(actual).toEqual(expectedNote);
     });
@@ -47,7 +48,7 @@ describe('case notes repo tests', () => {
         MockData.getCaseNote({ caseId }),
       ];
 
-      jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(mockNotes);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(mockNotes);
       const actualNotes = await repo.getNotesByCaseId(caseId);
       expect(actualNotes).toEqual(mockNotes);
     });
@@ -64,12 +65,10 @@ describe('case notes repo tests', () => {
         doc('id').equals(archival.id),
       );
 
-      const updateSpy = jest
-        .spyOn(MongoCollectionAdapter.prototype, 'updateOne')
-        .mockResolvedValue({
-          matchedCount: 1,
-          modifiedCount: 1,
-        });
+      const updateSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'updateOne').mockResolvedValue({
+        matchedCount: 1,
+        modifiedCount: 1,
+      });
 
       repo.archiveCaseNote(archival);
       expect(updateSpy).toHaveBeenCalledWith(query, expectedDateParameter);
@@ -95,7 +94,7 @@ describe('case notes repo tests', () => {
         doc('id').equals(note.id),
       );
 
-      const updateOneSpy = jest
+      const updateOneSpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'updateOne')
         .mockResolvedValue({ modifiedCount: 1, matchedCount: 1 });
 
@@ -106,9 +105,7 @@ describe('case notes repo tests', () => {
 
     test('should call findOne', async () => {
       const note = MockData.getCaseNote();
-      const findSpy = jest
-        .spyOn(MongoCollectionAdapter.prototype, 'findOne')
-        .mockResolvedValue(note);
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(note);
 
       const query = doc('id').equals(note.id);
 
@@ -123,25 +120,40 @@ describe('case notes repo tests', () => {
 
     test('should handle error on create note', async () => {
       const note = MockData.getCaseNote();
-      jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(error);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(error);
       await expect(() => repo.create(note)).rejects.toThrow(
-        getCamsError(error, 'CASE_NOTES_MONGO_REPOSITORY', 'Unable to create case note.'),
+        expect.objectContaining({
+          message: 'Unable to create case note.',
+          status: 500,
+          module: 'CASE-NOTES-MONGO-REPOSITORY',
+          originalError: expect.stringContaining('Error: some error'),
+        }),
       );
     });
 
     test('should handle error on archiveNote', async () => {
       const archiveNote = MockData.getCaseNoteDeletion();
-      jest.spyOn(MongoCollectionAdapter.prototype, 'updateOne').mockRejectedValue(error);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'updateOne').mockRejectedValue(error);
       await expect(() => repo.archiveCaseNote(archiveNote)).rejects.toThrow(
-        getCamsError(error, 'CASE_NOTES_MONGO_REPOSITORY', 'Unable to archive case note.'),
+        expect.objectContaining({
+          message: 'Unable to archive case note.',
+          status: 500,
+          module: 'CASE-NOTES-MONGO-REPOSITORY',
+          originalError: expect.stringContaining('Error: some error'),
+        }),
       );
     });
 
     test('should handle error on getNotesByCaseId', async () => {
       const caseId = '12-12345';
-      jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
       await expect(() => repo.getNotesByCaseId(caseId)).rejects.toThrow(
-        getCamsError(error, 'CASE_NOTES_MONGO_REPOSITORY', 'Unable to retrieve case note.'),
+        expect.objectContaining({
+          message: 'Unable to retrieve case note.',
+          status: 500,
+          module: 'CASE-NOTES-MONGO-REPOSITORY',
+          originalError: expect.stringContaining('Error: some error'),
+        }),
       );
     });
 
@@ -149,21 +161,19 @@ describe('case notes repo tests', () => {
       const archiveNote = MockData.getCaseNote();
       const retrievalErrorMessage = `Failed to update case note ${archiveNote.id}.`;
       const retrievalError = new Error(retrievalErrorMessage);
-      jest
-        .spyOn(MongoCollectionAdapter.prototype, 'updateOne')
-        .mockRejectedValue(
-          getCamsError(
-            retrievalError,
-            'CASE_NOTES_MONGO_REPOSITORY',
-            `Failed to update case note ${archiveNote.id}.`,
-          ),
-        );
+      vi.spyOn(MongoCollectionAdapter.prototype, 'updateOne').mockRejectedValue(
+        getCamsError(
+          retrievalError,
+          'CASE_NOTES_MONGO_REPOSITORY',
+          `Failed to update case note ${archiveNote.id}.`,
+        ),
+      );
       await expect(() => repo.update(archiveNote)).rejects.toThrow();
     });
 
     test('should handle error on read', async () => {
       const originalError = new Error('some error');
-      jest.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(originalError);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(originalError);
       const actual = await getTheThrownError(async () => {
         await repo.read('some-id');
       });
@@ -195,7 +205,7 @@ describe('case notes repo tests', () => {
       expect(repo2).toBe(repo1); // Should be the same instance
       expect(CaseNotesMongoRepository['referenceCount']).toBe(2);
       // Drop once, should not close
-      const closeSpy = jest.spyOn(repo1['client'], 'close').mockResolvedValue();
+      const closeSpy = vi.spyOn(repo1['client'], 'close').mockResolvedValue();
       CaseNotesMongoRepository.dropInstance();
       expect(CaseNotesMongoRepository['referenceCount']).toBe(1);
       expect(closeSpy).not.toHaveBeenCalled();
@@ -209,14 +219,14 @@ describe('case notes repo tests', () => {
     });
 
     test('release calls dropInstance', async () => {
-      const dropSpy = jest.spyOn(CaseNotesMongoRepository, 'dropInstance');
+      const dropSpy = vi.spyOn(CaseNotesMongoRepository, 'dropInstance');
       repo.release();
       expect(dropSpy).toHaveBeenCalled();
       dropSpy.mockRestore();
     });
 
     test('getNotesByCaseId returns empty array if no notes', async () => {
-      jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
       const actual = await repo.getNotesByCaseId('some-case-id');
       expect(actual).toEqual([]);
     });
@@ -229,7 +239,7 @@ describe('case notes repo tests', () => {
         doc('id').equals(minimal.id),
       );
       const expectedDateParameter = { archivedOn: minimal.archivedOn, archivedBy: undefined };
-      const updateSpy = jest
+      const updateSpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'updateOne')
         .mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
       await repo.archiveCaseNote(minimal);
@@ -243,7 +253,7 @@ describe('case notes repo tests', () => {
         doc('caseId').equals(input.caseId),
         doc('id').equals(input.id),
       );
-      const updateOneSpy = jest
+      const updateOneSpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'updateOne')
         .mockResolvedValue({ modifiedCount: 1, matchedCount: 1 });
       await repo.update({ ...input });
