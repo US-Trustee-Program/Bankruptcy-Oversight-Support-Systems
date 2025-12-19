@@ -4,6 +4,7 @@ import StaffUseCase from '../../use-cases/staff/staff';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { StaffController } from './staff.controller';
 import { ApplicationContext } from '../../adapters/types/basic';
+import { CamsUserReference } from '../../../../common/src/cams/users';
 
 describe('Staff Controller Tests', () => {
   let context: ApplicationContext;
@@ -14,17 +15,32 @@ describe('Staff Controller Tests', () => {
     controller = new StaffController(context);
   });
 
-  test('should return success if oversight staff are found', async () => {
-    const staffList = [
-      ...MockData.buildArray(MockData.getAttorneyUser, 3),
-      ...MockData.buildArray(MockData.getAuditorUser, 2),
-    ];
+  test('should return success with oversight staff grouped by role', async () => {
+    const oversightStaff: Record<string, CamsUserReference[]> = {
+      TrialAttorney: MockData.buildArray(MockData.getCamsUserReference, 3),
+      Auditor: MockData.buildArray(MockData.getCamsUserReference, 2),
+      Paralegal: MockData.buildArray(MockData.getCamsUserReference, 1),
+    };
 
-    jest.spyOn(StaffUseCase.prototype, 'getOversightStaff').mockResolvedValue(staffList);
+    jest.spyOn(StaffUseCase.prototype, 'getOversightStaff').mockResolvedValue(oversightStaff);
     const response = await controller.handleRequest(context);
     expect(response).toEqual(
       expect.objectContaining({
-        body: { data: staffList },
+        body: { data: oversightStaff },
+        headers: expect.anything(),
+        statusCode: 200,
+      }),
+    );
+  });
+
+  test('should return success with empty Record when no staff found', async () => {
+    const emptyStaff: Record<string, CamsUserReference[]> = {};
+
+    jest.spyOn(StaffUseCase.prototype, 'getOversightStaff').mockResolvedValue(emptyStaff);
+    const response = await controller.handleRequest(context);
+    expect(response).toEqual(
+      expect.objectContaining({
+        body: { data: emptyStaff },
         headers: expect.anything(),
         statusCode: 200,
       }),
