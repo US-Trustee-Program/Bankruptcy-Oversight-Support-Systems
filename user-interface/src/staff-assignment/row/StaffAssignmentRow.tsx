@@ -4,6 +4,7 @@ import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { formatDate } from '@/lib/utils/datetime';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
+import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import Actions from '@common/cams/actions';
 import { SearchResultsRowProps } from '@/search-results/SearchResults';
 import {
@@ -43,7 +44,7 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
     });
   }
 
-  function buildActionButton(assignments: CaseAssignment[] | undefined) {
+  function buildActionButton() {
     const commonModalButtonProps = {
       className: 'case-assignment-modal-toggle',
       buttonIndex: `${idx}`,
@@ -56,23 +57,16 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
       ref: openAssignmentsModalButtonRef,
     };
 
-    if (assignments && assignments.length > 0) {
-      return (
-        <OpenModalButton
-          {...commonModalButtonProps}
-          uswdsStyle={UswdsButtonStyle.Outline}
-          title="Edit Staff Assignments"
-        >
-          Edit
-        </OpenModalButton>
-      );
-    } else {
-      return (
-        <OpenModalButton {...commonModalButtonProps} title="Add Staff Assignments">
-          Assign
-        </OpenModalButton>
-      );
-    }
+    return (
+      <OpenModalButton
+        uswdsStyle={UswdsButtonStyle.Unstyled}
+        aria-label="Edit Staff Assignments"
+        title="Edit Staff Assignments"
+        {...commonModalButtonProps}
+      >
+        <IconLabel icon="edit" label="Edit" />
+      </OpenModalButton>
+    );
   }
 
   function buildAssignmentList(assignments: Partial<CaseAssignment>[] | undefined) {
@@ -84,29 +78,26 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
         </span>
       ));
     } else {
-      return <>(unassigned)</>;
+      return <span className="unassigned">(unassigned)</span>;
     }
   }
 
   return (
     <TableRow {...otherProps} key={idx}>
-      <TableRowData dataSortValue={bCase.caseId.replace(/-/g, '')}>
+      <TableRowData>
         <span className="no-wrap">
           <CaseNumber caseId={bCase.caseId} /> ({bCase.courtDivisionName})
         </span>
       </TableRowData>
       <TableRowData>{bCase.caseTitle}</TableRowData>
       <TableRowData>{bCase.chapter}</TableRowData>
-      <TableRowData dataSortValue={bCase.dateFiled.replace(/-/g, '')}>
-        {formatDate(bCase.dateFiled)}
-      </TableRowData>
+      <TableRowData>{formatDate(bCase.dateFiled)}</TableRowData>
       <TableRowData data-testid={`attorney-list-${idx}`} className="attorney-list">
         <span className="mobile-title">Assigned Attorney:</span>
         <div className="table-flex-container">
           <div className="attorney-list-container">{buildAssignmentList(state.assignments)}</div>
           <div className="table-column-toolbar">
-            {Actions.contains(bCase, Actions.ManageAssignments) &&
-              buildActionButton(state.assignments)}
+            {Actions.contains(bCase, Actions.ManageAssignments) && buildActionButton()}
           </div>
         </div>
       </TableRowData>

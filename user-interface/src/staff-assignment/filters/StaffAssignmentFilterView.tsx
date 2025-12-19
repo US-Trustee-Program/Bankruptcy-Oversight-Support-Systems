@@ -6,7 +6,6 @@ function StaffAssignmentFilterView(props: StaffAssignmentFilterViewProps) {
 
   return (
     <div>
-      <h3>Filters</h3>
       <section className="staff-assignment-filter-container">
         {viewModel.officeAssignees.length > 0 && viewModel.officeAssigneesError === false && (
           <ComboBox
