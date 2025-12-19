@@ -49,10 +49,6 @@ export class TrusteeAppointmentsUseCase {
         };
       });
 
-      context.logger.info(
-        MODULE_NAME,
-        `Retrieved ${enrichedAppointments.length} appointments for trustee ${trusteeId}`,
-      );
       return enrichedAppointments;
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
