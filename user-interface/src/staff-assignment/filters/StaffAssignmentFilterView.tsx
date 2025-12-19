@@ -13,7 +13,7 @@ function StaffAssignmentFilterView(props: StaffAssignmentFilterViewProps) {
             options={viewModel.assigneesToComboOptions(viewModel.officeAssignees)}
             onUpdateSelection={viewModel.handleFilterAssignee}
             label="Assigned Attorney"
-            ariaDescription="Filter the results by Attorney Name."
+            ariaDescription="Filter the results by Attorney Name"
             aria-live="off"
             multiSelect={false}
             ref={viewModel.assigneesFilterRef}
