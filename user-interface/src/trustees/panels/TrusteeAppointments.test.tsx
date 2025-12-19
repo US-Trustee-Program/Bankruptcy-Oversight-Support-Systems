@@ -12,9 +12,11 @@ describe('TrusteeAppointments', () => {
       trusteeId: 'trustee-123',
       chapter: '7-panel',
       courtId: '081',
+      courtDivisionName: 'Manhattan',
+      courtName: 'Southern District of New York',
       divisionCode: '1',
       status: 'active',
-      appointedDate: 'January 15, 2020',
+      appointedDate: '01/15/2020',
       effectiveDate: '2020-01-15T00:00:00.000Z',
       createdOn: '2020-01-10T14:30:00.000Z',
       createdBy: SYSTEM_USER_REFERENCE,
@@ -26,6 +28,8 @@ describe('TrusteeAppointments', () => {
       trusteeId: 'trustee-123',
       chapter: '11',
       courtId: '081',
+      courtDivisionName: 'New York',
+      courtName: 'Northern District of New York',
       divisionCode: '2',
       status: 'active',
       appointedDate: '03/22/2019',
@@ -81,8 +85,12 @@ describe('TrusteeAppointments', () => {
     render(<TrusteeAppointments trusteeId="trustee-123" />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Court 081 - Chapter 7 - Panel/i)).toBeInTheDocument();
-      expect(screen.getByText(/Court 081 - Chapter 11/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Southern District of New York \(Manhattan\) - Chapter 7 - Panel/i),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/Northern District of New York \(New York\) - Chapter 11/i),
+      ).toBeInTheDocument();
     });
   });
 

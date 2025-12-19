@@ -8,9 +8,11 @@ export type TrusteeAppointment = Auditable &
   Identifiable & {
     trusteeId: string;
     chapter: ChapterType;
-    courtId: string; // District court ID (e.g., '0208' for S.D.N.Y.)
-    divisionCode: string; // Division code (e.g., '081' for Manhattan)
-    appointedDate: string; // ISO 8601 date string
+    courtId: string;
+    divisionCode: string;
+    appointedDate: string;
     status: AppointmentStatus;
-    effectiveDate: string; // ISO 8601 date string
+    effectiveDate: string;
+    courtName?: string;
+    courtDivisionName?: string;
   };

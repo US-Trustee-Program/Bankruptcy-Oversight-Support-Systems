@@ -5,24 +5,23 @@ import './AppointmentCard.scss';
 
 export interface AppointmentCardProps {
   appointment: TrusteeAppointment;
-  districtName?: string;
-  cityName?: string;
 }
 
 export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
-  const { appointment, districtName, cityName } = props;
-
-  const formattedChapter = formatChapterType(appointment.chapter);
-  const districtDisplay = districtName || `Court ${appointment.courtId}`;
-  const cityDisplay = cityName ? ` (${cityName})` : '';
-  const formattedEffectiveDate = formatDate(appointment.effectiveDate);
-  const statusDisplay = `${appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)} ${formattedEffectiveDate}`;
+  const formattedChapter = formatChapterType(props.appointment.chapter);
+  let districtDisplay;
+  if (props.appointment.courtName && props.appointment.courtDivisionName) {
+    districtDisplay = `${props.appointment.courtName} (${props.appointment.courtDivisionName})`;
+  } else {
+    districtDisplay = 'Court not found';
+  }
+  const formattedEffectiveDate = formatDate(props.appointment.effectiveDate);
+  const statusDisplay = `${props.appointment.status.charAt(0).toUpperCase() + props.appointment.status.slice(1)} ${formattedEffectiveDate}`;
 
   return (
     <div className="appointment-card-container">
       <h3 className="appointment-card-heading">
-        {districtDisplay}
-        {cityDisplay} - Chapter {formattedChapter}
+        {districtDisplay} - Chapter {formattedChapter}
       </h3>
       <div className="appointment-card usa-card">
         <div className="usa-card__body">
@@ -30,7 +29,6 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
           <ul className="appointment-details-list">
             <li>
               <span className="appointment-label">District:</span> {districtDisplay}
-              {cityDisplay}
             </li>
             <li>
               <span className="appointment-label">Chapter:</span> {formattedChapter}
@@ -39,7 +37,8 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
               <span className="appointment-label">Status:</span> {statusDisplay}
             </li>
             <li>
-              <span className="appointment-label">Appointed:</span> {appointment.appointedDate}
+              <span className="appointment-label">Appointed:</span>{' '}
+              {props.appointment.appointedDate}
             </li>
           </ul>
         </div>
