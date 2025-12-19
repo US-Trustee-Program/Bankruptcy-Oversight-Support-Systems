@@ -6,7 +6,7 @@
  * tests to decode and verify JWT payloads instead of comparing raw tokens.
  */
 
-export interface JWTPayload {
+interface JWTPayload {
   iss?: string;
   sub?: string;
   aud?: string;
