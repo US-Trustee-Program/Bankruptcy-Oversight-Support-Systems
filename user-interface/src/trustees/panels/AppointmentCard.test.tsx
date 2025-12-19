@@ -9,8 +9,10 @@ describe('AppointmentCard', () => {
     id: 'appointment-001',
     trusteeId: 'trustee-123',
     chapter: '7-panel',
-    courtId: '081',
-    divisionCode: '1',
+    courtDivisionName: 'Manhattan',
+    courtId: '0208',
+    courtName: 'Southern District of New York',
+    divisionCode: '081',
     status: 'active',
     appointedDate: 'January 15, 2020',
     effectiveDate: '2020-01-15T00:00:00.000Z',
@@ -20,9 +22,13 @@ describe('AppointmentCard', () => {
     updatedBy: SYSTEM_USER_REFERENCE,
   };
 
-  function renderWithProps(props?: Partial<AppointmentCardProps>) {
+  function renderWithProps(props?: Partial<TrusteeAppointment>) {
+    const overrideAppointment = {
+      ...mockAppointment,
+      ...props,
+    };
     const defaultProps: AppointmentCardProps = {
-      appointment: mockAppointment,
+      appointment: overrideAppointment,
     };
 
     return render(<AppointmentCard {...defaultProps} {...props} />);
@@ -31,19 +37,21 @@ describe('AppointmentCard', () => {
   test('should render appointment card with correct heading', () => {
     renderWithProps();
 
-    expect(screen.getByText(/Court 081 - Chapter 7 - Panel/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Southern District of New York \(Manhattan\) - Chapter 7 - Panel/i),
+    ).toBeInTheDocument();
   });
 
   test('should render appointment card with district name when provided', () => {
-    renderWithProps({ districtName: 'Eastern District of New York' });
+    renderWithProps({ courtName: 'Eastern District of New York' });
 
     expect(
-      screen.getByText(/Eastern District of New York - Chapter 7 - Panel/i),
+      screen.getByText(/Eastern District of New York \(Manhattan\) - Chapter 7 - Panel/i),
     ).toBeInTheDocument();
   });
 
   test('should render appointment card with city name when provided', () => {
-    renderWithProps({ districtName: 'Eastern District of New York', cityName: 'Brooklyn' });
+    renderWithProps({ courtName: 'Eastern District of New York', courtDivisionName: 'Brooklyn' });
 
     expect(
       screen.getByText(/Eastern District of New York \(Brooklyn\) - Chapter 7 - Panel/i),
@@ -51,7 +59,7 @@ describe('AppointmentCard', () => {
   });
 
   test('should display appointment details correctly', () => {
-    renderWithProps({ districtName: 'Eastern District of New York', cityName: 'Brooklyn' });
+    renderWithProps({ courtName: 'Eastern District of New York', courtDivisionName: 'Brooklyn' });
 
     expect(screen.getByText(/District:/i)).toBeInTheDocument();
     expect(
@@ -71,7 +79,7 @@ describe('AppointmentCard', () => {
       chapter: '11',
     };
 
-    renderWithProps({ appointment: appointment11 });
+    renderWithProps(appointment11);
 
     expect(screen.getByText(/Chapter 11/i)).toBeInTheDocument();
   });
@@ -82,7 +90,7 @@ describe('AppointmentCard', () => {
       chapter: '13',
     };
 
-    renderWithProps({ appointment: appointment13 });
+    renderWithProps(appointment13);
 
     expect(screen.getByText(/Chapter 13/i)).toBeInTheDocument();
   });
@@ -93,7 +101,7 @@ describe('AppointmentCard', () => {
       chapter: '11-subchapter-v',
     };
 
-    renderWithProps({ appointment: appointment11v });
+    renderWithProps(appointment11v);
 
     expect(screen.getByText(/Chapter 11 - Subchapter V/i)).toBeInTheDocument();
   });
@@ -104,7 +112,7 @@ describe('AppointmentCard', () => {
       chapter: '7-non-panel',
     };
 
-    renderWithProps({ appointment: appointment7NonPanel });
+    renderWithProps(appointment7NonPanel);
 
     expect(screen.getByText(/Chapter 7 - Non-Panel/i)).toBeInTheDocument();
   });
@@ -116,7 +124,7 @@ describe('AppointmentCard', () => {
       effectiveDate: '2018-06-01T00:00:00.000Z',
     };
 
-    renderWithProps({ appointment: inactiveAppointment });
+    renderWithProps(inactiveAppointment);
 
     expect(screen.getByText(/Inactive 06\/01\/2018/i)).toBeInTheDocument();
   });
@@ -127,7 +135,7 @@ describe('AppointmentCard', () => {
       appointedDate: 'Appointed sometime in 2020',
     };
 
-    renderWithProps({ appointment: appointmentWithVariousDateFormats });
+    renderWithProps(appointmentWithVariousDateFormats);
 
     expect(screen.getByText('Appointed sometime in 2020')).toBeInTheDocument();
   });
