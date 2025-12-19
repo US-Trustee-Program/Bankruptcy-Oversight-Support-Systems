@@ -81,30 +81,5 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       );
       expect(actualError.isCamsError).toBe(true);
     });
-<<<<<<< HEAD
-
-    test('should log the retrieval of appointments', async () => {
-      const trusteeId = 'trustee-123';
-      const mockTrustee = MockData.getTrustee({ trusteeId });
-      const mockAppointments = [
-        MockData.getTrusteeAppointment({ trusteeId }),
-        MockData.getTrusteeAppointment({ trusteeId }),
-      ];
-      const logSpy = vi.spyOn(context.logger, 'info');
-
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
-      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue(
-        mockAppointments,
-      );
-
-      await trusteeAppointmentsUseCase.getTrusteeAppointments(context, trusteeId);
-
-      expect(logSpy).toHaveBeenCalledWith(
-        'TRUSTEE-APPOINTMENTS-USE-CASE',
-        `Retrieved ${mockAppointments.length} appointments for trustee ${trusteeId}`,
-      );
-    });
-=======
->>>>>>> c2d1b151c (Addressed a few minor pr comments.)
   });
 });
