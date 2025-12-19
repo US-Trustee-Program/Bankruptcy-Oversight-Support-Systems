@@ -2,7 +2,7 @@ import { Auditable } from './auditable';
 import { Identifiable } from './document';
 import { ChapterType } from './trustees';
 
-export type AppointmentStatus = 'active' | 'inactive';
+type AppointmentStatus = 'active' | 'inactive';
 
 export type TrusteeAppointment = Auditable &
   Identifiable & {
