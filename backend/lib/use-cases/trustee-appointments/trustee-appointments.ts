@@ -4,16 +4,20 @@ import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { getTrusteeAppointmentsRepository, getTrusteesRepository } from '../../factory';
 import { TrusteeAppointment } from '../../../../common/src/cams/trustee-appointments';
 import { NotFoundError } from '../../common-errors/not-found-error';
+import { CourtsUseCase } from '../courts/courts';
+import { CourtDivisionDetails } from '../../../../common/src/cams/courts';
 
 const MODULE_NAME = 'TRUSTEE-APPOINTMENTS-USE-CASE';
 
 export class TrusteeAppointmentsUseCase {
   private readonly trusteeAppointmentsRepository: TrusteeAppointmentsRepository;
   private readonly trusteesRepository: TrusteesRepository;
+  private readonly courtsUseCase: CourtsUseCase;
 
   constructor(context: ApplicationContext) {
     this.trusteeAppointmentsRepository = getTrusteeAppointmentsRepository(context);
     this.trusteesRepository = getTrusteesRepository(context);
+    this.courtsUseCase = new CourtsUseCase();
   }
 
   async getTrusteeAppointments(
@@ -30,14 +34,22 @@ export class TrusteeAppointmentsUseCase {
         });
       }
 
-      const appointments =
-        await this.trusteeAppointmentsRepository.getTrusteeAppointments(trusteeId);
+      const [appointments, courts] = await Promise.all([
+        this.trusteeAppointmentsRepository.getTrusteeAppointments(trusteeId),
+        this.courtsUseCase.getCourts(context),
+      ]);
 
-      context.logger.info(
-        MODULE_NAME,
-        `Retrieved ${appointments.length} appointments for trustee ${trusteeId}`,
-      );
-      return appointments;
+      // Enrich appointments with court information
+      const enrichedAppointments = appointments.map((appointment) => {
+        const courtDivision = this.findCourtDivision(courts, appointment.divisionCode);
+        return {
+          ...appointment,
+          courtName: courtDivision?.courtName,
+          courtDivisionName: courtDivision?.courtDivisionName,
+        };
+      });
+
+      return enrichedAppointments;
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: {
@@ -46,5 +58,12 @@ export class TrusteeAppointmentsUseCase {
         },
       });
     }
+  }
+
+  private findCourtDivision(
+    courts: CourtDivisionDetails[],
+    divisionCode: string,
+  ): CourtDivisionDetails | undefined {
+    return courts.find((court) => court.courtDivisionCode === divisionCode);
   }
 }
