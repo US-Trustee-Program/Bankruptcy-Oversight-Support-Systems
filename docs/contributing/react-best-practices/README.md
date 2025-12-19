@@ -31,22 +31,16 @@ This guide is specifically for **React 19 deployed as a client-side single-page 
 
 All patterns, examples, and best practices in this guide are for **client-side React 19 only**.
 
-### What's New in React 19 for SPAs
+### React 19 for SPAs: Key Features & Patterns
 
-React 19 brings significant improvements to client-side applications:
+React 19 brings significant improvements that change how we build client-side applications:
 
-1. **React Compiler** - Automatically optimizes re-renders without manual memoization
-2. **Actions** - Simplified form handling with `useActionState` and `useFormStatus` (client-side)
-3. **`useOptimistic`** - Built-in optimistic UI updates for better perceived performance
-4. **Concurrent Features** - `useTransition` and `useDeferredValue` for responsive UIs
-5. **Suspense** - Production-ready for code splitting and lazy loading
-
-### Key Mindset Shifts for React 19 SPAs
-
-- **Compiler over manual memoization**: Let React Compiler handle optimization automatically
-- **Custom hooks for data fetching**: Encapsulate `useEffect` data fetching patterns in custom hooks
-- **Actions for forms**: Use `useActionState` for form submissions instead of manual state management
-- **Suspense for code splitting**: Use Suspense with lazy loading for better performance
+1. **React Compiler** - Automatically optimizes re-renders, eliminating the need for manual memoization with `useMemo`, `useCallback`, and `React.memo`
+2. **Actions** - Use `useActionState` and `useFormStatus` for simplified form handling instead of manual state management
+3. **`useOptimistic`** - Built-in optimistic UI updates provide instant feedback for better perceived performance
+4. **Concurrent Features** - `useTransition` and `useDeferredValue` keep UIs responsive during heavy updates
+5. **Suspense** - Production-ready for code splitting and lazy loading to reduce initial bundle size
+6. **Custom hooks for data fetching** - Encapsulate `useEffect` data fetching patterns in reusable hooks
 
 ---
 

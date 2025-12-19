@@ -20,7 +20,8 @@ Keep state as local as possible and only lift it when necessary.
 
 - Deep prop drilling across 5+ layers with no intermediate component needing the data
 - Multiple Context providers with interdependent state that update frequently
-- High-frequency global updates causing performance issues (many components re-rendering unnecessarily)
+- High-frequency global updates causing performance issues (many components re-rendering
+  unnecessarily)
 - Need for complex state synchronization across distant parts of the app
 
 ```tsx
@@ -51,7 +52,7 @@ function SearchBar() {
   return (
     <input
       value={state.searchQuery}
-      onChange={e => setState({ ...state, searchQuery: e.target.value })}
+      onChange={(e) => setState({ ...state, searchQuery: e.target.value })}
     />
   );
 }
@@ -86,29 +87,27 @@ function SearchPage() {
 
 function SearchBar({ query, onQueryChange }) {
   // No global state needed - just props
-  return (
-    <input
-      value={query}
-      onChange={e => onQueryChange(e.target.value)}
-    />
-  );
+  return <input value={query} onChange={(e) => onQueryChange(e.target.value)} />;
 }
 ```
 
 **When to add a state management library:**
-- **Redux Toolkit / Zustand / Jotai**: Prop drilling across many layers, or need for complex global state with middleware
-- **TanStack Query / SWR**: Repeated fetch/caching logic, need for background refetching and cache management
+
+- **Redux Toolkit / Zustand / Jotai**: Prop drilling across many layers, or need for complex global
+  state with middleware
+- **TanStack Query / SWR**: Repeated fetch/caching logic, need for background refetching and cache
+  management
 
 ## useSyncExternalStore: Subscribe to External State
 
-Use `useSyncExternalStore` to subscribe to external state sources like browser APIs, third-party stores, or global variables.
+Use `useSyncExternalStore` to subscribe to external state sources like browser APIs, third-party
+stores, or global variables.
 
 ### Practice
 
 - Use `useSyncExternalStore` for subscribing to external state (not managed by React)
 - Provide a subscribe function that registers/unregisters listeners
 - Provide a getSnapshot function that returns current state
-- Optionally provide getServerSnapshot for SSR (not needed for SPAs)
 
 ### Why / Problems it solves
 
@@ -160,7 +159,7 @@ function useOnlineStatus() {
       };
     },
     // getSnapshot: Return current value
-    () => navigator.onLine
+    () => navigator.onLine,
   );
 
   return isOnline;
@@ -170,11 +169,7 @@ function useOnlineStatus() {
 function App() {
   const isOnline = useOnlineStatus();
 
-  return (
-    <div>
-      {isOnline ? 'Online' : 'Offline'}
-    </div>
-  );
+  return <div>{isOnline ? 'Online' : 'Offline'}</div>;
 }
 ```
 
@@ -279,17 +274,14 @@ class CounterStore {
   };
 
   private notifyListeners() {
-    this.listeners.forEach(listener => listener());
+    this.listeners.forEach((listener) => listener());
   }
 }
 
 const counterStore = new CounterStore();
 
 function useCounterStore() {
-  return useSyncExternalStore(
-    counterStore.subscribe,
-    counterStore.getSnapshot
-  );
+  return useSyncExternalStore(counterStore.subscribe, counterStore.getSnapshot);
 }
 
 // Usage
@@ -314,6 +306,5 @@ function Counter() {
 
 ---
 
-**Previous:** [Custom Hooks](03-custom-hooks.md)
-**Next:** [useReducer for Complex State](05-use-reducer.md)
-**Up:** [Overview](README.md)
+**Previous:** [Custom Hooks](03-custom-hooks.md) **Next:**
+[useReducer for Complex State](05-use-reducer.md) **Up:** [Overview](README.md)

@@ -6,7 +6,7 @@ Default to React primitives. Add tools when they remove real complexity, not to 
 - Start with built-in React patterns (useState, useContext, custom hooks)
 - Add external libraries only when you have **concrete signals** they solve a real pain point
 - Don't add tools preemptively "in case we need them later"
-- Evaluate libraries based on the problem they solve, not popularity
+- Evaluate libraries primarily on how well they solve your problem, but consider maintenance/community as risk factors
 
 **Why / Problems it solves**
 - Reduces bundle size and dependencies
@@ -103,7 +103,7 @@ function UserDashboard() {
 }
 ```
 
-#### 16.1 The "Good Fences" Principle: Isolate Third-Party Dependencies
+#### 18.1 The "Good Fences" Principle: Isolate Third-Party Dependencies
 
 When you do add third-party libraries, **isolate them behind abstraction layers** to prevent tight coupling throughout your codebase. This is the "Good Fences" principle.
 

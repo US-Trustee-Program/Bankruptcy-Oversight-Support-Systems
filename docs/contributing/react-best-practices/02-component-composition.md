@@ -431,80 +431,12 @@ function App() {
 }
 ```
 
-### Higher-Order Component (HOC) - Use Sparingly
-
-HOCs are less common in modern React (prefer hooks), but still useful for certain cross-cutting concerns.
-
-```tsx
-// ✅ GOOD: HOC for cross-cutting concerns (use hooks when possible instead)
-function withLoading(Component) {
-  return function WithLoadingComponent({ isLoading, ...props }) {
-    if (isLoading) {
-      return <div>Loading...</div>;
-    }
-    return <Component {...props} />;
-  };
-}
-
-// Usage
-function UserList({ users }) {
-  return (
-    <ul>
-      {users.map(user => (
-        <li key={user.id}>{user.name}</li>
-      ))}
-    </ul>
-  );
-}
-
-const UserListWithLoading = withLoading(UserList);
-
-function App() {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  return <UserListWithLoading users={users} isLoading={loading} />;
-}
-
-// ✅ BETTER: Use custom hook instead (modern approach)
-// Note: In React 19 SPAs, prefer data fetching with useEffect and Api2 - see [Concurrent Features](12-concurrent-features.md)
-function useData(url) {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // In practice, use Api2 instead of fetch
-    fetch(url).then(r => r.json()).then(data => {
-      setData(data);
-      setLoading(false);
-    });
-  }, [url]);
-
-  return { data, loading };
-}
-
-function UserList() {
-  const { data: users, loading } = useData('/api/users');
-
-  if (loading) return <div>Loading...</div>;
-
-  return (
-    <ul>
-      {users.map(user => (
-        <li key={user.id}>{user.name}</li>
-      ))}
-    </ul>
-  );
-}
-```
-
 ## When to Use Each Pattern
 
+- **Custom hooks**: Reusable stateful logic (preferred modern approach for most use cases)
 - **Render props / Children as function**: Flexible rendering based on shared logic
 - **Compound components**: Related components that share state (tabs, accordions, menus)
 - **Slots**: Flexible layouts with named regions
-- **HOCs**: Cross-cutting concerns (prefer hooks in modern React)
-- **Custom hooks**: Reusable stateful logic (preferred modern approach)
 
 ## Sources
 

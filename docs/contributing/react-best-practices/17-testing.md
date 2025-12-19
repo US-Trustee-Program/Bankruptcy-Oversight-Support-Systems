@@ -2,7 +2,7 @@
 
 Test user behavior, not implementation details. Combine unit, integration, and end-to-end tests for confidence.
 
-##1 Testing Philosophy & ESLint
+## 1 Testing Philosophy & ESLint
 
 **Practice**
 - **Test user behavior** (React Testing Library philosophy) - what users see and do
@@ -65,7 +65,7 @@ export default [
 ];
 ```
 
-##2 Testing Custom Hooks
+## 2 Testing Custom Hooks
 
 Use `renderHook` to test custom hooks in isolation.
 
@@ -121,7 +121,7 @@ test('useCounter respects initial value changes', () => {
 });
 ```
 
-##3 Testing Async Behavior and Suspense
+## 3 Testing Async Behavior and Suspense
 
 React 19's `use()` hook and Suspense require specific testing patterns.
 
@@ -180,7 +180,7 @@ test('displays error when fetch fails', async () => {
 });
 ```
 
-##4 Mocking API Calls with MSW
+## 4 Mocking API Calls with MSW
 
 Mock Service Worker (MSW) provides reliable API mocking for SPAs.
 
@@ -253,7 +253,7 @@ test('handles API error gracefully', async () => {
 });
 ```
 
-##5 Testing Forms and Actions
+## 5 Testing Forms and Actions
 
 Test React 19's `useActionState` and form submission patterns.
 
@@ -320,7 +320,7 @@ test('shows error on failed submission', async () => {
 });
 ```
 
-##6 Integration Testing
+## 6 Integration Testing
 
 Test multiple components working together.
 
@@ -358,7 +358,7 @@ test('user can search and view results', async () => {
 });
 ```
 
-##7 End-to-End Testing
+## 7 End-to-End Testing
 
 Test critical user journeys with Playwright to ensure the full application works correctly in a real browser environment.
 
@@ -461,23 +461,8 @@ test('user can add case note', async ({ page }) => {
 ```
 
 **Running E2E Tests**:
-```bash
-# Run all E2E tests
-cd test/e2e
-npm test
 
-# Run specific test file
-npx playwright test playwright/cases.test.ts
-
-# Run in headed mode (see browser)
-npx playwright test --headed
-
-# Run in debug mode
-npx playwright test --debug
-
-# Generate report
-npx playwright show-report
-```
+See `test/e2e/package.json` for available test scripts. Tests are run from the `test/e2e/` directory.
 
 **Testing Strategy Summary**
 - **Unit tests**: Individual components, hooks, utilities (fast, many tests)

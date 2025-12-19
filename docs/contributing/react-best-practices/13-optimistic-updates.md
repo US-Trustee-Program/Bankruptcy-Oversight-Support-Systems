@@ -1,23 +1,28 @@
-# Optimistic Updates for Better UX
+# Optimistic Updates with useOptimistic
 
-Provide instant feedback to users using React 19's `useOptimistic` hook.
+When optimistic UI is desired, React 19's `useOptimistic` hook provides a built-in way to manage temporary state updates.
 
 **Practice**
-- Show optimistic state immediately while async operations are in progress
-- Use `useOptimistic` to temporarily update UI before server confirms
-- Mark optimistic items visually (opacity, pending indicator)
-- Handle failures gracefully by reverting optimistic updates
+- Evaluate whether optimistic updates justify the added complexity
+- If implementing optimistic updates, use `useOptimistic` instead of manual state management
+- Mark optimistic items visually (opacity, pending indicator) to show they're not confirmed
+- Handle failures gracefully by reverting optimistic updates and showing error messages
 
-**Why / Problems it solves**
-- Makes the app feel instant and responsive
-- Reduces perceived latency for user actions
-- Improves user confidence that their action was registered
-- Modern apps feel slow without optimistic updates
+**Why / When to use optimistic updates**
+- **High-frequency user actions** where waiting feels tedious (e.g., liking posts, toggling favorites)
+- **Predictable operations** where failures are rare and the optimistic state is likely correct
+- **User expects immediacy** based on the interaction pattern (e.g., adding items to a list)
 
-**Signals to use optimistic updates**
-- User performs actions that trigger network requests (create, update, delete)
-- Users complain app feels slow or unresponsive
-- There's a noticeable delay between action and feedback
+**Tradeoffs**
+- **Benefit**: Instant feedback, improved perceived performance
+- **Cost**: Added complexity, error handling, potential for confusing states if operation fails
+- **Cost**: Must handle edge cases (conflicts, stale data, rollbacks)
+
+**When NOT to use optimistic updates**
+- Operations where failure is common or consequences are significant
+- Complex forms or multi-step processes
+- When loading states are fast enough (< 200ms) that optimistic UI adds unnecessary complexity
+- Critical operations where users should wait for confirmation (payments, deletions)
 
 ```tsx
 // ❌ BAD: No feedback until server responds
