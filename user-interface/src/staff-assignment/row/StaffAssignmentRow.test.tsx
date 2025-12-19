@@ -98,9 +98,9 @@ describe('StaffAssignmentRow tests', () => {
       expect(cols?.[4]).toHaveTextContent('(unassigned)');
     });
     const button = cols?.[4].querySelector('button');
-    expect(button).not.toHaveClass(UswdsButtonStyle.Outline);
-    expect(button).toHaveTextContent('Assign');
-    expect(button).toHaveAttribute('title', 'Add Staff Assignments');
+    expect(button).toHaveClass(UswdsButtonStyle.Unstyled);
+    expect(button).toHaveTextContent('Edit');
+    expect(button).toHaveAttribute('title', 'Edit Staff Assignments');
     expect(button).toHaveAttribute('data-testid', 'open-modal-button_0');
   });
 
@@ -118,7 +118,7 @@ describe('StaffAssignmentRow tests', () => {
       assignments.forEach((assignment) => {
         expect(cols?.[4]).toHaveTextContent(assignment.name);
         const button = cols?.[4].querySelector('button');
-        expect(button).toHaveClass(UswdsButtonStyle.Outline);
+        expect(button).toHaveClass(UswdsButtonStyle.Unstyled);
         expect(button).toHaveTextContent('Edit');
         expect(button).toHaveAttribute('title', 'Edit Staff Assignments');
         expect(button).toHaveAttribute('data-testid', 'open-modal-button_0');
