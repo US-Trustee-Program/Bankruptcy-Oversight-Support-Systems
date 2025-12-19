@@ -81,6 +81,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       );
       expect(actualError.isCamsError).toBe(true);
     });
+<<<<<<< HEAD
 
     test('should log the retrieval of appointments', async () => {
       const trusteeId = 'trustee-123';
@@ -103,5 +104,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         `Retrieved ${mockAppointments.length} appointments for trustee ${trusteeId}`,
       );
     });
+=======
+>>>>>>> c2d1b151c (Addressed a few minor pr comments.)
   });
 });

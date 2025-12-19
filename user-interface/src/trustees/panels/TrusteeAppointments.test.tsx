@@ -16,7 +16,7 @@ describe('TrusteeAppointments', () => {
       courtName: 'Southern District of New York',
       divisionCode: '1',
       status: 'active',
-      appointedDate: 'January 15, 2020',
+      appointedDate: '01/15/2020',
       effectiveDate: '2020-01-15T00:00:00.000Z',
       createdOn: '2020-01-10T14:30:00.000Z',
       createdBy: SYSTEM_USER_REFERENCE,

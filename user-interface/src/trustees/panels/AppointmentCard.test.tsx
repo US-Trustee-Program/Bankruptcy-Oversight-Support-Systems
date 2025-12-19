@@ -22,7 +22,7 @@ describe('AppointmentCard', () => {
     updatedBy: SYSTEM_USER_REFERENCE,
   };
 
-  function renderWithProps(props?: Partial<TrusteeAppointment>) {
+  function renderWithProps(props?: Partial<AppointmentCardProps>) {
     const overrideAppointment = {
       ...mockAppointment,
       ...props,
