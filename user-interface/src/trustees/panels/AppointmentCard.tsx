@@ -5,8 +5,6 @@ import './AppointmentCard.scss';
 
 export interface AppointmentCardProps {
   appointment: TrusteeAppointment;
-  districtName?: string;
-  courtDivisionName?: string;
 }
 
 export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
