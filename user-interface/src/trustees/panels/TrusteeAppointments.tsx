@@ -21,7 +21,6 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
       setError(null);
       try {
         const response = await Api2.getTrusteeAppointments(trusteeId);
-        console.log('Fetched trustee appointments:', response.data);
         setAppointments(response.data ?? []);
       } catch (err) {
         setError('Failed to load trustee appointments');
