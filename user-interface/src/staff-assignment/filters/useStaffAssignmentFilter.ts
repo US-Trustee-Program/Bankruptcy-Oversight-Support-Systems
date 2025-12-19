@@ -3,7 +3,6 @@ import {
   StaffAssignmentFilterHook,
 } from './staffAssignmentFilter.types';
 import { CamsUserReference } from '@common/cams/users';
-import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { useCallback, useEffect, useState } from 'react';
 import { StaffAssignmentUseCase } from './staffAssignmentFilterUseCase';
 
@@ -27,23 +26,13 @@ export function useStaffAssignmentFilter(
     controls.assigneesFilterRef.current?.focusInput();
   };
 
-  const assigneesToComboOptions = useCallback(
-    (officeAssigneesList: CamsUserReference[]): ComboOption[] => {
-      return StaffAssignmentUseCase.assigneesToComboOptions(officeAssigneesList);
-    },
-    [],
-  );
+  const assigneesToComboOptions = StaffAssignmentUseCase.assigneesToComboOptions;
 
   useEffect(() => {
-    StaffAssignmentUseCase.fetchAssignees().then((result) => {
-      if (result.success && result.assignees) {
-        setOfficeAssignees(result.assignees);
-        setOfficeAssigneesError(false);
-      } else {
-        setOfficeAssigneesError(true);
-      }
-    });
-  }, []);
+    // This is a false positive -- fetchAssignees sets state asynchronously
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchAssignees();
+  }, [fetchAssignees]);
 
   return {
     store: {
