@@ -91,11 +91,6 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
   const handleSubmit = async (ev: React.FormEvent): Promise<void> => {
     ev.preventDefault();
 
-    if (!formData.districtKey) {
-      globalAlert?.error('Please select a district');
-      return;
-    }
-
     setIsSubmitting(true);
 
     const [courtId, divisionCode] = formData.districtKey.split('|');
