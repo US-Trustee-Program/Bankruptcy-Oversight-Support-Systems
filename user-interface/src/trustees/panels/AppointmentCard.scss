@@ -6,19 +6,20 @@
   }
 
   .appointment-card-container {
-    max-width: 21.5rem;
 
     .appointment-card-heading {
-      margin: 0 0 1.25rem 0; // 20px bottom margin
+      margin: 0 0 1.25rem 0;
       font-size: 1.25rem;
       font-weight: bold;
       line-height: 1.2;
     }
 
     .appointment-card {
+      background-color: #fffbfb;
       border: 1px solid #dfe1e2;
       border-radius: 0.25rem;
-      margin-bottom: 1.5625rem; // 25px
+      margin-bottom: 1.5625rem;
+      max-width: 21.5rem;
 
       .usa-card__body {
         padding: 1.5rem;
@@ -26,7 +27,8 @@
         h4 {
           margin-top: 0;
           margin-bottom: 1rem;
-          font-size: 1.125rem;
+          font-family: "Source Sans Pro", sans-serif;
+          font-size: 1rem;
           font-weight: 600;
         }
 
@@ -44,6 +46,7 @@
             }
 
             .appointment-label {
+              font-family: "Source Sans Pro", sans-serif;
               font-weight: 600;
               margin-right: 0.25rem;
             }

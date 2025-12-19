@@ -10,14 +10,13 @@ export interface AppointmentCardProps {
 }
 
 export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
-  console.log('Rendering AppointmentCard with props:', props);
-  // const { appointment } = props;
-  console.log('AppointmentCard props:', props.appointment);
-
   const formattedChapter = formatChapterType(props.appointment.chapter);
-  // const districtDisplay = districtName || `Court ${appointment.courtId}`;
-  const districtDisplay = `${props.appointment?.courtName} (${props.appointment?.courtDivisionName})`;
-  // const cityDisplay = props.appointment?.courtDivisionName ? ` (${props.appointment?.courtDivisionName})` : '';
+  let districtDisplay;
+  if (props.appointment.courtName && props.appointment.courtDivisionName) {
+    districtDisplay = `${props.appointment.courtName} (${props.appointment.courtDivisionName})`;
+  } else {
+    districtDisplay = 'Court not found';
+  }
   const formattedEffectiveDate = formatDate(props.appointment.effectiveDate);
   const statusDisplay = `${props.appointment.status.charAt(0).toUpperCase() + props.appointment.status.slice(1)} ${formattedEffectiveDate}`;
 
@@ -40,7 +39,8 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
               <span className="appointment-label">Status:</span> {statusDisplay}
             </li>
             <li>
-              <span className="appointment-label">Appointed:</span> {props.appointment.appointedDate}
+              <span className="appointment-label">Appointed:</span>{' '}
+              {props.appointment.appointedDate}
             </li>
           </ul>
         </div>
