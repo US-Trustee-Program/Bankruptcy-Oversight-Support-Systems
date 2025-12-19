@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { QueryResults } from '../types/database';
 import { handleQueryResult } from './gateway-helper';
 import { CamsError } from '../../common-errors/cams-error';
@@ -6,7 +7,7 @@ import { ApplicationContext } from '../types/basic';
 
 const moduleName = 'gateway-helper-test';
 describe('Gateway helper test', () => {
-  const callback = jest.fn();
+  const callback = vi.fn();
 
   let context: ApplicationContext;
 

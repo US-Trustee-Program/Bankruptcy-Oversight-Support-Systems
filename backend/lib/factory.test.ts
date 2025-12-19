@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { ApplicationContext } from './adapters/types/basic';
 import OktaHumble from './humble-objects/okta-humble';
 import { createMockApplicationContext } from './testing/testing-utilities';
@@ -31,76 +32,74 @@ describe('Factory function-apps', () => {
   let TrusteeAppointmentsMongoRepository;
 
   beforeEach(async () => {
-    await jest.isolateModulesAsync(async () => {
-      factory = await import('./factory');
+    vi.resetModules();
 
-      RuntimeStateMongoRepository = (
-        await import('./adapters/gateways/mongo/runtime-state.mongo.repository')
-      ).RuntimeStateMongoRepository;
+    factory = await import('./factory');
 
-      MockMongoRepository = (await import('./testing/mock-gateways/mock-mongo.repository'))
-        .MockMongoRepository;
+    RuntimeStateMongoRepository = (
+      await import('./adapters/gateways/mongo/runtime-state.mongo.repository')
+    ).RuntimeStateMongoRepository;
 
-      OrdersMongoRepository = (await import('./adapters/gateways/mongo/orders.mongo.repository'))
-        .OrdersMongoRepository;
+    MockMongoRepository = (await import('./testing/mock-gateways/mock-mongo.repository'))
+      .MockMongoRepository;
 
-      UserSessionCacheRepository = (
-        await import('./adapters/gateways/mongo/user-session-cache.mongo.repository')
-      ).UserSessionCacheMongoRepository;
+    OrdersMongoRepository = (await import('./adapters/gateways/mongo/orders.mongo.repository'))
+      .OrdersMongoRepository;
 
-      ConsolidationOrdersMongoRepository = (
-        await import('./adapters/gateways/mongo/consolidations.mongo.repository')
-      ).default;
+    UserSessionCacheRepository = (
+      await import('./adapters/gateways/mongo/user-session-cache.mongo.repository')
+    ).UserSessionCacheMongoRepository;
 
-      MockOfficesGateway = (await import('./testing/mock-gateways/mock.offices.gateway'))
-        .MockOfficesGateway;
+    ConsolidationOrdersMongoRepository = (
+      await import('./adapters/gateways/mongo/consolidations.mongo.repository')
+    ).default;
 
-      MockOrdersGateway = (await import('./testing/mock-gateways/mock.orders.gateway'))
-        .MockOrdersGateway;
+    MockOfficesGateway = (await import('./testing/mock-gateways/mock.offices.gateway'))
+      .MockOfficesGateway;
 
-      DxtrOrdersGateway = (await import('./adapters/gateways/dxtr/orders.dxtr.gateway')).default;
+    MockOrdersGateway = (await import('./testing/mock-gateways/mock.orders.gateway'))
+      .MockOrdersGateway;
 
-      CaseDocketUseCase = (await import('./use-cases/case-docket/case-docket')).CaseDocketUseCase;
+    DxtrOrdersGateway = (await import('./adapters/gateways/dxtr/orders.dxtr.gateway')).default;
 
-      OfficesDxtrGateway = (await import('./adapters/gateways/dxtr/offices.dxtr.gateway')).default;
+    CaseDocketUseCase = (await import('./use-cases/case-docket/case-docket')).CaseDocketUseCase;
 
-      CasesLocalGateway = (await import('./adapters/gateways/cases.local.gateway'))
-        .CasesLocalGateway;
+    OfficesDxtrGateway = (await import('./adapters/gateways/dxtr/offices.dxtr.gateway')).default;
 
-      CasesDxtrGateway = (await import('./adapters/gateways/dxtr/cases.dxtr.gateway')).default;
+    CasesLocalGateway = (await import('./adapters/gateways/cases.local.gateway')).CasesLocalGateway;
 
-      CaseAssignmentMongoRepository = (
-        await import('./adapters/gateways/mongo/case-assignment.mongo.repository')
-      ).CaseAssignmentMongoRepository;
+    CasesDxtrGateway = (await import('./adapters/gateways/dxtr/cases.dxtr.gateway')).default;
 
-      OfficesMongoRepository = (await import('./adapters/gateways/mongo/offices.mongo.repository'))
-        .OfficesMongoRepository;
+    CaseAssignmentMongoRepository = (
+      await import('./adapters/gateways/mongo/case-assignment.mongo.repository')
+    ).CaseAssignmentMongoRepository;
 
-      UserSessionUseCase = (await import('./use-cases/user-session/user-session'))
-        .UserSessionUseCase;
+    OfficesMongoRepository = (await import('./adapters/gateways/mongo/offices.mongo.repository'))
+      .OfficesMongoRepository;
 
-      OktaGateway = (await import('./adapters/gateways/okta/okta-gateway')).default;
+    UserSessionUseCase = (await import('./use-cases/user-session/user-session')).UserSessionUseCase;
 
-      CaseNotesMongoRepository = (
-        await import('./adapters/gateways/mongo/case-notes.mongo.repository')
-      ).CaseNotesMongoRepository;
+    OktaGateway = (await import('./adapters/gateways/okta/okta-gateway')).default;
 
-      UsersMongoRepository = (await import('./adapters/gateways/mongo/user.repository'))
-        .UsersMongoRepository;
+    CaseNotesMongoRepository = (
+      await import('./adapters/gateways/mongo/case-notes.mongo.repository')
+    ).CaseNotesMongoRepository;
 
-      OktaUserGroupGateway = (await import('./adapters/gateways/okta/okta-user-group-gateway'))
-        .default;
+    UsersMongoRepository = (await import('./adapters/gateways/mongo/user.repository'))
+      .UsersMongoRepository;
 
-      MockUserGroupGateway = (await import('./testing/mock-gateways/mock-user-group-gateway'))
-        .default;
+    OktaUserGroupGateway = (await import('./adapters/gateways/okta/okta-user-group-gateway'))
+      .default;
 
-      StaffMongoRepository = (await import('./adapters/gateways/mongo/staff.mongo.repository'))
-        .StaffMongoRepository;
+    MockUserGroupGateway = (await import('./testing/mock-gateways/mock-user-group-gateway'))
+      .default;
 
-      TrusteeAppointmentsMongoRepository = (
-        await import('./adapters/gateways/mongo/trustee-appointments.mongo.repository')
-      ).TrusteeAppointmentsMongoRepository;
-    });
+    StaffMongoRepository = (await import('./adapters/gateways/mongo/staff.mongo.repository'))
+      .StaffMongoRepository;
+
+    TrusteeAppointmentsMongoRepository = (
+      await import('./adapters/gateways/mongo/trustee-appointments.mongo.repository')
+    ).TrusteeAppointmentsMongoRepository;
   });
 
   beforeAll(async () => {
@@ -231,7 +230,7 @@ describe('Factory function-apps', () => {
     contextWithOkta.config.userGroupGatewayConfig.keyId = 'mock';
     contextWithOkta.config.userGroupGatewayConfig.url = 'https://fake.url';
     contextWithOkta.config.userGroupGatewayConfig.privateKey = '{}';
-    jest.spyOn(OktaHumble.prototype, 'init').mockImplementation(jest.fn());
+    vi.spyOn(OktaHumble.prototype, 'init').mockImplementation(vi.fn());
 
     const result = await factory.getUserGroupGateway(contextWithOkta);
     expect(result).toBeInstanceOf(OktaUserGroupGateway);

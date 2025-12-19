@@ -3,26 +3,16 @@
   "version": "1.0.0",
   "description": "Custom tools used to aid development.",
   "scripts": {
-    "clean": "rm -rf ./node_modules",
-    "delete-all": "tsx --env-file=.env cosmos-records/index.ts",
-    "delete-assignments": "tsx --env-file=.env cosmos-records/delete-assignments.ts",
-    "delete-orders": "tsx --env-file=.env cosmos-records/delete-orders.ts",
     "generate-api-key": "tsx --env-file=.env api-keys/generate-key.ts",
-    "sync-orders": "tsx --env-file=.env cosmos-records/sync-orders.ts",
-    "reload-orders": "npm run delete-orders; npm run sync-orders",
-    "test-data:sql": "mkdir -p data; tsx --env-file=.env test-data/index.ts sql > data/test-data.sql",
-    "test-data:json": "mkdir -p data; tsx --env-file=.env test-data/index.ts json > data/test-data.json",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
   "author": "",
-  "license": "ISC",
+  "license": "CC0 v1.0",
   "dependencies": {
     "@azure/cosmos": "4.9.0",
     "@azure/identity": "4.13.0",
-    "@faker-js/faker": "9.9.0",
     "@types/node": "24.10.1",
-    "dotenv": "17.2.3",
     "tsx": "4.21.0"
   },
   "type": "module",

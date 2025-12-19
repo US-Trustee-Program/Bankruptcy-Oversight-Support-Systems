@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { StaffMongoRepository } from './staff.mongo.repository';
 import { ApplicationContext } from '../../types/basic';
 import { CamsRole } from '../../../../../common/src/cams/roles';
@@ -6,16 +7,16 @@ import { OfficesRepository } from '../../../use-cases/gateways.types';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { OfficeStaff } from './offices.mongo.repository';
 
-jest.mock('../../../factory');
+vi.mock('../../../factory');
 
-const mockGetOfficesRepository = getOfficesRepository as jest.MockedFunction<
+const mockGetOfficesRepository = getOfficesRepository as vi.MockedFunction<
   typeof getOfficesRepository
 >;
 
 describe('StaffMongoRepository', () => {
   let repository: StaffMongoRepository;
   let mockContext: ApplicationContext;
-  let mockOfficesRepository: jest.Mocked<OfficesRepository>;
+  let mockOfficesRepository: vi.Mocked<OfficesRepository>;
 
   beforeEach(async () => {
     const context = await createMockApplicationContext();
@@ -23,13 +24,13 @@ describe('StaffMongoRepository', () => {
     mockContext = await createMockApplicationContext();
 
     mockOfficesRepository = {
-      search: jest.fn(),
-      putOrExtendOfficeStaff: jest.fn(),
-      getOfficeAttorneys: jest.fn(),
-      putOfficeStaff: jest.fn(),
-      findAndDeleteStaff: jest.fn(),
-      release: jest.fn(),
-    } as jest.Mocked<OfficesRepository>;
+      search: vi.fn(),
+      putOrExtendOfficeStaff: vi.fn(),
+      getOfficeAttorneys: vi.fn(),
+      putOfficeStaff: vi.fn(),
+      findAndDeleteStaff: vi.fn(),
+      release: vi.fn(),
+    } as vi.Mocked<OfficesRepository>;
     mockGetOfficesRepository.mockReturnValue(mockOfficesRepository);
   });
 

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import UsersHelpers from './users.helpers';
 import { CamsUser, PrivilegedIdentityUser } from '../../../../common/src/cams/users';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
@@ -32,8 +33,8 @@ describe('UsersHelpers tests', () => {
       roles: [CamsRole.TrialAttorney, CamsRole.PrivilegedIdentityUser],
       offices: [manhattanOffice],
     });
-    jest.spyOn(MockUserGroupGateway.prototype, 'getUserById').mockResolvedValue(idpUser);
-    const pimSpy = jest
+    vi.spyOn(MockUserGroupGateway.prototype, 'getUserById').mockResolvedValue(idpUser);
+    const pimSpy = vi
       .spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser')
       .mockRejectedValue(new Error('this should not be called'));
 
@@ -48,8 +49,8 @@ describe('UsersHelpers tests', () => {
       roles: [CamsRole.TrialAttorney],
       offices: [manhattanOffice],
     });
-    jest.spyOn(MockUserGroupGateway.prototype, 'getUserById').mockResolvedValue(idpUser);
-    const pimSpy = jest
+    vi.spyOn(MockUserGroupGateway.prototype, 'getUserById').mockResolvedValue(idpUser);
+    const pimSpy = vi
       .spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser')
       .mockRejectedValue(new Error('this should not be called'));
 
@@ -64,8 +65,8 @@ describe('UsersHelpers tests', () => {
       roles: [CamsRole.TrialAttorney, CamsRole.PrivilegedIdentityUser],
       offices: [manhattanOffice],
     });
-    jest.spyOn(MockUserGroupGateway.prototype, 'getUserById').mockResolvedValue(idpUser);
-    const pimSpy = jest
+    vi.spyOn(MockUserGroupGateway.prototype, 'getUserById').mockResolvedValue(idpUser);
+    const pimSpy = vi
       .spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser')
       .mockRejectedValue(new NotFoundError('test-module'));
 
@@ -80,8 +81,8 @@ describe('UsersHelpers tests', () => {
       roles: [CamsRole.TrialAttorney, CamsRole.PrivilegedIdentityUser],
       offices: [manhattanOffice],
     });
-    jest.spyOn(MockUserGroupGateway.prototype, 'getUserById').mockResolvedValue(idpUser);
-    const pimSpy = jest
+    vi.spyOn(MockUserGroupGateway.prototype, 'getUserById').mockResolvedValue(idpUser);
+    const pimSpy = vi
       .spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser')
       .mockRejectedValue(new UnknownError('test-module'));
 
@@ -96,7 +97,7 @@ describe('UsersHelpers tests', () => {
       roles: [CamsRole.TrialAttorney, CamsRole.PrivilegedIdentityUser],
       offices: [manhattanOffice],
     });
-    jest.spyOn(MockUserGroupGateway.prototype, 'getUserById').mockResolvedValue(idpUser);
+    vi.spyOn(MockUserGroupGateway.prototype, 'getUserById').mockResolvedValue(idpUser);
     const elevation: PrivilegedIdentityUser = {
       documentType: 'PRIVILEGED_IDENTITY_USER',
       id: idpUser.id,
@@ -106,7 +107,7 @@ describe('UsersHelpers tests', () => {
       },
       expires: expiredDate,
     };
-    const pimSpy = jest
+    const pimSpy = vi
       .spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser')
       .mockResolvedValue(elevation);
 
@@ -118,7 +119,7 @@ describe('UsersHelpers tests', () => {
   test('should return elevated privileges', async () => {
     const roles = [CamsRole.TrialAttorney, CamsRole.PrivilegedIdentityUser];
     const idpUser: CamsUser = MockData.getCamsUser({ roles, offices: [manhattanOffice] });
-    jest.spyOn(MockUserGroupGateway.prototype, 'getUserById').mockResolvedValue(idpUser);
+    vi.spyOn(MockUserGroupGateway.prototype, 'getUserById').mockResolvedValue(idpUser);
     const elevation: PrivilegedIdentityUser = {
       documentType: 'PRIVILEGED_IDENTITY_USER',
       id: idpUser.id,
@@ -128,9 +129,9 @@ describe('UsersHelpers tests', () => {
       },
       expires: unexpiredDate,
     };
-    jest
-      .spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser')
-      .mockResolvedValue(elevation);
+    vi.spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser').mockResolvedValue(
+      elevation,
+    );
 
     const expected: CamsUser = {
       ...idpUser,
@@ -145,10 +146,10 @@ describe('UsersHelpers tests', () => {
   test('should return user when elevated privileges are not found', async () => {
     const roles = [CamsRole.TrialAttorney, CamsRole.PrivilegedIdentityUser];
     const idpUser: CamsUser = MockData.getCamsUser({ roles, offices: [manhattanOffice] });
-    jest.spyOn(MockUserGroupGateway.prototype, 'getUserById').mockResolvedValue(idpUser);
-    jest
-      .spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser')
-      .mockRejectedValue(new NotFoundError('test-module'));
+    vi.spyOn(MockUserGroupGateway.prototype, 'getUserById').mockResolvedValue(idpUser);
+    vi.spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser').mockRejectedValue(
+      new NotFoundError('test-module'),
+    );
 
     const user = await UsersHelpers.getPrivilegedIdentityUser(context, idpUser.id);
     expect(user).toEqual(idpUser);
@@ -157,7 +158,7 @@ describe('UsersHelpers tests', () => {
   test('should return combined privileges when providing the IDP user', async () => {
     const roles = [CamsRole.TrialAttorney, CamsRole.PrivilegedIdentityUser];
     const idpUser: CamsUser = MockData.getCamsUser({ roles, offices: [manhattanOffice] });
-    const idpSpy = jest
+    const idpSpy = vi
       .spyOn(MockUserGroupGateway.prototype, 'getUserById')
       .mockRejectedValue(new Error('this should not be called'));
     const elevation: PrivilegedIdentityUser = {
@@ -169,7 +170,7 @@ describe('UsersHelpers tests', () => {
       },
       expires: MockData.someDateAfterThisDate(new Date().toISOString()),
     };
-    const pimSpy = jest
+    const pimSpy = vi
       .spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser')
       .mockResolvedValue(elevation);
 
@@ -188,7 +189,7 @@ describe('UsersHelpers tests', () => {
   test('should return combined privileges when providing elevated privileges', async () => {
     const roles = [CamsRole.TrialAttorney, CamsRole.PrivilegedIdentityUser];
     const idpUser: CamsUser = MockData.getCamsUser({ roles, offices: [manhattanOffice] });
-    const idpSpy = jest
+    const idpSpy = vi
       .spyOn(MockUserGroupGateway.prototype, 'getUserById')
       .mockResolvedValue(idpUser);
     const pimUser: PrivilegedIdentityUser = {
@@ -200,7 +201,7 @@ describe('UsersHelpers tests', () => {
       },
       expires: MockData.someDateAfterThisDate(new Date().toISOString()),
     };
-    const pimSpy = jest
+    const pimSpy = vi
       .spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser')
       .mockRejectedValue(new Error('this should not be called'));
 

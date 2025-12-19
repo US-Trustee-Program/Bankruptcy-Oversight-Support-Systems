@@ -1,5 +1,5 @@
+import { vi } from 'vitest';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
-import { getCamsError } from '../../../common-errors/error-utilities';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { ApplicationContext } from '../../types/basic';
@@ -17,7 +17,7 @@ describe('case assignment repo tests', () => {
 
   afterEach(async () => {
     await closeDeferred(context);
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
     repo.release();
   });
 
@@ -25,7 +25,7 @@ describe('case assignment repo tests', () => {
     test('should create assignment', async () => {
       const fakeAttorney = MockData.getAttorneyUser();
       const assignment = MockData.getAttorneyAssignment({ name: fakeAttorney.name });
-      jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue(assignment.id);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue(assignment.id);
       const actual = await repo.create(assignment);
       expect(actual).toEqual(assignment.id);
     });
@@ -33,9 +33,11 @@ describe('case assignment repo tests', () => {
     test('should update assignment', async () => {
       const fakeAttorney = MockData.getAttorneyUser();
       const assignment = MockData.getAttorneyAssignment({ name: fakeAttorney.name });
-      jest
-        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
-        .mockResolvedValue({ id: assignment.id, modifiedCount: 1, upsertedCount: 0 });
+      vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockResolvedValue({
+        id: assignment.id,
+        modifiedCount: 1,
+        upsertedCount: 0,
+      });
       const actual = await repo.update(assignment);
       expect(actual).toEqual(assignment.id);
     });
@@ -46,7 +48,7 @@ describe('case assignment repo tests', () => {
         MockData.getAttorneyAssignment({ userId }),
         MockData.getAttorneyAssignment({ userId }),
       ];
-      jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(mockAssignments);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(mockAssignments);
       const actualAssignments = await repo.findAssignmentsByAssignee(userId);
       expect(actualAssignments).toEqual(mockAssignments);
     });
@@ -57,7 +59,7 @@ describe('case assignment repo tests', () => {
         MockData.getAttorneyAssignment({ caseId }),
         MockData.getAttorneyAssignment({ caseId }),
       ];
-      jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(mockAssignments);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(mockAssignments);
       const actualAssignment = await repo.getAssignmentsForCases([caseId]);
 
       expect(actualAssignment).toEqual(new Map([[caseId, mockAssignments]]));
@@ -70,61 +72,66 @@ describe('case assignment repo tests', () => {
     test('should handle error on create assignment', async () => {
       const fakeAttorney = MockData.getAttorneyUser();
       const assignment = MockData.getAttorneyAssignment({ name: fakeAttorney.name });
-      jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(error);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(error);
       await expect(() => repo.create(assignment)).rejects.toThrow(
-        getCamsError(
-          error,
-          'MONGO_COSMOS_DB_REPOSITORY_ASSIGNMENTS',
-          'Unable to create assignment.',
-        ),
+        expect.objectContaining({
+          message: 'Unable to create assignment.',
+          status: 500,
+          module: 'CASE-ASSIGNMENT-MONGO-REPOSITORY',
+          originalError: expect.stringContaining('Error: some error'),
+        }),
       );
     });
 
     test('should handle error when updating assignment', async () => {
       const fakeAttorney = MockData.getAttorneyUser();
       const assignment = MockData.getAttorneyAssignment({ name: fakeAttorney.name });
-      jest.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue(error);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue(error);
       await expect(() => repo.update(assignment)).rejects.toThrow(
-        getCamsError(
-          error,
-          'MONGO_COSMOS_DB_REPOSITORY_ASSIGNMENTS',
-          'Unable to update assignment.',
-        ),
+        expect.objectContaining({
+          message: 'Unable to update assignment.',
+          status: 500,
+          module: 'CASE-ASSIGNMENT-MONGO-REPOSITORY',
+          originalError: expect.stringContaining('Error: some error'),
+        }),
       );
     });
 
     test('should handle error on findAssignmentsByAssignee', async () => {
       const userId = 'userId-Joe Nobel';
-      jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
       await expect(() => repo.findAssignmentsByAssignee(userId)).rejects.toThrow(
-        getCamsError(
-          error,
-          'MONGO_COSMOS_DB_REPOSITORY_ASSIGNMENTS',
-          'Unable to retrieve assignment.',
-        ),
+        expect.objectContaining({
+          message: 'Unable to retrieve assignment.',
+          status: 500,
+          module: 'CASE-ASSIGNMENT-MONGO-REPOSITORY',
+          originalError: expect.stringContaining('Error: some error'),
+        }),
       );
     });
 
     test('should handle error on findAssignmentsByCaseId', async () => {
       const caseId = '111-22-33333';
-      jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
       await expect(() => repo.getAssignmentsForCases([caseId])).rejects.toThrow(
-        getCamsError(
-          error,
-          'MONGO_COSMOS_DB_REPOSITORY_ASSIGNMENTS',
-          'Unable to retrieve assignment.',
-        ),
+        expect.objectContaining({
+          message: 'Unable to retrieve assignment.',
+          status: 500,
+          module: 'CASE-ASSIGNMENT-MONGO-REPOSITORY',
+          originalError: expect.stringContaining('Error: some error'),
+        }),
       );
     });
 
     test('should handle error on getAllActiveAssignments', async () => {
-      jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
       await expect(() => repo.getAllActiveAssignments()).rejects.toThrow(
-        getCamsError(
-          error,
-          'MONGO_COSMOS_DB_REPOSITORY_ASSIGNMENTS',
-          'Unable to retrieve assignments.',
-        ),
+        expect.objectContaining({
+          message: 'Unable to retrieve assignments.',
+          status: 500,
+          module: 'CASE-ASSIGNMENT-MONGO-REPOSITORY',
+          originalError: expect.stringContaining('Error: some error'),
+        }),
       );
     });
   });
@@ -133,21 +140,23 @@ describe('case assignment repo tests', () => {
     test('update returns undefined if modifiedCount is 0', async () => {
       const fakeAttorney = MockData.getAttorneyUser();
       const assignment = MockData.getAttorneyAssignment({ name: fakeAttorney.name });
-      jest
-        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
-        .mockResolvedValue({ id: assignment.id, modifiedCount: 0, upsertedCount: 0 });
+      vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockResolvedValue({
+        id: assignment.id,
+        modifiedCount: 0,
+        upsertedCount: 0,
+      });
       const actual = await repo.update(assignment);
       expect(actual).toBeUndefined();
     });
 
     test('getAssignmentsForCases returns empty map if no assignments', async () => {
-      jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
       const actual = await repo.getAssignmentsForCases(['some-case-id']);
       expect(actual).toEqual(new Map());
     });
 
     test('getAllActiveAssignments returns empty array if no assignments', async () => {
-      jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
       const actual = await repo.getAllActiveAssignments();
       expect(actual).toEqual([]);
     });
@@ -166,7 +175,7 @@ describe('case assignment repo tests', () => {
       expect(repo2).toBe(repo1); // Should be the same instance
       expect(CaseAssignmentMongoRepository['referenceCount']).toBe(2);
       // Drop once, should not close
-      const closeSpy = jest.spyOn(repo1['client'], 'close').mockResolvedValue();
+      const closeSpy = vi.spyOn(repo1['client'], 'close').mockResolvedValue();
       CaseAssignmentMongoRepository.dropInstance();
       expect(CaseAssignmentMongoRepository['referenceCount']).toBe(1);
       expect(closeSpy).not.toHaveBeenCalled();
@@ -180,7 +189,7 @@ describe('case assignment repo tests', () => {
     });
 
     test('release calls dropInstance', async () => {
-      const dropSpy = jest.spyOn(CaseAssignmentMongoRepository, 'dropInstance');
+      const dropSpy = vi.spyOn(CaseAssignmentMongoRepository, 'dropInstance');
       repo.release();
       expect(dropSpy).toHaveBeenCalled();
       dropSpy.mockRestore();

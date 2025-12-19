@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import SyncCases from './sync-cases';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
@@ -14,7 +15,7 @@ describe('getCaseIds tests', () => {
   });
 
   test('should return empty events array when error is caught', async () => {
-    jest.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new Error('some error'));
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new Error('some error'));
     const actual = await SyncCases.getCaseIds(context);
     expect(actual).toEqual({ events: [] });
   });
@@ -23,7 +24,7 @@ describe('getCaseIds tests', () => {
     const lastSyncDate = '2025-01-01';
     const gatewayResponse = MockData.buildArray(MockData.randomCaseId, 3);
 
-    const getIdSpy = jest
+    const getIdSpy = vi
       .spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds')
       .mockResolvedValue(gatewayResponse);
 
@@ -31,7 +32,7 @@ describe('getCaseIds tests', () => {
       documentType: 'CASES_SYNC_STATE',
       lastSyncDate,
     };
-    jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(syncState);
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(syncState);
 
     const actual = await SyncCases.getCaseIds(context);
 
@@ -48,13 +49,13 @@ describe('getCaseIds tests', () => {
 
   test('should use provided lastSyncDate if provided', async () => {
     const lastSyncDate = '2025-02-01 23:59:59';
-    jest
-      .spyOn(MockMongoRepository.prototype, 'read')
-      .mockRejectedValue(new Error('this should not be called'));
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(
+      new Error('this should not be called'),
+    );
 
     const mockCaseIds = MockData.buildArray(MockData.randomCaseId, 3);
 
-    const getUpdatedSpy = jest
+    const getUpdatedSpy = vi
       .spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds')
       .mockResolvedValue(mockCaseIds);
 

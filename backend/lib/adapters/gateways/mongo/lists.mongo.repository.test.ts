@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { ApplicationContext } from '../../types/basic';
 import { ListsMongoRepository } from './lists.mongo.repository';
 import {
@@ -11,9 +12,9 @@ import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import { Creatable } from '../../../../../common/src/cams/creatable';
 
-const mockAggregate = jest.fn();
-const mockInsertOne = jest.fn();
-const mockDeleteOne = jest.fn();
+const mockAggregate = vi.fn();
+const mockInsertOne = vi.fn();
+const mockDeleteOne = vi.fn();
 
 describe('ListsMongoRepository', () => {
   let context: ApplicationContext;
@@ -23,9 +24,9 @@ describe('ListsMongoRepository', () => {
     mockAggregate.mockReset();
     mockInsertOne.mockReset();
     mockDeleteOne.mockReset();
-    jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockImplementation(mockInsertOne);
-    jest.spyOn(MongoCollectionAdapter.prototype, 'aggregate').mockImplementation(mockAggregate);
-    jest.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockImplementation(mockDeleteOne);
+    vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockImplementation(mockInsertOne);
+    vi.spyOn(MongoCollectionAdapter.prototype, 'aggregate').mockImplementation(mockAggregate);
+    vi.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockImplementation(mockDeleteOne);
     context = await createMockApplicationContext({
       env: {
         MONGO_CONNECTION_STRING: 'mongodb://localhost:27017',
@@ -37,7 +38,7 @@ describe('ListsMongoRepository', () => {
 
   afterEach(async () => {
     await closeDeferred(context);
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
     repository.release();
   });
 
@@ -105,7 +106,7 @@ describe('ListsMongoRepository', () => {
 
   describe('release', () => {
     test('should call dropInstance', () => {
-      const dropInstanceSpy = jest.spyOn(ListsMongoRepository, 'dropInstance');
+      const dropInstanceSpy = vi.spyOn(ListsMongoRepository, 'dropInstance');
 
       repository.release();
 

@@ -12,49 +12,43 @@ on:
 
 jobs:
   playwright-accessibility-test:
-    defaults:
-      run:
-        working-directory: ${{ inputs.path }}
     runs-on: ubuntu-latest
     env:
       CI: true
     steps:
-      - name: Install chrome
-        uses: browser-actions/setup-chrome@c785b87e244131f27c9f19c1a33e2ead956ab7ce # v1
       - name: Get source code
         uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: ${{ inputs.node-version }}
           cache: 'npm'
-          cache-dependency-path: ${{ inputs.path }}/package-lock.json
-
-      - name: CI Common
-        working-directory: common
-        run: |
-          npm ci
+          cache-dependency-path: package-lock.json
 
       - name: Install Node dependencies
         run: |
           npm ci
-          npx playwright install chromium msedge
+          npm install serve -g
 
       - name: Run UI in mock mode
         run: |
           export CAMS_USE_FAKE_API=true
           export CAMS_LOGIN_PROVIDER=none
-          npm run build
-          npm install serve -g
+          npm run build:user-interface
+          pushd ${{ inputs.path }}
           serve -s build &
           if ! timeout 120s sh -c 'until nc -z localhost 3000; do sleep 1; done'; then
               echo "Webapp check timed out"
               exit 1
           fi
+          popd
+
+      - name: Install Playwright Browsers
+        working-directory: ${{ inputs.path }}
+        run: npx playwright install --with-deps chromium msedge
 
       - name: Run Playwright a11y Tests
         id: playwrightA11yTests
-        run: |
-          npm run test:a11y
+        run: npm run test:a11y --workspace=user-interface
 
       - name: Upload report
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0

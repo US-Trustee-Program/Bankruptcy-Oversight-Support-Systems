@@ -1,5 +1,4 @@
-import { CamsError } from '../../../../common-errors/cams-error';
-import { NotFoundError } from '../../../../common-errors/not-found-error';
+import { vi } from 'vitest';
 import { CollectionHumble, DocumentClient } from '../../../../humble-objects/mongo-humble';
 import QueryBuilder from '../../../../query/query-builder';
 import QueryPipeline from '../../../../query/query-pipeline';
@@ -8,18 +7,19 @@ import { MongoCollectionAdapter, removeIds } from './mongo-adapter';
 const { and, orderBy } = QueryBuilder;
 
 const MODULE_NAME = 'TEST-MODULE';
+const ADAPTER_MODULE_NAME = MODULE_NAME + '_ADAPTER';
 
-const find = jest.fn();
-const findOne = jest.fn();
-const paginate = jest.fn();
-const replaceOne = jest.fn();
-const updateOne = jest.fn();
-const insertOne = jest.fn();
-const insertMany = jest.fn();
-const deleteOne = jest.fn();
-const deleteMany = jest.fn();
-const countDocuments = jest.fn();
-const aggregate = jest.fn();
+const find = vi.fn();
+const findOne = vi.fn();
+const paginate = vi.fn();
+const replaceOne = vi.fn();
+const updateOne = vi.fn();
+const insertOne = vi.fn();
+const insertMany = vi.fn();
+const deleteOne = vi.fn();
+const deleteMany = vi.fn();
+const countDocuments = vi.fn();
+const aggregate = vi.fn();
 
 const spies = {
   find,
@@ -47,7 +47,7 @@ describe('Mongo adapter', () => {
   const adapter = new MongoCollectionAdapter<TestType>(MODULE_NAME, humbleCollection);
 
   afterEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
   });
 
   test('should return an instance of the adapter from newAdapter', () => {
@@ -87,7 +87,7 @@ describe('Mongo adapter', () => {
       yield Promise.resolve({});
       yield Promise.resolve({});
     }
-    const sort = jest.fn().mockImplementation(generator);
+    const sort = vi.fn().mockImplementation(generator);
     find.mockResolvedValue({ sort });
     const item = await adapter.getAll(orderBy(['foo', 'ASCENDING']));
     expect(item).toEqual([{}, {}, {}]);
@@ -108,7 +108,7 @@ describe('Mongo adapter', () => {
       yield Promise.resolve({});
       yield Promise.resolve({});
     }
-    const sort = jest.fn().mockImplementation(generator);
+    const sort = vi.fn().mockImplementation(generator);
     find.mockResolvedValue({ sort });
     const item = await adapter.find(testQuery, orderBy(['foo', 'ASCENDING']));
     expect(item).toEqual([{}, {}, {}]);
@@ -155,7 +155,11 @@ describe('Mongo adapter', () => {
   test('should throw NotFound from findOne when a doc is not returned', async () => {
     findOne.mockResolvedValue(null);
     await expect(adapter.findOne(testQuery)).rejects.toThrow(
-      new NotFoundError(expect.anything(), { message: 'No matching item found.' }),
+      expect.objectContaining({
+        status: 404,
+        message: 'No matching item found.',
+        module: ADAPTER_MODULE_NAME,
+      }),
     );
   });
 
@@ -326,7 +330,11 @@ describe('Mongo adapter', () => {
     async (deletedCount: number) => {
       deleteOne.mockResolvedValue({ acknowledged: true, deletedCount });
       await expect(adapter.deleteOne(testQuery)).rejects.toThrow(
-        new NotFoundError(MODULE_NAME, { message: `Matched and deleted ${deletedCount} items.` }),
+        expect.objectContaining({
+          status: 404,
+          message: `Matched and deleted ${deletedCount} items.`,
+          module: ADAPTER_MODULE_NAME,
+        }),
       );
     },
   );
@@ -340,7 +348,11 @@ describe('Mongo adapter', () => {
   test('should throw NotFoundError if deleteMany returns a deletedCount of 0', async () => {
     deleteMany.mockResolvedValue({ acknowledged: true, deletedCount: 0 });
     await expect(adapter.deleteMany(testQuery)).rejects.toThrow(
-      new NotFoundError(MODULE_NAME, { message: 'No items deleted' }),
+      expect.objectContaining({
+        status: 404,
+        message: 'No items deleted',
+        module: ADAPTER_MODULE_NAME,
+      }),
     );
   });
 
@@ -367,12 +379,13 @@ describe('Mongo adapter', () => {
       insertedCount: 3,
     });
 
-    const error = new CamsError(MODULE_NAME, {
-      message: 'Not all items inserted',
-      data: expect.anything(),
-    });
-
-    await expect(async () => await adapter.insertMany([{}, {}, {}, {}])).rejects.toThrow(error);
+    await expect(async () => await adapter.insertMany([{}, {}, {}, {}])).rejects.toThrow(
+      expect.objectContaining({
+        status: 500,
+        message: 'Not all items inserted',
+        module: ADAPTER_MODULE_NAME,
+      }),
+    );
   });
 
   test('should handle errors', async () => {

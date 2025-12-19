@@ -1,5 +1,4 @@
 import { parseDebtorType, parsePetitionType, parseTransactionDate } from './dxtr.gateway.helper';
-import { CamsError } from '../../../common-errors/cams-error';
 import { DxtrTransactionRecord } from '../../types/cases';
 
 describe('DXTR Gateway Helper Tests', () => {
@@ -25,8 +24,10 @@ describe('DXTR Gateway Helper Tests', () => {
       expect(() => {
         parseTransactionDate(record);
       }).toThrow(
-        new CamsError('', {
+        expect.objectContaining({
           message: 'The transaction contains non-numeric characters in the date string.',
+          status: 500,
+          module: 'DXTR-GATEWAY-HELPER',
         }),
       );
     });

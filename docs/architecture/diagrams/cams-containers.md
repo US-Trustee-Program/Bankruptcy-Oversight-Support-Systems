@@ -4,7 +4,7 @@
 graph TB
   linkStyle default fill:#ffffff
 
-  subgraph diagram ["CAMS - Containers"]
+  subgraph diagram ["Container View: CAMS"]
     style diagram fill:#ffffff,stroke:#ffffff
 
     1["<div style='font-weight: bold'>AUST</div><div style='font-size: 70%; margin-top: 0px'>[Person]</div><div style='font-size: 80%; margin-top:10px'>Assistant United States<br />Trustee - manages a USTP<br />office</div>"]
@@ -18,7 +18,7 @@ graph TB
     5["<div style='font-weight: bold'>Authorized User</div><div style='font-size: 70%; margin-top: 0px'>[Person]</div>"]
     style 5 fill:#08427b,stroke:#052e56,color:#ffffff
 
-    subgraph 6 [CAMS]
+    subgraph 6 ["CAMS"]
       style 6 fill:#ffffff,stroke:#0b4884,color:#0b4884
 
       10("<div style='font-weight: bold'>Webapp</div><div style='font-size: 70%; margin-top: 0px'>[Container]</div><div style='font-size: 80%; margin-top:10px'>The user interface for CAMS</div>")
@@ -51,5 +51,6 @@ graph TB
     10-. "<div>Triggers order sync via HTTP</div><div style='font-size: 70%'></div>" .->34
     17-. "<div>Reads and writes case<br />assignments, orders, cases,<br />etc.</div><div style='font-size: 70%'></div>" .->41
     17-. "<div>Gets case data</div><div style='font-size: 70%'></div>" .->39
+
   end
 ```

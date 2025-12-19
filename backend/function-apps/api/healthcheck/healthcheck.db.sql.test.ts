@@ -1,50 +1,49 @@
+import { vi } from 'vitest';
+import { ConnectionPool } from 'mssql';
+
 import { ApplicationContext } from '../../../lib/adapters/types/basic';
 import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
 import { closeDeferred } from '../../../lib/deferrable/defer-close';
-
+import * as factory from '../../../lib/factory';
 import HealthcheckSqlDb from './healthcheck.db.sql';
-
-const mockRequestFunc = jest.fn().mockImplementation(() => ({
-  input: jest.fn(),
-  query: jest.fn().mockResolvedValue({ recordset: [{ id: 1 }] }),
-}));
-const mockCloseFunc = jest.fn();
-const mockConnect = jest.fn().mockImplementation(
-  (): Promise<unknown> =>
-    Promise.resolve({
-      request: mockRequestFunc,
-      close: mockCloseFunc,
-    }),
-);
-
-jest.mock('mssql', () => {
-  return {
-    ConnectionPool: jest.fn().mockImplementation(() => {
-      return {
-        connect: mockConnect,
-      };
-    }),
-  };
-});
 
 describe('healthcheck.db.sql', () => {
   let context: ApplicationContext;
   let healthcheckSqlDb: HealthcheckSqlDb;
+  let mockRequestFunc: ReturnType<typeof vi.fn>;
+  let mockCloseFunc: ReturnType<typeof vi.fn>;
+  let mockConnect: ReturnType<typeof vi.fn>;
 
   beforeAll(async () => {
     context = await createMockApplicationContext();
     healthcheckSqlDb = new HealthcheckSqlDb(context);
   });
 
+  beforeEach(() => {
+    mockRequestFunc = vi.fn(() => ({
+      input: vi.fn(),
+      query: vi.fn().mockResolvedValue({ recordset: [{ id: 1 }] }),
+    }));
+    mockCloseFunc = vi.fn();
+    mockConnect = vi.fn().mockResolvedValue({
+      request: mockRequestFunc,
+      close: mockCloseFunc,
+    });
+
+    vi.spyOn(factory, 'getSqlConnection').mockReturnValue({
+      connect: mockConnect,
+    } as unknown as ConnectionPool);
+  });
+
   afterEach(async () => {
     await closeDeferred(context);
-    jest.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should return true when database query returns records', async () => {
     mockRequestFunc.mockImplementation(() => ({
-      input: jest.fn(),
-      query: jest.fn().mockResolvedValue({ recordset: [{ id: 1 }] }),
+      input: vi.fn(),
+      query: vi.fn().mockResolvedValue({ recordset: [{ id: 1 }] }),
     }));
 
     const result = await healthcheckSqlDb.checkDxtrDbRead();
@@ -56,8 +55,8 @@ describe('healthcheck.db.sql', () => {
 
   test('should return false when database query returns no records', async () => {
     mockRequestFunc.mockImplementation(() => ({
-      input: jest.fn(),
-      query: jest.fn().mockResolvedValue({ recordset: [] }),
+      input: vi.fn(),
+      query: vi.fn().mockResolvedValue({ recordset: [] }),
     }));
 
     const result = await healthcheckSqlDb.checkDxtrDbRead();
@@ -72,7 +71,7 @@ describe('healthcheck.db.sql', () => {
     mockConnect.mockRejectedValueOnce(error);
 
     // Mock the logger.error method
-    const loggerErrorSpy = jest.spyOn(context.logger, 'error');
+    const loggerErrorSpy = vi.spyOn(context.logger, 'error');
 
     const result = await healthcheckSqlDb.checkDxtrDbRead();
 

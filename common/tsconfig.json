@@ -6,17 +6,19 @@
     "rootDir": "src",
     "sourceMap": true,
     "strict": false,
-    "skipLibCheck": true,
     "resolveJsonModule": true,
     "declaration": true,
     "declarationMap": true,
     "composite": true,
     "incremental": true,
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true
   },
   "exclude": [
-    "node_modules",
     "dist",
-    "**/*.test.ts"
+    "node_modules",
+    "../node_modules",
+    "**/*.test.ts",
+    "vitest.config.ts"
   ]
 }

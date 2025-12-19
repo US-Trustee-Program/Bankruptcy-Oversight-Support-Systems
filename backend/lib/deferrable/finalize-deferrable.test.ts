@@ -6,10 +6,8 @@ import * as DeferReleaseModule from './defer-release';
 
 describe('Finalize deferrable', () => {
   test('should call closeDeferred and releaseDeferred', async () => {
-    const closeDeferred = jest
-      .spyOn(DeferCloseModule, 'closeDeferred')
-      .mockResolvedValue(undefined);
-    const releaseDeferred = jest
+    const closeDeferred = vi.spyOn(DeferCloseModule, 'closeDeferred').mockResolvedValue(undefined);
+    const releaseDeferred = vi
       .spyOn(DeferReleaseModule, 'releaseDeferred')
       .mockResolvedValue(undefined);
 

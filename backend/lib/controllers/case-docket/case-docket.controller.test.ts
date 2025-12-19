@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { CaseDocketController } from './case-docket.controller';
 import { CaseDocketUseCase } from '../../use-cases/case-docket/case-docket';
@@ -29,7 +30,7 @@ describe('Test case-docket controller', () => {
     const caseId = THROW_UNKNOWN_ERROR_CASE_ID;
     const mockContext = await createMockApplicationContext({ request: { params: { caseId } } });
     const controller = new CaseDocketController(mockContext);
-    jest.spyOn(CaseDocketUseCase.prototype, 'getCaseDocket').mockImplementation(async () => {
+    vi.spyOn(CaseDocketUseCase.prototype, 'getCaseDocket').mockImplementation(async () => {
       throw Error(expectedMessage);
     });
     await expect(controller.handleRequest(mockContext)).rejects.toThrow(expectedMessage);

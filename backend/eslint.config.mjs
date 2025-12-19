@@ -1,5 +1,4 @@
-import eslintTsConfig from '../common/eslint-ts.config.mjs';
-import eslintTestConfig from '../common/eslint-test.config.mjs';
+import { eslintTsConfig, eslintTestConfig } from '../eslint-shared.config.mjs';
 
 const codeConfig = eslintTsConfig.map((configObject) => ({
   files: ['**/*.ts'],
@@ -12,7 +11,7 @@ const testConfig = eslintTestConfig.map((configObject) => ({
 
 const backendEslintConfig = [
   {
-    ignores: ['**/build/**/*', '**/dist/**/*', '**/node_modules/**/*', '**/coverage/**/*'],
+    ignores: ['**/build/**/*', '**/dist/**/*', '**/node_modules/**/*', '**/coverage/**/*', '**/eslint*.config.mjs'],
   },
   ...codeConfig,
   ...testConfig,

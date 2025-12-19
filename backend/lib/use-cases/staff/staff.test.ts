@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import StaffUseCase from './staff';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { StaffRepository } from '../gateways.types';
@@ -6,27 +7,27 @@ import { getStaffRepository } from '../../factory';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { CamsRole } from '../../../../common/src/cams/roles';
 
-jest.mock('../../factory');
+vi.mock('../../factory');
 
 describe('StaffUseCase', () => {
   let mockApplicationContext: ApplicationContext;
-  let mockStaffRepository: jest.Mocked<StaffRepository>;
+  let mockStaffRepository: vi.Mocked<StaffRepository>;
   let staffUseCase: StaffUseCase;
 
   beforeEach(async () => {
     mockApplicationContext = await createMockApplicationContext();
 
     mockStaffRepository = {
-      getOversightStaff: jest.fn(),
+      getOversightStaff: vi.fn(),
     };
 
-    (getStaffRepository as jest.Mock).mockReturnValue(mockStaffRepository);
+    (getStaffRepository as vi.Mock).mockReturnValue(mockStaffRepository);
 
     staffUseCase = new StaffUseCase(mockApplicationContext);
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('constructor', () => {

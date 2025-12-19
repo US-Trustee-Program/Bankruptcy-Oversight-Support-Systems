@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import CasesDxtrGateway from './cases.dxtr.gateway';
 import * as database from '../../utils/database';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
@@ -20,21 +21,21 @@ describe('Test DXTR Gateway', () => {
   let querySpy;
 
   beforeEach(async () => {
-    const featureFlagSpy = jest.spyOn(featureFlags, 'getFeatureFlags');
+    const featureFlagSpy = vi.spyOn(featureFlags, 'getFeatureFlags');
     featureFlagSpy.mockImplementation(async () => {
       return {};
     });
-    querySpy = jest.spyOn(database, 'executeQuery');
+    querySpy = vi.spyOn(database, 'executeQuery');
 
     applicationContext = await createMockApplicationContext();
     applicationContext.config.dxtrDbConfig.database = dxtrDatabaseName;
     testCasesDxtrGateway = new CasesDxtrGateway();
 
-    querySpy.mockImplementation(jest.fn());
+    querySpy.mockImplementation(vi.fn());
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   // TODO: Find a way to cover the different scenarios where executeQuery throws an error
@@ -708,11 +709,11 @@ describe('Test DXTR Gateway', () => {
     });
 
     afterEach(() => {
-      jest.restoreAllMocks();
+      vi.restoreAllMocks();
     });
 
     test('should return empty array', async () => {
-      jest.resetAllMocks();
+      vi.resetAllMocks();
       const mockTestCaseSummaryResponse = {
         success: true,
         results: {
@@ -786,7 +787,7 @@ describe('Test DXTR Gateway', () => {
     });
 
     test('should return an error', async () => {
-      jest.resetAllMocks();
+      vi.resetAllMocks();
       const errorMessage = 'query failed';
       const mockTestCaseSummaryResponse = {
         success: false,

@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { InvocationContextExtraOutputs } from '@azure/functions';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import StorageQueueGateway from './storage-queue-gateway';
@@ -8,8 +9,8 @@ describe('storage queue gateway', () => {
 
     test('should return an enqueue function to queue messages', async () => {
       const extraOutputs: InvocationContextExtraOutputs = {
-        set: jest.fn(),
-        get: jest.fn(),
+        set: vi.fn(),
+        get: vi.fn(),
       };
 
       const context = await createMockApplicationContext();

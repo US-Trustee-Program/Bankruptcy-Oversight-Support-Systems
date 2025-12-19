@@ -9,6 +9,8 @@
 - [Authentication Modes](/architecture/decision-records/AuthenticationModes.md)
 - [Azure Resource Manager](/architecture/decision-records/AzureResourceManager.md)
 - [Backend Logging](/architecture/decision-records/BackendLogging.md)
+- [BDD Full-Stack Testing](/architecture/decision-records/BddFullStackTesting.md)
+- [Testing Framework](/architecture/decision-records/TestingFramework.md)
 - [Dataflows](/architecture/decision-records/Dataflows.md)
 - [Dead Code Detection](/architecture/decision-records/DeadCodeDetection.md)
 - [Deployment](/architecture/decision-records/Deployment.md)

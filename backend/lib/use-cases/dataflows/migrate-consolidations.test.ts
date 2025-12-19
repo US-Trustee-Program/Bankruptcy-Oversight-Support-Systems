@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import AcmsOrders, {
   AcmsConsolidation,
@@ -45,21 +46,21 @@ describe('ACMS Orders', () => {
   });
 
   beforeEach(async () => {
-    jest
-      .spyOn(AcmsGatewayImpl.prototype, 'getLeadCaseIds')
-      .mockRejectedValue(new Error('unknown error'));
-    jest
-      .spyOn(AcmsGatewayImpl.prototype, 'getConsolidationDetails')
-      .mockRejectedValue(new Error('unknown error'));
+    vi.spyOn(AcmsGatewayImpl.prototype, 'getLeadCaseIds').mockRejectedValue(
+      new Error('unknown error'),
+    );
+    vi.spyOn(AcmsGatewayImpl.prototype, 'getConsolidationDetails').mockRejectedValue(
+      new Error('unknown error'),
+    );
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should return a page of consolidation orders', async () => {
     const expected: string[] = ['811100000', '1231111111'];
-    const getConsolidationOrders = jest
+    const getConsolidationOrders = vi
       .spyOn(AcmsGatewayImpl.prototype, 'getLeadCaseIds')
       .mockResolvedValue(expected);
 
@@ -76,16 +77,16 @@ describe('ACMS Orders', () => {
   });
 
   test('should write case references for consolidations to the cases repo', async () => {
-    const createConsolidationFromSpy = jest
+    const createConsolidationFromSpy = vi
       .spyOn(CasesMongoRepository.prototype, 'createConsolidationFrom')
       .mockResolvedValue(MockData.getConsolidationFrom());
-    const createConsolidationToSpy = jest
+    const createConsolidationToSpy = vi
       .spyOn(CasesMongoRepository.prototype, 'createConsolidationTo')
       .mockResolvedValue(MockData.getConsolidationTo());
-    const createCaseHistorySpy = jest
+    const createCaseHistorySpy = vi
       .spyOn(CasesMongoRepository.prototype, 'createCaseHistory')
       .mockResolvedValue();
-    const getConsolidationSpy = jest
+    const getConsolidationSpy = vi
       .spyOn(CasesMongoRepository.prototype, 'getConsolidation')
       .mockResolvedValue([]);
 
@@ -162,12 +163,12 @@ describe('ACMS Orders', () => {
       });
     });
 
-    jest.spyOn(AcmsGatewayImpl.prototype, 'getConsolidationDetails').mockResolvedValue(details);
-    jest
-      .spyOn(CasesDxtrGateway.prototype, 'getCaseSummary')
-      .mockImplementation((_context, caseId) => {
+    vi.spyOn(AcmsGatewayImpl.prototype, 'getConsolidationDetails').mockResolvedValue(details);
+    vi.spyOn(CasesDxtrGateway.prototype, 'getCaseSummary').mockImplementation(
+      (_context, caseId) => {
         return Promise.resolve(caseSummaryMap.get(caseId));
-      });
+      },
+    );
     const useCase = new AcmsOrders();
     await useCase.migrateConsolidation(context, leadCase.caseId);
 
@@ -188,16 +189,16 @@ describe('ACMS Orders', () => {
   });
 
   test('should get histories for consolidations over a date range', async () => {
-    jest
-      .spyOn(CasesMongoRepository.prototype, 'createConsolidationFrom')
-      .mockResolvedValue(MockData.getConsolidationFrom());
-    jest
-      .spyOn(CasesMongoRepository.prototype, 'createConsolidationTo')
-      .mockResolvedValue(MockData.getConsolidationTo());
-    const createCaseHistorySpy = jest
+    vi.spyOn(CasesMongoRepository.prototype, 'createConsolidationFrom').mockResolvedValue(
+      MockData.getConsolidationFrom(),
+    );
+    vi.spyOn(CasesMongoRepository.prototype, 'createConsolidationTo').mockResolvedValue(
+      MockData.getConsolidationTo(),
+    );
+    const createCaseHistorySpy = vi
       .spyOn(CasesMongoRepository.prototype, 'createCaseHistory')
       .mockResolvedValue();
-    jest.spyOn(CasesMongoRepository.prototype, 'getConsolidation').mockResolvedValue([]);
+    vi.spyOn(CasesMongoRepository.prototype, 'getConsolidation').mockResolvedValue([]);
 
     const leadCase = MockData.getCaseSummary();
     const childCases = MockData.buildArray(MockData.getCaseSummary, 4);
@@ -334,12 +335,12 @@ describe('ACMS Orders', () => {
       updatedOn: '2024-03-01',
     });
 
-    jest.spyOn(AcmsGatewayImpl.prototype, 'getConsolidationDetails').mockResolvedValue(details);
-    jest
-      .spyOn(CasesDxtrGateway.prototype, 'getCaseSummary')
-      .mockImplementation((_context, caseId) => {
+    vi.spyOn(AcmsGatewayImpl.prototype, 'getConsolidationDetails').mockResolvedValue(details);
+    vi.spyOn(CasesDxtrGateway.prototype, 'getCaseSummary').mockImplementation(
+      (_context, caseId) => {
         return Promise.resolve(caseSummaryMap.get(caseId));
-      });
+      },
+    );
     const useCase = new AcmsOrders();
     await useCase.migrateConsolidation(context, leadCase.caseId);
 
@@ -363,13 +364,13 @@ describe('ACMS Orders', () => {
       },
     });
 
-    const createConsolidationFromSpy = jest
+    const createConsolidationFromSpy = vi
       .spyOn(CasesMongoRepository.prototype, 'createConsolidationFrom')
       .mockResolvedValue(mockConsolidationFrom);
-    const createConsolidationToSpy = jest
+    const createConsolidationToSpy = vi
       .spyOn(CasesMongoRepository.prototype, 'createConsolidationTo')
       .mockResolvedValue(mockConsolidationTo);
-    const createCaseHistorySpy = jest
+    const createCaseHistorySpy = vi
       .spyOn(CasesMongoRepository.prototype, 'createCaseHistory')
       .mockResolvedValue();
 
@@ -409,9 +410,9 @@ describe('ACMS Orders', () => {
       updatedOn: mockConsolidationFrom.updatedOn,
     };
     const existingChildCaseId = childCases[0].caseId;
-    jest
-      .spyOn(CasesMongoRepository.prototype, 'getConsolidation')
-      .mockResolvedValue([existingFromLink]);
+    vi.spyOn(CasesMongoRepository.prototype, 'getConsolidation').mockResolvedValue([
+      existingFromLink,
+    ]);
 
     const caseSummaryMap = new Map<string, CaseSummary>([
       [leadCase.caseId, leadCase],
@@ -479,12 +480,12 @@ describe('ACMS Orders', () => {
       });
     });
 
-    jest.spyOn(AcmsGatewayImpl.prototype, 'getConsolidationDetails').mockResolvedValue(details);
-    jest
-      .spyOn(CasesDxtrGateway.prototype, 'getCaseSummary')
-      .mockImplementation((_context, caseId) => {
+    vi.spyOn(AcmsGatewayImpl.prototype, 'getConsolidationDetails').mockResolvedValue(details);
+    vi.spyOn(CasesDxtrGateway.prototype, 'getCaseSummary').mockImplementation(
+      (_context, caseId) => {
         return Promise.resolve(caseSummaryMap.get(caseId));
-      });
+      },
+    );
     const useCase = new AcmsOrders();
     await useCase.migrateConsolidation(context, leadCase.caseId);
 
@@ -504,13 +505,13 @@ describe('ACMS Orders', () => {
   });
 
   test('should not do anything if consolidations from ACMS are already in the cases repo', async () => {
-    const createConsolidationFromSpy = jest
+    const createConsolidationFromSpy = vi
       .spyOn(CasesMongoRepository.prototype, 'createConsolidationFrom')
       .mockResolvedValue(MockData.getConsolidationFrom());
-    const createConsolidationToSpy = jest
+    const createConsolidationToSpy = vi
       .spyOn(CasesMongoRepository.prototype, 'createConsolidationTo')
       .mockResolvedValue(MockData.getConsolidationTo());
-    const createCaseHistorySpy = jest
+    const createCaseHistorySpy = vi
       .spyOn(CasesMongoRepository.prototype, 'createCaseHistory')
       .mockResolvedValue();
 
@@ -553,9 +554,7 @@ describe('ACMS Orders', () => {
         updatedOn: '2024-02-01',
       },
     ];
-    jest
-      .spyOn(CasesMongoRepository.prototype, 'getConsolidation')
-      .mockResolvedValue(existingToLinks);
+    vi.spyOn(CasesMongoRepository.prototype, 'getConsolidation').mockResolvedValue(existingToLinks);
 
     const caseSummaryMap = new Map<string, CaseSummary>([
       [leadCase.caseId, leadCase],
@@ -563,12 +562,12 @@ describe('ACMS Orders', () => {
       [childCases[1].caseId, childCases[1]],
     ]);
 
-    jest.spyOn(AcmsGatewayImpl.prototype, 'getConsolidationDetails').mockResolvedValue(details);
-    jest
-      .spyOn(CasesDxtrGateway.prototype, 'getCaseSummary')
-      .mockImplementation((_context, caseId) => {
+    vi.spyOn(AcmsGatewayImpl.prototype, 'getConsolidationDetails').mockResolvedValue(details);
+    vi.spyOn(CasesDxtrGateway.prototype, 'getCaseSummary').mockImplementation(
+      (_context, caseId) => {
         return Promise.resolve(caseSummaryMap.get(caseId));
-      });
+      },
+    );
     const useCase = new AcmsOrders();
     await useCase.migrateConsolidation(context, leadCase.caseId);
 
@@ -595,7 +594,7 @@ describe('ACMS Orders', () => {
   test('should throw a CamsError when getLeadCaseIds fails with a standard Error', async () => {
     const useCase = new AcmsOrders();
     const predicate: AcmsPredicate = { divisionCode: '001', chapter: '01' };
-    jest.spyOn(AcmsGatewayImpl.prototype, 'getLeadCaseIds').mockImplementation(() => {
+    vi.spyOn(AcmsGatewayImpl.prototype, 'getLeadCaseIds').mockImplementation(() => {
       throw new Error('Gateway failure');
     });
     await expect(useCase.getLeadCaseIds(context, predicate)).rejects.toMatchObject({
@@ -608,7 +607,7 @@ describe('ACMS Orders', () => {
   test('should throw a CamsError when getLeadCaseIds fails with a non-Error value', async () => {
     const useCase = new AcmsOrders();
     const predicate: AcmsPredicate = { divisionCode: '002', chapter: '02' };
-    jest.spyOn(AcmsGatewayImpl.prototype, 'getLeadCaseIds').mockImplementation(() => {
+    vi.spyOn(AcmsGatewayImpl.prototype, 'getLeadCaseIds').mockImplementation(() => {
       throw 'string error';
     });
     await expect(useCase.getLeadCaseIds(context, predicate)).rejects.toMatchObject({

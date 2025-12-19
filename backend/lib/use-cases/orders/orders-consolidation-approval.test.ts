@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import {
   createMockApplicationContext,
   createMockApplicationContextSession,
@@ -34,14 +35,14 @@ describe('Orders use case', () => {
     casesRepo = getCasesRepository(mockContext);
     useCase = new OrdersUseCase(mockContext);
 
-    jest.spyOn(MockMongoRepository.prototype, 'count').mockResolvedValue(0);
-    jest
-      .spyOn(MockMongoRepository.prototype, 'create')
-      .mockImplementation((order) => Promise.resolve(order));
+    vi.spyOn(MockMongoRepository.prototype, 'count').mockResolvedValue(0);
+    vi.spyOn(MockMongoRepository.prototype, 'create').mockImplementation((order) =>
+      Promise.resolve(order),
+    );
   });
 
   afterEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
   });
 
   // TODO: Why does the order of these tests determine if 1 passes?  How are they trampling on each other?
@@ -56,7 +57,7 @@ describe('Orders use case', () => {
         override: { courtDivisionCode },
       }),
     );
-    jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(originalConsolidation);
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(originalConsolidation);
 
     const leadCaseSummary = MockData.getCaseSummary({ override: { courtDivisionCode } });
     const approval: ConsolidationOrderActionApproval = {
@@ -81,11 +82,11 @@ describe('Orders use case', () => {
       childCases: [originalConsolidation.childCases[2]],
     };
 
-    const mockUpdate = jest
+    const mockUpdate = vi
       .spyOn(MockMongoRepository.prototype, 'update')
       .mockResolvedValueOnce(newPendingConsolidation);
 
-    const mockCreate = jest
+    const mockCreate = vi
       .spyOn(MockMongoRepository.prototype, 'create')
       .mockResolvedValueOnce(approvedConsolidation);
     const leadCaseBefore: ConsolidationOrderSummary = {
@@ -128,45 +129,37 @@ describe('Orders use case', () => {
       updatedOn: '2024-01-01T12:00:00.000Z',
       updatedBy: SYSTEM_USER_REFERENCE,
     };
-    const mockGetHistory = jest
+    const mockGetHistory = vi
       .spyOn(MockMongoRepository.prototype, 'getCaseHistory')
       .mockImplementation((_context: ApplicationContext, caseId: string) => {
         return Promise.resolve([{ ...initialCaseHistory, caseId }]);
       });
-    const mockCreateHistory = jest
+    const mockCreateHistory = vi
       .spyOn(MockMongoRepository.prototype, 'createCaseHistory')
       .mockResolvedValue();
 
-    const _mockGetConsolidation = jest
+    const _mockGetConsolidation = vi
       .spyOn(MockMongoRepository.prototype, 'getConsolidation')
       .mockImplementation(async () => {
         return [];
       });
 
-    jest.spyOn(MockMongoRepository.prototype, 'update').mockResolvedValue(undefined);
-
-    jest.spyOn(MockMongoRepository.prototype, 'create').mockResolvedValue(undefined);
-
-    jest
-      .spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases')
-      .mockImplementation((ids: string[]) => {
+    vi.spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases').mockImplementation(
+      (ids: string[]) => {
         const assignmentsMap = new Map();
         ids.forEach((id) => {
           assignmentsMap.set(id, [MockData.getAttorneyAssignment({ id })]);
         });
         return Promise.resolve(assignmentsMap);
-      });
-    jest
-      .spyOn(MockMongoRepository.prototype, 'createConsolidationTo')
-      .mockResolvedValue(MockData.getConsolidationTo({ override: { otherCase: leadCaseSummary } }));
-    jest
-      .spyOn(MockMongoRepository.prototype, 'createConsolidationFrom')
-      .mockResolvedValue(
-        MockData.getConsolidationFrom({ override: { otherCase: childCaseSummaries[0] } }),
-      );
-    jest
-      .spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments')
-      .mockResolvedValue();
+      },
+    );
+    vi.spyOn(MockMongoRepository.prototype, 'createConsolidationTo').mockResolvedValue(
+      MockData.getConsolidationTo({ override: { otherCase: leadCaseSummary } }),
+    );
+    vi.spyOn(MockMongoRepository.prototype, 'createConsolidationFrom').mockResolvedValue(
+      MockData.getConsolidationFrom({ override: { otherCase: childCaseSummaries[0] } }),
+    );
+    vi.spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments').mockResolvedValue();
 
     const actual = await useCase.approveConsolidation(mockContext, approval);
     expect(mockUpdate).toHaveBeenCalled();
@@ -190,8 +183,8 @@ describe('Orders use case', () => {
       },
     });
 
-    jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(pendingConsolidation);
-    const mockDelete = jest.spyOn(MockMongoRepository.prototype, 'delete').mockResolvedValue();
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(pendingConsolidation);
+    const mockDelete = vi.spyOn(MockMongoRepository.prototype, 'delete').mockResolvedValue();
 
     const leadCaseSummary = MockData.getCaseSummary();
     const approval: ConsolidationOrderActionApproval = {
@@ -209,7 +202,7 @@ describe('Orders use case', () => {
       id: crypto.randomUUID(),
     };
 
-    const mockPut = jest
+    const mockPut = vi
       .spyOn(MockMongoRepository.prototype, 'create')
       .mockResolvedValue(newConsolidation);
 
@@ -261,31 +254,29 @@ describe('Orders use case', () => {
       updatedBy: SYSTEM_USER_REFERENCE,
     };
 
-    const mockGetHistory = jest
+    const mockGetHistory = vi
       .spyOn(MockMongoRepository.prototype, 'getCaseHistory')
       .mockImplementation((_context: ApplicationContext, caseId: string) => {
         return Promise.resolve([{ ...initialCaseHistory, caseId }]);
       });
 
-    const mockCreateHistory = jest
+    const mockCreateHistory = vi
       .spyOn(MockMongoRepository.prototype, 'createCaseHistory')
       .mockResolvedValue();
 
-    const mockCreateAssignment = jest
+    const mockCreateAssignment = vi
       .spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments')
       .mockResolvedValue();
 
-    const mockGetConsolidation = jest.spyOn(casesRepo, 'getConsolidation').mockResolvedValue([]);
+    const mockGetConsolidation = vi.spyOn(casesRepo, 'getConsolidation').mockResolvedValue([]);
 
-    jest
-      .spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases')
-      .mockResolvedValue(new Map());
-    jest
-      .spyOn(MockMongoRepository.prototype, 'createConsolidationTo')
-      .mockResolvedValue(MockData.getConsolidationTo());
-    jest
-      .spyOn(MockMongoRepository.prototype, 'createConsolidationFrom')
-      .mockResolvedValue(MockData.getConsolidationFrom());
+    vi.spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases').mockResolvedValue(new Map());
+    vi.spyOn(MockMongoRepository.prototype, 'createConsolidationTo').mockResolvedValue(
+      MockData.getConsolidationTo(),
+    );
+    vi.spyOn(MockMongoRepository.prototype, 'createConsolidationFrom').mockResolvedValue(
+      MockData.getConsolidationFrom(),
+    );
 
     const actual = await useCase.approveConsolidation(mockContext, approval);
     expect(mockGetConsolidation).toHaveBeenCalledTimes(pendingConsolidation.childCases.length + 1);

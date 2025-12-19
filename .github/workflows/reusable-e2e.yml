@@ -70,17 +70,10 @@ jobs:
           --stack-name ${{ inputs.stackName }} \
           --server-name ${{ secrets.AZ_SQL_SERVER_NAME }}
 
-      - name: CI Backend
-        working-directory: backend
-        run: |
-          npm ci
+      - name: Install Application Node Dependencies
+        run: npm ci
 
-      - name: CI Common
-        working-directory: common
-        run: |
-          npm ci
-
-      - name: Install Node dependencies
+      - name: Install E2E Node dependencies
         working-directory: test/e2e
         run: |
           npm ci
@@ -121,7 +114,6 @@ jobs:
 
       - name: Run E2E Tests
         id: e2eTests
-        if: false
         working-directory: test/e2e
         run: |
           echo "Running Playwright Tests..."

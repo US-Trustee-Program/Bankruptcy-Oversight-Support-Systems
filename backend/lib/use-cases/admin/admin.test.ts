@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { AdminUseCase } from './admin';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
@@ -7,7 +8,6 @@ import { randomUUID } from 'node:crypto';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { NotFoundError } from '../../common-errors/not-found-error';
-import { UnknownError } from '../../common-errors/unknown-error';
 import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
 import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
 import { MockOfficesGateway } from '../../testing/mock-gateways/mock.offices.gateway';
@@ -30,15 +30,15 @@ describe('Admin Use Case', () => {
 
   test('should add roles and offices to PrivilegedIdentityUser with an expiration in the future', async () => {
     const users = MockData.buildArray(MockData.getCamsUser, 4);
-    jest.spyOn(MockUserGroupGateway.prototype, 'getUserGroupWithUsers').mockResolvedValue({
+    vi.spyOn(MockUserGroupGateway.prototype, 'getUserGroupWithUsers').mockResolvedValue({
       id: randomUUID(),
       name: 'Test User Group',
       users,
     });
-    const repoSpy = jest
+    const repoSpy = vi
       .spyOn(MockMongoRepository.prototype, 'putPrivilegedIdentityUser')
       .mockResolvedValue({ id: users[0].id, modifiedCount: 0, upsertedCount: 1 });
-    const officeSpy = jest
+    const officeSpy = vi
       .spyOn(MockMongoRepository.prototype, 'putOrExtendOfficeStaff')
       .mockResolvedValue();
 
@@ -72,13 +72,13 @@ describe('Admin Use Case', () => {
       const users = MockData.buildArray(MockData.getCamsUser, 4);
       const user = users[0];
 
-      jest.spyOn(MockUserGroupGateway.prototype, 'getUserGroupWithUsers').mockResolvedValue({
+      vi.spyOn(MockUserGroupGateway.prototype, 'getUserGroupWithUsers').mockResolvedValue({
         id: randomUUID(),
         name: 'Test User Group',
         users,
       });
-      const repoSpy = jest.spyOn(MockMongoRepository.prototype, 'putPrivilegedIdentityUser');
-      const officeSpy = jest.spyOn(MockMongoRepository.prototype, 'putOrExtendOfficeStaff');
+      const repoSpy = vi.spyOn(MockMongoRepository.prototype, 'putPrivilegedIdentityUser');
+      const officeSpy = vi.spyOn(MockMongoRepository.prototype, 'putOrExtendOfficeStaff');
 
       const groups = ['USTP CAMS Case Assignment Manager', 'USTP CAMS Region 2 Office Manhattan'];
 
@@ -87,7 +87,7 @@ describe('Admin Use Case', () => {
           groups,
           expires,
         }),
-      ).rejects.toThrow(new BadRequestError(expect.anything()));
+      ).rejects.toThrow(BadRequestError);
       expect(repoSpy).not.toHaveBeenCalled();
       expect(officeSpy).not.toHaveBeenCalled();
     },
@@ -95,15 +95,17 @@ describe('Admin Use Case', () => {
 
   test('should throw an error if elevatePrivilegedUser fails to upsert the user', async () => {
     const user = MockData.getCamsUser();
-    jest.spyOn(MockUserGroupGateway.prototype, 'getUserGroupWithUsers').mockResolvedValue({
+    vi.spyOn(MockUserGroupGateway.prototype, 'getUserGroupWithUsers').mockResolvedValue({
       id: 'groupId',
       name: 'Test User Group',
       users: [user],
     });
 
-    jest
-      .spyOn(MockMongoRepository.prototype, 'putPrivilegedIdentityUser')
-      .mockResolvedValue({ id: null, modifiedCount: 0, upsertedCount: 0 });
+    vi.spyOn(MockMongoRepository.prototype, 'putPrivilegedIdentityUser').mockResolvedValue({
+      id: null,
+      modifiedCount: 0,
+      upsertedCount: 0,
+    });
 
     await expect(
       useCase.elevatePrivilegedUser(context, user.id, SYSTEM_USER_REFERENCE, {
@@ -115,7 +117,7 @@ describe('Admin Use Case', () => {
 
   test('should throw an error if the user is not an privileged identity user', async () => {
     const userId = 'non-privileged identity-user';
-    jest.spyOn(MockUserGroupGateway.prototype, 'getUserGroupWithUsers').mockResolvedValue({
+    vi.spyOn(MockUserGroupGateway.prototype, 'getUserGroupWithUsers').mockResolvedValue({
       id: 'groupId',
       name: 'Test User Group',
       users: [MockData.getCamsUser()],
@@ -131,7 +133,7 @@ describe('Admin Use Case', () => {
 
   test('should throw an error if no users exist in the privileged identity user group', async () => {
     const userId = 'non-privileged identity-user';
-    jest.spyOn(MockUserGroupGateway.prototype, 'getUserGroupWithUsers').mockResolvedValue({
+    vi.spyOn(MockUserGroupGateway.prototype, 'getUserGroupWithUsers').mockResolvedValue({
       id: 'groupId',
       name: 'Test User Group',
       users: [],
@@ -144,7 +146,7 @@ describe('Admin Use Case', () => {
       }),
     ).rejects.toThrow('User does not have privileged identity permission.');
 
-    jest.spyOn(MockUserGroupGateway.prototype, 'getUserGroupWithUsers').mockResolvedValue({
+    vi.spyOn(MockUserGroupGateway.prototype, 'getUserGroupWithUsers').mockResolvedValue({
       id: 'groupId',
       name: 'Test User Group',
       users: undefined,
@@ -162,7 +164,7 @@ describe('Admin Use Case', () => {
     const id = 'test-group';
     const name = 'Test User Group';
     const users = MockData.buildArray(MockData.getCamsUser, 4);
-    jest.spyOn(MockUserGroupGateway.prototype, 'getUserGroupWithUsers').mockResolvedValue({
+    vi.spyOn(MockUserGroupGateway.prototype, 'getUserGroupWithUsers').mockResolvedValue({
       id,
       name,
       users,
@@ -174,9 +176,9 @@ describe('Admin Use Case', () => {
   });
 
   test('should throw errors encountered calling getUserGroupWithUsers', async () => {
-    jest
-      .spyOn(MockUserGroupGateway.prototype, 'getUserGroupWithUsers')
-      .mockRejectedValue(new Error('Boom'));
+    vi.spyOn(MockUserGroupGateway.prototype, 'getUserGroupWithUsers').mockRejectedValue(
+      new Error('Boom'),
+    );
     await expect(useCase.getPrivilegedIdentityUsers(context)).rejects.toThrow(
       'Unable to get privileged identity users.',
     );
@@ -189,7 +191,7 @@ describe('Admin Use Case', () => {
       claims: { groups: [] },
       expires: '2026-01-01',
     };
-    jest.spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser').mockResolvedValue(user);
+    vi.spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser').mockResolvedValue(user);
 
     const result = await useCase.getPrivilegedIdentityUser(context, user.id);
     expect(result).toEqual(user);
@@ -197,20 +199,24 @@ describe('Admin Use Case', () => {
 
   test('should throw a NotFound error if the user is not found', async () => {
     const error = new NotFoundError('ADMIN-USE-CASE');
-    jest.spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser').mockRejectedValue(error);
+    vi.spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser').mockRejectedValue(error);
 
     await expect(useCase.getPrivilegedIdentityUser(context, 'invalidUserId')).rejects.toThrow(
-      error,
+      NotFoundError,
     );
   });
 
   test('should throw an error if an error is encountered with getPrivilegedIdentityUser', async () => {
     const error = new Error('some unknown error');
-    jest.spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser').mockRejectedValue(error);
+    vi.spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser').mockRejectedValue(error);
 
-    const expected = new UnknownError(expect.anything());
     await expect(useCase.getPrivilegedIdentityUser(context, 'invalidUserId')).rejects.toThrow(
-      expected,
+      expect.objectContaining({
+        message: 'Unknown Error',
+        status: 500,
+        module: 'ADMIN-USE-CASE',
+        originalError: expect.stringContaining('Error: some unknown error'),
+      }),
     );
   });
 
@@ -226,14 +232,20 @@ describe('Admin Use Case', () => {
 
   test('should throw an error if an error is encountered with getPrivilegedIdentityClaimGroups', async () => {
     const error = new Error('some unknown error');
-    jest.spyOn(MockOfficesGateway.prototype, 'getOffices').mockRejectedValue(error);
+    vi.spyOn(MockOfficesGateway.prototype, 'getOffices').mockRejectedValue(error);
 
-    const expected = new UnknownError(expect.anything());
-    await expect(useCase.getRoleAndOfficeGroupNames(context)).rejects.toThrow(expected);
+    await expect(useCase.getRoleAndOfficeGroupNames(context)).rejects.toThrow(
+      expect.objectContaining({
+        message: 'Unknown Error',
+        status: 500,
+        module: 'ADMIN-USE-CASE',
+        originalError: expect.stringContaining('Error: some unknown error'),
+      }),
+    );
   });
 
   test('should delete privileged identity user', async () => {
-    const deleteSpy = jest
+    const deleteSpy = vi
       .spyOn(MockMongoRepository.prototype, 'deletePrivilegedIdentityUser')
       .mockResolvedValue();
     const userId = 'user-id';
@@ -243,7 +255,7 @@ describe('Admin Use Case', () => {
 
   test('should throw when error is encountered during delete of privileged identity user', async () => {
     const error = new Error('some unknown error');
-    const deleteSpy = jest
+    const deleteSpy = vi
       .spyOn(MockMongoRepository.prototype, 'deletePrivilegedIdentityUser')
       .mockRejectedValue(error);
 

@@ -1,5 +1,5 @@
+import { vi } from 'vitest';
 import CaseManagement, { getAction } from './case-management';
-import { UnknownError } from '../../common-errors/unknown-error';
 import { CamsError } from '../../common-errors/cams-error';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
@@ -21,6 +21,7 @@ import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repo
 import { TransferOrder } from '../../../../common/src/cams/orders';
 import { ConsolidationTo } from '../../../../common/src/cams/events';
 import { CasesSearchPredicate } from '../../../../common/src/api/search';
+import { CaseAssignmentUseCase } from '../case-assignment/case-assignment';
 
 const attorneyJaneSmith = { id: '001', name: 'Jane Smith' };
 const attorneyJoeNobel = { id: '002', name: 'Joe Nobel' };
@@ -53,24 +54,6 @@ const assignments: CaseAssignment[] = [
 const caseIdWithAssignments = '081-23-01176';
 const assignmentMap = new Map([[caseIdWithAssignments, assignments]]);
 
-jest.mock('../case-assignment/case-assignment', () => {
-  return {
-    CaseAssignmentUseCase: jest.fn().mockImplementation(() => {
-      return {
-        findAssignmentsByCaseId: (caseIds: string[]) => {
-          if (caseIds[0] === 'ThrowError') {
-            throw new Error('TestError');
-          } else if (caseIds[0] === caseIdWithAssignments) {
-            return Promise.resolve(assignmentMap);
-          } else {
-            return Promise.resolve([]);
-          }
-        },
-      };
-    }),
-  };
-});
-
 describe('Case management tests', () => {
   let applicationContext: ApplicationContext;
   let useCase: CaseManagement;
@@ -87,10 +70,10 @@ describe('Case management tests', () => {
   beforeEach(() => {
     mockTransfers = MockData.buildArray(MockData.getTransferOrder, 2);
     mockConsolidations = [MockData.getConsolidationTo()];
-    jest.spyOn(MockMongoRepository.prototype, 'getTransfers').mockResolvedValue(mockTransfers);
-    jest
-      .spyOn(MockMongoRepository.prototype, 'getConsolidation')
-      .mockResolvedValue(mockConsolidations);
+    vi.spyOn(MockMongoRepository.prototype, 'getTransfers').mockResolvedValue(mockTransfers);
+    vi.spyOn(MockMongoRepository.prototype, 'getConsolidation').mockResolvedValue(
+      mockConsolidations,
+    );
   });
 
   beforeAll(async () => {
@@ -104,7 +87,7 @@ describe('Case management tests', () => {
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('constructor tests', () => {
@@ -211,12 +194,16 @@ describe('Case management tests', () => {
         },
       });
 
+      vi.spyOn(CaseAssignmentUseCase.prototype, 'findAssignmentsByCaseId').mockResolvedValue(
+        assignmentMap,
+      );
+
       const chapterCaseList = new CaseManagement(applicationContext);
-      jest.spyOn(chapterCaseList.casesGateway, 'getCaseDetail').mockImplementation(async () => {
+      vi.spyOn(chapterCaseList.casesGateway, 'getCaseDetail').mockImplementation(async () => {
         return Promise.resolve(caseDetail);
       });
 
-      jest.spyOn(chapterCaseList.casesGateway, 'getCaseDetail').mockResolvedValue(caseDetail);
+      vi.spyOn(chapterCaseList.casesGateway, 'getCaseDetail').mockResolvedValue(caseDetail);
 
       const actualCaseDetail = await chapterCaseList.getCaseDetail(applicationContext, caseId);
 
@@ -238,7 +225,10 @@ describe('Case management tests', () => {
         },
       });
 
-      jest.spyOn(useCase.officesGateway, 'getOfficeName').mockReturnValue(officeName);
+      vi.spyOn(CaseAssignmentUseCase.prototype, 'findAssignmentsByCaseId').mockResolvedValue(
+        assignmentMap,
+      );
+      vi.spyOn(useCase.officesGateway, 'getOfficeName').mockReturnValue(officeName);
       const _actions = [
         {
           actionName: 'manage assignments',
@@ -258,13 +248,18 @@ describe('Case management tests', () => {
         consolidation: mockConsolidations,
       };
 
-      jest.spyOn(useCase.casesGateway, 'getCaseDetail').mockResolvedValue(bCase);
+      vi.spyOn(useCase.casesGateway, 'getCaseDetail').mockResolvedValue(bCase);
       const actual = await useCase.getCaseDetail(applicationContext, bCase.caseId);
       expect(actual).toEqual(expected);
     });
 
     test('should throw an AssignmentError when CaseAssignmentUseCase.findAssignmentsByCaseId throws an error', async () => {
       const bCase = MockData.getCaseDetail({ override: { caseId: 'ThrowError' } });
+
+      vi.spyOn(CaseAssignmentUseCase.prototype, 'findAssignmentsByCaseId').mockRejectedValue(
+        new Error('TestError'),
+      );
+      vi.spyOn(useCase.casesGateway, 'getCaseDetail').mockResolvedValue(bCase);
 
       await expect(useCase.getCaseDetail(applicationContext, bCase.caseId)).rejects.toThrow(
         'Unable to retrieve case list. Please try again later. If the problem persists, please contact USTP support.',
@@ -277,7 +272,7 @@ describe('Case management tests', () => {
       const caseSummary = MockData.getCaseSummary({ override: { caseId: '000-00-00000' } });
 
       const context = await createMockApplicationContext();
-      jest.spyOn(useCase.casesGateway, 'getCaseSummary').mockResolvedValue(caseSummary);
+      vi.spyOn(useCase.casesGateway, 'getCaseSummary').mockResolvedValue(caseSummary);
 
       const actual = await useCase.getCaseSummary(context, '000-00-00000');
       expect(actual).toEqual(caseSummary);
@@ -285,10 +280,15 @@ describe('Case management tests', () => {
 
     test('should throw CamsError', async () => {
       const error = new Error('some error');
-      jest.spyOn(useCase.casesGateway, 'getCaseSummary').mockRejectedValue(error);
+      vi.spyOn(useCase.casesGateway, 'getCaseSummary').mockRejectedValue(error);
       const context = await createMockApplicationContext();
       await expect(useCase.getCaseSummary(context, '000-00-00000')).rejects.toThrow(
-        new UnknownError('test-module'),
+        expect.objectContaining({
+          message: 'Unknown Error',
+          status: 500,
+          module: 'CASE-MANAGEMENT-USE-CASE',
+          originalError: expect.stringContaining('Error: some error'),
+        }),
       );
     });
   });
@@ -306,7 +306,7 @@ describe('Case management tests', () => {
         includeOnlyUnassigned: true,
       };
 
-      const searchCases = jest
+      const searchCases = vi
         .spyOn(useCase.casesRepository, 'searchCases')
         .mockResolvedValue({ metadata: { total: 0 }, data: [] });
 
@@ -319,9 +319,10 @@ describe('Case management tests', () => {
     });
 
     test('should return an empty array for no matches', async () => {
-      jest
-        .spyOn(useCase.casesRepository, 'searchCases')
-        .mockResolvedValue({ metadata: { total: 0 }, data: [] });
+      vi.spyOn(useCase.casesRepository, 'searchCases').mockResolvedValue({
+        metadata: { total: 0 },
+        data: [],
+      });
       const actual = await useCase.searchCases(applicationContext, { caseNumber }, false);
       expect(actual).toEqual({ metadata: { total: 0 }, data: [] });
     });
@@ -344,10 +345,11 @@ describe('Case management tests', () => {
       const cases = allCaseIds.map((caseId) => {
         return MockData.getSyncedCase({ override: { caseId } });
       });
-      jest
-        .spyOn(useCase.casesRepository, 'searchCases')
-        .mockResolvedValue({ metadata: { total: cases.length }, data: cases });
-      const assignmentsSpy = jest
+      vi.spyOn(useCase.casesRepository, 'searchCases').mockResolvedValue({
+        metadata: { total: cases.length },
+        data: cases,
+      });
+      const assignmentsSpy = vi
         .spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases')
         .mockImplementation(() => {
           if (args.includeCaseAssignments) {
@@ -397,10 +399,11 @@ describe('Case management tests', () => {
         },
       });
       const expected = [{ ...syncedCase, officeCode, _actions }];
-      jest.spyOn(useCase.casesRepository, 'getConsolidationChildCaseIds').mockResolvedValue([]);
-      jest
-        .spyOn(useCase.casesRepository, 'searchCases')
-        .mockResolvedValue({ metadata: { total: 1 }, data: [syncedCase] });
+      vi.spyOn(useCase.casesRepository, 'getConsolidationChildCaseIds').mockResolvedValue([]);
+      vi.spyOn(useCase.casesRepository, 'searchCases').mockResolvedValue({
+        metadata: { total: 1 },
+        data: [syncedCase],
+      });
       const actual = await useCase.searchCases(applicationContext, predicate, false);
       expect(actual).toEqual({ metadata: { total: 1 }, data: expected });
     });
@@ -413,10 +416,10 @@ describe('Case management tests', () => {
       const cases = caseIds.map((caseId) => {
         return MockData.getSyncedCase({ override: { caseId } });
       });
-      const findAssignmentsByAssignee = jest
+      const findAssignmentsByAssignee = vi
         .spyOn(useCase.assignmentRepository, 'findAssignmentsByAssignee')
         .mockResolvedValue(assignments);
-      const searchCases = jest
+      const searchCases = vi
         .spyOn(useCase.casesRepository, 'searchCases')
         .mockResolvedValue({ metadata: { total: cases.length }, data: cases });
 
@@ -432,10 +435,10 @@ describe('Case management tests', () => {
 
     test('should return empty array when no caseIds are found', async () => {
       const user = MockData.getCamsUser({ offices: [REGION_02_GROUP_NY, REGION_02_GROUP_BU] });
-      const findAssignmentsByAssignee = jest
+      const findAssignmentsByAssignee = vi
         .spyOn(useCase.assignmentRepository, 'findAssignmentsByAssignee')
         .mockResolvedValue([]);
-      const searchCases = jest
+      const searchCases = vi
         .spyOn(useCase.casesRepository, 'searchCases')
         .mockRejectedValue(new Error('this should not be called'));
 
@@ -448,20 +451,21 @@ describe('Case management tests', () => {
 
     test('should throw UnknownError', async () => {
       const error = new Error('test error');
-      const expectedError = new UnknownError('TEST', {
-        message:
-          'Unable to retrieve case list. Please try again later. If the problem persists, please contact USTP support.',
-        originalError: error,
-      });
-      jest.spyOn(useCase.casesRepository, 'searchCases').mockRejectedValue(error);
+      vi.spyOn(useCase.casesRepository, 'searchCases').mockRejectedValue(error);
       await expect(useCase.searchCases(applicationContext, { caseNumber }, false)).rejects.toThrow(
-        expectedError,
+        expect.objectContaining({
+          message:
+            'Unable to retrieve case list. Please try again later. If the problem persists, please contact USTP support.',
+          status: 500,
+          module: 'CASE-MANAGEMENT-USE-CASE',
+          originalError: expect.stringContaining('Error: test error'),
+        }),
       );
     });
 
     test('should throw CamsError', async () => {
       const error = new CamsError('TEST', { message: 'test error' });
-      jest.spyOn(useCase.casesRepository, 'searchCases').mockRejectedValue(error);
+      vi.spyOn(useCase.casesRepository, 'searchCases').mockRejectedValue(error);
       await expect(useCase.searchCases(applicationContext, { caseNumber }, false)).rejects.toThrow(
         error,
       );

@@ -17,7 +17,7 @@ const nodeConfig = eslintNodeConfig.map((configObject) => ({
 
 const frontendEslintConfig = [
   {
-    ignores: ['**/build/**/*', '**/dist/**/*', '**/node_modules/**/*', '**/coverage/**/*'],
+    ignores: ['**/build/**/*', '**/dist/**/*', '**/node_modules/**/*', '**/coverage/**/*', '**/eslint*.config.mjs'],
   },
   ...codeConfig,
   ...testConfig,

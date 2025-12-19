@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import handler from './orders-suggestions.function';
 import { CamsError } from '../../../lib/common-errors/cams-error';
 import {
@@ -18,7 +19,7 @@ describe('Orders suggestions function tests', () => {
   });
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should return a list of suggested cases', async () => {
@@ -27,7 +28,7 @@ describe('Orders suggestions function tests', () => {
       data: summaries,
     });
 
-    const getSuggestedCasesSpy = jest
+    const getSuggestedCasesSpy = vi
       .spyOn(OrdersController.prototype, 'getSuggestedCases')
       .mockResolvedValue(camsHttpResponse);
 
@@ -39,7 +40,7 @@ describe('Orders suggestions function tests', () => {
   test('should return error response when error is encountered', async () => {
     const error = new CamsError('MOCK_ORDERS_CONTROLLER', { message: 'Mocked Error' });
     const { azureHttpResponse, loggerCamsErrorSpy } = buildTestResponseError(error);
-    jest.spyOn(OrdersController.prototype, 'getSuggestedCases').mockRejectedValue(error);
+    vi.spyOn(OrdersController.prototype, 'getSuggestedCases').mockRejectedValue(error);
 
     const response = await handler(request, context);
     expect(response).toMatchObject(azureHttpResponse);

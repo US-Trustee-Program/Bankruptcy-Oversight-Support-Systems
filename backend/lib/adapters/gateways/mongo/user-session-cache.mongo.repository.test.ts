@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import * as jwt from 'jsonwebtoken';
 import { ApplicationContext } from '../../types/basic';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
@@ -21,7 +22,7 @@ describe('User session cache Cosmos repository tests', () => {
   beforeEach(async () => {
     context = await createMockApplicationContext();
     repo = UserSessionCacheMongoRepository.getInstance(context);
-    jest.resetAllMocks();
+    vi.resetAllMocks();
   });
 
   afterEach(async () => {
@@ -30,21 +31,19 @@ describe('User session cache Cosmos repository tests', () => {
   });
 
   test('read should throw for invalid token', async () => {
-    const find = jest.spyOn(MongoCollectionAdapter.prototype, 'find');
+    const find = vi.spyOn(MongoCollectionAdapter.prototype, 'find');
     await expect(repo.read('invalid.token')).rejects.toThrow('Invalid token received.');
     expect(find).not.toHaveBeenCalled();
   });
 
   test('read should throw error on cache miss', async () => {
-    jest
-      .spyOn(MongoCollectionAdapter.prototype, 'findOne')
-      .mockRejectedValue(new NotFoundError(''));
+    vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(new NotFoundError(''));
     await expect(repo.read('a.valid.token')).rejects.toThrow('Not found');
   });
 
   test('read should return CamsSession on cache hit', async () => {
     const session = { ...expected, id: 'some-id', signature: 'some signature', ttl: 42 };
-    jest.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(session);
+    vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(session);
     const actual = await repo.read('a.valid.token');
     expect(actual).toEqual(expected);
     expect(actual).not.toEqual(
@@ -58,7 +57,7 @@ describe('User session cache Cosmos repository tests', () => {
 
   test('upsert should throw for invalid token', async () => {
     const newSession = { ...expected, accessToken: 'invalid.token' };
-    const insertOne = jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne');
+    const insertOne = vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne');
     await expect(repo.upsert(newSession)).rejects.toThrow('Invalid token received.');
     expect(insertOne).not.toHaveBeenCalled();
   });
@@ -66,7 +65,7 @@ describe('User session cache Cosmos repository tests', () => {
   test('upsert should return CamsSession and create valid ttl on success', async () => {
     const newSession = { ...expected };
     const camsJwtClaims = jwt.decode(newSession.accessToken) as CamsJwtClaims;
-    const replaceSpy = jest
+    const replaceSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
       .mockResolvedValue({ id: 'oid-guid', modifiedCount: 1, upsertedCount: 0 });
     const tokenParts = newSession.accessToken.split('.');
@@ -95,9 +94,9 @@ describe('User session cache Cosmos repository tests', () => {
 
   test('upsert should throw when replaceOne fails', async () => {
     const newSession = { ...expected };
-    jest
-      .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
-      .mockRejectedValue(new Error('some error'));
+    vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue(
+      new Error('some error'),
+    );
 
     await expect(repo.upsert(newSession)).rejects.toThrow();
   });
@@ -123,7 +122,7 @@ describe('UserSessionCacheMongoRepository singleton handling', () => {
     const repo = UserSessionCacheMongoRepository.getInstance(context);
     UserSessionCacheMongoRepository.getInstance(context); // refCount = 2
     // Mock client.close
-    const closeSpy = jest.spyOn(repo['client'], 'close').mockResolvedValue(undefined);
+    const closeSpy = vi.spyOn(repo['client'], 'close').mockResolvedValue(undefined);
     UserSessionCacheMongoRepository.dropInstance(); // refCount = 1
     expect(UserSessionCacheMongoRepository['referenceCount']).toBe(1);
     expect(closeSpy).not.toHaveBeenCalled();
@@ -147,7 +146,7 @@ describe('UserSessionCacheMongoRepository singleton handling', () => {
 
   test('release calls dropInstance', () => {
     const repo = UserSessionCacheMongoRepository.getInstance(context);
-    const dropSpy = jest.spyOn(UserSessionCacheMongoRepository, 'dropInstance');
+    const dropSpy = vi.spyOn(UserSessionCacheMongoRepository, 'dropInstance');
     repo.release();
     expect(dropSpy).toHaveBeenCalled();
   });
