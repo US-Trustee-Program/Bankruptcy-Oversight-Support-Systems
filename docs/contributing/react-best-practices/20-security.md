@@ -6,8 +6,7 @@ Protect your React SPA from common security vulnerabilities. Focus on client-sid
 - Sanitize user input before rendering
 - Use Content Security Policy (CSP) headers
 - Secure authentication tokens properly
-- Protect against XSS (Cross-Site Scripting)
-- Be cautious with `dangerouslySetInnerHTML`
+- Be cautious with `dangerouslySetInnerHTML` - sanitize with DOMPurify if needed
 - Validate data on both client and server
 - Use HTTPS for all API calls
 - Implement CSRF protection for state-changing operations
