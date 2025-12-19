@@ -492,6 +492,16 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         </label>
       </div>
       <div className="usa-combo-box">
+        <span id={`${comboBoxId}-aria-description`} className="screen-reader-only">
+          {label && label + '. '}
+          Combo box {multiSelect ? 'multi-select ' : ''}
+          {props.required ? 'required. ' : ''}
+          {ariaDescription ? `${ariaDescription}. ` : ''}
+          {getSelectedItemsDescription()}
+          {!comboboxDisabled
+            ? 'Press Enter or Down Arrow key to open the dropdown list.'
+            : 'Combo box is disabled.'}
+        </span>
         <div
           className={`input-container usa-input ${comboboxDisabled ? 'disabled' : ''} ${errorMessage && errorMessage.length > 0 ? 'usa-input-group--error' : ''}`}
           role="combobox"
@@ -527,13 +537,6 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                   aria-labelledby={`${comboBoxId}-label`}
                   ref={filterRef}
                 />
-                <span
-                  id={`${comboBoxId}-filter-input-aria-description`}
-                  className="screen-reader-only"
-                >
-                  Enter text to filter options. Use up and down arrows to select a filtered item
-                  from the list.
-                </span>
               </>
             ) : (
               <span title={getSelectedLabel()} className={getSelectedClasses()}>
@@ -541,16 +544,12 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
               </span>
             )}
           </div>
-          <span id={`${comboBoxId}-aria-description`} className="screen-reader-only">
-            {label && label + '. '}
-            Combo box {multiSelect ? 'multi-select ' : ''}
-            {props.required ? 'required. ' : ''}
-            {ariaDescription ? `${ariaDescription}. ` : ''}
-            {getSelectedItemsDescription()}
-            {!comboboxDisabled
-              ? 'Press Enter or Down Arrow key to open the dropdown list.'
-              : 'Combo box is disabled.'}
-          </span>
+          {expanded && (
+            <span id={`${comboBoxId}-filter-input-aria-description`} className="screen-reader-only">
+              Enter text to filter options. Use up and down arrows to select a filtered item from
+              the list.
+            </span>
+          )}
           <Button
             id={`${comboBoxId}-expand`}
             data-testid={`${comboBoxId}-expand`}
