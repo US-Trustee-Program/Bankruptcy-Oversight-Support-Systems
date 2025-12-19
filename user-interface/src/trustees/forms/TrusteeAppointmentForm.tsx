@@ -38,7 +38,6 @@ type FormData = {
 
 export type TrusteeAppointmentFormProps = {
   trusteeId: string;
-  trusteeName?: string;
 };
 
 function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
@@ -47,7 +46,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
   const session = LocalStorage.getSession();
   const navigate = useCamsNavigator();
 
-  const { trusteeId, trusteeName } = props;
+  const { trusteeId } = props;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingDistricts, setIsLoadingDistricts] = useState(true);
@@ -161,13 +160,6 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
 
   return (
     <div className="trustee-form-screen">
-      <div className="form-header">
-        <h1 className="text-no-wrap display-inline-block margin-right-1">
-          {trusteeName || 'Trustee'}
-        </h1>
-        <h2 className="text-normal">Add Trustee Appointments</h2>
-      </div>
-
       <form
         aria-label="Add Trustee Appointment"
         data-testid="trustee-appointment-form"

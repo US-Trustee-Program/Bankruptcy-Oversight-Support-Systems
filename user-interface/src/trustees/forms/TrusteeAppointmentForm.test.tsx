@@ -10,14 +10,12 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import * as useCamsNavigatorModule from '@/lib/hooks/UseCamsNavigator';
 
 const TEST_TRUSTEE_ID = 'test-trustee-123';
-const TEST_TRUSTEE_NAME = 'Test Trustee';
 const TEST_EFFECTIVE_DATE = '2024-01-15';
 const TEST_APPOINTED_DATE = '2024-01-01';
 
 function renderWithProps(
   props: TrusteeAppointmentFormProps = {
     trusteeId: TEST_TRUSTEE_ID,
-    trusteeName: TEST_TRUSTEE_NAME,
   },
 ) {
   return render(
@@ -109,17 +107,6 @@ describe('TrusteeAppointmentForm Tests', () => {
     expect(screen.getByLabelText(/appointment date/i)).toBeInTheDocument();
   });
 
-  test('should display trustee name in form header', async () => {
-    const trusteeName = 'John Doe';
-    renderWithProps({ trusteeId: 'test-123', trusteeName });
-
-    await waitFor(() => {
-      expect(screen.getByText(trusteeName)).toBeInTheDocument();
-    });
-
-    expect(screen.getByText('Add Trustee Appointments')).toBeInTheDocument();
-  });
-
   test('should have submit button disabled when form is incomplete', async () => {
     renderWithProps();
 
@@ -195,7 +182,7 @@ describe('TrusteeAppointmentForm Tests', () => {
   test('should handle successful form submission', async () => {
     const postSpy = vi.spyOn(Api2, 'postTrusteeAppointment').mockResolvedValue(undefined);
 
-    renderWithProps({ trusteeId: TEST_TRUSTEE_ID, trusteeName: 'Jane Smith' });
+    renderWithProps({ trusteeId: TEST_TRUSTEE_ID });
 
     await waitFor(() => {
       expect(document.querySelector('#district')).toBeInTheDocument();
