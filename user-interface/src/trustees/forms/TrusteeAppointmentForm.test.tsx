@@ -1,5 +1,5 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import TrusteeAppointmentForm, { TrusteeAppointmentFormProps } from './TrusteeAppointmentForm';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
@@ -8,10 +8,34 @@ import { FeatureFlagSet } from '@common/feature-flags';
 import Api2 from '@/lib/models/api2';
 import MockData from '@common/cams/test-utilities/mock-data';
 import * as useCamsNavigatorModule from '@/lib/hooks/UseCamsNavigator';
+import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 
 const TEST_TRUSTEE_ID = 'test-trustee-123';
 const TEST_EFFECTIVE_DATE = '2024-01-15';
 const TEST_APPOINTED_DATE = '2024-01-01';
+
+const mockActiveAppointment: TrusteeAppointment = {
+  id: 'appointment-1',
+  trusteeId: TEST_TRUSTEE_ID,
+  courtId: '097-',
+  divisionCode: '710',
+  chapter: '7-panel',
+  status: 'active',
+  appointedDate: '2023-01-01',
+  effectiveDate: '2023-01-01',
+  courtName: 'District of Alaska',
+  courtDivisionName: 'Juneau',
+  createdOn: '2023-01-01T00:00:00.000Z',
+  createdBy: 'test-user',
+  updatedOn: '2023-01-01T00:00:00.000Z',
+  updatedBy: 'test-user',
+};
+
+const mockInactiveAppointment: TrusteeAppointment = {
+  ...mockActiveAppointment,
+  id: 'appointment-2',
+  status: 'inactive',
+};
 
 function renderWithProps(
   props: TrusteeAppointmentFormProps = {
@@ -21,6 +45,21 @@ function renderWithProps(
   return render(
     <MemoryRouter>
       <TrusteeAppointmentForm {...props} />
+    </MemoryRouter>,
+  );
+}
+
+function renderWithNavigationState(
+  props: TrusteeAppointmentFormProps = {
+    trusteeId: TEST_TRUSTEE_ID,
+  },
+  state?: { existingAppointments?: TrusteeAppointment[] },
+) {
+  return render(
+    <MemoryRouter initialEntries={[{ pathname: '/', state }]}>
+      <Routes>
+        <Route path="/" element={<TrusteeAppointmentForm {...props} />} />
+      </Routes>
     </MemoryRouter>,
   );
 }
@@ -89,7 +128,7 @@ describe('TrusteeAppointmentForm Tests', () => {
   test('should show loading spinner while districts are loading', () => {
     renderWithProps();
 
-    const spinner = screen.getByText('Loading districts...');
+    const spinner = screen.getByText('Loading form data...');
     expect(spinner).toBeInTheDocument();
   });
 
@@ -409,6 +448,311 @@ describe('TrusteeAppointmentForm Tests', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /saving/i })).toBeInTheDocument();
+    });
+  });
+
+  describe('Validation Tests', () => {
+    test('should show validation error when overlapping active appointment exists', async () => {
+      renderWithProps({
+        trusteeId: TEST_TRUSTEE_ID,
+        existingAppointments: [mockActiveAppointment],
+      });
+
+      await waitFor(() => {
+        expect(document.querySelector('#district')).toBeInTheDocument();
+      });
+
+      // Select the same district and chapter as the existing active appointment
+      await userEvent.click(document.querySelector('#district-expand')!);
+      await waitFor(() => expect(screen.getByTestId('district-option-item-0')).toBeVisible());
+      await userEvent.click(screen.getByTestId('district-option-item-0')); // Alaska - Juneau (0202|020)
+
+      await userEvent.click(document.querySelector('#chapter-expand')!);
+      await waitFor(() => expect(screen.getByTestId('chapter-option-item-0')).toBeVisible());
+      await userEvent.click(screen.getByTestId('chapter-option-item-0')); // Chapter 7 - Panel
+
+      // Validation error should appear
+      await waitFor(() => {
+        expect(
+          screen.getByText(/An active appointment already exists for Chapter 7 - Panel/i),
+        ).toBeInTheDocument();
+      });
+
+      // Submit button should be disabled
+      const submitButton = screen.getByRole('button', { name: /save/i });
+      expect(submitButton).toBeDisabled();
+    });
+
+    test('should NOT show validation error when existing appointment is inactive', async () => {
+      renderWithProps({
+        trusteeId: TEST_TRUSTEE_ID,
+        existingAppointments: [mockInactiveAppointment],
+      });
+
+      await waitFor(() => {
+        expect(document.querySelector('#district')).toBeInTheDocument();
+      });
+
+      const effectiveDateInput = screen.getByLabelText(/status date/i) as HTMLInputElement;
+      const appointedDateInput = screen.getByLabelText(/appointment date/i) as HTMLInputElement;
+
+      // Select the same district and chapter as the inactive appointment
+      await userEvent.click(document.querySelector('#district-expand')!);
+      await waitFor(() => expect(screen.getByTestId('district-option-item-0')).toBeVisible());
+      await userEvent.click(screen.getByTestId('district-option-item-0'));
+
+      await userEvent.click(document.querySelector('#chapter-expand')!);
+      await waitFor(() => expect(screen.getByTestId('chapter-option-item-0')).toBeVisible());
+      await userEvent.click(screen.getByTestId('chapter-option-item-0'));
+
+      await userEvent.click(document.querySelector('#status-expand')!);
+      await waitFor(() => expect(screen.getByTestId('status-option-item-0')).toBeVisible());
+      await userEvent.click(screen.getByTestId('status-option-item-0')); // Active
+
+      fireEvent.change(effectiveDateInput, { target: { value: TEST_EFFECTIVE_DATE } });
+      fireEvent.change(appointedDateInput, { target: { value: TEST_APPOINTED_DATE } });
+
+      // No validation error should appear
+      expect(screen.queryByText(/An active appointment already exists/i)).not.toBeInTheDocument();
+
+      // Submit button should be enabled
+      const submitButton = screen.getByRole('button', { name: /save/i });
+      await waitFor(() => {
+        expect(submitButton).not.toBeDisabled();
+      });
+    });
+
+    test('should NOT show validation error when district is different', async () => {
+      renderWithProps({
+        trusteeId: TEST_TRUSTEE_ID,
+        existingAppointments: [mockActiveAppointment],
+      });
+
+      await waitFor(() => {
+        expect(document.querySelector('#district')).toBeInTheDocument();
+      });
+
+      const effectiveDateInput = screen.getByLabelText(/status date/i) as HTMLInputElement;
+      const appointedDateInput = screen.getByLabelText(/appointment date/i) as HTMLInputElement;
+
+      // Select a different district (item 1 instead of 0)
+      await userEvent.click(document.querySelector('#district-expand')!);
+      await waitFor(() => expect(screen.getByTestId('district-option-item-1')).toBeVisible());
+      await userEvent.click(screen.getByTestId('district-option-item-1'));
+
+      await userEvent.click(document.querySelector('#chapter-expand')!);
+      await waitFor(() => expect(screen.getByTestId('chapter-option-item-0')).toBeVisible());
+      await userEvent.click(screen.getByTestId('chapter-option-item-0'));
+
+      await userEvent.click(document.querySelector('#status-expand')!);
+      await waitFor(() => expect(screen.getByTestId('status-option-item-0')).toBeVisible());
+      await userEvent.click(screen.getByTestId('status-option-item-0'));
+
+      fireEvent.change(effectiveDateInput, { target: { value: TEST_EFFECTIVE_DATE } });
+      fireEvent.change(appointedDateInput, { target: { value: TEST_APPOINTED_DATE } });
+
+      // No validation error should appear
+      expect(screen.queryByText(/An active appointment already exists/i)).not.toBeInTheDocument();
+
+      // Submit button should be enabled
+      const submitButton = screen.getByRole('button', { name: /save/i });
+      await waitFor(() => {
+        expect(submitButton).not.toBeDisabled();
+      });
+    });
+
+    test('should NOT show validation error when chapter is different', async () => {
+      renderWithProps({
+        trusteeId: TEST_TRUSTEE_ID,
+        existingAppointments: [mockActiveAppointment],
+      });
+
+      await waitFor(() => {
+        expect(document.querySelector('#district')).toBeInTheDocument();
+      });
+
+      const effectiveDateInput = screen.getByLabelText(/status date/i) as HTMLInputElement;
+      const appointedDateInput = screen.getByLabelText(/appointment date/i) as HTMLInputElement;
+
+      // Select same district but different chapter
+      await userEvent.click(document.querySelector('#district-expand')!);
+      await waitFor(() => expect(screen.getByTestId('district-option-item-0')).toBeVisible());
+      await userEvent.click(screen.getByTestId('district-option-item-0'));
+
+      await userEvent.click(document.querySelector('#chapter-expand')!);
+      await waitFor(() => expect(screen.getByTestId('chapter-option-item-1')).toBeVisible());
+      await userEvent.click(screen.getByTestId('chapter-option-item-1')); // Chapter 7 - Non-Panel
+
+      await userEvent.click(document.querySelector('#status-expand')!);
+      await waitFor(() => expect(screen.getByTestId('status-option-item-0')).toBeVisible());
+      await userEvent.click(screen.getByTestId('status-option-item-0'));
+
+      fireEvent.change(effectiveDateInput, { target: { value: TEST_EFFECTIVE_DATE } });
+      fireEvent.change(appointedDateInput, { target: { value: TEST_APPOINTED_DATE } });
+
+      // No validation error should appear
+      expect(screen.queryByText(/An active appointment already exists/i)).not.toBeInTheDocument();
+
+      // Submit button should be enabled
+      const submitButton = screen.getByRole('button', { name: /save/i });
+      await waitFor(() => {
+        expect(submitButton).not.toBeDisabled();
+      });
+    });
+
+    test('should clear validation error when selection changes', async () => {
+      renderWithProps({
+        trusteeId: TEST_TRUSTEE_ID,
+        existingAppointments: [mockActiveAppointment],
+      });
+
+      await waitFor(() => {
+        expect(document.querySelector('#district')).toBeInTheDocument();
+      });
+
+      // First, select the same district and chapter to trigger validation error
+      await userEvent.click(document.querySelector('#district-expand')!);
+      await waitFor(() => expect(screen.getByTestId('district-option-item-0')).toBeVisible());
+      await userEvent.click(screen.getByTestId('district-option-item-0'));
+
+      await userEvent.click(document.querySelector('#chapter-expand')!);
+      await waitFor(() => expect(screen.getByTestId('chapter-option-item-0')).toBeVisible());
+      await userEvent.click(screen.getByTestId('chapter-option-item-0'));
+
+      // Validation error should appear
+      await waitFor(() => {
+        expect(
+          screen.getByText(/An active appointment already exists for Chapter 7 - Panel/i),
+        ).toBeInTheDocument();
+      });
+
+      // Now change the chapter to a different one
+      await userEvent.click(document.querySelector('#chapter-expand')!);
+      await waitFor(() => expect(screen.getByTestId('chapter-option-item-1')).toBeVisible());
+      await userEvent.click(screen.getByTestId('chapter-option-item-1')); // Chapter 7 - Non-Panel
+
+      // Validation error should disappear
+      await waitFor(() => {
+        expect(screen.queryByText(/An active appointment already exists/i)).not.toBeInTheDocument();
+      });
+    });
+
+    test('should prevent form submission when validation error exists', async () => {
+      const postSpy = vi.spyOn(Api2, 'postTrusteeAppointment').mockResolvedValue(undefined);
+
+      renderWithProps({
+        trusteeId: TEST_TRUSTEE_ID,
+        existingAppointments: [mockActiveAppointment],
+      });
+
+      await waitFor(() => {
+        expect(document.querySelector('#district')).toBeInTheDocument();
+      });
+
+      const effectiveDateInput = screen.getByLabelText(/status date/i) as HTMLInputElement;
+      const appointedDateInput = screen.getByLabelText(/appointment date/i) as HTMLInputElement;
+
+      // Select overlapping appointment
+      await userEvent.click(document.querySelector('#district-expand')!);
+      await waitFor(() => expect(screen.getByTestId('district-option-item-0')).toBeVisible());
+      await userEvent.click(screen.getByTestId('district-option-item-0'));
+
+      await userEvent.click(document.querySelector('#chapter-expand')!);
+      await waitFor(() => expect(screen.getByTestId('chapter-option-item-0')).toBeVisible());
+      await userEvent.click(screen.getByTestId('chapter-option-item-0'));
+
+      await userEvent.click(document.querySelector('#status-expand')!);
+      await waitFor(() => expect(screen.getByTestId('status-option-item-0')).toBeVisible());
+      await userEvent.click(screen.getByTestId('status-option-item-0'));
+
+      fireEvent.change(effectiveDateInput, { target: { value: TEST_EFFECTIVE_DATE } });
+      fireEvent.change(appointedDateInput, { target: { value: TEST_APPOINTED_DATE } });
+
+      // Submit button should be disabled
+      const submitButton = screen.getByRole('button', { name: /save/i });
+      expect(submitButton).toBeDisabled();
+
+      // API should not be called
+      expect(postSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Data Loading Tests', () => {
+    test('should use appointments passed via props', async () => {
+      const getTrusteeAppointmentsSpy = vi
+        .spyOn(Api2, 'getTrusteeAppointments')
+        .mockResolvedValue({ data: [] });
+
+      renderWithProps({
+        trusteeId: TEST_TRUSTEE_ID,
+        existingAppointments: [mockActiveAppointment],
+      });
+
+      await waitFor(() => {
+        expect(document.querySelector('#district')).toBeInTheDocument();
+      });
+
+      // Should NOT call the API since appointments were provided via props
+      expect(getTrusteeAppointmentsSpy).not.toHaveBeenCalled();
+    });
+
+    test('should use appointments passed via navigation state', async () => {
+      const getTrusteeAppointmentsSpy = vi
+        .spyOn(Api2, 'getTrusteeAppointments')
+        .mockResolvedValue({ data: [] });
+
+      renderWithNavigationState(
+        { trusteeId: TEST_TRUSTEE_ID },
+        { existingAppointments: [mockActiveAppointment] },
+      );
+
+      await waitFor(() => {
+        expect(document.querySelector('#district')).toBeInTheDocument();
+      });
+
+      // Should NOT call the API since appointments were provided via navigation state
+      expect(getTrusteeAppointmentsSpy).not.toHaveBeenCalled();
+    });
+
+    test('should fetch appointments via API when not provided', async () => {
+      const getTrusteeAppointmentsSpy = vi
+        .spyOn(Api2, 'getTrusteeAppointments')
+        .mockResolvedValue({ data: [mockActiveAppointment] });
+
+      renderWithProps({ trusteeId: TEST_TRUSTEE_ID });
+
+      await waitFor(() => {
+        expect(getTrusteeAppointmentsSpy).toHaveBeenCalledWith(TEST_TRUSTEE_ID);
+      });
+
+      await waitFor(() => {
+        expect(document.querySelector('#district')).toBeInTheDocument();
+      });
+    });
+
+    test('should show loading spinner when fetching appointments', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockImplementation(
+        () => new Promise((resolve) => setTimeout(() => resolve({ data: [] }), 100)),
+      );
+
+      renderWithProps({ trusteeId: TEST_TRUSTEE_ID });
+
+      // Should show loading spinner
+      expect(screen.getByText(/Loading form data/i)).toBeInTheDocument();
+    });
+
+    test('should handle error when fetching appointments fails', async () => {
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockRejectedValue(
+        new Error('Failed to fetch appointments'),
+      );
+
+      const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
+
+      renderWithProps({ trusteeId: TEST_TRUSTEE_ID });
+
+      await waitFor(() => {
+        expect(globalAlertSpy.error).toHaveBeenCalledWith('Failed to load existing appointments');
+      });
     });
   });
 });

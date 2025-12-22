@@ -1,4 +1,5 @@
 import './TrusteeContactForm.scss';
+import './TrusteeAppointmentForm.scss';
 import React, { useState, useCallback, useEffect } from 'react';
 import Input from '@/lib/components/uswds/Input';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
@@ -9,10 +10,12 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
 import { Stop } from '@/lib/components/Stop';
-import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
+import { TrusteeAppointmentInput, TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { ChapterType } from '@common/cams/trustees';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
+import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { useLocation } from 'react-router-dom';
 
 const CHAPTER_OPTIONS: ComboOption<ChapterType>[] = [
   { value: '7-panel', label: 'Chapter 7 - Panel' },
@@ -38,6 +41,7 @@ type FormData = {
 
 export type TrusteeAppointmentFormProps = {
   trusteeId: string;
+  existingAppointments?: TrusteeAppointment[];
 };
 
 function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
@@ -45,12 +49,23 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
   const navigate = useCamsNavigator();
+  const location = useLocation();
 
-  const { trusteeId } = props;
+  const { trusteeId, existingAppointments: passedAppointments } = props;
+
+  // Try to get appointments from props first, then from navigation state
+  const appointmentsFromState = (location.state as { existingAppointments?: TrusteeAppointment[] })
+    ?.existingAppointments;
+  const appointmentsToUse = passedAppointments ?? appointmentsFromState;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingDistricts, setIsLoadingDistricts] = useState(true);
+  const [isLoadingAppointments, setIsLoadingAppointments] = useState(!appointmentsToUse);
   const [districtOptions, setDistrictOptions] = useState<ComboOption[]>([]);
+  const [existingAppointments, setExistingAppointments] = useState<TrusteeAppointment[]>(
+    appointmentsToUse ?? [],
+  );
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [formData, setFormData] = useState<FormData>({
     districtKey: '',
     chapter: '' as ChapterType,
@@ -88,8 +103,69 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     loadDistricts();
   }, [globalAlert]);
 
+  useEffect(() => {
+    // Only load appointments if they weren't passed as props or navigation state
+    if (appointmentsToUse) {
+      return;
+    }
+
+    const loadAppointments = async () => {
+      try {
+        const response = await Api2.getTrusteeAppointments(trusteeId);
+        setExistingAppointments(response.data ?? []);
+      } catch (err) {
+        globalAlert?.error('Failed to load existing appointments');
+        console.error('Error loading appointments:', err);
+      } finally {
+        setIsLoadingAppointments(false);
+      }
+    };
+
+    loadAppointments();
+  }, [trusteeId, appointmentsToUse, globalAlert]);
+
+  const validateAppointment = useCallback((): boolean => {
+    if (!formData.districtKey || !formData.chapter) {
+      setValidationError(null);
+      return true;
+    }
+
+    const [courtId, divisionCode] = formData.districtKey.split('|');
+
+    // Check for overlapping active appointments
+    const hasOverlap = existingAppointments.some((appointment) => {
+      return (
+        appointment.courtId === courtId &&
+        appointment.divisionCode === divisionCode &&
+        appointment.chapter === formData.chapter &&
+        appointment.status === 'active'
+      );
+    });
+
+    if (hasOverlap) {
+      const district = districtOptions.find((opt) => opt.value === formData.districtKey);
+      const chapter = CHAPTER_OPTIONS.find((opt) => opt.value === formData.chapter);
+      setValidationError(
+        `An active appointment already exists for ${chapter?.label} in ${district?.label}. Please end the existing appointment before creating a new one.`,
+      );
+      return false;
+    }
+
+    setValidationError(null);
+    return true;
+  }, [formData.districtKey, formData.chapter, existingAppointments, districtOptions]);
+
+  // Validate whenever relevant fields change
+  useEffect(() => {
+    validateAppointment();
+  }, [validateAppointment]);
+
   const handleSubmit = async (ev: React.FormEvent): Promise<void> => {
     ev.preventDefault();
+
+    if (!validateAppointment()) {
+      return;
+    }
 
     setIsSubmitting(true);
 
@@ -142,8 +218,8 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     );
   }
 
-  if (isLoadingDistricts) {
-    return <LoadingSpinner caption="Loading districts..." />;
+  if (isLoadingDistricts || isLoadingAppointments) {
+    return <LoadingSpinner caption="Loading form data..." />;
   }
 
   const isFormValid =
@@ -151,7 +227,8 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     formData.chapter &&
     formData.status &&
     formData.effectiveDate &&
-    formData.appointedDate;
+    formData.appointedDate &&
+    !validationError;
 
   return (
     <div className="trustee-form-screen">
@@ -166,6 +243,10 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
             field.
           </span>
         </div>
+
+        {validationError && (
+          <Alert type={UswdsAlertStyle.Error} inline={true} show={true} message={validationError} />
+        )}
 
         <div className="form-container">
           <div className="form-column">
