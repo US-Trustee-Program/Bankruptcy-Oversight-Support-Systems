@@ -86,13 +86,9 @@ describe('TrusteeAppointments', () => {
     renderComponent('trustee-123');
 
     await waitFor(() => {
-<<<<<<< HEAD
-      expect(screen.getByText(/There are no appointments for this Trustee./i)).toBeInTheDocument();
-=======
       expect(screen.getByText(/Add New Appointment/i)).toBeInTheDocument();
       expect(screen.getByText(EMPTY_APPOINTMENTS_MESSAGE)).toBeInTheDocument();
       expect(screen.getByTestId('button-add-appointment-button')).toBeInTheDocument();
->>>>>>> 1763c5424 (Added 'Add' button to empty appointments screen)
     });
   });
 
@@ -171,11 +167,7 @@ describe('TrusteeAppointments', () => {
     renderComponent('trustee-123');
 
     await waitFor(() => {
-<<<<<<< HEAD
-      expect(screen.getByText(/There are no appointments for this Trustee./i)).toBeInTheDocument();
-=======
       expect(screen.getByText(EMPTY_APPOINTMENTS_MESSAGE)).toBeInTheDocument();
->>>>>>> 1763c5424 (Added 'Add' button to empty appointments screen)
     });
   });
 
@@ -186,11 +178,7 @@ describe('TrusteeAppointments', () => {
     renderComponent('trustee-123');
 
     await waitFor(() => {
-<<<<<<< HEAD
-      expect(screen.getByText(/There are no appointments for this Trustee./i)).toBeInTheDocument();
-=======
       expect(screen.getByText(EMPTY_APPOINTMENTS_MESSAGE)).toBeInTheDocument();
->>>>>>> 1763c5424 (Added 'Add' button to empty appointments screen)
     });
   });
 });

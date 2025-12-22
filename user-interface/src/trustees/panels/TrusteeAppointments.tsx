@@ -1,3 +1,4 @@
+import './TrusteeAppointments.scss';
 import { useEffect, useState } from 'react';
 import Api2 from '@/lib/models/api2';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
@@ -57,36 +58,30 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
     );
   }
 
+  const handleAddAppointment = () => {
+    navigate(`/trustees/${trusteeId}/appointments/create`, {
+      state: { existingAppointments: appointments },
+    });
+  };
+
   if (appointments.length === 0) {
     return (
       <div className="trustee-appointments-list">
-        <div className="record-detail-container">
-          <div className="empty-appointments-state">
-            <Button
-              id="add-appointment-button"
-              onClick={() => {
-                navigate(`/trustees/${trusteeId}/appointments/create`);
-              }}
-            >
-              <Icon name="add_circle" />
-              Add New Appointment
-            </Button>
-            <p className="margin-top-2">There are no appointments for this Trustee.</p>
-          </div>
+        <div className="toolbar">
+          <Button id="add-appointment-button" onClick={handleAddAppointment}>
+            <Icon name="add_circle" />
+            Add New Appointment
+          </Button>
         </div>
+        <div className="appointments-list">There are no appointments for this Trustee.</div>
       </div>
     );
   }
 
   return (
     <div className="trustee-appointments-list">
-      <div className="record-detail-container">
-        <Button
-          id="add-appointment-button"
-          onClick={() => {
-            navigate(`/trustees/${trusteeId}/appointments/create`);
-          }}
-        >
+      <div className="toolbar">
+        <Button id="add-appointment-button" onClick={handleAddAppointment}>
           <Icon name="add_circle" />
           Add New Appointment
         </Button>
