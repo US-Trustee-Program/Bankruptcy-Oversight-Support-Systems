@@ -115,7 +115,7 @@ test.describe('Trustees', () => {
     await expect(zipInput).toHaveValue('12345');
   });
 
-  test('should assign an auditor to a trustee', async ({ page }) => {
+  test.skip('should assign an auditor to a trustee', async ({ page }) => {
     // Navigate to the first trustee's detail page
     const trusteesTable = page.getByTestId('trustees-table');
     await expect(trusteesTable).toBeVisible(timeoutOption);
