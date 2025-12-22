@@ -428,6 +428,145 @@ CaseAssignmentMongoRepository: {
 
 ---
 
+## Extending the Fluent API vs Using Custom Spies
+
+### Philosophy: Prefer Fluent API Extensions
+
+**IMPORTANT**: When you need to mock a common, reusable fixture (like trustee history, case notes, assignments, etc.), **extend the Fluent API** by adding a new method rather than using `.withCustomSpy()`.
+
+**Reserve `.withCustomSpy()` as an escape hatch** for obscure, one-off test scenarios that would never be reused.
+
+### When to Extend the Fluent API
+
+Add a new fluent method when:
+- ✅ The data is a common domain concept (trustees, cases, notes, assignments, etc.)
+- ✅ Multiple tests will need this data
+- ✅ The data is part of the user-facing feature being tested
+- ✅ The mock setup is complex enough to warrant a helper
+
+**Examples that deserve fluent methods:**
+- `.withTrustee()` - Common domain object
+- `.withTrusteeHistory()` - Audit logs for trustees
+- `.withCaseNotes()` - Case notes are a key feature
+- `.withTransfers()` - Transfer orders are common
+- `.withOffices()` - Office data used across many screens
+
+### When to Use `.withCustomSpy()`
+
+Use `.withCustomSpy()` only for:
+- ❌ One-off, obscure edge cases specific to a single test
+- ❌ Testing error conditions with custom mock implementations
+- ❌ Temporary spies during test development (refactor to fluent method before committing)
+
+**Examples appropriate for `.withCustomSpy()`:**
+```typescript
+// Testing error handling - one-off scenario
+await TestSetup.forUser(session)
+  .withCustomSpy('TrusteesMongoRepository', {
+    read: vi.fn().mockRejectedValue(new Error('Database connection failed')),
+  })
+  .renderAt('/trustees/123');
+
+// Testing specific edge case - unlikely to be reused
+await TestSetup.forUser(session)
+  .withCustomSpy('SomeObscureGateway', {
+    someRareMethod: vi.fn().mockResolvedValue(edgeCaseData),
+  })
+  .renderAt('/some-route');
+```
+
+### How to Add a Fluent API Method
+
+**Step 1**: Add storage and type imports to `TestSetup` class:
+```typescript
+// test/bdd/helpers/fluent-test-setup.ts
+import type { TrusteeHistory } from '@common/cams/trustees';
+
+export class TestSetup {
+  // ... existing fields ...
+  private trusteeHistory: Map<string, TrusteeHistory[]> = new Map();
+```
+
+**Step 2**: Add the fluent method:
+```typescript
+  /**
+   * Provide audit/change history for a specific trustee.
+   * This will mock the TrusteesMongoRepository listTrusteeHistory() method.
+   *
+   * @param trusteeId The trustee ID to associate history with
+   * @param history Array of TrusteeHistory records (defaults to empty array)
+   * @example
+   * ```typescript
+   * await TestSetup
+   *   .forUser(TestSessions.trusteeAdmin())
+   *   .withTrustee(testTrustee)
+   *   .withTrusteeHistory(testTrustee.trusteeId, history)
+   *   .renderAt(`/trustees/${testTrustee.trusteeId}/audit-history`);
+   * ```
+   */
+  withTrusteeHistory(trusteeId: string, history: TrusteeHistory[] = []): TestSetup {
+    this.trusteeHistory.set(trusteeId, history);
+    return this;
+  }
+```
+
+**Step 3**: Add spy configuration in `renderAt()` method's spy config:
+```typescript
+  async renderAt(route: string): Promise<TestState> {
+    // ... existing setup ...
+
+    const spyConfig: Record<string, Record<string, unknown>> = {
+      // ... existing configs ...
+
+      TrusteesMongoRepository: {
+        read: /* ... existing ... */,
+        listTrustees: /* ... existing ... */,
+        listTrusteeHistory:
+          this.trusteeHistory.size > 0
+            ? async (trusteeId: string) => {
+                return this.trusteeHistory.get(trusteeId) || [];
+              }
+            : async () => [],
+      },
+    };
+
+    // ... rest of renderAt ...
+  }
+```
+
+**Step 4**: Update tests to use the new method:
+```typescript
+// Before (using custom spy):
+await TestSetup.forUser(TestSessions.trusteeAdmin())
+  .withTrustee(testTrustee)
+  .withCustomSpy('TrusteesMongoRepository', {
+    listTrusteeHistory: vi.fn().mockResolvedValue([]),
+  })
+  .renderAt(`/trustees/${testTrustee.trusteeId}/audit-history`);
+
+// After (using fluent method):
+await TestSetup.forUser(TestSessions.trusteeAdmin())
+  .withTrustee(testTrustee)
+  .withTrusteeHistory(testTrustee.trusteeId, [])
+  .renderAt(`/trustees/${testTrustee.trusteeId}/audit-history`);
+```
+
+### Benefits of Fluent API Extensions
+
+1. **Self-documenting**: Method names make test intent clear
+2. **Type-safe**: TypeScript catches errors at compile time
+3. **Reusable**: One implementation used across all tests
+4. **Maintainable**: Changes to mock setup happen in one place
+5. **Discoverable**: IDE autocomplete shows available options
+
+### Code Review Guideline
+
+During code review, if you see `.withCustomSpy()` being used for common domain data, suggest:
+
+> "This looks like common test data that multiple tests might need. Could we add a `.withXxx()` method to the Fluent API instead of using `.withCustomSpy()`? That would make it more reusable and self-documenting."
+
+---
+
 ## Common Pitfalls and Solutions
 
 ### 1. "Objects are not valid as a React child"
@@ -874,6 +1013,7 @@ Before creating a new BDD full-stack test, verify:
 - [ ] Imports `../../helpers/driver-mocks`
 - [ ] Uses `initializeTestServer()` / `cleanupTestServer()`
 - [ ] Uses Fluent API (`TestSetup`) for test setup
+- [ ] Uses Fluent API methods (`.withXxx()`) for common data; reserves `.withCustomSpy()` for one-off edge cases
 - [ ] Uses `MockData` from `@common/cams/test-utilities/mock-data` for test data
 - [ ] Waits for "Loading session" to complete (`waitForAppLoad()`)
 - [ ] Uses `document.body.textContent` for text assertions
@@ -930,16 +1070,17 @@ The key to successful BDD full-stack tests:
 
 1. **Spy on production code**, don't create fakes
 2. **Use Fluent API (`TestSetup`)** for declarative test setup
-3. **Choose the right test type**:
+3. **Extend Fluent API for common data**, reserve `.withCustomSpy()` for one-off edge cases
+4. **Choose the right test type**:
    - Read-only tests for display/navigation scenarios
    - Stateful tests for write operations and interactive workflows
-4. **Capture TestState** when testing writes: `const state = await TestSetup...renderAt(...)`
-5. **Provide explicit caseId** for case-specific methods (`.withCaseNotes(caseId, [])`)
-6. **Match mock types** to method signatures (async vs sync)
-7. **Wait for loading states** to complete
-8. **Use flexible text assertions** (`textContent`, not `getByText`)
-9. **Test in isolation** with proper cleanup
-10. **Follow the breadcrumbs** from unmocked method errors
+5. **Capture TestState** when testing writes: `const state = await TestSetup...renderAt(...)`
+6. **Provide explicit caseId** for case-specific methods (`.withCaseNotes(caseId, [])`)
+7. **Match mock types** to method signatures (async vs sync)
+8. **Wait for loading states** to complete
+9. **Use flexible text assertions** (`textContent`, not `getByText`)
+10. **Test in isolation** with proper cleanup
+11. **Follow the breadcrumbs** from unmocked method errors
 
 **Test Examples:**
 - **Read-only**: `case-detail.spec.tsx`, `search-cases.spec.tsx`, `my-cases.spec.tsx`

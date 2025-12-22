@@ -287,7 +287,27 @@ export async function spyOnAllGateways(
  * IMPORTANT: Uses vi.restoreAllMocks() which properly restores all
  * mocks to their original implementations. This is safe to call
  * in afterEach without affecting other running tests.
+ *
+ * Also clears singleton instances that might have cached references to
+ * old mock implementations.
  */
-export function clearAllRepositorySpies() {
+export async function clearAllRepositorySpies() {
   vi.restoreAllMocks();
+
+  // Clear singleton instances to ensure fresh instances with new spies
+  // IMPORTANT: Access the class's private static instance field to reset it
+  try {
+    const { TrusteesMongoRepository } =
+      await import('../../../backend/lib/adapters/gateways/mongo/trustees.mongo.repository');
+    // Reset the singleton by accessing the private static field
+    // @ts-expect-error - accessing private field for test cleanup
+    if (TrusteesMongoRepository.instance) {
+      // @ts-expect-error - accessing private field for test cleanup
+      TrusteesMongoRepository.instance = undefined;
+      // @ts-expect-error - accessing private field for test cleanup
+      TrusteesMongoRepository.referenceCount = 0;
+    }
+  } catch (_e) {
+    // Ignore if module not yet loaded
+  }
 }

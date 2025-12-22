@@ -29,11 +29,11 @@ describe('BDD Environment Diagnostics', () => {
 
   afterAll(async () => {
     await cleanupTestServer();
-    clearAllRepositorySpies();
+    await clearAllRepositorySpies();
   });
 
   beforeEach(async () => {
-    clearAllRepositorySpies();
+    await clearAllRepositorySpies();
     await spyOnMeEndpoint(TestSessions.caseAssignmentManager());
   });
 

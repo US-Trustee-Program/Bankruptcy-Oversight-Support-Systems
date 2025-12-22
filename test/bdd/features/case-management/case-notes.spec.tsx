@@ -38,8 +38,8 @@ describe.skip('Feature: Case Notes Management', () => {
     await cleanupTestServer();
   });
 
-  afterEach(() => {
-    clearAllRepositorySpies();
+  afterEach(async () => {
+    await clearAllRepositorySpies();
   });
 
   /**

@@ -1,10 +1,11 @@
 import { render, RenderOptions } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useNavigate } from 'react-router-dom';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsSession } from '@common/cams/session';
 import { TestSessions } from '../fixtures/auth.fixtures';
 import App from '@/App';
 import { AuthenticationRoutes } from '@/login/AuthenticationRoutes';
+import { useEffect } from 'react';
 
 /**
  * Custom render options for BDD tests
@@ -20,6 +21,29 @@ interface BddRenderOptions extends Omit<RenderOptions, 'wrapper'> {
    * Defaults to a Case Assignment Manager session
    */
   session?: CamsSession;
+
+  /**
+   * Optional callback to receive the navigate function for programmatic navigation
+   */
+  onNavigateReady?: (navigate: (to: string) => void) => void;
+}
+
+/**
+ * Internal component that captures the navigate function from React Router
+ * and passes it back to the test via callback
+ */
+function NavigateCapture({
+  onNavigateReady,
+}: {
+  onNavigateReady: (navigate: (to: string) => void) => void;
+}) {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    onNavigateReady(navigate);
+  }, [navigate, onNavigateReady]);
+
+  return null;
 }
 
 /**
@@ -43,6 +67,7 @@ export function renderApp(options: BddRenderOptions) {
   const {
     initialRoute,
     session = TestSessions.caseAssignmentManager(),
+    onNavigateReady,
     ...renderOptions
   } = options;
 
@@ -60,6 +85,7 @@ export function renderApp(options: BddRenderOptions) {
   return render(
     <MemoryRouter initialEntries={[initialRoute]}>
       <AuthenticationRoutes>
+        {onNavigateReady && <NavigateCapture onNavigateReady={onNavigateReady} />}
         <App />
       </AuthenticationRoutes>
     </MemoryRouter>,
