@@ -10,6 +10,24 @@ import { vi } from 'vitest';
  * import '../../helpers/driver-mocks';
  */
 
+/**
+ * Create a mock LaunchDarkly client with configurable feature flags.
+ * This helper ensures consistency between default mocks and test-specific overrides.
+ *
+ * @param featureFlags - Feature flags to enable (default: empty object for all flags disabled)
+ * @returns Mock LaunchDarkly client object
+ */
+export function createMockLaunchDarklyClient(featureFlags: Record<string, boolean> = {}) {
+  return {
+    waitForInitialization: vi.fn().mockResolvedValue(undefined),
+    allFlagsState: vi.fn().mockResolvedValue({
+      allValues: () => featureFlags,
+    }),
+    flush: vi.fn().mockResolvedValue(undefined),
+    close: vi.fn(),
+  };
+}
+
 // IMPORTANT: Mock MongoDB driver BEFORE any imports that use it
 vi.mock('mongodb', () => {
   // Create a proper mock cursor that is async iterable
@@ -148,3 +166,27 @@ vi.mock('mssql', () => {
     NVarChar: MockNVarChar,
   };
 });
+
+// Mock LaunchDarkly SDK for backend BEFORE any imports
+// This provides default feature flag behavior; individual tests can override via spyOn
+vi.mock('@launchdarkly/node-server-sdk', () => {
+  // Use shared helper to ensure consistency
+  const mockClient = createMockLaunchDarklyClient(); // Default: no flags enabled
+
+  return {
+    default: {
+      init: vi.fn().mockReturnValue(mockClient),
+    },
+    init: vi.fn().mockReturnValue(mockClient),
+  };
+});
+
+// Mock LaunchDarkly SDK for frontend BEFORE any imports
+// This provides default feature flag behavior; individual tests can override via spyOn
+vi.mock('launchdarkly-react-client-sdk', () => ({
+  withLDProvider: (_config: unknown) => (Component: unknown) => Component,
+  useFlags: () => ({}), // Default: no flags enabled
+  useLDClient: () => ({
+    identify: vi.fn(),
+  }),
+}));

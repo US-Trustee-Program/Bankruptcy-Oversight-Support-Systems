@@ -498,7 +498,7 @@ export class TestSetup {
 
     // Setup feature flags if any were specified
     if (Object.keys(this.featureFlags).length > 0) {
-      this.setupFeatureFlagMocks();
+      await this.setupFeatureFlagSpies();
     }
 
     // Build spy configuration
@@ -591,11 +591,31 @@ export class TestSetup {
 
       // Lists Repository (for bankruptcy software, courts, etc.)
       ListsMongoRepository: {
-        // Mock getBankruptcySoftwareList for trustee screens
-        getList: vi.fn().mockResolvedValue([
-          { _id: '1', list: 'bankruptcy-software', key: 'BestCase', value: 'BestCase' },
-          { _id: '2', list: 'bankruptcy-software', key: 'NextChapter', value: 'NextChapter' },
-        ]),
+        // Mock getList with list-aware behavior
+        getList: vi.fn().mockImplementation(async (listName: string) => {
+          // Return different data based on the list name
+          switch (listName) {
+            case 'bankruptcy-software':
+              return [
+                { _id: '1', list: 'bankruptcy-software', key: 'BestCase', value: 'BestCase' },
+                {
+                  _id: '2',
+                  list: 'bankruptcy-software',
+                  key: 'NextChapter',
+                  value: 'NextChapter',
+                },
+              ];
+            case 'courts':
+              // Return empty for courts - tests can override if needed
+              return [];
+            default:
+              // Throw for unknown lists to surface unexpected usage
+              throw new Error(
+                `[BDD TEST] Unexpected list requested: "${listName}". ` +
+                  `Add this list to ListsMongoRepository mock in fluent-test-setup.ts or override with .withCustomSpy()`,
+              );
+          }
+        }),
       },
 
       // Docket - STATE AWARE
@@ -797,39 +817,35 @@ export class TestSetup {
   }
 
   /**
-   * Set up feature flag mocks by mocking LaunchDarkly.
-   * This overrides the default test feature flags with test-specific values.
+   * Set up feature flag spies to override the default flags defined in driver-mocks.
+   * This allows individual tests to enable specific feature flags.
    *
-   * Mocks both backend (@launchdarkly/node-server-sdk) and frontend (launchdarkly-react-client-sdk)
+   * Uses spyOn to override the mocked LaunchDarkly modules that were hoisted in driver-mocks.
    */
-  private setupFeatureFlagMocks(): void {
-    // Mock LaunchDarkly for backend
-    vi.doMock('@launchdarkly/node-server-sdk', () => {
-      const mockClient = {
-        waitForInitialization: vi.fn().mockResolvedValue(undefined),
-        allFlagsState: vi.fn().mockResolvedValue({
-          allValues: () => this.featureFlags,
-        }),
-        flush: vi.fn().mockResolvedValue(undefined),
-        close: vi.fn(),
-      };
+  private async setupFeatureFlagSpies(): Promise<void> {
+    // Spy on backend LaunchDarkly to return test-specific flags
+    const backendLD = await import('@launchdarkly/node-server-sdk');
 
-      return {
-        default: {
-          init: vi.fn().mockReturnValue(mockClient),
-        },
-        init: vi.fn().mockReturnValue(mockClient),
-      };
-    });
-
-    // Mock LaunchDarkly for frontend
-    vi.doMock('launchdarkly-react-client-sdk', () => ({
-      withLDProvider: (_config: unknown) => (Component: unknown) => Component,
-      useFlags: () => this.featureFlags,
-      useLDClient: () => ({
-        identify: vi.fn(),
+    // NOTE: This duplicates createMockLaunchDarklyClient from driver-mocks.ts
+    // We cannot import and use the helper here due to module loading order issues
+    // with dynamic imports. The helper is fine in hoisted vi.mock() calls.
+    const mockClient = {
+      waitForInitialization: vi.fn().mockResolvedValue(undefined),
+      allFlagsState: vi.fn().mockResolvedValue({
+        allValues: () => this.featureFlags,
       }),
-    }));
+      flush: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn(),
+    };
+
+    vi.spyOn(backendLD, 'init').mockReturnValue(mockClient as never);
+    if (backendLD.default) {
+      vi.spyOn(backendLD.default, 'init').mockReturnValue(mockClient as never);
+    }
+
+    // Spy on frontend LaunchDarkly to return test-specific flags
+    const frontendLD = await import('launchdarkly-react-client-sdk');
+    vi.spyOn(frontendLD, 'useFlags').mockReturnValue(this.featureFlags);
   }
 }
 
