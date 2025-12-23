@@ -22,7 +22,7 @@ export class TrusteeAppointmentsController implements CamsController {
 
   public async handleRequest(
     context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<TrusteeAppointment[]>> {
+  ): Promise<CamsHttpResponseInit<TrusteeAppointment[] | undefined>> {
     // Check feature flag
     if (!context.featureFlags['trustee-management']) {
       return {
@@ -84,7 +84,7 @@ export class TrusteeAppointmentsController implements CamsController {
 
   private async handlePostRequest(
     context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<TrusteeAppointment[]>> {
+  ): Promise<CamsHttpResponseInit<undefined>> {
     const trusteeId = context.request.params['trusteeId'];
     const { body } = context.request;
 
