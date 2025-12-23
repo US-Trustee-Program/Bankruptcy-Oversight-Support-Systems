@@ -417,7 +417,7 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
         </div>
 
         <div className="usa-button-group">
-          <Button id="submit-button" type="submit" onClick={handleSubmit}>
+          <Button id="submit-button" type="submit">
             {isSubmitting ? 'Saving…' : 'Save'}
           </Button>
           <Button
