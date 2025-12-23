@@ -292,6 +292,8 @@ export async function spyOnAllGateways(
  * old mock implementations.
  */
 export async function clearAllRepositorySpies() {
+  // Restore all mocks including repository spies and feature flag spies
+  // This prevents cross-test state leakage
   vi.restoreAllMocks();
 
   // Clear singleton instances to ensure fresh instances with new spies
