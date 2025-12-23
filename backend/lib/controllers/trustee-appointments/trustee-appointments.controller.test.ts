@@ -161,14 +161,9 @@ describe('TrusteeAppointmentsController', () => {
         effectiveDate: '2024-01-15T00:00:00.000Z',
       };
       const createdAppointment = MockData.getTrusteeAppointment({
+        ...appointmentInput,
         id: 'appointment-456',
         trusteeId,
-        chapter: '7-panel',
-        courtId: '081',
-        divisionCode: '1',
-        appointedDate: '2024-01-15',
-        status: 'active',
-        effectiveDate: '2024-01-15T00:00:00.000Z',
       });
 
       context.request.params = { trusteeId };
@@ -188,8 +183,7 @@ describe('TrusteeAppointmentsController', () => {
     });
 
     test('should require trustee ID', async () => {
-      context.request.params = {};
-      context.request.body = {
+      const appointmentInput: TrusteeAppointmentInput = {
         chapter: '7-panel',
         courtId: '081',
         divisionCode: '1',
@@ -197,6 +191,9 @@ describe('TrusteeAppointmentsController', () => {
         status: 'active',
         effectiveDate: '2024-01-15T00:00:00.000Z',
       };
+
+      context.request.params = {};
+      context.request.body = appointmentInput;
 
       await expect(controller.handleRequest(context)).rejects.toThrow('Trustee ID is required');
     });
