@@ -87,9 +87,6 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     const loadDistricts = async () => {
       try {
         const response = await Api2.getCourts();
-        if (!response.data || response.data.length === 0) {
-          throw new Error('No districts available');
-        }
         const options = response.data.map((district) => ({
           value: `${district.courtId}|${district.courtDivisionCode}`,
           label: `${district.courtName} - ${district.courtDivisionName}`,
