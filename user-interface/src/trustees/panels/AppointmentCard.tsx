@@ -24,23 +24,25 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
         {districtDisplay} - Chapter {formattedChapter}
       </h3>
       <div className="appointment-card usa-card">
-        <div className="usa-card__body">
-          <h4>Key Information</h4>
-          <ul className="appointment-details-list">
-            <li>
-              <span className="appointment-label">District:</span> {districtDisplay}
-            </li>
-            <li>
-              <span className="appointment-label">Chapter:</span> {formattedChapter}
-            </li>
-            <li>
-              <span className="appointment-label">Status:</span> {statusDisplay}
-            </li>
-            <li>
-              <span className="appointment-label">Appointed:</span>{' '}
-              {props.appointment.appointedDate}
-            </li>
-          </ul>
+        <div className="usa-card__container">
+          <div className="usa-card__body">
+            <h4>Key Information</h4>
+            <ul className="appointment-details-list">
+              <li>
+                <span className="appointment-label">District:</span> {districtDisplay}
+              </li>
+              <li>
+                <span className="appointment-label">Chapter:</span> {formattedChapter}
+              </li>
+              <li>
+                <span className="appointment-label">Status:</span> {statusDisplay}
+              </li>
+              <li>
+                <span className="appointment-label">Appointed:</span>{' '}
+                {props.appointment.appointedDate}
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
     </div>
