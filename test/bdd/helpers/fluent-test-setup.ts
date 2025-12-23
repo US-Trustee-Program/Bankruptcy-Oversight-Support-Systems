@@ -38,7 +38,8 @@ import type {
   ConsolidationFrom,
   ConsolidationTo,
 } from '@common/cams/events';
-import type { UpdateResult } from '../../../backend/lib/use-cases/gateways.types';
+import type { Trustee, TrusteeHistory } from '@common/cams/trustees';
+import type { UpdateResult } from '@backend/lib/use-cases/gateways.types.ts';
 import { renderApp } from './render-with-context';
 import { spyOnMeEndpoint, spyOnAllGateways } from './repository-spies';
 import { TestState } from './test-state';
@@ -85,6 +86,9 @@ export class TestSetup {
   private docketEntries: unknown[] = [];
   private caseNotes: unknown[] = [];
   private offices: unknown[] = [];
+  private trustees: Trustee[] = [];
+  private trusteeHistory: Map<string, TrusteeHistory[]> = new Map();
+  private featureFlags: Record<string, boolean> = {};
   private customSpies: Record<string, Record<string, unknown>> = {};
 
   private constructor(session: CamsSession) {
@@ -305,6 +309,104 @@ export class TestSetup {
   }
 
   /**
+   * Provide a single trustee for the test.
+   * This will mock the TrusteesMongoRepository read() method to return this trustee.
+   *
+   * @param trustee The trustee to use in the test
+   * @example
+   * ```typescript
+   * const testTrustee = MockData.getTrustee({ override: { trusteeId: '123' } });
+   * await TestSetup
+   *   .forUser(TestSessions.trusteeAdmin())
+   *   .withTrustee(testTrustee)
+   *   .renderAt(`/trustees/${testTrustee.trusteeId}`);
+   * ```
+   */
+  withTrustee(trustee: Trustee): TestSetup {
+    this.trustees = [trustee];
+    return this;
+  }
+
+  /**
+   * Provide multiple trustees for the test.
+   * This will mock listTrustees() and read() to return the matching trustee by trusteeId.
+   *
+   * @param trustees Array of trustees to use
+   * @example
+   * ```typescript
+   * await TestSetup
+   *   .forUser(TestSessions.trusteeAdmin())
+   *   .withTrustees([trustee1, trustee2, trustee3])
+   *   .renderAt('/trustees');
+   * ```
+   */
+  withTrustees(trustees: Trustee[]): TestSetup {
+    this.trustees = trustees;
+    return this;
+  }
+
+  /**
+   * Provide audit/change history for a specific trustee.
+   * This will mock the TrusteesMongoRepository listTrusteeHistory() method.
+   *
+   * @param trusteeId The trustee ID to associate history with
+   * @param history Array of TrusteeHistory records (defaults to empty array if not provided)
+   * @example
+   * ```typescript
+   * const history = MockData.getTrusteeHistory(); // or []
+   * await TestSetup
+   *   .forUser(TestSessions.trusteeAdmin())
+   *   .withTrustee(testTrustee)
+   *   .withTrusteeHistory(testTrustee.trusteeId, history)
+   *   .renderAt(`/trustees/${testTrustee.trusteeId}/audit-history`);
+   * ```
+   */
+  withTrusteeHistory(trusteeId: string, history: TrusteeHistory[] = []): TestSetup {
+    this.trusteeHistory.set(trusteeId, history);
+    return this;
+  }
+
+  /**
+   * Enable a feature flag for the test.
+   * Feature flags control access to features in the application.
+   *
+   * @param flagName Name of the feature flag (e.g., 'trustee-management')
+   * @param enabled Whether the flag is enabled (default: true)
+   * @example
+   * ```typescript
+   * await TestSetup
+   *   .forUser(TestSessions.trusteeAdmin())
+   *   .withFeatureFlag('trustee-management')
+   *   .withTrustee(testTrustee)
+   *   .renderAt('/trustees/123');
+   * ```
+   */
+  withFeatureFlag(flagName: string, enabled: boolean = true): TestSetup {
+    this.featureFlags[flagName] = enabled;
+    return this;
+  }
+
+  /**
+   * Enable multiple feature flags for the test.
+   *
+   * @param flags Object with flag names as keys and enabled state as values
+   * @example
+   * ```typescript
+   * await TestSetup
+   *   .forUser(session)
+   *   .withFeatureFlags({
+   *     'trustee-management': true,
+   *     'case-consolidation': true,
+   *   })
+   *   .renderAt('/');
+   * ```
+   */
+  withFeatureFlags(flags: Record<string, boolean>): TestSetup {
+    Object.assign(this.featureFlags, flags);
+    return this;
+  }
+
+  /**
    * Add custom spy configurations for gateways not covered by the fluent API.
    *
    * @param gatewayName Name of the gateway (e.g., 'CasesDxtrGateway')
@@ -321,6 +423,50 @@ export class TestSetup {
    */
   withCustomSpy(gatewayName: string, methods: Record<string, unknown>): TestSetup {
     this.customSpies[gatewayName] = methods;
+    return this;
+  }
+
+  /**
+   * Set up common mocks for screens that typically load after authentication.
+   * This mocks the API calls that are commonly made on various authenticated screens,
+   * such as fetching user's assigned cases for My Cases screen, offices, and search results.
+   *
+   * Useful when testing screens that may load common data in the background,
+   * preventing API errors even if that data isn't directly asserted.
+   *
+   * @example
+   * ```typescript
+   * await TestSetup
+   *   .forUser(TestSessions.trusteeAdmin())
+   *   .withCommonPostLoginMocks()
+   *   .withTrustee(testTrustee)
+   *   .renderAt(`/trustees/${testTrustee.trusteeId}`);
+   * ```
+   */
+  withCommonPostLoginMocks(): TestSetup {
+    // Mock My Cases screen - user's assigned cases
+    if (!this.myAssignments.length) {
+      this.myAssignments = []; // Empty list is fine - just avoids API error
+    }
+
+    // Mock search results to empty if not already set
+    // This prevents errors if search screen is rendered
+    if (!this.searchResultsExplicitlySet) {
+      this.searchResults = [];
+    }
+
+    // Mock offices - typically loaded on various screens
+    if (!this.offices.length) {
+      this.offices = [
+        {
+          officeName: 'Manhattan',
+          officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
+          regionId: '02',
+          regionName: 'New York',
+        },
+      ];
+    }
+
     return this;
   }
 
@@ -349,6 +495,11 @@ export class TestSetup {
   async renderAt(route: string): Promise<TestState> {
     // Setup authentication
     await spyOnMeEndpoint(this.session);
+
+    // Setup feature flags if any were specified
+    if (Object.keys(this.featureFlags).length > 0) {
+      this.setupFeatureFlagMocks();
+    }
 
     // Build spy configuration
     // Note: State-aware spies are set up using TestState for reads/writes
@@ -415,6 +566,36 @@ export class TestSetup {
       },
       OfficesMongoRepository: {
         getOfficeAttorneys: vi.fn().mockResolvedValue([]),
+      },
+
+      // Trustees
+      TrusteesMongoRepository: {
+        read:
+          this.trustees.length > 0
+            ? async (trusteeId: string) => {
+                const found = this.trustees.find((t) => t.trusteeId === trusteeId);
+                if (!found) {
+                  throw new Error(`Trustee ${trusteeId} not found in test data`);
+                }
+                return found;
+              }
+            : undefined,
+        listTrustees: this.trustees.length > 0 ? async () => this.trustees : async () => [],
+        listTrusteeHistory:
+          this.trusteeHistory.size > 0
+            ? async (trusteeId: string) => {
+                return this.trusteeHistory.get(trusteeId) || [];
+              }
+            : async () => [],
+      },
+
+      // Lists Repository (for bankruptcy software, courts, etc.)
+      ListsMongoRepository: {
+        // Mock getBankruptcySoftwareList for trustee screens
+        getList: vi.fn().mockResolvedValue([
+          { _id: '1', list: 'bankruptcy-software', key: 'BestCase', value: 'BestCase' },
+          { _id: '2', list: 'bankruptcy-software', key: 'NextChapter', value: 'NextChapter' },
+        ]),
       },
 
       // Docket - STATE AWARE
@@ -613,6 +794,42 @@ export class TestSetup {
         return { deletedCount: 1 };
       });
     }
+  }
+
+  /**
+   * Set up feature flag mocks by mocking LaunchDarkly.
+   * This overrides the default test feature flags with test-specific values.
+   *
+   * Mocks both backend (@launchdarkly/node-server-sdk) and frontend (launchdarkly-react-client-sdk)
+   */
+  private setupFeatureFlagMocks(): void {
+    // Mock LaunchDarkly for backend
+    vi.doMock('@launchdarkly/node-server-sdk', () => {
+      const mockClient = {
+        waitForInitialization: vi.fn().mockResolvedValue(undefined),
+        allFlagsState: vi.fn().mockResolvedValue({
+          allValues: () => this.featureFlags,
+        }),
+        flush: vi.fn().mockResolvedValue(undefined),
+        close: vi.fn(),
+      };
+
+      return {
+        default: {
+          init: vi.fn().mockReturnValue(mockClient),
+        },
+        init: vi.fn().mockReturnValue(mockClient),
+      };
+    });
+
+    // Mock LaunchDarkly for frontend
+    vi.doMock('launchdarkly-react-client-sdk', () => ({
+      withLDProvider: (_config: unknown) => (Component: unknown) => Component,
+      useFlags: () => this.featureFlags,
+      useLDClient: () => ({
+        identify: vi.fn(),
+      }),
+    }));
   }
 }
 

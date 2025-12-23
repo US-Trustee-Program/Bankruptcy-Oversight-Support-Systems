@@ -93,6 +93,11 @@ export const TestSessions = {
    * Read-only user - can only view data
    */
   readOnlyUser: (): CamsSession => createTestSession([]),
+
+  /**
+   * Trustee Admin - can manage trustees and their information
+   */
+  trusteeAdmin: (): CamsSession => createTestSession([CamsRole.TrusteeAdmin]),
 };
 
 /**
@@ -108,4 +113,5 @@ export const TestAuthTokens = {
     CamsRole.DataVerifier,
   ]),
   readOnlyUser: createTestAuthToken([]),
+  trusteeAdmin: createTestAuthToken([CamsRole.TrusteeAdmin]),
 };
