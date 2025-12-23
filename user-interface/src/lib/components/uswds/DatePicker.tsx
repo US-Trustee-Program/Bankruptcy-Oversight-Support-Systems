@@ -190,9 +190,26 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
     };
   });
 
+  // Build aria-describedby IDs
+  const getAriaDescribedBy = () => {
+    const ids: string[] = [];
+
+    // Add custom aria-describedby if provided
+    if (props['aria-describedby']) {
+      ids.push(props['aria-describedby']);
+    }
+
+    // Add error message ID if there's an error
+    if (displayErrorMessage) {
+      ids.push(`${id}-error`);
+    }
+
+    return ids.length > 0 ? ids.join(' ') : undefined;
+  };
+
   return (
     <div className={`usa-form-group date-picker ${props.className ?? ''}`}>
-      <label className="usa-label" id={id + '-date-label'} htmlFor={id + '-date'}>
+      <label className="usa-label" id={id + '-label'} htmlFor={id}>
         {label || ''}
       </label>
       <div className="usa-date-picker">
@@ -201,8 +218,9 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
           className={setClassName()}
           id={id}
           name={props.name ?? ''}
-          aria-labelledby={id + '-date-label'}
-          aria-describedby={props['aria-describedby'] ?? id + '-date-hint'}
+          aria-labelledby={id + '-label'}
+          aria-describedby={getAriaDescribedBy()}
+          aria-invalid={displayErrorMessage ? 'true' : undefined}
           aria-live={props['aria-live'] ?? undefined}
           onChange={handleChange}
           onBlur={handleBlur}
@@ -215,7 +233,9 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
           ref={inputRef}
         />
       </div>
-      <div className="date-error">{displayErrorMessage}</div>
+      <div id={`${id}-error`} className="date-error" aria-live="polite">
+        {displayErrorMessage}
+      </div>
     </div>
   );
 }
