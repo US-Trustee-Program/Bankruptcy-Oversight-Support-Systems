@@ -371,6 +371,45 @@ describe('DatePicker additional coverage tests', () => {
     expect(mockOnChange).toHaveBeenCalled();
   });
 
+  test('should set aria-invalid when there is an error', async () => {
+    const minDate = '2024-01-01';
+    const maxDate = '2024-12-31';
+    renderWithProps({ minDate, maxDate, onChange: mockOnChange });
+
+    const inputEl = screen.getByTestId(DEFAULT_ID);
+
+    // Initially should not have aria-invalid
+    expect(inputEl).not.toHaveAttribute('aria-invalid');
+
+    // Enter date before minDate
+    fireEvent.change(inputEl, { target: { value: '2023-12-31' } });
+
+    // Wait for error to appear
+    await waitFor(() => {
+      expect(inputEl).toHaveAttribute('aria-invalid', 'true');
+    });
+
+    // Error div should be referenced in aria-describedby
+    expect(inputEl.getAttribute('aria-describedby')).toContain(`${DEFAULT_ID}-error`);
+  });
+
+  test('should include error ID in aria-describedby when custom error is provided', () => {
+    const customError = 'Custom error message';
+    renderWithProps({ customErrorMessage: customError });
+
+    const inputEl = screen.getByTestId(DEFAULT_ID);
+
+    // Should have aria-invalid when error exists
+    expect(inputEl).toHaveAttribute('aria-invalid', 'true');
+
+    // aria-describedby should include error ID
+    expect(inputEl.getAttribute('aria-describedby')).toContain(`${DEFAULT_ID}-error`);
+
+    // Error should be displayed
+    const errorDiv = document.getElementById(`${DEFAULT_ID}-error`);
+    expect(errorDiv).toHaveTextContent(customError);
+  });
+
   function renderWithProps(props?: Partial<DatePickerProps>): InputRef {
     const ref = React.createRef<InputRef>();
     const defaultProps: DatePickerProps = {
