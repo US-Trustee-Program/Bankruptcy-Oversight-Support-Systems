@@ -76,6 +76,8 @@ export class TrusteesController implements CamsController {
 
     // TODO: 12/17/25 We are only using the trusteeId on the front end after creation,
     // so we only need to return the meta portion of this body, not the full trustee record.
+    // modify the use case to return the the partial consisting of just the trusteeId.
+    // DO not reduce the output in the controller.
     return httpSuccess({
       statusCode: 201,
       body: {
