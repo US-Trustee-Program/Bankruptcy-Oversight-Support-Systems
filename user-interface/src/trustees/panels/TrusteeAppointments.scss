@@ -1,0 +1,10 @@
+.trustee-appointments-list {
+  .toolbar {
+    margin-bottom: 1.5rem;
+  }
+  .appointments-list {
+    display: flex;
+    flex-direction: column;
+    max-width: 60rem;
+  }
+}

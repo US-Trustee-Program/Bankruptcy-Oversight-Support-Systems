@@ -1,3 +1,4 @@
+import './Card.scss';
 import { HtmlHeading } from '@/lib/utils/html-semantics';
 import React from 'react';
 import { JSX, ReactNode } from 'react';

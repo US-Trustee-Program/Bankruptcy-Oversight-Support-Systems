@@ -1,7 +1,7 @@
+import './AppointmentCard.scss';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { formatChapterType } from '@common/cams/trustees';
 import { formatDate } from '@/lib/utils/datetime';
-import './AppointmentCard.scss';
 
 export interface AppointmentCardProps {
   appointment: TrusteeAppointment;

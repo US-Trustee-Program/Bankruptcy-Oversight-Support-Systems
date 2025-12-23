@@ -2,10 +2,14 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteeAppointmentsRepository, TrusteesRepository } from '../gateways.types';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { getTrusteeAppointmentsRepository, getTrusteesRepository } from '../../factory';
-import { TrusteeAppointment } from '../../../../common/src/cams/trustee-appointments';
+import {
+  TrusteeAppointment,
+  TrusteeAppointmentInput,
+} from '../../../../common/src/cams/trustee-appointments';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { CourtsUseCase } from '../courts/courts';
 import { CourtDivisionDetails } from '../../../../common/src/cams/courts';
+import { getCamsUserReference } from '../../../../common/src/cams/session';
 
 const MODULE_NAME = 'TRUSTEE-APPOINTMENTS-USE-CASE';
 
@@ -65,5 +69,44 @@ export class TrusteeAppointmentsUseCase {
     divisionCode: string,
   ): CourtDivisionDetails | undefined {
     return courts.find((court) => court.courtDivisionCode === divisionCode);
+  }
+
+  async createAppointment(
+    context: ApplicationContext,
+    trusteeId: string,
+    appointmentData: TrusteeAppointmentInput,
+  ): Promise<TrusteeAppointment> {
+    try {
+      // Verify trustee exists
+      try {
+        await this.trusteesRepository.read(trusteeId);
+      } catch (_e) {
+        throw new NotFoundError(MODULE_NAME, {
+          message: `Trustee with ID ${trusteeId} not found.`,
+        });
+      }
+
+      const userReference = getCamsUserReference(context.session.user);
+
+      const createdAppointment = await this.trusteeAppointmentsRepository.createAppointment(
+        trusteeId,
+        appointmentData,
+        userReference,
+      );
+
+      context.logger.info(
+        MODULE_NAME,
+        `Created appointment ${createdAppointment.id} for trustee ${trusteeId}`,
+      );
+
+      return createdAppointment;
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          module: MODULE_NAME,
+          message: `Failed to create appointment for trustee ${trusteeId}.`,
+        },
+      });
+    }
   }
 }

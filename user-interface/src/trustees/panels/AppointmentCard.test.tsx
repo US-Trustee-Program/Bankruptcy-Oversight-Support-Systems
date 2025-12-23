@@ -148,4 +148,41 @@ describe('AppointmentCard', () => {
 
     expect(screen.getByText('Appointed sometime in 2020')).toBeInTheDocument();
   });
+
+  test('should display "Court not found" when courtName is missing', () => {
+    const appointmentWithoutCourtName: TrusteeAppointment = {
+      ...mockAppointment,
+      courtName: undefined,
+    };
+
+    renderWithProps({ appointment: appointmentWithoutCourtName });
+
+    expect(screen.getByText(/Court not found - Chapter 7 - Panel/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Court not found/i).length).toBeGreaterThan(0);
+  });
+
+  test('should display "Court not found" when courtDivisionName is missing', () => {
+    const appointmentWithoutDivisionName: TrusteeAppointment = {
+      ...mockAppointment,
+      courtDivisionName: undefined,
+    };
+
+    renderWithProps({ appointment: appointmentWithoutDivisionName });
+
+    expect(screen.getByText(/Court not found - Chapter 7 - Panel/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Court not found/i).length).toBeGreaterThan(0);
+  });
+
+  test('should display "Court not found" when both courtName and courtDivisionName are missing', () => {
+    const appointmentWithoutCourt: TrusteeAppointment = {
+      ...mockAppointment,
+      courtName: undefined,
+      courtDivisionName: undefined,
+    };
+
+    renderWithProps({ appointment: appointmentWithoutCourt });
+
+    expect(screen.getByText(/Court not found - Chapter 7 - Panel/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Court not found/i).length).toBeGreaterThan(0);
+  });
 });

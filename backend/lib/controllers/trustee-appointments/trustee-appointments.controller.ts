@@ -1,6 +1,9 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteeAppointmentsUseCase } from '../../use-cases/trustee-appointments/trustee-appointments';
-import { TrusteeAppointment } from '../../../../common/src/cams/trustee-appointments';
+import {
+  TrusteeAppointment,
+  TrusteeAppointmentInput,
+} from '../../../../common/src/cams/trustee-appointments';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsController } from '../controller';
@@ -19,7 +22,7 @@ export class TrusteeAppointmentsController implements CamsController {
 
   public async handleRequest(
     context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<TrusteeAppointment[]>> {
+  ): Promise<CamsHttpResponseInit<TrusteeAppointment[] | undefined>> {
     // Check feature flag
     if (!context.featureFlags['trustee-management']) {
       return {
@@ -31,7 +34,7 @@ export class TrusteeAppointmentsController implements CamsController {
     if (!this.hasRequiredRole(context)) {
       throw getCamsError(
         new UnauthorizedError(MODULE_NAME, {
-          message: 'User does not have permission to view trustee appointments',
+          message: 'User does not have permission to access trustee appointments',
         }),
         MODULE_NAME,
       );
@@ -39,17 +42,17 @@ export class TrusteeAppointmentsController implements CamsController {
 
     const { method } = context.request;
 
-    if (method !== 'GET') {
-      throw getCamsError(
-        new BadRequestError(MODULE_NAME, {
-          message: `HTTP method ${method} is not supported`,
-        }),
-        MODULE_NAME,
-      );
-    }
-
     try {
-      return await this.handleGetRequest(context);
+      switch (method) {
+        case 'GET':
+          return await this.handleGetRequest(context);
+        case 'POST':
+          return await this.handlePostRequest(context);
+        default:
+          throw new BadRequestError(MODULE_NAME, {
+            message: `HTTP method ${method} is not supported`,
+          });
+      }
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
@@ -75,6 +78,42 @@ export class TrusteeAppointmentsController implements CamsController {
           self: context.request.url,
         },
         data: appointments,
+      },
+    });
+  }
+
+  private async handlePostRequest(
+    context: ApplicationContext,
+  ): Promise<CamsHttpResponseInit<undefined>> {
+    const trusteeId = context.request.params['trusteeId'];
+    const { body } = context.request;
+
+    if (!trusteeId) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: 'Trustee ID is required',
+      });
+    }
+
+    if (!body) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: 'Request body is required for appointment creation',
+      });
+    }
+
+    const appointmentData = body as TrusteeAppointmentInput;
+    const createdAppointment = await this.useCase.createAppointment(
+      context,
+      trusteeId,
+      appointmentData,
+    );
+
+    return httpSuccess({
+      statusCode: 201,
+      body: {
+        meta: {
+          self: `${context.request.url}/${createdAppointment.id}`,
+        },
+        data: undefined,
       },
     });
   }

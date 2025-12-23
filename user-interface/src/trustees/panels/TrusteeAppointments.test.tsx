@@ -1,11 +1,24 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
+import { MemoryRouter, useNavigate } from 'react-router-dom';
 import TrusteeAppointments from './TrusteeAppointments';
 import Api2 from '@/lib/models/api2';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+import userEvent from '@testing-library/user-event';
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: vi.fn(),
+  };
+});
 
 describe('TrusteeAppointments', () => {
+  const EMPTY_APPOINTMENTS_MESSAGE = /There are no appointments for this Trustee./i;
+  const mockNavigate = vi.fn();
+
   const mockAppointments: TrusteeAppointment[] = [
     {
       id: 'appointment-001',
@@ -41,8 +54,18 @@ describe('TrusteeAppointments', () => {
     },
   ];
 
+  function renderComponent(trusteeId: string) {
+    return render(
+      <MemoryRouter>
+        <TrusteeAppointments trusteeId={trusteeId} />
+      </MemoryRouter>,
+    );
+  }
+
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockNavigate.mockClear();
+    vi.mocked(useNavigate).mockReturnValue(mockNavigate);
   });
 
   test('should display loading spinner while fetching appointments', () => {
@@ -53,7 +76,7 @@ describe('TrusteeAppointments', () => {
         }),
     );
 
-    render(<TrusteeAppointments trusteeId="trustee-123" />);
+    renderComponent('trustee-123');
 
     expect(screen.getByText(/Loading appointments.../i)).toBeInTheDocument();
   });
@@ -62,27 +85,29 @@ describe('TrusteeAppointments', () => {
     vi.spyOn(Api2, 'getTrusteeAppointments').mockRejectedValue(new Error('API Error'));
     vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    render(<TrusteeAppointments trusteeId="trustee-123" />);
+    renderComponent('trustee-123');
 
     await waitFor(() => {
       expect(screen.getByText(/Failed to load trustee appointments/i)).toBeInTheDocument();
     });
   });
 
-  test('should display info alert when no appointments are found', async () => {
+  test('should display add button and message when no appointments are found', async () => {
     vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [] });
 
-    render(<TrusteeAppointments trusteeId="trustee-123" />);
+    renderComponent('trustee-123');
 
     await waitFor(() => {
-      expect(screen.getByText(/There are no appointments for this Trustee./i)).toBeInTheDocument();
+      expect(screen.getByText(/Add New Appointment/i)).toBeInTheDocument();
+      expect(screen.getByText(EMPTY_APPOINTMENTS_MESSAGE)).toBeInTheDocument();
+      expect(screen.getByTestId('button-add-appointment-button')).toBeInTheDocument();
     });
   });
 
   test('should display appointments when API call succeeds', async () => {
     vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: mockAppointments });
 
-    render(<TrusteeAppointments trusteeId="trustee-123" />);
+    renderComponent('trustee-123');
 
     await waitFor(() => {
       expect(
@@ -94,12 +119,25 @@ describe('TrusteeAppointments', () => {
     });
   });
 
+  test('should display add button when appointments exist', async () => {
+    vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: mockAppointments });
+
+    renderComponent('trustee-123');
+
+    await waitFor(() => {
+      expect(screen.getByText(/Add New Appointment/i)).toBeInTheDocument();
+      expect(screen.getByTestId('button-add-appointment-button')).toBeInTheDocument();
+      // Should not show the empty message
+      expect(screen.queryByText(EMPTY_APPOINTMENTS_MESSAGE)).not.toBeInTheDocument();
+    });
+  });
+
   test('should call getTrusteeAppointments with correct trusteeId', async () => {
     const getTrusteeAppointmentsSpy = vi
       .spyOn(Api2, 'getTrusteeAppointments')
       .mockResolvedValue({ data: mockAppointments });
 
-    render(<TrusteeAppointments trusteeId="trustee-123" />);
+    renderComponent('trustee-123');
 
     await waitFor(() => {
       expect(getTrusteeAppointmentsSpy).toHaveBeenCalledWith('trustee-123');
@@ -112,13 +150,21 @@ describe('TrusteeAppointments', () => {
       .spyOn(Api2, 'getTrusteeAppointments')
       .mockResolvedValue({ data: mockAppointments });
 
-    const { rerender } = render(<TrusteeAppointments trusteeId="trustee-123" />);
+    const { rerender } = render(
+      <MemoryRouter>
+        <TrusteeAppointments trusteeId="trustee-123" />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
       expect(getTrusteeAppointmentsSpy).toHaveBeenCalledWith('trustee-123');
     });
 
-    rerender(<TrusteeAppointments trusteeId="trustee-456" />);
+    rerender(
+      <MemoryRouter>
+        <TrusteeAppointments trusteeId="trustee-456" />
+      </MemoryRouter>,
+    );
 
     await waitFor(() => {
       expect(getTrusteeAppointmentsSpy).toHaveBeenCalledWith('trustee-456');
@@ -130,10 +176,10 @@ describe('TrusteeAppointments', () => {
     // @ts-expect-error - Testing edge case where API returns null despite type contract
     vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: null });
 
-    render(<TrusteeAppointments trusteeId="trustee-123" />);
+    renderComponent('trustee-123');
 
     await waitFor(() => {
-      expect(screen.getByText(/There are no appointments for this Trustee./i)).toBeInTheDocument();
+      expect(screen.getByText(EMPTY_APPOINTMENTS_MESSAGE)).toBeInTheDocument();
     });
   });
 
@@ -141,10 +187,44 @@ describe('TrusteeAppointments', () => {
     // @ts-expect-error - Testing edge case where API returns undefined despite type contract
     vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: undefined });
 
-    render(<TrusteeAppointments trusteeId="trustee-123" />);
+    renderComponent('trustee-123');
 
     await waitFor(() => {
-      expect(screen.getByText(/There are no appointments for this Trustee./i)).toBeInTheDocument();
+      expect(screen.getByText(EMPTY_APPOINTMENTS_MESSAGE)).toBeInTheDocument();
+    });
+  });
+
+  test('should navigate with appointments data when add button is clicked with no appointments', async () => {
+    vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [] });
+
+    renderComponent('trustee-123');
+
+    await waitFor(() => {
+      expect(screen.getByText(/Add New Appointment/i)).toBeInTheDocument();
+    });
+
+    const addButton = screen.getByTestId('button-add-appointment-button');
+    await userEvent.click(addButton);
+
+    expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-123/appointments/create', {
+      state: { existingAppointments: [] },
+    });
+  });
+
+  test('should navigate with appointments data when add button is clicked with existing appointments', async () => {
+    vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: mockAppointments });
+
+    renderComponent('trustee-123');
+
+    await waitFor(() => {
+      expect(screen.getByText(/Add New Appointment/i)).toBeInTheDocument();
+    });
+
+    const addButton = screen.getByTestId('button-add-appointment-button');
+    await userEvent.click(addButton);
+
+    expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-123/appointments/create', {
+      state: { existingAppointments: mockAppointments },
     });
   });
 });

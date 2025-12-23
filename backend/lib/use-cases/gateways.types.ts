@@ -41,7 +41,10 @@ import {
   TrusteeInput,
   TrusteeOversightAssignment,
 } from '../../../common/src/cams/trustees';
-import { TrusteeAppointment } from '../../../common/src/cams/trustee-appointments';
+import {
+  TrusteeAppointment,
+  TrusteeAppointmentInput,
+} from '../../../common/src/cams/trustee-appointments';
 import { Auditable } from '../../../common/src/cams/auditable';
 import {
   BankList,
@@ -243,6 +246,11 @@ export interface TrusteesRepository extends Reads<Trustee>, Releasable {
 
 export interface TrusteeAppointmentsRepository extends Reads<TrusteeAppointment>, Releasable {
   getTrusteeAppointments(trusteeId: string): Promise<TrusteeAppointment[]>;
+  createAppointment(
+    trusteeId: string,
+    appointmentInput: TrusteeAppointmentInput,
+    userRef: CamsUserReference,
+  ): Promise<TrusteeAppointment>;
 }
 
 export type RuntimeStateDocumentType =

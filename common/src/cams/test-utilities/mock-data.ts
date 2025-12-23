@@ -638,6 +638,8 @@ function getTrusteeAppointment(override: Partial<TrusteeAppointment> = {}): Trus
     appointedDate: getDateBeforeToday().toISOString(),
     status: 'active',
     effectiveDate: getDateBeforeToday().toISOString(),
+    createdOn: getDateBeforeToday().toISOString(),
+    createdBy: getCamsUserReference(),
     updatedOn: getDateBeforeToday().toISOString(),
     updatedBy: getCamsUserReference(),
     ...override,
