@@ -148,3 +148,33 @@ vi.mock('mssql', () => {
     NVarChar: MockNVarChar,
   };
 });
+
+// Mock LaunchDarkly SDK for backend BEFORE any imports
+// This provides default feature flag behavior; individual tests can override via spyOn
+vi.mock('@launchdarkly/node-server-sdk', () => {
+  const mockClient = {
+    waitForInitialization: vi.fn().mockResolvedValue(undefined),
+    allFlagsState: vi.fn().mockResolvedValue({
+      allValues: () => ({}), // Default: no flags enabled
+    }),
+    flush: vi.fn().mockResolvedValue(undefined),
+    close: vi.fn(),
+  };
+
+  return {
+    default: {
+      init: vi.fn().mockReturnValue(mockClient),
+    },
+    init: vi.fn().mockReturnValue(mockClient),
+  };
+});
+
+// Mock LaunchDarkly SDK for frontend BEFORE any imports
+// This provides default feature flag behavior; individual tests can override via spyOn
+vi.mock('launchdarkly-react-client-sdk', () => ({
+  withLDProvider: (_config: unknown) => (Component: unknown) => Component,
+  useFlags: () => ({}), // Default: no flags enabled
+  useLDClient: () => ({
+    identify: vi.fn(),
+  }),
+}));
