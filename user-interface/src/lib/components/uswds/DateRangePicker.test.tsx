@@ -61,7 +61,7 @@ describe('Test DateRangePicker component', () => {
     expect(endDateText).toHaveAttribute('max', '2025-01-01');
   });
 
-  test('should adjust min and max attributes when start or end date is changed, and reset when cleared', async () => {
+  test('should maintain static min and max attributes', async () => {
     render(
       <React.StrictMode>
         <DateRangePicker
@@ -72,37 +72,28 @@ describe('Test DateRangePicker component', () => {
       </React.StrictMode>,
     );
 
-    let startDateText = screen.getByTestId('date-picker-date-start');
-    let endDateText = screen.getByTestId('date-picker-date-end');
+    const startDateText = screen.getByTestId('date-picker-date-start');
+    const endDateText = screen.getByTestId('date-picker-date-end');
     await waitFor(() => {
       expect(startDateText).toBeInTheDocument();
     });
+
+    // Both fields should always have the same min/max constraints
+    expect(startDateText).toHaveAttribute('min', '2020-01-01');
     expect(startDateText).toHaveAttribute('max', '2035-01-01');
     expect(endDateText).toHaveAttribute('min', '2020-01-01');
+    expect(endDateText).toHaveAttribute('max', '2035-01-01');
 
+    // After entering dates, constraints should remain the same
     fireEvent.change(startDateText, { target: { value: '2022-05-01' } });
-
-    startDateText = screen.getByTestId('date-picker-date-start');
-    endDateText = screen.getByTestId('date-picker-date-end');
-    expect(startDateText).toHaveAttribute('max', '2035-01-01');
-    expect(endDateText).toHaveAttribute('min', '2022-05-01');
-
     fireEvent.change(endDateText, { target: { value: '2025-07-01' } });
 
-    startDateText = screen.getByTestId('date-picker-date-start');
-    endDateText = screen.getByTestId('date-picker-date-end');
-    expect(startDateText).toHaveAttribute('max', '2025-07-01');
-    expect(endDateText).toHaveAttribute('min', '2022-05-01');
-
-    fireEvent.change(startDateText, { target: { value: '' } });
-
-    expect(startDateText).toHaveAttribute('max', '2025-07-01');
-    expect(endDateText).toHaveAttribute('min', '2020-01-01');
-
-    fireEvent.change(endDateText, { target: { value: '' } });
-
-    expect(startDateText).toHaveAttribute('max', '2035-01-01');
-    expect(endDateText).toHaveAttribute('min', '2020-01-01');
+    await waitFor(() => {
+      expect(startDateText).toHaveAttribute('min', '2020-01-01');
+      expect(startDateText).toHaveAttribute('max', '2035-01-01');
+      expect(endDateText).toHaveAttribute('min', '2020-01-01');
+      expect(endDateText).toHaveAttribute('max', '2035-01-01');
+    });
   });
 
   // TODO: There is a weird unexplainable behavior in vitest it seems.
