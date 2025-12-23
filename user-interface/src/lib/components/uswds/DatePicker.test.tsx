@@ -130,7 +130,7 @@ describe('DatePicker additional coverage tests', () => {
     const labelText = 'Select a date';
     renderWithProps({ label: labelText });
 
-    const label = document.getElementById(`${DEFAULT_ID}-date-label`);
+    const label = document.getElementById(`${DEFAULT_ID}-label`);
     expect(label).toBeInTheDocument();
     expect(label).toHaveTextContent(labelText);
   });
