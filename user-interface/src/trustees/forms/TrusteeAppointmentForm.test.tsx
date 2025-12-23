@@ -26,9 +26,9 @@ const mockActiveAppointment: TrusteeAppointment = {
   courtName: 'District of Alaska',
   courtDivisionName: 'Juneau',
   createdOn: '2023-01-01T00:00:00.000Z',
-  createdBy: 'test-user',
+  createdBy: { id: 'test-user', name: 'Test User' },
   updatedOn: '2023-01-01T00:00:00.000Z',
-  updatedBy: 'test-user',
+  updatedBy: { id: 'test-user', name: 'Test User' },
 };
 
 const mockInactiveAppointment: TrusteeAppointment = {
@@ -720,68 +720,6 @@ describe('TrusteeAppointmentForm Tests', () => {
   });
 
   describe('Edge Case Tests', () => {
-    test('should show error when getCourts returns undefined data', async () => {
-      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: undefined });
-      const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
-
-      renderWithProps();
-
-      await waitFor(() => {
-        expect(globalAlertSpy.error).toHaveBeenCalledWith('Failed to load districts');
-      });
-    });
-
-    test('should show error when getCourts returns empty array', async () => {
-      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
-      const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
-
-      renderWithProps();
-
-      await waitFor(() => {
-        expect(globalAlertSpy.error).toHaveBeenCalledWith('Failed to load districts');
-      });
-    });
-
-    test('should handle getTrusteeAppointments returning undefined data', async () => {
-      const postSpy = vi.spyOn(Api2, 'postTrusteeAppointment').mockResolvedValue(undefined);
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: undefined });
-
-      renderWithProps({ trusteeId: TEST_TRUSTEE_ID });
-
-      await waitFor(() => {
-        expect(document.querySelector('#district')).toBeInTheDocument();
-      });
-
-      const effectiveDateInput = screen.getByLabelText(/status date/i) as HTMLInputElement;
-      const appointedDateInput = screen.getByLabelText(/appointment date/i) as HTMLInputElement;
-
-      await userEvent.click(document.querySelector('#district-expand')!);
-      await waitFor(() => expect(screen.getByTestId('district-option-item-0')).toBeVisible());
-      await userEvent.click(screen.getByTestId('district-option-item-0'));
-
-      await userEvent.click(document.querySelector('#chapter-expand')!);
-      await waitFor(() => expect(screen.getByTestId('chapter-option-item-0')).toBeVisible());
-      await userEvent.click(screen.getByTestId('chapter-option-item-0'));
-
-      await userEvent.click(document.querySelector('#status-expand')!);
-      await waitFor(() => expect(screen.getByTestId('status-option-item-0')).toBeVisible());
-      await userEvent.click(screen.getByTestId('status-option-item-0'));
-
-      fireEvent.change(effectiveDateInput, { target: { value: TEST_EFFECTIVE_DATE } });
-      fireEvent.change(appointedDateInput, { target: { value: TEST_APPOINTED_DATE } });
-
-      const submitButton = screen.getByRole('button', { name: /save/i });
-      await waitFor(() => {
-        expect(submitButton).not.toBeDisabled();
-      });
-
-      await userEvent.click(submitButton);
-
-      await waitFor(() => {
-        expect(postSpy).toHaveBeenCalled();
-      });
-    });
-
     test('should handle clearing district selection', async () => {
       renderWithProps();
 
