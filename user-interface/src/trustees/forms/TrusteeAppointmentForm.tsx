@@ -65,7 +65,6 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
   const [existingAppointments, setExistingAppointments] = useState<TrusteeAppointment[]>(
     appointmentsToUse ?? [],
   );
-  const [validationError, setValidationError] = useState<string | null>(null);
   const [formData, setFormData] = useState<FormData>({
     districtKey: '',
     chapter: '' as ChapterType,
@@ -73,13 +72,6 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     effectiveDate: '',
     appointedDate: '',
   });
-
-  // Track selections for ComboBoxes
-  const selectedDistrict = formData.districtKey
-    ? districtOptions.find((opt) => opt.value === formData.districtKey)
-    : undefined;
-  const selectedChapter = CHAPTER_OPTIONS.find((opt) => opt.value === formData.chapter);
-  const selectedStatus = STATUS_OPTIONS.find((opt) => opt.value === formData.status);
 
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
 
@@ -123,46 +115,47 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     loadAppointments();
   }, [trusteeId, appointmentsToUse, globalAlert]);
 
-  const validateAppointment = useCallback((): boolean => {
-    if (!formData.districtKey || !formData.chapter) {
-      setValidationError(null);
-      return true;
-    }
+  // Pure validation function
+  const getValidationError = (
+    data: FormData,
+    appointments: TrusteeAppointment[],
+    options: ComboOption[],
+  ): string | null => {
+    if (!data.districtKey || !data.chapter) return null;
 
-    const [courtId, divisionCode] = formData.districtKey.split('|');
+    const [courtId, divisionCode] = data.districtKey.split('|');
 
-    // Check for overlapping active appointments
-    const hasOverlap = existingAppointments.some((appointment) => {
-      return (
+    const hasOverlap = appointments.some(
+      (appointment) =>
         appointment.courtId === courtId &&
         appointment.divisionCode === divisionCode &&
-        appointment.chapter === formData.chapter &&
-        appointment.status === 'active'
-      );
-    });
+        appointment.chapter === data.chapter &&
+        appointment.status === 'active',
+    );
 
-    if (hasOverlap) {
-      const district = districtOptions.find((opt) => opt.value === formData.districtKey);
-      const chapter = CHAPTER_OPTIONS.find((opt) => opt.value === formData.chapter);
-      setValidationError(
-        `An active appointment already exists for ${chapter?.label} in ${district?.label}. Please end the existing appointment before creating a new one.`,
-      );
-      return false;
-    }
+    if (!hasOverlap) return null;
 
-    setValidationError(null);
-    return true;
-  }, [formData.districtKey, formData.chapter, existingAppointments, districtOptions]);
+    const district = options.find((opt) => opt.value === data.districtKey);
+    const chapter = CHAPTER_OPTIONS.find((opt) => opt.value === data.chapter);
 
-  // Validate whenever relevant fields change
-  useEffect(() => {
-    validateAppointment();
-  }, [validateAppointment]);
+    return `An active appointment already exists for ${chapter?.label} in ${district?.label}. Please end the existing appointment before creating a new one.`;
+  };
+
+  // Derive validation state
+  const validationError = getValidationError(formData, existingAppointments, districtOptions);
+
+  const isFormValid =
+    !!formData.districtKey &&
+    !!formData.chapter &&
+    !!formData.status &&
+    !!formData.effectiveDate &&
+    !!formData.appointedDate &&
+    !validationError;
 
   const handleSubmit = async (ev: React.FormEvent): Promise<void> => {
     ev.preventDefault();
 
-    if (!validateAppointment()) {
+    if (validationError) {
       return;
     }
 
@@ -220,14 +213,6 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     return <LoadingSpinner caption="Loading form data..." />;
   }
 
-  const isFormValid =
-    formData.districtKey &&
-    formData.chapter &&
-    formData.status &&
-    formData.effectiveDate &&
-    formData.appointedDate &&
-    !validationError;
-
   return (
     <div className="trustee-form-screen">
       <form
@@ -254,7 +239,11 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
                 label="District"
                 required={true}
                 options={districtOptions}
-                selections={selectedDistrict ? [selectedDistrict] : undefined}
+                selections={
+                  formData.districtKey
+                    ? [districtOptions.find((opt) => opt.value === formData.districtKey)!]
+                    : undefined
+                }
                 onUpdateSelection={(options) => {
                   handleFieldChange('districtKey', options[0]?.value ?? '');
                 }}
@@ -267,7 +256,11 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
                 label="Chapter"
                 required={true}
                 options={CHAPTER_OPTIONS}
-                selections={selectedChapter ? [selectedChapter] : undefined}
+                selections={
+                  formData.chapter
+                    ? [CHAPTER_OPTIONS.find((opt) => opt.value === formData.chapter)!]
+                    : undefined
+                }
                 onUpdateSelection={(options) => {
                   handleFieldChange('chapter', options[0]?.value ?? '');
                 }}
@@ -280,7 +273,11 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
                 label="Status"
                 required={true}
                 options={STATUS_OPTIONS}
-                selections={selectedStatus ? [selectedStatus] : undefined}
+                selections={
+                  formData.status
+                    ? [STATUS_OPTIONS.find((opt) => opt.value === formData.status)!]
+                    : undefined
+                }
                 onUpdateSelection={(options) => {
                   handleFieldChange('status', options[0]?.value ?? '');
                 }}
