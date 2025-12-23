@@ -146,20 +146,21 @@ describe('TrusteeAppointmentsController', () => {
   });
 
   describe('POST /api/trustees/:trusteeId/appointments', () => {
+    const appointmentInput: TrusteeAppointmentInput = {
+      chapter: '7-panel',
+      courtId: '081',
+      divisionCode: '1',
+      appointedDate: '2024-01-15',
+      status: 'active',
+      effectiveDate: '2024-01-15T00:00:00.000Z',
+    };
+
     beforeEach(() => {
       context.request.method = 'POST';
     });
 
     test('should create a new appointment for a trustee', async () => {
       const trusteeId = 'trustee-123';
-      const appointmentInput: TrusteeAppointmentInput = {
-        chapter: '7-panel',
-        courtId: '081',
-        divisionCode: '1',
-        appointedDate: '2024-01-15',
-        status: 'active',
-        effectiveDate: '2024-01-15T00:00:00.000Z',
-      };
       const createdAppointment = MockData.getTrusteeAppointment({
         ...appointmentInput,
         id: 'appointment-456',
@@ -183,15 +184,6 @@ describe('TrusteeAppointmentsController', () => {
     });
 
     test('should require trustee ID', async () => {
-      const appointmentInput: TrusteeAppointmentInput = {
-        chapter: '7-panel',
-        courtId: '081',
-        divisionCode: '1',
-        appointedDate: '2024-01-15',
-        status: 'active',
-        effectiveDate: '2024-01-15T00:00:00.000Z',
-      };
-
       context.request.params = {};
       context.request.body = appointmentInput;
 
