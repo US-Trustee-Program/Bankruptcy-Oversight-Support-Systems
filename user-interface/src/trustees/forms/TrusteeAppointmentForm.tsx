@@ -314,12 +314,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
         </div>
 
         <div className="usa-button-group">
-          <Button
-            id="submit-button"
-            type="submit"
-            onClick={handleSubmit}
-            disabled={!isFormValid || isSubmitting}
-          >
+          <Button id="submit-button" type="submit" disabled={!isFormValid || isSubmitting}>
             {isSubmitting ? 'Saving…' : 'Save'}
           </Button>
           <Button

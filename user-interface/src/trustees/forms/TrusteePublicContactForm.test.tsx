@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import TrusteePublicContactForm, {
   TrusteePublicContactFormProps,
@@ -417,7 +417,8 @@ describe('TrusteePublicContactForm Tests', () => {
     await userEvent.type(screen.getByTestId('trustee-phone'), '555-111-2222');
     await userEvent.type(screen.getByTestId('trustee-email'), 'p@example.com');
 
-    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+    const form = screen.getByTestId('trustee-public-form');
+    fireEvent.submit(form);
 
     await waitFor(() => {
       expect(globalAlertSpy.error).toHaveBeenCalled();
