@@ -609,8 +609,11 @@ export class TestSetup {
               // Return empty for courts - tests can override if needed
               return [];
             default:
-              // Return empty for unknown lists to avoid masking issues
-              return [];
+              // Throw for unknown lists to surface unexpected usage
+              throw new Error(
+                `[BDD TEST] Unexpected list requested: "${listName}". ` +
+                  `Add this list to ListsMongoRepository mock in fluent-test-setup.ts or override with .withCustomSpy()`,
+              );
           }
         }),
       },
@@ -822,6 +825,10 @@ export class TestSetup {
   private async setupFeatureFlagSpies(): Promise<void> {
     // Spy on backend LaunchDarkly to return test-specific flags
     const backendLD = await import('@launchdarkly/node-server-sdk');
+
+    // NOTE: This duplicates createMockLaunchDarklyClient from driver-mocks.ts
+    // We cannot import and use the helper here due to module loading order issues
+    // with dynamic imports. The helper is fine in hoisted vi.mock() calls.
     const mockClient = {
       waitForInitialization: vi.fn().mockResolvedValue(undefined),
       allFlagsState: vi.fn().mockResolvedValue({
