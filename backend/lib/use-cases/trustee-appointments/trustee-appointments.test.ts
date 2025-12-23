@@ -4,6 +4,7 @@ import { createMockApplicationContext, getTheThrownError } from '../../testing/t
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { TrusteeAppointmentsUseCase } from './trustee-appointments';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
+import { TrusteeAppointmentInput } from '../../../../common/src/cams/trustee-appointments';
 
 describe('TrusteeAppointmentsUseCase tests', () => {
   let context: ApplicationContext;
@@ -80,6 +81,110 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         trusteeAppointmentsUseCase.getTrusteeAppointments(context, trusteeId),
       );
       expect(actualError.isCamsError).toBe(true);
+    });
+  });
+
+  describe('createAppointment', () => {
+    const appointmentInput: TrusteeAppointmentInput = {
+      chapter: '7-panel',
+      courtId: '081',
+      divisionCode: '1',
+      appointedDate: '2024-01-15',
+      status: 'active',
+      effectiveDate: '2024-01-15T00:00:00.000Z',
+    };
+
+    beforeEach(async () => {
+      context = await createMockApplicationContext();
+      trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    test('should create a new appointment for a trustee', async () => {
+      const trusteeId = 'trustee-123';
+      const mockTrustee = MockData.getTrustee({ trusteeId });
+      const mockCreatedAppointment = MockData.getTrusteeAppointment({
+        trusteeId,
+        ...appointmentInput,
+      });
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'createAppointment').mockResolvedValue(
+        mockCreatedAppointment,
+      );
+
+      const result = await trusteeAppointmentsUseCase.createAppointment(
+        context,
+        trusteeId,
+        appointmentInput,
+      );
+
+      expect(result).toEqual(mockCreatedAppointment);
+      expect(MockMongoRepository.prototype.read).toHaveBeenCalledWith(trusteeId);
+      expect(MockMongoRepository.prototype.createAppointment).toHaveBeenCalledWith(
+        trusteeId,
+        appointmentInput,
+        expect.objectContaining({
+          id: expect.any(String),
+          name: expect.any(String),
+        }),
+      );
+    });
+
+    test('should throw NotFoundError when trustee does not exist', async () => {
+      const trusteeId = 'non-existent-trustee';
+      const repositoryError = new Error('Trustee not found');
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(repositoryError);
+
+      const actualError = await getTheThrownError(() =>
+        trusteeAppointmentsUseCase.createAppointment(context, trusteeId, appointmentInput),
+      );
+
+      expect(actualError.isCamsError).toBe(true);
+      expect(actualError.message).toContain(`Trustee with ID ${trusteeId} not found.`);
+    });
+
+    test('should handle repository error during appointment creation', async () => {
+      const trusteeId = 'trustee-123';
+      const mockTrustee = MockData.getTrustee({ trusteeId });
+      const repositoryError = new Error('Database error');
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'createAppointment').mockRejectedValue(
+        repositoryError,
+      );
+
+      const actualError = await getTheThrownError(() =>
+        trusteeAppointmentsUseCase.createAppointment(context, trusteeId, appointmentInput),
+      );
+
+      expect(actualError.isCamsError).toBe(true);
+    });
+
+    test('should log the creation of appointment', async () => {
+      const trusteeId = 'trustee-123';
+      const mockTrustee = MockData.getTrustee({ trusteeId });
+      const mockCreatedAppointment = MockData.getTrusteeAppointment({
+        trusteeId,
+        ...appointmentInput,
+      });
+      const logSpy = vi.spyOn(context.logger, 'info');
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'createAppointment').mockResolvedValue(
+        mockCreatedAppointment,
+      );
+
+      await trusteeAppointmentsUseCase.createAppointment(context, trusteeId, appointmentInput);
+
+      expect(logSpy).toHaveBeenCalledWith(
+        'TRUSTEE-APPOINTMENTS-USE-CASE',
+        `Created appointment ${mockCreatedAppointment.id} for trustee ${trusteeId}`,
+      );
     });
   });
 });

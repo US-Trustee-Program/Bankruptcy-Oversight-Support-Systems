@@ -29,7 +29,7 @@ export default async function handler(
 }
 
 app.http('trustee-appointments', {
-  methods: ['GET'],
+  methods: ['GET', 'POST'],
   authLevel: 'anonymous',
   handler,
   route: 'trustees/{trusteeId}/appointments',
