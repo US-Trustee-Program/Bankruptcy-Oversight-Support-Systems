@@ -15,11 +15,11 @@ export default defineConfig({
       all: true,
       include: ['src/**/*.ts'],
       exclude: [
+        'src/index.ts',
         '**/*.test.{ts,tsx}',
         '**/*.d.ts',
         '**/*mock*.{ts,tsx}',
         '**/test-utilities/**',
-        'http-status-codes.ts',
         ...coverageConfigDefaults.exclude,
       ],
       thresholds: {

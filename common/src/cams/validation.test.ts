@@ -277,6 +277,19 @@ describe('validation', () => {
       const obj = { nonexistentKey: 'anything' };
       expect(validateKey(spec, 'nonexistentKey', obj)).toEqual(VALID);
     });
+
+    test.each([
+      { description: 'null', value: null },
+      { description: 'undefined', value: undefined },
+      { description: 'string', value: 'string' },
+      { description: 'number', value: 123 },
+    ])('should handle non-object value: $description', ({ value }) => {
+      const spec = { name: [validator] };
+      // When obj is not an object, objValue becomes undefined
+      expect(validateKey(spec, 'name', value)).toEqual({
+        reasons: ['Failed validation.'],
+      });
+    });
   });
 
   describe('validateObject', () => {
