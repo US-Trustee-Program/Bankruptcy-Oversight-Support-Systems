@@ -181,6 +181,20 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
     };
   });
 
+  // Build accessible descriptions for date range constraints
+  const getDateRangeDescription = () => {
+    if (minDate && maxDate) {
+      return `Valid dates are between ${minDate} and ${maxDate}.`;
+    } else if (minDate) {
+      return `Valid dates are on or after ${minDate}.`;
+    } else if (maxDate) {
+      return `Valid dates are on or before ${maxDate}.`;
+    }
+    return '';
+  };
+
+  const dateRangeConstraint = getDateRangeDescription();
+
   return (
     <div
       id={id}
@@ -196,7 +210,7 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
         onChange={onStartDateChange}
         onBlur={onStartDateBlur}
         label={startDateLabel || 'Start date'}
-        aria-describedby={`${id}-aria-description`}
+        aria-describedby={`${id}-start-hint ${id}-aria-description`}
         aria-live={props['aria-live'] ?? undefined}
         name="event-date-start"
         value={value?.start}
@@ -204,6 +218,12 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
         required={required}
         customErrorMessage={startDateError}
       />
+      <span id={`${id}-start-hint`} className="usa-hint" hidden>
+        Enter the beginning date for the range. Use the format MM/DD/YYYY or select from the
+        calendar.
+        {dateRangeConstraint && ` ${dateRangeConstraint}`}
+      </span>
+
       <DatePicker
         ref={endDateRef}
         id={`${id}-date-end`}
@@ -212,7 +232,7 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
         onChange={onEndDateChange}
         onBlur={onEndDateBlur}
         label={endDateLabel || 'End date'}
-        aria-describedby={`${id}-aria-description`}
+        aria-describedby={`${id}-end-hint ${id}-aria-description`}
         aria-live={props['aria-live'] ?? undefined}
         name="event-date-end"
         value={value?.end}
@@ -220,6 +240,10 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
         required={required}
         customErrorMessage={endDateError}
       />
+      <span id={`${id}-end-hint`} className="usa-hint" hidden>
+        Enter the ending date for the range. Use the format MM/DD/YYYY or select from the calendar.
+        {dateRangeConstraint && ` ${dateRangeConstraint}`}
+      </span>
       <span id={`${id}-aria-description`} aria-live="polite" hidden>
         <span>Format: numeric month / numeric day / 4-digit year.</span>
         {ariaDescription && <span aria-label={ariaDescription}></span>}

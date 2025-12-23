@@ -640,4 +640,51 @@ describe('DateRangePicker additional coverage tests', () => {
     // Should return undefined due to catch block
     expect(result).toBeUndefined();
   });
+
+  test('should have accessible descriptions for both date fields', async () => {
+    const minDate = '2024-01-01';
+    const maxDate = '2024-12-31';
+
+    render(
+      <DateRangePicker
+        id="test-date-range"
+        minDate={minDate}
+        maxDate={maxDate}
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const startInput = screen.getByTestId('test-date-range-date-start');
+    const endInput = screen.getByTestId('test-date-range-date-end');
+
+    await waitFor(() => {
+      expect(startInput).toBeInTheDocument();
+    });
+
+    // Check that aria-describedby includes the hint IDs
+    expect(startInput).toHaveAttribute(
+      'aria-describedby',
+      expect.stringContaining('test-date-range-start-hint'),
+    );
+    expect(endInput).toHaveAttribute(
+      'aria-describedby',
+      expect.stringContaining('test-date-range-end-hint'),
+    );
+
+    // Verify hint elements exist with proper content
+    const startHint = document.getElementById('test-date-range-start-hint');
+    const endHint = document.getElementById('test-date-range-end-hint');
+
+    expect(startHint).toBeInTheDocument();
+    expect(endHint).toBeInTheDocument();
+
+    expect(startHint).toHaveTextContent('Enter the beginning date for the range');
+    expect(startHint).toHaveTextContent('MM/DD/YYYY');
+    expect(startHint).toHaveTextContent(`Valid dates are between ${minDate} and ${maxDate}`);
+
+    expect(endHint).toHaveTextContent('Enter the ending date for the range');
+    expect(endHint).toHaveTextContent('MM/DD/YYYY');
+    expect(endHint).toHaveTextContent(`Valid dates are between ${minDate} and ${maxDate}`);
+  });
 });
