@@ -277,6 +277,23 @@ describe('validation', () => {
       const obj = { nonexistentKey: 'anything' };
       expect(validateKey(spec, 'nonexistentKey', obj)).toEqual(VALID);
     });
+
+    test('should handle non-object values for obj parameter', () => {
+      const spec = { name: [validator] };
+      // When obj is not an object, objValue becomes undefined
+      expect(validateKey(spec, 'name', null)).toEqual({
+        reasons: ['Failed validation.'],
+      });
+      expect(validateKey(spec, 'name', undefined)).toEqual({
+        reasons: ['Failed validation.'],
+      });
+      expect(validateKey(spec, 'name', 'string')).toEqual({
+        reasons: ['Failed validation.'],
+      });
+      expect(validateKey(spec, 'name', 123)).toEqual({
+        reasons: ['Failed validation.'],
+      });
+    });
   });
 
   describe('validateObject', () => {
