@@ -64,6 +64,61 @@ function renderWithNavigationState(
   );
 }
 
+async function selectDistrict(userEvent: CamsUserEvent, itemIndex: number = 0) {
+  await userEvent.click(document.querySelector('#district-expand')!);
+  await waitFor(() =>
+    expect(screen.getByTestId(`district-option-item-${itemIndex}`)).toBeVisible(),
+  );
+  await userEvent.click(screen.getByTestId(`district-option-item-${itemIndex}`));
+}
+
+async function selectChapter(userEvent: CamsUserEvent, itemIndex: number = 0) {
+  await userEvent.click(document.querySelector('#chapter-expand')!);
+  await waitFor(() => expect(screen.getByTestId(`chapter-option-item-${itemIndex}`)).toBeVisible());
+  await userEvent.click(screen.getByTestId(`chapter-option-item-${itemIndex}`));
+}
+
+async function selectStatus(userEvent: CamsUserEvent, itemIndex: number = 0) {
+  await userEvent.click(document.querySelector('#status-expand')!);
+  await waitFor(() => expect(screen.getByTestId(`status-option-item-${itemIndex}`)).toBeVisible());
+  await userEvent.click(screen.getByTestId(`status-option-item-${itemIndex}`));
+}
+
+function fillDates(effectiveDate: string, appointedDate: string) {
+  const effectiveDateInput = screen.getByLabelText(/status date/i) as HTMLInputElement;
+  const appointedDateInput = screen.getByLabelText(/appointment date/i) as HTMLInputElement;
+  fireEvent.change(effectiveDateInput, { target: { value: effectiveDate } });
+  fireEvent.change(appointedDateInput, { target: { value: appointedDate } });
+}
+
+async function fillCompleteForm(
+  userEvent: CamsUserEvent,
+  options: {
+    districtIndex?: number;
+    chapterIndex?: number;
+    statusIndex?: number;
+    effectiveDate?: string;
+    appointedDate?: string;
+  } = {},
+) {
+  await waitFor(() => {
+    expect(document.querySelector('#district')).toBeInTheDocument();
+  });
+
+  if (options.districtIndex !== undefined) {
+    await selectDistrict(userEvent, options.districtIndex);
+  }
+  if (options.chapterIndex !== undefined) {
+    await selectChapter(userEvent, options.chapterIndex);
+  }
+  if (options.statusIndex !== undefined) {
+    await selectStatus(userEvent, options.statusIndex);
+  }
+  if (options.effectiveDate && options.appointedDate) {
+    fillDates(options.effectiveDate, options.appointedDate);
+  }
+}
+
 describe('TrusteeAppointmentForm Tests', () => {
   const navigateTo = vi.fn();
   const navigatorMock = {
@@ -81,7 +136,6 @@ describe('TrusteeAppointmentForm Tests', () => {
     } as FeatureFlagSet);
     vi.spyOn(useCamsNavigatorModule, 'default').mockReturnValue(navigatorMock);
 
-    // Mock getCourts API call
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({
       data: MockData.getCourts(),
     });
@@ -167,39 +221,27 @@ describe('TrusteeAppointmentForm Tests', () => {
     const effectiveDateInput = screen.getByLabelText(/status date/i) as HTMLInputElement;
     const appointedDateInput = screen.getByLabelText(/appointment date/i) as HTMLInputElement;
 
-    // Fill all required fields
-    // Open district combo and click first item
-    await userEvent.click(document.querySelector('#district-expand')!);
-    await waitFor(() => expect(screen.getByTestId('district-option-item-0')).toBeVisible());
-    await userEvent.click(screen.getByTestId('district-option-item-0'));
+    await selectDistrict(userEvent, 0);
     await waitFor(() =>
       expect(document.querySelector('#district .selection-label')).toHaveTextContent(
         'District of Alaska - Juneau',
       ),
     );
 
-    // Open chapter combo and click first item
-    await userEvent.click(document.querySelector('#chapter-expand')!);
-    await waitFor(() => expect(screen.getByTestId('chapter-option-item-0')).toBeVisible());
-    await userEvent.click(screen.getByTestId('chapter-option-item-0'));
+    await selectChapter(userEvent, 0);
     await waitFor(() =>
       expect(document.querySelector('#chapter .selection-label')).toHaveTextContent(
         'Chapter 7 - Panel',
       ),
     );
 
-    // Open status combo and click first item
-    await userEvent.click(document.querySelector('#status-expand')!);
-    await waitFor(() => expect(screen.getByTestId('status-option-item-0')).toBeVisible());
-    await userEvent.click(screen.getByTestId('status-option-item-0'));
+    await selectStatus(userEvent, 0);
     await waitFor(() =>
       expect(document.querySelector('#status .selection-label')).toHaveTextContent('Active'),
     );
 
-    fireEvent.change(effectiveDateInput, { target: { value: TEST_APPOINTED_DATE } });
-    fireEvent.change(appointedDateInput, { target: { value: TEST_APPOINTED_DATE } });
+    fillDates(TEST_APPOINTED_DATE, TEST_APPOINTED_DATE);
 
-    // Verify ComboBox selections are showing
     const districtSelection = document.querySelector('#district .selection-label');
     const chapterSelection = document.querySelector('#chapter .selection-label');
     const statusSelection = document.querySelector('#status .selection-label');
@@ -208,7 +250,6 @@ describe('TrusteeAppointmentForm Tests', () => {
     expect(chapterSelection).toHaveTextContent('Chapter 7 - Panel');
     expect(statusSelection).toHaveTextContent('Active');
 
-    // Verify date inputs have values
     expect(effectiveDateInput.value).toBe(TEST_APPOINTED_DATE);
     expect(appointedDateInput.value).toBe(TEST_APPOINTED_DATE);
 
@@ -223,28 +264,13 @@ describe('TrusteeAppointmentForm Tests', () => {
 
     renderWithProps({ trusteeId: TEST_TRUSTEE_ID });
 
-    await waitFor(() => {
-      expect(document.querySelector('#district')).toBeInTheDocument();
+    await fillCompleteForm(userEvent, {
+      districtIndex: 0,
+      chapterIndex: 0,
+      statusIndex: 0,
+      effectiveDate: TEST_EFFECTIVE_DATE,
+      appointedDate: TEST_APPOINTED_DATE,
     });
-
-    const effectiveDateInput = screen.getByLabelText(/status date/i) as HTMLInputElement;
-    const appointedDateInput = screen.getByLabelText(/appointment date/i) as HTMLInputElement;
-
-    // Fill ComboBox fields
-    await userEvent.click(document.querySelector('#district-expand')!);
-    await waitFor(() => expect(screen.getByTestId('district-option-item-0')).toBeVisible());
-    await userEvent.click(screen.getByTestId('district-option-item-0'));
-
-    await userEvent.click(document.querySelector('#chapter-expand')!);
-    await waitFor(() => expect(screen.getByTestId('chapter-option-item-0')).toBeVisible());
-    await userEvent.click(screen.getByTestId('chapter-option-item-0')); // '7-panel'
-
-    await userEvent.click(document.querySelector('#status-expand')!);
-    await waitFor(() => expect(screen.getByTestId('status-option-item-0')).toBeVisible());
-    await userEvent.click(screen.getByTestId('status-option-item-0')); // 'active'
-
-    fireEvent.change(effectiveDateInput, { target: { value: TEST_EFFECTIVE_DATE } });
-    fireEvent.change(appointedDateInput, { target: { value: TEST_APPOINTED_DATE } });
 
     const submitButton = screen.getByRole('button', { name: /save/i });
     await userEvent.click(submitButton);
@@ -277,7 +303,6 @@ describe('TrusteeAppointmentForm Tests', () => {
     const effectiveDateInput = screen.getByLabelText(/status date/i) as HTMLInputElement;
     const appointedDateInput = screen.getByLabelText(/appointment date/i) as HTMLInputElement;
 
-    // Fill all fields except district (leave it unselected)
     await userEvent.click(document.querySelector('#chapter-expand')!);
     await waitFor(() => expect(screen.getByTestId('chapter-option-item-0')).toBeVisible());
     await userEvent.click(screen.getByTestId('chapter-option-item-0'));
@@ -295,11 +320,9 @@ describe('TrusteeAppointmentForm Tests', () => {
     await userEvent.type(effectiveDateInput, TEST_EFFECTIVE_DATE);
     await userEvent.type(appointedDateInput, TEST_APPOINTED_DATE);
 
-    // Try to submit with empty district - button should be disabled
     const submitButton = screen.getByRole('button', { name: /save/i });
     expect(submitButton).toBeDisabled();
 
-    // Verify the API was not called
     expect(postSpy).not.toHaveBeenCalled();
     expect(globalAlertSpy.error).not.toHaveBeenCalled();
   });
@@ -312,27 +335,13 @@ describe('TrusteeAppointmentForm Tests', () => {
 
     renderWithProps({ trusteeId: TEST_TRUSTEE_ID });
 
-    await waitFor(() => {
-      expect(document.querySelector('#district')).toBeInTheDocument();
+    await fillCompleteForm(userEvent, {
+      districtIndex: 0,
+      chapterIndex: 0,
+      statusIndex: 0,
+      effectiveDate: TEST_EFFECTIVE_DATE,
+      appointedDate: TEST_APPOINTED_DATE,
     });
-
-    const effectiveDateInput = screen.getByLabelText(/status date/i) as HTMLInputElement;
-    const appointedDateInput = screen.getByLabelText(/appointment date/i) as HTMLInputElement;
-
-    await userEvent.click(document.querySelector('#district-expand')!);
-    await waitFor(() => expect(screen.getByTestId('district-option-item-0')).toBeVisible());
-    await userEvent.click(screen.getByTestId('district-option-item-0'));
-
-    await userEvent.click(document.querySelector('#chapter-expand')!);
-    await waitFor(() => expect(screen.getByTestId('chapter-option-item-0')).toBeVisible());
-    await userEvent.click(screen.getByTestId('chapter-option-item-0'));
-
-    await userEvent.click(document.querySelector('#status-expand')!);
-    await waitFor(() => expect(screen.getByTestId('status-option-item-0')).toBeVisible());
-    await userEvent.click(screen.getByTestId('status-option-item-0'));
-
-    fireEvent.change(effectiveDateInput, { target: { value: TEST_EFFECTIVE_DATE } });
-    fireEvent.change(appointedDateInput, { target: { value: TEST_APPOINTED_DATE } });
 
     const submitButton = screen.getByRole('button', { name: /save/i });
     await userEvent.click(submitButton);
@@ -379,7 +388,6 @@ describe('TrusteeAppointmentForm Tests', () => {
       expect(document.querySelector('#chapter')).toBeInTheDocument();
     });
 
-    // Open the chapter combobox to see options
     const chapterExpandButton = document.querySelector('#chapter-expand');
     expect(chapterExpandButton).toBeInTheDocument();
     await userEvent.click(chapterExpandButton!);
@@ -402,7 +410,6 @@ describe('TrusteeAppointmentForm Tests', () => {
       expect(document.querySelector('#status')).toBeInTheDocument();
     });
 
-    // Open the status combobox to see options
     const statusExpandButton = document.querySelector('#status-expand');
     expect(statusExpandButton).toBeInTheDocument();
     await userEvent.click(statusExpandButton!);
@@ -421,27 +428,13 @@ describe('TrusteeAppointmentForm Tests', () => {
 
     renderWithProps();
 
-    await waitFor(() => {
-      expect(document.querySelector('#district')).toBeInTheDocument();
+    await fillCompleteForm(userEvent, {
+      districtIndex: 0,
+      chapterIndex: 0,
+      statusIndex: 0,
+      effectiveDate: TEST_EFFECTIVE_DATE,
+      appointedDate: TEST_APPOINTED_DATE,
     });
-
-    const effectiveDateInput = screen.getByLabelText(/status date/i) as HTMLInputElement;
-    const appointedDateInput = screen.getByLabelText(/appointment date/i) as HTMLInputElement;
-
-    await userEvent.click(document.querySelector('#district-expand')!);
-    await waitFor(() => expect(screen.getByTestId('district-option-item-0')).toBeVisible());
-    await userEvent.click(screen.getByTestId('district-option-item-0'));
-
-    await userEvent.click(document.querySelector('#chapter-expand')!);
-    await waitFor(() => expect(screen.getByTestId('chapter-option-item-0')).toBeVisible());
-    await userEvent.click(screen.getByTestId('chapter-option-item-0'));
-
-    await userEvent.click(document.querySelector('#status-expand')!);
-    await waitFor(() => expect(screen.getByTestId('status-option-item-0')).toBeVisible());
-    await userEvent.click(screen.getByTestId('status-option-item-0'));
-
-    fireEvent.change(effectiveDateInput, { target: { value: TEST_EFFECTIVE_DATE } });
-    fireEvent.change(appointedDateInput, { target: { value: TEST_APPOINTED_DATE } });
 
     const submitButton = screen.getByRole('button', { name: /save/i });
     await userEvent.click(submitButton);
@@ -462,23 +455,15 @@ describe('TrusteeAppointmentForm Tests', () => {
         expect(document.querySelector('#district')).toBeInTheDocument();
       });
 
-      // Select the same district and chapter as the existing active appointment
-      await userEvent.click(document.querySelector('#district-expand')!);
-      await waitFor(() => expect(screen.getByTestId('district-option-item-0')).toBeVisible());
-      await userEvent.click(screen.getByTestId('district-option-item-0')); // Alaska - Juneau (0202|020)
+      await selectDistrict(userEvent, 0);
+      await selectChapter(userEvent, 0);
 
-      await userEvent.click(document.querySelector('#chapter-expand')!);
-      await waitFor(() => expect(screen.getByTestId('chapter-option-item-0')).toBeVisible());
-      await userEvent.click(screen.getByTestId('chapter-option-item-0')); // Chapter 7 - Panel
-
-      // Validation error should appear
       await waitFor(() => {
         expect(
           screen.getByText(/An active appointment already exists for Chapter 7 - Panel/i),
         ).toBeInTheDocument();
       });
 
-      // Submit button should be disabled
       const submitButton = screen.getByRole('button', { name: /save/i });
       expect(submitButton).toBeDisabled();
     });
@@ -489,33 +474,16 @@ describe('TrusteeAppointmentForm Tests', () => {
         existingAppointments: [mockInactiveAppointment],
       });
 
-      await waitFor(() => {
-        expect(document.querySelector('#district')).toBeInTheDocument();
+      await fillCompleteForm(userEvent, {
+        districtIndex: 0,
+        chapterIndex: 0,
+        statusIndex: 0,
+        effectiveDate: TEST_EFFECTIVE_DATE,
+        appointedDate: TEST_APPOINTED_DATE,
       });
 
-      const effectiveDateInput = screen.getByLabelText(/status date/i) as HTMLInputElement;
-      const appointedDateInput = screen.getByLabelText(/appointment date/i) as HTMLInputElement;
-
-      // Select the same district and chapter as the inactive appointment
-      await userEvent.click(document.querySelector('#district-expand')!);
-      await waitFor(() => expect(screen.getByTestId('district-option-item-0')).toBeVisible());
-      await userEvent.click(screen.getByTestId('district-option-item-0'));
-
-      await userEvent.click(document.querySelector('#chapter-expand')!);
-      await waitFor(() => expect(screen.getByTestId('chapter-option-item-0')).toBeVisible());
-      await userEvent.click(screen.getByTestId('chapter-option-item-0'));
-
-      await userEvent.click(document.querySelector('#status-expand')!);
-      await waitFor(() => expect(screen.getByTestId('status-option-item-0')).toBeVisible());
-      await userEvent.click(screen.getByTestId('status-option-item-0')); // Active
-
-      fireEvent.change(effectiveDateInput, { target: { value: TEST_EFFECTIVE_DATE } });
-      fireEvent.change(appointedDateInput, { target: { value: TEST_APPOINTED_DATE } });
-
-      // No validation error should appear
       expect(screen.queryByText(/An active appointment already exists/i)).not.toBeInTheDocument();
 
-      // Submit button should be enabled
       const submitButton = screen.getByRole('button', { name: /save/i });
       await waitFor(() => {
         expect(submitButton).not.toBeDisabled();
@@ -528,33 +496,16 @@ describe('TrusteeAppointmentForm Tests', () => {
         existingAppointments: [mockActiveAppointment],
       });
 
-      await waitFor(() => {
-        expect(document.querySelector('#district')).toBeInTheDocument();
+      await fillCompleteForm(userEvent, {
+        districtIndex: 1,
+        chapterIndex: 0,
+        statusIndex: 0,
+        effectiveDate: TEST_EFFECTIVE_DATE,
+        appointedDate: TEST_APPOINTED_DATE,
       });
 
-      const effectiveDateInput = screen.getByLabelText(/status date/i) as HTMLInputElement;
-      const appointedDateInput = screen.getByLabelText(/appointment date/i) as HTMLInputElement;
-
-      // Select a different district (item 1 instead of 0)
-      await userEvent.click(document.querySelector('#district-expand')!);
-      await waitFor(() => expect(screen.getByTestId('district-option-item-1')).toBeVisible());
-      await userEvent.click(screen.getByTestId('district-option-item-1'));
-
-      await userEvent.click(document.querySelector('#chapter-expand')!);
-      await waitFor(() => expect(screen.getByTestId('chapter-option-item-0')).toBeVisible());
-      await userEvent.click(screen.getByTestId('chapter-option-item-0'));
-
-      await userEvent.click(document.querySelector('#status-expand')!);
-      await waitFor(() => expect(screen.getByTestId('status-option-item-0')).toBeVisible());
-      await userEvent.click(screen.getByTestId('status-option-item-0'));
-
-      fireEvent.change(effectiveDateInput, { target: { value: TEST_EFFECTIVE_DATE } });
-      fireEvent.change(appointedDateInput, { target: { value: TEST_APPOINTED_DATE } });
-
-      // No validation error should appear
       expect(screen.queryByText(/An active appointment already exists/i)).not.toBeInTheDocument();
 
-      // Submit button should be enabled
       const submitButton = screen.getByRole('button', { name: /save/i });
       await waitFor(() => {
         expect(submitButton).not.toBeDisabled();
@@ -567,33 +518,16 @@ describe('TrusteeAppointmentForm Tests', () => {
         existingAppointments: [mockActiveAppointment],
       });
 
-      await waitFor(() => {
-        expect(document.querySelector('#district')).toBeInTheDocument();
+      await fillCompleteForm(userEvent, {
+        districtIndex: 0,
+        chapterIndex: 1,
+        statusIndex: 0,
+        effectiveDate: TEST_EFFECTIVE_DATE,
+        appointedDate: TEST_APPOINTED_DATE,
       });
 
-      const effectiveDateInput = screen.getByLabelText(/status date/i) as HTMLInputElement;
-      const appointedDateInput = screen.getByLabelText(/appointment date/i) as HTMLInputElement;
-
-      // Select same district but different chapter
-      await userEvent.click(document.querySelector('#district-expand')!);
-      await waitFor(() => expect(screen.getByTestId('district-option-item-0')).toBeVisible());
-      await userEvent.click(screen.getByTestId('district-option-item-0'));
-
-      await userEvent.click(document.querySelector('#chapter-expand')!);
-      await waitFor(() => expect(screen.getByTestId('chapter-option-item-1')).toBeVisible());
-      await userEvent.click(screen.getByTestId('chapter-option-item-1')); // Chapter 7 - Non-Panel
-
-      await userEvent.click(document.querySelector('#status-expand')!);
-      await waitFor(() => expect(screen.getByTestId('status-option-item-0')).toBeVisible());
-      await userEvent.click(screen.getByTestId('status-option-item-0'));
-
-      fireEvent.change(effectiveDateInput, { target: { value: TEST_EFFECTIVE_DATE } });
-      fireEvent.change(appointedDateInput, { target: { value: TEST_APPOINTED_DATE } });
-
-      // No validation error should appear
       expect(screen.queryByText(/An active appointment already exists/i)).not.toBeInTheDocument();
 
-      // Submit button should be enabled
       const submitButton = screen.getByRole('button', { name: /save/i });
       await waitFor(() => {
         expect(submitButton).not.toBeDisabled();
@@ -610,28 +544,17 @@ describe('TrusteeAppointmentForm Tests', () => {
         expect(document.querySelector('#district')).toBeInTheDocument();
       });
 
-      // First, select the same district and chapter to trigger validation error
-      await userEvent.click(document.querySelector('#district-expand')!);
-      await waitFor(() => expect(screen.getByTestId('district-option-item-0')).toBeVisible());
-      await userEvent.click(screen.getByTestId('district-option-item-0'));
+      await selectDistrict(userEvent, 0);
+      await selectChapter(userEvent, 0);
 
-      await userEvent.click(document.querySelector('#chapter-expand')!);
-      await waitFor(() => expect(screen.getByTestId('chapter-option-item-0')).toBeVisible());
-      await userEvent.click(screen.getByTestId('chapter-option-item-0'));
-
-      // Validation error should appear
       await waitFor(() => {
         expect(
           screen.getByText(/An active appointment already exists for Chapter 7 - Panel/i),
         ).toBeInTheDocument();
       });
 
-      // Now change the chapter to a different one
-      await userEvent.click(document.querySelector('#chapter-expand')!);
-      await waitFor(() => expect(screen.getByTestId('chapter-option-item-1')).toBeVisible());
-      await userEvent.click(screen.getByTestId('chapter-option-item-1')); // Chapter 7 - Non-Panel
+      await selectChapter(userEvent, 1);
 
-      // Validation error should disappear
       await waitFor(() => {
         expect(screen.queryByText(/An active appointment already exists/i)).not.toBeInTheDocument();
       });
@@ -645,34 +568,17 @@ describe('TrusteeAppointmentForm Tests', () => {
         existingAppointments: [mockActiveAppointment],
       });
 
-      await waitFor(() => {
-        expect(document.querySelector('#district')).toBeInTheDocument();
+      await fillCompleteForm(userEvent, {
+        districtIndex: 0,
+        chapterIndex: 0,
+        statusIndex: 0,
+        effectiveDate: TEST_EFFECTIVE_DATE,
+        appointedDate: TEST_APPOINTED_DATE,
       });
 
-      const effectiveDateInput = screen.getByLabelText(/status date/i) as HTMLInputElement;
-      const appointedDateInput = screen.getByLabelText(/appointment date/i) as HTMLInputElement;
-
-      // Select overlapping appointment
-      await userEvent.click(document.querySelector('#district-expand')!);
-      await waitFor(() => expect(screen.getByTestId('district-option-item-0')).toBeVisible());
-      await userEvent.click(screen.getByTestId('district-option-item-0'));
-
-      await userEvent.click(document.querySelector('#chapter-expand')!);
-      await waitFor(() => expect(screen.getByTestId('chapter-option-item-0')).toBeVisible());
-      await userEvent.click(screen.getByTestId('chapter-option-item-0'));
-
-      await userEvent.click(document.querySelector('#status-expand')!);
-      await waitFor(() => expect(screen.getByTestId('status-option-item-0')).toBeVisible());
-      await userEvent.click(screen.getByTestId('status-option-item-0'));
-
-      fireEvent.change(effectiveDateInput, { target: { value: TEST_EFFECTIVE_DATE } });
-      fireEvent.change(appointedDateInput, { target: { value: TEST_APPOINTED_DATE } });
-
-      // Submit button should be disabled
       const submitButton = screen.getByRole('button', { name: /save/i });
       expect(submitButton).toBeDisabled();
 
-      // API should not be called
       expect(postSpy).not.toHaveBeenCalled();
     });
 
@@ -684,36 +590,19 @@ describe('TrusteeAppointmentForm Tests', () => {
         existingAppointments: [mockActiveAppointment],
       });
 
-      await waitFor(() => {
-        expect(document.querySelector('#district')).toBeInTheDocument();
+      await fillCompleteForm(userEvent, {
+        districtIndex: 0,
+        chapterIndex: 0,
+        statusIndex: 0,
+        effectiveDate: TEST_EFFECTIVE_DATE,
+        appointedDate: TEST_APPOINTED_DATE,
       });
 
-      const effectiveDateInput = screen.getByLabelText(/status date/i) as HTMLInputElement;
-      const appointedDateInput = screen.getByLabelText(/appointment date/i) as HTMLInputElement;
       const form = screen.getByTestId('trustee-appointment-form') as HTMLFormElement;
 
-      // Select overlapping appointment
-      await userEvent.click(document.querySelector('#district-expand')!);
-      await waitFor(() => expect(screen.getByTestId('district-option-item-0')).toBeVisible());
-      await userEvent.click(screen.getByTestId('district-option-item-0'));
-
-      await userEvent.click(document.querySelector('#chapter-expand')!);
-      await waitFor(() => expect(screen.getByTestId('chapter-option-item-0')).toBeVisible());
-      await userEvent.click(screen.getByTestId('chapter-option-item-0'));
-
-      await userEvent.click(document.querySelector('#status-expand')!);
-      await waitFor(() => expect(screen.getByTestId('status-option-item-0')).toBeVisible());
-      await userEvent.click(screen.getByTestId('status-option-item-0'));
-
-      fireEvent.change(effectiveDateInput, { target: { value: TEST_EFFECTIVE_DATE } });
-      fireEvent.change(appointedDateInput, { target: { value: TEST_APPOINTED_DATE } });
-
-      // Programmatically submit the form (bypassing button disabled state)
       fireEvent.submit(form);
 
-      // Wait a bit to ensure no async operations happen
       await waitFor(() => {
-        // API should not be called because validation should have returned early
         expect(postSpy).not.toHaveBeenCalled();
       });
     });
@@ -723,13 +612,7 @@ describe('TrusteeAppointmentForm Tests', () => {
     test('should handle clearing district selection', async () => {
       renderWithProps();
 
-      await waitFor(() => {
-        expect(document.querySelector('#district')).toBeInTheDocument();
-      });
-
-      await userEvent.click(document.querySelector('#district-expand')!);
-      await waitFor(() => expect(screen.getByTestId('district-option-item-0')).toBeVisible());
-      await userEvent.click(screen.getByTestId('district-option-item-0'));
+      await selectDistrict(userEvent, 0);
 
       await waitFor(() =>
         expect(document.querySelector('#district .selection-label')).toHaveTextContent(
@@ -749,13 +632,7 @@ describe('TrusteeAppointmentForm Tests', () => {
     test('should handle clearing chapter selection', async () => {
       renderWithProps();
 
-      await waitFor(() => {
-        expect(document.querySelector('#chapter')).toBeInTheDocument();
-      });
-
-      await userEvent.click(document.querySelector('#chapter-expand')!);
-      await waitFor(() => expect(screen.getByTestId('chapter-option-item-0')).toBeVisible());
-      await userEvent.click(screen.getByTestId('chapter-option-item-0'));
+      await selectChapter(userEvent, 0);
 
       await waitFor(() =>
         expect(document.querySelector('#chapter .selection-label')).toHaveTextContent(
@@ -775,13 +652,7 @@ describe('TrusteeAppointmentForm Tests', () => {
     test('should handle clearing status selection', async () => {
       renderWithProps();
 
-      await waitFor(() => {
-        expect(document.querySelector('#status')).toBeInTheDocument();
-      });
-
-      await userEvent.click(document.querySelector('#status-expand')!);
-      await waitFor(() => expect(screen.getByTestId('status-option-item-0')).toBeVisible());
-      await userEvent.click(screen.getByTestId('status-option-item-0'));
+      await selectStatus(userEvent, 0);
 
       await waitFor(() =>
         expect(document.querySelector('#status .selection-label')).toHaveTextContent('Active'),
@@ -812,7 +683,6 @@ describe('TrusteeAppointmentForm Tests', () => {
         expect(document.querySelector('#district')).toBeInTheDocument();
       });
 
-      // Should NOT call the API since appointments were provided via props
       expect(getTrusteeAppointmentsSpy).not.toHaveBeenCalled();
     });
 
@@ -830,7 +700,6 @@ describe('TrusteeAppointmentForm Tests', () => {
         expect(document.querySelector('#district')).toBeInTheDocument();
       });
 
-      // Should NOT call the API since appointments were provided via navigation state
       expect(getTrusteeAppointmentsSpy).not.toHaveBeenCalled();
     });
 
@@ -857,7 +726,6 @@ describe('TrusteeAppointmentForm Tests', () => {
 
       renderWithProps({ trusteeId: TEST_TRUSTEE_ID });
 
-      // Should show loading spinner
       expect(screen.getByText(/Loading form data/i)).toBeInTheDocument();
     });
 
