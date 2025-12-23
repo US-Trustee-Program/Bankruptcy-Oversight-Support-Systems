@@ -50,13 +50,13 @@ function App() {
               <Route path="/case-detail/:caseId/*" element={<CaseDetailScreen />}></Route>
               <Route path="/data-verification" element={<DataVerificationScreen />}></Route>
               <Route path="/admin/*" element={<AdminScreen />}></Route>
+              <Route path="/trustees/:trusteeId/*" element={<TrusteeDetailScreen />}></Route>
               <Route path="/trustees" element={<TrusteesScreen />}>
                 <Route
                   path="create"
                   element={<TrusteePublicContactForm action="create" cancelTo="/trustees" />}
                 />
               </Route>
-              <Route path="/trustees/:trusteeId/*" element={<TrusteeDetailScreen />}></Route>
               <Route index element={<GoHome />}></Route>
               <Route path="*" element={<GoHome />}></Route>
             </Routes>

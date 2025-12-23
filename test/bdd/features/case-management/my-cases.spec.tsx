@@ -39,8 +39,8 @@ describe('Feature: My Cases (Full Stack)', () => {
   });
 
   // Clean up spies after each test to prevent pollution
-  afterEach(() => {
-    clearAllRepositorySpies();
+  afterEach(async () => {
+    await clearAllRepositorySpies();
   });
 
   /**
