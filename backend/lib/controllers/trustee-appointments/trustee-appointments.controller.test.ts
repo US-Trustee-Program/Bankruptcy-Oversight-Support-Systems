@@ -33,9 +33,9 @@ describe('TrusteeAppointmentsController', () => {
     }
 
     mockUseCase = {
-      getTrusteeAppointments: jest.fn(),
-      createAppointment: jest.fn(),
-    } as unknown as jest.Mocked<TrusteeAppointmentsUseCase>;
+      getTrusteeAppointments: vi.fn(),
+      createAppointment: vi.fn(),
+    } as unknown as Mocked<TrusteeAppointmentsUseCase>;
 
     (
       TrusteeAppointmentsUseCase as MockedClass<typeof TrusteeAppointmentsUseCase>

@@ -228,7 +228,7 @@ describe('TrusteeAppointmentsMongoRepository', () => {
 
     test('should create a new appointment successfully', async () => {
       const mockId = 'new-appointment-id';
-      const mockAdapter = jest
+      const mockAdapter = vi
         .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
         .mockResolvedValue(mockId);
 
@@ -255,7 +255,7 @@ describe('TrusteeAppointmentsMongoRepository', () => {
 
     test('should handle database errors during creation', async () => {
       const error = new Error('Database connection failed');
-      const mockAdapter = jest
+      const mockAdapter = vi
         .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
         .mockRejectedValue(error);
 

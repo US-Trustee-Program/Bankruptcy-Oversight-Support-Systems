@@ -87,7 +87,10 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     const loadDistricts = async () => {
       try {
         const response = await Api2.getCourts();
-        const options = (response.data ?? []).map((district) => ({
+        if (!response.data || response.data.length === 0) {
+          throw new Error('No districts available');
+        }
+        const options = response.data.map((district) => ({
           value: `${district.courtId}|${district.courtDivisionCode}`,
           label: `${district.courtName} - ${district.courtDivisionName}`,
         }));
@@ -104,7 +107,6 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
   }, [globalAlert]);
 
   useEffect(() => {
-    // Only load appointments if they weren't passed as props or navigation state
     if (appointmentsToUse) {
       return;
     }
@@ -182,7 +184,6 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
 
     try {
       await Api2.postTrusteeAppointment(trusteeId, payload);
-      globalAlert?.success('Appointment created successfully');
       navigate.navigateTo(`/trustees/${trusteeId}`);
     } catch (e) {
       globalAlert?.error(`Failed to create appointment: ${(e as Error).message}`);

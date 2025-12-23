@@ -675,6 +675,188 @@ describe('TrusteeAppointmentForm Tests', () => {
       // API should not be called
       expect(postSpy).not.toHaveBeenCalled();
     });
+
+    test('should call validation and return early on programmatic submit when validation fails', async () => {
+      const postSpy = vi.spyOn(Api2, 'postTrusteeAppointment').mockResolvedValue(undefined);
+
+      renderWithProps({
+        trusteeId: TEST_TRUSTEE_ID,
+        existingAppointments: [mockActiveAppointment],
+      });
+
+      await waitFor(() => {
+        expect(document.querySelector('#district')).toBeInTheDocument();
+      });
+
+      const effectiveDateInput = screen.getByLabelText(/status date/i) as HTMLInputElement;
+      const appointedDateInput = screen.getByLabelText(/appointment date/i) as HTMLInputElement;
+      const form = screen.getByTestId('trustee-appointment-form') as HTMLFormElement;
+
+      // Select overlapping appointment
+      await userEvent.click(document.querySelector('#district-expand')!);
+      await waitFor(() => expect(screen.getByTestId('district-option-item-0')).toBeVisible());
+      await userEvent.click(screen.getByTestId('district-option-item-0'));
+
+      await userEvent.click(document.querySelector('#chapter-expand')!);
+      await waitFor(() => expect(screen.getByTestId('chapter-option-item-0')).toBeVisible());
+      await userEvent.click(screen.getByTestId('chapter-option-item-0'));
+
+      await userEvent.click(document.querySelector('#status-expand')!);
+      await waitFor(() => expect(screen.getByTestId('status-option-item-0')).toBeVisible());
+      await userEvent.click(screen.getByTestId('status-option-item-0'));
+
+      fireEvent.change(effectiveDateInput, { target: { value: TEST_EFFECTIVE_DATE } });
+      fireEvent.change(appointedDateInput, { target: { value: TEST_APPOINTED_DATE } });
+
+      // Programmatically submit the form (bypassing button disabled state)
+      fireEvent.submit(form);
+
+      // Wait a bit to ensure no async operations happen
+      await waitFor(() => {
+        // API should not be called because validation should have returned early
+        expect(postSpy).not.toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('Edge Case Tests', () => {
+    test('should show error when getCourts returns undefined data', async () => {
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: undefined });
+      const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
+
+      renderWithProps();
+
+      await waitFor(() => {
+        expect(globalAlertSpy.error).toHaveBeenCalledWith('Failed to load districts');
+      });
+    });
+
+    test('should show error when getCourts returns empty array', async () => {
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+      const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
+
+      renderWithProps();
+
+      await waitFor(() => {
+        expect(globalAlertSpy.error).toHaveBeenCalledWith('Failed to load districts');
+      });
+    });
+
+    test('should handle getTrusteeAppointments returning undefined data', async () => {
+      const postSpy = vi.spyOn(Api2, 'postTrusteeAppointment').mockResolvedValue(undefined);
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: undefined });
+
+      renderWithProps({ trusteeId: TEST_TRUSTEE_ID });
+
+      await waitFor(() => {
+        expect(document.querySelector('#district')).toBeInTheDocument();
+      });
+
+      const effectiveDateInput = screen.getByLabelText(/status date/i) as HTMLInputElement;
+      const appointedDateInput = screen.getByLabelText(/appointment date/i) as HTMLInputElement;
+
+      await userEvent.click(document.querySelector('#district-expand')!);
+      await waitFor(() => expect(screen.getByTestId('district-option-item-0')).toBeVisible());
+      await userEvent.click(screen.getByTestId('district-option-item-0'));
+
+      await userEvent.click(document.querySelector('#chapter-expand')!);
+      await waitFor(() => expect(screen.getByTestId('chapter-option-item-0')).toBeVisible());
+      await userEvent.click(screen.getByTestId('chapter-option-item-0'));
+
+      await userEvent.click(document.querySelector('#status-expand')!);
+      await waitFor(() => expect(screen.getByTestId('status-option-item-0')).toBeVisible());
+      await userEvent.click(screen.getByTestId('status-option-item-0'));
+
+      fireEvent.change(effectiveDateInput, { target: { value: TEST_EFFECTIVE_DATE } });
+      fireEvent.change(appointedDateInput, { target: { value: TEST_APPOINTED_DATE } });
+
+      const submitButton = screen.getByRole('button', { name: /save/i });
+      await waitFor(() => {
+        expect(submitButton).not.toBeDisabled();
+      });
+
+      await userEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(postSpy).toHaveBeenCalled();
+      });
+    });
+
+    test('should handle clearing district selection', async () => {
+      renderWithProps();
+
+      await waitFor(() => {
+        expect(document.querySelector('#district')).toBeInTheDocument();
+      });
+
+      await userEvent.click(document.querySelector('#district-expand')!);
+      await waitFor(() => expect(screen.getByTestId('district-option-item-0')).toBeVisible());
+      await userEvent.click(screen.getByTestId('district-option-item-0'));
+
+      await waitFor(() =>
+        expect(document.querySelector('#district .selection-label')).toHaveTextContent(
+          'District of Alaska - Juneau',
+        ),
+      );
+
+      const clearButton = document.querySelector('#district-clear-all');
+      expect(clearButton).toBeInTheDocument();
+      await userEvent.click(clearButton as HTMLElement);
+
+      await waitFor(() => {
+        expect(document.querySelector('#district .selection-label')).toHaveTextContent('');
+      });
+    });
+
+    test('should handle clearing chapter selection', async () => {
+      renderWithProps();
+
+      await waitFor(() => {
+        expect(document.querySelector('#chapter')).toBeInTheDocument();
+      });
+
+      await userEvent.click(document.querySelector('#chapter-expand')!);
+      await waitFor(() => expect(screen.getByTestId('chapter-option-item-0')).toBeVisible());
+      await userEvent.click(screen.getByTestId('chapter-option-item-0'));
+
+      await waitFor(() =>
+        expect(document.querySelector('#chapter .selection-label')).toHaveTextContent(
+          'Chapter 7 - Panel',
+        ),
+      );
+
+      const clearButton = document.querySelector('#chapter-clear-all');
+      expect(clearButton).toBeInTheDocument();
+      await userEvent.click(clearButton as HTMLElement);
+
+      await waitFor(() => {
+        expect(document.querySelector('#chapter .selection-label')).toHaveTextContent('');
+      });
+    });
+
+    test('should handle clearing status selection', async () => {
+      renderWithProps();
+
+      await waitFor(() => {
+        expect(document.querySelector('#status')).toBeInTheDocument();
+      });
+
+      await userEvent.click(document.querySelector('#status-expand')!);
+      await waitFor(() => expect(screen.getByTestId('status-option-item-0')).toBeVisible());
+      await userEvent.click(screen.getByTestId('status-option-item-0'));
+
+      await waitFor(() =>
+        expect(document.querySelector('#status .selection-label')).toHaveTextContent('Active'),
+      );
+
+      const clearButton = document.querySelector('#status-clear-all');
+      expect(clearButton).toBeInTheDocument();
+      await userEvent.click(clearButton as HTMLElement);
+
+      await waitFor(() => {
+        expect(document.querySelector('#status .selection-label')).toHaveTextContent('');
+      });
+    });
   });
 
   describe('Data Loading Tests', () => {

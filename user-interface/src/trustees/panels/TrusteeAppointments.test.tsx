@@ -1,13 +1,23 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useNavigate } from 'react-router-dom';
 import TrusteeAppointments from './TrusteeAppointments';
 import Api2 from '@/lib/models/api2';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+import userEvent from '@testing-library/user-event';
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: vi.fn(),
+  };
+});
 
 describe('TrusteeAppointments', () => {
   const EMPTY_APPOINTMENTS_MESSAGE = /There are no appointments for this Trustee./i;
+  const mockNavigate = vi.fn();
 
   const mockAppointments: TrusteeAppointment[] = [
     {
@@ -54,6 +64,8 @@ describe('TrusteeAppointments', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockNavigate.mockClear();
+    vi.mocked(useNavigate).mockReturnValue(mockNavigate);
   });
 
   test('should display loading spinner while fetching appointments', () => {
@@ -179,6 +191,40 @@ describe('TrusteeAppointments', () => {
 
     await waitFor(() => {
       expect(screen.getByText(EMPTY_APPOINTMENTS_MESSAGE)).toBeInTheDocument();
+    });
+  });
+
+  test('should navigate with appointments data when add button is clicked with no appointments', async () => {
+    vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [] });
+
+    renderComponent('trustee-123');
+
+    await waitFor(() => {
+      expect(screen.getByText(/Add New Appointment/i)).toBeInTheDocument();
+    });
+
+    const addButton = screen.getByTestId('button-add-appointment-button');
+    await userEvent.click(addButton);
+
+    expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-123/appointments/create', {
+      state: { existingAppointments: [] },
+    });
+  });
+
+  test('should navigate with appointments data when add button is clicked with existing appointments', async () => {
+    vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: mockAppointments });
+
+    renderComponent('trustee-123');
+
+    await waitFor(() => {
+      expect(screen.getByText(/Add New Appointment/i)).toBeInTheDocument();
+    });
+
+    const addButton = screen.getByTestId('button-add-appointment-button');
+    await userEvent.click(addButton);
+
+    expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-123/appointments/create', {
+      state: { existingAppointments: mockAppointments },
     });
   });
 });
