@@ -131,6 +131,8 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
       try {
         if (isCreate) {
           // TODO: 12/17/25 Let's get rid of the need to use 'as' here.
+          // Modify the return type for Api2.postTrustee to include the intended partial
+          // which includes only the trusteeId.
           const response = await Api2.postTrustee(payload as TrusteeInput);
           const createdId = (response as { data?: { trusteeId?: string } })?.data?.trusteeId;
           navigate.navigateTo(`/trustees/${createdId}`);
