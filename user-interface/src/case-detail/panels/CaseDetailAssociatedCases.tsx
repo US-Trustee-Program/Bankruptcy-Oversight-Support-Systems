@@ -7,6 +7,7 @@ import './CaseDetailAssociatedCases.scss';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { CaseDetail } from '@common/cams/cases';
+import { LeadCaseIcon, MemberCaseIcon } from '@/lib/components/cams/RawSvgIcon';
 
 interface CaseDetailAssociatedCasesProps {
   caseDetail: CaseDetail;
@@ -129,7 +130,9 @@ export default function CaseDetailAssociatedCases(props: CaseDetailAssociatedCas
                     .map((bCase, idx) => {
                       return (
                         <tr key={idx}>
-                          <td>
+                          <td className="case-number-column">
+                            {bCase.documentType === 'CONSOLIDATION_TO' && <LeadCaseIcon />}
+                            {bCase.documentType === 'CONSOLIDATION_FROM' && <MemberCaseIcon />}
                             <CaseNumber caseId={bCase.otherCase.caseId} />
                             <span> ({bCase.otherCase.courtDivisionName})</span>
                           </td>

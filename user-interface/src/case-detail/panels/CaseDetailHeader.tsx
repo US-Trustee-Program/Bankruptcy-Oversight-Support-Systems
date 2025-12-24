@@ -1,12 +1,17 @@
 import './CaseDetailHeader.scss';
 import { useEffect } from 'react';
 import useFixedPosition from '@/lib/hooks/UseFixedPosition';
-import { CaseDetail, isChildCase, isLeadCase } from '@common/cams/cases';
+import { CaseDetail, isChildCase, isLeadCase, isTransferredCase } from '@common/cams/cases';
 import { copyCaseNumber, getCaseNumber } from '@/lib/utils/caseNumber';
 import CopyButton from '@/lib/components/cams/CopyButton';
 import useFeatureFlags, { VIEW_TRUSTEE_ON_CASE } from '@/lib/hooks/UseFeatureFlags';
 import Tag, { UswdsTagStyle } from '@/lib/components/uswds/Tag';
-import { GavelIcon, LeadCaseIcon, MemberCaseIcon } from '@/lib/components/cams/RawSvgIcon';
+import {
+  GavelIcon,
+  LeadCaseIcon,
+  MemberCaseIcon,
+  TransferredCaseIcon,
+} from '@/lib/components/cams/RawSvgIcon';
 
 export interface CaseDetailHeaderProps {
   isLoading: boolean;
@@ -82,6 +87,7 @@ export default function CaseDetailHeader(props: Readonly<CaseDetailHeaderProps>)
                 <div className="display-flex flex-align-center">
                   {isLeadCase(props.caseDetail) && <LeadCaseIcon />}
                   {isChildCase(props.caseDetail) && <MemberCaseIcon />}
+                  {isTransferredCase(props.caseDetail) && <TransferredCaseIcon />}
                   <h1
                     className="case-number text-no-wrap display-inline-block margin-right-1"
                     title="Case ID"

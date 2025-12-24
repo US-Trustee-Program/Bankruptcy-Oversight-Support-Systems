@@ -6,6 +6,7 @@ import {
   isCaseOpen,
   isChildCase,
   isLeadCase,
+  isTransferredCase,
 } from './cases';
 import MockData from './test-utilities/mock-data';
 
@@ -78,6 +79,28 @@ describe('cases common functions tests', () => {
         const bCase = MockData.getCaseDetail({ override: caseDetail });
         expect(isLeadCase(bCase)).toBe(leadResult);
         expect(isChildCase(bCase)).toBe(childResult);
+      },
+    );
+
+    const transferCases = [
+      [
+        'is transferred from',
+        { transfers: [{ documentType: 'TRANSFER_FROM' }] } as Partial<CaseDetail>,
+        true,
+      ],
+      [
+        'is transferred to',
+        { transfers: [{ documentType: 'TRANSFER_TO' }] } as Partial<CaseDetail>,
+        true,
+      ],
+      ['is not transferred', { transfers: [] } as Partial<CaseDetail>, false],
+      ['has no transfers', {} as Partial<CaseDetail>, false],
+    ];
+    test.each(transferCases)(
+      'should return correctly for isTransferredCase when case %s',
+      (_caseName: string, caseDetail: Partial<CaseDetail>, transferredResult: boolean) => {
+        const bCase = MockData.getCaseDetail({ override: caseDetail });
+        expect(isTransferredCase(bCase)).toBe(transferredResult);
       },
     );
   });

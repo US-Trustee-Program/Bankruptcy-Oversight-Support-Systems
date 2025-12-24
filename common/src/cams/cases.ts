@@ -132,6 +132,11 @@ export function isChildCase(bCase: CaseDetail) {
   return bCase.consolidation[0]?.documentType === 'CONSOLIDATION_TO';
 }
 
+export function isTransferredCase(bCase: CaseDetail) {
+  const documentType = bCase.transfers?.[0]?.documentType;
+  return documentType === 'TRANSFER_FROM' || documentType === 'TRANSFER_TO';
+}
+
 export function getCaseIdParts(caseId: string) {
   const parts = caseId.split('-');
   if (

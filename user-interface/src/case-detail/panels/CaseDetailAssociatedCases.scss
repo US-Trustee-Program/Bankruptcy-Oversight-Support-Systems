@@ -1,5 +1,5 @@
 .associated-cases {
-  table {
+  table#associated-cases-table {
     th.title-column {
       width: 40%;
     }
@@ -7,5 +7,17 @@
       white-space: normal;
     }
     white-space: nowrap;
+
+    tbody {
+      td {
+        vertical-align: middle;
+
+        .raw-svg-icon {
+          margin-right: 0.5rem;
+          vertical-align: middle;
+          display: inline-block;
+        }
+      }
+    }
   }
 }

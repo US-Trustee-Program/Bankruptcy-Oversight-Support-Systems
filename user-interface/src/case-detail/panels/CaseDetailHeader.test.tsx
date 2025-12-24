@@ -196,6 +196,27 @@ describe('feature flag true', () => {
     const childIcon = screen.getByTestId('member-case-icon');
     expect(childIcon).toBeInTheDocument();
   });
+
+  test('should render transferred case icon when case is transferred', () => {
+    const transferredCaseDetail = MockData.getCaseDetail({
+      override: {
+        petitionLabel: 'Voluntary',
+        transfers: [
+          {
+            documentType: 'TRANSFER_FROM',
+            caseId: '081-23-12345',
+            orderDate: '2024-01-15',
+            otherCase: MockData.getCaseSummary(),
+          },
+        ],
+      },
+    });
+
+    basicRender(transferredCaseDetail, false);
+
+    const transferIcon = screen.getByTestId('transfer-icon');
+    expect(transferIcon).toBeInTheDocument();
+  });
 });
 
 describe('feature flag false', () => {
