@@ -226,7 +226,7 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
           onBlur={handleBlur}
           data-testid={id}
           min={minDate}
-          max={maxDate}
+          max={maxDate || '9999-12-31'}
           value={dateValue ?? ''}
           disabled={isDisabled}
           required={props.required}
