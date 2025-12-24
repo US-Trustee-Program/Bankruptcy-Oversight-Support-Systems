@@ -1,6 +1,40 @@
 @use '../styles/theme';
 
 .case-detail, .record-detail {
+  // Override USWDS grid with flexbox for better responsive behavior
+  // Allow content to shrink fluidly on tablets, only stack on mobile phones
+  .grid-row {
+    display: flex;
+    flex-wrap: nowrap; // Don't wrap until mobile breakpoint
+    gap: 2rem; // Match grid-gap-lg
+
+    // Left navigation column
+    .grid-col-2 {
+      flex: 0 1 auto; // Allow it to shrink but not grow beyond max
+      min-width: 150px; // Minimum width
+      max-width: 225px; // Maximum width
+      width: 225px; // Preferred width
+    }
+
+    // Main content column
+    .grid-col-10 {
+      flex: 1 1 auto; // Allow it to grow and shrink
+      min-width: 0; // Critical: allows flex item to shrink below content width
+      width: auto;
+    }
+
+    // Mobile phones: stack the columns
+    @media screen and (max-width: 640px) {
+      flex-direction: column;
+
+      .grid-col-2,
+      .grid-col-10 {
+        width: 100%;
+        max-width: 100%;
+      }
+    }
+  }
+
   .record-detail-card-list {
     .record-detail-card {
       li.transfer {
