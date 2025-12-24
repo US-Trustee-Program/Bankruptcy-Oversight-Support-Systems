@@ -700,4 +700,23 @@ describe('DatePicker edge case coverage', () => {
     const errorElement = document.querySelector('.date-error');
     expect(errorElement?.textContent).toBe('');
   });
+
+  test('should have default max attribute to prevent year overflow', () => {
+    renderWithProps({ onChange: mockOnChange });
+
+    const inputEl = screen.getByTestId(DEFAULT_ID) as HTMLInputElement;
+
+    // Should have default max attribute when none provided
+    expect(inputEl).toHaveAttribute('max', '9999-12-31');
+  });
+
+  test('should respect custom maxDate over default max', () => {
+    const customMax = '2025-12-31';
+    renderWithProps({ maxDate: customMax, onChange: mockOnChange });
+
+    const inputEl = screen.getByTestId(DEFAULT_ID) as HTMLInputElement;
+
+    // Should use custom maxDate when provided
+    expect(inputEl).toHaveAttribute('max', customMax);
+  });
 });
