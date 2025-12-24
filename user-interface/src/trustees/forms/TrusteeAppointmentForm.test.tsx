@@ -287,7 +287,7 @@ describe('TrusteeAppointmentForm Tests', () => {
       );
     });
 
-    expect(navigateTo).toHaveBeenCalledWith(`/trustees/${TEST_TRUSTEE_ID}`);
+    expect(navigateTo).toHaveBeenCalledWith(`/trustees/${TEST_TRUSTEE_ID}/appointments`);
   });
 
   test('should show error alert when district is not selected on submit', async () => {

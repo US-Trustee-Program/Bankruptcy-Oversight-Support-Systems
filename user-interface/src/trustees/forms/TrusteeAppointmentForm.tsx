@@ -174,7 +174,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
 
     try {
       await Api2.postTrusteeAppointment(trusteeId, payload);
-      navigate.navigateTo(`/trustees/${trusteeId}`);
+      navigate.navigateTo(`/trustees/${trusteeId}/appointments`);
     } catch (e) {
       globalAlert?.error(`Failed to create appointment: ${(e as Error).message}`);
     } finally {
