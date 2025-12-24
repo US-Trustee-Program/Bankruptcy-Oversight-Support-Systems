@@ -688,3 +688,478 @@ describe('DateRangePicker additional coverage tests', () => {
     expect(endHint).toHaveTextContent(`Valid dates are between ${minDate} and ${maxDate}`);
   });
 });
+
+describe('DateRangePicker validation tests', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test('should display error when start date is after end date', async () => {
+    render(
+      <DateRangePicker
+        id="date-picker-validation"
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const startDateInput = screen.getByTestId('date-picker-validation-date-start');
+    const endDateInput = screen.getByTestId('date-picker-validation-date-end');
+
+    // Enter end date first
+    fireEvent.change(endDateInput, { target: { value: '2024-01-01' } });
+
+    // Enter start date that's after end date
+    fireEvent.change(startDateInput, { target: { value: '2024-12-31' } });
+
+    // Error should be displayed
+    await waitFor(() => {
+      const errorElement = screen.getByText('Start date cannot be after end date.');
+      expect(errorElement).toBeInTheDocument();
+    });
+  });
+
+  test('should validate date range on start date blur', async () => {
+    render(
+      <DateRangePicker
+        id="date-picker-blur-start"
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const startDateInput = screen.getByTestId('date-picker-blur-start-date-start');
+    const endDateInput = screen.getByTestId('date-picker-blur-start-date-end');
+
+    // Set end date first
+    fireEvent.change(endDateInput, { target: { value: '2024-01-01' } });
+
+    // Set start date to be after end date
+    fireEvent.change(startDateInput, { target: { value: '2024-12-31' } });
+
+    // Blur start date to trigger validation
+    fireEvent.blur(startDateInput);
+
+    // Error should be displayed
+    await waitFor(() => {
+      const errorElement = screen.getByText('Start date cannot be after end date.');
+      expect(errorElement).toBeInTheDocument();
+    });
+  });
+
+  test('should validate date range on end date blur', async () => {
+    render(
+      <DateRangePicker
+        id="date-picker-blur-end"
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const startDateInput = screen.getByTestId('date-picker-blur-end-date-start');
+    const endDateInput = screen.getByTestId('date-picker-blur-end-date-end');
+
+    // Set start date first
+    fireEvent.change(startDateInput, { target: { value: '2024-12-31' } });
+
+    // Set end date to be before start date
+    fireEvent.change(endDateInput, { target: { value: '2024-01-01' } });
+
+    // Blur end date to trigger validation
+    fireEvent.blur(endDateInput);
+
+    // Error should be displayed
+    await waitFor(() => {
+      const errorElement = screen.getByText('Start date cannot be after end date.');
+      expect(errorElement).toBeInTheDocument();
+    });
+  });
+
+  test('should clear errors when user changes start date', async () => {
+    render(
+      <DateRangePicker
+        id="date-picker-clear-error-start"
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const startDateInput = screen.getByTestId('date-picker-clear-error-start-date-start');
+    const endDateInput = screen.getByTestId('date-picker-clear-error-start-date-end');
+
+    // Create an error condition
+    fireEvent.change(endDateInput, { target: { value: '2024-01-01' } });
+    fireEvent.change(startDateInput, { target: { value: '2024-12-31' } });
+
+    // Error should be displayed
+    await waitFor(() => {
+      expect(screen.getByText('Start date cannot be after end date.')).toBeInTheDocument();
+    });
+
+    // Now change start date - error should clear
+    fireEvent.change(startDateInput, { target: { value: '2023-12-31' } });
+
+    await waitFor(() => {
+      expect(screen.queryByText('Start date cannot be after end date.')).not.toBeInTheDocument();
+    });
+  });
+
+  test('should clear errors when user changes end date', async () => {
+    render(
+      <DateRangePicker
+        id="date-picker-clear-error-end"
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const startDateInput = screen.getByTestId('date-picker-clear-error-end-date-start');
+    const endDateInput = screen.getByTestId('date-picker-clear-error-end-date-end');
+
+    // Create an error condition
+    fireEvent.change(startDateInput, { target: { value: '2024-12-31' } });
+    fireEvent.change(endDateInput, { target: { value: '2024-01-01' } });
+
+    // Error should be displayed
+    await waitFor(() => {
+      expect(screen.getByText('Start date cannot be after end date.')).toBeInTheDocument();
+    });
+
+    // Now change end date - error should clear
+    fireEvent.change(endDateInput, { target: { value: '2025-01-01' } });
+
+    await waitFor(() => {
+      expect(screen.queryByText('Start date cannot be after end date.')).not.toBeInTheDocument();
+    });
+  });
+
+  test('should not validate incomplete start dates', async () => {
+    render(
+      <DateRangePicker
+        id="date-picker-incomplete-start"
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const startDateInput = screen.getByTestId('date-picker-incomplete-start-date-start');
+    const endDateInput = screen.getByTestId('date-picker-incomplete-start-date-end');
+
+    // Set complete end date
+    fireEvent.change(endDateInput, { target: { value: '2024-01-01' } });
+
+    // Set incomplete start date (missing day)
+    fireEvent.change(startDateInput, { target: { value: '2024-12' } });
+
+    // No error should be displayed for incomplete date
+    await waitFor(() => {
+      expect(screen.queryByText('Start date cannot be after end date.')).not.toBeInTheDocument();
+    });
+  });
+
+  test('should not validate incomplete end dates', async () => {
+    render(
+      <DateRangePicker
+        id="date-picker-incomplete-end"
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const startDateInput = screen.getByTestId('date-picker-incomplete-end-date-start');
+    const endDateInput = screen.getByTestId('date-picker-incomplete-end-date-end');
+
+    // Set complete start date
+    fireEvent.change(startDateInput, { target: { value: '2024-12-31' } });
+
+    // Set incomplete end date (missing day)
+    fireEvent.change(endDateInput, { target: { value: '2024-01' } });
+
+    // No error should be displayed for incomplete date
+    await waitFor(() => {
+      expect(screen.queryByText('Start date cannot be after end date.')).not.toBeInTheDocument();
+    });
+  });
+
+  test('should not validate when either date is empty on blur', async () => {
+    render(
+      <DateRangePicker
+        id="date-picker-empty-blur"
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const startDateInput = screen.getByTestId('date-picker-empty-blur-date-start');
+    const endDateInput = screen.getByTestId('date-picker-empty-blur-date-end');
+
+    // Set only start date
+    fireEvent.change(startDateInput, { target: { value: '2024-12-31' } });
+
+    // Blur without setting end date
+    fireEvent.blur(startDateInput);
+
+    // No error should be displayed
+    await waitFor(() => {
+      expect(screen.queryByText('Start date cannot be after end date.')).not.toBeInTheDocument();
+    });
+
+    // Now set end date and blur
+    fireEvent.change(endDateInput, { target: { value: '2024-01-01' } });
+    fireEvent.blur(endDateInput);
+
+    // Now error should be displayed
+    await waitFor(() => {
+      expect(screen.getByText('Start date cannot be after end date.')).toBeInTheDocument();
+    });
+  });
+
+  test('should not show error for valid date range', async () => {
+    render(
+      <DateRangePicker
+        id="date-picker-valid-range"
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const startDateInput = screen.getByTestId('date-picker-valid-range-date-start');
+    const endDateInput = screen.getByTestId('date-picker-valid-range-date-end');
+
+    // Set valid date range (start before end)
+    fireEvent.change(startDateInput, { target: { value: '2024-01-01' } });
+    fireEvent.change(endDateInput, { target: { value: '2024-12-31' } });
+
+    // No error should be displayed
+    await waitFor(() => {
+      expect(screen.queryByText('Start date cannot be after end date.')).not.toBeInTheDocument();
+    });
+  });
+
+  test('should not show error for same start and end dates', async () => {
+    render(
+      <DateRangePicker
+        id="date-picker-same-dates"
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const startDateInput = screen.getByTestId('date-picker-same-dates-date-start');
+    const endDateInput = screen.getByTestId('date-picker-same-dates-date-end');
+
+    // Set same date for both
+    fireEvent.change(startDateInput, { target: { value: '2024-06-15' } });
+    fireEvent.change(endDateInput, { target: { value: '2024-06-15' } });
+
+    // No error should be displayed (same date is valid)
+    await waitFor(() => {
+      expect(screen.queryByText('Start date cannot be after end date.')).not.toBeInTheDocument();
+    });
+  });
+
+  test('should not validate invalid date formats', async () => {
+    render(
+      <DateRangePicker
+        id="date-picker-invalid-format"
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const startDateInput = screen.getByTestId('date-picker-invalid-format-date-start');
+    const endDateInput = screen.getByTestId('date-picker-invalid-format-date-end');
+
+    // Set invalid dates
+    fireEvent.change(startDateInput, { target: { value: 'invalid-date' } });
+    fireEvent.change(endDateInput, { target: { value: 'also-invalid' } });
+
+    // No error should be displayed for invalid formats
+    await waitFor(() => {
+      expect(screen.queryByText('Start date cannot be after end date.')).not.toBeInTheDocument();
+    });
+  });
+
+  test('should call onStartDateChange handler before validation', async () => {
+    const mockHandlerStart = vi.fn();
+    const mockHandlerEnd = vi.fn();
+
+    render(
+      <DateRangePicker
+        id="date-picker-handler-order"
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+        onStartDateChange={mockHandlerStart}
+        onEndDateChange={mockHandlerEnd}
+      />,
+    );
+
+    const startDateInput = screen.getByTestId('date-picker-handler-order-date-start');
+    const endDateInput = screen.getByTestId('date-picker-handler-order-date-end');
+
+    // Set end date
+    fireEvent.change(endDateInput, { target: { value: '2024-01-01' } });
+    expect(mockHandlerEnd).toHaveBeenCalledTimes(1);
+
+    // Set start date after end date
+    fireEvent.change(startDateInput, { target: { value: '2024-12-31' } });
+
+    // Handler should have been called
+    expect(mockHandlerStart).toHaveBeenCalledTimes(1);
+    expect(mockHandlerStart).toHaveBeenCalledWith(
+      expect.objectContaining({ target: expect.objectContaining({ value: '2024-12-31' }) }),
+    );
+  });
+
+  test('should call onEndDateChange handler before validation', async () => {
+    const mockHandlerStart = vi.fn();
+    const mockHandlerEnd = vi.fn();
+
+    render(
+      <DateRangePicker
+        id="date-picker-handler-order-end"
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+        onStartDateChange={mockHandlerStart}
+        onEndDateChange={mockHandlerEnd}
+      />,
+    );
+
+    const startDateInput = screen.getByTestId('date-picker-handler-order-end-date-start');
+    const endDateInput = screen.getByTestId('date-picker-handler-order-end-date-end');
+
+    // Set start date
+    fireEvent.change(startDateInput, { target: { value: '2024-12-31' } });
+    expect(mockHandlerStart).toHaveBeenCalledTimes(1);
+
+    // Set end date before start date
+    fireEvent.change(endDateInput, { target: { value: '2024-01-01' } });
+
+    // Handler should have been called
+    expect(mockHandlerEnd).toHaveBeenCalledTimes(1);
+    expect(mockHandlerEnd).toHaveBeenCalledWith(
+      expect.objectContaining({ target: expect.objectContaining({ value: '2024-01-01' }) }),
+    );
+  });
+
+  test('should clear both error states when start date changes', async () => {
+    render(
+      <DateRangePicker
+        id="date-picker-clear-both-start"
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const startDateInput = screen.getByTestId('date-picker-clear-both-start-date-start');
+    const endDateInput = screen.getByTestId('date-picker-clear-both-start-date-end');
+
+    // Create error condition
+    fireEvent.change(startDateInput, { target: { value: '2024-12-31' } });
+    fireEvent.change(endDateInput, { target: { value: '2024-01-01' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('Start date cannot be after end date.')).toBeInTheDocument();
+    });
+
+    // Change start date - should clear both error states
+    fireEvent.change(startDateInput, { target: { value: '2024-01' } });
+
+    await waitFor(() => {
+      expect(screen.queryByText('Start date cannot be after end date.')).not.toBeInTheDocument();
+    });
+  });
+
+  test('should clear both error states when end date changes', async () => {
+    render(
+      <DateRangePicker
+        id="date-picker-clear-both-end"
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const startDateInput = screen.getByTestId('date-picker-clear-both-end-date-start');
+    const endDateInput = screen.getByTestId('date-picker-clear-both-end-date-end');
+
+    // Create error condition
+    fireEvent.change(startDateInput, { target: { value: '2024-12-31' } });
+    fireEvent.change(endDateInput, { target: { value: '2024-01-01' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('Start date cannot be after end date.')).toBeInTheDocument();
+    });
+
+    // Change end date - should clear both error states
+    fireEvent.change(endDateInput, { target: { value: '2024-01' } });
+
+    await waitFor(() => {
+      expect(screen.queryByText('Start date cannot be after end date.')).not.toBeInTheDocument();
+    });
+  });
+
+  test('should clear errors when clearValue is called', async () => {
+    const ref = React.createRef<DateRangePickerRef>();
+
+    render(
+      <DateRangePicker
+        id="date-picker-clear-errors"
+        ref={ref}
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const startDateInput = screen.getByTestId('date-picker-clear-errors-date-start');
+    const endDateInput = screen.getByTestId('date-picker-clear-errors-date-end');
+
+    // Create error condition
+    fireEvent.change(startDateInput, { target: { value: '2024-12-31' } });
+    fireEvent.change(endDateInput, { target: { value: '2024-01-01' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('Start date cannot be after end date.')).toBeInTheDocument();
+    });
+
+    // Call clearValue
+    act(() => ref.current?.clearValue());
+
+    // Error should be cleared
+    await waitFor(() => {
+      expect(screen.queryByText('Start date cannot be after end date.')).not.toBeInTheDocument();
+    });
+  });
+
+  test('should clear errors when resetValue is called', async () => {
+    const ref = React.createRef<DateRangePickerRef>();
+
+    render(
+      <DateRangePicker
+        id="date-picker-reset-errors"
+        ref={ref}
+        value={{ start: '2024-01-01', end: '2024-12-31' }}
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const startDateInput = screen.getByTestId('date-picker-reset-errors-date-start');
+    const endDateInput = screen.getByTestId('date-picker-reset-errors-date-end');
+
+    // Change to create error condition
+    fireEvent.change(startDateInput, { target: { value: '2024-12-31' } });
+    fireEvent.change(endDateInput, { target: { value: '2024-01-01' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('Start date cannot be after end date.')).toBeInTheDocument();
+    });
+
+    // Call resetValue
+    act(() => ref.current?.resetValue());
+
+    // Error should be cleared
+    await waitFor(() => {
+      expect(screen.queryByText('Start date cannot be after end date.')).not.toBeInTheDocument();
+    });
+  });
+});
