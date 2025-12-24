@@ -681,11 +681,15 @@ describe('DateRangePicker additional coverage tests', () => {
 
     expect(startHint).toHaveTextContent('Enter the beginning date for the range');
     expect(startHint).toHaveTextContent('MM/DD/YYYY');
-    expect(startHint).toHaveTextContent(`Valid dates are between ${minDate} and ${maxDate}`);
+    expect(startHint).toHaveTextContent(
+      'Valid dates are between January 1, 2024 and December 31, 2024',
+    );
 
     expect(endHint).toHaveTextContent('Enter the ending date for the range');
     expect(endHint).toHaveTextContent('MM/DD/YYYY');
-    expect(endHint).toHaveTextContent(`Valid dates are between ${minDate} and ${maxDate}`);
+    expect(endHint).toHaveTextContent(
+      'Valid dates are between January 1, 2024 and December 31, 2024',
+    );
   });
 
   test('should pass futureDateWarningThresholdYears to child DatePickers', async () => {
@@ -1187,5 +1191,94 @@ describe('DateRangePicker validation tests', () => {
     await waitFor(() => {
       expect(screen.queryByText('Start date cannot be after end date.')).not.toBeInTheDocument();
     });
+  });
+
+  test('should not validate on blur when end date is empty', () => {
+    render(
+      <DateRangePicker
+        id="date-picker-blur-empty-end"
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const startDateInput = screen.getByTestId('date-picker-blur-empty-end-date-start');
+    const endDateInput = screen.getByTestId('date-picker-blur-empty-end-date-end');
+
+    // Fill start date
+    fireEvent.change(startDateInput, { target: { value: '2024-12-31' } });
+
+    // Blur end date while it's empty (should not validate)
+    fireEvent.blur(endDateInput);
+
+    // No error should appear
+    expect(screen.queryByText('Start date cannot be after end date.')).not.toBeInTheDocument();
+  });
+
+  test('should not validate on blur when start date is empty', () => {
+    render(
+      <DateRangePicker
+        id="date-picker-blur-empty-start"
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const endDateInput = screen.getByTestId('date-picker-blur-empty-start-date-end');
+
+    // Fill end date (start is empty)
+    fireEvent.change(endDateInput, { target: { value: '2024-01-01' } });
+
+    // Blur end date while start is empty (should not validate)
+    fireEvent.blur(endDateInput);
+
+    // No error should appear
+    expect(screen.queryByText('Start date cannot be after end date.')).not.toBeInTheDocument();
+  });
+
+  test('should execute debounced clearValue callback', () => {
+    vi.useFakeTimers();
+    const ref = React.createRef<DateRangePickerRef>();
+
+    render(
+      <DateRangePicker
+        id="date-picker-debounce-clear"
+        ref={ref}
+        value={{ start: '2024-01-01', end: '2024-12-31' }}
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+      />,
+    );
+
+    const startDateInput = screen.getByTestId(
+      'date-picker-debounce-clear-date-start',
+    ) as HTMLInputElement;
+    const endDateInput = screen.getByTestId(
+      'date-picker-debounce-clear-date-end',
+    ) as HTMLInputElement;
+
+    // Verify initial values
+    expect(startDateInput.value).toBe('2024-01-01');
+    expect(endDateInput.value).toBe('2024-12-31');
+
+    // Call clearValue
+    act(() => {
+      ref.current?.clearValue();
+    });
+
+    // Values should be cleared immediately
+    expect(startDateInput.value).toBe('');
+    expect(endDateInput.value).toBe('');
+
+    // Advance timers to execute debounced callback (250ms)
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+
+    // Debounced callback should have executed (values remain cleared)
+    expect(startDateInput.value).toBe('');
+    expect(endDateInput.value).toBe('');
+
+    vi.useRealTimers();
   });
 });

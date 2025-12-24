@@ -184,11 +184,15 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
   // Build accessible descriptions for date range constraints
   const getDateRangeDescription = () => {
     if (minDate && maxDate) {
-      return `Valid dates are between ${minDate} and ${maxDate}.`;
+      const formattedMin = formatDateForVoiceOver(minDate);
+      const formattedMax = formatDateForVoiceOver(maxDate);
+      return `Valid dates are between ${formattedMin} and ${formattedMax}.`;
     } else if (minDate) {
-      return `Valid dates are on or after ${minDate}.`;
+      const formattedMin = formatDateForVoiceOver(minDate);
+      return `Valid dates are on or after ${formattedMin}.`;
     } else if (maxDate) {
-      return `Valid dates are on or before ${maxDate}.`;
+      const formattedMax = formatDateForVoiceOver(maxDate);
+      return `Valid dates are on or before ${formattedMax}.`;
     }
     return '';
   };
