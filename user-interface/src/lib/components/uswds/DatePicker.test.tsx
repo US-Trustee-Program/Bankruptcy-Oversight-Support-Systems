@@ -496,14 +496,14 @@ describe('DatePicker edge case coverage', () => {
     expect(errorElement?.textContent).toBe('');
   });
 
-  test('should not show error for year before 1900', async () => {
+  test('should allow dates with years before 1900 when within minDate/maxDate range', async () => {
     const minDate = '1800-01-01';
     const maxDate = '2024-12-31';
     renderWithProps({ minDate, maxDate, onChange: mockOnChange });
 
     const inputEl = screen.getByTestId(DEFAULT_ID);
 
-    // Enter date with year before 1900
+    // Enter date with year before 1900 but within allowed range
     fireEvent.change(inputEl, { target: { value: '1850-06-15' } });
 
     // Wait for potential validation
@@ -511,27 +511,61 @@ describe('DatePicker edge case coverage', () => {
       await new Promise((resolve) => setTimeout(resolve, 600));
     });
 
-    // Error should not be shown for years outside 1900-2200 range
+    // No error should be shown - the arbitrary 1900-2200 restriction has been removed
     const errorElement = document.querySelector('.date-error');
     expect(errorElement?.textContent).toBe('');
   });
 
-  test('should not show error for year after 2200', async () => {
+  test('should show warning when futureDateWarningThresholdYears is configured', async () => {
     const minDate = '2024-01-01';
-    const maxDate = '2300-12-31';
-    renderWithProps({ minDate, maxDate, onChange: mockOnChange });
+    const maxDate = '9999-12-31';
+    renderWithProps({
+      minDate,
+      maxDate,
+      onChange: mockOnChange,
+      futureDateWarningThresholdYears: 100,
+    });
 
     const inputEl = screen.getByTestId(DEFAULT_ID);
 
-    // Enter date with year after 2200
+    // Enter date more than 100 years in the future (e.g., year 2250)
     fireEvent.change(inputEl, { target: { value: '2250-06-15' } });
 
-    // Wait for potential validation
+    // Wait for validation
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 600));
     });
 
-    // Error should not be shown for years outside 1900-2200 range
+    // Warning should be shown (not an error)
+    const warningElement = document.querySelector('.date-warning');
+    expect(warningElement).toBeInTheDocument();
+    expect(warningElement?.textContent).toContain('more than 100 years in the future');
+
+    // No error should be shown
+    const errorElement = document.querySelector('.date-error');
+    expect(errorElement?.textContent).toBe('');
+  });
+
+  test('should not show warning when futureDateWarningThresholdYears is not configured', async () => {
+    const minDate = '2024-01-01';
+    const maxDate = '9999-12-31';
+    renderWithProps({ minDate, maxDate, onChange: mockOnChange });
+
+    const inputEl = screen.getByTestId(DEFAULT_ID);
+
+    // Enter date more than 100 years in the future
+    fireEvent.change(inputEl, { target: { value: '2250-06-15' } });
+
+    // Wait for validation
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+
+    // No warning should be shown since prop is not configured
+    const warningElement = document.querySelector('.date-warning');
+    expect(warningElement).not.toBeInTheDocument();
+
+    // No error should be shown either (date is within min/max range)
     const errorElement = document.querySelector('.date-error');
     expect(errorElement?.textContent).toBe('');
   });
@@ -718,5 +752,107 @@ describe('DatePicker edge case coverage', () => {
 
     // Should use custom maxDate when provided
     expect(inputEl).toHaveAttribute('max', customMax);
+  });
+
+  test('should not show warning for dates exactly at threshold', async () => {
+    renderWithProps({ onChange: mockOnChange, futureDateWarningThresholdYears: 100 });
+
+    const inputEl = screen.getByTestId(DEFAULT_ID);
+
+    // Calculate exactly 100 years from now
+    const now = new Date();
+    const hundredYearsFromNow = new Date(now.getFullYear() + 100, now.getMonth(), now.getDate());
+    const dateString = hundredYearsFromNow.toISOString().split('T')[0];
+
+    fireEvent.change(inputEl, { target: { value: dateString } });
+
+    // Wait for validation
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+
+    // No warning should be shown for exactly at the threshold
+    const warningElement = document.querySelector('.date-warning');
+    expect(warningElement).not.toBeInTheDocument();
+  });
+
+  test('should not show warning when there is an error', async () => {
+    const minDate = '2024-01-01';
+    const maxDate = '2024-12-31';
+    renderWithProps({
+      minDate,
+      maxDate,
+      onChange: mockOnChange,
+      futureDateWarningThresholdYears: 100,
+    });
+
+    const inputEl = screen.getByTestId(DEFAULT_ID);
+
+    // Enter date that violates maxDate constraint (more than 100 years in future too)
+    fireEvent.change(inputEl, { target: { value: '2250-06-15' } });
+
+    // Wait for validation
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+
+    // Error should be shown (because it exceeds maxDate)
+    const errorElement = document.querySelector('.date-error');
+    expect(errorElement?.textContent).toContain('Date is not within allowed range');
+
+    // Warning should NOT be shown when there's an error
+    const warningElement = document.querySelector('.date-warning');
+    expect(warningElement).not.toBeInTheDocument();
+  });
+
+  test('should clear warning when date is changed to within threshold', async () => {
+    renderWithProps({ onChange: mockOnChange, futureDateWarningThresholdYears: 100 });
+
+    const inputEl = screen.getByTestId(DEFAULT_ID);
+
+    // First enter a date more than 100 years in the future
+    fireEvent.change(inputEl, { target: { value: '2250-06-15' } });
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+
+    // Warning should be shown
+    let warningElement = document.querySelector('.date-warning');
+    expect(warningElement).toBeInTheDocument();
+
+    // Now change to a date within 100 years
+    fireEvent.change(inputEl, { target: { value: '2025-06-15' } });
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+
+    // Warning should be cleared
+    warningElement = document.querySelector('.date-warning');
+    expect(warningElement).not.toBeInTheDocument();
+  });
+
+  test('should respect custom futureDateWarningThresholdYears values', async () => {
+    // Test with 50 years threshold
+    renderWithProps({ onChange: mockOnChange, futureDateWarningThresholdYears: 50 });
+
+    const inputEl = screen.getByTestId(DEFAULT_ID);
+
+    // Enter date 51 years in the future
+    const now = new Date();
+    const fiftyOnerearsFromNow = new Date(now.getFullYear() + 51, now.getMonth(), now.getDate());
+    const dateString = fiftyOnerearsFromNow.toISOString().split('T')[0];
+
+    fireEvent.change(inputEl, { target: { value: dateString } });
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+
+    // Warning should be shown with custom threshold
+    const warningElement = document.querySelector('.date-warning');
+    expect(warningElement).toBeInTheDocument();
+    expect(warningElement?.textContent).toContain('more than 50 years in the future');
   });
 });
