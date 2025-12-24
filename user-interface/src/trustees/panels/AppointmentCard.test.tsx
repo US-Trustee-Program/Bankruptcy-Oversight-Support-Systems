@@ -14,7 +14,7 @@ describe('AppointmentCard', () => {
     courtName: 'Southern District of New York',
     divisionCode: '081',
     status: 'active',
-    appointedDate: '01/15/2020',
+    appointedDate: '2020-01-15T00:00:00.000Z',
     effectiveDate: '2020-01-15T00:00:00.000Z',
     createdOn: '2020-01-10T14:30:00.000Z',
     createdBy: SYSTEM_USER_REFERENCE,
@@ -138,15 +138,15 @@ describe('AppointmentCard', () => {
     expect(screen.getByText(/Inactive 06\/01\/2018/i)).toBeInTheDocument();
   });
 
-  test('should display appointedDate as freeform text without formatting', () => {
-    const appointmentWithVariousDateFormats: TrusteeAppointment = {
+  test('should display appointedDate with standardized mm/dd/yyyy formatting', () => {
+    const appointmentWithDate: TrusteeAppointment = {
       ...mockAppointment,
-      appointedDate: 'Appointed sometime in 2020',
+      appointedDate: '2025-12-01T00:00:00.000Z',
     };
 
-    renderWithProps({ appointment: appointmentWithVariousDateFormats });
+    renderWithProps({ appointment: appointmentWithDate });
 
-    expect(screen.getByText('Appointed sometime in 2020')).toBeInTheDocument();
+    expect(screen.getByText('12/01/2025')).toBeInTheDocument();
   });
 
   test('should display "Court not found" when courtName is missing', () => {
