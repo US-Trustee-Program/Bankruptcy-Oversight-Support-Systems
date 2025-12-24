@@ -25,6 +25,7 @@ export type DatePickerProps = JSX.IntrinsicElements['input'] & {
   value?: string;
   required?: boolean;
   customErrorMessage?: string;
+  futureDateWarningThresholdYears?: number;
 };
 
 function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
@@ -36,6 +37,7 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
   const validationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [warningMessage, setWarningMessage] = useState<string>('');
 
   // Use custom error message from parent if provided
   const displayErrorMessage = props.customErrorMessage || errorMessage;
@@ -118,15 +120,17 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
       clearTimeout(validationTimeoutRef.current);
     }
 
-    // Clear errors if field is empty or incomplete
+    // Clear errors and warnings if field is empty or incomplete
     if (!rawValue) {
       setErrorMessage('');
+      setWarningMessage('');
       return;
     }
 
     const isCompleteDate = /^\d{4}-\d{2}-\d{2}$/.test(rawValue);
     if (!isCompleteDate) {
       setErrorMessage('');
+      setWarningMessage('');
       return;
     }
 
@@ -134,12 +138,7 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
 
     if (isInvalidDate(value)) {
       setErrorMessage('');
-      return;
-    }
-
-    const year = value.getFullYear();
-    if (year < 1900 || year > 2200) {
-      setErrorMessage('');
+      setWarningMessage('');
       return;
     }
 
@@ -165,6 +164,29 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
 
       if (!hasError) {
         setErrorMessage('');
+
+        // Check if date exceeds future date warning threshold (if configured)
+        if (props.futureDateWarningThresholdYears) {
+          const now = new Date();
+          const thresholdDate = new Date(
+            now.getFullYear() + props.futureDateWarningThresholdYears,
+            now.getMonth(),
+            now.getDate(),
+          );
+
+          if (value > thresholdDate) {
+            setWarningMessage(
+              `This date is more than ${props.futureDateWarningThresholdYears} years in the future. Please verify.`,
+            );
+          } else {
+            setWarningMessage('');
+          }
+        } else {
+          setWarningMessage('');
+        }
+      } else {
+        // Clear warning if there's an error
+        setWarningMessage('');
       }
     }, 500);
   }
@@ -236,6 +258,11 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
       <div id={`${id}-error`} className="date-error" aria-live="polite">
         {displayErrorMessage}
       </div>
+      {warningMessage && !displayErrorMessage && (
+        <div id={`${id}-warning`} className="date-warning" aria-live="polite">
+          {warningMessage}
+        </div>
+      )}
     </div>
   );
 }

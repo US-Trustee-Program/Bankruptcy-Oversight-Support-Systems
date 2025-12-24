@@ -613,6 +613,7 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
                         onStartDateChange={handleStartDateChange}
                         onEndDateChange={handleEndDateChange}
                         ref={dateRangeRef}
+                        futureDateWarningThresholdYears={100}
                       ></DateRangePicker>
                     </div>
                     <div className="in-docket-search form-field" data-testid="docket-number-search">
