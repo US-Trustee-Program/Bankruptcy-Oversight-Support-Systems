@@ -75,10 +75,13 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
 
   function clearValue() {
     setErrorMessage('');
+    setWarningMessage('');
     clearDateValue();
   }
 
   function resetValue() {
+    setErrorMessage('');
+    setWarningMessage('');
     if (props.value) {
       setDateValue(props.value);
     } else if (props.minDate) {
