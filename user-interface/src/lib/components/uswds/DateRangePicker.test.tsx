@@ -687,6 +687,32 @@ describe('DateRangePicker additional coverage tests', () => {
     expect(endHint).toHaveTextContent('MM/DD/YYYY');
     expect(endHint).toHaveTextContent(`Valid dates are between ${minDate} and ${maxDate}`);
   });
+
+  test('should pass futureDateWarningThresholdYears to child DatePickers', async () => {
+    render(
+      <DateRangePicker
+        id="test-date-range"
+        startDateLabel="Start Date"
+        endDateLabel="End Date"
+        futureDateWarningThresholdYears={100}
+      />,
+    );
+
+    const endDateInput = screen.getByTestId('test-date-range-date-end');
+
+    // Enter a date more than 100 years in the future
+    fireEvent.change(endDateInput, { target: { value: '2250-06-15' } });
+
+    // Wait for validation debounce
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+
+    // Warning should be displayed
+    const warningElement = document.querySelector('.date-warning');
+    expect(warningElement).toBeInTheDocument();
+    expect(warningElement?.textContent).toContain('more than 100 years in the future');
+  });
 });
 
 describe('DateRangePicker validation tests', () => {

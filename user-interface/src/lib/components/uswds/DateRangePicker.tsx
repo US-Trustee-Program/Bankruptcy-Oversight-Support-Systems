@@ -217,6 +217,7 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
         disabled={disabled}
         required={required}
         customErrorMessage={startDateError}
+        futureDateWarningThresholdYears={props.futureDateWarningThresholdYears}
       />
       <span id={`${id}-start-hint`} className="usa-hint" hidden>
         Enter the beginning date for the range. Use the format MM/DD/YYYY or select from the
@@ -239,6 +240,7 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
         disabled={disabled}
         required={required}
         customErrorMessage={endDateError}
+        futureDateWarningThresholdYears={props.futureDateWarningThresholdYears}
       />
       <span id={`${id}-end-hint`} className="usa-hint" hidden>
         Enter the ending date for the range. Use the format MM/DD/YYYY or select from the calendar.
