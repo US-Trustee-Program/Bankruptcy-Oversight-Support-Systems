@@ -960,4 +960,124 @@ describe('DatePicker edge case coverage', () => {
     errorElement = document.querySelector('.date-error');
     expect(errorElement?.textContent).toBe('');
   });
+
+  test('should clear warning message when clearValue() is called', async () => {
+    const ref = React.createRef<InputRef>();
+    const today = new Date();
+    const farFutureDate = new Date(today.getFullYear() + 150, today.getMonth(), today.getDate());
+    const farFutureDateString = farFutureDate.toISOString().split('T')[0];
+
+    render(
+      <DatePicker
+        id="test-clear-warning"
+        ref={ref}
+        futureDateWarningThresholdYears={100}
+        onChange={mockOnChange}
+      />,
+    );
+
+    const inputEl = screen.getByTestId('test-clear-warning');
+
+    // Enter a far future date to trigger warning
+    fireEvent.change(inputEl, { target: { value: farFutureDateString } });
+
+    // Wait for warning to appear
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+
+    let warningElement = document.querySelector('.date-warning');
+    expect(warningElement).toBeInTheDocument();
+    expect(warningElement?.textContent).toContain('more than 100 years in the future');
+
+    // Call clearValue
+    act(() => ref.current?.clearValue());
+
+    // Warning should be cleared (element removed from DOM)
+    await waitFor(() => {
+      warningElement = document.querySelector('.date-warning');
+      expect(warningElement).toBeNull();
+    });
+  });
+
+  test('should clear warning message when resetValue() is called', async () => {
+    const ref = React.createRef<InputRef>();
+    const today = new Date();
+    const farFutureDate = new Date(today.getFullYear() + 150, today.getMonth(), today.getDate());
+    const farFutureDateString = farFutureDate.toISOString().split('T')[0];
+
+    render(
+      <DatePicker
+        id="test-reset-warning"
+        ref={ref}
+        value="2024-01-01"
+        futureDateWarningThresholdYears={100}
+        onChange={mockOnChange}
+      />,
+    );
+
+    const inputEl = screen.getByTestId('test-reset-warning');
+
+    // Enter a far future date to trigger warning
+    fireEvent.change(inputEl, { target: { value: farFutureDateString } });
+
+    // Wait for warning to appear
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+
+    let warningElement = document.querySelector('.date-warning');
+    expect(warningElement).toBeInTheDocument();
+    expect(warningElement?.textContent).toContain('more than 100 years in the future');
+
+    // Call resetValue
+    act(() => ref.current?.resetValue());
+
+    // Warning should be cleared (element removed from DOM) and value should be reset
+    await waitFor(() => {
+      warningElement = document.querySelector('.date-warning');
+      expect(warningElement).toBeNull();
+      expect(inputEl).toHaveValue('2024-01-01');
+    });
+  });
+
+  test('should clear error message when resetValue() is called', async () => {
+    const ref = React.createRef<InputRef>();
+    const minDate = '2024-01-01';
+    const maxDate = '2024-12-31';
+
+    render(
+      <DatePicker
+        id="test-reset-error"
+        ref={ref}
+        value="2024-06-15"
+        minDate={minDate}
+        maxDate={maxDate}
+        onChange={mockOnChange}
+      />,
+    );
+
+    const inputEl = screen.getByTestId('test-reset-error');
+
+    // Enter date out of range to trigger error
+    fireEvent.change(inputEl, { target: { value: '2025-12-31' } });
+
+    // Wait for error to appear
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+
+    let errorElement = document.querySelector('.date-error');
+    expect(errorElement?.textContent).toContain('Date is not within allowed range');
+
+    // Call resetValue
+    act(() => ref.current?.resetValue());
+
+    // Error should be cleared and value should be reset
+    await waitFor(() => {
+      errorElement = document.querySelector('.date-error');
+      expect(errorElement?.textContent).toBe('');
+      expect(inputEl).toHaveValue('2024-06-15');
+    });
+  });
 });
