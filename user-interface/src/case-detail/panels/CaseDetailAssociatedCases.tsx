@@ -6,7 +6,12 @@ import { consolidationTypeMap } from '@/lib/utils/labels';
 import './CaseDetailAssociatedCases.scss';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { CaseDetail, getCaseConsolidationType } from '@common/cams/cases';
+import {
+  CaseDetail,
+  getCaseConsolidationType,
+  getLeadCaseLabel,
+  getMemberCaseLabel,
+} from '@common/cams/cases';
 import { LeadCaseIcon, MemberCaseIcon } from '@/lib/components/cams/RawSvgIcon';
 
 interface CaseDetailAssociatedCasesProps {
@@ -133,14 +138,10 @@ export default function CaseDetailAssociatedCases(props: CaseDetailAssociatedCas
                         <tr key={idx}>
                           <td className="case-number-column">
                             {bCase.documentType === 'CONSOLIDATION_TO' && (
-                              <LeadCaseIcon
-                                title={`Lead case in ${consolidationType.toLocaleLowerCase()}`}
-                              />
+                              <LeadCaseIcon title={getLeadCaseLabel(consolidationType)} />
                             )}
                             {bCase.documentType === 'CONSOLIDATION_FROM' && (
-                              <MemberCaseIcon
-                                title={`Member case in ${consolidationType.toLocaleLowerCase()}`}
-                              />
+                              <MemberCaseIcon title={getMemberCaseLabel(consolidationType)} />
                             )}
                             <CaseNumber caseId={bCase.otherCase.caseId} />
                             <span> ({bCase.otherCase.courtDivisionName})</span>

@@ -1,7 +1,10 @@
 import {
   CaseDetail,
   DxtrCase,
+  getCaseConsolidationType,
   getCaseIdParts,
+  getLeadCaseLabel,
+  getMemberCaseLabel,
   isCaseClosed,
   isCaseOpen,
   isChildCase,
@@ -9,6 +12,7 @@ import {
   isTransferredCase,
 } from './cases';
 import MockData from './test-utilities/mock-data';
+import { ConsolidationType } from './orders';
 
 describe('cases common functions tests', () => {
   test('should return true for re-closed case', () => {
@@ -103,6 +107,82 @@ describe('cases common functions tests', () => {
         expect(isTransferredCase(bCase)).toBe(transferredResult);
       },
     );
+
+    describe('getCaseConsolidationType', () => {
+      const consolidationTypeMap = new Map<ConsolidationType, string>([
+        ['administrative', 'Joint Administration'],
+        ['substantive', 'Substantive Consolidation'],
+      ]);
+
+      test('should return consolidation type for administrative consolidation', () => {
+        const consolidation = [
+          MockData.getConsolidationReference({
+            override: { consolidationType: 'administrative' },
+          }),
+        ];
+        expect(getCaseConsolidationType(consolidation, consolidationTypeMap)).toBe(
+          'Joint Administration',
+        );
+      });
+
+      test('should return consolidation type for substantive consolidation', () => {
+        const consolidation = [
+          MockData.getConsolidationReference({
+            override: { consolidationType: 'substantive' },
+          }),
+        ];
+        expect(getCaseConsolidationType(consolidation, consolidationTypeMap)).toBe(
+          'Substantive Consolidation',
+        );
+      });
+
+      test('should return empty string for empty consolidation array', () => {
+        expect(getCaseConsolidationType([], consolidationTypeMap)).toBe('');
+      });
+
+      test('should return empty string for unknown consolidation type', () => {
+        const consolidation = [
+          MockData.getConsolidationReference({
+            override: { consolidationType: 'unknown' as ConsolidationType },
+          }),
+        ];
+        expect(getCaseConsolidationType(consolidation, consolidationTypeMap)).toBe('');
+      });
+    });
+
+    describe('getLeadCaseLabel', () => {
+      test('should return lead case label with consolidation type', () => {
+        expect(getLeadCaseLabel('Joint Administration')).toBe('Lead case in joint administration');
+      });
+
+      test('should return lead case label with substantive consolidation', () => {
+        expect(getLeadCaseLabel('Substantive Consolidation')).toBe(
+          'Lead case in substantive consolidation',
+        );
+      });
+
+      test('should return just "Lead case" when consolidation type is empty', () => {
+        expect(getLeadCaseLabel('')).toBe('Lead case');
+      });
+    });
+
+    describe('getMemberCaseLabel', () => {
+      test('should return member case label with consolidation type', () => {
+        expect(getMemberCaseLabel('Joint Administration')).toBe(
+          'Member case in joint administration',
+        );
+      });
+
+      test('should return member case label with substantive consolidation', () => {
+        expect(getMemberCaseLabel('Substantive Consolidation')).toBe(
+          'Member case in substantive consolidation',
+        );
+      });
+
+      test('should return just "Member case" when consolidation type is empty', () => {
+        expect(getMemberCaseLabel('')).toBe('Member case');
+      });
+    });
   });
 
   describe('DxtrCase type', () => {
