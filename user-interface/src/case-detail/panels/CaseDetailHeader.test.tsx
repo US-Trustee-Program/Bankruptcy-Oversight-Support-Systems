@@ -217,6 +217,66 @@ describe('feature flag true', () => {
     const transferIcon = screen.getByTestId('transfer-icon');
     expect(transferIcon).toBeInTheDocument();
   });
+
+  test('should display tooltip for lead case icon with consolidation type', () => {
+    const leadCaseDetail = MockData.getCaseDetail({
+      override: {
+        petitionLabel: 'Voluntary',
+        consolidation: [
+          MockData.getConsolidationReference({
+            override: { documentType: 'CONSOLIDATION_FROM', consolidationType: 'administrative' },
+          }),
+        ],
+      },
+    });
+
+    basicRender(leadCaseDetail, false);
+
+    const leadIcon = screen.getByTestId('lead-case-icon');
+    const titleElement = leadIcon.querySelector('title');
+    expect(titleElement).toHaveTextContent('Lead case in joint administration');
+  });
+
+  test('should display tooltip for member case icon with consolidation type', () => {
+    const childCaseDetail = MockData.getCaseDetail({
+      override: {
+        petitionLabel: 'Voluntary',
+        consolidation: [
+          MockData.getConsolidationReference({
+            override: { documentType: 'CONSOLIDATION_TO', consolidationType: 'substantive' },
+          }),
+        ],
+      },
+    });
+
+    basicRender(childCaseDetail, false);
+
+    const memberIcon = screen.getByTestId('member-case-icon');
+    const titleElement = memberIcon.querySelector('title');
+    expect(titleElement).toHaveTextContent('Member case in substantive consolidation');
+  });
+
+  test('should display tooltip for transferred case icon', () => {
+    const transferredCaseDetail = MockData.getCaseDetail({
+      override: {
+        petitionLabel: 'Voluntary',
+        transfers: [
+          {
+            documentType: 'TRANSFER_FROM',
+            caseId: '081-23-12345',
+            orderDate: '2024-01-15',
+            otherCase: MockData.getCaseSummary(),
+          },
+        ],
+      },
+    });
+
+    basicRender(transferredCaseDetail, false);
+
+    const transferIcon = screen.getByTestId('transfer-icon');
+    const titleElement = transferIcon.querySelector('title');
+    expect(titleElement).toHaveTextContent('Transferred case');
+  });
 });
 
 describe('feature flag false', () => {

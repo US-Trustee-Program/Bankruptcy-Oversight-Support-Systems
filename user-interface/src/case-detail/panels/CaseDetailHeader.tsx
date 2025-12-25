@@ -1,11 +1,18 @@
 import './CaseDetailHeader.scss';
 import { useEffect } from 'react';
 import useFixedPosition from '@/lib/hooks/UseFixedPosition';
-import { CaseDetail, isChildCase, isLeadCase, isTransferredCase } from '@common/cams/cases';
+import {
+  CaseDetail,
+  getCaseConsolidationType,
+  isChildCase,
+  isLeadCase,
+  isTransferredCase,
+} from '@common/cams/cases';
 import { copyCaseNumber, getCaseNumber } from '@/lib/utils/caseNumber';
 import CopyButton from '@/lib/components/cams/CopyButton';
 import useFeatureFlags, { VIEW_TRUSTEE_ON_CASE } from '@/lib/hooks/UseFeatureFlags';
 import Tag, { UswdsTagStyle } from '@/lib/components/uswds/Tag';
+import { consolidationTypeMap } from '@/lib/utils/labels';
 import {
   GavelIcon,
   LeadCaseIcon,
@@ -22,7 +29,9 @@ export interface CaseDetailHeaderProps {
 export default function CaseDetailHeader(props: Readonly<CaseDetailHeaderProps>) {
   const { isFixed, fix, loosen } = useFixedPosition();
   const courtInformation = `${props.caseDetail?.courtName} (${props.caseDetail?.courtDivisionName})`;
-
+  const consolidationType = props.caseDetail
+    ? getCaseConsolidationType(props.caseDetail, consolidationTypeMap)
+    : '';
   const chapterInformationParts = [];
   if (props.caseDetail?.petitionLabel) {
     chapterInformationParts.push(props.caseDetail?.petitionLabel);
@@ -85,9 +94,17 @@ export default function CaseDetailHeader(props: Readonly<CaseDetailHeaderProps>)
               )}
               {!props.isLoading && props.caseDetail && (
                 <div className="display-flex flex-align-center">
-                  {isLeadCase(props.caseDetail) && <LeadCaseIcon />}
-                  {isChildCase(props.caseDetail) && <MemberCaseIcon />}
-                  {isTransferredCase(props.caseDetail) && <TransferredCaseIcon />}
+                  {isLeadCase(props.caseDetail) && (
+                    <LeadCaseIcon title={`Lead case in ${consolidationType.toLocaleLowerCase()}`} />
+                  )}
+                  {isChildCase(props.caseDetail) && (
+                    <MemberCaseIcon
+                      title={`Member case in ${consolidationType.toLocaleLowerCase()}`}
+                    />
+                  )}
+                  {isTransferredCase(props.caseDetail) && (
+                    <TransferredCaseIcon title="Transferred case" />
+                  )}
                   <h1
                     className="case-number text-no-wrap display-inline-block margin-right-1"
                     title="Case ID"
