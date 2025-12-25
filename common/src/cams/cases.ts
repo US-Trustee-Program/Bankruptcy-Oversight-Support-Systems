@@ -144,23 +144,21 @@ export function isTransferredCase(bCase: CaseDetail) {
   return documentType === 'TRANSFER_FROM' || documentType === 'TRANSFER_TO';
 }
 
-/**
- * Gets the human-readable consolidation type label for a case or consolidation array
- * @param consolidationOrCase - Either a CaseDetail or an array of Consolidation references
- * @param consolidationTypeMap - Map of ConsolidationType to human-readable labels
- * @returns The consolidation type label (e.g., "Joint Administration") or empty string if none
- */
 export function getCaseConsolidationType(
-  consolidationOrCase: CaseDetail | Consolidation[],
+  consolidation: Consolidation[],
   consolidationTypeMap: Map<ConsolidationType, string>,
 ): string {
-  const consolidation = Array.isArray(consolidationOrCase)
-    ? consolidationOrCase
-    : consolidationOrCase.consolidation;
+  return consolidationTypeMap.get(consolidation[0]?.consolidationType) ?? '';
+}
 
-  return (
-    (consolidation.length ? consolidationTypeMap.get(consolidation[0].consolidationType) : '') ?? ''
-  );
+export function getLeadCaseLabel(consolidationType: string): string {
+  return consolidationType ? `Lead case in ${consolidationType.toLocaleLowerCase()}` : 'Lead case';
+}
+
+export function getMemberCaseLabel(consolidationType: string): string {
+  return consolidationType
+    ? `Member case in ${consolidationType.toLocaleLowerCase()}`
+    : 'Member case';
 }
 
 export function getCaseIdParts(caseId: string) {

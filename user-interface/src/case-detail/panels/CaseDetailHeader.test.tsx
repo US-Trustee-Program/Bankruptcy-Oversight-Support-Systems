@@ -277,6 +277,44 @@ describe('feature flag true', () => {
     const titleElement = transferIcon.querySelector('title');
     expect(titleElement).toHaveTextContent('Transferred case');
   });
+
+  test('should display tooltip for lead case icon without consolidation type when empty', () => {
+    const leadCaseDetail = MockData.getCaseDetail({
+      override: {
+        petitionLabel: 'Voluntary',
+        consolidation: [
+          MockData.getConsolidationReference({
+            override: { documentType: 'CONSOLIDATION_FROM', consolidationType: undefined },
+          }),
+        ],
+      },
+    });
+
+    basicRender(leadCaseDetail, false);
+
+    const leadIcon = screen.getByTestId('lead-case-icon');
+    const titleElement = leadIcon.querySelector('title');
+    expect(titleElement).toHaveTextContent('Lead case');
+  });
+
+  test('should display tooltip for member case icon without consolidation type when empty', () => {
+    const childCaseDetail = MockData.getCaseDetail({
+      override: {
+        petitionLabel: 'Voluntary',
+        consolidation: [
+          MockData.getConsolidationReference({
+            override: { documentType: 'CONSOLIDATION_TO', consolidationType: undefined },
+          }),
+        ],
+      },
+    });
+
+    basicRender(childCaseDetail, false);
+
+    const memberIcon = screen.getByTestId('member-case-icon');
+    const titleElement = memberIcon.querySelector('title');
+    expect(titleElement).toHaveTextContent('Member case');
+  });
 });
 
 describe('feature flag false', () => {

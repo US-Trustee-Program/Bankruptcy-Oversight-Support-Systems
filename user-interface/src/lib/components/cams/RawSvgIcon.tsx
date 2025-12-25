@@ -19,7 +19,7 @@ export function GavelIcon() {
   );
 }
 
-export function LeadCaseIcon({ title }: { title?: string }) {
+export function LeadCaseIcon({ title }: { title: string }) {
   return (
     <svg
       className="raw-svg-icon lead-case-icon"
@@ -29,7 +29,7 @@ export function LeadCaseIcon({ title }: { title?: string }) {
       viewBox="0 0 22 28"
       xmlns="http://www.w3.org/2000/svg"
     >
-      {title && <title>{title}</title>}
+      <title>{title}</title>
       <path d="M0 25.5V2C0 0.89543 0.895431 0 2 0H15.125L22 6.875V25.5C22 26.6046 21.1046 27.5 20 27.5H2C0.895431 27.5 0 26.6046 0 25.5Z" />
       <path d="M16.5 17.875V22H8.25V17.875H12.1999H16.5ZM9.625 5.5V22H5.5V5.5H9.625Z" />
       <path d="M15.125 5.875V1.375L20.625 6.875H16.125C15.5727 6.875 15.125 6.42728 15.125 5.875Z" />
@@ -37,7 +37,7 @@ export function LeadCaseIcon({ title }: { title?: string }) {
   );
 }
 
-export function MemberCaseIcon({ title }: { title?: string }) {
+export function MemberCaseIcon({ title }: { title: string }) {
   return (
     <svg
       className="raw-svg-icon member-case-icon"
@@ -48,14 +48,14 @@ export function MemberCaseIcon({ title }: { title?: string }) {
       fill="currentColor"
       xmlns="http://www.w3.org/2000/svg"
     >
-      {title && <title>{title}</title>}
+      <title>{title}</title>
       <path d="M0 25.5V2C0 0.89543 0.895431 0 2 0H15.125L22 6.875V25.5C22 26.6046 21.1046 27.5 20 27.5H2C0.895431 27.5 0 26.6046 0 25.5Z" />
       <path d="M15.125 5.875V1.375L20.625 6.875H16.125C15.5727 6.875 15.125 6.42728 15.125 5.875Z" />
     </svg>
   );
 }
 
-export function TransferredCaseIcon({ title }: { title?: string }) {
+export function TransferredCaseIcon({ title }: { title: string }) {
   return (
     <svg
       className="raw-svg-icon transfer-icon"
@@ -66,7 +66,7 @@ export function TransferredCaseIcon({ title }: { title?: string }) {
       viewBox="0 0 22 28"
       fill="currentColor"
     >
-      {title && <title>{title}</title>}
+      <title>{title}</title>
       <path
         d="M0 25.5V2C0 0.89543 0.895431 0 2 0H15.125L22 6.875V25.5C22 26.6046 21.1046 27.5 20 27.5H2C0.895431 27.5 0 26.6046 0 25.5Z"
         fill="#005EA2"
