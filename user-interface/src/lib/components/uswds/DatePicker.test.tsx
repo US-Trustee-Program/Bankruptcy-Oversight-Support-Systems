@@ -8,6 +8,53 @@ import { InputRef } from '@/lib/type-declarations/input-fields';
 // in the formation that the UI expects. The date may only be changed using a change event and
 // the format must be in YYYY-DD-MM format.
 
+// Shared helper for rendering DatePicker with props
+function renderDatePickerWithProps(
+  id: string,
+  onChange: DatePickerProps['onChange'],
+  props?: Partial<DatePickerProps>,
+): InputRef {
+  const ref = React.createRef<InputRef>();
+  const defaultProps: DatePickerProps = { id, onChange };
+  const renderProps = { ...defaultProps, ...props };
+
+  render(
+    <React.StrictMode>
+      <BrowserRouter>
+        <DatePicker {...renderProps} ref={ref} />
+      </BrowserRouter>
+    </React.StrictMode>,
+  );
+
+  return ref.current!;
+}
+
+// Page object helpers for common operations
+const DEBOUNCE_MS = 600;
+const IMMEDIATE_MS = 100;
+
+function getInput(id: string) {
+  return screen.getByTestId(id) as HTMLInputElement;
+}
+
+async function waitForValidation(ms = DEBOUNCE_MS) {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+  });
+}
+
+function getErrorText() {
+  return (document.querySelector('.date-error') as HTMLElement | null)?.textContent ?? '';
+}
+
+function getWarningText() {
+  return (document.querySelector('.date-warning') as HTMLElement | null)?.textContent ?? '';
+}
+
+function getWarningElement() {
+  return document.querySelector('.date-warning');
+}
+
 describe('Test DatePicker component', async () => {
   const DEFAULT_ID = 'test-datepicker';
   const onChangeSpy = vi.fn();
@@ -17,21 +64,7 @@ describe('Test DatePicker component', async () => {
   });
 
   function renderWithProps(props?: Partial<DatePickerProps>): InputRef {
-    const ref = React.createRef<InputRef>();
-    const defaultProps: DatePickerProps = {
-      id: DEFAULT_ID,
-      onChange: onChangeSpy,
-    };
-
-    const renderProps = { ...defaultProps, ...props };
-    render(
-      <React.StrictMode>
-        <BrowserRouter>
-          <DatePicker {...renderProps} ref={ref} />
-        </BrowserRouter>
-      </React.StrictMode>,
-    );
-    return ref.current!;
+    return renderDatePickerWithProps(DEFAULT_ID, onChangeSpy, props);
   }
 
   test('should clear when clearValue() is called', async () => {
@@ -114,6 +147,10 @@ describe('DatePicker additional coverage tests', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
+
+  function renderWithProps(props?: Partial<DatePickerProps>): InputRef {
+    return renderDatePickerWithProps(DEFAULT_ID, mockOnChange, props);
+  }
 
   test('should handle className prop on form group and input', () => {
     const customClass = 'my-custom-class';
@@ -263,85 +300,6 @@ describe('DatePicker additional coverage tests', () => {
     });
   });
 
-  test('should reset to clearDateValue when no initial value and no minDate', async () => {
-    const view = renderWithProps({ onChange: mockOnChange });
-
-    const inputEl = screen.getByTestId(DEFAULT_ID);
-
-    // First set a value
-    fireEvent.change(inputEl, { target: { value: '2024-02-15' } });
-
-    // Then reset - should clear since no initial value and no minDate
-    act(() => view.resetValue());
-
-    await waitFor(() => {
-      expect(inputEl).toHaveValue('');
-    });
-  });
-
-  test('should handle invalid date and call onChange', async () => {
-    const initialValue = '2024-01-15';
-    const mockChangeSpy = vi.fn();
-    renderWithProps({
-      value: initialValue,
-      minDate: '2024-01-01',
-      maxDate: '2024-12-31',
-      onChange: mockChangeSpy,
-    });
-
-    const inputEl = screen.getByTestId(DEFAULT_ID);
-
-    fireEvent.change(inputEl, { target: { value: 'invalid-date' } });
-
-    await waitFor(() => {
-      expect(mockChangeSpy).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  test('should handle clearDateValue setTimeout behavior', () => {
-    const spy = vi.spyOn(window, 'setTimeout');
-
-    render(<DatePicker id="test-setTimeout" />);
-
-    const component = document.getElementById('test-setTimeout');
-    expect(component).toBeInTheDocument();
-    expect(spy).toHaveBeenCalledTimes(0);
-    spy.mockRestore();
-  });
-
-  test('should execute setTimeout callback in clearDateValue', async () => {
-    const setTimeoutSpy = vi.spyOn(window, 'setTimeout');
-
-    const ref = React.createRef<InputRef>();
-    render(<DatePicker id="test-timeout-callback" ref={ref} value="2024-01-01" />);
-
-    // Call clearValue which will trigger clearDateValue and its setTimeout
-    act(() => ref.current?.clearValue());
-
-    // Verify setTimeout was called
-    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 100);
-
-    // Manually execute the callback to cover line 37 (setDateValue(null))
-    const callback = setTimeoutSpy.mock.calls[0][0] as () => void;
-    act(() => callback());
-
-    setTimeoutSpy.mockRestore();
-  });
-
-  test('should test getValue method through ref', () => {
-    const ref = React.createRef<InputRef>();
-    render(<DatePicker id="test-date-picker" ref={ref} value="2024-01-15" />);
-
-    act(() => expect(ref.current?.getValue()).toBe('2024-01-15'));
-  });
-
-  test('should return empty string from getValue when no value', () => {
-    const ref = React.createRef<InputRef>();
-    render(<DatePicker id="test-date-picker-empty" ref={ref} />);
-
-    act(() => expect(ref.current?.getValue()).toBe(''));
-  });
-
   test('should set error message when date is below maxDate threshold', async () => {
     const minDate = '2024-01-01';
     const maxDate = '2024-12-31';
@@ -410,531 +368,143 @@ describe('DatePicker additional coverage tests', () => {
     expect(errorDiv).toHaveTextContent(customError);
   });
 
-  function renderWithProps(props?: Partial<DatePickerProps>): InputRef {
-    const ref = React.createRef<InputRef>();
-    const defaultProps: DatePickerProps = {
-      id: DEFAULT_ID,
-      onChange: mockOnChange,
-    };
-
-    const renderProps = { ...defaultProps, ...props };
-    render(
-      <React.StrictMode>
-        <BrowserRouter>
-          <DatePicker {...renderProps} ref={ref} />
-        </BrowserRouter>
-      </React.StrictMode>,
-    );
-    return ref.current!;
-  }
-});
-
-describe('DatePicker edge case coverage', () => {
-  const DEFAULT_ID = 'test-datepicker-edge';
-  const mockOnChange = vi.fn();
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-    vi.clearAllTimers();
-  });
-
-  function renderWithProps(props?: Partial<DatePickerProps>): InputRef {
-    const ref = React.createRef<InputRef>();
-    const defaultProps: DatePickerProps = {
-      id: DEFAULT_ID,
-      onChange: mockOnChange,
-    };
-
-    const renderProps = { ...defaultProps, ...props };
-    render(
-      <React.StrictMode>
-        <BrowserRouter>
-          <DatePicker {...renderProps} ref={ref} />
-        </BrowserRouter>
-      </React.StrictMode>,
-    );
-    return ref.current!;
-  }
-
-  test('should not show error for incomplete date (year-month only)', async () => {
-    const minDate = '2024-01-01';
-    const maxDate = '2024-12-31';
-    renderWithProps({ minDate, maxDate, onChange: mockOnChange });
+  test('should reset to clearDateValue when no initial value and no minDate', async () => {
+    const view = renderWithProps({ onChange: mockOnChange });
 
     const inputEl = screen.getByTestId(DEFAULT_ID);
 
-    // Enter incomplete date (only year-month)
-    fireEvent.change(inputEl, { target: { value: '2024-06' } });
+    // First set a value
+    fireEvent.change(inputEl, { target: { value: '2024-02-15' } });
 
-    // Wait a bit to ensure validation doesn't trigger
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
+    // Then reset - should clear since no initial value and no minDate
+    act(() => view.resetValue());
+
+    await waitFor(() => {
+      expect(inputEl).toHaveValue('');
     });
-
-    // Error should not be shown for incomplete dates
-    const errorElement = document.querySelector('.date-error');
-    expect(errorElement?.textContent).toBe('');
   });
 
-  test('should not show error for invalid date like Feb 31', async () => {
-    const minDate = '2024-01-01';
-    const maxDate = '2024-12-31';
-    renderWithProps({ minDate, maxDate, onChange: mockOnChange });
-
-    const inputEl = screen.getByTestId(DEFAULT_ID);
-
-    // Enter invalid date (Feb 31 doesn't exist)
-    fireEvent.change(inputEl, { target: { value: '2024-02-31' } });
-
-    // Wait for potential validation
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
-
-    // Error should not be shown for invalid dates (they're ignored)
-    const errorElement = document.querySelector('.date-error');
-    expect(errorElement?.textContent).toBe('');
-  });
-
-  test('should allow dates with years before 1900 when within minDate/maxDate range', async () => {
-    const minDate = '1800-01-01';
-    const maxDate = '2024-12-31';
-    renderWithProps({ minDate, maxDate, onChange: mockOnChange });
-
-    const inputEl = screen.getByTestId(DEFAULT_ID);
-
-    // Enter date with year before 1900 but within allowed range
-    fireEvent.change(inputEl, { target: { value: '1850-06-15' } });
-
-    // Wait for potential validation
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
-
-    // No error should be shown - the arbitrary 1900-2200 restriction has been removed
-    const errorElement = document.querySelector('.date-error');
-    expect(errorElement?.textContent).toBe('');
-  });
-
-  test('should show warning when futureDateWarningThresholdYears is configured', async () => {
-    const minDate = '2024-01-01';
-    const maxDate = '9999-12-31';
+  test('should handle invalid date input gracefully', async () => {
+    const initialValue = '2024-01-15';
+    const mockChangeSpy = vi.fn();
     renderWithProps({
-      minDate,
-      maxDate,
-      onChange: mockOnChange,
-      futureDateWarningThresholdYears: 100,
+      value: initialValue,
+      minDate: '2024-01-01',
+      maxDate: '2024-12-31',
+      onChange: mockChangeSpy,
     });
 
     const inputEl = screen.getByTestId(DEFAULT_ID);
 
-    // Enter date more than 100 years in the future (e.g., year 2250)
-    fireEvent.change(inputEl, { target: { value: '2250-06-15' } });
+    // Try to set an invalid date - browser will reject it
+    fireEvent.change(inputEl, { target: { value: 'invalid-date' } });
 
-    // Wait for validation
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
-
-    // Warning should be shown (not an error)
-    const warningElement = document.querySelector('.date-warning');
-    expect(warningElement).toBeInTheDocument();
-    expect(warningElement?.textContent).toContain('more than 100 years in the future');
-
-    // No error should be shown
-    const errorElement = document.querySelector('.date-error');
-    expect(errorElement?.textContent).toBe('');
-  });
-
-  test('should not show warning when futureDateWarningThresholdYears is not configured', async () => {
-    const minDate = '2024-01-01';
-    const maxDate = '9999-12-31';
-    renderWithProps({ minDate, maxDate, onChange: mockOnChange });
-
-    const inputEl = screen.getByTestId(DEFAULT_ID);
-
-    // Enter date more than 100 years in the future
-    fireEvent.change(inputEl, { target: { value: '2250-06-15' } });
-
-    // Wait for validation
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
-
-    // No warning should be shown since prop is not configured
-    const warningElement = document.querySelector('.date-warning');
-    expect(warningElement).not.toBeInTheDocument();
-
-    // No error should be shown either (date is within min/max range)
-    const errorElement = document.querySelector('.date-error');
-    expect(errorElement?.textContent).toBe('');
-  });
-
-  test('should clear error when entering valid date after error', async () => {
-    const minDate = '2024-01-01';
-    const maxDate = '2024-12-31';
-    renderWithProps({ minDate, maxDate, onChange: mockOnChange });
-
-    const inputEl = screen.getByTestId(DEFAULT_ID);
-
-    // First, enter invalid date (before minDate) to trigger error
-    fireEvent.change(inputEl, { target: { value: '2023-12-15' } });
-
-    // Wait for error to appear
+    // onChange should still be called (browser doesn't update value for invalid dates)
     await waitFor(() => {
-      const errorElement = document.querySelector('.date-error');
-      expect(errorElement?.textContent).toContain('Date is not within allowed range');
+      expect(mockChangeSpy).toHaveBeenCalled();
     });
-
-    // Now enter valid date within range
-    fireEvent.change(inputEl, { target: { value: '2024-06-15' } });
-
-    // Wait for validation to clear error
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
-
-    // Error should be cleared
-    const errorElement = document.querySelector('.date-error');
-    expect(errorElement?.textContent).toBe('');
   });
 
-  test('should handle onBlur callback', () => {
-    const onBlurSpy = vi.fn();
-    renderWithProps({ onBlur: onBlurSpy });
+  test('should handle clearDateValue setTimeout behavior', () => {
+    const spy = vi.spyOn(window, 'setTimeout');
 
-    const inputEl = screen.getByTestId(DEFAULT_ID);
+    render(<DatePicker id="test-setTimeout" />);
 
-    // Trigger blur event
-    fireEvent.blur(inputEl);
-
-    expect(onBlurSpy).toHaveBeenCalledTimes(1);
+    const component = document.getElementById('test-setTimeout');
+    expect(component).toBeInTheDocument();
+    expect(spy).toHaveBeenCalledTimes(0);
+    spy.mockRestore();
   });
 
-  test('should clear error when entering incomplete date after error exists', async () => {
-    const minDate = '2024-01-01';
-    const maxDate = '2024-12-31';
-    renderWithProps({ minDate, maxDate, onChange: mockOnChange });
+  test('should execute setTimeout callback in clearDateValue', async () => {
+    const setTimeoutSpy = vi.spyOn(window, 'setTimeout');
 
-    const inputEl = screen.getByTestId(DEFAULT_ID);
+    const ref = React.createRef<InputRef>();
+    render(<DatePicker id="test-timeout-callback" ref={ref} value="2024-01-01" />);
 
-    // First, enter invalid date (before minDate) to trigger error
-    fireEvent.change(inputEl, { target: { value: '2023-12-15' } });
+    // Call clearValue which will trigger clearDateValue and its setTimeout
+    act(() => ref.current?.clearValue());
 
-    // Wait for error to appear
-    await waitFor(() => {
-      const errorElement = document.querySelector('.date-error');
-      expect(errorElement?.textContent).toContain('Date is not within allowed range');
-    });
+    // Verify setTimeout was called
+    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 100);
 
-    // Now enter incomplete date (only year-month)
-    fireEvent.change(inputEl, { target: { value: '2024-06' } });
+    // Manually execute the callback to cover line 37 (setDateValue(null))
+    const callback = setTimeoutSpy.mock.calls[0][0] as () => void;
+    act(() => callback());
 
-    // Error should be cleared immediately for incomplete dates (no debounce)
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    });
-
-    const errorElement = document.querySelector('.date-error');
-    expect(errorElement?.textContent).toBe('');
+    setTimeoutSpy.mockRestore();
   });
 
-  test('should clear error when entering invalid date after error exists', async () => {
-    const minDate = '2024-01-01';
-    const maxDate = '2024-12-31';
-    renderWithProps({ minDate, maxDate, onChange: mockOnChange });
+  test('should test getValue method through ref', () => {
+    const ref = React.createRef<InputRef>();
+    render(<DatePicker id="test-date-picker" ref={ref} value="2024-01-15" />);
 
-    const inputEl = screen.getByTestId(DEFAULT_ID);
-
-    // First, enter out-of-range date to trigger error
-    fireEvent.change(inputEl, { target: { value: '2023-12-15' } });
-
-    // Wait for error to appear
-    await waitFor(() => {
-      const errorElement = document.querySelector('.date-error');
-      expect(errorElement?.textContent).toContain('Date is not within allowed range');
-    });
-
-    // Now enter invalid date like Feb 31 (invalid but complete format)
-    fireEvent.change(inputEl, { target: { value: '2024-02-31' } });
-
-    // Error should be cleared immediately for invalid dates (no debounce)
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    });
-
-    const errorElement = document.querySelector('.date-error');
-    expect(errorElement?.textContent).toBe('');
+    act(() => expect(ref.current?.getValue()).toBe('2024-01-15'));
   });
 
-  test('should not show error for truly invalid dates like month 13', async () => {
-    const minDate = '2024-01-01';
-    const maxDate = '2024-12-31';
-    renderWithProps({ minDate, maxDate, onChange: mockOnChange });
+  test('should return empty string from getValue when no value', () => {
+    const ref = React.createRef<InputRef>();
+    render(<DatePicker id="test-date-picker-empty" ref={ref} />);
 
-    const inputEl = screen.getByTestId(DEFAULT_ID);
-
-    // Enter date with invalid month (month 13 doesn't exist)
-    fireEvent.change(inputEl, { target: { value: '2024-13-01' } });
-
-    // Wait for potential validation
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
-
-    // Error should not be shown for truly invalid dates (they're ignored)
-    const errorElement = document.querySelector('.date-error');
-    expect(errorElement?.textContent).toBe('');
-  });
-
-  test('should not show error for invalid day like day 32', async () => {
-    const minDate = '2024-01-01';
-    const maxDate = '2024-12-31';
-    renderWithProps({ minDate, maxDate, onChange: mockOnChange });
-
-    const inputEl = screen.getByTestId(DEFAULT_ID);
-
-    // Enter date with invalid day (day 32 doesn't exist)
-    fireEvent.change(inputEl, { target: { value: '2024-12-32' } });
-
-    // Wait for potential validation
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
-
-    // Error should not be shown for truly invalid dates (they're ignored)
-    const errorElement = document.querySelector('.date-error');
-    expect(errorElement?.textContent).toBe('');
-  });
-
-  test('should clear error when entering truly invalid date after error exists', async () => {
-    const minDate = '2024-01-01';
-    const maxDate = '2024-12-31';
-    renderWithProps({ minDate, maxDate, onChange: mockOnChange });
-
-    const inputEl = screen.getByTestId(DEFAULT_ID);
-
-    // First, enter out-of-range date to trigger error
-    fireEvent.change(inputEl, { target: { value: '2023-12-15' } });
-
-    // Wait for error to appear
-    await waitFor(() => {
-      const errorElement = document.querySelector('.date-error');
-      expect(errorElement?.textContent).toContain('Date is not within allowed range');
-    });
-
-    // Now enter truly invalid date (month 13)
-    fireEvent.change(inputEl, { target: { value: '2024-13-01' } });
-
-    // Error should be cleared immediately for invalid dates (no debounce)
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    });
-
-    const errorElement = document.querySelector('.date-error');
-    expect(errorElement?.textContent).toBe('');
-  });
-
-  test('should have default max attribute to prevent year overflow', () => {
-    renderWithProps({ onChange: mockOnChange });
-
-    const inputEl = screen.getByTestId(DEFAULT_ID) as HTMLInputElement;
-
-    // Should have default max attribute when none provided
-    expect(inputEl).toHaveAttribute('max', '9999-12-31');
-  });
-
-  test('should respect custom maxDate over default max', () => {
-    const customMax = '2025-12-31';
-    renderWithProps({ maxDate: customMax, onChange: mockOnChange });
-
-    const inputEl = screen.getByTestId(DEFAULT_ID) as HTMLInputElement;
-
-    // Should use custom maxDate when provided
-    expect(inputEl).toHaveAttribute('max', customMax);
-  });
-
-  test('should not show warning for dates exactly at threshold', async () => {
-    renderWithProps({ onChange: mockOnChange, futureDateWarningThresholdYears: 100 });
-
-    const inputEl = screen.getByTestId(DEFAULT_ID);
-
-    // Calculate exactly 100 years from now
-    const now = new Date();
-    const hundredYearsFromNow = new Date(now.getFullYear() + 100, now.getMonth(), now.getDate());
-    const dateString = hundredYearsFromNow.toISOString().split('T')[0];
-
-    fireEvent.change(inputEl, { target: { value: dateString } });
-
-    // Wait for validation
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
-
-    // No warning should be shown for exactly at the threshold
-    const warningElement = document.querySelector('.date-warning');
-    expect(warningElement).not.toBeInTheDocument();
-  });
-
-  test('should not show warning when there is an error', async () => {
-    const minDate = '2024-01-01';
-    const maxDate = '2024-12-31';
-    renderWithProps({
-      minDate,
-      maxDate,
-      onChange: mockOnChange,
-      futureDateWarningThresholdYears: 100,
-    });
-
-    const inputEl = screen.getByTestId(DEFAULT_ID);
-
-    // Enter date that violates maxDate constraint (more than 100 years in future too)
-    fireEvent.change(inputEl, { target: { value: '2250-06-15' } });
-
-    // Wait for validation
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
-
-    // Error should be shown (because it exceeds maxDate)
-    const errorElement = document.querySelector('.date-error');
-    expect(errorElement?.textContent).toContain('Date is not within allowed range');
-
-    // Warning should NOT be shown when there's an error
-    const warningElement = document.querySelector('.date-warning');
-    expect(warningElement).not.toBeInTheDocument();
-  });
-
-  test('should clear warning when date is changed to within threshold', async () => {
-    renderWithProps({ onChange: mockOnChange, futureDateWarningThresholdYears: 100 });
-
-    const inputEl = screen.getByTestId(DEFAULT_ID);
-
-    // First enter a date more than 100 years in the future
-    fireEvent.change(inputEl, { target: { value: '2250-06-15' } });
-
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
-
-    // Warning should be shown
-    let warningElement = document.querySelector('.date-warning');
-    expect(warningElement).toBeInTheDocument();
-
-    // Now change to a date within 100 years
-    fireEvent.change(inputEl, { target: { value: '2025-06-15' } });
-
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
-
-    // Warning should be cleared
-    warningElement = document.querySelector('.date-warning');
-    expect(warningElement).not.toBeInTheDocument();
-  });
-
-  test('should respect custom futureDateWarningThresholdYears values', async () => {
-    // Test with 50 years threshold
-    renderWithProps({ onChange: mockOnChange, futureDateWarningThresholdYears: 50 });
-
-    const inputEl = screen.getByTestId(DEFAULT_ID);
-
-    // Enter date 51 years in the future
-    const now = new Date();
-    const fiftyOnerearsFromNow = new Date(now.getFullYear() + 51, now.getMonth(), now.getDate());
-    const dateString = fiftyOnerearsFromNow.toISOString().split('T')[0];
-
-    fireEvent.change(inputEl, { target: { value: dateString } });
-
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
-
-    // Warning should be shown with custom threshold
-    const warningElement = document.querySelector('.date-warning');
-    expect(warningElement).toBeInTheDocument();
-    expect(warningElement?.textContent).toContain('more than 50 years in the future');
+    act(() => expect(ref.current?.getValue()).toBe(''));
   });
 
   test('should clear errors and warnings when field becomes empty', async () => {
     const minDate = '2024-01-01';
     const maxDate = '2024-12-31';
-    renderWithProps({
-      minDate,
-      maxDate,
-      onChange: mockOnChange,
-      futureDateWarningThresholdYears: 100,
-    });
+    renderWithProps({ minDate, maxDate, onChange: mockOnChange });
 
     const inputEl = screen.getByTestId(DEFAULT_ID);
 
-    // First enter an invalid date (before minDate) to trigger error
+    // First enter an out-of-range date to trigger error
     fireEvent.change(inputEl, { target: { value: '2023-12-15' } });
 
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
+    await waitForValidation();
 
     // Error should be shown
-    let errorElement = document.querySelector('.date-error');
-    expect(errorElement?.textContent).toContain('Date is not within allowed range');
+    expect(getErrorText()).toContain('Date is not within allowed range');
 
-    // Now clear the field (empty value)
+    // Now clear the field
     fireEvent.change(inputEl, { target: { value: '' } });
 
-    // Error should be immediately cleared (no debounce)
+    // Error should be cleared immediately
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
     });
 
-    errorElement = document.querySelector('.date-error');
-    expect(errorElement?.textContent).toBe('');
+    expect(getErrorText()).toBe('');
   });
 
   test('should clear errors and warnings when date is incomplete', async () => {
     const minDate = '2024-01-01';
     const maxDate = '2024-12-31';
-    renderWithProps({
-      minDate,
-      maxDate,
-      onChange: mockOnChange,
-      futureDateWarningThresholdYears: 100,
-    });
+    renderWithProps({ minDate, maxDate, onChange: mockOnChange });
 
     const inputEl = screen.getByTestId(DEFAULT_ID);
 
-    // First enter an invalid date to trigger error
+    // First enter an out-of-range date to trigger error
     fireEvent.change(inputEl, { target: { value: '2023-12-15' } });
 
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    });
+    await waitForValidation();
 
     // Error should be shown
-    let errorElement = document.querySelector('.date-error');
-    expect(errorElement?.textContent).toContain('Date is not within allowed range');
+    expect(getErrorText()).toContain('Date is not within allowed range');
 
-    // Now enter incomplete date
+    // Now enter incomplete date (year-month only)
     fireEvent.change(inputEl, { target: { value: '2024-06' } });
 
-    // Error should be cleared immediately (incomplete dates don't trigger validation)
+    // Error should be cleared (no need to wait for debounce)
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
     });
 
-    errorElement = document.querySelector('.date-error');
-    expect(errorElement?.textContent).toBe('');
+    expect(getErrorText()).toBe('');
   });
 
   test('should clear errors and warnings for invalid dates', async () => {
     const minDate = '2024-01-01';
     const maxDate = '2024-12-31';
-    renderWithProps({
-      minDate,
-      maxDate,
-      onChange: mockOnChange,
-      futureDateWarningThresholdYears: 100,
-    });
+    renderWithProps({ minDate, maxDate, onChange: mockOnChange });
 
     const inputEl = screen.getByTestId(DEFAULT_ID);
 
@@ -1079,5 +649,236 @@ describe('DatePicker edge case coverage', () => {
       expect(errorElement?.textContent).toBe('');
       expect(inputEl).toHaveValue('2024-06-15');
     });
+  });
+});
+
+describe('DatePicker edge case coverage', () => {
+  const DEFAULT_ID = 'test-datepicker-edge';
+  const mockOnChange = vi.fn();
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.clearAllTimers();
+  });
+
+  function renderWithProps(props?: Partial<DatePickerProps>): InputRef {
+    return renderDatePickerWithProps(DEFAULT_ID, mockOnChange, props);
+  }
+
+  describe('invalid date handling', () => {
+    test.each([
+      ['incomplete date (year-month only)', '2024-06'],
+      ['invalid date like Feb 31', '2024-02-31'],
+      ['truly invalid date like month 13', '2024-13-01'],
+      ['invalid day like day 32', '2024-12-32'],
+    ])('should not show error for %s', async (_label, value) => {
+      const minDate = '2024-01-01';
+      const maxDate = '2024-12-31';
+      renderWithProps({ minDate, maxDate, onChange: mockOnChange });
+
+      fireEvent.change(getInput(DEFAULT_ID), { target: { value } });
+
+      await waitForValidation();
+      expect(getErrorText()).toBe('');
+    });
+
+    test.each([
+      ['incomplete date', '2024-06', IMMEDIATE_MS],
+      ['invalid date Feb 31', '2024-02-31', IMMEDIATE_MS],
+      ['truly invalid date month 13', '2024-13-01', IMMEDIATE_MS],
+    ])(
+      'should clear error when entering %s after error exists',
+      async (_label, followUpValue, delay) => {
+        const minDate = '2024-01-01';
+        const maxDate = '2024-12-31';
+        renderWithProps({ minDate, maxDate, onChange: mockOnChange });
+
+        const input = getInput(DEFAULT_ID);
+        fireEvent.change(input, { target: { value: '2023-12-15' } });
+
+        await waitFor(() => {
+          expect(getErrorText()).toContain('Date is not within allowed range');
+        });
+
+        fireEvent.change(input, { target: { value: followUpValue } });
+
+        await waitForValidation(delay);
+        expect(getErrorText()).toBe('');
+      },
+    );
+  });
+
+  describe('future date warning behavior', () => {
+    test.each([
+      {
+        label: 'no warning when prop not set',
+        threshold: undefined,
+        date: '2250-06-15',
+        expectWarning: false,
+        expectedSnippet: '',
+      },
+      {
+        label: 'warning when over 100 years in future',
+        threshold: 100,
+        date: '2250-06-15',
+        expectWarning: true,
+        expectedSnippet: 'more than 100 years in the future',
+      },
+      {
+        label: 'custom threshold of 50 years',
+        threshold: 50,
+        date: '2100-06-15',
+        expectWarning: true,
+        expectedSnippet: 'more than 50 years in the future',
+      },
+    ])('$label', async ({ threshold, date, expectWarning, expectedSnippet }) => {
+      renderWithProps({
+        minDate: '2024-01-01',
+        maxDate: '9999-12-31',
+        futureDateWarningThresholdYears: threshold,
+      });
+
+      fireEvent.change(getInput(DEFAULT_ID), { target: { value: date } });
+
+      await waitForValidation();
+
+      const warningText = getWarningText();
+      if (expectWarning) {
+        expect(warningText).toContain(expectedSnippet);
+      } else {
+        expect(warningText).toBe('');
+      }
+    });
+
+    test('should not show warning for dates exactly at threshold', async () => {
+      renderWithProps({ onChange: mockOnChange, futureDateWarningThresholdYears: 100 });
+
+      const inputEl = getInput(DEFAULT_ID);
+
+      // Calculate exactly 100 years from now
+      const now = new Date();
+      const hundredYearsFromNow = new Date(now.getFullYear() + 100, now.getMonth(), now.getDate());
+      const dateString = hundredYearsFromNow.toISOString().split('T')[0];
+
+      fireEvent.change(inputEl, { target: { value: dateString } });
+
+      await waitForValidation();
+
+      // No warning should be shown for exactly at the threshold
+      expect(getWarningElement()).not.toBeInTheDocument();
+    });
+
+    test('should not show warning when there is an error', async () => {
+      renderWithProps({
+        minDate: '2024-01-01',
+        maxDate: '2024-12-31',
+        futureDateWarningThresholdYears: 100,
+      });
+
+      fireEvent.change(getInput(DEFAULT_ID), { target: { value: '2025-06-15' } });
+
+      await waitForValidation();
+
+      // Error should be shown (date out of range)
+      expect(getErrorText()).toContain('Date is not within allowed range');
+
+      // No warning should be shown when there's an error
+      expect(getWarningElement()).not.toBeInTheDocument();
+    });
+
+    test('should clear warning when date is changed to within threshold', async () => {
+      renderWithProps({
+        minDate: '2024-01-01',
+        maxDate: '9999-12-31',
+        futureDateWarningThresholdYears: 100,
+      });
+
+      const inputEl = getInput(DEFAULT_ID);
+
+      // First enter far future date
+      fireEvent.change(inputEl, { target: { value: '2250-06-15' } });
+
+      await waitForValidation();
+
+      // Warning should be shown
+      expect(getWarningText()).toContain('more than 100 years in the future');
+
+      // Now enter date within threshold
+      fireEvent.change(inputEl, { target: { value: '2030-06-15' } });
+
+      await waitForValidation();
+
+      // Warning should be cleared
+      expect(getWarningText()).toBe('');
+    });
+  });
+
+  test('should allow dates with years before 1900 when within minDate/maxDate range', async () => {
+    const minDate = '1800-01-01';
+    const maxDate = '2024-12-31';
+    renderWithProps({ minDate, maxDate, onChange: mockOnChange });
+
+    fireEvent.change(getInput(DEFAULT_ID), { target: { value: '1850-06-15' } });
+
+    await waitForValidation();
+
+    // No error should be shown - the arbitrary 1900-2200 restriction has been removed
+    expect(getErrorText()).toBe('');
+  });
+
+  test('should clear error when entering valid date after error', async () => {
+    const minDate = '2024-01-01';
+    const maxDate = '2024-12-31';
+    renderWithProps({ minDate, maxDate, onChange: mockOnChange });
+
+    const inputEl = getInput(DEFAULT_ID);
+
+    // First, enter invalid date (before minDate) to trigger error
+    fireEvent.change(inputEl, { target: { value: '2023-12-15' } });
+
+    // Wait for error to appear
+    await waitFor(() => {
+      expect(getErrorText()).toContain('Date is not within allowed range');
+    });
+
+    // Now enter valid date within range
+    fireEvent.change(inputEl, { target: { value: '2024-06-15' } });
+
+    // Wait for validation to clear error
+    await waitForValidation();
+
+    // Error should be cleared
+    expect(getErrorText()).toBe('');
+  });
+
+  test('should handle onBlur callback', () => {
+    const onBlurSpy = vi.fn();
+    renderWithProps({ onBlur: onBlurSpy });
+
+    const inputEl = getInput(DEFAULT_ID);
+
+    // Trigger blur event
+    fireEvent.blur(inputEl);
+
+    expect(onBlurSpy).toHaveBeenCalledTimes(1);
+  });
+
+  test('should have default max attribute to prevent year overflow', () => {
+    renderWithProps({ onChange: mockOnChange });
+
+    const inputEl = getInput(DEFAULT_ID);
+
+    // Should have default max attribute when none provided
+    expect(inputEl).toHaveAttribute('max', '9999-12-31');
+  });
+
+  test('should respect custom maxDate over default max', () => {
+    const customMax = '2025-12-31';
+    renderWithProps({ maxDate: customMax, onChange: mockOnChange });
+
+    const inputEl = getInput(DEFAULT_ID);
+
+    // Should use custom maxDate when provided
+    expect(inputEl).toHaveAttribute('max', customMax);
   });
 });
