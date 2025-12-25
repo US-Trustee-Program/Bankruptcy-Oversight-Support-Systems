@@ -1,8 +1,5 @@
 import { CamsUser, CamsUserReference, getCourtDivisionCodes } from '@common/cams/users';
-import useFeatureFlags, {
-  CHAPTER_ELEVEN_ENABLED,
-  CHAPTER_TWELVE_ENABLED,
-} from '@/lib/hooks/UseFeatureFlags';
+import { CHAPTER_ELEVEN_ENABLED, CHAPTER_TWELVE_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 import {
   CasesSearchPredicate,
   DEFAULT_SEARCH_LIMIT,
@@ -15,10 +12,12 @@ import {
   StaffAssignmentUseCase,
   StaffAssignmentStore,
 } from './StaffAssignment.types';
+import { FeatureFlagSet } from '@common/feature-flags';
 
 const useStaffAssignmentUseCase = (
   store: StaffAssignmentStore,
   controls: StaffAssignmentControls,
+  featureFlags: FeatureFlagSet,
 ): StaffAssignmentUseCase => {
   const handleFilterAssignee = (assignees: ComboOption[]) => {
     if (assignees[0] && assignees[0].value === 'UNASSIGNED') {
@@ -51,7 +50,6 @@ const useStaffAssignmentUseCase = (
 
   const getChapters = (): string[] => {
     const chapters = ['15'];
-    const featureFlags = useFeatureFlags();
     if (featureFlags[CHAPTER_ELEVEN_ENABLED]) {
       chapters.push('11');
     }

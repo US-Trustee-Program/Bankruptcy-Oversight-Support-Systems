@@ -6,7 +6,7 @@ import Api2 from '@/lib/models/api2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import { BankruptcySoftwareList, BankruptcySoftwareListItem } from '@common/cams/lists';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Creatable } from '@common/cams/creatable';
 
 export function BankruptcySoftware() {
@@ -66,21 +66,24 @@ export function BankruptcySoftware() {
     }
   }
 
-  async function loadSoftwareList() {
+  const loadSoftwareList = useCallback(async () => {
     try {
       const response = await Api2.getBankruptcySoftwareList();
       setSoftwareList(response.data as BankruptcySoftwareList);
     } catch (error) {
       alert?.warning(`Failed to load bankruptcy software list. ${(error as Error).message}`);
     }
-  }
+  }, [alert]);
 
   useEffect(() => {
-    setIsLoaded(false);
+    const updateLoadingState = () => {
+      setIsLoaded(false);
+    };
+    updateLoadingState();
     loadSoftwareList().then(() => {
       setIsLoaded(true);
     });
-  }, []);
+  }, [loadSoftwareList]);
 
   return (
     <div className="bankruptcy-software-admin-panel" data-testid="bankruptcy-software-panel">

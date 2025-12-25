@@ -54,14 +54,10 @@ function AssignAttorneyModal_(
   });
 
   useEffect(() => {
-    useCase.fetchAttorneys();
-  }, [store.bCase]);
-
-  useEffect(() => {
     if (store.globalAlertError) {
       globalAlert?.error(store.globalAlertError);
     }
-  }, [store.globalAlertError]);
+  }, [globalAlert, store.globalAlertError]);
 
   const viewModel: AssignAttorneyModalViewModel = {
     actionButtonGroup,

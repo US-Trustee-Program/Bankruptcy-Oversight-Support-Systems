@@ -61,13 +61,10 @@ const assignAttorneyModalUseCase = (
   };
 
   const apiActions = {
-    fetchAttorneys: async () => {
+    fetchAttorneys: async (officeCode: string) => {
       let attorneys;
-      if (!store.bCase) {
-        return;
-      }
       try {
-        attorneys = await Api2.getOfficeAttorneys(store.bCase.officeCode ?? '');
+        attorneys = await Api2.getOfficeAttorneys(officeCode);
         store.setAttorneyList((attorneys as ResponseBody<AttorneyUser[]>).data);
       } catch (e) {
         store.setGlobalAlertError((e as Error).message);
@@ -195,6 +192,7 @@ const assignAttorneyModalUseCase = (
       if (showProps.callback) {
         store.setSubmissionCallback(() => showProps.callback);
       }
+      apiActions.fetchAttorneys(showProps.bCase.officeCode);
     }
     if (controls.modalRef.current?.show) {
       const showOptions = {

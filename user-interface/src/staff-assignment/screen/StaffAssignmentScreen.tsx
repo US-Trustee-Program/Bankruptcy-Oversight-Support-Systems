@@ -23,7 +23,8 @@ import {
 const StaffAssignmentScreen = () => {
   const store: StaffAssignmentStore = useStaffAssignmentStoreReact();
   const controls: StaffAssignmentControls = useStaffAssignmentControlsReact();
-  const useCase = useStaffAssignmentUseCase(store, controls);
+  const featureFlags = useFeatureFlags();
+  const useCase = useStaffAssignmentUseCase(store, controls, featureFlags);
 
   const infoModalId = 'info-modal';
   const assignmentModalId = 'assign-attorney-modal';
@@ -35,7 +36,6 @@ const StaffAssignmentScreen = () => {
     });
   }
 
-  const featureFlags = useFeatureFlags();
   const session = LocalStorage.getSession();
   const hasValidPermission = !!session?.user?.roles?.includes(CamsRole.CaseAssignmentManager);
   const hasAssignedOffices = !!(session?.user?.offices && session?.user?.offices.length > 0);

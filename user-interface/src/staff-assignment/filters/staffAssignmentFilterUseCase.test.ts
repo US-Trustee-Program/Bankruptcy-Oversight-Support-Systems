@@ -1,131 +1,153 @@
-import { ComboOption } from '@/lib/components/combobox/ComboBox';
-import {
-  StaffAssignmentFilterControls,
-  StaffAssignmentFilterStore,
-} from './staffAssignmentFilter.types';
+import { StaffAssignmentUseCase } from './staffAssignmentFilterUseCase';
 import MockData from '@common/cams/test-utilities/mock-data';
-import staffAssignmentFilterUseCase from './staffAssignmentFilterUseCase';
-import LocalStorage from '@/lib/utils/local-storage';
-import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
-import { FeatureFlagSet } from '@common/feature-flags';
-import { UstpOfficeDetails } from '@common/cams/offices';
-import Api2 from '@/lib/models/api2';
-import MockApi2 from '@/lib/testing/mock-api2';
-import { MockInstance } from 'vitest';
+import { UNASSIGNED_OPTION } from './staffAssignmentFilter.types';
 import { CamsUserReference } from '@common/cams/users';
-import { ResponseBody } from '@common/api/response';
+import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
+import LocalStorage from '@/lib/utils/local-storage';
+import Api2 from '@/lib/models/api2';
 
-describe('staff assignment filter use case tests', () => {
-  let mockFeatureFlags: FeatureFlagSet;
-  let setOfficeAssigneesSpy: MockInstance<(val: CamsUserReference[]) => void>;
-  let setOfficeAssigneesErrorSpy: MockInstance<(val: boolean) => void>;
-  const assignees = MockData.buildArray(MockData.getCamsUserReference, 5);
-  const mockStore: StaffAssignmentFilterStore = {
-    officeAssignees: assignees,
-    setOfficeAssignees: vi.fn(),
-    officeAssigneesError: false,
-    setOfficeAssigneesError: vi.fn(),
-    filterAssigneeCallback: null,
-    setFilterAssigneeCallback: vi.fn(),
-    focusOnRender: false,
-    setFocusOnRender: vi.fn(),
-  };
-  const comboBoxRef = {
-    current: {
-      setSelections: (_options: ComboOption[]) => {},
-      getSelections: () => [
-        {
-          value: '',
-          label: '',
-          selected: false,
-          hidden: false,
-        },
-      ],
-      clearSelections: () => {},
-      disable: (_value: boolean) => {},
-      focusInput: () => {},
-      focus: () => {},
-    },
-  };
-  const mockControls: StaffAssignmentFilterControls = {
-    assigneesFilterRef: comboBoxRef,
-  };
-
-  const useCase = staffAssignmentFilterUseCase(mockStore, mockControls);
-
-  beforeEach(() => {
-    const session = MockData.getCamsSession();
-    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
-    setOfficeAssigneesSpy = vi.spyOn(mockStore, 'setOfficeAssignees');
-    setOfficeAssigneesErrorSpy = vi.spyOn(mockStore, 'setOfficeAssigneesError');
-    mockFeatureFlags = {
-      'chapter-eleven-enabled': true,
-      'chapter-twelve-enabled': true,
-    };
-    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
-  });
-
+describe('StaffAssignmentUseCase', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  test('assigneesToComboOptions should return valid comboOptions for supplied assignees and unassigned option', async () => {
-    const expectedComboOptions: ComboOption[] = [
-      {
-        label: '(unassigned)',
-        value: 'UNASSIGNED',
-        divider: true,
-      },
-    ];
-    assignees.forEach((assignee) => {
-      expectedComboOptions.push({
-        label: assignee.name,
-        value: assignee.id,
+  describe('assigneesToComboOptions', () => {
+    test('should include UNASSIGNED option as first element', () => {
+      const assignees = MockData.buildArray(MockData.getCamsUserReference, 2);
+
+      const options = StaffAssignmentUseCase.assigneesToComboOptions(assignees);
+
+      expect(options[0]).toEqual(UNASSIGNED_OPTION);
+    });
+
+    test('should transform assignees to combo options', () => {
+      const assignee = MockData.getCamsUserReference();
+      assignee.id = 'test-id';
+      assignee.name = 'Test Name';
+
+      const options = StaffAssignmentUseCase.assigneesToComboOptions([assignee]);
+
+      expect(options[1]).toEqual({
+        value: 'test-id',
+        label: 'Test Name',
       });
     });
 
-    const comboOptions = useCase.assigneesToComboOptions(assignees);
-    expect(comboOptions).toEqual(expectedComboOptions);
-  });
+    test('should return correct length with UNASSIGNED option', () => {
+      const assignees = MockData.buildArray(MockData.getCamsUserReference, 3);
 
-  test('getOfficeAssignees should return a unique and sorted array of assignees', async () => {
-    const user1 = MockData.getCamsUserReference({ id: 'user-1', name: 'alfred' });
-    const user2 = MockData.getCamsUserReference({ id: 'user-2', name: 'boe' });
-    const user3 = MockData.getCamsUserReference({ id: 'user-3', name: 'frankie' });
-    const mockStaff = [user3, user1, user2, user2, user1];
-    const expectedAssignees = [user1, user2, user3];
+      const options = StaffAssignmentUseCase.assigneesToComboOptions(assignees);
 
-    const offices: UstpOfficeDetails[] = [MockData.getOfficeWithStaff(mockStaff)];
-    const callback = async (_officeCode: string): Promise<ResponseBody<CamsUserReference[]>> => {
-      return Promise.resolve({ data: mockStaff });
-    };
-
-    const actualAssignees = await useCase.getOfficeAssignees(callback, offices);
-    expect(actualAssignees).toEqual(expectedAssignees);
-  });
-
-  test('handleAssignmentChange should set officeAssignees to valid data if assignees were supplied and not display error', async () => {
-    const responseBody = MockData.getPaginatedResponseBody(assignees);
-    vi.spyOn(Api2, 'getOfficeAssignees').mockResolvedValue(responseBody);
-
-    await vi.waitFor(() => {
-      useCase.fetchAssignees();
-      expect(setOfficeAssigneesSpy).toHaveBeenCalledWith(
-        assignees.sort((a, b) => (a.name < b.name ? -1 : 1)),
-      );
+      expect(options).toHaveLength(4); // 3 assignees + UNASSIGNED
     });
 
-    expect(setOfficeAssigneesErrorSpy).toHaveBeenCalledWith(false);
+    test('should handle empty assignees array', () => {
+      const options = StaffAssignmentUseCase.assigneesToComboOptions([]);
+
+      expect(options).toEqual([UNASSIGNED_OPTION]);
+    });
   });
 
-  test('handleAssignmentChange should set setOfficeAssigneesError to true and not set assignees', async () => {
-    vi.spyOn(MockApi2, 'getOfficeAssignees').mockRejectedValue('error');
+  describe('getOfficeAssignees', () => {
+    test('should deduplicate assignees from multiple offices', async () => {
+      const assignee1: CamsUserReference = {
+        id: 'user-1',
+        name: 'Alice Smith',
+      };
+      const assignee2: CamsUserReference = {
+        id: 'user-2',
+        name: 'Bob Jones',
+      };
 
-    await vi.waitFor(() => {
-      useCase.fetchAssignees();
-      expect(setOfficeAssigneesErrorSpy).toHaveBeenCalledWith(true);
+      vi.spyOn(Api2, 'getOfficeAssignees')
+        .mockResolvedValueOnce({ data: [assignee1, assignee2] })
+        .mockResolvedValueOnce({ data: [assignee1] }); // Duplicate
+
+      const offices = MOCKED_USTP_OFFICES_ARRAY.slice(0, 2);
+
+      const result = await StaffAssignmentUseCase.getOfficeAssignees(offices);
+
+      expect(result).toHaveLength(2);
+      expect(result).toContainEqual(assignee1);
+      expect(result).toContainEqual(assignee2);
+      expect(Api2.getOfficeAssignees).toHaveBeenCalledTimes(2);
     });
 
-    expect(setOfficeAssigneesSpy).not.toHaveBeenCalled();
+    test('should sort assignees alphabetically by name', async () => {
+      const assignees: CamsUserReference[] = [
+        { id: '1', name: 'Zoe' },
+        { id: '2', name: 'Alice' },
+        { id: '3', name: 'Bob' },
+      ];
+
+      vi.spyOn(Api2, 'getOfficeAssignees').mockResolvedValue({ data: assignees });
+      const offices = [MOCKED_USTP_OFFICES_ARRAY[0]];
+
+      const result = await StaffAssignmentUseCase.getOfficeAssignees(offices);
+
+      expect(result[0].name).toBe('Alice');
+      expect(result[1].name).toBe('Bob');
+      expect(result[2].name).toBe('Zoe');
+    });
+
+    test('should call API function for each office', async () => {
+      const assignees = MockData.buildArray(MockData.getCamsUserReference, 2);
+      vi.spyOn(Api2, 'getOfficeAssignees').mockResolvedValue({ data: assignees });
+
+      const office1 = { ...MOCKED_USTP_OFFICES_ARRAY[0], officeCode: 'OFF1' };
+      const office2 = { ...MOCKED_USTP_OFFICES_ARRAY[1], officeCode: 'OFF2' };
+      const offices = [office1, office2];
+
+      await StaffAssignmentUseCase.getOfficeAssignees(offices);
+
+      expect(Api2.getOfficeAssignees).toHaveBeenCalledWith('OFF1');
+      expect(Api2.getOfficeAssignees).toHaveBeenCalledWith('OFF2');
+      expect(Api2.getOfficeAssignees).toHaveBeenCalledTimes(2);
+    });
+
+    test('should handle empty offices array', async () => {
+      vi.spyOn(Api2, 'getOfficeAssignees');
+
+      const result = await StaffAssignmentUseCase.getOfficeAssignees([]);
+
+      expect(result).toEqual([]);
+      expect(Api2.getOfficeAssignees).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('fetchAssignees', () => {
+    test('should return success when session has offices', async () => {
+      const assignees = MockData.buildArray(MockData.getCamsUserReference, 3);
+      vi.spyOn(Api2, 'getOfficeAssignees').mockResolvedValue({ data: assignees });
+      const session = MockData.getCamsSession();
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+
+      const result = await StaffAssignmentUseCase.fetchAssignees();
+
+      expect(result.success).toBe(true);
+      expect(result.assignees).toEqual(assignees.sort((a, b) => (a.name < b.name ? -1 : 1)));
+    });
+
+    test('should return failure when session has no offices', async () => {
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+      const apiSpy = vi.spyOn(Api2, 'getOfficeAssignees');
+
+      const result = await StaffAssignmentUseCase.fetchAssignees();
+
+      expect(result.success).toBe(false);
+      expect(result.assignees).toBeUndefined();
+      expect(apiSpy).not.toHaveBeenCalled();
+    });
+
+    test('should return failure when API fails', async () => {
+      vi.spyOn(Api2, 'getOfficeAssignees').mockRejectedValue(new Error('API Error'));
+      const session = MockData.getCamsSession();
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+
+      const result = await StaffAssignmentUseCase.fetchAssignees();
+
+      expect(result.success).toBe(false);
+      expect(result.assignees).toBeUndefined();
+    });
   });
 });
