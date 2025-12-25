@@ -6,7 +6,7 @@ import { consolidationTypeMap } from '@/lib/utils/labels';
 import './CaseDetailAssociatedCases.scss';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { CaseDetail } from '@common/cams/cases';
+import { CaseDetail, getCaseConsolidationType } from '@common/cams/cases';
 import { LeadCaseIcon, MemberCaseIcon } from '@/lib/components/cams/RawSvgIcon';
 
 interface CaseDetailAssociatedCasesProps {
@@ -20,6 +20,7 @@ export default function CaseDetailAssociatedCases(props: CaseDetailAssociatedCas
   const consolidation = associatedCases.filter(
     (c) => c.documentType === 'CONSOLIDATION_FROM' || c.documentType === 'CONSOLIDATION_TO',
   ) as Consolidation[];
+  const consolidationType = getCaseConsolidationType(consolidation, consolidationTypeMap);
 
   function sortTransfers(a: Transfer, b: Transfer) {
     return sortByDateReverse(a.orderDate, b.orderDate);
@@ -100,7 +101,7 @@ export default function CaseDetailAssociatedCases(props: CaseDetailAssociatedCas
       {!isAssociatedCasesLoading && consolidation.length > 0 && (
         <>
           <h3>
-            {consolidationTypeMap.get(consolidation[0].consolidationType)} ({consolidation.length})
+            {consolidationType} ({consolidation.length})
           </h3>
           <div className="grid-row grid-gap-lg">
             <div className="grid-col-12">
@@ -131,8 +132,16 @@ export default function CaseDetailAssociatedCases(props: CaseDetailAssociatedCas
                       return (
                         <tr key={idx}>
                           <td className="case-number-column">
-                            {bCase.documentType === 'CONSOLIDATION_TO' && <LeadCaseIcon />}
-                            {bCase.documentType === 'CONSOLIDATION_FROM' && <MemberCaseIcon />}
+                            {bCase.documentType === 'CONSOLIDATION_TO' && (
+                              <LeadCaseIcon
+                                title={`Lead case in ${consolidationType.toLocaleLowerCase()}`}
+                              />
+                            )}
+                            {bCase.documentType === 'CONSOLIDATION_FROM' && (
+                              <MemberCaseIcon
+                                title={`Member case in ${consolidationType.toLocaleLowerCase()}`}
+                              />
+                            )}
                             <CaseNumber caseId={bCase.otherCase.caseId} />
                             <span> ({bCase.otherCase.courtDivisionName})</span>
                           </td>

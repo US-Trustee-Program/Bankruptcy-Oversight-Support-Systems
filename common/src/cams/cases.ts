@@ -1,8 +1,15 @@
 import { DebtorAttorney, Debtor, LegacyTrustee } from './parties';
-import { ConsolidationFrom, ConsolidationTo, TransferFrom, TransferTo } from './events';
+import {
+  Consolidation,
+  ConsolidationFrom,
+  ConsolidationTo,
+  TransferFrom,
+  TransferTo,
+} from './events';
 import { CaseAssignment } from './assignments';
 import { Auditable } from './auditable';
 import { CamsUserReference } from './users';
+import { ConsolidationType } from './orders';
 
 export const VALID_CASEID_PATTERN = RegExp(/^[\dA-Z]{3}-\d{2}-\d{5}$/);
 
@@ -135,6 +142,25 @@ export function isChildCase(bCase: CaseDetail) {
 export function isTransferredCase(bCase: CaseDetail) {
   const documentType = bCase.transfers?.[0]?.documentType;
   return documentType === 'TRANSFER_FROM' || documentType === 'TRANSFER_TO';
+}
+
+/**
+ * Gets the human-readable consolidation type label for a case or consolidation array
+ * @param consolidationOrCase - Either a CaseDetail or an array of Consolidation references
+ * @param consolidationTypeMap - Map of ConsolidationType to human-readable labels
+ * @returns The consolidation type label (e.g., "Joint Administration") or empty string if none
+ */
+export function getCaseConsolidationType(
+  consolidationOrCase: CaseDetail | Consolidation[],
+  consolidationTypeMap: Map<ConsolidationType, string>,
+): string {
+  const consolidation = Array.isArray(consolidationOrCase)
+    ? consolidationOrCase
+    : consolidationOrCase.consolidation;
+
+  return (
+    (consolidation.length ? consolidationTypeMap.get(consolidation[0].consolidationType) : '') ?? ''
+  );
 }
 
 export function getCaseIdParts(caseId: string) {
