@@ -28,7 +28,6 @@ export function LeadCaseIcon({ title }: { title?: string }) {
       height="28"
       viewBox="0 0 22 28"
       xmlns="http://www.w3.org/2000/svg"
-      aria-label="Lead Case Icon"
     >
       {title && <title>{title}</title>}
       <path d="M0 25.5V2C0 0.89543 0.895431 0 2 0H15.125L22 6.875V25.5C22 26.6046 21.1046 27.5 20 27.5H2C0.895431 27.5 0 26.6046 0 25.5Z" />
@@ -48,7 +47,6 @@ export function MemberCaseIcon({ title }: { title?: string }) {
       viewBox="0 0 22 28"
       fill="currentColor"
       xmlns="http://www.w3.org/2000/svg"
-      aria-label="Associated Case Icon"
     >
       {title && <title>{title}</title>}
       <path d="M0 25.5V2C0 0.89543 0.895431 0 2 0H15.125L22 6.875V25.5C22 26.6046 21.1046 27.5 20 27.5H2C0.895431 27.5 0 26.6046 0 25.5Z" />
@@ -67,7 +65,6 @@ export function TransferredCaseIcon({ title }: { title?: string }) {
       height="28"
       viewBox="0 0 22 28"
       fill="currentColor"
-      aria-label="Transfer Icon"
     >
       {title && <title>{title}</title>}
       <path
