@@ -38,6 +38,10 @@ export default function CaseDetailHeader(props: Readonly<CaseDetailHeaderProps>)
   if (props.caseDetail?.chapter) {
     chapterInformationParts.push('Chapter', props.caseDetail?.chapter);
   }
+  const consolidationType =
+    !props.isLoading && props.caseDetail?.consolidation
+      ? getCaseConsolidationType(props.caseDetail.consolidation, consolidationTypeMap)
+      : '';
   const chapterInformation = chapterInformationParts.join(' ');
 
   const judgeInformation = props.caseDetail?.judgeName;
@@ -91,64 +95,56 @@ export default function CaseDetailHeader(props: Readonly<CaseDetailHeaderProps>)
               {props.isLoading && (
                 <h1 data-testid="case-detail-heading">Loading Case Details...</h1>
               )}
-              {!props.isLoading &&
-                props.caseDetail &&
-                (() => {
-                  const consolidationType = getCaseConsolidationType(
-                    props.caseDetail.consolidation,
-                    consolidationTypeMap,
-                  );
-                  return (
-                    <div className="display-flex flex-align-center">
-                      {isLeadCase(props.caseDetail) && (
-                        <LeadCaseIcon title={getLeadCaseLabel(consolidationType)} />
-                      )}
-                      {isChildCase(props.caseDetail) && (
-                        <MemberCaseIcon title={getMemberCaseLabel(consolidationType)} />
-                      )}
-                      {isTransferredCase(props.caseDetail) && (
-                        <TransferredCaseIcon title="Transferred case" />
-                      )}
-                      <h1
-                        className="case-number text-no-wrap display-inline-block margin-right-1"
-                        title="Case ID"
-                        aria-label={`Case ID ${props.caseId}`}
-                        data-testid="case-detail-heading"
-                      >
-                        {props.caseId}{' '}
-                        <CopyButton
-                          id="header-case-id"
-                          className="copy-button"
-                          onClick={() => copyCaseNumber(props.caseId)}
-                          title="Copy Case ID to clipboard"
-                        />
-                      </h1>
-                      <div className="tag-list">
-                        <Tag
-                          uswdsStyle={UswdsTagStyle.Primary}
-                          title="Court Name and District"
-                          id="court-name-and-district"
-                        >
-                          {courtInformation}
-                        </Tag>
-                        {judgeInformation && (
-                          <Tag title="Judge" id="case-judge">
-                            <GavelIcon />
-                            {judgeInformation}
-                          </Tag>
-                        )}
-                        <Tag
-                          // className="text-ink"
-                          uswdsStyle={UswdsTagStyle.Warm}
-                          title="Case Chapter"
-                          id="case-chapter"
-                        >
-                          {chapterInformation}
-                        </Tag>
-                      </div>
-                    </div>
-                  );
-                })()}
+              {!props.isLoading && props.caseDetail && (
+                <div className="display-flex flex-align-center">
+                  {isLeadCase(props.caseDetail) && (
+                    <LeadCaseIcon title={getLeadCaseLabel(consolidationType)} />
+                  )}
+                  {isChildCase(props.caseDetail) && (
+                    <MemberCaseIcon title={getMemberCaseLabel(consolidationType)} />
+                  )}
+                  {isTransferredCase(props.caseDetail) && (
+                    <TransferredCaseIcon title="Transferred case" />
+                  )}
+                  <h1
+                    className="case-number text-no-wrap display-inline-block margin-right-1"
+                    title="Case ID"
+                    aria-label={`Case ID ${props.caseId}`}
+                    data-testid="case-detail-heading"
+                  >
+                    {props.caseId}{' '}
+                    <CopyButton
+                      id="header-case-id"
+                      className="copy-button"
+                      onClick={() => copyCaseNumber(props.caseId)}
+                      title="Copy Case ID to clipboard"
+                    />
+                  </h1>
+                  <div className="tag-list">
+                    <Tag
+                      uswdsStyle={UswdsTagStyle.Primary}
+                      title="Court Name and District"
+                      id="court-name-and-district"
+                    >
+                      {courtInformation}
+                    </Tag>
+                    {judgeInformation && (
+                      <Tag title="Judge" id="case-judge">
+                        <GavelIcon />
+                        {judgeInformation}
+                      </Tag>
+                    )}
+                    <Tag
+                      // className="text-ink"
+                      uswdsStyle={UswdsTagStyle.Warm}
+                      title="Case Chapter"
+                      id="case-chapter"
+                    >
+                      {chapterInformation}
+                    </Tag>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
