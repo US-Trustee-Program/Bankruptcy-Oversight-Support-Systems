@@ -148,7 +148,7 @@ export default function CaseDetailAssociatedCases(props: CaseDetailAssociatedCas
                           </td>
                           <td className="title-column">
                             {bCase.otherCase.caseTitle}
-                            {bCase.documentType === 'CONSOLIDATION_TO' && ` (Lead)`}
+                            {bCase.documentType === 'CONSOLIDATION_TO'}
                           </td>
                           <td>{formatDate(bCase.otherCase.dateFiled)}</td>
                           <td>{formatDate(bCase.orderDate)}</td>
