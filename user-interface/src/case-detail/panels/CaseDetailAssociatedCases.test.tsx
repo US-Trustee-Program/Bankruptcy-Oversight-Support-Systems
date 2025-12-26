@@ -124,7 +124,7 @@ describe('associated cases tests', () => {
     const sortedMock = sortMock(mock);
 
     const tableRow1Cells = document.querySelectorAll('#associated-cases-table tr:nth-child(1) td');
-    expect(tableRow1Cells[1]).toHaveTextContent(`${sortedMock[0].otherCase.caseTitle} (Lead)`);
+    expect(tableRow1Cells[1]).toHaveTextContent(`${sortedMock[0].otherCase.caseTitle}`);
   });
 
   test('should display cases in order by case ID, after lead case.', async () => {
