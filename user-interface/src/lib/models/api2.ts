@@ -339,16 +339,6 @@ async function getMe() {
   return api().get<CamsSession>(`/me`);
 }
 
-async function extendSession(): Promise<void> {
-  try {
-    await api().post('/session/extend', {});
-  } catch (error) {
-    // Backend endpoint may not exist yet - gracefully handle
-    console.warn('Session extension endpoint not available:', error);
-    throw error;
-  }
-}
-
 async function getOfficeAttorneys(officeCode: string) {
   const path = `/offices/${officeCode}/attorneys`;
   return withCache({ key: path }).get<AttorneyUser[]>(path);
@@ -500,7 +490,6 @@ export const _Api2 = {
   deleteCaseNote,
   getCourts,
   getMe,
-  extendSession,
   getOfficeAttorneys,
   getOfficeAssignees,
   getOffices,

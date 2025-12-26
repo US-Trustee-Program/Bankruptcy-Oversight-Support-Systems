@@ -1,18 +1,19 @@
-import { useEffect, useRef } from 'react';
+import { useContext, useEffect, useRef } from 'react';
 import SessionTimeoutWarningModal, {
   SessionTimeoutWarningModalRef,
 } from '../SessionTimeoutWarningModal/SessionTimeoutWarningModal';
 import {
-  SESSION_TIMEOUT_WARNING_EVENT,
   resetLastInteraction,
   logout,
 } from '@/login/inactive-logout';
-import Api2 from '@/lib/models/api2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
+import { AUTH_EXPIRY_WARNING, renewOktaToken } from '@/login/providers/okta/okta-library';
+import { AuthContext } from '@/login/AuthContext';
 
 export default function SessionTimeoutManager() {
   const sessionTimeoutModalRef = useRef<SessionTimeoutWarningModalRef>(null);
   const globalAlertRef = useGlobalAlert();
+  const authContext = useContext(AuthContext);
 
   // Listen for session timeout warning event
   useEffect(() => {
@@ -20,10 +21,10 @@ export default function SessionTimeoutManager() {
       sessionTimeoutModalRef.current?.show();
     };
 
-    window.addEventListener(SESSION_TIMEOUT_WARNING_EVENT, handleSessionTimeoutWarning);
+    window.addEventListener(AUTH_EXPIRY_WARNING, handleSessionTimeoutWarning);
 
     return () => {
-      window.removeEventListener(SESSION_TIMEOUT_WARNING_EVENT, handleSessionTimeoutWarning);
+      window.removeEventListener(AUTH_EXPIRY_WARNING, handleSessionTimeoutWarning);
     };
   }, []);
 
@@ -31,11 +32,10 @@ export default function SessionTimeoutManager() {
     // Reset client-side timer
     resetLastInteraction();
 
-    // Attempt to extend server-side session
-    Api2.extendSession().catch((error: unknown) => {
-      console.warn('Session extension API call failed:', error);
-      // Client timer still reset, user continues working
-    });
+    // Extend server-side session
+    if (authContext.oktaAuth) {
+      renewOktaToken(authContext.oktaAuth);
+    }
 
     // Show success message (modal closes automatically via closeOnClick: true)
     globalAlertRef?.success('Your session has been extended');

@@ -2303,11 +2303,6 @@ async function getMe(): Promise<ResponseBody<CamsSession>> {
   return get<CamsSession>(`/me`);
 }
 
-async function extendSession(): Promise<void> {
-  // Mock implementation - just return success
-  return Promise.resolve();
-}
-
 async function getOfficeAttorneys(officeCode: string) {
   return get<AttorneyUser[]>(`/offices/${officeCode}/attorneys`);
 }
@@ -2662,7 +2657,6 @@ const MockApi2 = {
   deleteCaseNote,
   getCourts,
   getMe,
-  extendSession,
   getOfficeAttorneys,
   getOfficeAssignees,
   getOffices,
