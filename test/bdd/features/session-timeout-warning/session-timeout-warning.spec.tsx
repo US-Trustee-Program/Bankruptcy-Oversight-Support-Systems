@@ -1,13 +1,14 @@
 import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, test, expect, vi, beforeAll, afterAll, afterEach } from 'vitest';
 import LocalStorage from '@/lib/utils/local-storage';
-import * as InactiveLogout from '@/login/inactive-logout';
+import { AUTH_EXPIRY_WARNING } from '@/login/providers/okta/okta-library';
 import { initializeTestServer, cleanupTestServer } from '../../helpers/api-server';
-import { createTestSession, createTestAuthToken } from '../../fixtures/auth.fixtures';
+import { createTestSession } from '../../fixtures/auth.fixtures';
 import { TestSetup, waitForAppLoad } from '../../helpers/fluent-test-setup';
 import { clearAllRepositorySpies } from '../../helpers/repository-spies';
 import { CamsRole } from '@common/cams/roles';
-import Api2 from '@/lib/models/api2';
+import { AuthContext } from '@/login/AuthContext';
+import * as OktaLibrary from '@/login/providers/okta/okta-library';
 import OktaAuth from '@okta/okta-auth-js';
 
 // ALWAYS import driver mocks
@@ -21,11 +22,10 @@ import '../../helpers/driver-mocks';
  * So that I can extend my session without losing my work
  */
 
-describe.only('Feature: Session Timeout Warning', () => {
+describe('Feature: Session Timeout Warning', () => {
   const NOW = Date.now();
-  const THIRTY_MINUTES = 30 * 60 * 1000;
-  const SIXTY_SECONDS = 60 * 1000;
-  const TIME_INACTIVE_BEFORE_WARNING = THIRTY_MINUTES - SIXTY_SECONDS; // 29 minutes - user has been inactive this long
+  const HEARTBEAT = 5 * 60 * 1000; // 5 minutes - matches okta-library HEARTBEAT constant
+  const TIME_INACTIVE = HEARTBEAT + 1000; // User has been inactive for more than the heartbeat interval
 
   beforeAll(async () => {
     await initializeTestServer();
@@ -48,86 +48,73 @@ describe.only('Feature: Session Timeout Warning', () => {
   }
 
   /**
-   * Setup Okta Auth spies to return renewed tokens with custom expiry
-   * This mocks the renewOktaToken flow in okta-library.ts
-   */
-  function setupOktaRenewalSpies(renewedExpiryInSeconds: number) {
-    const roles = [CamsRole.TrialAttorney];
-
-    // Generate a real JWT with the renewed expiry time using createTestAuthToken
-    // This creates a properly signed JWT that can be naturally decoded
-    const renewedAccessToken = createTestAuthToken(roles, renewedExpiryInSeconds);
-
-    const mockUser = {
-      sub: 'test-user-id',
-      name: 'Test User',
-      email: 'test@example.com',
-    };
-
-    // Spy on getOrRenewAccessToken to return the renewed JWT
-    vi.spyOn(OktaAuth.prototype, 'getOrRenewAccessToken').mockResolvedValue(renewedAccessToken);
-
-    // Spy on getUser to return user info
-    vi.spyOn(OktaAuth.prototype, 'getUser').mockResolvedValue(mockUser);
-
-    // No need to mock token.decode - it will naturally decode the real JWT from createTestAuthToken
-
-    // Spy on Api2.getMe to return the updated session with renewed expiry
-    const renewedSession = createSessionWithExpiry(renewedExpiryInSeconds);
-    vi.spyOn(Api2, 'getMe').mockResolvedValue({ data: renewedSession });
-  }
-
-  /**
-   * Scenario: User clicks "Stay Logged In" button to extend session
+   * Scenario: Warning modal appears when AUTH_EXPIRY_WARNING event is emitted
    *
-   * Given the user has been inactive for 29 minutes
-   * When the warning modal appears
-   * And the user clicks the "Stay Logged In" button
-   * Then the session should be extended
-   * And the timer should be reset
-   * And the modal should close
-   * And a success toast should appear saying "Your session has been extended"
+   * Given the user's session is about to expire
+   * When the AUTH_EXPIRY_WARNING event is dispatched
+   * Then a warning modal should appear
+   * And it should display "Session Expiring Soon" heading
+   * And it should show the warning message
+   * And it should have "Stay Logged In" and "Log Out Now" buttons
    */
-  test('STEP 1: User clicks "Stay Logged In" button → Session extends + Toast appears', async () => {
-    // ARRANGE: Use fake timers to control time-dependent interactions
-    vi.useFakeTimers();
-    vi.setSystemTime(NOW);
-
-    // ARRANGE: Set up test session with custom JWT expiry (expires 60 seconds from NOW)
-    const expiryInSeconds = Math.floor(NOW / 1000) + 60; // Expires in 60 seconds from NOW
-    const session = createSessionWithExpiry(expiryInSeconds);
-
-    // ARRANGE: Setup Okta renewal to return a token that expires in 1 hour after renewal
-    const renewedExpiryInSeconds = Math.floor(NOW / 1000) + 3600; // Renewed token expires in 1 hour
-    setupOktaRenewalSpies(renewedExpiryInSeconds);
+  test('STEP 1a: Modal appears with warning when AUTH_EXPIRY_WARNING is emitted', async () => {
+    // ARRANGE: Set up test session
+    const session = createSessionWithExpiry();
 
     await TestSetup.forUser(session).withMyAssignments([]).renderAt('/my-cases');
     await waitForAppLoad();
 
-    // ARRANGE: Mock inactivity - user has been inactive for 29 minutes (60 seconds until timeout)
-    const setLastInteractionSpy = vi.spyOn(LocalStorage, 'setLastInteraction');
-    const getLastInteractionSpy = vi
-      .spyOn(LocalStorage, 'getLastInteraction')
-      .mockReturnValue(NOW - TIME_INACTIVE_BEFORE_WARNING);
+    // ACT: Emit AUTH_EXPIRY_WARNING event to trigger modal
+    window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
 
-    // ACT: Trigger inactivity check to show modal
-    // Wait for React effects to complete (modal ref to be set) before checking inactivity
-    await waitFor(async () => {
-      InactiveLogout.checkForInactivity();
-      await vi.runOnlyPendingTimersAsync(); // Flush any pending timers
+    // ASSERT: Modal should appear
+    await waitFor(() => {
       const modal = screen.getByTestId('modal-session-timeout-warning');
       expect(modal).toBeInTheDocument();
+      expect(modal).not.toHaveClass('is-hidden');
     });
 
-    // ASSERT: Modal should have heading
+    // ASSERT: Modal should have correct heading
     const heading = screen.getByText(/Session Expiring Soon/i);
     expect(heading).toBeInTheDocument();
+
+    // ASSERT: Modal should display the warning message
+    const message = screen.getByText(/Your session will expire in 60 seconds/i);
+    expect(message).toBeInTheDocument();
 
     // ASSERT: Modal should have "Stay Logged In" button
     const stayLoggedInButton = screen.getByRole('button', { name: /Stay Logged In/i });
     expect(stayLoggedInButton).toBeInTheDocument();
 
+    // ASSERT: Modal should have "Log Out Now" button
+    const logOutNowButton = screen.getByRole('button', { name: /Log Out Now/i });
+    expect(logOutNowButton).toBeInTheDocument();
+  });
+
+  /**
+   * Scenario: User extends session by clicking "Stay Logged In"
+   *
+   * Given the warning modal is displayed
+   * When the user clicks the "Stay Logged In" button
+   * Then the modal should close
+   */
+  test('STEP 1b: Clicking "Stay Logged In" closes the modal', async () => {
+    // ARRANGE: Set up test session
+    const session = createSessionWithExpiry();
+
+    await TestSetup.forUser(session).withMyAssignments([]).renderAt('/my-cases');
+    await waitForAppLoad();
+
+    // ARRANGE: Show the modal
+    window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
+    await waitFor(() => {
+      const modal = screen.getByTestId('modal-session-timeout-warning');
+      expect(modal).toBeInTheDocument();
+      expect(modal).not.toHaveClass('is-hidden');
+    });
+
     // ACT: Click "Stay Logged In" button
+    const stayLoggedInButton = screen.getByRole('button', { name: /Stay Logged In/i });
     fireEvent.click(stayLoggedInButton);
 
     // ASSERT: Modal should close (check for is-hidden class)
@@ -135,6 +122,38 @@ describe.only('Feature: Session Timeout Warning', () => {
       const modal = screen.getByTestId('modal-session-timeout-warning');
       expect(modal).toHaveClass('is-hidden');
     });
+  });
+
+  /**
+   * Scenario: Inactive timer is reset when user extends session
+   *
+   * Given the warning modal is displayed
+   * When the user clicks the "Stay Logged In" button
+   * Then the inactive timer should be reset
+   */
+  test('STEP 1c: Clicking "Stay Logged In" resets the inactive timer', async () => {
+    // ARRANGE: Set up test session
+    const session = createSessionWithExpiry();
+
+    await TestSetup.forUser(session).withMyAssignments([]).renderAt('/my-cases');
+    await waitForAppLoad();
+
+    // ARRANGE: Mock inactivity - user has been inactive for more than heartbeat interval
+    const setLastInteractionSpy = vi.spyOn(LocalStorage, 'setLastInteraction');
+    const getLastInteractionSpy = vi
+      .spyOn(LocalStorage, 'getLastInteraction')
+      .mockReturnValue(NOW - TIME_INACTIVE);
+
+    // ARRANGE: Show the modal
+    window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
+    await waitFor(() => {
+      const modal = screen.getByTestId('modal-session-timeout-warning');
+      expect(modal).toBeInTheDocument();
+    });
+
+    // ACT: Click "Stay Logged In" button
+    const stayLoggedInButton = screen.getByRole('button', { name: /Stay Logged In/i });
+    fireEvent.click(stayLoggedInButton);
 
     // ASSERT: Timer should be reset (setLastInteraction called with current time)
     expect(setLastInteractionSpy).toHaveBeenCalledWith(expect.any(Number));
@@ -142,15 +161,96 @@ describe.only('Feature: Session Timeout Warning', () => {
       setLastInteractionSpy.mock.calls[setLastInteractionSpy.mock.calls.length - 1][0];
     expect(lastCallTime).toBeGreaterThanOrEqual(NOW);
 
+    // Cleanup spies
+    getLastInteractionSpy.mockRestore();
+    setLastInteractionSpy.mockRestore();
+  });
+
+  /**
+   * Scenario: Okta token renewal is called when user extends session
+   *
+   * Given the warning modal is displayed
+   * And the AuthContext provides an oktaAuth instance
+   * When the user clicks the "Stay Logged In" button
+   * Then renewOktaToken should be called with the oktaAuth instance
+   */
+  test('STEP 1d: Clicking "Stay Logged In" calls renewOktaToken', async () => {
+    // ARRANGE: Create a mock oktaAuth instance
+    const mockOktaAuth = {} as Partial<OktaAuth>;
+
+    // ARRANGE: Spy on renewOktaToken
+    const renewOktaTokenSpy = vi.spyOn(OktaLibrary, 'renewOktaToken').mockResolvedValue();
+
+    // ARRANGE: Mock the SessionTimeoutManager's useContext call by patching the AuthContext
+    // We'll temporarily modify the _currentValue which is React's internal for context
+    interface ReactContextInternal {
+      _currentValue: unknown;
+      _currentValue2: unknown;
+    }
+    const authContextInternal = AuthContext as unknown as ReactContextInternal;
+    const originalValue = authContextInternal._currentValue;
+    authContextInternal._currentValue = { oktaAuth: mockOktaAuth };
+    authContextInternal._currentValue2 = { oktaAuth: mockOktaAuth }; // For concurrent mode
+
+    try {
+      // ARRANGE: Set up test session and render
+      const session = createSessionWithExpiry();
+      await TestSetup.forUser(session).withMyAssignments([]).renderAt('/my-cases');
+      await waitForAppLoad();
+
+      // ARRANGE: Show the modal
+      window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
+      await waitFor(() => {
+        const modal = screen.getByTestId('modal-session-timeout-warning');
+        expect(modal).toBeInTheDocument();
+      });
+
+      // ACT: Click "Stay Logged In" button
+      const stayLoggedInButton = screen.getByRole('button', { name: /Stay Logged In/i });
+      fireEvent.click(stayLoggedInButton);
+
+      // ASSERT: renewOktaToken should have been called with the mock oktaAuth
+      await waitFor(() => {
+        expect(renewOktaTokenSpy).toHaveBeenCalledWith(mockOktaAuth);
+      });
+    } finally {
+      // Cleanup: Restore original context value
+      authContextInternal._currentValue = originalValue;
+      authContextInternal._currentValue2 = originalValue;
+      renewOktaTokenSpy.mockRestore();
+    }
+  });
+
+  /**
+   * Scenario: Success message appears after extending session
+   *
+   * Given the warning modal is displayed
+   * When the user clicks the "Stay Logged In" button
+   * Then a success toast should appear
+   * And it should say "Your session has been extended"
+   */
+  test('STEP 1e: Success toast appears after extending session', async () => {
+    // ARRANGE: Set up test session
+    const session = createSessionWithExpiry();
+
+    await TestSetup.forUser(session).withMyAssignments([]).renderAt('/my-cases');
+    await waitForAppLoad();
+
+    // ARRANGE: Show the modal
+    window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
+    await waitFor(() => {
+      const modal = screen.getByTestId('modal-session-timeout-warning');
+      expect(modal).toBeInTheDocument();
+    });
+
+    // ACT: Click "Stay Logged In" button
+    const stayLoggedInButton = screen.getByRole('button', { name: /Stay Logged In/i });
+    fireEvent.click(stayLoggedInButton);
+
     // ASSERT: Toast notification should appear
     await waitFor(() => {
       const toast = screen.getByText(/Your session has been extended/i);
       expect(toast).toBeInTheDocument();
     });
-
-    // Cleanup spies and timers
-    getLastInteractionSpy.mockRestore();
-    setLastInteractionSpy.mockRestore();
-    vi.useRealTimers();
   });
 });
