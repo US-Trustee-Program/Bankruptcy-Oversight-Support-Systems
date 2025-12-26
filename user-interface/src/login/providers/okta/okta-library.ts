@@ -45,7 +45,7 @@ export async function handleHeartbeat(oktaAuth: OktaAuth) {
   const expirationLimit = expiration - SAFE_LIMIT;
 
   if (now > expirationLimit) {
-    if(isActive()) {
+    if (isActive()) {
       // if close to expiry and user active, renew token
       renewOktaToken(oktaAuth);
     } else {

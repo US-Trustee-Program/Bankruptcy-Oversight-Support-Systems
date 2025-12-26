@@ -81,7 +81,7 @@ export function OktaSession(props: Readonly<OktaSessionProps>) {
 
   appInsights.trackEvent({ name: 'Okta session established' }, { status: 'success' });
   return (
-    <AuthContext.Provider value={{oktaAuth}}>
+    <AuthContext.Provider value={{ oktaAuth }}>
       <Session provider="okta" accessToken={accessToken} expires={expires} issuer={issuer}>
         {props.children}
       </Session>
