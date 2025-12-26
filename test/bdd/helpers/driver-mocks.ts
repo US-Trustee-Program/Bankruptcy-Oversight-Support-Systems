@@ -190,3 +190,54 @@ vi.mock('launchdarkly-react-client-sdk', () => ({
     identify: vi.fn(),
   }),
 }));
+
+// Mock Okta Auth SDK BEFORE any imports
+// This provides a basic mock that can be overridden in individual tests using vi.spyOn
+vi.mock('@okta/okta-auth-js', () => {
+  // Export a mockable OktaAuth class that tests can spy on
+  class MockOktaAuth {
+    tokenManager = {
+      get: vi.fn().mockResolvedValue({
+        expiresAt: Math.floor(Date.now() / 1000) + 3600,
+        accessToken: 'mock-access-token',
+      }),
+      on: vi.fn(),
+      off: vi.fn(),
+      renew: vi.fn(),
+    };
+
+    token = {
+      getUserInfo: vi.fn().mockResolvedValue({
+        sub: 'test-user-id',
+        name: 'Test User',
+        email: 'test@example.com',
+      }),
+      decode: vi.fn().mockReturnValue({
+        payload: {
+          exp: Math.floor(Date.now() / 1000) + 3600,
+          iss: 'https://mock-issuer.okta.com/oauth2/default',
+          sub: 'test-user-id',
+          aud: 'mock-audience',
+        },
+      }),
+    };
+
+    isAuthenticated = vi.fn().mockResolvedValue(true);
+    getOrRenewAccessToken = vi.fn().mockResolvedValue('mock-access-token');
+    getAccessToken = vi.fn().mockResolvedValue('mock-access-token');
+    getUser = vi.fn().mockResolvedValue({
+      sub: 'test-user-id',
+      name: 'Test User',
+      email: 'test@example.com',
+    });
+    signInWithRedirect = vi.fn();
+    signOut = vi.fn();
+    start = vi.fn();
+    stop = vi.fn();
+  }
+
+  return {
+    default: MockOktaAuth,
+    OktaAuth: MockOktaAuth,
+  };
+});

@@ -21,7 +21,10 @@ const { nowInSeconds } = DateHelper;
  * Create a test session with specific roles and permissions
  * IMPORTANT: Uses 'okta' provider and MOCK_ISSUER to match setup-tests.ts configuration
  */
-export function createTestSession(roles: CamsRole[] = []): CamsSession {
+export function createTestSession(roles: CamsRole[] = [], expiryInSeconds?: number): CamsSession {
+  const NOW = nowInSeconds();
+  const ONE_DAY = 60 * 60 * 24;
+
   const session = MockData.getCamsSession({
     user: MockData.getCamsUser({
       id: 'test-user-id',
@@ -34,7 +37,8 @@ export function createTestSession(roles: CamsRole[] = []): CamsSession {
   });
 
   // Add JWT access token for API authentication
-  session.accessToken = createTestAuthToken(roles);
+  session.accessToken = createTestAuthToken(roles, expiryInSeconds);
+  session.expires = expiryInSeconds ?? NOW + ONE_DAY;
 
   return session;
 }
@@ -43,8 +47,10 @@ export function createTestSession(roles: CamsRole[] = []): CamsSession {
  * Create a mock JWT token for API requests
  * This creates a properly formatted JWT that matches what the backend's OAuth gateway expects
  * The audience is derived from the issuer path (e.g., MOCK_ISSUER → MOCK_AUDIENCE)
+ * @param roles - Array of CamsRole for the user
+ * @param expiryInSeconds - Optional custom expiry timestamp in seconds (Unix epoch). If not provided, defaults to NOW + ONE_DAY
  */
-export function createTestAuthToken(roles: CamsRole[] = []): string {
+export function createTestAuthToken(roles: CamsRole[] = [], expiryInSeconds?: number): string {
   const NOW = nowInSeconds();
   const ONE_DAY = 60 * 60 * 24;
 
@@ -52,7 +58,7 @@ export function createTestAuthToken(roles: CamsRole[] = []): string {
     aud: MOCK_AUDIENCE, // Matches the audience derived from issuer path '/oauth2/default'
     sub: 'test-user-id', // Matches the user ID in createTestSession
     iss: MOCK_ISSUER, // Must match backend CAMS_LOGIN_PROVIDER_CONFIG issuer
-    exp: NOW + ONE_DAY,
+    exp: expiryInSeconds ?? NOW + ONE_DAY,
     groups: roles,
   };
 

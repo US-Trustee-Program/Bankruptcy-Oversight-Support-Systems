@@ -4,7 +4,7 @@ const LOGIN_LOCAL_STORAGE_SESSION_KEY = 'cams:session';
 const LOGIN_LOCAL_STORAGE_FORM_CACHE_KEY = 'cams:cache:form:';
 const LOGIN_LOCAL_STORAGE_CACHE_KEY = 'cams:cache:';
 const LOGIN_LOCAL_STORAGE_ACK_KEY = 'cams:ack';
-const REFRESHING_TOKEN = 'cams:refreshing-token';
+const RENEWING_TOKEN = 'cams:renewing-token';
 const LAST_INTERACTION_KEY = 'cams:last-interaction';
 
 function getSession(): CamsSession | null {
@@ -61,18 +61,18 @@ function removeAck() {
   }
 }
 
-function isTokenBeingRefreshed() {
+function isTokenBeingRenewed() {
   if (window.localStorage) {
-    const alreadyRefreshing = window.localStorage.getItem(REFRESHING_TOKEN);
-    return alreadyRefreshing === 'true';
+    const alreadyRenewing = window.localStorage.getItem(RENEWING_TOKEN);
+    return alreadyRenewing === 'true';
   }
 }
 
-function setRefreshingToken() {
+function setRenewingToken() {
   if (window.localStorage) {
-    const alreadyRefreshing = window.localStorage.getItem(REFRESHING_TOKEN);
-    if (alreadyRefreshing !== 'true') {
-      window.localStorage.setItem(REFRESHING_TOKEN, 'true');
+    const alreadyRenewing = window.localStorage.getItem(RENEWING_TOKEN);
+    if (alreadyRenewing !== 'true') {
+      window.localStorage.setItem(RENEWING_TOKEN, 'true');
       return true;
     } else {
       return false;
@@ -80,9 +80,9 @@ function setRefreshingToken() {
   }
 }
 
-function removeRefreshingToken() {
+function removeRenewingToken() {
   if (window.localStorage) {
-    window.localStorage.removeItem(REFRESHING_TOKEN);
+    window.localStorage.removeItem(RENEWING_TOKEN);
   }
 }
 
@@ -112,16 +112,16 @@ const LocalStorage = {
   getAck,
   setAck,
   removeAck,
-  isTokenBeingRefreshed,
-  setRefreshingToken,
-  removeRefreshingToken,
+  isTokenBeingRenewed,
+  setRenewingToken,
+  removeRenewingToken,
   getLastInteraction,
   setLastInteraction,
   LOGIN_LOCAL_STORAGE_SESSION_KEY,
   LOGIN_LOCAL_STORAGE_FORM_CACHE_KEY,
   LOGIN_LOCAL_STORAGE_CACHE_KEY,
   LOGIN_LOCAL_STORAGE_ACK_KEY,
-  REFRESHING_TOKEN,
+  RENEWING_TOKEN,
   LAST_INTERACTION_KEY,
 };
 
