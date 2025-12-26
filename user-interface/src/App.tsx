@@ -20,6 +20,7 @@ import { GoHome } from './lib/components/GoHome';
 import TrusteesScreen from './trustees/TrusteesScreen';
 import TrusteeDetailScreen from './trustees/TrusteeDetailScreen';
 import TrusteePublicContactForm from './trustees/forms/TrusteePublicContactForm';
+import SessionTimeoutManager from './lib/components/cams/SessionTimeoutManager/SessionTimeoutManager';
 
 const featureFlagConfig = getFeatureFlagConfiguration();
 export const GlobalAlertContext = createContext<React.RefObject<GlobalAlertRef | null> | null>(
@@ -60,6 +61,7 @@ function App() {
               <Route index element={<GoHome />}></Route>
               <Route path="*" element={<GoHome />}></Route>
             </Routes>
+            <SessionTimeoutManager />
             <ScrollToTopButton data-testid="scroll-to-top-button" />
           </div>
         </GlobalAlertContext.Provider>
