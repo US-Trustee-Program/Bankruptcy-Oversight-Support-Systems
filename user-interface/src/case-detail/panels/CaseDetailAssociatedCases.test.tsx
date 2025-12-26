@@ -124,7 +124,7 @@ describe('associated cases tests', () => {
     const sortedMock = sortMock(mock);
 
     const tableRow1Cells = document.querySelectorAll('#associated-cases-table tr:nth-child(1) td');
-    expect(tableRow1Cells[1]).toHaveTextContent(`${sortedMock[0].otherCase.caseTitle} (Lead)`);
+    expect(tableRow1Cells[1]).toHaveTextContent(`${sortedMock[0].otherCase.caseTitle}`);
   });
 
   test('should display cases in order by case ID, after lead case.', async () => {
@@ -146,12 +146,44 @@ describe('associated cases tests', () => {
     expect(row3IdCell).toHaveTextContent(getCaseNumber(sortedMock[2].otherCase.caseId));
     expect(row4IdCell).toHaveTextContent(getCaseNumber(sortedMock[3].otherCase.caseId));
 
-    const row2Int = getInt(row2IdCell!.textContent as string);
-    const row3Int = getInt(row3IdCell!.textContent as string);
-    const row4Int = getInt(row4IdCell!.textContent as string);
+    const row2Link = row2IdCell!.querySelector('a');
+    const row3Link = row3IdCell!.querySelector('a');
+    const row4Link = row4IdCell!.querySelector('a');
+
+    const row2Int = getInt(row2Link!.textContent as string);
+    const row3Int = getInt(row3Link!.textContent as string);
+    const row4Int = getInt(row4Link!.textContent as string);
 
     expect(row3Int).toBeGreaterThan(row2Int);
     expect(row4Int).toBeGreaterThan(row3Int);
+  });
+
+  test('should display lead case icon with tooltip in table', () => {
+    const mock: EventCaseReference[] = getAssociatedCasesMock('081-34-34811', 'administrative');
+    renderComponent(mock, false);
+
+    const row1IdCell = document.querySelector(
+      '#associated-cases-table tr:nth-child(1) td:nth-child(1)',
+    );
+    const leadIcon = row1IdCell!.querySelector('[data-testid="lead-case-icon"]');
+    expect(leadIcon).toBeInTheDocument();
+
+    const titleElement = leadIcon!.querySelector('title');
+    expect(titleElement).toHaveTextContent('Lead case in joint administration');
+  });
+
+  test('should display member case icon with tooltip in table', () => {
+    const mock: EventCaseReference[] = getAssociatedCasesMock('081-34-34811', 'substantive');
+    renderComponent(mock, false);
+
+    const row2IdCell = document.querySelector(
+      '#associated-cases-table tr:nth-child(2) td:nth-child(1)',
+    );
+    const memberIcon = row2IdCell!.querySelector('[data-testid="member-case-icon"]');
+    expect(memberIcon).toBeInTheDocument();
+
+    const titleElement = memberIcon!.querySelector('title');
+    expect(titleElement).toHaveTextContent('Member case in substantive consolidation');
   });
 
   describe('Transferred case information tests', () => {
