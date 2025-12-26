@@ -1,6 +1,6 @@
 import OktaAuth, { UserClaims } from '@okta/okta-auth-js';
 import { describe, test } from 'vitest';
-import { getCamsUser, refreshOktaToken, registerRefreshOktaToken } from './okta-library';
+import { getCamsUser, renewOktaToken, registerRenewOktaToken } from './okta-library';
 import LocalStorage from '@/lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import * as apiModule from '@/lib/models/api';
@@ -21,18 +21,18 @@ const AFTER_EXPIRATION = EXPIRATION + TEN_SECONDS;
 const NEW_EXPIRATION = EXPIRATION + TEN_SECONDS * 2;
 
 const ACCESS_TOKEN = MockData.getJwt();
-const REFRESHED_ACCESS_TOKEN = MockData.getJwt();
+const RENEWED_ACCESS_TOKEN = MockData.getJwt();
 
 vi.spyOn(delayModule, 'delay').mockImplementation(async (_, cb) => (cb ? cb() : undefined));
 
 describe('Okta library', () => {
   const { nonReactWaitFor } = TestingUtilities;
-  describe('registerRefreshOktaToken', () => {
-    test('should register refreshOktaToken with the api', () => {
+  describe('registerRenewOktaToken', () => {
+    test('should register renewOktaToken with the api', () => {
       const addApiBeforeHook = vi.spyOn(apiModule, 'addApiBeforeHook');
 
       const oktaAuth = new OktaAuth(MOCK_OAUTH_CONFIG);
-      registerRefreshOktaToken(oktaAuth);
+      registerRenewOktaToken(oktaAuth);
 
       expect(addApiBeforeHook).toHaveBeenCalled();
     });
@@ -58,7 +58,7 @@ describe('Okta library', () => {
     });
   });
 
-  describe('refreshOktaToken', () => {
+  describe('renewOktaToken', () => {
     let oktaAuth: OktaAuth;
 
     const userClaims: UserClaims = {
@@ -80,9 +80,9 @@ describe('Okta library', () => {
     const getSession = vi.spyOn(LocalStorage, 'getSession');
     const setSession = vi.spyOn(LocalStorage, 'setSession');
 
-    const isTokenBeingRefreshedSpy = vi.spyOn(LocalStorage, 'isTokenBeingRefreshed');
-    const setRefreshingTokenSpy = vi.spyOn(LocalStorage, 'setRefreshingToken');
-    const removeRefreshingTokenSpy = vi.spyOn(LocalStorage, 'removeRefreshingToken');
+    const isTokenBeingRenewedSpy = vi.spyOn(LocalStorage, 'isTokenBeingRenewed');
+    const setRenewingTokenSpy = vi.spyOn(LocalStorage, 'setRenewingToken');
+    const removeRenewingTokenSpy = vi.spyOn(LocalStorage, 'removeRenewingToken');
 
     beforeEach(() => {
       vi.clearAllMocks();
@@ -91,7 +91,7 @@ describe('Okta library', () => {
 
     test('should do nothing if a session does not exist', async () => {
       getSession.mockReturnValue(null);
-      await refreshOktaToken(oktaAuth);
+      await renewOktaToken(oktaAuth);
 
       expect(getSession).toHaveBeenCalled();
       expect(setSession).not.toHaveBeenCalled();
@@ -99,7 +99,7 @@ describe('Okta library', () => {
 
     test('should do nothing if verified claims does not include an expiration', async () => {
       getSession.mockReturnValue(camsSession);
-      await refreshOktaToken(oktaAuth);
+      await renewOktaToken(oktaAuth);
 
       expect(getSession).toHaveBeenCalled();
       expect(setSession).not.toHaveBeenCalled();
@@ -107,17 +107,17 @@ describe('Okta library', () => {
 
     test('should do nothing if the expiration is not set to expire soon', async () => {
       vi.spyOn(Date, 'now').mockReturnValue(WAY_BEFORE_EXPIRATION);
-      await refreshOktaToken(oktaAuth);
+      await renewOktaToken(oktaAuth);
 
       expect(getSession).toHaveBeenCalled();
       expect(setSession).not.toHaveBeenCalled();
     });
 
-    test('should refresh the access token', async () => {
+    test('should renew the access token', async () => {
       vi.spyOn(Date, 'now').mockReturnValue(JUST_BEFORE_EXPIRATION);
 
       getSession.mockReturnValue(camsSession);
-      getOrRenewAccessToken.mockResolvedValue(REFRESHED_ACCESS_TOKEN);
+      getOrRenewAccessToken.mockResolvedValue(RENEWED_ACCESS_TOKEN);
       getUser.mockResolvedValue({ ...userClaims, exp: NEW_EXPIRATION });
 
       const oktaAuth = new OktaAuth(MOCK_OAUTH_CONFIG);
@@ -129,23 +129,23 @@ describe('Okta library', () => {
         };
       });
 
-      await refreshOktaToken(oktaAuth);
+      await renewOktaToken(oktaAuth);
 
       await nonReactWaitFor(() => {
-        return removeRefreshingTokenSpy.mock.calls.length > 0;
+        return removeRenewingTokenSpy.mock.calls.length > 0;
       });
       expect(getOrRenewAccessToken).toHaveBeenCalled();
       expect(getUser).toHaveBeenCalled();
 
-      expect(isTokenBeingRefreshedSpy).toHaveBeenCalled();
-      expect(setRefreshingTokenSpy).toHaveBeenCalled();
-      expect(removeRefreshingTokenSpy).toHaveBeenCalled();
+      expect(isTokenBeingRenewedSpy).toHaveBeenCalled();
+      expect(setRenewingTokenSpy).toHaveBeenCalled();
+      expect(removeRenewingTokenSpy).toHaveBeenCalled();
 
       expect(getSession).toHaveBeenCalled();
       expect(setSession).toHaveBeenCalledWith(
         expect.objectContaining({
           provider: 'okta',
-          accessToken: REFRESHED_ACCESS_TOKEN,
+          accessToken: RENEWED_ACCESS_TOKEN,
           user: { id: userClaims.sub, name: 'mock user' },
           expires: 7200020000,
           issuer: '',
@@ -153,9 +153,9 @@ describe('Okta library', () => {
       );
     });
 
-    test('should refresh the access token after it has expired', async () => {
+    test('should renew the access token after it has expired', async () => {
       vi.spyOn(Date, 'now').mockReturnValue(AFTER_EXPIRATION);
-      getOrRenewAccessToken.mockResolvedValue(REFRESHED_ACCESS_TOKEN);
+      getOrRenewAccessToken.mockResolvedValue(RENEWED_ACCESS_TOKEN);
 
       getSession.mockReturnValue(camsSession);
       getUser.mockResolvedValue(userClaims);
@@ -168,14 +168,14 @@ describe('Okta library', () => {
           },
         };
       });
-      await refreshOktaToken(oktaAuth);
+      await renewOktaToken(oktaAuth);
 
       await nonReactWaitFor(() => {
-        return removeRefreshingTokenSpy.mock.calls.length > 0;
+        return removeRenewingTokenSpy.mock.calls.length > 0;
       });
       expect(setSession).toHaveBeenCalled();
-      expect(setRefreshingTokenSpy).toHaveBeenCalled();
-      expect(removeRefreshingTokenSpy).toHaveBeenCalled();
+      expect(setRenewingTokenSpy).toHaveBeenCalled();
+      expect(removeRenewingTokenSpy).toHaveBeenCalled();
     });
 
     test('should do nothing if an error is encountered', async () => {
@@ -183,26 +183,26 @@ describe('Okta library', () => {
       getOrRenewAccessToken.mockRejectedValue(new Error('some error calling Okta'));
 
       const oktaAuth = new OktaAuth(MOCK_OAUTH_CONFIG);
-      await refreshOktaToken(oktaAuth);
+      await renewOktaToken(oktaAuth);
 
       await nonReactWaitFor(() => {
-        return removeRefreshingTokenSpy.mock.calls.length > 0;
+        return removeRenewingTokenSpy.mock.calls.length > 0;
       });
       expect(setSession).not.toHaveBeenCalled();
-      expect(setRefreshingTokenSpy).toHaveBeenCalled();
-      expect(removeRefreshingTokenSpy).toHaveBeenCalled();
+      expect(setRenewingTokenSpy).toHaveBeenCalled();
+      expect(removeRenewingTokenSpy).toHaveBeenCalled();
     });
 
-    test('should do nothing if the token is already being refreshed', async () => {
+    test('should do nothing if the token is already being renewed', async () => {
       vi.spyOn(Date, 'now').mockReturnValue(JUST_BEFORE_EXPIRATION);
 
       getSession.mockReturnValue(camsSession);
       getUser.mockResolvedValue(userClaims);
 
-      vi.spyOn(LocalStorage, 'isTokenBeingRefreshed')
+      vi.spyOn(LocalStorage, 'isTokenBeingRenewed')
         .mockReturnValueOnce(false)
         .mockReturnValue(true);
-      await refreshOktaToken(oktaAuth);
+      await renewOktaToken(oktaAuth);
       expect(setSession).not.toHaveBeenCalled();
     });
   });
