@@ -36,7 +36,7 @@
     "@azure/functions": "4.10.0",
     "@azure/identity": "4.13.0",
     "@azure/keyvault-secrets": "4.10.0",
-    "@launchdarkly/node-server-sdk": "9.10.3",
+    "@launchdarkly/node-server-sdk": "9.10.4",
     "@okta/jwt-verifier": "4.0.2",
     "@okta/okta-sdk-nodejs": "7.3.0",
     "applicationinsights": "3.12.1",
