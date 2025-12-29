@@ -366,7 +366,7 @@ describe('TrusteeAppointmentForm Tests', () => {
 
     await userEvent.click(cancelButton);
 
-    expect(navigateTo).toHaveBeenCalledWith('/trustees/trustee-456');
+    expect(navigateTo).toHaveBeenCalledWith('/trustees/trustee-456/appointments');
   });
 
   test('should show error when getCourts fails', async () => {

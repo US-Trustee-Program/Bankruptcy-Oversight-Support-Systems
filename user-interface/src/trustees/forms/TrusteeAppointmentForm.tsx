@@ -183,7 +183,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
   };
 
   const handleCancel = useCallback(() => {
-    navigate.navigateTo(`/trustees/${trusteeId}`);
+    navigate.navigateTo(`/trustees/${trusteeId}/appointments`);
   }, [navigate, trusteeId]);
 
   const handleFieldChange = (field: keyof FormData, value: string) => {
