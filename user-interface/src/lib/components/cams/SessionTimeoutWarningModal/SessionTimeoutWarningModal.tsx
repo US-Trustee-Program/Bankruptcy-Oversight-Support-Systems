@@ -39,17 +39,24 @@ function SessionTimeoutWarningModal_(
     },
   };
 
-  useImperativeHandle(ref, () => ({
-    show: () => {
-      setIsOpen(true);
-      setMountKey((prev) => prev + 1); // Increment key to force remount
-      modalRef.current?.show({});
-    },
-    hide: () => {
-      setIsOpen(false);
-      modalRef.current?.hide({});
-    },
-  }));
+  useImperativeHandle(
+    ref,
+    () => ({
+      show: () => {
+        // Only remount if modal is not already open
+        if (!isOpen) {
+          setMountKey((prev) => prev + 1);
+        }
+        setIsOpen(true);
+        modalRef.current?.show({});
+      },
+      hide: () => {
+        setIsOpen(false);
+        modalRef.current?.hide({});
+      },
+    }),
+    [isOpen],
+  );
 
   return (
     <Modal
@@ -66,6 +73,7 @@ function SessionTimeoutWarningModal_(
       }
       forceAction={true}
       actionButtonGroup={actionButtonGroup}
+      onClose={() => setIsOpen(false)}
     />
   );
 }

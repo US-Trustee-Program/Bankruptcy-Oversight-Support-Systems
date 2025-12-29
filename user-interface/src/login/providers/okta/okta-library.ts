@@ -5,12 +5,20 @@ import Api2 from '@/lib/models/api2';
 import { initializeSessionEndLogout } from '@/login/session-end-logout';
 
 const SAFE_LIMIT = 300;
-const HEARTBEAT = 1000 * 60 * 5;
+const HEARTBEAT = 5 * 1000;
 const LOGOUT_TIMER = 1000 * 60;
 
 // Custom event names
 export const AUTH_EXPIRY_WARNING = 'auth-expiry-warning';
 export const SESSION_TIMEOUT_WARNING = 'session-timeout-warning';
+
+// Flag to track if warning has been shown
+let warningShown = false;
+
+// Helper function for testing to reset the warning flag
+export function resetWarningShownFlag() {
+  warningShown = false;
+}
 
 export function registerRenewOktaToken(oktaAuth: OktaAuth) {
   startHeartbeat(() => handleHeartbeat(oktaAuth));
@@ -50,13 +58,12 @@ export async function handleHeartbeat(oktaAuth: OktaAuth) {
     if (isActive()) {
       // if close to expiry and user active, renew token
       renewOktaToken(oktaAuth);
-    } else {
-      // if close to expiry and user inactive, pop popup
+    } else if (!warningShown) {
+      // if close to expiry and user inactive, pop popup (only once)
+      warningShown = true;
       window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
       setInterval(initializeSessionEndLogout, LOGOUT_TIMER);
     }
-  } else {
-    startHeartbeat(() => handleHeartbeat(oktaAuth));
   }
 }
 
@@ -86,6 +93,9 @@ export async function renewOktaToken(oktaAuth: OktaAuth) {
       const me = await Api2.getMe();
       LocalStorage.setSession(me.data);
       initializeSessionEndLogout(me.data);
+
+      // Reset the warning flag since token was successfully renewed
+      warningShown = false;
     }
   } catch {
     // failed to renew access token.

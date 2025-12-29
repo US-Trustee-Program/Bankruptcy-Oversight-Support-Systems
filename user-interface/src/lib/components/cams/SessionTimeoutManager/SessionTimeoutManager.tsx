@@ -18,6 +18,7 @@ export default function SessionTimeoutManager() {
 
   useEffect(() => {
     const handleAuthExpiryWarning = () => {
+      console.log('Handling auth expiry warning event');
       sessionTimeoutModalRef.current?.show();
     };
 
@@ -30,7 +31,7 @@ export default function SessionTimeoutManager() {
 
     return () => {
       window.removeEventListener(AUTH_EXPIRY_WARNING, handleAuthExpiryWarning);
-      window.addEventListener(SESSION_TIMEOUT_WARNING, handleSessionTimeoutWarning);
+      window.removeEventListener(SESSION_TIMEOUT_WARNING, handleSessionTimeoutWarning);
     };
   }, []);
 
