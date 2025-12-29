@@ -501,7 +501,7 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
         <>
           <CaseDetailHeader isLoading={isLoading} caseId={caseId} />
           <div className="grid-row grid-gap-lg">
-            <div className="grid-col-2">
+            <div className="grid-col-2 case-detail-navigation-column">
               <CaseDetailNavigation
                 caseId={caseId}
                 initiallySelectedNavLink={navState}
@@ -522,7 +522,7 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
             caseDetail={caseBasicInfo}
           />
           <div className="grid-row grid-gap-lg">
-            <div className="grid-col-2">
+            <div className="grid-col-2 left-navigation-column">
               <div className="left-navigation-pane-container">
                 <CaseDetailNavigation
                   caseId={caseId}
@@ -613,6 +613,7 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
                         onStartDateChange={handleStartDateChange}
                         onEndDateChange={handleEndDateChange}
                         ref={dateRangeRef}
+                        futureDateWarningThresholdYears={100}
                       ></DateRangePicker>
                     </div>
                     <div className="in-docket-search form-field" data-testid="docket-number-search">
