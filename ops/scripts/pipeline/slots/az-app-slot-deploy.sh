@@ -99,6 +99,10 @@ while [ $attempt -le $max_attempts ]; do
 
     if az webapp deploy --resource-group "${app_rg}" --src-path "${artifact_path}" --name "${app_name}" --slot "${slot_name}" --type zip --async false --track-status true --clean true; then
         echo "Deployment succeeded on attempt ${attempt}"
+        echo "Restarting webapp slot to clear cache..."
+        az webapp restart --resource-group "${app_rg}" --name "${app_name}" --slot "${slot_name}"
+        echo "Waiting for restart to complete..."
+        sleep 15
         break
     else
         exit_code=$?
