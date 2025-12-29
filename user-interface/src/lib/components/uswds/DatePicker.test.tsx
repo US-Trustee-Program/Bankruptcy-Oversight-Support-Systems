@@ -10,9 +10,27 @@ import { InputRef } from '@/lib/type-declarations/input-fields';
 
 // Shared constants
 const DEFAULT_ID = 'test-datepicker';
+const DEBOUNCE_MS = 600;
+const IMMEDIATE_MS = 100;
 const mockOnChange = vi.fn();
 
-// Shared helper for rendering DatePicker with props
+// Helper functions (alphabetical order)
+function getErrorText() {
+  return (document.querySelector('.date-error') as HTMLElement | null)?.textContent ?? '';
+}
+
+function getInput(id: string) {
+  return screen.getByTestId(id) as HTMLInputElement;
+}
+
+function getWarningElement() {
+  return document.querySelector('.date-warning');
+}
+
+function getWarningText() {
+  return (document.querySelector('.date-warning') as HTMLElement | null)?.textContent ?? '';
+}
+
 function renderWithProps(props?: Partial<DatePickerProps>): InputRef {
   const ref = React.createRef<InputRef>();
   const defaultProps: DatePickerProps = { id: DEFAULT_ID, onChange: mockOnChange };
@@ -29,30 +47,10 @@ function renderWithProps(props?: Partial<DatePickerProps>): InputRef {
   return ref.current!;
 }
 
-// Page object helpers for common operations
-const DEBOUNCE_MS = 600;
-const IMMEDIATE_MS = 100;
-
-function getInput(id: string) {
-  return screen.getByTestId(id) as HTMLInputElement;
-}
-
 async function waitForValidation(ms = DEBOUNCE_MS) {
   await act(async () => {
     await new Promise((resolve) => setTimeout(resolve, ms));
   });
-}
-
-function getErrorText() {
-  return (document.querySelector('.date-error') as HTMLElement | null)?.textContent ?? '';
-}
-
-function getWarningText() {
-  return (document.querySelector('.date-warning') as HTMLElement | null)?.textContent ?? '';
-}
-
-function getWarningElement() {
-  return document.querySelector('.date-warning');
 }
 
 describe('Test DatePicker component', async () => {
