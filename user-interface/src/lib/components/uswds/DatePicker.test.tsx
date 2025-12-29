@@ -13,13 +13,9 @@ const DEFAULT_ID = 'test-datepicker';
 const mockOnChange = vi.fn();
 
 // Shared helper for rendering DatePicker with props
-function renderDatePickerWithProps(
-  id: string,
-  onChange: DatePickerProps['onChange'],
-  props?: Partial<DatePickerProps>,
-): InputRef {
+function renderWithProps(props?: Partial<DatePickerProps>): InputRef {
   const ref = React.createRef<InputRef>();
-  const defaultProps: DatePickerProps = { id, onChange };
+  const defaultProps: DatePickerProps = { id: DEFAULT_ID, onChange: mockOnChange };
   const renderProps = { ...defaultProps, ...props };
 
   render(
@@ -31,11 +27,6 @@ function renderDatePickerWithProps(
   );
 
   return ref.current!;
-}
-
-// Shared helper wrapper for convenience
-function renderWithProps(props?: Partial<DatePickerProps>): InputRef {
-  return renderDatePickerWithProps(DEFAULT_ID, mockOnChange, props);
 }
 
 // Page object helpers for common operations
