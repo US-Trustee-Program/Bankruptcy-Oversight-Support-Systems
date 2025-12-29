@@ -50,7 +50,6 @@ jobs:
     secrets: inherit # pragma: allowlist secret
     with:
       nodeVersion: ${{ vars.NODE_VERSION }}
-      isDeployment: true
       camsServerHostname: ${{ inputs.apiFunctionName }}.azurewebsites.us
       camsStagingHostname: ${{ inputs.apiFunctionName }}-${{ inputs.slotName }}.azurewebsites.us
       camsServerPort: ${{ vars.CAMS_SERVER_PORT }}
