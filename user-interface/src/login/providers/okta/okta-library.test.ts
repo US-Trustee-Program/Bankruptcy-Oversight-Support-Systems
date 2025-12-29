@@ -58,6 +58,44 @@ describe('Okta library', () => {
       const oktaAuth = new OktaAuth(MOCK_OAUTH_CONFIG);
       expect(() => registerRenewOktaToken(oktaAuth)).not.toThrow();
     });
+
+    test('should initialize heartbeat interval with correct parameters', () => {
+      vi.useFakeTimers();
+      const setIntervalSpy = vi.spyOn(window, 'setInterval');
+      const oktaAuth = new OktaAuth(MOCK_OAUTH_CONFIG);
+
+      registerRenewOktaToken(oktaAuth);
+
+      expect(setIntervalSpy).toHaveBeenCalledWith(
+        expect.any(Function),
+        1000 * 60 * 5, // HEARTBEAT = 5 minutes
+      );
+
+      vi.useRealTimers();
+    });
+
+    test('should clear existing heartbeat when called multiple times', () => {
+      vi.useFakeTimers();
+      const clearIntervalSpy = vi.spyOn(window, 'clearInterval');
+      const setIntervalSpy = vi.spyOn(window, 'setInterval');
+      const oktaAuth = new OktaAuth(MOCK_OAUTH_CONFIG);
+
+      // First call
+      registerRenewOktaToken(oktaAuth);
+      const firstIntervalId = setIntervalSpy.mock.results[0].value;
+
+      // Clear spies
+      clearIntervalSpy.mockClear();
+      setIntervalSpy.mockClear();
+
+      // Second call should clear the first interval
+      registerRenewOktaToken(oktaAuth);
+
+      expect(clearIntervalSpy).toHaveBeenCalledWith(firstIntervalId);
+      expect(setIntervalSpy).toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
   });
 
   describe('getCamsUser tests', () => {
@@ -296,7 +334,11 @@ describe('Okta library', () => {
       );
     });
 
-    test('should only emit AUTH_EXPIRY_WARNING once (warningShown flag prevents duplicates)', async () => {
+    test('should start logout timer when close to expiry and user is inactive', async () => {
+      // Use fake timers to verify setInterval is called
+      vi.useFakeTimers();
+      const setIntervalSpy = vi.spyOn(window, 'setInterval');
+
       nowInSecondsSpy.mockReturnValue(CLOSE_TO_EXPIRATION);
       // Mock user as inactive: last interaction was too long ago
       const now = Date.now();
@@ -326,6 +368,62 @@ describe('Okta library', () => {
       await handleHeartbeat(oktaAuth);
 
       expect(dispatchEventSpy).not.toHaveBeenCalled();
+    });
+
+    test('should clear existing logout timer before setting a new one when user is inactive', async () => {
+      vi.useFakeTimers();
+      const clearIntervalSpy = vi.spyOn(window, 'clearInterval');
+      const setIntervalSpy = vi.spyOn(window, 'setInterval');
+
+      nowInSecondsSpy.mockReturnValue(CLOSE_TO_EXPIRATION);
+      const now = Date.now();
+      const oldInteraction = now - (HEARTBEAT + 1000);
+      vi.spyOn(Date, 'now').mockReturnValue(now);
+      getLastInteractionSpy.mockReturnValue(oldInteraction);
+
+      // First call to create an interval
+      await handleHeartbeat(oktaAuth);
+      const firstIntervalId = setIntervalSpy.mock.results[0].value;
+
+      // Reset spies
+      clearIntervalSpy.mockClear();
+      setIntervalSpy.mockClear();
+
+      // Second call should clear the first interval before creating a new one
+      await handleHeartbeat(oktaAuth);
+
+      expect(clearIntervalSpy).toHaveBeenCalledWith(firstIntervalId);
+      expect(setIntervalSpy).toHaveBeenCalledWith(
+        sessionEndLogout.initializeSessionEndLogout,
+        1000 * 60,
+      );
+
+      vi.useRealTimers();
+    });
+
+    test('should clear existing heartbeat before starting a new one', async () => {
+      vi.useFakeTimers();
+      const clearIntervalSpy = vi.spyOn(window, 'clearInterval');
+      const setIntervalSpy = vi.spyOn(window, 'setInterval');
+
+      // First, set up a scenario that will start a heartbeat (not close to expiry)
+      nowInSecondsSpy.mockReturnValue(NOT_CLOSE_TO_EXPIRATION);
+
+      await handleHeartbeat(oktaAuth);
+      const firstHeartbeatId = setIntervalSpy.mock.results[0].value;
+
+      // Clear spies
+      clearIntervalSpy.mockClear();
+      setIntervalSpy.mockClear();
+
+      // Call handleHeartbeat again (still not close to expiry)
+      // This should clear the previous heartbeat and start a new one
+      await handleHeartbeat(oktaAuth);
+
+      expect(clearIntervalSpy).toHaveBeenCalledWith(firstHeartbeatId);
+      expect(setIntervalSpy).toHaveBeenCalled();
+
+      vi.useRealTimers();
     });
 
     test('should do nothing when not close to expiry', async () => {
