@@ -8,7 +8,7 @@ type DateRangeTestIds = {
   id: string;
 };
 
-const ERROR_TEXT = 'Start date cannot be after end date.';
+const ERROR_TEXT = 'Start date must be before end date.';
 
 function renderDateRangePicker(
   props: Partial<React.ComponentProps<typeof DateRangePicker>> & DateRangeTestIds,

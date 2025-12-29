@@ -51,7 +51,6 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
   const debounce = useDebounce();
 
   function validateDateRange(startValue: string, endValue: string) {
-    // Clear errors first
     setStartDateError('');
     setEndDateError('');
 
@@ -60,77 +59,72 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
     const isCompleteEndDate = /^\d{4}-\d{2}-\d{2}$/.test(endValue);
 
     if (!isCompleteStartDate || !isCompleteEndDate) {
-      return; // Don't validate incomplete dates
+      return;
     }
 
     const startDate = new Date(startValue);
     const endDate = new Date(endValue);
 
-    // Check if dates are valid
+    // Don't validate invalid dates
     if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-      return; // Don't validate invalid dates
+      return;
     }
 
-    // Check date range
     if (startDate > endDate) {
-      setStartDateError('Start date cannot be after end date.');
+      setStartDateError('Start date must be before end date.');
+    }
+  }
+
+  function handleDateChange(
+    ev: React.ChangeEvent<HTMLInputElement>,
+    startValue: string,
+    endValue: string,
+    callback?: (ev: React.ChangeEvent<HTMLInputElement>) => void,
+  ) {
+    setStartDateError('');
+    setEndDateError('');
+
+    if (callback) callback(ev);
+
+    if (startValue && endValue) {
+      validateDateRange(startValue, endValue);
     }
   }
 
   function onStartDateChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    // Clear errors when user starts typing
-    setStartDateError('');
-    setEndDateError('');
-
-    if (props.onStartDateChange) props.onStartDateChange(ev);
-
-    // Validate if we have both dates
-    const startValue = ev.target.value;
-    const endValue = endDateRef.current?.getValue();
-    if (startValue && endValue) {
-      validateDateRange(startValue, endValue);
-    }
+    handleDateChange(
+      ev,
+      ev.target.value,
+      endDateRef.current?.getValue() ?? '',
+      props.onStartDateChange,
+    );
   }
 
   function onEndDateChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    // Clear errors when user starts typing
-    setStartDateError('');
-    setEndDateError('');
+    handleDateChange(
+      ev,
+      startDateRef.current?.getValue() ?? '',
+      ev.target.value,
+      props.onEndDateChange,
+    );
+  }
 
-    if (props.onEndDateChange) props.onEndDateChange(ev);
-
-    // Validate if we have both dates
-    const endValue = ev.target.value;
-    const startValue = startDateRef.current?.getValue();
-    if (startValue && endValue) {
-      validateDateRange(startValue, endValue);
+  function handleDateBlur(startValue: string, endValue: string) {
+    if (!startValue || !endValue) {
+      return;
     }
+    validateDateRange(startValue, endValue);
   }
 
   function onStartDateBlur(ev: React.FocusEvent<HTMLInputElement>) {
-    const startValue = ev.target.value;
-    const endValue = endDateRef.current?.getValue();
-
-    if (!startValue || !endValue) {
-      return; // Don't validate if either field is empty
-    }
-
-    validateDateRange(startValue, endValue);
+    handleDateBlur(ev.target.value, endDateRef.current?.getValue() ?? '');
   }
 
   function onEndDateBlur(ev: React.FocusEvent<HTMLInputElement>) {
-    const endValue = ev.target.value;
-    const startValue = startDateRef.current?.getValue();
-
-    if (!startValue || !endValue) {
-      return; // Don't validate if either field is empty
-    }
-
-    validateDateRange(startValue, endValue);
+    handleDateBlur(startDateRef.current?.getValue() ?? '', ev.target.value);
   }
 
   function clearValue() {
-    // Clear error messages
     setStartDateError('');
     setEndDateError('');
 
@@ -144,7 +138,6 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
   }
 
   function resetValue() {
-    // Clear error messages
     setStartDateError('');
     setEndDateError('');
 
@@ -181,7 +174,6 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
     };
   });
 
-  // Build accessible descriptions for date range constraints
   const getDateRangeDescription = () => {
     if (minDate && maxDate) {
       const formattedMin = formatDateForVoiceOver(minDate);
