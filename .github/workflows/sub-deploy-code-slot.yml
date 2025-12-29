@@ -69,6 +69,13 @@ jobs:
           op: decode
           in: ${{ inputs.azResourceGrpAppEncrypted }}
 
+      - name: Verify downloaded artifact
+        run: |
+          echo "Verifying artifact contents..."
+          ls -lh ./${{ inputs.webappName }}.zip
+          unzip -l ./${{ inputs.webappName }}.zip | head -20
+          unzip -p ./${{ inputs.webappName }}.zip index.html | grep -i "meta name=\"info-sha\"" || echo "SHA meta tag not found"
+
       - name: Deploy to Azure WebApp Slot
         id: deploy-webapp-slot-step
         run: |
