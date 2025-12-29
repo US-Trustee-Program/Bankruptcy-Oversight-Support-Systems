@@ -5,7 +5,7 @@
     fill: white;
   }
 
-  &.lead-case-icon path:first-child {
+  &.lead-case-icon path:first-of-type {
     fill: colors.$primary;
   }
 
@@ -14,7 +14,7 @@
     fill: white;
   }
 
-  &.member-case-icon path:first-child {
+  &.member-case-icon path:first-of-type {
     fill: colors.$primary;
   }
 }
