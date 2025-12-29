@@ -114,7 +114,6 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
     // This is required for controlled inputs to work properly
     setDateValue(rawValue || null);
 
-    // Call parent's onChange immediately to keep it informed
     if (props.onChange) {
       props.onChange(ev);
     }
@@ -123,7 +122,6 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
       clearTimeout(validationTimeoutRef.current);
     }
 
-    // Clear errors and warnings if field is empty or incomplete
     if (!rawValue) {
       setErrorMessage('');
       setWarningMessage('');
@@ -168,7 +166,6 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
       if (!hasError) {
         setErrorMessage('');
 
-        // Check if date exceeds future date warning threshold (if configured)
         if (props.futureDateWarningThresholdYears) {
           const now = new Date();
           const thresholdDate = new Date(
@@ -188,7 +185,6 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
           setWarningMessage('');
         }
       } else {
-        // Clear warning if there's an error
         setWarningMessage('');
       }
     }, 500);
@@ -215,16 +211,13 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
     };
   });
 
-  // Build aria-describedby IDs
   const getAriaDescribedBy = () => {
     const ids: string[] = [];
 
-    // Add custom aria-describedby if provided
     if (props['aria-describedby']) {
       ids.push(props['aria-describedby']);
     }
 
-    // Add error message ID if there's an error
     if (displayErrorMessage) {
       ids.push(`${id}-error`);
     }
