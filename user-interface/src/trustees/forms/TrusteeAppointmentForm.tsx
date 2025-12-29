@@ -31,6 +31,10 @@ const STATUS_OPTIONS: ComboOption<'active' | 'inactive'>[] = [
   { value: 'inactive', label: 'Inactive' },
 ];
 
+function navigateToAppointments(trusteeId: string, navigate: ReturnType<typeof useCamsNavigator>) {
+  navigate.navigateTo(`/trustees/${trusteeId}/appointments`);
+}
+
 type FormData = {
   districtKey: string; // Combined key: "{courtId}|{divisionCode}"
   chapter: ChapterType;
@@ -174,7 +178,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
 
     try {
       await Api2.postTrusteeAppointment(trusteeId, payload);
-      navigate.navigateTo(`/trustees/${trusteeId}/appointments`);
+      navigateToAppointments(trusteeId, navigate);
     } catch (e) {
       globalAlert?.error(`Failed to create appointment: ${(e as Error).message}`);
     } finally {
@@ -183,7 +187,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
   };
 
   const handleCancel = useCallback(() => {
-    navigate.navigateTo(`/trustees/${trusteeId}/appointments`);
+    navigateToAppointments(trusteeId, navigate);
   }, [navigate, trusteeId]);
 
   const handleFieldChange = (field: keyof FormData, value: string) => {
