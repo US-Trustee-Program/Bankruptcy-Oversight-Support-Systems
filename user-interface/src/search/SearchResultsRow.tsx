@@ -8,16 +8,14 @@ export function SearchResultsRow(props: SearchResultsRowProps) {
 
   return (
     <TableRow {...otherProps}>
-      <TableRowData dataSortValue={bCase.caseId.replace(/-/g, '')} dataLabel={labels[0]}>
+      <TableRowData dataLabel={labels[0]}>
         <span className="no-wrap">
           <CaseNumber caseId={bCase.caseId} /> ({bCase.courtDivisionName})
         </span>
       </TableRowData>
       <TableRowData dataLabel={labels[1]}>{bCase.caseTitle}</TableRowData>
       <TableRowData dataLabel={labels[2]}>{bCase.chapter}</TableRowData>
-      <TableRowData dataSortValue={bCase.dateFiled.replace(/-/g, '')} dataLabel={labels[3]}>
-        {formatDate(bCase.dateFiled)}
-      </TableRowData>
+      <TableRowData dataLabel={labels[3]}>{formatDate(bCase.dateFiled)}</TableRowData>
     </TableRow>
   );
 }
