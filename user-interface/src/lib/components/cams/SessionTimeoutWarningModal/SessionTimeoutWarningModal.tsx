@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
@@ -20,6 +20,8 @@ function SessionTimeoutWarningModal_(
   ref: React.Ref<SessionTimeoutWarningModalRef>,
 ) {
   const modalRef = useRef<ModalRefType>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const [mountKey, setMountKey] = useState(0);
   const { warningSeconds, onStayLoggedIn, onLogoutNow } = props;
   const modalId = 'session-timeout-warning';
 
@@ -39,9 +41,12 @@ function SessionTimeoutWarningModal_(
 
   useImperativeHandle(ref, () => ({
     show: () => {
+      setIsOpen(true);
+      setMountKey((prev) => prev + 1); // Increment key to force remount
       modalRef.current?.show({});
     },
     hide: () => {
+      setIsOpen(false);
       modalRef.current?.hide({});
     },
   }));
@@ -53,8 +58,9 @@ function SessionTimeoutWarningModal_(
       heading="Session Expiring Soon"
       content={
         <p>
-          Your session will expire in <CountdownTimer timeInMs={warningSeconds * 1000} /> seconds
-          due to inactivity. Click &quot;Stay Logged In&quot; to continue working, or &quot;Log Out
+          Your session will expire in{' '}
+          {isOpen && <CountdownTimer key={mountKey} timeInMs={warningSeconds * 1000} />} seconds due
+          to inactivity. Click &quot;Stay Logged In&quot; to continue working, or &quot;Log Out
           Now&quot; to end your session.
         </p>
       }
