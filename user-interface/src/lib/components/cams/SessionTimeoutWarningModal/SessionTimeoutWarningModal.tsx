@@ -2,6 +2,7 @@ import { forwardRef, useImperativeHandle, useRef } from 'react';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
+import { CountdownTimer } from './CountdownTimer';
 
 export interface SessionTimeoutWarningModalRef {
   show: () => void;
@@ -52,8 +53,9 @@ function SessionTimeoutWarningModal_(
       heading="Session Expiring Soon"
       content={
         <p>
-          Your session will expire in {warningSeconds} seconds due to inactivity. Click &quot;Stay
-          Logged In&quot; to continue working, or &quot;Log Out Now&quot; to end your session.
+          Your session will expire in <CountdownTimer timeInMs={warningSeconds * 1000} /> seconds
+          due to inactivity. Click &quot;Stay Logged In&quot; to continue working, or &quot;Log Out
+          Now&quot; to end your session.
         </p>
       }
       forceAction={true}

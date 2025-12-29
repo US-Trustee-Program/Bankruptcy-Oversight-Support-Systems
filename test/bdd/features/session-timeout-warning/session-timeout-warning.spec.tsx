@@ -78,9 +78,14 @@ describe('Feature: Session Timeout Warning', () => {
     const heading = screen.getByText(/Session Expiring Soon/i);
     expect(heading).toBeInTheDocument();
 
-    // ASSERT: Modal should display the warning message
-    const message = screen.getByText(/Your session will expire in 60 seconds/i);
-    expect(message).toBeInTheDocument();
+    // ASSERT: Modal should display the warning message with countdown timer
+    const messageStart = screen.getByText(/Your session will expire in/i);
+    expect(messageStart).toBeInTheDocument();
+
+    // ASSERT: Countdown timer should be present and showing a value
+    const countdownTimer = screen.getByTestId('countdown-timer');
+    expect(countdownTimer).toBeInTheDocument();
+    expect(parseInt(countdownTimer.textContent || '0')).toBeGreaterThan(0);
 
     // ASSERT: Modal should have "Stay Logged In" button
     const stayLoggedInButton = screen.getByRole('button', { name: /Stay Logged In/i });
