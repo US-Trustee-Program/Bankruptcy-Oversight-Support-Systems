@@ -64,7 +64,8 @@ jobs:
           --apiFunctionName ${{ inputs.apiFunctionName }} \
           --webappName ${{ inputs.webappName }} \
           --gitSha ${{ github.sha }} \
-          --slotName ${{ inputs.slotName }}
+          --slotName ${{ inputs.slotName }} \
+          --resourceGroup ${{ steps.rgApp.outputs.out }}
 
       - name: Disable GHA runner access
         if: always()
