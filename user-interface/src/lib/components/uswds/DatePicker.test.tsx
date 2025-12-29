@@ -8,13 +8,11 @@ import { InputRef } from '@/lib/type-declarations/input-fields';
 // in the formation that the UI expects. The date may only be changed using a change event and
 // the format must be in YYYY-DD-MM format.
 
-// Shared constants
 const DEFAULT_ID = 'test-datepicker';
 const DEBOUNCE_MS = 600;
 const IMMEDIATE_MS = 100;
 const mockOnChange = vi.fn();
 
-// Helper functions (alphabetical order)
 function getErrorText() {
   return (document.querySelector('.date-error') as HTMLElement | null)?.textContent ?? '';
 }
@@ -196,7 +194,6 @@ describe('DatePicker additional coverage tests', () => {
 
     const inputEl = screen.getByTestId(DEFAULT_ID);
 
-    // Trigger a change event with invalid date (before minDate)
     fireEvent.change(inputEl, { target: { value: '2023-12-31' } });
 
     await waitFor(() => {
@@ -211,10 +208,8 @@ describe('DatePicker additional coverage tests', () => {
     const initialValue = '2024-01-01';
     const view = renderWithProps({ value: initialValue });
 
-    // Setting empty value should trigger resetValue
     view.setValue('');
 
-    // Should reset to initial value since it's provided
     const inputEl = screen.getByTestId(DEFAULT_ID);
     expect(inputEl).toHaveValue(initialValue);
   });
@@ -225,10 +220,8 @@ describe('DatePicker additional coverage tests', () => {
 
     const inputEl = screen.getByTestId(DEFAULT_ID);
 
-    // First set a value
     fireEvent.change(inputEl, { target: { value: '2024-02-15' } });
 
-    // Then reset - should go to minDate since no initial value was provided
     act(() => view.resetValue());
 
     await waitFor(() => {
@@ -276,7 +269,6 @@ describe('DatePicker additional coverage tests', () => {
 
     const inputEl = screen.getByTestId(DEFAULT_ID);
 
-    // Trigger an error by entering invalid date (before minDate)
     fireEvent.change(inputEl, { target: { value: '2023-12-31' } });
 
     await waitFor(() => {
@@ -284,14 +276,13 @@ describe('DatePicker additional coverage tests', () => {
     });
   });
 
-  test('should set error message when date is below maxDate threshold', async () => {
+  test('should set error message when date is above maxDate threshold', async () => {
     const minDate = '2024-01-01';
     const maxDate = '2024-12-31';
     renderWithProps({ minDate, maxDate, onChange: mockOnChange });
 
     const inputEl = screen.getByTestId(DEFAULT_ID);
 
-    // Enter date that's after maxDate
     fireEvent.change(inputEl, { target: { value: '2025-01-01' } });
 
     await waitFor(() => {
@@ -307,7 +298,6 @@ describe('DatePicker additional coverage tests', () => {
 
     const inputEl = screen.getByTestId(DEFAULT_ID);
 
-    // Enter a valid date - should call onChange directly
     fireEvent.change(inputEl, { target: { value: '2024-06-15' } });
 
     expect(mockOnChange).toHaveBeenCalled();
@@ -320,18 +310,14 @@ describe('DatePicker additional coverage tests', () => {
 
     const inputEl = screen.getByTestId(DEFAULT_ID);
 
-    // Initially should not have aria-invalid
     expect(inputEl).not.toHaveAttribute('aria-invalid');
 
-    // Enter date before minDate
     fireEvent.change(inputEl, { target: { value: '2023-12-31' } });
 
-    // Wait for error to appear
     await waitFor(() => {
       expect(inputEl).toHaveAttribute('aria-invalid', 'true');
     });
 
-    // Error div should be referenced in aria-describedby
     expect(inputEl.getAttribute('aria-describedby')).toContain(`${DEFAULT_ID}-error`);
   });
 
@@ -341,13 +327,9 @@ describe('DatePicker additional coverage tests', () => {
 
     const inputEl = screen.getByTestId(DEFAULT_ID);
 
-    // Should have aria-invalid when error exists
     expect(inputEl).toHaveAttribute('aria-invalid', 'true');
-
-    // aria-describedby should include error ID
     expect(inputEl.getAttribute('aria-describedby')).toContain(`${DEFAULT_ID}-error`);
 
-    // Error should be displayed
     const errorDiv = document.getElementById(`${DEFAULT_ID}-error`);
     expect(errorDiv).toHaveTextContent(customError);
   });
@@ -357,10 +339,8 @@ describe('DatePicker additional coverage tests', () => {
 
     const inputEl = screen.getByTestId(DEFAULT_ID);
 
-    // First set a value
     fireEvent.change(inputEl, { target: { value: '2024-02-15' } });
 
-    // Then reset - should clear since no initial value and no minDate
     act(() => view.resetValue());
 
     await waitFor(() => {
@@ -380,10 +360,8 @@ describe('DatePicker additional coverage tests', () => {
 
     const inputEl = screen.getByTestId(DEFAULT_ID);
 
-    // Try to set an invalid date - browser will reject it
     fireEvent.change(inputEl, { target: { value: 'invalid-date' } });
 
-    // onChange should still be called (browser doesn't update value for invalid dates)
     await waitFor(() => {
       expect(mockChangeSpy).toHaveBeenCalled();
     });
@@ -406,13 +384,10 @@ describe('DatePicker additional coverage tests', () => {
     const ref = React.createRef<InputRef>();
     render(<DatePicker id="test-timeout-callback" ref={ref} value="2024-01-01" />);
 
-    // Call clearValue which will trigger clearDateValue and its setTimeout
     act(() => ref.current?.clearValue());
 
-    // Verify setTimeout was called
     expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 100);
 
-    // Manually execute the callback to cover line 37 (setDateValue(null))
     const callback = setTimeoutSpy.mock.calls[0][0] as () => void;
     act(() => callback());
 
@@ -440,18 +415,14 @@ describe('DatePicker additional coverage tests', () => {
 
     const inputEl = screen.getByTestId(DEFAULT_ID);
 
-    // First enter an out-of-range date to trigger error
     fireEvent.change(inputEl, { target: { value: '2023-12-15' } });
 
     await waitForValidation();
 
-    // Error should be shown
     expect(getErrorText()).toContain('Date is not within allowed range');
 
-    // Now clear the field
     fireEvent.change(inputEl, { target: { value: '' } });
 
-    // Error should be cleared immediately
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
     });
@@ -466,18 +437,14 @@ describe('DatePicker additional coverage tests', () => {
 
     const inputEl = screen.getByTestId(DEFAULT_ID);
 
-    // First enter an out-of-range date to trigger error
     fireEvent.change(inputEl, { target: { value: '2023-12-15' } });
 
     await waitForValidation();
 
-    // Error should be shown
     expect(getErrorText()).toContain('Date is not within allowed range');
 
-    // Now enter incomplete date (year-month only)
     fireEvent.change(inputEl, { target: { value: '2024-06' } });
 
-    // Error should be cleared (no need to wait for debounce)
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
     });
@@ -492,21 +459,17 @@ describe('DatePicker additional coverage tests', () => {
 
     const inputEl = screen.getByTestId(DEFAULT_ID);
 
-    // First enter an out-of-range date to trigger error
     fireEvent.change(inputEl, { target: { value: '2023-12-15' } });
 
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 600));
     });
 
-    // Error should be shown
     let errorElement = document.querySelector('.date-error');
     expect(errorElement?.textContent).toContain('Date is not within allowed range');
 
-    // Now enter invalid date (Feb 31)
     fireEvent.change(inputEl, { target: { value: '2024-02-31' } });
 
-    // Error should be cleared (invalid dates are ignored)
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
     });
@@ -532,10 +495,8 @@ describe('DatePicker additional coverage tests', () => {
 
     const inputEl = screen.getByTestId('test-clear-warning');
 
-    // Enter a far future date to trigger warning
     fireEvent.change(inputEl, { target: { value: farFutureDateString } });
 
-    // Wait for warning to appear
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 600));
     });
@@ -544,10 +505,8 @@ describe('DatePicker additional coverage tests', () => {
     expect(warningElement).toBeInTheDocument();
     expect(warningElement?.textContent).toContain('more than 100 years in the future');
 
-    // Call clearValue
     act(() => ref.current?.clearValue());
 
-    // Warning should be cleared (element removed from DOM)
     await waitFor(() => {
       warningElement = document.querySelector('.date-warning');
       expect(warningElement).toBeNull();
@@ -572,10 +531,8 @@ describe('DatePicker additional coverage tests', () => {
 
     const inputEl = screen.getByTestId('test-reset-warning');
 
-    // Enter a far future date to trigger warning
     fireEvent.change(inputEl, { target: { value: farFutureDateString } });
 
-    // Wait for warning to appear
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 600));
     });
@@ -584,10 +541,8 @@ describe('DatePicker additional coverage tests', () => {
     expect(warningElement).toBeInTheDocument();
     expect(warningElement?.textContent).toContain('more than 100 years in the future');
 
-    // Call resetValue
     act(() => ref.current?.resetValue());
 
-    // Warning should be cleared (element removed from DOM) and value should be reset
     await waitFor(() => {
       warningElement = document.querySelector('.date-warning');
       expect(warningElement).toBeNull();
@@ -613,10 +568,8 @@ describe('DatePicker additional coverage tests', () => {
 
     const inputEl = screen.getByTestId('test-reset-error');
 
-    // Enter date out of range to trigger error
     fireEvent.change(inputEl, { target: { value: '2025-12-31' } });
 
-    // Wait for error to appear
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 600));
     });
@@ -624,10 +577,8 @@ describe('DatePicker additional coverage tests', () => {
     let errorElement = document.querySelector('.date-error');
     expect(errorElement?.textContent).toContain('Date is not within allowed range');
 
-    // Call resetValue
     act(() => ref.current?.resetValue());
 
-    // Error should be cleared and value should be reset
     await waitFor(() => {
       errorElement = document.querySelector('.date-error');
       expect(errorElement?.textContent).toBe('');
@@ -732,7 +683,6 @@ describe('DatePicker edge case coverage', () => {
 
       const inputEl = getInput(DEFAULT_ID);
 
-      // Calculate exactly 100 years from now
       const now = new Date();
       const hundredYearsFromNow = new Date(now.getFullYear() + 100, now.getMonth(), now.getDate());
       const dateString = hundredYearsFromNow.toISOString().split('T')[0];
@@ -741,7 +691,6 @@ describe('DatePicker edge case coverage', () => {
 
       await waitForValidation();
 
-      // No warning should be shown for exactly at the threshold
       expect(getWarningElement()).not.toBeInTheDocument();
     });
 
@@ -756,10 +705,8 @@ describe('DatePicker edge case coverage', () => {
 
       await waitForValidation();
 
-      // Error should be shown (date out of range)
       expect(getErrorText()).toContain('Date is not within allowed range');
 
-      // No warning should be shown when there's an error
       expect(getWarningElement()).not.toBeInTheDocument();
     });
 
@@ -772,20 +719,16 @@ describe('DatePicker edge case coverage', () => {
 
       const inputEl = getInput(DEFAULT_ID);
 
-      // First enter far future date
       fireEvent.change(inputEl, { target: { value: '2250-06-15' } });
 
       await waitForValidation();
 
-      // Warning should be shown
       expect(getWarningText()).toContain('more than 100 years in the future');
 
-      // Now enter date within threshold
       fireEvent.change(inputEl, { target: { value: '2030-06-15' } });
 
       await waitForValidation();
 
-      // Warning should be cleared
       expect(getWarningText()).toBe('');
     });
   });
@@ -799,7 +742,6 @@ describe('DatePicker edge case coverage', () => {
 
     await waitForValidation();
 
-    // No error should be shown - the arbitrary 1900-2200 restriction has been removed
     expect(getErrorText()).toBe('');
   });
 
@@ -810,21 +752,16 @@ describe('DatePicker edge case coverage', () => {
 
     const inputEl = getInput(DEFAULT_ID);
 
-    // First, enter invalid date (before minDate) to trigger error
     fireEvent.change(inputEl, { target: { value: '2023-12-15' } });
 
-    // Wait for error to appear
     await waitFor(() => {
       expect(getErrorText()).toContain('Date is not within allowed range');
     });
 
-    // Now enter valid date within range
     fireEvent.change(inputEl, { target: { value: '2024-06-15' } });
 
-    // Wait for validation to clear error
     await waitForValidation();
 
-    // Error should be cleared
     expect(getErrorText()).toBe('');
   });
 
@@ -834,7 +771,6 @@ describe('DatePicker edge case coverage', () => {
 
     const inputEl = getInput(DEFAULT_ID);
 
-    // Trigger blur event
     fireEvent.blur(inputEl);
 
     expect(onBlurSpy).toHaveBeenCalledTimes(1);
@@ -845,7 +781,6 @@ describe('DatePicker edge case coverage', () => {
 
     const inputEl = getInput(DEFAULT_ID);
 
-    // Should have default max attribute when none provided
     expect(inputEl).toHaveAttribute('max', '9999-12-31');
   });
 
@@ -855,7 +790,6 @@ describe('DatePicker edge case coverage', () => {
 
     const inputEl = getInput(DEFAULT_ID);
 
-    // Should use custom maxDate when provided
     expect(inputEl).toHaveAttribute('max', customMax);
   });
 });
