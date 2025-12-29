@@ -65,7 +65,6 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
     const startDate = new Date(startValue);
     const endDate = new Date(endValue);
 
-    // Don't validate invalid dates
     if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
       return;
     }
