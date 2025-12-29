@@ -6,7 +6,13 @@ import { consolidationTypeMap } from '@/lib/utils/labels';
 import './CaseDetailAssociatedCases.scss';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { CaseDetail } from '@common/cams/cases';
+import {
+  CaseDetail,
+  getCaseConsolidationType,
+  getLeadCaseLabel,
+  getMemberCaseLabel,
+} from '@common/cams/cases';
+import { LeadCaseIcon, MemberCaseIcon } from '@/lib/components/cams/RawSvgIcon';
 
 interface CaseDetailAssociatedCasesProps {
   caseDetail: CaseDetail;
@@ -19,6 +25,7 @@ export default function CaseDetailAssociatedCases(props: CaseDetailAssociatedCas
   const consolidation = associatedCases.filter(
     (c) => c.documentType === 'CONSOLIDATION_FROM' || c.documentType === 'CONSOLIDATION_TO',
   ) as Consolidation[];
+  const consolidationType = getCaseConsolidationType(consolidation, consolidationTypeMap);
 
   function sortTransfers(a: Transfer, b: Transfer) {
     return sortByDateReverse(a.orderDate, b.orderDate);
@@ -99,7 +106,7 @@ export default function CaseDetailAssociatedCases(props: CaseDetailAssociatedCas
       {!isAssociatedCasesLoading && consolidation.length > 0 && (
         <>
           <h3>
-            {consolidationTypeMap.get(consolidation[0].consolidationType)} ({consolidation.length})
+            {consolidationType} ({consolidation.length})
           </h3>
           <div className="grid-row grid-gap-lg">
             <div className="grid-col-12">
@@ -129,13 +136,19 @@ export default function CaseDetailAssociatedCases(props: CaseDetailAssociatedCas
                     .map((bCase, idx) => {
                       return (
                         <tr key={idx}>
-                          <td>
+                          <td className="case-number-column">
+                            {bCase.documentType === 'CONSOLIDATION_TO' && (
+                              <LeadCaseIcon title={getLeadCaseLabel(consolidationType)} />
+                            )}
+                            {bCase.documentType === 'CONSOLIDATION_FROM' && (
+                              <MemberCaseIcon title={getMemberCaseLabel(consolidationType)} />
+                            )}
                             <CaseNumber caseId={bCase.otherCase.caseId} />
                             <span> ({bCase.otherCase.courtDivisionName})</span>
                           </td>
                           <td className="title-column">
                             {bCase.otherCase.caseTitle}
-                            {bCase.documentType === 'CONSOLIDATION_TO' && ` (Lead)`}
+                            {bCase.documentType === 'CONSOLIDATION_TO'}
                           </td>
                           <td>{formatDate(bCase.otherCase.dateFiled)}</td>
                           <td>{formatDate(bCase.orderDate)}</td>

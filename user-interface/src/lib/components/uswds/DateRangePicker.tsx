@@ -42,34 +42,94 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
     required,
   } = props;
 
-  const [internalDateRange, setInternalDateRange] = useState<DateRange>({
-    start: minDate,
-    end: maxDate,
-  });
-
   const startDateRef = useRef<InputRef>(null);
   const endDateRef = useRef<InputRef>(null);
 
+  const [startDateError, setStartDateError] = useState<string>('');
+  const [endDateError, setEndDateError] = useState<string>('');
+
   const debounce = useDebounce();
 
+  function validateDateRange(startValue: string, endValue: string) {
+    setStartDateError('');
+    setEndDateError('');
+
+    // Only validate if both dates are complete (YYYY-MM-DD format)
+    const isCompleteStartDate = /^\d{4}-\d{2}-\d{2}$/.test(startValue);
+    const isCompleteEndDate = /^\d{4}-\d{2}-\d{2}$/.test(endValue);
+
+    if (!isCompleteStartDate || !isCompleteEndDate) {
+      return;
+    }
+
+    const startDate = new Date(startValue);
+    const endDate = new Date(endValue);
+
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      return;
+    }
+
+    if (startDate > endDate) {
+      setStartDateError('Start date must be before end date.');
+    }
+  }
+
+  function handleDateChange(
+    ev: React.ChangeEvent<HTMLInputElement>,
+    startValue: string,
+    endValue: string,
+    callback?: (ev: React.ChangeEvent<HTMLInputElement>) => void,
+  ) {
+    setStartDateError('');
+    setEndDateError('');
+
+    if (callback) callback(ev);
+
+    if (startValue && endValue) {
+      validateDateRange(startValue, endValue);
+    }
+  }
+
   function onStartDateChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    setInternalDateRange({ ...internalDateRange, start: ev.target.value || minDate });
-    if (props.onStartDateChange) props.onStartDateChange(ev);
+    handleDateChange(
+      ev,
+      ev.target.value,
+      endDateRef.current?.getValue() ?? '',
+      props.onStartDateChange,
+    );
   }
 
   function onEndDateChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    setInternalDateRange({ ...internalDateRange, end: ev.target.value || maxDate });
-    if (props.onEndDateChange) props.onEndDateChange(ev);
+    handleDateChange(
+      ev,
+      startDateRef.current?.getValue() ?? '',
+      ev.target.value,
+      props.onEndDateChange,
+    );
+  }
+
+  function handleDateBlur(startValue: string, endValue: string) {
+    if (!startValue || !endValue) {
+      return;
+    }
+    validateDateRange(startValue, endValue);
+  }
+
+  function onStartDateBlur(ev: React.FocusEvent<HTMLInputElement>) {
+    handleDateBlur(ev.target.value, endDateRef.current?.getValue() ?? '');
+  }
+
+  function onEndDateBlur(ev: React.FocusEvent<HTMLInputElement>) {
+    handleDateBlur(startDateRef.current?.getValue() ?? '', ev.target.value);
   }
 
   function clearValue() {
-    // TODO: This is sus. Why are we setting the state to it's current state. Will this cause a rerender or be rejected by React?
-    // Is this possibly causing the "weirdness" that requires us to debounce the clearValue again?
-    setInternalDateRange(internalDateRange);
+    setStartDateError('');
+    setEndDateError('');
+
     startDateRef.current?.clearValue();
     endDateRef.current?.clearValue();
 
-    // debounce to solve some funky weirdness with the date type input handling keyboard events after a reset.
     debounce(() => {
       startDateRef.current?.clearValue();
       endDateRef.current?.clearValue();
@@ -77,6 +137,9 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
   }
 
   function resetValue() {
+    setStartDateError('');
+    setEndDateError('');
+
     startDateRef.current?.resetValue();
     endDateRef.current?.resetValue();
   }
@@ -110,6 +173,23 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
     };
   });
 
+  const getDateRangeDescription = () => {
+    if (minDate && maxDate) {
+      const formattedMin = formatDateForVoiceOver(minDate);
+      const formattedMax = formatDateForVoiceOver(maxDate);
+      return `Valid dates are between ${formattedMin} and ${formattedMax}.`;
+    } else if (minDate) {
+      const formattedMin = formatDateForVoiceOver(minDate);
+      return `Valid dates are on or after ${formattedMin}.`;
+    } else if (maxDate) {
+      const formattedMax = formatDateForVoiceOver(maxDate);
+      return `Valid dates are on or before ${formattedMax}.`;
+    }
+    return '';
+  };
+
+  const dateRangeConstraint = getDateRangeDescription();
+
   return (
     <div
       id={id}
@@ -121,30 +201,46 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
         ref={startDateRef}
         id={`${id}-date-start`}
         minDate={minDate}
-        maxDate={internalDateRange.end}
+        maxDate={maxDate}
         onChange={onStartDateChange}
+        onBlur={onStartDateBlur}
         label={startDateLabel || 'Start date'}
-        aria-describedby={`${id}-aria-description`}
+        aria-describedby={`${id}-start-hint ${id}-aria-description`}
         aria-live={props['aria-live'] ?? undefined}
         name="event-date-start"
         value={value?.start}
         disabled={disabled}
         required={required}
+        customErrorMessage={startDateError}
+        futureDateWarningThresholdYears={props.futureDateWarningThresholdYears}
       />
+      <span id={`${id}-start-hint`} className="usa-hint" hidden>
+        Enter the beginning date for the range. Use the format MM/DD/YYYY or select from the
+        calendar.
+        {dateRangeConstraint && ` ${dateRangeConstraint}`}
+      </span>
+
       <DatePicker
         ref={endDateRef}
         id={`${id}-date-end`}
-        minDate={internalDateRange.start}
+        minDate={minDate}
         maxDate={maxDate}
         onChange={onEndDateChange}
+        onBlur={onEndDateBlur}
         label={endDateLabel || 'End date'}
-        aria-describedby={`${id}-aria-description`}
+        aria-describedby={`${id}-end-hint ${id}-aria-description`}
         aria-live={props['aria-live'] ?? undefined}
         name="event-date-end"
         value={value?.end}
         disabled={disabled}
         required={required}
+        customErrorMessage={endDateError}
+        futureDateWarningThresholdYears={props.futureDateWarningThresholdYears}
       />
+      <span id={`${id}-end-hint`} className="usa-hint" hidden>
+        Enter the ending date for the range. Use the format MM/DD/YYYY or select from the calendar.
+        {dateRangeConstraint && ` ${dateRangeConstraint}`}
+      </span>
       <span id={`${id}-aria-description`} aria-live="polite" hidden>
         <span>Format: numeric month / numeric day / 4-digit year.</span>
         {ariaDescription && <span aria-label={ariaDescription}></span>}
@@ -167,13 +263,10 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
             )
           </span>
         )}
-        {(internalDateRange?.start || internalDateRange?.end) && (
+        {(minDate || maxDate) && (
           <span>
-            Date range is currently set to{' '}
-            {internalDateRange?.start && (
-              <>start {formatDateForVoiceOver(internalDateRange.start)}</>
-            )}
-            {internalDateRange?.end && <>end {formatDateForVoiceOver(internalDateRange.end)}</>}
+            Date range is currently set to {minDate && <>start {formatDateForVoiceOver(minDate)}</>}
+            {maxDate && <>end {formatDateForVoiceOver(maxDate)}</>}
           </span>
         )}{' '}
         - <span>Use arrow keys to navigate days or type the date directly.</span>

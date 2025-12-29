@@ -1,8 +1,15 @@
 import { DebtorAttorney, Debtor, LegacyTrustee } from './parties';
-import { ConsolidationFrom, ConsolidationTo, TransferFrom, TransferTo } from './events';
+import {
+  Consolidation,
+  ConsolidationFrom,
+  ConsolidationTo,
+  TransferFrom,
+  TransferTo,
+} from './events';
 import { CaseAssignment } from './assignments';
 import { Auditable } from './auditable';
 import { CamsUserReference } from './users';
+import { ConsolidationType } from './orders';
 
 export const VALID_CASEID_PATTERN = RegExp(/^[\dA-Z]{3}-\d{2}-\d{5}$/);
 
@@ -130,6 +137,28 @@ export function isLeadCase(bCase: CaseDetail) {
 
 export function isChildCase(bCase: CaseDetail) {
   return bCase.consolidation[0]?.documentType === 'CONSOLIDATION_TO';
+}
+
+export function isTransferredCase(bCase: CaseDetail) {
+  const documentType = bCase.transfers?.[0]?.documentType;
+  return documentType === 'TRANSFER_FROM' || documentType === 'TRANSFER_TO';
+}
+
+export function getCaseConsolidationType(
+  consolidation: Consolidation[],
+  consolidationTypeMap: Map<ConsolidationType, string>,
+): string {
+  return consolidationTypeMap.get(consolidation[0]?.consolidationType) ?? '';
+}
+
+export function getLeadCaseLabel(consolidationType: string): string {
+  return consolidationType ? `Lead case in ${consolidationType.toLocaleLowerCase()}` : 'Lead case';
+}
+
+export function getMemberCaseLabel(consolidationType: string): string {
+  return consolidationType
+    ? `Member case in ${consolidationType.toLocaleLowerCase()}`
+    : 'Member case';
 }
 
 export function getCaseIdParts(caseId: string) {
