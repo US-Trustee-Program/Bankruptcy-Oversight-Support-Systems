@@ -97,7 +97,7 @@ backoff=2
 while [ $attempt -le $max_attempts ]; do
     echo "Deployment attempt ${attempt}/${max_attempts}..."
 
-    if az webapp deploy --resource-group "${app_rg}" --src-path "${artifact_path}" --name "${app_name}" --slot "${slot_name}" --type zip --async true --track-status false --clean true; then
+    if az webapp deploy --resource-group "${app_rg}" --src-path "${artifact_path}" --name "${app_name}" --slot "${slot_name}" --type zip --async false --track-status true --clean true; then
         echo "Deployment succeeded on attempt ${attempt}"
         break
     else
