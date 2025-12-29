@@ -16,6 +16,7 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
     districtDisplay = 'Court not found';
   }
   const formattedEffectiveDate = formatDate(props.appointment.effectiveDate);
+  const formattedAppointedDate = formatDate(props.appointment.appointedDate);
   const statusDisplay = `${props.appointment.status.charAt(0).toUpperCase() + props.appointment.status.slice(1)} ${formattedEffectiveDate}`;
 
   return (
@@ -38,8 +39,7 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
                 <span className="appointment-label">Status:</span> {statusDisplay}
               </li>
               <li>
-                <span className="appointment-label">Appointed:</span>{' '}
-                {props.appointment.appointedDate}
+                <span className="appointment-label">Appointed:</span> {formattedAppointedDate}
               </li>
             </ul>
           </div>
