@@ -5,7 +5,7 @@ import Api2 from '@/lib/models/api2';
 import { initializeSessionEndLogout } from '@/login/session-end-logout';
 
 const SAFE_LIMIT = 300;
-const HEARTBEAT = 5 * 1000;
+const HEARTBEAT = 1000 * 60 * 5;
 const LOGOUT_TIMER = 1000 * 60;
 
 export const AUTH_EXPIRY_WARNING = 'auth-expiry-warning';
@@ -73,14 +73,14 @@ export async function handleHeartbeat(oktaAuth: OktaAuth) {
     if (isActive()) {
       // if close to expiry and user active, renew token
       await renewOktaToken(oktaAuth);
-    } else if (!warningShown) {
-      // if close to expiry and user inactive, pop popup (only once)
-      warningShown = true;
     } else {
-      // if close to expiry and user inactive, pop popup
-      window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
-      clearLogoutTimerInterval();
-      logoutTimerIntervalId = window.setInterval(initializeSessionEndLogout, LOGOUT_TIMER);
+      // if close to expiry and user inactive, show warning once
+      if (!warningShown) {
+        warningShown = true;
+        window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
+        clearLogoutTimerInterval();
+        logoutTimerIntervalId = window.setInterval(initializeSessionEndLogout, LOGOUT_TIMER);
+      }
     }
   }
 }
