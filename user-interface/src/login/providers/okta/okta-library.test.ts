@@ -346,7 +346,9 @@ describe('Okta library', () => {
 
     test('should return early if no session exists', async () => {
       const getSessionSpy = vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
-      const nowInSecondsSpy = vi.spyOn(DateHelper, 'nowInSeconds').mockReturnValue(CLOSE_TO_EXPIRATION);
+      const nowInSecondsSpy = vi
+        .spyOn(DateHelper, 'nowInSeconds')
+        .mockReturnValue(CLOSE_TO_EXPIRATION);
       const renewOktaTokenSpy = vi.spyOn(OktaLibrary, 'renewOktaToken').mockResolvedValue();
       const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
 
@@ -361,7 +363,9 @@ describe('Okta library', () => {
     test('should not emit warning when close to expiry and user is active', async () => {
       const getSessionSpy = vi.spyOn(LocalStorage, 'getSession').mockReturnValue(camsSession);
       const getLastInteractionSpy = vi.spyOn(LocalStorage, 'getLastInteraction');
-      const nowInSecondsSpy = vi.spyOn(DateHelper, 'nowInSeconds').mockReturnValue(CLOSE_TO_EXPIRATION);
+      const nowInSecondsSpy = vi
+        .spyOn(DateHelper, 'nowInSeconds')
+        .mockReturnValue(CLOSE_TO_EXPIRATION);
       vi.spyOn(OktaLibrary, 'renewOktaToken').mockResolvedValue();
       const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
 
@@ -381,7 +385,9 @@ describe('Okta library', () => {
     test('should emit warning on first call when close to expiry and user is inactive', async () => {
       const getSessionSpy = vi.spyOn(LocalStorage, 'getSession').mockReturnValue(camsSession);
       const getLastInteractionSpy = vi.spyOn(LocalStorage, 'getLastInteraction');
-      const nowInSecondsSpy = vi.spyOn(DateHelper, 'nowInSeconds').mockReturnValue(CLOSE_TO_EXPIRATION);
+      const nowInSecondsSpy = vi
+        .spyOn(DateHelper, 'nowInSeconds')
+        .mockReturnValue(CLOSE_TO_EXPIRATION);
       const renewOktaTokenSpy = vi.spyOn(OktaLibrary, 'renewOktaToken').mockResolvedValue();
       const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
 
@@ -417,7 +423,9 @@ describe('Okta library', () => {
       vi.spyOn(DateHelper, 'nowInSeconds').mockReturnValue(CLOSE_TO_EXPIRATION);
       const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
       const setIntervalSpy = vi.spyOn(window, 'setInterval');
-      const initializeSessionEndLogoutSpy = vi.spyOn(sessionEndLogout, 'initializeSessionEndLogout').mockImplementation(() => {});
+      const initializeSessionEndLogoutSpy = vi
+        .spyOn(sessionEndLogout, 'initializeSessionEndLogout')
+        .mockImplementation(() => {});
 
       const now = Date.now();
       const oldInteraction = now - (HEARTBEAT + 1000); // Inactive beyond heartbeat window
@@ -478,7 +486,9 @@ describe('Okta library', () => {
 
     test('should do nothing when not close to expiry', async () => {
       const getSessionSpy = vi.spyOn(LocalStorage, 'getSession').mockReturnValue(camsSession);
-      const nowInSecondsSpy = vi.spyOn(DateHelper, 'nowInSeconds').mockReturnValue(NOT_CLOSE_TO_EXPIRATION);
+      const nowInSecondsSpy = vi
+        .spyOn(DateHelper, 'nowInSeconds')
+        .mockReturnValue(NOT_CLOSE_TO_EXPIRATION);
       const renewOktaTokenSpy = vi.spyOn(OktaLibrary, 'renewOktaToken').mockResolvedValue();
       const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
 
