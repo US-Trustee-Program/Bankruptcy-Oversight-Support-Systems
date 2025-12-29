@@ -118,9 +118,7 @@ describe('Tests for CountdownTimer component', () => {
     expect(timerSpan.textContent).toEqual('7');
 
     // Update the prop to a new time
-    act(() => {
-      rerender(<CountdownTimer timeInMs={20000} />);
-    });
+    rerender(<CountdownTimer timeInMs={20000} />);
     expect(timerSpan.textContent).toEqual('20');
   });
 });
