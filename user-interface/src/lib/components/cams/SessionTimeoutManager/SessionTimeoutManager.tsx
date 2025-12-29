@@ -4,7 +4,11 @@ import SessionTimeoutWarningModal, {
 } from '../SessionTimeoutWarningModal/SessionTimeoutWarningModal';
 import { resetLastInteraction, logout } from '@/login/inactive-logout';
 import { GlobalAlertContext } from '@/App';
-import { AUTH_EXPIRY_WARNING, renewOktaToken } from '@/login/providers/okta/okta-library';
+import {
+  AUTH_EXPIRY_WARNING,
+  SESSION_TIMEOUT_WARNING,
+  renewOktaToken,
+} from '@/login/providers/okta/okta-library';
 import { AuthContext } from '@/login/AuthContext';
 
 export default function SessionTimeoutManager() {
@@ -13,15 +17,20 @@ export default function SessionTimeoutManager() {
   const authContext = useContext(AuthContext);
 
   useEffect(() => {
-    const handleSessionTimeoutWarning = () => {
+    const handleAuthExpiryWarning = () => {
       sessionTimeoutModalRef.current?.show();
     };
 
-    window.addEventListener(AUTH_EXPIRY_WARNING, handleSessionTimeoutWarning);
-    // add event listener for SESSION_TIMEOUT_WARNING_EVENT
+    const handleSessionTimeoutWarning = () => {
+      logout();
+    };
+
+    window.addEventListener(AUTH_EXPIRY_WARNING, handleAuthExpiryWarning);
+    window.addEventListener(SESSION_TIMEOUT_WARNING, handleSessionTimeoutWarning);
 
     return () => {
-      window.removeEventListener(AUTH_EXPIRY_WARNING, handleSessionTimeoutWarning);
+      window.removeEventListener(AUTH_EXPIRY_WARNING, handleAuthExpiryWarning);
+      window.addEventListener(SESSION_TIMEOUT_WARNING, handleSessionTimeoutWarning);
     };
   }, []);
 

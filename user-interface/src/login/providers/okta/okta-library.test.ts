@@ -8,6 +8,7 @@ import {
   handleHeartbeat,
   isActive,
   AUTH_EXPIRY_WARNING,
+  SESSION_TIMEOUT_WARNING,
 } from './okta-library';
 import LocalStorage from '@/lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -38,6 +39,17 @@ vi.spyOn(delayModule, 'delay').mockImplementation(async (_, cb) => (cb ? cb() : 
 
 describe('Okta library', () => {
   const { nonReactWaitFor } = TestingUtilities;
+
+  describe('Constants', () => {
+    test('AUTH_EXPIRY_WARNING should be exported with correct value', () => {
+      expect(AUTH_EXPIRY_WARNING).toBe('auth-expiry-warning');
+    });
+
+    test('SESSION_TIMEOUT_WARNING should be exported with correct value', () => {
+      expect(SESSION_TIMEOUT_WARNING).toBe('session-timeout-warning');
+    });
+  });
+
   describe('registerRenewOktaToken', () => {
     test('should start the heartbeat interval', () => {
       // registerRenewOktaToken starts a heartbeat interval to monitor session expiration
@@ -241,6 +253,28 @@ describe('Okta library', () => {
           type: AUTH_EXPIRY_WARNING,
         }),
       );
+    });
+
+    test('should start logout timer when close to expiry and user is inactive', async () => {
+      // Use fake timers to verify setInterval is called
+      vi.useFakeTimers();
+      const setIntervalSpy = vi.spyOn(global, 'setInterval');
+
+      nowInSecondsSpy.mockReturnValue(CLOSE_TO_EXPIRATION);
+      // Mock user as inactive: last interaction was too long ago
+      const now = Date.now();
+      const oldInteraction = now - (HEARTBEAT + 1000); // Inactive beyond heartbeat window
+      vi.spyOn(Date, 'now').mockReturnValue(now);
+      getLastInteractionSpy.mockReturnValue(oldInteraction);
+
+      await handleHeartbeat(oktaAuth);
+
+      expect(setIntervalSpy).toHaveBeenCalledWith(
+        sessionEndLogout.initializeSessionEndLogout,
+        1000 * 60, // LOGOUT_TIMER = 1 minute
+      );
+
+      vi.useRealTimers();
     });
 
     test('should do nothing when not close to expiry', async () => {

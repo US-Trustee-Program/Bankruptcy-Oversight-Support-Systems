@@ -6,9 +6,11 @@ import { initializeSessionEndLogout } from '@/login/session-end-logout';
 
 const SAFE_LIMIT = 300;
 const HEARTBEAT = 1000 * 60 * 5;
+const LOGOUT_TIMER = 1000 * 60;
 
 // Custom event names
 export const AUTH_EXPIRY_WARNING = 'auth-expiry-warning';
+export const SESSION_TIMEOUT_WARNING = 'session-timeout-warning';
 
 export function registerRenewOktaToken(oktaAuth: OktaAuth) {
   startHeartbeat(() => handleHeartbeat(oktaAuth));
@@ -51,6 +53,7 @@ export async function handleHeartbeat(oktaAuth: OktaAuth) {
     } else {
       // if close to expiry and user inactive, pop popup
       window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
+      setInterval(initializeSessionEndLogout, LOGOUT_TIMER);
     }
   } else {
     startHeartbeat(() => handleHeartbeat(oktaAuth));

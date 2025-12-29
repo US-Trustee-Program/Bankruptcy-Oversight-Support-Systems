@@ -1,7 +1,7 @@
 import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, test, expect, vi, beforeAll, afterAll, afterEach } from 'vitest';
 import LocalStorage from '@/lib/utils/local-storage';
-import { AUTH_EXPIRY_WARNING } from '@/login/providers/okta/okta-library';
+import { AUTH_EXPIRY_WARNING, SESSION_TIMEOUT_WARNING } from '@/login/providers/okta/okta-library';
 import { initializeTestServer, cleanupTestServer } from '../../helpers/api-server';
 import { createTestSession } from '../../fixtures/auth.fixtures';
 import { TestSetup, waitForAppLoad } from '../../helpers/fluent-test-setup';
@@ -251,6 +251,63 @@ describe('Feature: Session Timeout Warning', () => {
     await waitFor(() => {
       const toast = screen.getByText(/Your session has been extended/i);
       expect(toast).toBeInTheDocument();
+    });
+  });
+
+  /**
+   * Scenario: User logs out by clicking "Log Out Now"
+   *
+   * Given the warning modal is displayed
+   * When the user clicks the "Log Out Now" button
+   * Then the user should be logged out
+   * And redirected to the logout page
+   */
+  test('STEP 1f: Clicking "Log Out Now" logs out the user', async () => {
+    // ARRANGE: Set up test session
+    const session = createSessionWithExpiry();
+
+    await TestSetup.forUser(session).withMyAssignments([]).renderAt('/my-cases');
+    await waitForAppLoad();
+
+    // ARRANGE: Show the modal
+    window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
+    await waitFor(() => {
+      const modal = screen.getByTestId('modal-session-timeout-warning');
+      expect(modal).toBeInTheDocument();
+      expect(modal).not.toHaveClass('is-hidden');
+    });
+
+    // ACT: Click "Log Out Now" button
+    const logOutNowButton = screen.getByRole('button', { name: /Log Out Now/i });
+    fireEvent.click(logOutNowButton);
+
+    // ASSERT: User should be redirected to logout page
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/');
+    });
+  });
+
+  /**
+   * Scenario: Automatic logout when SESSION_TIMEOUT_WARNING event is emitted
+   *
+   * Given the user's session has completely timed out due to inactivity
+   * When the SESSION_TIMEOUT_WARNING event is dispatched
+   * Then the user should be automatically logged out
+   * And redirected to the logout page
+   */
+  test('STEP 2: Automatic logout when SESSION_TIMEOUT_WARNING is emitted', async () => {
+    // ARRANGE: Set up test session
+    const session = createSessionWithExpiry();
+
+    await TestSetup.forUser(session).withMyAssignments([]).renderAt('/my-cases');
+    await waitForAppLoad();
+
+    // ACT: Emit SESSION_TIMEOUT_WARNING event (simulating automatic timeout)
+    window.dispatchEvent(new CustomEvent(SESSION_TIMEOUT_WARNING));
+
+    // ASSERT: User should be redirected to logout page
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/');
     });
   });
 });
