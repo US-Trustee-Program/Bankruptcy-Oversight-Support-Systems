@@ -19,7 +19,6 @@ export function resetWarningShownFlag() {
   warningShown = false;
 }
 
-
 export function registerRenewOktaToken(oktaAuth: OktaAuth) {
   startHeartbeat(() => handleHeartbeat(oktaAuth));
   // TODO: this depends on the API to renew (which is likely a logic error)
