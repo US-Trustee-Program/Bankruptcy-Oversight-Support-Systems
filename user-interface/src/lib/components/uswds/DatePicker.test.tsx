@@ -8,6 +8,10 @@ import { InputRef } from '@/lib/type-declarations/input-fields';
 // in the formation that the UI expects. The date may only be changed using a change event and
 // the format must be in YYYY-DD-MM format.
 
+// Shared constants
+const DEFAULT_ID = 'test-datepicker';
+const mockOnChange = vi.fn();
+
 // Shared helper for rendering DatePicker with props
 function renderDatePickerWithProps(
   id: string,
@@ -27,6 +31,11 @@ function renderDatePickerWithProps(
   );
 
   return ref.current!;
+}
+
+// Shared helper wrapper for convenience
+function renderWithProps(props?: Partial<DatePickerProps>): InputRef {
+  return renderDatePickerWithProps(DEFAULT_ID, mockOnChange, props);
 }
 
 // Page object helpers for common operations
@@ -56,16 +65,9 @@ function getWarningElement() {
 }
 
 describe('Test DatePicker component', async () => {
-  const DEFAULT_ID = 'test-datepicker';
-  const onChangeSpy = vi.fn();
-
   afterEach(() => {
     vi.restoreAllMocks();
   });
-
-  function renderWithProps(props?: Partial<DatePickerProps>): InputRef {
-    return renderDatePickerWithProps(DEFAULT_ID, onChangeSpy, props);
-  }
 
   test('should clear when clearValue() is called', async () => {
     const initialValue = '2024-01-01';
@@ -141,16 +143,9 @@ describe('Test DatePicker component', async () => {
 });
 
 describe('DatePicker additional coverage tests', () => {
-  const DEFAULT_ID = 'test-datepicker';
-  const mockOnChange = vi.fn();
-
   afterEach(() => {
     vi.restoreAllMocks();
   });
-
-  function renderWithProps(props?: Partial<DatePickerProps>): InputRef {
-    return renderDatePickerWithProps(DEFAULT_ID, mockOnChange, props);
-  }
 
   test('should handle className prop on form group and input', () => {
     const customClass = 'my-custom-class';
@@ -653,17 +648,10 @@ describe('DatePicker additional coverage tests', () => {
 });
 
 describe('DatePicker edge case coverage', () => {
-  const DEFAULT_ID = 'test-datepicker-edge';
-  const mockOnChange = vi.fn();
-
   afterEach(() => {
     vi.restoreAllMocks();
     vi.clearAllTimers();
   });
-
-  function renderWithProps(props?: Partial<DatePickerProps>): InputRef {
-    return renderDatePickerWithProps(DEFAULT_ID, mockOnChange, props);
-  }
 
   describe('invalid date handling', () => {
     test.each([
