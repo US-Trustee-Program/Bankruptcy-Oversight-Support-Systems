@@ -6,7 +6,7 @@ import Icon from '@/lib/components/uswds/Icon';
 import Input from '@/lib/components/uswds/Input';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import DateRangePicker from '@/lib/components/uswds/DateRangePicker';
-import { DateValidator } from '@/lib/components/uswds/DatePicker';
+import { ValidatorFunction } from 'common/src/cams/validation';
 import {
   ComboBoxRef,
   DateRange,
@@ -283,10 +283,11 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
 
   const globalAlert = useGlobalAlert();
 
-  const minDateValidator: DateValidator = (value: string) => {
+  const minDateValidator: ValidatorFunction = (value: unknown) => {
+    if (typeof value !== 'string') return { reasons: ['Must be a string'] };
     const date = new Date(value);
     const minDate = new Date('1978-12-31');
-    return date <= minDate ? 'Must be later than 1978.' : null;
+    return date <= minDate ? { reasons: ['Must be later than 1978.'] } : { valid: true as const };
   };
 
   async function fetchCaseBasicInfo() {
