@@ -242,22 +242,160 @@ function isPhoneNumber(value: unknown): ValidatorResult {
   return matches(PHONE_REGEX, 'Must be a valid phone number')(value);
 }
 
+/**
+ * Validates whether a value is a valid date in YYYY-MM-DD format.
+ * Checks both format and if the date is actually valid (e.g., not Feb 30).
+ *
+ * @param {unknown} value - The value to be validated as a date
+ * @returns {ValidatorResult} Object containing validation status and reason for failure if invalid
+ */
+function isValidDate(value: unknown): ValidatorResult {
+  if (typeof value !== 'string') {
+    return { reasons: ['Must be a string'] };
+  }
+
+  const isCompleteDate = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  if (!isCompleteDate) {
+    return { reasons: ['Must be in YYYY-MM-DD format'] };
+  }
+
+  const date = new Date(value);
+  if (isNaN(date.getTime())) {
+    return { reasons: ['Must be a valid date'] };
+  }
+
+  const isoString = date.toISOString().split('T')[0];
+  if (isoString !== value) {
+    return { reasons: ['Must be a valid date'] };
+  }
+
+  return VALID;
+}
+
+/**
+ * Creates a validator function that checks if a date is within a specified range.
+ * Validates that the date is after the minimum date and before the maximum date if provided.
+ *
+ * @param {string} [min] - The minimum allowed date in YYYY-MM-DD format
+ * @param {string} [max] - The maximum allowed date in YYYY-MM-DD format
+ * @param {string} [reason] - Optional custom error message to use for range violations
+ * @returns {ValidatorFunction} A validator function that checks date range
+ */
+function dateMinMax(min?: string, max?: string, reason?: string): ValidatorFunction {
+  return (value: unknown): ValidatorResult => {
+    const dateCheck = isValidDate(value);
+    if (!dateCheck.valid) {
+      return dateCheck;
+    }
+
+    const date = new Date(value as string);
+
+    if (min) {
+      const minDate = new Date(min);
+      if (date < minDate) {
+        return { reasons: [reason ?? 'Date is before minimum allowed date'] };
+      }
+    }
+
+    if (max) {
+      const maxDate = new Date(max);
+      if (date > maxDate) {
+        return { reasons: [reason ?? 'Date is after maximum allowed date'] };
+      }
+    }
+
+    return VALID;
+  };
+}
+
+/**
+ * Creates a validator function that checks if a date is before a specified comparison date.
+ *
+ * @param {string} compareDate - The comparison date in YYYY-MM-DD format
+ * @param {string} [reason] - Optional custom error message
+ * @returns {ValidatorFunction} A validator function that checks if date is before compareDate
+ */
+function dateBefore(compareDate: string, reason?: string): ValidatorFunction {
+  return (value: unknown): ValidatorResult => {
+    const dateCheck = isValidDate(value);
+    if (!dateCheck.valid) {
+      return dateCheck;
+    }
+
+    const date = new Date(value as string);
+    const compare = new Date(compareDate);
+
+    return date < compare ? VALID : { reasons: [reason ?? `Date must be before ${compareDate}`] };
+  };
+}
+
+/**
+ * Creates a validator function that checks if a date is after a specified comparison date.
+ *
+ * @param {string} compareDate - The comparison date in YYYY-MM-DD format
+ * @param {string} [reason] - Optional custom error message
+ * @returns {ValidatorFunction} A validator function that checks if date is after compareDate
+ */
+function dateAfter(compareDate: string, reason?: string): ValidatorFunction {
+  return (value: unknown): ValidatorResult => {
+    const dateCheck = isValidDate(value);
+    if (!dateCheck.valid) {
+      return dateCheck;
+    }
+
+    const date = new Date(value as string);
+    const compare = new Date(compareDate);
+
+    return date > compare ? VALID : { reasons: [reason ?? `Date must be after ${compareDate}`] };
+  };
+}
+
+/**
+ * Creates a validator function that checks if a date is not too far in the future.
+ * Validates that the date is within a specified number of years from now.
+ *
+ * @param {number} years - The maximum number of years in the future allowed
+ * @param {string} [reason] - Optional custom error message
+ * @returns {ValidatorFunction} A validator function that checks future date threshold
+ */
+function futureDateWithinYears(years: number, reason?: string): ValidatorFunction {
+  return (value: unknown): ValidatorResult => {
+    const dateCheck = isValidDate(value);
+    if (!dateCheck.valid) {
+      return dateCheck;
+    }
+
+    const date = new Date(value as string);
+    const now = new Date();
+    const thresholdDate = new Date(now.getFullYear() + years, now.getMonth(), now.getDate());
+
+    return date <= thresholdDate
+      ? VALID
+      : { reasons: [reason ?? `Date must be within ${years} years from today`] };
+  };
+}
+
 const Validators = {
   arrayOf,
+  dateAfter,
+  dateBefore,
+  dateMinMax,
   exactLength,
+  futureDateWithinYears,
   isEmailAddress,
+  isPhoneNumber,
+  isValidDate,
   isWebsiteAddress,
   isInSet,
-  isPhoneNumber,
   length,
   matches,
   maxLength,
   minLength,
   notSet,
   nullable,
+  optional,
   skip,
   spec,
-  optional,
 };
 
 export default Validators;

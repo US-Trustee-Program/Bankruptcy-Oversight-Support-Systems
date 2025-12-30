@@ -1,3 +1,4 @@
+import { describe, test, expect } from 'vitest';
 import { ValidationSpec, validateObject, VALID, ValidatorResult } from './validation';
 import Validators from './validators';
 
@@ -533,7 +534,7 @@ describe('validators', () => {
     const testCases: Array<{
       description: string;
       spec: ValidationSpec<TestPerson>;
-      value: TestPerson;
+      value: unknown;
       expected: ValidatorResult;
     }> = [
       {
@@ -680,15 +681,15 @@ describe('validators', () => {
     });
 
     test('should work with nested object specifications', () => {
-      const profileSpec = {
+      const profileSpec: ValidationSpec<{ age: number; city: string }> = {
         age: [Validators.matches(/^\d+$/, 'Age must be a number')],
         city: [Validators.minLength(1)],
       };
 
-      const userSpec: ValidationSpec<TestPerson> = {
+      const userSpec = {
         name: [Validators.minLength(1)],
         profile: profileSpec,
-      };
+      } as ValidationSpec<TestPerson>;
 
       const validator = Validators.spec(userSpec);
 
@@ -1020,6 +1021,287 @@ describe('validators', () => {
       expect(result.reasons).toHaveLength(1000);
       expect(result.reasons![0]).toBe('Element at index 0: Must contain at least 1 characters');
       expect(result.reasons![999]).toBe('Element at index 999: Must contain at least 1 characters');
+    });
+  });
+
+  describe('isValidDate', () => {
+    const testCases = [
+      {
+        description: 'should return valid for properly formatted date',
+        value: '2024-01-15',
+        expected: VALID,
+      },
+      {
+        description: 'should return valid for leap year date',
+        value: '2024-02-29',
+        expected: VALID,
+      },
+      {
+        description: 'should return invalid for non-leap year Feb 29',
+        value: '2023-02-29',
+        expected: { reasons: ['Must be a valid date'] },
+      },
+      {
+        description: 'should return invalid for incomplete date',
+        value: '2024-01',
+        expected: { reasons: ['Must be in YYYY-MM-DD format'] },
+      },
+      {
+        description: 'should return invalid for wrong format',
+        value: '01/15/2024',
+        expected: { reasons: ['Must be in YYYY-MM-DD format'] },
+      },
+      {
+        description: 'should return invalid for invalid month',
+        value: '2024-13-01',
+        expected: { reasons: ['Must be a valid date'] },
+      },
+      {
+        description: 'should return invalid for invalid day',
+        value: '2024-01-32',
+        expected: { reasons: ['Must be a valid date'] },
+      },
+      {
+        description: 'should return invalid for non-string value',
+        value: 123,
+        expected: { reasons: ['Must be a string'] },
+      },
+      {
+        description: 'should return invalid for null',
+        value: null,
+        expected: { reasons: ['Must be a string'] },
+      },
+      {
+        description: 'should return invalid for empty string',
+        value: '',
+        expected: { reasons: ['Must be in YYYY-MM-DD format'] },
+      },
+    ];
+    test.each(testCases)('$description', (testCase) => {
+      expect(Validators.isValidDate(testCase.value)).toEqual(testCase.expected);
+    });
+  });
+
+  describe('dateMinMax', () => {
+    const testCases = [
+      {
+        description: 'should return valid for date within range',
+        min: '2024-01-01',
+        max: '2024-12-31',
+        value: '2024-06-15',
+        expected: VALID,
+      },
+      {
+        description: 'should return valid for date at minimum',
+        min: '2024-01-01',
+        max: '2024-12-31',
+        value: '2024-01-01',
+        expected: VALID,
+      },
+      {
+        description: 'should return valid for date at maximum',
+        min: '2024-01-01',
+        max: '2024-12-31',
+        value: '2024-12-31',
+        expected: VALID,
+      },
+      {
+        description: 'should return invalid for date before minimum',
+        min: '2024-01-01',
+        max: '2024-12-31',
+        value: '2023-12-31',
+        expected: { reasons: ['Date is before minimum allowed date'] },
+      },
+      {
+        description: 'should return invalid for date after maximum',
+        min: '2024-01-01',
+        max: '2024-12-31',
+        value: '2025-01-01',
+        expected: { reasons: ['Date is after maximum allowed date'] },
+      },
+      {
+        description: 'should return valid when no min specified',
+        max: '2024-12-31',
+        value: '2020-01-01',
+        expected: VALID,
+      },
+      {
+        description: 'should return valid when no max specified',
+        min: '2024-01-01',
+        value: '2030-01-01',
+        expected: VALID,
+      },
+      {
+        description: 'should return invalid for invalid date format',
+        min: '2024-01-01',
+        max: '2024-12-31',
+        value: '01/15/2024',
+        expected: { reasons: ['Must be in YYYY-MM-DD format'] },
+      },
+      {
+        description: 'should return valid when no min or max specified',
+        value: '2024-06-15',
+        expected: VALID,
+      },
+      {
+        description: 'should use custom reason when date is before minimum',
+        min: '2024-01-01',
+        max: '2024-12-31',
+        reason: 'Date is not within allowed range. Enter a valid date.',
+        value: '2023-12-31',
+        expected: { reasons: ['Date is not within allowed range. Enter a valid date.'] },
+      },
+      {
+        description: 'should use custom reason when date is after maximum',
+        min: '2024-01-01',
+        max: '2024-12-31',
+        reason: 'Date is not within allowed range. Enter a valid date.',
+        value: '2025-01-01',
+        expected: { reasons: ['Date is not within allowed range. Enter a valid date.'] },
+      },
+    ];
+    test.each(testCases)('$description', (testCase) => {
+      const validator = Validators.dateMinMax(testCase.min, testCase.max, testCase.reason);
+      expect(validator(testCase.value)).toEqual(testCase.expected);
+    });
+  });
+
+  describe('dateBefore', () => {
+    const testCases = [
+      {
+        description: 'should return valid for date before comparison date',
+        compareDate: '2024-06-15',
+        value: '2024-06-14',
+        expected: VALID,
+      },
+      {
+        description: 'should return invalid for date equal to comparison date',
+        compareDate: '2024-06-15',
+        value: '2024-06-15',
+        expected: { reasons: ['Date must be before 2024-06-15'] },
+      },
+      {
+        description: 'should return invalid for date after comparison date',
+        compareDate: '2024-06-15',
+        value: '2024-06-16',
+        expected: { reasons: ['Date must be before 2024-06-15'] },
+      },
+      {
+        description: 'should use custom reason when provided',
+        compareDate: '2024-06-15',
+        reason: 'Custom error message',
+        value: '2024-06-16',
+        expected: { reasons: ['Custom error message'] },
+      },
+      {
+        description: 'should return invalid for invalid date format',
+        compareDate: '2024-06-15',
+        value: 'invalid',
+        expected: { reasons: ['Must be in YYYY-MM-DD format'] },
+      },
+    ];
+    test.each(testCases)('$description', (testCase) => {
+      const validator = Validators.dateBefore(testCase.compareDate, testCase.reason);
+      expect(validator(testCase.value)).toEqual(testCase.expected);
+    });
+  });
+
+  describe('dateAfter', () => {
+    const testCases = [
+      {
+        description: 'should return valid for date after comparison date',
+        compareDate: '2024-06-15',
+        value: '2024-06-16',
+        expected: VALID,
+      },
+      {
+        description: 'should return invalid for date equal to comparison date',
+        compareDate: '2024-06-15',
+        value: '2024-06-15',
+        expected: { reasons: ['Date must be after 2024-06-15'] },
+      },
+      {
+        description: 'should return invalid for date before comparison date',
+        compareDate: '2024-06-15',
+        value: '2024-06-14',
+        expected: { reasons: ['Date must be after 2024-06-15'] },
+      },
+      {
+        description: 'should use custom reason when provided',
+        compareDate: '2024-06-15',
+        reason: 'Custom error message',
+        value: '2024-06-14',
+        expected: { reasons: ['Custom error message'] },
+      },
+      {
+        description: 'should return invalid for invalid date format',
+        compareDate: '2024-06-15',
+        value: 'invalid',
+        expected: { reasons: ['Must be in YYYY-MM-DD format'] },
+      },
+    ];
+    test.each(testCases)('$description', (testCase) => {
+      const validator = Validators.dateAfter(testCase.compareDate, testCase.reason);
+      expect(validator(testCase.value)).toEqual(testCase.expected);
+    });
+  });
+
+  describe('futureDateWithinYears', () => {
+    test('should return valid for date within threshold', () => {
+      const now = new Date();
+      const futureDate = new Date(now.getFullYear() + 2, now.getMonth(), now.getDate());
+      const dateString = futureDate.toISOString().split('T')[0];
+
+      const validator = Validators.futureDateWithinYears(5);
+      expect(validator(dateString)).toEqual(VALID);
+    });
+
+    test('should return valid for date at exact threshold', () => {
+      const now = new Date();
+      const futureDate = new Date(now.getFullYear() + 5, now.getMonth(), now.getDate());
+      const dateString = futureDate.toISOString().split('T')[0];
+
+      const validator = Validators.futureDateWithinYears(5);
+      expect(validator(dateString)).toEqual(VALID);
+    });
+
+    test('should return invalid for date beyond threshold', () => {
+      const now = new Date();
+      const futureDate = new Date(now.getFullYear() + 6, now.getMonth(), now.getDate());
+      const dateString = futureDate.toISOString().split('T')[0];
+
+      const validator = Validators.futureDateWithinYears(5);
+      const result = validator(dateString);
+      expect(result.valid).not.toBe(true);
+      expect(result.reasons).toEqual(['Date must be within 5 years from today']);
+    });
+
+    test('should return valid for past date', () => {
+      const validator = Validators.futureDateWithinYears(5);
+      expect(validator('2020-01-01')).toEqual(VALID);
+    });
+
+    test('should return valid for current date', () => {
+      const now = new Date();
+      const dateString = now.toISOString().split('T')[0];
+
+      const validator = Validators.futureDateWithinYears(5);
+      expect(validator(dateString)).toEqual(VALID);
+    });
+
+    test('should use custom reason when provided', () => {
+      const now = new Date();
+      const futureDate = new Date(now.getFullYear() + 10, now.getMonth(), now.getDate());
+      const dateString = futureDate.toISOString().split('T')[0];
+
+      const validator = Validators.futureDateWithinYears(5, 'Date too far in future');
+      const result = validator(dateString);
+      expect(result.reasons).toEqual(['Date too far in future']);
+    });
+
+    test('should return invalid for invalid date format', () => {
+      const validator = Validators.futureDateWithinYears(5);
+      expect(validator('invalid')).toEqual({ reasons: ['Must be in YYYY-MM-DD format'] });
     });
   });
 });

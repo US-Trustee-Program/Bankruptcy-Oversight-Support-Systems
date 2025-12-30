@@ -9,9 +9,8 @@ import React, {
   useEffect,
   type JSX,
 } from 'react';
-import DateHelper from '@common/date-helper';
-
-const { isInvalidDate } = DateHelper;
+import Validators from 'common/src/cams/validators';
+import { ValidatorFunction } from 'common/src/cams/validation';
 
 export type DatePickerProps = JSX.IntrinsicElements['input'] & {
   id: string;
@@ -26,11 +25,11 @@ export type DatePickerProps = JSX.IntrinsicElements['input'] & {
   required?: boolean;
   customErrorMessage?: string;
   futureDateWarningThresholdYears?: number;
+  validators?: ValidatorFunction[];
 };
 
 function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
   const { id, label, minDate, maxDate } = props;
-  const defaultErrorMessage = 'Date is not within allowed range. Enter a valid date.';
 
   const inputRef = useRef<HTMLInputElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -137,7 +136,7 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
 
     const value = new Date(rawValue);
 
-    if (isInvalidDate(value)) {
+    if (isNaN(value.getTime())) {
       setErrorMessage('');
       setWarningMessage('');
       return;
@@ -145,36 +144,26 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
 
     // Debounce validation to avoid showing errors while user is typing
     validationTimeoutRef.current = setTimeout(() => {
-      let hasError = false;
+      const minMaxValidator = Validators.dateMinMax(
+        props.minDate,
+        props.maxDate,
+        'Date is not within allowed range. Enter a valid date.',
+      );
+      const minMaxResult = minMaxValidator(rawValue);
 
-      if (props.minDate && props.minDate.length > 0) {
-        const minDate = new Date(props.minDate);
-        if (value < minDate) {
-          setErrorMessage(defaultErrorMessage);
-          hasError = true;
-        }
-      }
-
-      if (!hasError && props.maxDate && props.maxDate.length > 0) {
-        const maxDate = new Date(props.maxDate);
-        if (value > maxDate) {
-          setErrorMessage(defaultErrorMessage);
-          hasError = true;
-        }
-      }
-
-      if (!hasError) {
+      if (!minMaxResult.valid && minMaxResult.reasons) {
+        setErrorMessage(minMaxResult.reasons.join(' '));
+        setWarningMessage('');
+      } else {
         setErrorMessage('');
 
         if (props.futureDateWarningThresholdYears) {
-          const now = new Date();
-          const thresholdDate = new Date(
-            now.getFullYear() + props.futureDateWarningThresholdYears,
-            now.getMonth(),
-            now.getDate(),
+          const futureValidator = Validators.futureDateWithinYears(
+            props.futureDateWarningThresholdYears,
           );
+          const futureResult = futureValidator(rawValue);
 
-          if (value > thresholdDate) {
+          if (!futureResult.valid && futureResult.reasons) {
             setWarningMessage(
               `This date is more than ${props.futureDateWarningThresholdYears} years in the future. Please verify.`,
             );
@@ -184,13 +173,31 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
         } else {
           setWarningMessage('');
         }
-      } else {
-        setWarningMessage('');
       }
     }, 500);
   }
 
   function handleBlur(ev: React.FocusEvent<HTMLInputElement>) {
+    if (validationTimeoutRef.current) {
+      clearTimeout(validationTimeoutRef.current);
+    }
+
+    const errors: string[] = [];
+
+    const invalidDateMessage = 'Must be a valid date mm/dd/yyyy.';
+    if (inputRef.current && inputRef.current.validity.badInput) {
+      errors.push(invalidDateMessage);
+    } else if (props.validators && dateValue) {
+      props.validators.forEach((validator) => {
+        const result = validator(dateValue);
+        if (!result.valid && result.reasons) {
+          errors.push(...result.reasons);
+        }
+      });
+    }
+
+    setErrorMessage(errors.join(' '));
+
     if (props.onBlur) {
       props.onBlur(ev);
     }
