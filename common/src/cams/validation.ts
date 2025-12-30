@@ -40,9 +40,6 @@ export function validate(func: ValidatorFunction, value: unknown): ValidatorResu
  * @returns ValidatorResults object containing validation status and reason for failure
  */
 export function validateEach(functions: ValidatorFunction[], value: unknown): ValidatorResult {
-  if (!functions) {
-    return VALID;
-  }
   const validatorResult = functions.map((f) => f(value)).filter((r) => !r.valid);
 
   if (!validatorResult.length) {
@@ -151,10 +148,6 @@ export function mergeValidatorResults(
 export function validateObject(spec: ValidationSpec<unknown>, obj: unknown): ValidatorResult {
   if (typeof obj !== 'object' || obj === null) {
     return { reasons: ['Value must be an object'] };
-  }
-
-  if (spec === null || spec === undefined) {
-    return { reasons: ['No validation specification provided'] };
   }
 
   const reasonMap: Record<string, ValidatorResult> = Object.keys(spec).reduce(

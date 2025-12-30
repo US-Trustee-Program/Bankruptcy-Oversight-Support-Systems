@@ -794,16 +794,22 @@ describe('DatePicker edge case coverage', () => {
   });
 
   test('should run multiple custom validators and concatenate error messages', async () => {
-    const minDateValidator = vi.fn((value: string) => {
+    const minDateValidator = vi.fn((value: unknown) => {
+      if (typeof value !== 'string') return { reasons: ['Must be a string'] };
       const date = new Date(value);
       const minDate = new Date('1978-01-01');
-      return date < minDate ? 'Date must be on or after 01/01/1978.' : null;
+      return date < minDate
+        ? { reasons: ['Date must be on or after 01/01/1978.'] }
+        : { valid: true as const };
     });
 
-    const maxDateValidator = vi.fn((value: string) => {
+    const maxDateValidator = vi.fn((value: unknown) => {
+      if (typeof value !== 'string') return { reasons: ['Must be a string'] };
       const date = new Date(value);
       const maxDate = new Date('2030-12-31');
-      return date > maxDate ? 'Date must be on or before 12/31/2030.' : null;
+      return date > maxDate
+        ? { reasons: ['Date must be on or before 12/31/2030.'] }
+        : { valid: true as const };
     });
 
     renderWithProps({ validators: [minDateValidator, maxDateValidator], onChange: mockOnChange });
@@ -822,10 +828,13 @@ describe('DatePicker edge case coverage', () => {
   });
 
   test('should clear custom validator errors on valid input', async () => {
-    const minDateValidator = (value: string) => {
+    const minDateValidator = (value: unknown) => {
+      if (typeof value !== 'string') return { reasons: ['Must be a string'] };
       const date = new Date(value);
       const minDate = new Date('1978-01-01');
-      return date < minDate ? 'Date must be on or after 01/01/1978.' : null;
+      return date < minDate
+        ? { reasons: ['Date must be on or after 01/01/1978.'] }
+        : { valid: true as const };
     };
 
     renderWithProps({ validators: [minDateValidator], onChange: mockOnChange });
