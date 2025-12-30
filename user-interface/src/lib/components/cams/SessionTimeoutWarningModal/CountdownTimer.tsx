@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 
 export interface CountdownTimerProps {
   timeInMs: number;
@@ -9,19 +9,10 @@ export function CountdownTimer({ timeInMs, running = true }: CountdownTimerProps
   const [secondsRemaining, setSecondsRemaining] = useState<number>(
     Math.max(0, Math.floor(timeInMs / 1000)),
   );
-  const previousRunning = useRef<boolean>(running);
 
   useEffect(() => {
-    // Reset the timer when timeInMs changes
+    // Reset timer whenever timeInMs or running changes
     setSecondsRemaining(Math.max(0, Math.floor(timeInMs / 1000)));
-  }, [timeInMs]);
-
-  useEffect(() => {
-    // Reset timer when transitioning from running to stopped (modal closes)
-    if (!running && previousRunning.current) {
-      setSecondsRemaining(Math.max(0, Math.floor(timeInMs / 1000)));
-    }
-    previousRunning.current = running;
 
     // Only set up interval when running is true
     if (!running) {
@@ -38,7 +29,7 @@ export function CountdownTimer({ timeInMs, running = true }: CountdownTimerProps
       });
     }, 1000);
 
-    // Cleanup interval on unmount or when running changes
+    // Cleanup interval on unmount or when dependencies change
     return () => {
       clearInterval(intervalId);
     };

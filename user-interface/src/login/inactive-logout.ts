@@ -9,7 +9,7 @@ const TIMEOUT = TIMEOUT_MINUTES * 60 * 1000;
 export const WARNING_THRESHOLD = 60 * 1000; // 60 seconds
 
 // Custom event names
-export const SESSION_TIMEOUT_WARNING_EVENT = 'session-timeout-warning';
+export const SESSION_TIMEOUT = 'session-timeout';
 
 // Module-level state
 let warningEmitted = false;
@@ -34,7 +34,7 @@ export function checkForInactivity() {
   // Emit warning event if within threshold
   if (timeUntilTimeout <= WARNING_THRESHOLD && timeUntilTimeout > 0) {
     if (!warningEmitted) {
-      window.dispatchEvent(new CustomEvent(SESSION_TIMEOUT_WARNING_EVENT));
+      window.dispatchEvent(new CustomEvent(SESSION_TIMEOUT));
       warningEmitted = true;
     }
   }

@@ -1,7 +1,8 @@
 import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, test, expect, vi, beforeAll, afterAll, afterEach } from 'vitest';
 import LocalStorage from '@/lib/utils/local-storage';
-import { AUTH_EXPIRY_WARNING, SESSION_TIMEOUT_WARNING } from '@/login/providers/okta/okta-library';
+import { AUTH_EXPIRY_WARNING } from '@/login/providers/okta/okta-library';
+import { SESSION_TIMEOUT } from '@/login/inactive-logout';
 import { initializeTestServer, cleanupTestServer } from '../../helpers/api-server';
 import { createTestSession } from '../../fixtures/auth.fixtures';
 import { TestSetup, waitForAppLoad } from '../../helpers/fluent-test-setup';
@@ -293,22 +294,22 @@ describe('Feature: Session Timeout Warning', () => {
   });
 
   /**
-   * Scenario: Automatic logout when SESSION_TIMEOUT_WARNING event is emitted
+   * Scenario: Automatic logout when SESSION_TIMEOUT event is emitted
    *
    * Given the user's session has completely timed out due to inactivity
-   * When the SESSION_TIMEOUT_WARNING event is dispatched
+   * When the SESSION_TIMEOUT event is dispatched
    * Then the user should be automatically logged out
    * And redirected to the logout page
    */
-  test('STEP 2: Automatic logout when SESSION_TIMEOUT_WARNING is emitted', async () => {
+  test('STEP 2: Automatic logout when SESSION_TIMEOUT is emitted', async () => {
     // ARRANGE: Set up test session
     const session = createSessionWithExpiry();
 
     await TestSetup.forUser(session).withMyAssignments([]).renderAt('/my-cases');
     await waitForAppLoad();
 
-    // ACT: Emit SESSION_TIMEOUT_WARNING event (simulating automatic timeout)
-    window.dispatchEvent(new CustomEvent(SESSION_TIMEOUT_WARNING));
+    // ACT: Emit SESSION_TIMEOUT event (simulating automatic timeout)
+    window.dispatchEvent(new CustomEvent(SESSION_TIMEOUT));
 
     // ASSERT: User should be redirected to logout page
     await waitFor(() => {
