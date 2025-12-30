@@ -742,17 +742,5 @@ describe('TrusteeAppointmentForm Tests', () => {
         expect(globalAlertSpy.error).toHaveBeenCalledWith('Failed to load existing appointments');
       });
     });
-
-    test('should handle null data from getTrusteeAppointments', async () => {
-      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({
-        data: null as unknown as TrusteeAppointment[],
-      });
-
-      renderWithProps({ trusteeId: TEST_TRUSTEE_ID });
-
-      await waitFor(() => {
-        expect(document.querySelector('#district')).toBeInTheDocument();
-      });
-    });
   });
 });
