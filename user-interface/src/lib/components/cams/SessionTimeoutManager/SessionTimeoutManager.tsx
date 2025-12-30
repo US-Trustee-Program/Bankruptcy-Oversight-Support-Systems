@@ -12,6 +12,8 @@ export default function SessionTimeoutManager() {
   const globalAlertRefObject = useContext(GlobalAlertContext);
   const authContext = useContext(AuthContext);
 
+  const ONE_MINUTE = 60;
+
   useEffect(() => {
     const handleAuthExpiryWarning = () => {
       sessionTimeoutModalRef.current?.show();
@@ -45,7 +47,7 @@ export default function SessionTimeoutManager() {
   return (
     <SessionTimeoutWarningModal
       ref={sessionTimeoutModalRef}
-      warningSeconds={60}
+      warningSeconds={ONE_MINUTE}
       onStayLoggedIn={handleStayLoggedIn}
       onLogoutNow={logout}
     />
