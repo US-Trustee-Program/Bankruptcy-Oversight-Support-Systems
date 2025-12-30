@@ -252,7 +252,8 @@ export interface TrusteeAppointmentsRepository extends Reads<TrusteeAppointment>
     userRef: CamsUserReference,
   ): Promise<TrusteeAppointment>;
   updateAppointment(
-    id: string,
+    trusteeId: string,
+    appointmentId: string,
     appointmentInput: TrusteeAppointmentInput,
     userRef: CamsUserReference,
   ): Promise<TrusteeAppointment>;

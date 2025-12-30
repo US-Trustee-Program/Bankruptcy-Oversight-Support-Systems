@@ -146,7 +146,7 @@ export class TrusteeAppointmentsController implements CamsController {
     }
 
     const appointmentData = body as TrusteeAppointmentInput;
-    await this.useCase.updateAppointment(context, appointmentId, appointmentData);
+    await this.useCase.updateAppointment(context, trusteeId, appointmentId, appointmentData);
 
     return httpSuccess({
       statusCode: 200,
