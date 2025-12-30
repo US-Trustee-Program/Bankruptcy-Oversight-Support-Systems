@@ -1,7 +1,8 @@
 import { render, waitFor, screen } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import SessionTimeoutManager from './SessionTimeoutManager';
-import { AUTH_EXPIRY_WARNING, SESSION_TIMEOUT_WARNING } from '@/login/providers/okta/okta-library';
+import { AUTH_EXPIRY_WARNING } from '@/login/providers/okta/okta-library';
+import { SESSION_TIMEOUT } from '@/login/inactive-logout';
 import * as inactiveLogout from '@/login/inactive-logout';
 import * as oktaLibrary from '@/login/providers/okta/okta-library';
 import { AuthContext } from '@/login/AuthContext';
@@ -63,7 +64,7 @@ describe('SessionTimeoutManager', () => {
     renderWithContext();
 
     expect(addEventListenerSpy).toHaveBeenCalledWith(AUTH_EXPIRY_WARNING, expect.any(Function));
-    expect(addEventListenerSpy).toHaveBeenCalledWith(SESSION_TIMEOUT_WARNING, expect.any(Function));
+    expect(addEventListenerSpy).toHaveBeenCalledWith(SESSION_TIMEOUT, expect.any(Function));
   });
 
   test('should clean up event listeners on unmount', () => {
@@ -74,10 +75,7 @@ describe('SessionTimeoutManager', () => {
     unmount();
 
     expect(removeEventListenerSpy).toHaveBeenCalledWith(AUTH_EXPIRY_WARNING, expect.any(Function));
-    expect(removeEventListenerSpy).toHaveBeenCalledWith(
-      SESSION_TIMEOUT_WARNING,
-      expect.any(Function),
-    );
+    expect(removeEventListenerSpy).toHaveBeenCalledWith(SESSION_TIMEOUT, expect.any(Function));
   });
 
   test('should show modal when AUTH_EXPIRY_WARNING event is dispatched', async () => {
@@ -94,13 +92,13 @@ describe('SessionTimeoutManager', () => {
     });
   });
 
-  test('should call logout when SESSION_TIMEOUT_WARNING event is dispatched', async () => {
+  test('should call logout when SESSION_TIMEOUT event is dispatched', async () => {
     const logoutSpy = vi.spyOn(inactiveLogout, 'logout');
 
     renderWithContext();
 
-    // Dispatch the SESSION_TIMEOUT_WARNING event
-    window.dispatchEvent(new CustomEvent(SESSION_TIMEOUT_WARNING));
+    // Dispatch the SESSION_TIMEOUT event
+    window.dispatchEvent(new CustomEvent(SESSION_TIMEOUT));
 
     await waitFor(() => {
       expect(logoutSpy).toHaveBeenCalled();

@@ -5,16 +5,9 @@ import SessionTimeoutWarningModal, {
   SessionTimeoutWarningModalRef,
 } from './SessionTimeoutWarningModal';
 
-// Extend global for test mock storage
-declare global {
-  var mockModalOnClose: (() => void) | undefined;
-}
-
 // Mock the Modal component
 vi.mock('@/lib/components/uswds/modal/Modal', () => ({
-  default: vi.fn(({ onClose, content, actionButtonGroup }) => {
-    // Store onClose in a global for testing
-    global.mockModalOnClose = onClose;
+  default: vi.fn(({ content, actionButtonGroup }) => {
     return (
       <div data-testid="mock-modal">
         <div data-testid="modal-content">{content}</div>
@@ -22,7 +15,6 @@ vi.mock('@/lib/components/uswds/modal/Modal', () => ({
           data-testid="submit-button"
           onClick={(e) => {
             actionButtonGroup.submitButton?.onClick(e);
-            if (onClose) onClose();
           }}
         >
           {actionButtonGroup.submitButton?.label}
@@ -31,7 +23,6 @@ vi.mock('@/lib/components/uswds/modal/Modal', () => ({
           data-testid="cancel-button"
           onClick={(e) => {
             actionButtonGroup.cancelButton?.onClick(e);
-            if (onClose) onClose();
           }}
         >
           {actionButtonGroup.cancelButton?.label}
@@ -83,10 +74,10 @@ describe('SessionTimeoutWarningModal', () => {
     expect(ref.current?.hide).toBeDefined();
   });
 
-  test('should increment mountKey when show() is called on closed modal', () => {
+  test('should show timer when show() is called', async () => {
     const ref = createRef<SessionTimeoutWarningModalRef>();
 
-    const { rerender } = render(
+    render(
       <SessionTimeoutWarningModal
         ref={ref}
         warningSeconds={warningSeconds}
@@ -95,25 +86,16 @@ describe('SessionTimeoutWarningModal', () => {
       />,
     );
 
-    // Call show() - should increment mountKey
+    // Call show() - should render timer
     ref.current?.show();
-    rerender(
-      <SessionTimeoutWarningModal
-        ref={ref}
-        warningSeconds={warningSeconds}
-        onStayLoggedIn={mockOnStayLoggedIn}
-        onLogoutNow={mockOnLogoutNow}
-      />,
-    );
 
-    // Timer should be remounted (new instance)
-    const newTimer = screen.queryByTestId('countdown-timer');
-
-    // Timer should exist since modal is open
-    expect(newTimer).toBeInTheDocument();
+    await waitFor(() => {
+      const timer = screen.queryByTestId('countdown-timer');
+      expect(timer).toBeInTheDocument();
+    });
   });
 
-  test('should NOT increment mountKey when show() is called on already open modal', async () => {
+  test('should reset timer when show() is called multiple times', async () => {
     const ref = createRef<SessionTimeoutWarningModalRef>();
 
     render(
@@ -129,51 +111,23 @@ describe('SessionTimeoutWarningModal', () => {
     ref.current?.show();
 
     await waitFor(() => {
-      expect(screen.getByTestId('countdown-timer')).toBeInTheDocument();
+      const timer = screen.getByTestId('countdown-timer');
+      expect(timer).toBeInTheDocument();
+      // Timer should show initial value
+      expect(timer.textContent).toBe('60');
     });
 
-    // Get the key of the timer
-    const firstTimer = screen.getByTestId('countdown-timer');
-    const firstKey = firstTimer.getAttribute('data-key');
-
-    // Call show() again while modal is already open
+    // Call show() again - timer should reset to initial value
     ref.current?.show();
 
     await waitFor(() => {
-      const secondTimer = screen.getByTestId('countdown-timer');
-      const secondKey = secondTimer.getAttribute('data-key');
-      // Key should be the same (mountKey was not incremented)
-      expect(secondKey).toBe(firstKey);
+      const timer = screen.getByTestId('countdown-timer');
+      // Timer should be reset to initial value
+      expect(timer.textContent).toBe('60');
     });
   });
 
-  test('should call onClose when modal closes', () => {
-    const ref = createRef<SessionTimeoutWarningModalRef>();
-
-    render(
-      <SessionTimeoutWarningModal
-        ref={ref}
-        warningSeconds={warningSeconds}
-        onStayLoggedIn={mockOnStayLoggedIn}
-        onLogoutNow={mockOnLogoutNow}
-      />,
-    );
-
-    // Open the modal
-    ref.current?.show();
-
-    // Simulate modal close by calling the onClose callback
-    const mockOnClose = global.mockModalOnClose;
-    expect(mockOnClose).toBeDefined();
-
-    // Call onClose
-    if (mockOnClose) mockOnClose();
-
-    // Verify that isOpen state is updated (indirectly by checking next show() increments mountKey)
-    // This is tested in the next test
-  });
-
-  test('should reset timer when modal is closed and reopened', async () => {
+  test('should reset timer when modal is reopened', async () => {
     const ref = createRef<SessionTimeoutWarningModalRef>();
 
     render(
@@ -189,27 +143,23 @@ describe('SessionTimeoutWarningModal', () => {
     ref.current?.show();
 
     await waitFor(() => {
-      expect(screen.getByTestId('countdown-timer')).toBeInTheDocument();
+      const timer = screen.getByTestId('countdown-timer');
+      expect(timer).toBeInTheDocument();
+      // Timer should show initial value
+      expect(timer.textContent).toBe('60');
     });
 
     // Close the modal using hide()
     ref.current?.hide();
 
-    // Also simulate the onClose callback being called
-    const mockOnClose = global.mockModalOnClose;
-    if (mockOnClose) mockOnClose();
-
-    await waitFor(() => {
-      // Timer should not be visible when modal is closed
-      const timer = screen.queryByTestId('countdown-timer');
-      expect(timer).not.toBeInTheDocument();
-    });
-
     // Reopen the modal - timer should be reset
     ref.current?.show();
 
     await waitFor(() => {
-      expect(screen.getByTestId('countdown-timer')).toBeInTheDocument();
+      const timer = screen.getByTestId('countdown-timer');
+      expect(timer).toBeInTheDocument();
+      // Timer should be reset to initial value
+      expect(timer.textContent).toBe('60');
     });
   });
 

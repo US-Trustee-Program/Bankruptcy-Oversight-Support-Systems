@@ -20,8 +20,7 @@ function SessionTimeoutWarningModal_(
   ref: React.Ref<SessionTimeoutWarningModalRef>,
 ) {
   const modalRef = useRef<ModalRefType>(null);
-  const [isOpen, setIsOpen] = useState(false);
-  const [mountKey, setMountKey] = useState(0);
+  const [timerKey, setTimerKey] = useState(0);
   const { warningSeconds, onStayLoggedIn, onLogoutNow } = props;
   const modalId = 'session-timeout-warning';
 
@@ -39,24 +38,15 @@ function SessionTimeoutWarningModal_(
     },
   };
 
-  useImperativeHandle(
-    ref,
-    () => ({
-      show: () => {
-        // Only remount if modal is not already open
-        if (!isOpen) {
-          setMountKey((prev) => prev + 1);
-        }
-        setIsOpen(true);
-        modalRef.current?.show({});
-      },
-      hide: () => {
-        setIsOpen(false);
-        modalRef.current?.hide({});
-      },
-    }),
-    [isOpen],
-  );
+  useImperativeHandle(ref, () => ({
+    show: () => {
+      setTimerKey((prev) => prev + 1);
+      modalRef.current?.show({});
+    },
+    hide: () => {
+      modalRef.current?.hide({});
+    },
+  }));
 
   return (
     <Modal
@@ -66,14 +56,13 @@ function SessionTimeoutWarningModal_(
       content={
         <p>
           Your session will expire in{' '}
-          {isOpen && <CountdownTimer key={mountKey} timeInMs={warningSeconds * 1000} />} seconds due
-          to inactivity. Click &quot;Stay Logged In&quot; to continue working, or &quot;Log Out
-          Now&quot; to end your session.
+          {timerKey > 0 && <CountdownTimer key={timerKey} timeInMs={warningSeconds * 1000} />}{' '}
+          seconds due to inactivity. Click &quot;Stay Logged In&quot; to continue working, or
+          &quot;Log Out Now&quot; to end your session.
         </p>
       }
       forceAction={true}
       actionButtonGroup={actionButtonGroup}
-      onClose={() => setIsOpen(false)}
     />
   );
 }
