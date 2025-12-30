@@ -3,6 +3,7 @@ import { DateRange, DateRangePickerRef, InputRef } from '@/lib/type-declarations
 import DatePicker, { DatePickerProps } from './DatePicker';
 import './DateRangePicker.scss';
 import useDebounce from '@/lib/hooks/UseDebounce';
+import { ValidatorFunction } from 'common/src/cams/validation';
 
 export const formatDateForVoiceOver = (dateString: string) => {
   try {
@@ -19,7 +20,7 @@ export const formatDateForVoiceOver = (dateString: string) => {
   }
 };
 
-interface DateRangePickerProps extends Omit<DatePickerProps, 'value'> {
+interface DateRangePickerProps extends Omit<DatePickerProps, 'value' | 'validators'> {
   onStartDateChange?: (ev: React.ChangeEvent<HTMLInputElement>) => void;
   onEndDateChange?: (ev: React.ChangeEvent<HTMLInputElement>) => void;
   startDateLabel?: string;
@@ -27,6 +28,8 @@ interface DateRangePickerProps extends Omit<DatePickerProps, 'value'> {
   value?: DateRange;
   disabled?: boolean;
   ariaDescription?: string;
+  startDateValidators?: ValidatorFunction[];
+  endDateValidators?: ValidatorFunction[];
 }
 
 function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangePickerRef>) {
@@ -40,6 +43,8 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
     value,
     disabled,
     required,
+    startDateValidators,
+    endDateValidators,
   } = props;
 
   const startDateRef = useRef<InputRef>(null);
@@ -213,6 +218,7 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
         required={required}
         customErrorMessage={startDateError}
         futureDateWarningThresholdYears={props.futureDateWarningThresholdYears}
+        validators={startDateValidators}
       />
       <span id={`${id}-start-hint`} className="usa-hint" hidden>
         Enter the beginning date for the range. Use the format MM/DD/YYYY or select from the
@@ -236,6 +242,7 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
         required={required}
         customErrorMessage={endDateError}
         futureDateWarningThresholdYears={props.futureDateWarningThresholdYears}
+        validators={endDateValidators}
       />
       <span id={`${id}-end-hint`} className="usa-hint" hidden>
         Enter the ending date for the range. Use the format MM/DD/YYYY or select from the calendar.

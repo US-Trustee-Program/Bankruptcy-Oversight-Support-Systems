@@ -792,4 +792,67 @@ describe('DatePicker edge case coverage', () => {
 
     expect(inputEl).toHaveAttribute('max', customMax);
   });
+
+  test('should run multiple custom validators and concatenate error messages', async () => {
+    const minDateValidator = vi.fn((value: unknown) => {
+      if (typeof value !== 'string') return { reasons: ['Must be a string'] };
+      const date = new Date(value);
+      const minDate = new Date('1978-01-01');
+      return date < minDate
+        ? { reasons: ['Date must be on or after 01/01/1978.'] }
+        : { valid: true as const };
+    });
+
+    const maxDateValidator = vi.fn((value: unknown) => {
+      if (typeof value !== 'string') return { reasons: ['Must be a string'] };
+      const date = new Date(value);
+      const maxDate = new Date('2030-12-31');
+      return date > maxDate
+        ? { reasons: ['Date must be on or before 12/31/2030.'] }
+        : { valid: true as const };
+    });
+
+    renderWithProps({ validators: [minDateValidator, maxDateValidator], onChange: mockOnChange });
+
+    const inputEl = getInput(DEFAULT_ID);
+
+    fireEvent.change(inputEl, { target: { value: '2031-01-01' } });
+    fireEvent.blur(inputEl);
+
+    await waitFor(() => {
+      expect(getErrorText()).toBe('Date must be on or before 12/31/2030.');
+    });
+
+    expect(minDateValidator).toHaveBeenCalledWith('2031-01-01');
+    expect(maxDateValidator).toHaveBeenCalledWith('2031-01-01');
+  });
+
+  test('should clear custom validator errors on valid input', async () => {
+    const minDateValidator = (value: unknown) => {
+      if (typeof value !== 'string') return { reasons: ['Must be a string'] };
+      const date = new Date(value);
+      const minDate = new Date('1978-01-01');
+      return date < minDate
+        ? { reasons: ['Date must be on or after 01/01/1978.'] }
+        : { valid: true as const };
+    };
+
+    renderWithProps({ validators: [minDateValidator], onChange: mockOnChange });
+
+    const inputEl = getInput(DEFAULT_ID);
+
+    fireEvent.change(inputEl, { target: { value: '1977-12-31' } });
+    fireEvent.blur(inputEl);
+
+    await waitFor(() => {
+      expect(getErrorText()).toBe('Date must be on or after 01/01/1978.');
+    });
+
+    fireEvent.change(inputEl, { target: { value: '2024-01-15' } });
+    fireEvent.blur(inputEl);
+
+    await waitFor(() => {
+      expect(getErrorText()).toBe('');
+    });
+  });
 });

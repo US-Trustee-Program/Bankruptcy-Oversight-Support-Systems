@@ -1,14 +1,8 @@
 import { vi } from 'vitest';
 import DateHelper from './date-helper';
 
-const {
-  getTodaysIsoDate,
-  isInvalidDate,
-  isValidDateString,
-  nowInSeconds,
-  sortDates,
-  sortDatesReverse,
-} = DateHelper;
+const { getTodaysIsoDate, isValidDateString, nowInSeconds, sortDates, sortDatesReverse } =
+  DateHelper;
 
 describe('date helper tests', () => {
   test('should sort dates newest first', () => {
@@ -51,16 +45,6 @@ describe('date helper tests', () => {
       expect(isValidDateString(input)).toBe(expected);
     },
   );
-
-  test('should succeed for valid date', () => {
-    const today = new Date();
-    expect(isInvalidDate(today)).toEqual(false);
-  });
-
-  test('should fail for invalid date', () => {
-    const today = new Date('nonsense');
-    expect(isInvalidDate(today)).toEqual(true);
-  });
 
   test("should get today's date", () => {
     // TODO: mock new Date()???

@@ -6,6 +6,7 @@ import Icon from '@/lib/components/uswds/Icon';
 import Input from '@/lib/components/uswds/Input';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import DateRangePicker from '@/lib/components/uswds/DateRangePicker';
+import { ValidatorFunction } from 'common/src/cams/validation';
 import {
   ComboBoxRef,
   DateRange,
@@ -281,6 +282,13 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
   const hasCaseNotes = caseNotes && !!caseNotes.length;
 
   const globalAlert = useGlobalAlert();
+
+  const minDateValidator: ValidatorFunction = (value: unknown) => {
+    if (typeof value !== 'string') return { reasons: ['Must be a string'] };
+    const date = new Date(value);
+    const minDate = new Date('1978-12-31');
+    return date <= minDate ? { reasons: ['Must be later than 1978.'] } : { valid: true as const };
+  };
 
   async function fetchCaseBasicInfo() {
     setIsLoading(true);
@@ -614,6 +622,8 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
                         onEndDateChange={handleEndDateChange}
                         ref={dateRangeRef}
                         futureDateWarningThresholdYears={100}
+                        startDateValidators={[minDateValidator]}
+                        endDateValidators={[minDateValidator]}
                       ></DateRangePicker>
                     </div>
                     <div className="in-docket-search form-field" data-testid="docket-number-search">
