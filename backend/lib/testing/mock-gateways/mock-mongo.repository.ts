@@ -289,4 +289,13 @@ export class MockMongoRepository
   createAppointment(..._ignore: any[]): Promise<any> {
     throw new Error('Method not implemented.');
   }
+
+  updateAppointment(
+    _trusteeId: string,
+    _appointmentId: string,
+    _appointmentInput: any,
+    _userRef: any,
+  ): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
 }
