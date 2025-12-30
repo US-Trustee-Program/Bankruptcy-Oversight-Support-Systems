@@ -10,6 +10,8 @@ import React, {
   type JSX,
 } from 'react';
 
+export type DateValidator = (value: string) => string | null;
+
 export type DatePickerProps = JSX.IntrinsicElements['input'] & {
   id: string;
   minDate?: string;
@@ -23,6 +25,7 @@ export type DatePickerProps = JSX.IntrinsicElements['input'] & {
   required?: boolean;
   customErrorMessage?: string;
   futureDateWarningThresholdYears?: number;
+  validators?: DateValidator[];
 };
 
 function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
@@ -192,10 +195,21 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
       clearTimeout(validationTimeoutRef.current);
     }
 
-    const invalidDateMessage = 'Must be a valid date mm/dd/yyyy.';
-    const isValid = !(inputRef.current && inputRef.current.validity.badInput);
+    const errors: string[] = [];
 
-    setErrorMessage(isValid ? '' : invalidDateMessage);
+    const invalidDateMessage = 'Must be a valid date mm/dd/yyyy.';
+    if (inputRef.current && inputRef.current.validity.badInput) {
+      errors.push(invalidDateMessage);
+    } else if (props.validators && dateValue) {
+      props.validators.forEach((validator) => {
+        const error = validator(dateValue);
+        if (error) {
+          errors.push(error);
+        }
+      });
+    }
+
+    setErrorMessage(errors.join(' '));
 
     if (props.onBlur) {
       props.onBlur(ev);
