@@ -236,6 +236,7 @@ describe('TrusteeAppointmentsController', () => {
       expect(result.body?.data).toBeUndefined();
       expect(mockUseCase.updateAppointment).toHaveBeenCalledWith(
         context,
+        trusteeId,
         appointmentId,
         appointmentUpdate,
       );

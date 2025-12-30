@@ -111,6 +111,7 @@ export class TrusteeAppointmentsUseCase {
 
   async updateAppointment(
     context: ApplicationContext,
+    trusteeId: string,
     appointmentId: string,
     appointmentData: TrusteeAppointmentInput,
   ): Promise<TrusteeAppointment> {
@@ -118,6 +119,7 @@ export class TrusteeAppointmentsUseCase {
       const userReference = getCamsUserReference(context.session.user);
 
       const updatedAppointment = await this.trusteeAppointmentsRepository.updateAppointment(
+        trusteeId,
         appointmentId,
         appointmentData,
         userReference,

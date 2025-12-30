@@ -189,6 +189,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
   });
 
   describe('updateAppointment', () => {
+    const trusteeId = 'trustee-123';
     const appointmentId = 'appointment-123';
     const appointmentUpdate: TrusteeAppointmentInput = {
       chapter: '11',
@@ -220,12 +221,14 @@ describe('TrusteeAppointmentsUseCase tests', () => {
 
       const result = await trusteeAppointmentsUseCase.updateAppointment(
         context,
+        trusteeId,
         appointmentId,
         appointmentUpdate,
       );
 
       expect(result).toEqual(mockUpdatedAppointment);
       expect(MockMongoRepository.prototype.updateAppointment).toHaveBeenCalledWith(
+        trusteeId,
         appointmentId,
         appointmentUpdate,
         expect.objectContaining({
@@ -243,7 +246,12 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       );
 
       const actualError = await getTheThrownError(() =>
-        trusteeAppointmentsUseCase.updateAppointment(context, appointmentId, appointmentUpdate),
+        trusteeAppointmentsUseCase.updateAppointment(
+          context,
+          trusteeId,
+          appointmentId,
+          appointmentUpdate,
+        ),
       );
 
       expect(actualError.isCamsError).toBe(true);
@@ -263,7 +271,12 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       );
 
       const actualError = await getTheThrownError(() =>
-        trusteeAppointmentsUseCase.updateAppointment(context, appointmentId, appointmentUpdate),
+        trusteeAppointmentsUseCase.updateAppointment(
+          context,
+          trusteeId,
+          appointmentId,
+          appointmentUpdate,
+        ),
       );
 
       expect(actualError.isCamsError).toBe(true);
@@ -280,7 +293,12 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         mockUpdatedAppointment,
       );
 
-      await trusteeAppointmentsUseCase.updateAppointment(context, appointmentId, appointmentUpdate);
+      await trusteeAppointmentsUseCase.updateAppointment(
+        context,
+        trusteeId,
+        appointmentId,
+        appointmentUpdate,
+      );
 
       expect(logSpy).toHaveBeenCalledWith(
         'TRUSTEE-APPOINTMENTS-USE-CASE',
