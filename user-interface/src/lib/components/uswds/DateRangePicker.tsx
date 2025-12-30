@@ -1,8 +1,9 @@
 import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { DateRange, DateRangePickerRef, InputRef } from '@/lib/type-declarations/input-fields';
-import DatePicker, { DatePickerProps, DateValidator } from './DatePicker';
+import DatePicker, { DatePickerProps } from './DatePicker';
 import './DateRangePicker.scss';
 import useDebounce from '@/lib/hooks/UseDebounce';
+import { ValidatorFunction } from 'common/src/cams/validation';
 
 export const formatDateForVoiceOver = (dateString: string) => {
   try {
@@ -27,8 +28,8 @@ interface DateRangePickerProps extends Omit<DatePickerProps, 'value' | 'validato
   value?: DateRange;
   disabled?: boolean;
   ariaDescription?: string;
-  startDateValidators?: DateValidator[];
-  endDateValidators?: DateValidator[];
+  startDateValidators?: ValidatorFunction[];
+  endDateValidators?: ValidatorFunction[];
 }
 
 function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangePickerRef>) {

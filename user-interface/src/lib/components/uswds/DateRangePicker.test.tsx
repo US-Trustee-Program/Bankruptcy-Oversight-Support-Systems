@@ -866,16 +866,22 @@ describe('DateRangePicker validation tests', () => {
   });
 
   test('should pass custom validators to start and end date pickers', async () => {
-    const startDateValidator = vi.fn((value: string) => {
+    const startDateValidator = vi.fn((value: unknown) => {
+      if (typeof value !== 'string') return { reasons: ['Must be a string'] };
       const date = new Date(value);
       const minDate = new Date('1978-01-01');
-      return date < minDate ? 'Start date must be on or after 01/01/1978.' : null;
+      return date < minDate
+        ? { reasons: ['Start date must be on or after 01/01/1978.'] }
+        : { valid: true as const };
     });
 
-    const endDateValidator = vi.fn((value: string) => {
+    const endDateValidator = vi.fn((value: unknown) => {
+      if (typeof value !== 'string') return { reasons: ['Must be a string'] };
       const date = new Date(value);
       const maxDate = new Date('2030-12-31');
-      return date > maxDate ? 'End date must be on or before 12/31/2030.' : null;
+      return date > maxDate
+        ? { reasons: ['End date must be on or before 12/31/2030.'] }
+        : { valid: true as const };
     });
 
     const { startInput, endInput } = renderDateRangePicker({

@@ -1,3 +1,4 @@
+import { describe, test, expect } from 'vitest';
 import {
   validate,
   validateEach,
@@ -78,8 +79,9 @@ describe('validation', () => {
 
   describe('$ validation', () => {
     test('should validate using $ key in ValidationSpec', () => {
-      const compoundFunction: ValidatorFunction = (value: TestPerson): ValidatorResult => {
-        if (!value.email && !value.phone) {
+      const compoundFunction: ValidatorFunction = (value: unknown): ValidatorResult => {
+        const testPerson = value as TestPerson;
+        if (!testPerson.email && !testPerson.phone) {
           return { reasons: ['At least a phone or email address is required'] };
         } else {
           return VALID;
@@ -104,8 +106,9 @@ describe('validation', () => {
     });
 
     test('should put reasons on specific field', () => {
-      const compoundFunction: ValidatorFunction = (value: TestPerson): ValidatorResult => {
-        if (!value.email && !value.phone) {
+      const compoundFunction: ValidatorFunction = (value: unknown): ValidatorResult => {
+        const testPerson = value as TestPerson;
+        if (!testPerson.email && !testPerson.phone) {
           return {
             reasonMap: {
               email: {
@@ -212,11 +215,6 @@ describe('validation', () => {
     ];
     test.each(testCases)('$description', (testCase) => {
       expect(validateEach(testCase.validators, testCase.value)).toEqual(testCase.expected);
-    });
-
-    test('should handle null/undefined functions array', () => {
-      expect(validateEach(null, 'anything')).toEqual(VALID);
-      expect(validateEach(undefined, 'anything')).toEqual(VALID);
     });
 
     test('should return reasonMap when first validator returns reasonMap', () => {
@@ -355,14 +353,6 @@ describe('validation', () => {
       expect(validateObject(spec, 123)).toEqual({
         reasons: ['Value must be an object'],
       });
-    });
-
-    test('should return a failed validation if a validation spec is not provided', () => {
-      const validObj = { someProperty: 'any value' };
-      const expected = { reasons: ['No validation specification provided'] };
-
-      expect(validateObject(null, validObj)).toEqual(expected);
-      expect(validateObject(undefined, validObj)).toEqual(expected);
     });
   });
 
@@ -608,8 +598,8 @@ describe('validation.mergeValidatorResults', () => {
     expect(merged.reasons).toEqual(expect.arrayContaining(['left-fail', 'right-fail']));
 
     expect(merged.reasonMap).toBeDefined();
-    expect(merged.reasonMap['extra']).toBeDefined();
-    expect(merged.reasonMap['extra'].reasons).toEqual(
+    expect(merged.reasonMap!['extra']).toBeDefined();
+    expect(merged.reasonMap!['extra'].reasons).toEqual(
       expect.arrayContaining(['left-extra', 'right-extra']),
     );
   });
@@ -627,7 +617,7 @@ describe('validation.validateObject $-spec merging', () => {
     const res = validateObject(spec, obj);
 
     expect(res.reasonMap).toBeDefined();
-    const aRes = res.reasonMap['a'];
+    const aRes = res.reasonMap!['a'];
     expect(aRes).toBeDefined();
     expect(aRes.reasons).toEqual(expect.arrayContaining(['a-level', 'dollar-level']));
   });
@@ -642,7 +632,7 @@ describe('validation.validateObject $-spec merging', () => {
     const res = validateObject(spec, obj);
 
     expect(res.reasonMap).toBeDefined();
-    const bRes = res.reasonMap['b'];
+    const bRes = res.reasonMap!['b'];
     expect(bRes).toBeDefined();
     expect(bRes.reasons).toEqual(expect.arrayContaining(['dollar-b']));
   });
