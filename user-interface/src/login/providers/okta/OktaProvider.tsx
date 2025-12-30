@@ -4,7 +4,7 @@ import { Security } from '@okta/okta-react';
 import { BadConfiguration } from '@/login/BadConfiguration';
 import { getLoginConfiguration, LOGIN_CONTINUE_PATH } from '@/login/login-library';
 import { EnvLoginConfig } from '@common/cams/login';
-import { registerRefreshOktaToken } from './okta-library';
+import { registerRenewOktaToken } from './okta-library';
 
 export type OktaProviderProps = PropsWithChildren;
 
@@ -15,7 +15,7 @@ export function OktaProvider(props: OktaProviderProps) {
     config.redirectUri = `${protocol}//${host}${LOGIN_CONTINUE_PATH}`;
     const oktaAuth = new OktaAuth(config);
 
-    registerRefreshOktaToken(oktaAuth);
+    registerRenewOktaToken(oktaAuth);
 
     return (
       <Security oktaAuth={oktaAuth} restoreOriginalUri={() => {}}>
