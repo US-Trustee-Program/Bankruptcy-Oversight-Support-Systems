@@ -4,7 +4,11 @@ import SessionTimeoutWarningModal, {
 } from '../SessionTimeoutWarningModal/SessionTimeoutWarningModal';
 import { resetLastInteraction, logout, SESSION_TIMEOUT } from '@/login/inactive-logout';
 import { GlobalAlertContext } from '@/App';
-import { AUTH_EXPIRY_WARNING, renewOktaToken, SIXTY_SECONDS } from '@/login/providers/okta/okta-library';
+import {
+  AUTH_EXPIRY_WARNING,
+  renewOktaToken,
+  SIXTY_SECONDS,
+} from '@/login/providers/okta/okta-library';
 import { AuthContext } from '@/login/AuthContext';
 
 export default function SessionTimeoutManager() {
