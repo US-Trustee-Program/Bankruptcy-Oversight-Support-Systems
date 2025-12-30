@@ -20,10 +20,6 @@ function isValidDateString(dateString: string | null | undefined) {
   return !!evaluation && evaluation.length === 1;
 }
 
-function isInvalidDate(dateValue: Date) {
-  return dateValue instanceof Date && isNaN(dateValue.getTime());
-}
-
 function getIsoDate(date: Date) {
   return date.toISOString().split('T')[0];
 }
@@ -39,7 +35,6 @@ function nowInSeconds() {
 const DateHelper = {
   getIsoDate,
   getTodaysIsoDate,
-  isInvalidDate,
   isValidDateString,
   nowInSeconds,
   sortDates,

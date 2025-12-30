@@ -9,9 +9,6 @@ import React, {
   useEffect,
   type JSX,
 } from 'react';
-import DateHelper from '@common/date-helper';
-
-const { isInvalidDate } = DateHelper;
 
 export type DatePickerProps = JSX.IntrinsicElements['input'] & {
   id: string;
@@ -137,7 +134,7 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
 
     const value = new Date(rawValue);
 
-    if (isInvalidDate(value)) {
+    if (isNaN(value.getTime())) {
       setErrorMessage('');
       setWarningMessage('');
       return;
@@ -191,6 +188,15 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
   }
 
   function handleBlur(ev: React.FocusEvent<HTMLInputElement>) {
+    if (validationTimeoutRef.current) {
+      clearTimeout(validationTimeoutRef.current);
+    }
+
+    const invalidDateMessage = 'Must be a valid date mm/dd/yyyy.';
+    const isValid = !(inputRef.current && inputRef.current.validity.badInput);
+
+    setErrorMessage(isValid ? '' : invalidDateMessage);
+
     if (props.onBlur) {
       props.onBlur(ev);
     }
