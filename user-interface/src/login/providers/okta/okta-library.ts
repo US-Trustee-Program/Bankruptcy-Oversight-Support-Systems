@@ -4,11 +4,12 @@ import DateHelper from '@common/date-helper';
 import Api2 from '@/lib/models/api2';
 import { initializeSessionEndLogout } from '@/login/session-end-logout';
 
-const SAFE_LIMIT = 300;
-const HEARTBEAT = 1000 * 60 * 5;
-const LOGOUT_TIMER = 1000 * 60;
-
 export const AUTH_EXPIRY_WARNING = 'auth-expiry-warning';
+export const SIXTY_SECONDS = 60;
+
+const SAFE_LIMIT = 300;
+const HEARTBEAT = 1000 * SIXTY_SECONDS * 5;
+const LOGOUT_TIMER = 1000 * SIXTY_SECONDS;
 
 class SessionTimerController {
   private heartbeatIntervalId: number | null = null;
@@ -72,8 +73,6 @@ export function resetWarningShownFlag() {
 
 export function registerRenewOktaToken(oktaAuth: OktaAuth) {
   sessionTimerController.startHeartbeat(() => handleHeartbeat(oktaAuth));
-  // TODO: this depends on the API to renew (which is likely a logic error)
-  // addApiBeforeHook(async () => renewOktaToken(oktaAuth));
 }
 
 export function getCamsUser(oktaUser: UserClaims | null) {

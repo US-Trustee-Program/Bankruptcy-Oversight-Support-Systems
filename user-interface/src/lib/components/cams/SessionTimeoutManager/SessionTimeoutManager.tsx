@@ -4,15 +4,13 @@ import SessionTimeoutWarningModal, {
 } from '../SessionTimeoutWarningModal/SessionTimeoutWarningModal';
 import { resetLastInteraction, logout, SESSION_TIMEOUT } from '@/login/inactive-logout';
 import { GlobalAlertContext } from '@/App';
-import { AUTH_EXPIRY_WARNING, renewOktaToken } from '@/login/providers/okta/okta-library';
+import { AUTH_EXPIRY_WARNING, renewOktaToken, SIXTY_SECONDS } from '@/login/providers/okta/okta-library';
 import { AuthContext } from '@/login/AuthContext';
 
 export default function SessionTimeoutManager() {
   const sessionTimeoutModalRef = useRef<SessionTimeoutWarningModalRef>(null);
   const globalAlertRefObject = useContext(GlobalAlertContext);
   const authContext = useContext(AuthContext);
-
-  const ONE_MINUTE = 60;
 
   useEffect(() => {
     const handleAuthExpiryWarning = () => {
@@ -47,7 +45,7 @@ export default function SessionTimeoutManager() {
   return (
     <SessionTimeoutWarningModal
       ref={sessionTimeoutModalRef}
-      warningSeconds={ONE_MINUTE}
+      warningSeconds={SIXTY_SECONDS}
       onStayLoggedIn={handleStayLoggedIn}
       onLogoutNow={logout}
     />
