@@ -35,6 +35,7 @@ describe('TrusteeAppointmentsController', () => {
     mockUseCase = {
       getTrusteeAppointments: vi.fn(),
       createAppointment: vi.fn(),
+      updateAppointment: vi.fn(),
     } as unknown as Mocked<TrusteeAppointmentsUseCase>;
 
     (
@@ -201,12 +202,78 @@ describe('TrusteeAppointmentsController', () => {
     });
   });
 
-  describe('Error handling', () => {
-    test('should reject unsupported HTTP methods', async () => {
+  describe('PUT /api/trustees/:trusteeId/appointments/:appointmentId', () => {
+    const appointmentUpdate: TrusteeAppointmentInput = {
+      chapter: '11',
+      courtId: '081',
+      divisionCode: '2',
+      appointedDate: '2024-02-01',
+      status: 'inactive',
+      effectiveDate: '2024-02-15T00:00:00.000Z',
+    };
+
+    beforeEach(() => {
       context.request.method = 'PUT';
+    });
+
+    test('should update an appointment', async () => {
+      const trusteeId = 'trustee-123';
+      const appointmentId = 'appointment-456';
+      const updatedAppointment = MockData.getTrusteeAppointment({
+        ...appointmentUpdate,
+        id: appointmentId,
+        trusteeId,
+      });
+
+      context.request.params = { trusteeId, appointmentId };
+      context.request.body = appointmentUpdate;
+      mockUseCase.updateAppointment.mockResolvedValue(updatedAppointment);
+
+      const result = await controller.handleRequest(context);
+
+      expect(result.statusCode).toBe(200);
+      expect(result.body?.meta?.self).toBe(context.request.url);
+      expect(result.body?.data).toBeUndefined();
+      expect(mockUseCase.updateAppointment).toHaveBeenCalledWith(
+        context,
+        trusteeId,
+        appointmentId,
+        appointmentUpdate,
+      );
+    });
+
+    test('should require trustee ID', async () => {
+      context.request.params = { appointmentId: 'appointment-456' };
+      context.request.body = appointmentUpdate;
+
+      await expect(controller.handleRequest(context)).rejects.toThrow('Trustee ID is required');
+    });
+
+    test('should require appointment ID', async () => {
+      context.request.params = { trusteeId: 'trustee-123' };
+      context.request.body = appointmentUpdate;
+
+      await expect(controller.handleRequest(context)).rejects.toThrow('Appointment ID is required');
+    });
+
+    test('should require request body', async () => {
+      const trusteeId = 'trustee-123';
+      const appointmentId = 'appointment-456';
+      context.request.params = { trusteeId, appointmentId };
+      context.request.body = undefined;
 
       await expect(controller.handleRequest(context)).rejects.toThrow(
-        'HTTP method PUT is not supported',
+        'Request body is required for appointment update',
+      );
+    });
+  });
+
+  describe('Error handling', () => {
+    test('should reject unsupported HTTP methods', async () => {
+      context.request.method = 'DELETE';
+
+      await expect(controller.handleRequest(context)).rejects.toThrow(
+        'HTTP method DELETE is not supported',
       );
     });
   });

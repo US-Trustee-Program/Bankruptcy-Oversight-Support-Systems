@@ -48,6 +48,8 @@ export class TrusteeAppointmentsController implements CamsController {
           return await this.handleGetRequest(context);
         case 'POST':
           return await this.handlePostRequest(context);
+        case 'PUT':
+          return await this.handlePutRequest(context);
         default:
           throw new BadRequestError(MODULE_NAME, {
             message: `HTTP method ${method} is not supported`,
@@ -112,6 +114,45 @@ export class TrusteeAppointmentsController implements CamsController {
       body: {
         meta: {
           self: `${context.request.url}/${createdAppointment.id}`,
+        },
+        data: undefined,
+      },
+    });
+  }
+
+  private async handlePutRequest(
+    context: ApplicationContext,
+  ): Promise<CamsHttpResponseInit<undefined>> {
+    const trusteeId = context.request.params['trusteeId'];
+    const appointmentId = context.request.params['appointmentId'];
+    const { body } = context.request;
+
+    if (!trusteeId) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: 'Trustee ID is required',
+      });
+    }
+
+    if (!appointmentId) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: 'Appointment ID is required',
+      });
+    }
+
+    if (!body) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: 'Request body is required for appointment update',
+      });
+    }
+
+    const appointmentData = body as TrusteeAppointmentInput;
+    await this.useCase.updateAppointment(context, trusteeId, appointmentId, appointmentData);
+
+    return httpSuccess({
+      statusCode: 200,
+      body: {
+        meta: {
+          self: context.request.url,
         },
         data: undefined,
       },

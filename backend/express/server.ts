@@ -270,6 +270,8 @@ export function createApp(): Application {
   };
 
   app.get('/api/trustees/:trusteeId/appointments', handleTrusteeAppointments);
+  app.post('/api/trustees/:trusteeId/appointments', handleTrusteeAppointments);
+  app.put('/api/trustees/:trusteeId/appointments/:appointmentId', handleTrusteeAppointments);
 
   const handleTrusteeAssignments = async (req: Request, res: Response, next: NextFunction) => {
     try {

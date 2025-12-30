@@ -251,6 +251,12 @@ export interface TrusteeAppointmentsRepository extends Reads<TrusteeAppointment>
     appointmentInput: TrusteeAppointmentInput,
     userRef: CamsUserReference,
   ): Promise<TrusteeAppointment>;
+  updateAppointment(
+    trusteeId: string,
+    appointmentId: string,
+    appointmentInput: TrusteeAppointmentInput,
+    userRef: CamsUserReference,
+  ): Promise<TrusteeAppointment>;
 }
 
 export type RuntimeStateDocumentType =

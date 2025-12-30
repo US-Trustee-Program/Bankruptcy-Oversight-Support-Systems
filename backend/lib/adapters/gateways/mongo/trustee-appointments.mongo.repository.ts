@@ -1,5 +1,6 @@
 import { ApplicationContext } from '../../types/basic';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
+import { NotFoundError } from '../../../common-errors/not-found-error';
 import { TrusteeAppointmentsRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import QueryBuilder from '../../../query/query-builder';
@@ -60,7 +61,9 @@ export class TrusteeAppointmentsMongoRepository
       const appointment = await this.getAdapter<TrusteeAppointmentDocument>().findOne(query);
 
       if (!appointment) {
-        throw new Error(`Trustee appointment with ID ${id} not found.`);
+        throw new NotFoundError(MODULE_NAME, {
+          message: `Trustee appointment with ID ${id} not found.`,
+        });
       }
 
       return appointment;
@@ -109,6 +112,55 @@ export class TrusteeAppointmentsMongoRepository
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to create trustee appointment for trustee ${trusteeId}.`,
+      });
+    }
+  }
+
+  async updateAppointment(
+    trusteeId: string,
+    appointmentId: string,
+    appointmentInput: TrusteeAppointmentInput,
+    user: CamsUserReference,
+  ): Promise<TrusteeAppointment> {
+    try {
+      const doc = using<TrusteeAppointmentDocument>();
+      const query = and(
+        doc('documentType').equals('TRUSTEE_APPOINTMENT'),
+        doc('id').equals(appointmentId),
+      );
+
+      const existingAppointment =
+        await this.getAdapter<TrusteeAppointmentDocument>().findOne(query);
+
+      if (!existingAppointment) {
+        throw new NotFoundError(MODULE_NAME, {
+          message: `Trustee appointment with ID ${appointmentId} not found.`,
+        });
+      }
+
+      if (existingAppointment.trusteeId !== trusteeId) {
+        const error: Error & { code?: string } = new Error(
+          `Appointment ${appointmentId} does not belong to trustee ${trusteeId}`,
+        );
+        error.code = 'TRUSTEE_APPOINTMENT_FORBIDDEN';
+        throw error;
+      }
+
+      const updatedAppointment: TrusteeAppointmentDocument = {
+        ...existingAppointment,
+        ...appointmentInput,
+        id: appointmentId,
+        documentType: 'TRUSTEE_APPOINTMENT',
+        updatedBy: user,
+        updatedOn: new Date().toISOString(),
+      };
+
+      await this.getAdapter<TrusteeAppointmentDocument>().replaceOne(query, updatedAppointment);
+
+      return updatedAppointment;
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to update trustee appointment with ID ${appointmentId}.`,
       });
     }
   }
