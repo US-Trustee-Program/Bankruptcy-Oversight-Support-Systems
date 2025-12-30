@@ -2,11 +2,12 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { LOGOUT_PATH } from './login-library';
 import { redirectTo } from '@/lib/hooks/UseCamsNavigator';
 import getAppConfiguration from '@/configuration/appConfiguration';
+import { SIXTY_SECONDS } from './providers/okta/okta-library';
 
 const POLLING_INTERVAL = 60000; // milliseconds
 const TIMEOUT_MINUTES = getAppConfiguration().inactiveTimeout ?? 30;
-const TIMEOUT = TIMEOUT_MINUTES * 60 * 1000;
-export const WARNING_THRESHOLD = 60 * 1000; // 60 seconds
+const TIMEOUT = TIMEOUT_MINUTES * SIXTY_SECONDS * 1000;
+export const WARNING_THRESHOLD = SIXTY_SECONDS * 1000; // 60 seconds
 
 // Custom event names
 export const SESSION_TIMEOUT = 'session-timeout';
