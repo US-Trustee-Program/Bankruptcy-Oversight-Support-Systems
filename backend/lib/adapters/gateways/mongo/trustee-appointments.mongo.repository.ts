@@ -112,4 +112,39 @@ export class TrusteeAppointmentsMongoRepository
       });
     }
   }
+
+  async updateAppointment(
+    id: string,
+    appointmentInput: TrusteeAppointmentInput,
+    user: CamsUserReference,
+  ): Promise<TrusteeAppointment> {
+    try {
+      const doc = using<TrusteeAppointmentDocument>();
+      const query = and(doc('documentType').equals('TRUSTEE_APPOINTMENT'), doc('id').equals(id));
+
+      const existingAppointment =
+        await this.getAdapter<TrusteeAppointmentDocument>().findOne(query);
+
+      if (!existingAppointment) {
+        throw new Error(`Trustee appointment with ID ${id} not found.`);
+      }
+
+      const updatedAppointment: TrusteeAppointmentDocument = {
+        ...existingAppointment,
+        ...appointmentInput,
+        id,
+        documentType: 'TRUSTEE_APPOINTMENT',
+        updatedBy: user,
+        updatedOn: new Date().toISOString(),
+      };
+
+      await this.getAdapter<TrusteeAppointmentDocument>().replaceOne(query, updatedAppointment);
+
+      return updatedAppointment;
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to update trustee appointment with ID ${id}.`,
+      });
+    }
+  }
 }

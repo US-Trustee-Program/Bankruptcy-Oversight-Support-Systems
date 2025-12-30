@@ -77,7 +77,6 @@ export class TrusteeAppointmentsUseCase {
     appointmentData: TrusteeAppointmentInput,
   ): Promise<TrusteeAppointment> {
     try {
-      // Verify trustee exists
       try {
         await this.trusteesRepository.read(trusteeId);
       } catch (_e) {
@@ -105,6 +104,33 @@ export class TrusteeAppointmentsUseCase {
         camsStackInfo: {
           module: MODULE_NAME,
           message: `Failed to create appointment for trustee ${trusteeId}.`,
+        },
+      });
+    }
+  }
+
+  async updateAppointment(
+    context: ApplicationContext,
+    appointmentId: string,
+    appointmentData: TrusteeAppointmentInput,
+  ): Promise<TrusteeAppointment> {
+    try {
+      const userReference = getCamsUserReference(context.session.user);
+
+      const updatedAppointment = await this.trusteeAppointmentsRepository.updateAppointment(
+        appointmentId,
+        appointmentData,
+        userReference,
+      );
+
+      context.logger.info(MODULE_NAME, `Updated appointment ${appointmentId}`);
+
+      return updatedAppointment;
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          module: MODULE_NAME,
+          message: `Failed to update appointment ${appointmentId}.`,
         },
       });
     }

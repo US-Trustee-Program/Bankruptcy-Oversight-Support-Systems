@@ -147,6 +147,8 @@ export class TrusteesController implements CamsController {
     const updateData = body as Partial<TrusteeInput>;
     const updatedTrustee = await this.useCase.updateTrustee(context, trusteeId, updateData);
 
+    // TODO: Change to return data: undefined instead of returning the updated record
+    // Frontend should fetch the updated record using the meta URL
     return httpSuccess({
       statusCode: 200,
       body: {
