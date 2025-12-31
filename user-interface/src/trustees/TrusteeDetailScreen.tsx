@@ -21,6 +21,7 @@ import { BankruptcySoftwareList } from '@common/cams/lists';
 import TrusteePublicContactForm from './forms/TrusteePublicContactForm';
 import TrusteeInternalContactForm from './forms/TrusteeInternalContactForm';
 import TrusteeAppointmentForm from './forms/TrusteeAppointmentForm';
+import EditTrusteeAppointment from './forms/EditTrusteeAppointment';
 
 type TrusteeHeaderProps = JSX.IntrinsicElements['div'] & {
   trustee: Trustee | null;
@@ -197,6 +198,11 @@ export default function TrusteeDetailScreen() {
       path: 'appointments/create',
       subHeading: 'Add Trustee Appointments',
       content: <TrusteeAppointmentForm trusteeId={trusteeId} />,
+    },
+    {
+      path: 'appointments/:appointmentId/edit',
+      subHeading: 'Edit Trustee Appointment',
+      content: <EditTrusteeAppointment />,
     },
     {
       path: 'assigned-staff',

@@ -10,6 +10,8 @@ import { NotFoundError } from '../../common-errors/not-found-error';
 import { CourtsUseCase } from '../courts/courts';
 import { CourtDivisionDetails } from '../../../../common/src/cams/courts';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
+import { TrusteeAppointmentHistory, TrusteeHistory } from '../../../../common/src/cams/trustees';
+import { Creatable } from '../../adapters/types/persistence.gateway';
 
 const MODULE_NAME = 'TRUSTEE-APPOINTMENTS-USE-CASE';
 
@@ -93,6 +95,35 @@ export class TrusteeAppointmentsUseCase {
         userReference,
       );
 
+      const [courts] = await Promise.all([this.courtsUseCase.getCourts(context)]);
+
+      const court = courts.find((c) => c.courtDivisionCode === createdAppointment.divisionCode);
+
+      const appointmentHistory: Creatable<TrusteeAppointmentHistory> = {
+        documentType: 'AUDIT_APPOINTMENT',
+        trusteeId,
+        appointmentId: createdAppointment.id,
+        before: undefined,
+        after: {
+          chapter: createdAppointment.chapter,
+          courtId: createdAppointment.courtId,
+          divisionCode: createdAppointment.divisionCode,
+          courtName: court?.courtName,
+          courtDivisionName: court?.courtDivisionName,
+          appointedDate: createdAppointment.appointedDate,
+          status: createdAppointment.status,
+          effectiveDate: createdAppointment.effectiveDate,
+        },
+        updatedBy: userReference,
+        updatedOn: new Date().toISOString(),
+        createdBy: userReference,
+        createdOn: new Date().toISOString(),
+      };
+
+      await this.trusteesRepository.createTrusteeHistory(
+        appointmentHistory as Creatable<TrusteeHistory>,
+      );
+
       context.logger.info(
         MODULE_NAME,
         `Created appointment ${createdAppointment.id} for trustee ${trusteeId}`,
@@ -118,12 +149,71 @@ export class TrusteeAppointmentsUseCase {
     try {
       const userReference = getCamsUserReference(context.session.user);
 
+      const existingAppointment = await this.trusteeAppointmentsRepository.read(appointmentId);
+
       const updatedAppointment = await this.trusteeAppointmentsRepository.updateAppointment(
         trusteeId,
         appointmentId,
         appointmentData,
         userReference,
       );
+
+      const appointmentChanged =
+        existingAppointment.chapter !== updatedAppointment.chapter ||
+        existingAppointment.courtId !== updatedAppointment.courtId ||
+        existingAppointment.divisionCode !== updatedAppointment.divisionCode ||
+        existingAppointment.appointedDate !== updatedAppointment.appointedDate ||
+        existingAppointment.status !== updatedAppointment.status ||
+        existingAppointment.effectiveDate !== updatedAppointment.effectiveDate;
+
+      if (appointmentChanged) {
+        const [courts] = await Promise.all([this.courtsUseCase.getCourts(context)]);
+
+        const findCourtInfo = (divisionCode: string) => {
+          const court = courts.find((c) => c.courtDivisionCode === divisionCode);
+          return {
+            courtName: court?.courtName,
+            courtDivisionName: court?.courtDivisionName,
+          };
+        };
+
+        const beforeCourtInfo = findCourtInfo(existingAppointment.divisionCode);
+        const afterCourtInfo = findCourtInfo(updatedAppointment.divisionCode);
+
+        const appointmentHistory: Creatable<TrusteeAppointmentHistory> = {
+          documentType: 'AUDIT_APPOINTMENT',
+          trusteeId,
+          appointmentId,
+          before: {
+            chapter: existingAppointment.chapter,
+            courtId: existingAppointment.courtId,
+            divisionCode: existingAppointment.divisionCode,
+            courtName: beforeCourtInfo.courtName,
+            courtDivisionName: beforeCourtInfo.courtDivisionName,
+            appointedDate: existingAppointment.appointedDate,
+            status: existingAppointment.status,
+            effectiveDate: existingAppointment.effectiveDate,
+          },
+          after: {
+            chapter: updatedAppointment.chapter,
+            courtId: updatedAppointment.courtId,
+            divisionCode: updatedAppointment.divisionCode,
+            courtName: afterCourtInfo.courtName,
+            courtDivisionName: afterCourtInfo.courtDivisionName,
+            appointedDate: updatedAppointment.appointedDate,
+            status: updatedAppointment.status,
+            effectiveDate: updatedAppointment.effectiveDate,
+          },
+          updatedBy: userReference,
+          updatedOn: new Date().toISOString(),
+          createdBy: userReference,
+          createdOn: new Date().toISOString(),
+        };
+
+        await this.trusteesRepository.createTrusteeHistory(
+          appointmentHistory as Creatable<TrusteeHistory>,
+        );
+      }
 
       context.logger.info(MODULE_NAME, `Updated appointment ${appointmentId}`);
 

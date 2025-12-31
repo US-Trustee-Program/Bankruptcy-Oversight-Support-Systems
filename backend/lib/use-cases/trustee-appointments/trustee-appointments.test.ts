@@ -115,6 +115,8 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       vi.spyOn(MockMongoRepository.prototype, 'createAppointment').mockResolvedValue(
         mockCreatedAppointment,
       );
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
+      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
 
       const result = await trusteeAppointmentsUseCase.createAppointment(
         context,
@@ -178,6 +180,8 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       vi.spyOn(MockMongoRepository.prototype, 'createAppointment').mockResolvedValue(
         mockCreatedAppointment,
       );
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
+      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
 
       await trusteeAppointmentsUseCase.createAppointment(context, trusteeId, appointmentInput);
 
@@ -210,14 +214,21 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     });
 
     test('should update an appointment successfully', async () => {
+      const mockExistingAppointment = MockData.getTrusteeAppointment({
+        id: appointmentId,
+        trusteeId,
+      });
       const mockUpdatedAppointment = MockData.getTrusteeAppointment({
         id: appointmentId,
         ...appointmentUpdate,
       });
 
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockExistingAppointment);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
         mockUpdatedAppointment,
       );
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
+      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
 
       const result = await trusteeAppointmentsUseCase.updateAppointment(
         context,
@@ -283,15 +294,22 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     });
 
     test('should log the update of appointment', async () => {
+      const mockExistingAppointment = MockData.getTrusteeAppointment({
+        id: appointmentId,
+        trusteeId,
+      });
       const mockUpdatedAppointment = MockData.getTrusteeAppointment({
         id: appointmentId,
         ...appointmentUpdate,
       });
       const logSpy = vi.spyOn(context.logger, 'info');
 
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockExistingAppointment);
       vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
         mockUpdatedAppointment,
       );
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
+      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
 
       await trusteeAppointmentsUseCase.updateAppointment(
         context,
@@ -303,6 +321,193 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       expect(logSpy).toHaveBeenCalledWith(
         'TRUSTEE-APPOINTMENTS-USE-CASE',
         `Updated appointment ${appointmentId}`,
+      );
+    });
+
+    test('should create audit history when appointment changes', async () => {
+      const mockExistingAppointment = MockData.getTrusteeAppointment({
+        id: appointmentId,
+        trusteeId,
+        chapter: '7-panel',
+        divisionCode: 'MAB',
+      });
+      const mockUpdatedAppointment = MockData.getTrusteeAppointment({
+        id: appointmentId,
+        trusteeId,
+        ...appointmentUpdate,
+      });
+      const mockCourts = [
+        {
+          courtId: '081',
+          courtDivisionCode: 'MAB',
+          courtName: 'Test Court',
+          courtDivisionName: 'Boston',
+          officeName: 'Test Office',
+          officeCode: 'MA',
+          groupDesignator: 'MA',
+          regionId: '02',
+          regionName: 'Boston',
+        },
+        {
+          courtId: '081',
+          courtDivisionCode: 'MAW',
+          courtName: 'Test Court',
+          courtDivisionName: 'Worcester',
+          officeName: 'Test Office',
+          officeCode: 'MA',
+          groupDesignator: 'MA',
+          regionId: '02',
+          regionName: 'Boston',
+        },
+        {
+          courtId: '081',
+          courtDivisionCode: '2',
+          courtName: 'Test Court',
+          courtDivisionName: 'Worcester',
+          officeName: 'Test Office',
+          officeCode: 'MA',
+          groupDesignator: 'MA',
+          regionId: '02',
+          regionName: 'Boston',
+        },
+      ];
+
+      const historyUpdateSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
+        .mockResolvedValue();
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockExistingAppointment);
+      vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
+        mockUpdatedAppointment,
+      );
+      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue(
+        mockCourts,
+      );
+
+      await trusteeAppointmentsUseCase.updateAppointment(
+        context,
+        trusteeId,
+        appointmentId,
+        appointmentUpdate,
+      );
+
+      expect(historyUpdateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'AUDIT_APPOINTMENT',
+          trusteeId,
+          appointmentId,
+          before: expect.objectContaining({
+            chapter: '7-panel',
+            divisionCode: 'MAB',
+            courtName: 'Test Court',
+            courtDivisionName: 'Boston',
+          }),
+          after: expect.objectContaining({
+            chapter: '11',
+            divisionCode: '2',
+            courtName: 'Test Court',
+            courtDivisionName: 'Worcester',
+          }),
+        }),
+      );
+    });
+
+    test('should not create audit history when appointment does not change', async () => {
+      const unchangedAppointment = MockData.getTrusteeAppointment({
+        id: appointmentId,
+        trusteeId,
+        ...appointmentUpdate,
+      });
+
+      const historyUpdateSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
+        .mockResolvedValue();
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(unchangedAppointment);
+      vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
+        unchangedAppointment,
+      );
+      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
+
+      await trusteeAppointmentsUseCase.updateAppointment(
+        context,
+        trusteeId,
+        appointmentId,
+        appointmentUpdate,
+      );
+
+      expect(historyUpdateSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('createAppointment audit history', () => {
+    const appointmentInput: TrusteeAppointmentInput = {
+      chapter: '7-panel',
+      courtId: '081',
+      divisionCode: 'MAB',
+      appointedDate: '2024-01-15',
+      status: 'active',
+      effectiveDate: '2024-01-15T00:00:00.000Z',
+    };
+
+    beforeEach(async () => {
+      context = await createMockApplicationContext();
+      trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    test('should create audit history when appointment is created', async () => {
+      const trusteeId = 'trustee-123';
+      const mockTrustee = MockData.getTrustee({ trusteeId });
+      const mockCreatedAppointment = MockData.getTrusteeAppointment({
+        trusteeId,
+        ...appointmentInput,
+      });
+      const mockCourts = [
+        {
+          courtId: '081',
+          courtDivisionCode: 'MAB',
+          courtName: 'Test Court',
+          courtDivisionName: 'Boston',
+          officeName: 'Test Office',
+          officeCode: 'MA',
+          groupDesignator: 'MA',
+          regionId: '02',
+          regionName: 'Boston',
+        },
+      ];
+
+      const historyCreateSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
+        .mockResolvedValue();
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'createAppointment').mockResolvedValue(
+        mockCreatedAppointment,
+      );
+      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue(
+        mockCourts,
+      );
+
+      await trusteeAppointmentsUseCase.createAppointment(context, trusteeId, appointmentInput);
+
+      expect(historyCreateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'AUDIT_APPOINTMENT',
+          trusteeId,
+          appointmentId: mockCreatedAppointment.id,
+          before: undefined,
+          after: expect.objectContaining({
+            chapter: '7-panel',
+            divisionCode: 'MAB',
+            courtName: 'Test Court',
+            courtDivisionName: 'Boston',
+            status: 'active',
+          }),
+        }),
       );
     });
   });

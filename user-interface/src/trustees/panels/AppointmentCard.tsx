@@ -2,6 +2,8 @@ import './AppointmentCard.scss';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { formatChapterType } from '@common/cams/trustees';
 import { formatDate } from '@/lib/utils/datetime';
+import { Link } from 'react-router-dom';
+import Icon from '@/lib/components/uswds/Icon';
 
 export interface AppointmentCardProps {
   appointment: TrusteeAppointment;
@@ -27,7 +29,16 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
       <div className="appointment-card usa-card">
         <div className="usa-card__container">
           <div className="usa-card__body">
-            <h4>Key Information</h4>
+            <div className="appointment-card-header">
+              <h4>Key Information</h4>
+              <Link
+                to={`/trustees/${props.appointment.trusteeId}/appointments/${props.appointment.id}/edit`}
+                className="appointment-edit-link"
+              >
+                <Icon name="edit" />
+                Edit
+              </Link>
+            </div>
             <ul className="appointment-details-list">
               <li>
                 <span className="appointment-label">District:</span> {districtDisplay}

@@ -395,6 +395,21 @@ describe('_Api2 functions', async () => {
     expect(getSpy).toHaveBeenCalledWith(`/trustees/${trusteeId}/appointments`, {});
   });
 
+  test('should call api.put function when calling putTrusteeAppointment', () => {
+    const putSpy = vi
+      .spyOn(api.default, 'put')
+      .mockResolvedValue({ data: { id: 'appointment-id' } });
+    const trusteeId = 'trustee-id';
+    const appointmentId = 'appointment-id';
+    const appointmentInput = MockData.getTrusteeAppointment();
+    api2.default.putTrusteeAppointment(trusteeId, appointmentId, appointmentInput);
+    expect(putSpy).toHaveBeenCalledWith(
+      `/trustees/${trusteeId}/appointments/${appointmentId}`,
+      appointmentInput,
+      {},
+    );
+  });
+
   test('should call api.get function when calling getTrusteeOversightAssignments', () => {
     const getSpy = vi
       .spyOn(api.default, 'get')

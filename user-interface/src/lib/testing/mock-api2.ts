@@ -2526,6 +2526,14 @@ async function postTrusteeAppointment(trusteeId: string, appointment: TrusteeApp
   return post(`/trustees/${trusteeId}/appointments`, appointment, {});
 }
 
+async function putTrusteeAppointment(
+  trusteeId: string,
+  appointmentId: string,
+  appointment: TrusteeAppointmentInput,
+) {
+  return put(`/trustees/${trusteeId}/appointments/${appointmentId}`, appointment, {});
+}
+
 async function getBankruptcySoftwareList() {
   return {
     data: [
@@ -2642,6 +2650,7 @@ const MockApi2 = {
   getTrusteeHistory,
   getTrusteeAppointments,
   postTrusteeAppointment,
+  putTrusteeAppointment,
   postTrustee,
   patchTrustee,
   deletePrivilegedIdentityUser,

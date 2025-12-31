@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, test, expect } from 'vitest';
+import { BrowserRouter } from 'react-router-dom';
 import AppointmentCard, { AppointmentCardProps } from './AppointmentCard';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
@@ -27,7 +28,11 @@ describe('AppointmentCard', () => {
       appointment: props?.appointment || mockAppointment,
     };
 
-    return render(<AppointmentCard {...defaultProps} />);
+    return render(
+      <BrowserRouter>
+        <AppointmentCard {...defaultProps} />
+      </BrowserRouter>,
+    );
   }
 
   test('should render appointment card with correct heading', () => {
@@ -184,5 +189,16 @@ describe('AppointmentCard', () => {
 
     expect(screen.getByText(/Court not found - Chapter 7 - Panel/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Court not found/i).length).toBeGreaterThan(0);
+  });
+
+  test('should render Edit link with correct href', () => {
+    renderWithProps();
+
+    const editLink = screen.getByRole('link', { name: /edit/i });
+    expect(editLink).toBeInTheDocument();
+    expect(editLink).toHaveAttribute(
+      'href',
+      `/trustees/${mockAppointment.trusteeId}/appointments/${mockAppointment.id}/edit`,
+    );
   });
 });

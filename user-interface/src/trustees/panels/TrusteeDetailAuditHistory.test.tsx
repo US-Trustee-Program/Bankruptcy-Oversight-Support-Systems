@@ -11,6 +11,7 @@ import {
   TrusteePublicContactHistory,
   TrusteeSoftwareHistory,
   TrusteeOversightHistory,
+  TrusteeAppointmentHistory,
 } from '@common/cams/trustees';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { ContactInformation } from '@common/cams/contact';
@@ -1252,6 +1253,95 @@ describe('TrusteeDetailAuditHistory', () => {
     });
   });
 
+  describe('Appointment History Tests', () => {
+    test('should display appointment change history correctly', async () => {
+      const mockAppointmentHistory = createMockAppointmentHistory();
+      vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: [mockAppointmentHistory] });
+
+      renderWithProps({});
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('change-type-appointment-0')).toHaveTextContent('Appointment');
+
+      const previousCell = screen.getByTestId('previous-appointment-0');
+      expect(previousCell).toHaveTextContent('Chapter: 7 - Panel');
+      expect(previousCell).toHaveTextContent(
+        'District: United States Bankruptcy Court - District of Massachusetts (Boston)',
+      );
+      expect(previousCell).toHaveTextContent('Appointed: 01/15/2023');
+      expect(previousCell).toHaveTextContent('Status: Active 01/15/2023');
+
+      const newCell = screen.getByTestId('new-appointment-0');
+      expect(newCell).toHaveTextContent('Chapter: 11');
+      expect(newCell).toHaveTextContent(
+        'District: United States Bankruptcy Court - District of Massachusetts (Worcester)',
+      );
+      expect(newCell).toHaveTextContent('Appointed: 02/01/2024');
+      expect(newCell).toHaveTextContent('Status: Inactive 02/15/2024');
+
+      expect(screen.getByTestId('changed-by-0')).toHaveTextContent('Admin User');
+      expect(screen.getByTestId('change-date-0')).toHaveTextContent('02/15/2024');
+    });
+
+    test('should display (none) when before is undefined (new appointment)', async () => {
+      const mockAppointmentHistory = createMockAppointmentHistory({
+        before: undefined,
+      });
+      vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: [mockAppointmentHistory] });
+
+      renderWithProps({});
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('previous-appointment-0')).toHaveTextContent('(none)');
+      expect(screen.getByTestId('new-appointment-0')).toHaveTextContent('Chapter: 11');
+    });
+
+    test('should display (none) when after is undefined (deleted appointment)', async () => {
+      const mockAppointmentHistory = createMockAppointmentHistory({
+        after: undefined,
+      });
+      vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: [mockAppointmentHistory] });
+
+      renderWithProps({});
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('previous-appointment-0')).toHaveTextContent('Chapter: 7 - Panel');
+      expect(screen.getByTestId('new-appointment-0')).toHaveTextContent('(none)');
+    });
+
+    test('should display division code when court information is missing', async () => {
+      const mockAppointmentHistory = createMockAppointmentHistory({
+        before: {
+          chapter: '7-panel',
+          courtId: '081',
+          divisionCode: 'MAB',
+          appointedDate: '2023-01-15',
+          status: 'active',
+          effectiveDate: '2023-01-15',
+        },
+      });
+      vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: [mockAppointmentHistory] });
+
+      renderWithProps({});
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
+
+      const previousCell = screen.getByTestId('previous-appointment-0');
+      expect(previousCell).toHaveTextContent('District: MAB');
+    });
+  });
+
   describe('RenderTrusteeHistory Integration Tests', () => {
     test('should render all history types through RenderTrusteeHistory component', async () => {
       const mockBankHistory = {
@@ -1470,6 +1560,47 @@ function createMockInternalContactHistory(
     updatedBy: {
       id: 'user-456',
       name: 'Jane Admin',
+    },
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a TrusteeAppointmentHistory object with sensible defaults
+ */
+function createMockAppointmentHistory(
+  overrides: Partial<TrusteeAppointmentHistory> = {},
+): TrusteeAppointmentHistory {
+  const id = mockIdCounter++;
+  return {
+    id: `audit-${id}-id`,
+    trusteeId: `audit-${id}`,
+    documentType: 'AUDIT_APPOINTMENT',
+    appointmentId: `appointment-${id}`,
+    before: {
+      chapter: '7-panel',
+      courtId: '081',
+      divisionCode: 'MAB',
+      courtName: 'United States Bankruptcy Court - District of Massachusetts',
+      courtDivisionName: 'Boston',
+      appointedDate: '2023-01-15',
+      status: 'active',
+      effectiveDate: '2023-01-15',
+    },
+    after: {
+      chapter: '11',
+      courtId: '081',
+      divisionCode: 'MAW',
+      courtName: 'United States Bankruptcy Court - District of Massachusetts',
+      courtDivisionName: 'Worcester',
+      appointedDate: '2024-02-01',
+      status: 'inactive',
+      effectiveDate: '2024-02-15',
+    },
+    updatedOn: '2024-02-15T14:30:00Z',
+    updatedBy: {
+      id: 'user-789',
+      name: 'Admin User',
     },
     ...overrides,
   };
