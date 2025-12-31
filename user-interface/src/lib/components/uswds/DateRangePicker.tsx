@@ -38,8 +38,8 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
     startDateLabel,
     endDateLabel,
     ariaDescription,
-    minDate,
-    maxDate,
+    min,
+    max,
     value,
     disabled,
     required,
@@ -53,7 +53,30 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
   const [startDateError, setStartDateError] = useState<string>('');
   const [endDateError, setEndDateError] = useState<string>('');
 
+  // Updated on blur to set cross-field min/max constraints
+  const [startDateValue, setStartDateValue] = useState<string>('');
+  const [endDateValue, setEndDateValue] = useState<string>('');
+
   const debounce = useDebounce();
+
+  // Start date max should be the earlier of: end date value or global max
+  function getStartDateMax(): string | undefined {
+    if (!endDateValue && !max) return undefined;
+    if (!endDateValue) return max;
+    if (!max) return endDateValue;
+    return endDateValue < max ? endDateValue : max;
+  }
+
+  // End date min should be the later of: start date value or global min
+  function getEndDateMin(): string | undefined {
+    if (!startDateValue && !min) return undefined;
+    if (!startDateValue) return min;
+    if (!min) return startDateValue;
+    return startDateValue > min ? startDateValue : min;
+  }
+
+  const startDateMax = getStartDateMax();
+  const endDateMin = getEndDateMin();
 
   function validateDateRange(startValue: string, endValue: string) {
     setStartDateError('');
@@ -121,16 +144,26 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
   }
 
   function onStartDateBlur(ev: React.FocusEvent<HTMLInputElement>) {
-    handleDateBlur(ev.target.value, endDateRef.current?.getValue() ?? '');
+    const newStartValue = ev.target.value;
+    const currentEndValue = endDateRef.current?.getValue() ?? '';
+    setStartDateValue(newStartValue);
+    setEndDateValue(currentEndValue);
+    handleDateBlur(newStartValue, currentEndValue);
   }
 
   function onEndDateBlur(ev: React.FocusEvent<HTMLInputElement>) {
-    handleDateBlur(startDateRef.current?.getValue() ?? '', ev.target.value);
+    const currentStartValue = startDateRef.current?.getValue() ?? '';
+    const newEndValue = ev.target.value;
+    setStartDateValue(currentStartValue);
+    setEndDateValue(newEndValue);
+    handleDateBlur(currentStartValue, newEndValue);
   }
 
   function clearValue() {
     setStartDateError('');
     setEndDateError('');
+    setStartDateValue('');
+    setEndDateValue('');
 
     startDateRef.current?.clearValue();
     endDateRef.current?.clearValue();
@@ -144,6 +177,8 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
   function resetValue() {
     setStartDateError('');
     setEndDateError('');
+    setStartDateValue('');
+    setEndDateValue('');
 
     startDateRef.current?.resetValue();
     endDateRef.current?.resetValue();
@@ -179,15 +214,18 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
   });
 
   const getDateRangeDescription = () => {
-    if (minDate && maxDate) {
-      const formattedMin = formatDateForVoiceOver(minDate);
-      const formattedMax = formatDateForVoiceOver(maxDate);
+    const minStr = typeof min === 'string' ? min : undefined;
+    const maxStr = typeof max === 'string' ? max : undefined;
+
+    if (minStr && maxStr) {
+      const formattedMin = formatDateForVoiceOver(minStr);
+      const formattedMax = formatDateForVoiceOver(maxStr);
       return `Valid dates are between ${formattedMin} and ${formattedMax}.`;
-    } else if (minDate) {
-      const formattedMin = formatDateForVoiceOver(minDate);
+    } else if (minStr) {
+      const formattedMin = formatDateForVoiceOver(minStr);
       return `Valid dates are on or after ${formattedMin}.`;
-    } else if (maxDate) {
-      const formattedMax = formatDateForVoiceOver(maxDate);
+    } else if (maxStr) {
+      const formattedMax = formatDateForVoiceOver(maxStr);
       return `Valid dates are on or before ${formattedMax}.`;
     }
     return '';
@@ -196,17 +234,12 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
   const dateRangeConstraint = getDateRangeDescription();
 
   return (
-    <div
-      id={id}
-      className="usa-date-range-picker"
-      data-min-date={props.minDate}
-      data-max-date={props.maxDate}
-    >
+    <div id={id} className="usa-date-range-picker" data-min-date={min} data-max-date={max}>
       <DatePicker
         ref={startDateRef}
         id={`${id}-date-start`}
-        minDate={minDate}
-        maxDate={maxDate}
+        min={min}
+        max={startDateMax}
         onChange={onStartDateChange}
         onBlur={onStartDateBlur}
         label={startDateLabel || 'Start date'}
@@ -217,7 +250,6 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
         disabled={disabled}
         required={required}
         customErrorMessage={startDateError}
-        futureDateWarningThresholdYears={props.futureDateWarningThresholdYears}
         validators={startDateValidators}
       />
       <span id={`${id}-start-hint`} className="usa-hint" hidden>
@@ -229,8 +261,8 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
       <DatePicker
         ref={endDateRef}
         id={`${id}-date-end`}
-        minDate={minDate}
-        maxDate={maxDate}
+        min={endDateMin}
+        max={max}
         onChange={onEndDateChange}
         onBlur={onEndDateBlur}
         label={endDateLabel || 'End date'}
@@ -241,7 +273,6 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
         disabled={disabled}
         required={required}
         customErrorMessage={endDateError}
-        futureDateWarningThresholdYears={props.futureDateWarningThresholdYears}
         validators={endDateValidators}
       />
       <span id={`${id}-end-hint`} className="usa-hint" hidden>
@@ -251,29 +282,29 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
       <span id={`${id}-aria-description`} aria-live="polite" hidden>
         <span>Format: numeric month / numeric day / 4-digit year.</span>
         {ariaDescription && <span aria-label={ariaDescription}></span>}
-        {(minDate || maxDate) && (
+        {(min || max) && (
           <span>
             (Valid date range is
-            {minDate && (
+            {min && (
               <>
-                {maxDate && <>within </>}
-                {minDate}
+                {max && <>within </>}
+                {min}
               </>
             )}
-            {maxDate && (
+            {max && (
               <>
-                {minDate && <> and </>}
-                {!minDate && <> on or before </>}
-                {maxDate}
+                {min && <> and </>}
+                {!min && <> on or before </>}
+                {max}
               </>
             )}
             )
           </span>
         )}
-        {(minDate || maxDate) && (
+        {(min || max) && typeof min === 'string' && typeof max === 'string' && (
           <span>
-            Date range is currently set to {minDate && <>start {formatDateForVoiceOver(minDate)}</>}
-            {maxDate && <>end {formatDateForVoiceOver(maxDate)}</>}
+            Date range is currently set to {min && <>start {formatDateForVoiceOver(min)}</>}
+            {max && <>end {formatDateForVoiceOver(max)}</>}
           </span>
         )}{' '}
         - <span>Use arrow keys to navigate days or type the date directly.</span>

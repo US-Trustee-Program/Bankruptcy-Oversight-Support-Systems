@@ -7,6 +7,7 @@ import {
   validateObject,
   VALID,
 } from './validation';
+import DateHelper from '../date-helper';
 
 /********************************************************************************
  * Common Validator Functions
@@ -275,13 +276,13 @@ function isValidDate(value: unknown): ValidatorResult {
 /**
  * Creates a validator function that checks if a date is within a specified range.
  * Validates that the date is after the minimum date and before the maximum date if provided.
+ * Returns specific error messages with formatted dates (MM/DD/YYYY).
  *
  * @param {string} [min] - The minimum allowed date in YYYY-MM-DD format
  * @param {string} [max] - The maximum allowed date in YYYY-MM-DD format
- * @param {string} [reason] - Optional custom error message to use for range violations
  * @returns {ValidatorFunction} A validator function that checks date range
  */
-function dateMinMax(min?: string, max?: string, reason?: string): ValidatorFunction {
+function dateMinMax(min?: string, max?: string): ValidatorFunction {
   return (value: unknown): ValidatorResult => {
     const dateCheck = isValidDate(value);
     if (!dateCheck.valid) {
@@ -293,14 +294,16 @@ function dateMinMax(min?: string, max?: string, reason?: string): ValidatorFunct
     if (min) {
       const minDate = new Date(min);
       if (date < minDate) {
-        return { reasons: [reason ?? 'Date is before minimum allowed date'] };
+        const formattedMin = DateHelper.formatDate(min);
+        return { reasons: [`Must be on or after ${formattedMin}.`] };
       }
     }
 
     if (max) {
       const maxDate = new Date(max);
       if (date > maxDate) {
-        return { reasons: [reason ?? 'Date is after maximum allowed date'] };
+        const formattedMax = DateHelper.formatDate(max);
+        return { reasons: [`Must be on or before ${formattedMax}.`] };
       }
     }
 
