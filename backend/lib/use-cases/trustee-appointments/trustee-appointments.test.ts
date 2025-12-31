@@ -328,6 +328,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       const mockExistingAppointment = MockData.getTrusteeAppointment({
         id: appointmentId,
         trusteeId,
+        courtId: '081',
         chapter: '7-panel',
         divisionCode: 'MAB',
       });

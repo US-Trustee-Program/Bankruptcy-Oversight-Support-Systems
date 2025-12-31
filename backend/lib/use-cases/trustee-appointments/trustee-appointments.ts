@@ -26,6 +26,16 @@ export class TrusteeAppointmentsUseCase {
     this.courtsUseCase = new CourtsUseCase();
   }
 
+  private findCourtDivision(
+    courts: CourtDivisionDetails[],
+    courtId: string,
+    divisionCode: string,
+  ): CourtDivisionDetails | undefined {
+    return courts.find(
+      (court) => court.courtId === courtId && court.courtDivisionCode === divisionCode,
+    );
+  }
+
   async getTrusteeAppointments(
     context: ApplicationContext,
     trusteeId: string,
@@ -47,7 +57,11 @@ export class TrusteeAppointmentsUseCase {
 
       // Enrich appointments with court information
       const enrichedAppointments = appointments.map((appointment) => {
-        const courtDivision = this.findCourtDivision(courts, appointment.divisionCode);
+        const courtDivision = this.findCourtDivision(
+          courts,
+          appointment.courtId,
+          appointment.divisionCode,
+        );
         return {
           ...appointment,
           courtName: courtDivision?.courtName,
@@ -64,13 +78,6 @@ export class TrusteeAppointmentsUseCase {
         },
       });
     }
-  }
-
-  private findCourtDivision(
-    courts: CourtDivisionDetails[],
-    divisionCode: string,
-  ): CourtDivisionDetails | undefined {
-    return courts.find((court) => court.courtDivisionCode === divisionCode);
   }
 
   async createAppointment(
@@ -97,7 +104,11 @@ export class TrusteeAppointmentsUseCase {
 
       const [courts] = await Promise.all([this.courtsUseCase.getCourts(context)]);
 
-      const court = courts.find((c) => c.courtDivisionCode === createdAppointment.divisionCode);
+      const court = this.findCourtDivision(
+        courts,
+        createdAppointment.courtId,
+        createdAppointment.divisionCode,
+      );
 
       const appointmentHistory: Creatable<TrusteeAppointmentHistory> = {
         documentType: 'AUDIT_APPOINTMENT',
@@ -169,16 +180,16 @@ export class TrusteeAppointmentsUseCase {
       if (appointmentChanged) {
         const [courts] = await Promise.all([this.courtsUseCase.getCourts(context)]);
 
-        const findCourtInfo = (divisionCode: string) => {
-          const court = courts.find((c) => c.courtDivisionCode === divisionCode);
-          return {
-            courtName: court?.courtName,
-            courtDivisionName: court?.courtDivisionName,
-          };
-        };
-
-        const beforeCourtInfo = findCourtInfo(existingAppointment.divisionCode);
-        const afterCourtInfo = findCourtInfo(updatedAppointment.divisionCode);
+        const beforeCourt = this.findCourtDivision(
+          courts,
+          existingAppointment.courtId,
+          existingAppointment.divisionCode,
+        );
+        const afterCourt = this.findCourtDivision(
+          courts,
+          updatedAppointment.courtId,
+          updatedAppointment.divisionCode,
+        );
 
         const appointmentHistory: Creatable<TrusteeAppointmentHistory> = {
           documentType: 'AUDIT_APPOINTMENT',
@@ -188,8 +199,8 @@ export class TrusteeAppointmentsUseCase {
             chapter: existingAppointment.chapter,
             courtId: existingAppointment.courtId,
             divisionCode: existingAppointment.divisionCode,
-            courtName: beforeCourtInfo.courtName,
-            courtDivisionName: beforeCourtInfo.courtDivisionName,
+            courtName: beforeCourt?.courtName,
+            courtDivisionName: beforeCourt?.courtDivisionName,
             appointedDate: existingAppointment.appointedDate,
             status: existingAppointment.status,
             effectiveDate: existingAppointment.effectiveDate,
@@ -198,8 +209,8 @@ export class TrusteeAppointmentsUseCase {
             chapter: updatedAppointment.chapter,
             courtId: updatedAppointment.courtId,
             divisionCode: updatedAppointment.divisionCode,
-            courtName: afterCourtInfo.courtName,
-            courtDivisionName: afterCourtInfo.courtDivisionName,
+            courtName: afterCourt?.courtName,
+            courtDivisionName: afterCourt?.courtDivisionName,
             appointedDate: updatedAppointment.appointedDate,
             status: updatedAppointment.status,
             effectiveDate: updatedAppointment.effectiveDate,
