@@ -4,6 +4,7 @@ import DatePicker, { DatePickerProps } from './DatePicker';
 import './DateRangePicker.scss';
 import useDebounce from '@/lib/hooks/UseDebounce';
 import { ValidatorFunction } from 'common/src/cams/validation';
+import Validators from 'common/src/cams/validators';
 
 export const formatDateForVoiceOver = (dateString: string) => {
   try {
@@ -78,28 +79,28 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
   const startDateMax = getStartDateMax();
   const endDateMin = getEndDateMin();
 
-  function validateDateRange(startValue: string, endValue: string) {
+  function validateDateRange(startValue: string, endValue: string): boolean {
     setStartDateError('');
     setEndDateError('');
 
-    // Only validate if both dates are complete (YYYY-MM-DD format)
-    const isCompleteStartDate = /^\d{4}-\d{2}-\d{2}$/.test(startValue);
-    const isCompleteEndDate = /^\d{4}-\d{2}-\d{2}$/.test(endValue);
+    // Validate both dates using the centralized validator
+    const startValidation = Validators.isValidDate(startValue);
+    const endValidation = Validators.isValidDate(endValue);
 
-    if (!isCompleteStartDate || !isCompleteEndDate) {
-      return;
+    if (!startValidation.valid || !endValidation.valid) {
+      return false;
     }
 
+    // Check if start date is before end date
     const startDate = new Date(startValue);
     const endDate = new Date(endValue);
 
-    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-      return;
-    }
-
     if (startDate > endDate) {
       setStartDateError('Start date must be before end date.');
+      return false;
     }
+
+    return true;
   }
 
   function handleDateChange(
@@ -111,10 +112,12 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
     setStartDateError('');
     setEndDateError('');
 
-    if (callback) callback(ev);
-
+    // Only call parent callback when we have a valid date range
     if (startValue && endValue) {
-      validateDateRange(startValue, endValue);
+      const isValid = validateDateRange(startValue, endValue);
+      if (isValid && callback) {
+        callback(ev);
+      }
     }
   }
 
