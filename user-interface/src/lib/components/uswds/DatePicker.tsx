@@ -11,11 +11,10 @@ import React, {
 } from 'react';
 import Validators from 'common/src/cams/validators';
 import { ValidatorFunction } from 'common/src/cams/validation';
+import DateHelper, { DEFAULT_MIN_DATE } from 'common/src/date-helper';
 
 export type DatePickerProps = JSX.IntrinsicElements['input'] & {
   id: string;
-  minDate?: string;
-  maxDate?: string;
   onChange?: (ev: React.ChangeEvent<HTMLInputElement>) => void;
   onBlur?: (ev: React.FocusEvent<HTMLInputElement>) => void;
   label?: string;
@@ -24,19 +23,22 @@ export type DatePickerProps = JSX.IntrinsicElements['input'] & {
   value?: string;
   required?: boolean;
   customErrorMessage?: string;
-  futureDateWarningThresholdYears?: number;
   validators?: ValidatorFunction[];
 };
 
 function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
-  const { id, label, minDate, maxDate } = props;
+  const { id, label } = props;
+
+  // Apply global defaults if not provided
+  const min = (typeof props.min === 'string' ? props.min : undefined) ?? DEFAULT_MIN_DATE;
+  const max =
+    (typeof props.max === 'string' ? props.max : undefined) ?? DateHelper.getTodaysIsoDate();
 
   const inputRef = useRef<HTMLInputElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const validationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const [warningMessage, setWarningMessage] = useState<string>('');
 
   // Use custom error message from parent if provided
   const displayErrorMessage = props.customErrorMessage || errorMessage;
@@ -74,17 +76,15 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
 
   function clearValue() {
     setErrorMessage('');
-    setWarningMessage('');
     clearDateValue();
   }
 
   function resetValue() {
     setErrorMessage('');
-    setWarningMessage('');
     if (props.value) {
       setDateValue(props.value);
-    } else if (props.minDate) {
-      setDateValue(props.minDate);
+    } else if (min) {
+      setDateValue(min);
     } else {
       clearDateValue();
     }
@@ -94,7 +94,7 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
     if (value.length > 0) {
       setDateValue(value);
     } else {
-      resetValue();
+      clearDateValue();
     }
   }
 
@@ -123,14 +123,12 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
 
     if (!rawValue) {
       setErrorMessage('');
-      setWarningMessage('');
       return;
     }
 
     const isCompleteDate = /^\d{4}-\d{2}-\d{2}$/.test(rawValue);
     if (!isCompleteDate) {
       setErrorMessage('');
-      setWarningMessage('');
       return;
     }
 
@@ -138,41 +136,18 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
 
     if (isNaN(value.getTime())) {
       setErrorMessage('');
-      setWarningMessage('');
       return;
     }
 
     // Debounce validation to avoid showing errors while user is typing
     validationTimeoutRef.current = setTimeout(() => {
-      const minMaxValidator = Validators.dateMinMax(
-        props.minDate,
-        props.maxDate,
-        'Date is not within allowed range. Enter a valid date.',
-      );
+      const minMaxValidator = Validators.dateMinMax(min, max);
       const minMaxResult = minMaxValidator(rawValue);
 
       if (!minMaxResult.valid && minMaxResult.reasons) {
         setErrorMessage(minMaxResult.reasons.join(' '));
-        setWarningMessage('');
       } else {
         setErrorMessage('');
-
-        if (props.futureDateWarningThresholdYears) {
-          const futureValidator = Validators.futureDateWithinYears(
-            props.futureDateWarningThresholdYears,
-          );
-          const futureResult = futureValidator(rawValue);
-
-          if (!futureResult.valid && futureResult.reasons) {
-            setWarningMessage(
-              `This date is more than ${props.futureDateWarningThresholdYears} years in the future. Please verify.`,
-            );
-          } else {
-            setWarningMessage('');
-          }
-        } else {
-          setWarningMessage('');
-        }
       }
     }, 500);
   }
@@ -187,16 +162,34 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
     const invalidDateMessage = 'Must be a valid date mm/dd/yyyy.';
     if (inputRef.current && inputRef.current.validity.badInput) {
       errors.push(invalidDateMessage);
-    } else if (props.validators && dateValue) {
-      props.validators.forEach((validator) => {
-        const result = validator(dateValue);
-        if (!result.valid && result.reasons) {
-          errors.push(...result.reasons);
+    } else if (dateValue) {
+      // Validate min/max constraints
+      const isCompleteDate = /^\d{4}-\d{2}-\d{2}$/.test(dateValue);
+      if (isCompleteDate) {
+        const date = new Date(dateValue);
+        if (!isNaN(date.getTime())) {
+          const minMaxValidator = Validators.dateMinMax(min, max);
+          const minMaxResult = minMaxValidator(dateValue);
+          if (!minMaxResult.valid && minMaxResult.reasons) {
+            errors.push(...minMaxResult.reasons);
+          }
         }
-      });
+      }
+
+      // Validate custom validators
+      if (props.validators) {
+        props.validators.forEach((validator) => {
+          const result = validator(dateValue);
+          if (!result.valid && result.reasons) {
+            errors.push(...result.reasons);
+          }
+        });
+      }
     }
 
-    setErrorMessage(errors.join(' '));
+    // Deduplicate errors before displaying
+    const uniqueErrors = [...new Set(errors)];
+    setErrorMessage(uniqueErrors.join(' '));
 
     if (props.onBlur) {
       props.onBlur(ev);
@@ -250,8 +243,8 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
           onChange={handleChange}
           onBlur={handleBlur}
           data-testid={id}
-          min={minDate}
-          max={maxDate || '9999-12-31'}
+          min={min}
+          max={max}
           value={dateValue ?? ''}
           disabled={isDisabled}
           required={props.required}
@@ -261,11 +254,6 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
       <div id={`${id}-error`} className="date-error" aria-live="polite">
         {displayErrorMessage}
       </div>
-      {warningMessage && !displayErrorMessage && (
-        <div id={`${id}-warning`} className="date-warning" aria-live="polite">
-          {warningMessage}
-        </div>
-      )}
     </div>
   );
 }

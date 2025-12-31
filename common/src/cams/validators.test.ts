@@ -1110,14 +1110,14 @@ describe('validators', () => {
         min: '2024-01-01',
         max: '2024-12-31',
         value: '2023-12-31',
-        expected: { reasons: ['Date is before minimum allowed date'] },
+        expected: { reasons: ['Must be on or after 01/01/2024.'] },
       },
       {
         description: 'should return invalid for date after maximum',
         min: '2024-01-01',
         max: '2024-12-31',
         value: '2025-01-01',
-        expected: { reasons: ['Date is after maximum allowed date'] },
+        expected: { reasons: ['Must be on or before 12/31/2024.'] },
       },
       {
         description: 'should return valid when no min specified',
@@ -1143,25 +1143,9 @@ describe('validators', () => {
         value: '2024-06-15',
         expected: VALID,
       },
-      {
-        description: 'should use custom reason when date is before minimum',
-        min: '2024-01-01',
-        max: '2024-12-31',
-        reason: 'Date is not within allowed range. Enter a valid date.',
-        value: '2023-12-31',
-        expected: { reasons: ['Date is not within allowed range. Enter a valid date.'] },
-      },
-      {
-        description: 'should use custom reason when date is after maximum',
-        min: '2024-01-01',
-        max: '2024-12-31',
-        reason: 'Date is not within allowed range. Enter a valid date.',
-        value: '2025-01-01',
-        expected: { reasons: ['Date is not within allowed range. Enter a valid date.'] },
-      },
     ];
     test.each(testCases)('$description', (testCase) => {
-      const validator = Validators.dateMinMax(testCase.min, testCase.max, testCase.reason);
+      const validator = Validators.dateMinMax(testCase.min, testCase.max);
       expect(validator(testCase.value)).toEqual(testCase.expected);
     });
   });

@@ -621,7 +621,6 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
                         onStartDateChange={handleStartDateChange}
                         onEndDateChange={handleEndDateChange}
                         ref={dateRangeRef}
-                        futureDateWarningThresholdYears={100}
                         startDateValidators={[minDateValidator]}
                         endDateValidators={[minDateValidator]}
                       ></DateRangePicker>

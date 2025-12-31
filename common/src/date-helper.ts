@@ -1,3 +1,7 @@
+// Global date constraints for date pickers
+// October 1, 1979 - the inception of the USTP trustee program pilot for the U.S. Bankruptcy Code
+export const DEFAULT_MIN_DATE = '1979-10-01';
+
 function sortDates(dateA: Date | string, dateB: Date | string): number {
   //Sort DESC
   if (dateA > dateB) {
@@ -32,7 +36,13 @@ function nowInSeconds() {
   return Math.floor(Date.now() / 1000);
 }
 
+function formatDate(isoDate: string): string {
+  const [year, month, day] = isoDate.split('-');
+  return `${month}/${day}/${year}`;
+}
+
 const DateHelper = {
+  formatDate,
   getIsoDate,
   getTodaysIsoDate,
   isValidDateString,
