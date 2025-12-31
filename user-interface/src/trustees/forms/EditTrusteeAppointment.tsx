@@ -12,6 +12,7 @@ export default function EditTrusteeAppointment() {
     appointmentId: string;
   }>();
   const [appointment, setAppointment] = useState<TrusteeAppointment | null>(null);
+  const [existingAppointments, setExistingAppointments] = useState<TrusteeAppointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,12 +20,14 @@ export default function EditTrusteeAppointment() {
     const loadAppointment = async () => {
       try {
         const response = await Api2.getTrusteeAppointments(trusteeId!);
-        const found = response.data?.find((a) => a.id === appointmentId);
+        const appointments = response.data ?? [];
+        const found = appointments.find((a) => a.id === appointmentId);
 
         if (!found) {
           setError('Appointment not found');
         } else {
           setAppointment(found);
+          setExistingAppointments(appointments);
         }
       } catch (err) {
         setError('Failed to load appointment');
@@ -51,5 +54,11 @@ export default function EditTrusteeAppointment() {
     );
   }
 
-  return <TrusteeAppointmentForm trusteeId={trusteeId} appointment={appointment} />;
+  return (
+    <TrusteeAppointmentForm
+      trusteeId={trusteeId}
+      appointment={appointment}
+      existingAppointments={existingAppointments}
+    />
+  );
 }
