@@ -2,7 +2,7 @@ import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, test, expect, vi, beforeAll, afterAll, afterEach } from 'vitest';
 import LocalStorage from '@/lib/utils/local-storage';
 import { AUTH_EXPIRY_WARNING } from '@/login/providers/okta/okta-library';
-import { SESSION_TIMEOUT } from '@/login/inactive-logout';
+import { SESSION_TIMEOUT } from '@/login/session-timer-controller';
 import { initializeTestServer, cleanupTestServer } from '../../helpers/api-server';
 import { createTestSession } from '../../fixtures/auth.fixtures';
 import { TestSetup, waitForAppLoad } from '../../helpers/fluent-test-setup';

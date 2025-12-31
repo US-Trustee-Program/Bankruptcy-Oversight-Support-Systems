@@ -26,7 +26,7 @@ const NEW_EXPIRATION = EXPIRATION_SECONDS + 20000;
 
 // Time constants for handleHeartbeat tests (in seconds)
 const SAFE_LIMIT = 300; // 5 minutes before expiration
-const HEARTBEAT = 1000 * 60 * 5; // 5 minutes in milliseconds
+const HEARTBEAT = 1000 * 60; // 1 minute in milliseconds
 const SESSION_EXPIRATION = 3600; // 1 hour from now (in seconds)
 const CLOSE_TO_EXPIRATION = SESSION_EXPIRATION - SAFE_LIMIT + 10; // Within warning window
 const NOT_CLOSE_TO_EXPIRATION = SESSION_EXPIRATION - SAFE_LIMIT - 100; // Not yet in warning window
@@ -110,7 +110,7 @@ describe('Okta library', () => {
 
       expect(setIntervalSpy).toHaveBeenCalledWith(
         expect.any(Function),
-        1000 * 60 * 5, // HEARTBEAT = 5 minutes
+        1000 * 60, // HEARTBEAT = 1 minute
       );
 
       vi.useRealTimers();
@@ -189,7 +189,6 @@ describe('Okta library', () => {
         .mockResolvedValue({ ...userClaims, exp: NEW_EXPIRATION });
       const setSession = vi.spyOn(LocalStorage, 'setSession');
       const getMeSpy = vi.spyOn(Api2, 'getMe').mockResolvedValue({ data: camsSession } as never);
-      vi.spyOn(sessionEndLogout, 'initializeSessionEndLogout').mockImplementation(() => {});
 
       const oktaAuth = new OktaAuth(MOCK_OAUTH_CONFIG);
       oktaAuth.token.decode = vi.fn().mockImplementation(() => {
@@ -240,7 +239,6 @@ describe('Okta library', () => {
         .mockResolvedValue({ ...userClaims, exp: NEW_EXPIRATION });
       vi.spyOn(LocalStorage, 'setSession');
       vi.spyOn(Api2, 'getMe').mockResolvedValue({ data: camsSession } as never);
-      vi.spyOn(sessionEndLogout, 'initializeSessionEndLogout').mockImplementation(() => {});
 
       const oktaAuth = new OktaAuth(MOCK_OAUTH_CONFIG);
       oktaAuth.token.decode = vi.fn().mockImplementation(() => {
@@ -273,7 +271,6 @@ describe('Okta library', () => {
       });
       const setSession = vi.spyOn(LocalStorage, 'setSession');
       vi.spyOn(Api2, 'getMe').mockResolvedValue({ data: camsSession } as never);
-      vi.spyOn(sessionEndLogout, 'initializeSessionEndLogout').mockImplementation(() => {});
 
       const oktaAuth = new OktaAuth(MOCK_OAUTH_CONFIG);
       oktaAuth.token.decode = vi.fn().mockImplementation(() => {
@@ -336,7 +333,14 @@ describe('Okta library', () => {
       const nowInSecondsSpy = vi
         .spyOn(DateHelper, 'nowInSeconds')
         .mockReturnValue(CLOSE_TO_EXPIRATION);
-      vi.spyOn(OktaLibrary, 'renewOktaToken').mockResolvedValue();
+
+      // Mock renewOktaToken dependencies to prevent actual renewal and event dispatching
+      vi.spyOn(OktaAuth.prototype, 'getOrRenewAccessToken').mockResolvedValue(ACCESS_TOKEN);
+      vi.spyOn(OktaAuth.prototype, 'getUser').mockResolvedValue({ sub: 'test', name: 'Test User' });
+      vi.spyOn(LocalStorage, 'setSession').mockImplementation(() => {});
+      vi.spyOn(Api2, 'getMe').mockResolvedValue({ data: camsSession } as never);
+      vi.spyOn(sessionEndLogout, 'initializeSessionEndLogout').mockImplementation(() => {});
+
       const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
 
       const now = Date.now();
@@ -350,6 +354,8 @@ describe('Okta library', () => {
       expect(nowInSecondsSpy).toHaveBeenCalled();
       expect(getLastInteractionSpy).toHaveBeenCalled();
       expect(dispatchEventSpy).not.toHaveBeenCalled();
+
+      vi.restoreAllMocks();
     });
 
     test('should emit warning on first call when close to expiry and user is inactive', async () => {
@@ -393,9 +399,6 @@ describe('Okta library', () => {
       vi.spyOn(DateHelper, 'nowInSeconds').mockReturnValue(CLOSE_TO_EXPIRATION);
       const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
       const setIntervalSpy = vi.spyOn(window, 'setInterval');
-      const initializeSessionEndLogoutSpy = vi
-        .spyOn(sessionEndLogout, 'initializeSessionEndLogout')
-        .mockImplementation(() => {});
 
       const now = Date.now();
       const oldInteraction = now - (HEARTBEAT + 1000); // Inactive beyond heartbeat window
@@ -414,10 +417,15 @@ describe('Okta library', () => {
       expect(setIntervalSpy).toHaveBeenCalledTimes(1);
       expect(setIntervalSpy).toHaveBeenCalledWith(expect.anything(), 1000 * 60);
 
-      // Verify that the callback invokes initializeSessionEndLogout with the session
+      // Verify that the callback dispatches SESSION_TIMEOUT event
       const callback = setIntervalSpy.mock.calls[0][0];
+      dispatchEventSpy.mockClear();
       callback();
-      expect(initializeSessionEndLogoutSpy).toHaveBeenCalledWith(camsSession);
+      expect(dispatchEventSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'session-timeout',
+        }),
+      );
 
       dispatchEventSpy.mockClear();
       setIntervalSpy.mockClear();
@@ -436,7 +444,6 @@ describe('Okta library', () => {
       const getLastInteractionSpy = vi.spyOn(LocalStorage, 'getLastInteraction');
       vi.spyOn(DateHelper, 'nowInSeconds').mockReturnValue(CLOSE_TO_EXPIRATION);
       const setIntervalSpy = vi.spyOn(window, 'setInterval');
-      vi.spyOn(sessionEndLogout, 'initializeSessionEndLogout').mockImplementation(() => {});
 
       const now = Date.now();
       const oldInteraction = now - (HEARTBEAT + 1000);

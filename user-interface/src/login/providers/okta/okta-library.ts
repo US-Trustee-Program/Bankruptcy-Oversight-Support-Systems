@@ -3,68 +3,15 @@ import LocalStorage from '@/lib/utils/local-storage';
 import DateHelper from '@common/date-helper';
 import Api2 from '@/lib/models/api2';
 import { initializeSessionEndLogout } from '@/login/session-end-logout';
+import {
+  HEARTBEAT,
+  SESSION_TIMEOUT,
+  SessionTimerController,
+} from '@/login/session-timer-controller';
 
 export const AUTH_EXPIRY_WARNING = 'auth-expiry-warning';
-export const SIXTY_SECONDS = 60;
 
 const SAFE_LIMIT = 300;
-const HEARTBEAT = 1000 * SIXTY_SECONDS * 5;
-const LOGOUT_TIMER = 1000 * SIXTY_SECONDS;
-
-class SessionTimerController {
-  private heartbeatIntervalId: number | null = null;
-  private logoutTimerIntervalId: number | null = null;
-  private warningShown = false;
-  private isRenewingToken = false;
-
-  startHeartbeat(callback: () => void): void {
-    this.clearHeartbeat();
-    this.heartbeatIntervalId = window.setInterval(callback, HEARTBEAT);
-  }
-
-  clearHeartbeat(): void {
-    if (this.heartbeatIntervalId !== null) {
-      window.clearInterval(this.heartbeatIntervalId);
-      this.heartbeatIntervalId = null;
-    }
-  }
-
-  startLogoutTimer(callback: () => void): void {
-    this.clearLogoutTimer();
-    this.logoutTimerIntervalId = window.setInterval(callback, LOGOUT_TIMER);
-  }
-
-  clearLogoutTimer(): void {
-    if (this.logoutTimerIntervalId !== null) {
-      window.clearInterval(this.logoutTimerIntervalId);
-      this.logoutTimerIntervalId = null;
-    }
-  }
-
-  setWarningShown(shown: boolean): void {
-    this.warningShown = shown;
-  }
-
-  hasWarningBeenShown(): boolean {
-    return this.warningShown;
-  }
-
-  setRenewingToken(renewing: boolean): void {
-    this.isRenewingToken = renewing;
-  }
-
-  isTokenRenewalInProgress(): boolean {
-    return this.isRenewingToken;
-  }
-
-  reset(): void {
-    this.clearHeartbeat();
-    this.clearLogoutTimer();
-    this.warningShown = false;
-    this.isRenewingToken = false;
-  }
-}
-
 const sessionTimerController = new SessionTimerController();
 
 export function resetWarningShownFlag() {
@@ -101,15 +48,15 @@ export async function handleHeartbeat(oktaAuth: OktaAuth) {
 
   if (now > expirationLimit) {
     if (isActive()) {
-      // if close to expiry and user active, renew token
       await renewOktaToken(oktaAuth);
       sessionTimerController.clearLogoutTimer();
     } else {
-      // if close to expiry and user inactive, show warning once
       if (!sessionTimerController.hasWarningBeenShown()) {
         sessionTimerController.setWarningShown(true);
         window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
-        sessionTimerController.startLogoutTimer(() => initializeSessionEndLogout(session));
+        sessionTimerController.startLogoutTimer(() =>
+          window.dispatchEvent(new CustomEvent(SESSION_TIMEOUT)),
+        );
       }
     }
   }
