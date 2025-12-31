@@ -2,7 +2,7 @@ import { render, waitFor, screen } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import SessionTimeoutManager from './SessionTimeoutManager';
 import { SESSION_TIMEOUT, AUTH_EXPIRY_WARNING } from '@/login/session-timer';
-import * as sessionTimerController from '@/login/session-timer';
+import * as sessionTimer from '@/login/session-timer';
 import * as oktaLibrary from '@/login/providers/okta/okta-library';
 import { AuthContext } from '@/login/AuthContext';
 import { GlobalAlertContext } from '@/App';
@@ -38,10 +38,10 @@ describe('SessionTimeoutManager', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    // Spy on stateless functions
-    logoutSpy = vi.spyOn(sessionTimerController, 'logout').mockImplementation(() => {});
+    // Spy on session timer functions
+    logoutSpy = vi.spyOn(sessionTimer, 'logout').mockImplementation(() => {});
     resetLastInteractionSpy = vi
-      .spyOn(sessionTimerController, 'resetLastInteraction')
+      .spyOn(sessionTimer, 'resetLastInteraction')
       .mockImplementation(() => {});
   });
 
