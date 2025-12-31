@@ -2,19 +2,20 @@ import { useContext, useEffect, useRef } from 'react';
 import SessionTimeoutWarningModal, {
   SessionTimeoutWarningModalRef,
 } from '../SessionTimeoutWarningModal/SessionTimeoutWarningModal';
-import { resetLastInteraction, logout, SESSION_TIMEOUT } from '@/login/inactive-logout';
-import { GlobalAlertContext } from '@/App';
 import {
-  AUTH_EXPIRY_WARNING,
-  renewOktaToken,
+  SessionTimerController,
+  SESSION_TIMEOUT,
   SIXTY_SECONDS,
-} from '@/login/providers/okta/okta-library';
+} from '@/login/session-timer-controller';
+import { GlobalAlertContext } from '@/App';
+import { AUTH_EXPIRY_WARNING, renewOktaToken } from '@/login/providers/okta/okta-library';
 import { AuthContext } from '@/login/AuthContext';
 
 export default function SessionTimeoutManager() {
   const sessionTimeoutModalRef = useRef<SessionTimeoutWarningModalRef>(null);
   const globalAlertRefObject = useContext(GlobalAlertContext);
   const authContext = useContext(AuthContext);
+  const sessionTimerController = new SessionTimerController();
 
   useEffect(() => {
     const handleAuthExpiryWarning = () => {
@@ -22,7 +23,7 @@ export default function SessionTimeoutManager() {
     };
 
     const handleSessionTimeout = () => {
-      logout();
+      sessionTimerController.logout();
     };
 
     window.addEventListener(AUTH_EXPIRY_WARNING, handleAuthExpiryWarning);
@@ -35,7 +36,7 @@ export default function SessionTimeoutManager() {
   }, []);
 
   const handleStayLoggedIn = () => {
-    resetLastInteraction();
+    sessionTimerController.resetLastInteraction();
 
     if (authContext.oktaAuth) {
       renewOktaToken(authContext.oktaAuth);
@@ -51,7 +52,7 @@ export default function SessionTimeoutManager() {
       ref={sessionTimeoutModalRef}
       warningSeconds={SIXTY_SECONDS}
       onStayLoggedIn={handleStayLoggedIn}
-      onLogoutNow={logout}
+      onLogoutNow={sessionTimerController.logout}
     />
   );
 }

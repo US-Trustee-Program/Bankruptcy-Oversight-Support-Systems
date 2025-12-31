@@ -2,8 +2,7 @@ import { render, waitFor, screen } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import SessionTimeoutManager from './SessionTimeoutManager';
 import { AUTH_EXPIRY_WARNING } from '@/login/providers/okta/okta-library';
-import { SESSION_TIMEOUT } from '@/login/inactive-logout';
-import * as inactiveLogout from '@/login/inactive-logout';
+import { SESSION_TIMEOUT, SessionTimerController } from '@/login/session-timer-controller';
 import * as oktaLibrary from '@/login/providers/okta/okta-library';
 import { AuthContext } from '@/login/AuthContext';
 import { GlobalAlertContext } from '@/App';
@@ -34,8 +33,16 @@ describe('SessionTimeoutManager', () => {
     logout: vi.fn(),
   };
 
+  let logoutSpy: ReturnType<typeof vi.spyOn>;
+  let resetLastInteractionSpy: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    // Spy on SessionTimerController methods
+    logoutSpy = vi.spyOn(SessionTimerController.prototype, 'logout').mockImplementation(() => {});
+    resetLastInteractionSpy = vi
+      .spyOn(SessionTimerController.prototype, 'resetLastInteraction')
+      .mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -93,8 +100,6 @@ describe('SessionTimeoutManager', () => {
   });
 
   test('should call logout when SESSION_TIMEOUT event is dispatched', async () => {
-    const logoutSpy = vi.spyOn(inactiveLogout, 'logout');
-
     renderWithContext();
 
     // Dispatch the SESSION_TIMEOUT event
@@ -107,7 +112,6 @@ describe('SessionTimeoutManager', () => {
 
   test('should call resetLastInteraction and renewOktaToken when Stay Logged In is clicked', async () => {
     const user = userEvent.setup();
-    const resetLastInteractionSpy = vi.spyOn(inactiveLogout, 'resetLastInteraction');
     const renewOktaTokenSpy = vi.spyOn(oktaLibrary, 'renewOktaToken').mockResolvedValue();
 
     renderWithContext();
@@ -130,7 +134,6 @@ describe('SessionTimeoutManager', () => {
 
   test('should show success alert when Stay Logged In is clicked', async () => {
     const user = userEvent.setup();
-    vi.spyOn(inactiveLogout, 'resetLastInteraction');
     vi.spyOn(oktaLibrary, 'renewOktaToken').mockResolvedValue();
 
     renderWithContext();
@@ -154,7 +157,6 @@ describe('SessionTimeoutManager', () => {
 
   test('should handle oktaAuth being null', async () => {
     const user = userEvent.setup();
-    const resetLastInteractionSpy = vi.spyOn(inactiveLogout, 'resetLastInteraction');
     const renewOktaTokenSpy = vi.spyOn(oktaLibrary, 'renewOktaToken').mockResolvedValue();
 
     const authContextWithoutOkta = {
@@ -190,7 +192,6 @@ describe('SessionTimeoutManager', () => {
 
   test('should call logout when Log Out Now is clicked', async () => {
     const user = userEvent.setup();
-    const logoutSpy = vi.spyOn(inactiveLogout, 'logout');
 
     renderWithContext();
 
