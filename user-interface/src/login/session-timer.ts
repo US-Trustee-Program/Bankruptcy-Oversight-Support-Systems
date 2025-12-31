@@ -75,4 +75,3 @@ export function logout(): void {
   const logoutUri = protocol + '//' + host + LOGOUT_PATH;
   redirectTo(logoutUri);
 }
-

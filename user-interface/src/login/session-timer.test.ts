@@ -42,7 +42,6 @@ describe('Timer Factory', () => {
 
 describe('Stateless Helper Functions', () => {
   const NOW = 100000;
-  const ONE_MINUTE = 60 * 1000;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -55,7 +54,7 @@ describe('Stateless Helper Functions', () => {
     });
 
     test('should return true if last interaction is within heartbeat window', () => {
-      const recentInteraction = NOW - (HEARTBEAT / 2);
+      const recentInteraction = NOW - HEARTBEAT / 2;
       expect(isUserActive(recentInteraction, HEARTBEAT)).toBe(true);
     });
 
@@ -73,13 +72,13 @@ describe('Stateless Helper Functions', () => {
     });
 
     test('should return correct time until timeout', () => {
-      const lastInteraction = NOW - (10 * 60 * 1000); // 10 minutes ago
-      const expected = TIMEOUT - (10 * 60 * 1000); // 20 minutes remaining
+      const lastInteraction = NOW - 10 * 60 * 1000; // 10 minutes ago
+      const expected = TIMEOUT - 10 * 60 * 1000; // 20 minutes remaining
       expect(getTimeUntilTimeout(lastInteraction, TIMEOUT)).toBe(expected);
     });
 
     test('should return negative value if timeout has passed', () => {
-      const lastInteraction = NOW - (31 * 60 * 1000); // 31 minutes ago
+      const lastInteraction = NOW - 31 * 60 * 1000; // 31 minutes ago
       const result = getTimeUntilTimeout(lastInteraction, TIMEOUT);
       expect(result).toBeLessThan(0);
     });
