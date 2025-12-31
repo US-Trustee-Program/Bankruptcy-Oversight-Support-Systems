@@ -119,21 +119,19 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
   }
 
   function onStartDateChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    handleDateChange(
-      ev,
-      ev.target.value,
-      endDateRef.current?.getValue() ?? '',
-      props.onStartDateChange,
-    );
+    const newStartValue = ev.target.value;
+    const currentEndValue = endDateRef.current?.getValue() ?? '';
+    setStartDateValue(newStartValue);
+    setEndDateValue(currentEndValue);
+    handleDateChange(ev, newStartValue, currentEndValue, props.onStartDateChange);
   }
 
   function onEndDateChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    handleDateChange(
-      ev,
-      startDateRef.current?.getValue() ?? '',
-      ev.target.value,
-      props.onEndDateChange,
-    );
+    const currentStartValue = startDateRef.current?.getValue() ?? '';
+    const newEndValue = ev.target.value;
+    setStartDateValue(currentStartValue);
+    setEndDateValue(newEndValue);
+    handleDateChange(ev, currentStartValue, newEndValue, props.onEndDateChange);
   }
 
   function handleDateBlur(startValue: string, endValue: string) {
