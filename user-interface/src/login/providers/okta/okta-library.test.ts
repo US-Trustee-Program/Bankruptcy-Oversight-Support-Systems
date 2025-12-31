@@ -7,7 +7,6 @@ import {
   registerRenewOktaToken,
   handleHeartbeat,
   isActive,
-  AUTH_EXPIRY_WARNING,
   resetWarningShownFlag,
 } from './okta-library';
 import LocalStorage from '@/lib/utils/local-storage';
@@ -17,6 +16,7 @@ import { CamsSession } from '@common/cams/session';
 import * as delayModule from '@common/delay';
 import DateHelper from '@common/date-helper';
 import * as sessionEndLogout from '@/login/session-end-logout';
+import { AUTH_EXPIRY_WARNING } from '@/login/session-timer';
 
 const MOCK_OAUTH_CONFIG = { issuer: 'https://mock.okta.com/oauth2/default' };
 
