@@ -3,19 +3,20 @@ import SessionTimeoutWarningModal, {
   SessionTimeoutWarningModalRef,
 } from '../SessionTimeoutWarningModal/SessionTimeoutWarningModal';
 import {
-  SessionTimerController,
   SESSION_TIMEOUT,
   SIXTY_SECONDS,
-} from '@/login/session-timer-controller';
+  AUTH_EXPIRY_WARNING,
+  resetLastInteraction,
+  logout,
+} from '@/login/session-timer';
 import { GlobalAlertContext } from '@/App';
-import { AUTH_EXPIRY_WARNING, renewOktaToken } from '@/login/providers/okta/okta-library';
+import { renewOktaToken } from '@/login/providers/okta/okta-library';
 import { AuthContext } from '@/login/AuthContext';
 
 export default function SessionTimeoutManager() {
   const sessionTimeoutModalRef = useRef<SessionTimeoutWarningModalRef>(null);
   const globalAlertRefObject = useContext(GlobalAlertContext);
   const authContext = useContext(AuthContext);
-  const sessionTimerController = new SessionTimerController();
 
   useEffect(() => {
     const handleAuthExpiryWarning = () => {
@@ -23,7 +24,7 @@ export default function SessionTimeoutManager() {
     };
 
     const handleSessionTimeout = () => {
-      sessionTimerController.logout();
+      logout();
     };
 
     window.addEventListener(AUTH_EXPIRY_WARNING, handleAuthExpiryWarning);
@@ -36,7 +37,7 @@ export default function SessionTimeoutManager() {
   }, []);
 
   const handleStayLoggedIn = () => {
-    sessionTimerController.resetLastInteraction();
+    resetLastInteraction();
 
     if (authContext.oktaAuth) {
       renewOktaToken(authContext.oktaAuth);
@@ -45,14 +46,12 @@ export default function SessionTimeoutManager() {
     globalAlertRefObject?.current?.success('Your session has been extended');
   };
 
-  //const other event handler
-
   return (
     <SessionTimeoutWarningModal
       ref={sessionTimeoutModalRef}
       warningSeconds={SIXTY_SECONDS}
       onStayLoggedIn={handleStayLoggedIn}
-      onLogoutNow={sessionTimerController.logout}
+      onLogoutNow={logout}
     />
   );
 }
