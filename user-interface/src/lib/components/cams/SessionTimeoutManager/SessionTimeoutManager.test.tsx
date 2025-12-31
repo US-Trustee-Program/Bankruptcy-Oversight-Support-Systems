@@ -1,10 +1,7 @@
 import { render, waitFor, screen } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import SessionTimeoutManager from './SessionTimeoutManager';
-import {
-  SESSION_TIMEOUT,
-  AUTH_EXPIRY_WARNING,
-} from '@/login/session-timer';
+import { SESSION_TIMEOUT, AUTH_EXPIRY_WARNING } from '@/login/session-timer';
 import * as sessionTimerController from '@/login/session-timer';
 import * as oktaLibrary from '@/login/providers/okta/okta-library';
 import { AuthContext } from '@/login/AuthContext';
