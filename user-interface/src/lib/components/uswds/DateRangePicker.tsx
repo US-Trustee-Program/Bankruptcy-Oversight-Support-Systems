@@ -5,6 +5,7 @@ import './DateRangePicker.scss';
 import useDebounce from '@/lib/hooks/UseDebounce';
 import { ValidatorFunction } from 'common/src/cams/validation';
 import Validators from 'common/src/cams/validators';
+import { DEFAULT_MIN_DATE } from '@common/date-helper';
 
 export const formatDateForVoiceOver = (dateString: string) => {
   try {
@@ -61,7 +62,7 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
   const debounce = useDebounce();
 
   // Start date max should be the earlier of: end date value or global max
-  function getStartDateMax(): string | undefined {
+  function getStartDateMax(): string | number | undefined {
     if (!endDateValue && !max) return undefined;
     if (!endDateValue) return max;
     if (!max) return endDateValue;
@@ -69,7 +70,7 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
   }
 
   // End date min should be the later of: start date value or global min
-  function getEndDateMin(): string | undefined {
+  function getEndDateMin(): string | number | undefined {
     if (!startDateValue && !min) return undefined;
     if (!startDateValue) return min;
     if (!min) return startDateValue;
@@ -111,11 +112,13 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
   ) {
     setStartDateError('');
     setEndDateError('');
-
-    // Only call parent callback when we have a valid date range
     if (startValue && endValue) {
       const isValid = validateDateRange(startValue, endValue);
-      if (isValid && callback) {
+      const TODAY = new Date().toISOString().split('T')[0];
+      const validationChecker = Validators.dateMinMax(DEFAULT_MIN_DATE, TODAY);
+      const { valid: isStartValid } = validationChecker(startValue);
+      const { valid: isEndValid } = validationChecker(endValue);
+      if (isValid && isStartValid && isEndValid && callback) {
         callback(ev);
       }
     }
@@ -126,7 +129,15 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
     const currentEndValue = endDateRef.current?.getValue() ?? '';
     setStartDateValue(newStartValue);
     setEndDateValue(currentEndValue);
-    handleDateChange(ev, newStartValue, currentEndValue, props.onStartDateChange);
+    const syntheticEvent = {
+      ...ev,
+      target: {
+        ...ev.target,
+        value: newStartValue,
+        dataset: { start: newStartValue, end: currentEndValue },
+      },
+    } as React.ChangeEvent<HTMLInputElement>;
+    handleDateChange(syntheticEvent, newStartValue, currentEndValue, props.onStartDateChange);
   }
 
   function onEndDateChange(ev: React.ChangeEvent<HTMLInputElement>) {
@@ -134,7 +145,15 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
     const newEndValue = ev.target.value;
     setStartDateValue(currentStartValue);
     setEndDateValue(newEndValue);
-    handleDateChange(ev, currentStartValue, newEndValue, props.onEndDateChange);
+    const syntheticEvent = {
+      ...ev,
+      target: {
+        ...ev.target,
+        value: newEndValue,
+        dataset: { start: currentStartValue, end: newEndValue },
+      },
+    } as React.ChangeEvent<HTMLInputElement>;
+    handleDateChange(syntheticEvent, currentStartValue, newEndValue, props.onEndDateChange);
   }
 
   function handleDateBlur(startValue: string, endValue: string) {
