@@ -114,8 +114,12 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
     setEndDateError('');
     if (startValue && endValue) {
       const isValid = validateDateRange(startValue, endValue);
-      const TODAY = new Date().toISOString().split('T')[0];
-      const validationChecker = Validators.dateMinMax(DEFAULT_MIN_DATE, TODAY);
+
+      const effectiveMin =
+        typeof min === 'string' && min > DEFAULT_MIN_DATE ? min : DEFAULT_MIN_DATE;
+      const effectiveMax = typeof max === 'string' ? max : new Date().toISOString().split('T')[0];
+
+      const validationChecker = Validators.dateMinMax(effectiveMin, effectiveMax);
       const { valid: isStartValid } = validationChecker(startValue);
       const { valid: isEndValid } = validationChecker(endValue);
       if (isValid && isStartValid && isEndValid && callback) {
