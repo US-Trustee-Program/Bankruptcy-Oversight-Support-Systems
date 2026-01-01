@@ -45,6 +45,46 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
   const getMax = () =>
     (typeof props.max === 'string' ? props.max : undefined) ?? DateHelper.getTodaysIsoDate();
 
+  // Centralized validation helper
+  function validateDateValue(value: string | null): string[] {
+    if (!value) return [];
+
+    const errors: string[] = [];
+
+    const isCompleteDate = /^\d{4}-\d{2}-\d{2}$/.test(value);
+    if (!isCompleteDate) return errors;
+
+    const date = new Date(value);
+    if (isNaN(date.getTime())) return errors;
+
+    // Min/max validation
+    const minMaxValidator = Validators.dateMinMax(getMin(), getMax());
+    const minMaxResult = minMaxValidator(value);
+    if (!minMaxResult.valid && minMaxResult.reasons) {
+      errors.push(...minMaxResult.reasons);
+    }
+
+    // Custom validators
+    if (props.validators) {
+      props.validators.forEach((validator) => {
+        const result = validator(value);
+        if (!result.valid && result.reasons) {
+          errors.push(...result.reasons);
+        }
+      });
+    }
+
+    return [...new Set(errors)];
+  }
+
+  // Reset value helper
+  function getResetValue(): string | null {
+    if (props.value) return props.value;
+
+    const min = getMin();
+    return min || null;
+  }
+
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
@@ -59,22 +99,8 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
 
   // Re-validate when min/max constraints change
   useEffect(() => {
-    if (!dateValue) return;
-
-    const isCompleteDate = /^\d{4}-\d{2}-\d{2}$/.test(dateValue);
-    if (!isCompleteDate) return;
-
-    const date = new Date(dateValue);
-    if (isNaN(date.getTime())) return;
-
-    const minMaxValidator = Validators.dateMinMax(getMin(), getMax());
-    const minMaxResult = minMaxValidator(dateValue);
-
-    if (!minMaxResult.valid && minMaxResult.reasons) {
-      setErrorMessage(minMaxResult.reasons.join(' '));
-    } else {
-      setErrorMessage('');
-    }
+    const errors = validateDateValue(dateValue);
+    setErrorMessage(errors.join(' '));
   }, [props.min, props.max, dateValue]);
 
   function setClassName() {
@@ -101,15 +127,11 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
 
   function resetValue() {
     setErrorMessage('');
-    if (props.value) {
-      setDateValue(props.value);
+    const resetTo = getResetValue();
+    if (resetTo) {
+      setDateValue(resetTo);
     } else {
-      const min = getMin();
-      if (min) {
-        setDateValue(min);
-      } else {
-        clearDateValue();
-      }
+      clearDateValue();
     }
   }
 
@@ -132,8 +154,6 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
   function handleChange(ev: React.ChangeEvent<HTMLInputElement>) {
     const rawValue = ev.target.value;
 
-    // Always update the internal state to match what the user typed
-    // This is required for controlled inputs to work properly
     setDateValue(rawValue || null);
 
     if (props.onChange) {
@@ -149,29 +169,10 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
       return;
     }
 
-    const isCompleteDate = /^\d{4}-\d{2}-\d{2}$/.test(rawValue);
-    if (!isCompleteDate) {
-      setErrorMessage('');
-      return;
-    }
-
-    const value = new Date(rawValue);
-
-    if (isNaN(value.getTime())) {
-      setErrorMessage('');
-      return;
-    }
-
     // Debounce validation to avoid showing errors while user is typing
     validationTimeoutRef.current = setTimeout(() => {
-      const minMaxValidator = Validators.dateMinMax(getMin(), getMax());
-      const minMaxResult = minMaxValidator(rawValue);
-
-      if (!minMaxResult.valid && minMaxResult.reasons) {
-        setErrorMessage(minMaxResult.reasons.join(' '));
-      } else {
-        setErrorMessage('');
-      }
+      const errors = validateDateValue(rawValue);
+      setErrorMessage(errors.join(' '));
     }, 500);
   }
 
@@ -185,34 +186,11 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
     const invalidDateMessage = 'Must be a valid date mm/dd/yyyy.';
     if (inputRef.current && inputRef.current.validity.badInput) {
       errors.push(invalidDateMessage);
-    } else if (dateValue) {
-      // Validate min/max constraints
-      const isCompleteDate = /^\d{4}-\d{2}-\d{2}$/.test(dateValue);
-      if (isCompleteDate) {
-        const date = new Date(dateValue);
-        if (!isNaN(date.getTime())) {
-          const minMaxValidator = Validators.dateMinMax(getMin(), getMax());
-          const minMaxResult = minMaxValidator(dateValue);
-          if (!minMaxResult.valid && minMaxResult.reasons) {
-            errors.push(...minMaxResult.reasons);
-          }
-        }
-      }
-
-      // Validate custom validators
-      if (props.validators) {
-        props.validators.forEach((validator) => {
-          const result = validator(dateValue);
-          if (!result.valid && result.reasons) {
-            errors.push(...result.reasons);
-          }
-        });
-      }
+    } else {
+      errors.push(...validateDateValue(dateValue));
     }
 
-    // Deduplicate errors before displaying
-    const uniqueErrors = [...new Set(errors)];
-    setErrorMessage(uniqueErrors.join(' '));
+    setErrorMessage([...new Set(errors)].join(' '));
 
     if (props.onBlur) {
       props.onBlur(ev);
