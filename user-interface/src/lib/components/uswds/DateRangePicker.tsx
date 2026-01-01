@@ -131,8 +131,8 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
     }
 
     return {
-      startValid: startValidation.valid && startInRange,
-      endValid: endValidation.valid && endInRange,
+      startValid: !!startValidation.valid && !!startInRange,
+      endValid: !!endValidation.valid && !!endInRange,
       rangeValid,
       startError,
       endError,
