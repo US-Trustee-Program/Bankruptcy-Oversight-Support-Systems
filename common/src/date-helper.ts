@@ -37,6 +37,9 @@ function nowInSeconds() {
 }
 
 function formatDate(isoDate: string): string {
+  if (!isValidDateString(isoDate)) {
+    return isoDate;
+  }
   const [year, month, day] = isoDate.split('-');
   return `${month}/${day}/${year}`;
 }
