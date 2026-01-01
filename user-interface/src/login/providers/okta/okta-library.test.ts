@@ -439,6 +439,7 @@ describe('Okta library', () => {
     let getLastInteractionSpy: ReturnType<typeof vi.spyOn>;
     let dateNowSpy: ReturnType<typeof vi.spyOn>;
     const TIMEOUT = 30 * 60 * 1000; // 30 minutes
+    const LOGOUT_TIMER = 60 * 1000; // 1 minute
 
     beforeEach(() => {
       getLastInteractionSpy = vi.spyOn(LocalStorage, 'getLastInteraction');
@@ -459,8 +460,8 @@ describe('Okta library', () => {
     });
 
     test('should return true if user was active within timeout interval', () => {
-      const now = 1000000;
-      const recentInteraction = now - (TIMEOUT - 1000); // 1 second before timeout expires
+      const now = 10000000;
+      const recentInteraction = now - (TIMEOUT - LOGOUT_TIMER - 1000); // 1 second before timeout expires
       dateNowSpy.mockReturnValue(now);
       getLastInteractionSpy.mockReturnValue(recentInteraction);
 
@@ -471,8 +472,8 @@ describe('Okta library', () => {
     });
 
     test('should return false if user was inactive beyond timeout interval', () => {
-      const now = 1000000;
-      const oldInteraction = now - (TIMEOUT + 1000); // 1 second after timeout expires
+      const now = 10000000;
+      const oldInteraction = now - (TIMEOUT - LOGOUT_TIMER + 1000); // 1 second after timeout expires
       dateNowSpy.mockReturnValue(now);
       getLastInteractionSpy.mockReturnValue(oldInteraction);
 

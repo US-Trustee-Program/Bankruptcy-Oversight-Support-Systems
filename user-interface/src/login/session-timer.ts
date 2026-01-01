@@ -34,7 +34,7 @@ export function isUserActive(lastInteraction: number | null): boolean {
 
   const now = Date.now();
   const timeElapsed = now - lastInteraction;
-  return timeElapsed < TIMEOUT;
+  return timeElapsed < TIMEOUT - LOGOUT_TIMER;
 }
 
 export function getTimeUntilTimeout(
