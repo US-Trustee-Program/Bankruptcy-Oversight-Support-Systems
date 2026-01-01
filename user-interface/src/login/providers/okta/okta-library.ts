@@ -1,17 +1,16 @@
 import OktaAuth, { UserClaims } from '@okta/okta-auth-js';
 import LocalStorage from '@/lib/utils/local-storage';
-import DateHelper from '@common/date-helper';
 import Api2 from '@/lib/models/api2';
 import {
   AUTH_EXPIRY_WARNING,
-  HEARTBEAT,
-  SAFE_LIMIT,
   SESSION_TIMEOUT,
   LOGOUT_TIMER,
   createTimer,
   isUserActive,
   getLastInteraction,
   Timer,
+  resetLastInteraction,
+  HEARTBEAT,
 } from '@/login/session-timer';
 
 let heartbeatTimer: Timer | null = null;
@@ -24,6 +23,7 @@ export function resetWarningShownFlag() {
 }
 
 export function registerRenewOktaToken(oktaAuth: OktaAuth) {
+  resetLastInteraction();
   if (heartbeatTimer) {
     heartbeatTimer.clear();
   }
@@ -35,32 +35,23 @@ export function getCamsUser(oktaUser: UserClaims | null) {
 }
 
 export function isActive() {
-  return isUserActive(getLastInteraction(), HEARTBEAT);
+  return isUserActive(getLastInteraction());
 }
 
 export async function handleHeartbeat(oktaAuth: OktaAuth) {
-  const now = DateHelper.nowInSeconds();
-  const session = LocalStorage.getSession();
-  if (!session) return;
-
-  const expiration = session.expires;
-  const expirationLimit = expiration - SAFE_LIMIT;
-
-  if (now > expirationLimit) {
-    if (isActive()) {
-      await renewOktaToken(oktaAuth);
-      if (logoutTimer) {
-        logoutTimer.clear();
-        logoutTimer = null;
-      }
-    } else {
-      if (!warningShown) {
-        warningShown = true;
-        window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
-        logoutTimer = createTimer(() => {
-          window.dispatchEvent(new CustomEvent(SESSION_TIMEOUT));
-        }, LOGOUT_TIMER);
-      }
+  if (isActive()) {
+    await renewOktaToken(oktaAuth);
+    if (logoutTimer) {
+      logoutTimer.clear();
+      logoutTimer = null;
+    }
+  } else {
+    if (!warningShown) {
+      warningShown = true;
+      window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
+      logoutTimer = createTimer(() => {
+        window.dispatchEvent(new CustomEvent(SESSION_TIMEOUT));
+      }, LOGOUT_TIMER);
     }
   }
 }
