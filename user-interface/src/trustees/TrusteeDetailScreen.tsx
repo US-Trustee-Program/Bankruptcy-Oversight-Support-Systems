@@ -196,7 +196,7 @@ export default function TrusteeDetailScreen() {
     },
     {
       path: 'appointments/create',
-      subHeading: 'Add Trustee Appointments',
+      subHeading: 'Add Trustee Appointment',
       content: <TrusteeAppointmentForm trusteeId={trusteeId} />,
     },
     {
