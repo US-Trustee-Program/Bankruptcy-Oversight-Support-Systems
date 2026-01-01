@@ -653,4 +653,74 @@ describe('DatePicker edge case coverage', () => {
       expect(getErrorText()).toBe('');
     });
   });
+
+  test('should show badInput error message on blur when input has invalid format', async () => {
+    const ref = React.createRef<InputRef>();
+    render(
+      <React.StrictMode>
+        <BrowserRouter>
+          <DatePicker id={DEFAULT_ID} onChange={mockOnChange} ref={ref} />
+        </BrowserRouter>
+      </React.StrictMode>,
+    );
+
+    const inputEl = getInput(DEFAULT_ID) as HTMLInputElement;
+
+    Object.defineProperty(inputEl, 'validity', {
+      writable: true,
+      value: {
+        badInput: true,
+        customError: false,
+        patternMismatch: false,
+        rangeOverflow: false,
+        rangeUnderflow: false,
+        stepMismatch: false,
+        tooLong: false,
+        tooShort: false,
+        typeMismatch: false,
+        valid: false,
+        valueMissing: false,
+      },
+    });
+
+    fireEvent.blur(inputEl);
+
+    await waitFor(() => {
+      expect(getErrorText()).toContain('Must be a valid date mm/dd/yyyy.');
+    });
+  });
+
+  test('should handle resetValue when value prop exists', async () => {
+    const initialValue = '2024-05-10';
+    const view = renderWithProps({ value: initialValue });
+
+    const datePicker = screen.getByTestId(DEFAULT_ID);
+
+    act(() => view.setValue('2024-12-25'));
+    await waitFor(() => {
+      expect(datePicker.attributes.getNamedItem('value')?.value).toEqual('2024-12-25');
+    });
+
+    act(() => view.resetValue());
+    await waitFor(() => {
+      expect(datePicker.attributes.getNamedItem('value')?.value).toEqual(initialValue);
+    });
+  });
+
+  test('should handle resetValue when min prop exists but no value prop', async () => {
+    const minDate = '2020-01-01';
+    const view = renderWithProps({ min: minDate });
+
+    const datePicker = screen.getByTestId(DEFAULT_ID);
+
+    act(() => view.setValue('2024-12-25'));
+    await waitFor(() => {
+      expect(datePicker.attributes.getNamedItem('value')?.value).toEqual('2024-12-25');
+    });
+
+    act(() => view.resetValue());
+    await waitFor(() => {
+      expect(datePicker.attributes.getNamedItem('value')?.value).toEqual(minDate);
+    });
+  });
 });

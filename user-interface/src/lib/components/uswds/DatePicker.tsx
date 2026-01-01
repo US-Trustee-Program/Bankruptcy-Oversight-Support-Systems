@@ -128,11 +128,7 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
   function resetValue() {
     setErrorMessage('');
     const resetTo = getResetValue();
-    if (resetTo) {
-      setDateValue(resetTo);
-    } else {
-      clearDateValue();
-    }
+    setDateValue(resetTo);
   }
 
   function setValue(value: string) {

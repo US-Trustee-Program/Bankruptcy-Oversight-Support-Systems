@@ -948,4 +948,52 @@ describe('DateRangePicker validation tests', () => {
       expect(callArgs.target.dataset.end).toBe('2024-12-31');
     });
   });
+
+  test('should not call callback when dates have invalid format', async () => {
+    const mockHandlerStart = vi.fn();
+    const mockHandlerEnd = vi.fn();
+    const { startInput, endInput } = renderDateRangePicker({
+      id: 'date-picker-invalid-format',
+      onStartDateChange: mockHandlerStart,
+      onEndDateChange: mockHandlerEnd,
+    });
+
+    fireEvent.change(startInput, { target: { value: '2024-02-30' } });
+    fireEvent.change(endInput, { target: { value: '2024-12-31' } });
+
+    await waitFor(() => {
+      expect(mockHandlerStart).not.toHaveBeenCalled();
+      expect(mockHandlerEnd).not.toHaveBeenCalled();
+    });
+  });
+
+  test('should show out of range error for start date below min', async () => {
+    const { startInput, endInput } = renderDateRangePicker({
+      id: 'date-picker-start-below-min',
+      min: '2020-01-01',
+    });
+
+    fireEvent.change(startInput, { target: { value: '2019-12-31' } });
+    fireEvent.change(endInput, { target: { value: '2020-02-01' } });
+    fireEvent.blur(startInput);
+
+    await waitFor(() => {
+      expect(screen.getByText('Start date is out of range.')).toBeInTheDocument();
+    });
+  });
+
+  test('should show out of range error for start date above max', async () => {
+    const { startInput, endInput } = renderDateRangePicker({
+      id: 'date-picker-start-above-max',
+      max: '2025-12-31',
+    });
+
+    fireEvent.change(startInput, { target: { value: '2026-01-01' } });
+    fireEvent.change(endInput, { target: { value: '2026-01-15' } });
+    fireEvent.blur(startInput);
+
+    await waitFor(() => {
+      expect(screen.getByText('Start date is out of range.')).toBeInTheDocument();
+    });
+  });
 });
