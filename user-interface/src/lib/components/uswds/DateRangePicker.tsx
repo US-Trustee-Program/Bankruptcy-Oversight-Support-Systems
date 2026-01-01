@@ -89,9 +89,6 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
   };
 
   function validateRange(startValue: string, endValue: string): RangeValidationResult {
-    const startValidation = Validators.isValidDate(startValue);
-    const endValidation = Validators.isValidDate(endValue);
-
     const effectiveMin = typeof min === 'string' && min > DEFAULT_MIN_DATE ? min : DEFAULT_MIN_DATE;
     const effectiveMax = typeof max === 'string' ? max : new Date().toISOString().split('T')[0];
 
@@ -102,16 +99,6 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
     let rangeValid = false;
     let startError: string | undefined;
     let endError: string | undefined;
-
-    if (!startValidation.valid || !endValidation.valid) {
-      return {
-        startValid: false,
-        endValid: false,
-        rangeValid: false,
-        startError,
-        endError,
-      };
-    }
 
     const startDate = new Date(startValue);
     const endDate = new Date(endValue);
@@ -131,8 +118,8 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
     }
 
     return {
-      startValid: !!startValidation.valid && !!startInRange,
-      endValid: !!endValidation.valid && !!endInRange,
+      startValid: !!startInRange,
+      endValid: !!endInRange,
       rangeValid,
       startError,
       endError,
