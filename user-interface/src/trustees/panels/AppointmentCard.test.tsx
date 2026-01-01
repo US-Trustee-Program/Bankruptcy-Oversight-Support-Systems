@@ -1,11 +1,28 @@
 import { render, screen } from '@testing-library/react';
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import AppointmentCard, { AppointmentCardProps } from './AppointmentCard';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+import userEvent from '@testing-library/user-event';
+
+const mockUseNavigate = vi.hoisted(() => vi.fn());
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: mockUseNavigate,
+  };
+});
 
 describe('AppointmentCard', () => {
+  const mockNavigate = vi.fn();
+
+  beforeEach(() => {
+    mockUseNavigate.mockReturnValue(mockNavigate);
+    vi.clearAllMocks();
+  });
   const mockAppointment: TrusteeAppointment = {
     id: 'appointment-001',
     trusteeId: 'trustee-123',
@@ -191,13 +208,22 @@ describe('AppointmentCard', () => {
     expect(screen.getAllByText(/Court not found/i).length).toBeGreaterThan(0);
   });
 
-  test('should render Edit link with correct href', () => {
+  test('should render Edit button', () => {
     renderWithProps();
 
-    const editLink = screen.getByRole('link', { name: /edit/i });
-    expect(editLink).toBeInTheDocument();
-    expect(editLink).toHaveAttribute(
-      'href',
+    const editButton = screen.getByRole('button', { name: /edit trustee appointment/i });
+    expect(editButton).toBeInTheDocument();
+    expect(editButton).toHaveAttribute('id', 'edit-trustee-appointment');
+  });
+
+  test('should navigate to edit page when Edit button is clicked', async () => {
+    const user = userEvent.setup();
+    renderWithProps();
+
+    const editButton = screen.getByRole('button', { name: /edit trustee appointment/i });
+    await user.click(editButton);
+
+    expect(mockNavigate).toHaveBeenCalledWith(
       `/trustees/${mockAppointment.trusteeId}/appointments/${mockAppointment.id}/edit`,
     );
   });

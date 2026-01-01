@@ -2,14 +2,16 @@ import './AppointmentCard.scss';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { formatChapterType } from '@common/cams/trustees';
 import { formatDate } from '@/lib/utils/datetime';
-import { Link } from 'react-router-dom';
-import Icon from '@/lib/components/uswds/Icon';
+import { useNavigate } from 'react-router-dom';
+import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
+import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 
 export interface AppointmentCardProps {
   appointment: TrusteeAppointment;
 }
 
 export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
+  const navigate = useNavigate();
   const formattedChapter = formatChapterType(props.appointment.chapter);
   let districtDisplay;
   if (props.appointment.courtName && props.appointment.courtDivisionName) {
@@ -21,6 +23,10 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
   const formattedAppointedDate = formatDate(props.appointment.appointedDate);
   const statusDisplay = `${props.appointment.status.charAt(0).toUpperCase() + props.appointment.status.slice(1)} ${formattedEffectiveDate}`;
 
+  function openEditTrustee() {
+    navigate(`/trustees/${props.appointment.trusteeId}/appointments/${props.appointment.id}/edit`);
+  }
+
   return (
     <div className="appointment-card-container">
       <h3 className="appointment-card-heading">
@@ -31,13 +37,15 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
           <div className="usa-card__body">
             <div className="appointment-card-header">
               <h4>Key Information</h4>
-              <Link
-                to={`/trustees/${props.appointment.trusteeId}/appointments/${props.appointment.id}/edit`}
-                className="appointment-edit-link"
+              <Button
+                id="edit-trustee-appointment"
+                uswdsStyle={UswdsButtonStyle.Unstyled}
+                aria-label="Edit trustee appointment"
+                title="Edit trustee appointment"
+                onClick={openEditTrustee}
               >
-                <Icon name="edit" />
-                Edit
-              </Link>
+                <IconLabel icon="edit" label="Edit" />
+              </Button>
             </div>
             <ul className="appointment-details-list">
               <li>
