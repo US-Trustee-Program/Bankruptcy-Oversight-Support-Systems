@@ -6,7 +6,6 @@ import {
   AUTH_EXPIRY_WARNING,
   HEARTBEAT,
   WARNING_THRESHOLD,
-  SAFE_LIMIT,
   LOGOUT_TIMER,
   createTimer,
   isUserActive,
@@ -53,18 +52,20 @@ describe('Stateless Helper Functions', () => {
   });
 
   describe('isUserActive', () => {
+    const TIMEOUT = 30 * 60 * 1000; // 30 minutes (default timeout)
+
     test('should return false if lastInteraction is null', () => {
       expect(isUserActive(null)).toBe(false);
     });
 
-    test('should return true if last interaction is within heartbeat window', () => {
-      const recentInteraction = NOW - HEARTBEAT / 2;
-      expect(isUserActive(recentInteraction, HEARTBEAT)).toBe(true);
+    test('should return true if last interaction is within timeout window', () => {
+      const recentInteraction = NOW - TIMEOUT / 2;
+      expect(isUserActive(recentInteraction)).toBe(true);
     });
 
-    test('should return false if last interaction is beyond heartbeat window', () => {
-      const oldInteraction = NOW - (HEARTBEAT + 1000);
-      expect(isUserActive(oldInteraction, HEARTBEAT)).toBe(false);
+    test('should return false if last interaction is beyond timeout window', () => {
+      const oldInteraction = NOW - (TIMEOUT + 1000);
+      expect(isUserActive(oldInteraction)).toBe(false);
     });
   });
 
@@ -199,28 +200,6 @@ describe('checkForInactivity function', () => {
     redirectToSpy.mockRestore();
   });
 
-  test('should dispatch SESSION_TIMEOUT event when within warning threshold', () => {
-    const TIMEOUT = 30 * 60 * 1000; // 30 minutes
-    const lastInteraction = NOW - (TIMEOUT - 30 * 1000); // 30 seconds until timeout
-
-    const getLastInteractionSpy = vi
-      .spyOn(LocalStorage, 'getLastInteraction')
-      .mockReturnValue(lastInteraction);
-    const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
-
-    checkForInactivity();
-
-    expect(getLastInteractionSpy).toHaveBeenCalled();
-    expect(dispatchEventSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: SESSION_TIMEOUT,
-      }),
-    );
-
-    getLastInteractionSpy.mockRestore();
-    dispatchEventSpy.mockRestore();
-  });
-
   test('should call logout when timeout has passed', () => {
     const TIMEOUT = 30 * 60 * 1000; // 30 minutes
     const lastInteraction = NOW - (TIMEOUT + 1000); // 1 second past timeout
@@ -286,7 +265,7 @@ describe('initializeInactiveLogout function', () => {
 
     initializeInactiveLogout();
 
-    expect(setIntervalSpy).toHaveBeenCalledWith(checkForInactivity, 60000);
+    expect(setIntervalSpy).toHaveBeenCalledWith(checkForInactivity, HEARTBEAT);
     expect(addEventListenerSpy).toHaveBeenCalledWith('click', resetLastInteraction);
     expect(addEventListenerSpy).toHaveBeenCalledWith('keypress', resetLastInteraction);
 
@@ -311,10 +290,6 @@ describe('Constants', () => {
 
   test('WARNING_THRESHOLD should be 1 minute', () => {
     expect(WARNING_THRESHOLD).toBe(60000); // 60 * 1000
-  });
-
-  test('SAFE_LIMIT should be 300 seconds', () => {
-    expect(SAFE_LIMIT).toBe(300);
   });
 
   test('LOGOUT_TIMER should be 1 minute', () => {

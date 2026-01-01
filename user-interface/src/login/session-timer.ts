@@ -8,7 +8,6 @@ export const HEARTBEAT = 1000 * SIXTY_SECONDS;
 export const WARNING_THRESHOLD = 1000 * SIXTY_SECONDS;
 export const SESSION_TIMEOUT = 'session-timeout';
 export const AUTH_EXPIRY_WARNING = 'auth-expiry-warning';
-export const SAFE_LIMIT = 300;
 export const LOGOUT_TIMER = 1000 * SIXTY_SECONDS;
 
 const TIMEOUT_MINUTES = getAppConfiguration().inactiveTimeout ?? 30;
@@ -28,16 +27,14 @@ export function createTimer(callback: () => void, interval: number): Timer {
 }
 
 // Stateless helper functions
-export function isUserActive(
-  lastInteraction: number | null,
-  heartbeatInterval: number = HEARTBEAT,
-): boolean {
+export function isUserActive(lastInteraction: number | null): boolean {
   if (!lastInteraction) {
     return false;
   }
+
   const now = Date.now();
   const timeElapsed = now - lastInteraction;
-  return timeElapsed < heartbeatInterval;
+  return timeElapsed < TIMEOUT;
 }
 
 export function getTimeUntilTimeout(
@@ -83,10 +80,6 @@ export function checkForInactivity() {
   const timeElapsed = now - lastInteraction;
   const timeUntilTimeout = TIMEOUT - timeElapsed;
 
-  if (timeUntilTimeout <= WARNING_THRESHOLD && timeUntilTimeout > 0) {
-    window.dispatchEvent(new CustomEvent(SESSION_TIMEOUT));
-  }
-
   if (timeUntilTimeout <= 0) {
     logout();
   }
@@ -99,7 +92,7 @@ export function logout(): void {
 }
 
 export function initializeInactiveLogout() {
-  setInterval(checkForInactivity, 60000);
+  setInterval(checkForInactivity, HEARTBEAT);
   document.body.addEventListener('click', resetLastInteraction);
   document.body.addEventListener('keypress', resetLastInteraction);
 }
