@@ -80,28 +80,63 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
   const startDateMax = getStartDateMax();
   const endDateMin = getEndDateMin();
 
-  function validateDateRange(startValue: string, endValue: string): boolean {
-    setStartDateError('');
-    setEndDateError('');
+  type RangeValidationResult = {
+    startValid: boolean;
+    endValid: boolean;
+    rangeValid: boolean;
+    startError?: string;
+    endError?: string;
+  };
 
-    // Validate both dates using the centralized validator
+  function validateRange(startValue: string, endValue: string): RangeValidationResult {
     const startValidation = Validators.isValidDate(startValue);
     const endValidation = Validators.isValidDate(endValue);
 
+    const effectiveMin = typeof min === 'string' && min > DEFAULT_MIN_DATE ? min : DEFAULT_MIN_DATE;
+    const effectiveMax = typeof max === 'string' ? max : new Date().toISOString().split('T')[0];
+
+    const minMaxValidator = Validators.dateMinMax(effectiveMin, effectiveMax);
+    const { valid: startInRange } = minMaxValidator(startValue);
+    const { valid: endInRange } = minMaxValidator(endValue);
+
+    let rangeValid = false;
+    let startError: string | undefined;
+    let endError: string | undefined;
+
     if (!startValidation.valid || !endValidation.valid) {
-      return false;
+      return {
+        startValid: false,
+        endValid: false,
+        rangeValid: false,
+        startError,
+        endError,
+      };
     }
 
-    // Check if start date is before end date
     const startDate = new Date(startValue);
     const endDate = new Date(endValue);
 
     if (startDate > endDate) {
-      setStartDateError('Start date must be before end date.');
-      return false;
+      startError = 'Start date must be before end date.';
+    } else {
+      rangeValid = true;
     }
 
-    return true;
+    if (!startInRange) {
+      startError = startError ?? 'Start date is out of range.';
+    }
+
+    if (!endInRange) {
+      endError = 'End date is out of range.';
+    }
+
+    return {
+      startValid: startValidation.valid && startInRange,
+      endValid: endValidation.valid && endInRange,
+      rangeValid,
+      startError,
+      endError,
+    };
   }
 
   function handleDateChange(
@@ -112,19 +147,19 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
   ) {
     setStartDateError('');
     setEndDateError('');
-    if (startValue && endValue) {
-      const isValid = validateDateRange(startValue, endValue);
 
-      const effectiveMin =
-        typeof min === 'string' && min > DEFAULT_MIN_DATE ? min : DEFAULT_MIN_DATE;
-      const effectiveMax = typeof max === 'string' ? max : new Date().toISOString().split('T')[0];
+    if (!startValue || !endValue) return;
 
-      const validationChecker = Validators.dateMinMax(effectiveMin, effectiveMax);
-      const { valid: isStartValid } = validationChecker(startValue);
-      const { valid: isEndValid } = validationChecker(endValue);
-      if (isValid && isStartValid && isEndValid && callback) {
-        callback(ev);
-      }
+    const { startValid, endValid, rangeValid, startError, endError } = validateRange(
+      startValue,
+      endValue,
+    );
+
+    if (startError) setStartDateError(startError);
+    if (endError) setEndDateError(endError);
+
+    if (startValid && endValid && rangeValid && callback) {
+      callback(ev);
     }
   }
 
@@ -164,7 +199,10 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
     if (!startValue || !endValue) {
       return;
     }
-    validateDateRange(startValue, endValue);
+
+    const { startError, endError } = validateRange(startValue, endValue);
+    setStartDateError(startError ?? '');
+    setEndDateError(endError ?? '');
   }
 
   function onStartDateBlur(ev: React.FocusEvent<HTMLInputElement>) {
