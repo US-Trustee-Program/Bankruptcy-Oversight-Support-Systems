@@ -12,7 +12,7 @@ import SyncCases from '../../../lib/use-cases/dataflows/sync-cases';
 import CasesRuntimeState from '../../../lib/use-cases/dataflows/cases-runtime-state';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
-import { CaseSyncEvent } from '../../../../common/src/queue/dataflow-types';
+import { CaseSyncEvent } from 'common';
 
 const MODULE_NAME = 'SYNC-CASES';
 const PAGE_SIZE = 100;
@@ -44,7 +44,8 @@ const TIMER_TRIGGER = buildFunctionName(MODULE_NAME, 'timerTrigger');
  *
  * Export and load changed cases from DXTR into CAMS.
  *
- * @param  context
+ * @param {StartMessage} startMessage
+ * @param {InvocationContext} invocationContext
  */
 async function handleStart(startMessage: StartMessage, invocationContext: InvocationContext) {
   try {
@@ -81,8 +82,8 @@ async function handleStart(startMessage: StartMessage, invocationContext: Invoca
 /**
  * handlePage
  *
- * @param page
- * @param invocationContext
+ * @param {CaseSyncEvent[]} events
+ * @param {InvocationContext} invocationContext
  */
 async function handlePage(events: CaseSyncEvent[], invocationContext: InvocationContext) {
   const appContext = await ContextCreator.getApplicationContext({ invocationContext });
