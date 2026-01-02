@@ -9,11 +9,104 @@ import { NotFoundError } from '../../../common-errors/not-found-error';
 import { CASE_SUMMARIES } from '../../../testing/mock-data/case-summaries.mock';
 import { DEBTORS } from '../../../testing/mock-data/debtors.mock';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
-import { LegacyTrustee } from '../../../../../common/src/cams/parties';
+import {
+  LegacyTrustee,
+  Party,
+  Debtor,
+  DebtorAttorney,
+} from '../../../../../common/src/cams/parties';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { TransactionIdRangeForDate } from '../../../use-cases/cases/cases.interface';
+import { DxtrTransactionRecord } from '../../types/cases';
 
 const dxtrDatabaseName = 'some-database-name';
+
+// Test helper functions
+const buildDebtor = (overrides: Partial<Debtor> = {}): Debtor => ({
+  name: 'John Q. Smith',
+  address1: '123 Main St',
+  address2: 'Apt 17',
+  address3: '',
+  cityStateZipCountry: 'Queens NY 12345 USA',
+  ssn: '123-45-6789',
+  taxId: '12-3456789',
+  ...overrides,
+});
+
+const buildJointDebtor = (overrides: Partial<Debtor> = {}): Debtor =>
+  buildDebtor({
+    name: 'Jane Q. Smith',
+    ssn: '987-65-4321',
+    taxId: '98-7654321',
+    ...overrides,
+  });
+
+const buildAttorney = (overrides: Partial<DebtorAttorney> = {}): DebtorAttorney => ({
+  name: 'James Brown Esq.',
+  address1: '456 South St',
+  address2: undefined,
+  address3: undefined,
+  cityStateZipCountry: 'Queens NY 12345 USA',
+  phone: '101-345-8765',
+  email: undefined,
+  office: undefined,
+  ...overrides,
+});
+
+const buildJointDebtorAttorney = (overrides: Partial<DebtorAttorney> = {}): DebtorAttorney =>
+  buildAttorney({
+    name: 'Sarah Green Esq.',
+    address1: '789 North Ave',
+    cityStateZipCountry: 'Brooklyn NY 11201 USA',
+    phone: '101-987-6543',
+    ...overrides,
+  });
+
+const buildTrustee = (overrides: Partial<Party> = {}): Party => ({
+  name: 'Robert Trustee',
+  address1: '789 Trust St',
+  address2: 'Suite 100',
+  address3: '',
+  cityStateZipCountry: 'Manhattan NY 10001 USA',
+  phone: '212-555-1234',
+  email: 'robert.trustee@example.com',
+  ...overrides,
+});
+
+const makeQueryResults = <T>(recordset: T[]): QueryResults => ({
+  success: true,
+  results: { recordset },
+  message: '',
+});
+
+const buildTransaction = (
+  overrides: Partial<DxtrTransactionRecord> = {},
+): DxtrTransactionRecord => ({
+  txRecord: 'zzzzzzzzzzzzzzzzzzz000000zzzzzzzzzzzz',
+  txCode: 'CBC',
+  ...overrides,
+});
+
+type CaseDetailQueryMocks = {
+  caseResults: QueryResults;
+  debtorResults: QueryResults;
+  jointDebtorResults: QueryResults;
+  transactionResults: QueryResults;
+  trusteeResults: QueryResults;
+  debtorAttorneyResults: QueryResults;
+  jointDebtorAttorneyResults: QueryResults;
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const setupCaseDetailQuerySequence = (querySpy: any, mocks: CaseDetailQueryMocks) => {
+  querySpy.mockImplementationOnce(async () => mocks.caseResults);
+  querySpy.mockImplementationOnce(async () => mocks.debtorResults);
+  querySpy.mockImplementationOnce(async () => mocks.jointDebtorResults);
+  querySpy.mockImplementationOnce(async () => mocks.transactionResults);
+  querySpy.mockImplementationOnce(async () => mocks.trusteeResults);
+  querySpy.mockImplementationOnce(async () => mocks.debtorAttorneyResults);
+  querySpy.mockImplementationOnce(async () => mocks.jointDebtorAttorneyResults);
+};
 
 describe('Test DXTR Gateway', () => {
   let applicationContext;
@@ -61,26 +154,8 @@ describe('Test DXTR Gateway', () => {
     const reopenedDate = '2023-12-31';
     const transferDate = '2023-12-31';
 
-    const expectedParty = {
-      name: 'John Q. Smith',
-      address1: '123 Main St',
-      address2: 'Apt 17',
-      address3: '',
-      cityStateZipCountry: 'Queens NY 12345 USA',
-      ssn: '123-45-6789',
-      taxId: '12-3456789',
-    };
-
-    const expectedJointDebtor = {
-      name: 'Jane Q. Smith',
-      address1: '123 Main St',
-      address2: 'Apt 17',
-      address3: '',
-      cityStateZipCountry: 'Queens NY 12345 USA',
-      ssn: '987-65-4321',
-      taxId: '98-7654321',
-    };
-
+    const expectedDebtor = buildDebtor();
+    const expectedJointDebtor = buildJointDebtor();
     const expectedTrusteeRecord = {
       name: 'John Q. Smith',
       address1: '123 Main St',
@@ -90,35 +165,14 @@ describe('Test DXTR Gateway', () => {
       phone: '101-345-8765',
       email: 'john.smith@example.com',
     };
-
-    const expectedDebtorAttorney = {
-      name: 'James Brown Esq.',
-      address1: '456 South St',
-      address2: undefined,
-      address3: undefined,
-      cityStateZipCountry: 'Queens NY 12345 USA',
-      phone: '101-345-8765',
-      email: undefined,
-      office: undefined,
-    };
-
-    const expectedJointDebtorAttorney = {
-      name: 'Sarah Green Esq.',
-      address1: '789 North Ave',
-      address2: undefined,
-      address3: undefined,
-      cityStateZipCountry: 'Brooklyn NY 11201 USA',
-      phone: '101-987-6543',
-      email: undefined,
-      office: undefined,
-    };
-
+    const expectedDebtorAttorney = buildAttorney();
+    const expectedJointDebtorAttorney = buildJointDebtorAttorney();
     const expectedDebtorTypeLabel = 'Corporate Business';
 
     const testCase = MockData.getCaseDetail({
       entityType: 'company',
       override: {
-        debtor: expectedParty,
+        debtor: expectedDebtor,
         jointDebtor: expectedJointDebtor,
         debtorAttorney: expectedDebtorAttorney,
         jointDebtorAttorney: expectedJointDebtorAttorney,
@@ -129,113 +183,22 @@ describe('Test DXTR Gateway', () => {
       },
     });
 
-    const cases = [testCase];
-
     const transactions = [
-      {
-        txRecord: 'zzzzzzzzzzzzzzzzzzz230830zzzzzzzzzzzz',
-        txCode: 'CBC',
-      },
-      {
-        txRecord: 'zzzzzzzzzzzzzzzzzzz231031zzzzzzzzzzzz',
-        txCode: 'CBC',
-      },
-      {
-        txRecord: 'zzzzzzzzzzzzzzzzzzz231115zzzzzzzzzzzz',
-        txCode: 'CDC',
-      },
-      {
-        txRecord: 'zzzzzzzzzzzzzzzzzzz231231zzzzzzzzzzzz',
-        txCode: 'OCO',
-      },
-      {
-        txRecord: 'zzzzzzzzzzzzzzzzzzz231231zzzzzzzzzzzz',
-        txCode: 'CTO',
-      },
+      buildTransaction({ txRecord: 'zzzzzzzzzzzzzzzzzzz230830zzzzzzzzzzzz', txCode: 'CBC' }),
+      buildTransaction({ txRecord: 'zzzzzzzzzzzzzzzzzzz231031zzzzzzzzzzzz', txCode: 'CBC' }),
+      buildTransaction({ txRecord: 'zzzzzzzzzzzzzzzzzzz231115zzzzzzzzzzzz', txCode: 'CDC' }),
+      buildTransaction({ txRecord: 'zzzzzzzzzzzzzzzzzzz231231zzzzzzzzzzzz', txCode: 'OCO' }),
+      buildTransaction({ txRecord: 'zzzzzzzzzzzzzzzzzzz231231zzzzzzzzzzzz', txCode: 'CTO' }),
     ];
 
-    const mockCaseResults: QueryResults = {
-      success: true,
-      results: {
-        recordset: cases,
-      },
-      message: '',
-    };
-
-    const mockTransactionResults: QueryResults = {
-      success: true,
-      results: {
-        recordset: transactions,
-      },
-      message: '',
-    };
-
-    const mockQueryParties: QueryResults = {
-      success: true,
-      results: {
-        recordset: [expectedParty],
-      },
-      message: '',
-    };
-
-    const mockQueryJointDebtor: QueryResults = {
-      success: true,
-      results: {
-        recordset: [expectedJointDebtor],
-      },
-      message: '',
-    };
-
-    const mockQueryTrustee: QueryResults = {
-      success: true,
-      results: {
-        recordset: [expectedTrusteeRecord],
-      },
-      message: '',
-    };
-
-    const mockQueryDebtorAttorney: QueryResults = {
-      success: true,
-      results: {
-        recordset: [expectedDebtorAttorney],
-      },
-      message: '',
-    };
-
-    const mockQueryJointDebtorAttorney: QueryResults = {
-      success: true,
-      results: {
-        recordset: [expectedJointDebtorAttorney],
-      },
-      message: '',
-    };
-
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockCaseResults);
-    });
-
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockQueryParties);
-    });
-
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockQueryJointDebtor);
-    });
-
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockTransactionResults);
-    });
-
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockQueryTrustee);
-    });
-
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockQueryDebtorAttorney);
-    });
-
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockQueryJointDebtorAttorney);
+    setupCaseDetailQuerySequence(querySpy, {
+      caseResults: makeQueryResults([testCase]),
+      debtorResults: makeQueryResults([expectedDebtor]),
+      jointDebtorResults: makeQueryResults([expectedJointDebtor]),
+      transactionResults: makeQueryResults(transactions),
+      trusteeResults: makeQueryResults([expectedTrusteeRecord]),
+      debtorAttorneyResults: makeQueryResults([expectedDebtorAttorney]),
+      jointDebtorAttorneyResults: makeQueryResults([expectedJointDebtorAttorney]),
     });
 
     const actualResult = await testCasesDxtrGateway.getCaseDetail(
@@ -270,7 +233,7 @@ describe('Test DXTR Gateway', () => {
     expect(actualResult.closedDate).toEqual(closedDate);
     expect(actualResult.dismissedDate).toEqual(dismissedDate);
     expect(actualResult.reopenedDate).toEqual(reopenedDate);
-    expect(actualResult.debtor).toEqual(expectedParty);
+    expect(actualResult.debtor).toEqual(expectedDebtor);
     expect(actualResult.jointDebtor).toEqual(expectedJointDebtor);
     expect(actualResult.debtorAttorney).toEqual(expectedDebtorAttorney);
     expect(actualResult.jointDebtorAttorney).toEqual(expectedJointDebtorAttorney);
@@ -754,37 +717,12 @@ describe('Test DXTR Gateway', () => {
   test('should return case detail without joint debtor and joint debtor attorney', async () => {
     const closedDate = '2023-10-31';
 
-    const expectedDebtor = {
-      name: 'John Q. Smith',
-      address1: '123 Main St',
-      address2: 'Apt 17',
-      address3: '',
-      cityStateZipCountry: 'Queens NY 12345 USA',
-      ssn: '123-45-6789',
-      taxId: '12-3456789',
-    };
-
-    const expectedTrusteeRecord = {
-      name: 'Robert Trustee',
-      address1: '789 Trust St',
-      address2: 'Suite 100',
-      address3: '',
-      cityStateZipCountry: 'Manhattan NY 10001 USA',
-      phone: '212-555-1234',
-      email: 'robert.trustee@example.com',
-    };
-
-    const expectedDebtorAttorney = {
-      name: 'James Brown Esq.',
-      address1: '456 South St',
-      address2: undefined,
-      address3: undefined,
-      cityStateZipCountry: 'Queens NY 12345 USA',
-      phone: '101-345-8765',
+    const expectedDebtor = buildDebtor();
+    const expectedTrusteeRecord = buildTrustee();
+    const expectedDebtorAttorney = buildAttorney({
       email: 'jbrown@lawfirm.com',
       office: 'Brown & Associates',
-    };
-
+    });
     const expectedDebtorTypeLabel = 'Individual Consumer';
 
     const testCase = MockData.getCaseDetail({
@@ -799,97 +737,18 @@ describe('Test DXTR Gateway', () => {
       },
     });
 
-    const cases = [testCase];
-
     const transactions = [
-      {
-        txRecord: 'zzzzzzzzzzzzzzzzzzz231031zzzzzzzzzzzz',
-        txCode: 'CBC',
-      },
+      buildTransaction({ txRecord: 'zzzzzzzzzzzzzzzzzzz231031zzzzzzzzzzzz', txCode: 'CBC' }),
     ];
 
-    const mockCaseResults: QueryResults = {
-      success: true,
-      results: {
-        recordset: cases,
-      },
-      message: '',
-    };
-
-    const mockTransactionResults: QueryResults = {
-      success: true,
-      results: {
-        recordset: transactions,
-      },
-      message: '',
-    };
-
-    const mockQueryDebtor: QueryResults = {
-      success: true,
-      results: {
-        recordset: [expectedDebtor],
-      },
-      message: '',
-    };
-
-    const mockQueryJointDebtor: QueryResults = {
-      success: true,
-      results: {
-        recordset: [],
-      },
-      message: '',
-    };
-
-    const mockQueryTrustee: QueryResults = {
-      success: true,
-      results: {
-        recordset: [expectedTrusteeRecord],
-      },
-      message: '',
-    };
-
-    const mockQueryDebtorAttorney: QueryResults = {
-      success: true,
-      results: {
-        recordset: [expectedDebtorAttorney],
-      },
-      message: '',
-    };
-
-    const mockQueryJointDebtorAttorney: QueryResults = {
-      success: true,
-      results: {
-        recordset: [],
-      },
-      message: '',
-    };
-
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockCaseResults);
-    });
-
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockQueryDebtor);
-    });
-
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockQueryJointDebtor);
-    });
-
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockTransactionResults);
-    });
-
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockQueryTrustee);
-    });
-
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockQueryDebtorAttorney);
-    });
-
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockQueryJointDebtorAttorney);
+    setupCaseDetailQuerySequence(querySpy, {
+      caseResults: makeQueryResults([testCase]),
+      debtorResults: makeQueryResults([expectedDebtor]),
+      jointDebtorResults: makeQueryResults([]), // No joint debtor
+      transactionResults: makeQueryResults(transactions),
+      trusteeResults: makeQueryResults([expectedTrusteeRecord]),
+      debtorAttorneyResults: makeQueryResults([expectedDebtorAttorney]),
+      jointDebtorAttorneyResults: makeQueryResults([]), // No joint debtor attorney
     });
 
     const actualResult = await testCasesDxtrGateway.getCaseDetail(
