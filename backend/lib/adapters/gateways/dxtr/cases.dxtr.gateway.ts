@@ -238,12 +238,13 @@ class CasesDxtrGateway implements CasesInterface {
         sCase.debtorTypeLabel = getDebtorTypeLabel(sCase.debtorTypeCode);
         sCase.petitionLabel = getPetitionInfo(sCase.petitionCode).petitionLabel;
         if (transferPetitionCode.has(sCase.petitionCode)) {
-          sCase.debtor = await this.queryDebtorParty(
+          // Debtor is required and should always exist for a valid case
+          sCase.debtor = (await this.queryDebtorParty(
             applicationContext,
             sCase.dxtrId,
             sCase.courtId,
             'db',
-          );
+          ))!;
           sCase.jointDebtor = await this.queryDebtorParty(
             applicationContext,
             sCase.dxtrId,
@@ -515,12 +516,13 @@ class CasesDxtrGateway implements CasesInterface {
         message: `Case summary not found for case ID: ${caseId}.`,
       });
     }
-    bCase.debtor = await this.queryDebtorParty(
+    // Debtor is required and should always exist for a valid case
+    bCase.debtor = (await this.queryDebtorParty(
       applicationContext,
       bCase.dxtrId,
       bCase.courtId,
       'db',
-    );
+    ))!;
     bCase.jointDebtor = await this.queryDebtorParty(
       applicationContext,
       bCase.dxtrId,
@@ -820,7 +822,7 @@ class CasesDxtrGateway implements CasesInterface {
     dxtrId: string,
     courtId: string,
     debtorPartyCode: DebtorPartyCode,
-  ): Promise<DebtorAttorney> {
+  ): Promise<DebtorAttorney | undefined> {
     const input: DbTableFieldSpec[] = [];
 
     input.push(
