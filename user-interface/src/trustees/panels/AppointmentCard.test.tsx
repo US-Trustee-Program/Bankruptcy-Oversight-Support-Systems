@@ -5,6 +5,8 @@ import AppointmentCard, { AppointmentCardProps } from './AppointmentCard';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import userEvent from '@testing-library/user-event';
+import TestingUtilities from '@/lib/testing/testing-utilities';
+import { CamsRole } from '@common/cams/roles';
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
 
@@ -22,6 +24,7 @@ describe('AppointmentCard', () => {
   beforeEach(() => {
     mockUseNavigate.mockReturnValue(mockNavigate);
     vi.clearAllMocks();
+    TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
   });
   const mockAppointment: TrusteeAppointment = {
     id: 'appointment-001',
@@ -208,7 +211,7 @@ describe('AppointmentCard', () => {
     expect(screen.getAllByText(/Court not found/i).length).toBeGreaterThan(0);
   });
 
-  test('should render Edit button', () => {
+  test('should render Edit button when user has TrusteeAdmin role', () => {
     renderWithProps();
 
     const editButton = screen.getByRole('button', { name: /edit trustee appointment/i });
@@ -226,5 +229,23 @@ describe('AppointmentCard', () => {
     expect(mockNavigate).toHaveBeenCalledWith(
       `/trustees/${mockAppointment.trusteeId}/appointments/${mockAppointment.id}/edit`,
     );
+  });
+
+  test('should not render Edit button when user lacks TrusteeAdmin role', () => {
+    TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
+
+    renderWithProps();
+
+    const editButton = screen.queryByRole('button', { name: /edit trustee appointment/i });
+    expect(editButton).not.toBeInTheDocument();
+  });
+
+  test('should not render Edit button when user has no roles', () => {
+    TestingUtilities.setUserWithRoles([]);
+
+    renderWithProps();
+
+    const editButton = screen.queryByRole('button', { name: /edit trustee appointment/i });
+    expect(editButton).not.toBeInTheDocument();
   });
 });
