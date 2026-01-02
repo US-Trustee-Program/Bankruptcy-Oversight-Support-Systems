@@ -8,6 +8,7 @@ export type ButtonGroupProps = {
   activeButtonId: string;
   onButtonClick: (id: string) => void;
   className?: string;
+  ariaLabel?: string;
 };
 
 export default function ButtonGroup({
@@ -16,6 +17,7 @@ export default function ButtonGroup({
   children,
   activeButtonId,
   onButtonClick,
+  ariaLabel,
 }: ButtonGroupProps) {
   const buttonClick = (
     ev: React.MouseEvent<HTMLButtonElement>,
@@ -77,6 +79,8 @@ export default function ButtonGroup({
       id={id}
       className={`usa-button-group usa-button-group--segmented ${className ? `${className}` : ''}`}
       data-testid={`button-group${id ? `-${id}` : ''}`}
+      role="group"
+      aria-label={ariaLabel || 'Button group'}
     >
       {renderChildren()}
     </ul>

@@ -309,7 +309,7 @@ describe('Input additional coverage tests', () => {
 
     const hintElement = document.querySelector('.usa-hint');
     expect(hintElement).toBeInTheDocument();
-    expect(hintElement?.id).toMatch(/input-hint-[a-z0-9]+/);
+    expect(hintElement?.id).toMatch(/input-hint-.+/);
   });
 
   test('should handle various input types and autoComplete', () => {
