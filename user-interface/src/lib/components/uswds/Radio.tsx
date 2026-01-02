@@ -1,4 +1,4 @@
-import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { RadioRef } from '../../type-declarations/input-fields';
 import Button, { UswdsButtonStyle } from './Button';
 
@@ -17,7 +17,15 @@ export interface RadioProps {
 
 function Radio_(props: RadioProps, ref: React.Ref<RadioRef>) {
   const [isDisabled, setIsDisabled] = useState<boolean>(props.disabled ?? false);
+  const [checkedState, setCheckedState] = useState<boolean>(props.checked ?? false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setCheckedState(props.checked ?? false);
+    if (inputRef.current) {
+      inputRef.current.checked = props.checked ?? false;
+    }
+  }, [props.checked]);
 
   function isChecked() {
     return inputRef.current?.checked ?? false;
@@ -33,14 +41,25 @@ function Radio_(props: RadioProps, ref: React.Ref<RadioRef>) {
     }
   }
 
-  function handleOnClick(_ev: React.MouseEvent<HTMLButtonElement>) {
+  function handleOnClick(
+    _ev: React.MouseEvent<HTMLButtonElement> | React.KeyboardEvent<HTMLButtonElement>,
+  ) {
     // clicking a radio button should always select it.  You should not be able to unselect by clicking a selected radio.
     if (inputRef.current?.checked !== undefined) {
       inputRef.current.checked = true;
     }
 
+    setCheckedState(true);
+
     if (props.onChange && inputRef.current?.value) {
       props.onChange(inputRef.current?.value);
+    }
+  }
+
+  function handleKeyDown(ev: React.KeyboardEvent<HTMLButtonElement>) {
+    if (ev.key === ' ' || ev.key === 'Enter') {
+      ev.preventDefault();
+      handleOnClick(ev);
     }
   }
 
@@ -58,7 +77,7 @@ function Radio_(props: RadioProps, ref: React.Ref<RadioRef>) {
         title={props.title}
         disabled={isDisabled}
         value={props.value}
-        checked={isChecked()}
+        checked={checkedState}
         required={props.required}
         onChange={() => {}}
         tabIndex={-1}
@@ -70,6 +89,9 @@ function Radio_(props: RadioProps, ref: React.Ref<RadioRef>) {
           className={`usa-input usa-radio__label ${UswdsButtonStyle.Unstyled}`}
           title={props.title}
           onClick={handleOnClick}
+          onKeyDown={handleKeyDown}
+          role="radio"
+          aria-checked={checkedState}
         >
           {props.label}
         </Button>
