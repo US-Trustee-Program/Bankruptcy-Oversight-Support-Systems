@@ -7,6 +7,7 @@ import {
   registerRenewOktaToken,
   handleHeartbeat,
   isActive,
+  isTokenCloseToExpiry,
   resetWarningShownFlag,
 } from './okta-library';
 import LocalStorage from '@/lib/utils/local-storage';
@@ -297,8 +298,9 @@ describe('Okta library', () => {
       oktaAuth = new OktaAuth(MOCK_OAUTH_CONFIG);
     });
 
-    test('should renew token when user is active', async () => {
+    test('should renew token when user is active and token is close to expiry', async () => {
       const getLastInteractionSpy = vi.spyOn(LocalStorage, 'getLastInteraction');
+      const getSessionSpy = vi.spyOn(LocalStorage, 'getSession');
       const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
 
       // Mock renewOktaToken dependencies to prevent actual API calls
@@ -310,13 +312,45 @@ describe('Okta library', () => {
 
       const now = Date.now();
       const recentInteraction = now - TIMEOUT / 2; // Active within timeout window
+      const expiresInFourMinutes = Math.floor(now / 1000) + 4 * 60; // Token expires in 4 minutes
+      const session = { expires: expiresInFourMinutes } as CamsSession;
+
       vi.spyOn(Date, 'now').mockReturnValue(now);
       getLastInteractionSpy.mockReturnValue(recentInteraction);
+      getSessionSpy.mockReturnValue(session);
 
       await handleHeartbeat(oktaAuth);
 
       expect(getLastInteractionSpy).toHaveBeenCalled();
       expect(getOrRenewAccessToken).toHaveBeenCalled();
+      expect(dispatchEventSpy).not.toHaveBeenCalled();
+
+      vi.restoreAllMocks();
+    });
+
+    test('should not renew token when user is active but token is not close to expiry', async () => {
+      const getLastInteractionSpy = vi.spyOn(LocalStorage, 'getLastInteraction');
+      const getSessionSpy = vi.spyOn(LocalStorage, 'getSession');
+      const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
+
+      // Mock renewOktaToken dependencies
+      const getOrRenewAccessToken = vi
+        .spyOn(OktaAuth.prototype, 'getOrRenewAccessToken')
+        .mockResolvedValue(ACCESS_TOKEN);
+
+      const now = Date.now();
+      const recentInteraction = now - TIMEOUT / 2; // Active within timeout window
+      const expiresInTenMinutes = Math.floor(now / 1000) + 10 * 60; // Token expires in 10 minutes
+      const session = { expires: expiresInTenMinutes } as CamsSession;
+
+      vi.spyOn(Date, 'now').mockReturnValue(now);
+      getLastInteractionSpy.mockReturnValue(recentInteraction);
+      getSessionSpy.mockReturnValue(session);
+
+      await handleHeartbeat(oktaAuth);
+
+      expect(getLastInteractionSpy).toHaveBeenCalled();
+      expect(getOrRenewAccessToken).not.toHaveBeenCalled(); // Should NOT renew
       expect(dispatchEventSpy).not.toHaveBeenCalled();
 
       vi.restoreAllMocks();
@@ -400,6 +434,7 @@ describe('Okta library', () => {
     test('should clear logout timer when user becomes active after warning', async () => {
       vi.useFakeTimers();
       const getLastInteractionSpy = vi.spyOn(LocalStorage, 'getLastInteraction');
+      const getSessionSpy = vi.spyOn(LocalStorage, 'getSession');
       const clearIntervalSpy = vi.spyOn(window, 'clearInterval');
 
       // Mock renewOktaToken dependencies to prevent actual API calls
@@ -423,7 +458,10 @@ describe('Okta library', () => {
 
       // Second call - user becomes active, should renew token and clear logout timer
       const recentInteraction = now - TIMEOUT / 2;
+      const expiresInFourMinutes = Math.floor(now / 1000) + 4 * 60; // Token expires in 4 minutes
+      const session = { expires: expiresInFourMinutes } as CamsSession;
       getLastInteractionSpy.mockReturnValue(recentInteraction);
+      getSessionSpy.mockReturnValue(session);
 
       await handleHeartbeat(oktaAuth);
 
@@ -481,6 +519,87 @@ describe('Okta library', () => {
 
       expect(result).toBe(false);
       expect(getLastInteractionSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('isTokenCloseToExpiry', () => {
+    let getSessionSpy: ReturnType<typeof vi.spyOn>;
+    let dateNowSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      getSessionSpy = vi.spyOn(LocalStorage, 'getSession');
+      dateNowSpy = vi.spyOn(Date, 'now');
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    test('should return true if no session exists', () => {
+      getSessionSpy.mockReturnValue(null);
+
+      const result = isTokenCloseToExpiry();
+
+      expect(result).toBe(true);
+      expect(getSessionSpy).toHaveBeenCalled();
+    });
+
+    test('should return true if session has no expiry field', () => {
+      const session = { expires: undefined } as unknown as CamsSession;
+      getSessionSpy.mockReturnValue(session);
+
+      const result = isTokenCloseToExpiry();
+
+      expect(result).toBe(true);
+      expect(getSessionSpy).toHaveBeenCalled();
+    });
+
+    test('should return true if token expires within 5 minutes', () => {
+      const now = Date.now();
+      const expiresInFourMinutes = Math.floor(now / 1000) + 4 * 60; // 4 minutes from now (in seconds)
+      const session = { expires: expiresInFourMinutes } as CamsSession;
+      dateNowSpy.mockReturnValue(now);
+      getSessionSpy.mockReturnValue(session);
+
+      const result = isTokenCloseToExpiry();
+
+      expect(result).toBe(true);
+    });
+
+    test('should return true if token has already expired', () => {
+      const now = Date.now();
+      const expiredOneMinuteAgo = Math.floor(now / 1000) - 60; // 1 minute ago (in seconds)
+      const session = { expires: expiredOneMinuteAgo } as CamsSession;
+      dateNowSpy.mockReturnValue(now);
+      getSessionSpy.mockReturnValue(session);
+
+      const result = isTokenCloseToExpiry();
+
+      expect(result).toBe(true);
+    });
+
+    test('should return false if token expires in more than 5 minutes', () => {
+      const now = Date.now();
+      const expiresInTenMinutes = Math.floor(now / 1000) + 10 * 60; // 10 minutes from now (in seconds)
+      const session = { expires: expiresInTenMinutes } as CamsSession;
+      dateNowSpy.mockReturnValue(now);
+      getSessionSpy.mockReturnValue(session);
+
+      const result = isTokenCloseToExpiry();
+
+      expect(result).toBe(false);
+    });
+
+    test('should return true exactly at 5 minute threshold', () => {
+      const now = Date.now();
+      const expiresInFiveMinutes = Math.floor(now / 1000) + 5 * 60; // Exactly 5 minutes from now
+      const session = { expires: expiresInFiveMinutes } as CamsSession;
+      dateNowSpy.mockReturnValue(now);
+      getSessionSpy.mockReturnValue(session);
+
+      const result = isTokenCloseToExpiry();
+
+      expect(result).toBe(true);
     });
   });
 });

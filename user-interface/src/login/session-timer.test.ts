@@ -5,13 +5,9 @@ import {
   SESSION_TIMEOUT,
   AUTH_EXPIRY_WARNING,
   HEARTBEAT,
-  WARNING_THRESHOLD,
   LOGOUT_TIMER,
   createTimer,
   isUserActive,
-  getTimeUntilTimeout,
-  shouldShowWarning,
-  shouldLogout,
   resetLastInteraction,
   getLastInteraction,
   checkForInactivity,
@@ -66,59 +62,6 @@ describe('Stateless Helper Functions', () => {
     test('should return false if last interaction is beyond timeout window', () => {
       const oldInteraction = NOW - (TIMEOUT + 1000);
       expect(isUserActive(oldInteraction)).toBe(false);
-    });
-  });
-
-  describe('getTimeUntilTimeout', () => {
-    const TIMEOUT = 30 * 60 * 1000; // 30 minutes
-
-    test('should return 0 if lastInteraction is null', () => {
-      expect(getTimeUntilTimeout(null, TIMEOUT)).toBe(0);
-    });
-
-    test('should return correct time until timeout', () => {
-      const lastInteraction = NOW - 10 * 60 * 1000; // 10 minutes ago
-      const expected = TIMEOUT - 10 * 60 * 1000; // 20 minutes remaining
-      expect(getTimeUntilTimeout(lastInteraction, TIMEOUT)).toBe(expected);
-    });
-
-    test('should return negative value if timeout has passed', () => {
-      const lastInteraction = NOW - 31 * 60 * 1000; // 31 minutes ago
-      const result = getTimeUntilTimeout(lastInteraction, TIMEOUT);
-      expect(result).toBeLessThan(0);
-    });
-  });
-
-  describe('shouldShowWarning', () => {
-    const WARNING_THRESHOLD = 60 * 1000; // 60 seconds
-
-    test('should return true if within warning threshold', () => {
-      const timeUntilTimeout = 30 * 1000; // 30 seconds
-      expect(shouldShowWarning(timeUntilTimeout, WARNING_THRESHOLD)).toBe(true);
-    });
-
-    test('should return false if outside warning threshold', () => {
-      const timeUntilTimeout = 2 * 60 * 1000; // 2 minutes
-      expect(shouldShowWarning(timeUntilTimeout, WARNING_THRESHOLD)).toBe(false);
-    });
-
-    test('should return false if timeout has passed', () => {
-      const timeUntilTimeout = -1000;
-      expect(shouldShowWarning(timeUntilTimeout, WARNING_THRESHOLD)).toBe(false);
-    });
-  });
-
-  describe('shouldLogout', () => {
-    test('should return true if timeUntilTimeout is 0', () => {
-      expect(shouldLogout(0)).toBe(true);
-    });
-
-    test('should return true if timeUntilTimeout is negative', () => {
-      expect(shouldLogout(-1000)).toBe(true);
-    });
-
-    test('should return false if timeUntilTimeout is positive', () => {
-      expect(shouldLogout(1000)).toBe(false);
     });
   });
 });
@@ -286,10 +229,6 @@ describe('Constants', () => {
 
   test('HEARTBEAT should be 1 minute', () => {
     expect(HEARTBEAT).toBe(60000); // 60 * 1000
-  });
-
-  test('WARNING_THRESHOLD should be 1 minute', () => {
-    expect(WARNING_THRESHOLD).toBe(60000); // 60 * 1000
   });
 
   test('LOGOUT_TIMER should be 1 minute', () => {

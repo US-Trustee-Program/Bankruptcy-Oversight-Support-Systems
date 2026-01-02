@@ -27,6 +27,11 @@ export function registerRenewOktaToken(oktaAuth: OktaAuth) {
   if (heartbeatTimer) {
     heartbeatTimer.clear();
   }
+  if (logoutTimer) {
+    logoutTimer.clear();
+    logoutTimer = null;
+  }
+  warningShown = false;
   heartbeatTimer = createTimer(() => handleHeartbeat(oktaAuth), HEARTBEAT);
 }
 
@@ -38,9 +43,22 @@ export function isActive() {
   return isUserActive(getLastInteraction());
 }
 
+export function isTokenCloseToExpiry(): boolean {
+  const session = LocalStorage.getSession();
+  if (!session || !session.expires) {
+    return true;
+  }
+  const now = Math.floor(Date.now() / 1000);
+  const timeUntilExpiry = session.expires - now;
+  const RENEWAL_THRESHOLD = 5 * 60;
+  return timeUntilExpiry <= RENEWAL_THRESHOLD;
+}
+
 export async function handleHeartbeat(oktaAuth: OktaAuth) {
   if (isActive()) {
-    await renewOktaToken(oktaAuth);
+    if (isTokenCloseToExpiry()) {
+      await renewOktaToken(oktaAuth);
+    }
     if (logoutTimer) {
       logoutTimer.clear();
       logoutTimer = null;

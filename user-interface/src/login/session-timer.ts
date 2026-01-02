@@ -5,7 +5,6 @@ import getAppConfiguration from '@/configuration/appConfiguration';
 
 export const SIXTY_SECONDS = 60;
 export const HEARTBEAT = 1000 * SIXTY_SECONDS;
-export const WARNING_THRESHOLD = 1000 * SIXTY_SECONDS;
 export const SESSION_TIMEOUT = 'session-timeout';
 export const AUTH_EXPIRY_WARNING = 'auth-expiry-warning';
 export const LOGOUT_TIMER = 1000 * SIXTY_SECONDS;
@@ -35,29 +34,6 @@ export function isUserActive(lastInteraction: number | null): boolean {
   const now = Date.now();
   const timeElapsed = now - lastInteraction;
   return timeElapsed < TIMEOUT - LOGOUT_TIMER;
-}
-
-export function getTimeUntilTimeout(
-  lastInteraction: number | null,
-  timeout: number = TIMEOUT,
-): number {
-  if (!lastInteraction) {
-    return 0;
-  }
-  const now = Date.now();
-  const timeElapsed = now - lastInteraction;
-  return timeout - timeElapsed;
-}
-
-export function shouldShowWarning(
-  timeUntilTimeout: number,
-  warningThreshold: number = SIXTY_SECONDS * 1000,
-): boolean {
-  return timeUntilTimeout <= warningThreshold && timeUntilTimeout > 0;
-}
-
-export function shouldLogout(timeUntilTimeout: number): boolean {
-  return timeUntilTimeout <= 0;
 }
 
 export function resetLastInteraction(): void {
