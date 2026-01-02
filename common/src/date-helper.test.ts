@@ -1,8 +1,14 @@
 import { vi } from 'vitest';
 import DateHelper from './date-helper';
 
-const { getTodaysIsoDate, isValidDateString, nowInSeconds, sortDates, sortDatesReverse } =
-  DateHelper;
+const {
+  formatDate,
+  getTodaysIsoDate,
+  isValidDateString,
+  nowInSeconds,
+  sortDates,
+  sortDatesReverse,
+} = DateHelper;
 
 describe('date helper tests', () => {
   test('should sort dates newest first', () => {
@@ -70,5 +76,21 @@ describe('date helper tests', () => {
       // Restore the original Date.now function
       Date.now = originalDateNow;
     }
+  });
+
+  describe('formatDate', () => {
+    test('should format valid ISO date string to MM/DD/YYYY', () => {
+      expect(formatDate('2024-01-15')).toBe('01/15/2024');
+      expect(formatDate('1979-10-01')).toBe('10/01/1979');
+      expect(formatDate('2025-12-31')).toBe('12/31/2025');
+    });
+
+    test('should return input as-is for invalid date strings', () => {
+      expect(formatDate('')).toBe('');
+      expect(formatDate('bogus')).toBe('bogus');
+      expect(formatDate('01/15/2024')).toBe('01/15/2024');
+      expect(formatDate('2024-1-1')).toBe('2024-1-1');
+      expect(formatDate('not-a-date')).toBe('not-a-date');
+    });
   });
 });
