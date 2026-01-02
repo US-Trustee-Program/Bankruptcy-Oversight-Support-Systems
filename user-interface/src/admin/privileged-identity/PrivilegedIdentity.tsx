@@ -306,8 +306,8 @@ export function PrivilegedIdentity() {
                 id="privileged-expiration-date"
                 label="Expires on"
                 disabled={true}
-                minDate={getTodaysIsoDate()}
-                maxDate={getMaxDate()}
+                min={getTodaysIsoDate()}
+                max={getMaxDate()}
                 onChange={handleExpirationUpdate}
                 ref={datePickerRef}
               ></DatePicker>

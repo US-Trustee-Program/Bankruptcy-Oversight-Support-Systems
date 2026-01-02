@@ -1,4 +1,5 @@
 $secondary-dark: #B50909;
+$secondary-darker: #8B0A03;
 $warning-light: #FFFFCA;
 $warning-text: #990000;
 
@@ -82,7 +83,7 @@ button.unstyled-button {
 
 .usa-input__error-message {
   padding: 0.25rem 0;
-  color: $warning-text;
+  color: $secondary-dark;
 }
 
 .usa-radio__input + label {
