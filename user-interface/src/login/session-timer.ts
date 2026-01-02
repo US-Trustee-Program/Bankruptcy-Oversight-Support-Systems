@@ -3,10 +3,10 @@ import { LOGOUT_PATH } from './login-library';
 import { redirectTo } from '@/lib/hooks/UseCamsNavigator';
 import getAppConfiguration from '@/configuration/appConfiguration';
 
-export const SIXTY_SECONDS = 60;
-export const HEARTBEAT = 1000 * SIXTY_SECONDS;
 export const SESSION_TIMEOUT = 'session-timeout';
 export const AUTH_EXPIRY_WARNING = 'auth-expiry-warning';
+export const SIXTY_SECONDS = 60;
+export const HEARTBEAT = 1000 * SIXTY_SECONDS;
 export const LOGOUT_TIMER = 1000 * SIXTY_SECONDS;
 
 const TIMEOUT_MINUTES = getAppConfiguration().inactiveTimeout ?? 30;
