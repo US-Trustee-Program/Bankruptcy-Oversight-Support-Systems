@@ -30,8 +30,8 @@ export default function EditTrusteeAppointment() {
           setExistingAppointments(appointments);
         }
       } catch (err) {
-        setError('Failed to load appointment');
-        console.error('Error loading appointment:', err);
+        const errorMessage = `Failed to load appointment: ${(err as Error).message}`;
+        setError(errorMessage);
       } finally {
         setIsLoading(false);
       }
