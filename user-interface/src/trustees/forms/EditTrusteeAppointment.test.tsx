@@ -80,15 +80,12 @@ describe('EditTrusteeAppointment', () => {
 
   test('should show error when API call fails', async () => {
     vi.spyOn(Api2, 'getTrusteeAppointments').mockRejectedValue(new Error('API error'));
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     renderWithRouter();
 
     await waitFor(() => {
-      expect(screen.getByText('Failed to load appointment')).toBeInTheDocument();
+      expect(screen.getByText(/Failed to load appointment: API error/)).toBeInTheDocument();
     });
-
-    consoleErrorSpy.mockRestore();
   });
 
   test('should pass appointment to TrusteeAppointmentForm', async () => {
