@@ -6,7 +6,6 @@ import Icon from '@/lib/components/uswds/Icon';
 import Input from '@/lib/components/uswds/Input';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import DateRangePicker from '@/lib/components/uswds/DateRangePicker';
-import { ValidatorFunction } from 'common/src/cams/validation';
 import {
   ComboBoxRef,
   DateRange,
@@ -18,6 +17,7 @@ import { CaseDetail, CaseDocket, CaseDocketEntry, CaseNote } from '@common/cams/
 import CaseDetailAssociatedCases from './panels/CaseDetailAssociatedCases';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { EventCaseReference } from '@common/cams/events';
+import { DEFAULT_MIN_DATE } from '@common/date-helper';
 import './CaseDetailScreen.scss';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { AssignAttorneyModalCallbackProps } from '@/staff-assignment/modal/assignAttorneyModal.types';
@@ -283,13 +283,6 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
 
   const globalAlert = useGlobalAlert();
 
-  const minDateValidator: ValidatorFunction = (value: unknown) => {
-    if (typeof value !== 'string') return { reasons: ['Must be a string'] };
-    const date = new Date(value);
-    const minDate = new Date('1978-12-31');
-    return date <= minDate ? { reasons: ['Must be later than 1978.'] } : { valid: true as const };
-  };
-
   async function fetchCaseBasicInfo() {
     setIsLoading(true);
     Api2.getCaseDetail(caseId!)
@@ -413,11 +406,15 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
   }
 
   function handleStartDateChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    setSelectedDateRange({ ...selectedDateRange, start: ev.target.value });
+    const start = ev.target.dataset.start || ev.target.value;
+    const end = ev.target.dataset.end;
+    setSelectedDateRange({ start, end });
   }
 
   function handleEndDateChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    setSelectedDateRange({ ...selectedDateRange, end: ev.target.value });
+    const start = ev.target.dataset.start;
+    const end = ev.target.dataset.end || ev.target.value;
+    setSelectedDateRange({ start, end });
   }
 
   function handleCaseAssignment(assignment: AssignAttorneyModalCallbackProps) {
@@ -620,10 +617,8 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
                         endDateLabel="Docket Date Range End"
                         onStartDateChange={handleStartDateChange}
                         onEndDateChange={handleEndDateChange}
+                        min={DEFAULT_MIN_DATE}
                         ref={dateRangeRef}
-                        futureDateWarningThresholdYears={100}
-                        startDateValidators={[minDateValidator]}
-                        endDateValidators={[minDateValidator]}
                       ></DateRangePicker>
                     </div>
                     <div className="in-docket-search form-field" data-testid="docket-number-search">

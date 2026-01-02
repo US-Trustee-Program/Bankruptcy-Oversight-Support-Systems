@@ -585,10 +585,15 @@ describe('Case Detail sort, search, and filter tests', () => {
       });
 
       const startDateText = screen.getByTestId('docket-date-range-date-start');
+      const endDateText = screen.getByTestId('docket-date-range-date-end');
+
+      fireEvent.change(endDateText, { target: { value: '2023-08-31' } });
       fireEvent.change(startDateText, { target: { value: '2023-07-01' } });
 
-      const docketListAfter = screen.getByTestId('searchable-docket');
-      expect(docketListAfter.children.length).toEqual(2);
+      await waitFor(() => {
+        const docketListAfter = screen.getByTestId('searchable-docket');
+        expect(docketListAfter.children.length).toEqual(2);
+      });
     });
 
     test('should list proper dockets when end date changes', async () => {
@@ -625,11 +630,16 @@ describe('Case Detail sort, search, and filter tests', () => {
         const endDateText = screen.getByTestId('docket-date-range-date-end');
         expect(endDateText).toBeInTheDocument();
       });
+      const startDateText = screen.getByTestId('docket-date-range-date-start');
       const endDateText = screen.getByTestId('docket-date-range-date-end');
+
+      fireEvent.change(startDateText, { target: { value: '2023-05-01' } });
       fireEvent.change(endDateText, { target: { value: '2023-07-01' } });
 
-      const docketListAfter = screen.getByTestId('searchable-docket');
-      expect(docketListAfter.children.length).toEqual(2);
+      await waitFor(() => {
+        const docketListAfter = screen.getByTestId('searchable-docket');
+        expect(docketListAfter.children.length).toEqual(2);
+      });
     });
   });
 
