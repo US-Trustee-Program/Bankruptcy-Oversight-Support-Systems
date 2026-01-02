@@ -87,7 +87,6 @@ function Alert_(props: AlertProps, ref: React.Ref<AlertRefType>) {
       className={`usa-alert-container ${containerClasses}`}
       data-testid={`alert-container${props.id ? '-' + props.id : ''}`}
       id={props.id}
-      role="alert"
     >
       <div
         className={`${classes} ${
@@ -107,7 +106,6 @@ function Alert_(props: AlertProps, ref: React.Ref<AlertRefType>) {
             <p
               className="usa-alert__text"
               data-testid={`alert-message${props.id ? '-' + props.id : ''}`}
-              aria-label={props.message}
             >
               {props.message}
             </p>
