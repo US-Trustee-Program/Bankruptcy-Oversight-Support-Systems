@@ -890,7 +890,7 @@ class CasesDxtrGateway implements CasesInterface {
   }
 
   debtorAttorneyQueryCallback(_context: ApplicationContext, queryResult: QueryResults) {
-    let debtorAttorney: DebtorAttorney;
+    let debtorAttorney: DebtorAttorney | undefined;
 
     (queryResult.results as mssql.IResult<DebtorAttorney>).recordset.forEach((record) => {
       debtorAttorney = { name: removeExtraSpaces(record.name) };
@@ -902,11 +902,11 @@ class CasesDxtrGateway implements CasesInterface {
       debtorAttorney.email = record.email;
       debtorAttorney.office = record.office;
     });
-    return debtorAttorney || null;
+    return debtorAttorney;
   }
 
   partyQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
-    let debtor: Debtor;
+    let debtor: Debtor | undefined;
     applicationContext.logger.debug(MODULE_NAME, `Party results received from DXTR`);
 
     (queryResult.results as mssql.IResult<Debtor>).recordset.forEach((record) => {
@@ -918,11 +918,11 @@ class CasesDxtrGateway implements CasesInterface {
       debtor.taxId = record.taxId;
       debtor.ssn = record.ssn;
     });
-    return debtor || null;
+    return debtor;
   }
 
   trusteeQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
-    let trustee: LegacyTrustee;
+    let trustee: LegacyTrustee | undefined;
     applicationContext.logger.debug(MODULE_NAME, `Trustee results received from DXTR`);
 
     (queryResult.results as mssql.IResult<Party>).recordset.forEach((record: Party) => {
@@ -935,7 +935,7 @@ class CasesDxtrGateway implements CasesInterface {
         },
       } as LegacyTrustee;
     });
-    return trustee || null;
+    return trustee;
   }
 
   transactionQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
