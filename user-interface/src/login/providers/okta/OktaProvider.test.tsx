@@ -5,6 +5,8 @@ import { OktaProvider } from './OktaProvider';
 import { PropsWithChildren } from 'react';
 import * as libraryModule from '@/login/login-library';
 import { EnvLoginConfig } from '@common/cams/login';
+import * as oktaLibrary from './okta-library';
+import LocalStorage from '@/lib/utils/local-storage';
 
 describe('OktaProvider', () => {
   const mockConfiguration: EnvLoginConfig = {
@@ -54,5 +56,53 @@ describe('OktaProvider', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('alert-message')).toHaveTextContent(error.message);
     });
+  });
+
+  test('should call registerRenewOktaToken when component renders', async () => {
+    // Reset mock to return proper config
+    getLoginConfigurationFromEnv.mockReturnValue(mockConfiguration);
+
+    const registerRenewOktaTokenSpy = vi
+      .spyOn(oktaLibrary, 'registerRenewOktaToken')
+      .mockImplementation(() => {});
+
+    const testId = 'child-div';
+    const childText = 'TEST';
+    const children = <div data-testid={testId}>{childText}</div>;
+
+    render(<OktaProvider>{children}</OktaProvider>);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId(testId)).toBeInTheDocument();
+    });
+
+    expect(registerRenewOktaTokenSpy).toHaveBeenCalledTimes(1);
+    expect(registerRenewOktaTokenSpy).toHaveBeenCalledWith(expect.any(Object));
+
+    registerRenewOktaTokenSpy.mockRestore();
+  });
+
+  test('should reset lastInteraction when registerRenewOktaToken is called', async () => {
+    // Reset mock to return proper config
+    getLoginConfigurationFromEnv.mockReturnValue(mockConfiguration);
+
+    const setLastInteractionSpy = vi.spyOn(LocalStorage, 'setLastInteraction');
+    const now = Date.now();
+    vi.spyOn(Date, 'now').mockReturnValue(now);
+
+    const testId = 'child-div';
+    const childText = 'TEST';
+    const children = <div data-testid={testId}>{childText}</div>;
+
+    render(<OktaProvider>{children}</OktaProvider>);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId(testId)).toBeInTheDocument();
+    });
+
+    expect(setLastInteractionSpy).toHaveBeenCalledWith(now);
+
+    setLastInteractionSpy.mockRestore();
+    vi.restoreAllMocks();
   });
 });

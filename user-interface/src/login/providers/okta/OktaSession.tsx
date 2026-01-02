@@ -3,9 +3,9 @@ import { Interstitial } from '@/login/Interstitial';
 import { Session } from '@/login/Session';
 import { useOktaAuth } from '@okta/okta-react';
 import { PropsWithChildren, useEffect, useState } from 'react';
-import { registerRenewOktaToken } from './okta-library';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 import { AuthContext } from '@/login/AuthContext';
+import { renewOktaToken } from './okta-library';
 
 export type OktaSessionProps = PropsWithChildren;
 
@@ -77,11 +77,14 @@ export function OktaSession(props: Readonly<OktaSessionProps>) {
   const expires = oktaJwt.payload.exp;
   const issuer = oktaJwt.payload.iss;
 
-  registerRenewOktaToken(oktaAuth);
-
   appInsights.trackEvent({ name: 'Okta session established' }, { status: 'success' });
   return (
-    <AuthContext.Provider value={{ oktaAuth }}>
+    <AuthContext.Provider
+      value={{
+        oktaAuth,
+        renewToken: () => renewOktaToken(oktaAuth),
+      }}
+    >
       <Session provider="okta" accessToken={accessToken} expires={expires} issuer={issuer}>
         {props.children}
       </Session>

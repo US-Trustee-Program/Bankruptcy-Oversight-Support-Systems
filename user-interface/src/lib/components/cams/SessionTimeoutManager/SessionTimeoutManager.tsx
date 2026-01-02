@@ -2,13 +2,14 @@ import { useContext, useEffect, useRef } from 'react';
 import SessionTimeoutWarningModal, {
   SessionTimeoutWarningModalRef,
 } from '../SessionTimeoutWarningModal/SessionTimeoutWarningModal';
-import { resetLastInteraction, logout, SESSION_TIMEOUT } from '@/login/inactive-logout';
-import { GlobalAlertContext } from '@/App';
 import {
-  AUTH_EXPIRY_WARNING,
-  renewOktaToken,
+  SESSION_TIMEOUT,
   SIXTY_SECONDS,
-} from '@/login/providers/okta/okta-library';
+  AUTH_EXPIRY_WARNING,
+  resetLastInteraction,
+  logout,
+} from '@/login/session-timer';
+import { GlobalAlertContext } from '@/App';
 import { AuthContext } from '@/login/AuthContext';
 
 export default function SessionTimeoutManager() {
@@ -36,15 +37,9 @@ export default function SessionTimeoutManager() {
 
   const handleStayLoggedIn = () => {
     resetLastInteraction();
-
-    if (authContext.oktaAuth) {
-      renewOktaToken(authContext.oktaAuth);
-    }
-
+    authContext.renewToken();
     globalAlertRefObject?.current?.success('Your session has been extended');
   };
-
-  //const other event handler
 
   return (
     <SessionTimeoutWarningModal

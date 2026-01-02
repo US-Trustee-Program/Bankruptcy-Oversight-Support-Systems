@@ -1,78 +1,39 @@
 import OktaAuth, { UserClaims } from '@okta/okta-auth-js';
 import LocalStorage from '@/lib/utils/local-storage';
-import DateHelper from '@common/date-helper';
 import Api2 from '@/lib/models/api2';
-import { initializeSessionEndLogout } from '@/login/session-end-logout';
+import {
+  AUTH_EXPIRY_WARNING,
+  SESSION_TIMEOUT,
+  LOGOUT_TIMER,
+  createTimer,
+  isUserActive,
+  getLastInteraction,
+  Timer,
+  resetLastInteraction,
+  HEARTBEAT,
+} from '@/login/session-timer';
+import DateHelper from '@common/date-helper';
 
-export const AUTH_EXPIRY_WARNING = 'auth-expiry-warning';
-export const SIXTY_SECONDS = 60;
-
-const SAFE_LIMIT = 300;
-const HEARTBEAT = 1000 * SIXTY_SECONDS * 5;
-const LOGOUT_TIMER = 1000 * SIXTY_SECONDS;
-
-class SessionTimerController {
-  private heartbeatIntervalId: number | null = null;
-  private logoutTimerIntervalId: number | null = null;
-  private warningShown = false;
-  private isRenewingToken = false;
-
-  startHeartbeat(callback: () => void): void {
-    this.clearHeartbeat();
-    this.heartbeatIntervalId = window.setInterval(callback, HEARTBEAT);
-  }
-
-  clearHeartbeat(): void {
-    if (this.heartbeatIntervalId !== null) {
-      window.clearInterval(this.heartbeatIntervalId);
-      this.heartbeatIntervalId = null;
-    }
-  }
-
-  startLogoutTimer(callback: () => void): void {
-    this.clearLogoutTimer();
-    this.logoutTimerIntervalId = window.setInterval(callback, LOGOUT_TIMER);
-  }
-
-  clearLogoutTimer(): void {
-    if (this.logoutTimerIntervalId !== null) {
-      window.clearInterval(this.logoutTimerIntervalId);
-      this.logoutTimerIntervalId = null;
-    }
-  }
-
-  setWarningShown(shown: boolean): void {
-    this.warningShown = shown;
-  }
-
-  hasWarningBeenShown(): boolean {
-    return this.warningShown;
-  }
-
-  setRenewingToken(renewing: boolean): void {
-    this.isRenewingToken = renewing;
-  }
-
-  isTokenRenewalInProgress(): boolean {
-    return this.isRenewingToken;
-  }
-
-  reset(): void {
-    this.clearHeartbeat();
-    this.clearLogoutTimer();
-    this.warningShown = false;
-    this.isRenewingToken = false;
-  }
-}
-
-const sessionTimerController = new SessionTimerController();
+let heartbeatTimer: Timer | null = null;
+let logoutTimer: Timer | null = null;
+let warningShown = false;
+let isRenewingToken = false;
 
 export function resetWarningShownFlag() {
-  sessionTimerController.setWarningShown(false);
+  warningShown = false;
 }
 
 export function registerRenewOktaToken(oktaAuth: OktaAuth) {
-  sessionTimerController.startHeartbeat(() => handleHeartbeat(oktaAuth));
+  resetLastInteraction();
+  if (heartbeatTimer) {
+    heartbeatTimer.clear();
+  }
+  if (logoutTimer) {
+    logoutTimer.clear();
+    logoutTimer = null;
+  }
+  warningShown = false;
+  heartbeatTimer = createTimer(() => handleHeartbeat(oktaAuth), HEARTBEAT);
 }
 
 export function getCamsUser(oktaUser: UserClaims | null) {
@@ -80,47 +41,46 @@ export function getCamsUser(oktaUser: UserClaims | null) {
 }
 
 export function isActive() {
-  const now = Date.now();
-  const lastInteraction = LocalStorage.getLastInteraction();
+  return isUserActive(getLastInteraction());
+}
 
-  if (!lastInteraction) {
-    return false;
+export function isTokenCloseToExpiry(): boolean {
+  const session = LocalStorage.getSession();
+  if (!session || !session.expires) {
+    return true;
   }
-
-  const timeElapsed = now - lastInteraction;
-  return timeElapsed < HEARTBEAT;
+  const now = DateHelper.nowInSeconds();
+  const timeUntilExpiry = session.expires - now;
+  const RENEWAL_THRESHOLD = 5 * 60;
+  return timeUntilExpiry <= RENEWAL_THRESHOLD;
 }
 
 export async function handleHeartbeat(oktaAuth: OktaAuth) {
-  const now = DateHelper.nowInSeconds();
-  const session = LocalStorage.getSession();
-  if (!session) return;
-
-  const expiration = session.expires;
-  const expirationLimit = expiration - SAFE_LIMIT;
-
-  if (now > expirationLimit) {
-    if (isActive()) {
-      // if close to expiry and user active, renew token
+  if (isActive()) {
+    if (isTokenCloseToExpiry()) {
       await renewOktaToken(oktaAuth);
-      sessionTimerController.clearLogoutTimer();
-    } else {
-      // if close to expiry and user inactive, show warning once
-      if (!sessionTimerController.hasWarningBeenShown()) {
-        sessionTimerController.setWarningShown(true);
-        window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
-        sessionTimerController.startLogoutTimer(() => initializeSessionEndLogout(session));
-      }
+    }
+    if (logoutTimer && !warningShown) {
+      logoutTimer.clear();
+      logoutTimer = null;
+    }
+  } else {
+    if (!warningShown) {
+      warningShown = true;
+      window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
+      logoutTimer = createTimer(() => {
+        window.dispatchEvent(new CustomEvent(SESSION_TIMEOUT));
+      }, LOGOUT_TIMER);
     }
   }
 }
 
 export async function renewOktaToken(oktaAuth: OktaAuth) {
-  if (sessionTimerController.isTokenRenewalInProgress()) {
+  if (isRenewingToken) {
     return;
   }
 
-  sessionTimerController.setRenewingToken(true);
+  isRenewingToken = true;
   try {
     const accessToken = await oktaAuth.getOrRenewAccessToken();
     const oktaUser = await oktaAuth.getUser();
@@ -140,14 +100,13 @@ export async function renewOktaToken(oktaAuth: OktaAuth) {
       // from Okta.
       const me = await Api2.getMe();
       LocalStorage.setSession(me.data);
-      initializeSessionEndLogout(me.data);
 
       // Reset the warning flag since token was successfully renewed
-      sessionTimerController.setWarningShown(false);
+      warningShown = false;
     }
   } catch {
     // failed to renew access token.
   } finally {
-    sessionTimerController.setRenewingToken(false);
+    isRenewingToken = false;
   }
 }
