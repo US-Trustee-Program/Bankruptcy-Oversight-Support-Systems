@@ -562,7 +562,7 @@ describe('Test DXTR Gateway', () => {
     );
 
     expect(actualResult.debtor).toEqual(expectedDebtor);
-    expect(actualResult.jointDebtor).toBeNull();
+    expect(actualResult.jointDebtor).toBeUndefined();
     expect(actualResult.debtorTypeLabel).toEqual(expectedDebtorTypeLabel);
     expect(actualResult.petitionLabel).toEqual('Voluntary');
   });
@@ -899,9 +899,9 @@ describe('Test DXTR Gateway', () => {
 
     expect(actualResult.closedDate).toEqual(closedDate);
     expect(actualResult.debtor).toEqual(expectedDebtor);
-    expect(actualResult.jointDebtor).toBeNull();
+    expect(actualResult.jointDebtor).toBeUndefined();
     expect(actualResult.debtorAttorney).toEqual(expectedDebtorAttorney);
-    expect(actualResult.jointDebtorAttorney).toBeNull();
+    expect(actualResult.jointDebtorAttorney).toBeUndefined();
     expect(actualResult.debtorTypeLabel).toEqual(expectedDebtorTypeLabel);
     expect(actualResult.trustee.name).toEqual('Robert Trustee');
   });
@@ -1084,7 +1084,7 @@ describe('Test DXTR Gateway', () => {
   });
 
   describe('partyQueryCallback', () => {
-    test('should return null when no results are returned', async () => {
+    test('should return undefined when no results are returned', async () => {
       const queryResult: QueryResults = {
         success: true,
         results: {
@@ -1095,7 +1095,7 @@ describe('Test DXTR Gateway', () => {
 
       const party = testCasesDxtrGateway.partyQueryCallback(applicationContext, queryResult);
 
-      expect(party).toBeNull();
+      expect(party).toBeUndefined();
     });
 
     test('should return expected debtor name', async () => {
@@ -1146,7 +1146,7 @@ describe('Test DXTR Gateway', () => {
   });
 
   describe('debtorAttorneyQueryCallback', () => {
-    test('should return null when no results are returned', async () => {
+    test('should return undefined when no results are returned', async () => {
       const queryResult: QueryResults = {
         success: true,
         results: {
@@ -1160,7 +1160,7 @@ describe('Test DXTR Gateway', () => {
         queryResult,
       );
 
-      expect(attorney).toBeNull();
+      expect(attorney).toBeUndefined();
     });
 
     test('should return expected attorney name', async () => {
