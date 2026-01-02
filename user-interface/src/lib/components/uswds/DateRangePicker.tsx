@@ -93,27 +93,33 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
     const effectiveMax = typeof max === 'string' ? max : new Date().toISOString().split('T')[0];
 
     const minMaxValidator = Validators.dateMinMax(effectiveMin, effectiveMax);
-    const startValidation = minMaxValidator(startValue);
-    const endValidation = minMaxValidator(endValue);
 
-    let rangeValid = false;
+    // Only validate dates that are actually provided
+    const startValidation = startValue
+      ? minMaxValidator(startValue)
+      : { valid: false, reasons: [] };
+    const endValidation = endValue ? minMaxValidator(endValue) : { valid: false, reasons: [] };
+
+    let rangeValid = true;
     let startError: string | undefined;
     let endError: string | undefined;
 
-    const startDate = new Date(startValue);
-    const endDate = new Date(endValue);
+    // Only check range if both dates are provided and individually valid
+    if (startValue && endValue && startValidation.valid && endValidation.valid) {
+      const startDate = new Date(startValue);
+      const endDate = new Date(endValue);
 
-    if (startDate > endDate) {
-      startError = 'Start date must be before end date.';
-    } else {
-      rangeValid = true;
+      if (startDate > endDate) {
+        startError = 'Start date must be before end date.';
+        rangeValid = false;
+      }
     }
 
-    if (!startValidation.valid) {
+    if (startValue && !startValidation.valid) {
       startError = startError ?? startValidation.reasons?.join(' ');
     }
 
-    if (!endValidation.valid) {
+    if (endValue && !endValidation.valid) {
       endError = endError ?? endValidation.reasons?.join(' ');
     }
 
@@ -135,7 +141,13 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
     setStartDateError('');
     setEndDateError('');
 
-    if (!startValue || !endValue) return;
+    // If both values are empty, call the callback to trigger search with no dates
+    if (!startValue && !endValue) {
+      if (callback) {
+        callback(ev);
+      }
+      return;
+    }
 
     const { startValid, endValid, rangeValid, startError, endError } = validateRange(
       startValue,
@@ -145,7 +157,7 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
     if (startError) setStartDateError(startError);
     if (endError) setEndDateError(endError);
 
-    if (startValid && endValid && rangeValid && callback) {
+    if ((startValid || endValid) && rangeValid && callback) {
       callback(ev);
     }
   }
