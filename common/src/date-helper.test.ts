@@ -3,6 +3,8 @@ import DateHelper from './date-helper';
 
 const {
   formatDate,
+  getCurrentIsoTimestamp,
+  getIsoTimestamp,
   getTodaysIsoDate,
   isValidDateString,
   nowInSeconds,
@@ -53,10 +55,26 @@ describe('date helper tests', () => {
   );
 
   test("should get today's date", () => {
-    // TODO: mock new Date()???
     const expected = new Date().toISOString().split('T')[0];
     const actual = getTodaysIsoDate();
     expect(actual).toEqual(expected);
+  });
+
+  test('should get ISO timestamp from a date', () => {
+    const testDate = new Date('2024-03-15T14:30:45.123Z');
+    const expected = '2024-03-15T14:30:45.123Z';
+    const actual = getIsoTimestamp(testDate);
+    expect(actual).toEqual(expected);
+  });
+
+  test('should get current ISO timestamp', () => {
+    const beforeCall = new Date().toISOString();
+    const actual = getCurrentIsoTimestamp();
+    const afterCall = new Date().toISOString();
+
+    expect(actual).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    expect(actual >= beforeCall).toBe(true);
+    expect(actual <= afterCall).toBe(true);
   });
 
   test('should convert current time to seconds', () => {

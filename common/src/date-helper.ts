@@ -32,6 +32,14 @@ function getTodaysIsoDate() {
   return getIsoDate(new Date());
 }
 
+function getIsoTimestamp(date: Date) {
+  return date.toISOString();
+}
+
+function getCurrentIsoTimestamp() {
+  return getIsoTimestamp(new Date());
+}
+
 function nowInSeconds() {
   return Math.floor(Date.now() / 1000);
 }
@@ -46,7 +54,9 @@ function formatDate(isoDate: string): string {
 
 const DateHelper = {
   formatDate,
+  getCurrentIsoTimestamp,
   getIsoDate,
+  getIsoTimestamp,
   getTodaysIsoDate,
   isValidDateString,
   nowInSeconds,
