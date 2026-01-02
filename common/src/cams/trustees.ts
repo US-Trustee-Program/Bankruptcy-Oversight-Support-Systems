@@ -98,10 +98,27 @@ export type TrusteeOversightHistory = AbstractTrusteeHistory<
   documentType: 'AUDIT_OVERSIGHT';
 };
 
+type AppointmentData = {
+  chapter: ChapterType;
+  courtId: string;
+  divisionCode: string;
+  courtName?: string;
+  courtDivisionName?: string;
+  appointedDate: string;
+  status: 'active' | 'inactive';
+  effectiveDate: string;
+};
+
+export type TrusteeAppointmentHistory = AbstractTrusteeHistory<AppointmentData, AppointmentData> & {
+  documentType: 'AUDIT_APPOINTMENT';
+  appointmentId: string;
+};
+
 export type TrusteeHistory =
   | TrusteeNameHistory
   | TrusteePublicContactHistory
   | TrusteeInternalContactHistory
   | TrusteeBankHistory
   | TrusteeSoftwareHistory
-  | TrusteeOversightHistory;
+  | TrusteeOversightHistory
+  | TrusteeAppointmentHistory;

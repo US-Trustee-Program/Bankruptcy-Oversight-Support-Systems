@@ -1,5 +1,4 @@
 .appointment-card-container {
-
   .appointment-card-heading {
     margin: 0 0 1.25rem 0;
     font-size: 1.25rem;
@@ -9,8 +8,43 @@
 
   .appointment-card {
     max-width: 21.5rem;
+    margin-bottom: 1.56rem;
 
     .usa-card__body {
+      padding-top: 1.44rem;
+      padding-right: 1.64rem;
+      padding-bottom: 1.27rem;
+
+      .appointment-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1.27rem;
+
+        h4 {
+          margin: 0;
+        }
+
+        .appointment-edit-link {
+          display: flex;
+          align-items: center;
+          gap: 0.25rem;
+          text-decoration: none;
+          color: #005ea2;
+          font-weight: 600;
+          font-size: 0.9375rem;
+
+          &:hover {
+            color: #1a4480;
+            text-decoration: underline;
+          }
+
+          .usa-icon {
+            font-size: 1.125rem;
+          }
+        }
+      }
+
       .appointment-details-list {
         list-style: none;
         padding: 0;

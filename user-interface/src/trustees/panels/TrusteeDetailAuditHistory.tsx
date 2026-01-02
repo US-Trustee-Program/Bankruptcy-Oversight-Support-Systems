@@ -12,6 +12,8 @@ import {
   TrusteeBankHistory,
   TrusteeSoftwareHistory,
   TrusteeOversightHistory,
+  TrusteeAppointmentHistory,
+  formatChapterType,
 } from '@common/cams/trustees';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
 import { Auditable } from '@common/cams/auditable';
@@ -188,6 +190,48 @@ function ShowTrusteeOversightHistory(props: ShowTrusteeOversightHistoryProps) {
   );
 }
 
+type ShowTrusteeAppointmentHistoryProps = Readonly<{
+  history: TrusteeAppointmentHistory;
+  idx: number;
+}>;
+
+function ShowTrusteeAppointmentHistory(props: ShowTrusteeAppointmentHistoryProps) {
+  const { history, idx } = props;
+
+  const formatAppointmentData = (data: typeof history.before | typeof history.after) => {
+    if (!data) return '(none)';
+    return (
+      <>
+        Chapter: {formatChapterType(data.chapter)}
+        <br />
+        District:{' '}
+        {data.courtName && data.courtDivisionName
+          ? `${data.courtName} (${data.courtDivisionName})`
+          : data.divisionCode}
+        <br />
+        Appointed: {formatDate(data.appointedDate)}
+        <br />
+        Status: {data.status.charAt(0).toUpperCase() + data.status.slice(1)}{' '}
+        {formatDate(data.effectiveDate)}
+      </>
+    );
+  };
+
+  return (
+    <tr>
+      <td data-testid={`change-type-appointment-${idx}`}>Appointment</td>
+      <td data-testid={`previous-appointment-${idx}`}>{formatAppointmentData(history.before)}</td>
+      <td data-testid={`new-appointment-${idx}`}>{formatAppointmentData(history.after)}</td>
+      <td data-testid={`changed-by-${idx}`}>
+        {history.updatedBy && <>{history.updatedBy.name}</>}
+      </td>
+      <td data-testid={`change-date-${idx}`}>
+        <span className="text-no-wrap">{formatDate(history.updatedOn)}</span>
+      </td>
+    </tr>
+  );
+}
+
 function RenderTrusteeHistory(props: Readonly<{ trusteeHistory: TrusteeHistory[] }>) {
   const { trusteeHistory } = props;
   return (
@@ -216,6 +260,14 @@ function RenderTrusteeHistory(props: Readonly<{ trusteeHistory: TrusteeHistory[]
                 history={history}
                 idx={idx}
               ></ShowTrusteeOversightHistory>
+            );
+          case 'AUDIT_APPOINTMENT':
+            return (
+              <ShowTrusteeAppointmentHistory
+                key={`${history.trusteeId}-${idx}`}
+                history={history}
+                idx={idx}
+              />
             );
         }
       })}
