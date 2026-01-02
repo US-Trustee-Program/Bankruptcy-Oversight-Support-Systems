@@ -12,6 +12,7 @@ import {
   resetLastInteraction,
   HEARTBEAT,
 } from '@/login/session-timer';
+import DateHelper from '@common/date-helper';
 
 let heartbeatTimer: Timer | null = null;
 let logoutTimer: Timer | null = null;
@@ -48,7 +49,7 @@ export function isTokenCloseToExpiry(): boolean {
   if (!session || !session.expires) {
     return true;
   }
-  const now = Math.floor(Date.now() / 1000);
+  const now = DateHelper.nowInSeconds();
   const timeUntilExpiry = session.expires - now;
   const RENEWAL_THRESHOLD = 5 * 60;
   return timeUntilExpiry <= RENEWAL_THRESHOLD;
@@ -59,7 +60,7 @@ export async function handleHeartbeat(oktaAuth: OktaAuth) {
     if (isTokenCloseToExpiry()) {
       await renewOktaToken(oktaAuth);
     }
-    if (logoutTimer) {
+    if (logoutTimer && !warningShown) {
       logoutTimer.clear();
       logoutTimer = null;
     }
