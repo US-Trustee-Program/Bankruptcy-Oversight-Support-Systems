@@ -11,7 +11,7 @@ import { Auditable } from './auditable';
 import { CamsUserReference } from './users';
 import { ConsolidationType } from './orders';
 
-export const VALID_CASEID_PATTERN = RegExp(/^[\dA-Z]{3}-\d{2}-\d{5}$/);
+export const VALID_CASEID_PATTERN = /^[\dA-Z]{3}-\d{2}-\d{5}$/;
 
 type FlatOfficeDetail = {
   officeName: string;
@@ -42,6 +42,7 @@ export type CaseBasics = FlatOfficeDetail & {
 
 export type CaseSummary = CaseBasics & {
   debtor: Debtor;
+  jointDebtor?: Debtor;
 };
 
 export type CaseDetail = CaseSummary & {
@@ -52,6 +53,7 @@ export type CaseDetail = CaseSummary & {
   transfers?: Array<TransferFrom | TransferTo>;
   consolidation: Array<ConsolidationTo | ConsolidationFrom>;
   debtorAttorney?: DebtorAttorney;
+  jointDebtorAttorney?: DebtorAttorney;
   judgeName?: string;
   trustee?: LegacyTrustee;
 };

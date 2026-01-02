@@ -37,6 +37,9 @@ const dismissedByCourtTxCode = 'CDC';
 const reopenedDateTxCode = 'OCO';
 const orderToTransferCode = 'CTO';
 
+type DebtorPartyCode = 'db' | 'jd';
+type PartyCode = DebtorPartyCode | 'tr';
+
 const NOT_FOUND = -1;
 
 type RawCaseIdAndMaxId = { caseId: string; maxTxId: number };
@@ -78,6 +81,13 @@ class CasesDxtrGateway implements CasesInterface {
       applicationContext,
       bCase.dxtrId,
       bCase.courtId,
+      'db',
+    );
+    bCase.jointDebtorAttorney = await this.queryDebtorAttorney(
+      applicationContext,
+      bCase.dxtrId,
+      bCase.courtId,
+      'jd',
     );
 
     return bCase;
@@ -90,53 +100,48 @@ class CasesDxtrGateway implements CasesInterface {
     const input: DbTableFieldSpec[] = [];
     const bCase = await this.getCaseSummary(applicationContext, caseId);
 
-    input.push({
-      name: 'taxId',
-      type: mssql.VarChar,
-      value: bCase.debtor.taxId,
-    });
-
-    input.push({
-      name: 'ssn',
-      type: mssql.VarChar,
-      value: bCase.debtor.ssn,
-    });
-
-    input.push({
-      name: 'caseTitle',
-      type: mssql.VarChar,
-      value: bCase.caseTitle,
-    });
-
-    input.push({
-      name: 'debtorName',
-      type: mssql.VarChar,
-      value: bCase.debtor.name,
-    });
-
-    input.push({
-      name: 'chapter',
-      type: mssql.VarChar,
-      value: bCase.chapter,
-    });
-
-    input.push({
-      name: 'dateFiled',
-      type: mssql.Date,
-      value: bCase.dateFiled,
-    });
-
-    input.push({
-      name: 'originalCourt',
-      type: mssql.VarChar,
-      value: bCase.courtId,
-    });
-
-    input.push({
-      name: 'originalDivision',
-      type: mssql.VarChar,
-      value: bCase.courtDivisionCode,
-    });
+    input.push(
+      {
+        name: 'taxId',
+        type: mssql.VarChar,
+        value: bCase.debtor.taxId,
+      },
+      {
+        name: 'ssn',
+        type: mssql.VarChar,
+        value: bCase.debtor.ssn,
+      },
+      {
+        name: 'caseTitle',
+        type: mssql.VarChar,
+        value: bCase.caseTitle,
+      },
+      {
+        name: 'debtorName',
+        type: mssql.VarChar,
+        value: bCase.debtor.name,
+      },
+      {
+        name: 'chapter',
+        type: mssql.VarChar,
+        value: bCase.chapter,
+      },
+      {
+        name: 'dateFiled',
+        type: mssql.Date,
+        value: bCase.dateFiled,
+      },
+      {
+        name: 'originalCourt',
+        type: mssql.VarChar,
+        value: bCase.courtId,
+      },
+      {
+        name: 'originalDivision',
+        type: mssql.VarChar,
+        value: bCase.courtDivisionCode,
+      },
+    );
 
     const CASE_SUGGESTION_QUERY = `SELECT
         cs_div.CS_DIV_ACMS as courtDivisionCode,
@@ -150,15 +155,35 @@ class CasesDxtrGateway implements CasesInterface {
         court.COURT_NAME as courtName,
         office.OFFICE_NAME_DISPLAY as courtDivisionName,
         TRIM(CONCAT(cs.JD_FIRST_NAME, ' ', cs.JD_MIDDLE_NAME, ' ', cs.JD_LAST_NAME)) as judgeName,
+        COALESCE(
+          NULLIF(TRIM(CONCAT(
+            debtor.PY_FIRST_NAME,
+            ' ',
+            debtor.PY_MIDDLE_NAME,
+            ' ',
+            debtor.PY_LAST_NAME,
+            ' ',
+            debtor.PY_GENERATION
+          )), ''),
+          TRIM(CONCAT(
+            jointDebtor.PY_FIRST_NAME,
+            ' ',
+            jointDebtor.PY_MIDDLE_NAME,
+            ' ',
+            jointDebtor.PY_LAST_NAME,
+            ' ',
+            jointDebtor.PY_GENERATION
+          ))
+        ) as partyName,
         TRIM(CONCAT(
-          PY_FIRST_NAME,
+          jointDebtor.PY_FIRST_NAME,
           ' ',
-          PY_MIDDLE_NAME,
+          jointDebtor.PY_MIDDLE_NAME,
           ' ',
-          PY_LAST_NAME,
+          jointDebtor.PY_LAST_NAME,
           ' ',
-          PY_GENERATION
-        )) as partyName,
+          jointDebtor.PY_GENERATION
+        )) as jointDebtorName,
         grp_des.REGION_ID as regionId,
         R.REGION_NAME AS regionName,
         TX.petitionCode,
@@ -173,8 +198,10 @@ class CasesDxtrGateway implements CasesInterface {
         JOIN [dbo].[AO_OFFICE] AS office
           ON cs.COURT_ID = office.COURT_ID
           AND cs_div.OFFICE_CODE = office.OFFICE_CODE
-        JOIN [dbo].[AO_PY] AS party
-          ON party.CS_CASEID = cs.CS_CASEID AND party.COURT_ID = cs.COURT_ID AND party.PY_ROLE = 'db'
+        LEFT JOIN [dbo].[AO_PY] AS debtor
+          ON debtor.CS_CASEID = cs.CS_CASEID AND debtor.COURT_ID = cs.COURT_ID AND debtor.PY_ROLE = 'db'
+        LEFT JOIN [dbo].[AO_PY] AS jointDebtor
+          ON jointDebtor.CS_CASEID = cs.CS_CASEID AND jointDebtor.COURT_ID = cs.COURT_ID AND jointDebtor.PY_ROLE = 'jd'
         JOIN [dbo].[AO_REGION] AS R ON grp_des.REGION_ID = R.REGION_ID
         JOIN (
           SELECT DISTINCT
@@ -186,7 +213,7 @@ class CasesDxtrGateway implements CasesInterface {
           JOIN [dbo].[AO_CS_DIV] AS C2 ON C1.CS_DIV = C2.CS_DIV
           JOIN [dbo].[AO_TX] AS T1 ON T1.CS_CASEID=C1.CS_CASEID AND T1.COURT_ID=C1.COURT_ID AND T1.TX_TYPE='1' AND T1.TX_CODE='1'
           JOIN [dbo].[AO_PY] AS P1
-          ON P1.CS_CASEID = C1.CS_CASEID AND P1.COURT_ID = C1.COURT_ID AND P1.PY_ROLE = 'db'
+          ON P1.CS_CASEID = C1.CS_CASEID AND P1.COURT_ID = C1.COURT_ID AND P1.PY_ROLE in ('db', 'jd')
           WHERE (
             P1.PY_TAXID = @taxId OR P1.PY_SSN = @ssn
             OR c1.CS_SHORT_TITLE = @caseTitle
@@ -216,20 +243,28 @@ class CasesDxtrGateway implements CasesInterface {
     );
 
     if (queryResult.success) {
-      const transferPetitionCode = ['TI', 'TV'];
+      const transferPetitionCode = new Set(['TI', 'TV']);
       const suggestedCases = this.casesQueryCallback(applicationContext, queryResult);
       for (const sCase of suggestedCases) {
         sCase.debtorTypeLabel = getDebtorTypeLabel(sCase.debtorTypeCode);
         sCase.petitionLabel = getPetitionInfo(sCase.petitionCode).petitionLabel;
-        if (transferPetitionCode.includes(sCase.petitionCode)) {
-          sCase.debtor = await this.queryDebtorParties(
+        if (transferPetitionCode.has(sCase.petitionCode)) {
+          // Debtor is required and should always exist for a valid case
+          sCase.debtor = (await this.queryDebtorParty(
             applicationContext,
             sCase.dxtrId,
             sCase.courtId,
+            'db',
+          ))!;
+          sCase.jointDebtor = await this.queryDebtorParty(
+            applicationContext,
+            sCase.dxtrId,
+            sCase.courtId,
+            'jd',
           );
         }
       }
-      return suggestedCases.filter((sc) => transferPetitionCode.includes(sc.petitionCode));
+      return suggestedCases.filter((sc) => transferPetitionCode.has(sc.petitionCode));
     } else {
       throw new CamsError(MODULE_NAME, { message: queryResult.message });
     }
@@ -241,17 +276,17 @@ class CasesDxtrGateway implements CasesInterface {
   ): Promise<TransactionIdRangeForDate> {
     const maxQuery = 'SELECT TOP 1 TX_ID AS MAX_TX_ID FROM AO_TX ORDER BY TX_ID DESC';
     const maxAnswer = await executeQuery(context, context.config.dxtrDbConfig, maxQuery);
-    const maxTxId: number = parseInt(maxAnswer.results['recordset'][0]['MAX_TX_ID']);
+    const maxTxId: number = Number.parseInt(maxAnswer.results['recordset'][0]['MAX_TX_ID']);
 
     const minQuery = 'SELECT TOP 1 TX_ID AS MIN_TX_ID FROM AO_TX ORDER BY TX_ID ASC';
     const minAnswer = await executeQuery(context, context.config.dxtrDbConfig, minQuery);
-    const minTxId: number = parseInt(minAnswer.results['recordset'][0]['MIN_TX_ID']);
+    const minTxId: number = Number.parseInt(minAnswer.results['recordset'][0]['MIN_TX_ID']);
 
     const startTxId = await this.bisectBound(context, minTxId, maxTxId, findDate, 'START');
     const endTxId =
-      startTxId !== NOT_FOUND
-        ? await this.bisectBound(context, startTxId, maxTxId, findDate, 'END')
-        : undefined;
+      startTxId === NOT_FOUND
+        ? undefined
+        : await this.bisectBound(context, startTxId, maxTxId, findDate, 'END');
 
     return {
       findDate,
@@ -340,14 +375,23 @@ class CasesDxtrGateway implements CasesInterface {
       office.OFFICE_NAME_DISPLAY as courtDivisionName,
       TRIM(CONCAT(cs.JD_FIRST_NAME, ' ', cs.JD_MIDDLE_NAME, ' ', cs.JD_LAST_NAME)) as judgeName,
       TRIM(CONCAT(
-        PY_FIRST_NAME,
+        debtor.PY_FIRST_NAME,
         ' ',
-        PY_MIDDLE_NAME,
+        debtor.PY_MIDDLE_NAME,
         ' ',
-        PY_LAST_NAME,
+        debtor.PY_LAST_NAME,
         ' ',
-        PY_GENERATION
+        debtor.PY_GENERATION
       )) as partyName,
+      TRIM(CONCAT(
+        jointDebtor.PY_FIRST_NAME,
+        ' ',
+        jointDebtor.PY_MIDDLE_NAME,
+        ' ',
+        jointDebtor.PY_LAST_NAME,
+        ' ',
+        jointDebtor.PY_GENERATION
+      )) as jointDebtorName,
       grp_des.REGION_ID as regionId,
       R.REGION_NAME AS regionName,
       substring(tx.REC,108,2) AS petitionCode,
@@ -362,8 +406,10 @@ class CasesDxtrGateway implements CasesInterface {
       JOIN [dbo].[AO_OFFICE] AS office
         ON cs.COURT_ID = office.COURT_ID
         AND cs_div.OFFICE_CODE = office.OFFICE_CODE
-      JOIN [dbo].[AO_PY] AS party
-        ON party.CS_CASEID = cs.CS_CASEID AND party.COURT_ID = cs.COURT_ID AND party.PY_ROLE = 'db'
+      LEFT JOIN [dbo].[AO_PY] AS debtor
+        ON debtor.CS_CASEID = cs.CS_CASEID AND debtor.COURT_ID = cs.COURT_ID AND debtor.PY_ROLE = 'db'
+      LEFT JOIN [dbo].[AO_PY] AS jointDebtor
+        ON jointDebtor.CS_CASEID = cs.CS_CASEID AND jointDebtor.COURT_ID = cs.COURT_ID AND jointDebtor.PY_ROLE = 'jd'
       JOIN [dbo].[AO_REGION] AS R ON grp_des.REGION_ID = R.REGION_ID
       JOIN [dbo].[AO_TX] AS tx ON tx.CS_CASEID=cs.CS_CASEID AND tx.COURT_ID=cs.COURT_ID AND tx.TX_TYPE='1' AND tx.TX_CODE='1'`;
 
@@ -374,16 +420,18 @@ class CasesDxtrGateway implements CasesInterface {
     const params: DbTableFieldSpec[] = [];
 
     const recordCount = predicate.limit ? predicate.limit + 1 : DEFAULT_SEARCH_LIMIT + 1;
-    params.push({
-      name: `limit`,
-      type: mssql.Int,
-      value: recordCount,
-    });
-    params.push({
-      name: `offset`,
-      type: mssql.Int,
-      value: predicate.offset ?? 0,
-    });
+    params.push(
+      {
+        name: `limit`,
+        type: mssql.Int,
+        value: recordCount,
+      },
+      {
+        name: `offset`,
+        type: mssql.Int,
+        value: predicate.offset ?? 0,
+      },
+    );
 
     if (predicate.caseNumber) {
       params.push({
@@ -479,7 +527,19 @@ class CasesDxtrGateway implements CasesInterface {
         message: `Case summary not found for case ID: ${caseId}.`,
       });
     }
-    bCase.debtor = await this.queryDebtorParties(applicationContext, bCase.dxtrId, bCase.courtId);
+    // Debtor is required and should always exist for a valid case
+    bCase.debtor = (await this.queryDebtorParty(
+      applicationContext,
+      bCase.dxtrId,
+      bCase.courtId,
+      'db',
+    ))!;
+    bCase.jointDebtor = await this.queryDebtorParty(
+      applicationContext,
+      bCase.dxtrId,
+      bCase.courtId,
+      'jd',
+    );
     bCase.debtorTypeLabel = getDebtorTypeLabel(bCase.debtorTypeCode);
     bCase.petitionLabel = getPetitionInfo(bCase.petitionCode).petitionLabel;
     return bCase;
@@ -491,6 +551,7 @@ class CasesDxtrGateway implements CasesInterface {
    * Gets the case ids for all cases with LAST_UPDATE_DATE values greater than the provided date.
    * 2025-02-23 06:35:30.453
    *
+   * @param {ApplicationContext} context
    * @param {string} start The date and time to begin checking for LAST_UPDATE_DATE values.
    * @returns {string[]} A list of case ids for updated cases.
    */
@@ -533,17 +594,18 @@ class CasesDxtrGateway implements CasesInterface {
   ): Promise<CaseSummary> {
     const input: DbTableFieldSpec[] = [];
 
-    input.push({
-      name: 'courtDiv',
-      type: mssql.VarChar,
-      value: courtDiv,
-    });
-
-    input.push({
-      name: 'dxtrCaseId',
-      type: mssql.VarChar,
-      value: dxtrCaseId,
-    });
+    input.push(
+      {
+        name: 'courtDiv',
+        type: mssql.VarChar,
+        value: courtDiv,
+      },
+      {
+        name: 'dxtrCaseId',
+        type: mssql.VarChar,
+        value: dxtrCaseId,
+      },
+    );
 
     const CASE_DETAIL_QUERY = `SELECT
         cs_div.CS_DIV_ACMS as courtDivisionCode,
@@ -594,13 +656,11 @@ class CasesDxtrGateway implements CasesInterface {
       input,
     );
 
-    return Promise.resolve(
-      handleQueryResult<CaseSummary>(
-        applicationContext,
-        queryResult,
-        MODULE_NAME,
-        this.caseDetailsQueryCallback,
-      ),
+    return handleQueryResult<CaseSummary>(
+      applicationContext,
+      queryResult,
+      MODULE_NAME,
+      this.caseDetailsQueryCallback,
     );
   }
 
@@ -611,41 +671,38 @@ class CasesDxtrGateway implements CasesInterface {
   ): Promise<TransactionDates> {
     const input: DbTableFieldSpec[] = [];
 
-    input.push({
-      name: 'dxtrId',
-      type: mssql.VarChar,
-      value: dxtrId,
-    });
-
-    input.push({
-      name: 'courtId',
-      type: mssql.VarChar,
-      value: courtId,
-    });
-
-    input.push({
-      name: 'closedByCourtTxCode',
-      type: mssql.VarChar,
-      value: closedByCourtTxCode,
-    });
-
-    input.push({
-      name: 'dismissedByCourtTxCode',
-      type: mssql.VarChar,
-      value: dismissedByCourtTxCode,
-    });
-
-    input.push({
-      name: 'orderToTransferCode',
-      type: mssql.VarChar,
-      value: orderToTransferCode,
-    });
-
-    input.push({
-      name: 'reopenedDate',
-      type: mssql.VarChar,
-      value: reopenedDateTxCode,
-    });
+    input.push(
+      {
+        name: 'dxtrId',
+        type: mssql.VarChar,
+        value: dxtrId,
+      },
+      {
+        name: 'courtId',
+        type: mssql.VarChar,
+        value: courtId,
+      },
+      {
+        name: 'closedByCourtTxCode',
+        type: mssql.VarChar,
+        value: closedByCourtTxCode,
+      },
+      {
+        name: 'dismissedByCourtTxCode',
+        type: mssql.VarChar,
+        value: dismissedByCourtTxCode,
+      },
+      {
+        name: 'orderToTransferCode',
+        type: mssql.VarChar,
+        value: orderToTransferCode,
+      },
+      {
+        name: 'reopenedDate',
+        type: mssql.VarChar,
+        value: reopenedDateTxCode,
+      },
+    );
 
     const query = `select
       REC as txRecord,
@@ -663,22 +720,20 @@ class CasesDxtrGateway implements CasesInterface {
       input,
     );
 
-    return Promise.resolve(
-      handleQueryResult<TransactionDates>(
-        applicationContext,
-        queryResult,
-        MODULE_NAME,
-        this.transactionQueryCallback,
-      ),
+    return handleQueryResult<TransactionDates>(
+      applicationContext,
+      queryResult,
+      MODULE_NAME,
+      this.transactionQueryCallback,
     );
   }
 
-  private async queryDebtorParties(
+  private async queryDebtorParty(
     applicationContext: ApplicationContext,
     dxtrId: string,
     courtId: string,
-  ): Promise<Debtor> {
-    const debtorPartyCode = 'db';
+    debtorPartyCode: DebtorPartyCode,
+  ): Promise<Debtor | undefined> {
     return this.queryParties<Debtor>(
       applicationContext,
       dxtrId,
@@ -707,28 +762,28 @@ class CasesDxtrGateway implements CasesInterface {
     applicationContext: ApplicationContext,
     dxtrId: string,
     courtId: string,
-    partyCode: string = 'db',
+    partyCode: PartyCode,
     mapper: (context: ApplicationContext, queryResult: QueryResults) => T,
   ): Promise<T> {
     const input: DbTableFieldSpec[] = [];
 
-    input.push({
-      name: 'dxtrId',
-      type: mssql.VarChar,
-      value: dxtrId,
-    });
-
-    input.push({
-      name: 'courtId',
-      type: mssql.VarChar,
-      value: courtId,
-    });
-
-    input.push({
-      name: 'partyCode',
-      type: mssql.VarChar,
-      value: partyCode,
-    });
+    input.push(
+      {
+        name: 'dxtrId',
+        type: mssql.VarChar,
+        value: dxtrId,
+      },
+      {
+        name: 'courtId',
+        type: mssql.VarChar,
+        value: courtId,
+      },
+      {
+        name: 'partyCode',
+        type: mssql.VarChar,
+        value: partyCode,
+      },
+    );
 
     const query = `SELECT
         TRIM(CONCAT(
@@ -770,29 +825,34 @@ class CasesDxtrGateway implements CasesInterface {
       input,
     );
 
-    return Promise.resolve(
-      handleQueryResult<T>(applicationContext, queryResult, MODULE_NAME, mapper),
-    );
+    return handleQueryResult<T>(applicationContext, queryResult, MODULE_NAME, mapper);
   }
 
   private async queryDebtorAttorney(
     context: ApplicationContext,
     dxtrId: string,
     courtId: string,
-  ): Promise<DebtorAttorney> {
+    debtorPartyCode: DebtorPartyCode,
+  ): Promise<DebtorAttorney | undefined> {
     const input: DbTableFieldSpec[] = [];
 
-    input.push({
-      name: 'dxtrId',
-      type: mssql.VarChar,
-      value: dxtrId,
-    });
-
-    input.push({
-      name: 'courtId',
-      type: mssql.VarChar,
-      value: courtId,
-    });
+    input.push(
+      {
+        name: 'dxtrId',
+        type: mssql.VarChar,
+        value: dxtrId,
+      },
+      {
+        name: 'courtId',
+        type: mssql.VarChar,
+        value: courtId,
+      },
+      {
+        name: 'debtorPartyCode',
+        type: mssql.VarChar,
+        value: debtorPartyCode,
+      },
+    );
 
     const query = `
       SELECT
@@ -824,7 +884,7 @@ class CasesDxtrGateway implements CasesInterface {
       WHERE
         CS_CASEID = @dxtrId AND
         COURT_ID = @courtId AND
-        PY_ROLE = 'db'
+        PY_ROLE = @debtorPartyCode
     `;
 
     const queryResult: QueryResults = await executeQuery(
@@ -834,18 +894,16 @@ class CasesDxtrGateway implements CasesInterface {
       input,
     );
 
-    return Promise.resolve(
-      handleQueryResult<DebtorAttorney>(
-        context,
-        queryResult,
-        MODULE_NAME,
-        this.debtorAttorneyQueryCallback,
-      ),
+    return handleQueryResult<DebtorAttorney>(
+      context,
+      queryResult,
+      MODULE_NAME,
+      this.debtorAttorneyQueryCallback,
     );
   }
 
   debtorAttorneyQueryCallback(_context: ApplicationContext, queryResult: QueryResults) {
-    let debtorAttorney: DebtorAttorney;
+    let debtorAttorney: DebtorAttorney | undefined;
 
     (queryResult.results as mssql.IResult<DebtorAttorney>).recordset.forEach((record) => {
       debtorAttorney = { name: removeExtraSpaces(record.name) };
@@ -857,11 +915,11 @@ class CasesDxtrGateway implements CasesInterface {
       debtorAttorney.email = record.email;
       debtorAttorney.office = record.office;
     });
-    return debtorAttorney || null;
+    return debtorAttorney;
   }
 
   partyQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
-    let debtor: Debtor;
+    let debtor: Debtor | undefined;
     applicationContext.logger.debug(MODULE_NAME, `Party results received from DXTR`);
 
     (queryResult.results as mssql.IResult<Debtor>).recordset.forEach((record) => {
@@ -873,11 +931,11 @@ class CasesDxtrGateway implements CasesInterface {
       debtor.taxId = record.taxId;
       debtor.ssn = record.ssn;
     });
-    return debtor || null;
+    return debtor;
   }
 
   trusteeQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
-    let trustee: LegacyTrustee;
+    let trustee: LegacyTrustee | undefined;
     applicationContext.logger.debug(MODULE_NAME, `Trustee results received from DXTR`);
 
     (queryResult.results as mssql.IResult<Party>).recordset.forEach((record: Party) => {
@@ -890,7 +948,7 @@ class CasesDxtrGateway implements CasesInterface {
         },
       } as LegacyTrustee;
     });
-    return trustee || null;
+    return trustee;
   }
 
   transactionQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
