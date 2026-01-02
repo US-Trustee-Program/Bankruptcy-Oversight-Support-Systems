@@ -5,6 +5,7 @@ import { useOktaAuth } from '@okta/okta-react';
 import { PropsWithChildren, useEffect, useState } from 'react';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 import { AuthContext } from '@/login/AuthContext';
+import { renewOktaToken } from './okta-library';
 
 export type OktaSessionProps = PropsWithChildren;
 
@@ -78,7 +79,12 @@ export function OktaSession(props: Readonly<OktaSessionProps>) {
 
   appInsights.trackEvent({ name: 'Okta session established' }, { status: 'success' });
   return (
-    <AuthContext.Provider value={{ oktaAuth }}>
+    <AuthContext.Provider
+      value={{
+        oktaAuth,
+        renewToken: () => renewOktaToken(oktaAuth),
+      }}
+    >
       <Session provider="okta" accessToken={accessToken} expires={expires} issuer={issuer}>
         {props.children}
       </Session>

@@ -10,7 +10,6 @@ import {
   logout,
 } from '@/login/session-timer';
 import { GlobalAlertContext } from '@/App';
-import { renewOktaToken } from '@/login/providers/okta/okta-library';
 import { AuthContext } from '@/login/AuthContext';
 
 export default function SessionTimeoutManager() {
@@ -38,11 +37,7 @@ export default function SessionTimeoutManager() {
 
   const handleStayLoggedIn = () => {
     resetLastInteraction();
-
-    if (authContext.oktaAuth) {
-      renewOktaToken(authContext.oktaAuth);
-    }
-
+    authContext.renewToken();
     globalAlertRefObject?.current?.success('Your session has been extended');
   };
 

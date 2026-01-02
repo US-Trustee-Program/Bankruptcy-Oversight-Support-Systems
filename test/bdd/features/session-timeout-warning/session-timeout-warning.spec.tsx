@@ -8,7 +8,6 @@ import { TestSetup, waitForAppLoad } from '../../helpers/fluent-test-setup';
 import { clearAllRepositorySpies } from '../../helpers/repository-spies';
 import { CamsRole } from '@common/cams/roles';
 import { AuthContext } from '@/login/AuthContext';
-import * as OktaLibrary from '@/login/providers/okta/okta-library';
 import OktaAuth from '@okta/okta-auth-js';
 
 // ALWAYS import driver mocks
@@ -172,19 +171,17 @@ describe('Feature: Session Timeout Warning', () => {
   });
 
   /**
-   * Scenario: Okta token renewal is called when user extends session
+   * Scenario: Token renewal is called when user extends session
    *
    * Given the warning modal is displayed
-   * And the AuthContext provides an oktaAuth instance
+   * And the AuthContext provides a renewToken function
    * When the user clicks the "Stay Logged In" button
-   * Then renewOktaToken should be called with the oktaAuth instance
+   * Then renewToken should be called
    */
-  test('STEP 1d: Clicking "Stay Logged In" calls renewOktaToken', async () => {
-    // ARRANGE: Create a mock oktaAuth instance
+  test('STEP 1d: Clicking "Stay Logged In" calls renewToken', async () => {
+    // ARRANGE: Create a mock renewToken function
+    const mockRenewToken = vi.fn().mockResolvedValue(undefined);
     const mockOktaAuth = {} as Partial<OktaAuth>;
-
-    // ARRANGE: Spy on renewOktaToken
-    const renewOktaTokenSpy = vi.spyOn(OktaLibrary, 'renewOktaToken').mockResolvedValue();
 
     // ARRANGE: Mock the SessionTimeoutManager's useContext call by patching the AuthContext
     // We'll temporarily modify the _currentValue which is React's internal for context
@@ -194,8 +191,14 @@ describe('Feature: Session Timeout Warning', () => {
     }
     const authContextInternal = AuthContext as unknown as ReactContextInternal;
     const originalValue = authContextInternal._currentValue;
-    authContextInternal._currentValue = { oktaAuth: mockOktaAuth };
-    authContextInternal._currentValue2 = { oktaAuth: mockOktaAuth }; // For concurrent mode
+    authContextInternal._currentValue = {
+      oktaAuth: mockOktaAuth,
+      renewToken: mockRenewToken,
+    };
+    authContextInternal._currentValue2 = {
+      oktaAuth: mockOktaAuth,
+      renewToken: mockRenewToken,
+    }; // For concurrent mode
 
     try {
       // ARRANGE: Set up test session and render
@@ -214,15 +217,14 @@ describe('Feature: Session Timeout Warning', () => {
       const stayLoggedInButton = screen.getByRole('button', { name: /Stay Logged In/i });
       fireEvent.click(stayLoggedInButton);
 
-      // ASSERT: renewOktaToken should have been called with the mock oktaAuth
+      // ASSERT: renewToken should have been called
       await waitFor(() => {
-        expect(renewOktaTokenSpy).toHaveBeenCalledWith(mockOktaAuth);
+        expect(mockRenewToken).toHaveBeenCalled();
       });
     } finally {
       // Cleanup: Restore original context value
       authContextInternal._currentValue = originalValue;
       authContextInternal._currentValue2 = originalValue;
-      renewOktaTokenSpy.mockRestore();
     }
   });
 
