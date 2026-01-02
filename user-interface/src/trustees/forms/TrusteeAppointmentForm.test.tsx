@@ -743,4 +743,189 @@ describe('TrusteeAppointmentForm Tests', () => {
       });
     });
   });
+
+  describe('Edit Mode Tests', () => {
+    test('should pre-populate form when appointment is provided', async () => {
+      const appointmentToEdit: TrusteeAppointment = {
+        ...mockActiveAppointment,
+        courtId: '0208',
+        divisionCode: '081',
+        chapter: '11',
+        status: 'active',
+        effectiveDate: '2024-06-15',
+        appointedDate: '2024-06-01',
+      };
+
+      renderWithProps({
+        trusteeId: TEST_TRUSTEE_ID,
+        appointment: appointmentToEdit,
+      });
+
+      await waitFor(() => {
+        expect(document.querySelector('#district')).toBeInTheDocument();
+      });
+
+      const effectiveDateInput = screen.getByLabelText(/status date/i) as HTMLInputElement;
+      const appointedDateInput = screen.getByLabelText(/appointment date/i) as HTMLInputElement;
+
+      expect(effectiveDateInput.value).toBe('2024-06-15');
+      expect(appointedDateInput.value).toBe('2024-06-01');
+    });
+
+    test('should have Edit Trustee Appointment aria-label in edit mode', async () => {
+      renderWithProps({
+        trusteeId: TEST_TRUSTEE_ID,
+        appointment: mockActiveAppointment,
+      });
+
+      await waitFor(() => {
+        expect(document.querySelector('#district')).toBeInTheDocument();
+      });
+
+      const form = screen.getByLabelText('Edit Trustee Appointment');
+      expect(form).toBeInTheDocument();
+    });
+
+    test('should call putTrusteeAppointment on submit in edit mode', async () => {
+      const appointmentToEdit: TrusteeAppointment = {
+        ...mockActiveAppointment,
+        id: 'appointment-to-edit',
+        courtId: '0208',
+        divisionCode: '081',
+        chapter: '7-panel',
+        status: 'active',
+        effectiveDate: '2024-06-15',
+        appointedDate: '2024-06-01',
+      };
+
+      const putSpy = vi.spyOn(Api2, 'putTrusteeAppointment').mockResolvedValue({
+        data: appointmentToEdit,
+      });
+
+      renderWithProps({
+        trusteeId: TEST_TRUSTEE_ID,
+        appointment: appointmentToEdit,
+        existingAppointments: [appointmentToEdit],
+      });
+
+      await waitFor(() => {
+        expect(document.querySelector('#district')).toBeInTheDocument();
+      });
+
+      const submitButton = screen.getByRole('button', { name: /save/i });
+      await userEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(putSpy).toHaveBeenCalledWith(
+          TEST_TRUSTEE_ID,
+          'appointment-to-edit',
+          expect.objectContaining({
+            courtId: '0208',
+            divisionCode: '081',
+            chapter: '7-panel',
+            status: 'active',
+            effectiveDate: '2024-06-15',
+            appointedDate: '2024-06-01',
+          }),
+        );
+      });
+    });
+
+    test('should NOT show validation error for the appointment being edited', async () => {
+      const appointmentToEdit: TrusteeAppointment = {
+        ...mockActiveAppointment,
+        id: 'appointment-being-edited',
+        courtId: '097-',
+        divisionCode: '710',
+        chapter: '7-panel',
+        status: 'active',
+        effectiveDate: '2024-06-15',
+        appointedDate: '2024-06-01',
+      };
+
+      renderWithProps({
+        trusteeId: TEST_TRUSTEE_ID,
+        appointment: appointmentToEdit,
+        existingAppointments: [appointmentToEdit],
+      });
+
+      await waitFor(() => {
+        expect(document.querySelector('#district')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    test('should show validation error if editing creates overlap with different appointment', async () => {
+      const appointmentToEdit: TrusteeAppointment = {
+        ...mockActiveAppointment,
+        id: 'appointment-being-edited',
+        courtId: '0208',
+        divisionCode: '081',
+        chapter: '11',
+        status: 'active',
+      };
+
+      const conflictingAppointment: TrusteeAppointment = {
+        ...mockActiveAppointment,
+        id: 'different-appointment',
+        courtId: '097-',
+        divisionCode: '710',
+        chapter: '7-panel',
+        status: 'active',
+      };
+
+      renderWithProps({
+        trusteeId: TEST_TRUSTEE_ID,
+        appointment: appointmentToEdit,
+        existingAppointments: [appointmentToEdit, conflictingAppointment],
+      });
+
+      await waitFor(() => {
+        expect(document.querySelector('#district')).toBeInTheDocument();
+      });
+
+      await selectDistrict(userEvent, 0);
+      await selectChapter(userEvent, 0);
+
+      await waitFor(() => {
+        const alert = screen.getByRole('alert');
+        expect(alert).toBeInTheDocument();
+        expect(alert).toHaveTextContent(
+          /An active appointment already exists for Chapter 7 - Panel/,
+        );
+      });
+    });
+
+    test('should show error message on failed PUT request', async () => {
+      const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
+      const appointmentToEdit: TrusteeAppointment = {
+        ...mockActiveAppointment,
+        id: 'appointment-to-edit',
+      };
+
+      const putSpy = vi
+        .spyOn(Api2, 'putTrusteeAppointment')
+        .mockRejectedValue(new Error('API Error'));
+
+      renderWithProps({
+        trusteeId: TEST_TRUSTEE_ID,
+        appointment: appointmentToEdit,
+      });
+
+      await waitFor(() => {
+        expect(document.querySelector('#district')).toBeInTheDocument();
+      });
+
+      const submitButton = screen.getByRole('button', { name: /save/i });
+      await userEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(putSpy).toHaveBeenCalled();
+        expect(globalAlertSpy.error).toHaveBeenCalledWith(
+          'Failed to update appointment: API Error',
+        );
+      });
+    });
+  });
 });

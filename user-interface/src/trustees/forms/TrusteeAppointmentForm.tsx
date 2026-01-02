@@ -46,6 +46,7 @@ type FormData = {
 export type TrusteeAppointmentFormProps = {
   trusteeId: string;
   existingAppointments?: TrusteeAppointment[];
+  appointment?: TrusteeAppointment;
 };
 
 function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
@@ -55,9 +56,9 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
   const navigate = useCamsNavigator();
   const location = useLocation();
 
-  const { trusteeId, existingAppointments: passedAppointments } = props;
+  const { trusteeId, existingAppointments: passedAppointments, appointment } = props;
+  const isEditMode = !!appointment;
 
-  // Try to get appointments from props first, then from navigation state
   const appointmentsFromState = (location.state as { existingAppointments?: TrusteeAppointment[] })
     ?.existingAppointments;
   const appointmentsToUse = passedAppointments ?? appointmentsFromState;
@@ -69,12 +70,23 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
   const [existingAppointments, setExistingAppointments] = useState<TrusteeAppointment[]>(
     appointmentsToUse ?? [],
   );
-  const [formData, setFormData] = useState<FormData>({
-    districtKey: '',
-    chapter: '' as ChapterType,
-    status: '' as 'active' | 'inactive',
-    effectiveDate: '',
-    appointedDate: '',
+  const [formData, setFormData] = useState<FormData>(() => {
+    if (appointment) {
+      return {
+        districtKey: `${appointment.courtId}|${appointment.divisionCode}`,
+        chapter: appointment.chapter,
+        status: appointment.status,
+        effectiveDate: appointment.effectiveDate.split('T')[0],
+        appointedDate: appointment.appointedDate.split('T')[0],
+      };
+    }
+    return {
+      districtKey: '',
+      chapter: '' as ChapterType,
+      status: '' as 'active' | 'inactive',
+      effectiveDate: '',
+      appointedDate: '',
+    };
   });
 
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
@@ -124,6 +136,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     data: FormData,
     appointments: TrusteeAppointment[],
     options: ComboOption[],
+    currentAppointmentId?: string,
   ): string | null => {
     if (!data.districtKey || !data.chapter) return null;
 
@@ -131,6 +144,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
 
     const hasOverlap = appointments.some(
       (appointment) =>
+        appointment.id !== currentAppointmentId &&
         appointment.courtId === courtId &&
         appointment.divisionCode === divisionCode &&
         appointment.chapter === data.chapter &&
@@ -145,8 +159,12 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     return `An active appointment already exists for ${chapter?.label} in ${district?.label}. Please end the existing appointment before creating a new one.`;
   };
 
-  // Derive validation state
-  const validationError = getValidationError(formData, existingAppointments, districtOptions);
+  const validationError = getValidationError(
+    formData,
+    existingAppointments,
+    districtOptions,
+    appointment?.id,
+  );
 
   const isFormValid =
     !!formData.districtKey &&
@@ -177,10 +195,15 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     };
 
     try {
-      await Api2.postTrusteeAppointment(trusteeId, payload);
+      if (isEditMode && appointment) {
+        await Api2.putTrusteeAppointment(trusteeId, appointment.id, payload);
+      } else {
+        await Api2.postTrusteeAppointment(trusteeId, payload);
+      }
       navigateToAppointments(trusteeId, navigate);
     } catch (e) {
-      globalAlert?.error(`Failed to create appointment: ${(e as Error).message}`);
+      const action = isEditMode ? 'update' : 'create';
+      globalAlert?.error(`Failed to ${action} appointment: ${(e as Error).message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -220,7 +243,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
   return (
     <div className="trustee-form-screen">
       <form
-        aria-label="Add Trustee Appointment"
+        aria-label={isEditMode ? 'Edit Trustee Appointment' : 'Add Trustee Appointment'}
         data-testid="trustee-appointment-form"
         onSubmit={handleSubmit}
       >

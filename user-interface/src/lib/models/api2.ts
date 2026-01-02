@@ -274,6 +274,14 @@ async function postTrusteeAppointment(trusteeId: string, appointment: TrusteeApp
   return api().post(`/trustees/${trusteeId}/appointments`, appointment);
 }
 
+async function putTrusteeAppointment(
+  trusteeId: string,
+  appointmentId: string,
+  appointment: TrusteeAppointmentInput,
+) {
+  return api().put(`/trustees/${trusteeId}/appointments/${appointmentId}`, appointment);
+}
+
 async function getCaseDetail(caseId: string) {
   return api().get<CaseDetail>(`/cases/${caseId}`);
 }
@@ -473,6 +481,7 @@ export const _Api2 = {
   getTrusteeHistory,
   getTrusteeAppointments,
   postTrusteeAppointment,
+  putTrusteeAppointment,
   getTrusteeOversightAssignments,
   createTrusteeOversightAssignment,
   postTrustee,
