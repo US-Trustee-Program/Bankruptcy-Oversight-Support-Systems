@@ -244,6 +244,95 @@ describe('Card', () => {
     expect(document.querySelector('h1')).not.toBeInTheDocument();
     expect(document.querySelector('.usa-card__header')).not.toBeInTheDocument();
   });
+
+  describe('Accessibility (WCAG 2.1)', () => {
+    test('should add aria-labelledby when heading is present', () => {
+      render(
+        <Card>
+          <CardHeading>Accessible Heading</CardHeading>
+          <CardBody>Content</CardBody>
+        </Card>,
+      );
+
+      const section = document.querySelector('.usa-card');
+      const heading = screen.getByText('Accessible Heading');
+
+      expect(section).toHaveAttribute('aria-labelledby');
+      expect(section?.getAttribute('aria-labelledby')).toBe(heading.id);
+    });
+
+    test('should NOT add aria-labelledby when heading is absent', () => {
+      render(
+        <Card>
+          <CardBody>Just body content</CardBody>
+        </Card>,
+      );
+
+      const section = document.querySelector('.usa-card');
+      expect(section).not.toHaveAttribute('aria-labelledby');
+    });
+
+    test('should generate unique heading ID with -heading suffix', () => {
+      render(
+        <Card>
+          <CardHeading>Test Heading</CardHeading>
+        </Card>,
+      );
+
+      const heading = screen.getByText('Test Heading');
+      expect(heading.id).toMatch(/-heading$/);
+    });
+
+    test('should use custom id prop for section and append -heading for heading ID', () => {
+      render(
+        <Card id="custom-card-id">
+          <CardHeading>Custom ID Test</CardHeading>
+        </Card>,
+      );
+
+      const section = document.querySelector('.usa-card');
+      const heading = screen.getByText('Custom ID Test');
+
+      expect(section).toHaveAttribute('id', 'custom-card-id');
+      expect(heading).toHaveAttribute('id', 'custom-card-id-heading');
+      expect(section).toHaveAttribute('aria-labelledby', 'custom-card-id-heading');
+    });
+
+    test('should ensure no duplicate IDs between section and heading', () => {
+      render(
+        <Card id="my-card">
+          <CardHeading>Heading Text</CardHeading>
+        </Card>,
+      );
+
+      const section = document.querySelector('.usa-card');
+      const heading = screen.getByText('Heading Text');
+
+      expect(section?.id).toBe('my-card');
+      expect(heading.id).toBe('my-card-heading');
+      expect(section?.id).not.toBe(heading.id);
+    });
+
+    test('should maintain unique IDs across multiple cards without custom id', () => {
+      render(
+        <>
+          <Card>
+            <CardHeading>First Card</CardHeading>
+          </Card>
+          <Card>
+            <CardHeading>Second Card</CardHeading>
+          </Card>
+        </>,
+      );
+
+      const firstHeading = screen.getByText('First Card');
+      const secondHeading = screen.getByText('Second Card');
+
+      expect(firstHeading.id).not.toBe(secondHeading.id);
+      expect(firstHeading.id).toBeTruthy();
+      expect(secondHeading.id).toBeTruthy();
+    });
+  });
 });
 
 describe('CardHeading', () => {
