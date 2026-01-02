@@ -2,6 +2,7 @@ import './forms.scss';
 import React, {
   forwardRef,
   useEffect,
+  useId,
   useImperativeHandle,
   useRef,
   useState,
@@ -32,6 +33,8 @@ function Input_(props: InputProps, ref: React.Ref<InputRef>) {
     props;
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const generatedId = useId();
+  const hintId = `input-hint-${props.id ?? generatedId}`;
 
   function emitChange(value: string) {
     if (props.onChange) {
@@ -64,10 +67,6 @@ function Input_(props: InputProps, ref: React.Ref<InputRef>) {
     setInputDisabled(value);
   }
 
-  function ariaDescribedBy() {
-    return `input-hint-${props.id ?? Math.random().toString(36).slice(2, 7)}`;
-  }
-
   function handleFocus(ev: React.FocusEvent<HTMLElement>) {
     if (inputRef.current && props.onFocus) {
       ev.target = inputRef.current;
@@ -98,7 +97,7 @@ function Input_(props: InputProps, ref: React.Ref<InputRef>) {
         {label}
       </label>
       {ariaDescription && (
-        <div className="usa-hint" id={ariaDescribedBy()}>
+        <div className="usa-hint" id={hintId}>
           {ariaDescription}
         </div>
       )}
@@ -109,15 +108,17 @@ function Input_(props: InputProps, ref: React.Ref<InputRef>) {
           {...otherProps}
           required={required}
           className={`usa-input usa-tooltip ${props.className ?? ''}`}
-          aria-invalid={errorMessage ? 'true' : undefined}
-          aria-errormessage={errorMessage ? `${props.id}-input__error-message` : undefined}
+          aria-invalid={errorMessage && errorMessage.length > 0 ? 'true' : undefined}
+          aria-errormessage={
+            errorMessage && errorMessage.length > 0 ? `${props.id}-input__error-message` : undefined
+          }
           data-position={props.position ?? 'right'}
           onChange={handleOnChange}
           onFocus={handleFocus}
           data-testid={props.id}
           disabled={inputDisabled}
           value={inputValue}
-          aria-describedby={ariaDescription ? ariaDescribedBy() : undefined}
+          aria-describedby={ariaDescription ? hintId : undefined}
           ref={inputRef}
         />
         {includeClearButton && !inputDisabled && inputValue.length > 0 && (

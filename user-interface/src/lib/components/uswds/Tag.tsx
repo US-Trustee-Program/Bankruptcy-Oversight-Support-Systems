@@ -1,5 +1,5 @@
 import './Tag.scss';
-import { JSX } from 'react';
+import { JSX, useId } from 'react';
 
 export enum UswdsTagStyle {
   Default = 'bg-base',
@@ -19,6 +19,7 @@ type TagProps = JSX.IntrinsicElements['span'] & {
 
 const Tag = (props: TagProps) => {
   const { id, uswdsStyle, className, title, children, ...otherProps } = props;
+  const generatedId = useId();
 
   const classes = ['usa-tag', 'usa-tag--big', 'text-no-uppercase'];
 
@@ -30,7 +31,7 @@ const Tag = (props: TagProps) => {
     classes.push(className);
   }
 
-  const tagId = id ?? `tag-id-${Math.floor(Math.random() * 10000)}`;
+  const tagId = id ?? `tag-id-${generatedId}`;
   const testId = id ?? 'test';
   return (
     <span

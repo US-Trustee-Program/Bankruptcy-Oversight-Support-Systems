@@ -313,7 +313,7 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
         customErrorMessage={startDateError}
         validators={startDateValidators}
       />
-      <span id={`${id}-start-hint`} className="usa-hint" hidden>
+      <span id={`${id}-start-hint`} className="usa-hint screen-reader-only">
         Enter the beginning date for the range. Use the format MM/DD/YYYY or select from the
         calendar.
         {dateRangeConstraint && ` ${dateRangeConstraint}`}
@@ -336,13 +336,13 @@ function DateRangePicker_(props: DateRangePickerProps, ref: React.Ref<DateRangeP
         customErrorMessage={endDateError}
         validators={endDateValidators}
       />
-      <span id={`${id}-end-hint`} className="usa-hint" hidden>
+      <span id={`${id}-end-hint`} className="usa-hint screen-reader-only">
         Enter the ending date for the range. Use the format MM/DD/YYYY or select from the calendar.
         {dateRangeConstraint && ` ${dateRangeConstraint}`}
       </span>
-      <span id={`${id}-aria-description`} aria-live="polite" hidden>
+      <span id={`${id}-aria-description`} aria-live="polite" className="screen-reader-only">
         <span>Format: numeric month / numeric day / 4-digit year.</span>
-        {ariaDescription && <span aria-label={ariaDescription}></span>}
+        {ariaDescription && <span>{ariaDescription}</span>}
         {(min || max) && (
           <span>
             (Valid date range is
