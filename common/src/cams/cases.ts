@@ -11,7 +11,7 @@ import { Auditable } from './auditable';
 import { CamsUserReference } from './users';
 import { ConsolidationType } from './orders';
 
-export const VALID_CASEID_PATTERN = new RegExp(/^[\dA-Z]{3}-\d{2}-\d{5}$/);
+export const VALID_CASEID_PATTERN = /^[\dA-Z]{3}-\d{2}-\d{5}$/;
 
 type FlatOfficeDetail = {
   officeName: string;
