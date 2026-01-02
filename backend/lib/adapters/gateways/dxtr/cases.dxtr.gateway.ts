@@ -155,15 +155,26 @@ class CasesDxtrGateway implements CasesInterface {
         court.COURT_NAME as courtName,
         office.OFFICE_NAME_DISPLAY as courtDivisionName,
         TRIM(CONCAT(cs.JD_FIRST_NAME, ' ', cs.JD_MIDDLE_NAME, ' ', cs.JD_LAST_NAME)) as judgeName,
-        TRIM(CONCAT(
-          debtor.PY_FIRST_NAME,
-          ' ',
-          debtor.PY_MIDDLE_NAME,
-          ' ',
-          debtor.PY_LAST_NAME,
-          ' ',
-          debtor.PY_GENERATION
-        )) as partyName,
+        COALESCE(
+          NULLIF(TRIM(CONCAT(
+            debtor.PY_FIRST_NAME,
+            ' ',
+            debtor.PY_MIDDLE_NAME,
+            ' ',
+            debtor.PY_LAST_NAME,
+            ' ',
+            debtor.PY_GENERATION
+          )), ''),
+          TRIM(CONCAT(
+            jointDebtor.PY_FIRST_NAME,
+            ' ',
+            jointDebtor.PY_MIDDLE_NAME,
+            ' ',
+            jointDebtor.PY_LAST_NAME,
+            ' ',
+            jointDebtor.PY_GENERATION
+          ))
+        ) as partyName,
         TRIM(CONCAT(
           jointDebtor.PY_FIRST_NAME,
           ' ',
