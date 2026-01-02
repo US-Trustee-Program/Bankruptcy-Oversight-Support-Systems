@@ -44,7 +44,7 @@ function SubmitCancelButtonGroup_(
   }));
 
   return (
-    <ul className={classes}>
+    <ul className={classes} role="group" aria-label="Modal actions">
       {submitButton && (
         <li className="usa-button-group__item">
           <Button

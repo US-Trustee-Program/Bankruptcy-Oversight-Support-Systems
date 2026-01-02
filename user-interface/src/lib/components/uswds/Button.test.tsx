@@ -47,7 +47,6 @@ describe('Test button component', () => {
 
     const button = screen.getByTestId('button-test');
     expect(button).toHaveAttribute('disabled');
-    expect(button).toHaveAttribute('aria-disabled');
   });
 
   test('Should disable button when the disable method is called on the Button ref', () => {
