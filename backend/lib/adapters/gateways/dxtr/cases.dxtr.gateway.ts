@@ -187,7 +187,7 @@ class CasesDxtrGateway implements CasesInterface {
         JOIN [dbo].[AO_OFFICE] AS office
           ON cs.COURT_ID = office.COURT_ID
           AND cs_div.OFFICE_CODE = office.OFFICE_CODE
-        JOIN [dbo].[AO_PY] AS debtor
+        LEFT JOIN [dbo].[AO_PY] AS debtor
           ON debtor.CS_CASEID = cs.CS_CASEID AND debtor.COURT_ID = cs.COURT_ID AND debtor.PY_ROLE = 'db'
         LEFT JOIN [dbo].[AO_PY] AS jointDebtor
           ON jointDebtor.CS_CASEID = cs.CS_CASEID AND jointDebtor.COURT_ID = cs.COURT_ID AND jointDebtor.PY_ROLE = 'jd'
@@ -394,7 +394,7 @@ class CasesDxtrGateway implements CasesInterface {
       JOIN [dbo].[AO_OFFICE] AS office
         ON cs.COURT_ID = office.COURT_ID
         AND cs_div.OFFICE_CODE = office.OFFICE_CODE
-      JOIN [dbo].[AO_PY] AS debtor
+      LEFT JOIN [dbo].[AO_PY] AS debtor
         ON debtor.CS_CASEID = cs.CS_CASEID AND debtor.COURT_ID = cs.COURT_ID AND debtor.PY_ROLE = 'db'
       LEFT JOIN [dbo].[AO_PY] AS jointDebtor
         ON jointDebtor.CS_CASEID = cs.CS_CASEID AND jointDebtor.COURT_ID = cs.COURT_ID AND jointDebtor.PY_ROLE = 'jd'
