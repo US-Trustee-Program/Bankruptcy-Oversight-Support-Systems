@@ -14,7 +14,7 @@ import { OktaProvider } from './providers/okta/OktaProvider';
 import LocalStorage from '@/lib/utils/local-storage';
 import { addApiAfterHook } from '@/lib/models/api';
 import { http401Hook } from './http401-logout';
-import { initializeInactiveLogout } from './inactive-logout';
+import { initializeInactiveLogout } from './session-timer';
 import getApiConfiguration from '@/configuration/apiConfiguration';
 import { CamsUser } from '@common/cams/users';
 import { CamsSession } from '@common/cams/session';
