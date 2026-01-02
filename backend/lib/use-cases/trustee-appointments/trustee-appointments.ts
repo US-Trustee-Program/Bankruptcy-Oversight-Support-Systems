@@ -17,6 +17,7 @@ import {
   ChapterType,
 } from '../../../../common/src/cams/trustees';
 import { Creatable } from '../../adapters/types/persistence.gateway';
+import DateHelper from '../../../../common/src/date-helper';
 
 const MODULE_NAME = 'TRUSTEE-APPOINTMENTS-USE-CASE';
 
@@ -81,7 +82,7 @@ export class TrusteeAppointmentsUseCase {
       };
     };
 
-    const now = new Date().toISOString();
+    const now = DateHelper.getCurrentIsoTimestamp();
 
     return {
       documentType: 'AUDIT_APPOINTMENT',
