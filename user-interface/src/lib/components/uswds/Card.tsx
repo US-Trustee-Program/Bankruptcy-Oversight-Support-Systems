@@ -3,7 +3,7 @@ import { HtmlHeading } from '@/lib/utils/html-semantics';
 import React from 'react';
 import { JSX, ReactNode } from 'react';
 
-type CardProps = JSX.IntrinsicElements['div'] & {
+type CardProps = JSX.IntrinsicElements['section'] & {
   children: ReactNode;
   headingLevel?: HtmlHeading;
 };
@@ -17,6 +17,10 @@ export const Card = ({ children, headingLevel = 'h4', ...props }: CardProps) => 
   let body: ReactNode = null;
   let footer: ReactNode = null;
 
+  const baseId = props.id || `card-${React.useId()}`;
+  const headingId = `${baseId}-heading`;
+  const HeadingTag = headingLevel;
+
   React.Children.forEach(children, (child) => {
     if (!React.isValidElement(child)) {
       return;
@@ -29,19 +33,21 @@ export const Card = ({ children, headingLevel = 'h4', ...props }: CardProps) => 
     }
   });
 
-  const HeadingTag = headingLevel;
+  const sectionAriaProps = heading ? { 'aria-labelledby': headingId } : {};
 
   return (
-    <div className="usa-card" {...props}>
+    <section className="usa-card" {...props} {...sectionAriaProps}>
       <div className="usa-card__container">
         {heading && (
-          <div className="usa-card__header">
-            <HeadingTag className="usa-card__heading">{heading}</HeadingTag>
-          </div>
+          <header className="usa-card__header">
+            <HeadingTag className="usa-card__heading" id={headingId}>
+              {heading}
+            </HeadingTag>
+          </header>
         )}
         {body && <div className="usa-card__body">{body}</div>}
-        {footer && <div className="usa-card__footer">{footer}</div>}
+        {footer && <footer className="usa-card__footer">{footer}</footer>}
       </div>
-    </div>
+    </section>
   );
 };
