@@ -139,9 +139,7 @@ describe('Test DXTR Gateway', () => {
       results: {},
       message: errorMessage,
     };
-    querySpy.mockImplementation(async () => {
-      return Promise.resolve(mockResults);
-    });
+    querySpy.mockResolvedValue(mockResults);
 
     await expect(testCasesDxtrGateway.searchCases(applicationContext, {})).rejects.toThrow(
       errorMessage,
@@ -283,23 +281,15 @@ describe('Test DXTR Gateway', () => {
       message: '',
     };
 
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockCaseResults);
-    });
+    querySpy.mockResolvedValueOnce(mockCaseResults);
 
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockQueryParties);
-    });
+    querySpy.mockResolvedValueOnce(mockQueryParties);
 
     // First for the debtor type.
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockDebtorTypeTransactionResults);
-    });
+    querySpy.mockResolvedValueOnce(mockDebtorTypeTransactionResults);
 
     // Second time for the petition type.
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockDebtorTypeTransactionResults);
-    });
+    querySpy.mockResolvedValueOnce(mockDebtorTypeTransactionResults);
 
     const actualResult = await testCasesDxtrGateway.getCaseSummary(
       applicationContext,
@@ -403,27 +393,17 @@ describe('Test DXTR Gateway', () => {
       message: '',
     };
 
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockCaseResults);
-    });
+    querySpy.mockResolvedValueOnce(mockCaseResults);
 
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockQueryDebtor);
-    });
+    querySpy.mockResolvedValueOnce(mockQueryDebtor);
 
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockQueryJointDebtor);
-    });
+    querySpy.mockResolvedValueOnce(mockQueryJointDebtor);
 
     // First for the debtor type.
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockDebtorTypeTransactionResults);
-    });
+    querySpy.mockResolvedValueOnce(mockDebtorTypeTransactionResults);
 
     // Second time for the petition type.
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockDebtorTypeTransactionResults);
-    });
+    querySpy.mockResolvedValueOnce(mockDebtorTypeTransactionResults);
 
     const actualResult = await testCasesDxtrGateway.getCaseSummary(
       applicationContext,
@@ -497,27 +477,17 @@ describe('Test DXTR Gateway', () => {
       message: '',
     };
 
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockCaseResults);
-    });
+    querySpy.mockResolvedValueOnce(mockCaseResults);
 
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockQueryDebtor);
-    });
+    querySpy.mockResolvedValueOnce(mockQueryDebtor);
 
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockQueryJointDebtor);
-    });
+    querySpy.mockResolvedValueOnce(mockQueryJointDebtor);
 
     // First for the debtor type.
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockDebtorTypeTransactionResults);
-    });
+    querySpy.mockResolvedValueOnce(mockDebtorTypeTransactionResults);
 
     // Second time for the petition type.
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockDebtorTypeTransactionResults);
-    });
+    querySpy.mockResolvedValueOnce(mockDebtorTypeTransactionResults);
 
     const actualResult = await testCasesDxtrGateway.getCaseSummary(
       applicationContext,
@@ -671,33 +641,19 @@ describe('Test DXTR Gateway', () => {
       message: '',
     };
 
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockCaseResults);
-    });
+    querySpy.mockResolvedValueOnce(mockCaseResults);
 
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockQueryDebtor);
-    });
+    querySpy.mockResolvedValueOnce(mockQueryDebtor);
 
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockQueryJointDebtor);
-    });
+    querySpy.mockResolvedValueOnce(mockQueryJointDebtor);
 
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockTransactionResults);
-    });
+    querySpy.mockResolvedValueOnce(mockTransactionResults);
 
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockQueryTrustee);
-    });
+    querySpy.mockResolvedValueOnce(mockQueryTrustee);
 
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockQueryDebtorAttorney);
-    });
+    querySpy.mockResolvedValueOnce(mockQueryDebtorAttorney);
 
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockQueryJointDebtorAttorney);
-    });
+    querySpy.mockResolvedValueOnce(mockQueryJointDebtorAttorney);
 
     const actualResult = await testCasesDxtrGateway.getCaseDetail(
       applicationContext,
@@ -862,33 +818,19 @@ describe('Test DXTR Gateway', () => {
       message: '',
     };
 
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockCaseResults);
-    });
+    querySpy.mockResolvedValueOnce(mockCaseResults);
 
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockQueryParties);
-    });
+    querySpy.mockResolvedValueOnce(mockQueryParties);
 
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockQueryJointDebtor);
-    });
+    querySpy.mockResolvedValueOnce(mockQueryJointDebtor);
 
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockTransactionResults);
-    });
+    querySpy.mockResolvedValueOnce(mockTransactionResults);
 
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockQueryTrustee);
-    });
+    querySpy.mockResolvedValueOnce(mockQueryTrustee);
 
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockQueryDebtorAttorney);
-    });
+    querySpy.mockResolvedValueOnce(mockQueryDebtorAttorney);
 
-    querySpy.mockImplementationOnce(async () => {
-      return Promise.resolve(mockQueryJointDebtorAttorney);
-    });
+    querySpy.mockResolvedValueOnce(mockQueryJointDebtorAttorney);
 
     await testCasesDxtrGateway.getCaseDetail(applicationContext, '081-23-12345');
     // getCase
