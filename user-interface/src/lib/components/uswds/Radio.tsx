@@ -27,6 +27,19 @@ function Radio_(props: RadioProps, ref: React.Ref<RadioRef>) {
     }
   }, [props.checked]);
 
+  // Sync checkedState when browser unchecks this radio (because another radio in the group was selected)
+  useEffect(() => {
+    const input = inputRef.current;
+    if (!input) return;
+
+    const handleNativeChange = () => {
+      setCheckedState(input.checked);
+    };
+
+    input.addEventListener('change', handleNativeChange);
+    return () => input.removeEventListener('change', handleNativeChange);
+  }, []);
+
   function isChecked() {
     return inputRef.current?.checked ?? false;
   }
@@ -79,7 +92,7 @@ function Radio_(props: RadioProps, ref: React.Ref<RadioRef>) {
         value={props.value}
         checked={checkedState}
         required={props.required}
-        onChange={() => {}}
+        onChange={(e) => setCheckedState(e.target.checked)}
         tabIndex={-1}
         ref={inputRef}
       />

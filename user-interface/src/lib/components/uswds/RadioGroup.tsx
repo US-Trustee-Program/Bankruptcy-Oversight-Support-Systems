@@ -9,6 +9,17 @@ export interface RadioGroupProps extends PropsWithChildren {
   children?: ReactElement<any> | Array<ReactElement<any>>;
 }
 
+function getNextIndex(currentIndex: number, key: string, length: number): number {
+  if (currentIndex === -1) {
+    return 0;
+  }
+
+  const isNextKey = key === 'ArrowDown' || key === 'ArrowRight';
+  const delta = isNextKey ? 1 : -1;
+
+  return (currentIndex + delta + length) % length;
+}
+
 export const RadioGroup = (props: RadioGroupProps) => {
   const required = props.required ? 'true' : null;
   const classes = props.className ?? '';
@@ -23,24 +34,20 @@ export const RadioGroup = (props: RadioGroupProps) => {
 
     if (!fieldsetRef.current) return;
 
-    // Find all radio buttons in the group
-    const radios = Array.from(fieldsetRef.current.querySelectorAll<HTMLElement>('[role="radio"]'));
+    const allRadios = Array.from(
+      fieldsetRef.current.querySelectorAll<HTMLElement>('[role="radio"]'),
+    );
+    const radios = allRadios.filter((radio) => {
+      const element = radio as HTMLButtonElement | HTMLInputElement;
+      const isDisabledAttr = element.hasAttribute('disabled') || element.disabled;
+      const isAriaDisabled = element.getAttribute('aria-disabled') === 'true';
+      return !isDisabledAttr && !isAriaDisabled;
+    });
 
     if (radios.length === 0) return;
 
-    const currentIndex = radios.findIndex((radio) => radio === document.activeElement);
-
-    let nextIndex: number;
-    if (currentIndex === -1) {
-      // No radio focused, focus the first one
-      nextIndex = 0;
-    } else if (ev.key === 'ArrowDown' || ev.key === 'ArrowRight') {
-      // Move to next radio (wrap around)
-      nextIndex = (currentIndex + 1) % radios.length;
-    } else {
-      // ArrowUp or ArrowLeft - move to previous radio (wrap around)
-      nextIndex = (currentIndex - 1 + radios.length) % radios.length;
-    }
+    const currentIndex = radios.indexOf(ev.target as HTMLElement);
+    const nextIndex = getNextIndex(currentIndex, ev.key, radios.length);
 
     const targetRadio = radios[nextIndex];
     targetRadio.focus();

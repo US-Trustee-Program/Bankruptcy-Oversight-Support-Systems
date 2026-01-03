@@ -33,8 +33,13 @@ function Checkbox_(props: CheckboxProps, ref: React.Ref<CheckboxRef>) {
   const realCheckboxRef = useRef<HTMLInputElement>(null);
 
   const checkHandler = (
-    _ev: React.MouseEvent<HTMLButtonElement> | React.KeyboardEvent<HTMLButtonElement>,
+    ev: React.MouseEvent<HTMLButtonElement> | React.KeyboardEvent<HTMLButtonElement>,
   ) => {
+    // Ignore keyboard-initiated native clicks; we handle keyboard toggling explicitly in keyUpHandler
+    if ('button' in ev && ev.detail === 0) {
+      return;
+    }
+
     if (props.onChange) {
       const syntheticEvent = {
         target: realCheckboxRef.current,
@@ -50,6 +55,13 @@ function Checkbox_(props: CheckboxProps, ref: React.Ref<CheckboxRef>) {
   };
 
   const keyDownHandler = (ev: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (ev.key === ' ' || ev.key === 'Enter') {
+      // Prevent page scroll / default button behavior, but do not toggle yet
+      ev.preventDefault();
+    }
+  };
+
+  const keyUpHandler = (ev: React.KeyboardEvent<HTMLButtonElement>) => {
     if (ev.key === ' ' || ev.key === 'Enter') {
       ev.preventDefault();
       checkHandler(ev);
@@ -121,6 +133,7 @@ function Checkbox_(props: CheckboxProps, ref: React.Ref<CheckboxRef>) {
           className={`usa-checkbox__label ${UswdsButtonStyle.Unstyled}`}
           onClick={checkHandler}
           onKeyDown={keyDownHandler}
+          onKeyUp={keyUpHandler}
           title={props.title}
           aria-label={props.label || `check ${props.value}`}
           role="checkbox"
