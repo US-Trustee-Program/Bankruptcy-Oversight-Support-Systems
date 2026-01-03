@@ -87,7 +87,6 @@ function Radio_(props: RadioProps, ref: React.Ref<RadioRef>) {
         type="radio"
         name={props.name}
         data-testid={radioTestId}
-        title={props.title}
         disabled={isDisabled}
         value={props.value}
         checked={checkedState}
