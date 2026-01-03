@@ -82,6 +82,8 @@ function Alert_(props: AlertProps, ref: React.Ref<AlertRefType>) {
     hide,
   }));
 
+  const resolvedRole = props.role || 'status';
+
   return (
     <div
       className={`usa-alert-container ${containerClasses}`}
@@ -96,8 +98,8 @@ function Alert_(props: AlertProps, ref: React.Ref<AlertRefType>) {
               ? 'usa-alert__hidden'
               : 'usa-alert__unset'
         }`}
-        role={props.role}
-        aria-live={props.role === 'alert' ? 'assertive' : 'polite'}
+        role={resolvedRole}
+        aria-live={resolvedRole === 'alert' ? 'assertive' : 'polite'}
         data-testid={`alert${props.id ? '-' + props.id : ''}`}
       >
         <div className="usa-alert__body">
