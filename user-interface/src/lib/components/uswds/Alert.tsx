@@ -82,7 +82,7 @@ function Alert_(props: AlertProps, ref: React.Ref<AlertRefType>) {
     hide,
   }));
 
-  const resolvedRole = props.role || 'status';
+  const resolvedRole = props.role || (props.type === UswdsAlertStyle.Error ? 'alert' : 'status');
 
   return (
     <div

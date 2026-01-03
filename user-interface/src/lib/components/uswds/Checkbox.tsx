@@ -122,7 +122,6 @@ function Checkbox_(props: CheckboxProps, ref: React.Ref<CheckboxRef>) {
         onChange={() => {}}
         onFocus={focusHandler}
         data-indeterminate={indeterminateState || null}
-        title={props.title}
         required={props.required}
         disabled={props.disabled}
         tabIndex={-1}
