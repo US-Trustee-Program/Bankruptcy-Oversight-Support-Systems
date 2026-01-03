@@ -52,7 +52,7 @@ export default function ButtonGroup({
         }
 
         return (
-          <li key={idx} className="usa-button-group__item">
+          <li key={idx} className="usa-button-group__item" role="none">
             {createElement(
               typedChild.type,
               {

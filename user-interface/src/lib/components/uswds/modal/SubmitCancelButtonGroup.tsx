@@ -46,7 +46,7 @@ function SubmitCancelButtonGroup_(
   return (
     <ul className={classes} role="group" aria-label="Modal actions">
       {submitButton && (
-        <li className="usa-button-group__item">
+        <li className="usa-button-group__item" role="none">
           <Button
             id={`${modalId}-submit-button`}
             ref={toggleSubmitButtonRef}
@@ -61,7 +61,7 @@ function SubmitCancelButtonGroup_(
         </li>
       )}
       {cancelButton && (
-        <li className="usa-button-group__item">
+        <li className="usa-button-group__item" role="none">
           <Button
             id={`${modalId}-cancel-button`}
             uswdsStyle={cancelButton.uswdsStyle ?? UswdsButtonStyle.Unstyled}
