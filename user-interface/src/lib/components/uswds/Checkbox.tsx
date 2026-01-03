@@ -32,7 +32,14 @@ function Checkbox_(props: CheckboxProps, ref: React.Ref<CheckboxRef>) {
   const [indeterminateState, setIndeterminateState] = useState<boolean>(false);
   const realCheckboxRef = useRef<HTMLInputElement>(null);
 
-  const checkHandler = (_ev: React.MouseEvent<HTMLButtonElement>) => {
+  const checkHandler = (
+    ev: React.MouseEvent<HTMLButtonElement> | React.KeyboardEvent<HTMLButtonElement>,
+  ) => {
+    // Ignore keyboard-initiated native clicks; we handle keyboard toggling explicitly in keyUpHandler
+    if ('button' in ev && ev.detail === 0) {
+      return;
+    }
+
     if (props.onChange) {
       const syntheticEvent = {
         target: realCheckboxRef.current,
@@ -45,6 +52,20 @@ function Checkbox_(props: CheckboxProps, ref: React.Ref<CheckboxRef>) {
     }
 
     setIsChecked(!isChecked);
+  };
+
+  const keyDownHandler = (ev: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (ev.key === ' ' || ev.key === 'Enter') {
+      // Prevent page scroll / default button behavior, but do not toggle yet
+      ev.preventDefault();
+    }
+  };
+
+  const keyUpHandler = (ev: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (ev.key === ' ' || ev.key === 'Enter') {
+      ev.preventDefault();
+      checkHandler(ev);
+    }
   };
 
   const focusHandler = (ev: React.FocusEvent<HTMLElement>) => {
@@ -97,12 +118,10 @@ function Checkbox_(props: CheckboxProps, ref: React.Ref<CheckboxRef>) {
         ref={realCheckboxRef}
         name={props.name ?? ''}
         value={props.value}
-        aria-label={props.label ?? `check ${props.value}`}
         checked={isChecked}
         onChange={() => {}}
         onFocus={focusHandler}
         data-indeterminate={indeterminateState || null}
-        title={props.title}
         required={props.required}
         disabled={props.disabled}
         tabIndex={-1}
@@ -112,8 +131,12 @@ function Checkbox_(props: CheckboxProps, ref: React.Ref<CheckboxRef>) {
           id={labelTestId}
           className={`usa-checkbox__label ${UswdsButtonStyle.Unstyled}`}
           onClick={checkHandler}
+          onKeyDown={keyDownHandler}
+          onKeyUp={keyUpHandler}
           title={props.title}
           aria-label={props.label || `check ${props.value}`}
+          role="checkbox"
+          aria-checked={isChecked}
         >
           {props.label ?? <>&nbsp;</>}
         </Button>
