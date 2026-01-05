@@ -173,6 +173,7 @@ function CaseNumberInput_(props: CaseNumberInputProps, ref: React.Ref<InputRef>)
       ariaDescription="For example, 12-34567"
       placeholder="__-_____"
       aria-placeholder=""
+      maxLength={8}
     ></Input>
   );
 }

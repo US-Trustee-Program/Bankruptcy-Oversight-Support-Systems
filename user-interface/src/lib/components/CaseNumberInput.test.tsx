@@ -232,6 +232,27 @@ describe('Case number input component', () => {
       expect(input.selectionEnd).toBe(2);
     });
   });
+
+  test('should have maxLength attribute set to 8 to prevent typing more than 7 digits plus hyphen', async () => {
+    const changeFunction = vi.fn();
+    render(<CaseNumberInput onChange={changeFunction} value="" />);
+
+    const input = document.querySelector('.usa-input') as HTMLInputElement;
+
+    // Verify maxLength attribute is set
+    expect(input).toHaveAttribute('maxlength', '8');
+
+    // Type 7 digits to get "00-00000" (8 characters including hyphen)
+    await userEvent.type(input, '0000000');
+    expect(input).toHaveValue('00-00000');
+
+    // With maxLength in place, userEvent.type will not allow typing beyond 8 characters
+    // The browser's native maxLength enforcement prevents additional characters
+    await userEvent.type(input, '123');
+
+    // Value should still be "00-00000" because maxLength prevents additional input
+    expect(input).toHaveValue('00-00000');
+  });
 });
 
 describe('Test formatCaseNumberInput function', () => {
