@@ -3,7 +3,7 @@ import Api2 from '@/lib/models/api2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { Staff } from '@common/cams/users';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
-import { CamsRole, OversightRole } from '@common/cams/roles';
+import { CamsRole, CamsRoleType, OversightRole, OversightRoleType } from '@common/cams/roles';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import ComboBox from '@/lib/components/combobox/ComboBox';
@@ -12,13 +12,13 @@ import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import './TrusteeOversightAssignmentModal.scss';
 
-const ROLE_LABELS: Record<OversightRole, string> = {
+const ROLE_LABELS: Record<OversightRoleType, string> = {
   [OversightRole.OversightAttorney]: 'attorney',
   [OversightRole.OversightAuditor]: 'auditor',
   [OversightRole.OversightParalegal]: 'paralegal',
 };
 
-const OVERSIGHT_TO_CAMS_ROLE: Record<OversightRole, CamsRole> = {
+const OVERSIGHT_TO_CAMS_ROLE: Record<OversightRoleType, CamsRoleType> = {
   [OversightRole.OversightAttorney]: CamsRole.TrialAttorney,
   [OversightRole.OversightAuditor]: CamsRole.Auditor,
   [OversightRole.OversightParalegal]: CamsRole.Paralegal,
@@ -27,7 +27,7 @@ const OVERSIGHT_TO_CAMS_ROLE: Record<OversightRole, CamsRole> = {
 interface TrusteeOversightAssignmentModalProps {
   modalId: string;
   trusteeId: string;
-  role: OversightRole;
+  role: OversightRoleType;
   onAssignment: (isAssigned: boolean) => void;
 }
 

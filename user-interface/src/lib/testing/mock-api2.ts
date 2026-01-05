@@ -36,7 +36,7 @@ import {
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { Creatable } from '@common/cams/creatable';
 import { BankListItem, BankruptcySoftwareListItem } from '@common/cams/lists';
-import { OversightRole } from '@common/cams/roles';
+import { OversightRole, OversightRoleType } from '@common/cams/roles';
 
 // Helper to generate a random ID
 function randomId() {
@@ -2625,7 +2625,7 @@ async function getTrusteeOversightAssignments(
 async function createTrusteeOversightAssignment(
   trusteeId: string,
   userId: string,
-  role: OversightRole,
+  role: OversightRoleType,
 ): Promise<ResponseBody<TrusteeOversightAssignment>> {
   return {
     data: {

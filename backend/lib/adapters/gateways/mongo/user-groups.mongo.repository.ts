@@ -69,4 +69,29 @@ export class UserGroupsMongoRepository extends BaseMongoRepository implements Us
       });
     }
   }
+
+  async getUserGroupsByNames(
+    context: ApplicationContext,
+    groupNames: string[],
+  ): Promise<UserGroup[]> {
+    try {
+      const doc = using<UserGroupDocument>();
+      const query = doc('groupName').contains(groupNames);
+
+      const documents = await this.getAdapter<UserGroupDocument>().find(query);
+
+      context.logger.info(
+        MODULE_NAME,
+        `Retrieved ${documents.length} user groups for ${groupNames.length} group names`,
+      );
+
+      // Convert documents to UserGroup (strip documentType)
+      return documents.map(({ documentType, ...userGroup }) => userGroup as UserGroup);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: 'Failed to retrieve user groups by names.',
+        data: { groupNames },
+      });
+    }
+  }
 }

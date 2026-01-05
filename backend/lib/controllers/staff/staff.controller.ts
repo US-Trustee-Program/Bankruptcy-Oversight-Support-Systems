@@ -15,7 +15,9 @@ export class StaffController implements CamsController {
     this.useCase = new StaffUseCase(context);
   }
 
-  public async handleRequest(context: ApplicationContext): Promise<CamsHttpResponseInit<Staff[]>> {
+  public async handleRequest(
+    context: ApplicationContext,
+  ): Promise<CamsHttpResponseInit<Record<string, Staff[]>>> {
     try {
       const data = await this.useCase.getOversightStaff(context);
       return httpSuccess({ body: { data } });

@@ -6,7 +6,7 @@ import Api2 from '@/lib/models/api2';
 import * as UseGlobalAlertModule from '@/lib/hooks/UseGlobalAlert';
 import { Staff } from '@common/cams/users';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
-import { CamsRole, OversightRole } from '@common/cams/roles';
+import { CamsRole, OversightRole, OversightRoleType } from '@common/cams/roles';
 import { TrusteeOversightAssignmentModalRef } from './TrusteeOversightAssignmentModal';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
@@ -73,7 +73,7 @@ describe('TrusteeOversightAssignmentModal', () => {
   });
 
   function renderWithProps(
-    role: OversightRole,
+    role: OversightRoleType,
     props?: Partial<{
       onAssignment: (flag: boolean) => void;
       ref?: React.RefObject<TrusteeOversightAssignmentModalRef | null> | undefined;

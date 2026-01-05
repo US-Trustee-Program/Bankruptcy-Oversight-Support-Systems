@@ -1,7 +1,7 @@
 import { ApplicationContext } from '../../types/basic';
 import { CamsUserReference, Staff } from '../../../../../common/src/cams/users';
 import { Auditable, createAuditRecord } from '../../../../../common/src/cams/auditable';
-import { CamsRole } from '../../../../../common/src/cams/roles';
+import { CamsRole, CamsRoleType } from '../../../../../common/src/cams/roles';
 import { getCamsUserReference } from '../../../../../common/src/cams/session';
 import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
 import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
@@ -154,7 +154,7 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
       conditions.push(this.doc('officeCode').equals(predicate.officeCode));
     }
     if (predicate?.role) {
-      conditions.push(this.doc('roles').contains([predicate.role as CamsRole]));
+      conditions.push(this.doc('roles').contains([predicate.role as CamsRoleType]));
     }
 
     try {

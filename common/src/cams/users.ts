@@ -1,5 +1,5 @@
 import { UstpOfficeDetails } from './offices';
-import { CamsRole } from './roles';
+import { CamsRoleType } from './roles';
 
 export type CamsUserReference = {
   id: string;
@@ -7,12 +7,12 @@ export type CamsUserReference = {
 };
 
 export type Staff = CamsUserReference & {
-  roles?: CamsRole[];
+  roles?: CamsRoleType[];
 };
 
 export type CamsUser = CamsUserReference & {
   offices?: UstpOfficeDetails[];
-  roles?: CamsRole[];
+  roles?: CamsRoleType[];
 };
 
 export type AttorneyUser = CamsUser & {

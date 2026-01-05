@@ -1,7 +1,11 @@
 import { StaffRepository } from '../../../use-cases/gateways.types';
 import { ApplicationContext } from '../../types/basic';
 import { Staff } from '../../../../../common/src/cams/users';
-import { CamsRole, OversightRole } from '../../../../../common/src/cams/roles';
+import {
+  CamsRoleType,
+  OversightRole,
+  OversightRoleType,
+} from '../../../../../common/src/cams/roles';
 import { getOfficesRepository } from '../../../factory';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 
@@ -40,7 +44,7 @@ export class StaffMongoRepository extends BaseMongoRepository implements StaffRe
 
   private async getStaffByRole(
     applicationContext: ApplicationContext,
-    role: CamsRole | OversightRole,
+    role: CamsRoleType | OversightRoleType,
   ): Promise<Staff[]> {
     const repo = getOfficesRepository(applicationContext);
     const results = await repo.search({ role });

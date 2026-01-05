@@ -282,6 +282,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  getUserGroupsByNames(_ignore: any, _groupNames: string[]): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
   getTrusteeAppointments(_ignore: any): Promise<any[]> {
     throw new Error('Method not implemented.');
   }

@@ -3,7 +3,7 @@ import { Identifiable } from './document';
 import { LegacyAddress } from './parties';
 import { ContactInformation } from './contact';
 import { CamsUserReference } from './users';
-import { OversightRole } from './roles';
+import { OversightRoleType } from './roles';
 import { NullableOptionalFields } from '../api/common';
 
 // Chapter types supported for trustee assignments
@@ -53,7 +53,7 @@ export type TrusteeOversightAssignment = Auditable &
   Identifiable & {
     trusteeId: string;
     user: CamsUserReference;
-    role: OversightRole;
+    role: OversightRoleType;
     unassignedOn?: string;
   };
 
@@ -90,7 +90,7 @@ export type TrusteeSoftwareHistory = AbstractTrusteeHistory<string, string> & {
   documentType: 'AUDIT_SOFTWARE';
 };
 
-type UserAndRole = { user: CamsUserReference; role: OversightRole };
+type UserAndRole = { user: CamsUserReference; role: OversightRoleType };
 export type TrusteeOversightHistory = AbstractTrusteeHistory<
   UserAndRole | null,
   UserAndRole | null
