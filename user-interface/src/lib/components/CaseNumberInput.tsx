@@ -73,36 +73,19 @@ function CaseNumberInput_(props: CaseNumberInputProps, ref: React.Ref<InputRef>)
   }
 
   function handleOnChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    const input = ev.target as HTMLInputElement;
-    const cursorPosition = input.selectionStart ?? 0;
-    const previousValue = input.value;
+    const inputElement = ev.target as HTMLInputElement;
+    const currentCursorPosition = inputElement.selectionStart ?? 0;
+    const previousValue = inputElement.value;
 
     const { joinedInput, isValidFullCaseNumber } = formatCaseNumberValue(ev.target.value);
-
     forwardedRef?.current?.setValue(joinedInput);
 
-    // Calculate new cursor position based on digits before cursor
-    const digitsBeforeCursor = previousValue.slice(0, cursorPosition).replace(/\D/g, '').length;
-
-    let newCursorPosition = 0;
-    let digitCount = 0;
-    for (let i = 0; i < joinedInput.length; i++) {
-      if (joinedInput[i].match(/\d/)) {
-        digitCount++;
-        if (digitCount === digitsBeforeCursor) {
-          newCursorPosition = i + 1;
-          break;
-        }
-      }
-    }
-
-    // Restore cursor position after React updates the DOM
-    setTimeout(() => {
-      const inputElement = ev.target as HTMLInputElement;
-      if (inputElement && typeof inputElement.setSelectionRange === 'function') {
-        inputElement.setSelectionRange(newCursorPosition, newCursorPosition);
-      }
-    }, 0);
+    // Calculate and set new cursor position based on digits before cursor
+    const digitsBeforeCursor = previousValue
+      .slice(0, currentCursorPosition)
+      .replace(/\D/g, '').length;
+    const newCursorPosition = calculateNewCursorPosition(joinedInput, digitsBeforeCursor);
+    setTimeout(() => setNewCursorPosition(inputElement, newCursorPosition), 0);
 
     const caseNumber = allowPartialCaseNumber
       ? joinedInput || undefined
@@ -111,6 +94,23 @@ function CaseNumberInput_(props: CaseNumberInputProps, ref: React.Ref<InputRef>)
         : undefined;
 
     onChange(caseNumber);
+  }
+
+  function setNewCursorPosition(inputElement: HTMLInputElement, newCursorPosition: number): void {
+    if (inputElement && typeof inputElement.setSelectionRange === 'function') {
+      inputElement.setSelectionRange(newCursorPosition, newCursorPosition);
+    }
+  }
+
+  function calculateNewCursorPosition(joinedInput: string, digitsBeforeCursor: number) {
+    for (let i = 0, digitCount = 0; i < joinedInput.length; i++) {
+      if (!joinedInput[i].match(/\d/)) continue;
+      digitCount++;
+      if (digitCount === digitsBeforeCursor) {
+        return i + 1;
+      }
+    }
+    return 0;
   }
 
   function handleEnter(ev: React.KeyboardEvent) {
