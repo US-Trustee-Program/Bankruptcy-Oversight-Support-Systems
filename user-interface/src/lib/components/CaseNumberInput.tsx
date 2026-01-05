@@ -115,13 +115,26 @@ function CaseNumberInput_(props: CaseNumberInputProps, ref: React.Ref<InputRef>)
   }
 
   function calculateNewCursorPosition(joinedInput: string, digitsBeforeCursor: number) {
+    if (digitsBeforeCursor === 0) {
+      return 0;
+    }
+
+    let lastDigitPosition = -1;
+
     for (let i = 0, digitCount = 0; i < joinedInput.length; i++) {
       if (!joinedInput[i].match(/\d/)) continue;
       digitCount++;
+      lastDigitPosition = i;
+
       if (digitCount === digitsBeforeCursor) {
         return i + 1;
       }
     }
+
+    if (lastDigitPosition >= 0) {
+      return lastDigitPosition + 1;
+    }
+
     return 0;
   }
 
