@@ -50,7 +50,7 @@
     "@okta/okta-react": "6.10.0",
     "@tiptap/extension-bold": "3.12.1",
     "@tiptap/extension-document": "3.12.1",
-    "@tiptap/extension-italic": "3.12.1",
+    "@tiptap/extension-italic": "3.13.0",
     "@tiptap/extension-list": "3.12.1",
     "@tiptap/extension-paragraph": "3.12.1",
     "@tiptap/extension-text": "3.12.1",
