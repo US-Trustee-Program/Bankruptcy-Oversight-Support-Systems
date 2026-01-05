@@ -73,9 +73,35 @@ function CaseNumberInput_(props: CaseNumberInputProps, ref: React.Ref<InputRef>)
   }
 
   function handleOnChange(ev: React.ChangeEvent<HTMLInputElement>) {
+    const input = ev.target as HTMLInputElement;
+    const cursorPosition = input.selectionStart ?? 0;
+    const previousValue = input.value;
+
     const { joinedInput, isValidFullCaseNumber } = formatCaseNumberValue(ev.target.value);
 
     forwardedRef?.current?.setValue(joinedInput);
+
+    // Calculate new cursor position based on digits before cursor
+    const digitsBeforeCursor = previousValue.slice(0, cursorPosition).replace(/\D/g, '').length;
+
+    let newCursorPosition = 0;
+    let digitCount = 0;
+    for (let i = 0; i < joinedInput.length; i++) {
+      if (joinedInput[i].match(/\d/)) {
+        digitCount++;
+        if (digitCount === digitsBeforeCursor) {
+          newCursorPosition = i + 1;
+          break;
+        }
+      }
+    }
+
+    // Restore cursor position after React updates the DOM
+    setTimeout(() => {
+      if (input) {
+        input.setSelectionRange(newCursorPosition, newCursorPosition);
+      }
+    }, 0);
 
     const caseNumber = allowPartialCaseNumber
       ? joinedInput || undefined
