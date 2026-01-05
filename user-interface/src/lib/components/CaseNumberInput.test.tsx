@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
 import CaseNumberInput, { formatCaseNumberValue } from './CaseNumberInput';
-import { act, fireEvent, render, waitFor } from '@testing-library/react';
+import { act, render, waitFor } from '@testing-library/react';
 import { InputRef } from '../type-declarations/input-fields';
 import React from 'react';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
@@ -156,16 +156,17 @@ describe('Case number input component', () => {
     render(<CaseNumberInput onChange={changeFunction} value="" />);
 
     const input = document.querySelector('.usa-input') as HTMLInputElement;
+    input.focus();
 
     // Type "24-56789"
-    await userEvent.type(input, '2456789');
+    await userEvent.keyboard('2456789');
     expect(input).toHaveValue('24-56789');
 
     // Simulate deleting the "5" by setting cursor position and firing change event
     // User has cursor at position 4 (after "24-5"), deletes "5" to get "246789"
     // After deletion, cursor should be at position 2 in the raw value "24|6789"
     input.setSelectionRange(4, 4);
-    fireEvent.change(input, { target: { value: '246789', selectionStart: 2 } });
+    await userEvent.keyboard('{backspace}');
 
     // Wait for React to update
     await waitFor(() => {
@@ -185,16 +186,17 @@ describe('Case number input component', () => {
     render(<CaseNumberInput onChange={changeFunction} value="" />);
 
     const input = document.querySelector('.usa-input') as HTMLInputElement;
+    input.focus();
 
     // Type "24-56789"
-    await userEvent.type(input, '2456789');
+    await userEvent.keyboard('2456789');
     expect(input).toHaveValue('24-56789');
 
     // Simulate deleting the first digit "2" by setting cursor at position 1 and deleting
     // User has cursor at position 1 (after "2"), deletes "2" to get "456789"
     // After deletion, cursor should be at position 0 in the raw value
     input.setSelectionRange(1, 1);
-    fireEvent.change(input, { target: { value: '456789', selectionStart: 0 } });
+    await userEvent.keyboard('{backspace}');
 
     // Wait for React to update
     await waitFor(() => {
@@ -214,22 +216,22 @@ describe('Case number input component', () => {
     render(<CaseNumberInput onChange={changeFunction} value="" />);
 
     const input = document.querySelector('.usa-input') as HTMLInputElement;
+    input.focus();
 
     // Type "24-56789"
-    await userEvent.type(input, '2456789');
+    await userEvent.keyboard('2456789');
     expect(input).toHaveValue('24-56789');
 
     // Simulate deleting "4" when cursor is at position 2 (after "24")
     // User has cursor at position 2 (after "24"), deletes "4" to get "256789"
     input.setSelectionRange(2, 2);
-    fireEvent.change(input, { target: { value: '256789', selectionStart: 2 } });
+    await userEvent.keyboard('{backspace}');
 
     await waitFor(() => {
       // After deleting "4", value should be "25-6789"
       expect(input).toHaveValue('25-6789');
-      // Cursor should be at position 2 (after "25")
-      expect(input.selectionStart).toBe(2);
-      expect(input.selectionEnd).toBe(2);
+      expect(input.selectionStart).toBe(1);
+      expect(input.selectionEnd).toBe(1);
     });
   });
 
