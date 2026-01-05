@@ -44,7 +44,7 @@ import {
   TrusteeOversightAssignment,
 } from '@common/cams/trustees';
 import { TrusteeAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
-import { OversightRole } from '@common/cams/roles';
+import { OversightRoleType } from '@common/cams/roles';
 import {
   BankList,
   BankListItem,
@@ -467,7 +467,7 @@ async function getTrusteeOversightAssignments(trusteeId: string) {
 async function createTrusteeOversightAssignment(
   trusteeId: string,
   userId: string,
-  role: OversightRole,
+  role: OversightRoleType,
 ) {
   return api().post<TrusteeOversightAssignment>(`/trustees/${trusteeId}/oversight-assignments`, {
     userId,

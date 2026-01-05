@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { CamsRole } from '@common/cams/roles';
+import { CamsRoleType } from '@common/cams/roles';
 import MockData from '@common/cams/test-utilities/mock-data';
 import LocalStorage from '../utils/local-storage';
 import { GlobalAlertRef } from '../components/cams/GlobalAlert/GlobalAlert';
@@ -40,7 +40,7 @@ function setUser(override: Partial<CamsUser> = {}) {
   return user;
 }
 
-function setUserWithRoles(roles: CamsRole[]) {
+function setUserWithRoles(roles: CamsRoleType[]) {
   const user = MockData.getCamsUser({ roles });
   LocalStorage.setSession(MockData.getCamsSession({ user }));
   return user;

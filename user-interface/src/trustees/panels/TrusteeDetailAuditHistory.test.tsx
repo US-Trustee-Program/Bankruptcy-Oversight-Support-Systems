@@ -15,7 +15,7 @@ import {
 } from '@common/cams/trustees';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { ContactInformation } from '@common/cams/contact';
-import { OversightRole } from '@common/cams/roles';
+import { OversightRole, OversightRoleType } from '@common/cams/roles';
 
 describe('TrusteeDetailAuditHistory', () => {
   const mockTrusteeId = '12345';
@@ -1218,14 +1218,14 @@ describe('TrusteeDetailAuditHistory', () => {
         trusteeId: 'audit-oversight-trustee',
         documentType: 'AUDIT_OVERSIGHT',
         before: {
-          role: 'unknown-role' as OversightRole,
+          role: 'unknown-role' as OversightRoleType,
           user: {
             id: 'user-before',
             name: 'John Unknown',
           },
         },
         after: {
-          role: 'another-unknown-role' as OversightRole,
+          role: 'another-unknown-role' as OversightRoleType,
           user: {
             id: 'user-after',
             name: 'Jane Unknown',

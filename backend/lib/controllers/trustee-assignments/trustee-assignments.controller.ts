@@ -7,13 +7,13 @@ import { CamsController } from '../controller';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { NotFoundError } from '../../common-errors/not-found-error';
-import { OversightRole } from '../../../../common/src/cams/roles';
+import { OversightRoleType } from '../../../../common/src/cams/roles';
 
 const MODULE_NAME = 'TRUSTEE-ASSIGNMENTS-CONTROLLER';
 
 interface CreateAssignmentRequest {
   userId: string;
-  role: OversightRole;
+  role: OversightRoleType;
 }
 
 export class TrusteeAssignmentsController implements CamsController {

@@ -16,5 +16,5 @@ export type CaseAssignment = Auditable & {
 export type StaffAssignmentAction = {
   caseId: string;
   attorneyList: CamsUserReference[];
-  role: CamsRole.TrialAttorney;
+  role: typeof CamsRole.TrialAttorney;
 };
