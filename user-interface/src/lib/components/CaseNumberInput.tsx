@@ -43,6 +43,8 @@ function CaseNumberInput_(props: CaseNumberInputProps, ref: React.Ref<InputRef>)
   const forwardedRef = useRef<InputRef>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const MAX_CHARACTERS_ALLOWED_ON_INPUT = 8;
+
   function getValue() {
     return forwardedRef.current?.getValue() ?? '';
   }
@@ -76,10 +78,10 @@ function CaseNumberInput_(props: CaseNumberInputProps, ref: React.Ref<InputRef>)
     const inputElement = ev.target as HTMLInputElement;
     const previousValue = inputElement.value;
     const currentCursorPosition = inputElement.selectionStart ?? 0;
+    const { joinedInput, isValidFullCaseNumber } = formatCaseNumberValue(ev.target.value);
 
-    await handleFormattedCaseNumberString(ev);
+    await handleFormattedCaseNumberString(joinedInput, isValidFullCaseNumber);
 
-    const { joinedInput } = formatCaseNumberValue(ev.target.value);
     const digitsBeforeCursor = previousValue
       .slice(0, currentCursorPosition)
       .replace(/\D/g, '').length;
@@ -88,18 +90,21 @@ function CaseNumberInput_(props: CaseNumberInputProps, ref: React.Ref<InputRef>)
     setNewCursorPosition(inputElement, newCursorPosition);
   }
 
-  async function handleFormattedCaseNumberString(ev: React.ChangeEvent<HTMLInputElement>) {
-    const { joinedInput, isValidFullCaseNumber } = formatCaseNumberValue(ev.target.value);
+  function getCaseNumberString(
+    joinedInput: string,
+    isValidFullCaseNumber: boolean,
+  ): string | undefined {
+    if (allowPartialCaseNumber) return joinedInput || undefined;
+    if (isValidFullCaseNumber) return joinedInput;
+    return undefined;
+  }
+
+  async function handleFormattedCaseNumberString(
+    joinedInput: string,
+    isValidFullCaseNumber: boolean,
+  ) {
     forwardedRef?.current?.setValue(joinedInput);
-
-    let caseNumber: string | undefined;
-
-    if (allowPartialCaseNumber) {
-      caseNumber = joinedInput || undefined;
-    } else {
-      caseNumber = isValidFullCaseNumber ? joinedInput : undefined;
-    }
-
+    const caseNumber: string | undefined = getCaseNumberString(joinedInput, isValidFullCaseNumber);
     onChange(caseNumber);
   }
 
@@ -180,7 +185,7 @@ function CaseNumberInput_(props: CaseNumberInputProps, ref: React.Ref<InputRef>)
       ariaDescription="For example, 12-34567"
       placeholder="__-_____"
       aria-placeholder=""
-      maxLength={8}
+      maxLength={MAX_CHARACTERS_ALLOWED_ON_INPUT}
     ></Input>
   );
 }
