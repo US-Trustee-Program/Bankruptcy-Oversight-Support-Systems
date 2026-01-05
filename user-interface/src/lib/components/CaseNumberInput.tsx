@@ -98,8 +98,9 @@ function CaseNumberInput_(props: CaseNumberInputProps, ref: React.Ref<InputRef>)
 
     // Restore cursor position after React updates the DOM
     setTimeout(() => {
-      if (input) {
-        input.setSelectionRange(newCursorPosition, newCursorPosition);
+      const inputElement = ev.target as HTMLInputElement;
+      if (inputElement && typeof inputElement.setSelectionRange === 'function') {
+        inputElement.setSelectionRange(newCursorPosition, newCursorPosition);
       }
     }, 0);
 
