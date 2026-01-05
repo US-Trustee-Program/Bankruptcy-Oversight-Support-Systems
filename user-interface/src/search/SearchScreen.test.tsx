@@ -325,7 +325,6 @@ describe('search screen', () => {
     const rows = document.querySelectorAll('#search-results-table-body > tr');
     expect(rows).toHaveLength(caseList.length);
 
-    await userEvent.clear(caseNumberInput);
     await userEvent.type(caseNumberInput, incompleteCaseNumber);
     const numberOfCallsBefore = searchCasesSpy.mock.calls.length;
     await userEvent.click(searchButton);
