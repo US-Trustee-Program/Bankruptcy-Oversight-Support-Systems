@@ -255,6 +255,58 @@ describe('Case number input component', () => {
     // Value should still be "00-00000" because maxLength prevents additional input
     expect(input).toHaveValue('00-00000');
   });
+
+  test('when max length is reached, typing in the middle should not work until a character is deleted', async () => {
+    const changeFunction = vi.fn();
+    render(<CaseNumberInput onChange={changeFunction} value="" />);
+
+    const input = document.querySelector('.usa-input') as HTMLInputElement;
+    input.focus();
+
+    await userEvent.keyboard('2456789');
+    expect(input).toHaveValue('24-56789');
+
+    input.setSelectionRange(4, 4);
+    expect(input.selectionStart).toBe(4);
+
+    await userEvent.keyboard('8');
+
+    expect(input).toHaveValue('24-56789');
+    expect(input.selectionStart).toBe(4);
+    expect(input.selectionEnd).toBe(4);
+
+    await userEvent.keyboard('{backspace}');
+
+    expect(input).toHaveValue('24-6789');
+    expect(input.selectionStart).toBe(2);
+
+    await userEvent.keyboard('9');
+
+    await waitFor(() => {
+      expect(input).toHaveValue('24-96789');
+      expect(input.selectionStart).toBe(4);
+      expect(input.selectionEnd).toBe(4);
+    });
+  });
+
+  test('when max length is reached, typing at the end should do nothing', async () => {
+    const changeFunction = vi.fn();
+    render(<CaseNumberInput onChange={changeFunction} value="" />);
+
+    const input = document.querySelector('.usa-input') as HTMLInputElement;
+    input.focus();
+
+    await userEvent.keyboard('0000000');
+    expect(input).toHaveValue('00-00000');
+
+    expect(input.selectionStart).toBe(8);
+
+    await userEvent.keyboard('12');
+
+    expect(input).toHaveValue('00-00000');
+    expect(input.selectionStart).toBe(8);
+    expect(input.selectionEnd).toBe(8);
+  });
 });
 
 describe('Test formatCaseNumberInput function', () => {
