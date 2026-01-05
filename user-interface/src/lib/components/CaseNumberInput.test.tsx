@@ -158,7 +158,6 @@ describe('Case number input component', () => {
     const input = document.querySelector('.usa-input') as HTMLInputElement;
     input.focus();
 
-    // Type "24-56789"
     await userEvent.keyboard('2456789');
     expect(input).toHaveValue('24-56789');
 
@@ -168,13 +167,10 @@ describe('Case number input component', () => {
     input.setSelectionRange(4, 4);
     await userEvent.keyboard('{backspace}');
 
-    // Wait for React to update
     await waitFor(() => {
-      // After deleting "5", value should be "24-6789"
       expect(input).toHaveValue('24-6789');
     });
 
-    // Verify cursor is at position 2 (after "24|-6789"), not at the end
     await waitFor(() => {
       expect(input.selectionStart).toBe(2);
       expect(input.selectionEnd).toBe(2);
@@ -188,7 +184,6 @@ describe('Case number input component', () => {
     const input = document.querySelector('.usa-input') as HTMLInputElement;
     input.focus();
 
-    // Type "24-56789"
     await userEvent.keyboard('2456789');
     expect(input).toHaveValue('24-56789');
 
@@ -198,13 +193,10 @@ describe('Case number input component', () => {
     input.setSelectionRange(1, 1);
     await userEvent.keyboard('{backspace}');
 
-    // Wait for React to update
     await waitFor(() => {
-      // After deleting "2", value should be "45-6789"
       expect(input).toHaveValue('45-6789');
     });
 
-    // Verify cursor is at position 0 (at the start)
     await waitFor(() => {
       expect(input.selectionStart).toBe(0);
       expect(input.selectionEnd).toBe(0);
@@ -218,17 +210,13 @@ describe('Case number input component', () => {
     const input = document.querySelector('.usa-input') as HTMLInputElement;
     input.focus();
 
-    // Type "24-56789"
     await userEvent.keyboard('2456789');
     expect(input).toHaveValue('24-56789');
 
-    // Simulate deleting "4" when cursor is at position 2 (after "24")
-    // User has cursor at position 2 (after "24"), deletes "4" to get "256789"
     input.setSelectionRange(2, 2);
     await userEvent.keyboard('{backspace}');
 
     await waitFor(() => {
-      // After deleting "4", value should be "25-6789"
       expect(input).toHaveValue('25-6789');
       expect(input.selectionStart).toBe(1);
       expect(input.selectionEnd).toBe(1);
@@ -241,18 +229,13 @@ describe('Case number input component', () => {
 
     const input = document.querySelector('.usa-input') as HTMLInputElement;
 
-    // Verify maxLength attribute is set
     expect(input).toHaveAttribute('maxlength', '8');
 
-    // Type 7 digits to get "00-00000" (8 characters including hyphen)
     await userEvent.type(input, '0000000');
     expect(input).toHaveValue('00-00000');
 
-    // With maxLength in place, userEvent.type will not allow typing beyond 8 characters
-    // The browser's native maxLength enforcement prevents additional characters
     await userEvent.type(input, '123');
 
-    // Value should still be "00-00000" because maxLength prevents additional input
     expect(input).toHaveValue('00-00000');
   });
 
