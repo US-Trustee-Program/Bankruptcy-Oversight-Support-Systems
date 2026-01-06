@@ -1,7 +1,7 @@
 import * as dotenv from 'dotenv';
 import { AuthorizationConfig } from '../adapters/types/authorization';
-import { EnvLoginConfig } from 'common/cams/login';
-import { keyValuesToRecord } from 'common/cams/utilities';
+import { EnvLoginConfig } from '@common/cams/login';
+import { keyValuesToRecord } from '@common/cams/utilities';
 
 dotenv.config();
 

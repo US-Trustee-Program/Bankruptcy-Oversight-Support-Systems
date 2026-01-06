@@ -1,7 +1,7 @@
 import { ApplicationContext } from '../adapters/types/basic';
 import { HttpRequest, InvocationContext } from '@azure/functions';
-import MockData from 'common/cams/test-utilities/mock-data';
-import { CamsSession } from 'common/cams/session';
+import MockData from '@common/cams/test-utilities/mock-data';
+import { CamsSession } from '@common/cams/session';
 import { CamsHttpMethod, CamsHttpRequest } from '../adapters/types/http';
 import ContextCreator from '../../function-apps/azure/application-context-creator';
 import { LoggerImpl } from '../adapters/services/logger.service';

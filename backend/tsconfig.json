@@ -6,8 +6,7 @@
     "outDir": "dist",
     "baseUrl": ".",
     "paths": {
-      "common": ["../common/src"],
-      "common/*": ["../common/src/*"]
+      "@common/*": ["../common/src/*"]
     },
     "sourceMap": true,
     "strict": false,

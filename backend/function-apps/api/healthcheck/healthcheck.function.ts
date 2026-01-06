@@ -6,7 +6,7 @@ import HealthcheckSqlDb from './healthcheck.db.sql';
 import HealthcheckInfo from './healthcheck.info';
 import { toAzureSuccess } from '../../azure/functions';
 import { httpSuccess } from '../../../lib/adapters/utils/http-response';
-import HttpStatusCodes from 'common/api/http-status-codes';
+import HttpStatusCodes from '@common/api/http-status-codes';
 import { closeDeferred } from '../../../lib/deferrable/defer-close';
 
 const MODULE_NAME = 'HEALTHCHECK';

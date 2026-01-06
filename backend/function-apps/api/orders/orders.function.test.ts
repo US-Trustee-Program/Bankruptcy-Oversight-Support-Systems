@@ -1,10 +1,10 @@
 import { vi } from 'vitest';
 import handler from './orders.function';
 import { CamsError } from '../../../lib/common-errors/cams-error';
-import MockData from 'common/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsHttpRequest } from '../../../lib/adapters/types/http';
 import { OrdersController } from '../../../lib/controllers/orders/orders.controller';
-import { Order } from 'common/cams/orders';
+import { Order } from '@common/cams/orders';
 import {
   buildTestResponseError,
   buildTestResponseSuccess,
@@ -12,7 +12,7 @@ import {
   createMockAzureFunctionRequest,
 } from '../../azure/testing-helpers';
 import { commonHeaders } from '../../../lib/adapters/utils/http-response';
-import HttpStatusCodes from 'common/api/http-status-codes';
+import HttpStatusCodes from '@common/api/http-status-codes';
 
 describe('Orders Function tests', () => {
   const request = createMockAzureFunctionRequest({

@@ -2,8 +2,8 @@ import { vi } from 'vitest';
 import handler from './case.assignment.function';
 import { CaseAssignmentController } from '../../../lib/controllers/case-assignment/case.assignment.controller';
 import ContextCreator from '../../azure/application-context-creator';
-import { CaseAssignment } from 'common/cams/assignments';
-import MockData from 'common/cams/test-utilities/mock-data';
+import { CaseAssignment } from '@common/cams/assignments';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsHttpRequest } from '../../../lib/adapters/types/http';
 import { InvocationContext } from '@azure/functions';
 import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
@@ -14,7 +14,7 @@ import {
 } from '../../azure/testing-helpers';
 import { CamsError } from '../../../lib/common-errors/cams-error';
 import { UnknownError } from '../../../lib/common-errors/unknown-error';
-import HttpStatusCodes from 'common/api/http-status-codes';
+import HttpStatusCodes from '@common/api/http-status-codes';
 
 describe('Case Assignment Function Tests', () => {
   const defaultRequestProps: Partial<CamsHttpRequest> = {

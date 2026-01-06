@@ -8,7 +8,7 @@ import {
   createMockAzureFunctionRequest,
 } from '../../azure/testing-helpers';
 import { ListsController } from '../../../lib/controllers/lists/lists.controller';
-import { BankList, BankruptcySoftwareList } from 'common/cams/lists';
+import { BankList, BankruptcySoftwareList } from '@common/cams/lists';
 
 describe('Lists Function tests', () => {
   let request;

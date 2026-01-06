@@ -6,7 +6,7 @@ import path from 'path';
 export default defineConfig({
   resolve: {
     alias: {
-      common: path.resolve(__dirname, '../common/src'),
+      '@common': path.resolve(__dirname, '../common/src'),
     },
   },
   test: {

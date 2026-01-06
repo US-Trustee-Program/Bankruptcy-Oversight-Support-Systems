@@ -1,14 +1,14 @@
 import { ApplicationContext } from '../adapters/types/basic';
-import { ConsolidationOrder, Order, RawOrderSync, TransferOrderAction } from 'common/cams/orders';
-import { ConsolidationTo, ConsolidationFrom, TransferFrom, TransferTo } from 'common/cams/events';
-import { CaseHistory } from 'common/cams/history';
-import { CaseDocket, CaseNote, SyncedCase } from 'common/cams/cases';
+import { ConsolidationOrder, Order, RawOrderSync, TransferOrderAction } from '@common/cams/orders';
+import { ConsolidationTo, ConsolidationFrom, TransferFrom, TransferTo } from '@common/cams/events';
+import { CaseHistory } from '@common/cams/history';
+import { CaseDocket, CaseNote, SyncedCase } from '@common/cams/cases';
 import {
   CasesSearchPredicate,
   OfficeAssigneePredicate,
   OfficeUserRolesPredicate,
   OrdersSearchPredicate,
-} from 'common/api/search';
+} from '@common/api/search';
 import {
   AttorneyUser,
   PrivilegedIdentityUser,
@@ -16,31 +16,31 @@ import {
   CamsUserReference,
   Staff,
   UserGroup,
-} from 'common/cams/users';
-import { UstpOfficeDetails } from 'common/cams/offices';
-import { CaseAssignment } from 'common/cams/assignments';
-import { CamsSession } from 'common/cams/session';
+} from '@common/cams/users';
+import { UstpOfficeDetails } from '@common/cams/offices';
+import { CaseAssignment } from '@common/cams/assignments';
+import { CamsSession } from '@common/cams/session';
 import { ConditionOrConjunction, Query, SortSpec } from '../query/query-builder';
 import { AcmsConsolidation, AcmsPredicate } from './dataflows/migrate-consolidations';
 import { Pipeline } from '../query/query-pipeline';
-import { ResourceActions } from 'common/cams/actions';
+import { ResourceActions } from '@common/cams/actions';
 import { OfficeStaff } from '../adapters/gateways/mongo/offices.mongo.repository';
 import {
   Trustee,
   TrusteeHistory,
   TrusteeInput,
   TrusteeOversightAssignment,
-} from 'common/cams/trustees';
-import { TrusteeAppointment, TrusteeAppointmentInput } from 'common/cams/trustee-appointments';
-import { Auditable } from 'common/cams/auditable';
+} from '@common/cams/trustees';
+import { TrusteeAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
+import { Auditable } from '@common/cams/auditable';
 import {
   BankList,
   BankListItem,
   BankruptcySoftwareList,
   BankruptcySoftwareListItem,
-} from 'common/cams/lists';
-import { Creatable } from 'common/cams/creatable';
-import { Identifiable } from 'common/cams/document';
+} from '@common/cams/lists';
+import { Creatable } from '@common/cams/creatable';
+import { Identifiable } from '@common/cams/document';
 
 export type ReplaceResult = {
   id: string;

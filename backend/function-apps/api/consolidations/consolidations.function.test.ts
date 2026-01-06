@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import MockData from 'common/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import handler from './consolidations.function';
 import { CamsHttpRequest } from '../../../lib/adapters/types/http';
 import ContextCreator from '../../azure/application-context-creator';
@@ -10,7 +10,7 @@ import {
   createMockAzureFunctionRequest,
 } from '../../azure/testing-helpers';
 import { OrdersController } from '../../../lib/controllers/orders/orders.controller';
-import { ConsolidationOrder } from 'common/cams/orders';
+import { ConsolidationOrder } from '@common/cams/orders';
 import { BadRequestError } from '../../../lib/common-errors/bad-request';
 
 describe('Consolidations Function tests', () => {

@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 import { StaffController } from '../../../lib/controllers/staff/staff.controller';
 import { CamsError } from '../../../lib/common-errors/cams-error';
-import MockData from 'common/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import {
   buildTestResponseError,
   buildTestResponseSuccess,
@@ -10,8 +10,8 @@ import {
 import StaffUseCase from '../../../lib/use-cases/staff/staff';
 import handler from './staff.function';
 import { InvocationContext } from '@azure/functions';
-import { ResponseBody } from 'common/api/response';
-import { AttorneyUser } from 'common/cams/users';
+import { ResponseBody } from '@common/api/response';
+import { AttorneyUser } from '@common/cams/users';
 import ContextCreator from '../../azure/application-context-creator';
 
 describe('Staff Azure Function tests', () => {

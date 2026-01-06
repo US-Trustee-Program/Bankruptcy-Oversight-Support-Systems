@@ -12,7 +12,7 @@ import SyncCases from '../../../lib/use-cases/dataflows/sync-cases';
 import CasesRuntimeState from '../../../lib/use-cases/dataflows/cases-runtime-state';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
-import { CaseSyncEvent } from 'common';
+import { CaseSyncEvent } from '@common';
 
 const MODULE_NAME = 'SYNC-CASES';
 const PAGE_SIZE = 100;

@@ -3,7 +3,7 @@ import { InvocationContext } from '@azure/functions';
 import handler from './trustees.function';
 import ContextCreator from '../../azure/application-context-creator';
 import { TrusteesController } from '../../../lib/controllers/trustees/trustees.controller';
-import MockData from 'common/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import {
   buildTestResponseError,
   buildTestResponseSuccess,

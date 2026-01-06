@@ -1,4 +1,4 @@
-import { filterToExtendedAscii, isValidUserInput } from 'common/cams/sanitization';
+import { filterToExtendedAscii, isValidUserInput } from '@common/cams/sanitization';
 import { LoggerImpl } from '../adapters/services/logger.service';
 import { BadRequestError } from '../common-errors/bad-request';
 
