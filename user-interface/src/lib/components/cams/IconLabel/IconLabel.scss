@@ -1,17 +1,17 @@
 .cams-icon-label {
-  display: inline-block;
-  position: relative;
-  vertical-align: middle;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
 
   span {
-    position: relative;
     font-size: 1rem;
+    line-height: 1rem;
+    padding: 0.25rem 0;
   }
 
   svg {
-    top: 0.35rem;
     height: 1.5rem;
     width: 1.5rem;
-    margin-right: 0.25rem;
+    flex-shrink: 0;
   }
 }

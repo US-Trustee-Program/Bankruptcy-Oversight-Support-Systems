@@ -28,6 +28,18 @@ export interface CaseDetailHeaderProps {
   caseDetail?: CaseDetail;
 }
 
+function composeCaseTitle(caseDetail?: CaseDetail): string {
+  if (!caseDetail) return '';
+
+  // If there's a joint debtor, compose the title with both names
+  if (caseDetail.jointDebtor?.name) {
+    return `${caseDetail.debtor.name} & ${caseDetail.jointDebtor.name}`;
+  }
+
+  // Otherwise, just use the debtor name
+  return caseDetail.debtor.name;
+}
+
 export default function CaseDetailHeader(props: Readonly<CaseDetailHeaderProps>) {
   const { isFixed, fix, loosen } = useFixedPosition();
   const courtInformation = `${props.caseDetail?.courtName} (${props.caseDetail?.courtDivisionName})`;
@@ -65,10 +77,10 @@ export default function CaseDetailHeader(props: Readonly<CaseDetailHeaderProps>)
   };
 
   function printH1() {
+    const displayTitle = composeCaseTitle(props.caseDetail);
     return (
       <h1 data-testid="case-detail-heading">
-        Case Details{' '}
-        <span data-testid="case-detail-heading-title"> - {props.caseDetail?.caseTitle}</span>
+        Case Details <span data-testid="case-detail-heading-title"> - {displayTitle}</span>
       </h1>
     );
   }
@@ -154,10 +166,10 @@ export default function CaseDetailHeader(props: Readonly<CaseDetailHeaderProps>)
                 <h2
                   className="case-number text-no-wrap"
                   title="Case title"
-                  aria-label={`Case title ${props.caseDetail?.caseTitle}`}
+                  aria-label={`Case title ${composeCaseTitle(props.caseDetail)}`}
                   data-testid="case-detail-heading-title"
                 >
-                  {props.caseDetail?.caseTitle}
+                  {composeCaseTitle(props.caseDetail)}
                 </h2>
               </div>
             </div>
@@ -225,9 +237,9 @@ export default function CaseDetailHeader(props: Readonly<CaseDetailHeaderProps>)
               <div className="grid-col-4">
                 <h3
                   data-testid="case-detail-heading"
-                  title={`Case Title: ${props.caseDetail?.caseTitle}`}
+                  title={`Case Title: ${composeCaseTitle(props.caseDetail)}`}
                 >
-                  {props.caseDetail?.caseTitle}
+                  {composeCaseTitle(props.caseDetail)}
                 </h3>
               </div>
               <div className="grid-col-1">
