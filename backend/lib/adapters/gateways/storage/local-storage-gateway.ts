@@ -6,6 +6,7 @@ const MODULE_NAME = 'LOCAL-STORAGE-GATEWAY';
 
 let roleMapping: Map<string, CamsRoleType>;
 export const ROLE_MAPPING_PATH = '/rolemapping.csv';
+// TODO: Add mappings for the Oversight CamsRoles here once the USTP groups are added
 const ROLE_MAPPING =
   'ad_group_name,idp_group_name,cams_role\n' +
   'USTP_CAMS_Super_User,USTP CAMS Super User,SuperUser\n' +

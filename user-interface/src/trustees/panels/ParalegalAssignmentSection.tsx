@@ -2,7 +2,7 @@ import { useRef, useCallback } from 'react';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
-import { OversightRole } from '@common/cams/roles';
+import { CamsRole } from '@common/cams/roles';
 import TrusteeOversightAssignmentModal, {
   TrusteeOversightAssignmentModalRef,
 } from '../modals/TrusteeOversightAssignmentModal';
@@ -21,7 +21,7 @@ export default function ParalegalAssignmentSection(
 ) {
   const { trusteeId, assignments, onAssignmentChange, isLoading = false } = props;
   const modalRef = useRef<TrusteeOversightAssignmentModalRef>(null);
-  const paralegalAssignment = assignments.find((a) => a.role === OversightRole.OversightParalegal);
+  const paralegalAssignment = assignments.find((a) => a.role === CamsRole.OversightParalegal);
 
   const handleAssignment = useCallback(
     (isAssigned: boolean) => {
@@ -90,7 +90,7 @@ export default function ParalegalAssignmentSection(
         ref={modalRef}
         modalId={`assign-paralegal-modal-${trusteeId}`}
         trusteeId={trusteeId}
-        role={OversightRole.OversightParalegal}
+        role={CamsRole.OversightParalegal}
         onAssignment={handleAssignment}
       />
     </div>

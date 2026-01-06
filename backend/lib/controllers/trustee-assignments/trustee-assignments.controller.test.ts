@@ -6,7 +6,6 @@ import { BadRequestError } from '../../common-errors/bad-request';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { TrusteeOversightAssignment } from '../../../../common/src/cams/trustees';
-import { OversightRole } from '../../../../common/src/cams/roles';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { CamsUserReference } from '../../../../common/src/cams/users';
 import { NotFoundError } from '../../common-errors/not-found-error';
@@ -30,7 +29,7 @@ describe('TrusteeAssignmentsController', () => {
       id: 'user-789',
       name: 'Attorney Smith',
     },
-    role: OversightRole.OversightAttorney,
+    role: CamsRole.OversightAttorney,
     createdBy: {
       name: 'system',
       id: 'system',
@@ -124,7 +123,7 @@ describe('TrusteeAssignmentsController', () => {
 
   describe('POST /api/v1/trustees/{trusteeId}/oversight-assignments', () => {
     test('should create attorney assignment with valid request including role', async () => {
-      const requestBody = { userId: 'user-789', role: OversightRole.OversightAttorney };
+      const requestBody = { userId: 'user-789', role: CamsRole.OversightAttorney };
       mockUseCase.assignOversightStaffToTrustee.mockResolvedValue(true);
 
       context.request.method = 'POST';
@@ -138,14 +137,14 @@ describe('TrusteeAssignmentsController', () => {
         context,
         'trustee-456',
         'user-789',
-        OversightRole.OversightAttorney,
+        CamsRole.OversightAttorney,
       );
       expect(response.statusCode).toBe(201);
       expect(response.body).toBeUndefined();
     });
 
     test('should create auditor assignment with valid request', async () => {
-      const requestBody = { userId: 'user-789', role: OversightRole.OversightAuditor };
+      const requestBody = { userId: 'user-789', role: CamsRole.OversightAuditor };
       mockUseCase.assignOversightStaffToTrustee.mockResolvedValue(true);
 
       context.request.method = 'POST';
@@ -159,14 +158,14 @@ describe('TrusteeAssignmentsController', () => {
         context,
         'trustee-456',
         'user-789',
-        OversightRole.OversightAuditor,
+        CamsRole.OversightAuditor,
       );
       expect(response.statusCode).toBe(201);
       expect(response.body).toBeUndefined();
     });
 
     test('should create paralegal assignment with valid request', async () => {
-      const requestBody = { userId: 'user-789', role: OversightRole.OversightParalegal };
+      const requestBody = { userId: 'user-789', role: CamsRole.OversightParalegal };
       mockUseCase.assignOversightStaffToTrustee.mockResolvedValue(true);
 
       context.request.method = 'POST';
@@ -180,14 +179,14 @@ describe('TrusteeAssignmentsController', () => {
         context,
         'trustee-456',
         'user-789',
-        OversightRole.OversightParalegal,
+        CamsRole.OversightParalegal,
       );
       expect(response.statusCode).toBe(201);
       expect(response.body).toBeUndefined();
     });
 
     test('should return 204 for idempotent attorney assignment request', async () => {
-      const requestBody = { userId: 'user-789', role: OversightRole.OversightAttorney };
+      const requestBody = { userId: 'user-789', role: CamsRole.OversightAttorney };
       mockUseCase.assignOversightStaffToTrustee.mockResolvedValue(false);
 
       context.request.method = 'POST';
@@ -201,7 +200,7 @@ describe('TrusteeAssignmentsController', () => {
         context,
         'trustee-456',
         'user-789',
-        OversightRole.OversightAttorney,
+        CamsRole.OversightAttorney,
       );
       expect(response.statusCode).toBe(204);
       expect(response.body).toBeUndefined();
@@ -218,7 +217,7 @@ describe('TrusteeAssignmentsController', () => {
     test('should throw BadRequestError when userId is missing from body', async () => {
       context.request.method = 'POST';
       context.request.params = { trusteeId: 'trustee-456' };
-      context.request.body = { role: OversightRole.OversightAttorney };
+      context.request.body = { role: CamsRole.OversightAttorney };
       context.request.url = '/api/v1/trustees/trustee-456/oversight-assignments';
 
       await expect(controller.handleRequest(context)).rejects.toThrow(BadRequestError);
@@ -241,7 +240,7 @@ describe('TrusteeAssignmentsController', () => {
 
       mockUseCase.assignOversightStaffToTrustee.mockRejectedValue(
         new BadRequestError('TRUSTEE-ASSIGNMENTS-USE-CASE', {
-          message: 'Role must be a valid OversightRole. Received: InvalidRole',
+          message: 'Role must be a valid oversight role. Received: InvalidRole',
         }),
       );
 
@@ -251,7 +250,7 @@ describe('TrusteeAssignmentsController', () => {
     test('should throw BadRequestError when trustee ID is missing for POST', async () => {
       context.request.method = 'POST';
       context.request.params = {};
-      context.request.body = { userId: 'user-789', role: OversightRole.OversightAttorney };
+      context.request.body = { userId: 'user-789', role: CamsRole.OversightAttorney };
       context.request.url = '/api/v1/trustees/oversight-assignments';
 
       await expect(controller.handleRequest(context)).rejects.toThrow(BadRequestError);
@@ -298,7 +297,7 @@ describe('TrusteeAssignmentsController', () => {
     });
 
     test('POST should successfully process assignment creation', async () => {
-      const requestBody = { userId: 'user-789', role: OversightRole.OversightAttorney };
+      const requestBody = { userId: 'user-789', role: CamsRole.OversightAttorney };
       mockUseCase.assignOversightStaffToTrustee.mockResolvedValue(true);
 
       context.request.method = 'POST';

@@ -1,5 +1,4 @@
 import { vi } from 'vitest';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import StaffUseCase from '../../use-cases/staff/staff';
 import { NotFoundError } from '../../common-errors/not-found-error';
@@ -28,9 +27,7 @@ describe('Staff Controller Tests', () => {
         { id: 'u4', name: 'Auditor 1', roles: [CamsRole.Auditor] },
         { id: 'u5', name: 'Auditor 2', roles: [CamsRole.Auditor] },
       ],
-      [CamsRole.Paralegal]: [
-        { id: 'u6', name: 'Paralegal 1', roles: [CamsRole.Paralegal] },
-      ],
+      [CamsRole.Paralegal]: [{ id: 'u6', name: 'Paralegal 1', roles: [CamsRole.Paralegal] }],
     };
 
     vi.spyOn(StaffUseCase.prototype, 'getOversightStaff').mockResolvedValue(mockData);

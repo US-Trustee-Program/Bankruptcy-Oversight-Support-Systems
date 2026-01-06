@@ -56,7 +56,8 @@ describe('Staff Azure Function tests', () => {
       },
       data: oversightStaff,
     };
-    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<Record<OversightRoleType, Staff[]>>(body);
+    const { camsHttpResponse, azureHttpResponse } =
+      buildTestResponseSuccess<Record<OversightRoleType, Staff[]>>(body);
     vi.spyOn(StaffController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
 
     const response = await handler(request, context);

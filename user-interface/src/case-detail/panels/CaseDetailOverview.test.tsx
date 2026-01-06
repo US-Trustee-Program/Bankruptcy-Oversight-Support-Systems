@@ -4,9 +4,9 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { CaseDetail } from '@common/cams/cases';
 import MockData from '@common/cams/test-utilities/mock-data';
 import Actions from '@common/cams/actions';
-import { AttorneyUser, CamsUser } from '@common/cams/users';
+import { AttorneyUser, CamsUser, Staff } from '@common/cams/users';
 import { MockAttorneys } from '@common/cams/test-utilities/attorneys.mock';
-import { CamsRole } from '@common/cams/roles';
+import { CamsRole, OversightRoleType } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';
 import { ResponseBody } from '@common/api/response';
 import Api2 from '@/lib/models/api2';
@@ -34,9 +34,14 @@ const BASE_TEST_CASE_DETAIL = MockData.getCaseDetail({
 const attorneyList: AttorneyUser[] = MockData.buildArray(MockData.getAttorneyUser, 2);
 
 describe('Case detail basic information panel', () => {
-  const attorneyListResponse: ResponseBody<AttorneyUser[]> = {
+  const staffByRole: Record<OversightRoleType, Staff[]> = {
+    [CamsRole.OversightAttorney]: attorneyList,
+    [CamsRole.OversightAuditor]: [],
+    [CamsRole.OversightParalegal]: [],
+  };
+  const attorneyListResponse: ResponseBody<Record<OversightRoleType, Staff[]>> = {
     meta: { self: 'self-url' },
-    data: attorneyList,
+    data: staffByRole,
   };
   vi.spyOn(Api2, 'getOversightStaff').mockResolvedValue(attorneyListResponse);
 

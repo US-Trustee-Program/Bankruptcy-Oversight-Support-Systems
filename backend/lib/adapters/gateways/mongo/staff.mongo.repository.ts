@@ -64,7 +64,7 @@ export class StaffMongoRepository extends BaseMongoRepository implements StaffRe
 
   async getOversightStaff(applicationContext: ApplicationContext): Promise<Staff[]> {
     const allStaff = new Map<string, Staff>();
-    const oversightRoles = Object.values(OversightRole);
+    const oversightRoles = Array.from(OversightRole);
 
     for (const role of oversightRoles) {
       const staffForRole = await this.getStaffByRole(applicationContext, role);
