@@ -7,8 +7,8 @@ import {
   createMockAzureFunctionRequest,
 } from '../../azure/testing-helpers';
 import { OrdersController } from '../../../lib/controllers/orders/orders.controller';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
-import { CaseSummary } from '../../../../common/src/cams/cases';
+import MockData from 'common/cams/test-utilities/mock-data';
+import { CaseSummary } from 'common/cams/cases';
 import { buildTestResponseError } from '../../azure/testing-helpers';
 
 describe('Orders suggestions function tests', () => {

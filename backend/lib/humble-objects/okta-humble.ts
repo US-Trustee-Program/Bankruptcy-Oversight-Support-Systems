@@ -5,7 +5,7 @@ import { UserGroupGatewayConfig } from '../adapters/types/authorization';
 import { isCamsError } from '../common-errors/cams-error';
 import { UnknownError } from '../common-errors/unknown-error';
 import { ServerConfigError } from '../common-errors/server-config-error';
-import { CamsUserGroup, CamsUserReference } from '../../../common/src/cams/users';
+import { CamsUserGroup, CamsUserReference } from 'common/cams/users';
 import { UnauthorizedError } from '../common-errors/unauthorized-error';
 import { RequiredError } from '@okta/okta-sdk-nodejs/src/types/generated/apis/baseapi';
 

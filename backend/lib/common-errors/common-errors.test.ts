@@ -5,7 +5,7 @@ import { NotFoundError } from './not-found-error';
 import { ServerConfigError } from './server-config-error';
 import { UnauthorizedError } from './unauthorized-error';
 import { UnknownError } from './unknown-error';
-import HttpStatusCodes from '../../../common/src/api/http-status-codes';
+import HttpStatusCodes from 'common/api/http-status-codes';
 
 describe('Common errors', () => {
   const testModuleName = 'Test';

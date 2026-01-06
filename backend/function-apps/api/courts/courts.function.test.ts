@@ -8,8 +8,8 @@ import {
   createMockAzureFunctionRequest,
 } from '../../azure/testing-helpers';
 import { CourtsController } from '../../../lib/controllers/courts/courts.controller';
-import { CourtDivisionDetails } from '../../../../common/src/cams/courts';
-import { COURT_DIVISIONS } from '../../../../common/src/cams/test-utilities/courts.mock';
+import { CourtDivisionDetails } from 'common/cams/courts';
+import { COURT_DIVISIONS } from 'common/cams/test-utilities/courts.mock';
 
 describe('Courts Function tests', () => {
   let request;

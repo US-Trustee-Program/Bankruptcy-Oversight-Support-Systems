@@ -1,6 +1,6 @@
 import * as dotenv from 'dotenv';
 import { UserGroupGatewayConfig } from '../adapters/types/authorization';
-import { keyValuesToRecord } from '../../../common/src/cams/utilities';
+import { keyValuesToRecord } from 'common/cams/utilities';
 
 dotenv.config();
 

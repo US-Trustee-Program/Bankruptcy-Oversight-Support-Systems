@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 import { CamsError } from '../../../lib/common-errors/cams-error';
 import ContextCreator from '../../azure/application-context-creator';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from 'common/cams/test-utilities/mock-data';
 import handler from './offices.function';
 import {
   buildTestResponseError,
@@ -10,7 +10,7 @@ import {
   createMockAzureFunctionRequest,
 } from '../../azure/testing-helpers';
 import { OfficesController } from '../../../lib/controllers/offices/offices.controller';
-import { MOCKED_USTP_OFFICES_ARRAY, UstpOfficeDetails } from '../../../../common/src/cams/offices';
+import { MOCKED_USTP_OFFICES_ARRAY, UstpOfficeDetails } from 'common/cams/offices';
 
 describe('offices Function tests', () => {
   let request;

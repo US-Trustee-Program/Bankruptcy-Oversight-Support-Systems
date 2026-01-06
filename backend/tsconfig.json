@@ -4,6 +4,11 @@
     "target": "ES2022",
     "lib": ["ES2022"],
     "outDir": "dist",
+    "baseUrl": ".",
+    "paths": {
+      "common": ["../common/src"],
+      "common/*": ["../common/src/*"]
+    },
     "sourceMap": true,
     "strict": false,
     "resolveJsonModule": true,
