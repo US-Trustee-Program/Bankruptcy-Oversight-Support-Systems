@@ -16,6 +16,7 @@ import Api2 from '@/lib/models/api2';
 import { CamsSession } from '@common/cams/session';
 import * as delayModule from '@common/delay';
 import { AUTH_EXPIRY_WARNING } from '@/login/session-timer';
+import * as sessionTimer from '@/login/session-timer';
 
 const MOCK_OAUTH_CONFIG = { issuer: 'https://mock.okta.com/oauth2/default' };
 
@@ -118,19 +119,6 @@ describe('Okta library', () => {
       expect(setIntervalSpy).toHaveBeenCalled();
 
       vi.useRealTimers();
-    });
-
-    test('should reset last interaction when called', () => {
-      const oktaAuth = new OktaAuth(MOCK_OAUTH_CONFIG);
-      const setLastInteractionSpy = vi.spyOn(LocalStorage, 'setLastInteraction');
-      const now = Date.now();
-      vi.spyOn(Date, 'now').mockReturnValue(now);
-
-      registerRenewOktaToken(oktaAuth);
-
-      expect(setLastInteractionSpy).toHaveBeenCalledWith(now);
-
-      vi.restoreAllMocks();
     });
   });
 
@@ -519,6 +507,38 @@ describe('Okta library', () => {
 
       expect(result).toBe(false);
       expect(getLastInteractionSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('registerRenewOktaToken', () => {
+    test('should register cleanup handler with session-timer', () => {
+      const registerSpy = vi.spyOn(sessionTimer, 'registerLogoutCleanupHandler');
+      const oktaAuth = new OktaAuth(MOCK_OAUTH_CONFIG);
+
+      registerRenewOktaToken(oktaAuth);
+
+      expect(registerSpy).toHaveBeenCalledWith(expect.any(Function));
+
+      registerSpy.mockRestore();
+    });
+
+    test('should clear existing timers when called', () => {
+      vi.useFakeTimers();
+      const clearIntervalSpy = vi.spyOn(window, 'clearInterval');
+      const oktaAuth = new OktaAuth(MOCK_OAUTH_CONFIG);
+
+      // First call creates heartbeat timer
+      registerRenewOktaToken(oktaAuth);
+
+      clearIntervalSpy.mockClear();
+
+      // Second call should clear the first heartbeat timer
+      registerRenewOktaToken(oktaAuth);
+
+      expect(clearIntervalSpy).toHaveBeenCalled();
+
+      vi.useRealTimers();
+      vi.restoreAllMocks();
     });
   });
 
