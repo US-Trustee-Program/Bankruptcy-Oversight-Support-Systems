@@ -11,7 +11,8 @@ import StaffUseCase from '../../../lib/use-cases/staff/staff';
 import handler from './staff.function';
 import { InvocationContext } from '@azure/functions';
 import { ResponseBody } from '../../../../common/src/api/response';
-import { AttorneyUser } from '../../../../common/src/cams/users';
+import { Staff } from '../../../../common/src/cams/users';
+import { CamsRole, OversightRoleType } from '../../../../common/src/cams/roles';
 import ContextCreator from '../../azure/application-context-creator';
 
 describe('Staff Azure Function tests', () => {
@@ -22,7 +23,7 @@ describe('Staff Azure Function tests', () => {
     vi.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
       MockData.getCamsSession(),
     );
-    vi.spyOn(StaffUseCase.prototype, 'getOversightStaff').mockResolvedValue([]);
+    vi.spyOn(StaffUseCase.prototype, 'getOversightStaff').mockResolvedValue({});
   });
 
   const errorTestCases = [
@@ -43,18 +44,19 @@ describe('Staff Azure Function tests', () => {
     },
   );
 
-  test('should return success with a list of oversight staff', async () => {
-    const oversightStaff = [
-      ...MockData.buildArray(MockData.getAttorneyUser, 3),
-      ...MockData.buildArray(MockData.getAuditorUser, 2),
-    ];
-    const body: ResponseBody<AttorneyUser[]> = {
+  test('should return success with a Record of oversight staff grouped by role', async () => {
+    const oversightStaff: Record<OversightRoleType, Staff[]> = {
+      [CamsRole.TrialAttorney]: MockData.buildArray(MockData.getAttorneyUser, 3),
+      [CamsRole.Auditor]: MockData.buildArray(MockData.getAuditorUser, 2),
+      [CamsRole.Paralegal]: [],
+    };
+    const body: ResponseBody<Record<OversightRoleType, Staff[]>> = {
       meta: {
         self: 'self-url',
       },
       data: oversightStaff,
     };
-    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<AttorneyUser[]>(body);
+    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<Record<OversightRoleType, Staff[]>>(body);
     vi.spyOn(StaffController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
 
     const response = await handler(request, context);
