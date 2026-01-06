@@ -14,6 +14,7 @@ import {
   logout,
   initializeInteractionListeners,
   registerLogoutCleanupHandler,
+  unregisterLogoutCleanupHandler,
   cancelPendingLogout,
 } from './session-timer';
 
@@ -221,6 +222,11 @@ describe('Logout cleanup handler', () => {
     vi.clearAllMocks();
   });
 
+  afterEach(() => {
+    // Reset module-level state to prevent test interdependence
+    unregisterLogoutCleanupHandler();
+  });
+
   test('registerLogoutCleanupHandler should register a cleanup handler', () => {
     const cleanupHandler = vi.fn();
 
@@ -254,13 +260,40 @@ describe('Logout cleanup handler', () => {
   });
 
   test('cancelPendingLogout should not crash when no handler is registered', () => {
-    // Reset handler by registering null (simulating no provider)
     const setLastInteractionSpy = vi.spyOn(LocalStorage, 'setLastInteraction');
+
+    // Explicitly unregister to simulate no provider
+    unregisterLogoutCleanupHandler();
 
     expect(() => cancelPendingLogout()).not.toThrow();
     expect(setLastInteractionSpy).toHaveBeenCalled();
 
     setLastInteractionSpy.mockRestore();
+  });
+
+  test('unregisterLogoutCleanupHandler should clear the handler', () => {
+    const cleanupHandler = vi.fn();
+    registerLogoutCleanupHandler(cleanupHandler);
+
+    unregisterLogoutCleanupHandler();
+
+    cancelPendingLogout();
+
+    // Handler should not be called after unregistering
+    expect(cleanupHandler).not.toHaveBeenCalled();
+  });
+
+  test('registerLogoutCleanupHandler should accept null to clear handler', () => {
+    const cleanupHandler = vi.fn();
+    registerLogoutCleanupHandler(cleanupHandler);
+
+    // Register null to clear
+    registerLogoutCleanupHandler(null);
+
+    cancelPendingLogout();
+
+    // Handler should not be called after registering null
+    expect(cleanupHandler).not.toHaveBeenCalled();
   });
 });
 

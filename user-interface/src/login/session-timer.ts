@@ -69,8 +69,12 @@ export function logout(): void {
 
 let logoutCleanupHandler: (() => void) | null = null;
 
-export function registerLogoutCleanupHandler(handler: () => void): void {
+export function registerLogoutCleanupHandler(handler: (() => void) | null): void {
   logoutCleanupHandler = handler;
+}
+
+export function unregisterLogoutCleanupHandler(): void {
+  logoutCleanupHandler = null;
 }
 
 export function cancelPendingLogout(): void {
