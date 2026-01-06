@@ -67,7 +67,6 @@ export function logout(): void {
   redirectTo(logoutUri);
 }
 
-// Callback handler for provider-specific logout cleanup (e.g., clearing timers, resetting flags)
 let logoutCleanupHandler: (() => void) | null = null;
 
 export function registerLogoutCleanupHandler(handler: () => void): void {
@@ -75,10 +74,8 @@ export function registerLogoutCleanupHandler(handler: () => void): void {
 }
 
 export function cancelPendingLogout(): void {
-  // Reset last interaction timestamp to mark user as active
   resetLastInteraction();
 
-  // Call provider-specific cleanup (e.g., clear logout timer in okta-library)
   if (logoutCleanupHandler) {
     logoutCleanupHandler();
   }
