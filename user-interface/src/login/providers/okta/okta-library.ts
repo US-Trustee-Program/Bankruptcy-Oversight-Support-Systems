@@ -9,8 +9,8 @@ import {
   isUserActive,
   getLastInteraction,
   Timer,
-  resetLastInteraction,
   HEARTBEAT,
+  registerLogoutCleanupHandler,
 } from '@/login/session-timer';
 import DateHelper from '@common/date-helper';
 
@@ -23,16 +23,23 @@ export function resetWarningShownFlag() {
   warningShown = false;
 }
 
-export function registerRenewOktaToken(oktaAuth: OktaAuth) {
-  resetLastInteraction();
-  if (heartbeatTimer) {
-    heartbeatTimer.clear();
-  }
+function cleanupPendingLogout() {
   if (logoutTimer) {
     logoutTimer.clear();
     logoutTimer = null;
   }
   warningShown = false;
+}
+
+export function registerRenewOktaToken(oktaAuth: OktaAuth) {
+  if (heartbeatTimer) {
+    heartbeatTimer.clear();
+  }
+  cleanupPendingLogout();
+
+  // Register Okta-specific cleanup handler with session-timer
+  registerLogoutCleanupHandler(cleanupPendingLogout);
+
   heartbeatTimer = createTimer(() => handleHeartbeat(oktaAuth), HEARTBEAT);
 }
 
@@ -60,9 +67,10 @@ export async function handleHeartbeat(oktaAuth: OktaAuth) {
     if (isTokenCloseToExpiry()) {
       await renewOktaToken(oktaAuth);
     }
-    if (logoutTimer && !warningShown) {
+    if (logoutTimer) {
       logoutTimer.clear();
       logoutTimer = null;
+      warningShown = false;
     }
   } else {
     if (!warningShown) {
