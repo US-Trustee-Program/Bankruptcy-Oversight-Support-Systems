@@ -1,0 +1,14 @@
+button.usa-button {
+  font-size: 1.06rem;
+  .cams-icon-label {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    top: -0.3rem;
+    font-size: 1rem;
+    svg {
+      top: 0;
+    }
+  }
+}

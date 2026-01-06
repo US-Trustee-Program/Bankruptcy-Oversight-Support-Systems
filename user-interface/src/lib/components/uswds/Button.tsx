@@ -1,3 +1,4 @@
+import './Button.scss';
 import React, { JSX, forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 
 export const BUTTON_BASE_CLASS = 'usa-button';

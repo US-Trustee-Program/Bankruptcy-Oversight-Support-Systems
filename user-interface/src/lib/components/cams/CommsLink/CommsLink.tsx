@@ -62,7 +62,7 @@ function CommsLink(props: Readonly<CommsLinkProps>) {
     iconToUse = icon ?? 'launch';
   } else if (isValidPhoneNumber && mode === 'phone-dialer') {
     href = toTelephoneUri(number!, extension);
-    labelToUse = label ?? (extension ? `${number}, ext. ${extension}` : number!);
+    labelToUse = label ?? (extension ? `${number} ext. ${extension}` : number!);
     iconToUse = icon ?? 'phone';
   }
 
