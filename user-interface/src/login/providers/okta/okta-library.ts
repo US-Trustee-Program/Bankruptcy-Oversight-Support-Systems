@@ -67,11 +67,7 @@ export async function handleHeartbeat(oktaAuth: OktaAuth) {
     if (isTokenCloseToExpiry()) {
       await renewOktaToken(oktaAuth);
     }
-    if (logoutTimer) {
-      logoutTimer.clear();
-      logoutTimer = null;
-      warningShown = false;
-    }
+    cleanupPendingLogout();
   } else {
     if (!warningShown) {
       warningShown = true;
