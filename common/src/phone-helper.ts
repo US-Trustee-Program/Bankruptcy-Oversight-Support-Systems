@@ -22,7 +22,7 @@ export function parsePhoneNumber(phone: string): ParsedPhone {
 
   // Split on common extension indicators (case-insensitive)
   // Matches: x, ext, ext., extension followed by optional colon/period and spaces
-  const extensionPattern = /\s*[x]|ext\.?|extension[:.]?\s*/i;
+  const extensionPattern = /\s+(?:x|ext\.?|extension[:.]?)\s*/i;
   const parts = phone.split(extensionPattern);
 
   // Extract the base number (first part)
