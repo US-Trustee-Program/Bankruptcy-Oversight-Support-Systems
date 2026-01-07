@@ -5,6 +5,7 @@ import {
   getCamsUser,
   renewOktaToken,
   registerRenewOktaToken,
+  unregisterRenewOktaToken,
   handleHeartbeat,
   isActive,
   isTokenCloseToExpiry,
@@ -16,6 +17,7 @@ import Api2 from '@/lib/models/api2';
 import { CamsSession } from '@common/cams/session';
 import * as delayModule from '@common/delay';
 import { AUTH_EXPIRY_WARNING } from '@/login/session-timer';
+import * as sessionTimer from '@/login/session-timer';
 
 const MOCK_OAUTH_CONFIG = { issuer: 'https://mock.okta.com/oauth2/default' };
 
@@ -119,19 +121,6 @@ describe('Okta library', () => {
 
       vi.useRealTimers();
     });
-
-    test('should reset last interaction when called', () => {
-      const oktaAuth = new OktaAuth(MOCK_OAUTH_CONFIG);
-      const setLastInteractionSpy = vi.spyOn(LocalStorage, 'setLastInteraction');
-      const now = Date.now();
-      vi.spyOn(Date, 'now').mockReturnValue(now);
-
-      registerRenewOktaToken(oktaAuth);
-
-      expect(setLastInteractionSpy).toHaveBeenCalledWith(now);
-
-      vi.restoreAllMocks();
-    });
   });
 
   describe('getCamsUser tests', () => {
@@ -204,15 +193,14 @@ describe('Okta library', () => {
       vi.restoreAllMocks();
     });
 
-    test('should do nothing if an error is encountered', async () => {
-      vi.spyOn(OktaAuth.prototype, 'getOrRenewAccessToken').mockRejectedValue(
-        new Error('some error calling Okta'),
-      );
+    test('should throw error if an error is encountered', async () => {
+      const error = new Error('some error calling Okta');
+      vi.spyOn(OktaAuth.prototype, 'getOrRenewAccessToken').mockRejectedValue(error);
       const setSession = vi.spyOn(LocalStorage, 'setSession');
 
       const oktaAuth = new OktaAuth(MOCK_OAUTH_CONFIG);
-      await renewOktaToken(oktaAuth);
 
+      await expect(renewOktaToken(oktaAuth)).rejects.toThrow('some error calling Okta');
       expect(setSession).not.toHaveBeenCalled();
 
       vi.restoreAllMocks();
@@ -431,7 +419,7 @@ describe('Okta library', () => {
       vi.restoreAllMocks();
     });
 
-    test('should clear logout timer when user becomes active after warning', async () => {
+    test('should clear logout timer when user becomes active and token is renewed', async () => {
       vi.useFakeTimers();
       const getLastInteractionSpy = vi.spyOn(LocalStorage, 'getLastInteraction');
       const getSessionSpy = vi.spyOn(LocalStorage, 'getSession');
@@ -456,7 +444,8 @@ describe('Okta library', () => {
 
       clearIntervalSpy.mockClear();
 
-      // Second call - user becomes active, should renew token and clear logout timer
+      // Second call - user becomes active and token is close to expiry
+      // Token renewal should happen and clear the logout timer
       const recentInteraction = now - TIMEOUT / 2;
       const expiresInFourMinutes = Math.floor(now / 1000) + 4 * 60; // Token expires in 4 minutes
       const session = { expires: expiresInFourMinutes } as CamsSession;
@@ -467,6 +456,48 @@ describe('Okta library', () => {
 
       expect(getOrRenewAccessToken).toHaveBeenCalled();
       expect(clearIntervalSpy).toHaveBeenCalled();
+
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+    });
+
+    test('should not clear logout timer when user becomes active during warning but token not close to expiry', async () => {
+      vi.useFakeTimers();
+      const getLastInteractionSpy = vi.spyOn(LocalStorage, 'getLastInteraction');
+      const getSessionSpy = vi.spyOn(LocalStorage, 'getSession');
+      const clearIntervalSpy = vi.spyOn(window, 'clearInterval');
+      const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
+
+      const now = Date.now();
+      vi.spyOn(Date, 'now').mockReturnValue(now);
+
+      // First call - user is inactive, warning shown and logout timer started
+      const oldInteraction = now - (TIMEOUT + 1000);
+      getLastInteractionSpy.mockReturnValue(oldInteraction);
+
+      await handleHeartbeat(oktaAuth);
+
+      expect(dispatchEventSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ type: AUTH_EXPIRY_WARNING }),
+      );
+
+      clearIntervalSpy.mockClear();
+      dispatchEventSpy.mockClear();
+
+      // Second call - user becomes active but token is NOT close to expiry
+      // Logout timer should NOT be cleared, countdown continues
+      const recentInteraction = now - TIMEOUT / 2;
+      const expiresInTenMinutes = Math.floor(now / 1000) + 10 * 60; // Token expires in 10 minutes
+      const session = { expires: expiresInTenMinutes } as CamsSession;
+      getLastInteractionSpy.mockReturnValue(recentInteraction);
+      getSessionSpy.mockReturnValue(session);
+
+      await handleHeartbeat(oktaAuth);
+
+      // Logout timer should NOT be cleared
+      expect(clearIntervalSpy).not.toHaveBeenCalled();
+      // Warning should NOT be dispatched again
+      expect(dispatchEventSpy).not.toHaveBeenCalled();
 
       vi.useRealTimers();
       vi.restoreAllMocks();
@@ -519,6 +550,80 @@ describe('Okta library', () => {
 
       expect(result).toBe(false);
       expect(getLastInteractionSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('registerRenewOktaToken', () => {
+    test('should register cleanup handler with session-timer', () => {
+      const registerSpy = vi.spyOn(sessionTimer, 'registerLogoutCleanupHandler');
+      const oktaAuth = new OktaAuth(MOCK_OAUTH_CONFIG);
+
+      registerRenewOktaToken(oktaAuth);
+
+      expect(registerSpy).toHaveBeenCalledWith(expect.any(Function));
+
+      registerSpy.mockRestore();
+    });
+
+    test('should clear existing timers when called', () => {
+      vi.useFakeTimers();
+      const clearIntervalSpy = vi.spyOn(window, 'clearInterval');
+      const oktaAuth = new OktaAuth(MOCK_OAUTH_CONFIG);
+
+      // First call creates heartbeat timer
+      registerRenewOktaToken(oktaAuth);
+
+      clearIntervalSpy.mockClear();
+
+      // Second call should clear the first heartbeat timer
+      registerRenewOktaToken(oktaAuth);
+
+      expect(clearIntervalSpy).toHaveBeenCalled();
+
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+    });
+  });
+
+  describe('unregisterRenewOktaToken', () => {
+    test('should clear heartbeat timer when called', () => {
+      vi.useFakeTimers();
+      const clearIntervalSpy = vi.spyOn(window, 'clearInterval');
+      const oktaAuth = new OktaAuth(MOCK_OAUTH_CONFIG);
+
+      // First register to create a timer
+      registerRenewOktaToken(oktaAuth);
+
+      clearIntervalSpy.mockClear();
+
+      // Unregister should clear the timer
+      unregisterRenewOktaToken();
+
+      expect(clearIntervalSpy).toHaveBeenCalledTimes(1);
+
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+    });
+
+    test('should unregister cleanup handler from session-timer', () => {
+      const registerSpy = vi.spyOn(sessionTimer, 'registerLogoutCleanupHandler');
+      const oktaAuth = new OktaAuth(MOCK_OAUTH_CONFIG);
+
+      // First register
+      registerRenewOktaToken(oktaAuth);
+
+      registerSpy.mockClear();
+
+      // Unregister should call with null
+      unregisterRenewOktaToken();
+
+      expect(registerSpy).toHaveBeenCalledWith(null);
+
+      registerSpy.mockRestore();
+    });
+
+    test('should not crash when called without prior registration', () => {
+      expect(() => unregisterRenewOktaToken()).not.toThrow();
     });
   });
 

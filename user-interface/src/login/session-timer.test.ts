@@ -12,7 +12,10 @@ import {
   getLastInteraction,
   checkForInactivity,
   logout,
-  initializeInactiveLogout,
+  initializeInteractionListeners,
+  registerLogoutCleanupHandler,
+  unregisterLogoutCleanupHandler,
+  cancelPendingLogout,
 } from './session-timer';
 
 describe('Timer Factory', () => {
@@ -190,7 +193,7 @@ describe('checkForInactivity function', () => {
   });
 });
 
-describe('initializeInactiveLogout function', () => {
+describe('initializeInteractionListeners function', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -201,20 +204,96 @@ describe('initializeInactiveLogout function', () => {
     document.body.removeEventListener('keypress', resetLastInteraction);
   });
 
-  test('should set up interval and event listeners', () => {
-    vi.useFakeTimers();
-    const setIntervalSpy = vi.spyOn(global, 'setInterval');
+  test('should set up event listeners for user activity tracking', () => {
     const addEventListenerSpy = vi.spyOn(document.body, 'addEventListener');
 
-    initializeInactiveLogout();
+    initializeInteractionListeners();
 
-    expect(setIntervalSpy).toHaveBeenCalledWith(checkForInactivity, HEARTBEAT);
     expect(addEventListenerSpy).toHaveBeenCalledWith('click', resetLastInteraction);
     expect(addEventListenerSpy).toHaveBeenCalledWith('keypress', resetLastInteraction);
+    expect(addEventListenerSpy).toHaveBeenCalledTimes(2);
 
-    setIntervalSpy.mockRestore();
     addEventListenerSpy.mockRestore();
-    vi.useRealTimers();
+  });
+});
+
+describe('Logout cleanup handler', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    // Reset module-level state to prevent test interdependence
+    unregisterLogoutCleanupHandler();
+  });
+
+  test('registerLogoutCleanupHandler should register a cleanup handler', () => {
+    const cleanupHandler = vi.fn();
+
+    registerLogoutCleanupHandler(cleanupHandler);
+
+    // Verify handler is registered by calling cancelPendingLogout
+    cancelPendingLogout();
+
+    expect(cleanupHandler).toHaveBeenCalledTimes(1);
+  });
+
+  test('cancelPendingLogout should reset last interaction', () => {
+    const setLastInteractionSpy = vi.spyOn(LocalStorage, 'setLastInteraction');
+    const now = Date.now();
+    vi.spyOn(Date, 'now').mockReturnValue(now);
+
+    cancelPendingLogout();
+
+    expect(setLastInteractionSpy).toHaveBeenCalledWith(now);
+
+    setLastInteractionSpy.mockRestore();
+  });
+
+  test('cancelPendingLogout should call registered cleanup handler', () => {
+    const cleanupHandler = vi.fn();
+    registerLogoutCleanupHandler(cleanupHandler);
+
+    cancelPendingLogout();
+
+    expect(cleanupHandler).toHaveBeenCalledTimes(1);
+  });
+
+  test('cancelPendingLogout should not crash when no handler is registered', () => {
+    const setLastInteractionSpy = vi.spyOn(LocalStorage, 'setLastInteraction');
+
+    // Explicitly unregister to simulate no provider
+    unregisterLogoutCleanupHandler();
+
+    expect(() => cancelPendingLogout()).not.toThrow();
+    expect(setLastInteractionSpy).toHaveBeenCalled();
+
+    setLastInteractionSpy.mockRestore();
+  });
+
+  test('unregisterLogoutCleanupHandler should clear the handler', () => {
+    const cleanupHandler = vi.fn();
+    registerLogoutCleanupHandler(cleanupHandler);
+
+    unregisterLogoutCleanupHandler();
+
+    cancelPendingLogout();
+
+    // Handler should not be called after unregistering
+    expect(cleanupHandler).not.toHaveBeenCalled();
+  });
+
+  test('registerLogoutCleanupHandler should accept null to clear handler', () => {
+    const cleanupHandler = vi.fn();
+    registerLogoutCleanupHandler(cleanupHandler);
+
+    // Register null to clear
+    registerLogoutCleanupHandler(null);
+
+    cancelPendingLogout();
+
+    // Handler should not be called after registering null
+    expect(cleanupHandler).not.toHaveBeenCalled();
   });
 });
 

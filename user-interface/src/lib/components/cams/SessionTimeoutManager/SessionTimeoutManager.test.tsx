@@ -34,15 +34,15 @@ describe('SessionTimeoutManager', () => {
   };
 
   let logoutSpy: ReturnType<typeof vi.spyOn>;
-  let resetLastInteractionSpy: ReturnType<typeof vi.spyOn>;
+  let cancelPendingLogoutSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
     mockRenewToken.mockClear();
     // Spy on session timer functions
     logoutSpy = vi.spyOn(sessionTimer, 'logout').mockImplementation(() => {});
-    resetLastInteractionSpy = vi
-      .spyOn(sessionTimer, 'resetLastInteraction')
+    cancelPendingLogoutSpy = vi
+      .spyOn(sessionTimer, 'cancelPendingLogout')
       .mockImplementation(() => {});
   });
 
@@ -111,7 +111,7 @@ describe('SessionTimeoutManager', () => {
     });
   });
 
-  test('should call resetLastInteraction and renewToken when Stay Logged In is clicked', async () => {
+  test('should call cancelPendingLogout and renewToken when Stay Logged In is clicked', async () => {
     const user = userEvent.setup();
 
     renderWithContext();
@@ -128,7 +128,7 @@ describe('SessionTimeoutManager', () => {
     const stayLoggedInButton = screen.getByText('Stay Logged In');
     await user.click(stayLoggedInButton);
 
-    expect(resetLastInteractionSpy).toHaveBeenCalled();
+    expect(cancelPendingLogoutSpy).toHaveBeenCalled();
     expect(mockRenewToken).toHaveBeenCalled();
   });
 
@@ -183,7 +183,7 @@ describe('SessionTimeoutManager', () => {
     const stayLoggedInButton = screen.getByText('Stay Logged In');
     await user.click(stayLoggedInButton);
 
-    expect(resetLastInteractionSpy).toHaveBeenCalled();
+    expect(cancelPendingLogoutSpy).toHaveBeenCalled();
     // renewToken should be called regardless of oktaAuth presence
     expect(mockRenewTokenWithoutOkta).toHaveBeenCalled();
   });

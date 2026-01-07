@@ -6,7 +6,6 @@ import { PropsWithChildren } from 'react';
 import * as libraryModule from '@/login/login-library';
 import { EnvLoginConfig } from '@common/cams/login';
 import * as oktaLibrary from './okta-library';
-import LocalStorage from '@/lib/utils/local-storage';
 
 describe('OktaProvider', () => {
   const mockConfiguration: EnvLoginConfig = {
@@ -82,27 +81,35 @@ describe('OktaProvider', () => {
     registerRenewOktaTokenSpy.mockRestore();
   });
 
-  test('should reset lastInteraction when registerRenewOktaToken is called', async () => {
+  test('should call unregisterRenewOktaToken when component unmounts', async () => {
     // Reset mock to return proper config
     getLoginConfigurationFromEnv.mockReturnValue(mockConfiguration);
 
-    const setLastInteractionSpy = vi.spyOn(LocalStorage, 'setLastInteraction');
-    const now = Date.now();
-    vi.spyOn(Date, 'now').mockReturnValue(now);
+    const registerRenewOktaTokenSpy = vi
+      .spyOn(oktaLibrary, 'registerRenewOktaToken')
+      .mockImplementation(() => {});
+    const unregisterRenewOktaTokenSpy = vi
+      .spyOn(oktaLibrary, 'unregisterRenewOktaToken')
+      .mockImplementation(() => {});
 
     const testId = 'child-div';
     const childText = 'TEST';
     const children = <div data-testid={testId}>{childText}</div>;
 
-    render(<OktaProvider>{children}</OktaProvider>);
+    const { unmount } = render(<OktaProvider>{children}</OktaProvider>);
 
     await waitFor(() => {
       expect(screen.queryByTestId(testId)).toBeInTheDocument();
     });
 
-    expect(setLastInteractionSpy).toHaveBeenCalledWith(now);
+    expect(registerRenewOktaTokenSpy).toHaveBeenCalledTimes(1);
+    expect(unregisterRenewOktaTokenSpy).not.toHaveBeenCalled();
 
-    setLastInteractionSpy.mockRestore();
-    vi.restoreAllMocks();
+    unmount();
+
+    expect(unregisterRenewOktaTokenSpy).toHaveBeenCalledTimes(1);
+
+    registerRenewOktaTokenSpy.mockRestore();
+    unregisterRenewOktaTokenSpy.mockRestore();
   });
 });

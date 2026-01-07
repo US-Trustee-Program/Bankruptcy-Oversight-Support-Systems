@@ -9,8 +9,8 @@ import {
   isUserActive,
   getLastInteraction,
   Timer,
-  resetLastInteraction,
   HEARTBEAT,
+  registerLogoutCleanupHandler,
 } from '@/login/session-timer';
 import DateHelper from '@common/date-helper';
 
@@ -23,17 +23,34 @@ export function resetWarningShownFlag() {
   warningShown = false;
 }
 
-export function registerRenewOktaToken(oktaAuth: OktaAuth) {
-  resetLastInteraction();
-  if (heartbeatTimer) {
-    heartbeatTimer.clear();
-  }
+function cleanupPendingLogout() {
   if (logoutTimer) {
     logoutTimer.clear();
     logoutTimer = null;
   }
   warningShown = false;
+}
+
+export function registerRenewOktaToken(oktaAuth: OktaAuth) {
+  if (heartbeatTimer) {
+    heartbeatTimer.clear();
+  }
+  cleanupPendingLogout();
+
+  // Register Okta-specific cleanup handler with session-timer
+  registerLogoutCleanupHandler(cleanupPendingLogout);
+
   heartbeatTimer = createTimer(() => handleHeartbeat(oktaAuth), HEARTBEAT);
+}
+
+export function unregisterRenewOktaToken() {
+  if (heartbeatTimer) {
+    heartbeatTimer.clear();
+    heartbeatTimer = null;
+  }
+
+  cleanupPendingLogout();
+  registerLogoutCleanupHandler(null);
 }
 
 export function getCamsUser(oktaUser: UserClaims | null) {
@@ -58,11 +75,14 @@ export function isTokenCloseToExpiry(): boolean {
 export async function handleHeartbeat(oktaAuth: OktaAuth) {
   if (isActive()) {
     if (isTokenCloseToExpiry()) {
-      await renewOktaToken(oktaAuth);
+      try {
+        await renewOktaToken(oktaAuth);
+      } catch (error) {
+        console.error('Background token renewal failed:', error);
+      }
     }
-    if (logoutTimer && !warningShown) {
-      logoutTimer.clear();
-      logoutTimer = null;
+    if (!warningShown) {
+      cleanupPendingLogout();
     }
   } else {
     if (!warningShown) {
@@ -103,9 +123,9 @@ export async function renewOktaToken(oktaAuth: OktaAuth) {
 
       // Reset the warning flag since token was successfully renewed
       warningShown = false;
+    } else {
+      throw new Error('Failed to get access token from Okta');
     }
-  } catch {
-    // failed to renew access token.
   } finally {
     isRenewingToken = false;
   }
