@@ -65,7 +65,11 @@ export function isTokenCloseToExpiry(): boolean {
 export async function handleHeartbeat(oktaAuth: OktaAuth) {
   if (isActive()) {
     if (isTokenCloseToExpiry()) {
-      await renewOktaToken(oktaAuth);
+      try {
+        await renewOktaToken(oktaAuth);
+      } catch (error) {
+        console.error('Background token renewal failed:', error);
+      }
     }
     cleanupPendingLogout();
   } else {
@@ -107,9 +111,9 @@ export async function renewOktaToken(oktaAuth: OktaAuth) {
 
       // Reset the warning flag since token was successfully renewed
       warningShown = false;
+    } else {
+      throw new Error('Failed to get access token from Okta');
     }
-  } catch {
-    // failed to renew access token.
   } finally {
     isRenewingToken = false;
   }

@@ -192,15 +192,14 @@ describe('Okta library', () => {
       vi.restoreAllMocks();
     });
 
-    test('should do nothing if an error is encountered', async () => {
-      vi.spyOn(OktaAuth.prototype, 'getOrRenewAccessToken').mockRejectedValue(
-        new Error('some error calling Okta'),
-      );
+    test('should throw error if an error is encountered', async () => {
+      const error = new Error('some error calling Okta');
+      vi.spyOn(OktaAuth.prototype, 'getOrRenewAccessToken').mockRejectedValue(error);
       const setSession = vi.spyOn(LocalStorage, 'setSession');
 
       const oktaAuth = new OktaAuth(MOCK_OAUTH_CONFIG);
-      await renewOktaToken(oktaAuth);
 
+      await expect(renewOktaToken(oktaAuth)).rejects.toThrow('some error calling Okta');
       expect(setSession).not.toHaveBeenCalled();
 
       vi.restoreAllMocks();

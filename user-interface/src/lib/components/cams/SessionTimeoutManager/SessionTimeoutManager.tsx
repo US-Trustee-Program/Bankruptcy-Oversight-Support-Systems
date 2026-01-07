@@ -35,10 +35,15 @@ export default function SessionTimeoutManager() {
     };
   }, []);
 
-  const handleStayLoggedIn = () => {
+  const handleStayLoggedIn = async () => {
     cancelPendingLogout();
-    authContext.renewToken();
-    globalAlertRefObject?.current?.success('Your session has been extended');
+    try {
+      await authContext.renewToken();
+      globalAlertRefObject?.current?.success('Your session has been extended');
+    } catch (error) {
+      globalAlertRefObject?.current?.error('Failed to renew session. Please log in again.');
+      console.error('Token renewal failed:', error);
+    }
   };
 
   return (
