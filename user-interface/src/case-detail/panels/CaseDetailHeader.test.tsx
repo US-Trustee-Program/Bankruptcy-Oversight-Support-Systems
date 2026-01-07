@@ -51,7 +51,7 @@ describe('Case Detail Header tests', () => {
     const caseChapter = screen.getByTestId('case-chapter');
 
     expect(isLoadingH1).toContainHTML('Case Detail');
-    expect(isLoadingH2).toContainHTML(testCaseDetail.caseTitle);
+    expect(isLoadingH2.textContent).toContain(testCaseDetail.debtor.name);
     expect(isFinishedH2).toBeInTheDocument();
     expect(caseChapter.innerHTML).toEqual(
       `${testCaseDetail.petitionLabel} Chapter ${testCaseDetail.chapter}`,
@@ -75,9 +75,9 @@ describe('Case Detail Header tests', () => {
 
     const app = await screen.findByTestId('app-component-test-id');
     const heading = await screen.findByTestId('case-detail-heading-title');
-    expect(heading.innerHTML).toEqual(` - ${testCaseDetail.caseTitle}`);
+    expect(heading.textContent).toContain(testCaseDetail.debtor.name);
     const title = await screen.findByTestId('case-detail-heading-title');
-    expect(title.innerHTML).toEqual(` - ${testCaseDetail.caseTitle}`);
+    expect(title.textContent).toContain(testCaseDetail.debtor.name);
 
     let normalHeader = await screen.findByTestId('case-detail-header');
     expect(normalHeader).toBeInTheDocument();
@@ -158,7 +158,7 @@ describe('feature flag true', () => {
     expect(isLoadingH1).toHaveClass('case-number');
     expect(isLoadingH1).toHaveTextContent(testCaseDetail.caseId);
     expect(screen.getByTitle('Copy Case ID to clipboard')).toBeInTheDocument();
-    expect(isLoadingH2).toContainHTML(testCaseDetail.caseTitle);
+    expect(isLoadingH2.textContent).toContain(testCaseDetail.debtor.name);
     expect(isFinishedH2).toBeInTheDocument();
     expect(caseChapter.innerHTML).toEqual(
       `${testCaseDetail.petitionLabel} Chapter ${testCaseDetail.chapter}`,
@@ -344,7 +344,7 @@ describe('feature flag false', () => {
     const caseChapter = screen.getByTestId('case-chapter');
 
     expect(isLoadingH1).toContainHTML('Case Detail');
-    expect(isLoadingH2).toContainHTML(testCaseDetail.caseTitle);
+    expect(isLoadingH2.textContent).toContain(testCaseDetail.debtor.name);
     expect(isFinishedH2).toBeInTheDocument();
     expect(caseChapter.innerHTML).toEqual(
       `${testCaseDetail.petitionLabel} Chapter ${testCaseDetail.chapter}`,

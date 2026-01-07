@@ -48,7 +48,7 @@ describe('FormattedAddress component', () => {
       expect(zipElement.textContent).toContain('10001');
 
       // Phone with extension
-      expect(screen.getByTestId('test-phone-number')).toHaveTextContent('555-123-4567, ext. 123');
+      expect(screen.getByTestId('test-phone-number')).toHaveTextContent('555-123-4567 ext. 123');
 
       // Email as link (default behavior)
       expect(screen.getByTestId('test-email')).toBeInTheDocument();
@@ -133,7 +133,7 @@ describe('FormattedAddress component', () => {
       renderComponent({ contact: mockFullContact });
 
       expect(screen.getByText('123 Main St')).not.toHaveAttribute('data-testid');
-      expect(screen.getByText('555-123-4567, ext. 123')).not.toHaveAttribute('data-testid');
+      expect(screen.getByText('555-123-4567 ext. 123')).not.toHaveAttribute('data-testid');
     });
 
     test('should handle contact with only address1 and no city/state/zip', () => {

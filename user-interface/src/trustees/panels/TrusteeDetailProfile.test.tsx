@@ -82,7 +82,7 @@ describe('TrusteeDetailProfile', () => {
     expect(screen.getByTestId('trustee-zip-code')).toHaveTextContent('12345');
 
     // Phone
-    expect(screen.getByTestId('trustee-phone-number')).toHaveTextContent('555-123-4567, ext. 1234');
+    expect(screen.getByTestId('trustee-phone-number')).toHaveTextContent('555-123-4567 ext. 1234');
 
     // Email
     const publicEmailElement = screen.getByTestId('trustee-email');
@@ -120,7 +120,7 @@ describe('TrusteeDetailProfile', () => {
 
     // Internal phone
     expect(screen.getByTestId('trustee-internal-phone-number')).toHaveTextContent(
-      '555-987-6543, ext. 5678',
+      '555-987-6543 ext. 5678',
     );
 
     // Internal email

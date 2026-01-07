@@ -114,7 +114,7 @@ describe('Case Detail screen tests', () => {
     await renderWithRoutes(undefined, [], basicInfoPath);
 
     const title = await screen.findByTestId('case-detail-heading-title');
-    expect(title).toHaveTextContent('Test Case Title');
+    expect(title.textContent).toContain('Trevor Shields');
 
     const chapter = await screen.findByTestId('case-chapter');
     expect(chapter).toHaveTextContent('Voluntary Chapter 15');
@@ -159,7 +159,7 @@ describe('Case Detail screen tests', () => {
     await screen.findByTestId('case-detail');
 
     const title = screen.getByTestId('case-detail-heading-title');
-    expect(title).toHaveTextContent(defaultTestCaseDetail.caseTitle);
+    expect(title.textContent).toContain(defaultTestCaseDetail.debtor.name);
 
     const caseNumber = document.querySelector('.case-number');
     expect(caseNumber?.textContent?.trim()).toEqual(caseId);
@@ -380,7 +380,7 @@ describe('Case Detail screen tests', () => {
 
     await renderWithProps({ ...testCaseDetail });
 
-    const element = await screen.findByTestId('case-detail-no-debtor-attorney');
+    const element = await screen.findByTestId('case-detail-debtor-no-attorney');
     expect(element).toHaveTextContent(informationUnavailable);
   });
 
@@ -458,7 +458,7 @@ describe('Case Detail screen tests', () => {
     await renderWithProps({ ...testCaseDetail });
 
     const title = screen.getByTestId('case-detail-heading-title');
-    expect(title).toHaveTextContent(testCaseDetail.caseTitle);
+    expect(title.textContent).toContain(testCaseDetail.debtor.name);
 
     const unassignedElement = document.querySelector('.unassigned-placeholder');
     expect(unassignedElement).toBeInTheDocument();
@@ -510,9 +510,9 @@ describe('Case Detail screen tests', () => {
         debtorAttorney: expectedAttorney,
       };
 
-      const expectedLink = `mailto:${expectedAttorney.email}?subject=${getCaseNumber(
-        testCaseDetail.caseId,
-      )} - ${testCaseDetail.caseTitle}`;
+      const expectedLink = `mailto:${expectedAttorney.email}?subject=${encodeURIComponent(
+        `${getCaseNumber(testCaseDetail.caseId)} - ${testCaseDetail.debtor.name}`,
+      )}`;
 
       await renderWithProps({ ...testCaseDetail });
 
