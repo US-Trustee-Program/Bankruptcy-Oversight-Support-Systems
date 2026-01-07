@@ -1,0 +1,8 @@
+@use '../../styles/theme';
+
+// Ensure cards in the card list have proper bottom margin
+.record-detail-card-list {
+  .usa-card {
+    margin-bottom: 1.5rem;
+  }
+}

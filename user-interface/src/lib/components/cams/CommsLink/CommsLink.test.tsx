@@ -178,7 +178,7 @@ describe('CommsLink Component', () => {
       expect(link.getAttribute('href')).toBe('tel:+15551234567;ext=123');
 
       const iconLabel = screen.getByTestId('icon-label');
-      expect(iconLabel).toHaveTextContent('555-123-4567, ext. 123');
+      expect(iconLabel).toHaveTextContent('555-123-4567 ext. 123');
       expect(iconLabel.getAttribute('data-icon')).toBe('phone');
     });
 

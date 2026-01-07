@@ -1,0 +1,21 @@
+@use '../../../styles/theme';
+
+.debtor-card-container {
+  margin-top: 0;
+  margin-bottom: 0;
+
+  .debtor-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-top: 1.25rem;
+
+    @media screen and (max-width: 768px) {
+      grid-template-columns: 1fr;
+    }
+
+    .case-detail-item-name {
+      font-weight: 700;
+    }
+  }
+}
