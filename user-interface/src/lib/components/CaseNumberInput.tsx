@@ -43,6 +43,8 @@ function CaseNumberInput_(props: CaseNumberInputProps, ref: React.Ref<InputRef>)
   const forwardedRef = useRef<InputRef>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const MAX_CHARACTERS_ALLOWED_ON_INPUT = 8;
+
   function getValue() {
     return forwardedRef.current?.getValue() ?? '';
   }
@@ -72,18 +74,68 @@ function CaseNumberInput_(props: CaseNumberInputProps, ref: React.Ref<InputRef>)
     return forwardedRef.current?.disable(value);
   }
 
-  function handleOnChange(ev: React.ChangeEvent<HTMLInputElement>) {
+  async function handleOnChange(ev: React.ChangeEvent<HTMLInputElement>) {
+    const inputElement = ev.target as HTMLInputElement;
+    const previousValue = inputElement.value;
+    const currentCursorPosition = inputElement.selectionStart ?? 0;
     const { joinedInput, isValidFullCaseNumber } = formatCaseNumberValue(ev.target.value);
 
+    await handleFormattedCaseNumberString(joinedInput, isValidFullCaseNumber);
+
+    const digitsBeforeCursor = previousValue
+      .slice(0, currentCursorPosition)
+      .replace(/\D/g, '').length;
+    const newCursorPosition = calculateNewCursorPosition(joinedInput, digitsBeforeCursor);
+
+    setNewCursorPosition(inputElement, newCursorPosition);
+  }
+
+  function getCaseNumberString(
+    joinedInput: string,
+    isValidFullCaseNumber: boolean,
+  ): string | undefined {
+    if (allowPartialCaseNumber) return joinedInput || undefined;
+    if (isValidFullCaseNumber) return joinedInput;
+    return undefined;
+  }
+
+  async function handleFormattedCaseNumberString(
+    joinedInput: string,
+    isValidFullCaseNumber: boolean,
+  ) {
     forwardedRef?.current?.setValue(joinedInput);
-
-    const caseNumber = allowPartialCaseNumber
-      ? joinedInput || undefined
-      : isValidFullCaseNumber
-        ? joinedInput
-        : undefined;
-
+    const caseNumber: string | undefined = getCaseNumberString(joinedInput, isValidFullCaseNumber);
     onChange(caseNumber);
+  }
+
+  function setNewCursorPosition(inputElement: HTMLInputElement, newCursorPosition: number): void {
+    if (inputElement && typeof inputElement.setSelectionRange === 'function') {
+      inputElement.setSelectionRange(newCursorPosition, newCursorPosition);
+    }
+  }
+
+  function calculateNewCursorPosition(joinedInput: string, digitsBeforeCursor: number) {
+    if (digitsBeforeCursor === 0) {
+      return 0;
+    }
+
+    let lastDigitPosition = -1;
+
+    for (let i = 0, digitCount = 0; i < joinedInput.length; i++) {
+      if (!joinedInput[i].match(/\d/)) continue;
+      digitCount++;
+      lastDigitPosition = i;
+
+      if (digitCount === digitsBeforeCursor) {
+        return i + 1;
+      }
+    }
+
+    if (lastDigitPosition >= 0) {
+      return lastDigitPosition + 1;
+    }
+
+    return 0;
   }
 
   function handleEnter(ev: React.KeyboardEvent) {
@@ -146,6 +198,7 @@ function CaseNumberInput_(props: CaseNumberInputProps, ref: React.Ref<InputRef>)
       ariaDescription="For example, 12-34567"
       placeholder="__-_____"
       aria-placeholder=""
+      maxLength={MAX_CHARACTERS_ALLOWED_ON_INPUT}
     ></Input>
   );
 }
