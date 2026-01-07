@@ -43,6 +43,16 @@ export function registerRenewOktaToken(oktaAuth: OktaAuth) {
   heartbeatTimer = createTimer(() => handleHeartbeat(oktaAuth), HEARTBEAT);
 }
 
+export function unregisterRenewOktaToken() {
+  if (heartbeatTimer) {
+    heartbeatTimer.clear();
+    heartbeatTimer = null;
+  }
+
+  cleanupPendingLogout();
+  registerLogoutCleanupHandler(null);
+}
+
 export function getCamsUser(oktaUser: UserClaims | null) {
   return { id: oktaUser?.sub ?? 'UNKNOWN', name: oktaUser?.name ?? oktaUser?.email ?? 'UNKNOWN' };
 }
@@ -71,7 +81,9 @@ export async function handleHeartbeat(oktaAuth: OktaAuth) {
         console.error('Background token renewal failed:', error);
       }
     }
-    cleanupPendingLogout();
+    if (!warningShown) {
+      cleanupPendingLogout();
+    }
   } else {
     if (!warningShown) {
       warningShown = true;

@@ -80,4 +80,36 @@ describe('OktaProvider', () => {
 
     registerRenewOktaTokenSpy.mockRestore();
   });
+
+  test('should call unregisterRenewOktaToken when component unmounts', async () => {
+    // Reset mock to return proper config
+    getLoginConfigurationFromEnv.mockReturnValue(mockConfiguration);
+
+    const registerRenewOktaTokenSpy = vi
+      .spyOn(oktaLibrary, 'registerRenewOktaToken')
+      .mockImplementation(() => {});
+    const unregisterRenewOktaTokenSpy = vi
+      .spyOn(oktaLibrary, 'unregisterRenewOktaToken')
+      .mockImplementation(() => {});
+
+    const testId = 'child-div';
+    const childText = 'TEST';
+    const children = <div data-testid={testId}>{childText}</div>;
+
+    const { unmount } = render(<OktaProvider>{children}</OktaProvider>);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId(testId)).toBeInTheDocument();
+    });
+
+    expect(registerRenewOktaTokenSpy).toHaveBeenCalledTimes(1);
+    expect(unregisterRenewOktaTokenSpy).not.toHaveBeenCalled();
+
+    unmount();
+
+    expect(unregisterRenewOktaTokenSpy).toHaveBeenCalledTimes(1);
+
+    registerRenewOktaTokenSpy.mockRestore();
+    unregisterRenewOktaTokenSpy.mockRestore();
+  });
 });
