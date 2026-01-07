@@ -3,7 +3,7 @@ import { vi } from 'vitest';
 
 import { LoggerImpl } from './logger.service';
 import { randomUUID } from 'crypto';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 
 describe('Basic logger service tests', () => {
   let mockLog;

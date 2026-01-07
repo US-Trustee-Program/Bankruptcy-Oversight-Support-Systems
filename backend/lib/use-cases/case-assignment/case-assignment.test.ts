@@ -5,18 +5,18 @@ import {
   createMockApplicationContext,
   createMockApplicationContextSession,
 } from '../../testing/testing-utilities';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
-import { CamsRole } from '../../../../common/src/cams/roles';
+import MockData from '@common/cams/test-utilities/mock-data';
+import { CamsRole } from '@common/cams/roles';
 import CaseManagement from '../cases/case-management';
-import { getCourtDivisionCodes } from '../../../../common/src/cams/users';
+import { getCourtDivisionCodes } from '@common/cams/users';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
-import { ConsolidationOrder } from '../../../../common/src/cams/orders';
+import { ConsolidationOrder } from '@common/cams/orders';
 import OfficeAssigneesUseCase from '../../use-cases/offices/office-assignees';
 import { OfficeStaff } from '../../adapters/gateways/mongo/offices.mongo.repository';
-import { ACMS_SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditable';
-import { MANHATTAN } from '../../../../common/src/cams/test-utilities/courts.mock';
-import { OfficeUserRolesPredicate } from '../../../../common/src/api/search';
-import { delay } from '../../../../common/src/delay';
+import { ACMS_SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+import { MANHATTAN } from '@common/cams/test-utilities/courts.mock';
+import { OfficeUserRolesPredicate } from '@common/api/search';
+import { delay } from '@common/delay';
 
 const randomId = () => {
   return '' + Math.random() * 99999999;

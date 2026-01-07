@@ -1,5 +1,5 @@
 import { app, InvocationContext, output } from '@azure/functions';
-import { CaseSyncEvent } from '../../../../common/src/queue/dataflow-types';
+import { CaseSyncEvent } from '@common/queue/dataflow-types';
 
 import ContextCreator from '../../azure/application-context-creator';
 import {
@@ -16,9 +16,9 @@ import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-
 import { isNotFoundError } from '../../../lib/common-errors/not-found-error';
 import ApplicationContextCreator from '../../azure/application-context-creator';
 import { UnknownError } from '../../../lib/common-errors/unknown-error';
-import DateHelper from '../../../../common/src/date-helper';
+import DateHelper from '@common/date-helper';
 import { STORAGE_QUEUE_CONNECTION } from '../storage-queues';
-import { filterToExtendedAscii } from '../../../../common/src/cams/sanitization';
+import { filterToExtendedAscii } from '@common/cams/sanitization';
 
 const MODULE_NAME = 'MIGRATE-CASES';
 const PAGE_SIZE = 100;

@@ -3,7 +3,7 @@ import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-res
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsController } from '../controller';
 import { CourtsUseCase } from '../../use-cases/courts/courts';
-import { CourtDivisionDetails } from '../../../../common/src/cams/courts';
+import { CourtDivisionDetails } from '@common/cams/courts';
 import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
 
 const MODULE_NAME = 'COURTS-CONTROLLER';

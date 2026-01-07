@@ -15,29 +15,24 @@ import {
   RawConsolidationOrder,
   TransferOrder,
   TransferOrderAction,
-} from '../../../../common/src/cams/orders';
-import {
-  ConsolidationFrom,
-  ConsolidationTo,
-  TransferFrom,
-  TransferTo,
-} from '../../../../common/src/cams/events';
-import { CaseSummary } from '../../../../common/src/cams/cases';
+} from '@common/cams/orders';
+import { ConsolidationFrom, ConsolidationTo, TransferFrom, TransferTo } from '@common/cams/events';
+import { CaseSummary } from '@common/cams/cases';
 import { CamsError } from '../../common-errors/cams-error';
-import DateHelper from '../../../../common/src/date-helper';
+import DateHelper from '@common/date-helper';
 import {
   CaseConsolidationHistory,
   CaseHistory,
   ConsolidationOrderSummary,
   isConsolidationHistory,
-} from '../../../../common/src/cams/history';
+} from '@common/cams/history';
 import { CaseAssignmentUseCase } from '../case-assignment/case-assignment';
 import { BadRequestError } from '../../common-errors/bad-request';
-import { CamsUserReference, getCourtDivisionCodes } from '../../../../common/src/cams/users';
-import { CamsRole } from '../../../../common/src/cams/roles';
+import { CamsUserReference, getCourtDivisionCodes } from '@common/cams/users';
+import { CamsRole } from '@common/cams/roles';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
-import { createAuditRecord } from '../../../../common/src/cams/auditable';
-import { OrdersSearchPredicate } from '../../../../common/src/api/search';
+import { createAuditRecord } from '@common/cams/auditable';
+import { OrdersSearchPredicate } from '@common/api/search';
 import { isNotFoundError } from '../../common-errors/not-found-error';
 import Factory, { getCasesGateway } from '../../factory';
 

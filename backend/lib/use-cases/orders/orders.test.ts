@@ -18,29 +18,24 @@ import {
   getCaseSummaryFromTransferOrder,
   TransferOrder,
   TransferOrderAction,
-} from '../../../../common/src/cams/orders';
-import {
-  ConsolidationFrom,
-  ConsolidationTo,
-  TransferFrom,
-  TransferTo,
-} from '../../../../common/src/cams/events';
+} from '@common/cams/orders';
+import { ConsolidationFrom, ConsolidationTo, TransferFrom, TransferTo } from '@common/cams/events';
 import { CASE_SUMMARIES } from '../../testing/mock-data/case-summaries.mock';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { CasesLocalGateway } from '../../adapters/gateways/cases.local.gateway';
-import { CaseSummary } from '../../../../common/src/cams/cases';
+import { CaseSummary } from '@common/cams/cases';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import * as crypto from 'crypto';
-import { CaseHistory, ConsolidationOrderSummary } from '../../../../common/src/cams/history';
+import { CaseHistory, ConsolidationOrderSummary } from '@common/cams/history';
 import { MockOrdersGateway } from '../../testing/mock-gateways/mock.orders.gateway';
-import { CamsRole } from '../../../../common/src/cams/roles';
-import { getCamsUserReference } from '../../../../common/src/cams/session';
+import { CamsRole } from '@common/cams/roles';
+import { getCamsUserReference } from '@common/cams/session';
 import { CaseAssignmentUseCase } from '../case-assignment/case-assignment';
-import { REGION_02_GROUP_NY } from '../../../../common/src/cams/test-utilities/mock-user';
-import { getCourtDivisionCodes } from '../../../../common/src/cams/users';
+import { REGION_02_GROUP_NY } from '@common/cams/test-utilities/mock-user';
+import { getCourtDivisionCodes } from '@common/cams/users';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
-import { CaseAssignment } from '../../../../common/src/cams/assignments';
+import { CaseAssignment } from '@common/cams/assignments';
 
 describe('Orders use case', () => {
   const ORIGINAL_ENV = process.env;

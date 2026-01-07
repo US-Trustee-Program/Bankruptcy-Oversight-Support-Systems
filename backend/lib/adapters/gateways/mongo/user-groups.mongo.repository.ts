@@ -2,7 +2,7 @@ import { ApplicationContext } from '../../types/basic';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { UserGroupsRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
-import { UserGroup } from '../../../../../common/src/cams/users';
+import { UserGroup } from '@common/cams/users';
 import QueryBuilder from '../../../query/query-builder';
 
 const MODULE_NAME = 'USER-GROUPS-MONGO-REPOSITORY';

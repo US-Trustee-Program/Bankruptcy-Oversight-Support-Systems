@@ -1,13 +1,13 @@
 import * as jwt from 'jsonwebtoken';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
-import MockUsers, { MockUser } from '../../../../common/src/cams/test-utilities/mock-user';
-import { CamsUser } from '../../../../common/src/cams/users';
-import { CamsRole } from '../../../../common/src/cams/roles';
-import { CamsJwt, CamsJwtClaims } from '../../../../common/src/cams/jwt';
+import MockUsers, { MockUser } from '@common/cams/test-utilities/mock-user';
+import { CamsUser } from '@common/cams/users';
+import { CamsRole } from '@common/cams/roles';
+import { CamsJwt, CamsJwtClaims } from '@common/cams/jwt';
 import { OpenIdConnectGateway } from '../../adapters/types/authorization';
-import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
-import DateHelper from '../../../../common/src/date-helper';
+import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
+import DateHelper from '@common/date-helper';
 
 const MODULE_NAME = 'MOCK-OAUTH2-GATEWAY';
 const mockUsers: MockUser[] = MockUsers;

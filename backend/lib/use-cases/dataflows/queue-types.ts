@@ -1,5 +1,5 @@
 import { CamsError } from '../../common-errors/cams-error';
-import { CaseSyncEvent } from '../../../../common/src/queue/dataflow-types';
+import { CaseSyncEvent } from '@common/queue/dataflow-types';
 
 type MaybeError<E extends CamsError = CamsError> = {
   error?: E;

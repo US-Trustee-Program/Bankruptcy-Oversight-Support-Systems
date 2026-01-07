@@ -1,6 +1,6 @@
 import * as ld from '@launchdarkly/node-server-sdk';
 import { ApplicationConfiguration } from '../../configs/application-configuration';
-import { testFeatureFlags } from '../../../../common/src/feature-flags';
+import { testFeatureFlags } from '@common/feature-flags';
 import { FeatureFlagSet } from '../types/basic';
 
 export async function getFeatureFlags(config: ApplicationConfiguration): Promise<FeatureFlagSet> {

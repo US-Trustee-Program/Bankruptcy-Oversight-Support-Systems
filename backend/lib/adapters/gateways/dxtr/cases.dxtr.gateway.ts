@@ -15,20 +15,10 @@ import { getDebtorTypeLabel } from '../debtor-type-gateway';
 import { getPetitionInfo } from '../petition-gateway';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import { CamsError } from '../../../common-errors/cams-error';
-import { CasesSearchPredicate, DEFAULT_SEARCH_LIMIT } from '../../../../../common/src/api/search';
-import {
-  CaseBasics,
-  CaseDetail,
-  CaseSummary,
-  getCaseIdParts,
-} from '../../../../../common/src/cams/cases';
-import {
-  DebtorAttorney,
-  Debtor,
-  Party,
-  LegacyTrustee,
-} from '../../../../../common/src/cams/parties';
-import { Trustee } from '../../../../../common/src/cams/trustees';
+import { CasesSearchPredicate, DEFAULT_SEARCH_LIMIT } from '@common/api/search';
+import { CaseBasics, CaseDetail, CaseSummary, getCaseIdParts } from '@common/cams/cases';
+import { DebtorAttorney, Debtor, Party, LegacyTrustee } from '@common/cams/parties';
+import { Trustee } from '@common/cams/trustees';
 
 const MODULE_NAME = 'CASES-DXTR-GATEWAY';
 

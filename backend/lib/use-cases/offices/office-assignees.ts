@@ -1,10 +1,10 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getOfficeAssigneesRepository, getOfficesGateway } from '../../factory';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
-import { CaseAssignment } from '../../../../common/src/cams/assignments';
-import { mapDivisionCodeToUstpOffice } from '../../../../common/src/cams/offices';
+import { CaseAssignment } from '@common/cams/assignments';
+import { mapDivisionCodeToUstpOffice } from '@common/cams/offices';
 import { OfficeAssignee } from '../gateways.types';
-import { getCaseIdParts } from '../../../../common/src/cams/cases';
+import { getCaseIdParts } from '@common/cams/cases';
 
 const MODULE_NAME = 'OFFICE-ASSIGNEES-USE-CASE';
 

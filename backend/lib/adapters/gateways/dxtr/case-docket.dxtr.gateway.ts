@@ -7,7 +7,7 @@ import { ApplicationContext } from '../../types/basic';
 import { CaseDocketGateway } from '../../../use-cases/gateways.types';
 import { CamsError } from '../../../common-errors/cams-error';
 import { NotFoundError } from '../../../common-errors/not-found-error';
-import { CaseDocket, CaseDocketEntryDocument } from '../../../../../common/src/cams/cases';
+import { CaseDocket, CaseDocketEntryDocument } from '@common/cams/cases';
 
 const MODULE_NAME = 'CASE-DOCKET-DXTR-GATEWAY';
 

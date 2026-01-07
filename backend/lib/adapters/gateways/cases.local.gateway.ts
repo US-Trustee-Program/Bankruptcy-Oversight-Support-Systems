@@ -2,11 +2,11 @@ import { CasesInterface, TransactionIdRangeForDate } from '../../use-cases/cases
 import { ApplicationContext } from '../types/basic';
 import { GatewayHelper } from './gateway-helper';
 import { getMonthDayYearStringFromDate } from '../utils/date-helper';
-import { CaseBasics, CaseDetail } from '../../../../common/src/cams/cases';
+import { CaseBasics, CaseDetail } from '@common/cams/cases';
 import { CamsError } from '../../common-errors/cams-error';
-import { CasesSearchPredicate } from '../../../../common/src/api/search';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
-import { filterToExtendedAscii } from '../../../../common/src/cams/sanitization';
+import { CasesSearchPredicate } from '@common/api/search';
+import MockData from '@common/cams/test-utilities/mock-data';
+import { filterToExtendedAscii } from '@common/cams/sanitization';
 
 const MODULE_NAME = 'MOCK-CASES-GATEWAY';
 

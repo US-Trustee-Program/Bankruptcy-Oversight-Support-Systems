@@ -1,4 +1,4 @@
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsHttpRequest } from '../../adapters/types/http';
 
 export const mockRequestUrl = 'http://mockhost/api';

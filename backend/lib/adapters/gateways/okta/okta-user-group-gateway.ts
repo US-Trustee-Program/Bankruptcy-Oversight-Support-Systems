@@ -1,4 +1,4 @@
-import { CamsUser, CamsUserGroup, CamsUserReference } from '../../../../../common/src/cams/users';
+import { CamsUser, CamsUserGroup, CamsUserReference } from '@common/cams/users';
 import { Initializer, UserGroupGateway, UserGroupGatewayConfig } from '../../types/authorization';
 import { UnknownError } from '../../../common-errors/unknown-error';
 import { ApplicationContext } from '../../types/basic';

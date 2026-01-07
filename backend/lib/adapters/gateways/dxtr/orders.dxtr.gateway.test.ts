@@ -9,7 +9,7 @@ import DxtrOrdersGateway, {
   dxtrOrdersSorter,
 } from './orders.dxtr.gateway';
 import { ApplicationContext } from '../../types/basic';
-import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 
 function getEarliestDate(docket: DxtrOrderDocketEntry[]) {
   return docket.reduce<string>((earliestDate, de) => {

@@ -7,9 +7,9 @@ import {
 } from '../../factory';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { CamsError } from '../../common-errors/cams-error';
-import { mapDivisionCodeToUstpOffice } from '../../../../common/src/cams/offices';
-import { CaseAssignment } from '../../../../common/src/cams/assignments';
-import { isCaseOpen } from '../../../../common/src/cams/cases';
+import { mapDivisionCodeToUstpOffice } from '@common/cams/offices';
+import { CaseAssignment } from '@common/cams/assignments';
+import { isCaseOpen } from '@common/cams/cases';
 import { OfficeAssignee } from '../gateways.types';
 
 const MODULE_NAME = 'MIGRATE-OFFICE-ASSIGNEES-USE-CASE';

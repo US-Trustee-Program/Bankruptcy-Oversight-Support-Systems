@@ -4,7 +4,7 @@ import {
   THROW_PERMISSIONS_ERROR_CASE_ID,
   THROW_UNKNOWN_ERROR_CASE_ID,
 } from '../../testing/testing-constants';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { CaseAssignmentUseCase } from '../../use-cases/case-assignment/case-assignment';
 import { CamsError } from '../../common-errors/cams-error';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
@@ -12,13 +12,13 @@ import {
   createMockApplicationContext,
   createMockApplicationContextSession,
 } from '../../testing/testing-utilities';
-import { CamsRole } from '../../../../common/src/cams/roles';
-import { CamsUserReference } from '../../../../common/src/cams/users';
+import { CamsRole } from '@common/cams/roles';
+import { CamsUserReference } from '@common/cams/users';
 import { UnknownError } from '../../common-errors/unknown-error';
-import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
+import HttpStatusCodes from '@common/api/http-status-codes';
 import { httpSuccess } from '../../adapters/utils/http-response';
 import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
-import { REGION_02_GROUP_NY } from '../../../../common/src/cams/test-utilities/mock-user';
+import { REGION_02_GROUP_NY } from '@common/cams/test-utilities/mock-user';
 import { ApplicationContext } from '../../adapters/types/basic';
 
 const Jane = MockData.getCamsUserReference({ name: 'Jane' });

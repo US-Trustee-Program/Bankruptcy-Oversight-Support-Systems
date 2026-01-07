@@ -1,11 +1,11 @@
-import { OrdersSearchPredicate } from '../../../../../common/src/api/search';
-import { ConsolidationOrder } from '../../../../../common/src/cams/orders';
+import { OrdersSearchPredicate } from '@common/api/search';
+import { ConsolidationOrder } from '@common/cams/orders';
 import QueryBuilder, { ConditionOrConjunction, using } from '../../../query/query-builder';
 import { ConsolidationOrdersRepository } from '../../../use-cases/gateways.types';
 import { ApplicationContext } from '../../types/basic';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
-import { escapeRegExCharacters } from '../../../../../common/src/cams/regex';
+import { escapeRegExCharacters } from '@common/cams/regex';
 
 const MODULE_NAME = 'CONSOLIDATIONS-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'consolidations';

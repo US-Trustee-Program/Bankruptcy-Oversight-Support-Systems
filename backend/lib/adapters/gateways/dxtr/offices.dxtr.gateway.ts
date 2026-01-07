@@ -4,8 +4,8 @@ import { ApplicationContext } from '../../types/basic';
 import { QueryResults } from '../../types/database';
 import { executeQuery } from '../../utils/database';
 import { OfficesGateway } from '../../../use-cases/offices/offices.types';
-import { CamsUserReference } from '../../../../../common/src/cams/users';
-import { UstpDivision, UstpGroup, UstpOfficeDetails } from '../../../../../common/src/cams/offices';
+import { CamsUserReference } from '@common/cams/users';
+import { UstpDivision, UstpGroup, UstpOfficeDetails } from '@common/cams/offices';
 import { buildOfficeCode, getOfficeName } from '../../../use-cases/offices/offices';
 
 const MODULE_NAME = 'OFFICES-GATEWAY';

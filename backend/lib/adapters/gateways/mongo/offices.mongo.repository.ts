@@ -1,15 +1,15 @@
 import { ApplicationContext } from '../../types/basic';
-import { CamsUserReference, Staff } from '../../../../../common/src/cams/users';
-import { Auditable, createAuditRecord } from '../../../../../common/src/cams/auditable';
-import { CamsRole, CamsRoleType } from '../../../../../common/src/cams/roles';
-import { getCamsUserReference } from '../../../../../common/src/cams/session';
+import { CamsUserReference, Staff } from '@common/cams/users';
+import { Auditable, createAuditRecord } from '@common/cams/auditable';
+import { CamsRole, CamsRoleType } from '@common/cams/roles';
+import { getCamsUserReference } from '@common/cams/session';
 import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
 import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { OfficesRepository, ReplaceResult } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { DEFAULT_STAFF_TTL } from '../../../use-cases/offices/offices';
 import { isNotFoundError } from '../../../common-errors/not-found-error';
-import { OfficeUserRolesPredicate } from '../../../../../common/src/api/search';
+import { OfficeUserRolesPredicate } from '@common/api/search';
 
 const MODULE_NAME = 'OFFICES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'offices';

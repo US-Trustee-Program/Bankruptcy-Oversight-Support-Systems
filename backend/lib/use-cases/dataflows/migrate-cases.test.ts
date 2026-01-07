@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { AcmsGatewayImpl } from '../../adapters/gateways/acms/acms.gateway';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { UnknownError } from '../../common-errors/unknown-error';

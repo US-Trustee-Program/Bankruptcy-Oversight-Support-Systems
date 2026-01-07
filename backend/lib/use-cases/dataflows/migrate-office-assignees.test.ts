@@ -1,11 +1,11 @@
 import { vi } from 'vitest';
 import MigrateOfficeAssigneesUseCase from './migrate-office-assignees';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { MockOfficesGateway } from '../../testing/mock-gateways/mock.offices.gateway';
-import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
+import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
 
 describe('office-assignees use case tests', () => {
   test('should migrate existing assignments', async () => {
