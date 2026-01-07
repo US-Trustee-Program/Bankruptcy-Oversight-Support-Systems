@@ -17,12 +17,12 @@ import {
 } from '@common/cams/trustees';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
 import { Auditable } from '@common/cams/auditable';
-import { OversightRole } from '@common/cams/roles';
+import { CamsRole } from '@common/cams/roles';
 
 const ROLE_DISPLAY_MAP = {
-  [OversightRole.OversightAttorney]: 'Attorney',
-  [OversightRole.OversightAuditor]: 'Auditor',
-  [OversightRole.OversightParalegal]: 'Paralegal',
+  [CamsRole.OversightAttorney]: 'Attorney',
+  [CamsRole.OversightAuditor]: 'Auditor',
+  [CamsRole.OversightParalegal]: 'Paralegal',
 } as const;
 
 export interface TrusteeDetailAuditHistoryProps {

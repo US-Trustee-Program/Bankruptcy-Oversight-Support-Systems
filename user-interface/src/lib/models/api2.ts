@@ -242,8 +242,8 @@ function withCache(cacheOptions: CacheOptions): Pick<GenericApiClient, 'get'> {
   };
 }
 
-async function getOversightStaff() {
-  return api().get<Staff[]>('/staff');
+async function getOversightStaff(): Promise<ResponseBody<Record<OversightRoleType, Staff[]>>> {
+  return api().get<Record<OversightRoleType, Staff[]>>('/staff');
 }
 
 async function postTrustee(trustee: TrusteeInput) {

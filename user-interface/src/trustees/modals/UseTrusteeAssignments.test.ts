@@ -3,7 +3,7 @@ import { vi, describe, test, expect, beforeEach } from 'vitest';
 import { useTrusteeAssignments } from './UseTrusteeAssignments';
 import Api2 from '@/lib/models/api2';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
-import { OversightRole } from '@common/cams/roles';
+import { CamsRole } from '@common/cams/roles';
 import { ResponseBody } from '@common/api/response';
 
 describe('useTrusteeAssignments', () => {
@@ -15,7 +15,7 @@ describe('useTrusteeAssignments', () => {
         id: 'attorney-123',
         name: 'Attorney Smith',
       },
-      role: OversightRole.OversightAttorney,
+      role: CamsRole.OversightAttorney,
       createdBy: {
         id: 'user-123',
         name: 'Admin User',
@@ -97,11 +97,7 @@ describe('useTrusteeAssignments', () => {
       expect(result.current.assignments).toEqual([newAssignment]);
     });
 
-    expect(spy).toHaveBeenCalledWith(
-      'trustee-123',
-      'attorney-123',
-      OversightRole.OversightAttorney,
-    );
+    expect(spy).toHaveBeenCalledWith('trustee-123', 'attorney-123', CamsRole.OversightAttorney);
     expect(result.current.isLoading).toBe(false);
     expect(result.current.error).toBeNull();
   });

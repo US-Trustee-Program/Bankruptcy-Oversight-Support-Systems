@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTrusteeAssignments } from '@/trustees/modals/UseTrusteeAssignments';
 import Api2 from '@/lib/models/api2';
 import { AttorneyUser } from '@common/cams/users';
+import { CamsRole } from '@common/cams/roles';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import AttorneyAssignmentSection from './AttorneyAssignmentSection';
 import AuditorAssignmentSection from './AuditorAssignmentSection';
@@ -28,7 +29,8 @@ export default function TrusteeAssignedStaff(props: Readonly<TrusteeAssignedStaf
       setAttorneysError(null);
       try {
         const response = await Api2.getOversightStaff();
-        setAttorneys(response.data ?? []);
+        const staffByRole = response.data ?? {};
+        setAttorneys(staffByRole[CamsRole.OversightAttorney] ?? []);
       } catch {
         setAttorneysError('Failed to load attorneys');
       } finally {

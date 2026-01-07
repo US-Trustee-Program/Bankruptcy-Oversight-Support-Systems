@@ -2,7 +2,7 @@ import { useRef, useCallback } from 'react';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
-import { OversightRole } from '@common/cams/roles';
+import { CamsRole } from '@common/cams/roles';
 import TrusteeOversightAssignmentModal, {
   TrusteeOversightAssignmentModalRef,
 } from '../modals/TrusteeOversightAssignmentModal';
@@ -19,7 +19,7 @@ interface AuditorAssignmentSectionProps {
 export default function AuditorAssignmentSection(props: Readonly<AuditorAssignmentSectionProps>) {
   const { trusteeId, assignments, onAssignmentChange, isLoading = false } = props;
   const modalRef = useRef<TrusteeOversightAssignmentModalRef>(null);
-  const auditorAssignment = assignments.find((a) => a.role === OversightRole.OversightAuditor);
+  const auditorAssignment = assignments.find((a) => a.role === CamsRole.OversightAuditor);
 
   const handleAssignment = useCallback(
     (isAssigned: boolean) => {
@@ -85,7 +85,7 @@ export default function AuditorAssignmentSection(props: Readonly<AuditorAssignme
         ref={modalRef}
         modalId={`assign-auditor-modal-${trusteeId}`}
         trusteeId={trusteeId}
-        role={OversightRole.OversightAuditor}
+        role={CamsRole.OversightAuditor}
         onAssignment={handleAssignment}
       />
     </div>

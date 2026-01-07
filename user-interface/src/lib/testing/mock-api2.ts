@@ -36,7 +36,7 @@ import {
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { Creatable } from '@common/cams/creatable';
 import { BankListItem, BankruptcySoftwareListItem } from '@common/cams/lists';
-import { OversightRole, OversightRoleType } from '@common/cams/roles';
+import { CamsRole, OversightRoleType } from '@common/cams/roles';
 
 // Helper to generate a random ID
 function randomId() {
@@ -2026,201 +2026,49 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
     };
   } else if (path === '/staff') {
     response = {
-      data: [
-        ...[
+      data: {
+        [CamsRole.TrialAttorney]: [
           {
             id: 'guid-34537',
             name: 'Sophia Stracke',
-            offices: [
-              {
-                officeCode: 'USTP_CAMS_Region_3_Office_Wilmington',
-                idpGroupName: 'USTP CAMS Region 3 Office Wilmington',
-                officeName: 'Wilmington',
-                groups: [
-                  {
-                    groupDesignator: 'WL',
-                    divisions: [
-                      {
-                        divisionCode: '111',
-                        court: {
-                          courtId: '0311',
-                          courtName: 'District of Delaware',
-                          state: 'DE',
-                        },
-                        courtOffice: {
-                          courtOfficeCode: '1',
-                          courtOfficeName: 'Delaware',
-                        },
-                      },
-                    ],
-                  },
-                ],
-                regionId: '3',
-                regionName: 'PHILADELPHIA',
-              },
-            ],
             roles: ['TrialAttorney'],
           },
           {
             id: 'guid-44199',
             name: 'Shawn Cronin',
-            offices: [
-              {
-                officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
-                idpGroupName: 'USTP CAMS Region 2 Office Manhattan',
-                officeName: 'Manhattan',
-                groups: [
-                  {
-                    groupDesignator: 'NY',
-                    divisions: [
-                      {
-                        divisionCode: '081',
-                        court: {
-                          courtId: '0208',
-                          courtName: 'Southern District of New York',
-                          state: 'NY',
-                        },
-                        courtOffice: {
-                          courtOfficeCode: '1',
-                          courtOfficeName: 'Manhattan',
-                        },
-                      },
-                      {
-                        divisionCode: '087',
-                        court: {
-                          courtId: '0208',
-                          courtName: 'Southern District of New York',
-                          state: 'NY',
-                        },
-                        courtOffice: {
-                          courtOfficeCode: '7',
-                          courtOfficeName: 'White Plains',
-                        },
-                      },
-                    ],
-                  },
-                ],
-                regionId: '2',
-                regionName: 'NEW YORK',
-              },
-            ],
             roles: ['TrialAttorney'],
           },
           {
             id: 'guid-58647',
             name: 'Brad Cremin I',
-            offices: [
-              {
-                officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
-                idpGroupName: 'USTP CAMS Region 2 Office Manhattan',
-                officeName: 'Manhattan',
-                groups: [
-                  {
-                    groupDesignator: 'NY',
-                    divisions: [
-                      {
-                        divisionCode: '081',
-                        court: {
-                          courtId: '0208',
-                          courtName: 'Southern District of New York',
-                          state: 'NY',
-                        },
-                        courtOffice: {
-                          courtOfficeCode: '1',
-                          courtOfficeName: 'Manhattan',
-                        },
-                      },
-                      {
-                        divisionCode: '087',
-                        court: {
-                          courtId: '0208',
-                          courtName: 'Southern District of New York',
-                          state: 'NY',
-                        },
-                        courtOffice: {
-                          courtOfficeCode: '7',
-                          courtOfficeName: 'White Plains',
-                        },
-                      },
-                    ],
-                  },
-                ],
-                regionId: '2',
-                regionName: 'NEW YORK',
-              },
-            ],
             roles: ['TrialAttorney'],
           },
         ],
-        ...[
+        [CamsRole.Auditor]: [
           {
             id: 'guid-92805',
             name: 'Gilbert Conn',
-            offices: [
-              {
-                officeCode: 'USTP_CAMS_Region_3_Office_Wilmington',
-                idpGroupName: 'USTP CAMS Region 3 Office Wilmington',
-                officeName: 'Wilmington',
-                groups: [
-                  {
-                    groupDesignator: 'WL',
-                    divisions: [
-                      {
-                        divisionCode: '111',
-                        court: {
-                          courtId: '0311',
-                          courtName: 'District of Delaware',
-                          state: 'DE',
-                        },
-                        courtOffice: {
-                          courtOfficeCode: '1',
-                          courtOfficeName: 'Delaware',
-                        },
-                      },
-                    ],
-                  },
-                ],
-                regionId: '3',
-                regionName: 'PHILADELPHIA',
-              },
-            ],
             roles: ['Auditor'],
           },
           {
             id: 'guid-28124',
             name: 'Angelica Collins',
-            offices: [
-              {
-                officeCode: 'USTP_CAMS_Region_3_Office_Wilmington',
-                idpGroupName: 'USTP CAMS Region 3 Office Wilmington',
-                officeName: 'Wilmington',
-                groups: [
-                  {
-                    groupDesignator: 'WL',
-                    divisions: [
-                      {
-                        divisionCode: '111',
-                        court: {
-                          courtId: '0311',
-                          courtName: 'District of Delaware',
-                          state: 'DE',
-                        },
-                        courtOffice: {
-                          courtOfficeCode: '1',
-                          courtOfficeName: 'Delaware',
-                        },
-                      },
-                    ],
-                  },
-                ],
-                regionId: '3',
-                regionName: 'PHILADELPHIA',
-              },
-            ],
             roles: ['Auditor'],
           },
         ],
-      ],
+        [CamsRole.Paralegal]: [
+          {
+            id: 'guid-73451',
+            name: 'Patricia Martinez',
+            roles: ['Paralegal'],
+          },
+          {
+            id: 'guid-61829',
+            name: 'Robert Thompson',
+            roles: ['Paralegal'],
+          },
+        ],
+      },
     };
   } else if (path.match(/\/cases\/999-99-00001/)) {
     response = {
@@ -2267,8 +2115,8 @@ async function _delete<T = unknown>(_path: string): Promise<ResponseBody<T>> {
   return response as ResponseBody<T>;
 }
 
-async function getOversightStaff(): Promise<ResponseBody<Staff[]>> {
-  return get<Staff[]>('/staff');
+async function getOversightStaff(): Promise<ResponseBody<Record<OversightRoleType, Staff[]>>> {
+  return get<Record<OversightRoleType, Staff[]>>('/staff');
 }
 
 async function getCaseDetail(caseId: string): Promise<ResponseBody<CaseDetail>> {
@@ -2612,7 +2460,7 @@ async function getTrusteeOversightAssignments(
           id: 'attorney-1',
           name: 'John Doe',
         },
-        role: OversightRole.OversightAttorney,
+        role: CamsRole.OversightAttorney,
         createdBy: { id: 'user-1', name: 'Admin User' },
         createdOn: '2023-01-01T00:00:00Z',
         updatedBy: { id: 'user-1', name: 'Admin User' },
