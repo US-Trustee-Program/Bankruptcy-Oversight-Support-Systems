@@ -18,6 +18,11 @@ const informationUnavailable = 'Information is not available.';
 
 export default function DebtorCard(props: Readonly<DebtorCardProps>) {
   const { title, debtor, debtorTypeLabel, attorney, caseId, caseTitle, testIdPrefix } = props;
+  const hasDebtorAddress =
+    debtor.address1 || debtor.address2 || debtor.address3 || debtor.cityStateZipCountry;
+  const hasAttorneyAddress =
+    attorney &&
+    (attorney.address1 || attorney.address2 || attorney.address3 || attorney.cityStateZipCountry);
 
   return (
     <div className="debtor-card-container">
@@ -62,10 +67,7 @@ export default function DebtorCard(props: Readonly<DebtorCardProps>) {
                 </div>
               )}
 
-              {(debtor.address1 ||
-                debtor.address2 ||
-                debtor.address3 ||
-                debtor.cityStateZipCountry) && (
+              {hasDebtorAddress && (
                 <div className="info-group address">
                   {debtor.address1 && (
                     <div className="address1" data-testid={`${testIdPrefix}-address1`}>
@@ -128,10 +130,7 @@ export default function DebtorCard(props: Readonly<DebtorCardProps>) {
                     )}
                   </div>
 
-                  {(attorney.address1 ||
-                    attorney.address2 ||
-                    attorney.address3 ||
-                    attorney.cityStateZipCountry) && (
+                  {hasAttorneyAddress && (
                     <div className="info-group address">
                       {attorney.address1 && (
                         <div className="address1" data-testid={`${testIdPrefix}-counsel-address1`}>
