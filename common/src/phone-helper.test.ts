@@ -68,6 +68,13 @@ describe('phone-helper', () => {
         extension: undefined,
       });
     });
+
+    test('should NOT parse extension without whitespace separator', () => {
+      expect(parsePhoneNumber('5008316978ext456')).toEqual({
+        number: '5008316978ext456',
+        extension: undefined,
+      });
+    });
   });
 
   describe('formatPhoneNumber', () => {
