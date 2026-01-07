@@ -94,6 +94,20 @@ def run_diagram_generator():
         os.chdir(original_dir)
 
 
+def has_unstaged_changes(file_path):
+    """Check if a file has unstaged changes.
+
+    Returns True if the file has unstaged changes, False otherwise.
+    git diff --exit-code returns 0 if no changes, 1 if changes exist.
+    """
+    result = subprocess.run(
+        ["git", "diff", "--exit-code", file_path],
+        capture_output=True,
+        check=False
+    )
+    return result.returncode == 1
+
+
 def main():
     staged_files = get_staged_files()
 
@@ -112,8 +126,17 @@ def main():
     print("Workflow diagram needs updating...")
 
     success = run_diagram_generator()
-    print("!!! Commit blocked: Please review and stage the updated workflow diagram" if success else "Failed to generate workflow diagrams")
-    return EXIT_FAILURE
+    if not success:
+        print("Failed to generate workflow diagrams")
+        return EXIT_FAILURE
+
+    # Check if the generator actually changed the file
+    if has_unstaged_changes(DIAGRAM_FILE):
+        print("!!! Commit blocked: Please review and stage the updated workflow diagram")
+        return EXIT_FAILURE
+
+    print("Workflow diagram is already up-to-date (no changes needed)")
+    return EXIT_SUCCESS
 
 
 if __name__ == "__main__":

@@ -85,6 +85,7 @@ jobs:
             --ustpIssueCollectorHash ${{ secrets.USTP_ISSUE_COLLECTOR_HASH }} \
             --createAlerts ${{ inputs.ghaEnvironment == 'Main-Gov' }} \
             --deployAppInsights true \
+            --analyticsWorkspaceId ${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} \
             --webappPlanType ${{ vars.AZ_PLAN_TYPE }} \
             --loginProvider ${{ vars.CAMS_LOGIN_PROVIDER }} \
             --loginProviderConfig '${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}' \
