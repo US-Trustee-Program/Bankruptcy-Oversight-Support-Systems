@@ -18,15 +18,9 @@ import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import useFeatureFlags, { VIEW_TRUSTEE_ON_CASE } from '@/lib/hooks/UseFeatureFlags';
 import DatesCard from './cards/DatesCard';
 import DebtorCard from './cards/DebtorCard';
+import { composeCaseTitle } from '../caseDetailHelper';
 
 const informationUnavailable = 'Information is not available.';
-
-function composeCaseTitle(caseDetail: CaseDetail): string {
-  if (caseDetail.jointDebtor?.name) {
-    return `${caseDetail.debtor.name} & ${caseDetail.jointDebtor.name}`;
-  }
-  return caseDetail.debtor.name;
-}
 
 export interface CaseDetailOverviewProps {
   caseDetail: CaseDetail;

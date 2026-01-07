@@ -21,23 +21,12 @@ import {
   MemberCaseIcon,
   TransferredCaseIcon,
 } from '@/lib/components/cams/RawSvgIcon';
+import { composeCaseTitle } from '../caseDetailHelper';
 
 export interface CaseDetailHeaderProps {
   isLoading: boolean;
   caseId: string | undefined;
   caseDetail?: CaseDetail;
-}
-
-function composeCaseTitle(caseDetail?: CaseDetail): string {
-  if (!caseDetail) return '';
-
-  // If there's a joint debtor, compose the title with both names
-  if (caseDetail.jointDebtor?.name) {
-    return `${caseDetail.debtor.name} & ${caseDetail.jointDebtor.name}`;
-  }
-
-  // Otherwise, just use the debtor name
-  return caseDetail.debtor.name;
 }
 
 export default function CaseDetailHeader(props: Readonly<CaseDetailHeaderProps>) {
