@@ -59,12 +59,6 @@ jobs:
           --slot-name ${{ inputs.slotName }} \
           --is-cicd
 
-          ./ops/scripts/pipeline/dev-add-allowed-ip.sh \
-          -g ${{ steps.rgApp.outputs.out }} \
-          -s ${{ inputs.stackName }} \
-          -p ${{ env.priority }} \
-          --is-cicd
-
           ./ops/scripts/pipeline/add-sql-firewall-rule.sh \
           -g ${{ secrets.AZURE_RG }} \
           --stack-name ${{ inputs.stackName }} \
@@ -137,12 +131,6 @@ jobs:
           -s ${{ inputs.stackName }} \
           -r ${name:0:32} \
           --slot-name ${{ inputs.slotName }}
-
-          name="gha-${{ env.priority }}-${{ inputs.stackName }}"
-          ./ops/scripts/pipeline/dev-rm-allowed-ip.sh \
-          -g ${{ steps.rgApp.outputs.out }} \
-          -s ${{ inputs.stackName }} \
-          -r ${name:0:32}
 
           ./ops/scripts/pipeline/add-sql-firewall-rule.sh \
           -g ${{ secrets.AZURE_RG }} \
