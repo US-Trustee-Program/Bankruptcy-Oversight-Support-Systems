@@ -95,17 +95,17 @@ def run_diagram_generator():
 
 
 def has_unstaged_changes(file_path):
-    """Check if a file has unstaged changes."""
-    try:
-        result = subprocess.run(
-            ["git", "diff", "--exit-code", file_path],
-            capture_output=True,
-            check=False
-        )
-        # Exit code 0 = no changes, 1 = has changes
-        return result.returncode == 1
-    except subprocess.CalledProcessError:
-        return False
+    """Check if a file has unstaged changes.
+
+    Returns True if the file has unstaged changes, False otherwise.
+    git diff --exit-code returns 0 if no changes, 1 if changes exist.
+    """
+    result = subprocess.run(
+        ["git", "diff", "--exit-code", file_path],
+        capture_output=True,
+        check=False
+    )
+    return result.returncode == 1
 
 
 def main():
