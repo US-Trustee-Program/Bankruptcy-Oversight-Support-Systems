@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import Api2 from '@/lib/models/api2';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
-import { OversightRole } from '@common/cams/roles';
+import { CamsRole } from '@common/cams/roles';
 
 interface UseTrusteeAssignmentsReturn {
   assignments: TrusteeOversightAssignment[];
@@ -37,7 +37,7 @@ export function useTrusteeAssignments(): UseTrusteeAssignmentsReturn {
       const response = await Api2.createTrusteeOversightAssignment(
         trusteeId,
         attorneyUserId,
-        OversightRole.OversightAttorney,
+        CamsRole.OversightAttorney,
       );
       if (response && response.data) {
         setAssignments((prev) => [...prev, response.data]);

@@ -15,7 +15,7 @@ import {
 } from '@common/cams/trustees';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { ContactInformation } from '@common/cams/contact';
-import { OversightRole, OversightRoleType } from '@common/cams/roles';
+import { CamsRole, OversightRoleType } from '@common/cams/roles';
 
 describe('TrusteeDetailAuditHistory', () => {
   const mockTrusteeId = '12345';
@@ -918,14 +918,14 @@ describe('TrusteeDetailAuditHistory', () => {
       trusteeId: 'audit-oversight-trustee',
       documentType: 'AUDIT_OVERSIGHT',
       before: {
-        role: OversightRole.OversightAttorney,
+        role: CamsRole.OversightAttorney,
         user: {
           id: 'user-123',
           name: 'John Attorney',
         },
       },
       after: {
-        role: OversightRole.OversightAttorney,
+        role: CamsRole.OversightAttorney,
         user: {
           id: 'user-456',
           name: 'Jane Attorney',
@@ -980,7 +980,7 @@ describe('TrusteeDetailAuditHistory', () => {
         ...mockOversightHistory,
         before: null,
         after: {
-          role: OversightRole.OversightAttorney,
+          role: CamsRole.OversightAttorney,
           user: {
             id: 'user-789',
             name: 'Bob Attorney',
@@ -1005,7 +1005,7 @@ describe('TrusteeDetailAuditHistory', () => {
       const oversightHistoryToNull = {
         ...mockOversightHistory,
         before: {
-          role: OversightRole.OversightAttorney,
+          role: CamsRole.OversightAttorney,
           user: {
             id: 'user-999',
             name: 'Charlie Attorney',
@@ -1129,7 +1129,7 @@ describe('TrusteeDetailAuditHistory', () => {
           override: {
             before: null,
             after: {
-              role: OversightRole.OversightAttorney,
+              role: CamsRole.OversightAttorney,
               user: { id: 'user-new', name: 'New Attorney' },
             },
           },
@@ -1142,7 +1142,7 @@ describe('TrusteeDetailAuditHistory', () => {
           name: 'no new oversight',
           override: {
             before: {
-              role: OversightRole.OversightAttorney,
+              role: CamsRole.OversightAttorney,
               user: { id: 'user-old', name: 'Old Attorney' },
             },
             after: null,
@@ -1369,11 +1369,11 @@ describe('TrusteeDetailAuditHistory', () => {
         trusteeId: 'trustee-1',
         documentType: 'AUDIT_OVERSIGHT',
         before: {
-          role: OversightRole.OversightAttorney,
+          role: CamsRole.OversightAttorney,
           user: { id: 'user-1', name: 'Attorney A' },
         },
         after: {
-          role: OversightRole.OversightAttorney,
+          role: CamsRole.OversightAttorney,
           user: { id: 'user-2', name: 'Attorney B' },
         },
         updatedOn: '2024-01-22T16:45:00Z',
@@ -1439,7 +1439,7 @@ describe('TrusteeDetailAuditHistory', () => {
           trusteeId: 'trustee-1',
           documentType: 'AUDIT_OVERSIGHT',
           before: {
-            role: OversightRole.OversightAttorney,
+            role: CamsRole.OversightAttorney,
             user: { id: 'user-1', name: 'Attorney A' },
           },
           after: null,

@@ -115,6 +115,8 @@ describe('StaffUseCase', () => {
 
       expect(result).toEqual({
         TrialAttorney: [],
+        Auditor: [],
+        Paralegal: [],
       });
     });
 
@@ -123,7 +125,11 @@ describe('StaffUseCase', () => {
 
       const result = await staffUseCase.getOversightStaff(mockApplicationContext);
 
-      expect(result).toEqual({});
+      expect(result).toEqual({
+        TrialAttorney: [],
+        Auditor: [],
+        Paralegal: [],
+      });
     });
 
     test('should log retrieved group count', async () => {
@@ -171,6 +177,8 @@ describe('StaffUseCase', () => {
 
       expect(result).toEqual({
         TrialAttorney: [{ id: 'u1', name: 'Attorney 1', roles: [CamsRole.TrialAttorney] }],
+        Auditor: [],
+        Paralegal: [],
       });
       // Unknown group should be skipped, not throw an error
     });

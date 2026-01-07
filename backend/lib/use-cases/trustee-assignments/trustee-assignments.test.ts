@@ -6,7 +6,7 @@ import {
   TrusteeOversightAssignment,
   TrusteeOversightHistory,
 } from '../../../../common/src/cams/trustees';
-import { CamsRole, OversightRole } from '../../../../common/src/cams/roles';
+import { CamsRole } from '../../../../common/src/cams/roles';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { CamsError } from '../../common-errors/cams-error';
@@ -46,7 +46,7 @@ describe('TrusteeAssignmentsUseCase', () => {
     id: 'assignment-123',
     trusteeId: 'trustee-789',
     user: mockAttorney,
-    role: OversightRole.OversightAttorney,
+    role: CamsRole.OversightAttorney,
     createdBy: mockUser,
     createdOn: '2023-01-01T00:00:00.000Z',
     updatedBy: mockUser,
@@ -202,7 +202,7 @@ describe('TrusteeAssignmentsUseCase', () => {
             context,
             'trustee-789',
             'attorney-456',
-            OversightRole.OversightAttorney,
+            CamsRole.OversightAttorney,
           ),
         ).rejects.toThrow(UnauthorizedError);
 
@@ -230,7 +230,7 @@ describe('TrusteeAssignmentsUseCase', () => {
               context,
               trusteeId,
               staffUserId,
-              OversightRole.OversightAttorney,
+              CamsRole.OversightAttorney,
             ),
           ).rejects.toThrow(BadRequestError);
 
@@ -246,7 +246,7 @@ describe('TrusteeAssignmentsUseCase', () => {
               context,
               trusteeId,
               staffUserId,
-              OversightRole.OversightAttorney,
+              CamsRole.OversightAttorney,
             ),
           ).rejects.toThrow(BadRequestError);
         },
@@ -271,7 +271,7 @@ describe('TrusteeAssignmentsUseCase', () => {
         const existingAssignment = {
           ...mockAssignment,
           user: { id: 'attorney-456', name: 'Attorney Smith' },
-          role: OversightRole.OversightAttorney,
+          role: CamsRole.OversightAttorney,
         };
         mockTrusteesRepository.getTrusteeOversightAssignments.mockResolvedValue([
           existingAssignment,
@@ -281,7 +281,7 @@ describe('TrusteeAssignmentsUseCase', () => {
           context,
           'trustee-789',
           'attorney-456',
-          OversightRole.OversightAttorney,
+          CamsRole.OversightAttorney,
         );
 
         expect(result).toBe(false);
@@ -294,7 +294,7 @@ describe('TrusteeAssignmentsUseCase', () => {
           ...mockAssignment,
           id: 'existing-assignment-id',
           user: { id: 'different-attorney', name: 'Different Attorney' },
-          role: OversightRole.OversightAttorney,
+          role: CamsRole.OversightAttorney,
         } as TrusteeOversightAssignment;
 
         const newAssignee = MockData.getCamsUser();
@@ -302,7 +302,7 @@ describe('TrusteeAssignmentsUseCase', () => {
           ...mockAssignment,
           id: 'new-assignment-id',
           user: mockAttorney,
-          role: OversightRole.OversightAttorney,
+          role: CamsRole.OversightAttorney,
         };
 
         mockTrusteesRepository.getTrusteeOversightAssignments.mockResolvedValue([
@@ -324,7 +324,7 @@ describe('TrusteeAssignmentsUseCase', () => {
           context,
           'trustee-789',
           'attorney-456',
-          OversightRole.OversightAttorney,
+          CamsRole.OversightAttorney,
         );
 
         expect(mockTrusteesRepository.updateTrusteeOversightAssignment).toHaveBeenCalledWith(
@@ -339,7 +339,7 @@ describe('TrusteeAssignmentsUseCase', () => {
       test('should proceed with assignment when no existing assignment for that role exists', async () => {
         const auditorAssignment = {
           ...mockAssignment,
-          role: OversightRole.OversightAuditor,
+          role: CamsRole.OversightAuditor,
         };
         mockTrusteesRepository.getTrusteeOversightAssignments.mockResolvedValue([
           auditorAssignment,
@@ -352,7 +352,7 @@ describe('TrusteeAssignmentsUseCase', () => {
           context,
           'trustee-789',
           'attorney-456',
-          OversightRole.OversightAttorney,
+          CamsRole.OversightAttorney,
         );
 
         expect(result).toBe(true);
@@ -373,7 +373,7 @@ describe('TrusteeAssignmentsUseCase', () => {
           context,
           'trustee-789',
           'attorney-456',
-          OversightRole.OversightAttorney,
+          CamsRole.OversightAttorney,
         );
 
         expect(mockTrusteesRepository.getTrusteeOversightAssignments).toHaveBeenCalledWith(
@@ -390,13 +390,13 @@ describe('TrusteeAssignmentsUseCase', () => {
           context,
           'trustee-789',
           'auditor-456',
-          OversightRole.OversightAuditor,
+          CamsRole.OversightAuditor,
         );
 
         const createAssignmentCall =
           mockTrusteesRepository.createTrusteeOversightAssignment.mock.calls[0][0];
         expect(createAssignmentCall).toHaveProperty('trusteeId', 'trustee-789');
-        expect(createAssignmentCall).toHaveProperty('role', OversightRole.OversightAuditor);
+        expect(createAssignmentCall).toHaveProperty('role', CamsRole.OversightAuditor);
         expect(createAssignmentCall).toHaveProperty('createdBy', expect.anything());
         expect(createAssignmentCall).toHaveProperty('createdOn', expect.anything());
       });
@@ -406,7 +406,7 @@ describe('TrusteeAssignmentsUseCase', () => {
           context,
           'trustee-789',
           'auditor-456',
-          OversightRole.OversightAuditor,
+          CamsRole.OversightAuditor,
         );
 
         const createHistoryCall = mockTrusteesRepository.createTrusteeHistory.mock.calls[0][0];
@@ -415,7 +415,7 @@ describe('TrusteeAssignmentsUseCase', () => {
         expect(createHistoryCall).toHaveProperty('before', null);
         expect((createHistoryCall as TrusteeOversightHistory).after).toHaveProperty(
           'role',
-          OversightRole.OversightAuditor,
+          CamsRole.OversightAuditor,
         );
       });
 
@@ -424,13 +424,13 @@ describe('TrusteeAssignmentsUseCase', () => {
           context,
           'trustee-789',
           'paralegal-456',
-          OversightRole.OversightParalegal,
+          CamsRole.OversightParalegal,
         );
 
         const createAssignmentCall =
           mockTrusteesRepository.createTrusteeOversightAssignment.mock.calls[0][0];
         expect(createAssignmentCall).toHaveProperty('trusteeId', 'trustee-789');
-        expect(createAssignmentCall).toHaveProperty('role', OversightRole.OversightParalegal);
+        expect(createAssignmentCall).toHaveProperty('role', CamsRole.OversightParalegal);
         expect(createAssignmentCall).toHaveProperty('createdBy', expect.anything());
         expect(createAssignmentCall).toHaveProperty('createdOn', expect.anything());
       });
@@ -440,7 +440,7 @@ describe('TrusteeAssignmentsUseCase', () => {
           context,
           'trustee-789',
           'paralegal-456',
-          OversightRole.OversightParalegal,
+          CamsRole.OversightParalegal,
         );
 
         const createHistoryCall = mockTrusteesRepository.createTrusteeHistory.mock.calls[0][0];
@@ -449,7 +449,7 @@ describe('TrusteeAssignmentsUseCase', () => {
         expect(createHistoryCall).toHaveProperty('before', null);
         expect((createHistoryCall as TrusteeOversightHistory).after).toHaveProperty(
           'role',
-          OversightRole.OversightParalegal,
+          CamsRole.OversightParalegal,
         );
       });
     });
@@ -514,7 +514,7 @@ describe('TrusteeAssignmentsUseCase', () => {
               context,
               'trustee-789',
               'attorney-456',
-              OversightRole.OversightAttorney,
+              CamsRole.OversightAttorney,
             ),
           ).rejects.toThrow(CamsError);
 

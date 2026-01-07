@@ -7,7 +7,7 @@ import {
   TrusteeOversightAssignment,
 } from '../../../../../common/src/cams/trustees';
 import { CamsUserReference } from '../../../../../common/src/cams/users';
-import { OversightRole } from '../../../../../common/src/cams/roles';
+import { CamsRole } from '../../../../../common/src/cams/roles';
 import {
   createMockApplicationContext,
   getTheThrownError,
@@ -636,7 +636,7 @@ describe('TrusteesMongoRepository', () => {
             id: 'attorney-1',
             name: 'John Attorney',
           },
-          role: OversightRole.OversightAttorney,
+          role: CamsRole.OversightAttorney,
           createdOn: '2025-10-07T10:00:00Z',
           createdBy: mockUser,
           updatedOn: '2025-10-07T10:00:00Z',
@@ -744,7 +744,7 @@ describe('TrusteesMongoRepository', () => {
           id: 'attorney-1',
           name: 'John Attorney',
         },
-        role: OversightRole.OversightAttorney,
+        role: CamsRole.OversightAttorney,
         createdOn: '2025-10-07T10:00:00Z',
         createdBy: mockUser,
         updatedOn: '2025-10-07T10:00:00Z',
@@ -779,7 +779,7 @@ describe('TrusteesMongoRepository', () => {
           id: 'attorney-1',
           name: 'John Attorney',
         },
-        role: OversightRole.OversightAttorney,
+        role: CamsRole.OversightAttorney,
         createdOn: '2025-10-07T10:00:00Z',
         createdBy: mockUser,
         updatedOn: '2025-10-07T10:00:00Z',

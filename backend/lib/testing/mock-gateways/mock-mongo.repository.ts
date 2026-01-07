@@ -7,8 +7,9 @@ import {
   ConsolidationFrom,
 } from '../../../../common/src/cams/events';
 import { CaseHistory } from '../../../../common/src/cams/history';
-import { CamsUserReference } from '../../../../common/src/cams/users';
+import { CamsUserReference, UserGroup } from '../../../../common/src/cams/users';
 import { ApplicationContext } from '../../adapters/types/basic';
+import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import {
   CamsPaginationResponse,
   CaseAssignmentRepository,
@@ -282,8 +283,16 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  getUserGroupsByNames(_ignore: any, _groupNames: string[]): Promise<any[]> {
-    throw new Error('Method not implemented.');
+  async getUserGroupsByNames(
+    _context: ApplicationContext,
+    groupNames: string[],
+  ): Promise<UserGroup[]> {
+    // Create mock user groups for the requested group names
+    return groupNames.map((groupName) => ({
+      id: `group-${groupName.replace(/\s+/g, '-').toLowerCase()}`,
+      groupName,
+      users: [MockData.getCamsUserReference(), MockData.getCamsUserReference()],
+    }));
   }
 
   getTrusteeAppointments(_ignore: any): Promise<any[]> {

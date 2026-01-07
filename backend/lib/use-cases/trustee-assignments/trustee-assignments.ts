@@ -99,10 +99,10 @@ export class TrusteeAssignmentsUseCase {
       });
     }
 
-    const validOversightRoles = Object.values(OversightRole);
+    const validOversightRoles = Array.from(OversightRole);
     if (!validOversightRoles.includes(role)) {
       throw new BadRequestError(MODULE_NAME, {
-        message: `Role must be a valid OversightRole. Received: ${role}`,
+        message: `Role must be a valid oversight role. Received: ${role}`,
       });
     }
 
