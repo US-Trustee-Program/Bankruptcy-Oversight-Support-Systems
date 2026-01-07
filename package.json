@@ -7,6 +7,8 @@
   "workspaces": [
     "common",
     "backend",
+    "backend/function-apps/api",
+    "backend/function-apps/dataflows",
     "user-interface",
     "dev-tools",
     "test/bdd",
@@ -14,10 +16,10 @@
   ],
   "scripts": {
     "build": "npm run build:backend && npm run build:user-interface",
-    "build:api": "npm run build:common && npm run build:api --workspace=backend",
+    "build:api": "npm run build:common && npm run build --workspace=backend && npm run build --workspace=backend/function-apps/api",
     "build:backend": "npm run build:common && npm run build --workspace=backend",
     "build:common": "npm run build --workspace=common",
-    "build:dataflows": "npm run build:common && npm run build:dataflows --workspace=backend",
+    "build:dataflows": "npm run build:common && npm run build --workspace=backend && npm run build --workspace=backend/function-apps/dataflows",
     "build:user-interface": "npm run build:common && npm run build --workspace=user-interface",
     "clean": "rm -rf node_modules && npm run clean --workspaces --if-present",
     "clean-and-build": "npm run clean && npm ci && npm run build",
