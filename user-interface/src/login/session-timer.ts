@@ -67,8 +67,25 @@ export function logout(): void {
   redirectTo(logoutUri);
 }
 
-export function initializeInactiveLogout() {
-  setInterval(checkForInactivity, HEARTBEAT);
+let logoutCleanupHandler: (() => void) | null = null;
+
+export function registerLogoutCleanupHandler(handler: (() => void) | null): void {
+  logoutCleanupHandler = handler;
+}
+
+export function unregisterLogoutCleanupHandler(): void {
+  logoutCleanupHandler = null;
+}
+
+export function cancelPendingLogout(): void {
+  resetLastInteraction();
+
+  if (logoutCleanupHandler) {
+    logoutCleanupHandler();
+  }
+}
+
+export function initializeInteractionListeners() {
   document.body.addEventListener('click', resetLastInteraction);
   document.body.addEventListener('keypress', resetLastInteraction);
 }
