@@ -4,18 +4,18 @@ import {
   Transfer,
   TransferFrom,
   TransferTo,
-} from '../../../../../common/src/cams/events';
+} from '@common/cams/events';
 import { ApplicationContext } from '../../types/basic';
-import { CaseHistory } from '../../../../../common/src/cams/history';
+import { CaseHistory } from '@common/cams/history';
 import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
 import { CamsPaginationResponse, CasesRepository } from '../../../use-cases/gateways.types';
 import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
-import { SyncedCase } from '../../../../../common/src/cams/cases';
-import { CasesSearchPredicate } from '../../../../../common/src/api/search';
+import { SyncedCase } from '@common/cams/cases';
+import { CasesSearchPredicate } from '@common/api/search';
 import { CamsError } from '../../../common-errors/cams-error';
 import QueryPipeline from '../../../query/query-pipeline';
-import { CaseAssignment } from '../../../../../common/src/cams/assignments';
+import { CaseAssignment } from '@common/cams/assignments';
 
 const MODULE_NAME = 'CASES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'cases';

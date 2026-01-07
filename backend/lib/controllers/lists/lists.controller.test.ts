@@ -9,8 +9,8 @@ import {
   BankruptcySoftwareList,
   BankListItem,
   BankruptcySoftwareListItem,
-} from '../../../../common/src/cams/lists';
-import { Creatable } from '../../../../common/src/cams/creatable';
+} from '@common/cams/lists';
+import { Creatable } from '@common/cams/creatable';
 import ListsUseCase from '../../use-cases/lists/lists';
 
 describe('lists controller tests', () => {

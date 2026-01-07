@@ -6,10 +6,10 @@ import {
   getUserGroupsRepository,
 } from '../../../lib/factory';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
-import { ConsolidationOrder, TransferOrder } from '../../../../common/src/cams/orders';
-import { CamsUserReference, UserGroup } from '../../../../common/src/cams/users';
-import { CaseSyncEvent } from '../../../../common/src/queue/dataflow-types';
-import { Trustee } from '../../../../common/src/cams/trustees';
+import { ConsolidationOrder, TransferOrder } from '@common/cams/orders';
+import { CamsUserReference, UserGroup } from '@common/cams/users';
+import { CaseSyncEvent } from '@common/queue/dataflow-types';
+import { Trustee } from '@common/cams/trustees';
 
 /**
  * Deletes all documents from all collections in the MongoDB database for e2e testing.

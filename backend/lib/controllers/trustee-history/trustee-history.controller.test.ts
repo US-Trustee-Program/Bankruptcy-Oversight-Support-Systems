@@ -5,7 +5,7 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { NORMAL_TRUSTEE_ID } from '../../testing/testing-constants';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 
 const TRUSTEE_HISTORY = MockData.getTrusteeHistory();
 

@@ -4,8 +4,8 @@ import StaffUseCase from '../../use-cases/staff/staff';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { StaffController } from './staff.controller';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { Staff } from '../../../../common/src/cams/users';
-import { CamsRole, OversightRoleType } from '../../../../common/src/cams/roles';
+import { Staff } from '@common/cams/users';
+import { CamsRole, OversightRoleType } from '@common/cams/roles';
 
 describe('Staff Controller Tests', () => {
   let context: ApplicationContext;

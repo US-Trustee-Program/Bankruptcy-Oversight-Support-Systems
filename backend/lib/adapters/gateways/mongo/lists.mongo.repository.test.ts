@@ -6,11 +6,11 @@ import {
   BankruptcySoftwareList,
   BankruptcySoftwareListItem,
   BankListItem,
-} from '../../../../../common/src/cams/lists';
+} from '@common/cams/lists';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import { closeDeferred } from '../../../deferrable/defer-close';
-import { Creatable } from '../../../../../common/src/cams/creatable';
+import { Creatable } from '@common/cams/creatable';
 
 const mockAggregate = vi.fn();
 const mockInsertOne = vi.fn();

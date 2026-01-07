@@ -3,10 +3,10 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import * as factory from '../../factory';
 import OfficeAssigneesUseCase from './office-assignees';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
-import { CaseAssignment } from '../../../../common/src/cams/assignments';
+import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
+import { CaseAssignment } from '@common/cams/assignments';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 
 describe('OfficeAssigneesUseCase', () => {
   let mockContext: ApplicationContext;

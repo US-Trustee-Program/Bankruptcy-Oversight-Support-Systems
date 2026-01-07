@@ -1,7 +1,7 @@
 import { ApplicationContext } from '../../../lib/adapters/types/basic';
 import { getCasesGateway } from '../../../lib/factory';
-import { CasesSearchPredicate } from '../../../../common/src/api/search';
-import { CaseBasics } from '../../../../common/src/cams/cases';
+import { CasesSearchPredicate } from '@common/api/search';
+import { CaseBasics } from '@common/cams/cases';
 import DataGenerationUtils from './data-generation-utils';
 
 async function getCasesFromDxtr(appContext: ApplicationContext) {

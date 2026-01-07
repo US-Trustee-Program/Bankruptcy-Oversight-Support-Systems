@@ -1,10 +1,10 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import Factory from '../../factory';
-import { ConsolidationFrom, ConsolidationTo } from '../../../../common/src/cams/events';
-import { ConsolidationType } from '../../../../common/src/cams/orders';
-import { CaseSummary } from '../../../../common/src/cams/cases';
-import { CaseConsolidationHistory } from '../../../../common/src/cams/history';
-import { ACMS_SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditable';
+import { ConsolidationFrom, ConsolidationTo } from '@common/cams/events';
+import { ConsolidationType } from '@common/cams/orders';
+import { CaseSummary } from '@common/cams/cases';
+import { CaseConsolidationHistory } from '@common/cams/history';
+import { ACMS_SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsError } from '../../common-errors/cams-error';
 

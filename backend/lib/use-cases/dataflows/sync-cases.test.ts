@@ -4,7 +4,7 @@ import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repo
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { CasesSyncState } from '../gateways.types';
 import { CasesLocalGateway } from '../../adapters/gateways/cases.local.gateway';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { ApplicationContext } from '../../adapters/types/basic';
 
 describe('getCaseIds tests', () => {

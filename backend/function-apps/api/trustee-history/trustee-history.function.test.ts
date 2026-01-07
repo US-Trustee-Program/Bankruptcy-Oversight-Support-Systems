@@ -8,14 +8,14 @@ import { CamsHttpRequest } from '../../../lib/adapters/types/http';
 import { InvocationContext } from '@azure/functions';
 import handler from './trustee-history.function';
 import ContextCreator from '../../azure/application-context-creator';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { TrusteeHistoryController } from '../../../lib/controllers/trustee-history/trustee-history.controller';
 import {
   buildTestResponseError,
   buildTestResponseSuccess,
   createMockAzureFunctionRequest,
 } from '../../azure/testing-helpers';
-import { TrusteeHistory } from '../../../../common/src/cams/trustees';
+import { TrusteeHistory } from '@common/cams/trustees';
 
 const TRUSTEE_HISTORY = MockData.getTrusteeHistory();
 

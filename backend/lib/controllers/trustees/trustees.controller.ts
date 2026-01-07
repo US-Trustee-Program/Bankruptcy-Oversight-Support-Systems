@@ -1,12 +1,12 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteesUseCase } from '../../use-cases/trustees/trustees';
-import { Trustee, TrusteeInput } from '../../../../common/src/cams/trustees';
+import { Trustee, TrusteeInput } from '@common/cams/trustees';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsController } from '../controller';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
-import { CamsRole } from '../../../../common/src/cams/roles';
+import { CamsRole } from '@common/cams/roles';
 
 const MODULE_NAME = 'TRUSTEES-CONTROLLER';
 

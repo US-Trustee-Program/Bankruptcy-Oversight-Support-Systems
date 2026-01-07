@@ -1,6 +1,6 @@
-import { SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditable';
-import { CaseAssignmentHistory } from '../../../../common/src/cams/history';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+import { CaseAssignmentHistory } from '@common/cams/history';
+import MockData from '@common/cams/test-utilities/mock-data';
 
 export const CASE_HISTORY: CaseAssignmentHistory[] = [
   {

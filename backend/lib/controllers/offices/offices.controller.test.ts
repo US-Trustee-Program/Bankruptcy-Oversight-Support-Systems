@@ -2,11 +2,11 @@ import { vi } from 'vitest';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { OfficesController } from './offices.controller';
-import { COURT_DIVISIONS } from '../../../../common/src/cams/test-utilities/courts.mock';
+import { COURT_DIVISIONS } from '@common/cams/test-utilities/courts.mock';
 import { CamsError } from '../../common-errors/cams-error';
 import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
 import { UnknownError } from '../../common-errors/unknown-error';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { OfficesUseCase } from '../../use-cases/offices/offices';
 
 describe('offices controller tests', () => {

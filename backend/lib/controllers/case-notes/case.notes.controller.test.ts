@@ -1,11 +1,11 @@
 import { vi } from 'vitest';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import {
   createMockApplicationContext,
   createMockApplicationContextSession,
 } from '../../testing/testing-utilities';
-import { CamsRole } from '../../../../common/src/cams/roles';
-import { REGION_02_GROUP_NY } from '../../../../common/src/cams/test-utilities/mock-user';
+import { CamsRole } from '@common/cams/roles';
+import { REGION_02_GROUP_NY } from '@common/cams/test-utilities/mock-user';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseNotesUseCase } from '../../use-cases/case-notes/case-notes';
 import { CaseNotesController } from './case.notes.controller';
@@ -13,8 +13,8 @@ import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-h
 import { NORMAL_CASE_ID } from '../../testing/testing-constants';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { randomUUID } from 'crypto';
-import { CaseNoteDeleteRequest, CaseNoteInput } from '../../../../common/src/cams/cases';
-import { getCamsUserReference } from '../../../../common/src/cams/session';
+import { CaseNoteDeleteRequest, CaseNoteInput } from '@common/cams/cases';
+import { getCamsUserReference } from '@common/cams/session';
 
 describe('Case note controller tests', () => {
   let applicationContext: ApplicationContext<CaseNoteInput>;

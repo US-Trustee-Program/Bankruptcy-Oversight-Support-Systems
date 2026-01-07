@@ -1,6 +1,6 @@
 import Factory from '../../factory';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { CaseHistory } from '../../../../common/src/cams/history';
+import { CaseHistory } from '@common/cams/history';
 
 export class CaseHistoryUseCase {
   public async getCaseHistory(context: ApplicationContext): Promise<CaseHistory[]> {

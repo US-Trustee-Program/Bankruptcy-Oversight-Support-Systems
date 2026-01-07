@@ -8,12 +8,12 @@ import {
   isConsolidationOrderRejection,
   Order,
   TransferOrderAction,
-} from '../../../../common/src/cams/orders';
-import { CaseSummary } from '../../../../common/src/cams/cases';
+} from '@common/cams/orders';
+import { CaseSummary } from '@common/cams/cases';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
-import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
+import HttpStatusCodes from '@common/api/http-status-codes';
 import { CamsController, CamsTimerController } from '../controller';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
