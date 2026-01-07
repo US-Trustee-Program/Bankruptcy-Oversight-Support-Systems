@@ -37,8 +37,9 @@ param functionsRuntime string
 // Provides mapping for runtime stack
 // Use the following query to check supported versions
 //  az functionapp list-runtimes --os linux --query "[].{stack:join(' ', [runtime, version]), LinuxFxVersion:linux_fx_version, SupportedFunctionsVersions:to_string(supported_functions_versions[])}" --output table
+// NOTE: Should match major version in .nvmrc (currently v22.17.1)
 var linuxFxVersionMap = {
-  node: 'NODE|20'
+  node: 'NODE|22'
 }
 
 param loginProviderConfig string
@@ -240,7 +241,6 @@ var baseApiFunctionAppConfigProperties = {
     functionAppScaleLimit: 1
     minimumElasticInstanceCount: 1
     publicNetworkAccess: 'Enabled'
-    ipSecurityRestrictions: ipSecurityRestrictionsRules
     ipSecurityRestrictionsDefaultAction: 'Deny'
     scmIpSecurityRestrictions: [
       {
@@ -259,6 +259,7 @@ var baseApiFunctionAppConfigProperties = {
   }
 
   var prodFunctionAppConfigProperties = union(baseApiFunctionAppConfigProperties, {
+    ipSecurityRestrictions: productionIpSecurityRestrictionsRules
     appSettings: concat(baseApiFunctionAppConfigProperties.appSettings, [
       {
         name: 'INFO_SHA'
@@ -283,6 +284,7 @@ var baseApiFunctionAppConfigProperties = {
   })
 
   var slotFunctionAppConfigProperties = union(baseApiFunctionAppConfigProperties, {
+    ipSecurityRestrictions: stagingIpSecurityRestrictionsRules
     appSettings: concat(baseApiFunctionAppConfigProperties.appSettings, [
       {
         name: 'INFO_SHA'
@@ -458,7 +460,34 @@ var apiApplicationSettings = concat(
     : []
 )
 
-var ipSecurityRestrictionsRules = concat(
+// Firewall rules for production slot
+// USTP: Deny all (access controlled by specific allow rules)
+// Flexion: Allow all (production is publicly accessible)
+var productionIpSecurityRestrictionsRules = concat(
+  [
+    {
+      ipAddress: 'Any'
+      action: isUstpDeployment ? 'Deny' : 'Allow'
+      priority: 2147483647
+      name: isUstpDeployment ? 'Deny all' : 'Allow all'
+      description: isUstpDeployment ? 'Deny all access' : 'Allow all access'
+    }
+  ],
+  allowVeracodeScan
+    ? [
+        {
+          ipAddress: '3.32.105.199/32'
+          action: 'Allow'
+          priority: 1000
+          name: 'Veracode Agent'
+          description: 'Allow Veracode DAST Scans'
+        }
+      ]
+    : []
+)
+
+// Firewall rules for staging slot (always deny for both environments)
+var stagingIpSecurityRestrictionsRules = concat(
   [
     {
       ipAddress: 'Any'
