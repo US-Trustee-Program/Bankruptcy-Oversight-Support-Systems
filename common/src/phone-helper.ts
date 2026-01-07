@@ -1,7 +1,4 @@
-export interface ParsedPhone {
-  number: string;
-  extension?: string;
-}
+import { PhoneNumber } from './cams/contact';
 
 /**
  * Parses a phone number string that may include an extension.
@@ -15,10 +12,8 @@ export interface ParsedPhone {
  * parsePhoneNumber('500-831-6978 ext. 123') // returns { number: '500-831-6978', extension: '123' }
  * parsePhoneNumber('5008316978') // returns { number: '500-831-6978' }
  */
-export function parsePhoneNumber(phone: string): ParsedPhone {
-  if (!phone) {
-    return { number: phone };
-  }
+export function parsePhoneNumber(phone: string): PhoneNumber | undefined {
+  if (!phone) return undefined;
 
   // Split on common extension indicators (case-insensitive)
   // Matches: x, ext, ext., extension followed by optional colon/period and spaces

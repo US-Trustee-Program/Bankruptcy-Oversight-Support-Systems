@@ -63,10 +63,7 @@ describe('phone-helper', () => {
     });
 
     test('should handle empty string', () => {
-      expect(parsePhoneNumber('')).toEqual({
-        number: '',
-        extension: undefined,
-      });
+      expect(parsePhoneNumber('')).toEqual(undefined);
     });
 
     test('should NOT parse extension without whitespace separator', () => {
