@@ -65,7 +65,20 @@ async function getApplicationContext<B = unknown>(
 async function getApplicationContextSession(context: ApplicationContext) {
   const authorizationHeader = context.request?.headers['authorization'];
 
+  // Diagnostic logging for authorization troubleshooting
+  context.logger.info(MODULE_NAME, {
+    message: 'API authorization check',
+    hasAuthHeader: !!authorizationHeader,
+    authHeaderFormat: authorizationHeader
+      ? `${authorizationHeader.split(' ')[0]} <${authorizationHeader.split(' ')[1]?.length || 0} chars>`
+      : 'none',
+  });
+
   if (!authorizationHeader) {
+    context.logger.error(MODULE_NAME, {
+      message: 'Authorization header missing',
+      url: context.request?.url,
+    });
     throw new UnauthorizedError(MODULE_NAME, {
       message: 'Authorization header missing.',
     });
@@ -74,6 +87,10 @@ async function getApplicationContextSession(context: ApplicationContext) {
   const match = authorizationHeader.match(/Bearer (.+)/);
 
   if (!match || match.length !== 2) {
+    context.logger.error(MODULE_NAME, {
+      message: 'Bearer token not found in authorization header',
+      authHeaderFormat: `${authorizationHeader.split(' ')[0]}`,
+    });
     throw new UnauthorizedError(MODULE_NAME, {
       message: 'Bearer token not found in authorization header',
     });
@@ -83,7 +100,15 @@ async function getApplicationContextSession(context: ApplicationContext) {
   const jwtToken = jwt.decode(match[1]);
   if (jwtToken) {
     accessToken = match[1];
+    context.logger.info(MODULE_NAME, {
+      message: 'JWT decoded successfully',
+      tokenLength: accessToken.length,
+    });
   } else {
+    context.logger.error(MODULE_NAME, {
+      message: 'Malformed Bearer token in authorization header',
+      tokenLength: match[1]?.length || 0,
+    });
     throw new UnauthorizedError(MODULE_NAME, {
       message: 'Malformed Bearer token in authorization header',
     });
