@@ -52,8 +52,9 @@ param appServiceRuntime string = 'php'
 // Provides mapping for runtime stack
 // Use the following query to check supported versions
 //  az functionapp list-runtimes --os linux --query "[].{stack:join(' ', [runtime, version]), LinuxFxVersion:linux_fx_version, SupportedFunctionsVersions:to_string(supported_functions_versions[])}" --output table
+// NOTE: Node version should match major version in .nvmrc (currently v22.17.1)
 var linuxFxVersionMap = {
-  node: 'NODE|20'
+  node: 'NODE|22'
   php: 'PHP|8.2'
 }
 
@@ -67,8 +68,11 @@ var appCommandLine = 'rm /etc/nginx/sites-enabled/default;envsubst < /home/site/
 @description('The preferred minimum TLS Cipher Suite to set for SSL negotiation. NOTE: Azure feature still in preview and limited to Premium plans')
 param preferredMinTLSCipherSuite string = 'TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256'
 
-@description('Flag to enable Vercode access')
+@description('Flag to enable Veracode access')
 param allowVeracodeScan bool = false
+
+@description('Is ustp deployment')
+param isUstpDeployment bool
 
 @description('boolean to determine creation and configuration of Application Insights for the Azure Function')
 param deployAppInsights bool = false
@@ -143,7 +147,7 @@ resource webapp 'Microsoft.Web/sites@2023-12-01' = {
 
   resource webappConfig 'config' = {
     name: 'web'
-    properties: webappConfigProperties
+    properties: productionWebappConfigProperties
   }
 
   resource slot 'slots' = {
@@ -157,7 +161,7 @@ resource webapp 'Microsoft.Web/sites@2023-12-01' = {
       }
       resource slotWebAppConfig 'config' = {
         name: 'web'
-        properties: webappConfigProperties
+        properties: stagingWebappConfigProperties
       }
   }
 }
@@ -210,7 +214,34 @@ var applicationSettings = concat(
     : []
 )
 
-var ipSecurityRestrictionsRules = concat(
+// Firewall rules for production slot
+// USTP: Deny all (access controlled by specific allow rules)
+// Flexion: Allow all (production is publicly accessible)
+var productionIpSecurityRestrictionsRules = concat(
+  [
+    {
+      ipAddress: 'Any'
+      action: isUstpDeployment ? 'Deny' : 'Allow'
+      priority: 2147483647
+      name: isUstpDeployment ? 'Deny all' : 'Allow all'
+      description: isUstpDeployment ? 'Deny all access' : 'Allow all access'
+    }
+  ],
+  allowVeracodeScan
+    ? [
+        {
+          ipAddress: '3.32.105.199/32'
+          action: 'Allow'
+          priority: 1000
+          name: 'Veracode Agent'
+          description: 'Allow Veracode DAST Scans'
+        }
+      ]
+    : []
+)
+
+// Firewall rules for staging slot (always deny for both environments)
+var stagingIpSecurityRestrictionsRules = concat(
   [
     {
       ipAddress: 'Any'
@@ -233,45 +264,60 @@ var ipSecurityRestrictionsRules = concat(
     : []
 )
 
-var webappConfigProperties = union(
+// Base configuration shared by both production and staging
+var baseWebappConfigProperties = {
+  appSettings: applicationSettings
+  numberOfWorkers: 1
+  alwaysOn: true
+  http20Enabled: true
+  minimumElasticInstanceCount: 0
+  publicNetworkAccess: 'Enabled'
+  ipSecurityRestrictionsDefaultAction: 'Deny'
+  scmIpSecurityRestrictions: [
     {
-      appSettings: applicationSettings
-      numberOfWorkers: 1
-      alwaysOn: true
-      http20Enabled: true
-      minimumElasticInstanceCount: 0
-      publicNetworkAccess: 'Enabled'
-      ipSecurityRestrictions: ipSecurityRestrictionsRules
-      ipSecurityRestrictionsDefaultAction: 'Deny'
-      scmIpSecurityRestrictions: [
-        {
-          ipAddress: 'Any'
-          action: 'Deny'
-          priority: 2147483647
-          name: 'Deny all'
-          description: 'Deny all access'
-        }
-      ]
-      scmIpSecurityRestrictionsDefaultAction: 'Deny'
-      scmIpSecurityRestrictionsUseMain: false
-      defaultDocuments: [
-        'index.html'
-      ]
-      httpLoggingEnabled: true
-      logsDirectorySizeLimit: 100
-      use32BitWorkerProcess: true
-      managedPipelineMode: 'Integrated'
-      virtualApplications: [
-        {
-          virtualPath: '/'
-          physicalPath: 'site\\wwwroot'
-          preloadEnabled: true
-        }
-      ]
-      linuxFxVersion: linuxFxVersionMap['${appServiceRuntime}']
-      appCommandLine: appCommandLine
-    },
-    isPremiumPlanType ? { minTlsCipherSuite: preferredMinTLSCipherSuite } : {}
+      ipAddress: 'Any'
+      action: 'Deny'
+      priority: 2147483647
+      name: 'Deny all'
+      description: 'Deny all access'
+    }
+  ]
+  scmIpSecurityRestrictionsDefaultAction: 'Deny'
+  scmIpSecurityRestrictionsUseMain: false
+  defaultDocuments: [
+    'index.html'
+  ]
+  httpLoggingEnabled: true
+  logsDirectorySizeLimit: 100
+  use32BitWorkerProcess: true
+  managedPipelineMode: 'Integrated'
+  virtualApplications: [
+    {
+      virtualPath: '/'
+      physicalPath: 'site\\wwwroot'
+      preloadEnabled: true
+    }
+  ]
+  linuxFxVersion: linuxFxVersionMap['${appServiceRuntime}']
+  appCommandLine: appCommandLine
+}
+
+// Production slot configuration (different firewall rules for USTP vs Flexion)
+var productionWebappConfigProperties = union(
+  baseWebappConfigProperties,
+  {
+    ipSecurityRestrictions: productionIpSecurityRestrictionsRules
+  },
+  isPremiumPlanType ? { minTlsCipherSuite: preferredMinTLSCipherSuite } : {}
+)
+
+// Staging slot configuration (always deny for both environments)
+var stagingWebappConfigProperties = union(
+  baseWebappConfigProperties,
+  {
+    ipSecurityRestrictions: stagingIpSecurityRestrictionsRules
+  },
+  isPremiumPlanType ? { minTlsCipherSuite: preferredMinTLSCipherSuite } : {}
 )
 
 module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
