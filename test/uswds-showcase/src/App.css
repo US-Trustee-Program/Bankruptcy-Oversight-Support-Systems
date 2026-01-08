@@ -1,0 +1,57 @@
+.uswds-showcase {
+  min-height: 100vh;
+  background-color: #f0f0f0;
+}
+
+.usa-header {
+  margin-bottom: 2rem;
+}
+
+.showcase-section {
+  background-color: white;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.showcase-section h2 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #005ea2;
+  color: #1b1b1b;
+}
+
+.showcase-section h3 {
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+  color: #565c65;
+}
+
+.button-examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.form-example {
+  margin-bottom: 2rem;
+}
+
+.tag-examples {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.icon-examples {
+  display: flex;
+  gap: 2rem;
+  font-size: 2rem;
+}
+
+body {
+  margin: 0;
+  font-family: 'Source Sans Pro', 'Helvetica Neue', 'Helvetica', 'Roboto', 'Arial', sans-serif;
+}

@@ -10,7 +10,8 @@
     "user-interface",
     "dev-tools",
     "test/bdd",
-    "test/e2e"
+    "test/e2e",
+    "test/uswds-showcase"
   ],
   "scripts": {
     "build": "npm run build:backend && npm run build:user-interface",
@@ -33,6 +34,7 @@
     "lint:fix": "npm run lint:fix --workspaces --if-present -- --quiet",
     "start:backend": "npm run start --workspace=backend",
     "start:frontend": "npm run start --workspace=user-interface",
+    "start:uswds:showcase": "npm run dev --workspace=test/uswds-showcase",
     "test": "npm run test --workspaces --if-present",
     "test:backend": "npm run test --workspace=backend",
     "test:bdd": "npm run test --workspace=test/bdd",
