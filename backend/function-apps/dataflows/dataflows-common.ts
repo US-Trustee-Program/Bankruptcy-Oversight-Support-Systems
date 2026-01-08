@@ -72,29 +72,8 @@ export function buildHttpTrigger(
   fn: (context: InvocationContext, request?: HttpRequest) => Promise<unknown>,
 ) {
   return async (request: HttpRequest, context: InvocationContext): Promise<HttpResponse> => {
-    const logger = ContextCreator.getLogger(context);
     try {
-      // Diagnostic logging for authorization troubleshooting
-      const authHeader = request.headers.get('Authorization');
-      const hasAdminKey = !!process.env.ADMIN_KEY;
-      const adminKeyLength = process.env.ADMIN_KEY?.length || 0;
-
-      logger.info(moduleName, {
-        message: 'Authorization check',
-        hasAuthHeader: !!authHeader,
-        authHeaderFormat: authHeader
-          ? `${authHeader.split(' ')[0]} <${authHeader.split(' ')[1]?.length || 0} chars>`
-          : 'none',
-        hasAdminKeyEnvVar: hasAdminKey,
-        adminKeyEnvVarLength: adminKeyLength,
-      });
-
       if (!isAuthorized(request)) {
-        logger.error(moduleName, {
-          message: 'Authorization failed',
-          hasAuthHeader: !!authHeader,
-          hasAdminKey,
-        });
         throw new ForbiddenError(moduleName);
       }
 
@@ -102,7 +81,7 @@ export function buildHttpTrigger(
 
       return new HttpResponse(toAzureSuccess({ statusCode: 201 }));
     } catch (error) {
-      return new HttpResponse(toAzureError(logger, moduleName, error));
+      return new HttpResponse(toAzureError(ContextCreator.getLogger(context), moduleName, error));
     }
   };
 }
