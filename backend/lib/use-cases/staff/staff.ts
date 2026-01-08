@@ -1,8 +1,8 @@
 import { UserGroupsRepository } from '../gateways.types';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getUserGroupsRepository, getStorageGateway } from '../../factory';
-import { Staff } from '../../../../common/src/cams/users';
-import { OversightRoles, OversightRoleType } from '../../../../common/src/cams/roles';
+import { Staff } from '@common/cams/users';
+import { OversightRoles, OversightRoleType } from '@common/cams/roles';
 
 const MODULE_NAME = 'STAFF-USE-CASE';
 

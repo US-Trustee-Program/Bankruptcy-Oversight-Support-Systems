@@ -5,7 +5,7 @@ import { createMockApplicationContext } from '../../../testing/testing-utilities
 import { ApplicationContext } from '../../types/basic';
 import { OfficeAssigneeMongoRepository } from './office-assignee.mongo.repository';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
-import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { OfficeAssignee } from '../../../use-cases/gateways.types';
 
 describe('case assignment repo tests', () => {

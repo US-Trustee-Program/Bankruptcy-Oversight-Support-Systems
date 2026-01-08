@@ -6,10 +6,10 @@ import {
 } from '../../azure/testing-helpers';
 import { CasesController } from '../../../lib/controllers/cases/cases.controller';
 import ContextCreator from '../../azure/application-context-creator';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { InvocationContext } from '@azure/functions';
-import { ResourceActions } from '../../../../common/src/cams/actions';
-import { CaseDetail } from '../../../../common/src/cams/cases';
+import { ResourceActions } from '@common/cams/actions';
+import { CaseDetail } from '@common/cams/cases';
 import { commonHeaders } from '../../../lib/adapters/utils/http-response';
 import { CamsError } from '../../../lib/common-errors/cams-error';
 

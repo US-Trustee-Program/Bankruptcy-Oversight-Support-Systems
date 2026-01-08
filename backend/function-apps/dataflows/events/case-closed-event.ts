@@ -2,7 +2,7 @@ import { app, InvocationContext } from '@azure/functions';
 import ModuleNames from '../module-names';
 import { CASE_CLOSED_EVENT_DLQ, CASE_CLOSED_EVENT_QUEUE } from '../storage-queues';
 import { buildFunctionName } from '../dataflows-common';
-import { CaseAssignment } from '../../../../common/src/cams/assignments';
+import { CaseAssignment } from '@common/cams/assignments';
 import ContextCreator from '../../azure/application-context-creator';
 import OfficeAssigneesUseCase from '../../../lib/use-cases/offices/office-assignees';
 

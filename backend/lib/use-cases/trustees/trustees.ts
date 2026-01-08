@@ -1,27 +1,22 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteesRepository } from '../gateways.types';
-import { getCamsUserReference } from '../../../../common/src/cams/session';
+import { getCamsUserReference } from '@common/cams/session';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { getTrusteesRepository } from '../../factory';
-import {
-  ValidationSpec,
-  validateObject,
-  flatten,
-  ValidatorResult,
-} from '../../../../common/src/cams/validation';
-import V from '../../../../common/src/cams/validators';
+import { ValidationSpec, validateObject, flatten, ValidatorResult } from '@common/cams/validation';
+import V from '@common/cams/validators';
 import {
   EMAIL_REGEX,
   EXTENSION_REGEX,
   PHONE_REGEX,
   WEBSITE_RELAXED_REGEX,
   ZIP_REGEX,
-} from '../../../../common/src/cams/regex';
+} from '@common/cams/regex';
 import { BadRequestError } from '../../common-errors/bad-request';
-import { Address, ContactInformation, PhoneNumber } from '../../../../common/src/cams/contact';
-import { Trustee, TrusteeHistory, TrusteeInput } from '../../../../common/src/cams/trustees';
-import { createAuditRecord } from '../../../../common/src/cams/auditable';
-import { deepEqual } from '../../../../common/src/object-equality';
+import { Address, ContactInformation, PhoneNumber } from '@common/cams/contact';
+import { Trustee, TrusteeHistory, TrusteeInput } from '@common/cams/trustees';
+import { createAuditRecord } from '@common/cams/auditable';
+import { deepEqual } from '@common/object-equality';
 
 const MODULE_NAME = 'TRUSTEES-USE-CASE';
 

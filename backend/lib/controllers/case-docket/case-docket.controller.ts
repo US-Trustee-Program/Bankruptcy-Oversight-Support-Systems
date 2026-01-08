@@ -4,7 +4,7 @@ import { getCaseDocketUseCase } from '../../factory';
 import { isCamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
-import { CaseDocket } from '../../../../common/src/cams/cases';
+import { CaseDocket } from '@common/cams/cases';
 import { CamsController } from '../controller';
 import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
 

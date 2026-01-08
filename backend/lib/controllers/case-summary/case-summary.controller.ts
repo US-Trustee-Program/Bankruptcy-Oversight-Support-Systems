@@ -1,5 +1,5 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import { CaseSummary } from '../../../../common/src/cams/cases';
+import { CaseSummary } from '@common/cams/cases';
 import CaseManagement from '../../use-cases/cases/case-management';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';

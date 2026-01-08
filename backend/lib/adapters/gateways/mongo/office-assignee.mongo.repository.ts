@@ -1,10 +1,10 @@
 import { OfficeAssignee, OfficeAssigneesRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { ApplicationContext } from '../../types/basic';
-import { OfficeAssigneePredicate } from '../../../../../common/src/api/search';
+import { OfficeAssigneePredicate } from '@common/api/search';
 import QueryBuilder, { using } from '../../../query/query-builder';
 import { CamsError } from '../../../common-errors/cams-error';
-import { CamsUserReference } from '../../../../../common/src/cams/users';
+import { CamsUserReference } from '@common/cams/users';
 import QueryPipeline from '../../../query/query-pipeline';
 
 const { and } = QueryBuilder;

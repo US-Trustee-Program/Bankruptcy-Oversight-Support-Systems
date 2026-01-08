@@ -1,13 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { SyncedCase } from '../../../../common/src/cams/cases';
-import {
-  TransferFrom,
-  TransferTo,
-  ConsolidationTo,
-  ConsolidationFrom,
-} from '../../../../common/src/cams/events';
-import { CaseHistory } from '../../../../common/src/cams/history';
-import { CamsUserReference, UserGroup } from '../../../../common/src/cams/users';
+import { SyncedCase } from '@common/cams/cases';
+import { TransferFrom, TransferTo, ConsolidationTo, ConsolidationFrom } from '@common/cams/events';
+import { CaseHistory } from '@common/cams/history';
+import { CamsUserReference, UserGroup } from '@common/cams/users';
 import { ApplicationContext } from '../../adapters/types/basic';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import {
@@ -28,14 +23,14 @@ import {
   UserSessionCacheRepository,
   UsersRepository,
 } from '../../use-cases/gateways.types';
-import { TrusteeHistory } from '../../../../common/src/cams/trustees';
+import { TrusteeHistory } from '@common/cams/trustees';
 import {
   BankList,
   BankListItem,
   BankruptcySoftwareList,
   BankruptcySoftwareListItem,
-} from '../../../../common/src/cams/lists';
-import { Creatable } from '../../../../common/src/cams/creatable';
+} from '@common/cams/lists';
+import { Creatable } from '@common/cams/creatable';
 
 export class MockMongoRepository
   implements

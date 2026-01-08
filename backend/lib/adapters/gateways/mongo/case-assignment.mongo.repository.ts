@@ -1,5 +1,5 @@
 import { ApplicationContext } from '../../types/basic';
-import { CaseAssignment } from '../../../../../common/src/cams/assignments';
+import { CaseAssignment } from '@common/cams/assignments';
 import QueryBuilder from '../../../query/query-builder';
 import { CaseAssignmentRepository } from '../../../use-cases/gateways.types';
 import { getCamsError } from '../../../common-errors/error-utilities';

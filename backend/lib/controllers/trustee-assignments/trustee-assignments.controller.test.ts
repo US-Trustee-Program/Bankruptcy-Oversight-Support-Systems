@@ -4,10 +4,10 @@ import { TrusteeAssignmentsController } from './trustee-assignments.controller';
 import { TrusteeAssignmentsUseCase } from '../../use-cases/trustee-assignments/trustee-assignments';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
-import { CamsRole } from '../../../../common/src/cams/roles';
-import { TrusteeOversightAssignment } from '../../../../common/src/cams/trustees';
+import { CamsRole } from '@common/cams/roles';
+import { TrusteeOversightAssignment } from '@common/cams/trustees';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { CamsUserReference } from '../../../../common/src/cams/users';
+import { CamsUserReference } from '@common/cams/users';
 import { NotFoundError } from '../../common-errors/not-found-error';
 
 vi.mock('../../use-cases/trustee-assignments/trustee-assignments');

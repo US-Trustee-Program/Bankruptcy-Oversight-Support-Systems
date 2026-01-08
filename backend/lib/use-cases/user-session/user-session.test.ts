@@ -2,19 +2,19 @@ import { vi } from 'vitest';
 import { UserSessionUseCase } from './user-session';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import * as factoryModule from '../../factory';
 import { ServerConfigError } from '../../common-errors/server-config-error';
-import { CamsSession } from '../../../../common/src/cams/session';
-import { urlRegex } from '../../../../common/src/cams/test-utilities/regex';
-import { CamsJwtHeader } from '../../../../common/src/cams/jwt';
+import { CamsSession } from '@common/cams/session';
+import { urlRegex } from '@common/cams/test-utilities/regex';
+import { CamsJwtHeader } from '@common/cams/jwt';
 import MockOpenIdConnectGateway from '../../testing/mock-gateways/mock-oauth2-gateway';
 import * as Verifier from '../../adapters/gateways/okta/HumbleVerifier';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import UsersHelpers from '../users/users.helpers';
-import * as delayModule from '../../../../common/src/delay';
+import * as delayModule from '@common/delay';
 
 describe('user-session.gateway test', () => {
   const jwtString = MockData.getJwt();

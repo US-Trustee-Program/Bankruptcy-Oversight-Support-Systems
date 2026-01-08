@@ -4,8 +4,8 @@ import { ApplicationContext } from '../../types/basic';
 import { ServerConfigError } from '../../../common-errors/server-config-error';
 import { UnauthorizedError } from '../../../common-errors/unauthorized-error';
 import { verifyAccessToken } from './HumbleVerifier';
-import { CamsUserReference } from '../../../../../common/src/cams/users';
-import { CamsJwt, isCamsJwt } from '../../../../../common/src/cams/jwt';
+import { CamsUserReference } from '@common/cams/users';
+import { CamsJwt, isCamsJwt } from '@common/cams/jwt';
 import { isCamsError } from '../../../common-errors/cams-error';
 
 const MODULE_NAME = 'OKTA-GATEWAY';
