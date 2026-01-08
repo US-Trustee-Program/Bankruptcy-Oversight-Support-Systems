@@ -5,7 +5,7 @@
   "description": "",
   "main": "dist/backend/function-apps/dataflows/dataflows.js",
   "scripts": {
-    "build": "tsc --build tsconfig.build.json",
+    "build": "tsc --build tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "clean": "rm -rf ./dist *.zip",
     "pack": "../../pack.sh dataflows",
     "prestart": "npm run build && cp ../../.env . && (cp ../../dev-users.json . 2>/dev/null || true)",

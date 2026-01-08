@@ -11,7 +11,7 @@ import {
 } from '../../azure/testing-helpers';
 import { CaseDocketController } from '../../../lib/controllers/case-docket/case-docket.controller';
 import { NotFoundError } from '../../../lib/common-errors/not-found-error';
-import { CaseDocket } from '../../../../common/src/cams/cases';
+import { CaseDocket } from '@common/cams/cases';
 
 describe('Case docket function', () => {
   const context = new InvocationContext({

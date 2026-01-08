@@ -6,12 +6,12 @@ import {
   ServerConfigError,
   UNSUPPORTED_AUTHENTICATION_PROVIDER,
 } from '../../common-errors/server-config-error';
-import { CamsSession } from '../../../../common/src/cams/session';
+import { CamsSession } from '@common/cams/session';
 import { isNotFoundError } from '../../common-errors/not-found-error';
 import UsersHelpers from '../users/users.helpers';
-import { CamsUserReference } from '../../../../common/src/cams/users';
-import { CamsJwt } from '../../../../common/src/cams/jwt';
-import { delay } from '../../../../common/src/delay';
+import { CamsUserReference } from '@common/cams/users';
+import { CamsJwt } from '@common/cams/jwt';
+import { delay } from '@common/delay';
 import { UserSessionCacheRepository } from '../gateways.types';
 
 const MODULE_NAME = 'USER-SESSION-GATEWAY';

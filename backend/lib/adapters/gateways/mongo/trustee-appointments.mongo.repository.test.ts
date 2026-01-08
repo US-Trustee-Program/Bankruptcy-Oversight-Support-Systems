@@ -4,11 +4,8 @@ import {
   TrusteeAppointmentsMongoRepository,
   TrusteeAppointmentDocument,
 } from './trustee-appointments.mongo.repository';
-import {
-  TrusteeAppointment,
-  TrusteeAppointmentInput,
-} from '../../../../../common/src/cams/trustee-appointments';
-import { CamsUserReference } from '../../../../../common/src/cams/users';
+import { TrusteeAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
+import { CamsUserReference } from '@common/cams/users';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import { closeDeferred } from '../../../deferrable/defer-close';

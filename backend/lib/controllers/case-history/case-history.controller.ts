@@ -1,6 +1,6 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseHistoryUseCase } from '../../use-cases/case-history/case-history';
-import { CaseHistory } from '../../../../common/src/cams/history';
+import { CaseHistory } from '@common/cams/history';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsController } from '../controller';

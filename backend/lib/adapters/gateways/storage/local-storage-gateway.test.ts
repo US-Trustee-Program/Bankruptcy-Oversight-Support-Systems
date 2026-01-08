@@ -1,5 +1,5 @@
 import LocalStorageGateway, { ROLE_MAPPING_PATH } from './local-storage-gateway';
-import { CamsRole } from '../../../../../common/src/cams/roles';
+import { CamsRole } from '@common/cams/roles';
 
 describe('map get', () => {
   test('should return null for invalid path', () => {

@@ -1,15 +1,15 @@
 import { vi } from 'vitest';
-import { CasesSearchPredicate } from '../../../../../common/src/api/search';
-import { ResourceActions } from '../../../../../common/src/cams/actions';
-import { SyncedCase } from '../../../../../common/src/cams/cases';
+import { CasesSearchPredicate } from '@common/api/search';
+import { ResourceActions } from '@common/cams/actions';
+import { SyncedCase } from '@common/cams/cases';
 import {
   ConsolidationFrom,
   ConsolidationTo,
   Transfer,
   TransferFrom,
   TransferTo,
-} from '../../../../../common/src/cams/events';
-import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
+} from '@common/cams/events';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsError } from '../../../common-errors/cams-error';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import QueryBuilder, { Conjunction, using } from '../../../query/query-builder';
@@ -24,9 +24,9 @@ import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import * as crypto from 'crypto';
 import { UnknownError } from '../../../common-errors/unknown-error';
 import { CamsPaginationResponse } from '../../../use-cases/gateways.types';
-import { CaseConsolidationHistory, CaseHistory } from '../../../../../common/src/cams/history';
+import { CaseConsolidationHistory, CaseHistory } from '@common/cams/history';
 import { randomUUID } from 'crypto';
-import { SYSTEM_USER_REFERENCE } from '../../../../../common/src/cams/auditable';
+import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 
 describe('Cases repository', () => {
   let repo: CasesMongoRepository;

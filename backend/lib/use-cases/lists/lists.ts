@@ -4,9 +4,9 @@ import {
   BankListItem,
   BankruptcySoftwareList,
   BankruptcySoftwareListItem,
-} from '../../../../common/src/cams/lists';
+} from '@common/cams/lists';
 import Factory from '../../factory';
-import { Creatable } from '../../../../common/src/cams/creatable';
+import { Creatable } from '@common/cams/creatable';
 
 class ListsUseCase {
   public async getBankruptcySoftwareList(

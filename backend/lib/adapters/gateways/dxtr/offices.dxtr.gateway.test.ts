@@ -4,11 +4,8 @@ import { ApplicationContext } from '../../types/basic';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import * as database from '../../utils/database';
 import { DbTableFieldSpec, IDbConfig, QueryResults } from '../../types/database';
-import { COURT_DIVISIONS } from '../../../../../common/src/cams/test-utilities/courts.mock';
-import {
-  MOCKED_USTP_OFFICES_ARRAY,
-  UstpOfficeDetails,
-} from '../../../../../common/src/cams/offices';
+import { COURT_DIVISIONS } from '@common/cams/test-utilities/courts.mock';
+import { MOCKED_USTP_OFFICES_ARRAY, UstpOfficeDetails } from '@common/cams/offices';
 
 describe('offices gateway tests', () => {
   describe('getOffice tests', () => {

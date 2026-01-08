@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import {
@@ -10,7 +10,7 @@ import { ApplicationContext } from '../../types/basic';
 import { CaseNotesMongoRepository } from './case-notes.mongo.repository';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import QueryBuilder from '../../../query/query-builder';
-import { CaseNote } from '../../../../../common/src/cams/cases';
+import { CaseNote } from '@common/cams/cases';
 
 const { and, using } = QueryBuilder;
 const doc = using<CaseNote>();

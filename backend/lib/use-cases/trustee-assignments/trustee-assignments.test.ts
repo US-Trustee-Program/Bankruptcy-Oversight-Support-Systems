@@ -2,18 +2,15 @@ import { vi } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteeAssignmentsUseCase } from './trustee-assignments';
 import { TrusteesRepository, UserGroupsRepository } from '../gateways.types';
-import {
-  TrusteeOversightAssignment,
-  TrusteeOversightHistory,
-} from '../../../../common/src/cams/trustees';
-import { CamsRole } from '../../../../common/src/cams/roles';
+import { TrusteeOversightAssignment, TrusteeOversightHistory } from '@common/cams/trustees';
+import { CamsRole } from '@common/cams/roles';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { CamsError } from '../../common-errors/cams-error';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { CamsUserReference } from '../../../../common/src/cams/users';
+import { CamsUserReference } from '@common/cams/users';
 import { UserGroupGateway } from '../../adapters/types/authorization';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import * as factory from '../../factory';
 import * as errorUtilities from '../../common-errors/error-utilities';
 

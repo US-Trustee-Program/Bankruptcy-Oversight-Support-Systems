@@ -4,14 +4,9 @@ import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import { ApplicationContext } from '../../types/basic';
 import { OrdersGateway } from '../../../use-cases/gateways.types';
 import { CamsError } from '../../../common-errors/cams-error';
-import {
-  OrderSync,
-  RawConsolidationOrder,
-  RawOrderSync,
-  TransferOrder,
-} from '../../../../../common/src/cams/orders';
+import { OrderSync, RawConsolidationOrder, RawOrderSync, TransferOrder } from '@common/cams/orders';
 import { DxtrCaseDocketEntryDocument, translateModel } from './case-docket.dxtr.gateway';
-import { CaseDocketEntry } from '../../../../../common/src/cams/cases';
+import { CaseDocketEntry } from '@common/cams/cases';
 
 const MODULE_NAME = 'ORDERS-DXTR-GATEWAY';
 const REGIONS_TO_SYNC = [

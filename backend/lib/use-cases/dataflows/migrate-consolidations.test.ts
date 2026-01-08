@@ -6,14 +6,14 @@ import AcmsOrders, {
   isAcmsEtlQueueItem,
 } from './migrate-consolidations';
 import { CasesMongoRepository } from '../../adapters/gateways/mongo/cases.mongo.repository';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { AcmsGatewayImpl } from '../../adapters/gateways/acms/acms.gateway';
 import CasesDxtrGateway from '../../adapters/gateways/dxtr/cases.dxtr.gateway';
-import { CaseSummary } from '../../../../common/src/cams/cases';
-import { ConsolidationType } from '../../../../common/src/cams/orders';
-import { CaseConsolidationHistory } from '../../../../common/src/cams/history';
-import { ACMS_SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditable';
-import { ConsolidationFrom } from '../../../../common/src/cams/events';
+import { CaseSummary } from '@common/cams/cases';
+import { ConsolidationType } from '@common/cams/orders';
+import { CaseConsolidationHistory } from '@common/cams/history';
+import { ACMS_SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+import { ConsolidationFrom } from '@common/cams/events';
 
 describe('isAcmsEtlQueueItem', () => {
   it('should return true for a valid AcmsEtlQueueItem', () => {

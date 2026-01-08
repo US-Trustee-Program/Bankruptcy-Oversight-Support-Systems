@@ -1,4 +1,4 @@
-import { CaseDocket, CaseDocketEntryDocument } from '../../../../common/src/cams/cases';
+import { CaseDocket, CaseDocketEntryDocument } from '@common/cams/cases';
 import { DxtrCaseDocketEntryDocument } from '../../adapters/gateways/dxtr/case-docket.dxtr.gateway';
 
 export const DXTR_CASE_DOCKET_ENTRIES: CaseDocket = [

@@ -18,12 +18,12 @@ import {
 } from '../gateways.types';
 import { buildOfficeCode } from '../offices/offices';
 import { getCamsError } from '../../common-errors/error-utilities';
-import { CaseBasics, CaseDetail, CaseSummary, SyncedCase } from '../../../../common/src/cams/cases';
-import Actions, { Action, ResourceActions } from '../../../../common/src/cams/actions';
-import { getCourtDivisionCodes } from '../../../../common/src/cams/users';
-import { CamsRole } from '../../../../common/src/cams/roles';
-import { CasesSearchPredicate } from '../../../../common/src/api/search';
-import { CaseAssignment } from '../../../../common/src/cams/assignments';
+import { CaseBasics, CaseDetail, CaseSummary, SyncedCase } from '@common/cams/cases';
+import Actions, { Action, ResourceActions } from '@common/cams/actions';
+import { getCourtDivisionCodes } from '@common/cams/users';
+import { CamsRole } from '@common/cams/roles';
+import { CasesSearchPredicate } from '@common/api/search';
+import { CaseAssignment } from '@common/cams/assignments';
 
 const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
 

@@ -9,7 +9,7 @@ import { CaseAssignmentController } from '../lib/controllers/case-assignment/cas
 import { CaseDocketController } from '../lib/controllers/case-docket/case-docket.controller';
 import { CaseHistoryController } from '../lib/controllers/case-history/case-history.controller';
 import { CaseNotesController } from '../lib/controllers/case-notes/case.notes.controller';
-import { CaseNoteInput } from '../../common/src/cams/cases';
+import { CaseNoteInput } from '@common/cams/cases';
 import { CaseSummaryController } from '../lib/controllers/case-summary/case-summary.controller';
 import { CaseAssociatedController } from '../lib/controllers/case-associated/case-associated.controller';
 import { OrdersController } from '../lib/controllers/orders/orders.controller';
@@ -25,7 +25,7 @@ import { PrivilegedIdentityAdminController } from '../lib/controllers/admin/priv
 import { finalizeDeferrable } from '../lib/deferrable/finalize-deferrable';
 import { mockAuthentication } from '../lib/testing/mock-gateways/mock-oauth2-gateway';
 import { httpSuccess } from '../lib/adapters/utils/http-response';
-import HttpStatusCodes from '../../common/src/api/http-status-codes';
+import HttpStatusCodes from '@common/api/http-status-codes';
 import HealthcheckCosmosDb from '../function-apps/api/healthcheck/healthcheck.db.cosmos';
 import HealthcheckSqlDb from '../function-apps/api/healthcheck/healthcheck.db.sql';
 import HealthcheckInfo from '../function-apps/api/healthcheck/healthcheck.info';

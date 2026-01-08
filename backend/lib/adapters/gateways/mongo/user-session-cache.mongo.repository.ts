@@ -1,13 +1,13 @@
 import * as jwt from 'jsonwebtoken';
 import { ApplicationContext } from '../../types/basic';
-import { CamsSession } from '../../../../../common/src/cams/session';
+import { CamsSession } from '@common/cams/session';
 import { UnauthorizedError } from '../../../common-errors/unauthorized-error';
-import { CamsJwtClaims } from '../../../../../common/src/cams/jwt';
+import { CamsJwtClaims } from '@common/cams/jwt';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import QueryBuilder from '../../../query/query-builder';
 import { UserSessionCacheRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
-import DateHelper from '../../../../../common/src/date-helper';
+import DateHelper from '@common/date-helper';
 
 const MODULE_NAME = 'USER-SESSION-CACHE-MONGO-REPOSITORY';
 const COLLECTION_NAME: string = 'user-session-cache';

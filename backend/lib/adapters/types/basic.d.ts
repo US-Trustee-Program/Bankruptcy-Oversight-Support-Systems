@@ -1,5 +1,5 @@
 import { ApplicationConfiguration } from '../../configs/application-configuration';
-import { CamsSession } from '../../../../common/src/cams/session';
+import { CamsSession } from '@common/cams/session';
 import { CamsHttpRequest } from './http';
 import { Closable } from '../../deferrable/defer-close';
 import { Releasable } from '../../use-cases/gateways.types';

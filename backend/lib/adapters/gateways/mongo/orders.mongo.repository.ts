@@ -1,5 +1,5 @@
-import { OrdersSearchPredicate } from '../../../../../common/src/api/search';
-import { Order, TransferOrder, TransferOrderAction } from '../../../../../common/src/cams/orders';
+import { OrdersSearchPredicate } from '@common/api/search';
+import { Order, TransferOrder, TransferOrderAction } from '@common/cams/orders';
 import { ApplicationContext } from '../../types/basic';
 import { OrdersRepository } from '../../../use-cases/gateways.types';
 import QueryBuilder, { Query } from '../../../query/query-builder';

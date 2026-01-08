@@ -1,4 +1,4 @@
-import { Debtor } from '../../../../common/src/cams/parties';
+import { Debtor } from '@common/cams/parties';
 
 export const DEBTORS = new Map<string, Debtor>([
   [

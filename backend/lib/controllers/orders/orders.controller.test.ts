@@ -12,14 +12,14 @@ import {
   Order,
   TransferOrder,
   TransferOrderAction,
-} from '../../../../common/src/cams/orders';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
-import DateHelper from '../../../../common/src/date-helper';
+} from '@common/cams/orders';
+import MockData from '@common/cams/test-utilities/mock-data';
+import DateHelper from '@common/date-helper';
 import { OrdersController } from './orders.controller';
 import { CamsHttpResponseInit, commonHeaders } from '../../adapters/utils/http-response';
-import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
+import HttpStatusCodes from '@common/api/http-status-codes';
 import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
-import { ResponseBody } from '../../../../common/src/api/response';
+import { ResponseBody } from '@common/api/response';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { BadRequestError } from '../../common-errors/bad-request';
 import * as crypto from 'crypto';

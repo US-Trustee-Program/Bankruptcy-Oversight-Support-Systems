@@ -10,7 +10,11 @@
     "isolatedModules": true,
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
-    "types": ["vitest/globals"]
+    "types": ["vitest/globals"],
+    "baseUrl": ".",
+    "paths": {
+      "@common/*": ["../common/src/*"]
+    }
   },
   "references": [{ "path": "../common" }],
   "exclude": ["node_modules"]
