@@ -330,10 +330,6 @@ export interface QueueGateway {
   ): { enqueue: (...messages: T[]) => void };
 }
 
-export interface StaffRepository {
-  getOversightStaff(applicationContext: ApplicationContext): Promise<Staff[]>;
-}
-
 export interface UserGroupsRepository extends Releasable {
   upsertUserGroupsBatch(context: ApplicationContext, userGroups: UserGroup[]): Promise<void>;
   getUserGroupsByNames(context: ApplicationContext, groupNames: string[]): Promise<UserGroup[]>;

@@ -21,7 +21,6 @@ import {
   OrdersRepository,
   RuntimeState,
   RuntimeStateRepository,
-  StaffRepository,
   TrusteeAppointmentsRepository,
   TrusteesRepository,
   UpdateResult,
@@ -52,7 +51,6 @@ export class MockMongoRepository
     TrusteesRepository,
     TrusteeAppointmentsRepository,
     ListsRepository,
-    StaffRepository,
     UserGroupsRepository
 {
   deleteSyncedCases(): Promise<void> {
@@ -268,10 +266,6 @@ export class MockMongoRepository
   }
 
   createTrusteeOversightAssignment(_ignore: any): Promise<any> {
-    throw new Error('Method not implemented.');
-  }
-
-  getOversightStaff(_ignore: any): Promise<any> {
     throw new Error('Method not implemented.');
   }
 

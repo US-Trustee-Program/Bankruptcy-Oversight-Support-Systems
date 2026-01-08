@@ -231,14 +231,6 @@ export async function spyOnAllGateways(
     explicitMocks.RuntimeStateMongoRepository,
   );
 
-  const { StaffMongoRepository } =
-    await import('../../../backend/lib/adapters/gateways/mongo/staff.mongo.repository');
-  spyOnAllGatewayMethods(
-    StaffMongoRepository,
-    'StaffMongoRepository',
-    explicitMocks.StaffMongoRepository,
-  );
-
   const { TrusteesMongoRepository } =
     await import('../../../backend/lib/adapters/gateways/mongo/trustees.mongo.repository');
   spyOnAllGatewayMethods(

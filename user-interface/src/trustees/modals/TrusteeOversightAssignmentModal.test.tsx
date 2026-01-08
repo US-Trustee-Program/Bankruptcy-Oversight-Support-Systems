@@ -14,18 +14,18 @@ describe('TrusteeOversightAssignmentModal', () => {
   let userEvent: CamsUserEvent;
 
   const mockAttorneys: Staff[] = [
-    { id: 'attorney-1', name: 'John Doe', roles: [CamsRole.TrialAttorney] },
-    { id: 'attorney-2', name: 'Jane Smith', roles: [CamsRole.TrialAttorney] },
+    { id: 'attorney-1', name: 'John Doe', roles: [CamsRole.OversightAttorney] },
+    { id: 'attorney-2', name: 'Jane Smith', roles: [CamsRole.OversightAttorney] },
   ];
 
   const mockAuditors: Staff[] = [
-    { id: 'auditor-1', name: 'Alice Auditor', roles: [CamsRole.Auditor] },
-    { id: 'auditor-2', name: 'Bob Auditor', roles: [CamsRole.Auditor] },
+    { id: 'auditor-1', name: 'Alice Auditor', roles: [CamsRole.OversightAuditor] },
+    { id: 'auditor-2', name: 'Bob Auditor', roles: [CamsRole.OversightAuditor] },
   ];
 
   const mockParalegals: Staff[] = [
-    { id: 'paralegal-1', name: 'Charlie Paralegal', roles: [CamsRole.Paralegal] },
-    { id: 'paralegal-2', name: 'Dana Paralegal', roles: [CamsRole.Paralegal] },
+    { id: 'paralegal-1', name: 'Charlie Paralegal', roles: [CamsRole.OversightParalegal] },
+    { id: 'paralegal-2', name: 'Dana Paralegal', roles: [CamsRole.OversightParalegal] },
   ];
 
   const mockAllStaff: Record<OversightRoleType, Staff[]> = {

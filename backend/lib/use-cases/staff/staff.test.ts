@@ -27,9 +27,9 @@ describe('StaffUseCase', () => {
     mockStorageGateway = {
       getRoleMapping: vi.fn().mockReturnValue(
         new Map([
-          ['USTP CAMS Trial Attorney', CamsRole.TrialAttorney],
-          ['USTP CAMS Auditor', CamsRole.Auditor],
-          ['USTP CAMS Paralegal', CamsRole.Paralegal],
+          ['USTP CAMS Trial Attorney', CamsRole.OversightAttorney],
+          ['USTP CAMS Auditor', CamsRole.OversightAuditor],
+          ['USTP CAMS Paralegal', CamsRole.OversightParalegal],
           ['USTP CAMS Super User', CamsRole.SuperUser], // Non-oversight role
         ]),
       ),
@@ -76,12 +76,16 @@ describe('StaffUseCase', () => {
       const result = await staffUseCase.getOversightStaff(mockApplicationContext);
 
       expect(result).toEqual({
-        TrialAttorney: [
-          { id: 'u1', name: 'Attorney 1', roles: [CamsRole.TrialAttorney] },
-          { id: 'u2', name: 'Attorney 2', roles: [CamsRole.TrialAttorney] },
+        [CamsRole.OversightAttorney]: [
+          { id: 'u1', name: 'Attorney 1', roles: [CamsRole.OversightAttorney] },
+          { id: 'u2', name: 'Attorney 2', roles: [CamsRole.OversightAttorney] },
         ],
-        Auditor: [{ id: 'u3', name: 'Auditor 1', roles: [CamsRole.Auditor] }],
-        Paralegal: [{ id: 'u4', name: 'Paralegal 1', roles: [CamsRole.Paralegal] }],
+        [CamsRole.OversightAuditor]: [
+          { id: 'u3', name: 'Auditor 1', roles: [CamsRole.OversightAuditor] },
+        ],
+        [CamsRole.OversightParalegal]: [
+          { id: 'u4', name: 'Paralegal 1', roles: [CamsRole.OversightParalegal] },
+        ],
       });
     });
 
@@ -176,9 +180,11 @@ describe('StaffUseCase', () => {
       const result = await staffUseCase.getOversightStaff(mockApplicationContext);
 
       expect(result).toEqual({
-        TrialAttorney: [{ id: 'u1', name: 'Attorney 1', roles: [CamsRole.TrialAttorney] }],
-        Auditor: [],
-        Paralegal: [],
+        [CamsRole.OversightAttorney]: [
+          { id: 'u1', name: 'Attorney 1', roles: [CamsRole.OversightAttorney] },
+        ],
+        [CamsRole.OversightAuditor]: [],
+        [CamsRole.OversightParalegal]: [],
       });
       // Unknown group should be skipped, not throw an error
     });
@@ -219,11 +225,13 @@ describe('StaffUseCase', () => {
       const result = await staffUseCase.getOversightStaff(mockApplicationContext);
 
       expect(result).toEqual({
-        TrialAttorney: [{ id: 'u1', name: 'Attorney 1', roles: [CamsRole.TrialAttorney] }],
-        Auditor: [],
-        Paralegal: [
-          { id: 'u2', name: 'Paralegal 1', roles: [CamsRole.Paralegal] },
-          { id: 'u3', name: 'Paralegal 2', roles: [CamsRole.Paralegal] },
+        [CamsRole.OversightAttorney]: [
+          { id: 'u1', name: 'Attorney 1', roles: [CamsRole.OversightAttorney] },
+        ],
+        [CamsRole.OversightAuditor]: [],
+        [CamsRole.OversightParalegal]: [
+          { id: 'u2', name: 'Paralegal 1', roles: [CamsRole.OversightParalegal] },
+          { id: 'u3', name: 'Paralegal 2', roles: [CamsRole.OversightParalegal] },
         ],
       });
     });

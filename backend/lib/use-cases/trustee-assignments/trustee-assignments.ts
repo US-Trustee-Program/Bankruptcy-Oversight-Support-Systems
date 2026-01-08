@@ -4,7 +4,7 @@ import {
   TrusteeOversightAssignment,
   TrusteeOversightHistory,
 } from '../../../../common/src/cams/trustees';
-import { CamsRole, OversightRole, OversightRoleType } from '../../../../common/src/cams/roles';
+import { CamsRole, OversightRoles, OversightRoleType } from '../../../../common/src/cams/roles';
 import { getTrusteesRepository, getUserGroupGateway } from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { BadRequestError } from '../../common-errors/bad-request';
@@ -99,8 +99,7 @@ export class TrusteeAssignmentsUseCase {
       });
     }
 
-    const validOversightRoles = Array.from(OversightRole);
-    if (!validOversightRoles.includes(role)) {
+    if (!OversightRoles.includes(role)) {
       throw new BadRequestError(MODULE_NAME, {
         message: `Role must be a valid oversight role. Received: ${role}`,
       });
