@@ -79,8 +79,7 @@ export function buildHttpTrigger(
       const hasAdminKey = !!process.env.ADMIN_KEY;
       const adminKeyLength = process.env.ADMIN_KEY?.length || 0;
 
-      logger.info(moduleName, {
-        message: 'Authorization check',
+      logger.info(moduleName, 'Authorization check', {
         hasAuthHeader: !!authHeader,
         authHeaderFormat: authHeader
           ? `${authHeader.split(' ')[0]} <${authHeader.split(' ')[1]?.length || 0} chars>`
@@ -90,8 +89,7 @@ export function buildHttpTrigger(
       });
 
       if (!isAuthorized(request)) {
-        logger.error(moduleName, {
-          message: 'Authorization failed',
+        logger.error(moduleName, 'Authorization failed', {
           hasAuthHeader: !!authHeader,
           hasAdminKey,
         });
