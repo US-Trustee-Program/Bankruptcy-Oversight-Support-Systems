@@ -46,9 +46,9 @@ describe('Staff Azure Function tests', () => {
 
   test('should return success with a Record of oversight staff grouped by role', async () => {
     const oversightStaff: Record<OversightRoleType, Staff[]> = {
-      [CamsRole.TrialAttorney]: MockData.buildArray(MockData.getAttorneyUser, 3),
-      [CamsRole.Auditor]: MockData.buildArray(MockData.getAuditorUser, 2),
-      [CamsRole.Paralegal]: MockData.buildArray(MockData.getParalegalUser, 1),
+      [CamsRole.OversightAttorney]: MockData.buildArray(MockData.getAttorneyUser, 3),
+      [CamsRole.OversightAuditor]: MockData.buildArray(MockData.getAuditorUser, 2),
+      [CamsRole.OversightParalegal]: MockData.buildArray(MockData.getParalegalUser, 1),
     };
     const body: ResponseBody<Record<OversightRoleType, Staff[]>> = {
       meta: {

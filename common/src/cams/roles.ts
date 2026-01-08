@@ -21,13 +21,10 @@ export const AssignableRole = {
 
 export type AssignableRoleType = (typeof AssignableRole)[keyof typeof AssignableRole];
 
-export const OversightRole = new Set<CamsRoleType>([
+export const OversightRoles = [
   CamsRole.OversightAttorney,
   CamsRole.OversightAuditor,
   CamsRole.OversightParalegal,
-]);
+] as const;
 
-export type OversightRoleType =
-  | typeof CamsRole.OversightAttorney
-  | typeof CamsRole.OversightAuditor
-  | typeof CamsRole.OversightParalegal;
+export type OversightRoleType = (typeof OversightRoles)[number];

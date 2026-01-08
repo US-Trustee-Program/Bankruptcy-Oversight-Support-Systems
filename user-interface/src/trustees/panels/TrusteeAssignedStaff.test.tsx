@@ -13,13 +13,13 @@ describe('TrusteeAssignedStaff', () => {
       id: 'attorney-1',
       name: 'Attorney Smith',
       offices: [],
-      roles: [CamsRole.TrialAttorney],
+      roles: [CamsRole.OversightAttorney],
     },
     {
       id: 'attorney-2',
       name: 'Attorney Jones',
       offices: [],
-      roles: [CamsRole.TrialAttorney],
+      roles: [CamsRole.OversightAttorney],
     },
   ];
 
@@ -161,7 +161,7 @@ describe('TrusteeAssignedStaff', () => {
           {
             id: 'attorney-1',
             name: 'Attorney Smith',
-            roles: [CamsRole.TrialAttorney],
+            roles: [CamsRole.OversightAttorney],
           },
         ],
         [CamsRole.OversightAuditor]: [],

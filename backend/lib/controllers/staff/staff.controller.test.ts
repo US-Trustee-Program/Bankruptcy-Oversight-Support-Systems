@@ -18,16 +18,18 @@ describe('Staff Controller Tests', () => {
 
   test('should return oversight staff in Record structure', async () => {
     const mockData: Record<OversightRoleType, Staff[]> = {
-      [CamsRole.TrialAttorney]: [
-        { id: 'u1', name: 'Attorney 1', roles: [CamsRole.TrialAttorney] },
-        { id: 'u2', name: 'Attorney 2', roles: [CamsRole.TrialAttorney] },
-        { id: 'u3', name: 'Attorney 3', roles: [CamsRole.TrialAttorney] },
+      [CamsRole.OversightAttorney]: [
+        { id: 'u1', name: 'Attorney 1', roles: [CamsRole.OversightAttorney] },
+        { id: 'u2', name: 'Attorney 2', roles: [CamsRole.OversightAttorney] },
+        { id: 'u3', name: 'Attorney 3', roles: [CamsRole.OversightAttorney] },
       ],
-      [CamsRole.Auditor]: [
-        { id: 'u4', name: 'Auditor 1', roles: [CamsRole.Auditor] },
-        { id: 'u5', name: 'Auditor 2', roles: [CamsRole.Auditor] },
+      [CamsRole.OversightAuditor]: [
+        { id: 'u4', name: 'Auditor 1', roles: [CamsRole.OversightAuditor] },
+        { id: 'u5', name: 'Auditor 2', roles: [CamsRole.OversightAuditor] },
       ],
-      [CamsRole.Paralegal]: [{ id: 'u6', name: 'Paralegal 1', roles: [CamsRole.Paralegal] }],
+      [CamsRole.OversightParalegal]: [
+        { id: 'u6', name: 'Paralegal 1', roles: [CamsRole.OversightParalegal] },
+      ],
     };
 
     vi.spyOn(StaffUseCase.prototype, 'getOversightStaff').mockResolvedValue(mockData);

@@ -28,7 +28,6 @@ describe('Factory function-apps', () => {
   let UsersMongoRepository;
   let OktaUserGroupGateway;
   let MockUserGroupGateway;
-  let StaffMongoRepository;
   let TrusteeAppointmentsMongoRepository;
 
   beforeEach(async () => {
@@ -93,9 +92,6 @@ describe('Factory function-apps', () => {
 
     MockUserGroupGateway = (await import('./testing/mock-gateways/mock-user-group-gateway'))
       .default;
-
-    StaffMongoRepository = (await import('./adapters/gateways/mongo/staff.mongo.repository'))
-      .StaffMongoRepository;
 
     TrusteeAppointmentsMongoRepository = (
       await import('./adapters/gateways/mongo/trustee-appointments.mongo.repository')
@@ -250,11 +246,6 @@ describe('Factory function-apps', () => {
 
     const obj = factory.getUserSessionUseCase(context);
     expect(obj).toBeInstanceOf(UserSessionUseCase);
-  });
-
-  test('getStaffRepository', async () => {
-    const obj = factory.getStaffRepository(dbContext);
-    expect(obj).toBeInstanceOf(StaffMongoRepository);
   });
 
   test('getTrusteeAppointmentsRepository', async () => {

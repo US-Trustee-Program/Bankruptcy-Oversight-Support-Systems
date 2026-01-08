@@ -2027,45 +2027,45 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
   } else if (path === '/staff') {
     response = {
       data: {
-        [CamsRole.TrialAttorney]: [
+        [CamsRole.OversightAttorney]: [
           {
             id: 'guid-34537',
             name: 'Sophia Stracke',
-            roles: ['TrialAttorney'],
+            roles: [CamsRole.OversightAttorney],
           },
           {
             id: 'guid-44199',
             name: 'Shawn Cronin',
-            roles: ['TrialAttorney'],
+            roles: [CamsRole.OversightAttorney],
           },
           {
             id: 'guid-58647',
             name: 'Brad Cremin I',
-            roles: ['TrialAttorney'],
+            roles: [CamsRole.OversightAttorney],
           },
         ],
-        [CamsRole.Auditor]: [
+        [CamsRole.OversightAuditor]: [
           {
             id: 'guid-92805',
             name: 'Gilbert Conn',
-            roles: ['Auditor'],
+            roles: [CamsRole.OversightAuditor],
           },
           {
             id: 'guid-28124',
             name: 'Angelica Collins',
-            roles: ['Auditor'],
+            roles: [CamsRole.OversightAuditor],
           },
         ],
-        [CamsRole.Paralegal]: [
+        [CamsRole.OversightParalegal]: [
           {
             id: 'guid-73451',
             name: 'Patricia Martinez',
-            roles: ['Paralegal'],
+            roles: [CamsRole.OversightParalegal],
           },
           {
             id: 'guid-61829',
             name: 'Robert Thompson',
-            roles: ['Paralegal'],
+            roles: [CamsRole.OversightParalegal],
           },
         ],
       },

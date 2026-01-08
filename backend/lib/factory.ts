@@ -24,7 +24,6 @@ import {
   QueueGateway,
   RuntimeState,
   RuntimeStateRepository,
-  StaffRepository,
   TrusteeAppointmentsRepository,
   TrusteesRepository,
   UserGroupsRepository,
@@ -68,7 +67,6 @@ import StorageQueueGateway from './adapters/gateways/storage-queue/storage-queue
 import { TrusteesMongoRepository } from './adapters/gateways/mongo/trustees.mongo.repository';
 import { TrusteeAppointmentsMongoRepository } from './adapters/gateways/mongo/trustee-appointments.mongo.repository';
 import { ListsMongoRepository } from './adapters/gateways/mongo/lists.mongo.repository';
-import { StaffMongoRepository } from './adapters/gateways/mongo/staff.mongo.repository';
 import { UserGroupsMongoRepository } from './adapters/gateways/mongo/user-groups.mongo.repository';
 import {
   ServerConfigError,
@@ -90,15 +88,6 @@ let mockOrdersRepository: MockMongoRepository;
 let mockConsolidationsRepository: MockMongoRepository;
 let mockCasesRepository: MockMongoRepository;
 let mockUserSessionCacheRepository: MockMongoRepository;
-
-export const getStaffRepository = (context: ApplicationContext): StaffRepository => {
-  if (context.config.get('dbMock')) {
-    return new MockMongoRepository();
-  }
-  const repo = StaffMongoRepository.getInstance(context);
-  deferRelease(repo, context);
-  return repo;
-};
 
 export const getUserGroupsRepository = (context: ApplicationContext): UserGroupsRepository => {
   if (context.config.get('dbMock')) {
@@ -419,7 +408,6 @@ const Factory = {
   getTrusteeAppointmentsRepository,
   getQueueGateway,
   getListsGateway,
-  getStaffRepository,
   getUserGroupsRepository,
 };
 
