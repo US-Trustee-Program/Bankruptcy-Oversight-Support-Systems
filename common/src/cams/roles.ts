@@ -1,30 +1,30 @@
-export enum CamsRole {
-  PrivilegedIdentityUser = 'PrivilegedIdentityUser',
-  SuperUser = 'SuperUser',
-  CaseAssignmentManager = 'CaseAssignmentManager',
-  TrialAttorney = 'TrialAttorney',
-  DataVerifier = 'DataVerifier',
-  TrusteeAdmin = 'TrusteeAdmin',
-  Auditor = 'Auditor',
-  Paralegal = 'Paralegal',
-  // OversightAttorney = 'USTP CAMS Trustee Oversight Attorney',
-}
+export const CamsRole = {
+  PrivilegedIdentityUser: 'PrivilegedIdentityUser',
+  SuperUser: 'SuperUser',
+  CaseAssignmentManager: 'CaseAssignmentManager',
+  TrialAttorney: 'TrialAttorney',
+  DataVerifier: 'DataVerifier',
+  TrusteeAdmin: 'TrusteeAdmin',
+  Auditor: 'Auditor',
+  Paralegal: 'Paralegal',
+  // TODO: Update the values for these Oversight CamsRoles after we have the USTP groups created
+  OversightAttorney: 'TrialAttorney',
+  OversightAuditor: 'Auditor',
+  OversightParalegal: 'Paralegal',
+} as const;
 
-export enum AssignableRole {
-  TrialAttorney = CamsRole.TrialAttorney,
-}
+export type CamsRoleType = (typeof CamsRole)[keyof typeof CamsRole];
 
-export enum OversightRole {
-  // TODO: Convert to using CamsRole.OversightAttorney
-  OversightAttorney = CamsRole.TrialAttorney,
-  OversightAuditor = CamsRole.Auditor,
-  OversightParalegal = CamsRole.Paralegal,
-}
+export const AssignableRole = {
+  TrialAttorney: CamsRole.TrialAttorney,
+} as const;
 
-/*
-The reason for having a USTP CAMS Trustee Oversight Attorney separate from
-USTP CAMS Trial Attorney is to keep our RBAC granularity based on features
-not on AD groups. USTP is free to assign the USTP CAMS Trial Attorney group
-as the sole member of the USTP CAMS Trustee Oversight Attorney group, but
-has the freedom to change the membership of the group at any time.
-*/
+export type AssignableRoleType = (typeof AssignableRole)[keyof typeof AssignableRole];
+
+export const OversightRoles = [
+  CamsRole.OversightAttorney,
+  CamsRole.OversightAuditor,
+  CamsRole.OversightParalegal,
+] as const;
+
+export type OversightRoleType = (typeof OversightRoles)[number];

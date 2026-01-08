@@ -10,7 +10,7 @@ import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { CaseAssignmentHistory } from '../../../../common/src/cams/history';
 import CaseManagement from '../cases/case-management';
 import { CamsUserReference, getCourtDivisionCodes } from '../../../../common/src/cams/users';
-import { CamsRole } from '../../../../common/src/cams/roles';
+import { CamsRole, CamsRoleType } from '../../../../common/src/cams/roles';
 import { AssignmentError } from './assignment.exception';
 import { createAuditRecord } from '../../../../common/src/cams/auditable';
 import OfficeAssigneesUseCase from '../offices/office-assignees';
@@ -36,7 +36,7 @@ export class CaseAssignmentUseCase {
     caseId: string,
     newAssignees: CamsUserReference[],
     role: string,
-    options: { processRoles?: CamsRole[] } = {},
+    options: { processRoles?: CamsRoleType[] } = {},
   ): Promise<void> {
     const casesRepo = Factory.getCasesRepository(context);
     const userAndProcessRoles = [].concat(context.session.user.roles).concat(options.processRoles);
@@ -95,7 +95,7 @@ export class CaseAssignmentUseCase {
           .search({ officeCode, userId: assignee.id, role })
           .then((response) => {
             return response.find((staff) => {
-              if (staff.roles.includes(role as CamsRole) && staff.name === assignee.name) {
+              if (staff.roles.includes(role as CamsRoleType) && staff.name === assignee.name) {
                 return true;
               }
             });
@@ -135,7 +135,7 @@ export class CaseAssignmentUseCase {
           caseId: bCase.caseId,
           userId: attorney.id,
           name: attorney.name,
-          role: CamsRole[role],
+          role: CamsRole[role] as string,
           assignedOn: currentDate,
         },
         context.session?.user,

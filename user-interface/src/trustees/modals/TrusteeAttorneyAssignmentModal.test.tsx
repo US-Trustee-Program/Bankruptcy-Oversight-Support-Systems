@@ -6,7 +6,7 @@ import Api2 from '@/lib/models/api2';
 import * as UseGlobalAlertModule from '@/lib/hooks/UseGlobalAlert';
 import { AttorneyUser } from '@common/cams/users';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
-import { CamsRole, OversightRole } from '@common/cams/roles';
+import { CamsRole } from '@common/cams/roles';
 import { TrusteeAttorneyAssignmentModalRef } from './TrusteeAttorneyAssignmentModal';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
@@ -70,7 +70,7 @@ describe('TrusteeAttorneyAssignmentModal', () => {
       id: 'attorney-1',
       name: 'John Doe',
     },
-    role: OversightRole.OversightAttorney,
+    role: CamsRole.OversightAttorney,
     createdBy: { id: 'user-1', name: 'Admin User' },
     createdOn: '2023-01-01T00:00:00Z',
     updatedBy: { id: 'user-1', name: 'Admin User' },
@@ -150,7 +150,7 @@ describe('TrusteeAttorneyAssignmentModal', () => {
       expect(Api2.createTrusteeOversightAssignment).toHaveBeenCalledWith(
         'trustee-123',
         'attorney-1',
-        OversightRole.OversightAttorney,
+        CamsRole.OversightAttorney,
       );
     });
 

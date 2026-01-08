@@ -3,7 +3,7 @@ import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
 import { AttorneyUser } from '@common/cams/users';
-import { OversightRole } from '@common/cams/roles';
+import { CamsRole } from '@common/cams/roles';
 import TrusteeAttorneyAssignmentModal, {
   TrusteeAttorneyAssignmentModalRef,
 } from '../modals/TrusteeAttorneyAssignmentModal';
@@ -21,7 +21,7 @@ interface AttorneyAssignmentSectionProps {
 export default function AttorneyAssignmentSection(props: Readonly<AttorneyAssignmentSectionProps>) {
   const { trusteeId, assignments, attorneys, onAssignmentChange, isLoading = false } = props;
   const modalRef = useRef<TrusteeAttorneyAssignmentModalRef>(null);
-  const attorneyAssignment = assignments.find((a) => a.role === OversightRole.OversightAttorney);
+  const attorneyAssignment = assignments.find((a) => a.role === CamsRole.OversightAttorney);
 
   const handleAssignment = useCallback(
     (isAssigned: boolean) => {

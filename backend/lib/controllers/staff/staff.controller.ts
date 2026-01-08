@@ -5,6 +5,7 @@ import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-res
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsController } from '../controller';
 import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
+import { OversightRoleType } from '../../../../common/src/cams/roles';
 
 const MODULE_NAME = 'STAFF-CONTROLLER';
 
@@ -15,7 +16,9 @@ export class StaffController implements CamsController {
     this.useCase = new StaffUseCase(context);
   }
 
-  public async handleRequest(context: ApplicationContext): Promise<CamsHttpResponseInit<Staff[]>> {
+  public async handleRequest(
+    context: ApplicationContext,
+  ): Promise<CamsHttpResponseInit<Record<OversightRoleType, Staff[]>>> {
     try {
       const data = await this.useCase.getOversightStaff(context);
       return httpSuccess({ body: { data } });

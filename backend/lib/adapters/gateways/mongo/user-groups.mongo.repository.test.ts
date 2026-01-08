@@ -282,4 +282,69 @@ describe('UserGroupsMongoRepository', () => {
       );
     });
   });
+
+  describe('getUserGroupsByNames', () => {
+    test('should query user-groups collection with CONTAINS condition', async () => {
+      const groupNames = ['USTP CAMS Trial Attorney', 'USTP CAMS Auditor'];
+      const mockGroups: UserGroupDocument[] = [
+        {
+          id: randomUUID(),
+          groupName: 'USTP CAMS Trial Attorney',
+          users: [MockData.getCamsUserReference()],
+          documentType: 'USER_GROUP',
+        },
+        {
+          id: randomUUID(),
+          groupName: 'USTP CAMS Auditor',
+          users: [MockData.getCamsUserReference()],
+          documentType: 'USER_GROUP',
+        },
+      ];
+
+      const findSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue(mockGroups);
+
+      const result = await repo.getUserGroupsByNames(context, groupNames);
+
+      expect(findSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          condition: 'CONTAINS',
+          leftOperand: { name: 'groupName' },
+          rightOperand: groupNames,
+        }),
+      );
+      expect(result).toHaveLength(2);
+      expect(result[0]).not.toHaveProperty('documentType');
+      expect(result[0]).toEqual({
+        id: mockGroups[0].id,
+        groupName: 'USTP CAMS Trial Attorney',
+        users: mockGroups[0].users,
+      });
+      expect(result[1]).toEqual({
+        id: mockGroups[1].id,
+        groupName: 'USTP CAMS Auditor',
+        users: mockGroups[1].users,
+      });
+    });
+
+    test('should return empty array when no groups match', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      const result = await repo.getUserGroupsByNames(context, ['NonExistent']);
+
+      expect(result).toEqual([]);
+    });
+
+    test('should throw CamsError with context on failure', async () => {
+      const mockError = new Error('Database error');
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(mockError);
+
+      await expect(repo.getUserGroupsByNames(context, ['Test'])).rejects.toThrow(CamsError);
+      await expect(repo.getUserGroupsByNames(context, ['Test'])).rejects.toMatchObject({
+        message: 'Failed to retrieve user groups by names.',
+        module: 'USER-GROUPS-MONGO-REPOSITORY',
+      });
+    });
+  });
 });
