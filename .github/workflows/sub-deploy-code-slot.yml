@@ -293,10 +293,10 @@ jobs:
 
       - name: Ensure correct access rules post-swap
         run: |
-          # Production slot: ensure Allow all (redundant with Bicep but ensures it's set)
+          # Production slot: ensure Allow all for webapp and API (Flexion only)
+          # Note: Dataflows remains deny-by-default for both USTP and Flexion
           az webapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.webappName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
           az functionapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.apiFunctionName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
-          az functionapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ inputs.dataflowsFunctionName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
 
           # Staging slot: lock down after swap (was production, now staging)
           az webapp config access-restriction set --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.webappName }} --slot ${{ inputs.slotName }} --default-action Deny 2>/dev/null || true
