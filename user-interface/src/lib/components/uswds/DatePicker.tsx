@@ -211,6 +211,10 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
   const getAriaDescribedBy = () => {
     const ids: string[] = [];
 
+    if (dateValue) {
+      ids.push(`${id}-current-value`);
+    }
+
     if (props['aria-describedby']) {
       ids.push(props['aria-describedby']);
     }
@@ -220,6 +224,21 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
     }
 
     return ids.length > 0 ? ids.join(' ') : undefined;
+  };
+
+  const formatDateForAnnouncement = (dateString: string): string => {
+    try {
+      const [year, month, day] = dateString.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+    } catch {
+      return dateString;
+    }
   };
 
   return (
@@ -248,6 +267,11 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
           ref={inputRef}
         />
       </div>
+      {dateValue && (
+        <span id={`${id}-current-value`} className="usa-sr-only">
+          Currently selected: {formatDateForAnnouncement(dateValue)}
+        </span>
+      )}
       <div id={`${id}-error`} className="date-error usa-input__error-message" aria-live="polite">
         {displayErrorMessage}
       </div>
