@@ -40,8 +40,9 @@ param functionsRuntime string
 // Provides mapping for runtime stack
 // Use the following query to check supported versions
 //  az functionapp list-runtimes --os linux --query "[].{stack:join(' ', [runtime, version]), LinuxFxVersion:linux_fx_version, SupportedFunctionsVersions:to_string(supported_functions_versions[])}" --output table
+// NOTE: Should match major version in .nvmrc (currently v22.17.1)
 var linuxFxVersionMap = {
-  node: 'NODE|20'
+  node: 'NODE|22'
 }
 
 param loginProviderConfig string
@@ -452,7 +453,7 @@ var baseApplicationSettings = concat(
         }
       ]
     : [
-        { name: 'MSSQL_PASS', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-CLIENT-ID)' }
+        { name: 'MSSQL_PASS', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-PASS)' }
         {
           name: 'ACMS_MSSQL_CLIENT_ID'
           value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-CLIENT-ID)'

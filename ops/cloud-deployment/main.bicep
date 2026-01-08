@@ -187,6 +187,7 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = {
       privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
       oktaUrl: oktaUrl
       slotName: slotName
+      isUstpDeployment: isUstpDeployment
     }
 }
 
