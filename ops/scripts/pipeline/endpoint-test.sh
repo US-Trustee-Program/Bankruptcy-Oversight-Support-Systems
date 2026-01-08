@@ -24,7 +24,7 @@ function on_exit() {
     # Restore main site default actions to Deny if they were changed
     # For USTP: Always restore to Deny
     # For Flexion: Only restore deployment slots to Deny, keep production slots at Allow
-    if [ "${main_default_action_changed}" = true ] && [ -n "${resource_group}" ]; then
+    if [ "${main_default_action_changed}" = "true" ] && [ -n "${resource_group}" ]; then
         # Determine if this is a deployment slot or production slot
         is_deployment_slot=false
         if [ -n "${slot_name}" ] && [ "${slot_name}" != "initial" ] && [ "${slot_name}" != "self" ]; then
@@ -33,11 +33,11 @@ function on_exit() {
 
         # Decide whether to restore to Deny
         should_restore=false
-        if [ "${is_ustp_deployment}" = true ]; then
+        if [ "${is_ustp_deployment}" = "true" ]; then
             # USTP: Always restore to Deny
             should_restore=true
             echo "USTP Deployment: Restoring main site default actions to Deny..."
-        elif [ "${is_deployment_slot}" = true ]; then
+        elif [ "${is_deployment_slot}" = "true" ]; then
             # Flexion deployment slot: Restore to Deny
             should_restore=true
             echo "Flexion Deployment Slot: Restoring main site default actions to Deny..."
@@ -46,16 +46,16 @@ function on_exit() {
             echo "Flexion Production Slot: Keeping main site default actions at Allow..."
         fi
 
-        if [ "${should_restore}" = true ]; then
+        if [ "${should_restore}" = "true" ]; then
             if [ -n "${webapp_name}" ]; then
-                if [ "${is_deployment_slot}" = true ]; then
+                if [ "${is_deployment_slot}" = "true" ]; then
                     az webapp config access-restriction set -g "${resource_group}" -n "${webapp_name}" --slot "${slot_name}" --default-action Deny 2>/dev/null || echo "Warning: Failed to restore webapp default action"
                 else
                     az webapp config access-restriction set -g "${resource_group}" -n "${webapp_name}" --default-action Deny 2>/dev/null || echo "Warning: Failed to restore webapp default action"
                 fi
             fi
             if [ -n "${api_name}" ]; then
-                if [ "${is_deployment_slot}" = true ]; then
+                if [ "${is_deployment_slot}" = "true" ]; then
                     az functionapp config access-restriction set -g "${resource_group}" -n "${api_name}" --slot "${slot_name}" --default-action Deny 2>/dev/null || echo "Warning: Failed to restore API default action"
                 else
                     az functionapp config access-restriction set -g "${resource_group}" -n "${api_name}" --default-action Deny 2>/dev/null || echo "Warning: Failed to restore API default action"
