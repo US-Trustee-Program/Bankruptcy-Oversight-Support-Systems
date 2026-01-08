@@ -1,11 +1,12 @@
-import { CamsRole } from '../../../../../common/src/cams/roles';
+import { CamsRole, CamsRoleType } from '../../../../../common/src/cams/roles';
 import { StorageGateway } from '../../types/storage';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 
 const MODULE_NAME = 'LOCAL-STORAGE-GATEWAY';
 
-let roleMapping: Map<string, CamsRole>;
+let roleMapping: Map<string, CamsRoleType>;
 export const ROLE_MAPPING_PATH = '/rolemapping.csv';
+// TODO: Add mappings for the Oversight CamsRoles here once the USTP groups are added
 const ROLE_MAPPING =
   'ad_group_name,idp_group_name,cams_role\n' +
   'USTP_CAMS_Super_User,USTP CAMS Super User,SuperUser\n' +
@@ -27,7 +28,7 @@ function get(path: string): string | null {
   return storage.get(path);
 }
 
-function getRoleMapping(): Map<string, CamsRole> {
+function getRoleMapping(): Map<string, CamsRoleType> {
   if (!roleMapping) {
     const roleArray = ROLE_MAPPING.split('\n');
     roleMapping = roleArray.reduce((roleMap, roleString, idx) => {
@@ -37,7 +38,7 @@ function getRoleMapping(): Map<string, CamsRole> {
       roleMap.set(roleInfo[1], CamsRole[roleInfo[2]]);
 
       return roleMap;
-    }, new Map<string, CamsRole>());
+    }, new Map<string, CamsRoleType>());
   }
 
   return roleMapping;
@@ -48,7 +49,7 @@ function getPrivilegedIdentityUserRoleGroupName(): string {
   let groupNameToReturn: string | undefined = undefined;
 
   for (const [groupName, camsRole] of mapping) {
-    if (camsRole === CamsRole.PrivilegedIdentityUser.toString()) {
+    if (camsRole === CamsRole.PrivilegedIdentityUser) {
       groupNameToReturn = groupName;
     }
   }

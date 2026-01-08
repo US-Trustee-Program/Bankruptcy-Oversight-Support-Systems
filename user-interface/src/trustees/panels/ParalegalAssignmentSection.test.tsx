@@ -4,7 +4,7 @@ import { vi, describe, test, expect } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import ParalegalAssignmentSection from './ParalegalAssignmentSection';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
-import { OversightRole } from '@common/cams/roles';
+import { CamsRole } from '@common/cams/roles';
 
 vi.mock('../modals/TrusteeOversightAssignmentModal', () => {
   return {
@@ -44,7 +44,7 @@ describe('ParalegalAssignmentSection', () => {
         id: 'paralegal-1',
         name: 'John Doe',
       },
-      role: OversightRole.OversightParalegal,
+      role: CamsRole.OversightParalegal,
       createdBy: { id: 'user-1', name: 'Admin User' },
       createdOn: '2023-01-01T00:00:00Z',
       updatedBy: { id: 'user-1', name: 'Admin User' },

@@ -3,7 +3,7 @@ import Api2, { _Api2, addAuthHeaderToApi, extractPathFromUri, useGenericApi } fr
 import Api, { addApiAfterHook, addApiBeforeHook } from '@/lib/models/api';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { StaffAssignmentAction } from '@common/cams/assignments';
-import { CamsRole, OversightRole } from '@common/cams/roles';
+import { CamsRole } from '@common/cams/roles';
 import { randomUUID } from 'crypto';
 import {
   ConsolidationOrderActionRejection,
@@ -333,7 +333,7 @@ describe('_Api2 functions', async () => {
       api2.default.createTrusteeOversightAssignment(
         'trustee-id',
         'user-id',
-        OversightRole.OversightAttorney,
+        CamsRole.OversightAttorney,
       ),
     ).rejects.toThrow(error);
     await expect(api2.default.getBanks()).rejects.toThrow(error);
@@ -425,7 +425,7 @@ describe('_Api2 functions', async () => {
       .mockResolvedValue({ data: { id: 'assignment-id' } });
     const trusteeId = 'trustee-id';
     const userId = 'user-id';
-    const role = OversightRole.OversightAttorney;
+    const role = CamsRole.OversightAttorney;
     api2.default.createTrusteeOversightAssignment(trusteeId, userId, role);
     expect(postSpy).toHaveBeenCalledWith(
       `/trustees/${trusteeId}/oversight-assignments`,

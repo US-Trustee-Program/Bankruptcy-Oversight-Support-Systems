@@ -44,7 +44,7 @@ import {
   TrusteeOversightAssignment,
 } from '@common/cams/trustees';
 import { TrusteeAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
-import { OversightRole } from '@common/cams/roles';
+import { OversightRoleType } from '@common/cams/roles';
 import {
   BankList,
   BankListItem,
@@ -242,8 +242,8 @@ function withCache(cacheOptions: CacheOptions): Pick<GenericApiClient, 'get'> {
   };
 }
 
-async function getOversightStaff() {
-  return api().get<Staff[]>('/staff');
+async function getOversightStaff(): Promise<ResponseBody<Record<OversightRoleType, Staff[]>>> {
+  return api().get<Record<OversightRoleType, Staff[]>>('/staff');
 }
 
 async function postTrustee(trustee: TrusteeInput) {
@@ -467,7 +467,7 @@ async function getTrusteeOversightAssignments(trusteeId: string) {
 async function createTrusteeOversightAssignment(
   trusteeId: string,
   userId: string,
-  role: OversightRole,
+  role: OversightRoleType,
 ) {
   return api().post<TrusteeOversightAssignment>(`/trustees/${trusteeId}/oversight-assignments`, {
     userId,

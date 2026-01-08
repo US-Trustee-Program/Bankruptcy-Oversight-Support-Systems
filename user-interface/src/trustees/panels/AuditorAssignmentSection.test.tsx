@@ -4,7 +4,7 @@ import { vi, describe, test, expect } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import AuditorAssignmentSection from './AuditorAssignmentSection';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
-import { OversightRole } from '@common/cams/roles';
+import { CamsRole } from '@common/cams/roles';
 
 vi.mock('../modals/TrusteeOversightAssignmentModal', () => {
   return {
@@ -44,7 +44,7 @@ describe('AuditorAssignmentSection', () => {
         id: 'auditor-1',
         name: 'Jane Smith',
       },
-      role: OversightRole.OversightAuditor,
+      role: CamsRole.OversightAuditor,
       createdBy: { id: 'user-1', name: 'Admin User' },
       createdOn: '2023-01-01T00:00:00Z',
       updatedBy: { id: 'user-1', name: 'Admin User' },

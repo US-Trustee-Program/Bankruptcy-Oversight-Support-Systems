@@ -2,8 +2,8 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import TrusteeAssignedStaff from './TrusteeAssignedStaff';
 import * as UseTrusteeAssignmentsModule from '@/trustees/modals/UseTrusteeAssignments';
-import { AttorneyUser } from '@common/cams/users';
-import { CamsRole, OversightRole } from '@common/cams/roles';
+import { AttorneyUser, Staff } from '@common/cams/users';
+import { CamsRole, OversightRoleType } from '@common/cams/roles';
 import Api2 from '@/lib/models/api2';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 
@@ -13,15 +13,21 @@ describe('TrusteeAssignedStaff', () => {
       id: 'attorney-1',
       name: 'Attorney Smith',
       offices: [],
-      roles: [CamsRole.TrialAttorney],
+      roles: [CamsRole.OversightAttorney],
     },
     {
       id: 'attorney-2',
       name: 'Attorney Jones',
       offices: [],
-      roles: [CamsRole.TrialAttorney],
+      roles: [CamsRole.OversightAttorney],
     },
   ];
+
+  const mockStaffByRole: Record<OversightRoleType, Staff[]> = {
+    [CamsRole.OversightAttorney]: mockAttorneys,
+    [CamsRole.OversightAuditor]: [],
+    [CamsRole.OversightParalegal]: [],
+  };
 
   const mockUseTrusteeAssignments = {
     assignments: [],
@@ -37,7 +43,7 @@ describe('TrusteeAssignedStaff', () => {
     vi.spyOn(UseTrusteeAssignmentsModule, 'useTrusteeAssignments').mockReturnValue(
       mockUseTrusteeAssignments,
     );
-    vi.spyOn(Api2, 'getOversightStaff').mockResolvedValue({ data: mockAttorneys });
+    vi.spyOn(Api2, 'getOversightStaff').mockResolvedValue({ data: mockStaffByRole });
   });
 
   test('should render component with correct structure', async () => {
@@ -150,13 +156,17 @@ describe('TrusteeAssignedStaff', () => {
     });
 
     vi.spyOn(Api2, 'getOversightStaff').mockResolvedValue({
-      data: [
-        {
-          id: 'attorney-1',
-          name: 'Attorney Smith',
-          roles: [CamsRole.TrialAttorney],
-        },
-      ],
+      data: {
+        [CamsRole.OversightAttorney]: [
+          {
+            id: 'attorney-1',
+            name: 'Attorney Smith',
+            roles: [CamsRole.OversightAttorney],
+          },
+        ],
+        [CamsRole.OversightAuditor]: [],
+        [CamsRole.OversightParalegal]: [],
+      },
     });
 
     vi.spyOn(Api2, 'createTrusteeOversightAssignment').mockResolvedValue({
@@ -164,7 +174,7 @@ describe('TrusteeAssignedStaff', () => {
         id: 'new-assignment',
         trusteeId: 'trustee-123',
         user: { id: 'attorney-1', name: 'Attorney Smith' },
-        role: OversightRole.OversightAttorney,
+        role: CamsRole.OversightAttorney,
         createdBy: { id: 'admin', name: 'Admin' },
         createdOn: '2024-01-01',
         updatedBy: { id: 'admin', name: 'Admin' },

@@ -1,7 +1,7 @@
 import { CamsUser, PrivilegedIdentityUser } from '../../../../common/src/cams/users';
 import { getOfficesGateway, getUserGroupGateway, getUsersRepository } from '../../factory';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { CamsRole } from '../../../../common/src/cams/roles';
+import { CamsRole, CamsRoleType } from '../../../../common/src/cams/roles';
 import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
 import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
 
@@ -45,7 +45,7 @@ async function getPrivilegedIdentityUser(
     }
     if (new Date() < new Date(pimUser.expires)) {
       const roles = getRolesFromGroupNames(pimUser.claims.groups);
-      const rolesSet = new Set<CamsRole>([...combined.roles, ...roles]);
+      const rolesSet = new Set<CamsRoleType>([...combined.roles, ...roles]);
 
       const offices = await getOfficesFromGroupNames(context, pimUser.claims.groups);
       const officeSet = new Set<UstpOfficeDetails>([...combined.offices, ...offices]);
@@ -64,7 +64,7 @@ async function getPrivilegedIdentityUser(
   return combined;
 }
 
-function getRolesFromGroupNames(idpGroups: string[]): CamsRole[] {
+function getRolesFromGroupNames(idpGroups: string[]): CamsRoleType[] {
   const rolesMap = LocalStorageGateway.getRoleMapping();
   return idpGroups.filter((group) => rolesMap.has(group)).map((group) => rolesMap.get(group));
 }

@@ -5,7 +5,7 @@ import { BrowserRouter } from 'react-router-dom';
 import AttorneyAssignmentSection from './AttorneyAssignmentSection';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
 import { AttorneyUser } from '@common/cams/users';
-import { CamsRole, OversightRole } from '@common/cams/roles';
+import { CamsRole } from '@common/cams/roles';
 
 vi.mock('../modals/TrusteeAttorneyAssignmentModal', () => {
   return {
@@ -29,7 +29,7 @@ vi.mock('../modals/TrusteeAttorneyAssignmentModal', () => {
                 id: 'new-assignment-1',
                 trusteeId: 'trustee-123',
                 user: { id: 'user-1', name: 'New Attorney' },
-                role: OversightRole.OversightAttorney,
+                role: CamsRole.OversightAttorney,
                 updatedOn: '2024-01-01T00:00:00Z',
                 updatedBy: { id: 'user-1', name: 'Test User' },
                 createdOn: '2024-01-01T00:00:00Z',
@@ -71,7 +71,7 @@ describe('AttorneyAssignmentSection', () => {
         id: 'attorney-1',
         name: 'John Doe',
       },
-      role: OversightRole.OversightAttorney,
+      role: CamsRole.OversightAttorney,
       createdBy: { id: 'user-1', name: 'Admin User' },
       createdOn: '2023-01-01T00:00:00Z',
       updatedBy: { id: 'user-1', name: 'Admin User' },

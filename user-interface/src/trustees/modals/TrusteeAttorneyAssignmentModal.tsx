@@ -3,7 +3,7 @@ import Api2 from '@/lib/models/api2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { AttorneyUser } from '@common/cams/users';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
-import { OversightRole } from '@common/cams/roles';
+import { CamsRole } from '@common/cams/roles';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import ComboBox from '@/lib/components/combobox/ComboBox';
@@ -65,7 +65,7 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
         await Api2.createTrusteeOversightAssignment(
           trusteeId,
           selectedAttorney.id,
-          OversightRole.OversightAttorney,
+          CamsRole.OversightAttorney,
         );
         onAssignment(true);
         globalAlert?.success('Attorney assigned successfully');

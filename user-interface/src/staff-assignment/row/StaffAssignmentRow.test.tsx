@@ -12,6 +12,8 @@ import { formatDate } from '@/lib/utils/datetime';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { CaseBasics } from '@common/cams/cases';
 import Actions, { ResourceActions } from '@common/cams/actions';
+import { Staff } from '@common/cams/users';
+import { CamsRole, OversightRoleType } from '@common/cams/roles';
 
 describe('StaffAssignmentRow tests', () => {
   const bCase: ResourceActions<CaseBasics> = {
@@ -66,7 +68,13 @@ describe('StaffAssignmentRow tests', () => {
     );
   }
 
-  vi.spyOn(Api2, 'getOversightStaff').mockResolvedValue({ data: TRIAL_ATTORNEYS });
+  const mockStaffByRole: Record<OversightRoleType, Staff[]> = {
+    [CamsRole.OversightAttorney]: TRIAL_ATTORNEYS,
+    [CamsRole.OversightAuditor]: [],
+    [CamsRole.OversightParalegal]: [],
+  };
+
+  vi.spyOn(Api2, 'getOversightStaff').mockResolvedValue({ data: mockStaffByRole });
 
   test('should render a row', async () => {
     const assignedAttorney = MockData.getAttorneyAssignment();

@@ -6,7 +6,7 @@ import Api2 from '@/lib/models/api2';
 import * as UseGlobalAlertModule from '@/lib/hooks/UseGlobalAlert';
 import { Staff } from '@common/cams/users';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
-import { CamsRole, OversightRole } from '@common/cams/roles';
+import { CamsRole, OversightRoleType } from '@common/cams/roles';
 import { TrusteeOversightAssignmentModalRef } from './TrusteeOversightAssignmentModal';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
@@ -14,27 +14,31 @@ describe('TrusteeOversightAssignmentModal', () => {
   let userEvent: CamsUserEvent;
 
   const mockAttorneys: Staff[] = [
-    { id: 'attorney-1', name: 'John Doe', roles: [CamsRole.TrialAttorney] },
-    { id: 'attorney-2', name: 'Jane Smith', roles: [CamsRole.TrialAttorney] },
+    { id: 'attorney-1', name: 'John Doe', roles: [CamsRole.OversightAttorney] },
+    { id: 'attorney-2', name: 'Jane Smith', roles: [CamsRole.OversightAttorney] },
   ];
 
   const mockAuditors: Staff[] = [
-    { id: 'auditor-1', name: 'Alice Auditor', roles: [CamsRole.Auditor] },
-    { id: 'auditor-2', name: 'Bob Auditor', roles: [CamsRole.Auditor] },
+    { id: 'auditor-1', name: 'Alice Auditor', roles: [CamsRole.OversightAuditor] },
+    { id: 'auditor-2', name: 'Bob Auditor', roles: [CamsRole.OversightAuditor] },
   ];
 
   const mockParalegals: Staff[] = [
-    { id: 'paralegal-1', name: 'Charlie Paralegal', roles: [CamsRole.Paralegal] },
-    { id: 'paralegal-2', name: 'Dana Paralegal', roles: [CamsRole.Paralegal] },
+    { id: 'paralegal-1', name: 'Charlie Paralegal', roles: [CamsRole.OversightParalegal] },
+    { id: 'paralegal-2', name: 'Dana Paralegal', roles: [CamsRole.OversightParalegal] },
   ];
 
-  const mockAllStaff: Staff[] = [...mockAttorneys, ...mockAuditors, ...mockParalegals];
+  const mockAllStaff: Record<OversightRoleType, Staff[]> = {
+    [CamsRole.OversightAttorney]: mockAttorneys,
+    [CamsRole.OversightAuditor]: mockAuditors,
+    [CamsRole.OversightParalegal]: mockParalegals,
+  };
 
   const mockAttorneyAssignment: TrusteeOversightAssignment = {
     id: 'assignment-1',
     trusteeId: 'trustee-123',
     user: { id: 'attorney-1', name: 'John Doe' },
-    role: OversightRole.OversightAttorney,
+    role: CamsRole.OversightAttorney,
     createdBy: { id: 'user-1', name: 'Admin User' },
     createdOn: '2023-01-01T00:00:00Z',
     updatedBy: { id: 'user-1', name: 'Admin User' },
@@ -45,7 +49,7 @@ describe('TrusteeOversightAssignmentModal', () => {
     id: 'assignment-2',
     trusteeId: 'trustee-123',
     user: { id: 'auditor-1', name: 'Alice Auditor' },
-    role: OversightRole.OversightAuditor,
+    role: CamsRole.OversightAuditor,
     createdBy: { id: 'user-1', name: 'Admin User' },
     createdOn: '2023-01-01T00:00:00Z',
     updatedBy: { id: 'user-1', name: 'Admin User' },
@@ -73,7 +77,7 @@ describe('TrusteeOversightAssignmentModal', () => {
   });
 
   function renderWithProps(
-    role: OversightRole,
+    role: OversightRoleType,
     props?: Partial<{
       onAssignment: (flag: boolean) => void;
       ref?: React.RefObject<TrusteeOversightAssignmentModalRef | null> | undefined;
@@ -101,14 +105,14 @@ describe('TrusteeOversightAssignmentModal', () => {
   describe('Attorney Role', () => {
     test('should render modal with correct structure', () => {
       const onAssignment = vi.fn();
-      renderWithProps(OversightRole.OversightAttorney, { onAssignment });
+      renderWithProps(CamsRole.OversightAttorney, { onAssignment });
       expect(screen.getByTestId('modal-test-modal')).toBeInTheDocument();
     });
 
     test('should load attorneys when modal opens', async () => {
       const onAssignment = vi.fn();
       const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
-      renderWithProps(OversightRole.OversightAttorney, { onAssignment, ref });
+      renderWithProps(CamsRole.OversightAttorney, { onAssignment, ref });
 
       act(() => ref.current!.show());
 
@@ -120,7 +124,7 @@ describe('TrusteeOversightAssignmentModal', () => {
     test('should display ComboBox for attorney selection', async () => {
       const onAssignment = vi.fn();
       const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
-      renderWithProps(OversightRole.OversightAttorney, { onAssignment, ref });
+      renderWithProps(CamsRole.OversightAttorney, { onAssignment, ref });
 
       act(() => ref.current!.show());
       await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
@@ -133,7 +137,7 @@ describe('TrusteeOversightAssignmentModal', () => {
     test('should enable submit button when attorney is selected', async () => {
       const onAssignment = vi.fn();
       const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
-      renderWithProps(OversightRole.OversightAttorney, { onAssignment, ref });
+      renderWithProps(CamsRole.OversightAttorney, { onAssignment, ref });
 
       act(() => ref.current!.show());
       await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
@@ -151,7 +155,7 @@ describe('TrusteeOversightAssignmentModal', () => {
     test('should successfully assign attorney with role parameter', async () => {
       const onAssignment = vi.fn();
       const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
-      renderWithProps(OversightRole.OversightAttorney, { onAssignment, ref });
+      renderWithProps(CamsRole.OversightAttorney, { onAssignment, ref });
 
       act(() => ref.current!.show());
       await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
@@ -165,7 +169,7 @@ describe('TrusteeOversightAssignmentModal', () => {
         expect(Api2.createTrusteeOversightAssignment).toHaveBeenCalledWith(
           'trustee-123',
           'attorney-1',
-          OversightRole.OversightAttorney,
+          CamsRole.OversightAttorney,
         );
       });
 
@@ -181,7 +185,7 @@ describe('TrusteeOversightAssignmentModal', () => {
 
       const onAssignment = vi.fn();
       const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
-      renderWithProps(OversightRole.OversightAttorney, { onAssignment, ref });
+      renderWithProps(CamsRole.OversightAttorney, { onAssignment, ref });
 
       act(() => ref.current!.show());
       await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
@@ -202,7 +206,7 @@ describe('TrusteeOversightAssignmentModal', () => {
 
       const onAssignment = vi.fn();
       const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
-      renderWithProps(OversightRole.OversightAttorney, { onAssignment, ref });
+      renderWithProps(CamsRole.OversightAttorney, { onAssignment, ref });
 
       act(() => ref.current!.show());
 
@@ -213,15 +217,17 @@ describe('TrusteeOversightAssignmentModal', () => {
     });
 
     test('should show loading spinner while fetching staff', async () => {
-      let resolvePromise!: (value: { data: Staff[] }) => void;
-      const loadingPromise = new Promise<{ data: Staff[] }>((resolve) => {
-        resolvePromise = resolve;
-      });
+      let resolvePromise!: (value: { data: Record<OversightRoleType, Staff[]> }) => void;
+      const loadingPromise = new Promise<{ data: Record<OversightRoleType, Staff[]> }>(
+        (resolve) => {
+          resolvePromise = resolve;
+        },
+      );
       vi.spyOn(Api2, 'getOversightStaff').mockReturnValueOnce(loadingPromise);
 
       const onAssignment = vi.fn();
       const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
-      renderWithProps(OversightRole.OversightAttorney, { onAssignment, ref });
+      renderWithProps(CamsRole.OversightAttorney, { onAssignment, ref });
 
       act(() => ref.current!.show());
 
@@ -240,14 +246,14 @@ describe('TrusteeOversightAssignmentModal', () => {
   describe('Auditor Role', () => {
     test('should render modal with correct structure for auditor', () => {
       const onAssignment = vi.fn();
-      renderWithProps(OversightRole.OversightAuditor, { onAssignment });
+      renderWithProps(CamsRole.OversightAuditor, { onAssignment });
       expect(screen.getByTestId('modal-test-modal')).toBeInTheDocument();
     });
 
     test('should load auditors when modal opens', async () => {
       const onAssignment = vi.fn();
       const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
-      renderWithProps(OversightRole.OversightAuditor, { onAssignment, ref });
+      renderWithProps(CamsRole.OversightAuditor, { onAssignment, ref });
 
       act(() => ref.current!.show());
 
@@ -259,7 +265,7 @@ describe('TrusteeOversightAssignmentModal', () => {
     test('should display ComboBox for auditor selection', async () => {
       const onAssignment = vi.fn();
       const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
-      renderWithProps(OversightRole.OversightAuditor, { onAssignment, ref });
+      renderWithProps(CamsRole.OversightAuditor, { onAssignment, ref });
 
       act(() => ref.current!.show());
       await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
@@ -276,7 +282,7 @@ describe('TrusteeOversightAssignmentModal', () => {
 
       const onAssignment = vi.fn();
       const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
-      renderWithProps(OversightRole.OversightAuditor, { onAssignment, ref });
+      renderWithProps(CamsRole.OversightAuditor, { onAssignment, ref });
 
       act(() => ref.current!.show());
       await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
@@ -290,7 +296,7 @@ describe('TrusteeOversightAssignmentModal', () => {
         expect(Api2.createTrusteeOversightAssignment).toHaveBeenCalledWith(
           'trustee-123',
           'auditor-1',
-          OversightRole.OversightAuditor,
+          CamsRole.OversightAuditor,
         );
       });
 
@@ -299,15 +305,17 @@ describe('TrusteeOversightAssignmentModal', () => {
     });
 
     test('should show loading spinner with auditor text while fetching', async () => {
-      let resolvePromise!: (value: { data: Staff[] }) => void;
-      const loadingPromise = new Promise<{ data: Staff[] }>((resolve) => {
-        resolvePromise = resolve;
-      });
+      let resolvePromise!: (value: { data: Record<OversightRoleType, Staff[]> }) => void;
+      const loadingPromise = new Promise<{ data: Record<OversightRoleType, Staff[]> }>(
+        (resolve) => {
+          resolvePromise = resolve;
+        },
+      );
       vi.spyOn(Api2, 'getOversightStaff').mockReturnValueOnce(loadingPromise);
 
       const onAssignment = vi.fn();
       const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
-      renderWithProps(OversightRole.OversightAuditor, { onAssignment, ref });
+      renderWithProps(CamsRole.OversightAuditor, { onAssignment, ref });
 
       act(() => ref.current!.show());
 
@@ -330,7 +338,7 @@ describe('TrusteeOversightAssignmentModal', () => {
 
       const onAssignment = vi.fn();
       const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
-      renderWithProps(OversightRole.OversightAuditor, { onAssignment, ref });
+      renderWithProps(CamsRole.OversightAuditor, { onAssignment, ref });
 
       act(() => ref.current!.show());
       await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
@@ -351,7 +359,7 @@ describe('TrusteeOversightAssignmentModal', () => {
     test('should hide modal and reset selected staff when hide is called', async () => {
       const onAssignment = vi.fn();
       const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
-      renderWithProps(OversightRole.OversightAttorney, { onAssignment, ref });
+      renderWithProps(CamsRole.OversightAttorney, { onAssignment, ref });
 
       act(() => ref.current!.show());
       await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
@@ -369,7 +377,7 @@ describe('TrusteeOversightAssignmentModal', () => {
     test('should not call API when trying to assign with no staff selected', async () => {
       const onAssignment = vi.fn();
       const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
-      renderWithProps(OversightRole.OversightAttorney, { onAssignment, ref });
+      renderWithProps(CamsRole.OversightAttorney, { onAssignment, ref });
 
       act(() => ref.current!.show());
       await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
@@ -388,7 +396,7 @@ describe('TrusteeOversightAssignmentModal', () => {
     test('should clear selected staff when ComboBox selection is cleared', async () => {
       const onAssignment = vi.fn();
       const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
-      renderWithProps(OversightRole.OversightAttorney, { onAssignment, ref });
+      renderWithProps(CamsRole.OversightAttorney, { onAssignment, ref });
 
       act(() => ref.current!.show());
       await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
@@ -410,7 +418,7 @@ describe('TrusteeOversightAssignmentModal', () => {
     test('should close modal without API call when same staff is selected as current assignment', async () => {
       const onAssignment = vi.fn();
       const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
-      renderWithProps(OversightRole.OversightAttorney, { onAssignment, ref });
+      renderWithProps(CamsRole.OversightAttorney, { onAssignment, ref });
 
       act(() => ref.current!.show(mockAttorneyAssignment));
       await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
@@ -427,7 +435,7 @@ describe('TrusteeOversightAssignmentModal', () => {
     test('should display Edit Attorney button and heading when editing existing assignment', async () => {
       const onAssignment = vi.fn();
       const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
-      renderWithProps(OversightRole.OversightAttorney, { onAssignment, ref });
+      renderWithProps(CamsRole.OversightAttorney, { onAssignment, ref });
 
       act(() => ref.current!.show(mockAttorneyAssignment));
       await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
@@ -442,7 +450,7 @@ describe('TrusteeOversightAssignmentModal', () => {
     test('should display Add Auditor button and heading when creating new auditor assignment', async () => {
       const onAssignment = vi.fn();
       const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
-      renderWithProps(OversightRole.OversightAuditor, { onAssignment, ref });
+      renderWithProps(CamsRole.OversightAuditor, { onAssignment, ref });
 
       act(() => ref.current!.show());
       await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
@@ -458,7 +466,7 @@ describe('TrusteeOversightAssignmentModal', () => {
   describe('Paralegal Role', () => {
     test('should render modal with correct structure for paralegal', () => {
       const onAssignment = vi.fn();
-      renderWithProps(OversightRole.OversightParalegal, { onAssignment });
+      renderWithProps(CamsRole.OversightParalegal, { onAssignment });
       expect(screen.getByTestId('modal-test-modal')).toBeInTheDocument();
     });
 
@@ -467,7 +475,7 @@ describe('TrusteeOversightAssignmentModal', () => {
         id: 'assignment-3',
         trusteeId: 'trustee-123',
         user: { id: 'paralegal-1', name: 'Bob Paralegal' },
-        role: OversightRole.OversightParalegal,
+        role: CamsRole.OversightParalegal,
         createdBy: { id: 'user-1', name: 'Admin User' },
         createdOn: '2023-01-01T00:00:00Z',
         updatedBy: { id: 'user-1', name: 'Admin User' },
@@ -480,7 +488,7 @@ describe('TrusteeOversightAssignmentModal', () => {
 
       const onAssignment = vi.fn();
       const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
-      renderWithProps(OversightRole.OversightParalegal, { onAssignment, ref });
+      renderWithProps(CamsRole.OversightParalegal, { onAssignment, ref });
 
       act(() => ref.current!.show());
       await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
@@ -494,7 +502,7 @@ describe('TrusteeOversightAssignmentModal', () => {
         expect(Api2.createTrusteeOversightAssignment).toHaveBeenCalledWith(
           'trustee-123',
           'paralegal-1',
-          OversightRole.OversightParalegal,
+          CamsRole.OversightParalegal,
         );
       });
 
@@ -505,7 +513,7 @@ describe('TrusteeOversightAssignmentModal', () => {
     test('should display Add Paralegal button and heading when creating new paralegal assignment', async () => {
       const onAssignment = vi.fn();
       const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
-      renderWithProps(OversightRole.OversightParalegal, { onAssignment, ref });
+      renderWithProps(CamsRole.OversightParalegal, { onAssignment, ref });
 
       act(() => ref.current!.show());
       await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());

@@ -1,7 +1,7 @@
-import { CamsRole } from '../../../../common/src/cams/roles';
+import { CamsRoleType } from '../../../../common/src/cams/roles';
 
 export type StorageGateway = {
   get(key: string): string | null;
-  getRoleMapping(): Map<string, CamsRole>;
+  getRoleMapping(): Map<string, CamsRoleType>;
   getPrivilegedIdentityUserRoleGroupName(): string;
 };

@@ -4,7 +4,7 @@ import {
   TrusteeOversightAssignment,
   TrusteeOversightHistory,
 } from '../../../../common/src/cams/trustees';
-import { CamsRole, OversightRole } from '../../../../common/src/cams/roles';
+import { CamsRole, OversightRoles, OversightRoleType } from '../../../../common/src/cams/roles';
 import { getTrusteesRepository, getUserGroupGateway } from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { BadRequestError } from '../../common-errors/bad-request';
@@ -79,7 +79,7 @@ export class TrusteeAssignmentsUseCase {
     context: ApplicationContext,
     trusteeId: string,
     staffUserId: string,
-    role: OversightRole,
+    role: OversightRoleType,
   ): Promise<boolean> {
     if (!context.session.user.roles.includes(CamsRole.TrusteeAdmin)) {
       throw new UnauthorizedError(
@@ -99,10 +99,9 @@ export class TrusteeAssignmentsUseCase {
       });
     }
 
-    const validOversightRoles = Object.values(OversightRole);
-    if (!validOversightRoles.includes(role)) {
+    if (!OversightRoles.includes(role)) {
       throw new BadRequestError(MODULE_NAME, {
-        message: `Role must be a valid OversightRole. Received: ${role}`,
+        message: `Role must be a valid oversight role. Received: ${role}`,
       });
     }
 

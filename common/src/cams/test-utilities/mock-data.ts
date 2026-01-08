@@ -48,7 +48,7 @@ import { CamsSession } from '../session';
 import { CamsJwtClaims } from '../jwt';
 import { Pagination } from '../../api/pagination';
 import DateHelper from '../../date-helper';
-import { CamsRole } from '../roles';
+import { CamsRole, CamsRoleType } from '../roles';
 import { MOCKED_USTP_OFFICES_ARRAY } from '../offices';
 import { REGION_02_GROUP_NY, SUPERUSER } from './mock-user';
 import { RoleAndOfficeGroupNames } from '../privileged-identity';
@@ -897,6 +897,13 @@ function getAuditorUser(override: Partial<AttorneyUser> = {}): AttorneyUser {
   };
 }
 
+function getParalegalUser(override: Partial<AttorneyUser> = {}): AttorneyUser {
+  return {
+    ...getCamsUser({ roles: [CamsRole.Paralegal] }),
+    ...override,
+  };
+}
+
 function getPrivilegedIdentityUser(
   override: Partial<PrivilegedIdentityUser> = {},
 ): PrivilegedIdentityUser {
@@ -925,7 +932,7 @@ function getRoleAndOfficeGroupNames(): RoleAndOfficeGroupNames {
 
 function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
   let offices = [REGION_02_GROUP_NY];
-  let roles: CamsRole[] = [];
+  let roles: CamsRoleType[] = [];
   if (override?.user?.roles?.includes(CamsRole.SuperUser)) {
     offices = MOCKED_USTP_OFFICES_ARRAY;
     roles = Object.values(CamsRole);
@@ -1074,6 +1081,7 @@ const MockData = {
   getCamsUserGroup,
   getAttorneyUser,
   getAuditorUser,
+  getParalegalUser,
   getPrivilegedIdentityUser,
   getRole,
   getRoleAndOfficeGroupNames,
