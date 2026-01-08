@@ -29,7 +29,7 @@ function App() {
   const [radioValue, setRadioValue] = useState('option1');
   const [inputValue, setInputValue] = useState('');
   const [textAreaValue, setTextAreaValue] = useState('');
-  const [dateValue, setDateValue] = useState('');
+  const [dateValue, setDateValue] = useState('2025-12-01');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [activeButtonId, setActiveButtonId] = useState('btn-1');
 
