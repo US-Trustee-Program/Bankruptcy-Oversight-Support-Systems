@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import useFeatureFlags, { VIEW_TRUSTEE_ON_CASE } from '@/lib/hooks/UseFeatureFlags';
 import { setCurrentNav, createNavStateMapper } from '@/lib/utils/navigation';
 
 export enum CaseNavState {
@@ -38,8 +37,6 @@ export default function CaseDetailNavigation({
 }: CaseDetailNavigationProps) {
   const [activeNav, setActiveNav] = useState<CaseNavState>(initiallySelectedNavLink);
 
-  const featureFlags = useFeatureFlags();
-
   return (
     <>
       <nav
@@ -62,23 +59,21 @@ export default function CaseDetailNavigation({
               Case Overview
             </NavLink>
           </li>
-          {featureFlags[VIEW_TRUSTEE_ON_CASE] && (
-            <li className="usa-sidenav__item">
-              <NavLink
-                to={`/case-detail/${caseId}/trustee-and-assigned-staff`}
-                data-testid="case-trustee-and-assigned-staff-link"
-                className={
-                  'usa-sidenav__link ' +
-                  setCurrentNav(activeNav, CaseNavState.TRUSTEE_AND_ASSIGNED_STAFF)
-                }
-                onClick={() => setActiveNav(CaseNavState.TRUSTEE_AND_ASSIGNED_STAFF)}
-                title="view trustee and assigned staff details for the current case"
-                end
-              >
-                Assigned Staff & Trustee
-              </NavLink>
-            </li>
-          )}
+          <li className="usa-sidenav__item">
+            <NavLink
+              to={`/case-detail/${caseId}/trustee-and-assigned-staff`}
+              data-testid="case-trustee-and-assigned-staff-link"
+              className={
+                'usa-sidenav__link ' +
+                setCurrentNav(activeNav, CaseNavState.TRUSTEE_AND_ASSIGNED_STAFF)
+              }
+              onClick={() => setActiveNav(CaseNavState.TRUSTEE_AND_ASSIGNED_STAFF)}
+              title="view trustee and assigned staff details for the current case"
+              end
+            >
+              Assigned Staff & Trustee
+            </NavLink>
+          </li>
           <li className="usa-sidenav__item">
             <NavLink
               to={`/case-detail/${caseId}/court-docket`}
