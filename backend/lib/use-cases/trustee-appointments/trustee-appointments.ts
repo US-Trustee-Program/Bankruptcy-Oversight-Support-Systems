@@ -8,7 +8,12 @@ import { CourtsUseCase } from '../courts/courts';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { getCamsUserReference } from '@common/cams/session';
 import { CamsUserReference } from '@common/cams/users';
-import { TrusteeAppointmentHistory, TrusteeHistory, ChapterType } from '@common/cams/trustees';
+import {
+  TrusteeAppointmentHistory,
+  TrusteeHistory,
+  ChapterType,
+  AppointmentType,
+} from '@common/cams/trustees';
 import { Creatable } from '../../adapters/types/persistence.gateway';
 import DateHelper from '@common/date-helper';
 
@@ -16,6 +21,7 @@ const MODULE_NAME = 'TRUSTEE-APPOINTMENTS-USE-CASE';
 
 type AppointmentSnapshot = {
   chapter: ChapterType;
+  appointmentType: AppointmentType;
   courtId: string;
   divisionCode: string;
   appointedDate: string;
@@ -47,6 +53,7 @@ export class TrusteeAppointmentsUseCase {
   private hasAppointmentChanged(before: TrusteeAppointment, after: TrusteeAppointment): boolean {
     return (
       before.chapter !== after.chapter ||
+      before.appointmentType !== after.appointmentType ||
       before.courtId !== after.courtId ||
       before.divisionCode !== after.divisionCode ||
       before.appointedDate !== after.appointedDate ||
@@ -164,6 +171,7 @@ export class TrusteeAppointmentsUseCase {
         undefined,
         {
           chapter: createdAppointment.chapter,
+          appointmentType: createdAppointment.appointmentType,
           courtId: createdAppointment.courtId,
           divisionCode: createdAppointment.divisionCode,
           appointedDate: createdAppointment.appointedDate,
@@ -216,6 +224,7 @@ export class TrusteeAppointmentsUseCase {
           userReference,
           {
             chapter: existingAppointment.chapter,
+            appointmentType: existingAppointment.appointmentType,
             courtId: existingAppointment.courtId,
             divisionCode: existingAppointment.divisionCode,
             appointedDate: existingAppointment.appointedDate,
@@ -224,6 +233,7 @@ export class TrusteeAppointmentsUseCase {
           },
           {
             chapter: updatedAppointment.chapter,
+            appointmentType: updatedAppointment.appointmentType,
             courtId: updatedAppointment.courtId,
             divisionCode: updatedAppointment.divisionCode,
             appointedDate: updatedAppointment.appointedDate,

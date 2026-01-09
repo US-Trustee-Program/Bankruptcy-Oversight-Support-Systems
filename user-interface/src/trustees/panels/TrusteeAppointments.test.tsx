@@ -23,7 +23,8 @@ describe('TrusteeAppointments', () => {
     {
       id: 'appointment-001',
       trusteeId: 'trustee-123',
-      chapter: '7-panel',
+      chapter: '7',
+      appointmentType: 'panel',
       courtId: '081',
       courtDivisionName: 'Manhattan',
       courtName: 'Southern District of New York',
@@ -40,6 +41,7 @@ describe('TrusteeAppointments', () => {
       id: 'appointment-002',
       trusteeId: 'trustee-123',
       chapter: '11',
+      appointmentType: 'case-by-case',
       courtId: '081',
       courtDivisionName: 'New York',
       courtName: 'Northern District of New York',
