@@ -1,6 +1,6 @@
 import './AppointmentCard.scss';
-import { TrusteeAppointment } from '@common/cams/trustee-appointments';
-import { getAppointmentDetails } from '@common/cams/trustees';
+import { TrusteeAppointment, formatAppointmentStatus } from '@common/cams/trustee-appointments';
+import { formatChapterType, formatAppointmentType } from '@common/cams/trustees';
 import { formatDate } from '@/lib/utils/datetime';
 import { useNavigate } from 'react-router-dom';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
@@ -18,16 +18,17 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
 
   const { chapter, appointmentType } = props.appointment;
-  const formattedChapter = getAppointmentDetails(chapter, appointmentType);
+  const formattedChapter = formatChapterType(chapter);
+  const formattedAppointmentType = formatAppointmentType(appointmentType);
   let districtDisplay;
   if (props.appointment.courtName && props.appointment.courtDivisionName) {
-    districtDisplay = `${props.appointment.courtName} (${props.appointment.courtDivisionName})`;
+    districtDisplay = `${props.appointment.courtName} - ${props.appointment.courtDivisionName}`;
   } else {
     districtDisplay = 'Court not found';
   }
   const formattedEffectiveDate = formatDate(props.appointment.effectiveDate);
   const formattedAppointedDate = formatDate(props.appointment.appointedDate);
-  const statusDisplay = `${props.appointment.status.charAt(0).toUpperCase() + props.appointment.status.slice(1)} ${formattedEffectiveDate}`;
+  const formattedStatus = formatAppointmentStatus(props.appointment.status);
 
   function openEditTrustee() {
     navigate(`/trustees/${props.appointment.trusteeId}/appointments/${props.appointment.id}/edit`);
@@ -36,7 +37,7 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
   return (
     <div className="appointment-card-container">
       <h3 className="appointment-card-heading">
-        {districtDisplay}: Chapter {formattedChapter}
+        {districtDisplay}: Chapter {formattedChapter} - {formattedAppointmentType}
       </h3>
       <div className="appointment-card usa-card">
         <div className="usa-card__container">
@@ -63,10 +64,17 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
                 <span className="appointment-label">Chapter:</span> {formattedChapter}
               </li>
               <li>
-                <span className="appointment-label">Status:</span> {statusDisplay}
+                <span className="appointment-label">Type:</span> {formattedAppointmentType}
               </li>
               <li>
                 <span className="appointment-label">Appointed:</span> {formattedAppointedDate}
+              </li>
+              <li>
+                <span className="appointment-label">Status:</span> {formattedStatus}
+              </li>
+              <li>
+                <span className="appointment-label">Status Effective:</span>{' '}
+                {formattedEffectiveDate}
               </li>
             </ul>
           </div>

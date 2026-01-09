@@ -113,10 +113,10 @@ describe('TrusteeAppointments', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(/Southern District of New York \(Manhattan\): Chapter 7 - Panel/i),
+        screen.getByText(/Southern District of New York - Manhattan: Chapter 7 - Panel/i),
       ).toBeInTheDocument();
       expect(
-        screen.getByText(/Northern District of New York \(New York\): Chapter 11/i),
+        screen.getByText(/Northern District of New York - New York: Chapter 11/i),
       ).toBeInTheDocument();
     });
   });

@@ -495,6 +495,11 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           {label} {props.required && <span className="required-form-field">*</span>}
         </label>
       </div>
+      {ariaDescription && (
+        <div className="usa-hint" id={`${comboBoxId}-hint`}>
+          {ariaDescription}
+        </div>
+      )}
       <div className="usa-combo-box">
         <span id={`${comboBoxId}-aria-description`} className="screen-reader-only">
           {label && label + '. '}
