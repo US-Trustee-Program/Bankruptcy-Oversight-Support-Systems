@@ -313,7 +313,7 @@ describe('Cases repository', () => {
   test('should call paginate without caseIds array in query', async () => {
     const predicate: CasesSearchPredicate = {
       chapters: ['15'],
-      excludeChildConsolidations: true,
+      excludeMemberConsolidations: true,
       limit: 1,
       offset: 0,
     };
@@ -359,7 +359,7 @@ describe('Cases repository', () => {
   test('should call paginate with caseIds array in query', async () => {
     const predicate: CasesSearchPredicate = {
       chapters: ['15'],
-      excludeChildConsolidations: true,
+      excludeMemberConsolidations: true,
       caseIds: [caseId1, caseId2],
       limit: 25,
       offset: 0,
@@ -407,7 +407,7 @@ describe('Cases repository', () => {
     const excludedCaseIds = ['111-11-11111', '111-11-11112'];
     const predicate: CasesSearchPredicate = {
       chapters: ['15'],
-      excludeChildConsolidations: true,
+      excludeMemberConsolidations: true,
       caseIds: [caseId1, caseId2],
       excludedCaseIds,
       limit: 5,
@@ -515,7 +515,7 @@ describe('Cases repository', () => {
       caseIds: [caseId],
       chapters,
       divisionCodes,
-      excludeChildConsolidations: true,
+      excludeMemberConsolidations: true,
       excludeClosedCases: true,
       includeOnlyUnassigned: true,
       limit: 25,
@@ -620,7 +620,7 @@ describe('Cases repository', () => {
   test('should throw error when paginate throws error', async () => {
     const predicate: CasesSearchPredicate = {
       chapters: ['15'],
-      excludeChildConsolidations: false,
+      excludeMemberConsolidations: false,
       limit: 25,
       offset: 0,
     };
@@ -702,7 +702,7 @@ describe('Cases repository', () => {
   test('should throw error when paginate has invalid limit and offset', async () => {
     const predicate: CasesSearchPredicate = {
       chapters: ['15'],
-      excludeChildConsolidations: false,
+      excludeMemberConsolidations: false,
       limit: 1,
       offset: -1,
     };
@@ -719,82 +719,82 @@ describe('Cases repository', () => {
     );
   });
 
-  test('getConsolidationChildCaseIds should throw error when find throws error', async () => {
+  test('getConsolidationMemberCaseIds should throw error when find throws error', async () => {
     const predicate: CasesSearchPredicate = {
       chapters: ['15'],
-      excludeChildConsolidations: true,
+      excludeMemberConsolidations: true,
     };
 
     vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
       new CamsError('CASES_MONGO_REPOSITORY'),
     );
-    await expect(async () => await repo.getConsolidationChildCaseIds(predicate)).rejects.toThrow(
+    await expect(async () => await repo.getConsolidationMemberCaseIds(predicate)).rejects.toThrow(
       'Unknown CAMS Error',
     );
   });
 
-  test('getConsolidationChildCaseIds should return a list of caseIds when given full predicate', async () => {
+  test('getConsolidationMemberCaseIds should return a list of caseIds when given full predicate', async () => {
     const caseIds = ['111-11-11111', '111-11-11112'];
     const predicate: CasesSearchPredicate = {
       chapters: ['15'],
       caseIds,
       divisionCodes: ['111'],
-      excludeChildConsolidations: true,
+      excludeMemberConsolidations: true,
     };
 
     vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
       MockData.getSyncedCase({ override: { caseId: caseIds[0] } }),
       MockData.getSyncedCase({ override: { caseId: caseIds[1] } }),
     ]);
-    const result = await repo.getConsolidationChildCaseIds(predicate);
+    const result = await repo.getConsolidationMemberCaseIds(predicate);
     expect(result).toEqual(caseIds);
   });
 
-  test('getConsolidationChildCaseIds should return a list of caseIds when predicate missing chapters', async () => {
+  test('getConsolidationMemberCaseIds should return a list of caseIds when predicate missing chapters', async () => {
     const caseIds = ['111-11-11111', '111-11-11112'];
     const predicate: CasesSearchPredicate = {
       caseIds,
       divisionCodes: ['111'],
-      excludeChildConsolidations: true,
+      excludeMemberConsolidations: true,
     };
 
     vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
       MockData.getSyncedCase({ override: { caseId: caseIds[0] } }),
       MockData.getSyncedCase({ override: { caseId: caseIds[1] } }),
     ]);
-    const result = await repo.getConsolidationChildCaseIds(predicate);
+    const result = await repo.getConsolidationMemberCaseIds(predicate);
     expect(result).toEqual(caseIds);
   });
 
-  test('getConsolidationChildCaseIds should return a list of caseIds when predicate missing divisionCodes', async () => {
+  test('getConsolidationMemberCaseIds should return a list of caseIds when predicate missing divisionCodes', async () => {
     const caseIds = ['111-11-11111', '111-11-11112'];
     const predicate: CasesSearchPredicate = {
       chapters: ['15'],
       caseIds,
-      excludeChildConsolidations: true,
+      excludeMemberConsolidations: true,
     };
 
     vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
       MockData.getSyncedCase({ override: { caseId: caseIds[0] } }),
       MockData.getSyncedCase({ override: { caseId: caseIds[1] } }),
     ]);
-    const result = await repo.getConsolidationChildCaseIds(predicate);
+    const result = await repo.getConsolidationMemberCaseIds(predicate);
     expect(result).toEqual(caseIds);
   });
 
-  test('getConsolidationChildCaseIds should return a list of caseIds when missing caseIds', async () => {
+  test('getConsolidationMemberCaseIds should return a list of caseIds when missing caseIds', async () => {
     const caseIds = ['111-11-11111', '111-11-11112'];
     const predicate: CasesSearchPredicate = {
       chapters: ['15'],
       divisionCodes: ['111'],
-      excludeChildConsolidations: true,
+      excludeMemberConsolidations: true,
     };
 
     vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
       MockData.getSyncedCase({ override: { caseId: caseIds[0] } }),
       MockData.getSyncedCase({ override: { caseId: caseIds[1] } }),
     ]);
-    const result = await repo.getConsolidationChildCaseIds(predicate);
+    const result = await repo.getConsolidationMemberCaseIds(predicate);
     expect(result).toEqual(caseIds);
   });
 
@@ -865,7 +865,7 @@ describe('Cases repository', () => {
       before: null,
       after: {
         status: 'pending',
-        childCases: [],
+        memberCases: [],
       },
       documentType: 'AUDIT_CONSOLIDATION',
       updatedOn: new Date().toISOString(),
@@ -885,7 +885,7 @@ describe('Cases repository', () => {
       before: null,
       after: {
         status: 'pending',
-        childCases: [],
+        memberCases: [],
       },
       documentType: 'AUDIT_CONSOLIDATION',
       updatedOn: new Date().toISOString(),

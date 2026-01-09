@@ -188,7 +188,7 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  getConsolidationChildCaseIds(..._ignore): Promise<string[]> {
+  getConsolidationMemberCaseIds(..._ignore): Promise<string[]> {
     throw new Error('Method not implemented.');
   }
 

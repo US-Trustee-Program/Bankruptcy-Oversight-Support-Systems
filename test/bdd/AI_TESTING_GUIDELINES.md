@@ -336,7 +336,7 @@ beforeEach(async () => {
       getTransfers: vi.fn().mockResolvedValue([]),
       getConsolidation: vi.fn().mockResolvedValue([]),
       getCaseHistory: vi.fn().mockResolvedValue([]),
-      getConsolidationChildCaseIds: vi.fn().mockResolvedValue([]),
+      getConsolidationMemberCaseIds: vi.fn().mockResolvedValue([]),
     },
     CaseAssignmentMongoRepository: {
       findAssignmentsByAssignee: vi.fn().mockResolvedValue([]),
@@ -906,7 +906,7 @@ await spyOnAllGateways({
     getTransfers: vi.fn().mockResolvedValue([]),
     getConsolidation: vi.fn().mockResolvedValue([]),
     getCaseHistory: vi.fn().mockResolvedValue([]),
-    getConsolidationChildCaseIds: vi.fn().mockResolvedValue([]),
+    getConsolidationMemberCaseIds: vi.fn().mockResolvedValue([]),
   },
   CaseAssignmentMongoRepository: {
     findAssignmentsByAssignee: vi.fn().mockResolvedValue([]),
@@ -939,7 +939,7 @@ await spyOnAllGateways({
   CasesMongoRepository: {
     // Mock in individual test: searchCases
     getConsolidation: vi.fn().mockResolvedValue([]),
-    getConsolidationChildCaseIds: vi.fn().mockResolvedValue([]),
+    getConsolidationMemberCaseIds: vi.fn().mockResolvedValue([]),
   },
   CaseAssignmentMongoRepository: {
     findAssignmentsByAssignee: vi.fn().mockResolvedValue([]),
@@ -967,7 +967,7 @@ await spyOnAllGateways({
   },
   CasesMongoRepository: {
     getConsolidation: vi.fn().mockResolvedValue([]),
-    getConsolidationChildCaseIds: vi.fn().mockResolvedValue([]),
+    getConsolidationMemberCaseIds: vi.fn().mockResolvedValue([]),
   },
   OfficesMongoRepository: {
     getOfficeAttorneys: vi.fn().mockResolvedValue([]),

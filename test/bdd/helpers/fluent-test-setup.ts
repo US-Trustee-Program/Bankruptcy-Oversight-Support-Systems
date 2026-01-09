@@ -540,7 +540,7 @@ export class TestSetup {
           return state.getConsolidations(caseId);
         }),
         getCaseHistory: vi.fn().mockResolvedValue([]),
-        getConsolidationChildCaseIds: vi.fn().mockResolvedValue([]),
+        getConsolidationMemberCaseIds: vi.fn().mockResolvedValue([]),
       },
 
       // Case assignments - STATE AWARE

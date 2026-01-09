@@ -182,7 +182,7 @@ describe('feature flag true', () => {
   });
 
   test('should render member case icon when case is member case', () => {
-    const childCaseDetail = MockData.getCaseDetail({
+    const memberCaseDetail = MockData.getCaseDetail({
       override: {
         petitionLabel: 'Voluntary',
         consolidation: [
@@ -191,7 +191,7 @@ describe('feature flag true', () => {
       },
     });
 
-    basicRender(childCaseDetail, false);
+    basicRender(memberCaseDetail, false);
 
     const childIcon = screen.getByTestId('member-case-icon');
     expect(childIcon).toBeInTheDocument();
@@ -238,7 +238,7 @@ describe('feature flag true', () => {
   });
 
   test('should display tooltip for member case icon with consolidation type', () => {
-    const childCaseDetail = MockData.getCaseDetail({
+    const memberCaseDetail = MockData.getCaseDetail({
       override: {
         petitionLabel: 'Voluntary',
         consolidation: [
@@ -249,7 +249,7 @@ describe('feature flag true', () => {
       },
     });
 
-    basicRender(childCaseDetail, false);
+    basicRender(memberCaseDetail, false);
 
     const memberIcon = screen.getByTestId('member-case-icon');
     const titleElement = memberIcon.querySelector('title');
@@ -298,7 +298,7 @@ describe('feature flag true', () => {
   });
 
   test('should display tooltip for member case icon without consolidation type when empty', () => {
-    const childCaseDetail = MockData.getCaseDetail({
+    const memberCaseDetail = MockData.getCaseDetail({
       override: {
         petitionLabel: 'Voluntary',
         consolidation: [
@@ -309,7 +309,7 @@ describe('feature flag true', () => {
       },
     });
 
-    basicRender(childCaseDetail, false);
+    basicRender(memberCaseDetail, false);
 
     const memberIcon = screen.getByTestId('member-case-icon');
     const titleElement = memberIcon.querySelector('title');
