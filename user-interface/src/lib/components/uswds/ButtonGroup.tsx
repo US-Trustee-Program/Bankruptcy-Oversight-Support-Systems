@@ -1,5 +1,6 @@
 import { Children, createElement, isValidElement, ReactElement } from 'react';
 import { UswdsButtonStyle } from './Button';
+import './ButtonGroup.scss';
 
 export type ButtonGroupProps = {
   id: string;

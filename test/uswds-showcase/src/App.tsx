@@ -34,9 +34,23 @@ function App() {
   const [activeButtonId, setActiveButtonId] = useState('btn-1');
 
   const modalRef = useRef<ModalRefType>(null);
+  const alertRef = useRef<any>(null);
+
+  const handleLearnMoreClick = () => {
+    alertRef.current?.show();
+  };
 
   return (
     <div className="uswds-showcase">
+      <Alert
+        ref={alertRef}
+        type={UswdsAlertStyle.Info}
+        title="Card Button Clicked!"
+        message="You clicked the Learn More button in the card."
+        timeout={5}
+        show={false}
+        className="floating-alert"
+      />
       <header className="usa-header usa-header--basic">
         <div className="usa-nav-container">
           <div className="usa-navbar">
@@ -103,7 +117,9 @@ function App() {
                 <p>This is the card body content. Cards can contain various types of content.</p>
               </CardBody>
               <CardFooter>
-                <Button uswdsStyle={UswdsButtonStyle.Secondary}>Learn More</Button>
+                <Button uswdsStyle={UswdsButtonStyle.Secondary} onClick={handleLearnMoreClick}>
+                  Learn More
+                </Button>
               </CardFooter>
             </Card>
           </section>

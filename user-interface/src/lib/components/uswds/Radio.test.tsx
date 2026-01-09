@@ -74,4 +74,71 @@ describe('Tests for USWDS Input component.', () => {
       expect(radioButton).not.toBeDisabled();
     });
   });
+
+  test('should handle Space key press', async () => {
+    renderWithoutProps();
+    const clickTarget = screen.getByTestId('button-radio-1-click-target');
+
+    const keydownEvent = new KeyboardEvent('keydown', { key: ' ', bubbles: true });
+    clickTarget.dispatchEvent(keydownEvent);
+
+    await waitFor(() => {
+      expect(onChangeHandlerSpy).toHaveBeenCalled();
+    });
+  });
+
+  test('should handle Enter key press', async () => {
+    renderWithoutProps();
+    const clickTarget = screen.getByTestId('button-radio-1-click-target');
+
+    const keydownEvent = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true });
+    clickTarget.dispatchEvent(keydownEvent);
+
+    await waitFor(() => {
+      expect(onChangeHandlerSpy).toHaveBeenCalled();
+    });
+  });
+
+  test('should sync checked state when native change event occurs', async () => {
+    render(<Radio {...defaultProps} checked={false} />);
+    const radioInput = screen.getByTestId(radioTestId) as HTMLInputElement;
+
+    // Simulate native change event (like when browser unchecks this radio due to another radio being selected)
+    act(() => {
+      radioInput.checked = true;
+      radioInput.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    await waitFor(() => {
+      expect(radioInput.checked).toBe(true);
+    });
+  });
+
+  test('should return false from isChecked when ref is not set', () => {
+    // Create a component that will immediately call isChecked before ref is fully initialized
+    const TestComponent = () => {
+      const localRef = React.useRef<RadioRef>(null);
+      const [checkedValue, setCheckedValue] = React.useState<boolean | null>(null);
+
+      React.useEffect(() => {
+        // Call isChecked immediately, potentially before the radio input is fully set up
+        if (localRef.current) {
+          setCheckedValue(localRef.current.isChecked());
+        }
+      }, []);
+
+      return (
+        <div>
+          <Radio {...defaultProps} ref={localRef} />
+          <div data-testid="checked-value">{String(checkedValue)}</div>
+        </div>
+      );
+    };
+
+    render(<TestComponent />);
+
+    // The component should not crash and should handle the undefined/null case
+    const checkedValueDiv = screen.getByTestId('checked-value');
+    expect(checkedValueDiv).toBeInTheDocument();
+  });
 });

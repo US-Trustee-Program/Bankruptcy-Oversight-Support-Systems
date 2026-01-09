@@ -1,5 +1,6 @@
 import Button, { UswdsButtonStyle } from './Button';
 import './forms.scss';
+import './Checkbox.scss';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 
 export enum CheckboxState {

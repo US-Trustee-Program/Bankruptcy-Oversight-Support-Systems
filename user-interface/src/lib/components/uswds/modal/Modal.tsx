@@ -1,3 +1,4 @@
+import './Modal.scss';
 import React, {
   forwardRef,
   RefObject,
