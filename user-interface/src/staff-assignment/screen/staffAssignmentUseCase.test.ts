@@ -133,7 +133,7 @@ describe('staff assignment use case tests', () => {
       divisionCodes: expectedDivisionCodes,
       chapters: ['15', '11', '12'],
       assignments: [assignees[0]],
-      excludeChildConsolidations: true,
+      excludeMemberConsolidations: true,
       excludeClosedCases: true,
     };
     vi.spyOn(commonUsers, 'getCourtDivisionCodes').mockReturnValue(expectedDivisionCodes);
@@ -150,7 +150,7 @@ describe('staff assignment use case tests', () => {
       divisionCodes: expectedDivisionCodes,
       chapters: ['15', '11', '12'],
       includeOnlyUnassigned: true,
-      excludeChildConsolidations: true,
+      excludeMemberConsolidations: true,
       excludeClosedCases: true,
     };
     vi.spyOn(commonUsers, 'getCourtDivisionCodes').mockReturnValue(expectedDivisionCodes);
@@ -165,7 +165,7 @@ describe('staff assignment use case tests', () => {
       offset: DEFAULT_SEARCH_OFFSET,
       divisionCodes: expectedDivisionCodes,
       chapters: ['15', '11', '12'],
-      excludeChildConsolidations: true,
+      excludeMemberConsolidations: true,
       excludeClosedCases: true,
     };
     vi.spyOn(commonUsers, 'getCourtDivisionCodes').mockReturnValue(expectedDivisionCodes);
