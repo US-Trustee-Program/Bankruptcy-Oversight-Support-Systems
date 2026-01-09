@@ -15,7 +15,7 @@ export function CaseNumber(props: CaseNumberProps) {
   const { caseId, renderAs = 'link', openLinkIn = 'new-window', tab, ...otherProps } = props;
   const span = <span {...otherProps}>{getCaseNumber(caseId)}</span>;
   if (renderAs === 'link') {
-    const target = openLinkIn === 'new-window' ? `CAMS-case-detail-${caseId}` : '_self';
+    const target = openLinkIn === 'new-window' ? '_blank' : '_self';
     const dataTestId = props['data-testid'] ? `${props['data-testid']}-link` : undefined;
     return (
       <Link
