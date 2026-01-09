@@ -1,5 +1,5 @@
 /** @type {import('dependency-cruiser').IConfiguration} */
-/*global module*/
+// eslint-disable-next-line no-undef
 module.exports = {
   forbidden: [
     /* rules from the 'recommended' preset: */
