@@ -33,26 +33,28 @@ function Checkbox_(props: CheckboxProps, ref: React.Ref<CheckboxRef>) {
   const [indeterminateState, setIndeterminateState] = useState<boolean>(false);
   const realCheckboxRef = useRef<HTMLInputElement>(null);
 
-  const checkHandler = (
-    ev: React.MouseEvent<HTMLButtonElement> | React.KeyboardEvent<HTMLButtonElement>,
-  ) => {
-    // Ignore keyboard-initiated native clicks; we handle keyboard toggling explicitly in keyUpHandler
-    if ('button' in ev && ev.detail === 0) {
-      return;
-    }
+  const toggleChecked = () => {
+    const nextChecked = !isChecked;
 
-    if (props.onChange) {
+    if (props.onChange && realCheckboxRef.current) {
       const syntheticEvent = {
         target: realCheckboxRef.current,
         currentTarget: realCheckboxRef.current,
       } as React.ChangeEvent<HTMLInputElement>;
 
-      syntheticEvent.target.checked = !isChecked;
-
+      syntheticEvent.target.checked = nextChecked;
       props.onChange(syntheticEvent);
     }
 
-    setIsChecked(!isChecked);
+    setIsChecked(nextChecked);
+  };
+
+  const clickHandler = (ev: React.MouseEvent<HTMLButtonElement>) => {
+    // Ignore keyboard-initiated native clicks; we handle keyboard toggling explicitly in keyUpHandler
+    if (ev.detail === 0) {
+      return;
+    }
+    toggleChecked();
   };
 
   const keyDownHandler = (ev: React.KeyboardEvent<HTMLButtonElement>) => {
@@ -65,7 +67,7 @@ function Checkbox_(props: CheckboxProps, ref: React.Ref<CheckboxRef>) {
   const keyUpHandler = (ev: React.KeyboardEvent<HTMLButtonElement>) => {
     if (ev.key === ' ' || ev.key === 'Enter') {
       ev.preventDefault();
-      checkHandler(ev);
+      toggleChecked();
     }
   };
 
@@ -131,7 +133,7 @@ function Checkbox_(props: CheckboxProps, ref: React.Ref<CheckboxRef>) {
         <Button
           id={labelTestId}
           className={`usa-checkbox__label ${UswdsButtonStyle.Unstyled}`}
-          onClick={checkHandler}
+          onClick={clickHandler}
           onKeyDown={keyDownHandler}
           onKeyUp={keyUpHandler}
           title={props.title}
