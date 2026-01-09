@@ -5,6 +5,7 @@ import { ContactInformation } from './contact';
 import { CamsUserReference } from './users';
 import { OversightRoleType } from './roles';
 import { NullableOptionalFields } from '../api/common';
+import { AppointmentStatus } from './trustee-appointments';
 
 export type ChapterType = '7' | '11' | '11-subchapter-v' | '12' | '13';
 
@@ -136,7 +137,7 @@ type AppointmentData = {
   courtName?: string;
   courtDivisionName?: string;
   appointedDate: string;
-  status: 'active' | 'inactive';
+  status: AppointmentStatus;
   effectiveDate: string;
 };
 
