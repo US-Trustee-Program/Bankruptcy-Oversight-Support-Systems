@@ -16,6 +16,7 @@ export function CaseNumber(props: CaseNumberProps) {
   const span = <span {...otherProps}>{getCaseNumber(caseId)}</span>;
   if (renderAs === 'link') {
     const target = openLinkIn === 'new-window' ? '_blank' : '_self';
+    const rel = openLinkIn === 'new-window' ? 'noopener noreferrer' : undefined;
     const dataTestId = props['data-testid'] ? `${props['data-testid']}-link` : undefined;
     return (
       <Link
@@ -24,6 +25,7 @@ export function CaseNumber(props: CaseNumberProps) {
         className={`usa-link`}
         title={`View case number ${props.caseId} details`}
         target={target}
+        rel={rel}
         reloadDocument={true}
       >
         {span}

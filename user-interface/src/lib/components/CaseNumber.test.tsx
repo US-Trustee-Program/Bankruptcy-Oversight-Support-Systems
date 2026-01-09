@@ -35,6 +35,7 @@ describe('CaseNumber component', () => {
       `View case number ${caseId} details`,
     );
     expect(link.attributes.getNamedItem('target')?.value).toEqual('_blank');
+    expect(link.attributes.getNamedItem('rel')?.value).toEqual('noopener noreferrer');
 
     const span = screen.getByTestId(testId);
     expect(span).toBeInTheDocument();
