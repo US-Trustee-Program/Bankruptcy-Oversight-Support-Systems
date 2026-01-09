@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "license": "CC0 v1.0",
   "description": "",
-  "main": "dist/*/*.function.js",
+  "main": "dist/index.js",
   "scripts": {
     "build": "node esbuild.config.mjs",
     "clean": "rm -rf ./dist *.zip",
