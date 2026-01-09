@@ -126,8 +126,25 @@ async function fillCompleteForm(
   }
   if (options.appointmentTypeIndex !== undefined) {
     await selectAppointmentType(userEvent, options.appointmentTypeIndex);
+    // Wait for appointment type selection to complete
+    await waitFor(() => {
+      const appointmentTypeItemListContainer = document.querySelector(
+        '#appointmentType-item-list-container',
+      );
+      if (appointmentTypeItemListContainer) {
+        expect(appointmentTypeItemListContainer.classList).toContain('closed');
+      }
+    });
   }
   if (options.statusIndex !== undefined) {
+    // Wait for status to be enabled after selecting appointment type
+    await waitFor(
+      () => {
+        const statusExpandButton = document.querySelector('#status-expand') as HTMLButtonElement;
+        expect(statusExpandButton).not.toBeDisabled();
+      },
+      { timeout: 3000 },
+    );
     await selectStatus(userEvent, options.statusIndex);
   }
   if (options.appointedDate) {
@@ -331,6 +348,29 @@ describe('TrusteeAppointmentForm Tests', () => {
       expect(document.querySelector('#chapter-item-list-container')!.classList).toContain('closed'),
     );
 
+    // Wait for appointment type to be enabled and select it
+    await waitFor(() => {
+      const appointmentTypeContainer = document.querySelector(
+        '#appointmentType .input-container',
+      ) as HTMLElement;
+      expect(appointmentTypeContainer).not.toHaveClass('disabled');
+    });
+
+    await userEvent.click(document.querySelector('#appointmentType-expand')!);
+    await waitFor(() => expect(screen.getByTestId('appointmentType-option-item-0')).toBeVisible());
+    await userEvent.click(screen.getByTestId('appointmentType-option-item-0'));
+    await waitFor(() =>
+      expect(document.querySelector('#appointmentType-item-list-container')!.classList).toContain(
+        'closed',
+      ),
+    );
+
+    // Wait for status to be enabled and select it
+    await waitFor(() => {
+      const statusExpandButton = document.querySelector('#status-expand') as HTMLButtonElement;
+      expect(statusExpandButton).not.toBeDisabled();
+    });
+
     await userEvent.click(document.querySelector('#status-expand')!);
     await waitFor(() => expect(screen.getByTestId('status-option-item-0')).toBeVisible());
     await userEvent.click(screen.getByTestId('status-option-item-0'));
@@ -477,11 +517,20 @@ describe('TrusteeAppointmentForm Tests', () => {
     expect(screen.getByText('Off Panel')).toBeInTheDocument();
   });
 
-  test('should display status options correctly', async () => {
+  test('should display status options correctly after selecting chapter and appointment type', async () => {
     renderWithProps();
 
     await waitFor(() => {
-      expect(document.querySelector('#status')).toBeInTheDocument();
+      expect(document.querySelector('#chapter')).toBeInTheDocument();
+    });
+
+    // Select Chapter 11 which has case-by-case (with active/inactive status)
+    await selectChapter(userEvent, 1);
+
+    // Chapter 11 auto-selects case-by-case since it only has one option
+    await waitFor(() => {
+      const statusExpandButton = document.querySelector('#status-expand') as HTMLButtonElement;
+      expect(statusExpandButton).not.toBeDisabled();
     });
 
     const statusExpandButton = document.querySelector('#status-expand');
@@ -648,6 +697,7 @@ describe('TrusteeAppointmentForm Tests', () => {
       await fillCompleteForm(userEvent, {
         districtIndex: 0,
         chapterIndex: 0,
+        appointmentTypeIndex: 0, // Select Panel to trigger validation error
         statusIndex: 0,
         appointedDate: TEST_APPOINTED_DATE,
       });
@@ -681,6 +731,255 @@ describe('TrusteeAppointmentForm Tests', () => {
       await waitFor(() => {
         expect(postSpy).not.toHaveBeenCalled();
       });
+    });
+  });
+
+  describe('Dynamic Status Options Tests', () => {
+    test('should disable status dropdown when chapter is not selected', async () => {
+      renderWithProps();
+
+      await waitFor(() => {
+        expect(document.querySelector('#status')).toBeInTheDocument();
+      });
+
+      const statusContainer = document.querySelector('#status .input-container') as HTMLElement;
+      expect(statusContainer).toHaveClass('disabled');
+
+      const statusExpandButton = document.querySelector('#status-expand') as HTMLButtonElement;
+      expect(statusExpandButton).toBeDisabled();
+    });
+
+    test('should disable status dropdown when appointmentType is not selected', async () => {
+      renderWithProps();
+
+      await waitFor(() => {
+        expect(document.querySelector('#chapter')).toBeInTheDocument();
+      });
+
+      // Select a chapter (Chapter 7 has multiple appointment types so won't auto-select)
+      await selectChapter(userEvent, 0);
+
+      // Wait for appointment type to be enabled
+      await waitFor(() => {
+        const appointmentTypeContainer = document.querySelector(
+          '#appointmentType .input-container',
+        ) as HTMLElement;
+        expect(appointmentTypeContainer).not.toHaveClass('disabled');
+      });
+
+      // Status should still be disabled because appointmentType is not selected yet
+      await waitFor(() => {
+        const statusContainer = document.querySelector('#status .input-container') as HTMLElement;
+        expect(statusContainer).toHaveClass('disabled');
+      });
+
+      const statusExpandButton = document.querySelector('#status-expand') as HTMLButtonElement;
+      expect(statusExpandButton).toBeDisabled();
+    });
+
+    test('should enable status dropdown when both chapter and appointmentType are selected', async () => {
+      renderWithProps();
+
+      await waitFor(() => {
+        expect(document.querySelector('#chapter')).toBeInTheDocument();
+      });
+
+      await selectChapter(userEvent, 0); // Select Chapter 7
+      await selectAppointmentType(userEvent, 0); // Select Panel
+
+      await waitFor(() => {
+        const statusContainer = document.querySelector('#status .input-container') as HTMLElement;
+        expect(statusContainer).not.toHaveClass('disabled');
+      });
+
+      const statusExpandButton = document.querySelector('#status-expand') as HTMLButtonElement;
+      expect(statusExpandButton).not.toBeDisabled();
+    });
+
+    test('should show correct status options for Chapter 7 Panel', async () => {
+      renderWithProps();
+
+      await waitFor(() => {
+        expect(document.querySelector('#chapter')).toBeInTheDocument();
+      });
+
+      await selectChapter(userEvent, 0); // Chapter 7
+      await selectAppointmentType(userEvent, 0); // Panel
+
+      await waitFor(() => {
+        const statusExpandButton = document.querySelector('#status-expand') as HTMLButtonElement;
+        expect(statusExpandButton).not.toBeDisabled();
+      });
+
+      const statusExpandButton = document.querySelector('#status-expand') as HTMLButtonElement;
+      await userEvent.click(statusExpandButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('Active')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('Voluntary Suspended')).toBeInTheDocument();
+      expect(screen.getByText('Involuntary Suspended')).toBeInTheDocument();
+      expect(screen.queryByText('Inactive')).not.toBeInTheDocument();
+    });
+
+    test('should show correct status options for Chapter 7 Off Panel', async () => {
+      renderWithProps();
+
+      await waitFor(() => {
+        expect(document.querySelector('#chapter')).toBeInTheDocument();
+      });
+
+      await selectChapter(userEvent, 0); // Chapter 7
+
+      // Wait for appointment type to be enabled after selecting chapter
+      await waitFor(() => {
+        const appointmentTypeContainer = document.querySelector(
+          '#appointmentType .input-container',
+        ) as HTMLElement;
+        expect(appointmentTypeContainer).not.toHaveClass('disabled');
+      });
+
+      await selectAppointmentType(userEvent, 1); // Off Panel
+
+      await waitFor(() => {
+        const statusExpandButton = document.querySelector('#status-expand') as HTMLButtonElement;
+        expect(statusExpandButton).not.toBeDisabled();
+      });
+
+      const statusExpandButton = document.querySelector('#status-expand') as HTMLButtonElement;
+      await userEvent.click(statusExpandButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('Deceased')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('Resigned')).toBeInTheDocument();
+      expect(screen.getByText('Terminated')).toBeInTheDocument();
+      expect(screen.queryByText('Active')).not.toBeInTheDocument();
+    });
+
+    test('should show correct status options for Chapter 11 Subchapter V Pool', async () => {
+      renderWithProps();
+
+      await waitFor(() => {
+        expect(document.querySelector('#chapter')).toBeInTheDocument();
+      });
+
+      await selectChapter(userEvent, 2); // Chapter 11 Subchapter V
+      await selectAppointmentType(userEvent, 0); // Pool
+
+      await waitFor(() => {
+        const statusExpandButton = document.querySelector('#status-expand') as HTMLButtonElement;
+        expect(statusExpandButton).not.toBeDisabled();
+      });
+
+      const statusExpandButton = document.querySelector('#status-expand') as HTMLButtonElement;
+      await userEvent.click(statusExpandButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('Active')).toBeInTheDocument();
+      });
+
+      // Pool should only have Active status
+      expect(screen.queryByText('Inactive')).not.toBeInTheDocument();
+      expect(screen.queryByText('Deceased')).not.toBeInTheDocument();
+    });
+
+    test('should reset status when chapter changes', async () => {
+      renderWithProps();
+
+      await waitFor(() => {
+        expect(document.querySelector('#chapter')).toBeInTheDocument();
+      });
+
+      // Select Chapter 7, Panel, and Active status
+      await selectChapter(userEvent, 0);
+      await selectAppointmentType(userEvent, 0);
+      await selectStatus(userEvent, 0);
+
+      await waitFor(() => {
+        expect(document.querySelector('#status .selection-label')).toHaveTextContent('Active');
+      });
+
+      // Change chapter to Chapter 11
+      await selectChapter(userEvent, 1);
+
+      // Status should be reset
+      await waitFor(() => {
+        expect(document.querySelector('#status .selection-label')).toHaveTextContent('');
+      });
+    });
+
+    test('should reset status when appointmentType changes', async () => {
+      renderWithProps();
+
+      await waitFor(() => {
+        expect(document.querySelector('#chapter')).toBeInTheDocument();
+      });
+
+      // Select Chapter 7, Panel, and Active status
+      await selectChapter(userEvent, 0);
+
+      // Wait for appointment type to be enabled after selecting chapter
+      await waitFor(() => {
+        const appointmentTypeContainer = document.querySelector(
+          '#appointmentType .input-container',
+        ) as HTMLElement;
+        expect(appointmentTypeContainer).not.toHaveClass('disabled');
+      });
+
+      await selectAppointmentType(userEvent, 0); // Panel
+
+      // Wait for status to be enabled
+      await waitFor(() => {
+        const statusExpandButton = document.querySelector('#status-expand') as HTMLButtonElement;
+        expect(statusExpandButton).not.toBeDisabled();
+      });
+
+      await selectStatus(userEvent, 0); // Active
+
+      await waitFor(() => {
+        expect(document.querySelector('#status .selection-label')).toHaveTextContent('Active');
+      });
+
+      // Change appointment type to Off Panel
+      await selectAppointmentType(userEvent, 1); // Off Panel
+
+      // Status should be reset
+      await waitFor(() => {
+        expect(document.querySelector('#status .selection-label')).toHaveTextContent('');
+      });
+    });
+
+    test('should show new appointment types for Chapter 7', async () => {
+      renderWithProps();
+
+      await waitFor(() => {
+        expect(document.querySelector('#chapter')).toBeInTheDocument();
+      });
+
+      await selectChapter(userEvent, 0); // Chapter 7
+
+      await waitFor(() => {
+        const appointmentTypeExpandButton = document.querySelector(
+          '#appointmentType-expand',
+        ) as HTMLButtonElement;
+        expect(appointmentTypeExpandButton).not.toBeDisabled();
+      });
+
+      const appointmentTypeExpandButton = document.querySelector(
+        '#appointmentType-expand',
+      ) as HTMLButtonElement;
+      await userEvent.click(appointmentTypeExpandButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('Panel')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('Off Panel')).toBeInTheDocument();
+      expect(screen.getByText('Elected')).toBeInTheDocument();
+      expect(screen.getByText('Converted Case')).toBeInTheDocument();
     });
   });
 
@@ -725,6 +1024,20 @@ describe('TrusteeAppointmentForm Tests', () => {
 
     test('should handle clearing status selection', async () => {
       renderWithProps();
+
+      await waitFor(() => {
+        expect(document.querySelector('#chapter')).toBeInTheDocument();
+      });
+
+      // Select chapter and appointment type first to enable status dropdown
+      await selectChapter(userEvent, 1); // Select Chapter 11
+      // Chapter 11 auto-selects case-by-case since it only has one option
+
+      // Wait for status to be enabled
+      await waitFor(() => {
+        const statusExpandButton = document.querySelector('#status-expand') as HTMLButtonElement;
+        expect(statusExpandButton).not.toBeDisabled();
+      });
 
       await selectStatus(userEvent, 0);
 

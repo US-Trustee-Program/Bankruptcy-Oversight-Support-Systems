@@ -32,6 +32,8 @@ describe('trustees', () => {
       ['pool', 'Pool'],
       ['out-of-pool', 'Out of Pool'],
       ['standing', 'Standing'],
+      ['elected', 'Elected'],
+      ['converted-case', 'Converted Case'],
     ])('should format "%s" as "%s"', (input: AppointmentType, expected: string) => {
       expect(formatAppointmentType(input)).toBe(expected);
     });
@@ -41,6 +43,8 @@ describe('trustees', () => {
     test.each([
       ['7', 'panel', '7 - Panel'],
       ['7', 'off-panel', '7 - Off Panel'],
+      ['7', 'elected', '7 - Elected'],
+      ['7', 'converted-case', '7 - Converted Case'],
       ['11', 'case-by-case', '11 - Case by Case'],
       ['11-subchapter-v', 'pool', '11 Subchapter V - Pool'],
       ['11-subchapter-v', 'out-of-pool', '11 Subchapter V - Out of Pool'],

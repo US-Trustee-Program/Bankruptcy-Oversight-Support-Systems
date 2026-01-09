@@ -60,7 +60,7 @@ describe('AppointmentCard', () => {
     renderWithProps();
 
     expect(
-      screen.getByText(/Southern District of New York \(Manhattan\) - Chapter 7 - Panel/i),
+      screen.getByText(/Southern District of New York \(Manhattan\): Chapter 7 - Panel/i),
     ).toBeInTheDocument();
   });
 
@@ -70,7 +70,7 @@ describe('AppointmentCard', () => {
     });
 
     expect(
-      screen.getByText(/Eastern District of New York \(Manhattan\) - Chapter 7 - Panel/i),
+      screen.getByText(/Eastern District of New York \(Manhattan\): Chapter 7 - Panel/i),
     ).toBeInTheDocument();
   });
 
@@ -84,7 +84,7 @@ describe('AppointmentCard', () => {
     });
 
     expect(
-      screen.getByText(/Eastern District of New York \(Brooklyn\) - Chapter 7 - Panel/i),
+      screen.getByText(/Eastern District of New York \(Brooklyn\): Chapter 7 - Panel/i),
     ).toBeInTheDocument();
   });
 
@@ -184,7 +184,7 @@ describe('AppointmentCard', () => {
 
     renderWithProps({ appointment: appointmentWithoutCourtName });
 
-    expect(screen.getByText(/Court not found - Chapter 7 - Panel/i)).toBeInTheDocument();
+    expect(screen.getByText(/Court not found: Chapter 7 - Panel/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Court not found/i).length).toBeGreaterThan(0);
   });
 
@@ -196,7 +196,7 @@ describe('AppointmentCard', () => {
 
     renderWithProps({ appointment: appointmentWithoutDivisionName });
 
-    expect(screen.getByText(/Court not found - Chapter 7 - Panel/i)).toBeInTheDocument();
+    expect(screen.getByText(/Court not found: Chapter 7 - Panel/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Court not found/i).length).toBeGreaterThan(0);
   });
 
@@ -209,7 +209,7 @@ describe('AppointmentCard', () => {
 
     renderWithProps({ appointment: appointmentWithoutCourt });
 
-    expect(screen.getByText(/Court not found - Chapter 7 - Panel/i)).toBeInTheDocument();
+    expect(screen.getByText(/Court not found: Chapter 7 - Panel/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Court not found/i).length).toBeGreaterThan(0);
   });
 
