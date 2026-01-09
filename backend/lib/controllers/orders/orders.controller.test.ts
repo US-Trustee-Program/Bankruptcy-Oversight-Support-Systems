@@ -220,8 +220,8 @@ describe('orders controller tests', () => {
     const mockConsolidationOrder = MockData.getConsolidationOrder();
     const mockConsolidationOrderActionApproval: ConsolidationOrderActionApproval = {
       ...mockConsolidationOrder,
-      approvedCases: [mockConsolidationOrder.childCases[0].caseId],
-      leadCase: mockConsolidationOrder.childCases[0],
+      approvedCases: [mockConsolidationOrder.memberCases[0].caseId],
+      leadCase: mockConsolidationOrder.memberCases[0],
     };
     vi.spyOn(OrdersUseCase.prototype, 'approveConsolidation').mockResolvedValue([
       mockConsolidationOrder,
@@ -248,7 +248,7 @@ describe('orders controller tests', () => {
     const mockConsolidationOrderActionApproval: ConsolidationOrderActionApproval = {
       ...mockConsolidationOrder,
       approvedCases: [],
-      leadCase: mockConsolidationOrder.childCases[0],
+      leadCase: mockConsolidationOrder.memberCases[0],
     };
     const request1 = mockCamsHttpRequest({ body: mockConsolidationOrderActionApproval });
     applicationContext.request = request1;
@@ -260,7 +260,7 @@ describe('orders controller tests', () => {
     const mockConsolidationOrderActionApproval2: ConsolidationOrderActionApproval = {
       ...mockConsolidationOrder2,
       approvedCases: [],
-      leadCase: mockConsolidationOrder.childCases[0],
+      leadCase: mockConsolidationOrder.memberCases[0],
       consolidationType: undefined,
     };
     const request2 = mockCamsHttpRequest({ body: mockConsolidationOrderActionApproval2 });
@@ -271,7 +271,7 @@ describe('orders controller tests', () => {
     // setup missing lead case
     const mockConsolidationOrderActionApproval3: ConsolidationOrderActionApproval = {
       ...mockConsolidationOrder,
-      approvedCases: [mockConsolidationOrder.childCases[0].caseId],
+      approvedCases: [mockConsolidationOrder.memberCases[0].caseId],
       leadCase: undefined,
     };
     const request3 = mockCamsHttpRequest({ body: mockConsolidationOrderActionApproval3 });

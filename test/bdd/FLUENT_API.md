@@ -382,7 +382,7 @@ The fluent API automatically sets up these default mocks for all tests:
 ### Always Mocked
 
 - `CasesMongoRepository.getCaseHistory()` → `[]`
-- `CasesMongoRepository.getConsolidationChildCaseIds()` → `[]`
+- `CasesMongoRepository.getConsolidationMemberCaseIds()` → `[]`
 - `CaseAssignmentMongoRepository.getAssignmentsForCases()` → `new Map()`
 - `OfficesDxtrGateway.getOfficeName()` → `'Test Office Name'`
 - `OfficesDxtrGateway.getOffices()` → `[]`

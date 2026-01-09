@@ -44,7 +44,7 @@ export const MyCasesScreen = () => {
     limit: DEFAULT_SEARCH_LIMIT,
     offset: DEFAULT_SEARCH_OFFSET,
     assignments: [getCamsUserReference(session.user)],
-    excludeChildConsolidations: true,
+    excludeMemberConsolidations: true,
     excludeClosedCases: !doShowClosedCases,
   };
 

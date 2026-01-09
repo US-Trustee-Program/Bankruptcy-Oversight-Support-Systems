@@ -7,7 +7,7 @@ import {
   getMemberCaseLabel,
   isCaseClosed,
   isCaseOpen,
-  isChildCase,
+  isMemberCase,
   isLeadCase,
   isTransferredCase,
 } from './cases';
@@ -73,7 +73,7 @@ describe('cases common functions tests', () => {
       ['is not consolidated', { consolidation: [] } as Partial<CaseDetail>, false, false],
     ];
     test.each(consolidationCases)(
-      'should return correctly for isLeadCase and isChildCase when case %s',
+      'should return correctly for isLeadCase and isMemberCase when case %s',
       (
         _caseName: string,
         caseDetail: Partial<CaseDetail>,
@@ -82,7 +82,7 @@ describe('cases common functions tests', () => {
       ) => {
         const bCase = MockData.getCaseDetail({ override: caseDetail });
         expect(isLeadCase(bCase)).toBe(leadResult);
-        expect(isChildCase(bCase)).toBe(childResult);
+        expect(isMemberCase(bCase)).toBe(childResult);
       },
     );
 

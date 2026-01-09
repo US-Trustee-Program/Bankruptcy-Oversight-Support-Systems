@@ -262,7 +262,7 @@ describe('search screen', () => {
       limit: 25,
       divisionCodes: expect.anything(),
       offset: 0,
-      excludeChildConsolidations: false,
+      excludeMemberConsolidations: false,
       excludeClosedCases: true,
     };
 
@@ -557,7 +557,7 @@ describe('search screen', () => {
     expect(searchCasesSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         caseNumber,
-        excludeChildConsolidations: false,
+        excludeMemberConsolidations: false,
         excludeClosedCases: true,
       }),
       includeAssignments,

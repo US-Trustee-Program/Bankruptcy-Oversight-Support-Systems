@@ -79,11 +79,11 @@ export default class CaseManagement {
         }
       }
 
-      let consolidationChildCaseIds: string[] = [];
-      if (predicate.excludeChildConsolidations === true) {
-        consolidationChildCaseIds =
-          await this.casesRepository.getConsolidationChildCaseIds(predicate);
-        predicate.excludedCaseIds = consolidationChildCaseIds;
+      let consolidationMemberCaseIds: string[] = [];
+      if (predicate.excludeMemberConsolidations === true) {
+        consolidationMemberCaseIds =
+          await this.casesRepository.getConsolidationMemberCaseIds(predicate);
+        predicate.excludedCaseIds = consolidationMemberCaseIds;
       }
 
       const searchResult = await this.casesRepository.searchCases(predicate);
