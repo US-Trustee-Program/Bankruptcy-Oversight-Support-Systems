@@ -260,7 +260,7 @@ export function ConsolidationOrderAccordionView(
               <div className="grid-col-1"></div>
               <div className="grid-col-10">
                 <CaseTable
-                  id={`order-${viewModel.order.id}-child-cases`}
+                  id={`order-${viewModel.order.id}-member-cases`}
                   cases={viewModel.order.memberCases}
                 ></CaseTable>
               </div>

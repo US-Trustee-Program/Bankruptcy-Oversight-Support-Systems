@@ -78,11 +78,11 @@ describe('cases common functions tests', () => {
         _caseName: string,
         caseDetail: Partial<CaseDetail>,
         leadResult: boolean,
-        childResult: boolean,
+        memberResult: boolean,
       ) => {
         const bCase = MockData.getCaseDetail({ override: caseDetail });
         expect(isLeadCase(bCase)).toBe(leadResult);
-        expect(isMemberCase(bCase)).toBe(childResult);
+        expect(isMemberCase(bCase)).toBe(memberResult);
       },
     );
 

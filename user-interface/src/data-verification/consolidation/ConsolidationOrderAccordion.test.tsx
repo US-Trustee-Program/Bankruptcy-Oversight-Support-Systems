@@ -221,7 +221,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     expect(leadCaseLink).toBeInTheDocument();
 
     order.memberCases.forEach((bCase, idx) => {
-      const tableRow = screen.queryByTestId(`order-${order.id}-child-cases-row-${idx}`);
+      const tableRow = screen.queryByTestId(`order-${order.id}-member-cases-row-${idx}`);
       expect(tableRow).toBeInTheDocument();
       expect(tableRow?.textContent).toContain(bCase.caseTitle);
     });

@@ -151,7 +151,7 @@ describe('test ConsolidationCasesTable component', () => {
 
     renderWithProps(props);
 
-    expect(screen.getByTestId('alert-container-is-child')).toHaveTextContent(
+    expect(screen.getByTestId('alert-container-is-member')).toHaveTextContent(
       'This case is a member case of a consolidation and cannot be consolidated.',
     );
   });

@@ -213,7 +213,7 @@ describe('Consolidation UseCase tests', () => {
     expect(setLeadCaseCourtSpy).toHaveBeenCalled();
   });
 
-  test('should return a valid case if case is not already consolidated and is not the child of another consolidation', async () => {
+  test('should return a valid case if case is not already consolidated and is not a member of another consolidation', async () => {
     const setIsValidatingSpy = vi.spyOn(store, 'setIsLookingForCase');
     const setAddCaseNumberErrorSpy = vi.spyOn(store, 'setAddCaseNumberError');
     const setCaseToAddSpy = vi.spyOn(store, 'setCaseToAdd');
@@ -384,7 +384,7 @@ describe('Consolidation UseCase tests', () => {
     expect(store.caseToAdd).toBeNull();
   });
 
-  test('should throw if lead case is a child in any other consolidation', () => {
+  test('should throw if lead case is a member in any other consolidation', () => {
     const caseId = '120-23-12345';
     const documentType = 'CONSOLIDATION_TO';
     const data = [

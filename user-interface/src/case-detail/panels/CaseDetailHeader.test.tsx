@@ -193,8 +193,8 @@ describe('feature flag true', () => {
 
     basicRender(memberCaseDetail, false);
 
-    const childIcon = screen.getByTestId('member-case-icon');
-    expect(childIcon).toBeInTheDocument();
+    const memberCaseIcon = screen.getByTestId('member-case-icon');
+    expect(memberCaseIcon).toBeInTheDocument();
   });
 
   test('should render transferred case icon when case is transferred', () => {
