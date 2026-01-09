@@ -1,13 +1,17 @@
 import * as esbuild from 'esbuild';
-import { COMMON_BUILD_OPTIONS } from '../../esbuild-shared.mjs';
+import { COMMON_BUILD_OPTIONS, findFunctionEntryPoints } from '../../esbuild-shared.mjs';
 
-// Build a single bundle that imports all functions
-// This ensures all app.http() registration code executes at startup
+const entryPoints = findFunctionEntryPoints();
+
+// eslint-disable-next-line no-undef
+console.log(`Found ${entryPoints.length} Azure Functions to bundle`);
+
 esbuild
   .build({
     ...COMMON_BUILD_OPTIONS,
-    entryPoints: ['./index.ts'],
-    outfile: 'dist/index.js',
+    entryPoints,
+    outdir: 'dist',
+    outbase: '.',
   })
   .catch((err) => {
     // eslint-disable-next-line no-undef
