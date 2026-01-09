@@ -14,7 +14,9 @@ export type AppointmentType =
   | 'case-by-case'
   | 'pool'
   | 'out-of-pool'
-  | 'standing';
+  | 'standing'
+  | 'elected'
+  | 'converted-case';
 
 export function getAppointmentDetails(
   chapter: ChapterType,
@@ -43,6 +45,8 @@ export function formatAppointmentType(appointmentType: AppointmentType): string 
     'case-by-case': 'Case by Case',
     'out-of-pool': 'Out of Pool',
     standing: 'Standing',
+    elected: 'Elected',
+    'converted-case': 'Converted Case',
   };
 
   return appointmentTypeLabels[appointmentType];

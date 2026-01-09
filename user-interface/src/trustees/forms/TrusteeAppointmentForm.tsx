@@ -14,6 +14,9 @@ import {
   TrusteeAppointmentInput,
   TrusteeAppointment,
   chapterAppointmentTypeMap,
+  getStatusOptions,
+  formatAppointmentStatus,
+  AppointmentStatus,
 } from '@common/cams/trustee-appointments';
 import { ChapterType, AppointmentType, formatAppointmentType } from '@common/cams/trustees';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
@@ -29,11 +32,6 @@ const CHAPTER_OPTIONS: ComboOption<ChapterType>[] = [
   { value: '13', label: 'Chapter 13' },
 ];
 
-const STATUS_OPTIONS: ComboOption<'active' | 'inactive'>[] = [
-  { value: 'active', label: 'Active' },
-  { value: 'inactive', label: 'Inactive' },
-];
-
 function navigateToAppointments(trusteeId: string, navigate: ReturnType<typeof useCamsNavigator>) {
   navigate.navigateTo(`/trustees/${trusteeId}/appointments`);
 }
@@ -42,7 +40,7 @@ type FormData = {
   districtKey: string; // Combined key: "{courtId}|{divisionCode}"
   chapter: ChapterType;
   appointmentType: AppointmentType;
-  status: 'active' | 'inactive';
+  status: AppointmentStatus;
   effectiveDate: string;
   appointedDate: string;
 };
@@ -89,7 +87,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
       districtKey: '',
       chapter: '' as ChapterType,
       appointmentType: '' as AppointmentType,
-      status: '' as 'active' | 'inactive',
+      status: '' as AppointmentStatus,
       effectiveDate: '',
       appointedDate: '',
     };
@@ -107,6 +105,17 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
       label: formatAppointmentType(type),
     }));
   }, [formData.chapter]);
+
+  // Dynamically generate status options based on selected chapter and appointment type
+  const statusOptions = useMemo<ComboOption<AppointmentStatus>[]>(() => {
+    if (!formData.chapter || !formData.appointmentType) return [];
+
+    const statuses = getStatusOptions(formData.chapter, formData.appointmentType);
+    return statuses.map((status) => ({
+      value: status,
+      label: formatAppointmentStatus(status),
+    }));
+  }, [formData.chapter, formData.appointmentType]);
 
   useEffect(() => {
     const loadDistricts = async () => {
@@ -235,7 +244,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
 
   const handleFieldChange = (field: keyof FormData, value: string) => {
     setFormData((prev) => {
-      // When chapter changes, auto-select appointmentType if only one option
+      // When chapter changes, reset appointmentType and status
       if (field === 'chapter') {
         // Type guard to ensure value is a valid ChapterType
         const isValidChapter = (val: string): val is ChapterType => {
@@ -245,9 +254,19 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
         if (isValidChapter(value)) {
           const types = chapterAppointmentTypeMap[value];
           const appointmentType = types && types.length === 1 ? types[0] : ('' as AppointmentType);
-          return { ...prev, chapter: value, appointmentType };
+          return { ...prev, chapter: value, appointmentType, status: '' as AppointmentStatus };
         }
       }
+
+      // When appointmentType changes, reset status
+      if (field === 'appointmentType') {
+        return {
+          ...prev,
+          appointmentType: value as AppointmentType,
+          status: '' as AppointmentStatus,
+        };
+      }
+
       return { ...prev, [field]: value };
     });
   };
@@ -356,10 +375,11 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
                 id="status"
                 label="Status"
                 required={true}
-                options={STATUS_OPTIONS}
+                disabled={!formData.chapter || !formData.appointmentType}
+                options={statusOptions}
                 selections={
                   formData.status
-                    ? [STATUS_OPTIONS.find((opt) => opt.value === formData.status)!]
+                    ? [statusOptions.find((opt) => opt.value === formData.status)!]
                     : undefined
                 }
                 onUpdateSelection={(options) => {
