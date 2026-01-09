@@ -1,6 +1,6 @@
 import './AppointmentCard.scss';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
-import { formatChapterType } from '@common/cams/trustees';
+import { getAppointmentDetails } from '@common/cams/trustees';
 import { formatDate } from '@/lib/utils/datetime';
 import { useNavigate } from 'react-router-dom';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
@@ -17,7 +17,8 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
   const session = LocalStorage.getSession();
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
 
-  const formattedChapter = formatChapterType(props.appointment.chapter);
+  const { chapter, appointmentType } = props.appointment;
+  const formattedChapter = getAppointmentDetails(chapter, appointmentType);
   let districtDisplay;
   if (props.appointment.courtName && props.appointment.courtDivisionName) {
     districtDisplay = `${props.appointment.courtName} (${props.appointment.courtDivisionName})`;
@@ -35,7 +36,7 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
   return (
     <div className="appointment-card-container">
       <h3 className="appointment-card-heading">
-        {districtDisplay} - Chapter {formattedChapter}
+        {districtDisplay}: Chapter {formattedChapter}
       </h3>
       <div className="appointment-card usa-card">
         <div className="usa-card__container">

@@ -29,7 +29,8 @@ describe('AppointmentCard', () => {
   const mockAppointment: TrusteeAppointment = {
     id: 'appointment-001',
     trusteeId: 'trustee-123',
-    chapter: '7-panel',
+    chapter: '7',
+    appointmentType: 'panel',
     courtDivisionName: 'Manhattan',
     courtId: '0208',
     courtName: 'Southern District of New York',
@@ -140,15 +141,16 @@ describe('AppointmentCard', () => {
     expect(screen.getByText(/Chapter 11 - Subchapter V/i)).toBeInTheDocument();
   });
 
-  test('should format chapter 7-non-panel correctly', () => {
-    const appointment7NonPanel: TrusteeAppointment = {
+  test('should format chapter 7 off-panel correctly', () => {
+    const appointment7OffPanel: TrusteeAppointment = {
       ...mockAppointment,
-      chapter: '7-non-panel',
+      chapter: '7',
+      appointmentType: 'off-panel',
     };
 
-    renderWithProps({ appointment: appointment7NonPanel });
+    renderWithProps({ appointment: appointment7OffPanel });
 
-    expect(screen.getByText(/Chapter 7 - Non-Panel/i)).toBeInTheDocument();
+    expect(screen.getByText(/Chapter 7 - Off Panel/i)).toBeInTheDocument();
   });
 
   test('should display inactive status correctly', () => {

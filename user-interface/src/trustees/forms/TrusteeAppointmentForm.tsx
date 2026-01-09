@@ -1,6 +1,6 @@
 import './TrusteeContactForm.scss';
 import './TrusteeAppointmentForm.scss';
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import Input from '@/lib/components/uswds/Input';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
@@ -10,16 +10,19 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
 import { Stop } from '@/lib/components/Stop';
-import { TrusteeAppointmentInput, TrusteeAppointment } from '@common/cams/trustee-appointments';
-import { ChapterType } from '@common/cams/trustees';
+import {
+  TrusteeAppointmentInput,
+  TrusteeAppointment,
+  chapterAppointmentTypeMap,
+} from '@common/cams/trustee-appointments';
+import { ChapterType, AppointmentType, formatAppointmentType } from '@common/cams/trustees';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { useLocation } from 'react-router-dom';
 
 const CHAPTER_OPTIONS: ComboOption<ChapterType>[] = [
-  { value: '7-panel', label: 'Chapter 7 - Panel' },
-  { value: '7-non-panel', label: 'Chapter 7 - Non-Panel' },
+  { value: '7', label: 'Chapter 7' },
   { value: '11', label: 'Chapter 11' },
   { value: '11-subchapter-v', label: 'Chapter 11 Subchapter V' },
   { value: '12', label: 'Chapter 12' },
@@ -38,6 +41,7 @@ function navigateToAppointments(trusteeId: string, navigate: ReturnType<typeof u
 type FormData = {
   districtKey: string; // Combined key: "{courtId}|{divisionCode}"
   chapter: ChapterType;
+  appointmentType: AppointmentType;
   status: 'active' | 'inactive';
   effectiveDate: string;
   appointedDate: string;
@@ -75,6 +79,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
       return {
         districtKey: `${appointment.courtId}|${appointment.divisionCode}`,
         chapter: appointment.chapter,
+        appointmentType: appointment.appointmentType,
         status: appointment.status,
         effectiveDate: appointment.effectiveDate.split('T')[0],
         appointedDate: appointment.appointedDate.split('T')[0],
@@ -83,6 +88,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     return {
       districtKey: '',
       chapter: '' as ChapterType,
+      appointmentType: '' as AppointmentType,
       status: '' as 'active' | 'inactive',
       effectiveDate: '',
       appointedDate: '',
@@ -90,6 +96,17 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
   });
 
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
+
+  // Dynamically generate appointment type options based on selected chapter
+  const appointmentTypeOptions = useMemo<ComboOption<AppointmentType>[]>(() => {
+    if (!formData.chapter) return [];
+
+    const types = chapterAppointmentTypeMap[formData.chapter];
+    return types.map((type) => ({
+      value: type,
+      label: formatAppointmentType(type),
+    }));
+  }, [formData.chapter]);
 
   useEffect(() => {
     const loadDistricts = async () => {
@@ -138,7 +155,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     options: ComboOption[],
     currentAppointmentId?: string,
   ): string | null => {
-    if (!data.districtKey || !data.chapter) return null;
+    if (!data.districtKey || !data.chapter || !data.appointmentType) return null;
 
     const [courtId, divisionCode] = data.districtKey.split('|');
 
@@ -148,6 +165,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
         appointment.courtId === courtId &&
         appointment.divisionCode === divisionCode &&
         appointment.chapter === data.chapter &&
+        appointment.appointmentType === data.appointmentType &&
         appointment.status === 'active',
     );
 
@@ -155,8 +173,9 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
 
     const district = options.find((opt) => opt.value === data.districtKey);
     const chapter = CHAPTER_OPTIONS.find((opt) => opt.value === data.chapter);
+    const appointmentTypeLabel = formatAppointmentType(data.appointmentType);
 
-    return `An active appointment already exists for ${chapter?.label} in ${district?.label}. Please end the existing appointment before creating a new one.`;
+    return `An active appointment already exists for ${chapter?.label} - ${appointmentTypeLabel} in ${district?.label}. Please end the existing appointment before creating a new one.`;
   };
 
   const validationError = getValidationError(
@@ -169,6 +188,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
   const isFormValid =
     !!formData.districtKey &&
     !!formData.chapter &&
+    !!formData.appointmentType &&
     !!formData.status &&
     !!formData.effectiveDate &&
     !!formData.appointedDate &&
@@ -187,6 +207,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
 
     const payload: TrusteeAppointmentInput = {
       chapter: formData.chapter,
+      appointmentType: formData.appointmentType,
       courtId,
       divisionCode,
       appointedDate: formData.appointedDate,
@@ -214,7 +235,22 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
   }, [navigate, trusteeId]);
 
   const handleFieldChange = (field: keyof FormData, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => {
+      // When chapter changes, auto-select appointmentType if only one option
+      if (field === 'chapter') {
+        // Type guard to ensure value is a valid ChapterType
+        const isValidChapter = (val: string): val is ChapterType => {
+          return val in chapterAppointmentTypeMap;
+        };
+
+        if (isValidChapter(value)) {
+          const types = chapterAppointmentTypeMap[value];
+          const appointmentType = types && types.length === 1 ? types[0] : ('' as AppointmentType);
+          return { ...prev, chapter: value, appointmentType };
+        }
+      }
+      return { ...prev, [field]: value };
+    });
   };
 
   if (!flags[TRUSTEE_MANAGEMENT]) {
@@ -293,6 +329,29 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
                 }}
               />
             </div>
+
+            {appointmentTypeOptions.length > 0 && (
+              <div className="field-group">
+                <ComboBox
+                  id="appointmentType"
+                  label="Appointment Type"
+                  required={true}
+                  options={appointmentTypeOptions}
+                  selections={
+                    formData.appointmentType
+                      ? [
+                          appointmentTypeOptions.find(
+                            (opt) => opt.value === formData.appointmentType,
+                          )!,
+                        ]
+                      : undefined
+                  }
+                  onUpdateSelection={(options) => {
+                    handleFieldChange('appointmentType', options[0]?.value ?? '');
+                  }}
+                />
+              </div>
+            )}
 
             <div className="field-group">
               <ComboBox

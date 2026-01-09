@@ -86,7 +86,8 @@ describe('TrusteeAppointmentsUseCase tests', () => {
 
   describe('createAppointment', () => {
     const appointmentInput: TrusteeAppointmentInput = {
-      chapter: '7-panel',
+      chapter: '7',
+      appointmentType: 'panel',
       courtId: '081',
       divisionCode: '1',
       appointedDate: '2024-01-15',
@@ -197,6 +198,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     const appointmentId = 'appointment-123';
     const appointmentUpdate: TrusteeAppointmentInput = {
       chapter: '11',
+      appointmentType: 'case-by-case',
       courtId: '081',
       divisionCode: '2',
       appointedDate: '2024-02-01',
@@ -329,7 +331,8 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         id: appointmentId,
         trusteeId,
         courtId: '081',
-        chapter: '7-panel',
+        chapter: '7',
+        appointmentType: 'panel',
         divisionCode: 'MAB',
       });
       const mockUpdatedAppointment = MockData.getTrusteeAppointment({
@@ -398,7 +401,8 @@ describe('TrusteeAppointmentsUseCase tests', () => {
           trusteeId,
           appointmentId,
           before: expect.objectContaining({
-            chapter: '7-panel',
+            chapter: '7',
+            appointmentType: 'panel',
             divisionCode: 'MAB',
             courtName: 'Test Court',
             courtDivisionName: 'Boston',
@@ -443,7 +447,8 @@ describe('TrusteeAppointmentsUseCase tests', () => {
 
   describe('createAppointment audit history', () => {
     const appointmentInput: TrusteeAppointmentInput = {
-      chapter: '7-panel',
+      chapter: '7',
+      appointmentType: 'panel',
       courtId: '081',
       divisionCode: 'MAB',
       appointedDate: '2024-01-15',
@@ -502,7 +507,8 @@ describe('TrusteeAppointmentsUseCase tests', () => {
           appointmentId: mockCreatedAppointment.id,
           before: undefined,
           after: expect.objectContaining({
-            chapter: '7-panel',
+            chapter: '7',
+            appointmentType: 'panel',
             divisionCode: 'MAB',
             courtName: 'Test Court',
             courtDivisionName: 'Boston',
