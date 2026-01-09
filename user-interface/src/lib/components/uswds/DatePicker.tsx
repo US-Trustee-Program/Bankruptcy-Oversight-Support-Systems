@@ -227,18 +227,25 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
   };
 
   const formatDateForAnnouncement = (dateString: string): string => {
-    try {
-      const [year, month, day] = dateString.split('-').map(Number);
-      const date = new Date(year, month - 1, day);
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
 
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      });
-    } catch {
+    // Check if date is invalid or if the date components don't match the input
+    // (JavaScript Date auto-corrects invalid dates like Feb 31 -> Mar 2)
+    if (
+      Number.isNaN(date.getTime()) ||
+      date.getFullYear() !== year ||
+      date.getMonth() !== month - 1 ||
+      date.getDate() !== day
+    ) {
       return dateString;
     }
+
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
   };
 
   return (
