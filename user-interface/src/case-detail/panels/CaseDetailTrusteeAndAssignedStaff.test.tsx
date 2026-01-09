@@ -32,6 +32,16 @@ const CONSOLIDATE_FROM: Consolidation = {
   updatedOn: '01-12-2024',
 };
 
+const CONSOLIDATE_TO: Consolidation = {
+  caseId: TEST_CASE_ID,
+  otherCase: MockData.getCaseSummary({ override: { caseId: '222-24-00001' } }),
+  orderDate: '01-12-2024',
+  consolidationType: 'administrative',
+  documentType: 'CONSOLIDATION_TO',
+  updatedBy: MockData.getCamsUser(),
+  updatedOn: '01-12-2024',
+};
+
 const BASE_TEST_CASE_DETAIL = MockData.getCaseDetail({
   override: {
     caseId: TEST_CASE_ID,
@@ -176,7 +186,7 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
 
       const caseDetailNotLeadCase = {
         ...BASE_TEST_CASE_DETAIL,
-        consolidation: [], // No consolidation means not a lead case
+        consolidation: [CONSOLIDATE_TO], // CONSOLIDATION_TO means this is a child case
       };
       renderWithProps({ caseDetail: caseDetailNotLeadCase });
       const editButton = screen.queryByTestId('open-modal-button');

@@ -50,13 +50,14 @@ export default function CaseDetailHeader(props: Readonly<CaseDetailHeaderProps>)
 
   const modifyHeader = () => {
     if (camsHeader) {
-      const caseDetailHeader = document.querySelector('.case-detail-header.fixed');
+      const recordDetailHeader = document.querySelector('.record-detail-header.fixed');
       const caseDetailH1 = document.querySelector('.record-detail-header h1');
       if (caseDetailH1 && caseDetailH1.getBoundingClientRect().top < 0) {
         fix();
       } else if (
-        caseDetailHeader &&
-        camsHeader.getBoundingClientRect().bottom > caseDetailHeader.getBoundingClientRect().bottom
+        recordDetailHeader &&
+        camsHeader.getBoundingClientRect().bottom >
+          recordDetailHeader.getBoundingClientRect().bottom
       ) {
         loosen();
       }
@@ -154,7 +155,7 @@ export default function CaseDetailHeader(props: Readonly<CaseDetailHeaderProps>)
     <>
       {isFixed && (
         <>
-          <div className="case-detail-header fixed" data-testid="case-detail-fixed-header">
+          <div className="record-detail-header fixed" data-testid="case-detail-fixed-header">
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-4">
                 <h3
