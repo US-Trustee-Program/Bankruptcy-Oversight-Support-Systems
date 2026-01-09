@@ -87,12 +87,12 @@ function App() {
           <section className="showcase-section">
             <h2>Buttons</h2>
             <div className="button-examples">
-              <Button>Default Button</Button>
-              <Button uswdsStyle={UswdsButtonStyle.Secondary}>Secondary Button</Button>
-              <Button uswdsStyle={UswdsButtonStyle.Cool}>Accent Cool Button</Button>
-              <Button uswdsStyle={UswdsButtonStyle.Base}>Base Button</Button>
-              <Button uswdsStyle={UswdsButtonStyle.Outline}>Outline Button</Button>
-              <Button disabled>Disabled Button</Button>
+              <Button>Default</Button>
+              <Button uswdsStyle={UswdsButtonStyle.Secondary}>Secondary</Button>
+              <Button uswdsStyle={UswdsButtonStyle.Cool}>Accent Cool</Button>
+              <Button uswdsStyle={UswdsButtonStyle.Base}>Base</Button>
+              <Button uswdsStyle={UswdsButtonStyle.Outline}>Outline</Button>
+              <Button disabled>Disabled</Button>
             </div>
           </section>
 
@@ -102,10 +102,11 @@ function App() {
               id="button-group-example"
               activeButtonId={activeButtonId}
               onButtonClick={(id) => setActiveButtonId(id)}
+              singleSelect={true}
             >
-              <Button id="btn-1">Button 1</Button>
-              <Button id="btn-2">Button 2</Button>
-              <Button id="btn-3">Button 3</Button>
+              <Button id="btn-1">First</Button>
+              <Button id="btn-2">Second</Button>
+              <Button id="btn-3">Third</Button>
             </ButtonGroup>
           </section>
 
@@ -132,7 +133,7 @@ function App() {
               <Input
                 id="input-example"
                 name="input-example"
-                label="Text Input"
+                label="Full name"
                 value={inputValue}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => setInputValue(e.target.value)}
               />
@@ -143,7 +144,7 @@ function App() {
               <TextArea
                 id="textarea-example"
                 name="textarea-example"
-                label="Text Area"
+                label="Comments"
                 value={textAreaValue}
                 onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setTextAreaValue(e.target.value)}
               />
@@ -154,7 +155,7 @@ function App() {
               <Checkbox
                 id="checkbox-example"
                 name="checkbox-example"
-                label="Checkbox Option"
+                label="Enable notifications"
                 value="checkbox-value"
                 checked={checkboxValue}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => setCheckboxValue(e.target.checked)}
@@ -166,7 +167,7 @@ function App() {
               <Radio
                 id="radio-1"
                 name="radio-example"
-                label="Option 1"
+                label="Small"
                 value="option1"
                 checked={radioValue === 'option1'}
                 onChange={(value: string) => setRadioValue(value)}
@@ -174,7 +175,7 @@ function App() {
               <Radio
                 id="radio-2"
                 name="radio-example"
-                label="Option 2"
+                label="Medium"
                 value="option2"
                 checked={radioValue === 'option2'}
                 onChange={(value: string) => setRadioValue(value)}
@@ -182,7 +183,7 @@ function App() {
               <Radio
                 id="radio-3"
                 name="radio-example"
-                label="Option 3"
+                label="Large"
                 value="option3"
                 checked={radioValue === 'option3'}
                 onChange={(value: string) => setRadioValue(value)}
@@ -191,11 +192,11 @@ function App() {
 
             <div className="form-example">
               <h3>Radio Group</h3>
-              <RadioGroup label="Radio Group">
+              <RadioGroup label="Preferred contact method">
                 <Radio
                   id="radio-a"
                   name="radio-group-example"
-                  label="Group Option A"
+                  label="Email"
                   value="a"
                   checked={radioValue === 'a'}
                   onChange={(value: string) => setRadioValue(value)}
@@ -203,7 +204,7 @@ function App() {
                 <Radio
                   id="radio-b"
                   name="radio-group-example"
-                  label="Group Option B"
+                  label="Phone"
                   value="b"
                   checked={radioValue === 'b'}
                   onChange={(value: string) => setRadioValue(value)}
@@ -211,7 +212,7 @@ function App() {
                 <Radio
                   id="radio-c"
                   name="radio-group-example"
-                  label="Group Option C"
+                  label="Mail"
                   value="c"
                   checked={radioValue === 'c'}
                   onChange={(value: string) => setRadioValue(value)}
@@ -253,15 +254,15 @@ function App() {
             <h2>Accordion</h2>
             <AccordionGroup>
               <Accordion id="accordion-1">
-                First Accordion Item
+                Personal Information
                 <div>This is the content of the first accordion item.</div>
               </Accordion>
               <Accordion id="accordion-2">
-                Second Accordion Item
+                Contact Details
                 <div>This is the content of the second accordion item.</div>
               </Accordion>
               <Accordion id="accordion-3">
-                Third Accordion Item
+                Preferences
                 <div>This is the content of the third accordion item.</div>
               </Accordion>
             </AccordionGroup>
@@ -300,8 +301,8 @@ function App() {
           <section className="showcase-section">
             <h2>Tag</h2>
             <div className="tag-examples">
-              <Tag>Default Tag</Tag>
-              <Tag className="usa-tag--big">Big Tag</Tag>
+              <Tag>Default</Tag>
+              <Tag className="usa-tag--big">Big</Tag>
             </div>
           </section>
 
