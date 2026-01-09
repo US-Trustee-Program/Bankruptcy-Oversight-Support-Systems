@@ -10,6 +10,7 @@ export type ButtonGroupProps = {
   onButtonClick: (id: string) => void;
   className?: string;
   ariaLabel?: string;
+  singleSelect?: boolean;
 };
 
 export default function ButtonGroup({
@@ -19,6 +20,7 @@ export default function ButtonGroup({
   activeButtonId,
   onButtonClick,
   ariaLabel,
+  singleSelect = false,
 }: ButtonGroupProps) {
   const buttonClick = (
     ev: React.MouseEvent<HTMLButtonElement>,
@@ -52,6 +54,13 @@ export default function ButtonGroup({
           childClassName += ` ${typedChild.props.className}`;
         }
 
+        const additionalProps = singleSelect
+          ? {
+              role: 'radio',
+              'aria-checked': activeButtonId === childId ? 'true' : 'false',
+            }
+          : {};
+
         return (
           <li key={idx} className="usa-button-group__item" role="none">
             {createElement(
@@ -66,6 +75,7 @@ export default function ButtonGroup({
                   ),
                 id: childId,
                 className: childClassName,
+                ...additionalProps,
               },
               typedChild.props.children,
             )}
@@ -80,7 +90,7 @@ export default function ButtonGroup({
       id={id}
       className={`usa-button-group usa-button-group--segmented ${className ? `${className}` : ''}`}
       data-testid={`button-group${id ? `-${id}` : ''}`}
-      role="group"
+      role={singleSelect ? 'radiogroup' : 'group'}
       aria-label={ariaLabel || 'Button group'}
     >
       {renderChildren()}

@@ -32,12 +32,12 @@ This showcase app displays all USWDS components in one place, including:
 From the project root, run:
 
 ```bash
-npm run start:uswds:showcase
+npm run start:uswds
 ```
 
 This will start the Vite dev server on port 3001 and automatically open the showcase in your browser.
 
-Alternatively, from within the `test/uswds-showcase` directory:
+Alternatively, from within the `test/uswds` directory:
 
 ```bash
 npm run dev
@@ -60,7 +60,7 @@ npm run preview
 ## Project Structure
 
 ```
-test/uswds-showcase/
+test/uswds/
 ├── src/
 │   ├── App.tsx          # Main showcase component
 │   ├── App.css          # Showcase styling
