@@ -11,7 +11,6 @@ import * as useCamsNavigatorModule from '@/lib/hooks/UseCamsNavigator';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 
 const TEST_TRUSTEE_ID = 'test-trustee-123';
-const TEST_EFFECTIVE_DATE = '2024-01-15';
 const TEST_APPOINTED_DATE = '2024-01-01';
 
 const mockActiveAppointment: TrusteeAppointment = {
@@ -79,16 +78,22 @@ async function selectChapter(userEvent: CamsUserEvent, itemIndex: number = 0) {
   await userEvent.click(screen.getByTestId(`chapter-option-item-${itemIndex}`));
 }
 
+async function selectAppointmentType(userEvent: CamsUserEvent, itemIndex: number = 0) {
+  await userEvent.click(document.querySelector('#appointmentType-expand')!);
+  await waitFor(() =>
+    expect(screen.getByTestId(`appointmentType-option-item-${itemIndex}`)).toBeVisible(),
+  );
+  await userEvent.click(screen.getByTestId(`appointmentType-option-item-${itemIndex}`));
+}
+
 async function selectStatus(userEvent: CamsUserEvent, itemIndex: number = 0) {
   await userEvent.click(document.querySelector('#status-expand')!);
   await waitFor(() => expect(screen.getByTestId(`status-option-item-${itemIndex}`)).toBeVisible());
   await userEvent.click(screen.getByTestId(`status-option-item-${itemIndex}`));
 }
 
-function fillDates(effectiveDate: string, appointedDate: string) {
-  const effectiveDateInput = screen.getByLabelText(/status date/i) as HTMLInputElement;
+function fillDate(appointedDate: string) {
   const appointedDateInput = screen.getByLabelText(/appointment date/i) as HTMLInputElement;
-  fireEvent.change(effectiveDateInput, { target: { value: effectiveDate } });
   fireEvent.change(appointedDateInput, { target: { value: appointedDate } });
 }
 
@@ -97,8 +102,8 @@ async function fillCompleteForm(
   options: {
     districtIndex?: number;
     chapterIndex?: number;
+    appointmentTypeIndex?: number;
     statusIndex?: number;
-    effectiveDate?: string;
     appointedDate?: string;
   } = {},
 ) {
@@ -111,12 +116,22 @@ async function fillCompleteForm(
   }
   if (options.chapterIndex !== undefined) {
     await selectChapter(userEvent, options.chapterIndex);
+    // Wait for appointmentType to be enabled after selecting chapter
+    await waitFor(() => {
+      const appointmentTypeContainer = document.querySelector(
+        '#appointmentType .input-container',
+      ) as HTMLElement;
+      expect(appointmentTypeContainer).not.toHaveClass('disabled');
+    });
+  }
+  if (options.appointmentTypeIndex !== undefined) {
+    await selectAppointmentType(userEvent, options.appointmentTypeIndex);
   }
   if (options.statusIndex !== undefined) {
     await selectStatus(userEvent, options.statusIndex);
   }
-  if (options.effectiveDate && options.appointedDate) {
-    fillDates(options.effectiveDate, options.appointedDate);
+  if (options.appointedDate) {
+    fillDate(options.appointedDate);
   }
 }
 
@@ -197,7 +212,6 @@ describe('TrusteeAppointmentForm Tests', () => {
     expect(document.querySelector('#district')).toBeInTheDocument();
     expect(document.querySelector('#chapter')).toBeInTheDocument();
     expect(document.querySelector('#status')).toBeInTheDocument();
-    expect(screen.getByLabelText(/status date/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/appointment date/i)).toBeInTheDocument();
   });
 
@@ -219,7 +233,6 @@ describe('TrusteeAppointmentForm Tests', () => {
       expect(document.querySelector('#district')).toBeInTheDocument();
     });
 
-    const effectiveDateInput = screen.getByLabelText(/status date/i) as HTMLInputElement;
     const appointedDateInput = screen.getByLabelText(/appointment date/i) as HTMLInputElement;
 
     await selectDistrict(userEvent, 0);
@@ -231,8 +244,14 @@ describe('TrusteeAppointmentForm Tests', () => {
 
     await selectChapter(userEvent, 0);
     await waitFor(() =>
-      expect(document.querySelector('#chapter .selection-label')).toHaveTextContent(
-        'Chapter 7 - Panel',
+      expect(document.querySelector('#chapter .selection-label')).toHaveTextContent('Chapter 7'),
+    );
+
+    // Manually select appointment type since Chapter 7 has multiple options
+    await selectAppointmentType(userEvent, 0);
+    await waitFor(() =>
+      expect(document.querySelector('#appointmentType .selection-label')).toHaveTextContent(
+        'Panel',
       ),
     );
 
@@ -241,17 +260,18 @@ describe('TrusteeAppointmentForm Tests', () => {
       expect(document.querySelector('#status .selection-label')).toHaveTextContent('Active'),
     );
 
-    fillDates(TEST_APPOINTED_DATE, TEST_APPOINTED_DATE);
+    fillDate(TEST_APPOINTED_DATE);
 
     const districtSelection = document.querySelector('#district .selection-label');
     const chapterSelection = document.querySelector('#chapter .selection-label');
+    const appointmentTypeSelection = document.querySelector('#appointmentType .selection-label');
     const statusSelection = document.querySelector('#status .selection-label');
 
     expect(districtSelection).toHaveTextContent('District of Alaska - Juneau');
-    expect(chapterSelection).toHaveTextContent('Chapter 7 - Panel');
+    expect(chapterSelection).toHaveTextContent('Chapter 7');
+    expect(appointmentTypeSelection).toHaveTextContent('Panel');
     expect(statusSelection).toHaveTextContent('Active');
 
-    expect(effectiveDateInput.value).toBe(TEST_APPOINTED_DATE);
     expect(appointedDateInput.value).toBe(TEST_APPOINTED_DATE);
 
     const submitButton = screen.getByRole('button', { name: /save/i });
@@ -268,8 +288,8 @@ describe('TrusteeAppointmentForm Tests', () => {
     await fillCompleteForm(userEvent, {
       districtIndex: 0,
       chapterIndex: 0,
+      appointmentTypeIndex: 0,
       statusIndex: 0,
-      effectiveDate: TEST_EFFECTIVE_DATE,
       appointedDate: TEST_APPOINTED_DATE,
     });
 
@@ -284,7 +304,7 @@ describe('TrusteeAppointmentForm Tests', () => {
           appointmentType: 'panel',
           status: 'active',
           appointedDate: TEST_APPOINTED_DATE,
-          effectiveDate: TEST_EFFECTIVE_DATE,
+          effectiveDate: TEST_APPOINTED_DATE,
         }),
       );
     });
@@ -302,7 +322,6 @@ describe('TrusteeAppointmentForm Tests', () => {
       expect(document.querySelector('#district')).toBeInTheDocument();
     });
 
-    const effectiveDateInput = screen.getByLabelText(/status date/i) as HTMLInputElement;
     const appointedDateInput = screen.getByLabelText(/appointment date/i) as HTMLInputElement;
 
     await userEvent.click(document.querySelector('#chapter-expand')!);
@@ -319,7 +338,6 @@ describe('TrusteeAppointmentForm Tests', () => {
       expect(document.querySelector('#status-item-list-container')!.classList).toContain('closed'),
     );
 
-    await userEvent.type(effectiveDateInput, TEST_EFFECTIVE_DATE);
     await userEvent.type(appointedDateInput, TEST_APPOINTED_DATE);
 
     const submitButton = screen.getByRole('button', { name: /save/i });
@@ -340,8 +358,8 @@ describe('TrusteeAppointmentForm Tests', () => {
     await fillCompleteForm(userEvent, {
       districtIndex: 0,
       chapterIndex: 0,
+      appointmentTypeIndex: 0,
       statusIndex: 0,
-      effectiveDate: TEST_EFFECTIVE_DATE,
       appointedDate: TEST_APPOINTED_DATE,
     });
 
@@ -395,14 +413,68 @@ describe('TrusteeAppointmentForm Tests', () => {
     await userEvent.click(chapterExpandButton!);
 
     await waitFor(() => {
-      expect(screen.getByText('Chapter 7 - Panel')).toBeInTheDocument();
+      expect(screen.getByText('Chapter 7')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Chapter 7 - Non-Panel')).toBeInTheDocument();
     expect(screen.getByText('Chapter 11')).toBeInTheDocument();
     expect(screen.getByText('Chapter 11 Subchapter V')).toBeInTheDocument();
     expect(screen.getByText('Chapter 12')).toBeInTheDocument();
     expect(screen.getByText('Chapter 13')).toBeInTheDocument();
+  });
+
+  test('should disable appointmentType dropdown when chapter is not selected', async () => {
+    renderWithProps();
+
+    await waitFor(() => {
+      expect(document.querySelector('#appointmentType')).toBeInTheDocument();
+    });
+
+    const appointmentTypeContainer = document.querySelector(
+      '#appointmentType .input-container',
+    ) as HTMLElement;
+    expect(appointmentTypeContainer).toHaveClass('disabled');
+
+    const appointmentTypeExpandButton = document.querySelector(
+      '#appointmentType-expand',
+    ) as HTMLButtonElement;
+    expect(appointmentTypeExpandButton).toBeDisabled();
+  });
+
+  test('should enable appointmentType dropdown when chapter is selected', async () => {
+    renderWithProps();
+
+    await waitFor(() => {
+      expect(document.querySelector('#chapter')).toBeInTheDocument();
+    });
+
+    // Initially, appointmentType should be disabled
+    let appointmentTypeContainer = document.querySelector(
+      '#appointmentType .input-container',
+    ) as HTMLElement;
+    expect(appointmentTypeContainer).toHaveClass('disabled');
+
+    // Select a chapter
+    await selectChapter(userEvent, 0);
+
+    // Wait for appointmentType to be enabled
+    await waitFor(() => {
+      appointmentTypeContainer = document.querySelector(
+        '#appointmentType .input-container',
+      ) as HTMLElement;
+      expect(appointmentTypeContainer).not.toHaveClass('disabled');
+    });
+
+    const appointmentTypeExpandButton = document.querySelector(
+      '#appointmentType-expand',
+    ) as HTMLButtonElement;
+    expect(appointmentTypeExpandButton).not.toBeDisabled();
+
+    // Verify appointment type options are displayed for Chapter 7
+    await userEvent.click(appointmentTypeExpandButton);
+    await waitFor(() => {
+      expect(screen.getByText('Panel')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Off Panel')).toBeInTheDocument();
   });
 
   test('should display status options correctly', async () => {
@@ -433,8 +505,8 @@ describe('TrusteeAppointmentForm Tests', () => {
     await fillCompleteForm(userEvent, {
       districtIndex: 0,
       chapterIndex: 0,
+      appointmentTypeIndex: 0,
       statusIndex: 0,
-      effectiveDate: TEST_EFFECTIVE_DATE,
       appointedDate: TEST_APPOINTED_DATE,
     });
 
@@ -459,6 +531,7 @@ describe('TrusteeAppointmentForm Tests', () => {
 
       await selectDistrict(userEvent, 0);
       await selectChapter(userEvent, 0);
+      await selectAppointmentType(userEvent, 0); // Select "Panel"
 
       await waitFor(() => {
         expect(
@@ -479,8 +552,8 @@ describe('TrusteeAppointmentForm Tests', () => {
       await fillCompleteForm(userEvent, {
         districtIndex: 0,
         chapterIndex: 0,
+        appointmentTypeIndex: 0,
         statusIndex: 0,
-        effectiveDate: TEST_EFFECTIVE_DATE,
         appointedDate: TEST_APPOINTED_DATE,
       });
 
@@ -501,8 +574,8 @@ describe('TrusteeAppointmentForm Tests', () => {
       await fillCompleteForm(userEvent, {
         districtIndex: 1,
         chapterIndex: 0,
+        appointmentTypeIndex: 0,
         statusIndex: 0,
-        effectiveDate: TEST_EFFECTIVE_DATE,
         appointedDate: TEST_APPOINTED_DATE,
       });
 
@@ -522,9 +595,9 @@ describe('TrusteeAppointmentForm Tests', () => {
 
       await fillCompleteForm(userEvent, {
         districtIndex: 0,
-        chapterIndex: 1,
+        chapterIndex: 1, // Chapter 11 auto-selects its single appointment type
+        // No appointmentTypeIndex needed since Chapter 11 has only one option
         statusIndex: 0,
-        effectiveDate: TEST_EFFECTIVE_DATE,
         appointedDate: TEST_APPOINTED_DATE,
       });
 
@@ -548,6 +621,7 @@ describe('TrusteeAppointmentForm Tests', () => {
 
       await selectDistrict(userEvent, 0);
       await selectChapter(userEvent, 0);
+      await selectAppointmentType(userEvent, 0); // Select "Panel"
 
       await waitFor(() => {
         expect(
@@ -555,6 +629,7 @@ describe('TrusteeAppointmentForm Tests', () => {
         ).toBeInTheDocument();
       });
 
+      // Change to a different chapter to clear the validation error
       await selectChapter(userEvent, 1);
 
       await waitFor(() => {
@@ -574,7 +649,6 @@ describe('TrusteeAppointmentForm Tests', () => {
         districtIndex: 0,
         chapterIndex: 0,
         statusIndex: 0,
-        effectiveDate: TEST_EFFECTIVE_DATE,
         appointedDate: TEST_APPOINTED_DATE,
       });
 
@@ -595,8 +669,8 @@ describe('TrusteeAppointmentForm Tests', () => {
       await fillCompleteForm(userEvent, {
         districtIndex: 0,
         chapterIndex: 0,
+        appointmentTypeIndex: 0,
         statusIndex: 0,
-        effectiveDate: TEST_EFFECTIVE_DATE,
         appointedDate: TEST_APPOINTED_DATE,
       });
 
@@ -637,9 +711,7 @@ describe('TrusteeAppointmentForm Tests', () => {
       await selectChapter(userEvent, 0);
 
       await waitFor(() =>
-        expect(document.querySelector('#chapter .selection-label')).toHaveTextContent(
-          'Chapter 7 - Panel',
-        ),
+        expect(document.querySelector('#chapter .selection-label')).toHaveTextContent('Chapter 7'),
       );
 
       const clearButton = document.querySelector('#chapter-clear-all');
@@ -750,9 +822,10 @@ describe('TrusteeAppointmentForm Tests', () => {
     test('should pre-populate form when appointment is provided', async () => {
       const appointmentToEdit: TrusteeAppointment = {
         ...mockActiveAppointment,
-        courtId: '0208',
-        divisionCode: '081',
-        chapter: '11',
+        courtId: '097-',
+        divisionCode: '710',
+        chapter: '7',
+        appointmentType: 'panel',
         status: 'active',
         effectiveDate: '2024-06-15',
         appointedDate: '2024-06-01',
@@ -767,10 +840,8 @@ describe('TrusteeAppointmentForm Tests', () => {
         expect(document.querySelector('#district')).toBeInTheDocument();
       });
 
-      const effectiveDateInput = screen.getByLabelText(/status date/i) as HTMLInputElement;
       const appointedDateInput = screen.getByLabelText(/appointment date/i) as HTMLInputElement;
 
-      expect(effectiveDateInput.value).toBe('2024-06-15');
       expect(appointedDateInput.value).toBe('2024-06-01');
     });
 
@@ -792,8 +863,8 @@ describe('TrusteeAppointmentForm Tests', () => {
       const appointmentToEdit: TrusteeAppointment = {
         ...mockActiveAppointment,
         id: 'appointment-to-edit',
-        courtId: '0208',
-        divisionCode: '081',
+        courtId: '097-',
+        divisionCode: '710',
         chapter: '7',
         appointmentType: 'panel',
         status: 'active',
@@ -823,8 +894,8 @@ describe('TrusteeAppointmentForm Tests', () => {
           TEST_TRUSTEE_ID,
           'appointment-to-edit',
           expect.objectContaining({
-            courtId: '0208',
-            divisionCode: '081',
+            courtId: '097-',
+            divisionCode: '710',
             chapter: '7',
             appointmentType: 'panel',
             status: 'active',
@@ -865,9 +936,10 @@ describe('TrusteeAppointmentForm Tests', () => {
       const appointmentToEdit: TrusteeAppointment = {
         ...mockActiveAppointment,
         id: 'appointment-being-edited',
-        courtId: '0208',
-        divisionCode: '081',
-        chapter: '11',
+        courtId: '097-',
+        divisionCode: '720',
+        chapter: '13',
+        appointmentType: 'standing',
         status: 'active',
       };
 
@@ -893,6 +965,7 @@ describe('TrusteeAppointmentForm Tests', () => {
 
       await selectDistrict(userEvent, 0);
       await selectChapter(userEvent, 0);
+      await selectAppointmentType(userEvent, 0); // Select "Panel"
 
       await waitFor(() => {
         const alert = screen.getByRole('alert');

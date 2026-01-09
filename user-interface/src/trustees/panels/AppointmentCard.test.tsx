@@ -138,7 +138,7 @@ describe('AppointmentCard', () => {
 
     renderWithProps({ appointment: appointment11v });
 
-    expect(screen.getByText(/Chapter 11 - Subchapter V/i)).toBeInTheDocument();
+    expect(screen.getByText(/Chapter 11 Subchapter V/i)).toBeInTheDocument();
   });
 
   test('should format chapter 7 off-panel correctly', () => {

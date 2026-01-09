@@ -465,6 +465,10 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     );
   }, [props.selections]);
 
+  useEffect(() => {
+    setComboboxDisabled(!!disabled);
+  }, [disabled]);
+
   useImperativeHandle(ref, () => ({
     setSelections,
     getSelections,
