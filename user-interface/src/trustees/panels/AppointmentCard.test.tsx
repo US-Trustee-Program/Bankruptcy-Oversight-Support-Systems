@@ -60,7 +60,7 @@ describe('AppointmentCard', () => {
     renderWithProps();
 
     expect(
-      screen.getByText(/Southern District of New York \(Manhattan\): Chapter 7 - Panel/i),
+      screen.getByText(/Southern District of New York - Manhattan: Chapter 7 - Panel/i),
     ).toBeInTheDocument();
   });
 
@@ -70,7 +70,7 @@ describe('AppointmentCard', () => {
     });
 
     expect(
-      screen.getByText(/Eastern District of New York \(Manhattan\): Chapter 7 - Panel/i),
+      screen.getByText(/Eastern District of New York - Manhattan: Chapter 7 - Panel/i),
     ).toBeInTheDocument();
   });
 
@@ -84,7 +84,7 @@ describe('AppointmentCard', () => {
     });
 
     expect(
-      screen.getByText(/Eastern District of New York \(Brooklyn\): Chapter 7 - Panel/i),
+      screen.getByText(/Eastern District of New York - Brooklyn: Chapter 7 - Panel/i),
     ).toBeInTheDocument();
   });
 
@@ -99,13 +99,17 @@ describe('AppointmentCard', () => {
 
     expect(screen.getByText(/District:/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/Eastern District of New York \(Brooklyn\)/i, { selector: 'li' }),
+      screen.getByText(/Eastern District of New York - Brooklyn/i, { selector: 'li' }),
     ).toBeInTheDocument();
     expect(screen.getByText(/Chapter:/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/7 - Panel/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/Status:/i)).toBeInTheDocument();
-    expect(screen.getByText(/Active 01\/15\/2020/i)).toBeInTheDocument();
+    expect(screen.getByText(/^7$/, { selector: 'li' })).toBeInTheDocument();
+    expect(screen.getByText(/Type:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Panel/i, { selector: 'li' })).toBeInTheDocument();
     expect(screen.getByText(/Appointed:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Status:/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Active$/, { selector: 'li' })).toBeInTheDocument();
+    expect(screen.getByText(/Status Effective:/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/01\/15\/2020/).length).toBe(2);
   });
 
   test('should format chapter 11 correctly', () => {
@@ -162,7 +166,10 @@ describe('AppointmentCard', () => {
 
     renderWithProps({ appointment: inactiveAppointment });
 
-    expect(screen.getByText(/Inactive 06\/01\/2018/i)).toBeInTheDocument();
+    expect(screen.getByText(/Status:/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Inactive$/i, { selector: 'li' })).toBeInTheDocument();
+    expect(screen.getByText(/Status Effective:/i)).toBeInTheDocument();
+    expect(screen.getByText(/06\/01\/2018/)).toBeInTheDocument();
   });
 
   test('should display appointedDate with standardized mm/dd/yyyy formatting', () => {

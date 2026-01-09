@@ -40,7 +40,7 @@ type FormData = {
   districtKey: string; // Combined key: "{courtId}|{divisionCode}"
   chapter: ChapterType;
   appointmentType: AppointmentType;
-  status: AppointmentStatus;
+  status: AppointmentStatus | '';
   effectiveDate: string;
   appointedDate: string;
 };
@@ -87,7 +87,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
       districtKey: '',
       chapter: '' as ChapterType,
       appointmentType: '' as AppointmentType,
-      status: '' as AppointmentStatus,
+      status: 'active' as AppointmentStatus,
       effectiveDate: '',
       appointedDate: '',
     };
@@ -95,16 +95,19 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
 
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
 
-  // Dynamically generate appointment type options based on selected chapter
   const appointmentTypeOptions = useMemo<ComboOption<AppointmentType>[]>(() => {
     if (!formData.chapter) return [];
 
     const types = chapterAppointmentTypeMap[formData.chapter];
-    return types.map((type) => ({
+    const filteredTypes = isEditMode
+      ? types
+      : types.filter((type) => type !== 'off-panel' && type !== 'out-of-pool');
+
+    return filteredTypes.map((type) => ({
       value: type,
       label: formatAppointmentType(type),
     }));
-  }, [formData.chapter]);
+  }, [formData.chapter, isEditMode]);
 
   // Dynamically generate status options based on selected chapter and appointment type
   const statusOptions = useMemo<ComboOption<AppointmentStatus>[]>(() => {
@@ -219,7 +222,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
       courtId,
       divisionCode,
       appointedDate: formData.appointedDate,
-      status: formData.status,
+      status: formData.status as AppointmentStatus,
       effectiveDate: isEditMode ? formData.effectiveDate : formData.appointedDate,
     };
 
@@ -253,17 +256,25 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
 
         if (isValidChapter(value)) {
           const types = chapterAppointmentTypeMap[value];
-          const appointmentType = types && types.length === 1 ? types[0] : ('' as AppointmentType);
-          return { ...prev, chapter: value, appointmentType, status: '' as AppointmentStatus };
+          const filteredTypes = isEditMode
+            ? types
+            : types.filter((type) => type !== 'off-panel' && type !== 'out-of-pool');
+          const appointmentType =
+            filteredTypes && filteredTypes.length === 1
+              ? filteredTypes[0]
+              : ('' as AppointmentType);
+          const status = isEditMode ? '' : 'active';
+          return { ...prev, chapter: value, appointmentType, status };
         }
       }
 
       // When appointmentType changes, reset status
       if (field === 'appointmentType') {
+        const status = isEditMode ? '' : 'active';
         return {
           ...prev,
           appointmentType: value as AppointmentType,
-          status: '' as AppointmentStatus,
+          status,
         };
       }
 
@@ -355,6 +366,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
                 required={true}
                 disabled={!formData.chapter}
                 options={appointmentTypeOptions}
+                ariaDescription="Select Chapter to see available types."
                 selections={
                   formData.appointmentType
                     ? [
@@ -370,38 +382,6 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
               />
             </div>
 
-            {isEditMode && (
-              <div className="field-group">
-                <Input
-                  id="effectiveDate"
-                  name="effectiveDate"
-                  label="Status Date"
-                  type="date"
-                  required={true}
-                  value={formData.effectiveDate}
-                  onChange={(e) => handleFieldChange('effectiveDate', e.target.value)}
-                />
-              </div>
-            )}
-
-            <div className="field-group">
-              <ComboBox
-                id="status"
-                label="Status"
-                required={true}
-                disabled={!formData.chapter || !formData.appointmentType}
-                options={statusOptions}
-                selections={
-                  formData.status
-                    ? [statusOptions.find((opt) => opt.value === formData.status)!]
-                    : undefined
-                }
-                onUpdateSelection={(options) => {
-                  handleFieldChange('status', options[0]?.value ?? '');
-                }}
-              />
-            </div>
-
             <div className="field-group">
               <Input
                 id="appointedDate"
@@ -413,6 +393,40 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
                 onChange={(e) => handleFieldChange('appointedDate', e.target.value)}
               />
             </div>
+
+            {isEditMode && (
+              <div className="field-group">
+                <ComboBox
+                  id="status"
+                  label="Status"
+                  required={true}
+                  disabled={!formData.chapter || !formData.appointmentType}
+                  options={statusOptions}
+                  selections={
+                    formData.status
+                      ? [statusOptions.find((opt) => opt.value === formData.status)!]
+                      : undefined
+                  }
+                  onUpdateSelection={(options) => {
+                    handleFieldChange('status', options[0]?.value ?? '');
+                  }}
+                />
+              </div>
+            )}
+
+            {isEditMode && (
+              <div className="field-group">
+                <Input
+                  id="effectiveDate"
+                  name="effectiveDate"
+                  label="Status Effective Date"
+                  type="date"
+                  required={true}
+                  value={formData.effectiveDate}
+                  onChange={(e) => handleFieldChange('effectiveDate', e.target.value)}
+                />
+              </div>
+            )}
           </div>
         </div>
 
