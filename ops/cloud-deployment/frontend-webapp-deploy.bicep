@@ -214,33 +214,31 @@ var applicationSettings = concat(
     : []
 )
 
-// Firewall rules for production slot
-// USTP: Deny all (access controlled by specific allow rules)
-// Flexion: Allow all (production is publicly accessible)
-var productionIpSecurityRestrictionsRules = concat(
-  [
-    {
-      ipAddress: 'Any'
-      action: isUstpDeployment ? 'Deny' : 'Allow'
-      priority: 2147483647
-      name: isUstpDeployment ? 'Deny all' : 'Allow all'
-      description: isUstpDeployment ? 'Deny all access' : 'Allow all access'
-    }
-  ],
-  allowVeracodeScan
-    ? [
+var productionIpSecurityRestrictionsRules = isUstpDeployment
+  ? concat(
+      allowVeracodeScan
+        ? [
+            {
+              ipAddress: '3.32.105.199/32'
+              action: 'Allow'
+              priority: 1000
+              name: 'Veracode Agent'
+              description: 'Allow Veracode DAST Scans'
+            }
+          ]
+        : [],
+      [
         {
-          ipAddress: '3.32.105.199/32'
-          action: 'Allow'
-          priority: 1000
-          name: 'Veracode Agent'
-          description: 'Allow Veracode DAST Scans'
+          ipAddress: 'Any'
+          action: 'Deny'
+          priority: 2147483647
+          name: 'Deny all'
+          description: 'Deny all access'
         }
       ]
-    : []
-)
+    )
+  : []
 
-// Firewall rules for staging slot (always deny for both environments)
 var stagingIpSecurityRestrictionsRules = concat(
   [
     {
@@ -264,7 +262,6 @@ var stagingIpSecurityRestrictionsRules = concat(
     : []
 )
 
-// Base configuration shared by both production and staging
 var baseWebappConfigProperties = {
   appSettings: applicationSettings
   numberOfWorkers: 1
@@ -272,7 +269,7 @@ var baseWebappConfigProperties = {
   http20Enabled: true
   minimumElasticInstanceCount: 0
   publicNetworkAccess: 'Enabled'
-  ipSecurityRestrictionsDefaultAction: 'Deny'
+  ipSecurityRestrictionsDefaultAction: isUstpDeployment ? 'Deny' : 'Allow'
   scmIpSecurityRestrictions: [
     {
       ipAddress: 'Any'
@@ -302,7 +299,6 @@ var baseWebappConfigProperties = {
   appCommandLine: appCommandLine
 }
 
-// Production slot configuration (different firewall rules for USTP vs Flexion)
 var productionWebappConfigProperties = union(
   baseWebappConfigProperties,
   {
@@ -311,7 +307,6 @@ var productionWebappConfigProperties = union(
   isPremiumPlanType ? { minTlsCipherSuite: preferredMinTLSCipherSuite } : {}
 )
 
-// Staging slot configuration (always deny for both environments)
 var stagingWebappConfigProperties = union(
   baseWebappConfigProperties,
   {
