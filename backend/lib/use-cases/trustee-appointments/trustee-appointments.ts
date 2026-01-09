@@ -2,7 +2,11 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteeAppointmentsRepository, TrusteesRepository } from '../gateways.types';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { getTrusteeAppointmentsRepository, getTrusteesRepository } from '../../factory';
-import { TrusteeAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
+import {
+  AppointmentStatus,
+  TrusteeAppointment,
+  TrusteeAppointmentInput,
+} from '@common/cams/trustee-appointments';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { CourtsUseCase } from '../courts/courts';
 import { CourtDivisionDetails } from '@common/cams/courts';
@@ -25,7 +29,7 @@ type AppointmentSnapshot = {
   courtId: string;
   divisionCode: string;
   appointedDate: string;
-  status: 'active' | 'inactive';
+  status: AppointmentStatus;
   effectiveDate: string;
 };
 

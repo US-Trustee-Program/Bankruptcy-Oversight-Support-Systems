@@ -370,6 +370,20 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
               />
             </div>
 
+            {isEditMode && (
+              <div className="field-group">
+                <Input
+                  id="effectiveDate"
+                  name="effectiveDate"
+                  label="Status Date"
+                  type="date"
+                  required={true}
+                  value={formData.effectiveDate}
+                  onChange={(e) => handleFieldChange('effectiveDate', e.target.value)}
+                />
+              </div>
+            )}
+
             <div className="field-group">
               <ComboBox
                 id="status"
@@ -387,20 +401,6 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
                 }}
               />
             </div>
-
-            {isEditMode && (
-              <div className="field-group">
-                <Input
-                  id="effectiveDate"
-                  name="effectiveDate"
-                  label="Status Date"
-                  type="date"
-                  required={true}
-                  value={formData.effectiveDate}
-                  onChange={(e) => handleFieldChange('effectiveDate', e.target.value)}
-                />
-              </div>
-            )}
 
             <div className="field-group">
               <Input
