@@ -190,7 +190,6 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     !!formData.chapter &&
     !!formData.appointmentType &&
     !!formData.status &&
-    !!formData.effectiveDate &&
     !!formData.appointedDate &&
     !validationError;
 
@@ -212,7 +211,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
       divisionCode,
       appointedDate: formData.appointedDate,
       status: formData.status,
-      effectiveDate: formData.effectiveDate,
+      effectiveDate: isEditMode ? formData.effectiveDate : formData.appointedDate,
     };
 
     try {
@@ -330,28 +329,27 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
               />
             </div>
 
-            {appointmentTypeOptions.length > 0 && (
-              <div className="field-group">
-                <ComboBox
-                  id="appointmentType"
-                  label="Appointment Type"
-                  required={true}
-                  options={appointmentTypeOptions}
-                  selections={
-                    formData.appointmentType
-                      ? [
-                          appointmentTypeOptions.find(
-                            (opt) => opt.value === formData.appointmentType,
-                          )!,
-                        ]
-                      : undefined
-                  }
-                  onUpdateSelection={(options) => {
-                    handleFieldChange('appointmentType', options[0]?.value ?? '');
-                  }}
-                />
-              </div>
-            )}
+            <div className="field-group">
+              <ComboBox
+                id="appointmentType"
+                label="Type"
+                required={true}
+                disabled={!formData.chapter}
+                options={appointmentTypeOptions}
+                selections={
+                  formData.appointmentType
+                    ? [
+                        appointmentTypeOptions.find(
+                          (opt) => opt.value === formData.appointmentType,
+                        )!,
+                      ]
+                    : undefined
+                }
+                onUpdateSelection={(options) => {
+                  handleFieldChange('appointmentType', options[0]?.value ?? '');
+                }}
+              />
+            </div>
 
             <div className="field-group">
               <ComboBox
@@ -370,17 +368,19 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
               />
             </div>
 
-            <div className="field-group">
-              <Input
-                id="effectiveDate"
-                name="effectiveDate"
-                label="Status Date"
-                type="date"
-                required={true}
-                value={formData.effectiveDate}
-                onChange={(e) => handleFieldChange('effectiveDate', e.target.value)}
-              />
-            </div>
+            {isEditMode && (
+              <div className="field-group">
+                <Input
+                  id="effectiveDate"
+                  name="effectiveDate"
+                  label="Status Date"
+                  type="date"
+                  required={true}
+                  value={formData.effectiveDate}
+                  onChange={(e) => handleFieldChange('effectiveDate', e.target.value)}
+                />
+              </div>
+            )}
 
             <div className="field-group">
               <Input
