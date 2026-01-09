@@ -262,7 +262,7 @@ function ConsolidationCaseTable_(
                     )}
                     {bCase.isMemberCase && (
                       <Alert
-                        id="is-child"
+                        id="is-member"
                         inline={true}
                         show={true}
                         message={

@@ -775,7 +775,7 @@ describe('Orders use case', () => {
       pendingConsolidation.memberCases.length,
     );
 
-    // Verify that createTrialAttorneyAssignments is called once for each approved child
+    // Verify that createTrialAttorneyAssignments is called once for each approved member
     expect(createAssignmentsSpy).toHaveBeenCalledTimes(approval.approvedCases.length);
     approval.approvedCases.forEach((approvedCase) => {
       expect(createAssignmentsSpy).toHaveBeenCalledWith(
@@ -956,7 +956,7 @@ describe('Orders use case', () => {
     );
     expect(additionalCaseInHistory).toBeDefined();
 
-    // Verify that createTrialAttorneyAssignments is called once for each approved child
+    // Verify that createTrialAttorneyAssignments is called once for each approved member
     expect(createAssignmentsSpy).toHaveBeenCalledTimes(approval.approvedCases.length);
     approval.approvedCases.forEach((approvedCase) => {
       expect(createAssignmentsSpy).toHaveBeenCalledWith(
@@ -1114,7 +1114,7 @@ describe('Orders use case', () => {
     );
     expect(leadCaseHistory[0].after.memberCases).toHaveLength(approval.approvedCases.length);
 
-    // Verify that createTrialAttorneyAssignments is called once for each approved child
+    // Verify that createTrialAttorneyAssignments is called once for each approved member
     expect(createAssignmentsSpy).toHaveBeenCalledTimes(approval.approvedCases.length);
     approval.approvedCases.forEach((approvedCase) => {
       expect(createAssignmentsSpy).toHaveBeenCalledWith(
@@ -1211,7 +1211,7 @@ describe('Orders use case', () => {
       expect.objectContaining({ updatedBy: getCamsUserReference(authorizedUser) }),
     );
 
-    // Verify that createTrialAttorneyAssignments is called once for each approved child
+    // Verify that createTrialAttorneyAssignments is called once for each approved member
     expect(createAssignmentsSpy).toHaveBeenCalledTimes(approval.approvedCases.length);
     approval.approvedCases.forEach((approvedCase) => {
       expect(createAssignmentsSpy).toHaveBeenCalledWith(
