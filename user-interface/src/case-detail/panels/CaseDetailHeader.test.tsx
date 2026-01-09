@@ -6,7 +6,6 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import { ResourceActions } from '@common/cams/actions';
 import { CaseDetail } from '@common/cams/cases';
 import * as caseNumber from '@/lib/utils/caseNumber';
-import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 
 function basicRender(caseDetail: ResourceActions<CaseDetail>, isLoading: boolean) {
   render(
@@ -23,13 +22,6 @@ const testCaseDetail = MockData.getCaseDetail({
 });
 
 describe('Case Detail Header tests', () => {
-  beforeEach(() => {
-    const mockFeatureFlags = {
-      [FeatureFlagHook.VIEW_TRUSTEE_ON_CASE]: false,
-    };
-    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
-  });
-
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -45,14 +37,14 @@ describe('Case Detail Header tests', () => {
   test('should render case detail info when isLoading is false', () => {
     basicRender(testCaseDetail, false);
 
-    const isLoadingH1 = screen.getByTestId('case-detail-heading');
-    const isLoadingH2 = screen.getByTestId('case-detail-heading-title');
-    const isFinishedH2 = screen.getByTestId('h2-with-case-info');
-    const caseChapter = screen.getByTestId('case-chapter');
+    const caseHeading = screen.getByTestId('case-detail-heading');
+    const caseTitle = screen.getByTestId('case-detail-heading-title');
+    const caseTitleSection = screen.getByTestId('h2-with-case-info');
+    const caseChapter = screen.getByTestId('tag-case-chapter');
 
-    expect(isLoadingH1).toContainHTML('Case Detail');
-    expect(isLoadingH2.textContent).toContain(testCaseDetail.debtor.name);
-    expect(isFinishedH2).toBeInTheDocument();
+    expect(caseHeading).toHaveTextContent(testCaseDetail.caseId);
+    expect(caseTitle.textContent).toContain(testCaseDetail.debtor.name);
+    expect(caseTitleSection).toBeInTheDocument();
     expect(caseChapter.innerHTML).toEqual(
       `${testCaseDetail.petitionLabel} Chapter ${testCaseDetail.chapter}`,
     );
@@ -137,17 +129,8 @@ describe('Case Detail Header tests', () => {
       expect(copySpy).toHaveBeenCalledWith(testCaseDetail.caseId);
     });
   });
-});
 
-describe('feature flag true', () => {
-  beforeEach(() => {
-    const mockFeatureFlags = {
-      [FeatureFlagHook.VIEW_TRUSTEE_ON_CASE]: true,
-    };
-    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
-  });
-
-  test('should render properly when true', () => {
+  test('should render case ID and tags in header', () => {
     basicRender(testCaseDetail, false);
 
     const isLoadingH1 = screen.getByTestId('case-detail-heading');
@@ -314,40 +297,5 @@ describe('feature flag true', () => {
     const memberIcon = screen.getByTestId('member-case-icon');
     const titleElement = memberIcon.querySelector('title');
     expect(titleElement).toHaveTextContent('Member case');
-  });
-});
-
-describe('feature flag false', () => {
-  beforeEach(() => {
-    const mockFeatureFlags = {
-      [FeatureFlagHook.VIEW_TRUSTEE_ON_CASE]: false,
-    };
-    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
-  });
-
-  test('should render loading info when isLoading is true and VIEW_TRUSTEE_ON_CASE is disabled', () => {
-    basicRender(testCaseDetail, true);
-
-    const isLoadingH1 = screen.getByTestId('case-detail-heading');
-    const isLoadingH2 = screen.getByTestId('loading-h2');
-
-    expect(isLoadingH1).toContainHTML('Loading Case Details...');
-    expect(isLoadingH2).toBeInTheDocument();
-  });
-
-  test('should render properly with false', () => {
-    basicRender(testCaseDetail, false);
-
-    const isLoadingH1 = screen.getByTestId('case-detail-heading');
-    const isLoadingH2 = screen.getByTestId('case-detail-heading-title');
-    const isFinishedH2 = screen.getByTestId('h2-with-case-info');
-    const caseChapter = screen.getByTestId('case-chapter');
-
-    expect(isLoadingH1).toContainHTML('Case Detail');
-    expect(isLoadingH2.textContent).toContain(testCaseDetail.debtor.name);
-    expect(isFinishedH2).toBeInTheDocument();
-    expect(caseChapter.innerHTML).toEqual(
-      `${testCaseDetail.petitionLabel} Chapter ${testCaseDetail.chapter}`,
-    );
   });
 });

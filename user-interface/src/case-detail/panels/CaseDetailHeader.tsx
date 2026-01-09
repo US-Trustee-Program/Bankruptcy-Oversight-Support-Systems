@@ -12,7 +12,6 @@ import {
 } from '@common/cams/cases';
 import { copyCaseNumber, getCaseNumber } from '@/lib/utils/caseNumber';
 import CopyButton from '@/lib/components/cams/CopyButton';
-import useFeatureFlags, { VIEW_TRUSTEE_ON_CASE } from '@/lib/hooks/UseFeatureFlags';
 import Tag, { UswdsTagStyle } from '@/lib/components/uswds/Tag';
 import { consolidationTypeMap } from '@/lib/utils/labels';
 import {
@@ -48,12 +47,11 @@ export default function CaseDetailHeader(props: Readonly<CaseDetailHeaderProps>)
   const judgeInformation = props.caseDetail?.judgeName;
   const appEl = document.querySelector('.App');
   const camsHeader = document.querySelector('.cams-header');
-  const featureFlags = useFeatureFlags();
 
   const modifyHeader = () => {
     if (camsHeader) {
       const caseDetailHeader = document.querySelector('.case-detail-header.fixed');
-      const caseDetailH1 = document.querySelector('.case-detail-header h1');
+      const caseDetailH1 = document.querySelector('.record-detail-header h1');
       if (caseDetailH1 && caseDetailH1.getBoundingClientRect().top < 0) {
         fix();
       } else if (
@@ -65,146 +63,81 @@ export default function CaseDetailHeader(props: Readonly<CaseDetailHeaderProps>)
     }
   };
 
-  function printH1() {
-    const displayTitle = composeCaseTitle(props.caseDetail);
-    return (
-      <h1 data-testid="case-detail-heading">
-        Case Details <span data-testid="case-detail-heading-title"> - {displayTitle}</span>
-      </h1>
-    );
-  }
-
-  function printH2() {
-    return (
-      <h2 className="case-number text-no-wrap" title="Case ID" aria-label="Case ID">
-        {props.caseId}{' '}
-        <CopyButton
-          id="header-case-id"
-          onClick={() => copyCaseNumber(props.caseId)}
-          title="Copy Case ID to clipboard"
-        />
-      </h2>
-    );
-  }
-
   function renderHeader() {
-    if (featureFlags[VIEW_TRUSTEE_ON_CASE]) {
-      return (
-        <div className="record-detail-header" data-testid="case-detail-header">
-          <div className="grid-row grid-gap-lg">
-            <div className="grid-col-12">
-              {props.isLoading && (
-                <h1 data-testid="case-detail-heading">Loading Case Details...</h1>
-              )}
-              {!props.isLoading && props.caseDetail && (
-                <div className="display-flex flex-align-center">
-                  {isLeadCase(props.caseDetail) && (
-                    <LeadCaseIcon title={getLeadCaseLabel(consolidationType)} />
-                  )}
-                  {isChildCase(props.caseDetail) && (
-                    <MemberCaseIcon title={getMemberCaseLabel(consolidationType)} />
-                  )}
-                  {isTransferredCase(props.caseDetail) && (
-                    <TransferredCaseIcon title="Transferred case" />
-                  )}
-                  <h1
-                    className="case-number text-no-wrap display-inline-block margin-right-1"
-                    title="Case ID"
-                    aria-label={`Case ID ${props.caseId}`}
-                    data-testid="case-detail-heading"
+    return (
+      <div className="record-detail-header" data-testid="case-detail-header">
+        <div className="grid-row grid-gap-lg">
+          <div className="grid-col-12">
+            {props.isLoading && <h1 data-testid="case-detail-heading">Loading Case Details...</h1>}
+            {!props.isLoading && props.caseDetail && (
+              <div className="display-flex flex-align-center">
+                {isLeadCase(props.caseDetail) && (
+                  <LeadCaseIcon title={getLeadCaseLabel(consolidationType)} />
+                )}
+                {isChildCase(props.caseDetail) && (
+                  <MemberCaseIcon title={getMemberCaseLabel(consolidationType)} />
+                )}
+                {isTransferredCase(props.caseDetail) && (
+                  <TransferredCaseIcon title="Transferred case" />
+                )}
+                <h1
+                  className="case-number text-no-wrap display-inline-block margin-right-1"
+                  title="Case ID"
+                  aria-label={`Case ID ${props.caseId}`}
+                  data-testid="case-detail-heading"
+                >
+                  {props.caseId}{' '}
+                  <CopyButton
+                    id="header-case-id"
+                    className="copy-button"
+                    onClick={() => copyCaseNumber(props.caseId)}
+                    title="Copy Case ID to clipboard"
+                  />
+                </h1>
+                <div className="tag-list">
+                  <Tag
+                    uswdsStyle={UswdsTagStyle.Primary}
+                    title="Court Name and District"
+                    id="court-name-and-district"
                   >
-                    {props.caseId}{' '}
-                    <CopyButton
-                      id="header-case-id"
-                      className="copy-button"
-                      onClick={() => copyCaseNumber(props.caseId)}
-                      title="Copy Case ID to clipboard"
-                    />
-                  </h1>
-                  <div className="tag-list">
-                    <Tag
-                      uswdsStyle={UswdsTagStyle.Primary}
-                      title="Court Name and District"
-                      id="court-name-and-district"
-                    >
-                      {courtInformation}
+                    {courtInformation}
+                  </Tag>
+                  {judgeInformation && (
+                    <Tag title="Judge" id="case-judge">
+                      <GavelIcon />
+                      {judgeInformation}
                     </Tag>
-                    {judgeInformation && (
-                      <Tag title="Judge" id="case-judge">
-                        <GavelIcon />
-                        {judgeInformation}
-                      </Tag>
-                    )}
-                    <Tag
-                      // className="text-ink"
-                      uswdsStyle={UswdsTagStyle.Warm}
-                      title="Case Chapter"
-                      id="case-chapter"
-                    >
-                      {chapterInformation}
-                    </Tag>
-                  </div>
+                  )}
+                  <Tag
+                    // className="text-ink"
+                    uswdsStyle={UswdsTagStyle.Warm}
+                    title="Case Chapter"
+                    id="case-chapter"
+                  >
+                    {chapterInformation}
+                  </Tag>
                 </div>
-              )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {!props.isLoading && (
+          <div className="grid-row grid-gap-lg" data-testid="h2-with-case-info">
+            <div className="grid-col">
+              <h2
+                className="case-number text-no-wrap"
+                title="Case title"
+                aria-label={`Case title ${composeCaseTitle(props.caseDetail)}`}
+                data-testid="case-detail-heading-title"
+              >
+                {composeCaseTitle(props.caseDetail)}
+              </h2>
             </div>
           </div>
-
-          {!props.isLoading && (
-            <div className="grid-row grid-gap-lg" data-testid="h2-with-case-info">
-              <div className="grid-col">
-                <h2
-                  className="case-number text-no-wrap"
-                  title="Case title"
-                  aria-label={`Case title ${composeCaseTitle(props.caseDetail)}`}
-                  data-testid="case-detail-heading-title"
-                >
-                  {composeCaseTitle(props.caseDetail)}
-                </h2>
-              </div>
-            </div>
-          )}
-        </div>
-      );
-    } else {
-      return (
-        <div className="case-detail-header" data-testid="case-detail-header">
-          <div className="grid-row grid-gap-lg">
-            <div className="grid-col-12">
-              {props.isLoading && (
-                <h1 data-testid="case-detail-heading">Loading Case Details...</h1>
-              )}
-              {!props.isLoading && props.caseDetail && printH1()}
-            </div>
-          </div>
-
-          {props.isLoading && (
-            <div className="grid-row grid-gap-lg" data-testid="loading-h2">
-              <div className="grid-col-12">{printH2()}</div>
-            </div>
-          )}
-
-          {!props.isLoading && (
-            <div className="grid-row grid-gap-lg" data-testid="h2-with-case-info">
-              <div className="grid-col-3">{printH2()}</div>
-              <div className="grid-col-5">
-                <h2
-                  className="court-name"
-                  title="Court Name and District"
-                  data-testid="court-name-and-district"
-                >
-                  {courtInformation}
-                </h2>
-              </div>
-              <div className="grid-col-3">
-                <h2 className="case-chapter" title="Case Chapter" data-testid="case-chapter">
-                  {chapterInformation}
-                </h2>
-              </div>
-            </div>
-          )}
-        </div>
-      );
-    }
+        )}
+      </div>
+    );
   }
 
   useEffect(() => {
