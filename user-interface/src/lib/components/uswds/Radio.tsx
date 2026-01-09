@@ -22,15 +22,27 @@ function Radio_(props: RadioProps, ref: React.Ref<RadioRef>) {
   const [checkedState, setCheckedState] = useState<boolean>(props.checked ?? false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Controlled mode: when props.checked is provided, derive from it
   useEffect(() => {
-    if (props.checked !== undefined) {
-      setCheckedState(props.checked);
+    setCheckedState(props.checked ?? false);
+    if (inputRef.current) {
+      inputRef.current.checked = props.checked ?? false;
     }
   }, [props.checked]);
 
+  // Sync checkedState when browser unchecks this radio (because another radio in the group was selected)
+  useEffect(() => {
+    const input = inputRef.current!;
+
+    const handleNativeChange = () => {
+      setCheckedState(input.checked);
+    };
+
+    input.addEventListener('change', handleNativeChange);
+    return () => input.removeEventListener('change', handleNativeChange);
+  }, []);
+
   function isChecked() {
-    return checkedState;
+    return inputRef.current!.checked;
   }
 
   function disable(value: boolean) {
@@ -38,17 +50,23 @@ function Radio_(props: RadioProps, ref: React.Ref<RadioRef>) {
   }
 
   function check(value: boolean) {
-    setCheckedState(value);
+    if (inputRef.current) {
+      inputRef.current.checked = value;
+    }
   }
 
   function handleOnClick(
     _ev: React.MouseEvent<HTMLButtonElement> | React.KeyboardEvent<HTMLButtonElement>,
   ) {
     // clicking a radio button should always select it.  You should not be able to unselect by clicking a selected radio.
+    if (inputRef.current?.checked !== undefined) {
+      inputRef.current.checked = true;
+    }
+
     setCheckedState(true);
 
     if (props.onChange && inputRef.current?.value) {
-      props.onChange(inputRef.current.value);
+      props.onChange(inputRef.current?.value);
     }
   }
 
