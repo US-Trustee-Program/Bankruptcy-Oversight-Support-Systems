@@ -55,6 +55,10 @@ function Radio_(props: RadioProps, ref: React.Ref<RadioRef>) {
     }
   }
 
+  function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setCheckedState(e.target.checked);
+  }
+
   function handleOnClick(
     _ev: React.MouseEvent<HTMLButtonElement> | React.KeyboardEvent<HTMLButtonElement>,
   ) {
@@ -67,6 +71,17 @@ function Radio_(props: RadioProps, ref: React.Ref<RadioRef>) {
 
     if (props.onChange && inputRef.current?.value) {
       props.onChange(inputRef.current?.value);
+    }
+
+    // Manually trigger change events on other radios in the same group to update their aria-checked
+    if (inputRef.current) {
+      const form = inputRef.current.form || document;
+      const radios = form.querySelectorAll(`input[type="radio"][name="${props.name}"]`);
+      radios.forEach((radio) => {
+        if (radio !== inputRef.current) {
+          radio.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      });
     }
   }
 
@@ -92,7 +107,7 @@ function Radio_(props: RadioProps, ref: React.Ref<RadioRef>) {
         value={props.value}
         checked={checkedState}
         required={props.required}
-        onChange={(e) => setCheckedState(e.target.checked)}
+        onChange={handleInputChange}
         tabIndex={-1}
         ref={inputRef}
       />
@@ -104,7 +119,7 @@ function Radio_(props: RadioProps, ref: React.Ref<RadioRef>) {
           onClick={handleOnClick}
           onKeyDown={handleKeyDown}
           role="radio"
-          aria-checked={checkedState}
+          aria-checked={checkedState ? 'true' : 'false'}
         >
           {props.label}
         </Button>
