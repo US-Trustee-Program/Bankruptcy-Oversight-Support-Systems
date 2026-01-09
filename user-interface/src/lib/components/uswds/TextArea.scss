@@ -1,3 +1,12 @@
+@import '@/styles/abstracts/colors';
+
 .textarea-container {
   padding-bottom: 1rem;
+}
+
+.usa-form-group {
+  label:has(+ .usa-textarea-group textarea[required])::after {
+    content: ' *';
+    color: $secondary-dark;
+  }
 }

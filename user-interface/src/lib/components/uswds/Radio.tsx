@@ -1,6 +1,8 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { RadioRef } from '../../type-declarations/input-fields';
 import Button, { UswdsButtonStyle } from './Button';
+import './forms.scss';
+import './Radio.scss';
 
 export interface RadioProps {
   id: string;
@@ -29,8 +31,7 @@ function Radio_(props: RadioProps, ref: React.Ref<RadioRef>) {
 
   // Sync checkedState when browser unchecks this radio (because another radio in the group was selected)
   useEffect(() => {
-    const input = inputRef.current;
-    if (!input) return;
+    const input = inputRef.current!;
 
     const handleNativeChange = () => {
       setCheckedState(input.checked);
@@ -41,7 +42,7 @@ function Radio_(props: RadioProps, ref: React.Ref<RadioRef>) {
   }, []);
 
   function isChecked() {
-    return inputRef.current?.checked ?? false;
+    return inputRef.current!.checked;
   }
 
   function disable(value: boolean) {

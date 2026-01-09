@@ -1,4 +1,5 @@
 import './forms.scss';
+import './Input.scss';
 import React, {
   forwardRef,
   useEffect,

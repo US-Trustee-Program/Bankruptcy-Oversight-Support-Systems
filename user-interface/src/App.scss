@@ -138,6 +138,11 @@ body {
   justify-content: right;
 }
 
+button.spaced-button {
+  margin-left: 1rem;
+  margin-right: 1rem;
+}
+
 @media screen and (max-width: 800px) {
   .App {
     .body {

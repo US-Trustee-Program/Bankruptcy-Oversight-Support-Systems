@@ -1,4 +1,5 @@
 import './forms.scss';
+import './RadioGroup.scss';
 import { PropsWithChildren, ReactElement, useRef } from 'react';
 
 export interface RadioGroupProps extends PropsWithChildren {
@@ -32,10 +33,8 @@ export const RadioGroup = (props: RadioGroupProps) => {
 
     ev.preventDefault();
 
-    if (!fieldsetRef.current) return;
-
     const allRadios = Array.from(
-      fieldsetRef.current.querySelectorAll<HTMLElement>('[role="radio"]'),
+      fieldsetRef.current!.querySelectorAll<HTMLElement>('[role="radio"]'),
     );
     const radios = allRadios.filter((radio) => {
       const element = radio as HTMLButtonElement | HTMLInputElement;

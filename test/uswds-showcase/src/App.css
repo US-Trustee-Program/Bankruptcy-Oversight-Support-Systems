@@ -51,6 +51,14 @@
   font-size: 2rem;
 }
 
+.floating-alert {
+  position: fixed;
+  top: 2rem;
+  right: 2rem;
+  z-index: 9999;
+  max-width: 400px;
+}
+
 body {
   margin: 0;
   font-family: 'Source Sans Pro', 'Helvetica Neue', 'Helvetica', 'Roboto', 'Arial', sans-serif;
