@@ -6,10 +6,14 @@ FROM node:22-alpine
 ARG FUNCTION_APP
 WORKDIR /build
 
-# Copy package files for the specific function app
-COPY function-apps/${FUNCTION_APP}/package.json .
+# Copy package files for the specific function app (build context is workspace root)
+COPY backend/function-apps/${FUNCTION_APP}/package.json .
+# Copy root package-lock.json for reproducible npm ci installs
+COPY package-lock.json .
 
 # Install dependencies (will build native modules for Linux)
-RUN npm install --production
+# Use npm ci for reproducible, lockfile-driven installs
+# NOTE: Flags must match pack.sh for consistency between Linux and Podman builds
+RUN npm ci --production --ignore-scripts=false --workspaces=false
 
 # Output will be in /build/node_modules
