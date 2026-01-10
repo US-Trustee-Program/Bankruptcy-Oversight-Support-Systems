@@ -6,13 +6,15 @@ import * as path from 'path';
  * These are copied manually during the pack step.
  */
 export const EXTERNAL_DEPENDENCIES = [
-  // Azure SDK packages - keep external to avoid bundling large SDKs
-  '@azure/*',
-  'applicationinsights',
-  // Native modules that can't be bundled
+  // All third-party packages - let Azure install them on Linux during deployment
+  // This avoids platform-specific binary issues with native modules
+  '@azure/functions',
   'mssql',
   'mongodb',
-  // Node.js built-ins are automatically external
+  'applicationinsights',
+  'dotenv',
+  'express',
+  // Only our own code (@common via path aliases) will be bundled
 ];
 
 /**
