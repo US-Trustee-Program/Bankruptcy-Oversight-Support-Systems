@@ -11,20 +11,23 @@ PACK_TEMP_DIR="/tmp/build/$1"
 echo "Creating archive $PACK_TEMP_DIR/$FILE_NAME.zip"
 
 # Detect OS and build node_modules accordingly
+# NOTE: This script is called from backend/function-apps/<app> directory
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
   # Running on Linux (GitHub Actions CI) - build dependencies directly
+  # We're already in backend/function-apps/<app>, just install here
+  # Use --workspaces=false to disable workspace linking and force local node_modules
   echo "Building dependencies on Linux (native)..."
-  cd "../../function-apps/$1" || exit
-  npm install --production --ignore-scripts=false
-  cd ../..
+  npm install --production --ignore-scripts=false --workspaces=false
 elif [[ "$OSTYPE" == "darwin"* ]]; then
   # Running on macOS - use Podman/Docker to build for Linux
   echo "Building dependencies for Linux using Podman..."
-  cd ../..
+  # Go to backend/ directory to run Podman build (Dockerfile.build is there)
+  cd ../.. || exit
   podman build -t "cams-$1-builder:latest" -f Dockerfile.build --build-arg "FUNCTION_APP=$1" .
   CONTAINER_ID=$(podman create "cams-$1-builder:latest")
   podman cp "$CONTAINER_ID:/build/node_modules" "function-apps/$1/"
   podman rm "$CONTAINER_ID"
+  # Return to function app directory
   cd "function-apps/$1" || exit
 else
   echo "Error: Unsupported OS type: $OSTYPE"
