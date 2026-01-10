@@ -10,5 +10,13 @@
     "pack": "../../pack.sh dataflows",
     "prestart": "npm run build && cp ../../.env . && (cp ../../dev-users.json . 2>/dev/null || true)",
     "start": "func start --javascript"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.10.0",
+    "mongodb": "^6.12.0",
+    "mssql": "^11.0.1",
+    "dotenv": "^16.4.7",
+    "express": "^5.2.1",
+    "applicationinsights": "^3.4.0"
   }
 }
