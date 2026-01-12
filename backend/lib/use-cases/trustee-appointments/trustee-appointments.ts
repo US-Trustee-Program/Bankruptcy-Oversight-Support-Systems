@@ -2,11 +2,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteeAppointmentsRepository, TrusteesRepository } from '../gateways.types';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { getTrusteeAppointmentsRepository, getTrusteesRepository } from '../../factory';
-import {
-  AppointmentStatus,
-  TrusteeAppointment,
-  TrusteeAppointmentInput,
-} from '@common/cams/trustee-appointments';
+import { TrusteeAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { CourtsUseCase } from '../courts/courts';
 import { CourtDivisionDetails } from '@common/cams/courts';
@@ -15,8 +11,9 @@ import { CamsUserReference } from '@common/cams/users';
 import {
   TrusteeAppointmentHistory,
   TrusteeHistory,
-  ChapterType,
+  AppointmentChapterType,
   AppointmentType,
+  AppointmentStatus,
 } from '@common/cams/trustees';
 import { Creatable } from '../../adapters/types/persistence.gateway';
 import DateHelper from '@common/date-helper';
@@ -24,7 +21,7 @@ import DateHelper from '@common/date-helper';
 const MODULE_NAME = 'TRUSTEE-APPOINTMENTS-USE-CASE';
 
 type AppointmentSnapshot = {
-  chapter: ChapterType;
+  chapter: AppointmentChapterType;
   appointmentType: AppointmentType;
   courtId: string;
   divisionCode: string;
