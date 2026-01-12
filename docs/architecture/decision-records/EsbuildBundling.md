@@ -39,19 +39,19 @@ This approach had several limitations:
 
 We migrated from tsc to esbuild for building the backend Azure Functions applications. The new build strategy:
 
-1. **Bundle application code** - All TypeScript source files and `@common/*` path alias imports are bundled into consolidated JavaScript files using esbuild
-2. **External dependencies** - Third-party npm packages (especially those with native modules like `mongodb`, `mssql`) remain external and are installed separately via npm
-3. **Shared configuration** - Common esbuild options are defined in `backend/esbuild-shared.mjs` and imported by function app build configs
-4. **Automatic entry point discovery** - Build configuration automatically finds all `*.function.ts` files as entry points
-5. **Preserve Azure Functions structure** - Output maintains the directory structure required by Azure Functions v4 programming model
+1. **Bundle application code** - All TypeScript source files and `@common/*` path alias imports are bundled into a single consolidated JavaScript file using esbuild
+2. **Single entry point** - Uses `index.ts` that imports all function modules, eliminating code duplication across functions
+3. **External dependencies** - Third-party npm packages (especially those with native modules like `mongodb`, `mssql`) remain external and are installed separately via npm
+4. **Shared configuration** - Common esbuild options are defined in `backend/esbuild-shared.mjs` and imported by function app build configs
 
 ### Build Configuration
 
-Each function app has an `esbuild.config.mjs` that:
-- Imports shared configuration from `backend/esbuild-shared.mjs`
-- Automatically discovers `*.function.ts` files as entry points
-- Adds the main entry point (`index.ts` or `dataflows.ts`)
-- Outputs to `dist/` directory with CommonJS format
+The API function app uses a single entry point strategy:
+- `backend/function-apps/api/index.ts` imports all function modules
+- Each function module registers itself via `app.http()` when imported
+- `esbuild.config.mjs` bundles everything into a single `dist/index.js`
+- Shared code (backend lib, Azure utilities, @common/* imports) is included exactly once
+- Prevents very large deployment artifacts by eliminating code duplication
 
 ### Integration with Packaging
 
@@ -70,8 +70,9 @@ ACCEPTED
 ### Positive
 
 1. **Solves path alias resolution** - esbuild natively resolves and bundles `@common/*` path aliases, eliminating the runtime import errors that tsc alone couldn't handle
-2. **Cleaner imports** - Enables simpler imports using path aliases instead of deep relative paths
-3. **Clear bundling strategy** - Application code is bundled, external dependencies remain separate
+2. **Eliminates code duplication** - Single entry point bundles shared code once, preventing very large deployment artifacts
+3. **Cleaner imports** - Enables simpler imports using path aliases instead of deep relative paths
+4. **Faster builds** - Single bundle build is significantly faster than multiple entry points
 
 ### Negative
 
@@ -81,6 +82,7 @@ ACCEPTED
 ## Related Documentation
 
 - `backend/esbuild-shared.mjs` - Shared esbuild configuration
+- `backend/function-apps/api/index.ts` - Single entry point that imports all functions
 - `backend/function-apps/api/esbuild.config.mjs` - API function app build config
 - `backend/function-apps/dataflows/esbuild.config.mjs` - Dataflows function app build config
 - `backend/pack.sh` - Packaging script with OS detection
