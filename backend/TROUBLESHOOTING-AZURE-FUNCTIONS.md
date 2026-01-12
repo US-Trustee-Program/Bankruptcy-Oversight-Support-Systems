@@ -498,22 +498,43 @@ export const EXTERNAL_DEPENDENCIES = [
 ### pack.sh Logic Flow
 
 ```bash
-# Detect OS
+# Verify we're in the correct directory
+if [[ ! -f "package.json" ]] || [[ ! -d "../../../.git" ]]; then
+  echo "Error: pack.sh must be run from backend/function-apps/<app> directory"
+  exit 1
+fi
+
+# Detect OS and build node_modules accordingly
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-  # CI/CD path: Already on Linux
-  cd function-apps/<app>
-  npm install --production
+  # CI/CD path: Build on Linux using root package-lock.json
+  cd ../../..  # Go to workspace root
+  # Copy package.json and root package-lock.json to temp directory
+  BUILD_TEMP="/tmp/npm-ci-<app>"
+  cp "backend/function-apps/<app>/package.json" "$BUILD_TEMP/"
+  cp package-lock.json "$BUILD_TEMP/"
+  # Run npm ci with root lockfile for consistency
+  cd "$BUILD_TEMP"
+  npm ci --production --ignore-scripts=false --workspaces=false
+  # Move node_modules to function app
+  mv node_modules backend/function-apps/<app>/
 
 elif [[ "$OSTYPE" == "darwin"* ]]; then
-  # Local development: Use Podman to build on Linux
-  podman build -t cams-<app>-builder:latest -f Dockerfile.build \
+  # Local development: Use Podman/Docker to build on Linux
+  cd ../../..  # Go to workspace root
+  # Detect container runtime (podman or docker)
+  podman build -t cams-<app>-builder:latest -f backend/Dockerfile.build \
     --build-arg FUNCTION_APP=<app> .
-  podman cp <container>:/build/node_modules function-apps/<app>/
+  podman cp <container>:/build/node_modules backend/function-apps/<app>/
 fi
 
 # Create zip with dist/ + node_modules/
 zip -r <app>.zip ./dist ./node_modules ./package.json ./host.json
 ```
+
+**Key points:**
+- Uses root `package-lock.json` for all environments (Linux CI, macOS, Docker)
+- `npm ci --workspaces=false` creates local node_modules without workspace symlinks
+- Linux and Docker paths produce identical dependency trees
 
 ### Deployment Zip Contents
 
