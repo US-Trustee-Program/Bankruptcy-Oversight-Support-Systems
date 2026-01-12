@@ -207,7 +207,7 @@ describe('_Api2 functions', async () => {
     const baseOrder = MockData.getConsolidationOrder();
     const dirtyConsolidationOrder: ConsolidationOrderActionRejection = {
       ...baseOrder,
-      rejectedCases: [baseOrder.childCases[0].caseId],
+      rejectedCases: [baseOrder.memberCases[0].caseId],
       reason: inputBlockedFromApi,
     };
 
@@ -221,13 +221,13 @@ describe('_Api2 functions', async () => {
     const baseOrder = MockData.getConsolidationOrder();
     const dirtyConsolidationOrder: ConsolidationOrderActionRejection = {
       consolidationId: baseOrder.consolidationId,
-      rejectedCases: [baseOrder.childCases[0].caseId],
+      rejectedCases: [baseOrder.memberCases[0].caseId],
       reason: inputPassedThroughApi,
     };
 
     const cleanConsolidationOrder = {
       consolidationId: baseOrder.consolidationId,
-      rejectedCases: [baseOrder.childCases[0].caseId],
+      rejectedCases: [baseOrder.memberCases[0].caseId],
       reason: inputPassedThroughApi,
     };
 
@@ -241,13 +241,13 @@ describe('_Api2 functions', async () => {
     const baseOrder = MockData.getConsolidationOrder();
     const consolidationOrderWithUndefinedReason: ConsolidationOrderActionRejection = {
       consolidationId: baseOrder.consolidationId,
-      rejectedCases: [baseOrder.childCases[0].caseId],
+      rejectedCases: [baseOrder.memberCases[0].caseId],
       reason: undefined,
     };
 
     const expectedOrderWithEmptyReason = {
       consolidationId: baseOrder.consolidationId,
-      rejectedCases: [baseOrder.childCases[0].caseId],
+      rejectedCases: [baseOrder.memberCases[0].caseId],
       reason: '',
     };
 

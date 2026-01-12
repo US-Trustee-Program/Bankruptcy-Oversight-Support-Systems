@@ -199,13 +199,13 @@ describe('ConsolidationOrderAccordion tests', () => {
     renderWithProps({ order: pendingOrder });
     const content = findAccordionContent(pendingOrder.id!, false);
 
-    const childCaseTable = screen.getByTestId(`case-list-${pendingOrder.id}`);
-    expect(childCaseTable).toBeInTheDocument();
+    const memberCaseTable = screen.getByTestId(`case-list-${pendingOrder.id}`);
+    expect(memberCaseTable).toBeInTheDocument();
 
-    pendingOrder.childCases.forEach((childCase) => {
-      expect(content?.textContent).toContain(childCase.caseTitle);
-      expect(content?.textContent).toContain(formatDate(childCase.dateFiled));
-      childCase.docketEntries.forEach((de) => {
+    pendingOrder.memberCases.forEach((memberCase) => {
+      expect(content?.textContent).toContain(memberCase.caseTitle);
+      expect(content?.textContent).toContain(formatDate(memberCase.dateFiled));
+      memberCase.docketEntries.forEach((de) => {
         expect(content?.textContent).toContain(de.summaryText);
         expect(content?.textContent).toContain(de.fullText);
       });
@@ -220,8 +220,8 @@ describe('ConsolidationOrderAccordion tests', () => {
     const leadCaseLink = screen.queryByTestId(`lead-case-number-link`);
     expect(leadCaseLink).toBeInTheDocument();
 
-    order.childCases.forEach((bCase, idx) => {
-      const tableRow = screen.queryByTestId(`order-${order.id}-child-cases-row-${idx}`);
+    order.memberCases.forEach((bCase, idx) => {
+      const tableRow = screen.queryByTestId(`order-${order.id}-member-cases-row-${idx}`);
       expect(tableRow).toBeInTheDocument();
       expect(tableRow?.textContent).toContain(bCase.caseTitle);
     });
@@ -238,7 +238,7 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(blockQuote?.textContent).toContain(order.reason);
     }
 
-    order.childCases.forEach((bCase, idx) => {
+    order.memberCases.forEach((bCase, idx) => {
       const tableRow = screen.queryByTestId(`${order.id}-case-list-row-${idx}-case-info`);
       expect(tableRow).toBeInTheDocument();
       expect(tableRow?.textContent).toContain(bCase.caseTitle);
@@ -462,7 +462,7 @@ describe('ConsolidationOrderAccordion tests', () => {
   });
 
   test('should call orderUpdate for approval', async () => {
-    const leadCase = order.childCases[0];
+    const leadCase = order.memberCases[0];
     const expectedOrderApproved: ConsolidationOrder = {
       ...order,
       leadCase,

@@ -6,7 +6,7 @@ import { OrderStatus, TransferOrder } from './orders';
 export interface ConsolidationOrderSummary {
   status: OrderStatus;
   leadCase?: CaseSummary;
-  childCases: Array<CaseSummary>;
+  memberCases: Array<CaseSummary>;
   reason?: string;
 }
 

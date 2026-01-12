@@ -42,7 +42,7 @@ describe('Consolidations Function tests', () => {
       },
       body: {
         ...mockConsolidationOrder,
-        rejectedCases: [mockConsolidationOrder.childCases[0]],
+        rejectedCases: [mockConsolidationOrder.memberCases[0]],
       },
     };
     const request = createMockAzureFunctionRequest(requestProps);

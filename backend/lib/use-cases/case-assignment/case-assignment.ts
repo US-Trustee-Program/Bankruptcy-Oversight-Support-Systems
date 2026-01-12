@@ -55,17 +55,17 @@ export class CaseAssignmentUseCase {
     }
     await this.assignTrialAttorneys(context, caseId, newAssignees, role);
 
-    // Reassign all child cases if this is a joint administration lead case.
+    // Reassign all member cases if this is a joint administration lead case.
     const consolidationReferences = await casesRepo.getConsolidation(caseId);
-    const childCaseIds = consolidationReferences
+    const memberCaseIds = consolidationReferences
       .filter(
         (reference) =>
           reference.documentType === 'CONSOLIDATION_FROM' &&
           reference.consolidationType === 'administrative',
       )
       .map((reference) => reference.otherCase.caseId);
-    for (const childCaseId of childCaseIds) {
-      await this.assignTrialAttorneys(context, childCaseId, newAssignees, role);
+    for (const memberCaseId of memberCaseIds) {
+      await this.assignTrialAttorneys(context, memberCaseId, newAssignees, role);
     }
   }
 

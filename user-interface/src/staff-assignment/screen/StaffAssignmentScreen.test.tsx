@@ -80,7 +80,7 @@ describe('StaffAssignmentScreen', () => {
       offset: DEFAULT_SEARCH_OFFSET,
       divisionCodes: getCourtDivisionCodes(user),
       chapters: ['15'],
-      excludeChildConsolidations: true,
+      excludeMemberConsolidations: true,
       excludeClosedCases: true,
     };
 
@@ -141,7 +141,7 @@ describe('StaffAssignmentScreen', () => {
       offset: DEFAULT_SEARCH_OFFSET,
       divisionCodes: getCourtDivisionCodes(user),
       chapters: expect.arrayContaining(['11', '12', '15']),
-      excludeChildConsolidations: true,
+      excludeMemberConsolidations: true,
       excludeClosedCases: true,
     };
 
@@ -204,7 +204,7 @@ describe('StaffAssignmentScreen', () => {
       offset: DEFAULT_SEARCH_OFFSET,
       divisionCodes: getCourtDivisionCodes(user),
       includeOnlyUnassigned: true,
-      excludeChildConsolidations: true,
+      excludeMemberConsolidations: true,
       excludeClosedCases: true,
       chapters: ['15'],
     };
