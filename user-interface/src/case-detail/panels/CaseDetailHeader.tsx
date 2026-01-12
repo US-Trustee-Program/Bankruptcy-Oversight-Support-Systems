@@ -50,8 +50,8 @@ export default function CaseDetailHeader(props: Readonly<CaseDetailHeaderProps>)
 
   const modifyHeader = () => {
     if (camsHeader) {
-      const recordDetailHeader = document.querySelector('.record-detail-header.fixed');
-      const caseDetailH1 = document.querySelector('.record-detail-header h1');
+      const recordDetailHeader = document.querySelector('.case-detail-header.fixed');
+      const caseDetailH1 = document.querySelector('.case-detail-header h1');
       if (caseDetailH1 && caseDetailH1.getBoundingClientRect().top < 0) {
         fix();
       } else if (
@@ -66,7 +66,7 @@ export default function CaseDetailHeader(props: Readonly<CaseDetailHeaderProps>)
 
   function renderHeader() {
     return (
-      <div className="record-detail-header" data-testid="case-detail-header">
+      <div className="case-detail-header" data-testid="case-detail-header">
         <div className="grid-row grid-gap-lg">
           <div className="grid-col-12">
             {props.isLoading && <h1 data-testid="case-detail-heading">Loading Case Details...</h1>}
@@ -155,7 +155,7 @@ export default function CaseDetailHeader(props: Readonly<CaseDetailHeaderProps>)
     <>
       {isFixed && (
         <>
-          <div className="record-detail-header fixed" data-testid="case-detail-fixed-header">
+          <div className="case-detail-header fixed" data-testid="case-detail-fixed-header">
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-4">
                 <h3
