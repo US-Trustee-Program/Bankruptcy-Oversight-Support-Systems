@@ -8,12 +8,16 @@ WORKDIR /build
 
 # Copy package files for the specific function app (build context is workspace root)
 COPY backend/function-apps/${FUNCTION_APP}/package.json .
-# Copy root package-lock.json for reproducible npm ci installs
+
+# IMPORTANT: Always use root package-lock.json for consistency
+# Individual function apps do NOT have their own package-lock.json files
+# This ensures identical dependency resolution across all environments
 COPY package-lock.json .
 
 # Install dependencies (will build native modules for Linux)
 # Use npm ci for reproducible, lockfile-driven installs
-# NOTE: Flags must match pack.sh for consistency between Linux and Podman builds
+# Use --workspaces=false to create local node_modules (no symlinks)
+# NOTE: These flags must match pack.sh Linux path for consistency
 RUN npm ci --production --ignore-scripts=false --workspaces=false
 
 # Output will be in /build/node_modules
