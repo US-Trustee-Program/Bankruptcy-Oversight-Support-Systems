@@ -1,12 +1,12 @@
 import { randomUUID } from 'crypto';
-import { CamsUser, CamsUserGroup, CamsUserReference } from '../../../../common/src/cams/users';
+import { CamsUser, CamsUserGroup, CamsUserReference } from '@common/cams/users';
 import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
 import { UserGroupGateway, UserGroupGatewayConfig } from '../../adapters/types/authorization';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
+import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
 import { NotFoundError } from '../../common-errors/not-found-error';
-import MockUsers from '../../../../common/src/cams/test-utilities/mock-user';
-import { getCamsUserReference } from '../../../../common/src/cams/session';
+import MockUsers from '@common/cams/test-utilities/mock-user';
+import { getCamsUserReference } from '@common/cams/session';
 
 const MODULE_NAME = 'MOCK-USER-GROUP-GATEWAY';
 

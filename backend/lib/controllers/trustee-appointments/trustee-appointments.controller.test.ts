@@ -2,12 +2,12 @@ import { vi, type Mocked, type MockedClass } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteeAppointmentsController } from './trustee-appointments.controller';
 import { TrusteeAppointmentsUseCase } from '../../use-cases/trustee-appointments/trustee-appointments';
-import { CamsUserReference } from '../../../../common/src/cams/users';
-import { CamsRole } from '../../../../common/src/cams/roles';
+import { CamsUserReference } from '@common/cams/users';
+import { CamsRole } from '@common/cams/roles';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { NotFoundError } from '../../common-errors/not-found-error';
-import { TrusteeAppointmentInput } from '../../../../common/src/cams/trustee-appointments';
+import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 
 // Mock the use case
 vi.mock('../../use-cases/trustee-appointments/trustee-appointments');

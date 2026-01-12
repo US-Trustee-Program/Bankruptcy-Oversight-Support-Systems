@@ -9,8 +9,8 @@ import {
   BankruptcySoftwareList,
   BankruptcySoftwareListItem,
   BankListItem,
-} from '../../../../common/src/cams/lists';
-import { Creatable } from '../../../../common/src/cams/creatable';
+} from '@common/cams/lists';
+import { Creatable } from '@common/cams/creatable';
 
 describe('ListsUseCase tests', () => {
   let useCase: ListsUseCase;

@@ -347,6 +347,28 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
       });
     });
 
+    test('should show joint administration warning for member cases', async () => {
+      const caseDetail: CaseDetail = { ...BASE_TEST_CASE_DETAIL, consolidation: [CONSOLIDATE_TO] };
+      const onCaseAssignment = vi.fn();
+      renderWithProps({
+        caseDetail,
+        onCaseAssignment,
+      });
+
+      const assignedStaffEditButton = screen.getByTestId('open-modal-button');
+      fireEvent.click(assignedStaffEditButton);
+
+      const modal = screen.getByTestId(`modal-${assignmentModalId}`);
+      await waitFor(() => {
+        expect(modal).toBeVisible();
+      });
+
+      const memberCaseMessage = screen.getByTestId('alert-message');
+      expect(memberCaseMessage).toHaveTextContent(
+        'The assignees for this case will not match the lead case.',
+      );
+    });
+
     test('should not show joint administration warning for lead cases', async () => {
       const onCaseAssignment = vi.fn();
       renderWithProps({ onCaseAssignment });
@@ -359,8 +381,8 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
         expect(modal).toBeVisible();
       });
 
-      const childCaseMessage = screen.queryByTestId('alert-message');
-      expect(childCaseMessage).not.toBeInTheDocument();
+      const memberCaseMessage = screen.queryByTestId('alert-message');
+      expect(memberCaseMessage).not.toBeInTheDocument();
     });
   });
 });

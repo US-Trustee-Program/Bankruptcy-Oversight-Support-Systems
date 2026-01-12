@@ -1,8 +1,8 @@
 import * as jwt from 'jsonwebtoken';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getUser } from './mock-oauth2-gateway';
-import { CamsSession } from '../../../../common/src/cams/session';
-import { CamsJwtClaims } from '../../../../common/src/cams/jwt';
+import { CamsSession } from '@common/cams/session';
+import { CamsJwtClaims } from '@common/cams/jwt';
 
 const cache = new Map<string, CamsSession>();
 

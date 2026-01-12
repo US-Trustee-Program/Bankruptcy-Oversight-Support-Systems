@@ -1,9 +1,9 @@
 import { ApplicationContext } from '../../types/basic';
-import { createAuditRecord } from '../../../../../common/src/cams/auditable';
+import { createAuditRecord } from '@common/cams/auditable';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { TrusteesRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
-import { CamsUserReference } from '../../../../../common/src/cams/users';
+import { CamsUserReference } from '@common/cams/users';
 import QueryBuilder from '../../../query/query-builder';
 import { Creatable } from '../../types/persistence.gateway';
 import {
@@ -11,7 +11,7 @@ import {
   TrusteeHistory,
   TrusteeInput,
   TrusteeOversightAssignment,
-} from '../../../../../common/src/cams/trustees';
+} from '@common/cams/trustees';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 
 const MODULE_NAME = 'TRUSTEES-MONGO-REPOSITORY';

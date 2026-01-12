@@ -4,18 +4,18 @@ import {
   Transfer,
   TransferFrom,
   TransferTo,
-} from '../../../../../common/src/cams/events';
+} from '@common/cams/events';
 import { ApplicationContext } from '../../types/basic';
-import { CaseHistory } from '../../../../../common/src/cams/history';
+import { CaseHistory } from '@common/cams/history';
 import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
 import { CamsPaginationResponse, CasesRepository } from '../../../use-cases/gateways.types';
 import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
-import { SyncedCase } from '../../../../../common/src/cams/cases';
-import { CasesSearchPredicate } from '../../../../../common/src/api/search';
+import { SyncedCase } from '@common/cams/cases';
+import { CasesSearchPredicate } from '@common/api/search';
 import { CamsError } from '../../../common-errors/cams-error';
 import QueryPipeline from '../../../query/query-pipeline';
-import { CaseAssignment } from '../../../../../common/src/cams/assignments';
+import { CaseAssignment } from '@common/cams/assignments';
 
 const MODULE_NAME = 'CASES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'cases';
@@ -214,7 +214,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
   }
 
-  async getConsolidationChildCaseIds(predicate: CasesSearchPredicate): Promise<string[]> {
+  async getConsolidationMemberCaseIds(predicate: CasesSearchPredicate): Promise<string[]> {
     const doc = using<ConsolidationTo>();
     try {
       const conditions: ConditionOrConjunction<ConsolidationTo>[] = [];
@@ -234,17 +234,17 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       const query = and(...conditions);
 
       const adapter = this.getAdapter<ConsolidationTo>();
-      const childConsolidations = await adapter.find(query);
+      const memberConsolidations = await adapter.find(query);
 
-      const childConsolidationCaseIds: string[] = [];
-      for (const consolidationTo of childConsolidations) {
-        childConsolidationCaseIds.push(consolidationTo.caseId);
+      const memberConsolidationCaseIds: string[] = [];
+      for (const consolidationTo of memberConsolidations) {
+        memberConsolidationCaseIds.push(consolidationTo.caseId);
       }
-      return childConsolidationCaseIds;
+      return memberConsolidationCaseIds;
     } catch (originalError) {
       const error = getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: {
-          message: `Failed to retrieve child consolidations${predicate.caseIds ? ' for ' + predicate.caseIds.join(', ') : ''}.`,
+          message: `Failed to retrieve member consolidations${predicate.caseIds ? ' for ' + predicate.caseIds.join(', ') : ''}.`,
           module: MODULE_NAME,
         },
       });
@@ -273,7 +273,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       conditions.push(doc('courtDivisionCode').contains(predicate.divisionCodes));
     }
 
-    if (predicate.excludeChildConsolidations === true && predicate.excludedCaseIds?.length > 0) {
+    if (predicate.excludeMemberConsolidations === true && predicate.excludedCaseIds?.length > 0) {
       conditions.push(doc('caseId').notContains(predicate.excludedCaseIds));
     }
 
@@ -317,7 +317,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     } catch (originalError) {
       const error = getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: {
-          message: `Failed to retrieve child consolidations${predicate.caseIds ? ' for ' + predicate.caseIds.join(', ') : ''}.`,
+          message: `Failed to retrieve member consolidations${predicate.caseIds ? ' for ' + predicate.caseIds.join(', ') : ''}.`,
           module: MODULE_NAME,
         },
       });

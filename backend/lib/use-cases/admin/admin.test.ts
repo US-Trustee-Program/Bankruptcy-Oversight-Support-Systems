@@ -1,19 +1,19 @@
 import { vi } from 'vitest';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { AdminUseCase } from './admin';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { PrivilegedIdentityUser } from '../../../../common/src/cams/users';
+import { PrivilegedIdentityUser } from '@common/cams/users';
 import { randomUUID } from 'node:crypto';
-import { getCamsUserReference } from '../../../../common/src/cams/session';
+import { getCamsUserReference } from '@common/cams/session';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { NotFoundError } from '../../common-errors/not-found-error';
-import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
+import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
 import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
 import { MockOfficesGateway } from '../../testing/mock-gateways/mock.offices.gateway';
 import { BadRequestError } from '../../common-errors/bad-request';
-import DateHelper from '../../../../common/src/date-helper';
-import { SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditable';
+import DateHelper from '@common/date-helper';
+import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import MockUserGroupGateway from '../../testing/mock-gateways/mock-user-group-gateway';
 
 describe('Admin Use Case', () => {

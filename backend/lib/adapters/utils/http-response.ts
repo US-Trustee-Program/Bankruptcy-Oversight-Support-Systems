@@ -1,5 +1,5 @@
-import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
-import { ResponseBody } from '../../../../common/src/api/response';
+import HttpStatusCodes from '@common/api/http-status-codes';
+import { ResponseBody } from '@common/api/response';
 
 export const commonHeaders: Record<string, string> = {
   'Content-Type': 'application/json',

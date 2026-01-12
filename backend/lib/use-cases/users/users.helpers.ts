@@ -1,8 +1,8 @@
-import { CamsUser, PrivilegedIdentityUser } from '../../../../common/src/cams/users';
+import { CamsUser, PrivilegedIdentityUser } from '@common/cams/users';
 import { getOfficesGateway, getUserGroupGateway, getUsersRepository } from '../../factory';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { CamsRole, CamsRoleType } from '../../../../common/src/cams/roles';
-import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
+import { CamsRole, CamsRoleType } from '@common/cams/roles';
+import { UstpOfficeDetails } from '@common/cams/offices';
 import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
 
 type PrivilegedIdentityHelperOptions = {

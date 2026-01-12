@@ -1,5 +1,5 @@
-import { CamsUser, CamsUserGroup, CamsUserReference } from '../../../../common/src/cams/users';
-import { CamsJwt } from '../../../../common/src/cams/jwt';
+import { CamsUser, CamsUserGroup, CamsUserReference } from '@common/cams/users';
+import { CamsJwt } from '@common/cams/jwt';
 import { ApplicationContext } from './basic';
 
 export type AuthorizationConfig = {

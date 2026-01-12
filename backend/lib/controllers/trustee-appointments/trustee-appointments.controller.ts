@@ -1,15 +1,12 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteeAppointmentsUseCase } from '../../use-cases/trustee-appointments/trustee-appointments';
-import {
-  TrusteeAppointment,
-  TrusteeAppointmentInput,
-} from '../../../../common/src/cams/trustee-appointments';
+import { TrusteeAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsController } from '../controller';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
-import { CamsRole } from '../../../../common/src/cams/roles';
+import { CamsRole } from '@common/cams/roles';
 
 const MODULE_NAME = 'TRUSTEE-APPOINTMENTS-CONTROLLER';
 

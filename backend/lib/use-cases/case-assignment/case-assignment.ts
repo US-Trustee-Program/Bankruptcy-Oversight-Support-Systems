@@ -6,15 +6,15 @@ import Factory, {
 } from '../../factory';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseAssignmentRepository, QueueGateway } from '../gateways.types';
-import { CaseAssignment } from '../../../../common/src/cams/assignments';
-import { CaseAssignmentHistory } from '../../../../common/src/cams/history';
+import { CaseAssignment } from '@common/cams/assignments';
+import { CaseAssignmentHistory } from '@common/cams/history';
 import CaseManagement from '../cases/case-management';
-import { CamsUserReference, getCourtDivisionCodes } from '../../../../common/src/cams/users';
-import { CamsRole, CamsRoleType } from '../../../../common/src/cams/roles';
+import { CamsUserReference, getCourtDivisionCodes } from '@common/cams/users';
+import { CamsRole, CamsRoleType } from '@common/cams/roles';
 import { AssignmentError } from './assignment.exception';
-import { createAuditRecord } from '../../../../common/src/cams/auditable';
+import { createAuditRecord } from '@common/cams/auditable';
 import OfficeAssigneesUseCase from '../offices/office-assignees';
-import { mapDivisionCodeToUstpOffice } from '../../../../common/src/cams/offices';
+import { mapDivisionCodeToUstpOffice } from '@common/cams/offices';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT';
@@ -55,17 +55,17 @@ export class CaseAssignmentUseCase {
     }
     await this.assignTrialAttorneys(context, caseId, newAssignees, role);
 
-    // Reassign all child cases if this is a joint administration lead case.
+    // Reassign all member cases if this is a joint administration lead case.
     const consolidationReferences = await casesRepo.getConsolidation(caseId);
-    const childCaseIds = consolidationReferences
+    const memberCaseIds = consolidationReferences
       .filter(
         (reference) =>
           reference.documentType === 'CONSOLIDATION_FROM' &&
           reference.consolidationType === 'administrative',
       )
       .map((reference) => reference.otherCase.caseId);
-    for (const childCaseId of childCaseIds) {
-      await this.assignTrialAttorneys(context, childCaseId, newAssignees, role);
+    for (const memberCaseId of memberCaseIds) {
+      await this.assignTrialAttorneys(context, memberCaseId, newAssignees, role);
     }
   }
 

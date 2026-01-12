@@ -1,16 +1,16 @@
 import { vi } from 'vitest';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsHttpResponseInit } from '../../adapters/utils/http-response';
 import CaseManagement from '../../use-cases/cases/case-management';
 import { CasesController } from './cases.controller';
-import { CaseDetail, SyncedCase } from '../../../../common/src/cams/cases';
+import { CaseDetail, SyncedCase } from '@common/cams/cases';
 import {
   mockCamsHttpRequest,
   mockRequestUrl,
 } from '../../testing/mock-data/cams-http-request-helper';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { ResourceActions } from '../../../../common/src/cams/actions';
+import { ResourceActions } from '@common/cams/actions';
 import { UnknownError } from '../../common-errors/unknown-error';
 
 describe('cases controller test', () => {

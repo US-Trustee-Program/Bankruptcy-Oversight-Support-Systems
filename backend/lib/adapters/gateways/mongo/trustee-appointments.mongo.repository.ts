@@ -4,12 +4,9 @@ import { NotFoundError } from '../../../common-errors/not-found-error';
 import { TrusteeAppointmentsRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import QueryBuilder from '../../../query/query-builder';
-import {
-  TrusteeAppointment,
-  TrusteeAppointmentInput,
-} from '../../../../../common/src/cams/trustee-appointments';
-import { createAuditRecord } from '../../../../../common/src/cams/auditable';
-import { CamsUserReference } from '../../../../../common/src/cams/users';
+import { TrusteeAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
+import { createAuditRecord } from '@common/cams/auditable';
+import { CamsUserReference } from '@common/cams/users';
 import { Creatable } from '../../types/persistence.gateway';
 
 const MODULE_NAME = 'TRUSTEE-APPOINTMENTS-MONGO-REPOSITORY';

@@ -12,14 +12,14 @@ import {
   Order,
   TransferOrder,
   TransferOrderAction,
-} from '../../../../common/src/cams/orders';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
-import DateHelper from '../../../../common/src/date-helper';
+} from '@common/cams/orders';
+import MockData from '@common/cams/test-utilities/mock-data';
+import DateHelper from '@common/date-helper';
 import { OrdersController } from './orders.controller';
 import { CamsHttpResponseInit, commonHeaders } from '../../adapters/utils/http-response';
-import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
+import HttpStatusCodes from '@common/api/http-status-codes';
 import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
-import { ResponseBody } from '../../../../common/src/api/response';
+import { ResponseBody } from '@common/api/response';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { BadRequestError } from '../../common-errors/bad-request';
 import * as crypto from 'crypto';
@@ -220,8 +220,8 @@ describe('orders controller tests', () => {
     const mockConsolidationOrder = MockData.getConsolidationOrder();
     const mockConsolidationOrderActionApproval: ConsolidationOrderActionApproval = {
       ...mockConsolidationOrder,
-      approvedCases: [mockConsolidationOrder.childCases[0].caseId],
-      leadCase: mockConsolidationOrder.childCases[0],
+      approvedCases: [mockConsolidationOrder.memberCases[0].caseId],
+      leadCase: mockConsolidationOrder.memberCases[0],
     };
     vi.spyOn(OrdersUseCase.prototype, 'approveConsolidation').mockResolvedValue([
       mockConsolidationOrder,
@@ -248,7 +248,7 @@ describe('orders controller tests', () => {
     const mockConsolidationOrderActionApproval: ConsolidationOrderActionApproval = {
       ...mockConsolidationOrder,
       approvedCases: [],
-      leadCase: mockConsolidationOrder.childCases[0],
+      leadCase: mockConsolidationOrder.memberCases[0],
     };
     const request1 = mockCamsHttpRequest({ body: mockConsolidationOrderActionApproval });
     applicationContext.request = request1;
@@ -260,7 +260,7 @@ describe('orders controller tests', () => {
     const mockConsolidationOrderActionApproval2: ConsolidationOrderActionApproval = {
       ...mockConsolidationOrder2,
       approvedCases: [],
-      leadCase: mockConsolidationOrder.childCases[0],
+      leadCase: mockConsolidationOrder.memberCases[0],
       consolidationType: undefined,
     };
     const request2 = mockCamsHttpRequest({ body: mockConsolidationOrderActionApproval2 });
@@ -271,7 +271,7 @@ describe('orders controller tests', () => {
     // setup missing lead case
     const mockConsolidationOrderActionApproval3: ConsolidationOrderActionApproval = {
       ...mockConsolidationOrder,
-      approvedCases: [mockConsolidationOrder.childCases[0].caseId],
+      approvedCases: [mockConsolidationOrder.memberCases[0].caseId],
       leadCase: undefined,
     };
     const request3 = mockCamsHttpRequest({ body: mockConsolidationOrderActionApproval3 });

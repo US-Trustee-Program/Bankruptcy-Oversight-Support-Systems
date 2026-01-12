@@ -1,4 +1,4 @@
-import HttpStatusCodes from '../../../common/src/api/http-status-codes';
+import HttpStatusCodes from '@common/api/http-status-codes';
 import * as util from 'node:util';
 
 export type CamsStackInfo = {

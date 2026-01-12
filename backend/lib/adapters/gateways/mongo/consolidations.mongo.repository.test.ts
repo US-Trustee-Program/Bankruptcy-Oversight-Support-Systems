@@ -1,12 +1,12 @@
 import { vi } from 'vitest';
 import { ApplicationContext } from '../../types/basic';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
-import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import ConsolidationOrdersMongoRepository from './consolidations.mongo.repository';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import QueryBuilder from '../../../query/query-builder';
 import { closeDeferred } from '../../../deferrable/defer-close';
-import { ConsolidationOrder } from '../../../../../common/src/cams/orders';
+import { ConsolidationOrder } from '@common/cams/orders';
 
 describe('Consolidations Repository tests', () => {
   let context: ApplicationContext;

@@ -1,4 +1,4 @@
-import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
+import { UstpOfficeDetails } from '@common/cams/offices';
 import { ApplicationContext } from '../../adapters/types/basic';
 
 export interface OfficesGateway {

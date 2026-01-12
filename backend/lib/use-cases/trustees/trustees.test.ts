@@ -1,10 +1,10 @@
 import { vi } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext, getTheThrownError } from '../../testing/testing-utilities';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { TrusteesUseCase } from './trustees';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
-import { getCamsUserReference } from '../../../../common/src/cams/session';
+import { getCamsUserReference } from '@common/cams/session';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { CamsError } from '../../common-errors/cams-error';
 

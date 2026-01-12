@@ -165,7 +165,7 @@ describe('Case Detail Header tests', () => {
   });
 
   test('should render member case icon when case is member case', () => {
-    const childCaseDetail = MockData.getCaseDetail({
+    const memberCaseDetail = MockData.getCaseDetail({
       override: {
         petitionLabel: 'Voluntary',
         consolidation: [
@@ -174,10 +174,10 @@ describe('Case Detail Header tests', () => {
       },
     });
 
-    basicRender(childCaseDetail, false);
+    basicRender(memberCaseDetail, false);
 
-    const childIcon = screen.getByTestId('member-case-icon');
-    expect(childIcon).toBeInTheDocument();
+    const memberCaseIcon = screen.getByTestId('member-case-icon');
+    expect(memberCaseIcon).toBeInTheDocument();
   });
 
   test('should render transferred case icon when case is transferred', () => {
@@ -221,7 +221,7 @@ describe('Case Detail Header tests', () => {
   });
 
   test('should display tooltip for member case icon with consolidation type', () => {
-    const childCaseDetail = MockData.getCaseDetail({
+    const memberCaseDetail = MockData.getCaseDetail({
       override: {
         petitionLabel: 'Voluntary',
         consolidation: [
@@ -232,7 +232,7 @@ describe('Case Detail Header tests', () => {
       },
     });
 
-    basicRender(childCaseDetail, false);
+    basicRender(memberCaseDetail, false);
 
     const memberIcon = screen.getByTestId('member-case-icon');
     const titleElement = memberIcon.querySelector('title');
@@ -281,7 +281,7 @@ describe('Case Detail Header tests', () => {
   });
 
   test('should display tooltip for member case icon without consolidation type when empty', () => {
-    const childCaseDetail = MockData.getCaseDetail({
+    const memberCaseDetail = MockData.getCaseDetail({
       override: {
         petitionLabel: 'Voluntary',
         consolidation: [
@@ -292,7 +292,7 @@ describe('Case Detail Header tests', () => {
       },
     });
 
-    basicRender(childCaseDetail, false);
+    basicRender(memberCaseDetail, false);
 
     const memberIcon = screen.getByTestId('member-case-icon');
     const titleElement = memberIcon.querySelector('title');

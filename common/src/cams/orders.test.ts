@@ -30,7 +30,7 @@ describe('orders model tests', () => {
     const mockOrder = MockData.getConsolidationOrder();
     const mockOrderAction: ConsolidationOrderActionRejection = {
       consolidationId: mockOrder.consolidationId,
-      rejectedCases: mockOrder.childCases.map((bCase) => bCase.caseId),
+      rejectedCases: mockOrder.memberCases.map((bCase) => bCase.caseId),
     };
     mockOrderAction.rejectedCases = [];
     mockOrderAction.reason = 'rejection reason';
@@ -41,7 +41,7 @@ describe('orders model tests', () => {
     const mockOrder = MockData.getConsolidationOrder();
     const mockOrderAction: ConsolidationOrderActionApproval = {
       consolidationId: mockOrder.consolidationId,
-      approvedCases: mockOrder.childCases.map((bCase) => bCase.caseId),
+      approvedCases: mockOrder.memberCases.map((bCase) => bCase.caseId),
       leadCase: MockData.getCaseSummary(),
       consolidationType: 'administrative',
     };

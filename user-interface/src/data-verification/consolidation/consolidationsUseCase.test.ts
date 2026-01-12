@@ -180,10 +180,10 @@ describe('Consolidation UseCase tests', () => {
 
     await useCase.handleOnExpand();
     expect(onExpand.mock.calls[0][0]).toEqual(`order-list-${mockOrder.id}`);
-    expect(assignmentsSpy.mock.calls[0][0]).toEqual(mockOrder.childCases[0].caseId);
-    expect(assignmentsSpy.mock.calls[1][0]).toEqual(mockOrder.childCases[1].caseId);
-    expect(associationsSpy.mock.calls[0][0]).toEqual(mockOrder.childCases[0].caseId);
-    expect(associationsSpy.mock.calls[1][0]).toEqual(mockOrder.childCases[1].caseId);
+    expect(assignmentsSpy.mock.calls[0][0]).toEqual(mockOrder.memberCases[0].caseId);
+    expect(assignmentsSpy.mock.calls[1][0]).toEqual(mockOrder.memberCases[1].caseId);
+    expect(associationsSpy.mock.calls[0][0]).toEqual(mockOrder.memberCases[0].caseId);
+    expect(associationsSpy.mock.calls[1][0]).toEqual(mockOrder.memberCases[1].caseId);
     expect(setIsDataEnhancedSpy).toHaveBeenCalledWith(true);
   }, 10000);
 
@@ -193,10 +193,10 @@ describe('Consolidation UseCase tests', () => {
 
     await useCase.handleOnExpand();
     expect(onExpand.mock.calls[0][0]).toEqual(`order-list-${mockOrder.id}`);
-    expect(assignmentsSpy.mock.calls[0][0]).toEqual(mockOrder.childCases[0].caseId);
-    expect(assignmentsSpy.mock.calls[1][0]).toEqual(mockOrder.childCases[1].caseId);
-    expect(associationsSpy.mock.calls[0][0]).toEqual(mockOrder.childCases[0].caseId);
-    expect(associationsSpy.mock.calls[1][0]).toEqual(mockOrder.childCases[1].caseId);
+    expect(assignmentsSpy.mock.calls[0][0]).toEqual(mockOrder.memberCases[0].caseId);
+    expect(assignmentsSpy.mock.calls[1][0]).toEqual(mockOrder.memberCases[1].caseId);
+    expect(associationsSpy.mock.calls[0][0]).toEqual(mockOrder.memberCases[0].caseId);
+    expect(associationsSpy.mock.calls[1][0]).toEqual(mockOrder.memberCases[1].caseId);
     expect(store.isDataEnhanced).toBeFalsy();
   }, 10000);
 
@@ -213,7 +213,7 @@ describe('Consolidation UseCase tests', () => {
     expect(setLeadCaseCourtSpy).toHaveBeenCalled();
   });
 
-  test('should return a valid case if case is not already consolidated and is not the child of another consolidation', async () => {
+  test('should return a valid case if case is not already consolidated and is not a member of another consolidation', async () => {
     const setIsValidatingSpy = vi.spyOn(store, 'setIsLookingForCase');
     const setAddCaseNumberErrorSpy = vi.spyOn(store, 'setAddCaseNumberError');
     const setCaseToAddSpy = vi.spyOn(store, 'setCaseToAdd');
@@ -263,7 +263,7 @@ describe('Consolidation UseCase tests', () => {
     const getCaseAssignmentsSpy = vi.spyOn(Api2, 'getCaseAssignments');
 
     store.order = MockData.getConsolidationOrder();
-    store.order.childCases.push(mockAddCase);
+    store.order.memberCases.push(mockAddCase);
     setupAddCase();
     useCase.verifyCaseCanBeAdded();
 
@@ -277,12 +277,12 @@ describe('Consolidation UseCase tests', () => {
     expect(getCaseAssignmentsSpy).not.toHaveBeenCalled();
   });
 
-  test('should add case to store.order.childCases when handleAddCaseAction is called an store.caseToAdd is set', async () => {
+  test('should add case to store.order.memberCases when handleAddCaseAction is called an store.caseToAdd is set', async () => {
     store.setCaseToAdd(mockAddCase);
-    expect(store.order.childCases).not.toContain(mockAddCase);
+    expect(store.order.memberCases).not.toContain(mockAddCase);
 
     useCase.handleAddCaseAction();
-    expect(store.order.childCases).toContain(mockAddCase);
+    expect(store.order.memberCases).toContain(mockAddCase);
   });
 
   test('should set selected cases', () => {
@@ -384,7 +384,7 @@ describe('Consolidation UseCase tests', () => {
     expect(store.caseToAdd).toBeNull();
   });
 
-  test('should throw if lead case is a child in any other consolidation', () => {
+  test('should throw if lead case is a member in any other consolidation', () => {
     const caseId = '120-23-12345';
     const documentType = 'CONSOLIDATION_TO';
     const data = [
@@ -522,7 +522,7 @@ describe('Consolidation UseCase tests', () => {
     expect(store.foundValidCaseNumber).toBe(false);
   });
 
-  test('should disable the verify button if a lead case and at least one child case are not selected', async () => {
+  test('should disable the verify button if a lead case and at least one member case are not selected', async () => {
     const disableButtonSpy = vi.spyOn(controls.approveButton.current!, 'disableButton');
     const leadCase = MockData.getConsolidatedOrderCase();
     store.setLeadCase(leadCase);
@@ -533,7 +533,7 @@ describe('Consolidation UseCase tests', () => {
     expect(disableButtonSpy).toHaveBeenCalled();
   });
 
-  test('should disable the verify button if a selected child case is a lead case for another consolidation', async () => {
+  test('should disable the verify button if a selected member case is a lead case for another consolidation', async () => {
     const disableButtonSpy = vi.spyOn(controls.approveButton.current!, 'disableButton');
     const leadCase = MockData.getConsolidatedOrderCase();
     store.setLeadCase(leadCase);
@@ -545,7 +545,7 @@ describe('Consolidation UseCase tests', () => {
     expect(disableButtonSpy).toHaveBeenCalled();
   });
 
-  test('should disable the verify button if a selected child case is already a part of another consolidation', async () => {
+  test('should disable the verify button if a selected member case is already a part of another consolidation', async () => {
     const disableButtonSpy = vi.spyOn(controls.approveButton.current!, 'disableButton');
     const leadCase = MockData.getConsolidatedOrderCase();
     store.setLeadCase(leadCase);

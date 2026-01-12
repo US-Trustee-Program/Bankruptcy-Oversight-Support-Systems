@@ -4,8 +4,8 @@ import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsController } from '../controller';
 import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
 import ListsUseCase from '../../use-cases/lists/lists';
-import { BankListItem, BankruptcySoftwareListItem } from '../../../../common/src/cams/lists';
-import { Creatable } from '../../../../common/src/cams/creatable';
+import { BankListItem, BankruptcySoftwareListItem } from '@common/cams/lists';
+import { Creatable } from '@common/cams/creatable';
 
 const MODULE_NAME = 'LISTS-CONTROLLER';
 

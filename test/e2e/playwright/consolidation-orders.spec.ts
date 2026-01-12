@@ -55,9 +55,9 @@ test.describe('Consolidation Orders', () => {
 
     await consolidationTypeSubstantive.click();
 
-    const childCaseCount = pendingConsolidationOrder.childCases.length;
+    const memberCaseCount = pendingConsolidationOrder.memberCases.length;
 
-    for (let i = 0; i < childCaseCount; ++i) {
+    for (let i = 0; i < memberCaseCount; ++i) {
       // The following is necessary because the USWDS checkbox input is rendered hidden off-screen.
       // Therefore, playwright can't check the box if it can't see it using the normal page.getByTestId.
       // So using this method, you can locate the checkbox and fire a click event.
@@ -71,7 +71,7 @@ test.describe('Consolidation Orders', () => {
         .click();
     }
 
-    // mark first child case as lead case
+    // mark first member case as lead case
     const markAsLeadButton1 = page.getByTestId(
       `button-assign-lead-case-list-${pendingConsolidationOrder.id}-0`,
     );

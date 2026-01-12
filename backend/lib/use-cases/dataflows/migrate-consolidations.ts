@@ -1,10 +1,10 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import Factory from '../../factory';
-import { ConsolidationFrom, ConsolidationTo } from '../../../../common/src/cams/events';
-import { ConsolidationType } from '../../../../common/src/cams/orders';
-import { CaseSummary } from '../../../../common/src/cams/cases';
-import { CaseConsolidationHistory } from '../../../../common/src/cams/history';
-import { ACMS_SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditable';
+import { ConsolidationFrom, ConsolidationTo } from '@common/cams/events';
+import { ConsolidationType } from '@common/cams/orders';
+import { CaseSummary } from '@common/cams/cases';
+import { CaseConsolidationHistory } from '@common/cams/history';
+import { ACMS_SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsError } from '../../common-errors/cams-error';
 
@@ -28,7 +28,7 @@ export function isAcmsEtlQueueItem(item: unknown): item is AcmsEtlQueueItem {
   return typeof item === 'object' && item !== null && 'leadCaseId' in item;
 }
 
-export type AcmsConsolidationChildCase = {
+export type AcmsConsolidationMemberCase = {
   caseId: string;
   consolidationType: string;
   consolidationDate: string;
@@ -36,12 +36,12 @@ export type AcmsConsolidationChildCase = {
 
 export type AcmsConsolidation = {
   leadCaseId: string;
-  childCases: AcmsConsolidationChildCase[];
+  memberCases: AcmsConsolidationMemberCase[];
 };
 
 export type AcmsTransformationResult = {
   leadCaseId: string;
-  childCaseCount: number;
+  memberCaseCount: number;
   success: boolean;
   error?: CamsError;
 };
@@ -75,7 +75,7 @@ class AcmsOrders {
   ): Promise<AcmsTransformationResult> {
     const report: AcmsTransformationResult = {
       leadCaseId: acmsLeadCaseId,
-      childCaseCount: 0,
+      memberCaseCount: 0,
       success: true,
     };
     try {
@@ -88,7 +88,7 @@ class AcmsOrders {
       const leadCase = await dxtr.getCaseSummary(context, basics.leadCaseId);
 
       const existingConsolidations = await casesRepo.getConsolidation(basics.leadCaseId);
-      const existingChildCaseIds = existingConsolidations
+      const existingMemberCaseIds = existingConsolidations
         .filter((link) => link.documentType === 'CONSOLIDATION_FROM')
         .map((link) => link.otherCase.caseId)
         .reduce((acc, caseId) => {
@@ -96,59 +96,59 @@ class AcmsOrders {
           return acc;
         }, new Set<string>());
 
-      const exportedChildCaseIds = basics.childCases
+      const exportedMemberCaseIds = basics.memberCases
         .map((bCase) => bCase.caseId)
         .reduce((acc, caseId) => {
           acc.add(caseId);
           return acc;
         }, new Set<string>());
 
-      report.childCaseCount = exportedChildCaseIds.size;
+      report.memberCaseCount = exportedMemberCaseIds.size;
 
-      const unimportedChildCaseIds = new Set<string>();
-      exportedChildCaseIds.forEach((caseId) => {
-        if (!existingChildCaseIds.has(caseId)) {
-          unimportedChildCaseIds.add(caseId);
+      const unimportedMemberCaseIds = new Set<string>();
+      exportedMemberCaseIds.forEach((caseId) => {
+        if (!existingMemberCaseIds.has(caseId)) {
+          unimportedMemberCaseIds.add(caseId);
         }
       });
 
       // Return early if there is no work to do.
-      if (unimportedChildCaseIds.size === 0) {
+      if (unimportedMemberCaseIds.size === 0) {
         return report;
       }
 
-      // Load any child cases that have not been migrated.
-      const childCaseSummaries = new Map<string, CaseSummary>();
-      const filteredBasicsChildCases = basics.childCases.filter((bCase) =>
-        unimportedChildCaseIds.has(bCase.caseId),
+      // Load any member cases that have not been migrated.
+      const memberCaseSummaries = new Map<string, CaseSummary>();
+      const filteredBasicsMemberCases = basics.memberCases.filter((bCase) =>
+        unimportedMemberCaseIds.has(bCase.caseId),
       );
 
-      for (const childCase of filteredBasicsChildCases) {
-        const consolidationType = childCase.consolidationType as ConsolidationType;
+      for (const memberCase of filteredBasicsMemberCases) {
+        const consolidationType = memberCase.consolidationType as ConsolidationType;
 
         const toLink: ConsolidationTo = {
-          caseId: childCase.caseId,
+          caseId: memberCase.caseId,
           consolidationType,
           documentType: 'CONSOLIDATION_TO',
-          orderDate: childCase.consolidationDate,
+          orderDate: memberCase.consolidationDate,
           otherCase: leadCase,
           updatedBy: ACMS_SYSTEM_USER_REFERENCE,
-          updatedOn: childCase.consolidationDate,
+          updatedOn: memberCase.consolidationDate,
         };
 
-        const otherCase = await dxtr.getCaseSummary(context, childCase.caseId);
+        const otherCase = await dxtr.getCaseSummary(context, memberCase.caseId);
         context.logger.debug(MODULE_NAME, `Found case summary for: ${otherCase.caseId}.`);
 
         const fromLink: ConsolidationFrom = {
           caseId: basics.leadCaseId,
           consolidationType,
           documentType: 'CONSOLIDATION_FROM',
-          orderDate: childCase.consolidationDate,
+          orderDate: memberCase.consolidationDate,
           otherCase,
           updatedBy: ACMS_SYSTEM_USER_REFERENCE,
-          updatedOn: childCase.consolidationDate,
+          updatedOn: memberCase.consolidationDate,
         };
-        childCaseSummaries.set(otherCase.caseId, otherCase);
+        memberCaseSummaries.set(otherCase.caseId, otherCase);
 
         await casesRepo.createConsolidationFrom(fromLink);
         await casesRepo.createConsolidationTo(toLink);
@@ -156,11 +156,11 @@ class AcmsOrders {
 
       // Partition history by date.
       const historyDateMap = new Map<string, CaseSummary[]>();
-      filteredBasicsChildCases.forEach((bCase) => {
+      filteredBasicsMemberCases.forEach((bCase) => {
         if (historyDateMap.has(bCase.consolidationDate)) {
-          historyDateMap.get(bCase.consolidationDate).push(childCaseSummaries.get(bCase.caseId));
+          historyDateMap.get(bCase.consolidationDate).push(memberCaseSummaries.get(bCase.caseId));
         } else {
-          historyDateMap.set(bCase.consolidationDate, [childCaseSummaries.get(bCase.caseId)]);
+          historyDateMap.set(bCase.consolidationDate, [memberCaseSummaries.get(bCase.caseId)]);
         }
       });
 
@@ -173,25 +173,25 @@ class AcmsOrders {
           after: {
             status: 'approved',
             leadCase,
-            childCases: [...historyDateMap.get(consolidationDate)],
+            memberCases: [...historyDateMap.get(consolidationDate)],
           },
           updatedBy: ACMS_SYSTEM_USER_REFERENCE,
           updatedOn: consolidationDate,
         };
 
-        // Write the history for the child cases.
+        // Write the history for the member cases.
         const caseIds = [...historyDateMap.get(consolidationDate).map((bCase) => bCase.caseId)];
         for (const caseId of caseIds) {
-          const childCaseHistory = { caseId, ...caseHistory };
-          await casesRepo.createCaseHistory(childCaseHistory);
+          const memberCaseHistory = { caseId, ...caseHistory };
+          await casesRepo.createCaseHistory(memberCaseHistory);
         }
 
         // Write the history for the lead case.
         const leadCaseHistoryAfter: CaseConsolidationHistory['after'] = {
           status: 'approved',
           leadCase,
-          childCases: leadCaseHistoryBefore
-            ? [...leadCaseHistoryBefore.childCases, ...historyDateMap.get(consolidationDate)]
+          memberCases: leadCaseHistoryBefore
+            ? [...leadCaseHistoryBefore.memberCases, ...historyDateMap.get(consolidationDate)]
             : [...historyDateMap.get(consolidationDate)],
         };
         const leadCaseHistory: CaseConsolidationHistory = {

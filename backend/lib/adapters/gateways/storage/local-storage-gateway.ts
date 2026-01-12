@@ -1,4 +1,4 @@
-import { CamsRole, CamsRoleType } from '../../../../../common/src/cams/roles';
+import { CamsRole, CamsRoleType } from '@common/cams/roles';
 import { StorageGateway } from '../../types/storage';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 

@@ -1,7 +1,7 @@
 import QueryPipeline, { Stage } from '../../../../query/query-pipeline';
 import MongoAggregateRenderer from './mongo-aggregate-renderer';
 import { Condition, Field } from '../../../../query/query-builder';
-import { CaseAssignment } from '../../../../../../common/src/cams/assignments';
+import { CaseAssignment } from '@common/cams/assignments';
 
 const { pipeline } = QueryPipeline;
 

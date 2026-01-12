@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 import { randomUUID } from 'crypto';
-import { CaseNote, CaseNoteEditRequest, CaseNoteInput } from '../../../../common/src/cams/cases';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import { CaseNote, CaseNoteEditRequest, CaseNoteInput } from '@common/cams/cases';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { NORMAL_CASE_ID } from '../../testing/testing-constants';
 import {
@@ -9,9 +9,9 @@ import {
   createMockApplicationContextSession,
 } from '../../testing/testing-utilities';
 import { CaseNotesUseCase } from './case-notes';
-import { REGION_02_GROUP_NY } from '../../../../common/src/cams/test-utilities/mock-user';
-import { CamsRole } from '../../../../common/src/cams/roles';
-import { ResourceActions } from '../../../../common/src/cams/actions';
+import { REGION_02_GROUP_NY } from '@common/cams/test-utilities/mock-user';
+import { CamsRole } from '@common/cams/roles';
+import { ResourceActions } from '@common/cams/actions';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 
 describe('Test case-notes use case', () => {

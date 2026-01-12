@@ -4,9 +4,9 @@ import { CamsController } from '../controller';
 import { AdminUseCase } from '../../use-cases/admin/admin';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { BadRequestError } from '../../common-errors/bad-request';
-import { CamsRole } from '../../../../common/src/cams/roles';
+import { CamsRole } from '@common/cams/roles';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
-import { getCamsUserReference } from '../../../../common/src/cams/session';
+import { getCamsUserReference } from '@common/cams/session';
 
 const MODULE_NAME = 'PRIVILEGED-IDENTITY-ADMIN-CONTROLLER';
 
