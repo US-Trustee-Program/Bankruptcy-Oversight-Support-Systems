@@ -505,7 +505,6 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           {label && label + '. '}
           Combo box {multiSelect ? 'multi-select ' : ''}
           {props.required ? 'required. ' : ''}
-          {ariaDescription ? `${ariaDescription}. ` : ''}
           {getSelectedItemsDescription()}
           {!comboboxDisabled
             ? 'Press Enter or Down Arrow key to open the dropdown list.'
@@ -519,7 +518,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           aria-expanded={expanded}
           aria-controls={`${comboBoxId}-item-list`}
           aria-labelledby={comboBoxId + '-label'}
-          aria-describedby={`${comboBoxId}-aria-description`}
+          aria-describedby={`${comboBoxId}-aria-description${ariaDescription ? ` ${comboBoxId}-hint` : ''}`}
           tabIndex={0}
           onClick={() => handleToggleDropdown()}
           onKeyDown={handleKeyDownOnToggleButton}
@@ -542,7 +541,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                   autoComplete={'off'}
                   aria-autocomplete="list"
                   aria-activedescendant={currentListItem ?? ''}
-                  aria-describedby={`${comboBoxId}-filter-input-aria-description`}
+                  aria-describedby={`${comboBoxId}-filter-input-aria-description${ariaDescription ? ` ${comboBoxId}-hint` : ''}`}
                   aria-labelledby={`${comboBoxId}-label`}
                   ref={filterRef}
                 />

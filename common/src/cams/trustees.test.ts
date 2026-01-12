@@ -3,7 +3,7 @@ import {
   getAppointmentDetails,
   formatChapterType,
   formatAppointmentType,
-  ChapterType,
+  AppointmentChapterType,
   AppointmentType,
 } from './trustees';
 
@@ -19,8 +19,8 @@ describe('trustees', () => {
       ['11-subchapter-v', '11 Subchapter V'],
       ['12', '12'],
       ['13', '13'],
-    ])('should format "%s" as "%s"', (input: ChapterType, expected: string) => {
-      expect(formatChapterType(input)).toBe(expected);
+    ])('should format "%s" as "%s"', (input, expected) => {
+      expect(formatChapterType(input as AppointmentChapterType)).toBe(expected);
     });
   });
 
@@ -34,8 +34,8 @@ describe('trustees', () => {
       ['standing', 'Standing'],
       ['elected', 'Elected'],
       ['converted-case', 'Converted Case'],
-    ])('should format "%s" as "%s"', (input: AppointmentType, expected: string) => {
-      expect(formatAppointmentType(input)).toBe(expected);
+    ])('should format "%s" as "%s"', (input, expected) => {
+      expect(formatAppointmentType(input as AppointmentType)).toBe(expected);
     });
   });
 
@@ -54,8 +54,13 @@ describe('trustees', () => {
       ['13', 'case-by-case', '13 - Case by Case'],
     ])(
       'should format chapter "%s" with type "%s" as "%s"',
-      (chapter: ChapterType, appointmentType: AppointmentType, expected: string) => {
-        expect(getAppointmentDetails(chapter, appointmentType)).toBe(expected);
+      (chapter, appointmentType, expected) => {
+        expect(
+          getAppointmentDetails(
+            chapter as AppointmentChapterType,
+            appointmentType as AppointmentType,
+          ),
+        ).toBe(expected);
       },
     );
   });
