@@ -60,9 +60,13 @@ function CommsLink(props: Readonly<CommsLinkProps>) {
     href = formatWebsiteUrl(website);
     labelToUse = label ?? website;
     iconToUse = icon ?? 'launch';
-  } else if (isValidPhoneNumber && mode === 'phone-dialer') {
-    href = toTelephoneUri(number!, extension);
-    labelToUse = label ?? (extension ? `${number} ext. ${extension}` : number!);
+  } else if (mode === 'phone-dialer' && number) {
+    // Always display the phone number, even if it doesn't match our expected format
+    // If valid, create a clickable tel: link; otherwise just display the number
+    if (isValidPhoneNumber) {
+      href = toTelephoneUri(number, extension);
+    }
+    labelToUse = label ?? (extension ? `${number} ext. ${extension}` : number);
     iconToUse = icon ?? 'phone';
   }
 
@@ -72,6 +76,9 @@ function CommsLink(props: Readonly<CommsLinkProps>) {
         <IconLabel label={labelToUse} icon={iconToUse} location="left" />
       </a>
     );
+  } else if (labelToUse && iconToUse !== 'error') {
+    // Display non-link content if we have a label and it's not an error state
+    return <IconLabel label={labelToUse} icon={iconToUse} location="left" />;
   } else {
     return <IconLabel label={labelToUse} icon={iconToUse} location="left" />;
   }
