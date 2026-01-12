@@ -5,10 +5,31 @@ import { ContactInformation } from './contact';
 import { CamsUserReference } from './users';
 import { OversightRoleType } from './roles';
 import { NullableOptionalFields } from '../api/common';
-import { ChapterType, AppointmentType, AppointmentStatus } from './types/Appointments';
+
+export type AppointmentChapterType = '7' | '11' | '11-subchapter-v' | '12' | '13';
+
+export type AppointmentType =
+  | 'panel'
+  | 'off-panel'
+  | 'case-by-case'
+  | 'pool'
+  | 'out-of-pool'
+  | 'standing'
+  | 'elected'
+  | 'converted-case';
+
+export type AppointmentStatus =
+  | 'active'
+  | 'inactive'
+  | 'voluntary-suspended'
+  | 'involuntary-suspended'
+  | 'deceased'
+  | 'resigned'
+  | 'terminated'
+  | 'removed';
 
 export function getAppointmentDetails(
-  chapter: ChapterType,
+  chapter: AppointmentChapterType,
   appointmentType: AppointmentType,
 ): string {
   const chapterTypeString = formatChapterType(chapter);
@@ -17,8 +38,8 @@ export function getAppointmentDetails(
   return `${chapterTypeString} - ${appointmentTypeString}`;
 }
 
-export function formatChapterType(chapter: ChapterType): string {
-  const chapterLabels: Partial<Record<ChapterType, string>> = {
+export function formatChapterType(chapter: AppointmentChapterType): string {
+  const chapterLabels: Partial<Record<AppointmentChapterType, string>> = {
     '11-subchapter-v': '11 Subchapter V',
   };
 
@@ -117,7 +138,7 @@ export type TrusteeOversightHistory = AbstractTrusteeHistory<
 };
 
 type AppointmentData = {
-  chapter: ChapterType;
+  chapter: AppointmentChapterType;
   appointmentType: AppointmentType;
   courtId: string;
   divisionCode: string;
