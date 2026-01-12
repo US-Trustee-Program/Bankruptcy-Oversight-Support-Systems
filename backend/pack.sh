@@ -32,7 +32,7 @@ PACK_TEMP_DIR="/tmp/build/$1"
 
 # Define cleanup for temporary build directory
 cleanup_build_temp() {
-  if [[ -n "${BUILD_TEMP:-}" ]] && [[ "$BUILD_TEMP" == /tmp/npm-ci-* ]] && [[ -d "$BUILD_TEMP" ]]; then
+  if [[ -n "${BUILD_TEMP:-}" ]] && [[ "$BUILD_TEMP" == */npm-ci-* ]] && [[ -d "$BUILD_TEMP" ]]; then
     echo "Cleaning up temporary build directory: $BUILD_TEMP"
     rm -rf -- "$BUILD_TEMP"
   fi
@@ -44,8 +44,8 @@ trap cleanup_build_temp EXIT
 echo "Creating archive $PACK_TEMP_DIR/$FILE_NAME.zip"
 
 # Detect OS and build node_modules accordingly
-if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-  # Running on Linux (GitHub Actions CI) - build dependencies directly
+if [[ "$OSTYPE" == linux* ]]; then
+  # Running on Linux (GitHub Actions CI, or any Linux variant) - build dependencies directly
   # Use root package-lock.json to match Dockerfile.build behavior
   # Use npm ci for reproducible, lockfile-driven installs
   # Use --workspaces=false to disable workspace linking and force local node_modules
@@ -56,7 +56,8 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
   cd "$WORKSPACE_ROOT" || exit
 
   # Create unique temp build directory to avoid race conditions in concurrent builds
-  BUILD_TEMP=$(mktemp -d "/tmp/npm-ci-$1.XXXXXX")
+  # Respects TMPDIR environment variable for custom temp directory locations
+  BUILD_TEMP=$(mktemp -d "${TMPDIR:-/tmp}/npm-ci-$1.XXXXXX")
 
   # Copy package.json and root package-lock.json (mirror Dockerfile.build)
   cp "$FUNCTION_APP_PATH/package.json" "$BUILD_TEMP/"
