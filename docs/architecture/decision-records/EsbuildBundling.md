@@ -45,21 +45,6 @@ We migrated from tsc to esbuild for building the backend Azure Functions applica
 4. **Automatic entry point discovery** - Build configuration automatically finds all `*.function.ts` files as entry points
 5. **Preserve Azure Functions structure** - Output maintains the directory structure required by Azure Functions v4 programming model
 
-### External Dependencies List
-
-The following dependencies are explicitly marked as external (not bundled):
-
-```javascript
-[
-  '@azure/functions',      // Cannot be bundled (dynamic requires)
-  'mssql',                // Native module (platform-specific binary)
-  'mongodb',              // Native module (platform-specific binary)
-  'applicationinsights',
-  'dotenv',
-  'express',
-]
-```
-
 ### Build Configuration
 
 Each function app has an `esbuild.config.mjs` that:
@@ -78,37 +63,20 @@ The esbuild output integrates with the existing packaging workflow:
 
 ## Status
 
-ACCEPTED (January 2026)
+ACCEPTED
 
 ## Consequences
 
 ### Positive
 
 1. **Solves path alias resolution** - esbuild natively resolves and bundles `@common/*` path aliases, eliminating the runtime import errors that tsc alone couldn't handle
-2. **Faster builds** - Single-pass bundling is significantly faster than tsc transpilation
-3. **Smaller output** - Bundled code reduces the number of files from thousands to dozens
-4. **Better developer experience** - Simpler, cleaner imports using path aliases instead of deep relative paths
-5. **Improved CI/CD performance** - Faster builds mean faster deployments
-6. **Clearer separation of concerns** - Application code is bundled, dependencies are external
-7. **Reduced deployment package complexity** - Fewer files to track and debug
-
-### Neutral
-
-1. **Different output structure** - Bundled code means stack traces reference bundled files, though source maps are still generated
-2. **Learning curve** - Team needs to understand esbuild configuration instead of tsconfig.json
+2. **Cleaner imports** - Enables simpler imports using path aliases instead of deep relative paths
+3. **Clear bundling strategy** - Application code is bundled, external dependencies remain separate
 
 ### Negative
 
-1. **External dependencies still required** - Native modules and Azure Functions SDK cannot be bundled, so node_modules packaging complexity remains
-2. **Platform-specific builds still needed** - Native modules require Linux builds (Podman on macOS, direct on Linux/CI)
-3. **Debugging** - Source maps are still generated but bundled code can be harder to debug than transpiled code
-
-### Migration Considerations
-
-1. **package.json dependencies** - Function apps now require explicit `dependencies` field (not just devDependencies) for external modules that will be packaged
-2. **pack.sh updates** - Packaging script updated to use `npm ci --workspaces=false` to force local node_modules creation instead of workspace symlinks
-3. **Dockerfile.build consistency** - Linux build container must use identical npm flags as pack.sh
-4. **Troubleshooting** - New TROUBLESHOOTING-AZURE-FUNCTIONS.md guide documents the esbuild architecture and common deployment issues
+1. **Platform-specific builds still required** - Native modules require Linux builds (Podman on macOS, direct on Linux/CI)
+2. **Bundled code complexity** - Source maps help, but debugging bundled code is harder than individual transpiled files
 
 ## Related Documentation
 
@@ -117,4 +85,3 @@ ACCEPTED (January 2026)
 - `backend/function-apps/dataflows/esbuild.config.mjs` - Dataflows function app build config
 - `backend/pack.sh` - Packaging script with OS detection
 - `backend/Dockerfile.build` - Linux build container
-- `backend/TROUBLESHOOTING-AZURE-FUNCTIONS.md` - Deployment troubleshooting guide
