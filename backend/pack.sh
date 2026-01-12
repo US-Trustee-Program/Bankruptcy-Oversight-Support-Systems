@@ -1,6 +1,17 @@
 #! /bin/bash
 
-if [[ $OUT == "" ]]; then
+# Exit on errors, undefined variables, and pipe failures
+set -euo pipefail
+
+# Validate function app name argument is provided
+if [[ -z "${1:-}" ]]; then
+  echo "Error: Function app name argument is required"
+  echo "Usage: pack.sh <app-name>"
+  echo "Example: pack.sh api"
+  exit 1
+fi
+
+if [[ -z "${OUT:-}" ]]; then
   FILE_NAME=$1;
 else
   FILE_NAME=$OUT;
@@ -18,6 +29,17 @@ fi
 WORKSPACE_ROOT="../../.."
 FUNCTION_APP_PATH="backend/function-apps/$1"
 PACK_TEMP_DIR="/tmp/build/$1"
+
+# Define cleanup for temporary build directory
+cleanup_build_temp() {
+  if [[ -n "${BUILD_TEMP:-}" ]] && [[ "$BUILD_TEMP" == /tmp/npm-ci-* ]] && [[ -d "$BUILD_TEMP" ]]; then
+    echo "Cleaning up temporary build directory: $BUILD_TEMP"
+    rm -rf -- "$BUILD_TEMP"
+  fi
+}
+
+# Set trap to clean up on script exit (success or failure)
+trap cleanup_build_temp EXIT
 
 echo "Creating archive $PACK_TEMP_DIR/$FILE_NAME.zip"
 
@@ -48,10 +70,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
   cd - > /dev/null || exit
   mv "$BUILD_TEMP/node_modules" "$FUNCTION_APP_PATH/"
 
-  # Clean up temp directory
-  rm -rf "$BUILD_TEMP"
-
-  # Return to function app directory
+  # Return to function app directory (trap will clean up BUILD_TEMP on exit)
   cd "$FUNCTION_APP_PATH" || exit
 elif [[ "$OSTYPE" == "darwin"* ]]; then
   # Running on macOS - use Podman/Docker to build for Linux
