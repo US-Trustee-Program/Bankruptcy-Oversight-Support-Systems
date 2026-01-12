@@ -946,7 +946,7 @@ const orders = [
     status: 'pending',
     courtDivisionCode: '802',
     jobId: 5228532703238990,
-    childCases: [
+    memberCases: [
       {
         debtor: {
           name: 'Kerry Marvin III',
@@ -1105,7 +1105,7 @@ const orders = [
     status: 'approved',
     courtDivisionCode: '310',
     jobId: 2015447520064332,
-    childCases: [
+    memberCases: [
       {
         debtor: {
           name: 'Arlene Goodwin',
@@ -1337,7 +1337,7 @@ const orders = [
     status: 'rejected',
     courtDivisionCode: '132',
     jobId: 2857091012849403,
-    childCases: [
+    memberCases: [
       {
         debtor: {
           name: 'Devin Herman',

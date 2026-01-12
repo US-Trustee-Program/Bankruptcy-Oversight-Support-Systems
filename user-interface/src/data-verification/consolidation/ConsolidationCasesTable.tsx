@@ -169,7 +169,7 @@ function ConsolidationCaseTable_(
                         value={idx}
                         title={`select ${bCase.caseTitle}`}
                         checked={included.includes(idx)}
-                        disabled={bCase.isChildCase}
+                        disabled={bCase.isMemberCase}
                       ></Checkbox>
                     </td>
                   )}
@@ -251,7 +251,7 @@ function ConsolidationCaseTable_(
                           </div>
                         );
                       })}
-                    {bCase.isLeadCase && !bCase.isChildCase && (
+                    {bCase.isLeadCase && !bCase.isMemberCase && (
                       <Alert
                         id="is-lead"
                         inline={true}
@@ -260,13 +260,13 @@ function ConsolidationCaseTable_(
                         type={UswdsAlertStyle.Warning}
                       ></Alert>
                     )}
-                    {bCase.isChildCase && (
+                    {bCase.isMemberCase && (
                       <Alert
-                        id="is-child"
+                        id="is-member"
                         inline={true}
                         show={true}
                         message={
-                          'This case is a child case of a consolidation and cannot be consolidated.'
+                          'This case is a member case of a consolidation and cannot be consolidated.'
                         }
                         type={UswdsAlertStyle.Warning}
                       ></Alert>

@@ -169,7 +169,7 @@ export function ConsolidationOrderAccordionView(
                 <ConsolidationCaseTable
                   id={`case-list-${viewModel.order.id}`}
                   data-testid={`${viewModel.order.id}-case-list`}
-                  cases={viewModel.order.childCases}
+                  cases={viewModel.order.memberCases}
                   leadCaseId={viewModel.showLeadCaseForm ? undefined : viewModel.leadCase?.caseId}
                   onSelect={viewModel.handleIncludeCase}
                   updateAllSelections={viewModel.updateAllSelections}
@@ -260,8 +260,8 @@ export function ConsolidationOrderAccordionView(
               <div className="grid-col-1"></div>
               <div className="grid-col-10">
                 <CaseTable
-                  id={`order-${viewModel.order.id}-child-cases`}
-                  cases={viewModel.order.childCases}
+                  id={`order-${viewModel.order.id}-member-cases`}
+                  cases={viewModel.order.memberCases}
                 ></CaseTable>
               </div>
               <div className="grid-col-1"></div>
@@ -294,7 +294,7 @@ export function ConsolidationOrderAccordionView(
                 <ConsolidationCaseTable
                   id={`${viewModel.order.id}-case-list`}
                   data-testid={`${viewModel.order.id}-case-list`}
-                  cases={viewModel.order.childCases}
+                  cases={viewModel.order.memberCases}
                   isDataEnhanced={viewModel.isDataEnhanced}
                 ></ConsolidationCaseTable>
               </div>

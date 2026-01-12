@@ -6,7 +6,7 @@ import {
   getCaseConsolidationType,
   getLeadCaseLabel,
   getMemberCaseLabel,
-  isChildCase,
+  isMemberCase,
   isLeadCase,
   isTransferredCase,
 } from '@common/cams/cases';
@@ -101,7 +101,7 @@ export default function CaseDetailHeader(props: Readonly<CaseDetailHeaderProps>)
                   {isLeadCase(props.caseDetail) && (
                     <LeadCaseIcon title={getLeadCaseLabel(consolidationType)} />
                   )}
-                  {isChildCase(props.caseDetail) && (
+                  {isMemberCase(props.caseDetail) && (
                     <MemberCaseIcon title={getMemberCaseLabel(consolidationType)} />
                   )}
                   {isTransferredCase(props.caseDetail) && (

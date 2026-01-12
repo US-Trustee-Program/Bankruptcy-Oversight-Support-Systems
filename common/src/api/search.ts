@@ -23,7 +23,7 @@ export type CasesSearchPredicate = SearchPredicate & {
   assignments?: CamsUserReference[];
   caseIds?: string[];
   excludedCaseIds?: string[];
-  excludeChildConsolidations?: boolean;
+  excludeMemberConsolidations?: boolean;
   excludeClosedCases?: boolean;
   includeOnlyUnassigned?: boolean;
 };

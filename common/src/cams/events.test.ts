@@ -1,6 +1,6 @@
 import {
   Consolidation,
-  isJointAdministrationChildCase,
+  isJointAdministrationMemberCase,
   isJointAdministrationLeadCase,
 } from './events';
 import MockData from './test-utilities/mock-data';
@@ -10,7 +10,7 @@ const jointAdministrationLeadCase: Consolidation[] = [
     override: { documentType: 'CONSOLIDATION_FROM', consolidationType: 'administrative' },
   }),
 ];
-const jointAdministrationChildCase: Consolidation[] = [
+const jointAdministrationMemberCase: Consolidation[] = [
   MockData.getConsolidationReference({
     override: { documentType: 'CONSOLIDATION_TO', consolidationType: 'administrative' },
   }),
@@ -20,7 +20,7 @@ const substantiveConsolidationLeadCase: Consolidation[] = [
     override: { documentType: 'CONSOLIDATION_FROM', consolidationType: 'substantive' },
   }),
 ];
-const substantiveConsolidationChildCase: Consolidation[] = [
+const substantiveConsolidationMemberCase: Consolidation[] = [
   MockData.getConsolidationReference({
     override: { documentType: 'CONSOLIDATION_TO', consolidationType: 'substantive' },
   }),
@@ -34,21 +34,21 @@ describe('Event domain helper function-apps', () => {
     test('should return false for all other cases', () => {
       expect(isJointAdministrationLeadCase([])).toBeFalsy();
       expect(isJointAdministrationLeadCase(undefined)).toBeFalsy();
-      expect(isJointAdministrationLeadCase(jointAdministrationChildCase)).toBeFalsy();
+      expect(isJointAdministrationLeadCase(jointAdministrationMemberCase)).toBeFalsy();
       expect(isJointAdministrationLeadCase(substantiveConsolidationLeadCase)).toBeFalsy();
-      expect(isJointAdministrationLeadCase(substantiveConsolidationChildCase)).toBeFalsy();
+      expect(isJointAdministrationLeadCase(substantiveConsolidationMemberCase)).toBeFalsy();
     });
   });
-  describe('isJointAdministrationChildCase', () => {
+  describe('isJointAdministrationMemberCase', () => {
     test('should return true', () => {
-      expect(isJointAdministrationChildCase(jointAdministrationChildCase)).toBeTruthy();
+      expect(isJointAdministrationMemberCase(jointAdministrationMemberCase)).toBeTruthy();
     });
     test('should return false for all other cases', () => {
-      expect(isJointAdministrationChildCase([])).toBeFalsy();
-      expect(isJointAdministrationChildCase(undefined)).toBeFalsy();
-      expect(isJointAdministrationChildCase(jointAdministrationLeadCase)).toBeFalsy();
-      expect(isJointAdministrationChildCase(substantiveConsolidationLeadCase)).toBeFalsy();
-      expect(isJointAdministrationChildCase(substantiveConsolidationChildCase)).toBeFalsy();
+      expect(isJointAdministrationMemberCase([])).toBeFalsy();
+      expect(isJointAdministrationMemberCase(undefined)).toBeFalsy();
+      expect(isJointAdministrationMemberCase(jointAdministrationLeadCase)).toBeFalsy();
+      expect(isJointAdministrationMemberCase(substantiveConsolidationLeadCase)).toBeFalsy();
+      expect(isJointAdministrationMemberCase(substantiveConsolidationMemberCase)).toBeFalsy();
     });
   });
 });

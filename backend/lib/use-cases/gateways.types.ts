@@ -172,7 +172,7 @@ export interface CasesRepository extends Releasable {
   searchCases(
     predicate: CasesSearchPredicate,
   ): Promise<CamsPaginationResponse<ResourceActions<SyncedCase>>>;
-  getConsolidationChildCaseIds(predicate: CasesSearchPredicate): Promise<string[]>;
+  getConsolidationMemberCaseIds(predicate: CasesSearchPredicate): Promise<string[]>;
   getSyncedCase(caseId: string): Promise<SyncedCase>;
 }
 

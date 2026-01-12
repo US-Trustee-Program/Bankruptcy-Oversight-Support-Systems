@@ -41,7 +41,7 @@ describe('consolidationOrderAccordion presenter tests', () => {
     const order: ConsolidationOrder = MockData.getConsolidationOrder();
     vi.spyOn(Api2, 'getCaseAssignments').mockResolvedValue({ data: [] });
 
-    const attorneys = await fetchLeadCaseAttorneys(order.childCases[0].caseId);
+    const attorneys = await fetchLeadCaseAttorneys(order.memberCases[0].caseId);
     expect(attorneys).toEqual([]);
   });
 
@@ -54,7 +54,7 @@ describe('consolidationOrderAccordion presenter tests', () => {
     const attorneyArray = mockAttorneys.map((assignment) => assignment.name);
     vi.spyOn(Api2, 'getCaseAssignments').mockResolvedValue({ data: mockAttorneys });
 
-    const attorneys = await fetchLeadCaseAttorneys(order.childCases[0].caseId);
+    const attorneys = await fetchLeadCaseAttorneys(order.memberCases[0].caseId);
     expect(attorneys).toEqual(attorneyArray);
   });
 });

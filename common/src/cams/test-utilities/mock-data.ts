@@ -396,7 +396,7 @@ function getConsolidationOrder(
     status: override?.status || 'pending',
     courtDivisionCode: summary.courtDivisionCode,
     jobId: faker.number.int(),
-    childCases: [getConsolidatedOrderCase({ override }), getConsolidatedOrderCase({ override })],
+    memberCases: [getConsolidatedOrderCase({ override }), getConsolidatedOrderCase({ override })],
   };
 
   return { ...consolidationOrder, ...override };
@@ -846,7 +846,7 @@ function getConsolidationHistory(override: Partial<ConsolidationOrderSummary> = 
   return {
     status: override.status || 'pending',
     leadCase: override.leadCase || undefined,
-    childCases: override.childCases || [],
+    memberCases: override.memberCases || [],
   };
 }
 

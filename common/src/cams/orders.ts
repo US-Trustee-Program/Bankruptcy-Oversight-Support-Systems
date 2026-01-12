@@ -94,7 +94,7 @@ export type ConsolidationOrder = CamsDocument & {
   jobId: number;
   leadCaseIdHint?: string;
   leadCase?: CaseSummary;
-  childCases: Array<ConsolidationOrderCase>;
+  memberCases: Array<ConsolidationOrderCase>;
   reason?: string;
 };
 
@@ -111,7 +111,7 @@ export type ConsolidationOrderCase = CaseSummary & {
   attorneyAssignments?: CaseAssignment[];
   associations?: Consolidation[];
   isLeadCase?: boolean;
-  isChildCase?: boolean;
+  isMemberCase?: boolean;
 };
 
 export function getCaseSummaryFromConsolidationOrderCase(

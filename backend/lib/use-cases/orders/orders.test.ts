@@ -217,11 +217,11 @@ describe('Orders use case', () => {
 
     const caseSummaries: Array<CaseSummary> = [
       consolidations[0].leadCase,
-      ...consolidations[0].childCases,
+      ...consolidations[0].memberCases,
       consolidations[1].leadCase,
-      ...consolidations[1].childCases,
+      ...consolidations[1].memberCases,
       consolidations[2].leadCase,
-      ...consolidations[2].childCases,
+      ...consolidations[2].memberCases,
     ];
 
     vi.spyOn(CasesLocalGateway.prototype, 'getCaseSummary').mockImplementation(
@@ -262,7 +262,7 @@ describe('Orders use case', () => {
 
     // The consolidation order should contain three cases. One for each raw order, and one for the returned lead case.
     const map = await useCase.mapConsolidations(mockContext, rawConsolidationOrders);
-    const caseIds = map.get(jobId).childCases.map((c) => c.caseId);
+    const caseIds = map.get(jobId).memberCases.map((c) => c.caseId);
     expect(caseIds).toHaveLength(3);
     expect(caseIds).toContain('999-99-00000');
     expect(caseIds).toContain('999-99-11111');
@@ -348,7 +348,7 @@ describe('Orders use case', () => {
     const rejectionReason = 'test';
     const rejection: ConsolidationOrderActionRejection = {
       ...pendingConsolidation,
-      rejectedCases: pendingConsolidation.childCases.map((bCase) => bCase.caseId),
+      rejectedCases: pendingConsolidation.memberCases.map((bCase) => bCase.caseId),
       reason: rejectionReason,
     };
     const newConsolidation = {
@@ -362,21 +362,21 @@ describe('Orders use case', () => {
       .mockResolvedValue(newConsolidation);
     const before: ConsolidationOrderSummary = {
       status: 'pending',
-      childCases: [],
+      memberCases: [],
     };
     const after: ConsolidationOrderSummary = {
       status: 'rejected',
-      childCases: [],
+      memberCases: [],
     };
-    const childCaseHistory: Partial<CaseHistory> = {
+    const memberCaseHistory: Partial<CaseHistory> = {
       documentType: 'AUDIT_CONSOLIDATION',
-      caseId: pendingConsolidation.childCases[0].caseId,
+      caseId: pendingConsolidation.memberCases[0].caseId,
       before,
       after,
     };
     const initialCaseHistory: CaseHistory = {
       documentType: 'AUDIT_CONSOLIDATION',
-      caseId: pendingConsolidation.childCases[0].caseId,
+      caseId: pendingConsolidation.memberCases[0].caseId,
       before: null,
       after: before,
       updatedOn: '2024-01-01T12:00:00.000Z',
@@ -398,17 +398,17 @@ describe('Orders use case', () => {
     expect(mockPut).toHaveBeenCalled();
     expect(mockCreateHistory.mock.calls[0][0]).toEqual(
       expect.objectContaining({
-        ...childCaseHistory,
-        caseId: pendingConsolidation.childCases[0].caseId,
+        ...memberCaseHistory,
+        caseId: pendingConsolidation.memberCases[0].caseId,
       }),
     );
     expect(mockCreateHistory.mock.calls[1][0]).toEqual(
       expect.objectContaining({
-        ...childCaseHistory,
-        caseId: pendingConsolidation.childCases[1].caseId,
+        ...memberCaseHistory,
+        caseId: pendingConsolidation.memberCases[1].caseId,
       }),
     );
-    expect(mockGetHistory).toHaveBeenCalledTimes(pendingConsolidation.childCases.length);
+    expect(mockGetHistory).toHaveBeenCalledTimes(pendingConsolidation.memberCases.length);
     expect(actual).toEqual([newConsolidation]);
   });
 
@@ -421,7 +421,7 @@ describe('Orders use case', () => {
 
     const rejectionReason = 'test';
     const rejection: ConsolidationOrderActionRejection = {
-      rejectedCases: [pendingConsolidation.childCases[0].caseId],
+      rejectedCases: [pendingConsolidation.memberCases[0].caseId],
       reason: rejectionReason,
       consolidationId: pendingConsolidation.id,
     };
@@ -434,8 +434,8 @@ describe('Orders use case', () => {
       ...pendingConsolidation,
       id: crypto.randomUUID(),
       status: 'pending',
-      childCases: pendingConsolidation.childCases.filter(
-        (bCase) => pendingConsolidation.childCases[0].caseId !== bCase.caseId,
+      memberCases: pendingConsolidation.memberCases.filter(
+        (bCase) => pendingConsolidation.memberCases[0].caseId !== bCase.caseId,
       ),
     };
     vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(pendingConsolidation);
@@ -449,21 +449,21 @@ describe('Orders use case', () => {
 
     const before: ConsolidationOrderSummary = {
       status: 'pending',
-      childCases: [],
+      memberCases: [],
     };
     const after: ConsolidationOrderSummary = {
       status: 'rejected',
-      childCases: [],
+      memberCases: [],
     };
-    const childCaseHistory: Partial<CaseHistory> = {
+    const memberCaseHistory: Partial<CaseHistory> = {
       documentType: 'AUDIT_CONSOLIDATION',
-      caseId: pendingConsolidation.childCases[0].caseId,
+      caseId: pendingConsolidation.memberCases[0].caseId,
       before,
       after,
     };
     const initialCaseHistory: CaseHistory = {
       documentType: 'AUDIT_CONSOLIDATION',
-      caseId: pendingConsolidation.childCases[0].caseId,
+      caseId: pendingConsolidation.memberCases[0].caseId,
       before: null,
       after: before,
       updatedOn: '2024-01-01T12:00:00.000Z',
@@ -486,19 +486,19 @@ describe('Orders use case', () => {
     expect(mockUpdate).toHaveBeenCalledTimes(1);
     expect(mockCreateHistory.mock.calls[0][0]).toEqual(
       expect.objectContaining({
-        ...childCaseHistory,
-        caseId: pendingConsolidation.childCases[0].caseId,
+        ...memberCaseHistory,
+        caseId: pendingConsolidation.memberCases[0].caseId,
       }),
     );
     expect(mockGetHistory).toHaveBeenCalledTimes(1);
     expect(actual).toEqual(expect.arrayContaining([newPendingConsolidation, newConsolidation]));
   });
 
-  test('should throw an error if a child case is part of another consolidation', async () => {
+  test('should throw an error if a member case is part of another consolidation', async () => {
     const pendingConsolidation = MockData.getConsolidationOrder();
     const leadCase = MockData.getCaseSummary();
     const approval: ConsolidationOrderActionApproval = {
-      approvedCases: pendingConsolidation.childCases.map((bCase) => {
+      approvedCases: pendingConsolidation.memberCases.map((bCase) => {
         return bCase.caseId;
       }),
       leadCase,
@@ -510,7 +510,7 @@ describe('Orders use case', () => {
       .mockResolvedValueOnce([
         MockData.getConsolidationReference({
           override: {
-            caseId: pendingConsolidation.childCases[0].caseId,
+            caseId: pendingConsolidation.memberCases[0].caseId,
             documentType: 'CONSOLIDATION_TO',
           },
         }),
@@ -520,16 +520,16 @@ describe('Orders use case', () => {
     vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(pendingConsolidation);
 
     await expect(useCase.approveConsolidation(mockContext, approval)).rejects.toThrow(
-      'Cannot consolidate order. A child case has already been consolidated.',
+      'Cannot consolidate order. A member case has already been consolidated.',
     );
     expect(mockGetConsolidation).toHaveBeenCalled();
   });
 
-  test('should throw an error if a lead case is a child case of another consolidation', async () => {
+  test('should throw an error if a lead case is a member case of another consolidation', async () => {
     const pendingConsolidation = MockData.getConsolidationOrder();
     const leadCase = MockData.getCaseSummary();
     const approval: ConsolidationOrderActionApproval = {
-      approvedCases: pendingConsolidation.childCases.map((bCase) => {
+      approvedCases: pendingConsolidation.memberCases.map((bCase) => {
         return bCase.caseId;
       }),
       leadCase,
@@ -553,7 +553,7 @@ describe('Orders use case', () => {
     vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(pendingConsolidation);
 
     await expect(useCase.approveConsolidation(mockContext, approval)).rejects.toThrow(
-      'Cannot consolidate order. The lead case is a child case of another consolidation.',
+      'Cannot consolidate order. The lead case is a member case of another consolidation.',
     );
     expect(mockGetConsolidation).toHaveBeenCalled();
   });
@@ -588,7 +588,7 @@ describe('Orders use case', () => {
     const pendingConsolidation = MockData.getConsolidationOrder();
     const leadCase = MockData.getCaseSummary();
     const approval: ConsolidationOrderActionApproval = {
-      approvedCases: pendingConsolidation.childCases.map((bCase) => {
+      approvedCases: pendingConsolidation.memberCases.map((bCase) => {
         return bCase.caseId;
       }),
       leadCase,
@@ -606,7 +606,7 @@ describe('Orders use case', () => {
     expect(mockGetConsolidation).not.toHaveBeenCalled();
   });
 
-  test('should not approve a consolidation without at least one child case.', async () => {
+  test('should not approve a consolidation without at least one member case.', async () => {
     const pendingConsolidation = MockData.getConsolidationOrder();
     const leadCase = MockData.getCaseSummary();
     const approval: ConsolidationOrderActionApproval = {
@@ -616,14 +616,14 @@ describe('Orders use case', () => {
       consolidationType: pendingConsolidation.consolidationType,
     };
     await expect(useCase.approveConsolidation(mockContext, approval)).rejects.toThrow(
-      'Consolidation approvals require at least one child case.',
+      'Consolidation approvals require at least one member case.',
     );
   });
 
   test('should throw an error if user is unauthorized to reject consolidations', async () => {
     const pendingConsolidation = MockData.getConsolidationOrder();
     const rejection: ConsolidationOrderActionRejection = {
-      rejectedCases: pendingConsolidation.childCases.map((bCase) => {
+      rejectedCases: pendingConsolidation.memberCases.map((bCase) => {
         return bCase.caseId;
       }),
       consolidationId: pendingConsolidation.id,
@@ -644,7 +644,7 @@ describe('Orders use case', () => {
     const pendingConsolidation = MockData.getConsolidationOrder();
     const leadCase = MockData.getCaseSummary();
     const approval: ConsolidationOrderActionApproval = {
-      approvedCases: pendingConsolidation.childCases.map((bCase) => {
+      approvedCases: pendingConsolidation.memberCases.map((bCase) => {
         return bCase.caseId;
       }),
       leadCase,
@@ -673,22 +673,22 @@ describe('Orders use case', () => {
 
     const before: ConsolidationOrderSummary = {
       status: 'pending',
-      childCases: [],
+      memberCases: [],
     };
     const after: ConsolidationOrderSummary = {
       status: 'approved',
       leadCase: expect.anything(),
-      childCases: [],
+      memberCases: [],
     };
-    const childCaseHistory: Partial<CaseHistory> = {
+    const memberCaseHistory: Partial<CaseHistory> = {
       documentType: 'AUDIT_CONSOLIDATION',
-      caseId: pendingConsolidation.childCases[0].caseId,
+      caseId: pendingConsolidation.memberCases[0].caseId,
       before,
       after,
     };
     const initialCaseHistory: CaseHistory = {
       documentType: 'AUDIT_CONSOLIDATION',
-      caseId: pendingConsolidation.childCases[0].caseId,
+      caseId: pendingConsolidation.memberCases[0].caseId,
       before: null,
       after: before,
       updatedOn: '2024-01-01T12:00:00.000Z',
@@ -719,10 +719,10 @@ describe('Orders use case', () => {
       return { id: assignment.userId, name: assignment.name };
     });
     expectedMap.set(leadCase.caseId, leadCaseAssignments);
-    pendingConsolidation.childCases.forEach((childCase) => {
+    pendingConsolidation.memberCases.forEach((memberCase) => {
       expectedMap.set(
-        childCase.caseId,
-        MockData.buildArray(() => MockData.getAttorneyAssignment({ caseId: childCase.caseId }), 3),
+        memberCase.caseId,
+        MockData.buildArray(() => MockData.getAttorneyAssignment({ caseId: memberCase.caseId }), 3),
       );
     });
 
@@ -748,32 +748,34 @@ describe('Orders use case', () => {
     expect(mockGetConsolidation).toHaveBeenCalled();
     expect(mockCreateCaseHistory.mock.calls[0][0]).toEqual(
       expect.objectContaining({
-        ...childCaseHistory,
-        caseId: pendingConsolidation.childCases[0].caseId,
+        ...memberCaseHistory,
+        caseId: pendingConsolidation.memberCases[0].caseId,
       }),
     );
     expect(mockCreateCaseHistory.mock.calls[1][0]).toEqual(
       expect.objectContaining({
-        ...childCaseHistory,
-        caseId: pendingConsolidation.childCases[1].caseId,
+        ...memberCaseHistory,
+        caseId: pendingConsolidation.memberCases[1].caseId,
       }),
     );
 
-    // Verify that createConsolidationTo and createConsolidationFrom are called for each child case
-    expect(mockCreateConsolidationTo).toHaveBeenCalledTimes(pendingConsolidation.childCases.length);
+    // Verify that createConsolidationTo and createConsolidationFrom are called for each member case
+    expect(mockCreateConsolidationTo).toHaveBeenCalledTimes(
+      pendingConsolidation.memberCases.length,
+    );
     expect(mockCreateConsolidationFrom).toHaveBeenCalledTimes(
-      pendingConsolidation.childCases.length,
+      pendingConsolidation.memberCases.length,
     );
 
-    // Verify that the child cases in the AUDIT_CONSOLIDATION document include all approved cases
+    // Verify that the member cases in the AUDIT_CONSOLIDATION document include all approved cases
     const leadCaseHistory = mockCreateCaseHistory.mock.calls.find(
       (call) => call[0].caseId === leadCase.caseId,
     );
-    expect(leadCaseHistory[0].after.childCases).toHaveLength(
-      pendingConsolidation.childCases.length,
+    expect(leadCaseHistory[0].after.memberCases).toHaveLength(
+      pendingConsolidation.memberCases.length,
     );
 
-    // Verify that createTrialAttorneyAssignments is called once for each approved child
+    // Verify that createTrialAttorneyAssignments is called once for each approved member
     expect(createAssignmentsSpy).toHaveBeenCalledTimes(approval.approvedCases.length);
     approval.approvedCases.forEach((approvedCase) => {
       expect(createAssignmentsSpy).toHaveBeenCalledWith(
@@ -800,7 +802,7 @@ describe('Orders use case', () => {
     // Include the additional case in the approved cases
     const approval: ConsolidationOrderActionApproval = {
       approvedCases: [
-        ...pendingConsolidation.childCases.map((bCase) => bCase.caseId),
+        ...pendingConsolidation.memberCases.map((bCase) => bCase.caseId),
         additionalCase.caseId,
       ],
       leadCase,
@@ -823,9 +825,9 @@ describe('Orders use case', () => {
       status: 'approved',
       leadCase: leadCase,
       id: crypto.randomUUID(),
-      // The new consolidation should include all child cases, including the additional one
-      childCases: [
-        ...pendingConsolidation.childCases,
+      // The new consolidation should include all member cases, including the additional one
+      memberCases: [
+        ...pendingConsolidation.memberCases,
         {
           ...additionalCase,
           orderDate: pendingConsolidation.orderDate,
@@ -851,12 +853,12 @@ describe('Orders use case', () => {
 
     const before: ConsolidationOrderSummary = {
       status: 'pending',
-      childCases: [],
+      memberCases: [],
     };
 
     const initialCaseHistory: CaseHistory = {
       documentType: 'AUDIT_CONSOLIDATION',
-      caseId: pendingConsolidation.childCases[0].caseId,
+      caseId: pendingConsolidation.memberCases[0].caseId,
       before: null,
       after: before,
       updatedOn: '2024-01-01T12:00:00.000Z',
@@ -891,10 +893,10 @@ describe('Orders use case', () => {
       return { id: assignment.userId, name: assignment.name };
     });
     expectedMap.set(leadCase.caseId, leadCaseAssignments);
-    pendingConsolidation.childCases.forEach((childCase) => {
+    pendingConsolidation.memberCases.forEach((memberCase) => {
       expectedMap.set(
-        childCase.caseId,
-        MockData.buildArray(() => MockData.getAttorneyAssignment({ caseId: childCase.caseId }), 3),
+        memberCase.caseId,
+        MockData.buildArray(() => MockData.getAttorneyAssignment({ caseId: memberCase.caseId }), 3),
       );
     });
 
@@ -923,10 +925,10 @@ describe('Orders use case', () => {
     // Verify that getConsolidation is called for all cases
     expect(mockGetConsolidation).toHaveBeenCalledTimes(approval.approvedCases.length + 1); // +1 for lead case
 
-    // Verify that createCaseHistory is called for all child cases, including the additional one
+    // Verify that createCaseHistory is called for all member cases, including the additional one
     expect(mockCreateCaseHistory).toHaveBeenCalledTimes(approval.approvedCases.length + 1); // +1 for lead case
 
-    // Verify that createConsolidationTo and createConsolidationFrom are called for all child cases
+    // Verify that createConsolidationTo and createConsolidationFrom are called for all member cases
     expect(mockCreateConsolidationTo).toHaveBeenCalledTimes(approval.approvedCases.length);
     expect(mockCreateConsolidationFrom).toHaveBeenCalledTimes(approval.approvedCases.length);
 
@@ -942,19 +944,19 @@ describe('Orders use case', () => {
     );
     expect(additionalCaseFromCall).toBeDefined();
 
-    // Verify that the child cases in the AUDIT_CONSOLIDATION document include all approved cases
+    // Verify that the member cases in the AUDIT_CONSOLIDATION document include all approved cases
     const leadCaseHistory = mockCreateCaseHistory.mock.calls.find(
       (call) => call[0].caseId === leadCase.caseId,
     );
-    expect(leadCaseHistory[0].after.childCases).toHaveLength(approval.approvedCases.length);
+    expect(leadCaseHistory[0].after.memberCases).toHaveLength(approval.approvedCases.length);
 
     // Verify that the additional case is included in the lead case history
-    const additionalCaseInHistory = leadCaseHistory[0].after.childCases.find(
-      (childCase) => childCase.caseId === additionalCase.caseId,
+    const additionalCaseInHistory = leadCaseHistory[0].after.memberCases.find(
+      (memberCase) => memberCase.caseId === additionalCase.caseId,
     );
     expect(additionalCaseInHistory).toBeDefined();
 
-    // Verify that createTrialAttorneyAssignments is called once for each approved child
+    // Verify that createTrialAttorneyAssignments is called once for each approved member
     expect(createAssignmentsSpy).toHaveBeenCalledTimes(approval.approvedCases.length);
     approval.approvedCases.forEach((approvedCase) => {
       expect(createAssignmentsSpy).toHaveBeenCalledWith(
@@ -973,14 +975,14 @@ describe('Orders use case', () => {
     const pendingConsolidation = MockData.getConsolidationOrder();
     const leadCase = MockData.getCaseSummary();
     const approval: ConsolidationOrderActionApproval = {
-      approvedCases: [pendingConsolidation.childCases[0].caseId],
+      approvedCases: [pendingConsolidation.memberCases[0].caseId],
       leadCase,
       consolidationId: pendingConsolidation.id,
       consolidationType: pendingConsolidation.consolidationType,
     };
     const newConsolidation = {
       ...pendingConsolidation,
-      childCases: [pendingConsolidation.childCases[0]],
+      memberCases: [pendingConsolidation.memberCases[0]],
       status: 'approved',
       leadCase: leadCase,
       id: crypto.randomUUID(),
@@ -989,8 +991,8 @@ describe('Orders use case', () => {
       ...pendingConsolidation,
       id: crypto.randomUUID(),
       status: 'pending',
-      childCases: pendingConsolidation.childCases.filter(
-        (bCase) => pendingConsolidation.childCases[0].caseId !== bCase.caseId,
+      memberCases: pendingConsolidation.memberCases.filter(
+        (bCase) => pendingConsolidation.memberCases[0].caseId !== bCase.caseId,
       ),
     };
     const consolidation = MockData.buildArray(
@@ -1009,22 +1011,22 @@ describe('Orders use case', () => {
 
     const before: ConsolidationOrderSummary = {
       status: 'pending',
-      childCases: [],
+      memberCases: [],
     };
     const after: ConsolidationOrderSummary = {
       status: 'approved',
       leadCase: expect.anything(),
-      childCases: [],
+      memberCases: [],
     };
-    const childCaseHistory: Partial<CaseHistory> = {
+    const memberCaseHistory: Partial<CaseHistory> = {
       documentType: 'AUDIT_CONSOLIDATION',
-      caseId: pendingConsolidation.childCases[0].caseId,
+      caseId: pendingConsolidation.memberCases[0].caseId,
       before,
       after,
     };
     const initialCaseHistory: CaseHistory = {
       documentType: 'AUDIT_CONSOLIDATION',
-      caseId: pendingConsolidation.childCases[0].caseId,
+      caseId: pendingConsolidation.memberCases[0].caseId,
       before: null,
       after: before,
       updatedOn: '2024-01-01T12:00:00.000Z',
@@ -1056,10 +1058,10 @@ describe('Orders use case', () => {
       return { id: assignment.userId, name: assignment.name };
     });
     expectedMap.set(leadCase.caseId, leadCaseAssignments);
-    pendingConsolidation.childCases.forEach((childCase) => {
+    pendingConsolidation.memberCases.forEach((memberCase) => {
       expectedMap.set(
-        childCase.caseId,
-        MockData.buildArray(() => MockData.getAttorneyAssignment({ caseId: childCase.caseId }), 3),
+        memberCase.caseId,
+        MockData.buildArray(() => MockData.getAttorneyAssignment({ caseId: memberCase.caseId }), 3),
       );
     });
 
@@ -1085,8 +1087,8 @@ describe('Orders use case', () => {
     expect(mockGetConsolidation).toHaveBeenCalled();
     expect(mockCreateCaseHistory.mock.calls[0][0]).toEqual(
       expect.objectContaining({
-        ...childCaseHistory,
-        caseId: pendingConsolidation.childCases[0].caseId,
+        ...memberCaseHistory,
+        caseId: pendingConsolidation.memberCases[0].caseId,
       }),
     );
 
@@ -1096,23 +1098,23 @@ describe('Orders use case', () => {
 
     // Verify that the approved case is included in the calls to createConsolidationTo
     const approvedCaseToCall = mockCreateConsolidationTo.mock.calls.find(
-      (call) => call[0].caseId === pendingConsolidation.childCases[0].caseId,
+      (call) => call[0].caseId === pendingConsolidation.memberCases[0].caseId,
     );
     expect(approvedCaseToCall).toBeDefined();
 
     // Verify that the approved case is included in the calls to createConsolidationFrom
     const approvedCaseFromCall = mockCreateConsolidationFrom.mock.calls.find(
-      (call) => call[0].otherCase.caseId === pendingConsolidation.childCases[0].caseId,
+      (call) => call[0].otherCase.caseId === pendingConsolidation.memberCases[0].caseId,
     );
     expect(approvedCaseFromCall).toBeDefined();
 
-    // Verify that the child cases in the AUDIT_CONSOLIDATION document include only the approved cases
+    // Verify that the member cases in the AUDIT_CONSOLIDATION document include only the approved cases
     const leadCaseHistory = mockCreateCaseHistory.mock.calls.find(
       (call) => call[0].caseId === leadCase.caseId,
     );
-    expect(leadCaseHistory[0].after.childCases).toHaveLength(approval.approvedCases.length);
+    expect(leadCaseHistory[0].after.memberCases).toHaveLength(approval.approvedCases.length);
 
-    // Verify that createTrialAttorneyAssignments is called once for each approved child
+    // Verify that createTrialAttorneyAssignments is called once for each approved member
     expect(createAssignmentsSpy).toHaveBeenCalledTimes(approval.approvedCases.length);
     approval.approvedCases.forEach((approvedCase) => {
       expect(createAssignmentsSpy).toHaveBeenCalledWith(
@@ -1131,7 +1133,7 @@ describe('Orders use case', () => {
     const pendingConsolidation = MockData.getConsolidationOrder();
     const leadCase = MockData.getCaseSummary();
     const approval: ConsolidationOrderActionApproval = {
-      approvedCases: pendingConsolidation.childCases.map((bCase) => {
+      approvedCases: pendingConsolidation.memberCases.map((bCase) => {
         return bCase.caseId;
       }),
       leadCase,
@@ -1177,10 +1179,10 @@ describe('Orders use case', () => {
       return { id: assignment.userId, name: assignment.name };
     });
     expectedMap.set(leadCase.caseId, leadCaseAssignments);
-    pendingConsolidation.childCases.forEach((childCase) => {
+    pendingConsolidation.memberCases.forEach((memberCase) => {
       expectedMap.set(
-        childCase.caseId,
-        MockData.buildArray(() => MockData.getAttorneyAssignment({ caseId: childCase.caseId }), 3),
+        memberCase.caseId,
+        MockData.buildArray(() => MockData.getAttorneyAssignment({ caseId: memberCase.caseId }), 3),
       );
     });
 
@@ -1209,7 +1211,7 @@ describe('Orders use case', () => {
       expect.objectContaining({ updatedBy: getCamsUserReference(authorizedUser) }),
     );
 
-    // Verify that createTrialAttorneyAssignments is called once for each approved child
+    // Verify that createTrialAttorneyAssignments is called once for each approved member
     expect(createAssignmentsSpy).toHaveBeenCalledTimes(approval.approvedCases.length);
     approval.approvedCases.forEach((approvedCase) => {
       expect(createAssignmentsSpy).toHaveBeenCalledWith(
@@ -1226,7 +1228,7 @@ describe('Orders use case', () => {
     const pendingConsolidation = MockData.getConsolidationOrder();
     const leadCase = MockData.getCaseSummary();
     const rejection: ConsolidationOrderActionRejection = {
-      rejectedCases: pendingConsolidation.childCases.map((bCase) => {
+      rejectedCases: pendingConsolidation.memberCases.map((bCase) => {
         return bCase.caseId;
       }),
       consolidationId: pendingConsolidation.id,
