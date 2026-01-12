@@ -14,6 +14,7 @@ import { ResponseBody } from '@common/api/response';
 import Api2 from '@/lib/models/api2';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import { Consolidation } from '@common/cams/events';
+import { CaseDetail } from '@common/cams/cases';
 
 const TEST_CASE_ID = '101-23-12345';
 const TEST_TRIAL_ATTORNEY_1 = MockAttorneys.Brian;
@@ -347,7 +348,7 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
       });
     });
 
-    test('should show joint administration warning for member cases', async () => {
+    test('should not show edit button for member cases', () => {
       const caseDetail: CaseDetail = { ...BASE_TEST_CASE_DETAIL, consolidation: [CONSOLIDATE_TO] };
       const onCaseAssignment = vi.fn();
       renderWithProps({
@@ -355,18 +356,8 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
         onCaseAssignment,
       });
 
-      const assignedStaffEditButton = screen.getByTestId('open-modal-button');
-      fireEvent.click(assignedStaffEditButton);
-
-      const modal = screen.getByTestId(`modal-${assignmentModalId}`);
-      await waitFor(() => {
-        expect(modal).toBeVisible();
-      });
-
-      const memberCaseMessage = screen.getByTestId('alert-message');
-      expect(memberCaseMessage).toHaveTextContent(
-        'The assignees for this case will not match the lead case.',
-      );
+      const assignedStaffEditButton = screen.queryByTestId('open-modal-button');
+      expect(assignedStaffEditButton).not.toBeInTheDocument();
     });
 
     test('should not show joint administration warning for lead cases', async () => {
