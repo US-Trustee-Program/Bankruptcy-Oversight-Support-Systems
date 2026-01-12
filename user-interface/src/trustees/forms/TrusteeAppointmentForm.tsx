@@ -40,10 +40,29 @@ function navigateToAppointments(trusteeId: string, navigate: ReturnType<typeof u
   navigate.navigateTo(`/trustees/${trusteeId}/appointments`);
 }
 
+// Helper functions for appointment type derivation
+function getAvailableAppointmentTypes(
+  chapter: AppointmentChapterType,
+  isEditMode: boolean,
+): AppointmentType[] {
+  const types = chapterAppointmentTypeMap[chapter] ?? [];
+  return isEditMode
+    ? [...types]
+    : types.filter((type) => type !== 'off-panel' && type !== 'out-of-pool');
+}
+
+function getDefaultAppointmentType(
+  chapter: AppointmentChapterType,
+  isEditMode: boolean,
+): AppointmentType | '' {
+  const types = getAvailableAppointmentTypes(chapter, isEditMode);
+  return types.length === 1 ? types[0] : '';
+}
+
 type FormData = {
   districtKey: string; // Combined key: "{courtId}|{divisionCode}"
-  chapter: AppointmentChapterType;
-  appointmentType: AppointmentType;
+  chapter: AppointmentChapterType | '';
+  appointmentType: AppointmentType | '';
   status: AppointmentStatus | '';
   effectiveDate: string;
   appointedDate: string;
@@ -102,12 +121,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
   const appointmentTypeOptions = useMemo<ComboOption<AppointmentType>[]>(() => {
     if (!formData.chapter) return [];
 
-    const types = chapterAppointmentTypeMap[formData.chapter];
-    const filteredTypes = isEditMode
-      ? types
-      : types.filter((type) => type !== 'off-panel' && type !== 'out-of-pool');
-
-    return filteredTypes.map((type) => ({
+    return getAvailableAppointmentTypes(formData.chapter, isEditMode).map((type) => ({
       value: type,
       label: formatAppointmentType(type),
     }));
@@ -206,6 +220,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     !!formData.chapter &&
     !!formData.appointmentType &&
     !!formData.status &&
+    (!isEditMode || !!formData.effectiveDate) &&
     !!formData.appointedDate &&
     !validationError;
 
@@ -221,8 +236,8 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     const [courtId, divisionCode] = formData.districtKey.split('|');
 
     const payload: TrusteeAppointmentInput = {
-      chapter: formData.chapter,
-      appointmentType: formData.appointmentType,
+      chapter: formData.chapter as AppointmentChapterType,
+      appointmentType: formData.appointmentType as AppointmentType,
       courtId,
       divisionCode,
       appointedDate: formData.appointedDate,
@@ -259,14 +274,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
         };
 
         if (isValidChapter(value)) {
-          const types = chapterAppointmentTypeMap[value];
-          const filteredTypes = isEditMode
-            ? types
-            : types.filter((type) => type !== 'off-panel' && type !== 'out-of-pool');
-          const appointmentType =
-            filteredTypes && filteredTypes.length === 1
-              ? filteredTypes[0]
-              : ('' as AppointmentType);
+          const appointmentType = getDefaultAppointmentType(value, isEditMode);
           const status = isEditMode ? '' : 'active';
           return { ...prev, chapter: value, appointmentType, status };
         }
@@ -335,11 +343,13 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
                 label="District"
                 required={true}
                 options={districtOptions}
-                selections={
-                  formData.districtKey
-                    ? [districtOptions.find((opt) => opt.value === formData.districtKey)!]
-                    : undefined
-                }
+                selections={(() => {
+                  if (!formData.districtKey) return undefined;
+                  const selected = districtOptions.find(
+                    (opt) => opt.value === formData.districtKey,
+                  );
+                  return selected ? [selected] : undefined;
+                })()}
                 onUpdateSelection={(options) => {
                   handleFieldChange('districtKey', options[0]?.value ?? '');
                 }}
@@ -352,11 +362,11 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
                 label="Chapter"
                 required={true}
                 options={CHAPTER_OPTIONS}
-                selections={
-                  formData.chapter
-                    ? [CHAPTER_OPTIONS.find((opt) => opt.value === formData.chapter)!]
-                    : undefined
-                }
+                selections={(() => {
+                  if (!formData.chapter) return undefined;
+                  const selected = CHAPTER_OPTIONS.find((opt) => opt.value === formData.chapter);
+                  return selected ? [selected] : undefined;
+                })()}
                 onUpdateSelection={(options) => {
                   handleFieldChange('chapter', options[0]?.value ?? '');
                 }}
@@ -371,15 +381,13 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
                 disabled={!formData.chapter}
                 options={appointmentTypeOptions}
                 ariaDescription="Select Chapter to see available types."
-                selections={
-                  formData.appointmentType
-                    ? [
-                        appointmentTypeOptions.find(
-                          (opt) => opt.value === formData.appointmentType,
-                        )!,
-                      ]
-                    : undefined
-                }
+                selections={(() => {
+                  if (!formData.appointmentType) return undefined;
+                  const selected = appointmentTypeOptions.find(
+                    (opt) => opt.value === formData.appointmentType,
+                  );
+                  return selected ? [selected] : undefined;
+                })()}
                 onUpdateSelection={(options) => {
                   handleFieldChange('appointmentType', options[0]?.value ?? '');
                 }}
@@ -406,11 +414,11 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
                   required={true}
                   disabled={!formData.chapter || !formData.appointmentType}
                   options={statusOptions}
-                  selections={
-                    formData.status
-                      ? [statusOptions.find((opt) => opt.value === formData.status)!]
-                      : undefined
-                  }
+                  selections={(() => {
+                    if (!formData.status) return undefined;
+                    const selected = statusOptions.find((opt) => opt.value === formData.status);
+                    return selected ? [selected] : undefined;
+                  })()}
                   onUpdateSelection={(options) => {
                     handleFieldChange('status', options[0]?.value ?? '');
                   }}
