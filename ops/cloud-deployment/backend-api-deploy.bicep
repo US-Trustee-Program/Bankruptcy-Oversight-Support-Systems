@@ -283,6 +283,7 @@ var baseApiFunctionAppConfigProperties = {
 
   var slotFunctionAppConfigProperties = union(baseApiFunctionAppConfigProperties, {
     ipSecurityRestrictions: stagingIpSecurityRestrictionsRules
+    ipSecurityRestrictionsDefaultAction: 'Deny'
     appSettings: concat(baseApiFunctionAppConfigProperties.appSettings, [
       {
         name: 'INFO_SHA'
