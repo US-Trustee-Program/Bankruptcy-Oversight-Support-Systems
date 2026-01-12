@@ -1,5 +1,5 @@
 import './Button.scss';
-import React, { JSX, forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import React, { JSX, forwardRef, useEffect, useId, useImperativeHandle, useState } from 'react';
 
 export const BUTTON_BASE_CLASS = 'usa-button';
 
@@ -35,6 +35,7 @@ const Button_ = (props: ButtonProps, ref: React.Ref<ButtonRef>) => {
   const { id, uswdsStyle, buttonState, className, title, children, type, ...otherProps } = props;
 
   const [isDisabled, setIsDisabled] = useState<boolean>(!!otherProps.disabled);
+  const generatedId = useId();
   const classes = [BUTTON_BASE_CLASS];
 
   if (uswdsStyle) {
@@ -61,7 +62,7 @@ const Button_ = (props: ButtonProps, ref: React.Ref<ButtonRef>) => {
     disableButton,
   }));
 
-  const buttonId = id ?? `button-id-${Math.floor(Math.random() * 10000)}`;
+  const buttonId = id ?? `button-id-${generatedId}`;
   const testId = id ?? 'test';
   return (
     <button
@@ -71,7 +72,6 @@ const Button_ = (props: ButtonProps, ref: React.Ref<ButtonRef>) => {
       className={classes.join(' ')}
       data-testid={`button-${testId}`}
       disabled={isDisabled}
-      aria-disabled={isDisabled}
       title={title}
       tabIndex={tabIndex}
     >

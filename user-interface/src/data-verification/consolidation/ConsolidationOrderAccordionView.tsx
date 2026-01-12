@@ -199,7 +199,7 @@ export function ConsolidationOrderAccordionView(
                   id={`accordion-cancel-button-${viewModel.order.id}`}
                   onClick={viewModel.handleClearInputs}
                   uswdsStyle={UswdsButtonStyle.Unstyled}
-                  className="unstyled-button"
+                  className="spaced-button"
                   ref={viewModel.clearButton}
                 >
                   Clear

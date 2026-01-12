@@ -1,7 +1,15 @@
+@import '@/styles/abstracts/colors';
 
 .date-picker {
   .date-error {
     padding: 0.5rem 0;
     font-size: 1rem;
+  }
+}
+
+.usa-form-group {
+  label:has(+ .usa-date-picker input[required])::after {
+    content: ' *';
+    color: $secondary-dark;
   }
 }
