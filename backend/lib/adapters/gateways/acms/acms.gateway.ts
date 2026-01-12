@@ -1,7 +1,7 @@
 import * as mssql from 'mssql';
 import {
   AcmsConsolidation,
-  AcmsConsolidationChildCase,
+  AcmsConsolidationMemberCase,
   AcmsPredicate,
 } from '../../../use-cases/dataflows/migrate-consolidations';
 import { AcmsGateway } from '../../../use-cases/gateways.types';
@@ -93,11 +93,11 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
       WHERE CONSOLIDATED_CASE_NUMBER = @leadCaseId`;
 
     try {
-      const results = await this.executeQuery<AcmsConsolidationChildCase>(context, query, input);
-      const rawResults = results.results as AcmsConsolidationChildCase[];
+      const results = await this.executeQuery<AcmsConsolidationMemberCase>(context, query, input);
+      const rawResults = results.results as AcmsConsolidationMemberCase[];
 
       const formattedLeadCaseId = this.formatCaseId(leadCaseId);
-      const childCases = rawResults
+      const memberCases = rawResults
         .filter((bCase) => bCase.caseId !== formattedLeadCaseId)
         .map((bCase) => {
           const date = String(bCase.consolidationDate);
@@ -110,13 +110,13 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
 
       context.logger.debug(
         MODULE_NAME,
-        `Child caseIds for lead case id ${formattedLeadCaseId}`,
-        childCases,
+        `Member caseIds for lead case id ${formattedLeadCaseId}`,
+        memberCases,
       );
 
       return {
         leadCaseId: this.formatCaseId(leadCaseId.toString()),
-        childCases,
+        memberCases,
       };
     } catch (originalError) {
       context.logger.error(

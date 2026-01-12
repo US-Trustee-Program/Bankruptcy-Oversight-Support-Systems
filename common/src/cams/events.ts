@@ -32,7 +32,7 @@ export type ConsolidationTo = EventBase &
     documentType: 'CONSOLIDATION_TO';
   };
 
-// Pointer to child case. One for each child.
+// Pointer to member case. One for each member.
 export type ConsolidationFrom = EventBase &
   ConsolidationDetails &
   Auditable & {
@@ -47,7 +47,7 @@ export function isJointAdministrationLeadCase(references?: Consolidation[]): boo
   return consolidationsMatchTypes(references, 'administrative', 'CONSOLIDATION_FROM');
 }
 
-export function isJointAdministrationChildCase(references?: Consolidation[]): boolean {
+export function isJointAdministrationMemberCase(references?: Consolidation[]): boolean {
   return consolidationsMatchTypes(references, 'administrative', 'CONSOLIDATION_TO');
 }
 

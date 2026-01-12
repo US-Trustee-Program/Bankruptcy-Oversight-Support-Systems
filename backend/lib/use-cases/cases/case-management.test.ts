@@ -293,7 +293,7 @@ describe('Case management tests', () => {
   describe('searchCases tests', () => {
     const basePredicate: CasesSearchPredicate = {
       chapters: ['15'],
-      excludeChildConsolidations: false,
+      excludeMemberConsolidations: false,
     };
     const caseNumber = '00-00000';
 
@@ -387,7 +387,7 @@ describe('Case management tests', () => {
       ];
       const predicate = {
         ...basePredicate,
-        excludeChildConsolidations: true,
+        excludeMemberConsolidations: true,
       };
 
       const syncedCase = MockData.getSyncedCase({
@@ -396,7 +396,7 @@ describe('Case management tests', () => {
         },
       });
       const expected = [{ ...syncedCase, officeCode, _actions }];
-      vi.spyOn(useCase.casesRepository, 'getConsolidationChildCaseIds').mockResolvedValue([]);
+      vi.spyOn(useCase.casesRepository, 'getConsolidationMemberCaseIds').mockResolvedValue([]);
       vi.spyOn(useCase.casesRepository, 'searchCases').mockResolvedValue({
         metadata: { total: 1 },
         data: [syncedCase],

@@ -1,4 +1,4 @@
-import { isJointAdministrationChildCase } from '@common/cams/events';
+import { isJointAdministrationMemberCase } from '@common/cams/events';
 import { CaseDetail } from '@common/cams/cases';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import AssignAttorneyModal from '@/staff-assignment/modal/AssignAttorneyModal';
@@ -109,7 +109,7 @@ function CaseDetailTrusteeAndAssignedStaff(
         ref={assignmentModalRef}
         modalId={'assignmentModalId'}
         alertMessage={
-          isJointAdministrationChildCase(caseDetail.consolidation)
+          isJointAdministrationMemberCase(caseDetail.consolidation)
             ? {
                 message: 'The assignees for this case will not match the lead case.',
                 type: UswdsAlertStyle.Warning,
