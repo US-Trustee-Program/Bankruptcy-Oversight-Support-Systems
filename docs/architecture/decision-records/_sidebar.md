@@ -23,4 +23,5 @@
 - [Monorepo Architecture: npm Workspaces](/architecture/decision-records/NpmWorkspaces.md)
 - [Office Assignees Collection Management](/architecture/decision-records/OfficeAssigneesCollectionManagement.md)
 - [Storage Queue](/architecture/decision-records/StorageQueue.md)
+- [Vector Search for Fuzzy Name Matching](/architecture/decision-records/VectorSearchForFuzzyNameMatching.md)
 - [Zero Downtime](/architecture/decision-records/ZeroDowntimeDeployment.md)
