@@ -17,6 +17,7 @@ export default defineConfig({
           fileURLToPath(new URL('./node_modules/', import.meta.url)),
           fileURLToPath(new URL('../node_modules/', import.meta.url)),
           fileURLToPath(new URL('../node_modules/@uswds/uswds/packages/', import.meta.url)),
+          fileURLToPath(new URL('./node_modules/@uswds/uswds/src/stylesheets/', import.meta.url)),
           fileURLToPath(new URL('./src/', import.meta.url)),
         ],
       },
