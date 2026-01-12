@@ -16,13 +16,13 @@ import {
   chapterAppointmentTypeMap,
   getStatusOptions,
   formatAppointmentStatus,
-  AppointmentStatus,
 } from '@common/cams/trustee-appointments';
-import { ChapterType, AppointmentType, formatAppointmentType } from '@common/cams/trustees';
+import { formatAppointmentType } from '@common/cams/trustees';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { useLocation } from 'react-router-dom';
+import { ChapterType, AppointmentType, AppointmentStatus } from '@common/cams/types/Appointments';
 
 const CHAPTER_OPTIONS: ComboOption<ChapterType>[] = [
   { value: '7', label: 'Chapter 7' },
