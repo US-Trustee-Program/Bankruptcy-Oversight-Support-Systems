@@ -1,10 +1,12 @@
 import * as esbuild from 'esbuild';
-import { COMMON_BUILD_OPTIONS, findFunctionEntryPoints } from '../../esbuild-shared.mjs';
+import { COMMON_BUILD_OPTIONS } from '../../esbuild-shared.mjs';
 
-const entryPoints = findFunctionEntryPoints();
+// Use single entry point to bundle all functions together
+// This eliminates code duplication across multiple bundles
+const entryPoints = ['index.ts'];
 
 // eslint-disable-next-line no-undef
-console.log(`Found ${entryPoints.length} Azure Functions to bundle`);
+console.log('Building single bundle with all Azure Functions');
 
 esbuild
   .build({
