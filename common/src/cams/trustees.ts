@@ -5,19 +5,7 @@ import { ContactInformation } from './contact';
 import { CamsUserReference } from './users';
 import { OversightRoleType } from './roles';
 import { NullableOptionalFields } from '../api/common';
-import { AppointmentStatus } from './trustee-appointments';
-
-export type ChapterType = '7' | '11' | '11-subchapter-v' | '12' | '13';
-
-export type AppointmentType =
-  | 'panel'
-  | 'off-panel'
-  | 'case-by-case'
-  | 'pool'
-  | 'out-of-pool'
-  | 'standing'
-  | 'elected'
-  | 'converted-case';
+import { ChapterType, AppointmentType, AppointmentStatus } from './types/Appointments';
 
 export function getAppointmentDetails(
   chapter: ChapterType,
@@ -31,7 +19,6 @@ export function getAppointmentDetails(
 
 export function formatChapterType(chapter: ChapterType): string {
   const chapterLabels: Partial<Record<ChapterType, string>> = {
-    //DO WE NEED PARTIAL OR SOMETHING ELSE FORCING US
     '11-subchapter-v': '11 Subchapter V',
   };
 

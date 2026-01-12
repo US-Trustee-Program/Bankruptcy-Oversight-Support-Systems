@@ -1,16 +1,6 @@
 import { Auditable } from './auditable';
 import { Identifiable } from './document';
-import { ChapterType, AppointmentType } from './trustees';
-
-export type AppointmentStatus =
-  | 'active'
-  | 'inactive'
-  | 'voluntary-suspended'
-  | 'involuntary-suspended'
-  | 'deceased'
-  | 'resigned'
-  | 'terminated'
-  | 'removed';
+import { AppointmentType, ChapterType, AppointmentStatus } from './types/Appointments';
 
 const chapter7AppointmentTypes: readonly AppointmentType[] = [
   'panel',
