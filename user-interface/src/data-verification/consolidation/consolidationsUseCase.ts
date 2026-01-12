@@ -20,7 +20,7 @@ import { ComboOption, ComboOptionList } from '@/lib/components/combobox/ComboBox
 import { sanitizeText } from '@/lib/utils/sanitize-text';
 import { delay } from '@common/delay';
 
-type ChildCaseFacts = { isConsolidationChildCase: boolean; leadCase?: CaseSummary };
+type MemberCaseFacts = { isConsolidationMemberCase: boolean; leadCase?: CaseSummary };
 
 export type OnOrderUpdate = (
   alertDetails: AlertDetails,
@@ -57,7 +57,7 @@ function isLeadCase(caseId: string, associations: Consolidation[]): boolean {
   return associations.some((a) => a.documentType === 'CONSOLIDATION_FROM' && a.caseId === caseId);
 }
 
-function isChildCase(caseId: string, associations: Consolidation[]): boolean {
+function isMemberCase(caseId: string, associations: Consolidation[]): boolean {
   return associations.some((a) => a.documentType === 'CONSOLIDATION_TO' && a.caseId === caseId);
 }
 
@@ -82,7 +82,7 @@ const consolidationUseCase = (
 
   const handleAddCaseAction = () => {
     if (store.caseToAdd) {
-      store.order.childCases.push(store.caseToAdd);
+      store.order.memberCases.push(store.caseToAdd);
       if (store.caseToAdd.isLeadCase) {
         handleMarkLeadCase(store.caseToAdd);
       }
@@ -95,22 +95,24 @@ const consolidationUseCase = (
     currentLeadCaseId: string,
   ) => {
     const associations = response.data;
-    const childCaseFactsList = associations
+    const memberCaseFactsList = associations
       .filter((reference) => reference.caseId === currentLeadCaseId)
       .filter((reference) => reference.documentType === 'CONSOLIDATION_TO')
       .map((reference) => {
         return {
-          isConsolidationChildCase: true,
+          isConsolidationMemberCase: true,
           leadCase: reference.otherCase,
-        } as ChildCaseFacts;
+        } as MemberCaseFacts;
       });
-    const childCaseFacts: ChildCaseFacts =
-      childCaseFactsList.length === 1 ? childCaseFactsList[0] : { isConsolidationChildCase: false };
+    const memberCaseFacts: MemberCaseFacts =
+      memberCaseFactsList.length === 1
+        ? memberCaseFactsList[0]
+        : { isConsolidationMemberCase: false };
 
-    if (childCaseFacts.isConsolidationChildCase) {
+    if (memberCaseFacts.isConsolidationMemberCase) {
       const message =
         `Case ${getCaseNumber(currentLeadCaseId)} is a consolidated ` +
-        `child case of case ${getCaseNumber(childCaseFacts.leadCase!.caseId)}.`;
+        `member case of case ${getCaseNumber(memberCaseFacts.leadCase!.caseId)}.`;
       store.setLeadCaseNumberError(message);
       store.setIsValidatingLeadCaseNumber(false);
       store.setFoundValidCaseNumber(false);
@@ -132,7 +134,7 @@ const consolidationUseCase = (
       store.setIsLookingForCase(true);
       store.setAddCaseNumberError('');
       store.setCaseToAdd(null);
-      const caseExists = !!store.order.childCases.find((bCase) => bCase.caseId === caseIdToVerify);
+      const caseExists = !!store.order.memberCases.find((bCase) => bCase.caseId === caseIdToVerify);
       if (caseExists) {
         store.setAddCaseNumberError('This case is already included in the consolidation.');
         store.setIsLookingForCase(false);
@@ -185,7 +187,7 @@ const consolidationUseCase = (
             attorneyAssignments,
             associations,
             isLeadCase: isLeadCase(caseSummary.caseId, associations),
-            isChildCase: isChildCase(caseSummary.caseId, associations),
+            isMemberCase: isMemberCase(caseSummary.caseId, associations),
           });
           store.setIsLookingForCase(false);
           store.setFoundValidCaseNumber(true);
@@ -315,7 +317,7 @@ const consolidationUseCase = (
   };
 
   const areAnySelectedCasesConsolidated = () => {
-    return store.selectedCases.some((bCase) => bCase.isChildCase);
+    return store.selectedCases.some((bCase) => bCase.isMemberCase);
   };
 
   const setOrderWithDataEnhancement = (order: ConsolidationOrder) => {
@@ -417,14 +419,14 @@ const consolidationUseCase = (
       let isDataEnhanced = true;
       const assignmentCalls = [];
       const associationCalls = [];
-      for (const bCase of store.order.childCases) {
+      for (const bCase of store.order.memberCases) {
         assignmentCalls.push(
           Api2.getCaseAssignments(bCase.caseId)
             .then((response) => {
               bCase.attorneyAssignments = response.data;
             })
             .catch(() => {
-              // The child case assignments are not critical to perform the consolidation. Catch any error
+              // The member case assignments are not critical to perform the consolidation. Catch any error
               // and don't set the attorney assignment for this specific case.
             }),
         );
@@ -433,7 +435,7 @@ const consolidationUseCase = (
             .then((response) => {
               bCase.associations = response.data;
               bCase.isLeadCase = isLeadCase(bCase.caseId, bCase.associations);
-              bCase.isChildCase = isChildCase(bCase.caseId, bCase.associations);
+              bCase.isMemberCase = isMemberCase(bCase.caseId, bCase.associations);
             })
             .catch(() => {
               isDataEnhanced = false;

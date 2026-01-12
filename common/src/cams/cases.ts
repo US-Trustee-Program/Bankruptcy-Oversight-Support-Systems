@@ -137,7 +137,7 @@ export function isLeadCase(bCase: CaseDetail) {
   return bCase.consolidation[0]?.documentType === 'CONSOLIDATION_FROM';
 }
 
-export function isChildCase(bCase: CaseDetail) {
+export function isMemberCase(bCase: CaseDetail) {
   return bCase.consolidation[0]?.documentType === 'CONSOLIDATION_TO';
 }
 

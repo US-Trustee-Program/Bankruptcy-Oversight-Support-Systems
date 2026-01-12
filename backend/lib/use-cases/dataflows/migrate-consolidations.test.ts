@@ -91,17 +91,17 @@ describe('ACMS Orders', () => {
       .mockResolvedValue([]);
 
     const leadCase = MockData.getCaseSummary();
-    const childCases = [MockData.getCaseSummary(), MockData.getCaseSummary()];
+    const memberCases = [MockData.getCaseSummary(), MockData.getCaseSummary()];
     const details: AcmsConsolidation = {
       leadCaseId: leadCase.caseId,
-      childCases: [
+      memberCases: [
         {
-          caseId: childCases[0].caseId,
+          caseId: memberCases[0].caseId,
           consolidationDate: '2024-01-01',
           consolidationType: 'substantive',
         },
         {
-          caseId: childCases[1].caseId,
+          caseId: memberCases[1].caseId,
           consolidationDate: '2024-01-01',
           consolidationType: 'administrative',
         },
@@ -110,11 +110,11 @@ describe('ACMS Orders', () => {
 
     const caseSummaryMap = new Map<string, CaseSummary>([
       [leadCase.caseId, leadCase],
-      [childCases[0].caseId, childCases[0]],
-      [childCases[1].caseId, childCases[1]],
+      [memberCases[0].caseId, memberCases[0]],
+      [memberCases[1].caseId, memberCases[1]],
     ]);
 
-    const expectedFromLinks = details.childCases.map((bCase) => {
+    const expectedFromLinks = details.memberCases.map((bCase) => {
       const { caseId } = leadCase;
       const orderDate = bCase.consolidationDate;
       const consolidationType = bCase.consolidationType as ConsolidationType;
@@ -139,7 +139,7 @@ describe('ACMS Orders', () => {
         after: {
           status: 'approved',
           leadCase,
-          childCases,
+          memberCases,
         },
         updatedBy: ACMS_SYSTEM_USER_REFERENCE,
         updatedOn: '2024-01-01',
@@ -147,7 +147,7 @@ describe('ACMS Orders', () => {
       });
     });
 
-    const expectedToLinks = details.childCases.map((bCase) => {
+    const expectedToLinks = details.memberCases.map((bCase) => {
       const { caseId } = bCase;
       const orderDate = bCase.consolidationDate;
       const consolidationType = bCase.consolidationType as ConsolidationType;
@@ -173,8 +173,8 @@ describe('ACMS Orders', () => {
     await useCase.migrateConsolidation(context, leadCase.caseId);
 
     expect(getConsolidationSpy).toHaveBeenCalled();
-    expect(createConsolidationToSpy).toHaveBeenCalledTimes(childCases.length);
-    expect(createConsolidationFromSpy).toHaveBeenCalledTimes(childCases.length);
+    expect(createConsolidationToSpy).toHaveBeenCalledTimes(memberCases.length);
+    expect(createConsolidationFromSpy).toHaveBeenCalledTimes(memberCases.length);
     expect(createCaseHistorySpy).toHaveBeenCalledTimes(expectedHistory.length);
 
     expectedFromLinks.forEach((fromLink) => {
@@ -201,27 +201,27 @@ describe('ACMS Orders', () => {
     vi.spyOn(CasesMongoRepository.prototype, 'getConsolidation').mockResolvedValue([]);
 
     const leadCase = MockData.getCaseSummary();
-    const childCases = MockData.buildArray(MockData.getCaseSummary, 4);
+    const memberCases = MockData.buildArray(MockData.getCaseSummary, 4);
     const details: AcmsConsolidation = {
       leadCaseId: leadCase.caseId,
-      childCases: [
+      memberCases: [
         {
-          caseId: childCases[0].caseId,
+          caseId: memberCases[0].caseId,
           consolidationDate: '2024-01-01',
           consolidationType: 'substantive',
         },
         {
-          caseId: childCases[1].caseId,
+          caseId: memberCases[1].caseId,
           consolidationDate: '2024-01-01',
           consolidationType: 'substantive',
         },
         {
-          caseId: childCases[2].caseId,
+          caseId: memberCases[2].caseId,
           consolidationDate: '2024-02-01',
           consolidationType: 'substantive',
         },
         {
-          caseId: childCases[3].caseId,
+          caseId: memberCases[3].caseId,
           consolidationDate: '2024-03-01',
           consolidationType: 'substantive',
         },
@@ -230,34 +230,34 @@ describe('ACMS Orders', () => {
 
     const caseSummaryMap = new Map<string, CaseSummary>([
       [leadCase.caseId, leadCase],
-      [childCases[0].caseId, childCases[0]],
-      [childCases[1].caseId, childCases[1]],
-      [childCases[2].caseId, childCases[2]],
-      [childCases[3].caseId, childCases[3]],
+      [memberCases[0].caseId, memberCases[0]],
+      [memberCases[1].caseId, memberCases[1]],
+      [memberCases[2].caseId, memberCases[2]],
+      [memberCases[3].caseId, memberCases[3]],
     ]);
 
-    // History for lead case and 2 child cases on '2024-01-01'
+    // History for lead case and 2 member cases on '2024-01-01'
     const allHistories: CaseConsolidationHistory[] = [];
     allHistories.push({
-      caseId: childCases[0].caseId,
+      caseId: memberCases[0].caseId,
       documentType: 'AUDIT_CONSOLIDATION',
       before: null,
       after: {
         status: 'approved',
         leadCase,
-        childCases: [childCases[0], childCases[1]],
+        memberCases: [memberCases[0], memberCases[1]],
       },
       updatedBy: ACMS_SYSTEM_USER_REFERENCE,
       updatedOn: '2024-01-01',
     });
     allHistories.push({
-      caseId: childCases[1].caseId,
+      caseId: memberCases[1].caseId,
       documentType: 'AUDIT_CONSOLIDATION',
       before: null,
       after: {
         status: 'approved',
         leadCase,
-        childCases: [childCases[0], childCases[1]],
+        memberCases: [memberCases[0], memberCases[1]],
       },
       updatedBy: ACMS_SYSTEM_USER_REFERENCE,
       updatedOn: '2024-01-01',
@@ -269,21 +269,21 @@ describe('ACMS Orders', () => {
       after: {
         status: 'approved',
         leadCase,
-        childCases: [childCases[0], childCases[1]],
+        memberCases: [memberCases[0], memberCases[1]],
       },
       updatedBy: ACMS_SYSTEM_USER_REFERENCE,
       updatedOn: '2024-01-01',
     });
 
-    // History for lead case and next child case on '2024-02-01'
+    // History for lead case and next member case on '2024-02-01'
     allHistories.push({
-      caseId: childCases[2].caseId,
+      caseId: memberCases[2].caseId,
       documentType: 'AUDIT_CONSOLIDATION',
       before: null,
       after: {
         status: 'approved',
         leadCase,
-        childCases: [childCases[2]],
+        memberCases: [memberCases[2]],
       },
       updatedBy: ACMS_SYSTEM_USER_REFERENCE,
       updatedOn: '2024-02-01',
@@ -294,26 +294,26 @@ describe('ACMS Orders', () => {
       before: {
         status: 'approved',
         leadCase,
-        childCases: [childCases[0], childCases[1]],
+        memberCases: [memberCases[0], memberCases[1]],
       },
       after: {
         status: 'approved',
         leadCase,
-        childCases: [childCases[0], childCases[1], childCases[2]],
+        memberCases: [memberCases[0], memberCases[1], memberCases[2]],
       },
       updatedBy: ACMS_SYSTEM_USER_REFERENCE,
       updatedOn: '2024-02-01',
     });
 
-    // History for lead case and next child case on '2024-03-01'
+    // History for lead case and next member case on '2024-03-01'
     allHistories.push({
-      caseId: childCases[3].caseId,
+      caseId: memberCases[3].caseId,
       documentType: 'AUDIT_CONSOLIDATION',
       before: null,
       after: {
         status: 'approved',
         leadCase,
-        childCases: [childCases[3]],
+        memberCases: [memberCases[3]],
       },
       updatedBy: ACMS_SYSTEM_USER_REFERENCE,
       updatedOn: '2024-03-01',
@@ -324,12 +324,12 @@ describe('ACMS Orders', () => {
       before: {
         status: 'approved',
         leadCase,
-        childCases: [childCases[0], childCases[1], childCases[2]],
+        memberCases: [memberCases[0], memberCases[1], memberCases[2]],
       },
       after: {
         status: 'approved',
         leadCase,
-        childCases: [childCases[0], childCases[1], childCases[2], childCases[3]],
+        memberCases: [memberCases[0], memberCases[1], memberCases[2], memberCases[3]],
       },
       updatedBy: ACMS_SYSTEM_USER_REFERENCE,
       updatedOn: '2024-03-01',
@@ -375,7 +375,7 @@ describe('ACMS Orders', () => {
       .mockResolvedValue();
 
     const leadCase = MockData.getCaseSummary();
-    const childCases = [
+    const memberCases = [
       MockData.getCaseSummary({
         override: {
           caseId: mockConsolidationFrom.caseId,
@@ -385,14 +385,14 @@ describe('ACMS Orders', () => {
     ];
     const details: AcmsConsolidation = {
       leadCaseId: leadCase.caseId,
-      childCases: [
+      memberCases: [
         {
-          caseId: childCases[0].caseId,
+          caseId: memberCases[0].caseId,
           consolidationDate: '2024-01-01',
           consolidationType: 'substantive',
         },
         {
-          caseId: childCases[1].caseId,
+          caseId: memberCases[1].caseId,
           consolidationDate: '2024-02-01',
           consolidationType: 'substantive',
         },
@@ -405,24 +405,24 @@ describe('ACMS Orders', () => {
       caseId: leadCase.caseId,
       documentType: 'CONSOLIDATION_FROM',
       orderDate: '2024-01-01',
-      otherCase: childCases[0],
+      otherCase: memberCases[0],
       updatedBy: mockConsolidationFrom.updatedBy,
       updatedOn: mockConsolidationFrom.updatedOn,
     };
-    const existingChildCaseId = childCases[0].caseId;
+    const existingMemberCaseId = memberCases[0].caseId;
     vi.spyOn(CasesMongoRepository.prototype, 'getConsolidation').mockResolvedValue([
       existingFromLink,
     ]);
 
     const caseSummaryMap = new Map<string, CaseSummary>([
       [leadCase.caseId, leadCase],
-      [childCases[0].caseId, childCases[0]],
-      [childCases[1].caseId, childCases[1]],
+      [memberCases[0].caseId, memberCases[0]],
+      [memberCases[1].caseId, memberCases[1]],
     ]);
 
-    const filterExistingCase = (bCase) => bCase.caseId !== existingChildCaseId;
+    const filterExistingCase = (bCase) => bCase.caseId !== existingMemberCaseId;
 
-    const expectedFromLinks = details.childCases.filter(filterExistingCase).map((bCase) => {
+    const expectedFromLinks = details.memberCases.filter(filterExistingCase).map((bCase) => {
       const { caseId } = leadCase;
       const orderDate = bCase.consolidationDate;
       const consolidationType = bCase.consolidationType as ConsolidationType;
@@ -445,11 +445,11 @@ describe('ACMS Orders', () => {
       after: {
         status: 'approved',
         leadCase,
-        childCases: childCases.filter(filterExistingCase),
+        memberCases: memberCases.filter(filterExistingCase),
       },
       updatedBy: ACMS_SYSTEM_USER_REFERENCE,
       updatedOn: '2024-02-01',
-      caseId: childCases[1].caseId,
+      caseId: memberCases[1].caseId,
     });
     expectedHistory.push({
       documentType: 'AUDIT_CONSOLIDATION',
@@ -457,14 +457,14 @@ describe('ACMS Orders', () => {
       after: {
         status: 'approved',
         leadCase,
-        childCases: childCases.filter(filterExistingCase),
+        memberCases: memberCases.filter(filterExistingCase),
       },
       updatedBy: ACMS_SYSTEM_USER_REFERENCE,
       updatedOn: '2024-02-01',
       caseId: leadCase.caseId,
     });
 
-    const expectedToLinks = details.childCases.filter(filterExistingCase).map((bCase) => {
+    const expectedToLinks = details.memberCases.filter(filterExistingCase).map((bCase) => {
       const { caseId } = bCase;
       const orderDate = bCase.consolidationDate;
       const consolidationType = bCase.consolidationType as ConsolidationType;
@@ -516,17 +516,17 @@ describe('ACMS Orders', () => {
       .mockResolvedValue();
 
     const leadCase = MockData.getCaseSummary();
-    const childCases = [MockData.getCaseSummary(), MockData.getCaseSummary()];
+    const memberCases = [MockData.getCaseSummary(), MockData.getCaseSummary()];
     const details: AcmsConsolidation = {
       leadCaseId: leadCase.caseId,
-      childCases: [
+      memberCases: [
         {
-          caseId: childCases[0].caseId,
+          caseId: memberCases[0].caseId,
           consolidationDate: '2024-01-01',
           consolidationType: 'substantive',
         },
         {
-          caseId: childCases[1].caseId,
+          caseId: memberCases[1].caseId,
           consolidationDate: '2024-02-01',
           consolidationType: 'substantive',
         },
@@ -540,7 +540,7 @@ describe('ACMS Orders', () => {
         caseId: leadCase.caseId,
         documentType: 'CONSOLIDATION_FROM',
         orderDate: '2024-01-01',
-        otherCase: childCases[0],
+        otherCase: memberCases[0],
         updatedBy: context.session.user,
         updatedOn: new Date().toISOString(),
       },
@@ -549,7 +549,7 @@ describe('ACMS Orders', () => {
         caseId: leadCase.caseId,
         documentType: 'CONSOLIDATION_FROM',
         orderDate: '2024-01-01',
-        otherCase: childCases[1],
+        otherCase: memberCases[1],
         updatedBy: context.session.user,
         updatedOn: '2024-02-01',
       },
@@ -558,8 +558,8 @@ describe('ACMS Orders', () => {
 
     const caseSummaryMap = new Map<string, CaseSummary>([
       [leadCase.caseId, leadCase],
-      [childCases[0].caseId, childCases[0]],
-      [childCases[1].caseId, childCases[1]],
+      [memberCases[0].caseId, memberCases[0]],
+      [memberCases[1].caseId, memberCases[1]],
     ]);
 
     vi.spyOn(AcmsGatewayImpl.prototype, 'getConsolidationDetails').mockResolvedValue(details);
