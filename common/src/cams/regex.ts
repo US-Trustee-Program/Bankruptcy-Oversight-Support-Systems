@@ -5,7 +5,10 @@ export function escapeRegExCharacters(str: string): string {
 export const EMAIL_REGEX =
   /^(?:[a-z0-9+_-]+(?:\.[a-z0-9+_-]+)*)@(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(?:\.(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?))+$/i;
 
-export const PHONE_REGEX = /^\d{3}-\d{3}-\d{4}$/;
+// Matches phone numbers with optional country code (1-) and optional extension
+// Examples: 123-456-7890, 1-123-456-7890, 123-456-7890 x123, 1-123-456-7890 ext. 12345
+export const PHONE_REGEX =
+  /^(?:1-)?\d{3}-\d{3}-\d{4}(?:\s+(?:x|ext\.?|extension[:.]?)\s*\d{1,6})?$/i;
 export const EXTENSION_REGEX = /^\d{1,6}$/;
 
 export const ZIP_REGEX = /^(\d{5}|\d{5}-\d{4})$/;
