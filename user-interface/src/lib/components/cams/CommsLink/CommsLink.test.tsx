@@ -203,6 +203,48 @@ describe('CommsLink Component', () => {
       expect(iconLabel).toHaveTextContent('Custom Phone');
       expect(iconLabel.getAttribute('data-icon')).toBe('custom-icon');
     });
+
+    test('displays phone number even when it does not match validation regex', () => {
+      const phoneContact: Partial<ContactInformation> = {
+        phone: { number: 'invalid-phone-format' },
+      };
+
+      render(
+        <CommsLink
+          contact={phoneContact as Omit<ContactInformation, 'address'>}
+          mode="phone-dialer"
+        />,
+      );
+
+      // Should not create a clickable link for invalid phone numbers
+      const link = screen.queryByRole('link');
+      expect(link).not.toBeInTheDocument();
+
+      // But should still display the phone number with phone icon
+      const iconLabel = screen.getByTestId('icon-label');
+      expect(iconLabel).toHaveTextContent('invalid-phone-format');
+      expect(iconLabel.getAttribute('data-icon')).toBe('phone');
+    });
+
+    test('displays unformatted phone number with extension when validation fails', () => {
+      const phoneContact: Partial<ContactInformation> = {
+        phone: { number: '123-456', extension: '789' },
+      };
+
+      render(
+        <CommsLink
+          contact={phoneContact as Omit<ContactInformation, 'address'>}
+          mode="phone-dialer"
+        />,
+      );
+
+      const link = screen.queryByRole('link');
+      expect(link).not.toBeInTheDocument();
+
+      const iconLabel = screen.getByTestId('icon-label');
+      expect(iconLabel).toHaveTextContent('123-456 ext. 789');
+      expect(iconLabel.getAttribute('data-icon')).toBe('phone');
+    });
   });
 
   describe('Mode: email', () => {
