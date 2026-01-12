@@ -8,6 +8,7 @@ import {
   Paginate,
   Pipeline,
   Sort,
+  VectorSearch,
 } from '../../../../query/query-pipeline';
 import { toMongoQuery } from './mongo-query-renderer';
 import { AggregateQuery } from '../../../../humble-objects/mongo-humble';
@@ -30,6 +31,20 @@ function toMongoAggregateSort(sort: Sort) {
       },
       {} as Record<never, 1 | -1>,
     ),
+  };
+}
+
+function toMongoVectorSearch(stage: VectorSearch) {
+  return {
+    $search: {
+      cosmosSearch: {
+        vector: stage.vector,
+        path: stage.path,
+        k: stage.k,
+        ...(stage.similarity && { similarity: stage.similarity }),
+      },
+      returnStoredSource: true,
+    },
   };
 }
 
@@ -180,6 +195,9 @@ function toMongoAggregate(pipeline: Pipeline): AggregateQuery {
     if (stage.stage === 'GROUP') {
       return toMongoGroup(stage);
     }
+    if (stage.stage === 'VECTOR_SEARCH') {
+      return toMongoVectorSearch(stage);
+    }
   });
 }
 
@@ -194,6 +212,7 @@ const MongoAggregateRenderer = {
   toMongoFilterCondition,
   translateCondition,
   toMongoAggregate,
+  toMongoVectorSearch,
 };
 
 export default MongoAggregateRenderer;

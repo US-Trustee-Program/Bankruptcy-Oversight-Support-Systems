@@ -18,6 +18,7 @@ export function setPaginationDefaults<P extends SearchPredicate = SearchPredicat
 
 export type CasesSearchPredicate = SearchPredicate & {
   caseNumber?: string;
+  name?: string; // Debtor name for fuzzy/semantic search
   divisionCodes?: string[];
   chapters?: string[];
   assignments?: CamsUserReference[];

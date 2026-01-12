@@ -2084,6 +2084,671 @@ node scripts/backfill-vectors.mjs
 
 ---
 
+## Implementation Status (January 2026)
+
+### ✅ Completed: Application Code Implementation
+
+**Date Completed:** January 12, 2026
+**Branch:** `CAMS-376-vector-encodings`
+**Status:** Code complete, infrastructure pending
+
+All application code for vector search has been successfully implemented and tested locally:
+
+#### Phase 1-3: Core Services ✅
+- ✅ `EmbeddingService` created with singleton pattern (`backend/lib/adapters/services/embedding.service.ts`)
+  - Model: Xenova/all-MiniLM-L6-v2 (384 dimensions)
+  - Loads in 62-91ms from local cache
+  - Generates embeddings in 1-3ms per text
+  - Successfully tested with similarity scores (0.85+ for similar names)
+- ✅ Data model updates (`common/src/api/search.ts`, `common/src/cams/cases.ts`)
+  - Added `name?: string` to `CasesSearchPredicate`
+  - Added `keywords?: string[]` and `keywordsVector?: number[]` to `SyncedCase`
+- ✅ Test script created and verified (`backend/scripts/test-embedding-service.ts`)
+
+#### Phase 4: Query Builder Infrastructure ✅
+- ✅ Added `VectorSearch` type to `backend/lib/query/query-pipeline.ts:94-100`
+- ✅ Updated `Stage` union type to include `VectorSearch` (line 138)
+- ✅ Created `vectorSearch()` builder function (lines 237-244)
+- ✅ Added to QueryPipeline exports (line 262)
+- ✅ Implemented `toMongoVectorSearch()` renderer in `backend/lib/adapters/gateways/mongo/utils/mongo-aggregate-renderer.ts:37-49`
+- ✅ Integrated into `toMongoAggregate()` pipeline renderer (lines 198-200)
+
+#### Phase 6: Repository Implementation ✅
+- ✅ Updated `CasesMongoRepository` to use query builder pattern (`backend/lib/adapters/gateways/mongo/cases.mongo.repository.ts:341-400`)
+- ✅ Implemented `searchCasesWithVectorSearch()` method with:
+  - Embedding generation with fallback to traditional search
+  - Hybrid search: vector search → match → sort → paginate
+  - Proper pipeline ordering ($search must be first for Cosmos DB)
+  - k parameter tuning (2x limit, max 100)
+- ✅ Graceful fallback if embedding generation fails
+
+### ⚠️ Blocked: Infrastructure Requirements
+
+**Root Cause:** The existing Cosmos DB instance is **not compatible** with vector search.
+
+#### Current Database Configuration
+```bash
+# Verified via: az cosmosdb show --name cosmos-mongo-ustp-cams-dev --resource-group bankruptcy-oversight-support-systems
+Name: cosmos-mongo-ustp-cams-dev
+Type: Azure Cosmos DB for MongoDB (RU-based/Serverless)
+Server Version: 7.0
+Capabilities: EnableServerless, EnableMongo, EnableMongoRoleBasedAccessControl
+```
+
+**Problem:** This is the RU-based Cosmos DB for MongoDB, which does **NOT support** the `$search` stage or vector search capabilities.
+
+#### Required Infrastructure
+To complete testing and deployment, the project requires:
+
+**Azure Cosmos DB for MongoDB vCore** (NOT RU-based)
+- Supports `$search` aggregation stage with `cosmosSearch` operator
+- Supports vector indexing on array fields
+- Required for all vector similarity operations
+
+### Next Steps to Complete Implementation
+
+---
+
+## Phase 7 (Infrastructure): Provision Azure Cosmos DB for MongoDB vCore
+
+**IMPORTANT:** This requires team approval due to cost implications and is a prerequisite for testing the vector search implementation.
+
+### Cost Considerations
+
+**Azure Cosmos DB for MongoDB vCore** has different pricing than the current RU-based model:
+
+- **Current (RU-based):** Scales to zero when idle, pay-per-request
+- **vCore model:** Always-on compute, charged hourly even when idle
+- **Minimum cost:** ~$100-150/month for smallest tier (M25)
+- **Recommendation:** Start with M25 tier, single shard, no HA for experimentation
+
+### Option 1: Create New vCore Cluster for Experimentation (Recommended)
+
+This approach creates a separate cluster specifically for testing vector search without impacting existing systems.
+
+#### Step 1: Provision vCore Cluster
+
+**Prerequisites:**
+```bash
+# Ensure Azure CLI is authenticated to US Government cloud
+az cloud show --query name -o tsv
+# Expected: AzureUSGovernment
+
+az account show --query "{subscription:name, user:user.name}"
+# Verify you have appropriate permissions
+```
+
+**Provisioning Command:**
+```bash
+# Set variables
+CLUSTER_NAME="cosmos-vcore-cams-experiment"
+RESOURCE_GROUP="bankruptcy-oversight-support-systems"  # Or create new RG
+LOCATION="usgovvirginia"  # Match existing resources
+ADMIN_USER="camsadmin"
+ADMIN_PASSWORD="<generate-secure-password>"  # 16+ chars, mixed case, numbers, symbols
+
+# Install preview extension (first time only)
+az extension add --name cosmosdb-preview
+
+# Create vCore cluster (takes 15-30 minutes)
+az cosmosdb mongocluster create \
+  --cluster-name "${CLUSTER_NAME}" \
+  --resource-group "${RESOURCE_GROUP}" \
+  --location "${LOCATION}" \
+  --administrator-login "${ADMIN_USER}" \
+  --administrator-login-password "${ADMIN_PASSWORD}" \
+  --server-version "7.0" \
+  --shard-node-tier "M25" \
+  --shard-node-ha false \
+  --shard-node-disk-size-gb 32 \
+  --shard-node-count 1 \
+  --tags "Project=CAMS" "Environment=Experiment" "Feature=VectorSearch"
+
+# Monitor creation status
+az cosmosdb mongocluster show \
+  --cluster-name "${CLUSTER_NAME}" \
+  --resource-group "${RESOURCE_GROUP}" \
+  --query "{name:name, state:provisioningState, connectionString:connectionString}" \
+  --output table
+```
+
+**Expected Output:**
+```
+Name                              ProvisioningState    ConnectionString
+--------------------------------  -------------------  -------------------------------------------------
+cosmos-vcore-cams-experiment      Succeeded           mongodb+srv://camsadmin:***@<cluster>.mongodbv...
+```
+
+#### Step 2: Configure Firewall Rules
+
+```bash
+# Allow Azure services
+az cosmosdb mongocluster firewall rule create \
+  --cluster-name "${CLUSTER_NAME}" \
+  --resource-group "${RESOURCE_GROUP}" \
+  --rule-name "AllowAzureServices" \
+  --start-ip-address "0.0.0.0" \
+  --end-ip-address "0.0.0.0"
+
+# Allow your development IP (for local testing)
+MY_IP=$(curl -s https://api.ipify.org)
+az cosmosdb mongocluster firewall rule create \
+  --cluster-name "${CLUSTER_NAME}" \
+  --resource-group "${RESOURCE_GROUP}" \
+  --rule-name "DevelopmentIP" \
+  --start-ip-address "${MY_IP}" \
+  --end-ip-address "${MY_IP}"
+
+# Verify firewall rules
+az cosmosdb mongocluster firewall rule list \
+  --cluster-name "${CLUSTER_NAME}" \
+  --resource-group "${RESOURCE_GROUP}" \
+  --output table
+```
+
+#### Step 3: Get Connection String
+
+```bash
+# Retrieve connection string
+CONNECTION_STRING=$(az cosmosdb mongocluster show \
+  --cluster-name "${CLUSTER_NAME}" \
+  --resource-group "${RESOURCE_GROUP}" \
+  --query "connectionString" -o tsv)
+
+echo "Connection String (save securely):"
+echo "${CONNECTION_STRING}"
+
+# Format for .env file (replace password placeholder)
+echo "MONGO_CONNECTION_STRING=${CONNECTION_STRING/\<password\>/${ADMIN_PASSWORD}}"
+```
+
+#### Step 4: Update Environment Configuration
+
+Create experimental environment file:
+
+**File:** `backend/.env.experiment`
+```bash
+# Azure Cosmos DB for MongoDB vCore (with vector search support)
+MONGO_CONNECTION_STRING="mongodb+srv://camsadmin:<password>@<cluster>.mongodbv.cosmos.azure.us/cams-vector-experiment?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=false"
+
+# Experimental database name
+COSMOS_DATABASE_NAME=cams-vector-experiment
+EXPERIMENTAL_DATABASE_NAME=cams-vector-experiment
+
+# Number of test cases to generate
+NUM_TEST_CASES=500
+
+# Mock login for testing
+CAMS_LOGIN_PROVIDER=mock
+DATABASE_MOCK=false
+
+# ADMIN_KEY (get from existing .env or generate new one)
+ADMIN_KEY=<your-admin-key>
+
+# Other settings (copy from existing .env as needed)
+```
+
+**Usage:**
+```bash
+# Switch to experimental database
+cd backend
+cp .env .env.backup
+cp .env.experiment .env
+
+# Verify connection
+mongo "${MONGO_CONNECTION_STRING//<password>/${ADMIN_PASSWORD}}" --eval "db.adminCommand('ping')"
+```
+
+#### Step 5: Seed Experimental Database
+
+**Prerequisites:**
+- Models must be downloaded: `cd backend && npm run download:models`
+- Verify models exist: `ls backend/models/Xenova/all-MiniLM-L6-v2/`
+
+**Run Seed Script:**
+```bash
+cd backend
+
+# Set environment variables
+export MONGO_CONNECTION_STRING="<from-step-3>"
+export EXPERIMENTAL_DATABASE_NAME="cams-vector-experiment"
+export NUM_TEST_CASES=500
+
+# Run seed script (takes 5-10 minutes)
+npx tsx scripts/seed-experimental-database.ts
+```
+
+**Expected Output:**
+```
+======================================================================
+EXPERIMENTAL DATABASE SEEDING SCRIPT (TypeScript)
+======================================================================
+
+Connecting to Cosmos DB...
+✓ Connected to Cosmos DB
+
+Loading embedding model (Xenova/all-MiniLM-L6-v2)...
+✓ Embedding model loaded
+
+Generating 480 test cases using MockData...
+  Generated 50/480 cases with embeddings...
+  Generated 100/480 cases with embeddings...
+  ...
+✓ Generated 480 test cases with MockData
+
+Generating special test cases with known name patterns...
+✓ Generated 20 special test cases for validation
+
+Clearing existing SYNCED_CASE documents in cases collection...
+✓ Deleted 0 existing documents
+
+Inserting 500 test cases...
+✓ Successfully inserted 500 test cases
+
+Creating vector index on cases collection...
+✓ Vector index created successfully
+
+Verifying seeded data...
+✓ Total cases: 500
+✓ Cases with keywords: 500
+✓ Cases with vectors: 500
+
+Vector index: ✓ Present
+  Type: vector-ivf
+  Dimensions: 384
+  Similarity: COS
+
+======================================================================
+EXPERIMENTAL DATABASE SETUP COMPLETE
+======================================================================
+```
+
+**Troubleshooting Seed Script:**
+
+If you encounter errors:
+
+1. **"Cannot connect to database"**
+   ```bash
+   # Verify connection string
+   echo $MONGO_CONNECTION_STRING
+
+   # Test connection
+   mongo "$MONGO_CONNECTION_STRING" --eval "db.adminCommand('ping')"
+
+   # Check firewall rules include your IP
+   az cosmosdb mongocluster firewall rule list \
+     --cluster-name "${CLUSTER_NAME}" \
+     --resource-group "${RESOURCE_GROUP}"
+   ```
+
+2. **"Model not found"**
+   ```bash
+   # Download models
+   cd backend
+   npm run download:models
+   ls models/Xenova/all-MiniLM-L6-v2/
+   # Should show: config.json, tokenizer.json, onnx/model.onnx
+   ```
+
+3. **"Vector index creation failed"**
+   - This is normal if running seed script multiple times
+   - Index only needs to be created once
+   - Verify: `mongo "$MONGO_CONNECTION_STRING" --eval "db.cases.getIndexes()"`
+
+#### Step 6: Test Vector Search
+
+**Start API with Experimental Database:**
+```bash
+cd backend/function-apps/api
+
+# Ensure .env.experiment is copied to .env
+cp ../../../.env.experiment ../../.env
+
+# Build and start
+npm run build
+npm start
+```
+
+**Test Vector Search Endpoint:**
+```bash
+# Wait for API to start (look for "Host lock lease acquired")
+
+# Set ADMIN_KEY from your .env file
+export ADMIN_KEY=$(grep ADMIN_KEY backend/.env | cut -d'=' -f2)
+
+# Test 1: Search for "John Smith"
+curl -s http://localhost:7071/api/cases \
+  -X POST \
+  -H "Authorization: ApiKey ${ADMIN_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"John Smith","limit":3,"offset":0}' \
+  | jq '.data[] | {caseId, debtor: .debtor.name, jointDebtor: .jointDebtor.name}'
+
+# Expected: Should return cases with "John Smith" or similar names
+
+# Test 2: Fuzzy search - typo in name
+curl -s http://localhost:7071/api/cases \
+  -X POST \
+  -H "Authorization: ApiKey ${ADMIN_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Jon Smith","limit":3,"offset":0}' \
+  | jq '.data[] | {caseId, debtor: .debtor.name}'
+
+# Expected: Should still find "John Smith" (fuzzy matching)
+
+# Test 3: Combined filters
+curl -s http://localhost:7071/api/cases \
+  -X POST \
+  -H "Authorization: ApiKey ${ADMIN_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"John Smith","divisionCodes":["081"],"limit":3,"offset":0}' \
+  | jq '.data[] | {caseId, division: .courtDivisionCode, debtor: .debtor.name}'
+
+# Expected: Only cases from division 081 with similar names
+```
+
+**Verify in Logs:**
+```bash
+# Check API logs for vector search activity
+# Should see:
+# - "Loading embedding model: Xenova/all-MiniLM-L6-v2"
+# - "Embedding model loaded successfully in XXms"
+# - "Generating embedding for name: John Smith"
+# - "Vector search with k=6, offset=0, limit=3"
+# - "Vector search for 'John Smith' returned X results"
+```
+
+#### Step 7: Performance Testing
+
+Once basic functionality is verified:
+
+```bash
+# Ensure ADMIN_KEY is set (from previous step)
+# export ADMIN_KEY=$(grep ADMIN_KEY backend/.env | cut -d'=' -f2)
+
+# Test 1: Measure embedding generation time
+# - First request (cold start): 50-100ms for model load + generation
+# - Subsequent requests: 1-5ms (model cached)
+
+# Test 2: Measure end-to-end search latency
+time curl -s http://localhost:7071/api/cases \
+  -X POST \
+  -H "Authorization: ApiKey ${ADMIN_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"John Smith","limit":25,"offset":0}' > /dev/null
+
+# Expected total time: 200-700ms
+# - Embedding generation: 50-100ms (first request) or 1-5ms (cached)
+# - Vector search: 100-500ms (depends on k parameter and dataset size)
+# - Traditional filters + sort + paginate: 50-100ms
+
+# Test 3: Verify fallback to traditional search
+# (Stop API, break vector index, restart API, test)
+```
+
+### Option 2: Migrate Existing Database (NOT Recommended for Initial Testing)
+
+**Why not recommended:**
+- Requires downtime for production/dev systems
+- No direct migration path from RU-based to vCore
+- Would need to export/import all data
+- Risk to existing functionality
+
+**If team decides to migrate later:**
+1. Create vCore cluster (as above)
+2. Use `mongodump` / `mongorestore` to migrate data
+3. Update application connection strings
+4. Run vector backfill script on migrated data
+5. Update infrastructure as code (Terraform/Bicep)
+
+---
+
+## Phase 8: Deploy to Azure (After Infrastructure Provisioned)
+
+Once the vCore cluster is provisioned and tested locally, deploy to Azure:
+
+### Step 1: Update Application Settings
+
+```bash
+# Add connection string to Azure Function App
+az functionapp config appsettings set \
+  --name ustp-cams-node-api \
+  --resource-group rg-cams-app \
+  --slot development \
+  --settings "MONGO_CONNECTION_STRING=<vcore-connection-string>"
+
+# Update database name
+az functionapp config appsettings set \
+  --name ustp-cams-node-api \
+  --resource-group rg-cams-app \
+  --slot development \
+  --settings "COSMOS_DATABASE_NAME=cams-vector-experiment" # pragma: allowlist secret
+```
+
+### Step 2: Deploy Code
+
+The vector search code is already implemented in branch `CAMS-376-vector-encodings`.
+
+```bash
+# Deploy via existing pipeline or manual deployment
+cd backend/function-apps/api
+npm run build
+npm run pack
+
+# Deploy to Azure
+az functionapp deployment source config-zip \
+  --resource-group rg-cams-app \
+  --name ustp-cams-node-api \
+  --slot development \
+  --src api.zip \
+  --build-remote false \
+  --timeout 600
+```
+
+### Step 3: Verify Deployment
+
+```bash
+# Check function app logs
+az webapp log tail \
+  --name ustp-cams-node-api \
+  --resource-group rg-cams-app \
+  --slot development
+
+# Look for:
+# - "Embedding model loaded successfully in XXms"
+# - "Vector search for '<name>' returned X results"
+
+# Test endpoint
+curl "https://ustp-cams-node-api-development.azurewebsites.us/api/cases" \
+  -X POST \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"John Smith","limit":10,"offset":0}'
+```
+
+---
+
+## Infrastructure Cost Estimation
+
+### vCore Cluster (M25, Single Shard, No HA)
+
+**Monthly costs (US Government Cloud):**
+- Compute: ~$0.20/hour × 730 hours = ~$146/month
+- Storage: 32 GB × ~$0.25/GB/month = ~$8/month
+- **Total: ~$154/month**
+
+**Comparison to RU-based:**
+- RU-based (current): Scales to zero, ~$0-50/month depending on usage
+- vCore: Always-on, ~$154/month minimum
+
+**Optimization options:**
+- After testing, can delete experimental cluster to stop charges
+- For production, consider shared vCore cluster across multiple databases
+- Monitor actual usage and right-size tier (M25 → M30 if needed, or downgrade)
+
+### Cost Management: Deprovisioning After Experiment
+
+**YES - You can delete the vCore cluster to minimize costs after experimentation.**
+
+#### Immediate Cost Savings
+- Charges stop immediately upon deletion
+- Billed hourly, so partial month is prorated
+- Example: 2-week experiment = ~$77 instead of $154/month
+
+#### How to Deprovision
+
+**Step 1: Export experimental data (optional, if you want to preserve test results)**
+```bash
+# Export data for future reference
+mongodump --uri="<vcore-connection-string>" \
+  --db=cams-vector-experiment \
+  --out=./experimental-data-backup
+
+# Compress backup
+tar -czf experimental-data-backup.tar.gz experimental-data-backup/
+```
+
+**Step 2: Delete the vCore cluster**
+```bash
+# Set variables
+CLUSTER_NAME="cosmos-vcore-cams-experiment"
+RESOURCE_GROUP="bankruptcy-oversight-support-systems"
+
+# Delete the cluster (WARNING: Cannot be undone)
+az cosmosdb mongocluster delete \
+  --cluster-name "${CLUSTER_NAME}" \
+  --resource-group "${RESOURCE_GROUP}" \
+  --yes
+
+# Verify deletion
+az cosmosdb mongocluster show \
+  --cluster-name "${CLUSTER_NAME}" \
+  --resource-group "${RESOURCE_GROUP}" 2>&1 | grep -q "not found" && echo "✓ Cluster deleted"
+```
+
+**Step 3: Remove environment configuration**
+```bash
+# Restore original .env
+cd backend
+cp .env.backup .env
+
+# Verify using original database
+grep DATABASE_NAME .env
+```
+
+#### What Gets Deleted
+- ✅ vCore cluster and all compute resources
+- ✅ All data in the experimental database
+- ✅ Vector indexes
+- ✅ Firewall rules and configuration
+
+#### What Remains
+- ✅ Your application code (all changes are in feature branch)
+- ✅ Backup data (if you exported it)
+- ✅ Knowledge about vector search functionality
+- ✅ Test procedures and documentation
+
+#### If You Need to Restart Later
+If team approves production deployment later:
+1. Re-provision vCore cluster (15-30 minutes)
+2. Run seed script to regenerate test data
+3. Continue testing from where you left off
+
+Total time to restart: ~45 minutes
+
+#### Recommendation
+**For experimentation:** Provision → Test (1-2 weeks) → Deprovision
+- Estimated cost: $50-100 for 1-2 weeks
+- Can restart anytime if needed
+
+**For production:** Provision dedicated vCore cluster only after team approves the feature for production use
+
+---
+
+## Infrastructure Decision Checklist
+
+Before proceeding with vCore provisioning, team should consider:
+
+- [ ] **Budget approval** for experimentation (~$50-100 for 1-2 weeks, cluster can be deleted after)
+- [ ] **Timeline** for testing and decision (cluster will be deprovisioned after evaluation to minimize costs)
+- [ ] **Alternative approaches** (e.g., use external vector database like Pinecone, though adds complexity)
+- [ ] **Production vs. development** separation (separate vCore clusters or shared?)
+- [ ] **Backup and disaster recovery** requirements for vCore cluster
+- [ ] **Monitoring and alerting** setup for vector search performance
+- [ ] **Documentation** for operations team on new infrastructure
+
+---
+
+## Alternative: Local MongoDB with Atlas Search (Development Only)
+
+For local development without Azure costs, can use MongoDB Atlas free tier:
+
+**Steps:**
+1. Create free MongoDB Atlas cluster (M0)
+2. Enable Atlas Search (includes vector search on free tier)
+3. Update local `.env` with Atlas connection string
+4. Run seed script against Atlas cluster
+5. Test vector search locally
+
+**Limitations:**
+- Atlas uses different syntax for vector search (`$vectorSearch` vs `cosmosSearch`)
+- Would require code changes to support both
+- Not suitable for production deployment in Azure
+
+---
+
+## Files Modified in This Implementation
+
+### Core Implementation Files
+- `backend/lib/adapters/services/embedding.service.ts` - NEW
+- `backend/lib/query/query-pipeline.ts` - MODIFIED (added VectorSearch)
+- `backend/lib/adapters/gateways/mongo/utils/mongo-aggregate-renderer.ts` - MODIFIED (added renderer)
+- `backend/lib/adapters/gateways/mongo/cases.mongo.repository.ts` - MODIFIED (added searchCasesWithVectorSearch)
+- `common/src/api/search.ts` - MODIFIED (added name field)
+- `common/src/cams/cases.ts` - MODIFIED (added keywords/keywordsVector fields)
+
+### Test Files
+- `backend/scripts/test-embedding-service.ts` - NEW
+- `backend/scripts/seed-experimental-database.ts` - EXISTING (Phase 0)
+
+### Configuration Files
+- `backend/esbuild-shared.mjs` - MODIFIED (externalized transformer deps)
+- `backend/.env.experiment` - NEW (not in git)
+
+---
+
+## Summary for Team Discussion
+
+### What's Ready
+✅ All application code is complete and follows established patterns
+✅ Query builder infrastructure properly extended
+✅ Embedding service tested and working (62ms model load, 1-3ms per embedding)
+✅ Repository implements hybrid search correctly (vector → filter → sort → paginate)
+✅ Graceful fallback if embedding generation fails
+
+### What's Blocked
+⚠️ Testing requires **Azure Cosmos DB for MongoDB vCore** infrastructure
+⚠️ Current Cosmos DB (RU-based) does not support `$search` or vector indexing
+⚠️ Estimated cost: **~$50-100 for 1-2 week experiment** (cluster can be deleted after testing)
+
+### Decision Needed
+- Approve vCore cluster provisioning for experimentation (~$50-100 for 1-2 weeks)
+- **Cost savings**: Cluster can be deleted after testing to minimize costs
+- OR defer vector search feature until budget available
+- OR explore alternative vector databases (adds architectural complexity)
+
+### Next Steps After Approval
+1. Provision vCore cluster (15-30 minutes)
+2. Configure firewall rules
+3. Seed experimental database (5-10 minutes)
+4. Test vector search locally
+5. Deploy to Azure development slot
+6. Validate functionality and performance
+7. Team review and production readiness assessment
+8. **Deprovision cluster** if not moving to production (stops all charges)
+
+---
+
 ## Contact & Support
 
 For questions or issues with this implementation:

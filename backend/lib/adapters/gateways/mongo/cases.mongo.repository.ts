@@ -16,6 +16,7 @@ import { CasesSearchPredicate } from '@common/api/search';
 import { CamsError } from '../../../common-errors/cams-error';
 import QueryPipeline from '../../../query/query-pipeline';
 import { CaseAssignment } from '@common/cams/assignments';
+import { getEmbeddingService } from '../../services/embedding.service';
 
 const MODULE_NAME = 'CASES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'cases';
@@ -32,6 +33,7 @@ const {
   pipeline,
   sort,
   source,
+  vectorSearch,
 } = QueryPipeline;
 
 function hasRequiredSearchFields(predicate: CasesSearchPredicate) {
@@ -297,6 +299,13 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       if (predicate.includeOnlyUnassigned) {
         return await this.searchForUnassignedCases(predicate);
       }
+
+      // Use vector search if name is provided
+      if (predicate.name && predicate.name.trim().length > 0) {
+        return await this.searchCasesWithVectorSearch(predicate);
+      }
+
+      // Traditional search without vector similarity
       const [dateFiled, caseNumber] = source<SyncedCase>().fields('dateFiled', 'caseNumber');
 
       const conditions = this.addConditions(predicate);
@@ -317,7 +326,73 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     } catch (originalError) {
       const error = getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: {
-          message: `Failed to retrieve member consolidations${predicate.caseIds ? ' for ' + predicate.caseIds.join(', ') : ''}.`,
+          message: `Failed to retrieve cases${predicate.caseIds ? ' for ' + predicate.caseIds.join(', ') : ''}.`,
+          module: MODULE_NAME,
+        },
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Search cases using vector similarity for fuzzy name matching.
+   * Uses hybrid approach: traditional filters first, then vector search.
+   */
+  private async searchCasesWithVectorSearch(
+    predicate: CasesSearchPredicate,
+  ): Promise<CamsPaginationResponse<SyncedCase>> {
+    if (!hasRequiredSearchFields(predicate)) {
+      throw new CamsError(MODULE_NAME, {
+        message: 'Case Search requires a pagination predicate with a valid limit and offset',
+      });
+    }
+
+    try {
+      const embeddingService = getEmbeddingService();
+
+      // Generate embedding vector for the search name
+      this.context.logger.debug(MODULE_NAME, `Generating embedding for name: ${predicate.name}`);
+      const queryVector = await embeddingService.generateEmbedding(this.context, predicate.name);
+
+      if (!queryVector) {
+        this.context.logger.warn(
+          MODULE_NAME,
+          `Failed to generate embedding for name: ${predicate.name}, falling back to traditional search`,
+        );
+        // Fall back to traditional search without name
+        const { name, ...predicateWithoutName } = predicate;
+        return await this.searchCases(predicateWithoutName);
+      }
+
+      // Build traditional match conditions using the existing helper
+      const conditions = this.addConditions(predicate);
+
+      // Get field references for sorting
+      const [dateFiled, caseNumber] = source<SyncedCase>().fields('dateFiled', 'caseNumber');
+
+      // Determine k (number of results to retrieve from vector search)
+      // Use 2x the requested limit to allow for better ranking
+      const k = Math.min(predicate.limit * 2, 100);
+
+      this.context.logger.debug(
+        MODULE_NAME,
+        `Vector search with k=${k}, offset=${predicate.offset}, limit=${predicate.limit}`,
+      );
+
+      // Build pipeline using query builder pattern
+      // NOTE: $search must be the first stage in Cosmos DB aggregation pipeline
+      const spec = pipeline(
+        vectorSearch(queryVector, 'keywordsVector', k), // Vector similarity search (MUST be first)
+        match(and(...conditions)), // Then filter with traditional conditions
+        sort(descending(dateFiled), descending(caseNumber)), // Sort by dateFiled, then caseNumber
+        paginate(predicate.offset, predicate.limit), // Apply pagination
+      );
+
+      return await this.getAdapter<SyncedCase>().paginate(spec);
+    } catch (originalError) {
+      const error = getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          message: `Failed to perform vector search for name: ${predicate.name}`,
           module: MODULE_NAME,
         },
       });

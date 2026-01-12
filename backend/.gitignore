@@ -100,3 +100,6 @@ __azurite_db*__.json
 
 # temp direcotory for scripted output
 temp
+
+# Embedding models (downloaded during build)
+models/

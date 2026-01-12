@@ -91,6 +91,14 @@ export type Group = {
   accumulators?: Accumulator[];
 };
 
+export type VectorSearch = {
+  stage: 'VECTOR_SEARCH';
+  vector: number[];
+  path: string;
+  k: number;
+  similarity?: 'COS' | 'IP' | 'L2';
+};
+
 export type FieldReference<T> = Field<T> & {
   source?: string;
 };
@@ -126,7 +134,8 @@ export type Stage<T = never> =
   | AddFields<T>
   | ExcludeFields
   | IncludeFields
-  | Group;
+  | Group
+  | VectorSearch;
 
 export function isPipeline(obj: unknown): obj is Pipeline {
   return typeof obj === 'object' && 'stages' in obj;
@@ -225,6 +234,15 @@ function first(field: Field, as: Field): First {
   return { accumulator: 'FIRST', as: { name: as.name }, field: { name: field.name } };
 }
 
+function vectorSearch(
+  vector: number[],
+  path: string,
+  k: number,
+  similarity: 'COS' | 'IP' | 'L2' = 'COS',
+): VectorSearch {
+  return { stage: 'VECTOR_SEARCH', vector, path, k, similarity };
+}
+
 const QueryPipeline = {
   addFields,
   additionalField,
@@ -241,6 +259,7 @@ const QueryPipeline = {
   pipeline,
   sort,
   source,
+  vectorSearch,
 };
 
 export default QueryPipeline;

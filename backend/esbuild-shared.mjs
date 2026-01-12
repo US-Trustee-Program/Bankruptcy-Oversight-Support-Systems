@@ -14,6 +14,12 @@ export const EXTERNAL_DEPENDENCIES = [
   'applicationinsights',
   'dotenv',
   'express',
+  // Transformer dependencies with native bindings
+  '@xenova/transformers',
+  'onnxruntime-node',
+  'onnxruntime-web',
+  'onnxruntime-common',
+  'sharp',
   // Only our own code (@common via path aliases) will be bundled
 ];
 
