@@ -498,22 +498,74 @@ export const EXTERNAL_DEPENDENCIES = [
 ### pack.sh Logic Flow
 
 ```bash
-# Detect OS
+# Verify we're in the correct directory
+if [[ ! -f "package.json" ]] || [[ ! -d "../../../.git" ]]; then
+  echo "Error: pack.sh must be run from backend/function-apps/<app> directory"
+  exit 1
+fi
+
+# Set up path variables
+WORKSPACE_ROOT="../../.."
+FUNCTION_APP_PATH="backend/function-apps/<app>"
+
+# Detect OS and build node_modules accordingly
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-  # CI/CD path: Already on Linux
-  cd function-apps/<app>
-  npm install --production
+  # CI/CD path: Build on Linux using root package-lock.json
+  cd "$WORKSPACE_ROOT"
+
+  # Create unique temp directory (avoids race conditions in concurrent builds)
+  BUILD_TEMP=$(mktemp -d "/tmp/npm-ci-<app>.XXXXXX")
+
+  # Copy package.json and root package-lock.json
+  cp "$FUNCTION_APP_PATH/package.json" "$BUILD_TEMP/"
+  cp package-lock.json "$BUILD_TEMP/"
+
+  # Run npm ci with root lockfile
+  cd "$BUILD_TEMP"
+  npm ci --production --ignore-scripts=false --workspaces=false
+
+  # Move node_modules to function app
+  cd - > /dev/null
+  mv "$BUILD_TEMP/node_modules" "$FUNCTION_APP_PATH/"
+
+  # Clean up temp directory
+  rm -rf "$BUILD_TEMP"
+
+  cd "$FUNCTION_APP_PATH"
 
 elif [[ "$OSTYPE" == "darwin"* ]]; then
-  # Local development: Use Podman to build on Linux
-  podman build -t cams-<app>-builder:latest -f Dockerfile.build \
+  # Local development: Detect container runtime (podman or docker)
+  if command -v podman &> /dev/null; then
+    CONTAINER_CMD="podman"
+  elif command -v docker &> /dev/null; then
+    CONTAINER_CMD="docker"
+  else
+    echo "Error: Neither podman nor docker found"
+    exit 1
+  fi
+
+  # Build using container
+  cd "$WORKSPACE_ROOT"
+  $CONTAINER_CMD build -t cams-<app>-builder:latest -f backend/Dockerfile.build \
     --build-arg FUNCTION_APP=<app> .
-  podman cp <container>:/build/node_modules function-apps/<app>/
+  CONTAINER_ID=$($CONTAINER_CMD create "cams-<app>-builder:latest")
+  $CONTAINER_CMD cp "$CONTAINER_ID:/build/node_modules" "$FUNCTION_APP_PATH/"
+  $CONTAINER_CMD rm "$CONTAINER_ID"
+
+  cd "$FUNCTION_APP_PATH"
 fi
 
 # Create zip with dist/ + node_modules/
-zip -r <app>.zip ./dist ./node_modules ./package.json ./host.json
+zip -q -r <app>.zip ./dist ./node_modules ./package.json ./host.json
 ```
+
+**Key points:**
+- Uses root `package-lock.json` for all environments (Linux CI, macOS, Docker)
+- Path variables (WORKSPACE_ROOT, FUNCTION_APP_PATH) avoid hardcoded paths
+- `mktemp -d` creates unique temp directories to prevent race conditions
+- Auto-detects podman or docker on macOS
+- `npm ci --workspaces=false` creates local node_modules without workspace symlinks
+- Linux and Docker paths produce identical dependency trees
 
 ### Deployment Zip Contents
 
@@ -522,18 +574,14 @@ A correct deployment zip should contain:
 ```
 api.zip
 ├── dist/
-│   ├── index.js                 # Entry point that registers all functions
-│   ├── healthcheck/
-│   │   └── healthcheck.function.js
-│   ├── cases/
-│   │   └── cases.function.js
-│   └── [20 more function directories]
+│   ├── index.js                 # Single bundle - all functions registered here
+│   └── index.js.map             # Source map for debugging
 ├── node_modules/
 │   ├── @azure/
 │   │   └── functions/           # Required for v4 programming model
 │   ├── mongodb/                 # With Linux .node binaries
 │   ├── mssql/                   # With Linux .node binaries
-│   └── [368 other packages]
+│   └── [280+ other packages]
 ├── package.json                 # With dependencies field
 └── host.json                    # Azure Functions config
 ```
