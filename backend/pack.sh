@@ -6,8 +6,6 @@ else
   FILE_NAME=$OUT;
 fi
 
-PACK_TEMP_DIR="/tmp/build/$1"
-
 # Verify we're in the expected directory structure
 # NOTE: This script is called from backend/function-apps/<app> directory
 if [[ ! -f "package.json" ]] || [[ ! -d "../../../.git" ]]; then
@@ -15,6 +13,11 @@ if [[ ! -f "package.json" ]] || [[ ! -d "../../../.git" ]]; then
   echo "Current directory: $(pwd)"
   exit 1
 fi
+
+# Set up path variables to avoid hardcoding throughout script
+WORKSPACE_ROOT="../../.."
+FUNCTION_APP_PATH="backend/function-apps/$1"
+PACK_TEMP_DIR="/tmp/build/$1"
 
 echo "Creating archive $PACK_TEMP_DIR/$FILE_NAME.zip"
 
@@ -28,15 +31,13 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
   echo "Building dependencies on Linux (native)..."
 
   # cd to workspace root to access package-lock.json
-  cd ../../.. || exit
+  cd "$WORKSPACE_ROOT" || exit
 
-  # Create temp build directory (mirror Dockerfile.build approach)
-  BUILD_TEMP="/tmp/npm-ci-$1"
-  rm -rf "$BUILD_TEMP"
-  mkdir -p "$BUILD_TEMP"
+  # Create unique temp build directory to avoid race conditions in concurrent builds
+  BUILD_TEMP=$(mktemp -d "/tmp/npm-ci-$1.XXXXXX")
 
   # Copy package.json and root package-lock.json (mirror Dockerfile.build)
-  cp "backend/function-apps/$1/package.json" "$BUILD_TEMP/"
+  cp "$FUNCTION_APP_PATH/package.json" "$BUILD_TEMP/"
   cp package-lock.json "$BUILD_TEMP/"
 
   # Run npm ci in temp directory with root lockfile
@@ -45,13 +46,13 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
 
   # Move node_modules to function app directory
   cd - > /dev/null || exit
-  mv "$BUILD_TEMP/node_modules" "backend/function-apps/$1/"
+  mv "$BUILD_TEMP/node_modules" "$FUNCTION_APP_PATH/"
 
   # Clean up temp directory
   rm -rf "$BUILD_TEMP"
 
   # Return to function app directory
-  cd "backend/function-apps/$1" || exit
+  cd "$FUNCTION_APP_PATH" || exit
 elif [[ "$OSTYPE" == "darwin"* ]]; then
   # Running on macOS - use Podman/Docker to build for Linux
   # Detect which container runtime is available
@@ -67,13 +68,13 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
   fi
 
   # Go to workspace root to access package-lock.json
-  cd ../../.. || exit
+  cd "$WORKSPACE_ROOT" || exit
   $CONTAINER_CMD build -t "cams-$1-builder:latest" -f backend/Dockerfile.build --build-arg "FUNCTION_APP=$1" .
   CONTAINER_ID=$($CONTAINER_CMD create "cams-$1-builder:latest")
-  $CONTAINER_CMD cp "$CONTAINER_ID:/build/node_modules" "backend/function-apps/$1/"
+  $CONTAINER_CMD cp "$CONTAINER_ID:/build/node_modules" "$FUNCTION_APP_PATH/"
   $CONTAINER_CMD rm "$CONTAINER_ID"
   # Return to function app directory
-  cd "backend/function-apps/$1" || exit
+  cd "$FUNCTION_APP_PATH" || exit
 else
   echo "Error: Unsupported OS type: $OSTYPE"
   exit 1
