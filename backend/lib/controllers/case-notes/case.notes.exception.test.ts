@@ -1,5 +1,5 @@
 import { ForbiddenCaseNotesError, InvalidCaseNotesError } from './case.notes.exception';
-import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
+import HttpStatusCodes from '@common/api/http-status-codes';
 
 describe('CAMS Case Notes Exception', () => {
   const testModuleName = 'Test';

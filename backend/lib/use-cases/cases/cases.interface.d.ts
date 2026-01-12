@@ -1,6 +1,6 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import { CaseBasics, CaseDetail, CaseSummary } from '../../../../common/src/cams/cases';
-import { CasesSearchPredicate } from '../../../../common/src/api/search';
+import { CaseBasics, CaseDetail, CaseSummary } from '@common/cams/cases';
+import { CasesSearchPredicate } from '@common/api/search';
 
 export type CasesSyncMeta = {
   caseIds: string[];

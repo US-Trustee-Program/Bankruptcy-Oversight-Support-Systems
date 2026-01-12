@@ -1,13 +1,13 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteeAssignmentsUseCase } from '../../use-cases/trustee-assignments/trustee-assignments';
-import { TrusteeOversightAssignment } from '../../../../common/src/cams/trustees';
+import { TrusteeOversightAssignment } from '@common/cams/trustees';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsController } from '../controller';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { NotFoundError } from '../../common-errors/not-found-error';
-import { OversightRoleType } from '../../../../common/src/cams/roles';
+import { OversightRoleType } from '@common/cams/roles';
 
 const MODULE_NAME = 'TRUSTEE-ASSIGNMENTS-CONTROLLER';
 

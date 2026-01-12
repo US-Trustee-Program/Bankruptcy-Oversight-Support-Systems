@@ -67,7 +67,7 @@ function ConsolidationOrderModal_(
   const { id, onConfirm, onCancel } = props;
 
   const [cases, setCases] = useState<ConsolidationOrderCase[]>([]);
-  const [childCasesDivHeight, setChildCasesDivHeight] = useState<string>('');
+  const [memberCasesDivHeight, setMemberCasesDivHeight] = useState<string>('');
   const [consolidationType, setConsolidationType] = useState<ConsolidationType>();
   const [leadCase, setLeadCase] = useState<ConsolidationOrderCase | null>(null);
   const [options, setOptions] = useState<ShowOptions>({
@@ -161,7 +161,7 @@ function ConsolidationOrderModal_(
     // get height of modal top section above scrolling div
     const modalWindowPadding = 100;
     const outerModalMargin = 220;
-    const minChildCasesDivHeight = 50;
+    const minMemberCasesDivHeight = 50;
 
     const modalContent = document.querySelector(`#${id}`);
     if (modalContent) {
@@ -178,9 +178,9 @@ function ConsolidationOrderModal_(
           button.clientHeight;
         const finalSize = Math.max(
           windowSize.height! - overallHeightOfModal,
-          minChildCasesDivHeight,
+          minMemberCasesDivHeight,
         );
-        setChildCasesDivHeight(`${finalSize}px`);
+        setMemberCasesDivHeight(`${finalSize}px`);
       }
     }
   }
@@ -211,7 +211,7 @@ function ConsolidationOrderModal_(
         <div
           data-testid="modal-case-list-container"
           className="modal-case-list-container"
-          style={{ maxHeight: childCasesDivHeight }}
+          style={{ maxHeight: memberCasesDivHeight }}
         >
           <ul className="usa-list--unstyled modal-case-list">
             {cases.map((bCase) => (
@@ -245,7 +245,7 @@ function ConsolidationOrderModal_(
         <div
           data-testid="modal-case-list-container"
           className="modal-case-list-container"
-          style={{ maxHeight: childCasesDivHeight }}
+          style={{ maxHeight: memberCasesDivHeight }}
         >
           <ul className="usa-list--unstyled modal-case-list">
             {cases.map((bCase) => (

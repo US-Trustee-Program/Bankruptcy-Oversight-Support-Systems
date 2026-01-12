@@ -4,7 +4,7 @@ import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-res
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsController } from '../controller';
 import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
-import { TrusteeHistory } from '../../../../common/src/cams/trustees';
+import { TrusteeHistory } from '@common/cams/trustees';
 
 const MODULE_NAME = 'TRUSTEE-HISTORY-CONTROLLER';
 

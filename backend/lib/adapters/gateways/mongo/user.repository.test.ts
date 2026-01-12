@@ -3,10 +3,10 @@ import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import { UsersMongoRepository } from './user.repository';
 import { ApplicationContext } from '../../types/basic';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
-import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import { closeDeferred } from '../../../deferrable/defer-close';
-import DateHelper from '../../../../../common/src/date-helper';
+import DateHelper from '@common/date-helper';
 
 describe('User repository tests', () => {
   let context: ApplicationContext;

@@ -1,4 +1,4 @@
-import { CaseSummary } from '../../../../common/src/cams/cases';
+import { CaseSummary } from '@common/cams/cases';
 
 export const CASE_SUMMARIES: CaseSummary[] = [
   {

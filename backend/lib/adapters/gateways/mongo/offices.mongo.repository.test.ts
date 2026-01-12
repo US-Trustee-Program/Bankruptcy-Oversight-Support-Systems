@@ -6,17 +6,17 @@ import {
 } from '../../../testing/testing-utilities';
 import { ApplicationContext } from '../../types/basic';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
-import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import QueryBuilder, { using } from '../../../query/query-builder';
-import { CamsRole } from '../../../../../common/src/cams/roles';
+import { CamsRole } from '@common/cams/roles';
 import { closeDeferred } from '../../../deferrable/defer-close';
-import { createAuditRecord, SYSTEM_USER_REFERENCE } from '../../../../../common/src/cams/auditable';
+import { createAuditRecord, SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { getCamsError } from '../../../common-errors/error-utilities';
-import { CamsSession } from '../../../../../common/src/cams/session';
+import { CamsSession } from '@common/cams/session';
 import { DEFAULT_STAFF_TTL } from '../../../use-cases/offices/offices';
-import { Staff } from '../../../../../common/src/cams/users';
+import { Staff } from '@common/cams/users';
 import { NotFoundError } from '../../../common-errors/not-found-error';
-import { OfficeUserRolesPredicate } from '../../../../../common/src/api/search';
+import { OfficeUserRolesPredicate } from '@common/api/search';
 
 describe('offices repo', () => {
   let context: ApplicationContext;

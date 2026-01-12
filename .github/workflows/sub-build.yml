@@ -78,7 +78,7 @@ jobs:
 
       - name: Package API
         working-directory: backend
-        run: OUT=${{ inputs.apiFunctionName }} npm run pack
+        run: OUT=${{ inputs.apiFunctionName }} npm run pack:api
 
       - name: Package Data Flow Artifact
         working-directory: backend

@@ -38,7 +38,7 @@ describe('AcmsOrdersController', () => {
     const leadCaseId = '811100000';
     const report: AcmsTransformationResult = {
       leadCaseId,
-      childCaseCount: 1,
+      memberCaseCount: 1,
       success: true,
     };
     const spy = vi.spyOn(AcmsOrders.prototype, 'migrateConsolidation').mockResolvedValue(report);

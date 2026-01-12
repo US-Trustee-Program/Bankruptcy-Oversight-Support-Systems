@@ -1,26 +1,23 @@
 import { vi } from 'vitest';
 import CaseManagement, { getAction } from './case-management';
 import { CamsError } from '../../common-errors/cams-error';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
-import { CaseAssignment } from '../../../../common/src/cams/assignments';
+import MockData from '@common/cams/test-utilities/mock-data';
+import { CaseAssignment } from '@common/cams/assignments';
 import {
   createMockApplicationContext,
   createMockApplicationContextSession,
 } from '../../testing/testing-utilities';
-import { CamsRole } from '../../../../common/src/cams/roles';
+import { CamsRole } from '@common/cams/roles';
 import { getCasesGateway } from '../../factory';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { CamsUser } from '../../../../common/src/cams/users';
-import {
-  REGION_02_GROUP_BU,
-  REGION_02_GROUP_NY,
-} from '../../../../common/src/cams/test-utilities/mock-user';
-import { ustpOfficeToCourtDivision } from '../../../../common/src/cams/courts';
+import { CamsUser } from '@common/cams/users';
+import { REGION_02_GROUP_BU, REGION_02_GROUP_NY } from '@common/cams/test-utilities/mock-user';
+import { ustpOfficeToCourtDivision } from '@common/cams/courts';
 import { buildOfficeCode } from '../offices/offices';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
-import { TransferOrder } from '../../../../common/src/cams/orders';
-import { ConsolidationTo } from '../../../../common/src/cams/events';
-import { CasesSearchPredicate } from '../../../../common/src/api/search';
+import { TransferOrder } from '@common/cams/orders';
+import { ConsolidationTo } from '@common/cams/events';
+import { CasesSearchPredicate } from '@common/api/search';
 import { CaseAssignmentUseCase } from '../case-assignment/case-assignment';
 
 const attorneyJaneSmith = { id: '001', name: 'Jane Smith' };
@@ -296,7 +293,7 @@ describe('Case management tests', () => {
   describe('searchCases tests', () => {
     const basePredicate: CasesSearchPredicate = {
       chapters: ['15'],
-      excludeChildConsolidations: false,
+      excludeMemberConsolidations: false,
     };
     const caseNumber = '00-00000';
 
@@ -390,7 +387,7 @@ describe('Case management tests', () => {
       ];
       const predicate = {
         ...basePredicate,
-        excludeChildConsolidations: true,
+        excludeMemberConsolidations: true,
       };
 
       const syncedCase = MockData.getSyncedCase({
@@ -399,7 +396,7 @@ describe('Case management tests', () => {
         },
       });
       const expected = [{ ...syncedCase, officeCode, _actions }];
-      vi.spyOn(useCase.casesRepository, 'getConsolidationChildCaseIds').mockResolvedValue([]);
+      vi.spyOn(useCase.casesRepository, 'getConsolidationMemberCaseIds').mockResolvedValue([]);
       vi.spyOn(useCase.casesRepository, 'searchCases').mockResolvedValue({
         metadata: { total: 1 },
         data: [syncedCase],

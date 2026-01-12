@@ -1,15 +1,15 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseAssignmentUseCase } from '../../use-cases/case-assignment/case-assignment';
 import { AssignmentError } from '../../use-cases/case-assignment/assignment.exception';
-import { CaseAssignment } from '../../../../common/src/cams/assignments';
-import { CamsUserReference } from '../../../../common/src/cams/users';
-import { AssignableRole } from '../../../../common/src/cams/roles';
+import { CaseAssignment } from '@common/cams/assignments';
+import { CamsUserReference } from '@common/cams/users';
+import { AssignableRole } from '@common/cams/roles';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
-import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
+import HttpStatusCodes from '@common/api/http-status-codes';
 import { CamsController } from '../controller';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
-import { VALID_CASEID_PATTERN } from '../../../../common/src/cams/cases';
+import { VALID_CASEID_PATTERN } from '@common/cams/cases';
 
 const MODULE_NAME = 'ASSIGNMENT-CONTROLLER';
 const INVALID_ROLE_MESSAGE = 'The provided role is not an assignable role.';

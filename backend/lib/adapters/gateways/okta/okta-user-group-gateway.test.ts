@@ -1,16 +1,16 @@
 import { vi } from 'vitest';
-import { CamsUser, CamsUserGroup, CamsUserReference } from '../../../../../common/src/cams/users';
+import { CamsUser, CamsUserGroup, CamsUserReference } from '@common/cams/users';
 import { UnknownError } from '../../../common-errors/unknown-error';
 import { UserGroupGateway, UserGroupGatewayConfig } from '../../types/authorization';
 import { ApplicationContext } from '../../types/basic';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { randomUUID } from 'node:crypto';
 import { MockOfficesGateway } from '../../../testing/mock-gateways/mock.offices.gateway';
-import { CamsRole } from '../../../../../common/src/cams/roles';
-import { UstpOfficeDetails } from '../../../../../common/src/cams/offices';
+import { CamsRole } from '@common/cams/roles';
+import { UstpOfficeDetails } from '@common/cams/offices';
 import OktaHumble, { IdpGroup } from '../../../humble-objects/okta-humble';
 import OktaUserGroupGateway from './okta-user-group-gateway';
-import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 
 const configuration: UserGroupGatewayConfig = {
   provider: 'okta',

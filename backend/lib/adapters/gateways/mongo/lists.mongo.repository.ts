@@ -9,9 +9,9 @@ import {
   BankruptcySoftwareListItem,
   ListItem,
   ListNames,
-} from '../../../../../common/src/cams/lists';
+} from '@common/cams/lists';
 import { ListsRepository } from '../../../use-cases/gateways.types';
-import { Creatable } from '../../../../../common/src/cams/creatable';
+import { Creatable } from '@common/cams/creatable';
 import QueryPipeline from '../../../query/query-pipeline';
 
 const MODULE_NAME = 'LISTS-MONGO-REPOSITORY';

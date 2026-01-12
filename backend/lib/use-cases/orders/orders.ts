@@ -15,29 +15,24 @@ import {
   RawConsolidationOrder,
   TransferOrder,
   TransferOrderAction,
-} from '../../../../common/src/cams/orders';
-import {
-  ConsolidationFrom,
-  ConsolidationTo,
-  TransferFrom,
-  TransferTo,
-} from '../../../../common/src/cams/events';
-import { CaseSummary } from '../../../../common/src/cams/cases';
+} from '@common/cams/orders';
+import { ConsolidationFrom, ConsolidationTo, TransferFrom, TransferTo } from '@common/cams/events';
+import { CaseSummary } from '@common/cams/cases';
 import { CamsError } from '../../common-errors/cams-error';
-import DateHelper from '../../../../common/src/date-helper';
+import DateHelper from '@common/date-helper';
 import {
   CaseConsolidationHistory,
   CaseHistory,
   ConsolidationOrderSummary,
   isConsolidationHistory,
-} from '../../../../common/src/cams/history';
+} from '@common/cams/history';
 import { CaseAssignmentUseCase } from '../case-assignment/case-assignment';
 import { BadRequestError } from '../../common-errors/bad-request';
-import { CamsUserReference, getCourtDivisionCodes } from '../../../../common/src/cams/users';
-import { CamsRole } from '../../../../common/src/cams/roles';
+import { CamsUserReference, getCourtDivisionCodes } from '@common/cams/users';
+import { CamsRole } from '@common/cams/roles';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
-import { createAuditRecord } from '../../../../common/src/cams/auditable';
-import { OrdersSearchPredicate } from '../../../../common/src/api/search';
+import { createAuditRecord } from '@common/cams/auditable';
+import { OrdersSearchPredicate } from '@common/api/search';
 import { isNotFoundError } from '../../common-errors/not-found-error';
 import Factory, { getCasesGateway } from '../../factory';
 
@@ -230,7 +225,7 @@ export class OrdersUseCase {
       if (writtenJobIds.includes(order.jobId)) {
         const history: ConsolidationOrderSummary = {
           status: 'pending',
-          childCases: [],
+          memberCases: [],
         };
         const caseHistory = createAuditRecord<CaseHistory>(
           {
@@ -292,12 +287,12 @@ export class OrdersUseCase {
     context: ApplicationContext,
     bCase: CaseSummary,
     status: OrderStatus,
-    childCases: CaseSummary[],
+    memberCases: CaseSummary[],
     leadCase?: CaseSummary,
   ): Promise<CaseHistory> {
     const after: ConsolidationOrderSummary = {
       status,
-      childCases,
+      memberCases,
     };
     if (leadCase) {
       after.leadCase = leadCase;
@@ -314,8 +309,8 @@ export class OrdersUseCase {
       before = undefined;
     }
 
-    if (isConsolidationHistory(before) && before.childCases.length > 0) {
-      after.childCases.push(...before.childCases);
+    if (isConsolidationHistory(before) && before.memberCases.length > 0) {
+      after.memberCases.push(...before.memberCases);
     }
     return createAuditRecord<CaseConsolidationHistory>(
       {
@@ -351,7 +346,7 @@ export class OrdersUseCase {
         (includedCases.length === 1 && includedCases[0] === leadCase.caseId))
     ) {
       throw new BadRequestError(MODULE_NAME, {
-        message: 'Consolidation approvals require at least one child case.',
+        message: 'Consolidation approvals require at least one member case.',
       });
     }
 
@@ -363,19 +358,19 @@ export class OrdersUseCase {
       provisionalOrder.reason = reason;
     }
 
-    const includedChildCases = provisionalOrder.childCases.filter((c) =>
+    const includedMemberCases = provisionalOrder.memberCases.filter((c) =>
       includedCases.includes(c.caseId),
     );
-    const includedChildCaseIds = includedChildCases.map((bCase) => bCase.caseId);
+    const includedMemberCaseIds = includedMemberCases.map((bCase) => bCase.caseId);
     const additionalCaseIds = includedCases.filter(
-      (bCase) => !includedChildCaseIds.includes(bCase),
+      (bCase) => !includedMemberCaseIds.includes(bCase),
     );
     context.logger.debug(MODULE_NAME, 'Provisional order:', provisionalOrder);
     context.logger.debug(MODULE_NAME, 'Params:', { ...params, context: undefined });
     context.logger.debug(
       MODULE_NAME,
       `Provisional order included these case id's:`,
-      includedChildCaseIds,
+      includedMemberCaseIds,
     );
     context.logger.debug(MODULE_NAME, `Included case id's were:`, includedCases);
 
@@ -383,7 +378,7 @@ export class OrdersUseCase {
     for (const caseId of additionalCaseIds) {
       const summary = await gateway.getCaseSummary(context, caseId);
       if (summary) {
-        includedChildCases.push({ ...summary, docketEntries: [], orderDate: '' });
+        includedMemberCases.push({ ...summary, docketEntries: [], orderDate: '' });
       }
     }
 
@@ -392,33 +387,33 @@ export class OrdersUseCase {
         const references = await casesRepo.getConsolidation(caseId);
         if (references.length > 0) {
           throw new BadRequestError(MODULE_NAME, {
-            message: `Cannot consolidate order. A child case has already been consolidated.`,
+            message: `Cannot consolidate order. A member case has already been consolidated.`,
           });
         }
       }
       const leadCaseReferences = await casesRepo.getConsolidation(leadCase.caseId);
-      const isLeadCaseAChildCase = leadCaseReferences
+      const isLeadCaseAMemberCase = leadCaseReferences
         .filter((reference) => reference.caseId === leadCase.caseId)
-        .reduce((isChildCase, reference) => {
-          return isChildCase || reference.documentType === 'CONSOLIDATION_TO';
+        .reduce((isMemberCase, reference) => {
+          return isMemberCase || reference.documentType === 'CONSOLIDATION_TO';
         }, false);
-      if (isLeadCaseAChildCase) {
+      if (isLeadCaseAMemberCase) {
         throw new BadRequestError(MODULE_NAME, {
-          message: `Cannot consolidate order. The lead case is a child case of another consolidation.`,
+          message: `Cannot consolidate order. The lead case is a member case of another consolidation.`,
         });
       }
     }
 
-    const filterChildCasesOnThisOrder = (c: ConsolidationOrderCase) =>
+    const filterMemberCasesOnThisOrder = (c: ConsolidationOrderCase) =>
       !includedCases.includes(c.caseId);
     const filterLeadCaseIfItExists = (c: ConsolidationOrderCase) =>
       !leadCase || c.caseId !== leadCase.caseId;
 
-    const remainingChildCases = provisionalOrder.childCases
-      .filter(filterChildCasesOnThisOrder)
+    const remainingMemberCases = provisionalOrder.memberCases
+      .filter(filterMemberCasesOnThisOrder)
       .filter(filterLeadCaseIfItExists) as Array<ConsolidationOrderCase>;
     const response: Array<ConsolidationOrder> = [];
-    const doSplit = remainingChildCases.length > 0;
+    const doSplit = remainingMemberCases.length > 0;
     const newConsolidation: ConsolidationOrder = {
       ...provisionalOrder,
       id: undefined,
@@ -426,7 +421,7 @@ export class OrdersUseCase {
       consolidationId: undefined,
       consolidationType,
       status,
-      childCases: includedChildCases,
+      memberCases: includedMemberCases,
       leadCase,
     };
 
@@ -446,7 +441,7 @@ export class OrdersUseCase {
       const remainingOrder = {
         ...provisionalOrder,
         consolidationType,
-        childCases: remainingChildCases,
+        memberCases: remainingMemberCases,
       };
       const updatedRemainingOrder = await consolidationsRepo.update(remainingOrder);
       response.push(updatedRemainingOrder as ConsolidationOrder);
@@ -454,9 +449,9 @@ export class OrdersUseCase {
       await consolidationsRepo.delete(provisionalOrder.id);
     }
 
-    for (const childCase of newConsolidation.childCases) {
-      if (!leadCase || childCase.caseId !== leadCase.caseId) {
-        const caseHistory = await this.buildHistory(context, childCase, status, [], leadCase);
+    for (const memberCase of newConsolidation.memberCases) {
+      if (!leadCase || memberCase.caseId !== leadCase.caseId) {
+        const caseHistory = await this.buildHistory(context, memberCase, status, [], leadCase);
         await casesRepo.createCaseHistory(caseHistory);
       }
     }
@@ -471,14 +466,14 @@ export class OrdersUseCase {
         return { id: assignment.userId, name: assignment.name };
       });
 
-      const childCaseSummaries = [];
-      for (const childCase of newConsolidation.childCases) {
-        if (childCase.caseId !== leadCase.caseId) {
-          // Add the reference to the lead case to the child case.
+      const memberCaseSummaries = [];
+      for (const memberCase of newConsolidation.memberCases) {
+        if (memberCase.caseId !== leadCase.caseId) {
+          // Add the reference to the lead case to the member case.
           const consolidationTo: ConsolidationTo = {
-            caseId: childCase.caseId,
+            caseId: memberCase.caseId,
             otherCase: leadCase,
-            orderDate: childCase.orderDate,
+            orderDate: memberCase.orderDate,
             consolidationType: newConsolidation.consolidationType,
             documentType: 'CONSOLIDATION_TO',
             updatedBy: context.session.user,
@@ -486,11 +481,11 @@ export class OrdersUseCase {
           };
           await casesRepo.createConsolidationTo(consolidationTo);
 
-          // Add the reference to the child case to the lead case.
+          // Add the reference to the member case to the lead case.
           const consolidationFrom: ConsolidationFrom = {
             caseId: newConsolidation.leadCase.caseId,
-            otherCase: getCaseSummaryFromConsolidationOrderCase(childCase),
-            orderDate: childCase.orderDate,
+            otherCase: getCaseSummaryFromConsolidationOrderCase(memberCase),
+            orderDate: memberCase.orderDate,
             consolidationType: newConsolidation.consolidationType,
             documentType: 'CONSOLIDATION_FROM',
             updatedBy: context.session.user,
@@ -498,18 +493,18 @@ export class OrdersUseCase {
           };
           await casesRepo.createConsolidationFrom(consolidationFrom);
 
-          // Assign lead case attorneys to the child case.
+          // Assign lead case attorneys to the member case.
           await assignmentUseCase.createTrialAttorneyAssignments(
             context,
-            childCase.caseId,
+            memberCase.caseId,
             leadCaseAttorneys,
             CamsRole.TrialAttorney,
             { processRoles: [CamsRole.CaseAssignmentManager] },
           );
 
-          // Add the child case lead case history.
-          const childCaseSummary = getCaseSummaryFromConsolidationOrderCase(childCase);
-          childCaseSummaries.push(childCaseSummary);
+          // Add the member case lead case history.
+          const memberCaseSummary = getCaseSummaryFromConsolidationOrderCase(memberCase);
+          memberCaseSummaries.push(memberCaseSummary);
         }
       }
 
@@ -518,7 +513,7 @@ export class OrdersUseCase {
         context,
         leadCase,
         status,
-        childCaseSummaries,
+        memberCaseSummaries,
       );
       await casesRepo.createCaseHistory(leadCaseHistory);
     }
@@ -575,7 +570,7 @@ export class OrdersUseCase {
         courtDivisionCode: firstOrder.courtDivisionCode,
         courtName: firstOrder.courtName,
         jobId,
-        childCases: Array.from(jobToCaseMap.get(jobId).values()),
+        memberCases: Array.from(jobToCaseMap.get(jobId).values()),
       };
       consolidationsByJobId.set(jobId, consolidationOrder);
     });

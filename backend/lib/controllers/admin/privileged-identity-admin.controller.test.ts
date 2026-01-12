@@ -2,11 +2,11 @@ import { vi } from 'vitest';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { AdminUseCase } from '../../use-cases/admin/admin';
 import { PrivilegedIdentityAdminController } from './privileged-identity-admin.controller';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { BadRequestError } from '../../common-errors/bad-request';
-import { CamsRole } from '../../../../common/src/cams/roles';
+import { CamsRole } from '@common/cams/roles';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
-import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
+import HttpStatusCodes from '@common/api/http-status-codes';
 
 describe('Privileged identity admin controller tests', () => {
   let controller: PrivilegedIdentityAdminController;

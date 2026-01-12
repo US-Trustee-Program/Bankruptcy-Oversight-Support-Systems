@@ -1,6 +1,6 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
-import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
+import HttpStatusCodes from '@common/api/http-status-codes';
 import { CamsController } from '../controller';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
@@ -11,9 +11,9 @@ import {
   CaseNoteEditRequest,
   CaseNoteInput,
   VALID_CASEID_PATTERN,
-} from '../../../../common/src/cams/cases';
+} from '@common/cams/cases';
 import { ForbiddenCaseNotesError } from './case.notes.exception';
-import { ResourceActions } from '../../../../common/src/cams/actions';
+import { ResourceActions } from '@common/cams/actions';
 
 const MODULE_NAME = 'CASE-NOTES-CONTROLLER';
 const VALID_ID_PATTERN = RegExp(/^[\dA-Za-z]+(-[\dA-Za-z]+)*$/);

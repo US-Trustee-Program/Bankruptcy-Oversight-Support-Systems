@@ -63,7 +63,7 @@ export default function SearchScreen() {
   const defaultSearchPredicate: CasesSearchPredicate = {
     limit: DEFAULT_SEARCH_LIMIT,
     offset: DEFAULT_SEARCH_OFFSET,
-    excludeChildConsolidations: false,
+    excludeMemberConsolidations: false,
     excludeClosedCases: true,
     divisionCodes: defaultDivisionCodes,
   };

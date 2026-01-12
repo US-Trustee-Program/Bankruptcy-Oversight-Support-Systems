@@ -3,7 +3,7 @@ import { ApplicationContext } from '../../types/basic';
 import { CaseDocketGateway } from '../../../use-cases/gateways.types';
 import { GatewayHelper } from '../gateway-helper';
 import { NORMAL_CASE_ID } from '../../../testing/testing-constants';
-import { CaseDocket } from '../../../../../common/src/cams/cases';
+import { CaseDocket } from '@common/cams/cases';
 
 const MODULE_NAME = 'CASE-DOCKET-MOCK-GATEWAY';
 

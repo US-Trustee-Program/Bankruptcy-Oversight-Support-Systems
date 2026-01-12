@@ -2,22 +2,15 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteeAppointmentsRepository, TrusteesRepository } from '../gateways.types';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { getTrusteeAppointmentsRepository, getTrusteesRepository } from '../../factory';
-import {
-  TrusteeAppointment,
-  TrusteeAppointmentInput,
-} from '../../../../common/src/cams/trustee-appointments';
+import { TrusteeAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { CourtsUseCase } from '../courts/courts';
-import { CourtDivisionDetails } from '../../../../common/src/cams/courts';
-import { getCamsUserReference } from '../../../../common/src/cams/session';
-import { CamsUserReference } from '../../../../common/src/cams/users';
-import {
-  TrusteeAppointmentHistory,
-  TrusteeHistory,
-  ChapterType,
-} from '../../../../common/src/cams/trustees';
+import { CourtDivisionDetails } from '@common/cams/courts';
+import { getCamsUserReference } from '@common/cams/session';
+import { CamsUserReference } from '@common/cams/users';
+import { TrusteeAppointmentHistory, TrusteeHistory, ChapterType } from '@common/cams/trustees';
 import { Creatable } from '../../adapters/types/persistence.gateway';
-import DateHelper from '../../../../common/src/date-helper';
+import DateHelper from '@common/date-helper';
 
 const MODULE_NAME = 'TRUSTEE-APPOINTMENTS-USE-CASE';
 

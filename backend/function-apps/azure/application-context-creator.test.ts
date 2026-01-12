@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import MockData from '../../../common/src/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { ApplicationContext } from '../../lib/adapters/types/basic';
 import * as FeatureFlags from '../../lib/adapters/utils/feature-flag';
 import { ApplicationConfiguration } from '../../lib/configs/application-configuration';

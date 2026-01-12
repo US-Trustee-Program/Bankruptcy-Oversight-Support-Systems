@@ -1,10 +1,10 @@
 import { vi } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext, getTheThrownError } from '../../testing/testing-utilities';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { TrusteeAppointmentsUseCase } from './trustee-appointments';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
-import { TrusteeAppointmentInput } from '../../../../common/src/cams/trustee-appointments';
+import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 
 describe('TrusteeAppointmentsUseCase tests', () => {
   let context: ApplicationContext;

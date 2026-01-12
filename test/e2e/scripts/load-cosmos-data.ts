@@ -15,6 +15,10 @@ if (!adminKey) {
 
 (async () => {
   try {
+    console.log(
+      `Seeding E2E database from endpoint '${endpoint}'.`,
+      `Admin key exists? ${adminKey !== undefined}`,
+    );
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
@@ -26,7 +30,7 @@ if (!adminKey) {
     }
     console.log('E2E CosmosDB seeded successfully.');
   } catch (err) {
-    console.error('Error seeding E2E CosmosDB:', err);
+    console.error('Error seeding E2E CosmosDB:', err.message);
     process.exit(1);
   }
 })();

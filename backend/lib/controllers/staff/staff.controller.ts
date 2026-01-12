@@ -1,6 +1,6 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import StaffUseCase from '../../use-cases/staff/staff';
-import { Staff } from '../../../../common/src/cams/users';
+import { Staff } from '@common/cams/users';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsController } from '../controller';

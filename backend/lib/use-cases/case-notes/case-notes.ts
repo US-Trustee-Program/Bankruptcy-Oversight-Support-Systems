@@ -6,13 +6,13 @@ import {
   CaseNoteDeleteRequest,
   CaseNoteEditRequest,
   CaseNoteInput,
-} from '../../../../common/src/cams/cases';
-import { CamsUser } from '../../../../common/src/cams/users';
+} from '@common/cams/cases';
+import { CamsUser } from '@common/cams/users';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
-import { getCamsUserReference } from '../../../../common/src/cams/session';
+import { getCamsUserReference } from '@common/cams/session';
 import { randomUUID } from 'node:crypto';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
-import Actions, { Action, ResourceActions } from '../../../../common/src/cams/actions';
+import Actions, { Action, ResourceActions } from '@common/cams/actions';
 
 const MODULE_NAME = 'CASE-NOTES-USE-CASE';
 

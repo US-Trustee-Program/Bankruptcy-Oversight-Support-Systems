@@ -1,9 +1,9 @@
 import * as dotenv from 'dotenv';
 import { ApplicationContext } from '../../../lib/adapters/types/basic';
-import { CaseBasics, CaseSummary, getCaseIdParts } from '../../../../common/src/cams/cases';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import { CaseBasics, CaseSummary, getCaseIdParts } from '@common/cams/cases';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { OrdersUseCase } from '../../../lib/use-cases/orders/orders';
-import { ConsolidationOrder, TransferOrder } from '../../../../common/src/cams/orders';
+import { ConsolidationOrder, TransferOrder } from '@common/cams/orders';
 import DxtrUtils from './dxtr-utils';
 import {
   insertConsolidationOrders,
@@ -12,8 +12,8 @@ import {
   insertUserGroups,
   syncCases,
 } from './db-utils';
-import { Trustee } from '../../../../common/src/cams/trustees';
-import { UserGroup } from '../../../../common/src/cams/users';
+import { Trustee } from '@common/cams/trustees';
+import { UserGroup } from '@common/cams/users';
 
 const KNOWN_GOOD_TRANSFER_FROM_CASE_NUMBER = '65-67641';
 const KNOWN_GOOD_TRANSFER_FROM_CASE_ID = '081-' + KNOWN_GOOD_TRANSFER_FROM_CASE_NUMBER;

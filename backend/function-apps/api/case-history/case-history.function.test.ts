@@ -6,14 +6,14 @@ import { CamsHttpRequest } from '../../../lib/adapters/types/http';
 import { InvocationContext } from '@azure/functions';
 import handler from './case-history.function';
 import ContextCreator from '../../azure/application-context-creator';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { CaseHistoryController } from '../../../lib/controllers/case-history/case-history.controller';
 import {
   buildTestResponseError,
   buildTestResponseSuccess,
   createMockAzureFunctionRequest,
 } from '../../azure/testing-helpers';
-import { CaseHistory } from '../../../../common/src/cams/history';
+import { CaseHistory } from '@common/cams/history';
 
 describe('Case History Function Tests', () => {
   const defaultRequestProps: Partial<CamsHttpRequest> = {

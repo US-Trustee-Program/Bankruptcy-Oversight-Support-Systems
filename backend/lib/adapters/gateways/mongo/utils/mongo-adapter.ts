@@ -1,5 +1,5 @@
-import { PaginationParameters } from '../../../../../../common/src/api/pagination';
-import { DEFAULT_SEARCH_LIMIT } from '../../../../../../common/src/api/search';
+import { PaginationParameters } from '@common/api/pagination';
+import { DEFAULT_SEARCH_LIMIT } from '@common/api/search';
 import { CamsError, isCamsError } from '../../../../common-errors/cams-error';
 import { getCamsErrorWithStack } from '../../../../common-errors/error-utilities';
 import { NotFoundError } from '../../../../common-errors/not-found-error';

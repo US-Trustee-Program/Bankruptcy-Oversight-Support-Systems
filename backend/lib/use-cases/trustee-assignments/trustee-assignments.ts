@@ -1,16 +1,13 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteesRepository } from '../gateways.types';
-import {
-  TrusteeOversightAssignment,
-  TrusteeOversightHistory,
-} from '../../../../common/src/cams/trustees';
-import { CamsRole, OversightRoles, OversightRoleType } from '../../../../common/src/cams/roles';
+import { TrusteeOversightAssignment, TrusteeOversightHistory } from '@common/cams/trustees';
+import { CamsRole, OversightRoles, OversightRoleType } from '@common/cams/roles';
 import { getTrusteesRepository, getUserGroupGateway } from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { BadRequestError } from '../../common-errors/bad-request';
-import { getCamsUserReference } from '../../../../common/src/cams/session';
-import { createAuditRecord } from '../../../../common/src/cams/auditable';
-import Validators from '../../../../common/src/cams/validators';
+import { getCamsUserReference } from '@common/cams/session';
+import { createAuditRecord } from '@common/cams/auditable';
+import Validators from '@common/cams/validators';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 
 const MODULE_NAME = 'TRUSTEE-ASSIGNMENTS-USE-CASE';

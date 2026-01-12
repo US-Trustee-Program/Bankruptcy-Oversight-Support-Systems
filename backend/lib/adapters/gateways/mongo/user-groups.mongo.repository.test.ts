@@ -6,11 +6,11 @@ import {
 } from '../../../testing/testing-utilities';
 import { ApplicationContext } from '../../types/basic';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
-import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import { CamsError } from '../../../common-errors/cams-error';
 import { randomUUID } from 'node:crypto';
-import { UserGroup } from '../../../../../common/src/cams/users';
+import { UserGroup } from '@common/cams/users';
 
 describe('UserGroupsMongoRepository', () => {
   let context: ApplicationContext;

@@ -1,11 +1,11 @@
 import { ApplicationContext } from '../../types/basic';
-import { Auditable, createAuditRecord } from '../../../../../common/src/cams/auditable';
+import { Auditable, createAuditRecord } from '@common/cams/auditable';
 import QueryBuilder from '../../../query/query-builder';
 import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { ReplaceResult, UsersRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { UnknownError } from '../../../common-errors/unknown-error';
-import { CamsUserReference, PrivilegedIdentityUser } from '../../../../../common/src/cams/users';
+import { CamsUserReference, PrivilegedIdentityUser } from '@common/cams/users';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 
 const MODULE_NAME = 'USERS-MONGO-REPOSITORY';

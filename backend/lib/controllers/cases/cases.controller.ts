@@ -1,12 +1,12 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import CaseManagement from '../../use-cases/cases/case-management';
-import { ResponseBody } from '../../../../common/src/api/response';
-import { CaseDetail, SyncedCase } from '../../../../common/src/cams/cases';
-import { CasesSearchPredicate } from '../../../../common/src/api/search';
+import { ResponseBody } from '@common/api/response';
+import { CaseDetail, SyncedCase } from '@common/cams/cases';
+import { CasesSearchPredicate } from '@common/api/search';
 import { CamsHttpRequest } from '../../adapters/types/http';
-import { Pagination } from '../../../../common/src/api/pagination';
+import { Pagination } from '@common/api/pagination';
 import { httpSuccess } from '../../adapters/utils/http-response';
-import { ResourceActions } from '../../../../common/src/cams/actions';
+import { ResourceActions } from '@common/cams/actions';
 import { CamsController } from '../controller';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';

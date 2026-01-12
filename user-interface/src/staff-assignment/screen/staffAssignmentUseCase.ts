@@ -70,7 +70,7 @@ const useStaffAssignmentUseCase = (
       offset: DEFAULT_SEARCH_OFFSET,
       divisionCodes: getCourtDivisionCodes(user),
       chapters: getChapters(),
-      excludeChildConsolidations: true,
+      excludeMemberConsolidations: true,
       excludeClosedCases: true,
     };
 

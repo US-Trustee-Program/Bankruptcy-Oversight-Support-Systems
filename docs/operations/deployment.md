@@ -1,5 +1,78 @@
 # Deployment
 
+## USTP vs Flexion Environment Differences
+
+CAMS is deployed to two distinct environment types with different requirements:
+
+- **Flexion Environments**: Development and testing environments managed by Flexion, deployed via GitHub Actions workflows
+- **USTP Environments**: Production and staging environments managed by USTP, deployed via Azure DevOps pipelines
+
+### Deployment Pipelines
+
+| Environment | Tool | Location |
+|------------|------|----------|
+| Flexion | GitHub Actions | `.github/workflows/` in CAMS repo |
+| USTP | Azure DevOps | `ADO-Mirror` repository |
+
+Both pipelines use the same Infrastructure as Code (Bicep templates) and shell scripts to ensure deployed environments are as similar as possible, with differences limited to security and access policies.
+
+### Network Security and Firewall Rules
+
+The most significant difference between environments is network access control:
+
+| Resource | Slot | USTP | Flexion |
+|----------|------|------|---------|
+| Webapp | Production | Deny-by-default + explicit allow rules | Publicly accessible (Allow all) |
+| Webapp | Staging | Deny-by-default + explicit allow rules | Deny-by-default |
+| API Function App | Production | Deny-by-default + explicit allow rules | Publicly accessible (Allow all) |
+| API Function App | Staging | Deny-by-default + explicit allow rules | Deny-by-default |
+| Dataflows Function App | Production | Deny-by-default + explicit allow rules | Deny-by-default + explicit allow rules |
+| Dataflows Function App | Staging | Deny-by-default + explicit allow rules | Deny-by-default |
+
+**Key Principles:**
+- **USTP**: All resources are deny-by-default with explicit allow rules for authorized access only
+- **Flexion**: Production webapp and API function are publicly accessible to facilitate testing and demos
+- **Dataflows**: Always deny-by-default in both environments (internal-only service)
+
+### The `isUstpDeployment` Flag
+
+The `isUstpDeployment` parameter/flag is used throughout the deployment tooling to toggle environment-specific behavior:
+
+**Bicep Templates** (`ops/cloud-deployment/*.bicep`):
+- `isUstpDeployment` parameter determines firewall rules in Infrastructure as Code
+- Example: `action: isUstpDeployment ? 'Deny' : 'Allow'`
+
+**Shell Scripts** (`ops/scripts/pipeline/*.sh`):
+- Scripts accept `--isUstpDeployment` flag to handle environment-specific logic
+- Used in: `endpoint-test.sh`, `dev-add-allowed-ip.sh`, `dev-rm-allowed-ip.sh`
+- Example: ADO pipelines pass `--isUstpDeployment`, GHA workflows do not
+
+**Important**: When adding scripts that modify firewall rules, always check if behavior should differ between USTP and Flexion environments.
+
+### Post-Swap Firewall Handling
+
+Azure slot swaps exchange all slot settings, including firewall configurations. This requires post-swap correction:
+
+**What happens during swap:**
+1. Staging slot code (with Deny firewall) → Production slot
+2. Production slot code (with Allow firewall for Flexion) → Staging slot
+
+**Post-swap corrections** (GHA `enable-access` job in `sub-deploy-code-slot.yml`):
+- **Webapp production**: Add AllowAll rule (Flexion only)
+- **API production**: Add AllowAll rule (Flexion only)
+- **Dataflows production**: Keep deny-by-default (both environments)
+- **All staging slots**: Set to deny-by-default (both environments)
+
+### Common Gotchas
+
+1. **Dataflows is different**: Dataflows function app is always deny-by-default, even in Flexion production. Don't include it in scripts that add public Allow rules.
+
+2. **Production ≠ Publicly accessible**: In USTP, production slots are deny-by-default. The term "production" refers to the main slot, not accessibility.
+
+3. **Scripts need environment awareness**: When writing scripts that modify access restrictions, use the `--isUstpDeployment` flag if behavior differs between environments.
+
+4. **Test both pipeline types**: Changes to deployment scripts should be validated in both GHA (Flexion) and ADO (USTP) pipelines.
+
 ## Infrastructure as Code
 
 Bicep files to provision resources in the Azure cloud environment with support for both commercial and US gov regions located in the ops/cloud-deployment folder. The bicep files are broken down to deploy a subset of what is needed by USTP Case Management System (CAMS). Use the **main bicep**, _main.bicep_, to provision complete Azure resources.

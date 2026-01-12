@@ -17,24 +17,49 @@ expected_git_sha=''
 isLocalRun=''
 resource_group=''
 main_default_action_changed=false
+is_ustp_deployment=false
 
 # shellcheck disable=SC2329  # Function is invoked via trap
 function on_exit() {
     # Restore main site default actions to Deny if they were changed
-    if [ "${main_default_action_changed}" = true ] && [ -n "${resource_group}" ]; then
-        echo "Restoring main site default actions to Deny..."
-        if [ -n "${webapp_name}" ]; then
-            if [ -n "${slot_name}" ] && [ "${slot_name}" != "initial" ] && [ "${slot_name}" != "self" ]; then
-                az webapp config access-restriction set -g "${resource_group}" -n "${webapp_name}" --slot "${slot_name}" --default-action Deny 2>/dev/null || echo "Warning: Failed to restore webapp default action"
-            else
-                az webapp config access-restriction set -g "${resource_group}" -n "${webapp_name}" --default-action Deny 2>/dev/null || echo "Warning: Failed to restore webapp default action"
-            fi
+    # For USTP: Always restore to Deny
+    # For Flexion: Only restore deployment slots to Deny, keep production slots at Allow
+    if [ "${main_default_action_changed}" = "true" ] && [ -n "${resource_group}" ]; then
+        # Determine if this is a deployment slot or production slot
+        is_deployment_slot=false
+        if [ -n "${slot_name}" ] && [ "${slot_name}" != "initial" ] && [ "${slot_name}" != "self" ]; then
+            is_deployment_slot=true
         fi
-        if [ -n "${api_name}" ]; then
-            if [ -n "${slot_name}" ] && [ "${slot_name}" != "initial" ] && [ "${slot_name}" != "self" ]; then
-                az functionapp config access-restriction set -g "${resource_group}" -n "${api_name}" --slot "${slot_name}" --default-action Deny 2>/dev/null || echo "Warning: Failed to restore API default action"
-            else
-                az functionapp config access-restriction set -g "${resource_group}" -n "${api_name}" --default-action Deny 2>/dev/null || echo "Warning: Failed to restore API default action"
+
+        # Decide whether to restore to Deny
+        should_restore=false
+        if [ "${is_ustp_deployment}" = "true" ]; then
+            # USTP: Always restore to Deny
+            should_restore=true
+            echo "USTP Deployment: Restoring main site default actions to Deny..."
+        elif [ "${is_deployment_slot}" = "true" ]; then
+            # Flexion deployment slot: Restore to Deny
+            should_restore=true
+            echo "Flexion Deployment Slot: Restoring main site default actions to Deny..."
+        else
+            # Flexion production slot: Keep Allow
+            echo "Flexion Production Slot: Keeping main site default actions at Allow..."
+        fi
+
+        if [ "${should_restore}" = "true" ]; then
+            if [ -n "${webapp_name}" ]; then
+                if [ "${is_deployment_slot}" = "true" ]; then
+                    az webapp config access-restriction set -g "${resource_group}" -n "${webapp_name}" --slot "${slot_name}" --default-action Deny 2>/dev/null || echo "Warning: Failed to restore webapp default action"
+                else
+                    az webapp config access-restriction set -g "${resource_group}" -n "${webapp_name}" --default-action Deny 2>/dev/null || echo "Warning: Failed to restore webapp default action"
+                fi
+            fi
+            if [ -n "${api_name}" ]; then
+                if [ "${is_deployment_slot}" = "true" ]; then
+                    az functionapp config access-restriction set -g "${resource_group}" -n "${api_name}" --slot "${slot_name}" --default-action Deny 2>/dev/null || echo "Warning: Failed to restore API default action"
+                else
+                    az functionapp config access-restriction set -g "${resource_group}" -n "${api_name}" --default-action Deny 2>/dev/null || echo "Warning: Failed to restore API default action"
+                fi
             fi
         fi
     fi
@@ -44,7 +69,7 @@ trap on_exit EXIT
 while [[ $# -gt 0 ]]; do
   case $1 in
   -h | --help)
-    echo "./endpoint-test.sh --webappName webappName --apiFunctionName apiFunctionName --slot slotName --resourceGroup rgName"
+    echo "./endpoint-test.sh --webappName webappName --apiFunctionName apiFunctionName --slot slotName --resourceGroup rgName [--isUstpDeployment]"
     exit 0
     ;;
 
@@ -77,6 +102,10 @@ while [[ $# -gt 0 ]]; do
     isLocalRun="true"
     api_name=""
     webapp_name=""
+    shift
+    ;;
+  --isUstpDeployment)
+    is_ustp_deployment=true
     shift
     ;;
   *)

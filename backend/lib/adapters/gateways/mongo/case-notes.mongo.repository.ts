@@ -1,4 +1,4 @@
-import { CaseNote } from '../../../../../common/src/cams/cases';
+import { CaseNote } from '@common/cams/cases';
 import { getCamsErrorWithStack, getCamsError } from '../../../common-errors/error-utilities';
 import QueryBuilder from '../../../query/query-builder';
 import { CaseNotesRepository, UpdateResult } from '../../../use-cases/gateways.types';

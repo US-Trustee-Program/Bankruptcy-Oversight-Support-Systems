@@ -1,4 +1,4 @@
-import { CamsRoleType } from '../../../../common/src/cams/roles';
+import { CamsRoleType } from '@common/cams/roles';
 
 export type StorageGateway = {
   get(key: string): string | null;

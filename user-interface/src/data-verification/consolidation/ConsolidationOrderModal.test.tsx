@@ -91,7 +91,7 @@ describe('ConsolidationOrderModalComponent', () => {
 
   test('should allow user to approve a consolidation', async () => {
     const id = 'test';
-    const childCases = MockData.buildArray(MockData.getCaseSummary, 2);
+    const memberCases = MockData.buildArray(MockData.getCaseSummary, 2);
     const courts = MockData.getCourts().slice(0, 3);
 
     const leadCase = MockData.getCaseSummary();
@@ -114,7 +114,7 @@ describe('ConsolidationOrderModalComponent', () => {
     // Render and activate the modal.
     const view = renderModalWithProps({ id, courts });
     await waitFor(() => {
-      view.current?.show({ status: 'approved', cases: childCases, leadCase, consolidationType });
+      view.current?.show({ status: 'approved', cases: memberCases, leadCase, consolidationType });
     });
 
     const modal = screen.getByTestId('modal-test');
@@ -152,7 +152,7 @@ describe('ConsolidationOrderModalComponent', () => {
     });
 
     await waitFor(() => {
-      view.current?.show({ status: 'approved', cases: childCases });
+      view.current?.show({ status: 'approved', cases: memberCases });
     });
     const cancelButton = screen.getByTestId(`button-${id}-cancel-button`);
     expect(cancelButton).toBeVisible();

@@ -6,12 +6,8 @@ import Factory, {
   getUsersRepository,
 } from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
-import {
-  PrivilegedIdentityUser,
-  CamsUserGroup,
-  CamsUserReference,
-} from '../../../../common/src/cams/users';
-import { getCamsUserReference } from '../../../../common/src/cams/session';
+import { PrivilegedIdentityUser, CamsUserGroup, CamsUserReference } from '@common/cams/users';
+import { getCamsUserReference } from '@common/cams/session';
 import { BadRequestError } from '../../common-errors/bad-request';
 import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
 import { UnknownError } from '../../common-errors/unknown-error';

@@ -4,7 +4,7 @@ import { AcmsGatewayImpl } from './acms.gateway';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import {
   AcmsConsolidation,
-  AcmsConsolidationChildCase,
+  AcmsConsolidationMemberCase,
   AcmsPredicate,
 } from '../../../use-cases/dataflows/migrate-consolidations';
 
@@ -80,7 +80,7 @@ describe('ACMS gateway tests', () => {
 
   test('should get substantive consolidation details from ACMS', async () => {
     const leadCaseId = '0000000000';
-    const databaseResult: AcmsConsolidationChildCase[] = [
+    const databaseResult: AcmsConsolidationMemberCase[] = [
       {
         caseId: '000-00-11111',
         consolidationDate: '20240201',
@@ -94,7 +94,7 @@ describe('ACMS gateway tests', () => {
     ];
     const expectedResult: AcmsConsolidation = {
       leadCaseId: '000-00-00000',
-      childCases: [
+      memberCases: [
         {
           caseId: '000-00-11111',
           consolidationDate: '2024-02-01',
@@ -128,7 +128,7 @@ describe('ACMS gateway tests', () => {
 
   test('should get administrative consolidation details from ACMS', async () => {
     const leadCaseId = '0000000000';
-    const databaseResult: AcmsConsolidationChildCase[] = [
+    const databaseResult: AcmsConsolidationMemberCase[] = [
       {
         caseId: '000-00-11111',
         consolidationDate: '20240201',
@@ -142,7 +142,7 @@ describe('ACMS gateway tests', () => {
     ];
     const expectedResult: AcmsConsolidation = {
       leadCaseId: '000-00-00000',
-      childCases: [
+      memberCases: [
         {
           caseId: '000-00-11111',
           consolidationDate: '2024-02-01',

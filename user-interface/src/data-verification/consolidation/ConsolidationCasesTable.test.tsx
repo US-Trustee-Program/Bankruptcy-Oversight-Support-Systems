@@ -135,7 +135,7 @@ describe('test ConsolidationCasesTable component', () => {
       cases: [
         MockData.getConsolidatedOrderCase({
           override: {
-            isChildCase: true,
+            isMemberCase: true,
             associations: [
               MockData.getConsolidationReference({
                 override: {
@@ -151,8 +151,8 @@ describe('test ConsolidationCasesTable component', () => {
 
     renderWithProps(props);
 
-    expect(screen.getByTestId('alert-container-is-child')).toHaveTextContent(
-      'This case is a child case of a consolidation and cannot be consolidated.',
+    expect(screen.getByTestId('alert-container-is-member')).toHaveTextContent(
+      'This case is a member case of a consolidation and cannot be consolidated.',
     );
   });
 

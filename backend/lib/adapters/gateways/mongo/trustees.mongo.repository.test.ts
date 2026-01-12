@@ -5,9 +5,9 @@ import {
   TrusteeInput,
   TrusteeNameHistory,
   TrusteeOversightAssignment,
-} from '../../../../../common/src/cams/trustees';
-import { CamsUserReference } from '../../../../../common/src/cams/users';
-import { CamsRole } from '../../../../../common/src/cams/roles';
+} from '@common/cams/trustees';
+import { CamsUserReference } from '@common/cams/users';
+import { CamsRole } from '@common/cams/roles';
 import {
   createMockApplicationContext,
   getTheThrownError,
