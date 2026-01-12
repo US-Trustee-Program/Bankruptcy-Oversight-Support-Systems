@@ -146,7 +146,7 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
           </Button>
           <Button
             id="cancel-button"
-            className="unstyled-button cancel-button"
+            className="spaced-button cancel-button"
             type="button"
             onClick={handleCancel}
             uswdsStyle={UswdsButtonStyle.Unstyled}

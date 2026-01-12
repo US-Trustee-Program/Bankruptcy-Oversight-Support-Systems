@@ -1,0 +1,20 @@
+@import '@/styles/abstracts/colors';
+
+.usa-fieldset {
+  legend[data-required='true']::after {
+    content: ' *';
+    color: $secondary-dark;
+  }
+  legend[data-required='true'] ~ .usa-form-group {
+    input[type='radio'][required] + label::after {
+      content: '';
+      color: transparent;
+    }
+  }
+}
+
+.usa-fieldset.radio-group {
+  .usa-form-group.usa-radio {
+    margin-top: 0;
+  }
+}

@@ -1,0 +1,29 @@
+@import '@/styles/abstracts/colors';
+
+.usa-form-group {
+  input[type='radio'][required] + label::after {
+    content: ' *';
+    color: $secondary-dark;
+  }
+}
+
+.usa-radio__input + label {
+  button {
+    text-decoration: none;
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+    height: 1.25rem;
+    line-height: 1.25rem;
+  }
+  button:active,
+  button:hover {
+    text-decoration: none;
+  }
+}
+
+.usa-radio__input:checked + label {
+  [class*='__label']::before {
+    box-shadow: 0 0 0 2px #005ea2, inset 0 0 0 2px #fff;
+    background-color: #005ea2;
+  }
+}

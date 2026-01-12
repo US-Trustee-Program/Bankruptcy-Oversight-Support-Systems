@@ -1,7 +1,9 @@
 import './forms.scss';
+import './Input.scss';
 import React, {
   forwardRef,
   useEffect,
+  useId,
   useImperativeHandle,
   useRef,
   useState,
@@ -32,6 +34,9 @@ function Input_(props: InputProps, ref: React.Ref<InputRef>) {
     props;
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const generatedId = useId();
+  const baseId = props.id ?? generatedId;
+  const hintId = `input-hint-${baseId}`;
 
   function emitChange(value: string) {
     if (props.onChange) {
@@ -64,10 +69,6 @@ function Input_(props: InputProps, ref: React.Ref<InputRef>) {
     setInputDisabled(value);
   }
 
-  function ariaDescribedBy() {
-    return `input-hint-${props.id ?? Math.random().toString(36).slice(2, 7)}`;
-  }
-
   function handleFocus(ev: React.FocusEvent<HTMLElement>) {
     if (inputRef.current && props.onFocus) {
       ev.target = inputRef.current;
@@ -94,11 +95,11 @@ function Input_(props: InputProps, ref: React.Ref<InputRef>) {
 
   return (
     <div className={`usa-form-group ${props.className ?? ''}`}>
-      <label className="usa-label" id={props.id + '-label'} htmlFor={props.id}>
+      <label className="usa-label" id={baseId + '-label'} htmlFor={baseId}>
         {label}
       </label>
       {ariaDescription && (
-        <div className="usa-hint" id={ariaDescribedBy()}>
+        <div className="usa-hint" id={hintId}>
           {ariaDescription}
         </div>
       )}
@@ -107,23 +108,26 @@ function Input_(props: InputProps, ref: React.Ref<InputRef>) {
       >
         <input
           {...otherProps}
+          id={baseId}
           required={required}
           className={`usa-input usa-tooltip ${props.className ?? ''}`}
-          aria-invalid={errorMessage ? 'true' : undefined}
-          aria-errormessage={errorMessage ? `${props.id}-input__error-message` : undefined}
+          aria-invalid={errorMessage && errorMessage.length > 0 ? 'true' : undefined}
+          aria-errormessage={
+            errorMessage && errorMessage.length > 0 ? `${baseId}-input__error-message` : undefined
+          }
           data-position={props.position ?? 'right'}
           onChange={handleOnChange}
           onFocus={handleFocus}
-          data-testid={props.id}
+          data-testid={baseId}
           disabled={inputDisabled}
           value={inputValue}
-          aria-describedby={ariaDescription ? ariaDescribedBy() : undefined}
+          aria-describedby={ariaDescription ? hintId : undefined}
           ref={inputRef}
         />
         {includeClearButton && !inputDisabled && inputValue.length > 0 && (
           <div className="usa-input-suffix">
             <Button
-              id={`clear-${props.id}`}
+              id={`clear-${baseId}`}
               uswdsStyle={UswdsButtonStyle.Unstyled}
               onClick={clearValue}
               aria-label="clear text input."
@@ -139,7 +143,7 @@ function Input_(props: InputProps, ref: React.Ref<InputRef>) {
         )}
       </div>
       {errorMessage && errorMessage.length > 0 && (
-        <div id={`${props.id}-input__error-message`} className="usa-input__error-message">
+        <div id={`${baseId}-input__error-message`} className="usa-input__error-message">
           {errorMessage}
         </div>
       )}

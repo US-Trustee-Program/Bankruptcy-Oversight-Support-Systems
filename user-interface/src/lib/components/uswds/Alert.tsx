@@ -82,12 +82,13 @@ function Alert_(props: AlertProps, ref: React.Ref<AlertRefType>) {
     hide,
   }));
 
+  const resolvedRole = props.role || (props.type === UswdsAlertStyle.Error ? 'alert' : 'status');
+
   return (
     <div
       className={`usa-alert-container ${containerClasses}`}
       data-testid={`alert-container${props.id ? '-' + props.id : ''}`}
       id={props.id}
-      role="alert"
     >
       <div
         className={`${classes} ${
@@ -97,8 +98,8 @@ function Alert_(props: AlertProps, ref: React.Ref<AlertRefType>) {
               ? 'usa-alert__hidden'
               : 'usa-alert__unset'
         }`}
-        role={props.role}
-        aria-live={props.role === 'alert' ? 'assertive' : 'polite'}
+        role={resolvedRole}
+        aria-live={resolvedRole === 'alert' ? 'assertive' : 'polite'}
         data-testid={`alert${props.id ? '-' + props.id : ''}`}
       >
         <div className="usa-alert__body">
@@ -107,7 +108,6 @@ function Alert_(props: AlertProps, ref: React.Ref<AlertRefType>) {
             <p
               className="usa-alert__text"
               data-testid={`alert-message${props.id ? '-' + props.id : ''}`}
-              aria-label={props.message}
             >
               {props.message}
             </p>

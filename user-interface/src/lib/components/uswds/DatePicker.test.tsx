@@ -724,3 +724,72 @@ describe('DatePicker edge case coverage', () => {
     });
   });
 });
+
+describe('DatePicker announcement formatting', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test('should format valid date for screen reader announcement', () => {
+    renderWithProps({ value: '2024-06-15' });
+
+    const announcement = document.getElementById(`${DEFAULT_ID}-current-value`);
+    expect(announcement).toBeInTheDocument();
+    expect(announcement?.textContent).toContain('Currently selected: June 15, 2024');
+  });
+
+  test('should show announcement only when date value exists', async () => {
+    const view = renderWithProps();
+
+    let announcement = document.getElementById(`${DEFAULT_ID}-current-value`);
+    expect(announcement).not.toBeInTheDocument();
+
+    act(() => view.setValue('2024-12-25'));
+
+    await waitFor(() => {
+      announcement = document.getElementById(`${DEFAULT_ID}-current-value`);
+      expect(announcement).toBeInTheDocument();
+    });
+  });
+
+  test('should handle invalid date gracefully in announcement', () => {
+    renderWithProps({ value: '2024-13-45' });
+
+    const announcement = document.getElementById(`${DEFAULT_ID}-current-value`);
+    expect(announcement).toBeInTheDocument();
+    // Should return original string for invalid date, not "Invalid Date"
+    expect(announcement?.textContent).toContain('Currently selected: 2024-13-45');
+    expect(announcement?.textContent).not.toContain('Invalid Date');
+  });
+
+  test('should handle invalid February date in announcement', () => {
+    renderWithProps({ value: '2024-02-31' });
+
+    const announcement = document.getElementById(`${DEFAULT_ID}-current-value`);
+    expect(announcement).toBeInTheDocument();
+    // Should return original string, not "Invalid Date"
+    expect(announcement?.textContent).toContain('Currently selected: 2024-02-31');
+    expect(announcement?.textContent).not.toContain('Invalid Date');
+  });
+
+  test('should format edge case dates correctly', async () => {
+    const view = renderWithProps({ value: '2024-01-01' });
+
+    let announcement = document.getElementById(`${DEFAULT_ID}-current-value`);
+    expect(announcement?.textContent).toContain('Currently selected: January 1, 2024');
+
+    act(() => view.setValue('2024-12-31'));
+
+    await waitFor(() => {
+      announcement = document.getElementById(`${DEFAULT_ID}-current-value`);
+      expect(announcement?.textContent).toContain('Currently selected: December 31, 2024');
+    });
+  });
+
+  test('should have sr-only class for accessibility', () => {
+    renderWithProps({ value: '2024-06-15' });
+
+    const announcement = document.getElementById(`${DEFAULT_ID}-current-value`);
+    expect(announcement).toHaveClass('usa-sr-only');
+  });
+});

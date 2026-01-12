@@ -176,7 +176,7 @@ function PendingTransferOrder_(
             id={`accordion-cancel-button-${order.id}`}
             onClick={cancel}
             uswdsStyle={UswdsButtonStyle.Unstyled}
-            className="unstyled-button"
+            className="spaced-button"
           >
             Clear
           </Button>
