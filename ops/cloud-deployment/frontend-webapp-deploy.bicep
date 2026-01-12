@@ -311,6 +311,7 @@ var stagingWebappConfigProperties = union(
   baseWebappConfigProperties,
   {
     ipSecurityRestrictions: stagingIpSecurityRestrictionsRules
+    ipSecurityRestrictionsDefaultAction: 'Deny'
   },
   isPremiumPlanType ? { minTlsCipherSuite: preferredMinTLSCipherSuite } : {}
 )
