@@ -17,14 +17,18 @@ import {
   getStatusOptions,
   formatAppointmentStatus,
 } from '@common/cams/trustee-appointments';
-import { formatAppointmentType } from '@common/cams/trustees';
+import {
+  AppointmentChapterType,
+  AppointmentStatus,
+  AppointmentType,
+  formatAppointmentType,
+} from '@common/cams/trustees';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { useLocation } from 'react-router-dom';
-import { ChapterType, AppointmentType, AppointmentStatus } from '@common/cams/types/Appointments';
 
-const CHAPTER_OPTIONS: ComboOption<ChapterType>[] = [
+const CHAPTER_OPTIONS: ComboOption<AppointmentChapterType>[] = [
   { value: '7', label: 'Chapter 7' },
   { value: '11', label: 'Chapter 11' },
   { value: '11-subchapter-v', label: 'Chapter 11 Subchapter V' },
@@ -38,7 +42,7 @@ function navigateToAppointments(trusteeId: string, navigate: ReturnType<typeof u
 
 type FormData = {
   districtKey: string; // Combined key: "{courtId}|{divisionCode}"
-  chapter: ChapterType;
+  chapter: AppointmentChapterType;
   appointmentType: AppointmentType;
   status: AppointmentStatus | '';
   effectiveDate: string;
@@ -85,7 +89,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     }
     return {
       districtKey: '',
-      chapter: '' as ChapterType,
+      chapter: '' as AppointmentChapterType,
       appointmentType: '' as AppointmentType,
       status: 'active' as AppointmentStatus,
       effectiveDate: '',
@@ -249,8 +253,8 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     setFormData((prev) => {
       // When chapter changes, reset appointmentType and status
       if (field === 'chapter') {
-        // Type guard to ensure value is a valid ChapterType
-        const isValidChapter = (val: string): val is ChapterType => {
+        // Type guard to ensure value is a valid AppointmentChapterType
+        const isValidChapter = (val: string): val is AppointmentChapterType => {
           return val in chapterAppointmentTypeMap;
         };
 
