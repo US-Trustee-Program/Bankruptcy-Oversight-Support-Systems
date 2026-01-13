@@ -20,7 +20,7 @@ test.describe('Trustees', () => {
     await expect(trusteeProfileLink).toBeVisible();
 
     await trusteeProfileLink.click();
-    await expect(page.locator('.record-detail-header')).toBeVisible();
+    await expect(page.locator('.case-detail-header')).toBeVisible();
 
     await page.waitForTimeout(ANALYZE_DELAY);
     const accessibilityScanResults = await createAxeBuilder(page).analyze();

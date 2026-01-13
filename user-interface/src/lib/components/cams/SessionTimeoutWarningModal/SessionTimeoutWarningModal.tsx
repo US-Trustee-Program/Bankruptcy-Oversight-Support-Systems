@@ -52,13 +52,13 @@ function SessionTimeoutWarningModal_(
     <Modal
       ref={modalRef}
       modalId={modalId}
-      heading="Session Expiring Soon"
+      heading="You Will Be Logged Out Soon"
       content={
         <p>
-          Your session will expire in{' '}
+          You will be logged out in{' '}
           {timerKey > 0 && <CountdownTimer key={timerKey} timeInMs={warningSeconds * 1000} />}{' '}
           seconds due to inactivity. Click &quot;Stay Logged In&quot; to continue working, or
-          &quot;Log Out Now&quot; to end your session.
+          &quot;Log Out Now&quot; to be logged out.
         </p>
       }
       forceAction={true}

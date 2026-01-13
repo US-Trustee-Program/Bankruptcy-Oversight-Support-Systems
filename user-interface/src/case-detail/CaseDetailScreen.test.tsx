@@ -10,7 +10,6 @@ import { MockAttorneys } from '@common/cams/test-utilities/attorneys.mock';
 import * as detailHeader from './panels/CaseDetailHeader';
 import MockData from '@common/cams/test-utilities/mock-data';
 import TestingUtilities from '@/lib/testing/testing-utilities';
-import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import MockApi2 from '@/lib/testing/mock-api2';
 
 const caseId = '101-23-12345';
@@ -21,8 +20,6 @@ const carlWilson = MockAttorneys.Carl;
 const carlAssignment = MockData.getAttorneyAssignment({ ...carlWilson });
 
 const rickBHartName = 'Rick B Hart';
-
-const trialAttorneyLabel = 'Trial Attorney';
 
 const informationUnavailable = 'Information is not available.';
 const taxIdUnavailable = 'Tax ID information is not available.';
@@ -52,10 +49,6 @@ describe('Case Detail screen tests', () => {
       ...env,
       CAMS_USE_FAKE_API: 'true',
     };
-    const mockFeatureFlags = {
-      [FeatureFlagHook.VIEW_TRUSTEE_ON_CASE]: false,
-    };
-    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
   });
 
   async function renderWithProps(props?: Partial<CaseDetail>, notes: CaseNote[] = []) {
@@ -116,7 +109,7 @@ describe('Case Detail screen tests', () => {
     const title = await screen.findByTestId('case-detail-heading-title');
     expect(title.textContent).toContain('Trevor Shields');
 
-    const chapter = await screen.findByTestId('case-chapter');
+    const chapter = await screen.findByTestId('tag-case-chapter');
     expect(chapter).toHaveTextContent('Voluntary Chapter 15');
   });
 
@@ -143,7 +136,7 @@ describe('Case Detail screen tests', () => {
     );
   });
 
-  test('should display case title, case number, dates, assignees, judge name, and debtor for the case', async () => {
+  test('should display case title, case number, dates, and debtor for the case', async () => {
     const mockDateFiled = '01-01-1962';
     const mockClosedDate = '01-01-1963';
     const mockDismissedDate = '01-30-1964';
@@ -161,8 +154,8 @@ describe('Case Detail screen tests', () => {
     const title = screen.getByTestId('case-detail-heading-title');
     expect(title.textContent).toContain(defaultTestCaseDetail.debtor.name);
 
-    const caseNumber = document.querySelector('.case-number');
-    expect(caseNumber?.textContent?.trim()).toEqual(caseId);
+    const caseHeading = screen.getByTestId('case-detail-heading');
+    expect(caseHeading.textContent).toContain(caseId);
 
     const dateFiled = await screen.findByTestId('case-detail-filed-date');
     expect(dateFiled).toHaveTextContent('Filed');
@@ -176,33 +169,13 @@ describe('Case Detail screen tests', () => {
     expect(dismissedDate).toHaveTextContent('Dismissed by court');
     expect(dismissedDate).toHaveTextContent(formatDate(mockDismissedDate));
 
-    const chapter = screen.getByTestId('case-chapter');
+    const chapter = screen.getByTestId('tag-case-chapter');
     expect(chapter).toHaveTextContent(defaultTestCaseDetail.chapter);
 
-    const courtName = screen.getByTestId('court-name-and-district');
+    const courtName = screen.getByTestId('tag-court-name-and-district');
     expect(courtName).toHaveTextContent(
       `${defaultTestCaseDetail.courtName} (${defaultTestCaseDetail.courtDivisionName})`,
     );
-
-    const region = screen.getByTestId('case-detail-region-id');
-    expect(region).toHaveTextContent(
-      `Region ${defaultTestCaseDetail.regionId.replace(/^0*/, '')} - ${defaultTestCaseDetail.courtDivisionName} Office`,
-    );
-
-    const assigneeMap = new Map<string, string>();
-    const assigneeElements = document.querySelectorAll('.assigned-staff-list .individual-assignee');
-    assigneeElements?.forEach((assignee) => {
-      const name = assignee.querySelector('.assignee-name')?.innerHTML;
-      const role = assignee.querySelector('.assignee-role')?.innerHTML;
-      if (name && role) {
-        assigneeMap.set(name, role);
-      }
-    });
-    expect(assigneeMap.get(`${brianWilson.name}`)).toEqual(trialAttorneyLabel);
-    expect(assigneeMap.get(`${carlWilson.name}`)).toEqual(trialAttorneyLabel);
-
-    const judgeName = screen.getByTestId('case-detail-judge-name');
-    expect(judgeName).toHaveTextContent(defaultTestCaseDetail.judgeName as string);
 
     const debtorName = screen.getByTestId('case-detail-debtor-name');
     expect(debtorName).toHaveTextContent(defaultTestCaseDetail.debtor.name);
@@ -238,7 +211,7 @@ describe('Case Detail screen tests', () => {
   ];
 
   test.each(regionTestCases)(
-    'should display the reformatted region ID',
+    'should display the reformatted region ID on trustee and assigned staff panel',
     async (regionId: string, officeName: string, expectedRegionId: string) => {
       const testCaseDetail: CaseDetail = {
         ...defaultTestCaseDetail,
@@ -250,7 +223,8 @@ describe('Case Detail screen tests', () => {
         debtorAttorney,
       };
 
-      await renderWithProps({ ...testCaseDetail });
+      const infoPath = `/case-detail/${testCaseDetail.caseId}/trustee-and-assigned-staff`;
+      await renderWithRoutes({ ...testCaseDetail }, [], infoPath);
 
       await screen.findByTestId('case-detail-heading-title');
       const region = screen.getByTestId('case-detail-region-id');
@@ -354,7 +328,7 @@ describe('Case Detail screen tests', () => {
     },
   );
 
-  test('should show "No judge assigned" when a judge name is unavailable.', async () => {
+  test('should not show judge tag when a judge name is unavailable', async () => {
     const testCaseDetail: CaseDetail = {
       ...defaultTestCaseDetail,
       debtor: {
@@ -365,8 +339,8 @@ describe('Case Detail screen tests', () => {
     };
     await renderWithProps({ ...testCaseDetail });
 
-    const judgeName = await screen.findByTestId('case-detail-no-judge-name');
-    expect(judgeName).toHaveTextContent(informationUnavailable);
+    const judgeTag = screen.queryByTestId('tag-case-judge');
+    expect(judgeTag).not.toBeInTheDocument();
   });
 
   test('should show "Information is not available." when a debtor attorney is unavailable.', async () => {
@@ -455,7 +429,8 @@ describe('Case Detail screen tests', () => {
       debtorAttorney,
     };
 
-    await renderWithProps({ ...testCaseDetail });
+    const infoPath = `/case-detail/${testCaseDetail.caseId}/trustee-and-assigned-staff`;
+    await renderWithRoutes({ ...testCaseDetail }, [], infoPath);
 
     const title = screen.getByTestId('case-detail-heading-title');
     expect(title.textContent).toContain(testCaseDetail.debtor.name);
