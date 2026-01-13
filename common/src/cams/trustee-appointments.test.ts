@@ -2,8 +2,11 @@ import {
   formatAppointmentStatus,
   getStatusOptions,
   chapterAppointmentTypeMap,
+  TRUSTEE_APPOINTMENTS_INTERNAL_SPEC,
+  TrusteeAppointmentInput,
 } from './trustee-appointments';
 import { AppointmentChapterType, AppointmentType, AppointmentStatus } from './trustees';
+import { validateObject } from './validation';
 
 describe('trustee-appointments', () => {
   describe('formatAppointmentStatus', () => {
@@ -122,6 +125,204 @@ describe('trustee-appointments', () => {
     test('should have correct appointment types for Chapter 13', () => {
       const chapter13Types = chapterAppointmentTypeMap['13'];
       expect(chapter13Types).toEqual(['standing', 'case-by-case']);
+    });
+  });
+
+  describe('TRUSTEE_APPOINTMENTS_INTERNAL_SPEC', () => {
+    const validAppointment: TrusteeAppointmentInput = {
+      chapter: '7',
+      appointmentType: 'panel',
+      status: 'active',
+      courtId: 'court-001',
+      divisionCode: '081',
+      appointedDate: '2024-01-01',
+      effectiveDate: '2024-01-01',
+    };
+
+    describe('valid appointmentType for chapter', () => {
+      test('should pass validation when appointmentType is valid for Chapter 7', () => {
+        const appointment: TrusteeAppointmentInput = {
+          ...validAppointment,
+          chapter: '7',
+          appointmentType: 'panel',
+          status: 'active',
+        };
+        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
+        expect(result.valid).toBe(true);
+      });
+
+      test('should pass validation when appointmentType is valid for Chapter 11', () => {
+        const appointment: TrusteeAppointmentInput = {
+          ...validAppointment,
+          chapter: '11',
+          appointmentType: 'case-by-case',
+          status: 'active',
+        };
+        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
+        expect(result.valid).toBe(true);
+      });
+
+      test('should fail validation when appointmentType is invalid for chapter', () => {
+        const appointment: TrusteeAppointmentInput = {
+          ...validAppointment,
+          chapter: '7',
+          appointmentType: 'standing' as AppointmentType,
+          status: 'active',
+        };
+        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
+        expect(result.valid).not.toBe(true);
+        expect(result.reasonMap?.$?.reasons).toContain(
+          'Appointment type "standing" is not valid for chapter 7',
+        );
+      });
+
+      test('should fail validation when appointmentType pool is used for Chapter 7', () => {
+        const appointment: TrusteeAppointmentInput = {
+          ...validAppointment,
+          chapter: '7',
+          appointmentType: 'pool' as AppointmentType,
+          status: 'active',
+        };
+        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
+        expect(result.valid).not.toBe(true);
+        expect(result.reasonMap?.$?.reasons).toContain(
+          'Appointment type "pool" is not valid for chapter 7',
+        );
+      });
+    });
+
+    describe('valid status for chapter and appointmentType', () => {
+      test('should pass validation when status is valid for Chapter 7 panel', () => {
+        const appointment: TrusteeAppointmentInput = {
+          ...validAppointment,
+          chapter: '7',
+          appointmentType: 'panel',
+          status: 'voluntarily-suspended',
+        };
+        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
+        expect(result.valid).toBe(true);
+      });
+
+      test('should pass validation when status is valid for Chapter 7 off-panel', () => {
+        const appointment: TrusteeAppointmentInput = {
+          ...validAppointment,
+          chapter: '7',
+          appointmentType: 'off-panel',
+          status: 'deceased',
+        };
+        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
+        expect(result.valid).toBe(true);
+      });
+
+      test('should pass validation when status is valid for Chapter 11 Subchapter V pool', () => {
+        const appointment: TrusteeAppointmentInput = {
+          ...validAppointment,
+          chapter: '11-subchapter-v',
+          appointmentType: 'pool',
+          status: 'active',
+        };
+        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
+        expect(result.valid).toBe(true);
+      });
+
+      test('should fail validation when status is invalid for Chapter 7 panel', () => {
+        const appointment: TrusteeAppointmentInput = {
+          ...validAppointment,
+          chapter: '7',
+          appointmentType: 'panel',
+          status: 'deceased',
+        };
+        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
+        expect(result.valid).not.toBe(true);
+        expect(result.reasonMap?.$?.reasons).toContain(
+          'Status "deceased" is not valid for chapter 7 with appointment type "panel"',
+        );
+      });
+
+      test('should fail validation when status is invalid for Chapter 7 off-panel', () => {
+        const appointment: TrusteeAppointmentInput = {
+          ...validAppointment,
+          chapter: '7',
+          appointmentType: 'off-panel',
+          status: 'active',
+        };
+        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
+        expect(result.valid).not.toBe(true);
+        expect(result.reasonMap?.$?.reasons).toContain(
+          'Status "active" is not valid for chapter 7 with appointment type "off-panel"',
+        );
+      });
+
+      test('should fail validation when status is invalid for Chapter 11 Subchapter V pool', () => {
+        const appointment: TrusteeAppointmentInput = {
+          ...validAppointment,
+          chapter: '11-subchapter-v',
+          appointmentType: 'pool',
+          status: 'deceased',
+        };
+        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
+        expect(result.valid).not.toBe(true);
+        expect(result.reasonMap?.$?.reasons).toContain(
+          'Status "deceased" is not valid for chapter 11-subchapter-v with appointment type "pool"',
+        );
+      });
+
+      test('should fail validation when status removed is used for Chapter 7 panel', () => {
+        const appointment: TrusteeAppointmentInput = {
+          ...validAppointment,
+          chapter: '7',
+          appointmentType: 'panel',
+          status: 'removed',
+        };
+        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
+        expect(result.valid).not.toBe(true);
+        expect(result.reasonMap?.$?.reasons).toContain(
+          'Status "removed" is not valid for chapter 7 with appointment type "panel"',
+        );
+      });
+    });
+
+    describe('combined validation', () => {
+      test('should report both errors when both appointmentType and status are invalid', () => {
+        const appointment: TrusteeAppointmentInput = {
+          ...validAppointment,
+          chapter: '7',
+          appointmentType: 'standing' as AppointmentType,
+          status: 'removed',
+        };
+        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
+        expect(result.valid).not.toBe(true);
+        expect(result.reasonMap?.$?.reasons).toContain(
+          'Appointment type "standing" is not valid for chapter 7',
+        );
+        expect(result.reasonMap?.$?.reasons).toContain(
+          'Status "removed" is not valid for chapter 7 with appointment type "standing"',
+        );
+      });
+    });
+
+    describe('edge cases', () => {
+      test('should pass validation for Chapter 13 standing with status active', () => {
+        const appointment: TrusteeAppointmentInput = {
+          ...validAppointment,
+          chapter: '13',
+          appointmentType: 'standing',
+          status: 'active',
+        };
+        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
+        expect(result.valid).toBe(true);
+      });
+
+      test('should pass validation for Chapter 12 case-by-case with status inactive', () => {
+        const appointment: TrusteeAppointmentInput = {
+          ...validAppointment,
+          chapter: '12',
+          appointmentType: 'case-by-case',
+          status: 'inactive',
+        };
+        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
+        expect(result.valid).toBe(true);
+      });
     });
   });
 });
