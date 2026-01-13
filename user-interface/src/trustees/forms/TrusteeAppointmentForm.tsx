@@ -294,6 +294,20 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     });
   };
 
+  const getSelections = (fieldValue: string, options: ComboOption[]) => {
+    if (!fieldValue) return undefined;
+    const selected = options.find((opt) => opt.value === fieldValue);
+    return selected ? [selected] : undefined;
+  };
+
+  const handleComboBoxUpdate = (field: keyof FormData, options: ComboOption[]) => {
+    handleFieldChange(field, options[0]?.value ?? '');
+  };
+
+  const handleDateChange = (field: keyof FormData, e: React.ChangeEvent<HTMLInputElement>) => {
+    handleFieldChange(field, e.target.value);
+  };
+
   if (!flags[TRUSTEE_MANAGEMENT]) {
     return (
       <div data-testid="trustee-appointment-create-disabled">
@@ -343,16 +357,8 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
                 label="District"
                 required={true}
                 options={districtOptions}
-                selections={(() => {
-                  if (!formData.districtKey) return undefined;
-                  const selected = districtOptions.find(
-                    (opt) => opt.value === formData.districtKey,
-                  );
-                  return selected ? [selected] : undefined;
-                })()}
-                onUpdateSelection={(options) => {
-                  handleFieldChange('districtKey', options[0]?.value ?? '');
-                }}
+                selections={getSelections(formData.districtKey, districtOptions)}
+                onUpdateSelection={(options) => handleComboBoxUpdate('districtKey', options)}
               />
             </div>
 
@@ -362,14 +368,8 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
                 label="Chapter"
                 required={true}
                 options={CHAPTER_OPTIONS}
-                selections={(() => {
-                  if (!formData.chapter) return undefined;
-                  const selected = CHAPTER_OPTIONS.find((opt) => opt.value === formData.chapter);
-                  return selected ? [selected] : undefined;
-                })()}
-                onUpdateSelection={(options) => {
-                  handleFieldChange('chapter', options[0]?.value ?? '');
-                }}
+                selections={getSelections(formData.chapter, CHAPTER_OPTIONS)}
+                onUpdateSelection={(options) => handleComboBoxUpdate('chapter', options)}
               />
             </div>
 
@@ -381,16 +381,8 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
                 disabled={!formData.chapter}
                 options={appointmentTypeOptions}
                 ariaDescription="Select Chapter to see available types."
-                selections={(() => {
-                  if (!formData.appointmentType) return undefined;
-                  const selected = appointmentTypeOptions.find(
-                    (opt) => opt.value === formData.appointmentType,
-                  );
-                  return selected ? [selected] : undefined;
-                })()}
-                onUpdateSelection={(options) => {
-                  handleFieldChange('appointmentType', options[0]?.value ?? '');
-                }}
+                selections={getSelections(formData.appointmentType, appointmentTypeOptions)}
+                onUpdateSelection={(options) => handleComboBoxUpdate('appointmentType', options)}
               />
             </div>
 
@@ -401,7 +393,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
                 label="Appointment Date"
                 required={true}
                 value={formData.appointedDate}
-                onChange={(e) => handleFieldChange('appointedDate', e.target.value)}
+                onChange={(e) => handleDateChange('appointedDate', e)}
               />
             </div>
 
@@ -413,14 +405,8 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
                   required={true}
                   disabled={!formData.chapter || !formData.appointmentType}
                   options={statusOptions}
-                  selections={(() => {
-                    if (!formData.status) return undefined;
-                    const selected = statusOptions.find((opt) => opt.value === formData.status);
-                    return selected ? [selected] : undefined;
-                  })()}
-                  onUpdateSelection={(options) => {
-                    handleFieldChange('status', options[0]?.value ?? '');
-                  }}
+                  selections={getSelections(formData.status, statusOptions)}
+                  onUpdateSelection={(options) => handleComboBoxUpdate('status', options)}
                 />
               </div>
             )}
@@ -433,7 +419,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
                   label="Status Effective Date"
                   required={true}
                   value={formData.effectiveDate}
-                  onChange={(e) => handleFieldChange('effectiveDate', e.target.value)}
+                  onChange={(e) => handleDateChange('effectiveDate', e)}
                 />
               </div>
             )}
