@@ -772,8 +772,8 @@ describe('TrusteeAppointmentForm Tests', () => {
         expect(screen.getByText('Active')).toBeInTheDocument();
       });
 
-      expect(screen.getByText('Voluntary Suspended')).toBeInTheDocument();
-      expect(screen.getByText('Involuntary Suspended')).toBeInTheDocument();
+      expect(screen.getByText('Voluntarily Suspended')).toBeInTheDocument();
+      expect(screen.getByText('Involuntarily Suspended')).toBeInTheDocument();
       expect(screen.queryByText('Inactive')).not.toBeInTheDocument();
     });
 
