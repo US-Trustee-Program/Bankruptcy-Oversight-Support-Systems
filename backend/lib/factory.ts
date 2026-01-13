@@ -24,6 +24,7 @@ import {
   QueueGateway,
   RuntimeState,
   RuntimeStateRepository,
+  SearchGateway,
   TrusteeAppointmentsRepository,
   TrusteesRepository,
   UserGroupsRepository,
@@ -68,6 +69,8 @@ import { TrusteesMongoRepository } from './adapters/gateways/mongo/trustees.mong
 import { TrusteeAppointmentsMongoRepository } from './adapters/gateways/mongo/trustee-appointments.mongo.repository';
 import { ListsMongoRepository } from './adapters/gateways/mongo/lists.mongo.repository';
 import { UserGroupsMongoRepository } from './adapters/gateways/mongo/user-groups.mongo.repository';
+import { AzureSearchGateway } from './adapters/gateways/azure-search/azure-search-gateway';
+import { MockAzureSearchGateway } from './testing/mock-gateways/mock-azure-search.gateway';
 import {
   ServerConfigError,
   UNSUPPORTED_AUTHENTICATION_PROVIDER,
@@ -76,6 +79,7 @@ import {
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
 let storageGateway: StorageGateway;
+let searchGateway: SearchGateway;
 let acmsGateway: AcmsGateway;
 let idpApiGateway: UserGroupGateway & Initializer<UserGroupGatewayConfig | ApplicationContext>;
 
@@ -297,6 +301,20 @@ export const getStorageGateway = (_context: ApplicationContext): StorageGateway 
     storageGateway = LocalStorageGateway;
   }
   return storageGateway;
+};
+
+export const getSearchGateway = (context: ApplicationContext): SearchGateway => {
+  if (searchGateway) return searchGateway;
+
+  const config = context.config.azureSearchConfig;
+
+  if (config.mock || context.config.get('dbMock')) {
+    searchGateway = new MockAzureSearchGateway();
+  } else {
+    searchGateway = new AzureSearchGateway(config);
+  }
+
+  return searchGateway;
 };
 
 export const getUserGroupGateway = async (

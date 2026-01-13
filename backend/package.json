@@ -32,6 +32,7 @@
     "start:api": "(cd function-apps/api && npm run start)",
     "start:dataflows": "(cd function-apps/dataflows && npm run start)",
     "start:express": "tsx --watch express/server.ts",
+    "azure-search-poc": "tsx lib/scripts/azure-search-poc.ts",
     "test": "CAMS_LOGIN_PROVIDER='mock' DATABASE_MOCK='true' MONGO_CONNECTION_STRING='mongodb://test-string' FEATURE_FLAG_SDK_KEY='' vitest run",
     "test:watch": "CAMS_LOGIN_PROVIDER='mock' DATABASE_MOCK='true' MONGO_CONNECTION_STRING='mongodb://test-string' FEATURE_FLAG_SDK_KEY='' vitest watch"
   },
@@ -40,6 +41,7 @@
     "@azure/functions": "4.10.0",
     "@azure/identity": "4.13.0",
     "@azure/keyvault-secrets": "4.10.0",
+    "@azure/search-documents": "^12.0.0",
     "@launchdarkly/node-server-sdk": "9.10.3",
     "@okta/jwt-verifier": "4.0.2",
     "@okta/okta-sdk-nodejs": "7.3.0",

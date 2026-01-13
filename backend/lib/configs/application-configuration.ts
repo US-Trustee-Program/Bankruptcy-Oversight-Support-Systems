@@ -2,6 +2,7 @@ import * as dotenv from 'dotenv';
 import { ServerType } from '../adapters/types/basic';
 import { DocumentDbConfig, IDbConfig } from '../adapters/types/database';
 import { AuthorizationConfig, UserGroupGatewayConfig } from '../adapters/types/authorization';
+import { AzureSearchConfig } from '../adapters/types/search';
 import { getAuthorizationConfig } from './authorization-configuration';
 import { getUserGroupGatewayConfig } from './user-groups-gateway-configuration';
 
@@ -16,6 +17,7 @@ export class ApplicationConfiguration {
   public readonly featureFlagKey: string;
   public readonly authConfig: AuthorizationConfig;
   public readonly userGroupGatewayConfig: UserGroupGatewayConfig;
+  public readonly azureSearchConfig: AzureSearchConfig;
 
   constructor() {
     this.dbMock = process.env.DATABASE_MOCK?.toLowerCase() === 'true';
@@ -26,6 +28,7 @@ export class ApplicationConfiguration {
     this.featureFlagKey = process.env.FEATURE_FLAG_SDK_KEY;
     this.authConfig = getAuthorizationConfig();
     this.userGroupGatewayConfig = getUserGroupGatewayConfig();
+    this.azureSearchConfig = this.getAzureSearchConfig();
   }
 
   private getAppServerConfig(): ServerType {
@@ -134,6 +137,15 @@ export class ApplicationConfiguration {
     return {
       databaseName: process.env.COSMOS_DATABASE_NAME,
       connectionString: process.env.MONGO_CONNECTION_STRING,
+    };
+  }
+
+  private getAzureSearchConfig(): AzureSearchConfig {
+    return {
+      endpoint: process.env.AZURE_SEARCH_ENDPOINT || '',
+      apiKey: process.env.AZURE_SEARCH_API_KEY || '',
+      indexName: process.env.AZURE_SEARCH_INDEX_NAME || 'bankruptcy-debtors-poc',
+      mock: process.env.AZURE_SEARCH_MOCK?.toLowerCase() === 'true',
     };
   }
 

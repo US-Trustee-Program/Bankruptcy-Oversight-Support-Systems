@@ -41,6 +41,7 @@ import {
 } from '@common/cams/lists';
 import { Creatable } from '@common/cams/creatable';
 import { Identifiable } from '@common/cams/document';
+import { SearchResult, SearchOptions } from '../adapters/types/search';
 
 export type ReplaceResult = {
   id: string;
@@ -320,4 +321,39 @@ export interface QueueGateway {
 export interface UserGroupsRepository extends Releasable {
   upsertUserGroupsBatch(context: ApplicationContext, userGroups: UserGroup[]): Promise<void>;
   getUserGroupsByNames(context: ApplicationContext, groupNames: string[]): Promise<UserGroup[]>;
+}
+
+/**
+ * Gateway interface for Azure AI Search operations
+ */
+export interface SearchGateway extends Releasable {
+  /**
+   * Creates the search index with the defined schema
+   */
+  createIndex(): Promise<void>;
+
+  /**
+   * Deletes the search index
+   */
+  deleteIndex(): Promise<void>;
+
+  /**
+   * Uploads documents to the search index
+   * @param documents Array of documents to upload
+   */
+  uploadDocuments<T>(documents: T[]): Promise<void>;
+
+  /**
+   * Searches the index for documents matching the search text
+   * @param searchText The text to search for
+   * @param options Search options (fuzzy, pagination, field selection)
+   * @returns Search results with count and matched documents
+   */
+  search<T>(searchText: string, options?: SearchOptions): Promise<SearchResult<T>>;
+
+  /**
+   * Gets the total count of documents in the index
+   * @returns The number of documents
+   */
+  getDocumentCount(): Promise<number>;
 }
