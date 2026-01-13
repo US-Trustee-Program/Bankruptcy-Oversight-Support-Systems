@@ -2,7 +2,11 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteeAppointmentsRepository, TrusteesRepository } from '../gateways.types';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { getTrusteeAppointmentsRepository, getTrusteesRepository } from '../../factory';
-import { TrusteeAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
+import {
+  TrusteeAppointment,
+  TrusteeAppointmentInput,
+  TRUSTEE_APPOINTMENTS_INTERNAL_SPEC,
+} from '@common/cams/trustee-appointments';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { CourtsUseCase } from '../courts/courts';
 import { CourtDivisionDetails } from '@common/cams/courts';
@@ -17,6 +21,8 @@ import {
 } from '@common/cams/trustees';
 import { Creatable } from '../../adapters/types/persistence.gateway';
 import DateHelper from '@common/date-helper';
+import { validateObject } from '@common/cams/validation';
+import { CamsError } from '../../common-errors/cams-error';
 
 const MODULE_NAME = 'TRUSTEE-APPOINTMENTS-USE-CASE';
 
@@ -49,6 +55,17 @@ export class TrusteeAppointmentsUseCase {
     return courts.find(
       (court) => court.courtId === courtId && court.courtDivisionCode === divisionCode,
     );
+  }
+
+  private validateAppointmentData(appointmentData: TrusteeAppointmentInput): void {
+    const validationResult = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointmentData);
+
+    if (!validationResult.valid && validationResult.reasonMap?.$?.reasons) {
+      const errors = validationResult.reasonMap.$.reasons.join('; ');
+      throw new CamsError(MODULE_NAME, {
+        message: errors,
+      });
+    }
   }
 
   private hasAppointmentChanged(before: TrusteeAppointment, after: TrusteeAppointment): boolean {
@@ -156,6 +173,8 @@ export class TrusteeAppointmentsUseCase {
         });
       }
 
+      this.validateAppointmentData(appointmentData);
+
       const userReference = getCamsUserReference(context.session.user);
 
       const createdAppointment = await this.trusteeAppointmentsRepository.createAppointment(
@@ -206,6 +225,8 @@ export class TrusteeAppointmentsUseCase {
     appointmentData: TrusteeAppointmentInput,
   ): Promise<TrusteeAppointment> {
     try {
+      this.validateAppointmentData(appointmentData);
+
       const userReference = getCamsUserReference(context.session.user);
 
       const existingAppointment = await this.trusteeAppointmentsRepository.read(appointmentId);

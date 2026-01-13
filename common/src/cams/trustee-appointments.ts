@@ -1,6 +1,7 @@
 import { Auditable } from './auditable';
 import { Identifiable } from './document';
 import { AppointmentType, AppointmentChapterType, AppointmentStatus } from './trustees';
+import { VALID, ValidatorFunction, ValidatorResult, ValidationSpec } from './validation';
 
 const chapter7AppointmentTypes: readonly AppointmentType[] = [
   'panel',
@@ -95,4 +96,57 @@ export type TrusteeAppointment = Auditable &
     effectiveDate: string;
     courtName?: string;
     courtDivisionName?: string;
+  };
+
+const validateAppointmentTypeForChapter: ValidatorFunction = (obj: unknown): ValidatorResult => {
+  const appointment = obj as TrusteeAppointmentInput;
+  const { chapter, appointmentType } = appointment;
+
+  if (!chapter || !appointmentType) {
+    return VALID;
+  }
+
+  const validAppointmentTypes = chapterAppointmentTypeMap[chapter];
+  if (!validAppointmentTypes.includes(appointmentType)) {
+    return {
+      reasonMap: {
+        $: {
+          reasons: [`Appointment type "${appointmentType}" is not valid for chapter ${chapter}`],
+        },
+      },
+    };
+  }
+
+  return VALID;
+};
+
+const validateStatusForChapterAndAppointmentType: ValidatorFunction = (
+  obj: unknown,
+): ValidatorResult => {
+  const appointment = obj as TrusteeAppointmentInput;
+  const { chapter, appointmentType, status } = appointment;
+
+  if (!chapter || !appointmentType || !status) {
+    return VALID;
+  }
+
+  const validStatuses = getStatusOptions(chapter, appointmentType);
+  if (!validStatuses.includes(status)) {
+    return {
+      reasonMap: {
+        $: {
+          reasons: [
+            `Status "${status}" is not valid for chapter ${chapter} with appointment type "${appointmentType}"`,
+          ],
+        },
+      },
+    };
+  }
+
+  return VALID;
+};
+
+export const TRUSTEE_APPOINTMENTS_INTERNAL_SPEC: Readonly<ValidationSpec<TrusteeAppointmentInput>> =
+  {
+    $: [validateAppointmentTypeForChapter, validateStatusForChapterAndAppointmentType],
   };
