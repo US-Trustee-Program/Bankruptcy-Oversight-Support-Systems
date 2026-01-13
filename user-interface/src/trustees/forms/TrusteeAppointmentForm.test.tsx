@@ -292,6 +292,7 @@ describe('TrusteeAppointmentForm Tests', () => {
   });
 
   test('should handle successful form submission', async () => {
+    vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [] });
     const postSpy = vi.spyOn(Api2, 'postTrusteeAppointment').mockResolvedValue(undefined);
 
     renderWithProps({ trusteeId: TEST_TRUSTEE_ID });
@@ -326,6 +327,7 @@ describe('TrusteeAppointmentForm Tests', () => {
   });
 
   test('should show error alert when district is not selected on submit', async () => {
+    vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [] });
     const postSpy = vi.spyOn(Api2, 'postTrusteeAppointment').mockResolvedValue(undefined);
     const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
 
@@ -372,6 +374,7 @@ describe('TrusteeAppointmentForm Tests', () => {
 
   test('should handle API error on form submission', async () => {
     const error = new Error('Network failure');
+    vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [] });
     vi.spyOn(Api2, 'postTrusteeAppointment').mockRejectedValue(error);
 
     const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
@@ -386,6 +389,9 @@ describe('TrusteeAppointmentForm Tests', () => {
     });
 
     const submitButton = screen.getByRole('button', { name: /save/i });
+    await waitFor(() => {
+      expect(submitButton).not.toBeDisabled();
+    });
     await userEvent.click(submitButton);
 
     await waitFor(() => {
@@ -501,6 +507,7 @@ describe('TrusteeAppointmentForm Tests', () => {
   });
 
   test('should show "Saving…" text on submit button while submitting', async () => {
+    vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: [] });
     vi.spyOn(Api2, 'postTrusteeAppointment').mockImplementation(
       () => new Promise<void>((resolve) => setTimeout(() => resolve(undefined), 1000)),
     );
@@ -515,6 +522,9 @@ describe('TrusteeAppointmentForm Tests', () => {
     });
 
     const submitButton = screen.getByRole('button', { name: /save/i });
+    await waitFor(() => {
+      expect(submitButton).not.toBeDisabled();
+    });
     await userEvent.click(submitButton);
 
     await waitFor(() => {
