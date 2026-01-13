@@ -185,7 +185,7 @@ describe('DateRangePicker additional coverage tests', () => {
       expect(ariaElement).toBeInTheDocument();
     });
     expect(ariaElement).toHaveAttribute('aria-live', 'polite');
-    expect(ariaElement).toHaveAttribute('hidden');
+    expect(ariaElement).toHaveClass('screen-reader-only');
   });
 
   test('should handle initial value prop', async () => {

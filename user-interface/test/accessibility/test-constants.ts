@@ -36,7 +36,6 @@ export const LARGE_VIEWPORT = {
  */
 export const DISABLED_A11Y_RULES = [
   'heading-order', // Temporarily disabled due to <h3>Filters</h3> without proper hierarchy
-  'label-title-only', // Temporarily disabled due to radio buttons using only title attribute for label
 ];
 
 /**

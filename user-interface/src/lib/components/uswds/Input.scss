@@ -1,0 +1,42 @@
+@import '@/styles/abstracts/colors';
+
+.usa-form-group {
+  label:has(~ .usa-input-group input[required])::after {
+    content: ' *';
+    color: $secondary-dark;
+  }
+
+  .usa-input-group {
+    input {
+      padding-right: 0.5rem;
+    }
+  }
+
+  .usa-input-prefix {
+    z-index: 1;
+  }
+
+  .usa-input-suffix {
+    z-index: 1;
+  }
+
+  .usa-input[data-position='right'] + .usa-input-prefix {
+    position: absolute;
+    right: 0;
+  }
+
+  .usa-input[data-position='left'] {
+    padding-right: 0;
+    padding-left: 2.5rem;
+  }
+
+  .usa-input[data-position='left'] + .usa-input-prefix {
+    position: absolute;
+    left: 0;
+    right: auto;
+  }
+
+  .usa-input[data-position='right'] + .usa-input-suffix {
+    padding-right: 0.5rem;
+  }
+}

@@ -1,13 +1,4 @@
-$secondary-dark: #B50909;
-$secondary-darker: #8B0A03;
-$warning-light: #FFFFCA;
-$warning-text: #990000;
-
-button.unstyled-button {
-  margin-left: 1rem;
-  margin-right: 1rem;
-  border-radius: 0.25rem;
-}
+@import '@/styles/abstracts/colors';
 
 .form-container {
   display: flex;
@@ -27,130 +18,9 @@ button.unstyled-button {
   }
 }
 
-.usa-form-group {
-  label:has(~ .usa-input-group input[required])::after {
-    content: ' *';
-    color: $secondary-dark;
-  }
-  label:has(+ .usa-textarea-group textarea[required])::after {
-    content: ' *';
-    color: $secondary-dark;
-  }
-  label:has(+ .usa-date-picker input[required])::after {
-    content: ' *';
-    color: $secondary-dark;
-  }
-  input[type="checkbox"][required] + label::after {
-    content: ' *';
-    color: $secondary-dark;
-  }
-  input[type="radio"][required] + label::after {
-    content: ' *';
-    color: $secondary-dark;
-  }
-  .usa-input-group {
-    input {
-      padding-right: 0.5rem;
-    }
-  }
-  .usa-input-prefix {
-    z-index: 1;
-  }
-  .usa-input-suffix {
-    z-index: 1;
-  }
-  .usa-input[data-position=right] + .usa-input-prefix {
-    position: absolute;
-    right: 0;
-  }
-  .usa-input[data-position=left] {
-    padding-right: 0;
-    padding-left: 2.5rem;
-  }
-  .usa-input[data-position=left] + .usa-input-prefix {
-    position: absolute;
-    left: 0;
-    right: auto;
-  }
-  .usa-input[data-position=right] + .usa-input-suffix {
-    padding-right: 0.5rem;
-  }
-}
-
-.usa-button-group {
-  padding: 1rem 5px;
-}
-
 .usa-input__error-message {
   padding: 0.25rem 0;
   color: $secondary-dark;
-}
-
-.usa-radio__input + label {
-  button {
-    text-decoration: none;
-    margin-top: 0.5rem;
-    margin-bottom: 0.5rem;
-    height: 1.25rem;
-    line-height: 1.25rem;
-  }
-  button:active, button:hover {
-    text-decoration: none;
-  }
-}
-.usa-radio__input:checked + label {
-  [class *= __label]::before {
-    box-shadow: 0 0 0 2px #005ea2, inset 0 0 0 2px #fff;
-    background-color: #005ea2;
-  }
-}
-.usa-checkbox__input + label {
-  line-height: 1.25rem;
-  button {
-    display: inline-block;
-    text-decoration: none;
-    margin-top: 0;
-    height:1.25rem;
-    margin-bottom: 1rem;
-  }
-  button:active, button:hover {
-    text-decoration: none;
-  }
-}
-.usa-checkbox__input + label {
-  [class *= __label]::before {
-    margin-left: 0.375rem;
-    margin-top: -0.15rem;
-  }
-}
-.usa-checkbox__input:checked + label {
-  [class *= __label]::before {
-    background-color: #005ea2;
-    background-image: url(/assets/styles/img/correct8.svg), linear-gradient(transparent, transparent);
-    background-repeat: no-repeat;
-    background-position: center center;
-    background-size: .75rem auto;
-    box-shadow: 0 0 0 2px #005ea2;
-  }
-}
-
-.usa-fieldset {
-  legend[data-required="true"]::after {
-    content: ' *';
-    color: $secondary-dark;
-  }
-  legend[data-required="true"] ~ .usa-form-group {
-    input[type="radio"][required] + label::after {
-      content: '';
-      color: transparent;
-    }
-  }
-}
-
-.usa-fieldset.radio-group {
-  .usa-form-group.usa-radio {
-    margin-top: 0;
-  }
 }
 
 .required-form-field {
